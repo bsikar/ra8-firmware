@@ -53,22 +53,21 @@ static void test_eth_app_loopback_ok(void)
     .eaeie1_mask  = 0U,
     .eaeie2_mask  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_etha_descriptor_ring_init(k_ra_etha_port_0,
-                                                   (uint16_t)k_test_eth_app_ring_tx,
-                                                   (uint16_t)k_test_eth_app_ring_rx,
-                                                   (uint16_t)k_test_eth_app_buffer_size));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_operation));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0,
+                                              (uint16_t)k_test_eth_app_ring_tx,
+                                              (uint16_t)k_test_eth_app_ring_rx,
+                                              (uint16_t)k_test_eth_app_buffer_size));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_operation));
   for (uint8_t i = 0U; i < (uint8_t)k_test_eth_app_burst; i++) {
-    TEST_ASSERT_EQ((int)k_ra_ok,
-                   (int)ra_etha_account_traffic(k_ra_etha_port_0, 1U, 0U, 1U, 0U, 0U));
+    TEST_ASSERT_EQ(k_ra_ok, ra_etha_account_traffic(k_ra_etha_port_0, 1U, 0U, 1U, 0U, 0U));
   }
   ra_etha_port_stats_t stats = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_etha_get_stats(k_ra_etha_port_0, &stats));
-  TEST_ASSERT_EQ((int)k_test_eth_app_burst, (int)stats.tx_ok);
-  TEST_ASSERT_EQ((int)k_test_eth_app_burst, (int)stats.rx_ok);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_etha_deinit(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &stats));
+  TEST_ASSERT_EQ(k_test_eth_app_burst, stats.tx_ok);
+  TEST_ASSERT_EQ(k_test_eth_app_burst, stats.rx_ok);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_deinit(k_ra_etha_port_0));
   TEST_END("eth_loopback: bring-up + account + stats");
 }
 
@@ -83,7 +82,7 @@ static void test_eth_app_init_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("eth_loopback: NULL cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_etha_init(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_init(k_ra_etha_port_0, nullptr));
   TEST_END("eth_loopback: NULL cfg rejected");
 }
 
@@ -104,8 +103,8 @@ static void test_eth_app_init_bad_port(void)
     .eaeie1_mask  = 0U,
     .eaeie2_mask  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_etha_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &cfg));
   TEST_END("eth_loopback: bad port rejected");
 }
 
@@ -121,8 +120,8 @@ static void test_eth_app_set_mode_bad_port(void)
   reset_world();
   TEST_BEGIN("eth_loopback: set_mode bad port rejected");
   TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_etha_set_mode((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_opc_reset));
+    k_ra_err_invalid_arg,
+    ra_etha_set_mode((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_opc_reset));
   TEST_END("eth_loopback: set_mode bad port rejected");
 }
 
@@ -143,8 +142,8 @@ static void test_eth_app_get_stats_null(void)
     .eaeie1_mask  = 0U,
     .eaeie2_mask  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_etha_get_stats(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_get_stats(k_ra_etha_port_0, nullptr));
   TEST_END("eth_loopback: get_stats NULL rejected");
 }
 

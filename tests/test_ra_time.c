@@ -21,7 +21,7 @@
 static void test_init_rejects_zero_hz(void)
 {
   TEST_BEGIN("ra_time_init rejects 0 Hz");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_time_init(0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_time_init(0U));
   TEST_END("ra_time_init rejects 0 Hz");
 }
 
@@ -34,7 +34,7 @@ static void test_init_rejects_zero_hz(void)
 static void test_init_accepts_reasonable_hz(void)
 {
   TEST_BEGIN("ra_time_init accepts sane cpu_hz");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(1000000UL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(1000000UL));
   TEST_END("ra_time_init accepts sane cpu_hz");
 }
 
@@ -52,7 +52,7 @@ static void test_tick_counter_advances(void)
   ra_time_on_tick();
   ra_time_on_tick();
   ra_time_on_tick();
-  TEST_ASSERT_EQ((int)(start + 3U), (int)ra_time_ms());
+  TEST_ASSERT_EQ((start + 3U), ra_time_ms());
   TEST_END("tick counter advances on on_tick");
 }
 
@@ -68,7 +68,7 @@ static void test_now_and_sleep_aliases(void)
   (void)ra_time_init(1000000UL);
   const uint32_t via_long  = ra_time_ms();
   const uint32_t via_short = ra_now_ms();
-  TEST_ASSERT_EQ((int)via_long, (int)via_short);
+  TEST_ASSERT_EQ(via_long, via_short);
   TEST_END("short aliases forward to systick");
 }
 
@@ -96,9 +96,9 @@ static void test_init_rejects_cpu_hz_too_low(void)
 {
   TEST_BEGIN("ra_time_init rejects cpu_hz that yields reload=0");
   /* 1001 / 1000 = 1; 1 - 1 = 0 -> k_ra_err_invalid_arg */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_time_init(1001U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_time_init(1001U));
   /* 1999 / 1000 = 1; same result */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_time_init(1999U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_time_init(1999U));
   TEST_END("ra_time_init rejects cpu_hz that yields reload=0");
 }
 
@@ -128,7 +128,7 @@ static void test_systick_handler_increments_counter(void)
   const uint32_t before = ra_time_ms();
   SysTick_Handler();
   SysTick_Handler();
-  TEST_ASSERT_EQ((int)(before + 2U), (int)ra_time_ms());
+  TEST_ASSERT_EQ((before + 2U), ra_time_ms());
   TEST_END("SysTick_Handler increments tick counter");
 }
 

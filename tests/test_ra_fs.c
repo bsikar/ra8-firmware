@@ -113,9 +113,9 @@ static void put32(uint8_t* p, uint32_t off, uint32_t v)
  */
 static void build_volume(ra_fs_type_t target)
 {
-  if (s_disk.bytes != NULL) {
+  if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
-    s_disk.bytes = NULL;
+    s_disk.bytes = nullptr;
   }
   uint32_t need_blocks = k_disk_blocks_fat16;
   if (target == k_ra_fs_type_fat12) {
@@ -126,7 +126,7 @@ static void build_volume(ra_fs_type_t target)
   s_disk.byte_count  = need_blocks * k_disk_block_size;
   s_disk.bytes       = (uint8_t*)calloc(1, s_disk.byte_count);
   s_disk.block_count = need_blocks;
-  if (s_disk.bytes == NULL) {
+  if (s_disk.bytes == nullptr) {
     TEST_FAIL_FMT("%s", "calloc failed");
   }
 
@@ -219,7 +219,7 @@ static void test_mount_unmount_fat16(void)
 {
   TEST_BEGIN("mount/unmount FAT16");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
   TEST_ASSERT_NOT_NULL(h);
   TEST_ASSERT_EQ(k_ra_fs_type_fat16, h->type);
@@ -237,7 +237,7 @@ static void test_fat12_detection(void)
 {
   TEST_BEGIN("FAT12 detection");
   build_volume(k_ra_fs_type_fat12);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra_fs_type_fat12, h->type);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
@@ -254,7 +254,7 @@ static void test_fat32_detection(void)
 {
   TEST_BEGIN("FAT32 detection");
   build_volume(k_ra_fs_type_fat32);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra_fs_type_fat32, h->type);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
@@ -271,9 +271,9 @@ static void test_open_close_create(void)
 {
   TEST_BEGIN("open/close create");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "HELLO.TXT", k_ra_fs_mode_write, &f));
   TEST_ASSERT_NOT_NULL(f);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
@@ -291,10 +291,10 @@ static void test_write_then_read(void)
 {
   TEST_BEGIN("write then read happy path");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
 
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "DATA.BIN", k_ra_fs_mode_write, &f));
   uint8_t payload[200] = {};
   for (uint32_t i = 0; i < sizeof payload; i++) {
@@ -303,16 +303,16 @@ static void test_write_then_read(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_write(f, payload, sizeof payload));
   uint32_t sz = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_size(f, &sz));
-  TEST_ASSERT_EQ((int)sizeof payload, (int)sz);
+  TEST_ASSERT_EQ(sizeof payload, sz);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "DATA.BIN", k_ra_fs_mode_read, &f));
   uint8_t  out[300] = {};
   uint32_t got      = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, out, sizeof out, &got));
-  TEST_ASSERT_EQ((int)sizeof payload, (int)got);
+  TEST_ASSERT_EQ(sizeof payload, got);
   for (uint32_t i = 0; i < sizeof payload; i++) {
-    TEST_ASSERT_EQ((int)payload[i], (int)out[i]);
+    TEST_ASSERT_EQ(payload[i], out[i]);
   }
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
@@ -329,10 +329,10 @@ static void test_read_cross_cluster(void)
 {
   TEST_BEGIN("read across cluster boundary");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
 
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "BIG.BIN", k_ra_fs_mode_write, &f));
   /* Write more than one cluster (cluster = 1 sector = 512 B in our BPB). */
   uint8_t payload[1500] = {};
@@ -346,9 +346,9 @@ static void test_read_cross_cluster(void)
   uint8_t  out[1500] = {};
   uint32_t got       = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, out, sizeof out, &got));
-  TEST_ASSERT_EQ((int)sizeof payload, (int)got);
+  TEST_ASSERT_EQ(sizeof payload, got);
   for (uint32_t i = 0; i < sizeof payload; i++) {
-    TEST_ASSERT_EQ((int)payload[i], (int)out[i]);
+    TEST_ASSERT_EQ(payload[i], out[i]);
   }
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
@@ -365,9 +365,9 @@ static void test_seek_tell(void)
 {
   TEST_BEGIN("seek + tell");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "S.BIN", k_ra_fs_mode_write, &f));
   uint8_t buf[64] = {};
   for (uint32_t i = 0; i < sizeof buf; i++) {
@@ -377,11 +377,11 @@ static void test_seek_tell(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_seek(f, 10));
   uint32_t pos = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_tell(f, &pos));
-  TEST_ASSERT_EQ(10, (int)pos);
+  TEST_ASSERT_EQ(10, pos);
   /* Out-of-range seek clamps to size. */
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_seek(f, 9999));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_tell(f, &pos));
-  TEST_ASSERT_EQ((int)sizeof buf, (int)pos);
+  TEST_ASSERT_EQ(sizeof buf, pos);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   TEST_END("seek + tell");
@@ -397,15 +397,15 @@ static void test_listdir(void)
 {
   TEST_BEGIN("listdir");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "A.TXT", k_ra_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "B.TXT", k_ra_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
   s_listdir_count = 0;
-  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", listdir_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", listdir_cb, nullptr));
   TEST_ASSERT(s_listdir_count >= 2);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   TEST_END("listdir");
@@ -421,9 +421,9 @@ static void test_unlink(void)
 {
   TEST_BEGIN("unlink");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "GONE.DAT", k_ra_fs_mode_write, &f));
   uint8_t b[10] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_write(f, b, sizeof b));
@@ -443,17 +443,17 @@ static void test_unlink(void)
 static void test_null_args(void)
 {
   TEST_BEGIN("null arg checks");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_mount(NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_unmount(NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_open(NULL, NULL, k_ra_fs_mode_read, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_close(NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_read(NULL, NULL, 0, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_write(NULL, NULL, 0));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_seek(NULL, 0));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_tell(NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_size(NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_listdir(NULL, NULL, NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_unlink(NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_mount(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_unmount(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_open(nullptr, nullptr, k_ra_fs_mode_read, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_close(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_read(nullptr, nullptr, 0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_write(nullptr, nullptr, 0));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_seek(nullptr, 0));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_tell(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_size(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_listdir(nullptr, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_unlink(nullptr, nullptr));
   TEST_END("null arg checks");
 }
 
@@ -467,9 +467,9 @@ static void test_no_such_file(void)
 {
   TEST_BEGIN("no such file");
   build_volume(k_ra_fs_type_fat16);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_fs_open(h, "NOPE.TXT", k_ra_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_fs_unlink(h, "NOPE.TXT"));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
@@ -486,9 +486,9 @@ static void test_no_free_space(void)
 {
   TEST_BEGIN("no free space");
   build_volume(k_ra_fs_type_fat12);
-  ra_fs_mount_t* h = NULL;
+  ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
-  ra_fs_file_t* f = NULL;
+  ra_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "FILL.BIN", k_ra_fs_mode_write, &f));
   /* The FAT12 disk has count_of_clusters << 4085, so try to write more
      bytes than the data region holds and expect k_ra_err_no_mem. */
@@ -510,7 +510,7 @@ static void test_bad_backend(void)
 {
   TEST_BEGIN("bad backend rejected");
   ra_fs_backend_t b = {};
-  ra_fs_mount_t*  h = NULL;
+  ra_fs_mount_t*  h = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_mount(&b, &h));
   TEST_END("bad backend rejected");
 }

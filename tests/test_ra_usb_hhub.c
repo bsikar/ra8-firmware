@@ -54,17 +54,16 @@ static void stub_on_attach(void* ctx, const ra_usb_hhub_device_t* device)
 
 static void walk_to_attach(void)
 {
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhub_attach_callback(stub_on_attach, (void*)k_test_hhub_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhub_attach_callback(stub_on_attach, (void*)k_test_hhub_ctx_token));
   for (uint8_t i = 0U; i < k_test_hhub_max_steps; ++i) {
     if (s_attach_count != 0U) {
       break;
     }
     ra_usb_fs()->DCPCTR = 0U;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_step());
+    TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_step());
   }
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_count);
+  TEST_ASSERT_EQ(1U, s_attach_count);
 }
 
 /* ---- Lifecycle ---- */
@@ -80,7 +79,7 @@ static void test_init_fs_returns_ok(void)
   TEST_BEGIN("ra_usb_hhub_init FS returns k_ra_ok and flips DCFM");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
 
   volatile r_usb_regs_t* reg   = ra_usb_fs();
   const uint16_t         dcfm  = (uint16_t)(1U << k_ra_syscfg_bit_dcfm);
@@ -88,7 +87,7 @@ static void test_init_fs_returns_ok(void)
   const uint16_t         dprpu = (uint16_t)(1U << k_ra_syscfg_bit_dprpu);
   TEST_ASSERT((reg->SYSCFG & dcfm) != 0U);
   TEST_ASSERT((reg->SYSCFG & drpd) != 0U);
-  TEST_ASSERT_EQ(0, (int)(reg->SYSCFG & dprpu));
+  TEST_ASSERT_EQ(0, (reg->SYSCFG & dprpu));
 
   TEST_END("ra_usb_hhub_init FS returns k_ra_ok and flips DCFM");
 }
@@ -103,7 +102,7 @@ static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hhub_init rejects bogus speed");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhub_init((ra_usb_speed_t)9U));
   TEST_END("ra_usb_hhub_init rejects bogus speed");
 }
 
@@ -117,7 +116,7 @@ static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hhub_close before init returns invalid_state");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhub_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_close());
   TEST_END("ra_usb_hhub_close before init returns invalid_state");
 }
 
@@ -133,12 +132,12 @@ static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
 
-  TEST_ASSERT_EQ((int32_t)k_test_hhub_ctx_token, (int32_t)(uintptr_t)s_attach_last_ctx);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.device_address);
-  TEST_ASSERT_EQ((int32_t)k_test_hhub_default_ports, (int32_t)s_attach_last_device.port_count);
+  TEST_ASSERT_EQ(k_test_hhub_ctx_token, (uintptr_t)s_attach_last_ctx);
+  TEST_ASSERT_EQ(1U, s_attach_last_device.device_address);
+  TEST_ASSERT_EQ(k_test_hhub_default_ports, s_attach_last_device.port_count);
   TEST_END("attach callback fires once after the enum step machine completes");
 }
 
@@ -155,19 +154,17 @@ static void test_pre_init_guards(void)
   TEST_BEGIN("class API rejects pre-init");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_attach_callback(stub_on_attach, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhub_step());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_attach_callback(stub_on_attach, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_step());
 
   uint8_t  count  = 0U;
   uint32_t status = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhub_get_port_count(&count));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_get_port_status(1U, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_set_port_feature(1U, k_ra_hhub_feature_port_power));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_clear_port_feature(1U, k_ra_hhub_feature_c_port_reset));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_get_port_count(&count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_get_port_status(1U, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhub_set_port_feature(1U, k_ra_hhub_feature_port_power));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhub_clear_port_feature(1U, k_ra_hhub_feature_c_port_reset));
   TEST_END("class API rejects pre-init");
 }
 
@@ -183,17 +180,16 @@ static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("class API rejects pre-attach with invalid_state");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
 
   uint8_t  count  = 0U;
   uint32_t status = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhub_get_port_count(&count));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_get_port_status(1U, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_set_port_feature(1U, k_ra_hhub_feature_port_power));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhub_clear_port_feature(1U, k_ra_hhub_feature_c_port_reset));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_get_port_count(&count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhub_get_port_status(1U, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhub_set_port_feature(1U, k_ra_hhub_feature_port_power));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhub_clear_port_feature(1U, k_ra_hhub_feature_c_port_reset));
   TEST_END("class API rejects pre-attach with invalid_state");
 }
 
@@ -209,12 +205,12 @@ static void test_null_arg_rejection(void)
 {
   TEST_BEGIN("get_port_count / get_port_status reject NULL");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_hhub_get_port_count(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_hhub_get_port_status(1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_hhub_get_port_count(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_hhub_get_port_status(1U, nullptr));
   TEST_END("get_port_count / get_port_status reject NULL");
 }
 
@@ -230,17 +226,17 @@ static void test_port_range_rejection(void)
 {
   TEST_BEGIN("port-range guards reject port=0 and port>port_count");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
   uint32_t status = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_get_port_status(0U, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_get_port_status(99U, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhub_set_port_feature(0U, k_ra_hhub_feature_port_power));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhub_clear_port_feature(99U, k_ra_hhub_feature_c_port_reset));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhub_get_port_status(0U, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhub_get_port_status(99U, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhub_set_port_feature(0U, k_ra_hhub_feature_port_power));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhub_clear_port_feature(99U, k_ra_hhub_feature_c_port_reset));
   TEST_END("port-range guards reject port=0 and port>port_count");
 }
 
@@ -256,12 +252,12 @@ static void test_get_port_count_value(void)
 {
   TEST_BEGIN("get_port_count returns the cached port count from descriptor walk");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
 
   uint8_t count = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_get_port_count(&count));
-  TEST_ASSERT_EQ((int32_t)k_test_hhub_default_ports, (int32_t)count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_get_port_count(&count));
+  TEST_ASSERT_EQ(k_test_hhub_default_ports, count);
   TEST_END("get_port_count returns the cached port count from descriptor walk");
 }
 
@@ -277,19 +273,19 @@ static void test_get_port_status_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhub_get_port_status stages bmRequestType=0xA3 + bRequest=0x00");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
   uint32_t status = 0xDEADBEEFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_get_port_status(2U, &status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_get_port_status(2U, &status));
   /* status[]] zeroed on entry. */
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)status);
+  TEST_ASSERT_EQ(0U, status);
   /* USBREQ low byte = bmRequestType, high byte = bRequest = 0xA3 | (0x00<<8). */
-  TEST_ASSERT_EQ((int32_t)0x00A3U, (int32_t)ra_usb_fs()->USBREQ);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_usb_fs()->USBVAL);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)ra_usb_fs()->USBINDX);
-  TEST_ASSERT_EQ((int32_t)4U, (int32_t)ra_usb_fs()->USBLENG);
+  TEST_ASSERT_EQ(0x00A3U, ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(0U, ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ(2U, ra_usb_fs()->USBINDX);
+  TEST_ASSERT_EQ(4U, ra_usb_fs()->USBLENG);
   TEST_END("ra_usb_hhub_get_port_status stages bmRequestType=0xA3 + bRequest=0x00");
 }
 
@@ -305,17 +301,16 @@ static void test_set_port_feature_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhub_set_port_feature stages bmRequestType=0x23 + bRequest=0x03");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_hhub_set_port_feature(3U, k_ra_hhub_feature_port_reset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_set_port_feature(3U, k_ra_hhub_feature_port_reset));
   /* USBREQ = (0x03 << 8) | 0x23 = 0x0323. */
-  TEST_ASSERT_EQ((int32_t)0x0323U, (int32_t)ra_usb_fs()->USBREQ);
-  TEST_ASSERT_EQ((int32_t)k_ra_hhub_feature_port_reset, (int32_t)ra_usb_fs()->USBVAL);
-  TEST_ASSERT_EQ((int32_t)3U, (int32_t)ra_usb_fs()->USBINDX);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_usb_fs()->USBLENG);
+  TEST_ASSERT_EQ(0x0323U, ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(k_ra_hhub_feature_port_reset, ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ(3U, ra_usb_fs()->USBINDX);
+  TEST_ASSERT_EQ(0U, ra_usb_fs()->USBLENG);
   TEST_END("ra_usb_hhub_set_port_feature stages bmRequestType=0x23 + bRequest=0x03");
 }
 
@@ -331,16 +326,15 @@ static void test_clear_port_feature_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhub_clear_port_feature stages bmRequestType=0x23 + bRequest=0x01");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_hhub_clear_port_feature(1U, k_ra_hhub_feature_c_port_reset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_clear_port_feature(1U, k_ra_hhub_feature_c_port_reset));
   /* USBREQ = (0x01 << 8) | 0x23 = 0x0123. */
-  TEST_ASSERT_EQ((int32_t)0x0123U, (int32_t)ra_usb_fs()->USBREQ);
-  TEST_ASSERT_EQ((int32_t)k_ra_hhub_feature_c_port_reset, (int32_t)ra_usb_fs()->USBVAL);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)ra_usb_fs()->USBINDX);
+  TEST_ASSERT_EQ(0x0123U, ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(k_ra_hhub_feature_c_port_reset, ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ(1U, ra_usb_fs()->USBINDX);
   TEST_END("ra_usb_hhub_clear_port_feature stages bmRequestType=0x23 + bRequest=0x01");
 }
 
@@ -364,14 +358,14 @@ static void test_mcdc_hhub(void)
 {
   TEST_BEGIN("hhub MC/DC: init speed / port_ok bounds");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_hs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhub_init((ra_usb_speed_t)9U));
 
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhub_init(k_ra_usb_speed_fs));
   walk_to_attach();
 
   uint32_t status = 0U;
@@ -379,9 +373,9 @@ static void test_mcdc_hhub(void)
   const ra_err_t b_v1 = ra_usb_hhub_get_port_status(2U, &status);
   TEST_ASSERT(b_v1 != k_ra_err_invalid_arg);
   /* B-V2: port=0 below first -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_get_port_status(0U, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhub_get_port_status(0U, &status));
   /* B-V3: port=99 above count -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_get_port_status(99U, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhub_get_port_status(99U, &status));
 
   TEST_END("hhub MC/DC: init speed / port_ok bounds");
 }

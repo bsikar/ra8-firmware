@@ -43,7 +43,7 @@ static void test_stack_canary_check_host(void)
   ra_sim_mmap_reset();
   /* On the host the canary range is compiled out via
    * RA_SIMULATOR_MODE and the function always reports success. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_stack_canary_check());
+  TEST_ASSERT_EQ(k_ra_ok, ra_stack_canary_check());
   TEST_END("ra_stack_canary_check returns ok on host");
 }
 
@@ -59,7 +59,7 @@ static void test_double_init_is_safe(void)
   ra_sim_mmap_reset();
   ra_infrastructure_init();
   ra_infrastructure_init();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_stack_canary_check());
+  TEST_ASSERT_EQ(k_ra_ok, ra_stack_canary_check());
   TEST_END("ra_infrastructure_init is safe to call twice");
 }
 

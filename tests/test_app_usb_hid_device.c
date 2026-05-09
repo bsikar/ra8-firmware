@@ -82,11 +82,11 @@ static void test_usb_pal_init_full_speed(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: pal_init full-speed");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
 
   ra_usb_pal_state_t state = k_ra_usb_pal_state_attached;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int)k_ra_usb_pal_state_detached, (int)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
   TEST_END("usb_hid: pal_init full-speed");
 }
 
@@ -102,12 +102,12 @@ static void test_usb_attach_transitions_to_attached(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: attach(true) moves detached -> attached");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
 
   ra_usb_pal_state_t state = k_ra_usb_pal_state_detached;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int)k_ra_usb_pal_state_attached, (int)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_attached, state);
   TEST_END("usb_hid: attach(true) moves detached -> attached");
 }
 
@@ -124,13 +124,13 @@ static void test_usb_open_hid_intr_in_endpoint(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: open EP1 IN intr, max_packet=8");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_usb_ep_hid_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_intr,
-                                         (uint16_t)k_test_usb_hid_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_usb_ep_hid_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_intr,
+                                    (uint16_t)k_test_usb_hid_max_packet));
   TEST_END("usb_hid: open EP1 IN intr, max_packet=8");
 }
 
@@ -147,13 +147,13 @@ static void test_usb_send_first_hid_report(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: ep_send 8-byte HID report");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_usb_ep_hid_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_intr,
-                                         (uint16_t)k_test_usb_hid_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_usb_ep_hid_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_intr,
+                                    (uint16_t)k_test_usb_hid_max_packet));
   /* HID boot-keyboard "no key pressed" report. */
   const uint8_t report[k_test_usb_report_len] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
   ra_err_t      err =
@@ -176,9 +176,8 @@ static void test_usb_event_handler_registers(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: event handler registration");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_set_event_handler(test_usb_event_cb, (void*)0xABCDU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_set_event_handler(test_usb_event_cb, (void*)0xABCDU));
   TEST_END("usb_hid: event handler registration");
 }
 
@@ -197,13 +196,13 @@ static void test_usb_attach_false_returns_to_detached(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: attach(false) returns to detached");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(false));
 
   ra_usb_pal_state_t state = k_ra_usb_pal_state_attached;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int)k_ra_usb_pal_state_detached, (int)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
   TEST_END("usb_hid: attach(false) returns to detached");
 }
 
@@ -219,14 +218,14 @@ static void test_usb_send_null_data_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_hid: ep_send rejects NULL data");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_usb_ep_hid_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_intr,
-                                         (uint16_t)k_test_usb_hid_max_packet));
-  ra_err_t err = ra_usb_pal_ep_send((uint8_t)k_test_usb_ep_hid_in, NULL, (uint16_t)4U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_usb_ep_hid_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_intr,
+                                    (uint16_t)k_test_usb_hid_max_packet));
+  ra_err_t err = ra_usb_pal_ep_send((uint8_t)k_test_usb_ep_hid_in, nullptr, (uint16_t)4U);
   TEST_ASSERT(err != k_ra_ok);
   TEST_END("usb_hid: ep_send rejects NULL data");
 }

@@ -55,10 +55,9 @@ static void test_timer_app_free_run_init(void)
 {
   reset_world();
   TEST_BEGIN("timer_capture_demo: free-run init ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_init());
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
   TEST_END("timer_capture_demo: free-run init ok");
 }
 
@@ -73,12 +72,11 @@ static void test_timer_app_read_ok(void)
 {
   reset_world();
   TEST_BEGIN("timer_capture_demo: read counter ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_init());
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
   uint32_t out = 0xAAAAAAAAUL;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gpt_read((uint8_t)k_t_timer_channel, &out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_read((uint8_t)k_t_timer_channel, &out));
   TEST_END("timer_capture_demo: read counter ok");
 }
 
@@ -93,10 +91,9 @@ static void test_timer_app_read_null(void)
 {
   reset_world();
   TEST_BEGIN("timer_capture_demo: NULL read rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_init());
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
   TEST_ASSERT(ra_gpt_read((uint8_t)k_t_timer_channel, nullptr) != k_ra_ok);
   TEST_END("timer_capture_demo: NULL read rejected");
 }
@@ -112,11 +109,11 @@ static void test_timer_app_read_null(void)
 static void test_timer_app_delta_branches(void)
 {
   TEST_BEGIN("timer_capture_demo: delta covers no-wrap + wrap");
-  TEST_ASSERT_EQ((int)100U, (int)delta(50U, 150U));
-  TEST_ASSERT_EQ((int)0U, (int)delta(0U, 0U));
+  TEST_ASSERT_EQ(100U, delta(50U, 150U));
+  TEST_ASSERT_EQ(0U, delta(0U, 0U));
   /* Wrap: start near top, stop just past zero. */
   const uint32_t wrap = delta(0xFFFFFFF0UL, 0x10U);
-  TEST_ASSERT_EQ((int)0x20U, (int)wrap);
+  TEST_ASSERT_EQ(0x20U, wrap);
   TEST_END("timer_capture_demo: delta covers no-wrap + wrap");
 }
 

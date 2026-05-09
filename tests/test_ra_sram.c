@@ -152,7 +152,7 @@ static void test_init_null_cfg(void)
 {
   TEST_BEGIN("sram init null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sram_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sram_init(nullptr));
   TEST_END("sram init null cfg");
 }
 
@@ -167,16 +167,16 @@ static void test_init_happy_disabled(void)
   TEST_BEGIN("sram init happy (all banks disabled)");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   /* Each SRAMCRn should be 0 (ECC off, OAD=int, latch off). */
   volatile r_sram_regs_t* regs = ra_sram_regs();
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_sram_cr_ptr(regs, bank));
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_sram_eccrgn_ptr(regs, bank));
+    TEST_ASSERT_EQ(0, *ra_sram_cr_ptr(regs, bank));
+    TEST_ASSERT_EQ(0, *ra_sram_eccrgn_ptr(regs, bank));
   }
   /* Wait state cleared (cfg requested false). */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)regs->SRAMWTSC);
+  TEST_ASSERT_EQ(0, regs->SRAMWTSC);
   TEST_END("sram init happy (all banks disabled)");
 }
 
@@ -197,19 +197,19 @@ static void test_init_with_ecc_check_bank0(void)
   cfg.banks[k_ra_sram_test_bank_first].eccrgn            = k_ra_sram_region_512kb;
   cfg.banks[k_ra_sram_test_bank_first].zero_init         = true;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   volatile r_sram_regs_t* regs = ra_sram_regs();
   const uint8_t           cr   = *ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_first);
   const uint8_t expect = (uint8_t)k_ra_sram_eccmod_with_chk | (uint8_t)k_ra_sram_cr_mask_e1stsen;
-  TEST_ASSERT_EQ((int32_t)expect, (int32_t)cr);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_eccrgn_512kb,
-                 (int32_t)*ra_sram_eccrgn_ptr(regs, (uint8_t)k_ra_sram_test_bank_first));
+  TEST_ASSERT_EQ(expect, cr);
+  TEST_ASSERT_EQ(k_ra_sram_eccrgn_512kb,
+                 *ra_sram_eccrgn_ptr(regs, (uint8_t)k_ra_sram_test_bank_first));
   /* Other banks should still be 0. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_mid));
+  TEST_ASSERT_EQ(0, *ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_mid));
 
   /* PRCR should be re-locked (low bit cleared). */
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_prcr_lock, (int32_t)regs->SRAMPRCR_S);
+  TEST_ASSERT_EQ(k_ra_sram_prcr_lock, regs->SRAMPRCR_S);
   TEST_END("sram init with ECC checking on bank 0");
 }
 
@@ -225,7 +225,7 @@ static void test_init_invalid_mode(void)
   prep();
   ra_sram_config_t cfg                          = make_default_cfg();
   cfg.banks[k_ra_sram_test_bank_first].ecc_mode = (ra_sram_ecc_mode_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_init(&cfg));
   TEST_END("sram init invalid ecc_mode");
 }
 
@@ -241,7 +241,7 @@ static void test_init_invalid_eccrgn_for_bank3(void)
   prep();
   ra_sram_config_t cfg                       = make_default_cfg();
   cfg.banks[k_ra_sram_test_bank_last].eccrgn = k_ra_sram_region_256kb;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_init(&cfg));
   TEST_END("sram init bank3 cannot exceed 128 KB region");
 }
 
@@ -257,10 +257,10 @@ static void test_init_with_wait_state(void)
   prep();
   ra_sram_config_t cfg = make_default_cfg();
   cfg.wait_state       = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_wtsc_wten, (int32_t)regs->SRAMWTSC);
+  TEST_ASSERT_EQ(k_ra_sram_wtsc_wten, regs->SRAMWTSC);
   TEST_END("sram init applies wait state");
 }
 
@@ -283,14 +283,13 @@ static void test_init_with_security(void)
   cfg.security.boundary_offset[k_ra_sram_test_bank_one]   = (uint32_t)k_ra_sram_test_sabar_off;
   cfg.security.boundary_offset[k_ra_sram_test_bank_mid]   = 0U;
   cfg.security.boundary_offset[k_ra_sram_test_bank_last]  = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
   const uint32_t expected_sar = (uint32_t)k_ra_sram_sar_bit_sa1 | (uint32_t)k_ra_sram_sar_bit_wtsa;
-  TEST_ASSERT_EQ((int32_t)expected_sar, (int32_t)cpscu->SRAMSAR);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_esar_bit_esa, (int32_t)cpscu->SRAMESAR);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_sabar_off,
-                 (int32_t)cpscu->SRAMSABAR[k_ra_sram_test_bank_one]);
+  TEST_ASSERT_EQ(expected_sar, cpscu->SRAMSAR);
+  TEST_ASSERT_EQ(k_ra_sram_esar_bit_esa, cpscu->SRAMESAR);
+  TEST_ASSERT_EQ(k_ra_sram_test_sabar_off, cpscu->SRAMSABAR[k_ra_sram_test_bank_one]);
   TEST_END("sram init applies SRAMSAR / SRAMESAR / SRAMSABARn");
 }
 
@@ -306,15 +305,15 @@ static void test_deinit_clears_cr(void)
   prep();
   ra_sram_config_t cfg                          = make_default_cfg();
   cfg.banks[k_ra_sram_test_bank_first].ecc_mode = k_ra_sram_ecc_no_check;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_deinit());
 
   volatile r_sram_regs_t* regs = ra_sram_regs();
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_sram_cr_ptr(regs, bank));
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_sram_eccrgn_ptr(regs, bank));
+    TEST_ASSERT_EQ(0, *ra_sram_cr_ptr(regs, bank));
+    TEST_ASSERT_EQ(0, *ra_sram_eccrgn_ptr(regs, bank));
   }
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)regs->SRAMWTSC);
+  TEST_ASSERT_EQ(0, regs->SRAMWTSC);
   TEST_END("sram deinit clears SRAMCRn");
 }
 
@@ -329,14 +328,12 @@ static void test_enter_exit_stop(void)
   TEST_BEGIN("sram enter_stop / exit_stop ok");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_enter_stop((uint8_t)k_ra_sram_test_bank_mid));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_exit_stop((uint8_t)k_ra_sram_test_bank_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_enter_stop((uint8_t)k_ra_sram_test_bank_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_exit_stop((uint8_t)k_ra_sram_test_bank_mid));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_enter_stop((uint8_t)k_ra_sram_test_bank_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_exit_stop((uint8_t)k_ra_sram_test_bank_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_enter_stop((uint8_t)k_ra_sram_test_bank_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_exit_stop((uint8_t)k_ra_sram_test_bank_bad));
   TEST_END("sram enter_stop / exit_stop ok");
 }
 
@@ -355,7 +352,7 @@ static void test_set_mode_happy(void)
   TEST_BEGIN("sram set_mode reprograms one bank");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   const ra_sram_bank_cfg_t bank_cfg = {
     .ecc_mode          = k_ra_sram_ecc_with_chk,
@@ -364,16 +361,15 @@ static void test_set_mode_happy(void)
     .eccrgn            = k_ra_sram_region_256kb,
     .zero_init         = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_set_mode((uint8_t)k_ra_sram_test_bank_mid, &bank_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_set_mode((uint8_t)k_ra_sram_test_bank_mid, &bank_cfg));
 
   volatile r_sram_regs_t* regs = ra_sram_regs();
   const uint8_t           cr   = *ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_mid);
   const uint8_t want = (uint8_t)k_ra_sram_eccmod_with_chk | (uint8_t)k_ra_sram_cr_mask_oad |
                        (uint8_t)k_ra_sram_cr_mask_e1stsen;
-  TEST_ASSERT_EQ((int32_t)want, (int32_t)cr);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_eccrgn_256kb,
-                 (int32_t)*ra_sram_eccrgn_ptr(regs, (uint8_t)k_ra_sram_test_bank_mid));
+  TEST_ASSERT_EQ(want, cr);
+  TEST_ASSERT_EQ(k_ra_sram_eccrgn_256kb,
+                 *ra_sram_eccrgn_ptr(regs, (uint8_t)k_ra_sram_test_bank_mid));
   TEST_END("sram set_mode reprograms one bank");
 }
 
@@ -394,8 +390,8 @@ static void test_set_mode_bad_bank(void)
     .eccrgn            = k_ra_sram_region_off,
     .zero_init         = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_mode((uint8_t)k_ra_sram_test_bank_bad, &bank_cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_set_mode((uint8_t)k_ra_sram_test_bank_bad, &bank_cfg));
   TEST_END("sram set_mode bad bank");
 }
 
@@ -409,8 +405,7 @@ static void test_set_mode_null_cfg(void)
 {
   TEST_BEGIN("sram set_mode null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sram_set_mode((uint8_t)k_ra_sram_test_bank_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sram_set_mode((uint8_t)k_ra_sram_test_bank_first, nullptr));
   TEST_END("sram set_mode null cfg");
 }
 
@@ -425,13 +420,12 @@ static void test_set_eccrgn_happy(void)
   TEST_BEGIN("sram set_eccrgn updates SRAMECCRGNn only");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sram_set_eccrgn((uint8_t)k_ra_sram_test_bank_one, k_ra_sram_region_384kb));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_set_eccrgn((uint8_t)k_ra_sram_test_bank_one, k_ra_sram_region_384kb));
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_eccrgn_384kb,
-                 (int32_t)*ra_sram_eccrgn_ptr(regs, (uint8_t)k_ra_sram_test_bank_one));
+  TEST_ASSERT_EQ(k_ra_sram_eccrgn_384kb,
+                 *ra_sram_eccrgn_ptr(regs, (uint8_t)k_ra_sram_test_bank_one));
   TEST_END("sram set_eccrgn updates SRAMECCRGNn only");
 }
 
@@ -445,9 +439,8 @@ static void test_set_eccrgn_rejects_bank3_oversize(void)
 {
   TEST_BEGIN("sram set_eccrgn bank3 over 128 KB rejected");
   prep();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_sram_set_eccrgn((uint8_t)k_ra_sram_test_bank_last, k_ra_sram_region_256kb));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_set_eccrgn((uint8_t)k_ra_sram_test_bank_last, k_ra_sram_region_256kb));
   TEST_END("sram set_eccrgn bank3 over 128 KB rejected");
 }
 
@@ -465,11 +458,11 @@ static void test_set_wait_state_manual(void)
 {
   TEST_BEGIN("sram set_wait_state writes WTEN");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_set_wait_state(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_set_wait_state(true));
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_wtsc_wten, (int32_t)regs->SRAMWTSC);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_set_wait_state(false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)regs->SRAMWTSC);
+  TEST_ASSERT_EQ(k_ra_sram_wtsc_wten, regs->SRAMWTSC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_set_wait_state(false));
+  TEST_ASSERT_EQ(0, regs->SRAMWTSC);
   TEST_END("sram set_wait_state writes WTEN");
 }
 
@@ -485,23 +478,23 @@ static void test_set_wait_state_for_clock(void)
   prep();
 
   /* Above half-max -> WTEN=1. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high,
-                                                           (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high,
+                                                  (uint32_t)k_ra_sram_test_iclk_max));
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_wtsc_wten, (int32_t)regs->SRAMWTSC);
+  TEST_ASSERT_EQ(k_ra_sram_wtsc_wten, regs->SRAMWTSC);
 
   /* Below half-max -> WTEN=0. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_low,
-                                                           (uint32_t)k_ra_sram_test_iclk_max));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)regs->SRAMWTSC);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_low,
+                                                  (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ(0, regs->SRAMWTSC);
 
   /* Bad inputs rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_wait_state_for_clock(0U, (uint32_t)k_ra_sram_test_iclk_max));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_set_wait_state_for_clock(0U, (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high, 0U));
   TEST_END("sram set_wait_state_for_clock follows HUM threshold");
 }
 
@@ -520,7 +513,7 @@ static void test_status_decode(void)
   TEST_BEGIN("sram status decodes per-bank flags");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   /* Inject error flags directly into the simulated SRAMESR. */
   volatile r_sram_regs_t* regs = ra_sram_regs();
@@ -530,16 +523,16 @@ static void test_status_decode(void)
   regs->SRAMEAR[k_ra_sram_test_bank_last][1]  = (uint32_t)k_ra_sram_test_fault_addr;
 
   ra_sram_status_t out = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_get_status(&out));
-  TEST_ASSERT_EQ((int32_t)((uint16_t)k_ra_sram_err_bank0_1bit | (uint16_t)k_ra_sram_err_bank3_2bit),
-                 (int32_t)out.raw_esr);
-  TEST_ASSERT_EQ((int32_t)0x01U, (int32_t)out.one_bit_mask); /* bank 0 only. */
-  TEST_ASSERT_EQ((int32_t)0x08U, (int32_t)out.two_bit_mask); /* bank 3 only. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_get_status(&out));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_sram_err_bank0_1bit | (uint16_t)k_ra_sram_err_bank3_2bit),
+                 out.raw_esr);
+  TEST_ASSERT_EQ(0x01U, out.one_bit_mask); /* bank 0 only. */
+  TEST_ASSERT_EQ(0x08U, out.two_bit_mask); /* bank 3 only. */
   /* Address is now absolute (offset + 0x2200_0000 base). */
   const uintptr_t want_abs =
     (uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)k_ra_sram_test_fault_addr;
-  TEST_ASSERT_EQ((int64_t)want_abs, (int64_t)out.addr_1bit[k_ra_sram_test_bank_first]);
-  TEST_ASSERT_EQ((int64_t)want_abs, (int64_t)out.addr_2bit[k_ra_sram_test_bank_last]);
+  TEST_ASSERT_EQ(want_abs, out.addr_1bit[k_ra_sram_test_bank_first]);
+  TEST_ASSERT_EQ(want_abs, out.addr_2bit[k_ra_sram_test_bank_last]);
   TEST_END("sram status decodes per-bank flags");
 }
 
@@ -553,7 +546,7 @@ static void test_status_null_out(void)
 {
   TEST_BEGIN("sram status null out");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sram_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sram_get_status(nullptr));
   TEST_END("sram status null out");
 }
 
@@ -567,10 +560,9 @@ static void test_clear_status_writes_esclr(void)
 {
   TEST_BEGIN("sram clear_status writes ESCLR");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_clear_status((uint16_t)k_ra_sram_err_bank2_2bit));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_clear_status((uint16_t)k_ra_sram_err_bank2_2bit));
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_err_bank2_2bit, (int32_t)regs->SRAMESCLR);
+  TEST_ASSERT_EQ(k_ra_sram_err_bank2_2bit, regs->SRAMESCLR);
   TEST_END("sram clear_status writes ESCLR");
 }
 
@@ -585,7 +577,7 @@ static void test_clear_status_rejects_reserved(void)
   TEST_BEGIN("sram clear_status rejects reserved bits");
   prep();
   /* Bits 8..15 are reserved in SRAMESCLR. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sram_clear_status((uint16_t)0x0100U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_clear_status((uint16_t)0x0100U));
   TEST_END("sram clear_status rejects reserved bits");
 }
 
@@ -599,19 +591,19 @@ static void test_clear_address_per_slot(void)
 {
   TEST_BEGIN("sram clear_address writes single ESCLR bit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_clear_address((uint8_t)k_ra_sram_test_bank_one,
-                                                (uint8_t)k_ra_sram_ear_slot_2bit));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sram_clear_address((uint8_t)k_ra_sram_test_bank_one, (uint8_t)k_ra_sram_ear_slot_2bit));
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_err_bank1_2bit, (int32_t)regs->SRAMESCLR);
+  TEST_ASSERT_EQ(k_ra_sram_err_bank1_2bit, regs->SRAMESCLR);
 
   /* Bad bank / slot rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_clear_address((uint8_t)k_ra_sram_test_bank_bad,
-                                                (uint8_t)k_ra_sram_ear_slot_1bit));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_clear_address((uint8_t)k_ra_sram_test_bank_first,
-                                                (uint8_t)k_ra_sram_test_slot_bad));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_sram_clear_address((uint8_t)k_ra_sram_test_bank_bad, (uint8_t)k_ra_sram_ear_slot_1bit));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_sram_clear_address((uint8_t)k_ra_sram_test_bank_first, (uint8_t)k_ra_sram_test_slot_bad));
   TEST_END("sram clear_address writes single ESCLR bit");
 }
 
@@ -638,20 +630,18 @@ static void test_zero_init_bank_writes_all_zero(void)
     dst[i] = (uint64_t)0xDEADBEEFCAFEBABEULL;
   }
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_zero_init_bank((uint8_t)k_ra_sram_test_bank_last));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_zero_init_bank((uint8_t)k_ra_sram_test_bank_last));
 
   for (uint32_t i = 0U; i < words; ++i) {
-    TEST_ASSERT_EQ((int64_t)0, (int64_t)dst[i]);
+    TEST_ASSERT_EQ(0, dst[i]);
   }
 
   /* Bank should be left in ECC-disabled mode. */
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_last));
+  TEST_ASSERT_EQ(0, *ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_last));
 
   /* Bad bank rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_zero_init_bank((uint8_t)k_ra_sram_test_bank_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_zero_init_bank((uint8_t)k_ra_sram_test_bank_bad));
   TEST_END("sram zero_init_bank writes 64-bit zero across the bank");
 }
 
@@ -666,20 +656,20 @@ static void test_self_test_catches_1bit(void)
   TEST_BEGIN("sram self_test catches a 1-bit injected error");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   bool caught = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_self_test((uint8_t)k_ra_sram_test_bank_one,
-                                            (uint32_t)k_ra_sram_test_probe_off,
-                                            false,
-                                            &caught));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_self_test((uint8_t)k_ra_sram_test_bank_one,
+                                   (uint32_t)k_ra_sram_test_probe_off,
+                                   false,
+                                   &caught));
   TEST_ASSERT(caught);
 
   /* The verify-step CR is 0x1C (ECC + check + 1-bit latch). */
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_cr_self_test_phase_verify,
-                 (int32_t)*ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_one));
+  TEST_ASSERT_EQ(k_ra_sram_cr_self_test_phase_verify,
+                 *ra_sram_cr_ptr(regs, (uint8_t)k_ra_sram_test_bank_one));
   TEST_END("sram self_test catches a 1-bit injected error");
 }
 
@@ -694,14 +684,14 @@ static void test_self_test_catches_2bit(void)
   TEST_BEGIN("sram self_test catches a 2-bit injected error");
   prep();
   const ra_sram_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_init(&cfg));
 
   bool caught = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_self_test((uint8_t)k_ra_sram_test_bank_one,
-                                            (uint32_t)k_ra_sram_test_probe_off,
-                                            true,
-                                            &caught));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_self_test((uint8_t)k_ra_sram_test_bank_one,
+                                   (uint32_t)k_ra_sram_test_probe_off,
+                                   true,
+                                   &caught));
   TEST_ASSERT(caught);
   TEST_END("sram self_test catches a 2-bit injected error");
 }
@@ -718,25 +708,24 @@ static void test_self_test_rejects_bad_offset(void)
   prep();
   bool caught = false;
   /* Mis-aligned offset (low 3 bits set). */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_sram_self_test((uint8_t)k_ra_sram_test_bank_first, 7U, false, &caught));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_self_test((uint8_t)k_ra_sram_test_bank_first, 7U, false, &caught));
   /* Beyond bank end. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_sram_self_test((uint8_t)k_ra_sram_test_bank_first, 0xFFFFFFF8U, false, &caught));
+    k_ra_err_invalid_arg,
+    ra_sram_self_test((uint8_t)k_ra_sram_test_bank_first, 0xFFFFFFF8U, false, &caught));
   /* Null caught pointer. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sram_self_test((uint8_t)k_ra_sram_test_bank_first,
-                                            (uint32_t)k_ra_sram_test_probe_off,
-                                            false,
-                                            nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sram_self_test((uint8_t)k_ra_sram_test_bank_first,
+                                   (uint32_t)k_ra_sram_test_probe_off,
+                                   false,
+                                   nullptr));
   /* Bad bank. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_self_test((uint8_t)k_ra_sram_test_bank_bad,
-                                            (uint32_t)k_ra_sram_test_probe_off,
-                                            false,
-                                            &caught));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_self_test((uint8_t)k_ra_sram_test_bank_bad,
+                                   (uint32_t)k_ra_sram_test_probe_off,
+                                   false,
+                                   &caught));
   TEST_END("sram self_test rejects bad probe offset");
 }
 
@@ -751,29 +740,25 @@ static void test_get_bank_info(void)
   TEST_BEGIN("sram get_bank_info reports static layout");
   prep();
   ra_sram_bank_info_t info = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_one, &info));
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_bank_one, (int32_t)info.bank);
-  TEST_ASSERT_EQ(
-    (int64_t)((uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)k_ra_sram_bank1_data_off),
-    (int64_t)info.data_base);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_bank012_size, (int32_t)info.data_size);
-  TEST_ASSERT_EQ(
-    (int64_t)((uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)k_ra_sram_ecc_bank1_off),
-    (int64_t)info.ecc_base);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_ecc_bank012_sz, (int32_t)info.ecc_size);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_one, &info));
+  TEST_ASSERT_EQ(k_ra_sram_test_bank_one, info.bank);
+  TEST_ASSERT_EQ(((uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)k_ra_sram_bank1_data_off),
+                 info.data_base);
+  TEST_ASSERT_EQ(k_ra_sram_bank012_size, info.data_size);
+  TEST_ASSERT_EQ(((uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)k_ra_sram_ecc_bank1_off),
+                 info.ecc_base);
+  TEST_ASSERT_EQ(k_ra_sram_ecc_bank012_sz, info.ecc_size);
 
   /* SRAM3 is the small bank. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_last, &info));
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_bank3_size, (int32_t)info.data_size);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_ecc_bank3_sz, (int32_t)info.ecc_size);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_last, &info));
+  TEST_ASSERT_EQ(k_ra_sram_bank3_size, info.data_size);
+  TEST_ASSERT_EQ(k_ra_sram_ecc_bank3_sz, info.ecc_size);
 
   /* Bad bank / null. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_bad, &info));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_bad, &info));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sram_get_bank_info((uint8_t)k_ra_sram_test_bank_first, nullptr));
   TEST_END("sram get_bank_info reports static layout");
 }
 
@@ -792,12 +777,12 @@ static void test_set_security(void)
   TEST_BEGIN("sram set_security writes SRAMSAR");
   prep();
   const uint32_t mask = (uint32_t)k_ra_sram_sar_bit_sa0 | (uint32_t)k_ra_sram_sar_bit_wtsa;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_set_security(mask));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_set_security(mask));
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
-  TEST_ASSERT_EQ((int32_t)mask, (int32_t)cpscu->SRAMSAR);
+  TEST_ASSERT_EQ(mask, cpscu->SRAMSAR);
 
   /* Reserved bits rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sram_set_security(0xFFFFFFFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sram_set_security(0xFFFFFFFFU));
   TEST_END("sram set_security writes SRAMSAR");
 }
 
@@ -811,12 +796,12 @@ static void test_set_ecc_security(void)
 {
   TEST_BEGIN("sram set_ecc_security writes SRAMESAR");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_set_ecc_security(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_set_ecc_security(true));
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_esar_bit_esa, (int32_t)cpscu->SRAMESAR);
+  TEST_ASSERT_EQ(k_ra_sram_esar_bit_esa, cpscu->SRAMESAR);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sram_set_ecc_security(false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)cpscu->SRAMESAR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sram_set_ecc_security(false));
+  TEST_ASSERT_EQ(0, cpscu->SRAMESAR);
   TEST_END("sram set_ecc_security writes SRAMESAR");
 }
 
@@ -830,21 +815,20 @@ static void test_set_boundary(void)
 {
   TEST_BEGIN("sram set_boundary writes SRAMSABARn");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_set_boundary((uint8_t)k_ra_sram_test_bank_mid,
-                                               (uint32_t)k_ra_sram_test_sabar_off));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sram_set_boundary((uint8_t)k_ra_sram_test_bank_mid, (uint32_t)k_ra_sram_test_sabar_off));
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_sabar_off,
-                 (int32_t)cpscu->SRAMSABAR[k_ra_sram_test_bank_mid]);
+  TEST_ASSERT_EQ(k_ra_sram_test_sabar_off, cpscu->SRAMSABAR[k_ra_sram_test_bank_mid]);
 
   /* Mis-aligned boundary rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_boundary((uint8_t)k_ra_sram_test_bank_mid,
-                                               (uint32_t)k_ra_sram_test_sabar_bad));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_sram_set_boundary((uint8_t)k_ra_sram_test_bank_mid, (uint32_t)k_ra_sram_test_sabar_bad));
   /* Bad bank rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_boundary((uint8_t)k_ra_sram_test_bank_bad,
-                                               (uint32_t)k_ra_sram_test_sabar_off));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_sram_set_boundary((uint8_t)k_ra_sram_test_bank_bad, (uint32_t)k_ra_sram_test_sabar_off));
   TEST_END("sram set_boundary writes SRAMSABARn");
 }
 
@@ -862,14 +846,12 @@ static void test_attach_null_fn_rejected(void)
 {
   TEST_BEGIN("sram attach rejects null fn");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sram_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sram_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sram_attach_bank_handler((uint8_t)k_ra_sram_test_bank_first, nullptr, nullptr));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_sram_attach_bank_handler((uint8_t)k_ra_sram_test_bank_first, nullptr, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_attach_bank_handler((uint8_t)k_ra_sram_test_bank_bad,
-                                                      stub_bank_error_cb,
-                                                      nullptr));
+    k_ra_err_invalid_arg,
+    ra_sram_attach_bank_handler((uint8_t)k_ra_sram_test_bank_bad, stub_bank_error_cb, nullptr));
   TEST_END("sram attach rejects null fn");
 }
 
@@ -883,32 +865,30 @@ static void test_dispatch_fires_callback(void)
 {
   TEST_BEGIN("sram dispatch fires global + bank callbacks");
   prep();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sram_attach_handler(stub_error_cb, (void*)(uintptr_t)k_ra_sram_test_ctx_token));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sram_attach_bank_handler((uint8_t)k_ra_sram_test_bank_mid,
-                                         stub_bank_error_cb,
-                                         (void*)(uintptr_t)k_ra_sram_test_bank_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_attach_handler(stub_error_cb, (void*)(uintptr_t)k_ra_sram_test_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_attach_bank_handler((uint8_t)k_ra_sram_test_bank_mid,
+                                             stub_bank_error_cb,
+                                             (void*)(uintptr_t)k_ra_sram_test_bank_ctx_token));
 
   ra_sram_dispatch((uint8_t)k_ra_sram_test_bank_mid, true, (uintptr_t)k_ra_sram_test_fault_addr);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_bank_mid, (int32_t)s_cb_last_bank);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(k_ra_sram_test_bank_mid, s_cb_last_bank);
   TEST_ASSERT(s_cb_last_2bit);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_fault_addr, (int32_t)s_cb_last_addr);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_ctx_token, (int32_t)(uintptr_t)s_cb_last_ctx);
+  TEST_ASSERT_EQ(k_ra_sram_test_fault_addr, s_cb_last_addr);
+  TEST_ASSERT_EQ(k_ra_sram_test_ctx_token, (uintptr_t)s_cb_last_ctx);
 
   /* Per-bank handler also fired with the bank-specific ctx. */
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_bank_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_bank_mid, (int32_t)s_bank_cb_last_bank);
+  TEST_ASSERT_EQ(1, s_bank_cb_count);
+  TEST_ASSERT_EQ(k_ra_sram_test_bank_mid, s_bank_cb_last_bank);
   TEST_ASSERT(s_bank_cb_last_2bit);
-  TEST_ASSERT_EQ((int32_t)k_ra_sram_test_bank_ctx_token, (int32_t)(uintptr_t)s_bank_cb_last_ctx);
+  TEST_ASSERT_EQ(k_ra_sram_test_bank_ctx_token, (uintptr_t)s_bank_cb_last_ctx);
 
   /* Out-of-range bank should be ignored. */
   ra_sram_dispatch((uint8_t)k_ra_sram_test_bank_bad, false, (uintptr_t)k_ra_sram_test_fault_addr);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cb_count);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_bank_cb_count);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(1, s_bank_cb_count);
   TEST_END("sram dispatch fires global + bank callbacks");
 }
 
@@ -922,9 +902,8 @@ static void test_dispatch_from_esr_walks_all_bits(void)
 {
   TEST_BEGIN("sram dispatch_from_esr fans every set bit");
   prep();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sram_attach_handler(stub_error_cb, (void*)(uintptr_t)k_ra_sram_test_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_attach_handler(stub_error_cb, (void*)(uintptr_t)k_ra_sram_test_ctx_token));
 
   /* Forge SRAMESR with three flags set across two banks. */
   volatile r_sram_regs_t* regs = ra_sram_regs();
@@ -938,11 +917,11 @@ static void test_dispatch_from_esr_walks_all_bits(void)
   ra_sram_status_t snapshot = {};
   const uint16_t   fired    = ra_sram_dispatch_from_esr(&snapshot);
 
-  TEST_ASSERT_EQ((int32_t)((uint16_t)k_ra_sram_err_bank0_1bit | (uint16_t)k_ra_sram_err_bank2_2bit |
-                           (uint16_t)k_ra_sram_err_bank3_1bit),
-                 (int32_t)fired);
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)s_cb_count);
-  TEST_ASSERT_EQ((int32_t)snapshot.raw_esr, (int32_t)fired);
+  TEST_ASSERT_EQ(((uint16_t)k_ra_sram_err_bank0_1bit | (uint16_t)k_ra_sram_err_bank2_2bit |
+                  (uint16_t)k_ra_sram_err_bank3_1bit),
+                 fired);
+  TEST_ASSERT_EQ(3, s_cb_count);
+  TEST_ASSERT_EQ(snapshot.raw_esr, fired);
   TEST_END("sram dispatch_from_esr fans every set bit");
 }
 
@@ -968,13 +947,13 @@ static void test_mcdc_ra_sram(void)
 {
   TEST_BEGIN("sram MC/DC: set_wait_state_for_clock 2-cond decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high,
-                                                           (uint32_t)k_ra_sram_test_iclk_max));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_wait_state_for_clock(0U, (uint32_t)k_ra_sram_test_iclk_max));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high, 0U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high,
+                                                  (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_set_wait_state_for_clock(0U, (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high, 0U));
   TEST_END("sram MC/DC: set_wait_state_for_clock 2-cond decision");
 }
 

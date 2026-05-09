@@ -48,7 +48,7 @@ static void test_wdt_init_null_cfg(void)
 {
   TEST_BEGIN("ra_wdt_init null cfg rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_init(nullptr));
   TEST_END("ra_wdt_init null cfg rejected");
 }
 
@@ -71,7 +71,7 @@ static void test_wdt_init_bad_clock_div(void)
   ra_sim_mmap_reset();
   ra_wdt_cfg_t cfg = k_valid_cfg;
   cfg.clock_div    = (ra_wdt_clock_div_t)0U; /* "Setting prohibited" per HUM. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_init(&cfg));
   TEST_END("ra_wdt_init bad clock_div rejected");
 }
 
@@ -94,7 +94,7 @@ static void test_wdt_init_bad_timeout(void)
   ra_sim_mmap_reset();
   ra_wdt_cfg_t cfg = k_valid_cfg;
   cfg.timeout      = (ra_wdt_timeout_sel_t)0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_init(&cfg));
   TEST_END("ra_wdt_init bad timeout rejected");
 }
 
@@ -117,7 +117,7 @@ static void test_wdt_init_nmi_expiry(void)
   ra_sim_mmap_reset();
   ra_wdt_cfg_t cfg = k_valid_cfg;
   cfg.on_expiry    = k_ra_wdt_on_expiry_nmi;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_init(&cfg));
   TEST_END("ra_wdt_init with on_expiry=nmi ok");
 }
 
@@ -140,7 +140,7 @@ static void test_wdt_init_stop_in_sleep(void)
   ra_sim_mmap_reset();
   ra_wdt_cfg_t cfg  = k_valid_cfg;
   cfg.stop_in_sleep = k_ra_wdt_sleep_stop_count;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_init(&cfg));
   TEST_END("ra_wdt_init stop_in_sleep variant ok");
 }
 
@@ -164,8 +164,8 @@ static void test_wdt_deinit_ok(void)
 {
   TEST_BEGIN("ra_wdt_deinit ok");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&k_valid_cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_init(&k_valid_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_deinit());
   TEST_END("ra_wdt_deinit ok");
 }
 
@@ -191,7 +191,7 @@ static void test_wdt_refresh_for_valid(void)
 {
   TEST_BEGIN("ra_wdt_refresh_for valid instance");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_refresh_for((ra_wdt_instance_t)0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_refresh_for((ra_wdt_instance_t)0U));
   TEST_END("ra_wdt_refresh_for valid instance");
 }
 
@@ -210,8 +210,8 @@ static void test_wdt_refresh_for_oob(void)
 {
   TEST_BEGIN("ra_wdt_refresh_for oob instance rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_wdt_refresh_for((ra_wdt_instance_t)k_ra_wdt_instance_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_wdt_refresh_for((ra_wdt_instance_t)k_ra_wdt_instance_count));
   TEST_END("ra_wdt_refresh_for oob instance rejected");
 }
 
@@ -235,7 +235,7 @@ static void test_wdt_get_counter_null(void)
 {
   TEST_BEGIN("ra_wdt_get_counter null rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_get_counter(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_get_counter(nullptr));
   TEST_END("ra_wdt_get_counter null rejected");
 }
 
@@ -257,8 +257,8 @@ static void test_wdt_get_counter_ok(void)
   /* Write a canned value into the CNTVAL[13:0] field of WDTSR. */
   ra_wdt()->WDTSR = (uint16_t)(0x0100U);
   uint16_t cnt    = 0xFFFFU;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_get_counter(&cnt));
-  TEST_ASSERT_EQ((int)(0x0100U & (uint16_t)k_ra_wdt_sr_cnt_mask), (int)cnt);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_get_counter(&cnt));
+  TEST_ASSERT_EQ((0x0100U & (uint16_t)k_ra_wdt_sr_cnt_mask), cnt);
   TEST_END("ra_wdt_get_counter reads CNTVAL field");
 }
 
@@ -284,7 +284,7 @@ static void test_wdt_clear_status_blocking_bad_mask(void)
 {
   TEST_BEGIN("ra_wdt_clear_status_blocking bad mask rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_clear_status_blocking(0x0001U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_clear_status_blocking(0x0001U));
   TEST_END("ra_wdt_clear_status_blocking bad mask rejected");
 }
 
@@ -305,7 +305,7 @@ static void test_wdt_clear_status_blocking_none(void)
 {
   TEST_BEGIN("ra_wdt_clear_status_blocking mask=none returns ok");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_clear_status_blocking((uint16_t)k_ra_wdt_status_none));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_clear_status_blocking((uint16_t)k_ra_wdt_status_none));
   TEST_END("ra_wdt_clear_status_blocking mask=none returns ok");
 }
 
@@ -327,8 +327,7 @@ static void test_wdt_clear_status_blocking_already_clear(void)
   TEST_BEGIN("ra_wdt_clear_status_blocking already clear returns ok");
   ra_sim_mmap_reset();
   /* WDTSR starts at zero after reset -- asking to clear underflow is a no-op. */
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_wdt_clear_status_blocking((uint16_t)k_ra_wdt_status_underflow));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_clear_status_blocking((uint16_t)k_ra_wdt_status_underflow));
   TEST_END("ra_wdt_clear_status_blocking already clear returns ok");
 }
 
@@ -352,17 +351,17 @@ static void test_wdt_timeout_cycles_get_all(void)
 {
   TEST_BEGIN("ra_wdt_timeout_cycles_get all valid selectors");
   uint16_t cycles = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_1024, &cycles));
-  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_1024, (int)cycles);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_1024, &cycles));
+  TEST_ASSERT_EQ(k_ra_wdt_cycles_1024, cycles);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_4096, &cycles));
-  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_4096, (int)cycles);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_4096, &cycles));
+  TEST_ASSERT_EQ(k_ra_wdt_cycles_4096, cycles);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_8192, &cycles));
-  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_8192, (int)cycles);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_8192, &cycles));
+  TEST_ASSERT_EQ(k_ra_wdt_cycles_8192, cycles);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_16384, &cycles));
-  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_16384, (int)cycles);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_16384, &cycles));
+  TEST_ASSERT_EQ(k_ra_wdt_cycles_16384, cycles);
   TEST_END("ra_wdt_timeout_cycles_get all valid selectors");
 }
 
@@ -380,8 +379,7 @@ static void test_wdt_timeout_cycles_get_all(void)
 static void test_wdt_timeout_cycles_get_null(void)
 {
   TEST_BEGIN("ra_wdt_timeout_cycles_get null rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_1024, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_1024, nullptr));
   TEST_END("ra_wdt_timeout_cycles_get null rejected");
 }
 
@@ -400,8 +398,8 @@ static void test_wdt_timeout_cycles_get_invalid(void)
 {
   TEST_BEGIN("ra_wdt_timeout_cycles_get invalid selector rejected");
   uint16_t cycles = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_wdt_timeout_cycles_get((ra_wdt_timeout_sel_t)0xFFU, &cycles));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_wdt_timeout_cycles_get((ra_wdt_timeout_sel_t)0xFFU, &cycles));
   TEST_END("ra_wdt_timeout_cycles_get invalid selector rejected");
 }
 
@@ -426,23 +424,23 @@ static void test_wdt_pclkb_divisor_all(void)
   TEST_BEGIN("ra_wdt_pclkb_divisor all valid dividers");
   uint16_t div = 0U;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_4, &div));
-  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_4, (int)div);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_4, &div));
+  TEST_ASSERT_EQ(k_ra_wdt_div_value_4, div);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_64, &div));
-  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_64, (int)div);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_64, &div));
+  TEST_ASSERT_EQ(k_ra_wdt_div_value_64, div);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_128, &div));
-  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_128, (int)div);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_128, &div));
+  TEST_ASSERT_EQ(k_ra_wdt_div_value_128, div);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_512, &div));
-  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_512, (int)div);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_512, &div));
+  TEST_ASSERT_EQ(k_ra_wdt_div_value_512, div);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_2048, &div));
-  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_2048, (int)div);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_2048, &div));
+  TEST_ASSERT_EQ(k_ra_wdt_div_value_2048, div);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_8192, &div));
-  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_8192, (int)div);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_8192, &div));
+  TEST_ASSERT_EQ(k_ra_wdt_div_value_8192, div);
   TEST_END("ra_wdt_pclkb_divisor all valid dividers");
 }
 
@@ -460,7 +458,7 @@ static void test_wdt_pclkb_divisor_all(void)
 static void test_wdt_pclkb_divisor_null(void)
 {
   TEST_BEGIN("ra_wdt_pclkb_divisor null rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_8192, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_8192, nullptr));
   TEST_END("ra_wdt_pclkb_divisor null rejected");
 }
 
@@ -479,8 +477,7 @@ static void test_wdt_pclkb_divisor_invalid(void)
 {
   TEST_BEGIN("ra_wdt_pclkb_divisor invalid rejected");
   uint16_t div = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_wdt_pclkb_divisor((ra_wdt_clock_div_t)0xFFU, &div));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_pclkb_divisor((ra_wdt_clock_div_t)0xFFU, &div));
   TEST_END("ra_wdt_pclkb_divisor invalid rejected");
 }
 
@@ -503,8 +500,8 @@ static void test_wdt_pclkb_divisor_invalid(void)
 static void test_wdt_total_pclkb_cycles_null(void)
 {
   TEST_BEGIN("ra_wdt_total_pclkb_cycles null rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, k_ra_wdt_clkdiv_4, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, k_ra_wdt_clkdiv_4, nullptr));
   TEST_END("ra_wdt_total_pclkb_cycles null rejected");
 }
 
@@ -525,11 +522,11 @@ static void test_wdt_total_pclkb_cycles_ok(void)
 {
   TEST_BEGIN("ra_wdt_total_pclkb_cycles computes product");
   uint32_t total = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, k_ra_wdt_clkdiv_4, &total));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, k_ra_wdt_clkdiv_4, &total));
   /* 1024 cycles * 4 div = 4096 */
   const uint32_t k_expected = (uint32_t)k_ra_wdt_cycles_1024 * (uint32_t)k_ra_wdt_div_value_4;
-  TEST_ASSERT_EQ((int64_t)k_expected, (int64_t)total);
+  TEST_ASSERT_EQ(k_expected, total);
   TEST_END("ra_wdt_total_pclkb_cycles computes product");
 }
 
@@ -548,9 +545,8 @@ static void test_wdt_total_pclkb_cycles_bad_sel(void)
 {
   TEST_BEGIN("ra_wdt_total_pclkb_cycles bad sel propagated");
   uint32_t total = 0U;
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_wdt_total_pclkb_cycles((ra_wdt_timeout_sel_t)0xFFU, k_ra_wdt_clkdiv_4, &total));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_wdt_total_pclkb_cycles((ra_wdt_timeout_sel_t)0xFFU, k_ra_wdt_clkdiv_4, &total));
   TEST_END("ra_wdt_total_pclkb_cycles bad sel propagated");
 }
 
@@ -570,8 +566,8 @@ static void test_wdt_total_pclkb_cycles_bad_div(void)
   TEST_BEGIN("ra_wdt_total_pclkb_cycles bad div propagated");
   uint32_t total = 0U;
   TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, (ra_wdt_clock_div_t)0xFFU, &total));
+    k_ra_err_invalid_arg,
+    ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, (ra_wdt_clock_div_t)0xFFU, &total));
   TEST_END("ra_wdt_total_pclkb_cycles bad div propagated");
 }
 
@@ -606,7 +602,7 @@ static void test_wdt_subscribe_null_fn(void)
   ra_sim_mmap_reset();
   (void)ra_wdt_deinit();
   uint8_t slot = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_subscribe(nullptr, nullptr, &slot));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_subscribe(nullptr, nullptr, &slot));
   TEST_END("ra_wdt_subscribe null fn rejected");
 }
 
@@ -632,8 +628,8 @@ static void test_wdt_subscribe_and_count(void)
 
   uint8_t slot1 = 0xFFU;
   uint8_t slot2 = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_subscribe(stub_sub, nullptr, &slot1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_subscribe(stub_sub, nullptr, &slot2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_subscribe(stub_sub, nullptr, &slot1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_subscribe(stub_sub, nullptr, &slot2));
 
   /* Slots should be distinct. */
   TEST_ASSERT(slot1 != slot2);
@@ -662,7 +658,7 @@ static void test_wdt_unsubscribe_free_slot(void)
   (void)ra_wdt_deinit();
 
   /* Slot 1 is free after deinit. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_wdt_unsubscribe(1U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_wdt_unsubscribe(1U));
   TEST_END("ra_wdt_unsubscribe free slot returns not_found");
 }
 
@@ -682,7 +678,7 @@ static void test_wdt_unsubscribe_free_slot(void)
 static void test_wdt_unsubscribe_oob(void)
 {
   TEST_BEGIN("ra_wdt_unsubscribe oob slot rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_unsubscribe((uint8_t)k_ra_wdt_max_subs));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_unsubscribe((uint8_t)k_ra_wdt_max_subs));
   TEST_END("ra_wdt_unsubscribe oob slot rejected");
 }
 
@@ -704,12 +700,12 @@ static void test_wdt_subscribe_unsubscribe_roundtrip(void)
   (void)ra_wdt_deinit();
 
   uint8_t slot = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_subscribe(stub_sub, nullptr, &slot));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_subscribe(stub_sub, nullptr, &slot));
   TEST_ASSERT(slot < k_ra_wdt_max_subs);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_unsubscribe(slot));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_unsubscribe(slot));
   /* Now unsubscribe again should return not_found. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_wdt_unsubscribe(slot));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_wdt_unsubscribe(slot));
   TEST_END("ra_wdt_subscribe/unsubscribe round-trip");
 }
 
@@ -735,11 +731,11 @@ static void test_wdt_subscribe_table_full(void)
   for (uint8_t i = 0U; i < k_non_legacy; ++i) {
     uint8_t        slot = 0xFFU;
     const ra_err_t e    = ra_wdt_subscribe(stub_sub, nullptr, &slot);
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)e);
+    TEST_ASSERT_EQ(k_ra_ok, e);
   }
 
   uint8_t overflow = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_err_no_mem, (int)ra_wdt_subscribe(stub_sub, nullptr, &overflow));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_wdt_subscribe(stub_sub, nullptr, &overflow));
   TEST_END("ra_wdt_subscribe table full returns no_mem");
 }
 
@@ -763,11 +759,11 @@ static void test_wdt_enter_exit_stop(void)
 {
   TEST_BEGIN("ra_wdt_enter_stop / ra_wdt_exit_stop");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_enter_stop());
-  TEST_ASSERT_EQ((int)k_ra_wdt_cstpr_slcstp, (int)ra_wdt()->WDTCSTPR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_enter_stop());
+  TEST_ASSERT_EQ(k_ra_wdt_cstpr_slcstp, ra_wdt()->WDTCSTPR);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_exit_stop());
-  TEST_ASSERT_EQ((int)0, (int)ra_wdt()->WDTCSTPR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_exit_stop());
+  TEST_ASSERT_EQ(0, ra_wdt()->WDTCSTPR);
   TEST_END("ra_wdt_enter_stop / ra_wdt_exit_stop");
 }
 
@@ -791,8 +787,8 @@ static void test_wdt_install_uninstall_nmi(void)
 {
   TEST_BEGIN("ra_wdt_install_nmi / ra_wdt_uninstall_nmi");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_install_nmi());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_uninstall_nmi());
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_install_nmi());
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_uninstall_nmi());
   TEST_END("ra_wdt_install_nmi / ra_wdt_uninstall_nmi");
 }
 
@@ -830,7 +826,7 @@ static ra_err_t stub_ofs_reader_err(uintptr_t addr, uint32_t* out)
 static void test_wdt_ofs_get_null(void)
 {
   TEST_BEGIN("ra_wdt_ofs_get null out rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_ofs_get((ra_wdt_instance_t)0U, nullptr));
   TEST_END("ra_wdt_ofs_get null out rejected");
 }
 
@@ -851,8 +847,8 @@ static void test_wdt_ofs_get_oob(void)
 {
   TEST_BEGIN("ra_wdt_ofs_get oob instance rejected");
   ra_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_wdt_ofs_get((ra_wdt_instance_t)k_ra_wdt_instance_count, &out));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_wdt_ofs_get((ra_wdt_instance_t)k_ra_wdt_instance_count, &out));
   TEST_END("ra_wdt_ofs_get oob instance rejected");
 }
 
@@ -874,7 +870,7 @@ static void test_wdt_ofs_reader_set_ok(void)
   TEST_BEGIN("ra_wdt_ofs_reader_set + ofs_get ok");
   (void)ra_wdt_ofs_reader_set(stub_ofs_reader_ok);
   ra_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
   /* Reset to default reader. */
   (void)ra_wdt_ofs_reader_set(nullptr);
   TEST_END("ra_wdt_ofs_reader_set + ofs_get ok");
@@ -896,7 +892,7 @@ static void test_wdt_ofs_reader_set_err(void)
   TEST_BEGIN("ra_wdt_ofs_get propagates reader error");
   (void)ra_wdt_ofs_reader_set(stub_ofs_reader_err);
   ra_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_err_hw_error, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
   (void)ra_wdt_ofs_reader_set(nullptr);
   TEST_END("ra_wdt_ofs_get propagates reader error");
 }
@@ -919,10 +915,10 @@ static void test_wdt_ofs_get_auto_start(void)
   TEST_BEGIN("ra_wdt_ofs_get decodes auto-start correctly");
   (void)ra_wdt_ofs_reader_set(stub_ofs_reader_ok);
   ra_wdt_ofs_decoded_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
   /* stub returns 0 -> strt field = 0 = auto-start */
-  TEST_ASSERT_EQ((int)k_ra_wdt_ofs_strt_auto, (int)out.start_mode);
-  TEST_ASSERT_EQ((int)1, (int)(int)out.auto_start);
+  TEST_ASSERT_EQ(k_ra_wdt_ofs_strt_auto, out.start_mode);
+  TEST_ASSERT_EQ(1, out.auto_start);
   (void)ra_wdt_ofs_reader_set(nullptr);
   TEST_END("ra_wdt_ofs_get decodes auto-start correctly");
 }

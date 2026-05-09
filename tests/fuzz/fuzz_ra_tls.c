@@ -101,10 +101,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   ra_tls_session_cfg_t cfg = {};
   cfg.bio_send             = loop_send;
   cfg.bio_recv             = loop_recv;
-  cfg.bio_ctx              = NULL;
-  cfg.server_name          = NULL;
+  cfg.bio_ctx              = nullptr;
+  cfg.server_name          = nullptr;
 
-  ra_tls_session_t session = NULL;
+  ra_tls_session_t session = nullptr;
   if (ra_tls_session_open(&session, &cfg) != k_ra_ok) {
     return 0;
   }

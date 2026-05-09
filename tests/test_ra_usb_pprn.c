@@ -75,10 +75,10 @@ static void test_init_default_status(void)
 {
   TEST_BEGIN("ra_usb_pprn_init seeds default port-status (online | not-error)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
 
   uint8_t status = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_get_port_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_get_port_status(&status));
   /* Bit 4 (select) and bit 3 (not-error) must be set. */
   TEST_ASSERT((status & (1U << k_ra_pprn_status_bit_select)) != 0U);
   TEST_ASSERT((status & (1U << k_ra_pprn_status_bit_not_error)) != 0U);
@@ -96,7 +96,7 @@ static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_pprn_init rejects bogus speed");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_init((ra_usb_speed_t)9U));
   TEST_END("ra_usb_pprn_init rejects bogus speed");
 }
 
@@ -109,9 +109,9 @@ static void test_init_bad_speed(void)
 static void test_class_request_codes(void)
 {
   TEST_BEGIN("Printer class request codes match USB Printer 1.1 spec");
-  TEST_ASSERT_EQ((int32_t)0x00, (int32_t)k_ra_pprn_req_get_device_id);
-  TEST_ASSERT_EQ((int32_t)0x01, (int32_t)k_ra_pprn_req_get_port_status);
-  TEST_ASSERT_EQ((int32_t)0x02, (int32_t)k_ra_pprn_req_soft_reset);
+  TEST_ASSERT_EQ(0x00, k_ra_pprn_req_get_device_id);
+  TEST_ASSERT_EQ(0x01, k_ra_pprn_req_get_port_status);
+  TEST_ASSERT_EQ(0x02, k_ra_pprn_req_soft_reset);
   TEST_END("Printer class request codes match USB Printer 1.1 spec");
 }
 
@@ -131,19 +131,18 @@ static void test_pre_init_calls(void)
   uint8_t        status = 0U;
   ra_usb_setup_t setup  = {};
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pprn_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_pprn_set_descriptors(s_sample_desc,
-                                                      (uint16_t)sizeof(s_sample_desc),
-                                                      s_sample_dev_id,
-                                                      (uint16_t)sizeof(s_sample_dev_id)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pprn_recv(buf, 8U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pprn_send(buf, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pprn_set_port_status(0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pprn_get_port_status(&status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_pprn_set_descriptors(s_sample_desc,
+                                             (uint16_t)sizeof(s_sample_desc),
+                                             s_sample_dev_id,
+                                             (uint16_t)sizeof(s_sample_dev_id)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_recv(buf, 8U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_send(buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_set_port_status(0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_get_port_status(&status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pprn_handle_setup(&setup));
   TEST_END("PPRN API rejects calls before init");
 }
 
@@ -157,36 +156,32 @@ static void test_set_descriptors(void)
 {
   TEST_BEGIN("ra_usb_pprn_set_descriptors validates pairing");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
 
   /* desc NULL -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_pprn_set_descriptors(nullptr, 1U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_set_descriptors(nullptr, 1U, nullptr, 0U));
 
   /* desc_len 0 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pprn_set_descriptors(s_sample_desc, 0U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_set_descriptors(s_sample_desc, 0U, nullptr, 0U));
 
   /* device_id ptr set but len 0 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pprn_set_descriptors(s_sample_desc,
-                                                      (uint16_t)sizeof(s_sample_desc),
-                                                      s_sample_dev_id,
-                                                      0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pprn_set_descriptors(s_sample_desc,
+                                             (uint16_t)sizeof(s_sample_desc),
+                                             s_sample_dev_id,
+                                             0U));
 
   /* Both NULL device-id is OK. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pprn_set_descriptors(s_sample_desc,
-                                                      (uint16_t)sizeof(s_sample_desc),
-                                                      nullptr,
-                                                      0U));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pprn_set_descriptors(s_sample_desc, (uint16_t)sizeof(s_sample_desc), nullptr, 0U));
 
   /* Both set is OK. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pprn_set_descriptors(s_sample_desc,
-                                                      (uint16_t)sizeof(s_sample_desc),
-                                                      s_sample_dev_id,
-                                                      (uint16_t)sizeof(s_sample_dev_id)));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pprn_set_descriptors(s_sample_desc,
+                                             (uint16_t)sizeof(s_sample_desc),
+                                             s_sample_dev_id,
+                                             (uint16_t)sizeof(s_sample_dev_id)));
   TEST_END("ra_usb_pprn_set_descriptors validates pairing");
 }
 
@@ -200,23 +195,22 @@ static void test_send_recv_validation(void)
 {
   TEST_BEGIN("ra_usb_pprn_send / recv validate args");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
 
   uint8_t  buf[16] = {};
   uint16_t got     = 0U;
 
   /* recv: NULL buf / NULL got_len / max_len 0. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_recv(nullptr, 8U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_recv(buf, 8U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_recv(buf, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_recv(nullptr, 8U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_recv(buf, 8U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_recv(buf, 0U, &got));
 
   /* send: NULL data + len -> null_ptr; len 0 -> invalid_arg; len > 64 (FS bulk) -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_send(nullptr, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_send(buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_send(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_send(buf, 0U));
 
   uint8_t big[128] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pprn_send(big, (uint16_t)sizeof(big)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_send(big, (uint16_t)sizeof(big)));
   TEST_END("ra_usb_pprn_send / recv validate args");
 }
 
@@ -230,18 +224,18 @@ static void test_port_status_round_trip(void)
 {
   TEST_BEGIN("ra_usb_pprn_set_port_status round-trips through get_port_status");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
 
   /* Simulate paper-empty event. */
   const uint8_t paper_empty =
     (uint8_t)((1U << k_ra_pprn_status_bit_paper_empty) | (1U << k_ra_pprn_status_bit_select));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_set_port_status(paper_empty));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_set_port_status(paper_empty));
 
   uint8_t out = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_get_port_status(&out));
-  TEST_ASSERT_EQ((int32_t)paper_empty, (int32_t)out);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_get_port_status(&out));
+  TEST_ASSERT_EQ(paper_empty, out);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_get_port_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_get_port_status(nullptr));
   TEST_END("ra_usb_pprn_set_port_status round-trips through get_port_status");
 }
 
@@ -255,9 +249,8 @@ static void test_handle_setup_dispatch(void)
 {
   TEST_BEGIN("ra_usb_pprn_handle_setup dispatches GET_DEVICE_ID / SOFT_RESET to callback");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
 
   /* GET_DEVICE_ID. */
   ra_usb_setup_t setup = {
@@ -267,22 +260,22 @@ static void test_handle_setup_dispatch(void)
     .w_index         = 0U,
     .w_length        = 64U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
-  TEST_ASSERT_EQ((int32_t)1, s_setup_cb_calls);
-  TEST_ASSERT_EQ((int32_t)k_ra_pprn_req_get_device_id, (int32_t)s_setup_cb_last_breq);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(1, s_setup_cb_calls);
+  TEST_ASSERT_EQ(k_ra_pprn_req_get_device_id, s_setup_cb_last_breq);
 
   /* GET_PORT_STATUS. */
   setup.b_request = (uint8_t)k_ra_pprn_req_get_port_status;
   setup.w_length  = 1U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
-  TEST_ASSERT_EQ((int32_t)2, s_setup_cb_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(2, s_setup_cb_calls);
 
   /* SOFT_RESET. */
   setup.bm_request_type = (uint8_t)0x21U;
   setup.b_request       = (uint8_t)k_ra_pprn_req_soft_reset;
   setup.w_length        = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
-  TEST_ASSERT_EQ((int32_t)3, s_setup_cb_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(3, s_setup_cb_calls);
   TEST_END("ra_usb_pprn_handle_setup dispatches GET_DEVICE_ID / SOFT_RESET to callback");
 }
 
@@ -296,7 +289,7 @@ static void test_handle_setup_rejects(void)
 {
   TEST_BEGIN("ra_usb_pprn_handle_setup rejects non-class / unknown / NULL");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
 
   /* Standard envelope -> not_supported. */
   ra_usb_setup_t setup = {
@@ -306,14 +299,14 @@ static void test_handle_setup_rejects(void)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_pprn_handle_setup(&setup));
 
   /* Class envelope but unknown bRequest -> not_supported. */
   setup.bm_request_type = (uint8_t)0xA1U;
   setup.b_request       = (uint8_t)0x77U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_pprn_handle_setup(&setup));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_handle_setup(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_handle_setup(nullptr));
   TEST_END("ra_usb_pprn_handle_setup rejects non-class / unknown / NULL");
 }
 
@@ -340,27 +333,26 @@ static void test_mcdc_pprn(void)
 {
   TEST_BEGIN("pprn MC/DC: init / send envelope / handle_setup decisions");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_hs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_init((ra_usb_speed_t)9U));
 
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_init(k_ra_usb_speed_fs));
 
   uint8_t buf[16] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_send(nullptr, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_send(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_send(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_send(nullptr, 4U));
   /* B-V2 + C-V2: forwards into ra_usb_queue_in. The host sim_mmap leaves
    * CFIFOCTR.FRDY clear, so the FIFO wait returns hw_timeout. The MC/DC
    * obligation is met because every pre-check inside ra_usb_pprn_send
    * was exercised end-to-end. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_usb_pprn_send(buf, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_send(buf, 1024U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_usb_pprn_send(buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_send(buf, 1024U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
   ra_usb_setup_t setup = {
     .bm_request_type = (uint8_t)0xA1U,
     .b_request       = (uint8_t)k_ra_pprn_req_get_device_id,
@@ -368,11 +360,11 @@ static void test_mcdc_pprn(void)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_handle_setup(&setup));
   setup.bm_request_type = (uint8_t)0x21U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_handle_setup(&setup));
   setup.bm_request_type = (uint8_t)0x80U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_pprn_handle_setup(&setup));
 
   setup.bm_request_type    = (uint8_t)0xA1U;
   const uint8_t requests[] = {
@@ -382,10 +374,10 @@ static void test_mcdc_pprn(void)
   };
   for (uint8_t i = 0U; i < 3U; ++i) {
     setup.b_request = requests[i];
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
+    TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_handle_setup(&setup));
   }
   setup.b_request = 0x77U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_pprn_handle_setup(&setup));
 
   TEST_END("pprn MC/DC: init / send envelope / handle_setup decisions");
 }

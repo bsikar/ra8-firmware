@@ -137,7 +137,7 @@ static bool priv_load_font(void)
   }
   path[root_len + rel_len] = '\0';
   FILE* fp                 = fopen(path, "rb");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     return false;
   }
   size_t n = fread(s_font_buf, 1U, sizeof(s_font_buf), fp);
@@ -198,7 +198,7 @@ static void test_null_and_preinit_guards(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_reflow_init(k_test_viewport_w,
                                 k_test_viewport_h,
-                                NULL,
+                                nullptr,
                                 s_font_len,
                                 k_test_font_px,
                                 k_test_color_body,
@@ -212,7 +212,7 @@ static void test_null_and_preinit_guards(void)
                                 k_test_font_px,
                                 k_test_color_body,
                                 k_test_color_link,
-                                NULL));
+                                nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_reflow_init(0U,
                                 k_test_viewport_h,
@@ -233,7 +233,7 @@ static void test_null_and_preinit_guards(void)
                                 &s_engine));
 
   /* close() guards. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_close(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_close(nullptr));
 
   /* Engine zeroed -> not initialised. */
   ra_reflow_t closed;
@@ -242,9 +242,11 @@ static void test_null_and_preinit_guards(void)
 
   /* layout_chapter() guards. */
   uint32_t pages = 0U;
-  TEST_ASSERT_EQ(
-    k_ra_err_null_ptr,
-    ra_reflow_layout_chapter(NULL, (const uint8_t*)k_xhtml_simple, strlen(k_xhtml_simple), &pages));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_reflow_layout_chapter(nullptr,
+                                          (const uint8_t*)k_xhtml_simple,
+                                          strlen(k_xhtml_simple),
+                                          &pages));
   TEST_ASSERT_EQ(k_ra_err_not_initialized,
                  ra_reflow_layout_chapter(&closed,
                                           (const uint8_t*)k_xhtml_simple,
@@ -252,10 +254,10 @@ static void test_null_and_preinit_guards(void)
                                           &pages));
 
   /* render_page() / get_page_count() / set_font_size() guards. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_render_page(NULL, 0U, NULL));
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_reflow_render_page(&closed, 0U, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_get_page_count(NULL, &pages));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_set_font_size(NULL, k_test_font_px));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_render_page(nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_reflow_render_page(&closed, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_get_page_count(nullptr, &pages));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_set_font_size(nullptr, k_test_font_px));
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_reflow_set_font_size(&closed, k_test_font_px));
 
   TEST_END("test_null_and_preinit_guards");
@@ -299,7 +301,7 @@ static void test_simple_layout(void)
   TEST_ASSERT_EQ(pages, page_count);
 
   /* render_page() with an out-of-range index -> out_of_range. */
-  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_reflow_render_page(&s_engine, page_count, NULL));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_reflow_render_page(&s_engine, page_count, nullptr));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
 
@@ -338,10 +340,10 @@ static void test_render_pixels_around_title(void)
 
   /* The first glyph must be the 'T' of "Title" (parser collapses any
    * leading whitespace before it). */
-  TEST_ASSERT_EQ((int32_t)'T', s_engine.glyphs[0].cp);
+  TEST_ASSERT_EQ('T', s_engine.glyphs[0].cp);
 
   priv_bind_gfx();
-  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
 
   /* The 'T' lives in the upper-left quadrant -- verify pixel
    * coverage there. */
@@ -601,7 +603,7 @@ static void test_mcdc_init_font_or(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_reflow_init(k_test_viewport_w,
                                 k_test_viewport_h,
-                                NULL,
+                                nullptr,
                                 s_font_len,
                                 k_test_font_px,
                                 k_test_color_body,
@@ -616,7 +618,7 @@ static void test_mcdc_init_font_or(void)
                                 k_test_font_px,
                                 k_test_color_body,
                                 k_test_color_link,
-                                NULL));
+                                nullptr));
   TEST_END("mcdc init font_data || out_engine NULL");
 }
 
@@ -740,18 +742,20 @@ static void test_mcdc_layout_chapter_null_or3(void)
                                           strlen(k_xhtml_simple),
                                           &pages));
   /* V2 */
-  TEST_ASSERT_EQ(
-    k_ra_err_null_ptr,
-    ra_reflow_layout_chapter(NULL, (const uint8_t*)k_xhtml_simple, strlen(k_xhtml_simple), &pages));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_reflow_layout_chapter(nullptr,
+                                          (const uint8_t*)k_xhtml_simple,
+                                          strlen(k_xhtml_simple),
+                                          &pages));
   /* V3 */
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_reflow_layout_chapter(&s_engine, NULL, strlen(k_xhtml_simple), &pages));
+                 ra_reflow_layout_chapter(&s_engine, nullptr, strlen(k_xhtml_simple), &pages));
   /* V4 */
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_reflow_layout_chapter(&s_engine,
                                           (const uint8_t*)k_xhtml_simple,
                                           strlen(k_xhtml_simple),
-                                          NULL));
+                                          nullptr));
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
   TEST_END("mcdc layout_chapter NULL OR(3)");
 }
@@ -777,8 +781,8 @@ static void test_mcdc_get_page_count_null_or(void)
                                 &s_engine));
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_get_page_count(&s_engine, &pages));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_get_page_count(NULL, &pages));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_get_page_count(&s_engine, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_get_page_count(nullptr, &pages));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_get_page_count(&s_engine, nullptr));
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
   TEST_END("mcdc get_page_count NULL OR");
 }

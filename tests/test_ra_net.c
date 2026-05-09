@@ -146,11 +146,11 @@ static void test_open_close(void)
 {
   TEST_BEGIN("ra_net_open / close lifecycle");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_open(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_open(&k_test_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_close());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_close());
   TEST_END("ra_net_open / close lifecycle");
 }
 
@@ -167,7 +167,7 @@ static void test_arp_request_reply(void)
 {
   TEST_BEGIN("ARP request elicits reply for our IP");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   uint8_t f[k_t_eth_hdr + k_t_arp_pkt] = {};
   /* Broadcast destination, peer MAC source. */
@@ -184,15 +184,15 @@ static void test_arp_request_reply(void)
   /* tha zero */
   (void)memcpy(&a[24], k_test_cfg.ip.bytes, 4U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, sizeof(f)));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, sizeof(f)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   uint8_t  out[k_ra_net_pal_frame_max];
   uint16_t out_len = (uint16_t)k_ra_net_pal_frame_max;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_drain_tx(out, &out_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_drain_tx(out, &out_len));
   TEST_ASSERT(out_len >= (uint16_t)(k_t_eth_hdr + k_t_arp_pkt));
-  TEST_ASSERT_EQ((int32_t)k_t_etype_arp, (int32_t)get_be16(&out[12]));
-  TEST_ASSERT_EQ(2, (int32_t)get_be16(&out[k_t_eth_hdr + 6])); /* opcode reply */
+  TEST_ASSERT_EQ(k_t_etype_arp, get_be16(&out[12]));
+  TEST_ASSERT_EQ(2, get_be16(&out[k_t_eth_hdr + 6])); /* opcode reply */
   TEST_END("ARP request elicits reply for our IP");
 }
 
@@ -209,7 +209,7 @@ static void test_icmp_echo(void)
 {
   TEST_BEGIN("ICMP echo request elicits echo reply");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   uint8_t f[k_t_eth_hdr + k_t_ip_hdr + k_t_icmp_hdr + 4U] = {};
   build_eth(f, &k_test_cfg.mac, &k_peer_mac, (uint16_t)k_t_etype_ip);
@@ -228,8 +228,8 @@ static void test_icmp_echo(void)
   uint16_t ck = cksum(icmp, (uint16_t)(k_t_icmp_hdr + 4U), 0U);
   put_be16(&icmp[2], ck);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, sizeof(f)));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, sizeof(f)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   uint8_t found = 0U;
   for (uint16_t iter = 0U; iter < 4U; iter++) {
@@ -244,7 +244,7 @@ static void test_icmp_echo(void)
       break;
     }
   }
-  TEST_ASSERT_EQ(1, (int32_t)found);
+  TEST_ASSERT_EQ(1, found);
   TEST_END("ICMP echo request elicits echo reply");
 }
 
@@ -261,13 +261,12 @@ static void test_udp_send(void)
 {
   TEST_BEGIN("UDP send: socket bound, datagram emitted");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(5000U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(5000U, &h));
   TEST_ASSERT(h < (ra_net_handle_t)k_ra_net_max_sockets);
   uint8_t payload[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_net_send(h, payload, sizeof(payload), k_peer_ip, 6000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_send(h, payload, sizeof(payload), k_peer_ip, 6000U));
 
   /* Drain frames; the first may be an ARP request (resolution) followed
    * by the UDP datagram. Skip ARP frames and verify the UDP payload. */
@@ -284,7 +283,7 @@ static void test_udp_send(void)
       break;
     }
   }
-  TEST_ASSERT_EQ(1, (int32_t)found_udp);
+  TEST_ASSERT_EQ(1, found_udp);
   TEST_END("UDP send: socket bound, datagram emitted");
 }
 
@@ -301,9 +300,9 @@ static void test_udp_recv(void)
 {
   TEST_BEGIN("UDP recv: synthetic datagram delivered to bound socket");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(7000U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(7000U, &h));
 
   uint8_t  payload[3] = {0xAAU, 0xBBU, 0xCCU};
   uint16_t udp_len    = (uint16_t)(k_t_udp_hdr + sizeof(payload));
@@ -319,18 +318,17 @@ static void test_udp_recv(void)
   put_be16(&udp[6], 0U); /* checksum optional on RX */
   (void)memcpy(&udp[k_t_udp_hdr], payload, sizeof(payload));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, flen));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, flen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   uint8_t       rx[16] = {0U};
   uint16_t      got    = 0U;
   ra_net_ipv4_t sip    = {};
   uint16_t      sport  = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_net_recv(h, rx, (uint16_t)sizeof(rx), &got, &sip, &sport));
-  TEST_ASSERT_EQ(3, (int32_t)got);
-  TEST_ASSERT_EQ(0xAA, (int32_t)rx[0]);
-  TEST_ASSERT_EQ(9000, (int32_t)sport);
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_recv(h, rx, (uint16_t)sizeof(rx), &got, &sip, &sport));
+  TEST_ASSERT_EQ(3, got);
+  TEST_ASSERT_EQ(0xAA, rx[0]);
+  TEST_ASSERT_EQ(9000, sport);
   TEST_END("UDP recv: synthetic datagram delivered to bound socket");
 }
 
@@ -379,14 +377,14 @@ static void test_tcp_listen_accept(void)
 {
   TEST_BEGIN("TCP listen accepts synthetic SYN, replies SYN+ACK");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_tcp_listen(8080U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_tcp_listen(8080U, &h));
 
   uint8_t  f[k_t_eth_hdr + k_t_ip_hdr + k_t_tcp_hdr] = {};
   uint16_t flen = build_tcp_frame(f, 40000U, 8080U, 1000U, 0U, (uint8_t)k_t_tcp_syn, nullptr, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, flen));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, flen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   uint8_t found_synack = 0U;
   for (uint16_t iter = 0U; iter < 4U; iter++) {
@@ -404,7 +402,7 @@ static void test_tcp_listen_accept(void)
       }
     }
   }
-  TEST_ASSERT_EQ(1, (int32_t)found_synack);
+  TEST_ASSERT_EQ(1, found_synack);
   TEST_END("TCP listen accepts synthetic SYN, replies SYN+ACK");
 }
 
@@ -421,23 +419,23 @@ static void test_tcp_data_after_established(void)
 {
   TEST_BEGIN("TCP data segment buffered, ACK emitted");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_tcp_listen(9090U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_tcp_listen(9090U, &h));
 
   /* Step 1: SYN. */
   uint8_t  f[k_t_eth_hdr + k_t_ip_hdr + k_t_tcp_hdr + 16U] = {};
   uint16_t flen = build_tcp_frame(f, 40001U, 9090U, 5000U, 0U, (uint8_t)k_t_tcp_syn, nullptr, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, flen));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, flen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
   uint8_t  drain[k_ra_net_pal_frame_max];
   uint16_t dlen = (uint16_t)k_ra_net_pal_frame_max;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_drain_tx(drain, &dlen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_drain_tx(drain, &dlen));
 
   /* Step 2: ACK -> ESTABLISHED. */
   flen = build_tcp_frame(f, 40001U, 9090U, 5001U, 0U, (uint8_t)k_t_tcp_ack, nullptr, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, flen));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, flen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   /* Step 3: data segment. */
   uint8_t data[4] = {'p', 'i', 'n', 'g'};
@@ -449,17 +447,16 @@ static void test_tcp_data_after_established(void)
                                     (uint8_t)((uint8_t)k_t_tcp_ack),
                                     data,
                                     sizeof(data));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, flen));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, flen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   uint8_t       rx[16];
   uint16_t      got   = 0U;
   ra_net_ipv4_t sip   = {};
   uint16_t      sport = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_net_recv(h, rx, (uint16_t)sizeof(rx), &got, &sip, &sport));
-  TEST_ASSERT_EQ(4, (int32_t)got);
-  TEST_ASSERT_EQ('p', (int32_t)rx[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_recv(h, rx, (uint16_t)sizeof(rx), &got, &sip, &sport));
+  TEST_ASSERT_EQ(4, got);
+  TEST_ASSERT_EQ('p', rx[0]);
   TEST_END("TCP data segment buffered, ACK emitted");
 }
 
@@ -476,9 +473,9 @@ static void test_tcp_close_handshake(void)
 {
   TEST_BEGIN("TCP close emits FIN");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_tcp_listen(7777U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_tcp_listen(7777U, &h));
 
   uint8_t  f[k_t_eth_hdr + k_t_ip_hdr + k_t_tcp_hdr] = {};
   uint16_t flen = build_tcp_frame(f, 41000U, 7777U, 1U, 0U, (uint8_t)k_t_tcp_syn, nullptr, 0U);
@@ -497,7 +494,7 @@ static void test_tcp_close_handshake(void)
   while (ra_net_test_drain_tx(drain2, &dlen2) == k_ra_ok) {
     dlen2 = (uint16_t)k_ra_net_pal_frame_max;
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_close_socket(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_close_socket(h));
   uint8_t found_fin = 0U;
   for (uint16_t iter = 0U; iter < 4U; iter++) {
     uint8_t  out[k_ra_net_pal_frame_max];
@@ -514,7 +511,7 @@ static void test_tcp_close_handshake(void)
       }
     }
   }
-  TEST_ASSERT_EQ(1, (int32_t)found_fin);
+  TEST_ASSERT_EQ(1, found_fin);
   TEST_END("TCP close emits FIN");
 }
 
@@ -531,7 +528,7 @@ static void test_dns_query_synthetic(void)
 {
   TEST_BEGIN("DNS query parses synthetic A-record response");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   /* Issue the query first -- the call sends a UDP packet and starts polling
    * with a 2-second timeout. We pre-stage the synthetic response on the PAL
@@ -584,23 +581,22 @@ static void test_null_and_oob(void)
 {
   TEST_BEGIN("NULL / out-of-range guards return errors");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_poll());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_socket_udp(53U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_socket_udp(0U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_socket_tcp_listen(80U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_close_socket(200U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_socket_udp(53U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_socket_udp(0U, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_socket_tcp_listen(80U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_close_socket(200U));
 
   uint8_t buf[4] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_net_send(200U, buf, sizeof(buf), k_peer_ip, 9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_send(200U, buf, sizeof(buf), k_peer_ip, 9U));
   uint16_t      got = 0U;
   ra_net_ipv4_t ip  = {};
   uint16_t      pt  = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_recv(0U, nullptr, 4U, &got, &ip, &pt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_dns_query(nullptr, &ip));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_recv(0U, nullptr, 4U, &got, &ip, &pt));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_dns_query(nullptr, &ip));
   TEST_END("NULL / out-of-range guards return errors");
 }
 
@@ -617,7 +613,7 @@ static void test_socket_table_full(void)
 {
   TEST_BEGIN("UDP socket table fills then refuses further sockets");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   uint16_t ok = 0U;
   for (uint16_t i = 0U; i < 8U; i++) {
     ra_net_handle_t h = (ra_net_handle_t)k_ra_net_invalid_handle;
@@ -625,9 +621,9 @@ static void test_socket_table_full(void)
       ok++;
     }
   }
-  TEST_ASSERT_EQ(8, (int32_t)ok);
+  TEST_ASSERT_EQ(8, ok);
   ra_net_handle_t extra = (ra_net_handle_t)k_ra_net_invalid_handle;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem, (int32_t)ra_net_socket_udp(30000U, &extra));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_net_socket_udp(30000U, &extra));
   TEST_END("UDP socket table fills then refuses further sockets");
 }
 
@@ -644,11 +640,11 @@ static void test_duplicate_udp_port(void)
 {
   TEST_BEGIN("UDP socket: duplicate port rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h1 = 0U;
   ra_net_handle_t h2 = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(1234U, &h1));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_net_socket_udp(1234U, &h2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(1234U, &h1));
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_net_socket_udp(1234U, &h2));
   TEST_END("UDP socket: duplicate port rejected");
 }
 

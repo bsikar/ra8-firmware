@@ -50,14 +50,14 @@ static void test_spi_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("spi_loopback: ra_spi_init ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
   const ra_spi_cfg_t cfg = {
     .baud_hz   = (uint32_t)k_test_spi_app_baud_hz,
     .pclka_hz  = (uint32_t)k_test_spi_app_pclka_hz,
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
   TEST_END("spi_loopback: ra_spi_init ok");
 }
 
@@ -73,14 +73,14 @@ static void test_spi_app_loopback_bit_set(void)
 {
   reset_world();
   TEST_BEGIN("spi_loopback: SPCR2.SPLP stamped");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
   const ra_spi_cfg_t cfg = {
     .baud_hz   = (uint32_t)k_test_spi_app_baud_hz,
     .pclka_hz  = (uint32_t)k_test_spi_app_pclka_hz,
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
   volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_test_spi_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->SPCR2 |= (uint32_t)k_ra_spcr2_mask_splp;

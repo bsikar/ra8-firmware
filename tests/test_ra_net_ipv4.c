@@ -55,20 +55,20 @@ static void test_mcdc_ra_net_test_inject_frame_len_guard(void)
 {
   TEST_BEGIN("ra_net_test_inject_frame MC/DC: len < hdr || len > max");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   uint8_t frame[1600];
   (void)memset(frame, 0, sizeof frame);
 
   /* V1: len=64. Decision F. (Eth+ARP-shaped; payload bytes are ignored
    * by the inject queue.) */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(frame, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(frame, 64U));
 
   /* V2: len=10 (< 14). Decision T -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_test_inject_frame(frame, 10U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_test_inject_frame(frame, 10U));
 
   /* V3: len=1600 (> 1518). Decision T -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_test_inject_frame(frame, 1600U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_test_inject_frame(frame, 1600U));
 
   TEST_END("ra_net_test_inject_frame MC/DC: len < hdr || len > max");
 }
@@ -94,7 +94,7 @@ static void test_mcdc_ra_net_test_drain_tx_null_guard(void)
 {
   TEST_BEGIN("ra_net_test_drain_tx MC/DC: out_buf NULL || inout_len NULL");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   /* PAL recv_frame requires capacity >= k_ra_net_pal_frame_max (1518). */
   uint8_t  buf[1518];
@@ -105,10 +105,10 @@ static void test_mcdc_ra_net_test_drain_tx_null_guard(void)
   TEST_ASSERT(e == k_ra_ok || e == k_ra_err_no_data);
 
   /* V2: out_buf NULL -> decision T -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_test_drain_tx(NULL, &cap));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_test_drain_tx(nullptr, &cap));
 
   /* V3: inout_len NULL -> decision T -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_test_drain_tx(buf, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_test_drain_tx(buf, nullptr));
 
   TEST_END("ra_net_test_drain_tx MC/DC: out_buf NULL || inout_len NULL");
 }
@@ -134,9 +134,9 @@ static void test_mcdc_ra_net_send_arg_guard(void)
 {
   TEST_BEGIN("ra_net_send MC/DC: len==0 || handle >= max");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(5555U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(5555U, &h));
 
   const uint8_t       payload[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
   const ra_net_ipv4_t dst        = {.bytes = {192U, 168U, 1U, 99U}};
@@ -146,11 +146,10 @@ static void test_mcdc_ra_net_send_arg_guard(void)
   TEST_ASSERT(e == k_ra_ok || e != k_ra_err_invalid_arg);
 
   /* V2: len==0 -> decision T -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_send(h, payload, 0U, dst, 1234U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_send(h, payload, 0U, dst, 1234U));
 
   /* V3: handle out of range -> C1=F, C2=T -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_net_send((ra_net_handle_t)99U, payload, 4U, dst, 1234U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_send((ra_net_handle_t)99U, payload, 4U, dst, 1234U));
 
   TEST_END("ra_net_send MC/DC: len==0 || handle >= max");
 }
@@ -190,9 +189,9 @@ static void test_mcdc_ra_net_recv_null_guard(void)
 {
   TEST_BEGIN("ra_net_recv MC/DC: buf||got_len||remote_ip||remote_port NULL");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(5556U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(5556U, &h));
 
   uint8_t       buf[16];
   uint16_t      got = 0U;
@@ -204,17 +203,13 @@ static void test_mcdc_ra_net_recv_null_guard(void)
   TEST_ASSERT(e == k_ra_err_no_data || e == k_ra_ok);
 
   /* V2: buf NULL. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_net_recv(h, NULL, (uint16_t)sizeof buf, &got, &rip, &rp));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_recv(h, nullptr, (uint16_t)sizeof buf, &got, &rip, &rp));
   /* V3: got_len NULL. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_net_recv(h, buf, (uint16_t)sizeof buf, NULL, &rip, &rp));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_recv(h, buf, (uint16_t)sizeof buf, nullptr, &rip, &rp));
   /* V4: remote_ip NULL. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_net_recv(h, buf, (uint16_t)sizeof buf, &got, NULL, &rp));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_recv(h, buf, (uint16_t)sizeof buf, &got, nullptr, &rp));
   /* V5: remote_port NULL. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_net_recv(h, buf, (uint16_t)sizeof buf, &got, &rip, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_recv(h, buf, (uint16_t)sizeof buf, &got, &rip, nullptr));
 
   TEST_END("ra_net_recv MC/DC: buf||got_len||remote_ip||remote_port NULL");
 }
@@ -240,9 +235,9 @@ static void test_mcdc_ra_net_recv_arg_guard(void)
 {
   TEST_BEGIN("ra_net_recv MC/DC: max_len==0 || handle >= max");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
   ra_net_handle_t h = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(5557U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(5557U, &h));
 
   uint8_t       buf[16];
   uint16_t      got = 0U;
@@ -254,14 +249,20 @@ static void test_mcdc_ra_net_recv_arg_guard(void)
   TEST_ASSERT(e == k_ra_err_no_data || e == k_ra_ok);
 
   /* V2: max_len==0 -> decision T -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_recv(h, buf, 0U, &got, &rip, &rp));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_recv(h, buf, 0U, &got, &rip, &rp));
 
   /* V3: handle out-of-range -> C1=F, C2=T -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_net_recv((ra_net_handle_t)99U, buf, 16U, &got, &rip, &rp));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_net_recv((ra_net_handle_t)99U, buf, 16U, &got, &rip, &rp));
 
   TEST_END("ra_net_recv MC/DC: max_len==0 || handle >= max");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_ra_net_ipv4_public_error_paths(void)
 {
@@ -272,73 +273,74 @@ static void test_ra_net_ipv4_public_error_paths(void)
   ra_net_ipv4_t   dst        = {.bytes = {192U, 168U, 1U, 55U}};
   ra_net_handle_t h          = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_open(NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_net_ipv4_send(dst, k_ip_proto_udp, payload, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_socket_udp(4000U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_socket_tcp_listen(80U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_socket_tcp_connect(dst, 80U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_send(0U, payload, 1U, dst, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_close_socket(0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_ipv4_send(dst, k_ip_proto_udp, payload, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_socket_udp(4000U, &h));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_socket_tcp_listen(80U, &h));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_socket_tcp_connect(dst, 80U, &h));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_send(0U, payload, 1U, dst, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_close_socket(0U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_open(&k_test_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_net_ipv4_send(dst, k_ip_proto_udp, NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_ipv4_send(dst, k_ip_proto_udp, nullptr, 0U));
 
   uint8_t big_payload[1500] = {0U};
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_size,
-    (int32_t)ra_net_ipv4_send(dst, k_ip_proto_udp, big_payload, (uint16_t)sizeof big_payload));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_close_socket((ra_net_handle_t)99U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_close_socket(0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_net_ipv4_send(dst, k_ip_proto_udp, big_payload, (uint16_t)sizeof big_payload));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_close_socket((ra_net_handle_t)99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_close_socket(0U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(4000U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_close_socket(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_socket_udp(4000U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_close_socket(h));
 
   TEST_END("ra_net_ipv4 public error paths");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_ra_net_ipv4_inject_and_dispatch_edges(void)
 {
   TEST_BEGIN("ra_net_ipv4 inject queue and dispatch edges");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_test_inject_frame(NULL, 64U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_test_inject_frame(nullptr, 64U));
 
   uint8_t f[64] = {0U};
   f[12]         = 0x08U;
   f[13]         = 0x00U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_net_test_inject_frame(f, (uint16_t)sizeof f));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_net_test_inject_frame(f, (uint16_t)sizeof f));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 
   /* Fill the simulator inject queue without polling, then force the full branch. */
   for (uint16_t i = 0U; i < 8U; i++) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, (uint16_t)sizeof f));
+    TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, (uint16_t)sizeof f));
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem,
-                 (int32_t)ra_net_test_inject_frame(f, (uint16_t)sizeof f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_net_test_inject_frame(f, (uint16_t)sizeof f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   /* IPv4 EtherType with too-short IPv4 payload. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, 14U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, 14U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   /* Full IPv4 header, but not version 4. */
   (void)memset(f, 0, sizeof f);
   f[12] = 0x08U;
   f[13] = 0x00U;
   f[14] = 0x60U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, 34U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, 34U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   /* Version 4 with an unknown protocol takes the dispatch default. */
   f[14] = 0x45U;
   f[23] = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, 34U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_test_inject_frame(f, 34U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_poll());
 
   TEST_END("ra_net_ipv4 inject queue and dispatch edges");
 }

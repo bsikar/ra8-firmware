@@ -78,11 +78,11 @@ static void test_lcd_drivers_init_or_halt(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: CGC + SysTick + LED1 init");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
   TEST_END("lcd_demo: CGC + SysTick + LED1 init");
 }
 
@@ -106,7 +106,7 @@ static void test_lcd_glcdc_two_layer_start(void)
     .height_px        = (uint16_t)k_test_lcd_l1_h,
     .format           = k_ra_glcdc_fmt_rgb565,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
 
   const ra_glcdc_layer2_cfg_t l2 = {
     .framebuffer_addr  = (uint32_t)k_test_lcd_fb_l2_addr,
@@ -118,11 +118,10 @@ static void test_lcd_glcdc_two_layer_start(void)
     .format            = k_ra_glcdc_fmt_rgb565,
     .alpha             = (uint8_t)k_test_lcd_alpha,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_set_layer2(&l2));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_glcdc_set_blend(k_ra_blend_alpha, (uint8_t)k_test_lcd_alpha));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_set_background_color(0U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_start(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_layer2(&l2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_blend(k_ra_blend_alpha, (uint8_t)k_test_lcd_alpha));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_background_color(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(true));
   TEST_END("lcd_demo: GLCDC two-layer bring-up + start");
 }
 
@@ -139,9 +138,9 @@ static void test_lcd_per_frame_led_toggle_loop(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: per-frame LED1 toggle loop");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
   for (uint8_t i = 0U; i < (uint8_t)k_test_lcd_redraw_n; i++) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
   }
   TEST_END("lcd_demo: per-frame LED1 toggle loop");
 }
@@ -161,7 +160,7 @@ static void test_lcd_glcdc_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: ra_glcdc_init(NULL) rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_glcdc_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_init(nullptr));
   TEST_END("lcd_demo: ra_glcdc_init(NULL) rejected");
 }
 
@@ -176,7 +175,7 @@ static void test_lcd_glcdc_set_layer2_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: set_layer2(NULL) rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_glcdc_set_layer2(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_set_layer2(nullptr));
   TEST_END("lcd_demo: set_layer2(NULL) rejected");
 }
 
@@ -191,8 +190,8 @@ static void test_lcd_glcdc_set_blend_invalid_mode(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: set_blend rejects out-of-range mode");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_glcdc_set_blend((ra_glcdc_blend_mode_t)0xFFU, (uint8_t)k_test_lcd_alpha));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_glcdc_set_blend((ra_glcdc_blend_mode_t)0xFFU, (uint8_t)k_test_lcd_alpha));
   TEST_END("lcd_demo: set_blend rejects out-of-range mode");
 }
 
@@ -207,8 +206,8 @@ static void test_lcd_led_toggle_invalid_id(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: led_toggle rejects invalid id");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
   TEST_END("lcd_demo: led_toggle rejects invalid id");
 }
 

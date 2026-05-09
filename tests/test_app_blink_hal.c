@@ -51,7 +51,7 @@ static void test_blink_hal_time_init_at_moco(void)
 {
   reset_world();
   TEST_BEGIN("blink_hal: ra_time_init at MOCO");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init((uint32_t)k_test_blink_hal_cpu_hz_reset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init((uint32_t)k_test_blink_hal_cpu_hz_reset));
   TEST_END("blink_hal: ra_time_init at MOCO");
 }
 
@@ -68,7 +68,7 @@ static void test_blink_hal_init_all_three_leds(void)
   reset_world();
   TEST_BEGIN("blink_hal: init LED1 + LED2 + LED3");
   for (uint8_t i = 0U; i < (uint8_t)k_ra_board_led_count; ++i) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init((ra_board_led_id_t)i));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init((ra_board_led_id_t)i));
   }
   TEST_END("blink_hal: init LED1 + LED2 + LED3");
 }
@@ -86,11 +86,11 @@ static void test_blink_hal_toggle_all_three_leds_loop(void)
   reset_world();
   TEST_BEGIN("blink_hal: toggle LED1+LED2+LED3 loop");
   for (uint8_t i = 0U; i < (uint8_t)k_ra_board_led_count; ++i) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init((ra_board_led_id_t)i));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init((ra_board_led_id_t)i));
   }
   for (uint8_t k = 0U; k < (uint8_t)k_test_blink_hal_iters; ++k) {
     for (uint8_t i = 0U; i < (uint8_t)k_ra_board_led_count; ++i) {
-      TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle((ra_board_led_id_t)i));
+      TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle((ra_board_led_id_t)i));
     }
   }
   TEST_END("blink_hal: toggle LED1+LED2+LED3 loop");
@@ -108,8 +108,7 @@ static void test_blink_hal_init_invalid_led_rejected(void)
 {
   reset_world();
   TEST_BEGIN("blink_hal: init rejects out-of-range LED id");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_led_init((ra_board_led_id_t)k_ra_board_led_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_led_init((ra_board_led_id_t)k_ra_board_led_count));
   TEST_END("blink_hal: init rejects out-of-range LED id");
 }
 
@@ -125,8 +124,8 @@ static void test_blink_hal_toggle_invalid(void)
 {
   reset_world();
   TEST_BEGIN("blink_hal: toggle rejects out-of-range LED id");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
   TEST_END("blink_hal: toggle rejects out-of-range LED id");
 }
 
@@ -141,12 +140,12 @@ static void test_blink_hal_full_main_sequence(void)
 {
   reset_world();
   TEST_BEGIN("blink_hal: full main() sequence");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init((uint32_t)k_test_blink_hal_cpu_hz_reset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init((uint32_t)k_test_blink_hal_cpu_hz_reset));
   for (uint8_t i = 0U; i < (uint8_t)k_ra_board_led_count; ++i) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init((ra_board_led_id_t)i));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init((ra_board_led_id_t)i));
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra_board_led_count; ++i) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle((ra_board_led_id_t)i));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle((ra_board_led_id_t)i));
   }
   TEST_END("blink_hal: full main() sequence");
 }

@@ -31,7 +31,7 @@ static size_t         s_blob_len;
 static ra_err_t fuzz_fat_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
-  if (buf == NULL) {
+  if (buf == nullptr) {
     return k_ra_err_null_ptr;
   }
   for (uint32_t s = 0U; s < count; s++) {
@@ -56,10 +56,10 @@ static ra_err_t fuzz_fat_write_block(void* ctx, uint32_t lba, uint32_t count, co
 static ra_err_t fuzz_fat_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
-  if (block_count != NULL) {
+  if (block_count != nullptr) {
     *block_count = (uint32_t)k_fuzz_fat_block_count;
   }
-  if (block_size != NULL) {
+  if (block_size != nullptr) {
     *block_size = (uint32_t)k_fuzz_fat_sector_bytes;
   }
   return k_ra_ok;
@@ -77,10 +77,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     .read_block   = fuzz_fat_read_block,
     .write_block  = fuzz_fat_write_block,
     .get_capacity = fuzz_fat_get_capacity,
-    .ctx          = NULL,
+    .ctx          = nullptr,
   };
-  ra_fs_mount_t* mount = NULL;
-  if (ra_fs_mount(&backend, &mount) == k_ra_ok && mount != NULL) {
+  ra_fs_mount_t* mount = nullptr;
+  if (ra_fs_mount(&backend, &mount) == k_ra_ok && mount != nullptr) {
     (void)ra_fs_unmount(mount);
   }
   return 0;

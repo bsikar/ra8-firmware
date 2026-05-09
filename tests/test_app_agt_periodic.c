@@ -46,11 +46,11 @@ static void test_agt_app_arm_ok(void)
   reset_world();
   TEST_BEGIN("agt_periodic: arm + status + stop");
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
+    k_ra_ok,
+    ra_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
   uint8_t status = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_agt_get_status((uint8_t)k_test_agt_app_channel, &status));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_agt_stop((uint8_t)k_test_agt_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_get_status((uint8_t)k_test_agt_app_channel, &status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_stop((uint8_t)k_test_agt_app_channel));
   TEST_END("agt_periodic: arm + status + stop");
 }
 
@@ -81,8 +81,8 @@ static void test_agt_app_status_null(void)
   reset_world();
   TEST_BEGIN("agt_periodic: status NULL rejected");
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
+    k_ra_ok,
+    ra_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
   TEST_ASSERT(ra_agt_get_status((uint8_t)k_test_agt_app_channel, nullptr) != k_ra_ok);
   TEST_END("agt_periodic: status NULL rejected");
 }

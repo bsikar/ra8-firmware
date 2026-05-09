@@ -45,15 +45,14 @@ static void test_kint_app_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("kint_demo: arm SW1 falling-edge IRQ");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_icu_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_init(k_ra_board_sw1));
   const ra_icu_irq_cfg_t cfg = {
     .sense      = k_ra_icu_irqmd_falling,
     .filter_div = k_ra_icu_fclksel_pclkb_64,
     .filter_en  = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_icu_configure_irq_pin((uint8_t)k_test_kint_app_irq_chan, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_configure_irq_pin((uint8_t)k_test_kint_app_irq_chan, &cfg));
   TEST_END("kint_demo: arm SW1 falling-edge IRQ");
 }
 
@@ -68,9 +67,9 @@ static void test_kint_app_cfg_null(void)
 {
   reset_world();
   TEST_BEGIN("kint_demo: NULL cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_icu_init());
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_icu_configure_irq_pin((uint8_t)k_test_kint_app_irq_chan, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_init());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_icu_configure_irq_pin((uint8_t)k_test_kint_app_irq_chan, nullptr));
   TEST_END("kint_demo: NULL cfg rejected");
 }
 
@@ -85,14 +84,14 @@ static void test_kint_app_bad_chan(void)
 {
   reset_world();
   TEST_BEGIN("kint_demo: bad IRQ chan rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_icu_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_init());
   const ra_icu_irq_cfg_t cfg = {
     .sense      = k_ra_icu_irqmd_falling,
     .filter_div = k_ra_icu_fclksel_pclkb_64,
     .filter_en  = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_icu_configure_irq_pin((uint8_t)k_test_kint_app_irq_chan_bad, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_icu_configure_irq_pin((uint8_t)k_test_kint_app_irq_chan_bad, &cfg));
   TEST_END("kint_demo: bad IRQ chan rejected");
 }
 
@@ -107,7 +106,7 @@ static void test_kint_app_sw_read_null(void)
 {
   reset_world();
   TEST_BEGIN("kint_demo: sw_read NULL rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_init(k_ra_board_sw1));
   TEST_ASSERT(ra_board_sw_read(k_ra_board_sw1, nullptr) != k_ra_ok);
   TEST_END("kint_demo: sw_read NULL rejected");
 }

@@ -63,7 +63,7 @@ static void reset_world(void)
   (void)ra_eth_close();
   (void)ra_eth_deinit();
   s_last_eth_event_mask = 0U;
-  s_last_eth_event_ctx  = NULL;
+  s_last_eth_event_ctx  = nullptr;
   /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
    * complete on the first iteration in RA_SIMULATOR_MODE. */
   *ra_sys_oscsf() = (uint8_t)0xFFU;
@@ -93,8 +93,8 @@ static void test_netx_pre_kernel_bringup(void)
 {
   reset_world();
   TEST_BEGIN("netx_tcp_echo: cgc_init + board_ethernet_init");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_ethernet_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_ethernet_init());
   TEST_END("netx_tcp_echo: cgc_init + board_ethernet_init");
 }
 
@@ -109,10 +109,10 @@ static void test_netx_pre_kernel_bringup(void)
 static void test_netx_open_nic(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   TEST_BEGIN("netx_tcp_echo: ra_eth_open at NetX MAC");
   const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
   TEST_END("netx_tcp_echo: ra_eth_open at NetX MAC");
 }
 
@@ -126,9 +126,9 @@ static void test_netx_open_nic(void)
 static void test_netx_attach_event_handler(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: attach event handler");
   ra_err_t err = ra_eth_attach_handler(test_netx_eth_event_cb, (void*)0xCAFEU);
@@ -146,9 +146,9 @@ static void test_netx_attach_event_handler(void)
 static void test_netx_get_stats(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: get_stats returns ok");
   ra_eth_stats_t stats = {};
@@ -169,9 +169,9 @@ static void test_netx_get_stats(void)
 static void test_netx_status_get_and_clear(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: status get + clear");
   uint32_t mask = 0xFFFFFFFFU;
@@ -192,12 +192,12 @@ static void test_netx_status_get_and_clear(void)
 static void test_netx_attach_null_handler_rejected(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   TEST_BEGIN("netx_tcp_echo: attach with NULL fn detaches");
   /* The contract treats attach(NULL) as a detach -- it stores nullptr
    * in the handler slot and returns ok. The NetX wrapper relies on
    * this to drop its event hook during shutdown. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_attach_handler(NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_attach_handler(nullptr, nullptr));
   TEST_END("netx_tcp_echo: attach with NULL fn detaches");
 }
 

@@ -52,11 +52,11 @@ static void test_icu_extint_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("icu_extint_demo: configure IRQ13 + readback");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_icu_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_init());
   const ra_icu_irq_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq, &cfg));
   uint8_t irqcr = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_icu_read_irqcr((uint8_t)k_test_icu_extint_irq, &irqcr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_read_irqcr((uint8_t)k_test_icu_extint_irq, &irqcr));
   TEST_END("icu_extint_demo: configure IRQ13 + readback");
 }
 

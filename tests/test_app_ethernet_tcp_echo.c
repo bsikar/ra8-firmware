@@ -82,8 +82,8 @@ static void test_eth_demo_pre_nic_bringup(void)
 {
   reset_world();
   TEST_BEGIN("eth_tcp_echo: cgc_init + board_ethernet_init");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_ethernet_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_ethernet_init());
   TEST_END("eth_tcp_echo: cgc_init + board_ethernet_init");
 }
 
@@ -99,10 +99,10 @@ static void test_eth_demo_pre_nic_bringup(void)
 static void test_eth_demo_open_nic(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   TEST_BEGIN("eth_tcp_echo: ra_eth_open with demo MAC");
   const ra_eth_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
   TEST_END("eth_tcp_echo: ra_eth_open with demo MAC");
 }
 
@@ -116,9 +116,9 @@ static void test_eth_demo_open_nic(void)
 static void test_eth_demo_link_status(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   const ra_eth_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
   TEST_BEGIN("eth_tcp_echo: link_status returns a defined state");
   ra_eth_link_t  link = {};
   const ra_err_t err  = ra_eth_link_status(&link);
@@ -139,9 +139,9 @@ static void test_eth_demo_link_status(void)
 static void test_eth_demo_rx_inject_and_read(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   const ra_eth_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
 
   TEST_BEGIN("eth_tcp_echo: inject + read frame");
   uint8_t inject[k_test_eth_frame_len];
@@ -169,9 +169,9 @@ static void test_eth_demo_rx_inject_and_read(void)
 static void test_eth_demo_write_frame(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   const ra_eth_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
 
   TEST_BEGIN("eth_tcp_echo: write 64-byte frame");
   uint8_t tx[k_test_eth_frame_len];
@@ -193,9 +193,9 @@ static void test_eth_demo_write_frame(void)
 static void test_eth_demo_open_null_cfg_rejected(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   TEST_BEGIN("eth_tcp_echo: open rejects NULL cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_eth_open(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_open(nullptr));
   TEST_END("eth_tcp_echo: open rejects NULL cfg");
 }
 
@@ -209,7 +209,7 @@ static void test_eth_demo_open_null_cfg_rejected(void)
 static void test_eth_demo_open_bad_channel_rejected(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
   TEST_BEGIN("eth_tcp_echo: open rejects bad channel");
   ra_eth_cfg_t cfg = make_demo_cfg();
   cfg.channel      = 99U;

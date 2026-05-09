@@ -91,7 +91,7 @@ static void test_canfd_demo_init_and_bitrate(void)
 {
   reset_world();
   TEST_BEGIN("canfd_demo: init(0) + set_bitrate(500k/2M)");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
   /* PCLKA = 125 MHz (PLL1P/8) does not divide 2 Mbit/s evenly across
    * the canfd timing solver's [8..25] tq search window, so the data
    * phase legitimately reports invalid_arg on the host. The nominal
@@ -117,7 +117,7 @@ static void test_canfd_demo_init_and_bitrate(void)
 static void test_canfd_demo_transmit_heartbeat(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
   TEST_BEGIN("canfd_demo: transmit heartbeat");
   const ra_canfd_frame_t f   = make_heartbeat_frame();
   ra_err_t               err = ra_canfd_transmit((uint8_t)k_test_canfd_channel, &f);
@@ -137,7 +137,7 @@ static void test_canfd_demo_transmit_heartbeat(void)
 static void test_canfd_demo_receive_empty_fifo(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
   TEST_BEGIN("canfd_demo: receive on empty FIFO returns no-data");
   ra_canfd_frame_t out = {};
   ra_err_t         err = ra_canfd_receive((uint8_t)k_test_canfd_channel, &out);
@@ -154,8 +154,8 @@ static void test_canfd_demo_rx_visual_beacon(void)
 {
   reset_world();
   TEST_BEGIN("canfd_demo: LED2 init + toggle (RX visual beacon)");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led2));
   TEST_END("canfd_demo: LED2 init + toggle (RX visual beacon)");
 }
 
@@ -184,9 +184,9 @@ static void test_canfd_demo_init_bad_channel(void)
 static void test_canfd_demo_transmit_null_frame(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
   TEST_BEGIN("canfd_demo: transmit rejects NULL frame");
-  TEST_ASSERT(ra_canfd_transmit((uint8_t)k_test_canfd_channel, NULL) != k_ra_ok);
+  TEST_ASSERT(ra_canfd_transmit((uint8_t)k_test_canfd_channel, nullptr) != k_ra_ok);
   TEST_END("canfd_demo: transmit rejects NULL frame");
 }
 

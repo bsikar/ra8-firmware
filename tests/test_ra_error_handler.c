@@ -39,9 +39,9 @@ static void install_sigill_handler(void)
   struct sigaction sa = {};
   sa.sa_handler       = test_sigill_handler;
   sa.sa_flags         = SA_NODEFER | SA_RESETHAND;
-  (void)sigaction(SIGILL, &sa, NULL);
-  (void)sigaction(SIGABRT, &sa, NULL);
-  (void)sigaction(SIGTRAP, &sa, NULL);
+  (void)sigaction(SIGILL, &sa, nullptr);
+  (void)sigaction(SIGABRT, &sa, nullptr);
+  (void)sigaction(SIGTRAP, &sa, nullptr);
 }
 
 /**

@@ -52,14 +52,13 @@ static void test_mcdc_reflow_parse_xhtml_null_guard(void)
   /* V1: both non-NULL. Decision F. Engine not initialised so the next
    * guard returns not_initialized; the line-62 decision is exercised
    * with outcome F. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_reflow_parse_xhtml(&s_engine, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_reflow_parse_xhtml(&s_engine, buf, 1U));
 
   /* V2: engine NULL -> decision T -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_reflow_parse_xhtml(NULL, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_parse_xhtml(nullptr, buf, 1U));
 
   /* V3: xhtml_buf NULL -> decision T -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_reflow_parse_xhtml(&s_engine, NULL, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_parse_xhtml(&s_engine, nullptr, 1U));
 
   TEST_END("ra_reflow_parse_xhtml MC/DC: engine NULL || xhtml_buf NULL");
 }

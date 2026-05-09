@@ -38,7 +38,7 @@ static void prep(void)
   (void)ra_mstp_init();
   (void)ra_net_pal_deinit();
   (void)ra_net_close();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 }
 
 /* ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ static uint16_t build_udp_frame(uint8_t*       frame,
   udp[5]       = (uint8_t)(udp_len & 0xFFU);
   udp[6]       = 0U;
   udp[7]       = 0U;
-  if (payload != NULL && payload_len > 0U) {
+  if (payload != nullptr && payload_len > 0U) {
     (void)memcpy(&udp[8], payload, payload_len);
   }
   return (uint16_t)(14U + ip_len);
@@ -129,12 +129,12 @@ static void test_mcdc_find_udp_socket_match(void)
   TEST_BEGIN("ra_net_udp find_socket_by_port MC/DC");
   prep();
   /* V1: no UDP socket at all. */
-  TEST_ASSERT_EQ((int32_t)-1, (int32_t)ra_net_udp_internal_find_socket_by_port(80U));
+  TEST_ASSERT_EQ(-1, ra_net_udp_internal_find_socket_by_port(80U));
   /* Bind a UDP socket on port 80. */
   ra_net_handle_t h = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_udp_socket(80U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_udp_socket(80U, &h));
   /* V2: kind matches, port mismatch. */
-  TEST_ASSERT_EQ((int32_t)-1, (int32_t)ra_net_udp_internal_find_socket_by_port(81U));
+  TEST_ASSERT_EQ(-1, ra_net_udp_internal_find_socket_by_port(81U));
   /* V3: kind matches, port matches. */
   TEST_ASSERT(ra_net_udp_internal_find_socket_by_port(80U) >= 0);
   TEST_END("ra_net_udp find_socket_by_port MC/DC");
@@ -164,7 +164,7 @@ static void test_mcdc_udp_send_arg_guard(void)
   TEST_BEGIN("ra_net_udp_send MC/DC: dst_port==0 || len==0");
   prep();
   ra_net_handle_t h = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_udp_socket(1234U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_udp_socket(1234U, &h));
   ra_net_ipv4_t dst    = {.bytes = {192U, 168U, 1U, 50U}};
   uint8_t       buf[4] = {1U, 2U, 3U, 4U};
 
@@ -174,9 +174,9 @@ static void test_mcdc_udp_send_arg_guard(void)
   TEST_ASSERT(e1 != k_ra_err_invalid_arg);
 
   /* V2: dst_port=0 -> C1 shorts -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_udp_send(h, buf, 4U, dst, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_udp_send(h, buf, 4U, dst, 0U));
   /* V3: len=0 -> C2 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_udp_send(h, buf, 0U, dst, 53U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_net_udp_send(h, buf, 0U, dst, 53U));
   TEST_END("ra_net_udp_send MC/DC: dst_port==0 || len==0");
 }
 
@@ -204,7 +204,7 @@ static void test_mcdc_udp_handle_dns_route(void)
   ra_net_handle_t h = 0;
   /* Bind socket on the dest port we'll target so the frame isn't
    * dropped after the DNS branch. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_udp_socket(53U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_udp_socket(53U, &h));
 
   ra_net_state_t* s         = ra_net_internal_state();
   uint8_t         frame[80] = {};
@@ -212,20 +212,20 @@ static void test_mcdc_udp_handle_dns_route(void)
 
   /* V1: pending=0, sport=53. C1 shorts; no DNS routing. */
   s->dns_pending = 0U;
-  flen           = build_udp_frame(frame, 53U, 53U, NULL, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_udp_handle(frame, flen));
+  flen           = build_udp_frame(frame, 53U, 53U, nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_udp_handle(frame, flen));
 
   /* V2: pending=1, sport=80. C2 false; no DNS routing. */
   s->dns_pending = 1U;
   s->dns_txid    = 0U;
-  flen           = build_udp_frame(frame, 80U, 53U, NULL, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_udp_handle(frame, flen));
+  flen           = build_udp_frame(frame, 80U, 53U, nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_udp_handle(frame, flen));
 
   /* V3: pending=1, sport=53. Both true; DNS branch executed. */
   s->dns_pending = 1U;
   s->dns_txid    = 0U;
-  flen           = build_udp_frame(frame, 53U, 53U, NULL, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_udp_handle(frame, flen));
+  flen           = build_udp_frame(frame, 53U, 53U, nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_udp_handle(frame, flen));
 
   TEST_END("ra_net_udp_handle DNS route MC/DC");
 }
@@ -423,28 +423,28 @@ static void test_mcdc_dns_a_record_selector(void)
   s->dns_txid    = 0x1111U;
   build_dns_answer(msg, &mlen, 0x1111U, 1U, 1U, 4U);
   ra_net_udp_internal_dns_consume_response(msg, mlen);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s->dns_pending);
+  TEST_ASSERT_EQ(0, s->dns_pending);
 
   /* V2: AAAA (28), IN, rdlen=4 -> C1 shorts. */
   s->dns_pending = 1U;
   s->dns_txid    = 0x2222U;
   build_dns_answer(msg, &mlen, 0x2222U, 28U, 1U, 4U);
   ra_net_udp_internal_dns_consume_response(msg, mlen);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s->dns_pending); /* not captured */
+  TEST_ASSERT_EQ(1, s->dns_pending); /* not captured */
 
   /* V3: A, CH (3), rdlen=4 -> C2 shorts. */
   s->dns_pending = 1U;
   s->dns_txid    = 0x3333U;
   build_dns_answer(msg, &mlen, 0x3333U, 1U, 3U, 4U);
   ra_net_udp_internal_dns_consume_response(msg, mlen);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s->dns_pending);
+  TEST_ASSERT_EQ(1, s->dns_pending);
 
   /* V4: A, IN, rdlen=16 -> C3=F. */
   s->dns_pending = 1U;
   s->dns_txid    = 0x4444U;
   build_dns_answer(msg, &mlen, 0x4444U, 1U, 1U, 16U);
   ra_net_udp_internal_dns_consume_response(msg, mlen);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s->dns_pending);
+  TEST_ASSERT_EQ(1, s->dns_pending);
 
   TEST_END("ra_net_udp dns_consume_response A-record selector MC/DC");
 }
@@ -466,8 +466,8 @@ static void test_mcdc_dns_query_null_guard(void)
   ra_net_ipv4_t ip = {};
   ra_err_t      e  = ra_net_dns_query("example.com", &ip);
   TEST_ASSERT(e != k_ra_err_null_ptr);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_dns_query(NULL, &ip));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_dns_query("example.com", NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_dns_query(nullptr, &ip));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_net_dns_query("example.com", nullptr));
   TEST_END("ra_net_dns_query MC/DC: hostname NULL || out_ip NULL");
 }
 

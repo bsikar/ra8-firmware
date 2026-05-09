@@ -68,8 +68,8 @@ static void test_blink_main_init_sequence_ok(void)
 {
   reset_world();
   TEST_BEGIN("blink: led_init(LED1)+led_init(LED2) succeed");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
   TEST_END("blink: led_init(LED1)+led_init(LED2) succeed");
 }
 
@@ -90,9 +90,9 @@ static void test_blink_thread_a_loop_toggles_led1(void)
 {
   reset_world();
   TEST_BEGIN("blink: thread A toggles LED1 N iterations");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
   for (uint8_t i = 0; i < (uint8_t)k_test_blink_iters; i++) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
   }
   TEST_END("blink: thread A toggles LED1 N iterations");
 }
@@ -109,9 +109,9 @@ static void test_blink_thread_b_loop_toggles_led2(void)
 {
   reset_world();
   TEST_BEGIN("blink: thread B toggles LED2 N iterations");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
   for (uint8_t i = 0; i < (uint8_t)k_test_blink_iters; i++) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led2));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led2));
   }
   TEST_END("blink: thread B toggles LED2 N iterations");
 }
@@ -135,8 +135,7 @@ static void test_blink_init_invalid_led_rejected(void)
 {
   reset_world();
   TEST_BEGIN("blink: invalid LED id rejected at init");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_led_init((ra_board_led_id_t)k_ra_board_led_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_led_init((ra_board_led_id_t)k_ra_board_led_count));
   TEST_END("blink: invalid LED id rejected at init");
 }
 
@@ -157,8 +156,8 @@ static void test_blink_toggle_invalid_led_rejected(void)
 {
   reset_world();
   TEST_BEGIN("blink: invalid LED id rejected at toggle");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
   TEST_END("blink: invalid LED id rejected at toggle");
 }
 
@@ -178,11 +177,11 @@ static void test_blink_interleaved_a_b_a_toggles(void)
 {
   reset_world();
   TEST_BEGIN("blink: interleaved A/B/A toggle order");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led2));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
   TEST_END("blink: interleaved A/B/A toggle order");
 }
 

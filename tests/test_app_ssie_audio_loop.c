@@ -91,20 +91,18 @@ static void test_ssie_app_run_ok(void)
   reset_world();
   TEST_BEGIN("ssie_audio_loop: init + start + stream");
   const ra_ssie_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ssie_init((uint8_t)k_test_ssie_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_test_ssie_app_channel, &cfg));
   /* Seed SSISR.IIRQ so ra_ssie_start sees the channel as idle. On real
    * silicon SSISR.IIRQ self-asserts after the FIFO reset; the host
    * mock does not auto-toggle it. */
   ra_ssie((uint8_t)k_test_ssie_app_channel)->SSISR = (uint32_t)k_ra_ssie_mask_iirq;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_ssie_start((uint8_t)k_test_ssie_app_channel, k_ra_ssie_dir_tx_rx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_start((uint8_t)k_test_ssie_app_channel, k_ra_ssie_dir_tx_rx));
   for (uint8_t i = 0U; i < (uint8_t)k_test_ssie_app_sample_count; i++) {
-    TEST_ASSERT_EQ(
-      (int)k_ra_ok,
-      (int)ra_ssie_write_sample((uint8_t)k_test_ssie_app_channel, k_test_ssie_pattern[i]));
+    TEST_ASSERT_EQ(k_ra_ok,
+                   ra_ssie_write_sample((uint8_t)k_test_ssie_app_channel, k_test_ssie_pattern[i]));
   }
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ssie_stop((uint8_t)k_test_ssie_app_channel));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ssie_deinit((uint8_t)k_test_ssie_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_stop((uint8_t)k_test_ssie_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_deinit((uint8_t)k_test_ssie_app_channel));
   TEST_END("ssie_audio_loop: init + start + stream");
 }
 
@@ -119,8 +117,7 @@ static void test_ssie_app_init_null(void)
 {
   reset_world();
   TEST_BEGIN("ssie_audio_loop: NULL cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_ssie_init((uint8_t)k_test_ssie_app_channel, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_init((uint8_t)k_test_ssie_app_channel, nullptr));
   TEST_END("ssie_audio_loop: NULL cfg rejected");
 }
 

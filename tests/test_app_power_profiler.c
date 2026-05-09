@@ -58,14 +58,14 @@ static void test_pp_app_bringup_ok(void)
     .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra_lpm_ss2lp_default,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&lpm_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&lpm_cfg));
   const ra_power_profile_config_t pp_cfg = {
     .pulse         = nullptr,
     .now_us        = test_pp_now_us,
     .user_ctx_gpio = nullptr,
     .user_ctx_time = nullptr,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_init(&pp_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_init(&pp_cfg));
   TEST_END("power_profiler: lpm + profiler init ok");
 }
 
@@ -80,7 +80,7 @@ static void test_pp_app_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("power_profiler: NULL pp cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_power_profile_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_power_profile_init(nullptr));
   TEST_END("power_profiler: NULL pp cfg rejected");
 }
 
@@ -107,23 +107,23 @@ static void test_pp_app_cycle_modes(void)
     .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra_lpm_ss2lp_default,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&lpm_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&lpm_cfg));
   const ra_power_profile_config_t pp_cfg = {
     .pulse         = nullptr,
     .now_us        = test_pp_now_us,
     .user_ctx_gpio = nullptr,
     .user_ctx_time = nullptr,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_init(&pp_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_init(&pp_cfg));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_mark_enter(k_ra_power_profile_region_active));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_mark_exit(k_ra_power_profile_region_active));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_mark_enter(k_ra_power_profile_region_sleep));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_mark_exit(k_ra_power_profile_region_sleep));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_mark_enter(k_ra_power_profile_region_active));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_mark_exit(k_ra_power_profile_region_active));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_mark_enter(k_ra_power_profile_region_sleep));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_mark_exit(k_ra_power_profile_region_sleep));
 
   ra_power_profile_stats_t stats = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_power_profile_get_stats(&stats));
+  TEST_ASSERT_EQ(k_ra_ok, ra_power_profile_get_stats(&stats));
   TEST_ASSERT(stats.regions[k_ra_power_profile_region_active].entries == 1U);
   TEST_ASSERT(stats.regions[k_ra_power_profile_region_active].exits == 1U);
   TEST_ASSERT(stats.regions[k_ra_power_profile_region_active].total_time_us > 0U);

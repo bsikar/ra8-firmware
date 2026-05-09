@@ -50,9 +50,9 @@ static inline uint8_t mirror_priv_blit_glyph_size(int w, int h)
 static void test_mcdc_priv_blit_glyph_size(void)
 {
   TEST_BEGIN("ra_reflow_render priv_blit_glyph size MC/DC: w>0 && h>0");
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)mirror_priv_blit_glyph_size(10, 10));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_priv_blit_glyph_size(0, 10));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_priv_blit_glyph_size(10, 0));
+  TEST_ASSERT_EQ(1, mirror_priv_blit_glyph_size(10, 10));
+  TEST_ASSERT_EQ(0, mirror_priv_blit_glyph_size(0, 10));
+  TEST_ASSERT_EQ(0, mirror_priv_blit_glyph_size(10, 0));
   TEST_END("ra_reflow_render priv_blit_glyph size MC/DC: w>0 && h>0");
 }
 

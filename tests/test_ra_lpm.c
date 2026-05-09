@@ -55,25 +55,25 @@ static void test_init_happy(void)
   ra_sim_mmap_reset();
 
   const ra_lpm_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
 
   /* SBYCR.OPE bit set; bits 5:0 and 7 cleared. */
-  TEST_ASSERT_EQ((int)k_ra_lpm_sbycr_ope_mask, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off)));
+  TEST_ASSERT_EQ(k_ra_lpm_sbycr_ope_mask, (*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off)));
 
   /* DPSBYCR: IOKEEP set, DCSSMODE = 0b10 << 2. */
   const uint8_t expected_dpsbycr =
     (uint8_t)((uint8_t)k_ra_lpm_dpsbycr_iokeep_mask |
               ((uint8_t)k_ra_lpm_dcssmode_256us << k_ra_lpm_dpsbycr_dcssmode_shift));
-  TEST_ASSERT_EQ((int)expected_dpsbycr, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off)));
+  TEST_ASSERT_EQ(expected_dpsbycr, (*ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off)));
 
   /* SSCR1: SS2FR=1, SS2LP=01b. */
   const uint8_t expected_sscr1 =
     (uint8_t)((uint8_t)k_ra_lpm_sscr1_ss2fr_mask |
               ((uint8_t)k_ra_lpm_ss2lp_low << k_ra_lpm_sscr1_ss2lp_shift));
-  TEST_ASSERT_EQ((int)expected_sscr1, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)));
+  TEST_ASSERT_EQ(expected_sscr1, (*ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)));
 
   /* LPSCR cleared on init -- next WFI is plain CPU sleep. */
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
 
   TEST_END("lpm init happy");
 }
@@ -89,7 +89,7 @@ static void test_init_null_cfg(void)
   TEST_BEGIN("lpm init null cfg");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_init(nullptr));
   TEST_END("lpm init null cfg");
 }
 
@@ -110,16 +110,16 @@ static void test_init_no_keep_no_bus(void)
   cfg.sscr_fast_return = false;
   cfg.dcdc_softstart   = k_ra_lpm_dcssmode_128us;
   cfg.sscr_low_power   = k_ra_lpm_ss2lp_default;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
 
   /* SBYCR has OPE cleared. */
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off)));
   /* DPSBYCR: IOKEEP cleared, DCSSMODE = 0b01 << 2 = 0x04. */
   const uint8_t expected =
     (uint8_t)((uint8_t)k_ra_lpm_dcssmode_128us << k_ra_lpm_dpsbycr_dcssmode_shift);
-  TEST_ASSERT_EQ((int)expected, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off)));
+  TEST_ASSERT_EQ(expected, (*ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off)));
   /* SSCR1: all bits clear. */
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)));
   TEST_END("lpm init no keep no bus");
 }
 
@@ -134,14 +134,12 @@ static void test_set_wakeup_sources(void)
   TEST_BEGIN("lpm set_wakeup_sources");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_lpm_set_wakeup_sources((uint32_t)k_ra_lpm_test_wupen0_pattern,
-                                                (uint32_t)k_ra_lpm_test_wupen1_pattern));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_lpm_set_wakeup_sources((uint32_t)k_ra_lpm_test_wupen0_pattern,
+                                           (uint32_t)k_ra_lpm_test_wupen1_pattern));
 
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_test_wupen0_pattern,
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_test_wupen1_pattern,
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
+  TEST_ASSERT_EQ(k_ra_lpm_test_wupen0_pattern, (*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
+  TEST_ASSERT_EQ(k_ra_lpm_test_wupen1_pattern, (*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
   TEST_END("lpm set_wakeup_sources");
 }
 
@@ -156,14 +154,13 @@ static void test_arm_clear_wupen0(void)
   TEST_BEGIN("lpm arm/clear wupen0");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_irq3));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_rtcalm));
-  TEST_ASSERT_EQ((int64_t)((uint32_t)k_ra_lpm_wupen0_irq3 | (uint32_t)k_ra_lpm_wupen0_rtcalm),
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_irq3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_rtcalm));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_lpm_wupen0_irq3 | (uint32_t)k_ra_lpm_wupen0_rtcalm),
+                 (*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_clear_wupen0_bits((uint32_t)k_ra_lpm_wupen0_irq3));
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_wupen0_rtcalm,
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_clear_wupen0_bits((uint32_t)k_ra_lpm_wupen0_irq3));
+  TEST_ASSERT_EQ(k_ra_lpm_wupen0_rtcalm, (*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
   TEST_END("lpm arm/clear wupen0");
 }
 
@@ -178,14 +175,13 @@ static void test_arm_clear_wupen1(void)
   TEST_BEGIN("lpm arm/clear wupen1");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_ulpt0u));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_i3c0));
-  TEST_ASSERT_EQ((int64_t)((uint32_t)k_ra_lpm_wupen1_ulpt0u | (uint32_t)k_ra_lpm_wupen1_i3c0),
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_ulpt0u));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_i3c0));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_lpm_wupen1_ulpt0u | (uint32_t)k_ra_lpm_wupen1_i3c0),
+                 (*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_clear_wupen1_bits((uint32_t)k_ra_lpm_wupen1_i3c0));
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_wupen1_ulpt0u,
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_clear_wupen1_bits((uint32_t)k_ra_lpm_wupen1_i3c0));
+  TEST_ASSERT_EQ(k_ra_lpm_wupen1_ulpt0u, (*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
   TEST_END("lpm arm/clear wupen1");
 }
 
@@ -201,26 +197,24 @@ static void test_arm_dpsier(void)
   ra_sim_mmap_reset();
 
   /* DPSIER0 = IRQ0..IRQ7 mask. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_0, 0xFFU));
-  TEST_ASSERT_EQ((int)0xFF, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsier0_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_0, 0xFFU));
+  TEST_ASSERT_EQ(0xFF, *ra_lpm_sysc_reg8(k_ra_lpm_dpsier0_off));
   /* DPSIFR0 should be cleared by the driver. */
-  TEST_ASSERT_EQ((int)0, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsifr0_off));
+  TEST_ASSERT_EQ(0, *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr0_off));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_1, 0xAAU));
-  TEST_ASSERT_EQ((int)0xAA, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsier1_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_1, 0xAAU));
+  TEST_ASSERT_EQ(0xAA, *ra_lpm_sysc_reg8(k_ra_lpm_dpsier1_off));
 
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_2, (uint8_t)k_ra_lpm_dpsier2_drtcaie_mask));
-  TEST_ASSERT_EQ((int)k_ra_lpm_dpsier2_drtcaie_mask, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsier2_off));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_2, (uint8_t)k_ra_lpm_dpsier2_drtcaie_mask));
+  TEST_ASSERT_EQ(k_ra_lpm_dpsier2_drtcaie_mask, *ra_lpm_sysc_reg8(k_ra_lpm_dpsier2_off));
 
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_3, (uint8_t)k_ra_lpm_dpsier3_diwdtie_mask));
-  TEST_ASSERT_EQ((int)k_ra_lpm_dpsier3_diwdtie_mask, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsier3_off));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_3, (uint8_t)k_ra_lpm_dpsier3_diwdtie_mask));
+  TEST_ASSERT_EQ(k_ra_lpm_dpsier3_diwdtie_mask, *ra_lpm_sysc_reg8(k_ra_lpm_dpsier3_off));
 
   /* Bad index. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_lpm_arm_dpsier((ra_lpm_dpsier_idx_t)5U, 0x01U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lpm_arm_dpsier((ra_lpm_dpsier_idx_t)5U, 0x01U));
   TEST_END("lpm arm_dpsier all four banks");
 }
 
@@ -239,13 +233,13 @@ static void test_clear_dpsifr(void)
   *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr0_off) = 0xFFU;
   *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr3_off) = 0x80U;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_clear_dpsifr(k_ra_lpm_dpsier_idx_0));
-  TEST_ASSERT_EQ((int)0, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsifr0_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_clear_dpsifr(k_ra_lpm_dpsier_idx_0));
+  TEST_ASSERT_EQ(0, *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr0_off));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_clear_dpsifr(k_ra_lpm_dpsier_idx_3));
-  TEST_ASSERT_EQ((int)0, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsifr3_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_clear_dpsifr(k_ra_lpm_dpsier_idx_3));
+  TEST_ASSERT_EQ(0, *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr3_off));
 
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_lpm_clear_dpsifr((ra_lpm_dpsier_idx_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lpm_clear_dpsifr((ra_lpm_dpsier_idx_t)9U));
   TEST_END("lpm clear_dpsifr");
 }
 
@@ -260,17 +254,16 @@ static void test_set_dpsiegr(void)
   TEST_BEGIN("lpm set_dpsiegr");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_dpsiegr(k_ra_lpm_dpsier_idx_0, 0x55U));
-  TEST_ASSERT_EQ((int)0x55, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsiegr0_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_dpsiegr(k_ra_lpm_dpsier_idx_0, 0x55U));
+  TEST_ASSERT_EQ(0x55, *ra_lpm_sysc_reg8(k_ra_lpm_dpsiegr0_off));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_dpsiegr(k_ra_lpm_dpsier_idx_1, 0xAAU));
-  TEST_ASSERT_EQ((int)0xAA, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsiegr1_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_dpsiegr(k_ra_lpm_dpsier_idx_1, 0xAAU));
+  TEST_ASSERT_EQ(0xAA, *ra_lpm_sysc_reg8(k_ra_lpm_dpsiegr1_off));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_dpsiegr(k_ra_lpm_dpsier_idx_2, 0x10U));
-  TEST_ASSERT_EQ((int)0x10, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsiegr2_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_dpsiegr(k_ra_lpm_dpsier_idx_2, 0x10U));
+  TEST_ASSERT_EQ(0x10, *ra_lpm_sysc_reg8(k_ra_lpm_dpsiegr2_off));
 
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_lpm_set_dpsiegr((ra_lpm_dpsier_idx_t)4U, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lpm_set_dpsiegr((ra_lpm_dpsier_idx_t)4U, 0xFFU));
   TEST_END("lpm set_dpsiegr");
 }
 
@@ -285,12 +278,11 @@ static void test_snooze_request_sources(void)
   TEST_BEGIN("lpm snooze_set_request_sources");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_snooze_set_request_sources(true, true, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_snooze_set_request_sources(true, true, true));
 
   const uint32_t want_w1 = (uint32_t)k_ra_lpm_wupen1_ulpt0u | (uint32_t)k_ra_lpm_wupen1_ulpt1u;
-  TEST_ASSERT_EQ((int64_t)want_w1, (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_wupen0_acmphs0,
-                 (int64_t)(*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
+  TEST_ASSERT_EQ(want_w1, (*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
+  TEST_ASSERT_EQ(k_ra_lpm_wupen0_acmphs0, (*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
   TEST_END("lpm snooze_set_request_sources");
 }
 
@@ -308,12 +300,12 @@ static void test_snooze_end_sources(void)
   /* Pre-stamp DPSIFR3 to verify the dummy-read-then-clear sequence. */
   *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr3_off) = 0xFFU;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_snooze_set_end_sources(true, false, true, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_snooze_set_end_sources(true, false, true, false));
 
   const uint8_t want =
     (uint8_t)((uint8_t)k_ra_lpm_dpsier3_dulpt0ie_mask | (uint8_t)k_ra_lpm_dpsier3_dusbfsie_mask);
-  TEST_ASSERT_EQ((int)want, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsier3_off));
-  TEST_ASSERT_EQ((int)0, (int)*ra_lpm_sysc_reg8(k_ra_lpm_dpsifr3_off));
+  TEST_ASSERT_EQ(want, *ra_lpm_sysc_reg8(k_ra_lpm_dpsier3_off));
+  TEST_ASSERT_EQ(0, *ra_lpm_sysc_reg8(k_ra_lpm_dpsifr3_off));
   TEST_END("lpm snooze_set_end_sources");
 }
 
@@ -333,22 +325,18 @@ static void test_ram_retention(void)
     .cpu0_tcm_keep  = true,
     .cpu1_tcm_keep  = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_ram_retention(&cfg));
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_pdramscr0_all_keep,
-                 (int64_t)*ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off));
-  TEST_ASSERT_EQ((int)k_ra_lpm_pdramscr1_rkeep0_mask,
-                 (int)*ra_lpm_sysc_reg8(k_ra_lpm_pdramscr1_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_ram_retention(&cfg));
+  TEST_ASSERT_EQ(k_ra_lpm_pdramscr0_all_keep, *ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off));
+  TEST_ASSERT_EQ(k_ra_lpm_pdramscr1_rkeep0_mask, *ra_lpm_sysc_reg8(k_ra_lpm_pdramscr1_off));
 
   cfg.cpu0_tcm_keep  = false;
   cfg.cpu1_tcm_keep  = true;
   cfg.pdramscr0_bits = (uint16_t)k_ra_lpm_pdramscr0_sram1_keep;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_ram_retention(&cfg));
-  TEST_ASSERT_EQ((int64_t)k_ra_lpm_pdramscr0_sram1_keep,
-                 (int64_t)*ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off));
-  TEST_ASSERT_EQ((int)k_ra_lpm_pdramscr1_rkeep1_mask,
-                 (int)*ra_lpm_sysc_reg8(k_ra_lpm_pdramscr1_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_ram_retention(&cfg));
+  TEST_ASSERT_EQ(k_ra_lpm_pdramscr0_sram1_keep, *ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off));
+  TEST_ASSERT_EQ(k_ra_lpm_pdramscr1_rkeep1_mask, *ra_lpm_sysc_reg8(k_ra_lpm_pdramscr1_off));
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_set_ram_retention(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_set_ram_retention(nullptr));
   TEST_END("lpm set_ram_retention");
 }
 
@@ -371,22 +359,22 @@ static void test_ldo_standby(void)
     .pll2 = k_ra_lpm_ldo_disabled,
     .hoco = k_ra_lpm_ldo_retained,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_ldo_standby(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_ldo_standby(&cfg));
   TEST_ASSERT_EQ(
-    (int)k_ra_lpm_ldocr_skeep_mask,
-    (int)((*ra_lpm_sysc_reg8(k_ra_lpm_pll1ldocr_off)) & (uint8_t)k_ra_lpm_ldocr_skeep_mask));
+    k_ra_lpm_ldocr_skeep_mask,
+    ((*ra_lpm_sysc_reg8(k_ra_lpm_pll1ldocr_off)) & (uint8_t)k_ra_lpm_ldocr_skeep_mask));
   TEST_ASSERT_EQ(
-    (int)0,
-    (int)((*ra_lpm_sysc_reg8(k_ra_lpm_pll2ldocr_off)) & (uint8_t)k_ra_lpm_ldocr_skeep_mask));
+    0,
+    ((*ra_lpm_sysc_reg8(k_ra_lpm_pll2ldocr_off)) & (uint8_t)k_ra_lpm_ldocr_skeep_mask));
   TEST_ASSERT_EQ(
-    (int)k_ra_lpm_ldocr_skeep_mask,
-    (int)((*ra_lpm_sysc_reg8(k_ra_lpm_hocoldocr_off)) & (uint8_t)k_ra_lpm_ldocr_skeep_mask));
+    k_ra_lpm_ldocr_skeep_mask,
+    ((*ra_lpm_sysc_reg8(k_ra_lpm_hocoldocr_off)) & (uint8_t)k_ra_lpm_ldocr_skeep_mask));
 
   /* Force OPCM != 0 -- write must be rejected with invalid_state. */
   *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off) = 0x01U;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_lpm_set_ldo_standby(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_lpm_set_ldo_standby(&cfg));
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_set_ldo_standby(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_set_ldo_standby(nullptr));
   TEST_END("lpm set_ldo_standby");
 }
 
@@ -410,17 +398,17 @@ static void test_clock_stop_each(void)
     k_ra_lpm_clock_sub,
   };
   for (uint8_t i = 0U; i < (uint8_t)(sizeof(clocks) / sizeof(clocks[0])); ++i) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_clock_stop(clocks[i], true));
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_clock_stop(clocks[i], &v));
+    TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_clock_stop(clocks[i], true));
+    TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_clock_stop(clocks[i], &v));
     TEST_ASSERT(v);
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_clock_stop(clocks[i], false));
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_clock_stop(clocks[i], &v));
+    TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_clock_stop(clocks[i], false));
+    TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_clock_stop(clocks[i], &v));
     TEST_ASSERT(!v);
   }
 
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_lpm_set_clock_stop(k_ra_lpm_clock_count, true));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_lpm_get_clock_stop(k_ra_lpm_clock_count, &v));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_clock_stop(k_ra_lpm_clock_moco, NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lpm_set_clock_stop(k_ra_lpm_clock_count, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lpm_get_clock_stop(k_ra_lpm_clock_count, &v));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_clock_stop(k_ra_lpm_clock_moco, nullptr));
   TEST_END("lpm set_clock_stop / get_clock_stop");
 }
 
@@ -438,17 +426,16 @@ static void test_opccr_read_and_wait(void)
   /* Hand-set OPCCR to "transition complete" (OPCMTSF=0). */
   *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off) = 0x00U;
   uint8_t v                             = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_opccr(&v));
-  TEST_ASSERT_EQ((int)0x00, (int)v);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_wait_for_opccr((uint32_t)k_ra_lpm_test_poll_budget));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_opccr(&v));
+  TEST_ASSERT_EQ(0x00, v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_wait_for_opccr((uint32_t)k_ra_lpm_test_poll_budget));
 
   /* Stick OPCMTSF=1 and observe the timeout. */
   *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off) = (uint8_t)k_ra_lpm_opccr_opcmtsf_msk;
-  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout,
-                 (int)ra_lpm_wait_for_opccr((uint32_t)k_ra_lpm_test_poll_budget));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_lpm_wait_for_opccr((uint32_t)k_ra_lpm_test_poll_budget));
 
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_lpm_wait_for_opccr(0U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_opccr(NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lpm_wait_for_opccr(0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_opccr(nullptr));
   TEST_END("lpm get_opccr + wait_for_opccr");
 }
 
@@ -463,15 +450,15 @@ static void test_prcr_unlock_relock(void)
   TEST_BEGIN("lpm prcr unlock/relock");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_prcr_unlock());
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_prcr_unlock());
   /* Upper byte must be the 0xA5 key; lower byte must include PRC1=1. */
   const uint16_t prcr_after_unlock = *ra_lpm_sysc_reg16(k_ra_lpm_prcr_off);
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_lpm_prcr_key), (int)(prcr_after_unlock & (uint16_t)0xFF00U));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_lpm_prcr_key), (prcr_after_unlock & (uint16_t)0xFF00U));
   TEST_ASSERT((prcr_after_unlock & (uint16_t)k_ra_lpm_prcr_prc1_msk) != 0U);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_prcr_relock());
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_prcr_relock());
   const uint16_t prcr_after_relock = *ra_lpm_sysc_reg16(k_ra_lpm_prcr_off);
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_lpm_prcr_key), (int)(prcr_after_relock & (uint16_t)0xFF00U));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_lpm_prcr_key), (prcr_after_relock & (uint16_t)0xFF00U));
   TEST_ASSERT((prcr_after_relock & (uint16_t)k_ra_lpm_prcr_prc1_msk) == 0U);
   TEST_END("lpm prcr unlock/relock");
 }
@@ -488,24 +475,24 @@ static void test_enter_sleep_modes(void)
   ra_sim_mmap_reset();
 
   /* Plain sleep -- LPSCR.LPMD = 0. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
 
   /* Deep Sleep -- LPSCR.LPMD = 0 (SCR.SLEEPDEEP toggled by driver). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_deep_sleep));
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_sleep));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
 
   /* Software standby -- LPSCR.LPMD = 0x5. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_software_std));
-  TEST_ASSERT_EQ((int)k_ra_sleep_mode_software_std, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_software_std));
+  TEST_ASSERT_EQ(k_ra_sleep_mode_software_std, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
 
   /* Deep standby 1 / 2 / 3. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_1));
-  TEST_ASSERT_EQ((int)k_ra_sleep_mode_deep_standby_1, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_2));
-  TEST_ASSERT_EQ((int)k_ra_sleep_mode_deep_standby_2, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_3));
-  TEST_ASSERT_EQ((int)k_ra_sleep_mode_deep_standby_3, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_1));
+  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_1, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_2));
+  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_2, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_3));
+  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_3, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_END("lpm enter sleep modes");
 }
 
@@ -520,8 +507,8 @@ static void test_enter_deep_standby_helper(void)
   TEST_BEGIN("lpm enter_deep_standby helper");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_deep_standby());
-  TEST_ASSERT_EQ((int)k_ra_sleep_mode_deep_standby_1, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_deep_standby());
+  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_1, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_END("lpm enter_deep_standby helper");
 }
 
@@ -536,10 +523,10 @@ static void test_enter_sleep_bad_mode(void)
   TEST_BEGIN("lpm enter sleep bad mode");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_lpm_enter_sleep((ra_sleep_mode_t)k_ra_lpm_test_bad_mode_value));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_lpm_enter_sleep((ra_sleep_mode_t)k_ra_lpm_test_bad_mode_value));
   /* Bad call must NOT have written LPSCR. */
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_END("lpm enter sleep bad mode");
 }
 
@@ -561,10 +548,10 @@ static void test_get_status_packs_four_regs(void)
   *ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)   = 0x05U;
 
   uint32_t status = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_status(&status));
-  TEST_ASSERT_EQ((int64_t)0x05055440UL, (int64_t)status);
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_status(&status));
+  TEST_ASSERT_EQ(0x05055440UL, status);
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_status(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_status(nullptr));
   TEST_END("lpm get_status packs SBYCR/DPSBYCR/LPSCR/SSCR1");
 }
 
@@ -579,17 +566,17 @@ static void test_get_exit_cause_packs_wupen(void)
   TEST_BEGIN("lpm get_exit_cause packs WUPEN0/WUPEN1");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_lpm_set_wakeup_sources((uint32_t)k_ra_lpm_test_wupen0_pattern,
-                                                (uint32_t)k_ra_lpm_test_wupen1_pattern));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_lpm_set_wakeup_sources((uint32_t)k_ra_lpm_test_wupen0_pattern,
+                                           (uint32_t)k_ra_lpm_test_wupen1_pattern));
   uint64_t cause = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_exit_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_exit_cause(&cause));
 
   const uint64_t expected =
     ((uint64_t)k_ra_lpm_test_wupen0_pattern) | (((uint64_t)k_ra_lpm_test_wupen1_pattern) << 32);
   TEST_ASSERT((cause == expected));
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_exit_cause(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_exit_cause(nullptr));
   TEST_END("lpm get_exit_cause packs WUPEN0/WUPEN1");
 }
 
@@ -616,19 +603,19 @@ static void test_get_dpsi_state(void)
   uint8_t enables[4] = {0U};
   uint8_t flags[4]   = {0U};
   uint8_t edges[3]   = {0U};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_dpsi_state(enables, flags, edges));
-  TEST_ASSERT_EQ((int)0x11, (int)enables[0]);
-  TEST_ASSERT_EQ((int)0x22, (int)enables[1]);
-  TEST_ASSERT_EQ((int)0x03, (int)enables[2]);
-  TEST_ASSERT_EQ((int)0x80, (int)enables[3]);
-  TEST_ASSERT_EQ((int)0xAA, (int)flags[0]);
-  TEST_ASSERT_EQ((int)0x55, (int)flags[3]);
-  TEST_ASSERT_EQ((int)0x33, (int)edges[0]);
-  TEST_ASSERT_EQ((int)0x10, (int)edges[2]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_dpsi_state(enables, flags, edges));
+  TEST_ASSERT_EQ(0x11, enables[0]);
+  TEST_ASSERT_EQ(0x22, enables[1]);
+  TEST_ASSERT_EQ(0x03, enables[2]);
+  TEST_ASSERT_EQ(0x80, enables[3]);
+  TEST_ASSERT_EQ(0xAA, flags[0]);
+  TEST_ASSERT_EQ(0x55, flags[3]);
+  TEST_ASSERT_EQ(0x33, edges[0]);
+  TEST_ASSERT_EQ(0x10, edges[2]);
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_dpsi_state(NULL, flags, edges));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_dpsi_state(enables, NULL, edges));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_get_dpsi_state(enables, flags, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_dpsi_state(nullptr, flags, edges));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_dpsi_state(enables, nullptr, edges));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_get_dpsi_state(enables, flags, nullptr));
   TEST_END("lpm get_dpsi_state snapshots all banks");
 }
 
@@ -645,23 +632,23 @@ static void test_deinit_resets_registers(void)
 
   /* Dirty state. */
   const ra_lpm_config_t cfg = make_default_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_set_wakeup_sources(0xFFFFFFFFUL, 0xFFFFFFFFUL));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_0, 0xFFU));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_software_std));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_set_wakeup_sources(0xFFFFFFFFUL, 0xFFFFFFFFUL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_0, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_software_std));
 
   /* Clean it. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_deinit());
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_deinit());
+  TEST_ASSERT_EQ(0, (*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_icu_reg32(k_ra_lpm_wupen1_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   /* SBYCR must read back its reset value (OPE = 1). */
-  TEST_ASSERT_EQ((int)k_ra_lpm_sbycr_reset_val, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off)));
+  TEST_ASSERT_EQ(k_ra_lpm_sbycr_reset_val, (*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off)));
   /* DPSBYCR must read back its reset value (DCSSMODE=01b). */
-  TEST_ASSERT_EQ((int)k_ra_lpm_dpsbycr_reset_val, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off)));
+  TEST_ASSERT_EQ(k_ra_lpm_dpsbycr_reset_val, (*ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off)));
   /* SSCR1 == 0; DPSIER0 == 0. */
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)));
-  TEST_ASSERT_EQ((int)0, (int)(*ra_lpm_sysc_reg8(k_ra_lpm_dpsier0_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_dpsier0_off)));
   TEST_END("lpm deinit resets registers");
 }
 

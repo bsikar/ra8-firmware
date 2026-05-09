@@ -51,14 +51,14 @@ static void mpu_test_setup(void)
 static void test_register_layout(void)
 {
   TEST_BEGIN("r_mpu_regs_t offsets match Arm Cortex-M85 TRM");
-  TEST_ASSERT_EQ((int)0x00, (int)offsetof(r_mpu_regs_t, TYPE));
-  TEST_ASSERT_EQ((int)0x04, (int)offsetof(r_mpu_regs_t, CTRL));
-  TEST_ASSERT_EQ((int)0x08, (int)offsetof(r_mpu_regs_t, RNR));
-  TEST_ASSERT_EQ((int)0x0C, (int)offsetof(r_mpu_regs_t, RBAR));
-  TEST_ASSERT_EQ((int)0x10, (int)offsetof(r_mpu_regs_t, RLAR));
-  TEST_ASSERT_EQ((int)0x30, (int)offsetof(r_mpu_regs_t, MAIR0));
-  TEST_ASSERT_EQ((int)0x34, (int)offsetof(r_mpu_regs_t, MAIR1));
-  TEST_ASSERT_EQ((int)0x38, (int)sizeof(r_mpu_regs_t));
+  TEST_ASSERT_EQ(0x00, offsetof(r_mpu_regs_t, TYPE));
+  TEST_ASSERT_EQ(0x04, offsetof(r_mpu_regs_t, CTRL));
+  TEST_ASSERT_EQ(0x08, offsetof(r_mpu_regs_t, RNR));
+  TEST_ASSERT_EQ(0x0C, offsetof(r_mpu_regs_t, RBAR));
+  TEST_ASSERT_EQ(0x10, offsetof(r_mpu_regs_t, RLAR));
+  TEST_ASSERT_EQ(0x30, offsetof(r_mpu_regs_t, MAIR0));
+  TEST_ASSERT_EQ(0x34, offsetof(r_mpu_regs_t, MAIR1));
+  TEST_ASSERT_EQ(0x38, sizeof(r_mpu_regs_t));
   TEST_END("r_mpu_regs_t offsets match Arm Cortex-M85 TRM");
 }
 
@@ -72,7 +72,7 @@ static void test_configure_null_cfg(void)
 {
   TEST_BEGIN("ra_mpu_configure(NULL) returns null_ptr");
   mpu_test_setup();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mpu_configure(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mpu_configure(nullptr));
   TEST_END("ra_mpu_configure(NULL) returns null_ptr");
 }
 
@@ -109,7 +109,7 @@ static void test_configure_too_many_regions(void)
     .privdefena   = false,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
   TEST_END("ra_mpu_configure rejects region_count > DREGION");
 }
 
@@ -133,7 +133,7 @@ static void test_configure_invalid_size(void)
     .attr_idx   = k_ra_mpu_attr_idx_0,
   };
   const ra_mpu_cfg_t cfg = {.regions = &r, .region_count = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
   TEST_END("ra_mpu_configure rejects non-power-of-two size");
 }
 
@@ -157,7 +157,7 @@ static void test_configure_misaligned_base(void)
     .attr_idx   = k_ra_mpu_attr_idx_0,
   };
   const ra_mpu_cfg_t cfg = {.regions = &r, .region_count = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
   TEST_END("ra_mpu_configure rejects misaligned base");
 }
 
@@ -181,7 +181,7 @@ static void test_configure_unrepresentable_perms(void)
     .attr_idx   = k_ra_mpu_attr_idx_0,
   };
   const ra_mpu_cfg_t cfg = {.regions = &r, .region_count = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
   TEST_END("ra_mpu_configure rejects priv-RO + unpriv-RW");
 }
 
@@ -213,19 +213,19 @@ static void test_configure_programs_region_zero(void)
     .hfnmiena     = false,
   };
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
 
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
-  TEST_ASSERT_EQ((int32_t)k_test_mpu_mair0, (int32_t)mpu->MAIR0);
-  TEST_ASSERT_EQ((int32_t)k_test_mpu_mair1, (int32_t)mpu->MAIR1);
+  TEST_ASSERT_EQ(k_test_mpu_mair0, mpu->MAIR0);
+  TEST_ASSERT_EQ(k_test_mpu_mair1, mpu->MAIR1);
 
   /* RNR ends at the last cleared region (DREGION - 1 = 15). */
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_test_mpu_dregion_count - 1U), (int32_t)mpu->RNR);
+  TEST_ASSERT_EQ(((uint32_t)k_test_mpu_dregion_count - 1U), mpu->RNR);
 
   /* CTRL must have ENABLE | PRIVDEFENA, no HFNMIENA. */
   const uint32_t expected_ctrl =
     (uint32_t)k_ra_mpu_ctrl_enable | (uint32_t)k_ra_mpu_ctrl_privdefena;
-  TEST_ASSERT_EQ((int32_t)expected_ctrl, (int32_t)mpu->CTRL);
+  TEST_ASSERT_EQ(expected_ctrl, mpu->CTRL);
   TEST_END("ra_mpu_configure programs region 0 RBAR/RLAR");
 }
 
@@ -256,11 +256,11 @@ static void test_configure_clears_unused_regions(void)
     .attr_idx   = k_ra_mpu_attr_idx_0,
   };
   const ra_mpu_cfg_t cfg = {.regions = &r, .region_count = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
 
   /* Re-select region 5 and check its RLAR is back to zero. */
   mpu->RNR = 5U;
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mpu->RLAR);
+  TEST_ASSERT_EQ(0, mpu->RLAR);
   TEST_END("ra_mpu_configure clears regions above region_count");
 }
 
@@ -275,11 +275,10 @@ static void test_enable_disable(void)
   TEST_BEGIN("ra_mpu_enable / ra_mpu_disable toggle CTRL.ENABLE");
   mpu_test_setup();
   ra_mpu_regs()->CTRL = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_enable());
-  TEST_ASSERT_EQ((int32_t)k_ra_mpu_ctrl_enable,
-                 (int32_t)(ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_disable());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_enable());
+  TEST_ASSERT_EQ(k_ra_mpu_ctrl_enable, (ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_disable());
+  TEST_ASSERT_EQ(0, (ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
   TEST_END("ra_mpu_enable / ra_mpu_disable toggle CTRL.ENABLE");
 }
 
@@ -293,7 +292,7 @@ static void test_set_region_null(void)
 {
   TEST_BEGIN("ra_mpu_set_region(NULL) returns null_ptr");
   mpu_test_setup();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mpu_set_region(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mpu_set_region(0U, nullptr));
   TEST_END("ra_mpu_set_region(NULL) returns null_ptr");
 }
 
@@ -317,7 +316,7 @@ static void test_set_region_out_of_range(void)
     .attr_idx   = k_ra_mpu_attr_idx_0,
   };
   /* DREGION = 16, valid indices 0..15. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(16U, &r));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(16U, &r));
   TEST_END("ra_mpu_set_region rejects out-of-range region index");
 }
 
@@ -340,27 +339,25 @@ static void test_set_region_writes_pair(void)
     .shareable  = k_ra_mpu_share_non,
     .attr_idx   = k_ra_mpu_attr_idx_3,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_set_region(7U, &r));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_set_region(7U, &r));
 
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
-  TEST_ASSERT_EQ((int32_t)7, (int32_t)mpu->RNR);
+  TEST_ASSERT_EQ(7, mpu->RNR);
 
   /* RLAR.EN must be set; AttrIndx must equal 3 (encoded in bits 3:1). */
-  TEST_ASSERT_EQ((int32_t)k_ra_mpu_rlar_en_mask,
-                 (int32_t)(mpu->RLAR & (uint32_t)k_ra_mpu_rlar_en_mask));
+  TEST_ASSERT_EQ(k_ra_mpu_rlar_en_mask, (mpu->RLAR & (uint32_t)k_ra_mpu_rlar_en_mask));
   const uint32_t attr =
     (mpu->RLAR & (uint32_t)k_ra_mpu_rlar_attridx_mask) >> (uint32_t)k_ra_mpu_rlar_attridx_shift;
-  TEST_ASSERT_EQ((int32_t)k_ra_mpu_attr_idx_3, (int32_t)attr);
+  TEST_ASSERT_EQ(k_ra_mpu_attr_idx_3, attr);
 
   /* RBAR.BASE field must equal our aligned base. */
-  TEST_ASSERT_EQ((int32_t)k_test_mpu_region_base,
-                 (int32_t)(mpu->RBAR & (uint32_t)k_ra_mpu_rbar_base_mask));
+  TEST_ASSERT_EQ(k_test_mpu_region_base, (mpu->RBAR & (uint32_t)k_ra_mpu_rbar_base_mask));
   /* AP encoding for priv RO + unpriv RO must be 0b11 = 3. */
   const uint32_t ap =
     (mpu->RBAR & (uint32_t)k_ra_mpu_rbar_ap_mask) >> (uint32_t)k_ra_mpu_rbar_ap_shift;
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)ap);
+  TEST_ASSERT_EQ(3, ap);
   /* XN = 0 because executable = true. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(mpu->RBAR & (uint32_t)k_ra_mpu_rbar_xn_mask));
+  TEST_ASSERT_EQ(0, (mpu->RBAR & (uint32_t)k_ra_mpu_rbar_xn_mask));
   TEST_END("ra_mpu_set_region writes RBAR + RLAR for selected region");
 }
 
@@ -423,17 +420,17 @@ static void test_validate_region_mcdc_is_pow2(void)
   /* Vector 1: size=0 -> is_pow2 C1=F. */
   const ra_mpu_region_t r0 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_zero);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r0));
 
   /* Vector 2: size=3 -> is_pow2 C1=T, C2=F. */
   const ra_mpu_region_t r3 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_three);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r3));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r3));
 
   /* Vector 3: size=32 -> is_pow2 C1=T, C2=T (and >= min). Accepted. */
   const ra_mpu_region_t r32 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_min_ok);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_set_region(0U, &r32));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_set_region(0U, &r32));
   TEST_END("ra_mpu_is_pow2 MC/DC via ra_mpu_set_region(size)");
 }
 
@@ -457,17 +454,17 @@ static void test_validate_region_mcdc_size_guard(void)
   /* Vector 1: pow2 and >= min -> accepted. */
   const ra_mpu_region_t r_ok =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_min_ok);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_set_region(0U, &r_ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_set_region(0U, &r_ok));
 
   /* Vector 2: not pow2 -> C1=T short-circuits, rejected. */
   const ra_mpu_region_t r_npow2 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_three);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r_npow2));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r_npow2));
 
   /* Vector 3: pow2 but below min -> C1=F, C2=T, rejected. */
   const ra_mpu_region_t r_small =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_pow2_lt_min);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r_small));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r_small));
   TEST_END("ra_mpu validate_region MC/DC: !is_pow2 || size < min");
 }
 
@@ -504,17 +501,17 @@ static void test_encode_ap_mcdc_priv_rw_unpriv_rw(void)
   /* Vector 1: priv=ro, unpriv=rw. */
   const ra_mpu_region_t r1 =
     mcdc_region(k_ra_mpu_perm_ro, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r1));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r1));
 
   /* Vector 2: priv=rw, unpriv=ro -- not encodable in AP[1:0]. */
   const ra_mpu_region_t r2 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r2));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r2));
 
   /* Vector 3: priv=rw, unpriv=rw -- encodes to AP=01, accepted. */
   const ra_mpu_region_t r3 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_set_region(0U, &r3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_set_region(0U, &r3));
   TEST_END("ra_mpu_encode_ap L65 MC/DC: priv==rw && unpriv==rw");
 }
 
@@ -547,17 +544,17 @@ static void test_encode_ap_mcdc_priv_ro_unpriv_none(void)
   /* Vector 1: priv=rw, unpriv=ro -- reaches L68 with C1=F. */
   const ra_mpu_region_t r1 =
     mcdc_region(k_ra_mpu_perm_rw, k_ra_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mpu_set_region(0U, &r1));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_set_region(0U, &r1));
 
   /* Vector 2: priv=ro, unpriv=ro -- L68 C1=T, C2=F. Falls to L71=T. */
   const ra_mpu_region_t r2 =
     mcdc_region(k_ra_mpu_perm_ro, k_ra_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_set_region(0U, &r2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_set_region(0U, &r2));
 
   /* Vector 3: priv=ro, unpriv=none -- L68 C1=T, C2=T -> AP=2. */
   const ra_mpu_region_t r3 =
     mcdc_region(k_ra_mpu_perm_ro, k_ra_mpu_perm_none, (uint32_t)k_test_mpu_size_4k);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_set_region(0U, &r3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_set_region(0U, &r3));
   TEST_END("ra_mpu_encode_ap L68 MC/DC: priv==ro && unpriv==none");
 }
 
@@ -592,7 +589,7 @@ static void test_validate_cfg_mcdc_region_count_and_regions(void)
     .privdefena   = false,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_configure(&cfg_v1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg_v1));
 
   /* Vector 2: one region, valid pointer. */
   const ra_mpu_region_t r =
@@ -605,7 +602,7 @@ static void test_validate_cfg_mcdc_region_count_and_regions(void)
     .privdefena   = false,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_configure(&cfg_v2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg_v2));
 
   /* Vector 3: one region claimed but pointer NULL -> null_ptr. */
   const ra_mpu_cfg_t cfg_v3 = {
@@ -616,7 +613,7 @@ static void test_validate_cfg_mcdc_region_count_and_regions(void)
     .privdefena   = false,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mpu_configure(&cfg_v3));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mpu_configure(&cfg_v3));
   TEST_END("ra_mpu_validate_cfg MC/DC: region_count>0 && regions==NULL");
 }
 

@@ -65,27 +65,45 @@ static void prep(void)
   /* Ensure each test starts from a closed state. */
   (void)ra_ptp_close();
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_open_close(void)
 {
   TEST_BEGIN("ptp open + close");
   prep();
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ptp_mask_port_en),
-                 (int32_t)(ra_ptp_regs()->PTP_CTRL & (uint32_t)k_ra_ptp_mask_port_en));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ptp_mask_port_en),
+                 (ra_ptp_regs()->PTP_CTRL & (uint32_t)k_ra_ptp_mask_port_en));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_close());
   TEST_END("ptp open + close");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_open_null(void)
 {
   TEST_BEGIN("ptp open null arg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ptp_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ptp_open(nullptr));
   TEST_END("ptp open null arg");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_open_bad_domain(void)
 {
@@ -93,31 +111,43 @@ static void test_open_bad_domain(void)
   prep();
   ra_ptp_cfg_t cfg = default_cfg();
   cfg.domain       = 200U; /* > k_ra_ptp_domain_user_max */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ptp_open(&cfg));
   TEST_END("ptp open bad domain");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_set_role_transitions(void)
 {
   TEST_BEGIN("ptp set_role transitions");
   prep();
   /* Pre-init must reject */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_role(k_ra_ptp_role_slave));
 
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_slave));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_transparent_clock));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_transparent_clock));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_master));
 
   /* Out-of-range role rejected */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ptp_set_role((ra_ptp_role_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ptp_set_role((ra_ptp_role_t)9U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_close());
   TEST_END("ptp set_role transitions");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_get_set_time(void)
 {
@@ -127,154 +157,191 @@ static void test_get_set_time(void)
   uint32_t nsec = 0U;
 
   /* Pre-init returns invalid_state */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_get_time(&sec, &nsec));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_ptp_set_time((uint64_t)k_test_ptp_sec, (uint32_t)k_test_ptp_nsec));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_get_time(&sec, &nsec));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_ptp_set_time((uint64_t)k_test_ptp_sec, (uint32_t)k_test_ptp_nsec));
 
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
   /* NULL args rejected */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ptp_get_time(nullptr, &nsec));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ptp_get_time(&sec, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ptp_get_time(nullptr, &nsec));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ptp_get_time(&sec, nullptr));
 
   /* nsec out of range rejected */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ptp_set_time(0U, (uint32_t)k_test_ptp_bad_ns));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ptp_set_time(0U, (uint32_t)k_test_ptp_bad_ns));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ptp_set_time((uint64_t)k_test_ptp_sec, (uint32_t)k_test_ptp_nsec));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_get_time(&sec, &nsec));
-  TEST_ASSERT_EQ((int32_t)k_test_ptp_sec, (int32_t)sec);
-  TEST_ASSERT_EQ((int32_t)k_test_ptp_nsec, (int32_t)nsec);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_time((uint64_t)k_test_ptp_sec, (uint32_t)k_test_ptp_nsec));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_get_time(&sec, &nsec));
+  TEST_ASSERT_EQ(k_test_ptp_sec, sec);
+  TEST_ASSERT_EQ(k_test_ptp_nsec, nsec);
   TEST_END("ptp get_time / set_time round-trip");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_adjust_time_positive(void)
 {
   TEST_BEGIN("ptp adjust_time positive");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_ptp_adjust_time((int32_t)k_test_ptp_offset));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_adjust_time((int32_t)k_test_ptp_offset));
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_time(0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_adjust_time((int32_t)k_test_ptp_offset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_time(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_adjust_time((int32_t)k_test_ptp_offset));
 
   uint64_t sec  = 0U;
   uint32_t nsec = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_get_time(&sec, &nsec));
-  TEST_ASSERT_EQ((int32_t)k_test_ptp_offset, (int32_t)nsec);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_get_time(&sec, &nsec));
+  TEST_ASSERT_EQ(k_test_ptp_offset, nsec);
   TEST_END("ptp adjust_time positive");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_adjust_time_negative(void)
 {
   TEST_BEGIN("ptp adjust_time negative");
   prep();
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_time(5U, 1000U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_adjust_time((int32_t)k_test_ptp_neg_off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_time(5U, 1000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_adjust_time((int32_t)k_test_ptp_neg_off));
 
   int32_t offset = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_get_offset(&offset));
-  TEST_ASSERT_EQ((int32_t)k_test_ptp_neg_off, (int32_t)offset);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_get_offset(&offset));
+  TEST_ASSERT_EQ(k_test_ptp_neg_off, offset);
   TEST_END("ptp adjust_time negative");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_adjust_rate(void)
 {
   TEST_BEGIN("ptp adjust_rate");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_ptp_adjust_rate((int32_t)k_test_ptp_ppb));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_adjust_rate((int32_t)k_test_ptp_ppb));
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_adjust_rate((int32_t)k_test_ptp_ppb));
-  TEST_ASSERT_EQ((int32_t)k_test_ptp_ppb, (int32_t)ra_ptp_regs()->PTP_RATE_PPB);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_adjust_rate(-(int32_t)k_test_ptp_ppb));
-  TEST_ASSERT_EQ(-(int32_t)k_test_ptp_ppb, (int32_t)ra_ptp_regs()->PTP_RATE_PPB);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_adjust_rate((int32_t)k_test_ptp_ppb));
+  TEST_ASSERT_EQ(k_test_ptp_ppb, ra_ptp_regs()->PTP_RATE_PPB);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_adjust_rate(-(int32_t)k_test_ptp_ppb));
+  TEST_ASSERT_EQ(-(int32_t)k_test_ptp_ppb, ra_ptp_regs()->PTP_RATE_PPB);
   TEST_END("ptp adjust_rate");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_send_sync_announce(void)
 {
   TEST_BEGIN("ptp send_sync + send_announce");
   prep();
   /* Pre-init rejects */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_sync());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_announce());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_announce());
 
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
   /* Master role -> ok */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_send_sync());
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ptp_mask_tx_sync), (int32_t)ra_ptp_regs()->PTP_TX_TRIG);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_send_announce());
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ptp_mask_tx_annc), (int32_t)ra_ptp_regs()->PTP_TX_TRIG);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_sync());
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ptp_mask_tx_sync), ra_ptp_regs()->PTP_TX_TRIG);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_announce());
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ptp_mask_tx_annc), ra_ptp_regs()->PTP_TX_TRIG);
 
   /* Slave role rejects send_* */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_slave));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_sync());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_announce());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_announce());
   TEST_END("ptp send_sync + send_announce");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_message_handler_dispatch(void)
 {
   TEST_BEGIN("ptp message handler dispatch");
   prep();
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
   /* No handler -> dispatch is a no-op (no crash). */
   ra_ptp_dispatch_message(k_ra_ptp_msg_sync, 1U, 2U);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_cb_count);
+  TEST_ASSERT_EQ(0, s_cb_count);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ptp_attach_message_handler(stub_msg_cb, (void*)(uintptr_t)k_test_ctx_marker));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ptp_attach_message_handler(stub_msg_cb, (void*)(uintptr_t)k_test_ctx_marker));
   ra_ptp_dispatch_message(k_ra_ptp_msg_follow_up, 7U, 42U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_ptp_msg_follow_up, (int32_t)s_cb_last_type);
-  TEST_ASSERT_EQ((int32_t)7, (int32_t)s_cb_last_sec);
-  TEST_ASSERT_EQ((int32_t)42, (int32_t)s_cb_last_nsec);
-  TEST_ASSERT_EQ((int32_t)k_test_ctx_marker, (int32_t)(uintptr_t)s_cb_last_ctx);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(k_ra_ptp_msg_follow_up, s_cb_last_type);
+  TEST_ASSERT_EQ(7, s_cb_last_sec);
+  TEST_ASSERT_EQ(42, s_cb_last_nsec);
+  TEST_ASSERT_EQ(k_test_ctx_marker, (uintptr_t)s_cb_last_ctx);
 
   /* Try a few more message types to cover dispatch path. */
   ra_ptp_dispatch_message(k_ra_ptp_msg_delay_req, 0U, 0U);
   ra_ptp_dispatch_message(k_ra_ptp_msg_delay_resp, 0U, 0U);
   ra_ptp_dispatch_message(k_ra_ptp_msg_pdelay_req, 0U, 0U);
   ra_ptp_dispatch_message(k_ra_ptp_msg_pdelay_resp, 0U, 0U);
-  TEST_ASSERT_EQ((int32_t)5, (int32_t)s_cb_count);
+  TEST_ASSERT_EQ(5, s_cb_count);
 
   /* Detach */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_attach_message_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_attach_message_handler(nullptr, nullptr));
   ra_ptp_dispatch_message(k_ra_ptp_msg_announce, 0U, 0U);
-  TEST_ASSERT_EQ((int32_t)5, (int32_t)s_cb_count);
+  TEST_ASSERT_EQ(5, s_cb_count);
   TEST_END("ptp message handler dispatch");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_get_offset(void)
 {
   TEST_BEGIN("ptp get_offset");
   prep();
   int32_t offset = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_get_offset(&offset));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_get_offset(&offset));
 
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ptp_get_offset(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ptp_get_offset(nullptr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_time(10U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_adjust_time((int32_t)k_test_ptp_offset));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_get_offset(&offset));
-  TEST_ASSERT_EQ((int32_t)k_test_ptp_offset, (int32_t)offset);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_time(10U, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_adjust_time((int32_t)k_test_ptp_offset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_get_offset(&offset));
+  TEST_ASSERT_EQ(k_test_ptp_offset, offset);
   TEST_END("ptp get_offset");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_pre_init_rejects(void)
 {
@@ -286,29 +353,35 @@ static void test_pre_init_rejects(void)
   uint64_t sec  = 0U;
   uint32_t nsec = 0U;
   int32_t  off  = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_get_time(&sec, &nsec));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_set_time(0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_adjust_time(0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_adjust_rate(0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_get_offset(&off));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_sync());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_announce());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_get_time(&sec, &nsec));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_time(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_adjust_time(0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_adjust_rate(0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_get_offset(&off));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_announce());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_role(k_ra_ptp_role_master));
   /* attach is allowed pre-init (it just stashes pointers) */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_attach_message_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_attach_message_handler(nullptr, nullptr));
   TEST_END("ptp pre-init rejects");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_mac_address_packing(void)
 {
   TEST_BEGIN("ptp mac address packing");
   prep();
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
   /* MAC was {0x02,0x11,0x22,0x33,0x44,0x55} -> MAC0 = 0x33221102 */
-  TEST_ASSERT_EQ((int32_t)0x33221102, (int32_t)ra_ptp_regs()->PTP_MAC0);
+  TEST_ASSERT_EQ(0x33221102, ra_ptp_regs()->PTP_MAC0);
   /* MAC1 = 0x00005544 */
-  TEST_ASSERT_EQ((int32_t)0x00005544, (int32_t)ra_ptp_regs()->PTP_MAC1);
+  TEST_ASSERT_EQ(0x00005544, ra_ptp_regs()->PTP_MAC1);
   TEST_END("ptp mac address packing");
 }
 
@@ -331,13 +404,13 @@ static void test_mcdc_ra_ptp(void)
   TEST_BEGIN("ptp MC/DC: internal_send role 2-cond decision");
   prep();
   const ra_ptp_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_master));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_send_sync());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_send_sync());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_slave));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_sync());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_sync());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_sync());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
   TEST_END("ptp MC/DC: internal_send role 2-cond decision");
 }
 

@@ -158,21 +158,21 @@ static void test_session_open_invalid_args(void)
   ra_tls_session_cfg_t cfg = make_loopback_cfg();
 
   /* NULL out_session pointer rejected. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(NULL, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(nullptr, &cfg));
 
   /* NULL cfg rejected. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, nullptr));
   TEST_ASSERT_NULL(s);
 
   /* NULL bio_send rejected. */
   ra_tls_session_cfg_t bad = make_loopback_cfg();
-  bad.bio_send             = NULL;
+  bad.bio_send             = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &bad));
   TEST_ASSERT_NULL(s);
 
   /* NULL bio_recv rejected. */
   bad          = make_loopback_cfg();
-  bad.bio_recv = NULL;
+  bad.bio_recv = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &bad));
   TEST_ASSERT_NULL(s);
 
@@ -189,7 +189,7 @@ static void test_session_open_invalid_args(void)
 static void test_session_open_before_init(void)
 {
   TEST_BEGIN("session_open before global_init returns not_initialized");
-  ra_tls_session_t     s   = NULL;
+  ra_tls_session_t     s   = nullptr;
   ra_tls_session_cfg_t cfg = make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_tls_session_open(&s, &cfg));
   TEST_ASSERT_NULL(s);
@@ -215,7 +215,7 @@ static void test_session_pool_exhaustion(void)
   }
 
   /* One past the cap must fail. */
-  ra_tls_session_t overflow = NULL;
+  ra_tls_session_t overflow = nullptr;
   TEST_ASSERT_EQ(k_ra_err_no_mem, ra_tls_session_open(&overflow, &cfg));
   TEST_ASSERT_NULL(overflow);
 
@@ -245,7 +245,7 @@ static void test_session_close_invalid_handle(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
 
   /* NULL handle. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_close(NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_close(nullptr));
 
   /* Pointer that is not inside the pool. */
   uint8_t          bogus_storage[16] = {};
@@ -268,7 +268,7 @@ static void test_loopback_handshake_and_io(void)
   loop_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
 
-  ra_tls_session_t     s   = NULL;
+  ra_tls_session_t     s   = nullptr;
   ra_tls_session_cfg_t cfg = make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
   TEST_ASSERT_NOT_NULL(s);
@@ -280,24 +280,24 @@ static void test_loopback_handshake_and_io(void)
   const uint8_t payload[] = {'h', 'i'};
   size_t        sent      = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, payload, sizeof(payload), &sent));
-  TEST_ASSERT_EQ((int64_t)sizeof(payload), (int64_t)sent);
+  TEST_ASSERT_EQ(sizeof(payload), sent);
 
   /* Recv reads the bytes back out of the loopback ring. */
   uint8_t recv_buf[8] = {};
   size_t  received    = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, recv_buf, sizeof(recv_buf), &received));
-  TEST_ASSERT_EQ((int64_t)sizeof(payload), (int64_t)received);
+  TEST_ASSERT_EQ(sizeof(payload), received);
   TEST_ASSERT(recv_buf[0] == 'h');
   TEST_ASSERT(recv_buf[1] == 'i');
 
   /* Zero-length transfers are no-ops with success. */
   sent = 99U;
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, payload, 0U, &sent));
-  TEST_ASSERT_EQ(0, (int64_t)sent);
+  TEST_ASSERT_EQ(0, sent);
 
   received = 99U;
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, recv_buf, 0U, &received));
-  TEST_ASSERT_EQ(0, (int64_t)received);
+  TEST_ASSERT_EQ(0, received);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
@@ -315,7 +315,7 @@ static void test_io_arg_validation(void)
   TEST_BEGIN("send/recv argument validation");
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
 
-  ra_tls_session_t     s   = NULL;
+  ra_tls_session_t     s   = nullptr;
   ra_tls_session_cfg_t cfg = make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
 
@@ -323,16 +323,16 @@ static void test_io_arg_validation(void)
   size_t  n      = 0U;
 
   /* NULL out_sent / out_received rejected. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, buf, sizeof(buf), NULL));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, buf, sizeof(buf), NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, buf, sizeof(buf), nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, buf, sizeof(buf), nullptr));
 
   /* NULL handle rejected. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(NULL, buf, sizeof(buf), &n));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(NULL, buf, sizeof(buf), &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(nullptr, buf, sizeof(buf), &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(nullptr, buf, sizeof(buf), &n));
 
   /* NULL buf with non-zero len rejected. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, NULL, 4U, &n));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, NULL, 4U, &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, nullptr, 4U, &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, nullptr, 4U, &n));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
@@ -366,19 +366,19 @@ static void test_mcdc_tls(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
 
   /* Decision A vectors. */
-  ra_tls_session_t     s  = NULL;
+  ra_tls_session_t     s  = nullptr;
   ra_tls_session_cfg_t v1 = make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &v1));
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
 
-  s                       = NULL;
+  s                       = nullptr;
   ra_tls_session_cfg_t v2 = make_loopback_cfg();
-  v2.bio_send             = NULL;
+  v2.bio_send             = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &v2));
 
-  s                       = NULL;
+  s                       = nullptr;
   ra_tls_session_cfg_t v3 = make_loopback_cfg();
-  v3.bio_recv             = NULL;
+  v3.bio_recv             = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &v3));
 
   /* Decision B vectors. Need a live session. */
@@ -387,12 +387,12 @@ static void test_mcdc_tls(void)
   uint8_t buf[4] = {0U};
   size_t  sent   = 0U;
   /* V1: buf=NULL, len=0 -> C1=T,C2=F -> dec F. Implementation accepts. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, NULL, 0U, &sent));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, nullptr, 0U, &sent));
   /* V2: buf=valid, len=0 -> C1=F short-circuits -> dec F. */
   sent = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, buf, 0U, &sent));
   /* V3: buf=NULL, len>0 -> C1=T,C2=T -> dec T -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, NULL, 4U, &sent));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, nullptr, 4U, &sent));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
@@ -415,18 +415,18 @@ static void test_mcdc_tls_recv_buf_len(void)
   TEST_BEGIN("tls MC/DC: recv buf == NULL && len > 0");
   loop_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
-  ra_tls_session_t     s   = NULL;
+  ra_tls_session_t     s   = nullptr;
   ra_tls_session_cfg_t cfg = make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
   uint8_t buf[4] = {0U};
   size_t  got    = 0U;
   /* V1: buf=NULL, len=0 -> dec F, len-zero short-circuits to ok. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, NULL, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, nullptr, 0U, &got));
   /* V2: buf=valid, len=0 -> C1=F short-circuits, dec F, len-zero short-circuits to ok. */
   got = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, buf, 0U, &got));
   /* V3: buf=NULL, len=4 -> dec T -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, NULL, 4U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, nullptr, 4U, &got));
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
   TEST_END("tls MC/DC: recv buf == NULL && len > 0");
@@ -450,7 +450,7 @@ static void test_mcdc_tls_handle_valid_bounds(void)
   TEST_BEGIN("tls MC/DC: handle_valid (session<base || session>=end)");
   loop_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
-  ra_tls_session_t     s   = NULL;
+  ra_tls_session_t     s   = nullptr;
   ra_tls_session_cfg_t cfg = make_loopback_cfg();
   /* V1: open a real session (lives inside the pool). */
   TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));

@@ -114,9 +114,9 @@ static ra_err_t bring_up(void)
 {
   reset_world();
   ra_modem_at_cfg_t cfg = {
-    .io                 = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = NULL},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 1000U,
   };
   return ra_modem_at_init(&cfg);
@@ -155,7 +155,7 @@ static int32_t mcu_tx_equals(const char* s)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("modem_at init NULL cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_modem_at_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_modem_at_init(nullptr));
   TEST_END("modem_at init NULL cfg");
 }
 
@@ -171,12 +171,12 @@ static void test_init_short_buffer_rejected(void)
   reset_world();
   uint8_t           tiny[4];
   ra_modem_at_cfg_t cfg = {
-    .io                 = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = NULL},
-    .line_buf           = tiny,
-    .line_buf_len       = (uint16_t)sizeof tiny,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = tiny,
+    .line_buf_len = (uint16_t)sizeof tiny,
     .default_timeout_ms = 100U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size, (int)ra_modem_at_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_modem_at_init(&cfg));
   TEST_END("modem_at init short buffer rejected");
 }
 
@@ -194,7 +194,7 @@ static void test_send_cmd_before_init_fails(void)
    * remains true, so instead we verify behaviour with a fresh process via
    * the current order: first test in main() calls this BEFORE bring_up().
    */
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_modem_at_send_cmd("AT", NULL, 50U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_modem_at_send_cmd("AT", nullptr, 50U));
   TEST_END("modem_at send_cmd before init returns not_initialized");
 }
 
@@ -207,10 +207,10 @@ static void test_send_cmd_before_init_fails(void)
 static void test_at_ok_with_echo(void)
 {
   TEST_BEGIN("modem_at AT -> echo + OK");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   /* Modem will echo "AT\r\n" then reply "\r\nOK\r\n". */
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", NULL, 1000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", nullptr, 1000U));
   TEST_ASSERT_EQ(0, mcu_tx_equals("AT\r"));
   TEST_END("modem_at AT -> echo + OK");
 }
@@ -224,9 +224,9 @@ static void test_at_ok_with_echo(void)
 static void test_at_error_returned(void)
 {
   TEST_BEGIN("modem_at ERROR final result");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+BAD\r\n\r\nERROR\r\n");
-  TEST_ASSERT_EQ((int)k_ra_err_hw_error, (int)ra_modem_at_send_cmd("AT+BAD", NULL, 1000U));
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_modem_at_send_cmd("AT+BAD", nullptr, 1000U));
   TEST_END("modem_at ERROR final result");
 }
 
@@ -239,9 +239,9 @@ static void test_at_error_returned(void)
 static void test_at_cme_error(void)
 {
   TEST_BEGIN("modem_at +CME ERROR final result");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+CPIN?\r\n\r\n+CME ERROR: 10\r\n");
-  TEST_ASSERT_EQ((int)k_ra_err_hw_error, (int)ra_modem_at_send_cmd("AT+CPIN?", NULL, 1000U));
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_modem_at_send_cmd("AT+CPIN?", nullptr, 1000U));
   TEST_END("modem_at +CME ERROR final result");
 }
 
@@ -254,10 +254,10 @@ static void test_at_cme_error(void)
 static void test_timeout(void)
 {
   TEST_BEGIN("modem_at timeout when no response");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   /* Auto-advance the fake clock by 50 ms per poll so timeout trips fast. */
   s_io.auto_advance_ms = 50U;
-  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_modem_at_send_cmd("AT", NULL, 100U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_modem_at_send_cmd("AT", nullptr, 100U));
   TEST_END("modem_at timeout when no response");
 }
 
@@ -270,10 +270,10 @@ static void test_timeout(void)
 static void test_send_cmd_capture(void)
 {
   TEST_BEGIN("modem_at capture +CSQ payload");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+CSQ\r\n\r\n+CSQ: 22,99\r\n\r\nOK\r\n");
   char out[64];
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd_capture("AT+CSQ", out, sizeof out, 1000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd_capture("AT+CSQ", out, sizeof out, 1000U));
   /* Captured payload should contain the +CSQ line. */
   TEST_ASSERT(out[0] == '+');
   TEST_ASSERT(out[1] == 'C');
@@ -291,10 +291,9 @@ static void test_send_cmd_capture(void)
 static void test_capture_buf_len_zero(void)
 {
   TEST_BEGIN("modem_at capture rejects buf_len == 0");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   char out[8] = {};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size,
-                 (int)ra_modem_at_send_cmd_capture("AT", out, 0U, 100U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_modem_at_send_cmd_capture("AT", out, 0U, 100U));
   TEST_END("modem_at capture rejects buf_len == 0");
 }
 
@@ -322,14 +321,13 @@ static void urc_handler(const char* line, void* ctx)
 static void test_urc_dispatch(void)
 {
   TEST_BEGIN("modem_at URC +CMTI dispatch during send_cmd");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   s_urc_hits    = 0;
   s_last_urc[0] = '\0';
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+CMTI:", urc_handler, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_register_unsolicited_handler("+CMTI:", urc_handler, nullptr));
   /* SMS arrival URC arrives mixed in with command response. */
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\n+CMTI: \"SM\",3\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", NULL, 1000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", nullptr, 1000U));
   TEST_ASSERT_EQ(1, s_urc_hits);
   TEST_ASSERT(s_last_urc[0] == '+');
   TEST_END("modem_at URC +CMTI dispatch during send_cmd");
@@ -344,11 +342,9 @@ static void test_urc_dispatch(void)
 static void test_urc_replace_same_prefix(void)
 {
   TEST_BEGIN("modem_at URC replace same prefix");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+CREG:", urc_handler, NULL));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+CREG:", urc_handler, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_register_unsolicited_handler("+CREG:", urc_handler, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_register_unsolicited_handler("+CREG:", urc_handler, nullptr));
   TEST_END("modem_at URC replace same prefix");
 }
 
@@ -361,14 +357,14 @@ static void test_urc_replace_same_prefix(void)
 static void test_urc_table_full(void)
 {
   TEST_BEGIN("modem_at URC table full returns no_mem");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   const char* prefixes[] = {"+A:", "+B:", "+C:", "+D:", "+E:", "+F:", "+G:", "+H:"};
   for (uint8_t i = 0U; i < (uint8_t)(sizeof prefixes / sizeof prefixes[0]); ++i) {
-    TEST_ASSERT_EQ((int)k_ra_ok,
-                   (int)ra_modem_at_register_unsolicited_handler(prefixes[i], urc_handler, NULL));
+    TEST_ASSERT_EQ(k_ra_ok,
+                   ra_modem_at_register_unsolicited_handler(prefixes[i], urc_handler, nullptr));
   }
-  TEST_ASSERT_EQ((int)k_ra_err_no_mem,
-                 (int)ra_modem_at_register_unsolicited_handler("+I:", urc_handler, NULL));
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 ra_modem_at_register_unsolicited_handler("+I:", urc_handler, nullptr));
   TEST_END("modem_at URC table full returns no_mem");
 }
 
@@ -381,11 +377,11 @@ static void test_urc_table_full(void)
 static void test_urc_invalid_prefix(void)
 {
   TEST_BEGIN("modem_at URC invalid prefix lengths");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size,
-                 (int)ra_modem_at_register_unsolicited_handler("", urc_handler, NULL));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_modem_at_register_unsolicited_handler("+X:", NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_modem_at_register_unsolicited_handler("", urc_handler, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_modem_at_register_unsolicited_handler("+X:", nullptr, nullptr));
   TEST_END("modem_at URC invalid prefix lengths");
 }
 
@@ -398,12 +394,11 @@ static void test_urc_invalid_prefix(void)
 static void test_poll_drains_urc(void)
 {
   TEST_BEGIN("modem_at poll drains URC outside command");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   s_urc_hits = 0;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+CREG:", urc_handler, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_register_unsolicited_handler("+CREG:", urc_handler, nullptr));
   fifo_push_str(&s_io.modem_to_mcu, "\r\n+CREG: 0,1\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_poll());
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_poll());
   TEST_ASSERT_EQ(1, s_urc_hits);
   TEST_END("modem_at poll drains URC outside command");
 }
@@ -417,9 +412,9 @@ static void test_poll_drains_urc(void)
 static void test_expected_response(void)
 {
   TEST_BEGIN("modem_at expected_response prefix accepted");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+CPIN?\r\n\r\n+CPIN: READY\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT+CPIN?", "+CPIN:", 1000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT+CPIN?", "+CPIN:", 1000U));
   TEST_END("modem_at expected_response prefix accepted");
 }
 
@@ -432,8 +427,8 @@ static void test_expected_response(void)
 static void test_send_cmd_null_arg(void)
 {
   TEST_BEGIN("modem_at send_cmd NULL arg");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_modem_at_send_cmd(NULL, NULL, 100U));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_modem_at_send_cmd(nullptr, nullptr, 100U));
   TEST_END("modem_at send_cmd NULL arg");
 }
 
@@ -446,9 +441,9 @@ static void test_send_cmd_null_arg(void)
 static void test_default_timeout_used(void)
 {
   TEST_BEGIN("modem_at default timeout applied when 0 passed");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", nullptr, 0U));
   TEST_ASSERT(mcu_tx_count() > 0U);
   TEST_END("modem_at default timeout applied when 0 passed");
 }
@@ -483,15 +478,15 @@ static void mcdc_dummy_urc(const char* line, void* ctx)
 static void test_mcdc_register_urc_prefix_len(void)
 {
   TEST_BEGIN("mcdc register_urc prefix length OR");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
 
   /* V1: normal-length prefix -> ok */
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+CSQ", mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_modem_at_register_unsolicited_handler("+CSQ", mcdc_dummy_urc, nullptr));
 
   /* V2: empty prefix -> invalid_size (C1=T) */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size,
-                 (int)ra_modem_at_register_unsolicited_handler("", mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_modem_at_register_unsolicited_handler("", mcdc_dummy_urc, nullptr));
 
   /* V3: oversize prefix -> invalid_size (C2=T). The URC max prefix len
    * is enum-bound; build a string longer than the cap. */
@@ -500,8 +495,8 @@ static void test_mcdc_register_urc_prefix_len(void)
     s_big[i] = 'A';
   }
   s_big[k_mcdc_prefix_too_big] = '\0';
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size,
-                 (int)ra_modem_at_register_unsolicited_handler(s_big, mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_modem_at_register_unsolicited_handler(s_big, mcdc_dummy_urc, nullptr));
   TEST_END("mcdc register_urc prefix length OR");
 }
 
@@ -535,14 +530,14 @@ static void test_mcdc_capture_expected_response(void)
    * present, expected==NULL means seen_exp starts at 1 in
    * internal_wait_response (line 489), so OK returns ok. This proves
    * C1 evaluated false in the payload case. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", NULL, k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", nullptr, k_mcdc_default_timeout));
 
   /* V2: expected_response="" via send_cmd. C1=T, C2=F -> seen_exp pre-set. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", "", k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", "", k_mcdc_default_timeout));
 
   /* V3: expected="+QRY", line that doesn't start with it -> C3=F.
    * OK without seen_exp triggers the "OK without expected prefix"
@@ -551,17 +546,16 @@ static void test_mcdc_capture_expected_response(void)
    * decision -- use send_cmd with an explicit expected prefix instead so
    * the C3=F path is actually exercised. */
   (void)buf;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+QRY\r\nOTHER\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_err_hw_error,
-                 (int)ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
 
   /* V4: expected="+QRY", line "+QRY:val" matches -> all T -> seen_exp=1
    * -> OK returns ok. NOTE: send_cmd_capture passes expected=NULL, so
    * we use send_cmd with an expected prefix. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+QRY\r\n+QRY:val\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
   TEST_END("mcdc capture expected_response (3-cond AND)");
 }
 
@@ -590,7 +584,7 @@ static void test_mcdc_capture_expected_response(void)
 static void test_mcdc_internal_classify_expected(void)
 {
   TEST_BEGIN("mcdc classify expected_response (3-cond OR)");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
 
   /* Register a URC handler so we can observe whether a line went to
    * URC dispatch (kind=urc) or payload. */
@@ -599,8 +593,8 @@ static void test_mcdc_internal_classify_expected(void)
    * dispatch path being taken (no observable side-effect besides
    * function being invoked). The test still validates the decision
    * by exercising all four vectors without crashing. */
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, nullptr));
 
   /* V1: expected=NULL (send_cmd_capture passes NULL). Dispatch allowed. */
   char buf[k_mcdc_capture_buf_bytes];
@@ -608,28 +602,28 @@ static void test_mcdc_internal_classify_expected(void)
   (void)ra_modem_at_send_cmd_capture("AT", buf, sizeof(buf), k_mcdc_default_timeout);
 
   /* V2: expected="" via send_cmd. C2=T allowed. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, nullptr));
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
   (void)ra_modem_at_send_cmd("AT", "", k_mcdc_default_timeout);
 
   /* V3: expected="+QRY" but line is "OTHER". C3=T (no prefix match) -> allowed.
    * But we need OK to not return hw_error: a matching prefix line must
    * appear; we add one before OK. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, nullptr));
   fifo_push_str(&s_io.modem_to_mcu, "AT+QRY\r\nOTHER\r\n+QRY:done\r\n\r\nOK\r\n");
   (void)ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout);
 
   /* V4: expected="+QRY", line starts with it. C1=F,C2=F,C3=F -> NOT
    * allowed; line classified as payload. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_modem_at_register_unsolicited_handler("+QRY", mcdc_dummy_urc, nullptr));
   fifo_push_str(&s_io.modem_to_mcu, "AT+QRY\r\n+QRY:val\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
 
   TEST_END("mcdc classify expected_response (3-cond OR)");
 }
@@ -649,12 +643,12 @@ static void test_mcdc_internal_classify_expected(void)
 static void test_mcdc_accumulate_line_terminator(void)
 {
   TEST_BEGIN("mcdc accumulate line terminator (CR/LF OR)");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
 
   /* Single command sequence pumps 'A','T' (V1, both F), then '\r' (V2,
    * C1=T), then '\n' (V3, C2=T) through internal_accumulate. */
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", NULL, k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", nullptr, k_mcdc_default_timeout));
   TEST_END("mcdc accumulate line terminator (CR/LF OR)");
 }
 
@@ -687,20 +681,20 @@ static void test_mcdc_capture_buf_guard(void)
   char buf[k_mcdc_capture_buf_bytes];
 
   /* V1: real capture buffer. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n+RESP:val\r\n\r\nOK\r\n");
   (void)ra_modem_at_send_cmd_capture("AT", buf, sizeof(buf), k_mcdc_default_timeout);
 
   /* V2: send_cmd path passes capture=NULL into internal_wait_response. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_modem_at_send_cmd("AT", NULL, k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_modem_at_send_cmd("AT", nullptr, k_mcdc_default_timeout));
 
   /* V3: buf_len=0 returns invalid_size at the guard upstream of the
    * internal helper; documents the unreachable masking pair. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size,
-                 (int)ra_modem_at_send_cmd_capture("AT", buf, 0U, k_mcdc_default_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_modem_at_send_cmd_capture("AT", buf, 0U, k_mcdc_default_timeout));
   TEST_END("mcdc capture buf guard (NULL || zero)");
 }
 
@@ -734,23 +728,23 @@ static void test_mcdc_reset_line_buf_pair(void)
   reset_world();
   /* V2: line_buf NULL is rejected by init -> internal_reset_line never reached. */
   ra_modem_at_cfg_t cfg2 = {
-    .io                 = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = NULL},
-    .line_buf           = NULL,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = nullptr,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 1000U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_modem_at_init(&cfg2));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_modem_at_init(&cfg2));
   /* V3: line_buf_len=0 is rejected by init for the same reason. */
   ra_modem_at_cfg_t cfg3 = {
-    .io                 = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = NULL},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = 0U,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = 0U,
     .default_timeout_ms = 1000U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size, (int)ra_modem_at_init(&cfg3));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_modem_at_init(&cfg3));
   /* V1: full happy init -- internal_reset_line is invoked and exercises
    * the AND-decision with both conditions T (proceeds to clear). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   TEST_END("mcdc reset_line buf+len pair (init-validator equivalence)");
 }
 
@@ -776,12 +770,11 @@ static void test_mcdc_internal_classify_cmd_echo_pair(void)
 {
   TEST_BEGIN("modem_at MC/DC: cmd_echo AND (ra_modem_at_internal_classify)");
   /* V1: cmd_echo=NULL -> short circuit -> not classified as echo. */
-  TEST_ASSERT(ra_modem_at_internal_classify("AT", NULL, NULL) != k_ra_modem_line_kind_echo);
+  TEST_ASSERT(ra_modem_at_internal_classify("AT", nullptr, nullptr) != k_ra_modem_line_kind_echo);
   /* V2: both true -> echo. */
-  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_echo,
-                 (int32_t)ra_modem_at_internal_classify("AT", "AT", NULL));
+  TEST_ASSERT_EQ(k_ra_modem_line_kind_echo, ra_modem_at_internal_classify("AT", "AT", nullptr));
   /* V3: cmd_echo non-NULL but line mismatch -> not echo. */
-  TEST_ASSERT(ra_modem_at_internal_classify("OTHER", "AT", NULL) != k_ra_modem_line_kind_echo);
+  TEST_ASSERT(ra_modem_at_internal_classify("OTHER", "AT", nullptr) != k_ra_modem_line_kind_echo);
   TEST_END("modem_at MC/DC: cmd_echo AND (ra_modem_at_internal_classify)");
 }
 
@@ -804,9 +797,9 @@ static void test_mcdc_internal_classify_cmd_echo_pair(void)
 static void test_mcdc_internal_str_len_pair(void)
 {
   TEST_BEGIN("modem_at MC/DC: internal_str_len short-circuit");
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_len(""));
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)ra_modem_at_internal_str_len("AB"));
-  TEST_ASSERT_EQ((int32_t)5, (int32_t)ra_modem_at_internal_str_len("HELLO"));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_len(""));
+  TEST_ASSERT_EQ(2, ra_modem_at_internal_str_len("AB"));
+  TEST_ASSERT_EQ(5, ra_modem_at_internal_str_len("HELLO"));
 
   /* V3: drive i to UINT16_MAX so C1 ("i < UINT16_MAX") flips to F. */
   static char s_huge[(size_t)UINT16_MAX + 1U];
@@ -814,7 +807,7 @@ static void test_mcdc_internal_str_len_pair(void)
     s_huge[k] = 'x';
   }
   s_huge[(size_t)UINT16_MAX] = '\0';
-  TEST_ASSERT_EQ((int32_t)UINT16_MAX, (int32_t)ra_modem_at_internal_str_len(s_huge));
+  TEST_ASSERT_EQ(UINT16_MAX, ra_modem_at_internal_str_len(s_huge));
 
   TEST_END("modem_at MC/DC: internal_str_len short-circuit");
 }
@@ -837,11 +830,11 @@ static void test_mcdc_internal_str_len_pair(void)
 static void test_mcdc_internal_str_eq_loop_pair(void)
 {
   TEST_BEGIN("modem_at MC/DC: internal_str_eq loop short-circuit");
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("X", "X"));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("", "Y"));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("X", ""));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("", ""));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("AB", "AC"));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_str_eq("X", "X"));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_eq("", "Y"));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_eq("X", ""));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_str_eq("", ""));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_eq("AB", "AC"));
   TEST_END("modem_at MC/DC: internal_str_eq loop short-circuit");
 }
 
@@ -863,11 +856,11 @@ static void test_mcdc_internal_str_eq_loop_pair(void)
 static void test_mcdc_internal_str_eq_terminator_pair(void)
 {
   TEST_BEGIN("modem_at MC/DC: internal_str_eq terminator AND");
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("", ""));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("X", ""));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("", "X"));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("AB", "AB"));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("AB", "ABC"));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_str_eq("", ""));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_eq("X", ""));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_eq("", "X"));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_str_eq("AB", "AB"));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_str_eq("AB", "ABC"));
   TEST_END("modem_at MC/DC: internal_str_eq terminator AND");
 }
 
@@ -893,9 +886,9 @@ static void test_mcdc_internal_str_eq_terminator_pair(void)
 static void test_mcdc_internal_starts_with(void)
 {
   TEST_BEGIN("modem_at MC/DC: internal_starts_with branches");
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_starts_with("ABC", "AB"));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_starts_with("ABC", "AX"));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_starts_with("A", ""));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_starts_with("ABC", "AB"));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_starts_with("ABC", "AX"));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_starts_with("A", ""));
   TEST_END("modem_at MC/DC: internal_starts_with branches");
 }
 
@@ -921,18 +914,18 @@ static void test_mcdc_internal_capture_line_guard(void)
   size_t used    = 0U;
 
   /* V1: capture=NULL -> short-circuit (no crash, used unchanged). */
-  ra_modem_at_internal_capture_line("hi", NULL, 64U, &used);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)used);
+  ra_modem_at_internal_capture_line("hi", nullptr, 64U, &used);
+  TEST_ASSERT_EQ(0, used);
 
   /* V2: capture valid but capture_len==0 -> early return. */
   ra_modem_at_internal_capture_line("hi", buf, 0U, &used);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)used);
+  TEST_ASSERT_EQ(0, used);
 
   /* V3: both false -> append succeeds. */
   ra_modem_at_internal_capture_line("hi", buf, sizeof(buf), &used);
   TEST_ASSERT(used >= 2U);
-  TEST_ASSERT_EQ((int32_t)'h', (int32_t)buf[0]);
-  TEST_ASSERT_EQ((int32_t)'i', (int32_t)buf[1]);
+  TEST_ASSERT_EQ('h', buf[0]);
+  TEST_ASSERT_EQ('i', buf[1]);
 
   TEST_END("modem_at MC/DC: internal_capture_line guard OR");
 }
@@ -960,9 +953,9 @@ static void test_mcdc_reset_line_should_clear_pure(void)
 {
   TEST_BEGIN("modem_at MC/DC: reset_line_should_clear (pure)");
   uint8_t scratch[8] = {0U};
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_reset_line_should_clear(NULL, 8U));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_reset_line_should_clear(scratch, 0U));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_reset_line_should_clear(scratch, 8U));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_reset_line_should_clear(nullptr, 8U));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_reset_line_should_clear(scratch, 0U));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_reset_line_should_clear(scratch, 8U));
   TEST_END("modem_at MC/DC: reset_line_should_clear (pure)");
 }
 
@@ -1008,35 +1001,34 @@ static void     mcdc_count_urc_handler(const char* line, void* ctx)
 static void test_mcdc_internal_classify_expected_direct(void)
 {
   TEST_BEGIN("modem_at MC/DC: classify expected_response (3-cond OR, direct)");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   /* Register a URC handler so we can observe URC dispatch. */
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_modem_at_register_unsolicited_handler("+QRY", mcdc_count_urc_handler, NULL));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_modem_at_register_unsolicited_handler("+QRY", mcdc_count_urc_handler, nullptr));
   s_mcdc_classify_urc_calls = 0U;
 
   /* V1: expected=NULL, line "+QRY:async" -> URC dispatch allowed
    * (C1=T) and registered handler matches -> URC fires. */
-  ra_modem_line_kind_t k1 = ra_modem_at_internal_classify("+QRY:async", NULL, NULL);
-  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_urc, (int32_t)k1);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_mcdc_classify_urc_calls);
+  ra_modem_line_kind_t k1 = ra_modem_at_internal_classify("+QRY:async", nullptr, nullptr);
+  TEST_ASSERT_EQ(k_ra_modem_line_kind_urc, k1);
+  TEST_ASSERT_EQ(1, s_mcdc_classify_urc_calls);
 
   /* V2: expected="", line "+QRY:async" -> C1=F C2=T -> URC allowed -> URC fires. */
-  ra_modem_line_kind_t k2 = ra_modem_at_internal_classify("+QRY:async", NULL, "");
-  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_urc, (int32_t)k2);
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)s_mcdc_classify_urc_calls);
+  ra_modem_line_kind_t k2 = ra_modem_at_internal_classify("+QRY:async", nullptr, "");
+  TEST_ASSERT_EQ(k_ra_modem_line_kind_urc, k2);
+  TEST_ASSERT_EQ(2, s_mcdc_classify_urc_calls);
 
   /* V3: expected="+OTH", line "+QRY:async" -> C1=F C2=F C3=T (no
    * starts_with match) -> URC allowed -> URC fires. */
-  ra_modem_line_kind_t k3 = ra_modem_at_internal_classify("+QRY:async", NULL, "+OTH");
-  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_urc, (int32_t)k3);
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)s_mcdc_classify_urc_calls);
+  ra_modem_line_kind_t k3 = ra_modem_at_internal_classify("+QRY:async", nullptr, "+OTH");
+  TEST_ASSERT_EQ(k_ra_modem_line_kind_urc, k3);
+  TEST_ASSERT_EQ(3, s_mcdc_classify_urc_calls);
 
   /* V4: expected="+QRY", line "+QRY:val" -> all conds F -> URC
    * dispatch suppressed -> URC handler NOT fired -> kind=payload. */
-  ra_modem_line_kind_t k4 = ra_modem_at_internal_classify("+QRY:val", NULL, "+QRY");
-  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_payload, (int32_t)k4);
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)s_mcdc_classify_urc_calls);
+  ra_modem_line_kind_t k4 = ra_modem_at_internal_classify("+QRY:val", nullptr, "+QRY");
+  TEST_ASSERT_EQ(k_ra_modem_line_kind_payload, k4);
+  TEST_ASSERT_EQ(3, s_mcdc_classify_urc_calls);
 
   TEST_END("modem_at MC/DC: classify expected_response (3-cond OR, direct)");
 }
@@ -1062,17 +1054,13 @@ static void test_mcdc_handle_line_payload_prefix_match_pure(void)
 {
   TEST_BEGIN("modem_at MC/DC: handle_line payload prefix match (3-cond AND, direct)");
   /* V1 */
-  TEST_ASSERT_EQ((int)0,
-                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", NULL));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", nullptr));
   /* V2 */
-  TEST_ASSERT_EQ((int)0,
-                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", ""));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", ""));
   /* V3 */
-  TEST_ASSERT_EQ((int)0,
-                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("OTHER", "+QRY"));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_handle_line_payload_prefix_match("OTHER", "+QRY"));
   /* V4 */
-  TEST_ASSERT_EQ((int)1,
-                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", "+QRY"));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", "+QRY"));
   TEST_END("modem_at MC/DC: handle_line payload prefix match (3-cond AND, direct)");
 }
 
@@ -1102,13 +1090,13 @@ static void test_mcdc_wait_response_should_clear_capture_pure(void)
   TEST_BEGIN("modem_at MC/DC: wait_response should-clear capture (2-cond AND, direct)");
   char buf[8];
   /* V1: F,F */
-  TEST_ASSERT_EQ((int)0, (int)ra_modem_at_internal_wait_response_should_clear_capture(NULL, 0U));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_wait_response_should_clear_capture(nullptr, 0U));
   /* V2: F,T (short-circuited at C1) */
-  TEST_ASSERT_EQ((int)0, (int)ra_modem_at_internal_wait_response_should_clear_capture(NULL, 8U));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_wait_response_should_clear_capture(nullptr, 8U));
   /* V3: T,F */
-  TEST_ASSERT_EQ((int)0, (int)ra_modem_at_internal_wait_response_should_clear_capture(buf, 0U));
+  TEST_ASSERT_EQ(0, ra_modem_at_internal_wait_response_should_clear_capture(buf, 0U));
   /* V4: T,T */
-  TEST_ASSERT_EQ((int)1, (int)ra_modem_at_internal_wait_response_should_clear_capture(buf, 8U));
+  TEST_ASSERT_EQ(1, ra_modem_at_internal_wait_response_should_clear_capture(buf, 8U));
   TEST_END("modem_at MC/DC: wait_response should-clear capture (2-cond AND, direct)");
 }
 

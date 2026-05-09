@@ -58,24 +58,24 @@ init_with(uint16_t w, uint16_t h, const uint8_t* font, uint16_t font_px, ra_refl
 static void test_mcdc_reflow_init_null_pair(void)
 {
   TEST_BEGIN("reflow_init MC/DC: (font_data||out_engine) NULL");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    NULL,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    NULL));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           nullptr,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           nullptr));
   TEST_END("reflow_init MC/DC: (font_data||out_engine) NULL");
 }
 
@@ -90,24 +90,24 @@ static void test_mcdc_reflow_init_null_pair(void)
 static void test_mcdc_reflow_init_viewport_zero(void)
 {
   TEST_BEGIN("reflow_init MC/DC: (viewport_w==0 || viewport_h==0)");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_zero,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_zero,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 init_with((uint16_t)k_test_reflow_dim_zero,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_zero,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
   TEST_END("reflow_init MC/DC: (viewport_w==0 || viewport_h==0)");
 }
 
@@ -123,24 +123,24 @@ static void test_mcdc_reflow_init_viewport_zero(void)
 static void test_mcdc_reflow_init_font_px_range(void)
 {
   TEST_BEGIN("reflow_init MC/DC: (font_px<min || font_px>max)");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_low,
-                                    &s_engine));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_high,
-                                    &s_engine));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_low,
+                           &s_engine));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_high,
+                           &s_engine));
   TEST_END("reflow_init MC/DC: (font_px<min || font_px>max)");
 }
 
@@ -164,15 +164,15 @@ static void test_mcdc_reflow_init_font_px_range(void)
 static void test_mcdc_reflow_set_font_size_no_cached_buf(void)
 {
   TEST_BEGIN("reflow_set_font_size MC/DC: no cached xhtml buffer");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)init_with((uint16_t)k_test_reflow_dim_ok,
-                                    (uint16_t)k_test_reflow_dim_ok,
-                                    s_dummy_font,
-                                    (uint16_t)k_test_reflow_font_ok,
-                                    &s_engine));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 init_with((uint16_t)k_test_reflow_dim_ok,
+                           (uint16_t)k_test_reflow_dim_ok,
+                           s_dummy_font,
+                           (uint16_t)k_test_reflow_font_ok,
+                           &s_engine));
   /* Vector 1: T,T -- xhtml_buf NULL and xhtml_len 0 right after init. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_reflow_set_font_size(&s_engine, (uint16_t)k_test_reflow_font_ok));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_reflow_set_font_size(&s_engine, (uint16_t)k_test_reflow_font_ok));
   TEST_END("reflow_set_font_size MC/DC: no cached xhtml buffer");
 }
 
@@ -244,7 +244,7 @@ static void test_mcdc_reflow_internal_xhtml_invalid(void)
   TEST_BEGIN("reflow MC/DC: xhtml_invalid OR");
   static const uint8_t buf[1] = {0U};
   TEST_ASSERT(!ra_reflow_internal_xhtml_invalid(buf, 1U));
-  TEST_ASSERT(ra_reflow_internal_xhtml_invalid(NULL, 1U));
+  TEST_ASSERT(ra_reflow_internal_xhtml_invalid(nullptr, 1U));
   TEST_ASSERT(ra_reflow_internal_xhtml_invalid(buf, 0U));
   TEST_END("reflow MC/DC: xhtml_invalid OR");
 }

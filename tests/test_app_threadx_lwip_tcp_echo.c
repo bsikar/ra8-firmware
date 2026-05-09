@@ -62,7 +62,7 @@ static void reset_world(void)
   ra_pin_validator_reset();
   (void)ra_net_pal_deinit();
   s_last_event_mask = 0U;
-  s_last_event_ctx  = NULL;
+  s_last_event_ctx  = nullptr;
 }
 
 /* -------------------------------------------------------------------------
@@ -80,12 +80,12 @@ static void test_lwip_pal_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("lwip: ra_net_pal_init with locally-administered MAC");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(&k_test_lwip_mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(&k_test_lwip_mac));
 
   ra_net_pal_mac_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_get_mac_addr(&out));
-  TEST_ASSERT_EQ((int)k_test_lwip_mac.bytes[0], (int)out.bytes[0]);
-  TEST_ASSERT_EQ((int)k_test_lwip_mac.bytes[5], (int)out.bytes[5]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_get_mac_addr(&out));
+  TEST_ASSERT_EQ(k_test_lwip_mac.bytes[0], out.bytes[0]);
+  TEST_ASSERT_EQ(k_test_lwip_mac.bytes[5], out.bytes[5]);
   TEST_END("lwip: ra_net_pal_init with locally-administered MAC");
 }
 
@@ -101,9 +101,8 @@ static void test_lwip_event_handler_registered(void)
 {
   reset_world();
   TEST_BEGIN("lwip: event handler registers without error");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(&k_test_lwip_mac));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_net_pal_set_event_handler(test_lwip_event_cb, (void*)0xCAFEBABE));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(&k_test_lwip_mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_set_event_handler(test_lwip_event_cb, (void*)0xCAFEBABE));
   TEST_END("lwip: event handler registers without error");
 }
 
@@ -121,9 +120,9 @@ static void test_lwip_link_status_pollable(void)
 {
   reset_world();
   TEST_BEGIN("lwip: link_status returns a defined state");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(&k_test_lwip_mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(&k_test_lwip_mac));
   ra_net_pal_link_state_t state = k_ra_net_pal_link_down;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_link_status(&state));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_link_status(&state));
   TEST_ASSERT(state == k_ra_net_pal_link_up || state == k_ra_net_pal_link_down);
   TEST_END("lwip: link_status returns a defined state");
 }
@@ -141,7 +140,7 @@ static void test_lwip_send_frame_in_range(void)
 {
   reset_world();
   TEST_BEGIN("lwip: send_frame accepts in-range payload");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(&k_test_lwip_mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(&k_test_lwip_mac));
   uint8_t frame[k_test_lwip_frame_max];
   /* Fill with a deterministic pattern -- mirrors a TCP echo reply. */
   for (uint8_t i = 0; i < (uint8_t)k_test_lwip_frame_max; i++) {
@@ -173,7 +172,7 @@ static void test_lwip_init_null_mac_accepted(void)
 {
   reset_world();
   TEST_BEGIN("lwip: init accepts NULL MAC (default zero)");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(nullptr));
   TEST_END("lwip: init accepts NULL MAC (default zero)");
 }
 
@@ -189,7 +188,7 @@ static void test_lwip_send_oversize_rejected(void)
 {
   reset_world();
   TEST_BEGIN("lwip: send_frame rejects oversize len");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(&k_test_lwip_mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(&k_test_lwip_mac));
   static uint8_t huge[2048];
   TEST_ASSERT(ra_net_pal_send_frame(huge, (uint16_t)1600) != k_ra_ok);
   TEST_END("lwip: send_frame rejects oversize len");
@@ -207,7 +206,7 @@ static void test_lwip_recv_empty_queue(void)
 {
   reset_world();
   TEST_BEGIN("lwip: recv_frame on empty queue is non-fatal");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(&k_test_lwip_mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_pal_init(&k_test_lwip_mac));
   uint8_t  buf[k_test_lwip_frame_max];
   uint16_t len = (uint16_t)k_test_lwip_frame_max;
   ra_err_t err = ra_net_pal_recv_frame(buf, &len);

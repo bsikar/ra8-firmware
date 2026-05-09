@@ -43,7 +43,7 @@ static void test_acmphs_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: bring-up ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
   const ra_acmphs_cfg_t cfg = {
     .ivpsel     = 0U,
     .ivrefsel   = 0U,
@@ -51,8 +51,7 @@ static void test_acmphs_app_bringup_ok(void)
     .filter_en  = false,
     .invert_out = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
   TEST_END("acmphs_compare: bring-up ok");
 }
 
@@ -68,7 +67,7 @@ static void test_acmphs_app_read_legal(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: read_output returns legal value");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
   const ra_acmphs_cfg_t cfg = {
     .ivpsel     = 0U,
     .ivrefsel   = 0U,
@@ -76,10 +75,9 @@ static void test_acmphs_app_read_legal(void)
     .filter_en  = false,
     .invert_out = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
   ra_level_t lv = k_ra_level_low;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_read_output((uint8_t)k_test_acmphs_app_channel, &lv));
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_read_output((uint8_t)k_test_acmphs_app_channel, &lv));
   TEST_ASSERT(lv == k_ra_level_low || lv == k_ra_level_high);
   TEST_END("acmphs_compare: read_output returns legal value");
 }
@@ -95,7 +93,7 @@ static void test_acmphs_app_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: null cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
   TEST_ASSERT(ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, nullptr) != k_ra_ok);
   TEST_END("acmphs_compare: null cfg rejected");
 }
@@ -111,7 +109,7 @@ static void test_acmphs_app_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: bad channel rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
   ra_level_t lv = k_ra_level_low;
   TEST_ASSERT(ra_acmphs_read_output((uint8_t)k_test_acmphs_app_bad_ch, &lv) != k_ra_ok);
   TEST_END("acmphs_compare: bad channel rejected");

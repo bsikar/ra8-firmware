@@ -66,9 +66,9 @@ static void test_unlock_value_constant(void)
   TEST_BEGIN("prcr unlock-cgc constant matches FSP key|PRC0");
   /* Cross-verify against FSP `BSP_PRV_PRCR_KEY (0xA500U)` plus the
    * PRC0 mask `0x0001U` from the FSP `g_prcr_masks[]` table. */
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_test_key_only), (int)((uint16_t)k_ra_prcr_lock_all));
-  TEST_ASSERT_EQ((int)((uint16_t)(k_ra_prcr_test_key_only | k_ra_prcr_test_prc0_msk)),
-                 (int)((uint16_t)k_ra_prcr_unlock_cgc));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_test_key_only), ((uint16_t)k_ra_prcr_lock_all));
+  TEST_ASSERT_EQ(((uint16_t)(k_ra_prcr_test_key_only | k_ra_prcr_test_prc0_msk)),
+                 ((uint16_t)k_ra_prcr_unlock_cgc));
   TEST_END("prcr unlock-cgc constant matches FSP key|PRC0");
 }
 
@@ -84,7 +84,7 @@ static void test_protected_write_unlocks_then_relocks(void)
   ra_sim_mmap_reset();
 
   /* Sanity: PRCR starts at 0 in the simulated mmap. */
-  TEST_ASSERT_EQ((int)0, (int)*ra_sys_prcr());
+  TEST_ASSERT_EQ(0, *ra_sys_prcr());
 
   uint16_t observed_during_body = 0U;
   RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
@@ -93,13 +93,13 @@ static void test_protected_write_unlocks_then_relocks(void)
   }
 
   /* Inside the body: upper byte == key, PRC0 == 1. */
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_test_key_only),
-                 (int)(observed_during_body & (uint16_t)k_ra_prcr_test_key_mask));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_test_key_only),
+                 (observed_during_body & (uint16_t)k_ra_prcr_test_key_mask));
   TEST_ASSERT((observed_during_body & (uint16_t)k_ra_prcr_test_prc0_msk) != 0U);
 
   /* After the body: still keyed but every group bit cleared. */
   const uint16_t after = *ra_sys_prcr();
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_test_key_only), (int)after);
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_test_key_only), after);
   TEST_ASSERT((after & (uint16_t)k_ra_prcr_test_prc0_msk) == 0U);
 
   TEST_END("RA_PROTECTED_WRITE unlocks for body, relocks after");
@@ -134,11 +134,11 @@ static void test_protected_write_relocks_on_break(void)
    * relock-on-early-exit must use `ra_sys_prcr_lock_all()`
    * explicitly or avoid `break`. */
   const uint16_t after = *ra_sys_prcr();
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_unlock_cgc), (int)after);
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_unlock_cgc), after);
 
   /* Manual relock to demonstrate the explicit-relock path. */
   ra_sys_prcr_lock_all();
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_lock_all), (int)*ra_sys_prcr());
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_lock_all), *ra_sys_prcr());
   TEST_END("RA_PROTECTED_WRITE relocks even when body breaks early");
 }
 
@@ -154,10 +154,10 @@ static void test_inline_unlock_helper_writes_key_plus_prc0(void)
   ra_sim_mmap_reset();
 
   ra_sys_prcr_unlock_cgc();
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_unlock_cgc), (int)*ra_sys_prcr());
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_unlock_cgc), *ra_sys_prcr());
 
   ra_sys_prcr_lock_all();
-  TEST_ASSERT_EQ((int)((uint16_t)k_ra_prcr_lock_all), (int)*ra_sys_prcr());
+  TEST_ASSERT_EQ(((uint16_t)k_ra_prcr_lock_all), *ra_sys_prcr());
   TEST_END("ra_sys_prcr_unlock_cgc / lock_all helpers");
 }
 
@@ -177,15 +177,15 @@ static void test_fsp_class_to_bit_mapping(void)
    *   [BSP_REG_PROTECT_SAR]         = 0x0010 (PRC4)
    *   [BSP_REG_PROTECT_RESET]       = 0x0020 (PRC5)
    * Cross-check our bit mask constants match those values. */
-  TEST_ASSERT_EQ(0x0001, (int)k_ra_prcr_test_prc0_msk);
-  TEST_ASSERT_EQ(0x0002, (int)k_ra_prcr_test_prc1_msk);
-  TEST_ASSERT_EQ(0x0008, (int)k_ra_prcr_test_prc3_msk);
-  TEST_ASSERT_EQ(0x0010, (int)k_ra_prcr_test_prc4_msk);
-  TEST_ASSERT_EQ(0x0020, (int)k_ra_prcr_test_prc5_msk);
+  TEST_ASSERT_EQ(0x0001, k_ra_prcr_test_prc0_msk);
+  TEST_ASSERT_EQ(0x0002, k_ra_prcr_test_prc1_msk);
+  TEST_ASSERT_EQ(0x0008, k_ra_prcr_test_prc3_msk);
+  TEST_ASSERT_EQ(0x0010, k_ra_prcr_test_prc4_msk);
+  TEST_ASSERT_EQ(0x0020, k_ra_prcr_test_prc5_msk);
 
   /* And the existing repo-wide enum has CGC at PRC0 and LPM at PRC1. */
-  TEST_ASSERT_EQ((int)k_ra_prcr_test_prc0_msk, (int)k_ra_prcr_grp0_cgc);
-  TEST_ASSERT_EQ((int)k_ra_prcr_test_prc1_msk, (int)k_ra_prcr_grp1_lpm);
+  TEST_ASSERT_EQ(k_ra_prcr_test_prc0_msk, k_ra_prcr_grp0_cgc);
+  TEST_ASSERT_EQ(k_ra_prcr_test_prc1_msk, k_ra_prcr_grp1_lpm);
   TEST_END("PRCR class-to-bit mapping cross-verified against FSP");
 }
 

@@ -58,12 +58,12 @@ static void test_init_happy(void)
                                 .eaeie0_mask  = 0xDEADBEEFU,
                                 .eaeie1_mask  = 0xCAFEBABEU,
                                 .eaeie2_mask  = 0x12345678U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_config,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE0);
-  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE1);
-  TEST_ASSERT_EQ((int32_t)0x12345678U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_etha_opc_config,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(0xDEADBEEFU, ra_etha(k_ra_etha_port_0)->EAEIE0);
+  TEST_ASSERT_EQ(0xCAFEBABEU, ra_etha(k_ra_etha_port_0)->EAEIE1);
+  TEST_ASSERT_EQ(0x12345678U, ra_etha(k_ra_etha_port_0)->EAEIE2);
   TEST_END("etha init happy");
 }
 
@@ -77,7 +77,7 @@ static void test_init_null(void)
 {
   TEST_BEGIN("etha init null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_etha_init(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_init(k_ra_etha_port_0, nullptr));
   TEST_END("etha init null cfg");
 }
 
@@ -95,8 +95,8 @@ static void test_init_bad_port(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &cfg));
   TEST_END("etha init bad port");
 }
 
@@ -114,29 +114,26 @@ static void test_status_read_and_clear(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_1, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_1, &cfg));
   ra_etha(k_ra_etha_port_1)->EAMS   = (uint32_t)k_ra_etha_ops_operation;
   ra_etha(k_ra_etha_port_1)->EAEIS0 = 0xCAFEBABEU;
   ra_etha(k_ra_etha_port_1)->EAEIS1 = 0xAABBCCDDU;
   ra_etha(k_ra_etha_port_1)->EAEIS2 = 0x11223344U;
 
   ra_etha_status_t snap = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_status(k_ra_etha_port_1, &snap));
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_ops_operation, (int32_t)snap.ops);
-  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)snap.eaeis0);
-  TEST_ASSERT_EQ((int32_t)0xAABBCCDDU, (int32_t)snap.eaeis1);
-  TEST_ASSERT_EQ((int32_t)0x11223344U, (int32_t)snap.eaeis2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_status(k_ra_etha_port_1, &snap));
+  TEST_ASSERT_EQ(k_ra_etha_ops_operation, snap.ops);
+  TEST_ASSERT_EQ(0xCAFEBABEU, snap.eaeis0);
+  TEST_ASSERT_EQ(0xAABBCCDDU, snap.eaeis1);
+  TEST_ASSERT_EQ(0x11223344U, snap.eaeis2);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_clear_status(k_ra_etha_port_1, k_ra_etha_irq_class_0, 0x0F0F0F0FU));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_get_status(k_ra_etha_port_1, nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_clear_status(k_ra_etha_port_1,
-                                  (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
-                                  0U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_clear_status(k_ra_etha_port_1, k_ra_etha_irq_class_0, 0x0F0F0F0FU));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_get_status(k_ra_etha_port_1, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_clear_status(k_ra_etha_port_1,
+                                      (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
+                                      0U));
   TEST_END("etha status read + clear");
 }
 
@@ -154,22 +151,19 @@ static void test_clear_status_blocks(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   ra_etha(k_ra_etha_port_0)->EAEIS0 = 0xFFFFFFFFU;
   ra_etha(k_ra_etha_port_0)->EAEIS1 = 0xFFFFFFFFU;
   ra_etha(k_ra_etha_port_0)->EAEIS2 = 0xFFFFFFFFU;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0x000000FFU));
-  TEST_ASSERT_EQ((int32_t)0xFFFFFF00U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIS0);
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x0000FF00U));
-  TEST_ASSERT_EQ((int32_t)0xFFFF00FFU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIS1);
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_2, 0xFFFF0000U));
-  TEST_ASSERT_EQ((int32_t)0x0000FFFFU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIS2);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0x000000FFU));
+  TEST_ASSERT_EQ(0xFFFFFF00U, ra_etha(k_ra_etha_port_0)->EAEIS0);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x0000FF00U));
+  TEST_ASSERT_EQ(0xFFFF00FFU, ra_etha(k_ra_etha_port_0)->EAEIS1);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_2, 0xFFFF0000U));
+  TEST_ASSERT_EQ(0x0000FFFFU, ra_etha(k_ra_etha_port_0)->EAEIS2);
   TEST_END("etha clear_status all blocks");
 }
 
@@ -187,37 +181,30 @@ static void test_enable_disable_irq(void)
                                 .eaeie0_mask  = 0xF0F0F0F0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0x0F0F0F0FU));
-  TEST_ASSERT_EQ((int32_t)0xFFFFFFFFU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE0);
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0x0F0F0F0FU));
-  TEST_ASSERT_EQ((int32_t)0xF0F0F0F0U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0x0F0F0F0FU));
+  TEST_ASSERT_EQ(0xFFFFFFFFU, ra_etha(k_ra_etha_port_0)->EAEIE0);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0x0F0F0F0FU));
+  TEST_ASSERT_EQ(0xF0F0F0F0U, ra_etha(k_ra_etha_port_0)->EAEIE0);
 
   /* Per-block coverage. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x000000FFU));
-  TEST_ASSERT_EQ((int32_t)0x000000FFU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE1);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_2, 0x0000FF00U));
-  TEST_ASSERT_EQ((int32_t)0x0000FF00U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE2);
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x000000FFU));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE1);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x000000FFU));
+  TEST_ASSERT_EQ(0x000000FFU, ra_etha(k_ra_etha_port_0)->EAEIE1);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_2, 0x0000FF00U));
+  TEST_ASSERT_EQ(0x0000FF00U, ra_etha(k_ra_etha_port_0)->EAEIE2);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x000000FFU));
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EAEIE1);
 
   /* Bad-arg: out-of-range port + block. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_enable_irq((ra_etha_port_t)(uint8_t)k_ra_etha_port_count,
-                                             k_ra_etha_irq_class_0,
-                                             0U));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_disable_irq(k_ra_etha_port_0,
-                                 (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
-                                 0U));
+    k_ra_err_invalid_arg,
+    ra_etha_enable_irq((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_irq_class_0, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_disable_irq(k_ra_etha_port_0,
+                                     (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
+                                     0U));
   TEST_END("etha enable/disable irq");
 }
 
@@ -235,31 +222,29 @@ static void test_attach_and_dispatch(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_attach_handler(k_ra_etha_port_0, stub_etha_cb, (void*)(uintptr_t)0xE0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_attach_handler(k_ra_etha_port_0, stub_etha_cb, (void*)(uintptr_t)0xE0U));
 
   ra_etha(k_ra_etha_port_0)->EAEIS0 = 0xABCDU;
   ra_etha(k_ra_etha_port_0)->EAEIS1 = 0x1234U;
   ra_etha(k_ra_etha_port_0)->EAEIS2 = 0x5678U;
   ra_etha_dispatch(k_ra_etha_port_0);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_etha_cb_count);
-  TEST_ASSERT_EQ((int32_t)0xABCDU, (int32_t)s_etha_cb_eaeis0);
-  TEST_ASSERT_EQ((int32_t)0x1234U, (int32_t)s_etha_cb_eaeis1);
-  TEST_ASSERT_EQ((int32_t)0x5678U, (int32_t)s_etha_cb_eaeis2);
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_port_0, (int32_t)s_etha_cb_last_port);
+  TEST_ASSERT_EQ(1, s_etha_cb_count);
+  TEST_ASSERT_EQ(0xABCDU, s_etha_cb_eaeis0);
+  TEST_ASSERT_EQ(0x1234U, s_etha_cb_eaeis1);
+  TEST_ASSERT_EQ(0x5678U, s_etha_cb_eaeis2);
+  TEST_ASSERT_EQ(k_ra_etha_port_0, s_etha_cb_last_port);
 
   /* Detach -- next dispatch must NOT increment the counter. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_attach_handler(k_ra_etha_port_0, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_attach_handler(k_ra_etha_port_0, nullptr, nullptr));
   ra_etha(k_ra_etha_port_0)->EAEIS0 = 0xDEADU;
   ra_etha_dispatch(k_ra_etha_port_0);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_etha_cb_count);
+  TEST_ASSERT_EQ(1, s_etha_cb_count);
 
   /* Out-of-range dispatch is a no-op (no callback fired). */
   ra_etha_dispatch((ra_etha_port_t)(uint8_t)k_ra_etha_port_count);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_etha_cb_count);
+  TEST_ASSERT_EQ(1, s_etha_cb_count);
   TEST_END("etha attach + dispatch");
 }
 
@@ -277,24 +262,23 @@ static void test_power_transition(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_enter_stop(k_ra_etha_port_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_disable,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_exit_stop(k_ra_etha_port_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_operation,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_config,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_reset(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enter_stop(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(k_ra_etha_opc_disable,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_exit_stop(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(k_ra_etha_opc_operation,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
+  TEST_ASSERT_EQ(k_ra_etha_opc_config,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_reset(k_ra_etha_port_0));
   /* After reset() the final EAMC write should be CONFIG. */
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_config,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_deinit(k_ra_etha_port_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_reset,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(k_ra_etha_opc_config,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_deinit(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(k_ra_etha_opc_reset,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
   TEST_END("etha power transition");
 }
 
@@ -309,14 +293,12 @@ static void test_lifecycle_bad_args(void)
   TEST_BEGIN("etha lifecycle bad args");
   prep();
   const ra_etha_port_t bad = (ra_etha_port_t)(uint8_t)k_ra_etha_port_count;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_etha_deinit(bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_etha_enter_stop(bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_etha_exit_stop(bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_etha_reset(bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_mode(bad, k_ra_etha_opc_reset));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_mode(k_ra_etha_port_0, (ra_etha_opc_t)4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_deinit(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_enter_stop(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_exit_stop(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_reset(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_mode(bad, k_ra_etha_opc_reset));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_mode(k_ra_etha_port_0, (ra_etha_opc_t)4U));
   TEST_END("etha lifecycle bad args");
 }
 
@@ -336,31 +318,28 @@ static void test_queue_arb_and_depth(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* Full sweep over 8 traffic classes. */
   for (uint8_t i = 0U; i < (uint8_t)k_ra_etha_tc_count; ++i) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                   (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)i, (uint8_t)i));
-    TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                   (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0,
-                                                    (ra_etha_tc_t)i,
-                                                    (uint16_t)((i + 1U) * 8U)));
+    TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)i, (uint8_t)i));
+    TEST_ASSERT_EQ(
+      k_ra_ok,
+      ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)i, (uint16_t)((i + 1U) * 8U)));
   }
   /* Verify EATDQAC packs the classes in the lower nibbles. */
-  TEST_ASSERT_EQ((int32_t)0x76543210U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQAC);
+  TEST_ASSERT_EQ(0x76543210U, ra_etha(k_ra_etha_port_0)->EATDQAC);
   /* Verify per-class EATDQDC entries. */
-  TEST_ASSERT_EQ((int32_t)8U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
-  TEST_ASSERT_EQ((int32_t)64U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[7]);
+  TEST_ASSERT_EQ(8U, ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
+  TEST_ASSERT_EQ(64U, ra_etha(k_ra_etha_port_0)->EATDQDC[7]);
 
   /* Bad args. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, k_ra_etha_tc_0, 16U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0,
-                                                (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count,
-                                                0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, k_ra_etha_tc_0, 0x800U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_arb(k_ra_etha_port_0, k_ra_etha_tc_0, 16U));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_depth(k_ra_etha_port_0, k_ra_etha_tc_0, 0x800U));
   TEST_END("etha queue arb + depth");
 }
 
@@ -378,24 +357,23 @@ static void test_get_queue_level(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   ra_etha(k_ra_etha_port_0)->EATDQM[3]   = 0x0123U;
   ra_etha(k_ra_etha_port_0)->EATDQMLM[3] = 0x0456U;
   uint16_t cur                           = 0U;
   uint16_t pk                            = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0, k_ra_etha_tc_3, &cur, &pk));
-  TEST_ASSERT_EQ((int32_t)0x0123U, (int32_t)cur);
-  TEST_ASSERT_EQ((int32_t)0x0456U, (int32_t)pk);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0, k_ra_etha_tc_3, nullptr, &pk));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0, k_ra_etha_tc_3, &cur, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0,
-                                                  (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count,
-                                                  &cur,
-                                                  &pk));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_queue_level(k_ra_etha_port_0, k_ra_etha_tc_3, &cur, &pk));
+  TEST_ASSERT_EQ(0x0123U, cur);
+  TEST_ASSERT_EQ(0x0456U, pk);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_etha_get_queue_level(k_ra_etha_port_0, k_ra_etha_tc_3, nullptr, &pk));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_etha_get_queue_level(k_ra_etha_port_0, k_ra_etha_tc_3, &cur, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_get_queue_level(k_ra_etha_port_0,
+                                         (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count,
+                                         &cur,
+                                         &pk));
   TEST_END("etha get queue level");
 }
 
@@ -413,17 +391,15 @@ static void test_set_preemption(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_preemption(k_ra_etha_port_0, 0xAAU, 1U, k_ra_etha_afs_192));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_preemption(k_ra_etha_port_0, 0xAAU, 1U, k_ra_etha_afs_192));
   /* Expected: TTQ7..0 = 0xAA, TTQ8 = 1, AFS = 2 << 16 */
-  TEST_ASSERT_EQ((int32_t)((0xAAU) | (1U << 8) | (2U << 16)),
-                 (int32_t)ra_etha(k_ra_etha_port_0)->EATPEC);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_preemption((ra_etha_port_t)(uint8_t)k_ra_etha_port_count,
-                                                 0U,
-                                                 0U,
-                                                 k_ra_etha_afs_64));
+  TEST_ASSERT_EQ(((0xAAU) | (1U << 8) | (2U << 16)), ra_etha(k_ra_etha_port_0)->EATPEC);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_preemption((ra_etha_port_t)(uint8_t)k_ra_etha_port_count,
+                                        0U,
+                                        0U,
+                                        k_ra_etha_afs_64));
   TEST_END("etha set preemption");
 }
 
@@ -441,18 +417,15 @@ static void test_set_max_frame_size(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* Standard 1500 + jumbo 9000 byte payloads. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_0, 1518U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_7, 9018U));
-  TEST_ASSERT_EQ((int32_t)1518U, (int32_t)ra_etha(k_ra_etha_port_0)->EATMFSC[0]);
-  TEST_ASSERT_EQ((int32_t)9018U, (int32_t)ra_etha(k_ra_etha_port_0)->EATMFSC[7]);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0,
-                                                     (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count,
-                                                     1500U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_0, 1518U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_7, 9018U));
+  TEST_ASSERT_EQ(1518U, ra_etha(k_ra_etha_port_0)->EATMFSC[0]);
+  TEST_ASSERT_EQ(9018U, ra_etha(k_ra_etha_port_0)->EATMFSC[7]);
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count, 1500U));
   TEST_END("etha set max frame size (jumbo)");
 }
 
@@ -472,21 +445,19 @@ static void test_set_ipv_remap(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   const uint8_t ok_map[8] = {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_set_ipv_remap(k_ra_etha_port_0, ok_map));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_ipv_remap(k_ra_etha_port_0, ok_map));
   /* Expected packed: 0x76543210 (IPVR7..0 each 3 bits in stride-4 nibbles). */
-  TEST_ASSERT_EQ((int32_t)0x76543210U, (int32_t)ra_etha(k_ra_etha_port_0)->EAIRC);
+  TEST_ASSERT_EQ(0x76543210U, ra_etha(k_ra_etha_port_0)->EAIRC);
 
   /* Bad arg: entry > 7 -> reject without writing. */
   ra_etha(k_ra_etha_port_0)->EAIRC = 0xDEADBEEFU;
   const uint8_t bad_map[8]         = {0U, 1U, 8U, 3U, 4U, 5U, 6U, 7U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_ipv_remap(k_ra_etha_port_0, bad_map));
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)ra_etha(k_ra_etha_port_0)->EAIRC);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_ipv_remap(k_ra_etha_port_0, bad_map));
+  TEST_ASSERT_EQ(0xDEADBEEFU, ra_etha(k_ra_etha_port_0)->EAIRC);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_set_ipv_remap(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_set_ipv_remap(k_ra_etha_port_0, nullptr));
   TEST_END("etha set ipv remap");
 }
 
@@ -504,28 +475,25 @@ static void test_set_vlan_mode_and_tag(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_vlan_mode(k_ra_etha_port_0,
-                                                k_ra_etha_vim_enabled,
-                                                k_ra_etha_vem_strip_outer));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_etha_set_vlan_mode(k_ra_etha_port_0, k_ra_etha_vim_enabled, k_ra_etha_vem_strip_outer));
   /* VIM=1, VEM=1<<16. */
-  TEST_ASSERT_EQ((int32_t)((1U) | (1U << 16)), (int32_t)ra_etha(k_ra_etha_port_0)->EAVCC);
+  TEST_ASSERT_EQ(((1U) | (1U << 16)), ra_etha(k_ra_etha_port_0)->EAVCC);
 
   const ra_etha_vlan_tag_t c = {.vid = 100U, .pcp = 5U, .dei = 1U};
   const ra_etha_vlan_tag_t s = {.vid = 200U, .pcp = 3U, .dei = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &c, &s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_vlan_tag(k_ra_etha_port_0, &c, &s));
   /* CTV=100 in [11:0]; CTP=5 in [14:12]; CTD=1 in [15];
    * STV=200<<16; STP=3<<28; STD=0. */
   const uint32_t expect = (100U) | (5U << 12) | (1U << 15) | (200U << 16) | (3U << 28);
-  TEST_ASSERT_EQ((int32_t)expect, (int32_t)ra_etha(k_ra_etha_port_0)->EAVTC);
+  TEST_ASSERT_EQ(expect, ra_etha(k_ra_etha_port_0)->EAVTC);
 
   /* Bad-arg: vid > 4095. */
   const ra_etha_vlan_tag_t bad = {.vid = 0x1000U, .pcp = 0U, .dei = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &bad, &s));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, nullptr, &s));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &bad, &s));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_set_vlan_tag(k_ra_etha_port_0, nullptr, &s));
   TEST_END("etha vlan mode + tag");
 }
 
@@ -543,14 +511,12 @@ static void test_rx_tag_filter(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_rx_tag_filter(k_ra_etha_port_0, 0x000001AAU));
-  TEST_ASSERT_EQ((int32_t)0x000001AAU, (int32_t)ra_etha(k_ra_etha_port_0)->EARTFC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_rx_tag_filter(k_ra_etha_port_0, 0x000001AAU));
+  TEST_ASSERT_EQ(0x000001AAU, ra_etha(k_ra_etha_port_0)->EARTFC);
   /* Mask is constrained to 9 bits. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_rx_tag_filter(k_ra_etha_port_0, 0xFFFFFFFFU));
-  TEST_ASSERT_EQ((int32_t)0x000001FFU, (int32_t)ra_etha(k_ra_etha_port_0)->EARTFC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_rx_tag_filter(k_ra_etha_port_0, 0xFFFFFFFFU));
+  TEST_ASSERT_EQ(0x000001FFU, ra_etha(k_ra_etha_port_0)->EARTFC);
   TEST_END("etha rx tag filter");
 }
 
@@ -570,13 +536,11 @@ static void test_cut_through_queue(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_configure_cut_through(k_ra_etha_port_0, 0x1234U, 0x5U));
-  TEST_ASSERT_EQ((int32_t)0x1234U, (int32_t)ra_etha(k_ra_etha_port_0)->EACTQC);
-  TEST_ASSERT_EQ((int32_t)0x5U, (int32_t)ra_etha(k_ra_etha_port_0)->EACTDQDC);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_configure_cut_through(k_ra_etha_port_0, 0U, 0x10U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_configure_cut_through(k_ra_etha_port_0, 0x1234U, 0x5U));
+  TEST_ASSERT_EQ(0x1234U, ra_etha(k_ra_etha_port_0)->EACTQC);
+  TEST_ASSERT_EQ(0x5U, ra_etha(k_ra_etha_port_0)->EACTDQDC);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_configure_cut_through(k_ra_etha_port_0, 0U, 0x10U));
   TEST_END("etha cut through queue");
 }
 
@@ -596,19 +560,17 @@ static void test_cbs_configure_and_state(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   const ra_etha_cbs_param_t p = {.increment = 0x12345U, .upper_lim = 0x4000U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, k_ra_etha_tc_2, 1U, &p));
-  TEST_ASSERT_EQ((int32_t)0x12345U, (int32_t)ra_etha(k_ra_etha_port_0)->EACAIVC[2]);
-  TEST_ASSERT_EQ((int32_t)0x4000U, (int32_t)ra_etha(k_ra_etha_port_0)->EACAULC[2]);
-  TEST_ASSERT_EQ((int32_t)(1U << 2), (int32_t)ra_etha(k_ra_etha_port_0)->EACAEC);
-  TEST_ASSERT_EQ((int32_t)(1U << 2), (int32_t)ra_etha(k_ra_etha_port_0)->EACC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_configure_cbs(k_ra_etha_port_0, k_ra_etha_tc_2, 1U, &p));
+  TEST_ASSERT_EQ(0x12345U, ra_etha(k_ra_etha_port_0)->EACAIVC[2]);
+  TEST_ASSERT_EQ(0x4000U, ra_etha(k_ra_etha_port_0)->EACAULC[2]);
+  TEST_ASSERT_EQ((1U << 2), ra_etha(k_ra_etha_port_0)->EACAEC);
+  TEST_ASSERT_EQ((1U << 2), ra_etha(k_ra_etha_port_0)->EACC);
 
   /* Disable path: clears the per-class bit but does not zero the param regs. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, k_ra_etha_tc_2, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EACAEC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_configure_cbs(k_ra_etha_port_0, k_ra_etha_tc_2, 0U, nullptr));
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EACAEC);
 
   /* Read oper-side mirrors. */
   ra_etha(k_ra_etha_port_0)->EACOEM     = (1U << 2);
@@ -618,19 +580,17 @@ static void test_cbs_configure_and_state(void)
   uint8_t             en                = 0U;
   uint8_t             gs                = 0U;
   ra_etha_cbs_param_t op                = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_get_cbs_state(k_ra_etha_port_0, k_ra_etha_tc_2, &en, &gs, &op));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)en);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)gs);
-  TEST_ASSERT_EQ((int32_t)0x9999U, (int32_t)op.increment);
-  TEST_ASSERT_EQ((int32_t)0x77777777U, (int32_t)op.upper_lim);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_cbs_state(k_ra_etha_port_0, k_ra_etha_tc_2, &en, &gs, &op));
+  TEST_ASSERT_EQ(1, en);
+  TEST_ASSERT_EQ(1, gs);
+  TEST_ASSERT_EQ(0x9999U, op.increment);
+  TEST_ASSERT_EQ(0x77777777U, op.upper_lim);
 
   /* Bad-arg + null. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, k_ra_etha_tc_0, 1U, nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_etha_get_cbs_state(k_ra_etha_port_0, k_ra_etha_tc_0, nullptr, &gs, &op));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_etha_configure_cbs(k_ra_etha_port_0, k_ra_etha_tc_0, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_etha_get_cbs_state(k_ra_etha_port_0, k_ra_etha_tc_0, nullptr, &gs, &op));
   TEST_END("etha cbs configure + state");
 }
 
@@ -650,40 +610,39 @@ static void test_tas_schedule_and_enable(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   const ra_etha_tas_gate_t list[2] = {
     {.gate_state = 0xFFU, .time_units = 1000U, .cut_through = 0U},
     {.gate_state = 0x0FU, .time_units = 2000U, .cut_through = 1U},
   };
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_set_tas_schedule(k_ra_etha_port_0, list, 2U, 100000U, 0xCAFEBABEDEADBEEFULL));
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)ra_etha(k_ra_etha_port_0)->EATASCSTC0);
-  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)ra_etha(k_ra_etha_port_0)->EATASCSTC1);
-  TEST_ASSERT_EQ((int32_t)100000U, (int32_t)ra_etha(k_ra_etha_port_0)->EATASCTC);
-  TEST_ASSERT_EQ((int32_t)0xFFU, (int32_t)ra_etha(k_ra_etha_port_0)->EATASIGSC);
+    k_ra_ok,
+    ra_etha_set_tas_schedule(k_ra_etha_port_0, list, 2U, 100000U, 0xCAFEBABEDEADBEEFULL));
+  TEST_ASSERT_EQ(0xDEADBEEFU, ra_etha(k_ra_etha_port_0)->EATASCSTC0);
+  TEST_ASSERT_EQ(0xCAFEBABEU, ra_etha(k_ra_etha_port_0)->EATASCSTC1);
+  TEST_ASSERT_EQ(100000U, ra_etha(k_ra_etha_port_0)->EATASCTC);
+  TEST_ASSERT_EQ(0xFFU, ra_etha(k_ra_etha_port_0)->EATASIGSC);
   /* Last EATASGL writes are observable. */
-  TEST_ASSERT_EQ((int32_t)0x0FU, (int32_t)ra_etha(k_ra_etha_port_0)->EATASGL0);
-  TEST_ASSERT_EQ((int32_t)((2000U) | (1U << 28)), (int32_t)ra_etha(k_ra_etha_port_0)->EATASGL1);
+  TEST_ASSERT_EQ(0x0FU, ra_etha(k_ra_etha_port_0)->EATASGL0);
+  TEST_ASSERT_EQ(((2000U) | (1U << 28)), ra_etha(k_ra_etha_port_0)->EATASGL1);
 
   /* TASCC commit bit set. */
   TEST_ASSERT(((ra_etha(k_ra_etha_port_0)->EATASC >> 1) & 1U) == 1U);
 
   /* Enable / disable. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_enable_tas(k_ra_etha_port_0, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_tas(k_ra_etha_port_0, 1U));
   TEST_ASSERT(((ra_etha(k_ra_etha_port_0)->EATASC >> 0) & 1U) == 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_enable_tas(k_ra_etha_port_0, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_tas(k_ra_etha_port_0, 0U));
   TEST_ASSERT(((ra_etha(k_ra_etha_port_0)->EATASC >> 0) & 1U) == 0U);
 
   /* Bad args. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_tas_schedule(k_ra_etha_port_0, list, 257U, 0U, 0ULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_set_tas_schedule(k_ra_etha_port_0, nullptr, 1U, 0U, 0ULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_tas_schedule(k_ra_etha_port_0, list, 257U, 0U, 0ULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_etha_set_tas_schedule(k_ra_etha_port_0, nullptr, 1U, 0U, 0ULL));
   /* Empty list is allowed (just programs cycle / start time). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_tas_schedule(k_ra_etha_port_0, nullptr, 0U, 999U, 0ULL));
-  TEST_ASSERT_EQ((int32_t)999U, (int32_t)ra_etha(k_ra_etha_port_0)->EATASCTC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_tas_schedule(k_ra_etha_port_0, nullptr, 0U, 999U, 0ULL));
+  TEST_ASSERT_EQ(999U, ra_etha(k_ra_etha_port_0)->EATASCTC);
   TEST_END("etha tas schedule + enable");
 }
 
@@ -703,7 +662,7 @@ static void test_read_clear_stats(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   ra_etha(k_ra_etha_port_0)->EAUSMFSECN = 0x0010U;
   ra_etha(k_ra_etha_port_0)->EATFECN    = 0x0020U;
   ra_etha(k_ra_etha_port_0)->EAFSECN    = 0x0030U;
@@ -711,22 +670,21 @@ static void test_read_clear_stats(void)
   ra_etha(k_ra_etha_port_0)->EADQSECN   = 0x0050U;
 
   ra_etha_stats_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_read_stats(k_ra_etha_port_0, &st));
-  TEST_ASSERT_EQ((int32_t)0x10U, (int32_t)st.switch_min_frame_err);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)st.tag_filter_err);
-  TEST_ASSERT_EQ((int32_t)0x30U, (int32_t)st.frame_size_err);
-  TEST_ASSERT_EQ((int32_t)0x40U, (int32_t)st.queue_overflow_err);
-  TEST_ASSERT_EQ((int32_t)0x50U, (int32_t)st.queue_security_err);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_read_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(0x10U, st.switch_min_frame_err);
+  TEST_ASSERT_EQ(0x20U, st.tag_filter_err);
+  TEST_ASSERT_EQ(0x30U, st.frame_size_err);
+  TEST_ASSERT_EQ(0x40U, st.queue_overflow_err);
+  TEST_ASSERT_EQ(0x50U, st.queue_security_err);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_clear_stats(k_ra_etha_port_0));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EAUSMFSECN);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EATFECN);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EAFSECN);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EADQOECN);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_etha(k_ra_etha_port_0)->EADQSECN);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_clear_stats(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EAUSMFSECN);
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EATFECN);
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EAFSECN);
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EADQOECN);
+  TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EADQSECN);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_read_stats(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_read_stats(k_ra_etha_port_0, nullptr));
   TEST_END("etha read + clear stats");
 }
 
@@ -746,36 +704,34 @@ static void test_descriptor_ring_init(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 1518U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 1518U));
   for (uint8_t i = 0U; i < (uint8_t)k_ra_etha_tc_count; ++i) {
-    TEST_ASSERT_EQ((int32_t)32U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[i]);
+    TEST_ASSERT_EQ(32U, ra_etha(k_ra_etha_port_0)->EATDQDC[i]);
   }
   ra_etha_port_stats_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
-  TEST_ASSERT_EQ((int32_t)32U, (int32_t)st.ring_tx);
-  TEST_ASSERT_EQ((int32_t)64U, (int32_t)st.ring_rx);
-  TEST_ASSERT_EQ((int32_t)1518U, (int32_t)st.ring_buf);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.tx_ok);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(32U, st.ring_tx);
+  TEST_ASSERT_EQ(64U, st.ring_rx);
+  TEST_ASSERT_EQ(1518U, st.ring_buf);
+  TEST_ASSERT_EQ(0U, st.tx_ok);
 
   /* Bad-arg + clamping cases. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 0U, 64U, 1518U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 8000U, 1518U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 16U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 17000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 0U, 64U, 1518U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 8000U, 1518U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 17000U));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)
-      ra_etha_descriptor_ring_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 32U, 64U, 1518U));
+    k_ra_err_invalid_arg,
+
+    ra_etha_descriptor_ring_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 32U, 64U, 1518U));
   /* Deep ring (>2047) clamped at the EATDQDC 11-bit ceiling. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4096U, 4096U, 1518U));
-  TEST_ASSERT_EQ((int32_t)2047U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4096U, 4096U, 1518U));
+  TEST_ASSERT_EQ(2047U, ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
   TEST_END("etha descriptor_ring_init");
 }
 
@@ -793,36 +749,33 @@ static void test_get_stats_and_account(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   ra_etha_port_stats_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.tx_ok);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(0U, st.tx_ok);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 100U, 2U, 75U, 3U, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
-  TEST_ASSERT_EQ((int32_t)100U, (int32_t)st.tx_ok);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)st.tx_err);
-  TEST_ASSERT_EQ((int32_t)75U, (int32_t)st.rx_ok);
-  TEST_ASSERT_EQ((int32_t)3U, (int32_t)st.rx_err);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)st.rx_drop);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_account_traffic(k_ra_etha_port_0, 100U, 2U, 75U, 3U, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(100U, st.tx_ok);
+  TEST_ASSERT_EQ(2U, st.tx_err);
+  TEST_ASSERT_EQ(75U, st.rx_ok);
+  TEST_ASSERT_EQ(3U, st.rx_err);
+  TEST_ASSERT_EQ(1U, st.rx_drop);
 
   /* Saturation: push tx_ok near UINT32_MAX and add 1000 more -> sat. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, UINT32_MAX - 50U, 0U, 0U, 0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 1000U, 0U, 0U, 0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_account_traffic(k_ra_etha_port_0, UINT32_MAX - 50U, 0U, 0U, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_account_traffic(k_ra_etha_port_0, 1000U, 0U, 0U, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &st));
   TEST_ASSERT(st.tx_ok == UINT32_MAX);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_get_stats((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &st));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_get_stats(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_get_stats((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &st));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)
-      ra_etha_account_traffic((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 0U, 0U, 0U, 0U, 0U));
+    k_ra_err_invalid_arg,
+
+    ra_etha_account_traffic((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 0U, 0U, 0U, 0U, 0U));
   TEST_END("etha get_stats + account_traffic");
 }
 
@@ -840,15 +793,14 @@ static void test_get_stats_after_deinit(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 5U, 5U, 5U, 5U, 5U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_deinit(k_ra_etha_port_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_account_traffic(k_ra_etha_port_0, 5U, 5U, 5U, 5U, 5U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_deinit(k_ra_etha_port_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   ra_etha_port_stats_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.tx_ok);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.ring_tx);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(0U, st.tx_ok);
+  TEST_ASSERT_EQ(0U, st.ring_tx);
   TEST_END("etha get_stats after deinit (clean slate)");
 }
 
@@ -866,16 +818,15 @@ static void test_etha_open_bad_args(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   ra_rmac_phy_link_t       lk  = {};
   const ra_etha_phy_open_t phy = {.phy_addr   = 5U,
                                   .advertise  = (uint16_t)k_ra_rmac_phy_advert_100_fd,
                                   .timeout_ms = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_etha_open(k_ra_etha_port_0, nullptr, &lk));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_etha_open(k_ra_etha_port_0, &phy, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_open((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &phy, &lk));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_open(k_ra_etha_port_0, nullptr, &lk));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_etha_open(k_ra_etha_port_0, &phy, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_open((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &phy, &lk));
   TEST_END("etha open bad args");
 }
 
@@ -893,7 +844,7 @@ static void test_etha_open_eamc_transition(void)
                                  .eaeie0_mask  = 0U,
                                  .eaeie1_mask  = 0U,
                                  .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &ecfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &ecfg));
   const ra_rmac_config_t rcfg = {.rx_filter       = k_ra_rmac_mrafc_unicast_match,
                                  .err_irq_enable  = 0U,
                                  .mon0_irq_enable = 0U,
@@ -902,7 +853,7 @@ static void test_etha_open_eamc_transition(void)
                                  .phy_interface   = k_ra_rmac_pis_rmii,
                                  .link_speed      = k_ra_rmac_lsc_100mbit,
                                  .duplex          = k_ra_rmac_duplex_full};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &rcfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &rcfg));
   /* Pre-arm MMIS1 for both PWACS and PRACS so MDIO writes complete; the
    * driver's reads return 0 (PRD bits zeroed by issue), so BMCR.RESET
    * appears already cleared and phy_reset succeeds. Auto-neg wait
@@ -917,8 +868,8 @@ static void test_etha_open_eamc_transition(void)
                                   .timeout_ms = 1U};
   const ra_err_t           r   = ra_etha_open(k_ra_etha_port_0, &phy, &lk);
   TEST_ASSERT(r == k_ra_ok || r == k_ra_err_hw_timeout);
-  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_operation,
-                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_ASSERT_EQ(k_ra_etha_opc_operation,
+                 (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
   TEST_END("etha open EAMC transition");
 }
 
@@ -938,11 +889,11 @@ static void test_set_security(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_set_security(k_ra_etha_port_0, 0x00FF00FFU));
-  TEST_ASSERT_EQ((int32_t)0x00FF00FFU, (int32_t)ra_etha(k_ra_etha_port_0)->EASCR);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_security((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_security(k_ra_etha_port_0, 0x00FF00FFU));
+  TEST_ASSERT_EQ(0x00FF00FFU, ra_etha(k_ra_etha_port_0)->EASCR);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_security((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 0U));
   TEST_END("etha set security gate");
 }
 
@@ -972,24 +923,21 @@ static void test_clear_status_mcdc_port_block(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
 
   /* Vector 1: port out of range, block in range. C1=T short-circuits. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_clear_status((ra_etha_port_t)(uint8_t)k_ra_etha_port_count,
-                                               k_ra_etha_irq_class_0,
-                                               0U));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_clear_status((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_irq_class_0, 0U));
 
   /* Vector 2: port valid, block valid. C1=F, C2=F -> Decision F. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0U));
 
   /* Vector 3: port valid, block out of range. C1=F, C2=T. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_clear_status(k_ra_etha_port_0,
-                                  (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
-                                  0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_clear_status(k_ra_etha_port_0,
+                                      (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
+                                      0U));
   TEST_END("etha clear_status MC/DC: !port_ok || !block_ok");
 }
 
@@ -1013,21 +961,19 @@ static void test_set_mode_mcdc_port_mode(void)
                                 .eaeie0_mask  = 0U,
                                 .eaeie1_mask  = 0U,
                                 .eaeie2_mask  = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
 
   /* Vector 1: port out of range, valid mode. C1=T short-circuits. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_set_mode((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_opc_config));
+    k_ra_err_invalid_arg,
+    ra_etha_set_mode((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_opc_config));
 
   /* Vector 2: port valid, mode within mask. C1=F, C2=F -> Decision F. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
 
   /* Vector 3: port valid, mode > k_ra_etha_mask_opc. C1=F, C2=T. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_set_mode(k_ra_etha_port_0, (ra_etha_opc_t)(k_ra_etha_mask_opc + 1U)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_mode(k_ra_etha_port_0, (ra_etha_opc_t)(k_ra_etha_mask_opc + 1U)));
   TEST_END("etha set_mode MC/DC: !port_ok || mode > mask");
 }
 
@@ -1047,18 +993,16 @@ static void test_mcdc_enable_irq_port_block(void)
   TEST_BEGIN("etha enable_irq MC/DC: !port_ok || !block_ok");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xFFU));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_enable_irq((ra_etha_port_t)99U, k_ra_etha_irq_class_0, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_enable_irq((ra_etha_port_t)99U, k_ra_etha_irq_class_0, 0xFFU));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0,
-                                             (ra_etha_irq_class_t)k_ra_etha_irq_class_count,
-                                             0xFFU));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_enable_irq(k_ra_etha_port_0, (ra_etha_irq_class_t)k_ra_etha_irq_class_count, 0xFFU));
   TEST_END("etha enable_irq MC/DC: !port_ok || !block_ok");
 }
 
@@ -1075,18 +1019,16 @@ static void test_mcdc_disable_irq_port_block(void)
   TEST_BEGIN("etha disable_irq MC/DC: !port_ok || !block_ok");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xFFU));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_disable_irq((ra_etha_port_t)99U, k_ra_etha_irq_class_0, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_disable_irq((ra_etha_port_t)99U, k_ra_etha_irq_class_0, 0xFFU));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_disable_irq(k_ra_etha_port_0,
-                                              (ra_etha_irq_class_t)k_ra_etha_irq_class_count,
-                                              0xFFU));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_disable_irq(k_ra_etha_port_0, (ra_etha_irq_class_t)k_ra_etha_irq_class_count, 0xFFU));
   TEST_END("etha disable_irq MC/DC: !port_ok || !block_ok");
 }
 
@@ -1112,20 +1054,18 @@ static void test_mcdc_set_queue_arb_triple(void)
   TEST_BEGIN("etha set_queue_arb MC/DC: !port_ok || !tc_ok || arb>mask");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* V1: all good. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U));
   /* V2: bad port. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_arb((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_arb((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1U));
   /* V3: bad tc. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1U));
   /* V4: bad arb. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)0U, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)0U, 0xFFU));
   TEST_END("etha set_queue_arb MC/DC: !port_ok || !tc_ok || arb>mask");
 }
 
@@ -1149,20 +1089,18 @@ static void test_mcdc_set_queue_depth_triple(void)
   TEST_BEGIN("etha set_queue_depth MC/DC: !port_ok || !tc_ok || depth>mask");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* V1: all good. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)0U, 16U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)0U, 16U));
   /* V2: bad port. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_depth((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_depth((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 16U));
   /* V3: bad tc. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 16U));
   /* V4: bad depth (> 0x7FF mask). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)0U, 0x800U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)0U, 0x800U));
   TEST_END("etha set_queue_depth MC/DC: !port_ok || !tc_ok || depth>mask");
 }
 
@@ -1189,28 +1127,26 @@ static void test_mcdc_descriptor_ring_args(void)
   TEST_BEGIN("etha descriptor_ring_init MC/DC: 6-cond AND args_ok");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* V1: control - all in range. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 1500U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 1500U));
   /* V2: num_tx below min. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 0U, 4U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 0U, 4U, 1500U));
   /* V3: num_tx above max. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4097U, 4U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4097U, 4U, 1500U));
   /* V4: num_rx below min. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 0U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 0U, 1500U));
   /* V5: num_rx above max. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4097U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4097U, 1500U));
   /* V6: buffer_size below min (64). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 1U));
   /* V7: buffer_size above max (16383). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 16384U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 16384U));
   TEST_END("etha descriptor_ring_init MC/DC: 6-cond AND args_ok");
 }
 
@@ -1236,32 +1172,26 @@ static void test_mcdc_set_vlan_tag_six(void)
   TEST_BEGIN("etha set_vlan_tag MC/DC: 6-cond OR field range");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   const ra_etha_vlan_tag_t ok_c = {.vid = 100U, .pcp = 5U, .dei = 1U};
   const ra_etha_vlan_tag_t ok_s = {.vid = 200U, .pcp = 3U, .dei = 0U};
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &ok_s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &ok_s));
   /* V2: c.vid out. */
   const ra_etha_vlan_tag_t v2 = {.vid = 0x1000U, .pcp = 0U, .dei = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &v2, &ok_s));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &v2, &ok_s));
   /* V3: s.vid out. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v2));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v2));
   /* V4: c.pcp out. */
   const ra_etha_vlan_tag_t v4 = {.vid = 0U, .pcp = 8U, .dei = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &v4, &ok_s));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &v4, &ok_s));
   /* V5: s.pcp out. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v4));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v4));
   /* V6: c.dei out. */
   const ra_etha_vlan_tag_t v6 = {.vid = 0U, .pcp = 0U, .dei = 2U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &v6, &ok_s));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &v6, &ok_s));
   /* V7: s.dei out. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v6));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v6));
   TEST_END("etha set_vlan_tag MC/DC: 6-cond OR field range");
 }
 
@@ -1283,22 +1213,18 @@ static void test_mcdc_get_queue_level_pair(void)
   TEST_BEGIN("etha get_queue_level MC/DC: !port_ok || !tc_ok");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   uint16_t cur = 0U;
   uint16_t pk  = 0U;
   /* V1: all good. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0, (ra_etha_tc_t)0U, &cur, &pk));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_queue_level(k_ra_etha_port_0, (ra_etha_tc_t)0U, &cur, &pk));
   /* V2: bad port (C1=T, short-circuits). */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_get_queue_level((ra_etha_port_t)99U, (ra_etha_tc_t)0U, &cur, &pk));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_get_queue_level((ra_etha_port_t)99U, (ra_etha_tc_t)0U, &cur, &pk));
   /* V3: bad tc (C1=F, C2=T). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0,
-                                                  (ra_etha_tc_t)k_ra_etha_tc_count,
-                                                  &cur,
-                                                  &pk));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_get_queue_level(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, &cur, &pk));
   TEST_END("etha get_queue_level MC/DC: !port_ok || !tc_ok");
 }
 
@@ -1318,17 +1244,16 @@ static void test_mcdc_set_max_frame_size_pair(void)
   TEST_BEGIN("etha set_max_frame_size MC/DC: !port_ok || !tc_ok");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* V1: all good. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1500U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1500U));
   /* V2: bad port. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_max_frame_size((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_set_max_frame_size((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1500U));
   /* V3: bad tc. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1500U));
+    k_ra_err_invalid_arg,
+    ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1500U));
   TEST_END("etha set_max_frame_size MC/DC: !port_ok || !tc_ok");
 }
 
@@ -1355,60 +1280,51 @@ static void test_mcdc_configure_cut_through_pair(void)
   TEST_BEGIN("etha configure_cut_through + cbs MC/DC");
   prep();
   const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
 
   /* configure_cut_through (line 993) */
   /* V1: all ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_configure_cut_through(k_ra_etha_port_0, 16U, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_configure_cut_through(k_ra_etha_port_0, 16U, 1U));
   /* V2: bad port. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_configure_cut_through((ra_etha_port_t)99U, 16U, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_configure_cut_through((ra_etha_port_t)99U, 16U, 1U));
   /* V3: bad dqd (mask is 0x7F so 0x80 is out-of-range). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_configure_cut_through(k_ra_etha_port_0, 16U, 0x80U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_etha_configure_cut_through(k_ra_etha_port_0, 16U, 0x80U));
 
   /* configure_cbs (line 1029, 1035) */
   const ra_etha_cbs_param_t ok_cbs = {.increment = 100U, .upper_lim = 1000U};
   /* V1 (1029): all ok, enable=1. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &ok_cbs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &ok_cbs));
   /* V2 (1029): bad port. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_configure_cbs((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1U, &ok_cbs));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_configure_cbs((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1U, &ok_cbs));
   /* V3 (1029): bad tc. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0,
-                                                (ra_etha_tc_t)k_ra_etha_tc_count,
-                                                1U,
-                                                &ok_cbs));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1U, &ok_cbs));
   /* V_param_lo (1035): increment exceeds k_ra_etha_mask_civ (0xFFFFF). */
   const ra_etha_cbs_param_t bad_inc = {.increment = 0x100000U, .upper_lim = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &bad_inc));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &bad_inc));
   /* V_param_hi (1035): upper_lim exceeds k_ra_etha_mask_cul (0x7FFFFFFF). */
   const ra_etha_cbs_param_t bad_ul = {.increment = 1U, .upper_lim = 0x80000000U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &bad_ul));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &bad_ul));
 
   /* get_cbs_state (line 1091) */
   uint8_t             en   = 0U;
   uint8_t             gop  = 0U;
   ra_etha_cbs_param_t oprm = {};
   /* V1: all ok. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_get_cbs_state(k_ra_etha_port_0, (ra_etha_tc_t)0U, &en, &gop, &oprm));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_get_cbs_state(k_ra_etha_port_0, (ra_etha_tc_t)0U, &en, &gop, &oprm));
   /* V2: bad port. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_etha_get_cbs_state((ra_etha_port_t)99U, (ra_etha_tc_t)0U, &en, &gop, &oprm));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_get_cbs_state((ra_etha_port_t)99U, (ra_etha_tc_t)0U, &en, &gop, &oprm));
   /* V3: bad tc. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)
-      ra_etha_get_cbs_state(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, &en, &gop, &oprm));
+    k_ra_err_invalid_arg,
+
+    ra_etha_get_cbs_state(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, &en, &gop, &oprm));
 
   TEST_END("etha configure_cut_through + cbs MC/DC");
 }
@@ -1453,24 +1369,23 @@ static void test_mcdc_test_inject_rx_quad(void)
   uint16_t out_etype = 0U;
   /* V1: all valid. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+    k_ra_ok,
+    ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
   /* V2: frame NULL (C1=T short). */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_etha_test_inject_rx(NULL, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+    k_ra_err_null_ptr,
+    ra_etha_test_inject_rx(nullptr, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
   /* V3: out_dst NULL (C1=F, C2=T). */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), NULL, out_src, &out_etype));
+    k_ra_err_null_ptr,
+    ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), nullptr, out_src, &out_etype));
   /* V4: out_src NULL (C1..C2=F, C3=T). */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, NULL, &out_etype));
+    k_ra_err_null_ptr,
+    ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, nullptr, &out_etype));
   /* V5: out_etype NULL (C1..C3=F, C4=T). */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, nullptr));
   TEST_END("etha test_inject_rx MC/DC: 4-cond OR null-check");
 }
 

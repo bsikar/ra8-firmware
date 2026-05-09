@@ -37,7 +37,7 @@ static void prep(void)
   (void)ra_mstp_init();
   (void)ra_net_pal_deinit();
   (void)ra_net_close();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_open(&k_test_cfg));
 }
 
 /**
@@ -61,7 +61,7 @@ static void test_mcdc_find_tcp_socket_state(void)
   TEST_BEGIN("ra_net_tcp find_socket state MC/DC");
   prep();
   ra_net_handle_t h = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_tcp_listen(80U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_net_tcp_listen(80U, &h));
   ra_net_ipv4_t any = {.bytes = {0U, 0U, 0U, 0U}};
 
   /* V1: match_state=0 -> short circuit; LISTEN socket found regardless. */
@@ -69,9 +69,7 @@ static void test_mcdc_find_tcp_socket_state(void)
   /* V2: match_state=1, want=LISTEN -> matches. */
   TEST_ASSERT(ra_net_tcp_internal_find_socket(80U, any, 0U, k_tcp_state_listen, 1U) >= 0);
   /* V3: match_state=1, want=ESTABLISHED -> mismatch -> skip. */
-  TEST_ASSERT_EQ(
-    (int32_t)-1,
-    (int32_t)ra_net_tcp_internal_find_socket(80U, any, 0U, k_tcp_state_established, 1U));
+  TEST_ASSERT_EQ(-1, ra_net_tcp_internal_find_socket(80U, any, 0U, k_tcp_state_established, 1U));
   TEST_END("ra_net_tcp find_socket state MC/DC");
 }
 
@@ -114,13 +112,11 @@ static void test_mcdc_find_tcp_socket_remote(void)
   ra_net_ipv4_t want_no = {.bytes = {10U, 0U, 0U, 2U}};
 
   /* V1: port mismatch -> C1=F shorts. */
-  TEST_ASSERT_EQ(
-    (int32_t)-1,
-    (int32_t)ra_net_tcp_internal_find_socket(80U, want_ok, 5001U, k_tcp_state_established, 1U));
+  TEST_ASSERT_EQ(-1,
+                 ra_net_tcp_internal_find_socket(80U, want_ok, 5001U, k_tcp_state_established, 1U));
   /* V2: port match, IP mismatch -> C1=T, C2=F. */
-  TEST_ASSERT_EQ(
-    (int32_t)-1,
-    (int32_t)ra_net_tcp_internal_find_socket(80U, want_no, 5000U, k_tcp_state_established, 1U));
+  TEST_ASSERT_EQ(-1,
+                 ra_net_tcp_internal_find_socket(80U, want_no, 5000U, k_tcp_state_established, 1U));
   /* V3: port match, IP match -> C1=T, C2=T. */
   TEST_ASSERT(ra_net_tcp_internal_find_socket(80U, want_ok, 5000U, k_tcp_state_established, 1U) >=
               0);
@@ -160,9 +156,9 @@ static void test_mcdc_tcp_emit_segment_payload(void)
       const uint8_t      buf[1]          = {0xAAU};
 
       /* V1: data_len=0, data=NULL -> short circuit, no copy. */
-      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, NULL, 0U);
+      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
       /* V2: data_len>0, data=NULL -> defensive skip (no copy). */
-      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, NULL, 1U);
+      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 1U);
       /* V3: data_len>0, data!=NULL -> memcpy payload. */
       (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, buf, 1U);
       break;

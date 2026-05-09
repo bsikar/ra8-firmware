@@ -93,13 +93,13 @@ static void test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg / callbacks");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_phy_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_open(nullptr));
   ra_rmac_phy_cfg_t cfg = make_cfg();
   cfg.io.read           = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_open(&cfg));
   cfg.io.read  = bus_read;
   cfg.io.write = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_open(&cfg));
   TEST_END("open rejects NULL cfg / callbacks");
 }
 
@@ -115,10 +115,10 @@ static void test_open_bad_args(void)
   prep();
   ra_rmac_phy_cfg_t cfg = make_cfg();
   cfg.phy_address       = (uint8_t)(k_test_addr_high + 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_open(&cfg));
   cfg          = make_cfg();
   cfg.lsi_type = (ra_rmac_phy_lsi_t)k_ra_rmac_phy_lsi_count;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_open(&cfg));
   TEST_END("open rejects bad PHY addr / lsi");
 }
 
@@ -133,12 +133,12 @@ static void test_lifecycle(void)
   TEST_BEGIN("open / re-open / close + advertisement written");
   prep();
   const ra_rmac_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)0x01E1, (int32_t)s_io.regs[4]);
-  TEST_ASSERT_EQ((int32_t)0x0300, (int32_t)s_io.regs[9]);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_rmac_phy_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rmac_phy_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(0x01E1, s_io.regs[4]);
+  TEST_ASSERT_EQ(0x0300, s_io.regs[9]);
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_rmac_phy_close());
   TEST_END("open / re-open / close + advertisement written");
 }
 
@@ -155,7 +155,7 @@ static void test_reset_timeout(void)
   s_io.reset_reads_remaining = 0xFFFFU; /* never auto-clear */
   ra_rmac_phy_cfg_t cfg      = make_cfg();
   cfg.reset_poll_max         = 2U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_rmac_phy_open(&cfg));
   TEST_END("open returns hw_timeout if BMCR.RESET never clears");
 }
 
@@ -170,18 +170,16 @@ static void test_mdio(void)
   TEST_BEGIN("mdio read/write validation");
   prep();
   const ra_rmac_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_mdio_write((uint8_t)k_test_reg_count, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_mdio_write(11U, 0xDEADU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_mdio_write((uint8_t)k_test_reg_count, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_mdio_write(11U, 0xDEADU));
 
   uint16_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_phy_mdio_read(11U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_mdio_read((uint8_t)k_test_reg_count, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_mdio_read(11U, &v));
-  TEST_ASSERT_EQ((int32_t)0xDEAD, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_mdio_read(11U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_mdio_read((uint8_t)k_test_reg_count, &v));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_mdio_read(11U, &v));
+  TEST_ASSERT_EQ(0xDEAD, v);
   TEST_END("mdio read/write validation");
 }
 
@@ -196,16 +194,16 @@ static void test_link_1000(void)
   TEST_BEGIN("link_status resolves 1000Base-T full-duplex from MSR");
   prep();
   const ra_rmac_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
 
   s_io.regs[1]  = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
   s_io.regs[10] = 0x0800U;                       /* 1000F     */
 
   ra_rmac_phy_link_t lk = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_phy_link_status_get(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)lk.link_up);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_1000f, (int32_t)lk.speed);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_link_status_get(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ(1, lk.link_up);
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_1000f, lk.speed);
   TEST_END("link_status resolves 1000Base-T full-duplex from MSR");
 }
 
@@ -221,14 +219,14 @@ static void test_link_100half_fallback(void)
   prep();
   ra_rmac_phy_cfg_t cfg = make_cfg();
   cfg.gbit_advertise    = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
 
   s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
   s_io.regs[5] = 0x0080U; /* 100H */
 
   ra_rmac_phy_link_t lk = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_100h, (int32_t)lk.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_100h, lk.speed);
   TEST_END("link_status falls back to LPA when no gbit advertised");
 }
 
@@ -243,15 +241,15 @@ static void test_lsi_and_autoneg(void)
   TEST_BEGIN("lsi_get + auto_negotiate_start");
   prep();
   const ra_rmac_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
 
   ra_rmac_phy_lsi_t lsi = k_ra_rmac_phy_lsi_default;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_phy_lsi_get(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_lsi_get(&lsi));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_lsi_ksz8091rnb, (int32_t)lsi);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_lsi_get(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_lsi_get(&lsi));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_lsi_ksz8091rnb, lsi);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_auto_negotiate_start());
-  TEST_ASSERT_EQ((int32_t)0x1200, (int32_t)s_io.regs[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_auto_negotiate_start());
+  TEST_ASSERT_EQ(0x1200, s_io.regs[0]);
   TEST_END("lsi_get + auto_negotiate_start");
 }
 
@@ -266,13 +264,13 @@ static void test_not_initialized(void)
   TEST_BEGIN("ops fail with not_initialized when closed");
   prep();
   uint16_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_rmac_phy_mdio_read(0U, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_rmac_phy_mdio_write(0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_rmac_phy_auto_negotiate_start());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_rmac_phy_mdio_read(0U, &v));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_rmac_phy_mdio_write(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_rmac_phy_auto_negotiate_start());
   ra_rmac_phy_link_t lk = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_rmac_phy_link_status_get(&lk));
   ra_rmac_phy_lsi_t lsi = k_ra_rmac_phy_lsi_default;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_rmac_phy_lsi_get(&lsi));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_rmac_phy_lsi_get(&lsi));
   TEST_END("ops fail with not_initialized when closed");
 }
 
@@ -300,27 +298,27 @@ static void test_mcdc_link_status_link_and_an(void)
   prep();
   ra_rmac_phy_cfg_t cfg = make_cfg();
   cfg.gbit_advertise    = 0U; /* skip 1000T branch -> fall to LPA. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
 
   ra_rmac_phy_link_t lk = {};
 
   /* Vector 1: BMSR=0 -> no link, no AN -> decision F. */
   s_io.regs[1] = 0x0000U;
   s_io.regs[5] = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_no_link, (int32_t)lk.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_no_link, lk.speed);
 
   /* Vector 2: BMSR.LINK only -> C1=T, C2=F -> decision F. */
   s_io.regs[1] = 0x0004U;
   s_io.regs[5] = 0x0080U; /* 100H bit; should be ignored since decision F. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_no_link, (int32_t)lk.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_no_link, lk.speed);
 
   /* Vector 3: BMSR.LINK + AN_COMPLETE -> decision T -> resolves via LPA. */
   s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
   s_io.regs[5] = 0x0080U; /* 100H */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_100h, (int32_t)lk.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_100h, lk.speed);
 
   TEST_END("rmac_phy link_status MC/DC: link_up && auto_neg_done");
 }

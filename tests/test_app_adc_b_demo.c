@@ -54,9 +54,9 @@ static void test_adc_b_arm_ok(void)
   reset_world();
   TEST_BEGIN("adc_b_demo: configure + read channel");
   const ra_adc_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_adc_init_configured(&cfg));
   uint16_t raw = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_adc_read_channel((uint8_t)k_test_adc_b_channel, &raw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_channel((uint8_t)k_test_adc_b_channel, &raw));
   TEST_END("adc_b_demo: configure + read channel");
 }
 
@@ -87,7 +87,7 @@ static void test_adc_b_read_null_out(void)
   reset_world();
   TEST_BEGIN("adc_b_demo: NULL out_raw rejected");
   const ra_adc_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_adc_init_configured(&cfg));
   TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_b_channel, nullptr) != k_ra_ok);
   TEST_END("adc_b_demo: NULL out_raw rejected");
 }
@@ -104,7 +104,7 @@ static void test_adc_b_bad_channel(void)
   reset_world();
   TEST_BEGIN("adc_b_demo: bad channel rejected");
   const ra_adc_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_adc_init_configured(&cfg));
   uint16_t raw = 0U;
   TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_b_channel_oor, &raw) != k_ra_ok);
   TEST_END("adc_b_demo: bad channel rejected");

@@ -53,7 +53,7 @@ static ra_usb_hcdc_device_t s_test_hcdc_attach_device;
 static void test_hcdc_on_attach(void* ctx, const ra_usb_hcdc_device_t* device)
 {
   s_test_hcdc_attach_ctx = (uintptr_t)ctx;
-  if (device != NULL) {
+  if (device != nullptr) {
     s_test_hcdc_attach_device = *device;
   }
 }
@@ -85,9 +85,8 @@ static void test_hcdc_pfs_routes_vbus_sense(void)
   reset_world();
   TEST_BEGIN("usb_host_cdc_echo: PFS routes USBHS_VBUS sense");
   const ra_port_pin_t pin = (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(pin, (ra_psel_t)k_test_hcdc_psel_usbhs, "test.vbus_sns"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(pin, (ra_psel_t)k_test_hcdc_psel_usbhs, "test.vbus_sns"));
   TEST_END("usb_host_cdc_echo: PFS routes USBHS_VBUS sense");
 }
 
@@ -101,7 +100,7 @@ static void test_hcdc_init_high_speed(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_cdc_echo: hcdc_init HS");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hcdc_init(k_ra_usb_speed_hs));
   TEST_END("usb_host_cdc_echo: hcdc_init HS");
 }
 
@@ -116,10 +115,9 @@ static void test_hcdc_init_callback_lineconfig_chain(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_cdc_echo: init + attach_cb + set_line_coding");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_init(k_ra_usb_speed_hs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hcdc_attach_callback(test_hcdc_on_attach, (void*)k_test_hcdc_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hcdc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hcdc_attach_callback(test_hcdc_on_attach, (void*)k_test_hcdc_ctx_token));
   ra_err_t err = ra_usb_hcdc_set_line_coding((uint32_t)k_test_hcdc_baud,
                                              k_ra_hcdc_parity_none,
                                              k_ra_hcdc_stop_1);
@@ -140,7 +138,7 @@ static void test_hcdc_recv_then_send_shape(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_cdc_echo: recv + send call-shape");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hcdc_init(k_ra_usb_speed_hs));
   uint8_t  buf[k_test_hcdc_buf_bytes];
   uint16_t got = 0U;
   ra_err_t err = ra_usb_hcdc_recv(buf, (uint16_t)k_test_hcdc_buf_bytes, &got);
@@ -167,8 +165,7 @@ static void test_hcdc_init_bad_speed_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_cdc_echo: hcdc_init rejects bogus speed");
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hcdc_init((ra_usb_speed_t)k_test_hcdc_bogus_speed));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hcdc_init((ra_usb_speed_t)k_test_hcdc_bogus_speed));
   TEST_END("usb_host_cdc_echo: hcdc_init rejects bogus speed");
 }
 
@@ -181,7 +178,7 @@ static void test_hcdc_close_before_init_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_cdc_echo: hcdc_close before init rejected");
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hcdc_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hcdc_close());
   TEST_END("usb_host_cdc_echo: hcdc_close before init rejected");
 }
 

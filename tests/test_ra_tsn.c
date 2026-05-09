@@ -71,15 +71,15 @@ static void test_init_happy(void)
   (void)ra_mstp_init();
 
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
   volatile r_tsn_ctrl_regs_t* reg = ra_tsn();
   /* Both TSEN and TSOE must be set after init. */
   TEST_ASSERT((reg->TSCR & (uint8_t)k_ra_tscr_mask_tsen) != 0U);
   TEST_ASSERT((reg->TSCR & (uint8_t)k_ra_tscr_mask_tsoe) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->TSCR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_deinit());
+  TEST_ASSERT_EQ(0, reg->TSCR);
   TEST_END("tsn init happy");
 }
 
@@ -95,7 +95,7 @@ static void test_init_null_cfg(void)
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_tsn_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_tsn_init(nullptr));
   TEST_END("tsn init null cfg");
 }
 
@@ -113,7 +113,7 @@ static void test_init_bad_stab(void)
 
   ra_tsn_config_t cfg = make_cfg();
   cfg.stab_us         = (uint16_t)k_ra_tsn_test_stab_below;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tsn_init(&cfg));
   TEST_END("tsn init bad stab");
 }
 
@@ -132,7 +132,7 @@ static void test_init_bad_high_ref(void)
   ra_tsn_config_t cfg = make_cfg();
   /* Pretend 80 degC reference -- not a supported part-number trim. */
   cfg.high_ref_degc = (ra_tsn_cal_temp_t)80;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tsn_init(&cfg));
   TEST_END("tsn init bad high ref");
 }
 
@@ -149,16 +149,15 @@ static void test_read_raw_masks_to_12_bits(void)
   (void)ra_mstp_init();
 
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
   uint16_t code = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_tsn_read_raw((uint16_t)k_ra_tsn_test_raw_above_12b, &code));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_read_raw((uint16_t)k_ra_tsn_test_raw_above_12b, &code));
   /* 0xF000 -> masked to 0x000 (top 4 bits dropped). */
-  TEST_ASSERT_EQ((int32_t)0x000U, (int32_t)code);
+  TEST_ASSERT_EQ(0x000U, code);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_read_raw(0x0FFFU, &code));
-  TEST_ASSERT_EQ((int32_t)0x0FFFU, (int32_t)code);
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_read_raw(0x0FFFU, &code));
+  TEST_ASSERT_EQ(0x0FFFU, code);
   TEST_END("tsn read_raw masks to 12 bits");
 }
 
@@ -175,9 +174,9 @@ static void test_read_raw_null_out(void)
   (void)ra_mstp_init();
 
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_tsn_read_raw(0x100U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_tsn_read_raw(0x100U, nullptr));
   TEST_END("tsn read_raw null out");
 }
 
@@ -197,7 +196,7 @@ static void test_read_raw_before_init(void)
   (void)ra_tsn_deinit();
 
   uint16_t code = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_tsn_read_raw(0x100U, &code));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_tsn_read_raw(0x100U, &code));
   TEST_END("tsn read_raw before init");
 }
 
@@ -215,13 +214,12 @@ static void test_convert_at_high_ref(void)
 
   inject_cal_words((uint32_t)k_ra_tsn_test_cal_hi_125, (uint32_t)k_ra_tsn_test_cal_lo_n40);
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
   int32_t milli = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_tsn_convert_to_milli_c((uint16_t)k_ra_tsn_test_raw_at_125, &milli));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_convert_to_milli_c((uint16_t)k_ra_tsn_test_raw_at_125, &milli));
   /* raw == cal_hi -> T = T1 = 125 degC = 125000 milli-C. */
-  TEST_ASSERT_EQ((int32_t)125000, milli);
+  TEST_ASSERT_EQ(125000, milli);
   TEST_END("tsn convert at high ref returns 125000 mC");
 }
 
@@ -239,13 +237,12 @@ static void test_convert_at_low_ref(void)
 
   inject_cal_words((uint32_t)k_ra_tsn_test_cal_hi_125, (uint32_t)k_ra_tsn_test_cal_lo_n40);
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
   int32_t milli = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_tsn_convert_to_milli_c((uint16_t)k_ra_tsn_test_raw_at_n40, &milli));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_convert_to_milli_c((uint16_t)k_ra_tsn_test_raw_at_n40, &milli));
   /* raw == cal_lo -> T = T2 = -40 degC = -40000 milli-C. */
-  TEST_ASSERT_EQ((int32_t)-40000, milli);
+  TEST_ASSERT_EQ(-40000, milli);
   TEST_END("tsn convert at low ref returns -40000 mC");
 }
 
@@ -263,11 +260,10 @@ static void test_convert_unprogrammed_cal_rejected(void)
 
   inject_cal_words(0U, 0U); /* both 0 -> no slope */
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
   int32_t milli = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_tsn_convert_to_milli_c(0x100U, &milli));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_tsn_convert_to_milli_c(0x100U, &milli));
   TEST_END("tsn convert refuses unprogrammed calibration");
 }
 
@@ -285,9 +281,9 @@ static void test_convert_null_out(void)
 
   inject_cal_words((uint32_t)k_ra_tsn_test_cal_hi_125, (uint32_t)k_ra_tsn_test_cal_lo_n40);
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_tsn_convert_to_milli_c(0x100U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_tsn_convert_to_milli_c(0x100U, nullptr));
   TEST_END("tsn convert null out");
 }
 
@@ -304,17 +300,17 @@ static void test_get_and_clear_status(void)
   (void)ra_mstp_init();
 
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_tscr_mask_all, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_get_status(&mask));
+  TEST_ASSERT_EQ(k_ra_tscr_mask_all, mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_clear_status());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_clear_status());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_get_status(&mask));
+  TEST_ASSERT_EQ(0, mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_tsn_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_tsn_get_status(nullptr));
   TEST_END("tsn get + clear status");
 }
 
@@ -331,10 +327,10 @@ static void test_power_transition(void)
   (void)ra_mstp_init();
 
   const ra_tsn_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_enter_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_exit_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_deinit());
   TEST_END("tsn power transition");
 }
 
@@ -364,21 +360,21 @@ static void test_mcdc_ra_tsn(void)
   (void)ra_mstp_init();
   ra_tsn_config_t cfg = make_cfg();
   cfg.high_ref_degc   = k_ra_tsn_cal_temp_high_125;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_deinit());
   cfg.high_ref_degc = k_ra_tsn_cal_temp_high_105;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_deinit());
   cfg.high_ref_degc = (ra_tsn_cal_temp_t)200;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tsn_init(&cfg));
   cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tsn_deinit());
   cfg.high_ref_degc = (ra_tsn_cal_temp_t)200;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tsn_init(&cfg));
   cfg              = make_cfg();
   cfg.low_ref_degc = (ra_tsn_cal_temp_t)0;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tsn_init(&cfg));
   TEST_END("tsn MC/DC: validate_cfg high/low ref decisions");
 }
 

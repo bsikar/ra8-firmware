@@ -213,9 +213,9 @@ static void test_compute_bad_inputs(void)
 {
   ra_touch_cal_point_t  pts[5] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   ra_touch_cal_matrix_t m      = {};
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(NULL, pts, 5U, &m));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(pts, NULL, 5U, &m));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(pts, pts, 5U, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(nullptr, pts, 5U, &m));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(pts, nullptr, 5U, &m));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(pts, pts, 5U, nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_compute(pts, pts, 2U, &m));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_compute(pts, pts, 6U, &m));
   /* All-collinear samples -> singular system. */
@@ -246,8 +246,8 @@ static void test_apply_clip_and_null(void)
 
   /* NULL guard. */
   ra_touch_cal_point_t raw = {0, 0};
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_apply(raw, NULL, 100U, 100U, &out));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_apply(raw, &m, 100U, 100U, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_apply(raw, nullptr, 100U, 100U, &out));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_apply(raw, &m, 100U, 100U, nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_apply(raw, &m, 0U, 100U, &out));
 
   /* Identity transform: clip negative to 0, clip > w-1. */
@@ -376,8 +376,8 @@ static void test_run_shim_error(void)
   TEST_ASSERT_EQ(k_ra_err_hw_error, ra_touch_cal_run(&cfg, &got));
 
   /* NULL guards on run. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(NULL, &got));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&cfg, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(nullptr, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&cfg, nullptr));
 
   /* Inset >= half panel rejected. */
   ra_touch_cal_run_cfg_t bad = cfg;
@@ -411,7 +411,7 @@ static void test_save_load_roundtrip(void)
   TEST_ASSERT_EQ('C', blob[1]);
   TEST_ASSERT_EQ('A', blob[2]);
   TEST_ASSERT_EQ('L', blob[3]);
-  TEST_ASSERT_EQ((int)k_ra_touch_cal_storage_version, blob[4]);
+  TEST_ASSERT_EQ(k_ra_touch_cal_storage_version, blob[4]);
 
   ra_touch_cal_matrix_t out = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_cal_load(blob, sizeof(blob), &out));
@@ -422,10 +422,10 @@ static void test_save_load_roundtrip(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_touch_cal_load(blob, (size_t)k_tc_blob - 1U, &out));
 
   /* NULL guard. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_save(NULL, blob, sizeof(blob)));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_save(&in, NULL, sizeof(blob)));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_load(NULL, sizeof(blob), &out));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_load(blob, sizeof(blob), NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_save(nullptr, blob, sizeof(blob)));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_save(&in, nullptr, sizeof(blob)));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_load(nullptr, sizeof(blob), &out));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_load(blob, sizeof(blob), nullptr));
 }
 
 /**
@@ -653,11 +653,11 @@ static void test_mcdc_compute_null_or3(void)
   /* V1 */
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_cal_compute(raw, scr, 3U, &got));
   /* V2 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(NULL, scr, 3U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(nullptr, scr, 3U, &got));
   /* V3 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(raw, NULL, 3U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(raw, nullptr, 3U, &got));
   /* V4 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(raw, scr, 3U, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(raw, scr, 3U, nullptr));
   TEST_END("touch_cal compute MC/DC: raw||screen||out NULL");
 }
 
@@ -685,11 +685,11 @@ static void test_mcdc_run_cb_null_or(void)
   };
   /* V2: draw=NULL */
   ra_touch_cal_run_cfg_t v2 = v1;
-  v2.draw_target            = NULL;
+  v2.draw_target            = nullptr;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&v2, &m));
   /* V3: read=NULL */
   ra_touch_cal_run_cfg_t v3 = v1;
-  v3.read_raw               = NULL;
+  v3.read_raw               = nullptr;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&v3, &m));
   /* V1 verified by test_run_full_sequence (proceeds path), but we add a
    * lightweight non-null assertion here to make the masking pair explicit:
@@ -726,9 +726,9 @@ static void test_mcdc_run_cfg_out_null_or(void)
     .read_raw      = stub_read,
   };
   /* V2 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(NULL, &m));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(nullptr, &m));
   /* V3 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&cfg, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&cfg, nullptr));
   /* V1 (decision F) verified end-to-end by test_run_full_sequence. */
   TEST_END("touch_cal run MC/DC: cfg||out NULL");
 }
@@ -770,21 +770,20 @@ static void test_mcdc_apply_run_screen_dim_pair(void)
   ra_touch_cal_point_t       out = {0, 0};
 
   /* Decision A V3: screen_height=0. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_touch_cal_apply(raw, &m, 100U, 0U, &out));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_apply(raw, &m, 100U, 0U, &out));
 
   /* Decision B V3: cfg->screen_height=0. */
   ra_touch_cal_run_cfg_t cfg = {
     .draw_target   = (ra_touch_cal_draw_target_fn_t)0x1U, /* non-null sentinels */
-    .draw_ctx      = NULL,
+    .draw_ctx      = nullptr,
     .read_raw      = (ra_touch_cal_read_raw_fn_t)0x1U,
-    .read_ctx      = NULL,
+    .read_ctx      = nullptr,
     .screen_width  = 320U,
     .screen_height = 0U,
     .inset_px      = 8U,
   };
   ra_touch_cal_matrix_t mat;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_cal_run(&cfg, &mat));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_run(&cfg, &mat));
   TEST_END("touch_cal MC/DC: apply+run screen_height==0 (C2 of OR)");
 }
 

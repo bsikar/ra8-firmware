@@ -183,7 +183,7 @@ static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_pmsc_init FS returns k_ra_ok");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
   TEST_END("ra_usb_pmsc_init FS returns k_ra_ok");
 }
 
@@ -197,7 +197,7 @@ static void test_init_hs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_pmsc_init HS returns k_ra_ok");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_hs));
   TEST_END("ra_usb_pmsc_init HS returns k_ra_ok");
 }
 
@@ -211,7 +211,7 @@ static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_pmsc_init rejects bogus speed");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pmsc_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pmsc_init((ra_usb_speed_t)9U));
   TEST_END("ra_usb_pmsc_init rejects bogus speed");
 }
 
@@ -225,7 +225,7 @@ static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_pmsc_close before init returns invalid_state");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pmsc_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pmsc_close());
   TEST_END("ra_usb_pmsc_close before init returns invalid_state");
 }
 
@@ -244,15 +244,14 @@ static void test_pre_init_guards(void)
   uint32_t                 data_len                 = 0U;
   ra_usb_pmsc_csw_status_t status                   = k_ra_pmsc_csw_status_passed;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pmsc_step());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pmsc_feed_cbw(buf));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pmsc_step());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pmsc_feed_cbw(buf));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_pmsc_dispatch_command(buf, (uint32_t)k_test_pmsc_cbw_len, &data_len, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_pmsc_build_csw(k_ra_pmsc_csw_status_passed, 0U, buf));
+    k_ra_err_invalid_state,
+    ra_usb_pmsc_dispatch_command(buf, (uint32_t)k_test_pmsc_cbw_len, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_pmsc_build_csw(k_ra_pmsc_csw_status_passed, 0U, buf));
 
   TEST_END("attach_storage / step / feed_cbw / dispatch / build_csw reject pre-init");
 }
@@ -267,17 +266,17 @@ static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("step / feed_cbw / dispatch reject pre-attach (post-init)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
 
   uint8_t                  buf[k_test_pmsc_cbw_len] = {};
   uint32_t                 data_len                 = 0U;
   ra_usb_pmsc_csw_status_t status                   = k_ra_pmsc_csw_status_passed;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pmsc_step());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pmsc_feed_cbw(buf));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pmsc_step());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pmsc_feed_cbw(buf));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_pmsc_dispatch_command(buf, (uint32_t)k_test_pmsc_cbw_len, &data_len, &status));
+    k_ra_err_invalid_state,
+    ra_usb_pmsc_dispatch_command(buf, (uint32_t)k_test_pmsc_cbw_len, &data_len, &status));
 
   TEST_END("step / feed_cbw / dispatch reject pre-attach (post-init)");
 }
@@ -292,28 +291,28 @@ static void test_attach_storage_null_validation(void)
 {
   TEST_BEGIN("attach_storage rejects NULL struct + NULL callbacks");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pmsc_attach_storage(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_attach_storage(nullptr));
 
   ra_usb_pmsc_storage_t bad = s_test_storage;
   bad.read_block            = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pmsc_attach_storage(&bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_attach_storage(&bad));
 
   bad             = s_test_storage;
   bad.write_block = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pmsc_attach_storage(&bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_attach_storage(&bad));
 
   bad              = s_test_storage;
   bad.get_capacity = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pmsc_attach_storage(&bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_attach_storage(&bad));
 
   bad             = s_test_storage;
   bad.get_inquiry = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pmsc_attach_storage(&bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_attach_storage(&bad));
 
   /* All four non-NULL accepted. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   TEST_END("attach_storage rejects NULL struct + NULL callbacks");
 }
@@ -328,9 +327,9 @@ static void test_feed_cbw_null_guard(void)
 {
   TEST_BEGIN("feed_cbw rejects NULL pointer");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pmsc_feed_cbw(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_feed_cbw(nullptr));
   TEST_END("feed_cbw rejects NULL pointer");
 }
 
@@ -344,8 +343,8 @@ static void test_feed_cbw_bad_signature_emits_phase_error(void)
 {
   TEST_BEGIN("feed_cbw with wrong signature -> phase-error CSW");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t bad_cbw[k_test_pmsc_cbw_len] = {};
   /* Set signature to garbage instead of 'USBC'. */
@@ -359,25 +358,24 @@ static void test_feed_cbw_bad_signature_emits_phase_error(void)
   bad_cbw[k_test_pmsc_cbw_off_tag + 2U] = 0x33U;
   bad_cbw[k_test_pmsc_cbw_off_tag + 3U] = 0x44U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pmsc_feed_cbw(bad_cbw));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pmsc_feed_cbw(bad_cbw));
 
   /* The driver should now be parked in CSW_TX with phase-error
    * status. Build the CSW and confirm its layout. */
   uint8_t csw[k_test_pmsc_csw_len] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_build_csw(k_ra_pmsc_csw_status_phase_error, 0U, csw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_build_csw(k_ra_pmsc_csw_status_phase_error, 0U, csw));
   /* dCSWSignature = 'USBS' little-endian. */
-  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)csw[k_test_pmsc_csw_off_signature + 0U]);
-  TEST_ASSERT_EQ((int32_t)0x53U, (int32_t)csw[k_test_pmsc_csw_off_signature + 1U]);
-  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)csw[k_test_pmsc_csw_off_signature + 2U]);
-  TEST_ASSERT_EQ((int32_t)0x53U, (int32_t)csw[k_test_pmsc_csw_off_signature + 3U]);
+  TEST_ASSERT_EQ(0x55U, csw[k_test_pmsc_csw_off_signature + 0U]);
+  TEST_ASSERT_EQ(0x53U, csw[k_test_pmsc_csw_off_signature + 1U]);
+  TEST_ASSERT_EQ(0x42U, csw[k_test_pmsc_csw_off_signature + 2U]);
+  TEST_ASSERT_EQ(0x53U, csw[k_test_pmsc_csw_off_signature + 3U]);
   /* Tag echo. */
-  TEST_ASSERT_EQ((int32_t)0x11U, (int32_t)csw[k_test_pmsc_csw_off_tag + 0U]);
-  TEST_ASSERT_EQ((int32_t)0x22U, (int32_t)csw[k_test_pmsc_csw_off_tag + 1U]);
-  TEST_ASSERT_EQ((int32_t)0x33U, (int32_t)csw[k_test_pmsc_csw_off_tag + 2U]);
-  TEST_ASSERT_EQ((int32_t)0x44U, (int32_t)csw[k_test_pmsc_csw_off_tag + 3U]);
+  TEST_ASSERT_EQ(0x11U, csw[k_test_pmsc_csw_off_tag + 0U]);
+  TEST_ASSERT_EQ(0x22U, csw[k_test_pmsc_csw_off_tag + 1U]);
+  TEST_ASSERT_EQ(0x33U, csw[k_test_pmsc_csw_off_tag + 2U]);
+  TEST_ASSERT_EQ(0x44U, csw[k_test_pmsc_csw_off_tag + 3U]);
   /* Status byte = phase error (0x02). */
-  TEST_ASSERT_EQ((int32_t)0x02U, (int32_t)csw[k_test_pmsc_csw_off_status]);
+  TEST_ASSERT_EQ(0x02U, csw[k_test_pmsc_csw_off_status]);
 
   TEST_END("feed_cbw with wrong signature -> phase-error CSW");
 }
@@ -392,8 +390,8 @@ static void test_inquiry_returns_backend_strings(void)
 {
   TEST_BEGIN("INQUIRY response includes backend-supplied vendor / product / revision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
@@ -401,39 +399,37 @@ static void test_inquiry_returns_backend_strings(void)
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 0xCAFEBABEU, 36U, true, 0U, cdb, 6U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                  data[k_test_pmsc_buf_capacity] = {};
   uint32_t                 data_len                       = 0U;
   ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_failed;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data,
-                                                       (uint32_t)k_test_pmsc_buf_capacity,
-                                                       &data_len,
-                                                       &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_pmsc_csw_status_passed, (int32_t)status);
-  TEST_ASSERT_EQ((int32_t)36U, (int32_t)data_len);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_storage_state.inquiry_calls);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
+  TEST_ASSERT_EQ(36U, data_len);
+  TEST_ASSERT_EQ(1U, s_storage_state.inquiry_calls);
 
   /* Vendor / product / revision starting at fixed offsets. */
-  TEST_ASSERT_EQ((int32_t)'A', (int32_t)data[8 + 0U]);
-  TEST_ASSERT_EQ((int32_t)'C', (int32_t)data[8 + 1U]);
-  TEST_ASSERT_EQ((int32_t)'M', (int32_t)data[8 + 2U]);
-  TEST_ASSERT_EQ((int32_t)'E', (int32_t)data[8 + 3U]);
+  TEST_ASSERT_EQ('A', data[8 + 0U]);
+  TEST_ASSERT_EQ('C', data[8 + 1U]);
+  TEST_ASSERT_EQ('M', data[8 + 2U]);
+  TEST_ASSERT_EQ('E', data[8 + 3U]);
 
-  TEST_ASSERT_EQ((int32_t)'T', (int32_t)data[16 + 0U]);
-  TEST_ASSERT_EQ((int32_t)'E', (int32_t)data[16 + 1U]);
-  TEST_ASSERT_EQ((int32_t)'S', (int32_t)data[16 + 2U]);
-  TEST_ASSERT_EQ((int32_t)'T', (int32_t)data[16 + 3U]);
+  TEST_ASSERT_EQ('T', data[16 + 0U]);
+  TEST_ASSERT_EQ('E', data[16 + 1U]);
+  TEST_ASSERT_EQ('S', data[16 + 2U]);
+  TEST_ASSERT_EQ('T', data[16 + 3U]);
 
-  TEST_ASSERT_EQ((int32_t)'1', (int32_t)data[32 + 0U]);
-  TEST_ASSERT_EQ((int32_t)'.', (int32_t)data[32 + 1U]);
-  TEST_ASSERT_EQ((int32_t)'0', (int32_t)data[32 + 2U]);
-  TEST_ASSERT_EQ((int32_t)'0', (int32_t)data[32 + 3U]);
+  TEST_ASSERT_EQ('1', data[32 + 0U]);
+  TEST_ASSERT_EQ('.', data[32 + 1U]);
+  TEST_ASSERT_EQ('0', data[32 + 2U]);
+  TEST_ASSERT_EQ('0', data[32 + 3U]);
 
   /* Byte 0: peripheral device type. Byte 1: removable bit set. */
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)data[0]);
-  TEST_ASSERT_EQ((int32_t)0x80U, (int32_t)data[1]);
+  TEST_ASSERT_EQ(0x00U, data[0]);
+  TEST_ASSERT_EQ(0x80U, data[1]);
 
   TEST_END("INQUIRY response includes backend-supplied vendor / product / revision");
 }
@@ -448,38 +444,36 @@ static void test_read_capacity_returns_count_minus_one_be(void)
 {
   TEST_BEGIN("READ_CAPACITY(10) returns block_count-1 + block_size big-endian");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[10]                  = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_read_capacity_10;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 1U, 8U, true, 0U, cdb, 10U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                  data[k_test_pmsc_buf_capacity] = {};
   uint32_t                 data_len                       = 0U;
   ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_failed;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data,
-                                                       (uint32_t)k_test_pmsc_buf_capacity,
-                                                       &data_len,
-                                                       &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_pmsc_csw_status_passed, (int32_t)status);
-  TEST_ASSERT_EQ((int32_t)8U, (int32_t)data_len);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
+  TEST_ASSERT_EQ(8U, data_len);
 
   /* k_test_pmsc_block_count = 1000 -> last LBA = 999 = 0x000003E7
    * big-endian. */
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)data[0]);
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)data[1]);
-  TEST_ASSERT_EQ((int32_t)0x03U, (int32_t)data[2]);
-  TEST_ASSERT_EQ((int32_t)0xE7U, (int32_t)data[3]);
+  TEST_ASSERT_EQ(0x00U, data[0]);
+  TEST_ASSERT_EQ(0x00U, data[1]);
+  TEST_ASSERT_EQ(0x03U, data[2]);
+  TEST_ASSERT_EQ(0xE7U, data[3]);
   /* Block size 512 = 0x00000200 big-endian. */
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)data[4]);
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)data[5]);
-  TEST_ASSERT_EQ((int32_t)0x02U, (int32_t)data[6]);
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)data[7]);
+  TEST_ASSERT_EQ(0x00U, data[4]);
+  TEST_ASSERT_EQ(0x00U, data[5]);
+  TEST_ASSERT_EQ(0x02U, data[6]);
+  TEST_ASSERT_EQ(0x00U, data[7]);
 
   TEST_END("READ_CAPACITY(10) returns block_count-1 + block_size big-endian");
 }
@@ -494,8 +488,8 @@ static void test_read10_calls_backend_and_returns_512(void)
 {
   TEST_BEGIN("READ(10) happy path -- backend produces 512 bytes");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   /* READ(10) at LBA 5, count 1. */
   uint8_t cdb[10]                  = {};
@@ -504,24 +498,22 @@ static void test_read10_calls_backend_and_returns_512(void)
   cdb[8]                           = 1U; /* count low byte. */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 2U, 512U, true, 0U, cdb, 10U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                  data[k_test_pmsc_buf_capacity] = {};
   uint32_t                 data_len                       = 0U;
   ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_failed;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data,
-                                                       (uint32_t)k_test_pmsc_buf_capacity,
-                                                       &data_len,
-                                                       &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_pmsc_csw_status_passed, (int32_t)status);
-  TEST_ASSERT_EQ((int32_t)512U, (int32_t)data_len);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_storage_state.read_calls);
-  TEST_ASSERT_EQ((int32_t)5U, (int32_t)s_storage_state.last_lba);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_storage_state.last_block_count);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
+  TEST_ASSERT_EQ(512U, data_len);
+  TEST_ASSERT_EQ(1U, s_storage_state.read_calls);
+  TEST_ASSERT_EQ(5U, s_storage_state.last_lba);
+  TEST_ASSERT_EQ(1U, s_storage_state.last_block_count);
   /* Read fill byte from stub propagated. */
-  TEST_ASSERT_EQ((int32_t)0xA5U, (int32_t)data[0]);
-  TEST_ASSERT_EQ((int32_t)0xA5U, (int32_t)data[511]);
+  TEST_ASSERT_EQ(0xA5U, data[0]);
+  TEST_ASSERT_EQ(0xA5U, data[511]);
 
   TEST_END("READ(10) happy path -- backend produces 512 bytes");
 }
@@ -536,8 +528,8 @@ static void test_write10_calls_backend(void)
 {
   TEST_BEGIN("WRITE(10) happy path -- backend receives 512 bytes");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   /* WRITE(10) at LBA 7, count 1. */
   uint8_t cdb[10]                  = {};
@@ -546,7 +538,7 @@ static void test_write10_calls_backend(void)
   cdb[8]                           = 1U;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 3U, 512U, false, 0U, cdb, 10U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
 
   /* The data buffer holds the host-supplied payload; pre-fill it so
    * the test can confirm the backend received it. */
@@ -556,17 +548,15 @@ static void test_write10_calls_backend(void)
   }
   uint32_t                 data_len = 0U;
   ra_usb_pmsc_csw_status_t status   = k_ra_pmsc_csw_status_failed;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data,
-                                                       (uint32_t)k_test_pmsc_buf_capacity,
-                                                       &data_len,
-                                                       &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_pmsc_csw_status_passed, (int32_t)status);
-  TEST_ASSERT_EQ((int32_t)512U, (int32_t)data_len);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_storage_state.write_calls);
-  TEST_ASSERT_EQ((int32_t)7U, (int32_t)s_storage_state.last_lba);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_storage_state.last_block_count);
-  TEST_ASSERT_EQ((int32_t)0x5AU, (int32_t)s_storage_state.last_write_byte);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
+  TEST_ASSERT_EQ(512U, data_len);
+  TEST_ASSERT_EQ(1U, s_storage_state.write_calls);
+  TEST_ASSERT_EQ(7U, s_storage_state.last_lba);
+  TEST_ASSERT_EQ(1U, s_storage_state.last_block_count);
+  TEST_ASSERT_EQ(0x5AU, s_storage_state.last_write_byte);
 
   TEST_END("WRITE(10) happy path -- backend receives 512 bytes");
 }
@@ -581,25 +571,23 @@ static void test_test_unit_ready_no_data_phase(void)
 {
   TEST_BEGIN("TEST_UNIT_READY produces zero-byte data phase + passed CSW");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_test_unit_ready;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 4U, 0U, true, 0U, cdb, 6U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                  data[k_test_pmsc_buf_capacity] = {};
   uint32_t                 data_len                       = 0xFFU;
   ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_failed;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data,
-                                                       (uint32_t)k_test_pmsc_buf_capacity,
-                                                       &data_len,
-                                                       &status));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)data_len);
-  TEST_ASSERT_EQ((int32_t)k_ra_pmsc_csw_status_passed, (int32_t)status);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(0U, data_len);
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
 
   TEST_END("TEST_UNIT_READY produces zero-byte data phase + passed CSW");
 }
@@ -614,25 +602,23 @@ static void test_unsupported_opcode_fails(void)
 {
   TEST_BEGIN("Unsupported SCSI opcode -> CSW status FAILED");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[10]                  = {};
   cdb[0]                           = 0xCCU; /* not a SCSI opcode the driver knows */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 5U, 0U, true, 0U, cdb, 10U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                  data[k_test_pmsc_buf_capacity] = {};
   uint32_t                 data_len                       = 0U;
   ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_passed;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data,
-                                                       (uint32_t)k_test_pmsc_buf_capacity,
-                                                       &data_len,
-                                                       &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_pmsc_csw_status_failed, (int32_t)status);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)data_len);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_failed, status);
+  TEST_ASSERT_EQ(0U, data_len);
 
   TEST_END("Unsupported SCSI opcode -> CSW status FAILED");
 }
@@ -647,14 +633,14 @@ static void test_step_state_machine_loops(void)
 {
   TEST_BEGIN("step transitions through phases and lands back at IDLE");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   /* From IDLE the step machine should advance without errors. The
    * starter just verifies we can pump it without tripping a state
    * guard. */
   for (uint8_t i = 0U; i < 8U; ++i) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_step());
+    TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_step());
   }
 
   TEST_END("step transitions through phases and lands back at IDLE");
@@ -670,18 +656,15 @@ static void test_dispatch_null_arg_rejection(void)
 {
   TEST_BEGIN("dispatch_command rejects NULL output pointers");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_attach_storage(&s_test_storage));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t                  data[16] = {};
   uint32_t                 dl       = 0U;
   ra_usb_pmsc_csw_status_t status   = k_ra_pmsc_csw_status_passed;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_pmsc_dispatch_command(nullptr, 16U, &dl, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data, 16U, nullptr, &status));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_pmsc_dispatch_command(data, 16U, &dl, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_dispatch_command(nullptr, 16U, &dl, &status));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_dispatch_command(data, 16U, nullptr, &status));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pmsc_dispatch_command(data, 16U, &dl, nullptr));
   TEST_END("dispatch_command rejects NULL output pointers");
 }
 
@@ -695,9 +678,9 @@ static void test_build_csw_null_guard(void)
 {
   TEST_BEGIN("build_csw rejects NULL output");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_pmsc_build_csw(k_ra_pmsc_csw_status_passed, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_usb_pmsc_build_csw(k_ra_pmsc_csw_status_passed, 0U, nullptr));
   TEST_END("build_csw rejects NULL output");
 }
 
@@ -720,11 +703,11 @@ static void test_mcdc_pmsc(void)
 {
   TEST_BEGIN("pmsc MC/DC: init speed gate");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_hs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pmsc_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pmsc_init((ra_usb_speed_t)9U));
   TEST_END("pmsc MC/DC: init speed gate");
 }
 

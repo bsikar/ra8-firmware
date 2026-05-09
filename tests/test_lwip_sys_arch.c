@@ -131,7 +131,7 @@ static void test_mcdc_sys_arch_decisions_documented(void)
   /* Sentinel: documents that the vector tables above remain in sync
    * with port/lwip/arch/sys_arch.c. Re-validate this list whenever a
    * decision is added/removed in that file. */
-  TEST_ASSERT_EQ((int32_t)k_lwip_sys_arch_decision_count, (int32_t)15);
+  TEST_ASSERT_EQ(k_lwip_sys_arch_decision_count, 15);
   TEST_END("mcdc sys_arch.c (15 decisions documented; host link n/a)");
 }
 

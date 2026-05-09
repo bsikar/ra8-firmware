@@ -53,11 +53,11 @@ static void test_canfd_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("canfd_loopback: init + bitrate ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_app_channel));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_canfd_set_bitrate((uint8_t)k_test_canfd_app_channel,
-                                           (uint32_t)k_test_canfd_app_bitrate,
-                                           (uint32_t)k_test_canfd_app_bitrate));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_set_bitrate((uint8_t)k_test_canfd_app_channel,
+                                      (uint32_t)k_test_canfd_app_bitrate,
+                                      (uint32_t)k_test_canfd_app_bitrate));
   TEST_END("canfd_loopback: init + bitrate ok");
 }
 
@@ -73,7 +73,7 @@ static void test_canfd_app_loopback_bits_set(void)
 {
   reset_world();
   TEST_BEGIN("canfd_loopback: CTME / CTMS bits stamped");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_app_channel));
   volatile r_canfd_t* reg = ra_canfd((uint8_t)k_test_canfd_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
   uint32_t ctr = reg->CFDC[0].CTR;
@@ -100,11 +100,11 @@ static void test_canfd_app_round_trip(void)
 {
   reset_world();
   TEST_BEGIN("canfd_loopback: TX + RX poll round-trip");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_app_channel));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_canfd_set_bitrate((uint8_t)k_test_canfd_app_channel,
-                                           (uint32_t)k_test_canfd_app_bitrate,
-                                           (uint32_t)k_test_canfd_app_bitrate));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_set_bitrate((uint8_t)k_test_canfd_app_channel,
+                                      (uint32_t)k_test_canfd_app_bitrate,
+                                      (uint32_t)k_test_canfd_app_bitrate));
   ra_canfd_frame_t tx = {
     .id          = (uint32_t)k_test_canfd_app_id,
     .dlc         = (uint8_t)k_test_canfd_app_dlc,
@@ -113,7 +113,7 @@ static void test_canfd_app_round_trip(void)
     .is_brs      = 0U,
     .data        = {0xDEU, 0xADU, 0xBEU, 0xEFU, 0x00U, 0x11U, 0x22U, 0x33U},
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_transmit((uint8_t)k_test_canfd_app_channel, &tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_transmit((uint8_t)k_test_canfd_app_channel, &tx));
   ra_canfd_frame_t rx = {};
   /* The mock RX FIFO is empty unless explicitly seeded -- the app
    * tolerates this and toggles LED2; the API contract still holds. */
@@ -148,7 +148,7 @@ static void test_canfd_app_zero_bitrate(void)
 {
   reset_world();
   TEST_BEGIN("canfd_loopback: zero bitrate rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_canfd_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_app_channel));
   TEST_ASSERT(ra_canfd_set_bitrate((uint8_t)k_test_canfd_app_channel, 0U, 0U) != k_ra_ok);
   TEST_END("canfd_loopback: zero bitrate rejected");
 }

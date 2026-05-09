@@ -23,8 +23,8 @@ static int32_t s_complete_last_ctx = 0;
 static void reset_state(void)
 {
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
   s_complete_count    = 0;
   s_complete_last_ctx = 0;
 }
@@ -50,7 +50,7 @@ static void test_init_marks_channels_free(void)
 
   for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dma_channel_count; ++ch) {
     bool busy = true;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_channel_is_busy(ch, &busy));
+    TEST_ASSERT_EQ(k_ra_ok, ra_dma_channel_is_busy(ch, &busy));
     TEST_ASSERT(!busy);
   }
   TEST_END("ra_dma_init: all channels free");
@@ -83,11 +83,11 @@ static void test_request_allocates_channel_zero(void)
   };
 
   uint8_t ch = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_request(&req, &ch));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ch);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(0, ch);
 
   bool busy = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_channel_is_busy(ch, &busy));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_channel_is_busy(ch, &busy));
   TEST_ASSERT(busy);
   TEST_END("ra_dma_request: first allocation gets channel 0");
 }
@@ -111,7 +111,7 @@ static void test_request_rejects_zero_count(void)
     .width    = k_ra_dmac_width_byte,
   };
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_dma_request(&req, &ch));
   TEST_END("ra_dma_request: zero count rejected");
 }
 
@@ -127,7 +127,7 @@ static void test_request_null_ptrs(void)
   reset_state();
 
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_dma_request(nullptr, &ch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dma_request(nullptr, &ch));
 
   uint8_t                buf[4] = {};
   const ra_dma_request_t req    = {
@@ -136,7 +136,7 @@ static void test_request_null_ptrs(void)
     .count    = 1U,
     .width    = k_ra_dmac_width_byte,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_dma_request(&req, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dma_request(&req, nullptr));
   TEST_END("ra_dma_request: null pointers rejected");
 }
 
@@ -159,16 +159,16 @@ static void test_release_round_trip(void)
     .width    = k_ra_dmac_width_byte,
   };
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_request(&req, &ch));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_release(ch));
 
   bool busy = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_channel_is_busy(ch, &busy));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_channel_is_busy(ch, &busy));
   TEST_ASSERT(!busy);
 
   /* Second release is an error. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_dma_release(ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_dma_release(ch));
   TEST_END("ra_dma_release: channel returns to free pool");
 }
 
@@ -182,7 +182,7 @@ static void test_release_bad_channel(void)
 {
   TEST_BEGIN("ra_dma_release: out-of-range rejected");
   reset_state();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_dma_release(99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_dma_release(99U));
   TEST_END("ra_dma_release: out-of-range rejected");
 }
 
@@ -207,10 +207,10 @@ static void test_channel_exhaustion(void)
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra_dma_channel_count; ++i) {
     uint8_t ch = 0U;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_request(&req, &ch));
+    TEST_ASSERT_EQ(k_ra_ok, ra_dma_request(&req, &ch));
   }
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem, (int32_t)ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_dma_request(&req, &ch));
 
   TEST_END("ra_dma_request: no-mem when all channels busy");
 }
@@ -237,12 +237,12 @@ static void test_sim_dma_memcpy_byte(void)
     .dst_inc  = true,
   };
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_request(&req, &ch));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_memcpy(ch));
 
-  TEST_ASSERT_EQ((int32_t)0x10, (int32_t)dst[0]);
-  TEST_ASSERT_EQ((int32_t)0x60, (int32_t)dst[5]);
+  TEST_ASSERT_EQ(0x10, dst[0]);
+  TEST_ASSERT_EQ(0x60, dst[5]);
   TEST_END("ra_sim_dma_memcpy: byte transfer");
 }
 
@@ -268,12 +268,12 @@ static void test_sim_dma_memcpy_word(void)
     .dst_inc  = true,
   };
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_request(&req, &ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_memcpy(ch));
 
-  TEST_ASSERT_EQ((int64_t)0xDEADBEEFU, (int64_t)dst[0]);
-  TEST_ASSERT_EQ((int64_t)0xCAFEBABEU, (int64_t)dst[1]);
-  TEST_ASSERT_EQ((int64_t)0x12345678U, (int64_t)dst[2]);
+  TEST_ASSERT_EQ(0xDEADBEEFU, dst[0]);
+  TEST_ASSERT_EQ(0xCAFEBABEU, dst[1]);
+  TEST_ASSERT_EQ(0x12345678U, dst[2]);
   TEST_END("ra_sim_dma_memcpy: word transfer");
 }
 
@@ -299,11 +299,11 @@ static void test_sim_dma_complete_fires_callback(void)
     .ctx         = &ctx_val,
   };
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_request(&req, &ch));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(ch));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_complete_count);
-  TEST_ASSERT_EQ((int32_t)0xABCD, (int32_t)s_complete_last_ctx);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_complete(ch));
+  TEST_ASSERT_EQ(1, s_complete_count);
+  TEST_ASSERT_EQ(0xABCD, s_complete_last_ctx);
   TEST_END("ra_sim_dma_complete: callback invoked with ctx");
 }
 
@@ -317,10 +317,10 @@ static void test_dma_request_without_init_fails(void)
 {
   TEST_BEGIN("ra_dma_request: not-initialised rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
   /* Deinit explicitly so s_initialized is false. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_deinit());
 
   uint8_t                buf[4] = {};
   const ra_dma_request_t req    = {
@@ -330,7 +330,7 @@ static void test_dma_request_without_init_fails(void)
     .width    = k_ra_dmac_width_byte,
   };
   uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_dma_request(&req, &ch));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_dma_request(&req, &ch));
   TEST_END("ra_dma_request: not-initialised rejected");
 }
 
@@ -345,9 +345,9 @@ static void test_channel_is_busy_bad_inputs(void)
   TEST_BEGIN("ra_dma_channel_is_busy: bad inputs");
   reset_state();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_dma_channel_is_busy(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dma_channel_is_busy(0U, nullptr));
   bool busy = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_dma_channel_is_busy(99U, &busy));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_dma_channel_is_busy(99U, &busy));
   TEST_END("ra_dma_channel_is_busy: bad inputs");
 }
 

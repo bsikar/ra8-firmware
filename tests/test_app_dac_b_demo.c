@@ -58,11 +58,10 @@ static void test_dac_b_arm_ok(void)
   reset_world();
   TEST_BEGIN("dac_b_demo: configure + write mid-scale");
   const ra_dac_b_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init_configured(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dac_b_set_output_enable((uint8_t)k_test_dac_b_channel, true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable((uint8_t)k_test_dac_b_channel, true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_mid));
   TEST_END("dac_b_demo: configure + write mid-scale");
 }
 
@@ -95,9 +94,9 @@ static void test_dac_b_clamp_value(void)
   reset_world();
   TEST_BEGIN("dac_b_demo: out-of-range value clamps");
   const ra_dac_b_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init_configured(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_over));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_over));
   TEST_END("dac_b_demo: out-of-range value clamps");
 }
 
@@ -113,7 +112,7 @@ static void test_dac_b_bad_channel(void)
   reset_world();
   TEST_BEGIN("dac_b_demo: bad channel rejected");
   const ra_dac_b_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
   TEST_ASSERT(ra_dac_b_write((uint8_t)k_test_dac_b_channel_bad, (uint16_t)k_test_dac_b_mid) !=
               k_ra_ok);
   TEST_END("dac_b_demo: bad channel rejected");

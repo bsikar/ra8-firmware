@@ -53,17 +53,17 @@ static void test_init_happy(void)
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_init());
 
   ra_bscan_status_t status = {
     .initialised      = false,
     .last_instruction = k_ra_bscan_instr_extest,
     .expected_idcode  = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
   TEST_ASSERT(status.initialised);
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_instr_bypass, (int32_t)status.last_instruction);
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_test_idcode_expected, (int32_t)status.expected_idcode);
+  TEST_ASSERT_EQ(k_ra_bscan_instr_bypass, status.last_instruction);
+  TEST_ASSERT_EQ(k_ra_bscan_test_idcode_expected, status.expected_idcode);
   TEST_END("bscan init happy");
 }
 
@@ -78,11 +78,11 @@ static void test_get_idcode_happy(void)
   TEST_BEGIN("bscan get_idcode happy");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_init());
 
   uint32_t idcode = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_get_idcode(&idcode));
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_test_idcode_expected, (int32_t)idcode);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_idcode(&idcode));
+  TEST_ASSERT_EQ(k_ra_bscan_test_idcode_expected, idcode);
   TEST_END("bscan get_idcode happy");
 }
 
@@ -98,7 +98,7 @@ static void test_get_idcode_null(void)
   ra_sim_mmap_reset();
   (void)ra_bscan_init();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bscan_get_idcode(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bscan_get_idcode(nullptr));
   TEST_END("bscan get_idcode null");
 }
 
@@ -115,7 +115,7 @@ static void test_get_idcode_not_initialised(void)
   (void)ra_bscan_deinit();
 
   uint32_t idcode = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_bscan_get_idcode(&idcode));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bscan_get_idcode(&idcode));
   TEST_END("bscan get_idcode not initialised");
 }
 
@@ -130,7 +130,7 @@ static void test_get_status_null(void)
   TEST_BEGIN("bscan get_status null");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bscan_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bscan_get_status(nullptr));
   TEST_END("bscan get_status null");
 }
 
@@ -145,17 +145,17 @@ static void test_set_instruction_happy(void)
   TEST_BEGIN("bscan set_instruction happy");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_init());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_set_instruction(k_ra_bscan_instr_idcode));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_set_instruction(k_ra_bscan_instr_idcode));
 
   ra_bscan_status_t status = {
     .initialised      = false,
     .last_instruction = k_ra_bscan_instr_bypass,
     .expected_idcode  = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_get_status(&status));
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_instr_idcode, (int32_t)status.last_instruction);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_bscan_instr_idcode, status.last_instruction);
   TEST_END("bscan set_instruction happy");
 }
 
@@ -170,17 +170,14 @@ static void test_set_instruction_reserved(void)
   TEST_BEGIN("bscan set_instruction reserved");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_init());
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_bscan_set_instruction((ra_bscan_instr_t)k_ra_bscan_test_instr_reserved_2));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_bscan_set_instruction((ra_bscan_instr_t)k_ra_bscan_test_instr_reserved_4));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_bscan_set_instruction((ra_bscan_instr_t)k_ra_bscan_test_instr_reserved_a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_bscan_set_instruction((ra_bscan_instr_t)k_ra_bscan_test_instr_reserved_2));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_bscan_set_instruction((ra_bscan_instr_t)k_ra_bscan_test_instr_reserved_4));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_bscan_set_instruction((ra_bscan_instr_t)k_ra_bscan_test_instr_reserved_a));
   TEST_END("bscan set_instruction reserved");
 }
 
@@ -196,8 +193,7 @@ static void test_set_instruction_not_initialised(void)
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_bscan_set_instruction(k_ra_bscan_instr_extest));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bscan_set_instruction(k_ra_bscan_instr_extest));
   TEST_END("bscan set_instruction not initialised");
 }
 
@@ -212,18 +208,18 @@ static void test_clear_status_happy(void)
   TEST_BEGIN("bscan clear_status happy");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_set_instruction(k_ra_bscan_instr_extest));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_set_instruction(k_ra_bscan_instr_extest));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_clear_status(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_clear_status(0U));
 
   ra_bscan_status_t status = {
     .initialised      = false,
     .last_instruction = k_ra_bscan_instr_extest,
     .expected_idcode  = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_get_status(&status));
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_instr_bypass, (int32_t)status.last_instruction);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_bscan_instr_bypass, status.last_instruction);
   TEST_ASSERT(status.initialised);
   TEST_END("bscan clear_status happy");
 }
@@ -240,8 +236,7 @@ static void test_clear_status_bad_mask(void)
   ra_sim_mmap_reset();
   (void)ra_bscan_init();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bscan_clear_status((uint32_t)k_ra_bscan_test_bad_mask));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bscan_clear_status((uint32_t)k_ra_bscan_test_bad_mask));
   TEST_END("bscan clear_status bad mask");
 }
 
@@ -257,7 +252,7 @@ static void test_clear_status_not_initialised(void)
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_bscan_clear_status(0U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bscan_clear_status(0U));
   TEST_END("bscan clear_status not initialised");
 }
 
@@ -272,17 +267,17 @@ static void test_deinit_idempotent(void)
   TEST_BEGIN("bscan deinit idempotent");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_deinit());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_deinit());
 
   ra_bscan_status_t status = {
     .initialised      = true,
     .last_instruction = k_ra_bscan_instr_extest,
     .expected_idcode  = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bscan_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
   TEST_ASSERT(!status.initialised);
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_instr_bypass, (int32_t)status.last_instruction);
+  TEST_ASSERT_EQ(k_ra_bscan_instr_bypass, status.last_instruction);
   TEST_END("bscan deinit idempotent");
 }
 
@@ -299,7 +294,7 @@ static void test_idcode_constant_matches_header(void)
    * the ``k_ra_bscan_jtidr_reset`` constant in the regs header (HUM
    * 50.2.2 p 3258 fixed value 0x085D_A447). If anyone ever ports this
    * file to a different RA-family member, this assertion fires. */
-  TEST_ASSERT_EQ((int32_t)k_ra_bscan_test_idcode_expected, (int32_t)k_ra_bscan_jtidr_reset);
+  TEST_ASSERT_EQ(k_ra_bscan_test_idcode_expected, k_ra_bscan_jtidr_reset);
   TEST_END("bscan idcode constant matches header");
 }
 

@@ -81,17 +81,17 @@ static void test_master_init_happy_ch0(void)
   ra_sim_mmap_reset();
 
   const ra_err_t err = ra_spi_master_init(k_ra_spi_test_ch_zero);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_zero);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int)k_ra_spi_test_spcr_en, (int)reg->SPCR);
+  TEST_ASSERT_EQ(k_ra_spi_test_spcr_en, reg->SPCR);
   /* SPCR3.SPBR field is non-zero after init at default 1.9 MHz / 125 MHz. */
   TEST_ASSERT((reg->SPCR3 & k_ra_spcr3_mask_spbr) != 0U);
-  TEST_ASSERT_EQ(0, (int)reg->SPCR2);
-  TEST_ASSERT_EQ(0, (int)reg->SPDECR);
-  TEST_ASSERT_EQ(0, (int)reg->SPDCR);
-  TEST_ASSERT_EQ(0, (int)reg->SPDCR2);
+  TEST_ASSERT_EQ(0, reg->SPCR2);
+  TEST_ASSERT_EQ(0, reg->SPDECR);
+  TEST_ASSERT_EQ(0, reg->SPDCR);
+  TEST_ASSERT_EQ(0, reg->SPDCR2);
   TEST_END("spi master_init ch0");
 }
 
@@ -106,7 +106,7 @@ static void test_master_init_happy_ch1(void)
   TEST_BEGIN("spi master_init ch1");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_spi_master_init(k_ra_spi_test_ch_one));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_master_init(k_ra_spi_test_ch_one));
   TEST_END("spi master_init ch1");
 }
 
@@ -121,7 +121,7 @@ static void test_master_init_bad_channel(void)
   TEST_BEGIN("spi master_init bad channel");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_spi_master_init(k_ra_spi_test_ch_oor));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_master_init(k_ra_spi_test_ch_oor));
   TEST_END("spi master_init bad channel");
 }
 
@@ -136,7 +136,7 @@ static void test_master_init_huge_channel(void)
   TEST_BEGIN("spi master_init huge channel");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_spi_master_init(k_ra_spi_test_ch_huge));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_master_init(k_ra_spi_test_ch_huge));
   TEST_END("spi master_init huge channel");
 }
 
@@ -160,9 +160,8 @@ static void test_xfer8_happy_with_rx(void)
    * TX into SPDR and later reads SPDR as RX, so the "received" byte
    * echoes the transmitted byte. */
   uint8_t rx = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
-  TEST_ASSERT_EQ((int)k_ra_spi_test_tx_byte, (int)rx);
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
+  TEST_ASSERT_EQ(k_ra_spi_test_tx_byte, rx);
   TEST_END("spi xfer8 happy with rx");
 }
 
@@ -181,8 +180,8 @@ static void test_xfer8_happy_null_rx(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->SPSR = k_ra_spi_test_both;
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_spi_xfer8(k_ra_spi_test_ch_one, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_xfer8(k_ra_spi_test_ch_one, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
   TEST_END("spi xfer8 happy null rx");
 }
 
@@ -198,8 +197,8 @@ static void test_xfer8_timeout_sptef(void)
   ra_sim_mmap_reset();
 
   /* SPSR = 0 -> SPTEF never sets -> first wait times out. */
-  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout,
-                 (int)ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
   TEST_END("spi xfer8 timeout sptef");
 }
 
@@ -220,8 +219,8 @@ static void test_xfer8_timeout_sprf(void)
   reg->SPSR = k_ra_spi_test_sptef;
 
   uint8_t rx = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout,
-                 (int)ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
   TEST_END("spi xfer8 timeout sprf");
 }
 
@@ -237,8 +236,8 @@ static void test_xfer8_bad_channel(void)
   ra_sim_mmap_reset();
 
   uint8_t rx = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_spi_xfer8(k_ra_spi_test_ch_oor, (uint8_t)k_ra_spi_test_tx_byte, &rx));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_spi_xfer8(k_ra_spi_test_ch_oor, (uint8_t)k_ra_spi_test_tx_byte, &rx));
   TEST_END("spi xfer8 bad channel");
 }
 
@@ -281,7 +280,7 @@ static void test_spi_init_configured(void)
 {
   TEST_BEGIN("ra_spi_init: SPCR.SPE set");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   volatile const r_spi_regs_t* reg = ra_spi(0U);
   /* SPCR carries SPE | SCKASE | MSTR. */
   TEST_ASSERT((reg->SPCR & k_ra_spcr_mask_spe) != 0U);
@@ -290,7 +289,7 @@ static void test_spi_init_configured(void)
   TEST_ASSERT((reg->SPCR3 & k_ra_spcr3_mask_spbr) != 0U);
   /* SPCMD0.SPB encodes 8-bit frame in [20:16]. */
   const uint32_t spb_field = (reg->SPCMD[0] & k_ra_spcmd_mask_spb) >> k_ra_spcmd_bit_spb_lo;
-  TEST_ASSERT_EQ((int32_t)k_ra_spcmd_spb_8bit, (int32_t)spb_field);
+  TEST_ASSERT_EQ(k_ra_spcmd_spb_8bit, spb_field);
   TEST_END("ra_spi_init: SPCR.SPE set");
 }
 
@@ -307,16 +306,16 @@ static void test_spi_init_mode_variants(void)
   ra_spi_cfg_t cfg = k_spi_cfg;
 
   cfg.mode = k_ra_spi_mode_1;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &cfg));
   TEST_ASSERT((ra_spi(0U)->SPCMD[0] & k_ra_spcmd_mask_cpha) != 0U);
 
   cfg.mode = k_ra_spi_mode_2;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(1U, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(1U, &cfg));
   TEST_ASSERT((ra_spi(1U)->SPCMD[0] & k_ra_spcmd_mask_cpol) != 0U);
 
   cfg.mode      = k_ra_spi_mode_3;
   cfg.lsb_first = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &cfg));
   TEST_ASSERT((ra_spi(0U)->SPCMD[0] & k_ra_spcmd_mask_lsbf) != 0U);
   TEST_END("ra_spi_init: mode 1/2/3 programme SPCMD bits");
 }
@@ -331,8 +330,8 @@ static void test_spi_init_bad(void)
 {
   TEST_BEGIN("ra_spi_init: bad inputs rejected");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_spi_init(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_init(9U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_init(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_init(9U, &k_spi_cfg));
   TEST_END("ra_spi_init: bad inputs rejected");
 }
 
@@ -346,12 +345,12 @@ static void test_spi_deinit(void)
 {
   TEST_BEGIN("ra_spi_deinit: SPCR cleared, MSTP released");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit(0U));
   bool stopped = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_is_stopped(k_ra_mstp_spi0, &stopped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_is_stopped(k_ra_mstp_spi0, &stopped));
   TEST_ASSERT(stopped);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_deinit(9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_deinit(9U));
   TEST_END("ra_spi_deinit: SPCR cleared, MSTP released");
 }
 
@@ -365,14 +364,13 @@ static void test_spi_set_clock(void)
 {
   TEST_BEGIN("ra_spi_set_clock: updates SPCR3.SPBR");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   const uint32_t before_spbr = ra_spi(0U)->SPCR3 & k_ra_spcr3_mask_spbr;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_set_clock(0U, 500000U, 120000000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_set_clock(0U, 500000U, 120000000U));
   const uint32_t after_spbr = ra_spi(0U)->SPCR3 & k_ra_spcr3_mask_spbr;
   TEST_ASSERT(after_spbr != before_spbr);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_set_clock(0U, 0U, 120000000U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_set_clock(9U, 1000000U, 120000000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_set_clock(0U, 0U, 120000000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_set_clock(9U, 1000000U, 120000000U));
   TEST_END("ra_spi_set_clock: updates SPCR3.SPBR");
 }
 
@@ -386,28 +384,28 @@ static void test_spi_errors(void)
 {
   TEST_BEGIN("ra_spi_get/clear_errors");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   volatile r_spi_regs_t* reg = ra_spi(0U);
   /* Pre-arm SPSR with all four error flags asserted (OVRF/MODF/PERF/UDRF). */
   reg->SPSR = k_ra_spsr_mask_errs;
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_get_errors(0U, &mask));
-  TEST_ASSERT_EQ((int32_t)(k_ra_spi_err_overrun | k_ra_spi_err_mode | k_ra_spi_err_parity |
-                           k_ra_spi_err_underrun),
-                 (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_get_errors(0U, &mask));
+  TEST_ASSERT_EQ(
+    (k_ra_spi_err_overrun | k_ra_spi_err_mode | k_ra_spi_err_parity | k_ra_spi_err_underrun),
+    mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_clear_errors(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_clear_errors(0U));
   /* Drivers cleared via SPSRC; the host mock backs both SPSR and SPSRC
    * with ordinary RAM so we manually clear SPSR to mirror the HW
    * write-1-clears behaviour for the get_errors readback. */
   reg->SPSR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_get_errors(0U, &mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_spi_err_none, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_get_errors(0U, &mask));
+  TEST_ASSERT_EQ(k_ra_spi_err_none, mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_spi_get_errors(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_get_errors(9U, &mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_clear_errors(9U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_get_errors(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_get_errors(9U, &mask));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_clear_errors(9U));
   TEST_END("ra_spi_get/clear_errors");
 }
 
@@ -421,21 +419,20 @@ static void test_spi_attach(void)
 {
   TEST_BEGIN("ra_spi_attach_transfer_handler: dispatch fires callback");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_attach_transfer_handler(0U, stub_spi_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_attach_transfer_handler(0U, stub_spi_cb, nullptr));
 
   /* Fake an overrun flag (SPSR.OVRF, bit 24) and fire ERI. */
   ra_spi(0U)->SPSR = k_ra_spsr_mask_ovrf;
   ra_spi_dispatch_spei(0U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_spi_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_spi_err_overrun, (int32_t)s_spi_cb_err);
+  TEST_ASSERT_EQ(1, s_spi_cb_count);
+  TEST_ASSERT_EQ(k_ra_spi_err_overrun, s_spi_cb_err);
 
   /* Zero-mask dispatch is a no-op. */
   ra_spi(0U)->SPSR = 0U;
   s_spi_cb_count   = 0;
   ra_spi_dispatch_spei(0U);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_spi_cb_count);
+  TEST_ASSERT_EQ(0, s_spi_cb_count);
 
   /* Out-of-range is a no-op. */
   ra_spi_dispatch_spei(9U);
@@ -443,8 +440,7 @@ static void test_spi_attach(void)
   ra_spi_dispatch_spti(9U);
   ra_spi_dispatch_spri(0U);
   ra_spi_dispatch_spri(9U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_attach_transfer_handler(9U, stub_spi_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_attach_transfer_handler(9U, stub_spi_cb, nullptr));
   TEST_END("ra_spi_attach_transfer_handler: dispatch fires callback");
 }
 
@@ -458,14 +454,14 @@ static void test_spi_power(void)
 {
   TEST_BEGIN("ra_spi_enter_stop / exit_stop");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(1U, &k_spi_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_enter_stop(1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(1U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_enter_stop(1U));
   bool stopped = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_is_stopped(k_ra_mstp_spi1, &stopped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_is_stopped(k_ra_mstp_spi1, &stopped));
   TEST_ASSERT(stopped);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_exit_stop(1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_enter_stop(9U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_exit_stop(9U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_exit_stop(1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_enter_stop(9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_exit_stop(9U));
   TEST_END("ra_spi_enter_stop / exit_stop");
 }
 
@@ -487,22 +483,22 @@ static void test_spi_write_dma_streams_to_spdr(void)
 {
   TEST_BEGIN("ra_spi_write_dma: buffer streams into SPDR");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
 
   const uint8_t src[] = {0x77U, 0x88U, 0x99U};
   uint8_t       dch   = 0xFFU;
   s_spi_dma_done      = 0;
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_write_dma(0U, src, (uint16_t)sizeof(src), stub_spi_dma_done, nullptr, &dch));
+    k_ra_ok,
+    ra_spi_write_dma(0U, src, (uint16_t)sizeof(src), stub_spi_dma_done, nullptr, &dch));
   TEST_ASSERT(dch < 8U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_memcpy(dch));
   volatile const r_spi_regs_t* reg = ra_spi(0U);
-  TEST_ASSERT_EQ((int32_t)0x99U, (int32_t)(reg->SPDR & 0xFFU));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(0x99U, (reg->SPDR & 0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_complete(dch));
   TEST_ASSERT_EQ(1, s_spi_dma_done);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_release(dch));
   TEST_END("ra_spi_write_dma: buffer streams into SPDR");
 }
 
@@ -516,8 +512,8 @@ static void test_spi_read_dma_streams_from_spdr(void)
 {
   TEST_BEGIN("ra_spi_read_dma: SPDR streams into buffer");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
 
   volatile r_spi_regs_t* reg = ra_spi(0U);
   reg->SPDR                  = 0x66U;
@@ -525,15 +521,14 @@ static void test_spi_read_dma_streams_from_spdr(void)
   uint8_t out[2] = {0U, 0U};
   uint8_t dch    = 0xFFU;
   s_spi_dma_done = 0;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_read_dma(0U, out, (uint16_t)sizeof(out), stub_spi_dma_done, nullptr, &dch));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
-  TEST_ASSERT_EQ((int32_t)0x66U, (int32_t)out[0]);
-  TEST_ASSERT_EQ((int32_t)0x66U, (int32_t)out[1]);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_read_dma(0U, out, (uint16_t)sizeof(out), stub_spi_dma_done, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ(0x66U, out[0]);
+  TEST_ASSERT_EQ(0x66U, out[1]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_complete(dch));
   TEST_ASSERT_EQ(1, s_spi_dma_done);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_release(dch));
   TEST_END("ra_spi_read_dma: SPDR streams into buffer");
 }
 
@@ -547,29 +542,21 @@ static void test_spi_dma_arg_validation(void)
 {
   TEST_BEGIN("ra_spi_{write,read}_dma: arg validation");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
 
   uint8_t       dch    = 0U;
   const uint8_t src[]  = {0x12U};
   uint8_t       dst[1] = {0U};
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_write_dma(99U, src, 1U, nullptr, nullptr, &dch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_read_dma(99U, dst, 1U, nullptr, nullptr, &dch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_write_dma(0U, src, 0U, nullptr, nullptr, &dch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_read_dma(0U, dst, 0U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_write_dma(99U, src, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_read_dma(99U, dst, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_write_dma(0U, src, 0U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_read_dma(0U, dst, 0U, nullptr, nullptr, &dch));
   TEST_END("ra_spi_{write,read}_dma: arg validation");
 }
 
@@ -615,18 +602,17 @@ static void test_spi_write_8bit_runs_loop(void)
 {
   TEST_BEGIN("ra_spi_write: 8-bit, 16-byte payload");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   prep_spsr_both(0U);
 
   uint8_t tx[k_ra_spi_test_buf16];
   for (uint32_t i = 0U; i < k_ra_spi_test_buf16; i++) {
     tx[i] = (uint8_t)(k_ra_spi_test_seed8 + i);
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write(0U, tx, k_ra_spi_test_buf16, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write(0U, tx, k_ra_spi_test_buf16, k_ra_spi_width_8));
   /* The mock retains the last byte written into SPDR. */
   volatile const r_spi_regs_t* reg = ra_spi(0U);
-  TEST_ASSERT_EQ((int32_t)tx[k_ra_spi_test_buf16 - 1U], (int32_t)(reg->SPDR & 0xFFU));
+  TEST_ASSERT_EQ(tx[k_ra_spi_test_buf16 - 1U], (reg->SPDR & 0xFFU));
   TEST_END("ra_spi_write: 8-bit, 16-byte payload");
 }
 
@@ -640,7 +626,7 @@ static void test_spi_read_8bit_runs_loop(void)
 {
   TEST_BEGIN("ra_spi_read: 8-bit, 16-byte payload");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   prep_spsr_both(0U);
 
   /* Pre-load SPDR with a known pattern; on the mock, read returns the
@@ -652,10 +638,9 @@ static void test_spi_read_8bit_runs_loop(void)
   for (uint32_t i = 0U; i < k_ra_spi_test_buf16; i++) {
     rx[i] = 0U;
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_read(0U, rx, k_ra_spi_test_buf16, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read(0U, rx, k_ra_spi_test_buf16, k_ra_spi_width_8));
   for (uint32_t i = 0U; i < k_ra_spi_test_buf16; i++) {
-    TEST_ASSERT_EQ((int32_t)0xFFU, (int32_t)rx[i]);
+    TEST_ASSERT_EQ(0xFFU, rx[i]);
   }
   TEST_END("ra_spi_read: 8-bit, 16-byte payload");
 }
@@ -670,7 +655,7 @@ static void test_spi_write_read_16bit(void)
 {
   TEST_BEGIN("ra_spi_write_read: 16-bit, 8-word full-duplex");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   prep_spsr_both(0U);
 
   uint16_t tx[k_ra_spi_test_buf8];
@@ -679,16 +664,15 @@ static void test_spi_write_read_16bit(void)
     tx[i] = (uint16_t)(k_ra_spi_test_seed16 + i);
     rx[i] = 0U;
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write_read(0U, tx, rx, k_ra_spi_test_buf8, k_ra_spi_width_16));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write_read(0U, tx, rx, k_ra_spi_test_buf8, k_ra_spi_width_16));
   /* Mock echoes TX -> RX through SPDR, so each rx[i] equals tx[i]. */
   for (uint32_t i = 0U; i < k_ra_spi_test_buf8; i++) {
-    TEST_ASSERT_EQ((int32_t)tx[i], (int32_t)rx[i]);
+    TEST_ASSERT_EQ(tx[i], rx[i]);
   }
   /* SPCMD0.SPB now encodes 16-bit. */
   volatile const r_spi_regs_t* reg = ra_spi(0U);
   const uint32_t spb_field         = (reg->SPCMD[0] & k_ra_spcmd_mask_spb) >> k_ra_spcmd_bit_spb_lo;
-  TEST_ASSERT_EQ((int32_t)k_ra_spcmd_spb_16bit, (int32_t)spb_field);
+  TEST_ASSERT_EQ(k_ra_spcmd_spb_16bit, spb_field);
   TEST_END("ra_spi_write_read: 16-bit, 8-word full-duplex");
 }
 
@@ -702,7 +686,7 @@ static void test_spi_write_read_32bit(void)
 {
   TEST_BEGIN("ra_spi_write_read: 32-bit, 4-word full-duplex");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   prep_spsr_both(0U);
 
   uint32_t tx[k_ra_spi_test_buf4];
@@ -711,14 +695,13 @@ static void test_spi_write_read_32bit(void)
     tx[i] = k_ra_spi_test_seed32 + i;
     rx[i] = 0U;
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write_read(0U, tx, rx, k_ra_spi_test_buf4, k_ra_spi_width_32));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write_read(0U, tx, rx, k_ra_spi_test_buf4, k_ra_spi_width_32));
   for (uint32_t i = 0U; i < k_ra_spi_test_buf4; i++) {
-    TEST_ASSERT_EQ((int32_t)tx[i], (int32_t)rx[i]);
+    TEST_ASSERT_EQ(tx[i], rx[i]);
   }
   volatile const r_spi_regs_t* reg = ra_spi(0U);
   const uint32_t spb_field         = (reg->SPCMD[0] & k_ra_spcmd_mask_spb) >> k_ra_spcmd_bit_spb_lo;
-  TEST_ASSERT_EQ((int32_t)k_ra_spcmd_spb_32bit, (int32_t)spb_field);
+  TEST_ASSERT_EQ(k_ra_spcmd_spb_32bit, spb_field);
   TEST_END("ra_spi_write_read: 32-bit, 4-word full-duplex");
 }
 
@@ -732,16 +715,12 @@ static void test_spi_multi_null_args(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: NULL-arg rejection");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write(0U, nullptr, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_read(0U, nullptr, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write_read(0U, nullptr, buf, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write_read(0U, buf, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_write(0U, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_read(0U, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_write_read(0U, nullptr, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_write_read(0U, buf, nullptr, 1U, k_ra_spi_width_8));
   TEST_END("ra_spi_{write,read,write_read}: NULL-arg rejection");
 }
 
@@ -755,13 +734,12 @@ static void test_spi_multi_zero_len(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: len==0 is no-op success");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   /* SPSR is zero, so any actual polling would hit k_ra_err_hw_timeout.
    * len==0 must never touch SPSR or SPDR -> we expect k_ra_ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_write(0U, nullptr, 0U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_read(0U, nullptr, 0U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write_read(0U, nullptr, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write(0U, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read(0U, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write_read(0U, nullptr, nullptr, 0U, k_ra_spi_width_8));
   TEST_END("ra_spi_{write,read,write_read}: len==0 is no-op success");
 }
 
@@ -775,14 +753,13 @@ static void test_spi_multi_bad_width(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: invalid bit_width rejected");
   prep_w33();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &k_spi_cfg));
   uint8_t buf[1] = {0U};
   /* 0xAA is not in {7, 15, 31}. */
   const ra_spi_bit_width_t bogus = (ra_spi_bit_width_t)0xAAU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_write(0U, buf, 1U, bogus));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_read(0U, buf, 1U, bogus));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_write_read(0U, buf, buf, 1U, bogus));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_write(0U, buf, 1U, bogus));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_read(0U, buf, 1U, bogus));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_write_read(0U, buf, buf, 1U, bogus));
   TEST_END("ra_spi_{write,read,write_read}: invalid bit_width rejected");
 }
 
@@ -797,12 +774,9 @@ static void test_spi_multi_bad_channel(void)
   TEST_BEGIN("ra_spi_{write,read,write_read}: invalid channel rejected");
   prep_w33();
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_write(9U, buf, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_read(9U, buf, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_spi_write_read(9U, buf, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_write(9U, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_read(9U, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_write_read(9U, buf, buf, 1U, k_ra_spi_width_8));
   TEST_END("ra_spi_{write,read,write_read}: invalid channel rejected");
 }
 
@@ -857,78 +831,67 @@ static void test_mcdc_ra_spi_b(void)
 
   /* --- Decision A: ra_spi_write line 766 -------------------------- */
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_master_init(k_ra_spi_test_ch_zero));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_master_init(k_ra_spi_test_ch_zero));
   prep_spsr_both(k_ra_spi_test_ch_zero);
   uint8_t one_byte = (uint8_t)k_ra_spi_test_tx_byte;
   /* V1: tx=valid, len=0 -> dec F, returns ok (no I/O). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write(k_ra_spi_test_ch_zero, &one_byte, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write(k_ra_spi_test_ch_zero, &one_byte, 0U, k_ra_spi_width_8));
   /* V2: tx=NULL, len=0 -> dec F, returns ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write(k_ra_spi_test_ch_zero, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write(k_ra_spi_test_ch_zero, nullptr, 0U, k_ra_spi_width_8));
   /* V3: tx=NULL, len=1 -> dec T, returns null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write(k_ra_spi_test_ch_zero, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_spi_write(k_ra_spi_test_ch_zero, nullptr, 1U, k_ra_spi_width_8));
 
   /* --- Decision B: ra_spi_read line 790 --------------------------- */
   uint8_t rxbuf = 0U;
   prep_spsr_both(k_ra_spi_test_ch_zero);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_read(k_ra_spi_test_ch_zero, &rxbuf, 0U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_read(k_ra_spi_test_ch_zero, nullptr, 0U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_read(k_ra_spi_test_ch_zero, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read(k_ra_spi_test_ch_zero, &rxbuf, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read(k_ra_spi_test_ch_zero, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_spi_read(k_ra_spi_test_ch_zero, nullptr, 1U, k_ra_spi_width_8));
 
   /* --- Decision C: ra_spi_write_dma line 1056 --------------------- */
   uint8_t txdma[4] = {1U, 2U, 3U, 4U};
   uint8_t dma_ch   = 0U;
   /* V1 (ch=0 valid, len=4): proceeds, returns ok. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_write_dma(k_ra_spi_test_ch_zero, txdma, 4U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_write_dma(k_ra_spi_test_ch_zero, txdma, 4U, nullptr, nullptr, &dma_ch));
   /* V2 (ch=200 OOR, len=4): C1=T, returns invalid_arg. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_write_dma(k_ra_spi_test_ch_huge, txdma, 4U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_spi_write_dma(k_ra_spi_test_ch_huge, txdma, 4U, nullptr, nullptr, &dma_ch));
   /* V3 (ch=0 valid, len=0): C1=F, C2=T, returns invalid_arg. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_write_dma(k_ra_spi_test_ch_zero, txdma, 0U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_spi_write_dma(k_ra_spi_test_ch_zero, txdma, 0U, nullptr, nullptr, &dma_ch));
 
   /* --- Decision D: ra_spi_read_dma line 1106 ---------------------- */
   uint8_t rxdma[4] = {};
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_read_dma(k_ra_spi_test_ch_zero, rxdma, 4U, nullptr, nullptr, &dma_ch));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_read_dma(k_ra_spi_test_ch_huge, rxdma, 4U, nullptr, nullptr, &dma_ch));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_read_dma(k_ra_spi_test_ch_zero, rxdma, 0U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_read_dma(k_ra_spi_test_ch_zero, rxdma, 4U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_spi_read_dma(k_ra_spi_test_ch_huge, rxdma, 4U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_spi_read_dma(k_ra_spi_test_ch_zero, rxdma, 0U, nullptr, nullptr, &dma_ch));
 
   /* --- Decision E: ra_spi_dispatch_spei line 1190 ----------------- */
   /* V1: mask=0, cb=NULL (no attach yet on a fresh init).
    * C1 short-circuits F -> no callback. */
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_master_init(k_ra_spi_test_ch_zero));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_master_init(k_ra_spi_test_ch_zero));
   s_spi_cb_count = 0;
   ra_spi_dispatch_spei(k_ra_spi_test_ch_zero);
-  TEST_ASSERT_EQ(0, (int32_t)s_spi_cb_count);
+  TEST_ASSERT_EQ(0, s_spi_cb_count);
   /* V2: mask=0, cb=valid (after attach).  C1 short-circuits F. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_attach_transfer_handler(k_ra_spi_test_ch_zero, stub_spi_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_attach_transfer_handler(k_ra_spi_test_ch_zero, stub_spi_cb, nullptr));
   ra_spi_dispatch_spei(k_ra_spi_test_ch_zero);
-  TEST_ASSERT_EQ(0, (int32_t)s_spi_cb_count);
+  TEST_ASSERT_EQ(0, s_spi_cb_count);
   /* V3: inject an OVRF error so the get_errors mask is non-zero, then
    * dispatch with cb still attached.  Both C1 and C2 are T -> callback
    * fires once. */
   volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_zero);
   reg->SPSR                  = k_ra_spsr_mask_ovrf;
   ra_spi_dispatch_spei(k_ra_spi_test_ch_zero);
-  TEST_ASSERT_EQ(1, (int32_t)s_spi_cb_count);
+  TEST_ASSERT_EQ(1, s_spi_cb_count);
 
   TEST_END("spi_b MC/DC: write/read/dma/dispatch_spei vectors");
 }

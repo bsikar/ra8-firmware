@@ -46,11 +46,10 @@ static void test_elc_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("elc_event_demo: init + link ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_elc_link((uint8_t)k_test_elc_app_slot, k_ra_elc_event_icu_irq0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_link((uint8_t)k_test_elc_app_slot, k_ra_elc_event_icu_irq0));
   bool enabled = false;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_is_enabled(&enabled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_is_enabled(&enabled));
   TEST_ASSERT(enabled);
   TEST_END("elc_event_demo: init + link ok");
 }
@@ -67,8 +66,8 @@ static void test_elc_app_software_trigger_ok(void)
 {
   reset_world();
   TEST_BEGIN("elc_event_demo: software trigger ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_software_trigger((uint8_t)k_test_elc_app_sw_event_idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_software_trigger((uint8_t)k_test_elc_app_sw_event_idx));
   TEST_END("elc_event_demo: software trigger ok");
 }
 
@@ -84,7 +83,7 @@ static void test_elc_app_link_bad_slot(void)
 {
   reset_world();
   TEST_BEGIN("elc_event_demo: link bad slot rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
   TEST_ASSERT(ra_elc_link((uint8_t)k_test_elc_app_bad_slot, k_ra_elc_event_icu_irq0) != k_ra_ok);
   TEST_END("elc_event_demo: link bad slot rejected");
 }
@@ -101,7 +100,7 @@ static void test_elc_app_software_trigger_bad_idx(void)
 {
   reset_world();
   TEST_BEGIN("elc_event_demo: bad sw event idx rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
   TEST_ASSERT(ra_elc_software_trigger((uint8_t)k_test_elc_app_bad_sw_event) != k_ra_ok);
   TEST_END("elc_event_demo: bad sw event idx rejected");
 }
@@ -117,7 +116,7 @@ static void test_elc_app_is_enabled_null(void)
 {
   reset_world();
   TEST_BEGIN("elc_event_demo: is_enabled NULL rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_elc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
   TEST_ASSERT(ra_elc_is_enabled(nullptr) != k_ra_ok);
   TEST_END("elc_event_demo: is_enabled NULL rejected");
 }

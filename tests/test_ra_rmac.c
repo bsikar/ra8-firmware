@@ -69,12 +69,12 @@ static void test_init_happy(void)
   TEST_BEGIN("rmac init happy");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_mrafc_unicast_match, (int32_t)ra_rmac(k_ra_rmac_port_0)->MRAFC);
-  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)ra_rmac(k_ra_rmac_port_0)->MEIE);
-  TEST_ASSERT_EQ((int32_t)0x00001FFFU, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIE0);
-  TEST_ASSERT_EQ((int32_t)0x0000000FU, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIE1);
-  TEST_ASSERT_EQ((int32_t)0x00000007U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIE2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_rmac_mrafc_unicast_match, ra_rmac(k_ra_rmac_port_0)->MRAFC);
+  TEST_ASSERT_EQ(0xCAFEBABEU, ra_rmac(k_ra_rmac_port_0)->MEIE);
+  TEST_ASSERT_EQ(0x00001FFFU, ra_rmac(k_ra_rmac_port_0)->MMIE0);
+  TEST_ASSERT_EQ(0x0000000FU, ra_rmac(k_ra_rmac_port_0)->MMIE1);
+  TEST_ASSERT_EQ(0x00000007U, ra_rmac(k_ra_rmac_port_0)->MMIE2);
   TEST_END("rmac init happy");
 }
 
@@ -88,7 +88,7 @@ static void test_init_null_cfg(void)
 {
   TEST_BEGIN("rmac init null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rmac_init(k_ra_rmac_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_init(k_ra_rmac_port_0, nullptr));
   TEST_END("rmac init null cfg");
 }
 
@@ -103,8 +103,8 @@ static void test_init_bad_port(void)
   TEST_BEGIN("rmac init bad port");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_init((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_init((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, &cfg));
   TEST_END("rmac init bad port");
 }
 
@@ -120,7 +120,7 @@ static void test_init_bad_interface(void)
   prep();
   ra_rmac_config_t cfg = default_cfg();
   cfg.phy_interface    = (ra_rmac_pis_t)(uint8_t)k_ra_rmac_pis_count;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   TEST_END("rmac init bad iface");
 }
 
@@ -136,7 +136,7 @@ static void test_init_bad_speed(void)
   prep();
   ra_rmac_config_t cfg = default_cfg();
   cfg.link_speed       = (ra_rmac_lsc_t)(uint8_t)k_ra_rmac_lsc_count;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   TEST_END("rmac init bad speed");
 }
 
@@ -151,23 +151,21 @@ static void test_set_mac_address(void)
   TEST_BEGIN("rmac set mac address");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_1, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_1, &cfg));
   const uint8_t mac[k_ra_rmac_mac_byte_count] = {0x12U, 0x34U, 0x56U, 0x78U, 0x9AU, 0xBCU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_mac_address(k_ra_rmac_port_1, mac));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_mac_address(k_ra_rmac_port_1, mac));
 
   /* MRMAC0.MAU holds high 16 bits with byte0 in [15:8]. */
   const uint32_t expected_mrmac0 = ((uint32_t)0x12U << 8U) | (uint32_t)0x34U;
   /* MRMAC1.MAL holds low 32 bits with mac[2] in [31:24]. */
   const uint32_t expected_mrmac1 =
     ((uint32_t)0x56U << 24U) | ((uint32_t)0x78U << 16U) | ((uint32_t)0x9AU << 8U) | (uint32_t)0xBCU;
-  TEST_ASSERT_EQ((int32_t)expected_mrmac0, (int32_t)ra_rmac(k_ra_rmac_port_1)->MRMAC0);
-  TEST_ASSERT_EQ((int32_t)expected_mrmac1, (int32_t)ra_rmac(k_ra_rmac_port_1)->MRMAC1);
+  TEST_ASSERT_EQ(expected_mrmac0, ra_rmac(k_ra_rmac_port_1)->MRMAC0);
+  TEST_ASSERT_EQ(expected_mrmac1, ra_rmac(k_ra_rmac_port_1)->MRMAC1);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_set_mac_address(k_ra_rmac_port_1, nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_set_mac_address((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, mac));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_set_mac_address(k_ra_rmac_port_1, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_mac_address((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, mac));
   TEST_END("rmac set mac address");
 }
 
@@ -182,16 +180,16 @@ static void test_set_rx_filter(void)
   TEST_BEGIN("rmac set rx filter");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_rmac_set_rx_filter(k_ra_rmac_port_0,
-                                   k_ra_rmac_mrafc_promiscuous | k_ra_rmac_mrafc_perfect_unicast));
-  TEST_ASSERT_EQ((int32_t)(k_ra_rmac_mrafc_promiscuous | k_ra_rmac_mrafc_perfect_unicast),
-                 (int32_t)ra_rmac(k_ra_rmac_port_0)->MRAFC);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_rx_filter((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                                k_ra_rmac_mrafc_broadcast));
+    k_ra_ok,
+    ra_rmac_set_rx_filter(k_ra_rmac_port_0,
+                          k_ra_rmac_mrafc_promiscuous | k_ra_rmac_mrafc_perfect_unicast));
+  TEST_ASSERT_EQ((k_ra_rmac_mrafc_promiscuous | k_ra_rmac_mrafc_perfect_unicast),
+                 ra_rmac(k_ra_rmac_port_0)->MRAFC);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_rx_filter((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
+                                       k_ra_rmac_mrafc_broadcast));
   TEST_END("rmac set rx filter");
 }
 
@@ -206,7 +204,7 @@ static void test_status_read_and_clear(void)
   TEST_BEGIN("rmac status read + clear");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   ra_rmac(k_ra_rmac_port_0)->MEIS  = 0xC0FFEE00U;
   ra_rmac(k_ra_rmac_port_0)->MMIS0 = 0x00001234U;
   ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0x0000000FU;
@@ -214,24 +212,23 @@ static void test_status_read_and_clear(void)
   ra_rmac(k_ra_rmac_port_0)->MPIM  = (uint32_t)k_ra_rmac_mpim_pls;
 
   ra_rmac_status_t snap = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_get_status(k_ra_rmac_port_0, &snap));
-  TEST_ASSERT_EQ((int32_t)0xC0FFEE00U, (int32_t)snap.err_status);
-  TEST_ASSERT_EQ((int32_t)0x00001234U, (int32_t)snap.mon_status[0]);
-  TEST_ASSERT_EQ((int32_t)0x0000000FU, (int32_t)snap.mon_status[1]);
-  TEST_ASSERT_EQ((int32_t)0x00000005U, (int32_t)snap.mon_status[2]);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_mpim_pls, (int32_t)snap.phy_monitor);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_get_status(k_ra_rmac_port_0, &snap));
+  TEST_ASSERT_EQ(0xC0FFEE00U, snap.err_status);
+  TEST_ASSERT_EQ(0x00001234U, snap.mon_status[0]);
+  TEST_ASSERT_EQ(0x0000000FU, snap.mon_status[1]);
+  TEST_ASSERT_EQ(0x00000005U, snap.mon_status[2]);
+  TEST_ASSERT_EQ(k_ra_rmac_mpim_pls, snap.phy_monitor);
 
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)
-      ra_rmac_clear_status(k_ra_rmac_port_0, 0x00FF00FFU, 0x00000FFFU, 0x0000000FU, 0x00000007U));
-  TEST_ASSERT_EQ((int32_t)0xC000EE00U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MEIS);
-  TEST_ASSERT_EQ((int32_t)0x00001000U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIS0);
-  TEST_ASSERT_EQ((int32_t)0x00000000U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIS1);
-  TEST_ASSERT_EQ((int32_t)0x00000000U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIS2);
+    k_ra_ok,
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_get_status(k_ra_rmac_port_0, nullptr));
+    ra_rmac_clear_status(k_ra_rmac_port_0, 0x00FF00FFU, 0x00000FFFU, 0x0000000FU, 0x00000007U));
+  TEST_ASSERT_EQ(0xC000EE00U, ra_rmac(k_ra_rmac_port_0)->MEIS);
+  TEST_ASSERT_EQ(0x00001000U, ra_rmac(k_ra_rmac_port_0)->MMIS0);
+  TEST_ASSERT_EQ(0x00000000U, ra_rmac(k_ra_rmac_port_0)->MMIS1);
+  TEST_ASSERT_EQ(0x00000000U, ra_rmac(k_ra_rmac_port_0)->MMIS2);
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_get_status(k_ra_rmac_port_0, nullptr));
   TEST_END("rmac status read + clear");
 }
 
@@ -246,7 +243,7 @@ static void test_set_link_modes(void)
   TEST_BEGIN("rmac set link modes");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Walk every (interface, speed, duplex) combination. */
   const ra_rmac_pis_t ifaces[] = {
@@ -269,34 +266,33 @@ static void test_set_link_modes(void)
   for (uint8_t i = 0; i < (uint8_t)(sizeof(ifaces) / sizeof(ifaces[0])); ++i) {
     for (uint8_t s = 0; s < (uint8_t)(sizeof(speeds) / sizeof(speeds[0])); ++s) {
       for (uint8_t d = 0; d < (uint8_t)(sizeof(duplexes) / sizeof(duplexes[0])); ++d) {
-        TEST_ASSERT_EQ(
-          (int32_t)k_ra_ok,
-          (int32_t)ra_rmac_set_link(k_ra_rmac_port_0, ifaces[i], speeds[s], duplexes[d]));
+        TEST_ASSERT_EQ(k_ra_ok,
+                       ra_rmac_set_link(k_ra_rmac_port_0, ifaces[i], speeds[s], duplexes[d]));
         const uint32_t mpic = ra_rmac(k_ra_rmac_port_0)->MPIC;
-        TEST_ASSERT_EQ((int32_t)((uint32_t)ifaces[i] & 0x7U), (int32_t)(mpic & 0x7U));
-        TEST_ASSERT_EQ((int32_t)((uint32_t)speeds[s] & 0x7U), (int32_t)((mpic >> 3U) & 0x7U));
+        TEST_ASSERT_EQ(((uint32_t)ifaces[i] & 0x7U), (mpic & 0x7U));
+        TEST_ASSERT_EQ(((uint32_t)speeds[s] & 0x7U), ((mpic >> 3U) & 0x7U));
         const uint32_t pipp_expected = (duplexes[d] == k_ra_rmac_duplex_full) ? 1U : 0U;
-        TEST_ASSERT_EQ((int32_t)pipp_expected, (int32_t)((mpic >> 9U) & 0x1U));
+        TEST_ASSERT_EQ(pipp_expected, ((mpic >> 9U) & 0x1U));
       }
     }
   }
 
   /* Bad-arg paths */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_link(k_ra_rmac_port_0,
-                                           (ra_rmac_pis_t)(uint8_t)k_ra_rmac_pis_count,
-                                           k_ra_rmac_lsc_10mbit,
-                                           k_ra_rmac_duplex_full));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_link(k_ra_rmac_port_0,
-                                           k_ra_rmac_pis_mii,
-                                           (ra_rmac_lsc_t)(uint8_t)k_ra_rmac_lsc_count,
-                                           k_ra_rmac_duplex_full));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_link((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                           k_ra_rmac_pis_mii,
-                                           k_ra_rmac_lsc_10mbit,
-                                           k_ra_rmac_duplex_full));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_link(k_ra_rmac_port_0,
+                                  (ra_rmac_pis_t)(uint8_t)k_ra_rmac_pis_count,
+                                  k_ra_rmac_lsc_10mbit,
+                                  k_ra_rmac_duplex_full));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_link(k_ra_rmac_port_0,
+                                  k_ra_rmac_pis_mii,
+                                  (ra_rmac_lsc_t)(uint8_t)k_ra_rmac_lsc_count,
+                                  k_ra_rmac_duplex_full));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_link((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
+                                  k_ra_rmac_pis_mii,
+                                  k_ra_rmac_lsc_10mbit,
+                                  k_ra_rmac_duplex_full));
   TEST_END("rmac set link modes");
 }
 
@@ -311,39 +307,32 @@ static void test_frame_size_and_vlan(void)
   TEST_BEGIN("rmac frame size + vlan");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Jumbo: min=64 max=9018. E-frame variant first. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_frame_size(k_ra_rmac_port_0, false, 64U, 9018U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_frame_size(k_ra_rmac_port_0, false, 64U, 9018U));
   const uint32_t expected_e = (((uint32_t)9018U) << 0U) | (((uint32_t)64U) << 16U);
-  TEST_ASSERT_EQ((int32_t)expected_e, (int32_t)ra_rmac(k_ra_rmac_port_0)->MRFSCE);
+  TEST_ASSERT_EQ(expected_e, ra_rmac(k_ra_rmac_port_0)->MRFSCE);
 
   /* P-frame variant */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_frame_size(k_ra_rmac_port_0, true, 60U, 1518U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_frame_size(k_ra_rmac_port_0, true, 60U, 1518U));
   const uint32_t expected_p = (((uint32_t)1518U) << 0U) | (((uint32_t)60U) << 16U);
-  TEST_ASSERT_EQ((int32_t)expected_p, (int32_t)ra_rmac(k_ra_rmac_port_0)->MRFSCP);
+  TEST_ASSERT_EQ(expected_p, ra_rmac(k_ra_rmac_port_0)->MRFSCP);
 
   /* min > max should reject */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_frame_size(k_ra_rmac_port_0, false, 9018U, 64U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_frame_size((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                                 false,
-                                                 64U,
-                                                 1518U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_set_frame_size(k_ra_rmac_port_0, false, 9018U, 64U));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_rmac_set_frame_size((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, false, 64U, 1518U));
 
   /* VLAN framing toggles MTFFC */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_vlan_framing(k_ra_rmac_port_0, true, true));
-  TEST_ASSERT_EQ((int32_t)(k_ra_rmac_mtffc_dpad | k_ra_rmac_mtffc_fcm),
-                 (int32_t)ra_rmac(k_ra_rmac_port_0)->MTFFC);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_vlan_framing(k_ra_rmac_port_0, false, false));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTFFC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_vlan_framing(k_ra_rmac_port_0, true, true));
+  TEST_ASSERT_EQ((k_ra_rmac_mtffc_dpad | k_ra_rmac_mtffc_fcm), ra_rmac(k_ra_rmac_port_0)->MTFFC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_vlan_framing(k_ra_rmac_port_0, false, false));
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MTFFC);
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_set_vlan_framing((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true, true));
+    k_ra_err_invalid_arg,
+    ra_rmac_set_vlan_framing((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true, true));
   TEST_END("rmac frame size + vlan");
 }
 
@@ -358,47 +347,41 @@ static void test_pause_and_pfc(void)
   TEST_BEGIN("rmac pause + pfc");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Classic pause */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_pause_frame(k_ra_rmac_port_0,
-                                                  k_ra_rmac_pause_mode_802_3x,
-                                                  0xFFFFU,
-                                                  0x42U,
-                                                  0x1FU));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_rmac_set_pause_frame(k_ra_rmac_port_0, k_ra_rmac_pause_mode_802_3x, 0xFFFFU, 0x42U, 0x1FU));
   const uint32_t expected_mtpfc =
     ((uint32_t)0xFFFFU << 0U) | ((uint32_t)0x42U << 16U) | ((uint32_t)0x1FU << 27U);
-  TEST_ASSERT_EQ((int32_t)expected_mtpfc, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC2);
+  TEST_ASSERT_EQ(expected_mtpfc, ra_rmac(k_ra_rmac_port_0)->MTPFC);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MTPFC2);
 
   /* PFC mode */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)
-      ra_rmac_set_pause_frame(k_ra_rmac_port_0, k_ra_rmac_pause_mode_pfc, 0x1234U, 0x10U, 0x05U));
-  TEST_ASSERT_EQ((int32_t)(1UL << 26U), (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC2);
+    k_ra_ok,
+
+    ra_rmac_set_pause_frame(k_ra_rmac_port_0, k_ra_rmac_pause_mode_pfc, 0x1234U, 0x10U, 0x05U));
+  TEST_ASSERT_EQ((1UL << 26U), ra_rmac(k_ra_rmac_port_0)->MTPFC2);
 
   /* PFC priority groups */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_pfc_group(k_ra_rmac_port_0, k_ra_rmac_pfc_group_0, 0xAAU));
-  TEST_ASSERT_EQ((int32_t)0xAAU, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC3[0]);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_pfc_group(k_ra_rmac_port_0, k_ra_rmac_pfc_group_1, 0x55U));
-  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC3[1]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_pfc_group(k_ra_rmac_port_0, k_ra_rmac_pfc_group_0, 0xAAU));
+  TEST_ASSERT_EQ(0xAAU, ra_rmac(k_ra_rmac_port_0)->MTPFC3[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_pfc_group(k_ra_rmac_port_0, k_ra_rmac_pfc_group_1, 0x55U));
+  TEST_ASSERT_EQ(0x55U, ra_rmac(k_ra_rmac_port_0)->MTPFC3[1]);
 
   /* Bad arg paths */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_set_pfc_group(k_ra_rmac_port_0,
-                                   (ra_rmac_pfc_group_t)(uint8_t)k_ra_rmac_pfc_group_count,
-                                   0xFFU));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_pause_frame((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                                  k_ra_rmac_pause_mode_pfc,
-                                                  0U,
-                                                  0U,
-                                                  0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_pfc_group(k_ra_rmac_port_0,
+                                       (ra_rmac_pfc_group_t)(uint8_t)k_ra_rmac_pfc_group_count,
+                                       0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_pause_frame((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
+                                         k_ra_rmac_pause_mode_pfc,
+                                         0U,
+                                         0U,
+                                         0U));
   TEST_END("rmac pause + pfc");
 }
 
@@ -413,25 +396,23 @@ static void test_lpi_and_magic_packet(void)
   TEST_BEGIN("rmac lpi + magic packet");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_lpi(k_ra_rmac_port_0, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_meeec_lpitr, (int32_t)ra_rmac(k_ra_rmac_port_0)->MEEEC);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_lpi(k_ra_rmac_port_0, false));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MEEEC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_lpi(k_ra_rmac_port_0, true));
+  TEST_ASSERT_EQ(k_ra_rmac_meeec_lpitr, ra_rmac(k_ra_rmac_port_0)->MEEEC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_lpi(k_ra_rmac_port_0, false));
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MEEEC);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_magic_packet(k_ra_rmac_port_0, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_mrgc_mpde,
-                 (int32_t)(ra_rmac(k_ra_rmac_port_0)->MRGC & (uint32_t)k_ra_rmac_mrgc_mpde));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_magic_packet(k_ra_rmac_port_0, false));
-  TEST_ASSERT_EQ((int32_t)0U,
-                 (int32_t)(ra_rmac(k_ra_rmac_port_0)->MRGC & (uint32_t)k_ra_rmac_mrgc_mpde));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_magic_packet(k_ra_rmac_port_0, true));
+  TEST_ASSERT_EQ(k_ra_rmac_mrgc_mpde,
+                 (ra_rmac(k_ra_rmac_port_0)->MRGC & (uint32_t)k_ra_rmac_mrgc_mpde));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_magic_packet(k_ra_rmac_port_0, false));
+  TEST_ASSERT_EQ(0U, (ra_rmac(k_ra_rmac_port_0)->MRGC & (uint32_t)k_ra_rmac_mrgc_mpde));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_lpi((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_set_magic_packet((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_lpi((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_magic_packet((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true));
   TEST_END("rmac lpi + magic packet");
 }
 
@@ -446,14 +427,13 @@ static void test_loopback(void)
   TEST_BEGIN("rmac loopback");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_loopback(k_ra_rmac_port_0, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_mlbc_lbme, (int32_t)ra_rmac(k_ra_rmac_port_0)->MLBC);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_set_loopback(k_ra_rmac_port_0, false));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MLBC);
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_set_loopback((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_loopback(k_ra_rmac_port_0, true));
+  TEST_ASSERT_EQ(k_ra_rmac_mlbc_lbme, ra_rmac(k_ra_rmac_port_0)->MLBC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_loopback(k_ra_rmac_port_0, false));
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MLBC);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_loopback((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, true));
   TEST_END("rmac loopback");
 }
 
@@ -468,26 +448,25 @@ static void test_ptp_filter(void)
   TEST_BEGIN("rmac ptp filter");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Program slot 5 -- offset 12, value 0x88, both triggers asserted. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_ptp_filter(k_ra_rmac_port_0, 5U, 12U, 0x88U, true, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_set_ptp_filter(k_ra_rmac_port_0, 5U, 12U, 0x88U, true, true));
   const uint32_t expected = (uint32_t)12U | ((uint32_t)0x88U << 8U) | (1UL << 16U) | (1UL << 17U);
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)ra_rmac(k_ra_rmac_port_0)->MPFC[5]);
+  TEST_ASSERT_EQ(expected, ra_rmac(k_ra_rmac_port_0)->MPFC[5]);
 
   /* Bounds */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)
-      ra_rmac_set_ptp_filter(k_ra_rmac_port_0, k_ra_rmac_ptp_filter_count, 0U, 0U, false, false));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_set_ptp_filter((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                                 0U,
-                                                 0U,
-                                                 0U,
-                                                 false,
-                                                 false));
+    k_ra_err_invalid_arg,
+
+    ra_rmac_set_ptp_filter(k_ra_rmac_port_0, k_ra_rmac_ptp_filter_count, 0U, 0U, false, false));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_set_ptp_filter((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
+                                        0U,
+                                        0U,
+                                        0U,
+                                        false,
+                                        false));
   TEST_END("rmac ptp filter");
 }
 
@@ -502,35 +481,31 @@ static void test_mdio_c22(void)
   TEST_BEGIN("rmac mdio c22");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Pre-load the simulator backing so the bounded poll completes. */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pwacs;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_mdio_c22_write(k_ra_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c22_write(k_ra_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
   /* MPSM should have been written with the encoded transaction. */
   const uint32_t mpsm_w = ra_rmac(k_ra_rmac_port_0)->MPSM;
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)(mpsm_w & 0x1U));      /* PSME */
-  TEST_ASSERT_EQ((int32_t)0xBEEFU, (int32_t)(mpsm_w >> 16U)); /* PRD */
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_rmac_mdio_op_c22_write << 13U),
-                 (int32_t)(mpsm_w & (0x3UL << 13U))); /* POP */
+  TEST_ASSERT_EQ(1U, (mpsm_w & 0x1U));      /* PSME */
+  TEST_ASSERT_EQ(0xBEEFU, (mpsm_w >> 16U)); /* PRD */
+  TEST_ASSERT_EQ(((uint32_t)k_ra_rmac_mdio_op_c22_write << 13U),
+                 (mpsm_w & (0x3UL << 13U))); /* POP */
 
   /* Now stage a read: PRD field already set to 0xBEEF; mark PRACS. */
   ra_rmac(k_ra_rmac_port_0)->MPSM  = ((uint32_t)0xCAFEU << 16U);
   ra_rmac(k_ra_rmac_port_0)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pracs;
   uint16_t v                       = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_mdio_c22_read(k_ra_rmac_port_0, 0x05U, 0x10U, &v));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c22_read(k_ra_rmac_port_0, 0x05U, 0x10U, &v));
   /* The driver issued an MPSM write that overwrote the PRD field with 0,
    * so the reader should see 0 (the freshly-issued read frame). */
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)v);
+  TEST_ASSERT_EQ(0U, v);
 
   /* Bad-arg / null cases */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_mdio_c22_read(k_ra_rmac_port_0, 0U, 0U, nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_mdio_c22_write((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_mdio_c22_read(k_ra_rmac_port_0, 0U, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_mdio_c22_write((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U, 0U, 0U));
   TEST_END("rmac mdio c22");
 }
 
@@ -545,27 +520,24 @@ static void test_mdio_c45(void)
   TEST_BEGIN("rmac mdio c45");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Pre-arm both MMIS1 completion bits so address + write both pass. */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 =
     (uint32_t)k_ra_rmac_mmis1_paacs | (uint32_t)k_ra_rmac_mmis1_pwacs;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_mdio_c45_write(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c45_write(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
 
   /* Address + read */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 =
     (uint32_t)k_ra_rmac_mmis1_paacs | (uint32_t)k_ra_rmac_mmis1_pracs;
   uint16_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_mdio_c45_read(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, &v));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c45_read(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, &v));
 
   /* Bad-arg / null cases */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_mdio_c45_read(k_ra_rmac_port_0, 0U, 0U, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_mdio_c45_read(k_ra_rmac_port_0, 0U, 0U, 0U, nullptr));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_mdio_c45_write((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U, 0U, 0U, 0U));
+    k_ra_err_invalid_arg,
+    ra_rmac_mdio_c45_write((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U, 0U, 0U, 0U));
   TEST_END("rmac mdio c45");
 }
 
@@ -580,7 +552,7 @@ static void test_read_stats(void)
   TEST_BEGIN("rmac read stats");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
   /* Stamp every counter with a unique pattern so we can verify the
    * struct fields are wired to the right register. */
@@ -632,20 +604,19 @@ static void test_read_stats(void)
   reg->MTXBCPL  = 0x79U;
 
   ra_rmac_stats_t s = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_read_stats(k_ra_rmac_port_0, &s));
-  TEST_ASSERT_EQ((int32_t)0x10U, (int32_t)s.pause_tx_manual);
-  TEST_ASSERT_EQ((int32_t)0x14U, (int32_t)s.eee_count);
-  TEST_ASSERT_EQ((int32_t)0x21U, (int32_t)s.pfc_tx_manual[1]);
-  TEST_ASSERT_EQ((int32_t)0x31U, (int32_t)s.pfc_tx_auto[1]);
-  TEST_ASSERT_EQ((int32_t)0x47U, (int32_t)s.pfc_rx[7]);
-  TEST_ASSERT_EQ((int32_t)0x51U, (int32_t)s.rx_hdr_crc_err);
-  TEST_ASSERT_EQ((int32_t)0x66U, (int32_t)s.rx_bytes_p_lower);
-  TEST_ASSERT_EQ((int32_t)0x79U, (int32_t)s.tx_bytes_p_lower);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_read_stats(k_ra_rmac_port_0, &s));
+  TEST_ASSERT_EQ(0x10U, s.pause_tx_manual);
+  TEST_ASSERT_EQ(0x14U, s.eee_count);
+  TEST_ASSERT_EQ(0x21U, s.pfc_tx_manual[1]);
+  TEST_ASSERT_EQ(0x31U, s.pfc_tx_auto[1]);
+  TEST_ASSERT_EQ(0x47U, s.pfc_rx[7]);
+  TEST_ASSERT_EQ(0x51U, s.rx_hdr_crc_err);
+  TEST_ASSERT_EQ(0x66U, s.rx_bytes_p_lower);
+  TEST_ASSERT_EQ(0x79U, s.tx_bytes_p_lower);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_read_stats(k_ra_rmac_port_0, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_read_stats((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, &s));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_read_stats(k_ra_rmac_port_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_read_stats((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, &s));
   TEST_END("rmac read stats");
 }
 
@@ -660,10 +631,9 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("rmac attach + dispatch");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_1, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_rmac_attach_handler(k_ra_rmac_port_1, stub_cb, (void*)(uintptr_t)0xABCDU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_1, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rmac_attach_handler(k_ra_rmac_port_1, stub_cb, (void*)(uintptr_t)0xABCDU));
 
   ra_rmac(k_ra_rmac_port_1)->MEIS  = 0x12345678U;
   ra_rmac(k_ra_rmac_port_1)->MMIS0 = 0x00000F00U;
@@ -671,30 +641,28 @@ static void test_attach_and_dispatch(void)
   ra_rmac(k_ra_rmac_port_1)->MMIS2 = 0x00000003U;
 
   ra_rmac_dispatch(k_ra_rmac_port_1);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cb_count);
-  TEST_ASSERT_EQ((int32_t)0x12345678U, (int32_t)s_cb_last_err);
-  TEST_ASSERT_EQ((int32_t)0x00000F00U, (int32_t)s_cb_last_m0);
-  TEST_ASSERT_EQ((int32_t)0x0000000AU, (int32_t)s_cb_last_m1);
-  TEST_ASSERT_EQ((int32_t)0x00000003U, (int32_t)s_cb_last_m2);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_port_1, (int32_t)s_cb_last_port);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(0x12345678U, s_cb_last_err);
+  TEST_ASSERT_EQ(0x00000F00U, s_cb_last_m0);
+  TEST_ASSERT_EQ(0x0000000AU, s_cb_last_m1);
+  TEST_ASSERT_EQ(0x00000003U, s_cb_last_m2);
+  TEST_ASSERT_EQ(k_ra_rmac_port_1, s_cb_last_port);
 
   /* All status registers should now be zero. */
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_1)->MEIS);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_1)->MMIS0);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_1)->MEIS);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_1)->MMIS0);
 
   /* Detach */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_attach_handler(k_ra_rmac_port_1, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_attach_handler(k_ra_rmac_port_1, nullptr, nullptr));
   ra_rmac(k_ra_rmac_port_1)->MEIS = 0xDEADBEEFU;
   ra_rmac_dispatch(k_ra_rmac_port_1);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cb_count);
+  TEST_ASSERT_EQ(1, s_cb_count);
 
   /* Bad port: dispatch returns early; attach refuses. */
   ra_rmac_dispatch((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_attach_handler((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                                 stub_cb,
-                                                 nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_rmac_attach_handler((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, stub_cb, nullptr));
   TEST_END("rmac attach + dispatch");
 }
 
@@ -710,15 +678,15 @@ static void test_stop_and_resume(void)
   prep();
   ra_rmac_config_t cfg = default_cfg();
   cfg.rx_filter        = k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_enter_stop(k_ra_rmac_port_0));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MRAFC);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_exit_stop(k_ra_rmac_port_0));
-  TEST_ASSERT_EQ((int32_t)cfg.rx_filter, (int32_t)ra_rmac(k_ra_rmac_port_0)->MRAFC);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_enter_stop((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_exit_stop((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_enter_stop(k_ra_rmac_port_0));
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MRAFC);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_exit_stop(k_ra_rmac_port_0));
+  TEST_ASSERT_EQ(cfg.rx_filter, ra_rmac(k_ra_rmac_port_0)->MRAFC);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_enter_stop((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_exit_stop((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count));
   TEST_END("rmac stop + resume");
 }
 
@@ -748,10 +716,10 @@ static void test_phy_reset_happy(void)
   TEST_BEGIN("rmac phy reset happy");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* MPSM read returns 0 (RESET cleared) -> driver returns k_ra_ok. */
   prime_mdio(k_ra_rmac_port_0, 0x0000U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_reset(k_ra_rmac_port_0, 5U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_reset(k_ra_rmac_port_0, 5U));
   TEST_END("rmac phy reset happy");
 }
 
@@ -766,10 +734,10 @@ static void test_phy_reset_bad_args(void)
   TEST_BEGIN("rmac phy reset bad args");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_reset((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rmac_phy_reset(k_ra_rmac_port_0, 32U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_phy_reset((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_reset(k_ra_rmac_port_0, 32U));
   TEST_END("rmac phy reset bad args");
 }
 
@@ -784,21 +752,20 @@ static void test_phy_set_advertise(void)
   TEST_BEGIN("rmac phy set_advertise");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   prime_mdio(k_ra_rmac_port_0, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_phy_set_advertise(k_ra_rmac_port_0,
-                                                    7U,
-                                                    (uint16_t)k_ra_rmac_phy_advert_100_fd |
-                                                      (uint16_t)k_ra_rmac_phy_advert_10_fd));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rmac_phy_set_advertise(k_ra_rmac_port_0,
+                                           7U,
+                                           (uint16_t)k_ra_rmac_phy_advert_100_fd |
+                                             (uint16_t)k_ra_rmac_phy_advert_10_fd));
   /* MPSM PRD field should encode (capabilities | selector_bit). */
   const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
   const uint16_t prd  = (uint16_t)((mpsm >> 16U) & 0xFFFFU);
   TEST_ASSERT(((prd & (uint16_t)k_ra_rmac_phy_advert_100_fd) != 0U));
   TEST_ASSERT(((prd & (uint16_t)k_ra_rmac_phy_advert_10_fd) != 0U));
   TEST_ASSERT(((prd & 0x0001U) != 0U)); /* selector */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_set_advertise(k_ra_rmac_port_0, 32U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_set_advertise(k_ra_rmac_port_0, 32U, 0U));
   TEST_END("rmac phy set_advertise");
 }
 
@@ -813,16 +780,15 @@ static void test_phy_auto_neg_start(void)
   TEST_BEGIN("rmac phy auto_neg_start");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   prime_mdio(k_ra_rmac_port_0, 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_auto_neg_start(k_ra_rmac_port_0, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_auto_neg_start(k_ra_rmac_port_0, 1U));
   const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
   const uint16_t prd  = (uint16_t)((mpsm >> 16U) & 0xFFFFU);
   TEST_ASSERT(((prd & 0x1000U) != 0U)); /* AN_ENABLE */
   TEST_ASSERT(((prd & 0x0200U) != 0U)); /* AN_RESTART */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_phy_auto_neg_start((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_phy_auto_neg_start((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
   TEST_END("rmac phy auto_neg_start");
 }
 
@@ -837,18 +803,18 @@ static void test_phy_auto_neg_wait_happy(void)
   TEST_BEGIN("rmac phy auto_neg_wait MPSM transaction shape");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* Simulator returns 0 from MPSM PRD on every read; AN_COMPLETE will
    * never be observed, so the call returns hw_timeout. We check the
    * MPSM transaction shape (PRA = BMSR = 1, PSME = 1) regardless. */
   prime_mdio(k_ra_rmac_port_0, 0U);
   ra_rmac_phy_link_t link = {};
   const ra_err_t     r    = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 0U, 1U, &link);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)r);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, r);
   TEST_ASSERT(!link.up);
   const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)(mpsm & 0x1U));          /* PSME */
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)((mpsm >> 8U) & 0x1FU)); /* PRA = BMSR */
+  TEST_ASSERT_EQ(1U, (mpsm & 0x1U));          /* PSME */
+  TEST_ASSERT_EQ(1U, ((mpsm >> 8U) & 0x1FU)); /* PRA = BMSR */
   TEST_END("rmac phy auto_neg_wait MPSM transaction shape");
 }
 
@@ -863,21 +829,18 @@ static void test_phy_auto_neg_wait_timeout(void)
   TEST_BEGIN("rmac phy auto_neg_wait timeout");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* MMIS1 left at zero -> internal_mdio_wait exhausts its budget. */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0U;
   ra_rmac_phy_link_t link          = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
   const ra_err_t     r             = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &link);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)r);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, r);
   TEST_ASSERT(!link.up);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)link.speed);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 0U, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_auto_neg_wait((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
-                                                    0U,
-                                                    0U,
-                                                    &link));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, link.speed);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 0U, 0U, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_rmac_phy_auto_neg_wait((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U, 0U, &link));
   TEST_END("rmac phy auto_neg_wait timeout");
 }
 
@@ -892,17 +855,15 @@ static void test_phy_link_status(void)
   TEST_BEGIN("rmac phy link_status");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* Simulator returns 0 -> link reads as down. */
   prime_mdio(k_ra_rmac_port_0, 0U);
   ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 3U, &link));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status(k_ra_rmac_port_0, 3U, &link));
   TEST_ASSERT(!link.up);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)link.speed);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 32U, &link));
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, link.speed);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_link_status(k_ra_rmac_port_0, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_link_status(k_ra_rmac_port_0, 32U, &link));
   TEST_END("rmac phy link_status");
 }
 
@@ -917,15 +878,15 @@ static void test_deinit(void)
   TEST_BEGIN("rmac deinit");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_deinit(k_ra_rmac_port_0));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MRAFC);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MEIE);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIE0);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIE1);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MMIE2);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_deinit((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_deinit(k_ra_rmac_port_0));
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MRAFC);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MEIE);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MMIE0);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MMIE1);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MMIE2);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_deinit((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count));
   TEST_END("rmac deinit");
 }
 
@@ -954,19 +915,17 @@ static void test_mcdc_ra_rmac(void)
   TEST_BEGIN("rmac MC/DC: phy_args_ok + link_status decisions");
   prep();
   const ra_rmac_config_t cfg = default_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   prime_mdio(k_ra_rmac_port_0, 0U);
   ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 5U, &link));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rmac_phy_link_status((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 5U, &link));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 32U, &link));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status(k_ra_rmac_port_0, 5U, &link));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rmac_phy_link_status((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 5U, &link));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_phy_link_status(k_ra_rmac_port_0, 32U, &link));
   link = (ra_rmac_phy_link_t){.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 3U, &link));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status(k_ra_rmac_port_0, 3U, &link));
   TEST_ASSERT(!link.up);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)link.speed);
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, link.speed);
   TEST_END("rmac MC/DC: phy_args_ok + link_status decisions");
 }
 

@@ -36,7 +36,7 @@ static void test_doc_app_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("doc_demo: ra_doc_init ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_doc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_doc_init());
   TEST_END("doc_demo: ra_doc_init ok");
 }
 
@@ -51,9 +51,9 @@ static void test_doc_app_add_ok(void)
 {
   reset_world();
   TEST_BEGIN("doc_demo: add16 round-trip");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_doc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_doc_init());
   uint16_t sum = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_doc_add16((uint16_t)0x1111U, (uint16_t)0x2222U, &sum));
+  TEST_ASSERT_EQ(k_ra_ok, ra_doc_add16((uint16_t)0x1111U, (uint16_t)0x2222U, &sum));
   TEST_END("doc_demo: add16 round-trip");
 }
 
@@ -68,7 +68,7 @@ static void test_doc_app_add_null(void)
 {
   reset_world();
   TEST_BEGIN("doc_demo: add16 NULL rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_doc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_doc_init());
   TEST_ASSERT(ra_doc_add16((uint16_t)0x1U, (uint16_t)0x2U, nullptr) != k_ra_ok);
   TEST_END("doc_demo: add16 NULL rejected");
 }
@@ -87,20 +87,20 @@ static void test_doc_app_chained_match(void)
 {
   reset_world();
   TEST_BEGIN("doc_demo: chained sum matches software");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_doc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_doc_init());
   const uint16_t operands[] =
     {0x1111U, 0x2222U, 0x3333U, 0x0F0FU, 0xF0F0U, 0x00FFU, 0xFF00U, 0xDEADU};
   uint16_t acc = operands[0];
   for (uint8_t i = 1U; i < 8U; ++i) {
     uint16_t partial = 0U;
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_doc_add16(acc, operands[i], &partial));
+    TEST_ASSERT_EQ(k_ra_ok, ra_doc_add16(acc, operands[i], &partial));
     acc = partial;
   }
   uint16_t sw = 0U;
   for (uint8_t i = 0U; i < 8U; ++i) {
     sw = (uint16_t)(sw + operands[i]);
   }
-  TEST_ASSERT_EQ((int)sw, (int)acc);
+  TEST_ASSERT_EQ(sw, acc);
   TEST_END("doc_demo: chained sum matches software");
 }
 

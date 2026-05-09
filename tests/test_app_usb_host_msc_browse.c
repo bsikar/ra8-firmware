@@ -46,7 +46,7 @@ static ra_usb_hmsc_device_t s_test_hmsc_attach_device;
 static void test_hmsc_on_attach(void* ctx, const ra_usb_hmsc_device_t* device)
 {
   s_test_hmsc_attach_ctx = (uintptr_t)ctx;
-  if (device != NULL) {
+  if (device != nullptr) {
     s_test_hmsc_attach_device = *device;
   }
 }
@@ -78,9 +78,8 @@ static void test_hmsc_pfs_routes_vbus_sense(void)
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: PFS routes USBHS_VBUS sense");
   const ra_port_pin_t pin = (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(pin, (ra_psel_t)k_test_hmsc_psel_usbhs, "test.vbus_sns"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(pin, (ra_psel_t)k_test_hmsc_psel_usbhs, "test.vbus_sns"));
   TEST_END("usb_host_msc_browse: PFS routes USBHS_VBUS sense");
 }
 
@@ -94,7 +93,7 @@ static void test_hmsc_init_high_speed(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: hmsc_init HS");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hmsc_init(k_ra_usb_speed_hs));
   TEST_END("usb_host_msc_browse: hmsc_init HS");
 }
 
@@ -110,10 +109,9 @@ static void test_hmsc_init_attach_callback_chain(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: init + attach_callback");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_init(k_ra_usb_speed_hs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hmsc_attach_callback(test_hmsc_on_attach, (void*)k_test_hmsc_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hmsc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hmsc_attach_callback(test_hmsc_on_attach, (void*)k_test_hmsc_ctx_token));
   TEST_END("usb_host_msc_browse: init + attach_callback");
 }
 
@@ -129,7 +127,7 @@ static void test_hmsc_inquiry_and_read_capacity_shape(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: inquiry + read_capacity call-shape");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hmsc_init(k_ra_usb_speed_hs));
   ra_usb_hmsc_inquiry_response_t resp = {};
   ra_err_t                       e1   = ra_usb_hmsc_inquiry((uint8_t)k_test_hmsc_target_lun, &resp);
   TEST_ASSERT(e1 != k_ra_err_invalid_arg);
@@ -151,7 +149,7 @@ static void test_hmsc_read10_lba0_call_shape(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: read10 LBA0 call-shape");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hmsc_init(k_ra_usb_speed_hs));
   uint8_t  buf[k_test_hmsc_block_size] = {};
   ra_err_t err = ra_usb_hmsc_read10((uint8_t)k_test_hmsc_target_lun, 0U, 1U, buf);
   TEST_ASSERT(err != k_ra_err_invalid_arg);
@@ -171,8 +169,7 @@ static void test_hmsc_init_bad_speed_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: hmsc_init rejects bogus speed");
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hmsc_init((ra_usb_speed_t)k_test_hmsc_bogus_speed));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hmsc_init((ra_usb_speed_t)k_test_hmsc_bogus_speed));
   TEST_END("usb_host_msc_browse: hmsc_init rejects bogus speed");
 }
 
@@ -185,7 +182,7 @@ static void test_hmsc_close_before_init_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_msc_browse: hmsc_close before init rejected");
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hmsc_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hmsc_close());
   TEST_END("usb_host_msc_browse: hmsc_close before init rejected");
 }
 

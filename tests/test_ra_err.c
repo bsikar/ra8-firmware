@@ -20,7 +20,7 @@
 static void test_k_ra_ok_is_zero(void)
 {
   TEST_BEGIN("k_ra_ok is zero");
-  TEST_ASSERT_EQ(0, (int)k_ra_ok);
+  TEST_ASSERT_EQ(0, k_ra_ok);
   TEST_END("k_ra_ok is zero");
 }
 

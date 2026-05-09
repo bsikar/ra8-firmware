@@ -76,7 +76,7 @@ static void test_srand_nonzero_seeds_deterministically(void)
   srand((unsigned int)k_rand_seed_repro); // NOLINT(cert-msc32-c,cert-msc51-cpp)
   const int r2 = rand();                  // NOLINT(cert-msc30-c,cert-msc50-cpp)
 
-  TEST_ASSERT_EQ((int64_t)r1, (int64_t)r2);
+  TEST_ASSERT_EQ(r1, r2);
   TEST_END("srand(non-zero) produces deterministic sequence");
 }
 

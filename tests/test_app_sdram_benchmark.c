@@ -47,7 +47,7 @@ static void test_sdram_app_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("sdram_benchmark: init ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
   TEST_END("sdram_benchmark: init ok");
 }
 
@@ -62,7 +62,7 @@ static void test_sdram_app_status_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("sdram_benchmark: get_status NULL rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
   TEST_ASSERT(ra_sdramc_get_status(nullptr) != k_ra_ok);
   TEST_END("sdram_benchmark: get_status NULL rejected");
 }
@@ -78,9 +78,9 @@ static void test_sdram_app_status_ok(void)
 {
   reset_world();
   TEST_BEGIN("sdram_benchmark: get_status ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
   uint8_t enabled = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_get_status(&enabled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_get_status(&enabled));
   TEST_END("sdram_benchmark: get_status ok");
 }
 
@@ -95,9 +95,9 @@ static void test_sdram_app_mbps_branches(void)
 {
   TEST_BEGIN("sdram_benchmark: mbps clamps ms==0");
   /* ms==0 path: 64 KB / (1 * 1000) = 65 (truncated). */
-  TEST_ASSERT_EQ((int)65, (int)app_mbps((uint32_t)k_test_sdram_app_block_bytes, 0U));
+  TEST_ASSERT_EQ(65, app_mbps((uint32_t)k_test_sdram_app_block_bytes, 0U));
   /* ms!=0 path: 64 KB / (10 * 1000) = 6 (truncated). */
-  TEST_ASSERT_EQ((int)6, (int)app_mbps((uint32_t)k_test_sdram_app_block_bytes, 10U));
+  TEST_ASSERT_EQ(6, app_mbps((uint32_t)k_test_sdram_app_block_bytes, 10U));
   TEST_END("sdram_benchmark: mbps clamps ms==0");
 }
 

@@ -59,7 +59,7 @@ static ra_usb_hhid_device_t s_test_hkbd_attach_device;
 static void test_hkbd_on_attach(void* ctx, const ra_usb_hhid_device_t* device)
 {
   s_test_hkbd_attach_ctx = (uintptr_t)ctx;
-  if (device != NULL) {
+  if (device != nullptr) {
     s_test_hkbd_attach_device = *device;
   }
 }
@@ -89,12 +89,10 @@ static void test_hkbd_pfs_routes_sci8(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_keyboard: PFS routes SCI8 TXD8 + RXD8");
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_hkbd_pin_txd, k_ra_psel_sci_async, "test.txd8"));
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_hkbd_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_hkbd_pin_txd, k_ra_psel_sci_async, "test.txd8"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_hkbd_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
   TEST_END("usb_host_keyboard: PFS routes SCI8 TXD8 + RXD8");
 }
 
@@ -115,7 +113,7 @@ static void test_hkbd_sci8_init_115200_8n1(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = (uint32_t)k_test_hkbd_pclk_hz,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sci_init((uint8_t)k_test_hkbd_sci_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_test_hkbd_sci_channel, &cfg));
   TEST_END("usb_host_keyboard: SCI8 init 115200 8N1");
 }
 
@@ -130,10 +128,9 @@ static void test_hkbd_init_and_attach_callback_ok(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_keyboard: hhid_init HS + attach_callback");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_hs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhid_attach_callback(test_hkbd_on_attach, (void*)k_test_hkbd_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhid_attach_callback(test_hkbd_on_attach, (void*)k_test_hkbd_ctx_token));
   TEST_END("usb_host_keyboard: hhid_init HS + attach_callback");
 }
 
@@ -151,7 +148,7 @@ static void test_hkbd_set_protocol_and_idle_call_shape(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_keyboard: set_protocol + set_idle call-shape");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_hs));
   ra_err_t e1 = ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot);
   TEST_ASSERT(e1 != k_ra_err_invalid_arg);
   ra_err_t e2 = ra_usb_hhid_set_idle(0U, 0U);
@@ -170,7 +167,7 @@ static void test_hkbd_get_input_report_shape(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_keyboard: get_input_report call-shape");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_hs));
   uint8_t  report[k_test_hkbd_report_bytes] = {};
   uint16_t got                              = 0U;
   ra_err_t err = ra_usb_hhid_get_input_report(report, (uint16_t)k_test_hkbd_report_bytes, &got);
@@ -193,8 +190,7 @@ static void test_hkbd_init_bad_speed_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_keyboard: hhid_init rejects bogus speed");
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhid_init((ra_usb_speed_t)k_test_hkbd_bogus_speed));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhid_init((ra_usb_speed_t)k_test_hkbd_bogus_speed));
   TEST_END("usb_host_keyboard: hhid_init rejects bogus speed");
 }
 
@@ -208,8 +204,7 @@ static void test_hkbd_set_protocol_before_init_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_host_keyboard: set_protocol before init rejected");
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot));
   TEST_END("usb_host_keyboard: set_protocol before init rejected");
 }
 

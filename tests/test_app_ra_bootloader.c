@@ -113,13 +113,13 @@ static void test_boot_pick_bank_table(void)
 {
   reset_world();
   TEST_BEGIN("ra_bootloader: pick_bank selector decision table");
-  TEST_ASSERT_EQ((int)k_test_boot_bank_a_base,
-                 (int)test_boot_pick_active_bank((uint8_t)k_test_boot_select_bank_a));
-  TEST_ASSERT_EQ((int)k_test_boot_bank_b_base,
-                 (int)test_boot_pick_active_bank((uint8_t)k_test_boot_select_bank_b));
-  TEST_ASSERT_EQ((int)k_test_boot_bank_a_base,
-                 (int)test_boot_pick_active_bank((uint8_t)k_test_boot_select_erased));
-  TEST_ASSERT_EQ((int)k_test_boot_bank_a_base, (int)test_boot_pick_active_bank((uint8_t)0x55U));
+  TEST_ASSERT_EQ(k_test_boot_bank_a_base,
+                 test_boot_pick_active_bank((uint8_t)k_test_boot_select_bank_a));
+  TEST_ASSERT_EQ(k_test_boot_bank_b_base,
+                 test_boot_pick_active_bank((uint8_t)k_test_boot_select_bank_b));
+  TEST_ASSERT_EQ(k_test_boot_bank_a_base,
+                 test_boot_pick_active_bank((uint8_t)k_test_boot_select_erased));
+  TEST_ASSERT_EQ(k_test_boot_bank_a_base, test_boot_pick_active_bank((uint8_t)0x55U));
   TEST_END("ra_bootloader: pick_bank selector decision table");
 }
 
@@ -135,12 +135,12 @@ static void test_boot_valid_vector_table_accepted(void)
 {
   reset_world();
   TEST_BEGIN("ra_bootloader: valid vector table accepted");
-  TEST_ASSERT_EQ(1,
-                 (int)test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a,
-                                              (uint32_t)k_test_boot_good_reset_a));
-  TEST_ASSERT_EQ(1,
-                 (int)test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_b,
-                                              (uint32_t)k_test_boot_good_reset_b));
+  TEST_ASSERT_EQ(
+    1,
+    test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a, (uint32_t)k_test_boot_good_reset_a));
+  TEST_ASSERT_EQ(
+    1,
+    test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_b, (uint32_t)k_test_boot_good_reset_b));
   TEST_END("ra_bootloader: valid vector table accepted");
 }
 
@@ -155,10 +155,10 @@ static void test_boot_dispatch_primary_when_valid(void)
   reset_world();
   TEST_BEGIN("ra_bootloader: primary-bank dispatch when valid");
   uintptr_t primary = test_boot_pick_active_bank((uint8_t)k_test_boot_select_bank_a);
-  TEST_ASSERT_EQ((int)k_test_boot_bank_a_base, (int)primary);
+  TEST_ASSERT_EQ(k_test_boot_bank_a_base, primary);
   uint32_t ok =
     test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a, (uint32_t)k_test_boot_good_reset_a);
-  TEST_ASSERT_EQ(1, (int)ok);
+  TEST_ASSERT_EQ(1, ok);
   TEST_END("ra_bootloader: primary-bank dispatch when valid");
 }
 
@@ -177,14 +177,14 @@ static void test_boot_fallback_dispatch_when_primary_invalid(void)
   uintptr_t fallback = (primary == (uintptr_t)k_test_boot_bank_a_base)
                          ? (uintptr_t)k_test_boot_bank_b_base
                          : (uintptr_t)k_test_boot_bank_a_base;
-  TEST_ASSERT_EQ((int)k_test_boot_bank_b_base, (int)fallback);
+  TEST_ASSERT_EQ(k_test_boot_bank_b_base, fallback);
   /* Primary invalid (erased), fallback valid -> fallback wins. */
   TEST_ASSERT_EQ(
     0,
-    (int)test_boot_bank_is_valid((uint32_t)k_test_boot_bad_msp, (uint32_t)k_test_boot_bad_reset));
-  TEST_ASSERT_EQ(1,
-                 (int)test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_b,
-                                              (uint32_t)k_test_boot_good_reset_b));
+    test_boot_bank_is_valid((uint32_t)k_test_boot_bad_msp, (uint32_t)k_test_boot_bad_reset));
+  TEST_ASSERT_EQ(
+    1,
+    test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_b, (uint32_t)k_test_boot_good_reset_b));
   TEST_END("ra_bootloader: fallback when primary invalid");
 }
 
@@ -204,7 +204,7 @@ static void test_boot_erased_bank_rejected(void)
   TEST_BEGIN("ra_bootloader: erased bank rejected");
   TEST_ASSERT_EQ(
     0,
-    (int)test_boot_bank_is_valid((uint32_t)k_test_boot_bad_msp, (uint32_t)k_test_boot_bad_msp));
+    test_boot_bank_is_valid((uint32_t)k_test_boot_bad_msp, (uint32_t)k_test_boot_bad_msp));
   TEST_END("ra_bootloader: erased bank rejected");
 }
 
@@ -219,7 +219,7 @@ static void test_boot_msp_below_sram_rejected(void)
   reset_world();
   TEST_BEGIN("ra_bootloader: MSP below SRAM rejected");
   /* MSP = 0x10000000 -- below SRAM at 0x22000000. */
-  TEST_ASSERT_EQ(0, (int)test_boot_bank_is_valid(0x10000000U, (uint32_t)k_test_boot_good_reset_a));
+  TEST_ASSERT_EQ(0, test_boot_bank_is_valid(0x10000000U, (uint32_t)k_test_boot_good_reset_a));
   TEST_END("ra_bootloader: MSP below SRAM rejected");
 }
 
@@ -237,9 +237,9 @@ static void test_boot_reset_outside_mram_rejected(void)
   /* Reset above MRAM end. */
   TEST_ASSERT_EQ(
     0,
-    (int)test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a, (uint32_t)k_test_boot_mram_end));
+    test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a, (uint32_t)k_test_boot_mram_end));
   /* Reset below MRAM origin. */
-  TEST_ASSERT_EQ(0, (int)test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a, 0x00100000U));
+  TEST_ASSERT_EQ(0, test_boot_bank_is_valid((uint32_t)k_test_boot_good_msp_a, 0x00100000U));
   TEST_END("ra_bootloader: Reset_Handler outside MRAM rejected");
 }
 
@@ -256,8 +256,8 @@ static void test_boot_both_banks_invalid_no_dispatch(void)
   TEST_BEGIN("ra_bootloader: both banks invalid -> halt");
   TEST_ASSERT_EQ(
     0,
-    (int)test_boot_bank_is_valid((uint32_t)k_test_boot_bad_msp, (uint32_t)k_test_boot_bad_reset));
-  TEST_ASSERT_EQ(0, (int)test_boot_bank_is_valid(0U, 0U));
+    test_boot_bank_is_valid((uint32_t)k_test_boot_bad_msp, (uint32_t)k_test_boot_bad_reset));
+  TEST_ASSERT_EQ(0, test_boot_bank_is_valid(0U, 0U));
   TEST_END("ra_bootloader: both banks invalid -> halt");
 }
 

@@ -76,18 +76,17 @@ static void test_tx_ring_full_at_ceiling(void)
   TEST_BEGIN("etha tx ring depth clamped to EATDQDC 11-bit ceiling");
   prep();
   const ra_etha_config_t cfg = default_etha_cfg(k_ra_etha_opc_config);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* Request 4096 entries -> EATDQDC field saturates at 2047 across all
    * traffic classes. The init still succeeds (clamping is the
    * documented behaviour) and the post-state is observable on every TC.
    * 4097+ would be rejected as out-of-range. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4096U, 256U, 1518U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4096U, 256U, 1518U));
   /* Request beyond the 4096 cap is rejected outright (not clamped). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4097U, 256U, 1518U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4097U, 256U, 1518U));
   for (uint8_t tc = 0U; tc < (uint8_t)k_ra_etha_tc_count; ++tc) {
-    TEST_ASSERT_EQ((int32_t)2047U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[tc]);
+    TEST_ASSERT_EQ(2047U, ra_etha(k_ra_etha_port_0)->EATDQDC[tc]);
   }
   TEST_END("etha tx ring depth clamped to EATDQDC 11-bit ceiling");
 }
@@ -105,16 +104,14 @@ static void test_rx_overrun_saturates(void)
   TEST_BEGIN("etha rx_drop counter saturates rather than wraps");
   prep();
   const ra_etha_config_t cfg = default_etha_cfg(k_ra_etha_opc_operation);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* Push rx_drop near saturation in a single accounting call. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 0U, 0U, 0U, 0U, UINT32_MAX - 5U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_account_traffic(k_ra_etha_port_0, 0U, 0U, 0U, 0U, UINT32_MAX - 5U));
   /* Then add 100 more -> must saturate at UINT32_MAX. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 0U, 0U, 0U, 0U, 100U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_account_traffic(k_ra_etha_port_0, 0U, 0U, 0U, 0U, 100U));
   ra_etha_port_stats_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_get_stats(k_ra_etha_port_0, &st));
   TEST_ASSERT(st.rx_drop == UINT32_MAX);
   TEST_END("etha rx_drop counter saturates rather than wraps");
 }
@@ -132,18 +129,16 @@ static void test_phy_auto_neg_wait_race(void)
   TEST_BEGIN("rmac auto_neg_wait timeout leaves status registers consistent");
   prep();
   const ra_rmac_config_t cfg = default_rmac_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* MMIS1=0 so MDIO completion never asserts; auto_neg_wait should
    * return hw_timeout cleanly and out_link.up must be false. */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0U;
   ra_rmac_phy_link_t lk            = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &lk));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &lk));
   TEST_ASSERT(!lk.up);
-  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)lk.speed);
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, lk.speed);
   /* Second wait call must observe the same outcome (idempotent). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &lk));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &lk));
   TEST_END("rmac auto_neg_wait timeout leaves status registers consistent");
 }
 
@@ -160,24 +155,21 @@ static void test_pause_frame_packing(void)
   TEST_BEGIN("rmac pause-frame packing across 802.3x and PFC modes");
   prep();
   const ra_rmac_config_t cfg = default_rmac_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* 802.3x classic pause: max pause time, max retry. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rmac_set_pause_frame(k_ra_rmac_port_0,
-                                                  k_ra_rmac_pause_mode_802_3x,
-                                                  0xFFFFU,
-                                                  0xFFU,
-                                                  0x1FU));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_rmac_set_pause_frame(k_ra_rmac_port_0, k_ra_rmac_pause_mode_802_3x, 0xFFFFU, 0xFFU, 0x1FU));
   const uint32_t want_mtpfc =
     ((uint32_t)0xFFFFU << 0U) | ((uint32_t)0xFFU << 16U) | ((uint32_t)0x1FU << 27U);
-  TEST_ASSERT_EQ((int32_t)want_mtpfc, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC2);
+  TEST_ASSERT_EQ(want_mtpfc, ra_rmac(k_ra_rmac_port_0)->MTPFC);
+  TEST_ASSERT_EQ(0U, ra_rmac(k_ra_rmac_port_0)->MTPFC2);
   /* PFC mode: PFM bit asserts in MTPFC2. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)
-      ra_rmac_set_pause_frame(k_ra_rmac_port_0, k_ra_rmac_pause_mode_pfc, 0x0001U, 0x01U, 0x00U));
-  TEST_ASSERT_EQ((int32_t)(1UL << 26U), (int32_t)ra_rmac(k_ra_rmac_port_0)->MTPFC2);
+    k_ra_ok,
+
+    ra_rmac_set_pause_frame(k_ra_rmac_port_0, k_ra_rmac_pause_mode_pfc, 0x0001U, 0x01U, 0x00U));
+  TEST_ASSERT_EQ((1UL << 26U), ra_rmac(k_ra_rmac_port_0)->MTPFC2);
   TEST_END("rmac pause-frame packing across 802.3x and PFC modes");
 }
 
@@ -194,23 +186,19 @@ static void test_jumbo_frame_size_limits(void)
   TEST_BEGIN("etha jumbo-frame size programming + ceiling rejection");
   prep();
   const ra_etha_config_t cfg = default_etha_cfg(k_ra_etha_opc_config);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* Standard Ethernet frame, jumbo, and a max-jumbo (under the
    * descriptor-ring buf cap of 16 KiB - 1) all accepted. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_0, 1518U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_4, 9018U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_7, 16383U));
-  TEST_ASSERT_EQ((int32_t)1518U, (int32_t)ra_etha(k_ra_etha_port_0)->EATMFSC[0]);
-  TEST_ASSERT_EQ((int32_t)9018U, (int32_t)ra_etha(k_ra_etha_port_0)->EATMFSC[4]);
-  TEST_ASSERT_EQ((int32_t)16383U, (int32_t)ra_etha(k_ra_etha_port_0)->EATMFSC[7]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_0, 1518U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_4, 9018U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_max_frame_size(k_ra_etha_port_0, k_ra_etha_tc_7, 16383U));
+  TEST_ASSERT_EQ(1518U, ra_etha(k_ra_etha_port_0)->EATMFSC[0]);
+  TEST_ASSERT_EQ(9018U, ra_etha(k_ra_etha_port_0)->EATMFSC[4]);
+  TEST_ASSERT_EQ(16383U, ra_etha(k_ra_etha_port_0)->EATMFSC[7]);
   /* Out-of-range traffic class still rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0,
-                                                     (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count,
-                                                     1500U));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)(uint8_t)k_ra_etha_tc_count, 1500U));
   TEST_END("etha jumbo-frame size programming + ceiling rejection");
 }
 
@@ -227,25 +215,21 @@ static void test_irq_enable_blocks_independent(void)
   TEST_BEGIN("etha enable/disable IRQ across all three blocks is non-destructive");
   prep();
   const ra_etha_config_t cfg = default_etha_cfg(k_ra_etha_opc_operation);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &cfg));
   /* Set distinct masks in each block, then toggle a single bit per
    * block and verify the others were untouched. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xAAAAAAAAU));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x55555555U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_2, 0xF0F0F0F0U));
-  TEST_ASSERT_EQ((int32_t)0xAAAAAAAAU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE0);
-  TEST_ASSERT_EQ((int32_t)0x55555555U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE1);
-  TEST_ASSERT_EQ((int32_t)0xF0F0F0F0U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xAAAAAAAAU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x55555555U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_2, 0xF0F0F0F0U));
+  TEST_ASSERT_EQ(0xAAAAAAAAU, ra_etha(k_ra_etha_port_0)->EAEIE0);
+  TEST_ASSERT_EQ(0x55555555U, ra_etha(k_ra_etha_port_0)->EAEIE1);
+  TEST_ASSERT_EQ(0xF0F0F0F0U, ra_etha(k_ra_etha_port_0)->EAEIE2);
   /* Clear one bit in block 1 -- block 0 / 2 must not be affected. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x00000001U));
-  TEST_ASSERT_EQ((int32_t)0xAAAAAAAAU, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE0);
-  TEST_ASSERT_EQ((int32_t)0x55555554U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE1);
-  TEST_ASSERT_EQ((int32_t)0xF0F0F0F0U, (int32_t)ra_etha(k_ra_etha_port_0)->EAEIE2);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_1, 0x00000001U));
+  TEST_ASSERT_EQ(0xAAAAAAAAU, ra_etha(k_ra_etha_port_0)->EAEIE0);
+  TEST_ASSERT_EQ(0x55555554U, ra_etha(k_ra_etha_port_0)->EAEIE1);
+  TEST_ASSERT_EQ(0xF0F0F0F0U, ra_etha(k_ra_etha_port_0)->EAEIE2);
   TEST_END("etha enable/disable IRQ across all three blocks is non-destructive");
 }
 

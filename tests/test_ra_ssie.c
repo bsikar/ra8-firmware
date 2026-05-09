@@ -119,21 +119,21 @@ static void test_init_happy(void)
   prep();
 
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg);
 
   TEST_ASSERT((reg->SSICR & (uint32_t)k_ra_ssie_mask_mst) != 0U);
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ssie_bclk_div_4 << (uint8_t)k_ra_ssie_bit_ckdv0),
-                 (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ckdv));
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ssie_swl_32 << (uint8_t)k_ra_ssie_bit_swl0),
-                 (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_swl));
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ssie_dwl_16 << (uint8_t)k_ra_ssie_bit_dwl0),
-                 (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_dwl));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ssie_bclk_div_4 << (uint8_t)k_ra_ssie_bit_ckdv0),
+                 (reg->SSICR & (uint32_t)k_ra_ssie_mask_ckdv));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ssie_swl_32 << (uint8_t)k_ra_ssie_bit_swl0),
+                 (reg->SSICR & (uint32_t)k_ra_ssie_mask_swl));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ssie_dwl_16 << (uint8_t)k_ra_ssie_bit_dwl0),
+                 (reg->SSICR & (uint32_t)k_ra_ssie_mask_dwl));
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
+  TEST_ASSERT_EQ(0, (reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
   TEST_END("ssie init happy (controller I2S)");
 }
 
@@ -155,17 +155,16 @@ static void test_init_slave_tdm(void)
   cfg.system_word   = k_ra_ssie_swl_32;
   cfg.use_gpt_clk   = true;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch1, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch1, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch1);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_mst));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_mst));
   TEST_ASSERT((reg->SSICR & (uint32_t)k_ra_ssie_mask_cks) != 0U);
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ssie_omod_tdm,
-                 (int32_t)(reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
+  TEST_ASSERT_EQ(k_ra_ssie_omod_tdm, (reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
   /* FRM=01 selects 4-channel TDM. */
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ssie_frm_alt1 << (uint8_t)k_ra_ssie_bit_frm0),
-                 (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_frm));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ssie_frm_alt1 << (uint8_t)k_ra_ssie_bit_frm0),
+                 (reg->SSICR & (uint32_t)k_ra_ssie_mask_frm));
   TEST_END("ssie init peripheral TDM-4 24-bit");
 }
 
@@ -208,14 +207,14 @@ static void test_init_all_formats(void)
     prep();
     ra_ssie_cfg_t cfg = make_master_i2s_cfg();
     cfg.format        = cases[i].fmt;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+    TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
     volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-    TEST_ASSERT_EQ((int32_t)cases[i].omod, (int32_t)(reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
-    TEST_ASSERT_EQ((int32_t)((uint32_t)cases[i].frm << (uint8_t)k_ra_ssie_bit_frm0),
-                   (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_frm));
+    TEST_ASSERT_EQ(cases[i].omod, (reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
+    TEST_ASSERT_EQ(((uint32_t)cases[i].frm << (uint8_t)k_ra_ssie_bit_frm0),
+                   (reg->SSICR & (uint32_t)k_ra_ssie_mask_frm));
     TEST_ASSERT_EQ(cases[i].expect_pdta ? 1 : 0,
-                   (int32_t)((reg->SSICR & (uint32_t)k_ra_ssie_mask_pdta) != 0U ? 1 : 0));
+                   ((reg->SSICR & (uint32_t)k_ra_ssie_mask_pdta) != 0U ? 1 : 0));
   }
   TEST_END("ssie init covers all seven formats");
 }
@@ -251,11 +250,11 @@ static void test_init_all_dividers(void)
     prep();
     ra_ssie_cfg_t cfg = make_master_i2s_cfg();
     cfg.bclk_div      = divs[i];
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+    TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
     volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-    TEST_ASSERT_EQ((int32_t)((uint32_t)divs[i] << (uint8_t)k_ra_ssie_bit_ckdv0),
-                   (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ckdv));
+    TEST_ASSERT_EQ(((uint32_t)divs[i] << (uint8_t)k_ra_ssie_bit_ckdv0),
+                   (reg->SSICR & (uint32_t)k_ra_ssie_mask_ckdv));
   }
   TEST_END("ssie init walks all 13 CKDV values");
 }
@@ -298,13 +297,13 @@ static void test_init_all_word_lengths(void)
       ra_ssie_cfg_t cfg = make_master_i2s_cfg();
       cfg.system_word   = sw[i];
       cfg.data_word     = dw[j];
-      TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+      TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
       volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-      TEST_ASSERT_EQ((int32_t)((uint32_t)sw[i] << (uint8_t)k_ra_ssie_bit_swl0),
-                     (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_swl));
-      TEST_ASSERT_EQ((int32_t)((uint32_t)dw[j] << (uint8_t)k_ra_ssie_bit_dwl0),
-                     (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_dwl));
+      TEST_ASSERT_EQ(((uint32_t)sw[i] << (uint8_t)k_ra_ssie_bit_swl0),
+                     (reg->SSICR & (uint32_t)k_ra_ssie_mask_swl));
+      TEST_ASSERT_EQ(((uint32_t)dw[j] << (uint8_t)k_ra_ssie_bit_dwl0),
+                     (reg->SSICR & (uint32_t)k_ra_ssie_mask_dwl));
     }
   }
   TEST_END("ssie init covers every SWL+DWL combination");
@@ -329,7 +328,7 @@ static void test_init_polarity_and_flags(void)
   cfg.enable_aucke  = true;
   cfg.tx_threshold  = 7U;
   cfg.rx_threshold  = 1U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   TEST_ASSERT((reg->SSICR & (uint32_t)k_ra_ssie_mask_del) != 0U);
@@ -340,7 +339,7 @@ static void test_init_polarity_and_flags(void)
   TEST_ASSERT((reg->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke) != 0U);
 
   /* SSISCR encodes RX threshold in [4:0] and TX threshold in [12:8]. */
-  TEST_ASSERT_EQ((int32_t)((7U << (uint8_t)k_ra_ssie_shift_tdes) | 1U), (int32_t)reg->SSISCR);
+  TEST_ASSERT_EQ(((7U << (uint8_t)k_ra_ssie_shift_tdes) | 1U), reg->SSISCR);
   TEST_END("ssie init exposes every polarity flag");
 }
 
@@ -357,13 +356,13 @@ static void test_init_lrcont_blocks_bckastp(void)
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.lr_continue   = true;
   cfg.bck_idle_stop = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   TEST_ASSERT((reg->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont) != 0U);
   /* HUM Ch 46.2.7 "SSIOFR : Audio Format Register" p 3091
    * Note 2 forbids both LRCONT+BCKASTP at once, so BCKASTP must be 0. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
+  TEST_ASSERT_EQ(0, (reg->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
   TEST_END("ssie init: LRCONT wins over BCKASTP when both requested");
 }
 
@@ -379,7 +378,7 @@ static void test_init_bckastp_alone(void)
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.bck_idle_stop = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   TEST_ASSERT((reg->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp) != 0U);
@@ -396,8 +395,7 @@ static void test_init_null_cfg(void)
 {
   TEST_BEGIN("ssie init null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, nullptr));
   TEST_END("ssie init null cfg");
 }
 
@@ -413,10 +411,8 @@ static void test_init_bad_channel(void)
   prep();
 
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch_bad, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch_way, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch_bad, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch_way, &cfg));
   TEST_END("ssie init bad channel");
 }
 
@@ -432,12 +428,10 @@ static void test_init_bad_threshold(void)
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.tx_threshold  = 0x40U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   cfg              = make_master_i2s_cfg();
   cfg.rx_threshold = 0x40U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_END("ssie init rejects threshold > 0x1F");
 }
 
@@ -453,18 +447,17 @@ static void test_deinit(void)
   prep();
 
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   reg->SSICR                  = reg->SSICR | (uint32_t)k_ra_ssie_mask_ren_ten;
   reg->SSIFCR                 = reg->SSIFCR | (uint32_t)k_ra_ssie_mask_aucke;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_deinit((uint8_t)k_ra_ssie_test_ch0));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_deinit((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
+  TEST_ASSERT_EQ(0, (reg->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_deinit((uint8_t)k_ra_ssie_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_deinit((uint8_t)k_ra_ssie_test_ch_bad));
   TEST_END("ssie deinit clears TEN/REN + AUCKE");
 }
 
@@ -483,26 +476,25 @@ static void test_start_stop_tx(void)
   TEST_BEGIN("ssie start TX sets TEN + TIE + TUIEN");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   /* Pre-set IIRQ so the start helper believes the SSIE is idle. */
   reg->SSISR = (uint32_t)k_ra_ssie_mask_iirq;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx));
   TEST_ASSERT((reg->SSICR & (uint32_t)k_ra_ssie_mask_ten) != 0U);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ren));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_ren));
   TEST_ASSERT((reg->SSICR & (1UL << (uint8_t)k_ra_ssie_bit_tuien)) != 0U);
   TEST_ASSERT((reg->SSIFCR & (uint32_t)k_ra_ssie_mask_tie) != 0U);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIFCR & (uint32_t)k_ra_ssie_mask_rie));
+  TEST_ASSERT_EQ(0, (reg->SSIFCR & (uint32_t)k_ra_ssie_mask_rie));
 
   /* Stop should clear TEN + IRQ enables but leave IIEN armed. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_stop((uint8_t)k_ra_ssie_test_ch0));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_err_ien));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_stop((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_err_ien));
   TEST_ASSERT((reg->SSICR & (uint32_t)k_ra_ssie_mask_iien) != 0U);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIFCR & (uint32_t)k_ra_ssie_mask_rie_tie));
+  TEST_ASSERT_EQ(0, (reg->SSIFCR & (uint32_t)k_ra_ssie_mask_rie_tie));
   TEST_END("ssie start TX sets TEN + TIE + TUIEN");
 }
 
@@ -517,19 +509,17 @@ static void test_start_busy_when_not_idle(void)
   TEST_BEGIN("ssie start refuses when SSIE not idle");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   /* IIRQ low + REN/TEN clear -> not idle. */
   reg->SSISR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_busy,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_rx));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_rx));
 
   /* Already started in another direction. */
   reg->SSISR = (uint32_t)k_ra_ssie_mask_iirq;
   reg->SSICR = reg->SSICR | (uint32_t)k_ra_ssie_mask_ten;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_busy,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_rx));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_rx));
   TEST_END("ssie start refuses when SSIE not idle");
 }
 
@@ -544,14 +534,12 @@ static void test_start_already_armed(void)
   TEST_BEGIN("ssie start is idempotent when already in mode");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   reg->SSISR                  = (uint32_t)k_ra_ssie_mask_iirq;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx));
   TEST_END("ssie start is idempotent when already in mode");
 }
 
@@ -565,10 +553,10 @@ static void test_start_bad_args(void)
 {
   TEST_BEGIN("ssie start rejects bad dir / bad channel");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch_bad, k_ra_ssie_dir_tx));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, (ra_ssie_dir_t)0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_start((uint8_t)k_ra_ssie_test_ch_bad, k_ra_ssie_dir_tx));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, (ra_ssie_dir_t)0U));
   TEST_END("ssie start rejects bad dir / bad channel");
 }
 
@@ -582,8 +570,7 @@ static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("ssie stop bad channel");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_stop((uint8_t)k_ra_ssie_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_stop((uint8_t)k_ra_ssie_test_ch_bad));
   TEST_END("ssie stop bad channel");
 }
 
@@ -598,16 +585,15 @@ static void test_recovery_clears_errors(void)
   TEST_BEGIN("ssie start_recovery clears error flags + SSIRST");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   reg->SSISR                  = (uint32_t)k_ra_ssie_mask_err_all | (uint32_t)k_ra_ssie_mask_iirq;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_start_recovery((uint8_t)k_ra_ssie_test_ch0));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSISR & (uint32_t)k_ra_ssie_mask_err_all));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIFCR & (uint32_t)k_ra_ssie_mask_ssirst));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_start_recovery((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(0, (reg->SSISR & (uint32_t)k_ra_ssie_mask_err_all));
+  TEST_ASSERT_EQ(0, (reg->SSIFCR & (uint32_t)k_ra_ssie_mask_ssirst));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_start_recovery((uint8_t)k_ra_ssie_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_start_recovery((uint8_t)k_ra_ssie_test_ch_bad));
   TEST_END("ssie start_recovery clears error flags + SSIRST");
 }
 
@@ -622,16 +608,15 @@ static void test_mute_toggles_muen(void)
   TEST_BEGIN("ssie mute toggles SSICR.MUEN");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_mute((uint8_t)k_ra_ssie_test_ch0, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_mute((uint8_t)k_ra_ssie_test_ch0, true));
   TEST_ASSERT((reg->SSICR & (uint32_t)k_ra_ssie_mask_muen) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_mute((uint8_t)k_ra_ssie_test_ch0, false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_muen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_mute((uint8_t)k_ra_ssie_test_ch0, false));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_muen));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_mute((uint8_t)k_ra_ssie_test_ch_bad, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_mute((uint8_t)k_ra_ssie_test_ch_bad, true));
   TEST_END("ssie mute toggles SSICR.MUEN");
 }
 
@@ -646,17 +631,16 @@ static void test_set_thresholds(void)
   TEST_BEGIN("ssie set_thresholds writes SSISCR");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-  TEST_ASSERT_EQ((int32_t)((0x10U << (uint8_t)k_ra_ssie_shift_tdes) | 0x05U), (int32_t)reg->SSISCR);
+  TEST_ASSERT_EQ(((0x10U << (uint8_t)k_ra_ssie_shift_tdes) | 0x05U), reg->SSISCR);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0, 0x40U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch_bad, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0, 0x40U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch_bad, 0U, 0U));
   TEST_END("ssie set_thresholds writes SSISCR");
 }
 
@@ -676,13 +660,12 @@ static void test_write_sample(void)
   prep();
 
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ssie_write_sample((uint8_t)k_ra_ssie_test_ch0, (uint32_t)k_ra_ssie_test_sample_a));
+    k_ra_ok,
+    ra_ssie_write_sample((uint8_t)k_ra_ssie_test_ch0, (uint32_t)k_ra_ssie_test_sample_a));
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ssie_test_sample_a, (int32_t)reg->SSIFTDR);
+  TEST_ASSERT_EQ(k_ra_ssie_test_sample_a, reg->SSIFTDR);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_write_sample((uint8_t)k_ra_ssie_test_ch_bad, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_write_sample((uint8_t)k_ra_ssie_test_ch_bad, 0U));
   TEST_END("ssie write_sample writes SSIFTDR");
 }
 
@@ -701,14 +684,12 @@ static void test_read_sample(void)
   reg->SSIFRDR                = (uint32_t)k_ra_ssie_test_sample_b;
 
   uint32_t sample = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_read_sample((uint8_t)k_ra_ssie_test_ch1, &sample));
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ssie_test_sample_b, (int32_t)sample);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_read_sample((uint8_t)k_ra_ssie_test_ch1, &sample));
+  TEST_ASSERT_EQ(k_ra_ssie_test_sample_b, sample);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_read_sample((uint8_t)k_ra_ssie_test_ch1, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_read_sample((uint8_t)k_ra_ssie_test_ch_bad, &sample));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_read_sample((uint8_t)k_ra_ssie_test_ch1, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_read_sample((uint8_t)k_ra_ssie_test_ch_bad, &sample));
   TEST_END("ssie read_sample reads SSIFRDR");
 }
 
@@ -733,18 +714,17 @@ static void test_write_buffer(void)
     /* keep TDC at 2 so the loop sees space (sim mmap is just RAM). */
   }
   uint16_t written = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 40U, &written));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 40U, &written));
   /* The simulator returns whatever we wrote into SSIFSR; since we
    * keep TDC=2 throughout, all 40 samples should fit. */
-  TEST_ASSERT_EQ((int32_t)40, (int32_t)written);
+  TEST_ASSERT_EQ(40, written);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U, &written));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U, &written));
   TEST_END("ssie write_buffer pumps until FIFO full");
 }
 
@@ -763,9 +743,8 @@ static void test_write_buffer_stops_when_full(void)
   reg->SSIFSR      = (uint32_t)((uint32_t)k_ra_ssie_fifo_depth << (uint8_t)k_ra_ssie_shift_tdc);
   uint32_t buf[4]  = {1U, 2U, 3U, 4U};
   uint16_t written = 99U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 4U, &written));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)written);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_write_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 4U, &written));
+  TEST_ASSERT_EQ(0, written);
   TEST_END("ssie write_buffer stops when TDC reaches depth");
 }
 
@@ -785,19 +764,18 @@ static void test_read_buffer(void)
   reg->SSIFRDR                = (uint32_t)k_ra_ssie_test_sample_b;
   uint32_t buf[8]             = {};
   uint16_t read               = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch1, buf, 8U, &read));
-  TEST_ASSERT_EQ((int32_t)8, (int32_t)read);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch1, buf, 8U, &read));
+  TEST_ASSERT_EQ(8, read);
   for (uint8_t i = 0U; i < 8U; i++) {
-    TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ssie_test_sample_b, (int32_t)buf[i]);
+    TEST_ASSERT_EQ(k_ra_ssie_test_sample_b, buf[i]);
   }
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch1, nullptr, 1U, &read));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch1, buf, 1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U, &read));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch1, nullptr, 1U, &read));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch1, buf, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U, &read));
   TEST_END("ssie read_buffer pumps until FIFO empty");
 }
 
@@ -815,9 +793,8 @@ static void test_read_buffer_empty_fifo(void)
   reg->SSIFSR                 = 0U;
   uint32_t buf[1]             = {};
   uint16_t read               = 99U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 1U, &read));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)read);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_read_buffer((uint8_t)k_ra_ssie_test_ch0, buf, 1U, &read));
+  TEST_ASSERT_EQ(0, read);
   TEST_END("ssie read_buffer returns 0 when RDC=0");
 }
 
@@ -850,8 +827,8 @@ static void test_attach_detach_dma(void)
     .tx_samples     = 16U,
     .rx_samples     = 16U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
   TEST_END("ssie attach_dma + detach_dma full duplex");
 }
 
@@ -874,8 +851,8 @@ static void test_attach_dma_tx_only(void)
     .tx_samples     = 8U,
     .rx_samples     = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
   TEST_END("ssie attach_dma TX-only path");
 }
 
@@ -890,8 +867,7 @@ static void test_attach_dma_bad_args(void)
   TEST_BEGIN("ssie attach_dma rejects bad descriptors");
   prep();
   static uint32_t buf[2] = {1U, 2U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, nullptr));
 
   ra_ssie_dma_cfg_t dma = {
     .tx_dma_channel = 0xFFU,
@@ -902,27 +878,22 @@ static void test_attach_dma_bad_args(void)
     .rx_samples     = 0U,
   };
   /* No directions enabled. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
 
   /* TX channel set but missing buffer. */
   dma.tx_dma_channel = (uint8_t)k_ra_ssie_test_dma_tx;
   dma.tx_samples     = 4U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
   dma.tx_buffer  = buf;
   dma.tx_samples = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma));
 
   /* Bad channel. */
   dma.tx_samples = 4U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch_bad, &dma));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch_bad, &dma));
 
   /* Detach on bad channel. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch_bad));
   TEST_END("ssie attach_dma rejects bad descriptors");
 }
 
@@ -946,9 +917,9 @@ static void test_get_status_decodes_fifo_levels(void)
   reg->SSISR                  = (uint32_t)k_ra_ssie_mask_iirq | (uint32_t)k_ra_ssie_test_ssisr_err;
 
   ra_ssie_status_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_get_status((uint8_t)k_ra_ssie_test_ch0, &st));
-  TEST_ASSERT_EQ((int32_t)10, (int32_t)st.tx_count);
-  TEST_ASSERT_EQ((int32_t)5, (int32_t)st.rx_count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_get_status((uint8_t)k_ra_ssie_test_ch0, &st));
+  TEST_ASSERT_EQ(10, st.tx_count);
+  TEST_ASSERT_EQ(5, st.rx_count);
   TEST_ASSERT(st.rx_full);
   TEST_ASSERT(st.tx_empty);
   TEST_ASSERT(st.idle);
@@ -960,10 +931,8 @@ static void test_get_status_decodes_fifo_levels(void)
   TEST_ASSERT((st.events & (uint8_t)k_ra_ssie_evt_tx_empty) != 0U);
   TEST_ASSERT((st.events & (uint8_t)k_ra_ssie_evt_rx_full) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_get_status((uint8_t)k_ra_ssie_test_ch0, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_get_status((uint8_t)k_ra_ssie_test_ch_bad, &st));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_get_status((uint8_t)k_ra_ssie_test_ch0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_get_status((uint8_t)k_ra_ssie_test_ch_bad, &st));
   TEST_END("ssie get_status decodes RDC/TDC + flags");
 }
 
@@ -981,17 +950,16 @@ static void test_clear_status_masks_to_writeable(void)
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   reg->SSISR                  = (uint32_t)k_ra_ssie_mask_iirq | (uint32_t)k_ra_ssie_mask_err_all;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_clear_status((uint8_t)k_ra_ssie_test_ch0,
-                                               (uint32_t)k_ra_ssie_mask_roirq |
-                                                 (uint32_t)k_ra_ssie_mask_toirq | 0x1U));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ssie_clear_status((uint8_t)k_ra_ssie_test_ch0,
+                         (uint32_t)k_ra_ssie_mask_roirq | (uint32_t)k_ra_ssie_mask_toirq | 0x1U));
 
   const uint32_t expected =
     (uint32_t)k_ra_ssie_mask_iirq | (uint32_t)k_ra_ssie_mask_ruirq | (uint32_t)k_ra_ssie_mask_tuirq;
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)reg->SSISR);
+  TEST_ASSERT_EQ(expected, reg->SSISR);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_clear_status((uint8_t)k_ra_ssie_test_ch_bad, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_clear_status((uint8_t)k_ra_ssie_test_ch_bad, 0U));
   TEST_END("ssie clear_status only touches error bits");
 }
 
@@ -1006,23 +974,20 @@ static void test_set_irq_enable(void)
   TEST_BEGIN("ssie set_irq_enable updates SSICR IRQ mask");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_set_irq_enable((uint8_t)k_ra_ssie_test_ch0,
-                                                 (uint32_t)k_ra_ssie_mask_irq_all,
-                                                 true));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ssie_set_irq_enable((uint8_t)k_ra_ssie_test_ch0, (uint32_t)k_ra_ssie_mask_irq_all, true));
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ssie_mask_irq_all,
-                 (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_irq_all));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_set_irq_enable((uint8_t)k_ra_ssie_test_ch0,
-                                                 (uint32_t)k_ra_ssie_mask_iien,
-                                                 false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_iien));
+  TEST_ASSERT_EQ(k_ra_ssie_mask_irq_all, (reg->SSICR & (uint32_t)k_ra_ssie_mask_irq_all));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ssie_set_irq_enable((uint8_t)k_ra_ssie_test_ch0, (uint32_t)k_ra_ssie_mask_iien, false));
+  TEST_ASSERT_EQ(0, (reg->SSICR & (uint32_t)k_ra_ssie_mask_iien));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_irq_enable((uint8_t)k_ra_ssie_test_ch_bad, 0U, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_irq_enable((uint8_t)k_ra_ssie_test_ch_bad, 0U, true));
   TEST_END("ssie set_irq_enable updates SSICR IRQ mask");
 }
 
@@ -1041,15 +1006,14 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("ssie attach + dispatch decodes events");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_attach_handler(stub_ssie_cb, (void*)(uintptr_t)0xA1B2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_attach_handler(stub_ssie_cb, (void*)(uintptr_t)0xA1B2U));
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch1);
   reg->SSISR                  = (uint32_t)k_ra_ssie_test_ssisr_err | (uint32_t)k_ra_ssie_mask_tuirq;
   reg->SSIFSR                 = (uint32_t)k_ra_ssie_mask_tde;
 
   ra_ssie_dispatch((uint8_t)k_ra_ssie_test_ch1);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ssie_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_ssie_test_ch1, (int32_t)s_ssie_cb_last_ch);
+  TEST_ASSERT_EQ(1, s_ssie_cb_count);
+  TEST_ASSERT_EQ(k_ra_ssie_test_ch1, s_ssie_cb_last_ch);
   TEST_ASSERT((s_ssie_cb_last_events & (uint8_t)k_ra_ssie_evt_tx_over) != 0U);
   TEST_ASSERT((s_ssie_cb_last_events & (uint8_t)k_ra_ssie_evt_rx_over) != 0U);
   TEST_ASSERT((s_ssie_cb_last_events & (uint8_t)k_ra_ssie_evt_tx_under) != 0U);
@@ -1057,12 +1021,12 @@ static void test_attach_and_dispatch(void)
 
   /* Out-of-range channel must be silently dropped. */
   ra_ssie_dispatch((uint8_t)k_ra_ssie_test_ch_bad);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ssie_cb_count);
+  TEST_ASSERT_EQ(1, s_ssie_cb_count);
 
   /* Detach -> dispatch is a no-op. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_attach_handler(nullptr, nullptr));
   ra_ssie_dispatch((uint8_t)k_ra_ssie_test_ch0);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ssie_cb_count);
+  TEST_ASSERT_EQ(1, s_ssie_cb_count);
   TEST_END("ssie attach + dispatch decodes events");
 }
 
@@ -1082,14 +1046,12 @@ static void test_power_transition(void)
   prep();
 
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_enter_stop((uint8_t)k_ra_ssie_test_ch0));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_exit_stop((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_enter_stop((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_exit_stop((uint8_t)k_ra_ssie_test_ch0));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_enter_stop((uint8_t)k_ra_ssie_test_ch_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_exit_stop((uint8_t)k_ra_ssie_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_enter_stop((uint8_t)k_ra_ssie_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_exit_stop((uint8_t)k_ra_ssie_test_ch_bad));
   TEST_END("ssie power transition");
 }
 
@@ -1108,10 +1070,9 @@ static void test_set_fifo_threshold_happy(void)
   TEST_BEGIN("ssie set_fifo_threshold programmes SSISCR");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
   TEST_ASSERT((reg->SSISCR & (uint32_t)k_ra_ssie_mask_tdes) != 0U);
   TEST_ASSERT((reg->SSISCR & (uint32_t)k_ra_ssie_mask_rdfs) != 0U);
@@ -1129,12 +1090,12 @@ static void test_set_fifo_threshold_bad_args(void)
   TEST_BEGIN("ssie set_fifo_threshold rejects bad arguments");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x40U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch_bad, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x40U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch_bad, 0U, 0U));
   TEST_END("ssie set_fifo_threshold rejects bad arguments");
 }
 
@@ -1149,13 +1110,13 @@ static void test_attach_dma_pair_happy(void)
   TEST_BEGIN("ssie attach_dma_pair binds tx+rx ids");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
-                                                  (uint8_t)k_ra_ssie_test_dma_tx,
-                                                  (uint8_t)k_ra_ssie_test_dma_rx));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
+                                         (uint8_t)k_ra_ssie_test_dma_tx,
+                                         (uint8_t)k_ra_ssie_test_dma_rx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
   TEST_END("ssie attach_dma_pair binds tx+rx ids");
 }
 
@@ -1169,10 +1130,10 @@ static void test_attach_dma_pair_bad_args(void)
 {
   TEST_BEGIN("ssie attach_dma_pair rejects all-unused / bad channel");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch_bad, 0U, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0, 0xFFU, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch_bad, 0U, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0, 0xFFU, 0xFFU));
   TEST_END("ssie attach_dma_pair rejects all-unused / bad channel");
 }
 
@@ -1187,10 +1148,10 @@ static void test_send_iso_happy(void)
   TEST_BEGIN("ssie send_iso pushes all samples");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   static const uint32_t buf[4] = {0xAA00U, 0xBB11U, 0xCC22U, 0xDD33U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch0, buf, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch0, buf, 4U));
   TEST_END("ssie send_iso pushes all samples");
 }
 
@@ -1204,11 +1165,9 @@ static void test_send_iso_bad_args(void)
 {
   TEST_BEGIN("ssie send_iso rejects null buffer / bad channel");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U));
   static const uint32_t buf[1] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U));
   TEST_END("ssie send_iso rejects null buffer / bad channel");
 }
 
@@ -1223,7 +1182,7 @@ static void test_recv_iso_drains_fifo(void)
   TEST_BEGIN("ssie recv_iso drains rx FIFO");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   /* Stub the SSIFSR RDC field so the loop runs at least once before
    * deciding the FIFO is empty. */
@@ -1233,8 +1192,7 @@ static void test_recv_iso_drains_fifo(void)
 
   uint32_t out[2] = {0U, 0U};
   uint16_t got    = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, out, 2U, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, out, 2U, &got));
   TEST_ASSERT(got <= 2U);
   TEST_END("ssie recv_iso drains rx FIFO");
 }
@@ -1251,12 +1209,12 @@ static void test_recv_iso_bad_args(void)
   prep();
   uint32_t out = 0U;
   uint16_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, &out, 1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch_bad, &out, 1U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, &out, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch_bad, &out, 1U, &got));
   TEST_END("ssie recv_iso rejects null + bad channel");
 }
 
@@ -1301,26 +1259,24 @@ static void test_mcdc_init_lrcont(void)
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.lr_continue   = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT((ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont) !=
               0U);
   /* V2 */
   prep();
   cfg             = make_master_i2s_cfg();
   cfg.lr_continue = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
   /* V3 */
   prep();
   cfg             = make_master_i2s_cfg();
   cfg.lr_continue = true;
   cfg.role        = k_ra_ssie_role_slave;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
   TEST_END("ssie MC/DC build_ssiofr lrcont && controller");
 }
 
@@ -1349,35 +1305,32 @@ static void test_mcdc_init_bckastp(void)
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.bck_idle_stop = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT((ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp) !=
               0U);
   /* V2 */
   prep();
   cfg               = make_master_i2s_cfg();
   cfg.bck_idle_stop = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
   /* V3 */
   prep();
   cfg               = make_master_i2s_cfg();
   cfg.bck_idle_stop = true;
   cfg.role          = k_ra_ssie_role_slave;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
   /* V4 */
   prep();
   cfg               = make_master_i2s_cfg();
   cfg.bck_idle_stop = true;
   cfg.lr_continue   = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
   TEST_END("ssie MC/DC build_ssiofr bckastp && controller && !lrcont");
 }
 
@@ -1399,26 +1352,24 @@ static void test_mcdc_init_aucke(void)
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.enable_aucke  = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT((ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke) !=
               0U);
   /* V2 */
   prep();
   cfg              = make_master_i2s_cfg();
   cfg.enable_aucke = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
   /* V3 */
   prep();
   cfg              = make_master_i2s_cfg();
   cfg.enable_aucke = true;
   cfg.role         = k_ra_ssie_role_slave;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)0,
-    (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(0,
+                 (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
   TEST_END("ssie MC/DC build_ssifcr aucke && controller");
 }
 
@@ -1439,19 +1390,17 @@ static void test_mcdc_init_threshold(void)
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
   cfg.tx_threshold  = (uint8_t)k_ssie_mcdc_thresh_in;
   cfg.rx_threshold  = (uint8_t)k_ssie_mcdc_thresh_in;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   prep();
   cfg              = make_master_i2s_cfg();
   cfg.tx_threshold = (uint8_t)k_ssie_mcdc_thresh_over;
   cfg.rx_threshold = (uint8_t)k_ssie_mcdc_thresh_in;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   prep();
   cfg              = make_master_i2s_cfg();
   cfg.tx_threshold = (uint8_t)k_ssie_mcdc_thresh_in;
   cfg.rx_threshold = (uint8_t)k_ssie_mcdc_thresh_over;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_END("ssie MC/DC init threshold range");
 }
 
@@ -1483,7 +1432,7 @@ static void test_mcdc_start_dir(void)
    * the validation gate before any other failure modes. */
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   /* V1, V2, V3: validation passes; downstream may return ok/busy but
    * NOT invalid_arg-from-bad-dir. */
   ra_err_t r1 = ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_rx);
@@ -1493,9 +1442,8 @@ static void test_mcdc_start_dir(void)
   ra_err_t r3 = ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, k_ra_ssie_dir_tx_rx);
   TEST_ASSERT(r3 != k_ra_err_invalid_arg || r3 == k_ra_ok);
   /* V4: bad dir -> invalid_arg. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, (ra_ssie_dir_t)k_ssie_mcdc_dir_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_start((uint8_t)k_ra_ssie_test_ch0, (ra_ssie_dir_t)k_ssie_mcdc_dir_bad));
   TEST_END("ssie MC/DC start dir != rx && != tx && != tx_rx");
 }
 
@@ -1514,19 +1462,19 @@ static void test_mcdc_set_thresholds(void)
   TEST_BEGIN("ssie MC/DC set_thresholds range");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
-                                                 (uint8_t)k_ssie_mcdc_thresh_in,
-                                                 (uint8_t)k_ssie_mcdc_thresh_in));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
-                                                 (uint8_t)k_ssie_mcdc_thresh_over,
-                                                 (uint8_t)k_ssie_mcdc_thresh_in));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
-                                                 (uint8_t)k_ssie_mcdc_thresh_in,
-                                                 (uint8_t)k_ssie_mcdc_thresh_over));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
+                                        (uint8_t)k_ssie_mcdc_thresh_in,
+                                        (uint8_t)k_ssie_mcdc_thresh_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
+                                        (uint8_t)k_ssie_mcdc_thresh_over,
+                                        (uint8_t)k_ssie_mcdc_thresh_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
+                                        (uint8_t)k_ssie_mcdc_thresh_in,
+                                        (uint8_t)k_ssie_mcdc_thresh_over));
   TEST_END("ssie MC/DC set_thresholds range");
 }
 
@@ -1550,7 +1498,7 @@ static void test_mcdc_attach_dma_neither(void)
   TEST_BEGIN("ssie MC/DC validate_dma_cfg !want_tx && !want_rx");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   static uint32_t txbuf[4] = {0U};
   static uint32_t rxbuf[4] = {0U};
   /* V1 */
@@ -1586,8 +1534,7 @@ static void test_mcdc_attach_dma_neither(void)
     .tx_samples     = 0U,
     .rx_samples     = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma3));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &dma3));
   TEST_END("ssie MC/DC validate_dma_cfg !want_tx && !want_rx");
 }
 
@@ -1614,7 +1561,7 @@ static void test_mcdc_attach_dma_tx_buffer(void)
   TEST_BEGIN("ssie MC/DC validate_dma_cfg want_tx && (buf==NULL || samples==0)");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   static uint32_t txbuf[4] = {0U};
   static uint32_t rxbuf[4] = {0U};
   /* V1 */
@@ -1646,8 +1593,7 @@ static void test_mcdc_attach_dma_tx_buffer(void)
     .tx_samples     = 4U,
     .rx_samples     = 4U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v3cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v3cfg));
   /* V4: want_tx=T, tx_samples=0 -> invalid_arg. */
   ra_ssie_dma_cfg_t v4cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
@@ -1657,8 +1603,7 @@ static void test_mcdc_attach_dma_tx_buffer(void)
     .tx_samples     = 0U,
     .rx_samples     = 4U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v4cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v4cfg));
   TEST_END("ssie MC/DC validate_dma_cfg want_tx && (buf==NULL || samples==0)");
 }
 
@@ -1681,7 +1626,7 @@ static void test_mcdc_attach_dma_rx_buffer(void)
   TEST_BEGIN("ssie MC/DC validate_dma_cfg want_rx && (buf==NULL || samples==0)");
   prep();
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   static uint32_t   txbuf[4] = {0U};
   static uint32_t   rxbuf[4] = {0U};
   ra_ssie_dma_cfg_t v1cfg    = {
@@ -1710,8 +1655,7 @@ static void test_mcdc_attach_dma_rx_buffer(void)
     .tx_samples     = 4U,
     .rx_samples     = 4U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v3cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v3cfg));
   ra_ssie_dma_cfg_t v4cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
@@ -1720,8 +1664,7 @@ static void test_mcdc_attach_dma_rx_buffer(void)
     .tx_samples     = 4U,
     .rx_samples     = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v4cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_attach_dma((uint8_t)k_ra_ssie_test_ch0, &v4cfg));
   TEST_END("ssie MC/DC validate_dma_cfg want_rx && (buf==NULL || samples==0)");
 }
 
@@ -1746,25 +1689,25 @@ static void test_mcdc_attach_dma_pair(void)
 {
   TEST_BEGIN("ssie MC/DC attach_dma_pair both-out-of-range guard");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
-                                                  (uint8_t)k_ssie_mcdc_dma_valid,
-                                                  (uint8_t)k_ssie_mcdc_dma_valid));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
+                                         (uint8_t)k_ssie_mcdc_dma_valid,
+                                         (uint8_t)k_ssie_mcdc_dma_valid));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
-                                                  (uint8_t)k_ssie_mcdc_dma_bad,
-                                                  (uint8_t)k_ssie_mcdc_dma_valid));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
+                                         (uint8_t)k_ssie_mcdc_dma_bad,
+                                         (uint8_t)k_ssie_mcdc_dma_valid));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
-                                                  (uint8_t)k_ssie_mcdc_dma_valid,
-                                                  (uint8_t)k_ssie_mcdc_dma_bad));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
+                                         (uint8_t)k_ssie_mcdc_dma_valid,
+                                         (uint8_t)k_ssie_mcdc_dma_bad));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
-                                                  (uint8_t)k_ssie_mcdc_dma_bad,
-                                                  (uint8_t)k_ssie_mcdc_dma_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
+                                         (uint8_t)k_ssie_mcdc_dma_bad,
+                                         (uint8_t)k_ssie_mcdc_dma_bad));
   TEST_END("ssie MC/DC attach_dma_pair both-out-of-range guard");
 }
 

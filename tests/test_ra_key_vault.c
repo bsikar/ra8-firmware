@@ -34,7 +34,7 @@ static const uint8_t k_test_chal[k_ra_key_vault_chal_bytes] = {
 static void test_init_zeroes_vault(void)
 {
   TEST_BEGIN("ra_key_vault_init zeroes everything");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
   TEST_END("ra_key_vault_init zeroes everything");
 }
 
@@ -47,18 +47,16 @@ static void test_init_zeroes_vault(void)
 static void test_store_then_challenge(void)
 {
   TEST_BEGIN("store + challenge produces deterministic digest");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_store(0U, k_test_key));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_store(0U, k_test_key));
 
   uint8_t digest_a[k_ra_key_vault_digest_bytes] = {0U};
   uint8_t digest_b[k_ra_key_vault_digest_bytes] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(0U, k_test_chal, digest_a));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(0U, k_test_chal, digest_b));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_sha256_xor_challenge(0U, k_test_chal, digest_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_sha256_xor_challenge(0U, k_test_chal, digest_b));
   /* Same inputs -> same digest. */
   for (uint32_t i = 0U; i < (uint32_t)k_ra_key_vault_digest_bytes; ++i) {
-    TEST_ASSERT_EQ((int32_t)digest_a[i], (int32_t)digest_b[i]);
+    TEST_ASSERT_EQ(digest_a[i], digest_b[i]);
   }
   TEST_END("store + challenge produces deterministic digest");
 }
@@ -72,8 +70,8 @@ static void test_store_then_challenge(void)
 static void test_different_challenge_different_digest(void)
 {
   TEST_BEGIN("changing the challenge changes the digest");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_store(0U, k_test_key));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_store(0U, k_test_key));
 
   uint8_t digest_a[k_ra_key_vault_digest_bytes] = {0U};
   uint8_t digest_b[k_ra_key_vault_digest_bytes] = {0U};
@@ -83,10 +81,8 @@ static void test_different_challenge_different_digest(void)
   }
   chal_b[0] ^= 0x01U; /* Flip one bit. */
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(0U, k_test_chal, digest_a));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(0U, chal_b, digest_b));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_sha256_xor_challenge(0U, k_test_chal, digest_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_sha256_xor_challenge(0U, chal_b, digest_b));
   bool any_diff = false;
   for (uint32_t i = 0U; i < (uint32_t)k_ra_key_vault_digest_bytes; ++i) {
     if (digest_a[i] != digest_b[i]) {
@@ -107,18 +103,15 @@ static void test_different_challenge_different_digest(void)
 static void test_arg_validation(void)
 {
   TEST_BEGIN("ra_key_vault_*: arg validation");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_key_vault_store(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_key_vault_store(99U, k_test_key));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_key_vault_store(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_key_vault_store(99U, k_test_key));
 
   uint8_t digest[k_ra_key_vault_digest_bytes] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(0U, nullptr, digest));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(0U, k_test_chal, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(99U, k_test_chal, digest));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_key_vault_sha256_xor_challenge(0U, nullptr, digest));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_key_vault_sha256_xor_challenge(0U, k_test_chal, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_key_vault_sha256_xor_challenge(99U, k_test_chal, digest));
   TEST_END("ra_key_vault_*: arg validation");
 }
 
@@ -131,17 +124,15 @@ static void test_arg_validation(void)
 static void test_nsc_veneer_forwards(void)
 {
   TEST_BEGIN("ra_nsc_key_vault_challenge forwards through veneer");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_key_vault_store(2U, k_test_key));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_store(2U, k_test_key));
 
   uint8_t digest_direct[k_ra_key_vault_digest_bytes] = {0U};
   uint8_t digest_veneer[k_ra_key_vault_digest_bytes] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_key_vault_sha256_xor_challenge(2U, k_test_chal, digest_direct));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_nsc_key_vault_challenge(2U, k_test_chal, digest_veneer));
+  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_sha256_xor_challenge(2U, k_test_chal, digest_direct));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_key_vault_challenge(2U, k_test_chal, digest_veneer));
   for (uint32_t i = 0U; i < (uint32_t)k_ra_key_vault_digest_bytes; ++i) {
-    TEST_ASSERT_EQ((int32_t)digest_direct[i], (int32_t)digest_veneer[i]);
+    TEST_ASSERT_EQ(digest_direct[i], digest_veneer[i]);
   }
   TEST_END("ra_nsc_key_vault_challenge forwards through veneer");
 }

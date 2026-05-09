@@ -107,7 +107,7 @@ static void test_gpt_capture_init_ok(void)
     .duty_b     = 0U,
     .auto_start = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gpt_init((uint8_t)k_test_gpt_capture_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_init((uint8_t)k_test_gpt_capture_channel, &cfg));
   TEST_END("gpt_capture: ra_gpt_init free-run config ok");
 }
 

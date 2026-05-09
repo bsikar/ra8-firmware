@@ -68,7 +68,7 @@ static void prep(void)
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
   const ra_rsip_config_t cfg = {.run_bist = true};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_init(&cfg));
 }
 
 /**
@@ -105,38 +105,33 @@ static void test_protected_aes_roundtrip(void)
   uint8_t raw_key[k_test_aes_block];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_aes_init(blob,
-                                                     k_ra_rsip_aes_key_bits_128,
-                                                     k_ra_rsip_aes_mode_ecb,
-                                                     nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_rsip_protected_aes_init(blob, k_ra_rsip_aes_key_bits_128, k_ra_rsip_aes_mode_ecb, nullptr));
 
   /* Encrypt -- the engine echoes DATA_OUT, so the ciphertext bytes
    * are the LE pattern from the four lanes. */
   preload_data_out();
   uint8_t pt[k_test_aes_block] = {};
   uint8_t ct[k_test_aes_block] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_aes_encrypt(pt, ct, (uint32_t)k_test_aes_block));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_encrypt(pt, ct, (uint32_t)k_test_aes_block));
   /* DEADBEEF in little-endian: EF BE AD DE */
-  TEST_ASSERT_EQ((int32_t)0xEFU, (int32_t)ct[0]);
-  TEST_ASSERT_EQ((int32_t)0xBEU, (int32_t)ct[1]);
-  TEST_ASSERT_EQ((int32_t)0xADU, (int32_t)ct[2]);
-  TEST_ASSERT_EQ((int32_t)0xDEU, (int32_t)ct[3]);
+  TEST_ASSERT_EQ(0xEFU, ct[0]);
+  TEST_ASSERT_EQ(0xBEU, ct[1]);
+  TEST_ASSERT_EQ(0xADU, ct[2]);
+  TEST_ASSERT_EQ(0xDEU, ct[3]);
 
   /* Decrypt path runs through the same engine. Re-preload because
    * the stub register values may have been clobbered by the encrypt
    * dispatch. */
   preload_data_out();
   uint8_t back[k_test_aes_block] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_aes_decrypt(ct, back, (uint32_t)k_test_aes_block));
-  TEST_ASSERT_EQ((int32_t)0xEFU, (int32_t)back[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_decrypt(ct, back, (uint32_t)k_test_aes_block));
+  TEST_ASSERT_EQ(0xEFU, back[0]);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_protected_aes_finish());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_finish());
 
   TEST_END("rsip protected aes round-trip");
 }
@@ -155,15 +150,12 @@ static void test_protected_aes192_init(void)
   uint8_t raw_key[24];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_192));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_192));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_aes_init(blob,
-                                                     k_ra_rsip_aes_key_bits_192,
-                                                     k_ra_rsip_aes_mode_ecb,
-                                                     nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_protected_aes_finish());
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_rsip_protected_aes_init(blob, k_ra_rsip_aes_key_bits_192, k_ra_rsip_aes_mode_ecb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_finish());
 
   TEST_END("rsip protected aes-192 init");
 }
@@ -182,15 +174,12 @@ static void test_protected_aes256_init(void)
   uint8_t raw_key[32];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_256));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_256));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_aes_init(blob,
-                                                     k_ra_rsip_aes_key_bits_256,
-                                                     k_ra_rsip_aes_mode_ecb,
-                                                     nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_protected_aes_finish());
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_rsip_protected_aes_init(blob, k_ra_rsip_aes_key_bits_256, k_ra_rsip_aes_mode_ecb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_finish());
 
   TEST_END("rsip protected aes-256 init");
 }
@@ -212,15 +201,12 @@ static void test_protected_aes_rejects_tamper(void)
   uint8_t raw_key[k_test_aes_block];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
   /* Flip the trailing MAC. */
   blob[(uint32_t)k_ra_rsip_wrapped_max_total - 1U] ^= 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_error,
-                 (int32_t)ra_rsip_protected_aes_init(blob,
-                                                     k_ra_rsip_aes_key_bits_128,
-                                                     k_ra_rsip_aes_mode_ecb,
-                                                     nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_error,
+    ra_rsip_protected_aes_init(blob, k_ra_rsip_aes_key_bits_128, k_ra_rsip_aes_mode_ecb, nullptr));
 
   TEST_END("rsip protected aes tamper");
 }
@@ -245,11 +231,11 @@ static void test_protected_aes_no_init(void)
   (void)ra_rsip_protected_aes_finish();
 
   uint8_t buf[k_test_aes_block] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_rsip_protected_aes_encrypt(buf, buf, (uint32_t)k_test_aes_block));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_rsip_protected_aes_decrypt(buf, buf, (uint32_t)k_test_aes_block));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rsip_protected_aes_finish());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_rsip_protected_aes_encrypt(buf, buf, (uint32_t)k_test_aes_block));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_rsip_protected_aes_decrypt(buf, buf, (uint32_t)k_test_aes_block));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_rsip_protected_aes_finish());
 
   TEST_END("rsip protected aes no init");
 }
@@ -272,19 +258,18 @@ static void test_protected_rsa_decrypt(void)
   uint8_t exponent[4]                   = {0x00U, 0x01U, 0x00U, 0x01U};
   (void)memset(modulus, (int)k_test_pattern_h, sizeof(modulus));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_rsa(blob, modulus, exponent, k_ra_rsip_rsa_2048));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_rsa(blob, modulus, exponent, k_ra_rsip_rsa_2048));
 
   uint8_t ct[k_test_rsa2048_bytes] = {};
   uint8_t pt[k_test_rsa2048_bytes] = {};
   (void)memset(ct, (int)k_test_pattern_d, sizeof(ct));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_rsa_decrypt(blob,
-                                                        k_ra_rsip_rsa_2048,
-                                                        ct,
-                                                        (uint32_t)k_test_rsa2048_bytes,
-                                                        pt,
-                                                        (uint32_t)k_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_2048,
+                                               ct,
+                                               (uint32_t)k_test_rsa2048_bytes,
+                                               pt,
+                                               (uint32_t)k_test_rsa2048_bytes));
 
   TEST_END("rsip protected rsa decrypt");
 }
@@ -306,18 +291,17 @@ static void test_protected_ecdsa_sign(void)
   uint8_t priv[k_test_p256_priv];
   (void)memset(priv, (int)k_test_pattern_d, sizeof(priv));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_ecc(blob, k_ra_rsip_curve_secp256r1, priv, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_ecc(blob, k_ra_rsip_curve_secp256r1, priv, true));
 
   uint8_t hash[k_test_sha256_digest];
   (void)memset(hash, (int)k_test_pattern_h, sizeof(hash));
   uint8_t sig[k_test_p256_sig] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_protected_ecdsa_sign(blob,
-                                                       k_ra_rsip_curve_secp256r1,
-                                                       hash,
-                                                       (uint32_t)k_test_sha256_digest,
-                                                       sig));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_ecdsa_sign(blob,
+                                              k_ra_rsip_curve_secp256r1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig));
 
   TEST_END("rsip protected ecdsa sign");
 }
@@ -341,60 +325,60 @@ static void test_protected_null_args(void)
   uint8_t hash[k_test_sha256_digest]        = {};
   uint8_t sig[k_test_p256_sig]              = {};
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_aes_init(nullptr,
-                                                     k_ra_rsip_aes_key_bits_128,
-                                                     k_ra_rsip_aes_mode_ecb,
-                                                     nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_aes_init(nullptr,
+                                            k_ra_rsip_aes_key_bits_128,
+                                            k_ra_rsip_aes_mode_ecb,
+                                            nullptr));
 
   /* Once init has not run successfully, encrypt/decrypt should still
    * fall to invalid_state regardless of NULL inputs (latched flag
    * guards before pointer checks). Sanity-check that finish keeps
    * the state idle. */
   (void)ra_rsip_protected_aes_finish();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_rsip_protected_aes_encrypt(nullptr, buf, (uint32_t)k_test_aes_block));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_rsip_protected_aes_encrypt(nullptr, buf, (uint32_t)k_test_aes_block));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_rsa_decrypt(nullptr,
-                                                        k_ra_rsip_rsa_2048,
-                                                        buf,
-                                                        (uint32_t)k_test_aes_block,
-                                                        buf,
-                                                        (uint32_t)k_test_rsa2048_bytes));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_rsa_decrypt(blob,
-                                                        k_ra_rsip_rsa_2048,
-                                                        nullptr,
-                                                        (uint32_t)k_test_aes_block,
-                                                        buf,
-                                                        (uint32_t)k_test_rsa2048_bytes));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_rsa_decrypt(blob,
-                                                        k_ra_rsip_rsa_2048,
-                                                        buf,
-                                                        (uint32_t)k_test_aes_block,
-                                                        nullptr,
-                                                        (uint32_t)k_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_rsa_decrypt(nullptr,
+                                               k_ra_rsip_rsa_2048,
+                                               buf,
+                                               (uint32_t)k_test_aes_block,
+                                               buf,
+                                               (uint32_t)k_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_2048,
+                                               nullptr,
+                                               (uint32_t)k_test_aes_block,
+                                               buf,
+                                               (uint32_t)k_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_2048,
+                                               buf,
+                                               (uint32_t)k_test_aes_block,
+                                               nullptr,
+                                               (uint32_t)k_test_rsa2048_bytes));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_ecdsa_sign(nullptr,
-                                                       k_ra_rsip_curve_secp256r1,
-                                                       hash,
-                                                       (uint32_t)k_test_sha256_digest,
-                                                       sig));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_ecdsa_sign(blob,
-                                                       k_ra_rsip_curve_secp256r1,
-                                                       nullptr,
-                                                       (uint32_t)k_test_sha256_digest,
-                                                       sig));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_protected_ecdsa_sign(blob,
-                                                       k_ra_rsip_curve_secp256r1,
-                                                       hash,
-                                                       (uint32_t)k_test_sha256_digest,
-                                                       nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_ecdsa_sign(nullptr,
+                                              k_ra_rsip_curve_secp256r1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_ecdsa_sign(blob,
+                                              k_ra_rsip_curve_secp256r1,
+                                              nullptr,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_protected_ecdsa_sign(blob,
+                                              k_ra_rsip_curve_secp256r1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              nullptr));
 
   TEST_END("rsip protected null args");
 }

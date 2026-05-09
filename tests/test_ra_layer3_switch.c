@@ -34,7 +34,7 @@ static void test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_layer3_switch_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_layer3_switch_open(nullptr));
   TEST_END("open rejects NULL cfg");
 }
 
@@ -49,10 +49,10 @@ static void test_open_bad_args(void)
   TEST_BEGIN("open rejects zero port_count or mtu_bytes");
   prep();
   ra_layer3_switch_cfg_t cfg = {.port_count = 0U, .mtu_bytes = 1500U, .promiscuous = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_layer3_switch_open(&cfg));
   cfg.port_count = 4U;
   cfg.mtu_bytes  = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_layer3_switch_open(&cfg));
   TEST_END("open rejects zero port_count or mtu_bytes");
 }
 
@@ -67,10 +67,10 @@ static void test_lifecycle(void)
   TEST_BEGIN("open / close lifecycle");
   prep();
   const ra_layer3_switch_cfg_t cfg = {.port_count = 4U, .mtu_bytes = 1500U, .promiscuous = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_layer3_switch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_layer3_switch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_layer3_switch_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_layer3_switch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_layer3_switch_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_layer3_switch_close());
   TEST_END("open / close lifecycle");
 }
 
@@ -87,12 +87,12 @@ static void test_route_add(void)
   const ra_layer3_switch_route_t route = {.dst_ip      = (uint32_t)k_test_l3_dst_ip,
                                           .mask        = (uint32_t)k_test_l3_mask,
                                           .egress_port = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_layer3_switch_route_add(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_layer3_switch_route_add(&route));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_layer3_switch_route_add(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_layer3_switch_route_add(&route));
 
   const ra_layer3_switch_cfg_t cfg = {.port_count = 4U, .mtu_bytes = 1500U, .promiscuous = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_layer3_switch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_layer3_switch_route_add(&route));
+  TEST_ASSERT_EQ(k_ra_ok, ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_layer3_switch_route_add(&route));
   TEST_END("route_add validates and refuses on placeholder");
 }
 
@@ -107,13 +107,13 @@ static void test_route_delete(void)
   TEST_BEGIN("route_delete state-checked");
   prep();
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_not_initialized,
-    (int32_t)ra_layer3_switch_route_delete((uint32_t)k_test_l3_dst_ip, (uint32_t)k_test_l3_mask));
+    k_ra_err_not_initialized,
+    ra_layer3_switch_route_delete((uint32_t)k_test_l3_dst_ip, (uint32_t)k_test_l3_mask));
   const ra_layer3_switch_cfg_t cfg = {.port_count = 4U, .mtu_bytes = 1500U, .promiscuous = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_layer3_switch_open(&cfg));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_not_supported,
-    (int32_t)ra_layer3_switch_route_delete((uint32_t)k_test_l3_dst_ip, (uint32_t)k_test_l3_mask));
+    k_ra_err_not_supported,
+    ra_layer3_switch_route_delete((uint32_t)k_test_l3_dst_ip, (uint32_t)k_test_l3_mask));
   TEST_END("route_delete state-checked");
 }
 
@@ -129,14 +129,14 @@ static void test_status(void)
   prep();
   uint8_t op = 0U;
   uint8_t pr = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_layer3_switch_status_get(nullptr, &pr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_layer3_switch_status_get(&op, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_layer3_switch_status_get(nullptr, &pr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_layer3_switch_status_get(&op, nullptr));
 
   const ra_layer3_switch_cfg_t cfg = {.port_count = 2U, .mtu_bytes = 9000U, .promiscuous = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_layer3_switch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_layer3_switch_status_get(&op, &pr));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)op);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)pr);
+  TEST_ASSERT_EQ(k_ra_ok, ra_layer3_switch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_layer3_switch_status_get(&op, &pr));
+  TEST_ASSERT_EQ(1, op);
+  TEST_ASSERT_EQ(1, pr);
   TEST_END("status_get null + reflects state");
 }
 

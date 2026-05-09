@@ -119,10 +119,10 @@ static void test_nsc_cgc_pll2_enable_rejects_zero_mul(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: pll2 rejects mul_int=0");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_bad_mul_int,
-                                             (uint8_t)k_test_pll2_mul_quarters,
-                                             k_ra_plodiv_div4));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_bad_mul_int,
+                                        (uint8_t)k_test_pll2_mul_quarters,
+                                        k_ra_plodiv_div4));
   TEST_END("tz_nsc_cgc_usb: pll2 rejects mul_int=0");
 }
 
@@ -135,10 +135,10 @@ static void test_nsc_cgc_pll2_enable_rejects_bad_quarters(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: pll2 rejects mul_quarters>3");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
-                                             (uint8_t)k_test_pll2_bad_mul_q,
-                                             k_ra_plodiv_div4));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
+                                        (uint8_t)k_test_pll2_bad_mul_q,
+                                        k_ra_plodiv_div4));
   TEST_END("tz_nsc_cgc_usb: pll2 rejects mul_quarters>3");
 }
 
@@ -157,7 +157,7 @@ static void test_nsc_cgc_get_clock_hz_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: get_clock_hz rejects NULL out");
-  const ra_err_t err = ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, NULL);
+  const ra_err_t err = ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr);
   TEST_ASSERT(err == k_ra_err_null_ptr || err == k_ra_err_invalid_arg);
   TEST_END("tz_nsc_cgc_usb: get_clock_hz rejects NULL out");
 }
@@ -172,7 +172,7 @@ static void test_nsc_cgc_get_clock_hz_ok(void)
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: get_clock_hz returns cpuclk0 hz");
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
   TEST_ASSERT(hz > 0U);
   TEST_END("tz_nsc_cgc_usb: get_clock_hz returns cpuclk0 hz");
 }
@@ -199,7 +199,7 @@ static void test_nsc_cgc_usbfs_chain_ok(void)
   const ra_err_t usbfs_err = ra_nsc_cgc_usbfs_clock_enable();
   TEST_ASSERT(usbfs_err == k_ra_ok || usbfs_err == k_ra_err_hw_timeout);
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
   TEST_END("tz_nsc_cgc_usb: pll2 + usbfs + get_clock_hz chain");
 }
 
@@ -219,13 +219,11 @@ static void test_nsc_full_bringup_chain_ok(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: full bring-up chain");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_tz_pin_dp, k_ra_psel_usb_fs, "tz.dp"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_tz_pin_dm, k_ra_psel_usb_fs, "tz.dm"));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tz_pin_dp, k_ra_psel_usb_fs, "tz.dp"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tz_pin_dm, k_ra_psel_usb_fs, "tz.dm"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   TEST_END("tz_nsc_cgc_usb: full bring-up chain");
 }
 

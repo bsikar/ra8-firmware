@@ -97,8 +97,8 @@ static void prep_init(ra_ble_host_role_t role)
     .name       = "ra8d2",
     .appearance = (uint16_t)k_test_default_appearance,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_attach_event_handler(stub_event_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_attach_event_handler(stub_event_cb, nullptr));
 }
 
 /* Build a 128-bit UUID with a recognizable byte pattern. */
@@ -126,10 +126,10 @@ static void test_init_close(void)
   const ra_ble_host_config_t cfg = {.role       = k_ra_ble_host_role_peripheral,
                                     .name       = "x",
                                     .appearance = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_host_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_close());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_host_close());
   TEST_END("ble_host init + close");
 }
 
@@ -145,11 +145,11 @@ static void test_init_null_and_role(void)
   ra_sim_mmap_reset();
   (void)ra_ble_host_close();
   (void)ra_ble_close();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ble_host_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_host_init(nullptr));
   const ra_ble_host_config_t bad = {.role       = (ra_ble_host_role_t)0xFFU,
-                                    .name       = NULL,
+                                    .name       = nullptr,
                                     .appearance = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_init(&bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_host_init(&bad));
   TEST_END("ble_host init NULL + bad role");
 }
 
@@ -168,13 +168,11 @@ static void test_pre_init_guards(void)
   uint16_t h = 0U;
   uint8_t  uuid[16];
   make_uuid(uuid, 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_host_advertise_stop());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_host_gatt_register_service(uuid, &h));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_host_advertise_stop());
   uint8_t buf[8];
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_ble_host_gatt_set_value(1U, buf, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_host_gatt_notify(1U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_host_gatt_set_value(1U, buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_host_gatt_notify(1U));
   TEST_END("ble_host pre-init guards");
 }
 
@@ -190,12 +188,12 @@ static void test_advertise_start_sends_enable(void)
   prep_init(k_ra_ble_host_role_peripheral);
 
   const uint8_t adv[] = {0x02U, 0x01U, 0x06U}; /* AD: flags general discoverable + LE-only. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(adv,
-                                                      (uint8_t)sizeof(adv),
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_test_adv_interval_ms));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(adv,
+                                             (uint8_t)sizeof(adv),
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_test_adv_interval_ms));
 
   /* Last captured TX packet should be LE_Set_Advertising_Enable
    * (opcode 0x200A) carrying enable=1. Frame format:
@@ -207,11 +205,11 @@ static void test_advertise_start_sends_enable(void)
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len >= 5U);
   const uint8_t* tail = cap + (cap_len - 5U);
-  TEST_ASSERT_EQ((int32_t)k_test_pkt_cmd_byte, (int32_t)tail[0]);
-  TEST_ASSERT_EQ((int32_t)0x0AU, (int32_t)tail[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)tail[2]);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)tail[3]);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)tail[4]);
+  TEST_ASSERT_EQ(k_test_pkt_cmd_byte, tail[0]);
+  TEST_ASSERT_EQ(0x0AU, tail[1]);
+  TEST_ASSERT_EQ(0x20U, tail[2]);
+  TEST_ASSERT_EQ(1, tail[3]);
+  TEST_ASSERT_EQ(1, tail[4]);
   TEST_END("ble_host advertise_start emits LE_Set_Advertising_Enable");
 }
 
@@ -227,19 +225,19 @@ static void test_advertise_arg_validation(void)
   prep_init(k_ra_ble_host_role_peripheral);
   /* Interval too low. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)
-      ra_ble_host_advertise_start(NULL, 0U, NULL, 0U, (uint16_t)k_test_adv_interval_too_low));
+    k_ra_err_invalid_arg,
+
+    ra_ble_host_advertise_start(nullptr, 0U, nullptr, 0U, (uint16_t)k_test_adv_interval_too_low));
   /* NULL with non-zero len. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_ble_host_advertise_start(NULL, 4U, NULL, 0U, (uint16_t)k_test_adv_interval_ms));
+    k_ra_err_null_ptr,
+    ra_ble_host_advertise_start(nullptr, 4U, nullptr, 0U, (uint16_t)k_test_adv_interval_ms));
   /* Observer role can't advertise. */
   (void)ra_ble_host_close();
   prep_init(k_ra_ble_host_role_observer);
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ble_host_advertise_start(NULL, 0U, NULL, 0U, (uint16_t)k_test_adv_interval_ms));
+    k_ra_err_invalid_arg,
+    ra_ble_host_advertise_start(nullptr, 0U, nullptr, 0U, (uint16_t)k_test_adv_interval_ms));
   TEST_END("ble_host advertise_start arg validation");
 }
 
@@ -259,13 +257,13 @@ static void test_register_service_and_char(void)
   make_uuid(chr_uuid, 0x20U);
 
   uint16_t svc = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT(svc != 0U);
 
   uint8_t  buf[k_test_value_buf_size];
   uint16_t chr = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
@@ -275,19 +273,17 @@ static void test_register_service_and_char(void)
   TEST_ASSERT(chr > svc);
 
   /* NULL guards. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_gatt_register_service(NULL, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_gatt_register_service(svc_uuid, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_gatt_register_char(svc, chr_uuid, 0U, buf, 4U, &chr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_gatt_register_char((uint16_t)0xBEEFU,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         4U,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_host_gatt_register_service(nullptr, &svc));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_host_gatt_register_service(svc_uuid, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_gatt_register_char(svc, chr_uuid, 0U, buf, 4U, &chr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_gatt_register_char((uint16_t)0xBEEFU,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                4U,
+                                                &chr));
   TEST_END("ble_host gatt register service + characteristic");
 }
 
@@ -307,12 +303,12 @@ static void test_set_value_and_notify_paths(void)
   make_uuid(chr_uuid, 0x40U);
 
   uint16_t svc = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
 
   uint8_t  buf[k_test_value_buf_size];
   uint16_t chr = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
@@ -321,22 +317,19 @@ static void test_set_value_and_notify_paths(void)
                    &chr));
 
   const uint8_t payload[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_set_value(chr, payload, (uint16_t)sizeof(payload)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, payload, (uint16_t)sizeof(payload)));
 
   /* set_value bad handle. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
-                 (int32_t)ra_ble_host_gatt_set_value(0xCAFEU, payload, 1U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_ble_host_gatt_set_value(0xCAFEU, payload, 1U));
   /* set_value too large. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_gatt_set_value(chr, payload, (uint16_t)0x4000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_host_gatt_set_value(chr, payload, (uint16_t)0x4000U));
 
   /* notify with no connection -- silent ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
 
   /* Inject a connection then a CCCD write to subscribe, then notify. */
   ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
-  TEST_ASSERT_EQ((int32_t)k_ra_ble_host_event_connected, (int32_t)s_evt_last_kind);
+  TEST_ASSERT_EQ(k_ra_ble_host_event_connected, s_evt_last_kind);
 
   /* Build an L2CAP B-frame: [len_lo][len_hi][cid_lo][cid_hi][ATT...].
    * ATT Write_Request to the CCCD handle (chr+1) with value 0x0001
@@ -356,15 +349,15 @@ static void test_set_value_and_notify_paths(void)
   l2cap_frame[8] = 0x00U;
 
   ra_ble_host_test_inject_acl((uint16_t)k_test_conn_handle, l2cap_frame, 9U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ble_host_event_subscribe, (int32_t)s_evt_last_kind);
+  TEST_ASSERT_EQ(k_ra_ble_host_event_subscribe, s_evt_last_kind);
 
   /* Now notify -- should send an ACL packet (controller TX captured). */
   ra_ble_test_reset_capture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_test_pkt_acl_byte, (int32_t)cap[0]);
+  TEST_ASSERT_EQ(k_test_pkt_acl_byte, cap[0]);
   TEST_END("ble_host gatt set_value + notify");
 }
 
@@ -384,16 +377,16 @@ static void test_att_write_via_acl(void)
   make_uuid(chr_uuid, 0x60U);
 
   uint16_t svc = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
   uint8_t  buf[8];
   uint16_t chr = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_write,
-                                                         buf,
-                                                         (uint16_t)sizeof(buf),
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_write,
+                                                buf,
+                                                (uint16_t)sizeof(buf),
+                                                &chr));
 
   ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
 
@@ -409,9 +402,9 @@ static void test_att_write_via_acl(void)
   l2cap_frame[7] = 0xABU;
   ra_ble_host_test_inject_acl((uint16_t)k_test_conn_handle, l2cap_frame, 8U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ble_host_event_write, (int32_t)s_evt_last_kind);
-  TEST_ASSERT_EQ((int32_t)chr, (int32_t)s_evt_last_attr);
-  TEST_ASSERT_EQ((int32_t)0xABU, (int32_t)buf[0]);
+  TEST_ASSERT_EQ(k_ra_ble_host_event_write, s_evt_last_kind);
+  TEST_ASSERT_EQ(chr, s_evt_last_attr);
+  TEST_ASSERT_EQ(0xABU, buf[0]);
   TEST_END("ble_host ATT Write_Request -> write event");
 }
 
@@ -429,11 +422,11 @@ static void test_max_services_exhaustion(void)
   uint16_t h = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_ble_host_max_services; i++) {
     make_uuid(uuid, (uint8_t)(0x80U + i));
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
+    TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(uuid, &h));
   }
   /* One more should fail with no_mem. */
   make_uuid(uuid, 0xF0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem, (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_ble_host_gatt_register_service(uuid, &h));
   TEST_END("ble_host gatt service table exhaustion");
 }
 
@@ -447,7 +440,7 @@ static void test_event_handler_attach(void)
 {
   TEST_BEGIN("ble_host attach_event_handler accepts NULL");
   prep_init(k_ra_ble_host_role_peripheral);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_attach_event_handler(NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_attach_event_handler(nullptr, nullptr));
   /* Connection injection must not crash with no handler. */
   ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
   TEST_ASSERT(ra_ble_host_test_event_count() > 0U);
@@ -465,14 +458,14 @@ static void test_advertise_stop_sends_disable(void)
   TEST_BEGIN("ble_host advertise_stop emits LE_Set_Advertising_Enable disable");
   prep_init(k_ra_ble_host_role_peripheral);
   ra_ble_test_reset_capture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_advertise_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_advertise_stop());
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len >= 5U);
-  TEST_ASSERT_EQ((int32_t)k_test_pkt_cmd_byte, (int32_t)cap[0]);
-  TEST_ASSERT_EQ((int32_t)0x0AU, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)cap[4]); /* enable = 0 */
+  TEST_ASSERT_EQ(k_test_pkt_cmd_byte, cap[0]);
+  TEST_ASSERT_EQ(0x0AU, cap[1]);
+  TEST_ASSERT_EQ(0x20U, cap[2]);
+  TEST_ASSERT_EQ(0, cap[4]); /* enable = 0 */
   TEST_END("ble_host advertise_stop emits LE_Set_Advertising_Enable disable");
 }
 
@@ -521,7 +514,7 @@ static void test_mcdc_l2cap_send_null_guard(void)
   /* Vector 1: NULL, len=0. C1=T, C2=F. Falls through to send (len=0 ok). */
   (void)ra_ble_host_l2cap_send((uint16_t)k_mcdc_test_conn,
                                (uint16_t)k_mcdc_test_cid_att,
-                               NULL,
+                               nullptr,
                                (uint16_t)k_mcdc_payload_len_zero);
 
   /* Vector 2: non-NULL, len>0. C1=F short-circuits. Falls through. */
@@ -531,11 +524,11 @@ static void test_mcdc_l2cap_send_null_guard(void)
                                (uint16_t)k_mcdc_payload_len_small);
 
   /* Vector 3: NULL, len>0. Decision T -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_l2cap_send((uint16_t)k_mcdc_test_conn,
-                                                 (uint16_t)k_mcdc_test_cid_att,
-                                                 NULL,
-                                                 (uint16_t)k_mcdc_payload_len_small));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_l2cap_send((uint16_t)k_mcdc_test_conn,
+                                        (uint16_t)k_mcdc_test_cid_att,
+                                        nullptr,
+                                        (uint16_t)k_mcdc_payload_len_small));
   TEST_END("mcdc l2cap_send (payload==NULL && len>0)");
 }
 
@@ -565,7 +558,9 @@ static void test_mcdc_acl_in_null_or_zero(void)
                               (uint16_t)k_mcdc_acl_len_minimal);
 
   /* Vector 2: NULL, len=4. C1 short-circuits T -> early return. */
-  ra_ble_host_test_inject_acl((uint16_t)k_mcdc_test_conn, NULL, (uint16_t)k_mcdc_acl_len_minimal);
+  ra_ble_host_test_inject_acl((uint16_t)k_mcdc_test_conn,
+                              nullptr,
+                              (uint16_t)k_mcdc_acl_len_minimal);
 
   /* Vector 3: non-NULL, len=0. C2=T -> early return. */
   ra_ble_host_test_inject_acl((uint16_t)k_mcdc_test_conn, k_frame, (uint16_t)k_mcdc_acl_len_zero);
@@ -603,27 +598,27 @@ static void test_mcdc_init_role_4cond(void)
   ra_ble_host_config_t cfg = {.role = k_ra_ble_host_role_peripheral, .name = "x", .appearance = 0U};
 
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   /* V2 */
   cfg.role = k_ra_ble_host_role_central;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   /* V3 */
   cfg.role = k_ra_ble_host_role_observer;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   /* V4 */
   cfg.role = k_ra_ble_host_role_broadcaster;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   /* V5: bogus role */
   cfg.role = (ra_ble_host_role_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_host_init(&cfg));
   TEST_END("mcdc init role (4-cond AND chain)");
 }
 
@@ -644,28 +639,28 @@ static void test_mcdc_advertise_role_guard(void)
   static const uint8_t k_adv[k_mcdc_adv_data_len_small] = {0U, 0U, 0U, 0U};
   /* V1: peripheral -> ok */
   prep_init(k_ra_ble_host_role_peripheral);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   /* V2: broadcaster -> ok */
   prep_init(k_ra_ble_host_role_broadcaster);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   /* V3: central -> invalid_arg */
   prep_init(k_ra_ble_host_role_central);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   TEST_END("mcdc advertise role guard");
 }
 
@@ -687,22 +682,22 @@ static void test_mcdc_advertise_adv_data_null(void)
   prep_init(k_ra_ble_host_role_peripheral);
   /* V1 */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ble_host_advertise_start(NULL, 0U, NULL, 0U, (uint16_t)k_mcdc_interval_ok));
+    k_ra_ok,
+    ra_ble_host_advertise_start(nullptr, 0U, nullptr, 0U, (uint16_t)k_mcdc_interval_ok));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_advertise_start(NULL,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_advertise_start(nullptr,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   TEST_END("mcdc advertise adv_data null guard");
 }
 
@@ -723,26 +718,26 @@ static void test_mcdc_advertise_lengths_too_big(void)
   static const uint8_t k_buf_big[k_mcdc_adv_data_len_too_big] = {};
   prep_init(k_ra_ble_host_role_peripheral);
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_buf_big,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_buf_big,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   /* V2: adv too big */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_advertise_start(k_buf_big,
-                                                      (uint8_t)k_mcdc_adv_data_len_too_big,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_advertise_start(k_buf_big,
+                                             (uint8_t)k_mcdc_adv_data_len_too_big,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
   /* V3: scan_resp too big */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_advertise_start(k_buf_big,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      k_buf_big,
-                                                      (uint8_t)k_mcdc_adv_data_len_too_big,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_advertise_start(k_buf_big,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             k_buf_big,
+                                             (uint8_t)k_mcdc_adv_data_len_too_big,
+                                             (uint16_t)k_mcdc_interval_ok));
   TEST_END("mcdc advertise length cap (OR)");
 }
 
@@ -762,24 +757,24 @@ static void test_mcdc_advertise_interval_range(void)
   TEST_BEGIN("mcdc advertise interval range (OR)");
   static const uint8_t k_adv[k_mcdc_adv_data_len_small] = {};
   prep_init(k_ra_ble_host_role_peripheral);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_too_low));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_too_high));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_too_low));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_too_high));
   TEST_END("mcdc advertise interval range (OR)");
 }
 
@@ -817,24 +812,24 @@ static void test_mcdc_advertise_scan_resp_null(void)
   static const uint8_t k_adv[k_mcdc_adv_data_len_small] = {0U, 0U, 0U, 0U};
   static const uint8_t k_sr[k_mcdc_adv_data_len_small]  = {0U, 0U, 0U, 0U};
   prep_init(k_ra_ble_host_role_peripheral);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      0U,
-                                                      (uint16_t)k_mcdc_interval_ok));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      k_sr,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      (uint16_t)k_mcdc_interval_ok));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_advertise_start(k_adv,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      NULL,
-                                                      (uint8_t)k_mcdc_adv_data_len_small,
-                                                      (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             0U,
+                                             (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             k_sr,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             (uint16_t)k_mcdc_interval_ok));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_advertise_start(k_adv,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             nullptr,
+                                             (uint8_t)k_mcdc_adv_data_len_small,
+                                             (uint16_t)k_mcdc_interval_ok));
   TEST_END("mcdc advertise scan_resp null guard");
 }
 
@@ -861,18 +856,18 @@ static void test_mcdc_init_name_copy_loop(void)
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   ra_ble_host_config_t c1 = {.role = k_ra_ble_host_role_peripheral, .name = "x", .appearance = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&c1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&c1));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   ra_ble_host_config_t c2 = {.role = k_ra_ble_host_role_peripheral, .name = "", .appearance = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&c2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&c2));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   static const char    k_long[] = "0123456789012345678901234567890ABCDE";
   ra_ble_host_config_t c3       = {.role       = k_ra_ble_host_role_peripheral,
                                    .name       = k_long,
                                    .appearance = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&c3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&c3));
   (void)ra_ble_host_close();
   (void)ra_ble_close();
   TEST_END("mcdc init name-copy loop (i<max && name[i]!=0)");
@@ -923,7 +918,7 @@ static void test_mcdc_att_handle_pdu_null_or_zero(void)
                              k_pdu,
                              (uint16_t)k_mcdc_att_pdu_len_small);
   ra_ble_host_att_handle_pdu((uint16_t)k_test_conn_handle,
-                             NULL,
+                             nullptr,
                              (uint16_t)k_mcdc_att_pdu_len_small);
   ra_ble_host_att_handle_pdu((uint16_t)k_test_conn_handle,
                              k_pdu,
@@ -961,10 +956,9 @@ static void test_mcdc_gatt_register_service_null_guard(void)
   uint8_t  uuid[16];
   uint16_t h = 0U;
   make_uuid(uuid, 0xA0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ble_host_gatt_register_service(NULL, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_gatt_register_service(uuid, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(uuid, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_host_gatt_register_service(nullptr, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_host_gatt_register_service(uuid, nullptr));
   TEST_END("mcdc gatt_register_service (uuid==NULL || out==NULL)");
 }
 
@@ -989,28 +983,28 @@ static void test_mcdc_gatt_register_char_uuid_or_out_null(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xB0U);
   make_uuid(chr_uuid, 0xB1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         NULL,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_gatt_register_char(svc,
+                                                nullptr,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                nullptr));
   TEST_END("mcdc gatt_register_char (uuid==NULL || out==NULL)");
 }
 
@@ -1038,30 +1032,30 @@ static void test_mcdc_gatt_register_char_value_buf_null_with_max(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xC0U);
   make_uuid(chr_uuid, 0xC1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         NULL,
-                                                         0U,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                nullptr,
+                                                0U,
+                                                &chr));
   make_uuid(chr_uuid, 0xC2U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   make_uuid(chr_uuid, 0xC3U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         NULL,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                nullptr,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   TEST_END("mcdc gatt_register_char (value_buf==NULL && value_max>0)");
 }
 
@@ -1090,30 +1084,30 @@ static void test_mcdc_gatt_register_char_svc_match(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xD0U);
   make_uuid(chr_uuid, 0xD1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   make_uuid(chr_uuid, 0xD2U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_gatt_register_char((uint16_t)k_mcdc_gatt_bad_handle,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_gatt_register_char((uint16_t)k_mcdc_gatt_bad_handle,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   make_uuid(chr_uuid, 0xD3U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_host_gatt_register_char(chr,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_host_gatt_register_char(chr,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   TEST_END("mcdc gatt_register_char svc lookup compound");
 }
 
@@ -1141,22 +1135,20 @@ static void test_mcdc_gatt_set_value_null_with_len(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xE0U);
   make_uuid(chr_uuid, 0xE1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   static const uint8_t k_payload[k_mcdc_gatt_payload_small] = {0x11U, 0x22U, 0x33U, 0x44U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_set_value(chr, NULL, 0U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ble_host_gatt_set_value(chr, k_payload, (uint16_t)k_mcdc_gatt_payload_small));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_ble_host_gatt_set_value(chr, NULL, (uint16_t)k_mcdc_gatt_payload_small));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_set_value(chr, k_payload, (uint16_t)k_mcdc_gatt_payload_small));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_host_gatt_set_value(chr, nullptr, (uint16_t)k_mcdc_gatt_payload_small));
   TEST_END("mcdc gatt_set_value (value==NULL && len>0)");
 }
 
@@ -1184,19 +1176,19 @@ static void test_mcdc_gatt_set_value_attr_lookup(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xF0U);
   make_uuid(chr_uuid, 0xF1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   uint8_t b = 0x55U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_set_value(chr, &b, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
-                 (int32_t)ra_ble_host_gatt_set_value((uint16_t)k_mcdc_gatt_bad_handle, &b, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found, (int32_t)ra_ble_host_gatt_set_value(svc, &b, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, &b, 1U));
+  TEST_ASSERT_EQ(k_ra_err_not_found,
+                 ra_ble_host_gatt_set_value((uint16_t)k_mcdc_gatt_bad_handle, &b, 1U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_ble_host_gatt_set_value(svc, &b, 1U));
   TEST_END("mcdc gatt_set_value (a==NULL || kind!=char_value)");
 }
 
@@ -1230,18 +1222,17 @@ static void test_mcdc_gatt_set_value_copy_guard(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0x70U);
   make_uuid(chr_uuid, 0x71U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_set_value(chr, buf, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, buf, 0U));
   uint8_t pl[k_mcdc_gatt_payload_small] = {0xAAU, 0xBBU, 0xCCU, 0xDDU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_set_value(chr, pl, (uint16_t)k_mcdc_gatt_payload_small));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, pl, (uint16_t)k_mcdc_gatt_payload_small));
   TEST_END("mcdc gatt_set_value (len>0 && a->value!=NULL) reachable subset");
 }
 
@@ -1269,19 +1260,18 @@ static void test_mcdc_gatt_notify_attr_lookup(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0x80U);
   make_uuid(chr_uuid, 0x81U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
                    buf,
                    (uint16_t)k_mcdc_gatt_buf_size,
                    &chr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
-                 (int32_t)ra_ble_host_gatt_notify((uint16_t)k_mcdc_gatt_bad_handle));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found, (int32_t)ra_ble_host_gatt_notify(svc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_ble_host_gatt_notify((uint16_t)k_mcdc_gatt_bad_handle));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_ble_host_gatt_notify(svc));
   TEST_END("mcdc gatt_notify (a==NULL || kind!=char_value)");
 }
 
@@ -1321,24 +1311,24 @@ static void test_mcdc_gatt_notify_decl_props(void)
   make_uuid(svc_uuid, 0x90U);
   make_uuid(chr_n_uuid, 0x91U);
   make_uuid(chr_r_uuid, 0x92U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_n_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
                    buf_n,
                    (uint16_t)k_mcdc_gatt_buf_size,
                    &chr_n));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc,
-                                                         chr_r_uuid,
-                                                         (uint8_t)k_ra_ble_host_char_prop_read,
-                                                         buf_r,
-                                                         (uint16_t)k_mcdc_gatt_buf_size,
-                                                         &chr_r));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr_n));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_gatt_notify(chr_r));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_r_uuid,
+                                                (uint8_t)k_ra_ble_host_char_prop_read,
+                                                buf_r,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr_r));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr_n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_host_gatt_notify(chr_r));
   TEST_END("mcdc gatt_notify (decl==NULL || (props & notify)==0)");
 }
 
@@ -1380,9 +1370,9 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xA1U);
   make_uuid(chr_uuid, 0xA2U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
@@ -1404,7 +1394,7 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
     0U,
   };
   ra_ble_host_test_inject_acl(k_test_conn_local, l2, 9U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
 
   /* V3: register two notify-capable chars on a fresh stack, subscribe
    * char A only, notify char B -> the existing CCCD row mismatches owner. */
@@ -1419,17 +1409,17 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
   uint16_t chrb = 0U;
   uint8_t  bufa[k_mcdc_gatt_buf_size];
   uint8_t  bufb[k_mcdc_gatt_buf_size];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc2));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc2));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc2,
                    chr_a_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
                    bufa,
                    (uint16_t)k_mcdc_gatt_buf_size,
                    &chra));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc2,
                    chr_b_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
@@ -1451,22 +1441,22 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
     0U,
   };
   ra_ble_host_test_inject_acl(k_test_conn_local, l2a, 9U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chrb));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chrb));
 
   /* V4: subscribed CCCD owner matches but only indicate enabled. */
   prep_init(k_ra_ble_host_role_peripheral);
   make_uuid(svc_uuid, 0xA6U);
   make_uuid(chr_uuid, 0xA7U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
-                   svc,
-                   chr_uuid,
-                   (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify |
-                             k_ra_ble_host_char_prop_indicate),
-                   buf,
-                   (uint16_t)k_mcdc_gatt_buf_size,
-                   &chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(svc,
+                                                chr_uuid,
+                                                (uint8_t)(k_ra_ble_host_char_prop_read |
+                                                          k_ra_ble_host_char_prop_notify |
+                                                          k_ra_ble_host_char_prop_indicate),
+                                                buf,
+                                                (uint16_t)k_mcdc_gatt_buf_size,
+                                                &chr));
   ra_ble_host_test_inject_connect(k_test_conn_local);
   cccd_handle        = (uint16_t)(chr + 1U);
   uint8_t l2_ind[10] = {
@@ -1482,7 +1472,7 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
     0U,
   };
   ra_ble_host_test_inject_acl(k_test_conn_local, l2_ind, 9U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
   TEST_END("mcdc gatt_notify subscriber CCCD compound (3-cond AND)");
 }
 
@@ -1515,9 +1505,9 @@ static void test_mcdc_gatt_notify_value_copy(void)
   uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0x60U);
   make_uuid(chr_uuid, 0x61U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
@@ -1539,11 +1529,10 @@ static void test_mcdc_gatt_notify_value_copy(void)
     0U,
   };
   ra_ble_host_test_inject_acl(k_test_conn_local, l2, 9U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
   uint8_t pl[k_mcdc_gatt_payload_small] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_set_value(chr, pl, (uint16_t)k_mcdc_gatt_payload_small));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, pl, (uint16_t)k_mcdc_gatt_payload_small));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
   TEST_END("mcdc gatt_notify value memcpy guard reachable subset");
 }
 

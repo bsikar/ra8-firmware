@@ -62,9 +62,9 @@ static uint32_t get32(const uint8_t* p, uint32_t off)
 
 static void free_volume(void)
 {
-  if (s_disk.bytes != NULL) {
+  if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
-    s_disk.bytes = NULL;
+    s_disk.bytes = nullptr;
   }
 }
 
@@ -74,7 +74,7 @@ static void alloc_volume(uint32_t blocks)
   s_disk.byte_count  = blocks * (uint32_t)k_block_size;
   s_disk.bytes       = (uint8_t*)calloc(1, s_disk.byte_count);
   s_disk.block_count = blocks;
-  if (s_disk.bytes == NULL) {
+  if (s_disk.bytes == nullptr) {
     TEST_FAIL_FMT("%s", "calloc failed");
   }
 }
@@ -179,14 +179,20 @@ static void list_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
   c->total_size += size;
   (void)snprintf(c->last_name, sizeof(c->last_name), "%s", name);
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_fat12_large_chain_hits_12bit_dispatch_and_straddle(void)
 {
   TEST_BEGIN("ra_fs FAT12: long chain hits 12-bit get/set and straddle");
   build_fat12_volume();
-  ra_fs_mount_t* h = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_fs_type_fat12, (int32_t)h->type);
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(k_ra_fs_type_fat12, h->type);
 
   const uint32_t len = 175000U;
   uint8_t*       wr  = (uint8_t*)malloc(len);
@@ -198,79 +204,89 @@ static void test_fat12_large_chain_hits_12bit_dispatch_and_straddle(void)
     rd[i] = 0U;
   }
 
-  ra_fs_file_t* f = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_open(h, "CHAIN.BIN", k_ra_fs_mode_write, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_write(f, wr, len));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_open(h, "CHAIN.BIN", k_ra_fs_mode_read, &f));
+  ra_fs_file_t* f = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "CHAIN.BIN", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_write(f, wr, len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "CHAIN.BIN", k_ra_fs_mode_read, &f));
   uint32_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_read(f, rd, len, &got));
-  TEST_ASSERT_EQ((int32_t)len, (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)memcmp(wr, rd, len));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_unlink(h, "CHAIN.BIN"));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_unmount(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, len, &got));
+  TEST_ASSERT_EQ(len, got);
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unlink(h, "CHAIN.BIN"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   free(wr);
   free(rd);
   free_volume();
   TEST_END("ra_fs FAT12: long chain hits 12-bit get/set and straddle");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_fat32_write_preserves_reserved_nibble_and_round_trips(void)
 {
   TEST_BEGIN("ra_fs FAT32: write/read preserves high reserved FAT nibble");
   build_fat32_volume();
   write_fat32_entry_raw(3U, 0xA0000000U);
-  ra_fs_mount_t* h = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_fs_type_fat32, (int32_t)h->type);
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(k_ra_fs_type_fat32, h->type);
 
   uint8_t payload[700] = {};
   for (uint32_t i = 0; i < sizeof(payload); i++) {
     payload[i] = (uint8_t)(0xA0U + (i & 0x0FU));
   }
-  ra_fs_file_t* f = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_open(h, "F32.BIN", k_ra_fs_mode_write, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_write(f, payload, sizeof(payload)));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
+  ra_fs_file_t* f = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "F32.BIN", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_write(f, payload, sizeof(payload)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
 
   const uint32_t fat_entry3 = get32(s_disk.bytes, ((1U * (uint32_t)k_block_size) + (3U * 4U)));
-  TEST_ASSERT_EQ((int32_t)0xA0000000U, (int32_t)(fat_entry3 & 0xF0000000U));
-  TEST_ASSERT_EQ((int32_t)4U, (int32_t)(fat_entry3 & 0x0FFFFFFFU));
+  TEST_ASSERT_EQ(0xA0000000U, (fat_entry3 & 0xF0000000U));
+  TEST_ASSERT_EQ(4U, (fat_entry3 & 0x0FFFFFFFU));
 
   uint8_t  rd[700] = {};
   uint32_t got     = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_open(h, "F32.BIN", k_ra_fs_mode_read, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_read(f, rd, sizeof(rd), &got));
-  TEST_ASSERT_EQ((int32_t)sizeof(rd), (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)memcmp(payload, rd, sizeof(rd)));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_unmount(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "F32.BIN", k_ra_fs_mode_read, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, sizeof(rd), &got));
+  TEST_ASSERT_EQ(sizeof(rd), got);
+  TEST_ASSERT_EQ(0, memcmp(payload, rd, sizeof(rd)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   free_volume();
   TEST_END("ra_fs FAT32: write/read preserves high reserved FAT nibble");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_short_name_boundary_cases(void)
 {
   TEST_BEGIN("ra_fs FAT16: short-name packing boundaries");
   build_fat16_volume();
-  ra_fs_mount_t* h = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_mount(&s_backend, &h));
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
 
-  ra_fs_file_t* f = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_open(h, "/ABCDEFGH.TXT", k_ra_fs_mode_write, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_open(h, "NOEXT", k_ra_fs_mode_write, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_fs_open(h, "ABCDEFGHI.TXT", k_ra_fs_mode_write, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_fs_open(h, "A.TOOL", k_ra_fs_mode_write, &f));
+  ra_fs_file_t* f = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "/ABCDEFGH.TXT", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "NOEXT", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_open(h, "ABCDEFGHI.TXT", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_open(h, "A.TOOL", k_ra_fs_mode_write, &f));
 
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_listdir(h, "/", list_cb, &ctx));
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)ctx.count);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_unmount(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", list_cb, &ctx));
+  TEST_ASSERT_EQ(2, ctx.count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   free_volume();
   TEST_END("ra_fs FAT16: short-name packing boundaries");
 }
@@ -282,6 +298,12 @@ static void fill_short_entry(uint8_t* ent, const char raw11[11], uint8_t attr, u
   ent[11] = attr;
   put32(ent, 28U, size);
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_fat32_root_walker_skips_and_follows_chain(void)
 {
@@ -290,8 +312,8 @@ static void test_fat32_root_walker_skips_and_follows_chain(void)
   write_fat32_entry_raw(2U, 4U);
   write_fat32_entry_raw(4U, 0x0FFFFFFFU);
 
-  ra_fs_mount_t* h = NULL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_mount(&s_backend, &h));
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
   uint8_t* root0 = &s_disk.bytes[h->first_data_lba * (uint32_t)k_block_size];
   for (uint32_t e = 0; e < 16U; e++) {
     char raw[11] =
@@ -305,10 +327,10 @@ static void test_fat32_root_walker_skips_and_follows_chain(void)
   fill_short_entry(root1, "TAIL    TXT", k_ra_fs_attr_archive, 99U);
 
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_listdir(h, "/", list_cb, &ctx));
-  TEST_ASSERT_EQ((int32_t)15, (int32_t)ctx.count);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(ctx.last_name, "TAIL.TXT"));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_unmount(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", list_cb, &ctx));
+  TEST_ASSERT_EQ(15, ctx.count);
+  TEST_ASSERT_EQ(0, strcmp(ctx.last_name, "TAIL.TXT"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   free_volume();
   TEST_END("ra_fs FAT32: root walker skips deleted/LFN and follows chain");
 }

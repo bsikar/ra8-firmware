@@ -60,16 +60,16 @@ static void test_i2c_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: PFS + iic_b_init ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_init());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_i2c_app_pin_scl, k_ra_psel_iic, "test.scl1"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_i2c_app_pin_sda, k_ra_psel_iic, "test.sda1"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_i2c_app_pin_scl, k_ra_psel_iic, "test.scl1"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_i2c_app_pin_sda, k_ra_psel_iic, "test.sda1"));
   const ra_iic_b_cfg_t cfg = {
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclka_hz = (uint32_t)k_test_i2c_app_pclka_hz,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iic_b_init((uint8_t)k_test_i2c_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init((uint8_t)k_test_i2c_app_channel, &cfg));
   TEST_END("i2c_loopback: PFS + iic_b_init ok");
 }
 
@@ -84,8 +84,7 @@ static void test_i2c_app_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: NULL cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_init((uint8_t)k_test_i2c_app_channel, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_iic_b_init((uint8_t)k_test_i2c_app_channel, nullptr));
   TEST_END("i2c_loopback: NULL cfg rejected");
 }
 
@@ -123,7 +122,7 @@ static void test_i2c_app_scan_null_out_rejected(void)
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclka_hz = (uint32_t)k_test_i2c_app_pclka_hz,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iic_b_init((uint8_t)k_test_i2c_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init((uint8_t)k_test_i2c_app_channel, &cfg));
   TEST_ASSERT(ra_iic_b_scan((uint8_t)k_test_i2c_app_channel,
                             (uint8_t)k_test_i2c_app_probe_addr,
                             nullptr) != k_ra_ok);

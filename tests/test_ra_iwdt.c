@@ -25,7 +25,7 @@ static void test_init_returns_ok(void)
 {
   TEST_BEGIN("ra_iwdt_init returns ok");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iwdt_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_init());
   TEST_END("ra_iwdt_init returns ok");
 }
 
@@ -45,12 +45,12 @@ static void test_register_layout_matches_fsp(void)
    *   IWDTRCR   @ 0x06 (uint8_t)
    *   IWDTCSTPR @ 0x08 (uint8_t)
    *   total size 0x0C. */
-  TEST_ASSERT_EQ((int)0x00, (int)offsetof(r_iwdt_regs_t, IWDTRR));
-  TEST_ASSERT_EQ((int)0x02, (int)offsetof(r_iwdt_regs_t, IWDTCR));
-  TEST_ASSERT_EQ((int)0x04, (int)offsetof(r_iwdt_regs_t, IWDTSR));
-  TEST_ASSERT_EQ((int)0x06, (int)offsetof(r_iwdt_regs_t, IWDTRCR));
-  TEST_ASSERT_EQ((int)0x08, (int)offsetof(r_iwdt_regs_t, IWDTCSTPR));
-  TEST_ASSERT_EQ((int)0x0C, (int)sizeof(r_iwdt_regs_t));
+  TEST_ASSERT_EQ(0x00, offsetof(r_iwdt_regs_t, IWDTRR));
+  TEST_ASSERT_EQ(0x02, offsetof(r_iwdt_regs_t, IWDTCR));
+  TEST_ASSERT_EQ(0x04, offsetof(r_iwdt_regs_t, IWDTSR));
+  TEST_ASSERT_EQ(0x06, offsetof(r_iwdt_regs_t, IWDTRCR));
+  TEST_ASSERT_EQ(0x08, offsetof(r_iwdt_regs_t, IWDTCSTPR));
+  TEST_ASSERT_EQ(0x0C, sizeof(r_iwdt_regs_t));
   TEST_END("r_iwdt_regs_t offsets match FSP R_IWDT_Type");
 }
 
@@ -72,7 +72,7 @@ static void test_refresh_writes_sequence(void)
    * IWDTRR should hold 0xFF. Per HUM Ch 28.2.1 a single write does NOT
    * refresh; FSP r_iwdt_refresh writes 0x00 then 0xFF in sequence. */
   ra_iwdt_refresh_deferred();
-  TEST_ASSERT_EQ((int)k_ra_iwdt_refresh_b, (int)reg->IWDTRR);
+  TEST_ASSERT_EQ(k_ra_iwdt_refresh_b, reg->IWDTRR);
 
   TEST_END("ra_iwdt_refresh_deferred writes 0x00,0xFF to IWDTRR");
 }
@@ -90,7 +90,7 @@ static void test_repeated_refresh_is_safe(void)
   for (uint8_t i = 0U; i < 5U; ++i) {
     ra_iwdt_refresh_deferred();
   }
-  TEST_ASSERT_EQ((int)k_ra_iwdt_refresh_b, (int)ra_iwdt()->IWDTRR);
+  TEST_ASSERT_EQ(k_ra_iwdt_refresh_b, ra_iwdt()->IWDTRR);
   TEST_END("ra_iwdt_refresh_deferred multiple calls");
 }
 
@@ -119,11 +119,9 @@ static void test_get_status(void)
   ra_iwdt()->IWDTSR = (uint16_t)k_ra_iwdt_status_underflow | (uint16_t)k_ra_iwdt_status_refresh;
 
   uint16_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_get_status(&mask));
-  TEST_ASSERT_EQ(
-    (int32_t)((uint16_t)k_ra_iwdt_status_underflow | (uint16_t)k_ra_iwdt_status_refresh),
-    (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_iwdt_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_get_status(&mask));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_iwdt_status_underflow | (uint16_t)k_ra_iwdt_status_refresh), mask);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_iwdt_get_status(nullptr));
   TEST_END("iwdt get_status");
 }
 
@@ -143,8 +141,8 @@ static void test_get_status_masks_cntval(void)
   ra_iwdt()->IWDTSR = (uint16_t)0x1234U | (uint16_t)k_ra_iwdt_status_underflow;
 
   uint16_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_iwdt_status_underflow, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_get_status(&mask));
+  TEST_ASSERT_EQ(k_ra_iwdt_status_underflow, mask);
   TEST_END("iwdt get_status masks out CNTVAL[13:0]");
 }
 
@@ -163,9 +161,9 @@ static void test_get_counter(void)
   ra_iwdt()->IWDTSR = (uint16_t)0x1234U | (uint16_t)k_ra_iwdt_status_underflow;
 
   uint16_t cnt = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_get_counter(&cnt));
-  TEST_ASSERT_EQ((int32_t)0x1234, (int32_t)cnt);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_iwdt_get_counter(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_get_counter(&cnt));
+  TEST_ASSERT_EQ(0x1234, cnt);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_iwdt_get_counter(nullptr));
   TEST_END("iwdt get_counter mirrors FSP R_IWDT_CounterGet");
 }
 
@@ -180,8 +178,8 @@ static void test_clear_status(void)
   TEST_BEGIN("iwdt clear_status");
   ra_sim_mmap_reset();
   ra_iwdt()->IWDTSR = (uint16_t)k_ra_iwdt_status_underflow;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_clear_status());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_iwdt()->IWDTSR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_clear_status());
+  TEST_ASSERT_EQ(0, ra_iwdt()->IWDTSR);
   TEST_END("iwdt clear_status");
 }
 
@@ -198,17 +196,16 @@ static void test_attach_and_dispatch(void)
   s_iwdt_cb_count     = 0U;
   s_iwdt_cb_last_mask = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iwdt_attach_handler(stub_iwdt_cb, (void*)(uintptr_t)0x55U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_attach_handler(stub_iwdt_cb, (void*)(uintptr_t)0x55U));
   ra_iwdt()->IWDTSR = (uint16_t)k_ra_iwdt_status_underflow;
   ra_iwdt_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_iwdt_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_iwdt_status_underflow, (int32_t)s_iwdt_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_iwdt_cb_count);
+  TEST_ASSERT_EQ(k_ra_iwdt_status_underflow, s_iwdt_cb_last_mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_attach_handler(nullptr, nullptr));
   ra_iwdt()->IWDTSR = (uint16_t)k_ra_iwdt_status_refresh;
   ra_iwdt_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_iwdt_cb_count);
+  TEST_ASSERT_EQ(1, s_iwdt_cb_count);
   TEST_END("iwdt attach + dispatch");
 }
 

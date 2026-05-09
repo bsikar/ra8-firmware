@@ -51,9 +51,9 @@ static void prep(void)
     .priority          = 4U,
     .refresh_period_ms = 50U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_set_now_hook(test_now_hook));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_set_refresh_hook(test_refresh_hook));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_set_now_hook(test_now_hook));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_set_refresh_hook(test_refresh_hook));
 }
 
 /**
@@ -85,30 +85,30 @@ static void test_mcdc_supervisor_tick_will_refresh(void)
   /* V1: zero workers -> any_present F, will_refresh F. */
   prep();
   bool did_refresh = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_tick(&did_refresh));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)did_refresh);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_refresh_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_tick(&did_refresh));
+  TEST_ASSERT_EQ(0, did_refresh);
+  TEST_ASSERT_EQ(0, s_refresh_calls);
 
   /* V2: one worker, just checked-in (alive). will_refresh T. */
   prep();
   uint8_t h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_register_thread("w1", 100U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_checkin(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_register_thread("w1", 100U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_checkin(h));
   did_refresh = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_tick(&did_refresh));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)did_refresh);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_refresh_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_tick(&did_refresh));
+  TEST_ASSERT_EQ(1, did_refresh);
+  TEST_ASSERT_EQ(1, s_refresh_calls);
 
   /* V3: one worker, overdue. will_refresh F. */
   prep();
   h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_register_thread("w2", 10U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_checkin(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_register_thread("w2", 10U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_checkin(h));
   s_now_ms    = 1000U; /* push monotonic clock past the deadline */
   did_refresh = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_tick(&did_refresh));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)did_refresh);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_refresh_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_tick(&did_refresh));
+  TEST_ASSERT_EQ(0, did_refresh);
+  TEST_ASSERT_EQ(0, s_refresh_calls);
 
   TEST_END("ra_wdt_supervisor_tick MC/DC: any_present && all_alive");
 }
@@ -153,16 +153,16 @@ static void test_mcdc_supervisor_tick_invoke_refresh(void)
   /* V1: no workers => will_refresh=F => C1=F => refresh hook not invoked. */
   prep();
   bool did_refresh = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_tick(&did_refresh));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_refresh_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_tick(&did_refresh));
+  TEST_ASSERT_EQ(0, s_refresh_calls);
 
   /* V2: alive worker => will_refresh=T, refresh!=NULL => hook called once. */
   prep();
   uint8_t h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_register_thread("w1", 100U, &h));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_checkin(h));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_supervisor_tick(&did_refresh));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_refresh_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_register_thread("w1", 100U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_checkin(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_tick(&did_refresh));
+  TEST_ASSERT_EQ(1, s_refresh_calls);
 
   TEST_END("ra_wdt_supervisor_tick MC/DC: will_refresh && refresh != NULL");
 }

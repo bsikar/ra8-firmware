@@ -52,11 +52,11 @@ static void test_can_classic_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("can_classic_loopback: init + classic bitrate ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_can_classic_channel));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_canfd_set_bitrate((uint8_t)k_test_can_classic_channel,
-                                           (uint32_t)k_test_can_classic_bitrate,
-                                           0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_can_classic_channel));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_set_bitrate((uint8_t)k_test_can_classic_channel,
+                                      (uint32_t)k_test_can_classic_bitrate,
+                                      0U));
   TEST_END("can_classic_loopback: init + classic bitrate ok");
 }
 
@@ -71,7 +71,7 @@ static void test_can_classic_loopback_bits(void)
 {
   reset_world();
   TEST_BEGIN("can_classic_loopback: CTME / CTMS bits stamped");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_can_classic_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_can_classic_channel));
   volatile r_canfd_t* reg = ra_canfd((uint8_t)k_test_can_classic_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
   uint32_t ctr = reg->CFDC[0].CTR;
@@ -97,11 +97,11 @@ static void test_can_classic_round_trip(void)
 {
   reset_world();
   TEST_BEGIN("can_classic_loopback: TX classic frame");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_can_classic_channel));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_canfd_set_bitrate((uint8_t)k_test_can_classic_channel,
-                                           (uint32_t)k_test_can_classic_bitrate,
-                                           0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_can_classic_channel));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_set_bitrate((uint8_t)k_test_can_classic_channel,
+                                      (uint32_t)k_test_can_classic_bitrate,
+                                      0U));
   ra_canfd_frame_t tx = {
     .id          = (uint32_t)k_test_can_classic_id,
     .dlc         = (uint8_t)k_test_can_classic_dlc,
@@ -110,7 +110,7 @@ static void test_can_classic_round_trip(void)
     .is_brs      = 0U,
     .data        = {0x01U, 0xC1U, 0xA5U, 0x5CU, 0x10U, 0x20U, 0x30U, 0x40U},
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_transmit((uint8_t)k_test_can_classic_channel, &tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_transmit((uint8_t)k_test_can_classic_channel, &tx));
   ra_canfd_frame_t rx = {};
   const ra_err_t   r  = ra_canfd_receive((uint8_t)k_test_can_classic_channel, &rx);
   TEST_ASSERT(r == k_ra_ok || r == k_ra_err_no_data);
@@ -143,7 +143,7 @@ static void test_can_classic_zero_bitrate(void)
 {
   reset_world();
   TEST_BEGIN("can_classic_loopback: zero bitrate rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_init((uint8_t)k_test_can_classic_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_can_classic_channel));
   TEST_ASSERT(ra_canfd_set_bitrate((uint8_t)k_test_can_classic_channel, 0U, 0U) != k_ra_ok);
   TEST_END("can_classic_loopback: zero bitrate rejected");
 }

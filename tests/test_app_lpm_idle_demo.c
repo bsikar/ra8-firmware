@@ -45,7 +45,7 @@ static void test_lpm_app_init_ok(void)
     .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra_lpm_ss2lp_default,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
   TEST_END("lpm_idle_demo: init ok");
 }
 
@@ -60,7 +60,7 @@ static void test_lpm_app_init_null(void)
 {
   reset_world();
   TEST_BEGIN("lpm_idle_demo: NULL cfg rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_lpm_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lpm_init(nullptr));
   TEST_END("lpm_idle_demo: NULL cfg rejected");
 }
 
@@ -82,8 +82,8 @@ static void test_lpm_app_enter_sleep_ok(void)
     .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra_lpm_ss2lp_default,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
   TEST_END("lpm_idle_demo: enter Sleep returns ok");
 }
 
@@ -105,10 +105,10 @@ static void test_lpm_app_status_after_sleep(void)
     .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra_lpm_ss2lp_default,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_sleep));
   uint32_t status = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_lpm_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_status(&status));
   TEST_END("lpm_idle_demo: get_status returns ok after wake");
 }
 

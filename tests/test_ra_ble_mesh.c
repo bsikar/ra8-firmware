@@ -35,7 +35,7 @@ static void evt_cb(void* ctx, const ra_ble_mesh_event_t* evt)
 static void test_init_null(void)
 {
   TEST_BEGIN("test_init_null");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_mesh_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_mesh_init(nullptr));
   TEST_END("test_init_null");
 }
 
@@ -70,7 +70,7 @@ static void test_lifecycle(void)
   cfg.elements[0].model_count  = 1U;
   cfg.elements[0].models[0].id = 0x0000U; /* Configuration Server. */
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(evt_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(evt_cb, nullptr));
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_prov_enable());
   TEST_ASSERT_EQ(1U, ra_ble_mesh_test_prov_active());
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_prov_disable());
@@ -143,15 +143,15 @@ static void test_mcdc_mesh_emit_event_guard(void)
   cfg.elements[0].models[0].id = 0x0000U;
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_init(&cfg));
   ra_ble_mesh_event_t evt = {.kind = k_ra_ble_mesh_evt_provisioned};
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(evt_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(evt_cb, nullptr));
   s_evt_count = 0U;
   ra_ble_mesh_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(nullptr, nullptr));
   ra_ble_mesh_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(evt_cb, NULL));
-  ra_ble_mesh_test_emit_event(NULL);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_mesh_attach_event_handler(evt_cb, nullptr));
+  ra_ble_mesh_test_emit_event(nullptr);
   TEST_ASSERT_EQ(1U, s_evt_count);
   TEST_END("mcdc mesh emit_event (fn!=NULL && evt!=NULL)");
 }
