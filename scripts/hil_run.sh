@@ -2,18 +2,19 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# hil_run.sh -- Flash a firmware .hex to the EK-RA8D2 via the Pi and verify
-# expected output appears on the J-Link OB UART within a timeout.
+# hil_run.sh -- Flash a firmware image (.elf or .hex) to the EK-RA8D2 via
+# the Pi and verify expected output appears on the J-Link OB UART within a
+# timeout.
 #
 # The Pi is the HIL host: the EK-RA8D2 board is physically wired to it,
 # the J-Link OB is ttyACM0, and the board VCOM (SCI8) is also ttyACM0 at
 # 115200 baud.
 #
 # Usage (run from the repo root on the dev machine):
-#   scripts/hil_run.sh --hex <path/to/app.hex> \
-#                      --expect <string>        \
-#                      [--baud 115200]          \
-#                      [--timeout 10]           \
+#   scripts/hil_run.sh --hex <path/to/app.elf|app.hex> \
+#                      --expect <string>                \
+#                      [--baud 115200]                  \
+#                      [--timeout 10]                   \
 #                      [--uart /dev/ttyACM0]
 #
 # Exit codes:
@@ -33,7 +34,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: $0 --hex <file> --expect <string> [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
+    echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
     exit 2
 }
 
@@ -55,16 +56,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$HEX" || -z "$EXPECT" ]] && usage
-[[ -f "$HEX" ]] || { echo -e "${RED}[HIL]${NC} hex not found: $HEX"; exit 2; }
+[[ -f "$HEX" ]] || { echo -e "${RED}[HIL]${NC} firmware file not found: $HEX"; exit 2; }
 
-APP_NAME="$(basename "${HEX%.hex}")"
-REMOTE_HEX="/tmp/hil_${APP_NAME}.hex"
+APP_NAME="$(basename "${HEX%.*}")"
+FIRMWARE_EXT="${HEX##*.}"
+REMOTE_FW="/tmp/hil_${APP_NAME}.${FIRMWARE_EXT}"
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
-# ---- 1. Copy hex to Pi -------------------------------------------------------
-echo -e "${YELLOW}[HIL]${NC} uploading hex..."
-scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
+# ---- 1. Copy firmware to Pi --------------------------------------------------
+echo -e "${YELLOW}[HIL]${NC} uploading ${FIRMWARE_EXT}..."
+scp -q "$HEX" "${PI_HOST}:${REMOTE_FW}"
 
 # ---- 2. Flash via J-Link on Pi -----------------------------------------------
 echo -e "${YELLOW}[HIL]${NC} flashing..."
@@ -79,15 +81,20 @@ speed 4000
 connect
 r
 halt
-loadfile ${REMOTE_HEX}
+loadfile ${REMOTE_FW}
 r
 g
 q
 JLINK
 JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP_SCRIPT" \
     > /tmp/hil_jlink_${APP_NAME}.log 2>&1
-if grep -q "Error" /tmp/hil_jlink_${APP_NAME}.log; then
+if grep -qiE "error|could not load|failed to" /tmp/hil_jlink_${APP_NAME}.log; then
     echo "J-Link error log:" >&2
+    cat /tmp/hil_jlink_${APP_NAME}.log >&2
+    exit 1
+fi
+if ! grep -q "O.K." /tmp/hil_jlink_${APP_NAME}.log; then
+    echo "J-Link did not confirm download (no 'O.K.' in log):" >&2
     cat /tmp/hil_jlink_${APP_NAME}.log >&2
     exit 1
 fi
@@ -98,11 +105,12 @@ REMOTE
 echo -e "${YELLOW}[HIL]${NC} waiting for '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
 RESULT=$(ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
-# Open UART at the right baud rate. stty must run before reading.
-stty -F ${UART} ${BAUD} raw -echo
-# Read lines for up to TIMEOUT_S seconds, exit 0 the moment EXPECT appears.
+# Configure baud rate once before opening the device for reading.
+stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb
+# Open the port on a dedicated fd so the loop does not re-open it each line.
+exec 3<>${UART}
 timeout ${TIMEOUT_S} bash -c '
-    while IFS= read -r line < ${UART}; do
+    while IFS= read -r line <&3; do
         echo "[uart] \$line"
         if echo "\$line" | grep -qF "${EXPECT}"; then
             echo "MATCH"
@@ -110,7 +118,7 @@ timeout ${TIMEOUT_S} bash -c '
         fi
     done
     exit 1
-' && echo "FOUND" || echo "TIMEOUT"
+' 3<>${UART} && echo "FOUND" || echo "TIMEOUT"
 REMOTE
 )
 
