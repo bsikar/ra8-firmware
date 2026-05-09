@@ -164,6 +164,44 @@ static void test_spi_init_and_xfer(void)
   TEST_END("ra_nsc_spi_init + xfer8");
 }
 
+static void test_spi_bulk_xfers(void)
+{
+  TEST_BEGIN("ra_nsc_spi bulk transfers");
+  prep();
+  ra_spi_cfg_t cfg = {};
+  cfg.mode         = k_ra_spi_mode_0;
+  cfg.baud_hz      = 1000000U;
+  cfg.pclka_hz     = 60000000U;
+  (void)ra_nsc_spi_init(0U, &cfg);
+
+  uint8_t tx[4] = {1, 2, 3, 4};
+  uint8_t rx[4] = {0};
+
+  /* Pre-set SPSR flags for 4 bytes of transfer. In the real hardware
+   * these spin loops would check SPSR, but our mock doesn't clear them
+   * automatically. We just set them so the loop falls through. */
+  volatile r_spi_regs_t* sreg = ra_spi(0U);
+  sreg->SPSR                  = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_write(0U, tx, 4U, k_ra_spi_width_8));
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_write(0U, nullptr, 4U, k_ra_spi_width_8));
+
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_read(0U, rx, 4U, k_ra_spi_width_8));
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_read(0U, nullptr, 4U, k_ra_spi_width_8));
+
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_write_read(0U, tx, rx, 4U, k_ra_spi_width_8));
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_write_read(0U, nullptr, rx, 4U, k_ra_spi_width_8));
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_write_read(0U, tx, nullptr, 4U, k_ra_spi_width_8));
+
+  TEST_END("ra_nsc_spi bulk transfers");
+}
+
 /* =============================================================================
  * USB veneers
  * =============================================================================
@@ -192,6 +230,7 @@ int32_t main(void)
   test_iic_init_forwards();
   test_iic_write_read_null();
   test_spi_init_and_xfer();
+  test_spi_bulk_xfers();
   test_usb_init_and_attach();
   (void)fprintf(stderr, "[OK ] test_ra_nsc_comms.c\n");
   return 0;

@@ -49,14 +49,13 @@ ARM_SIZE     ?= arm-none-eabi-size
 # Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
 RA_DEFAULT_APP ?= blink
 
-# Auto-discover apps: every examples/<tier>/<name>/ dir with main.c +
+# Auto-discover apps: every examples/<tier>/<app>/ or
+# examples/<tier>/<subtier>/<app>/ dir that contains main.c +
 # CMakeLists.txt. RA_APPS holds the bare app names (e.g. "blink");
 # RA_APP_DIR_<app> resolves each one to its full per-app directory so
-# `make blink` works regardless of which tier (ek_ra8d2/ vs
-# _unsupported/) the app lives in. A "tier" is the hardware-support
-# category, organised so a developer can see at a glance which apps
-# we can hardware-validate on the stock EK-RA8D2 EVM.
-_RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c)
+# `make blink` works regardless of which tier/subtier it lives in.
+_RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
+                 $(wildcard $(ROOT)/examples/*/*/*/main.c)
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
@@ -64,10 +63,9 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 # below from being shadowed by .PHONY targets.
 .PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
 
-# EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
-# apps the hardware smoke test sweeps because they run on a stock
-# EK-RA8D2 with no extra peripherals required.
-_EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/*/main.c)
+# hw_validated apps -- smoke test and stack-usage sweeps run over this
+# set only, since these are the apps confirmed working on a stock EK-RA8D2.
+_EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/main.c)
 EK_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_EK_APP_MAINS))))
 
 help:
@@ -101,15 +99,26 @@ help:
 default: $(RA_DEFAULT_APP)
 
 apps:
-	@echo "Available apps (grouped by tier):"
+	@echo "Available apps (grouped by tier / subtier):"
 	@for tier_dir in $(ROOT)/examples/*/; do \
 		tier=$$(basename "$$tier_dir"); \
-		echo "  [$$tier]"; \
-		for main in "$$tier_dir"*/main.c; do \
-			[ -f "$$main" ] || continue; \
-			app=$$(basename "$$(dirname "$$main")"); \
-			first_brief=$$(grep -m1 "@brief" "$$main" 2>/dev/null | sed 's/.*@brief //'); \
-			printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+		for entry in "$$tier_dir"*/; do \
+			[ -d "$$entry" ] || continue; \
+			if ls "$$entry"main.c >/dev/null 2>&1; then \
+				echo "  [$$tier]"; \
+				app=$$(basename "$$entry"); \
+				first_brief=$$(grep -m1 "@brief" "$${entry}main.c" 2>/dev/null | sed 's/.*@brief //'); \
+				printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+			else \
+				subtier=$$(basename "$$entry"); \
+				echo "  [$$tier/$$subtier]"; \
+				for main in "$$entry"*/main.c; do \
+					[ -f "$$main" ] || continue; \
+					app=$$(basename "$$(dirname "$$main")"); \
+					first_brief=$$(grep -m1 "@brief" "$$main" 2>/dev/null | sed 's/.*@brief //'); \
+					printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+				done; \
+			fi; \
 		done; \
 	done
 
@@ -121,7 +130,7 @@ $(RA_APPS):
 	$(MAKE) -C $(RA_APP_DIR_$@) build
 
 clean:
-	@for d in $(ROOT)/examples/*/*/main.c; do \
+	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c; do \
 		[ -f "$$d" ] || continue; \
 		$(MAKE) -C "$$(dirname $$d)" clean; \
 	done
@@ -212,7 +221,7 @@ ascii:
 	@for dir in src libs tests; do \
 		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
 	done
-	@for d in $(ROOT)/examples/*/*/main.c; do \
+	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c; do \
 		[ -f "$$d" ] || continue; \
 		python3 scripts/utils/fix-encoding.py --check "$$(dirname $$d)" || exit 1; \
 	done

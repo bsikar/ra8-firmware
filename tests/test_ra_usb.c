@@ -623,6 +623,146 @@ static void test_queue_out_arg_validation(void)
   TEST_END("ra_usb_queue_out arg validation");
 }
 
+static volatile uint16_t* test_usb_cfifoh(volatile r_usb_regs_t* reg)
+{
+  return (volatile uint16_t*)((uintptr_t)&reg->CFIFO + 2U);
+}
+
+static volatile uint8_t* test_usb_cfifohh(volatile r_usb_regs_t* reg)
+{
+  return (volatile uint8_t*)((uintptr_t)&reg->CFIFO + 3U);
+}
+
+static volatile uint32_t* test_usb_cfifo32(volatile r_usb_regs_t* reg)
+{
+  return (volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises FIFO width/tail
+ * branch coverage through the public queue_in API)
+ */
+static void test_queue_in_fifo_tail_paths(void)
+{
+  TEST_BEGIN("ra_usb_queue_in covers FS and HS FIFO tail paths");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t                fs_odd[3] = {0x11U, 0x22U, 0x33U};
+  volatile r_usb_regs_t* freg      = ra_usb_fs();
+  freg->CFIFOCTR                   = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs, 1U, fs_odd, 3U));
+  TEST_ASSERT_EQ((int32_t)0x33U, (int32_t)freg->CFIFO);
+
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_hs));
+  volatile r_usb_regs_t* hreg = ra_usb_hs();
+  const uint16_t         hsel = (uint16_t)(k_ra_fifosel_mbw_32 | k_ra_fifosel_isel | 1U);
+
+  uint8_t hs_head[4] = {0x10U, 0x20U, 0x30U, 0x40U};
+  hreg->CFIFOCTR     = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_in(k_ra_usb_speed_hs, 1U, hs_head, 4U));
+  TEST_ASSERT_EQ((int32_t)0x40302010U, (int32_t)(*test_usb_cfifo32(hreg)));
+  TEST_ASSERT_EQ((int32_t)hsel, (int32_t)hreg->CFIFOSEL);
+
+  uint8_t hs_half_tail[2] = {0x55U, 0x66U};
+  hreg->CFIFOCTR          = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_hs, 1U, hs_half_tail, 2U));
+  TEST_ASSERT_EQ((int32_t)0x6655U, (int32_t)(*test_usb_cfifoh(hreg)));
+  TEST_ASSERT_EQ((int32_t)hsel, (int32_t)hreg->CFIFOSEL);
+
+  uint8_t hs_byte_tail[3] = {0x77U, 0x88U, 0x99U};
+  hreg->CFIFOCTR          = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_hs, 1U, hs_byte_tail, 3U));
+  TEST_ASSERT_EQ((int32_t)0x99U, (int32_t)(*test_usb_cfifohh(hreg)));
+  TEST_ASSERT_EQ((int32_t)hsel, (int32_t)hreg->CFIFOSEL);
+
+  TEST_END("ra_usb_queue_in covers FS and HS FIFO tail paths");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises FIFO width/tail
+ * branch coverage through the public queue_out API)
+ */
+static void test_queue_out_fifo_tail_paths(void)
+{
+  TEST_BEGIN("ra_usb_queue_out covers FS and HS FIFO tail paths");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t                out[4]   = {};
+  uint16_t               len      = 1U;
+  volatile r_usb_regs_t* freg     = ra_usb_fs();
+  static const uint16_t  pipe_bit = (uint16_t)(1U << 1U);
+  freg->BRDYSTS                   = pipe_bit;
+  freg->CFIFOCTR                  = (uint16_t)(k_ra_fifoctr_frdy | 1U);
+  freg->CFIFO                     = (uint16_t)0xBBAAU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, 1U, out, &len));
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)len);
+  TEST_ASSERT_EQ((int32_t)0xAAU, (int32_t)out[0]);
+
+  out[0]         = 0U;
+  out[1]         = 0U;
+  len            = 2U;
+  freg->BRDYSTS  = pipe_bit;
+  freg->CFIFOCTR = (uint16_t)(k_ra_fifoctr_frdy | 2U);
+  freg->CFIFO    = (uint16_t)0xDDCCU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, 1U, out, &len));
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)len);
+  TEST_ASSERT_EQ((int32_t)0xCCU, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0xDDU, (int32_t)out[1]);
+
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_hs));
+  volatile r_usb_regs_t* hreg = ra_usb_hs();
+
+  out[0]                  = 0U;
+  out[1]                  = 0U;
+  out[2]                  = 0U;
+  out[3]                  = 0U;
+  len                     = 4U;
+  hreg->BRDYSTS           = pipe_bit;
+  hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 4U);
+  *test_usb_cfifo32(hreg) = 0x44332211U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
+  TEST_ASSERT_EQ((int32_t)4U, (int32_t)len);
+  TEST_ASSERT_EQ((int32_t)0x11U, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0x22U, (int32_t)out[1]);
+  TEST_ASSERT_EQ((int32_t)0x33U, (int32_t)out[2]);
+  TEST_ASSERT_EQ((int32_t)0x44U, (int32_t)out[3]);
+
+  out[0]                 = 0U;
+  out[1]                 = 0U;
+  len                    = 2U;
+  hreg->BRDYSTS          = pipe_bit;
+  hreg->CFIFOCTR         = (uint16_t)(k_ra_fifoctr_frdy | 2U);
+  *test_usb_cfifoh(hreg) = 0x6655U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)len);
+  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0x66U, (int32_t)out[1]);
+
+  out[0]                  = 0U;
+  out[1]                  = 0U;
+  out[2]                  = 0U;
+  len                     = 3U;
+  hreg->BRDYSTS           = pipe_bit;
+  hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 3U);
+  *test_usb_cfifoh(hreg)  = 0x8877U;
+  *test_usb_cfifohh(hreg) = 0x88U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
+  TEST_ASSERT_EQ((int32_t)3U, (int32_t)len);
+  TEST_ASSERT_EQ((int32_t)0x77U, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0x88U, (int32_t)out[1]);
+  TEST_ASSERT_EQ((int32_t)0x88U, (int32_t)out[2]);
+
+  TEST_END("ra_usb_queue_out covers FS and HS FIFO tail paths");
+}
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -1179,6 +1319,8 @@ int32_t main(void)
   test_read_setup_unconditional();
   test_queue_in_arg_validation();
   test_queue_out_arg_validation();
+  test_queue_in_fifo_tail_paths();
+  test_queue_out_fifo_tail_paths();
   test_hs_paths();
   test_mcdc_check_ep_args_pipe_num();
   test_mcdc_check_ep_args_ep_addr();

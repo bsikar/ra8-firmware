@@ -37,6 +37,7 @@
 typedef enum : uint32_t {
   k_rsip_edge_trng_chunk = 64U,
   k_rsip_edge_trng_total = 4096U,
+  k_rsip_edge_blob_bytes = 64U,
 } ra_rsip_edge_const_t;
 
 static void prep_running(void)
@@ -45,6 +46,25 @@ static void prep_running(void)
   (void)ra_mstp_init();
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
+}
+
+static void clear_mbox_error(void)
+{
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_ret) = 0U;
+}
+
+static void arm_mbox_error(void)
+{
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_ret) = 1U;
+}
+
+static ra_rsip_key_handle_t make_handle(ra_rsip_oem_cmd_t alg, uint32_t words)
+{
+  ra_rsip_key_handle_t h = {.alg = (uint32_t)alg, .body_words = words};
+  for (uint32_t i = 0U; i < words; ++i) {
+    h.body[i] = 0xA5A50000UL | i;
+  }
+  return h;
 }
 
 /* --- Concurrent key-import: back-to-back installs into the same handle --- */
@@ -270,6 +290,488 @@ static void test_trng_bulk_nonzero(void)
   TEST_END("rsip TRNG bulk read is not all-zero (silent-failure guard)");
 }
 
+static void test_install_nulls_and_hmac_variants(void)
+{
+  TEST_BEGIN("rsip key install nulls and HMAC variants");
+  prep_running();
+
+  const uint8_t        key32[32] = {};
+  ra_rsip_key_handle_t h         = {};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_aes192_install_plain(nullptr, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_aes192_install_plain(key32, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_aes256_install_plain(nullptr, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_aes256_install_plain(key32, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_chacha20_install_plain(nullptr, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_chacha20_install_plain(key32, nullptr));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha256, nullptr, sizeof(key32), &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha256,
+                                                     key32,
+                                                     sizeof(key32),
+                                                     nullptr));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha224, key32, sizeof(key32), &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_rsip_handle_words_hmac_sha224, (int32_t)h.body_words);
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha384, key32, sizeof(key32), &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_rsip_handle_words_hmac_sha384, (int32_t)h.body_words);
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha512, key32, sizeof(key32), &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_rsip_handle_words_hmac_sha512, (int32_t)h.body_words);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha512_224,
+                                                     key32,
+                                                     sizeof(key32),
+                                                     &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_rsip_handle_words_hmac_sha512, (int32_t)h.body_words);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha512_256,
+                                                     key32,
+                                                     sizeof(key32),
+                                                     &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_rsip_handle_words_hmac_sha512, (int32_t)h.body_words);
+
+  TEST_END("rsip key install nulls and HMAC variants");
+}
+
+static void test_oem_install_variants_and_hw_error(void)
+{
+  TEST_BEGIN("rsip OEM install variants and HW error");
+  prep_running();
+
+  const uint8_t        iv[16]   = {};
+  const uint8_t        blob[64] = {};
+  ra_rsip_key_handle_t h        = {};
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_oem_install(k_ra_rsip_oem_cmd_aes128, iv, blob, sizeof(blob), nullptr));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_oem_install(k_ra_rsip_oem_cmd_aes128, iv, nullptr, sizeof(blob), &h));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rsip_oem_install(k_ra_rsip_oem_cmd_aes128_xts, iv, blob, sizeof(blob), &h));
+
+  arm_mbox_error();
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_hw_error,
+    (int32_t)ra_rsip_oem_install(k_ra_rsip_oem_cmd_aes128, iv, blob, sizeof(blob), &h));
+  clear_mbox_error();
+
+  TEST_END("rsip OEM install variants and HW error");
+}
+
+static void test_aes_public_error_paths(void)
+{
+  TEST_BEGIN("rsip AES public error paths");
+  prep_running();
+
+  ra_rsip_key_handle_t aes192 =
+    make_handle(k_ra_rsip_oem_cmd_aes192, (uint32_t)k_ra_rsip_handle_words_aes192);
+  ra_rsip_key_handle_t aes256 =
+    make_handle(k_ra_rsip_oem_cmd_aes256, (uint32_t)k_ra_rsip_handle_words_aes256);
+  ra_rsip_key_handle_t bad =
+    make_handle(k_ra_rsip_oem_cmd_chacha20, (uint32_t)k_ra_rsip_handle_words_chacha20);
+  const uint8_t iv[16]  = {};
+  const uint8_t in[17]  = {};
+  uint8_t       out[17] = {};
+  uint8_t       tag[16] = {};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_aes_cipher(nullptr,
+                                             k_ra_rsip_aes_mode_ecb,
+                                             k_ra_rsip_dir_encrypt,
+                                             nullptr,
+                                             in,
+                                             out,
+                                             16U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_aes_cipher(&aes192,
+                                             k_ra_rsip_aes_mode_ecb,
+                                             k_ra_rsip_dir_encrypt,
+                                             nullptr,
+                                             nullptr,
+                                             out,
+                                             16U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_aes_cipher(&aes192,
+                                             k_ra_rsip_aes_mode_ecb,
+                                             k_ra_rsip_dir_encrypt,
+                                             nullptr,
+                                             in,
+                                             nullptr,
+                                             16U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_rsip_aes_cipher(&bad, k_ra_rsip_aes_mode_ctr, k_ra_rsip_dir_encrypt, iv, in, out, 5U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_aes_cipher(&aes192,
+                                             k_ra_rsip_aes_mode_cmac,
+                                             k_ra_rsip_dir_encrypt,
+                                             nullptr,
+                                             in,
+                                             out,
+                                             5U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_rsip_aes_cipher(&aes192, k_ra_rsip_aes_mode_ctr, k_ra_rsip_dir_decrypt, iv, in, out, 17U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_rsip_aes_cipher(&aes256, k_ra_rsip_aes_mode_gmac, k_ra_rsip_dir_encrypt, iv, in, out, 5U));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_aes_gcm(&aes192, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, nullptr, out, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_aes_gcm(&aes192, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, in, nullptr, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rsip_aes_gcm(&bad, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, in, out, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_aes_gcm(&aes192, k_ra_rsip_dir_decrypt, iv, nullptr, 0U, in, out, 16U, tag));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_aes_ccm(nullptr, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, in, out, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_aes_ccm(&aes192, k_ra_rsip_dir_encrypt, nullptr, nullptr, 0U, in, out, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_aes_ccm(&aes192, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, nullptr, out, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_aes_ccm(&aes192, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, in, nullptr, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_aes_ccm(&aes192, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, in, out, 16U, nullptr));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rsip_aes_ccm(&bad, k_ra_rsip_dir_encrypt, iv, nullptr, 0U, in, out, 16U, tag));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_aes_ccm(&aes256, k_ra_rsip_dir_decrypt, iv, in, 5U, in, out, 16U, tag));
+
+  arm_mbox_error();
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_hw_error,
+    (int32_t)
+      ra_rsip_aes_cipher(&aes192, k_ra_rsip_aes_mode_ctr, k_ra_rsip_dir_encrypt, iv, in, out, 5U));
+  clear_mbox_error();
+
+  TEST_END("rsip AES public error paths");
+}
+
+static void test_chacha_poly_hash_hmac_error_paths(void)
+{
+  TEST_BEGIN("rsip ChaCha Poly hash HMAC error paths");
+  prep_running();
+
+  ra_rsip_key_handle_t chacha =
+    make_handle(k_ra_rsip_oem_cmd_chacha20, (uint32_t)k_ra_rsip_handle_words_chacha20);
+  ra_rsip_key_handle_t aes =
+    make_handle(k_ra_rsip_oem_cmd_aes128, (uint32_t)k_ra_rsip_handle_words_aes128);
+  const uint8_t nonce[12] = {};
+  const uint8_t msg[5]    = {'h', 'e', 'l', 'l', 'o'};
+  uint8_t       out[64]   = {};
+  uint8_t       tag[16]   = {};
+  const uint8_t otk[32]   = {};
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_chacha20(nullptr, k_ra_rsip_dir_encrypt, nonce, 0U, msg, out, sizeof(msg)));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_chacha20(&chacha, k_ra_rsip_dir_encrypt, nullptr, 0U, msg, out, sizeof(msg)));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_chacha20(&chacha, k_ra_rsip_dir_encrypt, nonce, 0U, nullptr, out, sizeof(msg)));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_chacha20(&chacha, k_ra_rsip_dir_encrypt, nonce, 0U, msg, nullptr, sizeof(msg)));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_chacha20_poly1305(nullptr,
+                                                    k_ra_rsip_dir_encrypt,
+                                                    nonce,
+                                                    nullptr,
+                                                    0U,
+                                                    msg,
+                                                    out,
+                                                    sizeof(msg),
+                                                    tag));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_chacha20_poly1305(&chacha,
+                                                    k_ra_rsip_dir_encrypt,
+                                                    nullptr,
+                                                    nullptr,
+                                                    0U,
+                                                    msg,
+                                                    out,
+                                                    sizeof(msg),
+                                                    tag));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_chacha20_poly1305(&chacha,
+                                                    k_ra_rsip_dir_encrypt,
+                                                    nonce,
+                                                    nullptr,
+                                                    0U,
+                                                    nullptr,
+                                                    out,
+                                                    sizeof(msg),
+                                                    tag));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_chacha20_poly1305(&chacha,
+                                                    k_ra_rsip_dir_encrypt,
+                                                    nonce,
+                                                    nullptr,
+                                                    0U,
+                                                    msg,
+                                                    nullptr,
+                                                    sizeof(msg),
+                                                    tag));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_chacha20_poly1305(&chacha,
+                                                    k_ra_rsip_dir_encrypt,
+                                                    nonce,
+                                                    nullptr,
+                                                    0U,
+                                                    msg,
+                                                    out,
+                                                    sizeof(msg),
+                                                    nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_chacha20_poly1305(&aes,
+                                                    k_ra_rsip_dir_encrypt,
+                                                    nonce,
+                                                    nullptr,
+                                                    0U,
+                                                    msg,
+                                                    out,
+                                                    sizeof(msg),
+                                                    tag));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_chacha20_poly1305(&chacha,
+                                                    k_ra_rsip_dir_decrypt,
+                                                    nonce,
+                                                    nullptr,
+                                                    0U,
+                                                    msg,
+                                                    out,
+                                                    sizeof(msg),
+                                                    tag));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_poly1305(otk, msg, sizeof(msg), nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_poly1305(otk, nullptr, 1U, tag));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_poly1305(otk, nullptr, 0U, tag));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha256, nullptr, 1U, out, 32U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_hash((ra_rsip_hash_alg_t)0xFFFFU, msg, sizeof(msg), out, 32U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha224, nullptr, 0U, out, 28U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha384, msg, sizeof(msg), out, 48U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha512_224, msg, sizeof(msg), out, 28U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha512_256, msg, sizeof(msg), out, 32U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha3_224, msg, sizeof(msg), out, 28U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha3_384, msg, sizeof(msg), out, 48U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha3_512, msg, sizeof(msg), out, 64U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_shake256, msg, sizeof(msg), out, 5U));
+
+  TEST_END("rsip ChaCha Poly hash HMAC error paths");
+}
+
+static void test_hmac_public_variants(void)
+{
+  TEST_BEGIN("rsip HMAC public variants");
+  prep_running();
+
+  const uint8_t        msg[4]  = {'t', 'e', 's', 't'};
+  uint8_t              mac[64] = {};
+  ra_rsip_key_handle_t h224 =
+    make_handle(k_ra_rsip_oem_cmd_hmac_sha224, (uint32_t)k_ra_rsip_handle_words_hmac_sha224);
+  ra_rsip_key_handle_t h384 =
+    make_handle(k_ra_rsip_oem_cmd_hmac_sha384, (uint32_t)k_ra_rsip_handle_words_hmac_sha384);
+  ra_rsip_key_handle_t h512 =
+    make_handle(k_ra_rsip_oem_cmd_hmac_sha512, (uint32_t)k_ra_rsip_handle_words_hmac_sha512);
+  ra_rsip_key_handle_t h512_224 =
+    make_handle(k_ra_rsip_oem_cmd_hmac_sha512_224, (uint32_t)k_ra_rsip_handle_words_hmac_sha512);
+  ra_rsip_key_handle_t h512_256 =
+    make_handle(k_ra_rsip_oem_cmd_hmac_sha512_256, (uint32_t)k_ra_rsip_handle_words_hmac_sha512);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hmac(nullptr, msg, sizeof(msg), mac, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hmac(&h224, msg, sizeof(msg), nullptr, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hmac(&h224, nullptr, 1U, mac, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_hmac(&h224, nullptr, 0U, mac, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac(&h384, msg, sizeof(msg), mac, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac(&h512, msg, sizeof(msg), mac, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_hmac(&h512_224, msg, sizeof(msg), mac, sizeof(mac)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac(&h512_256, msg, sizeof(msg), mac, sizeof(mac)));
+
+  TEST_END("rsip HMAC public variants");
+}
+
+static void test_asym_and_kdf_error_paths(void)
+{
+  TEST_BEGIN("rsip asymmetric and KDF error paths");
+  prep_running();
+
+  ra_rsip_key_handle_t rsa =
+    make_handle(k_ra_rsip_oem_cmd_rsa2048_priv, (uint32_t)k_ra_rsip_handle_words_rsa2048_priv);
+  ra_rsip_key_handle_t ecc =
+    make_handle(k_ra_rsip_oem_cmd_ecc_secp256r1_priv, (uint32_t)k_ra_rsip_handle_words_ecc256_priv);
+  ra_rsip_key_handle_t ikm =
+    make_handle(k_ra_rsip_oem_cmd_hmac_sha256, (uint32_t)k_ra_rsip_handle_words_hmac_sha256);
+  const uint8_t        digest[33]                   = {};
+  uint8_t              sig[132]                     = {};
+  const uint8_t        point[66]                    = {};
+  uint8_t              blob[k_rsip_edge_blob_bytes] = {};
+  const uint8_t        iv[16]                       = {};
+  ra_rsip_key_handle_t out                          = {};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_rsa_sign(nullptr, k_ra_rsip_rsa_2048, digest, 32U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_rsa_sign(&rsa, k_ra_rsip_rsa_2048, nullptr, 32U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_rsa_sign(&rsa, k_ra_rsip_rsa_2048, digest, 32U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_rsa_verify(nullptr, k_ra_rsip_rsa_2048, digest, 32U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_rsa_verify(&rsa, k_ra_rsip_rsa_2048, nullptr, 32U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_rsa_verify(&rsa, k_ra_rsip_rsa_2048, digest, 32U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_rsa_sign(&rsa, k_ra_rsip_rsa_1024, digest, 5U, sig));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_ecdsa_sign(nullptr, k_ra_rsip_curve_secp192r1, digest, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_secp192r1, nullptr, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_secp192r1, digest, 5U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, (ra_rsip_curve_t)99U, digest, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_secp192r1, digest, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_secp224r1, digest, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_brain384r1, digest, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_brain512r1, digest, 5U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_ecdsa_sign(&ecc, k_ra_rsip_curve_secp521r1, digest, 5U, sig));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_ecdsa_verify(nullptr, k_ra_rsip_curve_secp256r1, digest, 32U, sig));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_ecdsa_verify(&ecc, k_ra_rsip_curve_secp256r1, nullptr, 32U, sig));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_ecdsa_verify(&ecc, k_ra_rsip_curve_secp256r1, digest, 32U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_ecdsa_verify(&ecc, (ra_rsip_curve_t)99U, digest, 32U, sig));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_ecdh_compute(nullptr, k_ra_rsip_curve_secp256r1, point, point, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_ecdh_compute(&ecc, k_ra_rsip_curve_secp256r1, nullptr, point, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_ecdh_compute(&ecc, k_ra_rsip_curve_secp256r1, point, nullptr, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_ecdh_compute(&ecc, k_ra_rsip_curve_secp256r1, point, point, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_ecdh_compute(&ecc, (ra_rsip_curve_t)99U, point, point, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_ecdh_compute(&ecc, k_ra_rsip_curve_secp256k1, point, point, &out));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_wrap(nullptr, iv, &ecc, blob));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_wrap(&ikm, nullptr, &ecc, blob));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_wrap(&ikm, iv, nullptr, blob));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_wrap(&ikm, iv, &ecc, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_unwrap(nullptr, iv, blob, &out));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_key_unwrap(&ikm, nullptr, blob, &out));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_unwrap(&ikm, iv, nullptr, &out));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_key_unwrap(&ikm, iv, blob, nullptr));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_kdf(k_ra_rsip_kdf_op_huk_label, nullptr, nullptr, 1U, nullptr, 0U, 32U, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_rsip_kdf(k_ra_rsip_kdf_op_huk_label, nullptr, nullptr, 0U, nullptr, 1U, 32U, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_hkdf_sha384, nullptr, nullptr, 0U, nullptr, 0U, 32U, &out));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_uid_label, nullptr, nullptr, 0U, nullptr, 0U, 32U, nullptr));
+  const uint8_t label[5]                = {'l', 'a', 'b', 'e', 'l'};
+  const uint8_t salt[3]                 = {'s', 'a', 'l'};
+  *ra_rsip_reg32(k_ra_rsip_off_kdf_out) = (uint32_t)k_ra_rsip_oem_cmd_hmac_sha256;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_kdf(k_ra_rsip_kdf_op_hkdf_sha512,
+                                      &ikm,
+                                      label,
+                                      sizeof(label),
+                                      salt,
+                                      sizeof(salt),
+                                      32U,
+                                      &out));
+
+  TEST_END("rsip asymmetric and KDF error paths");
+}
+
 int32_t main(void)
 {
   test_back_to_back_key_install();
@@ -278,6 +780,12 @@ int32_t main(void)
   test_aes_gcm_null_matrix();
   test_clear_status_garbage_bits();
   test_trng_bulk_nonzero();
+  test_install_nulls_and_hmac_variants();
+  test_oem_install_variants_and_hw_error();
+  test_aes_public_error_paths();
+  test_chacha_poly_hash_hmac_error_paths();
+  test_hmac_public_variants();
+  test_asym_and_kdf_error_paths();
   (void)fprintf(stderr, "[OK  ] test_ra_rsip_edge_cases.c\n");
   return 0;
 }

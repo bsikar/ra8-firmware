@@ -138,6 +138,25 @@ static void test_init_bad_mrefreq(void)
   TEST_END("flash init bad mrefreq");
 }
 
+static void test_init_all_optional_features_disabled(void)
+{
+  TEST_BEGIN("flash init optional features disabled");
+  ra_sim_mmap_reset();
+  ra_flash_cfg_t cfg     = make_cfg();
+  cfg.prefetch_en        = false;
+  cfg.ecc_encoder_enable = false;
+  cfg.ecc_decoder_enable = false;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+  TEST_ASSERT_EQ((int)0, (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mrcpfb)));
+  TEST_ASSERT_EQ(
+    (int)0,
+    (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrceecc) & (uint16_t)k_ra_mrceecc_mask_eccen));
+  TEST_ASSERT_EQ(
+    (int)0,
+    (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcdecc) & (uint16_t)k_ra_mrcdecc_mask_dececen));
+  TEST_END("flash init optional features disabled");
+}
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -324,6 +343,34 @@ static void test_erase_block_alignment(void)
   TEST_END("flash erase_block alignment");
 }
 
+static void test_write_block_simulator_reachable_paths(void)
+{
+  TEST_BEGIN("flash write_block simulator reachable paths");
+  ra_sim_mmap_reset();
+  const uint8_t buf[4] = {0x11U, 0x22U, 0x33U, 0x44U};
+
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_abufemp;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_flash_write_block((uint32_t)k_test_addr_in_mram, buf, sizeof(buf), k_ra_flash_world_s));
+  TEST_ASSERT_EQ((int)0x11, (int)(*(volatile uint8_t*)(uintptr_t)k_test_addr_in_mram));
+  TEST_ASSERT_EQ((int)k_ra_mrcpc1_key_disable,
+                 (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcpc1)));
+  TEST_ASSERT_EQ((int)0, (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mrpsc)));
+  TEST_ASSERT_EQ((int)1, (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mrcpfb)));
+
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) =
+    (uint8_t)(k_ra_mrcps_mask_abufemp | k_ra_mrcps_mask_prgerrc);
+  TEST_ASSERT_EQ((int)k_ra_err_hw_error,
+                 (int)ra_flash_write_block((uint32_t)k_test_addr_in_mram + 4U,
+                                           buf,
+                                           sizeof(buf),
+                                           k_ra_flash_world_ns));
+  TEST_ASSERT_EQ((int)k_ra_mrcpc0_key_disable,
+                 (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcpc0)));
+  TEST_END("flash write_block simulator reachable paths");
+}
+
 /* ---------------------------------------------------------------------------
  * Block protection
   *
@@ -417,6 +464,15 @@ static void test_force_stop_cmdlk(void)
   TEST_END("flash force_stop cmdlk");
 }
 
+static void test_force_stop_timeout(void)
+{
+  TEST_BEGIN("flash force_stop timeout");
+  ra_sim_mmap_reset();
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_flash_force_stop());
+  TEST_END("flash force_stop timeout");
+}
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -437,6 +493,21 @@ static void test_reset_happy(void)
   /* Force the exit-PE check to pass too: clearing MENTRYR via writes is fine. */
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_reset());
   TEST_END("flash reset happy");
+}
+
+static void test_reset_not_initialized_and_stop_error(void)
+{
+  TEST_BEGIN("flash reset not initialized and stop error");
+  ra_sim_mmap_reset();
+  (void)ra_flash_deinit();
+  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_flash_reset());
+
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat)  = (uint8_t)k_ra_mastat_mask_cmdlk;
+  TEST_ASSERT_EQ((int)k_ra_err_hw_error, (int)ra_flash_reset());
+  TEST_END("flash reset not initialized and stop error");
 }
 
 /* ---------------------------------------------------------------------------
@@ -468,6 +539,23 @@ static void test_set_startup_area_temporary(void)
   TEST_END("flash set_startup_area temporary");
 }
 
+static void test_set_startup_area_default_and_permanent(void)
+{
+  TEST_BEGIN("flash set_startup_area default and permanent");
+  ra_sim_mmap_reset();
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_startup_area(k_ra_flash_startup_default, true));
+  TEST_ASSERT_EQ((int)(uint16_t)(k_ra_msuacr_key | k_ra_msuacr_swap_default),
+                 (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_msuacr)));
+
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_startup_area(k_ra_flash_startup_default, false));
+  TEST_ASSERT_EQ((int)k_ra_msaddr_config_set_startup,
+                 (int)(*ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr)));
+  TEST_END("flash set_startup_area default and permanent");
+}
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -488,6 +576,7 @@ static void test_get_startup_area(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_get_startup_area(&btflg, &fspr));
   TEST_ASSERT_EQ((int)1, (int)btflg);
   TEST_ASSERT_EQ((int)1, (int)fspr);
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_get_startup_area(&btflg, nullptr));
   TEST_END("flash get_startup_area");
 }
 
@@ -514,6 +603,17 @@ static void test_config_set_write_validation(void)
   *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_config_set_write((uint32_t)k_test_addr_extra_in, buf));
   TEST_END("flash config_set_write validation");
+}
+
+static void test_config_set_write_ofs_window(void)
+{
+  TEST_BEGIN("flash config_set_write OFS window");
+  ra_sim_mmap_reset();
+  uint16_t buf[k_ra_mram_config_set_word_count]  = {};
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_config_set_write((uint32_t)k_ra_flash_ofs_start, buf));
+  TEST_ASSERT_EQ((int)k_ra_flash_ofs_start, (int)(*ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr)));
+  TEST_END("flash config_set_write OFS window");
 }
 
 /**
@@ -572,6 +672,20 @@ static void test_extra_mram_write_validation(void)
   TEST_END("flash extra_mram_write validation");
 }
 
+static void test_extra_mram_write_success_pads_payload(void)
+{
+  TEST_BEGIN("flash extra_mram_write success pads payload");
+  ra_sim_mmap_reset();
+  const uint8_t buf[3]                           = {0xA5U, 0x5AU, 0xC3U};
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_flash_extra_mram_write((uint32_t)k_ra_flash_extra_start, buf, sizeof(buf)));
+  TEST_ASSERT_EQ((int)k_ra_flash_extra_start,
+                 (int)(*ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr)));
+  TEST_END("flash extra_mram_write success pads payload");
+}
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -610,6 +724,37 @@ static void test_arc_argument_validation(void)
   TEST_END("flash arc validation");
 }
 
+static void test_arc_oembl_read_increment_paths(void)
+{
+  TEST_BEGIN("flash ARC OEMBL read and increment paths");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr)   = (uint32_t)k_ra_mstatr_mask_mrdy;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr0) = 0x00000003UL;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr1) = 0x80000000UL;
+  uint32_t count                                   = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_arc_read(k_ra_flash_arc_oembl, &count));
+  TEST_ASSERT_EQ((int)3, (int)count);
+  TEST_ASSERT_EQ((int)k_ra_mcntselr_oembl,
+                 (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mcntselr) & k_ra_mcntselr_mask));
+
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr)   = (uint32_t)k_ra_mstatr_mask_mrdy;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr0) = 0x00000001UL;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr1) = 0x00000000UL;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_arc_increment(k_ra_flash_arc_oembl));
+
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr)   = (uint32_t)k_ra_mstatr_mask_mrdy;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr0) = 0xFFFFFFFFUL;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr1) = 0xFFFFFFFFUL;
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_flash_arc_increment(k_ra_flash_arc_oembl));
+
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_flash_arc_read(k_ra_flash_arc_oembl, &count));
+  TEST_END("flash ARC OEMBL read and increment paths");
+}
+
 /* ---------------------------------------------------------------------------
  * Zeroize / MSAR / MSUINITR / ECC controls
  * ------------------------------------------------------------------------ */
@@ -618,6 +763,7 @@ static void test_zeroize_huk_paths(void)
 {
   TEST_BEGIN("flash zeroize_huk paths");
   ra_sim_mmap_reset();
+  (void)ra_flash_deinit();
   /* Without init -> not_initialized. */
   TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_flash_zeroize_huk());
 
@@ -628,6 +774,17 @@ static void test_zeroize_huk_paths(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_zeroize_huk());
   TEST_ASSERT_EQ((int)k_ra_mrezc_full_zero, (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrezc)));
   TEST_END("flash zeroize_huk paths");
+}
+
+static void test_zeroize_huk_timeout(void)
+{
+  TEST_BEGIN("flash zeroize_huk timeout");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrezs) = (uint8_t)k_ra_mrezs_mask_whukexe;
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_flash_zeroize_huk());
+  TEST_END("flash zeroize_huk timeout");
 }
 
 /**
@@ -679,6 +836,14 @@ static void test_set_ecc_encoder_decoder_enable(void)
   TEST_ASSERT_EQ(
     (int)0,
     (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcdecc) & (uint16_t)k_ra_mrcdecc_mask_dececen));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_ecc_encoder_enable(false));
+  TEST_ASSERT_EQ(
+    (int)0,
+    (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrceecc) & (uint16_t)k_ra_mrceecc_mask_eccen));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_ecc_decoder_enable(true));
+  TEST_ASSERT_EQ(
+    (int)k_ra_mrcdecc_mask_dececen,
+    (int)(*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcdecc) & (uint16_t)k_ra_mrcdecc_mask_dececen));
   TEST_END("flash set_ecc_*_enable");
 }
 
@@ -709,6 +874,9 @@ static void test_get_ecc_error_addr(void)
   TEST_ASSERT_EQ((int)0x22222222, (int)b);
   TEST_ASSERT_EQ((int)0x33333333, (int)c);
   TEST_ASSERT_EQ((int)0x44444444, (int)d);
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_get_ecc_error_addr(&a, nullptr, &c, &d));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_get_ecc_error_addr(&a, &b, nullptr, &d));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_get_ecc_error_addr(&a, &b, &c, nullptr));
   TEST_END("flash get_ecc_error_addr");
 }
 
@@ -786,6 +954,8 @@ static void test_get_update_status(void)
   TEST_ASSERT_EQ((int)1, (int)b);
   TEST_ASSERT_EQ((int)1, (int)d);
   TEST_ASSERT_EQ((int)1, (int)e);
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_get_update_status(&b, nullptr, &e));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_get_update_status(&b, &d, nullptr));
   TEST_END("flash get_update_status");
 }
 
@@ -825,9 +995,18 @@ static void test_set_irq_enable(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_code_ecc_ted, true));
   TEST_ASSERT_EQ((int)k_ra_mrcraeint_mask_intenbtc,
                  (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraeint)));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_code_ecc_dec, true));
+  TEST_ASSERT_EQ((int)(k_ra_mrcraeint_mask_intenbtc | k_ra_mrcraeint_mask_intenbdc),
+                 (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraeint)));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_code_ecc_ted, false));
+  TEST_ASSERT_EQ((int)k_ra_mrcraeint_mask_intenbdc,
+                 (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraeint)));
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_extra_ecc_dec, true));
   TEST_ASSERT_EQ((int)k_ra_mrcraeint_mask_intenbdc,
+                 (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mreraint)));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_extra_ecc_ted, true));
+  TEST_ASSERT_EQ((int)(k_ra_mrcraeint_mask_intenbdc | k_ra_mrcraeint_mask_intenbtc),
                  (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mreraint)));
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_program_err, true));
@@ -837,6 +1016,9 @@ static void test_set_irq_enable(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_extra_err, true));
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_extra_cmdlk, true));
   TEST_ASSERT_EQ((int)(k_ra_mpaeint_mask_mreaeie | k_ra_mpaeint_mask_cmdlkie),
+                 (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mpaeint)));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_extra_err, false));
+  TEST_ASSERT_EQ((int)k_ra_mpaeint_mask_cmdlkie,
                  (int)(*ra_mram_reg8((uint16_t)k_ra_mram_off_mpaeint)));
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_irq_enable(k_ra_flash_irq_extra_ready, true));
@@ -1452,6 +1634,7 @@ int32_t main(void)
   test_init_null_cfg();
   test_init_bad_mrcfreq();
   test_init_bad_mrefreq();
+  test_init_all_optional_features_disabled();
   test_deinit_locks_everything();
 
   test_get_status_paths();
@@ -1461,24 +1644,32 @@ int32_t main(void)
 
   test_write_block_validation();
   test_erase_block_alignment();
+  test_write_block_simulator_reachable_paths();
 
   test_block_protect_set();
   test_pe_mode_round_trip();
   test_force_stop_happy();
   test_force_stop_cmdlk();
+  test_force_stop_timeout();
   test_reset_happy();
+  test_reset_not_initialized_and_stop_error();
 
   test_set_startup_area_temporary();
+  test_set_startup_area_default_and_permanent();
   test_get_startup_area();
 
   test_config_set_write_validation();
+  test_config_set_write_ofs_window();
   test_mcdc_config_set_write_extra_window();
   test_extra_mram_write_validation();
+  test_extra_mram_write_success_pads_payload();
   test_extra_mram_erase_validation();
 
   test_arc_argument_validation();
+  test_arc_oembl_read_increment_paths();
 
   test_zeroize_huk_paths();
+  test_zeroize_huk_timeout();
   test_set_security_attribution();
   test_msuinitr_kick();
   test_set_ecc_encoder_decoder_enable();
