@@ -1064,9 +1064,18 @@ typedef enum : uint16_t {
  */
 static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
 {
-  const uint8_t mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
+  volatile uint8_t* const usbckcr = ra_sys_usbckcr();
+  const uint8_t           mask    = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
+#ifdef RA_SIMULATOR_MODE
+  /* Sim memory has no hardware ack -- fake USBCKSRDY toggling. */
+  if (expected != 0U) {
+    *usbckcr = (uint8_t)(*usbckcr | mask);
+  } else {
+    *usbckcr = (uint8_t)(*usbckcr & (uint8_t)~mask);
+  }
+#endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usbfs_srdy_poll_limit; ++i) {
-    const uint8_t got = (uint8_t)((*ra_sys_usbckcr() & mask) >> k_ra_usbckcr_bit_srdy);
+    const uint8_t got = (uint8_t)((*usbckcr & mask) >> k_ra_usbckcr_bit_srdy);
     if (got == expected) {
       return k_ra_ok;
     }
