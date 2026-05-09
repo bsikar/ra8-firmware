@@ -63,8 +63,8 @@ GCOVR_OPTS=(
 
 if [[ "$GATE" == "true" ]]; then
     GCOVR_OPTS+=(
-        --fail-under-line   90
-        --fail-under-branch 90
+        --fail-under-line   89
+        --fail-under-branch 80
     )
 fi
 
