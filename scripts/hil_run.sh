@@ -107,8 +107,7 @@ RESULT=$(ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 # Configure baud rate once before opening the device for reading.
 stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb
-# Open the port on a dedicated fd so the loop does not re-open it each line.
-exec 3<>${UART}
+# Pass the port as fd 3 to the child so the loop does not re-open it each line.
 timeout ${TIMEOUT_S} bash -c '
     while IFS= read -r line <&3; do
         echo "[uart] \$line"
