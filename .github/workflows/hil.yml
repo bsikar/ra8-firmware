@@ -35,6 +35,9 @@ concurrency:
   group: hil-board
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   hil-uart-suite:
     name: HIL uart suite (23 apps)
