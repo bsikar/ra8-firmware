@@ -41,7 +41,7 @@ static void test_init(void)
 {
   TEST_BEGIN("pdm init");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_init());
   TEST_END("pdm init");
 }
 
@@ -55,8 +55,8 @@ static void test_deinit(void)
 {
   TEST_BEGIN("pdm deinit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_deinit());
   TEST_END("pdm deinit");
 }
 
@@ -72,10 +72,10 @@ static void test_status_read_and_clear(void)
   prep();
   ra_pdm()->PDM_STAT = 0xDEADBEEFU;
   uint32_t mask      = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_clear_status(0xF0F0F0F0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdm_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_get_status(&mask));
+  TEST_ASSERT_EQ(0xDEADBEEFU, mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_clear_status(0xF0F0F0F0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdm_get_status(nullptr));
   TEST_END("pdm status read + clear");
 }
 
@@ -89,12 +89,11 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("pdm attach + dispatch");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdm_attach_handler(stub_pdm_cb, (void*)(uintptr_t)0x50U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_attach_handler(stub_pdm_cb, (void*)(uintptr_t)0x50U));
   ra_pdm()->PDM_STAT = 0xCAFEU;
   ra_pdm_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdm_cb_count);
-  TEST_ASSERT_EQ((int32_t)0xCAFEU, (int32_t)s_pdm_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_pdm_cb_count);
+  TEST_ASSERT_EQ(0xCAFEU, s_pdm_cb_last_mask);
   TEST_END("pdm attach + dispatch");
 }
 
@@ -108,9 +107,9 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("pdm power transition");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_enter_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdm_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdm_exit_stop());
   TEST_END("pdm power transition");
 }
 

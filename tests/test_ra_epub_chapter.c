@@ -34,10 +34,9 @@ static void test_mcdc_epub_get_chapter_count_null_pair(void)
   TEST_BEGIN("epub_get_chapter_count MC/DC: (book||out_count) NULL");
   ra_epub_book_t book = {};
   uint16_t       cnt  = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_get_chapter_count(&book, &cnt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(NULL, &cnt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(&book, NULL));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_get_chapter_count(&book, &cnt));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_chapter_count(nullptr, &cnt));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_chapter_count(&book, nullptr));
   TEST_END("epub_get_chapter_count MC/DC: (book||out_count) NULL");
 }
 
@@ -54,9 +53,9 @@ static void test_mcdc_epub_get_metadata_null_pair(void)
   TEST_BEGIN("epub_get_metadata MC/DC: (book||out_meta) NULL");
   ra_epub_book_t     book = {};
   ra_epub_metadata_t meta = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_epub_get_metadata(&book, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(NULL, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(&book, NULL));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_get_metadata(&book, &meta));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_metadata(nullptr, &meta));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_metadata(&book, nullptr));
   TEST_END("epub_get_metadata MC/DC: (book||out_meta) NULL");
 }
 
@@ -72,12 +71,12 @@ static void test_mcdc_epub_set_font_null_pair(void)
 {
   TEST_BEGIN("epub_set_font MC/DC: (book||font_data) NULL");
   ra_epub_book_t book = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_set_font(&book, s_font_buf, (size_t)k_test_epub_font_min_bytes));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_set_font(NULL, s_font_buf, (size_t)k_test_epub_font_min_bytes));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_set_font(&book, NULL, (size_t)k_test_epub_font_min_bytes));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_epub_set_font(&book, s_font_buf, (size_t)k_test_epub_font_min_bytes));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_set_font(nullptr, s_font_buf, (size_t)k_test_epub_font_min_bytes));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_set_font(&book, nullptr, (size_t)k_test_epub_font_min_bytes));
   TEST_END("epub_set_font MC/DC: (book||font_data) NULL");
 }
 
@@ -107,13 +106,13 @@ static void test_mcdc_epub_internal_join_path_guard(void)
   /* V1: both conditions false -> proceeds, writes "abc/x". */
   buf[0] = '!';
   ra_epub_internal_join_path("abc", "x", buf, sizeof(buf));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(buf, "abcx"));
+  TEST_ASSERT_EQ(0, strcmp(buf, "abcx"));
   /* V2: dst NULL -> early return (no crash). */
-  ra_epub_internal_join_path("abc", "x", NULL, sizeof(buf));
+  ra_epub_internal_join_path("abc", "x", nullptr, sizeof(buf));
   /* V3: cap == 0 -> early return (buf untouched). */
   buf[0] = '!';
   ra_epub_internal_join_path("abc", "x", buf, 0U);
-  TEST_ASSERT_EQ((int32_t)'!', (int32_t)buf[0]);
+  TEST_ASSERT_EQ('!', buf[0]);
   TEST_END("epub MC/DC: join_path (dst||cap=0) guard");
 }
 
@@ -139,12 +138,12 @@ static void test_mcdc_epub_internal_join_path_dir_loop(void)
   TEST_BEGIN("epub MC/DC: join_path dir-copy loop AND");
   char buf[16];
   /* V1: ample cap -> loop exits via C2 (NUL). */
-  ra_epub_internal_join_path("ab", NULL, buf, sizeof(buf));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(buf, "ab"));
+  ra_epub_internal_join_path("ab", nullptr, buf, sizeof(buf));
+  TEST_ASSERT_EQ(0, strcmp(buf, "ab"));
   /* V2: cap=2 -> only 1 byte fits (off+1<cap stops at off=1). */
-  ra_epub_internal_join_path("XYZ", NULL, buf, 2U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)strlen(buf));
-  TEST_ASSERT_EQ((int32_t)'X', (int32_t)buf[0]);
+  ra_epub_internal_join_path("XYZ", nullptr, buf, 2U);
+  TEST_ASSERT_EQ(1, strlen(buf));
+  TEST_ASSERT_EQ('X', buf[0]);
   TEST_END("epub MC/DC: join_path dir-copy loop AND");
 }
 
@@ -166,13 +165,13 @@ static void test_mcdc_epub_internal_join_path_name_loop(void)
   TEST_BEGIN("epub MC/DC: join_path name-copy loop AND");
   char buf[16];
   /* V1: ample cap, name only -> exits via NUL. */
-  ra_epub_internal_join_path(NULL, "cd", buf, sizeof(buf));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(buf, "cd"));
+  ra_epub_internal_join_path(nullptr, "cd", buf, sizeof(buf));
+  TEST_ASSERT_EQ(0, strcmp(buf, "cd"));
   /* V2: cap=3 -> only 2 bytes fit. */
-  ra_epub_internal_join_path(NULL, "cdef", buf, 3U);
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)strlen(buf));
-  TEST_ASSERT_EQ((int32_t)'c', (int32_t)buf[0]);
-  TEST_ASSERT_EQ((int32_t)'d', (int32_t)buf[1]);
+  ra_epub_internal_join_path(nullptr, "cdef", buf, 3U);
+  TEST_ASSERT_EQ(2, strlen(buf));
+  TEST_ASSERT_EQ('c', buf[0]);
+  TEST_ASSERT_EQ('d', buf[1]);
   TEST_END("epub MC/DC: join_path name-copy loop AND");
 }
 

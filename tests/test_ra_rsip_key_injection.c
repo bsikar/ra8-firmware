@@ -75,9 +75,8 @@ static void test_inject_aes128_roundtrip(void)
   uint8_t raw_key[k_test_aes128_bytes];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_key_validate(blob, k_ra_rsip_wrapped_type_aes));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_validate(blob, k_ra_rsip_wrapped_type_aes));
 
   TEST_END("rsip ki aes128 round-trip");
 }
@@ -100,8 +99,8 @@ static void test_inject_aes_bad_width(void)
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_rsip_key_inject_aes(blob, raw_key, (ra_rsip_aes_key_bits_t)k_test_bad_key_bits));
+    k_ra_err_invalid_arg,
+    ra_rsip_key_inject_aes(blob, raw_key, (ra_rsip_aes_key_bits_t)k_test_bad_key_bits));
 
   TEST_END("rsip ki aes bad width");
 }
@@ -124,10 +123,8 @@ static void test_inject_rsa2048(void)
   uint8_t exponent[4]  = {0x00U, 0x01U, 0x00U, 0x01U};
   (void)memset(modulus, (int)k_test_pattern_h, sizeof(modulus));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_rsa(blob, modulus, exponent, k_ra_rsip_rsa_2048));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_validate(blob, k_ra_rsip_wrapped_type_rsa_pub));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_rsa(blob, modulus, exponent, k_ra_rsip_rsa_2048));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_validate(blob, k_ra_rsip_wrapped_type_rsa_pub));
 
   TEST_END("rsip ki rsa2048 round-trip");
 }
@@ -154,15 +151,11 @@ static void test_inject_ecc_priv_pub(void)
   uint8_t blob_priv[k_ra_rsip_wrapped_max_total];
   uint8_t blob_pub[k_ra_rsip_wrapped_max_total];
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_ecc(blob_priv, k_ra_rsip_curve_secp256r1, priv, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_validate(blob_priv, k_ra_rsip_wrapped_type_ecc_priv));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_ecc(blob_priv, k_ra_rsip_curve_secp256r1, priv, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_validate(blob_priv, k_ra_rsip_wrapped_type_ecc_priv));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_ecc(blob_pub, k_ra_rsip_curve_secp256r1, pub, false));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_validate(blob_pub, k_ra_rsip_wrapped_type_ecc_pub));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_ecc(blob_pub, k_ra_rsip_curve_secp256r1, pub, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_validate(blob_pub, k_ra_rsip_wrapped_type_ecc_pub));
 
   TEST_END("rsip ki ecc priv+pub round-trip");
 }
@@ -184,19 +177,16 @@ static void test_validate_detects_tamper(void)
   uint8_t raw_key[k_test_aes128_bytes];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
   /* Flip a byte inside the trailing MAC region. */
   blob[(uint32_t)k_ra_rsip_wrapped_max_total - 1U] ^= 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_error,
-                 (int32_t)ra_rsip_key_validate(blob, k_ra_rsip_wrapped_type_aes));
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_rsip_key_validate(blob, k_ra_rsip_wrapped_type_aes));
 
   /* And the type-tag mismatch path. */
   uint8_t fresh[k_ra_rsip_wrapped_max_total];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rsip_key_inject_aes(fresh, raw_key, k_ra_rsip_aes_key_bits_128));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_rsip_key_validate(fresh, k_ra_rsip_wrapped_type_ecc_priv));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(fresh, raw_key, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_key_validate(fresh, k_ra_rsip_wrapped_type_ecc_priv));
 
   TEST_END("rsip ki validate detects tamper");
 }
@@ -218,28 +208,24 @@ static void test_null_args(void)
   uint8_t blob[k_ra_rsip_wrapped_max_total];
   uint8_t key[k_test_aes128_bytes] = {};
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_aes(nullptr, key, k_ra_rsip_aes_key_bits_128));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_aes(blob, nullptr, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_key_inject_aes(nullptr, key, k_ra_rsip_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_key_inject_aes(blob, nullptr, k_ra_rsip_aes_key_bits_128));
 
   uint8_t mod[256] = {};
   uint8_t exp[4]   = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_rsa(nullptr, mod, exp, k_ra_rsip_rsa_2048));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_rsa(blob, nullptr, exp, k_ra_rsip_rsa_2048));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_rsa(blob, mod, nullptr, k_ra_rsip_rsa_2048));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rsip_key_inject_rsa(nullptr, mod, exp, k_ra_rsip_rsa_2048));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rsip_key_inject_rsa(blob, nullptr, exp, k_ra_rsip_rsa_2048));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rsip_key_inject_rsa(blob, mod, nullptr, k_ra_rsip_rsa_2048));
 
   uint8_t scalar[k_test_p256_priv] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_ecc(nullptr, k_ra_rsip_curve_secp256r1, scalar, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_inject_ecc(blob, k_ra_rsip_curve_secp256r1, nullptr, true));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_key_inject_ecc(nullptr, k_ra_rsip_curve_secp256r1, scalar, true));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_rsip_key_inject_ecc(blob, k_ra_rsip_curve_secp256r1, nullptr, true));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_rsip_key_validate(nullptr, k_ra_rsip_wrapped_type_aes));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rsip_key_validate(nullptr, k_ra_rsip_wrapped_type_aes));
 
   TEST_END("rsip ki null args");
 }

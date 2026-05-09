@@ -50,12 +50,12 @@ static void test_init_clears_state(void)
 {
   TEST_BEGIN("ra_isr_init clears slots");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
 
   uint16_t slot = 0U;
   /* Unknown event not found. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)42U, &slot));
-  TEST_ASSERT_EQ((int32_t)k_ra_isr_slot_none, (int32_t)slot);
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_lookup_slot((ra_elc_event_t)42U, &slot));
+  TEST_ASSERT_EQ(k_ra_isr_slot_none, slot);
   TEST_END("ra_isr_init clears slots");
 }
 
@@ -69,22 +69,21 @@ static void test_register_allocates_first_slot(void)
 {
   TEST_BEGIN("ra_isr_register: first registration gets slot 0");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
 
   uint16_t slot = 0xFFFFU;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)0x50U, stub_handler_a, nullptr, 5U, &slot));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)slot);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_isr_register((ra_elc_event_t)0x50U, stub_handler_a, nullptr, 5U, &slot));
+  TEST_ASSERT_EQ(0, slot);
 
   uint16_t slot2 = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x50U, &slot2));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)slot2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_lookup_slot((ra_elc_event_t)0x50U, &slot2));
+  TEST_ASSERT_EQ(0, slot2);
 
   /* IELSR entry holds the event number. */
   volatile uint32_t* ielsr = ra_icu_ielsr(0U);
   TEST_ASSERT_NOT_NULL((void*)ielsr);
-  TEST_ASSERT_EQ((int32_t)0x50, (int32_t)(*ielsr & (uint32_t)k_ra_ielsr_iels_mask));
+  TEST_ASSERT_EQ(0x50, (*ielsr & (uint32_t)k_ra_ielsr_iels_mask));
 
   TEST_END("ra_isr_register: first registration gets slot 0");
 }
@@ -99,10 +98,10 @@ static void test_register_rejects_null_handler(void)
 {
   TEST_BEGIN("ra_isr_register: NULL handler rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_isr_register((ra_elc_event_t)1U, nullptr, nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_isr_register((ra_elc_event_t)1U, nullptr, nullptr, 0U, nullptr));
   TEST_END("ra_isr_register: NULL handler rejected");
 }
 
@@ -116,10 +115,9 @@ static void test_register_rejects_bad_priority(void)
 {
   TEST_BEGIN("ra_isr_register: priority out of range");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_isr_register((ra_elc_event_t)1U, stub_handler_a, nullptr, 99U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_isr_register((ra_elc_event_t)1U, stub_handler_a, nullptr, 99U, nullptr));
   TEST_END("ra_isr_register: priority out of range");
 }
 
@@ -133,13 +131,11 @@ static void test_register_duplicate_rejected(void)
 {
   TEST_BEGIN("ra_isr_register: duplicate event rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)7U, stub_handler_a, nullptr, 0U, nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_exists,
-    (int32_t)ra_isr_register((ra_elc_event_t)7U, stub_handler_a, nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_isr_register((ra_elc_event_t)7U, stub_handler_a, nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_exists,
+                 ra_isr_register((ra_elc_event_t)7U, stub_handler_a, nullptr, 0U, nullptr));
   TEST_END("ra_isr_register: duplicate event rejected");
 }
 
@@ -153,12 +149,11 @@ static void test_unregister_frees_slot(void)
 {
   TEST_BEGIN("ra_isr_unregister frees the slot");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)9U, stub_handler_a, nullptr, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_unregister((ra_elc_event_t)9U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found, (int32_t)ra_isr_unregister((ra_elc_event_t)9U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_isr_register((ra_elc_event_t)9U, stub_handler_a, nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_unregister((ra_elc_event_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_isr_unregister((ra_elc_event_t)9U));
   TEST_END("ra_isr_unregister frees the slot");
 }
 
@@ -172,16 +167,15 @@ static void test_dispatch_invokes_handler_with_ctx(void)
 {
   TEST_BEGIN("ra_isr_dispatch invokes the registered handler");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
   reset_counts();
 
   int32_t  marker = 0xBEEF;
   uint16_t slot   = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_isr_register((ra_elc_event_t)11U, stub_handler_a, &marker, 0U, &slot));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_register((ra_elc_event_t)11U, stub_handler_a, &marker, 0U, &slot));
   ra_isr_dispatch(slot);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_call_count);
-  TEST_ASSERT_EQ((int32_t)0xBEEF, (int32_t)s_last_ctx_val);
+  TEST_ASSERT_EQ(1, s_call_count);
+  TEST_ASSERT_EQ(0xBEEF, s_last_ctx_val);
   TEST_END("ra_isr_dispatch invokes the registered handler");
 }
 
@@ -195,11 +189,11 @@ static void test_dispatch_out_of_range_is_noop(void)
 {
   TEST_BEGIN("ra_isr_dispatch out-of-range is a no-op");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
   reset_counts();
 
   ra_isr_dispatch(500U); /* Out of bounds; nothing happens. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_call_count);
+  TEST_ASSERT_EQ(0, s_call_count);
   TEST_END("ra_isr_dispatch out-of-range is a no-op");
 }
 
@@ -213,16 +207,15 @@ static void test_multiple_events_get_distinct_slots(void)
 {
   TEST_BEGIN("ra_isr_register: distinct events -> distinct slots");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
 
   uint16_t slot_a = 0U;
   uint16_t slot_b = 0U;
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)0x30U, stub_handler_a, &s_ctx_scratch, 1U, &slot_a));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)0x31U, stub_handler_b, nullptr, 2U, &slot_b));
+    k_ra_ok,
+    ra_isr_register((ra_elc_event_t)0x30U, stub_handler_a, &s_ctx_scratch, 1U, &slot_a));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_isr_register((ra_elc_event_t)0x31U, stub_handler_b, nullptr, 2U, &slot_b));
   TEST_ASSERT(slot_a != slot_b);
   TEST_END("ra_isr_register: distinct events -> distinct slots");
 }
@@ -237,16 +230,13 @@ static void test_set_priority_roundtrip(void)
 {
   TEST_BEGIN("ra_isr_set_priority: updates stored priority");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)0x20U, stub_handler_a, nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_isr_register((ra_elc_event_t)0x20U, stub_handler_a, nullptr, 0U, nullptr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_set_priority((ra_elc_event_t)0x20U, 3U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_isr_set_priority((ra_elc_event_t)0x20U, 99U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
-                 (int32_t)ra_isr_set_priority((ra_elc_event_t)0xFFU, 3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_set_priority((ra_elc_event_t)0x20U, 3U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_isr_set_priority((ra_elc_event_t)0x20U, 99U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_isr_set_priority((ra_elc_event_t)0xFFU, 3U));
   TEST_END("ra_isr_set_priority: updates stored priority");
 }
 
@@ -260,9 +250,8 @@ static void test_lookup_slot_null_out(void)
 {
   TEST_BEGIN("ra_isr_lookup_slot: NULL out rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_isr_lookup_slot((ra_elc_event_t)1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_isr_lookup_slot((ra_elc_event_t)1U, nullptr));
   TEST_END("ra_isr_lookup_slot: NULL out rejected");
 }
 
@@ -294,31 +283,30 @@ static void test_find_event_mcdc_compound_guard(void)
 {
   TEST_BEGIN("internal_find_event MC/DC: in_use && event==query");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_init());
 
   /* Vector 1: in_use=F (table empty). Decision must be false for every
    * slot, so lookup returns slot_none. */
   uint16_t slot_v1 = 0xFFFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x40U, &slot_v1));
-  TEST_ASSERT_EQ((int32_t)k_ra_isr_slot_none, (int32_t)slot_v1);
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_lookup_slot((ra_elc_event_t)0x40U, &slot_v1));
+  TEST_ASSERT_EQ(k_ra_isr_slot_none, slot_v1);
 
   /* Register one event so subsequent vectors see in_use=T in slot 0. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_isr_register((ra_elc_event_t)0x40U, stub_handler_a, nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_isr_register((ra_elc_event_t)0x40U, stub_handler_a, nullptr, 0U, nullptr));
 
   /* Vector 2: in_use=T, event mismatch. Decision is false on slot 0
    * (because event 0x40 != query 0x41) and on every subsequent slot
    * (in_use=F short-circuits). Lookup returns slot_none. */
   uint16_t slot_v2 = 0xFFFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x41U, &slot_v2));
-  TEST_ASSERT_EQ((int32_t)k_ra_isr_slot_none, (int32_t)slot_v2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_lookup_slot((ra_elc_event_t)0x41U, &slot_v2));
+  TEST_ASSERT_EQ(k_ra_isr_slot_none, slot_v2);
 
   /* Vector 3: in_use=T, event match. Decision is true on slot 0; lookup
    * returns 0. */
   uint16_t slot_v3 = 0xFFFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x40U, &slot_v3));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)slot_v3);
+  TEST_ASSERT_EQ(k_ra_ok, ra_isr_lookup_slot((ra_elc_event_t)0x40U, &slot_v3));
+  TEST_ASSERT_EQ(0, slot_v3);
 
   TEST_END("internal_find_event MC/DC: in_use && event==query");
 }

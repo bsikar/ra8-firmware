@@ -44,11 +44,11 @@ static void test_init_clears_regs(void)
   reg1->DACR0                   = 0xFFFFFFFFUL;
   reg1->DADR                    = 0xBBBBU;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init());
-  TEST_ASSERT_EQ(0, (int)reg0->DACR0);
-  TEST_ASSERT_EQ(0, (int)reg0->DADR);
-  TEST_ASSERT_EQ(0, (int)reg1->DACR0);
-  TEST_ASSERT_EQ(0, (int)reg1->DADR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init());
+  TEST_ASSERT_EQ(0, reg0->DACR0);
+  TEST_ASSERT_EQ(0, reg0->DADR);
+  TEST_ASSERT_EQ(0, reg1->DACR0);
+  TEST_ASSERT_EQ(0, reg1->DADR);
   TEST_END("dac_b init clears both instances");
 }
 
@@ -63,14 +63,14 @@ static void test_write_channel_0(void)
   TEST_BEGIN("dac_b write channel 0");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init());
   /* Pre-arm channel 0 (FSP order: Open clears DACR0; Start sets DACEN). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_set_output_enable(0U, true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_0, (uint16_t)k_ra_dac_b_test_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable(0U, true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_0, (uint16_t)k_ra_dac_b_test_mid));
 
   volatile r_dac_b_regs_t* reg = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
-  TEST_ASSERT_EQ((int)k_ra_dac_b_test_mid, (int)reg->DADR);
+  TEST_ASSERT_EQ(k_ra_dac_b_test_mid, reg->DADR);
   /* FSP write writes ONLY DADR; it never touches DACR0. */
   TEST_ASSERT((reg->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
   TEST_ASSERT((reg->DACR0 & (uint32_t)k_ra_dacr0_mask_dae) == 0U);
@@ -88,13 +88,13 @@ static void test_write_channel_1(void)
   TEST_BEGIN("dac_b write channel 1");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_set_output_enable(1U, true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_1, (uint16_t)k_ra_dac_b_test_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable(1U, true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_1, (uint16_t)k_ra_dac_b_test_mid));
 
   volatile r_dac_b_regs_t* reg = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
-  TEST_ASSERT_EQ((int)k_ra_dac_b_test_mid, (int)reg->DADR);
+  TEST_ASSERT_EQ(k_ra_dac_b_test_mid, reg->DADR);
   TEST_ASSERT((reg->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
   TEST_END("dac_b write channel 1");
 }
@@ -110,12 +110,11 @@ static void test_write_clamps_over_range(void)
   TEST_BEGIN("dac_b write clamps over-range");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_0, (uint16_t)k_ra_dac_b_test_over));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_0, (uint16_t)k_ra_dac_b_test_over));
 
   volatile r_dac_b_regs_t* reg = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
-  TEST_ASSERT_EQ((int)k_ra_dac_b_test_max, (int)reg->DADR);
+  TEST_ASSERT_EQ(k_ra_dac_b_test_max, reg->DADR);
   TEST_END("dac_b write clamps over-range");
 }
 
@@ -130,12 +129,10 @@ static void test_write_bad_channel(void)
   TEST_BEGIN("dac_b write bad channel");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_bad, (uint16_t)k_ra_dac_b_test_mid));
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_way, (uint16_t)k_ra_dac_b_test_mid));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_bad, (uint16_t)k_ra_dac_b_test_mid));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_way, (uint16_t)k_ra_dac_b_test_mid));
   TEST_END("dac_b write bad channel");
 }
 
@@ -175,21 +172,17 @@ static void test_init_configured(void)
     .enable_channel0         = true,
     .enable_channel1         = true,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
 
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
 
   /* OFSSEL is bit 8 of DACR2 -- writing vref_low (1) shifts to 0x100. */
-  TEST_ASSERT_EQ((int32_t)k_ra_dacr2_mask_ofssel,
-                 (int32_t)(reg0->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel));
-  TEST_ASSERT_EQ((int32_t)k_ra_dacr2_mask_ofssel,
-                 (int32_t)(reg1->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel));
+  TEST_ASSERT_EQ(k_ra_dacr2_mask_ofssel, (reg0->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel));
+  TEST_ASSERT_EQ(k_ra_dacr2_mask_ofssel, (reg1->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel));
   /* DPSEL is bit 16 of DACR1 -- writing format_left (1) shifts to 0x10000. */
-  TEST_ASSERT_EQ((int32_t)k_ra_dacr1_mask_dpsel,
-                 (int32_t)(reg0->DACR1 & (uint32_t)k_ra_dacr1_mask_dpsel));
-  TEST_ASSERT_EQ((int32_t)k_ra_dacr1_mask_dpsel,
-                 (int32_t)(reg1->DACR1 & (uint32_t)k_ra_dacr1_mask_dpsel));
+  TEST_ASSERT_EQ(k_ra_dacr1_mask_dpsel, (reg0->DACR1 & (uint32_t)k_ra_dacr1_mask_dpsel));
+  TEST_ASSERT_EQ(k_ra_dacr1_mask_dpsel, (reg1->DACR1 & (uint32_t)k_ra_dacr1_mask_dpsel));
   /* internal_output_enabled=true means DAOUTDIS bit must be CLEAR. */
   TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_daoutdis) == 0U);
   TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_daoutdis) == 0U);
@@ -210,7 +203,7 @@ static void test_init_null(void)
   TEST_BEGIN("dac_b init null");
   prep_w42();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_dac_b_init_configured(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dac_b_init_configured(nullptr));
   TEST_END("dac_b init null");
 }
 
@@ -232,13 +225,13 @@ static void test_deinit(void)
     .enable_channel0         = true,
     .enable_channel1         = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init_configured(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_deinit());
   /* FSP R_DAC_B_Close: DACR0 = DAOUTDIS_Msk (Hi-Z output, DACEN cleared). */
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
-  TEST_ASSERT_EQ((int32_t)k_ra_dacr0_mask_daoutdis, (int32_t)reg0->DACR0);
-  TEST_ASSERT_EQ((int32_t)k_ra_dacr0_mask_daoutdis, (int32_t)reg1->DACR0);
+  TEST_ASSERT_EQ(k_ra_dacr0_mask_daoutdis, reg0->DACR0);
+  TEST_ASSERT_EQ(k_ra_dacr0_mask_daoutdis, reg1->DACR0);
   TEST_END("dac_b deinit");
 }
 
@@ -253,14 +246,14 @@ static void test_set_vref(void)
   TEST_BEGIN("dac_b set_vref");
   prep_w42();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_vref(k_ra_dac_b_vref_low));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_vref(k_ra_dac_b_vref_low));
   /* OFSSEL bit must be set after set_vref(low). */
   TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) !=
               0U);
   TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) !=
               0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_vref(k_ra_dac_b_vref_normal));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_vref(k_ra_dac_b_vref_normal));
   TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) ==
               0U);
   TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) ==
@@ -282,15 +275,15 @@ static void test_output_enable_toggle(void)
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_output_enable(0U, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable(0U, true));
   TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_output_enable(0U, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable(0U, false));
   TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) == 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_output_enable(1U, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable(1U, true));
   TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_output_enable(1U, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable(1U, false));
   TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) == 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_dac_b_set_output_enable(9U, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_dac_b_set_output_enable(9U, true));
   TEST_END("dac_b output_enable toggle");
 }
 
@@ -312,7 +305,7 @@ static void test_init_configured_both_disabled(void)
     .enable_channel0         = false,
     .enable_channel1         = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
   /* internal_output_enabled=false -> DAOUTDIS bit set, DACEN clear. */
@@ -338,13 +331,13 @@ static void test_status_read_and_clear(void)
   reg0->DACR0                   = (uint32_t)k_ra_dacr0_mask_dacen;
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0x01, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_get_status(&mask));
+  TEST_ASSERT_EQ(0x01, mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_clear_status());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_dac_b_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_clear_status());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_get_status(&mask));
+  TEST_ASSERT_EQ(0, mask);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dac_b_get_status(nullptr));
   TEST_END("dac_b status read + clear");
 }
 
@@ -359,14 +352,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("dac_b attach + dispatch");
   prep_w42();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_dac_b_attach_handler(stub_dac_cb, (void*)(uintptr_t)0xFEEDU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_attach_handler(stub_dac_cb, (void*)(uintptr_t)0xFEEDU));
   ra_dac_b_dispatch_update((uint8_t)k_ra_dac_b_test_ch_1);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_dac_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_dac_b_test_ch_1, (int32_t)s_dac_cb_last_ch);
+  TEST_ASSERT_EQ(1, s_dac_cb_count);
+  TEST_ASSERT_EQ(k_ra_dac_b_test_ch_1, s_dac_cb_last_ch);
 
   ra_dac_b_dispatch_update((uint8_t)k_ra_dac_b_test_ch_bad);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_dac_cb_count);
+  TEST_ASSERT_EQ(1, s_dac_cb_count);
   TEST_END("dac_b attach + dispatch");
 }
 
@@ -381,9 +373,9 @@ static void test_power_transition(void)
   TEST_BEGIN("dac_b power transition");
   prep_w42();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_enter_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_exit_stop());
   TEST_END("dac_b power transition");
 }
 

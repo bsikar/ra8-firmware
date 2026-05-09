@@ -122,7 +122,7 @@ static void test_mpu_configure_demo_table_ok(void)
   reset_world();
   TEST_BEGIN("mpu_demo: configure(3-region table) ok");
   const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
   /* main() guarantees MPU_CTRL.ENABLE on success. */
   TEST_ASSERT((ra_mpu_regs()->CTRL & 1U) != 0U);
   TEST_END("mpu_demo: configure(3-region table) ok");
@@ -141,8 +141,8 @@ static void test_mpu_led_init_after_configure(void)
   reset_world();
   TEST_BEGIN("mpu_demo: LED1 init after MPU configure");
   const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mpu_configure(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
   TEST_END("mpu_demo: LED1 init after MPU configure");
 }
 
@@ -159,10 +159,10 @@ static void test_mpu_thread_blink_loop(void)
   reset_world();
   TEST_BEGIN("mpu_demo: thread_entry blink loop N iterations");
   const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mpu_configure(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
   for (uint8_t i = 0U; i < (uint8_t)k_test_mpu_blink_iters; i++) {
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
   }
   TEST_END("mpu_demo: thread_entry blink loop N iterations");
 }
@@ -182,7 +182,7 @@ static void test_mpu_configure_null_cfg_rejected(void)
 {
   reset_world();
   TEST_BEGIN("mpu_demo: configure(NULL) rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_mpu_configure(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mpu_configure(nullptr));
   TEST_END("mpu_demo: configure(NULL) rejected");
 }
 
@@ -214,7 +214,7 @@ static void test_mpu_configure_bad_region_size_rejected(void)
     .privdefena   = true,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
   TEST_END("mpu_demo: configure rejects non-power-of-two region size");
 }
 
@@ -232,7 +232,7 @@ static void test_mpu_configure_too_many_regions_rejected(void)
   ra_mpu_regs()->TYPE = (uint32_t)(2UL << 8U);
   TEST_BEGIN("mpu_demo: configure rejects region_count > DREGION");
   const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
   TEST_END("mpu_demo: configure rejects region_count > DREGION");
 }
 

@@ -78,12 +78,10 @@ static void test_uart_pfs_routing_ok(void)
 {
   reset_world();
   TEST_BEGIN("uart_hello: PFS routes TXD8 + RXD8");
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_uart_pin_txd, k_ra_psel_sci_async, "test.txd8"));
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_uart_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_uart_pin_txd, k_ra_psel_sci_async, "test.txd8"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_uart_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
   TEST_END("uart_hello: PFS routes TXD8 + RXD8");
 }
 
@@ -106,7 +104,7 @@ static void test_uart_sci_init_115200_8n1(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = (uint32_t)k_test_uart_pclk_hz,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sci_init((uint8_t)k_test_uart_sci_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_test_uart_sci_channel, &cfg));
   TEST_END("uart_hello: ra_sci_init 115200 8N1");
 }
 
@@ -127,12 +125,10 @@ static void test_uart_steady_state_write_and_toggle(void)
   reset_world();
   TEST_BEGIN("uart_hello: write+toggle loop");
   /* Bring everything up first like the app does. */
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_uart_pin_txd, k_ra_psel_sci_async, "test.txd8"));
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_uart_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_uart_pin_txd, k_ra_psel_sci_async, "test.txd8"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_uart_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
   const ra_sci_cfg_t cfg = {
     .baud      = (uint32_t)k_test_uart_baud,
     .data_bits = k_ra_sci_data_8,
@@ -140,19 +136,19 @@ static void test_uart_steady_state_write_and_toggle(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = (uint32_t)k_test_uart_pclk_hz,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sci_init((uint8_t)k_test_uart_sci_channel, &cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_test_uart_sci_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
 
   /* ra_sci_init clears CSR via CFCLR; re-seed TDRE so each putc spin
    * completes immediately under RA_SIMULATOR_MODE. */
   volatile r_sci_regs_t* sci_reg = ra_sci((uint8_t)k_test_uart_sci_channel);
   for (uint8_t i = 0; i < (uint8_t)k_test_uart_loop_iters; i++) {
     sci_reg->CSR = (uint32_t)(1U << (uint8_t)k_ra_sci_csr_bit_tdre);
-    TEST_ASSERT_EQ((int)k_ra_ok,
-                   (int)ra_sci_write_polling((uint8_t)k_test_uart_sci_channel,
-                                             k_test_uart_greeting,
-                                             (uint32_t)(sizeof(k_test_uart_greeting) - 1U)));
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
+    TEST_ASSERT_EQ(k_ra_ok,
+                   ra_sci_write_polling((uint8_t)k_test_uart_sci_channel,
+                                        k_test_uart_greeting,
+                                        (uint32_t)(sizeof(k_test_uart_greeting) - 1U)));
+    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
   }
   TEST_END("uart_hello: write+toggle loop");
 }
@@ -195,7 +191,7 @@ static void test_uart_init_null_cfg_rejected(void)
 {
   reset_world();
   TEST_BEGIN("uart_hello: ra_sci_init rejects NULL cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_sci_init((uint8_t)k_test_uart_sci_channel, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_init((uint8_t)k_test_uart_sci_channel, nullptr));
   TEST_END("uart_hello: ra_sci_init rejects NULL cfg");
 }
 

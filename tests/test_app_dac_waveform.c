@@ -57,12 +57,12 @@ static void test_dac_app_bringup_and_loop(void)
     .enable_channel0         = true,
     .enable_channel1         = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
   const uint16_t step =
     (uint16_t)((uint32_t)k_test_dac_app_max_code / (uint32_t)k_test_dac_app_steps);
   for (uint16_t i = 0U; i < (uint16_t)k_test_dac_app_steps; ++i) {
     const uint16_t code = (uint16_t)(i * step);
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_write((uint8_t)k_test_dac_app_channel, code));
+    TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_write((uint8_t)k_test_dac_app_channel, code));
   }
   TEST_END("dac_waveform: init + triangle write loop");
 }
@@ -115,10 +115,10 @@ static void test_dac_app_clamp(void)
     .enable_channel0         = true,
     .enable_channel1         = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_dac_b_write((uint8_t)k_test_dac_app_channel, (uint16_t)k_test_dac_app_oversize));
+    k_ra_ok,
+    ra_dac_b_write((uint8_t)k_test_dac_app_channel, (uint16_t)k_test_dac_app_oversize));
   TEST_END("dac_waveform: oversize value clamps OK");
 }
 

@@ -58,9 +58,8 @@ static void test_link_first_slot(void)
   prep();
 
   const ra_err_t err = ra_elc_link((uint8_t)k_ra_elc_test_slot_first, k_ra_elc_event_icu_irq0);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
-  TEST_ASSERT_EQ((int32_t)k_ra_elc_event_icu_irq0,
-                 (int32_t)*test_elsr((uint8_t)k_ra_elc_test_slot_first));
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  TEST_ASSERT_EQ(k_ra_elc_event_icu_irq0, *test_elsr((uint8_t)k_ra_elc_test_slot_first));
   TEST_END("elc link first slot");
 }
 
@@ -75,10 +74,8 @@ static void test_link_mid_slot(void)
   TEST_BEGIN("elc link mid slot");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_elc_link((uint8_t)k_ra_elc_test_slot_mid, k_ra_elc_event_icu_irq1));
-  TEST_ASSERT_EQ((int32_t)k_ra_elc_event_icu_irq1,
-                 (int32_t)*test_elsr((uint8_t)k_ra_elc_test_slot_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_link((uint8_t)k_ra_elc_test_slot_mid, k_ra_elc_event_icu_irq1));
+  TEST_ASSERT_EQ(k_ra_elc_event_icu_irq1, *test_elsr((uint8_t)k_ra_elc_test_slot_mid));
   TEST_END("elc link mid slot");
 }
 
@@ -93,8 +90,7 @@ static void test_link_last_slot(void)
   TEST_BEGIN("elc link last valid slot");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_elc_link((uint8_t)k_ra_elc_test_slot_last, k_ra_elc_event_icu_irq15));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_link((uint8_t)k_ra_elc_test_slot_last, k_ra_elc_event_icu_irq15));
   TEST_END("elc link last valid slot");
 }
 
@@ -109,8 +105,8 @@ static void test_link_bad_slot(void)
   TEST_BEGIN("elc link bad slot");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_elc_link((uint8_t)k_ra_elc_test_slot_bad, k_ra_elc_event_none));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_elc_link((uint8_t)k_ra_elc_test_slot_bad, k_ra_elc_event_none));
   TEST_END("elc link bad slot");
 }
 
@@ -125,8 +121,8 @@ static void test_link_huge_slot(void)
   TEST_BEGIN("elc link huge slot");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_elc_link((uint8_t)k_ra_elc_test_slot_huge, k_ra_elc_event_none));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_elc_link((uint8_t)k_ra_elc_test_slot_huge, k_ra_elc_event_none));
   TEST_END("elc link huge slot");
 }
 
@@ -144,12 +140,12 @@ static void test_init_enables_controller(void)
   /* Pollute ELSR0 so we can verify init clears it. */
   *test_elsr(0U) = 0x123U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_init());
-  TEST_ASSERT_EQ((int32_t)(1U << k_ra_elcr_bit_elcon), (int32_t)*test_elcr());
-  TEST_ASSERT_EQ(0, (int32_t)*test_elsr(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
+  TEST_ASSERT_EQ((1U << k_ra_elcr_bit_elcon), *test_elcr());
+  TEST_ASSERT_EQ(0, *test_elsr(0U));
 
   bool enabled = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_is_enabled(&enabled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_is_enabled(&enabled));
   TEST_ASSERT(enabled);
   TEST_END("ra_elc_init: ELSR cleared + ELCON set");
 }
@@ -165,12 +161,12 @@ static void test_deinit_clears_elcon(void)
   TEST_BEGIN("ra_elc_deinit: ELCON cleared");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_deinit());
-  TEST_ASSERT_EQ(0, (int32_t)*test_elcr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_deinit());
+  TEST_ASSERT_EQ(0, *test_elcr());
 
   bool enabled = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_is_enabled(&enabled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_is_enabled(&enabled));
   TEST_ASSERT(!enabled);
   TEST_END("ra_elc_deinit: ELCON cleared");
 }
@@ -186,13 +182,11 @@ static void test_unlink_clears_slot(void)
   TEST_BEGIN("ra_elc_unlink: slot zeroed");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_elc_link((uint8_t)k_ra_elc_test_slot_mid, k_ra_elc_event_icu_irq1));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_unlink((uint8_t)k_ra_elc_test_slot_mid));
-  TEST_ASSERT_EQ(0, (int32_t)*test_elsr((uint8_t)k_ra_elc_test_slot_mid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_link((uint8_t)k_ra_elc_test_slot_mid, k_ra_elc_event_icu_irq1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_unlink((uint8_t)k_ra_elc_test_slot_mid));
+  TEST_ASSERT_EQ(0, *test_elsr((uint8_t)k_ra_elc_test_slot_mid));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_elc_unlink((uint8_t)k_ra_elc_test_slot_bad));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_elc_unlink((uint8_t)k_ra_elc_test_slot_bad));
   TEST_END("ra_elc_unlink: slot zeroed");
 }
 
@@ -210,15 +204,14 @@ static void test_software_trigger(void)
   /* After the documented HUM Ch 19.2.2 sequence
    * (0x00 -> 0x40 -> 0x41) the last byte the driver wrote (which is
    * what the simulator memory observes) is the trigger value 0x41. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_software_trigger(0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_elc_elsegr_step_trigger, (int32_t)*test_elsegr(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_software_trigger(0U));
+  TEST_ASSERT_EQ(k_ra_elc_elsegr_step_trigger, *test_elsegr(0U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_software_trigger(3U));
-  TEST_ASSERT_EQ((int32_t)k_ra_elc_elsegr_step_trigger, (int32_t)*test_elsegr(3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_elc_software_trigger(3U));
+  TEST_ASSERT_EQ(k_ra_elc_elsegr_step_trigger, *test_elsegr(3U));
 
   /* Out-of-range index: FSP has ELSEGR0..3 so index 4+ is rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_elc_software_trigger((uint8_t)k_ra_elc_test_seg_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_elc_software_trigger((uint8_t)k_ra_elc_test_seg_bad));
   TEST_END("ra_elc_software_trigger: 3-step sequence latches 0x41");
 }
 
@@ -232,7 +225,7 @@ static void test_is_enabled_null_out(void)
 {
   TEST_BEGIN("ra_elc_is_enabled: NULL out rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_elc_is_enabled(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_elc_is_enabled(nullptr));
   TEST_END("ra_elc_is_enabled: NULL out rejected");
 }
 

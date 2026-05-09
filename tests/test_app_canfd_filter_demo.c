@@ -55,16 +55,16 @@ static void test_filter_program_two_slots_ok(void)
 {
   reset_world();
   TEST_BEGIN("canfd_filter_demo: program two slots ok");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_canfd_filter_set((uint16_t)k_test_filter_slot_a,
-                                          (uint32_t)k_test_filter_id_exact,
-                                          (uint32_t)k_test_filter_mask_full,
-                                          (uint8_t)k_test_filter_dlc));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_canfd_filter_set((uint16_t)k_test_filter_slot_b,
-                                          (uint32_t)k_test_filter_id_mask,
-                                          (uint32_t)k_test_filter_mask_low4,
-                                          (uint8_t)k_test_filter_dlc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_filter_set((uint16_t)k_test_filter_slot_a,
+                                     (uint32_t)k_test_filter_id_exact,
+                                     (uint32_t)k_test_filter_mask_full,
+                                     (uint8_t)k_test_filter_dlc));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_filter_set((uint16_t)k_test_filter_slot_b,
+                                     (uint32_t)k_test_filter_id_mask,
+                                     (uint32_t)k_test_filter_mask_low4,
+                                     (uint8_t)k_test_filter_dlc));
   TEST_END("canfd_filter_demo: program two slots ok");
 }
 

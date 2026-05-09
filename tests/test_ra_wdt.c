@@ -32,7 +32,7 @@ static void test_wdt_init_ok(void)
     .on_expiry     = k_ra_wdt_on_expiry_reset,
     .stop_in_sleep = k_ra_wdt_sleep_keep_count,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_init(&cfg));
   TEST_END("ra_wdt_init returns ok");
 }
 
@@ -52,7 +52,7 @@ static void test_wdt_refresh_writes_sequence(void)
 
   ra_wdt_refresh_deferred();
   /* Last byte of the unlock sequence should be 0xFF. */
-  TEST_ASSERT_EQ((int)k_ra_wdt_refresh_b, (int)reg->WDTRR);
+  TEST_ASSERT_EQ(k_ra_wdt_refresh_b, reg->WDTRR);
 
   TEST_END("ra_wdt_refresh_deferred writes 0xFF to WDTRR");
 }
@@ -70,7 +70,7 @@ static void test_wdt_refresh_many(void)
   for (uint8_t i = 0U; i < 8U; ++i) {
     ra_wdt_refresh_deferred();
   }
-  TEST_ASSERT_EQ((int)k_ra_wdt_refresh_b, (int)ra_wdt()->WDTRR);
+  TEST_ASSERT_EQ(k_ra_wdt_refresh_b, ra_wdt()->WDTRR);
   TEST_END("ra_wdt_refresh_deferred is safe to loop");
 }
 
@@ -99,10 +99,9 @@ static void test_wdt_get_status(void)
   ra_wdt()->WDTSR = (uint16_t)k_ra_wdt_status_underflow | (uint16_t)k_ra_wdt_status_refresh;
 
   uint16_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)((uint16_t)k_ra_wdt_status_underflow | (uint16_t)k_ra_wdt_status_refresh),
-                 (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_wdt_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_get_status(&mask));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_wdt_status_underflow | (uint16_t)k_ra_wdt_status_refresh), mask);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_get_status(nullptr));
   TEST_END("wdt get_status");
 }
 
@@ -117,8 +116,8 @@ static void test_wdt_clear_status(void)
   TEST_BEGIN("wdt clear_status");
   ra_sim_mmap_reset();
   ra_wdt()->WDTSR = (uint16_t)k_ra_wdt_status_underflow;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_clear_status());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_wdt()->WDTSR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_clear_status());
+  TEST_ASSERT_EQ(0, ra_wdt()->WDTSR);
   TEST_END("wdt clear_status");
 }
 
@@ -135,17 +134,16 @@ static void test_wdt_attach_and_dispatch(void)
   s_wdt_cb_count     = 0U;
   s_wdt_cb_last_mask = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_wdt_attach_handler(stub_wdt_cb, (void*)(uintptr_t)0x99U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_attach_handler(stub_wdt_cb, (void*)(uintptr_t)0x99U));
   ra_wdt()->WDTSR = (uint16_t)k_ra_wdt_status_underflow;
   ra_wdt_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_wdt_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_wdt_status_underflow, (int32_t)s_wdt_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_wdt_cb_count);
+  TEST_ASSERT_EQ(k_ra_wdt_status_underflow, s_wdt_cb_last_mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_wdt_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_attach_handler(nullptr, nullptr));
   ra_wdt()->WDTSR = (uint16_t)k_ra_wdt_status_refresh;
   ra_wdt_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_wdt_cb_count);
+  TEST_ASSERT_EQ(1, s_wdt_cb_count);
   TEST_END("wdt attach + dispatch");
 }
 

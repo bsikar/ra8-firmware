@@ -44,9 +44,9 @@ static void prep(void)
     .priority          = 4U,
     .refresh_period_ms = 50U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_set_now_hook(hook_now));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_set_refresh_hook(hook_refresh));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_set_now_hook(hook_now));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_set_refresh_hook(hook_refresh));
 }
 
 /* ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ static void test_sup_init_null_cfg(void)
 {
   TEST_BEGIN("wdt_supervisor_init null cfg rejected");
   (void)ra_wdt_supervisor_deinit();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_supervisor_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_supervisor_init(nullptr));
   TEST_END("wdt_supervisor_init null cfg rejected");
 }
 
@@ -96,7 +96,7 @@ static void test_sup_init_null_stack(void)
     .priority          = 4U,
     .refresh_period_ms = 50U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_supervisor_init(&cfg));
   TEST_END("wdt_supervisor_init null stack rejected");
 }
 
@@ -123,7 +123,7 @@ static void test_sup_init_stack_too_small(void)
     .priority          = 4U,
     .refresh_period_ms = 50U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_supervisor_init(&cfg));
   TEST_END("wdt_supervisor_init stack too small rejected");
 }
 
@@ -150,7 +150,7 @@ static void test_sup_init_zero_period(void)
     .priority          = 4U,
     .refresh_period_ms = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_supervisor_init(&cfg));
   TEST_END("wdt_supervisor_init zero period rejected");
 }
 
@@ -177,7 +177,7 @@ static void test_sup_init_bad_priority(void)
     .priority          = 32U, /* k_ra_wdt_sup_max_priority = 31 */
     .refresh_period_ms = 50U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_supervisor_init(&cfg));
   TEST_END("wdt_supervisor_init bad priority rejected");
 }
 
@@ -204,7 +204,7 @@ static void test_sup_double_init_busy(void)
     .priority          = 4U,
     .refresh_period_ms = 50U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_busy, (int)ra_wdt_supervisor_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_wdt_supervisor_init(&cfg));
   TEST_END("wdt_supervisor double-init returns busy");
 }
 
@@ -230,8 +230,7 @@ static void test_sup_register_null_out_handle(void)
 {
   TEST_BEGIN("wdt_supervisor_register_thread null out_handle rejected");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_wdt_supervisor_register_thread("t1", 100U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_supervisor_register_thread("t1", 100U, nullptr));
   TEST_END("wdt_supervisor_register_thread null out_handle rejected");
 }
 
@@ -253,7 +252,7 @@ static void test_sup_register_null_name(void)
   TEST_BEGIN("wdt_supervisor_register_thread null name rejected");
   prep();
   uint8_t h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_supervisor_register_thread(nullptr, 100U, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_wdt_supervisor_register_thread(nullptr, 100U, &h));
   TEST_END("wdt_supervisor_register_thread null name rejected");
 }
 
@@ -275,7 +274,7 @@ static void test_sup_register_zero_deadline(void)
   TEST_BEGIN("wdt_supervisor_register_thread zero deadline rejected");
   prep();
   uint8_t h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_supervisor_register_thread("t1", 0U, &h));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_wdt_supervisor_register_thread("t1", 0U, &h));
   TEST_END("wdt_supervisor_register_thread zero deadline rejected");
 }
 
@@ -297,8 +296,7 @@ static void test_sup_register_not_initialized(void)
   TEST_BEGIN("wdt_supervisor_register_thread not_initialized before init");
   (void)ra_wdt_supervisor_deinit();
   uint8_t h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized,
-                 (int)ra_wdt_supervisor_register_thread("t1", 100U, &h));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_wdt_supervisor_register_thread("t1", 100U, &h));
   TEST_END("wdt_supervisor_register_thread not_initialized before init");
 }
 
@@ -320,11 +318,10 @@ static void test_sup_register_table_full(void)
   for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_sup_max_threads; ++i) {
     uint8_t        h = (uint8_t)k_ra_wdt_sup_handle_invalid;
     const ra_err_t e = ra_wdt_supervisor_register_thread("t", 100U, &h);
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)e);
+    TEST_ASSERT_EQ(k_ra_ok, e);
   }
   uint8_t overflow = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_err_no_mem,
-                 (int)ra_wdt_supervisor_register_thread("overflow", 100U, &overflow));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_wdt_supervisor_register_thread("overflow", 100U, &overflow));
   TEST_END("wdt_supervisor_register_thread table full returns no_mem");
 }
 
@@ -348,7 +345,7 @@ static void test_sup_checkin_not_initialized(void)
 {
   TEST_BEGIN("wdt_supervisor_checkin not_initialized");
   (void)ra_wdt_supervisor_deinit();
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_wdt_supervisor_checkin(0U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_wdt_supervisor_checkin(0U));
   TEST_END("wdt_supervisor_checkin not_initialized");
 }
 
@@ -369,8 +366,8 @@ static void test_sup_checkin_oob_handle(void)
 {
   TEST_BEGIN("wdt_supervisor_checkin oob handle rejected");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_wdt_supervisor_checkin((uint8_t)k_ra_wdt_sup_max_threads));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_wdt_supervisor_checkin((uint8_t)k_ra_wdt_sup_max_threads));
   TEST_END("wdt_supervisor_checkin oob handle rejected");
 }
 
@@ -391,7 +388,7 @@ static void test_sup_checkin_free_slot(void)
 {
   TEST_BEGIN("wdt_supervisor_checkin free slot returns not_found");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_wdt_supervisor_checkin(0U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_wdt_supervisor_checkin(0U));
   TEST_END("wdt_supervisor_checkin free slot returns not_found");
 }
 
@@ -416,7 +413,7 @@ static void test_sup_start_not_initialized(void)
 {
   TEST_BEGIN("wdt_supervisor_start not_initialized");
   (void)ra_wdt_supervisor_deinit();
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_wdt_supervisor_start());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_wdt_supervisor_start());
   TEST_END("wdt_supervisor_start not_initialized");
 }
 
@@ -437,8 +434,8 @@ static void test_sup_start_double_busy(void)
 {
   TEST_BEGIN("wdt_supervisor_start double start returns busy");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_start());
-  TEST_ASSERT_EQ((int)k_ra_err_busy, (int)ra_wdt_supervisor_start());
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_start());
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_wdt_supervisor_start());
   TEST_END("wdt_supervisor_start double start returns busy");
 }
 
@@ -464,8 +461,8 @@ static void test_sup_tick_not_initialized(void)
   TEST_BEGIN("wdt_supervisor_tick not_initialized");
   (void)ra_wdt_supervisor_deinit();
   bool did_refresh = true;
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_wdt_supervisor_tick(&did_refresh));
-  TEST_ASSERT_EQ((int)0, (int)did_refresh);
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_wdt_supervisor_tick(&did_refresh));
+  TEST_ASSERT_EQ(0, did_refresh);
   TEST_END("wdt_supervisor_tick not_initialized");
 }
 
@@ -487,9 +484,9 @@ static void test_sup_tick_null_out(void)
   TEST_BEGIN("wdt_supervisor_tick null out_did_refresh no crash");
   prep();
   uint8_t h = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_register_thread("t1", 200U, &h));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_checkin(h));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_tick(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_register_thread("t1", 200U, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_checkin(h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_tick(nullptr));
   TEST_END("wdt_supervisor_tick null out_did_refresh no crash");
 }
 
@@ -513,7 +510,7 @@ static void test_sup_thread_count_empty(void)
 {
   TEST_BEGIN("wdt_supervisor_thread_count returns 0 when empty");
   (void)ra_wdt_supervisor_deinit();
-  TEST_ASSERT_EQ((int)0, (int)ra_wdt_supervisor_thread_count());
+  TEST_ASSERT_EQ(0, ra_wdt_supervisor_thread_count());
   TEST_END("wdt_supervisor_thread_count returns 0 when empty");
 }
 
@@ -534,15 +531,15 @@ static void test_sup_thread_count_increments(void)
 {
   TEST_BEGIN("wdt_supervisor_thread_count increments with registrations");
   prep();
-  TEST_ASSERT_EQ((int)0, (int)ra_wdt_supervisor_thread_count());
+  TEST_ASSERT_EQ(0, ra_wdt_supervisor_thread_count());
 
   uint8_t h1 = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_register_thread("t1", 100U, &h1));
-  TEST_ASSERT_EQ((int)1, (int)ra_wdt_supervisor_thread_count());
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_register_thread("t1", 100U, &h1));
+  TEST_ASSERT_EQ(1, ra_wdt_supervisor_thread_count());
 
   uint8_t h2 = (uint8_t)k_ra_wdt_sup_handle_invalid;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_register_thread("t2", 200U, &h2));
-  TEST_ASSERT_EQ((int)2, (int)ra_wdt_supervisor_thread_count());
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_register_thread("t2", 200U, &h2));
+  TEST_ASSERT_EQ(2, ra_wdt_supervisor_thread_count());
   TEST_END("wdt_supervisor_thread_count increments with registrations");
 }
 
@@ -568,7 +565,7 @@ static void test_sup_set_now_hook_null_restores(void)
 {
   TEST_BEGIN("wdt_supervisor_set_now_hook null restores default");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_set_now_hook(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_set_now_hook(nullptr));
   TEST_END("wdt_supervisor_set_now_hook null restores default");
 }
 
@@ -589,7 +586,7 @@ static void test_sup_set_refresh_hook_null_restores(void)
 {
   TEST_BEGIN("wdt_supervisor_set_refresh_hook null restores default");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_supervisor_set_refresh_hook(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_wdt_supervisor_set_refresh_hook(nullptr));
   TEST_END("wdt_supervisor_set_refresh_hook null restores default");
 }
 

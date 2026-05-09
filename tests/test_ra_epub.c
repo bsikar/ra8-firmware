@@ -190,11 +190,11 @@ static void build_synth_epub(void)
                              MZ_NO_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
-  void*  heap_buf  = NULL;
+  void*  heap_buf  = nullptr;
   size_t heap_size = 0U;
   ok               = mz_zip_writer_finalize_heap_archive(&zip, &heap_buf, &heap_size);
   TEST_ASSERT(ok == MZ_TRUE);
-  TEST_ASSERT(heap_buf != NULL);
+  TEST_ASSERT(heap_buf != nullptr);
   TEST_ASSERT(heap_size > 0U);
   TEST_ASSERT(heap_size <= sizeof(s_epub_buf));
 
@@ -219,12 +219,12 @@ static void test_open_close(void)
   TEST_BEGIN("ra_epub open + close");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, "synth.epub", &book));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)book.in_use);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)book.in_use);
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, "synth.epub", &book));
+  TEST_ASSERT_EQ(1, book.in_use);
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+  TEST_ASSERT_EQ(0, book.in_use);
   /* Double-close fails with not_initialized. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_close(&book));
   TEST_END("ra_epub open + close");
 }
 
@@ -239,11 +239,11 @@ static void test_chapter_count(void)
   TEST_BEGIN("ra_epub chapter_count == 2");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint16_t n = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_get_chapter_count(&book, &n));
-  TEST_ASSERT_EQ((int32_t)k_test_expected_chapters, (int32_t)n);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_chapter_count(&book, &n));
+  TEST_ASSERT_EQ(k_test_expected_chapters, n);
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub chapter_count == 2");
 }
 
@@ -258,31 +258,27 @@ static void test_load_chapter(void)
   TEST_BEGIN("ra_epub load_chapter copies XHTML");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
 
   uint8_t buf[k_test_chapter_buf_bytes];
   size_t  got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
   TEST_ASSERT(got > 0U);
   TEST_ASSERT(got < sizeof(buf));
-  TEST_ASSERT(strstr((const char*)buf, "Chapter One") != NULL);
+  TEST_ASSERT(strstr((const char*)buf, "Chapter One") != nullptr);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_load_chapter(&book, 1U, buf, sizeof(buf), &got));
-  TEST_ASSERT(strstr((const char*)buf, "Chapter Two") != NULL);
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 1U, buf, sizeof(buf), &got));
+  TEST_ASSERT(strstr((const char*)buf, "Chapter Two") != nullptr);
 
   /* Out-of-range. */
   size_t junk = 999U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_epub_load_chapter(&book, 99U, buf, sizeof(buf), &junk));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)junk);
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_epub_load_chapter(&book, 99U, buf, sizeof(buf), &junk));
+  TEST_ASSERT_EQ(0, junk);
 
   /* Zero-length buffer. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_size,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_epub_load_chapter(&book, 0U, buf, 0U, &got));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub load_chapter copies XHTML");
 }
 
@@ -297,16 +293,16 @@ static void test_get_metadata(void)
   TEST_BEGIN("ra_epub get_metadata returns Dublin Core");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   ra_epub_metadata_t meta = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_get_metadata(&book, &meta));
-  TEST_ASSERT(meta.title != NULL);
-  TEST_ASSERT(meta.author != NULL);
-  TEST_ASSERT(meta.language != NULL);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(meta.title, "Test Book"));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(meta.author, "Brighton Sikarskie"));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)strcmp(meta.language, "en"));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_metadata(&book, &meta));
+  TEST_ASSERT(meta.title != nullptr);
+  TEST_ASSERT(meta.author != nullptr);
+  TEST_ASSERT(meta.language != nullptr);
+  TEST_ASSERT_EQ(0, strcmp(meta.title, "Test Book"));
+  TEST_ASSERT_EQ(0, strcmp(meta.author, "Brighton Sikarskie"));
+  TEST_ASSERT_EQ(0, strcmp(meta.language, "en"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub get_metadata returns Dublin Core");
 }
 
@@ -321,16 +317,16 @@ static void test_get_cover_image(void)
   TEST_BEGIN("ra_epub get_cover_image extracts raw bytes");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint8_t buf[k_test_cover_buf_bytes];
   size_t  got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_test_synth_cover_bytes, (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)0x89U, (int32_t)buf[0]);
-  TEST_ASSERT_EQ((int32_t)0x50U, (int32_t)buf[1]);
-  TEST_ASSERT_EQ((int32_t)0x4EU, (int32_t)buf[2]);
-  TEST_ASSERT_EQ((int32_t)0x47U, (int32_t)buf[3]);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_test_synth_cover_bytes, got);
+  TEST_ASSERT_EQ(0x89U, buf[0]);
+  TEST_ASSERT_EQ(0x50U, buf[1]);
+  TEST_ASSERT_EQ(0x4EU, buf[2]);
+  TEST_ASSERT_EQ(0x47U, buf[3]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub get_cover_image extracts raw bytes");
 }
 
@@ -345,50 +341,43 @@ static void test_render_glyph_paths(void)
   TEST_BEGIN("ra_epub render_glyph -- no font / bad font");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
 
   /* No font installed -- not_initialized. */
   uint8_t  bitmap[k_test_glyph_buf_bytes];
   uint32_t w = 0U;
   uint32_t h = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_render_glyph(&book,
-                                               (int32_t)k_test_codepoint_a,
-                                               (float)k_test_glyph_font_pixels,
-                                               bitmap,
-                                               sizeof(bitmap),
-                                               &w,
-                                               &h));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_epub_render_glyph(&book,
+                                      (int32_t)k_test_codepoint_a,
+                                      (float)k_test_glyph_font_pixels,
+                                      bitmap,
+                                      sizeof(bitmap),
+                                      &w,
+                                      &h));
 
   /* Install a fake-but-too-small font -- invalid_size. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_size,
-                 (int32_t)ra_epub_set_font(&book, k_synth_font_bytes, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_epub_set_font(&book, k_synth_font_bytes, 1U));
 
   /* Install the synthetic 16-byte font; stbtt_InitFont will reject it
    * because it's not a real TTF, so render_glyph returns
    * validation_failed -- which is exactly the contract we want. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_set_font(&book, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_validation_failed,
-                 (int32_t)ra_epub_render_glyph(&book,
-                                               (int32_t)k_test_codepoint_a,
-                                               (float)k_test_glyph_font_pixels,
-                                               bitmap,
-                                               sizeof(bitmap),
-                                               &w,
-                                               &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_set_font(&book, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
+  TEST_ASSERT_EQ(k_ra_err_validation_failed,
+                 ra_epub_render_glyph(&book,
+                                      (int32_t)k_test_codepoint_a,
+                                      (float)k_test_glyph_font_pixels,
+                                      bitmap,
+                                      sizeof(bitmap),
+                                      &w,
+                                      &h));
 
   /* Bad font size (0.0) -- invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_epub_render_glyph(&book,
-                                               (int32_t)k_test_codepoint_a,
-                                               0.0F,
-                                               bitmap,
-                                               sizeof(bitmap),
-                                               &w,
-                                               &h));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 0.0F, bitmap, sizeof(bitmap), &w, &h));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub render_glyph -- no font / bad font");
 }
 
@@ -406,42 +395,35 @@ static void test_null_arg_guards(void)
 
   /* Pre-init guards: book->in_use == 0 on every accessor. */
   uint16_t n = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_epub_get_chapter_count(&book, &n));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_get_chapter_count(&book, &n));
   uint8_t buf[16];
   size_t  got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
   ra_epub_metadata_t meta = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_epub_get_metadata(&book, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_set_font(&book, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_get_metadata(&book, &meta));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_epub_set_font(&book, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
 
   /* NULL-arg guards. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_open(NULL, NULL, &book));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_open(&media, NULL, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_close(NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(NULL, &n));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(&book, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_load_chapter(NULL, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, NULL, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(NULL, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(&book, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_cover_image(NULL, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_set_font(NULL, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_set_font(&book, NULL, sizeof(k_synth_font_bytes)));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open(nullptr, nullptr, &book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open(&media, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_close(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_chapter_count(nullptr, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_chapter_count(&book, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(nullptr, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(&book, 0U, nullptr, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_metadata(nullptr, &meta));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_metadata(&book, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(nullptr, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_set_font(nullptr, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_set_font(&book, nullptr, sizeof(k_synth_font_bytes)));
 
   /* Invalid media payload. */
-  const ra_epub_mem_media_t bad_media = {.data = NULL, .size = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_epub_open(&bad_media, NULL, &book));
+  const ra_epub_mem_media_t bad_media = {.data = nullptr, .size = 0U};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epub_open(&bad_media, nullptr, &book));
   TEST_END("ra_epub NULL-arg / pre-init guards");
 }
 
@@ -457,8 +439,8 @@ static void test_open_invalid_zip(void)
   static const uint8_t      k_garbage[] = {0x00U, 0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0x06U, 0x07U};
   ra_epub_book_t            book        = {};
   const ra_epub_mem_media_t media       = {.data = k_garbage, .size = sizeof(k_garbage)};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_validation_failed, (int32_t)ra_epub_open(&media, NULL, &book));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)book.in_use);
+  TEST_ASSERT_EQ(k_ra_err_validation_failed, ra_epub_open(&media, nullptr, &book));
+  TEST_ASSERT_EQ(0, book.in_use);
   TEST_END("ra_epub open with garbage payload -> validation_failed");
 }
 
@@ -490,15 +472,15 @@ static void test_mcdc_chapter_count_null_or(void)
   TEST_BEGIN("mcdc chapter_count NULL OR");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint16_t n = 0U;
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_get_chapter_count(&book, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_chapter_count(&book, &n));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(NULL, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_chapter_count(nullptr, &n));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(&book, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_chapter_count(&book, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc chapter_count NULL OR");
 }
 
@@ -523,22 +505,18 @@ static void test_mcdc_load_chapter_null_or3(void)
   TEST_BEGIN("mcdc load_chapter NULL OR(3)");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint8_t buf[k_mcdc_buf_small];
   size_t  got = 0U;
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_load_chapter(NULL, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(nullptr, 0U, buf, sizeof(buf), &got));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, NULL, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(&book, 0U, nullptr, sizeof(buf), &got));
   /* V4 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc load_chapter NULL OR(3)");
 }
 
@@ -568,13 +546,11 @@ static void test_mcdc_load_chapter_state_or(void)
   uint8_t                   buf[k_mcdc_buf_small];
   size_t                    got = 0U;
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
   TEST_END("mcdc load_chapter state OR (in_use || zip)");
 }
 
@@ -593,12 +569,12 @@ static void test_mcdc_metadata_null_or(void)
   TEST_BEGIN("mcdc metadata NULL OR");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   ra_epub_metadata_t meta = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_get_metadata(&book, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(NULL, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(&book, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_metadata(&book, &meta));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_metadata(nullptr, &meta));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_metadata(&book, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc metadata NULL OR");
 }
 
@@ -621,17 +597,14 @@ static void test_mcdc_cover_image_null_or3(void)
   TEST_BEGIN("mcdc cover_image NULL OR(3)");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint8_t buf[k_mcdc_buf_small];
   size_t  got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_cover_image(NULL, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_cover_image(&book, NULL, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_cover_image(&book, buf, sizeof(buf), NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(nullptr, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(&book, nullptr, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(&book, buf, sizeof(buf), nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc cover_image NULL OR(3)");
 }
 
@@ -647,18 +620,15 @@ static void test_mcdc_set_font_null_or(void)
   TEST_BEGIN("mcdc set_font NULL OR");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   static const uint8_t k_dummy_font[k_test_synth_font_bytes] = {};
   /* V1 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_set_font(&book, k_dummy_font, sizeof(k_dummy_font)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_set_font(&book, k_dummy_font, sizeof(k_dummy_font)));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_set_font(NULL, k_dummy_font, sizeof(k_dummy_font)));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_set_font(nullptr, k_dummy_font, sizeof(k_dummy_font)));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_set_font(&book, NULL, sizeof(k_dummy_font)));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_set_font(&book, nullptr, sizeof(k_dummy_font)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc set_font NULL OR");
 }
 
@@ -685,31 +655,31 @@ static void test_mcdc_render_glyph_null_or4(void)
   TEST_BEGIN("mcdc render_glyph NULL OR(4)");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint8_t  bm[k_mcdc_buf_small];
   uint32_t w = 0U, h = 0U;
   /* V1 (no font installed -> not_initialized, but the NULL guard passes). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_render_glyph(&book,
-                                               (int32_t)k_test_codepoint_a,
-                                               (float)k_test_glyph_font_pixels,
-                                               bm,
-                                               sizeof(bm),
-                                               &w,
-                                               &h));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_epub_render_glyph(&book,
+                                      (int32_t)k_test_codepoint_a,
+                                      (float)k_test_glyph_font_pixels,
+                                      bm,
+                                      sizeof(bm),
+                                      &w,
+                                      &h));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_render_glyph(NULL, 0, 16.0F, bm, sizeof(bm), &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_render_glyph(nullptr, 0, 16.0F, bm, sizeof(bm), &w, &h));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_render_glyph(&book, 0, 16.0F, NULL, sizeof(bm), &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_render_glyph(&book, 0, 16.0F, nullptr, sizeof(bm), &w, &h));
   /* V4 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_render_glyph(&book, 0, 16.0F, bm, sizeof(bm), NULL, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_render_glyph(&book, 0, 16.0F, bm, sizeof(bm), nullptr, &h));
   /* V5 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_render_glyph(&book, 0, 16.0F, bm, sizeof(bm), &w, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_render_glyph(&book, 0, 16.0F, bm, sizeof(bm), &w, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc render_glyph NULL OR(4)");
 }
 
@@ -732,28 +702,27 @@ static void test_mcdc_render_glyph_state_or(void)
   uint32_t                  w = 0U, h = 0U;
 
   /* V3 first: opened but no font set -> not_initialized via C2 path. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_not_initialized,
-    (int32_t)
-      ra_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h));
+    k_ra_err_not_initialized,
+
+    ra_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h));
   /* V1: install (synthetic) font and re-call. priv_font_init will
    * reject the dummy bytes, returning validation_failed -- but the
    * NULL/state guard at line 298 evaluates false (proceeds past it),
    * which is what we are asserting independence on. */
   static const uint8_t k_dummy_font[k_test_synth_font_bytes] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_set_font(&book, k_dummy_font, sizeof(k_dummy_font)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_set_font(&book, k_dummy_font, sizeof(k_dummy_font)));
   const int32_t rc1 = (int32_t)
     ra_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h);
   TEST_ASSERT(rc1 != (int32_t)k_ra_err_not_initialized);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   /* V2: book closed (in_use=0) -> not_initialized via C1. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_not_initialized,
-    (int32_t)
-      ra_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h));
+    k_ra_err_not_initialized,
+
+    ra_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h));
   TEST_END("mcdc render_glyph state OR (in_use || font)");
 }
 
@@ -782,15 +751,14 @@ static void test_mcdc_priv_join_path_dst_or(void)
   TEST_BEGIN("mcdc priv_join_path dst OR (unreachable bad-arg vectors)");
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
   uint8_t buf[k_mcdc_buf_small];
   size_t  got = 0U;
   /* V1 reachable: load_chapter drives priv_join_path with a real
    * stack buffer of fixed cap. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
   TEST_ASSERT(got > 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("mcdc priv_join_path dst OR (unreachable bad-arg vectors)");
 }
 

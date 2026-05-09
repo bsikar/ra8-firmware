@@ -41,7 +41,7 @@ static void test_init(void)
 {
   TEST_BEGIN("coma init");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_init());
   TEST_END("coma init");
 }
 
@@ -55,8 +55,8 @@ static void test_deinit(void)
 {
   TEST_BEGIN("coma deinit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_deinit());
   TEST_END("coma deinit");
 }
 
@@ -72,10 +72,10 @@ static void test_status_read_and_clear(void)
   prep();
   ra_coma()->COMA_STS = 0xC0FFEE00U;
   uint32_t mask       = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0xC0FFEE00U, (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_clear_status(0x00FF00FFU));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_eth_coma_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_get_status(&mask));
+  TEST_ASSERT_EQ(0xC0FFEE00U, mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_clear_status(0x00FF00FFU));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_coma_get_status(nullptr));
   TEST_END("coma status read + clear");
 }
 
@@ -89,17 +89,16 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("coma attach + dispatch");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_eth_coma_attach_handler(stub_coma_cb, (void*)(uintptr_t)0xC0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_attach_handler(stub_coma_cb, (void*)(uintptr_t)0xC0U));
   ra_coma()->COMA_STS = 0x1234U;
   ra_eth_coma_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_coma_cb_count);
-  TEST_ASSERT_EQ((int32_t)0x1234U, (int32_t)s_coma_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_coma_cb_count);
+  TEST_ASSERT_EQ(0x1234U, s_coma_cb_last_mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_attach_handler(nullptr, nullptr));
   ra_coma()->COMA_STS = 0x5678U;
   ra_eth_coma_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_coma_cb_count);
+  TEST_ASSERT_EQ(1, s_coma_cb_count);
   TEST_END("coma attach + dispatch");
 }
 
@@ -113,9 +112,9 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("coma power transition");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_enter_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_coma_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_coma_exit_stop());
   TEST_END("coma power transition");
 }
 

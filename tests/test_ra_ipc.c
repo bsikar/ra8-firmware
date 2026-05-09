@@ -137,7 +137,7 @@ static void test_init_happy(void)
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
   TEST_END("ipc init happy");
 }
 
@@ -151,7 +151,7 @@ static void test_init_null_cfg(void)
 {
   TEST_BEGIN("ipc init null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_init(nullptr));
   TEST_END("ipc init null cfg");
 }
 
@@ -166,9 +166,9 @@ static void test_init_bad_channel(void)
   TEST_BEGIN("ipc init bad channel");
   prep();
   ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_bad);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_init(&cfg));
   cfg.channel = (uint8_t)k_ra_ipc_test_ch_way;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_init(&cfg));
   TEST_END("ipc init bad channel");
 }
 
@@ -183,10 +183,9 @@ static void test_deinit_clears_state(void)
   TEST_BEGIN("ipc deinit clears state");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_mid);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_deinit((uint8_t)k_ra_ipc_test_ch_mid));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_deinit((uint8_t)k_ra_ipc_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_deinit((uint8_t)k_ra_ipc_test_ch_mid));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_deinit((uint8_t)k_ra_ipc_test_ch_bad));
   TEST_END("ipc deinit clears state");
 }
 
@@ -201,14 +200,13 @@ static void test_reset_fifo(void)
   TEST_BEGIN("ipc reset_fifo");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->CLR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_reset_fifo((uint8_t)k_ra_ipc_test_ch_first));
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ipc_clr_mask_rst, (int32_t)reg->CLR);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_reset_fifo((uint8_t)k_ra_ipc_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_reset_fifo((uint8_t)k_ra_ipc_test_ch_first));
+  TEST_ASSERT_EQ(k_ra_ipc_clr_mask_rst, reg->CLR);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_reset_fifo((uint8_t)k_ra_ipc_test_ch_bad));
   TEST_END("ipc reset_fifo");
 }
 
@@ -223,28 +221,27 @@ static void test_set_event_mask(void)
   TEST_BEGIN("ipc set_event_mask");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   /* New mask -> only RDY in scope; staging an IRQ0 should NOT fire
    * the per-event handler we attach. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_set_event_mask((uint8_t)k_ra_ipc_test_ch_first,
-                                                (uint32_t)k_ra_ipc_event_msg_ready));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_set_event_mask((uint8_t)k_ra_ipc_test_ch_bad, 0U));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ipc_set_event_mask((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_event_msg_ready));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_set_event_mask((uint8_t)k_ra_ipc_test_ch_bad, 0U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
-                                                      k_ra_ipc_irq_event_0,
-                                                      stub_ipc_irq_cb,
-                                                      (void*)(uintptr_t)k_ra_ipc_test_irq_ctx));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
+                                             k_ra_ipc_irq_event_0,
+                                             stub_ipc_irq_cb,
+                                             (void*)(uintptr_t)k_ra_ipc_test_irq_ctx));
 
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_irq0;
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_first);
   /* Filter blocked the IRQ0; per-event callback NOT fired. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_ipc_irq_cb_count);
+  TEST_ASSERT_EQ(0, s_ipc_irq_cb_count);
   TEST_END("ipc set_event_mask");
 }
 
@@ -261,30 +258,24 @@ static void test_channel_pair_convention(void)
   TEST_BEGIN("ipc channel-pair convention");
   prep();
   uint8_t ch = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, &ch));
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)ch);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 1U, &ch));
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)ch);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu1, 0U, &ch));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ch);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 1U, &ch));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ch);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, 1U, &ch));
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)ch);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, &ch));
+  TEST_ASSERT_EQ(2, ch);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 1U, &ch));
+  TEST_ASSERT_EQ(3, ch);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_send(k_ra_ipc_core_cpu1, 0U, &ch));
+  TEST_ASSERT_EQ(0, ch);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 1U, &ch));
+  TEST_ASSERT_EQ(1, ch);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, 1U, &ch));
+  TEST_ASSERT_EQ(3, ch);
 
   /* Bad-arg paths */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_channel_for_send((ra_ipc_core_id_t)9U, 0U, &ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 5U, &ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_channel_for_recv((ra_ipc_core_id_t)9U, 0U, &ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 5U, &ch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_channel_for_send((ra_ipc_core_id_t)9U, 0U, &ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 5U, &ch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_channel_for_recv((ra_ipc_core_id_t)9U, 0U, &ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 5U, &ch));
   TEST_END("ipc channel-pair convention");
 }
 
@@ -301,12 +292,11 @@ static void test_send_event_writes_iset(void)
   TEST_BEGIN("ipc send_event writes ISET");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_last);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_send_event((uint8_t)k_ra_ipc_test_ch_last, k_ra_ipc_irq_event_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_send_event((uint8_t)k_ra_ipc_test_ch_last, k_ra_ipc_irq_event_3));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_last);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int32_t)((uint32_t)1U << 3U), (int32_t)reg->ISET);
+  TEST_ASSERT_EQ(((uint32_t)1U << 3U), reg->ISET);
   TEST_END("ipc send_event writes ISET");
 }
 
@@ -320,11 +310,11 @@ static void test_send_event_bad_args(void)
 {
   TEST_BEGIN("ipc send_event bad args");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_send_event((uint8_t)k_ra_ipc_test_ch_bad, k_ra_ipc_irq_event_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_send_event((uint8_t)k_ra_ipc_test_ch_first,
-                                            (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_event((uint8_t)k_ra_ipc_test_ch_bad, k_ra_ipc_irq_event_0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_event((uint8_t)k_ra_ipc_test_ch_first,
+                                   (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count));
   TEST_END("ipc send_event bad args");
 }
 
@@ -338,17 +328,16 @@ static void test_clear_event_writes_clr(void)
 {
   TEST_BEGIN("ipc clear_event writes CLR");
   prep();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_first, k_ra_ipc_irq_event_5));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_first, k_ra_ipc_irq_event_5));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int32_t)((uint32_t)1U << 5U), (int32_t)reg->CLR);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_bad, k_ra_ipc_irq_event_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_first,
-                                             (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count));
+  TEST_ASSERT_EQ(((uint32_t)1U << 5U), reg->CLR);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_bad, k_ra_ipc_irq_event_0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_first,
+                                    (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count));
   TEST_END("ipc clear_event writes CLR");
 }
 
@@ -363,11 +352,11 @@ static void test_send_message_happy(void)
   TEST_BEGIN("ipc send_message happy");
   prep();
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_a));
+    k_ra_ok,
+    ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_a));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_a, (int32_t)reg->TXD);
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_a, reg->TXD);
   TEST_END("ipc send_message happy");
 }
 
@@ -385,11 +374,10 @@ static void test_send_message_full_returns_busy(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_full;
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_busy,
-    (int32_t)ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_b));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_bad, (uint32_t)k_ra_ipc_test_msg_b));
+    k_ra_err_busy,
+    ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_b));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_bad, (uint32_t)k_ra_ipc_test_msg_b));
   TEST_END("ipc send_message full");
 }
 
@@ -407,11 +395,10 @@ static void test_send_message_retry_eventually_succeeds(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* Start with FIFO not full -> immediate success on the first try. */
   reg->STA = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_send_message_retry((uint8_t)k_ra_ipc_test_ch_first,
-                                                    (uint32_t)k_ra_ipc_test_msg_c,
-                                                    8U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_c, (int32_t)reg->TXD);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ipc_send_message_retry((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_c, 8U));
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_c, reg->TXD);
   TEST_END("ipc send_message_retry eventually succeeds");
 }
 
@@ -428,14 +415,13 @@ static void test_send_message_retry_times_out(void)
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_full; /* permanently full */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_ipc_send_message_retry((uint8_t)k_ra_ipc_test_ch_first,
-                                                    (uint32_t)k_ra_ipc_test_msg_a,
-                                                    2U));
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_ipc_send_message_retry((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_a, 2U));
   /* Driver should have written CLR.FCLR each iteration. */
   TEST_ASSERT((reg->CLR & (uint32_t)k_ra_ipc_clr_mask_fclr) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_send_message_retry((uint8_t)k_ra_ipc_test_ch_bad, 0U, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_message_retry((uint8_t)k_ra_ipc_test_ch_bad, 0U, 1U));
   TEST_END("ipc send_message_retry times out");
 }
 
@@ -461,32 +447,30 @@ static void test_send_burst_partial_on_full(void)
     0x66666666U,
   };
   uint32_t written = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first,
-                                            data,
-                                            (uint32_t)k_ra_ipc_test_burst,
-                                            &written));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first,
+                                   data,
+                                   (uint32_t)k_ra_ipc_test_burst,
+                                   &written));
   /* Sim mmap returns whatever we wrote; STA stays at 0 so all 6 land. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_burst, (int32_t)written);
-  TEST_ASSERT_EQ((int32_t)0x66666666U, (int32_t)reg->TXD);
+  TEST_ASSERT_EQ(k_ra_ipc_test_burst, written);
+  TEST_ASSERT_EQ(0x66666666U, reg->TXD);
 
   /* Force STA.FULL high -> 0 written, still k_ra_ok. */
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_full;
   written  = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, data, 3U, &written));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)written);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, data, 3U, &written));
+  TEST_ASSERT_EQ(0, written);
 
   /* Bad args */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U, &written));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, data, 1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_bad, data, 1U, &written));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, data, 0U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, data, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_bad, data, 1U, &written));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, data, 0U, &written));
   TEST_END("ipc send_burst partial on full");
 }
 
@@ -501,13 +485,10 @@ static void test_recv_message_no_data(void)
   TEST_BEGIN("ipc recv_message no data");
   prep();
   uint32_t msg = 0xCAFEU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, &msg));
-  TEST_ASSERT_EQ((int32_t)0xCAFEU, (int32_t)msg);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_bad, &msg));
+  TEST_ASSERT_EQ(k_ra_err_no_data, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, &msg));
+  TEST_ASSERT_EQ(0xCAFEU, msg);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_bad, &msg));
   TEST_END("ipc recv_message no data");
 }
 
@@ -526,9 +507,8 @@ static void test_recv_message_happy(void)
   reg->STA     = (uint32_t)k_ra_ipc_sta_mask_rdy;
   reg->RXD     = (uint32_t)k_ra_ipc_test_msg_a;
   uint32_t msg = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, &msg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_a, (int32_t)msg);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, &msg));
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_a, msg);
   TEST_END("ipc recv_message happy");
 }
 
@@ -547,9 +527,8 @@ static void test_recv_message_retry_succeeds(void)
   reg->STA     = (uint32_t)k_ra_ipc_sta_mask_rdy;
   reg->RXD     = (uint32_t)k_ra_ipc_test_msg_b;
   uint32_t msg = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_first, &msg, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_b, (int32_t)msg);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_first, &msg, 4U));
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_b, msg);
   TEST_END("ipc recv_message_retry succeeds");
 }
 
@@ -564,15 +543,15 @@ static void test_recv_message_retry_times_out(void)
   TEST_BEGIN("ipc recv_message_retry times out");
   prep();
   uint32_t msg = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_first, &msg, 2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_first, &msg, 2U));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   TEST_ASSERT((reg->CLR & (uint32_t)k_ra_ipc_clr_mask_rclr) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_bad, &msg, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_recv_message_retry((uint8_t)k_ra_ipc_test_ch_bad, &msg, 1U));
   TEST_END("ipc recv_message_retry times out");
 }
 
@@ -592,27 +571,25 @@ static void test_recv_burst(void)
   reg->RXD        = (uint32_t)k_ra_ipc_test_msg_a;
   uint32_t buf[3] = {0U, 0U, 0U};
   uint32_t got    = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 3U, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 3U, &got));
   TEST_ASSERT(got == 3U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_a, (int32_t)buf[0]);
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_a, buf[0]);
 
   /* RDY low -> 0 read */
   reg->STA = 0U;
   got      = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 3U, &got));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 3U, &got));
+  TEST_ASSERT_EQ(0, got);
 
   /* Bad args */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_bad, buf, 1U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_bad, buf, 1U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_recv_burst((uint8_t)k_ra_ipc_test_ch_first, buf, 0U, &got));
   TEST_END("ipc recv_burst");
 }
 
@@ -632,14 +609,10 @@ static void test_get_status_passthrough(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA     = (uint32_t)k_ra_ipc_sta_mask_rdy | (uint32_t)k_ra_ipc_sta_mask_ferr;
   uint32_t sta = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_first, &sta));
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ipc_sta_mask_rdy | (uint32_t)k_ra_ipc_sta_mask_ferr),
-                 (int32_t)sta);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_first, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_bad, &sta));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_first, &sta));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_ipc_sta_mask_rdy | (uint32_t)k_ra_ipc_sta_mask_ferr), sta);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_bad, &sta));
   TEST_END("ipc get_status passthrough");
 }
 
@@ -653,22 +626,20 @@ static void test_clear_status_translates_bits(void)
 {
   TEST_BEGIN("ipc clear_status translates bits");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_clear_status(
-                   (uint8_t)k_ra_ipc_test_ch_first,
-                   (uint32_t)k_ra_ipc_event_irq2 | (uint32_t)k_ra_ipc_event_msg_ready |
-                     (uint32_t)k_ra_ipc_event_err_empty | (uint32_t)k_ra_ipc_event_err_full));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ipc_clear_status((uint8_t)k_ra_ipc_test_ch_first,
+                        (uint32_t)k_ra_ipc_event_irq2 | (uint32_t)k_ra_ipc_event_msg_ready |
+                          (uint32_t)k_ra_ipc_event_err_empty | (uint32_t)k_ra_ipc_event_err_full));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   const uint32_t expected = ((uint32_t)1U << 2U) | (uint32_t)k_ra_ipc_clr_mask_rst |
                             (uint32_t)k_ra_ipc_clr_mask_rclr | (uint32_t)k_ra_ipc_clr_mask_fclr;
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)reg->CLR);
+  TEST_ASSERT_EQ(expected, reg->CLR);
   reg->CLR = 0xA5A5A5A5UL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_clear_status((uint8_t)k_ra_ipc_test_ch_first, 0U));
-  TEST_ASSERT_EQ((int32_t)0xA5A5A5A5UL, (int32_t)reg->CLR);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_clear_status((uint8_t)k_ra_ipc_test_ch_bad, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_clear_status((uint8_t)k_ra_ipc_test_ch_first, 0U));
+  TEST_ASSERT_EQ(0xA5A5A5A5UL, reg->CLR);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_clear_status((uint8_t)k_ra_ipc_test_ch_bad, 0U));
   TEST_END("ipc clear_status translates bits");
 }
 
@@ -685,11 +656,10 @@ static void test_clear_errors(void)
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->CLR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_first));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_first));
   const uint32_t expected = (uint32_t)k_ra_ipc_clr_mask_rclr | (uint32_t)k_ra_ipc_clr_mask_fclr;
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)reg->CLR);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_bad));
+  TEST_ASSERT_EQ(expected, reg->CLR);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_bad));
   TEST_END("ipc clear_errors");
 }
 
@@ -707,28 +677,24 @@ static void test_can_send_and_has_data(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = 0U;
   bool can = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_first, &can));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_first, &can));
   TEST_ASSERT(can == true);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_full;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_first, &can));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_first, &can));
   TEST_ASSERT(can == false);
 
   bool has = true;
   reg->STA = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_first, &has));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_first, &has));
   TEST_ASSERT(has == false);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_rdy;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_first, &has));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_first, &has));
   TEST_ASSERT(has == true);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_first, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_first, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_bad, &can));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_bad, &has));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_can_send((uint8_t)k_ra_ipc_test_ch_bad, &can));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_has_data((uint8_t)k_ra_ipc_test_ch_bad, &has));
   TEST_END("ipc can_send + has_data");
 }
 
@@ -751,19 +717,19 @@ static void test_get_attribution_decodes_ipcsar(void)
   *sar               = (uint32_t)k_ra_ipcsar_mask_saipcir1;
   *par               = 0U;
   ra_ipc_attr_t attr = {.secure = false, .privileged = true};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_get_attribution(1U, &attr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_attribution(1U, &attr));
   TEST_ASSERT(attr.secure == true);
   TEST_ASSERT(attr.privileged == false);
   attr.secure     = true;
   attr.privileged = true;
   *sar            = 0U;
   *par            = (uint32_t)k_ra_ipcpar_mask_paipcir0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_get_attribution(0U, &attr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_attribution(0U, &attr));
   TEST_ASSERT(attr.secure == false);
   TEST_ASSERT(attr.privileged == true);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_get_attribution(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_get_attribution((uint8_t)k_ra_ipc_test_ch_bad, &attr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_get_attribution(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_get_attribution((uint8_t)k_ra_ipc_test_ch_bad, &attr));
   TEST_END("ipc get_attribution decodes IPCSAR/IPCPAR");
 }
 
@@ -783,19 +749,17 @@ static void test_get_nmi_attribution(void)
   *par                   = (uint32_t)k_ra_ipcpar_mask_paipcnmi0;
 
   ra_ipc_attr_t attr = {.secure = false, .privileged = false};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_get_nmi_attribution((uint8_t)k_ra_ipc_unit_ipc1, &attr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_nmi_attribution((uint8_t)k_ra_ipc_unit_ipc1, &attr));
   TEST_ASSERT(attr.secure == true);
   TEST_ASSERT(attr.privileged == false);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_get_nmi_attribution((uint8_t)k_ra_ipc_unit_ipc0, &attr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_nmi_attribution((uint8_t)k_ra_ipc_unit_ipc0, &attr));
   TEST_ASSERT(attr.secure == false);
   TEST_ASSERT(attr.privileged == true);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_get_nmi_attribution(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_get_nmi_attribution((uint8_t)k_ra_ipc_test_unit_bad, &attr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_get_nmi_attribution(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_get_nmi_attribution((uint8_t)k_ra_ipc_test_unit_bad, &attr));
   TEST_END("ipc get_nmi_attribution");
 }
 
@@ -815,18 +779,15 @@ static void test_get_sem_attribution(void)
   *par                   = (uint32_t)k_ra_ipcpar_mask_paipcsem0;
 
   ra_ipc_attr_t attr = {.secure = false, .privileged = false};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_get_sem_attribution(k_ra_ipc_sem_group_high, &attr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_sem_attribution(k_ra_ipc_sem_group_high, &attr));
   TEST_ASSERT(attr.secure == true);
   TEST_ASSERT(attr.privileged == false);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_get_sem_attribution(k_ra_ipc_sem_group_low, &attr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_get_sem_attribution(k_ra_ipc_sem_group_low, &attr));
   TEST_ASSERT(attr.secure == false);
   TEST_ASSERT(attr.privileged == true);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_get_sem_attribution(k_ra_ipc_sem_group_low, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_get_sem_attribution((ra_ipc_sem_attr_group_t)9U, &attr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_get_sem_attribution(k_ra_ipc_sem_group_low, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_get_sem_attribution((ra_ipc_sem_attr_group_t)9U, &attr));
   TEST_END("ipc get_sem_attribution");
 }
 
@@ -847,19 +808,16 @@ static void test_can_access(void)
   *par               = (uint32_t)k_ra_ipcpar_mask_paipcir2;
   ra_ipc_attr_t want = {.secure = true, .privileged = true};
   bool          ok   = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want, &ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want, &ok));
   TEST_ASSERT(ok == true);
   want.secure = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want, &ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want, &ok));
   TEST_ASSERT(ok == false);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, nullptr, &ok));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_bad, &want, &ok));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, nullptr, &ok));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_bad, &want, &ok));
   TEST_END("ipc can_access predicate");
 }
 
@@ -876,24 +834,23 @@ static void test_attach_and_dispatch_message(void)
   TEST_BEGIN("ipc attach + dispatch message");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ipc_attach_handler(stub_ipc_cb, (void*)(uintptr_t)k_ra_ipc_test_attr_ctx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_attach_handler(stub_ipc_cb, (void*)(uintptr_t)k_ra_ipc_test_attr_ctx));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->CLR = 0U;
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_rdy | 0x01U;
   reg->RXD = (uint32_t)k_ra_ipc_test_msg_b;
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ipc_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_ch_first, (int32_t)s_ipc_cb_last_channel);
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_b, (int32_t)s_ipc_cb_last_message);
+  TEST_ASSERT_EQ(1, s_ipc_cb_count);
+  TEST_ASSERT_EQ(k_ra_ipc_test_ch_first, s_ipc_cb_last_channel);
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_b, s_ipc_cb_last_message);
   TEST_ASSERT((s_ipc_cb_last_event_mask & (uint32_t)k_ra_ipc_event_msg_ready) != 0U);
   TEST_ASSERT((s_ipc_cb_last_event_mask & (uint32_t)k_ra_ipc_event_irq0) != 0U);
   TEST_ASSERT((uintptr_t)s_ipc_cb_last_ctx == (uintptr_t)k_ra_ipc_test_attr_ctx);
   const uint32_t expected_clr = (uint32_t)1U | (uint32_t)k_ra_ipc_clr_mask_rst;
-  TEST_ASSERT_EQ((int32_t)expected_clr, (int32_t)reg->CLR);
+  TEST_ASSERT_EQ(expected_clr, reg->CLR);
   TEST_END("ipc attach + dispatch message");
 }
 
@@ -908,14 +865,14 @@ static void test_dispatch_no_callback_is_safe(void)
   TEST_BEGIN("ipc dispatch without callback is safe");
   prep();
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_bad);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_ipc_cb_count);
+  TEST_ASSERT_EQ(0, s_ipc_cb_count);
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_mid);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_mid);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = 0x01U;
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_mid);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_ipc_cb_count);
+  TEST_ASSERT_EQ(0, s_ipc_cb_count);
   TEST_END("ipc dispatch without callback is safe");
 }
 
@@ -931,15 +888,15 @@ static void test_per_event_handler_decodes_each_line(void)
   prep();
   ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
   cfg.event_mask      = (uint32_t)k_ra_ipc_event_irq_all;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   /* Wire each of the eight IRQ lines to the same stub. */
   for (uint8_t i = 0U; i < (uint8_t)k_ra_ipc_irq_event_count; ++i) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                   (int32_t)ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
-                                                        (ra_ipc_irq_event_id_t)i,
-                                                        stub_ipc_irq_cb,
-                                                        (void*)(uintptr_t)k_ra_ipc_test_irq_ctx));
+    TEST_ASSERT_EQ(k_ra_ok,
+                   ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
+                                               (ra_ipc_irq_event_id_t)i,
+                                               stub_ipc_irq_cb,
+                                               (void*)(uintptr_t)k_ra_ipc_test_irq_ctx));
   }
 
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
@@ -947,22 +904,21 @@ static void test_per_event_handler_decodes_each_line(void)
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_irq_all;
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_first);
   /* All eight per-line callbacks fired. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_irq_event_count, (int32_t)s_ipc_irq_cb_count);
+  TEST_ASSERT_EQ(k_ra_ipc_irq_event_count, s_ipc_irq_cb_count);
   TEST_ASSERT((uintptr_t)s_ipc_irq_cb_last_ctx == (uintptr_t)k_ra_ipc_test_irq_ctx);
-  TEST_ASSERT_EQ((int32_t)(k_ra_ipc_irq_event_count - 1U), (int32_t)s_ipc_irq_cb_last_event);
+  TEST_ASSERT_EQ((k_ra_ipc_irq_event_count - 1U), s_ipc_irq_cb_last_event);
 
   /* Bad-arg paths */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_bad,
-                                                      k_ra_ipc_irq_event_0,
-                                                      stub_ipc_irq_cb,
-                                                      nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
-                                         (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count,
-                                         stub_ipc_irq_cb,
-                                         nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_bad,
+                                             k_ra_ipc_irq_event_0,
+                                             stub_ipc_irq_cb,
+                                             nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
+                                             (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count,
+                                             stub_ipc_irq_cb,
+                                             nullptr));
   TEST_END("ipc per-event handler fires per line");
 }
 
@@ -1002,19 +958,17 @@ static void test_sem_try_take_and_release(void)
   volatile uint32_t* sem = ra_ipc_sem(3U);
   TEST_ASSERT_NOT_NULL((void*)sem);
   *sem = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_try_take(3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_sem_try_take(3U));
   /* Release: HUM Ch 3.2.3 says writing 1 clears LOCK; the sim emulates
    * that, so post-release LOCK reads back 0 (free). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_release(3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_sem_release(3U));
   TEST_ASSERT((*sem & (uint32_t)k_ra_ipc_sem_mask_lock) == 0U);
   /* Force "already locked" by leaving LOCK = 1 in the backing word. */
   *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_ipc_sem_try_take(3U));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_ipc_sem_try_take(3U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_sem_try_take((uint8_t)k_ra_ipc_test_sem_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_sem_release((uint8_t)k_ra_ipc_test_sem_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_sem_try_take((uint8_t)k_ra_ipc_test_sem_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_sem_release((uint8_t)k_ra_ipc_test_sem_bad));
   TEST_END("ipc sem try_take / release");
 }
 
@@ -1030,7 +984,7 @@ static void test_sem_take_timeout_succeeds(void)
   prep();
   volatile uint32_t* sem = ra_ipc_sem(7U);
   *sem                   = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_take_timeout(7U, 16U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_sem_take_timeout(7U, 16U));
   TEST_END("ipc sem take_timeout succeeds");
 }
 
@@ -1049,10 +1003,9 @@ static void test_sem_take_timeout_fails(void)
    * reads back the same value (LOCK=1) so it never clears. */
   volatile uint32_t* sem = ra_ipc_sem(8U);
   *sem                   = (uint32_t)k_ra_ipc_sem_mask_lock;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_ipc_sem_take_timeout(8U, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_sem_take_timeout(8U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_sem_take_timeout((uint8_t)k_ra_ipc_test_sem_bad, 4U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_ipc_sem_take_timeout(8U, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_sem_take_timeout(8U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_sem_take_timeout((uint8_t)k_ra_ipc_test_sem_bad, 4U));
   TEST_END("ipc sem take_timeout fails");
 }
 
@@ -1069,7 +1022,7 @@ static void test_sem_is_locked(void)
   volatile uint32_t* sem = ra_ipc_sem(1U);
   *sem                   = 0U;
   bool locked            = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_is_locked(1U, &locked));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_sem_is_locked(1U, &locked));
   TEST_ASSERT(locked == false);
   /* Side-effect: the read inside is_locked took the lock; the
    * function should have re-released it for unlocked, leaving LOCK=0
@@ -1077,12 +1030,12 @@ static void test_sem_is_locked(void)
   TEST_ASSERT(*sem == 0U);
 
   *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_is_locked(1U, &locked));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_sem_is_locked(1U, &locked));
   TEST_ASSERT(locked == true);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_sem_is_locked(1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_sem_is_locked((uint8_t)k_ra_ipc_test_sem_bad, &locked));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_sem_is_locked(1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_sem_is_locked((uint8_t)k_ra_ipc_test_sem_bad, &locked));
   TEST_END("ipc sem is_locked");
 }
 
@@ -1121,28 +1074,26 @@ static void test_nmi_send_clear_status(void)
   TEST_ASSERT_NOT_NULL((void*)nmi);
   nmi->NMISET = 0U;
   nmi->NMISTA = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_nmi_send(0U));
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ipc_nmi_mask_bit, (int32_t)nmi->NMISET);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_nmi_send(0U));
+  TEST_ASSERT_EQ(k_ra_ipc_nmi_mask_bit, nmi->NMISET);
 
   nmi->NMISTA  = (uint32_t)k_ra_ipc_nmi_mask_bit;
   bool pending = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_nmi_get_status(0U, &pending));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_nmi_get_status(0U, &pending));
   TEST_ASSERT(pending == true);
   nmi->NMISTA = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_nmi_get_status(0U, &pending));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_nmi_get_status(0U, &pending));
   TEST_ASSERT(pending == false);
 
   nmi->NMICLR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_nmi_clear(0U));
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ipc_nmi_mask_bit, (int32_t)nmi->NMICLR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_nmi_clear(0U));
+  TEST_ASSERT_EQ(k_ra_ipc_nmi_mask_bit, nmi->NMICLR);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_nmi_send((uint8_t)k_ra_ipc_test_unit_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_nmi_clear((uint8_t)k_ra_ipc_test_unit_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_nmi_get_status(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_nmi_get_status((uint8_t)k_ra_ipc_test_unit_bad, &pending));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_nmi_send((uint8_t)k_ra_ipc_test_unit_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_nmi_clear((uint8_t)k_ra_ipc_test_unit_bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_nmi_get_status(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_nmi_get_status((uint8_t)k_ra_ipc_test_unit_bad, &pending));
   TEST_END("ipc nmi send/clear/status");
 }
 
@@ -1157,27 +1108,27 @@ static void test_nmi_dispatch_invokes_callback(void)
   TEST_BEGIN("ipc nmi dispatch invokes callback");
   prep();
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ipc_attach_nmi_handler(stub_ipc_nmi_cb, (void*)(uintptr_t)k_ra_ipc_test_nmi_ctx));
+    k_ra_ok,
+    ra_ipc_attach_nmi_handler(stub_ipc_nmi_cb, (void*)(uintptr_t)k_ra_ipc_test_nmi_ctx));
   volatile r_ipc_nmi_regs_t* nmi = ra_ipc_nmi(1U);
   TEST_ASSERT_NOT_NULL((void*)nmi);
   /* Pending NMI -> dispatch fires + acks. */
   nmi->NMISTA = (uint32_t)k_ra_ipc_nmi_mask_bit;
   nmi->NMICLR = 0U;
   ra_ipc_dispatch_nmi(1U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ipc_nmi_cb_count);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ipc_nmi_cb_last_unit);
+  TEST_ASSERT_EQ(1, s_ipc_nmi_cb_count);
+  TEST_ASSERT_EQ(1, s_ipc_nmi_cb_last_unit);
   TEST_ASSERT((uintptr_t)s_ipc_nmi_cb_last_ctx == (uintptr_t)k_ra_ipc_test_nmi_ctx);
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_ipc_nmi_mask_bit, (int32_t)nmi->NMICLR);
+  TEST_ASSERT_EQ(k_ra_ipc_nmi_mask_bit, nmi->NMICLR);
 
   /* No NMI pending -> dispatch is a silent no-op. */
   nmi->NMISTA = 0U;
   ra_ipc_dispatch_nmi(1U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ipc_nmi_cb_count);
+  TEST_ASSERT_EQ(1, s_ipc_nmi_cb_count);
 
   /* Bad unit id -> no-op. */
   ra_ipc_dispatch_nmi((uint8_t)k_ra_ipc_test_unit_bad);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ipc_nmi_cb_count);
+  TEST_ASSERT_EQ(1, s_ipc_nmi_cb_count);
   TEST_END("ipc nmi dispatch invokes callback");
 }
 
@@ -1193,18 +1144,16 @@ static void test_install_uninstall_isr(void)
 {
   TEST_BEGIN("ipc install/uninstall ISR");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_install_isr(0U, 8U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_install_isr(0U, 8U));
   /* Re-install -> exists. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_ipc_install_isr(0U, 8U));
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_ipc_install_isr(0U, 8U));
   /* Bad unit. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_install_isr((uint8_t)k_ra_ipc_test_unit_bad, 8U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_install_isr((uint8_t)k_ra_ipc_test_unit_bad, 8U));
 
   /* Uninstall -> ok, then not_found. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_uninstall_isr(0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found, (int32_t)ra_ipc_uninstall_isr(0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_uninstall_isr((uint8_t)k_ra_ipc_test_unit_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_uninstall_isr(0U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_ipc_uninstall_isr(0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_uninstall_isr((uint8_t)k_ra_ipc_test_unit_bad));
   TEST_END("ipc install/uninstall ISR");
 }
 
@@ -1235,18 +1184,18 @@ static void test_ring_init_and_predicates(void)
   TEST_BEGIN("ipc ring init + predicates");
   prep();
   ra_ipc_ring_t r = make_ring();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_init(&r));
   bool empty = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_is_empty(&r, &empty));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_is_empty(&r, &empty));
   TEST_ASSERT(empty == true);
   bool full = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_is_full(&r, &full));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_is_full(&r, &full));
   TEST_ASSERT(full == false);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_init(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_is_empty(nullptr, &empty));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_is_empty(&r, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_is_full(nullptr, &full));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_is_full(&r, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_is_empty(nullptr, &empty));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_is_empty(&r, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_is_full(nullptr, &full));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_is_full(&r, nullptr));
   TEST_END("ipc ring init + predicates");
 }
 
@@ -1262,35 +1211,35 @@ static void test_ring_init_bad_params(void)
   prep();
   ra_ipc_ring_t r = make_ring();
   r.slots         = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_init(&r));
 
   r      = make_ring();
   r.head = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_init(&r));
 
   r      = make_ring();
   r.tail = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_init(&r));
 
   r          = make_ring();
   r.capacity = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_ring_init(&r));
 
   r          = make_ring();
   r.capacity = 3U; /* not power of two */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_ring_init(&r));
 
   r         = make_ring();
   r.channel = (uint8_t)k_ra_ipc_test_ch_bad;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_ring_init(&r));
 
   r        = make_ring();
   r.sem_id = (uint8_t)k_ra_ipc_test_sem_bad;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_ring_init(&r));
 
   r           = make_ring();
   r.notify_id = (ra_ipc_irq_event_id_t)k_ra_ipc_irq_event_count;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_ring_init(&r));
   TEST_END("ipc ring init bad params");
 }
 
@@ -1305,20 +1254,20 @@ static void test_ring_produce_consume(void)
   TEST_BEGIN("ipc ring produce/consume");
   prep();
   ra_ipc_ring_t r = make_ring();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_init(&r));
 
   /* Empty -> consume returns no_data. */
   uint32_t got = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_ipc_ring_consume(&r, &got));
-  TEST_ASSERT_EQ((int32_t)0xFFU, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_err_no_data, ra_ipc_ring_consume(&r, &got));
+  TEST_ASSERT_EQ(0xFFU, got);
 
   /* Push -> consume returns the value. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_produce(&r, (uint32_t)k_ra_ipc_test_msg_a));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_produce(&r, (uint32_t)k_ra_ipc_test_msg_b));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_consume(&r, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_a, (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_consume(&r, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_b, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_produce(&r, (uint32_t)k_ra_ipc_test_msg_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_produce(&r, (uint32_t)k_ra_ipc_test_msg_b));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_consume(&r, &got));
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_a, got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_consume(&r, &got));
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_b, got);
   TEST_END("ipc ring produce/consume");
 }
 
@@ -1333,18 +1282,17 @@ static void test_ring_full(void)
   TEST_BEGIN("ipc ring full -> busy");
   prep();
   ra_ipc_ring_t r = make_ring();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_init(&r));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_init(&r));
   for (uint32_t i = 0U; i < (uint32_t)k_ra_ipc_test_ring_cap; ++i) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                   (int32_t)ra_ipc_ring_produce(&r, (uint32_t)k_ra_ipc_test_msg_a + i));
+    TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_produce(&r, (uint32_t)k_ra_ipc_test_msg_a + i));
   }
   bool full = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_ring_is_full(&r, &full));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_ring_is_full(&r, &full));
   TEST_ASSERT(full == true);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_ipc_ring_produce(&r, 0xFFU));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_produce(nullptr, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_consume(nullptr, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_ring_consume(&r, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_ipc_ring_produce(&r, 0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_produce(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_consume(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_ring_consume(&r, nullptr));
   TEST_END("ipc ring full -> busy");
 }
 
@@ -1369,15 +1317,13 @@ static void test_send_via_channel_for_send_helper(void)
   prep();
 
   uint8_t send_ch = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, &send_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, &send_ch));
   TEST_ASSERT(send_ch < (uint8_t)k_ra_ipc_test_ch_bad);
 
   const ra_ipc_config_t cfg = make_cfg(send_ch);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_send_message(send_ch, (uint32_t)k_ra_ipc_test_msg_c));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_send_message(send_ch, (uint32_t)k_ra_ipc_test_msg_c));
   TEST_END("ipc send through channel_for_send (happy)");
 }
 
@@ -1399,12 +1345,11 @@ static void test_recv_via_channel_for_recv_helper(void)
   prep();
 
   uint8_t recv_ch = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 0U, &recv_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, 0U, &recv_ch));
   TEST_ASSERT(recv_ch < (uint8_t)k_ra_ipc_test_ch_bad);
 
   const ra_ipc_config_t cfg = make_cfg(recv_ch);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel(recv_ch);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -1412,8 +1357,8 @@ static void test_recv_via_channel_for_recv_helper(void)
   reg->RXD = (uint32_t)k_ra_ipc_test_msg_a;
 
   uint32_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_recv_message(recv_ch, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_msg_a, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_recv_message(recv_ch, &got));
+  TEST_ASSERT_EQ(k_ra_ipc_test_msg_a, got);
   TEST_END("ipc recv through channel_for_recv (happy)");
 }
 
@@ -1435,20 +1380,20 @@ static void test_attach_recv_handler_dispatches(void)
   TEST_BEGIN("ipc attach recv handler -> dispatch");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
-                                                      k_ra_ipc_irq_event_0,
-                                                      stub_ipc_irq_cb,
-                                                      (void*)(uintptr_t)k_ra_ipc_test_irq_ctx));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_first,
+                                             k_ra_ipc_irq_event_0,
+                                             stub_ipc_irq_cb,
+                                             (void*)(uintptr_t)k_ra_ipc_test_irq_ctx));
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_irq0;
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT(s_ipc_irq_cb_count >= 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_test_ch_first, (int32_t)s_ipc_irq_cb_last_channel);
-  TEST_ASSERT_EQ((int32_t)k_ra_ipc_irq_event_0, (int32_t)s_ipc_irq_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_ipc_test_ch_first, s_ipc_irq_cb_last_channel);
+  TEST_ASSERT_EQ(k_ra_ipc_irq_event_0, s_ipc_irq_cb_last_event);
   TEST_END("ipc attach recv handler -> dispatch");
 }
 
@@ -1465,7 +1410,7 @@ static void test_clear_event_and_errors_combo(void)
   TEST_BEGIN("ipc clear event + clear errors");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   /* Set IRQ4 + RERR + FERR via the per-channel STA register, then ack
    * through the public API and confirm the CLR register reflects the
@@ -1476,10 +1421,9 @@ static void test_clear_event_and_errors_combo(void)
              (uint32_t)k_ra_ipc_sta_mask_ferr;
   reg->CLR = 0U;
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_first, k_ra_ipc_irq_event_4));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_first));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_clear_event((uint8_t)k_ra_ipc_test_ch_first, k_ra_ipc_irq_event_4));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_first));
 
   /* Driver wrote CLR4 + RCLR + FCLR. */
   TEST_ASSERT((reg->CLR & (uint32_t)k_ra_ipc_clr_mask_clr4) != 0U);
@@ -1500,26 +1444,20 @@ static void test_null_arg_rejection_sweep(void)
 {
   TEST_BEGIN("ipc NULL-arg sweep");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ipc_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_init(nullptr));
 
   uint8_t out_ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, 0U, nullptr));
   /* Sanity: with a non-NULL output the call still works. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, &out_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 0U, &out_ch));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, nullptr));
 
   uint32_t written = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U, &written));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_first, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ipc_send_burst((uint8_t)k_ra_ipc_test_ch_first, nullptr, 1U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ipc_get_status((uint8_t)k_ra_ipc_test_ch_first, nullptr));
   TEST_END("ipc NULL-arg sweep");
 }
 
@@ -1537,24 +1475,19 @@ static void test_channel_out_of_range_sweep(void)
   prep();
 
   const ra_ipc_config_t bad_cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_bad);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ipc_init(&bad_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_deinit((uint8_t)k_ra_ipc_test_ch_way));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_reset_fifo((uint8_t)k_ra_ipc_test_ch_bad));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_bad, (uint32_t)k_ra_ipc_test_msg_a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_init(&bad_cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_deinit((uint8_t)k_ra_ipc_test_ch_way));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_reset_fifo((uint8_t)k_ra_ipc_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_bad, (uint32_t)k_ra_ipc_test_msg_a));
   uint32_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_bad, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_bad,
-                                                      k_ra_ipc_irq_event_0,
-                                                      stub_ipc_irq_cb,
-                                                      nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_bad, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_clear_errors((uint8_t)k_ra_ipc_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ipc_attach_event_handler((uint8_t)k_ra_ipc_test_ch_bad,
+                                             k_ra_ipc_irq_event_0,
+                                             stub_ipc_irq_cb,
+                                             nullptr));
   TEST_END("ipc channel out-of-range sweep");
 }
 
@@ -1577,14 +1510,14 @@ static void test_mailbox_full_rejection(void)
   TEST_BEGIN("ipc mailbox full rejection");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   volatile r_ipc_channel_regs_t* reg = ra_ipc_channel((uint8_t)k_ra_ipc_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->STA = (uint32_t)k_ra_ipc_sta_mask_full;
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_busy,
-    (int32_t)ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_b));
+    k_ra_err_busy,
+    ra_ipc_send_message((uint8_t)k_ra_ipc_test_ch_first, (uint32_t)k_ra_ipc_test_msg_b));
   TEST_END("ipc mailbox full rejection");
 }
 
@@ -1601,12 +1534,11 @@ static void test_mailbox_empty_rejection(void)
   TEST_BEGIN("ipc mailbox empty rejection");
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   /* prep() already cleared the sim mmap, so RDY is 0 here. */
   uint32_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data,
-                 (int32_t)ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, &got));
+  TEST_ASSERT_EQ(k_ra_err_no_data, ra_ipc_recv_message((uint8_t)k_ra_ipc_test_ch_first, &got));
   TEST_END("ipc mailbox empty rejection");
 }
 
@@ -1644,23 +1576,20 @@ static void test_mcdc_ra_ipc(void)
   *sar                  = live_bit;
   *par                  = live_bit;
   ra_ipc_attr_t want_v1 = {.secure = true, .privileged = true};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v1, &ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v1, &ok));
   TEST_ASSERT(ok == true);
   ra_ipc_attr_t want_v2 = {.secure = false, .privileged = true};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v2, &ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v2, &ok));
   TEST_ASSERT(ok == false);
   ra_ipc_attr_t want_v3 = {.secure = true, .privileged = false};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v3, &ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v3, &ok));
   TEST_ASSERT(ok == false);
   prep();
   const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_attach_handler(stub_ipc_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_attach_handler(stub_ipc_cb, nullptr));
   ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_ipc_cb_count);
+  TEST_ASSERT_EQ(0U, s_ipc_cb_count);
   TEST_END("ipc MC/DC: can_access + dispatch 2-cond decisions");
 }
 

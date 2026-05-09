@@ -32,12 +32,12 @@ static void test_init_clears_irqcr_and_nmi(void)
   *ra_icu_wupen0()   = 0xCAFEBABEUL;
   *ra_icu_wupen1()   = 0xDEADBEEFUL;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_init());
-  TEST_ASSERT_EQ(0, (int32_t)*ra_icu_irqcr(0U));
-  TEST_ASSERT_EQ(0, (int32_t)*ra_icu_irqcr(16U));
-  TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_nmier());
-  TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_wupen0());
-  TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_wupen1());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_init());
+  TEST_ASSERT_EQ(0, *ra_icu_irqcr(0U));
+  TEST_ASSERT_EQ(0, *ra_icu_irqcr(16U));
+  TEST_ASSERT_EQ(0UL, *ra_icu_nmier());
+  TEST_ASSERT_EQ(0UL, *ra_icu_wupen0());
+  TEST_ASSERT_EQ(0UL, *ra_icu_wupen1());
   TEST_END("ra_icu_init: IRQCR + NMIER + WUPEN cleared");
 }
 
@@ -52,7 +52,7 @@ static void test_ielsr_mask_is_10_bits(void)
   TEST_BEGIN("ielsr IELS mask is 10 bits (FSP cross-check)");
   /* RA8D2 FSP R_ICU_Type IELSR_b shows IELS : 10 at [9:0].  Make sure
    * our mask includes bit 9. */
-  TEST_ASSERT_EQ((int32_t)0x3FF, (int32_t)k_ra_ielsr_iels_mask);
+  TEST_ASSERT_EQ(0x3FF, k_ra_ielsr_iels_mask);
   TEST_END("ielsr IELS mask is 10 bits (FSP cross-check)");
 }
 
@@ -74,12 +74,12 @@ static void test_configure_irq_pin_irqcrb(void)
     .filter_en  = true,
   };
   /* Channel 20 (IRQCRb[4]) lives at base + 0x14 + 4 = base + 0x18. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_configure_irq_pin(20U, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_configure_irq_pin(20U, &cfg));
 
   uint8_t val = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_read_irqcr(20U, &val));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_read_irqcr(20U, &val));
   /* Expected: IRQMD=10 (both), FCLKSEL=11 (PCLKB/64) at bit 4, FLTEN=1 at bit 7. */
-  TEST_ASSERT_EQ((int32_t)((2U << 0) | (3U << 4) | (1U << 7)), (int32_t)val);
+  TEST_ASSERT_EQ(((2U << 0) | (3U << 4) | (1U << 7)), val);
   TEST_END("ra_icu_configure_irq_pin: IRQCRb channel 20");
 }
 
@@ -100,12 +100,12 @@ static void test_configure_irq_pin(void)
     .filter_div = k_ra_icu_fclksel_pclkb_32,
     .filter_en  = true,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_configure_irq_pin(3U, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_configure_irq_pin(3U, &cfg));
 
   uint8_t val = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_read_irqcr(3U, &val));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_read_irqcr(3U, &val));
   /* Expected: IRQMD=01 (rising), FCLKSEL=10 (PCLKB/32) at bit 4, FLTEN=1 at bit 7. */
-  TEST_ASSERT_EQ((int32_t)((1U << 0) | (2U << 4) | (1U << 7)), (int32_t)val);
+  TEST_ASSERT_EQ(((1U << 0) | (2U << 4) | (1U << 7)), val);
   TEST_END("ra_icu_configure_irq_pin: rising-edge w/ filter");
 }
 
@@ -126,13 +126,13 @@ static void test_configure_irq_pin_bad_inputs(void)
     .filter_div = k_ra_icu_fclksel_pclkb,
     .filter_en  = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_icu_configure_irq_pin(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_icu_configure_irq_pin(0U, nullptr));
   /* 33 is past the 32-channel RA8D2 limit (FSP BSP_FEATURE_ICU_IRQ_CHANNELS_MASK == 0xFFFFFFFF). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_icu_configure_irq_pin(33U, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_icu_configure_irq_pin(33U, &cfg));
 
   uint8_t val = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_icu_read_irqcr(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_icu_read_irqcr(33U, &val));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_icu_read_irqcr(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_icu_read_irqcr(33U, &val));
   TEST_END("ra_icu_configure_irq_pin: bad inputs rejected");
 }
 
@@ -150,25 +150,25 @@ static void test_nmi_enable_disable_clear(void)
 
   /* FSP R_ICU_NMIER uses bits 0..20. Test with a broad mask so the
    * 32-bit contract is exercised end-to-end. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_enable(0x00105U));
-  TEST_ASSERT_EQ((int64_t)0x00105UL, (int64_t)*ra_icu_nmier());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_nmi_enable(0x00105U));
+  TEST_ASSERT_EQ(0x00105UL, *ra_icu_nmier());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_enable(0x10010U));
-  TEST_ASSERT_EQ((int64_t)0x10115UL, (int64_t)*ra_icu_nmier());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_nmi_enable(0x10010U));
+  TEST_ASSERT_EQ(0x10115UL, *ra_icu_nmier());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_disable(0x00004U));
-  TEST_ASSERT_EQ((int64_t)0x10111UL, (int64_t)*ra_icu_nmier());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_nmi_disable(0x00004U));
+  TEST_ASSERT_EQ(0x10111UL, *ra_icu_nmier());
 
   /* Status register reads + clear. */
   *ra_icu_nmisr() = 0x1F007AUL;
   uint32_t status = 0UL;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_status(&status));
-  TEST_ASSERT_EQ((int64_t)0x1F007AUL, (int64_t)status);
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_nmi_status(&status));
+  TEST_ASSERT_EQ(0x1F007AUL, status);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_clear(0x1FFFFFUL));
-  TEST_ASSERT_EQ((int64_t)0x1FFFFFUL, (int64_t)*ra_icu_nmiclr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_nmi_clear(0x1FFFFFUL));
+  TEST_ASSERT_EQ(0x1FFFFFUL, *ra_icu_nmiclr());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_icu_nmi_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_icu_nmi_status(nullptr));
   TEST_END("ra_icu_nmi_enable / disable / clear");
 }
 
@@ -225,12 +225,11 @@ static void test_route_happy(void)
   TEST_BEGIN("icu route happy");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_icu_route((uint16_t)k_ra_icu_test_nvic_first, k_ra_elc_event_icu_irq0));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_icu_route((uint16_t)k_ra_icu_test_nvic_first, k_ra_elc_event_icu_irq0));
   volatile uint32_t* reg = ra_icu_ielsr((uint16_t)k_ra_icu_test_nvic_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int32_t)k_ra_elc_event_icu_irq0, (int32_t)*reg);
+  TEST_ASSERT_EQ(k_ra_elc_event_icu_irq0, *reg);
   TEST_END("icu route happy");
 }
 
@@ -245,8 +244,7 @@ static void test_route_last_slot(void)
   TEST_BEGIN("icu route last slot");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_icu_route((uint16_t)k_ra_icu_test_nvic_last, k_ra_elc_event_icu_irq1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_icu_route((uint16_t)k_ra_icu_test_nvic_last, k_ra_elc_event_icu_irq1));
   TEST_END("icu route last slot");
 }
 
@@ -261,8 +259,8 @@ static void test_route_bad_slot(void)
   TEST_BEGIN("icu route bad slot");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_icu_route((uint16_t)k_ra_icu_test_nvic_bad, k_ra_elc_event_none));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_icu_route((uint16_t)k_ra_icu_test_nvic_bad, k_ra_elc_event_none));
   TEST_END("icu route bad slot");
 }
 
@@ -277,8 +275,8 @@ static void test_route_huge_slot(void)
   TEST_BEGIN("icu route huge slot");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_icu_route((uint16_t)k_ra_icu_test_nvic_huge, k_ra_elc_event_none));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_icu_route((uint16_t)k_ra_icu_test_nvic_huge, k_ra_elc_event_none));
   TEST_END("icu route huge slot");
 }
 
@@ -295,7 +293,7 @@ static void test_nvic_enable_first(void)
 
   ra_icu_nvic_enable((uint16_t)k_ra_icu_test_nvic_first);
   const uint32_t word = *test_iser_word((uint16_t)k_ra_icu_test_nvic_first);
-  TEST_ASSERT_EQ(1, (int32_t)word);
+  TEST_ASSERT_EQ(1, word);
   TEST_END("icu nvic_enable first");
 }
 
@@ -314,7 +312,7 @@ static void test_nvic_enable_mid(void)
   /* nvic 37 -> word 1, bit 5. */
   const uint32_t expected = (uint32_t)(1UL << 5U);
   const uint32_t word     = *test_iser_word((uint16_t)k_ra_icu_test_nvic_mid);
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)word);
+  TEST_ASSERT_EQ(expected, word);
   TEST_END("icu nvic_enable mid");
 }
 
@@ -332,7 +330,7 @@ static void test_nvic_disable(void)
   ra_icu_nvic_disable((uint16_t)k_ra_icu_test_nvic_mid);
   const uint32_t expected = (uint32_t)(1UL << 5U);
   const uint32_t word     = *test_icer_word((uint16_t)k_ra_icu_test_nvic_mid);
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)word);
+  TEST_ASSERT_EQ(expected, word);
   TEST_END("icu nvic_disable");
 }
 
@@ -350,16 +348,16 @@ static void test_nvic_set_priority(void)
   ra_icu_nvic_set_priority((uint16_t)k_ra_icu_test_nvic_mid, (uint8_t)k_ra_icu_test_prio_half);
   const uint8_t expected =
     (uint8_t)((uint8_t)k_ra_icu_test_prio_half << (uint8_t)k_ra_icu_test_prio_shift);
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)*test_ipr_byte((uint16_t)k_ra_icu_test_nvic_mid));
+  TEST_ASSERT_EQ(expected, *test_ipr_byte((uint16_t)k_ra_icu_test_nvic_mid));
 
   /* Edge-case: priority zero and max. */
   ra_icu_nvic_set_priority((uint16_t)k_ra_icu_test_nvic_first, (uint8_t)k_ra_icu_test_prio_zero);
-  TEST_ASSERT_EQ(0, (int32_t)*test_ipr_byte((uint16_t)k_ra_icu_test_nvic_first));
+  TEST_ASSERT_EQ(0, *test_ipr_byte((uint16_t)k_ra_icu_test_nvic_first));
 
   ra_icu_nvic_set_priority((uint16_t)k_ra_icu_test_nvic_last, (uint8_t)k_ra_icu_test_prio_max);
   const uint8_t expected_max =
     (uint8_t)((uint8_t)k_ra_icu_test_prio_max << (uint8_t)k_ra_icu_test_prio_shift);
-  TEST_ASSERT_EQ((int32_t)expected_max, (int32_t)*test_ipr_byte((uint16_t)k_ra_icu_test_nvic_last));
+  TEST_ASSERT_EQ(expected_max, *test_ipr_byte((uint16_t)k_ra_icu_test_nvic_last));
   TEST_END("icu nvic_set_priority");
 }
 

@@ -87,15 +87,12 @@ static void test_cdc_pfs_routes_four_usbfs_pins(void)
 {
   reset_world();
   TEST_BEGIN("usb_cdc_echo: PFS routes VBUS/VBUSEN/D+/D-");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_cdc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_pfs_route_peripheral(k_test_cdc_pin_vbusen, k_ra_psel_usb_fs, "test.vbusen"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_cdc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_cdc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_cdc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_cdc_pin_vbusen, k_ra_psel_usb_fs, "test.vbusen"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_cdc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_cdc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
   TEST_END("usb_cdc_echo: PFS routes VBUS/VBUSEN/D+/D-");
 }
 
@@ -110,18 +107,16 @@ static void test_cdc_full_bringup_chain_ok(void)
 {
   reset_world();
   TEST_BEGIN("usb_cdc_echo: full bring-up chain");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_cdc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_cdc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_cdc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_cdc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_cdc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_cdc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   ra_usb_pal_state_t state = k_ra_usb_pal_state_detached;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int)k_ra_usb_pal_state_attached, (int)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_attached, state);
   TEST_END("usb_cdc_echo: full bring-up chain");
 }
 
@@ -137,23 +132,23 @@ static void test_cdc_open_three_endpoints(void)
 {
   reset_world();
   TEST_BEGIN("usb_cdc_echo: open notify + bulk-IN + bulk-OUT");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_intr_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_intr,
-                                         (uint16_t)k_test_cdc_intr_packet));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_bulk,
-                                         (uint16_t)k_test_cdc_max_packet));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_out,
-                                         k_ra_usb_pal_ep_dir_out,
-                                         k_ra_usb_pal_ep_type_bulk,
-                                         (uint16_t)k_test_cdc_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_intr_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_intr,
+                                    (uint16_t)k_test_cdc_intr_packet));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)k_test_cdc_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_out,
+                                    k_ra_usb_pal_ep_dir_out,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)k_test_cdc_max_packet));
   TEST_END("usb_cdc_echo: open notify + bulk-IN + bulk-OUT");
 }
 
@@ -168,13 +163,13 @@ static void test_cdc_echo_one_packet(void)
 {
   reset_world();
   TEST_BEGIN("usb_cdc_echo: echo one bulk-IN packet");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_bulk,
-                                         (uint16_t)k_test_cdc_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)k_test_cdc_max_packet));
   const uint8_t echo[k_test_cdc_echo_payload] = {'h', 'e', 'l', 'l', 'o', '!', '\r', '\n'};
   ra_err_t      err =
     ra_usb_pal_ep_send((uint8_t)k_test_cdc_ep_bulk_in, echo, (uint16_t)k_test_cdc_echo_payload);
@@ -212,12 +207,12 @@ static void test_cdc_attach_false_returns_to_detached(void)
 {
   reset_world();
   TEST_BEGIN("usb_cdc_echo: attach(false) returns to detached");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(false));
   ra_usb_pal_state_t state = k_ra_usb_pal_state_attached;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int)k_ra_usb_pal_state_detached, (int)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
   TEST_END("usb_cdc_echo: attach(false) returns to detached");
 }
 
@@ -231,15 +226,15 @@ static void test_cdc_send_null_data_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_cdc_echo: ep_send rejects NULL data");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_bulk,
-                                         (uint16_t)k_test_cdc_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_cdc_ep_bulk_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)k_test_cdc_max_packet));
   ra_err_t err =
-    ra_usb_pal_ep_send((uint8_t)k_test_cdc_ep_bulk_in, NULL, (uint16_t)k_test_cdc_echo_payload);
+    ra_usb_pal_ep_send((uint8_t)k_test_cdc_ep_bulk_in, nullptr, (uint16_t)k_test_cdc_echo_payload);
   TEST_ASSERT(err != k_ra_ok);
   TEST_END("usb_cdc_echo: ep_send rejects NULL data");
 }

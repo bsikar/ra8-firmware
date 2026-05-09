@@ -31,21 +31,21 @@ static uint8_t s_fb[64U * 64U * 4U];
 static void test_mcdc_gfx_init_width_range(void)
 {
   TEST_BEGIN("gfx_init MC/DC: (width<min)||(width>max)");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_gfx_init(s_fb,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      k_ra_gfx_format_rgb565));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_gfx_init(s_fb,
-                                      (uint16_t)k_test_gfx_dim_zero,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      k_ra_gfx_format_rgb565));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_gfx_init(s_fb,
-                                      (uint16_t)k_test_gfx_dim_over,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gfx_init(s_fb,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_gfx_init(s_fb,
+                             (uint16_t)k_test_gfx_dim_zero,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_gfx_init(s_fb,
+                             (uint16_t)k_test_gfx_dim_over,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             k_ra_gfx_format_rgb565));
   TEST_END("gfx_init MC/DC: (width<min)||(width>max)");
 }
 
@@ -60,21 +60,21 @@ static void test_mcdc_gfx_init_width_range(void)
 static void test_mcdc_gfx_init_height_range(void)
 {
   TEST_BEGIN("gfx_init MC/DC: (height<min)||(height>max)");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_gfx_init(s_fb,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      k_ra_gfx_format_rgb565));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_gfx_init(s_fb,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      (uint16_t)k_test_gfx_dim_zero,
-                                      k_ra_gfx_format_rgb565));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_gfx_init(s_fb,
-                                      (uint16_t)k_test_gfx_dim_normal,
-                                      (uint16_t)k_test_gfx_dim_over,
-                                      k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gfx_init(s_fb,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_gfx_init(s_fb,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             (uint16_t)k_test_gfx_dim_zero,
+                             k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_gfx_init(s_fb,
+                             (uint16_t)k_test_gfx_dim_normal,
+                             (uint16_t)k_test_gfx_dim_over,
+                             k_ra_gfx_format_rgb565));
   TEST_END("gfx_init MC/DC: (height<min)||(height>max)");
 }
 

@@ -39,8 +39,8 @@ static void test_iic_peripheral_open_null_cfg_rejected(void)
 {
   reset_world();
   TEST_BEGIN("iic_b_peripheral_demo: open rejects NULL cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, nullptr));
   TEST_END("iic_b_peripheral_demo: open rejects NULL cfg");
 }
 
@@ -75,8 +75,7 @@ static void test_iic_peripheral_open_ok(void)
     .peripheral_addr_7b = (uint8_t)k_test_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg));
   TEST_END("iic_b_peripheral_demo: open at addr 0x42 ok");
 }
 
@@ -94,8 +93,8 @@ static void test_iic_peripheral_status_null_rejected(void)
     .general_call       = 0U,
   };
   (void)ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_peripheral_status((uint8_t)k_test_iic_peripheral_channel, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_status((uint8_t)k_test_iic_peripheral_channel, nullptr));
   TEST_END("iic_b_peripheral_demo: status rejects NULL out_mask");
 }
 
@@ -114,8 +113,8 @@ static void test_iic_peripheral_status_idle(void)
   };
   (void)ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
   uint8_t mask = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_status((uint8_t)k_test_iic_peripheral_channel, &mask));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_status((uint8_t)k_test_iic_peripheral_channel, &mask));
   TEST_END("iic_b_peripheral_demo: status reports idle on fresh open");
 }
 

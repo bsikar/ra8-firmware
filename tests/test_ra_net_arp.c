@@ -85,11 +85,11 @@ static void test_mcdc_arp_insert_match(void)
   const uint8_t b[4] = {10U, 0U, 0U, 2U};
 
   /* V1: timestamp 0 -> C1 false, decision false. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_arp_insert_match(0U, a, a));
+  TEST_ASSERT_EQ(0, mirror_arp_insert_match(0U, a, a));
   /* V2: timestamp non-zero, IP mismatch -> C1 true, C2 false, decision false. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_arp_insert_match(123U, a, b));
+  TEST_ASSERT_EQ(0, mirror_arp_insert_match(123U, a, b));
   /* V3: timestamp non-zero, IP match -> C1 true, C2 true, decision true. */
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)mirror_arp_insert_match(123U, a, a));
+  TEST_ASSERT_EQ(1, mirror_arp_insert_match(123U, a, a));
 
   TEST_END("ra_net_arp arp_insert MC/DC: ts != 0 && memcmp == 0");
 }

@@ -73,19 +73,19 @@ static void test_ppong_release_validates_inputs(void)
 {
   reset_world();
   TEST_BEGIN("cpu1_pingpong: release validates inputs");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
-                                      (void*)(uintptr_t)k_test_ppong_dummy_sp));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_cpu1_release(nullptr, (void*)(uintptr_t)k_test_ppong_dummy_sp));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_cpu1_release((void*)((uintptr_t)k_test_ppong_dummy_entry + 1U),
-                                      (void*)(uintptr_t)k_test_ppong_dummy_sp));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
-                                      (void*)((uintptr_t)k_test_ppong_dummy_sp + 1U)));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
+                                 (void*)(uintptr_t)k_test_ppong_dummy_sp));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_cpu1_release(nullptr, (void*)(uintptr_t)k_test_ppong_dummy_sp));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_cpu1_release((void*)((uintptr_t)k_test_ppong_dummy_entry + 1U),
+                                 (void*)(uintptr_t)k_test_ppong_dummy_sp));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
+                                 (void*)((uintptr_t)k_test_ppong_dummy_sp + 1U)));
   TEST_END("cpu1_pingpong: release validates inputs");
 }
 
@@ -103,11 +103,11 @@ static void test_ppong_release_then_running(void)
 {
   reset_world();
   TEST_BEGIN("cpu1_pingpong: release -> is_running");
-  TEST_ASSERT_EQ(0, (int)ra_cpu1_is_running());
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
-                                      (void*)(uintptr_t)k_test_ppong_dummy_sp));
-  TEST_ASSERT_EQ(1, (int)ra_cpu1_is_running());
+  TEST_ASSERT_EQ(0, ra_cpu1_is_running());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
+                                 (void*)(uintptr_t)k_test_ppong_dummy_sp));
+  TEST_ASSERT_EQ(1, ra_cpu1_is_running());
   TEST_END("cpu1_pingpong: release -> is_running");
 }
 
@@ -125,12 +125,12 @@ static void test_ppong_halt_round_trip(void)
 {
   reset_world();
   TEST_BEGIN("cpu1_pingpong: halt round-trip");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
-                                      (void*)(uintptr_t)k_test_ppong_dummy_sp));
-  TEST_ASSERT_EQ(1, (int)ra_cpu1_is_running());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cpu1_halt());
-  TEST_ASSERT_EQ(0, (int)ra_cpu1_is_running());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_cpu1_release((void*)(uintptr_t)k_test_ppong_dummy_entry,
+                                 (void*)(uintptr_t)k_test_ppong_dummy_sp));
+  TEST_ASSERT_EQ(1, ra_cpu1_is_running());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cpu1_halt());
+  TEST_ASSERT_EQ(0, ra_cpu1_is_running());
   TEST_END("cpu1_pingpong: halt round-trip");
 }
 
@@ -158,22 +158,19 @@ static void test_ppong_channel_pair_resolution(void)
   reset_world();
   TEST_BEGIN("cpu1_pingpong: channel-pair resolution MC/DC");
   uint8_t ch = 0xFFU;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch));
+  TEST_ASSERT_EQ(2, ch);
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch));
-  TEST_ASSERT_EQ(2, (int)ch);
+    k_ra_err_null_ptr,
+    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, nullptr));
   TEST_ASSERT_EQ(
-    (int)k_ra_err_null_ptr,
-    (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, nullptr));
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_ipc_channel_for_send((ra_ipc_core_id_t)0xFFU, (uint8_t)k_test_ppong_pair_zero, &ch));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 99U, &ch));
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, (uint8_t)k_test_ppong_pair_zero, &ch));
-  TEST_ASSERT_EQ(2, (int)ch);
+    k_ra_err_invalid_arg,
+    ra_ipc_channel_for_send((ra_ipc_core_id_t)0xFFU, (uint8_t)k_test_ppong_pair_zero, &ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, 99U, &ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, (uint8_t)k_test_ppong_pair_zero, &ch));
+  TEST_ASSERT_EQ(2, ch);
   TEST_END("cpu1_pingpong: channel-pair resolution MC/DC");
 }
 
@@ -202,14 +199,12 @@ static void test_ppong_send_recv_round_trip(void)
 
   uint8_t ch_send_cpu0 = 0xFFU;
   uint8_t ch_recv_cpu0 = 0xFFU;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0,
-                                              (uint8_t)k_test_ppong_pair_zero,
-                                              &ch_send_cpu0));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0,
-                                              (uint8_t)k_test_ppong_pair_zero,
-                                              &ch_recv_cpu0));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch_send_cpu0));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch_recv_cpu0));
 
   ra_ipc_config_t cfg_send = {
     .channel      = ch_send_cpu0,
@@ -223,11 +218,10 @@ static void test_ppong_send_recv_round_trip(void)
     .clear_status = true,
     .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_init(&cfg_send));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_init(&cfg_recv));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg_send));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg_recv));
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_ipc_send_message(ch_send_cpu0, (uint32_t)k_test_ppong_magic_ping));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_send_message(ch_send_cpu0, (uint32_t)k_test_ppong_magic_ping));
 
   volatile r_ipc_channel_regs_t* recv_reg = ra_ipc_channel(ch_recv_cpu0);
   TEST_ASSERT_NOT_NULL((void*)recv_reg);
@@ -235,8 +229,8 @@ static void test_ppong_send_recv_round_trip(void)
   recv_reg->STA = (uint32_t)k_ra_ipc_sta_mask_rdy;
 
   uint32_t got = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_recv_message(ch_recv_cpu0, &got));
-  TEST_ASSERT_EQ((int)k_test_ppong_magic_pong, (int)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_recv_message(ch_recv_cpu0, &got));
+  TEST_ASSERT_EQ(k_test_ppong_magic_pong, got);
 
   TEST_END("cpu1_pingpong: send/recv ping-pong round trip");
 }

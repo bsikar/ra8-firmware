@@ -26,11 +26,11 @@ static void test_probe_no_image(void)
 {
   TEST_BEGIN("test_probe_no_image");
   ra_ble_patch_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(nullptr, 0U));
   TEST_ASSERT_EQ(1U, ra_ble_patch_test_warned());
   TEST_ASSERT_EQ(0U, ra_ble_patch_is_loaded());
   /* Second call must be idempotent (no second warning, same return). */
-  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(nullptr, 0U));
   TEST_END("test_probe_no_image");
 }
 
@@ -44,7 +44,7 @@ static void test_null_with_len(void)
 {
   TEST_BEGIN("test_null_with_len");
   ra_ble_patch_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_patch_load(NULL, 32U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_patch_load(nullptr, 32U));
   TEST_END("test_null_with_len");
 }
 
@@ -103,9 +103,9 @@ static void test_mcdc_ra_ble_patch(void)
   TEST_BEGIN("ble_patch MC/DC: load 2-cond decisions");
   ra_ble_patch_test_reset();
   uint8_t buf[64] = {};
-  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(nullptr, 0U));
   ra_ble_patch_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_patch_load(NULL, 32U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_patch_load(nullptr, 32U));
   ra_ble_patch_test_reset();
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_ble_patch_load(buf, 64U));
   ra_ble_patch_test_reset();

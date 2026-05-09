@@ -62,12 +62,12 @@ static void test_gpt_pwm_arm_ok(void)
   reset_world();
   TEST_BEGIN("gpt_pwm_demo: arm + duty sweep");
   const ra_gpt_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gpt_init((uint8_t)k_test_gpt_pwm_channel, &cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_gpt_set_duty((uint8_t)k_test_gpt_pwm_channel,
-                                      k_ra_gpt_ccr_a,
-                                      (uint32_t)k_test_gpt_pwm_mid_duty));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gpt_stop((uint8_t)k_test_gpt_pwm_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_init((uint8_t)k_test_gpt_pwm_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gpt_set_duty((uint8_t)k_test_gpt_pwm_channel,
+                                 k_ra_gpt_ccr_a,
+                                 (uint32_t)k_test_gpt_pwm_mid_duty));
+  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_stop((uint8_t)k_test_gpt_pwm_channel));
   TEST_END("gpt_pwm_demo: arm + duty sweep");
 }
 

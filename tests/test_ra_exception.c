@@ -62,12 +62,12 @@ static void test_capture_diagnostics_happy(void)
   ra_exception_diagnostics_t diag = {};
   ra_exception_capture_diagnostics(&diag);
 
-  TEST_ASSERT_EQ((int)0xC0FFEE00L, (int)diag.cfsr);
-  TEST_ASSERT_EQ((int)0xC0FFEE04L, (int)diag.hfsr);
-  TEST_ASSERT_EQ((int)0xC0FFEE08L, (int)diag.dfsr);
-  TEST_ASSERT_EQ((int)0xC0FFEE0CL, (int)diag.mmfar);
-  TEST_ASSERT_EQ((int)0xC0FFEE10L, (int)diag.bfar);
-  TEST_ASSERT_EQ((int)0xC0FFEE14L, (int)diag.afsr);
+  TEST_ASSERT_EQ(0xC0FFEE00L, diag.cfsr);
+  TEST_ASSERT_EQ(0xC0FFEE04L, diag.hfsr);
+  TEST_ASSERT_EQ(0xC0FFEE08L, diag.dfsr);
+  TEST_ASSERT_EQ(0xC0FFEE0CL, diag.mmfar);
+  TEST_ASSERT_EQ(0xC0FFEE10L, diag.bfar);
+  TEST_ASSERT_EQ(0xC0FFEE14L, diag.afsr);
 
   TEST_END("ra_exception_capture_diagnostics fills buffer");
 }
@@ -114,7 +114,7 @@ static void test_exception_report_with_frame(void)
     /* Unreachable once internal_ra_fatal_error is invoked. */
     TEST_FAIL_FMT("%s", "ra_exception_report returned");
   }
-  TEST_ASSERT_EQ(1, (int)s_fatal_hit);
+  TEST_ASSERT_EQ(1, s_fatal_hit);
 
   TEST_END("ra_exception_report logs frame and halts via fatal");
 }
@@ -135,7 +135,7 @@ static void test_exception_report_null_frame(void)
     ra_exception_report(nullptr, 2U);
     TEST_FAIL_FMT("%s", "ra_exception_report returned");
   }
-  TEST_ASSERT_EQ(1, (int)s_fatal_hit);
+  TEST_ASSERT_EQ(1, s_fatal_hit);
 
   TEST_END("ra_exception_report accepts NULL frame");
 }

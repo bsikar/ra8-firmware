@@ -47,15 +47,14 @@ static void test_ulpt_app_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("ulpt_demo: arm + status + stop + re-arm");
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ulpt_start((uint8_t)k_test_ulpt_app_channel, (uint32_t)k_test_ulpt_app_period));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ulpt_start((uint8_t)k_test_ulpt_app_channel, (uint32_t)k_test_ulpt_app_period));
   uint8_t status = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ulpt_get_status((uint8_t)k_test_ulpt_app_channel, &status));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ulpt_stop((uint8_t)k_test_ulpt_app_channel));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ulpt_get_status((uint8_t)k_test_ulpt_app_channel, &status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ulpt_stop((uint8_t)k_test_ulpt_app_channel));
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ulpt_start((uint8_t)k_test_ulpt_app_channel, (uint32_t)k_test_ulpt_app_period_2));
+    k_ra_ok,
+    ra_ulpt_start((uint8_t)k_test_ulpt_app_channel, (uint32_t)k_test_ulpt_app_period_2));
   TEST_END("ulpt_demo: arm + status + stop + re-arm");
 }
 
@@ -85,9 +84,8 @@ static void test_ulpt_app_status_null(void)
 {
   reset_world();
   TEST_BEGIN("ulpt_demo: status NULL rejected");
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ulpt_start((uint8_t)k_test_ulpt_app_channel, (uint32_t)k_test_ulpt_app_period));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ulpt_start((uint8_t)k_test_ulpt_app_channel, (uint32_t)k_test_ulpt_app_period));
   TEST_ASSERT(ra_ulpt_get_status((uint8_t)k_test_ulpt_app_channel, nullptr) != k_ra_ok);
   TEST_END("ulpt_demo: status NULL rejected");
 }

@@ -41,7 +41,7 @@ static void test_init(void)
 {
   TEST_BEGIN("gwca init");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init());
   TEST_END("gwca init");
 }
 
@@ -55,8 +55,8 @@ static void test_deinit(void)
 {
   TEST_BEGIN("gwca deinit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_deinit());
   TEST_END("gwca deinit");
 }
 
@@ -72,10 +72,10 @@ static void test_status_read_and_clear(void)
   prep();
   ra_gwca()->GWCA_STS = 0x9ABCDEF0U;
   uint32_t mask       = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0x9ABCDEF0U, (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_clear_status(0xFF00FF00U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_eth_gwca_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_get_status(&mask));
+  TEST_ASSERT_EQ(0x9ABCDEF0U, mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_clear_status(0xFF00FF00U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_get_status(nullptr));
   TEST_END("gwca status read + clear");
 }
 
@@ -89,17 +89,16 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("gwca attach + dispatch");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_eth_gwca_attach_handler(stub_gwca_cb, (void*)(uintptr_t)0xB0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_handler(stub_gwca_cb, (void*)(uintptr_t)0xB0U));
   ra_gwca()->GWCA_STS = 0x4321U;
   ra_eth_gwca_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_gwca_cb_count);
-  TEST_ASSERT_EQ((int32_t)0x4321U, (int32_t)s_gwca_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_gwca_cb_count);
+  TEST_ASSERT_EQ(0x4321U, s_gwca_cb_last_mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_handler(nullptr, nullptr));
   ra_gwca()->GWCA_STS = 0x8765U;
   ra_eth_gwca_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_gwca_cb_count);
+  TEST_ASSERT_EQ(1, s_gwca_cb_count);
   TEST_END("gwca attach + dispatch");
 }
 
@@ -113,9 +112,9 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("gwca power transition");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_enter_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gwca_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_exit_stop());
   TEST_END("gwca power transition");
 }
 

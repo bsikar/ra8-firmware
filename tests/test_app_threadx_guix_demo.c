@@ -69,10 +69,10 @@ static void test_gx_pre_kernel_bringup(void)
 {
   reset_world();
   TEST_BEGIN("guix_demo: pre-kernel CGC + SysTick");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(hz));
   TEST_END("guix_demo: pre-kernel CGC + SysTick");
 }
 
@@ -94,10 +94,10 @@ static void test_gx_gui_thread_glcdc_start(void)
     .height_px        = (uint16_t)k_test_gx_fb_h,
     .format           = k_ra_glcdc_fmt_rgb565,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_start(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(true));
   /* The driver writes the configured framebuffer base into GR1_SADDR. */
-  TEST_ASSERT_EQ((int)k_test_gx_fb_addr, (int)*ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr));
+  TEST_ASSERT_EQ(k_test_gx_fb_addr, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr));
   TEST_END("guix_demo: gui_thread GLCDC bring-up + start");
 }
 
@@ -121,7 +121,7 @@ static void test_gx_app_thread_colour_cycle(void)
     /* alternate between two ARGB colours -- mirrors the production
      * blue/orange swap the prompt does each tick. */
     const uint32_t argb = ((i & 1U) == 0U) ? 0x000044FFUL : 0x00FF7700UL;
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_set_background_color(argb));
+    TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_background_color(argb));
   }
   TEST_END("guix_demo: app_thread colour cycle N iterations");
 }
@@ -141,7 +141,7 @@ static void test_gx_glcdc_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("guix_demo: ra_glcdc_init(NULL) rejected");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_glcdc_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_init(nullptr));
   TEST_END("guix_demo: ra_glcdc_init(NULL) rejected");
 }
 
@@ -157,9 +157,9 @@ static void test_gx_glcdc_stop_after_start(void)
 {
   reset_world();
   TEST_BEGIN("guix_demo: stop after start drives engine disabled");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_start(true));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_glcdc_start(false));
-  TEST_ASSERT_EQ(0, (int)*ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(false));
+  TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg));
   TEST_END("guix_demo: stop after start drives engine disabled");
 }
 
@@ -174,7 +174,7 @@ static void test_gx_glcdc_get_status_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("guix_demo: get_status(NULL) rejected");
-  TEST_ASSERT(ra_glcdc_get_status(NULL) != k_ra_ok);
+  TEST_ASSERT(ra_glcdc_get_status(nullptr) != k_ra_ok);
   TEST_END("guix_demo: get_status(NULL) rejected");
 }
 

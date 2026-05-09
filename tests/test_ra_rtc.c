@@ -33,12 +33,12 @@ static void test_init_happy_path(void)
   TEST_BEGIN("ra_rtc_init writes RCR2 HR24+START");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
 
   volatile r_rtc_regs_t* rtc = ra_rtc();
   /* Final write should be HR24=1, START=1. */
-  TEST_ASSERT_EQ((int)k_test_rcr2_hr24_start, (int)rtc->RCR2);
-  TEST_ASSERT_EQ(0, (int)rtc->RCR1);
+  TEST_ASSERT_EQ(k_test_rcr2_hr24_start, rtc->RCR2);
+  TEST_ASSERT_EQ(0, rtc->RCR1);
 
   TEST_END("ra_rtc_init writes RCR2 HR24+START");
 }
@@ -53,7 +53,7 @@ static void test_set_null_rejected(void)
 {
   TEST_BEGIN("ra_rtc_set rejects NULL");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_rtc_set(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rtc_set(nullptr));
   TEST_END("ra_rtc_set rejects NULL");
 }
 
@@ -67,7 +67,7 @@ static void test_get_null_rejected(void)
 {
   TEST_BEGIN("ra_rtc_get rejects NULL");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_rtc_get(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rtc_get(nullptr));
   TEST_END("ra_rtc_get rejects NULL");
 }
 
@@ -90,7 +90,7 @@ static void test_set_rejects_year_before_2000(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_rtc_set(&dt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set(&dt));
   TEST_END("ra_rtc_set rejects year < 2000");
 }
 
@@ -105,7 +105,7 @@ static void test_set_then_get_round_trip(void)
   TEST_BEGIN("ra_rtc_set then ra_rtc_get round-trips");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
 
   const ra_rtc_datetime_t in = {
     .year    = (uint16_t)k_test_rtc_year,
@@ -116,18 +116,18 @@ static void test_set_then_get_round_trip(void)
     .minute  = 37U,
     .second  = 42U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set(&in));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set(&in));
 
   ra_rtc_datetime_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_get(&out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get(&out));
 
-  TEST_ASSERT_EQ((int)in.year, (int)out.year);
-  TEST_ASSERT_EQ((int)in.month, (int)out.month);
-  TEST_ASSERT_EQ((int)in.day, (int)out.day);
-  TEST_ASSERT_EQ((int)in.weekday, (int)out.weekday);
-  TEST_ASSERT_EQ((int)in.hour, (int)out.hour);
-  TEST_ASSERT_EQ((int)in.minute, (int)out.minute);
-  TEST_ASSERT_EQ((int)in.second, (int)out.second);
+  TEST_ASSERT_EQ(in.year, out.year);
+  TEST_ASSERT_EQ(in.month, out.month);
+  TEST_ASSERT_EQ(in.day, out.day);
+  TEST_ASSERT_EQ(in.weekday, out.weekday);
+  TEST_ASSERT_EQ(in.hour, out.hour);
+  TEST_ASSERT_EQ(in.minute, out.minute);
+  TEST_ASSERT_EQ(in.second, out.second);
 
   TEST_END("ra_rtc_set then ra_rtc_get round-trips");
 }
@@ -143,7 +143,7 @@ static void test_bcd_boundary_values(void)
   TEST_BEGIN("ra_rtc BCD 59 max");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
 
   const ra_rtc_datetime_t in = {
     .year    = 2099U,
@@ -154,15 +154,15 @@ static void test_bcd_boundary_values(void)
     .minute  = 59U,
     .second  = 59U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set(&in));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set(&in));
 
   ra_rtc_datetime_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_get(&out));
-  TEST_ASSERT_EQ(59, (int)out.second);
-  TEST_ASSERT_EQ(59, (int)out.minute);
-  TEST_ASSERT_EQ(23, (int)out.hour);
-  TEST_ASSERT_EQ(12, (int)out.month);
-  TEST_ASSERT_EQ(2099, (int)out.year);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get(&out));
+  TEST_ASSERT_EQ(59, out.second);
+  TEST_ASSERT_EQ(59, out.minute);
+  TEST_ASSERT_EQ(23, out.hour);
+  TEST_ASSERT_EQ(12, out.month);
+  TEST_ASSERT_EQ(2099, out.year);
 
   TEST_END("ra_rtc BCD 59 max");
 }
@@ -178,7 +178,7 @@ static void test_bcd_zero(void)
   TEST_BEGIN("ra_rtc BCD 0 minimum");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
 
   const ra_rtc_datetime_t in = {
     .year    = 2000U,
@@ -189,14 +189,14 @@ static void test_bcd_zero(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set(&in));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set(&in));
 
   ra_rtc_datetime_t out = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_get(&out));
-  TEST_ASSERT_EQ(0, (int)out.second);
-  TEST_ASSERT_EQ(0, (int)out.minute);
-  TEST_ASSERT_EQ(0, (int)out.hour);
-  TEST_ASSERT_EQ(2000, (int)out.year);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get(&out));
+  TEST_ASSERT_EQ(0, out.second);
+  TEST_ASSERT_EQ(0, out.minute);
+  TEST_ASSERT_EQ(0, out.hour);
+  TEST_ASSERT_EQ(2000, out.year);
 
   TEST_END("ra_rtc BCD 0 minimum");
 }
@@ -223,10 +223,10 @@ static void test_deinit(void)
 {
   TEST_BEGIN("rtc deinit");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_deinit());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_rtc()->RCR1);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_rtc()->RCR2);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_deinit());
+  TEST_ASSERT_EQ(0, ra_rtc()->RCR1);
+  TEST_ASSERT_EQ(0, ra_rtc()->RCR2);
   TEST_END("rtc deinit");
 }
 
@@ -241,18 +241,17 @@ static void test_irq_enable_and_status(void)
   TEST_BEGIN("rtc irq enable + status");
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_periodic));
+    k_ra_ok,
+    ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_periodic));
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_periodic),
-                 (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get_status(&mask));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_periodic), mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_clear_status((uint8_t)k_ra_rtc_irq_alarm));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_rtc_irq_periodic, (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rtc_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_clear_status((uint8_t)k_ra_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get_status(&mask));
+  TEST_ASSERT_EQ(k_ra_rtc_irq_periodic, mask);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rtc_get_status(nullptr));
   TEST_END("rtc irq enable + status");
 }
 
@@ -269,16 +268,15 @@ static void test_attach_and_dispatch(void)
   s_rtc_cb_count     = 0U;
   s_rtc_cb_last_mask = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_rtc_attach_handler(stub_rtc_cb, (void*)(uintptr_t)0x42U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_attach_handler(stub_rtc_cb, (void*)(uintptr_t)0x42U));
   ra_rtc()->RCR1 = (uint8_t)k_ra_rtc_irq_alarm;
   ra_rtc_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_rtc_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_rtc_irq_alarm, (int32_t)s_rtc_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_rtc_cb_count);
+  TEST_ASSERT_EQ(k_ra_rtc_irq_alarm, s_rtc_cb_last_mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_attach_handler(nullptr, nullptr));
   ra_rtc_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_rtc_cb_count);
+  TEST_ASSERT_EQ(1, s_rtc_cb_count);
   TEST_END("rtc attach + dispatch");
 }
 
@@ -292,10 +290,10 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("rtc power transition");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_enter_stop());
   TEST_ASSERT((ra_rtc()->RCR2 & (uint8_t)0x01U) == 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_exit_stop());
   TEST_ASSERT((ra_rtc()->RCR2 & (uint8_t)0x01U) != 0U);
   TEST_END("rtc power transition");
 }
@@ -321,7 +319,7 @@ static void test_mcdc_set_alarm_range_guard(void)
 {
   TEST_BEGIN("mcdc rtc_set_alarm range guard");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
   ra_rtc_datetime_t a = {.year    = (uint16_t)2026,
                          .month   = (uint8_t)1,
                          .day     = (uint8_t)1,
@@ -330,18 +328,18 @@ static void test_mcdc_set_alarm_range_guard(void)
                          .minute  = 0U,
                          .second  = 0U};
   /* Vector A: all in range. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_alarm(&a));
   /* Vector B: bad hour only. */
   a.hour = (uint8_t)24;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
   /* Vector C: bad minute only. */
   a.hour   = 0U;
   a.minute = (uint8_t)60;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
   /* Vector D: bad second only. */
   a.minute = 0U;
   a.second = (uint8_t)60;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
   TEST_END("mcdc rtc_set_alarm range guard");
 }
 

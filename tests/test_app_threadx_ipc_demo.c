@@ -60,11 +60,11 @@ static void test_ipc_demo_resolve_send_recv_channels(void)
   uint8_t send_ch = 0xFFU;
   uint8_t recv_ch = 0xFFU;
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
+    k_ra_ok,
+    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
+    k_ra_ok,
+    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
   TEST_ASSERT(send_ch < 4U);
   TEST_ASSERT(recv_ch < 4U);
   TEST_END("ipc_demo: resolve M85 send + recv channel ids");
@@ -85,11 +85,11 @@ static void test_ipc_demo_init_both_channels(void)
   uint8_t send_ch = 0U;
   uint8_t recv_ch = 0U;
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
+    k_ra_ok,
+    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
+    k_ra_ok,
+    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
 
   ra_ipc_config_t cfg_send = {
     .channel      = send_ch,
@@ -103,8 +103,8 @@ static void test_ipc_demo_init_both_channels(void)
     .clear_status = true,
     .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_init(&cfg_send));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_init(&cfg_recv));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg_send));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg_recv));
   TEST_END("ipc_demo: init send + recv channels");
 }
 
@@ -121,15 +121,15 @@ static void test_ipc_demo_send_ping_with_retry(void)
   reset_world();
   uint8_t send_ch = 0U;
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
+    k_ra_ok,
+    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
   ra_ipc_config_t cfg = {
     .channel      = send_ch,
     .reset_fifo   = true,
     .clear_status = true,
     .event_mask   = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   TEST_BEGIN("ipc_demo: send_message_retry(ping)");
   ra_err_t err = ra_ipc_send_message_retry(send_ch,
@@ -152,15 +152,15 @@ static void test_ipc_demo_recv_returns_no_data(void)
   reset_world();
   uint8_t recv_ch = 0U;
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
+    k_ra_ok,
+    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
   ra_ipc_config_t cfg = {
     .channel      = recv_ch,
     .reset_fifo   = true,
     .clear_status = true,
     .event_mask   = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
 
   TEST_BEGIN("ipc_demo: recv on empty channel returns no_data");
   uint32_t msg = 0U;
@@ -181,8 +181,8 @@ static void test_ipc_demo_resolve_rejects_null(void)
   reset_world();
   TEST_BEGIN("ipc_demo: channel_for_send rejects NULL out");
   TEST_ASSERT_EQ(
-    (int)k_ra_err_null_ptr,
-    (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, NULL));
+    k_ra_err_null_ptr,
+    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, nullptr));
   TEST_END("ipc_demo: channel_for_send rejects NULL out");
 }
 

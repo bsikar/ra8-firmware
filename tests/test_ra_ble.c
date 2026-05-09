@@ -60,7 +60,7 @@ static void prep_open(void)
   /* If a previous test left the driver open, force-close. */
   (void)ra_ble_close();
   const ra_ble_config_t cfg = {.use_external_osc = 1U, .deep_sleep_enable = 1U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_open(&cfg));
   ra_ble_test_reset_capture();
 }
 
@@ -107,10 +107,10 @@ static void test_open_close(void)
   ra_sim_mmap_reset();
   (void)ra_ble_close();
   const ra_ble_config_t cfg = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_close());
   TEST_END("ble open + close");
 }
 
@@ -125,7 +125,7 @@ static void test_open_null_cfg(void)
   TEST_BEGIN("ble open NULL cfg");
   ra_sim_mmap_reset();
   (void)ra_ble_close();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ble_open(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_open(nullptr));
   TEST_END("ble open NULL cfg");
 }
 
@@ -140,8 +140,8 @@ static void test_send_command_before_open(void)
   TEST_BEGIN("ble cmd before open rejected");
   ra_sim_mmap_reset();
   (void)ra_ble_close();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 0U));
   TEST_END("ble cmd before open rejected");
 }
 
@@ -156,25 +156,25 @@ static void test_hci_send_command_framing(void)
   TEST_BEGIN("ble hci_send_command framing");
   prep_open();
   const uint8_t params[3] = {0xAAU, 0xBBU, 0xCCU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable,
-                                                  params,
-                                                  (uint8_t)sizeof(params)));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable,
+                                         params,
+                                         (uint8_t)sizeof(params)));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
-  TEST_ASSERT_EQ((int32_t)7, (int32_t)cap_len); /* 1 + 2 + 1 + 3 */
-  TEST_ASSERT_EQ((int32_t)k_test_byte_pkt_cmd, (int32_t)cap[0]);
-  TEST_ASSERT_EQ((int32_t)0x0AU, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)cap[3]);
-  TEST_ASSERT_EQ((int32_t)0xAAU, (int32_t)cap[4]);
-  TEST_ASSERT_EQ((int32_t)0xBBU, (int32_t)cap[5]);
-  TEST_ASSERT_EQ((int32_t)0xCCU, (int32_t)cap[6]);
+  TEST_ASSERT_EQ(7, cap_len); /* 1 + 2 + 1 + 3 */
+  TEST_ASSERT_EQ(k_test_byte_pkt_cmd, cap[0]);
+  TEST_ASSERT_EQ(0x0AU, cap[1]);
+  TEST_ASSERT_EQ(0x20U, cap[2]);
+  TEST_ASSERT_EQ(3, cap[3]);
+  TEST_ASSERT_EQ(0xAAU, cap[4]);
+  TEST_ASSERT_EQ(0xBBU, cap[5]);
+  TEST_ASSERT_EQ(0xCCU, cap[6]);
   /* Null with zero-len OK, null with non-zero rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 1U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 1U));
   TEST_END("ble hci_send_command framing");
 }
 
@@ -189,19 +189,18 @@ static void test_hci_send_acl_framing(void)
   TEST_BEGIN("ble hci_send_acl_data framing");
   prep_open();
   const uint8_t payload[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle,
-                                                   payload,
-                                                   (uint16_t)sizeof(payload)));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, payload, (uint16_t)sizeof(payload)));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
-  TEST_ASSERT_EQ((int32_t)9, (int32_t)cap_len); /* 1 + 2 + 2 + 4 */
-  TEST_ASSERT_EQ((int32_t)k_test_byte_pkt_acl, (int32_t)cap[0]);
-  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)0x04U, (int32_t)cap[3]);
-  TEST_ASSERT_EQ((int32_t)0x00U, (int32_t)cap[4]);
-  TEST_ASSERT_EQ((int32_t)0xDEU, (int32_t)cap[5]);
+  TEST_ASSERT_EQ(9, cap_len); /* 1 + 2 + 2 + 4 */
+  TEST_ASSERT_EQ(k_test_byte_pkt_acl, cap[0]);
+  TEST_ASSERT_EQ(0x42U, cap[1]);
+  TEST_ASSERT_EQ(0x00U, cap[2]);
+  TEST_ASSERT_EQ(0x04U, cap[3]);
+  TEST_ASSERT_EQ(0x00U, cap[4]);
+  TEST_ASSERT_EQ(0xDEU, cap[5]);
   TEST_END("ble hci_send_acl_data framing");
 }
 
@@ -216,8 +215,7 @@ static void test_event_dispatch(void)
   TEST_BEGIN("ble event dispatch synthesises LE_Connection_Complete");
   prep_open();
   s_evt_count = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_attach_event_handler(stub_evt_cb, (void*)(uintptr_t)0xCDU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_attach_event_handler(stub_evt_cb, (void*)(uintptr_t)0xCDU));
   /* Synthesise an LE Meta event with subevent 0x01 and 1 param byte. */
   const uint8_t inj[5] = {
     (uint8_t)k_test_byte_pkt_event,
@@ -227,12 +225,12 @@ static void test_event_dispatch(void)
     (uint8_t)0x77U,
   };
   ra_ble_test_inject_rx(inj, (uint16_t)sizeof(inj));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_dispatch());
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_evt_count);
-  TEST_ASSERT_EQ((int32_t)k_test_byte_evt_le_meta, (int32_t)s_evt_last_code);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)s_evt_last_plen);
-  TEST_ASSERT_EQ((int32_t)k_test_byte_evt_subev_cc, (int32_t)s_evt_last_param0);
-  TEST_ASSERT_EQ((int64_t)(uintptr_t)0xCDU, (int64_t)(uintptr_t)s_evt_last_ctx);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_dispatch());
+  TEST_ASSERT_EQ(1, s_evt_count);
+  TEST_ASSERT_EQ(k_test_byte_evt_le_meta, s_evt_last_code);
+  TEST_ASSERT_EQ(2U, s_evt_last_plen);
+  TEST_ASSERT_EQ(k_test_byte_evt_subev_cc, s_evt_last_param0);
+  TEST_ASSERT_EQ((uintptr_t)0xCDU, (uintptr_t)s_evt_last_ctx);
   TEST_END("ble event dispatch synthesises LE_Connection_Complete");
 }
 
@@ -247,7 +245,7 @@ static void test_acl_dispatch(void)
   TEST_BEGIN("ble acl dispatch");
   prep_open();
   s_acl_count = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_attach_acl_handler(stub_acl_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_attach_acl_handler(stub_acl_cb, nullptr));
   const uint8_t inj[7] = {
     (uint8_t)k_test_byte_pkt_acl,
     (uint8_t)0x42U,
@@ -258,11 +256,11 @@ static void test_acl_dispatch(void)
     (uint8_t)0x5AU,
   };
   ra_ble_test_inject_rx(inj, (uint16_t)sizeof(inj));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_dispatch());
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_acl_count);
-  TEST_ASSERT_EQ((int32_t)0x0042U, (int32_t)s_acl_last_handle);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)s_acl_last_len);
-  TEST_ASSERT_EQ((int32_t)0xA5U, (int32_t)s_acl_last_payload0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_dispatch());
+  TEST_ASSERT_EQ(1, s_acl_count);
+  TEST_ASSERT_EQ(0x0042U, s_acl_last_handle);
+  TEST_ASSERT_EQ(2U, s_acl_last_len);
+  TEST_ASSERT_EQ(0xA5U, s_acl_last_payload0);
   TEST_END("ble acl dispatch");
 }
 
@@ -284,16 +282,16 @@ static void test_set_random_address(void)
     (uint8_t)k_test_addr_byte_4,
     (uint8_t)k_test_addr_byte_5,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_set_random_address(addr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_set_random_address(addr));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
-  TEST_ASSERT_EQ((int32_t)10, (int32_t)cap_len); /* 1 + 2 + 1 + 6 */
-  TEST_ASSERT_EQ((int32_t)0x05U, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)6U, (int32_t)cap[3]);
-  TEST_ASSERT_EQ((int32_t)k_test_addr_byte_0, (int32_t)cap[4]);
-  TEST_ASSERT_EQ((int32_t)k_test_addr_byte_5, (int32_t)cap[9]);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ble_set_random_address(NULL));
+  TEST_ASSERT_EQ(10, cap_len); /* 1 + 2 + 1 + 6 */
+  TEST_ASSERT_EQ(0x05U, cap[1]);
+  TEST_ASSERT_EQ(0x20U, cap[2]);
+  TEST_ASSERT_EQ(6U, cap[3]);
+  TEST_ASSERT_EQ(k_test_addr_byte_0, cap[4]);
+  TEST_ASSERT_EQ(k_test_addr_byte_5, cap[9]);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_set_random_address(nullptr));
   TEST_END("ble set_random_address");
 }
 
@@ -308,26 +306,24 @@ static void test_set_advertising_data(void)
   TEST_BEGIN("ble set_advertising_data");
   prep_open();
   const uint8_t data[5] = {0x02U, 0x01U, 0x06U, 0x00U, 0x00U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_set_advertising_data(data, (uint8_t)sizeof(data)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_set_advertising_data(data, (uint8_t)sizeof(data)));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   /* HCI cmd: 1+2+1 framing + (1 length-prefix + 5 payload) = 10. */
-  TEST_ASSERT_EQ((int32_t)10, (int32_t)cap_len);
-  TEST_ASSERT_EQ((int32_t)0x08U, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)6U, (int32_t)cap[3]);
-  TEST_ASSERT_EQ((int32_t)5U, (int32_t)cap[4]); /* spec length prefix */
-  TEST_ASSERT_EQ((int32_t)0x02U, (int32_t)cap[5]);
+  TEST_ASSERT_EQ(10, cap_len);
+  TEST_ASSERT_EQ(0x08U, cap[1]);
+  TEST_ASSERT_EQ(0x20U, cap[2]);
+  TEST_ASSERT_EQ(6U, cap[3]);
+  TEST_ASSERT_EQ(5U, cap[4]); /* spec length prefix */
+  TEST_ASSERT_EQ(0x02U, cap[5]);
 
   /* Oversized adv data rejected. */
   uint8_t big[k_ra_ble_adv_data_max + 1U] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_set_advertising_data(big, (uint8_t)sizeof(big)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_set_advertising_data(big, (uint8_t)sizeof(big)));
   /* NULL with non-zero len rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ble_set_advertising_data(NULL, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_set_advertising_data(nullptr, 1U));
   /* NULL with zero len allowed. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_set_advertising_data(NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_set_advertising_data(nullptr, 0U));
   TEST_END("ble set_advertising_data");
 }
 
@@ -341,14 +337,14 @@ static void test_set_advertising_enable(void)
 {
   TEST_BEGIN("ble set_advertising_enable");
   prep_open();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_set_advertising_enable(1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_set_advertising_enable(1U));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
-  TEST_ASSERT_EQ((int32_t)5, (int32_t)cap_len);
-  TEST_ASSERT_EQ((int32_t)0x0AU, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)cap[3]);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)cap[4]);
+  TEST_ASSERT_EQ(5, cap_len);
+  TEST_ASSERT_EQ(0x0AU, cap[1]);
+  TEST_ASSERT_EQ(0x20U, cap[2]);
+  TEST_ASSERT_EQ(1U, cap[3]);
+  TEST_ASSERT_EQ(1U, cap[4]);
   TEST_END("ble set_advertising_enable");
 }
 
@@ -363,35 +359,34 @@ static void test_scan_start(void)
   TEST_BEGIN("ble scan_start emits two HCI commands");
   prep_open();
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ble_scan_start(1U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_window));
+    k_ra_ok,
+    ra_ble_scan_start(1U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_window));
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   /* set_scan_params: 1+2+1+7 = 11; set_scan_enable: 1+2+1+2 = 6; total 17. */
-  TEST_ASSERT_EQ((int32_t)17, (int32_t)cap_len);
-  TEST_ASSERT_EQ((int32_t)0x0BU, (int32_t)cap[1]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
-  TEST_ASSERT_EQ((int32_t)7U, (int32_t)cap[3]);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)cap[4]); /* active */
-  TEST_ASSERT_EQ((int32_t)(k_test_scan_interval & 0xFFU), (int32_t)cap[5]);
-  TEST_ASSERT_EQ((int32_t)(k_test_scan_interval >> 8), (int32_t)cap[6]);
-  TEST_ASSERT_EQ((int32_t)(k_test_scan_window & 0xFFU), (int32_t)cap[7]);
-  TEST_ASSERT_EQ((int32_t)(k_test_scan_window >> 8), (int32_t)cap[8]);
+  TEST_ASSERT_EQ(17, cap_len);
+  TEST_ASSERT_EQ(0x0BU, cap[1]);
+  TEST_ASSERT_EQ(0x20U, cap[2]);
+  TEST_ASSERT_EQ(7U, cap[3]);
+  TEST_ASSERT_EQ(1U, cap[4]); /* active */
+  TEST_ASSERT_EQ((k_test_scan_interval & 0xFFU), cap[5]);
+  TEST_ASSERT_EQ((k_test_scan_interval >> 8), cap[6]);
+  TEST_ASSERT_EQ((k_test_scan_window & 0xFFU), cap[7]);
+  TEST_ASSERT_EQ((k_test_scan_window >> 8), cap[8]);
   /* Second command starts at offset 11. */
-  TEST_ASSERT_EQ((int32_t)k_test_byte_pkt_cmd, (int32_t)cap[11]);
-  TEST_ASSERT_EQ((int32_t)0x0CU, (int32_t)cap[12]);
-  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[13]);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)cap[14]);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)cap[15]); /* enable */
+  TEST_ASSERT_EQ(k_test_byte_pkt_cmd, cap[11]);
+  TEST_ASSERT_EQ(0x0CU, cap[12]);
+  TEST_ASSERT_EQ(0x20U, cap[13]);
+  TEST_ASSERT_EQ(2U, cap[14]);
+  TEST_ASSERT_EQ(1U, cap[15]); /* enable */
 
   /* Bad params rejected. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_bad, (uint16_t)k_test_scan_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_scan_start(0U, (uint16_t)k_test_scan_bad, (uint16_t)k_test_scan_bad));
   /* Window > interval rejected. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_window, (uint16_t)k_test_scan_interval));
+    k_ra_err_invalid_arg,
+    ra_ble_scan_start(0U, (uint16_t)k_test_scan_window, (uint16_t)k_test_scan_interval));
   TEST_END("ble scan_start emits two HCI commands");
 }
 
@@ -406,7 +401,7 @@ static void test_dispatch_before_open(void)
   TEST_BEGIN("ble dispatch before open rejected");
   ra_sim_mmap_reset();
   (void)ra_ble_close();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_dispatch());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_dispatch());
   TEST_END("ble dispatch before open rejected");
 }
 
@@ -420,11 +415,11 @@ static void test_attach_handlers_idempotent(void)
 {
   TEST_BEGIN("ble attach handlers detach + reattach");
   prep_open();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_attach_event_handler(NULL, NULL));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_attach_acl_handler(NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_attach_event_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_attach_acl_handler(nullptr, nullptr));
   /* Dispatching with no handlers attached should still return ok on
    * empty / quiet inputs. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_dispatch());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_dispatch());
   TEST_END("ble attach handlers detach + reattach");
 }
 
@@ -458,32 +453,29 @@ static void test_mcdc_ble(void)
 
   /* Decision A vectors. */
   uint8_t pbuf[4] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, pbuf, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 4U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, pbuf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 4U));
 
   /* Decision B + C: scan_start interval / window range gates.
    * Use a known-valid (interval, window) and known-bad probes. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_window));
+    k_ra_ok,
+    ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_window));
   /* Decision B V2: interval too small. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_bad, (uint16_t)k_test_scan_window));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_scan_start(0U, (uint16_t)k_test_scan_bad, (uint16_t)k_test_scan_window));
   /* Decision B V3: interval too large (> scan_max). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_scan_start(0U, 0xFFFFU, (uint16_t)k_test_scan_window));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_scan_start(0U, 0xFFFFU, (uint16_t)k_test_scan_window));
   /* Decision C V2: window too small. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_bad));
   /* Decision C V3: window too large. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, 0xFFFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, 0xFFFFU));
   TEST_END("ble MC/DC: hci_send_command + scan_start range decisions");
 }
 
@@ -516,21 +508,19 @@ static void test_mcdc_ble_acl_inject_args(void)
   /* Decision A. */
   const uint8_t pl[4] = {0U};
   /* V1 */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, pl, (uint16_t)sizeof(pl)));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, pl, (uint16_t)sizeof(pl)));
   /* V2 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, nullptr, 0U));
   /* V3 */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, NULL, 4U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, nullptr, 4U));
 
   /* Decision B (inject_rx returns void; verify by absence of crash and
    * that subsequent dispatch sees no spurious bytes). */
   const uint8_t inj[2] = {0xAAU, 0xBBU};
   ra_ble_test_inject_rx(inj, (uint16_t)sizeof(inj)); /* V1 */
-  ra_ble_test_inject_rx(NULL, 4U);                   /* V2: short-circuit */
+  ra_ble_test_inject_rx(nullptr, 4U);                /* V2: short-circuit */
   ra_ble_test_inject_rx(inj, 0U);                    /* V3 */
 
   TEST_END("ble MC/DC: send_acl_data + inject_rx arg pairs");

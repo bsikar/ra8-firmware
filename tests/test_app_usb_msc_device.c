@@ -96,12 +96,10 @@ static void test_msc_pfs_routes_usbfs_pins(void)
 {
   reset_world();
   TEST_BEGIN("usb_msc_device: PFS routes USB-FS pins");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_msc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_msc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_msc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pfs_route_peripheral(k_test_msc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_msc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_msc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
   TEST_END("usb_msc_device: PFS routes USB-FS pins");
 }
 
@@ -116,18 +114,18 @@ static void test_msc_open_bulk_endpoint_pair(void)
 {
   reset_world();
   TEST_BEGIN("usb_msc_device: open bulk EP1 IN + EP2 OUT");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_in,
-                                         k_ra_usb_pal_ep_dir_in,
-                                         k_ra_usb_pal_ep_type_bulk,
-                                         (uint16_t)k_test_msc_max_packet));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_out,
-                                         k_ra_usb_pal_ep_dir_out,
-                                         k_ra_usb_pal_ep_type_bulk,
-                                         (uint16_t)k_test_msc_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_in,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)k_test_msc_max_packet));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_out,
+                                    k_ra_usb_pal_ep_dir_out,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)k_test_msc_max_packet));
   TEST_END("usb_msc_device: open bulk EP1 IN + EP2 OUT");
 }
 
@@ -146,7 +144,7 @@ static void test_msc_read_lba0_in_range(void)
   /* Replay copy semantics: one block out of the disk. */
   uint8_t buf[k_test_msc_block_size];
   (void)memcpy(buf, &s_test_msc_ramdisk[0], (size_t)k_test_msc_block_size);
-  TEST_ASSERT_EQ(0, (int)buf[0]);
+  TEST_ASSERT_EQ(0, buf[0]);
   TEST_END("usb_msc_device: SCSI READ LBA 0 fits in RAM-disk");
 }
 
@@ -167,8 +165,7 @@ static void test_msc_write_last_block_in_range(void)
   (void)memcpy(&s_test_msc_ramdisk[(k_test_msc_block_count - 1U) * k_test_msc_block_size],
                pat,
                sizeof(pat));
-  TEST_ASSERT_EQ(0xAA,
-                 (int)s_test_msc_ramdisk[(k_test_msc_block_count - 1U) * k_test_msc_block_size]);
+  TEST_ASSERT_EQ(0xAA, s_test_msc_ramdisk[(k_test_msc_block_count - 1U) * k_test_msc_block_size]);
   TEST_END("usb_msc_device: SCSI WRITE last block fits");
 }
 

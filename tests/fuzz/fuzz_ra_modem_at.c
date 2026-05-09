@@ -74,9 +74,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   s_now_ms  = 0U;
 
   ra_modem_at_cfg_t cfg = {
-    .io                 = {.tx_byte = fuzz_tx, .rx_byte = fuzz_rx, .now_ms = fuzz_now, .ctx = NULL},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = fuzz_tx, .rx_byte = fuzz_rx, .now_ms = fuzz_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 50U,
   };
   if (ra_modem_at_init(&cfg) != k_ra_ok) {

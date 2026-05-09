@@ -71,12 +71,10 @@ static void test_mcdc_ra_nsc_eth(void)
   TEST_ASSERT(v1 != k_ra_err_invalid_arg);
 
   /* V2: len=0 -> dec T via C1 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_zero));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_zero));
 
   /* V3: len=1519 (one past max) -> dec T via C2 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_over));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_over));
 
   /* Bonus: maximum still accepted (not part of the N+1 set, but
    * confirms the ``>`` is strict). */

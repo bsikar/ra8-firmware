@@ -53,7 +53,7 @@ static void test_sci_init_forwards(void)
 {
   TEST_BEGIN("ra_nsc_sci_init forwards to ra_sci_init");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_init(0U, &k_sci_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_sci_init(0U, &k_sci_cfg));
   TEST_END("ra_nsc_sci_init forwards to ra_sci_init");
 }
 
@@ -67,7 +67,7 @@ static void test_sci_init_null(void)
 {
   TEST_BEGIN("ra_nsc_sci_init: NULL cfg rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_sci_init(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_sci_init(0U, nullptr));
   TEST_END("ra_nsc_sci_init: NULL cfg rejected");
 }
 
@@ -81,15 +81,15 @@ static void test_sci_putc_getc_round_trip(void)
 {
   TEST_BEGIN("ra_nsc_sci_{putc,getc} round trip");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_init(0U, &k_sci_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_sci_init(0U, &k_sci_cfg));
   /* Pre-set CSR.TDRE / CSR.RDRF so the polling paths see the
    * "ready" flags the real hardware would supply. */
   volatile r_sci_regs_t* reg = ra_sci(0U);
   reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre) | (1U << (uint8_t)k_ra_sci_csr_bit_rdrf);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_putc(0U, 0xA5U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_sci_putc(0U, 0xA5U));
   uint8_t b = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_getc(0U, &b));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_sci_getc(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_sci_getc(0U, &b));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_sci_getc(0U, nullptr));
   TEST_END("ra_nsc_sci_{putc,getc} round trip");
 }
 
@@ -107,8 +107,8 @@ static void test_iic_init_forwards(void)
 {
   TEST_BEGIN("ra_nsc_iic_init forwards");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_iic_init(0U, &k_iic_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_iic_init(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_iic_init(0U, &k_iic_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_iic_init(0U, nullptr));
   TEST_END("ra_nsc_iic_init forwards");
 }
 
@@ -122,10 +122,10 @@ static void test_iic_write_read_null(void)
 {
   TEST_BEGIN("ra_nsc_iic_{write,read}: NULL rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_iic_init(0U, &k_iic_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_iic_write(0U, 0x50U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_iic_init(0U, &k_iic_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_iic_write(0U, 0x50U, nullptr, 0U));
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_iic_read(0U, 0x50U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_iic_read(0U, 0x50U, nullptr, 1U));
   /* Forward path: zero-length write is a legal stub call. */
   (void)ra_nsc_iic_write(0U, 0x50U, buf, 0U);
   TEST_END("ra_nsc_iic_{write,read}: NULL rejected");
@@ -149,18 +149,18 @@ static void test_spi_init_and_xfer(void)
   cfg.mode         = k_ra_spi_mode_0;
   cfg.baud_hz      = 1000000U;
   cfg.pclka_hz     = 60000000U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_init(0U, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_init(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_init(0U, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_init(0U, nullptr));
 
   /* Pre-set SPSR.SPTEF + SPRF so the polling xfer sees ready flags.
    * SPI_B keeps both flags in SPSR's high half (bits 29 + 31). */
   volatile r_spi_regs_t* sreg = ra_spi(0U);
   sreg->SPSR                  = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
   uint8_t rx                  = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_xfer8(0U, 0xCAU, &rx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_xfer8(0U, 0xCAU, &rx));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
   /* NULL rx is legal for the legacy ra_spi_xfer8 contract. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_xfer8(0U, 0xCAU, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_xfer8(0U, 0xCAU, nullptr));
   TEST_END("ra_nsc_spi_init + xfer8");
 }
 
@@ -189,26 +189,21 @@ static void test_spi_bulk_xfers(void)
   volatile r_spi_regs_t* sreg = ra_spi(0U);
   sreg->SPSR                  = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_write(0U, tx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_write(0U, tx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_nsc_spi_write(0U, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_write(0U, nullptr, 4U, k_ra_spi_width_8));
 
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_read(0U, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_read(0U, rx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_nsc_spi_read(0U, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_read(0U, nullptr, 4U, k_ra_spi_width_8));
 
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_nsc_spi_write_read(0U, tx, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_write_read(0U, tx, rx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_nsc_spi_write_read(0U, nullptr, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_write_read(0U, nullptr, rx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_nsc_spi_write_read(0U, tx, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_write_read(0U, tx, nullptr, 4U, k_ra_spi_width_8));
 
   TEST_END("ra_nsc_spi bulk transfers");
 }
@@ -227,9 +222,9 @@ static void test_usb_init_and_attach(void)
 {
   TEST_BEGIN("ra_nsc_usb_{init,attach} forwards");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_usb_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_usb_attach(k_ra_usb_speed_fs, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_usb_attach(k_ra_usb_speed_fs, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_usb_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_usb_attach(k_ra_usb_speed_fs, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_usb_attach(k_ra_usb_speed_fs, false));
   TEST_END("ra_nsc_usb_{init,attach} forwards");
 }
 

@@ -85,7 +85,7 @@ static void test_dma_app_fill(void)
     accum_dst |= s_dst[i];
   }
   TEST_ASSERT(accum_src != 0U);
-  TEST_ASSERT_EQ((int)0U, (int)accum_dst);
+  TEST_ASSERT_EQ(0U, accum_dst);
   TEST_END("dma_memcopy_demo: fill produces non-trivial src + zero dst");
 }
 
@@ -104,10 +104,10 @@ static void test_dma_app_verify_branches(void)
   fill_buffers();
   /* Manually mirror src -> dst to exercise the match branch. */
   (void)memcpy(s_dst, s_src, sizeof(s_src));
-  TEST_ASSERT_EQ((int)1U, (int)verify());
+  TEST_ASSERT_EQ(1U, verify());
   /* Flip one byte and re-verify -- mismatch branch. */
   s_dst[0] ^= 0x1U;
-  TEST_ASSERT_EQ((int)0U, (int)verify());
+  TEST_ASSERT_EQ(0U, verify());
   TEST_END("dma_memcopy_demo: verify covers match + mismatch");
 }
 
@@ -132,12 +132,12 @@ static void test_dma_app_start_programmes_regs(void)
     .src_inc = true,
     .dst_inc = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_t_dma_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_t_dma_channel, &cfg));
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_t_dma_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int)(uint32_t)(uintptr_t)s_src, (int)reg->DMSAR);
-  TEST_ASSERT_EQ((int)(uint32_t)(uintptr_t)s_dst, (int)reg->DMDAR);
-  TEST_ASSERT_EQ((int)k_t_dma_words, (int)reg->DMCRA);
+  TEST_ASSERT_EQ((uintptr_t)s_src, reg->DMSAR);
+  TEST_ASSERT_EQ((uintptr_t)s_dst, reg->DMDAR);
+  TEST_ASSERT_EQ(k_t_dma_words, reg->DMCRA);
   (void)ra_dmac_stop((uint8_t)k_t_dma_channel);
   TEST_END("dma_memcopy_demo: start programmes DMSAR/DMDAR/DMCRA");
 }

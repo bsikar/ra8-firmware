@@ -73,8 +73,8 @@ static void test_get_cause_unknown_when_all_zero(void)
   prep();
 
   ra_reset_cause_t cause = k_ra_reset_cause_software;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_unknown, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_unknown, cause);
 
   TEST_END("reset get_cause unknown when all zero");
 }
@@ -93,8 +93,8 @@ static void test_get_cause_porf(void)
   *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_porf_msk;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_power_on, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_power_on, cause);
 
   TEST_END("reset get_cause power-on");
 }
@@ -113,8 +113,8 @@ static void test_get_cause_swrf(void)
   *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_swrf_msk;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_software, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_software, cause);
 
   TEST_END("reset get_cause software");
 }
@@ -133,8 +133,8 @@ static void test_get_cause_iwdt(void)
   *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_iwdtrf_msk;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_iwdt, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_iwdt, cause);
 
   TEST_END("reset get_cause iwdt");
 }
@@ -153,8 +153,8 @@ static void test_get_cause_temperature(void)
   *ra_reset_rstsr3() = (uint8_t)k_ra_reset_rstsr3_temprf_msk;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_temperature, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_temperature, cause);
 
   TEST_END("reset get_cause temperature");
 }
@@ -173,8 +173,8 @@ static void test_get_cause_warm_start(void)
   *ra_reset_rstsr2() = (uint8_t)k_ra_reset_rstsr2_cwsf_msk;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_warm_start, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_warm_start, cause);
 
   TEST_END("reset get_cause warm start");
 }
@@ -195,8 +195,8 @@ static void test_get_cause_priority_porf_over_iwdt(void)
   *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_iwdtrf_msk;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_power_on, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_power_on, cause);
 
   TEST_END("reset get_cause priority POR > IWDT");
 }
@@ -216,7 +216,7 @@ static void test_get_cause_null_out(void)
   TEST_BEGIN("reset get_cause null out");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_reset_get_cause(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reset_get_cause(nullptr));
 
   TEST_END("reset get_cause null out");
 }
@@ -238,15 +238,15 @@ static void test_init_snapshot_survives_clear(void)
 
   *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_swrf_msk;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_init());
 
   /* External code (e.g. another driver) clears the live register. */
   *ra_reset_rstsr1() = 0U;
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
   /* The snapshot still says SOFTWARE because init captured it. */
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_cause_software, (int32_t)cause);
+  TEST_ASSERT_EQ(k_ra_reset_cause_software, cause);
 
   TEST_END("reset init snapshot survives subsequent register clear");
 }
@@ -268,12 +268,12 @@ static void test_get_raw_returns_register_words(void)
   *ra_reset_rstsr3() = (uint8_t)k_ra_reset_rstsr3_cvmrf_msk;
 
   ra_reset_raw_t raw = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_raw(&raw));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_raw(&raw));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_rstsr0_lvd1rf_msk, (int32_t)raw.rstsr0);
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_rstsr1_wdt1rf_msk, (int32_t)raw.rstsr1);
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_rstsr2_cwsf_msk, (int32_t)raw.rstsr2);
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_rstsr3_cvmrf_msk, (int32_t)raw.rstsr3);
+  TEST_ASSERT_EQ(k_ra_reset_rstsr0_lvd1rf_msk, raw.rstsr0);
+  TEST_ASSERT_EQ(k_ra_reset_rstsr1_wdt1rf_msk, raw.rstsr1);
+  TEST_ASSERT_EQ(k_ra_reset_rstsr2_cwsf_msk, raw.rstsr2);
+  TEST_ASSERT_EQ(k_ra_reset_rstsr3_cvmrf_msk, raw.rstsr3);
 
   TEST_END("reset get_raw returns register words");
 }
@@ -289,7 +289,7 @@ static void test_get_raw_null_out(void)
   TEST_BEGIN("reset get_raw null out");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_reset_get_raw(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reset_get_raw(nullptr));
 
   TEST_END("reset get_raw null out");
 }
@@ -312,10 +312,9 @@ static void test_clear_cause_rstsr0(void)
   *ra_reset_rstsr0() =
     (uint8_t)((uint8_t)k_ra_reset_rstsr0_porf_msk | (uint8_t)k_ra_reset_rstsr0_lvd1rf_msk);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_all_r0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_all_r0));
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_reset_rstsr0());
+  TEST_ASSERT_EQ(0, *ra_reset_rstsr0());
 
   TEST_END("reset clear_cause clears RSTSR0 bits");
 }
@@ -335,11 +334,10 @@ static void test_clear_cause_rstsr1_swrf(void)
     (uint32_t)k_ra_reset_rstsr1_swrf_msk | (uint32_t)k_ra_reset_rstsr1_iwdtrf_msk;
 
   /* Mask packs RSTSR1.SWRF (bit 2) at mask[10] -- helper enum value. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_swrf));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_swrf));
 
   /* SWRF cleared, IWDTRF preserved. */
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_rstsr1_iwdtrf_msk, (int32_t)*ra_reset_rstsr1());
+  TEST_ASSERT_EQ(k_ra_reset_rstsr1_iwdtrf_msk, *ra_reset_rstsr1());
 
   TEST_END("reset clear_cause clears RSTSR1.SWRF only");
 }
@@ -357,8 +355,8 @@ static void test_clear_cause_zero_mask_is_noop(void)
 
   *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_porf_msk;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_clear_cause(0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_rstsr0_porf_msk, (int32_t)*ra_reset_rstsr0());
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_clear_cause(0U));
+  TEST_ASSERT_EQ(k_ra_reset_rstsr0_porf_msk, *ra_reset_rstsr0());
 
   TEST_END("reset clear_cause zero mask is a no-op");
 }
@@ -381,8 +379,8 @@ static void test_get_attribution(void)
   *ra_reset_rstsar() = (uint32_t)k_ra_reset_test_attribution_v;
 
   uint32_t value = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_reset_get_attribution(&value));
-  TEST_ASSERT_EQ((int32_t)k_ra_reset_test_attribution_v, (int32_t)value);
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_attribution(&value));
+  TEST_ASSERT_EQ(k_ra_reset_test_attribution_v, value);
 
   TEST_END("reset get_attribution returns RSTSAR");
 }
@@ -398,7 +396,7 @@ static void test_get_attribution_null_out(void)
   TEST_BEGIN("reset get_attribution null out");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_reset_get_attribution(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reset_get_attribution(nullptr));
 
   TEST_END("reset get_attribution null out");
 }
@@ -426,7 +424,7 @@ static void test_software_reset_writes_aircr(void)
   const uint32_t expected =
     ((uint32_t)k_ra_reset_aircr_vectkey_value << (uint32_t)k_ra_reset_aircr_vectkey_pos) |
     (uint32_t)k_ra_reset_aircr_sysresetreq_msk;
-  TEST_ASSERT_EQ((int64_t)expected, (int64_t)*ra_reset_aircr());
+  TEST_ASSERT_EQ(expected, *ra_reset_aircr());
 
   TEST_END("reset software_reset writes AIRCR with VECTKEY+SYSRESETREQ");
 }

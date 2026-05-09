@@ -51,7 +51,7 @@ static void test_init_null_vector(void)
 {
   TEST_BEGIN("dtc init null vector");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_dtc_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dtc_init(nullptr));
   TEST_END("dtc init null vector");
 }
 
@@ -68,12 +68,12 @@ static void test_init_happy(void)
 
   void*          vec = (void*)(uintptr_t)k_ra_dtc_test_vector_addr;
   const ra_err_t err = ra_dtc_init(vec);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_dtc_regs_t* reg = ra_dtc();
-  TEST_ASSERT_EQ(0, (int)reg->DTCCR);
-  TEST_ASSERT_EQ(0, (int)reg->DTCST);
-  TEST_ASSERT_EQ((int)k_ra_dtc_test_vector_addr, (int)reg->DTCVBR);
+  TEST_ASSERT_EQ(0, reg->DTCCR);
+  TEST_ASSERT_EQ(0, reg->DTCST);
+  TEST_ASSERT_EQ(k_ra_dtc_test_vector_addr, reg->DTCVBR);
   TEST_END("dtc init happy");
 }
 
@@ -88,12 +88,12 @@ static void test_enable_then_disable(void)
   TEST_BEGIN("dtc enable then disable");
   prep();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_enable());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_enable());
   volatile r_dtc_regs_t* reg = ra_dtc();
-  TEST_ASSERT_EQ((int)k_ra_dtcst_dtcst_msk, (int)reg->DTCST);
+  TEST_ASSERT_EQ(k_ra_dtcst_dtcst_msk, reg->DTCST);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_disable());
-  TEST_ASSERT_EQ(0, (int)reg->DTCST);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_disable());
+  TEST_ASSERT_EQ(0, reg->DTCST);
   TEST_END("dtc enable then disable");
 }
 
@@ -107,10 +107,10 @@ static void test_deinit(void)
 {
   TEST_BEGIN("dtc deinit");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_init((void*)(uintptr_t)k_ra_dtc_test_vector_addr));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_init((void*)(uintptr_t)k_ra_dtc_test_vector_addr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_deinit());
   volatile r_dtc_regs_t* reg = ra_dtc();
-  TEST_ASSERT_EQ(0, (int)reg->DTCVBR);
+  TEST_ASSERT_EQ(0, reg->DTCVBR);
   TEST_END("dtc deinit");
 }
 
@@ -124,16 +124,15 @@ static void test_reconfigure(void)
 {
   TEST_BEGIN("dtc reconfigure");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_init((void*)(uintptr_t)k_ra_dtc_test_vector_addr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_dtc_reconfigure(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_init((void*)(uintptr_t)k_ra_dtc_test_vector_addr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dtc_reconfigure(nullptr));
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dtc_reconfigure((void*)(uintptr_t)k_ra_dtc_test_vector_addr2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_reconfigure((void*)(uintptr_t)k_ra_dtc_test_vector_addr2));
   volatile r_dtc_regs_t* reg = ra_dtc();
-  TEST_ASSERT_EQ((int)k_ra_dtc_test_vector_addr2, (int)reg->DTCVBR);
-  TEST_ASSERT_EQ(0, (int)reg->DTCST);
+  TEST_ASSERT_EQ(k_ra_dtc_test_vector_addr2, reg->DTCVBR);
+  TEST_ASSERT_EQ(0, reg->DTCST);
   /* FSP-aligned: reconfigure leaves DTCCR with RRS enabled (0x18). */
-  TEST_ASSERT_EQ((int)k_ra_dtccr_rrs_enable, (int)reg->DTCCR);
+  TEST_ASSERT_EQ(k_ra_dtccr_rrs_enable, reg->DTCCR);
   TEST_END("dtc reconfigure");
 }
 
@@ -150,13 +149,13 @@ static void test_status_read_and_clear(void)
 
   ra_dtc()->DTCSTS = 0xBEADU;
   uint16_t mask    = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_get_status(&mask));
-  TEST_ASSERT_EQ((int)0xBEADU, (int)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_get_status(&mask));
+  TEST_ASSERT_EQ(0xBEADU, mask);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_clear_status(0x00FFU));
-  TEST_ASSERT_EQ((int)(0xBEADU & ~0x00FFU), (int)ra_dtc()->DTCSTS);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_clear_status(0x00FFU));
+  TEST_ASSERT_EQ((0xBEADU & ~0x00FFU), ra_dtc()->DTCSTS);
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_dtc_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dtc_get_status(nullptr));
   TEST_END("dtc status read + clear");
 }
 
@@ -171,16 +170,16 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("dtc attach + dispatch");
   prep();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_attach_handler(stub_dtc_cb, (void*)(uintptr_t)0xD0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_attach_handler(stub_dtc_cb, (void*)(uintptr_t)0xD0U));
   ra_dtc()->DTCSTS = 0xCAFEU;
   ra_dtc_dispatch();
-  TEST_ASSERT_EQ((int)1, (int)s_dtc_cb_count);
-  TEST_ASSERT_EQ((int)0xCAFEU, (int)s_dtc_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_dtc_cb_count);
+  TEST_ASSERT_EQ(0xCAFEU, s_dtc_cb_last_mask);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_attach_handler(nullptr, nullptr));
   ra_dtc()->DTCSTS = 0xBEEFU;
   ra_dtc_dispatch();
-  TEST_ASSERT_EQ((int)1, (int)s_dtc_cb_count);
+  TEST_ASSERT_EQ(1, s_dtc_cb_count);
   TEST_END("dtc attach + dispatch");
 }
 
@@ -194,9 +193,9 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("dtc power transition");
   prep();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_init((void*)(uintptr_t)k_ra_dtc_test_vector_addr));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_enter_stop());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_init((void*)(uintptr_t)k_ra_dtc_test_vector_addr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_dtc_exit_stop());
   TEST_END("dtc power transition");
 }
 

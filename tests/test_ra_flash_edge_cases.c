@@ -63,7 +63,7 @@ static void test_blank_check_partial_page(void)
   TEST_BEGIN("flash blank_check on partially-erased page returns false");
   ra_sim_mmap_reset();
   const ra_flash_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_flash_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_init(&cfg));
 
   /* Stage a 32-byte page where only the first 16 bytes are erased. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_flash_edge_addr_extra_in;
@@ -75,15 +75,13 @@ static void test_blank_check_partial_page(void)
   }
 
   bool blank = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_flash_blank_check((uintptr_t)k_flash_edge_addr_extra_in, 32U, &blank));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)blank);
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_blank_check((uintptr_t)k_flash_edge_addr_extra_in, 32U, &blank));
+  TEST_ASSERT_EQ(0, blank);
 
   /* Sub-window over the first half remains blank. */
   blank = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_flash_blank_check((uintptr_t)k_flash_edge_addr_extra_in, 16U, &blank));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)blank);
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_blank_check((uintptr_t)k_flash_edge_addr_extra_in, 16U, &blank));
+  TEST_ASSERT_EQ(1, blank);
   TEST_END("flash blank_check on partially-erased page returns false");
 }
 
@@ -100,7 +98,7 @@ static void test_blank_check_page_boundary(void)
   TEST_BEGIN("flash blank_check spanning page boundary");
   ra_sim_mmap_reset();
   const ra_flash_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_flash_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_init(&cfg));
 
   /* Stage 64 bytes: first 32 dirty, second 32 erased. The check covers
    * the full span across the page boundary. */
@@ -112,9 +110,8 @@ static void test_blank_check_page_boundary(void)
     p[i] = 0xFFU;
   }
   bool blank = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_flash_blank_check((uintptr_t)k_flash_edge_addr_extra_in, 64U, &blank));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)blank);
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_blank_check((uintptr_t)k_flash_edge_addr_extra_in, 64U, &blank));
+  TEST_ASSERT_EQ(0, blank);
   TEST_END("flash blank_check spanning page boundary");
 }
 
@@ -133,20 +130,16 @@ static void test_write_block_crosses_page(void)
   const uint8_t buf[32] = {};
   /* Start at byte 30 of a page with 8 bytes of payload -> would cross
    * into the next page. The driver must reject this without writing. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_flash_write_block((uint32_t)k_ra_flash_code_start + 30U,
-                                               buf,
-                                               8U,
-                                               k_ra_flash_world_ns));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_flash_write_block((uint32_t)k_ra_flash_code_start + 30U, buf, 8U, k_ra_flash_world_ns));
   /* A clean 4-byte aligned write that fits in the page is accepted at
    * the validation stage (it still proceeds to the controller, which
    * the host substrate cannot actually drive -- we only assert the
    * arg-check path). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_flash_write_block((uint32_t)k_ra_flash_code_start + 28U,
-                                               buf,
-                                               8U,
-                                               k_ra_flash_world_ns));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_flash_write_block((uint32_t)k_ra_flash_code_start + 28U, buf, 8U, k_ra_flash_world_ns));
   TEST_END("flash write_block rejects spans crossing the 32-byte page");
 }
 
@@ -171,8 +164,8 @@ static void test_config_set_write_error_rollback(void)
     (uint32_t)k_ra_mstatr_mask_mrdy | (uint32_t)k_ra_mstatr_mask_oterr;
 
   uint16_t buf[k_ra_mram_config_set_word_count] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_error,
-                 (int32_t)ra_flash_config_set_write((uint32_t)k_flash_edge_addr_extra_in, buf));
+  TEST_ASSERT_EQ(k_ra_err_hw_error,
+                 ra_flash_config_set_write((uint32_t)k_flash_edge_addr_extra_in, buf));
   TEST_END("flash config_set_write returns hw_error when MSTATR sets OTERR");
 }
 
@@ -188,10 +181,10 @@ static void test_extra_mram_erase_bad_addr(void)
 {
   TEST_BEGIN("flash extra_mram_erase rejects address outside the window");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_flash_extra_mram_erase((uint32_t)k_flash_edge_addr_extra_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_flash_extra_mram_erase((uint32_t)k_flash_edge_addr_below_mram));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_flash_extra_mram_erase((uint32_t)k_flash_edge_addr_extra_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_flash_extra_mram_erase((uint32_t)k_flash_edge_addr_below_mram));
   TEST_END("flash extra_mram_erase rejects address outside the window");
 }
 
@@ -287,22 +280,19 @@ static void test_mcdc_flash_wait_buffer_ready_pair(void)
   /* V1: both bits set -> decision F every iteration -> timeout. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) =
     (uint8_t)(k_ra_mrcps_mask_prgbsyc | k_ra_mrcps_mask_abuffull);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_internal_wait_buffer_ready_call(2U));
 
   /* V2: PRGBSYC=1, ABUFFULL=0 -> C1=F shorts -> still decision F -> timeout. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_prgbsyc;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_internal_wait_buffer_ready_call(2U));
 
   /* V3: PRGBSYC=0, ABUFFULL=1 -> C1=T C2=F -> decision F -> timeout. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_abuffull;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_internal_wait_buffer_ready_call(2U));
 
   /* V4: both clear -> decision T -> ok on first iteration. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_internal_wait_buffer_ready_call(2U));
 
   TEST_END("flash MC/DC: wait_buffer_ready AND (line 150)");
 }
@@ -328,23 +318,20 @@ static void test_mcdc_flash_wait_commit_done_pair(void)
 
   /* V1: ABUFEMP=0, PRGBSYC=0 -> C1=F shorts -> timeout. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_internal_wait_commit_done_call(2U));
 
   /* V2: ABUFEMP=1, PRGBSYC=1 -> C1=T C2=F -> timeout. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) =
     (uint8_t)(k_ra_mrcps_mask_abufemp | k_ra_mrcps_mask_prgbsyc);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_internal_wait_commit_done_call(2U));
 
   /* V3: ABUFEMP=0, PRGBSYC=1 -> both conds F -> timeout. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_prgbsyc;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_internal_wait_commit_done_call(2U));
 
   /* V4: ABUFEMP=1, PRGBSYC=0 -> all T -> ok. */
   *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_abufemp;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_internal_wait_commit_done_call(2U));
 
   TEST_END("flash MC/DC: wait_commit_done AND (line 181)");
 }

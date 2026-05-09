@@ -100,23 +100,21 @@ static void test_mcdc_internal_spbr_zero_args(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   TEST_ASSERT(((ra_spi((uint8_t)k_test_channel_0)->SPCR3) & k_ra_spcr3_mask_spbr) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
 
   cfg.baud_hz  = 0U;
   cfg.pclka_hz = (uint32_t)k_test_pclka_hz;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)((ra_spi((uint8_t)k_test_channel_0)->SPCR3) & k_ra_spcr3_mask_spbr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(0, ((ra_spi((uint8_t)k_test_channel_0)->SPCR3) & k_ra_spcr3_mask_spbr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
 
   cfg.baud_hz  = (uint32_t)k_test_baud_hz;
   cfg.pclka_hz = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)((ra_spi((uint8_t)k_test_channel_0)->SPCR3) & k_ra_spcr3_mask_spbr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(0, ((ra_spi((uint8_t)k_test_channel_0)->SPCR3) & k_ra_spcr3_mask_spbr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC internal_spbr: baud||pclka == 0");
 }
 
@@ -139,20 +137,19 @@ static void test_mcdc_internal_spcmd_cpha(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpha));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(0, ((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpha));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
 
   cfg.mode = k_ra_spi_mode_1;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   TEST_ASSERT(((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpha) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
 
   cfg.mode = k_ra_spi_mode_3;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   TEST_ASSERT(((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpha) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC internal_spcmd: CPHA selector");
 }
 
@@ -175,20 +172,19 @@ static void test_mcdc_internal_spcmd_cpol(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpol));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(0, ((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpol));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
 
   cfg.mode = k_ra_spi_mode_2;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   TEST_ASSERT(((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpol) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
 
   cfg.mode = k_ra_spi_mode_3;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   TEST_ASSERT(((ra_spi((uint8_t)k_test_channel_0)->SPCMD[0]) & k_ra_spcmd_mask_cpol) != 0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC internal_spcmd: CPOL selector");
 }
 
@@ -213,25 +209,23 @@ static void test_mcdc_xfer_common_both_null(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
 
   uint8_t tx_buf[1] = {0xA5U};
   uint8_t rx_buf[1] = {0U};
 
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_write_read((uint8_t)k_test_channel_0, tx_buf, rx_buf, 1U, k_ra_spi_width_8));
+    k_ra_ok,
+    ra_spi_write_read((uint8_t)k_test_channel_0, tx_buf, rx_buf, 1U, k_ra_spi_width_8));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_read((uint8_t)k_test_channel_0, rx_buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read((uint8_t)k_test_channel_0, rx_buf, 1U, k_ra_spi_width_8));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write((uint8_t)k_test_channel_0, tx_buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write((uint8_t)k_test_channel_0, tx_buf, 1U, k_ra_spi_width_8));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_spi_write_read((uint8_t)k_test_channel_0, nullptr, nullptr, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+    k_ra_err_null_ptr,
+    ra_spi_write_read((uint8_t)k_test_channel_0, nullptr, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC xfer_common: tx==NULL && rx==NULL");
 }
 
@@ -253,17 +247,15 @@ static void test_mcdc_write_null_guard(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
 
   uint8_t tx_buf[1] = {0xC3U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write((uint8_t)k_test_channel_0, tx_buf, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_write((uint8_t)k_test_channel_0, nullptr, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_write((uint8_t)k_test_channel_0, nullptr, 0U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write((uint8_t)k_test_channel_0, tx_buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_spi_write((uint8_t)k_test_channel_0, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_write((uint8_t)k_test_channel_0, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC ra_spi_write: tx==NULL && len>0");
 }
 
@@ -282,17 +274,15 @@ static void test_mcdc_read_null_guard(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
 
   uint8_t rx_buf[1] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_read((uint8_t)k_test_channel_0, rx_buf, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_spi_read((uint8_t)k_test_channel_0, nullptr, 1U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_read((uint8_t)k_test_channel_0, nullptr, 0U, k_ra_spi_width_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read((uint8_t)k_test_channel_0, rx_buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_spi_read((uint8_t)k_test_channel_0, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_read((uint8_t)k_test_channel_0, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC ra_spi_read: rx==NULL && len>0");
 }
 
@@ -310,11 +300,11 @@ static void test_mcdc_write_dma_arg_guard(void)
   ra_err_t e = ra_spi_write_dma((uint8_t)k_test_channel_0, buf, 1U, nullptr, nullptr, &out_dma_ch);
   TEST_ASSERT(e != k_ra_err_invalid_arg);
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_write_dma((uint8_t)k_test_channel_oor, buf, 1U, nullptr, nullptr, &out_dma_ch));
+    k_ra_err_invalid_arg,
+    ra_spi_write_dma((uint8_t)k_test_channel_oor, buf, 1U, nullptr, nullptr, &out_dma_ch));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_write_dma((uint8_t)k_test_channel_0, buf, 0U, nullptr, nullptr, &out_dma_ch));
+    k_ra_err_invalid_arg,
+    ra_spi_write_dma((uint8_t)k_test_channel_0, buf, 0U, nullptr, nullptr, &out_dma_ch));
   TEST_END("spi_b MC/DC ra_spi_write_dma: channel || len arg guard");
 }
 
@@ -332,11 +322,11 @@ static void test_mcdc_read_dma_arg_guard(void)
   ra_err_t e = ra_spi_read_dma((uint8_t)k_test_channel_0, buf, 1U, nullptr, nullptr, &out_dma_ch);
   TEST_ASSERT(e != k_ra_err_invalid_arg);
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_read_dma((uint8_t)k_test_channel_oor, buf, 1U, nullptr, nullptr, &out_dma_ch));
+    k_ra_err_invalid_arg,
+    ra_spi_read_dma((uint8_t)k_test_channel_oor, buf, 1U, nullptr, nullptr, &out_dma_ch));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_spi_read_dma((uint8_t)k_test_channel_0, buf, 0U, nullptr, nullptr, &out_dma_ch));
+    k_ra_err_invalid_arg,
+    ra_spi_read_dma((uint8_t)k_test_channel_0, buf, 0U, nullptr, nullptr, &out_dma_ch));
   TEST_END("spi_b MC/DC ra_spi_read_dma: channel || len arg guard");
 }
 
@@ -358,34 +348,33 @@ static void test_mcdc_dispatch_spei_callback_guard(void)
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init((uint8_t)k_test_channel_0, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_channel_0, &cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_spi_attach_transfer_handler((uint8_t)k_test_channel_0,
-                                                         stub_spei_cb,
-                                                         (void*)(uintptr_t)0xCAFEU));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_attach_transfer_handler((uint8_t)k_test_channel_0,
+                                                stub_spei_cb,
+                                                (void*)(uintptr_t)0xCAFEU));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_ovrf;
   s_spei_calls                            = 0U;
   ra_spi_dispatch_spei((uint8_t)k_test_channel_0);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_spei_calls);
+  TEST_ASSERT_EQ(1, s_spei_calls);
   TEST_ASSERT(s_spei_last_mask != 0U);
 
   ra_spi((uint8_t)k_test_channel_0)->SPSR = 0U;
   s_spei_calls                            = 0U;
   ra_spi_dispatch_spei((uint8_t)k_test_channel_0);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_spei_calls);
+  TEST_ASSERT_EQ(0, s_spei_calls);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_spi_attach_transfer_handler((uint8_t)k_test_channel_0, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_attach_transfer_handler((uint8_t)k_test_channel_0, nullptr, nullptr));
   ra_spi((uint8_t)k_test_channel_0)->SPSR = k_ra_spsr_mask_modf;
   s_spei_calls                            = 0U;
   ra_spi_dispatch_spei((uint8_t)k_test_channel_0);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_spei_calls);
+  TEST_ASSERT_EQ(0, s_spei_calls);
 
   ra_spi_dispatch_spei((uint8_t)k_test_channel_oor);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b MC/DC dispatch_spei: mask && cb");
 }
 

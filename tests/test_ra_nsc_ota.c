@@ -43,15 +43,15 @@ static void test_mcdc_nsc_ota_commit_target_bank(void)
   /* Reset secure-side commit shadow so each vector sees a clean slate. */
   (void)ra_ota_commit_reset();
   /* V1: target_bank == A -> C1=F. Decision F, forwards to swap_bank, ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_ota_commit((uint8_t)k_ra_ota_bank_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_ota_commit((uint8_t)k_ra_ota_bank_a));
 
   (void)ra_ota_commit_reset();
   /* V2: target_bank == B -> C1=T, C2=F. Decision F, forwards, ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_ota_commit((uint8_t)k_ra_ota_bank_b));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_ota_commit((uint8_t)k_ra_ota_bank_b));
 
   (void)ra_ota_commit_reset();
   /* V3: target_bank == 99 -> C1=T, C2=T. Decision T, invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_nsc_ota_commit((uint8_t)99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_nsc_ota_commit((uint8_t)99U));
 
   TEST_END("ra_nsc_ota_commit MC/DC: target_bank != A && target_bank != B");
 }
@@ -69,7 +69,7 @@ static void test_mcdc_nsc_ota_commit_target_bank(void)
 static void test_nsc_flash_bank_config_forward(void)
 {
   TEST_BEGIN("ra_nsc_flash_bank_config forwards (no compound decisions)");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_flash_bank_config(0x0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_flash_bank_config(0x0U));
   TEST_END("ra_nsc_flash_bank_config forwards (no compound decisions)");
 }
 

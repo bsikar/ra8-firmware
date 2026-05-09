@@ -41,7 +41,7 @@ static void test_init(void)
 {
   TEST_BEGIN("gptp init");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_init());
   TEST_END("gptp init");
 }
 
@@ -55,8 +55,8 @@ static void test_deinit(void)
 {
   TEST_BEGIN("gptp deinit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_deinit());
   TEST_END("gptp deinit");
 }
 
@@ -72,10 +72,10 @@ static void test_status_read_and_clear(void)
   prep();
   ra_gptp()->GPTP_STS = 0x1EEE1588U;
   uint32_t mask       = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)0x1EEE1588U, (int32_t)mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_clear_status(0x0000FFFFU));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_eth_gptp_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_get_status(&mask));
+  TEST_ASSERT_EQ(0x1EEE1588U, mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_clear_status(0x0000FFFFU));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gptp_get_status(nullptr));
   TEST_END("gptp status read + clear");
 }
 
@@ -89,17 +89,16 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("gptp attach + dispatch");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_eth_gptp_attach_handler(stub_gptp_cb, (void*)(uintptr_t)0xF0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_attach_handler(stub_gptp_cb, (void*)(uintptr_t)0xF0U));
   ra_gptp()->GPTP_STS = 0xBEEFU;
   ra_eth_gptp_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_gptp_cb_count);
-  TEST_ASSERT_EQ((int32_t)0xBEEFU, (int32_t)s_gptp_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_gptp_cb_count);
+  TEST_ASSERT_EQ(0xBEEFU, s_gptp_cb_last_mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_attach_handler(nullptr, nullptr));
   ra_gptp()->GPTP_STS = 0xFACEU;
   ra_eth_gptp_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_gptp_cb_count);
+  TEST_ASSERT_EQ(1, s_gptp_cb_count);
   TEST_END("gptp attach + dispatch");
 }
 
@@ -113,9 +112,9 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("gptp power transition");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_enter_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_gptp_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_enter_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gptp_exit_stop());
   TEST_END("gptp power transition");
 }
 

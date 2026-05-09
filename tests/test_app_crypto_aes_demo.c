@@ -144,8 +144,8 @@ static void test_aes_app_round_trip_ok(void)
   TEST_BEGIN("crypto_aes_demo: encrypt + decrypt round-trip");
   uint8_t recovered[k_test_aes_app_plain_bytes] = {};
   size_t  rec_len                               = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)do_round_trip(recovered, sizeof(recovered), &rec_len));
-  TEST_ASSERT_EQ((int64_t)sizeof(recovered), (int64_t)rec_len);
+  TEST_ASSERT_EQ(k_ra_ok, do_round_trip(recovered, sizeof(recovered), &rec_len));
+  TEST_ASSERT_EQ(sizeof(recovered), rec_len);
   TEST_ASSERT_EQ(0, memcmp(recovered, k_t_aes_plain, sizeof(recovered)));
   teardown();
   TEST_END("crypto_aes_demo: encrypt + decrypt round-trip");
@@ -168,23 +168,22 @@ static void test_aes_app_tag_tamper_rejected(void)
     .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt),
   };
   ra_psa_key_t key = nullptr;
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_psa_key_import(&key, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_psa_key_import(&key, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
   uint8_t ct[k_test_aes_app_plain_bytes + k_ra_psa_gcm_tag_len] = {};
   size_t  ct_len                                                = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_psa_aead_encrypt(key,
-                                          k_ra_psa_alg_aes_gcm,
-                                          k_t_aes_nonce,
-                                          (size_t)k_ra_psa_gcm_nonce_len,
-                                          k_t_aes_aad,
-                                          (size_t)k_test_aes_app_aad_bytes,
-                                          k_t_aes_plain,
-                                          (size_t)k_test_aes_app_plain_bytes,
-                                          ct,
-                                          sizeof(ct),
-                                          &ct_len));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_psa_aead_encrypt(key,
+                                     k_ra_psa_alg_aes_gcm,
+                                     k_t_aes_nonce,
+                                     (size_t)k_ra_psa_gcm_nonce_len,
+                                     k_t_aes_aad,
+                                     (size_t)k_test_aes_app_aad_bytes,
+                                     k_t_aes_plain,
+                                     (size_t)k_test_aes_app_plain_bytes,
+                                     ct,
+                                     sizeof(ct),
+                                     &ct_len));
   ct[ct_len - 1U] ^= 0xFFU;
   uint8_t        recovered[k_test_aes_app_plain_bytes] = {};
   size_t         rec_len                               = 0U;
@@ -199,7 +198,7 @@ static void test_aes_app_tag_tamper_rejected(void)
                                            recovered,
                                            sizeof(recovered),
                                            &rec_len);
-  TEST_ASSERT_EQ((int)k_ra_err_crc_mismatch, (int)err);
+  TEST_ASSERT_EQ(k_ra_err_crc_mismatch, err);
   (void)ra_psa_key_destroy(key);
   teardown();
   TEST_END("crypto_aes_demo: tampered tag rejected");
@@ -221,9 +220,8 @@ static void test_aes_app_import_null_rejected(void)
     .alg   = k_ra_psa_alg_aes_gcm,
     .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt),
   };
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_psa_key_import(nullptr, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_psa_key_import(nullptr, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
   teardown();
   TEST_END("crypto_aes_demo: NULL handle import rejected");
 }

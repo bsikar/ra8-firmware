@@ -106,14 +106,14 @@ static void test_init_happy_dcdc(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   /* DCDCCTL should have DCDCON | OCPEN | STOPZA = 0x13. */
   const uint8_t expected =
     (uint8_t)((uint8_t)k_ra_vreg_mask_dcdcon | (uint8_t)k_ra_vreg_mask_ocpen |
               (uint8_t)k_ra_vreg_mask_stopza);
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)*ra_vreg_dcdcctl());
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_vccsel_3v0_to_3v6, (int32_t)*ra_vreg_vccsel());
+  TEST_ASSERT_EQ(expected, *ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(k_ra_vreg_vccsel_3v0_to_3v6, *ra_vreg_vccsel());
   TEST_END("vreg init dcdc happy");
 }
 
@@ -129,10 +129,10 @@ static void test_init_happy_dcdc_fast(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc_fast();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   /* Fast path -> DCDCCTL should be 0x53 (STOPZA + DCDCON + OCPEN + FST). */
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_dcdc_step_fast_on, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(k_ra_vreg_dcdc_step_fast_on, *ra_vreg_dcdcctl());
   TEST_END("vreg init dcdc fast-startup");
 }
 
@@ -148,12 +148,11 @@ static void test_init_happy_ldo(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_ldo();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   /* LDO mode -> DCDCCTL should have DCDCON cleared. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_lvo0e,
-                 (int32_t)(*ra_vreg_lvocr() & (uint8_t)k_ra_vreg_mask_lvo0e));
+  TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_lvo0e, (*ra_vreg_lvocr() & (uint8_t)k_ra_vreg_mask_lvo0e));
   TEST_END("vreg init ldo happy");
 }
 
@@ -171,10 +170,9 @@ static void test_init_happy_ldo_with_boost(void)
   ra_vreg_cfg_t cfg = make_cfg_ldo();
   cfg.ldo_boost     = true;
   cfg.lv_profile    = k_ra_vreg_lv_off;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_lcboost,
-                 (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_lcboost, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
   TEST_END("vreg init ldo with LCBOOST");
 }
 
@@ -189,7 +187,7 @@ static void test_init_null_cfg(void)
   TEST_BEGIN("vreg init null cfg");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_vreg_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vreg_init(nullptr));
   TEST_END("vreg init null cfg");
 }
 
@@ -206,7 +204,7 @@ static void test_init_bad_vccsel(void)
 
   ra_vreg_cfg_t cfg = make_cfg_dcdc();
   cfg.vccsel        = (ra_vreg_vccsel_t)0x07U; /* Out of 0..2 range. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_init(&cfg));
   TEST_END("vreg init bad vccsel");
 }
 
@@ -223,7 +221,7 @@ static void test_init_bad_mode(void)
 
   ra_vreg_cfg_t cfg = make_cfg_dcdc();
   cfg.mode          = (ra_vreg_mode_t)0xAAU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_init(&cfg));
   TEST_END("vreg init bad mode");
 }
 
@@ -240,7 +238,7 @@ static void test_init_bad_ocp(void)
 
   ra_vreg_cfg_t cfg = make_cfg_dcdc();
   cfg.ocp           = (ra_vreg_ocp_t)0x55U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_init(&cfg));
   TEST_END("vreg init bad ocp");
 }
 
@@ -257,7 +255,7 @@ static void test_init_bad_lv_profile(void)
 
   ra_vreg_cfg_t cfg = make_cfg_ldo();
   cfg.lv_profile    = (ra_vreg_lv_profile_t)0x55U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_init(&cfg));
   TEST_END("vreg init bad lv profile");
 }
 
@@ -278,18 +276,18 @@ static void test_set_mode_round_trip(void)
 
   /* Start from the LDO config so we can transition LDO -> DCDC -> LDO. */
   const ra_vreg_cfg_t cfg = make_cfg_ldo();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
   /* After the FSP-style 5-step sequence DCDCCTL = STOPZA | DCDCON | OCPEN = 0x13. */
   const uint8_t expected_on =
     (uint8_t)((uint8_t)k_ra_vreg_mask_stopza | (uint8_t)k_ra_vreg_mask_dcdcon |
               (uint8_t)k_ra_vreg_mask_ocpen);
-  TEST_ASSERT_EQ((int32_t)expected_on, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(expected_on, *ra_vreg_dcdcctl());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_ldo));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_mode(k_ra_vreg_mode_ldo));
+  TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
   TEST_END("vreg set_mode round trip");
 }
 
@@ -307,13 +305,12 @@ static void test_set_mode_keeps_lcboost_on_disable(void)
   ra_vreg_cfg_t cfg = make_cfg_ldo();
   cfg.ldo_boost     = true;
   cfg.lv_profile    = k_ra_vreg_lv_off;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   /* LDO -> DCDC -> LDO with cached LCBOOST should leave LCBOOST set. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_ldo));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_lcboost,
-                 (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_mode(k_ra_vreg_mode_ldo));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_lcboost, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
   TEST_END("vreg set_mode preserves LCBOOST during DCDC->LDO");
 }
 
@@ -328,7 +325,7 @@ static void test_set_mode_bad_arg(void)
   TEST_BEGIN("vreg set_mode bad arg");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_set_mode((ra_vreg_mode_t)0xAAU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_set_mode((ra_vreg_mode_t)0xAAU));
   TEST_END("vreg set_mode bad arg");
 }
 
@@ -343,17 +340,16 @@ static void test_set_vccsel(void)
   TEST_BEGIN("vreg set_vccsel");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_vccsel(k_ra_vreg_vccsel_2v4_to_2v7));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_vccsel_2v4_to_2v7, (int32_t)*ra_vreg_vccsel());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_vccsel(k_ra_vreg_vccsel_2v4_to_2v7));
+  TEST_ASSERT_EQ(k_ra_vreg_vccsel_2v4_to_2v7, *ra_vreg_vccsel());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_vccsel(k_ra_vreg_vccsel_2v7_to_3v0));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_vccsel_2v7_to_3v0, (int32_t)*ra_vreg_vccsel());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_vccsel(k_ra_vreg_vccsel_2v7_to_3v0));
+  TEST_ASSERT_EQ(k_ra_vreg_vccsel_2v7_to_3v0, *ra_vreg_vccsel());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_vccsel(k_ra_vreg_vccsel_3v0_to_3v6));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_vccsel_3v0_to_3v6, (int32_t)*ra_vreg_vccsel());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_vccsel(k_ra_vreg_vccsel_3v0_to_3v6));
+  TEST_ASSERT_EQ(k_ra_vreg_vccsel_3v0_to_3v6, *ra_vreg_vccsel());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_vreg_set_vccsel((ra_vreg_vccsel_t)0x10U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_set_vccsel((ra_vreg_vccsel_t)0x10U));
   TEST_END("vreg set_vccsel");
 }
 
@@ -370,20 +366,19 @@ static void test_set_ocp_levels(void)
 
   /* Start from a DCDC init so OCPEN starts asserted. */
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   /* off should clear OCPEN. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_ocp(k_ra_vreg_ocp_off));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_ocp(k_ra_vreg_ocp_off));
+  TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
 
   /* normal/low/high should all set OCPEN. */
   for (uint8_t lvl = (uint8_t)k_ra_vreg_ocp_normal; lvl <= (uint8_t)k_ra_vreg_ocp_high; ++lvl) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_ocp((ra_vreg_ocp_t)lvl));
-    TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_ocpen,
-                   (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
+    TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_ocp((ra_vreg_ocp_t)lvl));
+    TEST_ASSERT_EQ(k_ra_vreg_mask_ocpen, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
   }
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_set_ocp((ra_vreg_ocp_t)0xAAU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_set_ocp((ra_vreg_ocp_t)0xAAU));
   TEST_END("vreg set_ocp every level");
 }
 
@@ -398,12 +393,11 @@ static void test_set_fast_startup(void)
   TEST_BEGIN("vreg set_fast_startup");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_fast_startup(true));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_fst,
-                 (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_fst));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_fast_startup(true));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_fst, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_fst));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_fast_startup(false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_fst));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_fast_startup(false));
+  TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_fst));
   TEST_END("vreg set_fast_startup");
 }
 
@@ -418,12 +412,11 @@ static void test_set_ldo_boost(void)
   TEST_BEGIN("vreg set_ldo_boost");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_ldo_boost(true));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_lcboost,
-                 (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_ldo_boost(true));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_lcboost, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_ldo_boost(false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_ldo_boost(false));
+  TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_lcboost));
   TEST_END("vreg set_ldo_boost");
 }
 
@@ -439,20 +432,19 @@ static void test_set_lv_profile(void)
   prep();
 
   /* off -> 0 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_lv_profile(k_ra_vreg_lv_off));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_lvocr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_lv_profile(k_ra_vreg_lv_off));
+  TEST_ASSERT_EQ(0, *ra_vreg_lvocr());
 
   /* P0 -> only LVO0E. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_lv_profile(k_ra_vreg_lv_p0));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_lvo0e, (int32_t)*ra_vreg_lvocr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_lv_profile(k_ra_vreg_lv_p0));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_lvo0e, *ra_vreg_lvocr());
 
   /* P1 -> only LVO1E. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_lv_profile(k_ra_vreg_lv_p1));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_lvo1e, (int32_t)*ra_vreg_lvocr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_lv_profile(k_ra_vreg_lv_p1));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_lvo1e, *ra_vreg_lvocr());
 
   /* Bad enum -> invalid arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_vreg_set_lv_profile((ra_vreg_lv_profile_t)0x55U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_set_lv_profile((ra_vreg_lv_profile_t)0x55U));
   TEST_END("vreg set_lv_profile mutual exclusion");
 }
 
@@ -472,20 +464,20 @@ static void test_get_status_decoded(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   ra_vreg_status_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&st));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mode_dcdc, (int32_t)st.mode);
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_vccsel_3v0_to_3v6, (int32_t)st.vccsel_dec);
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_lv_off, (int32_t)st.lv_profile);
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_ocp_normal, (int32_t)st.ocp);
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_get_status(&st));
+  TEST_ASSERT_EQ(k_ra_vreg_mode_dcdc, st.mode);
+  TEST_ASSERT_EQ(k_ra_vreg_vccsel_3v0_to_3v6, st.vccsel_dec);
+  TEST_ASSERT_EQ(k_ra_vreg_lv_off, st.lv_profile);
+  TEST_ASSERT_EQ(k_ra_vreg_ocp_normal, st.ocp);
   TEST_ASSERT(st.dcdc_ready);
   TEST_ASSERT(st.io_buf_on);
   TEST_ASSERT(!st.fast_startup);
   TEST_ASSERT(!st.ldo_boost);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_vreg_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vreg_get_status(nullptr));
   TEST_END("vreg get_status decoded");
 }
 
@@ -501,13 +493,13 @@ static void test_get_status_ldo(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_ldo();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   ra_vreg_status_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&st));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mode_ldo, (int32_t)st.mode);
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_lv_p0, (int32_t)st.lv_profile);
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_ocp_off, (int32_t)st.ocp);
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_get_status(&st));
+  TEST_ASSERT_EQ(k_ra_vreg_mode_ldo, st.mode);
+  TEST_ASSERT_EQ(k_ra_vreg_lv_p0, st.lv_profile);
+  TEST_ASSERT_EQ(k_ra_vreg_ocp_off, st.ocp);
   TEST_ASSERT(!st.dcdc_ready);
   TEST_END("vreg get_status decoded (LDO + LV)");
 }
@@ -524,13 +516,12 @@ static void test_clear_status(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
 
   /* Clear the OCPEN bit, leave DCDCON intact. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_clear_status((uint8_t)k_ra_vreg_mask_ocpen));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
-  TEST_ASSERT_EQ((int32_t)k_ra_vreg_mask_dcdcon,
-                 (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_clear_status((uint8_t)k_ra_vreg_mask_ocpen));
+  TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
+  TEST_ASSERT_EQ(k_ra_vreg_mask_dcdcon, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
   TEST_END("vreg clear_status");
 }
 
@@ -548,8 +539,8 @@ static void test_clear_status_reserved_bits(void)
   /* Bits 2 and 3 are reserved -- attempting to "clear" them returns
    * invalid_arg without touching the register. */
   const uint8_t before = *ra_vreg_dcdcctl();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_clear_status((uint8_t)0x0CU));
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_clear_status((uint8_t)0x0CU));
+  TEST_ASSERT_EQ(before, *ra_vreg_dcdcctl());
   TEST_END("vreg clear_status rejects reserved bits");
 }
 
@@ -569,15 +560,15 @@ static void test_enter_exit_stop_legacy(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
   const uint8_t before = *ra_vreg_dcdcctl();
   TEST_ASSERT(before != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_enter_stop());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_enter_stop());
+  TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_exit_stop());
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_exit_stop());
+  TEST_ASSERT_EQ(before, *ra_vreg_dcdcctl());
   TEST_END("vreg enter/exit stop (legacy aliases)");
 }
 
@@ -596,10 +587,10 @@ static void test_enter_standby_every_variant(void)
        v <= (uint8_t)k_ra_vreg_standby_battery_backup;
        ++v) {
     const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_enter_standby((ra_vreg_standby_t)v));
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)(*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
+    TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
+    TEST_ASSERT_EQ(k_ra_ok, ra_vreg_enter_standby((ra_vreg_standby_t)v));
+    TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_dcdcon));
+    TEST_ASSERT_EQ(0, (*ra_vreg_dcdcctl() & (uint8_t)k_ra_vreg_mask_ocpen));
   }
   TEST_END("vreg enter_standby every variant");
 }
@@ -615,8 +606,7 @@ static void test_enter_standby_bad_variant(void)
   TEST_BEGIN("vreg enter_standby bad variant");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_vreg_enter_standby((ra_vreg_standby_t)0x55U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_enter_standby((ra_vreg_standby_t)0x55U));
   TEST_END("vreg enter_standby bad variant");
 }
 
@@ -632,10 +622,10 @@ static void test_exit_stop_uninitialised(void)
   prep();
 
   /* deinit clears the cached state. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_deinit());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_exit_stop());
   /* No restore should have occurred. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
   TEST_END("vreg exit stop uninitialised");
 }
 
@@ -651,15 +641,15 @@ static void test_reset_clears_cached_state(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_reset());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_reset());
 
   /* Registers should be back at reset and exit_stop should be a no-op. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_dcdcctl());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_vccsel());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_lvocr());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_exit_stop());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(0, *ra_vreg_vccsel());
+  TEST_ASSERT_EQ(0, *ra_vreg_lvocr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_exit_stop());
+  TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
   TEST_END("vreg reset clears cached state");
 }
 
@@ -680,19 +670,18 @@ static void test_attach_dispatch(void)
 
   /* Set DCDCCTL to a known marker value via init. */
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
   const uint8_t live = *ra_vreg_dcdcctl();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_vreg_attach_handler(stub_vreg_cb, (void*)(uintptr_t)0xCAFEU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_attach_handler(stub_vreg_cb, (void*)(uintptr_t)0xCAFEU));
   ra_vreg_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_vreg_cb_count);
-  TEST_ASSERT_EQ((int32_t)live, (int32_t)s_vreg_cb_last_word);
+  TEST_ASSERT_EQ(1, s_vreg_cb_count);
+  TEST_ASSERT_EQ(live, s_vreg_cb_last_word);
 
   /* Detach via nullptr -- subsequent dispatch is a no-op. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_attach_handler(nullptr, nullptr));
   ra_vreg_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_vreg_cb_count);
+  TEST_ASSERT_EQ(1, s_vreg_cb_count);
   TEST_END("vreg attach + dispatch");
 }
 
@@ -708,12 +697,12 @@ static void test_deinit_clears_regs(void)
   prep();
 
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_deinit());
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_dcdcctl());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_vccsel());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_vreg_lvocr());
+  TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
+  TEST_ASSERT_EQ(0, *ra_vreg_vccsel());
+  TEST_ASSERT_EQ(0, *ra_vreg_lvocr());
   TEST_END("vreg deinit clears regs");
 }
 
@@ -741,19 +730,19 @@ static void test_mcdc_ra_vreg(void)
   TEST_BEGIN("vreg MC/DC: set_mode + get_status 2-cond decisions");
   ra_sim_mmap_reset();
   const ra_vreg_cfg_t cfg = make_cfg_dcdc();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_ldo));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_set_mode((ra_vreg_mode_t)99U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_mode(k_ra_vreg_mode_ldo));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_vreg_set_mode((ra_vreg_mode_t)99U));
   ra_vreg_status_t out = {};
   *ra_vreg_dcdcctl()   = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_get_status(&out));
   TEST_ASSERT(out.dcdc_ready == false);
   *ra_vreg_dcdcctl() = (uint8_t)((uint8_t)k_ra_vreg_mask_dcdcon | (uint8_t)k_ra_vreg_mask_pd);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_get_status(&out));
   TEST_ASSERT(out.dcdc_ready == false);
   *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_mask_dcdcon;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vreg_get_status(&out));
   TEST_ASSERT(out.dcdc_ready == true);
   TEST_END("vreg MC/DC: set_mode + get_status 2-cond decisions");
 }

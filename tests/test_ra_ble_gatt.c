@@ -55,15 +55,14 @@ static void test_mcdc_gatt_notify_init_and_lookup(void)
 {
   TEST_BEGIN("ra_ble_host_gatt_notify MC/DC: init + lookup guards");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_ble_host_gatt_notify((uint16_t)k_test_gatt_handle_unknown));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_ble_host_gatt_notify((uint16_t)k_test_gatt_handle_unknown));
   prep();
   const ra_ble_host_config_t cfg = {.role       = k_ra_ble_host_role_peripheral,
                                     .appearance = 0U,
                                     .name       = "g"};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
-                 (int32_t)ra_ble_host_gatt_notify((uint16_t)k_test_gatt_handle_unknown));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_ble_host_gatt_notify((uint16_t)k_test_gatt_handle_unknown));
   TEST_END("ra_ble_host_gatt_notify MC/DC: init + lookup guards");
 }
 
@@ -88,18 +87,18 @@ static void test_mcdc_gatt_set_value_zero_len(void)
   const ra_ble_host_config_t cfg = {.role       = k_ra_ble_host_role_peripheral,
                                     .appearance = 0U,
                                     .name       = "g"};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
 
   uint8_t svc_uuid[16];
   uint8_t chr_uuid[16];
   make_uuid_g(svc_uuid, 0x70U);
   make_uuid_g(chr_uuid, 0x80U);
   uint16_t svc = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
   uint8_t  buf[k_test_value_buf_size];
   uint16_t chr = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char(
                    svc,
                    chr_uuid,
                    (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
@@ -109,11 +108,11 @@ static void test_mcdc_gatt_set_value_zero_len(void)
 
   /* Vector 2: F,T -- len=0 with non-NULL value buf. */
   const uint8_t payload[1] = {0xAAU};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_set_value(chr, payload, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, payload, 0U));
 
   /* Notify with no connection still returns ok and exercises the
    * value_len==0 branch at line 569 (same shape decision). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_notify(chr));
   TEST_END("ra_ble_host_gatt_set_value MC/DC: len==0 path");
 }
 
@@ -135,7 +134,7 @@ static void test_mcdc_gatt_internal_should_copy(void)
   uint8_t scratch = 0U;
   TEST_ASSERT(!ra_ble_gatt_internal_should_copy(0U, &scratch));
   TEST_ASSERT(ra_ble_gatt_internal_should_copy(4U, &scratch));
-  TEST_ASSERT(!ra_ble_gatt_internal_should_copy(4U, NULL));
+  TEST_ASSERT(!ra_ble_gatt_internal_should_copy(4U, nullptr));
   TEST_END("ra_ble_gatt MC/DC: should_copy AND");
 }
 

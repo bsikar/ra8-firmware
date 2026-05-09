@@ -67,19 +67,19 @@ static void test_mcdc_l2cap_init_role_4cond(void)
   ra_ble_host_config_t cfg = {.appearance = 0U, .name = "t"};
   prep();
   cfg.role = k_ra_ble_host_role_peripheral;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   prep();
   cfg.role = k_ra_ble_host_role_central;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   prep();
   cfg.role = k_ra_ble_host_role_observer;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   prep();
   cfg.role = k_ra_ble_host_role_broadcaster;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
   prep();
   cfg.role = (ra_ble_host_role_t)k_test_l2cap_role_bogus;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_host_init(&cfg));
   TEST_END("ra_ble_host_init MC/DC: role 4-cond chain");
 }
 
@@ -107,19 +107,19 @@ static void test_mcdc_l2cap_evt_trampoline_initguard(void)
   prep();
   const uint32_t before_v1 = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_dummy_params, 1U);
-  TEST_ASSERT_EQ((int32_t)before_v1, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before_v1, ra_ble_host_test_event_count());
 
   /* V2: initialised, params==NULL -> C1=T (early return). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   const uint32_t before_v2 = ra_ble_host_test_event_count();
-  ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, NULL, 0U);
-  TEST_ASSERT_EQ((int32_t)before_v2, (int32_t)ra_ble_host_test_event_count());
+  ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, nullptr, 0U);
+  TEST_ASSERT_EQ(before_v2, ra_ble_host_test_event_count());
 
   /* V3: initialised, params!=NULL but unrecognised event -> C1=F C2=F
    * (falls through to no-op tail; event count unchanged). */
   const uint32_t before_v3 = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_dummy_params, 1U);
-  TEST_ASSERT_EQ((int32_t)before_v3, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before_v3, ra_ble_host_test_event_count());
 
   TEST_END("ra_ble_l2cap MC/DC: evt-trampoline init/null guard (576)");
 }
@@ -152,23 +152,23 @@ static void test_mcdc_l2cap_evt_trampoline_lemeta_3cond(void)
   s_params_full[3]                 = (uint8_t)k_test_handle_hi;
 
   /* V1: wrong evt_code, but params still well-formed. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   uint32_t before = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_params_full, 19U);
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before, ra_ble_host_test_event_count());
 
   /* V2: right evt_code, short params (still non-NULL so guard passes). */
   static const uint8_t s_short_params[2] = {0U, 0U};
   before                                 = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_le_meta, s_short_params, 2U);
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before, ra_ble_host_test_event_count());
 
   /* V3: right evt_code + len, but wrong subev. */
   static uint8_t s_other_sub[19] = {0U};
   s_other_sub[0]                 = (uint8_t)k_test_subev_other;
   before                         = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_le_meta, s_other_sub, 19U);
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before, ra_ble_host_test_event_count());
 
   /* V4: all three conditions true -> a connected event is dispatched. */
   before = ra_ble_host_test_event_count();
@@ -203,7 +203,7 @@ static void test_mcdc_l2cap_evt_trampoline_disconn_2cond(void)
 
   /* Bring the host up and force a known conn_handle so V3 actually
    * matches s_state.conn_handle and emits the disconnected event. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)bring_up());
+  TEST_ASSERT_EQ(k_ra_ok, bring_up());
   const uint16_t conn_local = 0x0042U;
   ra_ble_host_test_inject_connect(conn_local);
 
@@ -212,13 +212,13 @@ static void test_mcdc_l2cap_evt_trampoline_disconn_2cond(void)
   static const uint8_t s_dummy_params4[4] = {0U, 0U, 0U, 0U};
   uint32_t             before             = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_dummy_params4, 4U);
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before, ra_ble_host_test_event_count());
 
   /* V2: right evt_code, but len < 4. */
   static const uint8_t s_short[1] = {0U};
   before                          = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_disconn, s_short, 1U);
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)ra_ble_host_test_event_count());
+  TEST_ASSERT_EQ(before, ra_ble_host_test_event_count());
 
   /* V3: matching disconnect for the active connection handle -> event. */
   static uint8_t s_disconn_params[4] = {0U};
