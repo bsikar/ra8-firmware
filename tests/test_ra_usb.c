@@ -397,7 +397,8 @@ static void test_configure_endpoint(void)
                                                     k_ra_usb_ep_type_bulk,
                                                     64U));
   volatile r_usb_regs_t* reg = ra_usb_fs();
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)reg->PIPESEL);
+  /* configure_endpoint deselects the pipe window (PIPESEL=0) before returning. */
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)reg->PIPESEL);
   /* PIPECFG should encode EP=5, dir=IN, type=bulk. */
   TEST_ASSERT_EQ((int32_t)5U, (int32_t)(reg->PIPECFG & k_ra_pipecfg_epnum_mask));
   TEST_ASSERT((reg->PIPECFG & k_ra_pipecfg_dir_in) != 0U);

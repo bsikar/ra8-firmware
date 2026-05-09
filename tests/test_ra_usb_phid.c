@@ -115,9 +115,9 @@ static void test_init_hs_default_protocol(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_get_protocol(&proto));
   TEST_ASSERT_EQ((int32_t)k_ra_phid_proto_report, (int32_t)proto);
 
-  /* PIPESEL was last written for the interrupt-OUT pipe (PIPE7). */
+  /* configure_endpoint deselects the pipe window (PIPESEL=0) before returning. */
   volatile r_usb_regs_t* reg = ra_usb_hs();
-  TEST_ASSERT_EQ((int32_t)k_ra_phid_pipe_intr_out, (int32_t)reg->PIPESEL);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)reg->PIPESEL);
   TEST_END("ra_usb_phid_init seeds protocol=report and idle=0");
 }
 
