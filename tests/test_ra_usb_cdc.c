@@ -69,12 +69,10 @@ static void test_init_hs_picks_512_bulk(void)
   TEST_BEGIN("ra_usb_cdc_init on HS configures 512-byte bulk pipes");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_cdc_init(k_ra_usb_speed_hs));
-  /* PIPECFG was last written for the interrupt pipe (PIPE6); the
-   * bulk-pipe state is in the controller's pipe table, but the host
-   * mock keeps the most recent PIPESEL/PIPEMAXP write. Read PIPE6
-   * config which should be intr / 8 bytes. */
+  /* configure_endpoint deselects the pipe window (PIPESEL=0) before returning;
+   * PIPEMAXP in simulator retains the last value written (interrupt pipe size). */
   volatile r_usb_regs_t* reg = ra_usb_hs();
-  TEST_ASSERT_EQ((int32_t)k_ra_cdc_pipe_intr_in, (int32_t)reg->PIPESEL);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)reg->PIPESEL);
   TEST_ASSERT_EQ((int32_t)k_ra_cdc_intr_max_packet, (int32_t)reg->PIPEMAXP);
   TEST_END("ra_usb_cdc_init on HS configures 512-byte bulk pipes");
 }
