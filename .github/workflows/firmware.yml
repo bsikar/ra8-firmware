@@ -20,7 +20,7 @@ jobs:
   # ---------------------------------------------------------------------------
   ascii:
     name: ASCII-only source files
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -43,7 +43,7 @@ jobs:
   # ---------------------------------------------------------------------------
   copyright:
     name: Copyright header check
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -57,7 +57,7 @@ jobs:
   # ---------------------------------------------------------------------------
   since:
     name: Doxygen @since tags
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -71,7 +71,7 @@ jobs:
   # ---------------------------------------------------------------------------
   format:
     name: clang-format check
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Run format check
@@ -84,7 +84,7 @@ jobs:
   # ---------------------------------------------------------------------------
   tidy:
     name: clang-tidy
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Run clang-tidy
@@ -95,7 +95,7 @@ jobs:
   # ---------------------------------------------------------------------------
   unit-tests:
     name: Unit tests (host)
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -109,7 +109,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage:
     name: Coverage (gcovr 90/90)
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
   # ---------------------------------------------------------------------------
   mcdc:
     name: MC/DC coverage gate
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -207,7 +207,7 @@ jobs:
   # ---------------------------------------------------------------------------
   pre-commit-checks:
     name: Pre-commit gate suite
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -265,7 +265,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-discover:
     name: Discover example apps
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
     steps:
@@ -297,7 +297,7 @@ jobs:
 
   build-cross:
     name: Cross-build ${{ matrix.app }}
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     needs: build-discover
     strategy:
       fail-fast: false
@@ -312,7 +312,7 @@ jobs:
   # ---------------------------------------------------------------------------
   docs:
     name: Doxygen warnings
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Run doxygen
@@ -356,7 +356,7 @@ jobs:
   # ---------------------------------------------------------------------------
   cppcheck:
     name: cppcheck
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Run cppcheck
@@ -399,7 +399,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage-comment:
     name: MC/DC delta comment
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     needs: mcdc
     if: github.event_name == 'pull_request'
     permissions:
