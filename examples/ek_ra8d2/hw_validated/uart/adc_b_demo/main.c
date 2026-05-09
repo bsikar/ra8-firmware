@@ -36,9 +36,9 @@
 
 /* TODO: Move this to its own test for 12-bit res and create another test that is 16-bit res:
  * Analog (Datasheet Page 1):
- * 16-bit A/D Converter (ADC16H) × 2, up to 23 channels
- * 12-bit D/A Converter (DAC12) × 2
- * High-Speed Analog Comparator (ACMPHS) × 4
+ * 16-bit A/D Converter (ADC16H) x 2, up to 23 channels
+ * 12-bit D/A Converter (DAC12) x 2
+ * High-Speed Analog Comparator (ACMPHS) x 4
  * Temperature Sensor (TSN)
  */
 
