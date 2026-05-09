@@ -2,44 +2,44 @@ name: hil
 
 # Hardware-in-the-loop CI.  Runs on the Raspberry Pi 5 self-hosted runner
 # (labels: self-hosted, hil, pi5, ra8d2) that has the EK-RA8D2 board wired
-# to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM).
+# to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud).
 #
-# The job:
-#   1. Checks out the repo on the Pi.
-#   2. Builds the app cross-compiled on the Pi (arm-none-eabi-gcc from apt).
-#   3. Flashes via JLinkExe (local, no SSH).
-#   4. Reads /dev/ttyACM0 and asserts expected UART output appears.
+# Covers all 23 apps in examples/ek_ra8d2/hw_validated/uart/:
+#   - Build each app cross-compiled on the Pi (arm-none-eabi-gcc from apt).
+#   - Flash via JLinkExe (local, no SSH).
+#   - Assert expected UART string appears on /dev/ttyACM0 within timeout.
 #
-# Only one HIL job runs at a time (concurrency group locks the board).
-# New apps are added as additional jobs following the same pattern.
+# One board, one runner: the hil-board concurrency group ensures jobs never
+# race on the attached hardware.
 
 on:
   push:
     branches: [main]
     paths:
-      - 'examples/ek_ra8d2/hw_validated/uart/uart_hello/**'
+      - 'examples/ek_ra8d2/hw_validated/uart/**'
       - 'libs/ra_hal/**'
       - 'scripts/hil_run_direct.sh'
+      - 'scripts/hil_suite.sh'
       - '.github/workflows/hil.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'examples/ek_ra8d2/hw_validated/uart/uart_hello/**'
+      - 'examples/ek_ra8d2/hw_validated/uart/**'
       - 'libs/ra_hal/**'
       - 'scripts/hil_run_direct.sh'
+      - 'scripts/hil_suite.sh'
       - '.github/workflows/hil.yml'
   workflow_dispatch:
 
-# Serialize all HIL jobs so they never race on the single attached board.
 concurrency:
   group: hil-board
   cancel-in-progress: false
 
 jobs:
-  uart-hello:
-    name: HIL uart_hello
+  hil-uart-suite:
+    name: HIL uart suite (23 apps)
     runs-on: [self-hosted, hil, ra8d2]
-    timeout-minutes: 10
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -52,13 +52,15 @@ jobs:
           arm-none-eabi-gcc --version
           cmake --version
 
-      - name: Build uart_hello
-        run: make uart_hello
-
-      - name: Flash and verify UART output
+      - name: Build all uart apps
         run: |
-          bash scripts/hil_run_direct.sh \
-            --hex  examples/ek_ra8d2/hw_validated/uart/uart_hello/build/uart_hello.hex \
-            --expect "hello, ra8d2!" \
-            --baud  115200 \
-            --timeout 15
+          make -j$(nproc) \
+            uart_hello crc_demo dma_memcopy_demo spi_loopback i2c_loopback \
+            adc_b_demo agt_periodic elc_event_demo rng_demo icu_extint_demo \
+            iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo \
+            power_profiler lpm_idle_demo crypto_aes_demo ssie_audio_loop \
+            watchdog_demo eth_loopback sdram_benchmark rtc_alarm \
+            threadx_filex_levelx_demo
+
+      - name: Run HIL suite
+        run: bash scripts/hil_suite.sh --uart /dev/ttyACM0
