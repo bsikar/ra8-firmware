@@ -677,6 +677,11 @@ static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
  */
 static ra_err_t internal_usbhs_wait_pll_lock_short(void)
 {
+#ifdef RA_SIMULATOR_MODE
+  /* No real PHY in simulator -- PLLSTA is always 0; skip the poll. */
+  s_usbhs_pllsta_probe = 0U;
+  return k_ra_ok;
+#else
   volatile uint16_t* const pllsta = ra_usbhs_pllsta();
   ra_err_t                 lock   = k_ra_err_hw_timeout;
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_attempt_limit; ++i) {
@@ -687,6 +692,7 @@ static ra_err_t internal_usbhs_wait_pll_lock_short(void)
   }
   s_usbhs_pllsta_probe = *pllsta;
   return lock;
+#endif
 }
 
 /**
