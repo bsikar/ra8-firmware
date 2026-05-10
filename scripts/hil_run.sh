@@ -68,16 +68,7 @@ echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIME
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
 # when the CPU is in a TrustZone-locked state.
 STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.${FIRMWARE_EXT}"
-OFS_ARGS=(
-    --remove-section=.option_setting_ofs0  --remove-section=.option_setting_ofs1
-    --remove-section=.option_setting_ofs2  --remove-section=.option_setting_ofs3
-    --remove-section=.option_setting_ofs1_sec --remove-section=.option_setting_ofs1_sel
-    --remove-section=.option_setting_ofs3_sec --remove-section=.option_setting_ofs3_sel
-    --remove-section=.option_setting_bps0  --remove-section=.option_setting_bps1
-    --remove-section=.option_setting_bps2  --remove-section=.option_setting_bps3
-    --remove-section=.option_setting_pbps0 --remove-section=.option_setting_pbps1
-    --remove-section=.option_setting_pbps2 --remove-section=.option_setting_pbps3
-)
+OFS_ARGS=( '--remove-section=.option_setting*' )
 ELF="${HEX%.hex}.elf"
 if [[ "$FIRMWARE_EXT" == "hex" ]]; then
     if [[ -f "$ELF" ]]; then
