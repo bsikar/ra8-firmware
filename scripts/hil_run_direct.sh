@@ -93,7 +93,7 @@ fi
 # LPSCR via DAP (PRCR-unlock + write 0 + relock) makes RAMCode's WFI a plain
 # Sleep that any interrupt can wake.
 TMP_SCRIPT="$(mktemp)"
-trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"' EXIT
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; pkill -f "cat ${UART}" 2>/dev/null || true' EXIT
 cat > "$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
@@ -111,6 +111,31 @@ JLINK
 
 echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 
+# Start UART reader in the background BEFORE flashing.  The firmware's boot
+# banner prints within milliseconds of "g" (go) -- if we open /dev/ttyACM0
+# only after JLinkExe returns, one-shot boot banners are missed because the
+# bytes arrive before any reader is attached.  Configure the tty first, then
+# launch a background tail that streams to a log file we can grep afterward.
+#
+# Kill any lingering readers from a previous test that didn't clean up.
+# Two cats on the same /dev/ttyACM0 each get only half the bytes, which
+# silently breaks pattern matching for the next test.
+pkill -f "cat ${UART}" 2>/dev/null || true
+sleep 0.1
+stty -F "${UART}" "${BAUD}" raw -echo
+UART_LOG="/tmp/hil_uart_${APP_NAME}.log"
+: > "${UART_LOG}"
+# Use setsid so the cat does not share our session/process group -- this
+# makes the cleanup pkill at end-of-script reliable regardless of exit path.
+# stdbuf -o0 disables stdout buffering so every byte received from the tty
+# is written to the log file immediately.  Without it, one-shot boot
+# banners (e.g. "ulpt: wake\r\n" = 12 bytes) sit in cat's 4KB output buffer
+# and grep races find an empty log.
+setsid stdbuf -o0 cat "${UART}" > "${UART_LOG}" 2>/dev/null &
+READER_PID=$!
+# Make sure the reader actually opened the tty before we proceed.
+sleep 0.2
+
 # Single attempt: each loadfile op accumulates state in the MRAM controller
 # (~13-op limit before PORST is required).  Retries make the accumulation
 # worse without recovering from it, so we fail fast and let the suite move
@@ -119,36 +144,47 @@ JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
     > "${LOG_FILE}" 2>&1
 
 if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond" "${LOG_FILE}"; then
+    kill "${READER_PID}" 2>/dev/null
     echo -e "${RED}[HIL]${NC} J-Link error -- log tail:" >&2
     tail -20 "${LOG_FILE}" >&2
     exit 1
 fi
 if ! grep -qE "Programming flash.*Done\.|Skipped\. Contents already match" "${LOG_FILE}"; then
+    kill "${READER_PID}" 2>/dev/null
     echo -e "${RED}[HIL]${NC} flash phase missing -- log tail:" >&2
     tail -20 "${LOG_FILE}" >&2
     exit 1
 fi
 echo -e "${YELLOW}[HIL]${NC} flash OK"
 
-# ---- 4. Read UART and check for expected string --------------------------------
-# stty configures the tty before reading. Feed the tty as stdin to a timed
-# subshell that reads line-by-line; exit 0 the moment EXPECT appears.
+# ---- 4. Wait for the expected string on UART  -----------------------------
+# The background reader started before flashing has been capturing into
+# ${UART_LOG} the whole time; tail-follow it until we see EXPECT or timeout.
 echo -e "${YELLOW}[HIL]${NC} waiting for '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
 
-stty -F "${UART}" "${BAUD}" raw -echo
-
 RESULT="TIMEOUT"
-if timeout "${TIMEOUT_S}" bash -c "
-    while IFS= read -r line; do
-        printf '[uart] %s\n' \"\$line\"
-        if printf '%s' \"\$line\" | grep -qF '${EXPECT}'; then
-            exit 0
-        fi
-    done
-    exit 1
-" < "${UART}"; then
-    RESULT="MATCH"
-fi
+# Poll the log file every 100 ms for up to TIMEOUT_S seconds.  This is
+# more robust than `tail -F | grep` which had a race where small one-shot
+# prints (12-26 bytes) sat in cat's stdio buffer and were not visible to
+# grep until cat was killed and flushed.
+deadline=$(( SECONDS + TIMEOUT_S ))
+while (( SECONDS < deadline )); do
+    if grep -qF "${EXPECT}" "${UART_LOG}" 2>/dev/null; then
+        RESULT="MATCH"
+        break
+    fi
+    sleep 0.1
+done
+echo "--- captured UART ---"
+sed 's/\r/\\r/g' "${UART_LOG}" | head -20 | sed 's/^/[uart] /'
+echo "--- end ---"
+
+# Stop the background tty reader.  It will keep running otherwise, consuming
+# data from /dev/ttyACM0 and breaking the next test's reader.  setsid moved
+# it out of our process group, so we pkill by name too as a safety net.
+kill "${READER_PID}" 2>/dev/null || true
+pkill -f "cat ${UART}" 2>/dev/null || true
+wait "${READER_PID}" 2>/dev/null || true
 
 if [[ "${RESULT}" == "MATCH" ]]; then
     echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
