@@ -482,17 +482,23 @@ static void test_enter_sleep_modes(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_sleep));
   TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
 
-  /* Software standby -- LPSCR.LPMD = 0x5. */
+  /* Software standby / deep standby: the driver clears LPSCR back to 0
+   * after WFI returns (see ra_lpm.c).  This guarantees the *next* WFI
+   * is a plain CPU sleep, not a re-entry into standby with no wake
+   * source -- the latter is what J-Link's RAMCode helper trips over
+   * after a debugger SYSRESETREQ, since the SYSC LPM block is in a
+   * separate reset domain and LPSCR survives SYSRESETREQ.  On host
+   * the WFI is a no-op so the post-WFI clear is observable
+   * immediately. */
   TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_software_std));
-  TEST_ASSERT_EQ(k_ra_sleep_mode_software_std, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
 
-  /* Deep standby 1 / 2 / 3. */
   TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_1));
-  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_1, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_2));
-  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_2, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_3));
-  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_3, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_END("lpm enter sleep modes");
 }
 
@@ -508,7 +514,9 @@ static void test_enter_deep_standby_helper(void)
   ra_sim_mmap_reset();
 
   TEST_ASSERT_EQ(k_ra_ok, ra_lpm_enter_deep_standby());
-  TEST_ASSERT_EQ(k_ra_sleep_mode_deep_standby_1, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
+  /* LPSCR is cleared by the driver after WFI returns -- see
+   * test_enter_sleep_modes for the rationale. */
+  TEST_ASSERT_EQ(0, (*ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off)));
   TEST_END("lpm enter_deep_standby helper");
 }
 
