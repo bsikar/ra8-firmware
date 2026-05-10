@@ -58,13 +58,14 @@ done
 
 APP_NAME="$(basename "${HEX%.hex}")"
 LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
 # ---- 1. Strip OFS sections ---------------------------------------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
-# when the CPU is in a TrustZone-locked state.  Strip them so J-Link only
-# programs the MRAM bank at 0x02000000.
+# when TrustZone option bytes are involved.  Strip them so J-Link only programs
+# the MRAM bank at 0x02000000.
 ELF="${HEX%.hex}.elf"
 STRIPPED_HEX="/tmp/hil_${APP_NAME}_mram.hex"
 OFS_ARGS=( '--remove-section=.option_setting*' )
@@ -76,35 +77,40 @@ else
         || cp "$HEX" "$STRIPPED_HEX"
 fi
 
-# ---- 2. Flash via J-Link -------------------------------------------------------
-echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
+# ---- 2. Convert to flat binary and generate w4 script -----------------------
+# loadfile/loadbin trigger an implicit SYSRESETREQ, causing J-Link to upload
+# RAMCode to SRAM and run Prepare/Program/Finalize against the MRAM controller.
+# After ~13 consecutive operations the MRAM controller accumulates error state
+# that only a physical PORST clears.  w4 writes directly via DAP with the CPU
+# halted, bypassing RAMCode entirely so no controller state accumulates.
+BIN_FILE="/tmp/hil_${APP_NAME}_mram.bin"
+arm-none-eabi-objcopy -I ihex -O binary "$STRIPPED_HEX" "$BIN_FILE"
 
 TMP_SCRIPT="$(mktemp)"
-trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"' EXIT
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX" "$BIN_FILE"' EXIT
 
-cat > "$TMP_SCRIPT" <<JLINK
-device ${JLINK_DEVICE}
-si SWD
-speed 4000
-connect
-halt
-loadfile ${STRIPPED_HEX}
-r
-g
-q
-JLINK
+python3 "${SCRIPT_DIR}/utils/gen_jlink_w4.py" \
+    "$BIN_FILE" 0x02000000 --device "${JLINK_DEVICE}" > "$TMP_SCRIPT"
+
+# ---- 3. Flash via J-Link (w4 DAP writes) ------------------------------------
+echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 
 JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
     > "${LOG_FILE}" 2>&1
 
-if grep -qE "^Error|RAMCode did not respond|could not be halted|Cannot connect to the probe" "${LOG_FILE}"; then
+if grep -qE "^Error|Cannot connect to the probe|Could not write memory|could not be halted" "${LOG_FILE}"; then
     echo -e "${RED}[HIL]${NC} J-Link error -- log:" >&2
+    cat "${LOG_FILE}" >&2
+    exit 1
+fi
+if ! grep -q "O\.K\." "${LOG_FILE}"; then
+    echo -e "${RED}[HIL]${NC} J-Link did not connect -- log:" >&2
     cat "${LOG_FILE}" >&2
     exit 1
 fi
 echo -e "${YELLOW}[HIL]${NC} flash OK"
 
-# ---- 2. Read UART and check for expected string --------------------------------
+# ---- 4. Read UART and check for expected string --------------------------------
 # stty configures the tty before reading. Feed the tty as stdin to a timed
 # subshell that reads line-by-line; exit 0 the moment EXPECT appears.
 echo -e "${YELLOW}[HIL]${NC} waiting for '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."

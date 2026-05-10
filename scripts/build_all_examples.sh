@@ -26,17 +26,17 @@ if [ ! -d examples ]; then
 fi
 
 # Auto-discover apps: every examples/<tier>/<name>/ dir with a main.c.
-# Apps live under tier directories (ek_ra8d2/, _unsupported/) but the
-# build-target name is just the bare app name -- `make blink` works
-# regardless of which tier directory the app lives in.
+# Apps live at arbitrary depth under examples/. Discover them via find.
+# The build-target name is the bare directory name -- `make blink` works
+# regardless of how deep the app lives.
 apps=()
-for d in examples/*/*/; do
-    d="${d%/}"
+while IFS= read -r main_c; do
+    d="$(dirname "$main_c")"
     name="$(basename "$d")"
-    if [ -f "$d/main.c" ] && [ -f "$d/Makefile" ]; then
+    if [ -f "$d/Makefile" ]; then
         apps+=("$name")
     fi
-done
+done < <(find examples -name "main.c" | sort)
 
 if [ "${#apps[@]}" -eq 0 ]; then
     echo "error: no buildable apps discovered under examples/" >&2

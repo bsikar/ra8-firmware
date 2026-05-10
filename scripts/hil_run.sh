@@ -66,36 +66,43 @@ echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIME
 
 # ---- 1. Strip OFS sections ---------------------------------------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
-# when the CPU is in a TrustZone-locked state.
+# when TrustZone option bytes are involved.  Strip them so J-Link only programs
+# the MRAM bank at 0x02000000.
+#
+# SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
+# J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
+# communicate reliably.  Using 4000 kHz causes RAMCode timeout.
+ELF="${HEX%.hex}.elf"
 STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.${FIRMWARE_EXT}"
 OFS_ARGS=( '--remove-section=.option_setting*' )
-ELF="${HEX%.hex}.elf"
-if [[ "$FIRMWARE_EXT" == "hex" ]]; then
-    if [[ -f "$ELF" ]]; then
-        arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_FW" 2>/dev/null \
-            || cp "$HEX" "$STRIPPED_FW"
-    else
-        arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_FW" 2>/dev/null \
-            || cp "$HEX" "$STRIPPED_FW"
-    fi
+if [[ "$FIRMWARE_EXT" == "elf" ]]; then
+    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex" 2>/dev/null \
+        || arm-none-eabi-objcopy -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex"
+    STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.hex"
+elif [[ -f "$ELF" ]]; then
+    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_FW" 2>/dev/null \
+        || cp "$HEX" "$STRIPPED_FW"
 else
-    cp "$HEX" "$STRIPPED_FW"
+    arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_FW" 2>/dev/null \
+        || cp "$HEX" "$STRIPPED_FW"
 fi
 
 # ---- 2. Copy firmware to Pi --------------------------------------------------
-echo -e "${YELLOW}[HIL]${NC} uploading ${FIRMWARE_EXT}..."
+REMOTE_FW="/tmp/hil_${APP_NAME}_mram.hex"
+echo -e "${YELLOW}[HIL]${NC} uploading hex..."
 scp -q "$STRIPPED_FW" "${PI_HOST}:${REMOTE_FW}"
 
-# ---- 2. Flash via J-Link on Pi -----------------------------------------------
+# ---- 3. Flash via J-Link on Pi -----------------------------------------------
 echo -e "${YELLOW}[HIL]${NC} flashing..."
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP_SCRIPT=\$(mktemp)
+LOG=/tmp/hil_jlink_${APP_NAME}.log
 trap 'rm -f "\$TMP_SCRIPT"' EXIT
 cat > "\$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
-speed 4000
+speed 1000
 connect
 halt
 loadfile ${REMOTE_FW}
@@ -103,16 +110,15 @@ r
 g
 q
 JLINK
-JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP_SCRIPT" \
-    > /tmp/hil_jlink_${APP_NAME}.log 2>&1
-if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" /tmp/hil_jlink_${APP_NAME}.log; then
+JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP_SCRIPT" > "\$LOG" 2>&1
+if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "\$LOG"; then
     echo "J-Link error log:" >&2
-    cat /tmp/hil_jlink_${APP_NAME}.log >&2
+    cat "\$LOG" >&2
     exit 1
 fi
-if ! grep -q "O.K." /tmp/hil_jlink_${APP_NAME}.log; then
+if ! grep -q "O\.K\." "\$LOG"; then
     echo "J-Link did not confirm download (no 'O.K.' in log):" >&2
-    cat /tmp/hil_jlink_${APP_NAME}.log >&2
+    cat "\$LOG" >&2
     exit 1
 fi
 echo "flash OK"

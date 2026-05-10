@@ -62,8 +62,12 @@ echo -e "${YELLOW}[hil_flash]${NC} app=${APP}"
 
 # ---- 1. Strip OFS sections ---------------------------------------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
-# when the CPU is in a TrustZone-locked state.  Strip them so J-Link only
-# programs the MRAM bank at 0x02000000.
+# when TrustZone option bytes are involved.  Strip them so J-Link only programs
+# the MRAM bank at 0x02000000.
+#
+# SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
+# J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
+# communicate reliably.  Using 4000 kHz causes RAMCode timeout.
 ELF="${APP_DIR}/build/${APP}.elf"
 STRIPPED_HEX="/tmp/hil_${APP}_mram.hex"
 OFS_ARGS=( '--remove-section=.option_setting*' )
@@ -81,7 +85,7 @@ ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
 
 # ---- 3. Copy hex to Pi -------------------------------------------------------
 echo -e "${YELLOW}[hil_flash]${NC} uploading hex..."
-REMOTE_HEX="/tmp/hil_${APP}.hex"
+REMOTE_HEX="/tmp/hil_${APP}_mram.hex"
 scp -q "$STRIPPED_HEX" "${PI_HOST}:${REMOTE_HEX}"
 
 # ---- 4. Flash via J-Link on Pi -----------------------------------------------
@@ -89,11 +93,12 @@ echo -e "${YELLOW}[hil_flash]${NC} flashing..."
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP=\$(mktemp)
+LOG=/tmp/hil_jlink_${APP}.log
 trap 'rm -f "\$TMP"' EXIT
 cat > "\$TMP" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
-speed 4000
+speed 1000
 connect
 halt
 loadfile ${REMOTE_HEX}
@@ -101,22 +106,21 @@ r
 g
 q
 JLINK
-JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" \
-    > /tmp/hil_jlink_${APP}.log 2>&1
-VTREF=\$(grep -oP 'VTref=\K[0-9.]+V' /tmp/hil_jlink_${APP}.log | head -1 || echo "unknown")
+JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" > "\$LOG" 2>&1
+VTREF=\$(grep -oP 'VTref=\K[0-9.]+V' "\$LOG" | head -1 || echo "unknown")
 echo "    VTref : \${VTREF}"
-echo "    log   : /tmp/hil_jlink_${APP}.log"
-if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" /tmp/hil_jlink_${APP}.log; then
+echo "    log   : \${LOG}"
+if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "\$LOG"; then
     echo "---- J-Link log (errors detected) ----" >&2
     grep -iE "^Error|Warning|could not|failed|O\.K\.|VTref|Cortex|DAP|AP\[|loadfile|Downloading" \
-        /tmp/hil_jlink_${APP}.log >&2 || cat /tmp/hil_jlink_${APP}.log >&2
+        "\$LOG" >&2 || cat "\$LOG" >&2
     echo "---------------------------------------" >&2
-    echo "(full log at /tmp/hil_jlink_${APP}.log on Pi)" >&2
+    echo "(full log at \${LOG} on Pi)" >&2
     exit 1
 fi
-if ! grep -q "O.K." /tmp/hil_jlink_${APP}.log; then
+if ! grep -q "O\.K\." "\$LOG"; then
     echo "---- J-Link log (no O.K. confirm) ----" >&2
-    cat /tmp/hil_jlink_${APP}.log >&2
+    cat "\$LOG" >&2
     echo "---------------------------------------" >&2
     exit 1
 fi

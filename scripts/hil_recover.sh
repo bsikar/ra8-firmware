@@ -86,15 +86,14 @@ fi
 
 # ---- strip OFS sections (the root cause of RAMCode timeout) ------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to time out during
-# Prepare() when the CPU is in a TrustZone-locked state.  Strip them so
-# J-Link only programs the MRAM bank at 0x02000000 which works cleanly.
+# Prepare() when TrustZone option bytes are involved.  Strip them so J-Link
+# only programs the MRAM bank at 0x02000000 which works cleanly.
+#
+# SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
+# J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
+# communicate reliably.  Using 4000 kHz causes RAMCode timeout.
 STRIPPED_HEX="/tmp/hil_recover_${APP}_mram.hex"
 OFS_SECTIONS=( '--remove-section=.option_setting*' )
-
-SRC="${ELF:-$HEX}"
-FMT="ihex"
-[[ "$SRC" == *.elf ]] && FMT="default" || FMT="ihex"
-
 if [[ -f "$ELF" ]]; then
     arm-none-eabi-objcopy "${OFS_SECTIONS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null \
         || arm-none-eabi-objcopy -O ihex "$ELF" "$STRIPPED_HEX"
@@ -106,7 +105,7 @@ tag "OFS-stripped hex: $STRIPPED_HEX"
 
 # ---- flash attempt function --------------------------------------------------
 internal_try_flash() {
-    local remote_hex="/tmp/hil_recover_${APP}.hex"
+    local remote_hex="/tmp/hil_recover_${APP}_mram.hex"
     local log="/tmp/hil_recover_jlink_${APP}.log"
 
     scp -q "$STRIPPED_HEX" "${PI_HOST}:${remote_hex}" 2>/dev/null || {
@@ -120,7 +119,7 @@ trap 'rm -f "\$TMP"' EXIT
 cat > "\$TMP" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
-speed 4000
+speed 1000
 connect
 halt
 loadfile ${remote_hex}
@@ -134,7 +133,6 @@ REMOTE
     local vtref halted ramcode_err ok_count download_count
     vtref="$(grep -oE 'VTref=[0-9.]+V' "$log" | head -1 | sed 's/VTref=//' || echo '?')"
     halted="$(grep -c 'CPU could not be halted' "$log" || true)"
-    # "Writing target memory failed" is a non-fatal post-restore artifact; exclude it
     ramcode_err="$(grep -c 'RAMCode did not respond\|Failed to prepare' "$log" || true)"
     ok_count="$(grep -c 'O\.K\.' "$log" || true)"
     download_count="$(grep -c 'Downloading file\|Contents already match\|Skipped\.' "$log" || true)"
@@ -191,7 +189,7 @@ if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
         ok "flashed $APP on attempt $attempt"
     else
         printf "\n"
-        err "all $MAX_ATTEMPTS attempts failed -- see /tmp/hil_recover_jlink_${APP}.log"
+        err "all $MAX_ATTEMPTS attempts failed -- see /tmp/hil_recover_jlink_${APP}.log on Pi"
         exit 1
     fi
 fi
