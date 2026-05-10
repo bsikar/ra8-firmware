@@ -20,6 +20,7 @@ on:
       - 'libs/ra_hal/**'
       - 'scripts/hil_run_direct.sh'
       - 'scripts/hil_suite.sh'
+      - 'scripts/hil_recover.sh'
       - '.github/workflows/hil.yml'
   pull_request:
     branches: [main]
@@ -28,6 +29,7 @@ on:
       - 'libs/ra_hal/**'
       - 'scripts/hil_run_direct.sh'
       - 'scripts/hil_suite.sh'
+      - 'scripts/hil_recover.sh'
       - '.github/workflows/hil.yml'
   workflow_dispatch:
 
