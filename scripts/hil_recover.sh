@@ -89,24 +89,7 @@ fi
 # Prepare() when the CPU is in a TrustZone-locked state.  Strip them so
 # J-Link only programs the MRAM bank at 0x02000000 which works cleanly.
 STRIPPED_HEX="/tmp/hil_recover_${APP}_mram.hex"
-OFS_SECTIONS=(
-    --remove-section=.option_setting_ofs0
-    --remove-section=.option_setting_ofs1
-    --remove-section=.option_setting_ofs2
-    --remove-section=.option_setting_ofs3
-    --remove-section=.option_setting_ofs1_sec
-    --remove-section=.option_setting_ofs1_sel
-    --remove-section=.option_setting_ofs3_sec
-    --remove-section=.option_setting_ofs3_sel
-    --remove-section=.option_setting_bps0
-    --remove-section=.option_setting_bps1
-    --remove-section=.option_setting_bps2
-    --remove-section=.option_setting_bps3
-    --remove-section=.option_setting_pbps0
-    --remove-section=.option_setting_pbps1
-    --remove-section=.option_setting_pbps2
-    --remove-section=.option_setting_pbps3
-)
+OFS_SECTIONS=( '--remove-section=.option_setting*' )
 
 SRC="${ELF:-$HEX}"
 FMT="ihex"
