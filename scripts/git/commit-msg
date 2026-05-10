@@ -70,6 +70,46 @@ if echo "${PAYLOAD}" | grep -qiE '\[bot\]\b'; then
     VIOLATIONS+=("Bot-account suffix '[bot]' in message (any bot, not just AI)")
 fi
 
+# ---- Inclusive terminology in commit message ----------------------
+# Per-line opt-out: LEGACY-OK: <reason> on the offending line.
+INCL_VIOLATIONS=()
+while IFS= read -r line; do
+    # Skip opt-out lines and git comment lines.
+    echo "${line}" | grep -qiE '^[[:space:]]*(#|LEGACY-OK:)' && continue
+    if echo "${line}" | grep -qiE '\bmaster(s|ed|ing|ship)?\b'; then
+        INCL_VIOLATIONS+=("legacy term 'master' in: ${line}")
+    fi
+    if echo "${line}" | grep -qiE '\bslave(s|d)?\b'; then
+        INCL_VIOLATIONS+=("legacy term 'slave' in: ${line}")
+    fi
+    if echo "${line}" | grep -qE '\bMOSI\b'; then
+        INCL_VIOLATIONS+=("legacy term 'MOSI' -- use COPI: ${line}")
+    fi
+    if echo "${line}" | grep -qE '\bMISO\b'; then
+        INCL_VIOLATIONS+=("legacy term 'MISO' -- use CIPO: ${line}")
+    fi
+    if echo "${line}" | grep -qiE '\bSlave[ _-]Select\b'; then
+        INCL_VIOLATIONS+=("legacy term 'Slave Select' -- use CS: ${line}")
+    fi
+    if echo "${line}" | grep -qE '\bSS\b'; then
+        INCL_VIOLATIONS+=("legacy term 'SS' (Slave Select) -- use CS: ${line}")
+    fi
+done <<< "${PAYLOAD}"
+
+if [[ ${#INCL_VIOLATIONS[@]} -gt 0 ]]; then
+    cat <<EOF >&2
+[FAIL] Commit message uses non-inclusive terminology.
+       Use COPI/CIPO, Controller/Peripheral, CS instead.
+       Per-line opt-out: add "LEGACY-OK: <reason>" to that line.
+
+Findings:
+EOF
+    for v in "${INCL_VIOLATIONS[@]}"; do
+        echo "  - ${v}" >&2
+    done
+    exit 1
+fi
+
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
     exit 0
 fi

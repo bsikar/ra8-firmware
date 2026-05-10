@@ -45,6 +45,7 @@ TESTS=(
     "lpm_idle_demo|lpm: wake_count=|15"
     "crypto_aes_demo|aes: round-trip OK|15"
     "watchdog_demo|wdt: boot reason=power_on|15"
+    "eth_loopback|etha: loopback ok|20"
     "sdram_benchmark|sdram: w=|20"
     "rtc_alarm|rtc: alarm fired|30"
     "threadx_filex_levelx_demo|fxlx|30"

@@ -506,9 +506,8 @@ typedef enum : uint8_t {
  * is selected.
  */
 typedef enum : uint16_t {
-  k_ra_board_pmod1_spi_cs =
-    (uint16_t)RA_PIN(k_ra_port_8,
-                     k_ra_pin_4), /**< Pmod1.1 SS  (SS2/IRQ14),  P804. UM Table 17 p 26. */
+  k_ra_board_pmod1_spi_cs = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_4),
+  /**< Pmod1.1 CS  (SS2/IRQ14),  P804. UM Table 17 p 26. */ /* LEGACY-OK: SS2 is the UM pin-mux signal name */
   k_ra_board_pmod1_spi_copi =
     (uint16_t)RA_PIN(k_ra_port_8,
                      k_ra_pin_1), /**< Pmod1.2 COPI (MOSI2/TXD2 per UM),P801. UM Table 17 p 26. */
@@ -567,8 +566,8 @@ typedef enum : uint16_t {
  * are present; selection is by jumper E10/E14/E15/E16.
  */
 typedef enum : uint16_t {
-  k_ra_board_pmod2_spi_cs =
-    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4), /**< Pmod2.1 SS   (SSLB0), P604. UM Table 19 p 27. */
+  k_ra_board_pmod2_spi_cs = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4),
+  /**< Pmod2.1 CS   (SSLB0), P604. UM Table 19 p 27. */ /* LEGACY-OK: SSLB0 is the UM pin-mux signal name */
   k_ra_board_pmod2_spi_copi =
     (uint16_t)RA_PIN(k_ra_port_6,
                      k_ra_pin_3), /**< Pmod2.2 COPI (MOSIB per UM), P603. UM Table 19 p 27. */

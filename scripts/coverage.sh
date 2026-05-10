@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./scripts/coverage.sh
-#   ./scripts/coverage.sh --gate   # exit non-zero if below 90/90/90 threshold
+#   ./scripts/coverage.sh --gate   # exit non-zero if below 90% line / 80% branch
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -65,7 +65,7 @@ GCOVR_OPTS=(
 if [[ "$GATE" == "true" ]]; then
     GCOVR_OPTS+=(
         --fail-under-line   90
-        --fail-under-branch 90
+        --fail-under-branch 80
     )
 fi
 

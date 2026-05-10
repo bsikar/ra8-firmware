@@ -307,6 +307,19 @@ fi
 # scripts/, docs/. The literal token "Claude" is reserved EXCLUSIVELY
 # for the project's own CLAUDE.md filename. See
 # docs/AI_ATTRIBUTION_POLICY.md.
+
+# ---- Inclusive terminology (source files) --------------------------
+# Bans MOSI/MISO/master/slave vocabulary. Use COPI/CIPO/Controller/
+# Peripheral instead. Per-line opt-out: LEGACY-OK: <reason>.
+if [[ -f scripts/utils/check_inclusive_terminology.py ]]; then
+    if ! python3 scripts/utils/check_inclusive_terminology.py; then
+        echo "[FAIL] check_inclusive_terminology.py reported issues."
+        echo "       Use COPI/CIPO, Controller/Peripheral, CS, Primary."
+        echo "       Per-line opt-out: LEGACY-OK: <reason>"
+        error_found=1
+    fi
+fi
+
 if [[ -f scripts/utils/check_no_ai_attribution.py ]]; then
     if ! python3 scripts/utils/check_no_ai_attribution.py; then
         echo "[FAIL] check_no_ai_attribution.py reported issues."

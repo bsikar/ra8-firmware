@@ -101,6 +101,7 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("mosi", re.compile(r"\bMOSI\b")),
     ("miso", re.compile(r"\bMISO\b")),
     ("slave_select", re.compile(r"\bSlave[ _-]Select\b", re.IGNORECASE)),
+    ("ss_pin", re.compile(r"\bSS\b")),  # SPI Slave Select pin abbreviation -- use CS
 )
 
 # Per-line opt-out marker.
