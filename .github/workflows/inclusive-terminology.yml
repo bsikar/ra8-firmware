@@ -29,42 +29,14 @@ jobs:
 
       - name: Check commit messages for non-inclusive terminology
         run: |
-          # On push: check all commits added by this push.
-          # On PR: check all commits in the PR branch relative to base.
+          # Only check commits reachable from HEAD that are NOT ancestors of
+          # FLOOR_SHA.  FLOOR_SHA is the commit that introduced this check;
+          # commits before it are grandfathered (they pre-date the gate).
+          FLOOR_SHA="036fdb661f08d9dcae45a3d912bafdff2bc173e0"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
             HEAD="${{ github.event.pull_request.head.sha }}"
           else
-            BASE="${{ github.event.before }}"
             HEAD="${{ github.sha }}"
           fi
-          # git log between base and head; --format=%B gives full body.
-          git log "${BASE}..${HEAD}" --format=%B | \
-          python3 - <<'PYEOF'
-import sys, re
-
-BANNED = [
-    (re.compile(r'\bmaster(s|ed|ing|ship)?\b', re.IGNORECASE), "master -- use Primary/Controller"),
-    (re.compile(r'\bslave(s|d)?\b',            re.IGNORECASE), "slave -- use Peripheral"),
-    (re.compile(r'\bMOSI\b'),                                  "MOSI -- use COPI"),
-    (re.compile(r'\bMISO\b'),                                  "MISO -- use CIPO"),
-    (re.compile(r'\bSlave[ _-]Select\b',        re.IGNORECASE), "Slave Select -- use CS"),
-    (re.compile(r'\bSS\b'),                                    "SS (Slave Select) -- use CS"),
-]
-LEGACY_OK = re.compile(r'LEGACY-OK\s*:', re.IGNORECASE)
-
-text = sys.stdin.read()
-violations = []
-for lineno, line in enumerate(text.splitlines(), 1):
-    if LEGACY_OK.search(line):
-        continue
-    for pattern, msg in BANNED:
-        if pattern.search(line):
-            violations.append(f"  line {lineno}: {msg}\n    > {line.strip()}")
-if violations:
-    print("[FAIL] Non-inclusive terminology in commit message(s):")
-    for v in violations:
-        print(v)
-    sys.exit(1)
-print("[PASS] Commit message terminology clean.")
-PYEOF
+          git log "${FLOOR_SHA}..${HEAD}" --format=%B | \
+            python3 scripts/utils/check_inclusive_terminology_commits.py
