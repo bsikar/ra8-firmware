@@ -61,20 +61,43 @@ LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
-# ---- 1. Flash via J-Link -------------------------------------------------------
+# ---- 1. Strip OFS sections ---------------------------------------------------
+# OFS sections at 0x0300A100+ cause J-Link RAMCode to timeout during Prepare()
+# when the CPU is in a TrustZone-locked state.  Strip them so J-Link only
+# programs the MRAM bank at 0x02000000.
+ELF="${HEX%.hex}.elf"
+STRIPPED_HEX="/tmp/hil_${APP_NAME}_mram.hex"
+OFS_ARGS=(
+    --remove-section=.option_setting_ofs0  --remove-section=.option_setting_ofs1
+    --remove-section=.option_setting_ofs2  --remove-section=.option_setting_ofs3
+    --remove-section=.option_setting_ofs1_sec --remove-section=.option_setting_ofs1_sel
+    --remove-section=.option_setting_ofs3_sec --remove-section=.option_setting_ofs3_sel
+    --remove-section=.option_setting_bps0  --remove-section=.option_setting_bps1
+    --remove-section=.option_setting_bps2  --remove-section=.option_setting_bps3
+    --remove-section=.option_setting_pbps0 --remove-section=.option_setting_pbps1
+    --remove-section=.option_setting_pbps2 --remove-section=.option_setting_pbps3
+)
+if [[ -f "$ELF" ]]; then
+    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null \
+        || cp "$HEX" "$STRIPPED_HEX"
+else
+    arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_HEX" 2>/dev/null \
+        || cp "$HEX" "$STRIPPED_HEX"
+fi
+
+# ---- 2. Flash via J-Link -------------------------------------------------------
 echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 
 TMP_SCRIPT="$(mktemp)"
-trap 'rm -f "$TMP_SCRIPT"' EXIT
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"' EXIT
 
 cat > "$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
-si 1
+si SWD
 speed 4000
 connect
-r
 halt
-loadfile ${HEX}
+loadfile ${STRIPPED_HEX}
 r
 g
 q
@@ -83,7 +106,7 @@ JLINK
 JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
     > "${LOG_FILE}" 2>&1
 
-if grep -q "Error" "${LOG_FILE}"; then
+if grep -qE "^Error|RAMCode did not respond|could not be halted|Cannot connect to the probe" "${LOG_FILE}"; then
     echo -e "${RED}[HIL]${NC} J-Link error -- log:" >&2
     cat "${LOG_FILE}" >&2
     exit 1
