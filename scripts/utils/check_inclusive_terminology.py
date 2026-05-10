@@ -111,6 +111,7 @@ LEGACY_OK_RE: re.Pattern[str] = re.compile(r"LEGACY-OK\s*:")
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/utils/check_inclusive_terminology.py",
+        "scripts/utils/check_inclusive_terminology_commits.py",
         "scripts/utils/fix_inclusive_terminology.py",
         "docs/STYLE_GUIDE.md",
         "docs/RING_AND_WORLD.md",
