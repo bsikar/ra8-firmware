@@ -53,10 +53,9 @@ trap 'rm -f "$TMP_SCRIPT"' EXIT
 #   - `-SelectEmuBySN` pins the probe so multi-probe machines don't prompt.
 cat > "$TMP_SCRIPT" <<EOF
 device R7KA8D2KF_CPU0
-si 1
+si SWD
 speed 4000
 connect
-r
 halt
 loadfile $HEX
 r
