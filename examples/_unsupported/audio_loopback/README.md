@@ -44,7 +44,7 @@ make -C examples/audio_loopback flash     # flash via on-board J-Link OB
 Or standalone:
 
 ```sh
-cd examples/audio_loopback/
+cd examples/_unsupported/audio_loopback/
 make
 make flash
 make clean
