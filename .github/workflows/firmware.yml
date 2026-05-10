@@ -106,10 +106,10 @@ jobs:
         run: bash tests/run_tests.sh
 
   # ---------------------------------------------------------------------------
-  # Coverage gate (gcovr 90/90) -- legacy line/branch coverage
+  # Coverage gate (gcovr 90 line / 80 branch)
   # ---------------------------------------------------------------------------
   coverage:
-    name: Coverage (gcovr 90/90)
+    name: Coverage (gcovr 90/80)
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
     steps:
