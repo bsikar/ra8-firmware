@@ -32,7 +32,7 @@ GUIX UI framework.
 ## Notes
 
 - GLCDC bring-up is intentionally skipped here -- the EK-RA8D2 v1
-  LCD-connector pin map is still marked TODO in `examples/lcd_demo/`.
+  LCD-connector pin map is still marked TODO in `examples/ek_ra8d2/hw_pending/lcd_demo/`.
   Once that lands, the same framebuffer can be picked up by GLCDC and
   the demo's pixels will appear on the panel.
 - The shim in `port/guix/gx_display_driver_ra_glcdc.{h,c}` runs in

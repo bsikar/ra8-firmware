@@ -19,26 +19,32 @@ Install the SEGGER J-Link package: <https://www.segger.com/downloads/jlink/>.
 Install Ozone if you want a GUI debugger:
 `brew install --cask segger-ozone` on macOS.
 
+Build artifacts land in `<app-dir>/build/<app>.{elf,hex}`. For
+`make blink` the directory is
+`examples/ek_ra8d2/hw_validated/smoke/blink/`; the top-level Makefile
+auto-discovers each app's directory so the `make <app>` shorthand works
+regardless of tier.
+
 ```sh
 # Build
 make blink
 
 # Flash
-./scripts/flash.sh examples/blink/build/blink.hex
+./scripts/flash.sh <app-dir>/build/<app>.hex
 
 # Debug (CLI, JLinkGDBServer + arm-none-eabi-gdb)
-./scripts/debug.sh examples/blink/build/blink.elf
+./scripts/debug.sh <app-dir>/build/<app>.elf
 
 # Debug (GUI, Ozone)
-./scripts/ozone.sh examples/blink/build/blink.elf
+./scripts/ozone.sh <app-dir>/build/<app>.elf
 ```
 
 Per-app Makefiles wrap these:
 
 ```sh
-make -C examples/blink flash
-make -C examples/blink debug
-make -C examples/blink ozone
+make -C <app-dir> flash
+make -C <app-dir> debug
+make -C <app-dir> ozone
 ```
 
 ---
@@ -64,20 +70,20 @@ brew install --cask gcc-arm-embedded   # for arm-none-eabi-gdb
 
 ```sh
 make blink
-./scripts/openocd_flash.sh examples/blink/build/blink.hex
+./scripts/openocd_flash.sh <app-dir>/build/<app>.hex
 ```
 
 Under the hood:
 
 ```sh
 openocd -f scripts/openocd/ek-ra8d2.cfg \
-        -c "program examples/blink/build/blink.hex verify reset exit"
+        -c "program <app-dir>/build/<app>.hex verify reset exit"
 ```
 
 ### Debug
 
 ```sh
-./scripts/openocd_debug.sh examples/blink/build/blink.elf
+./scripts/openocd_debug.sh <app-dir>/build/<app>.elf
 ```
 
 This starts `openocd` in the background (GDB server on `localhost:3333`)
@@ -92,7 +98,7 @@ that drive gdb themselves):
 openocd -f scripts/openocd/ek-ra8d2.cfg
 
 # Terminal 2
-arm-none-eabi-gdb examples/blink/build/blink.elf \
+arm-none-eabi-gdb <app-dir>/build/<app>.elf \
     -ex "target extended-remote :3333" \
     -ex "monitor reset halt" \
     -ex "load"

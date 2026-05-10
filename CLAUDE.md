@@ -748,12 +748,19 @@ vector tables, different memory layouts) is an explicit design goal.
 
 ```
 ra8d2-firmware/
-  CMakeLists.txt               Top-level CMake -- auto-discovers examples/<app>/ dirs
+  CMakeLists.txt               Top-level CMake -- auto-discovers examples/<tier>/.../<app>/ dirs
   Makefile                     Top-level shorthand: `make <app>` / `make apps`
   cmake/
     toolchain-ra8d2.cmake      arm-none-eabi cross-compile settings
   examples/
-    blink/                     Standalone app: raw-register LED blink
+    ek_ra8d2/                  Stock EK-RA8D2 evaluation kit (no extra HW)
+      hw_validated/            Apps confirmed working on a stock EVM
+        smoke/                 No-UART smoke tests (e.g. blink, blink_hal)
+        uart/                  Apps that print over SCI UART
+        manual/                Apps needing manual jumper / button steps
+      hw_pending/              Apps written but not yet HW-validated
+    _unsupported/              Apps needing external hardware (motor, audio CODEC, ...)
+    <tier>/.../<app>/          Each app dir contains:
       main.c                   Application entry
       vector_table.c           Per-app vector table + Reset_Handler
       system_init.c            Per-app SystemInit
@@ -763,7 +770,6 @@ ra8d2-firmware/
       CMakeLists.txt           Per-app cmake target
       Makefile                 Per-app `make` (configure + build via cmake)
       README.md
-    blink_hal/                 Same shape as blink/, HAL-based variant
   src/                         Shared internals (no boot code, no main)
     inc/                       Internal headers shared between TUs
     secure_app/                Ring 5 secure-side substrate (key vault)
@@ -799,7 +805,11 @@ ra8d2-firmware/
 
 ### Adding a new application
 
-Create a new directory `examples/<newapp>/` containing:
+Create a new directory `examples/<tier>/.../<newapp>/` (pick a tier
+that matches the hardware-support category -- e.g.
+`ek_ra8d2/hw_validated/smoke/`, `ek_ra8d2/hw_validated/uart/`,
+`ek_ra8d2/hw_validated/manual/`, `ek_ra8d2/hw_pending/`, or
+`_unsupported/`) containing:
 
 1. `main.c` -- the application entry.
 2. The five per-app boot files copied from a sibling app

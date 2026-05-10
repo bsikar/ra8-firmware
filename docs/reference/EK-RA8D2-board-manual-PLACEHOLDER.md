@@ -46,17 +46,17 @@ grep -rn "TODO: confirm" examples/ libs/
 
 | File:line | Subsystem | Firmware-guessed pin | Manual-confirmed pin | Status |
 |-----------|-----------|----------------------|----------------------|--------|
-| `examples/audio_loopback/main.c:109`      | SSI / I2S audio CODEC (DA7212 U14) | P5_00..P5_04        | See "Audio CODEC" below; actual pins are P403/P404/P405/P406/PD06/P511/P512 (Table 32 of UM)        | RESOLVED -- firmware guess WRONG, fix needed |
-| `examples/audio_loopback/README.md:38-42` | SSI / I2S audio CODEC              | AUDIO_MCK on P5_00 etc. | MCLK = PD06, BCLK = P403, WCLK = P404, DATIN = P405, DATOUT = P406, I2C SDA = P511, SCL = P512 (UM Table 32) | RESOLVED |
-| `examples/lcd_demo/main.c:71`             | GLCDC parallel TFT pin table       | unspecified J57     | Connector is **J1** (Parallel Graphics Expansion Port), pins per UM Table 33 -- see "GLCDC" below   | RESOLVED at connector level; per-pin PSEL still UNCONFIRMED for some entries |
-| `examples/lcd_demo/main.c:253`            | GLCDC connector reference          | J57                 | Correct connector is **J1**, not J57                                                                | RESOLVED -- firmware label WRONG |
-| `examples/lcd_demo/README.md:53`          | GLCDC pin table                    | every entry         | Use UM Table 33 directly                                                                            | RESOLVED |
-| `examples/ereader/main.c:273`             | GLCDC parallel TFT (shared)        | J57                 | Same as `lcd_demo` -- J1 + Table 33                                                                 | RESOLVED |
-| `examples/ereader/main.c:328`             | SDHI SD-card pin table             | unspecified         | **EK-RA8D2 v1 has NO microSD socket.** SDHI is not exposed on this board.                           | RESOLVED -- example code targets a non-existent peripheral; needs design decision |
-| `examples/ereader/main.c:77`              | GLCDC bring-up call sites          | n/a                 | Same as above                                                                                       | RESOLVED |
-| `examples/ereader/power.h`                | ICU buttons SW1/SW2                | SW1 -> IRQ11, SW2 -> IRQ12 | **SW1 -> P009 / IRQ13-DS, SW2 -> P008 / IRQ12-DS** (UM Table 25, Section 5.5.2)              | RESOLVED -- SW1 mapping in firmware is WRONG (IRQ11 -> IRQ13) |
-| `examples/motor_3phase/main.c:146`        | GPT0/GPT1/GPT2 GTIOCxA outputs     | P4_08 / P4_09 / P4_10 | **WRONG pins.** P408/P409/P410 are routed to the on-board J-Link debug MCU as UART pins (UM Section 5.4 / Pmod table). The EK-RA8D2 publicly exposes GTIOC1A on P105 and GTIOC2A on P103 via the Arduino Uno header (UM Table 20). GTIOC0A is not brought out on any documented header. | UNCONFIRMED -- needs design decision: either use P103/P105 (and drop GTIOC0A), or run motor_3phase off Pmod GTIOC pins (P810/P811 = GTIOC10A/B per UM Table 21) |
-| `examples/motor_3phase/README.md:46-48`   | Same as above                      | P4_08 / P4_09 / P4_10 | Same as above                                                                                       | UNCONFIRMED |
+| `examples/_unsupported/audio_loopback/main.c:109`      | SSI / I2S audio CODEC (DA7212 U14) | P5_00..P5_04        | See "Audio CODEC" below; actual pins are P403/P404/P405/P406/PD06/P511/P512 (Table 32 of UM)        | RESOLVED -- firmware guess WRONG, fix needed |
+| `examples/_unsupported/audio_loopback/README.md:38-42` | SSI / I2S audio CODEC              | AUDIO_MCK on P5_00 etc. | MCLK = PD06, BCLK = P403, WCLK = P404, DATIN = P405, DATOUT = P406, I2C SDA = P511, SCL = P512 (UM Table 32) | RESOLVED |
+| `examples/ek_ra8d2/hw_pending/lcd_demo/main.c:71`             | GLCDC parallel TFT pin table       | unspecified J57     | Connector is **J1** (Parallel Graphics Expansion Port), pins per UM Table 33 -- see "GLCDC" below   | RESOLVED at connector level; per-pin PSEL still UNCONFIRMED for some entries |
+| `examples/ek_ra8d2/hw_pending/lcd_demo/main.c:253`            | GLCDC connector reference          | J57                 | Correct connector is **J1**, not J57                                                                | RESOLVED -- firmware label WRONG |
+| `examples/ek_ra8d2/hw_pending/lcd_demo/README.md:53`          | GLCDC pin table                    | every entry         | Use UM Table 33 directly                                                                            | RESOLVED |
+| `examples/ek_ra8d2/hw_pending/ereader/main.c:273`             | GLCDC parallel TFT (shared)        | J57                 | Same as `lcd_demo` -- J1 + Table 33                                                                 | RESOLVED |
+| `examples/ek_ra8d2/hw_pending/ereader/main.c:328`             | SDHI SD-card pin table             | unspecified         | **EK-RA8D2 v1 has NO microSD socket.** SDHI is not exposed on this board.                           | RESOLVED -- example code targets a non-existent peripheral; needs design decision |
+| `examples/ek_ra8d2/hw_pending/ereader/main.c:77`              | GLCDC bring-up call sites          | n/a                 | Same as above                                                                                       | RESOLVED |
+| `examples/ek_ra8d2/hw_pending/ereader/power.h`                | ICU buttons SW1/SW2                | SW1 -> IRQ11, SW2 -> IRQ12 | **SW1 -> P009 / IRQ13-DS, SW2 -> P008 / IRQ12-DS** (UM Table 25, Section 5.5.2)              | RESOLVED -- SW1 mapping in firmware is WRONG (IRQ11 -> IRQ13) |
+| `examples/_unsupported/motor_3phase/main.c:146`        | GPT0/GPT1/GPT2 GTIOCxA outputs     | P4_08 / P4_09 / P4_10 | **WRONG pins.** P408/P409/P410 are routed to the on-board J-Link debug MCU as UART pins (UM Section 5.4 / Pmod table). The EK-RA8D2 publicly exposes GTIOC1A on P105 and GTIOC2A on P103 via the Arduino Uno header (UM Table 20). GTIOC0A is not brought out on any documented header. | UNCONFIRMED -- needs design decision: either use P103/P105 (and drop GTIOC0A), or run motor_3phase off Pmod GTIOC pins (P810/P811 = GTIOC10A/B per UM Table 21) |
+| `examples/_unsupported/motor_3phase/README.md:46-48`   | Same as above                      | P4_08 / P4_09 / P4_10 | Same as above                                                                                       | UNCONFIRMED |
 
 ## Audio CODEC pins (UM Table 32, Page 38) -- AUTHORITATIVE
 
@@ -113,7 +113,7 @@ values per pin are in the chip HW UM, not the board UM.
 ## SD-card / SDHI -- NOT POPULATED on EK-RA8D2 v1
 
 `grep -i 'SDHI\|microSD\|SD card'` over the EK-RA8D2 v1 User's Manual
-returns zero hits. The board does not expose SDHI. `examples/ereader`
+returns zero hits. The board does not expose SDHI. `examples/ek_ra8d2/hw_pending/ereader`
 SDHI bring-up is therefore for an external add-on board not described
 by the EK-RA8D2 v1 manual; it cannot be confirmed against this manual
 and should be deferred or moved to an example that targets the Pmod /
@@ -143,7 +143,7 @@ clean header trio. Documented public GTIOC pins (UM Tables 20 and 21):
 | Pmod          | GTIOC10A                           | P810 |
 | (none public) | GTIOC0A                            | -- |
 
-The current `examples/motor_3phase` choice of `P4_08 / P4_09 / P4_10`
+The current `examples/_unsupported/motor_3phase` choice of `P4_08 / P4_09 / P4_10`
 maps to debug-MCU UART pins (`P408/P409/P410`) on the EK-RA8D2 v1
 board and CANNOT drive a 3-phase inverter from the user MCU. The
 example needs to either:

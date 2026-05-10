@@ -109,7 +109,7 @@ make -C examples/usb_cdc_echo flash     # flash via on-board J-Link OB
 Or standalone:
 
 ```sh
-cd examples/usb_cdc_echo/
+cd examples/ek_ra8d2/hw_validated/smoke/usb_cdc_echo/
 make
 make flash
 make clean

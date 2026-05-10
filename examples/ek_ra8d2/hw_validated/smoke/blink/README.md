@@ -1,7 +1,7 @@
 # blink
 
 Minimum-viable LED-blink smoke test for the EK-RA8D2. Standalone
-example app: `examples/blink/main.c` plus its own `vector_table.c`,
+example app: `examples/ek_ra8d2/hw_validated/smoke/blink/main.c` plus its own `vector_table.c`,
 `system_init.c`, `secure_exception.c`, `trustzone_init.c`,
 `linker_script.ld`, `Makefile`, and `CMakeLists.txt`.
 
@@ -14,21 +14,21 @@ busy-wait. LED1 / P600 wiring per EK-RA8D2 v1 User's Manual Table 24
 
 Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (`ra_board_led_init`,
 `ra_board_led_toggle`) and `ra_time` for the 1 ms SysTick. For a
-multi-LED HAL-driven variant see `examples/blink_hal`.
+multi-LED HAL-driven variant see `examples/ek_ra8d2/hw_validated/smoke/blink_hal`.
 
 ## Build + flash
 
 From the repo root:
 
 ```sh
-make blink                       # cross-compile -> examples/blink/build/blink.elf
+make blink                       # cross-compile -> examples/ek_ra8d2/hw_validated/smoke/blink/build/blink.elf
 make -C examples/blink flash     # flash via on-board J-Link OB
 ```
 
-Or standalone, from inside `examples/blink/`:
+Or standalone, from inside `examples/ek_ra8d2/hw_validated/smoke/blink/`:
 
 ```sh
-cd examples/blink/
+cd examples/ek_ra8d2/hw_validated/smoke/blink/
 make                   # configure + build -> build/blink.{elf,hex,bin}
 make flash             # flash build/blink.hex
 make clean             # rm -rf build
@@ -37,11 +37,11 @@ make clean             # rm -rf build
 Or directly via cmake (e.g. for a `Release` build):
 
 ```sh
-cmake -S examples/blink -B examples/blink/build \
+cmake -S examples/ek_ra8d2/hw_validated/smoke/blink -B examples/ek_ra8d2/hw_validated/smoke/blink/build \
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
       -DCMAKE_BUILD_TYPE=Release
-cmake --build examples/blink/build
-bash scripts/flash.sh examples/blink/build/blink.hex
+cmake --build examples/ek_ra8d2/hw_validated/smoke/blink/build
+bash scripts/flash.sh examples/ek_ra8d2/hw_validated/smoke/blink/build/blink.hex
 ```
 
 ## Debugging

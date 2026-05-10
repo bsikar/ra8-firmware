@@ -22,14 +22,14 @@ where the driver thinks it did.
 From the repo root:
 
 ```sh
-make clock_check                       # cross-compile -> examples/clock_check/build/clock_check.elf
+make clock_check                       # cross-compile -> examples/ek_ra8d2/hw_validated/smoke/clock_check/build/clock_check.elf
 make -C examples/clock_check flash     # flash via on-board J-Link OB
 ```
 
-Or standalone, from inside `examples/clock_check/`:
+Or standalone, from inside `examples/ek_ra8d2/hw_validated/smoke/clock_check/`:
 
 ```sh
-cd examples/clock_check/
+cd examples/ek_ra8d2/hw_validated/smoke/clock_check/
 make
 make flash
 make clean

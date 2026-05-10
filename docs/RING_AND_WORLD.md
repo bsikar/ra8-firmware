@@ -34,7 +34,7 @@ services.
 | **3** | HAL drivers | `libs/ra_hal/src/ra_*.c` | Hardware Abstraction Layer. Programmes peripherals via Ring-2 register headers. The vast majority of driver code lives here. |
 | **4** | NSC veneers | `libs/ra_nsc/` | TrustZone Non-Secure-Callable veneers. Bridges between `{World: S}` and `{World: NS}` -- the only place where `__attribute__((cmse_nonsecure_entry))` is allowed. |
 | **5** | Secure app | `src/secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |
-| **6** | Application | `examples/<app>/main.c` (e.g. `examples/blink/`, `examples/blink_hal/`), test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
+| **6** | Application | `examples/<tier>/.../<app>/main.c` (e.g. `.../smoke/blink/`, `.../smoke/blink_hal/`), test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
 
 The numbering doesn't have to be contiguous; it's a coordinate system,
 not a rule book. A Ring 3 driver can include Ring 1 / Ring 2 headers
@@ -116,7 +116,7 @@ Carries `cmse_nonsecure_entry` attributes; lives under `libs/ra_nsc/`
 so the linker can place it in `.gnu.sgstubs`.
 
 ```c
-/* examples/blink/main.c */
+/* examples/ek_ra8d2/hw_validated/smoke/blink/main.c */
 /**
  * @file main.c
  * @brief Blink-LED smoke test

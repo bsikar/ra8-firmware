@@ -61,7 +61,7 @@ make -C examples/motor_3phase flash     # flash via on-board J-Link OB
 Or standalone:
 
 ```sh
-cd examples/motor_3phase/
+cd examples/_unsupported/motor_3phase/
 make
 make flash
 make clean
