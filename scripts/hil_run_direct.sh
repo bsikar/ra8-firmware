@@ -99,23 +99,38 @@ JLINK
 
 echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 
-JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
-    > "${LOG_FILE}" 2>&1
+# After ~10-13 consecutive loadfile ops the MRAM controller accumulates
+# error state that manifests as "RAMCode did not respond in time".  A short
+# delay between attempts sometimes lets it recover; permanent degradation
+# requires a physical PORST and will exhaust the retries.
+MAX_TRIES=3
+attempt=0
+flash_ok=0
+while (( attempt < MAX_TRIES )); do
+    attempt=$(( attempt + 1 ))
+    JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
+        > "${LOG_FILE}" 2>&1
 
-# Match real J-Link error patterns: "****** Error: ...", RAMCode timeout,
-# Cannot-connect, could-not-be-halted.  J-Link prints success as "O.K." and
-# the flash phase as "Programming flash" so we require both.
-if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond" "${LOG_FILE}"; then
-    echo -e "${RED}[HIL]${NC} J-Link error -- log:" >&2
+    if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond" "${LOG_FILE}"; then
+        echo -e "${YELLOW}[HIL]${NC} flash attempt ${attempt}/${MAX_TRIES} failed (J-Link error)" >&2
+        sleep 3
+        continue
+    fi
+    if ! grep -qE "Programming flash.*Done\.|Skipped\. Contents already match" "${LOG_FILE}"; then
+        echo -e "${YELLOW}[HIL]${NC} flash attempt ${attempt}/${MAX_TRIES}: no programming output" >&2
+        sleep 3
+        continue
+    fi
+    flash_ok=1
+    break
+done
+
+if (( flash_ok != 1 )); then
+    echo -e "${RED}[HIL]${NC} flash failed after ${MAX_TRIES} attempts -- log tail:" >&2
     tail -40 "${LOG_FILE}" >&2
     exit 1
 fi
-if ! grep -q "Programming flash.*Done\." "${LOG_FILE}"; then
-    echo -e "${RED}[HIL]${NC} J-Link did not program flash -- log:" >&2
-    tail -40 "${LOG_FILE}" >&2
-    exit 1
-fi
-echo -e "${YELLOW}[HIL]${NC} flash OK"
+echo -e "${YELLOW}[HIL]${NC} flash OK (attempt ${attempt})"
 
 # ---- 4. Read UART and check for expected string --------------------------------
 # stty configures the tty before reading. Feed the tty as stdin to a timed
