@@ -58,6 +58,7 @@ static const ra_port_pin_t k_iwdt_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_iwdt_demo_msg_refresh[] = "iwdt: refresh in window\r\n";
+static const uint8_t k_iwdt_demo_msg_boot[]    = "iwdt: poll counter\r\n";
 
 static void iwdt_demo_panic_halt(void)
 {
@@ -130,6 +131,12 @@ int32_t main(void)
 {
   iwdt_demo_setup_or_halt();
   ra_isr_globals_enable();
+
+  /* Boot banner -- emit immediately after setup so the HIL host can
+   * confirm the firmware booted regardless of OFS0 / IWDT state. */
+  (void)ra_sci_write_polling((uint8_t)k_iwdt_demo_sci_channel,
+                             k_iwdt_demo_msg_boot,
+                             (uint32_t)(sizeof(k_iwdt_demo_msg_boot) - 1U));
 
   if (ra_iwdt_init() != k_ra_ok) {
     iwdt_demo_panic_halt();

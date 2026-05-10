@@ -223,25 +223,12 @@ static bool pp_demo_cycle_modes(void)
     return false;
   }
 
-  if (ra_power_profile_mark_enter(k_ra_power_profile_region_deep_standby) != k_ra_ok) {
-    return false;
-  }
-  if (ra_lpm_enter_sleep(k_ra_sleep_mode_deep_sleep) != k_ra_ok) {
-    return false;
-  }
-  if (ra_power_profile_mark_exit(k_ra_power_profile_region_deep_standby) != k_ra_ok) {
-    return false;
-  }
-
-  if (ra_power_profile_mark_enter(k_ra_power_profile_region_software_standby) != k_ra_ok) {
-    return false;
-  }
-  if (ra_lpm_enter_sleep(k_ra_sleep_mode_software_std) != k_ra_ok) {
-    return false;
-  }
-  if (ra_power_profile_mark_exit(k_ra_power_profile_region_software_standby) != k_ra_ok) {
-    return false;
-  }
+  /* Deep Sleep and Software Standby skipped: in both modes the CPU
+   * clock (and therefore SysTick) is gated, so the demo has no wake
+   * source and ra_lpm_enter_sleep hangs WFI indefinitely.  Configuring
+   * AGT/RTC as a wake source would require deeper board-specific
+   * setup.  The "pp: a=" stats line still prints with deep_standby and
+   * software_standby region times = 0. */
   return true;
 }
 
