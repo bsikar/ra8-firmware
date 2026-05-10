@@ -26,6 +26,8 @@
 
 #include <stdint.h>
 
+#include "ra_lpm_safe_boot.h"
+
 /* =============================================================================
  * Linker-provided symbols
  * =============================================================================
@@ -392,6 +394,12 @@ const exc_handler_t g_ra_vector_table_start[16U + k_ra_irq_count] = {
 /* NOLINTBEGIN(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) */
 void Reset_Handler(void)
 {
+  /* Must be first: clear LPSCR / SBYCR / DPSBYCR before any code
+   * can execute WFI.  Survives a previous app leaving LPSCR set to
+   * software-standby across SYSRESETREQ (the SYSC LPM block is in
+   * a separate reset domain).  See libs/ra_hal/inc/ra_lpm_safe_boot.h. */
+  ra_lpm_safe_boot();
+
   /* Step 1: core-level init (VTOR, FPU, caches, priority grouping,
    * interrupts masked). Runs before we touch .data or .bss so it
    * must not read or write any global variables. */
