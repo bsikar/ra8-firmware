@@ -37,8 +37,8 @@ static void test_init_zeroes_refcounts_and_sets_all_stopped(void)
 
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
 
-  /* Every register should now be all-ones. */
-  TEST_ASSERT_EQ(0xFFFFFFFFU, ra_mstp()->MSTPCRA);
+  /* MSTPCRA bits 0-3 (SRAM0-3) must stay 0 to keep SRAM running. */
+  TEST_ASSERT_EQ(0xFFFFFFF0U, ra_mstp()->MSTPCRA);
   TEST_ASSERT_EQ(0xFFFFFFFFU, ra_mstp()->MSTPCRB);
   TEST_ASSERT_EQ(0xFFFFFFFFU, ra_mstp()->MSTPCRC);
   TEST_ASSERT_EQ(0xFFFFFFFFU, ra_mstp()->MSTPCRD);
