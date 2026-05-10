@@ -18,9 +18,11 @@
 set -euo pipefail
 
 UART="/dev/ttyACM0"
+ONLY=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --uart) UART="$2"; shift 2 ;;
+        --only) ONLY="$2"; shift 2 ;;
         *) echo "Unknown arg: $1"; exit 2 ;;
     esac
 done
@@ -64,6 +66,9 @@ declare -a failures=()
 
 for entry in "${TESTS[@]}"; do
     IFS='|' read -r app expect timeout_s <<< "$entry"
+    if [[ -n "$ONLY" && ",${ONLY}," != *",${app},"* ]]; then
+        continue
+    fi
     hex="${UART_DIR}/${app}/build/${app}.hex"
 
     printf "${YELLOW}[SUITE]${NC} %-35s expect='%s'\n" "${app}" "${expect}"

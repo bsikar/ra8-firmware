@@ -83,6 +83,15 @@ fi
 # Commander is impractical, so we use loadfile (which uses RAMCode internally).
 # OFS stripping above prevents the RAMCode Prepare() timeout that occurs when
 # .option_setting* sections at 0x0300A100 are included.
+#
+# Pre-flash LPSCR clear (HUM Ch 11.2.18 / 11.2.20):
+# Some apps (e.g. power_profiler) write LPSCR.LPMD = 0x4 (software standby)
+# before WFI.  SYSRESETREQ via the debugger does NOT reset the SYSC LPM block
+# (separate reset domain), so LPSCR survives reset.  When J-Link's RAMCode
+# helper later executes any WFI, it gets trapped into software standby with
+# no wake source -- "RAMCode did not respond" timeout cascades.  Clearing
+# LPSCR via DAP (PRCR-unlock + write 0 + relock) makes RAMCode's WFI a plain
+# Sleep that any interrupt can wake.
 TMP_SCRIPT="$(mktemp)"
 trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"' EXIT
 cat > "$TMP_SCRIPT" <<JLINK
@@ -91,6 +100,9 @@ si SWD
 speed 1000
 connect
 halt
+w2 0x4001E3FA 0xA502
+w1 0x4001EA90 0x00
+w2 0x4001E3FA 0xA500
 loadfile ${STRIPPED_HEX}
 r
 g
