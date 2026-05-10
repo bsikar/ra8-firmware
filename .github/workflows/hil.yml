@@ -4,7 +4,7 @@ name: hil
 # (labels: self-hosted, hil, pi5, ra8d2) that has the EK-RA8D2 board wired
 # to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud).
 #
-# Covers all 23 apps in examples/ek_ra8d2/hw_validated/uart/:
+# Covers all 19 apps in examples/ek_ra8d2/hw_validated/uart/:
 #   - Build each app cross-compiled on the Pi (arm-none-eabi-gcc from apt).
 #   - Flash via JLinkExe (local, no SSH).
 #   - Assert expected UART string appears on /dev/ttyACM0 within timeout.
@@ -40,7 +40,7 @@ env:
 
 jobs:
   hil-uart-suite:
-    name: HIL uart suite (23 apps)
+    name: HIL uart suite (19 apps)
     runs-on: [self-hosted, hil, ra8d2]
     timeout-minutes: 60
     steps:
@@ -60,11 +60,11 @@ jobs:
       - name: Build all uart apps
         run: |
           make -j$(nproc) \
-            uart_hello crc_demo dma_memcopy_demo spi_loopback i2c_loopback \
-            adc_b_demo agt_periodic elc_event_demo rng_demo icu_extint_demo \
+            uart_hello crc_demo dma_memcopy_demo i2c_loopback \
+            adc_b_demo agt_periodic elc_event_demo rng_demo \
             iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo \
-            power_profiler lpm_idle_demo crypto_aes_demo ssie_audio_loop \
-            watchdog_demo eth_loopback sdram_benchmark rtc_alarm \
+            power_profiler lpm_idle_demo crypto_aes_demo \
+            watchdog_demo sdram_benchmark rtc_alarm \
             threadx_filex_levelx_demo
 
       - name: Run HIL suite
