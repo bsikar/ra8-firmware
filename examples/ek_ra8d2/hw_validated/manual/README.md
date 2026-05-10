@@ -14,7 +14,6 @@ To build: `make <appname>` from the repo root.
 
 | App | Why CI cannot auto-verify |
 |-----|--------------------------|
-| eth_loopback | Requires Ethernet loopback cable or connector on the RJ-45 jack |
 | icu_extint_demo | All UART output is triggered by an external interrupt (SW1 / IRQ13); no automatic output at boot |
 | iic_b_peripheral_demo | Peripheral-mode I2C; needs an external I2C controller to initiate transactions |
 | kint_demo | All UART output is triggered by SW1 button press; no automatic output at boot |
