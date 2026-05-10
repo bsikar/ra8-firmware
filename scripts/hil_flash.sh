@@ -66,16 +66,7 @@ echo -e "${YELLOW}[hil_flash]${NC} app=${APP}"
 # programs the MRAM bank at 0x02000000.
 ELF="${APP_DIR}/build/${APP}.elf"
 STRIPPED_HEX="/tmp/hil_${APP}_mram.hex"
-OFS_ARGS=(
-    --remove-section=.option_setting_ofs0  --remove-section=.option_setting_ofs1
-    --remove-section=.option_setting_ofs2  --remove-section=.option_setting_ofs3
-    --remove-section=.option_setting_ofs1_sec --remove-section=.option_setting_ofs1_sel
-    --remove-section=.option_setting_ofs3_sec --remove-section=.option_setting_ofs3_sel
-    --remove-section=.option_setting_bps0  --remove-section=.option_setting_bps1
-    --remove-section=.option_setting_bps2  --remove-section=.option_setting_bps3
-    --remove-section=.option_setting_pbps0 --remove-section=.option_setting_pbps1
-    --remove-section=.option_setting_pbps2 --remove-section=.option_setting_pbps3
-)
+OFS_ARGS=( '--remove-section=.option_setting*' )
 if [[ -f "$ELF" ]]; then
     arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null \
         || cp "$HEX" "$STRIPPED_HEX"
