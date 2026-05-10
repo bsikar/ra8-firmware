@@ -77,35 +77,42 @@ else
         || cp "$HEX" "$STRIPPED_HEX"
 fi
 
-# ---- 2. Convert to flat binary and generate w4 script -----------------------
-# loadfile/loadbin trigger an implicit SYSRESETREQ, causing J-Link to upload
-# RAMCode to SRAM and run Prepare/Program/Finalize against the MRAM controller.
-# After ~13 consecutive operations the MRAM controller accumulates error state
-# that only a physical PORST clears.  w4 writes directly via DAP with the CPU
-# halted, bypassing RAMCode entirely so no controller state accumulates.
-BIN_FILE="/tmp/hil_${APP_NAME}_mram.bin"
-arm-none-eabi-objcopy -I ihex -O binary "$STRIPPED_HEX" "$BIN_FILE"
-
+# ---- 2. Flash via J-Link (loadfile with OFS-stripped hex) -------------------
+# Direct w4 writes don't commit to MRAM cells without the MRMS flush sequence
+# (MRCPC1 gate + MRCFLR flush per HUM Ch 59).  Implementing that in J-Link
+# Commander is impractical, so we use loadfile (which uses RAMCode internally).
+# OFS stripping above prevents the RAMCode Prepare() timeout that occurs when
+# .option_setting* sections at 0x0300A100 are included.
 TMP_SCRIPT="$(mktemp)"
-trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX" "$BIN_FILE"' EXIT
+trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"' EXIT
+cat > "$TMP_SCRIPT" <<JLINK
+device ${JLINK_DEVICE}
+si SWD
+speed 1000
+connect
+halt
+loadfile ${STRIPPED_HEX}
+r
+g
+q
+JLINK
 
-python3 "${SCRIPT_DIR}/utils/gen_jlink_w4.py" \
-    "$BIN_FILE" 0x02000000 --device "${JLINK_DEVICE}" > "$TMP_SCRIPT"
-
-# ---- 3. Flash via J-Link (w4 DAP writes) ------------------------------------
 echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 
 JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
     > "${LOG_FILE}" 2>&1
 
-if grep -qE "^Error|Cannot connect to the probe|Could not write memory|could not be halted" "${LOG_FILE}"; then
+# Match real J-Link error patterns: "****** Error: ...", RAMCode timeout,
+# Cannot-connect, could-not-be-halted.  J-Link prints success as "O.K." and
+# the flash phase as "Programming flash" so we require both.
+if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond" "${LOG_FILE}"; then
     echo -e "${RED}[HIL]${NC} J-Link error -- log:" >&2
-    cat "${LOG_FILE}" >&2
+    tail -40 "${LOG_FILE}" >&2
     exit 1
 fi
-if ! grep -q "O\.K\." "${LOG_FILE}"; then
-    echo -e "${RED}[HIL]${NC} J-Link did not connect -- log:" >&2
-    cat "${LOG_FILE}" >&2
+if ! grep -q "Programming flash.*Done\." "${LOG_FILE}"; then
+    echo -e "${RED}[HIL]${NC} J-Link did not program flash -- log:" >&2
+    tail -40 "${LOG_FILE}" >&2
     exit 1
 fi
 echo -e "${YELLOW}[HIL]${NC} flash OK"
