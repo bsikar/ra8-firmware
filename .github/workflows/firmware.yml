@@ -260,52 +260,15 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Cross-compile every example under examples/<tier>/<app> in parallel.
-  # The matrix is generated on the fly so adding a new app needs zero
-  # workflow edits.
+  # Cross-compile all examples in one job.
   # ---------------------------------------------------------------------------
-  build-discover:
-    name: Discover example apps
-    runs-on: [self-hosted, Linux, X64]
-    outputs:
-      matrix: ${{ steps.list.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: list
-        name: Enumerate examples/<tier>/<app>
-        run: |
-          set -e
-          apps=()
-          # Discover 2-level, 3-level, and 4-level app directories.
-          for d in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
-            d="${d%/}"
-            [ -f "$d/main.c" ] || continue
-            apps+=("$d")
-          done
-          # Emit a JSON array suitable for matrix.include.
-          json="["
-          first=1
-          for a in "${apps[@]}"; do
-            name=$(basename "$a")
-            if [ $first -eq 0 ]; then json+=","; fi
-            json+="{\"app\":\"${name}\",\"dir\":\"${a}\"}"
-            first=0
-          done
-          json+="]"
-          echo "matrix={\"include\":${json}}" >> "$GITHUB_OUTPUT"
-          echo "Discovered ${#apps[@]} apps."
-
   build-cross:
-    name: Cross-build ${{ matrix.app }}
+    name: Cross-build all apps
     runs-on: [self-hosted, Linux, X64]
-    needs: build-discover
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.build-discover.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build ${{ matrix.app }}
-        run: make ${{ matrix.app }}
+      - name: Build all apps
+        run: bash scripts/build_all_examples.sh
 
   # ---------------------------------------------------------------------------
   # Doxygen warning gate
