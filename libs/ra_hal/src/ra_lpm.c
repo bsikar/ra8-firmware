@@ -751,8 +751,13 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
   internal_wait_for_interrupt();
 
   /* On wake (or immediately on host), restore SLEEPDEEP for the next
-   * plain Sleep entry. */
+   * plain Sleep entry, and clear LPSCR back to Sleep mode so the next
+   * WFI does not re-enter Software Standby.  Without this, a debugger-
+   * issued SYSRESETREQ leaves LPSCR set (SYSC LPM block is in a
+   * separate reset domain), and the first WFI in J-Link's RAMCode
+   * helper re-enters standby -- bricking the chip until a true PORST. */
   internal_set_sleepdeep(false);
+  *ra_lpm_sysc_reg8(k_ra_lpm_lpscr_off) = 0U;
   return k_ra_ok;
 }
 
