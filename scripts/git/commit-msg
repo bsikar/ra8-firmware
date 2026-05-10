@@ -91,9 +91,8 @@ while IFS= read -r line; do
     if echo "${line}" | grep -qiE '\bSlave[ _-]Select\b'; then
         INCL_VIOLATIONS+=("legacy term 'Slave Select' -- use CS: ${line}")
     fi
-    if echo "${line}" | grep -qE '\bSS\b'; then
-        INCL_VIOLATIONS+=("legacy term 'SS' (Slave Select) -- use CS: ${line}")
-    fi
+    # Note: bare '\bSS\b' is intentionally omitted -- too many false positives
+    # in prose commit messages.  Caught at source-file level instead.
 done <<< "${PAYLOAD}"
 
 if [[ ${#INCL_VIOLATIONS[@]} -gt 0 ]]; then
