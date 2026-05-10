@@ -47,8 +47,8 @@ static void test_init_clears_wupen_and_resets_mstp(void)
   TEST_ASSERT_EQ(0, *wupen0_ptr());
   TEST_ASSERT_EQ(0, *wupen1_ptr());
 
-  /* MSTP all stopped. */
-  TEST_ASSERT_EQ(0xFFFFFFFFU, ra_mstp()->MSTPCRA);
+  /* MSTP all stopped; MSTPCRA bits 0-3 (SRAM0-3) kept 0. */
+  TEST_ASSERT_EQ(0xFFFFFFF0U, ra_mstp()->MSTPCRA);
   TEST_END("ra_pwr_init: WUPEN0/1 cleared, MSTP table reset");
 }
 
