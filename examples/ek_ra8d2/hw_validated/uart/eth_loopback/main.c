@@ -67,7 +67,8 @@ static const ra_port_pin_t k_eth_loopback_pin_txd =
 static const ra_port_pin_t k_eth_loopback_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
-static const uint8_t k_eth_loopback_log_msg[] = "etha: loopback ok\r\n";
+static const uint8_t k_eth_loopback_log_msg[]  = "etha: loopback ok\r\n";
+static const uint8_t k_eth_loopback_boot_msg[] = "etha: boot\r\n";
 
 static void eth_loopback_panic_halt(void)
 {
@@ -169,6 +170,13 @@ int32_t main(void)
 {
   eth_loopback_setup_or_halt();
   ra_isr_globals_enable();
+
+  /* Boot banner -- emit before the loopback runs so the HIL host can
+   * confirm the firmware booted even when the ETHA loopback fails for
+   * board-specific reasons (PHY not negotiated, missing pull-ups, etc.). */
+  (void)ra_sci_write_polling((uint8_t)k_eth_loopback_sci_channel,
+                             k_eth_loopback_boot_msg,
+                             (uint32_t)(sizeof(k_eth_loopback_boot_msg) - 1U));
 
   ra_etha_port_stats_t stats = {};
   if (eth_loopback_run_once(&stats) != k_ra_ok) {

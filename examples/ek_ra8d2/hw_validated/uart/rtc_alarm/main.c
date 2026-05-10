@@ -68,7 +68,8 @@ static const ra_port_pin_t k_rtc_demo_pin_txd =
 static const ra_port_pin_t k_rtc_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
-static const uint8_t k_rtc_demo_log_msg[] = "rtc: alarm fired\r\n";
+static const uint8_t k_rtc_demo_log_msg[]  = "rtc: alarm fired\r\n";
+static const uint8_t k_rtc_demo_boot_msg[] = "rtc: boot\r\n";
 
 static void rtc_demo_panic_halt(void)
 {
@@ -167,6 +168,13 @@ int32_t main(void)
 {
   rtc_demo_setup_or_halt();
   ra_isr_globals_enable();
+
+  /* Boot banner -- emit before the RTC poll loop so the HIL host can
+   * confirm the firmware booted even when the sub-clock crystal is not
+   * running and the alarm-fired path never reaches its own write. */
+  (void)ra_sci_write_polling((uint8_t)k_rtc_demo_sci_channel,
+                             k_rtc_demo_boot_msg,
+                             (uint32_t)(sizeof(k_rtc_demo_boot_msg) - 1U));
 
   while (1) {
     ra_rtc_datetime_t now = {};
