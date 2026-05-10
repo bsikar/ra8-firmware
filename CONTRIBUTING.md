@@ -89,10 +89,10 @@ edit -> bash scripts/format_code.sh -> bash scripts/test-docker.sh -> git commit
 For cross-compiled firmware iteration:
 
 ```bash
-make blink            # build one example app for the target
-make apps             # build every example app
-make <app>-flash      # flash via the on-board J-Link OB
-make <app>-debug      # launch GDB attached to the running target
+make blink                       # build one example app for the target
+make apps                        # list every discovered example app
+make -C <app-dir> flash          # flash via the on-board J-Link OB
+make -C <app-dir> debug          # launch GDB attached to the running target
 ```
 
 ## 5. Adding an application
@@ -100,8 +100,11 @@ make <app>-debug      # launch GDB attached to the running target
 The full procedure lives in `CLAUDE.md` under "Adding a new application".
 The short version:
 
-1. Create `examples/ek_ra8d2/<newapp>/` (every app is fully
-   self-contained -- its own boot files, linker script, CMakeLists).
+1. Create `examples/<tier>/.../<newapp>/` -- pick the tier that matches
+   the hardware-support category (`ek_ra8d2/hw_validated/smoke/`,
+   `ek_ra8d2/hw_validated/uart/`, `ek_ra8d2/hw_validated/manual/`,
+   `ek_ra8d2/hw_pending/`, or `_unsupported/`). Every app is fully
+   self-contained -- its own boot files, linker script, CMakeLists.
 2. Copy the five per-app boot files from a sibling app
    (`vector_table.c`, `system_init.c`, `secure_exception.c`,
    `trustzone_init.{c,h}`).

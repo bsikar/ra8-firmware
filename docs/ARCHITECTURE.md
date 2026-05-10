@@ -64,12 +64,12 @@ libs/                ← the standard library (everyone links it)
   ra_net_pal/          Ethernet PAL bridging the HAL to lwIP / similar
   ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
 
-examples/blink/, examples/blink_hal/   ← concrete apps shipped today
+examples/<tier>/.../<app>/             ← concrete apps shipped today (e.g. .../smoke/blink/, .../smoke/blink_hal/)
 ```
 
 ### Why every app is small
 
-Each `examples/<app>/main.c` only contains the application's `main()`
+Each `examples/<tier>/.../<app>/main.c` only contains the application's `main()`
 function. It assumes:
 
 - The vector table exists and is pinned to MRAM (provided by the
@@ -79,7 +79,7 @@ function. It assumes:
   priority grouping (provided by the app's own `system_init.c`)
 - The HAL libraries in `libs/` are linked and ready to use
 
-So `examples/blink_hal/main.c` only has to set up its specific peripherals
+So `blink_hal/main.c` only has to set up its specific peripherals
 (GPIO, SysTick) and run its loop -- everything underneath is
 provided by the per-app boot files and `libs/`.
 

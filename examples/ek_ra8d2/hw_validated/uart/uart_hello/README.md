@@ -96,14 +96,14 @@ cannot be re-routed at runtime. Hardware flow control is also wired
 From the repo root:
 
 ```sh
-make uart_hello                       # cross-compile -> examples/uart_hello/build/uart_hello.elf
+make uart_hello                       # cross-compile -> examples/ek_ra8d2/hw_validated/uart/uart_hello/build/uart_hello.elf
 make -C examples/uart_hello flash     # flash via on-board J-Link OB
 ```
 
 Or standalone:
 
 ```sh
-cd examples/uart_hello/
+cd examples/ek_ra8d2/hw_validated/uart/uart_hello/
 make
 make flash
 make clean
