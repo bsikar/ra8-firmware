@@ -410,6 +410,13 @@ static void demo_gui_setup_and_run(void)
                          (ULONG)k_demo_bpp_rgb565) != GX_SUCCESS) {
     demo_panic_halt();
   }
+  /* GUIX canvases come up with `gx_canvas_status` clear of
+   * GX_CANVAS_VISIBLE; without this call the system thread's first
+   * canvas refresh decides there is nothing to draw and the panel
+   * stays at whatever was in SRAM at boot (black). */
+  if (gx_canvas_show(&s_canvas) != GX_SUCCESS) {
+    demo_panic_halt();
+  }
 
   const GX_RECTANGLE root_rect =
     demo_rect(0, 0, (GX_VALUE)(k_demo_fb_width - 1U), (GX_VALUE)(k_demo_fb_height - 1U));
@@ -466,6 +473,31 @@ static void demo_gui_setup_and_run(void)
   if (gx_widget_show((GX_WIDGET*)&s_root) != GX_SUCCESS) {
     demo_panic_halt();
   }
+
+  /* The demo never loaded a GUIX theme so colour IDs 0/1/2 default
+   * to 0x000000 = black -- the GUIX paint pass ends up writing all
+   * zeros into the framebuffer and the panel stays solid black even
+   * though the widget tree painted successfully (swap_count > 0).
+   * Seed a handful of slots with visible colours so the initial
+   * paint actually has something to display. */
+  (void)gx_display_color_set(&s_display,
+                             0U,
+                             demo_argb(0xFFU, 0xFFU, 0xFFU)); /* canvas bg = white */
+  (void)gx_display_color_set(&s_display,
+                             GX_COLOR_ID_WINDOW_FILL,
+                             demo_argb(0xFFU, 0xFFU, 0xFFU)); /* window fill white */
+  (void)gx_display_color_set(&s_display,
+                             GX_COLOR_ID_WINDOW_BORDER,
+                             demo_argb(0x00U, 0x00U, 0x00U)); /* black border */
+  (void)gx_display_color_set(&s_display,
+                             GX_COLOR_ID_TEXT,
+                             demo_argb(0x00U, 0x00U, 0x00U)); /* text black */
+  (void)gx_display_color_set(&s_display, GX_COLOR_ID_BTN_UPPER, demo_argb(0xE0U, 0xE0U, 0xE0U));
+  (void)gx_display_color_set(&s_display, GX_COLOR_ID_BTN_LOWER, demo_argb(0x80U, 0x80U, 0x80U));
+
+  /* Force an explicit initial paint so the first frame lands in the
+   * framebuffer before gx_system_start blocks on the event queue. */
+  (void)gx_system_canvas_refresh();
 
   /* Hand control to GUIX. Returns only on internal scheduler error. */
   if (gx_system_start() != GX_SUCCESS) {
