@@ -181,6 +181,19 @@ if [[ -n "$c_files" ]]; then
         error_found=1
     fi
 
+    # ---- NASA P10 Rule 4 function-size cap -------------------------------
+    # The .clang-tidy LineThreshold=60 only fires when a file actually
+    # reaches clang-tidy, and the host tidy-build excludes every
+    # cross-compiled translation unit (anything pulling in ThreadX/GUIX/
+    # USBX/NetX or MCU register headers).  This source-level checker
+    # closes that gap: it scans every .c under libs/, src/, port/,
+    # examples/ regardless of compile-db membership.
+    if ! python3 scripts/utils/check_function_size.py; then
+        echo "[FAIL] function-size violation(s) above the 60-line cap."
+        echo "   Extract helpers or hoist tables to file scope to shrink."
+        error_found=1
+    fi
+
     # ---- no redundant casts inside TEST_ASSERT_EQ --------------------------
     test_files=$(echo "$c_files" | grep -E "^tests/" || true)
     if [[ -n "$test_files" ]] && [[ -f scripts/utils/check_assert_casts.py ]]; then

@@ -243,6 +243,11 @@ jobs:
           # code (libs/, src/, port/, examples/<app>/). Vendor macros
           # UX_NULL / TX_NULL / FX_NULL / NX_NULL are exempted.
           python3 scripts/utils/check_no_null.py --all
+          # check_function_size.py: NASA P10 Rule 4 -- every function
+          # must fit in <=60 lines.  Independent of the clang-tidy
+          # compile-db, so it covers cross-compiled TUs the host tidy
+          # build never sees (ThreadX/GUIX/USBX/NetX/HAL register code).
+          python3 scripts/utils/check_function_size.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
