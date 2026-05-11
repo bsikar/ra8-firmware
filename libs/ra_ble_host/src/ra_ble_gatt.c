@@ -353,25 +353,54 @@ ra_err_t ra_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* ou
  *
  * @since 0.1.0
  */
-ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
-                                        const uint8_t* uuid_128,
-                                        uint8_t        props,
-                                        uint8_t*       value_buf,
-                                        uint16_t       value_max,
-                                        uint16_t*      out_handle)
+/**
+ * @brief Validate register_char inputs and svc_handle ownership.
+ *
+ * @details Centralizes the up-front argument checks (null pointers,
+ *          state, props, value_max, svc lookup, and char-count cap)
+ *          for ra_ble_host_gatt_register_char.
+ *
+ * @param[in] st         Host state singleton.
+ * @param[in] svc_handle Parent service handle.
+ * @param[in] uuid_128   Characteristic UUID.
+ * @param[in] props      Property bitmask.
+ * @param[in] value_buf  Backing storage.
+ * @param[in] value_max  Capacity of value_buf.
+ * @param[in] out_handle Caller's output pointer.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   All inputs valid.
+ * @retval k_ra_err_null_ptr         uuid_128 / out_handle NULL, or value_buf NULL with value_max>0.
+ * @retval k_ra_err_not_initialized  Stack not yet opened.
+ * @retval k_ra_err_invalid_arg      Bad svc_handle, zero props, or oversized value.
+ * @retval k_ra_err_no_mem           Char count at capacity.
+ *
+ * @pre st != NULL.
+ * @pre Caller has not yet appended any attribute rows for this char.
+ * @post No state mutation regardless of outcome.
+ * @post Return code reflects only input/state validation.
+ *
+ * @note Not thread-safe; called from single-threaded application init.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t internal_register_char_validate(const ra_ble_host_state_t* st,
+                                                uint16_t                   svc_handle,
+                                                const uint8_t*             uuid_128,
+                                                uint8_t                    props,
+                                                const uint8_t*             value_buf,
+                                                uint16_t                   value_max,
+                                                const uint16_t*            out_handle)
 {
   enum : uint16_t {
     k_max_value_max = 512U,
-    k_uuid16_cccd   = 0x2902U,
   };
-
   if ((uuid_128 == nullptr) || (out_handle == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if ((value_buf == nullptr) && (value_max > 0U)) {
     return k_ra_err_null_ptr;
   }
-  ra_ble_host_state_t* st = ra_ble_host_state();
   if (st->initialized == 0U) {
     return k_ra_err_not_initialized;
   }
@@ -381,7 +410,6 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
   if (value_max > k_max_value_max) {
     return k_ra_err_invalid_arg;
   }
-  /* Verify svc_handle belongs to a registered service. */
   uint8_t svc_ok = 0U;
   for (uint8_t i = 0U; i < st->attr_count; i++) {
     if ((st->attrs[i].handle == svc_handle) && (st->attrs[i].kind == k_attr_kind_primary_service)) {
@@ -395,58 +423,136 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
   if (st->char_count >= k_ra_ble_host_max_chars) {
     return k_ra_err_no_mem;
   }
+  return k_ra_ok;
+}
 
-  /* Insert characteristic declaration (UUID 0x2803). The value of the
-   * decl is properties|value_handle|char_uuid; we don't materialize that
-   * in a buffer because the ATT Read_By_Type handler synthesizes it on
-   * the fly using the row's props + handle + uuid[]. */
-  uint8_t decl_uuid[k_ra_ble_host_uuid_bytes];
-  internal_uuid16_to_128(decl_uuid, 0x2803U);
-  /* The decl row stores the *characteristic*'s 128-bit UUID in uuid[]
-   * (so Read_By_Type can splat it into the response), and its props
-   * field carries the property bits. */
+/**
+ * @brief Append a CCCD row owned by ``value_handle`` if the supplied
+ *        props enable notify or indicate (Vol 3 Part G 3.3.3.3).
+ *
+ * @details If the property bitmask carries either the notify or indicate
+ *          bit, a fresh Client Characteristic Configuration Descriptor
+ *          attribute (UUID 0x2902) is appended to the host attribute
+ *          table and its ``value_handle_owner`` field is wired to the
+ *          parent characteristic's value handle so later HVN/HVI paths
+ *          can locate the subscription state. When neither bit is set
+ *          the function is a no-op.
+ *
+ * @param[in] props        Characteristic property bitmask.
+ * @param[in] value_handle Handle of the parent characteristic value row.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok          CCCD appended, or props did not require one.
+ * @retval k_ra_err_no_mem  Attribute table at capacity.
+ *
+ * @pre Stack initialized.
+ * @pre value_handle is a freshly registered char-value handle.
+ * @post On success the table either gained a CCCD row or was unchanged.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from single-threaded application init.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t internal_maybe_append_cccd(uint8_t props, uint16_t value_handle)
+{
+  enum : uint16_t {
+    k_uuid16_cccd = 0x2902U,
+  };
+  const uint8_t notify_or_indicate =
+    (uint8_t)(k_ra_ble_host_char_prop_notify | k_ra_ble_host_char_prop_indicate);
+  if ((props & notify_or_indicate) == 0U) {
+    return k_ra_ok;
+  }
+  uint8_t cccd_uuid[k_ra_ble_host_uuid_bytes];
+  internal_uuid16_to_128(cccd_uuid, k_uuid16_cccd);
+  ra_ble_host_attr_t* cccd = internal_append_attr(k_attr_kind_cccd, cccd_uuid, 0U, nullptr, 0U);
+  if (cccd == nullptr) {
+    return k_ra_err_no_mem;
+  }
+  cccd->value_handle_owner = value_handle;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Register a GATT characteristic under a previously created service.
+ *
+ * @details Appends a characteristic-declaration row (UUID 0x2803) and
+ *          its paired value row (carrying the supplied UUID and the
+ *          caller's backing buffer) to the host attribute table, then
+ *          conditionally appends a CCCD row when the property bitmask
+ *          enables notify or indicate
+ *          (Bluetooth Core 5.3 Vol 3 Part G 3.3). The freshly assigned
+ *          value handle is published through ``*out_handle`` so the
+ *          caller can later drive ra_ble_host_gatt_set_value /
+ *          ra_ble_host_gatt_notify.
+ *
+ * @param[in]  svc_handle Handle returned by ra_ble_host_gatt_register_service.
+ * @param[in]  uuid_128   16-byte little-endian characteristic UUID.
+ * @param[in]  props      Property bitmask (k_ra_ble_host_char_prop_*).
+ * @param[in]  value_buf  Backing buffer for the characteristic value
+ *                        (must outlive the host); may be NULL only when
+ *                        value_max == 0.
+ * @param[in]  value_max  Maximum value length in bytes (0..k_ra_ble_host_attr_value_max).
+ * @param[out] out_handle Receives the freshly assigned value handle.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Characteristic appended.
+ * @retval k_ra_err_null_ptr         uuid_128, value_buf (with value_max>0), or out_handle is NULL.
+ * @retval k_ra_err_not_initialized  Stack not yet opened.
+ * @retval k_ra_err_invalid_arg      svc_handle is not a service row, or value_max is out of range.
+ * @retval k_ra_err_no_mem           Attribute table at capacity.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre svc_handle was returned by ra_ble_host_gatt_register_service.
+ * @post On success the table gained 2 or 3 new rows (decl, value, optional CCCD).
+ * @post On failure no state is mutated beyond a possible partial append
+ *       that the caller must treat as opaque (the next register call
+ *       will return k_ra_err_no_mem rather than corrupt the table).
+ *
+ * @note Not thread-safe; called from single-threaded application init.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
+                                        const uint8_t* uuid_128,
+                                        uint8_t        props,
+                                        uint8_t*       value_buf,
+                                        uint16_t       value_max,
+                                        uint16_t*      out_handle)
+{
+  ra_ble_host_state_t* st  = ra_ble_host_state();
+  const ra_err_t       vrc = internal_register_char_validate(st,
+                                                             svc_handle,
+                                                             uuid_128,
+                                                             props,
+                                                             value_buf,
+                                                             value_max,
+                                                             out_handle);
+  if (vrc != k_ra_ok) {
+    return vrc;
+  }
+
+  /* Insert characteristic declaration (UUID 0x2803). The decl row
+   * stores the *characteristic*'s 128-bit UUID in uuid[] so
+   * Read_By_Type can splat it into the response; its props field
+   * carries the property bits. */
   ra_ble_host_attr_t* decl =
     internal_append_attr(k_attr_kind_char_decl, uuid_128, props, nullptr, 0U);
   if (decl == nullptr) {
     return k_ra_err_no_mem;
   }
-  /* Override: store the decl's *type* UUID separately in the cccd_value
-   * is not enough -- so we tag the kind and let ATT know to emit
-   * 0x2803 when answering Find Information requests. We achieve that
-   * by overwriting decl->uuid with the 128-bit form of 0x2803, BUT
-   * we also need the char UUID later. So we store the char UUID in
-   * the *value* row (kind == char_value) which we add immediately
-   * below. */
-  /* Actually re-set decl->uuid so Find_Information emits 0x2803. */
-  internal_uuid16_to_128(decl->uuid, 0x2803U);
-
   ra_ble_host_attr_t* val =
     internal_append_attr(k_attr_kind_char_value, uuid_128, 0U, value_buf, value_max);
   if (val == nullptr) {
     return k_ra_err_no_mem;
   }
-
-  /* Stash the char UUID also onto the decl row so Read_By_Type's
-   * handler can include it. We'll put it in val's uuid[] (already
-   * done above) and have the ATT layer pull from val. But ATT walks
-   * by handle, so using decl + 1 == val.handle works -- we already
-   * encode that assumption. To keep ATT simple we also keep the char
-   * UUID on decl (overwrites the 0x2803 we just wrote). To resolve
-   * the conflict, store the 0x2803 in *uuid only* for the
-   * Find_Information path; Read_By_Type uses decl->uuid for the
-   * char-uuid bytes. So write the *char* UUID back. */
+  /* Decl row keeps the char UUID in uuid[] for Read_By_Type. */
   (void)memcpy(decl->uuid, uuid_128, k_ra_ble_host_uuid_bytes);
 
-  /* Optional CCCD if notify or indicate. */
-  if ((props & (uint8_t)(k_ra_ble_host_char_prop_notify | k_ra_ble_host_char_prop_indicate)) !=
-      0U) {
-    uint8_t cccd_uuid[k_ra_ble_host_uuid_bytes];
-    internal_uuid16_to_128(cccd_uuid, k_uuid16_cccd);
-    ra_ble_host_attr_t* cccd = internal_append_attr(k_attr_kind_cccd, cccd_uuid, 0U, nullptr, 0U);
-    if (cccd == nullptr) {
-      return k_ra_err_no_mem;
-    }
-    cccd->value_handle_owner = val->handle;
+  const ra_err_t crc = internal_maybe_append_cccd(props, val->handle);
+  if (crc != k_ra_ok) {
+    return crc;
   }
 
   st->char_count = (uint8_t)(st->char_count + 1U);
@@ -508,28 +614,72 @@ ra_err_t ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, 
 }
 
 /**
+ * @brief Test whether any CCCD row has enabled notifications for the
+ *        given characteristic value handle.
+ *
+ * @details Linearly scans the attribute table for a CCCD row whose
+ *          ``value_handle_owner`` matches ``char_handle`` and whose
+ *          cached ``cccd_value`` has the notify bit (0x01) set
+ *          (Bluetooth Core 5.3 Vol 3 Part G 3.3.3.3). Returns on the
+ *          first match; with a fixed-size attribute table the loop is
+ *          bounded by ``st->attr_count``.
+ *
+ * @param[in] st           Host state singleton.
+ * @param[in] char_handle  Value handle to query.
+ *
+ * @return Boolean subscription flag.
+ * @retval true  At least one matching CCCD has the notify bit set.
+ * @retval false No subscriber for char_handle.
+ *
+ * @pre st != NULL.
+ * @pre Stack initialized.
+ * @post No state mutation.
+ * @post Return depends solely on the current attribute table.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
+ * @since 0.1.0
+ */
+static bool internal_has_notify_subscriber(const ra_ble_host_state_t* st, uint16_t char_handle)
+{
+  enum : uint8_t {
+    k_cccd_notify_bit = 0x01U,
+  };
+  for (uint8_t i = 0U; i < st->attr_count; i++) {
+    if ((st->attrs[i].kind == k_attr_kind_cccd) &&
+        (st->attrs[i].value_handle_owner == char_handle) &&
+        ((st->attrs[i].cccd_value & k_cccd_notify_bit) != 0U)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * @brief Send an ATT Handle_Value_Notification (HVN) for a characteristic.
  *
  * @details Frames an HVN PDU (opcode 0x1B, Bluetooth Core 5.3 Vol 3
- *          Part F 3.4.7.1) with the characteristic's current value
- *          and pushes it through the L2CAP layer on CID 0x0004 (LE
- *          ATT). Silently succeeds when no peer is connected or when
- *          the peer has not enabled notifications via the CCCD
- *          (Vol 3 Part G 3.3.3.3).
+ *          Part F 3.4.7.1) carrying the characteristic's current
+ *          cached value and pushes it through the L2CAP layer on
+ *          CID 0x0004 (LE ATT). Silently succeeds (k_ra_ok) when no
+ *          peer has enabled notifications via the CCCD
+ *          (Vol 3 Part G 3.3.3.3) so an application can call notify
+ *          unconditionally on every value update.
  *
  * @param[in] char_handle Value handle from ra_ble_host_gatt_register_char.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok                   Notification queued (or silently dropped).
+ * @retval k_ra_ok                   Notification queued, or silently dropped.
  * @retval k_ra_err_not_initialized  Stack not yet opened.
  * @retval k_ra_err_not_found        char_handle does not name a value row.
- * @retval k_ra_err_invalid_arg      Characteristic does not advertise notify.
+ * @retval k_ra_err_invalid_arg      Cached value length exceeds the HVN payload cap.
  * @retval other                     Whatever ra_ble_host_l2cap_send returns.
  *
  * @pre ra_ble_host_init has succeeded.
  * @pre Characteristic was registered with the notify property bit.
- * @post On success an HVN PDU has been queued (or silently dropped).
- * @post On failure no state is mutated.
+ * @post On success an HVN PDU was queued, or the call was a no-op
+ *       because no subscriber is currently registered.
+ * @post On failure no host state is mutated.
  *
  * @note Not thread-safe; called from the application thread.
  *
@@ -541,7 +691,6 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
     k_att_op_handle_value_notify = 0x1BU,
     k_pdu_hdr_bytes              = 3U,
     k_max_value_bytes            = 20U, /* MTU 23 - opcode(1) - handle(2). */
-    k_cccd_notify_bit            = 0x01U,
   };
   enum : uint16_t {
     k_l2cap_cid_att = 0x0004U,
@@ -568,18 +717,7 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
     /* No connection -- silently succeed. */
     return k_ra_ok;
   }
-
-  /* Find subscriber CCCD. */
-  uint8_t subscribed = 0U;
-  for (uint8_t i = 0U; i < st->attr_count; i++) {
-    if ((st->attrs[i].kind == k_attr_kind_cccd) &&
-        (st->attrs[i].value_handle_owner == char_handle) &&
-        ((st->attrs[i].cccd_value & k_cccd_notify_bit) != 0U)) {
-      subscribed = 1U;
-      break;
-    }
-  }
-  if (subscribed == 0U) {
+  if (!internal_has_notify_subscriber(st, char_handle)) {
     return k_ra_ok;
   }
 

@@ -110,33 +110,38 @@ static uint32_t internal_rotr(uint32_t x, uint32_t n)
   return (x >> n) | (x << (32U - n));
 }
 
+/* CITES-OK: constant-time decomposition. internal_sha256_32 is split into
+ * three helpers (build_block, schedule, compress). Each helper iterates a
+ * fixed loop count with no data-dependent branches; the only inputs whose
+ * values steer control flow are loop indices, which are compile-time
+ * constants. Side-channel posture is identical to the monolithic form. */
+
 /**
- * @brief Hash a 32-byte input. Padding produces a single 64-byte block.
+ * @brief Assemble the SHA-256 single-block padding for a 32-byte message.
  *
  * @details
- * Implements just enough of FIPS 180-4 to digest exactly 32 bytes.
- * The padding block is hard-coded (0x80, zeros, big-endian length
- * 0x0100) so the caller never has to assemble it. Used by
- * ::ra_key_vault_sha256_xor_challenge to scramble a per-key XOR
- * result without leaking the underlying key bytes.
+ * Writes 32 input bytes, the 0x80 terminator, zero-fill, and the fixed
+ * 256-bit big-endian length suffix into the caller's 64-byte block.
+ * The control flow is input-independent (two fixed-bound loops and a
+ * constant tail), preserving the constant-time property required of
+ * the secure-side digest.
  *
  * @param[in]  in32  32-byte input message.
- * @param[out] out32 32-byte SHA-256 digest.
+ * @param[out] block 64-byte padded block.
  *
- * @pre ``in32`` and ``out32`` are non-NULL.
- * @pre Both buffers span at least 32 bytes.
- * @post ``out32`` contains the SHA-256 digest of ``in32``.
+ * @pre ``in32`` and ``block`` are non-NULL.
+ * @pre ``block`` spans at least 64 bytes.
+ * @post ``block`` contains the FIPS 180-4 padded single-block message.
  * @post No global state is mutated.
  *
- * @note Pure compute function; safe from any context.
+ * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
+static void internal_sha256_build_block(const uint8_t* in32, uint8_t* block)
 {
   /* Build the 64-byte block: 32 input bytes, 0x80, zeros, then
-   * the 64-bit length in bits at the end (little-endian quirk:
-   * SHA-256 uses BIG endian length). */
-  uint8_t block[64];
+   * the 64-bit length in bits at the end (SHA-256 uses BIG-endian
+   * length). */
   for (uint32_t i = 0U; i < 32U; ++i) {
     block[i] = in32[i];
   }
@@ -144,17 +149,39 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
   for (uint32_t i = 33U; i < 56U; ++i) {
     block[i] = 0U;
   }
-  /* Length = 32 bytes = 256 bits. */
+  /* Length = 32 bytes = 256 bits = 0x0100 big-endian. */
   block[56] = 0U;
   block[57] = 0U;
   block[58] = 0U;
   block[59] = 0U;
   block[60] = 0U;
   block[61] = 0U;
-  block[62] = 0x01U; /* 0x0100 = 256 in big-endian. */
+  block[62] = 0x01U;
   block[63] = 0x00U;
+}
 
-  uint32_t w[64];
+/**
+ * @brief Expand a padded 64-byte block into the 64-word message schedule.
+ *
+ * @details
+ * Loads the first 16 words big-endian, then derives words 16..63 with
+ * the standard sigma0/sigma1 mixing. All loops have constant bounds and
+ * the body has no data-dependent branches, so this helper is
+ * constant-time in the same sense as the monolithic original.
+ *
+ * @param[in]  block 64-byte padded message block.
+ * @param[out] w     64-word message schedule.
+ *
+ * @pre ``block`` and ``w`` are non-NULL.
+ * @pre ``block`` spans 64 bytes and ``w`` spans 64 words.
+ * @post ``w`` holds the SHA-256 schedule for ``block``.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_sha256_schedule(const uint8_t* block, uint32_t* w)
+{
   for (uint32_t i = 0U; i < 16U; ++i) {
     w[i] = ((uint32_t)block[(i * 4U) + 0U] << 24U) | ((uint32_t)block[(i * 4U) + 1U] << 16U) |
            ((uint32_t)block[(i * 4U) + 2U] << 8U) | ((uint32_t)block[(i * 4U) + 3U]);
@@ -166,7 +193,32 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
       internal_rotr(w[i - 2U], 17U) ^ internal_rotr(w[i - 2U], 19U) ^ (w[i - 2U] >> 10U);
     w[i] = w[i - 16U] + s0 + w[i - 7U] + s1;
   }
+}
 
+/**
+ * @brief Run the 64-round SHA-256 compression and emit the digest.
+ *
+ * @details
+ * Compresses the message schedule into the initial hash value and
+ * serialises the eight 32-bit state words into the caller's 32-byte
+ * output buffer big-endian. The round loop iterates a fixed 64 times
+ * with no data-dependent branches; the final serialisation is two
+ * constant-bound loops. Constant-time posture identical to the
+ * monolithic original.
+ *
+ * @param[in]  w     64-word SHA-256 message schedule.
+ * @param[out] out32 32-byte digest output.
+ *
+ * @pre ``w`` and ``out32`` are non-NULL.
+ * @pre ``out32`` spans at least 32 bytes.
+ * @post ``out32`` contains the SHA-256 digest.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
+{
   uint32_t a = k_sha256_h0[0];
   uint32_t b = k_sha256_h0[1];
   uint32_t c = k_sha256_h0[2];
@@ -209,6 +261,37 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
     out32[(i * 4U) + 2U] = (uint8_t)(hh[i] >> 8U);
     out32[(i * 4U) + 3U] = (uint8_t)(hh[i]);
   }
+}
+
+/**
+ * @brief Hash a 32-byte input. Padding produces a single 64-byte block.
+ *
+ * @details
+ * Implements just enough of FIPS 180-4 to digest exactly 32 bytes by
+ * orchestrating the three constant-time helpers
+ * ::internal_sha256_build_block, ::internal_sha256_schedule and
+ * ::internal_sha256_compress. Used by
+ * ::ra_key_vault_sha256_xor_challenge to scramble a per-key XOR
+ * result without leaking the underlying key bytes.
+ *
+ * @param[in]  in32  32-byte input message.
+ * @param[out] out32 32-byte SHA-256 digest.
+ *
+ * @pre ``in32`` and ``out32`` are non-NULL.
+ * @pre Both buffers span at least 32 bytes.
+ * @post ``out32`` contains the SHA-256 digest of ``in32``.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute function; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
+{
+  uint8_t  block[64];
+  uint32_t w[64];
+  internal_sha256_build_block(in32, block);
+  internal_sha256_schedule(block, w);
+  internal_sha256_compress(w, out32);
 }
 
 // NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)

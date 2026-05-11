@@ -515,46 +515,34 @@ static uint16_t dns_encode_qname(const char* host, uint8_t* out)
 }
 
 /**
- * @brief Walk a DNS response and capture the first A record.
+ * @brief Advance pos past the DNS question section of a response.
  *
- * @details RFC 1035 sec 4.1 -- skips the question section, then
- *          walks the answers and stores the first IN-A record into
- *          the singleton's dns_answer field.
+ * @details RFC 1035 sec 4.1.2 -- each question is a qname followed by
+ *          qtype (2B) + qclass (2B). Honors message compression
+ *          pointers (0xC0). Byte-equivalent to the original inline
+ *          loop in ra_net_udp_internal_dns_consume_response.
  *
- * @param[in] dns  DNS message bytes (UDP payload).
- * @param[in] dlen Message length.
+ * @param[in] dns     DNS message bytes.
+ * @param[in] dlen    Message length.
+ * @param[in] qdcount Number of questions to skip.
+ * @param[in] start   Position to begin skipping from.
+ *
+ * @return uint16_t Position immediately past the question section.
+ * @retval >=start The new parse cursor.
  *
  * @pre dns is non-NULL.
- * @pre s_state.dns_pending == 1.
- * @post On success s_state.dns_answer holds the resolved IPv4 and
- *       s_state.dns_pending == 0.
- * @post On failure s_state.dns_pending may stay 1 (caller times out).
+ * @pre start <= dlen.
+ * @post Return value advances past qdcount questions.
+ * @post No state mutation.
  *
- * @note Not thread-safe.
+ * @note Not thread-safe; pure function.
  *
  * @since 0.1.0
  */
-void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
+static uint16_t
+dns_skip_questions(const uint8_t* dns, uint16_t dlen, uint16_t qdcount, uint16_t start)
 {
-  ra_net_state_t* s = ra_net_internal_state();
-  if (dlen < (uint16_t)k_dns_hdr_len) {
-    return;
-  }
-  uint16_t txid = ra_net_be16(&dns[0]);
-  if (txid != s->dns_txid) {
-    return;
-  }
-  uint16_t flags   = ra_net_be16(&dns[2]);
-  uint16_t qdcount = ra_net_be16(&dns[4]);
-  uint16_t ancount = ra_net_be16(&dns[6]);
-  s->dns_rcode     = (uint8_t)(flags & (uint16_t)k_dns_flag_rcode_mask);
-
-  if ((flags & (uint16_t)k_dns_flag_qr_response) == 0U) {
-    return;
-  }
-
-  /* Skip questions: each question is qname + 4 bytes (qtype/qclass). */
-  uint16_t pos = k_dns_hdr_len;
+  uint16_t pos = start;
   for (uint16_t q = 0U; q < qdcount; q++) {
     while (pos < dlen && dns[pos] != 0U) {
       if ((dns[pos] & 0xC0U) == 0xC0U) {
@@ -571,11 +559,45 @@ void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
     }
     pos = (uint16_t)(pos + 4U);
   }
+  return pos;
+}
 
-  /* Walk answers, take the first A record. */
+/**
+ * @brief Walk the DNS answer section and capture the first A record.
+ *
+ * @details RFC 1035 sec 4.1.3 -- iterates answers, skipping the name
+ *          (compressed or labeled), then inspects rrtype/rrclass/rdlen.
+ *          On the first IN-A record with rdlen==4 the four bytes are
+ *          copied into the singleton's dns_answer and dns_pending is
+ *          cleared. Byte-equivalent to the original inline answer loop.
+ *
+ * @param[in]     dns     DNS message bytes.
+ * @param[in]     dlen    Message length.
+ * @param[in]     ancount Number of answer records to walk.
+ * @param[in]     start   Position of the first answer record.
+ * @param[in,out] s       Network singleton; dns_answer/dns_pending are
+ *                        updated on a successful match.
+ *
+ * @pre dns is non-NULL.
+ * @pre s is non-NULL.
+ * @post On match s->dns_answer holds the resolved IPv4 and
+ *       s->dns_pending == 0.
+ * @post On miss / truncation no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+static void dns_scan_answers(const uint8_t*  dns,
+                             uint16_t        dlen,
+                             uint16_t        ancount,
+                             uint16_t        start,
+                             ra_net_state_t* s)
+{
+  uint16_t pos = start;
   for (uint16_t a = 0U; a < ancount; a++) {
     if (pos >= dlen) {
-      break;
+      return;
     }
     /* skip name (compressed or not) */
     if ((dns[pos] & 0xC0U) == 0xC0U) {
@@ -610,18 +632,159 @@ void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
 }
 
 /**
+ * @brief Walk a DNS response and capture the first A record.
+ *
+ * @details RFC 1035 sec 4.1 -- validates the transaction id against
+ *          the singleton, extracts QR/RCODE/QDCOUNT/ANCOUNT from the
+ *          header, skips the question section via dns_skip_questions,
+ *          then forwards to dns_scan_answers which records the first
+ *          IN-A record into dns_answer. Out-of-order, malformed, or
+ *          query-side packets are silently dropped so the caller's
+ *          poll loop simply waits for the next match.
+ *
+ * @param[in] dns  DNS message bytes (UDP payload). Must not be NULL
+ *                 when dlen > 0.
+ * @param[in] dlen Message length in bytes (0 .. UDP payload max).
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre s_state.dns_pending == 1 (a query is outstanding).
+ * @post On success s_state.dns_answer holds the resolved IPv4 and
+ *       s_state.dns_pending == 0.
+ * @post On failure s_state.dns_pending stays 1 (caller times out).
+ *
+ * @note Not thread-safe; intended to be called from the network thread.
+ *
+ * @since 0.1.0
+ */
+void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
+{
+  ra_net_state_t* s = ra_net_internal_state();
+  if (dlen < (uint16_t)k_dns_hdr_len) {
+    return;
+  }
+  uint16_t txid = ra_net_be16(&dns[0]);
+  if (txid != s->dns_txid) {
+    return;
+  }
+  uint16_t flags   = ra_net_be16(&dns[2]);
+  uint16_t qdcount = ra_net_be16(&dns[4]);
+  uint16_t ancount = ra_net_be16(&dns[6]);
+  s->dns_rcode     = (uint8_t)(flags & (uint16_t)k_dns_flag_rcode_mask);
+
+  if ((flags & (uint16_t)k_dns_flag_qr_response) == 0U) {
+    return;
+  }
+
+  uint16_t pos = dns_skip_questions(dns, dlen, qdcount, (uint16_t)k_dns_hdr_len);
+  dns_scan_answers(dns, dlen, ancount, pos, s);
+}
+
+/**
+ * @brief Build a DNS A-record query into the supplied buffer.
+ *
+ * @details RFC 1035 sec 4.1 -- writes a 12-byte header (with a fresh
+ *          transaction id seeded from s->dns_txid and the high bit set
+ *          for entropy), encodes the qname, and appends qtype=A /
+ *          qclass=IN. Byte-equivalent to the original inline build in
+ *          ra_net_dns_query.
+ *
+ * @param[in,out] s        Network singleton; dns_txid is advanced.
+ * @param[in]     hostname NUL-terminated hostname.
+ * @param[out]    buf      Query buffer.
+ *
+ * @return uint16_t Total query length in bytes.
+ * @retval >0 Bytes written into buf.
+ *
+ * @pre s, hostname, buf are non-NULL.
+ * @pre buf is at least hdr + (hlen+2) + 4 bytes long.
+ * @post buf holds a valid DNS A query.
+ * @post s->dns_txid advanced by one (with high bit forced).
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+static uint16_t dns_build_query(ra_net_state_t* s, const char* hostname, uint8_t* buf)
+{
+  s->dns_txid = (uint16_t)((s->dns_txid + 1U) | 0x8000U);
+  ra_net_put_be16(&buf[0], s->dns_txid);
+  ra_net_put_be16(&buf[2], (uint16_t)k_dns_flag_rd);
+  ra_net_put_be16(&buf[4], 1U); /* QDCOUNT */
+  ra_net_put_be16(&buf[6], 0U);
+  ra_net_put_be16(&buf[8], 0U);
+  ra_net_put_be16(&buf[10], 0U);
+  uint16_t qpos = (uint16_t)k_dns_hdr_len;
+  uint16_t qlen = dns_encode_qname(hostname, &buf[qpos]);
+  qpos          = (uint16_t)(qpos + qlen);
+  ra_net_put_be16(&buf[qpos], (uint16_t)k_dns_rr_a);
+  ra_net_put_be16(&buf[qpos + 2U], (uint16_t)k_dns_rr_class_in);
+  qpos = (uint16_t)(qpos + 4U);
+  return qpos;
+}
+
+/**
+ * @brief Bounded poll loop awaiting the DNS response.
+ *
+ * @details Spins ra_net_poll until s->dns_pending is cleared or the
+ *          deadline elapses. The poll_budget cap exists so the loop
+ *          terminates even when the host's time source is frozen
+ *          (unit tests use a manual clock). On real hardware the
+ *          SysTick-driven clock wins long before the budget.
+ *
+ * @param[in,out] s Network singleton; dns_pending is cleared on timeout.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok          Response observed.
+ * @retval k_ra_err_timeout Deadline elapsed before response arrived.
+ *
+ * @pre s is non-NULL and s->dns_pending == 1.
+ * @pre ra_time_ms() is monotonic and ra_net_poll is callable.
+ * @post On timeout s->dns_pending == 0.
+ * @post On success s->dns_answer holds the resolved IPv4.
+ *
+ * @note Not thread-safe; blocks the caller.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t dns_await_response(ra_net_state_t* s)
+{
+  uint32_t deadline    = ra_time_ms() + (uint32_t)k_ra_net_dns_timeout_ms;
+  uint32_t poll_budget = (uint32_t)k_ra_net_dns_timeout_ms; /* one poll per ms cap */
+  while (ra_net_internal_dns_loop_active(s->dns_pending, s->dns_rcode, poll_budget)) {
+    (void)ra_net_poll();
+    poll_budget--;
+    if (ra_time_ms() >= deadline) {
+      s->dns_pending = 0U;
+      return k_ra_err_timeout;
+    }
+    if (s->dns_pending == 0U) {
+      break;
+    }
+  }
+  if (s->dns_pending != 0U) {
+    s->dns_pending = 0U;
+    return k_ra_err_timeout;
+  }
+  return k_ra_ok;
+}
+
+/**
  * @brief Synchronously resolve a hostname to an IPv4 address.
  *
- * @details RFC 1035 -- emits a DNS A query to the configured server
- *          and polls until the response arrives or the timeout
- *          elapses. Note: blocks the caller; intended for
- *          single-threaded firmware contexts.
+ * @details RFC 1035 -- builds a DNS A-record query via dns_build_query,
+ *          emits it through udp_emit to the configured DNS server on
+ *          port 53 from an ephemeral source port, then drives
+ *          dns_await_response until either the singleton's dns_pending
+ *          clears or the timeout fires. On NXDOMAIN the RCODE is mapped
+ *          to k_ra_err_not_found. Blocks the caller; intended for
+ *          single-threaded firmware contexts only.
  *
- * @param[in]  hostname NUL-terminated hostname (must not be NULL).
+ * @param[in]  hostname NUL-terminated hostname (must not be NULL,
+ *                      length < k_ra_net_dns_max_hostname).
  * @param[out] out_ip   Filled with the resolved IPv4 on success.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok                Hostname resolved.
+ * @retval k_ra_ok                Hostname resolved; *out_ip valid.
  * @retval k_ra_err_null_ptr      hostname or out_ip is NULL.
  * @retval k_ra_err_invalid_state Stack not opened.
  * @retval k_ra_err_invalid_arg   Hostname too long.
@@ -631,8 +794,8 @@ void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
  *
  * @pre ra_net_open has succeeded with a configured DNS server.
  * @pre Both pointers are non-NULL.
- * @post On success *out_ip holds the resolved IPv4.
- * @post On failure *out_ip is unspecified.
+ * @post On success *out_ip holds the resolved IPv4 and s->dns_pending == 0.
+ * @post On failure *out_ip is unspecified and s->dns_pending == 0.
  *
  * @note Not thread-safe; blocks until the resolver completes.
  *
@@ -655,21 +818,8 @@ ra_err_t ra_net_dns_query(const char* hostname, ra_net_ipv4_t* out_ip)
     }
   }
 
-  /* Build query. */
   static uint8_t buf[((uint16_t)k_ra_net_dns_max_hostname * 2U) + (uint16_t)k_dns_hdr_len + 4U];
-  s->dns_txid = (uint16_t)((s->dns_txid + 1U) | 0x8000U);
-  ra_net_put_be16(&buf[0], s->dns_txid);
-  ra_net_put_be16(&buf[2], (uint16_t)k_dns_flag_rd);
-  ra_net_put_be16(&buf[4], 1U); /* QDCOUNT */
-  ra_net_put_be16(&buf[6], 0U);
-  ra_net_put_be16(&buf[8], 0U);
-  ra_net_put_be16(&buf[10], 0U);
-  uint16_t qpos = (uint16_t)k_dns_hdr_len;
-  uint16_t qlen = dns_encode_qname(hostname, &buf[qpos]);
-  qpos          = (uint16_t)(qpos + qlen);
-  ra_net_put_be16(&buf[qpos], (uint16_t)k_dns_rr_a);
-  ra_net_put_be16(&buf[qpos + 2U], (uint16_t)k_dns_rr_class_in);
-  qpos = (uint16_t)(qpos + 4U);
+  uint16_t       qpos = dns_build_query(s, hostname, buf);
 
   s->dns_pending = 1U;
   s->dns_rcode   = 0U;
@@ -682,25 +832,9 @@ ra_err_t ra_net_dns_query(const char* hostname, ra_net_ipv4_t* out_ip)
     return e;
   }
 
-  /* Bounded poll budget so the loop terminates even when the host's
-   * time source is frozen (unit tests use a manual clock). On real
-   * hardware the SysTick-driven clock wins long before the budget. */
-  uint32_t deadline    = ra_time_ms() + (uint32_t)k_ra_net_dns_timeout_ms;
-  uint32_t poll_budget = (uint32_t)k_ra_net_dns_timeout_ms; /* one poll per ms cap */
-  while (ra_net_internal_dns_loop_active(s->dns_pending, s->dns_rcode, poll_budget)) {
-    (void)ra_net_poll();
-    poll_budget--;
-    if (ra_time_ms() >= deadline) {
-      s->dns_pending = 0U;
-      return k_ra_err_timeout;
-    }
-    if (s->dns_pending == 0U) {
-      break;
-    }
-  }
-  if (s->dns_pending != 0U) {
-    s->dns_pending = 0U;
-    return k_ra_err_timeout;
+  ra_err_t we = dns_await_response(s);
+  if (we != k_ra_ok) {
+    return we;
   }
   if (s->dns_rcode == (uint8_t)k_dns_rcode_nxdomain) {
     return k_ra_err_not_found;

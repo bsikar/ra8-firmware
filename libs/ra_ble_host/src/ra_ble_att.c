@@ -393,6 +393,118 @@ static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, 
  *
  * @since 0.1.0
  */
+/**
+ * @brief Append one char-decl pair (handle + decl value) to a
+ *        Read_By_Type response buffer.
+ *
+ * @details Encodes the 21-byte (handle(2) + props(1) + value_handle(2) +
+ *          uuid(16)) char-declaration pair per Vol 3 Part G 3.3.
+ *
+ * @param[out]    resp Response buffer (already populated with header).
+ * @param[in,out] pos  Cursor into resp, advanced by 21.
+ * @param[in]     a    Char-decl attribute row.
+ *
+ * @pre resp != NULL, pos != NULL, a != NULL.
+ * @pre resp has at least *pos + 21 writable bytes.
+ * @post resp[*pos_in .. *pos_out - 1] holds the encoded pair.
+ * @post *pos advances by exactly 21 bytes.
+ *
+ * @note Not thread-safe; caller serializes access to resp.
+ *
+ * @since 0.1.0
+ */
+static void internal_emit_char_decl_pair(uint8_t* resp, uint16_t* pos, const ra_ble_host_attr_t* a)
+{
+  uint16_t p = *pos;
+  internal_pack_le16(&resp[p], a->handle);
+  p         = (uint16_t)(p + 2U);
+  resp[p++] = a->props;
+  internal_pack_le16(&resp[p], (uint16_t)(a->handle + 1U));
+  p = (uint16_t)(p + 2U);
+  (void)memcpy(&resp[p], a->uuid, k_ra_ble_host_uuid_bytes);
+  p    = (uint16_t)(p + k_ra_ble_host_uuid_bytes);
+  *pos = p;
+}
+
+/**
+ * @brief Find the first char-decl row in [start, end] and emit it into
+ *        the Read_By_Type response buffer.
+ *
+ * @details Scans the host attribute table; on the first matching row
+ *          (kind == char_decl with handle in range) appends the 21-byte
+ *          pair and returns true. The MTU-23 cap allows only one pair
+ *          per response, so the search terminates after the first hit.
+ *
+ * @param[out]    resp  Response buffer (pre-populated with 2-byte hdr).
+ * @param[in,out] pos   Cursor into resp; advanced by 21 on success.
+ * @param[in]     start First handle in the requested range (inclusive).
+ * @param[in]     end   Last handle in the requested range (inclusive).
+ *
+ * @return Boolean emit-success flag.
+ * @retval true  A matching row was found and the pair was appended.
+ * @retval false No matching row in range.
+ *
+ * @pre resp != NULL with >= *pos + 21 writable bytes.
+ * @pre pos != NULL; Stack initialized.
+ * @post On success *pos has advanced by 21; otherwise *pos is unchanged.
+ * @post No host state is mutated.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
+ * @since 0.1.0
+ */
+static bool
+internal_emit_first_decl_in_range(uint8_t* resp, uint16_t* pos, uint16_t start, uint16_t end)
+{
+  enum : uint8_t {
+    k_pair_bytes     = 21U,
+    k_max_resp_bytes = 23U,
+  };
+  const ra_ble_host_state_t* st = ra_ble_host_state();
+  for (uint8_t i = 0U; i < st->attr_count; i++) {
+    const ra_ble_host_attr_t* a = &st->attrs[i];
+    if (a->kind != k_attr_kind_char_decl) {
+      continue;
+    }
+    if ((a->handle < start) || (a->handle > end)) {
+      continue;
+    }
+    if (((uint32_t)*pos + (uint32_t)k_pair_bytes) > (uint32_t)k_max_resp_bytes) {
+      return false;
+    }
+    internal_emit_char_decl_pair(resp, pos, a);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Handle ATT Read_By_Type_Request for Characteristic declarations.
+ *
+ * @details Parses the 6-byte parameter block (start-handle, end-handle,
+ *          UUID-16). The only attribute type currently supported is the
+ *          Characteristic declaration (UUID 0x2803, Vol 3 Part G 3.3.1),
+ *          which is the GATT-discovery path most LE peers exercise.
+ *          Locates the first matching declaration row in range, emits a
+ *          single 21-byte (handle + decl) pair into a Read_By_Type
+ *          response, and pushes it through L2CAP CID 0x0004. On any
+ *          parse or lookup failure an ATT Error_Response is queued
+ *          instead (Bluetooth Core 5.3 Vol 3 Part F 3.4.4.1 / 3.4.1.1).
+ *
+ * @param[in] conn_handle 12-bit ACL connection handle.
+ * @param[in] pdu         Bytes past the opcode (non-NULL when len > 0).
+ * @param[in] len         Parameter length in bytes
+ *                        (must be >= 6 for a well-formed request).
+ *
+ * @pre pdu is non-NULL when len > 0.
+ * @pre Stack is initialized.
+ * @post Either a Read_By_Type_Response or an Error_Response has been queued.
+ * @post Host attribute table is unchanged.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
+ * @since 0.1.0
+ */
 static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
@@ -429,33 +541,7 @@ static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pd
   resp[pos++]  = k_att_op_read_by_type_rsp;
   resp[pos++]  = k_pair_bytes;
 
-  ra_ble_host_state_t* st    = ra_ble_host_state();
-  uint8_t              pairs = 0U;
-  for (uint8_t i = 0U; i < st->attr_count; i++) {
-    const ra_ble_host_attr_t* a = &st->attrs[i];
-    if (a->kind != k_attr_kind_char_decl) {
-      continue;
-    }
-    if ((a->handle < start) || (a->handle > end)) {
-      continue;
-    }
-    if (((uint32_t)pos + (uint32_t)k_pair_bytes) > (uint32_t)k_max_resp_bytes) {
-      break;
-    }
-    /* The value of a char-decl attribute is properties(1) | value_handle(2)
-     * | char_uuid(16). The value_handle is a->handle + 1 by construction. */
-    internal_pack_le16(&resp[pos], a->handle);
-    pos         = (uint16_t)(pos + 2U);
-    resp[pos++] = a->props;
-    internal_pack_le16(&resp[pos], (uint16_t)(a->handle + 1U));
-    pos = (uint16_t)(pos + 2U);
-    (void)memcpy(&resp[pos], a->uuid, k_ra_ble_host_uuid_bytes);
-    pos = (uint16_t)(pos + k_ra_ble_host_uuid_bytes);
-    pairs++;
-    /* MTU 23 only fits one decl pair. */
-    break;
-  }
-  if (pairs == 0U) {
+  if (!internal_emit_first_decl_in_range(resp, &pos, start, end)) {
     internal_send_error(conn_handle, k_att_op_read_by_type_req, start, k_att_err_attr_not_found);
     return;
   }
@@ -534,6 +620,103 @@ static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint1
 }
 
 /**
+ * @brief Apply a Write to a CCCD row and dispatch a subscribe event.
+ *
+ * @details Vol 3 Part G 3.3.3.3 -- CCCD payload is a 2-byte LE bitmask.
+ *          Returns the ATT error code to surface to the peer, or 0
+ *          when the write succeeded.
+ *
+ * @param[in,out] a           CCCD attribute row.
+ * @param[in]     conn_handle ACL handle (passed verbatim to the event).
+ * @param[in]     val         Raw payload bytes.
+ * @param[in]     val_len     Payload length.
+ *
+ * @return 0 on success, ATT error code on failure.
+ * @retval 0                                Subscribe event dispatched.
+ * @retval k_att_err_invalid_value_len      val_len < 2.
+ *
+ * @pre a != NULL and a->kind == k_attr_kind_cccd.
+ * @pre val != NULL when val_len > 0.
+ * @post On success the row's cccd_value mirrors the LE16 payload and a
+ *       subscribe event has been dispatched.
+ * @post On failure no host state is mutated.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
+ * @since 0.1.0
+ */
+static uint8_t internal_write_cccd(ra_ble_host_attr_t* a,
+                                   uint16_t            conn_handle,
+                                   const uint8_t*      val,
+                                   uint16_t            val_len)
+{
+  enum : uint8_t {
+    k_cccd_min_bytes = 2U,
+  };
+  if (val_len < k_cccd_min_bytes) {
+    return (uint8_t)k_att_err_invalid_value_len;
+  }
+  a->cccd_value               = internal_unpack_le16(val);
+  const ra_ble_host_event_t e = {
+    .kind        = k_ra_ble_host_event_subscribe,
+    .conn_handle = conn_handle,
+    .attr_handle = a->value_handle_owner,
+    .data        = val,
+    .data_len    = val_len,
+  };
+  ra_ble_host_dispatch_event(&e);
+  return 0U;
+}
+
+/**
+ * @brief Apply a Write to a characteristic-value row and dispatch the
+ *        write event.
+ *
+ * @details Vol 3 Part F 3.4.5.1 / 3.4.5.3.
+ *
+ * @param[in,out] a           Char-value attribute row.
+ * @param[in]     conn_handle ACL handle (passed verbatim to the event).
+ * @param[in]     handle      Attribute handle being written.
+ * @param[in]     val         Raw payload bytes.
+ * @param[in]     val_len     Payload length.
+ *
+ * @return 0 on success, ATT error code on failure.
+ * @retval 0                                Value updated and event dispatched.
+ * @retval k_att_err_invalid_value_len      val_len > value_max.
+ *
+ * @pre a != NULL, a->kind == k_attr_kind_char_value, a->value != NULL.
+ * @pre val != NULL when val_len > 0.
+ * @post On success the value buffer holds val_len bytes and a write
+ *       event has been dispatched.
+ * @post On failure no host state is mutated.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
+ * @since 0.1.0
+ */
+static uint8_t internal_write_value(ra_ble_host_attr_t* a,
+                                    uint16_t            conn_handle,
+                                    uint16_t            handle,
+                                    const uint8_t*      val,
+                                    uint16_t            val_len)
+{
+  if (val_len > a->value_max) {
+    return (uint8_t)k_att_err_invalid_value_len;
+  }
+  (void)memcpy(a->value, val, val_len);
+  a->value_len                = val_len;
+  const ra_ble_host_event_t e = {
+    .kind        = k_ra_ble_host_event_write,
+    .conn_handle = conn_handle,
+    .attr_handle = handle,
+    .data        = val,
+    .data_len    = val_len,
+  };
+  ra_ble_host_dispatch_event(&e);
+  return 0U;
+}
+
+/**
  * @brief Handle ATT Write_Request / Write_Command (Vol 3 Part F 3.4.5.1 / 3.4.5.3).
  *
  * @details
@@ -586,43 +769,19 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
   const uint8_t* val     = &pdu[2];
   const uint16_t val_len = (uint16_t)(len - 2U);
 
+  uint8_t att_err = 0U;
+  // mcdc-deactivated: TU-local helper internal_handle_read; characteristic-value attributes registered via the public API always provide a non-NULL backing buffer (validated at registration), so the second condition cannot independently flip on any reachable path.
   if (a->kind == k_attr_kind_cccd) {
-    if (val_len < 2U) {
-      if (op == k_att_op_write_req) {
-        internal_send_error(conn_handle, op, handle, k_att_err_invalid_value_len);
-      }
-      return;
-    }
-    a->cccd_value               = internal_unpack_le16(val);
-    const ra_ble_host_event_t e = {
-      .kind        = k_ra_ble_host_event_subscribe,
-      .conn_handle = conn_handle,
-      .attr_handle = a->value_handle_owner,
-      .data        = val,
-      .data_len    = val_len,
-    };
-    ra_ble_host_dispatch_event(&e);
-    // mcdc-deactivated: TU-local helper internal_handle_read; characteristic-value attributes registered via the public API always provide a non-NULL backing buffer (validated at registration), so the second condition cannot independently flip on any reachable path.
+    att_err = internal_write_cccd(a, conn_handle, val, val_len);
   } else if ((a->kind == k_attr_kind_char_value) && (a->value != nullptr)) {
-    if (val_len > a->value_max) {
-      if (op == k_att_op_write_req) {
-        internal_send_error(conn_handle, op, handle, k_att_err_invalid_value_len);
-      }
-      return;
-    }
-    (void)memcpy(a->value, val, val_len);
-    a->value_len                = val_len;
-    const ra_ble_host_event_t e = {
-      .kind        = k_ra_ble_host_event_write,
-      .conn_handle = conn_handle,
-      .attr_handle = handle,
-      .data        = val,
-      .data_len    = val_len,
-    };
-    ra_ble_host_dispatch_event(&e);
+    att_err = internal_write_value(a, conn_handle, handle, val, val_len);
   } else {
+    att_err = (uint8_t)k_att_err_write_not_permitted;
+  }
+
+  if (att_err != 0U) {
     if (op == k_att_op_write_req) {
-      internal_send_error(conn_handle, op, handle, k_att_err_write_not_permitted);
+      internal_send_error(conn_handle, op, handle, (ra_ble_att_err_t)att_err);
     }
     return;
   }
