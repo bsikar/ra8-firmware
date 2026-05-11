@@ -399,6 +399,24 @@ static void demo_gui_setup_and_run(void)
     demo_panic_halt();
   }
 
+  /* Wire up a tiny static colour table so `gx_display_color_set`
+   * has somewhere to land.  Without this the table pointer is NULL
+   * and every set call writes into uninitialised memory (or, more
+   * commonly, just gets ignored because the table is empty), and
+   * all widget paints end up using colour value 0 = black. */
+  static GX_COLOR s_color_table[32];
+  for (uint32_t i = 0U; i < 32U; i++) {
+    s_color_table[i] = demo_argb(0x00U, 0x00U, 0x00U); /* default black */
+  }
+  s_color_table[GX_COLOR_ID_CANVAS]      = demo_argb(0xFFU, 0xFFU, 0xFFU); /* white */
+  s_color_table[GX_COLOR_ID_WINDOW_FILL] = demo_argb(0xFFU, 0xFFU, 0xFFU);
+  s_color_table[GX_COLOR_ID_TEXT]        = demo_argb(0x00U, 0x00U, 0x00U);
+  s_color_table[GX_COLOR_ID_BTN_UPPER]   = demo_argb(0xE0U, 0xE0U, 0xE0U);
+  s_color_table[GX_COLOR_ID_BTN_LOWER]   = demo_argb(0x80U, 0x80U, 0x80U);
+  if (gx_display_color_table_set(&s_display, s_color_table, 32) != GX_SUCCESS) {
+    demo_panic_halt();
+  }
+
   if (gx_canvas_create(&s_canvas,
                        "ra8d2-canvas",
                        &s_display,
@@ -682,11 +700,10 @@ int32_t main(void)
   (void)ra_glcdc_start(true);
   (void)ra_glcdc_layer1_show((uintptr_t)s_framebuffer);
 
-  /* ThreadX needs IRQs unmasked so the scheduler can preempt on
-   * SysTick.  Safe to enable here: no peripheral IRQ source is
-   * armed yet, and ThreadX installs its own SysTick handler inside
-   * tx_kernel_enter. */
-  ra_isr_globals_enable();
+  /* Do NOT call ra_isr_globals_enable() here -- ThreadX unmasks
+   * globals inside tx_kernel_enter, and unmasking earlier lets the
+   * GLCDC VPOS interrupt (enabled by ra_glcdc_start) fire into a
+   * not-yet-installed NVIC vector, faulting the chip into reset. */
 
   tx_kernel_enter();
 #endif
