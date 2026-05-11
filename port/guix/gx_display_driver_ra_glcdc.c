@@ -323,12 +323,13 @@ UINT ra_guix_display_driver_setup(GX_DISPLAY* display)
    * recover the framebuffer base + dimensions without globals. */
   _gx_display_driver_565rgb_setup(display, &s_aux, ra_guix_display_driver_buffer_toggle);
 
-  /* Override the three entry points the project owns. The vendor
-   * versions remain in `display->gx_display_driver_*` for everything
-   * else -- horizontal-line draw, glyph rendering, alpha blending,
-   * etc. */
-  display->gx_display_driver_pixel_write = ra_guix_display_driver_pixel_write;
-  display->gx_display_driver_block_move  = ra_guix_display_driver_block_move;
+  /* Keep the vendor 565 RGB pixel_write -- it writes directly into
+   * the canvas memory (= our framebuffer = GLCDC scan-out buffer).
+   * The previous override routed through `ra_gfx_pixel`, which
+   * requires `ra_gfx_init` (never called by this app), so every
+   * pixel write was silently dropped with k_ra_err_not_initialized.
+   * Only override block_move so the swap counter still ticks. */
+  display->gx_display_driver_block_move = ra_guix_display_driver_block_move;
 
   /* Pin the panel dimensions on the display struct so callers that
    * skipped the gx_display_create wrapper (which sets them) still see
