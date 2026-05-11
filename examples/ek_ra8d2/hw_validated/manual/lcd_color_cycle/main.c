@@ -16,30 +16,27 @@
  * The blue board LED toggles every cycle as a visual heartbeat so
  * the firmware is observable even if the panel stays dark.
  *
- * Bring-up findings discovered while bringing this app up
- * (worth re-reading before adding new GLCDC apps):
+ * Bring-up findings surfaced while landing this app (now handled in
+ * the BSP / driver -- documented here so future GLCDC apps can rely
+ * on the abstractions instead of repeating the work):
  *
- *   1. `ra_pfs_route_peripheral` only sets PSEL and PMR; it leaves
- *      PDR=0 (input).  Parallel-RGB pins must be PDR=1 (output) for
- *      the GLCDC to drive them.  This file works around that with a
- *      manual PFS write that sets PSEL=0x19, PMR=1, PDR=1 directly.
+ *   1. `ra_pfs_route_peripheral` only sets PSEL + PMR; it leaves
+ *      PDR=0 (input).  GLCDC outputs need PDR=1.  Handled by
+ *      `ra_board_glcdc_init` in `libs/ra_board_ek_ra8d2`.
  *
- *   2. The GLCDC output stage composes `BG x GR2 x GR1`.  Even when
- *      only the BG plane is in use, BOTH GR1 and GR2 must be
- *      configured (dimensions, alpha=0, DISPSEL=transparent,
- *      FLMRD=0) and VEN-asserted.  Without GR2 in a sane state, the
- *      pipeline silently emits solid black.  See ra_glcdc.c
- *      `internal_panel_program` for the GR2 init.
+ *   2. The GLCDC output stage composes `BG x GR2 x GR1`.  Both GR1
+ *      and GR2 must be configured + VEN-asserted even when only the
+ *      BG plane is in use.  Handled by `ra_glcdc_init` /
+ *      `ra_glcdc_start` in `libs/ra_hal/src/ra_glcdc.c`.
  *
- *   3. The Parallel Graphics Expansion Board's BLEN signal (P514) is
- *      active-HIGH.  Driving it low kills the backlight.
+ *   3. The Parallel Graphics Expansion Board's BLEN signal (P514)
+ *      is active-HIGH.  Exposed as `k_ra_board_lcd_blen` in the BSP.
  *
- *   4. `BG_BGC` is shadow-registered: a write only takes effect on
- *      the next VS once `BG_EN.VEN=1` is asserted.  Runtime color
- *      changes must pulse VEN, which the driver does internally in
- *      `ra_glcdc_set_background_color`.
+ *   4. `BG_BGC` is shadow-registered: writes only take effect at
+ *      the next VS once `BG_EN.VEN=1` is asserted.
+ *      `ra_glcdc_set_background_color` pulses VEN internally.
  *
- * Pin map source: EK-RA8D2 v1 User Manual Table 33
+ * Pin map source (BSP): EK-RA8D2 v1 User Manual Table 33
  *   ("Parallel Graphics Expansion Port Assignments").
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -53,11 +50,8 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_glcdc.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
 
@@ -67,63 +61,15 @@ typedef enum : uint16_t {
 } lcd_panel_dim_t;
 
 typedef enum : uint32_t {
-  k_lcd_cycle_ms       = 500U,
-  k_lcd_reset_pulse_ms = 50U,
+  k_lcd_cycle_ms = 500U,
 } lcd_pace_t;
 
-#define LCD_PP(port, pin) ((ra_port_pin_t)(((uint16_t)(port) << 8) | (uint16_t)(pin)))
-
-typedef enum : uint16_t {
-  k_lcd_pin_reset_l = (uint16_t)LCD_PP(6U, 6U),  /**< P606 RESET_L  */
-  k_lcd_pin_blen    = (uint16_t)LCD_PP(5U, 14U), /**< P514 BLEN (active-high) */
-} lcd_gpio_pin_t;
-
-typedef enum : uint8_t {
-  k_lcd_glcdc_pin_count = 28U,
-} lcd_pin_count_t;
-
-/* Per EK-RA8D2 v1 UM Table 33 ("Parallel Graphics Expansion Port"). */
-static const ra_port_pin_t k_lcd_glcdc_pins[k_lcd_glcdc_pin_count] = {
-  /* DATA0..DATA7 (B0..B7) */
-  LCD_PP(9U, 14U),
-  LCD_PP(9U, 15U),
-  LCD_PP(9U, 3U),
-  LCD_PP(9U, 2U),
-  LCD_PP(9U, 10U),
-  LCD_PP(9U, 11U),
-  LCD_PP(9U, 12U),
-  LCD_PP(9U, 13U),
-  /* DATA8..DATA15 (G0..G7) */
-  LCD_PP(9U, 4U),
-  LCD_PP(2U, 7U),
-  LCD_PP(11U, 7U),
-  LCD_PP(11U, 6U),
-  LCD_PP(11U, 5U),
-  LCD_PP(11U, 1U),
-  LCD_PP(11U, 4U),
-  LCD_PP(11U, 3U),
-  /* DATA16..DATA23 (R0..R7) */
-  LCD_PP(11U, 2U),
-  LCD_PP(11U, 0U),
-  LCD_PP(7U, 7U),
-  LCD_PP(7U, 11U),
-  LCD_PP(7U, 12U),
-  LCD_PP(7U, 13U),
-  LCD_PP(7U, 14U),
-  LCD_PP(7U, 15U),
-  /* TCON / CLK */
-  LCD_PP(8U, 6U),
-  LCD_PP(8U, 5U),
-  LCD_PP(8U, 7U),
-  LCD_PP(5U, 15U),
-};
-
-/* BG_BGC format: bits[23:16]=R, [15:8]=G, [7:0]=B. */
+/* BG_BGC format: bits[23:16]=R, [15:8]=G, [7:0]=B; bits[31:24] reserved. */
 typedef enum : uint32_t {
-  k_bgc_red   = 0x00FF0000U,
-  k_bgc_green = 0x0000FF00U,
-  k_bgc_blue  = 0x000000FFU,
-  k_bgc_white = 0x00FFFFFFU,
+  k_bgc_red   = 0xFF0000U,
+  k_bgc_green = 0x00FF00U,
+  k_bgc_blue  = 0x0000FFU,
+  k_bgc_white = 0xFFFFFFU,
 } lcd_bgc_t;
 
 typedef enum : uint8_t {
@@ -143,76 +89,6 @@ static void lcd_panic_halt(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-/**
- * @brief Route all 28 GLCDC pins to PSEL=0x19 with PDR=1.
- *
- * Manual workaround: ra_pfs_route_peripheral only writes PSEL+PMR,
- * leaving PDR=0 (input).  GLCDC needs each pin as an output for the
- * peripheral to drive it.  This function does the route + PDR=1 in a
- * single direct PFS write per pin.
- */
-static ra_err_t lcd_glcdc_pins_init(void)
-{
-  enum : uintptr_t {
-    k_pfs_base_addr = 0x40400800UL,
-    k_pwpr_addr     = 0x40400D0CUL,
-    k_pwprs_addr    = 0x40400D14UL,
-  };
-  enum : uint8_t {
-    k_pwpr_unlock = 0x40U, /* PFSWE=1, B0WI=0 */
-    k_pwpr_lock   = 0x80U, /* PFSWE=0, B0WI=1 */
-  };
-  enum : uint32_t {
-    k_pin_stride_bytes = 4U,
-    k_port_stride_pins = 16U,
-    k_pfs_psel_shift   = 24U,
-    k_pfs_pmr_bit      = 1U << 16,
-    k_pfs_pdr_bit      = 1U << 2,
-  };
-
-  for (uint8_t i = 0U; i < (uint8_t)k_lcd_glcdc_pin_count; i++) {
-    const uint16_t           port = (uint16_t)((uint16_t)k_lcd_glcdc_pins[i] >> 8);
-    const uint16_t           pin  = (uint16_t)((uint16_t)k_lcd_glcdc_pins[i] & 0xFFU);
-    volatile uint32_t* const pfs =
-      (volatile uint32_t*)(k_pfs_base_addr +
-                           ((uintptr_t)port * k_port_stride_pins + (uintptr_t)pin) *
-                             k_pin_stride_bytes);
-    volatile uint8_t* const pwpr  = (volatile uint8_t*)k_pwpr_addr;
-    volatile uint8_t* const pwprs = (volatile uint8_t*)k_pwprs_addr;
-
-    /* HUM Ch 20.2.5 PWPR unlock sequence. */
-    *pwpr  = 0U;
-    *pwpr  = k_pwpr_unlock;
-    *pwprs = 0U;
-    *pwprs = k_pwpr_unlock;
-    *pfs   = ((uint32_t)k_ra_psel_glcdc << k_pfs_psel_shift) | k_pfs_pmr_bit | k_pfs_pdr_bit;
-    *pwpr  = 0U;
-    *pwpr  = k_pwpr_lock;
-    *pwprs = 0U;
-    *pwprs = k_pwpr_lock;
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Pulse the panel's RESET_L line and assert backlight enable.
- */
-[[nodiscard]] static ra_err_t lcd_panel_power_on(void)
-{
-  ra_err_t err = ra_gpio_output_init((ra_port_pin_t)k_lcd_pin_reset_l, k_ra_level_low);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  ra_delay_ms(k_lcd_reset_pulse_ms);
-  err = ra_gpio_write((ra_port_pin_t)k_lcd_pin_reset_l, k_ra_level_high);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  ra_delay_ms(k_lcd_reset_pulse_ms);
-  /* BLEN is ACTIVE-HIGH on EK-RA8D2 v1 (P514). */
-  return ra_gpio_output_init((ra_port_pin_t)k_lcd_pin_blen, k_ra_level_high);
 }
 
 #pragma GCC diagnostic push
@@ -254,19 +130,19 @@ int32_t main(void)
   }
   ra_delay_ms(100U);
 
-  if (lcd_panel_power_on() != k_ra_ok) {
+  if (ra_board_lcd_panel_power_on() != k_ra_ok) {
     lcd_panic_halt();
   }
-  if (lcd_glcdc_pins_init() != k_ra_ok) {
+  if (ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888) != k_ra_ok) {
     lcd_panic_halt();
   }
   ra_delay_ms(200U); /* let pins settle in output mode */
 
-  /* GLCDC: framebuffer pointer is irrelevant for this demo (BG plane
-   * drives the panel on its own with both graphics layers held
-   * invisible by the driver). */
+  /* GLCDC: BG plane drives the panel on its own with both graphics
+   * layers held invisible by the driver, so the framebuffer pointer
+   * is never dereferenced -- leave it null. */
   const ra_glcdc_config_t cfg = {
-    .framebuffer_addr = 0x68000000UL,
+    .framebuffer_addr = 0UL,
     .width_px         = (uint16_t)k_lcd_panel_w,
     .height_px        = (uint16_t)k_lcd_panel_h,
     .format           = k_ra_glcdc_fmt_rgb565,

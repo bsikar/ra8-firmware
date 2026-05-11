@@ -30,6 +30,7 @@
 #include "ra8d2_etha_regs.h"
 #include "ra8d2_icu_regs.h"
 #include "ra8d2_mstp_regs.h"
+#include "ra8d2_pfs_regs.h"
 #include "ra8d2_rmac_regs.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -414,6 +415,177 @@ const uint32_t g_ra_board_glcdc_rgb666_pin_count =
 const uint32_t g_ra_board_glcdc_rgb565_pin_count =
   sizeof(g_ra_board_glcdc_rgb565_pins) / sizeof(g_ra_board_glcdc_rgb565_pins[0]);
 
+/**
+ * @brief Test whether a J1 signal name corresponds to a GLCDC output.
+ *
+ * @details J1 connector pin table contains GLCDC outputs (TCONx, CLK,
+ * R/G/B data lines) mixed with GPIO/I2C/clock-input control signals
+ * (BLEN, RST, INT, SDA1, SCL1, EXTCLK).  Only the GLCDC outputs
+ * should be routed via PSEL=glcdc and switched to output direction.
+ *
+ * @param[in] signal Human-readable signal name from the pin table.
+ *
+ * @return ``true`` for TCONx / CLK / R[0-9]* / G[0-9]* / B[0-9]*.
+ * @retval true  Signal is a GLCDC peripheral output.
+ * @retval false Signal is GPIO/I2C/clock-input.
+ *
+ * @pre ``signal`` is non-null and NUL-terminated.
+ * @pre Signal names follow the EK-RA8D2 UM Table 33 conventions.
+ * @post No side effects; pure inspection.
+ * @post Return value is one of {true, false}.
+ *
+ * @note Single-threaded init-time helper.
+ * @since 0.1.0
+ */
+/**
+ * @brief Check whether a NUL-terminated string starts with `prefix`.
+ *
+ * @details Bounded to the longest prefix this BSP needs ("TCON",
+ * 4 chars).  Implemented inline instead of `strncmp` to keep the BSP
+ * free of `<string.h>` and to avoid compound boolean decisions that
+ * would require MC/DC vectors.
+ *
+ * @param[in] s      NUL-terminated subject string.
+ * @param[in] prefix NUL-terminated prefix (<= 4 chars).
+ *
+ * @return ``true`` iff every prefix character matches the matching
+ *         position in `s`.
+ * @retval true  Prefix matches.
+ * @retval false At least one character differs.
+ *
+ * @pre `s` and `prefix` are both non-null and NUL-terminated.
+ * @pre `prefix` is at most 4 characters long (compile-time invariant).
+ * @post No side effects; pure inspection.
+ * @post Return value is one of {true, false}.
+ *
+ * @note Init-time helper; single-threaded.
+ * @since 0.1.0
+ */
+static bool ra_board_glcdc_signal_starts_with(const char* s, const char* prefix)
+{
+  for (uint32_t i = 0U; i < 4U; i++) { /* longest prefix here is "TCON" = 4. */
+    if (prefix[i] == '\0') {
+      return true;
+    }
+    if (s[i] != prefix[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Check whether a signal name is a GLCDC R/G/B data line.
+ *
+ * @details Matches the pattern `[RGB][0-9]` (e.g. "R0", "G7", "B3").
+ * The digit check rules out "BLEN" (starts with B but second char is
+ * 'L', not a digit).
+ *
+ * @param[in] signal NUL-terminated signal name from the pin table.
+ *
+ * @return ``true`` iff the first two characters form `[RGB][0-9]`.
+ * @retval true  Signal is a colour-data line.
+ * @retval false Signal is not a colour-data line.
+ *
+ * @pre `signal` is non-null and at least 2 characters (incl. NUL).
+ * @pre Signal names follow EK-RA8D2 UM Table 33 conventions.
+ * @post No side effects; pure inspection.
+ * @post Return value is one of {true, false}.
+ *
+ * @note Init-time helper; single-threaded.
+ * @since 0.1.0
+ */
+static bool ra_board_glcdc_signal_is_color_data(const char* signal)
+{
+  /* Match R0..R9 / G0..G9 / B0..B9; digit in [1] excludes BLEN. */
+  const char c0 = signal[0];
+  if (c0 != 'R') {
+    if (c0 != 'G') {
+      if (c0 != 'B') {
+        return false;
+      }
+    }
+  }
+  const char c1 = signal[1];
+  if (c1 < '0') {
+    return false;
+  }
+  if (c1 > '9') {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Test whether a J1 signal name corresponds to a GLCDC output.
+ *
+ * @details Returns true for TCONx / CLK / R[0-9]* / G[0-9]* / B[0-9]*;
+ * false for BLEN / RST / SDA1 / SCL1 / INT / EXTCLK.  Used by
+ * `ra_board_glcdc_init` to filter the J1 connector pin table down to
+ * the pins that actually carry GLCDC peripheral signals.
+ *
+ * @param[in] signal Human-readable signal name from the pin table.
+ *
+ * @return ``true`` for GLCDC peripheral outputs.
+ * @retval true  Signal is a GLCDC peripheral output.
+ * @retval false Signal is GPIO/I2C/clock-input.
+ *
+ * @pre `signal` is non-null and NUL-terminated.
+ * @pre Signal names follow EK-RA8D2 UM Table 33 conventions.
+ * @post No side effects; pure inspection.
+ * @post Return value is one of {true, false}.
+ *
+ * @note Single-threaded init-time helper.
+ * @since 0.1.0
+ */
+static bool ra_board_glcdc_signal_is_output(const char* signal)
+{
+  if (ra_board_glcdc_signal_starts_with(signal, "TCON")) {
+    return true;
+  }
+  if (ra_board_glcdc_signal_starts_with(signal, "CLK")) {
+    return true;
+  }
+  return ra_board_glcdc_signal_is_color_data(signal);
+}
+
+/**
+ * @brief Force a PFS register to PSEL=glcdc, PMR=1, PDR=1 in one write.
+ *
+ * @details ``ra_pfs_route_peripheral`` writes PSEL + PMR but leaves
+ * PDR cleared, which keeps the pin in input direction.  GLCDC needs
+ * its outputs in output direction; this helper does the combined
+ * write directly under PWPR unlock so the chip drives the line.
+ *
+ * @param[in] pin J1 pin already validated to be a GLCDC output.
+ *
+ * @pre Caller has confirmed the pin is a GLCDC output via
+ *      ``ra_board_glcdc_signal_is_output``.
+ * @pre IOPORT module is powered (true at reset).
+ * @post PFS = (psel_glcdc << 24) | PMR | PDR for the target pin.
+ * @post PWPR is left in its locked state.
+ *
+ * @note Single-threaded init context only.
+ * @since 0.1.0
+ */
+static void ra_board_glcdc_force_pin_output(ra_port_pin_t pin)
+{
+  enum : uint32_t {
+    k_pfs_psel_shift = 24U,
+    k_pfs_pmr_bit    = 1U << 16,
+    k_pfs_pdr_bit    = 1U << 2,
+  };
+  const ra_port_t          port = RA_PIN_PORT(pin);
+  const ra_pin_t           bit  = RA_PIN_PIN(pin);
+  volatile uint32_t* const pfs  = ra_pfs_pmn(port, bit);
+  if (pfs == nullptr) {
+    return;
+  }
+  ra_pfs_pwpr_unlock();
+  *pfs = ((uint32_t)k_ra_psel_glcdc << k_pfs_psel_shift) | k_pfs_pmr_bit | k_pfs_pdr_bit;
+  ra_pfs_pwpr_lock();
+}
+
 /* Ra board glcdc init -- see implementation for details. */
 ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
 {
@@ -438,12 +610,56 @@ ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
   }
 
   for (uint32_t i = 0U; i < count; ++i) {
+    if (!ra_board_glcdc_signal_is_output(table[i].signal)) {
+      continue; /* GPIO/I2C/clock-input -- not a GLCDC peripheral pin. */
+    }
     const ra_err_t err = ra_pfs_route_peripheral(table[i].pin, k_ra_psel_glcdc, "ra_board.glcdc");
     if (err != k_ra_ok) {
       return err;
     }
+    /* Override PFS with PSEL + PMR + PDR=1 so the chip drives the
+     * pin as an output instead of leaving it as an input under
+     * peripheral control. */
+    ra_board_glcdc_force_pin_output(table[i].pin);
   }
   return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_board_lcd_panel_power_on`.
+ *
+ * @details See header for caller-facing contract.  Body drives
+ * RESET_L low for 50 ms, releases it high for another 50 ms to let
+ * the panel's internal POR finish, then asserts BLEN.
+ *
+ * @return Error code from the underlying GPIO operations.
+ * @retval k_ra_ok               Panel out of reset, backlight on.
+ * @retval k_ra_err_gpio_*       Underlying GPIO call failed.
+ *
+ * @pre IOPORT module powered (true at reset).
+ * @pre `ra_time_init` has been called.
+ * @post P606 RESET_L is high; P514 BLEN is high.
+ * @post Returns within ~100 ms.
+ *
+ * @note Single-threaded init context; blocks on `ra_delay_ms`.
+ * @since 0.1.0
+ */
+ra_err_t ra_board_lcd_panel_power_on(void)
+{
+  enum : uint32_t {
+    k_reset_pulse_ms = 50U,
+  };
+  ra_err_t err = ra_gpio_output_init(k_ra_pin_lcd_reset_l, k_ra_level_low);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_delay_ms(k_reset_pulse_ms);
+  err = ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_delay_ms(k_reset_pulse_ms);
+  return ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
 }
 
 /* =============================================================================
