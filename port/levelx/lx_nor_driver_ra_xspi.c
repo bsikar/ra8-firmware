@@ -548,18 +548,18 @@ typedef struct {
  * @since 0.1.0
  */
 static const ra_xspi_pin_ref_t s_ra_xspi_pin_refs[k_ra_xspi_pin_count] = {
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_4},  /**< CS,  P104. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_8},  /**< CK,  P808. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_1},  /**< DQS, P801. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_0},  /**< DQ0, P100. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_3},  /**< DQ1, P803. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_3},  /**< DQ2, P103. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_1},  /**< DQ3, P101. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_2},  /**< DQ4, P102. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_0},  /**< DQ5, P800. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_2},  /**< DQ6, P802. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_4},  /**< DQ7, P804. */
-  {0xFFU,                0xFFU               }, /**< Reserved sentinel. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_4}, /**< CS,  P104. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_8}, /**< CK,  P808. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_1}, /**< DQS, P801. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_0}, /**< DQ0, P100. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_3}, /**< DQ1, P803. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_3}, /**< DQ2, P103. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_1}, /**< DQ3, P101. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_2}, /**< DQ4, P102. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_0}, /**< DQ5, P800. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_2}, /**< DQ6, P802. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_4}, /**< DQ7, P804. */
+  {0xFFU, 0xFFU},                              /**< Reserved sentinel. */
 };
 
 /**
@@ -663,18 +663,28 @@ typedef enum : uint8_t {
   k_ra_xspi_reset_form_8d = 2U, /**< Opcode + complement for 8D-8D-8D. */
 } ra_xspi_reset_form_t;
 
-/* Bus init once -- see implementation for details. */
-static UINT priv_bus_init_once(void)
+/**
+ * @brief Stamp the observation breadcrumb at the start of a bring-up call.
+ *
+ * @details
+ * Writes the magic word, bumps ``call_count``, and zeroes the sub-stage
+ * error fields BEFORE any HAL call so a JLink memory dump can show
+ * exactly how far the bring-up progressed even if the controller hangs
+ * mid-step.
+ *
+ * @pre ``g_ra_xspi_rdid_observed`` is accessible (always; static SRAM).
+ * @pre Called from the bus-init path before any HAL XSPI call.
+ * @post ``g_ra_xspi_rdid_observed.stage == k_ra_xspi_stage_pins``.
+ * @post ``g_ra_xspi_rdid_observed.magic == k_ra_xspi_rdid_magic`` and
+ *       ``call_count`` is incremented by one.
+ *
+ * @note Not thread-safe; the LevelX NOR driver serialises all bus
+ *       accesses through a single owner task.
+ *
+ * @since 0.1.0
+ */
+static void priv_stamp_observed_start(void)
 {
-  if (s_xspi_bus_ready) {
-    return (UINT)LX_SUCCESS;
-  }
-
-  /* Stamp the magic + bump the counter BEFORE any HAL call so even a
-   * hang inside the controller leaves a visible breadcrumb at the
-   * known SRAM address. The sub-stage err fields are back-filled as
-   * each step completes so the operator can see exactly which step
-   * tripped. */
   g_ra_xspi_rdid_observed.magic = (uint32_t)k_ra_xspi_rdid_magic;
   g_ra_xspi_rdid_observed.call_count += 1U;
   g_ra_xspi_rdid_observed.rid_err      = (uint32_t)k_ra_ok;
@@ -682,28 +692,40 @@ static UINT priv_bus_init_once(void)
   g_ra_xspi_rdid_observed.reset_8d_err = (uint32_t)k_ra_ok;
   g_ra_xspi_rdid_observed.reset_1s_err = (uint32_t)k_ra_ok;
   g_ra_xspi_rdid_observed.stage        = (uint32_t)k_ra_xspi_stage_pins;
+}
 
-  if (ra_board_xspi_pins_init() != k_ra_ok) {
-    /* Capture whatever pin state we have BEFORE bailing so JLink can
-     * see how far the BSP got even on partial-failure paths. */
-    priv_capture_xspi_pin_state();
-    ra_log_error(s_lx_xspi_tag, "xspi pin init failed");
-    return (UINT)LX_ERROR;
-  }
-  /* Snapshot post-init PSEL on every OCTA pad. Any row where
-   * psel_observed != 0x1C or pmr_observed != 1 means the BSP enum is
-   * wrong for that pin -- the chip will not see that signal. */
-  priv_capture_xspi_pin_state();
-
-  /* Phase A: punch the chip out of any 8D-OPI mode left over from a
-   * previous boot. The volatile-config register that selects 8D mode
-   * survives a Cortex-M85 warm-reset because power was never removed,
-   * so even after our PFS reset pulse the IS25LX512M may still be in
-   * OPI. The only language it understands in that state is the 8D
-   * RSTEN/RST opcode pair (0x66 0x99 0x99 0x66) -- send that first
-   * with the controller in 8D mode. If the chip was actually in 1S,
-   * the 8D bytes look like garbage and the chip ignores them; we
-   * recover via the 1S reset in Phase B. */
+/**
+ * @brief Phase A -- punch the IS25LX512M out of any 8D-OPI mode.
+ *
+ * @details
+ * The volatile-config register that selects 8D mode survives a
+ * Cortex-M85 warm-reset because power was never removed, so even after
+ * the PFS reset pulse the chip may still be in OPI. The only opcode it
+ * understands in that state is the 8D RSTEN/RST pair (0x66 0x99 0x99
+ * 0x66). Sending those first with the controller in 8D mode recovers
+ * an OPI-stuck chip; a chip that was in 1S simply ignores the garbage
+ * and gets recovered by Phase B.
+ *
+ * @return ``LX_SUCCESS`` if the controller switched to 8D and the
+ *         reset opcodes were dispatched; ``LX_ERROR`` if
+ *         ``ra_xspi_init`` rejected the 8D mode switch.
+ * @retval LX_SUCCESS Controller is in 8D mode; reset opcodes dispatched.
+ * @retval LX_ERROR ``ra_xspi_init`` rejected the 8D protocol switch.
+ *
+ * @pre ``priv_stamp_observed_start`` has been called for this bring-up.
+ * @pre XSPI pins are configured (``ra_board_xspi_pins_init`` succeeded).
+ * @post ``g_ra_xspi_rdid_observed.reset_8d_err`` records the HAL outcome.
+ * @post Controller is left in 8D mode regardless of the reset result.
+ *
+ * @note ``ra_xspi_software_reset`` may legitimately time out here when
+ *       the chip is actually in 1S; we tolerate the failure and
+ *       record it in ``reset_8d_err`` instead of bailing.
+ * @note Not thread-safe; bus owner serialises all calls.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_reset_phase_8d(void)
+{
   g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_init_8d;
   if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_8d8d8d) != k_ra_ok) {
     ra_log_error(s_lx_xspi_tag, "ra_xspi_init 8d failed");
@@ -717,11 +739,34 @@ static UINT priv_bus_init_once(void)
    * never form a recognised opcode and CMDCMP may legitimately stall.
    * The Phase-B 1S reset will recover regardless. */
   ra_delay_ms((uint32_t)k_ra_xspi_reset_settle_ms);
+  return (UINT)LX_SUCCESS;
+}
 
-  /* Phase B: switch the controller back to 1S-1S-1S (the chip's
-   * power-on default and the protocol the rest of the driver uses)
-   * and issue the 1-byte RSTEN/RST pair. After this any chip that
-   * survived Phase A in 1S mode is now also in a known reset state. */
+/**
+ * @brief Phase B -- switch the controller to 1S-1S-1S and reset again.
+ *
+ * @details
+ * Restores the chip's power-on default protocol (the one the rest of
+ * the driver uses) and issues the 1-byte RSTEN/RST pair. After this
+ * any chip that survived Phase A in 1S mode is also in a known reset
+ * state.
+ *
+ * @return ``LX_SUCCESS`` if both the controller switch and the reset
+ *         opcodes succeeded; ``LX_ERROR`` if ``ra_xspi_init`` failed.
+ * @retval LX_SUCCESS Controller is in 1S mode; reset opcodes dispatched.
+ * @retval LX_ERROR ``ra_xspi_init`` rejected the 1S protocol switch.
+ *
+ * @pre Phase A (``priv_reset_phase_8d``) has been attempted.
+ * @pre XSPI pins are configured (``ra_board_xspi_pins_init`` succeeded).
+ * @post ``g_ra_xspi_rdid_observed.reset_1s_err`` records the HAL outcome.
+ * @post Controller is left in 1S-1S-1S protocol mode.
+ *
+ * @note Not thread-safe; bus owner serialises all calls.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_reset_phase_1s(void)
+{
   g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_init_1s;
   if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
     ra_log_error(s_lx_xspi_tag, "ra_xspi_init 1s failed");
@@ -732,14 +777,36 @@ static UINT priv_bus_init_once(void)
     ra_xspi_software_reset((uint8_t)k_ra_lx_xspi_instance, (uint8_t)k_ra_xspi_reset_form_1s);
   g_ra_xspi_rdid_observed.reset_1s_err = (uint32_t)reset_1s;
   ra_delay_ms((uint32_t)k_ra_xspi_reset_settle_ms);
+  return (UINT)LX_SUCCESS;
+}
 
-  /* Probe RDID. If the controller still can't read back the JEDEC
-   * triplet, every downstream WREN / PP / SE will fail too -- bail
-   * loudly so the failure is obvious. We expect the IS25LX512M-JHLE
-   * on EK-RA8D2 v1 to return ``{0x9D, 0x5A, 0x1A}`` per IS25LX512M
-   * datasheet Ch 8.13 p 36. A non-matching value after the dual-mode
-   * software reset most likely means a pin-routing issue (CS / DQ
-   * not actually on PSEL=0x1C). */
+/**
+ * @brief Probe RDID and confirm the IS25LX512M is responsive.
+ *
+ * @details
+ * Reads the JEDEC triplet. If the controller still cannot read it back
+ * after the dual-mode software reset, every downstream WREN / PP / SE
+ * will also fail -- so we bail loudly. The expected value for the
+ * IS25LX512M-JHLE on EK-RA8D2 v1 is ``{0x9D, 0x5A, 0x1A}`` per
+ * datasheet Ch 8.13 p 36. A mismatch usually means a pin-routing issue
+ * (CS / DQ not actually on PSEL=0x1C).
+ *
+ * @return ``LX_SUCCESS`` if RDID matches; ``LX_ERROR`` otherwise.
+ * @retval LX_SUCCESS JEDEC ID equals ``k_ra_lx_jedec_expected``.
+ * @retval LX_ERROR ``ra_xspi_flash_read_id`` failed or ID mismatched.
+ *
+ * @pre Controller is in 1S-1S-1S mode (Phase B completed).
+ * @pre IS25LX512M had at least ``k_ra_xspi_reset_settle_ms`` to settle.
+ * @post ``g_ra_xspi_rdid_observed.{rid_err,jedec_id}`` are updated.
+ * @post On success, the chip is confirmed responsive and ready for
+ *       erase/program/read opcodes.
+ *
+ * @note Not thread-safe; bus owner serialises all calls.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_probe_rdid(void)
+{
   g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_rdid;
   uint32_t       jedec_id       = 0U;
   const ra_err_t rid_err        = ra_xspi_flash_read_id((uint8_t)k_ra_lx_xspi_instance, &jedec_id);
@@ -753,6 +820,45 @@ static UINT priv_bus_init_once(void)
   if (jedec_id != (uint32_t)k_ra_lx_jedec_expected) {
     ra_log_error_val(s_lx_xspi_tag, "RDID mismatch (expected 0x9D5A1A); got", jedec_id);
     return (UINT)LX_ERROR;
+  }
+  return (UINT)LX_SUCCESS;
+}
+
+/* Bus init once -- see implementation for details. */
+static UINT priv_bus_init_once(void)
+{
+  if (s_xspi_bus_ready) {
+    return (UINT)LX_SUCCESS;
+  }
+
+  /* Stamp the magic + bump the counter BEFORE any HAL call so even a
+   * hang inside the controller leaves a visible breadcrumb at the
+   * known SRAM address. */
+  priv_stamp_observed_start();
+
+  if (ra_board_xspi_pins_init() != k_ra_ok) {
+    /* Capture whatever pin state we have BEFORE bailing so JLink can
+     * see how far the BSP got even on partial-failure paths. */
+    priv_capture_xspi_pin_state();
+    ra_log_error(s_lx_xspi_tag, "xspi pin init failed");
+    return (UINT)LX_ERROR;
+  }
+  /* Snapshot post-init PSEL on every OCTA pad. Any row where
+   * psel_observed != 0x1C or pmr_observed != 1 means the BSP enum is
+   * wrong for that pin -- the chip will not see that signal. */
+  priv_capture_xspi_pin_state();
+
+  const UINT phase_a = priv_reset_phase_8d();
+  if (phase_a != (UINT)LX_SUCCESS) {
+    return phase_a;
+  }
+  const UINT phase_b = priv_reset_phase_1s();
+  if (phase_b != (UINT)LX_SUCCESS) {
+    return phase_b;
+  }
+  const UINT probe = priv_probe_rdid();
+  if (probe != (UINT)LX_SUCCESS) {
+    return probe;
   }
 
   g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_done;
