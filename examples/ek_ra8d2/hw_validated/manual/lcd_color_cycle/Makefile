@@ -1,12 +1,12 @@
 #
-# Per-app Makefile for the `lcd_demo` firmware.
+# Per-app Makefile for the `lcd_color_cycle` firmware.
 #
 # Standalone use:
-#   cd examples/lcd_demo/
-#   make             # configure + build -> examples/lcd_demo/build/lcd_demo.elf
+#   cd examples/lcd_color_cycle/
+#   make             # configure + build -> examples/lcd_color_cycle/build/lcd_color_cycle.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf examples/lcd_demo/build
+#   make clean       # rm -rf examples/lcd_color_cycle/build
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -17,7 +17,7 @@
 
 SHELL     := /bin/bash
 
-APP        := lcd_demo
+APP        := lcd_color_cycle
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
