@@ -139,12 +139,20 @@ typedef enum : uint32_t {
 } demo_pool_t;
 
 /**
- * @brief Identifiers for the two label-colour states.
+ * @brief Font resource IDs registered with `gx_display_font_table_set`.
+ *
+ * @details Mirrors the order GUIX expects in the font table -- the
+ * value is what the widget's `gx_prompt_font_set(id)` looks up.
  */
 typedef enum : uint8_t {
-  k_demo_color_state_blue   = 0U, /**< Default blue label.       */
-  k_demo_color_state_orange = 1U, /**< Highlighted orange label. */
-} demo_color_state_t;
+  /* Font IDs start at 1 -- some GUIX widget paths treat ID 0 as
+   * "no font / use default" and skip rendering entirely. */
+  k_demo_font_mono       = 1U, /**< `_gx_system_font_mono`, 1 bpp.       */
+  k_demo_font_4bpp       = 2U, /**< `_gx_system_font_4bpp`, 4 bpp AA.    */
+  k_demo_font_8bpp       = 3U, /**< `_gx_system_font_8bpp`, 8 bpp AA.    */
+  k_demo_font_count      = 3U,
+  k_demo_font_table_size = 4U, /**< Slot 0 unused + 3 real fonts.    */
+} demo_font_id_t;
 
 /* =============================================================================
  * Cross-build state. Only present on the cross compile -- the host
@@ -175,12 +183,18 @@ static uint8_t s_gx_pool[k_demo_gx_pool_bytes] __attribute__((aligned(8)));
 static GX_DISPLAY     s_display;
 static GX_WINDOW_ROOT s_root;
 static GX_WINDOW      s_main_window;
-static GX_PROMPT      s_label;
-static GX_BUTTON      s_button;
 static GX_CANVAS      s_canvas;
 
-/* The text the prompt displays. GUIX does not copy the string. */
-static const GX_CHAR s_label_text[] = "Hello from GUIX on RA8D2";
+/* One prompt per bundled GUIX system font.  The screen shows the
+ * same sample string rendered in each font so the relative size
+ * / weight is easy to eyeball. */
+static GX_PROMPT s_prompt_mono;
+static GX_PROMPT s_prompt_4bpp;
+static GX_PROMPT s_prompt_8bpp;
+
+static const GX_CHAR s_text_mono[] = "Mono 1bpp: AaBb 0123";
+static const GX_CHAR s_text_4bpp[] = "4bpp AA: AaBb 0123";
+static const GX_CHAR s_text_8bpp[] = "8bpp AA: AaBb 0123";
 
 /* ThreadX control blocks + stacks. */
 static TX_THREAD s_gui_thread;
@@ -188,16 +202,9 @@ static TX_THREAD s_app_thread;
 static uint8_t   s_gui_stack[k_demo_thread_stack] __attribute__((aligned(8)));
 static uint8_t   s_app_stack[k_demo_thread_stack] __attribute__((aligned(8)));
 
-/**
- * @var s_label_color_state
- * @brief Current colour-cycle phase (`demo_color_state_t`).
- *
- * @note Only written by `app_thread_entry`; read by `gui_thread_entry`
- *       through `gx_system_canvas_refresh`. ThreadX makes the read
- *       atomic on Cortex-M85 (32-bit aligned uint8 read is a single
- *       LDRB).
- */
-static volatile uint8_t s_label_color_state = (uint8_t)k_demo_color_state_blue;
+/* Colour-cycle state was used by the (now removed) animated app
+ * thread.  Kept as a placeholder so future demos can re-add a
+ * volatile state byte without rewiring the widget tree. */
 
 /* =============================================================================
  * SysTick override -- routes the 1 ms tick into the ThreadX scheduler
@@ -377,6 +384,46 @@ static void demo_panic_halt(void)
  */
 static void demo_gui_setup_and_run(void)
 {
+  /* GLCDC bring-up runs HERE, not in main(), so we can sleep on the
+   * ThreadX scheduler (no busy-waits).  Don't use ra_delay_ms: the
+   * demo's SysTick_Handler routes to _tx_timer_interrupt, so
+   * ra_time's `s_tick_ms` never advances and ra_delay_ms would hang
+   * forever.  tx_thread_sleep ticks against the ThreadX-owned
+   * counter that IS advancing.  Tick = 1 ms per port/threadx/tx_user.h. */
+  (void)tx_thread_sleep(500U); /* PLL / panel-POR settle */
+  /* `ra_board_lcd_panel_power_on` internally calls ra_delay_ms,
+   * which would also hang here for the same reason.  Inline the
+   * GPIO sequence with tx_thread_sleep instead. */
+  (void)ra_gpio_output_init(k_ra_pin_lcd_reset_l, k_ra_level_low);
+  (void)tx_thread_sleep(50U);
+  (void)ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
+  (void)tx_thread_sleep(50U);
+  (void)ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
+
+  if (ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  (void)tx_thread_sleep(200U); /* let pins settle in output mode */
+
+  const ra_glcdc_config_t cfg = {
+    .framebuffer_addr = (uint32_t)(uintptr_t)s_framebuffer,
+    .width_px         = (uint16_t)k_demo_fb_width,
+    .height_px        = (uint16_t)k_demo_fb_height,
+    .format           = k_ra_glcdc_fmt_rgb565,
+  };
+  if (ra_glcdc_init(&cfg) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_glcdc_set_background_color(0x000000U) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_glcdc_start(true) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_glcdc_layer1_show((uintptr_t)s_framebuffer) != k_ra_ok) {
+    demo_panic_halt();
+  }
+
   if (ra_guix_display_driver_bind(&s_framebuffer[0][0],
                                   (uint16_t)k_demo_fb_width,
                                   (uint16_t)k_demo_fb_height) != k_ra_ok) {
@@ -408,12 +455,31 @@ static void demo_gui_setup_and_run(void)
   for (uint32_t i = 0U; i < 32U; i++) {
     s_color_table[i] = demo_argb(0x00U, 0x00U, 0x00U); /* default black */
   }
-  s_color_table[GX_COLOR_ID_CANVAS]      = demo_argb(0xFFU, 0xFFU, 0xFFU); /* white */
-  s_color_table[GX_COLOR_ID_WINDOW_FILL] = demo_argb(0xFFU, 0xFFU, 0xFFU);
-  s_color_table[GX_COLOR_ID_TEXT]        = demo_argb(0x00U, 0x00U, 0x00U);
-  s_color_table[GX_COLOR_ID_BTN_UPPER]   = demo_argb(0xE0U, 0xE0U, 0xE0U);
-  s_color_table[GX_COLOR_ID_BTN_LOWER]   = demo_argb(0x80U, 0x80U, 0x80U);
+  s_color_table[GX_COLOR_ID_CANVAS]      = demo_argb(0x00U, 0x00U, 0x60U); /* dark navy */
+  s_color_table[GX_COLOR_ID_WINDOW_FILL] = demo_argb(0x00U, 0x80U, 0xFFU); /* bright cyan */
+  s_color_table[GX_COLOR_ID_TEXT]        = demo_argb(0xFFU, 0xFFU, 0x00U); /* yellow */
+  s_color_table[GX_COLOR_ID_BTN_UPPER]   = demo_argb(0xFFU, 0x40U, 0x00U); /* orange */
+  s_color_table[GX_COLOR_ID_BTN_LOWER]   = demo_argb(0xC0U, 0x00U, 0x00U); /* dark red */
   if (gx_display_color_table_set(&s_display, s_color_table, 32) != GX_SUCCESS) {
+    demo_panic_halt();
+  }
+
+  /* Register the three GUIX-bundled system fonts as IDs 0/1/2.
+   * They live in `libs/third_party/guix/common/src/gx_system_font_*.c`
+   * and ship as part of the GUIX library itself.  Apps point a
+   * widget at a font by ID via `gx_prompt_font_set`. */
+  /* NOLINTBEGIN(bugprone-reserved-identifier) -- vendor symbols. */
+  extern GX_CONST GX_FONT _gx_system_font_mono;
+  extern GX_CONST GX_FONT _gx_system_font_4bpp;
+  extern GX_CONST GX_FONT _gx_system_font_8bpp;
+  /* NOLINTEND(bugprone-reserved-identifier) */
+  static GX_FONT* s_font_table[k_demo_font_table_size];
+  s_font_table[0]                = GX_NULL; /* slot 0 unused */
+  s_font_table[k_demo_font_mono] = (GX_FONT*)&_gx_system_font_mono;
+  s_font_table[k_demo_font_4bpp] = (GX_FONT*)&_gx_system_font_4bpp;
+  s_font_table[k_demo_font_8bpp] = (GX_FONT*)&_gx_system_font_8bpp;
+  if (gx_display_font_table_set(&s_display, s_font_table, (UINT)k_demo_font_table_size) !=
+      GX_SUCCESS) {
     demo_panic_halt();
   }
 
@@ -456,62 +522,66 @@ static void demo_gui_setup_and_run(void)
     demo_panic_halt();
   }
 
-  /* Label rectangle: top-half of the canvas, centred horizontally. */
-  const GX_RECTANGLE label_rect = demo_rect(8, 16, (GX_VALUE)(k_demo_fb_width - 9U), 48);
-  if (gx_prompt_create(&s_label,
-                       "ra8d2-label",
-                       &s_main_window,
-                       0,
-                       GX_STYLE_TEXT_LEFT | GX_STYLE_ENABLED,
-                       0U,
-                       &label_rect) != GX_SUCCESS) {
-    demo_panic_halt();
+  /* Stack three prompts vertically, one per registered system font.
+   * Framebuffer is 256x128; each font line gets ~40 px of vertical
+   * room (label + breathing room). */
+  static const struct {
+    GX_PROMPT*     prompt;
+    const char*    name;
+    const GX_CHAR* text;
+    UINT           text_len;
+    GX_VALUE       top;
+    GX_VALUE       bottom;
+    UINT           font_id;
+  } prompts[k_demo_font_count] = {
+    {.prompt   = &s_prompt_mono,
+     .name     = "font-mono",
+     .text     = s_text_mono,
+     .text_len = (UINT)(sizeof(s_text_mono) - 1U),
+     .top      = 8,
+     .bottom   = 36,
+     .font_id  = (UINT)k_demo_font_mono},
+    {.prompt   = &s_prompt_4bpp,
+     .name     = "font-4bpp",
+     .text     = s_text_4bpp,
+     .text_len = (UINT)(sizeof(s_text_4bpp) - 1U),
+     .top      = 44,
+     .bottom   = 76,
+     .font_id  = (UINT)k_demo_font_4bpp},
+    {.prompt   = &s_prompt_8bpp,
+     .name     = "font-8bpp",
+     .text     = s_text_8bpp,
+     .text_len = (UINT)(sizeof(s_text_8bpp) - 1U),
+     .top      = 84,
+     .bottom   = 116,
+     .font_id  = (UINT)k_demo_font_8bpp},
+  };
+  for (uint32_t i = 0U; i < (uint32_t)k_demo_font_count; i++) {
+    const GX_RECTANGLE r =
+      demo_rect(8, prompts[i].top, (GX_VALUE)(k_demo_fb_width - 9U), prompts[i].bottom);
+    if (gx_prompt_create(prompts[i].prompt,
+                         prompts[i].name,
+                         &s_main_window,
+                         0,
+                         GX_STYLE_TEXT_LEFT | GX_STYLE_ENABLED,
+                         (USHORT)i,
+                         &r) != GX_SUCCESS) {
+      demo_panic_halt();
+    }
+    GX_STRING s;
+    s.gx_string_ptr    = prompts[i].text;
+    s.gx_string_length = prompts[i].text_len;
+    if (gx_prompt_text_set_ext(prompts[i].prompt, &s) != GX_SUCCESS) {
+      demo_panic_halt();
+    }
+    if (gx_prompt_font_set(prompts[i].prompt, (GX_RESOURCE_ID)prompts[i].font_id) != GX_SUCCESS) {
+      demo_panic_halt();
+    }
   }
-  GX_STRING label_string;
-  label_string.gx_string_ptr    = s_label_text;
-  label_string.gx_string_length = (UINT)(sizeof(s_label_text) - 1U);
-  if (gx_prompt_text_set_ext(&s_label, &label_string) != GX_SUCCESS) {
-    demo_panic_halt();
-  }
-
-  /* Button rectangle: bottom-centre. */
-  const GX_RECTANGLE btn_rect = demo_rect(80, 80, 175, 112);
-  if (gx_button_create(&s_button,
-                       "ra8d2-button",
-                       &s_main_window,
-                       GX_STYLE_BORDER_RAISED | GX_STYLE_ENABLED,
-                       1U,
-                       &btn_rect) != GX_SUCCESS) {
-    demo_panic_halt();
-  }
-  /* The button uses its widget name as on-screen text via the default
-   * skin because we did not load any string-table resource. The demo
-   * is happy with the empty raised rectangle as a "tap" target. */
 
   if (gx_widget_show((GX_WIDGET*)&s_root) != GX_SUCCESS) {
     demo_panic_halt();
   }
-
-  /* The demo never loaded a GUIX theme so colour IDs 0/1/2 default
-   * to 0x000000 = black -- the GUIX paint pass ends up writing all
-   * zeros into the framebuffer and the panel stays solid black even
-   * though the widget tree painted successfully (swap_count > 0).
-   * Seed a handful of slots with visible colours so the initial
-   * paint actually has something to display. */
-  (void)gx_display_color_set(&s_display,
-                             0U,
-                             demo_argb(0xFFU, 0xFFU, 0xFFU)); /* canvas bg = white */
-  (void)gx_display_color_set(&s_display,
-                             GX_COLOR_ID_WINDOW_FILL,
-                             demo_argb(0xFFU, 0xFFU, 0xFFU)); /* window fill white */
-  (void)gx_display_color_set(&s_display,
-                             GX_COLOR_ID_WINDOW_BORDER,
-                             demo_argb(0x00U, 0x00U, 0x00U)); /* black border */
-  (void)gx_display_color_set(&s_display,
-                             GX_COLOR_ID_TEXT,
-                             demo_argb(0x00U, 0x00U, 0x00U)); /* text black */
-  (void)gx_display_color_set(&s_display, GX_COLOR_ID_BTN_UPPER, demo_argb(0xE0U, 0xE0U, 0xE0U));
-  (void)gx_display_color_set(&s_display, GX_COLOR_ID_BTN_LOWER, demo_argb(0x80U, 0x80U, 0x80U));
 
   /* Force an explicit initial paint so the first frame lands in the
    * framebuffer before gx_system_start blocks on the event queue. */
@@ -552,28 +622,14 @@ static void gui_thread_entry(ULONG thread_input)
 static void app_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-
+  /* Stay parked.  We previously cycled the label colour every 750 ms
+   * which forced a full canvas refresh on every tick; each refresh
+   * blanks the canvas to the background colour before re-drawing
+   * the widgets, producing visible flicker on a single-buffer
+   * pipeline.  Keep the demo static for now and let the GUIX
+   * system thread idle on the event queue. */
   while (1) {
-    (void)tx_thread_sleep((ULONG)k_demo_app_period_ticks);
-
-    /* Toggle the colour state. */
-    if (s_label_color_state == (uint8_t)k_demo_color_state_blue) {
-      s_label_color_state = (uint8_t)k_demo_color_state_orange;
-    } else {
-      s_label_color_state = (uint8_t)k_demo_color_state_blue;
-    }
-
-    /* Re-skin the label and ask GUIX for a paint pass. The two
-     * built-in colour resources (TEXT and SELECTED_TEXT) take ARGB
-     * values straight from `gx_display_color_set`; we drive both
-     * slots so the prompt's "selected" highlight follows the cycle
-     * if a focus event ever lands on it. */
-    GX_COLOR fg = demo_argb(0x20U, 0x60U, 0xE0U); /* default blue. */
-    if (s_label_color_state == (uint8_t)k_demo_color_state_orange) {
-      fg = demo_argb(0xE0U, 0x80U, 0x10U); /* highlight orange. */
-    }
-    (void)gx_display_color_set(&s_display, GX_COLOR_ID_TEXT, fg);
-    (void)gx_system_canvas_refresh();
+    (void)tx_thread_sleep(0xFFFFFFFFU);
   }
 }
 
@@ -658,52 +714,13 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
 #ifndef RA_SIMULATOR_MODE
-  /* GLCDC bring-up before tx_kernel_enter, but WITHOUT touching
-   * SysTick: ThreadX owns the SysTick vector once linked in, and the
-   * handler dereferences kernel state that doesn't exist yet here.
-   * Use busy-wait loops (Cortex-M85 nop @ ~1 GHz -- not calibrated;
-   * the GLCDC + panel are tolerant of generous delays). */
-  uint32_t cpuclk0_hz = 0U;
+  /* Minimal pre-kernel init: only clocks, MSTP, and the heartbeat
+   * LED.  Everything that wants to sleep on SysTick (panel POR
+   * settle, GLCDC bring-up, GUIX setup) runs from the gui_thread
+   * after `tx_kernel_enter` has installed the SysTick handler. */
   (void)ra_cgc_init();
-  (void)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz);
   (void)ra_mstp_init();
   (void)ra_board_led_init(k_ra_board_led1);
-
-  /* ~500 ms PLL / panel-POR settle (1 GHz, 8-cycle nop pair -> ~6 ns). */
-  for (volatile uint32_t i = 0U; i < 60000000U; i++) {
-    __asm__ volatile("nop");
-  }
-
-  /* Re-use the BSP power-on path -- but it calls ra_delay_ms inside,
-   * which uses SysTick. Inline the bare GPIO sequence here to avoid
-   * the dependency. */
-  (void)ra_gpio_output_init(k_ra_pin_lcd_reset_l, k_ra_level_low);
-  for (volatile uint32_t i = 0U; i < 6000000U; i++) {
-    __asm__ volatile("nop");
-  }
-  (void)ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
-  for (volatile uint32_t i = 0U; i < 6000000U; i++) {
-    __asm__ volatile("nop");
-  }
-  (void)ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
-
-  (void)ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888);
-
-  const ra_glcdc_config_t cfg = {
-    .framebuffer_addr = (uint32_t)(uintptr_t)s_framebuffer,
-    .width_px         = (uint16_t)k_demo_fb_width,
-    .height_px        = (uint16_t)k_demo_fb_height,
-    .format           = k_ra_glcdc_fmt_rgb565,
-  };
-  (void)ra_glcdc_init(&cfg);
-  (void)ra_glcdc_set_background_color(0x000000U);
-  (void)ra_glcdc_start(true);
-  (void)ra_glcdc_layer1_show((uintptr_t)s_framebuffer);
-
-  /* Do NOT call ra_isr_globals_enable() here -- ThreadX unmasks
-   * globals inside tx_kernel_enter, and unmasking earlier lets the
-   * GLCDC VPOS interrupt (enabled by ra_glcdc_start) fire into a
-   * not-yet-installed NVIC vector, faulting the chip into reset. */
 
   tx_kernel_enter();
 #endif
