@@ -178,6 +178,44 @@ void ra_glcdc_dispatch(void);
 [[nodiscard]] ra_err_t ra_glcdc_set_layer2(const ra_glcdc_layer2_cfg_t* cfg);
 
 /**
+ * @brief Make graphics layer 1 visible by pointing it at a framebuffer.
+ *
+ * @details
+ * Flips GR1 from the default hidden state (DISPSEL=transparent,
+ * FLMRD=0, alpha=0) into "show this framebuffer" mode:
+ *   - GR1.FLM2.SADDR  = ``fb_addr``      (framebuffer base)
+ *   - GR1.AB7.ARCDEF  = 0xFF             (fully opaque)
+ *   - GR1.AB1.DISPSEL = non_transparent  (current layer drawn)
+ *   - GR1.FLMRD.RENB  = 1                (enable AXI fetch)
+ *   - GR1.VEN         = 1                (commit on next VS)
+ *
+ * Width / height / format / position were already programmed by
+ * ``ra_glcdc_init``; the caller just provides the new framebuffer
+ * pointer.  Caller is responsible for filling the framebuffer in
+ * cache-coherent fashion (writes to 0x60000000-0x9FFFFFFF SDRAM are
+ * non-cacheable by the Cortex-M85 default memory map).
+ *
+ * @param[in] fb_addr Base address of the layer-1 framebuffer
+ *                    (must match the format passed to
+ *                    ``ra_glcdc_init``; alignment is implementation
+ *                    defined, 64-byte AXI burst boundary is safe).
+ *
+ * @return Error code.
+ * @retval k_ra_ok                 Layer 1 enabled.
+ * @retval k_ra_err_invalid_state  GLCDC not in DISPLAYING state.
+ *
+ * @pre ``ra_glcdc_init`` and ``ra_glcdc_start`` have been called.
+ * @pre ``fb_addr`` points to a valid framebuffer of the dimensions
+ *      passed to ``ra_glcdc_init``.
+ * @post GR1 fetches and composites pixels from ``fb_addr``.
+ * @post Layer-1 changes are visible from the next vertical sync.
+ *
+ * @note Single-threaded; not safe to call from IRQ.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_layer1_show(uintptr_t fb_addr);
+
+/**
  * @brief Set the layer-1-over-layer-2 blend mode and global alpha.
  *
  * @details
