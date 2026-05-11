@@ -377,6 +377,37 @@ static void priv_handle_get_status(NX_IP_DRIVER* req)
   req->nx_ip_driver_status        = NX_SUCCESS;
 }
 
+/**
+ * @brief Apply an ENABLE/DISABLE state change to the link mirror and NetX iface.
+ *
+ * @details
+ * Sets the driver's ``s_link_up`` cache to ``link_up``, marks the
+ * request successful, and -- when NetX provided an interface pointer
+ * -- toggles ``nx_interface_link_up`` to keep NetX's IP layer in sync
+ * with the driver's view.
+ *
+ * @param[in,out] driver_req NetX driver request; non-NULL.
+ * @param[in]     link_up    1U to bring the link up, 0U to bring it down.
+ *
+ * @pre ``driver_req != NULL``.
+ * @pre ``link_up`` is either ``0U`` (disable) or ``1U`` (enable).
+ * @post ``s_link_up == link_up`` and request status is ``NX_SUCCESS``.
+ * @post If ``driver_req->nx_ip_driver_interface != NULL``, the NetX
+ *       interface link state mirrors ``link_up``.
+ *
+ * @note Serialised on the NetX IP thread; not safe to call from ISRs.
+ *
+ * @since 0.1.0
+ */
+static void priv_set_link_state(NX_IP_DRIVER* driver_req, UCHAR link_up)
+{
+  s_link_up                       = link_up;
+  driver_req->nx_ip_driver_status = NX_SUCCESS;
+  if (driver_req->nx_ip_driver_interface != NX_NULL) {
+    driver_req->nx_ip_driver_interface->nx_interface_link_up = (link_up != 0U) ? NX_TRUE : NX_FALSE;
+  }
+}
+
 /* Nx ether driver ra eth -- see implementation for details. */
 void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
 {
@@ -390,23 +421,12 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
     case NX_LINK_INITIALIZE:
       priv_handle_init(driver_req);
       break;
-
     case NX_LINK_ENABLE:
-      s_link_up                       = 1U;
-      driver_req->nx_ip_driver_status = NX_SUCCESS;
-      if (driver_req->nx_ip_driver_interface != NX_NULL) {
-        driver_req->nx_ip_driver_interface->nx_interface_link_up = NX_TRUE;
-      }
+      priv_set_link_state(driver_req, 1U);
       break;
-
     case NX_LINK_DISABLE:
-      s_link_up                       = 0U;
-      driver_req->nx_ip_driver_status = NX_SUCCESS;
-      if (driver_req->nx_ip_driver_interface != NX_NULL) {
-        driver_req->nx_ip_driver_interface->nx_interface_link_up = NX_FALSE;
-      }
+      priv_set_link_state(driver_req, 0U);
       break;
-
     case NX_LINK_PACKET_SEND:
     case NX_LINK_PACKET_BROADCAST:
     case NX_LINK_ARP_SEND:
@@ -414,19 +434,15 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
     case NX_LINK_RARP_SEND:
       priv_handle_send(driver_req);
       break;
-
     case NX_LINK_DEFERRED_PROCESSING:
       priv_handle_deferred_rx(driver_req);
       break;
-
     case NX_LINK_GET_STATUS:
       priv_handle_get_status(driver_req);
       break;
-
     case NX_LINK_UNINITIALIZE:
       priv_handle_uninit(driver_req);
       break;
-
     case NX_LINK_MULTICAST_JOIN:
     case NX_LINK_MULTICAST_LEAVE:
       /* No multicast filter support on the ESWM block at this layer;
@@ -434,7 +450,6 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
        * software-side IP stack do its own multicast filtering. */
       driver_req->nx_ip_driver_status = NX_SUCCESS;
       break;
-
     default:
       driver_req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
       break;

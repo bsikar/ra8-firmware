@@ -167,6 +167,172 @@ UINT __wrap__nx_crypto_method_sha256_init(struct NX_CRYPTO_METHOD_STRUCT* method
 }
 
 /**
+ * @struct nx_sha256_alt_op_args_t
+ * @brief Forwarded argument bundle for the SHA-256 operation entry point.
+ *
+ * @details
+ * Groups the 14 parameters NetX Crypto passes to
+ * ``_nx_crypto_method_sha256_operation`` so the wrap function and its
+ * helpers can pass the full request around without re-listing the
+ * signature at every call site.
+ */
+typedef struct {
+  UINT                            op;                    /**< NetX op selector. */
+  VOID*                           handle;                /**< NetX session ptr. */
+  struct NX_CRYPTO_METHOD_STRUCT* method;                /**< Algorithm entry.  */
+  UCHAR*                          key;                   /**< Caller key.       */
+  NX_CRYPTO_KEY_SIZE              key_size_in_bits;      /**< Key length.       */
+  UCHAR*                          input;                 /**< Input buffer.     */
+  ULONG                           input_length_in_byte;  /**< Input length.     */
+  UCHAR*                          iv_ptr;                /**< IV pointer.       */
+  UCHAR*                          output;                /**< Output buffer.    */
+  ULONG                           output_length_in_byte; /**< Output capacity.  */
+  VOID*                           crypto_metadata;       /**< Metadata block.   */
+  ULONG                           crypto_metadata_size;  /**< Metadata size.    */
+  VOID*                           packet_ptr;            /**< Packet context.   */
+  VOID (*hw_cb)(VOID*, UINT);                            /**< HW completion cb. */
+} nx_sha256_alt_op_args_t;
+
+/**
+ * @brief Forward a SHA-256 operation to the upstream software path.
+ *
+ * @details
+ * Unpacks the bundled ``nx_sha256_alt_op_args_t`` and invokes the
+ * original ``__real__nx_crypto_method_sha256_operation`` provided by
+ * NetX Crypto. Used both as the unconditional path for unsupported ops
+ * and as the overflow fallback inside the streaming buffer path.
+ *
+ * @param[in] a Bundled argument set originally passed to the wrap;
+ *              non-NULL, fully populated by the wrapper.
+ *
+ * @return Upstream return value from
+ *         ``__real__nx_crypto_method_sha256_operation``.
+ * @retval NX_CRYPTO_SUCCESS Upstream completed successfully.
+ * @retval other Any non-zero NetX Crypto error propagated unchanged.
+ *
+ * @pre ``a != NULL``.
+ * @pre ``a->method != NULL`` (NetX never invokes the op without a method).
+ * @post No state owned by this shim is modified.
+ * @post The bundled arguments are passed through unchanged.
+ *
+ * @note Not thread-safe; caller serialises per NetX Crypto API rules.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_forward_op(const nx_sha256_alt_op_args_t* a)
+{
+  return __real__nx_crypto_method_sha256_operation(a->op,
+                                                   a->handle,
+                                                   a->method,
+                                                   a->key,
+                                                   a->key_size_in_bits,
+                                                   a->input,
+                                                   a->input_length_in_byte,
+                                                   a->iv_ptr,
+                                                   a->output,
+                                                   a->output_length_in_byte,
+                                                   a->crypto_metadata,
+                                                   a->crypto_metadata_size,
+                                                   a->packet_ptr,
+                                                   a->hw_cb);
+}
+
+/**
+ * @brief Handle ``NX_CRYPTO_HASH_UPDATE`` against the streaming buffer.
+ *
+ * @details
+ * Validates the input pointer, then appends up to
+ * ``k_nx_sha256_alt_max_message`` bytes into the accumulator. Falls
+ * back to the upstream software path once the accumulator would
+ * overflow so arbitrarily-large hashes still complete correctly.
+ *
+ * @param[in,out] meta Trailing metadata block; non-NULL.
+ * @param[in]     a    Bundled argument set.
+ *
+ * @return ``NX_CRYPTO_SUCCESS`` on append; upstream return code on
+ *         overflow fallback; ``NX_CRYPTO_PTR_ERROR`` on NULL input.
+ * @retval NX_CRYPTO_SUCCESS Bytes appended to the accumulator.
+ * @retval NX_CRYPTO_PTR_ERROR ``a->input`` is NULL.
+ * @retval other Upstream NetX error from the overflow fallback path.
+ *
+ * @pre ``meta != NULL``.
+ * @pre ``a != NULL``.
+ * @post On success, ``meta->used`` advanced by
+ *       ``a->input_length_in_byte``.
+ * @post On NULL-input failure, ``meta->used`` is unchanged.
+ *
+ * @note Not thread-safe; caller serialises per NetX Crypto API rules
+ *       and the per-context streaming contract.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_handle_update(nx_sha256_alt_meta_t* meta, const nx_sha256_alt_op_args_t* a)
+{
+  if (a->input == NX_CRYPTO_NULL) {
+    return (UINT)NX_CRYPTO_PTR_ERROR;
+  }
+  if ((meta->used + (uint32_t)a->input_length_in_byte) > (uint32_t)k_nx_sha256_alt_max_message) {
+    /* Accumulator full -- defer to upstream which can stream
+     * arbitrary-length inputs through its working buffer. */
+    return priv_forward_op(a);
+  }
+  (void)memcpy((void*)(meta->buf + meta->used),
+               (const void*)a->input,
+               (size_t)a->input_length_in_byte);
+  meta->used += (uint32_t)a->input_length_in_byte;
+  return (UINT)NX_CRYPTO_SUCCESS;
+}
+
+/**
+ * @brief Handle ``NX_CRYPTO_HASH_CALCULATE`` against the streaming buffer.
+ *
+ * @details
+ * Range-checks the output buffer, fires the RSIP single-shot
+ * ``ra_rsip_sha256`` over the accumulated bytes, and resets the
+ * accumulator so the next hash starts fresh -- even on HW error.
+ *
+ * @param[in,out] meta Trailing metadata block; non-NULL.
+ * @param[in]     a    Bundled argument set.
+ *
+ * @return ``NX_CRYPTO_SUCCESS`` on success;
+ *         ``NX_CRYPTO_PTR_ERROR`` if output is NULL;
+ *         ``NX_CRYPTO_INVALID_BUFFER_SIZE`` if output too small;
+ *         ``NX_CRYPTO_NOT_SUCCESSFUL`` if RSIP rejects the request.
+ * @retval NX_CRYPTO_SUCCESS Digest written to ``a->output``.
+ * @retval NX_CRYPTO_PTR_ERROR ``a->output`` is NULL.
+ * @retval NX_CRYPTO_INVALID_BUFFER_SIZE Output capacity below digest size.
+ * @retval NX_CRYPTO_NOT_SUCCESSFUL RSIP rejected the request.
+ *
+ * @pre ``meta != NULL``.
+ * @pre ``a != NULL``.
+ * @post ``meta->used`` is zero on return regardless of outcome.
+ * @post On success, the 32-byte SHA-256 digest is written to
+ *       ``a->output``.
+ *
+ * @note Not thread-safe; caller serialises per NetX Crypto API rules
+ *       and the RSIP single-context contract.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_handle_calculate(nx_sha256_alt_meta_t* meta, const nx_sha256_alt_op_args_t* a)
+{
+  if (a->output == NX_CRYPTO_NULL) {
+    return (UINT)NX_CRYPTO_PTR_ERROR;
+  }
+  if (a->output_length_in_byte < (ULONG)k_nx_sha256_alt_digest_bytes) {
+    return (UINT)NX_CRYPTO_INVALID_BUFFER_SIZE;
+  }
+  ra_err_t err = ra_rsip_sha256(meta->buf, meta->used, (uint8_t*)a->output);
+  /* Reset accumulator regardless of HW outcome so the next
+   * hash starts fresh. */
+  meta->used = 0U;
+  if (err != k_ra_ok) {
+    return (UINT)NX_CRYPTO_NOT_SUCCESSFUL;
+  }
+  return (UINT)NX_CRYPTO_SUCCESS;
+}
+
+/**
  * @brief ALT wrapper for ``_nx_crypto_method_sha256_operation``.
  *
  * @details
@@ -203,90 +369,40 @@ UINT __wrap__nx_crypto_method_sha256_operation(UINT                            o
   if (method == NX_CRYPTO_NULL || crypto_metadata == NX_CRYPTO_NULL) {
     return (UINT)NX_CRYPTO_PTR_ERROR;
   }
+  const nx_sha256_alt_op_args_t a = {
+    .op                    = op,
+    .handle                = handle,
+    .method                = method,
+    .key                   = key,
+    .key_size_in_bits      = key_size_in_bits,
+    .input                 = input,
+    .input_length_in_byte  = input_length_in_byte,
+    .iv_ptr                = iv_ptr,
+    .output                = output,
+    .output_length_in_byte = output_length_in_byte,
+    .crypto_metadata       = crypto_metadata,
+    .crypto_metadata_size  = crypto_metadata_size,
+    .packet_ptr            = packet_ptr,
+    .hw_cb                 = hw_cb,
+  };
 
   nx_sha256_alt_meta_t* meta = priv_meta_of(crypto_metadata, crypto_metadata_size);
   if (meta == (nx_sha256_alt_meta_t*)0 || meta->ready == 0U) {
     /* Metadata too small or never primed -- fall back. */
-    return __real__nx_crypto_method_sha256_operation(op,
-                                                     handle,
-                                                     method,
-                                                     key,
-                                                     key_size_in_bits,
-                                                     input,
-                                                     input_length_in_byte,
-                                                     iv_ptr,
-                                                     output,
-                                                     output_length_in_byte,
-                                                     crypto_metadata,
-                                                     crypto_metadata_size,
-                                                     packet_ptr,
-                                                     hw_cb);
+    return priv_forward_op(&a);
   }
-
   if (op == (UINT)NX_CRYPTO_HASH_INITIALIZE) {
     meta->used = 0U;
     return (UINT)NX_CRYPTO_SUCCESS;
   }
-
   if (op == (UINT)NX_CRYPTO_HASH_UPDATE) {
-    if (input == NX_CRYPTO_NULL) {
-      return (UINT)NX_CRYPTO_PTR_ERROR;
-    }
-    if ((meta->used + (uint32_t)input_length_in_byte) > (uint32_t)k_nx_sha256_alt_max_message) {
-      /* Accumulator full -- defer to upstream which can stream
-       * arbitrary-length inputs through its working buffer. */
-      return __real__nx_crypto_method_sha256_operation(op,
-                                                       handle,
-                                                       method,
-                                                       key,
-                                                       key_size_in_bits,
-                                                       input,
-                                                       input_length_in_byte,
-                                                       iv_ptr,
-                                                       output,
-                                                       output_length_in_byte,
-                                                       crypto_metadata,
-                                                       crypto_metadata_size,
-                                                       packet_ptr,
-                                                       hw_cb);
-    }
-    (void)memcpy((void*)(meta->buf + meta->used), (const void*)input, (size_t)input_length_in_byte);
-    meta->used += (uint32_t)input_length_in_byte;
-    return (UINT)NX_CRYPTO_SUCCESS;
+    return priv_handle_update(meta, &a);
   }
-
   if (op == (UINT)NX_CRYPTO_HASH_CALCULATE) {
-    if (output == NX_CRYPTO_NULL) {
-      return (UINT)NX_CRYPTO_PTR_ERROR;
-    }
-    if (output_length_in_byte < (ULONG)k_nx_sha256_alt_digest_bytes) {
-      return (UINT)NX_CRYPTO_INVALID_BUFFER_SIZE;
-    }
-    ra_err_t err = ra_rsip_sha256(meta->buf, meta->used, (uint8_t*)output);
-    /* Reset accumulator regardless of HW outcome so the next
-     * hash starts fresh. */
-    meta->used = 0U;
-    if (err != k_ra_ok) {
-      return (UINT)NX_CRYPTO_NOT_SUCCESSFUL;
-    }
-    return (UINT)NX_CRYPTO_SUCCESS;
+    return priv_handle_calculate(meta, &a);
   }
-
   /* AUTHENTICATE / VERIFY / unknown ops -> upstream. */
-  return __real__nx_crypto_method_sha256_operation(op,
-                                                   handle,
-                                                   method,
-                                                   key,
-                                                   key_size_in_bits,
-                                                   input,
-                                                   input_length_in_byte,
-                                                   iv_ptr,
-                                                   output,
-                                                   output_length_in_byte,
-                                                   crypto_metadata,
-                                                   crypto_metadata_size,
-                                                   packet_ptr,
-                                                   hw_cb);
+  return priv_forward_op(&a);
 }
 
 /**

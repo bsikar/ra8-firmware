@@ -807,7 +807,7 @@ volatile uint64_t s_last_dispatched_setup_fp = 0U;
  * @note Written only by ::internal_handle_ctrt.
  * @since 0.1.0
  */
-volatile uint64_t s_dispatched_fp_ring[4] = {};
+volatile uint64_t s_dispatched_fp_ring[4]  = {};
 volatile uint8_t  s_dispatched_fp_ring_idx = 0U;
 
 /**
@@ -829,7 +829,7 @@ volatile uint8_t s_state_at_dispatch = 0U;
 typedef enum : uint8_t {
   /* bmRequestType bit 7 -- USB 2.0 spec sec 9.3 Table 9-2:
    * 0 = Host-to-Device (write or no-data), 1 = Device-to-Host (read). */
-  k_ra_usb_setup_dir_mask  = 0x80U,
+  k_ra_usb_setup_dir_mask = 0x80U,
   /* SET_ADDRESS standard request code. USB 2.0 spec sec 9.4.6
    * Table 9-4 ("Standard Request Codes"): bRequest = 5 = SET_ADDRESS.
    * Used to gate out the manual CCPL pulse for SET_ADDRESS, which
@@ -1020,6 +1020,157 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/**
+ * @brief Drive an EP0 / DCP control transfer (data or status stage).
+ *
+ * @details Split the IN-data and zero-length status paths apart so the
+ * outer dispatcher's MC/DC inventory stays small.
+ *
+ *  - With payload (``in_transfer_length != 0``): push bytes via
+ *    ``ra_usb_dcp_in_data`` (PID=BUF, no CCPL). CCPL is asserted later
+ *    on the CTSQ status-stage edge by ``internal_handle_ctrt``.
+ *  - Zero-length (SET_ADDRESS, SET_CONFIGURATION...): call
+ *    ``ra_usb_control_response(true)`` which sets PID=BUF and pulses
+ *    CCPL, completing the status stage.
+ *
+ * @param[in,out] tr USBX EP0 transfer request.
+ *
+ * @return UX_SUCCESS or UX_TRANSFER_ERROR.
+ * @retval UX_SUCCESS Bytes / CCPL accepted by ``ra_usb``.
+ * @retval UX_TRANSFER_ERROR Underlying DCP call failed.
+ *
+ * @pre ``tr`` non-null and bound to the EP0 endpoint.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post ``actual_length`` reflects bytes pushed on the data path.
+ * @post No wire-side state mutated on error.
+ *
+ * @note Runs on the USBX device task context.
+ * @since 0.1.0
+ */
+static unsigned int internal_ep0_transfer(struct UX_SLAVE_TRANSFER_STRUCT* tr)
+{
+  if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
+      tr->ux_slave_transfer_request_data_pointer != nullptr) {
+    const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_in_transfer_length;
+    if (ra_usb_dcp_in_data(s_dcd.speed, tr->ux_slave_transfer_request_data_pointer, len) !=
+        k_ra_ok) {
+      return UX_TRANSFER_ERROR;
+    }
+    tr->ux_slave_transfer_request_actual_length = len;
+    return UX_SUCCESS;
+  }
+  if (ra_usb_control_response(s_dcd.speed, true) != k_ra_ok) {
+    return UX_TRANSFER_ERROR;
+  }
+  return UX_SUCCESS;
+}
+
+/**
+ * @brief Block on the USBX transfer semaphore until the IRQ posts completion.
+ *
+ * @details Mirrors the sync contract of ``ux_dcd_sim_slave_transfer_request``:
+ * for non-EP0 transfers the DCD must wait on
+ * ``ux_slave_transfer_request_semaphore`` until the IRQ path sets
+ * ``completion_code`` and ``tx_semaphore_put``s the semaphore. Returning
+ * UX_SUCCESS immediately would let class drivers observe ``actual_length=0``
+ * and treat it as a short-packet completion -- loopback consumers then
+ * busy-spin on ``(n == 0)``.
+ *
+ * @param[in,out] tr USBX transfer request being awaited.
+ * @param[in] pipe Pipe index used for ``s_diag`` accounting (2 == loopback).
+ *
+ * @return The completion code posted by the IRQ, or UX_TRANSFER_ERROR
+ *         on semaphore failure.
+ * @retval UX_SUCCESS IRQ posted a successful completion.
+ * @retval UX_TRANSFER_ERROR Timeout / abort / IRQ-side error.
+ *
+ * @pre ``tr`` is the stashed transfer at ``s_dcd.pipes[pipe].xfer``.
+ * @pre Caller is on the USBX task context (not in IRQ).
+ * @post ``s_dcd.pipes[pipe].xfer`` is nullptr if the wait failed.
+ * @post ``completion_code`` reflects the IRQ-posted result.
+ *
+ * @note Compiled out under ``UX_DEVICE_STANDALONE``; not used in that build.
+ * @since 0.1.0
+ */
+#ifndef UX_DEVICE_STANDALONE
+/**
+ * @brief Block on the USBX transfer semaphore until the IRQ posts completion.
+ *
+ * @details See the canonical block immediately above this ``#ifndef``
+ * for the full contract. Mirrored here so the doxy auditor can find a
+ * block immediately preceding the function definition (no preprocessor
+ * directive between the block and the signature).
+ *
+ * @param[in,out] tr USBX transfer request being awaited.
+ * @param[in] pipe Pipe index used for ``s_diag`` accounting (2 == loopback).
+ *
+ * @return The completion code posted by the IRQ, or UX_TRANSFER_ERROR on
+ *         semaphore failure.
+ * @retval UX_SUCCESS IRQ posted a successful completion.
+ * @retval UX_TRANSFER_ERROR Timeout / abort / IRQ-side error.
+ *
+ * @pre ``tr`` is the stashed transfer at ``s_dcd.pipes[pipe].xfer``.
+ * @pre Caller is on the USBX task context (not in IRQ).
+ * @post ``s_dcd.pipes[pipe].xfer`` is nullptr if the wait failed.
+ * @post ``completion_code`` reflects the IRQ-posted result.
+ *
+ * @note Compiled out under ``UX_DEVICE_STANDALONE``; not used in that build.
+ * @since 0.1.0
+ */
+static unsigned int internal_wait_completion(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe)
+{
+  ULONG timeout = tr->ux_slave_transfer_request_timeout;
+  if (timeout == 0U) {
+    timeout = TX_WAIT_FOREVER;
+  }
+  if (pipe == 2U) {
+    s_diag.xfer_req_pipe2_block++;
+  }
+  UINT sem_status = tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
+  if (pipe == 2U) {
+    s_diag.xfer_req_pipe2_woken++;
+  }
+  if (sem_status != TX_SUCCESS) {
+    /* Timeout / aborted: drop the pipe slot so a stale stash cannot
+     * cause the IRQ path to complete a now-defunct request. */
+    s_dcd.pipes[pipe].xfer                        = nullptr;
+    tr->ux_slave_transfer_request_completion_code = UX_TRANSFER_ERROR;
+    return UX_TRANSFER_ERROR;
+  }
+  return tr->ux_slave_transfer_request_completion_code;
+}
+#endif
+
+/**
+ * @brief USBX ``UX_DCD_TRANSFER_REQUEST`` dispatcher entry point.
+ *
+ * @details Validates the incoming transfer request, maps the endpoint
+ * address to a pipe index, and dispatches to either ``internal_ep0_transfer``
+ * (EP0 control) or stashes the request and submits an IN/OUT data
+ * transfer through the ``ra_usb_*`` register layer. Under non-standalone
+ * builds the request is then awaited via ``internal_wait_completion`` so
+ * USBX class drivers see synchronous completion with non-zero
+ * ``actual_length`` (the upstream sim-peripheral contract).
+ *
+ * @param[in,out] tr USBX transfer request to submit. ``ux_slave_transfer_request_endpoint``
+ *                   must point at a configured endpoint; data pointer
+ *                   and requested length describe the buffer.
+ *
+ * @return USBX result code.
+ * @retval UX_SUCCESS Transfer submitted (and, in non-standalone builds,
+ *                    completed by the IRQ path).
+ * @retval UX_TRANSFER_ERROR ``tr`` was null, endpoint was null, pipe
+ *                           was out of range, or the bridge layer
+ *                           rejected the submission.
+ *
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @pre Caller is the USBX device-stack dispatcher (task context).
+ * @post For non-EP0 IN transfers, ``s_dcd.pipes[pipe]`` holds the active stash.
+ * @post ``s_diag`` counters reflect the dispatch.
+ *
+ * @note Not ISR-safe; runs on the USBX device task context.
+ * @since 0.1.0
+ */
 static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr)
 {
   s_diag.xfer_req_total++;
@@ -1046,28 +1197,8 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     }
   }
 
-  /* DCP / EP0: split control IN data stage from the no-data status path.
-   * For a control transfer with payload (e.g. GET_DESCRIPTOR) we must
-   * push the bytes via ra_usb_dcp_in_data (which raises PID=BUF without
-   * pulsing CCPL); CCPL is asserted later on the CTSQ status-stage edge
-   * by the bridge's internal_handle_ctrt path. For zero-length control
-   * (e.g. SET_ADDRESS, SET_CONFIGURATION) ra_usb_control_response(true)
-   * sets PID=BUF and pulses CCPL, completing the status stage. */
   if (pipe == 0U) {
-    if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
-        tr->ux_slave_transfer_request_data_pointer != nullptr) {
-      const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_in_transfer_length;
-      if (ra_usb_dcp_in_data(s_dcd.speed, tr->ux_slave_transfer_request_data_pointer, len) !=
-          k_ra_ok) {
-        return UX_TRANSFER_ERROR;
-      }
-      tr->ux_slave_transfer_request_actual_length = len;
-      return UX_SUCCESS;
-    }
-    if (ra_usb_control_response(s_dcd.speed, true) != k_ra_ok) {
-      return UX_TRANSFER_ERROR;
-    }
-    return UX_SUCCESS;
+    return internal_ep0_transfer(tr);
   }
 
   /* Stash the active transfer so the IRQ path can post completion. */
@@ -1089,33 +1220,8 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     tr->ux_slave_transfer_request_actual_length = len;
   }
 
-  /* Synchronous bridge contract (matches ux_dcd_sim_slave_transfer_request):
-   * for non-EP0 transfers the DCD must block on
-   * ux_slave_transfer_request_semaphore until the IRQ path posts
-   * completion (sets completion_code and puts the semaphore). Returning
-   * UX_SUCCESS immediately would let USBX class drivers observe
-   * actual_length=0 and treat it as a short-packet completion --
-   * loopback consumers then busy-spin on (n == 0). */
 #ifndef UX_DEVICE_STANDALONE
-  ULONG timeout = tr->ux_slave_transfer_request_timeout;
-  if (timeout == 0U) {
-    timeout = TX_WAIT_FOREVER;
-  }
-  if (pipe == 2U) {
-    s_diag.xfer_req_pipe2_block++;
-  }
-  UINT sem_status = tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
-  if (pipe == 2U) {
-    s_diag.xfer_req_pipe2_woken++;
-  }
-  if (sem_status != TX_SUCCESS) {
-    /* Timeout / aborted: drop the pipe slot so a stale stash cannot
-     * cause the IRQ path to complete a now-defunct request. */
-    s_dcd.pipes[pipe].xfer                        = nullptr;
-    tr->ux_slave_transfer_request_completion_code = UX_TRANSFER_ERROR;
-    return UX_TRANSFER_ERROR;
-  }
-  return tr->ux_slave_transfer_request_completion_code;
+  return internal_wait_completion(tr, pipe);
 #else
   return UX_SUCCESS;
 #endif
@@ -1232,6 +1338,74 @@ static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/**
+ * @brief Drop the bridge's per-pipe transfer stash for a destroyed endpoint.
+ *
+ * @details USBX calls ``UX_DCD_DESTROY_ENDPOINT`` when a class driver
+ * tears down an interface (e.g. SET_CONFIGURATION(0) or device detach).
+ * The ra_usb register layer has no per-pipe destroy primitive, so the
+ * cleanup we owe is forgetting any cached ``UX_SLAVE_TRANSFER*`` so the
+ * IRQ path cannot post a completion against a defunct request.
+ *
+ * @param[in] ep USBX endpoint pointer (the parameter from the dispatch).
+ *
+ * @return UX_SUCCESS, or UX_ERROR if ``ep`` is null.
+ * @retval UX_SUCCESS Pipe stash cleared (or pipe was out of range).
+ * @retval UX_ERROR ``ep`` was null.
+ *
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @pre Caller is the USBX device-stack dispatcher.
+ * @post ``s_dcd.pipes[pipe].xfer`` is nullptr for the named pipe.
+ * @post No wire-side state mutated.
+ *
+ * @note Runs on the USBX device task context.
+ * @since 0.1.0
+ */
+static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
+{
+  if (ep == nullptr) {
+    return UX_ERROR;
+  }
+  const uint8_t pipe =
+    internal_ep_to_pipe((uint8_t)ep->ux_slave_endpoint_descriptor.bEndpointAddress);
+  if (pipe < (uint8_t)k_ux_dcd_ra_usb_max_pipes) {
+    s_dcd.pipes[pipe].xfer = nullptr;
+  }
+  return UX_SUCCESS;
+}
+
+/**
+ * @brief USBX device-side DCD function dispatcher.
+ *
+ * @details Stamped into ``UX_SLAVE_DCD::ux_slave_dcd_function`` during
+ * ``ux_dcd_ra_usb_initialize``. The USBX device stack calls this with a
+ * ``UX_DCD_*`` selector to request endpoint create/destroy, transfer
+ * request, transfer abort, stall, and similar primitives; the trampoline
+ * routes each to the matching ``internal_*`` helper.
+ *
+ * @param[in,out] dcd USBX DCD ownership block (currently unused; the
+ *                    bridge keeps its own static state in ``s_dcd``).
+ * @param[in] function USBX ``UX_DCD_*`` selector (e.g.
+ *                     ``UX_DCD_TRANSFER_REQUEST``).
+ * @param[in,out] parameter Selector-dependent argument
+ *                          (``UX_SLAVE_TRANSFER*`` /
+ *                          ``UX_SLAVE_ENDPOINT*`` / opaque).
+ *
+ * @return USBX result code from the dispatched helper.
+ * @retval UX_SUCCESS Function handled.
+ * @retval UX_CONTROLLER_UNKNOWN Bridge has not been initialized.
+ * @retval UX_ERROR Selector unsupported, or helper rejected the call.
+ * @retval UX_TRANSFER_ERROR Transfer-request helper failed.
+ *
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize`` (or the call returns
+ *      ``UX_CONTROLLER_UNKNOWN``).
+ * @pre Caller is the USBX device stack.
+ * @post ``s_dcd`` updated per the dispatched selector.
+ * @post Wire-side state may have been mutated (CREATE / STALL).
+ *
+ * @note Runs on the USBX device task context; not ISR-safe.
+ * @since 0.1.0
+ */
 unsigned int
 _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, void* parameter)
 {
@@ -1251,18 +1425,8 @@ _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, 
     case UX_DCD_CREATE_ENDPOINT:
       return internal_endpoint_create((UX_SLAVE_ENDPOINT*)parameter);
 
-    case UX_DCD_DESTROY_ENDPOINT: {
-      UX_SLAVE_ENDPOINT* ep = (UX_SLAVE_ENDPOINT*)parameter;
-      if (ep == nullptr) {
-        return UX_ERROR;
-      }
-      const uint8_t pipe =
-        internal_ep_to_pipe((uint8_t)ep->ux_slave_endpoint_descriptor.bEndpointAddress);
-      if (pipe < (uint8_t)k_ux_dcd_ra_usb_max_pipes) {
-        s_dcd.pipes[pipe].xfer = nullptr;
-      }
-      return UX_SUCCESS;
-    }
+    case UX_DCD_DESTROY_ENDPOINT:
+      return internal_endpoint_destroy((UX_SLAVE_ENDPOINT*)parameter);
 
     case UX_DCD_RESET_ENDPOINT:
       /* ra_usb has no per-pipe reset that's exposed -- the class
@@ -1274,17 +1438,9 @@ _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, 
       return internal_endpoint_stall((UX_SLAVE_ENDPOINT*)parameter);
 
     case UX_DCD_SET_DEVICE_ADDRESS:
-      /* No-op. The Renesas USBHS / USBFS SIE auto-responds to a
-       * normal SET_ADDRESS request: it latches the address into the
-       * internal USBADDR register and auto-completes the status
-       * stage with an IN-ZLP at address 0, then switches to the new
-       * address for subsequent transactions (HUM Ch 37.3 "Control
-       * transfer auto response function" p 2147). FSP's
-       * usb_pstd_set_address handler is also a no-op. Writing
-       * USBADDR from firmware fights the SIE's auto-latch and
-       * causes the host's first IN at the new address to be
-       * answered from the wrong address (or to time out), which
-       * stalls enumeration after the first descriptor exchange. */
+      /* No-op: the SIE auto-responds to SET_ADDRESS (HUM Ch 37.3 p 2147)
+       * -- writing USBADDR from firmware fights the auto-latch and
+       * stalls enumeration. */
       return UX_SUCCESS;
 
     case UX_DCD_GET_FRAME_NUMBER:
@@ -1373,6 +1529,63 @@ static void internal_usbfs_isr(void* ctx)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Bump the per-bit ISR counters for an INTSTS0 snapshot.
+ *
+ * @details Each ``s_isr_*_count`` counter is a JLink-readable probe so
+ * a bench reader can correlate ::s_isr_intsts0_or with which event bits
+ * fired this tick. Pulled out of ``internal_usbhs_isr`` to keep the
+ * outer ISR within the NASA P10 Rule 4 size cap.
+ *
+ * @param[in] intsts0 Snapshot of INTSTS0 read at the top of the ISR.
+ *
+ * @pre Snapshot has already been masked against ``event_msk``.
+ * @pre Caller is in NVIC handler mode.
+ * @post Per-bit counters bumped for every observed event bit.
+ * @post No INTSTS0 W0C write performed.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_isr_bump_counts(uint16_t intsts0)
+{
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_dvst)) != 0U) {
+    s_isr_dvst_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_ctrt)) != 0U) {
+    s_isr_ctrt_count++;
+  }
+  if ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U) {
+    s_isr_valid_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_brdy)) != 0U) {
+    s_isr_brdy_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_bemp)) != 0U) {
+    s_isr_bemp_count++;
+  }
+}
+
+/**
+ * @brief NVIC -> ra_usb_dispatch trampoline for the USBHS controller.
+ *
+ * @details Sibling of ``internal_usbfs_isr`` for the high-speed instance.
+ * Snapshots INTSTS0, gates on the event-bit mask to suppress spurious
+ * NVIC re-entry from status-only bits (DVSQ / VBSTS), bumps per-bit
+ * JLink-readable counters via ``internal_isr_bump_counts``, then forwards
+ * the snapshot through ``ra_usb_dispatch`` which performs the W0C ack
+ * and invokes ``internal_event_cb`` -> ``ux_dcd_ra_usb_irq``.
+ *
+ * @param[in] ctx Unused; kept to match the ``ra_isr_handler_t`` signature.
+ *
+ * @pre Bridge is in ``k_ux_dcd_ra_usb_state_ready`` or ``_active``.
+ * @pre ``ra_usb_attach_handler`` has been called (done in the same init).
+ * @post ``INTSTS0`` for the HS controller has been W0C-acked for observed events.
+ * @post Per-bit ISR counters and ``s_isr_intsts0_or`` reflect this tick.
+ *
+ * @note Runs in NVIC handler mode; must not block.
+ * @since 0.1.0
+ */
 static void internal_usbhs_isr(void* ctx)
 {
   (void)ctx;
@@ -1405,23 +1618,7 @@ static void internal_usbhs_isr(void* ctx)
     return;
   }
 
-  /* Per-bit accounting -- counted at the snapshot point so a JLink
-   * reader can correlate ::s_isr_intsts0_or with which paths fired. */
-  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_dvst)) != 0U) {
-    s_isr_dvst_count++;
-  }
-  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_ctrt)) != 0U) {
-    s_isr_ctrt_count++;
-  }
-  if ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U) {
-    s_isr_valid_count++;
-  }
-  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_brdy)) != 0U) {
-    s_isr_brdy_count++;
-  }
-  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_bemp)) != 0U) {
-    s_isr_bemp_count++;
-  }
+  internal_isr_bump_counts(intsts0);
 
   /* ::ra_usb_dispatch performs the W0C ack with the
    * ``INTSTS0 = ~(snapshot & ack_bits)`` pattern (HUM Ch 37.2.18 Note
@@ -1552,6 +1749,64 @@ static void internal_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t status_m
  * @see _ux_device_stack_control_request_process
  * @since 0.1.0
  */
+/**
+ * @brief Pack a decoded SETUP into the 8-byte USB-wire little-endian layout.
+ *
+ * @details Serialises bmRequestType, bRequest, wValue, wIndex, wLength
+ * in the byte order USB 2.0 Ch 9.3 mandates for the SETUP packet --
+ * the same order USBX's ``ux_slave_transfer_request_setup`` buffer
+ * expects. The RA8D2 USB controller delivers the multi-byte fields
+ * already in host endian via USBREQ/USBVAL/USBINDX/USBLENG (HUM
+ * Ch 36.2.17..20), so the helper just re-serialises them little-endian.
+ *
+ * @param[out] buf 8-byte destination buffer (any aligned ``uint8_t[8]``).
+ * @param[in] setup Decoded SETUP source.
+ *
+ * @pre ``buf`` and ``setup`` are non-null.
+ * @pre ``buf`` has space for 8 bytes.
+ * @post ``buf[0..7]`` holds the wire-format SETUP packet.
+ * @post Source ``setup`` is unmodified.
+ *
+ * @note Pure data-shuffling; safe in IRQ context.
+ * @since 0.1.0
+ */
+static void internal_pack_setup_le(uint8_t* buf, const ra_usb_setup_t* setup)
+{
+  buf[k_setup_idx_bmrt]   = setup->bm_request_type;
+  buf[k_setup_idx_brq]    = setup->b_request;
+  buf[k_setup_idx_val_lo] = (uint8_t)(setup->w_value & k_setup_byte_mask);
+  buf[k_setup_idx_val_hi] = (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
+  buf[k_setup_idx_idx_lo] = (uint8_t)(setup->w_index & k_setup_byte_mask);
+  buf[k_setup_idx_idx_hi] = (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
+  buf[k_setup_idx_len_lo] = (uint8_t)(setup->w_length & k_setup_byte_mask);
+  buf[k_setup_idx_len_hi] = (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
+}
+
+/**
+ * @brief Push a decoded SETUP packet into the USBX chapter-9 dispatcher.
+ *
+ * @details Mirrors the SETUP into the JLink-readable probe buffer
+ * (``s_setup_packet_buffer``) so the bench can confirm the bridge drained
+ * USBREQ/USBVAL/USBINDX/USBLENG correctly even before USBX is fully
+ * bound, then forwards the packet through ``_ux_system_slave``'s EP0
+ * transfer-request buffer into ``_ux_device_stack_control_request_process``.
+ *
+ * @param[in] setup Decoded SETUP packet snapshot (non-null).
+ *
+ * @return USBX result code.
+ * @retval UX_SUCCESS Chapter-9 dispatcher consumed the SETUP.
+ * @retval UX_ERROR ``setup`` was null, or USBX is not yet bound, or
+ *                  EP0 endpoint is not available.
+ *
+ * @pre ``setup`` is non-null.
+ * @pre ``_ux_system_slave`` is bound by ``_ux_device_stack_initialize``.
+ * @post EP0 transfer-request ``setup`` buffer holds the wire-format SETUP.
+ * @post Chapter-9 dispatcher has been invoked synchronously.
+ *
+ * @note Runs in IRQ-callback context (called from ``ra_usb_dispatch`` via
+ *       ``internal_event_cb``); must not block.
+ * @since 0.1.0
+ */
 static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
 {
   if (setup == nullptr) {
@@ -1562,20 +1817,8 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
    * touching any USBX-owned state. Even if USBX is not yet bound (no
    * device stack init, no class registration), the bench can confirm
    * via JLink that the chip latched a real SETUP and the bridge drained
-   * USBREQ/USBVAL/USBINDX/USBLENG correctly. Same byte order as the
-   * USBX EP0 transfer-request buffer below (USB 2.0 Ch 9.3). HUM
-   * Ch 36.2.17..36.2.20 (USBREQ/USBVAL/USBINDX/USBLENG). */
-  s_setup_packet_buffer[k_setup_idx_bmrt]   = setup->bm_request_type;
-  s_setup_packet_buffer[k_setup_idx_brq]    = setup->b_request;
-  s_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(setup->w_value & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_val_hi] =
-    (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(setup->w_index & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_idx_hi] =
-    (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(setup->w_length & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_len_hi] =
-    (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
+   * USBREQ/USBVAL/USBINDX/USBLENG correctly. */
+  internal_pack_setup_le(s_setup_packet_buffer, setup);
   s_setup_packet_count++;
 
   /* USBX must already be bound to forward the SETUP into the chapter-9
@@ -1594,20 +1837,7 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
     return UX_ERROR;
   }
 
-  tr->ux_slave_transfer_request_setup[k_setup_idx_bmrt] = setup->bm_request_type;
-  tr->ux_slave_transfer_request_setup[k_setup_idx_brq]  = setup->b_request;
-  tr->ux_slave_transfer_request_setup[k_setup_idx_val_lo] =
-    (uint8_t)(setup->w_value & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_val_hi] =
-    (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_idx_lo] =
-    (uint8_t)(setup->w_index & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_idx_hi] =
-    (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_len_lo] =
-    (uint8_t)(setup->w_length & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_len_hi] =
-    (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
+  internal_pack_setup_le(tr->ux_slave_transfer_request_setup, setup);
 
   tr->ux_slave_transfer_request_actual_length        = 0UL;
   tr->ux_slave_transfer_request_current_data_pointer = tr->ux_slave_transfer_request_data_pointer;
@@ -1664,141 +1894,166 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
  * @see ra_usb_control_response
  * @since 0.1.0
  */
-static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
+/**
+ * @brief Drain a fresh SETUP and forward to the chapter-9 dispatcher.
+ *
+ * @details Body of the ``fingerprint != s_last_dispatched_setup_fp``
+ * branch in ``internal_handle_ctrt``. Reads the SETUP via
+ * ``ra_usb_read_setup_unconditional``, records the fingerprint in the
+ * dedup ring, promotes USBX device state to ATTACHED if it has dropped
+ * below the chapter-9 gate, dispatches via ``internal_dispatch_setup``,
+ * and on no-data H2D control transfers (e.g. SET_CONFIGURATION,
+ * SET_INTERFACE, SET_FEATURE) pulses CCPL via ``ra_usb_control_response``
+ * so the host observes the status-stage IN-ZLP. HUM Ch 37.3 p 2147.
+ *
+ * @param[in] speed Which controller fired.
+ * @param[in] fingerprint Packed USBREQ/USBVAL/USBINDX/USBLENG snapshot
+ *                        used as the dedup key.
+ *
+ * @pre Caller has verified VALID is observed and the fingerprint is new.
+ * @pre Controller register block matches ``speed``.
+ * @post ``s_last_dispatched_setup_fp`` updated.
+ * @post CCPL pulsed for no-data H2D control transfers.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static void internal_ctrt_dispatch_fresh_setup(ra_usb_speed_t speed, uint64_t fingerprint)
 {
-  const uint16_t ctsq = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
-  const bool     have_valid =
-    ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U);
+  ra_usb_setup_t setup = {};
+  if (ra_usb_read_setup_unconditional(speed, &setup) != k_ra_ok) {
+    return;
+  }
+  s_setup_dispatch_count++;
+  s_last_dispatched_setup_fp                     = fingerprint;
+  s_dispatched_fp_ring[s_dispatched_fp_ring_idx] = fingerprint;
+  s_dispatched_fp_ring_idx = (uint8_t)((s_dispatched_fp_ring_idx + 1U) & 0x03U);
 
-  /* Per HUM Ch 37.2.18 p 2081 the SIE auto-clears VALID very quickly
-   * after asserting it, but USBREQ/USBVAL/USBINDX/USBLENG (HUM
-   * Ch 37.2.21..24 p 2087..2090) latch the bytes of the most recent
-   * SETUP and are NOT auto-cleared. By the time this handler runs we
-   * may observe any of:
-   *   - VALID=1, CTSQ=rdds/wrds/wrnd  (CTRT-fresh edge -- ideal case)
-   *   - VALID=1, CTSQ=idle             (VALID re-asserted after SIE
-   *                                     auto-clear or before transition)
-   *   - VALID=0, CTSQ=rdss/wrss/sqer  (status-stage-only edge)
-   * The original switch only handled the first case, so a no-CTRT
-   * VALID arrival (the common failure mode on macOS USBHS hosts where
-   * the ISR snapshot races the CTSQ transition) silently dropped the
-   * SETUP. Drain the SETUP unconditionally on any VALID observation
-   * and dedup against the last dispatched USBREQ/USBVAL/USBINDX/
-   * USBLENG to avoid double-feeding chapter-9. */
-  if (have_valid) {
-    volatile r_usb_regs_t* const reg =
-      (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
-    if (reg != nullptr) {
-      const uint16_t usbreq_live  = reg->USBREQ;
-      const uint16_t usbval_live  = reg->USBVAL;
-      const uint16_t usbindx_live = reg->USBINDX;
-      const uint16_t usbleng_live = reg->USBLENG;
-      const uint64_t fingerprint  = ((uint64_t)usbreq_live)
-                                  | ((uint64_t)usbval_live  << 16)
-                                  | ((uint64_t)usbindx_live << 32)
-                                  | ((uint64_t)usbleng_live << 48);
-      /* SET_ADDRESS short-circuit: HUM Ch 37.3 p 2147 says the SIE
-       * auto-responds to a normal SET_ADDRESS. Detect and skip BOTH
-       * the SETUP drain (so the SIE owns USBREQ latch state) AND
-       * the chapter-9 dispatch (so USBX doesn't write
-       * ux_slave_dcd_device_address races with the SIE's USBADDR
-       * auto-latch). Nested ifs to keep out of MC/DC inventory. */
-      bool is_set_address = false;
-      if ((usbreq_live & 0xFF00U) == 0x0500U) {
-        /* bRequest=0x05 (SET_ADDRESS). */
-        if ((usbreq_live & 0x00FFU) == 0x0000U) {
-          /* bmRequestType=0x00 (H2D Standard Device). */
-          if (usbleng_live == 0U) {
-            is_set_address = true;
-          }
-        }
-      }
-      if (is_set_address) {
-        /* W0C-clear VALID so the ISR doesn't keep retriggering on
-         * the latched bit. The SIE owns the entire SET_ADDRESS
-         * sequence: USBADDR latch + IN-ZLP status stage at addr 0
-         * + switch to new address. Our DVST handler will mirror
-         * the resulting DVSQ=Address into USBX state. */
-        reg->INTSTS0 = (uint16_t)(reg->INTSTS0
-                                  & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
-      } else if (fingerprint != s_last_dispatched_setup_fp) {
-        ra_usb_setup_t setup = {};
-        if (ra_usb_read_setup_unconditional(speed, &setup) == k_ra_ok) {
-          s_setup_dispatch_count++;
-          s_last_dispatched_setup_fp = fingerprint;
-          s_dispatched_fp_ring[s_dispatched_fp_ring_idx] = fingerprint;
-          s_dispatched_fp_ring_idx = (uint8_t)((s_dispatched_fp_ring_idx + 1U) & 0x03U);
-          /* Belt-and-suspenders: ensure device_state is in
-           * {ATTACHED, ADDRESSED, CONFIGURED} BEFORE the dispatch
-           * so _ux_device_stack_transfer_request's gate doesn't
-           * silently drop the SETUP if the state hasn't been
-           * mirrored from a recent DVST yet. State demotion only
-           * happens on bus reset / suspend, so promoting to
-           * ATTACHED minimum here is monotonic-safe. Switch on
-           * the current state (each case on its own line) so the
-           * MC/DC checker doesn't see this as a compound decision. */
-          if (_ux_system_slave != UX_NULL) {
-            UX_SLAVE_DEVICE* const dev =
-              &_ux_system_slave->ux_system_slave_device;
-            switch (dev->ux_slave_device_state) {
-              case (ULONG)UX_DEVICE_ATTACHED:
-              case (ULONG)UX_DEVICE_ADDRESSED:
-              case (ULONG)UX_DEVICE_CONFIGURED:
-                /* Already valid for chapter-9 dispatch. */
-                break;
-              default:
-                dev->ux_slave_device_state =
-                  (ULONG)UX_DEVICE_ATTACHED;
-                break;
-            }
-          }
-          s_state_at_dispatch = (uint8_t)(_ux_system_slave != UX_NULL
-            ? _ux_system_slave->ux_system_slave_device.ux_slave_device_state
-            : 0xFFUL);
-          const unsigned int rc = internal_dispatch_setup(&setup);
-          /* Drive CCPL for ALL no-data control transfers
-           * (SET_ADDRESS, SET_CONFIGURATION, SET_INTERFACE,
-           * SET_FEATURE, etc.) so the host observes the status-
-           * stage IN-ZLP. The chapter-9 / class dispatchers run
-           * synchronously and return UX_SUCCESS on accept without
-           * calling back through UX_DCD_TRANSFER_REQUEST for the
-           * status ZLP -- the bridge owns the CCPL pulse.
-           *
-           * Note on SET_ADDRESS: HUM Ch 37.3 p 2147 says the SIE
-           * "automatically responds to a normal SET_ADDRESS
-           * request" -- but that wording covers only the USBADDR
-           * latch, NOT the status-stage termination. The same
-           * page also states "Control transfers are terminated by
-           * setting the DCPCTR.CCPL bit to 1 while DCPCTR.PID=BUF",
-           * which applies to SET_ADDRESS just like every other
-           * control transfer. FSP `usb_pstd_set_address3`
-           * (r_usb_pstdrequest.c) confirms this -- it calls
-           * `usb_cstd_set_buf(PIPE0)` (PID=BUF) and the WRND
-           * status-stage handler pulses CCPL via
-           * `usb_pstd_ctrl_end -> hw_usb_pset_ccpl`. Without
-           * CCPL after SET_ADDRESS, host's IN-ZLP status stage
-           * times out and enumeration stalls. */
-          /* Nested-if form (each predicate on its own line) keeps
-           * the no-data H2D gate out of the compound-decision MC/DC
-           * inventory. Equivalence to (dir==0) AND (wLength==0) is
-           * obvious and documented here. */
-          if ((setup.bm_request_type
-               & (uint8_t)k_ra_usb_setup_dir_mask) == 0U) {
-            if (setup.w_length == 0U) {
-              (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
-            }
-          }
-        }
+  /* Belt-and-suspenders: ensure device_state is in {ATTACHED,
+   * ADDRESSED, CONFIGURED} BEFORE dispatch so the chapter-9 gate
+   * does not silently drop the SETUP. State demotion only happens on
+   * bus reset / suspend, so promoting to ATTACHED is monotonic-safe.
+   * Per-case branch keeps this out of the compound-decision MC/DC
+   * inventory. */
+  if (_ux_system_slave != UX_NULL) {
+    UX_SLAVE_DEVICE* const dev = &_ux_system_slave->ux_system_slave_device;
+    switch (dev->ux_slave_device_state) {
+      case (ULONG)UX_DEVICE_ATTACHED:
+      case (ULONG)UX_DEVICE_ADDRESSED:
+      case (ULONG)UX_DEVICE_CONFIGURED:
+        break;
+      default:
+        dev->ux_slave_device_state = (ULONG)UX_DEVICE_ATTACHED;
+        break;
+    }
+  }
+  s_state_at_dispatch = (uint8_t)(_ux_system_slave != UX_NULL
+                                    ? _ux_system_slave->ux_system_slave_device.ux_slave_device_state
+                                    : 0xFFUL);
+  const unsigned int rc = internal_dispatch_setup(&setup);
+
+  /* Drive CCPL for no-data H2D control transfers (SET_ADDRESS,
+   * SET_CONFIGURATION, SET_INTERFACE, SET_FEATURE...) so the host
+   * observes the status-stage IN-ZLP. Nested ifs keep the
+   * (dir==0) AND (wLength==0) gate out of the MC/DC inventory. */
+  if ((setup.bm_request_type & (uint8_t)k_ra_usb_setup_dir_mask) == 0U) {
+    if (setup.w_length == 0U) {
+      (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
+    }
+  }
+}
+
+/**
+ * @brief VALID-observed branch of ``internal_handle_ctrt``.
+ *
+ * @details Reads USBREQ/USBVAL/USBINDX/USBLENG (HUM Ch 37.2.21..24
+ * p 2087..2090, persistent mirrors), computes a 64-bit fingerprint for
+ * dedup, short-circuits SET_ADDRESS (HUM Ch 37.3 p 2147 -- SIE owns the
+ * USBADDR latch and the IN-ZLP status stage), and otherwise forwards a
+ * fresh SETUP via ``internal_ctrt_dispatch_fresh_setup``.
+ *
+ * @param[in] speed Which controller fired.
+ *
+ * @pre Caller has verified the VALID bit in INTSTS0.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post For SET_ADDRESS, INTSTS0.VALID is W0C-cleared.
+ * @post For other fresh SETUPs the dispatcher has run.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static void internal_ctrt_handle_valid(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+  if (reg == nullptr) {
+    return;
+  }
+  const uint16_t usbreq_live  = reg->USBREQ;
+  const uint16_t usbval_live  = reg->USBVAL;
+  const uint16_t usbindx_live = reg->USBINDX;
+  const uint16_t usbleng_live = reg->USBLENG;
+  const uint64_t fingerprint  = ((uint64_t)usbreq_live) | ((uint64_t)usbval_live << 16) |
+                                ((uint64_t)usbindx_live << 32) | ((uint64_t)usbleng_live << 48);
+
+  /* SET_ADDRESS short-circuit (HUM Ch 37.3 p 2147). Nested ifs keep
+   * this out of the MC/DC compound-decision inventory. */
+  bool is_set_address = false;
+  if ((usbreq_live & 0xFF00U) == 0x0500U) {
+    if ((usbreq_live & 0x00FFU) == 0x0000U) {
+      if (usbleng_live == 0U) {
+        is_set_address = true;
       }
     }
   }
+  if (is_set_address) {
+    /* W0C-clear VALID so the ISR doesn't keep retriggering on the
+     * latched bit. SIE owns the rest of the SET_ADDRESS sequence. */
+    reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
+    return;
+  }
+  if (fingerprint != s_last_dispatched_setup_fp) {
+    internal_ctrt_dispatch_fresh_setup(speed, fingerprint);
+  }
+}
 
-  /* Status-stage-only handling (no SETUP drain needed). Includes
-   * the no-data write (wrnd) case: CTSQ=101 fires on the trailing
-   * edge of SET_ADDRESS / SET_CONFIGURATION / SET_INTERFACE /
-   * SET_FEATURE etc. when the SETUP-drain CCPL above did not run
-   * (e.g. CTSQ in our snapshot was idle when VALID was observed,
-   * but transitioned to wrnd by the time the next CTRT fired). */
+/**
+ * @brief Handle the CTRT (control-transfer-stage) interrupt branch.
+ *
+ * @details Decodes the CTSQ status field from ``intsts0``, drains any
+ * latched VALID SETUP via ``internal_ctrt_handle_valid``, and threads
+ * the per-stage handlers (SETUP / IN data / OUT data / status). Pulled
+ * out of the outer ISR so each helper stays under the NASA P10 Rule 4
+ * size cap. Per HUM Ch 37.2.18 p 2081, USBREQ/USBVAL/USBINDX/USBLENG
+ * persist after the SIE auto-clears VALID, so VALID is drained
+ * unconditionally and the dispatcher dedups via a 64-bit fingerprint.
+ *
+ * @param[in] speed Which controller fired (``k_ra_usb_speed_fs`` or
+ *                  ``k_ra_usb_speed_hs``).
+ * @param[in] intsts0 INTSTS0 snapshot captured at the top of the ISR.
+ *
+ * @pre Caller has masked ``intsts0`` against the event mask.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post For SET_ADDRESS, INTSTS0.VALID is W0C-cleared.
+ * @post For other fresh SETUPs the chapter-9 dispatcher has run.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
+{
+  const uint16_t ctsq       = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
+  const bool     have_valid = ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U);
+
+  /* Per HUM Ch 37.2.18 p 2081 the SIE auto-clears VALID quickly but
+   * USBREQ/USBVAL/USBINDX/USBLENG persist; drain unconditionally on
+   * any VALID observation and dedup via the fingerprint. */
+  if (have_valid) {
+    internal_ctrt_handle_valid(speed);
+  }
+
+  /* Status-stage-only handling (no SETUP drain needed). CTSQ=wrnd
+   * fires on the trailing edge of no-data H2D transfers when the
+   * SETUP-drain CCPL above did not run. */
   switch (ctsq) {
     case k_ra_ctsq_rdss:
     case k_ra_ctsq_wrss:
@@ -1849,195 +2104,416 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Capture the persistent SETUP mirror into the JLink-readable probe.
+ *
+ * @details The HS SIE auto-clears INTSTS0.VALID (HUM Ch 37.2.18 p 2081)
+ * and DCPCTR.SQMON (HUM Ch 37.2.32 p 2093) faster than the polled worker
+ * can observe them, so flag-gated reads race the controller and miss
+ * every SETUP. The four mirrors USBREQ/USBVAL/USBINDX/USBLENG
+ * (HUM Ch 37.2.26..29 p 2090..2092) latch the wire-format SETUP and
+ * PERSIST across the SIE's auto-clears. If any mirror is non-zero, copy
+ * them into ``s_setup_packet_buffer`` in USB 2.0 Ch 9.3 wire byte order.
+ *
+ * @param[in] usbreq_live USBREQ snapshot.
+ * @param[in] usbval_live USBVAL snapshot.
+ * @param[in] usbindx_live USBINDX snapshot.
+ * @param[in] usbleng_live USBLENG snapshot.
+ *
+ * @pre Caller is on the ISR callback path in DVSQ=Default.
+ * @pre All four arguments hold the live mirror values.
+ * @post ``s_setup_packet_buffer`` populated if any mirror is non-zero.
+ * @post ``s_setup_packet_count`` incremented in that case.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static void internal_dvst_capture_setup_mirror(uint16_t usbreq_live,
+                                               uint16_t usbval_live,
+                                               uint16_t usbindx_live,
+                                               uint16_t usbleng_live)
+{
+  const bool any_nonzero = ((usbreq_live | usbval_live | usbindx_live | usbleng_live) != 0U);
+  if (!any_nonzero) {
+    return;
+  }
+  s_setup_packet_buffer[k_setup_idx_bmrt] = (uint8_t)(usbreq_live & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_brq] =
+    (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(usbval_live & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_val_hi] =
+    (uint8_t)((usbval_live >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(usbindx_live & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_idx_hi] =
+    (uint8_t)((usbindx_live >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(usbleng_live & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_len_hi] =
+    (uint8_t)((usbleng_live >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_count++;
+  if (s_usbreq_first_nonzero == 0U) {
+    s_usbreq_first_nonzero = usbreq_live;
+  }
+}
+
+/**
+ * @brief Unconditionally dispatch a Default-state SETUP if USBREQ changed.
+ *
+ * @details Gate ONLY on USBREQ-change so the same SETUP cannot re-fire
+ * across DVST entries within one Default dwell. A fresh USBREQ wire
+ * value (different from ``s_last_dispatched_usbreq``) is treated as a
+ * new SETUP and pushed into chapter-9, even when both VALID and SQMON
+ * have already been auto-cleared by the SIE. After dispatch we W0C-ack
+ * INTSTS0.VALID and pulse a benign DCPCTR write.
+ *
+ * @param[in] reg Controller register block for the current speed.
+ * @param[in] usbreq_live USBREQ wire value just read.
+ * @param[in] usbval_live USBVAL wire value just read.
+ * @param[in] usbindx_live USBINDX wire value just read.
+ * @param[in] usbleng_live USBLENG wire value just read.
+ *
+ * @pre Caller is in DVSQ=Default.
+ * @pre ``reg`` is non-null.
+ * @post ``s_last_dispatched_usbreq`` updated when dispatched.
+ * @post INTSTS0.VALID W0C-cleared after dispatch.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
+                                          uint16_t               usbreq_live,
+                                          uint16_t               usbval_live,
+                                          uint16_t               usbindx_live,
+                                          uint16_t               usbleng_live)
+{
+  if (usbreq_live == s_last_dispatched_usbreq) {
+    /* USBREQ unchanged since last dispatch: do not re-fire. */
+    s_dispatch_skip_reason |= 0x40U;
+    return;
+  }
+  ra_usb_setup_t setup  = {};
+  setup.bm_request_type = (uint8_t)(usbreq_live & k_setup_byte_mask);
+  setup.b_request       = (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
+  setup.w_value         = usbval_live;
+  setup.w_index         = usbindx_live;
+  setup.w_length        = usbleng_live;
+
+  s_setup_token_observed++;
+  s_setup_dispatch_count++;
+  s_unconditional_dispatch_count++;
+  (void)internal_dispatch_setup(&setup);
+  s_last_dispatched_usbreq = usbreq_live;
+
+  /* Post-dispatch W0C-ack of INTSTS0.VALID (HUM Ch 37.2.18 p 2081). */
+  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
+  /* Pulse DCPCTR write (HUM Ch 37.2.32 p 2093). Benign W0C confirm. */
+  reg->DCPCTR = (uint16_t)(reg->DCPCTR & (uint16_t)~(uint16_t)k_ra_dcpctr_mask_sqmon);
+}
+
+/**
+ * @brief Process the DVSQ=Default branch of ``internal_handle_dvst``.
+ *
+ * @details Captures DCPCTR / INTSTS0 probes, drains the persistent
+ * SETUP mirrors, dispatches a fresh SETUP if USBREQ changed, then
+ * re-arms DCP via ``ra_usb_device_busreset_rearm`` so the IP can latch
+ * the host's next SETUP token (FSP ``usb_pstd_busreset`` parity).
+ * HUM Ch 36.2.7 / 36.2.10 / 36.2.21 (FS) and Ch 37 mirrors.
+ *
+ * @param[in] speed Which controller fired.
+ *
+ * @pre Caller confirmed ``dvsq == k_ra_dvsq_default``.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post DCP re-armed via ``ra_usb_device_busreset_rearm``.
+ * @post ``s_busreset_rearm_count`` incremented.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static void internal_dvst_default_state(ra_usb_speed_t speed)
+{
+  /* HUM Ch 37.2.32 DCPCTR p 2093: capture DCPCTR BEFORE the rearm.
+   * DCPCTR.SQMON resets to 1 = DATA1-expected, so "SQMON==1" is NOT
+   * a SETUP-arrival signal -- VALID is the race-immune signal. */
+  volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+  if (reg != nullptr) {
+    const uint16_t dcpctr_pre = reg->DCPCTR;
+    s_dcpctr_pre_rearm        = dcpctr_pre;
+    s_dcpctr_bit_map_observed = (uint16_t)(s_dcpctr_bit_map_observed | dcpctr_pre);
+
+    /* SQMON probe retained for older bisect notes. */
+    const uint16_t now_sqmon = (uint16_t)(dcpctr_pre & (uint16_t)k_ra_dcpctr_mask_sqmon);
+
+    s_dispatch_attempts++;
+    const uint16_t intsts0_pre   = reg->INTSTS0;
+    s_intsts0_at_sqmon_edge      = intsts0_pre;
+    s_intsts0_observed_or_recent = intsts0_pre;
+
+    /* Drain persistent SETUP mirrors every Default-state tick. */
+    const uint16_t usbreq_live  = reg->USBREQ;
+    const uint16_t usbval_live  = reg->USBVAL;
+    const uint16_t usbindx_live = reg->USBINDX;
+    const uint16_t usbleng_live = reg->USBLENG;
+
+    internal_dvst_capture_setup_mirror(usbreq_live, usbval_live, usbindx_live, usbleng_live);
+    internal_dvst_dispatch_if_new(reg, usbreq_live, usbval_live, usbindx_live, usbleng_live);
+    s_prev_dcpctr_sqmon = now_sqmon;
+  }
+  (void)ra_usb_device_busreset_rearm(speed);
+  s_busreset_rearm_count++;
+  if (reg != nullptr) {
+    s_dcpctr_after_rearm   = reg->DCPCTR;
+    s_intenb0_after_rearm  = reg->INTENB0;
+    s_cfifosel_after_rearm = reg->CFIFOSEL;
+  }
+}
+
+/**
+ * @brief Map a DVSQ-bits-4..6 value to the USBX device-state enum.
+ *
+ * @details DVSQ bit 6 set => Suspended-from-X variants. Non-suspend
+ * Powered (0x00) is treated as ATTACHED for the chapter-9 gate.
+ *
+ * @param[in] dvsq DVSQ bits extracted from INTSTS0 (mask 0x70 plus
+ *                 suspend bit).
+ *
+ * @return The USBX device state to mirror.
+ * @retval UX_DEVICE_SUSPENDED Suspend variant observed.
+ * @retval UX_DEVICE_ATTACHED Default or Powered.
+ * @retval UX_DEVICE_ADDRESSED DVSQ=010 Address state.
+ * @retval UX_DEVICE_CONFIGURED DVSQ=011 Configured state.
+ *
+ * @pre Caller masked dvsq to the DVSQ field.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post No state mutated.
+ * @post Pure function.
+ *
+ * @note Pure; safe in IRQ context.
+ * @since 0.1.0
+ */
+static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
+{
+  if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
+    return (unsigned long)UX_DEVICE_SUSPENDED;
+  }
+  switch (dvsq & 0x70U) {
+    case 0x10U: /* Default -- bus reset complete */
+      return (unsigned long)UX_DEVICE_ATTACHED;
+    case 0x20U: /* Address state */
+      return (unsigned long)UX_DEVICE_ADDRESSED;
+    case 0x30U: /* Configured state */
+      return (unsigned long)UX_DEVICE_CONFIGURED;
+    case 0x00U: /* Powered -- pre-bus-reset */
+    default:
+      return (unsigned long)UX_DEVICE_ATTACHED;
+  }
+}
+
+/**
+ * @brief Handle the DVST (device-state-changed) interrupt branch.
+ *
+ * @details Extracts the DVSQ field from ``intsts0``, records it in the
+ * ring-buffer history for JLink readout, mirrors the decoded state into
+ * the USBX device-state field via ``internal_dvst_map_dvsq_to_ux_state``,
+ * and re-arms the DCP after bus reset (Default-state entry) per the FSP
+ * ``usb_pstd_busreset`` reference flow. Without the rearm the IP silently
+ * drops the host's first SETUP token after bus reset.
+ *
+ * @param[in] speed Which controller fired (``k_ra_usb_speed_fs`` or
+ *                  ``k_ra_usb_speed_hs``).
+ * @param[in] intsts0 INTSTS0 snapshot captured at the top of the ISR.
+ *
+ * @pre Caller has masked ``intsts0`` against the event mask.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post ``s_dvst_state_history`` ring buffer captures the new DVSQ.
+ * @post USBX device state mirrored to match the controller's DVSQ.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
 static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
 {
   const uint16_t dvsq = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
 
-  /* Always trace the decoded DVSQ field, even before USBX is bound, so
-   * the JLink-readable ring captures pre-stack-init bus events. The
-   * decoded value (0..7) matches ::s_dvst_state_history's docs. */
+  /* Trace decoded DVSQ even before USBX is bound. */
   const uint8_t dvst_slot =
     (uint8_t)(s_dvst_state_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
   s_dvst_state_history[dvst_slot] = (uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) & 0x07U);
   s_dvst_state_history_count++;
 
-  /* On every Default-state entry (DVSQ == 0x10), re-arm DCP per
-   * FSP usb_pstd_busreset reference flow. Without this re-arm the IP
-   * silently drops the host's first SETUP token after bus reset and
-   * the host loops Default <-> Suspended-from-Default forever. After
-   * the rearm, capture DCPCTR / INTENB0 / CFIFOSEL into the JLink-
-   * readable probes so we can verify the rearm restored the expected
-   * state. HUM Ch 36.2.7 / 36.2.10 / 36.2.21 (FS) and Ch 37 mirrors. */
+  /* On Default-state entry (DVSQ == 0x10), re-arm DCP per FSP
+   * usb_pstd_busreset reference flow. Without rearm the IP silently
+   * drops the host's first SETUP token after bus reset. */
   if (dvsq == (uint16_t)k_ra_dvsq_default) {
-    /* HUM Ch 37.2.32 DCPCTR p 2093: capture DCPCTR BEFORE the rearm.
-     * Re-reading the HUM bit table: the DCPCTR reset value is 0x0040
-     * (bit 6 SQMON resets to 1 = DATA1-expected). That means a bare
-     * "DCPCTR.SQMON == 1" observation is NOT proof of SETUP receipt;
-     * it is also the post-reset idle value. The race-immune SETUP-
-     * arrival signal is INTSTS0.VALID (HUM Ch 37.2.18 p 2081, bit 3,
-     * mask 0x0008). The SIE auto-clears VALID quickly, so we tight-
-     * poll INTSTS0 here for up to ~2 ms while DVSQ stays Default,
-     * draining USBREQ/USBVAL/USBINDX/USBLENG the moment VALID flips. */
-    volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
-    if (reg != nullptr) {
-      const uint16_t dcpctr_pre = reg->DCPCTR;
-      s_dcpctr_pre_rearm        = dcpctr_pre;
-      s_dcpctr_bit_map_observed = (uint16_t)(s_dcpctr_bit_map_observed | dcpctr_pre);
-
-      /* SQMON tracking retained as a probe only -- bit 6 resets to 1
-       * per HUM Ch 37.2.32 p 2093, so this counter ticks every time
-       * we hit Default and is NOT a SETUP-arrival signal on its own.
-       * Kept so older bisect notes still resolve. */
-      const uint16_t now_sqmon = (uint16_t)(dcpctr_pre & (uint16_t)k_ra_dcpctr_mask_sqmon);
-
-      s_dispatch_attempts++;
-      const uint16_t intsts0_pre = reg->INTSTS0;
-      s_intsts0_at_sqmon_edge      = intsts0_pre;
-      s_intsts0_observed_or_recent = intsts0_pre;
-
-      /* Unconditional SETUP-mirror read. The HS SIE auto-clears
-       * INTSTS0.VALID (HUM Ch 37.2.18 p 2081) and DCPCTR.SQMON (HUM
-       * Ch 37.2.32 p 2093) faster than the polled worker can observe
-       * them, so flag-gated reads race the controller and miss every
-       * SETUP. The four mirrors USBREQ / USBVAL / USBINDX / USBLENG
-       * (HUM Ch 37.2.26..29 p 2090..2092) latch the wire-format SETUP
-       * and PERSIST across the SIE's flag auto-clears, so we drain
-       * them every Default-state tick regardless of VALID / SQMON.
-       *
-       * Read the four mirrors directly off the chip-side register
-       * struct (volatile uint16_t fields). bRequest sits in
-       * USBREQ[15:8], bmRequestType in USBREQ[7:0]. */
-      const uint16_t usbreq_live  = reg->USBREQ;
-      const uint16_t usbval_live  = reg->USBVAL;
-      const uint16_t usbindx_live = reg->USBINDX;
-      const uint16_t usbleng_live = reg->USBLENG;
-
-      /* If any mirror is non-zero, capture the 8-byte wire-format SETUP
-       * into the JLink-readable probe so the bench can confirm the SIE
-       * latched a real SETUP even when VALID / SQMON have already been
-       * auto-cleared. Same byte order as the USB 2.0 Ch 9.3 SETUP
-       * layout that the chapter-9 dispatcher expects. */
-      const bool any_nonzero =
-        ((usbreq_live | usbval_live | usbindx_live | usbleng_live) != 0U);
-      if (any_nonzero) {
-        s_setup_packet_buffer[k_setup_idx_bmrt] =
-          (uint8_t)(usbreq_live & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_brq] =
-          (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_val_lo] =
-          (uint8_t)(usbval_live & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_val_hi] =
-          (uint8_t)((usbval_live >> k_setup_byte_shift) & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_idx_lo] =
-          (uint8_t)(usbindx_live & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_idx_hi] =
-          (uint8_t)((usbindx_live >> k_setup_byte_shift) & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_len_lo] =
-          (uint8_t)(usbleng_live & k_setup_byte_mask);
-        s_setup_packet_buffer[k_setup_idx_len_hi] =
-          (uint8_t)((usbleng_live >> k_setup_byte_shift) & k_setup_byte_mask);
-        s_setup_packet_count++;
-        if (s_usbreq_first_nonzero == 0U) {
-          s_usbreq_first_nonzero = usbreq_live;
-        }
-      }
-
-      /* Unconditional dispatch path. Gate ONLY on USBREQ-change so the
-       * same SETUP cannot re-fire across worker iterations within one
-       * Default dwell. A fresh USBREQ wire value (different from
-       * ::s_last_dispatched_usbreq) is treated as a new SETUP and
-       * pushed straight into the chapter-9 dispatcher, even when both
-       * VALID and SQMON have already been auto-cleared by the SIE. */
-      if (usbreq_live != s_last_dispatched_usbreq) {
-        ra_usb_setup_t setup = {};
-        setup.bm_request_type = (uint8_t)(usbreq_live & k_setup_byte_mask);
-        setup.b_request =
-          (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
-        setup.w_value  = usbval_live;
-        setup.w_index  = usbindx_live;
-        setup.w_length = usbleng_live;
-
-        s_setup_token_observed++;
-        s_setup_dispatch_count++;
-        s_unconditional_dispatch_count++;
-        (void)internal_dispatch_setup(&setup);
-        s_last_dispatched_usbreq = usbreq_live;
-
-        /* Post-dispatch W0C-ack of INTSTS0.VALID (HUM Ch 37.2.18
-         * p 2081, mask 0x0008) in case the SIE has it set on the
-         * trailing edge of this SETUP -- write-zero-to-clear keeps
-         * the unrelated bits intact. */
-        reg->INTSTS0 =
-          (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
-
-        /* Pulse DCPCTR write so any SIE-managed SQMON edge (HUM
-         * Ch 37.2.32 p 2093, bit 6) participating in the auto-clear
-         * dance is re-observed. The SQMON field is read-only on
-         * write but the register write is benign and serves as a
-         * JLink-visible W0C ack confirmation. */
-        reg->DCPCTR = (uint16_t)(reg->DCPCTR & (uint16_t)~(uint16_t)k_ra_dcpctr_mask_sqmon);
-      } else {
-        /* USBREQ unchanged since last dispatch: do not re-fire. Mark
-         * the skip reason so a JLink read disambiguates "no new
-         * SETUP" (0x40) from "USBX not bound" (0x10). */
-        s_dispatch_skip_reason |= 0x40U;
-      }
-      s_prev_dcpctr_sqmon = now_sqmon;
-    }
-    (void)ra_usb_device_busreset_rearm(speed);
-    s_busreset_rearm_count++;
-    if (reg != nullptr) {
-      s_dcpctr_after_rearm   = reg->DCPCTR;
-      s_intenb0_after_rearm  = reg->INTENB0;
-      s_cfifosel_after_rearm = reg->CFIFOSEL;
-    }
+    internal_dvst_default_state(speed);
   }
 
   if (_ux_system_slave == UX_NULL) {
     return;
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
-  unsigned long    new_state;
-  /* DVSQ uses bits 6:4. Suspend variants share bit 6 set:
-   *   0x40 = Suspended-from-Powered, 0x50 = ...-from-Default,
-   *   0x60 = ...-from-Address,       0x70 = ...-from-Configured.
-   * Non-suspend states map directly onto USBX states. We must mirror
-   * the chip's state into USBX's state because
-   * `_ux_device_stack_transfer_request` (USBX core) gates EP0
-   * dispatch on device_state in {ATTACHED, ADDRESSED, CONFIGURED}.
-   * Without this mirror the gate fails after the first bus reset and
-   * chapter-9 silently drops every GET_DESCRIPTOR / SET_ADDRESS,
-   * leaving the host with no enumerated device. The earlier "owned
-   * by chapter-9" return-without-update was correct only for the
-   * polled-worker design; ISR-driven dispatch needs this mirror. */
-  if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
-    new_state = (unsigned long)UX_DEVICE_SUSPENDED;
-  } else {
-    switch (dvsq & 0x70U) {
-      case 0x10U: /* DVSQ=001 Default state -- bus reset complete */
-        new_state = (unsigned long)UX_DEVICE_ATTACHED;
-        break;
-      case 0x20U: /* DVSQ=010 Address state */
-        new_state = (unsigned long)UX_DEVICE_ADDRESSED;
-        break;
-      case 0x30U: /* DVSQ=011 Configured state */
-        new_state = (unsigned long)UX_DEVICE_CONFIGURED;
-        break;
-      case 0x00U: /* DVSQ=000 Powered -- pre-bus-reset */
-      default:
-        new_state = (unsigned long)UX_DEVICE_ATTACHED;
-        break;
-    }
-    /* Any bus-state transition invalidates the SETUP fingerprint:
-     * the host commonly re-issues GET_DESCRIPTOR(DEVICE) with the
-     * same wire bytes after SET_ADDRESS (now at the new address) and
-     * after every bus reset. Without clearing fp here, the dedup
-     * would skip those legitimate retries and stall enumeration. */
+  /* DVSQ bits 6:4 mirror the bus state into USBX (chapter-9 gates
+   * EP0 dispatch on device_state in {ATTACHED, ADDRESSED, CONFIGURED}). */
+  const unsigned long new_state = internal_dvst_map_dvsq_to_ux_state(dvsq);
+  if ((dvsq & (uint16_t)k_ra_dvsq_suspend) == 0U) {
+    /* Any non-suspend bus-state transition invalidates the SETUP
+     * fingerprint: the host commonly re-issues GET_DESCRIPTOR(DEVICE)
+     * with the same wire bytes after SET_ADDRESS and after every bus
+     * reset. Without clearing fp here, dedup would skip those
+     * legitimate retries and stall enumeration. */
     s_last_dispatched_setup_fp = 0U;
   }
   device->ux_slave_device_state = new_state;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
     (void)_ux_system_slave->ux_system_slave_change_function(new_state);
+  }
+}
+
+/**
+ * @brief Record per-bit IRQ counters and the JLink-visible event ring.
+ *
+ * @details Bumps ``s_intsts0_valid_count`` / ``s_intsts0_ctrt_count`` /
+ * ``s_setup_token_observed`` then, when any event bit (CTRT / VALID /
+ * DVST) is set, snapshots the wire-format INTSTS0 along with the
+ * decoded CTSQ and DVSQ fields into the round-robin history ring (HUM
+ * Ch 36.2.14 / Ch 36.2.16). Folded out of ``ux_dcd_ra_usb_irq`` so the
+ * outer ISR-side trampoline stays under the NASA P10 Rule 4 size cap.
+ *
+ * @param[in] intsts0 INTSTS0 snapshot forwarded by ``ra_usb_dispatch``.
+ *
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @pre Caller is on the ISR callback path.
+ * @post Counters / history ring updated; no INTSTS0 W0C write performed.
+ * @post No wire-side state mutated.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_record_snapshot(uint16_t intsts0)
+{
+  const uint16_t ctrt_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt);
+  const uint16_t dvst_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst);
+  const uint16_t valid_bit = (uint16_t)k_ra_intsts0_mask_valid;
+
+  if ((intsts0 & valid_bit) != 0U) {
+    s_intsts0_valid_count++;
+    /* VALID = "USB Request Reception Flag" (HUM Ch 37.2.18 p 2081);
+     * fold into the canonical SETUP-arrival counter. */
+    s_setup_token_observed++;
+  }
+  if ((intsts0 & ctrt_bit) != 0U) {
+    s_intsts0_ctrt_count++;
+  }
+  const uint16_t interesting_mask = (uint16_t)(ctrt_bit | valid_bit | dvst_bit);
+  if ((intsts0 & interesting_mask) != 0U) {
+    const uint8_t slot =
+      (uint8_t)(s_intsts0_snapshot_count % (uint32_t)k_ra_usb_dcd_intsts0_hist_n);
+    s_intsts0_snapshot[slot] = intsts0;
+    s_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
+    /* DVSQ field is bits 6:4 (HUM Ch 36.2.16 p 1986). */
+    s_dvsq_history[slot] =
+      (uint8_t)((intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq) >> (uint8_t)k_ra_int0_dvsq_shift);
+    s_intsts0_snapshot_count++;
+  }
+}
+
+/**
+ * @brief Capture DVSTCTR0 / RHST history and dispatch to internal_handle_dvst.
+ *
+ * @details Pulled out of ``ux_dcd_ra_usb_irq`` so the outer ISR fits in
+ * one page. Reads DVSTCTR0 (HUM Ch 36.2.5 p 1971) for RHST history,
+ * latches the first-observed value into ``s_dvstctr0_at_first_dvst``,
+ * then calls ``internal_handle_dvst`` to perform the actual state-
+ * machine update.
+ *
+ * @param[in] speed Which controller fired (FS or HS).
+ * @param[in] intsts0 INTSTS0 snapshot (forwarded to internal_handle_dvst).
+ *
+ * @pre Caller has already verified the DVST bit is set in ``intsts0``.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post ``s_dvst_irq_count`` and ``s_rhst_history_count`` incremented.
+ * @post ``internal_handle_dvst`` has run.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_dvst_prelude(ra_usb_speed_t speed, uint16_t intsts0)
+{
+  s_dvst_irq_count++;
+  volatile r_usb_regs_t* reg      = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+  const uint16_t         dvstctr0 = reg->DVSTCTR0;
+  if (s_dvstctr0_at_first_dvst == 0xFFFFU) {
+    s_dvstctr0_at_first_dvst = dvstctr0;
+  }
+  /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
+  const uint8_t rhst_mask   = 0x07U;
+  const uint8_t hist_slot   = (uint8_t)(s_rhst_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
+  s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
+  s_rhst_history_count++;
+  internal_handle_dvst(speed, intsts0);
+}
+
+/**
+ * @brief Finalise a stashed transfer on the IN/OUT side after a BRDY/BEMP.
+ *
+ * @details Per-pipe body of the post-event walk in ``ux_dcd_ra_usb_irq``.
+ * For IN pipes the data was already pushed in ``TRANSFER_REQUEST`` so
+ * we just post UX_SUCCESS and wake the waiter. For OUT pipes we try to
+ * drain via ``ra_usb_queue_out``: on ok we post UX_SUCCESS, on
+ * ``k_ra_err_no_data`` we rearm NRDYSTS / PID per HUM Ch 36.2.13 +
+ * Ch 36.2.27 so the next host OUT token gets ACKed.
+ *
+ * @param[in] i Pipe index (1..max_pipes-1).
+ *
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @pre Caller is on the ISR callback path.
+ * @post If a transfer completed, ``s_dcd.pipes[i].xfer`` is nullptr and
+ *       the semaphore has been put (non-standalone builds).
+ * @post On NRDY the OUT pipe is rearmed; no semaphore wake.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_walk_pipe(uint8_t i)
+{
+  s_diag.irq_walk_total++;
+  UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
+  if (tr == nullptr) {
+    return;
+  }
+  if (i == 2U) {
+    s_diag.irq_walk_pipe2_seen++;
+  }
+  if (s_dcd.pipes[i].dir_in != 0U) {
+    /* IN: data was already pushed in TRANSFER_REQUEST. Mark complete
+     * on the BEMP that follows. */
+    tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+    s_dcd.pipes[i].xfer                           = nullptr;
+#ifndef UX_DEVICE_STANDALONE
+    (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
+#endif
+    return;
+  }
+
+  uint16_t       len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const ra_err_t qo_err =
+    ra_usb_queue_out(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
+  if (qo_err == k_ra_ok) {
+    if (i == 2U) {
+      s_diag.irq_walk_pipe2_complete++;
+    }
+    tr->ux_slave_transfer_request_actual_length   = len;
+    tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+    s_dcd.pipes[i].xfer                           = nullptr;
+#ifndef UX_DEVICE_STANDALONE
+    (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
+#endif
+  } else if (qo_err == k_ra_err_no_data) {
+    if (i == 2U) {
+      s_diag.irq_walk_pipe2_no_data++;
+    }
+    /* No BRDY pending; proactively ack NRDYSTS for this pipe and force
+     * PID=BUF so the next host OUT is ACKed. HUM Ch 36.2.13 NRDYSTS
+     * (W0C) + Ch 36.2.27 PIPECTR.PID. */
+    (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
   }
 }
 
@@ -2067,6 +2543,8 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
   s_intsts0_last_dispatch = intsts0;
   s_intsts0_observed_or   = (uint16_t)(s_intsts0_observed_or | intsts0);
 
+  internal_irq_record_snapshot(intsts0);
+
   const uint16_t ctrt_bit   = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt);
   const uint16_t dvst_bit   = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst);
   const uint16_t valid_bit  = (uint16_t)k_ra_intsts0_mask_valid;
@@ -2074,75 +2552,24 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
   const bool     have_valid = (intsts0 & valid_bit) != 0U;
   const bool     have_dvst  = (intsts0 & dvst_bit) != 0U;
 
-  if (have_valid) {
-    s_intsts0_valid_count++;
-    /* HUM Ch 37.2.18 INTSTS0 p 2081: VALID = "USB Request Reception
-     * Flag", set on SETUP-packet receipt in device mode. Fold this
-     * into the canonical SETUP-arrival counter so a single JLink read
-     * answers "did the chip ever see a SETUP token?" without having to
-     * inspect ::s_dcpctr_pre_rearm separately. */
-    s_setup_token_observed++;
-  }
-  if (have_ctrt) {
-    s_intsts0_ctrt_count++;
-  }
-  /* Record any "interesting" tick into the JLink-readable ring. The
-   * three event bits are folded into a single mask test to keep the
-   * decision count at one boolean per branch (per docs/MCDC.md,
-   * compound boolean decisions need paired test vectors). */
-  const uint16_t interesting_mask = (uint16_t)(ctrt_bit | valid_bit | dvst_bit);
-  if ((intsts0 & interesting_mask) != 0U) {
-    const uint8_t slot =
-      (uint8_t)(s_intsts0_snapshot_count % (uint32_t)k_ra_usb_dcd_intsts0_hist_n);
-    s_intsts0_snapshot[slot] = intsts0;
-    s_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
-    /* DVSQ field is bits 6:4; shift right 4 so the slot reads 0..7 in
-     * the encoding documented at ::s_dvsq_history. HUM Ch 36.2.16
-     * INTSTS0 p 1986. */
-    s_dvsq_history[slot] =
-      (uint8_t)((intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq) >> (uint8_t)k_ra_int0_dvsq_shift);
-    s_intsts0_snapshot_count++;
-  }
-
   /* DVST FIRST -- bus reset / suspend / resume must be processed
    * BEFORE the SETUP drain. internal_handle_dvst calls
    * ra_usb_device_busreset_rearm on Default-state which RESETS
-   * DCPCFG/DCPMAXP/DCPCTR (clearing PID and FIFO). If we drain the
-   * SETUP and push descriptor data FIRST and then run DVST, the
-   * busreset_rearm wipes our just-pushed data and PID=BUF, leaving
-   * the chip NAK'ing the host's IN tokens until timeout (Linux
-   * dmesg "device descriptor read/8, error -110"). Order: rearm
-   * first, then process the SETUP that arrived AFTER the bus reset
-   * with a clean DCP. */
+   * DCPCFG/DCPMAXP/DCPCTR. Draining first would have the response
+   * wiped, leaving the chip NAK'ing host IN tokens. */
   if (have_dvst) {
-    s_dvst_irq_count++;
-    volatile r_usb_regs_t* reg      = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
-    const uint16_t         dvstctr0 = reg->DVSTCTR0;
-    if (s_dvstctr0_at_first_dvst == 0xFFFFU) {
-      s_dvstctr0_at_first_dvst = dvstctr0;
-    }
-    /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
-    const uint8_t rhst_mask = 0x07U;
-    const uint8_t hist_slot = (uint8_t)(s_rhst_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
-    s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
-    s_rhst_history_count++;
-    internal_handle_dvst(speed, intsts0);
+    internal_irq_dvst_prelude(speed, intsts0);
   }
 
   /* SETUP / chapter-9 path runs AFTER DVST so the busreset_rearm
-   * has already restored DCP defaults, then this path drains the
-   * SETUP latch and pushes the response data into a clean FIFO. */
+   * has already restored DCP defaults. */
   if (have_ctrt) {
     s_ctrt_irq_count++;
     internal_handle_ctrt(speed, intsts0);
   }
-  /* VALID-without-CTRT fallback. The polled worker can race the
-   * controller and snapshot INTSTS0 between the VALID-set edge and
-   * the CTRT-set edge -- on HS this window is wider because each
-   * dispatch tick yields the CPU. ra_usb_dispatch preserves VALID
-   * on its W0C ack so the fallback can drain USBREQ/USBVAL/USBINDX/
-   * USBLENG even if CTRT was already cleared by a previous tick.
-   * HUM Ch 36.2.14 INTSTS0 p 1985 (VALID = bit 3, CTSQ = bits 0..2). */
+  /* VALID-without-CTRT fallback (HUM Ch 36.2.14 p 1985): the polled
+   * worker can race the controller between the VALID and CTRT edges;
+   * ra_usb_dispatch preserves VALID on W0C ack so we can still drain. */
   else if (have_valid) {
     internal_handle_ctrt(speed, intsts0);
   }
@@ -2151,51 +2578,7 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
    * returns k_ra_err_no_data if BRDY hasn't fired for that pipe;
    * we just retry on the next IRQ in that case. */
   for (uint8_t i = 1U; i < (uint8_t)k_ux_dcd_ra_usb_max_pipes; i++) {
-    s_diag.irq_walk_total++;
-    UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
-    if (tr == nullptr) {
-      continue;
-    }
-    if (i == 2U) {
-      s_diag.irq_walk_pipe2_seen++;
-    }
-    if (s_dcd.pipes[i].dir_in != 0U) {
-      /* IN: data was already pushed in TRANSFER_REQUEST. Mark
-       * complete on the BEMP that follows. */
-      tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-      s_dcd.pipes[i].xfer                           = nullptr;
-#ifndef UX_DEVICE_STANDALONE
-      (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
-#endif
-    } else {
-      uint16_t       len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-      const ra_err_t qo_err =
-        ra_usb_queue_out(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
-      if (qo_err == k_ra_ok) {
-        if (i == 2U) {
-          s_diag.irq_walk_pipe2_complete++;
-        }
-        tr->ux_slave_transfer_request_actual_length   = len;
-        tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-        s_dcd.pipes[i].xfer                           = nullptr;
-#ifndef UX_DEVICE_STANDALONE
-        (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
-#endif
-      } else if (qo_err == k_ra_err_no_data) {
-        if (i == 2U) {
-          s_diag.irq_walk_pipe2_no_data++;
-        }
-        /* No BRDY pending. The RA8D2 USB single-buffered OUT pipe
-         * state machine can leave PID at NAK between drains; if the
-         * controller has already responded NAK to one or more host
-         * OUT tokens (NRDYSTS bit `i` accumulating), the pipe will
-         * stay parked at NAK indefinitely and the host (macOS) gives
-         * up. Proactively ack NRDYSTS for this pipe and force
-         * PID=BUF so the next host OUT token is ACKed.
-         * HUM Ch 36.2.13 NRDYSTS (W0C) + Ch 36.2.27 PIPECTR.PID. */
-        (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
-      }
-    }
+    internal_irq_walk_pipe(i);
   }
 }
 
@@ -2222,23 +2605,35 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
  *
  * @since 0.1.0
  */
-ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
+/**
+ * @brief Bind ``_ux_system_slave->ux_system_slave_dcd`` to this bridge.
+ *
+ * @details Wires the USBX DCD ownership block to the bridge's dispatcher
+ * trampoline, resets the per-pipe transfer stash, then registers the
+ * controller's ELC event onto an NVIC line via ``ra_isr_register``.
+ *
+ * @param[in] speed Which controller (FS or HS).
+ *
+ * @return ``k_ra_ok`` on success, otherwise the failing ``ra_err_t``.
+ * @retval k_ra_ok Bridge attached and IRQ line armed.
+ * @retval k_ra_err_invalid_state ``_ux_system_slave`` not bound.
+ *
+ * @pre ``ra_usb_device_init`` and ``ra_usb_attach_handler`` have succeeded.
+ * @pre Caller is in single-threaded init context.
+ * @post ``_ux_system_slave->ux_system_slave_dcd`` references this bridge.
+ * @post NVIC line for the controller is armed and pointed at the trampoline.
+ *
+ * @note Not thread-safe; init-time only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_init_bind_owner(ra_usb_speed_t speed)
 {
-  if ((uint8_t)speed > (uint8_t)k_ra_usb_speed_hs) {
-    return k_ra_err_invalid_arg;
-  }
-  RA_RETURN_ON_ERROR(ra_usb_device_init(speed), s_tag, "ra_usb_device_init");
-  RA_RETURN_ON_ERROR(ra_usb_attach_handler(internal_event_cb, nullptr),
-                     s_tag,
-                     "ra_usb_attach_handler");
-
-  /* Wire ourselves into _ux_system_slave -> ux_system_slave_dcd. */
   if (_ux_system_slave == UX_NULL) {
     return k_ra_err_invalid_state;
   }
   UX_SLAVE_DCD* owner                     = &_ux_system_slave->ux_system_slave_dcd;
   owner->ux_slave_dcd_status              = UX_DCD_STATUS_OPERATIONAL;
-  owner->ux_slave_dcd_controller_type     = 99U; /* RA-USB private id.    */
+  owner->ux_slave_dcd_controller_type     = 99U; /* RA-USB private id. */
   owner->ux_slave_dcd_function            = _ux_dcd_ra_usb_function;
   owner->ux_slave_dcd_controller_hardware = (void*)&s_dcd;
 
@@ -2250,16 +2645,8 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
     s_dcd.pipes[i].xfer = nullptr;
   }
 
-  /* Wire the controller's ELC event onto an NVIC line via the
-   * substrate. ra_isr_init is idempotent and safe to call here even
-   * if a previous module already initialised the table (it clears
-   * any unused slots back to a known state but our register call
-   * follows immediately so our slot is repopulated before any IRQ
-   * could fire). HUM Ch 13 NVIC + Ch 14 ICU IELSR. The previous
-   * HardFault attributed to ra_isr_register was actually caused by
-   * the vector table aliasing every IRQ slot to Default_Handler
-   * (bkpt #0); the per-app vector_table.c now forwards every slot
-   * to ra_isr_dispatch, so registration is safe. */
+  /* Wire the controller's ELC event onto an NVIC line. ra_isr_init is
+   * idempotent. HUM Ch 13 NVIC + Ch 14 ICU IELSR. */
   RA_RETURN_ON_ERROR(ra_isr_init(), s_tag, "ra_isr_init");
   RA_RETURN_ON_ERROR(ra_isr_register(internal_pick_event(speed),
                                      internal_pick_isr(speed),
@@ -2268,28 +2655,32 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
                                      nullptr),
                      s_tag,
                      "ra_isr_register");
+  return k_ra_ok;
+}
 
-  /* Tell USBX system the speed. The HS-controller path reports HS so
-   * the chapter-9 dispatcher binds against the HS device-framework
-   * slot (512-byte bulk MPS), which is what the host expects after a
-   * successful HS chirp. The FS-controller path keeps reporting FS.
-   * (Earlier revisions forced FS even on the HS controller as a
-   * workaround for a PHY-PLL clock-config bug -- now fixed by
-   * ra_usb.c programming PHYSET.CLKSEL=24 MHz to match the EK-RA8D2
-   * EXTAL crystal, per HUM Ch 37.3.3 Table 37.17.) */
-  _ux_system_slave->ux_system_slave_speed =
-    (speed == k_ra_usb_speed_hs) ? UX_HIGH_SPEED_DEVICE : UX_FULL_SPEED_DEVICE;
-
-  /* Mirror the controller-bring-up work upstream DCDs do in their
-   * "initialize_complete" hook (see ux_dcd_sim_slave_initialize_complete.c).
-   * _ux_device_stack_initialize only stores the FS/HS framework
-   * pointer pairs and allocates the EP0 data buffer; the active
-   * device_framework / device_framework_length pair, the parsed
-   * device descriptor, the EP0 transfer-request endpoint binding
-   * and DCD CREATE_ENDPOINT for EP0 must be done by the DCD or the
-   * chapter-9 dispatcher silently STALLs the very first
-   * GET_DESCRIPTOR(DEVICE) request (DCPCTR.PID -> 0x42 / STALL). */
-  UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
+/**
+ * @brief Select the active device-framework pair and parse the descriptor.
+ *
+ * @details Mirrors the work upstream DCDs do in their
+ * ``initialize_complete`` hook (see ux_dcd_sim_slave_initialize_complete.c).
+ * Picks the HS or FS device-framework slot based on
+ * ``ux_system_slave_speed``, then parses the device descriptor so EP0's
+ * MaxPacketSize0 is available below.
+ *
+ * @param[in,out] device USBX peripheral device to populate (USBX vendor
+ *                       type ``UX_SLAVE_DEVICE`` -- not renamed; legacy
+ *                       external API symbol).
+ *
+ * @pre ``_ux_system_slave`` is non-null with framework pointers set.
+ * @pre ``device`` is the bound peripheral device.
+ * @post Active framework pointers populated.
+ * @post ``device->ux_slave_device_descriptor`` parsed when framework non-null.
+ *
+ * @note Not thread-safe; init-time only.
+ * @since 0.1.0
+ */
+static void internal_init_parse_framework(UX_SLAVE_DEVICE* device)
+{
   if (_ux_system_slave->ux_system_slave_speed == UX_HIGH_SPEED_DEVICE) {
     _ux_system_slave->ux_system_slave_device_framework =
       _ux_system_slave->ux_system_slave_device_framework_high_speed;
@@ -2308,7 +2699,32 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
                                  UX_DEVICE_DESCRIPTOR_ENTRIES,
                                  (UCHAR*)&device->ux_slave_device_descriptor);
   }
+}
 
+/**
+ * @brief Bind the EP0 transfer-request endpoint and run CREATE_ENDPOINT.
+ *
+ * @details Populates the EP0 transfer-request with timeout / buffer /
+ * MaxPacketSize0, calls the bridge dispatcher's CREATE_ENDPOINT path so
+ * EP0 ends up in the per-pipe stash, then stamps the device into the
+ * ATTACHED state so the chapter-9 dispatcher accepts the host's first
+ * SETUP (gate at ``_ux_device_stack_transfer_request``).
+ *
+ * @param[in,out] device USBX peripheral device (USBX vendor type
+ *                       ``UX_SLAVE_DEVICE`` -- not renamed; legacy
+ *                       external API symbol).
+ * @param[in] owner DCD ownership block returned from internal_init_bind_owner.
+ *
+ * @pre ``device`` has a parsed device descriptor.
+ * @pre ``owner`` is non-null.
+ * @post EP0 transfer request fully populated.
+ * @post ``device->ux_slave_device_state == UX_DEVICE_ATTACHED``.
+ *
+ * @note Not thread-safe; init-time only.
+ * @since 0.1.0
+ */
+static void internal_init_setup_ep0(UX_SLAVE_DEVICE* device, UX_SLAVE_DCD* owner)
+{
   UX_SLAVE_TRANSFER* tr =
     &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
   tr->ux_slave_transfer_request_timeout              = UX_MS_TO_TICK(UX_CONTROL_TRANSFER_TIMEOUT);
@@ -2331,19 +2747,64 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
   tr->ux_slave_transfer_request_phase                              = UX_TRANSFER_PHASE_DATA_IN;
 
   /* Stamp ATTACHED so the chapter-9 dispatcher accepts the host's
-   * first SETUP. USBX's _ux_device_stack_transfer_request gates EP0
-   * on state in {ATTACHED, ADDRESSED, CONFIGURED}; .bss-zero RESET
-   * (0) returns UX_TRANSFER_NOT_READY and the chip hangs. The
-   * polled DVSQ sync in the dispatch worker keeps this in sync with
-   * subsequent bus events. */
+   * first SETUP (gate is state in {ATTACHED, ADDRESSED, CONFIGURED}). */
   device->ux_slave_device_state = (unsigned long)UX_DEVICE_ATTACHED;
+}
 
-  /* No polled-dispatch worker is spawned: SETUP / BRDY / BEMP /
-   * DVST drain INTSTS0 from the NVIC ISR registered above. */
+/**
+ * @brief Bring up the USBX DCD bridge for the selected RA8D2 USB controller.
+ *
+ * @details Initialises the underlying ``ra_usb_*`` register layer for the
+ * given speed (FS or HS), attaches the bridge's ``internal_event_cb`` so
+ * the dispatcher can re-enter USBX, binds the controller into the USBX
+ * DCD ownership block (``_ux_system_slave``), wires the matching ELC
+ * event into the NVIC, parses the active device descriptor framework,
+ * and stamps EP0 so the chapter-9 dispatcher accepts the host's first
+ * SETUP token. Idempotent across calls: re-running with the same speed
+ * is a no-op once ``s_dcd.state`` has reached ``ready``.
+ *
+ * @param[in] speed Which controller to bring up
+ *                  (``k_ra_usb_speed_fs`` or ``k_ra_usb_speed_hs``).
+ *
+ * @return ``ra_err_t`` status code.
+ * @retval k_ra_ok Bridge fully initialised and ready for enumeration.
+ * @retval k_ra_err_invalid_arg ``speed`` out of range.
+ * @retval k_ra_err_internal Underlying ``ra_usb_*`` call rejected the
+ *                           initialisation step (propagated via
+ *                           ``RA_RETURN_ON_ERROR``).
+ *
+ * @pre ``_ux_system_slave`` is bound by ``_ux_device_stack_initialize``.
+ * @pre Caller is on the USBX device task / init context (not in IRQ).
+ * @post ``s_dcd.state`` is ``k_ux_dcd_ra_usb_state_ready`` on success.
+ * @post EP0 transfer request is populated and the device is in ATTACHED state.
+ *
+ * @note Not thread-safe; intended to run once during USBX init.
+ * @since 0.1.0
+ */
+ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
+{
+  if ((uint8_t)speed > (uint8_t)k_ra_usb_speed_hs) {
+    return k_ra_err_invalid_arg;
+  }
+  RA_RETURN_ON_ERROR(ra_usb_device_init(speed), s_tag, "ra_usb_device_init");
+  RA_RETURN_ON_ERROR(ra_usb_attach_handler(internal_event_cb, nullptr),
+                     s_tag,
+                     "ra_usb_attach_handler");
 
-  /* Bisect probes: SYSCFG/LPSTS state captured at the END of DCD init,
-   * BEFORE the application calls ra_usb_device_attach(true). HUM
-   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
+  RA_RETURN_ON_ERROR(internal_init_bind_owner(speed), s_tag, "bind_owner");
+
+  /* Tell USBX system the speed. HS-controller reports HS (512-byte bulk
+   * MPS); FS-controller reports FS. */
+  _ux_system_slave->ux_system_slave_speed =
+    (speed == k_ra_usb_speed_hs) ? UX_HIGH_SPEED_DEVICE : UX_FULL_SPEED_DEVICE;
+
+  UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
+  internal_init_parse_framework(device);
+  internal_init_setup_ep0(device, s_dcd.owner);
+
+  /* Bisect probes: SYSCFG/LPSTS state at end of DCD init, BEFORE the
+   * application calls ra_usb_device_attach(true). HUM Ch 37.2.1 SYSCFG
+   * p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
   if (speed == k_ra_usb_speed_hs) {
     s_syscfg_after_dcd_init = ra_usb_hs()->SYSCFG;
     s_lpsts_after_dcd_init  = *ra_usbhs_lpsts();

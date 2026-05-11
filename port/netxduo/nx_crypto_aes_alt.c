@@ -238,6 +238,176 @@ static UCHAR priv_map_mode(UINT alg, UINT op, ra_rsip_aes_mode_t* mode, ra_rsip_
 }
 
 /**
+ * @struct nx_aes_alt_op_args_t
+ * @brief Forwarded argument bundle for the AES operation entry point.
+ *
+ * @details
+ * Groups the 14 parameters NetX Crypto passes to
+ * ``_nx_crypto_method_aes_operation`` so the wrap function and its
+ * helpers can pass the full request around without re-listing the
+ * signature at every call site. Layout is opaque to NetX; the wrap
+ * function fills it once and the helpers consume by pointer.
+ */
+typedef struct {
+  UINT                            op;                    /**< NetX op selector. */
+  VOID*                           handle;                /**< NetX session ptr. */
+  struct NX_CRYPTO_METHOD_STRUCT* method;                /**< Algorithm entry.  */
+  UCHAR*                          key;                   /**< Caller key.       */
+  NX_CRYPTO_KEY_SIZE              key_size_in_bits;      /**< Key length.       */
+  UCHAR*                          input;                 /**< Input buffer.     */
+  ULONG                           input_length_in_byte;  /**< Input length.     */
+  UCHAR*                          iv_ptr;                /**< IV pointer.       */
+  UCHAR*                          output;                /**< Output buffer.    */
+  ULONG                           output_length_in_byte; /**< Output capacity.  */
+  VOID*                           crypto_metadata;       /**< Metadata block.   */
+  ULONG                           crypto_metadata_size;  /**< Metadata size.    */
+  VOID*                           packet_ptr;            /**< Packet context.   */
+  VOID (*hw_cb)(VOID*, UINT);                            /**< HW completion cb. */
+} nx_aes_alt_op_args_t;
+
+/**
+ * @brief Forward an AES operation to the upstream software path.
+ *
+ * @details
+ * Unpacks the bundled ``nx_aes_alt_op_args_t`` and invokes the original
+ * ``__real__nx_crypto_method_aes_operation`` provided by NetX Crypto.
+ * Used both as the unconditional path when the accelerator is not
+ * eligible and as a defensive fallback inside the accelerated path.
+ *
+ * @param[in] a Bundled argument set originally passed to the wrap;
+ *              non-NULL, fully populated by the wrapper.
+ *
+ * @return Upstream return value from
+ *         ``__real__nx_crypto_method_aes_operation``.
+ * @retval NX_CRYPTO_SUCCESS Upstream completed successfully.
+ * @retval other Any non-zero NetX Crypto error propagated unchanged.
+ *
+ * @pre ``a != NULL``.
+ * @pre ``a->method != NULL`` (NetX never invokes the op without a method).
+ * @post No state owned by this shim is modified.
+ * @post The bundled arguments are passed through unchanged.
+ *
+ * @note Not thread-safe; caller serialises per NetX Crypto API rules.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_forward_op(const nx_aes_alt_op_args_t* a)
+{
+  return __real__nx_crypto_method_aes_operation(a->op,
+                                                a->handle,
+                                                a->method,
+                                                a->key,
+                                                a->key_size_in_bits,
+                                                a->input,
+                                                a->input_length_in_byte,
+                                                a->iv_ptr,
+                                                a->output,
+                                                a->output_length_in_byte,
+                                                a->crypto_metadata,
+                                                a->crypto_metadata_size,
+                                                a->packet_ptr,
+                                                a->hw_cb);
+}
+
+/**
+ * @brief Decide whether the operation must fall back to the software path.
+ *
+ * @details
+ * The accelerated path requires: an accelerated algorithm (CBC / CTR),
+ * a bulk encrypt or decrypt op (not init / update / finalise), a
+ * metadata area large enough to host the trailing wrapped key, and a
+ * key that ``..._init`` actually installed.
+ *
+ * @param[in] a Bundled argument set.
+ *
+ * @return 1U if the caller must defer to ``priv_forward_op``; 0U if
+ *         the hardware path is eligible.
+ * @retval 1U Operation must fall back to the upstream software path.
+ * @retval 0U Operation is eligible for the RSIP accelerator path.
+ *
+ * @pre ``a != NULL``.
+ * @pre ``a->method != NULL`` (vetted by the NetX Crypto entry point).
+ * @post No state owned by this shim is modified.
+ * @post The decision is a pure function of the bundled arguments.
+ *
+ * @note Pure inspection; thread-safe with respect to shim state. Caller
+ *       still serialises per NetX Crypto API rules.
+ *
+ * @since 0.1.0
+ */
+static UCHAR priv_must_fallback(const nx_aes_alt_op_args_t* a)
+{
+  if (priv_alg_is_accelerated(a->method->nx_crypto_algorithm) == 0U) {
+    return 1U;
+  }
+  if (a->op != (UINT)NX_CRYPTO_ENCRYPT && a->op != (UINT)NX_CRYPTO_DECRYPT) {
+    return 1U;
+  }
+  if (a->crypto_metadata_size < (sizeof(NX_CRYPTO_AES) + sizeof(nx_aes_alt_meta_t))) {
+    return 1U;
+  }
+  if (priv_meta_of(a->crypto_metadata)->ready == 0U) {
+    return 1U;
+  }
+  return 0U;
+}
+
+/**
+ * @brief Execute the accelerated AES bulk operation on RSIP.
+ *
+ * @details
+ * Translates the NetX algorithm/op pair into RSIP enums, range-checks
+ * the output buffer, then submits one ``ra_rsip_aes_cipher`` call. If
+ * the algorithm/op cannot be mapped (defensive -- the caller already
+ * vetted accelerated-ness), defers to the upstream software path.
+ *
+ * @param[in] a Bundled argument set.
+ *
+ * @return ``NX_CRYPTO_SUCCESS`` on success;
+ *         ``NX_CRYPTO_INVALID_BUFFER_SIZE`` when output is too small;
+ *         ``NX_CRYPTO_NOT_SUCCESSFUL`` when RSIP rejects the request;
+ *         upstream error code on software-path fallback.
+ * @retval NX_CRYPTO_SUCCESS RSIP completed the cipher successfully.
+ * @retval NX_CRYPTO_INVALID_BUFFER_SIZE Output buffer smaller than input.
+ * @retval NX_CRYPTO_NOT_SUCCESSFUL RSIP rejected the request.
+ * @retval other Upstream NetX error from the software fallback path.
+ *
+ * @pre ``a != NULL``.
+ * @pre ``priv_must_fallback(a) == 0U`` (caller already vetted eligibility).
+ * @post On success, ``a->output`` holds ``a->input_length_in_byte``
+ *       cipher bytes.
+ * @post On failure, shim state is unchanged.
+ *
+ * @note Not thread-safe; caller serialises per NetX Crypto API rules
+ *       and the RSIP single-context contract.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_run_accelerated(const nx_aes_alt_op_args_t* a)
+{
+  ra_rsip_aes_mode_t mode = k_ra_rsip_aes_mode_ecb;
+  ra_rsip_aes_dir_t  dir  = k_ra_rsip_dir_encrypt;
+  if (priv_map_mode(a->method->nx_crypto_algorithm, a->op, &mode, &dir) == 0U) {
+    return priv_forward_op(a);
+  }
+  if (a->output_length_in_byte < a->input_length_in_byte) {
+    return (UINT)NX_CRYPTO_INVALID_BUFFER_SIZE;
+  }
+  nx_aes_alt_meta_t* meta = priv_meta_of(a->crypto_metadata);
+  ra_err_t           err  = ra_rsip_aes_cipher(&meta->key,
+                                               mode,
+                                               dir,
+                                               (const uint8_t*)a->iv_ptr,
+                                               (const uint8_t*)a->input,
+                                               (uint8_t*)a->output,
+                                               (uint32_t)a->input_length_in_byte);
+  if (err != k_ra_ok) {
+    return (UINT)NX_CRYPTO_NOT_SUCCESSFUL;
+  }
+  return (UINT)NX_CRYPTO_SUCCESS;
+}
+
+/**
  * @brief ALT wrapper for ``_nx_crypto_method_aes_operation``.
  *
  * @details
@@ -270,112 +440,26 @@ UINT __wrap__nx_crypto_method_aes_operation(UINT                            op,
   if (method == NX_CRYPTO_NULL || crypto_metadata == NX_CRYPTO_NULL) {
     return (UINT)NX_CRYPTO_PTR_ERROR;
   }
-
-  if (priv_alg_is_accelerated(method->nx_crypto_algorithm) == 0U) {
-    return __real__nx_crypto_method_aes_operation(op,
-                                                  handle,
-                                                  method,
-                                                  key,
-                                                  key_size_in_bits,
-                                                  input,
-                                                  input_length_in_byte,
-                                                  iv_ptr,
-                                                  output,
-                                                  output_length_in_byte,
-                                                  crypto_metadata,
-                                                  crypto_metadata_size,
-                                                  packet_ptr,
-                                                  hw_cb);
+  const nx_aes_alt_op_args_t a = {
+    .op                    = op,
+    .handle                = handle,
+    .method                = method,
+    .key                   = key,
+    .key_size_in_bits      = key_size_in_bits,
+    .input                 = input,
+    .input_length_in_byte  = input_length_in_byte,
+    .iv_ptr                = iv_ptr,
+    .output                = output,
+    .output_length_in_byte = output_length_in_byte,
+    .crypto_metadata       = crypto_metadata,
+    .crypto_metadata_size  = crypto_metadata_size,
+    .packet_ptr            = packet_ptr,
+    .hw_cb                 = hw_cb,
+  };
+  if (priv_must_fallback(&a) != 0U) {
+    return priv_forward_op(&a);
   }
-
-  /* Bulk encrypt/decrypt path only -- defer init/update/finalise
-   * variants to upstream which carries the multi-block state. */
-  if (op != (UINT)NX_CRYPTO_ENCRYPT && op != (UINT)NX_CRYPTO_DECRYPT) {
-    return __real__nx_crypto_method_aes_operation(op,
-                                                  handle,
-                                                  method,
-                                                  key,
-                                                  key_size_in_bits,
-                                                  input,
-                                                  input_length_in_byte,
-                                                  iv_ptr,
-                                                  output,
-                                                  output_length_in_byte,
-                                                  crypto_metadata,
-                                                  crypto_metadata_size,
-                                                  packet_ptr,
-                                                  hw_cb);
-  }
-
-  if (crypto_metadata_size < (sizeof(NX_CRYPTO_AES) + sizeof(nx_aes_alt_meta_t))) {
-    return __real__nx_crypto_method_aes_operation(op,
-                                                  handle,
-                                                  method,
-                                                  key,
-                                                  key_size_in_bits,
-                                                  input,
-                                                  input_length_in_byte,
-                                                  iv_ptr,
-                                                  output,
-                                                  output_length_in_byte,
-                                                  crypto_metadata,
-                                                  crypto_metadata_size,
-                                                  packet_ptr,
-                                                  hw_cb);
-  }
-
-  nx_aes_alt_meta_t* meta = priv_meta_of(crypto_metadata);
-  if (meta->ready == 0U) {
-    return __real__nx_crypto_method_aes_operation(op,
-                                                  handle,
-                                                  method,
-                                                  key,
-                                                  key_size_in_bits,
-                                                  input,
-                                                  input_length_in_byte,
-                                                  iv_ptr,
-                                                  output,
-                                                  output_length_in_byte,
-                                                  crypto_metadata,
-                                                  crypto_metadata_size,
-                                                  packet_ptr,
-                                                  hw_cb);
-  }
-
-  ra_rsip_aes_mode_t mode = k_ra_rsip_aes_mode_ecb;
-  ra_rsip_aes_dir_t  dir  = k_ra_rsip_dir_encrypt;
-  if (priv_map_mode(method->nx_crypto_algorithm, op, &mode, &dir) == 0U) {
-    return __real__nx_crypto_method_aes_operation(op,
-                                                  handle,
-                                                  method,
-                                                  key,
-                                                  key_size_in_bits,
-                                                  input,
-                                                  input_length_in_byte,
-                                                  iv_ptr,
-                                                  output,
-                                                  output_length_in_byte,
-                                                  crypto_metadata,
-                                                  crypto_metadata_size,
-                                                  packet_ptr,
-                                                  hw_cb);
-  }
-
-  if (output_length_in_byte < input_length_in_byte) {
-    return (UINT)NX_CRYPTO_INVALID_BUFFER_SIZE;
-  }
-
-  ra_err_t err = ra_rsip_aes_cipher(&meta->key,
-                                    mode,
-                                    dir,
-                                    (const uint8_t*)iv_ptr,
-                                    (const uint8_t*)input,
-                                    (uint8_t*)output,
-                                    (uint32_t)input_length_in_byte);
-  if (err != k_ra_ok) {
-    return (UINT)NX_CRYPTO_NOT_SUCCESSFUL;
-  }
-  return (UINT)NX_CRYPTO_SUCCESS;
+  return priv_run_accelerated(&a);
 }
 
 /**
