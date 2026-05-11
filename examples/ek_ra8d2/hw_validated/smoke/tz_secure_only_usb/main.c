@@ -457,6 +457,128 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
+ * @brief Brings USBX system + device stack up with the FS framework.
+ *
+ * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
+ * @retval UX_SUCCESS Stack initialized.
+ *
+ * @pre USBX memory pool ``s_usbx_pool`` is at file scope.
+ * @pre Caller is in thread context (USBX requires ThreadX services).
+ * @post On success, the device stack accepts class registrations.
+ * @post On failure, USBX state is undefined; caller should bail.
+ *
+ * @note Single-call; not idempotent.
+ * @since 0.1.0
+ */
+static UINT demo_usbx_stack_up(void)
+{
+  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
+    return UX_ERROR;
+  }
+  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
+                                     0,
+                                     s_device_framework_fs,
+                                     sizeof(s_device_framework_fs),
+                                     s_string_framework,
+                                     sizeof(s_string_framework),
+                                     s_language_id_framework,
+                                     sizeof(s_language_id_framework),
+                                     UX_NULL);
+}
+
+/**
+ * @brief Registers the CDC-ACM class against the device-stack configuration.
+ *
+ * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
+ * @retval UX_SUCCESS Class registered.
+ *
+ * @pre ``demo_usbx_stack_up`` has succeeded.
+ * @pre ``demo_cdc_activate`` / ``demo_cdc_deactivate`` are defined.
+ * @post CDC-ACM class is bound to configuration 1, interface 0.
+ * @post Activation callback will post ``s_cdc_active_sem``.
+ *
+ * @note Not re-entrant.
+ * @since 0.1.0
+ */
+static UINT demo_cdc_class_register(void)
+{
+  UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
+    .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
+    .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
+    .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
+  };
+  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
+                                         _ux_device_class_cdc_acm_entry,
+                                         1,
+                                         0,
+                                         &cdc_params);
+}
+
+/**
+ * @brief Pin USBX peripheral state at CONFIGURED.
+ *
+ * @details Works around a residual DVSQ-poll race on this silicon that can
+ * leave ``ux_slave_device_state`` at ATTACHED after SET_CONFIGURATION,
+ * breaking ``_ux_device_class_cdc_acm_read``'s state gate. Safe to assert
+ * once ``s_cdc_acm`` is non-NULL.
+ *
+ * @pre Called from worker thread context.
+ * @pre ``s_cdc_acm`` is non-NULL (CDC class activated).
+ * @post ``_ux_system_slave->...ux_slave_device_state`` is CONFIGURED.
+ * @post Read/write APIs accept transfers.
+ *
+ * @note Inline candidate; called every iteration.
+ * @since 0.1.0
+ */
+static void demo_pin_configured_state(void)
+{
+  if (_ux_system_slave != UX_NULL) {
+    _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
+      (unsigned long)UX_DEVICE_CONFIGURED;
+  }
+}
+
+/**
+ * @brief One iteration of the CDC echo loop.
+ *
+ * @param[in,out] buf Scratch buffer (echo data).
+ * @param[in]     cap Buffer capacity in bytes.
+ *
+ * @pre Worker is running and ``s_cdc_acm`` is non-NULL.
+ * @pre ``buf`` is non-NULL with ``cap`` bytes.
+ * @post Diag counters updated.
+ * @post LED1 toggled once per echoed byte on success.
+ *
+ * @note Returns on each iteration; outer loop reinvokes.
+ * @since 0.1.0
+ */
+static void demo_echo_iter(UCHAR* buf, ULONG cap)
+{
+  demo_pin_configured_state();
+  ULONG n = 0UL;
+  s_demo_diag.loop_pre_read++;
+  UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n);
+  s_demo_diag.loop_post_read++;
+  if (read_status != UX_SUCCESS) {
+    tx_thread_sleep(k_demo_idle_ticks);
+    return;
+  }
+  s_demo_diag.loop_read_ok++;
+  if (n == 0UL) {
+    s_demo_diag.loop_read_zero++;
+    return;
+  }
+  s_demo_diag.loop_pre_write++;
+  if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+    return;
+  }
+  s_demo_diag.loop_post_write++;
+  for (ULONG i = 0UL; i < n; i++) {
+    (void)ra_board_led_toggle(k_ra_board_led1);
+  }
+}
+
+/**
  * @brief Worker thread entry. Brings USBX + CDC up, then echoes forever.
  *
  * @param[in] arg Unused (ThreadX entry signature).
@@ -471,37 +593,12 @@ static VOID demo_worker(ULONG arg)
 {
   (void)arg;
 
-  /* Bring USBX up. */
-  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
+  if (demo_usbx_stack_up() != UX_SUCCESS) {
     return;
   }
-  if (_ux_device_stack_initialize((UCHAR*)UX_NULL, /* HS framework            */
-                                  0,
-                                  s_device_framework_fs,
-                                  sizeof(s_device_framework_fs),
-                                  s_string_framework,
-                                  sizeof(s_string_framework),
-                                  s_language_id_framework,
-                                  sizeof(s_language_id_framework),
-                                  UX_NULL) != UX_SUCCESS) {
+  if (demo_cdc_class_register() != UX_SUCCESS) {
     return;
   }
-
-  /* Register CDC-ACM class against the configuration. */
-  UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
-    .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
-    .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
-    .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
-  };
-  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
-                                      _ux_device_class_cdc_acm_entry,
-                                      1, /* configuration #  */
-                                      0, /* interface #      */
-                                      &cdc_params) != UX_SUCCESS) {
-    return;
-  }
-
-  /* Plug our DCD bridge into the device stack and turn the bus on. */
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
     return;
   }
@@ -509,9 +606,7 @@ static VOID demo_worker(ULONG arg)
     return;
   }
 
-  /* Echo loop. */
   UCHAR buf[k_demo_echo_buf_bytes];
-  ULONG n = 0UL;
   while (1) {
     s_demo_diag.loop_iter++;
     if (s_cdc_acm == UX_NULL) {
@@ -522,39 +617,7 @@ static VOID demo_worker(ULONG arg)
       (void)tx_semaphore_get(&s_cdc_active_sem, TX_WAIT_FOREVER);
       continue;
     }
-    /* Pin USBX state at CONFIGURED on every iteration. The chip's
-     * DVSQ field is the source of truth for bus state and reads
-     * CONFIGURED once SET_CONFIGURATION lands; the polled DVSQ
-     * sync in the dispatch worker should keep ux_slave_device_state
-     * advanced, but on this silicon there is a residual race that
-     * leaves it at ATTACHED, breaking _ux_device_class_cdc_acm_read's
-     * state gate. Once s_cdc_acm is non-NULL the chapter-9 stack has
-     * already activated the class, so it is safe to assert
-     * CONFIGURED here. */
-    if (_ux_system_slave != UX_NULL) {
-      _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
-        (unsigned long)UX_DEVICE_CONFIGURED;
-    }
-    s_demo_diag.loop_pre_read++;
-    UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n);
-    s_demo_diag.loop_post_read++;
-    if (read_status != UX_SUCCESS) {
-      tx_thread_sleep(k_demo_idle_ticks);
-      continue;
-    }
-    s_demo_diag.loop_read_ok++;
-    if (n == 0UL) {
-      s_demo_diag.loop_read_zero++;
-      continue;
-    }
-    s_demo_diag.loop_pre_write++;
-    if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
-      continue;
-    }
-    s_demo_diag.loop_post_write++;
-    for (ULONG i = 0UL; i < n; i++) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
-    }
+    demo_echo_iter(buf, (ULONG)sizeof(buf));
   }
 }
 

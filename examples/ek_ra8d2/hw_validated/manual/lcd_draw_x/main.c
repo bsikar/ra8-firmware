@@ -95,12 +95,25 @@ static void lcd_draw_x(uint16_t color)
   __asm__ volatile("dsb" ::: "memory");
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+/**
+ * @brief Bring up clocks, MSTP, system tick and the on-board LEDs.
+ *
+ * @details
+ * First phase of the demo's startup sequence. Any failure halts in the
+ * red-LED panic loop -- there is no recovery path for a clock or pin
+ * misconfiguration.
+ *
+ * @pre Reset handler has populated ``.data`` / ``.bss``.
+ * @pre Interrupts are still globally disabled.
+ * @post Clocks, MSTP, system tick and both board LEDs are initialised.
+ * @post Global IRQs are enabled.
+ *
+ * @note Not thread-safe; single-shot startup helper.
+ * @since 0.1.0
+ */
+static void lcd_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
-
   if (ra_cgc_init() != k_ra_ok) {
     lcd_panic_halt();
   }
@@ -120,12 +133,27 @@ int32_t main(void)
     lcd_panic_halt();
   }
   ra_isr_globals_enable();
+}
 
-  ra_delay_ms(500U);
-
-  lcd_fb_fill(k_color_bg);
-  lcd_draw_x(k_color_x);
-
+/**
+ * @brief Bring up the panel and start GLCDC composited over the SRAM FB.
+ *
+ * @details
+ * Second phase of startup. Mirrors the original inline sequence: panel
+ * power-on, GLCDC pin/clock setup, settle delay, GLCDC controller init
+ * with the SRAM framebuffer as graphics layer 1, black BG, then show
+ * the layer. Any failure halts in the red-LED panic loop.
+ *
+ * @pre ::lcd_bringup_clocks has run successfully.
+ * @pre The framebuffer has already been painted.
+ * @post GLCDC is running with layer 1 visible.
+ * @post Panel back-light and 3.3 V rail are on.
+ *
+ * @note Not thread-safe; single-shot startup helper.
+ * @since 0.1.0
+ */
+static void lcd_bringup_panel(void)
+{
   if (ra_board_lcd_panel_power_on() != k_ra_ok) {
     lcd_panic_halt();
   }
@@ -152,6 +180,19 @@ int32_t main(void)
   if (ra_glcdc_layer1_show((uintptr_t)s_framebuffer) != k_ra_ok) {
     lcd_panic_halt();
   }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  lcd_bringup_clocks();
+  ra_delay_ms(500U);
+
+  lcd_fb_fill(k_color_bg);
+  lcd_draw_x(k_color_x);
+
+  lcd_bringup_panel();
 
   while (1) {
     (void)ra_board_led_toggle(k_ra_board_led_blue);

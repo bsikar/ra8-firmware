@@ -776,33 +776,33 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Worker thread entry. Brings USBX + CDC up, then echoes forever.
+ * @brief Bring up USBX system + device stack with HS+FS frameworks.
  *
- * @param[in] arg Unused (ThreadX entry signature).
+ * @details
+ * Initializes the USBX memory pool, then registers both HS and FS device
+ * frameworks. With the PHY CLKSEL=24 fix landed (see
+ * ra_usb.c::internal_usbhs_phy_bringup), the HS chirp completes correctly
+ * and the host expects HS-conformant descriptors with 512-byte bulk MPS.
+ * USBX picks the framework matching the negotiated bus speed
+ * (RHST=011 -> HS framework, RHST=010 -> FS framework).
  *
- * @pre ``tx_application_define`` started this thread auto-start.
- * @post Thread loops forever; never returns.
+ * @return true on success, false on any USBX failure.
+ * @retval true Both system and device stacks initialized.
+ * @retval false ``_ux_system_initialize`` or ``_ux_device_stack_initialize`` failed.
  *
- * @note Single-instance worker; not designed for re-entry.
+ * @pre USBX pool storage exists and is sized k_demo_usbx_pool_bytes.
+ * @post On success, the USBX stack is ready for class registration.
+ *
+ * @note Not thread-safe; called only from ``demo_worker``.
  * @since 0.1.0
  */
-static VOID demo_worker(ULONG arg)
+static bool demo_worker_usbx_init(void)
 {
-  (void)arg;
-
-  s_boot_probe = (uint32_t)k_boot_probe_thread_entry;
-  /* Bring USBX up. */
   s_boot_probe = (uint32_t)k_boot_probe_pre_sys_init;
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return;
+    return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
-  /* Populate BOTH framework slots. With the PHY CLKSEL=24 fix landed
-   * (see ra_usb.c::internal_usbhs_phy_bringup), the HS chirp completes
-   * correctly and the host expects HS-conformant descriptors with
-   * 512-byte bulk MPS. USBX picks the framework matching the
-   * negotiated bus speed (RHST=011 -> HS framework, RHST=010 -> FS
-   * framework). */
   if (_ux_device_stack_initialize(s_device_framework_hs,
                                   sizeof(s_device_framework_hs),
                                   s_device_framework_fs,
@@ -812,10 +812,31 @@ static VOID demo_worker(ULONG arg)
                                   s_language_id_framework,
                                   sizeof(s_language_id_framework),
                                   UX_NULL) != UX_SUCCESS) {
-    return;
+    return false;
   }
+  return true;
+}
 
-  /* Register CDC-ACM class against the configuration. */
+/**
+ * @brief Register the CDC-ACM class against configuration 1, interface 0.
+ *
+ * @details
+ * Wires the activate/deactivate callbacks so ``s_cdc_acm`` tracks the
+ * live class instance. Must be called after the device stack has been
+ * initialized and before ``ux_dcd_ra_usb_initialize``.
+ *
+ * @return true on success, false on USBX failure.
+ * @retval true CDC-ACM class registered.
+ * @retval false ``_ux_device_stack_class_register`` failed.
+ *
+ * @pre ``demo_worker_usbx_init`` returned true.
+ * @post CDC-ACM class is bound to configuration 1, interface 0.
+ *
+ * @note Not thread-safe; called only from ``demo_worker``.
+ * @since 0.1.0
+ */
+static bool demo_worker_register_cdc(void)
+{
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
@@ -827,72 +848,79 @@ static VOID demo_worker(ULONG arg)
                                       1, /* configuration #  */
                                       0, /* interface #      */
                                       &cdc_params) != UX_SUCCESS) {
-    return;
+    return false;
   }
+  return true;
+}
 
-  /* USBHS controller bring-up is now performed exactly once, inside
-   * ux_dcd_ra_usb_initialize below (which calls ra_usb_device_init
-   * itself). The PHY clock was armed in main() via
-   * ra_cgc_usbhs_pll_enable; PD07 role-select is owned by demo_pins_init.
-   * MSTPB12 ungate happens inside ra_usb_device_init via ra_mstp_enable.
-   *
-   * Previously this site called ra_board_usbhs_device_init() which also
-   * invoked ra_usb_device_init(hs), and ux_dcd_ra_usb_initialize then
-   * invoked ra_usb_device_init(hs) AGAIN. The duplicate PHY bring-up
-   * (HSE -> PLL CLKSEL bisect -> common init) re-cleared INTENB0 and
-   * left the controller in a state where chirp completed but the host
-   * never issued SETUP -- exactly the failure signature observed on
-   * J7. The FS demo never had this duplicate call, which is consistent
-   * with FS enumerating fine on the same hardware. */
-  s_boot_probe = (uint32_t)k_boot_probe_post_board_usbhs_init;
-
-  /* PHY analog "host-mode kick" + chip-level SYSCFG reset (DISABLED).
-   *
-   * Originally added when investigating the "host completes chirp but
-   * never sends SETUP" symptom. We left the block in place but
-   * compile-time disabled it via ``#if 0`` once the more likely root
-   * cause -- duplicate ra_usb_device_init() calls -- was identified
-   * and removed above. The kick wrote SYSCFG=0 and then re-asserted
-   * SCKE/HSE/USBE which clobbered every register the (now-removed)
-   * ra_board_usbhs_device_init had just programmed; running it after
-   * ux_dcd_ra_usb_initialize would clobber that init too, and running
-   * it BEFORE that init is redundant because ra_usb_device_init drives
-   * SYSCFG itself.
-   *
-   * Sequence (HUM Ch 37.2.1 SYSCFG p 2060):
-   *   1. Snapshot DPRPU/HSE/USBE/SCKE bits we want to preserve.
-   *   2. Set DCFM=1, DRPD=1, clear DPRPU; keep USBE/SCKE/HSE intact.
-   *   3. Sleep 2 ticks (~20 ms) so the analog block settles in host
-   *      mode and the bus pull-downs are sampled.
-   *   4. Chip-level reset: write SYSCFG=0 to drop USBE+everything,
-   *      then re-assert SCKE, HSE, USBE in the original device-mode
-   *      configuration with DPRPU still cleared (attach happens later
-   *      via ra_usb_device_attach which sets DPRPU).
-   *   5. Sleep 1 tick (~10 ms) to let the PHY relock.
-   */
-  /* Host-mode kick disabled -- see comment above. The variable is kept
-   * so JLink scripts that read it still link; it is now always 0. */
+/**
+ * @brief Plug the DCD bridge into the device stack and attach the bus.
+ *
+ * @details
+ * USBHS controller bring-up is performed exactly once, inside
+ * ``ux_dcd_ra_usb_initialize`` (which itself calls ``ra_usb_device_init``).
+ * The PHY clock was armed in main() via ``ra_cgc_usbhs_pll_enable``;
+ * PD07 role-select is owned by ``demo_pins_init``. MSTPB12 ungate happens
+ * inside ``ra_usb_device_init`` via ``ra_mstp_enable``.
+ *
+ * Previously this site called ``ra_board_usbhs_device_init()`` which also
+ * invoked ``ra_usb_device_init(hs)`` and ``ux_dcd_ra_usb_initialize`` then
+ * invoked it AGAIN. The duplicate PHY bring-up cleared INTENB0 and left
+ * the controller in a state where chirp completed but the host never
+ * issued SETUP -- exactly the failure signature observed on J7.
+ *
+ * The "host-mode kick" / SYSCFG reset block previously sitting between
+ * the two probes was compile-time disabled (#if 0) and has been removed;
+ * ``s_host_kick_done`` is left at 0 so JLink scripts that read it still
+ * link.
+ *
+ * @return true on success, false on any HAL failure.
+ * @retval true DCD initialized and bus attached at HS.
+ * @retval false ``ux_dcd_ra_usb_initialize`` or ``ra_usb_device_attach`` failed.
+ *
+ * @pre ``demo_worker_register_cdc`` returned true.
+ * @post Bus is attached at HS speed; controller is enumerating.
+ *
+ * @note Not thread-safe; called only from ``demo_worker``.
+ * @since 0.1.0
+ */
+static bool demo_worker_start_dcd(void)
+{
+  s_boot_probe     = (uint32_t)k_boot_probe_post_board_usbhs_init;
   s_host_kick_done = 0U;
-
-  /* Plug our DCD bridge into the device stack and turn the bus on. */
-  s_boot_probe = (uint32_t)k_boot_probe_pre_ux_dcd_init;
+  s_boot_probe     = (uint32_t)k_boot_probe_pre_ux_dcd_init;
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
-    return;
+    return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_ux_dcd_init;
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_attach;
   if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
-    return;
+    return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_dev_attach;
+  return true;
+}
 
-  /* Spawn the INTENB0 re-arm watchdog. USB Bus Reset on the RA8D2 HS
-   * controller auto-clears INTENB0 to 0 (verified live via JLink: a
-   * manual write of INTENB0 = 0xFF00 immediately resumed ISR firing
-   * after a host bus reset). The driver's ``busreset_rearm`` is
-   * supposed to do this from the DVST(=Default) ISR path, but the ISR
-   * cannot run while INTENB0 is zero. This polled watchdog breaks the
-   * chicken-and-egg by re-writing INTENB0 outside the ISR. */
+/**
+ * @brief Spawn the INTENB0 re-arm watchdog thread.
+ *
+ * @details
+ * USB Bus Reset on the RA8D2 HS controller auto-clears INTENB0 to 0
+ * (verified live via JLink: a manual write of INTENB0 = 0xFF00 immediately
+ * resumed ISR firing after a host bus reset). The driver's
+ * ``busreset_rearm`` is supposed to do this from the DVST(=Default) ISR
+ * path, but the ISR cannot run while INTENB0 is zero. This polled
+ * watchdog breaks the chicken-and-egg by re-writing INTENB0 outside the
+ * ISR.
+ *
+ * @pre ``demo_worker_start_dcd`` returned true.
+ * @post A ThreadX thread named ``usbhs_intenb0_wdog`` is auto-started.
+ *
+ * @note Not thread-safe; called only from ``demo_worker``.
+ * @since 0.1.0
+ */
+static void demo_worker_spawn_intenb0_watchdog(void)
+{
   (void)tx_thread_create(&s_intenb0_watchdog_thread,
                          "usbhs_intenb0_wdog",
                          intenb0_watchdog_entry,
@@ -903,18 +931,51 @@ static VOID demo_worker(ULONG arg)
                          15U,
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
+}
 
-  /* Echo loop. */
-  s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
-  /* Bisect probes captured ONCE on entry to the echo loop. HUM
-   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111, HUM
-   * Ch 51.8.1 PSARB p 3284, HUM Ch 51.8.6 PPARB p 3292. */
+/**
+ * @brief Capture bisect probes ONCE on entry to the echo loop.
+ *
+ * @details
+ * Reads SYSCFG / LPSTS / PSARB / PPARB into JLink-visible globals so
+ * post-mortem analysis can confirm the controller state at the moment
+ * the echo loop starts spinning.
+ *
+ * HUM Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111,
+ * HUM Ch 51.8.1 PSARB p 3284, HUM Ch 51.8.6 PPARB p 3292.
+ *
+ * @pre USBHS MSTP ungated; SYSCFG.USBE=1.
+ * @post Four ``s_*_in_echo_loop`` / ``s_*_state`` globals are set.
+ *
+ * @note Not thread-safe; called only from ``demo_worker``.
+ * @since 0.1.0
+ */
+static void demo_worker_capture_echo_probes(void)
+{
   s_syscfg_in_echo_loop                  = ra_usb_hs()->SYSCFG;
   s_lpsts_in_echo_loop                   = *ra_usbhs_lpsts();
   volatile const uint32_t* const psarb_p = (volatile const uint32_t*)0x40204004UL;
   volatile const uint32_t* const pparb_p = (volatile const uint32_t*)0x4020401CUL;
   s_psar_state                           = *psarb_p;
   s_ppar_state                           = *pparb_p;
+}
+
+/**
+ * @brief Run the CDC-ACM echo loop forever.
+ *
+ * @details
+ * Read up to ``k_demo_echo_buf_bytes`` bytes from the host, echo them
+ * straight back, and toggle LED1 once per byte echoed. ``s_demo_diag``
+ * counters track each branch for JLink-side instrumentation.
+ *
+ * @pre ``demo_worker_start_dcd`` returned true.
+ * @post Never returns.
+ *
+ * @note Single-instance; not designed for re-entry.
+ * @since 0.1.0
+ */
+static void demo_worker_echo_loop(void)
+{
   UCHAR buf[k_demo_echo_buf_bytes];
   ULONG n = 0UL;
   while (1) {
@@ -949,6 +1010,38 @@ static VOID demo_worker(ULONG arg)
       (void)ra_board_led_toggle(k_ra_board_led1);
     }
   }
+}
+
+/**
+ * @brief Worker thread entry. Brings USBX + CDC up, then echoes forever.
+ *
+ * @param[in] arg Unused (ThreadX entry signature).
+ *
+ * @pre ``tx_application_define`` started this thread auto-start.
+ * @post Thread loops forever; never returns.
+ *
+ * @note Single-instance worker; not designed for re-entry.
+ * @since 0.1.0
+ */
+static VOID demo_worker(ULONG arg)
+{
+  (void)arg;
+
+  s_boot_probe = (uint32_t)k_boot_probe_thread_entry;
+  if (!demo_worker_usbx_init()) {
+    return;
+  }
+  if (!demo_worker_register_cdc()) {
+    return;
+  }
+  if (!demo_worker_start_dcd()) {
+    return;
+  }
+  demo_worker_spawn_intenb0_watchdog();
+
+  s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
+  demo_worker_capture_echo_probes();
+  demo_worker_echo_loop();
 }
 
 /* -------------------------------------------------------------------------- */

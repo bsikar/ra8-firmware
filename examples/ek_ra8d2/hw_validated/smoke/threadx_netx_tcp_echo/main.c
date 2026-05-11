@@ -361,14 +361,27 @@ static void demo_log_echo(ULONG n, ULONG peer_ip)
  *
  * @since 0.1.0
  */
-static UINT demo_netx_bring_up(void)
+/**
+ * @brief Creates the NetX packet pool and IP instance with our MAC.
+ *
+ * @return UINT NX_SUCCESS on success, propagated NetX error otherwise.
+ * @retval NX_SUCCESS Pool and IP created; MAC pushed to link driver.
+ *
+ * @pre ``nx_system_initialize`` has run.
+ * @pre File-scope ``s_packet_pool`` / ``s_ip`` are reserved.
+ * @post On success, IP thread is running and link driver knows the MAC.
+ * @post On failure, returned code names the failing API.
+ *
+ * @note Called once from ``demo_netx_bring_up``.
+ * @since 0.1.0
+ */
+static UINT demo_netx_create_ip(void)
 {
-  UINT s;
-  s = nx_packet_pool_create(&s_packet_pool,
-                            (CHAR*)"ra_eth_pool",
-                            (ULONG)k_demo_packet_size,
-                            s_pool_memory,
-                            (ULONG)sizeof(s_pool_memory));
+  UINT s = nx_packet_pool_create(&s_packet_pool,
+                                 (CHAR*)"ra_eth_pool",
+                                 (ULONG)k_demo_packet_size,
+                                 s_pool_memory,
+                                 (ULONG)sizeof(s_pool_memory));
   if (s != NX_SUCCESS) {
     return s;
   }
@@ -393,6 +406,15 @@ static UINT demo_netx_bring_up(void)
   ULONG lsw = 0U;
   demo_pack_mac(&msw, &lsw);
   (void)nx_ip_interface_physical_address_set(&s_ip, 0U, msw, lsw, NX_TRUE);
+  return NX_SUCCESS;
+}
+
+static UINT demo_netx_bring_up(void)
+{
+  UINT s = demo_netx_create_ip();
+  if (s != NX_SUCCESS) {
+    return s;
+  }
 
   s = nx_arp_enable(&s_ip, (VOID*)s_arp_cache, (ULONG)sizeof(s_arp_cache));
   if (s != NX_SUCCESS) {

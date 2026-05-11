@@ -539,27 +539,52 @@ static void demo_build_jiggle(demo_phase_t phase, UCHAR* report)
  * @note Single-instance worker; not designed for re-entry.
  * @since 0.1.0
  */
-static VOID demo_worker(ULONG arg)
+/**
+ * @brief Brings the USBX system and FS device stack up.
+ *
+ * @return UINT UX_SUCCESS on success.
+ * @retval UX_SUCCESS Stack ready.
+ *
+ * @pre File-scope ``s_usbx_pool`` is reserved.
+ * @pre Caller is in thread context.
+ * @post Device stack accepts class registrations.
+ * @post On failure, USBX state is undefined.
+ *
+ * @note Call once per worker bring-up.
+ * @since 0.1.0
+ */
+static UINT demo_usbx_stack_up(void)
 {
-  (void)arg;
-
-  /* Bring USBX up. */
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return;
+    return UX_ERROR;
   }
-  if (_ux_device_stack_initialize((UCHAR*)UX_NULL, /* HS framework            */
-                                  0,
-                                  s_device_framework_fs,
-                                  sizeof(s_device_framework_fs),
-                                  s_string_framework,
-                                  sizeof(s_string_framework),
-                                  s_language_id_framework,
-                                  sizeof(s_language_id_framework),
-                                  UX_NULL) != UX_SUCCESS) {
-    return;
-  }
+  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
+                                     0,
+                                     s_device_framework_fs,
+                                     sizeof(s_device_framework_fs),
+                                     s_string_framework,
+                                     sizeof(s_string_framework),
+                                     s_language_id_framework,
+                                     sizeof(s_language_id_framework),
+                                     UX_NULL);
+}
 
-  /* Register HID class against the configuration. */
+/**
+ * @brief Registers the HID class with the configured report descriptor.
+ *
+ * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
+ * @retval UX_SUCCESS Class registered.
+ *
+ * @pre ``demo_usbx_stack_up`` has succeeded.
+ * @pre ``s_report_descriptor`` is at file scope and valid.
+ * @post HID class bound to configuration 1, interface 0.
+ * @post ``demo_hid_activate`` will fire on SET_CONFIGURATION.
+ *
+ * @note Not re-entrant.
+ * @since 0.1.0
+ */
+static UINT demo_hid_class_register(void)
+{
   UX_SLAVE_CLASS_HID_PARAMETER hid_params = {
     .ux_slave_class_hid_instance_activate         = demo_hid_activate,
     .ux_slave_class_hid_instance_deactivate       = demo_hid_deactivate,
@@ -569,15 +594,51 @@ static VOID demo_worker(ULONG arg)
     .ux_device_class_hid_parameter_callback       = UX_NULL,
     .ux_device_class_hid_parameter_get_callback   = demo_hid_get_callback,
   };
-  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_hid",
-                                      _ux_device_class_hid_entry,
-                                      1, /* configuration #  */
-                                      0, /* interface #      */
-                                      &hid_params) != UX_SUCCESS) {
+  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_hid",
+                                         _ux_device_class_hid_entry,
+                                         1,
+                                         0,
+                                         &hid_params);
+}
+
+/**
+ * @brief Push a single HID jiggle event in the given phase.
+ *
+ * @param[in,out] phase Current jiggle phase; advanced on successful send.
+ *
+ * @pre Worker thread context; ``s_hid_class`` is non-NULL.
+ * @pre ``phase`` points to a valid ``demo_phase_t``.
+ * @post On UX_SUCCESS: LED1 toggled and ``*phase`` advanced.
+ * @post On failure: ``*phase`` unchanged.
+ *
+ * @note Caller paces invocations with ``tx_thread_sleep``.
+ * @since 0.1.0
+ */
+static void demo_jiggle_send(demo_phase_t* phase)
+{
+  UX_SLAVE_CLASS_HID_EVENT hid_event;
+  (void)memset(&hid_event, 0, sizeof(hid_event));
+  hid_event.ux_device_class_hid_event_length      = (ULONG)k_demo_hid_report_bytes;
+  hid_event.ux_device_class_hid_event_report_id   = 0UL;
+  hid_event.ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
+  demo_build_jiggle(*phase, hid_event.ux_device_class_hid_event_buffer);
+
+  if (_ux_device_class_hid_event_set(s_hid_class, &hid_event) == UX_SUCCESS) {
+    (void)ra_board_led_toggle(k_ra_board_led1);
+    *phase = (demo_phase_t)(((uint8_t)(*phase + 1U)) % k_demo_phase_count);
+  }
+}
+
+static VOID demo_worker(ULONG arg)
+{
+  (void)arg;
+
+  if (demo_usbx_stack_up() != UX_SUCCESS) {
     return;
   }
-
-  /* Plug our DCD bridge into the device stack and turn the bus on. */
+  if (demo_hid_class_register() != UX_SUCCESS) {
+    return;
+  }
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
     return;
   }
@@ -589,25 +650,13 @@ static VOID demo_worker(ULONG arg)
    * worker (spawned inside ux_dcd_ra_usb_initialize BEFORE the
    * ra_usb_device_attach(true) above raised DPRPU), so this thread
    * only needs to push HID reports once per period. */
-  UX_SLAVE_CLASS_HID_EVENT hid_event;
-  demo_phase_t             phase = k_demo_phase_right;
+  demo_phase_t phase = k_demo_phase_right;
   while (1) {
     if (s_hid_class == UX_NULL) {
       tx_thread_sleep(k_demo_jiggle_period_ticks);
       continue;
     }
-
-    (void)memset(&hid_event, 0, sizeof(hid_event));
-    hid_event.ux_device_class_hid_event_length      = (ULONG)k_demo_hid_report_bytes;
-    hid_event.ux_device_class_hid_event_report_id   = 0UL;
-    hid_event.ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
-    demo_build_jiggle(phase, hid_event.ux_device_class_hid_event_buffer);
-
-    if (_ux_device_class_hid_event_set(s_hid_class, &hid_event) == UX_SUCCESS) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
-      phase = (demo_phase_t)(((uint8_t)(phase + 1U)) % k_demo_phase_count);
-    }
-
+    demo_jiggle_send(&phase);
     tx_thread_sleep(k_demo_jiggle_period_ticks);
   }
 }

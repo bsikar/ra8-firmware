@@ -23,11 +23,36 @@
  *     committed to `docs/reference/`, so the demo animates
  *     automatically rather than reading a real GPIO.
  *
- * The framebuffer lives in SRAM as a 256 x 128 RGB565 buffer (64 KiB,
- * comfortably inside the 2 MiB SRAM budget). On real silicon the
- * 1024 x 600 native-resolution framebuffer would have to live in
- * SDRAM because RGB565 at that size is 1.2 MiB; that requires SDRAMC
- * bring-up which is out of scope for this UI smoke test.
+ * This is a GUIX-NATIVE demo: GUIX owns the entire canvas and
+ * paints everything on it -- text, progress bars, animations.
+ * The application code never writes pixels to the framebuffer
+ * directly.  Compare against `lcd_draw_x` / `lcd_color_cycle`
+ * which are HAL-only demos that paint pixels by hand; this one
+ * is the "use the framework" reference.
+ *
+ *   - GR1 framebuffer  -- 480 x 270 RGB565 in SRAM.  Lives at the
+ *                         panel's top-left back-porch corner.  All
+ *                         pixels in this region come from GUIX
+ *                         draw calls.
+ *   - GR2              -- unused.  No hand-painted overlay layer.
+ *   - BG plane         -- solid colour around the GR1 region.
+ *
+ * Widget tree:
+ *   root window
+ *     main_window
+ *       title prompt          -- "GUIX Native Demo" in ArnoPro 18 pt
+ *       4 font sample prompts -- mono / 4bpp / 8bpp / ArnoPro
+ *       linear progress bar   -- animated 0->100% by app_thread
+ *       radial progress bar   -- animated 0->100% by app_thread
+ *
+ * The animation thread bumps each progress widget's
+ * `current_val` every 50 ms and calls
+ * `gx_system_canvas_refresh()` so GUIX redraws.  No
+ * framebuffer-by-hand bookkeeping.
+ *
+ * On real silicon a full 1024 x 600 RGB565 framebuffer is 1.2 MiB
+ * and would need SDRAM; once SDRAMC is up, this same widget tree
+ * scales to the full panel by changing two enums.
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29
@@ -43,12 +68,9 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_glcdc.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_time.h"
 
 /*
  * Cross-build-only includes: the host unit-test harness does not link
@@ -71,18 +93,19 @@
  * @brief Demo framebuffer dimensions.
  *
  * @details
- * 256 x 128 RGB565 = 64 KiB. Picked small on purpose so the buffer
- * lands in on-chip SRAM and the bring-up does not need SDRAMC. The
- * native EK-RA8D2 panel is 1024 x 600; this buffer maps to the
- * top-left corner in the GLCDC viewport.
+ * 256 x 128 ARGB8888 = 128 KiB.  ARGB (not RGB565) so that pixels
+ * GUIX does NOT paint stay at alpha=0 and let the BG plane show
+ * through -- this is what lets the BG-colour cycle still be
+ * visible while the GUIX widgets float on top.  The native panel
+ * is 1024 x 600; this buffer maps to the top-left corner.
  */
 typedef enum : uint16_t {
-  k_demo_fb_width  = 256U, /**< Framebuffer width  (pixels). */
-  k_demo_fb_height = 128U, /**< Framebuffer height (pixels). */
+  k_demo_fb_width  = 480U, /**< Framebuffer width  (pixels). */
+  k_demo_fb_height = 270U, /**< Framebuffer height (pixels). */
 } demo_fb_dim_t;
 
 /**
- * @brief Bytes per pixel for RGB565 (used in stride math).
+ * @brief Bytes per pixel for ARGB8888 (used in stride / canvas-size math).
  */
 typedef enum : uint8_t {
   k_demo_bpp_rgb565 = 2U, /**< 2 bytes per RGB565 pixel. */
@@ -204,11 +227,22 @@ static GX_CANVAS      s_canvas;
  * zero-size dummy prompt FIRST absorbs the bug so the three real
  * font prompts render. */
 static GX_PROMPT s_prompt_dummy;
+static GX_PROMPT s_prompt_title;
 static GX_PROMPT s_prompt_mono;
 static GX_PROMPT s_prompt_4bpp;
 static GX_PROMPT s_prompt_8bpp;
 static GX_PROMPT s_prompt_arnopro;
 
+/* Animated progress widgets.  The app_thread ticks both of these
+ * every 50 ms; GUIX repaints automatically through the dirty-rect
+ * mechanism after `gx_progress_bar_info_set` /
+ * `gx_radial_progress_bar_info_set` are called. */
+static GX_PROGRESS_BAR             s_progress_bar;
+static GX_PROGRESS_BAR_INFO        s_progress_bar_info;
+static GX_RADIAL_PROGRESS_BAR      s_radial_bar;
+static GX_RADIAL_PROGRESS_BAR_INFO s_radial_bar_info;
+
+static const GX_CHAR s_text_title[]   = "GUIX Native Demo";
 static const GX_CHAR s_text_mono[]    = "Mono: AaBb 0123";
 static const GX_CHAR s_text_4bpp[]    = "4bpp: AaBb 0123";
 static const GX_CHAR s_text_8bpp[]    = "8bpp: AaBb 0123";
@@ -312,16 +346,18 @@ static VOID demo_gx_free(VOID* mem)
  */
 
 /**
- * @brief Pack ARGB components into a GUIX `GX_COLOR` word.
+ * @brief Pack RGB components into a GUIX `GX_COLOR` word (opaque).
  *
  * @details
- * GUIX colours are `0xAARRGGBB`. Used for both the label-text colour
- * and the GUIX background fill.
+ * `GX_COLOR` is laid out as `0xAARRGGBB`; this demo only paints
+ * fully-opaque widgets and the underlying framebuffer is RGB565
+ * (no alpha channel), so the alpha byte is hard-coded to `0xFF`
+ * and the caller only supplies the three colour channels.
  *
  * @param[in] r Red channel 0..255.
  * @param[in] g Green channel 0..255.
  * @param[in] b Blue channel 0..255.
- * @return Packed ARGB.
+ * @return Packed `GX_COLOR` with alpha=0xFF.
  *
  * @since 0.1.0
  */
@@ -331,7 +367,7 @@ typedef enum : uint8_t {
   k_demo_color_shift_g = 8U,
 } demo_color_shift_t;
 
-static inline GX_COLOR demo_argb(uint8_t r, uint8_t g, uint8_t b)
+static inline GX_COLOR demo_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
   return (GX_COLOR)((0xFFUL << k_demo_color_shift_a) | ((uint32_t)r << k_demo_color_shift_r) |
                     ((uint32_t)g << k_demo_color_shift_g) | (uint32_t)b);
@@ -376,42 +412,26 @@ static void demo_panic_halt(void)
 }
 
 /**
- * @brief Tear up the GUIX widget tree and start the event loop.
+ * @brief Bring up the LCD panel and GLCDC pipeline for GR1.
  *
- * @details
- * Called from `gui_thread_entry`. Runs:
+ * @details Powers the panel, programmes the GLCDC for the demo
+ * framebuffer dimensions (480 x 270 RGB565), sets the BG plane
+ * black, starts scan-out, and makes graphics layer 1 visible
+ * with `s_framebuffer` as its source.  Panics on any HAL error.
  *
- *   1. `ra_guix_display_driver_bind` -- hand the framebuffer base
- *      to the shim.
- *   2. `gx_system_initialize` -- bring up GUIX's internal state.
- *   3. `gx_studio_display_configure`-equivalent: `gx_display_create`
- *      with `ra_guix_display_driver_setup` as the driver-setup
- *      callback.
- *   4. `gx_canvas_create` against the same framebuffer pointer.
- *   5. Build the widget tree: a root window containing the prompt
- *      (label) and a button.
- *   6. `gx_widget_show` on the root, then `gx_system_start` (does
- *      not return).
- *
- * @pre GLCDC is running and scanning out `s_framebuffer`.
- * @pre ThreadX scheduler is up.
- *
- * @post GUIX is in its event loop; the canvas displays the demo.
- *
+ * @pre Called from the GUI thread (uses `tx_thread_sleep`).
+ * @pre `s_framebuffer` is zero-initialised in `.bss`.
+ * @post GLCDC is scanning out; GR1 is reading `s_framebuffer`.
+ * @post BG plane = black.
+ * @note Single-threaded; not safe to call from IRQ.
  * @since 0.1.0
  */
-static void demo_gui_setup_and_run(void)
+static void demo_lcd_panel_bringup(void)
 {
-  /* GLCDC bring-up runs HERE, not in main(), so we can sleep on the
-   * ThreadX scheduler (no busy-waits).  Don't use ra_delay_ms: the
-   * demo's SysTick_Handler routes to _tx_timer_interrupt, so
-   * ra_time's `s_tick_ms` never advances and ra_delay_ms would hang
-   * forever.  tx_thread_sleep ticks against the ThreadX-owned
-   * counter that IS advancing.  Tick = 1 ms per port/threadx/tx_user.h. */
   (void)tx_thread_sleep(500U); /* PLL / panel-POR settle */
-  /* `ra_board_lcd_panel_power_on` internally calls ra_delay_ms,
-   * which would also hang here for the same reason.  Inline the
-   * GPIO sequence with tx_thread_sleep instead. */
+  /* Inline the GPIO sequence with tx_thread_sleep: ra_delay_ms
+   * uses ra_time's tick which is not advanced by the demo's
+   * SysTick (we route it to ThreadX instead). */
   (void)ra_gpio_output_init(k_ra_pin_lcd_reset_l, k_ra_level_low);
   (void)tx_thread_sleep(50U);
   (void)ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
@@ -441,21 +461,30 @@ static void demo_gui_setup_and_run(void)
   if (ra_glcdc_layer1_show((uintptr_t)s_framebuffer) != k_ra_ok) {
     demo_panic_halt();
   }
+}
 
+/**
+ * @brief Bind the framebuffer, install the allocator, and bring
+ *        up the GUIX system + display objects.
+ *
+ * @pre `demo_lcd_panel_bringup` has run.
+ * @post `s_display` is created and the GUIX system thread is alive.
+ * @note Single-threaded; not safe to call from IRQ.
+ * @since 0.1.0
+ */
+static void demo_guix_system_setup(void)
+{
   if (ra_guix_display_driver_bind(&s_framebuffer[0][0],
                                   (uint16_t)k_demo_fb_width,
                                   (uint16_t)k_demo_fb_height) != k_ra_ok) {
     demo_panic_halt();
   }
-
   if (gx_system_memory_allocator_set(demo_gx_alloc, demo_gx_free) != GX_SUCCESS) {
     demo_panic_halt();
   }
-
   if (gx_system_initialize() != GX_SUCCESS) {
     demo_panic_halt();
   }
-
   if (gx_display_create(&s_display,
                         "ra8d2-glcdc",
                         ra_guix_display_driver_setup,
@@ -463,45 +492,59 @@ static void demo_gui_setup_and_run(void)
                         (GX_VALUE)k_demo_fb_height) != GX_SUCCESS) {
     demo_panic_halt();
   }
+}
 
-  /* Wire up a tiny static colour table so `gx_display_color_set`
-   * has somewhere to land.  Without this the table pointer is NULL
-   * and every set call writes into uninitialised memory (or, more
-   * commonly, just gets ignored because the table is empty), and
-   * all widget paints end up using colour value 0 = black. */
+/**
+ * @brief Populate the GUIX colour-resource table.
+ *
+ * @details `GX_COLOR_ID_*` values are indices into the table
+ * supplied to `gx_display_color_table_set`.  Unset slots default
+ * to fully transparent so widgets that pick up a stray
+ * unconfigured ID do not paint stale colours.  The five named
+ * slots cover everything the demo's widgets render with.
+ *
+ * @pre `demo_guix_system_setup` has run.
+ * @post Display has a 32-entry colour resource table installed.
+ * @since 0.1.0
+ */
+static void demo_guix_install_palette(void)
+{
   static GX_COLOR s_color_table[32];
   for (uint32_t i = 0U; i < 32U; i++) {
-    s_color_table[i] = demo_argb(0x00U, 0x00U, 0x00U); /* default black */
+    s_color_table[i] = 0x00000000UL;
   }
-  s_color_table[GX_COLOR_ID_CANVAS]      = demo_argb(0x00U, 0x00U, 0x60U); /* dark navy */
-  s_color_table[GX_COLOR_ID_WINDOW_FILL] = demo_argb(0x00U, 0x80U, 0xFFU); /* bright cyan */
-  s_color_table[GX_COLOR_ID_TEXT]        = demo_argb(0xFFU, 0xFFU, 0x00U); /* yellow */
-  s_color_table[GX_COLOR_ID_BTN_UPPER]   = demo_argb(0xFFU, 0x40U, 0x00U); /* orange */
-  s_color_table[GX_COLOR_ID_BTN_LOWER]   = demo_argb(0xC0U, 0x00U, 0x00U); /* dark red */
+  s_color_table[GX_COLOR_ID_CANVAS]      = demo_rgb(0x00U, 0x00U, 0x60U); /* dark navy */
+  s_color_table[GX_COLOR_ID_WINDOW_FILL] = demo_rgb(0x00U, 0x80U, 0xFFU); /* bright cyan */
+  s_color_table[GX_COLOR_ID_TEXT]        = demo_rgb(0xFFU, 0xFFU, 0x00U); /* yellow */
+  s_color_table[GX_COLOR_ID_BTN_UPPER]   = demo_rgb(0xFFU, 0x40U, 0x00U); /* orange */
+  s_color_table[GX_COLOR_ID_BTN_LOWER]   = demo_rgb(0xC0U, 0x00U, 0x00U); /* dark red */
   if (gx_display_color_table_set(&s_display, s_color_table, 32) != GX_SUCCESS) {
     demo_panic_halt();
   }
+}
 
-  /* Register the three GUIX-bundled system fonts as IDs 0/1/2.
-   * They live in `libs/third_party/guix/common/src/gx_system_font_*.c`
-   * and ship as part of the GUIX library itself.  Apps point a
-   * widget at a font by ID via `gx_prompt_font_set`. */
+/**
+ * @brief Install the font resource table.
+ *
+ * @details Slot 0 is intentionally NULL because several GUIX
+ * widget paths treat `font_id = 0` as "use the system default"
+ * and silently skip rendering when no default is installed.
+ * Slots 1..4 hold the three GUIX-bundled bitmap fonts plus the
+ * in-tree ArnoPro font generated by `scripts/utils/font_to_guix.py`.
+ *
+ * @pre `demo_guix_system_setup` has run.
+ * @post Display has a font resource table with slots 1..4 populated.
+ * @since 0.1.0
+ */
+static void demo_guix_install_fonts(void)
+{
   /* NOLINTBEGIN(bugprone-reserved-identifier) -- vendor symbols. */
   extern GX_CONST GX_FONT _gx_system_font_mono;
   extern GX_CONST GX_FONT _gx_system_font_4bpp;
   extern GX_CONST GX_FONT _gx_system_font_8bpp;
   /* NOLINTEND(bugprone-reserved-identifier) */
-  /* In-tree font generated by `scripts/utils/font_to_guix.py` from
-   * `libs/fonts/ArnoPro-Regular.otf` at 18 pt, 4 bpp anti-aliased. */
   extern GX_CONST GX_FONT g_font_arnopro_18;
   static GX_FONT*         s_font_table[k_demo_font_table_size];
-  /* Slot 0 is intentionally NULL.  When a widget's font_id is 0,
-   * several GUIX widget paths interpret it as "no font assigned --
-   * use the system default" and end up rendering nothing because
-   * there is no default font set on this build.  Reserving slot 0
-   * keeps any widget left at the default `font_id = 0` from
-   * accidentally pointing at one of our real fonts and shifting
-   * the layout.  Real fonts start at slot 1. */
   s_font_table[0]                   = GX_NULL;
   s_font_table[k_demo_font_mono]    = (GX_FONT*)&_gx_system_font_mono;
   s_font_table[k_demo_font_4bpp]    = (GX_FONT*)&_gx_system_font_4bpp;
@@ -511,7 +554,19 @@ static void demo_gui_setup_and_run(void)
       GX_SUCCESS) {
     demo_panic_halt();
   }
+}
 
+/**
+ * @brief Build the canvas + root window + main window scaffold.
+ *
+ * @pre `demo_guix_install_palette` and `demo_guix_install_fonts`
+ *      have both run.
+ * @post `s_canvas`, `s_root`, and `s_main_window` exist; the
+ *       main window is attached as a child of the root.
+ * @since 0.1.0
+ */
+static void demo_guix_canvas_setup(void)
+{
   if (gx_canvas_create(&s_canvas,
                        "ra8d2-canvas",
                        &s_display,
@@ -523,82 +578,108 @@ static void demo_gui_setup_and_run(void)
                          (ULONG)k_demo_bpp_rgb565) != GX_SUCCESS) {
     demo_panic_halt();
   }
-  /* GUIX canvases come up with `gx_canvas_status` clear of
-   * GX_CANVAS_VISIBLE; without this call the system thread's first
-   * canvas refresh decides there is nothing to draw and the panel
-   * stays at whatever was in SRAM at boot (black). */
+  /* GUIX canvases come up with GX_CANVAS_VISIBLE clear; without
+   * this call the system thread's first refresh decides there is
+   * nothing to draw. */
   if (gx_canvas_show(&s_canvas) != GX_SUCCESS) {
     demo_panic_halt();
   }
-
   const GX_RECTANGLE root_rect =
     demo_rect(0, 0, (GX_VALUE)(k_demo_fb_width - 1U), (GX_VALUE)(k_demo_fb_height - 1U));
   if (gx_window_root_create(&s_root, "ra8d2-root", &s_canvas, GX_STYLE_NONE, 0U, &root_rect) !=
       GX_SUCCESS) {
     demo_panic_halt();
   }
-
-  const GX_RECTANGLE win_rect = root_rect;
   if (gx_window_create(&s_main_window,
                        "ra8d2-main-window",
                        GX_NULL,
                        GX_STYLE_ENABLED,
                        0U,
-                       &win_rect) != GX_SUCCESS) {
+                       &root_rect) != GX_SUCCESS) {
     demo_panic_halt();
   }
   if (gx_widget_attach((GX_WIDGET*)&s_root, (GX_WIDGET*)&s_main_window) != GX_SUCCESS) {
     demo_panic_halt();
   }
+}
 
-  /* Stack three prompts vertically, one per registered system font.
-   * Framebuffer is 256x128; each font line gets ~40 px of vertical
-   * room (label + breathing room). */
-  static const struct {
-    GX_PROMPT*     prompt;
-    const char*    name;
-    const GX_CHAR* text;
-    UINT           text_len;
-    GX_VALUE       top;
-    GX_VALUE       bottom;
-    UINT           font_id;
-  } prompts[k_demo_font_count] = {
-    /* Four equally-sized rows of ~31 px each, fitting inside the
-     * 128-px-tall canvas with a 2 px margin on each side.  Each
-     * rect is tall enough for the largest font's line height
-     * (mono / 4bpp / 8bpp all ~18 px; ArnoPro 18 pt ~19 px) plus
-     * a vertical-centering breathing margin. */
-    {.prompt   = &s_prompt_mono,
-     .name     = "font-mono",
-     .text     = s_text_mono,
-     .text_len = (UINT)(sizeof(s_text_mono) - 1U),
-     .top      = 8,
-     .bottom   = 36,
-     .font_id  = (UINT)k_demo_font_mono},
-    {.prompt   = &s_prompt_4bpp,
-     .name     = "font-4bpp",
-     .text     = s_text_4bpp,
-     .text_len = (UINT)(sizeof(s_text_4bpp) - 1U),
-     .top      = 38,
-     .bottom   = 66,
-     .font_id  = (UINT)k_demo_font_4bpp},
-    {.prompt   = &s_prompt_8bpp,
-     .name     = "font-8bpp",
-     .text     = s_text_8bpp,
-     .text_len = (UINT)(sizeof(s_text_8bpp) - 1U),
-     .top      = 68,
-     .bottom   = 96,
-     .font_id  = (UINT)k_demo_font_8bpp},
-    {.prompt   = &s_prompt_arnopro,
-     .name     = "font-arnopro",
-     .text     = s_text_arnopro,
-     .text_len = (UINT)(sizeof(s_text_arnopro) - 1U),
-     .top      = 98,
-     .bottom   = 126,
-     .font_id  = (UINT)k_demo_font_arnopro},
-  };
-  /* Burn the first-child slot on a zero-size dummy.  See the comment
-   * by `s_prompt_dummy` above for why this is needed. */
+/**
+ * @struct demo_prompt_row_t
+ * @brief Layout description for one text-prompt row in the canvas.
+ *
+ * @details Used by `demo_guix_create_prompts` to walk a compile-
+ * time table of prompts so the create-loop body stays short.
+ */
+typedef struct {
+  GX_PROMPT*     prompt;   /**< Storage for the widget control block. */
+  const char*    name;     /**< Debug name (passed to GUIX).          */
+  const GX_CHAR* text;     /**< Text to render.                       */
+  UINT           text_len; /**< Length of `text` in bytes.            */
+  GX_VALUE       top;      /**< Top edge (px, canvas-relative).       */
+  GX_VALUE       bottom;   /**< Bottom edge (px, canvas-relative).    */
+  UINT           font_id;  /**< Font resource ID.                     */
+} demo_prompt_row_t;
+
+/**
+ * @brief Create the title prompt + four font-sample prompts.
+ *
+ * @details Each prompt occupies a horizontal stripe inside the
+ * canvas.  A zero-size dummy prompt is created FIRST as a
+ * workaround for the "first-child-of-parent doesn't render"
+ * issue documented next to `s_prompt_dummy`.
+ *
+ * @pre `demo_guix_canvas_setup` has run.
+ * @post Five prompts attached to `s_main_window` (plus the dummy).
+ * @since 0.1.0
+ */
+/**
+ * @var s_prompts
+ * @brief Compile-time table of the prompts the demo renders.
+ *
+ * @details One row per text widget the demo paints into GR1; the
+ * y coordinates pack the rows vertically inside the 270 px-tall
+ * canvas with the title row reserved at the top.
+ */
+static const demo_prompt_row_t s_prompts[5] = {
+  {.prompt   = &s_prompt_title,
+   .name     = "title",
+   .text     = s_text_title,
+   .text_len = (UINT)(sizeof(s_text_title) - 1U),
+   .top      = 8,
+   .bottom   = 36,
+   .font_id  = (UINT)k_demo_font_arnopro},
+  {.prompt   = &s_prompt_mono,
+   .name     = "font-mono",
+   .text     = s_text_mono,
+   .text_len = (UINT)(sizeof(s_text_mono) - 1U),
+   .top      = 46,
+   .bottom   = 74,
+   .font_id  = (UINT)k_demo_font_mono},
+  {.prompt   = &s_prompt_4bpp,
+   .name     = "font-4bpp",
+   .text     = s_text_4bpp,
+   .text_len = (UINT)(sizeof(s_text_4bpp) - 1U),
+   .top      = 78,
+   .bottom   = 106,
+   .font_id  = (UINT)k_demo_font_4bpp},
+  {.prompt   = &s_prompt_8bpp,
+   .name     = "font-8bpp",
+   .text     = s_text_8bpp,
+   .text_len = (UINT)(sizeof(s_text_8bpp) - 1U),
+   .top      = 110,
+   .bottom   = 138,
+   .font_id  = (UINT)k_demo_font_8bpp},
+  {.prompt   = &s_prompt_arnopro,
+   .name     = "font-arnopro",
+   .text     = s_text_arnopro,
+   .text_len = (UINT)(sizeof(s_text_arnopro) - 1U),
+   .top      = 142,
+   .bottom   = 170,
+   .font_id  = (UINT)k_demo_font_arnopro},
+};
+
+static void demo_guix_create_prompts(void)
+{
   const GX_RECTANGLE dummy_rect = demo_rect(0, 0, 0, 0);
   if (gx_prompt_create(&s_prompt_dummy,
                        "dummy",
@@ -609,12 +690,11 @@ static void demo_gui_setup_and_run(void)
                        &dummy_rect) != GX_SUCCESS) {
     demo_panic_halt();
   }
-
-  for (uint32_t i = 0U; i < (uint32_t)k_demo_font_count; i++) {
+  for (uint32_t i = 0U; i < (sizeof(s_prompts) / sizeof(s_prompts[0])); i++) {
     const GX_RECTANGLE r =
-      demo_rect(8, prompts[i].top, (GX_VALUE)(k_demo_fb_width - 9U), prompts[i].bottom);
-    if (gx_prompt_create(prompts[i].prompt,
-                         prompts[i].name,
+      demo_rect(12, s_prompts[i].top, (GX_VALUE)(k_demo_fb_width - 13U), s_prompts[i].bottom);
+    if (gx_prompt_create(s_prompts[i].prompt,
+                         s_prompts[i].name,
                          &s_main_window,
                          0,
                          GX_STYLE_TEXT_LEFT | GX_STYLE_ENABLED,
@@ -623,25 +703,104 @@ static void demo_gui_setup_and_run(void)
       demo_panic_halt();
     }
     GX_STRING s;
-    s.gx_string_ptr    = prompts[i].text;
-    s.gx_string_length = prompts[i].text_len;
-    if (gx_prompt_text_set_ext(prompts[i].prompt, &s) != GX_SUCCESS) {
+    s.gx_string_ptr    = s_prompts[i].text;
+    s.gx_string_length = s_prompts[i].text_len;
+    if (gx_prompt_text_set_ext(s_prompts[i].prompt, &s) != GX_SUCCESS) {
       demo_panic_halt();
     }
-    if (gx_prompt_font_set(prompts[i].prompt, (GX_RESOURCE_ID)prompts[i].font_id) != GX_SUCCESS) {
+    if (gx_prompt_font_set(s_prompts[i].prompt, (GX_RESOURCE_ID)s_prompts[i].font_id) !=
+        GX_SUCCESS) {
       demo_panic_halt();
     }
   }
+}
+
+/**
+ * @brief Create the linear + radial progress-bar widgets.
+ *
+ * @details Both progress bars start at value 0; `app_thread`
+ * advances them on a timer and calls the matching `*_info_set`
+ * helper, which marks the widget dirty so GUIX repaints at the
+ * next event-loop pass.
+ *
+ * @pre `demo_guix_canvas_setup` has run.
+ * @post `s_progress_bar` and `s_radial_bar` are attached to
+ *       `s_main_window`.
+ * @since 0.1.0
+ */
+static void demo_guix_create_progress_widgets(void)
+{
+  s_progress_bar_info.gx_progress_bar_info_min_val        = 0;
+  s_progress_bar_info.gx_progress_bar_info_max_val        = 100;
+  s_progress_bar_info.gx_progress_bar_info_current_val    = 0;
+  s_progress_bar_info.gx_progress_bar_font_id             = (GX_RESOURCE_ID)k_demo_font_4bpp;
+  s_progress_bar_info.gx_progress_bar_normal_text_color   = GX_COLOR_ID_TEXT;
+  s_progress_bar_info.gx_progress_bar_selected_text_color = GX_COLOR_ID_TEXT;
+  s_progress_bar_info.gx_progress_bar_disabled_text_color = GX_COLOR_ID_TEXT;
+  s_progress_bar_info.gx_progress_bar_fill_pixelmap       = 0;
+  const GX_RECTANGLE progress_rect = demo_rect(20, 184, (GX_VALUE)(k_demo_fb_width - 21U), 210);
+  if (gx_progress_bar_create(&s_progress_bar,
+                             "progress",
+                             &s_main_window,
+                             &s_progress_bar_info,
+                             GX_STYLE_ENABLED | GX_STYLE_PROGRESS_PERCENT,
+                             5U,
+                             &progress_rect) != GX_SUCCESS) {
+    demo_panic_halt();
+  }
+
+  s_radial_bar_info.gx_radial_progress_bar_info_xcenter     = (GX_VALUE)(k_demo_fb_width / 2U);
+  s_radial_bar_info.gx_radial_progress_bar_info_ycenter     = 234;
+  s_radial_bar_info.gx_radial_progress_bar_info_radius      = 26;
+  s_radial_bar_info.gx_radial_progress_bar_info_current_val = 0;
+  s_radial_bar_info.gx_radial_progress_bar_info_anchor_val  = 270; /* 12 o'clock */
+  s_radial_bar_info.gx_radial_progress_bar_info_font_id     = (GX_RESOURCE_ID)k_demo_font_4bpp;
+  s_radial_bar_info.gx_radial_progress_bar_info_normal_text_color    = GX_COLOR_ID_TEXT;
+  s_radial_bar_info.gx_radial_progress_bar_info_selected_text_color  = GX_COLOR_ID_TEXT;
+  s_radial_bar_info.gx_radial_progress_bar_info_disabled_text_color  = GX_COLOR_ID_TEXT;
+  s_radial_bar_info.gx_radial_progress_bar_info_normal_brush_width   = 6;
+  s_radial_bar_info.gx_radial_progress_bar_info_selected_brush_width = 6;
+  s_radial_bar_info.gx_radial_progress_bar_info_normal_brush_color   = GX_COLOR_ID_CANVAS;
+  s_radial_bar_info.gx_radial_progress_bar_info_selected_brush_color = GX_COLOR_ID_TEXT;
+  if (gx_radial_progress_bar_create(&s_radial_bar,
+                                    "radial",
+                                    (GX_WIDGET*)&s_main_window,
+                                    &s_radial_bar_info,
+                                    GX_STYLE_ENABLED,
+                                    6U) != GX_SUCCESS) {
+    demo_panic_halt();
+  }
+}
+
+/**
+ * @brief Top-level GUI bring-up: chain every setup helper, then
+ *        enter the GUIX event loop.
+ *
+ * @details Each helper panics on failure, so the orchestrator
+ * reads top-to-bottom.  Returns only on a GUIX internal scheduler
+ * error (which also halts).
+ *
+ * @pre Called from `gui_thread_entry`.
+ * @pre ThreadX scheduler is up; SysTick is routing to `_tx_timer_interrupt`.
+ * @post GUIX has finished its first paint; `gx_system_start`
+ *       has taken over the calling thread.
+ * @since 0.1.0
+ */
+static void demo_gui_setup_and_run(void)
+{
+  demo_lcd_panel_bringup();
+  demo_guix_system_setup();
+  demo_guix_install_palette();
+  demo_guix_install_fonts();
+  demo_guix_canvas_setup();
+  demo_guix_create_prompts();
+  demo_guix_create_progress_widgets();
 
   if (gx_widget_show((GX_WIDGET*)&s_root) != GX_SUCCESS) {
     demo_panic_halt();
   }
-
-  /* Force an explicit initial paint so the first frame lands in the
-   * framebuffer before gx_system_start blocks on the event queue. */
+  /* Force the first frame to land before gx_system_start blocks. */
   (void)gx_system_canvas_refresh();
-
-  /* Hand control to GUIX. Returns only on internal scheduler error. */
   if (gx_system_start() != GX_SUCCESS) {
     demo_panic_halt();
   }
@@ -664,26 +823,47 @@ static void gui_thread_entry(ULONG thread_input)
 }
 
 /**
- * @brief Application thread: cycles the label colour every 750 ms.
+ * @brief Application thread: animates the GUIX progress widgets.
+ *
+ * @details Every 50 ms, advances the linear and radial progress
+ * bars' `current_val` by one step (wrapping back to 0 after 100),
+ * then calls `gx_progress_bar_info_set` / `gx_radial_progress_bar_info_set`
+ * to tell GUIX the widgets are dirty.  GUIX's system thread picks
+ * up the dirty widgets and repaints them at the next event-loop
+ * pass.  No framebuffer-by-hand work involved.
+ *
+ * This shows the GUIX side of the architecture: the app code just
+ * publishes new widget state and the framework handles repaint
+ * scheduling, dirty-rect tracking, and pixel composition.
  *
  * @param[in] thread_input Unused (ThreadX cookie).
- *
- * @pre GUIX has finished initialising (the GUI thread is running).
- * @post `s_label_color_state` toggles between blue and orange.
  *
  * @since 0.1.0
  */
 static void app_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-  /* Stay parked.  We previously cycled the label colour every 750 ms
-   * which forced a full canvas refresh on every tick; each refresh
-   * blanks the canvas to the background colour before re-drawing
-   * the widgets, producing visible flicker on a single-buffer
-   * pipeline.  Keep the demo static for now and let the GUIX
-   * system thread idle on the event queue. */
+  enum : uint32_t {
+    k_animation_tick_ms = 50U, /**< 50 ms between steps -> ~2 s sweep. */
+    k_animation_step    = 2U,  /**< 0..100 in 50 steps.                */
+    k_animation_max     = 100U,
+  };
+  /* Let GUIX finish its first paint before we start firing updates. */
+  (void)tx_thread_sleep(500U);
+  uint32_t linear_val = 0U;
+  uint32_t radial_val = 0U;
   while (1) {
-    (void)tx_thread_sleep(0xFFFFFFFFU);
+    (void)tx_thread_sleep(k_animation_tick_ms);
+
+    linear_val = (linear_val + k_animation_step) % (k_animation_max + 1U);
+    s_progress_bar_info.gx_progress_bar_info_current_val = (INT)linear_val;
+    (void)gx_progress_bar_info_set(&s_progress_bar, &s_progress_bar_info);
+
+    /* Radial advances at a different rate so the two widgets
+     * don't move in lock-step.  k_animation_step + 1 = 3 -> ~1.7 s sweep. */
+    radial_val = (radial_val + (k_animation_step + 1U)) % (k_animation_max + 1U);
+    s_radial_bar_info.gx_radial_progress_bar_info_current_val = (GX_VALUE)radial_val;
+    (void)gx_radial_progress_bar_info_set(&s_radial_bar, &s_radial_bar_info);
   }
 }
 

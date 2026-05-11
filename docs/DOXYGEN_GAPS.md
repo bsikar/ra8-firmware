@@ -6,24 +6,53 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 
 ## Summary
 
-- Total functions audited: 2800
-- Functions with gaps: 0
-- Total missing-tag instances: 0
+- Total functions audited: 2878
+- Functions with gaps: 35
+- Total missing-tag instances: 213
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
+| `@param` | 36 |
+| `@post` | 32 |
+| `@pre` | 31 |
+| `@note` | 25 |
+| `@details` | 22 |
+| `@retval` | 22 |
+| `@brief` | 17 |
+| `@since` | 17 |
+| `@return` | 11 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
+| `port/usbx` | 9 |
+| `libs/ra_ble_host` | 7 |
+| `port/netxduo` | 7 |
+| `libs/ra_hal` | 5 |
+| `port/levelx` | 4 |
+| `libs/ra_net` | 3 |
 
 ## Top 30 files by gap count
 
 | File | Functions with gaps |
 |------|---------------------|
+| `port/usbx/ux_dcd_ra_usb.c` | 8 |
+| `libs/ra_ble_host/src/ra_ble_gatt.c` | 4 |
+| `port/levelx/lx_nor_driver_ra_xspi.c` | 4 |
+| `libs/ra_net/src/ra_net_udp.c` | 3 |
+| `port/netxduo/nx_crypto_aes_alt.c` | 3 |
+| `port/netxduo/nx_crypto_sha256_alt.c` | 3 |
+| `libs/ra_ble_host/src/ra_ble_l2cap.c` | 2 |
+| `libs/ra_hal/src/ra_glcdc.c` | 2 |
+| `libs/ra_ble_host/src/ra_ble_att.c` | 1 |
+| `libs/ra_hal/src/ra_rmac_phy.c` | 1 |
+| `libs/ra_hal/src/ra_rsip_protected.c` | 1 |
+| `libs/ra_hal/src/ra_sdcard.c` | 1 |
+| `port/netxduo/nx_ether_driver_ra_eth.c` | 1 |
+| `port/usbx/ux_hcd_ra_usb.c` | 1 |
 
 ## Severity legend
 
@@ -39,4 +68,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 |------|---------------------|-----------------------|
 | 2026-05-02 (original)                 | 2557 | 20328 |
 | 2026-05-02 (refresh)                  | 663  | 4935  |
-| 2026-05-02 (auditor false-pos fix)    | 0 | 0 |
+| 2026-05-02 (auditor false-pos fix)    | 35 | 213 |
