@@ -9,7 +9,7 @@
 #
 # Standalone:
 #   cmake -S . -B build \
-#         -DCMAKE_TOOLCHAIN_FILE=../../../../cmake/toolchain-ra8d2.cmake \
+#         -DCMAKE_TOOLCHAIN_FILE=../../../../../cmake/toolchain-ra8d2.cmake \
 #         -DRA_USE_THREADX=ON -DRA_USE_GUIX=ON
 #   cmake --build build
 #
@@ -30,7 +30,7 @@ if(NOT _ra_has_parent)
 endif()
 
 if(RA_APP_STANDALONE)
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
@@ -64,7 +64,7 @@ if(RA_APP_STANDALONE)
     include(${RA_REPO_ROOT}/cmake/threadx.cmake OPTIONAL RESULT_VARIABLE _tx_inc)
     include(${RA_REPO_ROOT}/cmake/guix.cmake)
 else()
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 endif()
 
 # Skip the executable when GUIX is not enabled. The top-level build
@@ -99,6 +99,7 @@ file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/
 file(GLOB_RECURSE LIB_RA_NSC_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE LIB_RA_BOARD_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE APP_SECURE_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
+file(GLOB_RECURSE LIB_FONTS_SOURCES      CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/fonts/*.c)
 
 # Pull in the GUIX <-> GLCDC shim source via the property that
 # port/guix/CMakeLists.txt populates.
@@ -121,6 +122,7 @@ add_executable(${RA_APP_NAME}.elf
     ${LIB_RA_BOARD_SOURCES}
     ${APP_SECURE_SOURCES}
     ${RA_GUIX_PORT_SOURCES}
+    ${LIB_FONTS_SOURCES}
 )
 
 ra_target_enable_project_warnings(${RA_APP_NAME}.elf STACK_USAGE_BYTES 4400)
