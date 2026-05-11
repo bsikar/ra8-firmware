@@ -311,6 +311,42 @@ extern const uint32_t g_ra_board_glcdc_rgb565_pin_count;
  */
 [[nodiscard]] ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt);
 
+/** @brief Board-style aliases for the J1 LCD GPIO control pins.
+ *
+ *  The underlying ``ra_port_pin_t`` enum members live in
+ *  ``libs/ra_core/inc/ra_port_constants.h`` (the same place LED1/2/3
+ *  are declared) so casting them to ``ra_port_pin_t`` is type-safe
+ *  for the analyzer.  Source: EK-RA8D2 v1 UM Table 33 p 42.
+ */
+typedef enum : uint16_t {
+  k_ra_board_lcd_reset_l = (uint16_t)k_ra_pin_lcd_reset_l, /**< J1-6 RST,  P606 (active-low). */
+  k_ra_board_lcd_blen    = (uint16_t)k_ra_pin_lcd_blen,    /**< J1-1 BLEN, P514 (active-high). */
+} ra_board_lcd_gpio_pin_t;
+
+/**
+ * @brief Pulse the J1 panel's RESET_L line and assert BLEN backlight.
+ *
+ * @details Drives `k_ra_board_lcd_reset_l` low for 50 ms, releases it
+ * high, waits another 50 ms for the panel's internal controller to
+ * latch reset-release, then drives `k_ra_board_lcd_blen` high to
+ * enable the backlight.  Must be called BEFORE `ra_board_glcdc_init`
+ * routes the data pins to PSEL=glcdc so the panel sees stable signals
+ * by the time GLCDC starts driving them.
+ *
+ * @retval k_ra_ok               Panel reset released and backlight on.
+ * @retval k_ra_err_invalid_arg  GPIO init for one of the pins failed.
+ * @retval k_ra_err_gpio_*       Underlying ra_gpio_* propagated error.
+ *
+ * @pre IOPORT module is powered (true at reset).
+ * @pre `ra_time_init` has been called (function blocks on `ra_delay_ms`).
+ * @post P606 (RESET_L) is driven high; panel is out of reset.
+ * @post P514 (BLEN) is driven high; backlight is on.
+ *
+ * @note Single-threaded init context; blocks for ~100 ms total.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_lcd_panel_power_on(void);
+
 /* =============================================================================
  * 4. Audio CODEC (DA7212 U14, SSIE + I2C)
  *    (UM Section 6.6, Table 32, page 38)

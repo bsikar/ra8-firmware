@@ -255,6 +255,22 @@ typedef enum : uint32_t {
   k_glcdc_alpha_opaque = 0xFFUL, /**< Fully opaque (constant alpha). */
 } ra_glcdc_alpha_priv_t;
 
+/* Panel timing constants for the EK-RA8D2 Parallel Graphics Expansion
+ * Board 1 + ER-TFT070-6 panel (1024 x 600).  Confirmed against the
+ * LVGL EK-RA8D2 reference project; differ from the generic 1024 x 600
+ * values in ra8d2_glcdc_regs.h (h_back 140 -> 160, h_sync 20 -> 4,
+ * v_back 20 -> 23). */
+typedef enum : uint32_t {
+  k_glcdc_pgeb1_h_active = 1024U,
+  k_glcdc_pgeb1_h_front  = 160U,
+  k_glcdc_pgeb1_h_back   = 160U,
+  k_glcdc_pgeb1_h_sync   = 4U,
+  k_glcdc_pgeb1_v_active = 600U,
+  k_glcdc_pgeb1_v_front  = 12U,
+  k_glcdc_pgeb1_v_back   = 23U,
+  k_glcdc_pgeb1_v_sync   = 3U,
+} ra_glcdc_pgeb1_timing_t;
+
 /* OUT_SET.FORMAT[1:0] codes for output bus. */
 typedef enum : uint32_t {
   k_glcdc_out_set_rgb888 = 0U,
@@ -505,14 +521,16 @@ static void internal_program_out(void)
 static void internal_panel_program(uintptr_t fb_addr, uint16_t fb_format)
 {
   const ra_glcdc_panel_timing_t t = {
-    .h_active = 1024U,
-    .h_back   = 160U,
-    .h_sync   = 4U,
-    .h_total  = 1024U + 160U + 160U + 4U,
-    .v_active = 600U,
-    .v_back   = 23U,
-    .v_sync   = 3U,
-    .v_total  = 600U + 12U + 23U + 3U,
+    .h_active = (uint32_t)k_glcdc_pgeb1_h_active,
+    .h_back   = (uint32_t)k_glcdc_pgeb1_h_back,
+    .h_sync   = (uint32_t)k_glcdc_pgeb1_h_sync,
+    .h_total  = (uint32_t)k_glcdc_pgeb1_h_active + (uint32_t)k_glcdc_pgeb1_h_front +
+                (uint32_t)k_glcdc_pgeb1_h_back + (uint32_t)k_glcdc_pgeb1_h_sync,
+    .v_active = (uint32_t)k_glcdc_pgeb1_v_active,
+    .v_back   = (uint32_t)k_glcdc_pgeb1_v_back,
+    .v_sync   = (uint32_t)k_glcdc_pgeb1_v_sync,
+    .v_total  = (uint32_t)k_glcdc_pgeb1_v_active + (uint32_t)k_glcdc_pgeb1_v_front +
+                (uint32_t)k_glcdc_pgeb1_v_back + (uint32_t)k_glcdc_pgeb1_v_sync,
   };
   internal_program_tcon(&t);
   internal_program_bg(&t);
@@ -726,14 +744,28 @@ ra_err_t ra_glcdc_set_blend(ra_glcdc_blend_mode_t mode, uint8_t global_alpha)
 /* ra_glcdc_set_background_color -- see header for full description. */
 ra_err_t ra_glcdc_set_background_color(uint32_t argb)
 {
-  /* HUM Ch 63 "BG_BGC" p 3744 */ /* panel-wide fallback colour. */
-  *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc) = argb;
-  /* BG_BGC is shadow-registered -- the write only takes effect on the
-   * next vertical sync once BG_EN.VEN is asserted.  Pulse VEN so the
-   * new colour commits without re-running the full start sequence. */
+  /* BG_BGC is direct-write (not shadow-latched).  Writing it mid-
+   * frame tears the panel horizontally.  Sync to vblank by pulsing
+   * BG.EN.VEN and polling BG.EN.VEN to auto-clear (= VS just fired),
+   * then write BG_BGC during the vblank window so the next visible
+   * scan starts with the new colour.  FSP polls BG.EN.VEN_b in
+   * exactly this way (see r_glcdc.c FSP_ERROR_RETURN checks). */
+  enum : uint32_t {
+    k_bg_en_ven   = 1UL << 8,
+    k_ven_timeout = 0x40000UL, /* > 1 frame at 1 GHz CPU. */
+  };
+
   uint32_t bg_en = *ra_glcdc_reg32(k_ra_glcdc_off_bg_en);
-  bg_en |= (1UL << 8); /* VEN */
+  bg_en |= k_bg_en_ven;
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_en) = bg_en;
+
+  for (uint32_t i = 0U; i < (uint32_t)k_ven_timeout; i++) {
+    if ((*ra_glcdc_reg32(k_ra_glcdc_off_bg_en) & k_bg_en_ven) == 0U) {
+      break;
+    }
+  }
+  /* HUM Ch 63 "BG_BGC" p 3744 -- write during vblank. */
+  *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc) = argb;
   return k_ra_ok;
 }
 
