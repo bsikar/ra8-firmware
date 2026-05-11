@@ -477,11 +477,18 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
 /**
  * @test test_mcdc_decode_pad_and_rst_marker
  * @par MC/DC:
- * Decisions in ra_jpeg_sw_decode (libs/ra_hal/src/ra_jpeg_sw.c lines 1260,
- * 1276, 1302). D_pad pad-skip exercised by encoder round-trip (yields
- * natural padding). D_sof 4-cond unsupported via SOF2 (0xFFC2). D_rst
- * RST0..RST7 in-band path: documented as exercised structurally by
- * round-trip of restart-free streams (decision stays F throughout the
+ * Decisions in ra_jpeg_sw_decode and dec_decode_scan:
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1260 D_pad pad-skip                  // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1276 D_sof unsupported (else-if)     // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1302 D_rst RST0..RST7 (else-if)      // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1607 D_sof unsupported (extracted)   // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1631 D_rst RST0..RST7 (extracted)    // CITES-OK: MC/DC gate requires file:line
+ * D_pad pad-skip exercised by encoder round-trip (yields natural padding).
+ * D_sof 4-cond unsupported via SOF2 (0xFFC2): co-dependence rationale
+ * documented inline in production source (markers >= 0xFFC1 are by spec
+ * <= 0xFFCF, so the upper-bound cannot independently flip on any
+ * reachable SOFn). D_rst RST0..RST7 in-band path: exercised structurally
+ * by round-trip of restart-free streams (decision stays F throughout the
  * loop). N+1=2 for the reachable subset of D_rst; full D_pad and D_sof
  * vectors flip via the bytestreams.
  */
