@@ -278,6 +278,86 @@ static int32_t internal_clip32(int32_t v, int32_t lo, int32_t hi)
  * ===========================================================================
  */
 
+/**
+ * @struct internal_lsq_sums_t
+ * @brief Accumulated least-squares sums driving the calibration solve.
+ *
+ * @details
+ * Holds the 11 running sums needed to assemble the 3x3 normal-equation
+ * matrix and both right-hand sides for the weighted-least-squares affine
+ * fit (Fang & Chang 2007). Bundling them keeps the
+ * ::ra_touch_cal_compute body compact while preserving bit-exact math.
+ */
+typedef struct {
+  float Sx;  /**< Sum of raw x. */
+  float Sy;  /**< Sum of raw y. */
+  float Sxx; /**< Sum of raw x^2. */
+  float Syy; /**< Sum of raw y^2. */
+  float Sxy; /**< Sum of raw x*y. */
+  float Su;  /**< Sum of screen x. */
+  float Sv;  /**< Sum of screen y. */
+  float Sxu; /**< Sum of raw x * screen x. */
+  float Syu; /**< Sum of raw y * screen x. */
+  float Sxv; /**< Sum of raw x * screen y. */
+  float Syv; /**< Sum of raw y * screen y. */
+} internal_lsq_sums_t;
+
+/**
+ * @brief Accumulate the 11 least-squares sums over ``n`` sample pairs.
+ *
+ * @details
+ * Pure-data helper extracted from ::ra_touch_cal_compute to keep the
+ * top-level function within the NASA P10 Rule 4 cap. The arithmetic is
+ * bit-identical to the inlined original.
+ *
+ * @param[in]  raw    Raw touch samples (length ``n``).
+ * @param[in]  screen Screen targets (length ``n``).
+ * @param[in]  n      Sample count.
+ * @param[out] s      Accumulated sums (zero-initialised by the helper).
+ *
+ * @pre All pointers are non-NULL and ``n`` >= 1.
+ * @pre Caller has already validated argument ranges.
+ * @post ``s`` holds the 11 sums over ``[0, n)``.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_accumulate_sums(const ra_touch_cal_point_t* raw,
+                                     const ra_touch_cal_point_t* screen,
+                                     uint8_t                     n,
+                                     internal_lsq_sums_t*        s)
+{
+  s->Sx  = 0.0F;
+  s->Sy  = 0.0F;
+  s->Sxx = 0.0F;
+  s->Syy = 0.0F;
+  s->Sxy = 0.0F;
+  s->Su  = 0.0F;
+  s->Sv  = 0.0F;
+  s->Sxu = 0.0F;
+  s->Syu = 0.0F;
+  s->Sxv = 0.0F;
+  s->Syv = 0.0F;
+  for (uint8_t i = 0U; i < n; i++) {
+    const float xi = (float)raw[i].x;
+    const float yi = (float)raw[i].y;
+    const float ui = (float)screen[i].x;
+    const float vi = (float)screen[i].y;
+    s->Sx += xi;
+    s->Sy += yi;
+    s->Sxx += xi * xi;
+    s->Syy += yi * yi;
+    s->Sxy += xi * yi;
+    s->Su += ui;
+    s->Sv += vi;
+    s->Sxu += xi * ui;
+    s->Syu += yi * ui;
+    s->Sxv += xi * vi;
+    s->Syv += yi * vi;
+  }
+}
+
 /* Implementation of ra_touch_cal_compute (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
                               const ra_touch_cal_point_t* screen,
@@ -291,50 +371,28 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
     return k_ra_err_invalid_arg;
   }
 
-  float Sx = 0.0F, Sy = 0.0F;
-  float Sxx = 0.0F, Syy = 0.0F, Sxy = 0.0F;
-  float Su = 0.0F, Sv = 0.0F;
-  float Sxu = 0.0F, Syu = 0.0F;
-  float Sxv = 0.0F, Syv = 0.0F;
-
-  for (uint8_t i = 0U; i < n; i++) {
-    const float xi = (float)raw[i].x;
-    const float yi = (float)raw[i].y;
-    const float ui = (float)screen[i].x;
-    const float vi = (float)screen[i].y;
-    Sx += xi;
-    Sy += yi;
-    Sxx += xi * xi;
-    Syy += yi * yi;
-    Sxy += xi * yi;
-    Su += ui;
-    Sv += vi;
-    Sxu += xi * ui;
-    Syu += yi * ui;
-    Sxv += xi * vi;
-    Syv += yi * vi;
-  }
+  internal_lsq_sums_t s;
+  internal_accumulate_sums(raw, screen, n, &s);
 
   const float fn   = (float)n;
   const float A[9] = {
-    Sxx,
-    Sxy,
-    Sx,
-    Sxy,
-    Syy,
-    Sy,
-    Sx,
-    Sy,
+    s.Sxx,
+    s.Sxy,
+    s.Sx,
+    s.Sxy,
+    s.Syy,
+    s.Sy,
+    s.Sx,
+    s.Sy,
     fn,
   };
+  const float Bu[3] = {s.Sxu, s.Syu, s.Su};
+  const float Bv[3] = {s.Sxv, s.Syv, s.Sv};
 
-  float       sol_u[3] = {0.0F, 0.0F, 0.0F};
-  float       sol_v[3] = {0.0F, 0.0F, 0.0F};
-  const float Bu[3]    = {Sxu, Syu, Su};
-  const float Bv[3]    = {Sxv, Syv, Sv};
-
-  bool ok_u = false;
-  bool ok_v = false;
+  float sol_u[3] = {0.0F, 0.0F, 0.0F};
+  float sol_v[3] = {0.0F, 0.0F, 0.0F};
+  bool  ok_u     = false;
+  bool  ok_v     = false;
   internal_solve3(A, Bu, sol_u, &ok_u);
   internal_solve3(A, Bv, sol_v, &ok_v);
   // mcdc-deactivated: TU-local helper internal_clip32 solver-success gate; A is the same 3x3 calibration matrix for both Bu and Bv solves, so internal_solve3 either succeeds for both right-hand sides (det(A) != 0) or fails for both (det(A) == 0) -- ok_u and ok_v are co-determined by the matrix conditioning.
