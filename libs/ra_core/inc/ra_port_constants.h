@@ -150,6 +150,10 @@ typedef enum : uint16_t {
   k_ra_pin_led1 = 0x0600U, /**< LED1 on P6_00 -- (port 6  << 8) | pin 0. */
   k_ra_pin_led2 = 0x0303U, /**< LED2 on P3_03 -- (port 3  << 8) | pin 3. */
   k_ra_pin_led3 = 0x0A07U, /**< LED3 on P10_07 -- (port 10 << 8) | pin 7. */
+
+  /* ---- Parallel Graphics Expansion Board 1 GPIO control (J1 + UM Table 33). */
+  k_ra_pin_lcd_reset_l = 0x0606U, /**< J1-6 RST,  P606 (active-low).   */
+  k_ra_pin_lcd_blen    = 0x050EU, /**< J1-1 BLEN, P514 (active-high).  */
 } ra_port_pin_t;
 
 /**
