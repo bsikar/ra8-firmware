@@ -396,6 +396,8 @@ static void internal_program_bg(const ra_glcdc_panel_timing_t* t)
  * @param[in] t          Panel timing.
  * @param[in] fb_addr    GR1 framebuffer base address.
  * @param[in] fb_format  Pixel format code for FLM6.FORMAT[30:28].
+ * @param[in] fb_w       Framebuffer width in pixels (and layer width on the panel).
+ * @param[in] fb_h       Framebuffer height in pixels (and layer height on the panel).
  *
  * @pre internal_program_bg has been called.
  * @pre `fb_addr` points to allocated framebuffer memory (only
@@ -407,23 +409,33 @@ static void internal_program_bg(const ra_glcdc_panel_timing_t* t)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
-static void
-internal_program_gr1(const ra_glcdc_panel_timing_t* t, uintptr_t fb_addr, uint16_t fb_format)
+static void internal_program_gr1(const ra_glcdc_panel_timing_t* t,
+                                 uintptr_t                      fb_addr,
+                                 uint16_t                       fb_format,
+                                 uint16_t                       fb_w,
+                                 uint16_t                       fb_h)
 {
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_fmt)   = ((uint32_t)fb_format << k_glcdc_shift_flm6_fmt);
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr) = (uint32_t)fb_addr;
 
-  const uint32_t line_bytes                = t->h_active * (uint32_t)k_glcdc_bpp_rgb565;
+  /* FLM3.LNOFF (line stride) + FLM5 (active line / AXI-burst count)
+   * track the FRAMEBUFFER dimensions, not the panel.  This lets a
+   * small SRAM framebuffer occupy only a portion of the panel
+   * (rest is filled by the BG plane via BG_BGC). */
+  const uint32_t line_bytes                = (uint32_t)fb_w * (uint32_t)k_glcdc_bpp_rgb565;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_flm3) = (line_bytes << k_glcdc_shift_high);
 
   const uint32_t datanum                   = (line_bytes / (uint32_t)k_glcdc_axi_burst_bytes) - 1U;
-  const uint32_t lnnum                     = t->v_active - 1U;
+  const uint32_t lnnum                     = (uint32_t)fb_h - 1U;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_line) = (lnnum << k_glcdc_shift_high) | datanum;
 
-  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_size) = (t->h_back << k_glcdc_shift_high) | t->h_active;
-  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab2)  = (t->v_back << k_glcdc_shift_high) | t->v_active;
-  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab4)  = (t->v_back << k_glcdc_shift_high) | t->v_active;
-  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab5)  = (t->h_back << k_glcdc_shift_high) | t->h_active;
+  /* Layer position on the panel: start at the back-porch corner
+   * (top-left of the active area) so a small framebuffer renders
+   * at the panel's origin and the rest stays BG-plane. */
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_size) = (t->h_back << k_glcdc_shift_high) | (uint32_t)fb_w;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab2)  = (t->v_back << k_glcdc_shift_high) | (uint32_t)fb_h;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab4)  = (t->v_back << k_glcdc_shift_high) | (uint32_t)fb_h;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab5)  = (t->h_back << k_glcdc_shift_high) | (uint32_t)fb_w;
 
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1)   = (uint32_t)k_glcdc_dispsel_transparent;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_flmrd) = 0U;
@@ -508,6 +520,8 @@ static void internal_program_out(void)
  *
  * @param[in] fb_addr    Framebuffer base address for GR1.
  * @param[in] fb_format  GR1 framebuffer pixel format.
+ * @param[in] fb_w       GR1 framebuffer width (pixels).
+ * @param[in] fb_h       GR1 framebuffer height (pixels).
  *
  * @pre internal_graphics_power_on has been called.
  * @pre GLCDC peripheral clock is active (MSTPCRD enabled).
@@ -518,7 +532,8 @@ static void internal_program_out(void)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
-static void internal_panel_program(uintptr_t fb_addr, uint16_t fb_format)
+static void
+internal_panel_program(uintptr_t fb_addr, uint16_t fb_format, uint16_t fb_w, uint16_t fb_h)
 {
   const ra_glcdc_panel_timing_t t = {
     .h_active = (uint32_t)k_glcdc_pgeb1_h_active,
@@ -534,7 +549,7 @@ static void internal_panel_program(uintptr_t fb_addr, uint16_t fb_format)
   };
   internal_program_tcon(&t);
   internal_program_bg(&t);
-  internal_program_gr1(&t, fb_addr, fb_format);
+  internal_program_gr1(&t, fb_addr, fb_format, fb_w, fb_h);
   internal_program_gr2(&t);
   internal_program_out();
 }
@@ -575,7 +590,10 @@ ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
                                               (uint32_t)k_panel_clk_dcdr_div2;
 
   /* Programme every other panel-side register in the FSP-documented order. */
-  internal_panel_program(cfg->framebuffer_addr, (uint16_t)cfg->format);
+  internal_panel_program(cfg->framebuffer_addr,
+                         (uint16_t)cfg->format,
+                         cfg->width_px,
+                         cfg->height_px);
 
   ra_log_info_val(s_tag, "glcdc_init fb", cfg->framebuffer_addr);
   return k_ra_ok;
@@ -766,6 +784,40 @@ ra_err_t ra_glcdc_set_background_color(uint32_t argb)
   }
   /* HUM Ch 63 "BG_BGC" p 3744 -- write during vblank. */
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc) = argb;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_glcdc_layer1_show`.
+ *
+ * @details See header for caller-facing contract.  Writes SADDR,
+ * alpha=0xFF, DISPSEL=non_transparent, FLMRD=1, then asserts GR1.VEN
+ * so the chip commits the layer-1 visibility flip at the next VS.
+ *
+ * @param[in] fb_addr Framebuffer base address (see header for dims).
+ *
+ * @return Always `k_ra_ok` (writes can't fail at this point).
+ * @retval k_ra_ok Layer 1 visible from next VS.
+ *
+ * @pre `ra_glcdc_init` and `ra_glcdc_start` have run.
+ * @pre `fb_addr` is valid for the framebuffer size from init.
+ * @post GR1 fetches and composites pixels from `fb_addr`.
+ * @post GR1.VEN is asserted (auto-clears at next VS).
+ *
+ * @note Single-threaded; not safe to call from IRQ.
+ * @since 0.1.0
+ */
+ra_err_t ra_glcdc_layer1_show(uintptr_t fb_addr)
+{
+  enum : uint32_t {
+    k_gr1_ven = 1UL << 0,
+  };
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr) = (uint32_t)fb_addr;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab7) =
+    ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef);
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1)   = (uint32_t)k_glcdc_dispsel_non_transparent;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_flmrd) = 1U;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en)    = k_gr1_ven;
   return k_ra_ok;
 }
 
