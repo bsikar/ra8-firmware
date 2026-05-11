@@ -782,7 +782,8 @@ ra_err_t ra_glcdc_set_background_color(uint32_t argb)
       break;
     }
   }
-  /* HUM Ch 63 "BG_BGC" p 3744 -- write during vblank. */
+  /* Write BG_BGC during the vblank window we just polled into. */
+  /* HUM Ch 63 "BG_BGC" p 3744 */
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc) = argb;
   return k_ra_ok;
 }
