@@ -542,10 +542,201 @@ ra_err_t ra_net_tcp_close(ra_net_handle_t h)
  */
 
 /**
+ * @brief Parsed view of an inbound TCP frame.
+ *
+ * @details Aggregates the wire-format fields a state handler needs to
+ *          consume, so we can pass one struct instead of nine scalars.
+ *
+ * @invariant payload points into the caller's frame buffer for the
+ *            lifetime of a single ra_net_tcp_handle() call.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t       sport;   /**< Source TCP port (host order). */
+  uint16_t       dport;   /**< Destination TCP port (host order). */
+  uint32_t       seq;     /**< Sequence number. */
+  uint32_t       ack;     /**< Acknowledgment number. */
+  uint8_t        flags;   /**< TCP control flag bitmask. */
+  uint16_t       seg_len; /**< Payload byte count. */
+  const uint8_t* payload; /**< Pointer to payload bytes. */
+  ra_net_ipv4_t  src_ip;  /**< Source IPv4 address. */
+} ra_net_tcp_view_t;
+
+/**
+ * @brief Parse an Ethernet+IPv4+TCP frame into a wire-format view.
+ *
+ * @details Validates the IP total-length cap, then extracts ports,
+ *          sequence numbers, flags, and payload bounds. Byte-equivalent
+ *          to the inline parse in the original ra_net_tcp_handle.
+ *
+ * @param[in]  frame Ethernet+IPv4+TCP frame bytes. Must not be NULL.
+ * @param[in]  len   Frame length.
+ * @param[out] v     Parsed view (only valid on success).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Frame parsed.
+ * @retval k_ra_err_invalid_arg  IP total-length exceeds frame.
+ *
+ * @pre frame is non-NULL and len >= eth+ipv4+tcp header total.
+ * @pre v is non-NULL.
+ * @post On success *v is fully populated.
+ * @post On failure *v is unspecified.
+ *
+ * @note Not thread-safe; pure function.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t tcp_parse_frame(const uint8_t* frame, uint16_t len, ra_net_tcp_view_t* v)
+{
+  const uint8_t* ip   = &frame[k_eth_hdr_len];
+  uint16_t       ihl  = (uint16_t)((uint16_t)(ip[0] & 0x0FU) * 4U);
+  uint16_t       tlen = ra_net_be16(&ip[2]);
+  if ((uint16_t)(k_eth_hdr_len + tlen) > len) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint8_t* tcp  = &frame[k_eth_hdr_len + ihl];
+  uint8_t        doff = (uint8_t)((tcp[k_tcp_offset_dataoff] >> 4U) * 4U);
+  v->sport            = ra_net_be16(&tcp[0]);
+  v->dport            = ra_net_be16(&tcp[2]);
+  v->seq              = ra_net_be32(&tcp[4]);
+  v->ack              = ra_net_be32(&tcp[8]);
+  v->flags            = tcp[k_tcp_offset_flags];
+  v->seg_len          = (uint16_t)(tlen - ihl - doff);
+  v->payload          = &tcp[doff];
+  v->src_ip           = (ra_net_ipv4_t){};
+  (void)memcpy(v->src_ip.bytes, &ip[12], 4U);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Handle an inbound segment on a LISTEN socket.
+ *
+ * @details RFC 793 LISTEN -> SYN_RECEIVED. Drops non-SYN segments.
+ *
+ * @param[in,out] t   Listening socket slot.
+ * @param[in]     idx Slot index (used to seed ISS).
+ * @param[in]     v   Parsed inbound segment.
+ *
+ * @return ra_err_t Error code from emit_segment, or k_ra_ok if dropped.
+ * @retval k_ra_ok Segment ignored or SYN+ACK queued.
+ * @retval other   ra_net_ipv4_send error code.
+ *
+ * @pre t->state == k_tcp_state_listen.
+ * @pre v is non-NULL.
+ * @post On SYN, t bound to peer and transitioned to SYN_RECEIVED.
+ * @post Otherwise no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t tcp_rx_listen(ra_net_tcp_sock_t* t, int16_t idx, const ra_net_tcp_view_t* v)
+{
+  if ((v->flags & (uint8_t)k_tcp_flag_syn) == 0U) {
+    return k_ra_ok;
+  }
+  t->remote_ip   = v->src_ip;
+  t->remote_port = v->sport;
+  t->rcv_nxt     = v->seq + 1U;
+  t->snd_nxt     = (uint32_t)k_tcp_initial_iss + (uint32_t)idx;
+  t->snd_una     = t->snd_nxt;
+  t->state       = k_tcp_state_syn_received;
+  ra_err_t e =
+    ra_net_tcp_internal_emit_segment(t,
+                                     (uint8_t)((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack),
+                                     nullptr,
+                                     0U);
+  if (e == k_ra_ok) {
+    t->snd_nxt++;
+  }
+  return e;
+}
+
+/**
+ * @brief Handle an inbound segment on a SYN_SENT socket.
+ *
+ * @details RFC 793 SYN_SENT -> ESTABLISHED on SYN+ACK.
+ *
+ * @param[in,out] t Active-open socket.
+ * @param[in]     v Parsed inbound segment.
+ *
+ * @return ra_err_t Error code from emit_segment, or k_ra_ok if dropped.
+ * @retval k_ra_ok Segment processed; ACK may be queued.
+ * @retval other   ra_net_ipv4_send error code.
+ *
+ * @pre t->state == k_tcp_state_syn_sent.
+ * @pre v is non-NULL.
+ * @post On SYN+ACK, t transitions to ESTABLISHED and ACK is queued.
+ * @post Otherwise no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t tcp_rx_syn_sent(ra_net_tcp_sock_t* t, const ra_net_tcp_view_t* v)
+{
+  if ((v->flags & ((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack)) ==
+      ((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack)) {
+    t->rcv_nxt = v->seq + 1U;
+    t->snd_una = v->ack;
+    t->state   = k_tcp_state_established;
+    return ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Handle an inbound segment on an ESTABLISHED socket.
+ *
+ * @details Copies up to RX-buffer capacity, ACKs received data,
+ *          processes FIN -> CLOSE_WAIT, and snaps snd_una on ACK.
+ *
+ * @param[in,out] t Established socket.
+ * @param[in]     v Parsed inbound segment.
+ *
+ * @return ra_err_t Always k_ra_ok (segment emits are best-effort).
+ * @retval k_ra_ok Segment processed.
+ *
+ * @pre t->state == k_tcp_state_established.
+ * @pre v is non-NULL.
+ * @post Data appended to rx_buf (truncated to capacity).
+ * @post On FIN, t transitions to CLOSE_WAIT.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t tcp_rx_established(ra_net_tcp_sock_t* t, const ra_net_tcp_view_t* v)
+{
+  if (v->seg_len != 0U) {
+    uint16_t copy_len = v->seg_len;
+    if ((uint32_t)t->rx_len + (uint32_t)copy_len > (uint32_t)k_ra_net_tcp_rx_buf_size) {
+      copy_len = (uint16_t)(k_ra_net_tcp_rx_buf_size - t->rx_len);
+    }
+    (void)memcpy(&t->rx_buf[t->rx_len], v->payload, copy_len);
+    t->rx_len  = (uint16_t)(t->rx_len + copy_len);
+    t->rcv_nxt = v->seq + (uint32_t)v->seg_len;
+    (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+  }
+  if ((v->flags & (uint8_t)k_tcp_flag_fin) != 0U) {
+    t->rcv_nxt++;
+    t->state = k_tcp_state_close_wait;
+    (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+  }
+  if ((v->flags & (uint8_t)k_tcp_flag_ack) != 0U) {
+    t->snd_una = v->ack;
+  }
+  return k_ra_ok;
+}
+
+/**
  * @brief Process an inbound TCP frame; drive the per-socket FSM.
  *
  * @details RFC 793 -- finds the matching socket by 4-tuple (or
- *          LISTEN on the destination port), then advances its FSM.
+ *          LISTEN on the destination port), then advances its FSM via
+ *          the per-state handlers tcp_rx_listen / tcp_rx_syn_sent /
+ *          tcp_rx_established.
  *
  * @param[in] frame Ethernet+IPv4+TCP frame bytes. Must not be NULL.
  * @param[in] len   Frame length.
@@ -575,100 +766,39 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
   if (len < min) {
     return k_ra_err_invalid_arg;
   }
-  const uint8_t* ip   = &frame[k_eth_hdr_len];
-  uint16_t       ihl  = (uint16_t)((uint16_t)(ip[0] & 0x0FU) * 4U);
-  uint16_t       tlen = ra_net_be16(&ip[2]);
-  if ((uint16_t)(k_eth_hdr_len + tlen) > len) {
-    return k_ra_err_invalid_arg;
+  ra_net_tcp_view_t v;
+  ra_err_t          pe = tcp_parse_frame(frame, len, &v);
+  if (pe != k_ra_ok) {
+    return pe;
   }
-  const uint8_t* tcp     = &frame[k_eth_hdr_len + ihl];
-  uint16_t       sport   = ra_net_be16(&tcp[0]);
-  uint16_t       dport   = ra_net_be16(&tcp[2]);
-  uint32_t       seq     = ra_net_be32(&tcp[4]);
-  uint32_t       ack     = ra_net_be32(&tcp[8]);
-  uint8_t        doff    = (uint8_t)((tcp[k_tcp_offset_dataoff] >> 4U) * 4U);
-  uint8_t        flags   = tcp[k_tcp_offset_flags];
-  uint16_t       seg_len = (uint16_t)(tlen - ihl - doff);
-  const uint8_t* payload = &tcp[doff];
-
-  ra_net_ipv4_t src_ip = {};
-  (void)memcpy(src_ip.bytes, &ip[12], 4U);
 
   ra_net_state_t* s = ra_net_internal_state();
 
   /* Match: established connection first, then listening socket. */
-  int16_t idx = ra_net_tcp_internal_find_socket(dport, src_ip, sport, k_tcp_state_closed, 0U);
+  int16_t idx = ra_net_tcp_internal_find_socket(v.dport, v.src_ip, v.sport, k_tcp_state_closed, 0U);
   if (idx < 0) {
     return k_ra_err_not_found;
   }
   ra_net_tcp_sock_t* t = &s->socks[idx].tcp;
 
-  /* LISTEN: accept SYN, transition to SYN_RECEIVED. */
   if (t->state == k_tcp_state_listen) {
-    if ((flags & (uint8_t)k_tcp_flag_syn) == 0U) {
-      return k_ra_ok;
-    }
-    /* Bind the listening slot to the new peer. */
-    t->remote_ip   = src_ip;
-    t->remote_port = sport;
-    t->rcv_nxt     = seq + 1U;
-    t->snd_nxt     = (uint32_t)k_tcp_initial_iss + (uint32_t)idx;
-    t->snd_una     = t->snd_nxt;
-    t->state       = k_tcp_state_syn_received;
-    ra_err_t e =
-      ra_net_tcp_internal_emit_segment(t,
-                                       (uint8_t)((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack),
-                                       nullptr,
-                                       0U);
-    if (e == k_ra_ok) {
-      t->snd_nxt++;
-    }
-    return e;
+    return tcp_rx_listen(t, idx, &v);
   }
-
   if (t->state == k_tcp_state_syn_sent) {
-    if ((flags & ((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack)) ==
-        ((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack)) {
-      t->rcv_nxt = seq + 1U;
-      t->snd_una = ack;
-      t->state   = k_tcp_state_established;
-      return ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
-    }
-    return k_ra_ok;
+    return tcp_rx_syn_sent(t, &v);
   }
-
   if (t->state == k_tcp_state_syn_received) {
-    if ((flags & (uint8_t)k_tcp_flag_ack) != 0U) {
-      t->snd_una = ack;
+    if ((v.flags & (uint8_t)k_tcp_flag_ack) != 0U) {
+      t->snd_una = v.ack;
       t->state   = k_tcp_state_established;
     }
     return k_ra_ok;
   }
-
   if (t->state == k_tcp_state_established) {
-    if (seg_len != 0U) {
-      uint16_t copy_len = seg_len;
-      if ((uint32_t)t->rx_len + (uint32_t)copy_len > (uint32_t)k_ra_net_tcp_rx_buf_size) {
-        copy_len = (uint16_t)(k_ra_net_tcp_rx_buf_size - t->rx_len);
-      }
-      (void)memcpy(&t->rx_buf[t->rx_len], payload, copy_len);
-      t->rx_len  = (uint16_t)(t->rx_len + copy_len);
-      t->rcv_nxt = seq + (uint32_t)seg_len;
-      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
-    }
-    if ((flags & (uint8_t)k_tcp_flag_fin) != 0U) {
-      t->rcv_nxt++;
-      t->state = k_tcp_state_close_wait;
-      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
-    }
-    if ((flags & (uint8_t)k_tcp_flag_ack) != 0U) {
-      t->snd_una = ack;
-    }
-    return k_ra_ok;
+    return tcp_rx_established(t, &v);
   }
-
   if (t->state == k_tcp_state_fin_wait) {
-    if ((flags & (uint8_t)k_tcp_flag_fin) != 0U) {
+    if ((v.flags & (uint8_t)k_tcp_flag_fin) != 0U) {
       t->rcv_nxt++;
       (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
       t->state = k_tcp_state_closed;
@@ -676,9 +806,8 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
     }
     return k_ra_ok;
   }
-
   if (t->state == k_tcp_state_last_ack) {
-    if ((flags & (uint8_t)k_tcp_flag_ack) != 0U) {
+    if ((v.flags & (uint8_t)k_tcp_flag_ack) != 0U) {
       t->state = k_tcp_state_closed;
       (void)memset(&s->socks[idx], 0, sizeof(s->socks[idx]));
     }

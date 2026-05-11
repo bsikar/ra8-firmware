@@ -218,8 +218,34 @@ ra_err_t ra_tls_global_deinit(void)
   return k_ra_ok;
 }
 
-/* Ra tls session open -- see implementation for details. */
-ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session_cfg_t* cfg)
+/**
+ * @brief Validate ``ra_tls_session_open`` inputs before slot acquisition.
+ *
+ * @details
+ * Returns the same error codes as the inlined original so the public
+ * contract is preserved bit-for-bit; the helper exists purely to keep
+ * the open function within the NASA P10 Rule 4 line budget.
+ *
+ * @param[in,out] out_session Caller's session handle out-parameter.
+ * @param[in]     cfg         Caller-supplied session configuration.
+ *
+ * @return ``k_ra_ok`` when arguments are valid, otherwise the matching
+ *         error code.
+ *
+ * @retval k_ra_ok                 Inputs valid.
+ * @retval k_ra_err_invalid_arg    NULL out pointer / cfg / BIO callbacks.
+ * @retval k_ra_err_not_initialized Module has not been initialised.
+ *
+ * @pre Caller has not yet acquired a pool slot.
+ * @pre ``out_session`` may be NULL (handled by this helper).
+ * @post On success no state is mutated.
+ * @post On error ``*out_session`` is NULL when ``out_session`` is non-NULL.
+ *
+ * @note Pure validation helper; safe from any context.
+ * @since 0.1.0
+ */
+static ra_err_t internal_session_validate_args(ra_tls_session_t*           out_session,
+                                               const ra_tls_session_cfg_t* cfg)
 {
   if (out_session == nullptr) {
     return k_ra_err_invalid_arg;
@@ -235,17 +261,39 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
   if ((cfg->bio_send == nullptr) || (cfg->bio_recv == nullptr)) {
     return k_ra_err_invalid_arg;
   }
-
-  struct ra_tls_session_handle* slot = internal_pool_acquire();
-  if (slot == nullptr) {
-    ra_log_warn(k_ra_tls_tag, "session pool exhausted");
-    return k_ra_err_no_mem;
-  }
-
-  slot->in_use = true;
-  slot->cfg    = *cfg;
+  return k_ra_ok;
+}
 
 #ifndef RA_SIMULATOR_MODE
+/**
+ * @brief Run the Mbed TLS init/config/setup sequence for a fresh slot.
+ *
+ * @details
+ * On any sub-step failure the helper tears down the partial Mbed TLS
+ * state and zeroes the slot so the caller can return the error without
+ * leaking pool capacity. Hoisted out of ::ra_tls_session_open to keep
+ * the orchestrator within the line cap.
+ *
+ * @param[in,out] slot Pool slot freshly marked ``in_use``.
+ * @param[in]     cfg  Caller-supplied session configuration.
+ *
+ * @return ``k_ra_ok`` on success, ``k_ra_err_hw_init_failed`` on any
+ *         Mbed TLS sub-step failure.
+ *
+ * @retval k_ra_ok                 Slot fully configured.
+ * @retval k_ra_err_hw_init_failed Mbed TLS rejected one of the calls.
+ *
+ * @pre ``slot->in_use`` is true and ``slot->cfg`` is the caller config.
+ * @pre Module has been initialised.
+ * @post On success the slot's SSL context is wired to the BIO callbacks.
+ * @post On error the slot is fully zeroed.
+ *
+ * @note Not thread-safe; pool serialisation is the caller's job.
+ * @since 0.1.0
+ */
+static ra_err_t internal_session_mbedtls_setup(struct ra_tls_session_handle* slot,
+                                               const ra_tls_session_cfg_t*   cfg)
+{
   mbedtls_ssl_init(&slot->ssl);
   mbedtls_ssl_config_init(&slot->config);
 
@@ -280,6 +328,32 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
                       (mbedtls_ssl_send_t*)cfg->bio_send,
                       (mbedtls_ssl_recv_t*)cfg->bio_recv,
                       nullptr);
+  return k_ra_ok;
+}
+#endif
+
+/* Ra tls session open -- see implementation for details. */
+ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session_cfg_t* cfg)
+{
+  const ra_err_t arg_rc = internal_session_validate_args(out_session, cfg);
+  if (arg_rc != k_ra_ok) {
+    return arg_rc;
+  }
+
+  struct ra_tls_session_handle* slot = internal_pool_acquire();
+  if (slot == nullptr) {
+    ra_log_warn(k_ra_tls_tag, "session pool exhausted");
+    return k_ra_err_no_mem;
+  }
+
+  slot->in_use = true;
+  slot->cfg    = *cfg;
+
+#ifndef RA_SIMULATOR_MODE
+  const ra_err_t setup_rc = internal_session_mbedtls_setup(slot, cfg);
+  if (setup_rc != k_ra_ok) {
+    return setup_rc;
+  }
 #else
   slot->handshake_done = false;
 #endif
