@@ -305,30 +305,87 @@ static err_t demo_netif_bring_up(void)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Open + bind + listen on the echo port.
+ *
+ * @return int Listening socket fd, or ``-1`` on any failure.
+ * @retval >=0 Bound and listening fd.
+ * @retval -1  Socket / bind / listen failed; caller should retry.
+ *
+ * @pre lwIP socket API is available (``demo_netif_bring_up`` succeeded).
+ * @pre ``k_demo_echo_port`` and ``k_demo_listen_backlog`` are configured.
+ * @post On success the fd is in LISTEN state.
+ * @post On failure no fd is leaked.
+ *
+ * @note Logs each failure cause over UART.
+ * @since 0.1.0
+ */
+static int demo_open_listen_sock(void)
+{
+  int fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+  if (fd < 0) {
+    demo_print("[lwip] socket() failed\r\n");
+    return -1;
+  }
+  struct sockaddr_in addr = {};
+  addr.sin_family         = AF_INET;
+  addr.sin_addr.s_addr    = htonl(INADDR_ANY);
+  addr.sin_port           = htons((uint16_t)k_demo_echo_port);
+  if (lwip_bind(fd, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+    demo_print("[lwip] bind() failed\r\n");
+    (void)lwip_close(fd);
+    return -1;
+  }
+  if (lwip_listen(fd, (int)k_demo_listen_backlog) != 0) {
+    demo_print("[lwip] listen() failed\r\n");
+    (void)lwip_close(fd);
+    return -1;
+  }
+  return fd;
+}
+
+/**
+ * @brief Per-client recv/send echo until peer closes.
+ *
+ * @param[in] client_fd Connected client socket.
+ *
+ * @pre ``client_fd >= 0`` and refers to an accepted TCP connection.
+ * @pre lwIP is up.
+ * @post All bytes read from peer are echoed back (or loop bails on error).
+ * @post Caller closes ``client_fd``.
+ *
+ * @note Logs each successful echo's byte count.
+ * @since 0.1.0
+ */
+static void demo_serve_client(int client_fd)
+{
+  uint8_t rx[k_demo_rx_buf_bytes];
+  while (1) {
+    int n = lwip_recv(client_fd, rx, (size_t)sizeof(rx), 0);
+    if (n <= 0) {
+      break;
+    }
+    int sent_total = 0;
+    while (sent_total < n) {
+      int s = lwip_send(client_fd, &rx[sent_total], (size_t)(n - sent_total), 0);
+      if (s <= 0) {
+        sent_total = -1;
+        break;
+      }
+      sent_total += s;
+    }
+    if (sent_total < 0) {
+      break;
+    }
+    demo_log_echo((uint32_t)n);
+  }
+}
+
 static void demo_echo_loop(void)
 {
   while (1) {
-    int listen_fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    int listen_fd = demo_open_listen_sock();
     if (listen_fd < 0) {
-      demo_print("[lwip] socket() failed\r\n");
-      (void)tx_thread_sleep(100U);
-      continue;
-    }
-
-    struct sockaddr_in addr = {};
-    addr.sin_family         = AF_INET;
-    addr.sin_addr.s_addr    = htonl(INADDR_ANY);
-    addr.sin_port           = htons((uint16_t)k_demo_echo_port);
-
-    if (lwip_bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
-      demo_print("[lwip] bind() failed\r\n");
-      (void)lwip_close(listen_fd);
-      (void)tx_thread_sleep(100U);
-      continue;
-    }
-    if (lwip_listen(listen_fd, (int)k_demo_listen_backlog) != 0) {
-      demo_print("[lwip] listen() failed\r\n");
-      (void)lwip_close(listen_fd);
       (void)tx_thread_sleep(100U);
       continue;
     }
@@ -341,27 +398,7 @@ static void demo_echo_loop(void)
         demo_print("[lwip] accept() failed; relistening\r\n");
         break;
       }
-
-      uint8_t rx[k_demo_rx_buf_bytes];
-      while (1) {
-        int n = lwip_recv(client_fd, rx, (size_t)sizeof(rx), 0);
-        if (n <= 0) {
-          break;
-        }
-        int sent_total = 0;
-        while (sent_total < n) {
-          int s = lwip_send(client_fd, &rx[sent_total], (size_t)(n - sent_total), 0);
-          if (s <= 0) {
-            sent_total = -1;
-            break;
-          }
-          sent_total += s;
-        }
-        if (sent_total < 0) {
-          break;
-        }
-        demo_log_echo((uint32_t)n);
-      }
+      demo_serve_client(client_fd);
       (void)lwip_close(client_fd);
     }
 

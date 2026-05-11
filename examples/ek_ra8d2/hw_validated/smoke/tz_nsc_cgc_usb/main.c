@@ -426,41 +426,106 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
  * @note Single-instance worker; not designed for re-entry.
  * @since 0.1.0
  */
-static VOID demo_worker(ULONG arg)
+/**
+ * @brief Brings the USBX system + FS device stack up.
+ *
+ * @return UINT UX_SUCCESS on success.
+ * @retval UX_SUCCESS Stack ready.
+ *
+ * @pre File-scope ``s_usbx_pool`` is reserved.
+ * @pre Caller is in thread context.
+ * @post Stack accepts class registrations.
+ * @post On failure, USBX state is undefined.
+ *
+ * @note Single-call.
+ * @since 0.1.0
+ */
+static UINT demo_usbx_stack_up(void)
 {
-  (void)arg;
-
-  /* Bring USBX up. */
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return;
+    return UX_ERROR;
   }
-  if (_ux_device_stack_initialize((UCHAR*)UX_NULL, /* HS framework            */
-                                  0,
-                                  s_device_framework_fs,
-                                  sizeof(s_device_framework_fs),
-                                  s_string_framework,
-                                  sizeof(s_string_framework),
-                                  s_language_id_framework,
-                                  sizeof(s_language_id_framework),
-                                  UX_NULL) != UX_SUCCESS) {
-    return;
-  }
+  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
+                                     0,
+                                     s_device_framework_fs,
+                                     sizeof(s_device_framework_fs),
+                                     s_string_framework,
+                                     sizeof(s_string_framework),
+                                     s_language_id_framework,
+                                     sizeof(s_language_id_framework),
+                                     UX_NULL);
+}
 
-  /* Register CDC-ACM class against the configuration. */
+/**
+ * @brief Registers the CDC-ACM class against the device-stack configuration.
+ *
+ * @return UINT UX_SUCCESS on success.
+ * @retval UX_SUCCESS Class registered.
+ *
+ * @pre ``demo_usbx_stack_up`` has succeeded.
+ * @pre Activate/deactivate callbacks are defined at file scope.
+ * @post CDC class bound to configuration 1, interface 0.
+ * @post Activation callback fires on SET_CONFIGURATION.
+ *
+ * @note Not re-entrant.
+ * @since 0.1.0
+ */
+static UINT demo_cdc_class_register(void)
+{
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
-  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
-                                      _ux_device_class_cdc_acm_entry,
-                                      1, /* configuration #  */
-                                      0, /* interface #      */
-                                      &cdc_params) != UX_SUCCESS) {
+  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
+                                         _ux_device_class_cdc_acm_entry,
+                                         1,
+                                         0,
+                                         &cdc_params);
+}
+
+/**
+ * @brief One iteration of the CDC echo loop.
+ *
+ * @param[in,out] buf Scratch buffer.
+ * @param[in]     cap Buffer capacity in bytes.
+ *
+ * @pre ``s_cdc_acm`` is non-NULL.
+ * @pre ``buf`` is non-NULL with ``cap`` bytes.
+ * @post On success, ``buf[0..n)`` is echoed back to host.
+ * @post LED1 toggled once per echoed byte.
+ *
+ * @note Outer loop reinvokes this every iteration.
+ * @since 0.1.0
+ */
+static void demo_echo_iter(UCHAR* buf, ULONG cap)
+{
+  ULONG n = 0UL;
+  if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n) != UX_SUCCESS) {
+    tx_thread_sleep(k_demo_idle_ticks);
     return;
   }
+  if (n == 0UL) {
+    return;
+  }
+  if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+    return;
+  }
+  for (ULONG i = 0UL; i < n; i++) {
+    (void)ra_board_led_toggle(k_ra_board_led1);
+  }
+}
 
-  /* Plug our DCD bridge into the device stack and turn the bus on. */
+static VOID demo_worker(ULONG arg)
+{
+  (void)arg;
+
+  if (demo_usbx_stack_up() != UX_SUCCESS) {
+    return;
+  }
+  if (demo_cdc_class_register() != UX_SUCCESS) {
+    return;
+  }
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
     return;
   }
@@ -468,27 +533,13 @@ static VOID demo_worker(ULONG arg)
     return;
   }
 
-  /* Echo loop. */
   UCHAR buf[k_demo_echo_buf_bytes];
-  ULONG n = 0UL;
   while (1) {
     if (s_cdc_acm == UX_NULL) {
       tx_thread_sleep(k_demo_idle_ticks);
       continue;
     }
-    if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n) != UX_SUCCESS) {
-      tx_thread_sleep(k_demo_idle_ticks);
-      continue;
-    }
-    if (n == 0UL) {
-      continue;
-    }
-    if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
-      continue;
-    }
-    for (ULONG i = 0UL; i < n; i++) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
-    }
+    demo_echo_iter(buf, (ULONG)sizeof(buf));
   }
 }
 

@@ -810,6 +810,135 @@ static void ereader_catalogue_try_book(const char* filename, size_t blob_len)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Check whether a directory entry is a candidate EPUB to ingest.
+ *
+ * @details
+ * Tests both the filename suffix (case-insensitive ".epub") and the
+ * file size bounds expected by the catalogue ingest path.
+ *
+ * @param[in] name Null-terminated filename from FileX directory walk.
+ * @param[in] size Size of the entry in bytes.
+ *
+ * @return true if the entry should be considered for ingest.
+ * @retval true Name ends in ``.epub`` and size fits in the blob buffer.
+ * @retval false Otherwise.
+ *
+ * @pre ``name`` is null-terminated.
+ * @post No side effects.
+ *
+ * @note Reentrant; pure function of its inputs.
+ * @since 0.1.0
+ */
+static bool library_entry_is_epub(const CHAR* name, ULONG size)
+{
+  const size_t name_len = strlen(name);
+  if ((name_len <= 5U) || (size == 0UL) || (size > (ULONG)k_ereader_zip_blob_bytes)) {
+    return false;
+  }
+  const char* tail = &name[name_len - 5U];
+  return ((tail[0] == '.') && ((tail[1] == 'e') || (tail[1] == 'E')) &&
+          ((tail[2] == 'p') || (tail[2] == 'P')) && ((tail[3] == 'u') || (tail[3] == 'U')) &&
+          ((tail[4] == 'b') || (tail[4] == 'B')));
+}
+
+/**
+ * @brief Read one EPUB file fully into the shared blob and hand it to
+ *        the catalogue ingester.
+ *
+ * @param[in] name Null-terminated filename to open under the current FX dir.
+ * @param[in] size File size, in bytes, used as the read request length.
+ *
+ * @pre ``s_sd_media`` is mounted with the working directory set.
+ * @pre ``library_entry_is_epub(name, size)`` returned true.
+ * @post ``s_book_blob`` may have been mutated; file handle is closed.
+ *
+ * @note Not thread-safe; called only from ``library_thread_entry``.
+ * @since 0.1.0
+ */
+static void library_ingest_epub(const CHAR* name, ULONG size)
+{
+  if (fx_file_open(&s_sd_media, &s_book_file, (CHAR*)name, FX_OPEN_FOR_READ) != FX_SUCCESS) {
+    return;
+  }
+  ULONG actual = 0UL;
+  if (fx_file_read(&s_book_file, s_book_blob, size, &actual) == FX_SUCCESS) {
+    ereader_catalogue_try_book(name, (size_t)actual);
+  }
+  (void)fx_file_close(&s_book_file);
+}
+
+/**
+ * @brief Walk /books/ on the mounted SD card and ingest every EPUB found.
+ *
+ * @details
+ * Uses the simple flat FileX iterator since the skeleton does not need
+ * to recurse. Each candidate entry is filtered through
+ * ``library_entry_is_epub`` before being read into ``s_book_blob`` and
+ * handed to ``ereader_catalogue_try_book``.
+ *
+ * @pre ``s_sd_media`` is open.
+ * @post Every readable EPUB under /books/ has been offered to the
+ *       catalogue ingester.
+ *
+ * @note Not thread-safe; called only from ``library_thread_entry``.
+ * @since 0.1.0
+ */
+static void library_scan_books_dir(void)
+{
+  CHAR  name[FX_MAX_LONG_NAME_LEN];
+  UINT  attributes = 0U;
+  ULONG size       = 0U;
+
+  (void)fx_directory_default_set(&s_sd_media, "/books");
+  UINT status = fx_directory_first_full_entry_find(&s_sd_media,
+                                                   name,
+                                                   &attributes,
+                                                   &size,
+                                                   FX_NULL,
+                                                   FX_NULL,
+                                                   FX_NULL,
+                                                   FX_NULL,
+                                                   FX_NULL,
+                                                   FX_NULL);
+  while (status == FX_SUCCESS) {
+    if (library_entry_is_epub(name, size)) {
+      library_ingest_epub(name, size);
+    }
+    status = fx_directory_next_full_entry_find(&s_sd_media,
+                                               name,
+                                               &attributes,
+                                               &size,
+                                               FX_NULL,
+                                               FX_NULL,
+                                               FX_NULL,
+                                               FX_NULL,
+                                               FX_NULL,
+                                               FX_NULL);
+  }
+}
+
+/**
+ * @brief Post ``k_ereader_msg_library_ready`` to the UI queue and park.
+ *
+ * @param[in] sleep_ticks ThreadX sleep interval between wakeups while
+ *                        the thread parks forever.
+ *
+ * @pre The UI queue ``s_ui_queue`` has been created.
+ * @post The library_ready message is on the queue; thread sleeps forever.
+ *
+ * @note Not thread-safe; called only from ``library_thread_entry``.
+ * @since 0.1.0
+ */
+static void library_post_ready_and_park(ULONG sleep_ticks)
+{
+  ULONG msg = (ULONG)k_ereader_msg_library_ready;
+  (void)tx_queue_send(&s_ui_queue, &msg, TX_NO_WAIT);
+  while (1) {
+    (void)tx_thread_sleep(sleep_ticks);
+  }
+}
+
 static void library_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
@@ -823,72 +952,17 @@ static void library_thread_entry(ULONG thread_input)
   if (status != FX_SUCCESS) {
     ereader_print("[ereader] SD mount failed\r\n");
     /* Still post the ready message so the UI can show "no books". */
-    ULONG msg = (ULONG)k_ereader_msg_library_ready;
-    (void)tx_queue_send(&s_ui_queue, &msg, TX_NO_WAIT);
-    while (1) {
-      (void)tx_thread_sleep(1000U);
-    }
+    library_post_ready_and_park(1000U);
   }
 
-  /* Walk /books/ -- look for *.epub entries. We use the simple flat
-   * iterator since the skeleton does not need to recurse. */
-  CHAR  name[FX_MAX_LONG_NAME_LEN];
-  UINT  attributes = 0U;
-  ULONG size       = 0U;
-
-  (void)fx_directory_default_set(&s_sd_media, "/books");
-  status = fx_directory_first_full_entry_find(&s_sd_media,
-                                              name,
-                                              &attributes,
-                                              &size,
-                                              FX_NULL,
-                                              FX_NULL,
-                                              FX_NULL,
-                                              FX_NULL,
-                                              FX_NULL,
-                                              FX_NULL);
-  while (status == FX_SUCCESS) {
-    /* Match suffix ".epub" (case-insensitive). */
-    const size_t name_len = strlen(name);
-    if ((name_len > 5U) && (size > 0UL) && (size <= (ULONG)k_ereader_zip_blob_bytes)) {
-      const char* tail = &name[name_len - 5U];
-      const bool  is_epub =
-        ((tail[0] == '.') && ((tail[1] == 'e') || (tail[1] == 'E')) &&
-         ((tail[2] == 'p') || (tail[2] == 'P')) && ((tail[3] == 'u') || (tail[3] == 'U')) &&
-         ((tail[4] == 'b') || (tail[4] == 'B')));
-      if (is_epub) {
-        if (fx_file_open(&s_sd_media, &s_book_file, name, FX_OPEN_FOR_READ) == FX_SUCCESS) {
-          ULONG actual = 0UL;
-          if (fx_file_read(&s_book_file, s_book_blob, size, &actual) == FX_SUCCESS) {
-            ereader_catalogue_try_book(name, (size_t)actual);
-          }
-          (void)fx_file_close(&s_book_file);
-        }
-      }
-    }
-    status = fx_directory_next_full_entry_find(&s_sd_media,
-                                               name,
-                                               &attributes,
-                                               &size,
-                                               FX_NULL,
-                                               FX_NULL,
-                                               FX_NULL,
-                                               FX_NULL,
-                                               FX_NULL,
-                                               FX_NULL);
-  }
+  library_scan_books_dir();
   (void)fx_media_close(&s_sd_media);
 
   ereader_print("[ereader] loaded ");
   ereader_print_uint((uint16_t)s_book_count);
   ereader_print(" books from SD card\r\n");
 
-  ULONG msg = (ULONG)k_ereader_msg_library_ready;
-  (void)tx_queue_send(&s_ui_queue, &msg, TX_NO_WAIT);
-
-  while (1) {
-    (void)tx_thread_sleep(10000U);
-  }
+  library_post_ready_and_park(10000U);
 }
 
 /* =============================================================================
@@ -1131,29 +1205,38 @@ ereader_rect(GX_VALUE left, GX_VALUE top, GX_VALUE right, GX_VALUE bottom)
  *
  * @since 0.1.0
  */
-static void ereader_build_widgets(void)
+/**
+ * @brief Create the root window + the library/reader window pair.
+ *
+ * @param[in] root_rect Fullscreen rectangle bounds shared by all windows.
+ *
+ * @pre A valid canvas (``s_gx_canvas``) has been created.
+ * @post ``s_gx_root``, ``s_gx_library_win`` and ``s_gx_reader_win`` are
+ *       created and attached to the root.
+ *
+ * @note Halts via ``ereader_panic_halt`` on any GUIX failure.
+ * @note Not thread-safe; only called from ``ereader_build_widgets``.
+ * @since 0.1.0
+ */
+static void ereader_build_windows(const GX_RECTANGLE* root_rect)
 {
-  const GX_RECTANGLE root_rect =
-    ereader_rect(0, 0, (GX_VALUE)(k_ereader_fb_width - 1U), (GX_VALUE)(k_ereader_fb_height - 1U));
-
   if (gx_window_root_create(&s_gx_root,
                             "ereader-root",
                             &s_gx_canvas,
                             GX_STYLE_NONE,
                             0U,
-                            &root_rect) != GX_SUCCESS) {
+                            root_rect) != GX_SUCCESS) {
     ereader_panic_halt();
   }
-
   if (gx_window_create(&s_gx_library_win,
                        "library",
                        GX_NULL,
                        GX_STYLE_BORDER_THIN | GX_STYLE_ENABLED,
                        0U,
-                       &root_rect) != GX_SUCCESS) {
+                       root_rect) != GX_SUCCESS) {
     ereader_panic_halt();
   }
-  if (gx_window_create(&s_gx_reader_win, "reader", GX_NULL, GX_STYLE_BORDER_THIN, 1U, &root_rect) !=
+  if (gx_window_create(&s_gx_reader_win, "reader", GX_NULL, GX_STYLE_BORDER_THIN, 1U, root_rect) !=
       GX_SUCCESS) {
     ereader_panic_halt();
   }
@@ -1163,16 +1246,31 @@ static void ereader_build_widgets(void)
   if (gx_widget_attach((GX_WIDGET*)&s_gx_root, (GX_WIDGET*)&s_gx_reader_win) != GX_SUCCESS) {
     ereader_panic_halt();
   }
+}
 
-  const GX_RECTANGLE label_rect =
-    ereader_rect(8, 8, (GX_VALUE)(k_ereader_fb_width - 9U), (GX_VALUE)(k_ereader_fb_height - 9U));
+/**
+ * @brief Create both text prompts inside their respective windows.
+ *
+ * @param[in] label_rect Inset rectangle inside the parent window where
+ *                       the prompt paints.
+ *
+ * @pre ``ereader_build_windows`` has run.
+ * @post ``s_gx_library_label`` and ``s_gx_reader_label`` exist and are
+ *       attached to their windows.
+ *
+ * @note Halts via ``ereader_panic_halt`` on any GUIX failure.
+ * @note Not thread-safe; only called from ``ereader_build_widgets``.
+ * @since 0.1.0
+ */
+static void ereader_build_prompts(const GX_RECTANGLE* label_rect)
+{
   if (gx_prompt_create(&s_gx_library_label,
                        "lib-text",
                        &s_gx_library_win,
                        0,
                        GX_STYLE_TEXT_LEFT | GX_STYLE_ENABLED,
                        0U,
-                       &label_rect) != GX_SUCCESS) {
+                       label_rect) != GX_SUCCESS) {
     ereader_panic_halt();
   }
   if (gx_prompt_create(&s_gx_reader_label,
@@ -1181,23 +1279,50 @@ static void ereader_build_widgets(void)
                        0,
                        GX_STYLE_TEXT_LEFT | GX_STYLE_ENABLED,
                        0U,
-                       &label_rect) != GX_SUCCESS) {
+                       label_rect) != GX_SUCCESS) {
     ereader_panic_halt();
   }
+}
 
+/**
+ * @brief Seed the prompts with their initial placeholder text.
+ *
+ * @details
+ * Library prompt text starts as the placeholder; ``library_thread``
+ * rewrites it after the catalogue is ready. Reader prompt shows the
+ * compile-time fallback until the user picks a book.
+ *
+ * @pre ``ereader_build_prompts`` has run.
+ * @post Both prompts carry their initial GX_STRING contents.
+ *
+ * @note Not thread-safe; only called from ``ereader_build_widgets``.
+ * @since 0.1.0
+ */
+static void ereader_seed_prompt_text(void)
+{
   GX_STRING reader_string;
   reader_string.gx_string_ptr    = s_reader_fallback_text;
   reader_string.gx_string_length = (UINT)(sizeof(s_reader_fallback_text) - 1U);
   (void)gx_prompt_text_set_ext(&s_gx_reader_label, &reader_string);
 
-  /* Library prompt text starts as the placeholder; library_thread
-   * rewrites it after the catalogue is ready. */
   static const char* k_initial_lib = "Loading library...";
   (void)memcpy(s_library_text, k_initial_lib, strlen(k_initial_lib) + 1U);
   GX_STRING lib_string;
   lib_string.gx_string_ptr    = s_library_text;
   lib_string.gx_string_length = (UINT)strlen(s_library_text);
   (void)gx_prompt_text_set_ext(&s_gx_library_label, &lib_string);
+}
+
+static void ereader_build_widgets(void)
+{
+  const GX_RECTANGLE root_rect =
+    ereader_rect(0, 0, (GX_VALUE)(k_ereader_fb_width - 1U), (GX_VALUE)(k_ereader_fb_height - 1U));
+  ereader_build_windows(&root_rect);
+
+  const GX_RECTANGLE label_rect =
+    ereader_rect(8, 8, (GX_VALUE)(k_ereader_fb_width - 9U), (GX_VALUE)(k_ereader_fb_height - 9U));
+  ereader_build_prompts(&label_rect);
+  ereader_seed_prompt_text();
 
   if (gx_widget_show((GX_WIDGET*)&s_gx_root) != GX_SUCCESS) {
     ereader_panic_halt();
@@ -1219,7 +1344,18 @@ static void ereader_build_widgets(void)
  *
  * @since 0.1.0
  */
-static void ereader_ui_run(void)
+/**
+ * @brief Bind the framebuffer to GUIX and initialize display + canvas.
+ *
+ * @pre Framebuffer + GUIX shim are reachable (verified by
+ *      ``ra_guix_display_driver_bind``).
+ * @post GUIX has a working display and canvas pointing at ``s_framebuffer``.
+ *
+ * @note Halts via ``ereader_panic_halt`` on any GUIX failure.
+ * @note Not thread-safe; only called from ``ereader_ui_run``.
+ * @since 0.1.0
+ */
+static void ereader_guix_bringup(void)
 {
   if (ra_guix_display_driver_bind(&s_framebuffer[0][0],
                                   (uint16_t)k_ereader_fb_width,
@@ -1250,7 +1386,61 @@ static void ereader_ui_run(void)
                          (ULONG)k_ereader_bpp_rgb565) != GX_SUCCESS) {
     ereader_panic_halt();
   }
+}
 
+/**
+ * @brief Dispatch one UI-queue message.
+ *
+ * @details
+ * Receives events from ``library_thread``, ``reader_thread`` and the
+ * SW1/SW2 IRQs, then asks GUIX for a repaint as appropriate.
+ *
+ * @param[in] msg Packed ``(kind, payload)`` queue word, as produced by
+ *                ``ereader_msg_pack``.
+ *
+ * @pre GUIX widgets have been built.
+ * @post UI state and reader-queue traffic reflect the inbound event.
+ *
+ * @note Not thread-safe; only called from ``ereader_ui_run``.
+ * @since 0.1.0
+ */
+static void ereader_ui_dispatch_msg(ULONG msg)
+{
+  const uint8_t  kind    = (uint8_t)(msg & 0xFFUL);
+  const uint32_t payload = (uint32_t)(msg >> (uint32_t)k_ereader_payload_shift);
+  (void)payload;
+
+  if (kind == (uint8_t)k_ereader_msg_library_ready) {
+    ereader_build_library_text();
+    GX_STRING lib_string;
+    lib_string.gx_string_ptr    = s_library_text;
+    lib_string.gx_string_length = (UINT)strlen(s_library_text);
+    (void)gx_prompt_text_set_ext(&s_gx_library_label, &lib_string);
+  } else if (kind == (uint8_t)k_ereader_msg_sw1) {
+    /* SW1 = "next book" if in library, else "page-prev" if reading. */
+    if (s_active_book >= s_book_count) {
+      ULONG out = ereader_msg_pack(k_ereader_msg_load_book, 0U);
+      (void)tx_queue_send(&s_reader_queue, &out, TX_NO_WAIT);
+    } else {
+      ULONG out = ereader_msg_pack(k_ereader_msg_page_prev, 0U);
+      (void)tx_queue_send(&s_reader_queue, &out, TX_NO_WAIT);
+    }
+  } else if (kind == (uint8_t)k_ereader_msg_sw2) {
+    /* SW2 = "page-next" while reading. */
+    ULONG out = ereader_msg_pack(k_ereader_msg_page_next, 0U);
+    (void)tx_queue_send(&s_reader_queue, &out, TX_NO_WAIT);
+  } else if (kind == (uint8_t)k_ereader_msg_rendered) {
+    /* Reader_thread says "the framebuffer is fresh"; ask GUIX to
+     * redraw the canvas. */
+    (void)gx_system_canvas_refresh();
+  } else {
+    /* Unknown message kind -- ignore. */
+  }
+}
+
+static void ereader_ui_run(void)
+{
+  ereader_guix_bringup();
   ereader_build_widgets();
 
   if (gx_system_start() != GX_SUCCESS) {
@@ -1266,36 +1456,7 @@ static void ereader_ui_run(void)
     if (tx_queue_receive(&s_ui_queue, &msg, TX_WAIT_FOREVER) != TX_SUCCESS) {
       continue;
     }
-    const uint8_t  kind    = (uint8_t)(msg & 0xFFUL);
-    const uint32_t payload = (uint32_t)(msg >> (uint32_t)k_ereader_payload_shift);
-    (void)payload;
-
-    if (kind == (uint8_t)k_ereader_msg_library_ready) {
-      ereader_build_library_text();
-      GX_STRING lib_string;
-      lib_string.gx_string_ptr    = s_library_text;
-      lib_string.gx_string_length = (UINT)strlen(s_library_text);
-      (void)gx_prompt_text_set_ext(&s_gx_library_label, &lib_string);
-    } else if (kind == (uint8_t)k_ereader_msg_sw1) {
-      /* SW1 = "next book" if in library, else "page-prev" if reading. */
-      if (s_active_book >= s_book_count) {
-        ULONG out = ereader_msg_pack(k_ereader_msg_load_book, 0U);
-        (void)tx_queue_send(&s_reader_queue, &out, TX_NO_WAIT);
-      } else {
-        ULONG out = ereader_msg_pack(k_ereader_msg_page_prev, 0U);
-        (void)tx_queue_send(&s_reader_queue, &out, TX_NO_WAIT);
-      }
-    } else if (kind == (uint8_t)k_ereader_msg_sw2) {
-      /* SW2 = "page-next" while reading. */
-      ULONG out = ereader_msg_pack(k_ereader_msg_page_next, 0U);
-      (void)tx_queue_send(&s_reader_queue, &out, TX_NO_WAIT);
-    } else if (kind == (uint8_t)k_ereader_msg_rendered) {
-      /* Reader_thread says "the framebuffer is fresh"; ask GUIX to
-       * redraw the canvas. */
-      (void)gx_system_canvas_refresh();
-    } else {
-      /* Unknown message kind -- ignore. */
-    }
+    ereader_ui_dispatch_msg(msg);
 
     /* Non-blocking LVD poll. If the rail dipped past the
      * configured threshold since the last check, log a warning. The

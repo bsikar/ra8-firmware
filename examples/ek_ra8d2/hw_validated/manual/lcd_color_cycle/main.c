@@ -91,12 +91,28 @@ static void lcd_panic_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+/**
+ * @brief Bring up clocks, MSTP, system tick and the on-board LEDs.
+ *
+ * @details
+ * First phase of the demo's startup sequence. Any failure halts in the
+ * red-LED panic loop -- there is no recovery path for a clock or pin
+ * misconfiguration.
+ *
+ * @return CPUCLK0 frequency in Hz; the caller passes it on to
+ *         ::ra_time_init for tick generation.
+ *
+ * @pre Reset handler has populated ``.data`` / ``.bss``.
+ * @pre Interrupts are still globally disabled.
+ * @post Clocks, MSTP, system tick and both board LEDs are initialised.
+ * @post Global IRQs are enabled.
+ *
+ * @note Not thread-safe; single-shot startup helper.
+ * @since 0.1.0
+ */
+static uint32_t lcd_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
-
   if (ra_cgc_init() != k_ra_ok) {
     lcd_panic_halt();
   }
@@ -116,7 +132,29 @@ int32_t main(void)
     lcd_panic_halt();
   }
   ra_isr_globals_enable();
+  return cpuclk0_hz;
+}
 
+/**
+ * @brief Bring up SDRAM, panel power, GLCDC and prime the BG plane.
+ *
+ * @details
+ * Second phase of the demo's startup sequence. Mirrors the original
+ * inline sequence exactly: 500 ms PLL/panel settle, SDRAM init for
+ * follow-on apps, panel power-on, GLCDC pin/clock setup, then the
+ * GLCDC controller itself with an initial red background. Any failure
+ * halts in the red-LED panic loop.
+ *
+ * @pre ::lcd_bringup_clocks has run successfully.
+ * @pre Interrupts are globally enabled.
+ * @post GLCDC is running and driving the panel with the initial colour.
+ * @post Panel back-light and 3.3 V rail are on.
+ *
+ * @note Not thread-safe; single-shot startup helper.
+ * @since 0.1.0
+ */
+static void lcd_bringup_panel(void)
+{
   /* Stabilization delays: PLLs, SDRAM, and the panel itself all need
    * a few hundred ms after power-on to settle.  Without these, the
    * GLCDC sometimes starts before LCDCLK is stable and the panel
@@ -156,6 +194,14 @@ int32_t main(void)
   if (ra_glcdc_start(true) != k_ra_ok) {
     lcd_panic_halt();
   }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  (void)lcd_bringup_clocks();
+  lcd_bringup_panel();
 
   uint8_t i = 0U;
   while (1) {
