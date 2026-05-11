@@ -275,6 +275,88 @@ ra_err_t ra_rsip_protected_aes_finish(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Map an ::ra_rsip_rsa_size_t to its modulus byte count.
+ *
+ * @details
+ * Lookup helper used by the protected RSA path; the engine's
+ * modular-exponentiation surface accepts only the four canonical key
+ * sizes. Anything else is rejected.
+ *
+ * @param[in]  size       RSA key-size enum.
+ * @param[out] out_bytes  Receives 128/256/384/512 on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Valid size mapped.
+ * @retval k_ra_err_invalid_arg   Unknown enum value.
+ *
+ * @pre ``out_bytes`` non-NULL.
+ * @pre Caller has validated the wrapped key blob.
+ * @post On success ``*out_bytes`` holds the modulus length in bytes.
+ * @post On error ``*out_bytes`` is unchanged.
+ *
+ * @note Pure function; no side effects.
+ * @since 0.1.0
+ */
+static ra_err_t internal_rsa_mod_bytes(ra_rsip_rsa_size_t size, uint32_t* out_bytes)
+{
+  switch (size) {
+    case k_ra_rsip_rsa_1024:
+      *out_bytes = 128U;
+      return k_ra_ok;
+    case k_ra_rsip_rsa_2048:
+      *out_bytes = 256U;
+      return k_ra_ok;
+    case k_ra_rsip_rsa_3072:
+      *out_bytes = 384U;
+      return k_ra_ok;
+    case k_ra_rsip_rsa_4096:
+      *out_bytes = 512U;
+      return k_ra_ok;
+    default:
+      return k_ra_err_invalid_arg;
+  }
+}
+
+/**
+ * @brief Resolve the OEM install opcode for an RSA private key size.
+ *
+ * @details
+ * The stub install table is keyed by ::ra_rsip_oem_cmd_t; this helper
+ * collapses the size-to-opcode mapping so the public entry point does
+ * not have to repeat the switch in line.
+ *
+ * @param[in] size RSA key-size enum.
+ *
+ * @return ::ra_rsip_oem_cmd_t value; ``k_ra_rsip_oem_cmd_invalid`` for
+ *         sizes not represented in the OEM install path (RSA-1024).
+ * @retval k_ra_rsip_oem_cmd_rsa2048_priv  size == k_ra_rsip_rsa_2048.
+ * @retval k_ra_rsip_oem_cmd_rsa3072_priv  size == k_ra_rsip_rsa_3072.
+ * @retval k_ra_rsip_oem_cmd_rsa4096_priv  size == k_ra_rsip_rsa_4096.
+ * @retval k_ra_rsip_oem_cmd_invalid       size is RSA-1024 or unknown.
+ *
+ * @pre Caller has validated ``size`` via internal_rsa_mod_bytes().
+ * @pre ``size`` is a value of ::ra_rsip_rsa_size_t.
+ * @post Return value is one of the documented opcodes or _invalid.
+ * @post No global or module-private state is mutated.
+ *
+ * @note Pure function; reentrant and ISR-safe.
+ * @since 0.1.0
+ */
+static ra_rsip_oem_cmd_t internal_rsa_install_cmd(ra_rsip_rsa_size_t size)
+{
+  if (size == k_ra_rsip_rsa_2048) {
+    return k_ra_rsip_oem_cmd_rsa2048_priv;
+  }
+  if (size == k_ra_rsip_rsa_3072) {
+    return k_ra_rsip_oem_cmd_rsa3072_priv;
+  }
+  if (size == k_ra_rsip_rsa_4096) {
+    return k_ra_rsip_oem_cmd_rsa4096_priv;
+  }
+  return k_ra_rsip_oem_cmd_invalid;
+}
+
 /* Implementation of ra_rsip_protected_rsa_decrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
                                        ra_rsip_rsa_size_t size,
@@ -300,21 +382,9 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
   }
 
   uint32_t mod_bytes = 0U;
-  switch (size) {
-    case k_ra_rsip_rsa_1024:
-      mod_bytes = 128U;
-      break;
-    case k_ra_rsip_rsa_2048:
-      mod_bytes = 256U;
-      break;
-    case k_ra_rsip_rsa_3072:
-      mod_bytes = 384U;
-      break;
-    case k_ra_rsip_rsa_4096:
-      mod_bytes = 512U;
-      break;
-    default:
-      return k_ra_err_invalid_arg;
+  rc                 = internal_rsa_mod_bytes(size, &mod_bytes);
+  if (rc != k_ra_ok) {
+    return rc;
   }
   if (plaintext_cap < mod_bytes) {
     return k_ra_err_invalid_arg;
@@ -336,15 +406,8 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
   /* Use the OEM install path for RSA private keys: the wrapped layout
    * fed in here is already the engine-acceptable blob plus a 16-byte
    * IV that the stub validates trivially. */
-  uint8_t           install_iv[k_ra_rsip_p_iv_bytes] = {};
-  ra_rsip_oem_cmd_t install_cmd                      = k_ra_rsip_oem_cmd_invalid;
-  if (size == k_ra_rsip_rsa_2048) {
-    install_cmd = k_ra_rsip_oem_cmd_rsa2048_priv;
-  } else if (size == k_ra_rsip_rsa_3072) {
-    install_cmd = k_ra_rsip_oem_cmd_rsa3072_priv;
-  } else if (size == k_ra_rsip_rsa_4096) {
-    install_cmd = k_ra_rsip_oem_cmd_rsa4096_priv;
-  }
+  uint8_t                 install_iv[k_ra_rsip_p_iv_bytes] = {};
+  const ra_rsip_oem_cmd_t install_cmd                      = internal_rsa_install_cmd(size);
   rc = ra_rsip_oem_install(install_cmd, install_iv, modulus, mod_bytes, &handle);
   p_scrub(modulus, mod_bytes);
   if (rc != k_ra_ok) {

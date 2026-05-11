@@ -216,6 +216,67 @@ void ra_glcdc_dispatch(void);
 [[nodiscard]] ra_err_t ra_glcdc_layer1_show(uintptr_t fb_addr);
 
 /**
+ * @brief Make graphics layer 2 visible at an arbitrary panel position.
+ *
+ * @details Sets GR2's framebuffer pointer / stride / dimensions /
+ * position registers and pulses VEN to commit on the next vsync.
+ * The framebuffer is interpreted as RGB565.
+ *
+ * @param[in] fb_addr Base address of the layer-2 framebuffer (RGB565).
+ * @param[in] panel_x Horizontal position on the panel in GLCDC coords.
+ * @param[in] panel_y Vertical   position on the panel in GLCDC coords.
+ * @param[in] fb_w    Framebuffer width in pixels.
+ * @param[in] fb_h    Framebuffer height in pixels.
+ *
+ * @return Error code.
+ * @retval k_ra_ok Layer 2 enabled.
+ *
+ * @pre `ra_glcdc_init` and `ra_glcdc_start` have been called.
+ * @pre `fb_addr` points to an `fb_w * fb_h * 2`-byte RGB565
+ *      framebuffer.
+ * @post GR2 fetches and composites pixels from `fb_addr` at
+ *       (panel_x, panel_y).
+ * @post Layer-2 changes are visible from the next vertical sync.
+ *
+ * @note Single-threaded; not safe to call from IRQ.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_layer2_show(uintptr_t fb_addr,
+                                            uint16_t  panel_x,
+                                            uint16_t  panel_y,
+                                            uint16_t  fb_w,
+                                            uint16_t  fb_h);
+
+/**
+ * @brief Enable chroma-key transparency on graphics layer 2.
+ *
+ * @details Pixels in GR2's framebuffer whose RGB888 expansion
+ * matches `key_rgb888` are treated as fully transparent at
+ * composite time -- the layer below (BG plane) shows through
+ * those pixels.  All other pixels remain opaque.  This lets a
+ * single RGB565 GR2 layer host multiple opaque shapes with the
+ * BG plane visible between them.
+ *
+ * Caller-provided key is in 0xRRGGBB form (alpha is ignored).
+ * For an RGB565 framebuffer, paint matching pixels with the
+ * RGB565 word whose 5/6/5-to-8/8/8 expansion equals `key_rgb888`
+ * (e.g. magenta: paint 0xF81F into the fb and pass 0xFF00FF here).
+ *
+ * @param[in] key_rgb888 Chroma-key match colour in 0x00RRGGBB form.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Chroma-key enabled; takes effect on next vsync.
+ *
+ * @pre `ra_glcdc_layer2_show` has been called.
+ * @post GR2.AB7.CKON = 1, GR2.AB8 = key, GR2.AB9 = transparent.
+ * @post GR2.VEN is asserted (auto-clears on next vsync).
+ *
+ * @note Single-threaded; not safe to call from IRQ.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_layer2_chroma_key_enable(uint32_t key_rgb888);
+
+/**
  * @brief Set the layer-1-over-layer-2 blend mode and global alpha.
  *
  * @details
