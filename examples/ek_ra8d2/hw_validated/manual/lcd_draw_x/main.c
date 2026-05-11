@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/lcd_draw_x/main.c
+ * @file examples/ek_ra8d2/hw_validated/manual/lcd_draw_x/main.c
  * @brief Draw a coloured X to a SRAM-backed GR1 layer on the EK-RA8D2 panel
  *
  * @par Tag
@@ -58,8 +58,7 @@ typedef enum : uint32_t {
 
 /* Static framebuffer in SRAM, 64-byte AXI-burst aligned so the GLCDC
  * fetches are clean. */
-static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h]
-  __attribute__((aligned(64))); /* NOLINT(misc-include-cleaner) */
+static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h] __attribute__((aligned(64)));
 
 static void lcd_panic_halt(void)
 {

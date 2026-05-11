@@ -40,11 +40,15 @@
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
+#include "ra_glcdc.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
+#include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
+#include "ra_time.h"
 
 /*
  * Cross-build-only includes: the host unit-test harness does not link
@@ -339,6 +343,8 @@ static inline GX_RECTANGLE demo_rect(GX_VALUE left, GX_VALUE top, GX_VALUE right
  */
 static void demo_panic_halt(void)
 {
+  (void)ra_board_led_init(k_ra_board_led3); /* red */
+  (void)ra_board_led_on(k_ra_board_led3);
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -601,21 +607,55 @@ void tx_application_define(void* first_unused_memory)
  */
 int32_t main(void)
 {
-  /* GLCDC bring-up is intentionally left out of the smoke-test build
-   * because the EK-RA8D2 board's LCD-connector wiring is still
-   * marked TODO in `examples/lcd_demo/main.c`. The GUIX side does
-   * not depend on the panel being live -- it writes the framebuffer
-   * unconditionally and the GLCDC, when started later, simply scans
-   * out whatever is already there. The LED gives the user a visible
-   * "ThreadX is alive" indication while the GUI thread paints.
-   */
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
-    while (1) {
-      __asm__ volatile("wfi");
-    }
+#ifndef RA_SIMULATOR_MODE
+  /* GLCDC bring-up before tx_kernel_enter, but WITHOUT touching
+   * SysTick: ThreadX owns the SysTick vector once linked in, and the
+   * handler dereferences kernel state that doesn't exist yet here.
+   * Use busy-wait loops (Cortex-M85 nop @ ~1 GHz -- not calibrated;
+   * the GLCDC + panel are tolerant of generous delays). */
+  uint32_t cpuclk0_hz = 0U;
+  (void)ra_cgc_init();
+  (void)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz);
+  (void)ra_mstp_init();
+  (void)ra_board_led_init(k_ra_board_led1);
+
+  /* ~500 ms PLL / panel-POR settle (1 GHz, 8-cycle nop pair -> ~6 ns). */
+  for (volatile uint32_t i = 0U; i < 60000000U; i++) {
+    __asm__ volatile("nop");
   }
 
-#ifndef RA_SIMULATOR_MODE
+  /* Re-use the BSP power-on path -- but it calls ra_delay_ms inside,
+   * which uses SysTick. Inline the bare GPIO sequence here to avoid
+   * the dependency. */
+  (void)ra_gpio_output_init(k_ra_pin_lcd_reset_l, k_ra_level_low);
+  for (volatile uint32_t i = 0U; i < 6000000U; i++) {
+    __asm__ volatile("nop");
+  }
+  (void)ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
+  for (volatile uint32_t i = 0U; i < 6000000U; i++) {
+    __asm__ volatile("nop");
+  }
+  (void)ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
+
+  (void)ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888);
+
+  const ra_glcdc_config_t cfg = {
+    .framebuffer_addr = (uint32_t)(uintptr_t)s_framebuffer,
+    .width_px         = (uint16_t)k_demo_fb_width,
+    .height_px        = (uint16_t)k_demo_fb_height,
+    .format           = k_ra_glcdc_fmt_rgb565,
+  };
+  (void)ra_glcdc_init(&cfg);
+  (void)ra_glcdc_set_background_color(0x000000U);
+  (void)ra_glcdc_start(true);
+  (void)ra_glcdc_layer1_show((uintptr_t)s_framebuffer);
+
+  /* ThreadX needs IRQs unmasked so the scheduler can preempt on
+   * SysTick.  Safe to enable here: no peripheral IRQ source is
+   * armed yet, and ThreadX installs its own SysTick handler inside
+   * tx_kernel_enter. */
+  ra_isr_globals_enable();
+
   tx_kernel_enter();
 #endif
 
