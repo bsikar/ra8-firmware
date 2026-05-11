@@ -1317,6 +1317,170 @@ static void dec_idct_into(int32_t* coeffs, uint8_t* tile)
   }
 }
 
+/**
+ * @brief Decode the hmax*vmax luma blocks of one MCU and write them into the Y tile.
+ *
+ * @details
+ * Pulls successive 8x8 luma blocks from the entropy stream, IDCTs each
+ * one, and copies it into the correct sub-rectangle of `y_tile` so the
+ * MCU pixel-emit loop can address it linearly.
+ *
+ * @param[in,out] d        Decoder context (DC predictors mutate).
+ * @param[in,out] br       Bit-reader positioned at the next luma block.
+ * @param[out]    y_tile   Output tile of (mcu_w_px x mcu_h_px) luma px.
+ * @param[in]     mcu_w_px MCU width in pixels (k_ra_jpeg_block_dim * d->hmax).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Success, all luma blocks consumed.
+ * @retval k_ra_err_protocol_error Underlying dec_block() reported a stream error.
+ *
+ * @pre `d`, `br`, `y_tile` are non-NULL.
+ * @pre `d->hmax` and `d->vmax` are non-zero (enforced by dec_parse_sof0).
+ * @post On success `br->pos` advanced past hmax*vmax luma blocks.
+ * @post On success `y_tile` fully populated with reconstructed Y pixels.
+ *
+ * @note Not thread-safe; caller serializes access via decoder context.
+ * @since 0.1.0
+ */
+static ra_err_t dec_decode_mcu_y_blocks(ra_jpeg_dec_ctx_t*   d,
+                                        ra_jpeg_bitreader_t* br,
+                                        uint8_t*             y_tile,
+                                        uint16_t             mcu_w_px)
+{
+  int32_t coeffs[(uint32_t)k_ra_jpeg_block_size];
+  for (uint8_t by = 0U; by < d->vmax; by++) {
+    for (uint8_t bx = 0U; bx < d->hmax; bx++) {
+      ra_err_t e = dec_block(d, br, 0U, coeffs);
+      if (e != k_ra_ok) {
+        return e;
+      }
+      uint8_t blk[(uint32_t)k_ra_jpeg_block_size];
+      dec_idct_into(coeffs, blk);
+      for (uint8_t r = 0U; r < (uint8_t)k_ra_jpeg_block_dim; r++) {
+        for (uint8_t c = 0U; c < (uint8_t)k_ra_jpeg_block_dim; c++) {
+          uint16_t ty                = (uint16_t)(by * (uint16_t)k_ra_jpeg_block_dim + r);
+          uint16_t tx                = (uint16_t)(bx * (uint16_t)k_ra_jpeg_block_dim + c);
+          y_tile[ty * mcu_w_px + tx] = blk[r * (uint8_t)k_ra_jpeg_block_dim + c];
+        }
+      }
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Decode the Cb and Cr 8x8 blocks of one MCU into their tile buffers.
+ *
+ * @details
+ * For 3-component YCbCr streams, consumes one Cb block then one Cr block
+ * from the entropy stream, IDCTs each, and stores the result in the
+ * caller's tile arrays. Caller must skip this for grayscale streams.
+ *
+ * @param[in,out] d       Decoder context (DC predictors mutate).
+ * @param[in,out] br      Bit-reader positioned at the next chroma block.
+ * @param[out]    cb_tile 64-byte buffer for reconstructed Cb pixels.
+ * @param[out]    cr_tile 64-byte buffer for reconstructed Cr pixels.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Both chroma blocks decoded successfully.
+ * @retval k_ra_err_protocol_error Stream error reported by dec_block().
+ *
+ * @pre `d->ncomp == 3` (caller verifies before invocation).
+ * @pre `cb_tile` and `cr_tile` each point to >= 64 writable bytes.
+ * @post `br->pos` advanced past two 8x8 chroma blocks.
+ * @post Both tile buffers fully populated.
+ *
+ * @note Not thread-safe; caller serializes access via decoder context.
+ * @since 0.1.0
+ */
+static ra_err_t dec_decode_mcu_chroma_blocks(ra_jpeg_dec_ctx_t*   d,
+                                             ra_jpeg_bitreader_t* br,
+                                             uint8_t*             cb_tile,
+                                             uint8_t*             cr_tile)
+{
+  int32_t  coeffs[(uint32_t)k_ra_jpeg_block_size];
+  ra_err_t e = dec_block(d, br, 1U, coeffs);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  dec_idct_into(coeffs, cb_tile);
+  e = dec_block(d, br, 2U, coeffs);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  dec_idct_into(coeffs, cr_tile);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Convert one MCU's reconstructed YCbCr tiles into output RGB pixels.
+ *
+ * @details
+ * Walks every pixel of the MCU at output position (mx,my), pulling the
+ * matching Y sample from `y_tile` and the (sub-sampled) Cb/Cr samples
+ * from `cb_tile`/`cr_tile` according to the stream's hmax/vmax. For
+ * grayscale streams (ncomp == 1) the chroma samples default to the
+ * level-offset (128) so the BT.601 transform produces R==G==B==Y.
+ *
+ * @param[in]  d        Decoder context (provides hmax, vmax, width/height).
+ * @param[in]  y_tile   mcu_w_px-stride buffer of Y samples for this MCU.
+ * @param[in]  cb_tile  64-byte Cb tile (ignored when d->ncomp != 3).
+ * @param[in]  cr_tile  64-byte Cr tile (ignored when d->ncomp != 3).
+ * @param[in]  mx       MCU column index in the output image.
+ * @param[in]  my       MCU row index in the output image.
+ * @param[in]  mcu_w_px MCU width in pixels.
+ * @param[in]  mcu_h_px MCU height in pixels.
+ * @param[out] out_buf  Destination RGB888 image buffer.
+ *
+ * @return None.
+ *
+ * @pre `out_buf` has space for d->width * d->height * 3 bytes.
+ * @pre `mcu_w_px > 0` and `mcu_h_px > 0`.
+ * @post `out_buf` updated only inside the visible region of this MCU.
+ * @post No JPEG-stream state is modified.
+ *
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+static void dec_emit_mcu_rgb(const ra_jpeg_dec_ctx_t* d,
+                             const uint8_t*           y_tile,
+                             const uint8_t*           cb_tile,
+                             const uint8_t*           cr_tile,
+                             uint16_t                 mx,
+                             uint16_t                 my,
+                             uint16_t                 mcu_w_px,
+                             uint16_t                 mcu_h_px,
+                             uint8_t*                 out_buf)
+{
+  for (uint16_t r = 0U; r < mcu_h_px; r++) {
+    uint16_t py = (uint16_t)(my * mcu_h_px + r);
+    if (py >= d->height) {
+      break;
+    }
+    for (uint16_t c = 0U; c < mcu_w_px; c++) {
+      uint16_t px = (uint16_t)(mx * mcu_w_px + c);
+      if (px >= d->width) {
+        break;
+      }
+      int32_t y = (int32_t)y_tile[r * mcu_w_px + c];
+      int32_t cb;
+      int32_t cr;
+      if (d->ncomp == 3U) {
+        uint16_t cr_x = (uint16_t)(c / d->hmax);
+        uint16_t cr_y = (uint16_t)(r / d->vmax);
+        cb            = (int32_t)cb_tile[cr_y * (uint16_t)k_ra_jpeg_block_dim + cr_x];
+        cr            = (int32_t)cr_tile[cr_y * (uint16_t)k_ra_jpeg_block_dim + cr_x];
+      } else {
+        cb = (int32_t)k_ra_jpeg_level_offset;
+        cr = (int32_t)k_ra_jpeg_level_offset;
+      }
+      uint32_t idx =
+        ((uint32_t)py * (uint32_t)d->width + (uint32_t)px) * (uint32_t)k_ra_jpeg_rgb_components;
+      ycc_to_rgb(y, cb, cr, &out_buf[idx], &out_buf[idx + 1U], &out_buf[idx + 2U]);
+    }
+  }
+}
+
 /* Walk the entropy-coded segment, MCU by MCU -- see surrounding code and HUM citations. */
 static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t out_buf_len)
 {
@@ -1337,7 +1501,7 @@ static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t
   /*
    * Cross-function invariant: dec_parse_sof0() only returns success for
    * 4:4:4, 4:2:2 (h+v), 4:2:2 (h-only), and 4:2:0 chroma layouts, all of
-   * which set hmax and vmax to a non-zero value (see lines 1110..1144).
+   * which set hmax and vmax to a non-zero value (see dec_parse_sof0).
    * The clang static analyzer (scan-build, core.DivideZero) cannot follow
    * the cross-function invariant, so re-state it here as an assertion to
    * make the property locally provable to the analyzer and to NASA Power-
@@ -1354,7 +1518,6 @@ static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t
   uint8_t y_tile[(uint32_t)k_ra_jpeg_mcu_max_dim * (uint32_t)k_ra_jpeg_mcu_max_dim];
   uint8_t cb_tile[(uint32_t)k_ra_jpeg_block_size];
   uint8_t cr_tile[(uint32_t)k_ra_jpeg_block_size];
-  int32_t coeffs[(uint32_t)k_ra_jpeg_block_size];
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra_jpeg_max_comps; i++) {
     d->comp_dc_pred[i] = 0;
@@ -1362,69 +1525,114 @@ static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t
 
   for (uint16_t my = 0U; my < mcus_y; my++) {
     for (uint16_t mx = 0U; mx < mcus_x; mx++) {
-      /* Y blocks: hmax * vmax of them, in raster order. */
-      for (uint8_t by = 0U; by < d->vmax; by++) {
-        for (uint8_t bx = 0U; bx < d->hmax; bx++) {
-          ra_err_t e = dec_block(d, &br, 0U, coeffs);
-          if (e != k_ra_ok) {
-            return e;
-          }
-          uint8_t blk[(uint32_t)k_ra_jpeg_block_size];
-          dec_idct_into(coeffs, blk);
-          for (uint8_t r = 0U; r < (uint8_t)k_ra_jpeg_block_dim; r++) {
-            for (uint8_t c = 0U; c < (uint8_t)k_ra_jpeg_block_dim; c++) {
-              uint16_t ty                = (uint16_t)(by * (uint16_t)k_ra_jpeg_block_dim + r);
-              uint16_t tx                = (uint16_t)(bx * (uint16_t)k_ra_jpeg_block_dim + c);
-              y_tile[ty * mcu_w_px + tx] = blk[r * (uint8_t)k_ra_jpeg_block_dim + c];
-            }
-          }
-        }
+      ra_err_t e = dec_decode_mcu_y_blocks(d, &br, y_tile, mcu_w_px);
+      if (e != k_ra_ok) {
+        return e;
       }
       if (d->ncomp == 3U) {
-        ra_err_t e = dec_block(d, &br, 1U, coeffs);
+        e = dec_decode_mcu_chroma_blocks(d, &br, cb_tile, cr_tile);
         if (e != k_ra_ok) {
           return e;
         }
-        dec_idct_into(coeffs, cb_tile);
-        e = dec_block(d, &br, 2U, coeffs);
-        if (e != k_ra_ok) {
-          return e;
-        }
-        dec_idct_into(coeffs, cr_tile);
       }
-
-      /* Emit pixels. */
-      for (uint16_t r = 0U; r < mcu_h_px; r++) {
-        uint16_t py = (uint16_t)(my * mcu_h_px + r);
-        if (py >= d->height) {
-          break;
-        }
-        for (uint16_t c = 0U; c < mcu_w_px; c++) {
-          uint16_t px = (uint16_t)(mx * mcu_w_px + c);
-          if (px >= d->width) {
-            break;
-          }
-          int32_t y = (int32_t)y_tile[r * mcu_w_px + c];
-          int32_t cb;
-          int32_t cr;
-          if (d->ncomp == 3U) {
-            uint16_t cr_x = (uint16_t)(c / d->hmax);
-            uint16_t cr_y = (uint16_t)(r / d->vmax);
-            cb            = (int32_t)cb_tile[cr_y * (uint16_t)k_ra_jpeg_block_dim + cr_x];
-            cr            = (int32_t)cr_tile[cr_y * (uint16_t)k_ra_jpeg_block_dim + cr_x];
-          } else {
-            cb = (int32_t)k_ra_jpeg_level_offset;
-            cr = (int32_t)k_ra_jpeg_level_offset;
-          }
-          uint32_t idx =
-            ((uint32_t)py * (uint32_t)d->width + (uint32_t)px) * (uint32_t)k_ra_jpeg_rgb_components;
-          ycc_to_rgb(y, cb, cr, &out_buf[idx], &out_buf[idx + 1U], &out_buf[idx + 2U]);
-        }
-      }
+      dec_emit_mcu_rgb(d, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
     }
   }
   d->cursor = br.pos;
   return k_ra_ok;
+}
+
+/**
+ * @enum ra_jpeg_dec_marker_action_t
+ * @brief Result of dec_dispatch_marker(): tells ra_jpeg_sw_decode() what to do next.
+ */
+typedef enum : uint8_t {
+  k_ra_jpeg_dec_continue = 0U, /**< Keep scanning markers. */
+  k_ra_jpeg_dec_scan     = 1U, /**< SOS reached; caller should run dec_decode_scan(). */
+  k_ra_jpeg_dec_eoi      = 2U, /**< EOI reached; caller should stop with protocol_error. */
+} ra_jpeg_dec_marker_action_t;
+
+/**
+ * @brief Dispatch one JPEG marker segment in the top-level decode loop.
+ *
+ * @details
+ * Parses one marker following the 0xFF prefix at `d->cursor` and updates
+ * the decoder context accordingly. Tracks whether an SOF0 has been seen
+ * via `*got_sof`. Unknown segments are skipped with `dec_skip_segment()`
+ * so unrecognised APPn/COM payloads do not abort decoding.
+ *
+ * @param[in,out] d        Decoder context (cursor advances).
+ * @param[in,out] got_sof  Tracks whether SOF0 has been parsed yet.
+ * @param[out]    action   What the caller should do next.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Marker parsed successfully (see *action).
+ * @retval k_ra_err_protocol_error Malformed marker, truncated stream, or SOS before SOF.
+ * @retval k_ra_err_not_supported  Unsupported SOFn (progressive, lossless, ...).
+ *
+ * @pre `d`, `got_sof`, `action` are non-NULL.
+ * @pre `d->cursor < d->src_len` (caller checks).
+ * @post `d->cursor` advanced past the marker byte and (for sized markers) past its payload.
+ * @post `*action` is one of the ra_jpeg_dec_marker_action_t values.
+ *
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+static ra_err_t
+dec_dispatch_marker(ra_jpeg_dec_ctx_t* d, bool* got_sof, ra_jpeg_dec_marker_action_t* action)
+{
+  *action = k_ra_jpeg_dec_continue;
+  if (d->src[d->cursor] != (uint8_t)k_ra_jpeg_marker_byte) {
+    return k_ra_err_protocol_error;
+  }
+  while (d->cursor < d->src_len && d->src[d->cursor] == (uint8_t)k_ra_jpeg_marker_byte) {
+    d->cursor++;
+  }
+  if (d->cursor >= d->src_len) {
+    return k_ra_err_protocol_error;
+  }
+  uint8_t m = d->src[d->cursor];
+  d->cursor++;
+  uint16_t mk = (uint16_t)(0xFF00U | m);
+
+  if (mk == (uint16_t)k_ra_jpeg_marker_sof0) {
+    ra_err_t e = dec_parse_sof0(d);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    *got_sof = true;
+    return k_ra_ok;
+    // mcdc-deactivated: dec_decode_scan unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision earlier in this TU -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
+  }
+  if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht && mk != 0xFFC8U) {
+    return k_ra_err_not_supported;
+  }
+  if (mk == (uint16_t)k_ra_jpeg_marker_dqt) {
+    return dec_parse_dqt(d);
+  }
+  if (mk == (uint16_t)k_ra_jpeg_marker_dht) {
+    return dec_parse_dht(d);
+  }
+  if (mk == (uint16_t)k_ra_jpeg_marker_sos) {
+    if (!*got_sof) {
+      return k_ra_err_protocol_error;
+    }
+    ra_err_t e = dec_parse_sos(d);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    *action = k_ra_jpeg_dec_scan;
+    return k_ra_ok;
+  }
+  if (mk == (uint16_t)k_ra_jpeg_marker_eoi) {
+    *action = k_ra_jpeg_dec_eoi;
+    return k_ra_ok;
+  }
+  if (mk >= (uint16_t)k_ra_jpeg_marker_rst0 && mk <= (uint16_t)k_ra_jpeg_marker_rst7) {
+    /* Standalone marker, no length. */
+    return k_ra_ok;
+  }
+  return dec_skip_segment(d);
 }
 
 /* ra jpeg sw decode -- see surrounding code and HUM citations. */
@@ -1460,60 +1668,18 @@ ra_err_t ra_jpeg_sw_decode(const uint8_t* jpeg_buf,
 
   bool got_sof = false;
   while (d->cursor < d->src_len) {
-    if (d->src[d->cursor] != (uint8_t)k_ra_jpeg_marker_byte) {
-      return k_ra_err_protocol_error;
+    ra_jpeg_dec_marker_action_t action = k_ra_jpeg_dec_continue;
+    ra_err_t                    e      = dec_dispatch_marker(d, &got_sof, &action);
+    if (e != k_ra_ok) {
+      return e;
     }
-    while (d->cursor < d->src_len && d->src[d->cursor] == (uint8_t)k_ra_jpeg_marker_byte) {
-      d->cursor++;
-    }
-    if (d->cursor >= d->src_len) {
-      return k_ra_err_protocol_error;
-    }
-    uint8_t m = d->src[d->cursor];
-    d->cursor++;
-    uint16_t mk = (uint16_t)(0xFF00U | m);
-
-    if (mk == (uint16_t)k_ra_jpeg_marker_sof0) {
-      ra_err_t e = dec_parse_sof0(d);
-      if (e != k_ra_ok) {
-        return e;
-      }
-      got_sof = true;
-      // mcdc-deactivated: dec_decode_scan unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision earlier in this TU -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
-    } else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht &&
-               mk != 0xFFC8U) {
-      return k_ra_err_not_supported;
-    } else if (mk == (uint16_t)k_ra_jpeg_marker_dqt) {
-      ra_err_t e = dec_parse_dqt(d);
-      if (e != k_ra_ok) {
-        return e;
-      }
-    } else if (mk == (uint16_t)k_ra_jpeg_marker_dht) {
-      ra_err_t e = dec_parse_dht(d);
-      if (e != k_ra_ok) {
-        return e;
-      }
-    } else if (mk == (uint16_t)k_ra_jpeg_marker_sos) {
-      if (!got_sof) {
-        return k_ra_err_protocol_error;
-      }
-      ra_err_t e = dec_parse_sos(d);
-      if (e != k_ra_ok) {
-        return e;
-      }
+    if (action == k_ra_jpeg_dec_scan) {
       *out_w = d->width;
       *out_h = d->height;
       return dec_decode_scan(d, out_buf, out_buf_len);
-    } else if (mk == (uint16_t)k_ra_jpeg_marker_eoi) {
+    }
+    if (action == k_ra_jpeg_dec_eoi) {
       break;
-    } else if (mk >= (uint16_t)k_ra_jpeg_marker_rst0 && mk <= (uint16_t)k_ra_jpeg_marker_rst7) {
-      /* Standalone marker, no length. */
-      continue;
-    } else {
-      ra_err_t e = dec_skip_segment(d);
-      if (e != k_ra_ok) {
-        return e;
-      }
     }
   }
   return k_ra_err_protocol_error;
@@ -1855,31 +2021,77 @@ static void enc_sample_c_block_420(const int32_t* cplane,
   }
 }
 
-/* Top-level encode driver -- emits the full JFIF byte stream -- see surrounding code and HUM citations. */
-static ra_err_t
-enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_t quality)
+/**
+ * @brief Build the four Annex K.3.3 Huffman code/size LUTs in the encoder context.
+ *
+ * @details
+ * Sums each of the four BITS arrays to get the symbol counts, then calls
+ * `enc_build_codes()` to materialise the canonical Huffman code values
+ * and bit-lengths into the encoder context. The totals are returned via
+ * out-params so the caller can pass them to `enc_emit_dht_one()` without
+ * recomputing.
+ *
+ * @param[in,out] e          Encoder context whose code/size LUT arrays are filled.
+ * @param[out]    total_dc_l Total luma DC symbols (sum of s_hbits_dc_luma).
+ * @param[out]    total_ac_l Total luma AC symbols.
+ * @param[out]    total_dc_c Total chroma DC symbols.
+ * @param[out]    total_ac_c Total chroma AC symbols.
+ *
+ * @return None.
+ *
+ * @pre `e`, `total_dc_l`, `total_ac_l`, `total_dc_c`, `total_ac_c` non-NULL.
+ * @pre `e`'s code/size LUT fields are writable.
+ * @post All four LUT pairs populated with canonical Huffman codes.
+ * @post Totals reflect the static BITS arrays.
+ *
+ * @note Not thread-safe; caller serializes via encoder context.
+ * @since 0.1.0
+ */
+static void enc_build_huff_tables(ra_jpeg_enc_ctx_t* e,
+                                  uint16_t*          total_dc_l,
+                                  uint16_t*          total_ac_l,
+                                  uint16_t*          total_dc_c,
+                                  uint16_t*          total_ac_c)
 {
-  /* Build quantization tables. */
-  uint16_t qs = enc_quality_scale(quality);
-  enc_scale_qtab(s_quant_luma, e->qy, qs);
-  enc_scale_qtab(s_quant_chroma, e->qc, qs);
-
-  /* Build Huffman code tables from K.3.3 BITS/VALUES. */
-  uint16_t total_dc_l = 0U;
-  uint16_t total_ac_l = 0U;
-  uint16_t total_dc_c = 0U;
-  uint16_t total_ac_c = 0U;
+  *total_dc_l = 0U;
+  *total_ac_l = 0U;
+  *total_dc_c = 0U;
+  *total_ac_c = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_jpeg_huff_lengths; i++) {
-    total_dc_l = (uint16_t)(total_dc_l + s_hbits_dc_luma[i]);
-    total_ac_l = (uint16_t)(total_ac_l + s_hbits_ac_luma[i]);
-    total_dc_c = (uint16_t)(total_dc_c + s_hbits_dc_chroma[i]);
-    total_ac_c = (uint16_t)(total_ac_c + s_hbits_ac_chroma[i]);
+    *total_dc_l = (uint16_t)(*total_dc_l + s_hbits_dc_luma[i]);
+    *total_ac_l = (uint16_t)(*total_ac_l + s_hbits_ac_luma[i]);
+    *total_dc_c = (uint16_t)(*total_dc_c + s_hbits_dc_chroma[i]);
+    *total_ac_c = (uint16_t)(*total_ac_c + s_hbits_ac_chroma[i]);
   }
-  enc_build_codes(s_hbits_dc_luma, s_hval_dc_luma, e->code_dc_l, e->size_dc_l, total_dc_l);
-  enc_build_codes(s_hbits_ac_luma, s_hval_ac_luma, e->code_ac_l, e->size_ac_l, total_ac_l);
-  enc_build_codes(s_hbits_dc_chroma, s_hval_dc_chroma, e->code_dc_c, e->size_dc_c, total_dc_c);
-  enc_build_codes(s_hbits_ac_chroma, s_hval_ac_chroma, e->code_ac_c, e->size_ac_c, total_ac_c);
+  enc_build_codes(s_hbits_dc_luma, s_hval_dc_luma, e->code_dc_l, e->size_dc_l, *total_dc_l);
+  enc_build_codes(s_hbits_ac_luma, s_hval_ac_luma, e->code_ac_l, e->size_ac_l, *total_ac_l);
+  enc_build_codes(s_hbits_dc_chroma, s_hval_dc_chroma, e->code_dc_c, e->size_dc_c, *total_dc_c);
+  enc_build_codes(s_hbits_ac_chroma, s_hval_ac_chroma, e->code_ac_c, e->size_ac_c, *total_ac_c);
+}
 
+/**
+ * @brief Emit the SOI marker plus the 16-byte APP0 JFIF header.
+ *
+ * @details
+ * Writes the JFIF 1.1 APP0 segment with `units=0`, aspect ratio 1:1, no
+ * embedded thumbnail. Extracted from `enc_emit_headers()` purely to keep
+ * the latter under the project's 60-line function-size budget; the byte
+ * sequence is identical to what the monolithic implementation produced.
+ *
+ * @param[in,out] e Encoder context (cursor advances).
+ *
+ * @return None.
+ *
+ * @pre `e` non-NULL with a writable `dst` buffer.
+ * @pre `e->cap - e->pos >= 22` (SOI + APP0 marker + payload).
+ * @post `e->pos` advanced by 22 bytes (SOI + APP0 header + 16-byte payload).
+ * @post Byte stream matches the JFIF 1.1 APP0 layout.
+ *
+ * @note Not thread-safe; caller serializes via encoder context.
+ * @since 0.1.0
+ */
+static void enc_emit_app0_jfif(ra_jpeg_enc_ctx_t* e)
+{
   /* SOI. */
   enc_emit_u16(e, (uint16_t)k_ra_jpeg_marker_soi);
 
@@ -1898,6 +2110,45 @@ enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_
   enc_emit_u16(e, 1U); /* Aspect 1:1. */
   enc_emit_u8(e, 0U);
   enc_emit_u8(e, 0U); /* No thumbnail. */
+}
+
+/**
+ * @brief Emit the SOI/APP0/DQT/SOF0/DHT/SOS header segments for a 4:2:0 YCbCr stream.
+ *
+ * @details
+ * Writes every byte that precedes the entropy-coded scan, in the order
+ * specified by JFIF 1.1: SOI, APP0 (16-byte payload), DQT, SOF0 (3-comp,
+ * 4:2:0 sampling, 8-bit), four DHT segments (DC/AC x luma/chroma), and
+ * the SOS that hands the four Huffman selectors and the spectral-range
+ * bytes to the decoder.
+ *
+ * @param[in,out] e          Encoder context (cursor advances).
+ * @param[in]     w          Image width in pixels.
+ * @param[in]     h          Image height in pixels.
+ * @param[in]     total_dc_l Symbol count for luma DC HUFFVAL.
+ * @param[in]     total_ac_l Symbol count for luma AC HUFFVAL.
+ * @param[in]     total_dc_c Symbol count for chroma DC HUFFVAL.
+ * @param[in]     total_ac_c Symbol count for chroma AC HUFFVAL.
+ *
+ * @return None.
+ *
+ * @pre `e` non-NULL with a writable `dst` buffer.
+ * @pre All four totals come from enc_build_huff_tables().
+ * @post `e->pos` advanced past every header segment.
+ * @post Header bytes byte-identical to the previous monolithic implementation.
+ *
+ * @note Not thread-safe; caller serializes via encoder context.
+ * @since 0.1.0
+ */
+static void enc_emit_headers(ra_jpeg_enc_ctx_t* e,
+                             uint16_t           w,
+                             uint16_t           h,
+                             uint16_t           total_dc_l,
+                             uint16_t           total_ac_l,
+                             uint16_t           total_dc_c,
+                             uint16_t           total_ac_c)
+{
+  enc_emit_app0_jfif(e);
 
   /* DQT, SOF0, DHT x4, SOS. */
   enc_emit_dqt(e);
@@ -1940,6 +2191,143 @@ enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_
   enc_emit_u8(e, 0U);
   enc_emit_u8(e, 63U);
   enc_emit_u8(e, 0U);
+}
+
+/**
+ * @brief Convert 16 source RGB rows into Y / Cb / Cr 16-row strips.
+ *
+ * @details
+ * For each of 16 output rows, replicates the right-edge / bottom-edge
+ * source pixels (clamp-to-edge) so that the YCbCr strips cover the full
+ * `pad_w` width and the requested vertical strip starting at `mby`.
+ * Uses the caller-provided scratch RGB buffer for one row at a time, so
+ * the chroma sub-sampling later in `enc_sample_c_block_420()` sees
+ * fully-populated planes.
+ *
+ * @param[in]  rgb      Source RGB888 image of size w*h.
+ * @param[in]  w        Source image width in pixels.
+ * @param[in]  h        Source image height in pixels.
+ * @param[in]  pad_w    Padded (16-aligned) strip width.
+ * @param[in]  mby      Strip start row in the padded image.
+ * @param[out] y_strip  Output Y plane of pad_w * 16 samples.
+ * @param[out] cb_strip Output Cb plane of pad_w * 16 samples.
+ * @param[out] cr_strip Output Cr plane of pad_w * 16 samples.
+ * @param[out] tmp_rgb  Scratch RGB row buffer of pad_w*3 bytes.
+ *
+ * @return None.
+ *
+ * @pre `rgb`, `y_strip`, `cb_strip`, `cr_strip`, `tmp_rgb` non-NULL.
+ * @pre `w > 0`, `h > 0`, `pad_w >= w`, `pad_w` is a multiple of 16.
+ * @post YCbCr strips populated for all 16 rows of the slice.
+ * @post `tmp_rgb` contents undefined after return (scratch only).
+ *
+ * @note Not thread-safe; relies on caller-provided scratch buffers.
+ * @since 0.1.0
+ */
+static void enc_convert_strip_to_ycc(const uint8_t* rgb,
+                                     uint16_t       w,
+                                     uint16_t       h,
+                                     uint16_t       pad_w,
+                                     uint16_t       mby,
+                                     int32_t*       y_strip,
+                                     int32_t*       cb_strip,
+                                     int32_t*       cr_strip,
+                                     uint8_t*       tmp_rgb)
+{
+  for (uint8_t r = 0U; r < 16U; r++) {
+    uint16_t src_y = mby + r;
+    if (src_y >= h) {
+      src_y = (uint16_t)(h - 1U);
+    }
+    for (uint16_t c = 0U; c < pad_w; c++) {
+      uint16_t src_x = c;
+      if (src_x >= w) {
+        src_x = (uint16_t)(w - 1U);
+      }
+      uint32_t sidx =
+        ((uint32_t)src_y * (uint32_t)w + (uint32_t)src_x) * (uint32_t)k_ra_jpeg_rgb_components;
+      tmp_rgb[c * (uint8_t)k_ra_jpeg_rgb_components + 0U] = rgb[sidx + 0U];
+      tmp_rgb[c * (uint8_t)k_ra_jpeg_rgb_components + 1U] = rgb[sidx + 1U];
+      tmp_rgb[c * (uint8_t)k_ra_jpeg_rgb_components + 2U] = rgb[sidx + 2U];
+    }
+    enc_rgb_to_ycc_row(tmp_rgb,
+                       pad_w,
+                       &y_strip[r * pad_w],
+                       &cb_strip[r * pad_w],
+                       &cr_strip[r * pad_w]);
+  }
+}
+
+/**
+ * @brief Encode every 16x16 MCU in a 16-row YCbCr strip.
+ *
+ * @details
+ * For each MCU column inside `pad_w`, samples four 8x8 luma blocks at
+ * (0,0)(8,0)(0,8)(8,8), then two sub-sampled 8x8 chroma blocks (Cb,Cr).
+ * Each block is fed through `enc_block()` with the matching quant table
+ * and Huffman LUTs, which emits the entropy-coded bits into the encoder
+ * context.
+ *
+ * @param[in,out] e        Encoder context (bit-buffer mutates).
+ * @param[in]     pad_w    Padded strip width (multiple of 16).
+ * @param[in]     y_strip  Luma plane samples for this strip.
+ * @param[in]     cb_strip Cb plane samples for this strip.
+ * @param[in]     cr_strip Cr plane samples for this strip.
+ *
+ * @return None.
+ *
+ * @pre `e` is initialised with valid Huffman LUTs.
+ * @pre `pad_w > 0` and a multiple of 16.
+ * @post `e->pos`/bit buffer advanced by the entropy bytes of every MCU in the strip.
+ * @post Block sample order is byte-identical to the previous monolithic encoder.
+ *
+ * @note Not thread-safe; caller serializes via encoder context.
+ * @since 0.1.0
+ */
+static void enc_encode_mcu_row(ra_jpeg_enc_ctx_t* e,
+                               uint16_t           pad_w,
+                               const int32_t*     y_strip,
+                               const int32_t*     cb_strip,
+                               const int32_t*     cr_strip)
+{
+  for (uint16_t mbx = 0U; mbx < pad_w; mbx = (uint16_t)(mbx + 16U)) {
+    int32_t blk[(uint32_t)k_ra_jpeg_block_size];
+    /* 4 luma blocks: (0,0) (0,8) (8,0) (8,8). */
+    for (uint8_t by = 0U; by < 2U; by++) {
+      for (uint8_t bx = 0U; bx < 2U; bx++) {
+        enc_sample_y_block(y_strip,
+                           pad_w,
+                           16U,
+                           (uint16_t)(mbx + bx * 8U),
+                           (uint16_t)(by * 8U),
+                           blk);
+        enc_block(e, blk, e->qy, 0U, e->code_dc_l, e->size_dc_l, e->code_ac_l, e->size_ac_l);
+      }
+    }
+    enc_sample_c_block_420(cb_strip, pad_w, 16U, mbx, 0U, blk);
+    enc_block(e, blk, e->qc, 1U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
+    enc_sample_c_block_420(cr_strip, pad_w, 16U, mbx, 0U, blk);
+    enc_block(e, blk, e->qc, 2U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
+  }
+}
+
+/* Top-level encode driver -- emits the full JFIF byte stream -- see surrounding code and HUM citations. */
+static ra_err_t
+enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_t quality)
+{
+  /* Build quantization tables. */
+  uint16_t qs = enc_quality_scale(quality);
+  enc_scale_qtab(s_quant_luma, e->qy, qs);
+  enc_scale_qtab(s_quant_chroma, e->qc, qs);
+
+  /* Build Huffman code tables from K.3.3 BITS/VALUES. */
+  uint16_t total_dc_l;
+  uint16_t total_ac_l;
+  uint16_t total_dc_c;
+  uint16_t total_ac_c;
+  enc_build_huff_tables(e, &total_dc_l, &total_ac_l, &total_dc_c, &total_ac_c);
+
+  enc_emit_headers(e, w, h, total_dc_l, total_ac_l, total_dc_c, total_ac_c);
 
   /* Convert source rows to YCbCr 16-row strips. Static buffers
    * keep the host stack small while still respecting NASA Rule 3
@@ -1956,49 +2344,8 @@ enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_
   static uint8_t s_tmp_rgb[3U * (uint32_t)k_ra_jpeg_enc_max_w];
 
   for (uint16_t mby = 0U; mby < pad_h; mby = (uint16_t)(mby + 16U)) {
-    /* Convert 16 source rows into YCbCr planes. */
-    for (uint8_t r = 0U; r < 16U; r++) {
-      uint16_t src_y = mby + r;
-      if (src_y >= h) {
-        src_y = (uint16_t)(h - 1U);
-      }
-      for (uint16_t c = 0U; c < pad_w; c++) {
-        uint16_t src_x = c;
-        if (src_x >= w) {
-          src_x = (uint16_t)(w - 1U);
-        }
-        uint32_t sidx =
-          ((uint32_t)src_y * (uint32_t)w + (uint32_t)src_x) * (uint32_t)k_ra_jpeg_rgb_components;
-        s_tmp_rgb[c * (uint8_t)k_ra_jpeg_rgb_components + 0U] = rgb[sidx + 0U];
-        s_tmp_rgb[c * (uint8_t)k_ra_jpeg_rgb_components + 1U] = rgb[sidx + 1U];
-        s_tmp_rgb[c * (uint8_t)k_ra_jpeg_rgb_components + 2U] = rgb[sidx + 2U];
-      }
-      enc_rgb_to_ycc_row(s_tmp_rgb,
-                         pad_w,
-                         &s_y_strip[r * pad_w],
-                         &s_cb_strip[r * pad_w],
-                         &s_cr_strip[r * pad_w]);
-    }
-    /* For each MCU column, encode 4 Y blocks then Cb, Cr. */
-    for (uint16_t mbx = 0U; mbx < pad_w; mbx = (uint16_t)(mbx + 16U)) {
-      int32_t blk[(uint32_t)k_ra_jpeg_block_size];
-      /* 4 luma blocks: (0,0) (0,8) (8,0) (8,8). */
-      for (uint8_t by = 0U; by < 2U; by++) {
-        for (uint8_t bx = 0U; bx < 2U; bx++) {
-          enc_sample_y_block(s_y_strip,
-                             pad_w,
-                             16U,
-                             (uint16_t)(mbx + bx * 8U),
-                             (uint16_t)(by * 8U),
-                             blk);
-          enc_block(e, blk, e->qy, 0U, e->code_dc_l, e->size_dc_l, e->code_ac_l, e->size_ac_l);
-        }
-      }
-      enc_sample_c_block_420(s_cb_strip, pad_w, 16U, mbx, 0U, blk);
-      enc_block(e, blk, e->qc, 1U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
-      enc_sample_c_block_420(s_cr_strip, pad_w, 16U, mbx, 0U, blk);
-      enc_block(e, blk, e->qc, 2U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
-    }
+    enc_convert_strip_to_ycc(rgb, w, h, pad_w, mby, s_y_strip, s_cb_strip, s_cr_strip, s_tmp_rgb);
+    enc_encode_mcu_row(e, pad_w, s_y_strip, s_cb_strip, s_cr_strip);
   }
 
   enc_flush_bits(e);
