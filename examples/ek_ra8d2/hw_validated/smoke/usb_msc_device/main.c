@@ -440,28 +440,52 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
  * @note Single-instance worker; not designed for re-entry.
  * @since 0.1.0
  */
-static VOID demo_worker(ULONG arg)
+/**
+ * @brief Brings USBX system + FS device stack up.
+ *
+ * @return UINT UX_SUCCESS on success.
+ * @retval UX_SUCCESS Stack ready.
+ *
+ * @pre File-scope pool reserved.
+ * @pre Thread context.
+ * @post Device stack accepts class registrations.
+ * @post On failure, USBX state is undefined.
+ *
+ * @note Single-call; not idempotent.
+ * @since 0.1.0
+ */
+static UINT demo_usbx_stack_up(void)
 {
-  (void)arg;
-
-  /* Bring USBX up. */
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return;
+    return UX_ERROR;
   }
-  if (_ux_device_stack_initialize((UCHAR*)UX_NULL, /* HS framework            */
-                                  0,
-                                  s_device_framework_fs,
-                                  sizeof(s_device_framework_fs),
-                                  s_string_framework,
-                                  sizeof(s_string_framework),
-                                  s_language_id_framework,
-                                  sizeof(s_language_id_framework),
-                                  UX_NULL) != UX_SUCCESS) {
-    return;
-  }
+  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
+                                     0,
+                                     s_device_framework_fs,
+                                     sizeof(s_device_framework_fs),
+                                     s_string_framework,
+                                     sizeof(s_string_framework),
+                                     s_language_id_framework,
+                                     sizeof(s_language_id_framework),
+                                     UX_NULL);
+}
 
-  /* Register the Mass-Storage class against the configuration with one
-   * LUN backed by ``s_ramdisk``. */
+/**
+ * @brief Registers the Mass-Storage class with one LUN backed by ``s_ramdisk``.
+ *
+ * @return UINT UX_SUCCESS on success.
+ * @retval UX_SUCCESS Class registered.
+ *
+ * @pre ``demo_usbx_stack_up`` has succeeded.
+ * @pre Media read/write/status callbacks are defined.
+ * @post MSC class bound to configuration 1, interface 0.
+ * @post LUN0 advertises ``k_demo_block_count`` removable FAT blocks.
+ *
+ * @note Not re-entrant.
+ * @since 0.1.0
+ */
+static UINT demo_msc_class_register(void)
+{
   UX_SLAVE_CLASS_STORAGE_PARAMETER msc_params;
   (void)memset(&msc_params, 0, sizeof(msc_params));
   msc_params.ux_slave_class_storage_parameter_number_lun  = 1UL;
@@ -486,15 +510,23 @@ static VOID demo_worker(ULONG arg)
   msc_params.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_status =
     demo_msc_status;
 
-  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_storage",
-                                      _ux_device_class_storage_entry,
-                                      1, /* configuration #  */
-                                      0, /* interface #      */
-                                      &msc_params) != UX_SUCCESS) {
+  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_storage",
+                                         _ux_device_class_storage_entry,
+                                         1,
+                                         0,
+                                         &msc_params);
+}
+
+static VOID demo_worker(ULONG arg)
+{
+  (void)arg;
+
+  if (demo_usbx_stack_up() != UX_SUCCESS) {
     return;
   }
-
-  /* Plug our DCD bridge into the device stack and turn the bus on. */
+  if (demo_msc_class_register() != UX_SUCCESS) {
+    return;
+  }
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
     return;
   }
