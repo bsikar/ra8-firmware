@@ -166,6 +166,7 @@ collect_source_files() {
         ! -path '*/_deps/*' \
         ! -path '*/third_party/*' \
         ! -path '*/tests/*' \
+        ! -path '*/libs/fonts/*' \
         2>/dev/null || true
 }
 
