@@ -35,10 +35,13 @@
 #include "tx_user.h"
 #endif
 
-/* RA8D2 boot-default MOCO clock. Same value blink_hal uses for
- * ra_time_init(). 8.4 MHz / 1000 = 8400 cycles per 1 ms tick, which fits
- * the 24-bit SysTick.LOAD register (max 0xFFFFFF == 16,777,215). */
-                .equ    RA_BOOT_CLOCK_HZ,        8400000
+/* Apps that use ThreadX are expected to bring CPUCLK0 up to its
+ * post-cgc target (1 GHz on the EK-RA8D2 / RA8D2 group) BEFORE
+ * calling tx_kernel_enter.  Reload uses the post-cgc rate so 1 ms
+ * tick is actually 1 ms wall-clock, not 1 ms scaled by the
+ * 8.4 MHz reset clock.  1 GHz / 1000 = 1,000,000 -- fits the
+ * 24-bit SysTick.LOAD register (max 0xFFFFFF == 16,777,215). */
+                .equ    RA_BOOT_CLOCK_HZ,        1000000000
                 .equ    RA_THREADX_TICK_HZ,      1000
                 .equ    RA_SYSTICK_RELOAD,       ((RA_BOOT_CLOCK_HZ / RA_THREADX_TICK_HZ) - 1)
 

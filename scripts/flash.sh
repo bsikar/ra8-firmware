@@ -50,7 +50,11 @@ trap 'rm -f "$TMP_SCRIPT"' EXIT
 #     selection GUI on macOS even with `-nogui 1`, and (worse) skips the
 #     RA-specific flash algorithm so MRAM writes silently fail.
 #   - `-nogui 1` suppresses the "Target device settings" picker.
-#   - `-SelectEmuBySN` pins the probe so multi-probe machines don't prompt.
+#   - We do NOT pin `-SelectEmuBySN`: the on-board J-Link OB's serial
+#     number changes when the USB cable or hub re-enumerates, and a
+#     stale pin silently "succeeds" (JLinkExe always exits 0) while
+#     actually skipping every command -- which means an old MRAM
+#     image keeps running and looks identical to a fresh flash.
 cat > "$TMP_SCRIPT" <<EOF
 device R7KA8D2KF_CPU0
 si SWD
@@ -63,6 +67,25 @@ g
 q
 EOF
 
-JLinkExe -nogui 1 -SelectEmuBySN 1086567198 -commanderscript "$TMP_SCRIPT"
+LOG=$(mktemp)
+trap 'rm -f "$TMP_SCRIPT" "$LOG"' EXIT
+if ! JLinkExe -nogui 1 -commanderscript "$TMP_SCRIPT" | tee "$LOG"; then
+    echo -e "${RED}[FAIL]${NC} JLinkExe returned a non-zero exit code"
+    exit 1
+fi
+
+# JLinkExe always exits 0, even when the probe never connected.  Scan
+# the captured log for the connection-failure signature; bail out
+# loudly so a stale MRAM image cannot pass for a successful flash.
+if grep -qE 'Connecting to J-Link via USB\.\.\.FAILED|Cannot connect to J-Link' "$LOG"; then
+    echo -e "${RED}[FAIL]${NC} J-Link probe not reachable -- nothing was flashed."
+    echo    "         Check the USB cable on the J-Link OB port (not the USB-Device port),"
+    echo    "         and confirm 'JLinkExe' alone can run 'connect' successfully."
+    exit 1
+fi
+if grep -qE 'verify failed|Verify failed|Programming failed' "$LOG"; then
+    echo -e "${RED}[FAIL]${NC} Flash verify failed -- MRAM image does not match the hex."
+    exit 1
+fi
 
 echo -e "${GREEN}[DONE]${NC} Flashed $HEX"
