@@ -392,24 +392,29 @@ static uint32_t internal_ccr2(const ra_sci_cfg_t* cfg)
  * =============================================================================
  */
 
-/* ra sci init -- see surrounding code and HUM citations. */
-ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
+/**
+ * @brief Program CCR0..CCR4 + FCR for the requested UART config.
+ *
+ * @details
+ * Performs the deterministic MMIO write sequence required between
+ * MSTP-enable and the final TE/RE strobe: CCR0=0 (disable), FCR=0
+ * (non-FIFO), CCR1/CCR3/CCR2 from the cached helpers, CCR4=0, then
+ * the CFCLR / FFCLR latch clear. The write order is identical to
+ * FSP r_sci_b_uart.c.
+ *
+ * @param[in,out] reg Channel register bank, non-NULL.
+ * @param[in]     cfg Validated UART configuration.
+ *
+ * @pre Caller has enabled the module-stop clock for this channel.
+ * @pre ``reg`` is the canonical bank pointer for the active channel.
+ * @post CCR0=0 (TX/RX still disabled until ra_sci_init re-strobes it).
+ * @post FCR=0, CCR1/CCR2/CCR3 programmed, CCR4 cleared, flags cleared.
+ *
+ * @note Not thread-safe; called once during init under IRQ-masked context.
+ * @since 0.1.0
+ */
+static void internal_program_ccr_bank(volatile r_sci_regs_t* reg, const ra_sci_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR(cfg, s_tag, "sci_init: cfg");
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
-  const ra_err_t mst_err = ra_mstp_enable(s_mstp_table[channel]);
-  if (mst_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
-    ra_log_error_val(s_tag, "sci_init: mstp enable failed", (uint32_t)mst_err);
-    return k_ra_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
-  }
-
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- disable
    * TX/RX/IE bits before reconfiguring CCR1..CCR4 and FCR. */
   reg->CCR0 = 0U;
@@ -439,6 +444,27 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
    * any latches inherited from a previous boot before TX/RX go live.
    * Mirrors FSP r_sci_b_uart.c. */
   internal_clear_csr_flags(reg);
+}
+
+/* ra sci init -- see surrounding code and HUM citations. */
+ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "sci_init: cfg");
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
+  const ra_err_t mst_err = ra_mstp_enable(s_mstp_table[channel]);
+  if (mst_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_START */
+    ra_log_error_val(s_tag, "sci_init: mstp enable failed", (uint32_t)mst_err);
+    return k_ra_err_hw_init_failed;
+    /* GCOVR_EXCL_STOP */
+  }
+
+  internal_program_ccr_bank(reg, cfg);
 
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- enable
    * transmitter and receiver. Interrupt-enable bits are toggled

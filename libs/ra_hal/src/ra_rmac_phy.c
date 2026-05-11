@@ -114,6 +114,129 @@ static ra_rmac_phy_internal_t s_state = {};
  * @note Not thread-safe; one PHY per driver instance.
  * @since 0.1.0
  */
+/**
+ * @brief Issue BMCR.RESET to the PHY and poll until it self-clears.
+ *
+ * @details
+ * IEEE 802.3 Clause 22 6.3.5.2.5 requires BMCR bit 15 (RESET) to be
+ * write-only; the PHY clears it once internal state has been
+ * re-initialised. Polls up to ``poll_max`` MDIO reads before giving up.
+ *
+ * @param[in] poll_max Maximum read iterations before timing out.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 BMCR.RESET observed clear.
+ * @retval k_ra_err_hw_timeout     BMCR.RESET still set after poll_max reads.
+ *
+ * @pre ``s_state.io.read`` and ``s_state.io.write`` non-NULL.
+ * @pre ``s_state.phy_address`` is the open driver's PHY.
+ * @post On success the PHY is back in its post-reset default state.
+ * @post On error the PHY may be partway through reset; caller closes driver.
+ *
+ * @note Not thread-safe; called from open under IRQ-masked init.
+ * @since 0.1.0
+ */
+static ra_err_t internal_reset_and_wait(uint16_t poll_max)
+{
+  ra_err_t err = s_state.io.write(s_state.io.ctx,
+                                  s_state.phy_address,
+                                  k_ra_rmac_phy_reg_control,
+                                  k_ra_rmac_phy_bmcr_reset);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (uint16_t i = 0U; i < poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+    uint16_t reg = 0U;
+    err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra_rmac_phy_reg_control, &reg);
+    if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
+      return err;
+    }
+    if ((reg & k_ra_rmac_phy_bmcr_reset) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Program the auto-negotiation advertisement registers.
+ *
+ * @details
+ * Writes the cached local-advertise word into Clause-22 register 4
+ * (AN_ADVERT) and -- if non-zero -- the gbit-advertise word into
+ * register 9 (1000BASE-T control). Skipping the second write keeps
+ * 10/100-only PHYs from rejecting an unsupported register access.
+ *
+ * @return ``ra_err_t`` error code propagated from the MDIO callback.
+ * @retval k_ra_ok                  Advertisement programmed.
+ *
+ * @pre Caller has populated ``s_state.local_advertise`` / ``gbit_advertise``.
+ * @pre Driver still holds the opened-but-tentative state from open().
+ * @post Advertised abilities reflect the cached configuration on success.
+ * @post Driver state is unchanged on error.
+ *
+ * @note Not thread-safe; called only from open().
+ * @since 0.1.0
+ */
+static ra_err_t internal_program_advertise(void)
+{
+  ra_err_t err = s_state.io.write(s_state.io.ctx,
+                                  s_state.phy_address,
+                                  k_ra_rmac_phy_reg_an_advert,
+                                  s_state.local_advertise);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (s_state.gbit_advertise != 0U) {
+    err = s_state.io.write(s_state.io.ctx,
+                           s_state.phy_address,
+                           k_ra_rmac_phy_reg_1000t_ctrl,
+                           s_state.gbit_advertise);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Open the RMAC PHY driver and bring the off-chip PHY out of reset.
+ *
+ * @details
+ * Validates the caller-supplied configuration, captures the MDIO IO seam
+ * (read/write function pointers) into module-private state, issues a soft
+ * reset over MDIO and polls BMCR.RESET to clear, then programs the
+ * advertised abilities into ANAR (and 1000BASE-T control where the LSI
+ * supports gigabit). Subsequent ``ra_rmac_phy_*`` calls operate against
+ * the cached state; only one open instance is permitted at a time.
+ *
+ * Algorithm:
+ *   1. Null-pointer + range validation on cfg / cfg->io / phy_address.
+ *   2. Copy cfg fields into the module-private ``s_state``.
+ *   3. internal_reset_and_wait() drives BMCR.RESET=1 and polls clear.
+ *   4. internal_program_advertise() writes ANAR (and 1000T_CTRL if used).
+ *
+ * @param[in] cfg PHY configuration: IO seam, MDIO address (0..31),
+ *                LSI family, advertised abilities, and reset poll budget.
+ *                Must not be nullptr; ``cfg->io.read`` and
+ *                ``cfg->io.write`` must be non-null.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  PHY reset and advertise programmed.
+ * @retval k_ra_err_invalid_arg     cfg/io pointers null, phy_address out
+ *                                  of range, or unknown lsi_type.
+ * @retval k_ra_err_exists          Driver already opened; close first.
+ * @retval k_ra_err_io              MDIO write to BMCR/ANAR failed.
+ * @retval k_ra_err_timeout         BMCR.RESET did not clear within budget.
+ *
+ * @pre Caller is in single-threaded init context with the MDIO bus idle.
+ * @pre RMAC controller MDIO is clocked (caller has enabled the MAC).
+ * @post On k_ra_ok the driver is in the opened state with cached config.
+ * @post On failure the driver remains closed (s_state.opened == false).
+ *
+ * @note Not thread-safe; the module owns a single static state instance.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_open(const ra_rmac_phy_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -136,51 +259,18 @@ ra_err_t ra_rmac_phy_open(const ra_rmac_phy_cfg_t* cfg)
   s_state.io              = cfg->io;
   s_state.last_bmsr       = 0U;
 
-  ra_err_t err = s_state.io.write(s_state.io.ctx,
-                                  s_state.phy_address,
-                                  k_ra_rmac_phy_reg_control,
-                                  k_ra_rmac_phy_bmcr_reset);
-  if (err != k_ra_ok) {
-    s_state.opened = false;
-    return err;
-  }
   const uint16_t poll_max =
     (cfg->reset_poll_max == 0U) ? k_ra_rmac_phy_reset_poll_max : cfg->reset_poll_max;
-  bool reset_cleared = false;
-  for (uint16_t i = 0U; i < poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
-    uint16_t reg = 0U;
-    err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra_rmac_phy_reg_control, &reg);
-    if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
-      s_state.opened = false;
-      return err;
-    }
-    if ((reg & k_ra_rmac_phy_bmcr_reset) == 0U) {
-      reset_cleared = true;
-      break;
-    }
-  }
-  if (!reset_cleared) {
-    s_state.opened = false;
-    return k_ra_err_hw_timeout;
-  }
-
-  err = s_state.io.write(s_state.io.ctx,
-                         s_state.phy_address,
-                         k_ra_rmac_phy_reg_an_advert,
-                         s_state.local_advertise);
+  ra_err_t err = internal_reset_and_wait(poll_max);
   if (err != k_ra_ok) {
     s_state.opened = false;
     return err;
   }
-  if (s_state.gbit_advertise != 0U) {
-    err = s_state.io.write(s_state.io.ctx,
-                           s_state.phy_address,
-                           k_ra_rmac_phy_reg_1000t_ctrl,
-                           s_state.gbit_advertise);
-    if (err != k_ra_ok) {
-      s_state.opened = false;
-      return err;
-    }
+
+  err = internal_program_advertise();
+  if (err != k_ra_ok) {
+    s_state.opened = false;
+    return err;
   }
   ra_log_info_val(s_tag, "rmac phy lsi", (uint32_t)cfg->lsi_type);
   return k_ra_ok;

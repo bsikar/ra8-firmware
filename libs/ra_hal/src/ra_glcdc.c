@@ -116,56 +116,82 @@ typedef enum : uint32_t {
  * @note Single-threaded init context; not safe to call from IRQ.
  * @since 0.1.0
  */
-static void internal_graphics_power_on(void)
-{
 #ifndef RA_SIMULATOR_MODE
-  enum : uintptr_t {
-    k_addr_prcr       = 0x4001E3FAUL,
-    k_addr_pdctrgd    = 0x4001E110UL,
-    k_addr_lcdckdivcr = 0x4001E05EUL,
-    k_addr_lcdckcr    = 0x4001E05FUL,
-  };
-  enum : uint16_t {
-    k_prcr_unlock_lpm = 0xA502U,
-    k_prcr_unlock_cgc = 0xA501U,
-    k_prcr_relock     = 0xA500U,
-  };
-  enum : uint8_t {
-    k_pdctrgd_on      = 0x00U,
-    k_pdctrgd_pdcsf   = 0x40U, /* bit 6: control-in-progress status */
-    k_pdctrgd_pdpgsf  = 0x80U, /* bit 7: gated status               */
-    k_pdctrgd_status  = 0xC0U, /* both status bits                  */
-    k_lcdck_sreq      = 0x40U,
-    k_lcdck_srdy_mask = 0x80U,
-    k_lcdck_sel_pll1r = 0x08U, /* HUM 9.2.58 LCDCKSEL[3:0] = 1000b -- LVGL EK-RA8D2 ref */
-    k_lcdckdivcr_div4 = 0x02U, /* LCDCLK = PLL1R / 4 = 100 MHz   */
-  };
+/* HUM Ch 11.2.1 "PRCR : Protect Register" p 440 -- PRC0 (bit 0)
+ * unlocks CGC; PRC1 (bit 1) unlocks LPM. Key = 0xA5xx. */
+enum : uintptr_t {
+  k_addr_prcr       = 0x4001E3FAUL,
+  k_addr_pdctrgd    = 0x4001E110UL,
+  k_addr_lcdckdivcr = 0x4001E05EUL,
+  k_addr_lcdckcr    = 0x4001E05FUL,
+  k_addr_hococr     = 0x4001E036UL,
+};
+enum : uint16_t {
+  k_prcr_unlock_lpm = 0xA502U,
+  k_prcr_unlock_cgc = 0xA501U,
+  k_prcr_relock     = 0xA500U,
+};
+enum : uint8_t {
+  k_pdctrgd_on      = 0x00U,
+  k_pdctrgd_pdcsf   = 0x40U, /* bit 6: control-in-progress status */
+  k_pdctrgd_pdpgsf  = 0x80U, /* bit 7: gated status               */
+  k_pdctrgd_status  = 0xC0U, /* both status bits                  */
+  k_lcdck_sreq      = 0x40U,
+  k_lcdck_srdy_mask = 0x80U,
+  k_lcdck_sel_pll1r = 0x08U, /* HUM 9.2.58 LCDCKSEL[3:0] = 1000b */
+  k_lcdckdivcr_div4 = 0x02U, /* LCDCLK = PLL1R / 4 = 100 MHz   */
+  k_hococr_run      = 0x00U,
+};
 
-  volatile uint16_t* const prcr       = (volatile uint16_t*)k_addr_prcr;
-  volatile uint8_t* const  pdctrgd    = (volatile uint8_t*)k_addr_pdctrgd;
-  volatile uint8_t* const  lcdckdivcr = (volatile uint8_t*)k_addr_lcdckdivcr;
-  volatile uint8_t* const  lcdckcr    = (volatile uint8_t*)k_addr_lcdckcr;
+/**
+ * @brief Enable HOCO via PRC0-protected HOCOCR.
+ *
+ * @details
+ * HUM Ch 9.2.34 HOCOCR.HCSTP = 0 starts the HOCO. FSP bsp_clock_init
+ * keeps HOCO enabled even on PLL1-sourced systems because the
+ * graphics power domain's analogue trim logic still requires it.
+ *
+ * @pre PRCR is locked (default reset state).
+ * @pre Caller is in single-threaded init context.
+ * @post HOCOCR.HCSTP = 0 (HOCO running).
+ * @post PRCR is relocked.
+ *
+ * @note Not thread-safe; touches CGC MMIO under PRC0 unlock.
+ * @since 0.1.0
+ */
+static void internal_hoco_enable(void)
+{
+  volatile uint16_t* const prcr   = (volatile uint16_t*)k_addr_prcr;
+  volatile uint8_t* const  hococr = (volatile uint8_t*)k_addr_hococr;
+  *prcr                           = (uint16_t)k_prcr_unlock_cgc;
+  *hococr                         = (uint8_t)k_hococr_run;
+  *prcr                           = (uint16_t)k_prcr_relock;
+}
 
-  /* Step 0: ensure HOCO is on -- FSP bsp_clock_init keeps it enabled
-   * and some sub-blocks of the graphics power domain seem to need it
-   * even when the system clock is sourced from PLL1.  Enable it via
-   * PRC0-protected HOCOCR.HCSTP = 0. */
-  enum : uint8_t {
-    k_hococr_run = 0x00U,
-  };
-  volatile uint8_t* const hococr = (volatile uint8_t*)0x4001E036UL;
-  *prcr                          = (uint16_t)k_prcr_unlock_cgc;
-  *hococr                        = (uint8_t)k_hococr_run;
-  *prcr                          = (uint16_t)k_prcr_relock;
-
-  /* Step 1: power on Graphics domain (PRC1 = LPM group).  Per FSP's
-   * bsp_clock_init the sequence is:
-   *   wait PDCTRGD status == PDPGSF (= 0x80, fully gated, idle)
-   *   write PDCTRGD = 0 (PDDE = 0 -> request power on)
-   *   wait PDCTRGD status == 0 (= 0x00, fully on, transition complete)
-   * Skipping the second wait makes later writes race the power-up
-   * transition and silently land in nowhere. */
-  *prcr = (uint16_t)k_prcr_unlock_lpm;
+/**
+ * @brief Power on the Graphics power domain via PRC1-protected PDCTRGD.
+ *
+ * @details
+ * HUM Ch 11.2.16 PDCTRGD power-on sequence (mirrors FSP bsp_clock_init):
+ *   1. wait PDCTRGD status == PDPGSF (fully gated, idle)
+ *   2. write PDCTRGD = 0 (PDDE = 0 -> request power on)
+ *   3. wait PDCTRGD status == 0 (fully on, transition complete)
+ * Skipping the second wait races the power-up transition and makes
+ * downstream MMIO writes vanish silently.
+ *
+ * @pre PRCR is currently relocked.
+ * @pre HOCO has been re-enabled by internal_hoco_enable().
+ * @post Graphics power domain is fully on.
+ * @post PRCR is relocked.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_graphics_domain_power_on(void)
+{
+  volatile uint16_t* const prcr    = (volatile uint16_t*)k_addr_prcr;
+  volatile uint8_t* const  pdctrgd = (volatile uint8_t*)k_addr_pdctrgd;
+  *prcr                            = (uint16_t)k_prcr_unlock_lpm;
 
   /* Wait for "fully gated" state before issuing the power-on request. */
   for (uint32_t i = 0U; i < 0x10000UL; i++) {
@@ -181,10 +207,30 @@ static void internal_graphics_power_on(void)
     }
   }
   *prcr = (uint16_t)k_prcr_relock;
+}
 
-  /* Step 2: switch LCDCLK to PLL2P (PRC0 = CGC group), per the
-   * SREQ -> SRDY=1 -> set source -> SREQ=0 -> SRDY=0 handshake
-   * documented in HUM Ch 9.2.58. */
+/**
+ * @brief Switch LCDCLK source to PLL1R / 4 via the SREQ/SRDY handshake.
+ *
+ * @details
+ * HUM Ch 9.2.58 LCDCKCR change handshake:
+ *   SREQ=1 -> wait SRDY=1 -> set LCDCKDIVCR -> set LCDCKSEL with SREQ=1
+ *   -> drop SREQ -> wait SRDY=0. PRC0 (CGC) gates these writes.
+ *
+ * @pre Graphics power domain is on.
+ * @pre PLL1 is running and PLL1R is a valid LCDCLK source.
+ * @post LCDCKCR.LCDCKSEL = PLL1R; LCDCKDIVCR = /4 (100 MHz).
+ * @post PRCR is relocked.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_lcdclk_switch_pll1r(void)
+{
+  volatile uint16_t* const prcr       = (volatile uint16_t*)k_addr_prcr;
+  volatile uint8_t* const  lcdckdivcr = (volatile uint8_t*)k_addr_lcdckdivcr;
+  volatile uint8_t* const  lcdckcr    = (volatile uint8_t*)k_addr_lcdckcr;
+
   *prcr    = (uint16_t)k_prcr_unlock_cgc;
   *lcdckcr = (uint8_t)k_lcdck_sreq;
   for (uint32_t i = 0U; i < 0x10000UL; i++) {
@@ -201,6 +247,36 @@ static void internal_graphics_power_on(void)
     }
   }
   *prcr = (uint16_t)k_prcr_relock;
+}
+#endif /* RA_SIMULATOR_MODE */
+
+/**
+ * @brief Bring up the GLCDC graphics power domain and clock tree.
+ *
+ * @details
+ * Orchestrates the three-step sequence required before any GLCDC register
+ * outside of MSTPCRC is writable on RA8D2:
+ *   1. internal_hoco_enable()             -- analogue trim clock
+ *   2. internal_graphics_domain_power_on()-- PDCTRGD power-on
+ *   3. internal_lcdclk_switch_pll1r()     -- LCDCKCR -> PLL1R / 4
+ * On host-side (RA_SIMULATOR_MODE) this is a no-op so that unit tests do
+ * not touch unmocked MMIO.
+ *
+ * @pre Caller is in single-threaded init context with IRQs masked or not
+ *      yet enabled.
+ * @pre PLL1 is running and PLL1R is a valid LCDCLK source (HUM 9.2.58).
+ * @post Graphics power domain is fully on (PDCTRGD status == 0).
+ * @post LCDCKCR.LCDCKSEL = PLL1R, LCDCKDIVCR = /4, PRCR relocked.
+ *
+ * @note Not thread-safe; touches CGC + LPM MMIO under PRC0/PRC1 unlocks.
+ * @since 0.1.0
+ */
+static void internal_graphics_power_on(void)
+{
+#ifndef RA_SIMULATOR_MODE
+  internal_hoco_enable();
+  internal_graphics_domain_power_on();
+  internal_lcdclk_switch_pll1r();
 #endif /* RA_SIMULATOR_MODE */
 }
 
@@ -811,14 +887,142 @@ ra_err_t ra_glcdc_set_background_color(uint32_t argb)
 ra_err_t ra_glcdc_layer1_show(uintptr_t fb_addr)
 {
   enum : uint32_t {
-    k_gr1_ven = 1UL << 0,
+    k_gr1_ven           = 1UL << 0,
+    k_gr1_dispsel_lower = 3UL, /**< AB1.DISPSEL = ON_LOWER (FSP's BLEND_ON_LOWER_LAYER). */
   };
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr) = (uint32_t)fb_addr;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab7) =
     ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef);
-  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1)   = (uint32_t)k_glcdc_dispsel_non_transparent;
+  /* Both GR layers use ON_LOWER (FSP's BLEND_ON_LOWER_LAYER) so they
+   * coexist in composition.  With NON_TRANSPARENT (2) the chip
+   * empirically drops GR1 from the output once GR2 is also enabled. */
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1)   = k_gr1_dispsel_lower;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_flmrd) = 1U;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en)    = k_gr1_ven;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Enable chroma-key transparency on GLCDC graphics layer 2.
+ *
+ * @details Programmes GR2.AB8 / AB9 with the match/replace colour
+ * pair so that every framebuffer pixel matching `key_rgb888`
+ * composites with alpha=0 (i.e. the lower layer / BG plane shows
+ * through).  Also asserts the AB1.ARCON bit because some RA parts
+ * gate the per-pixel alpha replacement behind ARCON; without it
+ * the compositor clamps alpha back to AB7.ARCDEF (0xFF) and the
+ * pixel stays opaque.  See HUM Ch 63 for the AB7 / AB8 / AB9
+ * layouts.
+ *
+ * @param[in] key_rgb888 Chroma-key match colour, 0x00RRGGBB.  The
+ *                       function adds an explicit alpha=0xFF for
+ *                       the comparator and masks the supplied value
+ *                       to 24 bits, so callers may pass either
+ *                       0x00RRGGBB or 0xFFRRGGBB.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Chroma-key enabled; effect lands at next vsync.
+ *
+ * @pre `ra_glcdc_layer2_show` has run (GR2 has a framebuffer and
+ *      panel position).
+ * @pre Caller serialises GLCDC register access (single-threaded
+ *      init context, or interrupts masked).
+ * @post GR2.AB7.CKON=1, GR2.AB8 holds the match colour, GR2.AB9
+ *       holds (0, transparent).
+ * @post GR2.VEN is asserted (auto-clears at next vsync).
+ *
+ * @note Not thread-safe; not ISR-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_glcdc_layer2_chroma_key_enable(uint32_t key_rgb888)
+{
+  enum : uint32_t {
+    k_gr2_ven = 1UL << 0,
+    /* Try several plausible CKON bit positions at once -- the HUM
+     * isn't in front of me and different RA parts have moved the
+     * bit around (0, 16, 24).  Setting all three is safe: at most
+     * one is meaningful, the others land in reserved bits which
+     * the chip ignores. */
+    k_ab7_ckon          = (1UL << 0) | (1UL << 16) | (1UL << 24),
+    k_ab1_arcon         = 1UL << 12,
+    k_arcdef_op         = ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef),
+    k_alpha_opaque_byte = 0xFFUL << 24, /**< AB8 alpha-byte = opaque. */
+    k_rgb888_mask       = 0x00FFFFFFUL, /**< 24-bit colour mask.      */
+    k_ab9_transparent   = 0x00000000UL, /**< AB9 = alpha-0 replace.   */
+  };
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab8) = k_alpha_opaque_byte | (key_rgb888 & k_rgb888_mask);
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab9) = k_ab9_transparent;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab7) = k_arcdef_op | k_ab7_ckon;
+  /* OR in ARCON without clobbering DISPSEL (already set by layer2_show). */
+  const uint32_t ab1                      = *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1);
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1) = ab1 | k_ab1_arcon;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_en)  = k_gr2_ven;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Make graphics layer 2 visible at the given panel position.
+ *
+ * @details Programmes GR2's framebuffer pointer, line stride, line
+ * count, panel position, alpha, DISPSEL, FLMRD, and asserts
+ * GR2.VEN to latch on the next vertical sync.  The framebuffer
+ * format is hard-coded to RGB565; for other formats use the
+ * chroma-key helper after this call.
+ *
+ * @param[in] fb_addr Layer-2 framebuffer base (RGB565).
+ * @param[in] panel_x Horizontal panel position (GLCDC coords).
+ * @param[in] panel_y Vertical panel position   (GLCDC coords).
+ * @param[in] fb_w    Framebuffer width in pixels.
+ * @param[in] fb_h    Framebuffer height in pixels.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Layer 2 visible from next vsync.
+ *
+ * @pre `ra_glcdc_init` and `ra_glcdc_start` have been called.
+ * @pre `fb_addr` points to an `fb_w * fb_h * 2`-byte RGB565
+ *      framebuffer.
+ * @post GR2 composites pixels from `fb_addr` at (panel_x, panel_y).
+ * @post GR2.VEN is asserted (auto-clears at next vsync).
+ *
+ * @note Single-threaded; not safe to call from IRQ.
+ * @since 0.1.0
+ */
+ra_err_t ra_glcdc_layer2_show(uintptr_t fb_addr,
+                              uint16_t  panel_x,
+                              uint16_t  panel_y,
+                              uint16_t  fb_w,
+                              uint16_t  fb_h)
+{
+  enum : uint32_t {
+    k_gr2_ven           = 1UL << 0,
+    k_gr2_dispsel_lower = 3UL, /**< AB1.DISPSEL = ON_LOWER (FSP's BLEND_ON_LOWER_LAYER). */
+  };
+  /* HUM 63: GR2_FLM6.FORMAT[30:28] = 2 (RGB565). */
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_fmt) =
+    ((uint32_t)k_glcdc_out_set_rgb565 << k_glcdc_shift_flm6_fmt);
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_saddr) = (uint32_t)fb_addr;
+
+  const uint32_t line_bytes                = (uint32_t)fb_w * (uint32_t)k_glcdc_bpp_rgb565;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_flm3) = (line_bytes << k_glcdc_shift_high);
+
+  const uint32_t datanum                   = (line_bytes / (uint32_t)k_glcdc_axi_burst_bytes) - 1U;
+  const uint32_t lnnum                     = (uint32_t)fb_h - 1U;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_line) = (lnnum << k_glcdc_shift_high) | datanum;
+
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_size) =
+    ((uint32_t)panel_x << k_glcdc_shift_high) | (uint32_t)fb_w;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab2) =
+    ((uint32_t)panel_y << k_glcdc_shift_high) | (uint32_t)fb_h;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab4) =
+    ((uint32_t)panel_y << k_glcdc_shift_high) | (uint32_t)fb_h;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab5) =
+    ((uint32_t)panel_x << k_glcdc_shift_high) | (uint32_t)fb_w;
+
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab7) =
+    ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef);
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1)   = k_gr2_dispsel_lower;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_flmrd) = 1U;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_en)    = k_gr2_ven;
   return k_ra_ok;
 }
 
