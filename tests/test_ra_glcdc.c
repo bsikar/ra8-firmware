@@ -46,6 +46,26 @@ typedef enum : uint32_t {
   k_test_clut_dist = 0xDEADBEEFUL,
 } test_glcdc_word_t;
 
+/* Packed register layouts the driver writes for the built-in PGEB1 panel
+ * (1024x600, h_back=160, v_back=23).  Per HUM Ch 63 BG_HSIZE/BG_VSIZE
+ * carry `(back+1) << 16 | active`, GR1_LINE carries `(h-1) << 16 | (line_bytes/64 - 1)`,
+ * and GR1_FMT carries `format << 28`. */
+typedef enum : uint32_t {
+  k_test_pgeb1_h_back_plus_1   = 161U, /* 160 + sync_pos_min(1)        */
+  k_test_pgeb1_v_back_plus_1   = 24U,  /* 23  + sync_pos_min(1)        */
+  k_test_glcdc_shift_high      = 16U,
+  k_test_glcdc_shift_flm6_fmt  = 28U,
+  k_test_glcdc_axi_burst_bytes = 64U,
+  k_test_glcdc_bpp_rgb565      = 2U,
+  k_test_exp_bg_hsize = ((uint32_t)k_test_pgeb1_h_back_plus_1 << 16) | (uint32_t)k_test_glcdc_width,
+  k_test_exp_bg_vsize =
+    ((uint32_t)k_test_pgeb1_v_back_plus_1 << 16) | (uint32_t)k_test_glcdc_height,
+  k_test_exp_gr1_fmt        = ((uint32_t)k_ra_glcdc_fmt_rgb565 << 28),
+  k_test_exp_gr1_line_bytes = (uint32_t)k_test_glcdc_width * (uint32_t)k_test_glcdc_bpp_rgb565,
+  k_test_exp_gr1_line = (((uint32_t)k_test_glcdc_height - 1U) << 16) |
+                        ((k_test_exp_gr1_line_bytes / (uint32_t)k_test_glcdc_axi_burst_bytes) - 1U),
+} test_glcdc_packed_t;
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -66,13 +86,15 @@ static void test_init_happy_path(void)
 
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
 
-  /* The driver writes the configured width into BG_HSIZE. */
-  TEST_ASSERT_EQ(k_test_glcdc_width, *ra_glcdc_reg32(k_ra_glcdc_off_bg_hsize));
-  TEST_ASSERT_EQ(k_test_glcdc_height, *ra_glcdc_reg32(k_ra_glcdc_off_bg_vsize));
+  /* HUM Ch 63: BG_HSIZE/BG_VSIZE carry `(back+1) << 16 | active`,
+   * GR1_FMT carries `format << 28`, GR1_LINE carries
+   * `(h-1) << 16 | (line_bytes/burst - 1)`. */
+  TEST_ASSERT_EQ(k_test_exp_bg_hsize, *ra_glcdc_reg32(k_ra_glcdc_off_bg_hsize));
+  TEST_ASSERT_EQ(k_test_exp_bg_vsize, *ra_glcdc_reg32(k_ra_glcdc_off_bg_vsize));
   TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc));
-  TEST_ASSERT_EQ(k_ra_glcdc_fmt_rgb565, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_fmt));
+  TEST_ASSERT_EQ(k_test_exp_gr1_fmt, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_fmt));
   TEST_ASSERT_EQ(k_test_glcdc_fb_addr, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr));
-  TEST_ASSERT_EQ(k_test_glcdc_width, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_line));
+  TEST_ASSERT_EQ(k_test_exp_gr1_line, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_line));
 
   TEST_END("ra_glcdc_init happy path");
 }
@@ -103,7 +125,9 @@ static void test_start_enable(void)
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(true));
   TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg));
-  TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_bg_en));
+  /* ra_glcdc_start sequences VEN(bit8) then EN(bit0) into BG_EN per FSP
+   * R_GLCDC_Start, leaving 0x101 = (VEN|EN). */
+  TEST_ASSERT_EQ(0x101U, *ra_glcdc_reg32(k_ra_glcdc_off_bg_en));
   TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en));
   TEST_END("ra_glcdc_start enables engine");
 }
@@ -122,7 +146,9 @@ static void test_start_disable(void)
   *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = 0xAAU;
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(false));
   TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg));
-  TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_bg_en));
+  /* Disable path: SWRST(bit16) is held high so the controller stays
+   * out of operating reset while EN/VEN drop -- BG_EN reads 0x10000. */
+  TEST_ASSERT_EQ(0x10000U, *ra_glcdc_reg32(k_ra_glcdc_off_bg_en));
   TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en));
   TEST_END("ra_glcdc_start disables engine");
 }
