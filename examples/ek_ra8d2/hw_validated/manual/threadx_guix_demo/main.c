@@ -66,8 +66,10 @@
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
+#include "ra_display_pal.h"
+#include "ra_display_pal_guix.h"
+#include "ra_display_pal_lcd.h"
 #include "ra_err.h"
-#include "ra_glcdc.h"
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -80,7 +82,6 @@
 #ifndef RA_SIMULATOR_MODE
 #include "gx_api.h"
 #include "gx_display.h"
-#include "gx_display_driver_ra_glcdc.h"
 #include "tx_api.h"
 #endif
 
@@ -196,6 +197,28 @@ typedef enum : uint8_t {
  */
 static uint16_t s_framebuffer[k_demo_fb_height][k_demo_fb_width]
   __attribute__((aligned(k_demo_fb_align)));
+
+/**
+ * @brief Display PAL config selecting the LCD backend.
+ *
+ * @details
+ * Bound at startup by ``demo_lcd_panel_bringup``.  To target the
+ * IT8951-compatible e-ink panel in the future, change the
+ * ``iface`` line to ``&k_display_backend_eink_it8951`` -- the rest
+ * of this demo (GUIX widget tree, animation, threads) stays
+ * untouched.
+ */
+static const display_cfg_t k_demo_display_cfg = {
+  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .framebuffer       = &s_framebuffer[0][0],
+  .framebuffer_bytes = sizeof(s_framebuffer),
+  .width_px          = (uint16_t)k_demo_fb_width,
+  .height_px         = (uint16_t)k_demo_fb_height,
+  .pixfmt            = k_display_pixfmt_rgb565,
+};
+
+/** @brief PAL handle returned by ``display_init``. */
+static display_handle_t* s_display_pal = nullptr;
 
 /**
  * @var s_gx_pool
@@ -437,28 +460,14 @@ static void demo_lcd_panel_bringup(void)
   (void)ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
   (void)tx_thread_sleep(50U);
   (void)ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
-
-  if (ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888) != k_ra_ok) {
-    demo_panic_halt();
-  }
   (void)tx_thread_sleep(200U); /* let pins settle in output mode */
 
-  const ra_glcdc_config_t cfg = {
-    .framebuffer_addr = (uint32_t)(uintptr_t)s_framebuffer,
-    .width_px         = (uint16_t)k_demo_fb_width,
-    .height_px        = (uint16_t)k_demo_fb_height,
-    .format           = k_ra_glcdc_fmt_rgb565,
-  };
-  if (ra_glcdc_init(&cfg) != k_ra_ok) {
-    demo_panic_halt();
-  }
-  if (ra_glcdc_set_background_color(0x000000U) != k_ra_ok) {
-    demo_panic_halt();
-  }
-  if (ra_glcdc_start(true) != k_ra_ok) {
-    demo_panic_halt();
-  }
-  if (ra_glcdc_layer1_show((uintptr_t)s_framebuffer) != k_ra_ok) {
+  /* Display PAL: bound to the LCD backend by ``k_demo_display_cfg``.
+   * Folds ``ra_board_glcdc_init`` + ``ra_glcdc_init`` +
+   * ``set_background_color`` + ``start(true)`` + ``layer1_show`` into
+   * a single call.  Switching to e-ink later is a one-line change
+   * in ``k_demo_display_cfg``. */
+  if (display_init(&k_demo_display_cfg, &s_display_pal) != k_ra_ok) {
     demo_panic_halt();
   }
 }
@@ -474,9 +483,11 @@ static void demo_lcd_panel_bringup(void)
  */
 static void demo_guix_system_setup(void)
 {
-  if (ra_guix_display_driver_bind(&s_framebuffer[0][0],
-                                  (uint16_t)k_demo_fb_width,
-                                  (uint16_t)k_demo_fb_height) != k_ra_ok) {
+  /* Ask the display PAL for the GUIX setup-fn + dimensions.  The PAL
+   * routes through the bound backend; the LCD backend forwards to
+   * ``port/guix/`` so this code path stays backend-agnostic. */
+  display_guix_attach_t attach = {nullptr, 0U, 0U};
+  if (display_bind_guix(s_display_pal, &attach) != k_ra_ok) {
     demo_panic_halt();
   }
   if (gx_system_memory_allocator_set(demo_gx_alloc, demo_gx_free) != GX_SUCCESS) {
@@ -485,11 +496,14 @@ static void demo_guix_system_setup(void)
   if (gx_system_initialize() != GX_SUCCESS) {
     demo_panic_halt();
   }
+  /* Cast the PAL's opaque setup-fn back to GUIX's typed signature
+   * at the call site, the same way ``ra_display_pal_guix.h`` shows
+   * in its example. */
   if (gx_display_create(&s_display,
                         "ra8d2-glcdc",
-                        ra_guix_display_driver_setup,
-                        (GX_VALUE)k_demo_fb_width,
-                        (GX_VALUE)k_demo_fb_height) != GX_SUCCESS) {
+                        (UINT (*)(GX_DISPLAY*))attach.setup_fn,
+                        (GX_VALUE)attach.width_px,
+                        (GX_VALUE)attach.height_px) != GX_SUCCESS) {
     demo_panic_halt();
   }
 }

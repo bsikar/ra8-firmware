@@ -31,8 +31,9 @@
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
+#include "ra_display_pal.h"
+#include "ra_display_pal_lcd.h"
 #include "ra_err.h"
-#include "ra_glcdc.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
@@ -57,8 +58,28 @@ typedef enum : uint32_t {
 } lcd_pace_t;
 
 /* Static framebuffer in SRAM, 64-byte AXI-burst aligned so the GLCDC
- * fetches are clean. */
+ * fetches are clean.  The display PAL takes a pointer to this and
+ * forwards it to the GLCDC HAL via ``display_init``. */
 static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h] __attribute__((aligned(64)));
+
+/**
+ * @brief Display PAL config selecting the LCD backend.
+ *
+ * @details
+ * To target a different backend in the future -- e.g. an
+ * IT8951-compatible e-ink panel -- only the ``iface`` line below
+ * changes (point it at ``k_display_backend_eink_it8951`` in
+ * ``ra_display_pal_eink.h``).  Everything else in this app
+ * (painting, heartbeat, panic loop) stays untouched.
+ */
+static const display_cfg_t k_lcd_draw_x_display_cfg = {
+  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .framebuffer       = s_framebuffer,
+  .framebuffer_bytes = sizeof(s_framebuffer),
+  .width_px          = (uint16_t)k_fb_w,
+  .height_px         = (uint16_t)k_fb_h,
+  .pixfmt            = k_display_pixfmt_rgb565,
+};
 
 static void lcd_panic_halt(void)
 {
@@ -136,50 +157,31 @@ static void lcd_bringup_clocks(void)
 }
 
 /**
- * @brief Bring up the panel and start GLCDC composited over the SRAM FB.
+ * @brief Bring up the panel through the display PAL.
  *
  * @details
- * Second phase of startup. Mirrors the original inline sequence: panel
- * power-on, GLCDC pin/clock setup, settle delay, GLCDC controller init
- * with the SRAM framebuffer as graphics layer 1, black BG, then show
- * the layer. Any failure halts in the red-LED panic loop.
+ * Replaces the previous 6-step GLCDC bring-up sequence with a single
+ * ``display_init`` call against ``k_lcd_draw_x_display_cfg``.  The
+ * PAL's LCD backend folds panel power-on, GLCDC pin/clock setup,
+ * settle delay, controller init, BG-clear, ``start(true)`` and
+ * ``layer1_show`` into one call.  Any failure halts in the red-LED
+ * panic loop.
  *
  * @pre ::lcd_bringup_clocks has run successfully.
  * @pre The framebuffer has already been painted.
- * @post GLCDC is running with layer 1 visible.
+ * @post Display PAL handle is alive; GLCDC is scanning out the FB.
  * @post Panel back-light and 3.3 V rail are on.
  *
  * @note Not thread-safe; single-shot startup helper.
  * @since 0.1.0
  */
-static void lcd_bringup_panel(void)
+static display_handle_t* lcd_bringup_panel(void)
 {
-  if (ra_board_lcd_panel_power_on() != k_ra_ok) {
+  display_handle_t* d = nullptr;
+  if (display_init(&k_lcd_draw_x_display_cfg, &d) != k_ra_ok) {
     lcd_panic_halt();
   }
-  if (ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888) != k_ra_ok) {
-    lcd_panic_halt();
-  }
-  ra_delay_ms(200U);
-
-  const ra_glcdc_config_t cfg = {
-    .framebuffer_addr = (uint32_t)(uintptr_t)s_framebuffer,
-    .width_px         = (uint16_t)k_fb_w,
-    .height_px        = (uint16_t)k_fb_h,
-    .format           = k_ra_glcdc_fmt_rgb565,
-  };
-  if (ra_glcdc_init(&cfg) != k_ra_ok) {
-    lcd_panic_halt();
-  }
-  if (ra_glcdc_set_background_color(0x000000U) != k_ra_ok) {
-    lcd_panic_halt();
-  }
-  if (ra_glcdc_start(true) != k_ra_ok) {
-    lcd_panic_halt();
-  }
-  if (ra_glcdc_layer1_show((uintptr_t)s_framebuffer) != k_ra_ok) {
-    lcd_panic_halt();
-  }
+  return d;
 }
 
 #pragma GCC diagnostic push
@@ -192,7 +194,7 @@ int32_t main(void)
   lcd_fb_fill(k_color_bg);
   lcd_draw_x(k_color_x);
 
-  lcd_bringup_panel();
+  (void)lcd_bringup_panel();
 
   while (1) {
     (void)ra_board_led_toggle(k_ra_board_led_blue);

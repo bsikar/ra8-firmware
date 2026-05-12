@@ -141,6 +141,7 @@ file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_OTA_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ota/src/*.c)
+file(GLOB_RECURSE RA_DISPLAY_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_display_pal/src/*.c)
 file(GLOB_RECURSE RA_POWER_PROFILE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_power_profile/src/*.c)
 file(GLOB_RECURSE RA_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.c)
 file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.cpp)
@@ -199,6 +200,7 @@ add_library(ra_core_hal OBJECT
     ${RA_GFX_SOURCES}
     ${RA_NSC_SOURCES}
     ${RA_OTA_SOURCES}
+    ${RA_DISPLAY_PAL_SOURCES}
     ${RA_POWER_PROFILE_SOURCES}
     ${RA_EPUB_C_SOURCES}
     ${RA_EPUB_CPP_SOURCES}
@@ -237,6 +239,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/libs/ra_ota/inc
+    ${FW_ROOT}/libs/ra_display_pal/inc
     ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
     ${FW_ROOT}/libs/ra_reflow/inc
@@ -267,6 +270,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
     ${FW_ROOT}/libs/ra_ota/src
+    ${FW_ROOT}/libs/ra_display_pal/src
     ${FW_ROOT}/libs/ra_power_profile/src
     ${FW_ROOT}/libs/ra_touch_cal/src
     ${FW_ROOT}/libs/ra_mpu/src
@@ -360,6 +364,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/libs/ra_ota/inc
+    ${FW_ROOT}/libs/ra_display_pal/inc
     ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
     ${FW_ROOT}/libs/ra_reflow/inc
@@ -385,6 +390,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
     ${FW_ROOT}/libs/ra_ota/src
+    ${FW_ROOT}/libs/ra_display_pal/src
     ${FW_ROOT}/libs/ra_power_profile/src
     ${FW_ROOT}/libs/ra_touch_cal/src
     ${FW_ROOT}/libs/ra_mpu/src
