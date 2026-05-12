@@ -63,6 +63,10 @@ libs/                ← the standard library (everyone links it)
   ra_nsc/              TrustZone Non-Secure-Callable veneers
   ra_net_pal/          Ethernet PAL bridging the HAL to lwIP / similar
   ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
+  ra_display_pal/      Display PAL: one function-pointer iface, two
+                         backends -- LCD (ra_glcdc) and IT8951 e-ink
+                         stub. Apps swap backends with a one-line
+                         change to their `display_cfg_t`.
 
 examples/<tier>/.../<app>/             ← concrete apps shipped today (e.g. .../smoke/blink/, .../smoke/blink_hal/)
 ```
