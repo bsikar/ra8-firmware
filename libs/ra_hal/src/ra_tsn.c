@@ -45,13 +45,13 @@ typedef enum : uint16_t {
 } ra_tsn_internal_t;
 
 /**
- * @var s_ra_tsn_initialised
+ * @var s_ra_tsn_initialized
  * @brief Tracks whether ``ra_tsn_init`` has run successfully.
  *
  * @note Read by ``ra_tsn_read_raw`` / ``ra_tsn_convert_to_milli_c``
  *       to refuse work before init.
  */
-static bool s_ra_tsn_initialised;
+static bool s_ra_tsn_initialized;
 
 /**
  * @var s_ra_tsn_high_ref_degc
@@ -167,7 +167,7 @@ ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg)
 
   s_ra_tsn_high_ref_degc = (int16_t)cfg->high_ref_degc;
   s_ra_tsn_low_ref_degc  = (int16_t)cfg->low_ref_degc;
-  s_ra_tsn_initialised   = true;
+  s_ra_tsn_initialized   = true;
 
   ra_log_info(s_tag, "tsn_init");
   return k_ra_ok;
@@ -185,11 +185,11 @@ ra_err_t ra_tsn_deinit(void)
   reg->TSCR = 0U;
 
   /* Clear the init flag unconditionally so that callers cannot reach a
-   * "looks-initialised but isn't" state if deinit is invoked from a
+   * "looks-initialized but isn't" state if deinit is invoked from a
    * partially-torn-down context (e.g. mstp refcount already 0 because
    * the test harness reset it). The mstp refcount underflow is logged
    * by ra_mstp itself and is harmless here. */
-  s_ra_tsn_initialised = false;
+  s_ra_tsn_initialized = false;
 
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
   (void)ra_mstp_disable(k_ra_mstp_tsn);
@@ -200,7 +200,7 @@ ra_err_t ra_tsn_deinit(void)
 ra_err_t ra_tsn_read_raw(uint16_t raw, uint16_t* out_code)
 {
   RA_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
-  if (!s_ra_tsn_initialised) {
+  if (!s_ra_tsn_initialized) {
     return k_ra_err_invalid_state;
   }
   /* HUM Ch 55.2.2 "TSCDR : Temperature Sensor Calibration Data Register",
@@ -213,7 +213,7 @@ ra_err_t ra_tsn_read_raw(uint16_t raw, uint16_t* out_code)
 ra_err_t ra_tsn_convert_to_milli_c(uint16_t raw_code, int32_t* out_milli_c)
 {
   RA_CHECK_NULL_PTR(out_milli_c, s_tag, "out_milli_c must not be nullptr");
-  if (!s_ra_tsn_initialised) {
+  if (!s_ra_tsn_initialized) {
     return k_ra_err_invalid_state;
   }
 

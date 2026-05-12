@@ -119,7 +119,7 @@ typedef struct {
  * @param[in] cfg Configuration. Must not be `nullptr`.
  *
  * @return `ra_err_t`.
- * @retval k_ra_ok                  PHY initialised.
+ * @retval k_ra_ok                  PHY initialized.
  * @retval k_ra_err_null_ptr        `cfg` or required IO callback NULL.
  * @retval k_ra_err_invalid_arg     `phy_address` > 31 or `lsi_type` invalid.
  * @retval k_ra_err_exists          Already opened.

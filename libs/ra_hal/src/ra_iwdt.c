@@ -82,7 +82,7 @@ typedef enum : uint16_t {
  * do not have to pull in ``ra8d2_iwdt_regs.h``. Mirrors FSP
  * ``R_IWDT_Refresh`` (which writes 0x00 then 0xFF to IWDTRR).
  *
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

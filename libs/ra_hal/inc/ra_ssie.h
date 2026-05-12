@@ -316,7 +316,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @param[in] cfg     Non-NULL configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok               Channel initialised.
+ * @retval k_ra_ok               Channel initialized.
  * @retval k_ra_err_null_ptr     ``cfg`` was nullptr.
  * @retval k_ra_err_invalid_arg  ``channel`` out of range.
  * @retval k_ra_err_hw_timeout   SSIRST did not self-clear within
@@ -376,7 +376,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @retval k_ra_err_busy        SSIE is not idle and direction would
  *                              change (must call ``ra_ssie_stop`` first).
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre IRQs masked while modifying SSICR.
  *
  * @post Requested REN/TEN bits asserted.
@@ -401,7 +401,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @retval k_ra_ok              Stop requested; IIEN now armed.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre IRQs masked while modifying SSICR.
  *
  * @post REN/TEN/error-IEN bits cleared.
@@ -426,7 +426,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @retval k_ra_err_invalid_arg Channel out of range.
  * @retval k_ra_err_hw_timeout  SSIRST did not self-clear in bound.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre Caller has consumed any pending RX data (FIFO is reset).
  *
  * @post FIFOs are empty and all SSISR error flags cleared.
@@ -450,7 +450,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @retval k_ra_ok              MUEN updated.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre IRQs masked.
  *
  * @post SSICR.MUEN reflects ``enable``.
@@ -472,7 +472,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @retval k_ra_ok              SSISCR updated.
  * @retval k_ra_err_invalid_arg Channel out of range or threshold > 0x1F.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre Channel currently idle (SSISR.IIRQ = 1).
  *
  * @post SSISCR.TDES = ``tx_threshold``, SSISCR.RDFS = ``rx_threshold``.
@@ -502,7 +502,7 @@ ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_thresho
  * @retval k_ra_ok              Thresholds programmed.
  * @retval k_ra_err_invalid_arg Channel out of range or threshold > 0x1F.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre Channel currently idle.
  *
  * @post SSISCR reflects the requested thresholds.
@@ -533,7 +533,7 @@ ra_ssie_set_fifo_threshold(uint8_t channel, uint8_t tx_threshold, uint8_t rx_thr
  * @retval k_ra_ok              Channel binding recorded.
  * @retval k_ra_err_invalid_arg Channel out of range OR both DMA ids >= 8.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre At least one of ``tx_dma_channel`` / ``rx_dma_channel`` < 8.
  *
  * @post Internal DMA bookkeeping records the TX / RX DMAC ids.
@@ -566,7 +566,7 @@ ra_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint8_t rx_dma_
  * @retval k_ra_err_null_ptr    ``buffer`` was NULL.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised + started in TX mode.
+ * @pre Channel previously initialized + started in TX mode.
  * @pre ``buffer`` is non-NULL and points to ``samples`` words.
  *
  * @post All ``samples`` words have been pushed into SSIFTDR.
@@ -595,7 +595,7 @@ ra_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint8_t rx_dma_
  * @retval k_ra_err_null_ptr    ``buffer`` or ``out_got`` was NULL.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised + started in RX mode.
+ * @pre Channel previously initialized + started in RX mode.
  * @pre ``buffer`` and ``out_got`` are non-NULL.
  *
  * @post ``*out_got <= max_samples``.
@@ -629,7 +629,7 @@ ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16
  * @retval k_ra_ok               Sample queued.
  * @retval k_ra_err_invalid_arg  ``channel`` out of range.
  *
- * @pre Channel was previously initialised.
+ * @pre Channel was previously initialized.
  * @pre Caller has (or accepts) FIFO space (TDE = 1).
  *
  * @post One write to SSIFTDR has been issued.
@@ -652,7 +652,7 @@ ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16
  * @retval k_ra_err_null_ptr     ``out`` was nullptr.
  * @retval k_ra_err_invalid_arg  ``channel`` out of range.
  *
- * @pre Channel previously initialised, ``out`` non-NULL.
+ * @pre Channel previously initialized, ``out`` non-NULL.
  * @pre Caller has confirmed RDF or non-zero RDC.
  *
  * @post ``*out`` holds the dequeued sample.
@@ -681,7 +681,7 @@ ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16
  * @retval k_ra_err_null_ptr    ``buffer`` or ``out_written`` was NULL.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre ``buffer`` and ``out_written`` non-NULL.
  *
  * @post ``*out_written <= samples``.
@@ -708,7 +708,7 @@ ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16
  * @retval k_ra_err_null_ptr    ``buffer`` or ``out_read`` was NULL.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre ``buffer`` and ``out_read`` non-NULL.
  *
  * @post ``*out_read <= samples``.
@@ -747,7 +747,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @retval k_ra_err_null_ptr    ``dma`` was NULL.
  * @retval k_ra_err_invalid_arg Channel out of range or DMA samples = 0.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @pre DMA channels not currently in use.
  *
  * @post DMAC sources/destinations and counts loaded.
@@ -794,7 +794,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @retval k_ra_err_null_ptr     ``out`` was nullptr.
  * @retval k_ra_err_invalid_arg  ``channel`` out of range.
  *
- * @pre Channel previously initialised, ``out`` non-NULL.
+ * @pre Channel previously initialized, ``out`` non-NULL.
  * @pre IRQs may be enabled (read-only).
  *
  * @post ``*out`` reflects a coherent SSISR/SSIFSR snapshot.
@@ -821,7 +821,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @retval k_ra_ok               Mask written.
  * @retval k_ra_err_invalid_arg  ``channel`` out of range.
  *
- * @pre Channel initialised.
+ * @pre Channel initialized.
  * @pre Caller already read SSISR (W1C requires "read 1 then write 0").
  *
  * @post Flags in ``mask`` are cleared.
@@ -895,7 +895,7 @@ void ra_ssie_dispatch(uint8_t channel);
  * @retval k_ra_ok              SSICR updated.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel initialised.
+ * @pre Channel initialized.
  * @pre Caller has registered an event handler via
  *      ``ra_ssie_attach_handler``.
  *
@@ -918,7 +918,7 @@ void ra_ssie_dispatch(uint8_t channel);
  * @param[in] channel Channel index.
  * @return ``ra_err_t`` error code.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre IRQs masked.
  *
  * @post MSTP bit set, peripheral clock removed.

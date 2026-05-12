@@ -82,10 +82,10 @@ typedef struct {
  * scatter of statics so future moves to a context-handle API are
  * mechanical.
  *
- * @invariant ``initialised == 1`` implies ``cfg.line_buf != NULL``.
+ * @invariant ``initialized == 1`` implies ``cfg.line_buf != NULL``.
  */
 typedef struct {
-  uint8_t                initialised; /**< 1 after ``ra_modem_at_init``. */
+  uint8_t                initialized; /**< 1 after ``ra_modem_at_init``. */
   ra_modem_at_cfg_t      cfg;         /**< Cached caller configuration. */
   uint16_t               line_len;    /**< Bytes pending in ``cfg.line_buf``. */
   ra_modem_at_state_t    state;       /**< FSM state. */
@@ -820,7 +820,7 @@ ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
   s_mod.cfg         = *cfg;
   s_mod.line_len    = 0U;
   s_mod.state       = k_ra_modem_at_state_idle;
-  s_mod.initialised = 1U;
+  s_mod.initialized = 1U;
   internal_clear_urc_table();
   internal_reset_line();
   return k_ra_ok;
@@ -829,7 +829,7 @@ ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
 /* Implementation of ra_modem_at_send_cmd (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, uint16_t timeout_ms)
 {
-  if (s_mod.initialised == 0U) {
+  if (s_mod.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(cmd, RA_MODEM_AT_TAG, "cmd");
@@ -850,7 +850,7 @@ ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, ui
 ra_err_t
 ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uint16_t timeout_ms)
 {
-  if (s_mod.initialised == 0U) {
+  if (s_mod.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(cmd, RA_MODEM_AT_TAG, "cmd");
@@ -945,7 +945,7 @@ internal_urc_insert(const char* prefix, uint16_t plen, ra_modem_at_urc_fn_t fn, 
 ra_err_t
 ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
 {
-  if (s_mod.initialised == 0U) {
+  if (s_mod.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(prefix, RA_MODEM_AT_TAG, "prefix");
@@ -968,7 +968,7 @@ ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_
 /* Implementation of ra_modem_at_poll (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_poll(void)
 {
-  if (s_mod.initialised == 0U) {
+  if (s_mod.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   while (1) {

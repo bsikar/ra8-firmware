@@ -307,11 +307,16 @@ typedef ra_err_t (*ra_usb_pmsc_get_inquiry_fn_t)(void*    ctx,
  * @endcode
  */
 typedef struct {
-  ra_usb_pmsc_read_block_fn_t   read_block;   /**< Block read hook.   */
-  ra_usb_pmsc_write_block_fn_t  write_block;  /**< Block write hook.  */
+  // cppcheck-suppress unusedStructMember
+  ra_usb_pmsc_read_block_fn_t read_block; /**< Block read hook.   */
+  // cppcheck-suppress unusedStructMember
+  ra_usb_pmsc_write_block_fn_t write_block; /**< Block write hook.  */
+  // cppcheck-suppress unusedStructMember
   ra_usb_pmsc_get_capacity_fn_t get_capacity; /**< Capacity hook.     */
-  ra_usb_pmsc_get_inquiry_fn_t  get_inquiry;  /**< INQUIRY hook.      */
-  void*                         ctx;          /**< Opaque context.    */
+  // cppcheck-suppress unusedStructMember
+  ra_usb_pmsc_get_inquiry_fn_t get_inquiry; /**< INQUIRY hook.      */
+  // cppcheck-suppress unusedStructMember
+  void* ctx; /**< Opaque context.    */
 } ra_usb_pmsc_storage_t;
 
 /* =============================================================================
@@ -356,7 +361,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -385,7 +390,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Backend installed.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `storage` was NULL or any callback was
  *         NULL.
  *
@@ -429,7 +434,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised, or storage
+ * @retval k_ra_err_invalid_state Driver not initialized, or storage
  *         not attached.
  *
  * @pre `ra_usb_pmsc_init` has run.
@@ -461,7 +466,7 @@ typedef struct {
  * @return `ra_err_t` error code.
  * @retval k_ra_ok CBW accepted; state machine now in CDB_DECODE.
  * @retval k_ra_err_null_ptr `cbw` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or storage
+ * @retval k_ra_err_invalid_state Driver not initialized, or storage
  *         not attached.
  * @retval k_ra_err_invalid_arg Signature mismatch (CBW invalid). In
  *         this case the BOT machine transitions to a phase-error
@@ -501,7 +506,7 @@ typedef struct {
  * @retval k_ra_ok Command dispatched (the CSW status byte may still
  *         be `k_ra_pmsc_csw_status_failed`).
  * @retval k_ra_err_null_ptr Any output pointer was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, storage
+ * @retval k_ra_err_invalid_state Driver not initialized, storage
  *         not attached, or no CBW currently in-flight.
  * @retval k_ra_err_invalid_size `data_buf_capacity` was 0.
  *
@@ -537,7 +542,7 @@ typedef struct {
  * @return `ra_err_t` error code.
  * @retval k_ra_ok CSW constructed.
  * @retval k_ra_err_null_ptr `out_csw` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no CBW
+ * @retval k_ra_err_invalid_state Driver not initialized, or no CBW
  *         currently in-flight.
  *
  * @pre `out_csw` non-NULL.

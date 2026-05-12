@@ -147,14 +147,22 @@ typedef enum : uint8_t {
  * right pipes.
  */
 typedef struct {
-  uint8_t  device_address;      /**< Assigned USB address (1..127).      */
-  uint8_t  bulk_in_ep;          /**< Attached device's bulk IN EP num.   */
-  uint8_t  bulk_out_ep;         /**< Attached device's bulk OUT EP num.  */
-  uint8_t  intr_in_ep;          /**< Attached device's intr IN EP num.   */
-  uint16_t bulk_in_max_packet;  /**< Attached bulk-IN wMaxPacketSize.    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bulk_in_ep; /**< Attached device's bulk IN EP num.   */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bulk_out_ep; /**< Attached device's bulk OUT EP num.  */
+  // cppcheck-suppress unusedStructMember
+  uint8_t intr_in_ep; /**< Attached device's intr IN EP num.   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t bulk_in_max_packet; /**< Attached bulk-IN wMaxPacketSize.    */
+  // cppcheck-suppress unusedStructMember
   uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize.   */
-  uint16_t vendor_id;           /**< idVendor from device descriptor.    */
-  uint16_t product_id;          /**< idProduct from device descriptor.   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t product_id; /**< idProduct from device descriptor.   */
 } ra_usb_hcdc_device_t;
 
 /**
@@ -219,7 +227,7 @@ typedef void (*ra_usb_hcdc_attach_fn_t)(void* ctx, const ra_usb_hcdc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -251,7 +259,7 @@ typedef void (*ra_usb_hcdc_attach_fn_t)(void* ctx, const ra_usb_hcdc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Callback installed.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre `ra_usb_hcdc_init` has run.
  *
@@ -282,7 +290,7 @@ typedef void (*ra_usb_hcdc_attach_fn_t)(void* ctx, const ra_usb_hcdc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no
+ * @retval k_ra_err_invalid_state Driver not initialized, or no
  *         device attached.
  * @retval k_ra_err_invalid_arg Bad `data` / `len`.
  *
@@ -311,7 +319,7 @@ typedef void (*ra_usb_hcdc_attach_fn_t)(void* ctx, const ra_usb_hcdc_device_t* d
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes drained; `*got_len` reflects the count.
  * @retval k_ra_err_no_data Pipe was empty.
- * @retval k_ra_err_invalid_state Driver not initialised, or no
+ * @retval k_ra_err_invalid_state Driver not initialized, or no
  *         device attached.
  * @retval k_ra_err_invalid_arg Bad `out_buf` / `max_len` / `got_len`.
  *
@@ -346,7 +354,7 @@ typedef void (*ra_usb_hcdc_attach_fn_t)(void* ctx, const ra_usb_hcdc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no
+ * @retval k_ra_err_invalid_state Driver not initialized, or no
  *         device attached.
  * @retval k_ra_err_invalid_arg `parity` / `stop_bits` out of range
  *         or `baud` is zero.
@@ -380,7 +388,7 @@ typedef void (*ra_usb_hcdc_attach_fn_t)(void* ctx, const ra_usb_hcdc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_hcdc_init` succeeded.
  *

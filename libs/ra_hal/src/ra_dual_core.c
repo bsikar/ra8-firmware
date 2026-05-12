@@ -52,7 +52,7 @@ typedef struct {
 
 /**
  * @var s_sim
- * @brief Host-only register mirror, initialised to "CPU1 stopped" reset state.
+ * @brief Host-only register mirror, initialized to "CPU1 stopped" reset state.
  *
  * @details Reset value of LPCSR is LPCSTPCH1=1 (CPU1 stopped) and STAT=1.
  */
@@ -72,7 +72,7 @@ static ra_dual_core_sim_state_t s_sim = {
  * @return uint32_t Current 32-bit LPCSR value.
  * @retval 0..UINT32_MAX Whatever the test harness most recently wrote.
  *
- * @pre Module file-static state ``s_sim`` is initialised (BSS zero or
+ * @pre Module file-static state ``s_sim`` is initialized (BSS zero or
  *      the explicit reset value at file scope).
  * @pre Caller does not concurrently mutate ``s_sim.lpcsr`` from another
  *      thread.
@@ -97,7 +97,7 @@ static inline uint32_t internal_lpcsr_read(void)
  *
  * @param[in] value New LPCSR value to latch into the host mirror.
  *
- * @pre Module file-static state ``s_sim`` is initialised.
+ * @pre Module file-static state ``s_sim`` is initialized.
  * @pre Caller serialises mutations of ``s_sim.lpcsr``.
  * @post ``s_sim.lpcsr`` matches ``value`` with the STAT field mirroring
  *       STPCH1.
@@ -124,7 +124,7 @@ static inline void internal_lpcsr_write(uint32_t value)
  *
  * @param[in] value New VTORC1 value.
  *
- * @pre Module file-static state ``s_sim`` is initialised.
+ * @pre Module file-static state ``s_sim`` is initialized.
  * @pre Caller serialises mutations of ``s_sim.vtorc1``.
  * @post ``s_sim.vtorc1 == value``.
  * @post No other shim fields are modified.
@@ -146,7 +146,7 @@ static inline void internal_vtorc1_write(uint32_t value)
  *
  * @param[in] value New MSPC1 value.
  *
- * @pre Module file-static state ``s_sim`` is initialised.
+ * @pre Module file-static state ``s_sim`` is initialized.
  * @pre Caller serialises mutations of ``s_sim.mspc1``.
  * @post ``s_sim.mspc1 == value``.
  * @post No other shim fields are modified.

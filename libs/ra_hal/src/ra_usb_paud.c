@@ -93,7 +93,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the device-Audio function.
  */
 typedef struct {
-  bool                   initialised;    /**< True after init.            */
+  bool                   initialized;    /**< True after init.            */
   ra_usb_speed_t         speed;          /**< Underlying controller.      */
   uint16_t               iso_max_packet; /**< Pipe max-packet size.       */
   const uint8_t*         desc;           /**< Cached descriptor blob.     */
@@ -258,7 +258,7 @@ ra_err_t ra_usb_paud_init(ra_usb_speed_t speed)
     (void)ra_usb_device_deinit(speed);
     return pipes_err;
   }
-  s_state.initialised = true;
+  s_state.initialized = true;
   ra_log_info_val(s_tag, "device-Audio ready", (uint32_t)speed);
   return k_ra_ok;
 }
@@ -266,12 +266,12 @@ ra_err_t ra_usb_paud_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_paud_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   (void)ra_usb_device_attach(s_state.speed, false);
   const ra_err_t err  = ra_usb_device_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.desc        = nullptr;
   s_state.setup_cb    = nullptr;
   s_state.setup_ctx   = nullptr;
@@ -286,7 +286,7 @@ ra_err_t ra_usb_paud_close(void)
 /* Implementation of ra_usb_paud_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_descriptors(const uint8_t* desc, uint16_t desc_len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   RA_CHECK_NULL_PTR(desc, s_tag, "set_descriptors: desc");
@@ -306,7 +306,7 @@ ra_err_t ra_usb_paud_set_descriptors(const uint8_t* desc, uint16_t desc_len)
 /* Implementation of ra_usb_paud_send_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_send_frame(const uint8_t* frame, uint16_t len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if ((frame == nullptr) && (len != 0U)) {
@@ -323,7 +323,7 @@ ra_err_t ra_usb_paud_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_le
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv_frame: buf");
   RA_CHECK_NULL_PTR(got_len, s_tag, "recv_frame: got_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (max_len == 0U) {
@@ -347,7 +347,7 @@ ra_err_t ra_usb_paud_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_le
 /* Implementation of ra_usb_paud_set_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_format(ra_usb_paud_format_t format)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (format.sample_rate_hz == 0U) {
@@ -369,7 +369,7 @@ ra_err_t ra_usb_paud_set_format(ra_usb_paud_format_t format)
 ra_err_t ra_usb_paud_get_format(ra_usb_paud_format_t* out_format)
 {
   RA_CHECK_NULL_PTR(out_format, s_tag, "get_format: out_format");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out_format = s_state.format;
@@ -379,7 +379,7 @@ ra_err_t ra_usb_paud_get_format(ra_usb_paud_format_t* out_format)
 /* Implementation of ra_usb_paud_set_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_volume(int16_t volume_q8_8)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.volume_q8_8 = volume_q8_8;
@@ -390,7 +390,7 @@ ra_err_t ra_usb_paud_set_volume(int16_t volume_q8_8)
 ra_err_t ra_usb_paud_get_volume(int16_t* out_volume)
 {
   RA_CHECK_NULL_PTR(out_volume, s_tag, "get_volume: out_volume");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out_volume = s_state.volume_q8_8;
@@ -405,7 +405,7 @@ ra_err_t ra_usb_paud_get_volume(int16_t* out_volume)
 /* Implementation of ra_usb_paud_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_attach_setup_handler(ra_usb_paud_setup_fn_t setup_fn, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.setup_cb  = setup_fn;
@@ -422,7 +422,7 @@ ra_err_t ra_usb_paud_attach_setup_handler(ra_usb_paud_setup_fn_t setup_fn, void*
 ra_err_t ra_usb_paud_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!internal_is_class_envelope(setup->bm_request_type)) {

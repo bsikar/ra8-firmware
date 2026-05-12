@@ -21,7 +21,7 @@
  *     for passkey entry / numeric comparison without touching the
  *     NimBLE host event loop directly.
  *
- * The layer is initialised by ``ra_ble_security_init`` after
+ * The layer is initialized by ``ra_ble_security_init`` after
  * ``ra_ble_host_init`` has brought the controller + NimBLE host
  * stack up. Deinit is implicit in ``ra_ble_host_close``.
  *
@@ -106,11 +106,15 @@ typedef enum : uint8_t {
  * applications never have to call ble_hs_cfg directly.
  */
 typedef struct {
-  ra_ble_security_io_cap_t io_cap;           /**< Local I/O capability.            */
-  uint8_t                  bonding_enable;   /**< 1 = persist keys to store.       */
-  uint8_t                  mitm_required;    /**< 1 = require MITM protection.     */
-  uint8_t                  sc_only;          /**< 1 = LE Secure Connections only.  */
-  uint8_t                  use_rsip_offload; /**< 1 = ECDH/CMAC via RSIP.          */
+  ra_ble_security_io_cap_t io_cap; /**< Local I/O capability.            */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bonding_enable; /**< 1 = persist keys to store.       */
+  // cppcheck-suppress unusedStructMember
+  uint8_t mitm_required; /**< 1 = require MITM protection.     */
+  // cppcheck-suppress unusedStructMember
+  uint8_t sc_only; /**< 1 = LE Secure Connections only.  */
+  // cppcheck-suppress unusedStructMember
+  uint8_t use_rsip_offload; /**< 1 = ECDH/CMAC via RSIP.          */
 } ra_ble_security_config_t;
 
 /**
@@ -118,10 +122,13 @@ typedef struct {
  * @brief Event payload delivered to the user callback.
  */
 typedef struct {
-  ra_ble_security_event_kind_t kind;        /**< Event kind.                       */
-  uint16_t                     conn_handle; /**< ACL connection handle.            */
-  uint32_t                     passkey;     /**< Passkey (display / compare evts). */
-  uint8_t                      status;      /**< SMP failure reason on _pairing_fail. */
+  ra_ble_security_event_kind_t kind; /**< Event kind.                       */
+  // cppcheck-suppress unusedStructMember
+  uint16_t conn_handle; /**< ACL connection handle.            */
+  // cppcheck-suppress unusedStructMember
+  uint32_t passkey; /**< Passkey (display / compare evts). */
+  // cppcheck-suppress unusedStructMember
+  uint8_t status; /**< SMP failure reason on _pairing_fail. */
 } ra_ble_security_event_t;
 
 /**

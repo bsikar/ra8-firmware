@@ -61,9 +61,12 @@ typedef enum : uint16_t {
  * primary service.
  */
 typedef struct {
-  uint16_t start_handle;                              /**< First attribute handle.    */
-  uint16_t end_handle;                                /**< Last attribute handle.     */
-  uint8_t  uuid_128[k_ra_ble_gatt_client_uuid_bytes]; /**< 128-bit service UUID.      */
+  // cppcheck-suppress unusedStructMember
+  uint16_t start_handle; /**< First attribute handle.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t end_handle; /**< Last attribute handle.     */
+  // cppcheck-suppress unusedStructMember
+  uint8_t uuid_128[k_ra_ble_gatt_client_uuid_bytes]; /**< 128-bit service UUID.      */
 } ra_ble_gatt_service_t;
 
 /**
@@ -133,7 +136,7 @@ typedef void (*ra_ble_gatt_notify_fn_t)(void*          ctx,
  * attributes" the host calls ``cb`` once more with ``svc == NULL``.
  *
  * Algorithm:
- *  1. Validate ``cb`` is non-NULL and the wrapper is initialised.
+ *  1. Validate ``cb`` is non-NULL and the wrapper is initialized.
  *  2. Map the call onto ``ble_gattc_disc_all_svcs(conn_handle, ...)``.
  *  3. Invoke ``cb`` for each row, then a final NULL.
  *

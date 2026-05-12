@@ -91,9 +91,9 @@ static void test_mcdc_l2cap_init_role_4cond(void)
  *   ``if ((params == NULL) || (s_state.initialized == 0U))``
  * (2 conditions, OR; N+1 = 3 vectors).
  *
- * - V1: host uninitialised, params valid -> C1=F C2=T -> dec T (return).
- * - V2: host initialised,   params NULL  -> C1=T short -> dec T (return).
- * - V3: host initialised,   params valid -> C1=F C2=F -> dec F (proceed).
+ * - V1: host uninitialized, params valid -> C1=F C2=T -> dec T (return).
+ * - V2: host initialized,   params NULL  -> C1=T short -> dec T (return).
+ * - V3: host initialized,   params valid -> C1=F C2=F -> dec F (proceed).
  * V1+V3 flip C2; V2+V3 flip C1. Minimal MC/DC. Driven through the
  * UNIT_TEST veneer ra_ble_host_test_inject_event so the production
  * decision is exercised on the real source.
@@ -103,19 +103,19 @@ static void test_mcdc_l2cap_evt_trampoline_initguard(void)
   TEST_BEGIN("ra_ble_l2cap MC/DC: evt-trampoline init/null guard (576)");
   static const uint8_t s_dummy_params[1] = {0U};
 
-  /* V1: not initialised, params!=NULL -> C2=T (early return; no event). */
+  /* V1: not initialized, params!=NULL -> C2=T (early return; no event). */
   prep();
   const uint32_t before_v1 = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_dummy_params, 1U);
   TEST_ASSERT_EQ(before_v1, ra_ble_host_test_event_count());
 
-  /* V2: initialised, params==NULL -> C1=T (early return). */
+  /* V2: initialized, params==NULL -> C1=T (early return). */
   TEST_ASSERT_EQ(k_ra_ok, bring_up());
   const uint32_t before_v2 = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, nullptr, 0U);
   TEST_ASSERT_EQ(before_v2, ra_ble_host_test_event_count());
 
-  /* V3: initialised, params!=NULL but unrecognised event -> C1=F C2=F
+  /* V3: initialized, params!=NULL but unrecognised event -> C1=F C2=F
    * (falls through to no-op tail; event count unchanged). */
   const uint32_t before_v3 = ra_ble_host_test_event_count();
   ra_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_dummy_params, 1U);

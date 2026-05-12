@@ -306,7 +306,7 @@ typedef struct {
  * @var s_conn
  * @brief The single accepted TCP connection (or LISTEN).
  *
- * @details Initialised to LISTEN; reset back to LISTEN whenever the
+ * @details Initialized to LISTEN; reset back to LISTEN whenever the
  * peer sends FIN / RST or a new SYN preempts the existing flow.
  */
 static tcp_conn_t s_conn = {.state = k_tcp_state_listen};

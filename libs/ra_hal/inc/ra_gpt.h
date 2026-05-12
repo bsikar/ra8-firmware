@@ -363,7 +363,7 @@ typedef struct {
  * @retval k_ra_ok           Period buffer programmed.
  * @retval k_ra_err_null_ptr ``channel`` out of range.
  *
- * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre Channel previously initialized via ``ra_gpt_init``.
  * @pre IRQs masked or single-threaded init context.
  * @post GTPBR holds ``period_counts``.
  * @post On the next overflow GTPR is reloaded from GTPBR.
@@ -398,7 +398,7 @@ typedef struct {
  * @retval k_ra_err_invalid_arg ``pin`` not in ``ra_gpt_pwm_pin_t``.
  * @retval k_ra_err_null_ptr    ``channel`` out of range.
  *
- * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre Channel previously initialized via ``ra_gpt_init``.
  * @pre Caller has ensured ``compare_counts`` <= GTPR.
  * @post GTCCRC / GTCCRE holds the new value.
  * @post GTBER buffer-enable bit for the selected pin is asserted.
@@ -462,7 +462,7 @@ ra_gpt_duty_cycle_set(uint8_t channel, ra_gpt_pwm_pin_t pin, uint32_t compare_co
  * @retval k_ra_err_null_ptr    ``channel`` out of range or ``cfg`` NULL.
  * @retval k_ra_err_invalid_arg ``pin`` not in ``ra_gpt_pwm_pin_t``.
  *
- * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre Channel previously initialized via ``ra_gpt_init``.
  * @pre IRQs masked or single-threaded init context.
  * @post GTIOR fields for the selected pin reflect ``cfg``.
  * @post GTIOR fields for the *other* pin are preserved.
@@ -496,7 +496,7 @@ ra_gpt_pwm_pin_configure(uint8_t channel, ra_gpt_pwm_pin_t pin, const ra_gpt_pwm
  * @retval k_ra_ok           Dead-time programmed.
  * @retval k_ra_err_null_ptr ``channel`` out of range.
  *
- * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre Channel previously initialized via ``ra_gpt_init``.
  * @pre IRQs masked or single-threaded init context.
  * @post GTDVU == ``rising_dt`` and GTDVD == ``falling_dt``.
  * @post GTDTCR.TDE bit is set iff either input is non-zero.
@@ -688,7 +688,7 @@ ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty);
  * @retval k_ra_err_no_mem All DMAC channels in use.
  * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
- * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre Channel previously initialized via ``ra_gpt_init``.
  * @pre ``ra_dma_init`` has been called.
  * @post On success, DMAC channel is armed.
  *
@@ -728,7 +728,7 @@ ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty);
  * @retval k_ra_err_no_mem All DMAC channels in use.
  * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
- * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre Channel previously initialized via ``ra_gpt_init``.
  * @pre ``ra_dma_init`` has been called.
  * @post On success, DMAC channel is armed.
  *
@@ -755,7 +755,7 @@ ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -771,7 +771,7 @@ void ra_gpt_dispatch_ovf(uint8_t channel);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -787,7 +787,7 @@ void ra_gpt_dispatch_und(uint8_t channel);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -803,7 +803,7 @@ void ra_gpt_dispatch_ccra(uint8_t channel);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

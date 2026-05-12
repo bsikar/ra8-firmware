@@ -41,7 +41,7 @@
  * @retval k_ra_ok              Bank-swap latched.
  * @retval k_ra_err_invalid_arg Unknown bank index.
  *
- * @pre TrustZone substrate initialised.
+ * @pre TrustZone substrate initialized.
  * @pre Caller has verified the new image.
  * @post On success the next NVIC reset boots from ``target_bank``.
  * @post On failure the active bank is unchanged.

@@ -87,7 +87,9 @@ typedef ra_err_t (*ra_etha_netif_tx_fn)(void*          ctx,
  * @brief Registration record bound to a netif via ::ra_etha_netif_attach_tx.
  */
 typedef struct {
+    // cppcheck-suppress unusedStructMember
     ra_etha_netif_tx_fn fn;  /**< Callback (nullptr -> linkoutput drops). */
+    // cppcheck-suppress unusedStructMember
     void*               ctx; /**< Opaque cookie passed back to fn.        */
 } ra_etha_netif_tx_hook_t;
 
@@ -108,10 +110,10 @@ typedef struct {
  * (which must point to a ::ra_etha_port_t coerced through `(void*)(uintptr_t)`)
  * BEFORE calling `netif_add(.., ra_etha_netif_init, ..)`.
  *
- * @param[in,out] netif lwIP netif being initialised.
+ * @param[in,out] netif lwIP netif being initialized.
  *
  * @return ::err_t
- * @retval ERR_OK   netif initialised.
+ * @retval ERR_OK   netif initialized.
  * @retval ERR_ARG  netif is nullptr or `netif->state` carries an invalid port.
  *
  * @pre `netif->state` is `(void*)(uintptr_t)k_ra_etha_port_0` or `_1`.
@@ -150,15 +152,15 @@ err_t ra_etha_netif_init(struct netif* netif);
  * pushes a contiguous Ethernet frame into the chosen TX path (DMA descriptor
  * ring, or a polled MAC FIFO write, etc.).
  *
- * @param[in,out] netif Netif previously initialised via ::ra_etha_netif_init.
+ * @param[in,out] netif Netif previously initialized via ::ra_etha_netif_init.
  * @param[in]     fn    TX callback (nullptr to detach).
  * @param[in]     ctx   Opaque cookie passed to fn on each invocation.
  *
  * @return ::err_t
  * @retval ERR_OK   Hook installed (or cleared).
- * @retval ERR_ARG  netif is nullptr or was not initialised by this port.
+ * @retval ERR_ARG  netif is nullptr or was not initialized by this port.
  *
- * @pre netif initialised via ::ra_etha_netif_init.
+ * @pre netif initialized via ::ra_etha_netif_init.
  * @pre Caller owns the lifetime of ctx for as long as fn is registered.
  * @post Subsequent calls into `netif->linkoutput` route through fn.
  * @post Previous hook (if any) is no longer reachable.
@@ -187,7 +189,7 @@ err_t ra_etha_netif_attach_tx(struct netif*       netif,
  * is itself ISR-safe but the surrounding pbuf pool accessor takes
  * `SYS_ARCH_PROTECT()` which is a TX_MUTEX in this port -- not ISR-callable.
  *
- * @param[in] netif  Netif previously initialised via ::ra_etha_netif_init.
+ * @param[in] netif  Netif previously initialized via ::ra_etha_netif_init.
  * @param[in] frame  Pointer to the Ethernet frame bytes.
  * @param[in] length Frame length in bytes (without FCS).
  *
@@ -197,7 +199,7 @@ err_t ra_etha_netif_attach_tx(struct netif*       netif,
  * @retval k_ra_err_invalid_arg  length == 0 or length > 1518 (max Ethernet w/o jumbo).
  * @retval k_ra_err_busy         PBUF_POOL exhausted; frame dropped.
  *
- * @pre netif initialised via ::ra_etha_netif_init.
+ * @pre netif initialized via ::ra_etha_netif_init.
  * @pre Called from a ThreadX thread (NOT from hard-IRQ context).
  * @post On success the frame is owned by lwIP; the caller may free its source
  *       buffer immediately.

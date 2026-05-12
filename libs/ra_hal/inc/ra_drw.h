@@ -279,7 +279,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @return ``ra_err_t`` propagated from ``ra_mstp_disable``.
  * @retval k_ra_ok DRW powered down successfully.
  *
- * @pre Driver was previously initialised (otherwise the disable is
+ * @pre Driver was previously initialized (otherwise the disable is
  * a no-op since ref count is already zero).
  * @pre Caller holds single-threaded teardown context.
  *
@@ -308,7 +308,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr ``out_mask`` was ``nullptr``.
  *
  * @pre ``out_mask`` is non-null.
- * @pre Driver has been initialised (peripheral clock running).
+ * @pre Driver has been initialized (peripheral clock running).
  *
  * @post ``*out_mask`` reflects the latched STATUS bits at the time
  * of the read.
@@ -329,7 +329,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok HWREVISION read.
  * @retval k_ra_err_null_ptr ``out`` was nullptr.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre ``out`` non-null.
  * @post ``*out`` carries the alias-of-CONTROL2 HWREVISION value.
  * @post No DRW side effects.
@@ -354,7 +354,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok IRQCTL written.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Caller's mask is constructed from documented bit enums.
  *
  * @post Bits selected by ``mask`` have been pushed to IRQCTL.
@@ -382,7 +382,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok IRQCTL updated.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Only enable bits set; W1C bits will be ORed in by this call.
  * @post IRQCTL.{ENUM,DLIST,BUS}IRQEN match ``enable_mask``.
  * @post All pending IRQ flags have been cleared.
@@ -422,7 +422,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * Reads STATUS, writes ``IRQCTL = all_clr`` to ack pending bits,
  * then invokes the registered callback (if any) with the snapshot.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Called from IRQ context or with IRQs masked.
  *
  * @post All pending DRW IRQ flags acknowledged in IRQCTL.
@@ -447,7 +447,7 @@ void ra_drw_dispatch(void);
  * @retval k_ra_ok Engine idle.
  * @retval k_ra_err_hw_timeout Budget exhausted.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre ``poll_budget`` >= 1.
  * @post On success, all of BUSYENUM / BUSYWRITE / DLISTACTIVE are 0.
  * @post On timeout, no register state is changed.
@@ -504,7 +504,7 @@ void ra_drw_dispatch(void);
  *
  * @return ``ra_err_t`` always ``k_ra_ok``.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Caller is OK with discarding pending draws.
  * @post All IRQ flags ack'd; PERFCOUNT1/2 zeroed.
  * @post CACHECTL flush bits pulsed.
@@ -526,7 +526,7 @@ void ra_drw_dispatch(void);
  *
  * @return ``ra_err_t`` always ``k_ra_ok``.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre At least one of the booleans is true (no-op accepted but
  * logged).
  * @post Selected cache(s) are flushed; enable bits are preserved.
@@ -551,7 +551,7 @@ void ra_drw_dispatch(void);
  * @retval k_ra_err_null_ptr ``grad`` was nullptr.
  *
  * @pre ``grad`` is non-null.
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @post COLOR1 = grad->color1_argb8888.
  * @post COLOR2 = grad->color2_argb8888.
  *
@@ -566,7 +566,7 @@ void ra_drw_dispatch(void);
  *
  * @return ``ra_err_t`` always ``k_ra_ok``.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Pattern source has been enabled via ``ra_drw_set_pattern_enable``.
  * @post PATTERN[7:0] = pattern_byte; upper bits zeroed (HUM W=0).
  * @post No effect on geometry / blend state.
@@ -583,7 +583,7 @@ void ra_drw_dispatch(void);
  *
  * @return ``ra_err_t`` always ``k_ra_ok``.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre PATTERN already programmed if ``enable`` is true.
  * @post CONTROL2 reflects the requested pattern bits; other CONTROL2
  * fields preserved.
@@ -603,7 +603,7 @@ void ra_drw_dispatch(void);
  * @retval k_ra_err_null_ptr ``blend`` was nullptr.
  *
  * @pre ``blend`` is non-null.
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @post CONTROL2.{BSF,BDF,BSI,BDI,BSFA,BDFA,BSIA,BDIA,BC2,USEACB}
  * reflect ``*blend``; other CONTROL2 bits preserved.
  * @post COLOR1 alpha byte set to ``blend->global_alpha`` (other COLOR1
@@ -622,7 +622,7 @@ void ra_drw_dispatch(void);
  *
  * @return ``ra_err_t`` always ``k_ra_ok``.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Caller has chosen a key colour that does not occur in the source
  * data when ``enable`` is true.
  * @post COLKEY = key_rgb (alpha cleared per HUM W=0 rule).
@@ -649,7 +649,7 @@ void ra_drw_dispatch(void);
  * @retval k_ra_err_invalid_arg pitch_px > k_ra_drw_max_texpitch_tx.
  *
  * @pre ``tex`` non-null and points at validated descriptor.
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @post TEXORIGIN, TEXPITCH, TEXMASK, U/V limiters, COLKEY (when
  * enabled) all reflect ``*tex``.
  * @post CONTROL2.{TEXTUREENABLE,TEXTURECLAMPX,TEXTURECLAMPY,
@@ -665,7 +665,7 @@ void ra_drw_dispatch(void);
  *
  * @return ``ra_err_t`` always ``k_ra_ok``.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Caller drained any in-flight textured blit.
  * @post CONTROL2.{TEXTUREENABLE,RLEENABLE,CLUTENABLE,COLKEYENABLE} = 0.
  * @post Other CONTROL2 fields preserved.
@@ -723,7 +723,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_err_invalid_arg width/height was 0 or > 1024.
  *
  * @pre ``rect`` is non-null.
- * @pre Driver is initialised; framebuffer ORIGIN is valid memory.
+ * @pre Driver is initialized; framebuffer ORIGIN is valid memory.
  * @post DRW engine has accepted the rectangle; STATUS may be busy.
  * @post Caller may follow with ``ra_drw_get_status`` to wait on
  * ``k_ra_drw_status_busyenum`` to fall to 0.
@@ -776,7 +776,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_err_invalid_arg width_px == 0 or > 1024.
  *
  * @pre ``line`` non-null.
- * @pre Driver is initialised.
+ * @pre Driver is initialized.
  * @post DRW engine has accepted the line; STATUS may be busy.
  * @post COLOR1 holds line->color_argb8888.
  *
@@ -798,7 +798,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_err_null_ptr ``tri`` was nullptr.
  *
  * @pre ``tri`` non-null.
- * @pre Driver is initialised.
+ * @pre Driver is initialized.
  * @post DRW engine has accepted the triangle.
  * @post COLOR1 holds tri->color_argb8888.
  *
@@ -829,7 +829,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_err_invalid_arg Address null or unaligned.
  *
  * @pre ``dlist_addr`` non-null and 4-byte aligned.
- * @pre Driver is initialised; CACHECTL flushed if RAM was just written.
+ * @pre Driver is initialized; CACHECTL flushed if RAM was just written.
  * @post DLISTSTART = dlist_addr; engine begins fetching.
  * @post On completion the DLISTIRQ flag will be raised in STATUS.
  *
@@ -853,7 +853,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_ok Counters armed.
  * @retval k_ra_err_invalid_arg Either event > 0x1F.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre Each event in [0..0x1F]; "Setting prohibited" values rejected
  * where they fall outside the documented set.
  * @post PERFTRIGGER carries both selectors; PERFCOUNT1 = PERFCOUNT2 = 0.
@@ -877,7 +877,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_err_invalid_arg ``id`` outside enum.
  *
  * @pre ``out`` non-null.
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @post ``*out`` holds the snapshot.
  * @post No DRW side effects.
  *
@@ -894,7 +894,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @retval k_ra_ok Counter cleared.
  * @retval k_ra_err_invalid_arg ``id`` outside enum.
  *
- * @pre Driver has been initialised.
+ * @pre Driver has been initialized.
  * @pre ``id`` is one of ``k_ra_drw_perfctr_*``.
  * @post PERFCOUNTid = 0.
  * @post No effect on the other counter.

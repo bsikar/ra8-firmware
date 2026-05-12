@@ -207,7 +207,7 @@ static void test_msc_read_past_end_rejected(void)
 /**
  * @brief ep_open before pal_init is rejected (worker-thread orderings).
  *
- * @par MC/DC: Failure side of the ``initialised == false`` invariant
+ * @par MC/DC: Failure side of the ``initialized == false`` invariant
  * check in ep_open.
  */
 static void test_msc_ep_open_before_init_rejected(void)

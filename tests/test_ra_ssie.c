@@ -1419,7 +1419,7 @@ static void test_mcdc_init_threshold(void)
  * - V2: dir=tx     -> T,F -> F (proceeds)
  * - V3: dir=tx_rx  -> T,T,F -> F (proceeds)
  * - V4: dir=5      -> T,T,T -> decision T -> invalid_arg
- * Channel may be uninitialised; we only assert *not* invalid_arg for
+ * Channel may be uninitialized; we only assert *not* invalid_arg for
  * V1..V3 (other ra_err_t paths are acceptable -- the goal is to prove
  * the validation gate did not reject the dir value), and ==invalid_arg
  * for V4. With the channel un-init the simulator returns invalid_arg,

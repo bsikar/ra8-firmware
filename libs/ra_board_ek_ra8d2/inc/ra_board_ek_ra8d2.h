@@ -117,7 +117,7 @@ typedef enum : uint8_t {
  * @retval k_ra_err_invalid_arg     led >= k_ra_board_led_count.
  * @retval k_ra_err_gpio_conflict   Pin already owned.
  *
- * @pre HAL pin validator initialised (single-threaded boot context).
+ * @pre HAL pin validator initialized (single-threaded boot context).
  * @post LED is off and pin is configured as a digital output.
  *
  * @since 0.1.0
@@ -201,7 +201,7 @@ typedef enum : uint8_t {
  * @brief Configure a switch pin as an input with internal pull-up.
  *
  * @retval k_ra_ok / k_ra_err_invalid_arg / k_ra_err_gpio_conflict
- * @pre HAL pin validator initialised.
+ * @pre HAL pin validator initialized.
  * @post Pin is digital input, pull-up enabled.
  * @since 0.1.0
  */
@@ -501,7 +501,7 @@ typedef enum : uint8_t {
  * @brief Configure an Arduino header pin in GPIO ``mode``.
  *
  * @retval k_ra_ok / k_ra_err_invalid_arg / k_ra_err_gpio_conflict
- * @pre HAL pin validator initialised.
+ * @pre HAL pin validator initialized.
  * @pre SW4-4 ON (Arduino vs Octo-SPI selection).
  * @since 0.1.0
  */
@@ -509,13 +509,13 @@ typedef enum : uint8_t {
                                                  ra_board_arduino_mode_t mode);
 
 /**
- * @brief Drive a previously-initialised Arduino GPIO pin.
+ * @brief Drive a previously-initialized Arduino GPIO pin.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_arduino_gpio_write(ra_board_arduino_pin_t pin, ra_level_t level);
 
 /**
- * @brief Sample a previously-initialised Arduino GPIO pin.
+ * @brief Sample a previously-initialized Arduino GPIO pin.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin,
@@ -706,7 +706,7 @@ typedef enum : uint16_t {
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra_mstp_init`` has run.
- * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialised at
+ * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialized at
  *       100 kHz; U15.P0..P7 are configured as outputs driven HIGH.
  *
  * @note Not thread-safe; call once from the boot context immediately
@@ -1007,7 +1007,7 @@ typedef enum : uint16_t {
  * @retval k_ra_err_gpio_conflict   PD02 or PD03 already owned.
  * @retval k_ra_err_hw_init_failed  Underlying ``ra_sci_init`` failed.
  *
- * @pre HAL pin validator initialised (single-threaded boot context).
+ * @pre HAL pin validator initialized (single-threaded boot context).
  * @pre ra_mstp_init() has run.
  * @post SCI3 is enabled with TE=RE=1; PD02/PD03 are routed to SCI3.
  *
@@ -1046,7 +1046,7 @@ typedef enum : uint16_t {
  *
  * @retval k_ra_ok                  Read complete; *out_len in [0, cap].
  * @retval k_ra_err_invalid_arg     out / out_len NULL with non-zero cap.
- * @retval k_ra_err_not_initialized Console not initialised.
+ * @retval k_ra_err_not_initialized Console not initialized.
  *
  * @pre ra_board_uart_console_init succeeded.
  * @post 0 <= *out_len <= cap.
@@ -1183,7 +1183,7 @@ typedef enum : uint8_t {
  * @pre IOPORT module powered (reset default).
  * @pre ra_mstp_init() has run.
  * @post All sixteen Ethernet pins are in RGMII alternate-function mode.
- * @post ETHA0 and RMAC0 are initialised and ready for descriptor-ring
+ * @post ETHA0 and RMAC0 are initialized and ready for descriptor-ring
  *       configuration / auto-negotiation.
  *
  * @note Not thread-safe; call once during board bring-up.

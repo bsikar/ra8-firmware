@@ -136,7 +136,7 @@ static nx_sha256_alt_meta_t* priv_meta_of(VOID* crypto_metadata, ULONG size)
  * @param[in,out] method See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -418,7 +418,7 @@ UINT __wrap__nx_crypto_method_sha256_operation(UINT                            o
  * @param[in,out] crypto_metadata See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

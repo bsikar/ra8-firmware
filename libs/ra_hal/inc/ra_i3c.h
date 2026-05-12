@@ -117,7 +117,7 @@ typedef struct {
  *
  * @retval k_ra_ok            Controller ready for ``ra_i3c_bus_enable``.
  * @retval k_ra_err_*         MSTP enable failed; see ``ra_mstp.h``.
- * @pre  MSTP module is initialised.
+ * @pre  MSTP module is initialized.
  * @pre  No other module owns the I3C peripheral.
  * @post CECTL.CLKE == 1 and INIE == INSTE == 0.
  * @post BCTL.BUSE == 0.

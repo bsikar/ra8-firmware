@@ -58,7 +58,7 @@ static const char* s_tag = "FLASH";
 typedef struct {
   ra_flash_callback_t cb;          /**< Registered IRQ callback (or NULL). */
   void*               user_ctx;    /**< Caller pointer passed to ``cb``.    */
-  bool                initialised; /**< True after ``ra_flash_init``.       */
+  bool                initialized; /**< True after ``ra_flash_init``.       */
   bool                prefetch_on; /**< Last-known MRCPFB state.            */
   uintptr_t           win_low;     /**< Soft access-window low (incl).      */
   uintptr_t           win_high;    /**< Soft access-window high (excl).     */
@@ -570,7 +570,7 @@ ra_err_t ra_flash_init(const ra_flash_cfg_t* cfg)
   /* HUM Ch 59 "MRERAES : Extra MRAM Read Access Error Status" p 3557 */
   *ra_mram_reg8(k_ra_mram_off_mreraes) = 0U;
 
-  s_rt.initialised = true;
+  s_rt.initialized = true;
   s_rt.cb          = nullptr;
   s_rt.user_ctx    = nullptr;
 
@@ -592,7 +592,7 @@ ra_err_t ra_flash_deinit(void)
   *ra_mram_reg8(k_ra_mram_off_mrcps) = k_ra_mrcps_mask_errors;
   internal_set_prefetch(true);
 
-  s_rt.initialised = false;
+  s_rt.initialized = false;
   s_rt.cb          = nullptr;
   s_rt.user_ctx    = nullptr;
   return k_ra_ok;
@@ -1064,7 +1064,7 @@ ra_err_t ra_flash_force_stop(void)
 /* ra_flash_reset -- see header for full description. */
 ra_err_t ra_flash_reset(void)
 {
-  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_reset before init");
+  RA_VALIDATE_INIT(s_rt.initialized, s_tag, "flash_reset before init");
   ra_err_t err = ra_flash_enter_pe_mode();
   if (err != k_ra_ok) {
     return err;
@@ -1338,7 +1338,7 @@ ra_err_t ra_flash_arc_increment(ra_flash_arc_id_t counter)
   if (counter >= k_ra_flash_arc_count) {
     return k_ra_err_invalid_arg;
   }
-  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "arc_inc before init");
+  RA_VALIDATE_INIT(s_rt.initialized, s_tag, "arc_inc before init");
 
   ra_err_t err = ra_flash_enter_pe_mode();
   if (err != k_ra_ok) {
@@ -1375,7 +1375,7 @@ ra_err_t ra_flash_arc_read(ra_flash_arc_id_t counter, uint32_t* out_count)
   if (counter >= k_ra_flash_arc_count) {
     return k_ra_err_invalid_arg;
   }
-  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "arc_read before init");
+  RA_VALIDATE_INIT(s_rt.initialized, s_tag, "arc_read before init");
 
   if (counter == k_ra_flash_arc_oembl) {
     ra_err_t err = ra_flash_enter_pe_mode();
@@ -1400,7 +1400,7 @@ ra_err_t ra_flash_arc_read(ra_flash_arc_id_t counter, uint32_t* out_count)
 /* ra_flash_zeroize_huk -- see header for full description. */
 ra_err_t ra_flash_zeroize_huk(void)
 {
-  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "zeroize before init");
+  RA_VALIDATE_INIT(s_rt.initialized, s_tag, "zeroize before init");
   /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3565 */
   *ra_mram_reg16(k_ra_mram_off_mrezc) = k_ra_mrezc_full_zero;
 
@@ -2020,7 +2020,7 @@ static ra_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
 /* ra_flash_erase -- see header for full description. */
 ra_err_t ra_flash_erase(uintptr_t address, uint32_t num_blocks)
 {
-  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_erase before init");
+  RA_VALIDATE_INIT(s_rt.initialized, s_tag, "flash_erase before init");
   if (num_blocks == 0U) {
     return k_ra_err_invalid_arg;
   }
@@ -2046,7 +2046,7 @@ ra_err_t ra_flash_erase(uintptr_t address, uint32_t num_blocks)
 ra_err_t ra_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
 {
   RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
-  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_write before init");
+  RA_VALIDATE_INIT(s_rt.initialized, s_tag, "flash_write before init");
   if (len == 0U || (len % k_ra_mram_write_size_bytes) != 0U) {
     return k_ra_err_invalid_arg;
   }

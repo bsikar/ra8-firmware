@@ -122,7 +122,7 @@ static void test_eth_demo_link_status(void)
   TEST_BEGIN("eth_tcp_echo: link_status returns a defined state");
   ra_eth_link_t  link = {};
   const ra_err_t err  = ra_eth_link_status(&link);
-  /* Mock PHY may report ok, not-initialised, or timeout polling the
+  /* Mock PHY may report ok, not-initialized, or timeout polling the
    * MII registers; all three are acceptable shapes for the demo. */
   TEST_ASSERT(err == k_ra_ok || err == k_ra_err_not_initialized || err == k_ra_err_hw_timeout);
   TEST_END("eth_tcp_echo: link_status returns a defined state");

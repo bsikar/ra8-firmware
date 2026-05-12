@@ -694,7 +694,7 @@ void ra_usb_dispatch(ra_usb_speed_t speed);
  * @param[in] speed Controller selector.
  * @return Raw INTSTS0 value.
  * @retval 0 invalid speed or controller not powered.
- * @pre Module is initialised via ra_usb_device_init.
+ * @pre Module is initialized via ra_usb_device_init.
  * @pre Caller has the controller powered.
  * @post No INTSTS0 bits are modified.
  * @post Returned value reflects the controller at call time.

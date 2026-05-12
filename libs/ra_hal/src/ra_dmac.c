@@ -184,7 +184,7 @@ static inline uint16_t internal_md_code(ra_dmac_mode_t mode)
  * @param[in,out] mode See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -221,7 +221,7 @@ static inline uint16_t internal_dts_code(ra_dmac_mode_t mode, ra_dmac_repeat_are
  * @param[in,out] src_inc See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -250,7 +250,7 @@ static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
  * @param[in,out] cfg See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -277,7 +277,7 @@ static inline uint16_t internal_dmtmd_value(const ra_dmac_config_t* cfg)
  * @param[in,out] cfg See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -309,7 +309,7 @@ static inline uint8_t internal_dmint_value(const ra_dmac_config_t* cfg)
  * @param[in,out] cfg See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -349,7 +349,7 @@ static inline ra_err_t internal_validate_cfg(const ra_dmac_config_t* cfg)
  *
  * @param[in,out] cfg See function signature.
  * @param[in,out] reg See function signature.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

@@ -137,10 +137,14 @@ typedef enum : uint8_t {
  *        callback.
  */
 typedef struct {
-  uint8_t  device_address; /**< Assigned USB address (1..127).   */
-  uint8_t  port_count;     /**< bNbrPorts from HUB descriptor.   */
-  uint16_t vendor_id;      /**< idVendor.                        */
-  uint16_t product_id;     /**< idProduct.                       */
+  // cppcheck-suppress unusedStructMember
+  uint8_t device_address; /**< Assigned USB address (1..127).   */
+  // cppcheck-suppress unusedStructMember
+  uint8_t port_count; /**< bNbrPorts from HUB descriptor.   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t vendor_id; /**< idVendor.                        */
+  // cppcheck-suppress unusedStructMember
+  uint16_t product_id; /**< idProduct.                       */
 } ra_usb_hhub_device_t;
 
 /**
@@ -194,7 +198,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -220,7 +224,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Callback installed.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre `ra_usb_hhub_init` has run.
  * @post On a subsequent attach, `on_attach(ctx, &device)` fires once.
@@ -249,7 +253,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Count copied to `*count`.
  * @retval k_ra_err_null_ptr `count` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no HUB
+ * @retval k_ra_err_invalid_state Driver not initialized, or no HUB
  *         attached.
  *
  * @pre `ra_usb_hhub_init` succeeded.
@@ -281,7 +285,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
  * @retval k_ra_err_null_ptr `status` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no HUB
+ * @retval k_ra_err_invalid_state Driver not initialized, or no HUB
  *         attached.
  * @retval k_ra_err_invalid_arg `port` out of range.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
@@ -311,7 +315,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no HUB
+ * @retval k_ra_err_invalid_state Driver not initialized, or no HUB
  *         attached.
  * @retval k_ra_err_invalid_arg `port` out of range.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
@@ -341,7 +345,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no HUB
+ * @retval k_ra_err_invalid_state Driver not initialized, or no HUB
  *         attached.
  * @retval k_ra_err_invalid_arg `port` out of range.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
@@ -373,7 +377,7 @@ typedef void (*ra_usb_hhub_attach_fn_t)(void* ctx, const ra_usb_hhub_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_hhub_init` succeeded.
  *

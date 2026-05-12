@@ -477,7 +477,7 @@ static uint8_t usb_host_format_decimal_u32(uint32_t value, uint8_t* out)
  * @param[in] device Pointer to the attach snapshot. The HAL guarantees
  *                   it is valid for the duration of this call.
  *
- * @pre Driver was initialised via `ra_usb_hcdc_init`.
+ * @pre Driver was initialized via `ra_usb_hcdc_init`.
  *
  * @post `s_state.attached` is true, `s_state.device` carries the
  *       VID/PID/EP info, and LED1 is driven high.

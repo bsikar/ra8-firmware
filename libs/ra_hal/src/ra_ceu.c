@@ -137,7 +137,7 @@ static uint32_t s_ceu_dma_len;
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -170,7 +170,7 @@ static uint32_t internal_pack_camcr(const ra_ceu_config_t* cfg)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -198,7 +198,7 @@ static uint32_t internal_pack_capcr(const ra_ceu_config_t* cfg)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -228,7 +228,7 @@ static uint32_t internal_pack_caifr(const ra_ceu_config_t* cfg)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -259,7 +259,7 @@ static uint32_t internal_pack_cflcr(const ra_ceu_config_t* cfg)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -286,7 +286,7 @@ static uint32_t internal_pack_cfszr(const ra_ceu_config_t* cfg)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -323,7 +323,7 @@ static uint32_t internal_pack_cdocr(const ra_ceu_config_t* cfg)
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -364,7 +364,7 @@ static ra_err_t internal_wait_idle(void)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -389,7 +389,7 @@ static bool internal_is_aligned(const void* ptr)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -432,7 +432,7 @@ static ra_err_t internal_validate_buffers(const ra_ceu_buffers_t* bufs)
  * contract; this site adds no behaviour beyond what the public
  * API documents.
  * @param[in] bufs See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -492,7 +492,7 @@ static void internal_program_addresses(const ra_ceu_buffers_t* bufs)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static void internal_program_geometry(const ra_ceu_config_t* cfg)
@@ -536,7 +536,7 @@ static void internal_program_geometry(const ra_ceu_config_t* cfg)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static void internal_program_format(const ra_ceu_config_t* cfg)
@@ -563,7 +563,7 @@ static void internal_program_format(const ra_ceu_config_t* cfg)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static void internal_program_destination(const ra_ceu_config_t* cfg)
@@ -770,7 +770,7 @@ ra_err_t ra_ceu_exit_stop(void)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -889,7 +889,7 @@ ra_err_t ra_ceu_capture_disarm(void)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static void internal_plane_b_mirror_from_a(void)

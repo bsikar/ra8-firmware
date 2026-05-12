@@ -24,19 +24,19 @@
  * @par State Machine
  * @startuml
  *  state idle
- *  state initialised
+ *  state initialized
  *  state hs_clock_running
  *  state video_running
  *  state ulps
  *  [*] --> idle
- *  idle --> initialised        : ra_mipi_dsi_init()
- *  initialised --> hs_clock_running : ra_mipi_dsi_hs_clock_start()
+ *  idle --> initialized        : ra_mipi_dsi_init()
+ *  initialized --> hs_clock_running : ra_mipi_dsi_hs_clock_start()
  *  hs_clock_running --> video_running : ra_mipi_dsi_video_start()
  *  hs_clock_running --> ulps   : ra_mipi_dsi_ulps_enter()
  *  ulps --> hs_clock_running   : ra_mipi_dsi_ulps_exit()
  *  video_running --> hs_clock_running : ra_mipi_dsi_video_stop()
- *  hs_clock_running --> initialised : ra_mipi_dsi_hs_clock_stop()
- *  initialised --> idle        : ra_mipi_dsi_deinit()
+ *  hs_clock_running --> initialized : ra_mipi_dsi_hs_clock_stop()
+ *  initialized --> idle        : ra_mipi_dsi_deinit()
  * @enduml
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -168,7 +168,7 @@ static uint16_t s_pending_rx_len;
  * once the bit has been gated. ``ra_mipi_dsi_enter_stop()`` clears it
  * (because it gives the MSTPC reference back) and
  * ``ra_mipi_dsi_exit_stop()`` re-sets it. The flag exists so that
- * ``deinit()`` is idempotent: calling it on an already-de-initialised
+ * ``deinit()`` is idempotent: calling it on an already-de-initialized
  * driver returns ``k_ra_ok`` instead of letting ``ra_mstp_disable()``
  * underflow its reference count and surface
  * ``k_ra_err_invalid_state``. HUM Ch 11.2.8 "MSTPCRC : Module Stop
@@ -688,7 +688,7 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_deinit(void)
 {
-  /* Idempotent: a second deinit (or a deinit on a never-initialised
+  /* Idempotent: a second deinit (or a deinit on a never-initialized
    * driver) must succeed without underflowing the MSTPC refcount.
    * HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446. */
   if (!s_initialized) {

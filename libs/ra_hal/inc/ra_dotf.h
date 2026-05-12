@@ -49,7 +49,7 @@
  *
  * @warning Misconfiguration of DOTF when executing from the encrypted
  *          XSPI window will cause the CPU to fetch garbage and almost
- *          certainly take a HardFault. The driver MUST be initialised
+ *          certainly take a HardFault. The driver MUST be initialized
  *          and the conversion region MUST be programmed before
  *          control jumps into XiP code that lives in the encrypted
  *          area. The intended call order on a cold boot is:

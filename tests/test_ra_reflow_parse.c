@@ -49,7 +49,7 @@ static void test_mcdc_reflow_parse_xhtml_null_guard(void)
   TEST_BEGIN("ra_reflow_parse_xhtml MC/DC: engine NULL || xhtml_buf NULL");
   const uint8_t buf[1] = {0x20U};
 
-  /* V1: both non-NULL. Decision F. Engine not initialised so the next
+  /* V1: both non-NULL. Decision F. Engine not initialized so the next
    * guard returns not_initialized; the line-62 decision is exercised
    * with outcome F. */
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_reflow_parse_xhtml(&s_engine, buf, 1U));

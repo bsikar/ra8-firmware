@@ -170,7 +170,7 @@ typedef ra_err_t (*ra_usb_pvnd_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -199,7 +199,7 @@ typedef ra_err_t (*ra_usb_pvnd_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Pointer + length stored.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `desc` was NULL.
  * @retval k_ra_err_invalid_arg `desc_len == 0`.
  *
@@ -225,7 +225,7 @@ typedef ra_err_t (*ra_usb_pvnd_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes queued onto bulk-IN.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `data` was NULL with `len > 0`.
  * @retval k_ra_err_invalid_arg `len == 0` or larger than the pipe max.
  *
@@ -249,7 +249,7 @@ typedef ra_err_t (*ra_usb_pvnd_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  * @retval k_ra_ok Bytes drained.
  * @retval k_ra_err_no_data Pipe was empty.
  * @retval k_ra_err_null_ptr `buf` or `got_len` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_invalid_arg `max_len == 0`.
  *
  * @pre `ra_usb_pvnd_init` succeeded.
@@ -278,7 +278,7 @@ typedef ra_err_t (*ra_usb_pvnd_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Handler installed.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_pvnd_init` succeeded.
  *
@@ -308,7 +308,7 @@ typedef ra_err_t (*ra_usb_pvnd_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP handled (status stage queued internally).
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `setup` was NULL.
  * @retval k_ra_err_not_supported `bmRequestType` is not a vendor envelope.
  *

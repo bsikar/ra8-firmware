@@ -233,7 +233,7 @@ typedef void (*ra_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintpt
  *
  * @param[in] cfg Non-NULL configuration descriptor.
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Driver initialised, all banks programmed.
+ * @retval k_ra_ok                Driver initialized, all banks programmed.
  * @retval k_ra_err_null_ptr      ``cfg`` was NULL.
  * @retval k_ra_err_invalid_arg   A bank carries an out-of-range mode value.
  * @retval k_ra_err_hw_init_failed MSTP ungate failed for one of the banks.
@@ -257,7 +257,7 @@ typedef void (*ra_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintpt
  *
  * @note Not thread-safe.
  * @warning Per HUM 58.2.7 p 3533, enabling ``ecc_with_chk`` on
- *          uninitialised SRAM can immediately trigger a spurious NMI
+ *          uninitialized SRAM can immediately trigger a spurious NMI
  *          or reset. Set ``zero_init = true`` for any bank where
  *          ``ecc_mode == k_ra_sram_ecc_with_chk``.
  *
@@ -343,7 +343,7 @@ typedef void (*ra_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintpt
  *
  * @note Not thread-safe. Does NOT run the zero-init pass; call
  *       ``ra_sram_zero_init_bank`` first if switching to with-check
- *       mode on an uninitialised region.
+ *       mode on an uninitialized region.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sram_set_mode(uint8_t bank, const ra_sram_bank_cfg_t* cfg);

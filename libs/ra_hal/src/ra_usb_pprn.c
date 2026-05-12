@@ -70,7 +70,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the device-Printer function.
  */
 typedef struct {
-  bool                   initialised;     /**< True after init.            */
+  bool                   initialized;     /**< True after init.            */
   ra_usb_speed_t         speed;           /**< Underlying controller.      */
   uint16_t               bulk_max_packet; /**< Pipe max-packet size.       */
   const uint8_t*         desc;            /**< Cached descriptor blob.     */
@@ -211,7 +211,7 @@ ra_err_t ra_usb_pprn_init(ra_usb_speed_t speed)
     (void)ra_usb_device_deinit(speed);
     return pipes_err;
   }
-  s_state.initialised = true;
+  s_state.initialized = true;
   ra_log_info_val(s_tag, "device-Printer ready", (uint32_t)speed);
   return k_ra_ok;
 }
@@ -219,12 +219,12 @@ ra_err_t ra_usb_pprn_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_pprn_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   (void)ra_usb_device_attach(s_state.speed, false);
   const ra_err_t err  = ra_usb_device_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.desc        = nullptr;
   s_state.device_id   = nullptr;
   s_state.setup_cb    = nullptr;
@@ -243,7 +243,7 @@ ra_err_t ra_usb_pprn_set_descriptors(const uint8_t* desc,
                                      const uint8_t* device_id,
                                      uint16_t       device_id_len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   RA_CHECK_NULL_PTR(desc, s_tag, "set_descriptors: desc");
@@ -273,7 +273,7 @@ ra_err_t ra_usb_pprn_recv(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv: buf");
   RA_CHECK_NULL_PTR(got_len, s_tag, "recv: got_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (max_len == 0U) {
@@ -292,7 +292,7 @@ ra_err_t ra_usb_pprn_recv(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 /* Implementation of ra_usb_pprn_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_send(const uint8_t* data, uint16_t len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if ((data == nullptr) && (len != 0U)) {
@@ -312,7 +312,7 @@ ra_err_t ra_usb_pprn_send(const uint8_t* data, uint16_t len)
 /* Implementation of ra_usb_pprn_set_port_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_set_port_status(uint8_t status_byte)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.port_status = status_byte;
@@ -323,7 +323,7 @@ ra_err_t ra_usb_pprn_set_port_status(uint8_t status_byte)
 ra_err_t ra_usb_pprn_get_port_status(uint8_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "get_port_status: out_status");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out_status = s_state.port_status;
@@ -338,7 +338,7 @@ ra_err_t ra_usb_pprn_get_port_status(uint8_t* out_status)
 /* Implementation of ra_usb_pprn_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_attach_setup_handler(ra_usb_pprn_setup_fn_t setup_fn, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.setup_cb  = setup_fn;
@@ -355,7 +355,7 @@ ra_err_t ra_usb_pprn_attach_setup_handler(ra_usb_pprn_setup_fn_t setup_fn, void*
 ra_err_t ra_usb_pprn_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if ((setup->bm_request_type != k_ra_pprn_bm_class_iface_in) &&

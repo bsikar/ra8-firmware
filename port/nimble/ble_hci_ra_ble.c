@@ -306,7 +306,7 @@ ra_err_t ble_hci_ra_ble_deinit(void)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -441,7 +441,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */

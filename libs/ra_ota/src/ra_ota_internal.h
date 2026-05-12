@@ -40,7 +40,7 @@ extern "C" {
  * @retval k_ra_err_invalid_arg Key not found / no digits.
  *
  * @pre json, key, out_v are all non-NULL and NUL-terminated.
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post On success ``*out_v`` holds the parsed value.
  * @post On failure ``*out_v`` is unchanged.
  *

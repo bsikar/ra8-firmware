@@ -313,7 +313,7 @@ typedef struct {
  * @param[in]  raw    Raw touch samples (length ``n``).
  * @param[in]  screen Screen targets (length ``n``).
  * @param[in]  n      Sample count.
- * @param[out] s      Accumulated sums (zero-initialised by the helper).
+ * @param[out] s      Accumulated sums (zero-initialized by the helper).
  *
  * @pre All pointers are non-NULL and ``n`` >= 1.
  * @pre Caller has already validated argument ranges.

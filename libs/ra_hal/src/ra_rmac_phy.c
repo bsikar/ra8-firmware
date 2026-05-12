@@ -120,7 +120,7 @@ static ra_rmac_phy_internal_t s_state = {};
  * @details
  * IEEE 802.3 Clause 22 6.3.5.2.5 requires BMCR bit 15 (RESET) to be
  * write-only; the PHY clears it once internal state has been
- * re-initialised. Polls up to ``poll_max`` MDIO reads before giving up.
+ * re-initialized. Polls up to ``poll_max`` MDIO reads before giving up.
  *
  * @param[in] poll_max Maximum read iterations before timing out.
  *

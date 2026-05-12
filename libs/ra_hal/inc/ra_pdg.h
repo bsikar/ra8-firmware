@@ -283,7 +283,7 @@ typedef void (*ra_pdg_event_fn_t)(void* ctx);
  * @retval k_ra_ok Block parked back in module-stop with all
  * channels disabled.
  *
- * @pre PDG was previously initialised (otherwise a no-op).
+ * @pre PDG was previously initialized (otherwise a no-op).
  * @post GTDLYCR.DLLEN = 0 and DLYRST = 1.
  * @post GTDLYCR2 = 0 (every channel bypassed and powered down).
  *

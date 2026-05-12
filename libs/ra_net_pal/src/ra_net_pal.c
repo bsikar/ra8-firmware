@@ -114,7 +114,7 @@ typedef struct {
   ra_net_pal_link_state_t link_state;                    /**< Last observed link state. */
   ra_net_pal_event_fn_t   event_fn;                      /**< Async event callback. */
   void*                   event_ctx;                     /**< Callback context. */
-  bool                    initialised;                   /**< True after ra_net_pal_init. */
+  bool                    initialized;                   /**< True after ra_net_pal_init. */
   ra_net_pal_slot_t       ring[k_ra_net_pal_ring_slots]; /**< RX/TX ring. */
   uint16_t                head;                          /**< Next slot to pop (recv). */
   uint16_t                tail;                          /**< Next slot to push (send). */
@@ -189,7 +189,7 @@ static uint32_t internal_translate_event(uint32_t eth_mask)
  *
  * @details
  * Installed via ``ra_eth_attach_handler`` during ::ra_net_pal_init.
- * Drops events while the PAL is uninitialised, then translates the
+ * Drops events while the PAL is uninitialized, then translates the
  * raw status mask via ::internal_translate_event and forwards
  * non-zero results to the stack-installed callback.
  *
@@ -208,7 +208,7 @@ static uint32_t internal_translate_event(uint32_t eth_mask)
 static void internal_eth_event(void* ctx, uint32_t status_mask)
 {
   (void)ctx;
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return;
   }
   const uint32_t pal_mask = internal_translate_event(status_mask);
@@ -241,9 +241,9 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
  *
  * @pre ``ra_mstp_init`` and ``ra_pwr_init`` have been called.
  * @pre IRQs masked or single-threaded init context.
- * @post On success, ``s_state.initialised == true`` and the ring
+ * @post On success, ``s_state.initialized == true`` and the ring
  *       is empty.
- * @post On failure, ``s_state.initialised == false`` and ra_eth has
+ * @post On failure, ``s_state.initialized == false`` and ra_eth has
  *       been torn down.
  *
  * @note Not thread-safe; must run from boot init context.
@@ -262,7 +262,7 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
   s_state.link_state  = k_ra_net_pal_link_down;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
-  s_state.initialised = true;
+  s_state.initialized = true;
   internal_ring_reset();
 
   if (mac != nullptr) {
@@ -273,7 +273,7 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
   if (att_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
     /* GCOVR_EXCL_START */
     ra_log_error_val(s_tag, "ra_eth_attach_handler failed", (uint32_t)att_err);
-    s_state.initialised = false;
+    s_state.initialized = false;
     (void)ra_eth_deinit();
     return k_ra_err_hw_init_failed;
     /* GCOVR_EXCL_STOP */
@@ -293,11 +293,11 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
  *
  * @return ``ra_err_t`` error code from ``ra_eth_deinit``.
  * @retval k_ra_ok                   Released cleanly.
- * @retval k_ra_err_invalid_state    PAL was never initialised.
+ * @retval k_ra_err_invalid_state    PAL was never initialized.
  *
  * @pre IRQs masked or single-threaded shutdown context.
- * @pre PAL was previously initialised (otherwise returns invalid_state).
- * @post ``s_state.initialised == false``.
+ * @pre PAL was previously initialized (otherwise returns invalid_state).
+ * @post ``s_state.initialized == false``.
  * @post Subsequent send/recv calls return ``k_ra_err_invalid_state``.
  *
  * @note Not thread-safe.
@@ -306,12 +306,12 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
  */
 ra_err_t ra_net_pal_deinit(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   (void)ra_eth_attach_handler(nullptr, nullptr);
   const ra_err_t err  = ra_eth_deinit();
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
   s_state.link_state  = k_ra_net_pal_link_down;
@@ -331,10 +331,10 @@ ra_err_t ra_net_pal_deinit(void)
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  MAC stored.
  * @retval k_ra_err_null_ptr        ``mac`` was NULL.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  *
  * @pre ``mac`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @post ``s_state.mac`` mirrors the supplied descriptor.
  * @post No other PAL state is mutated.
  *
@@ -344,7 +344,7 @@ ra_err_t ra_net_pal_deinit(void)
 ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
 {
   RA_CHECK_NULL_PTR(mac, s_tag, "set_mac_addr: mac");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   internal_copy_bytes(s_state.mac.bytes, mac->bytes, k_ra_net_pal_mac_addr_len);
@@ -361,10 +361,10 @@ ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  MAC copied.
  * @retval k_ra_err_null_ptr        ``out_mac`` was NULL.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  *
  * @pre ``out_mac`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @post ``out_mac`` holds the current MAC.
  * @post No PAL state is modified.
  *
@@ -374,7 +374,7 @@ ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
 ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
 {
   RA_CHECK_NULL_PTR(out_mac, s_tag, "get_mac_addr: out_mac");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   internal_copy_bytes(out_mac->bytes, s_state.mac.bytes, k_ra_net_pal_mac_addr_len);
@@ -399,11 +399,11 @@ ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
  * @retval k_ra_ok                  Frame queued.
  * @retval k_ra_err_null_ptr        ``frame`` was NULL.
  * @retval k_ra_err_invalid_arg     ``len`` zero or above ``k_ra_net_pal_frame_max``.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  * @retval k_ra_err_no_mem          TX ring is full; retry after drain.
  *
  * @pre ``frame`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @post On success, ``s_state.count`` is incremented by one.
  * @post On error, no ring state is mutated.
  *
@@ -414,7 +414,7 @@ ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
 ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
 {
   RA_CHECK_NULL_PTR(frame, s_tag, "send_frame: frame");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if ((len == 0U) || (len > k_ra_net_pal_frame_max)) {
@@ -452,7 +452,7 @@ ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
  * @retval k_ra_ok                 Frame copied.
  * @retval k_ra_err_no_data        No frame ready.
  * @retval k_ra_err_null_ptr       ``out_buf`` or ``inout_len`` NULL.
- * @retval k_ra_err_invalid_state  PAL not initialised.
+ * @retval k_ra_err_invalid_state  PAL not initialized.
  * @retval k_ra_err_invalid_arg    ``*inout_len`` < ``k_ra_net_pal_frame_max``.
  *
  * @pre ``out_buf`` and ``inout_len`` are non-NULL.
@@ -468,7 +468,7 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "recv_frame: out_buf");
   RA_CHECK_NULL_PTR(inout_len, s_tag, "recv_frame: inout_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (*inout_len < k_ra_net_pal_frame_max) {
@@ -491,7 +491,7 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
 ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "link_status: out_state");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out_state = s_state.link_state;
@@ -511,9 +511,9 @@ ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Handler installed/cleared.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre ``fn`` is callable from ISR context if it is non-NULL.
  * @post ``s_state.event_fn == fn`` and ``s_state.event_ctx == ctx``.
  * @post No other PAL state is mutated.
@@ -523,7 +523,7 @@ ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
  */
 ra_err_t ra_net_pal_set_event_handler(ra_net_pal_event_fn_t fn, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.event_fn  = fn;

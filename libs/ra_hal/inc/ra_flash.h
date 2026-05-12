@@ -282,7 +282,7 @@ typedef void (*ra_flash_callback_t)(const ra_flash_isr_event_t* ev);
  * @param[in] cfg Non-NULL configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Controller initialised, in read mode.
+ * @retval k_ra_ok Controller initialized, in read mode.
  * @retval k_ra_err_null_ptr ``cfg`` was NULL.
  * @retval k_ra_err_invalid_arg ``cfg->mrcfreq_mhz`` > 0x0FA or
  * ``cfg->mrefreq_mhz`` > 0x07D.
@@ -881,7 +881,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  */
 uint32_t ra_flash_dispatch_isr(void);
 

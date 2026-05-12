@@ -182,20 +182,33 @@ typedef enum : uint16_t {
  * report calls land on the right interface.
  */
 typedef struct {
-  uint8_t        device_address;        /**< Assigned USB address (1..127).      */
-  uint8_t        intr_in_ep;            /**< Attached device's intr IN EP num.   */
-  uint8_t        intr_out_ep;           /**< Attached device's intr OUT EP num
+  // cppcheck-suppress unusedStructMember
+  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  // cppcheck-suppress unusedStructMember
+  uint8_t intr_in_ep; /**< Attached device's intr IN EP num.   */
+  // cppcheck-suppress unusedStructMember
+  uint8_t intr_out_ep; /**< Attached device's intr OUT EP num
                                           (0 if absent).                      */
-  uint8_t        interface_number;      /**< HID bInterfaceNumber.               */
-  uint8_t        subclass;              /**< bInterfaceSubClass (boot=1).        */
-  uint8_t        protocol;              /**< bInterfaceProtocol (kb=1, ms=2).    */
-  uint16_t       intr_in_max_packet;    /**< Attached intr-IN wMaxPacketSize.    */
-  uint16_t       intr_out_max_packet;   /**< Attached intr-OUT wMaxPacketSize.   */
-  uint16_t       vendor_id;             /**< idVendor from device descriptor.    */
-  uint16_t       product_id;            /**< idProduct from device descriptor.   */
-  uint16_t       report_descriptor_len; /**< Cached Report desc length.          */
-  const uint8_t* hid_descriptor;        /**< Pointer to cached HID class desc.   */
-  const uint8_t* report_descriptor;     /**< Pointer to cached HID Report desc.  */
+  // cppcheck-suppress unusedStructMember
+  uint8_t interface_number; /**< HID bInterfaceNumber.               */
+  // cppcheck-suppress unusedStructMember
+  uint8_t subclass; /**< bInterfaceSubClass (boot=1).        */
+  // cppcheck-suppress unusedStructMember
+  uint8_t protocol; /**< bInterfaceProtocol (kb=1, ms=2).    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t intr_in_max_packet; /**< Attached intr-IN wMaxPacketSize.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t intr_out_max_packet; /**< Attached intr-OUT wMaxPacketSize.   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t product_id; /**< idProduct from device descriptor.   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t report_descriptor_len; /**< Cached Report desc length.          */
+  // cppcheck-suppress unusedStructMember
+  const uint8_t* hid_descriptor; /**< Pointer to cached HID class desc.   */
+  // cppcheck-suppress unusedStructMember
+  const uint8_t* report_descriptor; /**< Pointer to cached HID Report desc.  */
 } ra_usb_hhid_device_t;
 
 /**
@@ -252,7 +265,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -284,7 +297,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Callback installed.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre `ra_usb_hhid_init` has run.
  *
@@ -321,7 +334,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  * @retval k_ra_ok Control transfer queued; on completion `*got_len`
  *         reflects the count.
  * @retval k_ra_err_null_ptr `out_buf` or `got_len` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg Bogus `target_report_type` or
  *         `max_len == 0`.
@@ -359,7 +372,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
  * @retval k_ra_err_null_ptr `in_buf` was NULL with non-zero `len`.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg Bogus `target_report_type`.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
@@ -392,7 +405,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
  *
@@ -418,7 +431,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg `boot_or_report` out of range.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
@@ -455,7 +468,7 @@ typedef void (*ra_usb_hhid_attach_fn_t)(void* ctx, const ra_usb_hhid_device_t* d
  * @retval k_ra_ok Bytes drained; `*got_len` reflects the count.
  * @retval k_ra_err_no_data Pipe was empty.
  * @retval k_ra_err_null_ptr `out_buf` or `got_len` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg `max_len == 0`.
  *
@@ -486,7 +499,7 @@ ra_usb_hhid_get_input_report(uint8_t* out_buf, uint16_t max_len, uint16_t* got_l
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_hhid_init` succeeded.
  *

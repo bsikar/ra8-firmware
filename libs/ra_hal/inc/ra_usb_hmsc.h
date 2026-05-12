@@ -183,15 +183,24 @@ typedef enum : uint16_t {
  * copy it) so subsequent SCSI calls land on the right LUN.
  */
 typedef struct {
-  uint8_t  device_address;      /**< Assigned USB address (1..127).      */
-  uint8_t  bulk_in_ep;          /**< Attached device's bulk IN EP num.   */
-  uint8_t  bulk_out_ep;         /**< Attached device's bulk OUT EP num.  */
-  uint8_t  max_lun;             /**< Get-Max-LUN response (0..15).       */
-  uint8_t  interface_number;    /**< MSC bInterfaceNumber.               */
-  uint16_t bulk_in_max_packet;  /**< Attached bulk-IN wMaxPacketSize.    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bulk_in_ep; /**< Attached device's bulk IN EP num.   */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bulk_out_ep; /**< Attached device's bulk OUT EP num.  */
+  // cppcheck-suppress unusedStructMember
+  uint8_t max_lun; /**< Get-Max-LUN response (0..15).       */
+  // cppcheck-suppress unusedStructMember
+  uint8_t interface_number; /**< MSC bInterfaceNumber.               */
+  // cppcheck-suppress unusedStructMember
+  uint16_t bulk_in_max_packet; /**< Attached bulk-IN wMaxPacketSize.    */
+  // cppcheck-suppress unusedStructMember
   uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize.   */
-  uint16_t vendor_id;           /**< idVendor from device descriptor.    */
-  uint16_t product_id;          /**< idProduct from device descriptor.   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t product_id; /**< idProduct from device descriptor.   */
 } ra_usb_hmsc_device_t;
 
 /**
@@ -203,13 +212,20 @@ typedef struct {
  * wire; the driver copies them in unchanged.
  */
 typedef struct {
-  uint8_t peripheral_qualifier;   /**< Bits [7:5] of byte 0.    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t peripheral_qualifier; /**< Bits [7:5] of byte 0.    */
+  // cppcheck-suppress unusedStructMember
   uint8_t peripheral_device_type; /**< Bits [4:0] of byte 0.    */
-  uint8_t removable;              /**< 1 = removable medium.    */
-  uint8_t version;                /**< SPC version code.        */
-  uint8_t vendor_id[8];           /**< T10 Vendor ID, ASCII.    */
-  uint8_t product_id[16];         /**< Product ID, ASCII.       */
-  uint8_t product_revision[4];    /**< Product revision, ASCII. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t removable; /**< 1 = removable medium.    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t version; /**< SPC version code.        */
+  // cppcheck-suppress unusedStructMember
+  uint8_t vendor_id[8]; /**< T10 Vendor ID, ASCII.    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t product_id[16]; /**< Product ID, ASCII.       */
+  // cppcheck-suppress unusedStructMember
+  uint8_t product_revision[4]; /**< Product revision, ASCII. */
 } ra_usb_hmsc_inquiry_response_t;
 
 /**
@@ -267,7 +283,7 @@ typedef void (*ra_usb_hmsc_attach_fn_t)(void* ctx, const ra_usb_hmsc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -299,7 +315,7 @@ typedef void (*ra_usb_hmsc_attach_fn_t)(void* ctx, const ra_usb_hmsc_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Callback installed.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre `ra_usb_hmsc_init` has run.
  *
@@ -330,7 +346,7 @@ typedef void (*ra_usb_hmsc_attach_fn_t)(void* ctx, const ra_usb_hmsc_device_t* d
  * @return `ra_err_t` error code.
  * @retval k_ra_ok INQUIRY succeeded.
  * @retval k_ra_err_null_ptr `response` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg `target_lun` out of range.
  * @retval k_ra_err_hw_error BBB transfer failed (CSW status != 0).
@@ -362,7 +378,7 @@ typedef void (*ra_usb_hmsc_attach_fn_t)(void* ctx, const ra_usb_hmsc_device_t* d
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Capacity read.
  * @retval k_ra_err_null_ptr Either pointer was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg `target_lun` out of range.
  * @retval k_ra_err_hw_error BBB transfer failed.
@@ -395,7 +411,7 @@ ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, uint32_t* b
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Read complete.
  * @retval k_ra_err_null_ptr `out_buf` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg Argument out of range (zero block
  *         count, bogus LUN).
@@ -428,7 +444,7 @@ ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Write complete.
  * @retval k_ra_err_null_ptr `in_buf` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg Argument out of range.
  * @retval k_ra_err_hw_error BBB transfer failed.
@@ -460,7 +476,7 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_hmsc_init` succeeded.
  *

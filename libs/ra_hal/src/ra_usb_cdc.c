@@ -88,7 +88,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the CDC function.
  */
 typedef struct {
-  bool                     initialised; /**< True after `ra_usb_cdc_init`. */
+  bool                     initialized; /**< True after `ra_usb_cdc_init`. */
   ra_usb_speed_t           speed;       /**< Underlying controller.        */
   ra_usb_cdc_line_coding_t coding;      /**< Most recent line coding.      */
   bool                     dtr;         /**< DTR shadow.                   */
@@ -223,7 +223,7 @@ ra_err_t ra_usb_cdc_init(ra_usb_speed_t speed)
     (void)ra_usb_device_deinit(speed);
     return pipes_err;
   }
-  s_state.initialised = true;
+  s_state.initialized = true;
   ra_log_info(s_tag, "CDC ready");
   return k_ra_ok;
 }
@@ -231,12 +231,12 @@ ra_err_t ra_usb_cdc_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_cdc_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_deinit(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   (void)ra_usb_device_attach(s_state.speed, false);
   const ra_err_t err  = ra_usb_device_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.dtr         = false;
   s_state.rts         = false;
   return err;
@@ -245,7 +245,7 @@ ra_err_t ra_usb_cdc_deinit(void)
 /* Implementation of ra_usb_cdc_attach (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_attach(bool attached)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   return ra_usb_device_attach(s_state.speed, attached);
@@ -259,7 +259,7 @@ ra_err_t ra_usb_cdc_attach(bool attached)
 /* Implementation of ra_usb_cdc_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_send(const uint8_t* data, uint16_t len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if ((data == nullptr) && (len != 0U)) {
@@ -273,7 +273,7 @@ ra_err_t ra_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "cdc_recv: out_buf");
   RA_CHECK_NULL_PTR(inout_len, s_tag, "cdc_recv: inout_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (*inout_len == 0U) {
@@ -365,7 +365,7 @@ static ra_err_t internal_dispatch_class_setup(const ra_usb_setup_t* setup)
 ra_err_t ra_usb_cdc_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if ((setup->bm_request_type != k_ra_cdc_bm_class_recip_iface) &&
@@ -379,7 +379,7 @@ ra_err_t ra_usb_cdc_handle_setup(const ra_usb_setup_t* setup)
 ra_err_t ra_usb_cdc_get_line_coding(ra_usb_cdc_line_coding_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "get_line_coding: out");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out = s_state.coding;
@@ -391,7 +391,7 @@ ra_err_t ra_usb_cdc_get_line_state(bool* out_dtr, bool* out_rts)
 {
   RA_CHECK_NULL_PTR(out_dtr, s_tag, "get_line_state: out_dtr");
   RA_CHECK_NULL_PTR(out_rts, s_tag, "get_line_state: out_rts");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out_dtr = s_state.dtr;

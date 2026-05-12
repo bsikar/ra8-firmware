@@ -81,7 +81,7 @@ static void internal_safe_strcpy(char* dst, const char* src, uint32_t cap)
  * @retval k_ra_ok            Message handed to the secure logger.
  * @retval k_ra_err_null_ptr  A pointer argument was NULL.
  *
- * @pre TrustZone substrate has been initialised.
+ * @pre TrustZone substrate has been initialized.
  * @pre Both strings reside in the NS data region.
  * @post Tag/message copied into secure scratch and forwarded.
  * @post Strings truncated to ``k_ra_nsc_log_msg_max_len-1`` if longer.

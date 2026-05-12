@@ -33,7 +33,7 @@ from pathlib import Path
 # Canonical init-order ranking. Higher rank = later in boot.
 #
 # Anything not listed here is implicitly rank PERIPHERAL_RANK (peripherals
-# must be initialised after the core CGC -> MSTP -> IOPORT chain).
+# must be initialized after the core CGC -> MSTP -> IOPORT chain).
 RANK_CGC = 10
 RANK_MSTP = 20
 RANK_IOPORT = 30

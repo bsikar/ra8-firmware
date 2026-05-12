@@ -445,7 +445,7 @@ static void test_set_delay_batch_bad_inputs(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_set_delay_not_initialised(void)
+static void test_set_delay_not_initialized(void)
 {
   TEST_BEGIN("pdg set_delay before init");
   prep();
@@ -1189,7 +1189,7 @@ int32_t main(void)
   test_get_delay_round_trip();
   test_set_delay_batch_happy();
   test_set_delay_batch_bad_inputs();
-  test_set_delay_not_initialised();
+  test_set_delay_not_initialized();
   test_delay_ns_to_code_low_band();
   test_power_transition();
   test_channel_bypass_set();

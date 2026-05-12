@@ -830,7 +830,7 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_validate_boundary(uint16_t addr)

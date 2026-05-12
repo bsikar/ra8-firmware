@@ -787,7 +787,7 @@ void ra_wdt_dispatch(void);
  * HUM Ch 14.2.14 p 542 -- NMIER is sticky-set; once written it cannot
  * be cleared by software except via the matching ``ra_wdt_uninstall_nmi``
  * helper which goes through ``ra_icu_nmi_disable``. Use this from the
- * boot sequence after the ICU is initialised but before the WDT
+ * boot sequence after the ICU is initialized but before the WDT
  * starts decrementing.
  *
  * @return ``ra_err_t``

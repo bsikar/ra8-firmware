@@ -96,7 +96,7 @@ static ra_ota_state_t s_state = k_ra_ota_state_idle;
 static ra_ota_cfg_t s_cfg;
 
 /** @brief True once ``ra_ota_init`` has succeeded. */
-static bool s_initialised = false;
+static bool s_initialized = false;
 
 /** @brief Cached decoded manifest from the most recent check. */
 static ra_ota_manifest_t s_manifest;
@@ -143,7 +143,7 @@ typedef enum : uint32_t {
  * @param[in] new_state New SM state.
  * @param[in] err       Error to surface (k_ra_ok on healthy paths).
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre Caller is the single OTA worker (no concurrent callers).
  * @post ``s_state`` == new_state.
  * @post ``s_last_err`` == err.
@@ -183,7 +183,7 @@ static void priv_set_state(ra_ota_state_t new_state, ra_err_t err)
  * @retval k_ra_err_null_ptr A required net function pointer is NULL.
  *
  * @pre ``cfg`` is non-NULL.
- * @pre Module is in the process of being initialised.
+ * @pre Module is in the process of being initialized.
  * @post Returns k_ra_ok iff every net pointer is non-NULL.
  * @post No state mutated.
  *
@@ -213,7 +213,7 @@ static ra_err_t priv_validate_cfg_net(const ra_ota_cfg_t* cfg)
  * @retval k_ra_err_null_ptr A required crypto function pointer is NULL.
  *
  * @pre ``cfg`` is non-NULL.
- * @pre Module is in the process of being initialised.
+ * @pre Module is in the process of being initialized.
  * @post Returns k_ra_ok iff every crypto pointer is non-NULL.
  * @post No state mutated.
  *
@@ -245,7 +245,7 @@ static ra_err_t priv_validate_cfg_crypto(const ra_ota_cfg_t* cfg)
  * @retval k_ra_err_invalid_arg ``bank_size_bytes`` is zero or above the cap.
  *
  * @pre ``cfg`` is non-NULL.
- * @pre Module is in the process of being initialised.
+ * @pre Module is in the process of being initialized.
  * @post Returns k_ra_ok iff all callbacks are present and the bank size is sane.
  * @post No state mutated.
  *
@@ -329,7 +329,7 @@ static ra_err_t priv_validate_cfg(const ra_ota_cfg_t* cfg)
  * @retval k_ra_ok        Drain completed (possibly short on EOF).
  * @retval other          Whatever the network backend returned.
  *
- * @pre Module is initialised and ``s_cfg.net.read`` is set.
+ * @pre Module is initialized and ``s_cfg.net.read`` is set.
  * @pre ``dst`` and ``out_n`` are non-NULL.
  * @post On success ``*out_n`` reflects bytes written into ``dst``.
  * @post On failure ``*out_n`` is unspecified.
@@ -485,7 +485,7 @@ ra_err_t ra_ota_internal_json_u32(const char* json, const char* key, uint32_t* o
  * @note Static helper; pure function.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static uint8_t priv_hex_nibble(char c)
@@ -654,7 +654,7 @@ static ra_err_t priv_manifest_decode(const char* json, ra_ota_manifest_t* out)
  * @brief Initialise the OTA module from a caller-supplied configuration.
  *
  * @details
- * Verifies the module is in the un-initialised state, runs the full
+ * Verifies the module is in the un-initialized state, runs the full
  * ``priv_validate_cfg`` check on ``cfg``, then captures the descriptor
  * by-value into ``s_cfg`` and resets the state machine to
  * ``k_ra_ota_state_idle``.
@@ -662,12 +662,12 @@ static ra_err_t priv_manifest_decode(const char* json, ra_ota_manifest_t* out)
  * @param[in] cfg Configuration descriptor (function pointers + URLs).
  *
  * @return ra_err_t outcome.
- * @retval k_ra_ok                Module initialised.
- * @retval k_ra_err_invalid_state Module already initialised.
+ * @retval k_ra_ok                Module initialized.
+ * @retval k_ra_err_invalid_state Module already initialized.
  * @retval k_ra_err_null_ptr      ``cfg`` (or sub-pointer) was NULL.
  * @retval k_ra_err_invalid_arg   Configuration field out of range.
  *
- * @pre Module is uninitialised (or ``ra_ota_deinit`` was called).
+ * @pre Module is uninitialized (or ``ra_ota_deinit`` was called).
  * @pre All function pointers in ``cfg`` are wired up.
  * @post On success the module is in ``k_ra_ota_state_idle``.
  * @post On failure no module state was mutated.
@@ -686,7 +686,7 @@ static ra_err_t priv_manifest_decode(const char* json, ra_ota_manifest_t* out)
  */
 ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
 {
-  if (s_initialised) {
+  if (s_initialized) {
     return k_ra_err_invalid_state;
   }
   const ra_err_t e = priv_validate_cfg(cfg);
@@ -698,14 +698,14 @@ ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
   s_manifest_valid = false;
   s_bytes_done     = 0U;
   s_last_err       = k_ra_ok;
-  s_initialised    = true;
+  s_initialized    = true;
   /* run_as_thread is honoured by an external adapter -- on host the
    * caller drives ra_ota_run_step() directly. */
   return k_ra_ok;
 }
 
 /**
- * @brief Reset the OTA module to its un-initialised state.
+ * @brief Reset the OTA module to its un-initialized state.
  *
  * @details
  * Clears the cached configuration, manifest, byte-counter and last
@@ -715,7 +715,7 @@ ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
  * @retval k_ra_ok Always succeeds.
  *
  * @pre None (safe to call before init).
- * @post ``s_initialised`` is false.
+ * @post ``s_initialized`` is false.
  * @post ``s_cfg`` is zeroed.
  *
  * @see ra_ota_init()
@@ -724,11 +724,11 @@ ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
  *       is running.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  */
 ra_err_t ra_ota_deinit(void)
 {
-  s_initialised    = false;
+  s_initialized    = false;
   s_state          = k_ra_ota_state_idle;
   s_manifest_valid = false;
   s_bytes_done     = 0U;
@@ -745,7 +745,7 @@ ra_err_t ra_ota_deinit(void)
  * so a torn read is impossible on the target.
  *
  * @return ra_ota_state_t outcome.
- * @retval k_ra_ota_state_idle Module not initialised, or genuinely idle.
+ * @retval k_ra_ota_state_idle Module not initialized, or genuinely idle.
  * @retval other               Whatever state the worker last latched.
  *
  * @pre None (safe to call before init -- returns ``idle``).
@@ -756,7 +756,7 @@ ra_err_t ra_ota_deinit(void)
  * @note Thread-safe: yes -- single-byte read of a static.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 ra_ota_state_t ra_ota_get_state(void)
@@ -780,7 +780,7 @@ ra_ota_state_t ra_ota_get_state(void)
  * @retval k_ra_err_invalid_size  Server advertised too large a body.
  * @retval other                  Whatever the network backend returned.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre ``out_got`` non-NULL.
  * @post On success ``s_buf[0..*out_got]`` holds the payload + trailing NUL.
  * @post On failure the network connection has been closed.
@@ -823,7 +823,7 @@ static ra_err_t priv_fetch_manifest_payload(uint32_t* out_got)
  *
  * @return ra_err_t outcome.
  * @retval k_ra_ok                  Manifest cached and returned.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_null_ptr        ``out_manifest`` was NULL.
  * @retval k_ra_err_invalid_state   Module not in ``idle``.
  * @retval other                    Network or decode error.
@@ -840,7 +840,7 @@ static ra_err_t priv_fetch_manifest_payload(uint32_t* out_got)
  */
 ra_err_t ra_ota_check_for_update(ra_ota_manifest_t* out_manifest)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(out_manifest, s_tag, "out_manifest");
@@ -1009,7 +1009,7 @@ static ra_err_t priv_download_loop(const ra_ota_manifest_t* manifest)
  *
  * @return ra_err_t outcome.
  * @retval k_ra_ok                  Download complete; ready to verify.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_null_ptr        ``manifest`` was NULL.
  * @retval k_ra_err_invalid_state   Module not in ``idle`` or ``downloading``.
  * @retval k_ra_err_invalid_size    Image larger than the configured bank.
@@ -1027,7 +1027,7 @@ static ra_err_t priv_download_loop(const ra_ota_manifest_t* manifest)
  */
 ra_err_t ra_ota_download_to_inactive_bank(const ra_ota_manifest_t* manifest)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(manifest, s_tag, "manifest");
@@ -1134,7 +1134,7 @@ static ra_err_t priv_rehash_bank(const ra_ota_manifest_t* m, uint8_t out_digest[
  *
  * @return ra_err_t outcome.
  * @retval k_ra_ok                  Image authenticated.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_null_ptr        ``manifest`` was NULL.
  * @retval k_ra_err_invalid_state   Module not in ``verifying``.
  * @retval k_ra_err_crc_mismatch    SHA-256 mismatch (image corrupt).
@@ -1153,7 +1153,7 @@ static ra_err_t priv_rehash_bank(const ra_ota_manifest_t* m, uint8_t out_digest[
  */
 ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(manifest, s_tag, "manifest");
@@ -1196,7 +1196,7 @@ ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
  * @return ra_err_t outcome.
  * @retval k_ra_ok                  Bank latched (the call normally
  *                                  doesn't return on hardware).
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_invalid_state   Module not in ``committing``.
  * @retval other                    Backend error from set_startup.
  *
@@ -1212,7 +1212,7 @@ ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
  */
 ra_err_t ra_ota_commit_and_reboot(void)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (s_state != k_ra_ota_state_committing) {
@@ -1245,13 +1245,13 @@ ra_err_t ra_ota_commit_and_reboot(void)
  * @retval k_ra_ok Step completed (or terminal state reached).
  * @retval other   Whatever the dispatched function returned.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post The state machine has advanced by at most one transition.
  *
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static ra_err_t priv_step_dispatch(void)
@@ -1289,12 +1289,12 @@ static ra_err_t priv_step_dispatch(void)
  *
  * @details
  * Thin wrapper over ``priv_step_dispatch`` that gates on
- * ``s_initialised``. Intended for callers that opted out of running
+ * ``s_initialized``. Intended for callers that opted out of running
  * the OTA worker as a background thread.
  *
  * @return ra_err_t outcome.
  * @retval k_ra_ok                  Step completed.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval other                    Step-specific error.
  *
  * @pre ``ra_ota_init`` succeeded.
@@ -1306,12 +1306,12 @@ static ra_err_t priv_step_dispatch(void)
  * @note Thread-safe: no -- single owner only.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 ra_err_t ra_ota_run_step(void)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   return priv_step_dispatch();
@@ -1328,7 +1328,7 @@ ra_err_t ra_ota_run_step(void)
  *
  * @return ra_err_t outcome.
  * @retval k_ra_ok                  Update completed (or already done).
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval other                    Whatever the failing step returned.
  *
  * @pre ``ra_ota_init`` succeeded.
@@ -1339,12 +1339,12 @@ ra_err_t ra_ota_run_step(void)
  * @note Thread-safe: no.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 ra_err_t ra_ota_run_full_update(void)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   /* Bounded by the longest legal sequence (idle -> checking ->

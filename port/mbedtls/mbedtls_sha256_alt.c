@@ -94,7 +94,7 @@ void mbedtls_sha256_free(mbedtls_sha256_context* ctx)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -179,7 +179,7 @@ int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.

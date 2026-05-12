@@ -123,7 +123,7 @@ static ra_etha_slot_t s_slots[k_ra_etha_port_count];
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -146,7 +146,7 @@ static inline bool internal_port_ok(ra_etha_port_t port)
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -169,7 +169,7 @@ static inline bool internal_tc_ok(ra_etha_tc_t tc)
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -846,7 +846,7 @@ ra_err_t ra_etha_set_security(ra_etha_port_t port, uint32_t mask)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -871,7 +871,7 @@ static inline bool internal_ring_args_ok(uint16_t num_tx, uint16_t num_rx, uint1
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

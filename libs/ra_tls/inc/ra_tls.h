@@ -211,7 +211,7 @@ struct ra_tls_session_handle;
  * @brief Opaque TLS session handle (typed pointer into the static pool).
  *
  * @details
- * NULL is a sentinel for "uninitialised handle". The only legal way to
+ * NULL is a sentinel for "uninitialized handle". The only legal way to
  * obtain a non-NULL value is ``ra_tls_session_open``; passing any
  * other pointer to ``ra_tls_session_close`` and friends is undefined
  * behaviour from the caller's perspective and yields
@@ -236,22 +236,22 @@ typedef struct ra_tls_session_handle* ra_tls_session_t;
  * ``ra_tls_global_deinit`` return ``k_ra_err_exists``.
  *
  * Algorithm:
- * 1. If already initialised, return ``k_ra_err_exists``.
+ * 1. If already initialized, return ``k_ra_err_exists``.
  * 2. Initialise the entropy + CTR_DRBG state in ``.bss``.
  * 3. Walk the session pool and call ``mbedtls_ssl_init`` /
  *    ``mbedtls_ssl_config_init`` on each slot so close-without-open
  *    paths are well-defined.
- * 4. Mark the module initialised.
+ * 4. Mark the module initialized.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok            Facade ready.
- * @retval k_ra_err_exists    Already initialised this boot.
+ * @retval k_ra_err_exists    Already initialized this boot.
  * @retval k_ra_err_hw_error  CTR_DRBG seed (entropy) failed.
  *
  * @pre Mbed TLS has been built into the firmware image (``RA_USE_MBEDTLS=ON``)
  *      OR ``RA_SIMULATOR_MODE`` is defined for the host unit-test build.
  * @pre RSIP TRNG is reachable (skipped in simulator mode).
- * @post Module is in the initialised state on success.
+ * @post Module is in the initialized state on success.
  * @post Session pool is fully reset (no slot held).
  *
  * @note Not re-entrant. Call from the boot path before any TLS session
@@ -276,7 +276,7 @@ ra_err_t ra_tls_global_init(void);
  *
  * @details
  * Frees every still-open session, wipes the CTR_DRBG state, and
- * marks the module uninitialised so a subsequent
+ * marks the module uninitialized so a subsequent
  * ``ra_tls_global_init`` succeeds again.
  *
  * @return ra_err_t Error code.
@@ -284,8 +284,8 @@ ra_err_t ra_tls_global_init(void);
  * @retval k_ra_err_not_initialized ``ra_tls_global_init`` was never called.
  *
  * @pre None (safe to call before any session open).
- * @pre Module was previously initialised.
- * @post Pool is empty and module is not initialised.
+ * @pre Module was previously initialized.
+ * @post Pool is empty and module is not initialized.
  * @post All ``mbedtls_*`` contexts freed.
  *
  * @note Not re-entrant.
@@ -351,7 +351,7 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
  * @retval k_ra_err_not_initialized ``ra_tls_global_init`` was never called.
  *
  * @pre ``session`` was returned by ``ra_tls_session_open``.
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post Slot is free and may be re-issued.
  * @post No further use of ``session`` is permitted (use-after-free is
  *       caller's bug).
@@ -381,7 +381,7 @@ ra_err_t ra_tls_session_close(ra_tls_session_t session);
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Handshake complete.
  * @retval k_ra_err_invalid_arg     ``session`` invalid.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_would_block     BIO is non-blocking; retry later.
  * @retval k_ra_err_comm_error      Mbed TLS reported a fatal handshake
  *                                  failure (cert / protocol / decode).
@@ -416,7 +416,7 @@ ra_err_t ra_tls_handshake(ra_tls_session_t session);
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Wrote ``*out_sent`` bytes.
  * @retval k_ra_err_invalid_arg     Any pointer NULL or session invalid.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_would_block     Non-blocking BIO returned WANT_WRITE.
  * @retval k_ra_err_comm_error      Fatal TLS-layer error.
  *
@@ -449,7 +449,7 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
  * @retval k_ra_ok                  Decrypted ``*out_received`` bytes
  *                                  (0 on clean close).
  * @retval k_ra_err_invalid_arg     Any pointer NULL or session invalid.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_would_block     No ciphertext available yet.
  * @retval k_ra_err_comm_error      Fatal TLS-layer error.
  *

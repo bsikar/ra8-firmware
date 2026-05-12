@@ -335,7 +335,7 @@ void ra_rsip_dispatch(void);
  * @pre ``buf`` is non-NULL.
  *
  * @post On success, ``buf[0..len-1]`` holds fresh random bytes.
- * @post On failure, the caller must treat ``buf`` as uninitialised.
+ * @post On failure, the caller must treat ``buf`` as uninitialized.
  *
  * @warning See file-level @warning -- the BIST gate is the only
  * safety check between this routine and biased output.
@@ -426,7 +426,7 @@ typedef enum : uint16_t {
 typedef struct {
   uint8_t  buf[k_ra_rsip_inc_buf_bytes]; /**< Accumulated message bytes.   */
   uint32_t used;                         /**< Bytes currently in ``buf``.  */
-  uint8_t  initialised;                  /**< 1 = ready, 0 = unset.        */
+  uint8_t  initialized;                  /**< 1 = ready, 0 = unset.        */
 } ra_rsip_sha256_ctx_t;
 
 /**
@@ -441,7 +441,7 @@ typedef struct {
  * @pre ``ra_rsip_init`` has been called at least once since reset.
  * @pre ``ctx`` is non-NULL.
  *
- * @post ``ctx->used == 0`` and ``ctx->initialised == 1``.
+ * @post ``ctx->used == 0`` and ``ctx->initialized == 1``.
  * @post No engine state is modified.
  *
  * @note Thread safety: not thread-safe.
@@ -471,10 +471,10 @@ typedef struct {
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                Bytes accumulated.
  * @retval k_ra_err_null_ptr      ``ctx`` was nullptr or ``data`` was NULL with non-zero ``len``.
- * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialized.
  * @retval k_ra_err_invalid_arg   Cumulative input exceeds ``k_ra_rsip_inc_buf_bytes``.
  *
- * @pre ``ctx->initialised == 1``.
+ * @pre ``ctx->initialized == 1``.
  * @pre Either ``len == 0`` or ``data`` is non-NULL.
  *
  * @post On success ``ctx->used`` grew by ``len``.
@@ -496,14 +496,14 @@ ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t l
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                Digest written.
  * @retval k_ra_err_null_ptr      ``ctx`` or ``digest_out`` was nullptr.
- * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialized.
  * @retval k_ra_err_hw_timeout    Underlying ``ra_rsip_sha256`` timed out.
  *
- * @pre ``ctx->initialised == 1``.
+ * @pre ``ctx->initialized == 1``.
  * @pre ``digest_out`` is non-NULL.
  *
  * @post On success ``digest_out[0..31]`` holds the SHA-256.
- * @post On any return ``ctx->initialised == 0``.
+ * @post On any return ``ctx->initialized == 0``.
  *
  * @note Thread safety: not thread-safe.
  * @see ra_rsip_sha256_init
@@ -530,7 +530,7 @@ ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t l
 typedef struct {
   ra_rsip_sha256_ctx_t inner;                             /**< Running inner-hash state.   */
   uint8_t              key_block[k_ra_rsip_sha256_block]; /**< Prepared 64-byte key block. */
-  uint8_t              initialised;                       /**< 1 = ready, 0 = unset.       */
+  uint8_t              initialized;                       /**< 1 = ready, 0 = unset.       */
 } ra_rsip_hmac_sha256_ctx_t;
 
 /**
@@ -548,7 +548,7 @@ typedef struct {
  * @pre ``ra_rsip_init`` has been called.
  * @pre ``ctx`` is non-NULL.
  *
- * @post ``ctx->initialised == 1``.
+ * @post ``ctx->initialized == 1``.
  * @post No engine state is modified beyond the optional key-collapse.
  *
  * @note Thread safety: not thread-safe.
@@ -568,10 +568,10 @@ ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uin
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                Bytes accumulated.
  * @retval k_ra_err_null_ptr      ``ctx`` was nullptr or ``data`` NULL with non-zero ``len``.
- * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialized.
  * @retval k_ra_err_invalid_arg   Cumulative input exceeds the buffer cap.
  *
- * @pre ``ctx->initialised == 1``.
+ * @pre ``ctx->initialized == 1``.
  * @pre Either ``len == 0`` or ``data`` is non-NULL.
  *
  * @post On success ``ctx->inner.used`` grew by ``len``.
@@ -593,14 +593,14 @@ ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, 
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                MAC written.
  * @retval k_ra_err_null_ptr      ``ctx`` or ``mac_out`` was nullptr.
- * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialized.
  * @retval k_ra_err_hw_timeout    Either SHA pass timed out.
  *
- * @pre ``ctx->initialised == 1``.
+ * @pre ``ctx->initialized == 1``.
  * @pre ``mac_out`` is non-NULL.
  *
  * @post On success ``mac_out[0..31]`` is the HMAC-SHA-256.
- * @post On any return ``ctx->initialised == 0``.
+ * @post On any return ``ctx->initialized == 0``.
  *
  * @note Thread safety: not thread-safe.
  * @see ra_rsip_hmac_sha256_init

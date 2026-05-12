@@ -1154,7 +1154,7 @@ dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* ou
  * @param[in,out] out_g See function signature.
  * @param[in,out] out_r See function signature.
  * @param[in,out] y See function signature.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -2276,7 +2276,7 @@ static void enc_convert_strip_to_ycc(const uint8_t* rgb,
  *
  * @return None.
  *
- * @pre `e` is initialised with valid Huffman LUTs.
+ * @pre `e` is initialized with valid Huffman LUTs.
  * @pre `pad_w > 0` and a multiple of 16.
  * @post `e->pos`/bit buffer advanced by the entropy bytes of every MCU in the strip.
  * @post Block sample order is byte-identical to the previous monolithic encoder.

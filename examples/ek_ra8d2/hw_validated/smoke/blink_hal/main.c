@@ -91,7 +91,7 @@ int32_t main(void)
  * @retval k_ra_err_invalid_arg   A LED id was rejected by the BSP.
  * @retval k_ra_err_gpio_conflict A pin was already claimed.
  *
- * @pre HAL pin validator initialised.
+ * @pre HAL pin validator initialized.
  * @post LED1..LED3 are output-low.
  */
 [[nodiscard]] static ra_err_t blink_pins_init(void)

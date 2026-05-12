@@ -70,7 +70,7 @@ typedef struct {
  * @details
  * Indexed by slot number 0..k_ra_isr_slot_count - 1. Updated by
  * ``ra_isr_register / unregister`` and read by ``ra_isr_dispatch``.
- * Static so it is zero-initialised at boot.
+ * Static so it is zero-initialized at boot.
  */
 static ra_isr_slot_t s_slots[k_ra_isr_slot_count];
 

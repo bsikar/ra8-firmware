@@ -169,7 +169,7 @@ void ra_sdhi_dispatch(uint8_t instance);
  * @retval k_ra_err_invalid_arg ``block_count`` was 0.
  * @retval k_ra_err_hw_timeout RSPEND or BRE poll exceeded the spin budget.
  *
- * @pre Card has been initialised through CMD0..ACMD41 + CMD2/3/7 by the consumer.
+ * @pre Card has been initialized through CMD0..ACMD41 + CMD2/3/7 by the consumer.
  * @pre ``ra_sdhi_init`` has been called for ``instance``.
  * @post On success ``buf[0..block_count*512]`` holds card data.
  * @post SD_INFO1.RSPEND and SD_INFO2 BRE bits are cleared.
@@ -204,7 +204,7 @@ ra_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint32_t block_
  * @retval k_ra_err_invalid_arg ``block_count`` was 0.
  * @retval k_ra_err_hw_timeout RSPEND or BWE poll exceeded the spin budget.
  *
- * @pre Card has been initialised through CMD0..ACMD41 + CMD2/3/7 by the consumer.
+ * @pre Card has been initialized through CMD0..ACMD41 + CMD2/3/7 by the consumer.
  * @pre Card is not write-protected (caller responsibility).
  * @post On success the requested block range has been pushed into the SDHI FIFO.
  * @post For multi-block writes a CMD12 STOP_TRANSMISSION has been issued.

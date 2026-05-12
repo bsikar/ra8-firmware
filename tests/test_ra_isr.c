@@ -272,7 +272,7 @@ static void test_lookup_slot_null_out(void)
  * delegates to internal_find_event.
  *
  * Vector mapping:
- * - Vec1: lookup on a freshly-initialised table (every slot in_use=F).
+ * - Vec1: lookup on a freshly-initialized table (every slot in_use=F).
  * - Vec2: register event 0x40 in slot 0, then lookup event 0x41 -- the
  *   loop hits slot 0 (in_use=T, event=0x40 != 0x41) then slot 1 free
  *   and returns slot_none.

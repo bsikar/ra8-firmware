@@ -322,11 +322,11 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  *
  * @par State Machine
  * @startuml
- * [*] --> uninitialised
- * uninitialised --> initialised: ra_vin_init
- * initialised --> capturing: ra_vin_capture_start
- * capturing --> initialised: ra_vin_capture_stop
- * initialised --> uninitialised: ra_vin_deinit
+ * [*] --> uninitialized
+ * uninitialized --> initialized: ra_vin_init
+ * initialized --> capturing: ra_vin_capture_start
+ * capturing --> initialized: ra_vin_capture_stop
+ * initialized --> uninitialized: ra_vin_deinit
  * @enduml
  *
  * @param[in] cfg Non-NULL configuration descriptor.
@@ -357,7 +357,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @return ra_err_t
  * @retval k_ra_ok Always.
  *
- * @pre Driver has been initialised (otherwise this is a no-op write).
+ * @pre Driver has been initialized (otherwise this is a no-op write).
  * @post MC.ME and FC.CC are 0.
  * @post Registered callback (if any) is cleared.
  *
@@ -477,7 +477,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr window was NULL.
  * @retval k_ra_err_invalid_arg end < start or value > 4095.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre `window != NULL`.
  * @post SLPRC/ELPRC/SPPRC/EPPRC reflect `window`.
  * @post Pre-clip-violation IRQs (PRCLIPH/PRCLIPV) become meaningful.
@@ -505,7 +505,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr scale was NULL.
  * @retval k_ra_err_invalid_arg Mantissa > 15 or fraction > 4095.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `scale != NULL`.
  * @post UDS_SCALE reflects `scale`.
  *
@@ -530,7 +530,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg Value > 127.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre v_bwidth + h_bwidth in legal 7-bit range.
  * @post UDS_PASS_BWIDTH reflects the new values.
  *
@@ -554,7 +554,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg Value > 4095.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Both sizes <= 4095.
  * @post UDS_CLIP_SIZE reflects the new values.
  *
@@ -578,7 +578,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_null_ptr ctrl was NULL.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `ctrl != NULL`.
  * @post UDS_CTRL reflects `ctrl`.
  *
@@ -596,7 +596,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @return ra_err_t
  * @retval k_ra_ok Always.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Capture not running (caller stops first if needed).
  * @post MC.SCLE matches `enable`.
  *
@@ -635,7 +635,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok LUT programmed.
  * @retval k_ra_err_null_ptr y_table was NULL.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Capture not running.
  * @post All 256 LUT entries reflect the supplied tables.
  * @post MC.LUTE matches `enable`.
@@ -668,7 +668,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Coefficients written.
  * @retval k_ra_err_null_ptr coeffs was NULL.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre `coeffs != NULL`.
  * @post CSCE1..4 reflect `coeffs`.
  *
@@ -695,7 +695,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr row was NULL.
  * @retval k_ra_err_invalid_arg channel > 2 or shift_down > 31.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre `row != NULL` and channel < 3.
  * @post YCCRn / CBCCRn / CRCCRn reflect `row`.
  *
@@ -726,7 +726,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg mode > 2.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre Mode value is one of `k_ra_vin_dc_*`.
  * @post MC.DC and MC.DC2 reflect the new values.
  *
@@ -749,7 +749,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg mode > 1.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre Mode is one of `k_ra_vin_yuv444_*`.
  * @post MC.YUV444 matches `mode`.
  *
@@ -768,7 +768,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg mode > 2.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre Mode is one of `k_ra_vin_im_*`.
  * @post MC.IM reflects `mode`.
  *
@@ -792,7 +792,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr mode was NULL.
  * @retval k_ra_err_invalid_arg conv_mode > 2 or y_mode > 3.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre `mode != NULL`.
  * @post DMR reflects `mode`.
  *
@@ -817,7 +817,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr input was NULL.
  * @retval k_ra_err_invalid_arg virtual_channel > 15 or data_type > 0x3F.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre `input != NULL`.
  * @post CSI_IFMD reflects `input`.
  *
@@ -837,7 +837,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_err_null_ptr detect was NULL.
  * @retval k_ra_err_invalid_arg even_field_num > 1.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `detect != NULL`.
  * @post CSIFLD reflects `detect`.
  *
@@ -863,7 +863,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg Any non-zero base unaligned.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre At least one of mb1/mb2/mb3 is non-zero.
  * @post Specified MBn registers reflect the new bases.
  *
@@ -883,7 +883,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg Address not 64-byte aligned.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `uv_addr` is either zero or 64-byte aligned.
  * @post UVAOF reflects `uv_addr`.
  *
@@ -1009,7 +1009,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @return ra_err_t
  * @retval k_ra_ok Always.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Caller has masked the VIN IRQ if updating mid-capture.
  * @post IE register equals `mask`.
  *
@@ -1028,7 +1028,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @retval k_ra_ok Programmed.
  * @retval k_ra_err_invalid_arg line > 4095.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `line` <= 4095.
  * @post SI register equals `line`.
  *
@@ -1095,7 +1095,7 @@ void ra_vin_dispatch(void);
  * @return ra_err_t error code from `ra_mstp_disable`.
  *
  * @pre Caller has stopped any in-flight CSI traffic.
- * @pre Driver was previously initialised.
+ * @pre Driver was previously initialized.
  * @post MC.ME = 0.
  * @post MIPI CSI MSTP gate is closed.
  *
@@ -1220,7 +1220,7 @@ ra_vin_capture_start(void* buf, uint16_t w, uint16_t h, ra_vin_input_fmt_t forma
  * @retval k_ra_ok Window programmed.
  * @retval k_ra_err_invalid_arg Arguments out of range.
  *
- * @pre Driver initialised, capture not running.
+ * @pre Driver initialized, capture not running.
  * @pre `w >= 1`, `h >= 1`, `x + w - 1 <= 4095`, `y + h - 1 <= 4095`.
  * @post SLPRC/ELPRC/SPPRC/EPPRC reflect the requested window.
  *

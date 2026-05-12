@@ -69,7 +69,7 @@ typedef struct {
   ra_vreg_ocp_t        ocp;          /**< Cached OCP level (no HW readback). */
   ra_vreg_lv_profile_t lv_profile;   /**< Cached LV profile.               */
   ra_vreg_standby_t    last_standby; /**< Last standby variant requested. */
-  bool                 initialised;  /**< True once `ra_vreg_init` ran.   */
+  bool                 initialized;  /**< True once `ra_vreg_init` ran.   */
   bool                 fast_startup; /**< Cached FST bit.                 */
   bool                 ldo_boost;    /**< Cached LCBOOST bit.             */
 } ra_vreg_state_t;
@@ -382,7 +382,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   s_state.fast_startup = cfg->fast_startup;
   s_state.ldo_boost    = cfg->ldo_boost;
   s_state.last_standby = k_ra_vreg_standby_software;
-  s_state.initialised  = true;
+  s_state.initialized  = true;
 
   ra_log_info(s_tag, "vreg_init");
   return k_ra_ok;
@@ -409,7 +409,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   s_state.lv_profile   = k_ra_vreg_lv_off;
   s_state.fast_startup = false;
   s_state.ldo_boost    = false;
-  s_state.initialised  = false;
+  s_state.initialized  = false;
   return k_ra_ok;
 }
 
@@ -611,7 +611,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 
 [[nodiscard]] ra_err_t ra_vreg_exit_standby(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_ok;
   }
   /* Restore VCCSEL before re-enabling DCDC.

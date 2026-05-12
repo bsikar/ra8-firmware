@@ -150,7 +150,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the composite-class driver.
  */
 typedef struct {
-  bool                     initialised; /**< True after init.                  */
+  bool                     initialized; /**< True after init.                  */
   ra_usb_speed_t           speed;       /**< Underlying controller.            */
   ra_usb_composite_state_t state;       /**< Dispatch state machine phase.     */
   uint8_t                  class_count; /**< Registered classes count.         */
@@ -399,7 +399,7 @@ static ra_err_t internal_route_class(const ra_usb_setup_t* setup, uint8_t* out_i
  */
 static inline ra_err_t internal_require_init(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   return k_ra_ok;
@@ -432,7 +432,7 @@ ra_err_t ra_usb_composite_init(ra_usb_speed_t speed)
     s_state.classes[i] = (ra_usb_composite_class_t){};
   }
   internal_clear_if_owners();
-  s_state.initialised = true;
+  s_state.initialized = true;
 
   ra_log_info_val(s_tag, "composite ready", (uint32_t)speed);
   return k_ra_ok;
@@ -441,7 +441,7 @@ ra_err_t ra_usb_composite_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_composite_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   /* Walk in reverse-registration order so a class registered late
@@ -457,7 +457,7 @@ ra_err_t ra_usb_composite_close(void)
   }
 
   const ra_err_t deinit_err = ra_usb_device_deinit(s_state.speed);
-  s_state.initialised       = false;
+  s_state.initialized       = false;
   s_state.class_count       = 0U;
   s_state.device_desc       = nullptr;
   s_state.config_desc       = nullptr;

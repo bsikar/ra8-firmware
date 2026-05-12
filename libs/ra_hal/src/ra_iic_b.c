@@ -123,7 +123,7 @@ typedef enum : uint32_t {
 typedef struct {
   ra_iic_b_complete_fn_t cb;          /**< Callback or NULL.            */
   void*                  ctx;         /**< Callback context.            */
-  bool                   initialised; /**< Tracks ``ra_iic_b_init`` /
+  bool                   initialized; /**< Tracks ``ra_iic_b_init`` /
                                          ``ra_iic_b_deinit``.           */
   bool                   bus_held;    /**< True when the previous
                                          transaction returned with
@@ -157,7 +157,7 @@ static ra_iic_b_state_t s_iic_b_state[k_ra_iic_b_channel_count];
  *
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -198,7 +198,7 @@ static uint8_t internal_iic_b_half_period(uint32_t bus_hz, uint32_t pclka_hz)
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -225,7 +225,7 @@ static ra_err_t internal_iic_b_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t 
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -264,7 +264,7 @@ static uint8_t internal_iic_b_decode_errors(uint32_t bst)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -291,7 +291,7 @@ static ra_err_t internal_iic_b_reset(volatile r_iic_b_regs_t* reg)
  * contract; this site adds no behaviour beyond what the public
  * API documents.
  * @param[in] reg See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -314,7 +314,7 @@ static void internal_iic_b_start(volatile r_iic_b_regs_t* reg)
  * when the caller passes ``restart=true`` to write/read.
  *
  * @param[in] reg See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -339,7 +339,7 @@ static void internal_iic_b_restart(volatile r_iic_b_regs_t* reg)
  * HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479
  *
  * @param[in] reg See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -361,7 +361,7 @@ static void internal_iic_b_stop(volatile r_iic_b_regs_t* reg)
  * contract; this site adds no behaviour beyond what the public
  * API documents.
  * @param[in] reg See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -393,7 +393,7 @@ static void internal_iic_b_clear_bst(volatile r_iic_b_regs_t* reg)
  * API documents.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -424,7 +424,7 @@ static ra_err_t internal_iic_b_send_address(volatile r_iic_b_regs_t* reg, uint8_
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -458,7 +458,7 @@ static ra_err_t internal_iic_b_status_from_bst(uint32_t bst)
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -485,7 +485,7 @@ static bool internal_iic_b_bus_free(volatile const r_iic_b_regs_t* reg)
  *
  * @param[in] reg See header declaration for direction and constraints.
  * @param[in] cfg See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -550,7 +550,7 @@ ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
 
   s_iic_b_state[channel].cb          = nullptr;
   s_iic_b_state[channel].ctx         = nullptr;
-  s_iic_b_state[channel].initialised = true;
+  s_iic_b_state[channel].initialized = true;
   s_iic_b_state[channel].bus_held    = false;
 
   ra_log_info_val(s_tag, "iic_b_init channel", (uint32_t)channel);
@@ -571,7 +571,7 @@ ra_err_t ra_iic_b_deinit(uint8_t channel)
   reg->CECTL                         = 0U;
   s_iic_b_state[channel].cb          = nullptr;
   s_iic_b_state[channel].ctx         = nullptr;
-  s_iic_b_state[channel].initialised = false;
+  s_iic_b_state[channel].initialized = false;
   s_iic_b_state[channel].bus_held    = false;
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
@@ -607,7 +607,7 @@ ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
  * API documents.
  * @param[in] reg See header declaration for direction and constraints.
  * @param[in] bus_held See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -637,7 +637,7 @@ static void internal_iic_b_open_phase(volatile r_iic_b_regs_t* reg, bool bus_hel
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -674,7 +674,7 @@ internal_iic_b_drain_tx(volatile r_iic_b_regs_t* reg, const uint8_t* data, uint3
  * @param[in] channel See header declaration for direction and constraints.
  * @param[in] err See header declaration for direction and constraints.
  * @param[in] restart See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -705,7 +705,7 @@ internal_iic_b_finalize(volatile r_iic_b_regs_t* reg, uint8_t channel, ra_err_t 
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -775,7 +775,7 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -812,7 +812,7 @@ static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* o
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

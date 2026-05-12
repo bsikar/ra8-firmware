@@ -53,7 +53,7 @@ typedef struct {
  * ``ra_dma_request / release`` and read by
  * ``ra_dma_dispatch_complete``.
  *
- * @note Static so the table is zero-initialised at boot.
+ * @note Static so the table is zero-initialized at boot.
  */
 static ra_dma_channel_state_t s_channels[k_ra_dma_channel_count];
 
@@ -101,7 +101,7 @@ static bool s_initialized = false;
  * @retval 0..k_ra_dma_channel_count-1 First free channel index.
  * @retval k_ra_dma_channel_none Every channel slot is currently in use.
  *
- * @pre ``s_channels[]`` has been initialised (``ra_dma_init()`` called).
+ * @pre ``s_channels[]`` has been initialized (``ra_dma_init()`` called).
  * @pre Caller holds an implicit lock against concurrent allocation.
  * @post No state mutated by the scan itself.
  * @post Returned index, if valid, references a free slot.
@@ -247,7 +247,7 @@ ra_err_t ra_dma_init(void)
  * @pre ``ra_dma_init()`` previously succeeded.
  * @pre No outstanding interrupt expected from any channel.
  * @post All channels report ``in_use == false``.
- * @post Driver re-enters uninitialised state.
+ * @post Driver re-enters uninitialized state.
  *
  * @note Not thread-safe; call once during system shutdown.
  * @since 0.1.0

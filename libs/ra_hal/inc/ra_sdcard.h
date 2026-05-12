@@ -96,10 +96,10 @@ typedef struct {
  * @param[in] cfg Non-NULL configuration with a valid SDHI instance.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok                  Card initialised, ready for I/O.
+ * @retval k_ra_ok                  Card initialized, ready for I/O.
  * @retval k_ra_err_null_ptr        ``cfg`` was NULL.
  * @retval k_ra_err_invalid_arg     ``cfg->instance`` out of range.
- * @retval k_ra_err_invalid_state   Already initialised (call ::ra_sdcard_deinit first).
+ * @retval k_ra_err_invalid_state   Already initialized (call ::ra_sdcard_deinit first).
  * @retval k_ra_err_hw_timeout      A command never produced RSPEND.
  * @retval k_ra_err_hw_init_failed  CMD8 echo / ACMD41 pattern mismatch.
  *
@@ -128,7 +128,7 @@ typedef struct {
  *
  * @details
  * Thin pass-through to ::ra_sdhi_read_block once the card has been
- * initialised. The ``lba`` argument is the logical block address as
+ * initialized. The ``lba`` argument is the logical block address as
  * understood by the card -- which means *block* address for SDHC/SDXC
  * and *byte* address for SDSC. ``ra_sdcard`` translates the SDSC case
  * internally (lba * 512) so callers always pass block indices.
@@ -141,7 +141,7 @@ typedef struct {
  * @retval k_ra_ok                Success.
  * @retval k_ra_err_null_ptr      ``buf`` was NULL.
  * @retval k_ra_err_invalid_arg   ``count`` was 0.
- * @retval k_ra_err_invalid_state Card never initialised.
+ * @retval k_ra_err_invalid_state Card never initialized.
  * @retval k_ra_err_out_of_range  ``lba + count`` exceeds card capacity.
  *
  * @pre  ::ra_sdcard_init has returned k_ra_ok.
@@ -187,7 +187,7 @@ typedef struct {
  * @return ra_err_t Error code.
  * @retval k_ra_ok                Success.
  * @retval k_ra_err_null_ptr      ``out_blocks`` was NULL.
- * @retval k_ra_err_invalid_state Card never initialised.
+ * @retval k_ra_err_invalid_state Card never initialized.
  *
  * @pre  ``out_blocks`` is non-NULL.
  * @pre  ::ra_sdcard_init has returned k_ra_ok.
@@ -206,7 +206,7 @@ typedef struct {
  * @return ra_err_t Error code.
  * @retval k_ra_ok                Success.
  * @retval k_ra_err_null_ptr      ``out_type`` was NULL.
- * @retval k_ra_err_invalid_state Card never initialised.
+ * @retval k_ra_err_invalid_state Card never initialized.
  *
  * @pre  ``out_type`` is non-NULL.
  * @pre  ::ra_sdcard_init has returned k_ra_ok.

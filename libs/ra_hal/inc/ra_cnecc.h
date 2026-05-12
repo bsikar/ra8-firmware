@@ -212,7 +212,7 @@ typedef void (*ra_cnecc_error_fn_t)(void* ctx, uint8_t instance, bool is_2bit, u
  * @param[in] cfg Non-NULL configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Driver initialised, both instances live.
+ * @retval k_ra_ok                Driver initialized, both instances live.
  * @retval k_ra_err_null_ptr      ``cfg`` was NULL.
  * @retval k_ra_err_hw_init_failed MSTP ungate failed for one of the
  *                                  CANFD instances.

@@ -89,7 +89,7 @@ extern "C" {
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
