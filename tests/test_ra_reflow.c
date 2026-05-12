@@ -235,7 +235,7 @@ static void test_null_and_preinit_guards(void)
   /* close() guards. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_close(nullptr));
 
-  /* Engine zeroed -> not initialised. */
+  /* Engine zeroed -> not initialized. */
   ra_reflow_t closed;
   (void)memset(&closed, 0, sizeof(closed));
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_reflow_close(&closed));

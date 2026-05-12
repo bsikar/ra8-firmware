@@ -56,7 +56,7 @@ typedef enum : uint32_t {
  * @brief Firmware-side TAP bookkeeping object.
  */
 typedef struct {
-  bool             initialised;      /**< True between init and deinit.        */
+  bool             initialized;      /**< True between init and deinit.        */
   ra_bscan_instr_t last_instruction; /**< Last opcode the fixture reported.    */
   uint32_t         expected_idcode;  /**< JTIDR value the fixture should see.  */
 } ra_bscan_state_t;
@@ -69,7 +69,7 @@ typedef struct {
  *       init / shutdown context.
  */
 static ra_bscan_state_t s_bscan_state = {
-  .initialised      = false,
+  .initialized      = false,
   .last_instruction = k_ra_bscan_instr_bypass,
   .expected_idcode  = 0U,
 };
@@ -111,7 +111,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
   /* HUM Ch 50.2 "Register Descriptions", Table 50.3 p 3258 -- JTIDR
    * is hardwired to 0x085D_A447 and the JTIR power-on value is 0xE
    * (BYPASS path selected by the TAP controller on reset). */
-  s_bscan_state.initialised      = true;
+  s_bscan_state.initialized      = true;
   s_bscan_state.last_instruction = k_ra_bscan_instr_bypass;
   s_bscan_state.expected_idcode  = k_ra_bscan_jtidr_reset;
   ra_log_info(s_tag, "bscan init");
@@ -124,7 +124,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
    * state when the external fixture holds TMS=1 for >=5 TCK clocks.
    * From a CPU-side bookkeeping viewpoint we just drop our cached
    * fields back to the power-on equivalents. */
-  s_bscan_state.initialised      = false;
+  s_bscan_state.initialized      = false;
   s_bscan_state.last_instruction = k_ra_bscan_instr_bypass;
   s_bscan_state.expected_idcode  = 0U;
   return k_ra_ok;
@@ -133,7 +133,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
 [[nodiscard]] ra_err_t ra_bscan_get_idcode(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if (!s_bscan_state.initialised) {
+  if (!s_bscan_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* HUM Ch 50.2.2 "JTIDR : ID Code Register", p 3258-3259 -- DID[31:0]
@@ -149,7 +149,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
   /* HUM Ch 50.2.3 "JTBPR : Bypass Register", p 3259 explicitly states
    * the TAP registers cannot be read from the CPU -- so this is a
    * pure firmware-side snapshot. */
-  out->initialised      = s_bscan_state.initialised;
+  out->initialized      = s_bscan_state.initialized;
   out->last_instruction = s_bscan_state.last_instruction;
   out->expected_idcode  = s_bscan_state.expected_idcode;
   return k_ra_ok;
@@ -160,7 +160,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
   if (mask != k_ra_bscan_clear_mask_none) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_bscan_state.initialised) {
+  if (!s_bscan_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* HUM Ch 50.2.1 "JTIR : Instruction Register", p 3258 -- the TAP
@@ -172,7 +172,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
 
 [[nodiscard]] ra_err_t ra_bscan_set_instruction(ra_bscan_instr_t instr)
 {
-  if (!s_bscan_state.initialised) {
+  if (!s_bscan_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_is_known_instruction(instr)) {

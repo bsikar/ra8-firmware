@@ -150,7 +150,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state CDC was never initialised.
+ * @retval k_ra_err_invalid_state CDC was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -168,7 +168,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok State updated.
- * @retval k_ra_err_invalid_state CDC not initialised.
+ * @retval k_ra_err_invalid_state CDC not initialized.
  *
  * @pre `ra_usb_cdc_init` succeeded.
  *
@@ -193,7 +193,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Transfer queued.
- * @retval k_ra_err_invalid_state CDC not initialised.
+ * @retval k_ra_err_invalid_state CDC not initialized.
  * @retval k_ra_err_invalid_arg Bad `data` / `len`.
  *
  * @pre `ra_usb_cdc_init` succeeded.
@@ -214,7 +214,7 @@ typedef struct {
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes received.
  * @retval k_ra_err_no_data Pipe was empty.
- * @retval k_ra_err_invalid_state CDC not initialised.
+ * @retval k_ra_err_invalid_state CDC not initialized.
  * @retval k_ra_err_invalid_arg Bad pointers / capacity.
  *
  * @pre `out_buf`, `inout_len` non-NULL, `*inout_len > 0`.
@@ -245,7 +245,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP handled (status stage queued internally).
- * @retval k_ra_err_invalid_state CDC not initialised.
+ * @retval k_ra_err_invalid_state CDC not initialized.
  * @retval k_ra_err_invalid_arg `setup` was NULL.
  * @retval k_ra_err_not_supported `bRequest` is not a CDC ACM request
  *         this layer cares about.
@@ -267,7 +267,7 @@ typedef struct {
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Copied.
  * @retval k_ra_err_invalid_arg `out` was NULL.
- * @retval k_ra_err_invalid_state CDC not initialised.
+ * @retval k_ra_err_invalid_state CDC not initialized.
  *
  * @pre `out` non-NULL.
  *
@@ -287,7 +287,7 @@ typedef struct {
  * @return `ra_err_t` error code.
  * @retval k_ra_ok State copied.
  * @retval k_ra_err_invalid_arg `out_dtr` / `out_rts` were NULL.
- * @retval k_ra_err_invalid_state CDC not initialised.
+ * @retval k_ra_err_invalid_state CDC not initialized.
  *
  * @pre Output pointers non-NULL.
  *

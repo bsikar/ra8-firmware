@@ -112,8 +112,8 @@ typedef enum : uint32_t {
  * @brief Driver lifecycle state.
  */
 typedef enum : uint8_t {
-  k_ra_epaper_state_uninit = 0U, /**< Not initialised yet.            */
-  k_ra_epaper_state_ready  = 1U, /**< Initialised and idle.           */
+  k_ra_epaper_state_uninit = 0U, /**< Not initialized yet.            */
+  k_ra_epaper_state_ready  = 1U, /**< Initialized and idle.           */
 } ra_epaper_state_t;
 
 /**
@@ -513,7 +513,7 @@ static void internal_ra_epaper_pulse_reset(void)
   RA_CHECK_NULL_PTR(cfg, s_tag, "epaper_init: cfg null");
 
   if (s_panel.state != k_ra_epaper_state_uninit) {
-    ra_log_error(s_tag, "epaper_init: already initialised");
+    ra_log_error(s_tag, "epaper_init: already initialized");
     return k_ra_err_invalid_state;
   }
   ra_err_t err = internal_ra_epaper_validate_cfg(cfg);

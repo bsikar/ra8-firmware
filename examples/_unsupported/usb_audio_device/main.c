@@ -349,7 +349,7 @@ static void usb_audio_sci_or_halt(uint32_t pclka_hz)
  * seed the format + volume shadows, then ``ra_nsc_usb_attach`` to
  * raise the D+ pull-up so the host begins enumeration.
  *
- * @pre Clocks + SCI8 already initialised.
+ * @pre Clocks + SCI8 already initialized.
  * @post USB-FS device-mode UAC1 endpoint is live.
  *
  * @since 0.1.0
@@ -406,7 +406,7 @@ static void usb_audio_setup_or_halt(void)
  * @return Error code from ``ra_usb_paud_send_frame``.
  *
  * @retval k_ra_ok                  Bytes queued onto iso-IN.
- * @retval k_ra_err_invalid_state   Driver not initialised.
+ * @retval k_ra_err_invalid_state   Driver not initialized.
  * @retval k_ra_err_invalid_arg     LUT byte count out of range.
  *
  * @pre ``ra_usb_paud_init`` succeeded.
@@ -424,7 +424,7 @@ static void usb_audio_setup_or_halt(void)
  *
  * @param[in] frames Frame counter snapshot.
  *
- * @pre SCI8 is initialised.
+ * @pre SCI8 is initialized.
  * @post One ASCII line written to SCI8 and LED1 toggled once.
  *
  * @since 0.1.0

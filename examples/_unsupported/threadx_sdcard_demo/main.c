@@ -299,7 +299,7 @@ static void sdcard_one_pass(void)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @pre Pins routed; console initialised; ThreadX scheduler running.
+ * @pre Pins routed; console initialized; ThreadX scheduler running.
  * @post Loops forever: read + dump + LED1 toggle + sleep.
  */
 static void sdcard_thread_entry(ULONG thread_input)
@@ -313,7 +313,7 @@ static void sdcard_thread_entry(ULONG thread_input)
       (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
     }
   }
-  sdcard_log("sdcard: card initialised\r\n");
+  sdcard_log("sdcard: card initialized\r\n");
 
   while (1) {
     sdcard_one_pass();

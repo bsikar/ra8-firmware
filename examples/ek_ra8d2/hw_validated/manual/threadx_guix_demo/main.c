@@ -380,7 +380,7 @@ static inline GX_COLOR demo_rgb(uint8_t r, uint8_t g, uint8_t b)
  * @param[in] top    Inclusive top edge.
  * @param[in] right  Inclusive right edge.
  * @param[in] bottom Inclusive bottom edge.
- * @return Initialised rectangle.
+ * @return Initialized rectangle.
  *
  * @since 0.1.0
  */
@@ -420,7 +420,7 @@ static void demo_panic_halt(void)
  * with `s_framebuffer` as its source.  Panics on any HAL error.
  *
  * @pre Called from the GUI thread (uses `tx_thread_sleep`).
- * @pre `s_framebuffer` is zero-initialised in `.bss`.
+ * @pre `s_framebuffer` is zero-initialized in `.bss`.
  * @post GLCDC is scanning out; GR1 is reading `s_framebuffer`.
  * @post BG plane = black.
  * @note Single-threaded; not safe to call from IRQ.

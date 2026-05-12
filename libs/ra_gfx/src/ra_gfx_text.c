@@ -89,7 +89,7 @@ typedef struct {
   uint16_t        height;      /**< Height in pixels.             */
   ra_gfx_format_t format;      /**< Pixel format.                 */
   uint8_t         bpp;         /**< Bytes per pixel.              */
-  bool            initialised; /**< Set after a successful init.  */
+  bool            initialized; /**< Set after a successful init.  */
 } ra_gfx_state_t;
 
 /** @brief Module-private framebuffer binding. */
@@ -383,14 +383,14 @@ ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t 
   s_state.height      = height;
   s_state.format      = format;
   s_state.bpp         = internal_bpp(format);
-  s_state.initialised = true;
+  s_state.initialized = true;
   return k_ra_ok;
 }
 
 /* Implementation of ra_gfx_clear (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_clear(uint32_t color)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   for (uint32_t y = 0; y < s_state.height; y++) {
@@ -409,7 +409,7 @@ ra_err_t ra_gfx_clear(uint32_t color)
 /* Implementation of ra_gfx_pixel (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if ((x < 0) || (y < 0) || (x >= (int32_t)s_state.width) || (y >= (int32_t)s_state.height)) {
@@ -422,7 +422,7 @@ ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
 /* Implementation of ra_gfx_line (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* Bresenham. */
@@ -456,7 +456,7 @@ ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t co
 /* Implementation of ra_gfx_rect (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color, bool filled)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if ((w <= 0) || (h <= 0)) {
@@ -542,7 +542,7 @@ internal_circle_filled_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32
 /* Implementation of ra_gfx_circle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool filled)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if (r < 0) {
@@ -628,7 +628,7 @@ ra_err_t ra_gfx_text_out(int32_t              x,
   if ((str == nullptr) || (font == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   int32_t       cur_x  = x;
@@ -677,7 +677,7 @@ ra_err_t ra_gfx_blit(const void*     src_buf,
   if (src_buf == nullptr) {
     return k_ra_err_null_ptr;
   }
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if ((src_w == 0) || (src_h == 0) || !internal_format_ok(src_format)) {

@@ -116,7 +116,7 @@ typedef enum : uint32_t {
  * @details
  * Single-instance driver: only one card is supported at a time.
  * Holds the SDHI instance index plus the protocol-level state
- * captured during init (RCA, capacity, card type). ``initialised``
+ * captured during init (RCA, capacity, card type). ``initialized``
  * gates every public API except ::ra_sdcard_init / ::ra_sdcard_deinit.
  */
 typedef struct {
@@ -124,7 +124,7 @@ typedef struct {
   uint16_t              rca;             /**< Card-assigned relative address */
   ra_sdcard_card_type_t type;            /**< SDSC / SDHC / SDXC */
   uint8_t               instance;        /**< SDHI instance index */
-  uint8_t               initialised;     /**< Non-zero once init succeeded */
+  uint8_t               initialized;     /**< Non-zero once init succeeded */
 } ra_sdcard_state_t;
 
 /** @brief Module-private state. */
@@ -374,7 +374,7 @@ static ra_sdcard_card_type_t internal_classify(uint8_t high_capacity, uint32_t b
 ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
-  if (s_sdcard.initialised != 0U) {
+  if (s_sdcard.initialized != 0U) {
     return k_ra_err_invalid_state;
   }
 
@@ -416,7 +416,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
   s_sdcard.rca             = rca;
   s_sdcard.capacity_blocks = blocks;
   s_sdcard.type            = internal_classify(high_capacity, blocks);
-  s_sdcard.initialised     = 1U;
+  s_sdcard.initialized     = 1U;
 
   ra_log_info_val(s_tag, "sdcard init blocks", blocks);
   return k_ra_ok;
@@ -436,7 +436,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -457,7 +457,7 @@ ra_err_t ra_sdcard_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
   if (count == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (s_sdcard.initialised == 0U) {
+  if (s_sdcard.initialized == 0U) {
     return k_ra_err_invalid_state;
   }
   if ((lba + count) > s_sdcard.capacity_blocks) {
@@ -474,7 +474,7 @@ ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count
   if (count == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (s_sdcard.initialised == 0U) {
+  if (s_sdcard.initialized == 0U) {
     return k_ra_err_invalid_state;
   }
   if ((lba + count) > s_sdcard.capacity_blocks) {
@@ -488,7 +488,7 @@ ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count
 ra_err_t ra_sdcard_get_capacity(uint32_t* out_blocks)
 {
   RA_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks");
-  if (s_sdcard.initialised == 0U) {
+  if (s_sdcard.initialized == 0U) {
     return k_ra_err_invalid_state;
   }
   *out_blocks = s_sdcard.capacity_blocks;
@@ -499,7 +499,7 @@ ra_err_t ra_sdcard_get_capacity(uint32_t* out_blocks)
 ra_err_t ra_sdcard_get_type(ra_sdcard_card_type_t* out_type)
 {
   RA_CHECK_NULL_PTR(out_type, s_tag, "out_type");
-  if (s_sdcard.initialised == 0U) {
+  if (s_sdcard.initialized == 0U) {
     return k_ra_err_invalid_state;
   }
   *out_type = s_sdcard.type;
@@ -509,11 +509,11 @@ ra_err_t ra_sdcard_get_type(ra_sdcard_card_type_t* out_type)
 /* Ra sdcard deinit -- see implementation for details. */
 ra_err_t ra_sdcard_deinit(void)
 {
-  if (s_sdcard.initialised == 0U) {
+  if (s_sdcard.initialized == 0U) {
     return k_ra_ok;
   }
   const uint8_t inst       = s_sdcard.instance;
-  s_sdcard.initialised     = 0U;
+  s_sdcard.initialized     = 0U;
   s_sdcard.capacity_blocks = 0U;
   s_sdcard.rca             = 0U;
   s_sdcard.type            = k_ra_sdcard_type_unknown;

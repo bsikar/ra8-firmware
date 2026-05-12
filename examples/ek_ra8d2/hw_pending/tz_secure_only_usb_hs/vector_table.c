@@ -17,7 +17,7 @@
  *
  * - `_stack_top`: end of the main stack, set in the linker script.
  * - `_etext`, `_sdata`, `_edata`, `_sbss`, `_ebss`: section boundaries
- *   used by `Reset_Handler` to copy initialised data from flash/MRAM
+ *   used by `Reset_Handler` to copy initialized data from flash/MRAM
  *   to SRAM and zero the BSS.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -419,7 +419,7 @@ void Reset_Handler(void)
    * must not read or write any global variables. */
   SystemInit();
 
-  /* Step 2: copy initialised data from flash/MRAM to SRAM. */
+  /* Step 2: copy initialized data from flash/MRAM to SRAM. */
   uint32_t* src = &g_ra_ls_sidata;
   uint32_t* dst = &g_ra_ls_sdata;
   while (dst < &g_ra_ls_edata) {

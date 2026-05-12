@@ -139,7 +139,7 @@ static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
  * @retval Always a value with bit 31 set, never ``0``.
  *
  * @pre ``slot`` was validated by the caller.
- * @pre ``s_salt`` has been initialised by ::ra_key_import_reset or boot default.
+ * @pre ``s_salt`` has been initialized by ::ra_key_import_reset or boot default.
  * @post No state is mutated.
  * @post Return value is deterministic for fixed (slot, s_salt).
  *

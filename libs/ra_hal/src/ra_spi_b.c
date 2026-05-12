@@ -133,7 +133,7 @@ typedef enum : uint32_t {
 typedef struct {
   ra_spi_complete_fn_t cb;          /**< Transfer-complete callback. */
   void*                ctx;         /**< Callback context.            */
-  bool                 initialised; /**< True after ``ra_spi_init``.  */
+  bool                 initialized; /**< True after ``ra_spi_init``.  */
 } ra_spi_state_t;
 
 /**
@@ -370,7 +370,7 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 
   s_spi_state[channel].cb          = nullptr;
   s_spi_state[channel].ctx         = nullptr;
-  s_spi_state[channel].initialised = true;
+  s_spi_state[channel].initialized = true;
   ra_log_info_val(s_tag, "spi_init channel", (uint32_t)channel);
   return k_ra_ok;
 }
@@ -390,7 +390,7 @@ ra_err_t ra_spi_deinit(uint8_t channel)
   reg->SPCR                        = 0U;
   s_spi_state[channel].cb          = nullptr;
   s_spi_state[channel].ctx         = nullptr;
-  s_spi_state[channel].initialised = false;
+  s_spi_state[channel].initialized = false;
   return ra_mstp_disable(s_spi_mstp_table[channel]);
 }
 

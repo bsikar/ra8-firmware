@@ -35,7 +35,7 @@
  * | `RA_RETURN_NULL_ON_ERROR`   | no     | `void*`        | Pointer-returning factories     |
  * | `RA_CHECK_NULL_PTR`         | no     | `ra_err_t`     | Precondition: non-NULL pointer  |
  * | `RA_CHECK_RANGE`            | no     | `ra_err_t`     | Precondition: numeric range     |
- * | `RA_VALIDATE_INIT`          | no     | `ra_err_t`     | Precondition: module initialised |
+ * | `RA_VALIDATE_INIT`          | no     | `ra_err_t`     | Precondition: module initialized |
  *
  * ## NASA Power of 10 Compliance
  *
@@ -288,7 +288,7 @@ extern "C" {
 #define RA_VALIDATE_PTR(ptr, tag, message) RA_CHECK_NULL_PTR(ptr, tag, message)
 
 /**
- * @brief Precondition: module must be initialised.
+ * @brief Precondition: module must be initialized.
  *
  * @param initialized Boolean expression (`true` if init complete).
  * @param tag         Component tag for logging.

@@ -90,7 +90,7 @@ typedef enum : uint8_t {
  *
  * @details
  * Mirrors the subset of FSP `transfer_info_t` that this project
- * currently programmes. Defaults (zero-initialised struct) yield a
+ * currently programmes. Defaults (zero-initialized struct) yield a
  * software-triggered, normal-mode transfer with both pointers fixed
  * and no IRQ -- safe for the existing CEU / SSIE / SCI / SPI / GPT
  * call sites.

@@ -305,7 +305,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Always succeeds.
  *
- * @pre Driver previously initialised via ``ra_bkup_init``.
+ * @pre Driver previously initialized via ``ra_bkup_init``.
  * @pre IRQs masked or single-threaded shutdown context.
  * @post VBTBER.VBAE == 0.
  * @post VBTBPCR1.BPWSWSTP == 1.
@@ -365,7 +365,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * After a VBATT->VCC transition the firmware must:
  *  1. Wait for VBPORM == 1.
  *  2. Inspect VBPORF: if set, the VBATT_R rail dropped below
- *     VPORBATT and the entire backup area must be reinitialised by
+ *     VPORBATT and the entire backup area must be reinitialized by
  *     calling ``ra_bkup_cold_start_init``. If clear, the backup area
  *     state survived and no further action is required.
  *
@@ -432,7 +432,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @retval k_ra_ok            ``out`` populated.
  * @retval k_ra_err_null_ptr  ``out == nullptr``.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre ``out`` points to writable storage.
  * @post ``out->source`` reflects current BPWSWM bit.
  * @post ``out->raw_vbtbpsr`` matches the live register read.
@@ -459,7 +459,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Always succeeds (bits not set in ``mask`` left alone).
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre IRQs masked or single-threaded context.
  * @post VBPORF cleared if requested.
  * @post Bits of VBTADSR present in ``mask`` cleared.
@@ -485,7 +485,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @retval k_ra_err_null_ptr   ``out == nullptr``.
  * @retval k_ra_err_invalid_arg ``word_index >= 32``.
  *
- * @pre Driver initialised with ``cfg->enable_backup == true``.
+ * @pre Driver initialized with ``cfg->enable_backup == true``.
  * @pre ``out`` points to writable storage.
  * @post ``*out`` matches the live 32-bit register value.
  *
@@ -506,7 +506,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @retval k_ra_ok              Value written.
  * @retval k_ra_err_invalid_arg ``word_index >= 32``.
  *
- * @pre Driver initialised with ``cfg->enable_backup == true``.
+ * @pre Driver initialized with ``cfg->enable_backup == true``.
  * @pre IRQs masked or single-threaded context.
  * @post VBTBKRn[word_index*4 .. word_index*4+3] == ``value`` (LE).
  *
@@ -528,7 +528,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @retval k_ra_err_null_ptr    ``out == nullptr``.
  * @retval k_ra_err_invalid_arg ``index >= 128``.
  *
- * @pre Driver initialised with ``cfg->enable_backup == true``.
+ * @pre Driver initialized with ``cfg->enable_backup == true``.
  * @pre ``out`` writable.
  * @post ``*out`` matches the live byte.
  *
@@ -547,7 +547,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @retval k_ra_ok              Byte written.
  * @retval k_ra_err_invalid_arg ``index >= 128``.
  *
- * @pre Driver initialised with ``cfg->enable_backup == true``.
+ * @pre Driver initialized with ``cfg->enable_backup == true``.
  * @post VBTBKRn[index] == ``value``.
  *
  * @see ra_bkup_read_byte
@@ -566,7 +566,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok All 128 VBTBKRn slots zeroed.
  *
- * @pre Driver initialised with ``cfg->enable_backup == true``.
+ * @pre Driver initialized with ``cfg->enable_backup == true``.
  * @pre IRQs masked.
  * @post Every VBTBKRn[0..127] == 0.
  *
@@ -642,7 +642,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @retval k_ra_err_null_ptr    ``high_out == nullptr``.
  * @retval k_ra_err_invalid_arg ``channel >= 3``.
  *
- * @pre Driver initialised; VCHnINEN must be 1 for the read to be
+ * @pre Driver initialized; VCHnINEN must be 1 for the read to be
  *      meaningful (HUM Ch 12.2.10 p 506 -- otherwise reads as 0).
  * @post ``*high_out`` matches the live VCHnMON bit.
  *
@@ -782,7 +782,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handler stored.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Caller-managed lifetime for ``ctx``.
  * @post Subsequent ``ra_bkup_dispatch`` invokes ``fn``.
  * @post Passing ``nullptr`` for ``fn`` makes ``dispatch`` a no-op.
@@ -804,7 +804,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                Dispatched (or no-op if no flag set).
- * @retval k_ra_err_not_initialized Driver not initialised.
+ * @retval k_ra_err_not_initialized Driver not initialized.
  *
  * @pre ISR caller, IRQs masked at this point.
  * @post Flagged-and-armed VBTADFn bits are W0Ced.
@@ -819,7 +819,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *
  * @param[in] tamper_flags Snapshot of VBTADSR observed in the ISR.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Caller has read VBTADSR before clearing flags.
  * @post Callback executed if attached.
  * @post No state change in this driver.

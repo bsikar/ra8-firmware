@@ -985,7 +985,7 @@ typedef enum : uint16_t {
  *
  * @details See implementation for details.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -1013,7 +1013,7 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
  *
  * @details See implementation for details.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -1234,7 +1234,7 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
  * @param[in,out] ep See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -1296,7 +1296,7 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -1331,7 +1331,7 @@ static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
  * @param[in,out] parameter See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -1649,7 +1649,7 @@ static void internal_usbhs_isr(void* ctx)
  *
  * @details See implementation for details.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static ra_elc_event_t internal_pick_event(ra_usb_speed_t speed)
@@ -1672,7 +1672,7 @@ static ra_elc_event_t internal_pick_event(ra_usb_speed_t speed)
  *
  * @details See implementation for details.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static ra_isr_handler_t internal_pick_isr(ra_usb_speed_t speed)
@@ -1687,7 +1687,7 @@ static ra_isr_handler_t internal_pick_isr(ra_usb_speed_t speed)
  * @param[in,out] ctx See function signature.
  * @param[in,out] speed See function signature.
  * @param[in,out] status_mask See function signature.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -2526,7 +2526,7 @@ static void internal_irq_walk_pipe(uint8_t i)
  * @param[in,out] intsts0 See function signature for type and usage.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -2597,7 +2597,7 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -2767,7 +2767,7 @@ static void internal_init_setup_ep0(UX_SLAVE_DEVICE* device, UX_SLAVE_DCD* owner
  *                  (``k_ra_usb_speed_fs`` or ``k_ra_usb_speed_hs``).
  *
  * @return ``ra_err_t`` status code.
- * @retval k_ra_ok Bridge fully initialised and ready for enumeration.
+ * @retval k_ra_ok Bridge fully initialized and ready for enumeration.
  * @retval k_ra_err_invalid_arg ``speed`` out of range.
  * @retval k_ra_err_internal Underlying ``ra_usb_*`` call rejected the
  *                           initialisation step (propagated via
@@ -2823,7 +2823,7 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -2857,7 +2857,7 @@ ra_err_t ux_dcd_ra_usb_uninitialize(void)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *

@@ -141,7 +141,7 @@ typedef enum : uint32_t {
  * @brief Singleton shadow state for the host-CDC driver.
  */
 typedef struct {
-  bool                    initialised; /**< True after `ra_usb_hcdc_init`. */
+  bool                    initialized; /**< True after `ra_usb_hcdc_init`. */
   bool                    attached;    /**< True after enumeration done.   */
   ra_usb_speed_t          speed;       /**< Underlying controller.         */
   ra_usb_hcdc_step_t      step;        /**< Current enumeration step.      */
@@ -588,7 +588,7 @@ ra_err_t ra_usb_hcdc_init(ra_usb_speed_t speed)
   s_state.attach_cb   = nullptr;
   s_state.attach_ctx  = nullptr;
   s_state.device      = (ra_usb_hcdc_device_t){};
-  s_state.initialised = true;
+  s_state.initialized = true;
 
   ra_log_info_val(s_tag, "host-CDC ready", (uint32_t)speed);
   return k_ra_ok;
@@ -597,13 +597,13 @@ ra_err_t ra_usb_hcdc_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_hcdc_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   /* Bus power down: drop UACT before tearing the controller. */
   (void)ra_usb_host_set_uact(s_state.speed, false);
   const ra_err_t err  = ra_usb_host_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.attached    = false;
   s_state.attach_cb   = nullptr;
   s_state.attach_ctx  = nullptr;
@@ -619,7 +619,7 @@ ra_err_t ra_usb_hcdc_close(void)
 /* Implementation of ra_usb_hcdc_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_attach_callback(ra_usb_hcdc_attach_fn_t on_attach, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.attach_cb  = on_attach;
@@ -635,7 +635,7 @@ ra_err_t ra_usb_hcdc_attach_callback(ra_usb_hcdc_attach_fn_t on_attach, void* ct
 /* Implementation of ra_usb_hcdc_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_send(const uint8_t* data, uint16_t len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -652,7 +652,7 @@ ra_err_t ra_usb_hcdc_recv(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "hcdc_recv: out_buf");
   RA_CHECK_NULL_PTR(got_len, s_tag, "hcdc_recv: got_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -681,7 +681,7 @@ ra_err_t ra_usb_hcdc_set_line_coding(uint32_t                baud,
                                      ra_usb_hcdc_parity_t    parity,
                                      ra_usb_hcdc_stop_bits_t stop_bits)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -727,7 +727,7 @@ ra_err_t ra_usb_hcdc_set_line_coding(uint32_t                baud,
 /* Implementation of ra_usb_hcdc_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_step(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   return internal_step_advance();

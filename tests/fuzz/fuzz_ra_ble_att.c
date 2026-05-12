@@ -42,7 +42,7 @@ enum : uint16_t {
   k_fuzz_uuid_marker_c = 0xB0U,
 };
 
-static uint8_t s_initialised;
+static uint8_t s_initialized;
 static uint8_t s_value_buf[k_fuzz_value_buf_len];
 static uint8_t s_frame[k_fuzz_max_frame_len];
 
@@ -93,11 +93,11 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   if (size == 0U || size > (size_t)k_fuzz_max_att_pdu) {
     return 0;
   }
-  if (s_initialised == 0U) {
+  if (s_initialized == 0U) {
     if (fuzz_ble_setup() != 0) {
       return 0;
     }
-    s_initialised = 1U;
+    s_initialized = 1U;
   }
   /* L2CAP B-frame header: payload_len(LE16) + cid(LE16) + payload */
   const uint16_t att_len = (uint16_t)size;

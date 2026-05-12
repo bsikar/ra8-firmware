@@ -379,7 +379,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @param[in] cfg Static driver configuration. Must not be `nullptr`.
  *
  * @return `ra_err_t` outcome.
- * @retval k_ra_ok                Driver initialised, link up.
+ * @retval k_ra_ok                Driver initialized, link up.
  * @retval k_ra_err_null_ptr      `cfg == nullptr`.
  * @retval k_ra_err_invalid_arg   Lane count outside [1,2].
  * @retval k_ra_err_hw_timeout    MSTP read-back loop timed out.
@@ -409,7 +409,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @retval k_ra_ok                Block stopped, MSTP gated.
  * @retval k_ra_err_hw_timeout    MSTP read-back loop timed out.
  *
- * @pre Driver was initialised with ::ra_mipi_dsi_init (ignored if not).
+ * @pre Driver was initialized with ::ra_mipi_dsi_init (ignored if not).
  * @pre No active sequence operation (`LINKSR.SQ0RUN == SQ1RUN == 0`).
  * @post IRQ callback pointer cleared.
  * @post `MSTPCRC.MSTPC10` set (block clock gated).
@@ -484,7 +484,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  *
  * @return `k_ra_ok` on success, `k_ra_err_hw_timeout` on poll timeout.
  *
- * @pre Driver is initialised.
+ * @pre Driver is initialized.
  * @pre PHY is up.
  * @post `LINKSR.HSBUSY` clear once HS clock is stable.
  * @post Continuous mode: clock keeps running until
@@ -534,7 +534,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @retval k_ra_err_invalid_arg   `vc > 3`.
  * @retval k_ra_err_busy          Sequence engine already running.
  *
- * @pre Driver was initialised via ::ra_mipi_dsi_init.
+ * @pre Driver was initialized via ::ra_mipi_dsi_init.
  * @pre `LINKSR.SQ0RUN` is 0.
  * @post Descriptor 0 of channel 0 carries the assembled header.
  * @post `SQCH0SET0R` was pulsed with START + CHSEL.
@@ -568,7 +568,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @retval k_ra_err_invalid_arg  `vc > 3` or LP and `tx_len > 128`.
  * @retval k_ra_err_busy         Sequence engine already running.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Either `tx_len == 0` or `data` valid.
  * @post Descriptor 0 of the selected channel carries the long-packet
  *       header (DATA0 = WC[7:0], DATA1 = WC[15:8]).
@@ -603,7 +603,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @retval k_ra_err_invalid_state LP requested while video mode running.
  *
  * @pre `cmd` non-NULL.
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post Selected sequence channel descriptor 0 populated.
  * @post `SQCH*SET0R` pulsed.
  *
@@ -635,7 +635,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @retval k_ra_err_invalid_arg  `vc > 3` or `rx_len == 0`.
  * @retval k_ra_err_busy         Sequence engine running.
  *
- * @pre Driver initialised; PHY in BTA-capable state.
+ * @pre Driver initialized; PHY in BTA-capable state.
  * @pre `p_rx_buffer` lives until the IRQ fires.
  * @post Descriptor 0 of channel 0 holds a read header.
  * @post `SQCH0SET0R` pulsed.
@@ -664,7 +664,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  *         or the clock lane is requested while continuous-clock mode
  *         is on (HW prohibits it).
  *
- * @pre Driver initialised and HS clock currently running.
+ * @pre Driver initialized and HS clock currently running.
  * @pre `lanes` is a non-empty subset of valid lane bits.
  * @post `ULPSCR.CLENT` and/or `DLENT` were pulsed for selected lanes.
  * @post Subsequent `ra_mipi_dsi_send_*` is rejected until `_ulps_exit`.
@@ -682,7 +682,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  *
  * @pre At least one of the requested lanes is currently in ULPS
  *      (otherwise the exit pulse is a no-op).
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post `ULPSCR.CLEXIT` and/or `DLEXIT` pulsed.
  * @post After the wake-up sequence completes (driver-tracked) the link
  *       is ready for HS / LP traffic again.
@@ -748,7 +748,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  *         never asserts within the bounded loop.
  *
  * @pre Video mode is currently running (otherwise call is a no-op).
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post `LINKSR.VRUN` clear.
  * @post `VMSR` cleared of stale flags.
  *
@@ -784,7 +784,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @return `k_ra_ok` / `k_ra_err_null_ptr`.
  *
  * @pre `out_status` non-NULL.
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post `*out_status` populated with the current LINKSR snapshot.
  * @post No registers mutated.
  *
@@ -819,7 +819,7 @@ typedef void (*ra_mipi_dsi_event_fn_t)(void* ctx, ra_mipi_dsi_event_t event, uin
  * @return `k_ra_ok` / `k_ra_err_null_ptr`.
  *
  * @pre `out_err` non-NULL.
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post `AKEPACMSR` written to `AKEPSCR` (cleared in HW).
  * @post `*out_err` reflects the snapshot before clearing.
  *
@@ -870,7 +870,7 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len);
  * @return `k_ra_ok` / `k_ra_err_null_ptr`.
  *
  * @pre `out_pending` non-NULL.
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post `*out_pending` reflects current RXSR snapshot.
  * @post No registers mutated.
  *
@@ -883,7 +883,7 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len);
  *
  * @return `k_ra_ok`.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Caller is in IRQ context or has IRQs masked.
  * @post `RXSR.RXTE / EXTEDET` clear.
  * @post Other RXSR bits preserved.
@@ -901,7 +901,7 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len);
  *
  * @return `k_ra_ok` / `k_ra_err_invalid_arg` for unknown class.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `event` is a defined enumerator.
  * @post Selected IER bits updated.
  * @post Other IER bits preserved.
@@ -1065,7 +1065,7 @@ typedef struct {
  * @retval k_ra_err_null_ptr     `timing == nullptr`.
  * @retval k_ra_err_invalid_arg  A field is wider than the target register.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `timing` is non-NULL.
  * @post Video-mode timing registers reflect the new values.
  * @post Other VM* registers preserve their power-on defaults.
@@ -1096,7 +1096,7 @@ typedef struct {
  * @retval k_ra_err_busy          Sequence engine still running.
  * @retval k_ra_err_invalid_state Video mode running (LP rejected).
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre `params` is non-NULL.
  * @post Sequence channel 0 descriptor 0 carries the assembled header.
  * @post `SQCH0SET0R` pulsed with START.
@@ -1126,7 +1126,7 @@ typedef struct {
  * @retval k_ra_err_invalid_arg  `len > 1024`.
  * @retval k_ra_err_busy         Sequence engine running.
  *
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @pre Either `len == 0` or `payload` valid.
  * @post Descriptor 0 of channel 1 carries the long-packet header.
  *
@@ -1155,7 +1155,7 @@ ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint1
  * @retval k_ra_err_invalid_arg  ``len > 128`` (LP cap).
  * @retval k_ra_err_busy         Sequence engine still running.
  *
- * @pre Driver initialised via ::ra_mipi_dsi_init.
+ * @pre Driver initialized via ::ra_mipi_dsi_init.
  * @pre Either ``len == 0`` or ``payload`` is non-NULL.
  * @post Sequence channel 0 descriptor 0 carries the assembled header.
  * @post ``SQCH0SET0R`` pulsed with START.
@@ -1179,7 +1179,7 @@ ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint1
  * @retval k_ra_err_invalid_arg Continuous-clock mode active and clock
  *                              lane requested -- HW prohibits it.
  *
- * @pre Driver initialised, HS clock currently running.
+ * @pre Driver initialized, HS clock currently running.
  * @pre Continuous-clock mode is OFF.
  * @post ULPSCR.CLENT and DLENT have been pulsed.
  * @post Subsequent `ra_mipi_dsi_send_*` is rejected until ::ra_mipi_dsi_exit_ulps.
@@ -1198,7 +1198,7 @@ ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint1
  * @retval k_ra_ok Both lanes woken.
  *
  * @pre At least one of the lanes was previously placed in ULPS.
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post ULPSCR.CLEXIT and DLEXIT pulsed.
  * @post Link is ready for HS / LP traffic again once the wake-up
  *       sequence completes.
@@ -1222,7 +1222,7 @@ ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint1
  * @retval k_ra_err_null_ptr `out == nullptr`.
  *
  * @pre `out` non-NULL.
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post `*out` reflects the current LINKSR snapshot.
  * @post No registers mutated.
  *

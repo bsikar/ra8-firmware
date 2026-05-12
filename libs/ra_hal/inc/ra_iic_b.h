@@ -118,7 +118,7 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @param[in] cfg     Configuration descriptor.
  *
  * @return ``ra_err_t``.
- * @retval k_ra_ok              Channel initialised, BCTL.BUSE = 1.
+ * @retval k_ra_ok              Channel initialized, BCTL.BUSE = 1.
  * @retval k_ra_err_null_ptr    ``cfg`` is NULL.
  * @retval k_ra_err_invalid_arg ``channel`` out of range or
  *                              ``cfg->bus_hz`` zero.
@@ -161,7 +161,7 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @retval k_ra_ok              STDBR programmed.
  * @retval k_ra_err_invalid_arg Channel / clock out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post STDBR.SBRLO / SBRHO reflect the new divider.
  *
  * @since 0.1.0
@@ -213,7 +213,7 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @retval k_ra_err_nack        Slave NACKed; STOP was issued.
  * @retval k_ra_err_hw_error    Arbitration lost; STOP was issued.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post On ``k_ra_ok`` and ``restart == false``: STOP issued, bus free.
  * @post On ``k_ra_ok`` and ``restart == true``: bus held by master;
  *       next call must be on the same channel/target.
@@ -256,7 +256,7 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  * @retval k_ra_err_nack        Slave NACKed the address byte.
  * @retval k_ra_err_hw_error    Arbitration lost.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post BST status flags cleared.
  *
  * @since 0.1.0
@@ -297,7 +297,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @retval k_ra_err_nack        Slave NACKed.
  * @retval k_ra_err_hw_timeout  Poll timed out.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post Bus is released regardless of outcome.
  *
  * @since 0.1.0
@@ -330,7 +330,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @retval k_ra_ok              Abort issued.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post Channel is idle; BST flags cleared.
  *
  * @since 0.1.0
@@ -355,7 +355,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @retval k_ra_err_null_ptr    ``out_acked`` is NULL or channel invalid.
  * @retval k_ra_err_hw_timeout  Status poll timed out.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  *
  * @since 0.1.0
  */
@@ -411,7 +411,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @retval k_ra_ok              Callback registered.
  * @retval k_ra_err_invalid_arg Channel out of range.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post BIE / NTIE bits track ``fn`` non-null status.
  *
  * @since 0.1.0
@@ -432,7 +432,7 @@ ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx);
  *
  * @since 0.1.0
  *
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

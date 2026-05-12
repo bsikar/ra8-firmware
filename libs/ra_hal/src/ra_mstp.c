@@ -93,7 +93,7 @@ typedef enum : uint32_t {
  * ``bit`` is 0..31. A value of 0 means "no driver currently needs
  * this peripheral"; the corresponding MSTPCR bit should be 1.
  *
- * @note Static so the table is zero-initialised at boot.
+ * @note Static so the table is zero-initialized at boot.
  * @warning ``ra_mstp_*`` functions are the only legal writers.
  */
 static uint8_t s_refcount[k_ra_mstp_reg_count][k_ra_mstp_bit_count];

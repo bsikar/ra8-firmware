@@ -71,7 +71,7 @@ extern "C" {
  *
  * @details
  * Captured by ::ra_rmac_init. All fields default to safe values when
- * zero-initialised: 100-Mbit MII full-duplex, unicast-only filter,
+ * zero-initialized: 100-Mbit MII full-duplex, unicast-only filter,
  * no IRQs enabled, no PFC, no EEE.
  */
 typedef struct {

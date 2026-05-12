@@ -141,10 +141,10 @@ static ra_cnecc_counters_t* s_cnecc_bbr_mirror[k_ra_cnecc_instance_count];
 static ra_cnecc_config_t s_cnecc_cached_cfg;
 
 /**
- * @var s_cnecc_initialised
+ * @var s_cnecc_initialized
  * @brief True between successful ``init`` and matching ``deinit``.
  */
-static bool s_cnecc_initialised;
+static bool s_cnecc_initialized;
 
 /**
  * @var s_cnecc_isr_attached
@@ -299,7 +299,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     RA_RETURN_ON_ERROR(err, s_tag, "cnecc_init apply"); /* GCOVR_EXCL_BR_LINE */
   }
   s_cnecc_cached_cfg  = *cfg;
-  s_cnecc_initialised = true;
+  s_cnecc_initialized = true;
   ra_log_info(s_tag, "cnecc_init");
   return k_ra_ok;
 }
@@ -329,7 +329,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     s_cnecc_two_bit_count[i]  = 0U;
     s_cnecc_overflow_count[i] = 0U;
   }
-  s_cnecc_initialised = false;
+  s_cnecc_initialized = false;
   return k_ra_ok;
 }
 
@@ -375,7 +375,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_exit_standby(void)
 {
-  if (!s_cnecc_initialised) {
+  if (!s_cnecc_initialized) {
     return k_ra_err_not_initialized;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra_cnecc_instance_count; ++i) {
@@ -754,7 +754,7 @@ typedef enum : uint8_t {
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

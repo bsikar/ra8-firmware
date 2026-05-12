@@ -263,7 +263,7 @@ static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
@@ -304,7 +304,7 @@ static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static UINT priv_nor_block_erased_verify(ULONG block)
@@ -422,7 +422,7 @@ typedef enum : uint32_t {
  * @brief JLink-readable observation of the last RDID probe.
  *
  * @details
- * Lives in normal ``.bss`` (zero-initialised by the C runtime), so on
+ * Lives in normal ``.bss`` (zero-initialized by the C runtime), so on
  * cold boot the ``magic`` field reads ``0`` and the operator knows
  * the global has not yet been written. Updated unconditionally inside
  * ``priv_bus_init_once`` *before* any error-return path so that even

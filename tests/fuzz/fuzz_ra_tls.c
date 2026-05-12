@@ -47,7 +47,7 @@ typedef struct {
 } loop_ctx_t;
 
 static loop_ctx_t s_loop;
-static uint8_t    s_initialised;
+static uint8_t    s_initialized;
 
 static int loop_send(void* ctx, const uint8_t* buf, size_t len)
 {
@@ -87,11 +87,11 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   if (size == 0U || size > (size_t)k_fuzz_max_input) {
     return 0;
   }
-  if (s_initialised == 0U) {
+  if (s_initialized == 0U) {
     if (ra_tls_global_init() != k_ra_ok) {
       return 0;
     }
-    s_initialised = 1U;
+    s_initialized = 1U;
   }
 
   (void)memset(&s_loop, 0, sizeof s_loop);

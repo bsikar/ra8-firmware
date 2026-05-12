@@ -70,7 +70,7 @@ typedef enum : uint8_t {
  * @param[in] reg    CAC register block.
  * @param[in] expect Expected CACR0 value (0 = stopped, 1 = running).
  *
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

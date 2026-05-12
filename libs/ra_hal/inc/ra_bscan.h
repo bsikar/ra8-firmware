@@ -18,7 +18,7 @@
  *
  * What this module does:
  *  - ``ra_bscan_init()`` -- record the expected JTIDR value and mark
- *    the TAP-state object as initialised so the host-side test rig
+ *    the TAP-state object as initialized so the host-side test rig
  *    has a place to stash its "current instruction" hint.
  *  - ``ra_bscan_deinit()`` -- forget all state.
  *  - ``ra_bscan_get_idcode()`` -- return the manufacturer ID code
@@ -81,9 +81,11 @@ extern "C" {
  * from the CPU.
  */
 typedef struct {
-  bool             initialised;      /**< True once ``ra_bscan_init`` ran.            */
+  // cppcheck-suppress unusedStructMember
+  bool             initialized;      /**< True once ``ra_bscan_init`` ran.            */
   ra_bscan_instr_t last_instruction; /**< Last JTIR opcode reported by the fixture.  */
-  uint32_t         expected_idcode;  /**< JTIDR value the fixture should observe.    */
+  // cppcheck-suppress unusedStructMember
+  uint32_t expected_idcode; /**< JTIDR value the fixture should observe.    */
 } ra_bscan_status_t;
 
 /* =============================================================================
@@ -95,7 +97,7 @@ typedef struct {
  * @brief Initialise the firmware-side TAP bookkeeping object.
  *
  * @details
- * Marks the driver as initialised and seeds the expected JTIDR with
+ * Marks the driver as initialized and seeds the expected JTIDR with
  * the chip's hardwired device ID code (``0x085D_A447``, HUM Ch 50.2.2
  * Table 50.3 entry, p 3258). Touches no hardware: the boundary-scan
  * TAP is reachable only over the external JTAG pins.
@@ -106,7 +108,7 @@ typedef struct {
  * @pre Single-threaded init context.
  * @pre Caller has not already called ``ra_bscan_init`` since the last
  *      ``ra_bscan_deinit`` (re-init is allowed and is a no-op).
- * @post ``ra_bscan_get_status``->initialised == true.
+ * @post ``ra_bscan_get_status``->initialized == true.
  * @post ``ra_bscan_get_status``->expected_idcode == 0x085DA447.
  *
  * @note Not thread-safe.
@@ -122,14 +124,14 @@ typedef struct {
  *
  * @details
  * Clears the recorded instruction and idcode and marks the driver as
- * uninitialised. Touches no hardware.
+ * uninitialized. Touches no hardware.
  *
  * @return ra_err_t
  * @retval k_ra_ok Always succeeds.
  *
  * @pre Driver may be in any state (deinit is idempotent).
  * @pre Single-threaded shutdown context.
- * @post ``ra_bscan_get_status``->initialised == false.
+ * @post ``ra_bscan_get_status``->initialized == false.
  * @post ``ra_bscan_get_status``->last_instruction == BYPASS.
  *
  * @note Not thread-safe.
@@ -176,7 +178,7 @@ typedef struct {
  * @brief Get a snapshot of the driver's TAP bookkeeping state.
  *
  * @details
- * Returns the firmware-side view (initialised flag, last reported
+ * Returns the firmware-side view (initialized flag, last reported
  * JTIR opcode, expected JTIDR). Does not query hardware -- the four
  * TAP registers (JTIR / JTIDR / JTBPR / JTBSR) are not CPU-readable
  * (HUM Ch 50.2.3 explicit note, p 3259).
@@ -221,7 +223,7 @@ typedef struct {
  * @pre ``ra_bscan_init`` has been called.
  * @pre ``mask`` is 0.
  * @post Recorded instruction == BYPASS.
- * @post Initialised flag unchanged.
+ * @post Initialized flag unchanged.
  *
  * @note Not thread-safe.
  * @see ra_bscan_set_instruction
@@ -255,7 +257,7 @@ typedef struct {
  * @pre ``instr`` is one of EXTEST / SAMPLE_PRELOAD / IDCODE / CLAMP /
  *      HIGHZ / BYPASS.
  * @post ``ra_bscan_get_status``->last_instruction == ``instr``.
- * @post Initialised flag unchanged.
+ * @post Initialized flag unchanged.
  *
  * @note Not thread-safe.
  * @warning EXTEST / CLAMP / HIGHZ disconnect every general-purpose

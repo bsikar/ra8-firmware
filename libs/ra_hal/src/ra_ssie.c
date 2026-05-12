@@ -60,7 +60,7 @@ typedef enum : uint8_t {
 typedef struct {
   uint8_t tx_dma_channel; /**< DMAC channel pumping TX (or unused). */
   uint8_t rx_dma_channel; /**< DMAC channel pumping RX (or unused). */
-  bool    initialised;    /**< true after ra_ssie_init succeeded.   */
+  bool    initialized;    /**< true after ra_ssie_init succeeded.   */
   bool    dma_attached;   /**< true after ra_ssie_attach_dma.       */
 } ra_ssie_runtime_t;
 
@@ -80,16 +80,16 @@ static const ra_mstp_t s_ssie_mstp_table[k_ra_ssie_channel_count] = {
 
 /**
  * @var s_ssie_runtime
- * @brief Per-channel runtime state. Initialised to zero / unused.
+ * @brief Per-channel runtime state. Initialized to zero / unused.
  */
 static ra_ssie_runtime_t s_ssie_runtime[k_ra_ssie_channel_count] = {
   {.tx_dma_channel = k_ra_ssie_dma_ch_unused,
    .rx_dma_channel = k_ra_ssie_dma_ch_unused,
-   .initialised    = false,
+   .initialized    = false,
    .dma_attached   = false},
   {.tx_dma_channel = k_ra_ssie_dma_ch_unused,
    .rx_dma_channel = k_ra_ssie_dma_ch_unused,
-   .initialised    = false,
+   .initialized    = false,
    .dma_attached   = false},
 };
 
@@ -637,7 +637,7 @@ ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
 
   internal_apply_init_regs(reg, cfg, frm, pdta, sdta, omod);
 
-  s_ssie_runtime[channel].initialised  = true;
+  s_ssie_runtime[channel].initialized  = true;
   s_ssie_runtime[channel].dma_attached = false;
   ra_log_info_val(s_tag, "ssie_init channel", (uint32_t)channel);
   return k_ra_ok;
@@ -658,7 +658,7 @@ ra_err_t ra_ssie_deinit(uint8_t channel)
   if (s_ssie_runtime[channel].dma_attached) {
     (void)ra_ssie_detach_dma(channel);
   }
-  s_ssie_runtime[channel].initialised = false;
+  s_ssie_runtime[channel].initialized = false;
   return ra_mstp_disable(s_ssie_mstp_table[channel]);
 }
 

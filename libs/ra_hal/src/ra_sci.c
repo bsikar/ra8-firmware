@@ -113,7 +113,7 @@ typedef struct {
   void*          rx_ctx;      /**< RX handler context. */
   ra_sci_tx_fn_t tx_fn;       /**< Attached TX handler, NULL if none. */
   void*          tx_ctx;      /**< TX handler context. */
-  bool           initialised; /**< True after ra_sci_init. */
+  bool           initialized; /**< True after ra_sci_init. */
   /* Async TX state (ra_sci_write). */
   const uint8_t* tx_buf; /**< Source buffer, NULL when idle. */
   uint32_t       tx_len; /**< Total bytes requested. 0 = idle. */
@@ -338,7 +338,7 @@ static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
  * @param[in,out] reg See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -471,7 +471,7 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
    * separately by ra_sci_attach_{rx,tx}_handler. */
   reg->CCR0 = (1U << k_ra_sci_ccr0_bit_te) | (1U << k_ra_sci_ccr0_bit_re);
 
-  s_state[channel].initialised = true;
+  s_state[channel].initialized = true;
   s_state[channel].tx_buf      = nullptr;
   s_state[channel].tx_len      = 0U;
   s_state[channel].tx_idx      = 0U;
@@ -496,7 +496,7 @@ ra_err_t ra_sci_deinit(uint8_t channel)
   s_state[channel].rx_ctx      = nullptr;
   s_state[channel].tx_fn       = nullptr;
   s_state[channel].tx_ctx      = nullptr;
-  s_state[channel].initialised = false;
+  s_state[channel].initialized = false;
   s_state[channel].tx_buf      = nullptr;
   s_state[channel].tx_len      = 0U;
   s_state[channel].tx_idx      = 0U;
@@ -786,7 +786,7 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_state[channel].initialised) {
+  if (!s_state[channel].initialized) {
     return k_ra_err_invalid_arg;
   }
   if (s_state[channel].tx_len != 0U) {
@@ -815,7 +815,7 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_state[channel].initialised) {
+  if (!s_state[channel].initialized) {
     return k_ra_err_invalid_arg;
   }
   if (s_state[channel].rx_len != 0U) {

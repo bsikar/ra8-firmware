@@ -190,7 +190,7 @@ static void test_send_cmd_before_init_fails(void)
 {
   TEST_BEGIN("modem_at send_cmd before init returns not_initialized");
   /* Force-uninit by passing a NULL cfg (rejected) and rely on init flag.
-   * To be deterministic we re-run init with NULL after which initialised
+   * To be deterministic we re-run init with NULL after which initialized
    * remains true, so instead we verify behaviour with a fresh process via
    * the current order: first test in main() calls this BEFORE bring_up().
    */
@@ -1102,7 +1102,7 @@ static void test_mcdc_wait_response_should_clear_capture_pure(void)
 
 int32_t main(void)
 {
-  /* This test must run BEFORE bring_up() so the initialised flag is 0. */
+  /* This test must run BEFORE bring_up() so the initialized flag is 0. */
   test_send_cmd_before_init_fails();
 
   test_init_null_cfg();

@@ -169,16 +169,26 @@ typedef enum : uint8_t {
  * `_send_frame` / `_recv_frame` calls land on the right pipes.
  */
 typedef struct {
-  uint8_t  device_address;                       /**< Assigned USB address (1..127).      */
-  uint8_t  bulk_in_ep;                           /**< Adapter's bulk IN EP num.           */
-  uint8_t  bulk_out_ep;                          /**< Adapter's bulk OUT EP num.          */
-  uint8_t  intr_in_ep;                           /**< Adapter's intr IN (notify) EP num.  */
-  uint16_t bulk_in_max_packet;                   /**< Adapter bulk-IN wMaxPacketSize.     */
-  uint16_t bulk_out_max_packet;                  /**< Adapter bulk-OUT wMaxPacketSize.    */
-  uint16_t vendor_id;                            /**< idVendor from device descriptor.    */
-  uint16_t product_id;                           /**< idProduct from device descriptor.   */
-  uint8_t  i_mac_address;                        /**< iMACAddress string descr index.     */
-  uint8_t  mac_address[k_ra_hcdc_ecm_mac_bytes]; /**< 6-byte MAC parsed from iMACAddress. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bulk_in_ep; /**< Adapter's bulk IN EP num.           */
+  // cppcheck-suppress unusedStructMember
+  uint8_t bulk_out_ep; /**< Adapter's bulk OUT EP num.          */
+  // cppcheck-suppress unusedStructMember
+  uint8_t intr_in_ep; /**< Adapter's intr IN (notify) EP num.  */
+  // cppcheck-suppress unusedStructMember
+  uint16_t bulk_in_max_packet; /**< Adapter bulk-IN wMaxPacketSize.     */
+  // cppcheck-suppress unusedStructMember
+  uint16_t bulk_out_max_packet; /**< Adapter bulk-OUT wMaxPacketSize.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  // cppcheck-suppress unusedStructMember
+  uint16_t product_id; /**< idProduct from device descriptor.   */
+  // cppcheck-suppress unusedStructMember
+  uint8_t i_mac_address; /**< iMACAddress string descr index.     */
+  // cppcheck-suppress unusedStructMember
+  uint8_t mac_address[k_ra_hcdc_ecm_mac_bytes]; /**< 6-byte MAC parsed from iMACAddress. */
 } ra_usb_hcdc_ecm_device_t;
 
 /**
@@ -235,7 +245,7 @@ typedef void (*ra_usb_hcdc_ecm_attach_fn_t)(void* ctx, const ra_usb_hcdc_ecm_dev
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -268,7 +278,7 @@ typedef void (*ra_usb_hcdc_ecm_attach_fn_t)(void* ctx, const ra_usb_hcdc_ecm_dev
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Callback installed.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre `ra_usb_hcdc_ecm_init` has run.
  *
@@ -301,7 +311,7 @@ typedef void (*ra_usb_hcdc_ecm_attach_fn_t)(void* ctx, const ra_usb_hcdc_ecm_dev
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no adapter
+ * @retval k_ra_err_invalid_state Driver not initialized, or no adapter
  *         attached.
  * @retval k_ra_err_invalid_arg Bad `buf` / `len`.
  *
@@ -331,7 +341,7 @@ typedef void (*ra_usb_hcdc_ecm_attach_fn_t)(void* ctx, const ra_usb_hcdc_ecm_dev
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Frame drained; `*got_len` reflects the count.
  * @retval k_ra_err_no_data Pipe was empty.
- * @retval k_ra_err_invalid_state Driver not initialised, or no adapter
+ * @retval k_ra_err_invalid_state Driver not initialized, or no adapter
  *         attached.
  * @retval k_ra_err_null_ptr `buf` or `got_len` was NULL.
  * @retval k_ra_err_invalid_arg `max_len == 0`.
@@ -368,7 +378,7 @@ ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len);
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no adapter
+ * @retval k_ra_err_invalid_state Driver not initialized, or no adapter
  *         attached.
  * @retval k_ra_err_invalid_arg `filter_mask` has bits outside the
  *         documented set.
@@ -398,7 +408,7 @@ ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len);
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Control transfer queued; `*out_link` populated.
- * @retval k_ra_err_invalid_state Driver not initialised, or no adapter
+ * @retval k_ra_err_invalid_state Driver not initialized, or no adapter
  *         attached.
  * @retval k_ra_err_null_ptr `out_link` was NULL.
  * @retval k_ra_err_busy A control transfer is already in flight.
@@ -430,7 +440,7 @@ ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len);
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_hcdc_ecm_init` succeeded.
  *

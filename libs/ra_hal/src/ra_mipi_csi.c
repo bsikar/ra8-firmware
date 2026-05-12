@@ -890,7 +890,7 @@ ra_err_t ra_mipi_csi_short_packet_re_enable_store(void)
  * @return ::ra_err_t outcome.
  * @retval k_ra_ok Always returned in the current implementation.
  *
- * @pre Module has been initialised via ::ra_mipi_csi_init.
+ * @pre Module has been initialized via ::ra_mipi_csi_init.
  * @pre Caller serialises with the IRQ source if registering at runtime.
  * @post Subsequent ::ra_mipi_csi_dispatch calls invoke ``fn`` with ``ctx``.
  * @post Previously registered callback (if any) is overwritten.

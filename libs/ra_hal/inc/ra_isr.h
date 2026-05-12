@@ -309,7 +309,7 @@ void ra_isr_dispatch(uint16_t slot);
  * deterministic init".
  *
  * @pre Every IRQ source the application uses has been wired up.
- * @pre Every shared data structure that ISRs touch is initialised.
+ * @pre Every shared data structure that ISRs touch is initialized.
  * @post PRIMASK is clear; pending NVIC interrupts will dispatch.
  *
  * @note Symmetric counterpart of ``ra_isr_globals_disable``. Calling

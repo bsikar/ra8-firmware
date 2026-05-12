@@ -472,7 +472,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @return ``ra_err_t`` error code (see ``ra_mipi_phy_init``).
  *
  * @pre ``cfg`` non-NULL.
- * @pre The PHY was previously initialised at least once.
+ * @pre The PHY was previously initialized at least once.
  * @post On success, DPHYEN reads 1 and PLL is locked.
  *
  * @note Thread safety: not thread-safe.

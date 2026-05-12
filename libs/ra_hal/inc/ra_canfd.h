@@ -42,7 +42,7 @@ extern "C" {
  *
  * @invariant `dlc <= 15`
  * @invariant If `is_extended == 0`, `id` fits in 11 bits.
- * @invariant If `is_brs`, the channel must have been initialised with
+ * @invariant If `is_brs`, the channel must have been initialized with
  *            a data bit rate > nominal bit rate.
  *
  * @note The `data` array is sized for the worst case (64-byte CAN-FD
@@ -180,7 +180,7 @@ typedef void (*ra_canfd_event_fn_t)(void* ctx, uint8_t channel, uint32_t status_
  * contract; this site adds no behaviour beyond what the public
  * API documents.
  * @param[in] channel See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -210,7 +210,7 @@ void ra_canfd_dispatch(uint8_t channel);
  * @retval k_ra_err_invalid_arg  @p filter_id, @p accept_id, or @p dlc out
  *                               of range.
  *
- * @pre  Channel is initialised; controller is in global-reset mode.
+ * @pre  Channel is initialized; controller is in global-reset mode.
  * @pre  Caller is single-threaded init context.
  * @post CFDGAFL[entry].ID/M/P1 reflect the requested rule.
  * @post CFDGAFLECTR.AFLDAE re-locked when the call returns.
@@ -262,7 +262,7 @@ ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8
  * @return ::ra_err_t outcome.
  * @retval k_ra_ok    Mode bit updated.
  *
- * @pre  At least one CANFD channel is initialised.
+ * @pre  At least one CANFD channel is initialized.
  * @pre  Controller is in global-reset before flipping the bit.
  * @post CFDGFDCFG.NISO reflects @p enable.
  * @post Subsequent CAN-FD frames use the selected framing.

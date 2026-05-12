@@ -584,7 +584,7 @@ static void usb_kbd_format_hex_u16(uint16_t value, uint8_t* out)
  * @param[in] ctx    Caller context (unused).
  * @param[in] device Pointer to the attach snapshot.
  *
- * @pre Driver was initialised via `ra_usb_hhid_init`.
+ * @pre Driver was initialized via `ra_usb_hhid_init`.
  *
  * @post `s_state.attached` is true, `s_state.device` carries the
  *       VID/PID/EP info, and LED1 is driven high.

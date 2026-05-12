@@ -201,7 +201,7 @@ struct ra_psa_key_handle;
  * @brief Opaque PSA key handle (typed pointer into the static pool).
  *
  * @details
- * NULL is the sentinel for "uninitialised handle". The only legal way
+ * NULL is the sentinel for "uninitialized handle". The only legal way
  * to obtain a non-NULL value is ``ra_psa_key_import``; passing any
  * other pointer to ``ra_psa_*`` yields ``k_ra_err_invalid_arg``.
  *
@@ -246,21 +246,21 @@ typedef struct ra_psa_key_attr {
  * ``ra_psa_crypto_deinit`` return ``k_ra_err_exists``.
  *
  * Algorithm:
- * 1. If already initialised, return ``k_ra_err_exists``.
+ * 1. If already initialized, return ``k_ra_err_exists``.
  * 2. Invoke ``psa_crypto_init`` (or the simulator stand-in).
  * 3. Zero ``s_key_pool`` so close-without-import paths are well defined.
- * 4. Mark the module initialised.
+ * 4. Mark the module initialized.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok           Facade ready.
- * @retval k_ra_err_exists   Already initialised this boot.
+ * @retval k_ra_err_exists   Already initialized this boot.
  * @retval k_ra_err_hw_error TF-PSA-Crypto initialisation reported a fault.
  *
  * @pre TF-PSA-Crypto has been built into the firmware image
  *      (``RA_USE_MBEDTLS=ON``) OR ``RA_SIMULATOR_MODE`` is defined.
  * @pre Caller is on the boot thread; not safe to interleave with other
  *      crypto calls.
- * @post Module is in the initialised state on success.
+ * @post Module is in the initialized state on success.
  * @post Key pool is fully reset (no slot held).
  *
  * @note Not re-entrant. Call from the boot path.
@@ -284,16 +284,16 @@ ra_err_t ra_psa_crypto_init(void);
  *
  * @details
  * Destroys every still-imported key, calls ``mbedtls_psa_crypto_free``
- * (or the simulator stand-in), and clears the initialised flag so a
+ * (or the simulator stand-in), and clears the initialized flag so a
  * subsequent ``ra_psa_crypto_init`` succeeds again.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Facade torn down.
  * @retval k_ra_err_not_initialized ``ra_psa_crypto_init`` was never called.
  *
- * @pre Module was previously initialised.
+ * @pre Module was previously initialized.
  * @pre Caller has guaranteed no other thread holds a key handle.
- * @post Pool is empty and module is not initialised.
+ * @post Pool is empty and module is not initialized.
  * @post All TF-PSA-Crypto resources released.
  *
  * @note Not re-entrant.
@@ -322,7 +322,7 @@ ra_err_t ra_psa_crypto_deinit(void);
  * @retval k_ra_ok                  Key imported and handle valid.
  * @retval k_ra_err_invalid_arg     NULL pointer or malformed attributes.
  * @retval k_ra_err_invalid_size    ``data_len`` exceeds the static cap.
- * @retval k_ra_err_not_initialized Facade was never initialised.
+ * @retval k_ra_err_not_initialized Facade was never initialized.
  * @retval k_ra_err_no_mem          Pool exhausted (``k_ra_psa_max_keys``).
  * @retval k_ra_err_hw_error        Underlying ``psa_import_key`` rejected
  *                                  the key (bad key material).
@@ -369,10 +369,10 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Key destroyed.
  * @retval k_ra_err_invalid_arg     Handle NULL or not from this pool.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  *
  * @pre Handle was returned by ``ra_psa_key_import``.
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post Slot is free and may be re-issued.
  * @post No further use of ``handle`` is permitted.
  *
@@ -405,10 +405,10 @@ ra_err_t ra_psa_key_destroy(ra_psa_key_t handle);
  * @retval k_ra_ok                  Digest written.
  * @retval k_ra_err_invalid_arg     Pointer NULL or wrong algorithm.
  * @retval k_ra_err_invalid_size    ``out_cap`` too small.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_hw_error        PSA reported a fatal error.
  *
- * @pre Facade initialised.
+ * @pre Facade initialized.
  * @pre ``out`` is non-NULL.
  * @post On ``k_ra_ok``, ``*out_len == k_ra_psa_sha256_len``.
  * @post On any error, ``*out_len == 0``.
@@ -449,7 +449,7 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
  * @retval k_ra_ok                  Signature emitted.
  * @retval k_ra_err_invalid_arg     NULL pointer or alg mismatch.
  * @retval k_ra_err_invalid_size    Output buffer too small.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_not_supported   Key type / alg not implemented.
  * @retval k_ra_err_hw_error        Underlying ``psa_sign_hash`` failed.
  *
@@ -493,7 +493,7 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
  * @retval k_ra_ok                  Signature is valid.
  * @retval k_ra_err_crc_mismatch    Signature is invalid.
  * @retval k_ra_err_invalid_arg     Pointer NULL or alg mismatch.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_not_supported   Algorithm not implemented.
  * @retval k_ra_err_hw_error        Underlying PSA call reported a fault.
  *
@@ -543,7 +543,7 @@ ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
  * @retval k_ra_err_invalid_arg     NULL pointer / alg mismatch.
  * @retval k_ra_err_invalid_size    Output buffer too small or nonce
  *                                  wrong length.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_hw_error        Underlying AEAD reported a fault.
  *
  * @pre Handle was imported with ``k_ra_psa_usage_encrypt``.
@@ -598,7 +598,7 @@ ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
  * @retval k_ra_err_invalid_arg     NULL pointer / alg mismatch.
  * @retval k_ra_err_invalid_size    Output buffer too small or input
  *                                  too short to contain a tag.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_crc_mismatch    Tag verification failed
  *                                  (ciphertext / aad / nonce / key
  *                                  was tampered with).
@@ -644,10 +644,10 @@ ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
  * @retval k_ra_ok                  ``out`` filled with ``out_len`` bytes.
  * @retval k_ra_err_invalid_arg     ``out`` was NULL.
  * @retval k_ra_err_invalid_size    ``out_len`` was zero.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_hw_error        Underlying ``psa_generate_random`` failed.
  *
- * @pre Facade has been initialised via ``ra_psa_crypto_init``.
+ * @pre Facade has been initialized via ``ra_psa_crypto_init``.
  * @pre ``out`` is non-NULL.
  * @post On ``k_ra_ok``, ``out[0..out_len-1]`` has been written.
  * @post On any error, ``out`` is unchanged.

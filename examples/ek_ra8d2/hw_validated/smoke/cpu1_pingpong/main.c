@@ -43,7 +43,7 @@ typedef enum : uint8_t {
  * @retval k_ra_ok          Message received.
  * @retval k_ra_err_timeout No message in time.
  * @pre out_msg non-NULL.
- * @pre channel previously initialised via ra_ipc_init.
+ * @pre channel previously initialized via ra_ipc_init.
  * @post On k_ra_ok, *out_msg holds the peer's payload.
  * @post Loop count bounded by k_cpu1_pingpong_poll_max.
  * @note Not thread-safe.

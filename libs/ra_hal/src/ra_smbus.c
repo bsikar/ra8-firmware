@@ -52,11 +52,11 @@ typedef enum : uint16_t {
  * @struct ra_smbus_state_t
  * @brief Module state: latched at init time.
  *
- * @invariant ``initialised`` is true if and only if ``ra_iic_b_init``
+ * @invariant ``initialized`` is true if and only if ``ra_iic_b_init``
  *            succeeded and ``ra_smbus_deinit`` has not been called.
  */
 typedef struct {
-  bool                initialised; /**< Latched after a good init.      */
+  bool                initialized; /**< Latched after a good init.      */
   uint8_t             channel;     /**< IIC_B channel.                  */
   bool                pec_enabled; /**< Append + verify PEC byte.       */
   ra_smbus_alert_fn_t alert_fn;    /**< SMBALERT# callback (or NULL).   */
@@ -65,7 +65,7 @@ typedef struct {
 
 /** @brief Singleton driver state. */
 static ra_smbus_state_t s_state = {
-  .initialised = false,
+  .initialized = false,
   .channel     = 0U,
   .pec_enabled = false,
   .alert_fn    = nullptr,
@@ -92,7 +92,7 @@ static ra_smbus_state_t s_state = {
  * @return Updated CRC.
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -154,7 +154,7 @@ ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
   if (err != k_ra_ok) {
     return err;
   }
-  s_state.initialised = true;
+  s_state.initialized = true;
   s_state.channel     = cfg->channel;
   s_state.pec_enabled = cfg->pec_enabled;
   s_state.alert_fn    = nullptr;
@@ -165,11 +165,11 @@ ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
 /* Ra smbus deinit -- see implementation for details. */
 ra_err_t ra_smbus_deinit(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   const ra_err_t err  = ra_iic_b_deinit(s_state.channel);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.alert_fn    = nullptr;
   s_state.alert_ctx   = nullptr;
   return err;
@@ -183,7 +183,7 @@ ra_err_t ra_smbus_deinit(void)
 /* Ra smbus send byte -- see implementation for details. */
 ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* Frame: [data] (+ optional [PEC]) -- the address byte is emitted by
@@ -204,7 +204,7 @@ ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
 ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "receive_byte: out_data");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   uint8_t        buf[2] = {0U, 0U};
@@ -234,7 +234,7 @@ ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
 /* Ra smbus write byte data -- see implementation for details. */
 ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   uint8_t  buf[3];
@@ -255,7 +255,7 @@ ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
 ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "read_byte_data: out_data");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* Combined transfer: write [cmd], RESTART, read [data] (+ optional
@@ -290,7 +290,7 @@ ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_da
 /* Ra smbus block write -- see implementation for details. */
 ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* data, uint8_t len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if (len == 0U) {
@@ -325,7 +325,7 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "block_read: buf");
   RA_CHECK_NULL_PTR(out_len, s_tag, "block_read: out_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if (cap == 0U) {
@@ -376,7 +376,7 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
 /* Ra smbus alert register callback -- see implementation for details. */
 ra_err_t ra_smbus_alert_register_callback(ra_smbus_alert_fn_t fn, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   s_state.alert_fn  = fn;
@@ -387,7 +387,7 @@ ra_err_t ra_smbus_alert_register_callback(ra_smbus_alert_fn_t fn, void* ctx)
 /* Ra smbus alert dispatch -- see implementation for details. */
 ra_err_t ra_smbus_alert_dispatch(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   uint8_t        ara = 0U;

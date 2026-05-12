@@ -626,7 +626,7 @@ typedef enum : uint8_t {
   k_ra_rsip_status_bit_ready   = 0U, /**< 1 = idle and ready for command.   */
   k_ra_rsip_status_bit_busy    = 1U, /**< 1 = engine is running a command.  */
   k_ra_rsip_status_bit_bist_ok = 2U, /**< 1 = self-test passed.             */
-  k_ra_rsip_status_bit_kv_ok   = 3U, /**< 1 = key vault initialised.        */
+  k_ra_rsip_status_bit_kv_ok   = 3U, /**< 1 = key vault initialized.        */
   k_ra_rsip_status_bit_huk_ok  = 4U, /**< 1 = HUK loaded and unwrapped.     */
   k_ra_rsip_status_bit_dpa_on  = 5U, /**< 1 = SPA/DPA countermeasures live. */
   k_ra_rsip_status_bit_err     = 7U, /**< 1 = access-management error.      */

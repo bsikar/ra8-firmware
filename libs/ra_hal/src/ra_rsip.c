@@ -250,7 +250,7 @@ static void internal_unpack_le(uint32_t word, uint8_t* p);
  * @param[in] off Word-addressed RSIP register offset (input port).
  * @param[in] in  Source byte buffer (>= ``len`` bytes); may be NULL only when ``len == 0``.
  * @param[in] len Number of bytes to push into the port.
- * @pre Engine has been initialised and the target port is ready for writes.
+ * @pre Engine has been initialized and the target port is ready for writes.
  * @pre Either ``len == 0`` or ``in != NULL``.
  * @post The port has observed ``ceil(len / 4)`` 32-bit writes.
  * @post No caller-visible buffer is modified.
@@ -741,7 +741,7 @@ ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ctx->used        = 0U;
-  ctx->initialised = 1U;
+  ctx->initialized = 1U;
   return k_ra_ok;
 }
 
@@ -752,7 +752,7 @@ ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, u
   if ((data == nullptr) && (len != 0U)) {
     return k_ra_err_null_ptr;
   }
-  if (ctx->initialised != 1U) {
+  if (ctx->initialized != 1U) {
     return k_ra_err_invalid_state;
   }
   if (len == 0U) {
@@ -773,11 +773,11 @@ ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA_CHECK_NULL_PTR(digest_out, s_tag, "digest_out must not be nullptr");
-  if (ctx->initialised != 1U) {
+  if (ctx->initialized != 1U) {
     return k_ra_err_invalid_state;
   }
   const ra_err_t err = internal_sha256_dispatch(ctx->buf, ctx->used, digest_out);
-  ctx->initialised   = 0U;
+  ctx->initialized   = 0U;
   ctx->used          = 0U;
   return err;
 }
@@ -833,10 +833,10 @@ ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uin
   }
   const ra_err_t upd_err = ra_rsip_sha256_update(&ctx->inner, ipad, k_ra_rsip_sha256_block);
   if (upd_err != k_ra_ok) {
-    ctx->inner.initialised = 0U;
+    ctx->inner.initialized = 0U;
     return upd_err;
   }
-  ctx->initialised = 1U;
+  ctx->initialized = 1U;
   return k_ra_ok;
 }
 
@@ -845,7 +845,7 @@ ra_err_t
 ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
-  if (ctx->initialised != 1U) {
+  if (ctx->initialized != 1U) {
     return k_ra_err_invalid_state;
   }
   return ra_rsip_sha256_update(&ctx->inner, data, len);
@@ -898,7 +898,7 @@ ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA_CHECK_NULL_PTR(mac_out, s_tag, "mac_out must not be nullptr");
-  if (ctx->initialised != 1U) {
+  if (ctx->initialized != 1U) {
     return k_ra_err_invalid_state;
   }
   uint8_t        inner_digest[k_ra_rsip_sha256_digest_bytes] = {};
@@ -907,7 +907,7 @@ ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_
   if (inner_err == k_ra_ok) {
     result = internal_hmac_outer(ctx->key_block, inner_digest, mac_out);
   }
-  ctx->initialised = 0U;
+  ctx->initialized = 0U;
   for (uint32_t i = 0U; i < k_ra_rsip_sha256_block; ++i) {
     ctx->key_block[i] = 0x00U;
   }

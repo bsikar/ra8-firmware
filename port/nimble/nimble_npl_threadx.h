@@ -130,7 +130,7 @@ struct ble_npl_mutex {
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -147,7 +147,7 @@ void nimble_port_init(void);
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */

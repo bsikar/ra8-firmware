@@ -282,7 +282,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the host-MSC driver.
  */
 typedef struct {
-  bool                    initialised;  /**< True after init.            */
+  bool                    initialized;  /**< True after init.            */
   bool                    attached;     /**< True after enum done.       */
   ra_usb_speed_t          speed;        /**< Underlying controller.      */
   ra_usb_hmsc_step_t      step;         /**< Current enumeration step.   */
@@ -746,7 +746,7 @@ ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
   s_state.attach_ctx   = nullptr;
   s_state.device       = (ra_usb_hmsc_device_t){};
   s_state.next_cbw_tag = k_ra_hmsc_initial_tag;
-  s_state.initialised  = true;
+  s_state.initialized  = true;
 
   ra_log_info_val(s_tag, "host-MSC ready", (uint32_t)speed);
   return k_ra_ok;
@@ -755,13 +755,13 @@ ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
 /* ra usb hmsc close -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   /* Bus power down: drop UACT before tearing the controller. */
   (void)ra_usb_host_set_uact(s_state.speed, false);
   const ra_err_t err  = ra_usb_host_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.attached    = false;
   s_state.attach_cb   = nullptr;
   s_state.attach_ctx  = nullptr;
@@ -777,7 +777,7 @@ ra_err_t ra_usb_hmsc_close(void)
 /* ra usb hmsc attach callback -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_attach_callback(ra_usb_hmsc_attach_fn_t on_attach, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.attach_cb  = on_attach;
@@ -793,7 +793,7 @@ ra_err_t ra_usb_hmsc_attach_callback(ra_usb_hmsc_attach_fn_t on_attach, void* ct
 /* Validate driver state + LUN before issuing a SCSI command -- see surrounding code and HUM citations. */
 static ra_err_t internal_check_ready(uint8_t target_lun)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -830,7 +830,7 @@ static ra_err_t internal_send_cbw(const uint8_t* cbw)
 /**
  * @brief Pull bytes from the bulk-IN pipe (data + CSW phase).
  *
- * @details `inout_len` is initialised to capacity by the caller and
+ * @details `inout_len` is initialized to capacity by the caller and
  * receives the actual byte count on return.
  * @param[out] dst See declaration: ``uint8_t* dst``.
  * @param[out] inout_len See declaration: ``uint16_t* inout_len``.
@@ -1071,7 +1071,7 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
 /* ra usb hmsc step -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_step(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   return internal_step_advance();

@@ -327,7 +327,7 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_ipc_reset_fifo(uint8_t channel);
 
 /**
- * @brief Update the event-mask filter for an already-initialised channel.
+ * @brief Update the event-mask filter for an already-initialized channel.
  *
  * @param[in] channel Channel id 0..3.
  * @param[in] mask    New ``ra_ipc_event_t`` bitmask.
@@ -658,7 +658,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @retval k_ra_err_invalid_arg ``channel >= 4``.
  * @retval k_ra_err_null_ptr    ``out_sta`` was NULL.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre ``out_sta`` non-NULL.
  * @post ``*out_sta`` reflects the live STA value.
  * @post No registers are mutated.
@@ -679,7 +679,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @retval k_ra_ok              Mask written.
  * @retval k_ra_err_invalid_arg ``channel >= 4``.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre ``mask`` only contains bits drawn from ``ra_ipc_event_t``.
  * @post Bits requested in ``mask`` read back as 0 on next get_status.
  * @post No other STA bits are disturbed.
@@ -699,7 +699,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @retval k_ra_ok              Errors cleared.
  * @retval k_ra_err_invalid_arg ``channel >= 4``.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre Caller observed (or expects) STA.RERR or STA.FERR to be set.
  * @post STA.RERR == 0 and STA.FERR == 0 on next read.
  * @post No other STA bits are disturbed.
@@ -721,7 +721,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @retval k_ra_err_invalid_arg ``channel >= 4``.
  * @retval k_ra_err_null_ptr    ``out_can_send`` was NULL.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre ``out_can_send`` non-NULL.
  * @post No registers are mutated.
  * @post ``*out_can_send`` reflects ``!STA.FULL``.
@@ -742,7 +742,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @retval k_ra_err_invalid_arg ``channel >= 4``.
  * @retval k_ra_err_null_ptr    ``out_has_data`` was NULL.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre ``out_has_data`` non-NULL.
  * @post No registers are mutated.
  * @post ``*out_has_data`` reflects ``STA.RDY``.
@@ -1139,7 +1139,7 @@ void ra_ipc_dispatch_nmi(uint8_t unit);
  * @retval k_ra_ok              Stored.
  * @retval k_ra_err_invalid_arg ``channel >= 4`` or ``event_id > 7``.
  *
- * @pre Channel was initialised.
+ * @pre Channel was initialized.
  * @pre IRQs masked at install time.
  * @post Subsequent ``ra_ipc_dispatch`` invocations call ``fn(ctx, ch, ev)``
  *       when STA.IRQev is set in the dispatched mask.
@@ -1251,7 +1251,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * @param[in] ring Non-NULL descriptor (caller-allocated).
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok              Initialised.
+ * @retval k_ra_ok              Initialized.
  * @retval k_ra_err_null_ptr    ``ring`` or one of its required pointer
  *                               fields was NULL.
  * @retval k_ra_err_invalid_arg ``capacity == 0`` or non-power-of-two.
@@ -1276,7 +1276,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * the semaphore, then signals the consumer through
  * ``ra_ipc_send_event(ring->channel, ring->notify_id)``.
  *
- * @param[in] ring    Non-NULL initialised descriptor.
+ * @param[in] ring    Non-NULL initialized descriptor.
  * @param[in] payload 32-bit word to enqueue.
  *
  * @return ``ra_err_t`` error code.
@@ -1303,7 +1303,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * ``slots[tail % capacity]`` into ``out_payload`` if non-empty,
  * advances tail, releases the semaphore.
  *
- * @param[in]  ring        Non-NULL initialised descriptor.
+ * @param[in]  ring        Non-NULL initialized descriptor.
  * @param[out] out_payload Receives the popped word.
  *
  * @return ``ra_err_t`` error code.
@@ -1334,7 +1334,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * @retval k_ra_err_null_ptr    ``ring`` or ``out_empty`` was NULL.
  *
  * @pre ``ring`` and ``out_empty`` non-NULL.
- * @pre ``ring`` was initialised.
+ * @pre ``ring`` was initialized.
  * @post No registers are mutated.
  * @post ``*out_empty`` reflects head == tail.
  *
@@ -1354,7 +1354,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * @retval k_ra_err_null_ptr    ``ring`` or ``out_full`` was NULL.
  *
  * @pre ``ring`` and ``out_full`` non-NULL.
- * @pre ``ring`` was initialised.
+ * @pre ``ring`` was initialized.
  * @post No registers are mutated.
  * @post ``*out_full`` reflects (head - tail) == capacity.
  *

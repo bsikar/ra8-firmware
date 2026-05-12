@@ -63,7 +63,7 @@ extern "C" {
  * @param[in] iv          16-byte IV (NULL only for ECB).
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Context initialised.
+ * @retval k_ra_ok Context initialized.
  * @retval k_ra_err_null_ptr ``wrapped_key`` was NULL.
  * @retval k_ra_err_invalid_arg Wrapper type tag mismatched, mode or
  *                              key-bits unsupported.

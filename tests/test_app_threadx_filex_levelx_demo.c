@@ -12,7 +12,7 @@
  *   - ra_cgc / ra_time pre-kernel boot.
  *   - The SCI panic-flush helper used by demo_panic_halt().
  *   - ra_fs (the FileX equivalent surface) precondition guards on a
- *     fresh / partially-initialised backend.
+ *     fresh / partially-initialized backend.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -201,10 +201,10 @@ static void test_fxlx_mount_rejects_partial_backend(void)
  *
  * @details demo_panic_halt() always (void)-casts ra_sci_flush; verify
  * the call shape returns a well-defined failure rather than crashing
- * when the SCI is uninitialised.
+ * when the SCI is uninitialized.
  *
  * @par MC/DC:
- * State-machine vector: SCI8 stays uninitialised; flush rejection
+ * State-machine vector: SCI8 stays uninitialized; flush rejection
  * matches the demo_panic_halt() drain budget being zero.
  */
 static void test_fxlx_panic_flush_before_init(void)

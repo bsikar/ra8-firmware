@@ -219,7 +219,7 @@ typedef enum : uint8_t {
  * @param[in] byte Byte to transmit.
  * @return ``k_ra_ok`` / ``k_ra_err_hw_timeout`` / ``k_ra_err_invalid_arg``.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post On success, the byte has been handed to the TX register.
  *
  * @note Thread safety: not thread-safe with respect to IRQ TX on
@@ -236,7 +236,7 @@ typedef enum : uint8_t {
  * @return ``k_ra_ok`` / ``k_ra_err_hw_timeout`` / ``k_ra_err_null_ptr``.
  *
  * @pre ``out_byte`` non-NULL.
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post On success, one byte was drained from RDR.
  *
  * @note Thread safety: not thread-safe.
@@ -289,7 +289,7 @@ typedef enum : uint8_t {
  * @retval k_ra_err_invalid_arg ``channel`` > 9.
  * @retval k_ra_err_hw_timeout Spin budget elapsed without TEND.
  *
- * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre Channel previously initialized via ``ra_sci_init``.
  * @post On success, the SCI transmit shift register is empty -- safe to
  *       drop CCR0.TE, gate the MSTP clock, or execute WFI.
  *
@@ -317,7 +317,7 @@ typedef enum : uint8_t {
  * @param[in] ctx Context passed to the callback.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post On success, SCR.RIE is set (if ``fn`` non-NULL).
  * @since 0.1.0
  */
@@ -332,7 +332,7 @@ typedef enum : uint8_t {
  * @param[in] ctx Context passed to the callback.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post On success, SCR.TIE is set (if ``fn`` non-NULL).
  * @since 0.1.0
  */
@@ -381,7 +381,7 @@ typedef enum : uint8_t {
  * @param[in] pclk_hz Current PCLKB frequency in Hz.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
- * @pre Channel initialised.
+ * @pre Channel initialized.
  * @pre IRQs masked or single-threaded context.
  * @post BRR reflects the new divider.
  * @since 0.1.0
@@ -449,10 +449,10 @@ typedef enum : uint8_t {
  * @retval k_ra_ok Transfer armed.
  * @retval k_ra_err_null_ptr ``data`` is NULL with ``len`` > 0.
  * @retval k_ra_err_invalid_arg ``channel`` > 9 or channel not
- * initialised.
+ * initialized.
  * @retval k_ra_err_busy A previous async TX is still draining.
  *
- * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre Channel previously initialized via ``ra_sci_init``.
  * @pre ``data`` non-NULL when ``len`` > 0.
  * @post On success, CCR0.TIE = 1 and the per-channel TX state holds
  * ``data`` / ``len``.
@@ -485,10 +485,10 @@ typedef enum : uint8_t {
  * @retval k_ra_ok Transfer armed.
  * @retval k_ra_err_null_ptr ``buf`` is NULL with ``len`` > 0.
  * @retval k_ra_err_invalid_arg ``channel`` > 9 or channel not
- * initialised.
+ * initialized.
  * @retval k_ra_err_busy A previous async RX is still draining.
  *
- * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre Channel previously initialized via ``ra_sci_init``.
  * @pre ``buf`` non-NULL when ``len`` > 0.
  * @post On success, CCR0.RIE = 1 and the per-channel RX state holds
  * ``buf`` / ``len`` / ``index = 0``.
@@ -520,7 +520,7 @@ typedef enum : uint8_t {
  * @retval k_ra_err_invalid_arg ``channel`` > 9 or ``direction`` is not
  * one of the three defined values.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post The selected direction(s) have ``IE`` bits cleared and the
  * matching per-channel byte counter is zero.
  *
@@ -551,7 +551,7 @@ typedef enum : uint8_t {
  * @retval k_ra_err_invalid_arg ``channel`` > 9.
  *
  * @pre ``remaining`` is non-NULL.
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post CCR0.RIE = 0 and the per-channel RX state is zeroed.
  *
  * @note Thread safety: not thread-safe.
@@ -618,7 +618,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @retval k_ra_ok RX paused (CCR0.RE = 0).
  * @retval k_ra_err_invalid_arg ``channel`` > 9.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post CCR0.RE = 0; bytes already in RDR remain readable.
  *
  * @note Thread safety: not thread-safe.
@@ -636,7 +636,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @retval k_ra_ok RX re-armed (CCR0.RE = 1).
  * @retval k_ra_err_invalid_arg ``channel`` > 9.
  *
- * @pre Channel previously initialised.
+ * @pre Channel previously initialized.
  * @post CCR0.RE = 1.
  *
  * @note Thread safety: not thread-safe.
@@ -682,7 +682,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @retval k_ra_err_no_mem All DMAC channels in use.
  * @retval k_ra_err_hw_error Underlying ``ra_dma_request`` failed.
  *
- * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre Channel previously initialized via ``ra_sci_init``.
  * @pre ``ra_dma_init`` has been called.
  * @pre ``out_dma_channel`` is non-NULL.
  *
@@ -725,7 +725,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @retval k_ra_err_no_mem All DMAC channels in use.
  * @retval k_ra_err_hw_error Underlying ``ra_dma_request`` failed.
  *
- * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre Channel previously initialized via ``ra_sci_init``.
  * @pre ``ra_dma_init`` has been called.
  * @pre ``out_buf`` and ``out_dma_channel`` are non-NULL.
  *
@@ -760,7 +760,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @since 0.1.0
  *
  * @details See implementation for details.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -777,7 +777,7 @@ void ra_sci_dispatch_txi(uint8_t channel);
  * @since 0.1.0
  *
  * @details See implementation for details.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -794,7 +794,7 @@ void ra_sci_dispatch_rxi(uint8_t channel);
  * @since 0.1.0
  *
  * @details See implementation for details.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */

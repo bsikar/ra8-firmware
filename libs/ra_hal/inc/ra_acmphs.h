@@ -200,7 +200,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

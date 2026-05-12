@@ -53,7 +53,7 @@ typedef enum : uint8_t {
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -81,7 +81,7 @@ static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
  * Citation: HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490.
  *
  * @param[in] channel See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -108,7 +108,7 @@ static void internal_disable_channel(uint8_t channel)
  * starting conversion.
  *
  * @param[in] channel See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -132,7 +132,7 @@ static void internal_start_channel(uint8_t channel)
  * contract; this site adds no behaviour beyond what the public
  * API documents.
  * @param[in] channel See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -198,7 +198,7 @@ static ra_dac_b_state_t s_dac_b_state;
  * API documents.
  * @param[in] channel See header declaration for direction and constraints.
  * @param[in] cfg See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

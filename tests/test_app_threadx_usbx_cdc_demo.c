@@ -214,7 +214,7 @@ static void test_ucdc_send_null_data_rejected(void)
  * @brief ep_open before init rejected (worker-thread orderings).
  *
  * @par MC/DC:
- * Decision vector under test: ``initialised == false`` invariant in
+ * Decision vector under test: ``initialized == false`` invariant in
  * ep_open -- failure side of the init-precondition decision.
  */
 static void test_ucdc_ep_open_before_init_rejected(void)

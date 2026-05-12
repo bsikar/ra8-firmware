@@ -421,10 +421,10 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
  *
  * @pre ``cfg`` is non-NULL and has passed ``priv_validate_cfg``.
  * @pre ``s_state.opened`` is ``false``.
- * @post On ``k_ra_ok`` the IIC_B channel is initialised, ``s_state``
+ * @post On ``k_ra_ok`` the IIC_B channel is initialized, ``s_state``
  *       reflects ``cfg``, the GT911 status byte has been acknowledged,
  *       and the IRQ pin (if any) is programmed for falling-edge detect.
- * @post On error the IIC_B channel has been deinitialised.
+ * @post On error the IIC_B channel has been deinitialized.
  *
  * @note Not thread-safe; ``ra_touch_open`` is the only caller and runs
  *       single-threaded during driver bring-up.

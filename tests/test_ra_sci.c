@@ -886,7 +886,7 @@ static void test_async_null_arg_rejection(void)
   TEST_ASSERT_EQ(k_ra_err_busy, ra_sci_read(5U, buf, 1U));
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort(5U, k_ra_sci_dir_rx));
 
-  /* Calling write/read on an uninitialised channel is rejected. */
+  /* Calling write/read on an uninitialized channel is rejected. */
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_deinit(5U));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_write(5U, pl, 1U));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_read(5U, buf, 1U));

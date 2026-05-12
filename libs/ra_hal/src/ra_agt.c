@@ -153,7 +153,7 @@ ra_err_t ra_agt_deinit(uint8_t channel)
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_agt_start_free_run`` was previously called for ``channel``
- *      or the channel has been initialised by a sibling driver.
+ *      or the channel has been initialized by a sibling driver.
  *
  * @post Counter holds ``reload``.
  * @post Channel state (running / stopped) is unchanged.

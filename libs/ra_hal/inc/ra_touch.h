@@ -177,7 +177,7 @@ typedef void (*ra_touch_event_fn_t)(void* ctx);
  * @retval k_ra_err_not_initialized ``ra_touch_open`` was not called.
  *
  * @pre Driver is currently open.
- * @post No handler is registered; the IIC_B channel is deinitialised.
+ * @post No handler is registered; the IIC_B channel is deinitialized.
  *
  * @since 0.1.0
  */

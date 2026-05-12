@@ -19,10 +19,10 @@
  * @par State Machine
  * @startuml
  * [*] --> reset
- * reset --> initialised: ra_drw_init
- * initialised --> stopped: ra_drw_enter_stop
- * stopped --> initialised: ra_drw_exit_stop
- * initialised --> reset: ra_drw_deinit
+ * reset --> initialized: ra_drw_init
+ * initialized --> stopped: ra_drw_enter_stop
+ * stopped --> initialized: ra_drw_exit_stop
+ * initialized --> reset: ra_drw_deinit
  * @enduml
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -237,7 +237,7 @@ static inline int32_t internal_iabs(int32_t v)
  * @param[in] set_mask Bits to set after the clear.
  * @return Updated CONTROL2 value (also written back to the register).
  *
- * @pre Driver initialised; CONTROL2 is reachable.
+ * @pre Driver initialized; CONTROL2 is reachable.
  * @pre Caller must ensure no draw is in flight (CONTROL2 is latched
  * at the start of an enumeration).
  * @post CONTROL2 = (old & ~clear_mask) | set_mask.
@@ -264,7 +264,7 @@ static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_m
  * @param[in] rect Rectangle in pixel space (validated by caller).
  *
  * @pre rect dimensions in [1..1024].
- * @pre Driver initialised.
+ * @pre Driver initialized.
  * @post L1..L4 START / XADD / YADD describe a filled axis-aligned quad.
  * @post SIZE = (height << 16) | width.
  *

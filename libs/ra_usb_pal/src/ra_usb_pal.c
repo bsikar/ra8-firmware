@@ -125,7 +125,7 @@ typedef struct {
   ra_usb_pal_state_t    state;                          /**< Detached/attached/... */
   ra_usb_pal_event_fn_t event_fn;                       /**< Stack-installed callback. */
   void*                 event_ctx;                      /**< Callback context. */
-  bool                  initialised;                    /**< True after ra_usb_pal_init. */
+  bool                  initialized;                    /**< True after ra_usb_pal_init. */
   ra_usb_pal_ep_slot_t  eps[k_ra_usb_pal_ep_table_len]; /**< Per-EP state. */
 } ra_usb_pal_state_inner_t;
 
@@ -231,7 +231,7 @@ static uint16_t internal_translate(uint16_t usb_mask)
  *
  * @details
  * Installed via ``ra_usb_attach_handler`` during ::ra_usb_pal_init.
- * Drops events while the PAL is uninitialised or arriving from a
+ * Drops events while the PAL is uninitialized or arriving from a
  * different speed than the one negotiated, then translates the raw
  * status mask via ::internal_translate and forwards non-zero
  * results to the stack callback.
@@ -252,7 +252,7 @@ static uint16_t internal_translate(uint16_t usb_mask)
 static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_mask)
 {
   (void)ctx;
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return;
   }
   if (speed != s_state.speed) {
@@ -289,9 +289,9 @@ static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_
  *
  * @pre ``ra_mstp_init`` and ``ra_pwr_init`` have been called.
  * @pre IRQs masked or single-threaded init context.
- * @post On success, ``s_state.initialised == true`` and every EP
+ * @post On success, ``s_state.initialized == true`` and every EP
  *       slot is in the unopened state.
- * @post On failure, ``s_state.initialised == false`` and the
+ * @post On failure, ``s_state.initialized == false`` and the
  *       underlying ra_usb driver has been torn down.
  *
  * @note Not thread-safe; must run from boot init context.
@@ -313,14 +313,14 @@ ra_err_t ra_usb_pal_init(ra_usb_speed_t speed)
   s_state.state       = k_ra_usb_pal_state_detached;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
-  s_state.initialised = true;
+  s_state.initialized = true;
   internal_reset_eps();
 
   const ra_err_t att_err = ra_usb_attach_handler(internal_usb_event, nullptr);
   if (att_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
     /* GCOVR_EXCL_START */
     ra_log_error_val(s_tag, "ra_usb_attach_handler failed", (uint32_t)att_err);
-    s_state.initialised = false;
+    s_state.initialized = false;
     (void)ra_usb_device_deinit(speed);
     return k_ra_err_hw_init_failed;
     /* GCOVR_EXCL_STOP */
@@ -340,11 +340,11 @@ ra_err_t ra_usb_pal_init(ra_usb_speed_t speed)
  *
  * @return ``ra_err_t`` error code from ``ra_usb_device_deinit``.
  * @retval k_ra_ok                  Released cleanly.
- * @retval k_ra_err_invalid_state   PAL was never initialised.
+ * @retval k_ra_err_invalid_state   PAL was never initialized.
  *
  * @pre IRQs masked or single-threaded shutdown context.
- * @pre PAL was previously initialised (otherwise returns invalid_state).
- * @post ``s_state.initialised == false``.
+ * @pre PAL was previously initialized (otherwise returns invalid_state).
+ * @post ``s_state.initialized == false``.
  * @post Subsequent EP calls return ``k_ra_err_invalid_state``.
  *
  * @note Not thread-safe.
@@ -353,13 +353,13 @@ ra_err_t ra_usb_pal_init(ra_usb_speed_t speed)
  */
 ra_err_t ra_usb_pal_deinit(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   (void)ra_usb_device_attach(s_state.speed, false);
   (void)ra_usb_attach_handler(nullptr, nullptr);
   const ra_err_t err  = ra_usb_device_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
   s_state.state       = k_ra_usb_pal_state_detached;
@@ -378,9 +378,9 @@ ra_err_t ra_usb_pal_deinit(void)
  *
  * @return ``ra_err_t`` error code from the underlying driver.
  * @retval k_ra_ok                  Attach state updated.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre Bus is in a stable enumeration state (host connected if attaching).
  * @post On success, ``s_state.state`` reflects ``attached``.
  * @post On error, no PAL state is mutated.
@@ -390,7 +390,7 @@ ra_err_t ra_usb_pal_deinit(void)
  */
 ra_err_t ra_usb_pal_attach(bool attached)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   const ra_err_t err = ra_usb_device_attach(s_state.speed, attached);
@@ -411,7 +411,7 @@ ra_err_t ra_usb_pal_attach(bool attached)
 ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "get_state: out_state");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   *out_state = s_state.state;
@@ -433,11 +433,11 @@ ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Endpoint opened.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  * @retval k_ra_err_invalid_arg     Address, direction, type, or max_packet
  *                                  out of range.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre Endpoint is not currently opened (re-opens are allowed and reset state).
  * @post On success, the slot is opened and the per-EP ring is empty.
  * @post On error, no slot state is mutated.
@@ -454,7 +454,7 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
    * (0x80 = IN). Strip it so callers can pass either the descriptor
    * form (e.g. 0x83) or the bare endpoint number (e.g. 3). */
   ep_addr = (uint8_t)(ep_addr & (uint8_t)k_ra_usb_pal_ep_addr_mask);
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (ra_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra_usb_pal_ep_max)) {
@@ -496,12 +496,12 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Packet queued.
- * @retval k_ra_err_invalid_state   PAL not initialised or EP not opened.
+ * @retval k_ra_err_invalid_state   PAL not initialized or EP not opened.
  * @retval k_ra_err_null_ptr        ``data`` NULL with ``len > 0``.
  * @retval k_ra_err_invalid_arg     Address out of range or length above limit.
  * @retval k_ra_err_no_mem          Per-EP ring full; drain and retry.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre Endpoint was opened via ::ra_usb_pal_ep_open.
  * @post On success, the per-EP ring depth is incremented by one.
  * @post On error, no slot state is mutated.
@@ -513,7 +513,7 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
 {
   /* Accept descriptor-shaped (0x80 | ep) and bare-number ep_addr. */
   ep_addr = (uint8_t)(ep_addr & (uint8_t)k_ra_usb_pal_ep_addr_mask);
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (ra_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra_usb_pal_ep_max)) {
@@ -563,10 +563,10 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
  * @retval k_ra_ok                  Packet copied.
  * @retval k_ra_err_no_data         Ring empty.
  * @retval k_ra_err_null_ptr        ``out_buf`` or ``inout_len`` NULL.
- * @retval k_ra_err_invalid_state   PAL not initialised or EP not opened.
+ * @retval k_ra_err_invalid_state   PAL not initialized or EP not opened.
  * @retval k_ra_err_invalid_arg     Address out of range or capacity zero.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre Endpoint was opened via ::ra_usb_pal_ep_open.
  * @post On success, the per-EP ring depth is decremented by one.
  * @post On error, no slot state is mutated.
@@ -580,7 +580,7 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
   RA_CHECK_NULL_PTR(inout_len, s_tag, "ep_recv: inout_len");
   /* Accept descriptor-shaped (0x80 | ep) and bare-number ep_addr. */
   ep_addr = (uint8_t)(ep_addr & (uint8_t)k_ra_usb_pal_ep_addr_mask);
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (ra_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra_usb_pal_ep_max)) {
@@ -621,9 +621,9 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Handler installed/cleared.
- * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_state   PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre ``fn`` is callable from ISR context if it is non-NULL.
  * @post ``s_state.event_fn == fn`` and ``s_state.event_ctx == ctx``.
  * @post No other PAL state is mutated.
@@ -633,7 +633,7 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
  */
 ra_err_t ra_usb_pal_set_event_handler(ra_usb_pal_event_fn_t fn, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.event_fn  = fn;

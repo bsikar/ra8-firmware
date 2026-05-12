@@ -49,7 +49,7 @@ extern "C" {
  *
  * @pre `SystemInit()` has already executed.
  * @pre Function is called from a single-threaded context.
- * @post Log backend, pin validator, and stack canary are initialised.
+ * @post Log backend, pin validator, and stack canary are initialized.
  * @post Subsequent `ra_*_init()` driver entries may be called.
  *
  * @note Must be called before any `ra_*` driver init function. Safe

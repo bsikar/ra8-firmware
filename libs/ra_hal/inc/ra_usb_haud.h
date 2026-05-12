@@ -327,7 +327,7 @@ typedef void (*ra_usb_haud_attach_fn_t)(void* ctx, const ra_usb_haud_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -360,7 +360,7 @@ typedef void (*ra_usb_haud_attach_fn_t)(void* ctx, const ra_usb_haud_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Callback installed.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre `ra_usb_haud_init` has run.
  *
@@ -396,7 +396,7 @@ typedef void (*ra_usb_haud_attach_fn_t)(void* ctx, const ra_usb_haud_device_t* d
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_invalid_arg One of channel_count / bits_per_sample
  *         / sample_rate_hz is out of range.
@@ -431,7 +431,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
  *
@@ -462,7 +462,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP queued.
- * @retval k_ra_err_invalid_state Driver not initialised, or no device
+ * @retval k_ra_err_invalid_state Driver not initialized, or no device
  *         attached.
  * @retval k_ra_err_busy Controller busy with a prior SETUP.
  *
@@ -498,7 +498,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes queued for the next iso-OUT slot.
  * @retval k_ra_err_null_ptr `buf == NULL` and `len_bytes != 0`.
- * @retval k_ra_err_invalid_state Driver not initialised, no device
+ * @retval k_ra_err_invalid_state Driver not initialized, no device
  *         attached, or device has no iso-OUT endpoint.
  * @retval k_ra_err_invalid_arg `len_bytes == 0`.
  * @retval k_ra_err_busy iso-OUT pipe busy.
@@ -529,7 +529,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  * @retval k_ra_ok Bytes drained; `*got_len_bytes` reflects the count.
  * @retval k_ra_err_no_data Pipe was empty.
  * @retval k_ra_err_null_ptr `buf` or `got_len_bytes` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised, no device
+ * @retval k_ra_err_invalid_state Driver not initialized, no device
  *         attached, or device has no iso-IN endpoint.
  * @retval k_ra_err_invalid_arg `max_len_bytes == 0`.
  *
@@ -560,7 +560,7 @@ ra_usb_haud_recv_samples(uint8_t* buf, uint16_t max_len_bytes, uint16_t* got_len
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_haud_init` succeeded.
  *

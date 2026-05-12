@@ -275,7 +275,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the device-MSC driver.
  */
 typedef struct {
-  bool                  initialised;                    /**< True after init.            */
+  bool                  initialized;                    /**< True after init.            */
   bool                  storage_attached;               /**< True after attach_storage.  */
   ra_usb_speed_t        speed;                          /**< Underlying controller.      */
   ra_usb_pmsc_state_t   bot_state;                      /**< BOT state machine phase.    */
@@ -765,7 +765,7 @@ static ra_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_l
 ra_err_t ra_usb_pmsc_feed_cbw(const uint8_t* cbw)
 {
   RA_CHECK_NULL_PTR(cbw, s_tag, "feed_cbw: cbw");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.storage_attached) {
@@ -865,7 +865,7 @@ static ra_err_t internal_dispatch_scsi(uint8_t*                  data_buf,
  */
 static ra_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.storage_attached) {
@@ -932,7 +932,7 @@ ra_err_t
 ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uint8_t* out_csw)
 {
   RA_CHECK_NULL_PTR(out_csw, s_tag, "build_csw: out_csw");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
 
@@ -948,7 +948,7 @@ ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uin
 /* Implementation of ra_usb_pmsc_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_step(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.storage_attached) {
@@ -994,7 +994,7 @@ ra_err_t ra_usb_pmsc_step(void)
 /* Implementation of ra_usb_pmsc_attach_storage (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   RA_CHECK_NULL_PTR(storage, s_tag, "attach_storage: storage");
@@ -1038,12 +1038,12 @@ ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
   s_state.cbw_cdb_len      = 0U;
   s_state.last_data_len    = 0U;
   internal_zero_bytes(s_state.cbw_cdb, (uint32_t)k_ra_pmsc_cdb_max_len);
-  s_state.initialised = true;
+  s_state.initialized = true;
 
   const ra_err_t pipes_err = internal_configure_pipes();
   if (pipes_err != k_ra_ok) {
     (void)ra_usb_device_deinit(speed);
-    s_state.initialised = false;
+    s_state.initialized = false;
     return pipes_err;
   }
 
@@ -1054,13 +1054,13 @@ ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_pmsc_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   /* Drop D+ pull-up so the host sees a clean detach. */
   (void)ra_usb_device_attach(s_state.speed, false);
   const ra_err_t err       = ra_usb_device_deinit(s_state.speed);
-  s_state.initialised      = false;
+  s_state.initialized      = false;
   s_state.storage_attached = false;
   s_state.bot_state        = k_ra_pmsc_state_idle;
   return err;

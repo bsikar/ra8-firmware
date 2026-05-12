@@ -38,16 +38,16 @@ static const ra_net_config_t k_fuzz_cfg = {
 };
 
 static uint8_t s_frame[k_fuzz_eth_max_frame];
-static uint8_t s_initialised;
+static uint8_t s_initialized;
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (s_initialised == 0U) {
+  if (s_initialized == 0U) {
     (void)ra_mstp_init();
     if (ra_net_open(&k_fuzz_cfg) != k_ra_ok) {
       return 0;
     }
-    s_initialised = 1U;
+    s_initialized = 1U;
   }
   if (size < k_fuzz_eth_min_frame || size > sizeof s_frame) {
     return 0;

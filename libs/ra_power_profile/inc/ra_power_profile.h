@@ -215,7 +215,7 @@ typedef struct {
  *
  * @details
  * Stores the supplied hooks, zeroes every per-region accumulator, and
- * marks the module as initialised. Calling ``ra_power_profile_init``
+ * marks the module as initialized. Calling ``ra_power_profile_init``
  * a second time re-initialises (the previous accumulators are
  * discarded). The function never touches hardware directly; all
  * side effects flow through the hooks in ``cfg``.
@@ -234,7 +234,7 @@ typedef struct {
  *
  * @pre ``cfg`` is non-NULL.
  * @pre Caller is single-threaded (init context).
- * @post The module is initialised.
+ * @post The module is initialized.
  * @post All per-region accumulators are zeroed.
  *
  * @note Not thread-safe. Run from system init.
@@ -257,7 +257,7 @@ ra_err_t ra_power_profile_init(const ra_power_profile_config_t* cfg);
  * detectable in the snapshot).
  *
  * Algorithm:
- *  1. Validate module is initialised and ``region_id`` is in range.
+ *  1. Validate module is initialized and ``region_id`` is in range.
  *  2. Increment ``regions[region_id].entries``.
  *  3. Stamp ``last_enter_us`` from the time hook (if any).
  *  4. Set ``is_open = true``.
@@ -272,7 +272,7 @@ ra_err_t ra_power_profile_init(const ra_power_profile_config_t* cfg);
  * called.
  * @retval k_ra_err_range_check_failed   ``region_id`` is out of range.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre ``region_id < k_ra_power_profile_max_regions``.
  * @post ``regions[region_id].entries`` increased by 1.
  * @post ``regions[region_id].is_open == true``.
@@ -297,7 +297,7 @@ ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id);
  * surface the imbalance.
  *
  * Algorithm:
- *  1. Validate module is initialised and ``region_id`` is in range.
+ *  1. Validate module is initialized and ``region_id`` is in range.
  *  2. Increment ``regions[region_id].exits``.
  *  3. If region was open, accumulate ``now - last_enter_us`` and
  *     clear ``is_open``.
@@ -313,7 +313,7 @@ ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id);
  * called.
  * @retval k_ra_err_range_check_failed   ``region_id`` is out of range.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre ``region_id < k_ra_power_profile_max_regions``.
  * @post ``regions[region_id].exits`` increased by 1.
  * @post ``regions[region_id].is_open == false``.
@@ -340,9 +340,9 @@ ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id);
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Success.
  * @retval k_ra_err_null_ptr        ``out_stats`` is ``nullptr``.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre ``out_stats`` is non-NULL.
  * @post ``*out_stats`` is a consistent snapshot of internal state.
  *
@@ -365,9 +365,9 @@ ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats);
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Success.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post Every region's ``entries``/``exits``/``total_time_us`` is 0.
  * @post Every region's ``is_open`` is ``false``.
  *

@@ -60,7 +60,7 @@
  *
  * @details
  * Populated by `ra_guix_display_driver_bind` and read back by
- * `ra_guix_display_driver_setup`. Zero-initialised at boot so callers
+ * `ra_guix_display_driver_setup`. Zero-initialized at boot so callers
  * that forget to bind a framebuffer are caught by the NULL check
  * inside the setup routine.
  */
@@ -239,7 +239,7 @@ void ra_guix_display_driver_pixel_write(GX_DRAW_CONTEXT* context,
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -292,7 +292,7 @@ void ra_guix_display_driver_block_move(GX_DRAW_CONTEXT* context,
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */

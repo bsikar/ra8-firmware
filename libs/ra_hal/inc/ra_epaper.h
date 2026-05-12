@@ -166,7 +166,7 @@ typedef struct {
  * @retval k_ra_ok                 Panel responsive and identified.
  * @retval k_ra_err_null_ptr       ``cfg`` is NULL.
  * @retval k_ra_err_invalid_arg    ``cfg`` field out of range.
- * @retval k_ra_err_invalid_state  Driver already initialised.
+ * @retval k_ra_err_invalid_state  Driver already initialized.
  * @retval k_ra_err_hw_timeout     HRDY never asserted.
  * @retval k_ra_err_hw_init_failed SPI init failed.
  *
@@ -203,7 +203,7 @@ typedef struct {
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Buffer transferred.
  * @retval k_ra_err_null_ptr        ``area`` or ``buf`` is NULL.
- * @retval k_ra_err_invalid_state   Panel never initialised.
+ * @retval k_ra_err_invalid_state   Panel never initialized.
  * @retval k_ra_err_invalid_size    ``buf_len`` mismatch.
  * @retval k_ra_err_hw_timeout      HRDY stuck low.
  *
@@ -232,7 +232,7 @@ typedef struct {
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Panel idle and updated.
  * @retval k_ra_err_null_ptr        ``area`` is NULL.
- * @retval k_ra_err_invalid_state   Panel never initialised.
+ * @retval k_ra_err_invalid_state   Panel never initialized.
  * @retval k_ra_err_hw_timeout      LUT busy never cleared.
  *
  * @pre  ``ra_epaper_load_image`` populated the area.
@@ -254,10 +254,10 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                 Panel asleep.
- * @retval k_ra_err_invalid_state  Panel never initialised.
+ * @retval k_ra_err_invalid_state  Panel never initialized.
  *
  * @pre  ``ra_epaper_init`` succeeded.
- * @post Driver state machine is back in ``uninitialised``; caller
+ * @post Driver state machine is back in ``uninitialized``; caller
  *       must re-init before any further load / display.
  *
  * @note Not thread-safe.

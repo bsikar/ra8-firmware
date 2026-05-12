@@ -228,7 +228,7 @@ typedef ra_err_t (*ra_usb_phid_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -264,7 +264,7 @@ typedef ra_err_t (*ra_usb_phid_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Pointers + lengths stored.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr Either pointer was NULL.
  * @retval k_ra_err_invalid_arg Either length was 0.
  *
@@ -303,7 +303,7 @@ typedef ra_err_t (*ra_usb_phid_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes queued onto interrupt-IN.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `payload` was NULL with `len > 0`.
  * @retval k_ra_err_invalid_arg `len` zero with `report_id == 0`, or
  *         too large for the pipe max-packet.
@@ -337,7 +337,7 @@ ra_usb_phid_send_report(uint8_t report_id, const uint8_t* payload, uint16_t len)
  * @retval k_ra_ok Bytes drained; `*got_len` reflects the count.
  * @retval k_ra_err_no_data Pipe was empty.
  * @retval k_ra_err_null_ptr `buf` or `got_len` was NULL.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_invalid_arg `max_len == 0`.
  *
  * @pre `ra_usb_phid_init` succeeded.
@@ -371,7 +371,7 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Handler installed.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_phid_init` succeeded.
  *
@@ -401,7 +401,7 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP handled (status stage queued internally).
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `setup` was NULL.
  * @retval k_ra_err_not_supported `bRequest` is not a HID class request
  *         this layer cares about.
@@ -428,7 +428,7 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Value copied.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `out_idle_rate` was NULL.
  *
  * @pre `out_idle_rate` non-NULL.
@@ -447,7 +447,7 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Value copied.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `out_protocol` was NULL.
  *
  * @pre `out_protocol` non-NULL.

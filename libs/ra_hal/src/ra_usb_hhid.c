@@ -129,7 +129,7 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the host-HID driver.
  */
 typedef struct {
-  bool                    initialised;                      /**< True after `ra_usb_hhid_init`. */
+  bool                    initialized;                      /**< True after `ra_usb_hhid_init`. */
   bool                    attached;                         /**< True after enumeration done.   */
   ra_usb_speed_t          speed;                            /**< Underlying controller.         */
   ra_usb_hhid_step_t      step;                             /**< Current enumeration step.      */
@@ -649,7 +649,7 @@ ra_err_t ra_usb_hhid_init(ra_usb_speed_t speed)
   s_state.attach_cb   = nullptr;
   s_state.attach_ctx  = nullptr;
   s_state.device      = (ra_usb_hhid_device_t){};
-  s_state.initialised = true;
+  s_state.initialized = true;
 
   ra_log_info_val(s_tag, "host-HID ready", (uint32_t)speed);
   return k_ra_ok;
@@ -658,13 +658,13 @@ ra_err_t ra_usb_hhid_init(ra_usb_speed_t speed)
 /* Implementation of ra_usb_hhid_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_close(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   /* Bus power down: drop UACT before tearing the controller. */
   (void)ra_usb_host_set_uact(s_state.speed, false);
   const ra_err_t err  = ra_usb_host_deinit(s_state.speed);
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.attached    = false;
   s_state.attach_cb   = nullptr;
   s_state.attach_ctx  = nullptr;
@@ -680,7 +680,7 @@ ra_err_t ra_usb_hhid_close(void)
 /* Implementation of ra_usb_hhid_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_attach_callback(ra_usb_hhid_attach_fn_t on_attach, void* ctx)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   s_state.attach_cb  = on_attach;
@@ -805,7 +805,7 @@ ra_err_t ra_usb_hhid_get_report(ra_usb_hhid_report_type_t target_report_type,
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "get_report: out_buf");
   RA_CHECK_NULL_PTR(got_len, s_tag, "get_report: got_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -853,7 +853,7 @@ ra_err_t ra_usb_hhid_set_report(ra_usb_hhid_report_type_t target_report_type,
                                 const uint8_t*            in_buf,
                                 uint16_t                  len)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -891,7 +891,7 @@ ra_err_t ra_usb_hhid_set_report(ra_usb_hhid_report_type_t target_report_type,
 /* Implementation of ra_usb_hhid_set_idle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_set_idle(uint8_t duration, uint8_t report_id)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -917,7 +917,7 @@ ra_err_t ra_usb_hhid_set_idle(uint8_t duration, uint8_t report_id)
 /* Implementation of ra_usb_hhid_set_protocol (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_set_protocol(ra_usb_hhid_protocol_select_t boot_or_report)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -946,7 +946,7 @@ ra_err_t ra_usb_hhid_get_input_report(uint8_t* out_buf, uint16_t max_len, uint16
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "get_input_report: out_buf");
   RA_CHECK_NULL_PTR(got_len, s_tag, "get_input_report: got_len");
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   if (!s_state.attached) {
@@ -973,7 +973,7 @@ ra_err_t ra_usb_hhid_get_input_report(uint8_t* out_buf, uint16_t max_len, uint16
 /* Implementation of ra_usb_hhid_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_step(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_invalid_state;
   }
   return internal_step_advance();

@@ -72,7 +72,7 @@ typedef void (*ra_iwdt_event_fn_t)(void* ctx, uint16_t status_mask);
  * ``0x00`` then ``0xFF`` sequence to IWDTRR. A single write does NOT
  * refresh -- both bytes are required.
  *
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
@@ -137,7 +137,7 @@ void ra_iwdt_refresh_deferred(void);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Driver state has been initialized by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.

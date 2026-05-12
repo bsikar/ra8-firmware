@@ -216,7 +216,7 @@ void ra_xspi_dispatch(uint8_t instance);
  * @return `k_ra_ok` on success.
  * @return `k_ra_err_null_ptr` if `instance` is out of range.
  *
- * @pre Driver has been initialised via `ra_xspi_init()`.
+ * @pre Driver has been initialized via `ra_xspi_init()`.
  * @pre A read command set has been programmed in `CMCFGCS[n]`.
  * @post `BMCTL0` reads as `k_ra_xspi_bmctl0_read_only`.
  * @post `CMCTLCH[0/1].XIPEN` is set.
@@ -268,7 +268,7 @@ void ra_xspi_dispatch(uint8_t instance);
  * @return `k_ra_err_null_ptr` if `instance` is out of range.
  * @return `k_ra_err_invalid_arg` if `addr_bytes` is neither 3 nor 4.
  *
- * @pre Driver has been initialised via `ra_xspi_init()`.
+ * @pre Driver has been initialized via `ra_xspi_init()`.
  * @post On enable: ``CMCFGCS`` slot 0 carries (read_cmd, addr_bytes)
  *       and ``CMCTLCH[0/1].XIPEN`` is set.
  * @post On disable: ``CMCTLCH[0/1].XIPEN`` is cleared and
@@ -319,7 +319,7 @@ ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t ad
  * @return `k_ra_err_null_ptr` if `instance` is out of range.
  * @return `k_ra_err_hw_timeout` if calibration never completes.
  *
- * @pre Driver was initialised in an OPI / 8D mode.
+ * @pre Driver was initialized in an OPI / 8D mode.
  * @post ``CCCTL0.CAEN`` is 0.
  * @post On host builds the calibration step is a no-op that returns
  *       ``k_ra_ok`` (no real DQS line to phase-scan).
@@ -409,7 +409,7 @@ ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t ad
  * @return ``k_ra_err_hw_timeout`` if the controller never raises
  *         CMDCMP for either RSTEN or RST.
  *
- * @pre Driver has been initialised via ``ra_xspi_init()`` in a
+ * @pre Driver has been initialized via ``ra_xspi_init()`` in a
  *      protocol mode that matches ``cmd_bytes``.
  * @pre Caller will leave the chip undisturbed for tRPH (>=50 us)
  *      after this returns before issuing the next command.

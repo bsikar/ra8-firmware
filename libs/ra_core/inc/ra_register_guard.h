@@ -49,7 +49,7 @@ typedef struct {
  *       exit.
  *
  * @details See implementation for details.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -74,7 +74,7 @@ static inline void ra_register_guard_enter(ra_register_guard_t* guard)
  *                  `ra_register_guard_enter()`.
  *
  * @details See implementation for details.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

@@ -202,7 +202,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @retval k_ra_err_invalid_arg Channel or ``bit_width`` invalid.
  * @retval k_ra_err_hw_timeout SPSR.SPTEF / SPSR.SPRF never asserted.
  *
- * @pre Channel previously initialised via ``ra_spi_init``.
+ * @pre Channel previously initialized via ``ra_spi_init``.
  * @pre Caller-supplied buffer alignment matches ``bit_width`` (16 / 32 bit
  *      access requires properly aligned pointers).
  * @post On success, every requested unit has shifted out on COPI and
@@ -238,7 +238,7 @@ ra_spi_write(uint8_t channel, const void* tx, uint32_t len, ra_spi_bit_width_t b
  * @retval k_ra_err_invalid_arg Channel or ``bit_width`` invalid.
  * @retval k_ra_err_hw_timeout Polling SPSR flag never asserted.
  *
- * @pre Channel previously initialised via ``ra_spi_init``.
+ * @pre Channel previously initialized via ``ra_spi_init``.
  * @pre Caller-supplied buffer alignment matches ``bit_width``.
  * @post On success, ``rx[0..len-1]`` contains the bytes / words shifted
  *       in on CIPO during ``len`` dummy clock cycles.
@@ -274,7 +274,7 @@ ra_spi_read(uint8_t channel, void* rx, uint32_t len, ra_spi_bit_width_t bit_widt
  * @retval k_ra_err_invalid_arg Channel or ``bit_width`` invalid.
  * @retval k_ra_err_hw_timeout Polling SPSR flag never asserted.
  *
- * @pre Channel previously initialised via ``ra_spi_init``.
+ * @pre Channel previously initialized via ``ra_spi_init``.
  * @post On success, every unit has been exchanged in both directions.
  *
  * @note Thread safety: not thread-safe.
@@ -390,7 +390,7 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  * @retval k_ra_err_no_mem All DMAC channels in use.
  * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
- * @pre Channel previously initialised with 8-bit frames.
+ * @pre Channel previously initialized with 8-bit frames.
  * @pre ``ra_dma_init`` has been called.
  * @post On success, DMAC channel is armed.
  *
@@ -425,7 +425,7 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  * @retval k_ra_err_no_mem All DMAC channels in use.
  * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
- * @pre Channel previously initialised with 8-bit frames.
+ * @pre Channel previously initialized with 8-bit frames.
  * @pre ``ra_dma_init`` has been called.
  * @post On success, DMAC channel is armed.
  *

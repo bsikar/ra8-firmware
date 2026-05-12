@@ -115,7 +115,7 @@ typedef enum : uint32_t {
  * has run successfully.
  *
  * @details
- * The PDG block is "initialised" when ``ra_pdg_init`` has driven the
+ * The PDG block is "initialized" when ``ra_pdg_init`` has driven the
  * DLL into the locked / running state, i.e. GTDLYCR.DLLEN == 1 and
  * GTDLYCR.DLYRST == 0 (HUM Ch 23.2.1 p 1154). Reading the register
  * directly avoids stale-static-flag bugs across host-test resets that
@@ -133,7 +133,7 @@ typedef enum : uint32_t {
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static bool internal_pdg_is_initialised(void)
+static bool internal_pdg_is_initialized(void)
 {
   /* HUM Ch 23.2.1 "GTDLYCR : PWM Output Delay Control Register" p 1154 */
   const uint16_t cr = ra_pdg()->GTDLYCR;
@@ -475,7 +475,7 @@ ra_err_t ra_pdg_deinit(void)
 /* Implementation of ra_pdg_set_delay (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_set_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t code)
 {
-  if (!internal_pdg_is_initialised()) {
+  if (!internal_pdg_is_initialized()) {
     return k_ra_err_not_initialized;
   }
   const ra_err_t v = internal_validate_slot(channel, pin, edge, code);
@@ -508,7 +508,7 @@ ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
 ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t count)
 {
   RA_CHECK_NULL_PTR(entries, s_tag, "entries must not be nullptr");
-  if (!internal_pdg_is_initialised()) {
+  if (!internal_pdg_is_initialized()) {
     return k_ra_err_not_initialized;
   }
   if ((count == 0U) || (count > k_ra_pdg_slot_count)) {
@@ -601,7 +601,7 @@ ra_err_t ra_pdg_enter_stop(uint8_t channel)
 /* Implementation of ra_pdg_channel_bypass_set (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
 {
-  if (!internal_pdg_is_initialised()) {
+  if (!internal_pdg_is_initialized()) {
     return k_ra_err_not_initialized;
   }
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -623,7 +623,7 @@ ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
 /* Implementation of ra_pdg_pin_disable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_pin_disable(uint8_t channel, ra_pdg_pin_t pin)
 {
-  if (!internal_pdg_is_initialised()) {
+  if (!internal_pdg_is_initialized()) {
     return k_ra_err_not_initialized;
   }
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -781,7 +781,7 @@ ra_err_t ra_pdg_pick_frange(uint32_t gptclk_hz, ra_pdg_frange_t* out)
 /* Implementation of ra_pdg_set_frange (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
 {
-  if (!internal_pdg_is_initialised()) {
+  if (!internal_pdg_is_initialized()) {
     return k_ra_err_not_initialized;
   }
   if (!internal_frange_ok(new_frange)) {
@@ -834,7 +834,7 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
 /* Implementation of ra_pdg_bind_gpt_channel (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_bind_gpt_channel(uint8_t channel)
 {
-  if (!internal_pdg_is_initialised()) {
+  if (!internal_pdg_is_initialized()) {
     return k_ra_err_not_initialized;
   }
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {

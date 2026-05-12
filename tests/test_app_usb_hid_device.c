@@ -234,7 +234,7 @@ static void test_usb_send_null_data_rejected(void)
  * @brief ep_open before pal_init is rejected (precondition guard).
  *
  * @par MC/DC:
- * Decision vector under test: ``initialised == false`` invariant
+ * Decision vector under test: ``initialized == false`` invariant
  * check in ep_open. Failure-side of the init-precondition decision.
  */
 static void test_usb_ep_open_before_init_rejected(void)

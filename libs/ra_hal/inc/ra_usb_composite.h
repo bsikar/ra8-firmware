@@ -226,7 +226,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Released.
- * @retval k_ra_err_invalid_state Driver was never initialised.
+ * @retval k_ra_err_invalid_state Driver was never initialized.
  *
  * @pre Single-threaded shutdown context.
  *
@@ -265,7 +265,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Class registered, init invoked.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `class_layer` was NULL or any of its
  *         callbacks was NULL.
  * @retval k_ra_err_invalid_arg `interface_number_count` was 0 or the
@@ -307,7 +307,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Descriptors cached.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr Either pointer was NULL.
  *
  * @pre `ra_usb_composite_init` has run.
@@ -348,7 +348,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  *
  * @pre `ra_usb_composite_init` has run.
  *
@@ -384,7 +384,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP dispatched.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `setup` or `out_handler_class` was NULL.
  * @retval k_ra_err_not_found Class request whose `wIndex` does not
  *         fall in any registered class's IF range.
@@ -407,7 +407,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Count returned.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `out_count` was NULL.
  *
  * @pre `out_count` non-NULL.
@@ -427,7 +427,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Pointer returned.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `out_desc` was NULL.
  *
  * @pre `out_desc` non-NULL.
@@ -448,7 +448,7 @@ typedef struct {
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Pointer returned.
- * @retval k_ra_err_invalid_state Driver not initialised.
+ * @retval k_ra_err_invalid_state Driver not initialized.
  * @retval k_ra_err_null_ptr `out_desc` was NULL.
  *
  * @pre `out_desc` non-NULL.

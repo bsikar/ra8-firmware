@@ -67,14 +67,14 @@ typedef enum : uint32_t {
  * @brief File-scope cached snapshot of reset cause + raw registers.
  */
 typedef struct {
-  bool             initialised; /**< True once ``ra_reset_init`` ran.    */
+  bool             initialized; /**< True once ``ra_reset_init`` ran.    */
   ra_reset_cause_t cause;       /**< Decoded primary cause.              */
   ra_reset_raw_t   raw;         /**< Raw register words at boot.         */
 } ra_reset_state_t;
 
 /**
  * @var s_state
- * @brief File-scope snapshot. Zero-initialised by the C runtime.
+ * @brief File-scope snapshot. Zero-initialized by the C runtime.
  */
 static ra_reset_state_t s_state;
 
@@ -311,7 +311,7 @@ ra_err_t ra_reset_init(void)
 {
   internal_read_raw(&s_state.raw);
   s_state.cause       = internal_decode(&s_state.raw);
-  s_state.initialised = true;
+  s_state.initialized = true;
   ra_log_info_val(s_tag, "boot cause", (uint32_t)s_state.cause);
   return k_ra_ok;
 }
@@ -331,7 +331,7 @@ ra_err_t ra_reset_init(void)
  * @pre None.
  * @pre Caller is the host test harness (else this is a no-op
  *      anyway because the symbol does not exist).
- * @post ``s_state.initialised == false``.
+ * @post ``s_state.initialized == false``.
  * @post Subsequent ``ra_reset_get_cause`` reads fresh from the
  *       sim-mmap registers.
  *
@@ -340,7 +340,7 @@ ra_err_t ra_reset_init(void)
  */
 void ra_reset_test_only_reset_state(void)
 {
-  s_state.initialised = false;
+  s_state.initialized = false;
   s_state.cause       = k_ra_reset_cause_unknown;
   s_state.raw         = (ra_reset_raw_t){};
 }
@@ -350,7 +350,7 @@ void ra_reset_test_only_reset_state(void)
 ra_err_t ra_reset_get_cause(ra_reset_cause_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if (s_state.initialised) {
+  if (s_state.initialized) {
     *out = s_state.cause;
     return k_ra_ok;
   }
@@ -364,7 +364,7 @@ ra_err_t ra_reset_get_cause(ra_reset_cause_t* out)
 ra_err_t ra_reset_get_raw(ra_reset_raw_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if (s_state.initialised) {
+  if (s_state.initialized) {
     *out = s_state.raw;
     return k_ra_ok;
   }
@@ -402,7 +402,7 @@ ra_err_t ra_reset_clear_cause(uint32_t mask)
 
   /* Refresh the cached cause if init was already called -- the next
    * reader should see the post-clear state, not the boot snapshot. */
-  if (s_state.initialised) {
+  if (s_state.initialized) {
     internal_read_raw(&s_state.raw);
     s_state.cause = internal_decode(&s_state.raw);
   }

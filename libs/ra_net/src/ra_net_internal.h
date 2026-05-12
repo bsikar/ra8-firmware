@@ -244,7 +244,7 @@ typedef enum : uint32_t {
  * @param[in,out] n See function signature for type and usage.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -268,7 +268,7 @@ static inline void ra_net_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t 
  * @param[in,out] n See function signature for type and usage.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -296,7 +296,7 @@ static inline void ra_net_zero_bytes(uint8_t* dst, uint16_t n)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -327,7 +327,7 @@ static inline int ra_net_compare_bytes(const uint8_t* a, const uint8_t* b, uint1
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -349,7 +349,7 @@ static inline uint16_t ra_net_be16(const uint8_t* p)
  * @param[in,out] v See function signature for type and usage.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -374,7 +374,7 @@ static inline void ra_net_put_be16(uint8_t* p, uint16_t v)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -397,7 +397,7 @@ static inline uint32_t ra_net_be32(const uint8_t* p)
  * @param[in,out] v See function signature for type and usage.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
