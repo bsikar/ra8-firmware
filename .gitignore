@@ -127,3 +127,4 @@ venv/
 build_test/
 doxy_run.txt
 .pi-connection
+*.dump
