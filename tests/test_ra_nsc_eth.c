@@ -64,7 +64,7 @@ static void test_mcdc_ra_nsc_eth(void)
   TEST_BEGIN("ra_nsc_eth_send MC/DC: length validator OR");
   static const uint8_t s_frame[1600] = {};
 
-  /* V1: valid length -> validator dec F.  PAL is not initialised in
+  /* V1: valid length -> validator dec F.  PAL is not initialized in
    * this TU, so the tail call returns not_initialized -- that proves
    * the validator did not short-circuit out with invalid_arg. */
   const ra_err_t v1 = ra_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_ok);

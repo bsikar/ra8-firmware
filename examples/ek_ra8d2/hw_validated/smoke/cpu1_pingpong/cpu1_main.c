@@ -37,7 +37,7 @@ typedef enum : uint8_t {
  * @pre Vector table installed.
  * @pre IPC channels reachable.
  * @post Loop never exits.
- * @post IPC channels remain initialised.
+ * @post IPC channels remain initialized.
  * @note Single-threaded entry.
  * @since 0.1.0
  */
@@ -78,7 +78,7 @@ typedef enum : uint8_t {
 /**
  * @brief CPU1 reset handler.
  * @details Jumps to cpu1_main.
- * @pre SP initialised by hardware via MSPC1.
+ * @pre SP initialized by hardware via MSPC1.
  * @pre CPU1 just exited reset.
  * @post Never returns.
  * @post CPU1 enters cpu1_main loop.

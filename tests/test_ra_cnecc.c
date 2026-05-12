@@ -836,7 +836,7 @@ static void test_exit_standby_without_init(void)
 {
   TEST_BEGIN("cnecc exit_standby without init");
   prep();
-  /* The 'initialised' flag flips back to false on deinit. We need to
+  /* The 'initialized' flag flips back to false on deinit. We need to
    * deinit first to test the precondition path. */
   TEST_ASSERT_EQ(k_ra_ok, ra_cnecc_deinit());
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_cnecc_exit_standby());

@@ -195,7 +195,7 @@ def render_full(rows: List[AppSizes]) -> str:
         "- `text`  -- combined .vectors / .text / .rodata / .gnu.sgstubs / "
         "  .init_array / .ARM.exidx (everything that lives in MRAM at "
         "  runtime).\n"
-        "- `data`  -- combined .data / .sdata (initialised RAM).\n"
+        "- `data`  -- combined .data / .sdata (initialized RAM).\n"
         "- `bss`   -- combined .bss / .stack_canary / .noinit (zero-init "
         "  RAM).\n"
         "- `total` -- text + data + bss (on-target footprint; "

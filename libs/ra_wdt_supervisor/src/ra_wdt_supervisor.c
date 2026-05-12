@@ -57,7 +57,7 @@ typedef struct {
  * @brief Module state -- entirely static.
  */
 typedef struct {
-  bool                    initialised; /**< True after successful init. */
+  bool                    initialized; /**< True after successful init. */
   bool                    started;     /**< True after start spawned the thread. */
   ra_wdt_sup_cfg_t        cfg;         /**< Cached configuration. */
   ra_wdt_sup_slot_t       slots[k_ra_wdt_sup_max_threads]; /**< Registry. */
@@ -196,7 +196,7 @@ static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t de
  *
  * @param[in] arg Unused (ThreadX entry-fn signature requires a ULONG).
  *
- * @pre ``s_state.initialised`` is true.
+ * @pre ``s_state.initialized`` is true.
  * @post Loops forever (NASA Rule 2: bounded body, unbounded outer).
  *
  * @pre Module state is consistent.
@@ -230,7 +230,7 @@ ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg)
   if (cfg_err != k_ra_ok) {
     return cfg_err;
   }
-  if (s_state.initialised) {
+  if (s_state.initialized) {
     return k_ra_err_busy;
   }
 
@@ -245,14 +245,14 @@ ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg)
     return k_ra_err_rtos_error;
   }
 
-  s_state.initialised = true;
+  s_state.initialized = true;
   return k_ra_ok;
 }
 
 /* Implementation of ra_wdt_supervisor_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_deinit(void)
 {
-  if (s_state.initialised) {
+  if (s_state.initialized) {
     if (s_state.started) {
       (void)tx_thread_terminate(&s_state.thread);
       (void)tx_thread_delete(&s_state.thread);
@@ -316,7 +316,7 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
   if (deadline_ms == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
 
@@ -345,7 +345,7 @@ ra_err_t ra_wdt_supervisor_checkin(uint8_t handle)
   if (handle >= (uint8_t)k_ra_wdt_sup_max_threads) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
 
@@ -367,7 +367,7 @@ ra_err_t ra_wdt_supervisor_checkin(uint8_t handle)
 /* Implementation of ra_wdt_supervisor_start (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_start(void)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if (s_state.started) {
@@ -395,7 +395,7 @@ ra_err_t ra_wdt_supervisor_start(void)
 /* Implementation of ra_wdt_supervisor_tick (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_tick(bool* out_did_refresh)
 {
-  if (!s_state.initialised) {
+  if (!s_state.initialized) {
     if (out_did_refresh != nullptr) {
       *out_did_refresh = false;
     }

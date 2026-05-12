@@ -245,7 +245,7 @@ static void demo_panic_halt(void)
  *
  * @pre Reset_Handler / SystemInit complete.
  * @post On success the BSP console is sending at 115200 8N1, the
- *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialised, and
+ *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialized, and
  *       the RSIP engine has finished BIST.
  *
  * @since 0.1.0
@@ -568,7 +568,7 @@ static int demo_entropy_source(void* ctx, unsigned char* buf, size_t len, size_t
  * @retval PSA_SUCCESS on success.
  * @retval PSA_ERROR_HARDWARE_FAILURE if the RSIP TRNG returned an error.
  *
- * @pre RSIP has been initialised by ``ra_rsip_init()``.
+ * @pre RSIP has been initialized by ``ra_rsip_init()``.
  * @post @p output contains @p output_size bytes pulled from RSIP TRNG.
  *
  * @note Not thread-safe; callers must serialise across threads.
@@ -871,7 +871,7 @@ static void demo_free(void* p)
  *
  * @pre ``tx_kernel_enter()`` has been called.
  * @post One worker thread is created and NetX + Mbed TLS are
- *       initialised inside it.
+ *       initialized inside it.
  *
  * @since 0.1.0
  */

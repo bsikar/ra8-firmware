@@ -205,7 +205,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok PAL released.
- * @retval k_ra_err_invalid_state PAL was never initialised.
+ * @retval k_ra_err_invalid_state PAL was never initialized.
  *
  * @pre IRQs masked or single-threaded shutdown context.
  *
@@ -228,9 +228,9 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Pull-up state updated.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post On success, ``ra_usb_pal_get_state`` returns ``attached``
  * or ``detached`` to match.
@@ -248,10 +248,10 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Copied.
  * @retval k_ra_err_null_ptr ``out_state`` was NULL.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
  * @pre ``out_state`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post No PAL state is modified.
  *
@@ -282,9 +282,9 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Endpoint configured.
  * @retval k_ra_err_invalid_arg Bad ep_addr / dir / type / size.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post On success, the endpoint is ready for transfers.
  *
@@ -307,10 +307,10 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @retval k_ra_ok Transfer queued.
  * @retval k_ra_err_null_ptr ``data`` was NULL with non-zero len.
  * @retval k_ra_err_invalid_arg ep_addr or len out of range.
- * @retval k_ra_err_invalid_state PAL not initialised or EP not opened.
+ * @retval k_ra_err_invalid_state PAL not initialized or EP not opened.
  * @retval k_ra_err_no_mem EP TX ring full; try again later.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre Endpoint previously opened via ``ra_usb_pal_ep_open``.
  *
  * @post On success, the data has been queued for TX.
@@ -332,9 +332,9 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @retval k_ra_err_no_data No data ready (poll-friendly).
  * @retval k_ra_err_null_ptr ``out_buf`` / ``inout_len`` NULL.
  * @retval k_ra_err_invalid_arg ep_addr or capacity bad.
- * @retval k_ra_err_invalid_state PAL not initialised or EP not opened.
+ * @retval k_ra_err_invalid_state PAL not initialized or EP not opened.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  * @pre Endpoint previously opened via ``ra_usb_pal_ep_open``.
  *
  * @post On success, ``*inout_len`` holds the byte count.
@@ -362,9 +362,9 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handler installed (or detached).
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post Subsequent ra_usb events are routed through ``fn``.
  *

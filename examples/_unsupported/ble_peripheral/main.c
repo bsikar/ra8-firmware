@@ -516,7 +516,7 @@ static void ble_peripheral_sci_or_halt(uint32_t pclka_hz)
 /**
  * @brief Bring the BLE host stack + GATT table + advertising up.
  *
- * @pre Clocks + SCI8 are already initialised.
+ * @pre Clocks + SCI8 are already initialized.
  * @post Stack is in peripheral role and connectable advertising on the
  *       primary channels.
  *

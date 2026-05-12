@@ -9,7 +9,7 @@
  * Brings up the per-port Ethernet Agent (ETHA) on port 0 in CONFIG mode
  * and then transitions it through OPERATION mode -- the **MAC-only**
  * loopback path that does not require the off-chip PEF7071 PHY to be
- * powered or auto-negotiated. A descriptor ring is initialised, a
+ * powered or auto-negotiated. A descriptor ring is initialized, a
  * single 64-byte synthetic frame is "transmitted" by accounting for it
  * in the per-port stats, and the resulting RX-OK / TX-OK / drop
  * counters are dumped over the J-Link OB CDC console.

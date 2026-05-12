@@ -230,7 +230,7 @@ static void test_event_handler_relays_eth_status(void)
 static void test_calls_before_init_fail(void)
 {
   TEST_BEGIN("ra_net_pal_*: pre-init calls return invalid_state");
-  prep(); /* prep() ends with deinit, so PAL is uninitialised. */
+  prep(); /* prep() ends with deinit, so PAL is uninitialized. */
 
   ra_net_pal_mac_t        mac                         = {};
   ra_net_pal_link_state_t link                        = k_ra_net_pal_link_up;

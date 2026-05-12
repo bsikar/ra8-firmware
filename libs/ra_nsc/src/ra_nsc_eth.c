@@ -39,7 +39,7 @@ static const char* s_tag = "NSCETH";
  * @retval k_ra_err_null_ptr     ``ns_frame`` was NULL.
  * @retval k_ra_err_invalid_arg  ``len`` out of range.
  *
- * @pre TrustZone substrate has been initialised.
+ * @pre TrustZone substrate has been initialized.
  * @pre ``ns_frame`` lies entirely within the NS data region.
  * @post On success the secure-side TX path owns a copy of the frame.
  * @post On failure no bytes were forwarded to ra_net_pal.
@@ -71,7 +71,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_eth_send(const uint8_t* ns_frame, uint16_t len)
  * @retval k_ra_err_null_ptr     A pointer argument was NULL.
  * @retval k_ra_err_invalid_arg  Capacity below the frame max.
  *
- * @pre TrustZone substrate has been initialised.
+ * @pre TrustZone substrate has been initialized.
  * @pre Both pointers lie in the NS data region.
  * @post On success ``*inout_len`` reflects the byte count copied.
  * @post On failure ``*ns_buf`` may still have been touched.

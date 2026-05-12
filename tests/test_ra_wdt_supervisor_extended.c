@@ -188,8 +188,8 @@ static void test_sup_init_bad_priority(void)
  * @post Second init returns k_ra_err_busy.
  *
  * @par MC/DC:
- * Decision: ``s_state.initialised``
- * - V1: not initialised -> false -> proceed.
+ * Decision: ``s_state.initialized``
+ * - V1: not initialized -> false -> proceed.
  * - V2: already init    -> true  -> k_ra_err_busy.
  *
  * @since 0.1.0
@@ -285,7 +285,7 @@ static void test_sup_register_zero_deadline(void)
  * @post Returns k_ra_err_not_initialized.
  *
  * @par MC/DC:
- * Decision: ``!s_state.initialised``
+ * Decision: ``!s_state.initialized``
  * - V1: not init -> true  -> error.
  * - V2: init     -> false -> proceed.
  *
@@ -337,7 +337,7 @@ static void test_sup_register_table_full(void)
  * @post Returns k_ra_err_not_initialized.
  *
  * @par MC/DC:
- * Decision: ``!s_state.initialised`` -- true branch.
+ * Decision: ``!s_state.initialized`` -- true branch.
  *
  * @since 0.1.0
  */
@@ -404,7 +404,7 @@ static void test_sup_checkin_free_slot(void)
  * @post Returns k_ra_err_not_initialized.
  *
  * @par MC/DC:
- * Decision: ``!s_state.initialised``
+ * Decision: ``!s_state.initialized``
  * - V1: not init -> true  -> error.
  *
  * @since 0.1.0
@@ -451,7 +451,7 @@ static void test_sup_start_double_busy(void)
  * @post Returns k_ra_err_not_initialized; out_did_refresh=false.
  *
  * @par MC/DC:
- * Decision: ``!s_state.initialised`` in ra_wdt_supervisor_tick
+ * Decision: ``!s_state.initialized`` in ra_wdt_supervisor_tick
  * - V1: not init -> true  -> error + out set.
  *
  * @since 0.1.0

@@ -264,7 +264,7 @@ int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.

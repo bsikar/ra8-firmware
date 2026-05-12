@@ -499,7 +499,7 @@ static uint8_t usb_msc_format_decimal_u32(uint32_t value, uint8_t* out)
  *                   the file-scope `s_state`).
  * @param[in] device Pointer to the attach snapshot.
  *
- * @pre Driver was initialised via `ra_usb_hmsc_init`.
+ * @pre Driver was initialized via `ra_usb_hmsc_init`.
  *
  * @post `s_state.attached` is true, `s_state.device` carries the
  *       VID/PID/EP/max-lun info, and LED1 is driven high.
@@ -727,7 +727,7 @@ static void usb_msc_setup_or_halt(void)
  * @retval k_ra_ok                    Toggle accepted.
  * @retval k_ra_err_gpio_invalid_pin  LED2 pin index rejected.
  *
- * @pre LED2 GPIO output is initialised.
+ * @pre LED2 GPIO output is initialized.
  *
  * @post LED2 has flipped state once.
  *

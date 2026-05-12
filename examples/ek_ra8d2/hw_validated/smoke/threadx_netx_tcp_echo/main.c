@@ -172,7 +172,7 @@ static void demo_panic_halt(void)
  *
  * @pre Reset_Handler / SystemInit complete.
  * @post On success the BSP console is sending at 115200 8N1 and the
- *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialised.
+ *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialized.
  *
  * @since 0.1.0
  */
@@ -520,7 +520,7 @@ static void demo_thread_entry(ULONG thread_input)
  *   ThreadX port; unused -- we statically allocate.
  *
  * @pre ``tx_kernel_enter()`` has been called.
- * @post One worker thread is created and NetX is initialised.
+ * @post One worker thread is created and NetX is initialized.
  *
  * @since 0.1.0
  */

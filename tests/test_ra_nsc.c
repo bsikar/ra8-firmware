@@ -186,7 +186,7 @@ static void test_periph_init_idempotent(void)
   TEST_BEGIN("ra_nsc_periph_init: idempotent");
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_nsc_periph_init());
-  /* Second call returns k_ra_ok via the s_initialised fast-path. */
+  /* Second call returns k_ra_ok via the s_initialized fast-path. */
   TEST_ASSERT_EQ(k_ra_ok, ra_nsc_periph_init());
   TEST_ASSERT_EQ(k_ra_ok, ra_nsc_periph_init());
   TEST_END("ra_nsc_periph_init: idempotent");

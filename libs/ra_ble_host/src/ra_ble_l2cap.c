@@ -574,7 +574,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
  * @pre Caller is single-threaded init context.
  * @pre Stack is not already initialized.
  * @post On success ra_ble_host_state()->initialized == 1.
- * @post On failure no state is left initialised.
+ * @post On failure no state is left initialized.
  *
  * @note Not thread-safe; called once at boot.
  *

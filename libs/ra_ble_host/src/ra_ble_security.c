@@ -194,12 +194,12 @@ static uint8_t internal_map_io_cap(ra_ble_security_io_cap_t io_cap)
  * @param[in] cfg Configuration. Must not be NULL.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok                Wrapper initialised.
+ * @retval k_ra_ok                Wrapper initialized.
  * @retval k_ra_err_null_ptr      cfg == NULL.
  * @retval k_ra_err_invalid_arg   Out-of-range io_cap.
  *
  * @pre Caller is single-threaded init context.
- * @pre Wrapper is not already initialised.
+ * @pre Wrapper is not already initialized.
  * @post On success s_state.initialized == 1.
  * @post On failure no state is mutated.
  *
@@ -239,11 +239,11 @@ ra_err_t ra_ble_security_init(const ra_ble_security_config_t* cfg)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Wrapper closed.
- * @retval k_ra_err_not_initialized Wrapper was never initialised.
+ * @retval k_ra_err_not_initialized Wrapper was never initialized.
  *
  * @pre ra_ble_security_init has succeeded.
  * @pre Caller is single-threaded.
- * @post Wrapper is no longer initialised.
+ * @post Wrapper is no longer initialized.
  * @post Event handler is detached.
  *
  * @note Not thread-safe.
@@ -271,7 +271,7 @@ ra_err_t ra_ble_security_close(void)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Pairing started.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  * @retval k_ra_err_invalid_arg     NimBLE rejected the request.
  *
  * @pre ra_ble_security_init has succeeded.
@@ -315,7 +315,7 @@ ra_err_t ra_ble_security_pair(uint16_t conn_handle)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Reply injected.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  * @retval k_ra_err_invalid_arg     passkey out of range or NimBLE rejected.
  *
  * @pre ra_ble_security_init has succeeded.
@@ -371,7 +371,7 @@ ra_err_t ra_ble_security_passkey_reply(uint16_t conn_handle, uint32_t passkey, u
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Bonds cleared.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  * @retval k_ra_err_hw_error        Underlying store rejected the wipe.
  *
  * @pre ra_ble_security_init has succeeded.
@@ -410,7 +410,7 @@ ra_err_t ra_ble_security_clear_bonds(void)
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Count returned.
  * @retval k_ra_err_null_ptr        out_count == NULL.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  *
  * @pre ra_ble_security_init has succeeded.
  * @pre out_count is non-NULL.
@@ -477,7 +477,7 @@ void ra_ble_security_test_set_bond_count(uint8_t count);
  *
  * @param[in] evt Event payload.
  *
- * @pre Wrapper is initialised.
+ * @pre Wrapper is initialized.
  * @pre Caller is the unit-test harness (single-threaded).
  * @post Application callback was invoked (if registered and evt != NULL).
  * @post No internal state is mutated.
@@ -501,7 +501,7 @@ void ra_ble_security_test_emit_event(const ra_ble_security_event_t* evt)
  *
  * @param[in] count New count (0..k_ra_ble_security_max_bonds).
  *
- * @pre Wrapper is initialised (or about to be queried by tests).
+ * @pre Wrapper is initialized (or about to be queried by tests).
  * @pre Caller is the unit-test harness (single-threaded).
  * @post s_state.bond_count == count.
  * @post No other state is mutated.

@@ -197,11 +197,17 @@ typedef enum : uint8_t {
  * array of these. Treat fields as read-only outside of `ra_reflow_*`.
  */
 typedef struct {
-  uint8_t  kind;     /**< `ra_reflow_token_kind_t`. */
-  uint8_t  tag;      /**< `ra_reflow_html_tag_t` (0 if N/A). */
-  uint8_t  style;    /**< Font-style bitmask.                 */
-  uint8_t  reserved; /**< Padding to 4-byte align.            */
+  // cppcheck-suppress unusedStructMember
+  uint8_t kind; /**< `ra_reflow_token_kind_t`. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t tag; /**< `ra_reflow_html_tag_t` (0 if N/A). */
+  // cppcheck-suppress unusedStructMember
+  uint8_t style; /**< Font-style bitmask.                 */
+  // cppcheck-suppress unusedStructMember
+  uint8_t reserved; /**< Padding to 4-byte align.            */
+  // cppcheck-suppress unusedStructMember
   uint32_t text_off; /**< Byte offset into the text pool.     */
+  // cppcheck-suppress unusedStructMember
   uint32_t text_len; /**< Byte length within the text pool.   */
 } ra_reflow_token_t;
 
@@ -215,13 +221,20 @@ typedef struct {
  * body text mix on the same page without re-scanning style state.
  */
 typedef struct {
-  int32_t  x;        /**< Pixel column of glyph baseline-left. */
-  int32_t  y;        /**< Pixel row of glyph baseline.         */
-  int32_t  cp;       /**< Unicode code point.                  */
-  uint32_t color;    /**< 32-bit RGB colour.                   */
-  uint16_t font_px;  /**< Pixel size used for this glyph.      */
-  uint8_t  style;    /**< Font-style bitmask.                  */
-  uint8_t  reserved; /**< Padding.                             */
+  // cppcheck-suppress unusedStructMember
+  int32_t x; /**< Pixel column of glyph baseline-left. */
+  // cppcheck-suppress unusedStructMember
+  int32_t y; /**< Pixel row of glyph baseline.         */
+  // cppcheck-suppress unusedStructMember
+  int32_t cp; /**< Unicode code point.                  */
+  // cppcheck-suppress unusedStructMember
+  uint32_t color; /**< 32-bit RGB colour.                   */
+  // cppcheck-suppress unusedStructMember
+  uint16_t font_px; /**< Pixel size used for this glyph.      */
+  // cppcheck-suppress unusedStructMember
+  uint8_t style; /**< Font-style bitmask.                  */
+  // cppcheck-suppress unusedStructMember
+  uint8_t reserved; /**< Padding.                             */
 } ra_reflow_glyph_t;
 
 /**
@@ -229,7 +242,9 @@ typedef struct {
  * @brief Index range of glyphs that belong to one page.
  */
 typedef struct {
+  // cppcheck-suppress unusedStructMember
   uint32_t glyph_first; /**< Index of first glyph in this page. */
+  // cppcheck-suppress unusedStructMember
   uint32_t glyph_count; /**< Number of glyphs in this page.     */
 } ra_reflow_page_t;
 
@@ -247,42 +262,62 @@ typedef struct {
  * and bound via `ra_reflow_init()`. Treat all fields as read-only;
  * mutate only through the `ra_reflow_*` API.
  *
- * @invariant `in_use == 1` while initialised; cleared by `ra_reflow_close()`.
+ * @invariant `in_use == 1` while initialized; cleared by `ra_reflow_close()`.
  *
  * @see ra_reflow_init()
  * @see ra_reflow_close()
  */
 typedef struct {
   /* --- viewport + style ------------------------------------------------ */
+  // cppcheck-suppress unusedStructMember
   uint16_t viewport_w; /**< Viewport width, pixels.             */
+  // cppcheck-suppress unusedStructMember
   uint16_t viewport_h; /**< Viewport height, pixels.            */
-  uint16_t font_px;    /**< Body font size in pixels.           */
+  // cppcheck-suppress unusedStructMember
+  uint16_t font_px; /**< Body font size in pixels.           */
+  // cppcheck-suppress unusedStructMember
   uint16_t reserved16; /**< Padding.                            */
+  // cppcheck-suppress unusedStructMember
   uint32_t body_color; /**< Body text colour (0xRRGGBB).        */
+  // cppcheck-suppress unusedStructMember
   uint32_t link_color; /**< Anchor text colour (0xRRGGBB).      */
 
   /* --- font (caller-owned TTF blob) ------------------------------------ */
+  // cppcheck-suppress unusedStructMember
   const uint8_t* font_data; /**< TTF blob; outlives the engine.   */
-  size_t         font_len;  /**< Length of `font_data`, bytes.    */
+  // cppcheck-suppress unusedStructMember
+  size_t font_len; /**< Length of `font_data`, bytes.    */
 
   /* --- cached chapter input ------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
   const uint8_t* xhtml_buf; /**< Last `layout_chapter` input.     */
-  size_t         xhtml_len; /**< Length of `xhtml_buf`.           */
+  // cppcheck-suppress unusedStructMember
+  size_t xhtml_len; /**< Length of `xhtml_buf`.           */
 
   /* --- token stream --------------------------------------------------- */
-  ra_reflow_token_t tokens[k_ra_reflow_max_tokens];         /**< Parsed tokens. */
-  uint32_t          token_count;                            /**< Tokens used.   */
-  uint8_t           text_pool[k_ra_reflow_text_pool_bytes]; /**< Text bytes. */
-  uint32_t          text_pool_used; /**< Bytes consumed in text_pool.       */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_token_t tokens[k_ra_reflow_max_tokens]; /**< Parsed tokens. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t token_count; /**< Tokens used.   */
+  // cppcheck-suppress unusedStructMember
+  uint8_t text_pool[k_ra_reflow_text_pool_bytes]; /**< Text bytes. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t text_pool_used; /**< Bytes consumed in text_pool.       */
 
   /* --- laid-out glyphs ------------------------------------------------ */
+  // cppcheck-suppress unusedStructMember
   ra_reflow_glyph_t glyphs[k_ra_reflow_max_glyphs]; /**< Positioned glyphs. */
-  uint32_t          glyph_count;                    /**< Glyphs used.                          */
-  ra_reflow_page_t  pages[k_ra_reflow_max_pages];   /**< Page index ranges. */
-  uint32_t          page_count;                     /**< Pages used.                           */
+  // cppcheck-suppress unusedStructMember
+  uint32_t glyph_count; /**< Glyphs used.                          */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_page_t pages[k_ra_reflow_max_pages]; /**< Page index ranges. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t page_count; /**< Pages used.                           */
 
   /* --- lifecycle ------------------------------------------------------ */
-  uint8_t in_use;       /**< 1 = initialised, 0 = closed. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t in_use; /**< 1 = initialized, 0 = closed. */
+  // cppcheck-suppress unusedStructMember
   uint8_t reserved8[3]; /**< Padding.               */
 } ra_reflow_t;
 
@@ -310,7 +345,7 @@ typedef struct {
  * @param[out] out_engine  Engine handle to populate.
  *
  * @return ra_err_t
- * @retval k_ra_ok                  Initialised.
+ * @retval k_ra_ok                  Initialized.
  * @retval k_ra_err_null_ptr        `font_data` or `out_engine` is NULL.
  * @retval k_ra_err_invalid_arg     Viewport or font size out of range.
  * @retval k_ra_err_invalid_size    `font_len` too small.
@@ -319,7 +354,7 @@ typedef struct {
  * @pre  Viewport and font size in their documented ranges.
  * @post On success, `out_engine->in_use == 1` and
  *       `out_engine->page_count == 0`.
- * @post On failure, `*out_engine` is zero-initialised.
+ * @post On failure, `*out_engine` is zero-initialized.
  *
  * @note Not thread-safe. Single-threaded init context.
  *
@@ -337,7 +372,7 @@ typedef struct {
                                       ra_reflow_t*   out_engine);
 
 /**
- * @brief Release a previously initialised engine.
+ * @brief Release a previously initialized engine.
  *
  * @param[in,out] engine Engine returned by `ra_reflow_init()`.
  *
@@ -381,7 +416,7 @@ typedef struct {
  *      a new page.
  *   6. After all tokens, record `page_count`.
  *
- * @param[in,out] engine          Initialised engine handle.
+ * @param[in,out] engine          Initialized engine handle.
  * @param[in]     xhtml_buf       UTF-8 / ASCII XHTML source bytes.
  * @param[in]     xhtml_len       Length of `xhtml_buf`, bytes (>0).
  * @param[out]    out_total_pages Total page count (>= 1 on success).
@@ -466,7 +501,7 @@ ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* frameb
  * are rebuilt from scratch; the previous page count and page-glyph
  * ranges are invalidated.
  *
- * @param[in,out] engine       Initialised + laid-out engine.
+ * @param[in,out] engine       Initialized + laid-out engine.
  * @param[in]     new_font_px  New body font size, pixels
  *                             (`k_ra_reflow_min_font_px` ..
  *                              `k_ra_reflow_max_font_px`).

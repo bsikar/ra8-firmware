@@ -40,7 +40,7 @@ static void test_refresh_hook(void)
 
 static void prep(void)
 {
-  /* deinit any previous run; ignore error if not initialised. */
+  /* deinit any previous run; ignore error if not initialized. */
   (void)ra_wdt_supervisor_deinit();
   s_now_ms        = 0U;
   s_refresh_calls = 0U;
@@ -127,7 +127,7 @@ static void test_mcdc_supervisor_tick_will_refresh(void)
  *
  * V1 vs V2 vary C1; V2 vs V3 vary C2.
  *
- * Note: in production ``s_state.refresh`` is initialised to a non-null
+ * Note: in production ``s_state.refresh`` is initialized to a non-null
  * default; ``ra_wdt_supervisor_set_refresh_hook(NULL)`` restores that
  * default, so observing the C2=F branch via the public API requires
  * the C1=F short-circuit path (V1 covers that masking pair). The C2=F

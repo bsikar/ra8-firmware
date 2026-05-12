@@ -535,7 +535,7 @@ void ra_ble_host_test_inject_connect(uint16_t conn_handle);
  * @post Connection bookkeeping (conn_handle / att_mtu / CCCDs) may have
  *       been updated and a connect/disconnect event dispatched.
  * @post No state change for unrecognised events or when the host is
- *       not yet initialised.
+ *       not yet initialized.
  *
  * @note Not thread-safe; intended for the unit-test harness.
  *

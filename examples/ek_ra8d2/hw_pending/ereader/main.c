@@ -1179,7 +1179,7 @@ static void ereader_build_library_text(void)
  * @param[in] right  Inclusive right edge.
  * @param[in] bottom Inclusive bottom edge.
  *
- * @return Initialised rectangle.
+ * @return Initialized rectangle.
  *
  * @since 0.1.0
  */
@@ -1197,7 +1197,7 @@ ereader_rect(GX_VALUE left, GX_VALUE top, GX_VALUE right, GX_VALUE bottom)
 /**
  * @brief Build the Library + Reader windows + their prompts.
  *
- * @pre GUIX has been initialised and a canvas exists.
+ * @pre GUIX has been initialized and a canvas exists.
  * @post Both windows are attached to the root; only the library
  *       window is visible at startup.
  *
@@ -1498,7 +1498,7 @@ static void ui_thread_entry(ULONG thread_input)
  *   provided by the ThreadX port; unused -- we statically allocate.
  *
  * @pre tx_kernel_enter() has been called.
- * @post Three worker threads are running and FileX is initialised.
+ * @post Three worker threads are running and FileX is initialized.
  *
  * @note Not thread-safe; runs once during scheduler startup.
  *

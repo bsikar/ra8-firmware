@@ -205,7 +205,7 @@ Ring 0 is silicon register definitions plus the per-app boot files
 | REQ-CHIP-004     | Each app SHALL bring up the SAU per `trustzone_init.c` before transitioning to NS code (where applicable).| `examples/ek_ra8d2/blink/trustzone_init.c`                                                      | `tests/test_ra_sim_world.c`                          |
 | REQ-CHIP-005     | The linker script SHALL place `.vectors` at `0x02000000` (MRAM-S base) and reserve OFS bytes per HUM Ch 6. | `examples/ek_ra8d2/blink/linker_script.ld`                                                      | `tests/test_ra_ofs.c`                                |
 | REQ-CHIP-006     | Each Ring-2 register header SHALL declare the peripheral base address as a `uintptr_t` typed enum.       | `libs/ra_hal/inc/ra8d2_*_regs.h` (62 files)                                                     | `tests/test_coverage_compile_all.c`                  |
-| REQ-CHIP-007     | OFS bytes SHALL be initialised to a state that disables the IWDT and selects the M85 boot mode at reset. | `libs/ra_hal/src/ra_ofs.c`                                                                       | `tests/test_ra_ofs.c`                                |
+| REQ-CHIP-007     | OFS bytes SHALL be initialized to a state that disables the IWDT and selects the M85 boot mode at reset. | `libs/ra_hal/src/ra_ofs.c`                                                                       | `tests/test_ra_ofs.c`                                |
 
 ### 4.2 Ring 1 -- core utilities (REQ-CORE-XXX)
 

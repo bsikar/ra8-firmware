@@ -172,7 +172,7 @@ static void test_hcdc_init_bad_speed_rejected(void)
 /**
  * @brief close before init is rejected (worker-thread orderings).
  *
- * @par MC/DC: Failure side of the ``initialised == true`` invariant.
+ * @par MC/DC: Failure side of the ``initialized == true`` invariant.
  */
 static void test_hcdc_close_before_init_rejected(void)
 {

@@ -449,7 +449,7 @@ void ble_npl_hw_exit_critical(uint32_t ctx)
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -479,7 +479,7 @@ uint8_t ble_npl_hw_is_in_critical(void)
  */
 static struct ble_npl_eventq s_dflt_eventq;
 
-/** @brief Initialised flag for the default eventq. */
+/** @brief Initialized flag for the default eventq. */
 static uint8_t s_dflt_eventq_ready = 0U;
 
 /* Bring the default eventq up -- see implementation for details. */
@@ -517,7 +517,7 @@ struct ble_npl_eventq* nimble_port_get_dflt_eventq(void)
  *
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -639,7 +639,7 @@ __attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, in
  * @param[in,out] buf See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

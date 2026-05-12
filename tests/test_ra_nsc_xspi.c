@@ -59,7 +59,7 @@ static void test_mcdc_ra_nsc_xspi(void)
   TEST_BEGIN("ra_nsc_xspi_read MC/DC: length validator OR");
   static uint8_t s_dst[5000] = {};
 
-  /* V1: valid length -> dec F.  XSPI driver not initialised in this
+  /* V1: valid length -> dec F.  XSPI driver not initialized in this
    * TU, so the tail call returns a non-invalid_arg error. */
   const ra_err_t v1 =
     ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_ok);

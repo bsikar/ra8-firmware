@@ -13,7 +13,7 @@
  * typedef struct {
  *     const ra_pin_interface_t* pin_if;
  *     ra_port_pin_t             led_pin;
- *     bool                      initialised;
+ *     bool                      initialized;
  * } led_driver_t;
  *
  * ra_err_t led_driver_blink(led_driver_t* drv) {
@@ -51,22 +51,27 @@ typedef struct {
   /**
    * @brief Configure a pin as an output at an initial level.
    */
+  // cppcheck-suppress unusedStructMember
   ra_err_t (*output_init)(void* ctx, ra_port_pin_t pin, ra_level_t init_level);
   /**
    * @brief Drive a pin.
    */
+  // cppcheck-suppress unusedStructMember
   ra_err_t (*write)(void* ctx, ra_port_pin_t pin, ra_level_t level);
   /**
    * @brief Read a pin.
    */
+  // cppcheck-suppress unusedStructMember
   ra_err_t (*read)(void* ctx, ra_port_pin_t pin, ra_level_t* out_level);
   /**
    * @brief Toggle a pin.
    */
+  // cppcheck-suppress unusedStructMember
   ra_err_t (*toggle)(void* ctx, ra_port_pin_t pin);
   /**
    * @brief Opaque context handed to every call.
    */
+  // cppcheck-suppress unusedStructMember
   void* ctx;
 } ra_pin_interface_t;
 

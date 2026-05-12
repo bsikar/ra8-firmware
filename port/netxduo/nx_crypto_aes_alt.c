@@ -171,7 +171,7 @@ static nx_aes_alt_meta_t* priv_meta_of(VOID* crypto_metadata)
  * @param[in,out] key_size_in_bits See function signature.
  * @param[in,out] method See function signature.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
@@ -477,7 +477,7 @@ UINT __wrap__nx_crypto_method_aes_operation(UINT                            op,
  * @param[in,out] crypto_metadata See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

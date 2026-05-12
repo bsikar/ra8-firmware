@@ -60,7 +60,7 @@ typedef enum : uint16_t {
  * config disables SHA-224).
  *
  * @invariant ``started == 0`` between ``free`` and ``starts``.
- * @invariant ``inner.initialised == started`` after every public call.
+ * @invariant ``inner.initialized == started`` after every public call.
  *
  * @note The Mbed TLS API treats ``mbedtls_sha256_context`` as opaque,
  *       so the layout is owned by this port.
@@ -81,8 +81,11 @@ typedef enum : uint16_t {
  */
 typedef struct mbedtls_sha256_context {
   ra_rsip_sha256_ctx_t inner;   /**< Streaming RSIP HAL context.       */
+  // cppcheck-suppress unusedStructMember
   uint8_t              started; /**< 1 between ``starts`` and ``finish``. */
+  // cppcheck-suppress unusedStructMember
   uint8_t              is224;   /**< 0 -- SHA-256 only on this shim.   */
+  // cppcheck-suppress unusedStructMember
   uint8_t              pad[2];  /**< Reserved for 4-byte alignment.    */
 } mbedtls_sha256_context;
 

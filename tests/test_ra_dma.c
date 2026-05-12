@@ -315,7 +315,7 @@ static void test_sim_dma_complete_fires_callback(void)
  */
 static void test_dma_request_without_init_fails(void)
 {
-  TEST_BEGIN("ra_dma_request: not-initialised rejected");
+  TEST_BEGIN("ra_dma_request: not-initialized rejected");
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
   /* Deinit explicitly so s_initialized is false. */
@@ -331,7 +331,7 @@ static void test_dma_request_without_init_fails(void)
   };
   uint8_t ch = 0U;
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_dma_request(&req, &ch));
-  TEST_END("ra_dma_request: not-initialised rejected");
+  TEST_END("ra_dma_request: not-initialized rejected");
 }
 
 /**

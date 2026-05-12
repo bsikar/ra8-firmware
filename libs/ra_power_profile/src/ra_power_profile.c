@@ -134,7 +134,7 @@ static ra_err_t internal_validate_region(ra_power_profile_region_id_t region_id)
  * @return Current monotonic timestamp in microseconds, or 0 if no
  *         clock hook was configured.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post Return value is monotonically non-decreasing across calls.
  *
  * @note Internal helper; not exported.
@@ -162,7 +162,7 @@ static uint64_t internal_now_us(void)
  * @param[in] region_id Region whose edge is being marked.
  * @param[in] entering  ``true`` for an enter edge, ``false`` for exit.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @post Either the hook ran exactly once, or no hook was configured.
  *
  * @note Internal helper; not exported.

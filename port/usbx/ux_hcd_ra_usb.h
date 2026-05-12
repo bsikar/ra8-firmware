@@ -55,7 +55,7 @@ struct UX_TRANSFER_STRUCT;
  * @brief Run-state of the HCD bridge.
  */
 typedef enum : uint8_t {
-  k_ux_hcd_ra_usb_state_uninit = 0U, /**< Bridge not yet initialised.   */
+  k_ux_hcd_ra_usb_state_uninit = 0U, /**< Bridge not yet initialized.   */
   k_ux_hcd_ra_usb_state_ready  = 1U, /**< Bridge installed; bus idle.   */
   k_ux_hcd_ra_usb_state_active = 2U, /**< SOF generation enabled.       */
 } ra_usb_hcd_state_t;
@@ -91,7 +91,7 @@ typedef enum : uint8_t {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                 Bridge released.
- * @retval k_ra_err_invalid_state  Bridge was never initialised.
+ * @retval k_ra_err_invalid_state  Bridge was never initialized.
  *
  * @pre ``ux_hcd_ra_usb_initialize`` previously succeeded.
  *
@@ -115,7 +115,7 @@ typedef enum : uint8_t {
  *
  * @details See implementation for details.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 ra_usb_hcd_state_t ux_hcd_ra_usb_state(void);
@@ -134,7 +134,7 @@ ra_usb_hcd_state_t ux_hcd_ra_usb_state(void);
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *

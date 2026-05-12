@@ -78,7 +78,7 @@ struct ra_tls_session_handle {
 static struct ra_tls_session_handle s_session_pool[k_ra_tls_max_sessions];
 
 /** @brief One-shot global init flag protecting CTR_DRBG and pool state. */
-static bool s_initialised;
+static bool s_initialized;
 
 #ifndef RA_SIMULATOR_MODE
 /** @brief Shared deterministic random byte generator. */
@@ -104,7 +104,7 @@ static mbedtls_entropy_context s_entropy;
  * @return ``true`` when ``session`` resolves to an in-use pool slot.
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -146,7 +146,7 @@ static struct ra_tls_session_handle* internal_pool_acquire(void)
  * Used by both ``global_init`` and ``global_deinit`` so the pool
  * lifecycle is symmetric.
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -175,7 +175,7 @@ static void internal_pool_reset(void)
 /* Ra tls global init -- see implementation for details. */
 ra_err_t ra_tls_global_init(void)
 {
-  if (s_initialised) {
+  if (s_initialized) {
     ra_log_warn(k_ra_tls_tag, "global_init called twice");
     return k_ra_err_exists;
   }
@@ -195,7 +195,7 @@ ra_err_t ra_tls_global_init(void)
   }
 #endif
 
-  s_initialised = true;
+  s_initialized = true;
   ra_log_info(k_ra_tls_tag, "global_init ok");
   return k_ra_ok;
 }
@@ -203,7 +203,7 @@ ra_err_t ra_tls_global_init(void)
 /* Ra tls global deinit -- see implementation for details. */
 ra_err_t ra_tls_global_deinit(void)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
 
@@ -214,7 +214,7 @@ ra_err_t ra_tls_global_deinit(void)
   mbedtls_entropy_free(&s_entropy);
 #endif
 
-  s_initialised = false;
+  s_initialized = false;
   return k_ra_ok;
 }
 
@@ -234,7 +234,7 @@ ra_err_t ra_tls_global_deinit(void)
  *
  * @retval k_ra_ok                 Inputs valid.
  * @retval k_ra_err_invalid_arg    NULL out pointer / cfg / BIO callbacks.
- * @retval k_ra_err_not_initialized Module has not been initialised.
+ * @retval k_ra_err_not_initialized Module has not been initialized.
  *
  * @pre Caller has not yet acquired a pool slot.
  * @pre ``out_session`` may be NULL (handled by this helper).
@@ -252,7 +252,7 @@ static ra_err_t internal_session_validate_args(ra_tls_session_t*           out_s
   }
   *out_session = nullptr;
 
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (cfg == nullptr) {
@@ -284,7 +284,7 @@ static ra_err_t internal_session_validate_args(ra_tls_session_t*           out_s
  * @retval k_ra_err_hw_init_failed Mbed TLS rejected one of the calls.
  *
  * @pre ``slot->in_use`` is true and ``slot->cfg`` is the caller config.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post On success the slot's SSL context is wired to the BIO callbacks.
  * @post On error the slot is fully zeroed.
  *
@@ -365,7 +365,7 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
 /* Ra tls session close -- see implementation for details. */
 ra_err_t ra_tls_session_close(ra_tls_session_t session)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(session)) {
@@ -383,7 +383,7 @@ ra_err_t ra_tls_session_close(ra_tls_session_t session)
 /* Ra tls handshake -- see implementation for details. */
 ra_err_t ra_tls_handshake(ra_tls_session_t session)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(session)) {
@@ -427,7 +427,7 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
   }
   *out_sent = 0U;
 
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(session)) {
@@ -468,7 +468,7 @@ ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t*
   }
   *out_received = 0U;
 
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(session)) {

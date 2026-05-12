@@ -170,7 +170,7 @@ static void test_blink_toggle_invalid_led_rejected(void)
  *
  * @par MC/DC:
  * State-machine coverage: per-LED state transitions
- * (uninitialised -> initialised -> toggling). Pairs A+B in
+ * (uninitialized -> initialized -> toggling). Pairs A+B in
  * interleaved order to exercise that no global lock is required.
  */
 static void test_blink_interleaved_a_b_a_toggles(void)

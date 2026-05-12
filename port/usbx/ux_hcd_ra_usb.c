@@ -65,7 +65,7 @@ static ra_usb_hcd_t s_hcd = {
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -96,7 +96,7 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -254,7 +254,7 @@ static unsigned int internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -297,7 +297,7 @@ static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -389,7 +389,7 @@ static unsigned int internal_port_set_enabled(bool enable)
  *
  * @return USBX result code from the dispatched helper.
  * @retval UX_SUCCESS Function handled.
- * @retval UX_CONTROLLER_UNKNOWN Bridge has not been initialised.
+ * @retval UX_CONTROLLER_UNKNOWN Bridge has not been initialized.
  * @retval UX_ERROR Selector unsupported, or helper rejected the call.
  *
  * @pre Bridge is past ``ux_hcd_ra_usb_initialize`` (or call returns
@@ -468,7 +468,7 @@ _ux_hcd_ra_usb_function(struct UX_HCD_STRUCT* hcd, unsigned int function, void* 
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -520,7 +520,7 @@ ra_err_t ux_hcd_ra_usb_initialize(ra_usb_speed_t speed)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *
@@ -553,7 +553,7 @@ ra_err_t ux_hcd_ra_usb_uninitialize(void)
  * @retval 0 Success or default value.
  *
  * @pre Caller has validated arguments.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  * @post Returned value reflects current state.
  *

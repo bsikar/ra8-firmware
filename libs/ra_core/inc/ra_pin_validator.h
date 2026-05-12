@@ -23,7 +23,7 @@
  * - At driver init time, after validating arguments, BEFORE touching
  *   any hardware registers. If the claim fails, the driver must return
  *   `k_ra_err_gpio_conflict` without leaving the peripheral in a
- *   half-initialised state.
+ *   half-initialized state.
  * - At driver de-init time, release all owned pins so the same pin
  *   can be re-used by another peripheral later.
  *

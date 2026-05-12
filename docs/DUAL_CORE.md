@@ -9,7 +9,7 @@ The Renesas RA8D2 ships two Arm cores:
 
 CPU0 is the boot core. On power-up the chip jumps to the M85 reset
 vector and CPU1 is held in the LPCSTPCH1=1 stopped state. CPU1 is
-released by CPU0 firmware once the SoC is initialised.
+released by CPU0 firmware once the SoC is initialized.
 
 ## Memory map split
 

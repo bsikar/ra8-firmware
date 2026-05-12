@@ -185,11 +185,11 @@ ra_err_t ra_ble_mesh_init(const ra_ble_mesh_config_t* cfg)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Wrapper torn down.
- * @retval k_ra_err_not_initialized Wrapper was never initialised.
+ * @retval k_ra_err_not_initialized Wrapper was never initialized.
  *
  * @pre ra_ble_mesh_init has succeeded.
  * @pre Caller is single-threaded.
- * @post Wrapper is no longer initialised.
+ * @post Wrapper is no longer initialized.
  * @post Provisioning beacon is off.
  *
  * @note Not thread-safe.
@@ -217,7 +217,7 @@ ra_err_t ra_ble_mesh_close(void)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Beaconing started.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  * @retval k_ra_err_hw_error        Upstream NimBLE Mesh rejected.
  *
  * @pre ra_ble_mesh_init has succeeded.
@@ -254,7 +254,7 @@ ra_err_t ra_ble_mesh_prov_enable(void)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Beaconing stopped.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  * @retval k_ra_err_hw_error        Upstream NimBLE Mesh rejected.
  *
  * @pre ra_ble_mesh_init has succeeded.
@@ -292,7 +292,7 @@ ra_err_t ra_ble_mesh_prov_disable(void)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                  Reset issued.
- * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_not_initialized Wrapper not initialized.
  *
  * @pre ra_ble_mesh_init has succeeded.
  * @pre Caller is single-threaded.
@@ -338,7 +338,7 @@ uint8_t ra_ble_mesh_test_prov_active(void);
  *
  * @param[in] evt Event payload (must not be NULL for delivery).
  *
- * @pre Wrapper is initialised.
+ * @pre Wrapper is initialized.
  * @pre Caller is the unit-test harness (single-threaded).
  * @post If a handler is registered and evt != NULL it has been invoked.
  * @post No internal state is mutated.
@@ -365,7 +365,7 @@ void ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt)
  * @retval 0 Provisioning beacon is off.
  * @retval 1 Provisioning beacon is on.
  *
- * @pre Wrapper is initialised.
+ * @pre Wrapper is initialized.
  * @pre Caller is the unit-test harness (single-threaded).
  * @post No state is mutated.
  * @post Return value matches s_state.provisioning_on.

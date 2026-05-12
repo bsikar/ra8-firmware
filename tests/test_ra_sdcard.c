@@ -135,7 +135,7 @@ static void prep(void)
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
   /* Force the driver back to clean state in case a prior test left
-   * it initialised. */
+   * it initialized. */
   (void)ra_sdcard_deinit();
 }
 

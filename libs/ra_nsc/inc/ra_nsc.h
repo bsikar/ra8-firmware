@@ -260,7 +260,7 @@ extern "C" {
  * @pre Called from NS world after vector_table init.
  * @pre IRQs masked or single-threaded boot context.
  *
- * @post All Ring-3 substrate modules are initialised on the
+ * @post All Ring-3 substrate modules are initialized on the
  * secure side.
  *
  * @par TrustZone Safety:
@@ -298,7 +298,7 @@ extern "C" {
  * @retval k_ra_err_null_ptr ``ns_chal`` / ``ns_digest`` NULL.
  * @retval k_ra_err_invalid_arg ``slot`` >= 8.
  *
- * @pre PAL has been initialised; the secure key vault has been
+ * @pre PAL has been initialized; the secure key vault has been
  * programmed with at least one key in the requested slot.
  *
  * @post ``ns_digest[0..31]`` holds SHA-256(key XOR challenge).

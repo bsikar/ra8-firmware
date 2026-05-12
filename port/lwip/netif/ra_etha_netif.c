@@ -144,7 +144,7 @@ static uint32_t internal_port_of(const struct netif* netif) {
  * @retval ERR_VAL        Frame too large for the scratch buffer.
  * @retval ERR_ARG        netif/pbuf invalid.
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

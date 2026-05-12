@@ -292,7 +292,7 @@ static void ptp_time_transmitter_sci_or_halt(uint32_t pclka_hz)
 /**
  * @brief Bring up the Ethernet NIC and wait for PHY link.
  *
- * @pre Clocks + SCI8 are already initialised.
+ * @pre Clocks + SCI8 are already initialized.
  * @post NIC TX/RX rings are running and the PHY reports BMSR.LINK = 1.
  *
  * @since 0.1.0

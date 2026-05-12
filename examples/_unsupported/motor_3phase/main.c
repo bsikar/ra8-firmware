@@ -381,7 +381,7 @@ static void motor_3phase_init_clocks_and_led(uint32_t* out_pclka_hz)
  *
  * @param[in] pclka_hz Live PCLKA rate.
  *
- * @pre Clocks initialised.
+ * @pre Clocks initialized.
  * @pre pclka_hz is non-zero.
  *
  * @post SCI8 is enabled.
@@ -496,7 +496,7 @@ static uint32_t motor_3phase_u32_to_dec(uint32_t value, uint8_t* buf)
  * @param[in] v_duty V-phase compare value.
  * @param[in] w_duty W-phase compare value.
  *
- * @pre SCI8 is initialised.
+ * @pre SCI8 is initialized.
  *
  * @post Seven writes have been issued on SCI8.
  * @post No heap or dynamic allocations.

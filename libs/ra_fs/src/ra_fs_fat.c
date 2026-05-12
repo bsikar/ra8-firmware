@@ -1074,7 +1074,7 @@ static void priv_dir_walk_init_root(const ra_fs_mount_t* m, dir_walk_t* w)
  * @retval k_ra_err_* Backend error from a FAT read.
  *
  * @pre `m`, `w`, and `out_eod` are non-NULL.
- * @pre Walker has been initialised by `priv_dir_walk_init_root`.
+ * @pre Walker has been initialized by `priv_dir_walk_init_root`.
  * @post On success `w` either points at a new sector or `*out_eod` is 1.
  * @post `w->entry_idx` is reset to 0 on a successful advance.
  *
@@ -1302,7 +1302,7 @@ static ra_err_t priv_free_chain(const ra_fs_mount_t* m, uint32_t start)
  * @retval non-NULL Pointer to a `ra_fs_mount_t` with `in_use == 0`.
  * @retval NULL     Mount table is full.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre Caller serialises mount/unmount operations.
  * @post No state modified.
  * @post Returned pointer remains valid for the program lifetime.
@@ -1330,7 +1330,7 @@ static ra_fs_mount_t* priv_alloc_mount_slot(void)
  * @retval non-NULL Pointer to a `ra_fs_file_t` with `in_use == 0`.
  * @retval NULL     File table is full.
  *
- * @pre Module is initialised.
+ * @pre Module is initialized.
  * @pre Caller serialises open/close operations.
  * @post No state modified.
  * @post Returned pointer remains valid for the program lifetime.

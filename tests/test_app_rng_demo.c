@@ -46,7 +46,7 @@ static void reset_world(void)
  *
  * @par MC/DC:
  * Decision in app: ``ra_psa_crypto_random != ok``. One atomic
- * condition x 2 vectors -- this test (ok) + the not-initialised test
+ * condition x 2 vectors -- this test (ok) + the not-initialized test
  * below (err).
  */
 static void test_rng_app_random_ok(void)
@@ -70,10 +70,10 @@ static void test_rng_app_random_ok(void)
  * @brief Calling random before init is rejected.
  *
  * @par MC/DC:
- * Decision: ``s_initialised`` flag. Two vectors -- pre-init (this) +
+ * Decision: ``s_initialized`` flag. Two vectors -- pre-init (this) +
  * post-init (above).
  */
-static void test_rng_app_random_not_initialised(void)
+static void test_rng_app_random_not_initialized(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: random before init rejected");
@@ -140,7 +140,7 @@ static void test_rng_app_nibble_to_hex(void)
 int main(void)
 {
   test_rng_app_random_ok();
-  test_rng_app_random_not_initialised();
+  test_rng_app_random_not_initialized();
   test_rng_app_random_null();
   test_rng_app_random_zero_len();
   test_rng_app_nibble_to_hex();

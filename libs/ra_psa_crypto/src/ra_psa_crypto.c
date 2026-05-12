@@ -176,7 +176,7 @@ struct ra_psa_key_handle {
 static struct ra_psa_key_handle s_key_pool[k_ra_psa_max_keys];
 
 /** @brief One-shot global init flag protecting the pool. */
-static bool s_initialised;
+static bool s_initialized;
 
 /* =============================================================================
  * Internal helpers
@@ -390,7 +390,7 @@ internal_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_ra_psa_s
  * @param[in,out] nonce See function signature.
  * @param[in,out] nonce_len See function signature.
  * @param[in,out] out_tag See function signature.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -441,7 +441,7 @@ static void internal_sim_aead_tag(const uint8_t* key,
  * @param[in,out] len See function signature.
  * @param[in,out] nonce See function signature.
  * @param[in,out] nonce_len See function signature.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -501,7 +501,7 @@ static void internal_sim_keystream(const uint8_t* key,
  * @param[in,out] slot See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -559,7 +559,7 @@ static ra_err_t internal_sim_aead_encrypt(const struct ra_psa_key_handle* slot,
  * @param[in,out] slot See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -617,7 +617,7 @@ static ra_err_t internal_sim_aead_decrypt(const struct ra_psa_key_handle* slot,
 /* Ra psa crypto init -- see implementation for details. */
 ra_err_t ra_psa_crypto_init(void)
 {
-  if (s_initialised) {
+  if (s_initialized) {
     return k_ra_err_exists;
   }
 
@@ -634,14 +634,14 @@ ra_err_t ra_psa_crypto_init(void)
     s_key_pool[i].key_len = 0U;
   }
 
-  s_initialised = true;
+  s_initialized = true;
   return k_ra_ok;
 }
 
 /* Ra psa crypto deinit -- see implementation for details. */
 ra_err_t ra_psa_crypto_deinit(void)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
 
@@ -660,7 +660,7 @@ ra_err_t ra_psa_crypto_deinit(void)
   mbedtls_psa_crypto_free();
 #endif
 
-  s_initialised = false;
+  s_initialized = false;
   return k_ra_ok;
 }
 
@@ -756,7 +756,7 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
   if ((out_handle == nullptr) || (attr == nullptr) || (data == nullptr) || (data_len == 0U)) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (data_len > (size_t)k_ra_psa_max_key_bytes) {
@@ -790,7 +790,7 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
 /* Ra psa key destroy -- see implementation for details. */
 ra_err_t ra_psa_key_destroy(ra_psa_key_t handle)
 {
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(handle)) {
@@ -826,7 +826,7 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
   if (alg != k_ra_psa_alg_sha_256) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (out_cap < (size_t)k_ra_psa_sha256_len) {
@@ -864,7 +864,7 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
   if ((hash == nullptr) || (sig == nullptr) || (sig_len == nullptr)) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(handle)) {
@@ -921,7 +921,7 @@ ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
   if ((hash == nullptr) || (sig == nullptr)) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(handle)) {
@@ -984,7 +984,7 @@ static ra_err_t internal_aead_encrypt_check(ra_psa_key_t   handle,
   if (((plain == nullptr) && (plain_len != 0U)) || ((aad == nullptr) && (aad_len != 0U))) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(handle) || (alg != k_ra_psa_alg_aes_gcm) ||
@@ -1085,7 +1085,7 @@ static ra_err_t internal_aead_decrypt_check(ra_psa_key_t   handle,
   if ((aad == nullptr) && (aad_len != 0U)) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
   if (!internal_handle_valid(handle) || (alg != k_ra_psa_alg_aes_gcm) ||
@@ -1192,10 +1192,10 @@ ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
  * @retval k_ra_ok                  ``out`` filled with ``out_len`` bytes.
  * @retval k_ra_err_invalid_arg     ``out`` was NULL.
  * @retval k_ra_err_invalid_size    ``out_len`` was zero.
- * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_not_initialized Facade not initialized.
  * @retval k_ra_err_hw_error        Underlying ``psa_generate_random`` failed.
  *
- * @pre Facade has been initialised by ``ra_psa_crypto_init``.
+ * @pre Facade has been initialized by ``ra_psa_crypto_init``.
  * @pre ``out`` is non-NULL and ``out_len > 0``.
  * @post On ``k_ra_ok`` ``out[0..out_len-1]`` has been written.
  * @post On any error ``out`` is unchanged.
@@ -1211,7 +1211,7 @@ ra_err_t ra_psa_crypto_random(uint8_t* out, size_t out_len)
   if (out_len == 0U) {
     return k_ra_err_invalid_size;
   }
-  if (!s_initialised) {
+  if (!s_initialized) {
     return k_ra_err_not_initialized;
   }
 

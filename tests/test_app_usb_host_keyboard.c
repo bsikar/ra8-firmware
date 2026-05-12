@@ -197,7 +197,7 @@ static void test_hkbd_init_bad_speed_rejected(void)
 /**
  * @brief set_protocol before hhid_init is rejected.
  *
- * @par MC/DC: Failure side of the ``initialised == true`` invariant
+ * @par MC/DC: Failure side of the ``initialized == true`` invariant
  * check in set_protocol.
  */
 static void test_hkbd_set_protocol_before_init_rejected(void)

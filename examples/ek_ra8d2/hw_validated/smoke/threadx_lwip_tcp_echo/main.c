@@ -125,7 +125,7 @@ static void demo_panic_halt(void)
  *
  * @pre Reset_Handler / SystemInit complete.
  * @post On success the BSP console is sending at 115200 8N1 and the
- *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialised.
+ *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialized.
  *
  * @since 0.1.0
  */
@@ -444,7 +444,7 @@ void tx_application_define(void* first_unused_memory)
   (void)first_unused_memory;
 
   /* Spin up the lwIP tcpip_thread once. NULL completion-callback is
-   * fine; the call returns when the lwIP core is initialised. */
+   * fine; the call returns when the lwIP core is initialized. */
   tcpip_init(nullptr, nullptr);
 
   (void)tx_thread_create(&s_demo_thread,

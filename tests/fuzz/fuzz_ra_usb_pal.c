@@ -44,7 +44,7 @@ enum : uint16_t {
   k_fuzz_ep_type_mod  = 4U,
 };
 
-static uint8_t s_initialised;
+static uint8_t s_initialized;
 static uint8_t s_recv_buf[k_fuzz_recv_cap];
 
 static int fuzz_pal_setup(void)
@@ -65,11 +65,11 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   if (size < (size_t)k_fuzz_min_input || size > (size_t)k_fuzz_max_input) {
     return 0;
   }
-  if (s_initialised == 0U) {
+  if (s_initialized == 0U) {
     if (fuzz_pal_setup() != 0) {
       return 0;
     }
-    s_initialised = 1U;
+    s_initialized = 1U;
   }
 
   const uint8_t             raw_desc = data[0];

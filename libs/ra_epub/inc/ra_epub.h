@@ -122,8 +122,10 @@ typedef enum : uint8_t {
  * @see ra_epub_open()
  */
 typedef struct {
+  // cppcheck-suppress unusedStructMember
   const uint8_t* data; /**< Pointer to the EPUB byte stream.        */
-  size_t         size; /**< Length of the EPUB byte stream, bytes.  */
+  // cppcheck-suppress unusedStructMember
+  size_t size; /**< Length of the EPUB byte stream, bytes.  */
 } ra_epub_mem_media_t;
 
 /* ===========================================================================
@@ -148,8 +150,10 @@ typedef struct {
  */
 typedef struct {
   /* --- Backing storage (caller-owned) ---------------------------------- */
+  // cppcheck-suppress unusedStructMember
   const uint8_t* zip_bytes; /**< Pointer to the EPUB blob.           */
-  size_t         zip_size;  /**< Length of the EPUB blob.            */
+  // cppcheck-suppress unusedStructMember
+  size_t zip_size; /**< Length of the EPUB blob.            */
 
   /* --- miniz state ----------------------------------------------------- */
   /* Inline storage for `mz_zip_archive`. Sized via static_assert in
@@ -163,30 +167,42 @@ typedef struct {
    * pointer-typed and ``uint64_t`` fields that require 8-byte
    * alignment. Without the alignment specifier the cast is
    * undefined behaviour on strict-alignment architectures. */
+  // cppcheck-suppress unusedStructMember
   alignas(max_align_t) uint8_t zip_archive_storage[k_ra_epub_zip_archive_bytes];
+  // cppcheck-suppress unusedStructMember
   uint8_t zip_archive_active; /**< 1 = mz_zip_reader_init succeeded. */
 
   /* --- Chapter table --------------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
   uint16_t chapter_count; /**< Spine length actually stored. */
-  char     chapter_paths[k_ra_epub_max_chapters]
-                        [k_ra_epub_max_path_len]; /**< Manifest hrefs (relative to OPF dir). */
+  // cppcheck-suppress unusedStructMember
+  char chapter_paths[k_ra_epub_max_chapters]
+                    [k_ra_epub_max_path_len]; /**< Manifest hrefs (relative to OPF dir). */
 
   /* --- Metadata -------------------------------------------------------- */
-  char title[k_ra_epub_meta_len];    /**< Dublin Core `<dc:title>`.     */
-  char author[k_ra_epub_meta_len];   /**< Dublin Core `<dc:creator>`.   */
+  // cppcheck-suppress unusedStructMember
+  char title[k_ra_epub_meta_len]; /**< Dublin Core `<dc:title>`.     */
+  // cppcheck-suppress unusedStructMember
+  char author[k_ra_epub_meta_len]; /**< Dublin Core `<dc:creator>`.   */
+  // cppcheck-suppress unusedStructMember
   char language[k_ra_epub_meta_len]; /**< Dublin Core `<dc:language>`.  */
 
   /* --- Cover ----------------------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
   char cover_path[k_ra_epub_max_path_len]; /**< Path to cover image (or empty). */
 
   /* --- OPF base directory --------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
   char opf_dir[k_ra_epub_max_path_len]; /**< Directory portion of the OPF. */
 
   /* --- Optional embedded font for glyph rendering --------------------- */
+  // cppcheck-suppress unusedStructMember
   const uint8_t* font_data; /**< TTF blob; NULL if unset.        */
-  size_t         font_size; /**< TTF blob length.                */
+  // cppcheck-suppress unusedStructMember
+  size_t font_size; /**< TTF blob length.                */
 
   /* --- Lifecycle ------------------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
   uint8_t in_use; /**< 1 = open, 0 = closed.                          */
 } ra_epub_book_t;
 
@@ -200,8 +216,11 @@ typedef struct {
  * @brief Dublin Core metadata bundle returned by `ra_epub_get_metadata()`.
  */
 typedef struct {
-  const char* title;    /**< NUL-terminated title; "" if absent.      */
-  const char* author;   /**< NUL-terminated creator; "" if absent.    */
+  // cppcheck-suppress unusedStructMember
+  const char* title; /**< NUL-terminated title; "" if absent.      */
+  // cppcheck-suppress unusedStructMember
+  const char* author; /**< NUL-terminated creator; "" if absent.    */
+  // cppcheck-suppress unusedStructMember
   const char* language; /**< NUL-terminated language tag; "" if absent.*/
 } ra_epub_metadata_t;
 
@@ -247,7 +266,7 @@ typedef struct {
  * @pre `media` non-NULL.
  * @pre `out_book` non-NULL.
  * @post On success, `out_book->in_use == 1` and `chapter_count >= 0`.
- * @post On failure, `*out_book` is zero-initialised.
+ * @post On failure, `*out_book` is zero-initialized.
  *
  * @note Not thread-safe. Single-threaded init context.
  *

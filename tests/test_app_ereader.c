@@ -248,8 +248,8 @@ static void test_ereader_open_corrupt_blob_rejected(void)
  * @brief Double-init of LED1 still succeeds (idempotent).
  *
  * @par MC/DC:
- * State-machine vector: per-LED state already-initialised -> still-
- * initialised transition, exercising library_thread re-entry.
+ * State-machine vector: per-LED state already-initialized -> still-
+ * initialized transition, exercising library_thread re-entry.
  */
 static void test_ereader_led_init_idempotent(void)
 {

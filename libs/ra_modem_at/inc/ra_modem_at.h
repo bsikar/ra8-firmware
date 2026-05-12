@@ -181,7 +181,7 @@ typedef void (*ra_modem_at_urc_fn_t)(const char* line, void* ctx);
  * @param[in] cfg Pointer to a fully populated configuration.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Initialised successfully.
+ * @retval k_ra_ok                 Initialized successfully.
  * @retval k_ra_err_null_ptr       ``cfg``, ``cfg->line_buf`` or any
  *                                 IO function pointer is NULL.
  * @retval k_ra_err_invalid_size   ``line_buf_len`` smaller than 16.
@@ -315,7 +315,7 @@ ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uin
  * @retval k_ra_err_null_ptr        ``prefix`` or ``fn`` NULL.
  * @retval k_ra_err_invalid_size    ``prefix`` too long or empty.
  * @retval k_ra_err_no_mem          Handler table full.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  *
  * @pre ``ra_modem_at_init`` returned ``k_ra_ok``.
  * @post Future matching lines invoke ``fn`` exactly once each.
@@ -337,7 +337,7 @@ ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                  Drain completed.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  *
  * @pre ``ra_modem_at_init`` returned ``k_ra_ok``.
  * @post RX FIFO drained for the current call.

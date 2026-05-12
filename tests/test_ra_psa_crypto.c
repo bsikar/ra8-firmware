@@ -11,7 +11,7 @@
  * - SHA-256 round-trip against a known FIPS 180-4 test vector
  * - sign + verify round-trip with a deterministic test key
  * - AES-GCM encrypt + decrypt round-trip with tag-tampering detection
- * - error paths: NULL pointers, uninitialised facade, oversized keys,
+ * - error paths: NULL pointers, uninitialized facade, oversized keys,
  *   wrong algorithm tags, undersized output buffers
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -91,7 +91,7 @@ static const uint8_t k_test_nonce[12] = {
 
 static void prep_init(void)
 {
-  /* deinit is allowed to fail with not-initialised on the very first
+  /* deinit is allowed to fail with not-initialized on the very first
    * call; subsequent calls observe a properly torn-down module. */
   (void)ra_psa_crypto_deinit();
   TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
@@ -141,7 +141,7 @@ static void test_deinit_without_init(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_import_uninitialised(void)
+static void test_import_uninitialized(void)
 {
   TEST_BEGIN("psa import without init");
   (void)ra_psa_crypto_deinit();
@@ -1613,7 +1613,7 @@ int32_t main(void)
 {
   test_init_double();
   test_deinit_without_init();
-  test_import_uninitialised();
+  test_import_uninitialized();
   test_import_invalid_args();
   test_import_destroy_round_trip();
   test_pool_exhaustion();

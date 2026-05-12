@@ -31,7 +31,7 @@ USB Audio 1.0 sec 2.2.5 "Format Type Descriptor" -- Type-I PCM.
 - 2 channels (stereo).
 - 16-bit sub-frame.
 - Iso-IN max-packet 192 bytes per FS frame (`48 * 2 * 2`).
-- Volume Q8.8 dB initialised to 0 dB (full scale, no attenuation).
+- Volume Q8.8 dB initialized to 0 dB (full scale, no attenuation).
 
 The 48-sample sine LUT amplitude is `0x4000` (half full-scale) so a
 naive host downstream-mixer cannot clip.

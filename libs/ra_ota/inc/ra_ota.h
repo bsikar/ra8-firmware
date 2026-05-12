@@ -305,7 +305,7 @@ typedef struct {
  *                               function pointer was NULL.
  * @retval k_ra_err_invalid_arg  URL string was empty or not
  *                               NUL-terminated; bank size 0; etc.
- * @retval k_ra_err_invalid_state Already initialised.
+ * @retval k_ra_err_invalid_state Already initialized.
  *
  * @pre ``cfg`` non-NULL.
  * @pre Every interface in ``cfg`` has all its function pointers set.
@@ -326,10 +326,10 @@ typedef struct {
  * and clears the module-static state. Safe to call from idle.
  *
  * @return ``ra_err_t`` outcome.
- * @retval k_ra_ok Module deinitialised.
+ * @retval k_ra_ok Module deinitialized.
  *
  * @pre None.
- * @post Module is back in the uninitialised state.
+ * @post Module is back in the uninitialized state.
  * @post Calling any other ra_ota_* API now returns
  *       ``k_ra_err_not_initialized``.
  *
@@ -391,7 +391,7 @@ typedef struct {
  * @return ``ra_err_t`` outcome.
  * @retval k_ra_ok                  All bytes programmed.
  * @retval k_ra_err_null_ptr        ``manifest`` was NULL.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_invalid_state   Wrong state for download.
  * @retval k_ra_err_invalid_size    image_size > bank size.
  * @retval k_ra_err_hw_error        Flash or network backend failed.
@@ -421,7 +421,7 @@ typedef struct {
  * @return ``ra_err_t`` outcome.
  * @retval k_ra_ok                  Verification passed.
  * @retval k_ra_err_null_ptr        ``manifest`` was NULL.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_invalid_state   Wrong state for verification.
  * @retval k_ra_err_crc_mismatch    SHA-256 digest mismatch.
  * @retval k_ra_err_hw_error        ECDSA verification rejected the
@@ -452,7 +452,7 @@ typedef struct {
  * @return ``ra_err_t`` outcome (caller usually never sees the
  *         success path on hardware -- the part is already resetting).
  * @retval k_ra_ok                  Boot bank swapped (host build only).
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  * @retval k_ra_err_invalid_state   Verification has not passed.
  * @retval k_ra_err_hw_error        ``set_startup`` failed.
  *
@@ -474,8 +474,8 @@ typedef struct {
  * ``uint8_t`` so a torn read is impossible on the target.
  *
  * @return One of ``ra_ota_state_t``; ``k_ra_ota_state_idle`` if the
- *         module has not been initialised.
- * @retval k_ra_ota_state_idle        Uninitialised, idle, or already done.
+ *         module has not been initialized.
+ * @retval k_ra_ota_state_idle        Uninitialized, idle, or already done.
  * @retval k_ra_ota_state_checking    Manifest fetch in progress.
  * @retval k_ra_ota_state_downloading Image download in progress.
  * @retval k_ra_ota_state_verifying   Verifying signature.
@@ -489,7 +489,7 @@ typedef struct {
  * @note Thread-safe: read of a single ``uint8_t``.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 ra_ota_state_t ra_ota_get_state(void);
@@ -505,7 +505,7 @@ ra_ota_state_t ra_ota_get_state(void);
  * @return ``k_ra_ok`` on a successful step (including no-op when
  *         already idle/done) or a state-specific error code.
  * @retval k_ra_ok                  Step completed.
- * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_not_initialized Module not initialized.
  *
  * @pre ``ra_ota_init`` has been called.
  * @post The state machine is in the next state, ``done``, or ``error``.

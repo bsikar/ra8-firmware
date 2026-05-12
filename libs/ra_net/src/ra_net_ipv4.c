@@ -145,7 +145,7 @@ uint16_t ra_net_checksum_ones(const uint8_t* data, uint16_t len, uint32_t sum0)
  * @pre cfg points to a valid configuration.
  * @pre Stack is not already opened.
  * @post On success s_state.opened == 1.
- * @post On failure no state is left initialised.
+ * @post On failure no state is left initialized.
  *
  * @note Not thread-safe; called from init context.
  *

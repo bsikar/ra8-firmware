@@ -56,12 +56,12 @@ static void test_init_happy(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_init());
 
   ra_bscan_status_t status = {
-    .initialised      = false,
+    .initialized      = false,
     .last_instruction = k_ra_bscan_instr_extest,
     .expected_idcode  = 0U,
   };
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
-  TEST_ASSERT(status.initialised);
+  TEST_ASSERT(status.initialized);
   TEST_ASSERT_EQ(k_ra_bscan_instr_bypass, status.last_instruction);
   TEST_ASSERT_EQ(k_ra_bscan_test_idcode_expected, status.expected_idcode);
   TEST_END("bscan init happy");
@@ -108,15 +108,15 @@ static void test_get_idcode_null(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_get_idcode_not_initialised(void)
+static void test_get_idcode_not_initialized(void)
 {
-  TEST_BEGIN("bscan get_idcode not initialised");
+  TEST_BEGIN("bscan get_idcode not initialized");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
 
   uint32_t idcode = 0U;
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bscan_get_idcode(&idcode));
-  TEST_END("bscan get_idcode not initialised");
+  TEST_END("bscan get_idcode not initialized");
 }
 
 /**
@@ -150,7 +150,7 @@ static void test_set_instruction_happy(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_set_instruction(k_ra_bscan_instr_idcode));
 
   ra_bscan_status_t status = {
-    .initialised      = false,
+    .initialized      = false,
     .last_instruction = k_ra_bscan_instr_bypass,
     .expected_idcode  = 0U,
   };
@@ -187,14 +187,14 @@ static void test_set_instruction_reserved(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_set_instruction_not_initialised(void)
+static void test_set_instruction_not_initialized(void)
 {
-  TEST_BEGIN("bscan set_instruction not initialised");
+  TEST_BEGIN("bscan set_instruction not initialized");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
 
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bscan_set_instruction(k_ra_bscan_instr_extest));
-  TEST_END("bscan set_instruction not initialised");
+  TEST_END("bscan set_instruction not initialized");
 }
 
 /**
@@ -214,13 +214,13 @@ static void test_clear_status_happy(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_clear_status(0U));
 
   ra_bscan_status_t status = {
-    .initialised      = false,
+    .initialized      = false,
     .last_instruction = k_ra_bscan_instr_extest,
     .expected_idcode  = 0U,
   };
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
   TEST_ASSERT_EQ(k_ra_bscan_instr_bypass, status.last_instruction);
-  TEST_ASSERT(status.initialised);
+  TEST_ASSERT(status.initialized);
   TEST_END("bscan clear_status happy");
 }
 
@@ -246,14 +246,14 @@ static void test_clear_status_bad_mask(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_clear_status_not_initialised(void)
+static void test_clear_status_not_initialized(void)
 {
-  TEST_BEGIN("bscan clear_status not initialised");
+  TEST_BEGIN("bscan clear_status not initialized");
   ra_sim_mmap_reset();
   (void)ra_bscan_deinit();
 
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bscan_clear_status(0U));
-  TEST_END("bscan clear_status not initialised");
+  TEST_END("bscan clear_status not initialized");
 }
 
 /**
@@ -271,12 +271,12 @@ static void test_deinit_idempotent(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_deinit());
 
   ra_bscan_status_t status = {
-    .initialised      = true,
+    .initialized      = true,
     .last_instruction = k_ra_bscan_instr_extest,
     .expected_idcode  = 0U,
   };
   TEST_ASSERT_EQ(k_ra_ok, ra_bscan_get_status(&status));
-  TEST_ASSERT(!status.initialised);
+  TEST_ASSERT(!status.initialized);
   TEST_ASSERT_EQ(k_ra_bscan_instr_bypass, status.last_instruction);
   TEST_END("bscan deinit idempotent");
 }
@@ -303,14 +303,14 @@ int32_t main(void)
   test_init_happy();
   test_get_idcode_happy();
   test_get_idcode_null();
-  test_get_idcode_not_initialised();
+  test_get_idcode_not_initialized();
   test_get_status_null();
   test_set_instruction_happy();
   test_set_instruction_reserved();
-  test_set_instruction_not_initialised();
+  test_set_instruction_not_initialized();
   test_clear_status_happy();
   test_clear_status_bad_mask();
-  test_clear_status_not_initialised();
+  test_clear_status_not_initialized();
   test_deinit_idempotent();
   test_idcode_constant_matches_header();
   (void)fprintf(stderr, "[OK  ] test_ra_bscan.c\n");

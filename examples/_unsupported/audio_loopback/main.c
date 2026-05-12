@@ -188,7 +188,7 @@ static void audio_loopback_init_clocks_and_led(uint32_t* out_pclka_hz)
  *
  * @param[in] pclka_hz Live PCLKA rate from ``ra_cgc_get_clock_hz``.
  *
- * @pre Clocks have been initialised.
+ * @pre Clocks have been initialized.
  * @pre pclka_hz is non-zero.
  *
  * @post SCI8 is enabled.
@@ -279,7 +279,7 @@ static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
  *
  * @param[in] block_count Cumulative block count.
  *
- * @pre SCI8 is initialised.
+ * @pre SCI8 is initialized.
  *
  * @post Three writes have been issued on SCI8.
  * @post No heap or dynamic allocations.

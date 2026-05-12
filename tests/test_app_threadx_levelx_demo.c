@@ -140,7 +140,7 @@ static void test_lx_console_init_zero_baud_rejected(void)
  * @brief Console write before init rejected (precondition guard).
  *
  * @par MC/DC:
- * Decision vector under test: ``initialised == false`` invariant in
+ * Decision vector under test: ``initialized == false`` invariant in
  * console_write -- failure side of the init-precondition decision.
  */
 static void test_lx_console_write_before_init_rejected(void)
@@ -156,7 +156,7 @@ static void test_lx_console_write_before_init_rejected(void)
  * @brief Flush before init rejected (panic-halt drain precondition).
  *
  * @par MC/DC:
- * State-machine vector: console subsystem stays in "uninitialised"
+ * State-machine vector: console subsystem stays in "uninitialized"
  * state and rejects the flush requested by demo_panic_halt().
  */
 static void test_lx_console_flush_before_init_rejected(void)

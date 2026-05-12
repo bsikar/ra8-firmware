@@ -191,7 +191,7 @@ typedef enum : uint32_t {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok PAL released.
- * @retval k_ra_err_invalid_state PAL was never initialised.
+ * @retval k_ra_err_invalid_state PAL was never initialized.
  *
  * @pre IRQs masked or single-threaded shutdown context.
  *
@@ -225,7 +225,7 @@ typedef enum : uint32_t {
  * @retval k_ra_err_invalid_state ``ra_net_pal_init`` not called yet.
  *
  * @pre ``mac`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post Subsequent ``ra_net_pal_get_mac_addr`` returns ``mac``.
  *
@@ -242,10 +242,10 @@ typedef enum : uint32_t {
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok MAC copied.
  * @retval k_ra_err_null_ptr ``out_mac`` was NULL.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
  * @pre ``out_mac`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post No PAL state is modified.
  *
@@ -275,11 +275,11 @@ typedef enum : uint32_t {
  * @retval k_ra_ok Frame queued for TX.
  * @retval k_ra_err_null_ptr ``frame`` was NULL.
  * @retval k_ra_err_invalid_arg ``len`` zero or out of range.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  * @retval k_ra_err_no_mem TX ring full; try again later.
  *
  * @pre ``frame`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post On success, the frame is queued and the caller may drop
  * ``frame``.
@@ -307,12 +307,12 @@ typedef enum : uint32_t {
  * @retval k_ra_ok Frame copied.
  * @retval k_ra_err_no_data No frame ready (poll-friendly).
  * @retval k_ra_err_null_ptr ``out_buf`` / ``inout_len`` NULL.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  * @retval k_ra_err_invalid_arg ``*inout_len`` < frame_max capacity.
  *
  * @pre ``out_buf`` and ``inout_len`` are non-NULL.
  * @pre ``*inout_len`` >= ``k_ra_net_pal_frame_max``.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post On success, ``*inout_len`` holds the actual frame length.
  *
@@ -335,10 +335,10 @@ typedef enum : uint32_t {
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Link state copied.
  * @retval k_ra_err_null_ptr ``out_state`` was NULL.
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
  * @pre ``out_state`` is non-NULL.
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post No PAL state is modified.
  *
@@ -366,9 +366,9 @@ typedef enum : uint32_t {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handler installed (or detached).
- * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_state PAL not initialized.
  *
- * @pre PAL has been initialised.
+ * @pre PAL has been initialized.
  *
  * @post Subsequent ra_eth events are routed through ``fn``.
  *

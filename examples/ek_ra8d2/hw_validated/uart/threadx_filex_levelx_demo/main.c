@@ -422,7 +422,7 @@ static void demo_thread_entry(ULONG thread_input)
  *   provided by the ThreadX port; unused -- we statically allocate.
  *
  * @pre ``tx_kernel_enter()`` has been called.
- * @post One worker thread is created and FileX + LevelX are initialised.
+ * @post One worker thread is created and FileX + LevelX are initialized.
  *
  * @since 0.1.0
  */

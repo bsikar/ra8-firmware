@@ -105,7 +105,7 @@ static void lcd_draw_x(uint16_t color)
  *
  * @pre Reset handler has populated ``.data`` / ``.bss``.
  * @pre Interrupts are still globally disabled.
- * @post Clocks, MSTP, system tick and both board LEDs are initialised.
+ * @post Clocks, MSTP, system tick and both board LEDs are initialized.
  * @post Global IRQs are enabled.
  *
  * @note Not thread-safe; single-shot startup helper.

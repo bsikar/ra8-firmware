@@ -225,7 +225,7 @@ static void demo_clocks_or_halt(void)
  * 2. ``ble_hci_ra_ble_init`` attaches our NimBLE <-> ra_ble bridge.
  * 3. ``nimble_port_init`` brings the host stack's default eventq up.
  *
- * @pre Clocks + SCI8 are already initialised.
+ * @pre Clocks + SCI8 are already initialized.
  * @post On success the HCI mailbox is reachable from NimBLE.
  *
  * @since 0.1.0

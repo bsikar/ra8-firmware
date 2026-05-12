@@ -31,9 +31,9 @@
  * @par State Machine:
  * @startuml
  * [*] --> Uninit
- * Uninit --> Initialised: ra_wdt_supervisor_init
- * Initialised --> Initialised: register_thread / checkin
- * Initialised --> Running: ra_wdt_supervisor_start
+ * Uninit --> Initialized: ra_wdt_supervisor_init
+ * Initialized --> Initialized: register_thread / checkin
+ * Initialized --> Running: ra_wdt_supervisor_start
  * Running --> Running: tick (all threads alive -> refresh WDT)
  * Running --> Stalled: any thread overdue (no refresh issued)
  * Stalled --> [*]: WDT underflow / chip reset
@@ -155,7 +155,7 @@ typedef void (*ra_wdt_sup_refresh_fn_t)(void);
  * @param[in] cfg Pointer to a populated configuration block.
  *
  * @return ``ra_err_t``
- * @retval k_ra_ok Supervisor initialised, ready for register / start.
+ * @retval k_ra_ok Supervisor initialized, ready for register / start.
  * @retval k_ra_err_null_ptr ``cfg`` was null or ``cfg->stack`` was null.
  * @retval k_ra_err_invalid_arg Stack too small / period zero / bad priority.
  * @retval k_ra_err_busy ``ra_wdt_supervisor_init`` was already called.
@@ -186,12 +186,12 @@ typedef void (*ra_wdt_sup_refresh_fn_t)(void);
 [[nodiscard]] ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg);
 
 /**
- * @brief Reset the supervisor to its uninitialised state (test helper).
+ * @brief Reset the supervisor to its uninitialized state (test helper).
  *
  * @details
  * Tears down the registry, deletes the mutex, and clears module state.
  * Intended for unit tests that need a fresh slate between cases. Safe
- * to call when never initialised.
+ * to call when never initialized.
  *
  * @return ``ra_err_t``
  * @retval k_ra_ok Always succeeds.

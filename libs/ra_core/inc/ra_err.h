@@ -228,7 +228,7 @@ typedef enum : uint16_t {
   k_ra_err_cancelled = 0x10E,
 
   /**
-   * @brief Module not initialised -- `_init()` not yet called successfully.
+   * @brief Module not initialized -- `_init()` not yet called successfully.
    * @par Value: 0x10F
    */
   k_ra_err_not_initialized = 0x10F,
@@ -474,7 +474,7 @@ typedef ra_err_codes_t ra_err_t;
  *
  * @details See implementation for details.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

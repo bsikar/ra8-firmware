@@ -47,7 +47,7 @@ static const char* s_tag = "NSCCOM";
  * @retval k_ra_err_null_ptr     ``cfg`` was NULL.
  * @retval k_ra_err_invalid_arg  ``cfg`` outside NS range or channel bad.
  *
- * @pre TrustZone substrate has been initialised.
+ * @pre TrustZone substrate has been initialized.
  * @pre ``cfg`` lies entirely within the NS data region.
  * @post On success the SCI hardware is ready for I/O.
  * @post On failure no module state was mutated.
@@ -340,7 +340,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx
  * @note Static helper; pure function.
  * @since 0.1.0
  *
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static uint8_t internal_spi_unit_bytes(ra_spi_bit_width_t bit_width)

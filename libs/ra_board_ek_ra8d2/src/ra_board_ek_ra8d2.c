@@ -770,7 +770,7 @@ ra_err_t ra_board_xspi_pins_init(void)
 /**
  * @brief Tracks whether ``ra_board_audio_init`` has succeeded.
  */
-static bool s_audio_initialised = false;
+static bool s_audio_initialized = false;
 
 /**
  * @brief Supported PCM significant-bit-depth values for the DA7212 path.
@@ -887,7 +887,7 @@ static ra_err_t internal_audio_route_pins(void)
  * @param[in,out] swl See function signature.
  * @return Result code or value; see implementation.
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
@@ -950,7 +950,7 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
   if (serr != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
-  s_audio_initialised = true;
+  s_audio_initialized = true;
   return k_ra_ok;
 }
 
@@ -963,7 +963,7 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
   if (len == 0U || (len % (uint32_t)k_ra_audio_samples_per_word) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_audio_initialised) {
+  if (!s_audio_initialized) {
     return k_ra_err_not_initialized;
   }
   /* Two int16_t samples (one stereo frame) pack into one 32-bit SSIE
@@ -1083,7 +1083,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  *
  * @retval 0 Success or default value.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_usbhs_clock_and_mstp(void)
@@ -1404,7 +1404,7 @@ typedef enum : uint32_t {
  * @return ra_err_t Result of ra_gpio_output_init.
  * @retval k_ra_ok PD07 owned and driven low.
  * @pre IOPORT module clock is on (always-on after reset).
- * @pre Pin validator initialised.
+ * @pre Pin validator initialized.
  * @post On success, PD07 is GPIO-output low and owned by GPIO tag.
  * @post On any return, s_usbhs_role_pin_probe is updated and
  *       s_usbhs_role_pin_err records the gpio-init result.
@@ -1626,7 +1626,7 @@ ra_err_t ra_board_mipi_dsi_init(void)
  * this flag is false so callers cannot accidentally drive an
  * unconfigured channel.
  */
-static bool s_uart_console_initialised = false;
+static bool s_uart_console_initialized = false;
 
 /**
  * @brief Default PCLKB frequency assumed for SCI3 BRR calculation.
@@ -1677,7 +1677,7 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
   if (err != k_ra_ok) {
     return err;
   }
-  s_uart_console_initialised = true;
+  s_uart_console_initialized = true;
   return k_ra_ok;
 }
 
@@ -1690,7 +1690,7 @@ ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
   if (data == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_uart_console_initialised) {
+  if (!s_uart_console_initialized) {
     return k_ra_err_not_initialized;
   }
   return ra_sci_write_polling((uint8_t)k_ra_board_uart_console_sci_channel, data, (uint32_t)len);
@@ -1709,7 +1709,7 @@ ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
   if (out == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_uart_console_initialised) {
+  if (!s_uart_console_initialized) {
     return k_ra_err_not_initialized;
   }
 
@@ -1732,7 +1732,7 @@ ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
 /* Ra board uart console flush -- see implementation for details. */
 ra_err_t ra_board_uart_console_flush(void)
 {
-  if (!s_uart_console_initialised) {
+  if (!s_uart_console_initialized) {
     return k_ra_err_not_initialized;
   }
   /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- defer to

@@ -30,7 +30,7 @@
 
 static const char* s_tag = "NSCPRH";
 
-static bool s_initialised = false;
+static bool s_initialized = false;
 
 /**
  * @brief NSC veneer: bring up the secure-side peripheral substrate.
@@ -42,7 +42,7 @@ static bool s_initialised = false;
  * ``ra_mstp_init`` -> ``ra_pwr_init`` -> ``ra_isr_init`` -> ``ra_dma_init``.
  *
  * The function is idempotent: subsequent calls return ``k_ra_ok``
- * without redoing the work. On failure the latched ``s_initialised``
+ * without redoing the work. On failure the latched ``s_initialized``
  * flag stays false so a future call may retry from scratch.
  *
  * @return ra_err_t outcome.
@@ -64,7 +64,7 @@ static bool s_initialised = false;
  */
 RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void)
 {
-  if (s_initialised) {
+  if (s_initialized) {
     return k_ra_ok;
   }
 
@@ -100,7 +100,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void)
     /* GCOVR_EXCL_STOP */
   }
 
-  s_initialised = true;
+  s_initialized = true;
   ra_log_info(s_tag, "secure substrate up");
   return k_ra_ok;
 }

@@ -75,7 +75,7 @@ typedef struct {
  * @param[out] out Pointer to a buffer to fill. Must not be `nullptr`.
  *
  * @details See implementation for details.
- * @pre Module has been initialised.
+ * @pre Module has been initialized.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.

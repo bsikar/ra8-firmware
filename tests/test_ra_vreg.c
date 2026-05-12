@@ -85,7 +85,7 @@ static void prep(void)
   s_vreg_cb_last_word = 0U;
   /* Also detach any handler left over from a previous test. */
   (void)ra_vreg_attach_handler(nullptr, nullptr);
-  /* Bring the cached state back to "uninitialised" between tests so
+  /* Bring the cached state back to "uninitialized" between tests so
    * each case observes the deinit path independently. */
   (void)ra_vreg_deinit();
 }
@@ -616,9 +616,9 @@ static void test_enter_standby_bad_variant(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_exit_stop_uninitialised(void)
+static void test_exit_stop_uninitialized(void)
 {
-  TEST_BEGIN("vreg exit stop uninitialised");
+  TEST_BEGIN("vreg exit stop uninitialized");
   prep();
 
   /* deinit clears the cached state. */
@@ -626,7 +626,7 @@ static void test_exit_stop_uninitialised(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_vreg_exit_stop());
   /* No restore should have occurred. */
   TEST_ASSERT_EQ(0, *ra_vreg_dcdcctl());
-  TEST_END("vreg exit stop uninitialised");
+  TEST_END("vreg exit stop uninitialized");
 }
 
 /**
@@ -776,7 +776,7 @@ int32_t main(void)
   test_enter_exit_stop_legacy();
   test_enter_standby_every_variant();
   test_enter_standby_bad_variant();
-  test_exit_stop_uninitialised();
+  test_exit_stop_uninitialized();
   test_reset_clears_cached_state();
 
   test_attach_dispatch();

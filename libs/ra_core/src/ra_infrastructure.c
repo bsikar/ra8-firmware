@@ -76,7 +76,7 @@ static void internal_write_stack_canary(void)
  *
  * @pre `SystemInit()` has executed.
  * @pre Function is called from a single-threaded context.
- * @post Log backend, pin validator, and stack canary are initialised.
+ * @post Log backend, pin validator, and stack canary are initialized.
  * @post Drivers may now be brought up.
  *
  * @note Not thread-safe; intended for one-shot init only.

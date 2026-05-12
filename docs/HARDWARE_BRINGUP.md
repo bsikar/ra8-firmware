@@ -765,7 +765,7 @@ allowed to settle for 8s before halt-and-read. Outcome:
 Decoded:
 
 - magic        = `0x44434455` (`UCDD` little-endian -- struct
-                 initialised, bridge code linked in and ran).
+                 initialized, bridge code linked in and ran).
 - ctrt_count   = 0      -- **zero CTRT (CTRL-transfer-ready) edges seen**.
 - dvst_count   = 1      -- one DVST (device-state change) edge seen
                           (the initial detached -> powered transition
