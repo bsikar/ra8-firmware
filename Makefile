@@ -254,18 +254,10 @@ version:
 # Add one target per app as they are validated.  The target name is
 # hil-<appname>; `make hil` runs all of them.
 # ---------------------------------------------------------------------------
-HIL_UART_HELLO_HEX := $(ROOT)/examples/ek_ra8d2/hw_validated/uart/uart_hello/build/uart_hello.hex
+.PHONY: hil
 
-.PHONY: hil hil-uart-hello
-
-hil-uart-hello: uart_hello
-	bash scripts/hil_run.sh \
-	    --hex  $(HIL_UART_HELLO_HEX) \
-	    --expect "hello, ra8d2!" \
-	    --baud 115200 \
-	    --timeout 10
-
-hil: hil-uart-hello
+hil:
+	bash scripts/hil_dev.sh
 
 # Hardware smoke test -- builds every EVM-tier app, then flashes each
 # one through the on-board J-Link OB and classifies the halt-PC as
