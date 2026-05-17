@@ -913,6 +913,7 @@ typedef enum : uint16_t {
   k_ux_dcd_ra_usb_auto_echo_max = 512U,
 } ux_dcd_ra_usb_auto_echo_cfg_t;
 
+volatile uint32_t s_dcd_irq_spurious_mask_count = 0U;
 volatile uint32_t s_dcd_auto_echo_enable     = 0U;
 volatile uint32_t s_dcd_auto_echo_drain_ok   = 0U;
 volatile uint32_t s_dcd_auto_echo_drain_skip = 0U;
@@ -934,6 +935,19 @@ void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
   s_dcd_auto_echo_out_pipe = out_pipe;
   s_dcd_auto_echo_in_pipe  = in_pipe;
   s_dcd_auto_echo_enable   = 1U;
+}
+
+/**
+ * @brief Re-enable the USB IRQ at the NVIC level. Designed to be called
+ *        from a periodic context (SysTick or a polling worker thread)
+ *        after the ISR's spurious-entry path masked the line to stop a
+ *        USBR-driven storm. ICER[0] / ISER[0] are the NVIC clear-enable
+ *        / set-enable for IRQ 0 (which is where ra_isr maps the USBHS
+ *        combined "USB_INT+RESUME" line).
+ */
+void ux_dcd_ra_usb_irq_reenable(void)
+{
+  *(volatile uint32_t*)0xE000E100UL = 1UL;
 }
 
 /**
@@ -1655,20 +1669,38 @@ static void internal_usbhs_isr(void* ctx)
    * without writing INTSTS0 to avoid an interrupt storm caused by
    * spurious NVIC re-entry. Without this gate ::s_isr_invocations
    * climbs at ~1 MHz on USBHS bring-up. */
-  const uint16_t intsts0   = ra_usb_intsts0_snapshot(k_ra_usb_speed_hs);
-  const uint16_t event_msk = (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
-                                        (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
-                                        (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_sofr) |
-                                        (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_vbse) |
-                                        (uint16_t)k_ra_intsts0_mask_valid);
+  const uint16_t intsts0 = ra_usb_intsts0_snapshot(k_ra_usb_speed_hs);
+  /* Gate the ISR on ONLY the events we have enabled in INTENB0
+   * (BRDY/BEMP/CTRT/DVST/VBSE + VALID). The RA8D2 USBHS ELC event
+   * line "USB_INT+RESUME" is asserted by EITHER (INTSTS0 & INTENB0)
+   * OR the PHY's separate USBR resume-detect signal -- USBR is not
+   * gated by INTENB0, so once the bus enters resume signalling the
+   * NVIC line stays asserted and we get a permanent IRQ storm.
+   * Excluding RSME / SOFR / NRDY from the gate (matching the masks
+   * we drop in INTENB0) lets the ISR return early on every USBR-
+   * driven re-entry, leaving PendSV free to dispatch the worker. */
+  const uint16_t event_msk =
+    (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_bemp) |
+               (1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |
+               (1U << k_ra_int0_bit_vbse) | (uint16_t)k_ra_intsts0_mask_valid);
 
   s_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
-    /* Spurious entry: NVIC line raised but no event source latched.
-     * Returning without writing INTSTS0 preserves W0C semantics and
-     * lets the IP retire the spurious assertion on the next bus
-     * micro-frame. */
+    /* Spurious or USBR-driven re-entry. The RA8D2 USBHS combined
+     * "USB_INT+RESUME" ELC event line is asserted by the PHY's USBR
+     * signal independent of INTENB0, so the IRQ keeps re-firing
+     * while the host is in (or just exited) resume signalling.
+     * W0C-ack the stuck bits and return fast -- the gate keeps
+     * each call short so real-event ISRs (BRDY/BEMP/CTRT) still
+     * get processed, and PendSV gets cycles in the gaps. */
+    const uint16_t stuck_mask =
+      (uint16_t)((1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr) |
+                 (1U << k_ra_int0_bit_nrdy));
+    if ((intsts0 & stuck_mask) != 0U) {
+      (void)ra_usb_clear_status(k_ra_usb_speed_hs, (uint16_t)(intsts0 & stuck_mask));
+    }
+    s_dcd_irq_spurious_mask_count++;
     return;
   }
 
@@ -2569,7 +2601,17 @@ static void internal_irq_walk_pipe(uint8_t i)
   }
   if (s_dcd.pipes[i].dir_in != 0U) {
     /* IN: data was already pushed in TRANSFER_REQUEST. Mark complete
-     * on the BEMP that follows. */
+     * on the BEMP that follows, and W0C-ack the per-pipe BEMPSTS bit
+     * so the global INTSTS0.BEMP flag can de-assert -- without this
+     * BEMPSTS stays set forever, the global BEMP re-asserts after
+     * every dispatch ack, and the ISR storm prevents PendSV from
+     * delivering completions to the worker. HUM Ch 36.2.15 BEMPSTS
+     * (W0C, write `~pipe_bit` to clear only this pipe). */
+    volatile r_usb_regs_t* reg = (s_dcd.speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+    if (reg != nullptr) {
+      const uint16_t pipe_bit = (uint16_t)(1U << i);
+      reg->BEMPSTS            = (uint16_t)(~pipe_bit);
+    }
     tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
     s_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE

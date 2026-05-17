@@ -201,6 +201,13 @@ ra_usb_dcd_state_t ux_dcd_ra_usb_state(void);
  */
 void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe);
 
+/**
+ * @brief Re-enable the USB NVIC IRQ. Call from a periodic context
+ * (SysTick, watchdog) to recover after the ISR's spurious-entry path
+ * masked the line to stop a USBR-driven IRQ storm.
+ */
+void ux_dcd_ra_usb_irq_reenable(void);
+
 /* Internal dispatcher exposed for direct invocation from
  * ``_ux_dcd_ra_usb_initialize`` (in the .c file) and for unit tests. */
 /**
