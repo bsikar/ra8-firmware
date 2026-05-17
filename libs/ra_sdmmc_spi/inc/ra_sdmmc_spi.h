@@ -66,9 +66,9 @@ extern "C" {
  * @brief Block-I/O size constants.
  */
 typedef enum : uint16_t {
-  k_ra_sdmmc_spi_block_size       = 512U,  /**< Fixed 512-byte block (SD spec PHY v9 section 7.2.2). */
-  k_ra_sdmmc_spi_cmd_frame_bytes  = 6U,    /**< 1 cmd-byte + 4 arg-bytes + 1 CRC-byte. */
-  k_ra_sdmmc_spi_csd_response_len = 16U,   /**< CMD9 CSD register payload bytes. */
+  k_ra_sdmmc_spi_block_size = 512U,     /**< Fixed 512-byte block (SD spec PHY v9 section 7.2.2). */
+  k_ra_sdmmc_spi_cmd_frame_bytes  = 6U, /**< 1 cmd-byte + 4 arg-bytes + 1 CRC-byte. */
+  k_ra_sdmmc_spi_csd_response_len = 16U, /**< CMD9 CSD register payload bytes. */
 } ra_sdmmc_spi_limits_t;
 
 /**
@@ -143,10 +143,7 @@ typedef ra_err_t (*ra_sdmmc_spi_cs_fn_t)(void* ctx, bool asserted);
  *
  * @since 0.1.0
  */
-typedef ra_err_t (*ra_sdmmc_spi_xfer_fn_t)(void*          ctx,
-                                           const uint8_t* tx,
-                                           uint8_t*       rx,
-                                           uint32_t       len);
+typedef ra_err_t (*ra_sdmmc_spi_xfer_fn_t)(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len);
 
 /**
  * @struct ra_sdmmc_spi_transport_t
