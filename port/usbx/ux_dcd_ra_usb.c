@@ -1671,18 +1671,20 @@ static void internal_usbhs_isr(void* ctx)
    * climbs at ~1 MHz on USBHS bring-up. */
   const uint16_t intsts0 = ra_usb_intsts0_snapshot(k_ra_usb_speed_hs);
   /* Gate the ISR on ONLY the events we have enabled in INTENB0
-   * (BRDY/BEMP/CTRT/DVST/VBSE + VALID). The RA8D2 USBHS ELC event
-   * line "USB_INT+RESUME" is asserted by EITHER (INTSTS0 & INTENB0)
-   * OR the PHY's separate USBR resume-detect signal -- USBR is not
-   * gated by INTENB0, so once the bus enters resume signalling the
-   * NVIC line stays asserted and we get a permanent IRQ storm.
-   * Excluding RSME / SOFR / NRDY from the gate (matching the masks
-   * we drop in INTENB0) lets the ISR return early on every USBR-
-   * driven re-entry, leaving PendSV free to dispatch the worker. */
+   * (BRDY/NRDY/BEMP/CTRT/DVST/VBSE + VALID). The RA8D2 USBHS ELC
+   * event line "USB_INT+RESUME" is asserted by EITHER (INTSTS0 &
+   * INTENB0) OR the PHY's separate USBR resume-detect signal --
+   * USBR is not gated by INTENB0, so once the bus enters resume
+   * signalling the NVIC line stays asserted and we get a permanent
+   * IRQ storm. Excluding RSME / SOFR from the gate (matching the
+   * masks we drop in INTENB0) lets the ISR return early on every
+   * USBR-driven re-entry, leaving PendSV free to dispatch the
+   * worker. */
   const uint16_t event_msk =
-    (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_bemp) |
-               (1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |
-               (1U << k_ra_int0_bit_vbse) | (uint16_t)k_ra_intsts0_mask_valid);
+    (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
+               (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
+               (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse) |
+               (uint16_t)k_ra_intsts0_mask_valid);
 
   s_isr_intsts0_or |= intsts0;
 
@@ -1691,12 +1693,9 @@ static void internal_usbhs_isr(void* ctx)
      * "USB_INT+RESUME" ELC event line is asserted by the PHY's USBR
      * signal independent of INTENB0, so the IRQ keeps re-firing
      * while the host is in (or just exited) resume signalling.
-     * W0C-ack the stuck bits and return fast -- the gate keeps
-     * each call short so real-event ISRs (BRDY/BEMP/CTRT) still
-     * get processed, and PendSV gets cycles in the gaps. */
+     * W0C-ack the stuck bits and return fast. */
     const uint16_t stuck_mask =
-      (uint16_t)((1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr) |
-                 (1U << k_ra_int0_bit_nrdy));
+      (uint16_t)((1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
     if ((intsts0 & stuck_mask) != 0U) {
       (void)ra_usb_clear_status(k_ra_usb_speed_hs, (uint16_t)(intsts0 & stuck_mask));
     }
