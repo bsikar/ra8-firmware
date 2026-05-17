@@ -1,0 +1,432 @@
+/**
+ * @file ra_sdmmc_spi.h
+ * @brief SD card driver in SPI-mode (PMOD-attached cards)
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * SPI-mode SD/SDHC/SDXC card driver. The card sits on an SPI bus
+ * (RSPI / SPI_B or any compatible 8-bit full-duplex transport) and
+ * answers the standard SD command set wrapped in the SPI-mode framing
+ * defined in SD Specification Part 1 Physical Layer Simplified
+ * Specification v9.10 section 7 ("SPI Mode").
+ *
+ * The driver is transport-agnostic. Callers wire it up by passing a
+ * ::ra_sdmmc_spi_transport_t descriptor that holds three function
+ * pointers (clock-rate set, CS drive, full-duplex byte exchange).
+ * The host-side unit tests inject a mock transport; the firmware
+ * application binds the real ``ra_spi`` HAL driver through a tiny
+ * adapter that lives in the example app.
+ *
+ * Public API:
+ *
+ *   - ``ra_sdmmc_spi_init(...)``        -- send CMD0/CMD8/ACMD41/CMD58
+ *                                          probe, learn capacity, escalate
+ *                                          the SPI clock to data speed.
+ *   - ``ra_sdmmc_spi_read_block(...)``  -- single-block read  (CMD17).
+ *   - ``ra_sdmmc_spi_write_block(...)`` -- single-block write (CMD24).
+ *   - ``ra_sdmmc_spi_get_capacity(...)``-- expose the 512-byte block count.
+ *   - ``ra_sdmmc_spi_get_card_type(...)``-- SDSC / SDHC / SDXC.
+ *   - ``ra_sdmmc_spi_deinit(...)``      -- release the transport.
+ *
+ * The block I/O API takes a logical block address. Inside the driver
+ * the address is converted to a *byte* address for SDSC cards (CMD17/24
+ * argument is in bytes for v1.x cards) and left as a *block* address
+ * for SDHC / SDXC cards (CMD17/24 argument is in blocks for v2.x cards
+ * with the CCS bit set). Callers always speak in 512-byte blocks.
+ *
+ * The driver also exposes a small ::ra_fs_backend_t adapter
+ * (``ra_sdmmc_spi_bind_fs_backend``) that plugs the SD card straight
+ * into the ``ra_fs`` FAT filesystem layer without any extra glue in
+ * the application.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra_err.h"
+#include "ra_fs.h"
+
+/* =============================================================================
+ * Compile-time limits and protocol constants
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sdmmc_spi_limits_t
+ * @brief Block-I/O size constants.
+ */
+typedef enum : uint16_t {
+  k_ra_sdmmc_spi_block_size       = 512U,  /**< Fixed 512-byte block (SD spec PHY v9 section 7.2.2). */
+  k_ra_sdmmc_spi_cmd_frame_bytes  = 6U,    /**< 1 cmd-byte + 4 arg-bytes + 1 CRC-byte. */
+  k_ra_sdmmc_spi_csd_response_len = 16U,   /**< CMD9 CSD register payload bytes. */
+} ra_sdmmc_spi_limits_t;
+
+/**
+ * @enum ra_sdmmc_spi_clock_t
+ * @brief Canonical SPI clock rates used by ::ra_sdmmc_spi_init.
+ *
+ * @details
+ * The SD spec mandates the host opens the bus at 100-400 kHz for the
+ * identification sequence (CMD0 ... ACMD41 ... CMD58) and only then
+ * escalates to data-transfer speed (default-speed = 25 MHz, high-speed
+ * = 50 MHz). We pick 25 MHz as the default-speed target -- it is the
+ * universal floor the v1.x and v2.x card families all support.
+ */
+typedef enum : uint32_t {
+  k_ra_sdmmc_spi_clock_init_hz = 400000U,   /**< Mandatory init clock floor. */
+  k_ra_sdmmc_spi_clock_data_hz = 25000000U, /**< Default-speed data clock. */
+} ra_sdmmc_spi_clock_t;
+
+/**
+ * @enum ra_sdmmc_spi_card_type_t
+ * @brief Detected SD card capacity / addressing class.
+ */
+typedef enum : uint8_t {
+  k_ra_sdmmc_spi_type_unknown = 0U, /**< Not yet probed / probe failed.        */
+  k_ra_sdmmc_spi_type_sdv1    = 1U, /**< SD v1.x (byte-addressed).            */
+  k_ra_sdmmc_spi_type_sdv2    = 2U, /**< SD v2.x SC (byte-addressed).         */
+  k_ra_sdmmc_spi_type_sdhc    = 3U, /**< SDHC / SDXC v2.x (block-addressed).  */
+} ra_sdmmc_spi_card_type_t;
+
+/* =============================================================================
+ * Transport descriptor (Dependency Inversion seam)
+ * =============================================================================
+ */
+
+/**
+ * @brief Set the SPI clock frequency.
+ *
+ * @param[in] ctx     Transport context cookie.
+ * @param[in] hz      Target clock rate in Hz.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Clock applied.
+ * @retval k_ra_err_invalid_arg  ``hz`` outside the transport's range.
+ *
+ * @since 0.1.0
+ */
+typedef ra_err_t (*ra_sdmmc_spi_set_clock_fn_t)(void* ctx, uint32_t hz);
+
+/**
+ * @brief Drive the chip-select line of the SD card.
+ *
+ * @param[in] ctx       Transport context cookie.
+ * @param[in] asserted  ``true`` to drive CS low (selected), ``false`` to
+ *                      release CS high.
+ *
+ * @return ra_err_t error code (k_ra_ok on success).
+ *
+ * @since 0.1.0
+ */
+typedef ra_err_t (*ra_sdmmc_spi_cs_fn_t)(void* ctx, bool asserted);
+
+/**
+ * @brief Exchange ``len`` bytes full-duplex on the SPI bus.
+ *
+ * @param[in]  ctx Transport context cookie.
+ * @param[in]  tx  TX buffer; if NULL the transport shall shift out 0xFF
+ *                 (idle pattern -- SD spec PHY v9 section 7.2.4).
+ * @param[out] rx  RX buffer; if NULL the transport shall discard.
+ * @param[in]  len Number of bytes to exchange; must be > 0.
+ *
+ * @return ra_err_t error code.
+ *
+ * @since 0.1.0
+ */
+typedef ra_err_t (*ra_sdmmc_spi_xfer_fn_t)(void*          ctx,
+                                           const uint8_t* tx,
+                                           uint8_t*       rx,
+                                           uint32_t       len);
+
+/**
+ * @struct ra_sdmmc_spi_transport_t
+ * @brief Driver-to-bus binding (Dependency Inversion seam).
+ *
+ * @details
+ * All three callbacks must be non-NULL. ``ctx`` is passed back into
+ * every callback so the caller can carry its own state.
+ *
+ * @invariant Every function pointer is non-NULL for a usable transport.
+ */
+typedef struct {
+  ra_sdmmc_spi_set_clock_fn_t set_clock; /**< Set SPI clock frequency.                */
+  ra_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip-select asserted / released.  */
+  ra_sdmmc_spi_xfer_fn_t      xfer;      /**< Full-duplex byte exchange.              */
+  void*                       ctx;       /**< Caller-owned context cookie.            */
+} ra_sdmmc_spi_transport_t;
+
+/* =============================================================================
+ * Lifecycle
+ * =============================================================================
+ */
+
+/**
+ * @brief Run the SD SPI-mode identification sequence on a card.
+ *
+ * @details
+ * Steps (SD spec PHY v9 section 7.2.1 "Mode Selection and Initialization"):
+ *
+ *   1. Set bus clock to 400 kHz, send >= 74 dummy clocks with CS high.
+ *   2. Assert CS, send CMD0 (GO_IDLE_STATE), expect R1 = 0x01 (idle).
+ *   3. Send CMD8 (SEND_IF_COND, arg = 0x000001AA). R7 echo of the low
+ *      12 bits classifies the card as v2.x; "illegal command" (R1.bit2
+ *      set) classifies it as v1.x.
+ *   4. Loop ACMD41 (CMD55 + CMD41, HCS = 1 for v2.x cards) until R1
+ *      reports "ready" (bit 0 of R1 == 0).
+ *   5. For v2.x cards, send CMD58 (READ_OCR) and capture the CCS bit;
+ *      CCS == 1 means SDHC/SDXC (block-addressed).
+ *   6. Send CMD9 (SEND_CSD), parse the CSD-v1 or CSD-v2 fields to
+ *      compute the capacity in 512-byte blocks.
+ *   7. Send CMD16 (SET_BLOCKLEN, 512) to lock the block size.
+ *   8. Bump the bus clock to ``k_ra_sdmmc_spi_clock_data_hz`` (25 MHz).
+ *
+ * @param[in] transport Non-NULL transport descriptor with all three
+ *                      function pointers populated. The struct is copied
+ *                      so the caller may free its storage on return.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Card probed and ready.
+ * @retval k_ra_err_null_ptr          ``transport`` or any callback is NULL.
+ * @retval k_ra_err_invalid_state     Driver already initialized.
+ * @retval k_ra_err_hw_timeout        CMD0 / ACMD41 never produced a response.
+ * @retval k_ra_err_protocol_error    CMD8 echo mismatch, unexpected R1 bits.
+ * @retval k_ra_err_crc_mismatch      CMD response CRC7 mismatch.
+ * @retval k_ra_err_hw_init_failed    ACMD41 init loop exceeded retry budget.
+ *
+ * @pre ``transport`` is non-NULL.
+ * @pre ``transport->set_clock / cs / xfer`` are all non-NULL.
+ * @post On success ::ra_sdmmc_spi_get_capacity returns a non-zero block count.
+ * @post On success the SPI bus runs at ``k_ra_sdmmc_spi_clock_data_hz``.
+ *
+ * @note Blocking, polled implementation; not safe to call from an ISR.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_init(const ra_sdmmc_spi_transport_t* transport);
+
+/**
+ * @brief Tear down the driver and release the transport binding.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Always (idempotent).
+ *
+ * @pre None.
+ * @post Internal state is the same as before the first ::ra_sdmmc_spi_init.
+ * @post Subsequent ::ra_sdmmc_spi_init may re-bind a new transport.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_deinit(void);
+
+/* =============================================================================
+ * Block I/O
+ * =============================================================================
+ */
+
+/**
+ * @brief Read one 512-byte block at logical block address ``lba``.
+ *
+ * @details
+ * Issues CMD17 (READ_SINGLE_BLOCK) with the appropriate byte/block
+ * address conversion for the detected card type. Waits for the data
+ * token (0xFE), drains 512 payload bytes, then drains the trailing
+ * 2-byte CRC16 (SD spec PHY v9 section 7.3.3.2 "Start Block Token").
+ * The CRC16 is checked.
+ *
+ * @param[in]  lba LBA in 512-byte units. Must satisfy ``lba < capacity``.
+ * @param[out] buf Destination buffer, exactly 512 bytes.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Block read and CRC verified.
+ * @retval k_ra_err_null_ptr          ``buf`` is NULL.
+ * @retval k_ra_err_invalid_state     Driver not initialized.
+ * @retval k_ra_err_out_of_range      ``lba >= capacity``.
+ * @retval k_ra_err_hw_timeout        Data token never arrived.
+ * @retval k_ra_err_crc_mismatch      CRC16 mismatch on the payload.
+ * @retval k_ra_err_protocol_error    Card returned non-zero R1.
+ *
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @pre  ``buf`` is non-NULL.
+ * @post On success, ``buf[0..511]`` holds the requested block.
+ * @post Card remains in ``tran`` state.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf);
+
+/**
+ * @brief Write one 512-byte block at logical block address ``lba``.
+ *
+ * @details
+ * Issues CMD24 (WRITE_BLOCK), sends the data-block token (0xFE), the
+ * 512 payload bytes, the 2-byte CRC16, then polls until the card
+ * de-asserts the busy-token (CIPO == 0xFF). The data-response token
+ * is checked for "data accepted" (xxx00101).
+ *
+ * @param[in] lba LBA in 512-byte units. Must satisfy ``lba < capacity``.
+ * @param[in] buf Source buffer, exactly 512 bytes.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Block written and card became idle.
+ * @retval k_ra_err_null_ptr          ``buf`` is NULL.
+ * @retval k_ra_err_invalid_state     Driver not initialized.
+ * @retval k_ra_err_out_of_range      ``lba >= capacity``.
+ * @retval k_ra_err_hw_timeout        Card never released busy.
+ * @retval k_ra_err_protocol_error    Data-response token != "accepted".
+ *
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @pre  ``buf`` is non-NULL.
+ * @post On success, the card's storage at LBA ``lba`` matches ``buf``.
+ * @post Card remains in ``tran`` state.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf);
+
+/* =============================================================================
+ * Status queries
+ * =============================================================================
+ */
+
+/**
+ * @brief Return the card capacity in 512-byte blocks.
+ *
+ * @param[out] out_blocks Receives the block count; non-NULL.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Success.
+ * @retval k_ra_err_null_ptr        ``out_blocks`` is NULL.
+ * @retval k_ra_err_invalid_state   Driver not initialized.
+ *
+ * @pre  ``out_blocks`` is non-NULL.
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @post On success ``*out_blocks > 0``.
+ * @post Driver state unchanged.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_get_capacity(uint32_t* out_blocks);
+
+/**
+ * @brief Return the detected card type.
+ *
+ * @param[out] out_type Receives the card type; non-NULL.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Success.
+ * @retval k_ra_err_null_ptr        ``out_type`` is NULL.
+ * @retval k_ra_err_invalid_state   Driver not initialized.
+ *
+ * @pre  ``out_type`` is non-NULL.
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @post Driver state unchanged.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_get_card_type(ra_sdmmc_spi_card_type_t* out_type);
+
+/* =============================================================================
+ * ra_fs backend adapter
+ * =============================================================================
+ */
+
+/**
+ * @brief Populate an ::ra_fs_backend_t that mounts onto this SD driver.
+ *
+ * @details
+ * Once ::ra_sdmmc_spi_init has returned ``k_ra_ok``, the caller can
+ * invoke this helper to bind the SD card into the ``ra_fs`` FAT layer:
+ *
+ * @code
+ * ra_fs_backend_t backend;
+ * (void)ra_sdmmc_spi_bind_fs_backend(&backend);
+ * ra_fs_mount_t* mount = nullptr;
+ * (void)ra_fs_mount(&backend, &mount);
+ * @endcode
+ *
+ * The backend forwards ``read_block`` / ``write_block`` to the SD
+ * driver one block at a time and reports the capacity in 512-byte
+ * blocks. The ``ctx`` field is left NULL because the SD driver has a
+ * single global instance.
+ *
+ * @param[out] out_backend Populated backend descriptor; non-NULL.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Backend populated.
+ * @retval k_ra_err_null_ptr        ``out_backend`` is NULL.
+ * @retval k_ra_err_invalid_state   Driver not initialized.
+ *
+ * @pre  ``out_backend`` is non-NULL.
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @post ``*out_backend`` carries non-NULL ``read_block`` /
+ *       ``write_block`` / ``get_capacity`` pointers.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_bind_fs_backend(ra_fs_backend_t* out_backend);
+
+/* =============================================================================
+ * Test-only helpers (CRC primitives)
+ * =============================================================================
+ */
+
+/**
+ * @brief Compute the SD-spec CRC7 over an arbitrary byte run.
+ *
+ * @details
+ * Polynomial 0x09 (x^7 + x^3 + 1), left-shifted, as defined in SD spec
+ * PHY v9 section 4.5 "CRC7". Used internally to seed every CMD frame's
+ * trailing CRC byte (the bottom bit of the CRC byte is the "end bit",
+ * always 1, so the wire value is ``(crc7 << 1) | 1U``).
+ *
+ * @param[in] data Buffer to hash; non-NULL when ``len > 0``.
+ * @param[in] len  Byte count; may be zero.
+ *
+ * @return uint8_t CRC7 in the low 7 bits.
+ * @retval 0..0x7F Computed CRC7. Returns 0 on NULL input.
+ *
+ * @pre  ``data`` is non-NULL or ``len == 0``.
+ * @pre  Caller treats the return value as a 7-bit CRC, not 8.
+ * @post No side effects.
+ * @post Driver state is unchanged.
+ *
+ * @note Thread-safe; pure function with no global state.
+ * @since 0.1.0
+ */
+uint8_t ra_sdmmc_spi_crc7(const uint8_t* data, uint32_t len);
+
+/**
+ * @brief Compute the SD-spec CRC16-CCITT over an arbitrary byte run.
+ *
+ * @details
+ * Polynomial 0x1021 (x^16 + x^12 + x^5 + 1), seed 0x0000, as defined
+ * in SD spec PHY v9 section 4.5 "CRC16". The wire format is big-endian.
+ *
+ * @param[in] data Buffer to hash; non-NULL when ``len > 0``.
+ * @param[in] len  Byte count; may be zero.
+ *
+ * @return uint16_t CRC16-CCITT over ``data[0..len-1]``.
+ * @retval 0..0xFFFF Computed CRC16. Returns 0 on NULL input.
+ *
+ * @pre  ``data`` is non-NULL or ``len == 0``.
+ * @pre  Caller serializes the result big-endian on the wire.
+ * @post No side effects.
+ * @post Driver state is unchanged.
+ *
+ * @note Thread-safe; pure function with no global state.
+ * @since 0.1.0
+ */
+uint16_t ra_sdmmc_spi_crc16(const uint8_t* data, uint32_t len);
+
+#ifdef __cplusplus
+}
+#endif
