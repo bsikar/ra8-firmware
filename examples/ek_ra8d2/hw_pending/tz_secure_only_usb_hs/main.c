@@ -771,6 +771,11 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
       (unsigned long)UX_DEVICE_CONFIGURED;
   }
   s_cdc_activate_count++;
+  /* CDC bulk endpoints: EP2 OUT -> pipe 2, EP1 IN -> pipe 1. Turn on
+   * the bridge's ISR-side auto-echo so OUT data is mirrored back on
+   * the IN pipe without needing the broken thread scheduler to deliver
+   * a USBX transfer_request. */
+  ux_dcd_ra_usb_auto_echo_enable(2U, 1U);
   (void)tx_semaphore_put(&s_cdc_active_sem);
   s_cdc_activate_post_put++;
 }

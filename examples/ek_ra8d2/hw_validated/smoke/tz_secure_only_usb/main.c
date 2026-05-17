@@ -433,6 +433,11 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
    * polling s_cdc_acm with tx_thread_sleep, which never returned on
    * this hardware. */
   (void)tx_semaphore_put(&s_cdc_active_sem);
+  /* CDC bulk endpoints: EP2 OUT -> pipe 2, EP1 IN -> pipe 1. Turn on
+   * the bridge's ISR-side auto-echo so OUT data is mirrored back on
+   * the IN pipe without relying on the worker thread (whose scheduling
+   * is broken on this silicon). */
+  ux_dcd_ra_usb_auto_echo_enable(2U, 1U);
 }
 
 /**

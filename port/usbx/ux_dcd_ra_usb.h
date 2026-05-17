@@ -178,6 +178,29 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0);
  */
 ra_usb_dcd_state_t ux_dcd_ra_usb_state(void);
 
+/**
+ * @brief Enable ISR-side auto-echo from a bulk OUT pipe to a bulk IN pipe.
+ *
+ * @details
+ * Workaround for a ThreadX scheduling failure on this silicon where the
+ * application worker thread blocks indefinitely on tx_semaphore_get after
+ * the CDC class activates. With auto-echo on, the bridge's
+ * ::internal_irq_walk_pipe drains the OUT pipe in-place and re-queues the
+ * data on the IN pipe entirely inside the USB IRQ -- no thread-mode
+ * dispatch required.
+ *
+ * @param[in] out_pipe Pipe index of the bulk OUT endpoint (e.g. 2 for CDC).
+ * @param[in] in_pipe  Pipe index of the bulk IN endpoint (e.g. 1 for CDC).
+ *
+ * @pre Both pipes have been configured via the USBX endpoint-create path
+ *      (i.e. host has issued SET_CONFIGURATION).
+ *
+ * @note Bypasses USBX for the data path; do not combine with
+ *       _ux_device_class_cdc_acm_read / _write on the same pipes.
+ * @since 0.2.0
+ */
+void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe);
+
 /* Internal dispatcher exposed for direct invocation from
  * ``_ux_dcd_ra_usb_initialize`` (in the .c file) and for unit tests. */
 /**
