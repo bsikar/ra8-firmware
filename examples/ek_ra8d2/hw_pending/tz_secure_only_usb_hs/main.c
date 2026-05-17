@@ -270,10 +270,18 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
 /**
  * @var s_cdc_acm
  * @brief Active CDC-ACM class instance, captured by activate callback.
- * @note Read by worker; written by USBX class thread.
+ * @note Read by worker; written by USBX class thread (ISR context).
+ *       Must be volatile so the worker's tight polling loop re-reads
+ *       memory each iteration and sees the ISR-side write.
  * @since 0.1.0
  */
-static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
+static volatile UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
+
+/* JLink-readable counters: how many times activate / deactivate ran. */
+volatile uint32_t s_cdc_activate_count   = 0U;
+volatile uint32_t s_cdc_activate_post_put = 0U;
+volatile uint32_t s_cdc_deactivate_count = 0U;
+volatile uint32_t s_pendsv_observed_run_count = 0U;
 
 /**
  * @struct demo_diag_t
@@ -762,7 +770,9 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
     _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
       (unsigned long)UX_DEVICE_CONFIGURED;
   }
+  s_cdc_activate_count++;
   (void)tx_semaphore_put(&s_cdc_active_sem);
+  s_cdc_activate_post_put++;
 }
 
 /**
@@ -779,6 +789,7 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
 static VOID demo_cdc_deactivate(VOID* cdc_instance)
 {
   (void)cdc_instance;
+  s_cdc_deactivate_count++;
   s_cdc_acm = UX_NULL;
 }
 
@@ -991,9 +1002,17 @@ static void demo_worker_echo_loop(void)
   ULONG n = 0UL;
   while (1) {
     s_demo_diag.loop_iter++;
-    if (s_cdc_acm == UX_NULL) {
+    UX_SLAVE_CLASS_CDC_ACM* cdc_snap = (UX_SLAVE_CLASS_CDC_ACM*)s_cdc_acm;
+    if (cdc_snap == UX_NULL) {
       s_demo_diag.loop_cdc_null++;
-      (void)tx_semaphore_get(&s_cdc_active_sem, TX_WAIT_FOREVER);
+      /* Bounded-wait sleep instead of WAIT_FOREVER/relinquish. On this
+       * silicon both tx_semaphore_get(TX_WAIT_FOREVER) and a tight
+       * relinquish loop leave the worker un-schedulable once an
+       * ISR-context activate runs. tx_thread_sleep with a small tick
+       * count keeps the thread on a timer-resume path, which PendSV
+       * does pick up here. The next iteration re-reads volatile
+       * s_cdc_acm and proceeds. */
+      tx_thread_sleep(k_demo_idle_ticks);
       continue;
     }
     if (_ux_system_slave != UX_NULL) {
@@ -1001,7 +1020,7 @@ static void demo_worker_echo_loop(void)
         (unsigned long)UX_DEVICE_CONFIGURED;
     }
     s_demo_diag.loop_pre_read++;
-    UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n);
+    UINT read_status = _ux_device_class_cdc_acm_read(cdc_snap, buf, sizeof(buf), &n);
     s_demo_diag.loop_post_read++;
     if (read_status != UX_SUCCESS) {
       tx_thread_sleep(k_demo_idle_ticks);
@@ -1013,7 +1032,7 @@ static void demo_worker_echo_loop(void)
       continue;
     }
     s_demo_diag.loop_pre_write++;
-    if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+    if (_ux_device_class_cdc_acm_write(cdc_snap, buf, n, &n) != UX_SUCCESS) {
       continue;
     }
     s_demo_diag.loop_post_write++;
