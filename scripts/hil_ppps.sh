@@ -2,21 +2,22 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# hil_ppps.sh -- Toggle the J-Link's USB port on/off via PPPS (Per-Port Power
-# Switching) through uhubctl on the HIL Pi.  Triggers a USB re-enumeration
-# without cutting board power.
+# hil_ppps.sh -- Toggle a USB port on/off via PPPS (Per-Port Power Switching)
+# through uhubctl on the HIL Pi.  Forces a USB re-enumeration of whatever
+# is plugged into that hub port WITHOUT cutting board power.
 #
-# The VIA Labs hub is not a true PPPS hub: it can switch data/power per-port
-# at the USB level but cannot cut the 5V rail to downstream devices.  Use
-# hil_tapo.sh for a hard power cycle of the EK-RA8D2 board.
+# The VIA Labs hub at 2-1.3 is not a true PPPS hub: it switches data/power
+# per-port at the USB level but cannot cut the 5V rail to downstream
+# devices.  Use hil_tapo.sh for a hard power cycle of the EK-RA8D2 board.
 #
-# J-Link location: hub 2-1.3 port 2 (USB 2.0) and hub 3-1.3 port 2 (USB 3.0).
-# uhubctl toggles both simultaneously when addressed by the USB-2 hub path.
+# EK-RA8D2 wiring on hub 2-1.3 (see project_hil_wiring memory):
+#   port 1 -> J7  USBHS  (1209:000c when HS firmware is running)
+#   port 2 -> J-Link OB  (1366:1024 always)
+#   port 4 -> J11 USBFS  (1209:000a when FS firmware is running)
 #
 # Usage (run from repo root on dev machine):
-#   bash scripts/hil_ppps.sh off
-#   bash scripts/hil_ppps.sh on
-#   bash scripts/hil_ppps.sh cycle     # off -> 1 s -> on
+#   bash scripts/hil_ppps.sh <off|on|cycle> [port]
+#     port defaults to 2 (J-Link).  Pick 1 for USBHS, 4 for USBFS.
 #
 # Exit codes:
 #   0  -- command succeeded
@@ -27,38 +28,38 @@ set -euo pipefail
 
 PI_HOST="star@star.local"
 HUB="2-1.3"
-PORT="2"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-[[ $# -eq 1 ]] || { echo "Usage: $0 <off|on|cycle>"; exit 2; }
+[[ $# -ge 1 && $# -le 2 ]] || { echo "Usage: $0 <off|on|cycle> [port]"; exit 2; }
 CMD="$1"
+PORT="${2:-2}"
 
 ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
     || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
 
 case "$CMD" in
     off)
-        echo -e "${YELLOW}[hil_ppps]${NC} J-Link port OFF"
+        echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF"
         ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a off" 2>&1
         ;;
     on)
-        echo -e "${YELLOW}[hil_ppps]${NC} J-Link port ON"
+        echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON"
         ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a on" 2>&1
         ;;
     cycle)
-        echo -e "${YELLOW}[hil_ppps]${NC} J-Link port OFF"
+        echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF"
         ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a off" 2>&1
         sleep 1
-        echo -e "${YELLOW}[hil_ppps]${NC} J-Link port ON"
+        echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON"
         ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a on" 2>&1
         ;;
     *)
-        echo "Usage: $0 <off|on|cycle>"; exit 2
+        echo "Usage: $0 <off|on|cycle> [port]"; exit 2
         ;;
 esac
 
-echo -e "${GREEN}[hil_ppps DONE]${NC} ${CMD}"
+echo -e "${GREEN}[hil_ppps DONE]${NC} ${CMD} port ${PORT}"
