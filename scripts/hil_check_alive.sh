@@ -63,7 +63,10 @@ done
 # 1. Flash the app.
 echo -e "${YELLOW}[alive]${NC} flashing ${APP_NAME}..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-"${SCRIPT_DIR}/hil_flash.sh" "$APP_NAME" >/dev/null 2>&1 || {
+# Suppress stdout (each successful flash prints a J-Link log path that
+# we don't need in the CI scroll), but KEEP stderr so a real flash
+# failure shows the underlying error instead of just "flash failed".
+"${SCRIPT_DIR}/hil_flash.sh" "$APP_NAME" >/dev/null || {
     echo -e "${RED}[alive]${NC} flash failed for ${APP_NAME}"
     exit 1
 }

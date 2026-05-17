@@ -38,7 +38,9 @@ PPPS_REENUM_RETRIES=3
 # Auto-detect if we are running on the Pi itself (so the script can serve
 # as the body of a self-hosted CI job without SSH'ing to itself).
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
     LOCAL_PI=1
 fi
 # Wrappers: run something on the Pi (locally if we ARE the Pi, else via SSH).

@@ -99,7 +99,13 @@ if (( RUN_LOCAL == 0 )); then
     echo -e "${YELLOW}[hil_flash]${NC} uploading hex..."
     scp -q "$STRIPPED_HEX" "${PI_HOST}:${REMOTE_HEX}"
 else
-    cp "$STRIPPED_HEX" "$REMOTE_HEX"
+    # Local on Pi: STRIPPED_HEX and REMOTE_HEX resolve to the same path
+    # (both /tmp/hil_${APP}_mram.hex), so the cp would be a self-copy and
+    # `cp` refuses with "are the same file". Only copy when the paths
+    # differ.
+    if [[ "$STRIPPED_HEX" != "$REMOTE_HEX" ]]; then
+        cp "$STRIPPED_HEX" "$REMOTE_HEX"
+    fi
 fi
 
 # ---- 4. Flash via J-Link (local on Pi, or via SSH) ---------------------------
