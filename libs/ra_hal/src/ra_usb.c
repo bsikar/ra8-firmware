@@ -1735,7 +1735,18 @@ static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data,
     reg->CFIFO        = (uint16_t)(lo | (uint16_t)(hi << k_ra_usb_byte_bits));
   }
   if ((len & 1U) != 0U) {
-    reg->CFIFO = (uint16_t)data[len - 1U];
+    /* For the trailing odd byte we must switch CFIFOSEL.MBW to 8-bit
+     * and write one byte; a 16-bit write here adds a garbage zero byte
+     * to DTLN and the host sees an overlong descriptor (EOVERFLOW /
+     * EPIPE during enumeration). Mirrors FSP hw_usb_write_fifo8 for
+     * USBFS. HUM Ch 36.2.6 CFIFOSEL.MBW p 1976. */
+    const uint16_t          sel_save = reg->CFIFOSEL;
+    const uint16_t          sel_8 =
+      (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk) | k_ra_fifosel_mbw_8);
+    volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
+    reg->CFIFOSEL                  = sel_8;
+    *cfifo8                        = data[len - 1U];
+    reg->CFIFOSEL                  = sel_save;
   }
 }
 
@@ -1788,23 +1799,25 @@ static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data
   if (tail == 0U) {
     return;
   }
-  const uint16_t sel_save = reg->CFIFOSEL;
-  const uint16_t sel_base = (uint16_t)(sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk);
-  uint16_t       offset   = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
-  volatile uint16_t* const cfifoh  = (volatile uint16_t*)((uintptr_t)&reg->CFIFO + 2U);
-  volatile uint8_t* const  cfifohh = (volatile uint8_t*)((uintptr_t)&reg->CFIFO + 3U);
-  if ((tail & 0x2U) != 0U) {
-    reg->CFIFOSEL     = (uint16_t)(sel_base | k_ra_fifosel_mbw_16);
-    const uint16_t hw = *cfifoh;
-    data[offset + 0U] = (uint8_t)(hw & k_ra_usb_byte_mask);
-    data[offset + 1U] = (uint8_t)((hw >> k_ra_usb_byte_bits) & k_ra_usb_byte_mask);
-    offset            = (uint16_t)(offset + 2U);
+  /* HUM Ch 37.2.7 CFIFO: at MBW=32 the FIFO read pointer only advances
+   * on 32-bit reads at CFIFO+0. Narrow CFIFOH/CFIFOHH reads at MBW=16/8
+   * do not advance the pointer reliably (a 3-byte bulk-OUT packet drains
+   * as bytes [0],[1],[0] when mixed). For the trailing 1..3 bytes of a
+   * non-quadword packet we keep MBW=32 and consume one final 32-bit
+   * word, extracting only the `tail` low-order bytes (the FIFO presents
+   * unused-byte slots as don't-care). One read, one pointer advance,
+   * no MBW transition. */
+  const uint32_t           word     = *(volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  const uint16_t           off_base = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  const uint8_t            bytes[4] = {
+    (uint8_t)(word & k_ra_usb_byte_mask),
+    (uint8_t)((word >> k_ra_usb_shift_b1) & k_ra_usb_byte_mask),
+    (uint8_t)((word >> k_ra_usb_shift_b2) & k_ra_usb_byte_mask),
+    (uint8_t)((word >> k_ra_usb_shift_b3) & k_ra_usb_byte_mask),
+  };
+  for (uint16_t i = 0U; i < tail; ++i) {
+    data[off_base + i] = bytes[i];
   }
-  if ((tail & 0x1U) != 0U) {
-    reg->CFIFOSEL = (uint16_t)(sel_base | k_ra_fifosel_mbw_8);
-    data[offset]  = *cfifohh;
-  }
-  reg->CFIFOSEL = sel_save;
 }
 
 /**
@@ -1839,8 +1852,18 @@ static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16
     data[(2U * i) + 1U] = (uint8_t)((word >> k_ra_usb_byte_bits) & k_ra_usb_byte_mask);
   }
   if ((len & 1U) != 0U) {
-    const uint16_t word = reg->CFIFO;
-    data[len - 1U]      = (uint8_t)(word & k_ra_usb_byte_mask);
+    /* Trailing odd byte: switch CFIFOSEL.MBW to 8-bit so the read
+     * advances DTLN by exactly 1. A 16-bit read here pulls two bytes
+     * (the wanted byte plus a follow-on byte the IP has not yet
+     * provided), advancing DTLN by 2 and desyncing every subsequent
+     * drain. Mirrors FSP hw_usb_read_fifo8 for USBFS. */
+    const uint16_t          sel_save = reg->CFIFOSEL;
+    const uint16_t          sel_8 =
+      (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk) | k_ra_fifosel_mbw_8);
+    volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
+    reg->CFIFOSEL                  = sel_8;
+    data[len - 1U]                 = *cfifo8;
+    reg->CFIFOSEL                  = sel_save;
   }
 }
 
