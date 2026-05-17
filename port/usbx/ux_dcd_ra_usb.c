@@ -47,7 +47,11 @@
  * threads so SETUP / BRDY / BEMP events drain promptly.
  */
 typedef enum : uint8_t {
-  k_ra_usb_dcd_isr_prio = 4U, /**< NVIC priority used for both USBFS and USBHS lines. */
+  /* Priority 8 (NVIC 0x80) leaves SysTick (NVIC 0x40) and PendSV able to
+   * preempt the USB ISR. With same priority, SysTick cannot interrupt the
+   * USB ISR and the 8 kHz SOFR + per-pipe NRDY events starve thread mode,
+   * preventing tx_thread_sleep from ever waking. HUM Ch 13 NVIC priorities. */
+  k_ra_usb_dcd_isr_prio = 8U,
 } ra_usb_dcd_isr_prio_t;
 
 /* Tag used by ra_log_*. Must be a static lifetime string. */
@@ -1218,6 +1222,15 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
       return UX_TRANSFER_ERROR;
     }
     tr->ux_slave_transfer_request_actual_length = len;
+  } else {
+    /* OUT pipe: move from PID=NAK to PID=BUF so the controller ACKs
+     * the first host OUT token.  Without this the pipe stays at NAK
+     * forever; BRDY never fires; internal_irq_walk_pipe never runs;
+     * the semaphore is never posted.  HUM Ch 36.2.27 PIPECTR.PID. */
+    if (ra_usb_rearm_out_pipe(s_dcd.speed, pipe) != k_ra_ok) {
+      s_dcd.pipes[pipe].xfer = nullptr;
+      return UX_TRANSFER_ERROR;
+    }
   }
 
 #ifndef UX_DEVICE_STANDALONE
