@@ -194,17 +194,33 @@ ra_usb_dcd_state_t ux_dcd_ra_usb_state(void);
  *
  * @pre Both pipes have been configured via the USBX endpoint-create path
  *      (i.e. host has issued SET_CONFIGURATION).
+ * @pre Called from task / startup context, not from inside an ISR.
+ *
+ * @post Subsequent BRDY events on ``out_pipe`` with no USBX waiter
+ *       drive the auto-echo body and re-queue on ``in_pipe``.
+ * @post Auto-echo counters under ``s_dcd_auto_echo_*`` start tracking.
  *
  * @note Bypasses USBX for the data path; do not combine with
  *       _ux_device_class_cdc_acm_read / _write on the same pipes.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe);
 
 /**
- * @brief Re-enable the USB NVIC IRQ. Call from a periodic context
- * (SysTick, watchdog) to recover after the ISR's spurious-entry path
- * masked the line to stop a USBR-driven IRQ storm.
+ * @brief Re-enable the USB NVIC IRQ at the controller level.
+ *
+ * @details Call from a periodic context (SysTick, watchdog) to recover
+ * after the ISR's spurious-entry path masked the line to stop a
+ * USBR-driven IRQ storm. Writes ``1`` to NVIC ISER[0] bit 0.
+ *
+ * @pre ``ra_isr`` mapped USBHS to NVIC IRQ 0 (project-wide invariant).
+ * @pre Caller is the periodic re-arm context, not the storm-affected ISR.
+ *
+ * @post NVIC routes the next USBHS event to ::internal_usbhs_isr.
+ * @post No other CPU / module state is changed.
+ *
+ * @note Idempotent; safe to call from polling context.
+ * @since 0.1.0
  */
 void ux_dcd_ra_usb_irq_reenable(void);
 

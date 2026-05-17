@@ -223,7 +223,8 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("usb attach + dispatch");
   prep_cb();
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_attach_handler(k_ra_usb_speed_fs, stub_usb_cb, (void*)(uintptr_t)0xAAU));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_attach_handler(k_ra_usb_speed_fs, stub_usb_cb, (void*)(uintptr_t)0xAAU));
   ra_usb_fs()->INTSTS0 = (uint16_t)0xCAFEU;
   ra_usb_dispatch(k_ra_usb_speed_fs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
@@ -623,7 +624,14 @@ static void test_queue_in_fifo_tail_paths(void)
   volatile r_usb_regs_t* freg      = ra_usb_fs();
   freg->CFIFOCTR                   = (uint16_t)k_ra_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_in(k_ra_usb_speed_fs, 1U, fs_odd, 3U));
-  TEST_ASSERT_EQ(0x33U, freg->CFIFO);
+  /* USBFS trailing-odd-byte path now writes via MBW=8 to the low CFIFO
+   * byte instead of a uint16 store. The even loop stores 0x2211 first,
+   * then the byte write replaces the LOW byte with 0x33, so CFIFO reads
+   * back as 0x2233 in the sim (where MMIO has no DTLN model). Mirrors
+   * FSP hw_usb_write_fifo8 for USBFS; see internal_fifo_write in
+   * libs/ra_hal/src/ra_usb.c (HUM Ch 36.2.6 CFIFOSEL.MBW). */
+  TEST_ASSERT_EQ(0x2233U, freg->CFIFO);
+  TEST_ASSERT_EQ(0x33U, *(volatile uint8_t*)(uintptr_t)&freg->CFIFO);
 
   prep_cb();
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_device_init(k_ra_usb_speed_hs));
@@ -703,12 +711,18 @@ static void test_queue_out_fifo_tail_paths(void)
   TEST_ASSERT_EQ(0x33U, out[2]);
   TEST_ASSERT_EQ(0x44U, out[3]);
 
-  out[0]                 = 0U;
-  out[1]                 = 0U;
-  len                    = 2U;
-  hreg->BRDYSTS          = pipe_bit;
-  hreg->CFIFOCTR         = (uint16_t)(k_ra_fifoctr_frdy | 2U);
-  *test_usb_cfifoh(hreg) = 0x6655U;
+  /* USBHS tail read at MBW=32: internal_fifo_read_hs_tail reads CFIFO+0
+   * as one uint32 and extracts the low `tail` bytes -- it does NOT read
+   * CFIFOH/CFIFOHH because narrow reads on USBHS do not advance the FIFO
+   * pointer reliably (HUM Ch 37.2.7; see comment in
+   * internal_fifo_read_hs_tail). Seed the tail bytes via CFIFO+0
+   * accordingly. */
+  out[0]                  = 0U;
+  out[1]                  = 0U;
+  len                     = 2U;
+  hreg->BRDYSTS           = pipe_bit;
+  hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 2U);
+  *test_usb_cfifo32(hreg) = 0x00006655U;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0x55U, out[0]);
@@ -720,12 +734,11 @@ static void test_queue_out_fifo_tail_paths(void)
   len                     = 3U;
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 3U);
-  *test_usb_cfifoh(hreg)  = 0x8877U;
-  *test_usb_cfifohh(hreg) = 0x88U;
+  *test_usb_cfifo32(hreg) = 0x00887766U;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
   TEST_ASSERT_EQ(3U, len);
-  TEST_ASSERT_EQ(0x77U, out[0]);
-  TEST_ASSERT_EQ(0x88U, out[1]);
+  TEST_ASSERT_EQ(0x66U, out[0]);
+  TEST_ASSERT_EQ(0x77U, out[1]);
   TEST_ASSERT_EQ(0x88U, out[2]);
 
   TEST_END("ra_usb_queue_out covers FS and HS FIFO tail paths");
