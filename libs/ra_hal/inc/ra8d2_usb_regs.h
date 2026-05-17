@@ -597,6 +597,28 @@ typedef enum : uint16_t {
 } ra_usb_pipecfg_field_t;
 
 /* =============================================================================
+ * PIPEBUF fields (HUM Ch 36.2.25)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_usb_pipebuf_field_t
+ * @brief PIPEBUF field masks / shifts.
+ *
+ * Layout: BUFSIZE[14:10] | BUFNMB[7:0]. Buffer block is 64 bytes; the
+ * pipe's FIFO region is `(BUFSIZE+1) * 64` bytes starting at
+ * `BUFNMB * 64`. With PIPECFG.DBLB the region is split into two equal
+ * halves of `(BUFSIZE+1)/2 * 64` bytes each, so a 1024-byte region
+ * (BUFSIZE=15) holds 2x512 packets for HS bulk MPS=512.
+ */
+typedef enum : uint16_t {
+  k_ra_pipebuf_bufnmb_mask  = 0x00FFU,
+  k_ra_pipebuf_bufsize_mask = 0x7C00U,
+  k_ra_pipebuf_bufsize_shift = 10U,
+  k_ra_pipebuf_block_bytes  = 64U, /**< Each buffer block is 64 bytes. */
+} ra_usb_pipebuf_field_t;
+
+/* =============================================================================
  * PIPECTR bit positions (HUM Ch 36.2.27)
  * =============================================================================
  */
