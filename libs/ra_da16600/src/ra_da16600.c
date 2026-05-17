@@ -48,10 +48,27 @@
  * each function's local-frame budget without preprocessor expansion.
  */
 typedef enum : uint16_t {
-  k_ra_da16600_cmd_buf_bytes     = 96U,  /**< Per-command AT line buffer (TX). */
-  k_ra_da16600_capture_buf_bytes = 256U, /**< Per-command response capture. */
-  k_ra_da16600_payload_max_bytes = 1460U, /**< One TCP MSS. UM-WI-046 5.2.5. */
+  k_ra_da16600_cmd_buf_bytes     = 96U,    /**< Per-command AT line buffer (TX). */
+  k_ra_da16600_capture_buf_bytes = 256U,   /**< Per-command response capture. */
+  k_ra_da16600_payload_max_bytes = 1460U,  /**< One TCP MSS. UM-WI-046 5.2.5. */
 } ra_da16600_internal_caps_t;
+
+/**
+ * @brief Stack-buffer sizing for decimal uint32_t formatting.
+ *
+ * @details
+ * The widest decimal representation of a @c uint32_t is the literal
+ * @c "4294967295" -- ten characters. Adding one trailing NUL puts the
+ * total at eleven bytes. These two constants are typed enums so the
+ * compiler picks a stable 8-bit width and the values appear by name in
+ * the disassembly / debugger, satisfying NASA P10 Rule 8 and the
+ * project-wide ``readability-magic-numbers`` lint gate.
+ */
+typedef enum : uint8_t {
+  k_ra_da16600_u32_digit_max = 10U, /**< Max decimal digits in a uint32_t. */
+  k_ra_da16600_u32_str_bytes = 11U, /**< Digits + NUL terminator. */
+  k_ra_da16600_decimal_base  = 10U, /**< Decimal radix for the formatter. */
+} ra_da16600_format_caps_t;
 
 /**
  * @brief Persistent driver state.
@@ -76,11 +93,19 @@ static ra_da16600_state_t s_da;
 /**
  * @brief NUL-terminated string length, capped at @c UINT16_MAX.
  *
+ * @details Walks @p s until the first NUL byte or until @c UINT16_MAX is
+ * reached, whichever comes first. The cap prevents a runaway loop on a
+ * non-terminated input.
+ *
  * @param[in] s NUL-terminated string (must be non-NULL).
  * @return Length in bytes.
+ * @retval 0..UINT16_MAX Number of bytes before the first NUL.
  *
- * @pre @p s is non-NULL and NUL-terminated.
+ * @pre @p s is non-NULL.
+ * @pre @p s is NUL-terminated before @c UINT16_MAX.
  * @post No state mutated.
+ * @post Return value <= @c UINT16_MAX.
+ *
  * @note Pure function; safe to call concurrently.
  * @since 0.1.0
  */
@@ -96,17 +121,26 @@ static uint16_t internal_str_len(const char* s)
 /**
  * @brief Append @p src to @p dst, NUL-terminate, bounded by @p cap.
  *
+ * @details Strict-bounded variant of @c strcat that uses an explicit
+ * offset cursor instead of re-scanning @p dst on every call. Used by
+ * the AT-command formatters in this TU to build a multi-piece command
+ * line without ever pulling in @c <string.h>.
+ *
  * @param[in,out] dst Destination buffer (NUL-terminated on exit).
  * @param[in]     cap Capacity of @p dst including NUL.
  * @param[in,out] off In: current write offset. Out: updated offset.
  * @param[in]     src NUL-terminated string to append.
  *
- * @return 1 on success, 0 if appending would overflow.
+ * @return Status flag.
+ * @retval 1 Appended successfully; @p *off advanced past @p src.
+ * @retval 0 Appending would overflow; @p dst forcibly NUL-terminated.
  *
  * @pre @p dst, @p off, @p src non-NULL.
  * @pre @p cap >= 1.
  * @post On success, ``dst[*off] == '\0'``.
  * @post On overflow, ``dst[cap-1] == '\0'`` and result is 0.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
  * @since 0.1.0
  */
 static uint8_t internal_strcat_bounded(char* dst, size_t cap, size_t* off, const char* src)
@@ -132,29 +166,41 @@ static uint8_t internal_strcat_bounded(char* dst, size_t cap, size_t* off, const
  * @brief Format a decimal uint32_t into @p dst, NUL-terminated.
  *
  * @details Avoids @c snprintf so the driver stays libc-free for the
- * target build. Writes at most 11 bytes ("4294967295" + NUL).
+ * target build. Writes at most ::k_ra_da16600_u32_str_bytes bytes
+ * ("4294967295" + NUL).
  *
- * @param[out] dst    Destination; must hold at least 11 bytes.
+ * The intermediate @c tmp buffer is zero-initialised before use so the
+ * clang static analyser can prove every later read of the reversed
+ * digits is well-defined regardless of the @p value path taken; this
+ * also matches NASA P10 Rule 5's "no garbage on egress" guarantee.
+ *
+ * @param[out] dst    Destination; must hold at least
+ *                    ::k_ra_da16600_u32_str_bytes bytes.
  * @param[in]  value  Value to format.
  *
  * @pre @p dst is non-NULL.
+ * @pre @p dst points to at least ::k_ra_da16600_u32_str_bytes bytes
+ *      of writable storage.
  * @post @c dst is NUL-terminated.
+ * @post Every byte written is a printable ASCII digit ('0'..'9').
+ *
+ * @note Pure function; safe to call concurrently.
  * @since 0.1.0
  */
 static void internal_format_u32(char* dst, uint32_t value)
 {
-  /* Worst case "4294967295" = 10 digits. */
-  char     tmp[11];
-  uint8_t  ti  = 0U;
-  uint32_t v   = value;
+  /* Worst case "4294967295" = k_ra_da16600_u32_digit_max digits. */
+  char     tmp[k_ra_da16600_u32_str_bytes] = {};
+  uint8_t  ti                              = 0U;
+  uint32_t v                               = value;
   if (v == 0U) {
     dst[0] = '0';
     dst[1] = '\0';
     return;
   }
-  while ((v > 0U) && (ti < 10U)) {
-    tmp[ti] = (char)('0' + (uint8_t)(v % 10U));
-    v /= 10U;
+  while ((v > 0U) && (ti < (uint8_t)k_ra_da16600_u32_digit_max)) {
+    tmp[ti] = (char)('0' + (uint8_t)(v % (uint32_t)k_ra_da16600_decimal_base));
+    v /= (uint32_t)k_ra_da16600_decimal_base;
     ++ti;
   }
   /* Reverse into dst. */
@@ -176,8 +222,17 @@ static void internal_format_u32(char* dst, uint32_t value)
  * accept both. UM-WI-046 section 4.1 documents the slash-separated
  * form for FW 3.2+ and the SOH-separated form for legacy 3.0 builds.
  *
- * @param[in] s NUL-terminated input string.
+ * @param[in] s NUL-terminated input string (may be NULL).
  * @return Entry count (0 if empty / NULL).
+ * @retval 0 @p s is NULL or empty.
+ * @retval >0 One plus the number of separators in @p s.
+ *
+ * @pre @p s may be NULL; this is part of the contract.
+ * @pre When non-NULL, @p s is NUL-terminated.
+ * @post No state mutated.
+ * @post Return value fits in @c uint16_t.
+ *
+ * @note Pure function; safe to call concurrently.
  * @since 0.1.0
  */
 static uint16_t internal_count_scan_entries(const char* s)
@@ -203,7 +258,21 @@ static uint16_t internal_count_scan_entries(const char* s)
 /**
  * @brief Verify driver was initialized before any command call.
  *
- * @return ::k_ra_ok if initialized, ::k_ra_err_not_initialized otherwise.
+ * @details Gate used by every public command entry point to reject
+ * calls that arrived before ::ra_da16600_init returned ::k_ra_ok.
+ * Keeps the per-function pre-condition logic concentrated in one
+ * place.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok                  Driver has been initialised.
+ * @retval k_ra_err_not_initialized ::ra_da16600_init has not yet run.
+ *
+ * @pre @c s_da has been written by ::ra_da16600_init or zero-initialised.
+ * @pre Caller is on the single owner thread (driver is single-instance).
+ * @post No state mutated.
+ * @post Return value is exactly one of the documented retvals.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
  * @since 0.1.0
  */
 static ra_err_t internal_require_init(void)
@@ -215,12 +284,343 @@ static ra_err_t internal_require_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Build the ``AT+WFJAP=<ssid>,4,<key>`` command into @p cmd.
+ *
+ * @details
+ * Splits out the command-formatting step of ::ra_da16600_wifi_connect
+ * to keep the public entry point inside the NASA P10 Rule 4 60-line
+ * ceiling and the @c readability-function-size threshold. Security
+ * mode 4 ("WPA2-PSK") is hard-coded per UM-WI-046 Table 4.5-1.
+ *
+ * @param[out] cmd       Caller-owned command buffer.
+ * @param[in]  cmd_cap   Capacity of @p cmd in bytes (incl. NUL).
+ * @param[in]  ssid      NUL-terminated SSID.
+ * @param[in]  passkey   NUL-terminated WPA2 passphrase.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Command formatted into @p cmd.
+ * @retval k_ra_err_invalid_size One of the concatenations overflowed.
+ *
+ * @pre @p cmd, @p ssid, @p passkey are non-NULL.
+ * @pre @p cmd_cap > 0.
+ * @post On success, @p cmd is a NUL-terminated AT command line.
+ * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_build_wfjap_cmd(char*       cmd,
+                                         size_t      cmd_cap,
+                                         const char* ssid,
+                                         const char* passkey)
+{
+  size_t off = 0U;
+  cmd[0]     = '\0';
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+WFJAP=") == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, ssid) == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",4,") == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, passkey) == 0U)) {
+    ra_log_error(RA_DA16600_TAG, "WFJAP command overflows cmd buffer");
+    return k_ra_err_invalid_size;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Parse ``+WFJAP:1,<ssid>,<ip>`` and copy the IP string out.
+ *
+ * @details
+ * UM-WI-046 section 4.5 documents the URC layout: the IPv4 address
+ * sits after the second comma. This helper walks the captured line,
+ * skips two commas, and copies the dotted-decimal IPv4 address into
+ * @p out_ip_str up to the next delimiter (comma, CR, LF, NUL).
+ *
+ * @param[in]  capture     Captured DA16600 response line.
+ * @param[out] out_ip_str  Caller buffer for dotted-decimal IPv4.
+ * @param[in]  ip_str_len  Capacity of @p out_ip_str.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok           IP successfully parsed and copied.
+ * @retval k_ra_err_hw_error Capture line missing two commas or empty IP.
+ *
+ * @pre @p capture and @p out_ip_str are non-NULL.
+ * @pre @p ip_str_len >= ::k_ra_da16600_ip_str_len.
+ * @post On success, @p out_ip_str is a non-empty NUL-terminated string.
+ * @post On error, @p out_ip_str[0] is NUL.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_parse_wfjap_ip(const char* capture,
+                                        char*       out_ip_str,
+                                        size_t      ip_str_len)
+{
+  out_ip_str[0]   = '\0';
+  uint16_t i      = 0U;
+  uint16_t commas = 0U;
+  while ((capture[i] != '\0') && (commas < 2U)) {
+    if (capture[i] == ',') {
+      ++commas;
+    }
+    ++i;
+  }
+  if ((capture[i] == '\0') || (commas != 2U)) {
+    ra_log_error(RA_DA16600_TAG, "WFJAP response malformed");
+    return k_ra_err_hw_error;
+  }
+  /* Copy IP until comma / newline / NUL. */
+  size_t oi = 0U;
+  while ((capture[i] != '\0') && (capture[i] != ',') && (capture[i] != '\r')
+         && (capture[i] != '\n') && (oi + 1U < ip_str_len)) {
+    out_ip_str[oi] = capture[i];
+    ++oi;
+    ++i;
+  }
+  out_ip_str[oi] = '\0';
+  if (oi == 0U) {
+    ra_log_error(RA_DA16600_TAG, "WFJAP IP empty");
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Parse the ``+TRTS:<cid>`` / ``+TRTC:<cid>`` numeric tail.
+ *
+ * @details
+ * UM-WI-046 sections 5.2.3 / 5.2.4 report the allocated cid as a
+ * decimal integer immediately following a colon (with an optional
+ * leading space). Some firmware revisions skip the cid line entirely
+ * and just reply bare ``OK``; this helper signals that by returning
+ * ::k_ra_ok with @c *out_cid == 0 so the caller can keep that
+ * legacy-firmware contract.
+ *
+ * @param[in]  capture  Captured DA16600 response line.
+ * @param[out] out_cid  Parsed cid (0 if no cid line present).
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok           Cid parsed (or absent, legacy firmware).
+ * @retval k_ra_err_hw_error Cid colon present but no digits followed.
+ *
+ * @pre @p capture is non-NULL and NUL-terminated.
+ * @pre @p out_cid is non-NULL.
+ * @post @p *out_cid is in 0..255.
+ * @post On success, no internal state is mutated.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_parse_socket_cid(const char* capture, ra_da16600_socket_t* out_cid)
+{
+  uint16_t i = 0U;
+  while ((capture[i] != '\0') && (capture[i] != ':')) {
+    ++i;
+  }
+  if (capture[i] != ':') {
+    /* No cid line; assume legacy firmware that defers cid publication. */
+    *out_cid = 0U;
+    return k_ra_ok;
+  }
+  ++i;
+  if (capture[i] == ' ') {
+    ++i;
+  }
+  uint32_t cid = 0U;
+  uint8_t  saw = 0U;
+  while ((capture[i] >= '0') && (capture[i] <= '9')) {
+    cid = (cid * (uint32_t)k_ra_da16600_decimal_base)
+          + (uint32_t)(capture[i] - '0');
+    ++i;
+    saw = 1U;
+  }
+  if (saw == 0U) {
+    ra_log_error(RA_DA16600_TAG, "cid parse failed");
+    return k_ra_err_hw_error;
+  }
+  *out_cid = (ra_da16600_socket_t)cid;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Build the ``AT+TRTS=<port>`` or ``AT+TRTC=<ip>,<port>`` line.
+ *
+ * @details
+ * Extracted from ::ra_da16600_tcp_open so the public entry point fits
+ * inside the cognitive-complexity ceiling. UM-WI-046 sections 5.2.3
+ * (listen) and 5.2.4 (connect) define the two command shapes.
+ *
+ * @param[out] cmd        Caller-owned command buffer.
+ * @param[in]  cmd_cap    Capacity of @p cmd in bytes.
+ * @param[in]  role       Listen vs connect role.
+ * @param[in]  remote_ip  Dotted-decimal IPv4 (connect role only).
+ * @param[in]  port       TCP port in host byte order.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Command formatted into @p cmd.
+ * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
+ *
+ * @pre @p cmd is non-NULL and @p cmd_cap >= 1.
+ * @pre When @p role is connect, @p remote_ip is non-NULL.
+ * @post On success, @p cmd is a NUL-terminated AT command line.
+ * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_build_tcp_open_cmd(char*                    cmd,
+                                            size_t                   cmd_cap,
+                                            ra_da16600_socket_role_t role,
+                                            const char*              remote_ip,
+                                            uint16_t                 port)
+{
+  size_t off = 0U;
+  cmd[0]     = '\0';
+  char port_str[k_ra_da16600_u32_str_bytes] = {};
+  internal_format_u32(port_str, (uint32_t)port);
+
+  if (role == k_ra_da16600_socket_listen) {
+    if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTS=") == 0U)
+        || (internal_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
+      ra_log_error(RA_DA16600_TAG, "TRTS command overflow");
+      return k_ra_err_invalid_size;
+    }
+    return k_ra_ok;
+  }
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTC=") == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, remote_ip) == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
+    ra_log_error(RA_DA16600_TAG, "TRTC command overflow");
+    return k_ra_err_invalid_size;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Build the ``AT+TRDTS=<cid>,<len>,`` header (no payload).
+ *
+ * @details
+ * Extracted from ::ra_da16600_tcp_send so the public entry point fits
+ * inside the NASA P10 Rule 4 ceiling. UM-WI-046 section 5.2.5 defines
+ * the header layout; the raw binary payload is appended by the caller
+ * after this helper returns. @p out_off is the new write offset so
+ * the caller knows where to start copying its payload bytes.
+ *
+ * @param[out] cmd      Caller-owned command buffer.
+ * @param[in]  cmd_cap  Capacity of @p cmd in bytes.
+ * @param[in]  sock     TCP socket / cid.
+ * @param[in]  len      Payload length in bytes.
+ * @param[out] out_off  Final write offset into @p cmd.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Header formatted, @p *out_off updated.
+ * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
+ *
+ * @pre @p cmd and @p out_off are non-NULL.
+ * @pre @p cmd_cap >= 1.
+ * @post On success, @p cmd[*out_off] is NUL and the header is complete.
+ * @post On overflow, @p cmd is NUL-terminated and @p *out_off is 0.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_build_trdts_header(char*               cmd,
+                                            size_t              cmd_cap,
+                                            ra_da16600_socket_t sock,
+                                            size_t              len,
+                                            size_t*             out_off)
+{
+  size_t off = 0U;
+  cmd[0]     = '\0';
+  *out_off   = 0U;
+
+  char num[k_ra_da16600_u32_str_bytes] = {};
+  internal_format_u32(num, (uint32_t)sock);
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRDTS=") == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, num) == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
+    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
+    return k_ra_err_invalid_size;
+  }
+  internal_format_u32(num, (uint32_t)len);
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, num) == 0U)
+      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
+    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
+    return k_ra_err_invalid_size;
+  }
+  *out_off = off;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Extract the binary payload after the second comma in @p capture.
+ *
+ * @details
+ * Extracted from ::ra_da16600_tcp_recv. UM-WI-046 section 5.2.6
+ * documents the ``+TRDTC:<cid>,<len>,<data>`` URC layout. The driver
+ * here only needs to skip past two commas to land on the first byte
+ * of the payload, then copy until newline or NUL bounded by @p cap.
+ *
+ * @param[in]  capture  Captured DA16600 response line.
+ * @param[out] buf      Caller payload buffer.
+ * @param[in]  cap      Capacity of @p buf in bytes.
+ * @param[out] out_len  Bytes actually copied (0 on error).
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok            At least one payload byte was copied.
+ * @retval k_ra_err_hw_timeout No ``:`` URC marker present in @p capture.
+ * @retval k_ra_err_hw_error   URC was malformed (no second comma).
+ *
+ * @pre @p capture, @p buf, @p out_len are non-NULL.
+ * @pre @p cap >= 1.
+ * @post On any error path, @p *out_len == 0.
+ * @post On success, @p *out_len <= @p cap.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_extract_trdtc_payload(const char* capture,
+                                               uint8_t*    buf,
+                                               size_t      cap,
+                                               size_t*     out_len)
+{
+  *out_len   = 0U;
+  uint16_t i = 0U;
+  while ((capture[i] != '\0') && (capture[i] != ':')) {
+    ++i;
+  }
+  if (capture[i] != ':') {
+    return k_ra_err_hw_timeout;
+  }
+  uint16_t commas = 0U;
+  while ((capture[i] != '\0') && (commas < 2U)) {
+    if (capture[i] == ',') {
+      ++commas;
+    }
+    ++i;
+  }
+  if (capture[i] == '\0') {
+    return k_ra_err_hw_error;
+  }
+  size_t oi = 0U;
+  while ((capture[i] != '\0') && (capture[i] != '\r') && (capture[i] != '\n')
+         && (oi < cap)) {
+    buf[oi] = (uint8_t)capture[i];
+    ++oi;
+    ++i;
+  }
+  *out_len = oi;
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * Lifecycle
  * =============================================================================
  */
 
-/* UM-WI-046 section 2.1 "Basic AT Commands": bare ``AT`` returns OK. */
+/* UM-WI-046 section 2.1 "Basic AT Commands": bare ``AT`` returns OK.
+ * see header for the documented contract */
 ra_err_t ra_da16600_init(const ra_da16600_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, RA_DA16600_TAG, "cfg");
@@ -268,7 +668,8 @@ ra_err_t ra_da16600_init(const ra_da16600_cfg_t* cfg)
  */
 
 /* UM-WI-046 section 4.1 "Wi-Fi Scan": AT+WFSCAN returns one
- * +WFSCAN:<list> line followed by OK. */
+ * +WFSCAN:<list> line followed by OK.
+ * see header for the documented contract */
 ra_err_t ra_da16600_wifi_scan(uint16_t* out_count)
 {
   RA_CHECK_NULL_PTR(out_count, RA_DA16600_TAG, "out_count");
@@ -304,11 +705,40 @@ ra_err_t ra_da16600_wifi_scan(uint16_t* out_count)
   return k_ra_ok;
 }
 
-/* UM-WI-046 section 4.5 "Connect / Disconnect AP": AT+WFJAP. */
-ra_err_t ra_da16600_wifi_connect(const char* ssid,
-                                  const char* passkey,
-                                  char*       out_ip_str,
-                                  size_t      ip_str_len)
+/**
+ * @brief Validate the argument tuple passed to ::ra_da16600_wifi_connect.
+ *
+ * @details
+ * Splits the precondition checks (NULL pointers, output-buffer size
+ * floor, SSID / passkey length window) out of the public entry point
+ * so that function fits inside the NASA P10 Rule 4 statement budget.
+ *
+ * @param[in] ssid       NUL-terminated SSID.
+ * @param[in] passkey    NUL-terminated WPA2 passphrase.
+ * @param[in] out_ip_str Caller buffer for dotted-decimal IPv4.
+ * @param[in] ip_str_len Capacity of @p out_ip_str.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              All preconditions hold.
+ * @retval k_ra_err_null_ptr    One of @p ssid, @p passkey, @p out_ip_str
+ *                              is NULL.
+ * @retval k_ra_err_invalid_size SSID empty/too long, passkey too long,
+ *                              or @p ip_str_len below the floor.
+ *
+ * @pre All three pointer arguments may legally be NULL; that is what
+ *      this helper checks.
+ * @pre @c k_ra_da16600_ssid_max_len and @c k_ra_da16600_passkey_max_len
+ *      reflect UM-WI-046 section 4.5 limits.
+ * @post On error, @p out_ip_str (if non-NULL) is left untouched.
+ * @post On success, all four arguments are valid for ::ra_da16600_wifi_connect.
+ *
+ * @note Not thread-safe; caller must serialise driver access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wifi_connect_validate(const char* ssid,
+                                               const char* passkey,
+                                               const char* out_ip_str,
+                                               size_t      ip_str_len)
 {
   RA_CHECK_NULL_PTR(ssid, RA_DA16600_TAG, "ssid");
   RA_CHECK_NULL_PTR(passkey, RA_DA16600_TAG, "passkey");
@@ -317,8 +747,6 @@ ra_err_t ra_da16600_wifi_connect(const char* ssid,
     ra_log_error(RA_DA16600_TAG, "ip_str_len too small");
     return k_ra_err_invalid_size;
   }
-  out_ip_str[0] = '\0';
-
   uint16_t ssid_len = internal_str_len(ssid);
   uint16_t pk_len   = internal_str_len(passkey);
   if ((ssid_len == 0U) || (ssid_len >= (uint16_t)k_ra_da16600_ssid_max_len)
@@ -326,65 +754,47 @@ ra_err_t ra_da16600_wifi_connect(const char* ssid,
     ra_log_error(RA_DA16600_TAG, "ssid/passkey length invalid");
     return k_ra_err_invalid_size;
   }
+  return k_ra_ok;
+}
 
-  ra_err_t err = internal_require_init();
+/* UM-WI-046 section 4.5 "Connect / Disconnect AP": AT+WFJAP.
+ * see header for the documented contract */
+ra_err_t ra_da16600_wifi_connect(const char* ssid,
+                                 const char* passkey,
+                                 char*       out_ip_str,
+                                 size_t      ip_str_len)
+{
+  ra_err_t err = internal_wifi_connect_validate(ssid, passkey, out_ip_str, ip_str_len);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  out_ip_str[0] = '\0';
+
+  err = internal_require_init();
   if (err != k_ra_ok) {
     return err;
   }
 
-  /* Build the AT command into a stack buffer:
-   *   AT+WFJAP=<ssid>,<security>,<key>
-   * Security mode 4 == WPA2-PSK per UM-WI-046 Table 4.5-1. */
-  char   cmd[k_ra_da16600_cmd_buf_bytes];
-  size_t off = 0U;
-  cmd[0]     = '\0';
-  if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+WFJAP=") == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, ssid) == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, ",4,") == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, passkey) == 0U)) {
-    ra_log_error(RA_DA16600_TAG, "WFJAP command overflows cmd buffer");
-    return k_ra_err_invalid_size;
+  char cmd[k_ra_da16600_cmd_buf_bytes];
+  err = internal_build_wfjap_cmd(cmd, sizeof cmd, ssid, passkey);
+  if (err != k_ra_ok) {
+    return err;
   }
 
   char capture[k_ra_da16600_capture_buf_bytes];
   capture[0] = '\0';
-  err        = ra_modem_at_send_cmd_capture(
-    cmd, capture, (size_t)k_ra_da16600_capture_buf_bytes, (uint16_t)k_ra_da16600_timeout_connect_ms);
+  err        = ra_modem_at_send_cmd_capture(cmd,
+                                     capture,
+                                     (size_t)k_ra_da16600_capture_buf_bytes,
+                                     (uint16_t)k_ra_da16600_timeout_connect_ms);
   if (err != k_ra_ok) {
     return err;
   }
-
-  /* Parse "+WFJAP:1,<ssid>,<ip>" -- pull the IP after the third comma.
-   * UM-WI-046 section 4.5 documents the URC layout. */
-  uint16_t i       = 0U;
-  uint16_t commas  = 0U;
-  while ((capture[i] != '\0') && (commas < 2U)) {
-    if (capture[i] == ',') {
-      ++commas;
-    }
-    ++i;
-  }
-  if ((capture[i] == '\0') || (commas != 2U)) {
-    ra_log_error(RA_DA16600_TAG, "WFJAP response malformed");
-    return k_ra_err_hw_error;
-  }
-  /* Copy IP until comma / newline / NUL. */
-  size_t   oi = 0U;
-  while ((capture[i] != '\0') && (capture[i] != ',') && (capture[i] != '\r')
-         && (capture[i] != '\n') && (oi + 1U < ip_str_len)) {
-    out_ip_str[oi] = capture[i];
-    ++oi;
-    ++i;
-  }
-  out_ip_str[oi] = '\0';
-  if (oi == 0U) {
-    ra_log_error(RA_DA16600_TAG, "WFJAP IP empty");
-    return k_ra_err_hw_error;
-  }
-  return k_ra_ok;
+  return internal_parse_wfjap_ip(capture, out_ip_str, ip_str_len);
 }
 
-/* UM-WI-046 section 4.5: AT+WFQAP disassociates. */
+/* UM-WI-046 section 4.5: AT+WFQAP disassociates.
+ * see header for the documented contract */
 ra_err_t ra_da16600_wifi_disconnect(void)
 {
   ra_err_t err = internal_require_init();
@@ -399,11 +809,12 @@ ra_err_t ra_da16600_wifi_disconnect(void)
  * =============================================================================
  */
 
-/* UM-WI-046 section 5.2.3 (TRTS: listen) / 5.2.4 (TRTC: client). */
+/* UM-WI-046 section 5.2.3 (TRTS: listen) / 5.2.4 (TRTC: client).
+ * see header for the documented contract */
 ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
-                              const char*              remote_ip,
-                              uint16_t                 port,
-                              ra_da16600_socket_t*     out_socket)
+                             const char*              remote_ip,
+                             uint16_t                 port,
+                             ra_da16600_socket_t*     out_socket)
 {
   RA_CHECK_NULL_PTR(out_socket, RA_DA16600_TAG, "out_socket");
   *out_socket = 0U;
@@ -421,70 +832,26 @@ ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
     return err;
   }
 
-  char   cmd[k_ra_da16600_cmd_buf_bytes];
-  size_t off = 0U;
-  cmd[0]     = '\0';
-  char port_str[11];
-  internal_format_u32(port_str, (uint32_t)port);
-
-  if (role == k_ra_da16600_socket_listen) {
-    if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTS=") == 0U)
-        || (internal_strcat_bounded(cmd, sizeof cmd, &off, port_str) == 0U)) {
-      ra_log_error(RA_DA16600_TAG, "TRTS command overflow");
-      return k_ra_err_invalid_size;
-    }
-  } else {
-    if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTC=") == 0U)
-        || (internal_strcat_bounded(cmd, sizeof cmd, &off, remote_ip) == 0U)
-        || (internal_strcat_bounded(cmd, sizeof cmd, &off, ",") == 0U)
-        || (internal_strcat_bounded(cmd, sizeof cmd, &off, port_str) == 0U)) {
-      ra_log_error(RA_DA16600_TAG, "TRTC command overflow");
-      return k_ra_err_invalid_size;
-    }
-  }
-
-  char capture[k_ra_da16600_capture_buf_bytes];
-  capture[0] = '\0';
-  err        = ra_modem_at_send_cmd_capture(
-    cmd, capture, (size_t)k_ra_da16600_capture_buf_bytes, (uint16_t)k_ra_da16600_timeout_socket_ms);
+  char cmd[k_ra_da16600_cmd_buf_bytes];
+  err = internal_build_tcp_open_cmd(cmd, sizeof cmd, role, remote_ip, port);
   if (err != k_ra_ok) {
     return err;
   }
 
-  /* Both TRTS and TRTC report the allocated cid in "+TRTS:<cid>" or
-   * "+TRTC:<cid>" (UM-WI-046 5.2.3 / 5.2.4). Locate the first digit
-   * after ':' and stop at the first non-digit. */
-  uint16_t i = 0U;
-  while ((capture[i] != '\0') && (capture[i] != ':')) {
-    ++i;
+  char capture[k_ra_da16600_capture_buf_bytes];
+  capture[0] = '\0';
+  err        = ra_modem_at_send_cmd_capture(cmd,
+                                     capture,
+                                     (size_t)k_ra_da16600_capture_buf_bytes,
+                                     (uint16_t)k_ra_da16600_timeout_socket_ms);
+  if (err != k_ra_ok) {
+    return err;
   }
-  if (capture[i] != ':') {
-    /* No cid line; if the module replied bare OK assume cid 0. This
-     * matches several DA16600 firmware revisions that defer cid
-     * publication to the first inbound packet. */
-    *out_socket = 0U;
-    return k_ra_ok;
-  }
-  ++i;
-  if (capture[i] == ' ') {
-    ++i;
-  }
-  uint32_t cid = 0U;
-  uint8_t  saw = 0U;
-  while ((capture[i] >= '0') && (capture[i] <= '9')) {
-    cid = (cid * 10U) + (uint32_t)(capture[i] - '0');
-    ++i;
-    saw = 1U;
-  }
-  if (saw == 0U) {
-    ra_log_error(RA_DA16600_TAG, "cid parse failed");
-    return k_ra_err_hw_error;
-  }
-  *out_socket = (ra_da16600_socket_t)cid;
-  return k_ra_ok;
+  return internal_parse_socket_cid(capture, out_socket);
 }
 
-/* UM-WI-046 section 5.2.5 "Send Data on TCP": AT+TRDTS=<cid>,<len>,<data>. */
+/* UM-WI-046 section 5.2.5 "Send Data on TCP": AT+TRDTS=<cid>,<len>,<data>.
+ * see header for the documented contract */
 ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size_t len)
 {
   if (len == 0U) {
@@ -506,21 +873,9 @@ ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size
    * appended raw (length-prefixed framing -- UM-WI-046 5.2.5). */
   char   cmd[k_ra_da16600_cmd_buf_bytes];
   size_t off = 0U;
-  cmd[0]     = '\0';
-  char num[11];
-
-  internal_format_u32(num, (uint32_t)sock);
-  if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRDTS=") == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, ",") == 0U)) {
-    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
-    return k_ra_err_invalid_size;
-  }
-  internal_format_u32(num, (uint32_t)len);
-  if ((internal_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, ",") == 0U)) {
-    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
-    return k_ra_err_invalid_size;
+  err = internal_build_trdts_header(cmd, sizeof cmd, sock, len, &off);
+  if (err != k_ra_ok) {
+    return err;
   }
 
   /* The DA16600 expects the binary payload to follow the comma-list
@@ -543,12 +898,13 @@ ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size
 
 /* UM-WI-046 section 5.2.6 "Receive Data on TCP": +TRDTC:<cid>,<len>,<data>
  * arrives asynchronously. We block-poll the AT pipe until the URC is
- * captured or the caller-specified timeout fires. */
+ * captured or the caller-specified timeout fires.
+ * see header for the documented contract */
 ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
-                              uint8_t*            buf,
-                              size_t              cap,
-                              size_t*             out_len,
-                              uint16_t            timeout_ms)
+                             uint8_t*            buf,
+                             size_t              cap,
+                             size_t*             out_len,
+                             uint16_t            timeout_ms)
 {
   (void)sock; /* Recv buffer is socket-multiplexed by the module; the
                  caller treats us as a flat byte stream for now. */
@@ -573,42 +929,16 @@ ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
   char capture[k_ra_da16600_capture_buf_bytes];
   capture[0]      = '\0';
   uint16_t to_use = (timeout_ms == 0U) ? (uint16_t)k_ra_da16600_timeout_socket_ms : timeout_ms;
-  err = ra_modem_at_send_cmd_capture("AT", capture, (size_t)k_ra_da16600_capture_buf_bytes, to_use);
+  err = ra_modem_at_send_cmd_capture(
+    "AT", capture, (size_t)k_ra_da16600_capture_buf_bytes, to_use);
   if (err != k_ra_ok) {
     return err;
   }
-
-  /* Find "+TRDTC:" line. */
-  uint16_t i = 0U;
-  while ((capture[i] != '\0') && (capture[i] != ':')) {
-    ++i;
-  }
-  if (capture[i] != ':') {
-    return k_ra_err_hw_timeout;
-  }
-  /* Skip past two commas to reach the binary payload. */
-  uint16_t commas = 0U;
-  while ((capture[i] != '\0') && (commas < 2U)) {
-    if (capture[i] == ',') {
-      ++commas;
-    }
-    ++i;
-  }
-  if (capture[i] == '\0') {
-    return k_ra_err_hw_error;
-  }
-  /* Copy until newline or NUL, bounded by @p cap. */
-  size_t oi = 0U;
-  while ((capture[i] != '\0') && (capture[i] != '\r') && (capture[i] != '\n') && (oi < cap)) {
-    buf[oi] = (uint8_t)capture[i];
-    ++oi;
-    ++i;
-  }
-  *out_len = oi;
-  return k_ra_ok;
+  return internal_extract_trdtc_payload(capture, buf, cap, out_len);
 }
 
-/* UM-WI-046 section 5.2.7 "Terminate Session": AT+TRTRM=<cid>. */
+/* UM-WI-046 section 5.2.7 "Terminate Session": AT+TRTRM=<cid>.
+ * see header for the documented contract */
 ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
 {
   ra_err_t err = internal_require_init();
@@ -618,7 +948,7 @@ ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
   char   cmd[k_ra_da16600_cmd_buf_bytes];
   size_t off = 0U;
   cmd[0]     = '\0';
-  char num[11];
+  char num[k_ra_da16600_u32_str_bytes] = {};
   internal_format_u32(num, (uint32_t)sock);
   if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTRM=") == 0U)
       || (internal_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)) {
@@ -633,7 +963,8 @@ ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
  * =============================================================================
  */
 
-/* UM-WI-046 section 7.4 "BLE Advertising Control": AT+BLEADVSTART. */
+/* UM-WI-046 section 7.4 "BLE Advertising Control": AT+BLEADVSTART.
+ * see header for the documented contract */
 ra_err_t ra_da16600_ble_advertise_start(void)
 {
   ra_err_t err = internal_require_init();
@@ -644,7 +975,8 @@ ra_err_t ra_da16600_ble_advertise_start(void)
     "AT+BLEADVSTART", nullptr, (uint16_t)k_ra_da16600_timeout_ble_ms);
 }
 
-/* UM-WI-046 section 7.4: AT+BLEADVSTOP. */
+/* UM-WI-046 section 7.4: AT+BLEADVSTOP.
+ * see header for the documented contract */
 ra_err_t ra_da16600_ble_advertise_stop(void)
 {
   ra_err_t err = internal_require_init();
