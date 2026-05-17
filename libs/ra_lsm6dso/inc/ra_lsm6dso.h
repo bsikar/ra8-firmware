@@ -85,7 +85,7 @@ typedef enum : uint8_t {
  * @brief Default 7-bit I2C target addresses.
  *
  * @details
- * Per DS12140 sec 6.1.1 "I2C operation": the LSM6DSO 7-bit slave
+ * Per DS12140 sec 6.1.1 "I2C operation": the LSM6DSO 7-bit peripheral
  * address is ``1101 010x`` where ``x`` is the inverted SDO/SA0 pin
  * level. ``SDO/SA0 = 0`` selects ``0x6A``; ``SDO/SA0 = 1`` selects
  * ``0x6B``. The MikroE 6DOF IMU 12 Click ties SA0 high by default
@@ -247,10 +247,7 @@ typedef ra_err_t (*ra_lsm6dso_read_fn_t)(void* ctx, uint8_t reg, uint8_t* buf, u
  *
  * @return ``ra_err_t`` Error code propagated from the transport.
  */
-typedef ra_err_t (*ra_lsm6dso_write_fn_t)(void*          ctx,
-                                          uint8_t        reg,
-                                          const uint8_t* buf,
-                                          uint32_t       len);
+typedef ra_err_t (*ra_lsm6dso_write_fn_t)(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len);
 
 /**
  * @struct ra_lsm6dso_bus_t
