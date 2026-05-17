@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# hil_suite.sh -- Run the full HIL test suite for hw_validated/uart/ apps.
+# hil_suite.sh -- Run the full HIL test suite for hw_validated/hil/ apps.
 #
 # Each entry in the TESTS table below maps an app name to the UART string
 # that must appear on /dev/ttyACM0 within a timeout after flashing.
@@ -13,7 +13,7 @@
 #   bash scripts/hil_suite.sh [--uart /dev/ttyACM0]
 #
 # The hex for each app is expected at:
-#   examples/ek_ra8d2/hw_validated/uart/<app>/build/<app>.hex
+#   examples/ek_ra8d2/hw_validated/hil/<app>/build/<app>.hex
 
 set -euo pipefail
 
@@ -53,7 +53,7 @@ TESTS=(
     "threadx_filex_levelx_demo|fxlx|30"
 )
 
-UART_DIR="examples/ek_ra8d2/hw_validated/uart"
+UART_DIR="examples/ek_ra8d2/hw_validated/hil"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'

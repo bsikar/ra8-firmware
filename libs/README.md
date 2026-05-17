@@ -26,7 +26,7 @@ ra_core                     -->  (nothing in libs/)
 ```
 
 (`<app>` is any directory under `examples/` containing a `main.c`,
-e.g. `examples/ek_ra8d2/hw_validated/smoke/blink/`, `.../smoke/blink_hal/` -- see the repo-root
+e.g. `examples/ek_ra8d2/hw_validated/hil/blink/`, `.../smoke/blink_hal/` -- see the repo-root
 [README](../README.md).)
 
 `ra_core` exists specifically so `ra_hal` drivers can rely on

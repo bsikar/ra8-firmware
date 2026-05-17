@@ -807,7 +807,7 @@ ra8d2-firmware/
 
 Create a new directory `examples/<tier>/.../<newapp>/` (pick a tier
 that matches the hardware-support category -- e.g.
-`ek_ra8d2/hw_validated/smoke/`, `ek_ra8d2/hw_validated/uart/`,
+`ek_ra8d2/hw_validated/hil/`, `ek_ra8d2/hw_validated/hil/`,
 `ek_ra8d2/hw_validated/manual/`, `ek_ra8d2/hw_pending/`, or
 `_unsupported/`) containing:
 

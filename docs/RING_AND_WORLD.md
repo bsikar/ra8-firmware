@@ -116,7 +116,7 @@ Carries `cmse_nonsecure_entry` attributes; lives under `libs/ra_nsc/`
 so the linker can place it in `.gnu.sgstubs`.
 
 ```c
-/* examples/ek_ra8d2/hw_validated/smoke/blink/main.c */
+/* examples/ek_ra8d2/hw_validated/hil/blink/main.c */
 /**
  * @file main.c
  * @brief Blink-LED smoke test

@@ -21,7 +21,7 @@ Install Ozone if you want a GUI debugger:
 
 Build artifacts land in `<app-dir>/build/<app>.{elf,hex}`. For
 `make blink` the directory is
-`examples/ek_ra8d2/hw_validated/smoke/blink/`; the top-level Makefile
+`examples/ek_ra8d2/hw_validated/hil/blink/`; the top-level Makefile
 auto-discovers each app's directory so the `make <app>` shorthand works
 regardless of tier.
 

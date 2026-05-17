@@ -2,12 +2,13 @@ name: hil
 
 # Hardware-in-the-loop CI.  Runs on the Raspberry Pi 5 self-hosted runner
 # (labels: self-hosted, hil, pi5, ra8d2) that has the EK-RA8D2 board wired
-# to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud).
+# to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud), USBFS on
+# J11 -> hub port 4, USBHS on J7 -> hub port 1.
 #
-# Covers all 20 apps in examples/ek_ra8d2/hw_validated/uart/:
-#   - Build each app cross-compiled on the Pi (arm-none-eabi-gcc from apt).
-#   - Flash via JLinkExe (local, no SSH).
-#   - Assert expected UART string appears on /dev/ttyACM0 within timeout.
+# Drives scripts/hil_all.sh, which auto-discovers every app under
+# examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
+# manifest (uart_scrape, usb_cdc, or alive). Adding a new app to that
+# directory automatically pulls it into CI as soon as it has a hil.conf.
 #
 # One board, one runner: the hil-board concurrency group ensures jobs never
 # race on the attached hardware.
@@ -19,14 +20,8 @@ on:
       - 'examples/ek_ra8d2/hw_validated/**'
       - 'libs/ra_hal/**'
       - 'port/usbx/**'
-      - 'scripts/hil_run_direct.sh'
-      - 'scripts/hil_suite.sh'
-      - 'scripts/hil_usb_test.sh'
-      - 'scripts/hil_recover.sh'
-      - 'scripts/hil_flash.sh'
-      - 'scripts/hil_ppps.sh'
-      - 'scripts/hil_tapo.sh'
-      - 'scripts/usb_benchmark.py'
+      - 'scripts/hil_*.sh'
+      - 'scripts/usb_*.py'
       - '.github/workflows/hil.yml'
   pull_request:
     branches: [main]
@@ -34,14 +29,8 @@ on:
       - 'examples/ek_ra8d2/hw_validated/**'
       - 'libs/ra_hal/**'
       - 'port/usbx/**'
-      - 'scripts/hil_run_direct.sh'
-      - 'scripts/hil_suite.sh'
-      - 'scripts/hil_usb_test.sh'
-      - 'scripts/hil_recover.sh'
-      - 'scripts/hil_flash.sh'
-      - 'scripts/hil_ppps.sh'
-      - 'scripts/hil_tapo.sh'
-      - 'scripts/usb_benchmark.py'
+      - 'scripts/hil_*.sh'
+      - 'scripts/usb_*.py'
       - '.github/workflows/hil.yml'
   workflow_dispatch:
 
@@ -53,10 +42,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  hil-uart-suite:
-    name: HIL uart suite (20 apps)
+  hil-all:
+    name: HIL all (auto-discover hil/)
     runs-on: [self-hosted, hil, ra8d2]
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -71,30 +60,15 @@ jobs:
           arm-none-eabi-gcc --version
           cmake --version
 
-      - name: Build all uart apps
+      - name: List apps discovered under hil/
+        run: bash scripts/hil_all.sh --list
+
+      - name: Build every app under hil/
+        # hil_all.sh builds them itself, but doing it explicitly in a
+        # separate step gives clearer logs if a build (not a flash) fails.
         run: |
-          make -j$(nproc) \
-            uart_hello crc_demo dma_memcopy_demo i2c_loopback \
-            adc_b_demo agt_periodic elc_event_demo rng_demo \
-            iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo \
-            power_profiler lpm_idle_demo crypto_aes_demo \
-            watchdog_demo eth_loopback sdram_benchmark rtc_alarm \
-            threadx_filex_levelx_demo
+          apps=$(ls examples/ek_ra8d2/hw_validated/hil/ | grep -v README.md)
+          make -j$(nproc) $apps
 
-      - name: Run HIL uart suite
-        run: bash scripts/hil_suite.sh --uart /dev/ttyACM0
-
-  hil-usb-suite:
-    name: HIL usb suite (FS + HS echo)
-    runs-on: [self-hosted, hil, ra8d2]
-    timeout-minutes: 30
-    needs: hil-uart-suite
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build both USB apps
-        run: |
-          make -j$(nproc) tz_secure_only_usb tz_secure_only_usb_hs
-
-      - name: Run HIL USB suite
-        run: bash scripts/hil_usb_test.sh
+      - name: Run HIL across every app (auto-discovered)
+        run: bash scripts/hil_all.sh --skip-build

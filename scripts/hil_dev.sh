@@ -32,7 +32,7 @@ HIL_APPS=(
     threadx_filex_levelx_demo
 )
 
-UART_DIR="examples/ek_ra8d2/hw_validated/uart"
+UART_DIR="examples/ek_ra8d2/hw_validated/hil"
 
 echo "[hil-dev] Building ${#HIL_APPS[@]} uart apps..."
 make -j"$(nproc)" -C "$ROOT" "${HIL_APPS[@]}"
