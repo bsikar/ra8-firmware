@@ -16,20 +16,32 @@ on:
   push:
     branches: [main]
     paths:
-      - 'examples/ek_ra8d2/hw_validated/uart/**'
+      - 'examples/ek_ra8d2/hw_validated/**'
       - 'libs/ra_hal/**'
+      - 'port/usbx/**'
       - 'scripts/hil_run_direct.sh'
       - 'scripts/hil_suite.sh'
+      - 'scripts/hil_usb_test.sh'
       - 'scripts/hil_recover.sh'
+      - 'scripts/hil_flash.sh'
+      - 'scripts/hil_ppps.sh'
+      - 'scripts/hil_tapo.sh'
+      - 'scripts/usb_benchmark.py'
       - '.github/workflows/hil.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'examples/ek_ra8d2/hw_validated/uart/**'
+      - 'examples/ek_ra8d2/hw_validated/**'
       - 'libs/ra_hal/**'
+      - 'port/usbx/**'
       - 'scripts/hil_run_direct.sh'
       - 'scripts/hil_suite.sh'
+      - 'scripts/hil_usb_test.sh'
       - 'scripts/hil_recover.sh'
+      - 'scripts/hil_flash.sh'
+      - 'scripts/hil_ppps.sh'
+      - 'scripts/hil_tapo.sh'
+      - 'scripts/usb_benchmark.py'
       - '.github/workflows/hil.yml'
   workflow_dispatch:
 
@@ -69,5 +81,20 @@ jobs:
             watchdog_demo eth_loopback sdram_benchmark rtc_alarm \
             threadx_filex_levelx_demo
 
-      - name: Run HIL suite
+      - name: Run HIL uart suite
         run: bash scripts/hil_suite.sh --uart /dev/ttyACM0
+
+  hil-usb-suite:
+    name: HIL usb suite (FS + HS echo)
+    runs-on: [self-hosted, hil, ra8d2]
+    timeout-minutes: 30
+    needs: hil-uart-suite
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build both USB apps
+        run: |
+          make -j$(nproc) tz_secure_only_usb tz_secure_only_usb_hs
+
+      - name: Run HIL USB suite
+        run: bash scripts/hil_usb_test.sh
