@@ -37,8 +37,10 @@ TAPO_SCRIPT="$ROOT/scripts/tapo_control.py"
 # Run locally if we are on the Pi (self-hosted CI runner case); otherwise
 # upload + ssh to the Pi from the developer workstation.
 if [[ "$(hostname 2>/dev/null || true)" == "star" ]]; then
-    [[ -f "$ENV_FILE" ]] \
-        || { echo -e "${RED}[ERROR]${NC} $ENV_FILE not found"; exit 2; }
+    # tapo_control.py looks for .env in the repo root, then falls back to
+    # ~/.tapo.env. We just need one of them.
+    [[ -f "$ENV_FILE" || -f "${HOME}/.tapo.env" ]] \
+        || { echo -e "${RED}[ERROR]${NC} neither $ENV_FILE nor ~/.tapo.env found"; exit 2; }
     echo -e "${YELLOW}[hil_tapo]${NC} running locally: $CMD"
     (cd "$ROOT" && python3 "$TAPO_SCRIPT" "$CMD")
 else
