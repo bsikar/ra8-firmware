@@ -32,7 +32,7 @@ PI_HOST="star@star.local"
 HUB="2-1.3"
 HUB_PORT_USBHS=1
 HUB_PORT_USBFS=4
-ENUM_WAIT_S=15
+ENUM_WAIT_S=35
 PPPS_REENUM_RETRIES=3
 
 # Auto-detect if we are running on the Pi itself (so the script can serve
