@@ -15,14 +15,14 @@ Anything not grounded in the codebase is intentionally omitted.
 
 | Region        | Base         | Length on RA8D2 | Notes                                        | Code reference                          |
 |---------------|--------------|-----------------|----------------------------------------------|------------------------------------------|
-| ITCM          | `0x00000000` | 64 KiB          | Cortex-M85 instruction tightly-coupled mem   | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:11,30` |
-| MRAM (code)   | `0x02000000` | 1 MiB           | Non-volatile code + rodata + vectors + OFS   | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:9,28`  |
+| ITCM          | `0x00000000` | 64 KiB          | Cortex-M85 instruction tightly-coupled mem   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:11,30` |
+| MRAM (code)   | `0x02000000` | 1 MiB           | Non-volatile code + rodata + vectors + OFS   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:9,28`  |
 | Factory cal   | `0x02C1EDA0` | (TSN cal block) | TSN factory-calibration data window          | `libs/ra_hal/inc/ra8d2_tsn_regs.h`      |
-| DTCM          | `0x20000000` | 64 KiB          | Cortex-M85 data tightly-coupled mem          | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:12,31` |
-| SRAM (ECC)    | `0x22000000` | 2 MiB           | Main SRAM, ECC-protected, secure alias       | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:13,32` |
-| SRAM NS alias | `0x22100000` | 1 MiB           | Non-secure single-image alias of SRAM        | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:42`    |
-| MRAM NS alias | `0x02080000` | 512 KiB         | Non-secure single-image alias of MRAM        | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:41`    |
-| External SDRAM| `0x68000000` | 64 MiB on EK    | Driven by SDRAMC, EK-RA8D2 v1 populates 64MB | `examples/ek_ra8d2/hw_validated/smoke/blink/linker_script.ld:17,33` |
+| DTCM          | `0x20000000` | 64 KiB          | Cortex-M85 data tightly-coupled mem          | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:12,31` |
+| SRAM (ECC)    | `0x22000000` | 2 MiB           | Main SRAM, ECC-protected, secure alias       | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:13,32` |
+| SRAM NS alias | `0x22100000` | 1 MiB           | Non-secure single-image alias of SRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:42`    |
+| MRAM NS alias | `0x02080000` | 512 KiB         | Non-secure single-image alias of MRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:41`    |
+| External SDRAM| `0x68000000` | 64 MiB on EK    | Driven by SDRAMC, EK-RA8D2 v1 populates 64MB | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:17,33` |
 | System ctrl   | `0xE000ED90` | (MPU/SCS)       | Cortex-M85 MPU control (core MPU)            | `libs/ra_hal/inc/ra8d2_mpu_regs.h`      |
 
 Notes on the core memory layout:

@@ -36,7 +36,9 @@ TAPO_SCRIPT="$ROOT/scripts/tapo_control.py"
 
 # Run locally if we are on the Pi (self-hosted CI runner case); otherwise
 # upload + ssh to the Pi from the developer workstation.
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]]; then
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
     # tapo_control.py looks for .env in the repo root, then falls back to
     # ~/.tapo.env. We just need one of them.
     [[ -f "$ENV_FILE" || -f "${HOME}/.tapo.env" ]] \
