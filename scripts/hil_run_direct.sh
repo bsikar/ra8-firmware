@@ -4,12 +4,14 @@
 #
 # hil_run_direct.sh -- Flash a firmware .hex and verify expected UART output.
 #
-# Intended for use DIRECTLY on the HIL host (Raspberry Pi 5) where the
-# EK-RA8D2 board is physically wired.  This script has no SSH dependency --
-# it runs JLinkExe and reads the UART locally.  For the developer-workstation
-# variant that SSHes into the Pi, see scripts/hil_run.sh.
+# Auto-detects environment:
+#  * If running ON the HIL Pi (hostname == "star"), runs JLinkExe and reads
+#    /dev/ttyACM0 directly.
+#  * If running on a developer workstation, SCPs the hex to the Pi, SSHes
+#    in, and re-invokes itself there. The shape of the test (expect string,
+#    timeout) is preserved unchanged.
 #
-# Usage (run from the repo root on the Pi):
+# Usage (works from either side):
 #   scripts/hil_run_direct.sh --hex <path/to/app.hex> \
 #                             --expect <string>        \
 #                             [--baud 115200]          \
@@ -23,6 +25,7 @@
 
 set -euo pipefail
 
+PI_HOST="${PI_HOST:-star@star.local}"
 JLINK_SN="1086567198"
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 
@@ -58,7 +61,34 @@ done
 
 APP_NAME="$(basename "${HEX%.hex}")"
 LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Detect whether we're already on the Pi (matches the pattern used by
+# hil_usb_test.sh: hostname OR aarch64 + ttyACM0 present).
+LOCAL_PI=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+    LOCAL_PI=1
+fi
+
+# Off-Pi: scp the hex over, re-invoke ourselves on the Pi with --hex
+# pointing at the remote copy. This way every Pi-local step (JLinkExe,
+# /dev/ttyACM0 reads) runs natively, and the developer just sees the
+# pass/fail on stdout.
+if (( LOCAL_PI == 0 )); then
+    ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
+        || { echo -e "${RED}[HIL]${NC} cannot reach ${PI_HOST}"; exit 2; }
+    REMOTE_HEX="/tmp/$(basename "$HEX")"
+    scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
+    # If an ELF sibling exists, copy it too -- the OFS-strip path uses it.
+    if [[ -f "${HEX%.hex}.elf" ]]; then
+        scp -q "${HEX%.hex}.elf" "${PI_HOST}:${REMOTE_HEX%.hex}.elf"
+    fi
+    # Re-invoke ourselves on the Pi. Quote the expect string carefully so
+    # spaces / brackets survive the SSH transport.
+    ssh "$PI_HOST" "bash -s -- --hex '${REMOTE_HEX}' --expect $(printf '%q' "$EXPECT") --baud '${BAUD}' --timeout '${TIMEOUT_S}' --uart '${UART}'" < "$0"
+    exit $?
+fi
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
@@ -122,6 +152,33 @@ echo -e "${YELLOW}[HIL]${NC} flashing ${HEX}..."
 # silently breaks pattern matching for the next test.
 pkill -f "cat ${UART}" 2>/dev/null || true
 sleep 0.1
+# Find the J-Link OB's VCOM dynamically. After a USB-CDC test the
+# 1209:xxx device may still be enumerated and claim /dev/ttyACM0,
+# bumping J-Link's VCOM to /dev/ttyACM1 (or higher). Scan all
+# /dev/ttyACM* and pick the one whose USB descriptor is the SEGGER
+# J-Link (VID 0x1366). Also handles the J-Link briefly disappearing
+# during back-to-back flash cycles (5 s retry window).
+JLINK_VID="1366"
+JLINK_TTY=""
+for _i in 1 2 3 4 5 6 7 8 9 10; do
+    for d in /dev/ttyACM*; do
+        [ -e "$d" ] || continue
+        if udevadm info "$d" 2>/dev/null | grep -q "ID_VENDOR_ID=${JLINK_VID}"; then
+            JLINK_TTY="$d"
+            break 2
+        fi
+    done
+    sleep 0.5
+done
+if [ -z "$JLINK_TTY" ]; then
+    echo -e "${RED}[HIL]${NC} J-Link VCOM (VID ${JLINK_VID}) never enumerated under /dev/ttyACM*" >&2
+    ls /dev/ttyACM* 2>&1 >&2 || true
+    exit 1
+fi
+if [ "$JLINK_TTY" != "$UART" ]; then
+    echo -e "${YELLOW}[HIL]${NC} J-Link VCOM is ${JLINK_TTY} (default ${UART} taken by another USB device)"
+    UART="$JLINK_TTY"
+fi
 stty -F "${UART}" "${BAUD}" raw -echo
 UART_LOG="/tmp/hil_uart_${APP_NAME}.log"
 : > "${UART_LOG}"

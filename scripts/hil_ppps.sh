@@ -58,7 +58,9 @@ CMD="$1"
 PORT="${2:-2}"
 
 RUN_LOCAL=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]]; then
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
     RUN_LOCAL=1
 fi
 

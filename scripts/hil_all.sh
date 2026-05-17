@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# hil_all.sh -- run every HIL-able app under examples/ek_ra8d2/hw_validated/hil/.
+#
+# Auto-discovers: any directory under `hil/` containing both a CMakeLists.txt
+# and a `hil.conf` is picked up. Apps without a hil.conf cause the run to
+# fail (loud) so nothing slips through silently. Truly-human-only apps must
+# live under `manual/` instead.
+#
+# Per-app `hil.conf` (sourced as bash) declares HOW the app is verified.
+# Supported modes:
+#
+#   HIL_MODE=uart_scrape
+#     HIL_EXPECT="some string"     -- regex that must appear on /dev/ttyACM0
+#     HIL_TIMEOUT_S=10             -- wait window after flashing
+#
+#   HIL_MODE=usb_cdc
+#     HIL_VIDPID="1209:000c"       -- which CDC device to bind
+#     HIL_HUB_PORT=1               -- VIA Labs hub port on 2-1.3 (1=HS, 4=FS)
+#     HIL_PPPS_MODE=hard|soft      -- re-enum mechanism (hard=uhubctl, soft=authorized)
+#     HIL_MPS_CHUNK=64|512         -- bulk MPS for the correctness chunk size
+#     HIL_STREAM_BYTES=65536       -- streaming-bench payload
+#     HIL_STREAM_FLOOR_KBS=250     -- one-way throughput floor (KB/s) to pass
+#
+#   HIL_MODE=alive
+#     HIL_BOOT_S=2                 -- seconds to let the chip run before
+#                                     checking the CPU is still healthy
+#
+# Usage:
+#   bash scripts/hil_all.sh                  -- everything
+#   bash scripts/hil_all.sh --only blink     -- one app
+#   bash scripts/hil_all.sh --skip-build     -- assume binaries are built
+#   bash scripts/hil_all.sh --mode uart_scrape  -- only one mode
+#   bash scripts/hil_all.sh --list           -- enumerate apps + modes, no run
+#
+# Exit:
+#   0 = every selected app passed
+#   1 = at least one failed (or had no hil.conf)
+#   2 = usage error
+#
+# Designed to be the one entry-point for both local dev and CI.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
+PI_HOST="${PI_HOST:-star@star.local}"
+
+# When running ON the Pi itself, the lsusb/ttyACM probes and the dd target are
+# already local. When running OFF the Pi (developer workstation), the helper
+# scripts SSH out automatically -- but we still want to use the matching
+# detection here to avoid double-hops.
+LOCAL_PI=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+    LOCAL_PI=1
+fi
+pi_run()  { if (( LOCAL_PI )); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+ONLY=""
+MODE_FILTER=""
+SKIP_BUILD=0
+LIST_ONLY=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --only) ONLY="$2"; shift 2 ;;
+        --mode) MODE_FILTER="$2"; shift 2 ;;
+        --skip-build) SKIP_BUILD=1; shift ;;
+        --list) LIST_ONLY=1; shift ;;
+        -h|--help) sed -n '5,46p' "$0"; exit 0 ;;
+        *) echo "Unknown arg: $1"; exit 2 ;;
+    esac
+done
+
+# Auto-discover hil/<app>/ dirs.
+declare -a APPS=()
+while IFS= read -r d; do
+    name="$(basename "$d")"
+    [[ "$name" == "README.md" ]] && continue
+    APPS+=("$name")
+done < <(find "$HIL_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
+
+if (( ${#APPS[@]} == 0 )); then
+    echo -e "${RED}[hil_all]${NC} no apps found under ${HIL_DIR}"
+    exit 1
+fi
+
+echo -e "${CYAN}[hil_all]${NC} discovered ${#APPS[@]} apps under hil/"
+
+if (( LIST_ONLY )); then
+    printf "%-40s %s\n" "APP" "MODE"
+    for app in "${APPS[@]}"; do
+        conf="${HIL_DIR}/${app}/hil.conf"
+        if [[ -f "$conf" ]]; then
+            mode="$(grep -E '^HIL_MODE=' "$conf" | head -1 | cut -d= -f2 | tr -d '"' || true)"
+            printf "%-40s %s\n" "$app" "${mode:-(unset)}"
+        else
+            printf "%-40s %s\n" "$app" "(no hil.conf -- WILL FAIL)"
+        fi
+    done
+    exit 0
+fi
+
+# Build everything first unless told otherwise. Build failures stop the run.
+if (( SKIP_BUILD == 0 )); then
+    echo -e "${CYAN}[hil_all]${NC} building all apps under hil/"
+    declare -a build_targets=()
+    if [[ -n "$ONLY" ]]; then
+        build_targets=("$ONLY")
+    else
+        build_targets=("${APPS[@]}")
+    fi
+    cd "$REPO_ROOT"
+    # We pass everything to one `make` so the project's discovery sweeps once.
+    if ! make -k "${build_targets[@]}" >/dev/null 2>&1; then
+        echo -e "${RED}[hil_all]${NC} make failed for at least one app -- check 'make <app>' individually"
+        exit 1
+    fi
+fi
+
+# Per-app verifiers. Each takes the app name + sourced hil.conf vars and
+# returns 0 on pass, non-zero on fail. Output a one-line PASS/FAIL summary.
+
+run_uart_scrape() {
+    local app="$1"
+    bash "${REPO_ROOT}/scripts/hil_run_direct.sh" \
+        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+        --expect "${HIL_EXPECT}" \
+        --timeout "${HIL_TIMEOUT_S:-10}"
+}
+
+run_usb_cdc() {
+    local app="$1"
+    bash "${REPO_ROOT}/scripts/hil_usb_test.sh" \
+        --only-app "${app}" \
+        --vidpid "${HIL_VIDPID}" \
+        --hub-port "${HIL_HUB_PORT}" \
+        --ppps-mode "${HIL_PPPS_MODE:-hard}" \
+        --mps-chunk "${HIL_MPS_CHUNK:-512}" \
+        --stream-bytes "${HIL_STREAM_BYTES:-1048576}" \
+        --stream-floor "${HIL_STREAM_FLOOR_KBS:-2000}"
+}
+
+run_alive() {
+    local app="$1"
+    local boot_s="${HIL_BOOT_S:-2}"
+    bash "${REPO_ROOT}/scripts/hil_check_alive.sh" \
+        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+        --boot-seconds "${boot_s}"
+}
+
+declare -i pass=0 fail=0 skipped=0
+declare -a failed_apps=()
+
+for app in "${APPS[@]}"; do
+    if [[ -n "$ONLY" && "$ONLY" != "$app" ]]; then continue; fi
+
+    conf="${HIL_DIR}/${app}/hil.conf"
+    if [[ ! -f "$conf" ]]; then
+        echo -e "${RED}[hil_all]${NC} ${app}: NO hil.conf (every app under hil/ must declare a HIL mode)"
+        failed_apps+=("$app (missing hil.conf)")
+        (( fail++ )) || true
+        continue
+    fi
+
+    # Source the manifest. Reset known vars first so values from a
+    # previous app's conf cannot leak. Export them so per-mode runners
+    # invoked as subprocesses (e.g. hil_check_alive.sh) can read them.
+    unset HIL_MODE HIL_EXPECT HIL_TIMEOUT_S
+    unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
+    unset HIL_BOOT_S HIL_FAULT_EXPECTED
+    # shellcheck disable=SC1090
+    source "$conf"
+    export HIL_MODE HIL_EXPECT HIL_TIMEOUT_S \
+           HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
+           HIL_BOOT_S HIL_FAULT_EXPECTED
+
+    if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
+        (( skipped++ )) || true
+        continue
+    fi
+
+    echo
+    echo -e "${CYAN}[hil_all]${NC} =========================================="
+    echo -e "${CYAN}[hil_all]${NC} ${app} (mode=${HIL_MODE})"
+    echo -e "${CYAN}[hil_all]${NC} =========================================="
+
+    rc=0
+    case "$HIL_MODE" in
+        uart_scrape) run_uart_scrape "$app" || rc=$? ;;
+        usb_cdc)     run_usb_cdc     "$app" || rc=$? ;;
+        alive)       run_alive       "$app" || rc=$? ;;
+        *)
+            echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
+            rc=99
+            ;;
+    esac
+
+    if (( rc == 0 )); then
+        echo -e "${GREEN}[hil_all]${NC} ${app} PASS"
+        (( pass++ )) || true
+    else
+        echo -e "${RED}[hil_all]${NC} ${app} FAIL (rc=${rc})"
+        failed_apps+=("$app (mode=${HIL_MODE})")
+        (( fail++ )) || true
+    fi
+done
+
+echo
+echo "==================================================="
+echo "  hil_all: ${pass} passed, ${fail} failed, ${skipped} skipped"
+echo "==================================================="
+if (( fail > 0 )); then
+    echo "  FAILED apps:"
+    for a in "${failed_apps[@]}"; do echo "    - $a"; done
+    exit 1
+fi
+exit 0

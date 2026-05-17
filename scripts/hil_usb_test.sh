@@ -53,11 +53,26 @@ NC='\033[0m'
 
 ONLY=""
 QUICK=""
+ONLY_APP=""
+APP_VIDPID=""
+APP_HUB_PORT=""
+APP_PPPS_MODE=""
+APP_MPS_CHUNK=""
+APP_STREAM_BYTES=""
+APP_STREAM_FLOOR_KBS=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --only)  ONLY="$2"; shift 2 ;;
-        --quick) QUICK="--quick"; shift ;;
-        -h|--help) sed -n '6,28p' "$0"; exit 0 ;;
+        --only)         ONLY="$2"; shift 2 ;;
+        --quick)        QUICK="--quick"; shift ;;
+        # Per-app overrides used by scripts/hil_all.sh (one app per run).
+        --only-app)     ONLY_APP="$2"; shift 2 ;;
+        --vidpid)       APP_VIDPID="$2"; shift 2 ;;
+        --hub-port)     APP_HUB_PORT="$2"; shift 2 ;;
+        --ppps-mode)    APP_PPPS_MODE="$2"; shift 2 ;;
+        --mps-chunk)    APP_MPS_CHUNK="$2"; shift 2 ;;
+        --stream-bytes) APP_STREAM_BYTES="$2"; shift 2 ;;
+        --stream-floor) APP_STREAM_FLOOR_KBS="$2"; shift 2 ;;
+        -h|--help)      sed -n '6,28p' "$0"; exit 0 ;;
         *) echo "Unknown arg: $1"; exit 2 ;;
     esac
 done
@@ -200,20 +215,35 @@ run_one_controller() {
 
 overall=0
 
-if [[ -z "$ONLY" || "$ONLY" == "fs" ]]; then
-    # USBFS re-enumeration: hub-level PPPS (uhubctl) does not propagate
-    # cleanly through the FS PHY, so use the host-side `authorized`
-    # toggle ("soft"). MPS = 64. Streaming floor 250 KB/s (target ~360
-    # measured, 1 MB/s theoretical wire).
-    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "soft" \
-        64  65536  250 || overall=1
-fi
+# Single-app mode (driven by scripts/hil_all.sh with a per-app manifest).
+if [[ -n "$ONLY_APP" ]]; then
+    # Required args
+    : "${APP_VIDPID:?--vidpid required with --only-app}"
+    : "${APP_HUB_PORT:?--hub-port required with --only-app}"
+    APP_PPPS_MODE="${APP_PPPS_MODE:-hard}"
+    APP_MPS_CHUNK="${APP_MPS_CHUNK:-512}"
+    APP_STREAM_BYTES="${APP_STREAM_BYTES:-1048576}"
+    APP_STREAM_FLOOR_KBS="${APP_STREAM_FLOOR_KBS:-2000}"
+    # Pretty-print short controller name from VID:PID.
+    label="$ONLY_APP"
+    run_one_controller "$label" "$ONLY_APP" "$APP_VIDPID" "$APP_HUB_PORT" "$APP_PPPS_MODE" \
+        "$APP_MPS_CHUNK" "$APP_STREAM_BYTES" "$APP_STREAM_FLOOR_KBS" || overall=1
+else
+    if [[ -z "$ONLY" || "$ONLY" == "fs" ]]; then
+        # USBFS re-enumeration: hub-level PPPS (uhubctl) does not propagate
+        # cleanly through the FS PHY, so use the host-side `authorized`
+        # toggle ("soft"). MPS = 64. Streaming floor 250 KB/s (target ~360
+        # measured, 1 MB/s theoretical wire).
+        run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "soft" \
+            64  65536  250 || overall=1
+    fi
 
-if [[ -z "$ONLY" || "$ONLY" == "hs" ]]; then
-    # USBHS: hub-level PPPS (uhubctl) works fine. MPS = 512. Streaming
-    # floor 2000 KB/s (target ~2660 measured, 30 MB/s theoretical wire).
-    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "hard" \
-        512 1048576 2000 || overall=1
+    if [[ -z "$ONLY" || "$ONLY" == "hs" ]]; then
+        # USBHS: hub-level PPPS (uhubctl) works fine. MPS = 512. Streaming
+        # floor 2000 KB/s (target ~2660 measured, 30 MB/s theoretical wire).
+        run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "hard" \
+            512 1048576 2000 || overall=1
+    fi
 fi
 
 echo
