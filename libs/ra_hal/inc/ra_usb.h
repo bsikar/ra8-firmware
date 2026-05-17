@@ -646,8 +646,16 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  */
 
 /**
- * @brief Install (or detach) the shared USB event handler.
+ * @brief Install (or detach) the per-controller USB event handler.
  *
+ * @details
+ * Each controller (USBFS, USBHS) has its own callback slot, so one
+ * firmware image can run different upper-layer drivers on each
+ * controller simultaneously (e.g. USBX/DCD bridge on USBHS, a bare-CDC
+ * handler on USBFS). The matching `ra_usb_dispatch(speed)` only fires
+ * the callback registered for that speed.
+ *
+ * @param[in] speed Which controller's callback slot to update.
  * @param[in] fn Callback. NULL detaches.
  * @param[in] ctx Context passed to `fn`.
  *
@@ -656,12 +664,13 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  *
  * @pre None.
  *
- * @post Subsequent `ra_usb_dispatch` calls route through `fn`.
+ * @post Subsequent `ra_usb_dispatch(speed)` calls route through `fn`.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx);
+[[nodiscard]] ra_err_t ra_usb_attach_handler(ra_usb_speed_t speed,
+                                             ra_usb_event_fn_t fn, void* ctx);
 
 /**
  * @brief Snapshot `INTSTS0` and fire the installed event handler.

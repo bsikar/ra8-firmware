@@ -104,7 +104,13 @@ typedef enum : uint16_t {
  * loop runs in a dedicated ThreadX worker, not in NVIC context.
  */
 typedef enum : uint32_t {
-  k_ra_usb_frdy_poll_limit = 10000000UL, /**< Spin-loops before timeout. */
+  k_ra_usb_frdy_poll_limit      = 10000000UL, /**< Spin-loops before timeout. */
+  /* Short-bound FRDY poll used by queue_out's post-BCLR DBLB-second-
+   * bank check. Must be tight (we're typically on the IRQ-time
+   * drain path) but big enough to absorb the few cycles between BCLR
+   * and the FIFO pointer flipping to the other bank when DBLB is on.
+   * 256 iters x ~3 cycles == sub-microsecond at 1 GHz. */
+  k_ra_usb_dblb_frdy_poll_limit = 256UL,
 } ra_usb_internal_lim32_t;
 
 /**
@@ -1374,6 +1380,38 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/**
+ * @brief Compute the PIPEBUF word for a bulk pipe (2*MPS region).
+ *
+ * @details
+ * Statically partition the controller's internal FIFO RAM among the
+ * bulk pipes. Reserve blocks 0..7 (64-byte units) for the DCP (per
+ * FSP/Renesas examples), then pack user pipes in pipe-number order
+ * with 2*MPS per pipe so PIPECFG.DBLB has two banks.
+ *
+ *   BUFNMB  = 8 + (pipe_num - 1) * blocks_per_pipe
+ *   BUFSIZE = (2 * MPS / 64) - 1
+ *
+ *   HS MPS=512 -> blocks_per_pipe = 16, BUFSIZE = 15
+ *   FS MPS=64  -> blocks_per_pipe = 2,  BUFSIZE = 1
+ *
+ * @param[in] pipe_num   PIPE number 1..9.
+ * @param[in] max_packet Pipe MPS (bytes).
+ * @return PIPEBUF word.
+ */
+static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
+{
+  const uint16_t mps_blocks =
+    (uint16_t)(((uint32_t)max_packet + (k_ra_pipebuf_block_bytes - 1U)) /
+               k_ra_pipebuf_block_bytes);
+  const uint16_t blocks_per_pipe = (uint16_t)(mps_blocks * 2U);
+  const uint16_t bufsize_field   = (uint16_t)(blocks_per_pipe - 1U);
+  const uint16_t bufnmb_field    =
+    (uint16_t)(8U + (uint16_t)((uint16_t)(pipe_num - 1U) * blocks_per_pipe));
+  return (uint16_t)((bufsize_field << k_ra_pipebuf_bufsize_shift) |
+                    (bufnmb_field & k_ra_pipebuf_bufnmb_mask));
+}
+
 static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_usb_ep_type_t type)
 {
   uint16_t cfg = (uint16_t)((uint16_t)ep_addr & k_ra_pipecfg_epnum_mask);
@@ -1383,6 +1421,13 @@ static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_u
   if (type == k_ra_usb_ep_type_bulk) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_bulk);
     cfg = (uint16_t)(cfg | k_ra_pipecfg_shtnak);
+    /* HUM Ch 36.2.24 PIPECFG.DBLB: enable hardware double-buffering on
+     * bulk pipes. With matching PIPEBUF (2*MPS per pipe) and the
+     * DBLB-aware drain in queue_out's post-BCLR path (drains both
+     * banks before clearing BRDYSTS), the controller can have one
+     * bank on the wire while the CPU loads the other, doubling
+     * sustained throughput. */
+    cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);
   } else if (type == k_ra_usb_ep_type_intr) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_intr);
   } else {
@@ -1561,6 +1606,13 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
   reg->PIPESEL = pipe_num;
   /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 1996 */
   reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type);
+  /* HUM Ch 36.2.25 "PIPEBUF : Pipe Buffer Setting Register", p 2002.
+   * Bulk pipes get a 2*MPS region so the matching PIPECFG.DBLB has
+   * two banks of MPS bytes each. Interrupt/iso pipes keep the reset
+   * default (single bank). */
+  if (type == k_ra_usb_ep_type_bulk) {
+    reg->PIPEBUF = internal_pipebuf_word(pipe_num, max_packet);
+  }
   /* HUM Ch 36.2.26 "PIPEMAXP : Pipe Maximum Packet Size Register", p 2003 */
   reg->PIPEMAXP = max_packet;
   reg->PIPEPERI = 0U;
@@ -2193,14 +2245,21 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
   /* Fast path: BRDYSTS bit `pipe_num` is set by hardware when an OUT
    * packet has landed in this pipe's FIFO buffer. If it's clear, no
    * data is waiting -- return k_ra_err_no_data WITHOUT entering the
-   * 10ms FRDY spin (which would otherwise starve the polled-dispatch
-   * worker that calls this every iteration).
+   * 10ms FRDY spin.
    * HUM Ch 36.2.12 "BRDYSTS : BRDY Interrupt Status Register", p 1983. */
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
   if ((reg->BRDYSTS & pipe_bit) == 0U) {
     *inout_len = 0U;
     return k_ra_err_no_data;
   }
+
+  /* W0C BRDYSTS for this pipe BEFORE draining (FSP pattern, mirrors
+   * `r_usb_pinthandler_usbip0.c` order). Critical for PIPECFG.DBLB:
+   * if bank B raises a fresh BRDY edge while we are still draining
+   * bank A, the BRDYSTS bit will be re-set by hardware and survive a
+   * future read; clearing AFTER the drain would wipe that edge and
+   * lose every other packet. */
+  reg->BRDYSTS = (uint16_t)(~pipe_bit);
 
   internal_select_cfifo(reg, pipe_num, false);
   const ra_err_t ready = internal_wait_frdy(reg);
@@ -2209,17 +2268,22 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
   if (available == 0U) {
-    /* Ack BRDY for this pipe and re-arm. */
-    reg->BRDYSTS = (uint16_t)(~pipe_bit);
-    *inout_len   = 0U;
+    /* Zero-length packet (ZLP). FSP releases the bank explicitly via
+     * BCLR in this case (`r_usb_plibusbip.c` usb_pstd_read_data line
+     * 700: "0 length packet -> Clear BVAL"). For a non-zero drain the
+     * FIFO empties naturally as we read DTLN bytes; BCLR is NOT used
+     * and would confuse the bank pointer in DBLB mode. */
+    reg->CFIFOCTR = k_ra_fifoctr_bclr;
+    *inout_len    = 0U;
     return k_ra_err_no_data;
   }
   const uint16_t take = (available < *inout_len) ? available : *inout_len;
   internal_fifo_read(reg, out_buf, take);
-  *inout_len    = take;
-  reg->CFIFOCTR = k_ra_fifoctr_bclr;
-  /* Ack BRDY for this pipe (W0C: write 0 to clear). */
-  reg->BRDYSTS = (uint16_t)(~pipe_bit);
+  *inout_len = take;
+  /* No BCLR for non-zero drain (FSP semantics). The FIFO read above
+   * drained `take` bytes; the remainder (if take < available) is lost
+   * by design -- our caller passed a buffer large enough for one MPS
+   * packet, which is what one bank holds. */
   internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
   return k_ra_ok;
 }
@@ -2404,8 +2468,24 @@ ra_err_t ra_usb_control_response(ra_usb_speed_t speed, bool accept)
  * =============================================================================
  */
 
-static ra_usb_event_fn_t s_usb_fn;
-static void*             s_usb_ctx;
+/* Per-controller callbacks. Two slots so USBFS and USBHS can have
+ * independent event handlers -- this is what lets one firmware image
+ * run the DCD bridge on one controller and a different driver (e.g.
+ * bare-CDC) on the other. */
+typedef enum : uint8_t {
+  k_ra_usb_cb_slot_fs = 0U,
+  k_ra_usb_cb_slot_hs = 1U,
+  k_ra_usb_cb_slot_n  = 2U,
+} ra_usb_cb_slot_t;
+
+static ra_usb_event_fn_t s_usb_fn[k_ra_usb_cb_slot_n];
+static void*             s_usb_ctx[k_ra_usb_cb_slot_n];
+
+static uint8_t internal_cb_slot(ra_usb_speed_t speed)
+{
+  return (speed == k_ra_usb_speed_hs) ? (uint8_t)k_ra_usb_cb_slot_hs
+                                      : (uint8_t)k_ra_usb_cb_slot_fs;
+}
 
 /**
  * @brief Implementation of ra_usb_attach_handler (see header for full contract).
@@ -2421,10 +2501,11 @@ static void*             s_usb_ctx;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx)
+ra_err_t ra_usb_attach_handler(ra_usb_speed_t speed, ra_usb_event_fn_t fn, void* ctx)
 {
-  s_usb_fn  = fn;
-  s_usb_ctx = ctx;
+  const uint8_t slot = internal_cb_slot(speed);
+  s_usb_fn[slot]     = fn;
+  s_usb_ctx[slot]    = ctx;
   return k_ra_ok;
 }
 
@@ -2479,8 +2560,9 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
                                        (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
   reg->INTSTS0            = (uint16_t)~(uint16_t)(mask & ack_bits);
 
-  const ra_usb_event_fn_t fn  = s_usb_fn;
-  void* const             ctx = s_usb_ctx;
+  const uint8_t           slot = internal_cb_slot(speed);
+  const ra_usb_event_fn_t fn   = s_usb_fn[slot];
+  void* const             ctx  = s_usb_ctx[slot];
   if (fn != nullptr) {
     fn(ctx, speed, mask);
   }
