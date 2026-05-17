@@ -182,6 +182,13 @@ fi
 stty -F "${UART}" "${BAUD}" raw -echo
 UART_LOG="/tmp/hil_uart_${APP_NAME}.log"
 : > "${UART_LOG}"
+# Drain any stale bytes from the previous test that are still queued in
+# the kernel-side tty receive buffer (`stty` doesn't tcflush). Without
+# this, the new firmware's output is preceded by the previous app's
+# output and the head -20 display truncates the new bytes off-screen.
+# A short non-blocking read + discard is enough; stale buffers are
+# typically a few hundred bytes.
+dd if="${UART}" iflag=nonblock of=/dev/null count=4 bs=1024 2>/dev/null || true
 # Use setsid so the cat does not share our session/process group -- this
 # makes the cleanup pkill at end-of-script reliable regardless of exit path.
 # stdbuf -o0 disables stdout buffering so every byte received from the tty
