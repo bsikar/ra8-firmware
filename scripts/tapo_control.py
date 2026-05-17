@@ -87,8 +87,8 @@ async def main() -> None:
             print(f"{dev.alias}: turned OFF")
         elif cmd == "cycle":
             await dev.turn_off()
-            print(f"{dev.alias}: OFF -- waiting 2 s...")
-            await asyncio.sleep(2)
+            print(f"{dev.alias}: OFF -- waiting 5 s...")
+            await asyncio.sleep(5)
             await dev.turn_on()
             print(f"{dev.alias}: ON")
         else:
