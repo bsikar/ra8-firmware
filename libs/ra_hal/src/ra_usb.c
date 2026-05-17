@@ -1947,6 +1947,17 @@ static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16
  */
 ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uint16_t len)
 {
+  /* THROUGHPUT NOTE.
+   * queue_in writes ONE packet (up to MPS bytes) into the IN pipe's
+   * CFIFO bank and asserts BVAL. The hardware transmits the bank on
+   * the next IN token from the host. With PIPECFG.DBLB the pipe has
+   * two banks: queue_in can fill bank B while bank A is being TX'd,
+   * doubling sustained throughput on a fast host. Our measured
+   * ceiling (2.66 MB/s on HS) is bounded by the Linux cdc_acm read-
+   * URB completion path on the host, not by this code. See the
+   * matching note in port/usbx/ux_dcd_ra_usb.c (auto-echo block) for
+   * the full chain-of-causality + what it would take to lift the
+   * ceiling. */
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
