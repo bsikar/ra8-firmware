@@ -1735,11 +1735,10 @@ static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data,
     reg->CFIFO        = (uint16_t)(lo | (uint16_t)(hi << k_ra_usb_byte_bits));
   }
   if ((len & 1U) != 0U) {
-    /* For the trailing odd byte we must switch CFIFOSEL.MBW to 8-bit
-     * and write one byte; a 16-bit write here adds a garbage zero byte
-     * to DTLN and the host sees an overlong descriptor (EOVERFLOW /
-     * EPIPE during enumeration). Mirrors FSP hw_usb_write_fifo8 for
-     * USBFS. HUM Ch 36.2.6 CFIFOSEL.MBW p 1976. */
+    /* Trailing odd byte: switch to MBW=8 and write one byte. A 16-bit
+     * write here adds a phantom zero byte to DTLN and the host sees
+     * EOVERFLOW on every odd-length descriptor. Mirrors FSP
+     * hw_usb_write_fifo8 for USBFS. HUM Ch 36.2.6 CFIFOSEL.MBW. */
     const uint16_t          sel_save = reg->CFIFOSEL;
     const uint16_t          sel_8 =
       (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk) | k_ra_fifosel_mbw_8);
@@ -1852,11 +1851,8 @@ static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16
     data[(2U * i) + 1U] = (uint8_t)((word >> k_ra_usb_byte_bits) & k_ra_usb_byte_mask);
   }
   if ((len & 1U) != 0U) {
-    /* Trailing odd byte: switch CFIFOSEL.MBW to 8-bit so the read
-     * advances DTLN by exactly 1. A 16-bit read here pulls two bytes
-     * (the wanted byte plus a follow-on byte the IP has not yet
-     * provided), advancing DTLN by 2 and desyncing every subsequent
-     * drain. Mirrors FSP hw_usb_read_fifo8 for USBFS. */
+    /* Trailing odd byte: switch to MBW=8 and read one byte so DTLN
+     * advances by exactly 1. Mirrors FSP hw_usb_read_fifo8 for USBFS. */
     const uint16_t          sel_save = reg->CFIFOSEL;
     const uint16_t          sel_8 =
       (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk) | k_ra_fifosel_mbw_8);
