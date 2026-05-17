@@ -85,6 +85,7 @@ wait_for_enum() {
 
 run_one_controller() {
     local name="$1" app="$2" vidpid="$3" hub_port="$4" ppps_supported="${5:-yes}"
+    local mps_chunk="${6:-64}"
     local rc=0
 
     echo
@@ -114,8 +115,8 @@ run_one_controller() {
         return 1
     fi
 
-    echo -e "${YELLOW}[USB-${name}]${NC} step 4 -- run usb_benchmark.py"
-    if pi_run "python3 /tmp/usb_benchmark.py ${QUICK}"; then
+    echo -e "${YELLOW}[USB-${name}]${NC} step 4 -- run usb_benchmark.py (chunk=${mps_chunk}B)"
+    if pi_run "python3 /tmp/usb_benchmark.py ${QUICK} --throughput-chunk ${mps_chunk}"; then
         echo -e "${GREEN}[USB-${name}]${NC} benchmark PASS"
     else
         echo -e "${RED}[USB-${name}]${NC} benchmark FAIL"
@@ -151,11 +152,14 @@ if [[ -z "$ONLY" || "$ONLY" == "fs" ]]; then
     # USBFS PPPS re-enumeration on Linux is unreliable -- the device's
     # USBFS pull-up state cannot resync cleanly after a hub-side data
     # toggle. Skip that step for FS; rely on Tapo power-cycle to recover.
-    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "no"  || overall=1
+    # USBFS bulk MPS = 64.
+    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "no"  64  || overall=1
 fi
 
 if [[ -z "$ONLY" || "$ONLY" == "hs" ]]; then
-    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "yes" || overall=1
+    # USBHS bulk MPS = 512; use it for the throughput chunk so the
+    # round-trip latency does not dominate the measurement.
+    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "yes" 512 || overall=1
 fi
 
 echo
