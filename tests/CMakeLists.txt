@@ -138,6 +138,7 @@ file(GLOB_RECURSE RA_BLE_HOST_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ble_h
 file(GLOB_RECURSE RA_TLS_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tls/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
 file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src/*.c)
+file(GLOB_RECURSE RA_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_sdmmc_spi/src/*.c)
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_OTA_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ota/src/*.c)
@@ -197,6 +198,7 @@ add_library(ra_core_hal OBJECT
     ${RA_TLS_SOURCES}
     ${RA_USB_PAL_SOURCES}
     ${RA_FS_SOURCES}
+    ${RA_SDMMC_SPI_SOURCES}
     ${RA_GFX_SOURCES}
     ${RA_NSC_SOURCES}
     ${RA_OTA_SOURCES}
@@ -235,6 +237,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
+    ${FW_ROOT}/libs/ra_sdmmc_spi/inc
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
@@ -267,6 +270,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_tls/src
     ${FW_ROOT}/libs/ra_usb_pal/src
     ${FW_ROOT}/libs/ra_fs/src
+    ${FW_ROOT}/libs/ra_sdmmc_spi/src
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
     ${FW_ROOT}/libs/ra_ota/src
@@ -360,6 +364,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
+    ${FW_ROOT}/libs/ra_sdmmc_spi/inc
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
@@ -387,6 +392,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_tls/src
     ${FW_ROOT}/libs/ra_usb_pal/src
     ${FW_ROOT}/libs/ra_fs/src
+    ${FW_ROOT}/libs/ra_sdmmc_spi/src
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
     ${FW_ROOT}/libs/ra_ota/src
