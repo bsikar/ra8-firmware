@@ -28,6 +28,14 @@
 #     HIL_BOOT_S=2                 -- seconds to let the chip run before
 #                                     checking the CPU is still healthy
 #
+#   HIL_MODE=hil_eth_tcp
+#     HIL_BOARD_IP="192.168.1.42"  -- IPv4 the firmware listens at
+#     HIL_PORT=7                   -- listening TCP port
+#     HIL_PROTO=tcp                -- "tcp" (echo), "udp" (echo), or "http"
+#     HIL_PAYLOAD_BYTES=512        -- bytes to round-trip (tcp/udp only)
+#     HIL_BOOT_TIMEOUT_S=25        -- wait for "eth: ready" banner
+#     HIL_PROBE_TIMEOUT_S=10       -- wire-side probe deadline
+#
 # Usage:
 #   bash scripts/hil_all.sh                  -- everything
 #   bash scripts/hil_all.sh --only blink     -- one app
@@ -158,6 +166,18 @@ run_alive() {
         --boot-seconds "${boot_s}"
 }
 
+run_hil_eth_tcp() {
+    local app="$1"
+    bash "${REPO_ROOT}/scripts/hil_eth_tcp.sh" \
+        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+        --board-ip "${HIL_BOARD_IP}" \
+        --port "${HIL_PORT}" \
+        --proto "${HIL_PROTO:-tcp}" \
+        --payload-bytes "${HIL_PAYLOAD_BYTES:-512}" \
+        --boot-timeout "${HIL_BOOT_TIMEOUT_S:-25}" \
+        --probe-timeout "${HIL_PROBE_TIMEOUT_S:-10}"
+}
+
 declare -i pass=0 fail=0 skipped=0
 declare -a failed_apps=()
 
@@ -178,11 +198,13 @@ for app in "${APPS[@]}"; do
     unset HIL_MODE HIL_EXPECT HIL_TIMEOUT_S
     unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
     unset HIL_BOOT_S HIL_FAULT_EXPECTED
+    unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
     # shellcheck disable=SC1090
     source "$conf"
     export HIL_MODE HIL_EXPECT HIL_TIMEOUT_S \
            HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
-           HIL_BOOT_S HIL_FAULT_EXPECTED
+           HIL_BOOT_S HIL_FAULT_EXPECTED \
+           HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
 
     if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
         (( skipped++ )) || true
@@ -199,6 +221,7 @@ for app in "${APPS[@]}"; do
         uart_scrape) run_uart_scrape "$app" || rc=$? ;;
         usb_cdc)     run_usb_cdc     "$app" || rc=$? ;;
         alive)       run_alive       "$app" || rc=$? ;;
+        hil_eth_tcp) run_hil_eth_tcp "$app" || rc=$? ;;
         *)
             echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
             rc=99

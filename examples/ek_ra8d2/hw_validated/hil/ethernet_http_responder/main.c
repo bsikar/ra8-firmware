@@ -1,6 +1,6 @@
 /**
- * @file examples/ek_ra8d2/ethernet_tcp_echo/main.c
- * @brief Ethernet TCP echo responder for EK-RA8D2 (sweep-2 ra_eth ring exercise)
+ * @file examples/ek_ra8d2/ethernet_http_responder/main.c
+ * @brief Minimal HTTP/1.1 GET responder for EK-RA8D2 (HIL companion app)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -12,30 +12,27 @@
  * (locally-administered, unicast), then sits on the descriptor ring
  * popping frames and answering them by hand:
  *
- *   - RFC 826 ARP "who-has 192.168.1.42" -> ARP reply with our MAC.
- *   - RFC 791 IPv4 / RFC 792 ICMP echo request -> ICMP echo reply with
- *     payload mirrored back, type/code rewritten and checksum redone.
- *   - RFC 793 TCP, single connection at a time, listening on port 7
- *     (Echo Protocol). The state machine answers SYN with SYN-ACK,
- *     mirrors any data segment payload back as ACK + PSH, and closes
- *     gracefully on FIN with FIN-ACK -> ACK.
+ *   - RFC 826 ARP "who-has 192.168.1.44" -> ARP reply with our MAC.
+ *   - RFC 791 IPv4 / RFC 792 ICMP echo request -> ICMP echo reply.
+ *   - RFC 793 TCP on port 80, single connection at a time. After the
+ *     SYN handshake, the firmware does not parse the request -- it
+ *     just sends a canned HTTP/1.1 200 OK with a tiny ASCII body on
+ *     the first inbound segment, then closes the connection.
  *
- * No lwIP -- frame construction is byte-level by hand. Header layouts
- * are described in named typed enums (no magic numbers) and every
- * checksum is recomputed (IPv4 header, ICMP, TCP pseudo-header).
+ * The fixed response is:
  *
- * ## Ethernet pinout
+ * ``HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n
+ *   Content-Length: 21\r\n\r\nHello from RA8D2!\r\n``
  *
- * The EK-RA8D2 v1 routes the on-chip RMAC through the on-board PEF7071
- * PHY in **RGMII** mode (UM Table 26 p 33). The full sixteen-pin RGMII
- * map (ETH_TXC, ETH_TX_CTL, ETH_TXD0..3, ETH_RXC, ETH_RX_CTL,
- * ETH_RXD0..3, ETH_MDC, ETH_MDIO, plus PHY reset / interrupt / power
- * lines) is owned by ``ra_board_ethernet_init()`` so this app does not
- * touch IOPORT directly. See ``libs/ra_board_ek_ra8d2`` for the
- * authoritative pin list.
+ * The host probes this app with ``curl http://192.168.1.44/`` (or
+ * ``hil_eth_tcp.sh`` in --mode http) and asserts the response contains
+ * the marker string ``Hello from RA8D2``.
+ *
+ * Frame construction is byte-level by hand. Header layouts are named
+ * typed enums and every checksum is recomputed.
  *
  * @author Brighton Sikarskie
- * @date 2026-04-29
+ * @date 2026-05-17
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -55,43 +52,34 @@
 #include "ra_time.h"
 
 /**
- * @enum eth_tcp_echo_config_t
+ * @enum eth_http_config_t
  * @brief Top-level demo configuration constants.
- *
- * @details
- * Every numeric used by the bring-up path appears here so the magic-
- * number lint never sees a bare integer. The SCI8 channel matches the
- * on-board J-Link OB CDC bridge pins (PD_02 / PD_03).
  */
 typedef enum : uint32_t {
-  k_eth_tcp_echo_baud         = 115200U, /**< J-Link OB CDC baud.     */
-  k_eth_tcp_echo_sci_channel  = 8U,      /**< SCI8 logging channel.   */
-  k_eth_tcp_echo_link_poll_ms = 100U,    /**< PHY BMSR poll period.   */
-  k_eth_tcp_echo_idle_us      = 200U,    /**< Idle wait between RX.   */
-} eth_tcp_echo_config_t;
+  k_eth_http_baud         = 115200U,
+  k_eth_http_sci_channel  = 8U,
+  k_eth_http_link_poll_ms = 100U,
+} eth_http_config_t;
 
 /**
- * @enum eth_tcp_echo_buf_size_t
+ * @enum eth_http_buf_size_t
  * @brief Frame buffer sizing constants.
  */
 typedef enum : uint16_t {
-  k_eth_tcp_echo_frame_buf = 1536U, /**< Max raw Ethernet frame.   */
-  k_eth_tcp_echo_min_frame = 60U,   /**< 802.3 minimum (excl FCS). */
-} eth_tcp_echo_buf_size_t;
+  k_eth_http_frame_buf = 1536U, /**< Max raw Ethernet frame.   */
+  k_eth_http_min_frame = 60U,   /**< 802.3 minimum (excl FCS). */
+} eth_http_buf_size_t;
 
 /**
  * @enum eth_hdr_layout_t
- * @brief Byte offsets inside the 14-byte Ethernet II header.
- *
- * @details RFC 894 / IEEE 802.3 -- destination MAC, source MAC,
- * EtherType big-endian.
+ * @brief Byte offsets inside the 14-byte Ethernet II header (RFC 894).
  */
 typedef enum : uint8_t {
-  k_eth_off_dst_mac   = 0U,  /**< Destination MAC (6 bytes).  */
-  k_eth_off_src_mac   = 6U,  /**< Source MAC (6 bytes).       */
-  k_eth_off_ethertype = 12U, /**< EtherType (2 bytes BE).     */
-  k_eth_hdr_len       = 14U, /**< Total Ethernet II header.   */
-  k_eth_mac_len       = 6U,  /**< MAC address byte count.     */
+  k_eth_off_dst_mac   = 0U,
+  k_eth_off_src_mac   = 6U,
+  k_eth_off_ethertype = 12U,
+  k_eth_hdr_len       = 14U,
+  k_eth_mac_len       = 6U,
 } eth_hdr_layout_t;
 
 /**
@@ -99,28 +87,25 @@ typedef enum : uint8_t {
  * @brief EtherType values we recognise (RFC 7042).
  */
 typedef enum : uint16_t {
-  k_ethertype_ipv4 = 0x0800U, /**< Internet Protocol v4. */
-  k_ethertype_arp  = 0x0806U, /**< Address Resolution.   */
+  k_ethertype_ipv4 = 0x0800U,
+  k_ethertype_arp  = 0x0806U,
 } eth_ethertype_t;
 
 /**
  * @enum arp_layout_t
  * @brief Byte offsets inside an ARP-over-Ethernet packet (RFC 826).
- *
- * @details Field order: HTYPE / PTYPE / HLEN / PLEN / OPER / SHA / SPA
- * / THA / TPA. All multi-byte fields are big-endian.
  */
 typedef enum : uint8_t {
-  k_arp_off_htype   = 0U,  /**< Hardware type (Ethernet=1). */
-  k_arp_off_ptype   = 2U,  /**< Protocol type (IPv4=0x0800).*/
-  k_arp_off_hlen    = 4U,  /**< Hardware addr length (6).   */
-  k_arp_off_plen    = 5U,  /**< Protocol addr length (4).   */
-  k_arp_off_oper    = 6U,  /**< Operation (1=req, 2=reply). */
-  k_arp_off_sha     = 8U,  /**< Sender hardware addr.       */
-  k_arp_off_spa     = 14U, /**< Sender protocol addr.       */
-  k_arp_off_tha     = 18U, /**< Target hardware addr.       */
-  k_arp_off_tpa     = 24U, /**< Target protocol addr.       */
-  k_arp_payload_len = 28U, /**< Total ARP-over-Eth payload. */
+  k_arp_off_htype   = 0U,
+  k_arp_off_ptype   = 2U,
+  k_arp_off_hlen    = 4U,
+  k_arp_off_plen    = 5U,
+  k_arp_off_oper    = 6U,
+  k_arp_off_sha     = 8U,
+  k_arp_off_spa     = 14U,
+  k_arp_off_tha     = 18U,
+  k_arp_off_tpa     = 24U,
+  k_arp_payload_len = 28U,
 } arp_layout_t;
 
 /**
@@ -128,11 +113,11 @@ typedef enum : uint8_t {
  * @brief ARP fixed-field values.
  */
 typedef enum : uint16_t {
-  k_arp_htype_ether = 1U, /**< Hardware = Ethernet.     */
-  k_arp_oper_req    = 1U, /**< OPER = Request.          */
-  k_arp_oper_reply  = 2U, /**< OPER = Reply.            */
-  k_arp_hlen_eth    = 6U, /**< MAC addr length.         */
-  k_arp_plen_ipv4   = 4U, /**< IPv4 addr length.        */
+  k_arp_htype_ether = 1U,
+  k_arp_oper_req    = 1U,
+  k_arp_oper_reply  = 2U,
+  k_arp_hlen_eth    = 6U,
+  k_arp_plen_ipv4   = 4U,
 } arp_const_t;
 
 /**
@@ -140,17 +125,17 @@ typedef enum : uint16_t {
  * @brief Byte offsets inside an IPv4 header (RFC 791, no options).
  */
 typedef enum : uint8_t {
-  k_ipv4_off_ver_ihl  = 0U,  /**< Version (4 hi) | IHL (4 lo). */
-  k_ipv4_off_tos      = 1U,  /**< Type of service / DSCP.      */
-  k_ipv4_off_total    = 2U,  /**< Total length BE.             */
-  k_ipv4_off_id       = 4U,  /**< Identification BE.           */
-  k_ipv4_off_frag     = 6U,  /**< Flags + fragment offset.     */
-  k_ipv4_off_ttl      = 8U,  /**< Time to live.                */
-  k_ipv4_off_proto    = 9U,  /**< Protocol (1=ICMP, 6=TCP).    */
-  k_ipv4_off_checksum = 10U, /**< Header checksum BE.          */
-  k_ipv4_off_src_ip   = 12U, /**< Source IPv4.                 */
-  k_ipv4_off_dst_ip   = 16U, /**< Destination IPv4.            */
-  k_ipv4_hdr_len      = 20U, /**< Min IPv4 header (no opts).   */
+  k_ipv4_off_ver_ihl  = 0U,
+  k_ipv4_off_tos      = 1U,
+  k_ipv4_off_total    = 2U,
+  k_ipv4_off_id       = 4U,
+  k_ipv4_off_frag     = 6U,
+  k_ipv4_off_ttl      = 8U,
+  k_ipv4_off_proto    = 9U,
+  k_ipv4_off_checksum = 10U,
+  k_ipv4_off_src_ip   = 12U,
+  k_ipv4_off_dst_ip   = 16U,
+  k_ipv4_hdr_len      = 20U,
 } ipv4_layout_t;
 
 /**
@@ -158,12 +143,12 @@ typedef enum : uint8_t {
  * @brief IPv4 fixed-field values used by the responder.
  */
 typedef enum : uint8_t {
-  k_ipv4_ver_ihl     = 0x45U, /**< IPv4, IHL=5 (no options).   */
-  k_ipv4_tos_default = 0x00U, /**< Routine traffic.            */
-  k_ipv4_ttl_default = 64U,   /**< Default TTL per RFC 1700.   */
-  k_ipv4_proto_icmp  = 1U,    /**< ICMP (RFC 792).             */
-  k_ipv4_proto_tcp   = 6U,    /**< TCP (RFC 793).              */
-  k_ipv4_addr_len    = 4U,    /**< Octets in an IPv4 address.  */
+  k_ipv4_ver_ihl     = 0x45U,
+  k_ipv4_tos_default = 0x00U,
+  k_ipv4_ttl_default = 64U,
+  k_ipv4_proto_icmp  = 1U,
+  k_ipv4_proto_tcp   = 6U,
+  k_ipv4_addr_len    = 4U,
 } ipv4_const_t;
 
 /**
@@ -171,12 +156,10 @@ typedef enum : uint8_t {
  * @brief Byte offsets inside the ICMP header (RFC 792).
  */
 typedef enum : uint8_t {
-  k_icmp_off_type = 0U, /**< Type field.                   */
-  k_icmp_off_code = 1U, /**< Code field.                   */
-  k_icmp_off_sum  = 2U, /**< Checksum BE over header+data. */
-  k_icmp_off_id   = 4U, /**< Identifier BE (echo).         */
-  k_icmp_off_seq  = 6U, /**< Sequence BE (echo).           */
-  k_icmp_hdr_len  = 8U, /**< Header length (incl id/seq).  */
+  k_icmp_off_type = 0U,
+  k_icmp_off_code = 1U,
+  k_icmp_off_sum  = 2U,
+  k_icmp_hdr_len  = 8U,
 } icmp_layout_t;
 
 /**
@@ -193,17 +176,17 @@ typedef enum : uint8_t {
  * @brief Byte offsets inside the TCP header (RFC 793, no options).
  */
 typedef enum : uint8_t {
-  k_tcp_off_src_port = 0U,    /**< Source port BE.        */
-  k_tcp_off_dst_port = 2U,    /**< Destination port BE.   */
-  k_tcp_off_seq      = 4U,    /**< Sequence number BE.    */
-  k_tcp_off_ack      = 8U,    /**< Acknowledgement BE.    */
-  k_tcp_off_data_off = 12U,   /**< Data offset (4 hi).    */
-  k_tcp_off_flags    = 13U,   /**< Control flags.         */
-  k_tcp_off_window   = 14U,   /**< Window size BE.        */
-  k_tcp_off_checksum = 16U,   /**< Checksum BE.           */
-  k_tcp_off_urgent   = 18U,   /**< Urgent pointer BE.     */
-  k_tcp_hdr_len      = 20U,   /**< Min TCP header.        */
-  k_tcp_data_off_5   = 0x50U, /**< 5x32-bit words = 20. */
+  k_tcp_off_src_port = 0U,
+  k_tcp_off_dst_port = 2U,
+  k_tcp_off_seq      = 4U,
+  k_tcp_off_ack      = 8U,
+  k_tcp_off_data_off = 12U,
+  k_tcp_off_flags    = 13U,
+  k_tcp_off_window   = 14U,
+  k_tcp_off_checksum = 16U,
+  k_tcp_off_urgent   = 18U,
+  k_tcp_hdr_len      = 20U,
+  k_tcp_data_off_5   = 0x50U,
 } tcp_layout_t;
 
 /**
@@ -223,9 +206,9 @@ typedef enum : uint8_t {
  * @brief TCP demo constants.
  */
 typedef enum : uint16_t {
-  k_tcp_listen_port = 7U,      /**< Echo Protocol (RFC 862).    */
+  k_tcp_listen_port = 80U,     /**< HTTP (RFC 9110).            */
   k_tcp_rx_window   = 1024U,   /**< Advertised window.          */
-  k_tcp_initial_seq = 0x1000U, /**< Our deterministic ISN.      */
+  k_tcp_initial_seq = 0x1000U, /**< Deterministic ISN.          */
 } tcp_const_t;
 
 /**
@@ -236,7 +219,7 @@ typedef enum : uint8_t {
   k_tcp_state_listen       = 0U,
   k_tcp_state_syn_received = 1U,
   k_tcp_state_established  = 2U,
-  k_tcp_state_close_wait   = 3U,
+  k_tcp_state_response_sent = 3U,
   k_tcp_state_last_ack     = 4U,
 } tcp_state_t;
 
@@ -245,53 +228,57 @@ typedef enum : uint8_t {
  * @brief Misc protocol constants (bit shifts, masks, byte indices).
  */
 typedef enum : uint32_t {
-  k_shift_byte       = 8U,      /**< 8-bit shift.                       */
-  k_shift_word       = 16U,     /**< 16-bit shift.                      */
-  k_shift_dword      = 24U,     /**< 24-bit shift.                      */
-  k_shift_nibble_hi  = 4U,      /**< High-nibble shift (data offset).   */
-  k_mask_byte        = 0xFFU,   /**< Low-byte mask.                     */
-  k_mask_word        = 0xFFFFU, /**< Low-word mask.                     */
-  k_mask_nibble_hi   = 0xF0U,   /**< High-nibble mask.                  */
-  k_idx_b0           = 0U,      /**< Byte index 0.                      */
-  k_idx_b1           = 1U,      /**< Byte index 1.                      */
-  k_idx_b2           = 2U,      /**< Byte index 2.                      */
-  k_idx_b3           = 3U,      /**< Byte index 3.                      */
-  k_idx_pseudo_zero  = 8U,      /**< TCP pseudo-header zero byte index. */
-  k_idx_pseudo_proto = 9U,      /**< TCP pseudo-header proto-byte index.*/
-  k_idx_pseudo_len   = 10U,     /**< TCP pseudo-header seg-len offset.  */
-  k_pseudo_hdr_len   = 12U,     /**< IPv4 TCP pseudo-header bytes.      */
-  k_ipv4_ver_field   = 0x40U,   /**< Version-4 nibble (top nibble).     */
-  k_step_word_bytes  = 2U,      /**< Bytes per 16-bit checksum word.    */
-  k_step_data_off    = 4U,      /**< Bytes per TCP data-offset word.    */
-  k_mask_nibble_lo   = 0x0FU,   /**< Low-nibble mask.                   */
+  k_shift_byte       = 8U,
+  k_shift_word       = 16U,
+  k_shift_dword      = 24U,
+  k_shift_nibble_hi  = 4U,
+  k_mask_byte        = 0xFFU,
+  k_mask_word        = 0xFFFFU,
+  k_mask_nibble_hi   = 0xF0U,
+  k_idx_b0           = 0U,
+  k_idx_b1           = 1U,
+  k_idx_b2           = 2U,
+  k_idx_b3           = 3U,
+  k_idx_pseudo_zero  = 8U,
+  k_idx_pseudo_proto = 9U,
+  k_idx_pseudo_len   = 10U,
+  k_pseudo_hdr_len   = 12U,
+  k_ipv4_ver_field   = 0x40U,
+  k_step_word_bytes  = 2U,
+  k_step_data_off    = 4U,
+  k_mask_nibble_lo   = 0x0FU,
 } proto_misc_t;
 
-/**
- * @brief Static demo identity: MAC, IPv4, listen port (config block).
- *
- * @details Locally-administered unicast MAC (bit 1 of first octet=1,
- * bit 0=0). IPv4 192.168.1.42 / 24, gateway 192.168.1.1 -- the gateway
- * is recorded for completeness but the responder never originates a
- * routed packet, so no ARP-for-gateway is performed.
- */
+/** @brief Static demo identity. */
 static const uint8_t k_my_mac[k_eth_mac_len]    = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
-static const uint8_t k_my_ip[k_ipv4_addr_len]   = {192U, 168U, 1U, 42U};
+static const uint8_t k_my_ip[k_ipv4_addr_len]   = {192U, 168U, 1U, 44U};
 static const uint8_t k_broadcast[k_eth_mac_len] = {0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU};
 
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
+/** @brief J-Link OB CDC pinout (SCI8 / PD02 + PD03). */
 static const ra_port_pin_t k_pin_log_txd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
 static const ra_port_pin_t k_pin_log_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /**
+ * @brief Canned HTTP/1.1 200 OK body sent on every accepted connection.
+ *
+ * @details
+ * Hand-built so total length is known at compile time. The
+ * Content-Length value must equal the length of the body that follows
+ * the blank line ("Hello from RA8D2!\r\n" = 19 bytes).
+ */
+static const char k_http_response[] =
+  "HTTP/1.1 200 OK\r\n"
+  "Content-Type: text/plain\r\n"
+  "Content-Length: 19\r\n"
+  "Connection: close\r\n"
+  "\r\n"
+  "Hello from RA8D2!\r\n";
+
+/**
  * @struct tcp_conn_t
  * @brief Single-connection TCP control block.
- *
- * @details The responder accepts exactly one TCP client at a time
- * (RFC 793 "passive open" + a tiny FSM). Sequence numbers track the
- * usual SND/RCV variables: ``snd_nxt`` is what we will put in the
- * next outgoing SEQ field, ``rcv_nxt`` is what we expect from the peer.
  */
 typedef struct {
   tcp_state_t state;                    /**< Current FSM state.             */
@@ -302,26 +289,10 @@ typedef struct {
   uint32_t    rcv_nxt;                  /**< Next expected peer SEQ.        */
 } tcp_conn_t;
 
-/**
- * @var s_conn
- * @brief The single accepted TCP connection (or LISTEN).
- *
- * @details Initialized to LISTEN; reset back to LISTEN whenever the
- * peer sends FIN / RST or a new SYN preempts the existing flow.
- */
+/** @brief The single accepted TCP connection (or LISTEN). */
 static tcp_conn_t s_conn = {.state = k_tcp_state_listen};
 
-/**
- * @brief Park the CPU forever in WFI on fatal init failure.
- *
- * @pre Called only after a fatal error in boot.
- * @pre IRQs may or may not be enabled (we do not require any state).
- *
- * @post CPU is parked; only a debugger or external reset wakes it.
- *
- * @since 0.1.0
- */
-static void eth_tcp_echo_panic_halt(void)
+static void eth_http_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -335,13 +306,11 @@ static void eth_tcp_echo_panic_halt(void)
  *
  * @pre s != nullptr.
  * @pre ra_sci_init() succeeded for the SCI8 channel.
- *
- * @post Bytes have been polled out of TXD8 (or the call silently
- *       discarded them on backpressure -- this is logging only).
+ * @post Bytes have been polled out of TXD8 (or discarded on backpressure).
  *
  * @since 0.1.0
  */
-static void eth_tcp_echo_log(const char* s)
+static void eth_http_log(const char* s)
 {
   if (s == nullptr) {
     return;
@@ -350,17 +319,18 @@ static void eth_tcp_echo_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_sci_write_polling((uint8_t)k_eth_tcp_echo_sci_channel, (const uint8_t*)s, len);
+  (void)ra_sci_write_polling((uint8_t)k_eth_http_sci_channel, (const uint8_t*)s, len);
 }
 
 /**
- * @brief Read a 16-bit big-endian word from a packet buffer.
+ * @brief Read a 16-bit big-endian word.
  *
- * @param[in] p Pointer to the high byte.
- * @return The native-order 16-bit value.
+ * @param[in] p Pointer to high byte.
+ * @return Native-order value.
  *
- * @pre p points to at least 2 readable bytes.
+ * @pre p covers >= 2 readable bytes.
  * @post No state changes.
+ *
  * @since 0.1.0
  */
 static uint16_t rd_be16(const uint8_t* p)
@@ -369,13 +339,14 @@ static uint16_t rd_be16(const uint8_t* p)
 }
 
 /**
- * @brief Read a 32-bit big-endian word from a packet buffer.
+ * @brief Read a 32-bit big-endian word.
  *
- * @param[in] p Pointer to the high byte.
- * @return The native-order 32-bit value.
+ * @param[in] p Pointer to high byte.
+ * @return Native-order value.
  *
- * @pre p points to at least 4 readable bytes.
+ * @pre p covers >= 4 readable bytes.
  * @post No state changes.
+ *
  * @since 0.1.0
  */
 static uint32_t rd_be32(const uint8_t* p)
@@ -385,13 +356,14 @@ static uint32_t rd_be32(const uint8_t* p)
 }
 
 /**
- * @brief Write a 16-bit big-endian word to a packet buffer.
+ * @brief Write a 16-bit big-endian word.
  *
- * @param[out] p Pointer to the high byte.
- * @param[in]  v Native-order 16-bit value.
+ * @param[out] p Pointer to high byte.
+ * @param[in]  v Native-order value.
  *
- * @pre p points to at least 2 writable bytes.
+ * @pre p covers >= 2 writable bytes.
  * @post Two bytes at p hold v in network byte order.
+ *
  * @since 0.1.0
  */
 static void wr_be16(uint8_t* p, uint16_t v)
@@ -401,13 +373,14 @@ static void wr_be16(uint8_t* p, uint16_t v)
 }
 
 /**
- * @brief Write a 32-bit big-endian word to a packet buffer.
+ * @brief Write a 32-bit big-endian word.
  *
- * @param[out] p Pointer to the high byte.
- * @param[in]  v Native-order 32-bit value.
+ * @param[out] p Pointer to high byte.
+ * @param[in]  v Native-order value.
  *
- * @pre p points to at least 4 writable bytes.
+ * @pre p covers >= 4 writable bytes.
  * @post Four bytes at p hold v in network byte order.
+ *
  * @since 0.1.0
  */
 static void wr_be32(uint8_t* p, uint32_t v)
@@ -428,6 +401,7 @@ static void wr_be32(uint8_t* p, uint32_t v)
  * @pre dst and src do not alias.
  * @pre Both buffers cover at least n bytes.
  * @post n bytes have been copied.
+ *
  * @since 0.1.0
  */
 static void mem_copy(uint8_t* dst, const uint8_t* src, uint16_t n)
@@ -440,16 +414,13 @@ static void mem_copy(uint8_t* dst, const uint8_t* src, uint16_t n)
 /**
  * @brief Compute an RFC 1071 internet checksum.
  *
- * @details Folds the 1's-complement sum of all 16-bit words in ``buf``
- * into a 16-bit value, then returns its 1's complement. Trailing odd
- * byte (if any) is treated as the high half of a final 16-bit word.
- *
  * @param[in] buf Bytes to checksum.
  * @param[in] len Length in bytes.
  * @return 16-bit network-byte-order ready checksum.
  *
- * @pre buf points to at least len bytes.
+ * @pre buf covers at least len bytes.
  * @post No state changes.
+ *
  * @since 0.1.0
  */
 static uint16_t inet_csum(const uint8_t* buf, uint16_t len)
@@ -472,7 +443,7 @@ static uint16_t inet_csum(const uint8_t* buf, uint16_t len)
 /**
  * @brief Build an Ethernet II header at the head of ``out``.
  *
- * @param[out] out         Destination frame buffer (>=14 bytes).
+ * @param[out] out         Destination buffer (>= 14 bytes).
  * @param[in]  dst_mac     Destination MAC.
  * @param[in]  ethertype   EtherType.
  *
@@ -492,7 +463,7 @@ static void build_eth_hdr(uint8_t* out, const uint8_t* dst_mac, uint16_t etherty
 /**
  * @brief Build an IPv4 header at offset k_eth_hdr_len in ``out``.
  *
- * @param[out] out      Frame buffer (>= 14 + 20 bytes).
+ * @param[out] out      Frame buffer.
  * @param[in]  dst_ip   Destination IPv4 address.
  * @param[in]  proto    IPv4 Protocol field.
  * @param[in]  payload_len Bytes of payload (after IPv4 header).
@@ -520,21 +491,17 @@ static void build_ipv4_hdr(uint8_t* out, const uint8_t* dst_ip, uint8_t proto, u
 }
 
 /**
- * @brief Compute the TCP checksum over the pseudo-header + segment.
- *
- * @details RFC 793 sec 3.1: 96-bit pseudo-header (src IP, dst IP, zero,
- * proto, TCP-length) prepended logically to the segment.
+ * @brief Compute the TCP pseudo-header checksum per RFC 793 sec 3.1.
  *
  * @param[in] src_ip 4-byte source IPv4.
  * @param[in] dst_ip 4-byte destination IPv4.
- * @param[in] seg    TCP header + payload bytes (in network order, with
- *                   the checksum field already zeroed).
+ * @param[in] seg    TCP header + payload (checksum field zeroed).
  * @param[in] seg_len Total segment length in bytes.
- *
  * @return 16-bit checksum to drop in the TCP header.
  *
- * @pre All pointers point to readable buffers.
+ * @pre All pointers are readable.
  * @post No state changes.
+ *
  * @since 0.1.0
  */
 static uint16_t
@@ -547,8 +514,6 @@ tcp_csum(const uint8_t* src_ip, const uint8_t* dst_ip, const uint8_t* seg, uint1
   pseudo[k_idx_pseudo_proto] = k_ipv4_proto_tcp;
   wr_be16(&pseudo[k_idx_pseudo_len], seg_len);
 
-  /* Sum pseudo-header + segment. We can't concatenate without a
-   * scratch buffer, so we sum the two regions and fold once. */
   uint32_t sum = 0U;
   for (uint8_t i = 0U; (uint8_t)(i + 1U) < k_pseudo_hdr_len; i = (uint8_t)(i + k_step_word_bytes)) {
     sum += (uint32_t)rd_be16(&pseudo[i]);
@@ -576,17 +541,17 @@ tcp_csum(const uint8_t* src_ip, const uint8_t* dst_ip, const uint8_t* seg, uint1
  * @return Error code from ::ra_eth_write.
  *
  * @pre ra_eth_open succeeded.
- * @pre frame != nullptr and len >= k_eth_tcp_echo_min_frame.
+ * @pre frame != nullptr and len >= k_eth_http_min_frame.
  * @post On success the frame has been queued on the TX ring and LED2
  *       has been toggled exactly once.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t eth_tcp_echo_tx(const uint8_t* frame, uint16_t len)
+[[nodiscard]] static ra_err_t eth_http_tx(const uint8_t* frame, uint16_t len)
 {
   uint16_t pad_len = len;
-  if (pad_len < k_eth_tcp_echo_min_frame) {
-    pad_len = k_eth_tcp_echo_min_frame;
+  if (pad_len < k_eth_http_min_frame) {
+    pad_len = k_eth_http_min_frame;
   }
   const ra_err_t err = ra_eth_write(frame, (uint32_t)pad_len);
   if (err == k_ra_ok) {
@@ -598,7 +563,7 @@ tcp_csum(const uint8_t* src_ip, const uint8_t* dst_ip, const uint8_t* seg, uint1
 /**
  * @brief Handle an incoming ARP packet -- reply if it asks for our IP.
  *
- * @param[in] frame Inbound frame (Ethernet header + ARP payload).
+ * @param[in] frame Inbound frame.
  * @param[in] len   Total frame length.
  *
  * @pre frame != nullptr.
@@ -616,14 +581,13 @@ static void handle_arp(const uint8_t* frame, uint16_t len)
   if (rd_be16(&arp[k_arp_off_oper]) != k_arp_oper_req) {
     return;
   }
-  /* Target Protocol Address must equal our IP. */
   for (uint8_t i = 0U; i < k_ipv4_addr_len; i++) {
     if (arp[k_arp_off_tpa + i] != k_my_ip[i]) {
       return;
     }
   }
 
-  eth_tcp_echo_log("ra8d2: ARP request from peer\r\n");
+  eth_http_log("ra8d2: ARP request from peer\r\n");
 
   uint8_t reply[k_eth_hdr_len + k_arp_payload_len] = {};
   build_eth_hdr(reply, &arp[k_arp_off_sha], k_ethertype_arp);
@@ -638,7 +602,7 @@ static void handle_arp(const uint8_t* frame, uint16_t len)
   mem_copy(&a[k_arp_off_tha], &arp[k_arp_off_sha], k_eth_mac_len);
   mem_copy(&a[k_arp_off_tpa], &arp[k_arp_off_spa], k_ipv4_addr_len);
 
-  (void)eth_tcp_echo_tx(reply, (uint16_t)sizeof(reply));
+  (void)eth_http_tx(reply, (uint16_t)sizeof(reply));
 }
 
 /**
@@ -646,9 +610,9 @@ static void handle_arp(const uint8_t* frame, uint16_t len)
  *
  * @param[in] frame Full inbound frame.
  * @param[in] len   Frame length.
- * @param[in] ip_total IPv4 total length field (already validated).
+ * @param[in] ip_total IPv4 total length.
  *
- * @pre frame holds Eth + IPv4 + ICMP at the standard offsets.
+ * @pre frame holds Eth + IPv4 + ICMP at standard offsets.
  * @pre len >= k_eth_hdr_len + ip_total.
  * @post On echo-request to k_my_ip an echo-reply is queued for TX.
  *
@@ -667,7 +631,7 @@ static void handle_icmp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
     return;
   }
 
-  uint8_t reply[k_eth_tcp_echo_frame_buf] = {};
+  uint8_t reply[k_eth_http_frame_buf] = {};
   build_eth_hdr(reply, &frame[k_eth_off_src_mac], k_ethertype_ipv4);
   build_ipv4_hdr(reply, &ip[k_ipv4_off_src_ip], k_ipv4_proto_icmp, icmp_len);
 
@@ -679,28 +643,54 @@ static void handle_icmp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
   wr_be16(&out_icmp[k_icmp_off_sum], inet_csum(out_icmp, icmp_len));
 
   const uint16_t total = (uint16_t)(k_eth_hdr_len + k_ipv4_hdr_len + icmp_len);
-  (void)eth_tcp_echo_tx(reply, total);
+  (void)eth_http_tx(reply, total);
+}
+
+/**
+ * @brief Compute the length of a NUL-terminated string at compile time.
+ *
+ * @details
+ * Local helper to avoid pulling in ``<string.h>``. NASA Rule 2 bound is
+ * a fixed upper limit -- the only NUL-terminated string in this TU is
+ * the canned HTTP response which is < 256 bytes.
+ *
+ * @param[in] s NUL-terminated string.
+ * @return Length in bytes, not counting the NUL.
+ *
+ * @pre s != nullptr.
+ * @pre strlen(s) < 256.
+ * @post No state changes.
+ *
+ * @since 0.1.0
+ */
+static uint16_t s_strlen(const char* s)
+{
+  uint16_t n = 0U;
+  while (n < (uint16_t)0xFFU && s[n] != '\0') {
+    n++;
+  }
+  return n;
 }
 
 /**
  * @brief Build and send a TCP segment using s_conn for addressing.
  *
- * @param[in] flags   TCP flags byte.
- * @param[in] payload Payload bytes (may be nullptr if payload_len=0).
+ * @param[in] flags       TCP flags byte.
+ * @param[in] payload     Payload bytes (may be nullptr if payload_len=0).
  * @param[in] payload_len Payload length in bytes.
  *
  * @return Error code from ::ra_eth_write.
  *
- * @pre s_conn has valid peer_mac/peer_ip/peer_port and snd_nxt/rcv_nxt.
- * @pre payload covers at least payload_len bytes if payload_len > 0.
- * @post The segment is queued on the TX descriptor ring.
+ * @pre s_conn has valid peer addressing and snd_nxt/rcv_nxt.
+ * @pre payload covers payload_len bytes when payload_len > 0.
+ * @post Segment queued on the TX descriptor ring.
  *
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t tcp_send(uint8_t flags, const uint8_t* payload, uint16_t payload_len)
 {
-  uint8_t  frame[k_eth_tcp_echo_frame_buf] = {};
-  uint16_t seg_len                         = (uint16_t)(k_tcp_hdr_len + payload_len);
+  uint8_t  frame[k_eth_http_frame_buf] = {};
+  uint16_t seg_len                     = (uint16_t)(k_tcp_hdr_len + payload_len);
 
   build_eth_hdr(frame, s_conn.peer_mac, k_ethertype_ipv4);
   build_ipv4_hdr(frame, s_conn.peer_ip, k_ipv4_proto_tcp, seg_len);
@@ -720,25 +710,22 @@ static void handle_icmp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
   }
   wr_be16(&tcp[k_tcp_off_checksum], tcp_csum(k_my_ip, s_conn.peer_ip, tcp, seg_len));
 
-  return eth_tcp_echo_tx(frame, (uint16_t)(k_eth_hdr_len + k_ipv4_hdr_len + seg_len));
+  return eth_http_tx(frame, (uint16_t)(k_eth_hdr_len + k_ipv4_hdr_len + seg_len));
 }
 
 /**
  * @struct tcp_seg_t
- * @brief Parsed TCP segment fields used by the dispatch helpers.
- *
- * @details Lifts hdr/payload pointers and decoded SEQ/ACK/flags out of
- * ::handle_tcp so each branch fits inside the NASA-rule-4 line budget.
+ * @brief Parsed TCP segment fields.
  */
 typedef struct {
-  const uint8_t* frame;       /**< Original frame pointer.       */
-  const uint8_t* ip;          /**< Pointer to IPv4 header.       */
-  const uint8_t* payload;     /**< Pointer to TCP payload bytes. */
-  uint16_t       payload_len; /**< Payload length in bytes.      */
-  uint16_t       src_port;    /**< Peer's TCP source port.       */
-  uint32_t       seq;         /**< Peer's SEQ.                   */
-  uint32_t       ack;         /**< Peer's ACK.                   */
-  uint8_t        flags;       /**< Control-flag byte.            */
+  const uint8_t* frame;
+  const uint8_t* ip;
+  const uint8_t* payload;
+  uint16_t       payload_len;
+  uint16_t       src_port;
+  uint32_t       seq;
+  uint32_t       ack;
+  uint8_t        flags;
 } tcp_seg_t;
 
 /**
@@ -748,14 +735,13 @@ typedef struct {
  *
  * @pre s_conn.state == k_tcp_state_listen.
  * @pre s != nullptr.
- * @post s_conn populated with peer addressing, SYN-ACK queued.
- * @post s_conn.snd_nxt advanced past the synthetic SYN byte.
+ * @post s_conn populated; SYN-ACK queued; snd_nxt advanced past the SYN.
  *
  * @since 0.1.0
  */
 static void tcp_on_syn(const tcp_seg_t* s)
 {
-  eth_tcp_echo_log("ra8d2: TCP connection from peer\r\n");
+  eth_http_log("ra8d2: HTTP connection from peer\r\n");
   mem_copy(s_conn.peer_mac, &s->frame[k_eth_off_src_mac], k_eth_mac_len);
   mem_copy(s_conn.peer_ip, &s->ip[k_ipv4_off_src_ip], k_ipv4_addr_len);
   s_conn.peer_port = s->src_port;
@@ -767,22 +753,31 @@ static void tcp_on_syn(const tcp_seg_t* s)
 }
 
 /**
- * @brief Echo data on an ESTABLISHED connection.
+ * @brief Send the canned HTTP response then queue our FIN.
  *
- * @param[in] s Parsed segment with payload_len > 0.
+ * @param[in] s Parsed segment that delivered the request bytes.
  *
  * @pre s_conn.state == k_tcp_state_established.
  * @pre s->payload covers s->payload_len readable bytes.
- * @post Payload echoed, snd_nxt and rcv_nxt advanced.
+ * @post Response sent; FIN queued; state advanced to RESPONSE_SENT.
  *
  * @since 0.1.0
  */
 static void tcp_on_data(const tcp_seg_t* s)
 {
   s_conn.rcv_nxt = s->seq + (uint32_t)s->payload_len;
-  (void)tcp_send((uint8_t)(k_tcp_flag_ack | k_tcp_flag_psh), s->payload, s->payload_len);
-  s_conn.snd_nxt += (uint32_t)s->payload_len;
-  eth_tcp_echo_log("ra8d2: echoed bytes\r\n");
+
+  const uint16_t resp_len = s_strlen(k_http_response);
+  (void)tcp_send((uint8_t)(k_tcp_flag_ack | k_tcp_flag_psh),
+                 (const uint8_t*)k_http_response,
+                 resp_len);
+  s_conn.snd_nxt += (uint32_t)resp_len;
+
+  /* Immediately queue our FIN -- we are server-side close. */
+  (void)tcp_send((uint8_t)(k_tcp_flag_ack | k_tcp_flag_fin), nullptr, 0U);
+  s_conn.snd_nxt += 1U;
+  s_conn.state = k_tcp_state_response_sent;
+  eth_http_log("ra8d2: HTTP 200 sent\r\n");
 }
 
 /**
@@ -790,18 +785,24 @@ static void tcp_on_data(const tcp_seg_t* s)
  *
  * @param[in] s Parsed segment.
  *
- * @pre s_conn.state in {ESTABLISHED, SYN-RECEIVED}.
- * @post s_conn.state == k_tcp_state_last_ack.
- * @post FIN-ACK queued, snd_nxt advanced past the synthetic FIN byte.
+ * @pre s_conn.state != k_tcp_state_listen.
+ * @post s_conn.state == k_tcp_state_last_ack on a fresh FIN; otherwise
+ *       reset to LISTEN.
  *
  * @since 0.1.0
  */
 static void tcp_on_fin(const tcp_seg_t* s)
 {
   s_conn.rcv_nxt = s->seq + (uint32_t)s->payload_len + 1U;
-  s_conn.state   = k_tcp_state_last_ack;
-  (void)tcp_send((uint8_t)(k_tcp_flag_ack | k_tcp_flag_fin), nullptr, 0U);
-  s_conn.snd_nxt += 1U;
+  /* If we have not yet sent our FIN, queue one now; otherwise this is
+   * the peer ACKing both FINs and we can return to LISTEN. */
+  if (s_conn.state == k_tcp_state_response_sent) {
+    s_conn.state = k_tcp_state_last_ack;
+  } else {
+    (void)tcp_send((uint8_t)(k_tcp_flag_ack | k_tcp_flag_fin), nullptr, 0U);
+    s_conn.snd_nxt += 1U;
+    s_conn.state = k_tcp_state_last_ack;
+  }
 }
 
 /**
@@ -809,8 +810,10 @@ static void tcp_on_fin(const tcp_seg_t* s)
  *
  * @param[in] s Parsed segment.
  *
- * @pre s != nullptr and s->frame/ip/payload reference valid bytes.
- * @post s_conn.state advances per the RFC 793 subset.
+ * @pre s != nullptr.
+ * @post s_conn.state advances per the RFC 793 subset:
+ *         LISTEN -> SYN-RECEIVED -> ESTABLISHED -> RESPONSE_SENT ->
+ *         LAST-ACK -> LISTEN.
  *
  * @since 0.1.0
  */
@@ -830,8 +833,8 @@ static void tcp_step_fsm(const tcp_seg_t* s)
   if (s_conn.state == k_tcp_state_established && s->payload_len > 0U) {
     tcp_on_data(s);
   }
-  if ((s->flags & k_tcp_flag_fin) != 0U &&
-      (s_conn.state == k_tcp_state_established || s_conn.state == k_tcp_state_syn_received)) {
+  if ((s->flags & k_tcp_flag_fin) != 0U && s_conn.state != k_tcp_state_listen &&
+      s_conn.state != k_tcp_state_last_ack) {
     tcp_on_fin(s);
     return;
   }
@@ -848,11 +851,9 @@ static void tcp_step_fsm(const tcp_seg_t* s)
  * @param[in] len      Frame length.
  * @param[in] ip_total IPv4 total length field.
  *
- * @pre frame holds Eth + IPv4 + TCP at the standard offsets.
+ * @pre frame holds Eth + IPv4 + TCP at standard offsets.
  * @pre ip_total >= k_ipv4_hdr_len + k_tcp_hdr_len.
- * @post s_conn.state advances per the RFC 793 subset:
- *         LISTEN -> SYN-RECEIVED -> ESTABLISHED -> CLOSE-WAIT ->
- *         LAST-ACK -> LISTEN.
+ * @post s_conn.state advances per the RFC 793 subset.
  *
  * @since 0.1.0
  */
@@ -921,7 +922,6 @@ static void handle_frame(const uint8_t* frame, uint16_t len)
   if ((ip[k_ipv4_off_ver_ihl] & (uint8_t)k_mask_nibble_hi) != (uint8_t)k_ipv4_ver_field) {
     return;
   }
-  /* Drop frames not addressed to us (tolerate broadcast for ARP only). */
   for (uint8_t i = 0U; i < k_ipv4_addr_len; i++) {
     if (ip[k_ipv4_off_dst_ip + i] != k_my_ip[i]) {
       return;
@@ -941,64 +941,56 @@ static void handle_frame(const uint8_t* frame, uint16_t len)
 }
 
 /**
- * @brief Bring the chip up: CGC, time, GPIO, SCI8, RMII pins, NIC.
- *
- * @details Panic-halts on any failure -- there is no graceful retry.
+ * @brief Bring the chip up: CGC, time, GPIO, SCI8, RGMII pins, NIC.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
- * @post All HAL modules required by the echo loop are running.
+ * @post All HAL modules required by the responder are running.
  *
  * @since 0.1.0
  */
-static void eth_tcp_echo_setup_or_halt(void)
+static void eth_http_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
 
-  /* SCI8 logging on PD_02 / PD_03 (J-Link OB CDC bridge). Pins are
-   * file-scope above so the symbolic analyser sees them as immutable
-   * compile-time constants and skips the enum-range warning. */
-  if (ra_pfs_route_peripheral(k_pin_log_txd, k_ra_psel_sci_async, "eth_tcp_echo.log_tx") !=
-      k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+  if (ra_pfs_route_peripheral(k_pin_log_txd, k_ra_psel_sci_async, "eth_http.log_tx") != k_ra_ok) {
+    eth_http_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_pin_log_rxd, k_ra_psel_sci_async, "eth_tcp_echo.log_rx") !=
-      k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+  if (ra_pfs_route_peripheral(k_pin_log_rxd, k_ra_psel_sci_async, "eth_http.log_rx") != k_ra_ok) {
+    eth_http_panic_halt();
   }
   const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_eth_tcp_echo_baud,
+    .baud      = k_eth_http_baud,
     .data_bits = k_ra_sci_data_8,
     .parity    = k_ra_sci_parity_none,
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = pclka_hz,
   };
-  if (ra_sci_init((uint8_t)k_eth_tcp_echo_sci_channel, &sci_cfg) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+  if (ra_sci_init((uint8_t)k_eth_http_sci_channel, &sci_cfg) != k_ra_ok) {
+    eth_http_panic_halt();
   }
 
-  /* RGMII pinmux per EK-RA8D2 v1 UM Table 26 p 33. */
   if (ra_board_ethernet_init() != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
 
   const ra_eth_cfg_t eth_cfg = {
@@ -1009,31 +1001,28 @@ static void eth_tcp_echo_setup_or_halt(void)
     .buffer_size        = 0U,
   };
   if (ra_eth_open(&eth_cfg) != k_ra_ok) {
-    eth_tcp_echo_panic_halt();
+    eth_http_panic_halt();
   }
 }
 
 /**
  * @brief Block until the PHY reports link-up via BMSR.
  *
- * @details Polls ::ra_eth_link_status every k_eth_tcp_echo_link_poll_ms
- * milliseconds until ``link_up == 1``. Logs once on first success.
- *
  * @pre ra_eth_open succeeded.
- * @post On return, the PHY has reported link-up at least once.
+ * @post On return, PHY reports link-up at least once.
  *
  * @since 0.1.0
  */
-static void eth_tcp_echo_wait_link(void)
+static void eth_http_wait_link(void)
 {
   while (1) {
     ra_eth_link_t  st  = {};
     const ra_err_t err = ra_eth_link_status(&st);
     if (err == k_ra_ok && st.link_up != 0U) {
-      eth_tcp_echo_log("ra8d2: link up\r\n");
+      eth_http_log("ra8d2: link up\r\n");
       return;
     }
-    ra_delay_ms(k_eth_tcp_echo_link_poll_ms);
+    ra_delay_ms(k_eth_http_link_poll_ms);
   }
 }
 
@@ -1053,31 +1042,28 @@ static void eth_tcp_echo_wait_link(void)
  */
 int32_t main(void)
 {
-  /* Suppress "address never null" by leaning on the broadcast constant. */
   (void)k_broadcast;
 
-  eth_tcp_echo_setup_or_halt();
+  eth_http_setup_or_halt();
   ra_isr_globals_enable();
-  eth_tcp_echo_wait_link();
+  eth_http_wait_link();
 
-  /* HIL probe banner -- parsed by scripts/hil_eth_tcp.sh after flashing
-   * to discover the static IPv4 address the firmware will respond at,
-   * plus an explicit "ready" mark so the host knows to start probing. */
-  eth_tcp_echo_log("eth: ip=192.168.1.42 port=7 proto=tcp\r\n");
-  eth_tcp_echo_log("eth: ready\r\n");
+  /* HIL probe banner. */
+  eth_http_log("eth: ip=192.168.1.44 port=80 proto=http\r\n");
+  eth_http_log("eth: ready\r\n");
 
-  uint8_t rx_frame[k_eth_tcp_echo_frame_buf] = {};
+  uint8_t rx_frame[k_eth_http_frame_buf] = {};
   while (1) {
     uint32_t       rx_len = 0U;
-    const ra_err_t err    = ra_eth_read(rx_frame, (uint32_t)k_eth_tcp_echo_frame_buf, &rx_len);
+    const ra_err_t err    = ra_eth_read(rx_frame, (uint32_t)k_eth_http_frame_buf, &rx_len);
     if (err == k_ra_ok && rx_len > 0U) {
       handle_frame(rx_frame, (uint16_t)rx_len);
     } else {
-      ra_delay_ms(0U); /* Cooperative yield placeholder. */
+      ra_delay_ms(0U);
     }
   }
 
-  eth_tcp_echo_panic_halt();
+  eth_http_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop
