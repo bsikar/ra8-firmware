@@ -438,16 +438,16 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   /**
-   * Device-mode event mask: BRDY | BEMP | CTRT | DVST | VBSE.
-   * Equals 0x9D00 (BRDY=0x100, BEMP=0x400, CTRT=0x800, DVST=0x1000,
-   * VBSE=0x8000). SOFR, NRDY, and RSME are intentionally omitted --
-   * SOFR fires every 125us on HS, NRDY fires for every host token
-   * to a NAK'd pipe, and RSME stays asserted while the host holds
-   * resume signalling; together they starve PendSV.
+   * Device-mode event mask: BRDY | NRDY | BEMP | CTRT | DVST | VBSE.
+   * Equals 0x9F00. SOFR and RSME are intentionally omitted -- SOFR
+   * fires every 125us on HS, and RSME on USBHS stays asserted while
+   * the host holds resume signalling (PHY USBR signal); together
+   * they starve PendSV. NRDY drives per-pipe NAK re-arm and does
+   * not cause a storm on its own.
    * Used by the watchdog thread in tz_secure_only_usb_hs to re-arm
    * INTENB0 if a USB Reset clears it.
    */
-  k_ra_int0_full_mask = 0x9D00U,
+  k_ra_int0_full_mask = 0x9F00U,
 } ra_usb_intenb0_mask_t;
 
 /**

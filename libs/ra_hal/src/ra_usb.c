@@ -926,18 +926,17 @@ static void internal_usb_init_common(volatile r_usb_regs_t* reg)
    * CTRT, DVST, SOFR, RSME, VBSE. Enabling SOFR + RSME is required for
    * HS so the IP latches resume / SOF events in INTSTS0; without RSME
    * a host wake from suspend leaves the device asleep. */
-  /* SOFR, NRDY, and RSME are intentionally NOT enabled here:
+  /* SOFR and RSME are intentionally NOT enabled here:
    *   - SOFR fires every 125us on HS (= 8 kHz);
-   *   - NRDY fires for every host token sent to a NAK'd pipe;
-   *   - RSME stays asserted while the host holds the bus in resume
-   *     signalling and re-fires the ISR every microframe.
-   * Together they starve PendSV and the demo worker thread never
-   * gets scheduled. We rely on BRDY/BEMP/CTRT/DVST for the actual
-   * chapter-9 and bulk transfer flows; RSME / SOFR / NRDY values are
-   * still readable from INTSTS0 for poll-style drivers. */
+   *   - RSME stays asserted on USBHS via the PHY's USBR signal
+   *     while the host holds the bus in resume signalling;
+   * Both starve PendSV and the demo worker thread never gets
+   * scheduled. NRDY is still useful (drives the bridge's per-pipe
+   * NAK re-arm) and does not cause a storm on its own. RSME / SOFR
+   * status is still readable from INTSTS0 for poll-style drivers. */
   reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
-                            (1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |
-                            (1U << k_ra_int0_bit_vbse));
+                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
   reg->INTENB1 = 0U;
   reg->BRDYENB = 0U;
   reg->NRDYENB = 0U;
@@ -1339,18 +1338,17 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
    * bus reset (notably CTRT). Re-apply the post-init mask defensively
    * so the next SETUP raises CTRT as expected. Mirrors the mask in
    * internal_usb_init_common. */
-  /* SOFR, NRDY, and RSME are intentionally NOT enabled here:
+  /* SOFR and RSME are intentionally NOT enabled here:
    *   - SOFR fires every 125us on HS (= 8 kHz);
-   *   - NRDY fires for every host token sent to a NAK'd pipe;
-   *   - RSME stays asserted while the host holds the bus in resume
-   *     signalling and re-fires the ISR every microframe.
-   * Together they starve PendSV and the demo worker thread never
-   * gets scheduled. We rely on BRDY/BEMP/CTRT/DVST for the actual
-   * chapter-9 and bulk transfer flows; RSME / SOFR / NRDY values are
-   * still readable from INTSTS0 for poll-style drivers. */
+   *   - RSME stays asserted on USBHS via the PHY's USBR signal
+   *     while the host holds the bus in resume signalling;
+   * Both starve PendSV and the demo worker thread never gets
+   * scheduled. NRDY is still useful (drives the bridge's per-pipe
+   * NAK re-arm) and does not cause a storm on its own. RSME / SOFR
+   * status is still readable from INTSTS0 for poll-style drivers. */
   reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
-                            (1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |
-                            (1U << k_ra_int0_bit_vbse));
+                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
 
   return k_ra_ok;
 }
