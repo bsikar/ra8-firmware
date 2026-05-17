@@ -188,6 +188,7 @@ file(GLOB_RECURSE RA_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_psa
 file(GLOB_RECURSE RA_WDT_SUPERVISOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_wdt_supervisor/src/*.c)
 file(GLOB_RECURSE RA_MPU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_mpu/src/*.c)
 file(GLOB_RECURSE RA_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
+file(GLOB_RECURSE RA_LSM6DSO_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_lsm6dso/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
@@ -217,6 +218,7 @@ add_library(ra_core_hal OBJECT
     ${RA_PSA_CRYPTO_SOURCES}
     ${RA_WDT_SUPERVISOR_SOURCES}
     ${RA_BOARD_EK_RA8D2_SOURCES}
+    ${RA_LSM6DSO_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -254,6 +256,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_psa_crypto/inc
     ${FW_ROOT}/libs/ra_wdt_supervisor/inc
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc
+    ${FW_ROOT}/libs/ra_lsm6dso/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -285,6 +288,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_psa_crypto/src
     ${FW_ROOT}/libs/ra_wdt_supervisor/src
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
+    ${FW_ROOT}/libs/ra_lsm6dso/src
     ${FW_ROOT}/libs/ra_epub/src
     ${FW_ROOT}/libs/ra_reflow/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
@@ -383,6 +387,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_psa_crypto/inc
     ${FW_ROOT}/libs/ra_wdt_supervisor/inc
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc
+    ${FW_ROOT}/libs/ra_lsm6dso/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -409,6 +414,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_psa_crypto/src
     ${FW_ROOT}/libs/ra_wdt_supervisor/src
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
+    ${FW_ROOT}/libs/ra_lsm6dso/src
     ${FW_ROOT}/libs/ra_epub/src
     ${FW_ROOT}/libs/ra_reflow/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
