@@ -79,23 +79,31 @@ else
         || cp "$HEX" "$STRIPPED_HEX"
 fi
 
-# ---- 2. Check Pi reachable ---------------------------------------------------
-ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
-    || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+# Detect if we are already on the Pi (CI self-hosted runner case).
+RUN_LOCAL=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]]; then
+    RUN_LOCAL=1
+fi
 
-# ---- 3. Copy hex to Pi -------------------------------------------------------
-echo -e "${YELLOW}[hil_flash]${NC} uploading hex..."
 REMOTE_HEX="/tmp/hil_${APP}_mram.hex"
-scp -q "$STRIPPED_HEX" "${PI_HOST}:${REMOTE_HEX}"
+LOG="/tmp/hil_jlink_${APP}.log"
 
-# ---- 4. Flash via J-Link on Pi -----------------------------------------------
+if (( RUN_LOCAL == 0 )); then
+    # ---- 2. Check Pi reachable -----------------------------------------------
+    ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
+        || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+
+    # ---- 3. Copy hex to Pi ---------------------------------------------------
+    echo -e "${YELLOW}[hil_flash]${NC} uploading hex..."
+    scp -q "$STRIPPED_HEX" "${PI_HOST}:${REMOTE_HEX}"
+else
+    cp "$STRIPPED_HEX" "$REMOTE_HEX"
+fi
+
+# ---- 4. Flash via J-Link (local on Pi, or via SSH) ---------------------------
 echo -e "${YELLOW}[hil_flash]${NC} flashing..."
-ssh "$PI_HOST" bash <<REMOTE
-set -euo pipefail
-TMP=\$(mktemp)
-LOG=/tmp/hil_jlink_${APP}.log
-trap 'rm -f "\$TMP"' EXIT
-cat > "\$TMP" <<JLINK
+flash_cmds() {
+    cat <<EOF
 device ${JLINK_DEVICE}
 si SWD
 speed 1000
@@ -105,6 +113,43 @@ loadfile ${REMOTE_HEX}
 r
 g
 q
+EOF
+}
+post_check() {
+    local log="$1"
+    VTREF=$(grep -oP 'VTref=\K[0-9.]+V' "$log" | head -1 || echo "unknown")
+    echo "    VTref : ${VTREF}"
+    echo "    log   : ${log}"
+    if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "$log"; then
+        echo "---- J-Link log (errors detected) ----" >&2
+        grep -iE "^Error|Warning|could not|failed|O\.K\.|VTref|Cortex|DAP|AP\[|loadfile|Downloading" \
+            "$log" >&2 || cat "$log" >&2
+        echo "---------------------------------------" >&2
+        return 1
+    fi
+    if ! grep -q "O\.K\." "$log"; then
+        echo "---- J-Link log (no O.K. confirm) ----" >&2
+        cat "$log" >&2
+        echo "---------------------------------------" >&2
+        return 1
+    fi
+    return 0
+}
+
+if (( RUN_LOCAL )); then
+    TMP=$(mktemp)
+    trap 'rm -f "$TMP"' EXIT
+    flash_cmds > "$TMP"
+    JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP" > "$LOG" 2>&1
+    post_check "$LOG" || exit 1
+else
+    ssh "$PI_HOST" bash <<REMOTE
+set -euo pipefail
+TMP=\$(mktemp)
+LOG="${LOG}"
+trap 'rm -f "\$TMP"' EXIT
+cat > "\$TMP" <<JLINK
+$(flash_cmds)
 JLINK
 JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" > "\$LOG" 2>&1
 VTREF=\$(grep -oP 'VTref=\K[0-9.]+V' "\$LOG" | head -1 || echo "unknown")
@@ -125,5 +170,6 @@ if ! grep -q "O\.K\." "\$LOG"; then
     exit 1
 fi
 REMOTE
+fi
 
 echo -e "${GREEN}[hil_flash DONE]${NC} ${APP} is running on the board"

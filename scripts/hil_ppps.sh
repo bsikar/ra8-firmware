@@ -38,24 +38,40 @@ NC='\033[0m'
 CMD="$1"
 PORT="${2:-2}"
 
-ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
-    || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+# Detect whether we are running on the Pi already (CI runner) so we skip SSH.
+RUN_LOCAL=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]]; then
+    RUN_LOCAL=1
+fi
+
+if (( RUN_LOCAL == 0 )); then
+    ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
+        || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+fi
+
+run_uhubctl() {
+    if (( RUN_LOCAL )); then
+        sudo -n uhubctl -l "${HUB}" -p "${PORT}" -a "$1" 2>&1
+    else
+        ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a $1" 2>&1
+    fi
+}
 
 case "$CMD" in
     off)
         echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF"
-        ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a off" 2>&1
+        run_uhubctl off
         ;;
     on)
         echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON"
-        ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a on" 2>&1
+        run_uhubctl on
         ;;
     cycle)
         echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF"
-        ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a off" 2>&1
+        run_uhubctl off
         sleep 1
         echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON"
-        ssh "$PI_HOST" "sudo -n uhubctl -l ${HUB} -p ${PORT} -a on" 2>&1
+        run_uhubctl on
         ;;
     *)
         echo "Usage: $0 <off|on|cycle> [port]"; exit 2

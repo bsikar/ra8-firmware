@@ -35,6 +35,16 @@ HUB_PORT_USBFS=4
 ENUM_WAIT_S=15
 PPPS_REENUM_RETRIES=3
 
+# Auto-detect if we are running on the Pi itself (so the script can serve
+# as the body of a self-hosted CI job without SSH'ing to itself).
+LOCAL_PI=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+    LOCAL_PI=1
+fi
+# Wrappers: run something on the Pi (locally if we ARE the Pi, else via SSH).
+pi_run()  { if (( LOCAL_PI )); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
+pi_cp()   { if (( LOCAL_PI )); then cp "$1" "$2"; else scp -q "$1" "${PI_HOST}:${2}"; fi; }
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -52,17 +62,19 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
-    || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+if (( LOCAL_PI == 0 )); then
+    ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
+        || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+fi
 
 # Make sure the Pi has the latest copy of usb_benchmark.py.
-scp -q scripts/usb_benchmark.py "${PI_HOST}:/tmp/usb_benchmark.py"
+pi_cp scripts/usb_benchmark.py /tmp/usb_benchmark.py
 
 # Wait until lsusb reports the given VID:PID on the right hub port.
 wait_for_enum() {
     local vidpid="$1" port="$2" timeout="${3:-$ENUM_WAIT_S}" t=0
     while (( t < timeout )); do
-        if ssh "$PI_HOST" "lsusb 2>/dev/null | grep -q '${vidpid}'" 2>/dev/null; then
+        if pi_run "lsusb 2>/dev/null | grep -q '${vidpid}'" 2>/dev/null; then
             return 0
         fi
         sleep 1
@@ -103,7 +115,7 @@ run_one_controller() {
     fi
 
     echo -e "${YELLOW}[USB-${name}]${NC} step 4 -- run usb_benchmark.py"
-    if ssh "$PI_HOST" "python3 /tmp/usb_benchmark.py ${QUICK}"; then
+    if pi_run "python3 /tmp/usb_benchmark.py ${QUICK}"; then
         echo -e "${GREEN}[USB-${name}]${NC} benchmark PASS"
     else
         echo -e "${RED}[USB-${name}]${NC} benchmark FAIL"
