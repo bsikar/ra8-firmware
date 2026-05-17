@@ -287,9 +287,9 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
 static UX_SLAVE_CLASS_CDC_ACM* volatile s_cdc_acm = UX_NULL;
 
 /* JLink-readable counters: how many times activate / deactivate ran. */
-volatile uint32_t s_cdc_activate_count   = 0U;
-volatile uint32_t s_cdc_activate_post_put = 0U;
-volatile uint32_t s_cdc_deactivate_count = 0U;
+volatile uint32_t s_cdc_activate_count        = 0U;
+volatile uint32_t s_cdc_activate_post_put     = 0U;
+volatile uint32_t s_cdc_deactivate_count      = 0U;
 volatile uint32_t s_pendsv_observed_run_count = 0U;
 
 /**

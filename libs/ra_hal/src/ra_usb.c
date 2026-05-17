@@ -104,7 +104,7 @@ typedef enum : uint16_t {
  * loop runs in a dedicated ThreadX worker, not in NVIC context.
  */
 typedef enum : uint32_t {
-  k_ra_usb_frdy_poll_limit      = 10000000UL, /**< Spin-loops before timeout. */
+  k_ra_usb_frdy_poll_limit = 10000000UL, /**< Spin-loops before timeout. */
   /* Short-bound FRDY poll used by queue_out's post-BCLR DBLB-second-
    * bank check. Must be tight (we're typically on the IRQ-time
    * drain path) but big enough to absorb the few cycles between BCLR
@@ -1397,21 +1397,56 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
  *
  * @param[in] pipe_num   PIPE number 1..9.
  * @param[in] max_packet Pipe MPS (bytes).
- * @return PIPEBUF word.
+ *
+ * @return PIPEBUF word ready to be written to register ``PIPEBUF``.
+ * @retval 0..0xFFFF Packed BUFNMB/BUFSIZE word (no error condition; the
+ *                   helper is total over its enum-checked inputs).
+ *
+ * @pre ``pipe_num`` is in the 1..9 range (caller-checked).
+ * @pre ``max_packet`` is the pipe's MPS (caller validated <= 1024).
+ * @post No global state is touched; the helper is pure.
+ * @post Returned word satisfies HUM Ch 36.2.25 PIPEBUF layout.
+ *
+ * @note Pure / thread-safe.
+ * @since 0.1.0
  */
 static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
 {
   const uint16_t mps_blocks =
-    (uint16_t)(((uint32_t)max_packet + (k_ra_pipebuf_block_bytes - 1U)) /
-               k_ra_pipebuf_block_bytes);
+    (uint16_t)(((uint32_t)max_packet + (k_ra_pipebuf_block_bytes - 1U)) / k_ra_pipebuf_block_bytes);
   const uint16_t blocks_per_pipe = (uint16_t)(mps_blocks * 2U);
   const uint16_t bufsize_field   = (uint16_t)(blocks_per_pipe - 1U);
-  const uint16_t bufnmb_field    =
+  const uint16_t bufnmb_field =
     (uint16_t)(8U + (uint16_t)((uint16_t)(pipe_num - 1U) * blocks_per_pipe));
   return (uint16_t)((bufsize_field << k_ra_pipebuf_bufsize_shift) |
                     (bufnmb_field & k_ra_pipebuf_bufnmb_mask));
 }
 
+/**
+ * @brief Pack PIPECFG fields for a configured non-control pipe.
+ *
+ * @details Encodes endpoint number, direction (DIR), pipe type (TYPE),
+ * and, for bulk pipes, the SHTNAK + DBLB flags into the PIPECFG word.
+ * HUM Ch 36.2.24 PIPECFG / DBLB; we always enable hardware double-
+ * buffering on bulk pipes so the matching PIPEBUF (2*MPS) gives two
+ * banks of MPS bytes each.
+ *
+ * @param[in] ep_addr Endpoint address (low nibble = EP number; bit 7
+ *                    direction; the helper reads only the EP number).
+ * @param[in] dir     Pipe direction (::k_ra_usb_ep_dir_in or _out).
+ * @param[in] type    Pipe type (bulk / interrupt / iso).
+ *
+ * @return PIPECFG word ready to write to ``PIPECFG``.
+ * @retval 0..0xFFFF Packed configuration word; no error condition.
+ *
+ * @pre ``ep_addr`` low nibble is the EP number (caller validated 1..15).
+ * @pre ``dir`` / ``type`` are valid enum values.
+ * @post No global state is touched; the helper is pure.
+ * @post For bulk pipes the SHTNAK + DBLB flags are set in the result.
+ *
+ * @note Pure / thread-safe.
+ * @since 0.1.0
+ */
 static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_usb_ep_type_t type)
 {
   uint16_t cfg = (uint16_t)((uint16_t)ep_addr & k_ra_pipecfg_epnum_mask);
@@ -1805,8 +1840,8 @@ static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data,
      * write here adds a phantom zero byte to DTLN and the host sees
      * EOVERFLOW on every odd-length descriptor. Mirrors FSP
      * hw_usb_write_fifo8 for USBFS. HUM Ch 36.2.6 CFIFOSEL.MBW. */
-    const uint16_t          sel_save = reg->CFIFOSEL;
-    const uint16_t          sel_8 =
+    const uint16_t sel_save = reg->CFIFOSEL;
+    const uint16_t sel_8 =
       (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk) | k_ra_fifosel_mbw_8);
     volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
     reg->CFIFOSEL                  = sel_8;
@@ -1872,9 +1907,9 @@ static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data
    * word, extracting only the `tail` low-order bytes (the FIFO presents
    * unused-byte slots as don't-care). One read, one pointer advance,
    * no MBW transition. */
-  const uint32_t           word     = *(volatile uint32_t*)(uintptr_t)&reg->CFIFO;
-  const uint16_t           off_base = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
-  const uint8_t            bytes[4] = {
+  const uint32_t word     = *(volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  const uint16_t off_base = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  const uint8_t  bytes[4] = {
     (uint8_t)(word & k_ra_usb_byte_mask),
     (uint8_t)((word >> k_ra_usb_shift_b1) & k_ra_usb_byte_mask),
     (uint8_t)((word >> k_ra_usb_shift_b2) & k_ra_usb_byte_mask),
@@ -1919,8 +1954,8 @@ static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16
   if ((len & 1U) != 0U) {
     /* Trailing odd byte: switch to MBW=8 and read one byte so DTLN
      * advances by exactly 1. Mirrors FSP hw_usb_read_fifo8 for USBFS. */
-    const uint16_t          sel_save = reg->CFIFOSEL;
-    const uint16_t          sel_8 =
+    const uint16_t sel_save = reg->CFIFOSEL;
+    const uint16_t sel_8 =
       (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk) | k_ra_fifosel_mbw_8);
     volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
     reg->CFIFOSEL                  = sel_8;
@@ -2492,15 +2527,37 @@ typedef enum : uint8_t {
 static ra_usb_event_fn_t s_usb_fn[k_ra_usb_cb_slot_n];
 static void*             s_usb_ctx[k_ra_usb_cb_slot_n];
 
+/**
+ * @brief Map a USB speed enum to the per-controller callback slot index.
+ *
+ * @details Two slots exist: ``k_ra_usb_cb_slot_fs`` for the USBFS
+ * controller and ``k_ra_usb_cb_slot_hs`` for the USBHS controller.
+ * Every code path that indexes ``s_usb_fn[]`` or ``s_usb_ctx[]``
+ * goes through this helper so we never confuse the two.
+ *
+ * @param[in] speed Controller selector (FS or HS).
+ *
+ * @return Slot index in ``s_usb_fn[]`` / ``s_usb_ctx[]``.
+ * @retval k_ra_usb_cb_slot_hs ``speed == k_ra_usb_speed_hs``.
+ * @retval k_ra_usb_cb_slot_fs Any other speed value (FS default).
+ *
+ * @pre ``speed`` is a valid ``ra_usb_speed_t`` enum.
+ * @pre s_usb_fn / s_usb_ctx storage is in scope.
+ * @post No global state is touched; the helper is pure.
+ * @post Result is always < ``k_ra_usb_cb_slot_n``.
+ *
+ * @note Pure / thread-safe.
+ * @since 0.1.0
+ */
 static uint8_t internal_cb_slot(ra_usb_speed_t speed)
 {
-  return (speed == k_ra_usb_speed_hs) ? (uint8_t)k_ra_usb_cb_slot_hs
-                                      : (uint8_t)k_ra_usb_cb_slot_fs;
+  return (speed == k_ra_usb_speed_hs) ? (uint8_t)k_ra_usb_cb_slot_hs : (uint8_t)k_ra_usb_cb_slot_fs;
 }
 
 /**
  * @brief Implementation of ra_usb_attach_handler (see header for full contract).
  * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
  * @param[in] fn See implementation.
  * @param[in] ctx See implementation.
  * @return Result code.
