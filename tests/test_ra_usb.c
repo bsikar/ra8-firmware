@@ -223,7 +223,7 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("usb attach + dispatch");
   prep_cb();
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_attach_handler(stub_usb_cb, (void*)(uintptr_t)0xAAU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_attach_handler(k_ra_usb_speed_fs, stub_usb_cb, (void*)(uintptr_t)0xAAU));
   ra_usb_fs()->INTSTS0 = (uint16_t)0xCAFEU;
   ra_usb_dispatch(k_ra_usb_speed_fs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
@@ -749,7 +749,7 @@ static void test_hs_paths(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_get_status(k_ra_usb_speed_hs, &mask));
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_clear_status(k_ra_usb_speed_hs, (uint16_t)0x0002U));
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_attach_handler(stub_usb_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_attach_handler(k_ra_usb_speed_hs, stub_usb_cb, nullptr));
   ra_usb_hs()->INTSTS0 = (uint16_t)0xBABEU;
   ra_usb_dispatch(k_ra_usb_speed_hs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);

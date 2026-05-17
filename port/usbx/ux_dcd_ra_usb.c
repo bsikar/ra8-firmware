@@ -2913,7 +2913,7 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
     return k_ra_err_invalid_arg;
   }
   RA_RETURN_ON_ERROR(ra_usb_device_init(speed), s_tag, "ra_usb_device_init");
-  RA_RETURN_ON_ERROR(ra_usb_attach_handler(internal_event_cb, nullptr),
+  RA_RETURN_ON_ERROR(ra_usb_attach_handler(speed, internal_event_cb, nullptr),
                      s_tag,
                      "ra_usb_attach_handler");
 
@@ -2963,7 +2963,7 @@ ra_err_t ux_dcd_ra_usb_uninitialize(void)
     return k_ra_err_invalid_state;
   }
   /* Matching pair to the disabled ra_isr_register in the init path. */
-  (void)ra_usb_attach_handler(nullptr, nullptr);
+  (void)ra_usb_attach_handler(s_dcd.speed, nullptr, nullptr);
   (void)ra_usb_device_deinit(s_dcd.speed);
   if (s_dcd.owner != nullptr) {
     s_dcd.owner->ux_slave_dcd_status   = UX_DCD_STATUS_HALTED;

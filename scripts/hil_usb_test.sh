@@ -67,8 +67,24 @@ if (( LOCAL_PI == 0 )); then
         || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
 fi
 
-# Make sure the Pi has the latest copy of usb_benchmark.py.
-pi_cp scripts/usb_benchmark.py /tmp/usb_benchmark.py
+# Make sure the Pi has the latest copy of the benchmark scripts.
+pi_cp scripts/usb_benchmark.py    /tmp/usb_benchmark.py
+pi_cp scripts/usb_stream_bench.py /tmp/usb_stream_bench.py
+
+# Helper: chmod /dev/ttyACM* udev sometimes leaves at root-only because
+# the device's deferred descriptor parse races the rule that adds the
+# dialout group. The CI runs as the `star` user so we just relax the
+# perms unconditionally before benchmarking.
+relax_acm_perms() {
+    pi_run "for d in /dev/ttyACM*; do sudo -n chmod 666 \$d 2>/dev/null || true; done"
+}
+
+# Resolve /dev/ttyACMx for the device with VID:PID == $vidpid.
+find_ttyacm_for_vidpid() {
+    local vidpid="$1"
+    local vid="${vidpid%%:*}"
+    pi_run "for d in /dev/ttyACM*; do udevadm info \$d 2>/dev/null | grep -q ID_VENDOR_ID=${vid} && { echo \$d; exit 0; }; done; exit 1"
+}
 
 # Wait until lsusb reports the given VID:PID on the right hub port.
 wait_for_enum() {
@@ -86,6 +102,8 @@ wait_for_enum() {
 run_one_controller() {
     local name="$1" app="$2" vidpid="$3" hub_port="$4" ppps_mode="${5:-hard}"
     local mps_chunk="${6:-64}"
+    local stream_bytes="${7:-65536}"  # streaming-bench payload size
+    local stream_min_kbs="${8:-200}"  # one-way throughput floor (KB/s)
     local rc=0
 
     echo
@@ -115,11 +133,40 @@ run_one_controller() {
         return 1
     fi
 
-    echo -e "${YELLOW}[USB-${name}]${NC} step 4 -- run usb_benchmark.py (chunk=${mps_chunk}B)"
-    if pi_run "python3 /tmp/usb_benchmark.py ${QUICK} --throughput-chunk ${mps_chunk}"; then
-        echo -e "${GREEN}[USB-${name}]${NC} benchmark PASS"
+    relax_acm_perms
+    local dev
+    dev=$(find_ttyacm_for_vidpid "${vidpid}") || dev=""
+    if [[ -z "$dev" ]]; then
+        echo -e "${RED}[USB-${name}]${NC} no /dev/ttyACMx matches vid ${vidpid%%:*}"
+        return 1
+    fi
+    echo -e "${YELLOW}[USB-${name}]${NC} device: ${dev}"
+
+    echo -e "${YELLOW}[USB-${name}]${NC} step 4a -- correctness (usb_benchmark.py chunk=${mps_chunk}B)"
+    if pi_run "python3 /tmp/usb_benchmark.py ${dev} ${QUICK} --throughput-chunk ${mps_chunk}"; then
+        echo -e "${GREEN}[USB-${name}]${NC} correctness PASS"
     else
-        echo -e "${RED}[USB-${name}]${NC} benchmark FAIL"
+        echo -e "${RED}[USB-${name}]${NC} correctness FAIL"
+        rc=1
+    fi
+
+    echo -e "${YELLOW}[USB-${name}]${NC} step 4b -- streaming throughput (${stream_bytes}B, floor ${stream_min_kbs} KB/s)"
+    local bench_out
+    if bench_out=$(pi_run "python3 /tmp/usb_stream_bench.py ${dev} --bytes ${stream_bytes}" 2>&1); then
+        echo "$bench_out"
+        # Parse the "one-way wire throughput : NNN.N KB/s" line and
+        # compare against the floor. integer-ish compare to avoid bc.
+        local kbs
+        kbs=$(echo "$bench_out" | sed -nE 's/.*one-way wire throughput[^0-9]*([0-9]+).*/\1/p' | head -1)
+        if [[ -n "$kbs" && "$kbs" -ge "$stream_min_kbs" ]]; then
+            echo -e "${GREEN}[USB-${name}]${NC} throughput PASS (${kbs} KB/s >= ${stream_min_kbs} KB/s)"
+        else
+            echo -e "${RED}[USB-${name}]${NC} throughput FAIL (${kbs:-?} KB/s < ${stream_min_kbs} KB/s)"
+            rc=1
+        fi
+    else
+        echo "$bench_out"
+        echo -e "${RED}[USB-${name}]${NC} streaming bench errored"
         rc=1
     fi
 
@@ -156,13 +203,17 @@ overall=0
 if [[ -z "$ONLY" || "$ONLY" == "fs" ]]; then
     # USBFS re-enumeration: hub-level PPPS (uhubctl) does not propagate
     # cleanly through the FS PHY, so use the host-side `authorized`
-    # toggle ("soft"). MPS = 64.
-    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "soft" 64  || overall=1
+    # toggle ("soft"). MPS = 64. Streaming floor 250 KB/s (target ~360
+    # measured, 1 MB/s theoretical wire).
+    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "soft" \
+        64  65536  250 || overall=1
 fi
 
 if [[ -z "$ONLY" || "$ONLY" == "hs" ]]; then
-    # USBHS: hub-level PPPS (uhubctl) works fine. MPS = 512.
-    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "hard" 512 || overall=1
+    # USBHS: hub-level PPPS (uhubctl) works fine. MPS = 512. Streaming
+    # floor 2000 KB/s (target ~2660 measured, 30 MB/s theoretical wire).
+    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "hard" \
+        512 1048576 2000 || overall=1
 fi
 
 echo

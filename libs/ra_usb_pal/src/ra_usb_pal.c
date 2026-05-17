@@ -316,7 +316,7 @@ ra_err_t ra_usb_pal_init(ra_usb_speed_t speed)
   s_state.initialized = true;
   internal_reset_eps();
 
-  const ra_err_t att_err = ra_usb_attach_handler(internal_usb_event, nullptr);
+  const ra_err_t att_err = ra_usb_attach_handler(speed, internal_usb_event, nullptr);
   if (att_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
     /* GCOVR_EXCL_START */
     ra_log_error_val(s_tag, "ra_usb_attach_handler failed", (uint32_t)att_err);
@@ -357,7 +357,7 @@ ra_err_t ra_usb_pal_deinit(void)
     return k_ra_err_invalid_state;
   }
   (void)ra_usb_device_attach(s_state.speed, false);
-  (void)ra_usb_attach_handler(nullptr, nullptr);
+  (void)ra_usb_attach_handler(s_state.speed, nullptr, nullptr);
   const ra_err_t err  = ra_usb_device_deinit(s_state.speed);
   s_state.initialized = false;
   s_state.event_fn    = nullptr;
