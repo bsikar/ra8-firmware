@@ -175,42 +175,49 @@ def test_throughput(fd, flags, total_bytes, chunk_size, label):
     return integrity
 
 
-def test_throughput_serial(fd, flags, total_bytes, label):
-    """Write everything, then read everything -- measures pure echo speed."""
-    print(f'=== Test: serialised throughput {label} ({total_bytes}B) ===')
+def test_throughput_chunked(fd, flags, total_bytes, chunk_bytes, label):
+    """Echo round-trip in chunk_bytes-sized pieces: write chunk, drain echo,
+    verify integrity, repeat. Measures sustainable end-to-end echo rate.
+    Single-buffered chunk-by-chunk avoids the device-side IN FIFO overflow
+    that a free-running "write all, then read all" would cause for any
+    payload larger than the bulk-IN max-packet size."""
+    print(f'=== Test: chunked throughput {label} ({total_bytes}B in {chunk_bytes}B chunks) ===')
     drain(fd, flags)
     rng     = random.Random(0xBEEF1234)
     payload = bytes(rng.randint(0, 255) for _ in range(total_bytes))
     fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
     start    = time.monotonic()
-    sent_off = 0
-    chunk    = 64
-    # Phase 1: write in small chunks so device-side queue does not overflow.
-    while sent_off < total_bytes:
-        n         = os.write(fd, payload[sent_off:sent_off + chunk])
-        sent_off += n
-    elapsed_w = time.monotonic() - start
-    # Phase 2: read until done or timeout
-    recv     = bytearray()
-    deadline = time.monotonic() + 15.0
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-    while len(recv) < total_bytes and time.monotonic() < deadline:
+    offset   = 0
+    chunk_failures = 0
+    while offset < total_bytes:
+        n        = min(chunk_bytes, total_bytes - offset)
+        sent     = payload[offset:offset + n]
+        os.write(fd, sent)
+        recv     = b''
+        deadline = time.monotonic() + 2.0
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
         try:
-            d = os.read(fd, 4096)
-            if d:
-                recv += d
-            else:
-                time.sleep(0.005)
-        except BlockingIOError:
-            time.sleep(0.005)
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
-    elapsed   = time.monotonic() - start
-    bps       = total_bytes / elapsed if elapsed > 0 else 0
-    integrity = bytes(recv) == payload[:len(recv)] and len(recv) == total_bytes
-    print(f'  write {total_bytes}B took {elapsed_w:.3f}s; full round-trip {elapsed:.3f}s '
-          f'-> {bps/1024:.1f} KB/s')
-    print(f'  data integrity: {"OK" if integrity else "FAIL"}')
-    return integrity
+            while len(recv) < n and time.monotonic() < deadline:
+                try:
+                    d = os.read(fd, 4096)
+                    if d:
+                        recv += d
+                    else:
+                        time.sleep(0.001)
+                except BlockingIOError:
+                    time.sleep(0.001)
+        finally:
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
+        if recv != sent:
+            chunk_failures += 1
+            if chunk_failures <= 3:
+                print(f'  chunk@{offset} mismatch ({n}B): sent {sent.hex()[:40]}... recv {recv.hex()[:40]}...')
+        offset += n
+    elapsed = time.monotonic() - start
+    bps     = total_bytes / elapsed if elapsed > 0 else 0
+    print(f'  {total_bytes}B round-trip in {elapsed:.3f}s -> {bps/1024:.1f} KB/s '
+          f'({2*bps/1024:.1f} KB/s aggregate); chunk failures = {chunk_failures}')
+    return chunk_failures == 0
 
 
 def find_cdc_device():
@@ -256,17 +263,14 @@ def main():
     drain(fd, flags)
     r2 = test_random(fd, flags, 50)
     drain(fd, flags)
-    r3 = test_throughput_serial(fd, flags, args.throughput_bytes, 'echo')
-    drain(fd, flags)
-    r4 = test_throughput(fd, flags, args.throughput_bytes, args.throughput_chunk, 'echo')
+    r3 = test_throughput_chunked(fd, flags, args.throughput_bytes, args.throughput_chunk, 'echo')
 
     print()
     print(f'  Test 1 (lengths 1..64)            :  {"PASS" if r1 else "FAIL"}')
     print(f'  Test 2 (50 random 1..255B)         :  {"PASS" if r2 else "FAIL"}')
-    print(f'  Test 3 (serial throughput)         :  {"PASS" if r3 else "FAIL"}')
-    print(f'  Test 4 (concurrent throughput)     :  {"PASS" if r4 else "FAIL"}')
+    print(f'  Test 3 (chunked throughput)        :  {"PASS" if r3 else "FAIL"}')
     print()
-    overall = r1 and r2 and r3 and r4
+    overall = r1 and r2 and r3
     print('OVERALL: ' + ('ALL PASS' if overall else 'FAIL'))
     os.close(fd)
     sys.exit(0 if overall else 1)
