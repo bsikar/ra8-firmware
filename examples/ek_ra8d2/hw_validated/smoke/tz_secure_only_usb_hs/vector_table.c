@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/tz_secure_only_usb_hs/vector_table.c
+ * @file examples/ek_ra8d2/hw_validated/smoke/tz_secure_only_usb_hs/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details
