@@ -909,8 +909,8 @@ static ra_usb_dcd_t s_dcd = {
  * Diagnostic counters expose what the path is doing; auto_echo_buf is
  * static and reused across BRDY events. Set ::s_dcd_auto_echo_enable to 1
  * via ::ux_dcd_ra_usb_auto_echo_enable() to opt in. */
-typedef enum : uint8_t {
-  k_ux_dcd_ra_usb_auto_echo_max = 64U,
+typedef enum : uint16_t {
+  k_ux_dcd_ra_usb_auto_echo_max = 512U,
 } ux_dcd_ra_usb_auto_echo_cfg_t;
 
 volatile uint32_t s_dcd_auto_echo_enable     = 0U;
@@ -2542,9 +2542,16 @@ static void internal_irq_walk_pipe(uint8_t i)
       if (qo == k_ra_ok && len > 0U) {
         s_dcd_auto_echo_drain_ok++;
         s_dcd_auto_echo_last_len = len;
+        const uint16_t out_mps = s_dcd.pipes[i].max_pkt;
         if (ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
             k_ra_ok) {
           s_dcd_auto_echo_tx_ok++;
+          /* If the data packet was exactly MPS, follow with a ZLP so the
+           * host URB completes; otherwise the host waits for a short
+           * packet that never arrives. */
+          if (out_mps != 0U && (len % out_mps) == 0U) {
+            (void)ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, 0U);
+          }
         }
         else {
           s_dcd_auto_echo_tx_err++;
