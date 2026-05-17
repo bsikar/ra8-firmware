@@ -102,6 +102,22 @@ static const char* s_demo_tag = "TZSECONLYHS";
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
+
+/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
+ * counter (for ra_delay_ms) AND ThreadX's timer (for tx_thread_sleep and
+ * semaphore timeouts). The default weak ra_time SysTick handler only advances
+ * the ms counter; without _tx_timer_interrupt ThreadX time never advances
+ * and PendSV / scheduling latency on resumed threads explodes. The project's
+ * tx_initialize_low_level.S configures SysTick but relies on the application
+ * to publish the handler. */
+extern void ra_time_on_tick(void);
+extern void _tx_timer_interrupt(void);
+void        SysTick_Handler(void);
+void        SysTick_Handler(void)
+{
+  ra_time_on_tick();
+  _tx_timer_interrupt();
+}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -413,10 +429,10 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x01U,
   0x40U,
-  0x34U,
-  0x12U,
-  0x78U,
-  0x56U,
+  0x09U, /* idVendor  lo: VID = 0x1209 (pid.codes open-source VID). */
+  0x12U, /* idVendor  hi                                             */
+  0x0CU, /* idProduct lo: PID = 0x000C (HS CDC ACM).                */
+  0x00U, /* idProduct hi                                             */
   0x00U,
   0x01U,
   0x01U,
@@ -529,10 +545,10 @@ static UCHAR s_device_framework_hs[] = {
   0x02U,
   0x01U,
   0x40U,
-  0x34U,
-  0x12U,
-  0x78U,
-  0x56U,
+  0x09U, /* idVendor  lo: VID = 0x1209 (pid.codes open-source VID). */
+  0x12U, /* idVendor  hi                                             */
+  0x0CU, /* idProduct lo: PID = 0x000C (HS CDC ACM).                */
+  0x00U, /* idProduct hi                                             */
   0x00U,
   0x01U,
   0x01U,
@@ -648,70 +664,65 @@ static UCHAR s_device_framework_hs[] = {
  * @since 0.1.0
  */
 static UCHAR s_string_framework[] = {
-  /* idx 1: "TestMfg-RA8D2-HS" (16 ASCII bytes). */
+  /* idx 1: "Brighton Sikarskie" (18 ASCII bytes). */
   0x09U,
   0x04U,
   0x01U,
-  0x10U,
-  'T',
-  'e',
-  's',
-  't',
-  'M',
-  'f',
+  0x12U,
+  'B',
+  'r',
+  'i',
   'g',
-  '-',
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  '-',
-  'H',
+  'h',
+  't',
+  'o',
+  'n',
+  ' ',
   'S',
-  /* idx 2: "Test-RA8D2-HS-CDC-Echo" (22 ASCII bytes). */
+  'i',
+  'k',
+  'a',
+  'r',
+  's',
+  'k',
+  'i',
+  'e',
+  /* idx 2: "RA8D2 HS CDC Echo" (17 ASCII bytes). */
   0x09U,
   0x04U,
   0x02U,
-  0x16U,
-  'T',
-  'e',
-  's',
-  't',
-  '-',
+  0x11U,
   'R',
   'A',
   '8',
   'D',
   '2',
-  '-',
+  ' ',
   'H',
   'S',
-  '-',
+  ' ',
   'C',
   'D',
   'C',
-  '-',
+  ' ',
   'E',
   'c',
   'h',
   'o',
-  /* idx 3: "RA8D2HS-NEW-002" (15 ASCII bytes). */
+  /* idx 3: "RA8D2-CDC-002" (13 ASCII bytes). */
   0x09U,
   0x04U,
   0x03U,
-  0x0FU,
+  0x0DU,
   'R',
   'A',
   '8',
   'D',
   '2',
-  'H',
-  'S',
   '-',
-  'N',
-  'E',
-  'W',
+  'C',
+  'D',
+  'C',
   '-',
   '0',
   '0',
