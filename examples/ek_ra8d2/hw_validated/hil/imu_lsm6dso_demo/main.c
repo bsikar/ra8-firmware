@@ -130,8 +130,8 @@ typedef enum : uint32_t {
 static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
 {
   uint8_t  tmp[k_imu_demo_int_str_cap] = {};
-  uint32_t n                            = 0U;
-  bool     neg                          = false;
+  uint32_t n                           = 0U;
+  bool     neg                         = false;
   /* Two's complement edge case: INT16_MIN.  We work in int32_t so we
    * have headroom to negate. */
   int32_t v = value;
@@ -168,7 +168,7 @@ static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
 /** @brief Adapter context: holds channel + 7-bit address. */
 typedef struct {
   uint8_t channel; /**< IIC_B channel (0 on RA8D2).      */
-  uint8_t addr7;   /**< 7-bit slave address.             */
+  uint8_t addr7;   /**< 7-bit peripheral address.        */
 } imu_demo_iic_ctx_t;
 
 /**
@@ -212,16 +212,13 @@ typedef enum : uint32_t {
   k_imu_demo_iic_tx_cap = 16U,
 } imu_demo_iic_cap_t;
 
-static ra_err_t imu_demo_iic_write(void*          ctx,
-                                   uint8_t        reg,
-                                   const uint8_t* buf,
-                                   uint32_t       len)
+static ra_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
 {
   if (len > (uint32_t)k_imu_demo_iic_tx_cap - 1U) {
     return k_ra_err_invalid_arg;
   }
   uint8_t scratch[k_imu_demo_iic_tx_cap] = {};
-  scratch[0]                              = reg;
+  scratch[0]                             = reg;
   for (uint32_t i = 0U; i < len; ++i) {
     scratch[i + 1U] = buf[i];
   }
@@ -355,6 +352,134 @@ static void imu_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
 }
 
 /* =============================================================================
+ * Main-loop helpers (kept out of main() to satisfy NASA P10 Rule 4).
+ * =============================================================================
+ */
+
+/**
+ * @brief Verify the LSM6DSO is alive and is the expected silicon.
+ *
+ * @details
+ * Reads WHO_AM_I and compares against ``k_lsm6dso_who_am_i_value``.
+ * On any failure the function emits a banner, latches LED2, and
+ * parks via ``imu_demo_panic_halt`` -- it never returns to the caller
+ * in that case.
+ *
+ * @param[in,out] dev Driver instance bound by ``ra_lsm6dso_init``.
+ *
+ * @pre ``dev`` was bound by a successful ``ra_lsm6dso_init``.
+ * @pre SCI8 is initialized for banner emission.
+ * @post On success the OK banner has been printed.
+ * @post On failure the function never returns; LED2 is latched ON.
+ *
+ * @note Halts the CPU on failure -- not callable from ISR context.
+ *
+ * @since 0.1.0
+ */
+static void imu_demo_check_who_am_i(ra_lsm6dso_t* dev)
+{
+  uint8_t        who = 0U;
+  const ra_err_t r   = ra_lsm6dso_who_am_i(dev, &who);
+  if (r != k_ra_ok) {
+    imu_demo_tx(k_imu_demo_banner_nak, (uint32_t)(sizeof(k_imu_demo_banner_nak) - 1U));
+    (void)ra_board_led_on(k_ra_board_led2);
+    imu_demo_panic_halt();
+  }
+  if (who != (uint8_t)k_lsm6dso_who_am_i_value) {
+    imu_demo_tx(k_imu_demo_banner_bad, (uint32_t)(sizeof(k_imu_demo_banner_bad) - 1U));
+    (void)ra_board_led_on(k_ra_board_led2);
+    imu_demo_panic_halt();
+  }
+  imu_demo_tx(k_imu_demo_banner_ok, (uint32_t)(sizeof(k_imu_demo_banner_ok) - 1U));
+}
+
+/**
+ * @brief Apply the demo's fixed sensor configuration (+-2 g, +-250 dps, 104 Hz).
+ *
+ * @details
+ * Wraps the three configuration setters into a single panic-on-error
+ * gate. Halts the CPU and latches LED2 if any setter returns non-OK.
+ *
+ * @param[in,out] dev Driver instance bound by ``ra_lsm6dso_init``.
+ *
+ * @pre ``dev->initialized`` is true.
+ * @pre The IIC bus is up and the LSM6DSO is ACKing.
+ * @post On success the sensor is configured and ready for reads.
+ * @post On failure the function never returns; LED2 is latched ON.
+ *
+ * @note Halts the CPU on failure -- not callable from ISR context.
+ *
+ * @since 0.1.0
+ */
+static void imu_demo_configure(ra_lsm6dso_t* dev)
+{
+  if (ra_lsm6dso_set_accel_range(dev, k_lsm6dso_xl_fs_2g) != k_ra_ok) {
+    (void)ra_board_led_on(k_ra_board_led2);
+    imu_demo_panic_halt();
+  }
+  if (ra_lsm6dso_set_gyro_range(dev, k_lsm6dso_g_fs_250dps) != k_ra_ok) {
+    (void)ra_board_led_on(k_ra_board_led2);
+    imu_demo_panic_halt();
+  }
+  if (ra_lsm6dso_set_odr(dev, k_lsm6dso_odr_104hz) != k_ra_ok) {
+    (void)ra_board_led_on(k_ra_board_led2);
+    imu_demo_panic_halt();
+  }
+}
+
+/**
+ * @brief Read one cycle of accel + gyro + temperature and emit the log line.
+ *
+ * @details
+ * Performs three back-to-back driver reads and, on full success,
+ * prints the ``"lsm6dso: ax=.. ay=.. ..."`` log line scraped by the
+ * HIL harness. On any single read failure the error banner is
+ * printed and LED2 is latched ON for the rest of the run.
+ *
+ * @param[in,out] dev Driver instance bound by ``ra_lsm6dso_init``.
+ *
+ * @pre ``dev->initialized`` is true.
+ * @pre SCI8 has been initialized for banner emission.
+ * @post Exactly one ``"lsm6dso: ..."`` line has been emitted on success.
+ * @post LED2 is ON if any read returned non-OK; otherwise unchanged.
+ *
+ * @note Not thread-safe -- single-threaded background loop only.
+ *
+ * @since 0.1.0
+ */
+static void imu_demo_sample_and_emit(ra_lsm6dso_t* dev)
+{
+  static const uint8_t k_label_prefix[]  = "lsm6dso: ax=";
+  static const uint8_t k_label_ay[]      = " ay=";
+  static const uint8_t k_label_az[]      = " az=";
+  static const uint8_t k_label_gx[]      = " gx=";
+  static const uint8_t k_label_gy[]      = " gy=";
+  static const uint8_t k_label_gz[]      = " gz=";
+  static const uint8_t k_label_temp[]    = " temp=";
+  static const uint8_t k_label_newline[] = "\r\n";
+
+  ra_lsm6dso_xyz_t a      = {};
+  ra_lsm6dso_xyz_t g      = {};
+  int32_t          tcenti = 0;
+  const ra_err_t   ra     = ra_lsm6dso_read_accel(dev, &a);
+  const ra_err_t   rg     = ra_lsm6dso_read_gyro(dev, &g);
+  const ra_err_t   rt     = ra_lsm6dso_read_temp(dev, &tcenti);
+  if (ra != k_ra_ok || rg != k_ra_ok || rt != k_ra_ok) {
+    imu_demo_tx(k_imu_demo_banner_err, (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
+    (void)ra_board_led_on(k_ra_board_led2);
+    return;
+  }
+  imu_demo_emit_kv(k_label_prefix, (uint32_t)(sizeof(k_label_prefix) - 1U), a.x);
+  imu_demo_emit_kv(k_label_ay, (uint32_t)(sizeof(k_label_ay) - 1U), a.y);
+  imu_demo_emit_kv(k_label_az, (uint32_t)(sizeof(k_label_az) - 1U), a.z);
+  imu_demo_emit_kv(k_label_gx, (uint32_t)(sizeof(k_label_gx) - 1U), g.x);
+  imu_demo_emit_kv(k_label_gy, (uint32_t)(sizeof(k_label_gy) - 1U), g.y);
+  imu_demo_emit_kv(k_label_gz, (uint32_t)(sizeof(k_label_gz) - 1U), g.z);
+  imu_demo_emit_kv(k_label_temp, (uint32_t)(sizeof(k_label_temp) - 1U), tcenti);
+  imu_demo_tx(k_label_newline, (uint32_t)(sizeof(k_label_newline) - 1U));
+}
+
+/* =============================================================================
  * Main
  * =============================================================================
  */
@@ -395,64 +520,12 @@ int32_t main(void)
     imu_demo_panic_halt();
   }
 
-  uint8_t        who = 0U;
-  const ra_err_t r   = ra_lsm6dso_who_am_i(&dev, &who);
-  if (r != k_ra_ok) {
-    imu_demo_tx(k_imu_demo_banner_nak, (uint32_t)(sizeof(k_imu_demo_banner_nak) - 1U));
-    (void)ra_board_led_on(k_ra_board_led2);
-    imu_demo_panic_halt();
-  }
-  if (who != (uint8_t)k_lsm6dso_who_am_i_value) {
-    imu_demo_tx(k_imu_demo_banner_bad, (uint32_t)(sizeof(k_imu_demo_banner_bad) - 1U));
-    (void)ra_board_led_on(k_ra_board_led2);
-    imu_demo_panic_halt();
-  }
-  imu_demo_tx(k_imu_demo_banner_ok, (uint32_t)(sizeof(k_imu_demo_banner_ok) - 1U));
-
+  imu_demo_check_who_am_i(&dev);
   /* Configure: +-2 g, +-250 dps, 104 Hz. */
-  if (ra_lsm6dso_set_accel_range(&dev, k_lsm6dso_xl_fs_2g) != k_ra_ok) {
-    (void)ra_board_led_on(k_ra_board_led2);
-    imu_demo_panic_halt();
-  }
-  if (ra_lsm6dso_set_gyro_range(&dev, k_lsm6dso_g_fs_250dps) != k_ra_ok) {
-    (void)ra_board_led_on(k_ra_board_led2);
-    imu_demo_panic_halt();
-  }
-  if (ra_lsm6dso_set_odr(&dev, k_lsm6dso_odr_104hz) != k_ra_ok) {
-    (void)ra_board_led_on(k_ra_board_led2);
-    imu_demo_panic_halt();
-  }
-
-  static const uint8_t k_label_prefix[]  = "lsm6dso: ax=";
-  static const uint8_t k_label_ay[]      = " ay=";
-  static const uint8_t k_label_az[]      = " az=";
-  static const uint8_t k_label_gx[]      = " gx=";
-  static const uint8_t k_label_gy[]      = " gy=";
-  static const uint8_t k_label_gz[]      = " gz=";
-  static const uint8_t k_label_temp[]    = " temp=";
-  static const uint8_t k_label_newline[] = "\r\n";
+  imu_demo_configure(&dev);
 
   while (1) {
-    ra_lsm6dso_xyz_t a       = {};
-    ra_lsm6dso_xyz_t g       = {};
-    int32_t          tcenti  = 0;
-    const ra_err_t   ra      = ra_lsm6dso_read_accel(&dev, &a);
-    const ra_err_t   rg      = ra_lsm6dso_read_gyro(&dev, &g);
-    const ra_err_t   rt      = ra_lsm6dso_read_temp(&dev, &tcenti);
-    if (ra != k_ra_ok || rg != k_ra_ok || rt != k_ra_ok) {
-      imu_demo_tx(k_imu_demo_banner_err,
-                  (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
-      (void)ra_board_led_on(k_ra_board_led2);
-    } else {
-      imu_demo_emit_kv(k_label_prefix, (uint32_t)(sizeof(k_label_prefix) - 1U), a.x);
-      imu_demo_emit_kv(k_label_ay,     (uint32_t)(sizeof(k_label_ay) - 1U),     a.y);
-      imu_demo_emit_kv(k_label_az,     (uint32_t)(sizeof(k_label_az) - 1U),     a.z);
-      imu_demo_emit_kv(k_label_gx,     (uint32_t)(sizeof(k_label_gx) - 1U),     g.x);
-      imu_demo_emit_kv(k_label_gy,     (uint32_t)(sizeof(k_label_gy) - 1U),     g.y);
-      imu_demo_emit_kv(k_label_gz,     (uint32_t)(sizeof(k_label_gz) - 1U),     g.z);
-      imu_demo_emit_kv(k_label_temp,   (uint32_t)(sizeof(k_label_temp) - 1U),   tcenti);
-      imu_demo_tx(k_label_newline, (uint32_t)(sizeof(k_label_newline) - 1U));
-    }
+    imu_demo_sample_and_emit(&dev);
     (void)ra_board_led_toggle(k_ra_board_led1);
     ra_delay_ms(k_imu_demo_period_ms);
   }
