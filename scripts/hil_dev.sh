@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
 # hil_dev.sh -- Full HIL suite runner for the dev machine.
 #
 # Builds all 20 uart apps locally, ships hexes + suite scripts to star,

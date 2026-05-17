@@ -669,8 +669,7 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_usb_attach_handler(ra_usb_speed_t speed,
-                                             ra_usb_event_fn_t fn, void* ctx);
+[[nodiscard]] ra_err_t ra_usb_attach_handler(ra_usb_speed_t speed, ra_usb_event_fn_t fn, void* ctx);
 
 /**
  * @brief Snapshot `INTSTS0` and fire the installed event handler.

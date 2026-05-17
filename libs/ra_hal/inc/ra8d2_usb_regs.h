@@ -612,10 +612,10 @@ typedef enum : uint16_t {
  * (BUFSIZE=15) holds 2x512 packets for HS bulk MPS=512.
  */
 typedef enum : uint16_t {
-  k_ra_pipebuf_bufnmb_mask  = 0x00FFU,
-  k_ra_pipebuf_bufsize_mask = 0x7C00U,
+  k_ra_pipebuf_bufnmb_mask   = 0x00FFU,
+  k_ra_pipebuf_bufsize_mask  = 0x7C00U,
   k_ra_pipebuf_bufsize_shift = 10U,
-  k_ra_pipebuf_block_bytes  = 64U, /**< Each buffer block is 64 bytes. */
+  k_ra_pipebuf_block_bytes   = 64U, /**< Each buffer block is 64 bytes. */
 } ra_usb_pipebuf_field_t;
 
 /* =============================================================================

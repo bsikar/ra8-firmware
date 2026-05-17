@@ -914,21 +914,40 @@ typedef enum : uint16_t {
 } ux_dcd_ra_usb_auto_echo_cfg_t;
 
 volatile uint32_t s_dcd_irq_spurious_mask_count = 0U;
-volatile uint32_t s_dcd_auto_echo_enable     = 0U;
-volatile uint32_t s_dcd_auto_echo_drain_ok   = 0U;
-volatile uint32_t s_dcd_auto_echo_drain_skip = 0U;
-volatile uint32_t s_dcd_auto_echo_tx_ok      = 0U;
-volatile uint32_t s_dcd_auto_echo_tx_err     = 0U;
-volatile uint16_t s_dcd_auto_echo_last_len   = 0U;
+volatile uint32_t s_dcd_auto_echo_enable        = 0U;
+volatile uint32_t s_dcd_auto_echo_drain_ok      = 0U;
+volatile uint32_t s_dcd_auto_echo_drain_skip    = 0U;
+volatile uint32_t s_dcd_auto_echo_tx_ok         = 0U;
+volatile uint32_t s_dcd_auto_echo_tx_err        = 0U;
+volatile uint16_t s_dcd_auto_echo_last_len      = 0U;
 static uint8_t    s_dcd_auto_echo_buf[k_ux_dcd_ra_usb_auto_echo_max];
-static uint8_t    s_dcd_auto_echo_out_pipe   = 0U;
-static uint8_t    s_dcd_auto_echo_in_pipe    = 0U;
+static uint8_t    s_dcd_auto_echo_out_pipe = 0U;
+static uint8_t    s_dcd_auto_echo_in_pipe  = 0U;
 
 /**
- * @brief Enable bridge-side auto-echo from `out_pipe` (bulk OUT) to
- *        `in_pipe` (bulk IN). All data arriving on `out_pipe` is mirrored
- *        back on `in_pipe` from inside the IRQ path. Workaround for
- *        ThreadX worker thread scheduling failure on this silicon.
+ * @brief Enable bridge-side auto-echo on the configured pipe pair.
+ *
+ * @details All data arriving on ``out_pipe`` (bulk OUT) is drained and
+ * re-queued onto ``in_pipe`` (bulk IN) from inside the IRQ path.
+ * Workaround for ThreadX worker thread scheduling failure on this
+ * silicon. Once enabled, the loop runs whenever
+ * ::internal_irq_walk_pipe encounters an OUT pipe with no waiter; see
+ * ::internal_irq_auto_echo for the body.
+ *
+ * @param[in] out_pipe Pipe index to drain on (bulk OUT).
+ * @param[in] in_pipe  Pipe index to re-queue on (bulk IN).
+ *
+ * @return No value; the call cannot fail.
+ * @retval (void) Auto-echo is enabled on the requested pipe pair.
+ *
+ * @pre Both pipes are configured via ::ra_usb_configure_endpoint.
+ * @pre Called from task / startup context (not from inside an ISR).
+ * @post ``s_dcd_auto_echo_enable == 1``.
+ * @post ``s_dcd_auto_echo_out_pipe == out_pipe`` and
+ *       ``s_dcd_auto_echo_in_pipe == in_pipe``.
+ *
+ * @note Not thread-safe; intended for one-shot configuration at startup.
+ * @since 0.1.0
  */
 void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
 {
@@ -938,12 +957,24 @@ void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
 }
 
 /**
- * @brief Re-enable the USB IRQ at the NVIC level. Designed to be called
- *        from a periodic context (SysTick or a polling worker thread)
- *        after the ISR's spurious-entry path masked the line to stop a
- *        USBR-driven storm. ICER[0] / ISER[0] are the NVIC clear-enable
- *        / set-enable for IRQ 0 (which is where ra_isr maps the USBHS
- *        combined "USB_INT+RESUME" line).
+ * @brief Re-enable the USB IRQ at the NVIC level after a spurious mask.
+ *
+ * @details Designed to be called from a periodic context (SysTick or a
+ * polling worker thread) after the ISR's spurious-entry path masked
+ * the line to stop a USBR-driven storm. ICER[0] / ISER[0] are the
+ * NVIC clear-enable / set-enable for IRQ 0 (which is where ::ra_isr
+ * maps the USBHS combined "USB_INT+RESUME" line).
+ *
+ * @return No value; the helper is unconditional.
+ * @retval (void) NVIC ISER[0] bit 0 is set.
+ *
+ * @pre ``ra_isr`` mapped USBHS to NVIC IRQ 0 (project-wide invariant).
+ * @pre Caller is the periodic re-arm context, not the storm-affected ISR.
+ * @post NVIC re-routes the next USBHS event to ::internal_usbhs_isr.
+ * @post No other CPU / module state is changed.
+ *
+ * @note Idempotent; safe to call from polling context.
+ * @since 0.1.0
  */
 void ux_dcd_ra_usb_irq_reenable(void)
 {
@@ -1192,15 +1223,69 @@ static unsigned int internal_wait_completion(struct UX_SLAVE_TRANSFER_STRUCT* tr
 #endif
 
 /**
+ * @brief Submit the stashed IN/OUT transfer on a non-EP0 pipe.
+ *
+ * @details Extracted from ::internal_transfer_request to keep the
+ * dispatcher under the NASA P10 Rule 4 60-line cap. For IN endpoints
+ * (bit-7 set in ``ep_addr``) we push the buffer via ``ra_usb_queue_in``
+ * and record the actual length; for OUT endpoints we move PIPECTR.PID
+ * from NAK to BUF via ``ra_usb_rearm_out_pipe`` so the controller ACKs
+ * the first host OUT token. HUM Ch 36.2.27 PIPECTR.PID.
+ *
+ * @param[in,out] tr      USBX transfer request, already validated and stashed.
+ * @param[in]     pipe    Pipe index the transfer is bound to (1..max_pipes-1).
+ * @param[in]     ep_addr Endpoint address byte (bit-7 = direction).
+ *
+ * @return ``UX_SUCCESS`` on submission; ``UX_TRANSFER_ERROR`` if the
+ *         bridge layer rejected the request.
+ * @retval UX_SUCCESS Buffer queued (IN) or PIPECTR.PID == BUF (OUT).
+ * @retval UX_TRANSFER_ERROR Bridge layer rejected the submission;
+ *                           ``s_dcd.pipes[pipe].xfer`` has been cleared.
+ *
+ * @pre ``s_dcd.pipes[pipe].xfer == tr`` (caller stashed the request).
+ * @pre ``pipe != 0`` (EP0 handled separately).
+ *
+ * @post On error, ``s_dcd.pipes[pipe].xfer`` is cleared.
+ * @post On success, ``tr->ux_slave_transfer_request_actual_length`` is
+ *       set for IN transfers; OUT pipes have PIPECTR.PID == BUF.
+ *
+ * @note Task-context only; not ISR-safe.
+ * @since 0.1.0
+ */
+static unsigned int
+internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t ep_addr)
+{
+  if ((ep_addr & 0x80U) != 0U) {
+    const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+    if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, len) !=
+        k_ra_ok) {
+      s_dcd.pipes[pipe].xfer = nullptr;
+      return UX_TRANSFER_ERROR;
+    }
+    tr->ux_slave_transfer_request_actual_length = len;
+    return UX_SUCCESS;
+  }
+  /* OUT pipe: move from PID=NAK to PID=BUF so the controller ACKs
+   * the first host OUT token.  Without this the pipe stays at NAK
+   * forever; BRDY never fires; internal_irq_walk_pipe never runs;
+   * the semaphore is never posted.  HUM Ch 36.2.27 PIPECTR.PID. */
+  if (ra_usb_rearm_out_pipe(s_dcd.speed, pipe) != k_ra_ok) {
+    s_dcd.pipes[pipe].xfer = nullptr;
+    return UX_TRANSFER_ERROR;
+  }
+  return UX_SUCCESS;
+}
+
+/**
  * @brief USBX ``UX_DCD_TRANSFER_REQUEST`` dispatcher entry point.
  *
  * @details Validates the incoming transfer request, maps the endpoint
  * address to a pipe index, and dispatches to either ``internal_ep0_transfer``
  * (EP0 control) or stashes the request and submits an IN/OUT data
- * transfer through the ``ra_usb_*`` register layer. Under non-standalone
- * builds the request is then awaited via ``internal_wait_completion`` so
- * USBX class drivers see synchronous completion with non-zero
- * ``actual_length`` (the upstream sim-peripheral contract).
+ * transfer via ::internal_submit_pipe through the ``ra_usb_*`` register
+ * layer. Under non-standalone builds the request is then awaited via
+ * ``internal_wait_completion`` so USBX class drivers see synchronous
+ * completion with non-zero ``actual_length``.
  *
  * @param[in,out] tr USBX transfer request to submit. ``ux_slave_transfer_request_endpoint``
  *                   must point at a configured endpoint; data pointer
@@ -1260,23 +1345,9 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     s_diag.xfer_req_pipe2_stashed++;
   }
 
-  if ((ep_addr & 0x80U) != 0U) {
-    const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-    if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, len) !=
-        k_ra_ok) {
-      s_dcd.pipes[pipe].xfer = nullptr;
-      return UX_TRANSFER_ERROR;
-    }
-    tr->ux_slave_transfer_request_actual_length = len;
-  } else {
-    /* OUT pipe: move from PID=NAK to PID=BUF so the controller ACKs
-     * the first host OUT token.  Without this the pipe stays at NAK
-     * forever; BRDY never fires; internal_irq_walk_pipe never runs;
-     * the semaphore is never posted.  HUM Ch 36.2.27 PIPECTR.PID. */
-    if (ra_usb_rearm_out_pipe(s_dcd.speed, pipe) != k_ra_ok) {
-      s_dcd.pipes[pipe].xfer = nullptr;
-      return UX_TRANSFER_ERROR;
-    }
+  const unsigned int submit = internal_submit_pipe(tr, pipe, ep_addr);
+  if (submit != UX_SUCCESS) {
+    return submit;
   }
 
 #ifndef UX_DEVICE_STANDALONE
@@ -1654,6 +1725,57 @@ static void internal_isr_bump_counts(uint16_t intsts0)
  * @note Runs in NVIC handler mode; must not block.
  * @since 0.1.0
  */
+/**
+ * @brief W0C-ack RSME/SOFR on a spurious USBHS ISR re-entry.
+ *
+ * @details The RA8D2 USBHS combined "USB_INT+RESUME" ELC event line is
+ * asserted by the PHY's USBR signal independent of INTENB0, so the IRQ
+ * keeps re-firing while the host is in (or just exited) resume
+ * signalling. When the snapshot has no event bits set we W0C-clear the
+ * stuck RSME/SOFR flags and bump the spurious counter.
+ *
+ * @param[in] intsts0 The just-snapshotted INTSTS0 value.
+ *
+ * @pre Caller already determined ``(intsts0 & event_msk) == 0``.
+ * @pre USBHS module is initialized (``ra_usb_device_init`` has run).
+ * @post ``s_dcd_irq_spurious_mask_count`` is incremented.
+ * @post RSME/SOFR bits that were set are cleared via ::ra_usb_clear_status.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_ack_spurious_usbhs(uint16_t intsts0)
+{
+  const uint16_t stuck_mask = (uint16_t)((1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
+  if ((intsts0 & stuck_mask) != 0U) {
+    (void)ra_usb_clear_status(k_ra_usb_speed_hs, (uint16_t)(intsts0 & stuck_mask));
+  }
+  s_dcd_irq_spurious_mask_count++;
+}
+
+/**
+ * @brief NVIC ISR entry point for the USBHS controller.
+ *
+ * @details Snapshot ``INTSTS0`` and gate the rest of the ISR on the
+ * event bits (8..15 plus the VALID flag). Spurious / USBR-driven
+ * re-entry is short-circuited via ::internal_ack_spurious_usbhs.
+ * Real events are forwarded to ::ra_usb_dispatch, which performs the
+ * canonical W0C ack and invokes the USBX-side handler.
+ *
+ * @param[in] ctx Opaque ISR context (unused; kept for the ICU callback ABI).
+ *
+ * @pre USBHS module is past ``ra_usb_device_init``.
+ * @pre Caller is the NVIC USBHS_INT vector.
+ *
+ * @post ``s_isr_invocations`` is incremented.
+ * @post On a real event ``ra_usb_dispatch`` ran; on a spurious one
+ *       RSME/SOFR were W0C-cleared and ``s_dcd_irq_spurious_mask_count``
+ *       is incremented.
+ *
+ * @note ISR-only; must not block. Not re-entrant within a single
+ *       controller.
+ * @since 0.1.0
+ */
 static void internal_usbhs_isr(void* ctx)
 {
   (void)ctx;
@@ -1661,45 +1783,24 @@ static void internal_usbhs_isr(void* ctx)
 
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
    *
-   * Snapshot INTSTS0 first and gate the rest of the ISR on the event
-   * bits (8..15 plus the VALID flag in bit 3). DVSQ[6:4] and VBSTS[7]
-   * are read-only status fields and must NEVER be treated as events;
-   * a snapshot of 0x0090 (DVSQ=Default + VBSTS=1) means "no event
-   * pending, just status-bits asserted" and the ISR must return
-   * without writing INTSTS0 to avoid an interrupt storm caused by
-   * spurious NVIC re-entry. Without this gate ::s_isr_invocations
-   * climbs at ~1 MHz on USBHS bring-up. */
-  const uint16_t intsts0 = ra_usb_intsts0_snapshot(k_ra_usb_speed_hs);
-  /* Gate the ISR on ONLY the events we have enabled in INTENB0
-   * (BRDY/NRDY/BEMP/CTRT/DVST/VBSE + VALID). The RA8D2 USBHS ELC
-   * event line "USB_INT+RESUME" is asserted by EITHER (INTSTS0 &
-   * INTENB0) OR the PHY's separate USBR resume-detect signal --
-   * USBR is not gated by INTENB0, so once the bus enters resume
-   * signalling the NVIC line stays asserted and we get a permanent
-   * IRQ storm. Excluding RSME / SOFR from the gate (matching the
-   * masks we drop in INTENB0) lets the ISR return early on every
-   * USBR-driven re-entry, leaving PendSV free to dispatch the
-   * worker. */
-  const uint16_t event_msk =
-    (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
-               (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
-               (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse) |
-               (uint16_t)k_ra_intsts0_mask_valid);
+   * Snapshot INTSTS0 first and gate on event bits (8..15 + VALID in
+   * bit 3). DVSQ[6:4] and VBSTS[7] are status-only and must NEVER be
+   * treated as events; a snapshot of 0x0090 (DVSQ=Default + VBSTS=1)
+   * means "no event pending, just status-bits asserted" and the ISR
+   * must return without touching INTSTS0 to avoid an interrupt storm.
+   * The event_msk below matches the bits enabled in INTENB0; RSME /
+   * SOFR are intentionally excluded because the USBR resume-detect
+   * signal can re-assert the NVIC line independent of INTENB0. */
+  const uint16_t intsts0   = ra_usb_intsts0_snapshot(k_ra_usb_speed_hs);
+  const uint16_t event_msk = (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
+                                        (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
+                                        (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse) |
+                                        (uint16_t)k_ra_intsts0_mask_valid);
 
   s_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
-    /* Spurious or USBR-driven re-entry. The RA8D2 USBHS combined
-     * "USB_INT+RESUME" ELC event line is asserted by the PHY's USBR
-     * signal independent of INTENB0, so the IRQ keeps re-firing
-     * while the host is in (or just exited) resume signalling.
-     * W0C-ack the stuck bits and return fast. */
-    const uint16_t stuck_mask =
-      (uint16_t)((1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
-    if ((intsts0 & stuck_mask) != 0U) {
-      (void)ra_usb_clear_status(k_ra_usb_speed_hs, (uint16_t)(intsts0 & stuck_mask));
-    }
-    s_dcd_irq_spurious_mask_count++;
+    internal_ack_spurious_usbhs(intsts0);
     return;
   }
 
@@ -1711,11 +1812,7 @@ static void internal_usbhs_isr(void* ctx)
    * to all other bits (no-op under W0C). VALID is intentionally NOT
    * acked here -- the SETUP drain in ::ux_dcd_ra_usb_irq /
    * ::ra_usb_read_setup_unconditional clears VALID after copying
-   * USBREQ/USBVAL/USBINDX/USBLENG. The dispatcher then forwards the
-   * snapshot to ::internal_event_cb -> ::ux_dcd_ra_usb_irq for
-   * per-bit USBX-side handling (DVST -> busreset_rearm, CTRT/VALID
-   * -> _ux_device_stack_control_request_process, BRDY/BEMP -> pipe
-   * completion). */
+   * USBREQ/USBVAL/USBINDX/USBLENG. */
   ra_usb_dispatch(k_ra_usb_speed_hs);
 }
 
@@ -2557,90 +2654,124 @@ static void internal_irq_dvst_prelude(ra_usb_speed_t speed, uint16_t intsts0)
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-static void internal_irq_walk_pipe(uint8_t i)
+/**
+ * @brief No-waiter auto-echo drain on the configured OUT pipe.
+ *
+ * @details When the USBX-side waiter is absent (typically because the
+ * worker thread has not yet been dispatched) and the operator has
+ * enabled the in-ISR auto-echo path, drain the OUT pipe locally and
+ * re-queue the bytes back on the IN pipe. Workaround for ThreadX
+ * worker scheduling failure -- keeps echo functional without any
+ * thread-mode involvement.
+ *
+ * THROUGHPUT NOTE.
+ * On hardware this echo loop sustains ~2.66 MB/s one-way at HS and
+ * ~360 KB/s at FS (measured via scripts/usb_stream_bench.py against
+ * Linux cdc_acm). That is ~66 % of the per-microframe scheduling
+ * ceiling for HS (4 MB/s at 1 packet/125 us microframe) and ~35 % of
+ * FS bulk wire. The bottleneck is NOT this code path -- it is the
+ * host's cdc_acm URB-completion pipeline (MPS-sized read URBs, one
+ * completion per packet, callback latency limits URB recycling). To
+ * push past this ceiling needs either a libusb async client, a kernel
+ * cdc_acm patch with bigger URBs, or a vendor-specific interface.
+ *
+ * @param[in] i Pipe index that just signalled BRDY/BEMP with no waiter.
+ *
+ * @pre Called from ISR context only.
+ * @pre Caller already verified ``s_dcd.pipes[i].xfer == nullptr``.
+ * @post On a successful drain, the IN pipe holds the echoed payload
+ *       (with a trailing ZLP when ``len % MPS == 0``).
+ * @post Counters under ``s_dcd_auto_echo_*`` are updated.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_auto_echo(uint8_t i)
 {
-  s_diag.irq_walk_total++;
-  UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
-  if (tr == nullptr) {
-    /* No USBX-side waiter on this pipe. If auto-echo is on and this is
-     * the configured OUT pipe, drain it locally and re-queue on the
-     * IN pipe. Workaround for ThreadX worker scheduling failure --
-     * keeps echo working without any thread-mode involvement.
-     *
-     * THROUGHPUT NOTE.
-     * On hardware this echo loop sustains ~2.66 MB/s one-way at HS and
-     * ~360 KB/s at FS (measured via scripts/usb_stream_bench.py against
-     * Linux cdc_acm). That is ~66 % of the per-microframe scheduling
-     * ceiling for HS (4 MB/s at 1 packet/125 us microframe) and ~35 %
-     * of FS bulk wire. The bottleneck is NOT this code path -- it is
-     * the host's cdc_acm URB-completion pipeline: cdc_acm uses MPS-
-     * sized read URBs and completes each one on a single packet, then
-     * re-posts. The completion-callback latency limits how fast the
-     * host can free URBs back to the controller, and the device sits
-     * idle waiting for the next IN token. Confirmed via libusb async
-     * bench: device firmware can sustain higher rates when the host
-     * pipelines URBs aggressively.
-     *
-     * To push past this ceiling we would need one of:
-     *  (a) Replace cdc_acm with libusb async + ring of MPS*N URBs on
-     *      the host side. Not useful for general-purpose CDC users.
-     *  (b) Patch cdc_acm to use bigger read URBs (>= 4 KB). Touches
-     *      Linux kernel, not our firmware.
-     *  (c) Add a vendor-specific bulk-only interface using a custom
-     *      host tool. Loses CDC compatibility. */
-    if (s_dcd_auto_echo_enable != 0U && i == s_dcd_auto_echo_out_pipe &&
-        s_dcd.pipes[i].dir_in == 0U) {
-      uint16_t       len = (uint16_t)k_ux_dcd_ra_usb_auto_echo_max;
-      const ra_err_t qo  = ra_usb_queue_out(s_dcd.speed, i, s_dcd_auto_echo_buf, &len);
-      if (qo == k_ra_ok && len > 0U) {
-        s_dcd_auto_echo_drain_ok++;
-        s_dcd_auto_echo_last_len = len;
-        const uint16_t out_mps = s_dcd.pipes[i].max_pkt;
-        if (ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
-            k_ra_ok) {
-          s_dcd_auto_echo_tx_ok++;
-          /* If the data packet was exactly MPS, follow with a ZLP so the
-           * host URB completes; otherwise the host waits for a short
-           * packet that never arrives. */
-          if (out_mps != 0U && (len % out_mps) == 0U) {
-            (void)ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, 0U);
-          }
+  if (s_dcd_auto_echo_enable != 0U && i == s_dcd_auto_echo_out_pipe &&
+      s_dcd.pipes[i].dir_in == 0U) {
+    uint16_t       len = (uint16_t)k_ux_dcd_ra_usb_auto_echo_max;
+    const ra_err_t qo  = ra_usb_queue_out(s_dcd.speed, i, s_dcd_auto_echo_buf, &len);
+    if (qo == k_ra_ok && len > 0U) {
+      s_dcd_auto_echo_drain_ok++;
+      s_dcd_auto_echo_last_len = len;
+      const uint16_t out_mps   = s_dcd.pipes[i].max_pkt;
+      if (ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
+          k_ra_ok) {
+        s_dcd_auto_echo_tx_ok++;
+        /* If the data packet was exactly MPS, follow with a ZLP so the
+         * host URB completes; otherwise the host waits for a short
+         * packet that never arrives. */
+        if (out_mps != 0U && (len % out_mps) == 0U) {
+          (void)ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, 0U);
         }
-        else {
-          s_dcd_auto_echo_tx_err++;
-        }
+      } else {
+        s_dcd_auto_echo_tx_err++;
       }
-      else {
-        s_dcd_auto_echo_drain_skip++;
-        (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
-      }
+    } else {
+      s_dcd_auto_echo_drain_skip++;
+      (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
     }
-    return;
   }
-  if (i == 2U) {
-    s_diag.irq_walk_pipe2_seen++;
-  }
-  if (s_dcd.pipes[i].dir_in != 0U) {
-    /* IN: data was already pushed in TRANSFER_REQUEST. Mark complete
-     * on the BEMP that follows, and W0C-ack the per-pipe BEMPSTS bit
-     * so the global INTSTS0.BEMP flag can de-assert -- without this
-     * BEMPSTS stays set forever, the global BEMP re-asserts after
-     * every dispatch ack, and the ISR storm prevents PendSV from
-     * delivering completions to the worker. HUM Ch 36.2.15 BEMPSTS
-     * (W0C, write `~pipe_bit` to clear only this pipe). */
-    volatile r_usb_regs_t* reg = (s_dcd.speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
-    if (reg != nullptr) {
-      const uint16_t pipe_bit = (uint16_t)(1U << i);
-      reg->BEMPSTS            = (uint16_t)(~pipe_bit);
-    }
-    tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-    s_dcd.pipes[i].xfer                           = nullptr;
-#ifndef UX_DEVICE_STANDALONE
-    (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
-#endif
-    return;
-  }
+}
 
+/**
+ * @brief Complete a stashed IN-pipe transfer.
+ *
+ * @details IN: data was already pushed in TRANSFER_REQUEST. Mark
+ * complete on the BEMP that follows, and W0C-ack the per-pipe BEMPSTS
+ * bit so the global INTSTS0.BEMP flag can de-assert -- without this
+ * BEMPSTS stays set forever, the global BEMP re-asserts after every
+ * dispatch ack, and the ISR storm prevents PendSV from delivering
+ * completions to the worker. HUM Ch 36.2.15 BEMPSTS (W0C, write
+ * ``~pipe_bit`` to clear only this pipe).
+ *
+ * @param[in,out] tr Stashed transfer to complete.
+ * @param[in]     i  Pipe index.
+ *
+ * @pre Called from ISR context only.
+ * @pre ``s_dcd.pipes[i].xfer == tr``.
+ * @post ``s_dcd.pipes[i].xfer == nullptr``.
+ * @post Per-pipe BEMPSTS bit is cleared and the waiter is woken (non-standalone).
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
+{
+  volatile r_usb_regs_t* reg = (s_dcd.speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+  if (reg != nullptr) {
+    const uint16_t pipe_bit = (uint16_t)(1U << i);
+    reg->BEMPSTS            = (uint16_t)(~pipe_bit);
+  }
+  tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+  s_dcd.pipes[i].xfer                           = nullptr;
+#ifndef UX_DEVICE_STANDALONE
+  (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
+#endif
+}
+
+/**
+ * @brief Complete a stashed OUT-pipe transfer (or rearm on no-data).
+ *
+ * @details Drain the OUT pipe into the stashed buffer. On success post
+ * UX_SUCCESS and wake the waiter; on ``k_ra_err_no_data`` proactively
+ * W0C-ack NRDYSTS for this pipe and force PIPECTR.PID = BUF so the
+ * next host OUT is ACKed. HUM Ch 36.2.13 NRDYSTS + Ch 36.2.27 PIPECTR.
+ *
+ * @param[in,out] tr Stashed transfer to complete.
+ * @param[in]     i  Pipe index.
+ *
+ * @pre Called from ISR context only.
+ * @pre ``s_dcd.pipes[i].xfer == tr``.
+ * @post On success ``s_dcd.pipes[i].xfer == nullptr`` and the waiter is woken.
+ * @post On no-data the OUT pipe is rearmed; no semaphore wake.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
+{
   uint16_t       len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
   const ra_err_t qo_err =
     ra_usb_queue_out(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
@@ -2654,15 +2785,53 @@ static void internal_irq_walk_pipe(uint8_t i)
 #ifndef UX_DEVICE_STANDALONE
     (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
-  } else if (qo_err == k_ra_err_no_data) {
+    return;
+  }
+  if (qo_err == k_ra_err_no_data) {
     if (i == 2U) {
       s_diag.irq_walk_pipe2_no_data++;
     }
-    /* No BRDY pending; proactively ack NRDYSTS for this pipe and force
-     * PID=BUF so the next host OUT is ACKed. HUM Ch 36.2.13 NRDYSTS
-     * (W0C) + Ch 36.2.27 PIPECTR.PID. */
     (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
   }
+}
+
+/**
+ * @brief Per-pipe finaliser for the BRDY/BEMP walk in ::ux_dcd_ra_usb_irq.
+ *
+ * @details If no USBX-side waiter is stashed, dispatch to the in-ISR
+ * auto-echo path (workaround for ThreadX worker scheduling failure).
+ * Otherwise dispatch to ::internal_irq_complete_in or
+ * ::internal_irq_complete_out depending on the pipe direction.
+ *
+ * @param[in] i Pipe index (1..max_pipes-1).
+ *
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @pre Caller is on the ISR callback path.
+ *
+ * @post One of: a transfer was completed and the semaphore was put;
+ *       the OUT pipe was rearmed on no-data; or the auto-echo loop
+ *       drained the OUT pipe and re-queued on the IN pipe.
+ * @post ``s_diag.irq_walk_total`` is incremented.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_walk_pipe(uint8_t i)
+{
+  s_diag.irq_walk_total++;
+  UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
+  if (tr == nullptr) {
+    internal_irq_auto_echo(i);
+    return;
+  }
+  if (i == 2U) {
+    s_diag.irq_walk_pipe2_seen++;
+  }
+  if (s_dcd.pipes[i].dir_in != 0U) {
+    internal_irq_complete_in(tr, i);
+    return;
+  }
+  internal_irq_complete_out(tr, i);
 }
 
 /**
