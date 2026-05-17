@@ -904,6 +904,38 @@ static ra_usb_dcd_t s_dcd = {
   .pipes = {},
 };
 
+/* Auto-echo support: lets the bridge mirror data from one OUT pipe to one
+ * IN pipe directly inside the ISR, without involving USBX worker threads.
+ * Diagnostic counters expose what the path is doing; auto_echo_buf is
+ * static and reused across BRDY events. Set ::s_dcd_auto_echo_enable to 1
+ * via ::ux_dcd_ra_usb_auto_echo_enable() to opt in. */
+typedef enum : uint8_t {
+  k_ux_dcd_ra_usb_auto_echo_max = 64U,
+} ux_dcd_ra_usb_auto_echo_cfg_t;
+
+volatile uint32_t s_dcd_auto_echo_enable     = 0U;
+volatile uint32_t s_dcd_auto_echo_drain_ok   = 0U;
+volatile uint32_t s_dcd_auto_echo_drain_skip = 0U;
+volatile uint32_t s_dcd_auto_echo_tx_ok      = 0U;
+volatile uint32_t s_dcd_auto_echo_tx_err     = 0U;
+volatile uint16_t s_dcd_auto_echo_last_len   = 0U;
+static uint8_t    s_dcd_auto_echo_buf[k_ux_dcd_ra_usb_auto_echo_max];
+static uint8_t    s_dcd_auto_echo_out_pipe   = 0U;
+static uint8_t    s_dcd_auto_echo_in_pipe    = 0U;
+
+/**
+ * @brief Enable bridge-side auto-echo from `out_pipe` (bulk OUT) to
+ *        `in_pipe` (bulk IN). All data arriving on `out_pipe` is mirrored
+ *        back on `in_pipe` from inside the IRQ path. Workaround for
+ *        ThreadX worker thread scheduling failure on this silicon.
+ */
+void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
+{
+  s_dcd_auto_echo_out_pipe = out_pipe;
+  s_dcd_auto_echo_in_pipe  = in_pipe;
+  s_dcd_auto_echo_enable   = 1U;
+}
+
 /**
  * @struct ra_usb_dcd_diag_t
  * @brief Externally-readable diagnostic counters for OUT-pipe stall debug.
@@ -1295,6 +1327,15 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
   s_dcd.pipes[pipe].ep_addr = ep_addr;
   s_dcd.pipes[pipe].dir_in  = (uint8_t)((ep_addr & 0x80U) != 0U ? 1U : 0U);
   s_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
+  /* Auto-arm OUT pipes to PID=BUF right after the endpoint is created
+   * by the USBX class layer. Without this the pipe sits at PID=NAK until
+   * a transfer_request is issued by a worker thread; if scheduling is
+   * blocked (see ux_dcd_ra_usb_auto_echo_enable) the host's bulk-OUT
+   * URBs never reach the controller and the ISR-side auto-echo path
+   * cannot drain them. HUM Ch 36.2.27 PIPECTR.PID. */
+  if ((ep_addr & 0x80U) == 0U) {
+    (void)ra_usb_rearm_out_pipe(s_dcd.speed, pipe);
+  }
   return UX_SUCCESS;
 }
 
@@ -2490,6 +2531,30 @@ static void internal_irq_walk_pipe(uint8_t i)
   s_diag.irq_walk_total++;
   UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
   if (tr == nullptr) {
+    /* No USBX-side waiter on this pipe. If auto-echo is on and this is
+     * the configured OUT pipe, drain it locally and re-queue on the
+     * IN pipe. Workaround for ThreadX worker scheduling failure --
+     * keeps echo working without any thread-mode involvement. */
+    if (s_dcd_auto_echo_enable != 0U && i == s_dcd_auto_echo_out_pipe &&
+        s_dcd.pipes[i].dir_in == 0U) {
+      uint16_t       len = (uint16_t)k_ux_dcd_ra_usb_auto_echo_max;
+      const ra_err_t qo  = ra_usb_queue_out(s_dcd.speed, i, s_dcd_auto_echo_buf, &len);
+      if (qo == k_ra_ok && len > 0U) {
+        s_dcd_auto_echo_drain_ok++;
+        s_dcd_auto_echo_last_len = len;
+        if (ra_usb_queue_in(s_dcd.speed, s_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
+            k_ra_ok) {
+          s_dcd_auto_echo_tx_ok++;
+        }
+        else {
+          s_dcd_auto_echo_tx_err++;
+        }
+      }
+      else {
+        s_dcd_auto_echo_drain_skip++;
+        (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
+      }
+    }
     return;
   }
   if (i == 2U) {
