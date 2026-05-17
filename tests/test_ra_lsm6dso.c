@@ -46,9 +46,9 @@
 
 /** @brief Register-file capacity for the mock. */
 typedef enum : uint32_t {
-  k_mock_regs_cap   = 256U, /**< Full 8-bit register address space. */
-  k_mock_log_cap    = 32U,  /**< Last N writes are recorded.        */
-  k_mock_burst_cap  = 64U,  /**< Cap on per-read burst size.        */
+  k_mock_regs_cap  = 256U, /**< Full 8-bit register address space. */
+  k_mock_log_cap   = 32U,  /**< Last N writes are recorded.        */
+  k_mock_burst_cap = 64U,  /**< Cap on per-read burst size.        */
 } mock_cap_t;
 
 /** @brief One recorded write transaction. */
@@ -63,7 +63,7 @@ typedef struct {
   uint8_t      regs[k_mock_regs_cap];
   mock_write_t writes[k_mock_log_cap];
   uint32_t     write_count;
-  ra_err_t     forced_err;  /**< Override return; ``k_ra_ok`` to disable. */
+  ra_err_t     forced_err; /**< Override return; ``k_ra_ok`` to disable. */
 } mock_t;
 
 static mock_t s_mock;
@@ -184,9 +184,9 @@ static void test_who_am_i_happy(void)
   const ra_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   s_mock.regs[(uint8_t)k_lsm6dso_reg_who_am_i] = (uint8_t)k_lsm6dso_who_am_i_value;
-  uint8_t id = 0U;
+  uint8_t id                                   = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_who_am_i(&dev, &id));
-  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_who_am_i_value, id);
+  TEST_ASSERT_EQ(k_lsm6dso_who_am_i_value, id);
   TEST_END("lsm6dso: WHO_AM_I returns 0x6C");
 }
 
@@ -207,7 +207,7 @@ static void test_who_am_i_wrong_id(void)
   const ra_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   s_mock.regs[(uint8_t)k_lsm6dso_reg_who_am_i] = 0xFFU;
-  uint8_t id = 0U;
+  uint8_t id                                   = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_who_am_i(&dev, &id));
   TEST_ASSERT_EQ(0xFFU, id);
   TEST_END("lsm6dso: WHO_AM_I 0xFF surfaces to caller");
@@ -257,7 +257,7 @@ static void test_nack_propagation(void)
   const ra_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   s_mock.forced_err = k_ra_err_nack;
-  uint8_t id = 0U;
+  uint8_t id        = 0U;
   TEST_ASSERT_EQ(k_ra_err_nack, ra_lsm6dso_who_am_i(&dev, &id));
   /* Set-range path issues a read first; it should NACK too. */
   TEST_ASSERT_EQ(k_ra_err_nack, ra_lsm6dso_set_accel_range(&dev, k_lsm6dso_xl_fs_4g));
@@ -299,7 +299,7 @@ static void test_set_accel_range_writes_fs_xl(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_set_accel_range(&dev, k_lsm6dso_xl_fs_8g));
   /* 8g code is 0x03, occupying bits [3:2] -> 0x0C. */
   TEST_ASSERT_EQ(0x40U | 0x0CU, s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl1_xl]);
-  TEST_ASSERT_EQ((int)k_lsm6dso_xl_fs_8g, (int)dev.accel_fs_code);
+  TEST_ASSERT_EQ(k_lsm6dso_xl_fs_8g, dev.accel_fs_code);
   TEST_END("lsm6dso: set_accel_range writes FS_XL bits");
 }
 
@@ -316,8 +316,7 @@ static void test_set_accel_range_invalid(void)
   ra_lsm6dso_t           dev = {};
   const ra_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_lsm6dso_set_accel_range(&dev, (ra_lsm6dso_xl_fs_t)0x7FU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lsm6dso_set_accel_range(&dev, (ra_lsm6dso_xl_fs_t)0x7FU));
   TEST_END("lsm6dso: set_accel_range rejects out-of-range code");
 }
 
@@ -375,7 +374,7 @@ static void test_set_odr_writes_both_blocks(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_set_odr(&dev, k_lsm6dso_odr_104hz));
   TEST_ASSERT_EQ(0x40U | 0x0CU, s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl1_xl]);
   TEST_ASSERT_EQ(0x40U | 0x02U, s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g]);
-  TEST_ASSERT_EQ((int)k_lsm6dso_odr_104hz, (int)dev.odr_code);
+  TEST_ASSERT_EQ(k_lsm6dso_odr_104hz, dev.odr_code);
   TEST_END("lsm6dso: set_odr writes CTRL1_XL + CTRL2_G");
 }
 
@@ -416,13 +415,13 @@ static void test_read_accel_combines_le_bytes(void)
   const ra_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   /* OUTX_L_A = 0x28; layout XL XH YL YH ZL ZH. */
-  const uint8_t base                            = (uint8_t)k_lsm6dso_reg_outx_l_a;
-  s_mock.regs[base + 0]                         = 0x34U; /* XL */
-  s_mock.regs[base + 1]                         = 0x12U; /* XH -> 0x1234  =  4660 */
-  s_mock.regs[base + 2]                         = 0xFFU; /* YL */
-  s_mock.regs[base + 3]                         = 0xFFU; /* YH -> 0xFFFF  =    -1 */
-  s_mock.regs[base + 4]                         = 0x00U; /* ZL */
-  s_mock.regs[base + 5]                         = 0x80U; /* ZH -> 0x8000  = -32768 */
+  const uint8_t base    = (uint8_t)k_lsm6dso_reg_outx_l_a;
+  s_mock.regs[base + 0] = 0x34U; /* XL */
+  s_mock.regs[base + 1] = 0x12U; /* XH -> 0x1234  =  4660 */
+  s_mock.regs[base + 2] = 0xFFU; /* YL */
+  s_mock.regs[base + 3] = 0xFFU; /* YH -> 0xFFFF  =    -1 */
+  s_mock.regs[base + 4] = 0x00U; /* ZL */
+  s_mock.regs[base + 5] = 0x80U; /* ZH -> 0x8000  = -32768 */
 
   ra_lsm6dso_xyz_t out = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_read_accel(&dev, &out));
@@ -434,6 +433,17 @@ static void test_read_accel_combines_le_bytes(void)
 
 /**
  * @test ra_lsm6dso_read_gyro_combines_le_bytes
+ *
+ * @par MC/DC:
+ * No compound boolean decisions are exercised by this test -- the
+ * production code path under test (``internal_lsm6dso_read_xyz``)
+ * contains a single ``if (r != k_ra_ok)`` early-exit on the
+ * transport return code, which is single-condition. The vectors
+ * below therefore cover statement / branch coverage only:
+ * - Vector 1: ``read_regs`` returns ``k_ra_ok`` -> XYZ bytes packed.
+ * Coverage of the ``k_ra_ok`` short-circuit branch lives in
+ * ``test_read_accel_returns_bus_error`` so MC/DC is satisfied at the
+ * file level even though this individual test does not add vectors.
  */
 static void test_read_gyro_combines_le_bytes(void)
 {
@@ -515,7 +525,7 @@ static void test_fifo_drains_words(void)
   const ra_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   /* DIFF_FIFO low byte = 2 -> 2 FIFO words live. */
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1] = 2U;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1]     = 2U;
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1 + 1] = 0U;
   /* Stamp recognisable bytes into the FIFO data tap. */
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_data_out + 0] = 0xAAU;
@@ -530,7 +540,7 @@ static void test_fifo_drains_words(void)
 
   /* Vector 2: live = 0 -> out_words = 0, no payload read needed. */
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1] = 0U;
-  words = 0xFFFFU;
+  words                                            = 0xFFFFU;
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_read_xl_gyro_fifo(&dev, buf, 16U, &words));
   TEST_ASSERT_EQ(0U, words);
 
@@ -553,14 +563,10 @@ static void test_fifo_validates_inputs(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   uint8_t  buf[4] = {};
   uint32_t words  = 0U;
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_lsm6dso_read_xl_gyro_fifo(nullptr, buf, 1U, &words));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_lsm6dso_read_xl_gyro_fifo(&dev, nullptr, 1U, &words));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_lsm6dso_read_xl_gyro_fifo(&dev, buf, 1U, nullptr));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_lsm6dso_read_xl_gyro_fifo(&dev, buf, 0U, &words));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lsm6dso_read_xl_gyro_fifo(nullptr, buf, 1U, &words));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lsm6dso_read_xl_gyro_fifo(&dev, nullptr, 1U, &words));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_lsm6dso_read_xl_gyro_fifo(&dev, buf, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_lsm6dso_read_xl_gyro_fifo(&dev, buf, 0U, &words));
   TEST_END("lsm6dso: FIFO drain validates inputs");
 }
 
