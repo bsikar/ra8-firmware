@@ -117,6 +117,12 @@ void        SysTick_Handler(void)
 {
   ra_time_on_tick();
   _tx_timer_interrupt();
+  /* Re-enable the USB IRQ at the NVIC level. The bridge's ISR
+   * spurious-entry path masks it to break the USBR-driven storm
+   * (RA8D2 USBHS combined INT+RESUME line); we tick it back on
+   * every 1 ms ThreadX tick so any real event is processed within
+   * one period. */
+  ux_dcd_ra_usb_irq_reenable();
 }
 #endif
 
@@ -166,10 +172,7 @@ static const ra_port_pin_t k_demo_pin_pd07_role =
 typedef enum : uint32_t {
   k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
-  k_demo_echo_buf_bytes  = 64U,    /**< One bulk packet per recv/send. HS
-                                        bulk MPS could go to 512 but 64
-                                        keeps first-pass parity with the
-                                        FS demo. */
+  k_demo_echo_buf_bytes  = 512U,   /**< HS bulk MPS. */
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
 } demo_config_t;
 
@@ -275,7 +278,13 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
  *       memory each iteration and sees the ISR-side write.
  * @since 0.1.0
  */
-static volatile UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
+/* Note the placement of `volatile`: we want the POINTER itself to be
+ * volatile so the worker re-reads it from memory each loop iteration.
+ * `volatile UX_SLAVE_CLASS_CDC_ACM*` would only make the pointee
+ * volatile and the compiler is free to cache the NULL pointer value
+ * in a register -- which is exactly the bug that masked the activate
+ * write for the entire echo loop. */
+static UX_SLAVE_CLASS_CDC_ACM* volatile s_cdc_acm = UX_NULL;
 
 /* JLink-readable counters: how many times activate / deactivate ran. */
 volatile uint32_t s_cdc_activate_count   = 0U;
@@ -771,10 +780,15 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
       (unsigned long)UX_DEVICE_CONFIGURED;
   }
   s_cdc_activate_count++;
-  /* CDC bulk endpoints: EP2 OUT -> pipe 2, EP1 IN -> pipe 1. Turn on
-   * the bridge's ISR-side auto-echo so OUT data is mirrored back on
-   * the IN pipe without needing the broken thread scheduler to deliver
-   * a USBX transfer_request. */
+  /* Enable bridge-side auto-echo for the CDC bulk pair (EP2 OUT -> EP1 IN).
+   * The worker thread DOES get scheduled now (the IRQ-mask + SysTick re-
+   * enable in ux_dcd_ra_usb.c stops the USBR-driven storm) and the proper
+   * _ux_device_class_cdc_acm_read / _write path works for individual
+   * packets, but the per-transfer round-trip latency is ~1 ms ThreadX
+   * tick because of the IRQ re-enable cadence. Auto-echo bypasses the
+   * thread mode entirely and runs the mirror inside the dispatch
+   * handler -- which is invoked on every real BRDY/BEMP -- so the
+   * throughput is line-rate and integrity is perfect. */
   ux_dcd_ra_usb_auto_echo_enable(2U, 1U);
   (void)tx_semaphore_put(&s_cdc_active_sem);
   s_cdc_activate_post_put++;
