@@ -2565,7 +2565,29 @@ static void internal_irq_walk_pipe(uint8_t i)
     /* No USBX-side waiter on this pipe. If auto-echo is on and this is
      * the configured OUT pipe, drain it locally and re-queue on the
      * IN pipe. Workaround for ThreadX worker scheduling failure --
-     * keeps echo working without any thread-mode involvement. */
+     * keeps echo working without any thread-mode involvement.
+     *
+     * THROUGHPUT NOTE.
+     * On hardware this echo loop sustains ~2.66 MB/s one-way at HS and
+     * ~360 KB/s at FS (measured via scripts/usb_stream_bench.py against
+     * Linux cdc_acm). That is ~66 % of the per-microframe scheduling
+     * ceiling for HS (4 MB/s at 1 packet/125 us microframe) and ~35 %
+     * of FS bulk wire. The bottleneck is NOT this code path -- it is
+     * the host's cdc_acm URB-completion pipeline: cdc_acm uses MPS-
+     * sized read URBs and completes each one on a single packet, then
+     * re-posts. The completion-callback latency limits how fast the
+     * host can free URBs back to the controller, and the device sits
+     * idle waiting for the next IN token. Confirmed via libusb async
+     * bench: device firmware can sustain higher rates when the host
+     * pipelines URBs aggressively.
+     *
+     * To push past this ceiling we would need one of:
+     *  (a) Replace cdc_acm with libusb async + ring of MPS*N URBs on
+     *      the host side. Not useful for general-purpose CDC users.
+     *  (b) Patch cdc_acm to use bigger read URBs (>= 4 KB). Touches
+     *      Linux kernel, not our firmware.
+     *  (c) Add a vendor-specific bulk-only interface using a custom
+     *      host tool. Loses CDC compatibility. */
     if (s_dcd_auto_echo_enable != 0U && i == s_dcd_auto_echo_out_pipe &&
         s_dcd.pipes[i].dir_in == 0U) {
       uint16_t       len = (uint16_t)k_ux_dcd_ra_usb_auto_echo_max;

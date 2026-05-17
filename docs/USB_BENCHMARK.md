@@ -98,29 +98,52 @@ controller in turn:
 Both controllers are exercised in the same job; the suite passes only
 when BOTH succeed.
 
-Why not "both USBs active simultaneously in one firmware?"
----------------------------------------------------------
+Both USBs active simultaneously: status and the path
+----------------------------------------------------
 
 Both USB controllers are independent at the silicon level (separate
 PHYs, separate ISR lines, separate MSTP gates, no shared clock domain).
-What blocks a single firmware from running them concurrently is the
-**USBX device stack** layer above our DCD bridge: USBX's device stack
-is a singleton — `_ux_device_stack_initialize` creates one stack with
-one device descriptor and a single set of class interfaces. Wiring two
-DCD instances under one stack would land us with one device, one
-device-descriptor, but two SETUP-handler paths — not what the USB spec
-expects.
+The blocker for a single firmware image enumerating both as USB
+devices is the **USBX device stack**: USBX's device stack is a
+singleton -- `_ux_device_stack_initialize` creates one stack with one
+device descriptor and a single set of class interfaces. Two DCD
+instances under one stack would land us with one device, one
+device-descriptor, but two SETUP-handler paths -- not what the USB
+spec expects, and not what USBX is built to do.
 
-The DCD bridge itself (`port/usbx/ux_dcd_ra_usb.c`) uses a single
-`s_dcd` static. Refactoring it to be per-controller is mechanical, but
-without USBX support upstream it would not get us a working "dual
-device" — the host would still see one CDC interface, gated by whichever
-controller registered first.
+**What is already in place for dual operation:**
 
-Until USBX is replaced or substantially rewritten, the supported pattern
-is one controller per firmware image. The HIL job exercises both back-
-to-back, which gives the same end-to-end coverage as a "concurrent"
-test would.
+1. `ra_usb_attach_handler(speed, fn, ctx)` is now per-controller, so
+   one firmware image can register *different* upper-layer handlers
+   on the two speeds. The HAL routes BRDY/BEMP/CTRT/etc. for FS and
+   HS to independent callback slots.
+2. The DCD bridge (`port/usbx/ux_dcd_ra_usb.c`) claims its speed's
+   slot when initialized; the other slot stays available.
+3. PIPECFG.DBLB + PIPEBUF allocation are programmed correctly on
+   bulk pipes, so the second controller (when added) gets the same
+   firmware-side throughput characteristics as the first.
+
+**What remains: a "bare CDC" handler (~500 LOC) for the second
+controller.** This handler would:
+
+* Drive its controller through the same `libs/ra_hal/src/ra_usb.c`
+  primitives (`ra_usb_queue_out`, `ra_usb_queue_in`,
+  `ra_usb_read_setup_*`, `ra_usb_set_address`,
+  `ra_usb_control_response`, etc.) -- no USBX.
+* Implement a minimal chapter-9 SETUP state machine
+  (`GET_DESCRIPTOR` for device, configuration, string,
+  device-qualifier; `SET_ADDRESS`; `SET_CONFIGURATION`;
+  `GET_STATUS`; `CLEAR_FEATURE`; `SET_INTERFACE`).
+* Implement two CDC class requests (`GET_LINE_CODING` returning a
+  fixed line coding; `SET_CONTROL_LINE_STATE` accepting any state).
+* Carry its own descriptors (CDC-ACM, distinct VID:PID/strings so
+  the host can tell the two devices apart on the same USB bus).
+* Auto-echo bulk-OUT to bulk-IN exactly like the bridge does.
+
+The HAL groundwork above is the prerequisite work; the bare-CDC
+handler is the standalone next step. Until that lands, the supported
+pattern is **one controller per firmware image** and the HIL job
+exercises both back-to-back. See "HIL coverage" above.
 
 Implementation notes (echo path)
 --------------------------------
@@ -138,28 +161,47 @@ the RA8D2 USBHS USBR-driven IRQ storm is gated out by the strict ISR
 gate in ux_dcd_ra_usb.c and the BEMPSTS clear in the IN-pipe completion
 path). Auto-echo just shortcuts the per-transfer thread round-trip.
 
-Future work (not in this commit)
---------------------------------
+Why the throughput stops where it does
+--------------------------------------
 
-The streaming numbers above are about 8-10% of the wire's bulk
-ceiling. The bottleneck is the single-buffer auto-echo: each ISR
-processes one packet (drain OUT, queue IN, return). To get past the
-"one packet per IRQ" ceiling we need two things in concert:
+The streaming numbers above are stable and the device-side
+optimisation work IS done. PIPECFG.DBLB is enabled with a 2*MPS
+PIPEBUF region per bulk pipe (HUM Ch 36.2.24, 36.2.25), and
+`ra_usb_queue_out` drains banks per the FSP pattern (W0C BRDYSTS at
+the top, BCLR only for ZLPs). A first attempt with the wrong drain
+order truncated 1 MB streams at exactly 524 288 B because clearing
+BRDYSTS after the bank-A drain wiped bank-B's fresh edge -- that's
+fixed. Verified via the libusb async bench at
+`scripts/usb_libusb_bench.py`: when the host pipelines URBs without
+cdc_acm overhead, the firmware echo path can sustain the same rates
+as cdc_acm and (with more URBs in flight) higher.
 
-1. **Hardware double-buffering**. Set `PIPECFG.DBLB` on bulk pipes
-   and program `PIPEBUF` with a 2*MPS region per pipe (HUM Ch 36.2.24,
-   36.2.25). The scaffolding for this is in
-   `libs/ra_hal/inc/ra8d2_usb_regs.h` (PIPEBUF field defs added) and
-   `libs/ra_hal/src/ra_usb.c` (helper `internal_pipebuf_word()` is
-   present; activation is commented `TODO` until point 2 is done).
-2. **Bank-aware drain in the queue_out/queue_in HAL paths**. With
-   DBLB on, BRDY fires per-bank; if `queue_out` doesn't drain both
-   banks the second bank stalls and throughput halves rather than
-   doubles. A first attempt confirmed this empirically (1 MB stream
-   on HS truncated at exactly 524 288 B, i.e. half).
+The ceiling we observe (~2.66 MB/s on HS, ~360 KB/s on FS) is the
+**Linux cdc_acm URB-completion pipeline**, not the firmware:
 
-Once both are in place the expected gains are ~2-3x on HS and ~1.5-2x
-on FS. The ZLP cadence may also need tuning (the host's read URB is
-MPS-sized so a per-packet ZLP doubles IN transactions for free; a
-per-N-packet ZLP works on HS but breaks the FS host driver's URB
-completion path -- so leave it per-packet for now).
+* `cdc_acm` posts MPS-sized read URBs (512 B at HS, 64 B at FS) and
+  completes each one on a single packet from the device.
+* Per-URB completion-callback latency between the kernel re-posting
+  the URB and the device having a new IN buffer to fill caps the
+  per-microframe packet rate. We measured ~66 % of the 4 MB/s HS
+  microframe ceiling.
+* Increasing the per-URB byte budget would help, but that requires a
+  kernel patch -- it is not something this firmware can fix.
+
+Three workarounds exist if higher rates are needed by a specific
+application:
+
+1. **libusb on the host**, async transfers, ring of >= 16 URBs in
+   flight. Bypasses cdc_acm completely. Works today against
+   unmodified firmware -- see `scripts/usb_libusb_bench.py` for the
+   scaffolding.
+2. **Patch cdc_acm read URB size** to >= 4 KB. Host-side, Linux
+   kernel change.
+3. **Vendor-specific bulk-only interface** instead of CDC-ACM, with
+   a custom host tool. Loses CDC compatibility (no /dev/ttyACM*
+   any more).
+
+None of these are appropriate for the CDC-ACM-echo posture of this
+firmware. The matching comment block in
+`port/usbx/ux_dcd_ra_usb.c::internal_irq_walk_pipe` and the
+queue_in / queue_out headers point readers at this doc.
