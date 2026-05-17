@@ -84,7 +84,7 @@ wait_for_enum() {
 }
 
 run_one_controller() {
-    local name="$1" app="$2" vidpid="$3" hub_port="$4" ppps_supported="${5:-yes}"
+    local name="$1" app="$2" vidpid="$3" hub_port="$4" ppps_mode="${5:-hard}"
     local mps_chunk="${6:-64}"
     local rc=0
 
@@ -123,24 +123,29 @@ run_one_controller() {
         rc=1
     fi
 
-    if [[ "$ppps_supported" == "yes" ]]; then
-        echo -e "${YELLOW}[USB-${name}]${NC} step 5 -- PPPS re-enumeration on port ${hub_port}"
-        local reenum_ok=0
-        for attempt in $(seq 1 "${PPPS_REENUM_RETRIES}"); do
-            bash scripts/hil_ppps.sh cycle "${hub_port}" >/dev/null 2>&1
-            if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
-                echo -e "${GREEN}[USB-${name}]${NC} PPPS re-enumeration OK (attempt ${attempt})"
-                reenum_ok=1
-                break
-            fi
-            echo -e "${YELLOW}[USB-${name}]${NC} PPPS re-enum attempt ${attempt} failed; retrying"
-        done
-        if (( reenum_ok == 0 )); then
-            echo -e "${RED}[USB-${name}]${NC} PPPS re-enumeration FAILED after ${PPPS_REENUM_RETRIES} tries"
-            rc=1
+    # PPPS re-enumeration. USBHS uses the hardware uhubctl mechanism
+    # (PPPS), USBFS uses the host-side authorized sysfs toggle (--soft)
+    # because the device's USBFS PHY does not resync to a hub-side data
+    # toggle. Both achieve the same outcome: device forced to re-run
+    # chapter-9 enumeration without losing firmware state.
+    local soft_arg=""
+    if [[ "$ppps_mode" == "soft" ]]; then
+        soft_arg="--soft"
+    fi
+    echo -e "${YELLOW}[USB-${name}]${NC} step 5 -- re-enumeration on port ${hub_port} (${ppps_mode})"
+    local reenum_ok=0
+    for attempt in $(seq 1 "${PPPS_REENUM_RETRIES}"); do
+        bash scripts/hil_ppps.sh ${soft_arg} cycle "${hub_port}" >/dev/null 2>&1 || true
+        if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
+            echo -e "${GREEN}[USB-${name}]${NC} re-enumeration OK (attempt ${attempt})"
+            reenum_ok=1
+            break
         fi
-    else
-        echo -e "${YELLOW}[USB-${name}]${NC} step 5 -- PPPS re-enumeration test skipped (known unreliable)"
+        echo -e "${YELLOW}[USB-${name}]${NC} re-enum attempt ${attempt} failed; retrying"
+    done
+    if (( reenum_ok == 0 )); then
+        echo -e "${RED}[USB-${name}]${NC} re-enumeration FAILED after ${PPPS_REENUM_RETRIES} tries"
+        rc=1
     fi
 
     return $rc
@@ -149,17 +154,15 @@ run_one_controller() {
 overall=0
 
 if [[ -z "$ONLY" || "$ONLY" == "fs" ]]; then
-    # USBFS PPPS re-enumeration on Linux is unreliable -- the device's
-    # USBFS pull-up state cannot resync cleanly after a hub-side data
-    # toggle. Skip that step for FS; rely on Tapo power-cycle to recover.
-    # USBFS bulk MPS = 64.
-    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "no"  64  || overall=1
+    # USBFS re-enumeration: hub-level PPPS (uhubctl) does not propagate
+    # cleanly through the FS PHY, so use the host-side `authorized`
+    # toggle ("soft"). MPS = 64.
+    run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "soft" 64  || overall=1
 fi
 
 if [[ -z "$ONLY" || "$ONLY" == "hs" ]]; then
-    # USBHS bulk MPS = 512; use it for the throughput chunk so the
-    # round-trip latency does not dominate the measurement.
-    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "yes" 512 || overall=1
+    # USBHS: hub-level PPPS (uhubctl) works fine. MPS = 512.
+    run_one_controller "HS" "tz_secure_only_usb_hs" "1209:000c" "$HUB_PORT_USBHS" "hard" 512 || overall=1
 fi
 
 echo
