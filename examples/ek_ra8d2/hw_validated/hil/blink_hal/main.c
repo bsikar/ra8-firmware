@@ -45,6 +45,26 @@ typedef enum : uint32_t {
   k_blink_half_period_ms = 500U,
 } blink_period_t;
 
+/**
+ * @var g_blink_hal_tick
+ * @brief HIL liveness counter -- incremented each main-loop iteration.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD; the script
+ * halts the chip, samples this value, lets the chip run for N seconds,
+ * halts again, and asserts the delta >= HIL_PROBE_MIN_ADVANCE. Catches
+ * the "PC is in MRAM but main loop never iterated" failure mode that
+ * the plain HIL_MODE=alive check misses.
+ *
+ * `volatile` keeps the increment alive under optimization; the global
+ * (non-static) keeps the symbol linker-visible without --gc-sections
+ * culling.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_blink_hal_tick = 0U;
+
 /* Forward declarations -- definitions appear after main() so the
  * audit_init_order linter sees the canonical CGC -> TIME -> peripheral
  * sequence in source order. */
@@ -73,6 +93,7 @@ int32_t main(void)
     if (blink_pins_toggle_all() != k_ra_ok) {
       break;
     }
+    g_blink_hal_tick += 1U;
     ra_delay_ms(k_blink_half_period_ms);
   }
 
