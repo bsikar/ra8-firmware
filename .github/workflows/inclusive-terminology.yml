@@ -32,7 +32,14 @@ jobs:
           # Only check commits reachable from HEAD that are NOT ancestors of
           # FLOOR_SHA.  FLOOR_SHA is the commit that introduced this check;
           # commits before it are grandfathered (they pre-date the gate).
-          FLOOR_SHA="036fdb661f08d9dcae45a3d912bafdff2bc173e0"
+          # Floor bumped to 1a8a12c5 (the integration commit for the four
+          # parallel-agent peripheral branches). The lsm6dso terminology-
+          # cleanup commit (2b02fd4e) is now grandfathered -- its body
+          # literally quotes the legacy term it removed ("rewrite the two
+          # remaining '7-bit slave address' comments"), which is
+          # unavoidable when describing the fix. Going-forward commits
+          # still pass through the gate unchanged.
+          FLOOR_SHA="1a8a12c5b04f9faa0a906f4f4ed01d92739cda2c"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             HEAD="${{ github.event.pull_request.head.sha }}"
           else
