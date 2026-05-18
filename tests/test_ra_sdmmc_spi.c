@@ -581,7 +581,10 @@ static void test_read_block_detects_crc_mismatch(void)
  */
 static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
 {
-  mock_queue_idle(1U);                                       /* N_WR pad slot.        */
+  /* Note: the preceding `queue_command_response_r1` for the CMD24 R1
+   * already leaves one trailing idle (its cs_release post-byte) that
+   * the driver's `internal_write_data_phase` consumes as the N_WR pad
+   * read, so this helper does NOT queue an additional N_WR pad. */
   mock_queue_idle(1U);                                       /* data-token TX slot.   */
   mock_queue_idle((uint32_t)k_ra_sdmmc_spi_block_size);      /* 512 payload TX slots. */
   mock_queue_idle(2U);                                       /* 2 CRC TX slots.       */
