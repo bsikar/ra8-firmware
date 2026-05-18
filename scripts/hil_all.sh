@@ -35,12 +35,23 @@
 #                                     checking the CPU is still healthy
 #
 #   HIL_MODE=jlink_memprobe
-#     HIL_PROBE_SYMBOL="g_tick"    -- name of a `volatile uint32_t` the
-#                                     firmware increments in its main
-#                                     loop / ISR
-#     HIL_PROBE_MIN_ADVANCE=4      -- minimum delta over the sample window
-#     HIL_PROBE_SECONDS=3          -- sample window length in seconds
-#     For apps that should not pull in a UART (blink-class smoke tests).
+#     HIL_PROBE_SYMBOL="g_tick"          -- name of a `volatile uint32_t`
+#                                           the firmware increments in
+#                                           its main loop / ISR
+#     HIL_PROBE_MIN_ADVANCE=4            -- minimum delta over the window
+#     HIL_PROBE_SECONDS=3                -- sample window length in seconds
+#     HIL_PROBE_FAILURE_SYMBOL="g_err"   -- (optional) name of a failure
+#                                           counter that must NOT advance
+#                                           more than HIL_PROBE_MAX_FAILURE
+#                                           (default 0). Pairs with the
+#                                           primary counter for apps that
+#                                           run a loopback / round-trip:
+#                                           success counter must advance,
+#                                           failure counter must stay 0.
+#     HIL_PROBE_MAX_FAILURE=0            -- max allowed failure delta
+#     For apps that should not pull in a UART (blink-class smoke tests)
+#     or whose validation is a pure pass/fail counter (CAN loopback,
+#     CRC verify, ...).
 #
 #   HIL_MODE=hil_eth_tcp
 #     HIL_BOARD_IP="192.168.1.42"  -- IPv4 the firmware listens at
@@ -187,12 +198,18 @@ run_alive() {
 
 run_jlink_memprobe() {
     local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_jlink_memprobe.sh" \
-        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
-        --symbol "${HIL_PROBE_SYMBOL}" \
-        --min-advance "${HIL_PROBE_MIN_ADVANCE:-4}" \
-        --seconds "${HIL_PROBE_SECONDS:-3}" \
+    local -a args=(
+        --hex "${HIL_DIR}/${app}/build/${app}.hex"
+        --symbol "${HIL_PROBE_SYMBOL}"
+        --min-advance "${HIL_PROBE_MIN_ADVANCE:-4}"
+        --seconds "${HIL_PROBE_SECONDS:-3}"
         --app-name "${app}"
+    )
+    if [[ -n "${HIL_PROBE_FAILURE_SYMBOL:-}" ]]; then
+        args+=( --failure-symbol "${HIL_PROBE_FAILURE_SYMBOL}" )
+        args+=( --max-failure-advance "${HIL_PROBE_MAX_FAILURE:-0}" )
+    fi
+    bash "${REPO_ROOT}/scripts/hil_jlink_memprobe.sh" "${args[@]}"
 }
 
 run_hil_eth_tcp() {
@@ -229,6 +246,7 @@ for app in "${APPS[@]}"; do
     unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
     unset HIL_BOOT_S HIL_FAULT_EXPECTED
     unset HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS
+    unset HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE
     unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
     # shellcheck disable=SC1090
     source "$conf"
@@ -237,6 +255,7 @@ for app in "${APPS[@]}"; do
            HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
            HIL_BOOT_S HIL_FAULT_EXPECTED \
            HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
+           HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE \
            HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
 
     if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then

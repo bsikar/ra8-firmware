@@ -68,6 +68,41 @@ typedef enum : uint32_t {
   k_canfd_filter_ctms_intl  = 0x1UL,
 } canfd_filter_ctr_t;
 
+/**
+ * @var g_canfd_filter_match
+ * @brief HIL liveness counter -- incremented on every filter
+ *        sub-round that behaved as expected (matched IDs round-trip,
+ *        no-match ID gets rejected by the acceptance filter).
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving the acceptance-filter slots really gate the
+ * RX FIFO (alive-mode could only prove the chip didn't crash, not
+ * that the filters discriminated frames).
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_match = 0U;
+
+/**
+ * @var g_canfd_filter_mismatch
+ * @brief HIL failure counter -- incremented whenever filter behavior
+ *        deviates: a matched-ID round failed, or a no-match-ID frame
+ *        leaked through and produced a successful RX.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below
+ * HIL_PROBE_MAX_FAILURE). Catches both "TX/RX path broke" and
+ * "acceptance filter let everything through" -- previously invisible
+ * because the chip kept iterating the main loop happily.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_mismatch = 0U;
+
 /** @brief Park the CPU after a fatal init failure. */
 static void canfd_filter_panic_halt(void)
 {
@@ -202,13 +237,22 @@ int32_t main(void)
      * land in the RX FIFO. */
     if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_exact) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led1);
+      g_canfd_filter_match += 1U;
+    } else {
+      g_canfd_filter_mismatch += 1U;
     }
     if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_mask) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led1);
+      g_canfd_filter_match += 1U;
+    } else {
+      g_canfd_filter_mismatch += 1U;
     }
     /* No-match: receive should report no_data; if it doesn't, latch LED2. */
     if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_nomatch) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led2);
+      g_canfd_filter_mismatch += 1U;
+    } else {
+      g_canfd_filter_match += 1U;
     }
     ra_delay_ms(k_canfd_filter_period_ms);
   }
