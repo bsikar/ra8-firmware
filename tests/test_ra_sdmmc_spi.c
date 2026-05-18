@@ -184,18 +184,29 @@ static void queue_command_response_r1(uint8_t r1)
   mock_queue_idle(1U);
   /* The 6-byte command itself shifts in 0xFFs (no response there). */
   mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
-  /* R1 token (no padding -- mock returns 0xFF for queue underflow
-   * which the R1 wait loop treats as "sentinel set, keep polling"). */
+  /* R1 token. */
   mock_queue_byte(r1);
+  /* cs_release post-byte: ra_sdmmc_spi's `internal_cs_release` clocks
+   * one trailing idle byte after deasserting CS (SD spec PHY v9
+   * section 7.2.4). The mock's xfer reads rx for every transmitted
+   * byte, so without an explicit trailing idle here the next command's
+   * queued bytes would be misaligned by one position. */
+  mock_queue_idle(1U);
 }
 
 static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
 {
-  queue_command_response_r1(r1);
+  /* Same as queue_command_response_r1 but inserts the 4-byte R3/R7
+   * tail BEFORE the cs_release post-byte. */
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte(r1);
   mock_queue_byte((uint8_t)((tail_word >> 24U) & 0xFFU));
   mock_queue_byte((uint8_t)((tail_word >> 16U) & 0xFFU));
   mock_queue_byte((uint8_t)((tail_word >> 8U) & 0xFFU));
   mock_queue_byte((uint8_t)(tail_word & 0xFFU));
+  /* cs_release post-byte (see queue_command_response_r1 comment). */
+  mock_queue_idle(1U);
 }
 
 /**
@@ -218,7 +229,15 @@ static void build_csd_v2_32gib(uint8_t* out)
 
 static void queue_csd_read(const uint8_t* csd)
 {
-  queue_command_response_r1((uint8_t)k_test_r1_ready);
+  /* Inline R1-phase: 1 cs_assert idle + 6 CMD9 frame idles + 1 R1.
+   * NOT the cs_release-padded variant because CMD9 leaves CS asserted
+   * across the R1 -> data-token -> CSD body -> CRC sequence (single
+   * CS-bracketed read). The driver-side `internal_cs_release` runs
+   * once at the very end, after the CRC bytes -- handled by the
+   * trailing idle below. */
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_ready);
   mock_queue_byte((uint8_t)k_test_data_token_start);
   for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_csd_response_len; i++) {
     mock_queue_byte(csd[i]);
@@ -227,6 +246,8 @@ static void queue_csd_read(const uint8_t* csd)
    * verify CRC16 on the CSD read. */
   mock_queue_byte(0U);
   mock_queue_byte(0U);
+  /* cs_release post-byte (same rationale as queue_command_response_r1). */
+  mock_queue_idle(1U);
 }
 
 /**
