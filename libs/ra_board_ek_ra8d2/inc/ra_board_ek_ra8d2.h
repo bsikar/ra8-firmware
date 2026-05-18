@@ -644,7 +644,7 @@ typedef enum : uint16_t {
 } ra_board_pmod2_gpio_pin_t;
 
 /* =============================================================================
- * 6b. MikroBUS slot (via MikroE Click Shield on Arduino headers)
+ * 6b. MikroBUS connector (J21/J22, UM Section 5.3.5 + Table 21 p 29)
  * =============================================================================
  */
 
@@ -652,33 +652,68 @@ typedef enum : uint16_t {
  * @brief MikroBUS slot wiring on this board.
  *
  * @details
- * The EK-RA8D2 has no native MikroBUS socket on the PCB. In this project's
- * physical bring-up:
+ * The EK-RA8D2 v1 carries a mikroBUS-compatible footprint at J21/J22 in
+ * the center of the System Control + Ecosystem Access area
+ * (UM Rev 1.01 Section 5.3.5 Figure 16 p 29). The socket is **not
+ * populated** by default; the user can either solder the standard
+ * mikroBUS headers onto J21/J22 to plug a MikroE Click in directly, or
+ * use a Click-Shield-style breakout over the Arduino UNO header (Table
+ * 20 p 28) -- both routes terminate at the same RA8D2 pads.
+ *
+ * For this project's physical bring-up:
  *
  *   - Pmod1 (J26) is occupied by the US159-DA16600EVZ Wi-Fi+BLE daughter
- *     card (uses SCI2 UART pins).
+ *     card (uses SCI2 UART pins, requires SW4-1 ON + SW4-2 OFF).
  *   - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD (uses RSPI-B).
- *   - The MikroE LSM6DSO IMU 12 Click sits in a MikroBUS slot that is
- *     adapted onto the EK-RA8D2 via a Click-Shield-style breakout on the
- *     Arduino headers. The Click Shield wires MikroBUS SDA/SCL to the
- *     Arduino D14/D15 pads, which the EK-RA8D2 v1 UM Table 20 p 28
- *     identifies as **SDA1 = P511 / SCL1 = P512** -- the same SDA1/SCL1
- *     bus the audio CODEC, camera, MIPI-DSI touch panel, and the
- *     k_ra_board_pmod1_i2c_* aliases also live on.
+ *   - The MikroBUS slot carries the MikroE LSM6DSO IMU 12 Click and is
+ *     used in I2C mode only (SW4-4 ON to enable the MikroBUS pads,
+ *     SW4-5 OFF to route the I2C/I3C pads to SDA1/SCL1).
  *
- * Only the MikroBUS signals required by drivers in this tree are mapped
- * below. Additional signals (SPI, UART, AN, PWM, INT, RST, CS) can be
- * added later when a Click that needs them is integrated -- the standard
- * MikroBUS-to-Arduino-header pinout is documented in the MikroE
- * "Click Shield for Arduino UNO" datasheet.
+ * Per UM Table 21 p 29, all twelve mikroBUS signals are mapped below.
+ * Software callers should only enable the subset they need (e.g. the
+ * IMU demo touches just I2C).
  *
  * @par Reference:
- * EK-RA8D2 v1 UM Rev 1.01 Table 20 p 28 (Arduino UNO header signals).
+ * EK-RA8D2 v1 UM Rev 1.01 Table 21 p 29 (mikroBUS Port Assignments).
  */
 typedef enum : uint16_t {
-  /** @brief MikroBUS SDA -> Arduino D14 -> P511 (SDA1). */
+  /** @brief J21.1 AN  -- analog input. */
+  k_ra_board_mikrobus_an   = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4),
+  /** @brief J21.2 RST -- reset out to the Click. P201 also doubles as MD pin. */
+  k_ra_board_mikrobus_rst  = (uint16_t)RA_PIN(k_ra_port_2, k_ra_pin_1),
+  /** @brief J21.3 CS   -- SPI chip-select (SSLB0, SW4-4 ON). */
+  k_ra_board_mikrobus_cs   = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_3),
+  /** @brief J21.4 SCK  -- SPI clock (RSPCKB, SW4-4 ON). */
+  k_ra_board_mikrobus_sck  = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_2),
+  /** @brief J21.5 CIPO -- Controller In, Peripheral Out (UM names this MISOB, SW4-4 ON). */ /* LEGACY-OK: MISOB is the UM pin-mux signal name */
+  k_ra_board_mikrobus_cipo = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_0),
+  /** @brief J21.6 COPI -- Controller Out, Peripheral In (UM names this MOSIB, SW4-4 ON). */ /* LEGACY-OK: MOSIB is the UM pin-mux signal name */
+  k_ra_board_mikrobus_copi = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_1),
+  /** @brief J22.1 PWM -- GTIOC10A. */
+  k_ra_board_mikrobus_pwm  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_10),
+  /** @brief J22.2 INT -- hardware interrupt (IRQ-22). */
+  k_ra_board_mikrobus_int  = (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_1),
+  /** @brief J22.3 RX  -- UART RX (RXD7, SW4-4 ON). */
+  k_ra_board_mikrobus_rx   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_8),
+  /** @brief J22.4 TX  -- UART TX (TXD7, SW4-4 ON). */
+  k_ra_board_mikrobus_tx   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_9),
+} ra_board_mikrobus_pin_t;
+
+/**
+ * @brief MikroBUS J22.5 / J22.6 I2C lines.
+ *
+ * @details Per UM Table 21 footnote *1, the I3C/I2C pads are switched by
+ * SW4-5: **OFF = I2C** -> P511 (SDA1) / P512 (SCL1); ON = I3C -> P401
+ * (SDA0) / P400 (SCL0). This project always runs in I2C mode, so the
+ * symbols below resolve to SDA1/SCL1. Per UM Section 5.4.2 p 30,
+ * the on-board pull-ups are not enabled by default; firmware must
+ * either enable the internal pad pull-ups via PFS.PCR or rely on the
+ * pull-ups inside the IIC_B controller / Click board itself.
+ */
+typedef enum : uint16_t {
+  /** @brief J22.6 SDA (SW4-5 OFF) -> P511 SDA1. */
   k_ra_board_mikrobus_i2c_sda = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11),
-  /** @brief MikroBUS SCL -> Arduino D15 -> P512 (SCL1). */
+  /** @brief J22.5 SCL (SW4-5 OFF) -> P512 SCL1. */
   k_ra_board_mikrobus_i2c_scl = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12),
 } ra_board_mikrobus_i2c_pin_t;
 
@@ -694,6 +729,78 @@ typedef enum : uint16_t {
 typedef enum : uint8_t {
   k_ra_board_mikrobus_iic_b_channel = 0U,
 } ra_board_mikrobus_iic_channel_t;
+
+/* =============================================================================
+ * 6c. Project SW4 layout (UM Section 4.3 Table 3 p 16 + Table 18 p 26)
+ * =============================================================================
+ */
+
+/**
+ * @brief Required SW4 DIP-switch positions for this project's wiring.
+ *
+ * @details
+ * The on-board SW4 8-position DIP picks which of the chip's muxed
+ * peripherals the EK-RA8D2 routes to its connectors. Per UM Table 3
+ * p 16, each bit governs a different routing decision, several of which
+ * conflict (SW4-3 vs SW4-4 vs the Pmod1 mode bits). The layout below
+ * is the one this project's wiring assumes:
+ *
+ * | SW4 | Position | Reason                                                 |
+ * |-----|----------|--------------------------------------------------------|
+ * | 1   | ON       | Pmod1 Mode-Sel-1 (with SW4-2 OFF -> UART for DA16600). |
+ * | 2   | OFF      | Pmod1 Mode-Sel-2 (UART, see Table 18).                 |
+ * | 3   | ON       | Octo-SPI Inactive -- frees Pmod1/Arduino/mikroBUS.     |
+ * | 4   | ON       | Arduino + mikroBUS Connectors Active (IMU on mikroBUS).|
+ * | 5   | OFF      | I2C Active on mikroBUS (P511/P512 SDA1/SCL1).          |
+ * | 6   | OFF      | Default -- Parallel Display + MIPI Camera.             |
+ * | 7   | OFF      | Default -- USBFS role toggle in mechanical OFF.        |
+ * | 8   | OFF      | Default -- USBHS in Device mode.                       |
+ *
+ * The user can either flip the physical DIP switches to match, or call
+ * ``ra_board_io_expander_apply_project_sw4_defaults`` to have the U15
+ * PI4IOE5V6408 expander drive the same pattern in firmware (the
+ * expander outputs override the mechanical DIP per UM Section 5.5.3
+ * p 32).
+ *
+ * @par Reference:
+ * EK-RA8D2 v1 UM Rev 1.01 Table 3 p 16 (Switch Configuration Definitions)
+ * and Table 18 p 26 (Pmod 1 Switch Configuration).
+ */
+typedef enum : uint8_t {
+  /** @brief U15 output byte that drives the SW4 layout above.
+   *  Bit n = 1 -> SW4-(n+1) reads OFF; bit n = 0 -> reads ON. */
+  k_ra_board_pi4ioe_output_project_default = 0xF2U,
+} ra_board_pi4ioe_project_t;
+
+/**
+ * @brief Program the U15 I/O expander to apply the project's SW4 layout.
+ *
+ * @details
+ * Equivalent to ``ra_board_io_expander_set_usbhs_device_mode`` but
+ * writes ``k_ra_board_pi4ioe_output_project_default`` (0xF2) to the
+ * expander's output register instead of 0xFF. After the write the
+ * board is forced into "Pmod1 UART, Octo-SPI inactive, Arduino +
+ * mikroBUS active, I2C on mikroBUS, USBHS Device" regardless of the
+ * physical DIP positions.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                All five U15 register writes succeeded.
+ * @retval k_ra_err_gpio_conflict P400/P401 already owned by another driver.
+ * @retval k_ra_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra_err_nack          U15 didn't ACK the register write.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ``ra_mstp_init`` has run.
+ * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialized at
+ *       100 kHz; U15.P0..P7 are configured as outputs driven to
+ *       ``k_ra_board_pi4ioe_output_project_default``.
+ *
+ * @note Not thread-safe; call once from the boot context before any
+ *       Pmod / Arduino / mikroBUS init that depends on SW4 routing.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_io_expander_apply_project_sw4_defaults(void);
 
 /* =============================================================================
  * 7. USB (UM Section 5.4.1 + 6.2, Tables 22 + 28, p 30 + 34)

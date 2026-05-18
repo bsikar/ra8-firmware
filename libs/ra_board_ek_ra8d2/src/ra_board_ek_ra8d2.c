@@ -1278,25 +1278,32 @@ static ra_err_t internal_io_expander_route_pins(void)
 }
 
 /**
- * @brief Issue the three U15 register writes that force USB-HS device mode.
+ * @brief Issue the three U15 register writes that latch a given SW4 layout.
  * @details Order matches the FSP reference (output-latch -> Hi-Z clear ->
- *          iodir) so the pin only flips to output once the latch is already
+ *          iodir) so each pin only flips to output once the latch is already
  *          driving the desired level. Updates s_io_expander_probe between
  *          writes so JLink can pinpoint a NACK.
+ * @param[in] output_byte Bit-pattern written to PI4IOE5V6408 reg 0x05
+ *                        (Output state). Bit n = 1 -> SW4-(n+1) reads OFF;
+ *                        bit n = 0 -> reads ON. Use ``0xFF`` to mirror the
+ *                        all-DIPs-OFF mechanical default or
+ *                        ``k_ra_board_pi4ioe_output_project_default``
+ *                        (0xF2) for this project's wiring.
  * @return ra_err_t Error code; k_ra_ok if all three writes ack.
- * @retval k_ra_ok U15 driving SW4-default pattern with SW4-8 OFF strap.
+ * @retval k_ra_ok U15 driving the requested SW4 layout, P0..P7 outputs.
+ * @retval k_ra_err_nack U15 didn't ACK one of the register writes.
  * @pre ra_iic_b_init has already configured channel 0.
  * @pre I2C bus is idle.
- * @post On success, U15 IODIR=0xFF, OUTPUT=0xFF, HIZ=0x00.
+ * @post On success, U15 IODIR=0xFF, OUTPUT=output_byte, HIZ=0x00.
  * @post On failure, s_io_expander_probe records the failing step.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t internal_io_expander_program_u15(void)
+static ra_err_t internal_io_expander_program_u15(uint8_t output_byte)
 {
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_out;
-  ra_err_t err        = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output,
-                                                       (uint8_t)k_ra_board_pi4ioe_output_all_high);
+  ra_err_t err =
+    internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output, output_byte);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1311,8 +1318,35 @@ static ra_err_t internal_io_expander_program_u15(void)
                                         (uint8_t)k_ra_board_pi4ioe_iodir_all_outputs);
 }
 
-/* Ra board io expander set usbhs device mode -- see implementation for details. */
-ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
+/**
+ * @brief Shared U15 bring-up: route SCL0/SDA0, gate-on IIC_B, then load
+ *        @p output_byte into the expander's output register.
+ *
+ * @details The two public entry points differ only in the SW4 layout they
+ *          program, so factor the PFS-route + MSTP-ungate + IIC_B-init +
+ *          U15-write sequence into one helper. The probe word
+ *          ``s_io_expander_probe`` is updated between steps so a JLink
+ *          halt can pinpoint which step NACKed.
+ *
+ * @param[in] output_byte Value to latch into U15's output register
+ *                        (see ``internal_io_expander_program_u15``).
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok All four bring-up steps completed.
+ * @retval k_ra_err_gpio_conflict P400/P401 already owned.
+ * @retval k_ra_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra_err_nack U15 didn't ACK one of the register writes.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ``ra_mstp_init`` has run.
+ * @post On success P400/P401 are routed to SCL0/SDA0; IIC_B0 is at
+ *       100 kHz; U15.P0..P7 are outputs driven to @p output_byte.
+ * @post ``s_io_expander_probe`` ends at ``k_io_exp_probe_success`` on OK
+ *       or at the failing step on error.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_io_expander_apply(uint8_t output_byte)
 {
   /* Step 1: route P400 -> SCL0 and P401 -> SDA0 with NCODR on both
    * (HUM Ch 20.6 PSEL table p 859). */
@@ -1346,12 +1380,49 @@ ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
   }
 
   /* Step 4: program U15 in FSP-reference order. */
-  err = internal_io_expander_program_u15();
+  err = internal_io_expander_program_u15(output_byte);
   if (err != k_ra_ok) {
     return err;
   }
   s_io_expander_probe = (uint32_t)k_io_exp_probe_success;
   return k_ra_ok;
+}
+
+/* Ra board io expander set usbhs device mode -- see implementation for details. */
+ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
+{
+  return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_all_high);
+}
+
+/**
+ * @brief Program U15 with this project's SW4 override pattern.
+ * @details Writes ``k_ra_board_pi4ioe_output_project_default`` (0xF2) to
+ *          the expander's output register, which forces SW4-1 ON +
+ *          SW4-2 OFF (Pmod1 UART) + SW4-3 ON (Octo-SPI inactive) +
+ *          SW4-4 ON (Arduino/mikroBUS active) + SW4-5 OFF (I2C),
+ *          regardless of the physical DIP positions. See the header
+ *          for the full per-bit table.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok All four bring-up steps completed; SW4 layout latched.
+ * @retval k_ra_err_gpio_conflict P400/P401 already owned.
+ * @retval k_ra_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra_err_nack U15 didn't ACK one of the register writes.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ``ra_mstp_init`` has run.
+ * @post On success U15 outputs are 0xF2; the project's expected SW4
+ *       layout is active.
+ * @post P400/P401 are routed to SCL0/SDA0 and IIC_B0 is brought up at
+ *       100 kHz, ready for subsequent in-tree I2C work.
+ *
+ * @note Not thread-safe; call once early in main() before any code that
+ *       depends on Pmod1 / Arduino / mikroBUS routing.
+ * @since 0.1.0
+ */
+ra_err_t ra_board_io_expander_apply_project_sw4_defaults(void)
+{
+  return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_project_default);
 }
 
 /**
