@@ -454,7 +454,14 @@ __attribute__((naked, noreturn)) void HardFault_Handler(void)
                    "b     ra_exception_report\n");
 }
 
-__attribute__((naked, noreturn)) void MemManage_Handler(void)
+/* MemManage_Handler is `weak` here so the application can install a
+ * recovering handler (mpu_partition_simple does this in main.c: the
+ * demo deliberately writes to an RO-marked MPU region and the override
+ * clears CFSR, rewrites the stacked PC, prints a "fault handled"
+ * banner, and returns so execution continues). If no override is
+ * provided the default trampoline parks the CPU via the exception
+ * reporter, matching the other fault vectors. */
+__attribute__((naked, noreturn, weak)) void MemManage_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"

@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_mpu.h"
@@ -163,6 +164,32 @@ void SysTick_Handler(void)
 }
 
 /**
+ * @var g_threadx_mpu_partition_match
+ * @brief HIL liveness counter -- incremented by the worker thread on
+ *        every LED-toggle iteration.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving:
+ *   1. ra_mpu_configure(&s_mpu_cfg) returned k_ra_ok and the three-
+ *      region partition table is live without locking the kernel
+ *      out of its bookkeeping pages.
+ *   2. tx_kernel_enter dispatched the worker thread.
+ *   3. The 1 Hz SysTick / _tx_timer_interrupt path is unblocked by
+ *      the SRAM and peripheral MPU regions, so tx_thread_sleep wakes
+ *      the worker normally.
+ *
+ * The alive-mode check could only prove the chip didn't HardFault;
+ * the counter proves the MPU partition did not silently break the
+ * scheduler tick or LED-toggle path.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_threadx_mpu_partition_match = 0U;
+
+/**
  * @brief Worker thread: blink LED1 to prove MPU did not wedge us.
  */
 static void thread_entry(ULONG thread_input)
@@ -170,6 +197,7 @@ static void thread_entry(ULONG thread_input)
   (void)thread_input;
   while (1) {
     (void)ra_board_led_toggle(k_ra_board_led1);
+    g_threadx_mpu_partition_match += 1U;
     (void)tx_thread_sleep((ULONG)k_mpu_blink_ticks);
   }
 }
@@ -211,6 +239,20 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
+  /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick
+   * with a reload sized for the post-PLL CPUCLK0 = 1 GHz (see the
+   * threadx_blink/main.c rationale). Skipping ra_cgc_init leaves the
+   * chip on the MOCO (~8.4 MHz) so the SysTick reload takes ~119 ms
+   * wallclock per tick -- the worker's tx_thread_sleep(1000) would
+   * then sleep for ~2 minutes and the HIL counter window would see
+   * zero advance. Bring up the PLL before tx_kernel_enter so the
+   * scheduler tick rate matches what tx_user.h declared. */
+  if (ra_cgc_init() != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+
   if (ra_mpu_configure(&s_mpu_cfg) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");

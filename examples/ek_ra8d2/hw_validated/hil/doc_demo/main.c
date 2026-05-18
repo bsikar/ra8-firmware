@@ -62,6 +62,41 @@ static void doc_demo_panic_halt(void)
 }
 
 /**
+ * @var g_doc_match
+ * @brief HIL liveness counter -- incremented on every iteration where
+ *        the hardware DOC sum matched the software reference sum.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving the DOC peripheral actually computed the
+ * same chained-add result as the portable software reference (the
+ * alive-mode check could only prove the chip didn't crash, not that
+ * DOC arithmetic was correct).
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_doc_match = 0U;
+
+/**
+ * @var g_doc_mismatch
+ * @brief HIL failure counter -- incremented every time the hardware
+ *        DOC sum disagreed with the software reference, or the DOC
+ *        accumulator call returned a non-ok status.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below HIL_PROBE_MAX_FAILURE).
+ * Catches silent failure modes where DOC reports success but produces
+ * a wrong DODSR result, or where the driver returns an error code -- both
+ * previously invisible because the chip kept iterating the main loop.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_doc_mismatch = 0U;
+
+/**
  * @brief Software reference: sum every operand modulo 2^16.
  *
  * @par MC/DC:
@@ -178,11 +213,13 @@ int32_t main(void)
     uint8_t        match = 0U;
     const ra_err_t err   = doc_demo_one_iter(&match);
     if (err != k_ra_ok) {
-      break;
-    }
-    if (match != 0U) {
+      g_doc_mismatch += 1U;
+      (void)ra_board_led_toggle(k_ra_board_led2);
+    } else if (match != 0U) {
+      g_doc_match += 1U;
       (void)ra_board_led_toggle(k_ra_board_led1);
     } else {
+      g_doc_mismatch += 1U;
       (void)ra_board_led_toggle(k_ra_board_led2);
     }
     ra_delay_ms((uint32_t)k_doc_demo_period_ms);
