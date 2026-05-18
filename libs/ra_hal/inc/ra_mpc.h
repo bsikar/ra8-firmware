@@ -75,38 +75,38 @@ extern "C" {
  *       ``k_ra_pfs_bit_psel0`` before writing.
  */
 typedef enum : uint8_t {
-  k_ra_mpc_psel_gpio       = 0x00U, /**< 00000: plain GPIO / DEBUG. */
-  k_ra_mpc_psel_agt        = 0x01U, /**< 00001: AGT/AGTW timer I/O. */
-  k_ra_mpc_psel_gpt0       = 0x02U, /**< 00010: GPT0 (low channels). */
-  k_ra_mpc_psel_gpt1       = 0x03U, /**< 00011: GPT1 alt mux. */
-  k_ra_mpc_psel_sci0       = 0x04U, /**< 00100: SCI 0/2/4/6/8. */
-  k_ra_mpc_psel_sci1       = 0x05U, /**< 00101: SCI 1/3/5/7/9. */
-  k_ra_mpc_psel_spi        = 0x06U, /**< 00110: SPI. */
-  k_ra_mpc_psel_iic        = 0x07U, /**< 00111: IIC. */
-  k_ra_mpc_psel_key        = 0x08U, /**< 01000: KEY input. */
-  k_ra_mpc_psel_clkout_rtc = 0x09U, /**< 01001: CLKOUT / comparator / RTC. */
-  k_ra_mpc_psel_cac_adc    = 0x0AU, /**< 01010: CAC / ADC trigger. */
-  k_ra_mpc_psel_bus        = 0x0BU, /**< 01011: external bus interface. */
-  k_ra_mpc_psel_acmphs     = 0x0CU, /**< 01100: ACMPHS / CTSU. */
-  k_ra_mpc_psel_lcdc       = 0x0DU, /**< 01101: segment LCDC / SCI DEn. */
-  k_ra_mpc_psel_ceu        = 0x0FU, /**< 01111: camera engine unit (CEU). */
-  k_ra_mpc_psel_canfd      = 0x10U, /**< 10000: CAN / CANFD. */
-  k_ra_mpc_psel_qspi       = 0x11U, /**< 10001: QSPI controller. */
-  k_ra_mpc_psel_ssi        = 0x12U, /**< 10010: SSI audio. */
-  k_ra_mpc_psel_usbfs      = 0x13U, /**< 10011: USB Full-Speed. */
-  k_ra_mpc_psel_usbhs      = 0x14U, /**< 10100: USB High-Speed / GPT2. */
-  k_ra_mpc_psel_sdhi       = 0x15U, /**< 10101: SDHI / MMC / GPT3. */
+  k_ra_mpc_psel_gpio        = 0x00U, /**< 00000: plain GPIO / DEBUG. */
+  k_ra_mpc_psel_agt         = 0x01U, /**< 00001: AGT/AGTW timer I/O. */
+  k_ra_mpc_psel_gpt0        = 0x02U, /**< 00010: GPT0 (low channels). */
+  k_ra_mpc_psel_gpt1        = 0x03U, /**< 00011: GPT1 alt mux. */
+  k_ra_mpc_psel_sci0        = 0x04U, /**< 00100: SCI 0/2/4/6/8. */
+  k_ra_mpc_psel_sci1        = 0x05U, /**< 00101: SCI 1/3/5/7/9. */
+  k_ra_mpc_psel_spi         = 0x06U, /**< 00110: SPI. */
+  k_ra_mpc_psel_iic         = 0x07U, /**< 00111: IIC. */
+  k_ra_mpc_psel_key         = 0x08U, /**< 01000: KEY input. */
+  k_ra_mpc_psel_clkout_rtc  = 0x09U, /**< 01001: CLKOUT / comparator / RTC. */
+  k_ra_mpc_psel_cac_adc     = 0x0AU, /**< 01010: CAC / ADC trigger. */
+  k_ra_mpc_psel_bus         = 0x0BU, /**< 01011: external bus interface. */
+  k_ra_mpc_psel_acmphs      = 0x0CU, /**< 01100: ACMPHS / CTSU. */
+  k_ra_mpc_psel_lcdc        = 0x0DU, /**< 01101: segment LCDC / SCI DEn. */
+  k_ra_mpc_psel_ceu         = 0x0FU, /**< 01111: camera engine unit (CEU). */
+  k_ra_mpc_psel_canfd       = 0x10U, /**< 10000: CAN / CANFD. */
+  k_ra_mpc_psel_qspi        = 0x11U, /**< 10001: QSPI controller. */
+  k_ra_mpc_psel_ssi         = 0x12U, /**< 10010: SSI audio. */
+  k_ra_mpc_psel_usbfs       = 0x13U, /**< 10011: USB Full-Speed. */
+  k_ra_mpc_psel_usbhs       = 0x14U, /**< 10100: USB High-Speed / GPT2. */
+  k_ra_mpc_psel_sdhi        = 0x15U, /**< 10101: SDHI / MMC / GPT3. */
   k_ra_mpc_psel_ether_mii   = 0x16U, /**< 10110: Ethernet MII / GPT4 / UARTA. */
   k_ra_mpc_psel_ether_rmii  = 0x17U, /**< 10111: Ethernet RMII. */
   k_ra_mpc_psel_pdc         = 0x18U, /**< 11000: PDC / AGT1 / Ether RGMII (alias). */
   k_ra_mpc_psel_ether_rgmii = 0x18U, /**< 11000: Ethernet RGMII (preferred name). */
-  k_ra_mpc_psel_glcdc      = 0x19U, /**< 11001: graphics LCDC / CAC. */
-  k_ra_mpc_psel_trace      = 0x1AU, /**< 11010: ETM debug trace. */
-  k_ra_mpc_psel_pdm        = 0x1BU, /**< 11011: PDM / GPT5. */
-  k_ra_mpc_psel_ospi       = 0x1CU, /**< 11100: Octa-SPI controller. */
-  k_ra_mpc_psel_cec        = 0x1DU, /**< 11101: CEC / PGAOUT0. */
-  k_ra_mpc_psel_ulpt       = 0x1EU, /**< 11110: ULPT / PGAOUT1. */
-  k_ra_mpc_psel_mipi       = 0x1FU, /**< 11111: MIPI DSI. */
+  k_ra_mpc_psel_glcdc       = 0x19U, /**< 11001: graphics LCDC / CAC. */
+  k_ra_mpc_psel_trace       = 0x1AU, /**< 11010: ETM debug trace. */
+  k_ra_mpc_psel_pdm         = 0x1BU, /**< 11011: PDM / GPT5. */
+  k_ra_mpc_psel_ospi        = 0x1CU, /**< 11100: Octa-SPI controller. */
+  k_ra_mpc_psel_cec         = 0x1DU, /**< 11101: CEC / PGAOUT0. */
+  k_ra_mpc_psel_ulpt        = 0x1EU, /**< 11110: ULPT / PGAOUT1. */
+  k_ra_mpc_psel_mipi        = 0x1FU, /**< 11111: MIPI DSI. */
 } ra_mpc_psel_t;
 
 /**

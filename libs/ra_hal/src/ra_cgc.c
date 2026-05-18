@@ -1586,7 +1586,7 @@ static ra_err_t internal_ensure_hoco_running_for_usb_ck(void)
    * sim has OSCSF=0 and would time out. Seed HOCOSF so callers that need
    * a stable HOCO (USB60CKCR / ESWCKCR SREQ->SRDY handshakes) progress. */
   volatile uint8_t* const oscsf = ra_sys_oscsf();
-  *oscsf                        = (uint8_t)((uint8_t)*oscsf | (uint8_t)(1U << k_ra_oscsf_bit_hocosf));
+  *oscsf = (uint8_t)((uint8_t)*oscsf | (uint8_t)(1U << k_ra_oscsf_bit_hocosf));
 #endif
   return internal_wait_oscsf_set(k_ra_oscsf_bit_hocosf);
 }
@@ -1701,13 +1701,13 @@ ra_err_t ra_cgc_usbhs_pll_enable(
  * FSP "log2 ratio" map).
  */
 typedef enum : uint8_t {
-  k_ra_eswckdivcr_div1   = 0U, /**< /1   */
-  k_ra_eswckdivcr_div2   = 1U, /**< /2 -- PLL1P/2 = 500 MHz (ESWPHYCLK target). */
-  k_ra_eswckdivcr_div4   = 2U, /**< /4 -- PLL1P/4 = 250 MHz (ESWCLK target).    */
-  k_ra_eswckdivcr_div8   = 3U, /**< /8   */
-  k_ra_eswckdivcr_div16  = 4U, /**< /16  */
-  k_ra_eswckdivcr_div32  = 5U, /**< /32  */
-  k_ra_eswckdivcr_div64  = 6U, /**< /64  */
+  k_ra_eswckdivcr_div1  = 0U, /**< /1   */
+  k_ra_eswckdivcr_div2  = 1U, /**< /2 -- PLL1P/2 = 500 MHz (ESWPHYCLK target). */
+  k_ra_eswckdivcr_div4  = 2U, /**< /4 -- PLL1P/4 = 250 MHz (ESWCLK target).    */
+  k_ra_eswckdivcr_div8  = 3U, /**< /8   */
+  k_ra_eswckdivcr_div16 = 4U, /**< /16  */
+  k_ra_eswckdivcr_div32 = 5U, /**< /32  */
+  k_ra_eswckdivcr_div64 = 6U, /**< /64  */
 } ra_cgc_eswckdivcr_t;
 
 typedef enum : uint32_t {
@@ -1823,8 +1823,8 @@ static ra_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* ckcr_reg,
    *      the subsequent SREQ-clear hangs.
    *   5. Clear SREQ -> peripheral clock starts.
    *   6. Spin-wait SRDY=0 (start acknowledged).                       */
-  *ckcr_reg      = (uint8_t)(*ckcr_reg | sreq_mask);
-  ra_err_t err   = internal_wait_cksrdy(ckcr_reg, 1U);
+  *ckcr_reg    = (uint8_t)(*ckcr_reg | sreq_mask);
+  ra_err_t err = internal_wait_cksrdy(ckcr_reg, 1U);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1864,7 +1864,7 @@ static ra_err_t internal_wait_pdctreswm_clear(uint8_t bit)
   *pd = (uint8_t)(*pd & (uint8_t)~mask);
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra_cgc_eswclk_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*pd & mask) == 0U) {                                           /* GCOVR_EXCL_BR_LINE */
+    if ((*pd & mask) == 0U) {                                            /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

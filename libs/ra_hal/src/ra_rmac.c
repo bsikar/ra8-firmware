@@ -227,11 +227,11 @@ static inline uint32_t internal_make_mpic(ra_rmac_pis_t    iface,
                                           uint32_t         psmcs)
 {
   /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1707 */
-  const uint32_t pis  = ((uint32_t)iface & k_ra_rmac_mask_mpic_pis)
-                        << (uint32_t)k_ra_rmac_shift_mpic_pis;
-  const uint32_t lsc  = ((uint32_t)speed & k_ra_rmac_mask_mpic_lsc)
-                        << (uint32_t)k_ra_rmac_shift_mpic_lsc;
-  const uint32_t pipp = (duplex == k_ra_rmac_duplex_full) ? (1UL << 9U) : 0UL;
+  const uint32_t pis         = ((uint32_t)iface & k_ra_rmac_mask_mpic_pis)
+                               << (uint32_t)k_ra_rmac_shift_mpic_pis;
+  const uint32_t lsc         = ((uint32_t)speed & k_ra_rmac_mask_mpic_lsc)
+                               << (uint32_t)k_ra_rmac_shift_mpic_lsc;
+  const uint32_t pipp        = (duplex == k_ra_rmac_duplex_full) ? (1UL << 9U) : 0UL;
   const uint32_t psmcs_field = (psmcs & k_ra_rmac_mask_mpic_psmcs)
                                << (uint32_t)k_ra_rmac_shift_mpic_psmcs;
   return pis | lsc | pipp | psmcs_field;
@@ -368,17 +368,16 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
  */
 static void internal_program_mac_config(volatile r_rmac_regs_t* reg, const ra_rmac_config_t* cfg)
 {
-  reg->MIOC   = 0U;
-  reg->MTFFC  = 0U;
-  reg->MRMAC0 = 0U;
-  reg->MRMAC1 = 0U;
-  reg->MRGC   = 0U;
-  reg->MRAFC  = (uint32_t)cfg->rx_filter;
-  reg->MLBC   = 0U;
-  reg->MEEEC  = 0U;
-  const uint32_t mdc_hz =
-    (cfg->mdc_hz != 0U) ? cfg->mdc_hz : (uint32_t)k_ra_rmac_mdc_default_hz;
-  const uint32_t psmcs = internal_calc_psmcs(cfg->eswclk_hz, mdc_hz);
+  reg->MIOC             = 0U;
+  reg->MTFFC            = 0U;
+  reg->MRMAC0           = 0U;
+  reg->MRMAC1           = 0U;
+  reg->MRGC             = 0U;
+  reg->MRAFC            = (uint32_t)cfg->rx_filter;
+  reg->MLBC             = 0U;
+  reg->MEEEC            = 0U;
+  const uint32_t mdc_hz = (cfg->mdc_hz != 0U) ? cfg->mdc_hz : (uint32_t)k_ra_rmac_mdc_default_hz;
+  const uint32_t psmcs  = internal_calc_psmcs(cfg->eswclk_hz, mdc_hz);
   reg->MPIC = internal_make_mpic(cfg->phy_interface, cfg->link_speed, cfg->duplex, psmcs);
 }
 
