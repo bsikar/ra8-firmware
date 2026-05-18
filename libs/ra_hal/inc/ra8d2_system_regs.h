@@ -451,16 +451,16 @@ static inline volatile uint8_t* ra_sys_usb60ckdivcr(void)
  * enum drives every peripheral clock select).
  */
 typedef enum : uint8_t {
-  k_ra_eswcksel_hoco  = 0U, /**< HOCO. */
-  k_ra_eswcksel_moco  = 1U, /**< MOCO. */
-  k_ra_eswcksel_loco  = 2U, /**< LOCO. */
-  k_ra_eswcksel_main  = 3U, /**< Main XTAL. */
-  k_ra_eswcksel_pll1p = 5U, /**< PLL1P (preferred for 125 MHz ESWCLK). */
-  k_ra_eswcksel_pll2p = 6U, /**< PLL2P. */
-  k_ra_eswcksel_pll1q = 7U, /**< PLL1Q. */
-  k_ra_eswcksel_pll1r = 8U, /**< PLL1R. */
-  k_ra_eswcksel_pll2q = 9U, /**< PLL2Q. */
-  k_ra_eswcksel_pll2r = 10U,/**< PLL2R. */
+  k_ra_eswcksel_hoco  = 0U,  /**< HOCO. */
+  k_ra_eswcksel_moco  = 1U,  /**< MOCO. */
+  k_ra_eswcksel_loco  = 2U,  /**< LOCO. */
+  k_ra_eswcksel_main  = 3U,  /**< Main XTAL. */
+  k_ra_eswcksel_pll1p = 5U,  /**< PLL1P (preferred for 125 MHz ESWCLK). */
+  k_ra_eswcksel_pll2p = 6U,  /**< PLL2P. */
+  k_ra_eswcksel_pll1q = 7U,  /**< PLL1Q. */
+  k_ra_eswcksel_pll1r = 8U,  /**< PLL1R. */
+  k_ra_eswcksel_pll2q = 9U,  /**< PLL2Q. */
+  k_ra_eswcksel_pll2r = 10U, /**< PLL2R. */
 } ra_eswcksel_t;
 
 /**

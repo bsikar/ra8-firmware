@@ -151,12 +151,12 @@ typedef enum : uint32_t {
  * "RGMII + TX skew" board profile).
  */
 typedef enum : uint32_t {
-  k_ra_eswm_miicr_miisel_mii   = 0UL,         /**< MIISEL = MII/GMII.              */
-  k_ra_eswm_miicr_miisel_rgmii = 1UL,         /**< MIISEL = RGMII.                 */
-  k_ra_eswm_miicr_miisel_rmii  = 2UL,         /**< MIISEL = RMII.                  */
-  k_ra_eswm_miicr_miisel_mask  = 0x3UL,       /**< MIISEL field mask (bits 1:0).   */
-  k_ra_eswm_miicr_divstp       = (1UL << 8U), /**< DIVSTP -- gate the clock div.   */
-  k_ra_eswm_miicr_txcide       = (1UL << 12U),/**< TXCIDE -- TXC internal delay.   */
+  k_ra_eswm_miicr_miisel_mii   = 0UL,          /**< MIISEL = MII/GMII.              */
+  k_ra_eswm_miicr_miisel_rgmii = 1UL,          /**< MIISEL = RGMII.                 */
+  k_ra_eswm_miicr_miisel_rmii  = 2UL,          /**< MIISEL = RMII.                  */
+  k_ra_eswm_miicr_miisel_mask  = 0x3UL,        /**< MIISEL field mask (bits 1:0).   */
+  k_ra_eswm_miicr_divstp       = (1UL << 8U),  /**< DIVSTP -- gate the clock div.   */
+  k_ra_eswm_miicr_txcide       = (1UL << 12U), /**< TXCIDE -- TXC internal delay.   */
 } ra_eswm_miicr_field_t;
 
 /** @brief Get pointer to ESWM.MIIRR (32-bit). */
