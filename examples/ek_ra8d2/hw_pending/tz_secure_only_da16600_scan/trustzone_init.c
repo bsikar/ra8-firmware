@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/trustzone_init.c
+ * @file examples/ek_ra8d2/hw_pending/tz_secure_only_da16600_scan/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag

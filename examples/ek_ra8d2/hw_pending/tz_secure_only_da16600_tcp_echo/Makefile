@@ -1,8 +1,8 @@
 #
-# Per-app Makefile for the `tz_secure_only_da16600_scan` firmware.
+# Per-app Makefile for the `tz_secure_only_da16600_tcp_echo` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_validated/hil/tz_secure_only_da16600_scan/
+#   cd examples/ek_ra8d2/hw_pending/tz_secure_only_da16600_tcp_echo/
 #   make
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
@@ -14,7 +14,7 @@
 
 SHELL     := /bin/bash
 
-APP        := tz_secure_only_da16600_scan
+APP        := tz_secure_only_da16600_tcp_echo
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build

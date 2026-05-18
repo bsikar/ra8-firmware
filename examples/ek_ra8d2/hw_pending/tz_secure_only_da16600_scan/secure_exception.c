@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/secure_exception.c
+ * @file examples/ek_ra8d2/hw_pending/tz_secure_only_da16600_scan/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

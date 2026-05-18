@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_da16600_tcp_echo/vector_table.c
+ * @file examples/ek_ra8d2/hw_pending/tz_secure_only_da16600_scan/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details

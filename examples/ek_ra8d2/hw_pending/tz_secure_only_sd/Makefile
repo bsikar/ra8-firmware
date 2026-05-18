@@ -2,7 +2,7 @@
 # Per-app Makefile for the `tz_secure_only_sd` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/
+#   cd examples/ek_ra8d2/hw_pending/tz_secure_only_sd/
 #   make             # configure + build -> build/tz_secure_only_sd.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
