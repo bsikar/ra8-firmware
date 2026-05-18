@@ -48,9 +48,9 @@
  * each function's local-frame budget without preprocessor expansion.
  */
 typedef enum : uint16_t {
-  k_ra_da16600_cmd_buf_bytes     = 96U,    /**< Per-command AT line buffer (TX). */
-  k_ra_da16600_capture_buf_bytes = 256U,   /**< Per-command response capture. */
-  k_ra_da16600_payload_max_bytes = 1460U,  /**< One TCP MSS. UM-WI-046 5.2.5. */
+  k_ra_da16600_cmd_buf_bytes     = 96U,   /**< Per-command AT line buffer (TX). */
+  k_ra_da16600_capture_buf_bytes = 256U,  /**< Per-command response capture. */
+  k_ra_da16600_payload_max_bytes = 1460U, /**< One TCP MSS. UM-WI-046 5.2.5. */
 } ra_da16600_internal_caps_t;
 
 /**
@@ -112,6 +112,11 @@ static ra_da16600_state_t s_da;
 static uint16_t internal_str_len(const char* s)
 {
   uint16_t i = 0U;
+  /* cppcheck-suppress arrayIndexOutOfBoundsCond
+   * Reason: this is a NUL-bounded scan; the upper bound exists only as
+   * a safety cap for unterminated input. cppcheck can't tell the caller
+   * always passes a NUL-terminated string, so it flags the conditional
+   * as "redundant or OOB". */
   while ((i < (uint16_t)UINT16_MAX) && (s[i] != '\0')) {
     ++i;
   }
@@ -310,17 +315,15 @@ static ra_err_t internal_require_init(void)
  * @note Not thread-safe; caller must serialise driver access.
  * @since 0.1.0
  */
-static ra_err_t internal_build_wfjap_cmd(char*       cmd,
-                                         size_t      cmd_cap,
-                                         const char* ssid,
-                                         const char* passkey)
+static ra_err_t
+internal_build_wfjap_cmd(char* cmd, size_t cmd_cap, const char* ssid, const char* passkey)
 {
   size_t off = 0U;
   cmd[0]     = '\0';
-  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+WFJAP=") == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, ssid) == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",4,") == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, passkey) == 0U)) {
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+WFJAP=") == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, ssid) == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, ",4,") == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, passkey) == 0U)) {
     ra_log_error(RA_DA16600_TAG, "WFJAP command overflows cmd buffer");
     return k_ra_err_invalid_size;
   }
@@ -352,9 +355,7 @@ static ra_err_t internal_build_wfjap_cmd(char*       cmd,
  * @note Not thread-safe; caller must serialise driver access.
  * @since 0.1.0
  */
-static ra_err_t internal_parse_wfjap_ip(const char* capture,
-                                        char*       out_ip_str,
-                                        size_t      ip_str_len)
+static ra_err_t internal_parse_wfjap_ip(const char* capture, char* out_ip_str, size_t ip_str_len)
 {
   out_ip_str[0]   = '\0';
   uint16_t i      = 0U;
@@ -371,8 +372,8 @@ static ra_err_t internal_parse_wfjap_ip(const char* capture,
   }
   /* Copy IP until comma / newline / NUL. */
   size_t oi = 0U;
-  while ((capture[i] != '\0') && (capture[i] != ',') && (capture[i] != '\r')
-         && (capture[i] != '\n') && (oi + 1U < ip_str_len)) {
+  while ((capture[i] != '\0') && (capture[i] != ',') && (capture[i] != '\r') &&
+         (capture[i] != '\n') && (oi + 1U < ip_str_len)) {
     out_ip_str[oi] = capture[i];
     ++oi;
     ++i;
@@ -429,8 +430,7 @@ static ra_err_t internal_parse_socket_cid(const char* capture, ra_da16600_socket
   uint32_t cid = 0U;
   uint8_t  saw = 0U;
   while ((capture[i] >= '0') && (capture[i] <= '9')) {
-    cid = (cid * (uint32_t)k_ra_da16600_decimal_base)
-          + (uint32_t)(capture[i] - '0');
+    cid = (cid * (uint32_t)k_ra_da16600_decimal_base) + (uint32_t)(capture[i] - '0');
     ++i;
     saw = 1U;
   }
@@ -474,23 +474,23 @@ static ra_err_t internal_build_tcp_open_cmd(char*                    cmd,
                                             const char*              remote_ip,
                                             uint16_t                 port)
 {
-  size_t off = 0U;
-  cmd[0]     = '\0';
+  size_t off                                = 0U;
+  cmd[0]                                    = '\0';
   char port_str[k_ra_da16600_u32_str_bytes] = {};
   internal_format_u32(port_str, (uint32_t)port);
 
   if (role == k_ra_da16600_socket_listen) {
-    if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTS=") == 0U)
-        || (internal_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
+    if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTS=") == 0U) ||
+        (internal_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
       ra_log_error(RA_DA16600_TAG, "TRTS command overflow");
       return k_ra_err_invalid_size;
     }
     return k_ra_ok;
   }
-  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTC=") == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, remote_ip) == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTC=") == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, remote_ip) == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
     ra_log_error(RA_DA16600_TAG, "TRTC command overflow");
     return k_ra_err_invalid_size;
   }
@@ -537,15 +537,15 @@ static ra_err_t internal_build_trdts_header(char*               cmd,
 
   char num[k_ra_da16600_u32_str_bytes] = {};
   internal_format_u32(num, (uint32_t)sock);
-  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRDTS=") == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, num) == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, "AT+TRDTS=") == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, num) == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
     ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
     return k_ra_err_invalid_size;
   }
   internal_format_u32(num, (uint32_t)len);
-  if ((internal_strcat_bounded(cmd, cmd_cap, &off, num) == 0U)
-      || (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
+  if ((internal_strcat_bounded(cmd, cmd_cap, &off, num) == 0U) ||
+      (internal_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
     ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
     return k_ra_err_invalid_size;
   }
@@ -580,10 +580,8 @@ static ra_err_t internal_build_trdts_header(char*               cmd,
  * @note Not thread-safe; caller must serialise driver access.
  * @since 0.1.0
  */
-static ra_err_t internal_extract_trdtc_payload(const char* capture,
-                                               uint8_t*    buf,
-                                               size_t      cap,
-                                               size_t*     out_len)
+static ra_err_t
+internal_extract_trdtc_payload(const char* capture, uint8_t* buf, size_t cap, size_t* out_len)
 {
   *out_len   = 0U;
   uint16_t i = 0U;
@@ -604,8 +602,7 @@ static ra_err_t internal_extract_trdtc_payload(const char* capture,
     return k_ra_err_hw_error;
   }
   size_t oi = 0U;
-  while ((capture[i] != '\0') && (capture[i] != '\r') && (capture[i] != '\n')
-         && (oi < cap)) {
+  while ((capture[i] != '\0') && (capture[i] != '\r') && (capture[i] != '\n') && (oi < cap)) {
     buf[oi] = (uint8_t)capture[i];
     ++oi;
     ++i;
@@ -629,8 +626,7 @@ ra_err_t ra_da16600_init(const ra_da16600_cfg_t* cfg)
     ra_log_error(RA_DA16600_TAG, "line_buf_len below floor");
     return k_ra_err_invalid_size;
   }
-  if ((cfg->io.tx_byte == nullptr) || (cfg->io.rx_byte == nullptr)
-      || (cfg->io.now_ms == nullptr)) {
+  if ((cfg->io.tx_byte == nullptr) || (cfg->io.rx_byte == nullptr) || (cfg->io.now_ms == nullptr)) {
     ra_log_error(RA_DA16600_TAG, "io callbacks must be non-NULL");
     return k_ra_err_null_ptr;
   }
@@ -681,8 +677,10 @@ ra_err_t ra_da16600_wifi_scan(uint16_t* out_count)
 
   char capture[k_ra_da16600_capture_buf_bytes];
   capture[0] = '\0';
-  err        = ra_modem_at_send_cmd_capture(
-    "AT+WFSCAN", capture, (size_t)k_ra_da16600_capture_buf_bytes, (uint16_t)k_ra_da16600_timeout_scan_ms);
+  err        = ra_modem_at_send_cmd_capture("AT+WFSCAN",
+                                            capture,
+                                            (size_t)k_ra_da16600_capture_buf_bytes,
+                                            (uint16_t)k_ra_da16600_timeout_scan_ms);
   if (err != k_ra_ok) {
     return err;
   }
@@ -749,8 +747,8 @@ static ra_err_t internal_wifi_connect_validate(const char* ssid,
   }
   uint16_t ssid_len = internal_str_len(ssid);
   uint16_t pk_len   = internal_str_len(passkey);
-  if ((ssid_len == 0U) || (ssid_len >= (uint16_t)k_ra_da16600_ssid_max_len)
-      || (pk_len >= (uint16_t)k_ra_da16600_passkey_max_len)) {
+  if ((ssid_len == 0U) || (ssid_len >= (uint16_t)k_ra_da16600_ssid_max_len) ||
+      (pk_len >= (uint16_t)k_ra_da16600_passkey_max_len)) {
     ra_log_error(RA_DA16600_TAG, "ssid/passkey length invalid");
     return k_ra_err_invalid_size;
   }
@@ -759,10 +757,8 @@ static ra_err_t internal_wifi_connect_validate(const char* ssid,
 
 /* UM-WI-046 section 4.5 "Connect / Disconnect AP": AT+WFJAP.
  * see header for the documented contract */
-ra_err_t ra_da16600_wifi_connect(const char* ssid,
-                                 const char* passkey,
-                                 char*       out_ip_str,
-                                 size_t      ip_str_len)
+ra_err_t
+ra_da16600_wifi_connect(const char* ssid, const char* passkey, char* out_ip_str, size_t ip_str_len)
 {
   ra_err_t err = internal_wifi_connect_validate(ssid, passkey, out_ip_str, ip_str_len);
   if (err != k_ra_ok) {
@@ -784,9 +780,9 @@ ra_err_t ra_da16600_wifi_connect(const char* ssid,
   char capture[k_ra_da16600_capture_buf_bytes];
   capture[0] = '\0';
   err        = ra_modem_at_send_cmd_capture(cmd,
-                                     capture,
-                                     (size_t)k_ra_da16600_capture_buf_bytes,
-                                     (uint16_t)k_ra_da16600_timeout_connect_ms);
+                                            capture,
+                                            (size_t)k_ra_da16600_capture_buf_bytes,
+                                            (uint16_t)k_ra_da16600_timeout_connect_ms);
   if (err != k_ra_ok) {
     return err;
   }
@@ -841,9 +837,9 @@ ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
   char capture[k_ra_da16600_capture_buf_bytes];
   capture[0] = '\0';
   err        = ra_modem_at_send_cmd_capture(cmd,
-                                     capture,
-                                     (size_t)k_ra_da16600_capture_buf_bytes,
-                                     (uint16_t)k_ra_da16600_timeout_socket_ms);
+                                            capture,
+                                            (size_t)k_ra_da16600_capture_buf_bytes,
+                                            (uint16_t)k_ra_da16600_timeout_socket_ms);
   if (err != k_ra_ok) {
     return err;
   }
@@ -873,7 +869,7 @@ ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size
    * appended raw (length-prefixed framing -- UM-WI-046 5.2.5). */
   char   cmd[k_ra_da16600_cmd_buf_bytes];
   size_t off = 0U;
-  err = internal_build_trdts_header(cmd, sizeof cmd, sock, len, &off);
+  err        = internal_build_trdts_header(cmd, sizeof cmd, sock, len, &off);
   if (err != k_ra_ok) {
     return err;
   }
@@ -929,8 +925,7 @@ ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
   char capture[k_ra_da16600_capture_buf_bytes];
   capture[0]      = '\0';
   uint16_t to_use = (timeout_ms == 0U) ? (uint16_t)k_ra_da16600_timeout_socket_ms : timeout_ms;
-  err = ra_modem_at_send_cmd_capture(
-    "AT", capture, (size_t)k_ra_da16600_capture_buf_bytes, to_use);
+  err = ra_modem_at_send_cmd_capture("AT", capture, (size_t)k_ra_da16600_capture_buf_bytes, to_use);
   if (err != k_ra_ok) {
     return err;
   }
@@ -946,12 +941,12 @@ ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
     return err;
   }
   char   cmd[k_ra_da16600_cmd_buf_bytes];
-  size_t off = 0U;
-  cmd[0]     = '\0';
+  size_t off                           = 0U;
+  cmd[0]                               = '\0';
   char num[k_ra_da16600_u32_str_bytes] = {};
   internal_format_u32(num, (uint32_t)sock);
-  if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTRM=") == 0U)
-      || (internal_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)) {
+  if ((internal_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTRM=") == 0U) ||
+      (internal_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)) {
     ra_log_error(RA_DA16600_TAG, "TRTRM command overflow");
     return k_ra_err_invalid_size;
   }
@@ -971,8 +966,7 @@ ra_err_t ra_da16600_ble_advertise_start(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_modem_at_send_cmd(
-    "AT+BLEADVSTART", nullptr, (uint16_t)k_ra_da16600_timeout_ble_ms);
+  return ra_modem_at_send_cmd("AT+BLEADVSTART", nullptr, (uint16_t)k_ra_da16600_timeout_ble_ms);
 }
 
 /* UM-WI-046 section 7.4: AT+BLEADVSTOP.
@@ -983,6 +977,5 @@ ra_err_t ra_da16600_ble_advertise_stop(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_modem_at_send_cmd(
-    "AT+BLEADVSTOP", nullptr, (uint16_t)k_ra_da16600_timeout_ble_ms);
+  return ra_modem_at_send_cmd("AT+BLEADVSTOP", nullptr, (uint16_t)k_ra_da16600_timeout_ble_ms);
 }

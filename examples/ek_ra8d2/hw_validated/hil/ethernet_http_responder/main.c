@@ -216,11 +216,11 @@ typedef enum : uint16_t {
  * @brief Minimal single-connection TCP state (subset of RFC 793).
  */
 typedef enum : uint8_t {
-  k_tcp_state_listen       = 0U,
-  k_tcp_state_syn_received = 1U,
-  k_tcp_state_established  = 2U,
+  k_tcp_state_listen        = 0U,
+  k_tcp_state_syn_received  = 1U,
+  k_tcp_state_established   = 2U,
   k_tcp_state_response_sent = 3U,
-  k_tcp_state_last_ack     = 4U,
+  k_tcp_state_last_ack      = 4U,
 } tcp_state_t;
 
 /**
@@ -268,13 +268,12 @@ static const ra_port_pin_t k_pin_log_rxd =
  * Content-Length value must equal the length of the body that follows
  * the blank line ("Hello from RA8D2!\r\n" = 19 bytes).
  */
-static const char k_http_response[] =
-  "HTTP/1.1 200 OK\r\n"
-  "Content-Type: text/plain\r\n"
-  "Content-Length: 19\r\n"
-  "Connection: close\r\n"
-  "\r\n"
-  "Hello from RA8D2!\r\n";
+static const char k_http_response[] = "HTTP/1.1 200 OK\r\n"
+                                      "Content-Type: text/plain\r\n"
+                                      "Content-Length: 19\r\n"
+                                      "Connection: close\r\n"
+                                      "\r\n"
+                                      "Hello from RA8D2!\r\n";
 
 /**
  * @struct tcp_conn_t
@@ -666,6 +665,10 @@ static void handle_icmp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
 static uint16_t s_strlen(const char* s)
 {
   uint16_t n = 0U;
+  /* cppcheck-suppress arrayIndexOutOfBoundsCond
+   * Reason: this is a NUL-bounded scan; the 0xFF upper bound is a
+   * safety cap for unterminated input. cppcheck can't see that the
+   * caller always passes a NUL-terminated string literal. */
   while (n < (uint16_t)0xFFU && s[n] != '\0') {
     n++;
   }

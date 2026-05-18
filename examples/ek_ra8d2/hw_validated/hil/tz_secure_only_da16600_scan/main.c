@@ -58,8 +58,8 @@
  *  - @c k_demo_at_line_buf_len: AT-line accumulator buffer length.
  */
 typedef enum : uint32_t {
-  k_demo_baud           = 115200U,
-  k_demo_da16600_sci_ch = 2U,
+  k_demo_baud            = 115200U,
+  k_demo_da16600_sci_ch  = 2U,
   k_demo_at_line_buf_len = 256U,
   k_demo_cpu_hz_at_reset = 8400000U,
 } da16600_scan_const_t;

@@ -84,11 +84,11 @@ static const ra_port_pin_t k_demo_pin_rxd =
 /** @brief AT line buffer (caller-owned per ::ra_da16600_cfg_t contract). */
 static uint8_t s_at_line[k_demo_at_line_buf];
 
-static const uint8_t k_demo_banner_boot[]       = "da16600: tcp echo boot\r\n";
-static const uint8_t k_demo_banner_assoc_fail[] = "da16600: wifi connect failed\r\n";
+static const uint8_t k_demo_banner_boot[]        = "da16600: tcp echo boot\r\n";
+static const uint8_t k_demo_banner_assoc_fail[]  = "da16600: wifi connect failed\r\n";
 static const uint8_t k_demo_banner_listen_fail[] = "da16600: tcp listen failed\r\n";
-static const uint8_t k_demo_banner_ip_prefix[]  = "wifi: ip=";
-static const uint8_t k_demo_banner_cr_lf[]      = "\r\n";
+static const uint8_t k_demo_banner_ip_prefix[]   = "wifi: ip=";
+static const uint8_t k_demo_banner_cr_lf[]       = "\r\n";
 
 /* =============================================================================
  * Helpers
@@ -213,8 +213,8 @@ int32_t main(void)
   }
 
   char ip[k_ra_da16600_ip_str_len];
-  if (ra_da16600_wifi_connect(DA16600_SSID, DA16600_PASS, ip, (size_t)k_ra_da16600_ip_str_len)
-      != k_ra_ok) {
+  if (ra_da16600_wifi_connect(DA16600_SSID, DA16600_PASS, ip, (size_t)k_ra_da16600_ip_str_len) !=
+      k_ra_ok) {
     demo_log(k_demo_banner_assoc_fail, (uint32_t)(sizeof k_demo_banner_assoc_fail - 1U));
     demo_panic_halt();
   }
@@ -230,9 +230,10 @@ int32_t main(void)
   demo_log(k_demo_banner_cr_lf, (uint32_t)(sizeof k_demo_banner_cr_lf - 1U));
 
   ra_da16600_socket_t listener = 0U;
-  if (ra_da16600_tcp_open(
-        k_ra_da16600_socket_listen, nullptr, (uint16_t)k_demo_echo_port, &listener)
-      != k_ra_ok) {
+  if (ra_da16600_tcp_open(k_ra_da16600_socket_listen,
+                          nullptr,
+                          (uint16_t)k_demo_echo_port,
+                          &listener) != k_ra_ok) {
     demo_log(k_demo_banner_listen_fail, (uint32_t)(sizeof k_demo_banner_listen_fail - 1U));
     demo_panic_halt();
   }
@@ -241,9 +242,11 @@ int32_t main(void)
   uint8_t rx[k_demo_recv_cap];
   while (1) {
     size_t got = 0U;
-    if (ra_da16600_tcp_recv(
-          listener, rx, (size_t)k_demo_recv_cap, &got, (uint16_t)k_demo_recv_timeout_ms)
-        == k_ra_ok) {
+    if (ra_da16600_tcp_recv(listener,
+                            rx,
+                            (size_t)k_demo_recv_cap,
+                            &got,
+                            (uint16_t)k_demo_recv_timeout_ms) == k_ra_ok) {
       if (got > 0U) {
         (void)ra_da16600_tcp_send(listener, rx, got);
       }

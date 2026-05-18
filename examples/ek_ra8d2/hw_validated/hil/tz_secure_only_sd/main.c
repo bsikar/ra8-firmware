@@ -71,13 +71,13 @@
  * @brief Compile-time settings for the SD round-trip demo.
  */
 typedef enum : uint32_t {
-  k_sd_demo_uart_baud      = 115200U,
-  k_sd_demo_uart_channel   = 8U,
-  k_sd_demo_spi_channel    = 1U, /**< Pmod2 / J25 is wired to RSPI bus B = SPI ch 1. */
-  k_sd_demo_payload_bytes  = 4096U,
-  k_sd_demo_prng_seed      = 0x5EEDC0DEUL,
-  k_sd_demo_prng_mul       = 1664525UL,  /**< Numerical Recipes LCG.    */
-  k_sd_demo_prng_add       = 1013904223UL,
+  k_sd_demo_uart_baud     = 115200U,
+  k_sd_demo_uart_channel  = 8U,
+  k_sd_demo_spi_channel   = 1U, /**< Pmod2 / J25 is wired to RSPI bus B = SPI ch 1. */
+  k_sd_demo_payload_bytes = 4096U,
+  k_sd_demo_prng_seed     = 0x5EEDC0DEUL,
+  k_sd_demo_prng_mul      = 1664525UL, /**< Numerical Recipes LCG.    */
+  k_sd_demo_prng_add      = 1013904223UL,
 } sd_demo_config_t;
 
 /**
@@ -110,14 +110,10 @@ static const ra_port_pin_t k_sd_demo_pin_rxd =
  * controller pulses CS between every word, which the SD protocol does
  * not tolerate. Driving CS by hand is the standard workaround.
  */
-static const ra_port_pin_t k_sd_demo_pin_sck =
-  (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
-static const ra_port_pin_t k_sd_demo_pin_cipo =
-  (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
-static const ra_port_pin_t k_sd_demo_pin_copi =
-  (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
-static const ra_port_pin_t k_sd_demo_pin_cs =
-  (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+static const ra_port_pin_t k_sd_demo_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
+static const ra_port_pin_t k_sd_demo_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
+static const ra_port_pin_t k_sd_demo_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
+static const ra_port_pin_t k_sd_demo_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
 
 /* =============================================================================
  * UART output helpers
@@ -125,13 +121,13 @@ static const ra_port_pin_t k_sd_demo_pin_cs =
  */
 
 /** @brief Static message strings -- ASCII-only per project policy. */
-static const uint8_t k_sd_demo_msg_boot[]    = "sd: boot\r\n";
-static const uint8_t k_sd_demo_msg_init_ok[] = "sd: card ready\r\n";
-static const uint8_t k_sd_demo_msg_mount_ok[] = "sd: fs mounted\r\n";
-static const uint8_t k_sd_demo_msg_ok[]      = "sd: roundtrip ok\r\n";
-static const uint8_t k_sd_demo_msg_card_pre[] = "sd: card=";
-static const uint8_t k_sd_demo_msg_mb_suf[]   = " MB\r\n";
-static const uint8_t k_sd_demo_msg_init_fail[] = "sd: FAIL init\r\n";
+static const uint8_t k_sd_demo_msg_boot[]       = "sd: boot\r\n";
+static const uint8_t k_sd_demo_msg_init_ok[]    = "sd: card ready\r\n";
+static const uint8_t k_sd_demo_msg_mount_ok[]   = "sd: fs mounted\r\n";
+static const uint8_t k_sd_demo_msg_ok[]         = "sd: roundtrip ok\r\n";
+static const uint8_t k_sd_demo_msg_card_pre[]   = "sd: card=";
+static const uint8_t k_sd_demo_msg_mb_suf[]     = " MB\r\n";
+static const uint8_t k_sd_demo_msg_init_fail[]  = "sd: FAIL init\r\n";
 static const uint8_t k_sd_demo_msg_mount_fail[] = "sd: FAIL mount\r\n";
 static const uint8_t k_sd_demo_msg_write_fail[] = "sd: FAIL write\r\n";
 static const uint8_t k_sd_demo_msg_read_fail[]  = "sd: FAIL read\r\n";
@@ -157,8 +153,8 @@ static void sd_demo_print_u32(uint32_t value)
     buf[--pos] = (uint8_t)'0';
   } else {
     while ((value > 0U) && (pos > 0U)) {
-      buf[--pos]   = (uint8_t)('0' + (uint8_t)(value % 10U));
-      value        = value / 10U;
+      buf[--pos] = (uint8_t)('0' + (uint8_t)(value % 10U));
+      value      = value / 10U;
     }
   }
   sd_demo_print(&buf[pos], (uint32_t)sizeof(buf) - pos);
@@ -247,8 +243,7 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  */
 [[nodiscard]] static ra_err_t sd_demo_console_pins_init(void)
 {
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_sd_demo_pin_txd, k_ra_psel_sci_async, "tz_sd.txd8");
+  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_txd, k_ra_psel_sci_async, "tz_sd.txd8");
   if (err != k_ra_ok) {
     return err;
   }
@@ -359,7 +354,7 @@ static void sd_demo_fill_payload(uint8_t* buf, uint32_t len)
 [[nodiscard]] static ra_err_t
 sd_demo_write_payload(ra_fs_mount_t* mount, const uint8_t* payload, uint32_t len)
 {
-  ra_fs_file_t* f = nullptr;
+  ra_fs_file_t* f   = nullptr;
   ra_err_t      err = ra_fs_open(mount, "TEST.TXT", k_ra_fs_mode_write, &f);
   if (err != k_ra_ok) {
     return err;
@@ -378,7 +373,7 @@ sd_demo_write_payload(ra_fs_mount_t* mount, const uint8_t* payload, uint32_t len
 [[nodiscard]] static ra_err_t
 sd_demo_read_payload(ra_fs_mount_t* mount, uint8_t* buf, uint32_t cap, uint32_t* out_len)
 {
-  ra_fs_file_t* f = nullptr;
+  ra_fs_file_t* f   = nullptr;
   ra_err_t      err = ra_fs_open(mount, "TEST.TXT", k_ra_fs_mode_read, &f);
   if (err != k_ra_ok) {
     return err;
@@ -504,10 +499,7 @@ int32_t main(void)
     sd_demo_panic_halt();
   }
   uint32_t got = 0U;
-  if (sd_demo_read_payload(mount,
-                           s_readback,
-                           (uint32_t)k_sd_demo_payload_bytes,
-                           &got) != k_ra_ok) {
+  if (sd_demo_read_payload(mount, s_readback, (uint32_t)k_sd_demo_payload_bytes, &got) != k_ra_ok) {
     sd_demo_print(k_sd_demo_msg_read_fail, (uint32_t)sizeof(k_sd_demo_msg_read_fail) - 1U);
     sd_demo_panic_halt();
   }

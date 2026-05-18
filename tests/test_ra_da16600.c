@@ -119,9 +119,9 @@ static ra_err_t bring_up_with_probe(void)
   /* Pre-seed the bare-AT probe response so init succeeds. */
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nOK\r\n");
   ra_da16600_cfg_t cfg = {
-    .io = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 1000U,
   };
   return ra_da16600_init(&cfg);
@@ -152,9 +152,9 @@ static void test_init_short_buffer_rejected(void)
   reset_world();
   uint8_t          tiny[16];
   ra_da16600_cfg_t cfg = {
-    .io = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
-    .line_buf           = tiny,
-    .line_buf_len       = (uint16_t)sizeof tiny,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = tiny,
+    .line_buf_len = (uint16_t)sizeof tiny,
     .default_timeout_ms = 100U,
   };
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_da16600_init(&cfg));
@@ -171,9 +171,9 @@ static void test_init_missing_io_callbacks(void)
   TEST_BEGIN("da16600 init missing io callbacks rejected");
   reset_world();
   ra_da16600_cfg_t cfg = {
-    .io                 = {.tx_byte = nullptr, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = nullptr, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 100U,
   };
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_da16600_init(&cfg));
@@ -208,9 +208,9 @@ static void test_init_at_probe_error(void)
   reset_world();
   fifo_push_str(&s_io.modem_to_mcu, "AT\r\n\r\nERROR\r\n");
   ra_da16600_cfg_t cfg = {
-    .io = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 1000U,
   };
   TEST_ASSERT_EQ(k_ra_err_hw_error, ra_da16600_init(&cfg));
@@ -228,9 +228,9 @@ static void test_init_at_probe_timeout(void)
   reset_world();
   s_io.auto_advance_ms = 200U;
   ra_da16600_cfg_t cfg = {
-    .io = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
-    .line_buf           = s_line_buf,
-    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
+    .line_buf     = s_line_buf,
+    .line_buf_len = (uint16_t)sizeof s_line_buf,
     .default_timeout_ms = 100U,
   };
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_da16600_init(&cfg));
@@ -316,8 +316,9 @@ static void test_wifi_connect_happy(void)
                 "+WFJAP:1,hil_lab,192.168.4.42\r\n"
                 "\r\nOK\r\n");
   char ip[k_ra_da16600_ip_str_len];
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_da16600_wifi_connect("hil_lab", "test1234", ip, (size_t)k_ra_da16600_ip_str_len));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_da16600_wifi_connect("hil_lab", "test1234", ip, (size_t)k_ra_da16600_ip_str_len));
   TEST_ASSERT(strcmp(ip, "192.168.4.42") == 0);
   TEST_END("da16600 wifi_connect parses +WFJAP IP");
 }
@@ -364,8 +365,9 @@ static void test_wifi_connect_malformed_response(void)
                 "+WFJAP:incomplete\r\n"
                 "\r\nOK\r\n");
   char ip[k_ra_da16600_ip_str_len];
-  TEST_ASSERT_EQ(k_ra_err_hw_error,
-                 ra_da16600_wifi_connect("hil_lab", "test1234", ip, (size_t)k_ra_da16600_ip_str_len));
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_error,
+    ra_da16600_wifi_connect("hil_lab", "test1234", ip, (size_t)k_ra_da16600_ip_str_len));
   TEST_END("da16600 wifi_connect malformed response rejected");
 }
 
@@ -405,8 +407,7 @@ static void test_tcp_open_connect(void)
 {
   TEST_BEGIN("da16600 tcp_open connect TRTC cid parse");
   TEST_ASSERT_EQ(k_ra_ok, bring_up_with_probe());
-  fifo_push_str(&s_io.modem_to_mcu,
-                "AT+TRTC=192.168.4.1,80\r\n+TRTC:3\r\n\r\nOK\r\n");
+  fifo_push_str(&s_io.modem_to_mcu, "AT+TRTC=192.168.4.1,80\r\n+TRTC:3\r\n\r\nOK\r\n");
   ra_da16600_socket_t sock = 0xFFU;
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_da16600_tcp_open(k_ra_da16600_socket_connect, "192.168.4.1", 80U, &sock));
@@ -423,9 +424,8 @@ static void test_tcp_open_invalid_role(void)
   TEST_BEGIN("da16600 tcp_open invalid role rejected");
   TEST_ASSERT_EQ(k_ra_ok, bring_up_with_probe());
   ra_da16600_socket_t sock = 0xFFU;
-  TEST_ASSERT_EQ(
-    k_ra_err_invalid_arg,
-    ra_da16600_tcp_open((ra_da16600_socket_role_t)99U, "1.2.3.4", 80U, &sock));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_da16600_tcp_open((ra_da16600_socket_role_t)99U, "1.2.3.4", 80U, &sock));
   TEST_END("da16600 tcp_open invalid role rejected");
 }
 
@@ -467,8 +467,7 @@ static void test_tcp_recv_payload(void)
 {
   TEST_BEGIN("da16600 tcp_recv extracts +TRDTC payload");
   TEST_ASSERT_EQ(k_ra_ok, bring_up_with_probe());
-  fifo_push_str(&s_io.modem_to_mcu,
-                "AT\r\n+TRDTC:0,4,echo\r\n\r\nOK\r\n");
+  fifo_push_str(&s_io.modem_to_mcu, "AT\r\n+TRDTC:0,4,echo\r\n\r\nOK\r\n");
   uint8_t buf[16];
   size_t  out_len = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_da16600_tcp_recv(0U, buf, sizeof buf, &out_len, 100U));
@@ -556,7 +555,10 @@ static void test_ble_advertise_error(void)
  *   - libs/ra_da16600/src/ra_da16600.c:541 internal_build_trdts_header sock        (CITES-OK: MC/DC gate requires file:line)
  *   - libs/ra_da16600/src/ra_da16600.c:542 internal_build_trdts_header comma       (CITES-OK: MC/DC gate requires file:line)
  *   - libs/ra_da16600/src/ra_da16600.c:548 internal_build_trdts_header trailing    (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:608 internal_extract_trdtc_payload cap loop (CITES-OK: MC/DC gate requires file:line)
+ *   - libs/ra_da16600/src/ra_da16600.c:605 internal_extract_trdtc_payload cap loop (CITES-OK: MC/DC gate requires file:line)
+ *   - libs/ra_da16600/src/ra_da16600.c:375 internal_parse_wfjap_ip ip-copy loop    (CITES-OK: MC/DC gate requires file:line)
+ *   - libs/ra_da16600/src/ra_da16600.c:750 wifi_connect_validate ssid_len OR-chain (CITES-OK: MC/DC gate requires file:line)
+ *   - libs/ra_da16600/src/ra_da16600.c:948 tcp_close TRTRM strcat overflow OR     (CITES-OK: MC/DC gate requires file:line)
  * N+1 vectors
  * for each decision are discharged by the existing public-API tests:
  * format_u32 loop guard is exercised by every test that emits a port

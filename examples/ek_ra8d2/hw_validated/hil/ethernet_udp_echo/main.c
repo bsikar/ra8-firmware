@@ -592,9 +592,9 @@ static void handle_icmp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
 static void handle_udp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
 {
   (void)len;
-  const uint8_t* ip       = &frame[k_eth_hdr_len];
-  const uint8_t* udp      = &ip[k_ipv4_hdr_len];
-  const uint16_t udp_len  = (uint16_t)(ip_total - k_ipv4_hdr_len);
+  const uint8_t* ip      = &frame[k_eth_hdr_len];
+  const uint8_t* udp     = &ip[k_ipv4_hdr_len];
+  const uint16_t udp_len = (uint16_t)(ip_total - k_ipv4_hdr_len);
   if (udp_len < k_udp_hdr_len) {
     return;
   }

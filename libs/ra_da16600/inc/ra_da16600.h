@@ -75,10 +75,10 @@ extern "C" {
  * exact width and each value appears by name in the debugger / disasm.
  */
 typedef enum : uint16_t {
-  k_ra_da16600_ssid_max_len   = 32U,  /**< IEEE 802.11 SSID max bytes (incl. NUL). */
-  k_ra_da16600_passkey_max_len = 64U, /**< WPA2/WPA3 passphrase max bytes (incl. NUL). */
-  k_ra_da16600_ip_str_len     = 16U,  /**< Room for "255.255.255.255" + NUL. */
-  k_ra_da16600_min_line_buf   = 128U, /**< Floor on caller AT line buffer length. */
+  k_ra_da16600_ssid_max_len    = 32U,  /**< IEEE 802.11 SSID max bytes (incl. NUL). */
+  k_ra_da16600_passkey_max_len = 64U,  /**< WPA2/WPA3 passphrase max bytes (incl. NUL). */
+  k_ra_da16600_ip_str_len      = 16U,  /**< Room for "255.255.255.255" + NUL. */
+  k_ra_da16600_min_line_buf    = 128U, /**< Floor on caller AT line buffer length. */
 } ra_da16600_limits_t;
 
 /**
@@ -230,10 +230,8 @@ typedef struct {
  * @see UM-WI-046 section 4.5.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_da16600_wifi_connect(const char* ssid,
-                                                const char* passkey,
-                                                char*       out_ip_str,
-                                                size_t      ip_str_len);
+[[nodiscard]] ra_err_t
+ra_da16600_wifi_connect(const char* ssid, const char* passkey, char* out_ip_str, size_t ip_str_len);
 
 /**
  * @brief Disassociate from the current Wi-Fi network.
@@ -322,9 +320,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
-                                            const char*              remote_ip,
-                                            uint16_t                 port,
-                                            ra_da16600_socket_t*     out_socket);
+                                           const char*              remote_ip,
+                                           uint16_t                 port,
+                                           ra_da16600_socket_t*     out_socket);
 
 /**
  * @brief Send a byte payload on an open TCP socket.
@@ -355,9 +353,8 @@ typedef enum : uint8_t {
  * @see UM-WI-046 section 5.2.5.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock,
-                                            const uint8_t*      data,
-                                            size_t              len);
+[[nodiscard]] ra_err_t
+ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size_t len);
 
 /**
  * @brief Block until a payload arrives on the socket or the timeout fires.
@@ -392,10 +389,10 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
-                                            uint8_t*            buf,
-                                            size_t              cap,
-                                            size_t*             out_len,
-                                            uint16_t            timeout_ms);
+                                           uint8_t*            buf,
+                                           size_t              cap,
+                                           size_t*             out_len,
+                                           uint16_t            timeout_ms);
 
 /**
  * @brief Close a previously opened TCP socket.
