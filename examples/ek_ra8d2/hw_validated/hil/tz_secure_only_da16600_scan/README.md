@@ -30,5 +30,23 @@ VCOM serial output, and passes once that string appears within
 ## Hardware setup
 
 Follow `scripts/hil_da16600_setup.md` for the Pmod jumper / wiring
-checklist. No flashing is performed by this commit -- the binary is
-built and verified to link clean only.
+checklist.
+
+### Required SW4 DIP positions
+
+Per EK-RA8D2 v1 UM Rev 1.01 Table 3 p 16 + Table 18 p 26, Pmod1's
+mode is selected by SW4-1 and SW4-2:
+
+| SW4 | Position | Reason                                                |
+| --- | -------- | ----------------------------------------------------- |
+| 1   | ON       | Pmod1 Mode-Sel-1 = UART (with SW4-2 OFF).             |
+| 2   | OFF      | Pmod1 Mode-Sel-2 = UART (Table 18).                   |
+| 3   | ON       | Octo-SPI Inactive -- frees Pmod1 SPI/UART pads.       |
+
+The DA16600 Pmod card uses Pmod1's UART pair (TXD2/RXD2 on P801/P802),
+so SW4-1 ON + SW4-2 OFF + SW4-3 ON is mandatory. Either flip the
+physical DIPs to match, or call
+`ra_board_io_expander_apply_project_sw4_defaults()` from `main()` so
+the U15 expander drives the project's full SW4 layout regardless of
+DIP positions. See "Project SW4 layout" in
+`libs/ra_board_ek_ra8d2/inc/ra_board_ek_ra8d2.h`.
