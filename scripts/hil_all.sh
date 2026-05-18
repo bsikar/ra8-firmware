@@ -13,8 +13,14 @@
 # Supported modes:
 #
 #   HIL_MODE=uart_scrape
-#     HIL_EXPECT="some string"     -- regex that must appear on /dev/ttyACM0
-#     HIL_TIMEOUT_S=10             -- wait window after flashing
+#     HIL_EXPECT="some string"        -- substring that must appear on UART
+#     HIL_EXPECT_NEGATIVE="re"        -- (optional) extended-regex of
+#                                        failure banners that must NOT
+#                                        appear; if matched, the run fails
+#                                        even when HIL_EXPECT also matched.
+#                                        Plug for the "expect overlaps a
+#                                        failure banner" hole.
+#     HIL_TIMEOUT_S=10                -- wait window after flashing
 #
 #   HIL_MODE=usb_cdc
 #     HIL_VIDPID="1209:000c"       -- which CDC device to bind
@@ -140,10 +146,15 @@ fi
 
 run_uart_scrape() {
     local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_run_direct.sh" \
-        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
-        --expect "${HIL_EXPECT}" \
+    local -a args=(
+        --hex "${HIL_DIR}/${app}/build/${app}.hex"
+        --expect "${HIL_EXPECT}"
         --timeout "${HIL_TIMEOUT_S:-10}"
+    )
+    if [[ -n "${HIL_EXPECT_NEGATIVE:-}" ]]; then
+        args+=( --expect-negative "${HIL_EXPECT_NEGATIVE}" )
+    fi
+    bash "${REPO_ROOT}/scripts/hil_run_direct.sh" "${args[@]}"
 }
 
 run_usb_cdc() {
@@ -195,13 +206,15 @@ for app in "${APPS[@]}"; do
     # Source the manifest. Reset known vars first so values from a
     # previous app's conf cannot leak. Export them so per-mode runners
     # invoked as subprocesses (e.g. hil_check_alive.sh) can read them.
-    unset HIL_MODE HIL_EXPECT HIL_TIMEOUT_S
+    unset HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S
+    unset HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK
     unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
     unset HIL_BOOT_S HIL_FAULT_EXPECTED
     unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
     # shellcheck disable=SC1090
     source "$conf"
-    export HIL_MODE HIL_EXPECT HIL_TIMEOUT_S \
+    export HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S \
+           HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK \
            HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
            HIL_BOOT_S HIL_FAULT_EXPECTED \
            HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
