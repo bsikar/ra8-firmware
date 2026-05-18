@@ -42,7 +42,7 @@ HEX=""
 EXPECT=""
 BAUD="115200"
 TIMEOUT_S="10"
-UART="/dev/ttyACM0"
+UART=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -57,6 +57,26 @@ done
 
 [[ -z "$HEX" || -z "$EXPECT" ]] && usage
 [[ -f "$HEX" ]] || { echo -e "${RED}[HIL]${NC} firmware file not found: $HEX"; exit 2; }
+
+# Auto-detect J-Link OB CDC port on the Pi when --uart not given.  Without
+# this the script falls back to /dev/ttyACM0, which is occupied by the
+# chip's USBHS CDC device whenever a previous USB firmware ran (or even
+# stale from before a reset), so reads return garbage from the wrong port.
+# The J-Link OB CDC always reports ID_MODEL=J-Link via udev.
+if [[ -z "$UART" ]]; then
+    UART=$(ssh "$PI_HOST" bash -s <<'REMOTE'
+for dev in /dev/ttyACM*; do
+    [[ -e "$dev" ]] || continue
+    if udevadm info "$dev" 2>/dev/null | grep -q "ID_MODEL=J-Link"; then
+        echo "$dev"
+        exit 0
+    fi
+done
+echo "/dev/ttyACM0"
+REMOTE
+)
+    UART="${UART:-/dev/ttyACM0}"
+fi
 
 APP_NAME="$(basename "${HEX%.*}")"
 FIRMWARE_EXT="${HEX##*.}"
