@@ -38,6 +38,25 @@ typedef enum : uint8_t {
   k_ra_mpu_ap_invalid             = 0xFFU, /**< Sentinel: not encodable. */
 } ra_mpu_ap_t;
 
+/**
+ * @enum ra_mpu_shcsr_t
+ * @brief SCB->SHCSR address + bits needed to dispatch MemManage faults.
+ *
+ * @details
+ * Armv8-M ARM B3.2.10 "SHCSR, System Handler Control and State
+ * Register" / Cortex-M85 TRM SCB+0x24. Bit 16 MEMFAULTENA enables
+ * the MemManage exception; without it any MPU permission violation
+ * escalates to HardFault and the strong MemManage_Handler the
+ * application installed never runs.
+ */
+typedef enum : uintptr_t {
+  k_ra_mpu_shcsr_addr = 0xE000ED24U, /**< SCB->SHCSR (Armv8-M B3.2.10). */
+} ra_mpu_shcsr_addr_t;
+
+typedef enum : uint32_t {
+  k_ra_mpu_shcsr_memfaultena = (1U << 16U), /**< SHCSR.MEMFAULTENA bit. */
+} ra_mpu_shcsr_bits_t;
+
 /* Test whether `value` is a positive power of two -- see implementation for details. */
 static inline bool ra_mpu_is_pow2(uint32_t value)
 {
@@ -184,6 +203,20 @@ ra_err_t ra_mpu_configure(const ra_mpu_cfg_t* cfg)
     ra_mpu_clear_region(i);
   }
   mpu->CTRL = ra_mpu_build_ctrl(cfg);
+
+  /* Enable MemManage fault dispatch via SHCSR.MEMFAULTENA (bit 16).
+   * Without this bit, every MPU permission violation silently escalates
+   * to HardFault -- the strong MemManage_Handler the application
+   * installed never runs. Armv8-M ARM "B3.2.10 SHCSR, System Handler
+   * Control and State Register" + Cortex-M85 TRM SCB+0x24. The MPU is
+   * useless as a runtime safety mechanism without this enable; making
+   * it the default of ra_mpu_configure means every consumer gets
+   * working MemFault delivery without having to know about the
+   * separate SHCSR concern. Callers that genuinely want
+   * MemFault->HardFault escalation can clear SHCSR.MEMFAULTENA
+   * themselves after the configure call. */
+  volatile uint32_t* shcsr = (volatile uint32_t*)k_ra_mpu_shcsr_addr;
+  *shcsr |= (uint32_t)k_ra_mpu_shcsr_memfaultena;
   return k_ra_ok;
 }
 
