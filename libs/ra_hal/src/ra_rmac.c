@@ -183,7 +183,18 @@ static inline bool internal_port_ok(ra_rmac_port_t port)
  */
 static inline uint32_t internal_calc_psmcs(uint32_t eswclk_hz, uint32_t mdc_hz)
 {
-  if (eswclk_hz == 0U || mdc_hz == 0U) {
+  /* Defensive clamp: ESWCLK = 0 means the chip's CGC has not been
+   * configured; pick the slowest MDC the field can encode so the PHY
+   * has the best chance of latching. ``mdc_hz`` is guaranteed non-zero
+   * by the only caller (``internal_program_mac_config`` substitutes
+   * ``k_ra_rmac_mdc_default_hz`` when ``cfg->mdc_hz`` is 0), so a
+   * single early-return on eswclk_hz==0 is sufficient. */
+  if (eswclk_hz == 0U) {
+    return (uint32_t)k_ra_rmac_mdc_psmcs_max;
+  }
+  /* Same defensive clamp on mdc_hz to avoid undefined integer div if
+   * a future caller bypasses the substitution above. */
+  if (mdc_hz == 0U) {
     return (uint32_t)k_ra_rmac_mdc_psmcs_max;
   }
   uint32_t psmcs = ((eswclk_hz / mdc_hz) / 2U);
