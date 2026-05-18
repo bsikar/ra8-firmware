@@ -231,6 +231,81 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
 [[nodiscard]] ra_err_t ra_cgc_usbhs_pll_enable(void);
 
 /**
+ * @brief Bring up the Ethernet Switch Module (ESWM / RMAC) clock.
+ *
+ * @details
+ * On RA8D2 the RMAC PHY-station-management hardware (MPSM/MPIC) is
+ * fed by ESWCLK, a dedicated peripheral clock with its own source-
+ * select (ESWCKCR) and divider (ESWCKDIVCR) registers. After power-on
+ * reset ESWCKCR reads as 0 (ESWCKSEL = HOCO ~20 MHz) which is fine for
+ * MDC but the source-select handshake (CKSREQ -> CKSRDY) must still be
+ * exercised for the divider write to take effect. Symptom on a chip
+ * where this routine has not run: ``ra_rmac_mdio_c22_read`` returns
+ * ``k_ra_err_hw_timeout`` for every PHY address even though the wire is
+ * physically connected and the PHY is out of reset.
+ *
+ * Sequence per FSP ``bsp_peripheral_clock_set`` and the HUM Ch 9
+ * "Clock selection switching procedure":
+ *   1. PRCR-CGC unlock window.
+ *   2. ESWCKCR.CKSREQ = 1, wait CKSRDY = 1 (clock gated, switchable).
+ *   3. Write ESWCKDIVCR.
+ *   4. Write ESWCKCR = ``source`` | CKSREQ.
+ *   5. Write ESWCKCR = ``source`` (drop the request bit).
+ *   6. Wait CKSRDY = 0 (new clock running).
+ *   7. PRCR re-lock.
+ *
+ * This implementation picks PLL1P / 8 = 125 MHz as the ESWCLK source,
+ * matching what every FSP example for the EK-RA8D2 ships with. The
+ * resulting 125 MHz fans out to:
+ *   - ESWM's per-port descriptor-ring logic.
+ *   - The MPIC.PSMCS divider chain (-> 1 MHz MDC after ra_rmac_init).
+ *
+ * The same eswclk_hz value is what the caller passes via
+ * ::ra_rmac_config_t::eswclk_hz so ``internal_calc_psmcs`` can
+ * compute the right MPIC.PSMCS divider code.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok            ESWCLK selected and running.
+ * @retval k_ra_err_hw_timeout CKSRDY handshake never completed.
+ *
+ * @pre  ::ra_cgc_init has been called (PLL1 locked).
+ * @pre  Single-threaded init context.
+ *
+ * @post ESWCKCR.CKSEL = ::k_ra_eswcksel_pll1p, ESWCKDIVCR = /1.
+ * @post Subsequent ``ra_rmac_init`` calls will see a live ESWCLK.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_eswclk_init(void);
+
+/**
+ * @brief Query the current ESWCLK (Ethernet Switch clock) frequency.
+ *
+ * @details
+ * Computed from the most recent ::ra_cgc_eswclk_init call. Returns 0
+ * if the ESWCLK has not been configured. Used by ::ra_rmac_init
+ * (callers fill ``ra_rmac_config_t.eswclk_hz`` from this value) to
+ * compute the MPIC.PSMCS divider code.
+ *
+ * @param[out] out_hz On success, the live ESWCLK frequency in Hz.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok           ESWCLK frequency written to *out_hz.
+ * @retval k_ra_err_null_ptr out_hz is nullptr.
+ *
+ * @pre  out_hz is a valid 32-bit pointer.
+ * @post On k_ra_ok, *out_hz holds the live ESWCLK frequency
+ *       (0 if ::ra_cgc_eswclk_init has not yet succeeded).
+ *
+ * @note Thread-safe (read-only access to a published value).
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_eswclk_hz(uint32_t* out_hz);
+
+/**
  * @brief Bring up PLL2 with caller-supplied multiplier and P divider.
  *
  * @details

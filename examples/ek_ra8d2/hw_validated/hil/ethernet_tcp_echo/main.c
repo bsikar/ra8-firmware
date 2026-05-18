@@ -1003,7 +1003,7 @@ static void eth_tcp_echo_setup_or_halt(void)
 
   const ra_eth_cfg_t eth_cfg = {
     .mac_address = {k_my_mac[0], k_my_mac[1], k_my_mac[2], k_my_mac[3], k_my_mac[4], k_my_mac[5]},
-    .channel     = 0U,
+    .channel     = 1U, /* EK-RA8D2: PEF7071 PHY is on RMAC1 (FSP eswm_rgmii1). */
     .num_tx_descriptors = 0U,
     .num_rx_descriptors = 0U,
     .buffer_size        = 0U,

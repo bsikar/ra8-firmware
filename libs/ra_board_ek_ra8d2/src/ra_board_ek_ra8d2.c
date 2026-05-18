@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "ra8d2_elc_regs.h"
+#include "ra8d2_ether_regs.h"
 #include "ra8d2_etha_regs.h"
 #include "ra8d2_icu_regs.h"
 #include "ra8d2_mstp_regs.h"
@@ -1848,9 +1849,14 @@ static ra_err_t internal_eth_phy_hw_reset(void)
  * @brief Route the 15 non-RSTN ETHERC pins to their ETHERC alternate.
  *
  * @details
- * Walks `s_eth_routes` and assigns every pin EXCEPT RSTN to
- * `k_ra_psel_ether_rmii`. RSTN is left in GPIO mode by
- * `internal_eth_phy_hw_reset`.
+ * Walks `s_eth_routes` and assigns every pin EXCEPT RSTN to the RGMII
+ * PSEL slot. The EK-RA8D2 wires its PEF7071 / GPY111 PHY in RGMII
+ * mode (data pins: 4xTXD + 4xRXD + TXC + RXC + TX_CTL + RX_CTL plus
+ * MDC / MDIO / MDINT / RSTN) -- the FSP config.xml for the canonical
+ * ``ethernet_ek_ra8d2_ep`` example routes every Ethernet pin via the
+ * ``eswm_rgmii1`` PSEL, which corresponds to ``k_ra_psel_ether_rgmii``
+ * (PSEL field value 0x18, comment "PDC / AGT1 / Ether RGMII" in
+ * libs/ra_hal/inc/ra_mpc.h).
  *
  * @return Result code from `ra_pfs_route_peripheral`.
  * @retval k_ra_ok               All 15 alt-function pins routed.
@@ -1859,7 +1865,7 @@ static ra_err_t internal_eth_phy_hw_reset(void)
  * @pre internal_eth_phy_hw_reset has run.
  * @pre PFS write-protect is unlocked by ra_pfs_route_peripheral.
  * @post 15 pins (MDC/MDIO/TXDx/RXDx/TX_CTL/RX_CTL/TXCLK/RXCLK/MDINT)
- *       are routed to ETHERC alternate.
+ *       are routed to the RGMII ETHERC alternate.
  * @post RSTN stays a GPIO (never touched here).
  *
  * @note Not thread-safe.
@@ -1874,7 +1880,7 @@ static ra_err_t internal_eth_route_alt_pins(void)
       continue;
     }
     const ra_err_t err = ra_pfs_route_peripheral((ra_port_pin_t)s_eth_routes[i].pin,
-                                                 k_ra_psel_ether_rmii,
+                                                 k_ra_psel_ether_rgmii,
                                                  s_eth_routes[i].owner);
     if (err != k_ra_ok) {
       return err;
@@ -1884,41 +1890,304 @@ static ra_err_t internal_eth_route_alt_pins(void)
   return k_ra_ok;
 }
 
-/* Ra board ethernet init -- see implementation for details. */
-ra_err_t ra_board_ethernet_init(void)
+/**
+ * @brief Bring the ESWM Common Agent (COMA) IP out of reset.
+ *
+ * @details
+ * After ESWCLK / ESWPHYCLK are running and the MSTP gates for ESWM /
+ * ETHPHYCLK are released and PDCTRESWM has powered the domain on, the
+ * RA8D2 still gates the per-port RMAC / ETHA register windows behind
+ * the COMA "switch clock" enable. Without this sequence the entire
+ * RMAC / ETHA register surface reads back 0 and writes are silently
+ * dropped (verified with a J-Link MMIO probe on EK-RA8D2 hardware).
+ *
+ * The sequence mirrors FSP r_layer3_switch_reset_coma:
+ *   1. Pulse COMA.RRC.RR (1 then 0): reset the ESWM IP.
+ *   2. Set COMA.RCEC.RCE (bit 16): enable the switch clock.
+ *   3. Pulse COMA.CABPIRM.BPIOG (1): initialise the buffer pool.
+ *   4. Wait for COMA.CABPIRM.BPR to set (buffer pool ready).
+ *
+ * The small busy-wait between RRC pulse and RCEC write is required
+ * (FSP uses ``R_BSP_SoftwareDelay(1ms)``); 200_000 nops at 1 GHz lands
+ * around ~0.5 ms, comfortably above the FSP delay.
+ *
+ * @return Result code.
+ * @retval k_ra_ok               COMA bring-up complete.
+ * @retval k_ra_err_hw_timeout   Buffer-pool BPR flag never asserted.
+ *
+ * @pre  ::ra_cgc_eswclk_init has run (ESWCLK + ESWPHYCLK live, PDDE=0,
+ *       MSTPC30 + MSTPC28 released).
+ * @pre  Caller is single-threaded init context.
+ *
+ * @post COMA.RCEC.RCE = 1, buffer pool initialised, per-port RMAC /
+ *       ETHA register windows accessible.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+/**
+ * @enum ra_board_eth_coma_delay_t
+ * @brief Busy-wait iteration counts for the COMA bring-up sequence.
+ *
+ * @details
+ * Cortex-M85 at ~1 GHz, ~3 cycles per ``nop`` -> 3,000,000 iters lands
+ * around 9 ms (FSP r_layer3_switch_reset_coma uses
+ * ``R_BSP_SoftwareDelay(1, BSP_DELAY_UNITS_MILLISECONDS)`` for the
+ * same purpose, so ~1 ms is sufficient -- we keep ~3 ms for margin).
+ * 200_000 iters is the equivalent of the FSP 1-us settle delay used
+ * between the ETHA EAMC writes.
+ */
+typedef enum : uint32_t {
+  k_ra_board_eth_coma_delay_iters = 3000000UL, /**< ~1-3 ms busy wait between COMA writes. */
+  k_ra_board_eth_etha_step_iters  = 200000UL,  /**< ~50 us settle between ETHA mode writes.*/
+} ra_board_eth_coma_delay_t;
+
+/**
+ * @brief Bring the COMA (Common Agent) IP out of reset and enable per-
+ *        agent clock fan-out.
+ *
+ * @details
+ * Subset of FSP r_layer3_switch_reset_coma needed for the bare RMAC /
+ * ETHA MDIO bring-up. Without this sequence the per-port RMAC / ETHA
+ * register windows read back 0 and writes are silently dropped (the
+ * COMA switch clock gates them).
+ *
+ * @return Always ::k_ra_ok (no failure paths in the truncated sequence).
+ * @retval k_ra_ok COMA RRC pulsed and RCEC=RCE|ACE programmed.
+ *
+ * @pre ESWM MSTP gates released (MSTPC30 + MSTPC28).
+ * @pre PDCTRESWM.PDDE = 0 (peripheral domain powered).
+ * @post COMA.RCEC.RCE = 1 and ACE[6:0] = all-ones.
+ * @post Per-port RMAC / ETHA register windows are accessible.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_coma_reset(void)
 {
-  /* Step 0: hardware-reset the on-board PEF7071 PHY before anything
-   * else touches MDIO. Without this the chip's first MDIO read
-   * times out -- the PHY does not answer until RST_N has been
-   * pulsed (UM Table 26/27 + PEF7071 datasheet sec 6.3 "Reset"). */
-  ra_err_t err = internal_eth_phy_hw_reset();
+  /* Subset of FSP r_layer3_switch_reset_coma -- just the parts the
+   * bare RMAC / ETHA MDIO path needs. The full Layer-3 switch flow
+   * additionally pulses CABPIRM.BPIOG and waits for BPR (the buffer-
+   * pool reset); on EK-RA8D2 hardware BPR never asserts unless GWCA
+   * is also being brought up, so we skip that step. The two we keep:
+   *   1. RRC pulse: resets the ESWM IP and all the per-agent windows.
+   *   2. RCEC = RCE | ACE[6:0]=ALL: fans every per-agent clock out so
+   *      RMAC0/1 + ETHA0/1 + GWCA + MFWD + GPTP all become accessible.
+   */
+
+  /* Step 1: RRC pulse + ~1 ms delay. */
+  *ra_coma_rrc() = (uint32_t)k_ra_coma_rrc_rr;
+  *ra_coma_rrc() = 0U;
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_delay_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+  /* Step 2: enable RCE + every ACE bit at once. The Renesas-doc'd
+   * "RCE-alone then RCE|ACE" sequence is only required when the
+   * downstream buffer-pool init has to settle in between; we're
+   * not running that step so a single write is sufficient. */
+  *ra_coma_rcec() = (uint32_t)k_ra_coma_rcec_rce | (uint32_t)k_ra_coma_rcec_ace_mask;
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_delay_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Programme ESWM.MIICR1 + MIIRR for RGMII operation on port 1.
+ *
+ * @details
+ * The EK-RA8D2 wires its PEF7071 / GPY111 PHY to RMAC port **1** -- the
+ * canonical FSP example project ``ethernet_ek_ra8d2_ep`` confirms this:
+ * every Ethernet pin is configured as ``eswm_rgmii1`` (note the trailing
+ * "1") in the pincfg, and the r_rmac module is instantiated on
+ * Channel 1 (ra_cfg.txt "Channel: 1"). RMAC0 / ETHA0 is left unused on
+ * this evaluation board.
+ *
+ * The Ethernet Switch Module wraps the per-port MAC pins with a media-
+ * interface multiplexer. After power-on reset MIIRR.RGRST1 is 1 (RGMII1
+ * held in reset) and MIICR1.MIISEL reads 0 (GMII/MII), so neither the
+ * data pins nor the MDC/MDIO line tick until the driver explicitly:
+ *
+ *   1. Sets MIICR1.MIISEL = 1 (RGMII) plus TXCIDE = 1 (on-chip TX
+ *      delay), matching the FSP "RGMII + 2 ns TX skew" board profile.
+ *   2. Clears MIIRR.RGRST1 (release the RGMII1 reset).
+ *
+ * Without these two writes ``ra_rmac_mdio_c22_read`` returns
+ * k_ra_err_hw_timeout for every PHY address even with a working
+ * physical link, because the MDC pad sits in reset alongside the
+ * data pads.
+ *
+ * @return ::k_ra_ok. Two MMIO writes; no failure paths.
+ * @retval k_ra_ok Always returned -- no error path.
+ * @pre  ESWM module-stop has been released (the RMAC and ESWM share
+ *       MSTPCRC.MSTPCESWM; ra_rmac_init takes the ref-count up).
+ * @pre  COMA has been brought out of reset (internal_eth_coma_reset).
+ * @post MIICR1 = TXCIDE | RGMII, MIIRR.RGRST1 = 0.
+ * @post RMAC1 / ETHA1 data pins ready to clock.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_eswm_select_rgmii(void)
+{
+  /* HUM Ch 29 "ESWM" + FSP r_rmac_phy_set_mii_type_configuration:
+   * write MIICR before lifting the per-port RGMII reset so the
+   * pin mux is in the correct mode the instant the data pins go live.
+   * MIICR / MIIRR live at the +0x19400 sub-block of the ESWM window
+   * (see ra8d2_ether_regs.h ra_eswm_off_miicr1 / ra_eswm_off_miirr). */
+  *ra_eswm_miicr1() = (uint32_t)k_ra_eswm_miicr_txcide | (uint32_t)k_ra_eswm_miicr_miisel_rgmii;
+  uint32_t miirr    = *ra_eswm_miirr();
+  miirr &= ~(uint32_t)k_ra_eswm_miirr_rgrst1;
+  *ra_eswm_miirr() = miirr;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Bring the ESWM subsystem live: clocks + power + MSTP + COMA reset.
+ *
+ * @details
+ * Factored out of ::ra_board_ethernet_init to keep that function under
+ * the project's NASA Rule 4 / clang-tidy function-size threshold. Runs
+ * the four upstream gates the RMAC / ETHA register windows hang off:
+ * ESWCLK / ESWPHYCLK, PDCTRESWM power-on, MSTPC30 (ESWM) MSTP release,
+ * MSTPC28 (ETHPHYCLK) MSTP release, and finally the COMA RRC/RCEC
+ * bring-up. ``out_eswclk_hz`` receives the live ESWCLK frequency so
+ * the caller can plumb it into ``ra_rmac_config_t``.
+ *
+ * @param[out] out_eswclk_hz Live ESWCLK frequency in Hz on success.
+ *
+ * @return Error code from the underlying CGC / MSTP / COMA paths.
+ * @retval k_ra_ok Bring-up sequence completed.
+ * @retval k_ra_err_hw_timeout Sub-step (eswclk, MSTP) timed out.
+ *
+ * @pre  ``out_eswclk_hz`` is a valid 32-bit pointer.
+ * @pre  Single-threaded init context.
+ * @post On k_ra_ok, ESWM is fully clocked + COMA is out of reset.
+ * @post *out_eswclk_hz holds the live ESWCLK frequency.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
+{
+  ra_err_t err = ra_cgc_eswclk_init();
   if (err != k_ra_ok) {
     return err;
   }
-
-  /* Step 1: route every remaining Ethernet pin to its ETHERC alternate
-   * (RSTN intentionally stays a GPIO driven HIGH). */
-  err = internal_eth_route_alt_pins();
+  err = ra_cgc_eswclk_hz(out_eswclk_hz);
   if (err != k_ra_ok) {
     return err;
   }
+  err = ra_mstp_enable(k_ra_mstp_eswm);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return internal_eth_coma_reset();
+}
 
-  /* Step 2: ETHA0 bring-up. RESET mode + no IRQs is enough for the
-   * descriptor-ring init the application will do later. */
+/**
+ * @brief Walk ETHA1 from RESET through DISABLE to CONFIG.
+ *
+ * @details
+ * Per FSP r_rmac_phy_open, RMAC.MPIC is only writable while the paired
+ * ETHA is in CONFIG mode (writes are silently dropped in other modes).
+ * This helper drives ETHA into CONFIG so ``ra_rmac_init`` can land the
+ * MPIC programming; ``internal_eth_etha_to_operation`` flips to
+ * OPERATION afterwards so MDIO traffic can start.
+ *
+ * @return k_ra_ok on success; otherwise propagates ra_etha_set_mode.
+ * @retval k_ra_ok Walked to CONFIG.
+ * @retval k_ra_err_invalid_arg ra_etha_set_mode rejected an argument.
+ *
+ * @pre  ``internal_eth_eswm_bring_up`` has succeeded.
+ * @pre  Single-threaded init context.
+ * @post ETHA1 EAMC reflects CONFIG; busy-wait between writes mirrors
+ *       FSP r_rmac_phy_set_operation_mode.
+ * @post EAMS.OPS == CONFIG (best-effort; FSP does not poll either).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_etha_to_config(void)
+{
   const ra_etha_config_t etha_cfg = {
     .initial_mode = k_ra_etha_opc_reset,
     .eaeie0_mask  = 0U,
     .eaeie1_mask  = 0U,
     .eaeie2_mask  = 0U,
   };
-  err = ra_etha_init((ra_etha_port_t)k_ra_board_eth_etha_port, &etha_cfg);
+  ra_err_t err = ra_etha_init((ra_etha_port_t)k_ra_board_eth_etha_port, &etha_cfg);
   if (err != k_ra_ok) {
     return err;
   }
+  static const ra_etha_opc_t s_chain[] = {
+    k_ra_etha_opc_disable,
+    k_ra_etha_opc_config,
+  };
+  for (uint8_t step = 0U; step < (uint8_t)(sizeof(s_chain) / sizeof(s_chain[0])); ++step) {
+    err = ra_etha_set_mode((ra_etha_port_t)k_ra_board_eth_etha_port, s_chain[step]);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_etha_step_iters; ++i) {
+      __asm__ volatile("nop");
+    }
+  }
+  return k_ra_ok;
+}
 
-  /* Step 3: RMAC0 bring-up. RGMII / 1Gb / full-duplex matches the
-   * board PHY's strap defaults; auto-negotiation will refine this
-   * once the application calls ra_rmac_phy_auto_neg_start. */
+/**
+ * @brief Promote ETHA1 from CONFIG to OPERATION (post-MPIC programming).
+ *
+ * @details
+ * MDIO transactions require ETHA in OPERATION mode (FSP
+ * r_rmac_phy_get_operation_mode invariant). Run AFTER ra_rmac_init has
+ * programmed MPIC, never before -- MPIC writes are silently dropped in
+ * any mode other than CONFIG.
+ *
+ * @return k_ra_ok on success; otherwise propagates ra_etha_set_mode.
+ * @retval k_ra_ok ETHA promoted to OPERATION.
+ * @retval k_ra_err_invalid_arg ra_etha_set_mode rejected an argument.
+ *
+ * @pre  ra_rmac_init has programmed RMAC1 MPIC.
+ * @pre  Single-threaded init context.
+ * @post ETHA1 EAMC = OPERATION; subsequent ra_rmac_mdio_c22_read works.
+ * @post Busy-wait gives the EAMC write time to take effect.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_etha_to_operation(void)
+{
+  ra_err_t err = ra_etha_set_mode((ra_etha_port_t)k_ra_board_eth_etha_port,
+                                  k_ra_etha_opc_operation);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_etha_step_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Programme RMAC1 with the RGMII / 1Gb full-duplex profile.
+ *
+ * @details
+ * ``ra_rmac_init`` is the API that lands MPIC; this helper builds the
+ * RGMII config struct and hands it off so the bring-up function below
+ * stays under the function-size threshold.
+ *
+ * @param[in] eswclk_hz Live ESWCLK frequency in Hz (from
+ *                      ::internal_eth_eswm_bring_up).
+ * @return k_ra_ok on success; otherwise propagates ra_rmac_init.
+ * @retval k_ra_ok RMAC1 initialised.
+ * @retval k_ra_err_invalid_arg ra_rmac_init rejected the cfg block.
+ *
+ * @pre  ETHA1 is in CONFIG mode (::internal_eth_etha_to_config has run).
+ * @pre  ``eswclk_hz`` > 0.
+ * @post RMAC1 MPIC programmed for RGMII / 1Gb / full / 1 MHz MDC.
+ * @post MAC address filter set to unicast + broadcast accept.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
+{
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
   const ra_rmac_config_t rmac_cfg = {
     .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast),
@@ -1929,11 +2198,53 @@ ra_err_t ra_board_ethernet_init(void)
     .phy_interface   = k_ra_rmac_pis_rgmii,
     .link_speed      = k_ra_rmac_lsc_1000mbit,
     .duplex          = k_ra_rmac_duplex_full,
+    .eswclk_hz       = eswclk_hz,
+    .mdc_hz          = (uint32_t)k_ra_rmac_mdc_default_hz,
   };
-  err = ra_rmac_init((ra_rmac_port_t)k_ra_board_eth_rmac_port, &rmac_cfg);
+  return ra_rmac_init((ra_rmac_port_t)k_ra_board_eth_rmac_port, &rmac_cfg);
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+}
+
+/* Ra board ethernet init -- see implementation for details. */
+ra_err_t ra_board_ethernet_init(void)
+{
+  /* Step 0: hardware-reset the on-board PEF7071 PHY before anything
+   * else touches MDIO. */
+  ra_err_t err = internal_eth_phy_hw_reset();
   if (err != k_ra_ok) {
     return err;
   }
-  return k_ra_ok;
+  /* Step 1: route every remaining Ethernet pin to its RGMII alt mux. */
+  err = internal_eth_route_alt_pins();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Step 2: bring up ESWCLK + ESWPHYCLK, release PDCTRESWM, lift the
+   * ETHPHYCLK / ESWM MSTP gates, and pulse the COMA agent out of
+   * reset. After this the per-port RMAC / ETHA register windows
+   * answer reads and accept writes. */
+  uint32_t eswclk_hz = 0U;
+  err = internal_eth_eswm_bring_up(&eswclk_hz);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Step 3: ETHA1 RESET -> DISABLE -> CONFIG so RMAC.MPIC is writable. */
+  err = internal_eth_etha_to_config();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Step 4: select RGMII on the media-interface mux + release the
+   * per-port reset. */
+  err = internal_eth_eswm_select_rgmii();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Step 5: RMAC1 bring-up. Programs MPIC (PSMCS / PIS / LSC / PIPP),
+   * MAC address filter, and IRQ block. */
+  err = internal_eth_rmac_program(eswclk_hz);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Step 6: promote ETHA1 to OPERATION so MDIO can drive MDC. */
+  return internal_eth_etha_to_operation();
 }

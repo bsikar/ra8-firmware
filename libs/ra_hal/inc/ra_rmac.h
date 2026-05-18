@@ -66,6 +66,31 @@ extern "C" {
 #include "ra_err.h"
 
 /**
+ * @enum ra_rmac_mdc_clk_t
+ * @brief MPIC PHY-station-management clock-rate constants.
+ *
+ * @details
+ * The MPIC register packs three MDC-related fields:
+ *   - PSMCS[22:16] : clock divider; MDC = ESWCLK / (2 * (PSMCS + 1)).
+ *   - PSMHT[26:24] : MDIO hold-time adjust (FSP default 0).
+ *   - PSMCT[30:28] : MDIO capture-time adjust (FSP default 0).
+ *
+ * Exposed publicly so the board-level bring-up code can pick a
+ * conservative ``mdc_hz`` target without having to know the PSMCS
+ * field width. IEEE 802.3 Clause 22 caps MDC at 2.5 MHz; the
+ * GPY111 / PEF7071 family is happy at 1 MHz which is what the
+ * default constant below provides.
+ *
+ * Cross-checked against FSP r_rmac_phy_calculate_mpic and CMSIS
+ * R7KA8D2KF_core0.h R_RMAC0_MPIC_PSMCS_Pos / PSMHT_Pos / PSMCT_Pos.
+ */
+typedef enum : uint32_t {
+  k_ra_rmac_mdc_default_hz = 1000000UL, /**< 1 MHz MDC -- well below the 2.5 MHz ceiling. */
+  k_ra_rmac_mdc_min_hz     = 100000UL,  /**< Lower-bound sanity (PSMCS is 7 bits wide).   */
+  k_ra_rmac_mdc_psmcs_max  = 127UL,     /**< MPIC.PSMCS[22:16] is 7 bits wide.            */
+} ra_rmac_mdc_clk_t;
+
+/**
  * @struct ra_rmac_config_t
  * @brief Per-port RMAC configuration knobs.
  *
@@ -83,6 +108,25 @@ typedef struct {
   ra_rmac_pis_t    phy_interface;   /**< Initial MPIC.PIS encoding.     */
   ra_rmac_lsc_t    link_speed;      /**< Initial MPIC.LSC encoding.     */
   ra_rmac_duplex_t duplex;          /**< Initial MPIC.PIPP encoding.    */
+  /**
+   * @brief Live ESWCLK frequency in Hz (input to the MDC divider).
+   *
+   * @details
+   * Used together with ::mdc_hz to program MPIC.PSMCS. Must equal the
+   * frequency actually delivered by ESWCKCR/ESWCKDIVCR after
+   * ``ra_cgc_eswclk_init`` runs. A value of 0 falls back to a safe
+   * "PSMCS = max" code (slowest MDC).
+   */
+  uint32_t eswclk_hz;
+  /**
+   * @brief Target MDC (PHY station-management clock) frequency in Hz.
+   *
+   * @details
+   * IEEE 802.3 Clause 22 caps MDC at 2.5 MHz; most PHYs (including the
+   * GPY111 / PEF7071 on the EK-RA8D2) work happily at 1 MHz. A value
+   * of 0 falls back to ::k_ra_rmac_mdc_default_hz (1 MHz).
+   */
+  uint32_t mdc_hz;
 } ra_rmac_config_t;
 
 /**
