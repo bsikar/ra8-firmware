@@ -63,6 +63,39 @@ typedef enum : uint32_t {
   k_can_demo_ctms_intl  = 0x1UL,
 } can_demo_ctr_t;
 
+/**
+ * @var g_can_match
+ * @brief HIL liveness counter -- incremented on every successful
+ *        TX -> internal loopback -> RX round-trip.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving the CAN_FD peripheral actually moved frames
+ * through its internal loopback (the alive-mode check could only
+ * prove the chip didn't crash, not that CAN actually worked).
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_can_match = 0U;
+
+/**
+ * @var g_can_mismatch
+ * @brief HIL failure counter -- incremented every time TX or RX
+ *        returned a non-ok status.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below
+ * HIL_PROBE_MAX_FAILURE). Catches the silent-failure mode where the
+ * peripheral starts up but TX fails or RX times out -- previously
+ * invisible because the chip kept iterating the main loop happily.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_can_mismatch = 0U;
+
 /** @brief Park forever after fatal init failure. */
 static void can_demo_panic_halt(void)
 {
@@ -193,8 +226,10 @@ int32_t main(void)
   while (1) {
     if (can_demo_one_round_trip(seq) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led1);
+      g_can_match += 1U;
     } else {
       (void)ra_board_led_toggle(k_ra_board_led2);
+      g_can_mismatch += 1U;
     }
     seq++;
     ra_delay_ms((uint32_t)k_can_demo_period_ms);

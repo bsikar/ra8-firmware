@@ -49,15 +49,19 @@ SYMBOL=""
 MIN_ADVANCE=4
 SECONDS_S=3
 APP_NAME=""
+FAILURE_SYMBOL=""
+MAX_FAILURE_ADVANCE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --hex)         HEX="$2";         shift 2 ;;
-        --symbol)      SYMBOL="$2";      shift 2 ;;
-        --min-advance) MIN_ADVANCE="$2"; shift 2 ;;
-        --seconds)     SECONDS_S="$2";   shift 2 ;;
-        --app-name)    APP_NAME="$2";    shift 2 ;;
-        -h|--help)     sed -n '5,30p' "$0"; exit 0 ;;
+        --hex)                  HEX="$2";                  shift 2 ;;
+        --symbol)               SYMBOL="$2";               shift 2 ;;
+        --min-advance)          MIN_ADVANCE="$2";          shift 2 ;;
+        --seconds)              SECONDS_S="$2";            shift 2 ;;
+        --app-name)             APP_NAME="$2";             shift 2 ;;
+        --failure-symbol)       FAILURE_SYMBOL="$2";       shift 2 ;;
+        --max-failure-advance)  MAX_FAILURE_ADVANCE="$2";  shift 2 ;;
+        -h|--help)              sed -n '5,30p' "$0"; exit 0 ;;
         *) echo "Unknown arg: $1"; exit 2 ;;
     esac
 done
@@ -87,7 +91,27 @@ if [[ ! "$SYM_TYPE" =~ ^[bBdD]$ ]]; then
     echo -e "${RED}[memprobe]${NC} symbol '${SYMBOL}' type '${SYM_TYPE}' is not data (need bss/data, not text)"
     exit 1
 fi
+
+# Same lookup for the optional failure-counter symbol.
+FAIL_ADDR=""
+if [[ -n "$FAILURE_SYMBOL" ]]; then
+    FAIL_LINE="$(arm-none-eabi-nm --print-size "$ELF" | awk -v s="$FAILURE_SYMBOL" '$NF==s {print; exit}')"
+    if [[ -z "$FAIL_LINE" ]]; then
+        echo -e "${RED}[memprobe]${NC} failure-symbol '${FAILURE_SYMBOL}' not found in $(basename "$ELF")"
+        exit 1
+    fi
+    FAIL_ADDR="$(echo "$FAIL_LINE" | awk '{print $1}')"
+    FAIL_TYPE="$(echo "$FAIL_LINE" | awk '{print $(NF-1)}')"
+    if [[ ! "$FAIL_TYPE" =~ ^[bBdD]$ ]]; then
+        echo -e "${RED}[memprobe]${NC} failure-symbol '${FAILURE_SYMBOL}' type '${FAIL_TYPE}' is not data"
+        exit 1
+    fi
+fi
+
 echo -e "${YELLOW}[memprobe]${NC} app=${APP_NAME} symbol=${SYMBOL} addr=0x${SYM_ADDR} min_advance=${MIN_ADVANCE} window=${SECONDS_S}s"
+if [[ -n "$FAIL_ADDR" ]]; then
+    echo -e "${YELLOW}[memprobe]${NC} failure_symbol=${FAILURE_SYMBOL} addr=0x${FAIL_ADDR} max_failure_advance=${MAX_FAILURE_ADVANCE}"
+fi
 
 # 1. Flash.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -108,20 +132,29 @@ fi
 
 PI_TMP="/tmp/hil_memprobe_${APP_NAME}.jlink"
 PI_LOG="/tmp/hil_memprobe_${APP_NAME}.log"
-JLINK_SCRIPT=$(cat <<EOF
+JLINK_SCRIPT_PRE=$(cat <<EOF
 device ${JLINK_DEVICE}
 si SWD
 speed 1000
 connect
 halt
 mem32 0x${SYM_ADDR} 1
+EOF
+)
+if [[ -n "$FAIL_ADDR" ]]; then
+    JLINK_SCRIPT_PRE="$(printf '%s\nmem32 0x%s 1' "$JLINK_SCRIPT_PRE" "$FAIL_ADDR")"
+fi
+JLINK_SCRIPT_POST=$(cat <<EOF
 go
 sleep $(( SECONDS_S * 1000 ))
 halt
 mem32 0x${SYM_ADDR} 1
-q
 EOF
 )
+if [[ -n "$FAIL_ADDR" ]]; then
+    JLINK_SCRIPT_POST="$(printf '%s\nmem32 0x%s 1' "$JLINK_SCRIPT_POST" "$FAIL_ADDR")"
+fi
+JLINK_SCRIPT="$(printf '%s\n%s\nq\n' "$JLINK_SCRIPT_PRE" "$JLINK_SCRIPT_POST")"
 
 if (( RUN_LOCAL )); then
     echo "$JLINK_SCRIPT" > "$PI_TMP"
@@ -132,9 +165,9 @@ else
     scp -q "${PI_HOST}:${PI_LOG}" "${PI_LOG}" 2>/dev/null || true
 fi
 
-# 3. Parse the two `mem32 0xADDR 1` outputs. J-Link prints them on
-# their own line as "ADDR = VALUE ". Pull both values; the first is
-# pre-sleep, the second is post-sleep.
+# 3. Parse mem32 outputs. J-Link prints each as "ADDR = VALUE " on its
+# own line. Pull values for the primary symbol; if a failure symbol
+# is set, pull those too.
 mapfile -t MEM_HITS < <(grep -iE "^${SYM_ADDR}" "$PI_LOG" | awk '{print $3}' | tr 'a-f' 'A-F')
 if [[ ${#MEM_HITS[@]} -lt 2 ]]; then
     echo -e "${RED}[memprobe]${NC} failed to read symbol twice from J-Link log:"
@@ -146,19 +179,50 @@ POST="${MEM_HITS[1]}"
 pre_dec=$((16#$PRE))
 post_dec=$((16#$POST))
 delta=$(( post_dec - pre_dec ))
-
-# Counter wrap is unlikely over 3 s for a once-per-second increment,
-# but if pre is near UINT32_MAX it could wrap. Handle by treating
-# negative delta as wrap = (2^32 - pre) + post.
 if (( delta < 0 )); then
     delta=$(( ( (1 << 32) - pre_dec ) + post_dec ))
 fi
 
-if (( delta >= MIN_ADVANCE )); then
-    echo -e "${GREEN}[memprobe]${NC} ${APP_NAME} PASS (${SYMBOL}: 0x${PRE} -> 0x${POST}, delta=${delta} >= ${MIN_ADVANCE})"
+# Failure-symbol parse: should advance no more than MAX_FAILURE_ADVANCE.
+fail_delta=0
+FAIL_PRE=""
+FAIL_POST=""
+if [[ -n "$FAIL_ADDR" ]]; then
+    mapfile -t FAIL_HITS < <(grep -iE "^${FAIL_ADDR}" "$PI_LOG" | awk '{print $3}' | tr 'a-f' 'A-F')
+    if [[ ${#FAIL_HITS[@]} -lt 2 ]]; then
+        echo -e "${RED}[memprobe]${NC} failed to read failure-symbol twice from J-Link log"
+        tail -20 "$PI_LOG" >&2
+        exit 1
+    fi
+    FAIL_PRE="${FAIL_HITS[0]}"
+    FAIL_POST="${FAIL_HITS[1]}"
+    fail_pre_dec=$((16#$FAIL_PRE))
+    fail_post_dec=$((16#$FAIL_POST))
+    fail_delta=$(( fail_post_dec - fail_pre_dec ))
+    if (( fail_delta < 0 )); then
+        fail_delta=$(( ( (1 << 32) - fail_pre_dec ) + fail_post_dec ))
+    fi
+fi
+
+ok=1
+if (( delta < MIN_ADVANCE )); then
+    ok=0
+fi
+if [[ -n "$FAIL_ADDR" ]] && (( fail_delta > MAX_FAILURE_ADVANCE )); then
+    ok=0
+fi
+
+PRIMARY_MSG="${SYMBOL}: 0x${PRE} -> 0x${POST}, delta=${delta} (need >= ${MIN_ADVANCE})"
+FAIL_MSG=""
+if [[ -n "$FAIL_ADDR" ]]; then
+    FAIL_MSG="; ${FAILURE_SYMBOL}: 0x${FAIL_PRE} -> 0x${FAIL_POST}, delta=${fail_delta} (max ${MAX_FAILURE_ADVANCE})"
+fi
+
+if (( ok == 1 )); then
+    echo -e "${GREEN}[memprobe]${NC} ${APP_NAME} PASS (${PRIMARY_MSG}${FAIL_MSG})"
     exit 0
 else
-    echo -e "${RED}[memprobe]${NC} ${APP_NAME} FAIL (${SYMBOL}: 0x${PRE} -> 0x${POST}, delta=${delta} < ${MIN_ADVANCE})"
+    echo -e "${RED}[memprobe]${NC} ${APP_NAME} FAIL (${PRIMARY_MSG}${FAIL_MSG})"
     echo "    (J-Link log: ${PI_LOG})"
     exit 1
 fi
