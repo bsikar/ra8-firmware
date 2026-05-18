@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Enforce the HIL "honest contract" gate.
+
+Every hil.conf under examples/ek_ra8d2/hw_validated/hil/ must declare
+HIL_MODE to one of:
+  - uart_scrape       (UART success-banner assertion)
+  - usb_cdc           (Pi-side USB host probe)
+  - jlink_memprobe    (named-symbol counter advance via SWD)
+  - hil_eth_tcp       (Pi-as-peer TCP/UDP/HTTP probe)
+  - alive             ONLY if HIL_FAULT_EXPECTED=1 is also set
+                      (legitimate fault-recovery test path -- the
+                      handler is required to latch CFSR != 0 and the
+                      app must emit a positive UART banner that is
+                      not in hil_check_alive.sh's negative regex)
+
+Plain HIL_MODE=alive without HIL_FAULT_EXPECTED is the historical
+"PC happens to be in MRAM" loose check; it lets silently-broken apps
+pass CI and is forbidden under hw_validated/hil/. Apps that genuinely
+have no observable signal yet (panic-halt at init, no
+instrumentation) must live in hw_pending/ until they are fixed AND
+instrumented.
+
+Exit:
+  0  every hil.conf in hw_validated/hil/ satisfies the policy
+  1  one or more hil.confs violate
+  2  usage / unreachable repo root
+"""
+
+from __future__ import annotations
+
+import pathlib
+import re
+import sys
+from typing import Iterable
+
+ALLOWED_MODES: frozenset[str] = frozenset({
+    "uart_scrape",
+    "usb_cdc",
+    "jlink_memprobe",
+    "hil_eth_tcp",
+})
+
+
+def _iter_hil_confs(repo_root: pathlib.Path) -> Iterable[pathlib.Path]:
+    """Yield every hil.conf under examples/ek_ra8d2/hw_validated/hil/."""
+    hil_dir = repo_root / "examples" / "ek_ra8d2" / "hw_validated" / "hil"
+    if not hil_dir.is_dir():
+        return ()
+    return hil_dir.glob("*/hil.conf")
+
+
+def _parse_kv(conf: pathlib.Path) -> dict[str, str]:
+    """Extract simple KEY=VALUE lines (no shell expansion) from a hil.conf."""
+    out: dict[str, str] = {}
+    pat = re.compile(r"^\s*([A-Z_][A-Z_0-9]*)\s*=\s*(.*?)\s*$")
+    for raw in conf.read_text().splitlines():
+        line = raw.split("#", 1)[0].rstrip()
+        m = pat.match(line)
+        if not m:
+            continue
+        key, val = m.group(1), m.group(2)
+        if val.startswith(('"', "'")) and val.endswith(val[0]) and len(val) >= 2:
+            val = val[1:-1]
+        out[key] = val
+    return out
+
+
+def main() -> int:
+    repo_root = pathlib.Path(__file__).resolve().parents[2]
+    violations: list[str] = []
+
+    for conf in sorted(_iter_hil_confs(repo_root)):
+        kv = _parse_kv(conf)
+        mode = kv.get("HIL_MODE", "")
+        fault_expected = kv.get("HIL_FAULT_EXPECTED", "0")
+        app = conf.parent.name
+
+        if mode in ALLOWED_MODES:
+            continue
+        if mode == "alive" and fault_expected == "1":
+            continue
+
+        if mode == "alive":
+            violations.append(
+                f"{conf.relative_to(repo_root)}: HIL_MODE=alive without "
+                f"HIL_FAULT_EXPECTED=1 is forbidden under "
+                f"hw_validated/hil/. Either:\n"
+                f"    - instrument the app (g_<x>_match symbol + "
+                f"HIL_MODE=jlink_memprobe), OR\n"
+                f"    - add a UART success banner + HIL_MODE=uart_scrape, OR\n"
+                f"    - move the app to examples/ek_ra8d2/hw_pending/{app}/."
+            )
+        elif mode == "":
+            violations.append(
+                f"{conf.relative_to(repo_root)}: missing HIL_MODE"
+            )
+        else:
+            violations.append(
+                f"{conf.relative_to(repo_root)}: HIL_MODE={mode!r} is not "
+                f"in the allowed set "
+                f"({sorted(ALLOWED_MODES) + ['alive (with HIL_FAULT_EXPECTED=1)']})"
+            )
+
+    if violations:
+        sys.stderr.write(
+            "check_hil_alive_policy.py: "
+            f"{len(violations)} violation(s) in hw_validated/hil/:\n"
+        )
+        for v in violations:
+            sys.stderr.write(f"  - {v}\n")
+        sys.stderr.write(
+            "\nThe HIL 'honest contract' rule: every app under "
+            "hw_validated/hil/ must prove its feature works end-to-end on "
+            "real hardware, not just that the chip booted.\n"
+        )
+        return 1
+
+    print(
+        f"check_hil_alive_policy.py: 0 findings across "
+        f"{sum(1 for _ in _iter_hil_confs(repo_root))} hil.conf file(s)."
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
