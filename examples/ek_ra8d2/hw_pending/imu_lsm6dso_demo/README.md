@@ -34,17 +34,39 @@ physical bring-up:
   which routes MikroBUS SDA/SCL to the Arduino D14/D15 pads
   (= SDA1/SCL1 = P511/P512 per EK-RA8D2 v1 UM Table 20 p 28).
 
-| LSM6DSO MikroBUS pin | Arduino-header pad | EVM net | Notes                                  |
-| -------------------- | ------------------ | ------- | -------------------------------------- |
-| SDA                  | D14                | P511    | SDA1, UM Table 20 p 28.                |
-| SCL                  | D15                | P512    | SCL1, UM Table 20 p 28.                |
-| 3V3                  | shield 3V3 rail    | -       | EVM supplies 3.3 V.                    |
-| GND                  | shield GND         | -       | EVM ground.                            |
-| SA0 / SDO            | tied HIGH (3V3)    | -       | Picks I2C address 0x6B (MikroE default). |
+| LSM6DSO MikroBUS pin | J22/Arduino pad | EVM net | Notes                                  |
+| -------------------- | --------------- | ------- | -------------------------------------- |
+| SDA                  | J22.6 / D14     | P511    | SDA1, UM Table 21 p 29 (SW4-5 = OFF).  |
+| SCL                  | J22.5 / D15     | P512    | SCL1, UM Table 21 p 29 (SW4-5 = OFF).  |
+| 3V3                  | shield 3V3 rail | -       | EVM supplies 3.3 V.                    |
+| GND                  | shield GND      | -       | EVM ground.                            |
+| SA0 / SDO            | tied HIGH (3V3) | -       | Picks I2C address 0x6B (MikroE default). |
 
-Until the Click is wired up the demo will print `lsm6dso: I2C NAK`,
-latch LED2, and the HIL scrape test in `hil.conf` will fail with
-"timeout waiting for `lsm6dso: who_am_i=0x6c`".
+### Required SW4 DIP positions
+
+Per EK-RA8D2 v1 UM Rev 1.01 Table 3 p 16 + Section 5.3.5 p 29 the
+on-board SW4 8-position DIP gates which connectors the chip's muxed
+peripherals route to. For this project the I2C-side MikroBUS path
+requires:
+
+| SW4 | Position | Reason                                                |
+| --- | -------- | ----------------------------------------------------- |
+| 3   | ON       | Octo-SPI Inactive (frees the Arduino/mikroBUS pins).  |
+| 4   | ON       | Arduino + mikroBUS connectors Active.                 |
+| 5   | OFF      | I2C Active on mikroBUS (P511/P512 SDA1/SCL1).         |
+
+The other channels (SW4-1/2 for Pmod1 mode, SW4-6/7/8) are independent
+and can stay at the project's other defaults documented in
+`libs/ra_board_ek_ra8d2/inc/ra_board_ek_ra8d2.h` ("Project SW4 layout").
+
+Either flip the DIPs manually or call
+`ra_board_io_expander_apply_project_sw4_defaults()` early in `main()`
+to have the U15 PI4IOE5V6408 expander drive the whole project layout
+in firmware -- this overrides whatever the physical switches read.
+
+Until the Click is wired up and the SW4 layout is correct, the demo
+will print `lsm6dso: I2C NAK`, latch LED2, and the HIL scrape test in
+`hil.conf` will fail with "timeout waiting for `lsm6dso: who_am_i=0x6c`".
 
 ## Build + flash
 
