@@ -54,14 +54,14 @@ typedef enum : uint32_t {
  * @brief Per-test SPI mock state.
  */
 typedef struct {
-  uint8_t  rx_queue[k_mock_buf_bytes];  /**< Bytes the driver "reads" next. */
-  uint32_t rx_len;                      /**< Bytes loaded into rx_queue.    */
-  uint32_t rx_pos;                      /**< Next index inside rx_queue.    */
-  uint8_t  tx_log[k_mock_buf_bytes];    /**< Every byte the driver writes.  */
-  uint32_t tx_len;                      /**< Outbound bytes recorded.       */
-  uint32_t clock_hz;                    /**< Most recent set_clock call.    */
-  bool     cs_asserted;                 /**< Current CS line state.         */
-  uint32_t cs_assert_count;             /**< Total CS->low transitions.     */
+  uint8_t  rx_queue[k_mock_buf_bytes]; /**< Bytes the driver "reads" next. */
+  uint32_t rx_len;                     /**< Bytes loaded into rx_queue.    */
+  uint32_t rx_pos;                     /**< Next index inside rx_queue.    */
+  uint8_t  tx_log[k_mock_buf_bytes];   /**< Every byte the driver writes.  */
+  uint32_t tx_len;                     /**< Outbound bytes recorded.       */
+  uint32_t clock_hz;                   /**< Most recent set_clock call.    */
+  bool     cs_asserted;                /**< Current CS line state.         */
+  uint32_t cs_assert_count;            /**< Total CS->low transitions.     */
 } mock_spi_t;
 
 static mock_spi_t s_mock = {};
@@ -150,16 +150,16 @@ static const ra_sdmmc_spi_transport_t s_mock_transport = {
  */
 
 typedef enum : uint8_t {
-  k_test_r1_idle             = 0x01U,
-  k_test_r1_ready            = 0x00U,
-  k_test_r1_illegal_cmd      = 0x05U,
-  k_test_data_token_start    = 0xFEU,
+  k_test_r1_idle              = 0x01U,
+  k_test_r1_ready             = 0x00U,
+  k_test_r1_illegal_cmd       = 0x05U,
+  k_test_data_token_start     = 0xFEU,
   k_test_data_response_accept = 0x05U,
 } test_resp_const_t;
 
 typedef enum : uint32_t {
-  k_test_cmd8_echo    = 0x000001AAUL,
-  k_test_ocr_ccs_ready = 0xC0FF8000UL, /**< busy=1 | CCS=1 | voltage window */
+  k_test_cmd8_echo       = 0x000001AAUL,
+  k_test_ocr_ccs_ready   = 0xC0FF8000UL, /**< busy=1 | CCS=1 | voltage window */
   k_test_cmd_frame_bytes = 6U,
   /* Allow a generous post-frame N_CR gap so the driver's R1 polling
    * never times out -- the mock queues idle 0xFF bytes for every clock
@@ -173,10 +173,13 @@ typedef enum : uint32_t {
  * @details
  * The driver clocks: 1 idle (cs_assert post-byte), 6 cmd bytes, then
  * an R1 wait (1..N idle bytes followed by the R1 token), then 1 idle
- * (cs_release post-byte). We queue 8 bytes here -- 1 cs_assert idle,
- * 6 cmd idles, 1 R1 token -- and leave the cs_release trailing idle
- * to come from the mock's 0xFF default-fill so successive responses
- * stay aligned at the next call.
+ * (cs_release post-byte). We queue all 9 explicitly here -- the
+ * cs_release idle has to be a real queue entry, not mock-underflow
+ * default-fill, because the mock's xfer always advances rx_pos on
+ * every byte regardless of CS state. Without it, the next command's
+ * queued bytes get consumed by the current cs_release read and
+ * everything shifts by one (off-by-one tracing surfaced this when
+ * `internal_send_cmd8` saw a misaligned R7 echo tail).
  */
 static void queue_command_response_r1(uint8_t r1)
 {
@@ -265,7 +268,7 @@ static void queue_full_init_sdhc_32gib(void)
   /* CMD8 -> R1 idle + echoed pattern. */
   queue_command_response_r3_or_r7((uint8_t)k_test_r1_idle, (uint32_t)k_test_cmd8_echo);
   /* ACMD41 -> CMD55 R1 idle + ACMD41 R1 ready. */
-  queue_command_response_r1((uint8_t)k_test_r1_idle); /* CMD55 R1 */
+  queue_command_response_r1((uint8_t)k_test_r1_idle);  /* CMD55 R1 */
   queue_command_response_r1((uint8_t)k_test_r1_ready); /* ACMD41 R1 */
   /* CMD58 -> R1 ready + OCR with CCS bit set. */
   queue_command_response_r3_or_r7((uint8_t)k_test_r1_ready, (uint32_t)k_test_ocr_ccs_ready);
@@ -453,13 +456,13 @@ static void test_init_cmd8_classifies_v1_card(void)
    * C_SIZE_MULT=7 -> ~1 GiB. */
   uint8_t csd_v1[k_ra_sdmmc_spi_csd_response_len];
   memset(csd_v1, 0, sizeof(csd_v1));
-  csd_v1[0]  = 0x00U;       /* CSD_STRUCTURE = 0 */
-  csd_v1[5]  = 0x09U;       /* READ_BL_LEN = 9 (low nibble) */
-  csd_v1[6]  = 0x03U;       /* C_SIZE bits 11:10 = 0b11 */
-  csd_v1[7]  = 0xFFU;       /* C_SIZE bits 9:2 = 0xFF */
-  csd_v1[8]  = 0xC0U;       /* C_SIZE bits 1:0 = 0b11 (-> C_SIZE = 0x3FF = 1023) */
-  csd_v1[9]  = 0x03U;       /* C_SIZE_MULT bits 2:1 = 0b11 */
-  csd_v1[10] = 0x80U;       /* C_SIZE_MULT bit 0 = 1 (-> C_SIZE_MULT = 7) */
+  csd_v1[0]  = 0x00U; /* CSD_STRUCTURE = 0 */
+  csd_v1[5]  = 0x09U; /* READ_BL_LEN = 9 (low nibble) */
+  csd_v1[6]  = 0x03U; /* C_SIZE bits 11:10 = 0b11 */
+  csd_v1[7]  = 0xFFU; /* C_SIZE bits 9:2 = 0xFF */
+  csd_v1[8]  = 0xC0U; /* C_SIZE bits 1:0 = 0b11 (-> C_SIZE = 0x3FF = 1023) */
+  csd_v1[9]  = 0x03U; /* C_SIZE_MULT bits 2:1 = 0b11 */
+  csd_v1[10] = 0x80U; /* C_SIZE_MULT bit 0 = 1 (-> C_SIZE_MULT = 7) */
   queue_csd_read(csd_v1);
   /* CMD16 -> R1 ready. */
   queue_command_response_r1((uint8_t)k_test_r1_ready);
@@ -500,7 +503,7 @@ static void test_read_block_rejects_oor(void)
   per_test_setup();
   queue_full_init_sdhc_32gib();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
-  uint8_t buf[k_ra_sdmmc_spi_block_size];
+  uint8_t  buf[k_ra_sdmmc_spi_block_size];
   uint32_t cap = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
   TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_read_block(cap, buf));
@@ -585,14 +588,14 @@ static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
    * already leaves one trailing idle (its cs_release post-byte) that
    * the driver's `internal_write_data_phase` consumes as the N_WR pad
    * read, so this helper does NOT queue an additional N_WR pad. */
-  mock_queue_idle(1U);                                       /* data-token TX slot.   */
-  mock_queue_idle((uint32_t)k_ra_sdmmc_spi_block_size);      /* 512 payload TX slots. */
-  mock_queue_idle(2U);                                       /* 2 CRC TX slots.       */
-  mock_queue_byte(data_response);                            /* response token byte.  */
+  mock_queue_idle(1U);                                  /* data-token TX slot.   */
+  mock_queue_idle((uint32_t)k_ra_sdmmc_spi_block_size); /* 512 payload TX slots. */
+  mock_queue_idle(2U);                                  /* 2 CRC TX slots.       */
+  mock_queue_byte(data_response);                       /* response token byte.  */
   for (uint32_t i = 0U; i < busy_bytes; i++) {
-    mock_queue_byte(0x00U);                                  /* card busy 0x00.       */
+    mock_queue_byte(0x00U); /* card busy 0x00.       */
   }
-  mock_queue_byte((uint8_t)k_mock_xfer_byte_idle);           /* busy released 0xFF.   */
+  mock_queue_byte((uint8_t)k_mock_xfer_byte_idle); /* busy released 0xFF.   */
 }
 
 /**
