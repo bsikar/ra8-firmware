@@ -1778,12 +1778,101 @@ static const struct {
   {k_ra_board_eth_pin_rstn, "ra_board.eth.rstn"},
 };
 
-/* Ra board ethernet init -- see implementation for details. */
-ra_err_t ra_board_ethernet_init(void)
+/**
+ * @enum ra_board_eth_phy_reset_cycles_t
+ * @brief Cycle-counted PHY reset timings (Cortex-M85 @ ~1 GHz).
+ *
+ * @details
+ * The PEF7071 datasheet sec 6.3 "Reset" requires:
+ *   - RST_N held LOW for >= 10 ms (we use >= 15 ms).
+ *   - Post-release wait >= 50 ms before any MDIO access (we use >= 60 ms).
+ *
+ * `ra_delay_ms` is NOT usable here -- this function may run before
+ * global IRQs are enabled (the typical app order is
+ * setup_or_halt -> ra_isr_globals_enable), and ra_delay_ms is
+ * WFI + SysTick, which hangs with IRQs masked. A `volatile nop`
+ * loop is ~3 cycles/iter at 1 GHz so:
+ *   - 5_000_000 iters >= 15 ms
+ *   - 20_000_000 iters >= 60 ms
+ */
+typedef enum : uint32_t {
+  k_ra_board_eth_phy_rst_low_iters  = 5000000UL,  /**< >= 15 ms LOW.  */
+  k_ra_board_eth_phy_rst_post_iters = 20000000UL, /**< >= 60 ms HIGH. */
+} ra_board_eth_phy_reset_cycles_t;
+
+/**
+ * @brief Hardware-reset the on-board PEF7071 PHY via GPIO.
+ *
+ * @details
+ * Routes the board's PHY_RSTN net (P708) as a plain GPIO output,
+ * asserts LOW for the required hold time, releases HIGH, and leaves
+ * the pin in GPIO mode driven HIGH for the rest of the application.
+ * The ETHERC alternate mux does NOT source RSTN, so the pin MUST
+ * stay a GPIO to keep the PHY out of reset.
+ *
+ * @return Result code.
+ * @retval k_ra_ok               PHY reset cycle completed.
+ * @retval k_ra_err_invalid_arg  GPIO init / write rejected.
+ *
+ * @pre RA8D2 IOPORT clock is on (chip-default reset state is fine).
+ * @pre Caller serialises (single-threaded init context).
+ * @post P708 is in GPIO-output mode driven HIGH.
+ * @post >= 60 ms has elapsed since RST_N rising edge.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_phy_hw_reset(void)
 {
-  /* Step 1: route every Ethernet pin to its ETHERC alternate. */
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_port_pin_t rstn_pin = (ra_port_pin_t)k_ra_board_eth_pin_rstn;
+  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  ra_err_t err = ra_gpio_output_init(rstn_pin, k_ra_level_low);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_phy_rst_low_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+  err = ra_gpio_write(rstn_pin, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_phy_rst_post_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Route the 15 non-RSTN ETHERC pins to their ETHERC alternate.
+ *
+ * @details
+ * Walks `s_eth_routes` and assigns every pin EXCEPT RSTN to
+ * `k_ra_psel_ether_rmii`. RSTN is left in GPIO mode by
+ * `internal_eth_phy_hw_reset`.
+ *
+ * @return Result code from `ra_pfs_route_peripheral`.
+ * @retval k_ra_ok               All 15 alt-function pins routed.
+ * @retval k_ra_err_invalid_arg  ra_pfs_route_peripheral rejected one pin.
+ *
+ * @pre internal_eth_phy_hw_reset has run.
+ * @pre PFS write-protect is unlocked by ra_pfs_route_peripheral.
+ * @post 15 pins (MDC/MDIO/TXDx/RXDx/TX_CTL/RX_CTL/TXCLK/RXCLK/MDINT)
+ *       are routed to ETHERC alternate.
+ * @post RSTN stays a GPIO (never touched here).
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_route_alt_pins(void)
+{
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_port_pin_t rstn_pin = (ra_port_pin_t)k_ra_board_eth_pin_rstn;
   for (uint32_t i = 0U; i < sizeof(s_eth_routes) / sizeof(s_eth_routes[0]); ++i) {
+    if ((ra_port_pin_t)s_eth_routes[i].pin == rstn_pin) {
+      continue;
+    }
     const ra_err_t err = ra_pfs_route_peripheral((ra_port_pin_t)s_eth_routes[i].pin,
                                                  k_ra_psel_ether_rmii,
                                                  s_eth_routes[i].owner);
@@ -1792,6 +1881,27 @@ ra_err_t ra_board_ethernet_init(void)
     }
   }
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  return k_ra_ok;
+}
+
+/* Ra board ethernet init -- see implementation for details. */
+ra_err_t ra_board_ethernet_init(void)
+{
+  /* Step 0: hardware-reset the on-board PEF7071 PHY before anything
+   * else touches MDIO. Without this the chip's first MDIO read
+   * times out -- the PHY does not answer until RST_N has been
+   * pulsed (UM Table 26/27 + PEF7071 datasheet sec 6.3 "Reset"). */
+  ra_err_t err = internal_eth_phy_hw_reset();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 1: route every remaining Ethernet pin to its ETHERC alternate
+   * (RSTN intentionally stays a GPIO driven HIGH). */
+  err = internal_eth_route_alt_pins();
+  if (err != k_ra_ok) {
+    return err;
+  }
 
   /* Step 2: ETHA0 bring-up. RESET mode + no IRQs is enough for the
    * descriptor-ring init the application will do later. */
@@ -1801,7 +1911,7 @@ ra_err_t ra_board_ethernet_init(void)
     .eaeie1_mask  = 0U,
     .eaeie2_mask  = 0U,
   };
-  ra_err_t err = ra_etha_init((ra_etha_port_t)k_ra_board_eth_etha_port, &etha_cfg);
+  err = ra_etha_init((ra_etha_port_t)k_ra_board_eth_etha_port, &etha_cfg);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1809,6 +1919,7 @@ ra_err_t ra_board_ethernet_init(void)
   /* Step 3: RMAC0 bring-up. RGMII / 1Gb / full-duplex matches the
    * board PHY's strap defaults; auto-negotiation will refine this
    * once the application calls ra_rmac_phy_auto_neg_start. */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
   const ra_rmac_config_t rmac_cfg = {
     .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast),
     .err_irq_enable  = 0U,
@@ -1820,6 +1931,7 @@ ra_err_t ra_board_ethernet_init(void)
     .duplex          = k_ra_rmac_duplex_full,
   };
   err = ra_rmac_init((ra_rmac_port_t)k_ra_board_eth_rmac_port, &rmac_cfg);
+  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   if (err != k_ra_ok) {
     return err;
   }
