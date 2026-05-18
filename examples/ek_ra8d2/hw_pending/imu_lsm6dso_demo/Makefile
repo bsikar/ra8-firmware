@@ -2,7 +2,7 @@
 # Per-app Makefile for the `imu_lsm6dso_demo` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_validated/hil/imu_lsm6dso_demo/
+#   cd examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/
 #   make             # configure + build -> build/imu_lsm6dso_demo.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger

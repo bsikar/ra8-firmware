@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/imu_lsm6dso_demo/secure_exception.c
+ * @file examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

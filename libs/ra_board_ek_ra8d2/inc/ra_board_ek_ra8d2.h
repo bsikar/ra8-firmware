@@ -644,6 +644,58 @@ typedef enum : uint16_t {
 } ra_board_pmod2_gpio_pin_t;
 
 /* =============================================================================
+ * 6b. MikroBUS slot (via MikroE Click Shield on Arduino headers)
+ * =============================================================================
+ */
+
+/**
+ * @brief MikroBUS slot wiring on this board.
+ *
+ * @details
+ * The EK-RA8D2 has no native MikroBUS socket on the PCB. In this project's
+ * physical bring-up:
+ *
+ *   - Pmod1 (J26) is occupied by the US159-DA16600EVZ Wi-Fi+BLE daughter
+ *     card (uses SCI2 UART pins).
+ *   - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD (uses RSPI-B).
+ *   - The MikroE LSM6DSO IMU 12 Click sits in a MikroBUS slot that is
+ *     adapted onto the EK-RA8D2 via a Click-Shield-style breakout on the
+ *     Arduino headers. The Click Shield wires MikroBUS SDA/SCL to the
+ *     Arduino D14/D15 pads, which the EK-RA8D2 v1 UM Table 20 p 28
+ *     identifies as **SDA1 = P511 / SCL1 = P512** -- the same SDA1/SCL1
+ *     bus the audio CODEC, camera, MIPI-DSI touch panel, and the
+ *     k_ra_board_pmod1_i2c_* aliases also live on.
+ *
+ * Only the MikroBUS signals required by drivers in this tree are mapped
+ * below. Additional signals (SPI, UART, AN, PWM, INT, RST, CS) can be
+ * added later when a Click that needs them is integrated -- the standard
+ * MikroBUS-to-Arduino-header pinout is documented in the MikroE
+ * "Click Shield for Arduino UNO" datasheet.
+ *
+ * @par Reference:
+ * EK-RA8D2 v1 UM Rev 1.01 Table 20 p 28 (Arduino UNO header signals).
+ */
+typedef enum : uint16_t {
+  /** @brief MikroBUS SDA -> Arduino D14 -> P511 (SDA1). */
+  k_ra_board_mikrobus_i2c_sda = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11),
+  /** @brief MikroBUS SCL -> Arduino D15 -> P512 (SCL1). */
+  k_ra_board_mikrobus_i2c_scl = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12),
+} ra_board_mikrobus_i2c_pin_t;
+
+/**
+ * @brief I2C peripheral channel that backs the MikroBUS SDA/SCL pins.
+ *
+ * @details The RA8D2 group exposes a single IIC_B controller (channel 0).
+ * The P511/P512 pins are its SDA1/SCL1 alternate-function pad pair (the
+ * SDA0/SCL0 pads at P401/P400 are gated by SW4-5 and not used here).
+ * Firmware that talks to a MikroBUS Click over I2C should call
+ * ``ra_iic_b_init`` with this channel.
+ */
+typedef enum : uint8_t {
+  k_ra_board_mikrobus_iic_b_channel = 0U,
+} ra_board_mikrobus_iic_channel_t;
+
+/* =============================================================================
  * 7. USB (UM Section 5.4.1 + 6.2, Tables 22 + 28, p 30 + 34)
  * =============================================================================
  */
