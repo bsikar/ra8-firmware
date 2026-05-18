@@ -47,6 +47,44 @@ typedef enum : uint8_t {
   k_gpt_pwm_demo_channel = 0U,
 } gpt_pwm_demo_chan_t;
 
+/**
+ * @var g_gpt_pwm_match
+ * @brief HIL liveness counter -- incremented every iteration in which
+ *        GTCNT advanced relative to the previous sample AND the new
+ *        duty value was accepted by ``ra_gpt_set_duty``.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving the GPT peripheral is actually counting
+ * (not just that we configured it without faulting). If the GPT were
+ * wedged or the clock gate were off, GTCNT would never change and
+ * this counter would stop advancing.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_gpt_pwm_match = 0U;
+
+/**
+ * @var g_gpt_pwm_mismatch
+ * @brief HIL failure counter -- incremented whenever a sub-step fails:
+ *        ``ra_gpt_set_duty`` returned non-ok, ``ra_gpt_read`` returned
+ *        non-ok, or GTCNT did not advance between two samples taken
+ *        ``k_gpt_pwm_demo_step_ms`` apart.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below
+ * HIL_PROBE_MAX_FAILURE). Catches "GPT clock gate closed silently",
+ * "GTCNT frozen at 0", and "duty write rejected at runtime" -- none
+ * of which alive-mode could detect because the main loop never
+ * breaks on these errors.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_gpt_pwm_mismatch = 0U;
+
 static void gpt_pwm_demo_panic_halt(void)
 {
   while (1) {
@@ -102,11 +140,26 @@ int32_t main(void)
     gpt_pwm_demo_panic_halt();
   }
 
-  uint32_t duty = 0U;
-  bool     up   = true;
+  uint32_t duty       = 0U;
+  bool     up         = true;
+  uint32_t prev_count = 0U;
+  bool     have_prev  = false;
   while (1) {
     if (ra_gpt_set_duty((uint8_t)k_gpt_pwm_demo_channel, k_ra_gpt_ccr_a, duty) != k_ra_ok) {
+      g_gpt_pwm_mismatch += 1U;
       break;
+    }
+    uint32_t now_count = 0U;
+    if (ra_gpt_read((uint8_t)k_gpt_pwm_demo_channel, &now_count) != k_ra_ok) {
+      g_gpt_pwm_mismatch += 1U;
+    } else if (have_prev && (now_count == prev_count)) {
+      /* 20 ms passed but GTCNT did not move -- timer is wedged. */
+      g_gpt_pwm_mismatch += 1U;
+      prev_count = now_count;
+    } else {
+      g_gpt_pwm_match += 1U;
+      prev_count = now_count;
+      have_prev  = true;
     }
     if (up) {
       if (duty + (uint32_t)k_gpt_pwm_demo_step_pct >= (uint32_t)k_gpt_pwm_demo_period) {
