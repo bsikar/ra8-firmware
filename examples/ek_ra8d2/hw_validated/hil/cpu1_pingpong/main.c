@@ -35,6 +35,42 @@ typedef enum : uint8_t {
 } cpu1_pingpong_pair_t;
 
 /**
+ * @var g_cpu1_pingpong_match
+ * @brief HIL liveness counter -- incremented on every successful
+ *        CPU0 -> CPU1 -> CPU0 ping/pong round-trip (got == 0x4321).
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving CPU1 (Cortex-M33) was released, booted its
+ * vector table, and is servicing the IPC channel pair. If CPU1 never
+ * came out of reset, this counter stays at 0 -- alive-mode could not
+ * catch that failure because CPU0 keeps iterating its outer loop.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_cpu1_pingpong_match = 0U;
+
+/**
+ * @var g_cpu1_pingpong_mismatch
+ * @brief HIL failure counter -- incremented whenever a round-trip
+ *        cannot complete: TX failed, RX timed out after the bounded
+ *        poll, or the returned word was not the expected pong magic.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below
+ * HIL_PROBE_MAX_FAILURE). Catches "CPU1 hung after release", "IPC
+ * FIFO wedged", and "CPU1 echoed the wrong magic" -- previously
+ * invisible because the outer ``while (1)`` happily ``continue``s on
+ * every failure.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_cpu1_pingpong_mismatch = 0U;
+
+/**
  * @brief Drain a single message off an IPC channel with bounded poll.
  * @details Loops up to k_cpu1_pingpong_poll_max times.
  * @param[in]  channel IPC channel id.
@@ -106,14 +142,18 @@ int main(void)
 
   while (1) {
     if (ra_ipc_send_message(ch_send, (uint32_t)k_cpu1_pingpong_magic_ping) != k_ra_ok) {
+      g_cpu1_pingpong_mismatch += 1U;
       continue;
     }
     uint32_t got = 0U;
     if (recv_blocking(ch_recv, &got) != k_ra_ok) {
+      g_cpu1_pingpong_mismatch += 1U;
       continue;
     }
     if (got != (uint32_t)k_cpu1_pingpong_magic_pong) {
+      g_cpu1_pingpong_mismatch += 1U;
       continue;
     }
+    g_cpu1_pingpong_match += 1U;
   }
 }
