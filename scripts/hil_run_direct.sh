@@ -13,15 +13,34 @@
 #
 # Usage (works from either side):
 #   scripts/hil_run_direct.sh --hex <path/to/app.hex> \
-#                             --expect <string>        \
-#                             [--baud 115200]          \
-#                             [--timeout 10]           \
+#                             --expect <string>            \
+#                             [--expect-negative <regex>]  \
+#                             [--baud 115200]              \
+#                             [--timeout 10]               \
 #                             [--uart /dev/ttyACM0]
 #
+# --expect-negative <regex>
+#     Extended-regex (grep -E) of substrings that, if seen in the UART
+#     log, fail the run -- even when the positive --expect matched.
+#     Closes the class of weak hil.conf where HIL_EXPECT="fxlx"
+#     matches both "fxlx: booting" and "fxlx: lx_nor_flash_format
+#     failed". Per-app hil.conf passes this in as HIL_EXPECT_NEGATIVE.
+#
+# Sanity gates run on the inputs themselves (rejected with exit 2
+# before flashing):
+#   - --expect must be >= 12 chars unless HIL_EXPECT_SHORT_OK=1 in the
+#     environment (small-app escape hatch documented in the README).
+#   - --expect must not be a substring of any failure-banner string in
+#     the .elf .rodata (where "failure banner" means a string matching
+#     /FAIL|panic|NAK|ERROR|failed/ via arm-none-eabi-strings).
+#
 # Exit codes:
-#   0  PASS  -- expected string appeared within timeout
-#   1  FAIL  -- timeout elapsed without match, or flash failed
-#   2  ERROR -- missing arguments / hardware not reachable
+#   0  PASS  -- positive expect matched within timeout AND no negative
+#               expect (if set) matched in the captured log
+#   1  FAIL  -- timeout elapsed without positive match, OR negative
+#               expect matched, OR flash failed
+#   2  ERROR -- missing arguments, hardware not reachable, or sanity
+#               gates rejected the input
 
 set -euo pipefail
 
@@ -35,29 +54,67 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: $0 --hex <file> --expect <string> [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
+    echo "Usage: $0 --hex <file> --expect <string> [--expect-negative <regex>] [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
     exit 2
 }
 
 HEX=""
 EXPECT=""
+EXPECT_NEG="${HIL_EXPECT_NEGATIVE:-}"
 BAUD="115200"
 TIMEOUT_S="10"
 UART="/dev/ttyACM0"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --hex)     HEX="$2";       shift 2 ;;
-        --expect)  EXPECT="$2";    shift 2 ;;
-        --baud)    BAUD="$2";      shift 2 ;;
-        --timeout) TIMEOUT_S="$2"; shift 2 ;;
-        --uart)    UART="$2";      shift 2 ;;
+        --hex)             HEX="$2";        shift 2 ;;
+        --expect)          EXPECT="$2";     shift 2 ;;
+        --expect-negative) EXPECT_NEG="$2"; shift 2 ;;
+        --baud)            BAUD="$2";       shift 2 ;;
+        --timeout)         TIMEOUT_S="$2";  shift 2 ;;
+        --uart)            UART="$2";       shift 2 ;;
         *) echo "Unknown arg: $1"; usage ;;
     esac
 done
 
 [[ -z "$HEX" || -z "$EXPECT" ]] && usage
 [[ -f "$HEX" ]] || { echo -e "${RED}[HIL]${NC} hex not found: $HEX"; exit 2; }
+
+# Sanity gate 1: minimum positive-expect length.
+# "fxlx" (4 chars) is the canonical failure case -- it appears in both
+# "fxlx: booting..." (success) and "fxlx: lx_nor_flash_format failed"
+# (failure). 12 chars effectively requires a colon-banner-with-words
+# pattern that can't accidentally overlap with a failure path.
+MIN_EXPECT_LEN=12
+if [[ "${HIL_EXPECT_SHORT_OK:-0}" != "1" && ${#EXPECT} -lt $MIN_EXPECT_LEN ]]; then
+    echo -e "${RED}[HIL]${NC} --expect='${EXPECT}' is too short (${#EXPECT} < ${MIN_EXPECT_LEN} chars)."
+    echo "    Tighten the banner so it can't accidentally match a failure path."
+    echo "    Override (not recommended): HIL_EXPECT_SHORT_OK=1"
+    exit 2
+fi
+
+# Sanity gate 2: overlap with .elf failure banners.
+# Pull every string >= len(EXPECT) from the matching .elf via
+# arm-none-eabi-strings; if any string that contains EXPECT also
+# contains a failure word, the EXPECT pattern can match the
+# failure banner -- reject before flashing.
+ELF_FOR_STRINGS="${HEX%.hex}.elf"
+if [[ -f "$ELF_FOR_STRINGS" ]] && command -v arm-none-eabi-strings >/dev/null 2>&1; then
+    OVERLAP_HITS=$(arm-none-eabi-strings -n "${MIN_EXPECT_LEN}" "$ELF_FOR_STRINGS" 2>/dev/null \
+        | grep -F -- "$EXPECT" \
+        | grep -iE '\b(FAIL|FAILED|panic|NAK|ERROR|failed|HardFault|MemFault|BusFault|UsageFault|abort)\b' \
+        | head -3 || true)
+    if [[ -n "$OVERLAP_HITS" ]]; then
+        echo -e "${RED}[HIL]${NC} --expect='${EXPECT}' overlaps failure banners in $(basename "$ELF_FOR_STRINGS"):"
+        while IFS= read -r line; do echo "    + $line"; done <<< "$OVERLAP_HITS"
+        echo "    Pick a HIL_EXPECT that is unique to the success path."
+        echo "    Override (not recommended): HIL_EXPECT_OVERLAP_OK=1"
+        if [[ "${HIL_EXPECT_OVERLAP_OK:-0}" != "1" ]]; then
+            exit 2
+        fi
+        echo -e "${YELLOW}[HIL]${NC} HIL_EXPECT_OVERLAP_OK=1 set -- continuing despite overlap."
+    fi
+fi
 
 APP_NAME="$(basename "${HEX%.hex}")"
 LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
@@ -86,7 +143,17 @@ if (( LOCAL_PI == 0 )); then
     fi
     # Re-invoke ourselves on the Pi. Quote the expect string carefully so
     # spaces / brackets survive the SSH transport.
-    ssh "$PI_HOST" "bash -s -- --hex '${REMOTE_HEX}' --expect $(printf '%q' "$EXPECT") --baud '${BAUD}' --timeout '${TIMEOUT_S}' --uart '${UART}'" < "$0"
+    REMOTE_ARGS="--hex '${REMOTE_HEX}' --expect $(printf '%q' "$EXPECT")"
+    if [[ -n "$EXPECT_NEG" ]]; then
+        REMOTE_ARGS+=" --expect-negative $(printf '%q' "$EXPECT_NEG")"
+    fi
+    REMOTE_ARGS+=" --baud '${BAUD}' --timeout '${TIMEOUT_S}' --uart '${UART}'"
+    # Propagate the sanity-gate escape-hatch flags so the remote side
+    # doesn't re-reject inputs the local side already vetted.
+    REMOTE_ENV=""
+    [[ "${HIL_EXPECT_SHORT_OK:-0}" == "1" ]]   && REMOTE_ENV+="HIL_EXPECT_SHORT_OK=1 "
+    [[ "${HIL_EXPECT_OVERLAP_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_OVERLAP_OK=1 "
+    ssh "$PI_HOST" "${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" < "$0"
     exit $?
 fi
 
@@ -249,6 +316,19 @@ echo "--- end ---"
 kill "${READER_PID}" 2>/dev/null || true
 pkill -f "cat ${UART}" 2>/dev/null || true
 wait "${READER_PID}" 2>/dev/null || true
+
+# Negative-expect scan -- runs even on positive match. The point is
+# to catch firmware that emits BOTH a healthy boot banner and an
+# error banner later in the same run; a positive-only test would
+# wrongly pass.
+if [[ -n "$EXPECT_NEG" ]]; then
+    NEG_HIT=$(grep -iE -- "$EXPECT_NEG" "${UART_LOG}" | head -3 || true)
+    if [[ -n "$NEG_HIT" ]]; then
+        echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: matched --expect-negative='${EXPECT_NEG}'"
+        while IFS= read -r line; do echo "    + $line"; done <<< "$NEG_HIT"
+        exit 1
+    fi
+fi
 
 if [[ "${RESULT}" == "MATCH" ]]; then
     echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
