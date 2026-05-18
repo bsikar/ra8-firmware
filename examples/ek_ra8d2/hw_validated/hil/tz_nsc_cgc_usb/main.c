@@ -180,6 +180,52 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
  */
 static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
 
+/**
+ * @var g_tz_nsc_cgc_usb_match
+ * @brief HIL liveness counter -- incremented on every worker-thread
+ *        iteration once the NSC-veneer-mediated CGC bring-up has
+ *        finished and the USB device stack is live.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving:
+ *   1. The Secure-side ra_cgc_init ran during Reset_Handler.
+ *   2. The three NSC veneer calls in main() (pll2_enable,
+ *      usbfs_clock_enable, get_clock_hz) returned k_ra_ok -- i.e. the
+ *      cross-world transition actually delivered the expected return
+ *      value, not the silent-drop failure mode that motivates this
+ *      demo.
+ *   3. tx_kernel_enter dispatched the worker, which is now iterating.
+ *
+ * The alive-mode check could only prove the chip didn't crash, not
+ * that the NSC trampolines correctly funnelled CGC writes into the
+ * Secure world.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_nsc_cgc_usb_match = 0U;
+
+/**
+ * @var g_tz_nsc_cgc_usb_mismatch
+ * @brief HIL failure counter -- incremented when USBX stack bring-up,
+ *        class registration, DCD initialize, or device attach fail in
+ *        the worker thread, or when a CDC-ACM read/write returns a
+ *        non-UX_SUCCESS status after enumeration.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below HIL_PROBE_MAX_FAILURE).
+ * Catches the silent-failure mode where the NSC veneer succeeded but
+ * the downstream USBX stack failed to come up -- previously invisible
+ * because the worker thread returned cleanly on init failure and the
+ * chip kept the ThreadX scheduler running with no live worker.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_nsc_cgc_usb_mismatch = 0U;
+
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
 /* -------------------------------------------------------------------------- */
@@ -502,6 +548,7 @@ static void demo_echo_iter(UCHAR* buf, ULONG cap)
 {
   ULONG n = 0UL;
   if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n) != UX_SUCCESS) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
     tx_thread_sleep(k_demo_idle_ticks);
     return;
   }
@@ -509,6 +556,7 @@ static void demo_echo_iter(UCHAR* buf, ULONG cap)
     return;
   }
   if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
     return;
   }
   for (ULONG i = 0UL; i < n; i++) {
@@ -521,20 +569,31 @@ static VOID demo_worker(ULONG arg)
   (void)arg;
 
   if (demo_usbx_stack_up() != UX_SUCCESS) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
     return;
   }
   if (demo_cdc_class_register() != UX_SUCCESS) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
     return;
   }
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
     return;
   }
   if (ra_usb_device_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
     return;
   }
 
+  /* Past this point all NSC-veneer-mediated CGC + USB stack bring-up
+   * succeeded. Each loop iteration past here proves the cross-world
+   * trampolines delivered correct return values and the worker thread
+   * is actually scheduled. The counter advances even without a USB
+   * host connected (idle-tick path), so the probe works on a stock
+   * HIL board with no USB-FS host attached. */
   UCHAR buf[k_demo_echo_buf_bytes];
   while (1) {
+    g_tz_nsc_cgc_usb_match += 1U;
     if (s_cdc_acm == UX_NULL) {
       tx_thread_sleep(k_demo_idle_ticks);
       continue;
