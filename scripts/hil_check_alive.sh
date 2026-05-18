@@ -228,7 +228,7 @@ fi
 # to .../build/<app>.{elf,hex}); skip the symbol check if .elf isn't
 # alongside.
 ELF="${HEX%.hex}.elf"
-FAULT_SPINNER_RE='(panic_halt|Default_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|spin_forever|hang_forever|_die|__assert_fail)'
+FAULT_SPINNER_RE='(panic_halt|halt_loop|exception_halt|Default_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|spin_forever|hang_forever|_die|__assert_fail)'
 if [[ -f "$ELF" ]] && command -v arm-none-eabi-addr2line >/dev/null 2>&1; then
     PC1_SYM="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${PC1}" 2>/dev/null | head -1 || true)"
     PC2_SYM="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${PC2}" 2>/dev/null | head -1 || true)"
