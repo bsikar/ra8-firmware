@@ -1,22 +1,33 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/imu_lsm6dso_demo/main.c
+ * @file examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/main.c
  * @brief LSM6DSO 6-DoF IMU bring-up demo over IIC_B
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Stand-alone EK-RA8D2 application that exercises the new
- * ``libs/ra_lsm6dso`` driver against an LSM6DSO carrier wired to the
- * Pmod1 I2C pins (P511/SDA1 + P512/SCL1, UM Table 17 p 26). The
- * EK-RA8D2 does not have a dedicated MikroBUS socket -- the MikroE
- * 6DOF IMU 12 Click is expected to be soldered to a MikroE-to-Pmod
- * adapter (or its I2C pads directly hand-wired into J26's I2C side).
+ * Stand-alone EK-RA8D2 application that exercises the
+ * ``libs/ra_lsm6dso`` driver against a MikroE LSM6DSO 6-DoF IMU 12 Click
+ * sitting in the MikroBUS slot. Project wiring (see BSP comments at
+ * ``k_ra_board_mikrobus_i2c_*``):
+ *
+ *   - Pmod1 (J26) is occupied by the US159-DA16600EVZ Wi-Fi+BLE card.
+ *   - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD.
+ *   - The LSM6DSO Click is wired to a MikroBUS socket adapted onto the
+ *     EK-RA8D2 via a MikroE Click-Shield breakout on the Arduino
+ *     headers; the shield routes MikroBUS SDA/SCL to Arduino D14/D15
+ *     which the EK-RA8D2 v1 UM Table 20 p 28 identifies as
+ *     SDA1 = P511 / SCL1 = P512.
+ *
+ * Pins resolve through the BSP symbols ``k_ra_board_mikrobus_i2c_sda``
+ * / ``_scl``; the underlying IIC_B controller is channel
+ * ``k_ra_board_mikrobus_iic_b_channel`` (= 0 -- the RA8D2 group exposes
+ * only one IIC_B controller).
  *
  * Flow:
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 and PCLKA up.
- *   2. ``ra_mstp_init`` + PFS routing of SCL1/SDA1 and SCI8 console pins.
- *   3. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm.
+ *   2. PFS routing of MikroBUS SDA/SCL and the SCI8 console pins.
+ *   3. ``ra_iic_b_init`` on the MikroBUS IIC_B channel at 100 kHz Sm.
  *   4. ``ra_lsm6dso_init`` against the IIC_B-backed transport adapter.
  *   5. Read WHO_AM_I. On success print
  *      ``"lsm6dso: who_am_i=0x6c\r\n"`` (banner line for HIL scrape).
@@ -55,7 +66,7 @@ typedef enum : uint32_t {
   k_imu_demo_period_ms   = 250U,
   k_imu_demo_bus_hz      = 100000U,
   k_imu_demo_sci_channel = 8U,
-  k_imu_demo_iic_channel = 0U,
+  k_imu_demo_iic_channel = (uint32_t)k_ra_board_mikrobus_iic_b_channel,
 } imu_demo_const_t;
 
 /** @brief Pinout for SCI8 console (PD02 TXD8 / PD03 RXD8), UM Table 13. */
@@ -64,11 +75,11 @@ static const ra_port_pin_t k_imu_demo_pin_txd =
 static const ra_port_pin_t k_imu_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
-/** @brief Pinout for IIC channel 0 (P512 SCL / P511 SDA on EK-RA8D2). */
+/** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */
 static const ra_port_pin_t k_imu_demo_pin_scl =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_12);
+  (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
 static const ra_port_pin_t k_imu_demo_pin_sda =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_11);
+  (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
 
 /* =============================================================================
  * Tiny printf-equivalents for HIL log scraping

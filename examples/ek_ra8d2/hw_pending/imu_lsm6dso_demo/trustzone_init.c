@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/imu_lsm6dso_demo/trustzone_init.c
+ * @file examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag
