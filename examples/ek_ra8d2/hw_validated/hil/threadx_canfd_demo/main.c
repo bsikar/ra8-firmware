@@ -35,6 +35,7 @@
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
@@ -87,6 +88,26 @@ static TX_THREAD s_thread_tx;
 static TX_THREAD s_thread_rx;
 
 /**
+ * @var g_threadx_canfd_match
+ * @brief HIL liveness counter -- incremented on every successful
+ *        iteration of either ThreadX demo thread.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving the ThreadX scheduler is actually
+ * dispatching both threads (the alive-mode check could only prove
+ * the chip didn't crash, not that the kernel was running).
+ *
+ * @note The current TX/RX threads in this demo are LED-blink stubs --
+ *       no real CANFD transmit/receive happens -- so this counter
+ *       proves scheduler liveness rather than CAN-FD throughput.
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_threadx_canfd_match = 0U;
+
+/**
  * @brief SysTick handler -- forwards to ThreadX scheduler tick.
  */
 void SysTick_Handler(void);
@@ -110,6 +131,7 @@ static void thread_tx_entry(ULONG thread_input)
   (void)thread_input;
   while (1) {
     (void)ra_board_led_toggle(k_ra_board_led1);
+    g_threadx_canfd_match += 1U;
     (void)tx_thread_sleep((ULONG)k_canfd_heartbeat_ticks);
   }
 }
@@ -129,6 +151,7 @@ static void thread_rx_entry(ULONG thread_input)
   (void)thread_input;
   while (1) {
     (void)ra_board_led_toggle(k_ra_board_led2);
+    g_threadx_canfd_match += 1U;
     (void)tx_thread_sleep((ULONG)k_canfd_rx_poll_ticks);
   }
 }
@@ -196,6 +219,18 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
+  /* CGC bring-up FIRST so the ThreadX SysTick reload (programmed in
+   * tx_initialize_low_level.S assuming RA_BOOT_CLOCK_HZ = 1 GHz)
+   * ticks at the intended 1 ms wallclock cadence. On MOCO (~8.4 MHz)
+   * the tick rate would be 1/119 the expected, making
+   * tx_thread_sleep(...) ~119x slower than the ms value declared in
+   * source. */
+  if (ra_cgc_init() != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
