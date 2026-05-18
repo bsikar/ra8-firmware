@@ -283,13 +283,13 @@ static void test_crc7_published_vectors(void)
   /* CMD0 with arg = 0 -> wire byte 0x95 -> CRC7 = 0x4A. */
   const uint8_t cmd0_frame[5] = {0x40U, 0x00U, 0x00U, 0x00U, 0x00U};
   const uint8_t expected_cmd0 = 0x4AU;
-  TEST_ASSERT_EQ((int64_t)expected_cmd0, (int64_t)ra_sdmmc_spi_crc7(cmd0_frame, 5U));
+  TEST_ASSERT_EQ(expected_cmd0, ra_sdmmc_spi_crc7(cmd0_frame, 5U));
   /* CMD8 arg = 0x000001AA -> wire byte 0x87 -> CRC7 = 0x43. */
   const uint8_t cmd8_frame[5] = {0x48U, 0x00U, 0x00U, 0x01U, 0xAAU};
   const uint8_t expected_cmd8 = 0x43U;
-  TEST_ASSERT_EQ((int64_t)expected_cmd8, (int64_t)ra_sdmmc_spi_crc7(cmd8_frame, 5U));
+  TEST_ASSERT_EQ(expected_cmd8, ra_sdmmc_spi_crc7(cmd8_frame, 5U));
   /* nullptr guard: CRC7 of a nullptr pointer == 0. */
-  TEST_ASSERT_EQ(0, (int64_t)ra_sdmmc_spi_crc7(nullptr, 4U));
+  TEST_ASSERT_EQ(0, ra_sdmmc_spi_crc7(nullptr, 4U));
   TEST_END("crc7 published vectors");
 }
 
@@ -302,14 +302,14 @@ static void test_crc16_published_vectors(void)
 {
   TEST_BEGIN("crc16 known vectors");
   /* Zero-length input -> seed 0x0000. */
-  TEST_ASSERT_EQ(0, (int64_t)ra_sdmmc_spi_crc16(nullptr, 0U));
+  TEST_ASSERT_EQ(0, ra_sdmmc_spi_crc16(nullptr, 0U));
   /* All-zero 512-byte block -> CRC16-CCITT of all-zero is 0x0000. */
   uint8_t zeros[512];
   memset(zeros, 0, sizeof(zeros));
-  TEST_ASSERT_EQ(0, (int64_t)ra_sdmmc_spi_crc16(zeros, sizeof(zeros)));
+  TEST_ASSERT_EQ(0, ra_sdmmc_spi_crc16(zeros, sizeof(zeros)));
   /* "123456789" classic vector for CRC16-CCITT seed 0x0000 == 0x31C3. */
   const uint8_t msg[9] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
-  TEST_ASSERT_EQ(0x31C3, (int64_t)ra_sdmmc_spi_crc16(msg, sizeof(msg)));
+  TEST_ASSERT_EQ(0x31C3, ra_sdmmc_spi_crc16(msg, sizeof(msg)));
   TEST_END("crc16 known vectors");
 }
 
@@ -361,7 +361,26 @@ static void test_init_validates_callbacks(void)
 
 /**
  * @par MC/DC:
- * End-to-end init flow exercises every compound decision (validate_transport, build_frame CMD8 special case) in their TRUE-control configuration; vectors documented in test_mcdc_* functions above.
+ * End-to-end init flow exercises every compound decision in
+ * ``libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c`` in its TRUE-control
+ * configuration:
+ *
+ *   - `validate_transport` OR-chain (vectors documented on
+ *     ::test_mcdc_validate_transport_or_chain).
+ *   - `internal_build_frame` AND-decision ``cmd == CMD8 && arg == 0x1AA``
+ *     (libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c:331). // CITES-OK: MC/DC gate requires file:line
+ *     The init path issues
+ *     CMD8 with the canonical argument (both operands true; on-wire
+ *     byte 5 == published constant 0x87) AND issues CMD0 / CMD55 /
+ *     CMD17 etc. that vary the first operand false (falling into the
+ *     generic CRC7 branch). Pair (V1=CMD8/0x1AA, V2=CMD0/0) flips the
+ *     first operand independently; pair (V1, V3=CMD17/lba) flips both.
+ *     The V4 vector (CMD8 with non-0x1AA arg) is unreachable from the
+ *     public API because the driver never issues CMD8 with anything
+ *     else -- coupled-operand exception per DO-178C 6.4.4.3
+ *     "where coupled, document and justify".
+ *   - `fs_get_capacity` NULL-OR (vectors on
+ *     ::test_mcdc_fs_get_capacity_null_or).
  */
 static void test_init_full_sdhc_path(void)
 {
@@ -374,14 +393,14 @@ static void test_init_full_sdhc_path(void)
   uint32_t cap = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
   /* 32 GiB SDHC card: ((0xFFFF + 1) * 1024) blocks = 0x4000000 = 64 Mi blocks. */
-  TEST_ASSERT_EQ((int64_t)((0xFFFFUL + 1UL) * 1024UL), (int64_t)cap);
+  TEST_ASSERT_EQ(((0xFFFFUL + 1UL) * 1024UL), cap);
 
   ra_sdmmc_spi_card_type_t type = k_ra_sdmmc_spi_type_unknown;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_card_type(&type));
-  TEST_ASSERT_EQ((int64_t)k_ra_sdmmc_spi_type_sdhc, (int64_t)type);
+  TEST_ASSERT_EQ(k_ra_sdmmc_spi_type_sdhc, type);
 
   /* Final clock should be at the data-speed target (25 MHz). */
-  TEST_ASSERT_EQ((int64_t)k_ra_sdmmc_spi_clock_data_hz, (int64_t)s_mock.clock_hz);
+  TEST_ASSERT_EQ(k_ra_sdmmc_spi_clock_data_hz, s_mock.clock_hz);
 
   TEST_END("init full SDHC 32GiB path");
 }
@@ -426,7 +445,7 @@ static void test_init_cmd8_classifies_v1_card(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
   ra_sdmmc_spi_card_type_t type = k_ra_sdmmc_spi_type_unknown;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_card_type(&type));
-  TEST_ASSERT_EQ((int64_t)k_ra_sdmmc_spi_type_sdv1, (int64_t)type);
+  TEST_ASSERT_EQ(k_ra_sdmmc_spi_type_sdv1, type);
   TEST_END("CMD8 illegal -> v1 classification");
 }
 
@@ -617,7 +636,7 @@ static void test_bind_fs_backend_populates_struct(void)
   uint32_t blocks = 0U;
   uint32_t bsize  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, backend.get_capacity(backend.ctx, &blocks, &bsize));
-  TEST_ASSERT_EQ((int64_t)k_ra_sdmmc_spi_block_size, (int64_t)bsize);
+  TEST_ASSERT_EQ(k_ra_sdmmc_spi_block_size, bsize);
   TEST_ASSERT(blocks > 0U);
   TEST_END("bind_fs_backend populates struct");
 }
@@ -688,53 +707,14 @@ static void test_mcdc_validate_transport_or_chain(void)
   TEST_END("MC/DC: validate_transport OR-chain");
 }
 
-/**
- * @test test_mcdc_build_frame_cmd8_special_case
- *
- * @par MC/DC:
- * Decision: ``else if ((cmd == k_sd_cmd_send_if_cond) &&
- *                      (arg == (uint32_t)k_sd_cmd8_arg_check_pattern))``
- * (2 conditions; libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c:331) // CITES-OK: MC/DC gate requires file:line
- * inside ``internal_build_frame``.
- *
- * The decision selects the pre-computed CRC-tagged byte 0x87 vs the
- * runtime-computed CRC7. We cannot reach ``internal_build_frame`` from
- * outside the TU, but the public API exercises the AND-decision
- * indirectly: the init path issues CMD8 with the canonical argument
- * (both conditions true), and the read/write paths issue CMDs that
- * are NEITHER CMD8 (varies first operand) nor with the magic argument
- * (varies second operand). Vectors:
- *
- *   - V1: cmd=CMD8,   arg=0x1AA -- both true, byte 5 == 0x87.
- *   - V2: cmd=CMD0,   arg=0     -- first false, falls into CMD0 branch.
- *   - V3: cmd=CMD17,  arg=lba   -- first false (no CMD8), second false too,
- *                                  falls into generic CRC7 branch.
- *   - V4: cmd=CMD8,   arg!=0x1AA-- first true, second false -- generic.
- *
- * Pairs (V1,V2)/(V1,V4) flip the operands independently. The on-wire
- * CRC byte for V1 is the published 0x87; for the others it is the
- * runtime CRC7 output, which we verify by sending real commands and
- * watching the bus stay responsive (a wrong CRC would make the card
- * return ``ILLEGAL_COMMAND`` and abort init).
- */
-static void test_mcdc_build_frame_cmd8_special_case(void)
-{
-  TEST_BEGIN("MC/DC: build_frame CMD8 special-case");
-  per_test_setup();
-  /* V1+V2+V3+V4 -- a complete successful init exercises every leg:
-   *   wake_card uses no CMD (V3 covered through SET_BLOCKLEN below).
-   *   CMD0 (V2): first operand false.
-   *   CMD8 with 0x1AA (V1): both true, generic CRC7 NOT invoked.
-   *   CMD55+ACMD41, CMD58, CMD9, CMD16 (V3): first operand false. */
-  queue_full_init_sdhc_32gib();
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
-  /* V4 cannot be triggered through the public API because the driver
-   * never issues CMD8 with anything but 0x1AA. The two reachable
-   * branches (V1, V2/V3) already independently flip the decision
-   * outcome -- N+1 minimal MC/DC under the operand-coupled exception
-   * (DO-178C 6.4.4.3 "where coupled, document and justify"). */
-  TEST_END("MC/DC: build_frame CMD8 special-case");
-}
+/* test_mcdc_build_frame_cmd8_special_case was removed -- the AND-decision
+ * `(cmd == CMD8) && (arg == 0x1AA)` inside `internal_build_frame` is
+ * fully exercised by `test_init_full_sdhc_path` below (V1: both
+ * operands true; init also issues CMD0 / CMD55 / CMD17 / etc. which
+ * vary the first operand false). The removed test re-queued the same
+ * full-init mock responses as `test_init_full_sdhc_path` and was
+ * functionally a duplicate; the MC/DC justification it carried has
+ * been folded into the `@par MC/DC:` block on the test that remains. */
 
 /**
  * @test test_mcdc_fs_get_capacity_null_or
@@ -778,7 +758,6 @@ static void test_mcdc_fs_get_capacity_null_or(void)
 int main(void)
 {
   test_mcdc_validate_transport_or_chain();
-  test_mcdc_build_frame_cmd8_special_case();
   test_mcdc_fs_get_capacity_null_or();
   test_crc7_published_vectors();
   test_crc16_published_vectors();
