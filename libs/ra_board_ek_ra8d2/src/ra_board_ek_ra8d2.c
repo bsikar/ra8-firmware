@@ -1701,16 +1701,23 @@ ra_err_t ra_board_mipi_dsi_init(void)
 static bool s_uart_console_initialized = false;
 
 /**
- * @brief Default PCLKB frequency assumed for SCI3 BRR calculation.
+ * @brief Minimum SCI module operating clock accepted by the console init.
  *
  * @details
- * The RA8D2 reset-default CGC programming runs ICLK at 240 MHz and
- * PCLKB at 60 MHz (chip HUM Ch 12 CGC). The console init uses this
- * value when calling ``ra_sci_init``; applications that retune CGC
- * must call ``ra_sci_set_baud(3, baud, new_pclkb_hz)`` afterwards.
+ * The RA8D2 SCI_B peripheral takes its baud-rate generator clock from
+ * PCLKA (chip HUM Ch 38.2 "SCI registers" -- the SCI module operating
+ * clock is the high-speed peripheral clock PCLKA, NOT PCLKB as some
+ * lower-end RA chips). After ``ra_cgc_init()`` brings PLL1 up,
+ * PCLKA = PLL1P/8 = 125 MHz on this project's CGC tree
+ * (``k_ra_pclka_hz`` in ``ra_time_constants.h``). Before that, the chip
+ * sits on MOCO (~8 MHz), which is far too low for a usable 115200 baud
+ * BRR -- so the console init refuses to come up until CGC has published
+ * a post-PLL PCLKA value. This minimum is set well above MOCO and well
+ * below the 125 MHz target so a different CGC tree can still bring the
+ * console up as long as PCLKA is in a reasonable UART range.
  */
 typedef enum : uint32_t {
-  k_ra_board_uart_console_default_pclkb_hz = 60000000UL,
+  k_ra_board_uart_console_min_pclka_hz = 16000000UL,
 } ra_board_uart_console_clock_t;
 
 /* Ra board uart console init -- see implementation for details. */
@@ -1720,13 +1727,29 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
     return k_ra_err_invalid_arg;
   }
 
-  /* Route PD02 -> TXD3, PD03 -> RXD3 (UM Table 13 p 24). PSEL value
+  /* SCI8's baud generator is fed by PCLKA on RA8D2 (chip HUM Ch 38.2
+   * "SCI registers"). Hardcoding a constant here was the bug behind
+   * every garbled UART symptom on apps that retune CGC: the BRR was
+   * being computed for an assumed 60 MHz against a real 125 MHz clock,
+   * so the line rate came out 2x too fast. Read PCLKA from CGC at
+   * runtime instead so the BRR tracks whatever the application's CGC
+   * tree settled on. */
+  uint32_t       pclka_hz = 0U;
+  ra_err_t       err      = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (pclka_hz < (uint32_t)k_ra_board_uart_console_min_pclka_hz) {
+    return k_ra_err_not_initialized;
+  }
+
+  /* Route PD02 -> TXD8, PD03 -> RXD8 (UM Table 13 p 24). PSEL value
    * k_ra_psel_sci_async = 0x04 covers SCI async TXD/RXD per the chip
    * HUM Multiplexed Pin Function Selector. */
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
-  ra_err_t err = ra_pfs_route_peripheral((ra_port_pin_t)k_ra_board_uart_console_pin_txd,
-                                         k_ra_psel_sci_async,
-                                         "ra_board.uart.console.txd");
+  err = ra_pfs_route_peripheral((ra_port_pin_t)k_ra_board_uart_console_pin_txd,
+                                k_ra_psel_sci_async,
+                                "ra_board.uart.console.txd");
   if (err != k_ra_ok) {
     return err;
   }
@@ -1743,7 +1766,7 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
     .data_bits = k_ra_sci_data_8,
     .parity    = k_ra_sci_parity_none,
     .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = (uint32_t)k_ra_board_uart_console_default_pclkb_hz,
+    .pclk_hz   = pclka_hz,
   };
   err = ra_sci_init((uint8_t)k_ra_board_uart_console_sci_channel, &cfg);
   if (err != k_ra_ok) {
