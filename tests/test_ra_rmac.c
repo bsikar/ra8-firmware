@@ -933,28 +933,23 @@ static void test_mcdc_ra_rmac(void)
  * @test test_mcdc_ra_rmac_psmcs_clamp
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_rmac.c:184 in internal_calc_psmcs CITES-OK: MC/DC source citation
- * ``if (eswclk_hz == 0U || mdc_hz == 0U)`` (2 conditions, ``||``).
- * Threaded through ``ra_rmac_init`` -> ``internal_program_mac_config``
- * -> ``internal_calc_psmcs``. The PSMCS field of MPIC (bits 22:16)
- * reads back as 0x7F (k_ra_rmac_mdc_psmcs_max) whenever the
- * conservative clamp branch fires, and a valid divider code when both
- * inputs are non-zero.
+ * Two sequential 1-condition decisions in internal_calc_psmcs
+ * (libs/ra_hal/src/ra_rmac.c:184 and :189; CITES-OK: MC/DC source citation):
+ *  D1: ``if (eswclk_hz == 0U)`` -- returns clamped PSMCS=127.
+ *  D2: ``if (mdc_hz == 0U)``    -- returns clamped PSMCS=127.
+ * Each is a 1-condition decision so MC/DC reduces to branch coverage
+ * (vectors T + F). Threaded through ``ra_rmac_init`` ->
+ * ``internal_program_mac_config`` -> ``internal_calc_psmcs``.
  *
- * Effective vectors achievable through the public API:
- *  - V1: cfg.eswclk_hz=125M, cfg.mdc_hz=1M -> internal_calc_psmcs sees
- *        eswclk=125M, mdc=1M -> dec F -> PSMCS = 61.
- *  - V2: cfg.eswclk_hz=0,    cfg.mdc_hz=1M -> internal_calc_psmcs sees
- *        eswclk=0,    mdc=1M -> dec T via C1=T short-circuit -> PSMCS=127.
+ * Vectors:
+ *  - V1: cfg.eswclk_hz=125M, cfg.mdc_hz=1M -> D1=F, D2=F -> compute
+ *        PSMCS=61 (125M/1M/2 - 1).
+ *  - V2: cfg.eswclk_hz=0,    cfg.mdc_hz=1M -> D1=T -> PSMCS=127.
  *
- * The C2-only branch (eswclk!=0 && mdc==0) is unreachable from the
- * public API because ``internal_program_mac_config`` substitutes the
- * cfg.mdc_hz==0 sentinel with ``k_ra_rmac_mdc_default_hz`` BEFORE
- * calling ``internal_calc_psmcs``. The C2=T branch survives as
- * defensive code for an internal future caller that bypasses the
- * substitution; per DO-178C 6.4.4.3 a representative-subset vector
- * set (V1 + V2) is accepted because the unreachable input is
- * documented as a callable-API impossibility.
+ * D2=T is unreachable from the public API because
+ * ``internal_program_mac_config`` substitutes the cfg.mdc_hz==0 sentinel
+ * with ``k_ra_rmac_mdc_default_hz`` BEFORE calling internal_calc_psmcs.
+ * Documented as callable-API impossibility per DO-178C 6.4.4.3.
  */
 static void test_mcdc_ra_rmac_psmcs_clamp(void)
 {
@@ -970,7 +965,7 @@ static void test_mcdc_ra_rmac_psmcs_clamp(void)
   uint32_t mpic       = ra_rmac(k_ra_rmac_port_0)->MPIC;
   uint32_t psmcs_read = (mpic >> psmcs_shift) & psmcs_mask;
   TEST_ASSERT_EQ(61U, psmcs_read);
-  /* V2: eswclk_hz = 0 -> short-circuit via C1=T, PSMCS clamps to max. */
+  /* V2: eswclk_hz = 0 -> D1=T -> PSMCS clamps to max. */
   prep();
   cfg           = default_cfg();
   cfg.eswclk_hz = 0U;
