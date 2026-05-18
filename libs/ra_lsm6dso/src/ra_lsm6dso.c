@@ -448,9 +448,9 @@ ra_err_t ra_lsm6dso_read_temp(ra_lsm6dso_t* dev, int32_t* out_centi_c)
   /* DS12140 sec 9.27 OUT_TEMP_L (20h) + sec 9.28 OUT_TEMP_H (21h). */
   uint8_t        bytes[2] = {};
   const ra_err_t r        = dev->bus.read_regs(dev->bus.ctx,
-                                        (uint8_t)k_lsm6dso_reg_out_temp_l,
-                                        bytes,
-                                        (uint32_t)k_lsm6dso_temp_burst_bytes);
+                                               (uint8_t)k_lsm6dso_reg_out_temp_l,
+                                               bytes,
+                                               (uint32_t)k_lsm6dso_temp_burst_bytes);
   if (r != k_ra_ok) {
     return r;
   }
@@ -493,9 +493,9 @@ static ra_err_t internal_lsm6dso_read_fifo_depth(ra_lsm6dso_t* dev, uint32_t* ou
 {
   uint8_t        status[2] = {};
   const ra_err_t rs        = dev->bus.read_regs(dev->bus.ctx,
-                                         (uint8_t)k_lsm6dso_reg_fifo_status1,
-                                         status,
-                                         (uint32_t)k_lsm6dso_fifo_status_bytes);
+                                                (uint8_t)k_lsm6dso_reg_fifo_status1,
+                                                status,
+                                                (uint32_t)k_lsm6dso_fifo_status_bytes);
   if (rs != k_ra_ok) {
     return rs;
   }

@@ -317,7 +317,7 @@ uint16_t ra_sdmmc_spi_crc16(const uint8_t* data, uint32_t len)
 static ra_err_t internal_xfer_one(uint8_t tx, uint8_t* rx)
 {
   const uint8_t tx_buf[1] = {tx};
-  uint8_t       rx_buf[1] = {0};
+  uint8_t       rx_buf[1] = {};
   ra_err_t      err       = s_state.transport.xfer(s_state.transport.ctx, tx_buf, rx_buf, 1U);
   if (err != k_ra_ok) {
     return err;
@@ -442,7 +442,7 @@ static ra_err_t internal_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1)
 /* Drain the four trailing bytes of an R3 / R7 response -- see implementation for details. */
 static ra_err_t internal_read_r3_or_r7_tail(uint32_t* out_word)
 {
-  uint8_t  bytes[4] = {0};
+  uint8_t  bytes[4] = {};
   ra_err_t err      = s_state.transport.xfer(s_state.transport.ctx, nullptr, bytes, 4U);
   if (err != k_ra_ok) {
     /* Some transports do not allow NULL tx; fall back to per-byte. */
@@ -520,8 +520,8 @@ static uint32_t internal_csd_to_blocks(const uint8_t* csd)
      * csd[7] (middle 8 bits), csd[8][7:6] (low 2 bits). */
     const uint8_t  read_bl_len = (uint8_t)(csd[5] & 0x0FU);
     const uint32_t c_size      = (((uint32_t)csd[6] & 0x03U) << 10U) | ((uint32_t)csd[7] << 2U) |
-                            ((uint32_t)(csd[8] & 0xC0U) >> 6U);
-    const uint8_t c_size_mult =
+                                 ((uint32_t)(csd[8] & 0xC0U) >> 6U);
+    const uint8_t  c_size_mult =
       (uint8_t)((((uint8_t)csd[9] & 0x03U) << 1U) | (((uint8_t)csd[10] & 0x80U) >> 7U));
     const uint32_t mult      = (uint32_t)1U << ((uint32_t)c_size_mult + 2U);
     const uint32_t block_len = (uint32_t)1U << (uint32_t)read_bl_len;
@@ -678,7 +678,7 @@ static ra_err_t internal_read_csd(uint32_t* out_blocks)
     (void)internal_cs_release();
     return err;
   }
-  uint8_t csd[k_ra_sdmmc_spi_csd_response_len] = {0};
+  uint8_t csd[k_ra_sdmmc_spi_csd_response_len] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_csd_response_len; i++) {
     err = internal_xfer_one((uint8_t)k_sd_token_idle, &csd[i]);
     if (err != k_ra_ok) {
@@ -687,7 +687,7 @@ static ra_err_t internal_read_csd(uint32_t* out_blocks)
     }
   }
   /* Drain trailing CRC16 (2 bytes). */
-  uint8_t crc_bytes[2] = {0};
+  uint8_t crc_bytes[2] = {};
   (void)internal_xfer_one((uint8_t)k_sd_token_idle, &crc_bytes[0]);
   (void)internal_xfer_one((uint8_t)k_sd_token_idle, &crc_bytes[1]);
   (void)internal_cs_release();
