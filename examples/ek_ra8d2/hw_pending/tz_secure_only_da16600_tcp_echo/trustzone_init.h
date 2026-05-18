@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/trustzone_init.h
+ * @file examples/ek_ra8d2/hw_pending/tz_secure_only_da16600_tcp_echo/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
  *
  * @par Tag
