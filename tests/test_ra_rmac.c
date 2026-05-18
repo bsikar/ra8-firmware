@@ -972,9 +972,9 @@ static void test_mcdc_ra_rmac_psmcs_clamp(void)
   TEST_ASSERT_EQ(61U, psmcs_read);
   /* V2: eswclk_hz = 0 -> short-circuit via C1=T, PSMCS clamps to max. */
   prep();
-  cfg            = default_cfg();
-  cfg.eswclk_hz  = 0U;
-  cfg.mdc_hz     = 1000000U;
+  cfg           = default_cfg();
+  cfg.eswclk_hz = 0U;
+  cfg.mdc_hz    = 1000000U;
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   mpic       = ra_rmac(k_ra_rmac_port_0)->MPIC;
   psmcs_read = (mpic >> psmcs_shift) & psmcs_mask;

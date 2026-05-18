@@ -27,8 +27,8 @@
 #include <stdint.h>
 
 #include "ra8d2_elc_regs.h"
-#include "ra8d2_ether_regs.h"
 #include "ra8d2_etha_regs.h"
+#include "ra8d2_ether_regs.h"
 #include "ra8d2_icu_regs.h"
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_pfs_regs.h"
@@ -2154,8 +2154,8 @@ static ra_err_t internal_eth_etha_to_config(void)
  */
 static ra_err_t internal_eth_etha_to_operation(void)
 {
-  ra_err_t err = ra_etha_set_mode((ra_etha_port_t)k_ra_board_eth_etha_port,
-                                  k_ra_etha_opc_operation);
+  ra_err_t err =
+    ra_etha_set_mode((ra_etha_port_t)k_ra_board_eth_etha_port, k_ra_etha_opc_operation);
   if (err != k_ra_ok) {
     return err;
   }
@@ -2224,7 +2224,7 @@ ra_err_t ra_board_ethernet_init(void)
    * reset. After this the per-port RMAC / ETHA register windows
    * answer reads and accept writes. */
   uint32_t eswclk_hz = 0U;
-  err = internal_eth_eswm_bring_up(&eswclk_hz);
+  err                = internal_eth_eswm_bring_up(&eswclk_hz);
   if (err != k_ra_ok) {
     return err;
   }
