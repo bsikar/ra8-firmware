@@ -58,7 +58,7 @@ static const char* s_tag = "SDSPI";
  * "Command Format" (bit 7 = 0, bit 6 = 1, bits 5..0 = command index).
  */
 typedef enum : uint8_t {
-  k_sd_cmd_go_idle_state      = 0x40U | 0U,  /**< CMD0  GO_IDLE_STATE        */
+  k_sd_cmd_go_idle_state      = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
   k_sd_cmd_send_if_cond       = 0x40U | 8U,  /**< CMD8  SEND_IF_COND         */
   k_sd_cmd_send_csd           = 0x40U | 9U,  /**< CMD9  SEND_CSD             */
   k_sd_cmd_send_cid           = 0x40U | 10U, /**< CMD10 SEND_CID             */
