@@ -1,16 +1,18 @@
 #
-# Per-app CMake for the `tz_secure_only_sd` firmware.
+# Per-app CMake for the `tz_secure_only_da16600_tcp_echo` firmware.
 #
-# SPI-mode SD card round-trip demo for the EK-RA8D2 with a Digilent
-# PMOD MicroSD (Digikey 1286-1200-ND, part 410-380) plugged into J25.
+# Boots the EK-RA8D2, brings up SCI2 wired to the US159-DA16600EVZ
+# Pmod1 connector, talks AT to the DA16600 module, and runs one
+# Wi-Fi scan over its AT interface. Prints the count of networks to
+# the J-Link OB VCOM channel ("wifi: scan complete, N=<n>") so the
+# HIL harness can scrape it.
 #
 # Standalone:
 #   cmake -S . -B build \
-#         -DCMAKE_TOOLCHAIN_FILE=../../../../../cmake/toolchain-ra8d2.cmake
+#         -DCMAKE_TOOLCHAIN_FILE=../../../../cmake/toolchain-ra8d2.cmake
 #   cmake --build build
 #
-# Top-level builds use the same CMakeLists.txt by going through
-# add_subdirectory.
+# Top-level builds use the same CMakeLists.txt through add_subdirectory.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -25,15 +27,15 @@ if(NOT _ra_has_parent)
 endif()
 
 if(RA_APP_STANDALONE)
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../" ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
 
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-    project(tz_secure_only_sd
+    project(tz_secure_only_da16600_tcp_echo
         LANGUAGES C ASM
         VERSION ${RA_PROJECT_VERSION}
-        DESCRIPTION "SPI-mode SD card round-trip demo for EK-RA8D2"
+        DESCRIPTION "DA16600 Wi-Fi TCP echo demo for EK-RA8D2"
     )
 
     if(NOT CMAKE_BUILD_TYPE)
@@ -54,7 +56,7 @@ if(RA_APP_STANDALONE)
 
     option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 else()
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../" ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
 endif()
 
 include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
@@ -63,7 +65,7 @@ include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 # Sources
 #############################################################################
 
-set(RA_APP_NAME tz_secure_only_sd)
+set(RA_APP_NAME tz_secure_only_da16600_tcp_echo)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
@@ -73,15 +75,15 @@ set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/trustzone_init.c
 )
 
-file(GLOB_RECURSE LIB_RA_CORE_SOURCES   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_core/src/*.c)
-file(GLOB_RECURSE LIB_RA_HAL_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_hal/src/*.c)
-file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_net_pal/src/*.c)
-file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_usb_pal/src/*.c)
-file(GLOB_RECURSE LIB_RA_NSC_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_nsc/src/*.c)
-file(GLOB_RECURSE LIB_RA_BOARD_SOURCES  CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
-file(GLOB_RECURSE LIB_RA_FS_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_fs/src/*.c)
-file(GLOB_RECURSE LIB_RA_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_sdmmc_spi/src/*.c)
-file(GLOB_RECURSE APP_SECURE_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
+file(GLOB_RECURSE LIB_RA_CORE_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_core/src/*.c)
+file(GLOB_RECURSE LIB_RA_HAL_SOURCES      CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_hal/src/*.c)
+file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES  CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_net_pal/src/*.c)
+file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES  CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_usb_pal/src/*.c)
+file(GLOB_RECURSE LIB_RA_NSC_SOURCES      CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_nsc/src/*.c)
+file(GLOB_RECURSE LIB_RA_BOARD_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
+file(GLOB_RECURSE LIB_RA_MODEM_AT_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_modem_at/src/*.c)
+file(GLOB_RECURSE LIB_RA_DA16600_SOURCES  CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_da16600/src/*.c)
+file(GLOB_RECURSE APP_SECURE_SOURCES      CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
 
 #############################################################################
 # Executable
@@ -97,8 +99,8 @@ add_executable(${RA_APP_NAME}.elf
     ${LIB_RA_USB_PAL_SOURCES}
     ${LIB_RA_NSC_SOURCES}
     ${LIB_RA_BOARD_SOURCES}
-    ${LIB_RA_FS_SOURCES}
-    ${LIB_RA_SDMMC_SPI_SOURCES}
+    ${LIB_RA_MODEM_AT_SOURCES}
+    ${LIB_RA_DA16600_SOURCES}
     ${APP_SECURE_SOURCES}
 )
 
@@ -122,8 +124,8 @@ target_include_directories(${RA_APP_NAME}.elf PRIVATE
     ${RA_REPO_ROOT}/libs/ra_usb_pal/inc
     ${RA_REPO_ROOT}/libs/ra_nsc/inc
     ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/inc
-    ${RA_REPO_ROOT}/libs/ra_fs/inc
-    ${RA_REPO_ROOT}/libs/ra_sdmmc_spi/inc
+    ${RA_REPO_ROOT}/libs/ra_modem_at/inc
+    ${RA_REPO_ROOT}/libs/ra_da16600/inc
 )
 
 target_link_options(${RA_APP_NAME}.elf PRIVATE

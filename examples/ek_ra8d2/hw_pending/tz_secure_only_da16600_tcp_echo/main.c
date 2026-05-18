@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_da16600_tcp_echo/main.c
+ * @file examples/ek_ra8d2/hw_pending/tz_secure_only_da16600_tcp_echo/main.c
  * @brief DA16600 Wi-Fi TCP-echo demo for EK-RA8D2 + US159-DA16600EVZ Pmod
  *
  * @par Tag
