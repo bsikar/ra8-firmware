@@ -43,6 +43,41 @@ typedef enum : uint32_t {
   k_journal_byte_shift    = 8U,
 } flash_journal_const_t;
 
+/**
+ * @var g_fj_match
+ * @brief HIL liveness counter -- incremented on every successful
+ *        erase -> program -> read-back -> compare round-trip.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
+ * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
+ * sample window, proving the Octo-SPI flash peripheral actually wrote
+ * and read back matching bytes (the alive-mode check could only prove
+ * the chip didn't crash, not that flash actually round-tripped data).
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_match = 0U;
+
+/**
+ * @var g_fj_mismatch
+ * @brief HIL failure counter -- incremented on any erase, program, or
+ *        read failure, or when the read-back bytes don't match what
+ *        was just written.
+ *
+ * @details
+ * The memprobe asserts this stays at 0 (or below
+ * HIL_PROBE_MAX_FAILURE). Catches the silent-failure mode where the
+ * peripheral starts up but writes silently drop, reads return stale
+ * data, or the compare miscompares -- previously invisible because
+ * the chip kept iterating the main loop happily.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_mismatch = 0U;
+
 /** @brief Park the CPU after a fatal init failure. */
 static void flash_journal_panic_halt(void)
 {
@@ -155,8 +190,10 @@ int32_t main(void)
     const ra_err_t err    = flash_journal_round_trip(counter, &echoed);
     if (err == k_ra_ok && echoed == counter) {
       (void)ra_board_led_toggle(k_ra_board_led1);
+      g_fj_match += 1U;
     } else {
       (void)ra_board_led_toggle(k_ra_board_led2);
+      g_fj_mismatch += 1U;
     }
     counter++;
     ra_delay_ms(k_journal_period_ms);
