@@ -1104,13 +1104,13 @@ typedef enum : uint16_t {
  * the same connector but are gated by trace-cut links E17 / E9 and are
  * not used by the basic console wiring.
  *
- * On the RA8D2 PD02/PD03 are the SCI3 TXD3/RXD3 alternate functions
+ * On the RA8D2 PD02/PD03 are the SCI8 TXD8/RXD8 alternate functions
  * (chip HUM "Multiplexed Pin Function Selector"); the BSP forwards to
- * SCI channel 3 via ``ra_sci_init`` / ``ra_sci_write_polling`` /
+ * SCI channel 8 via ``ra_sci_init`` / ``ra_sci_write_polling`` /
  * ``ra_sci_getc_polling``.
  */
 typedef enum : uint8_t {
-  k_ra_board_uart_console = 0U, /**< J-Link OB VCOM bridge: PD02 TXD / PD03 RXD on SCI3.
+  k_ra_board_uart_console = 0U, /**< J-Link OB VCOM bridge: PD02 TXD / PD03 RXD on SCI8.
                                  *   EK-RA8D2 UM Table 13 p 24. */
 } ra_board_uart_t;
 
@@ -1121,7 +1121,7 @@ typedef enum : uint8_t {
  * Exposed as an enum (not a macro) so test code and applications can
  * reference the channel without re-encoding the magic number. The
  * value comes from PD02/PD03's Multiplexed Pin Function Selector
- * row in the chip HUM I/O Ports chapter (TXD3/RXD3 alternate).
+ * row in the chip HUM I/O Ports chapter (TXD8/RXD8 alternate).
  */
 typedef enum : uint8_t {
   k_ra_board_uart_console_sci_channel =
@@ -1149,26 +1149,34 @@ typedef enum : uint16_t {
 } ra_board_uart_console_pin_t;
 
 /**
- * @brief Configure SCI3 + PD02/PD03 as the debug-console UART.
+ * @brief Configure SCI8 + PD02/PD03 as the debug-console UART.
  *
  * @details
- * Routes PD02 -> TXD3 and PD03 -> RXD3 (PSEL = SCI async) and brings
- * SCI3 up via ``ra_sci_init`` with 8N1 framing at the requested baud.
- * The PCLKB frequency used for the BRR calculation is taken from the
- * chip's reset default (60 MHz on RA8D2 with stock CGC programming);
- * applications that retune CGC must call ``ra_sci_set_baud`` after
- * their CGC change to recompute the divisor.
+ * Routes PD02 -> TXD8 and PD03 -> RXD8 (PSEL = SCI async) and brings
+ * SCI8 up via ``ra_sci_init`` with 8N1 framing at the requested baud.
+ * The SCI module operating clock on RA8D2 is PCLKA (chip HUM Ch 38.2
+ * "SCI registers"); the BRR divisor is computed from the **current**
+ * PCLKA frequency reported by ``ra_cgc_get_clock_hz``, so callers must
+ * call ``ra_cgc_init()`` **before** ``ra_board_uart_console_init``.
+ * Applications that retune CGC afterwards must additionally call
+ * ``ra_sci_set_baud((uint8_t)k_ra_board_uart_console_sci_channel,
+ * baud, new_pclka_hz)`` to recompute the divisor.
  *
  * @param[in] baud Target line rate in bps (e.g. 115200).
  *
  * @retval k_ra_ok                  Console up, ready to TX/RX.
  * @retval k_ra_err_invalid_arg     baud == 0.
+ * @retval k_ra_err_not_initialized ``ra_cgc_init`` has not yet published
+ *                                  a usable PCLKA value (chip still on
+ *                                  MOCO / pre-PLL).
  * @retval k_ra_err_gpio_conflict   PD02 or PD03 already owned.
  * @retval k_ra_err_hw_init_failed  Underlying ``ra_sci_init`` failed.
  *
  * @pre HAL pin validator initialized (single-threaded boot context).
+ * @pre ``ra_cgc_init()`` has run and PCLKA is post-PLL.
  * @pre ra_mstp_init() has run.
- * @post SCI3 is enabled with TE=RE=1; PD02/PD03 are routed to SCI3.
+ * @post SCI8 is enabled with TE=RE=1; PD02/PD03 are routed to SCI8.
+ * @post BRR computed against the live PCLKA value (no hardcoded clock).
  *
  * @note Not thread-safe; call once during board bring-up.
  * @since 0.1.0
@@ -1186,7 +1194,7 @@ typedef enum : uint16_t {
  * @retval k_ra_err_not_initialized ``ra_board_uart_console_init`` not called.
  *
  * @pre ra_board_uart_console_init succeeded.
- * @post All ``len`` bytes have been handed to the SCI3 TDR shift register.
+ * @post All ``len`` bytes have been handed to the SCI8 TDR shift register.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len);
@@ -1195,7 +1203,7 @@ typedef enum : uint16_t {
  * @brief Polled non-blocking read from the J-Link OB VCOM console.
  *
  * @details
- * Drains up to ``cap`` bytes from SCI3 RDR while RDRF stays set. Stops
+ * Drains up to ``cap`` bytes from SCI8 RDR while RDRF stays set. Stops
  * (without error) the first time RDRF clears so the call never blocks
  * waiting for a host that is silent.
  *
