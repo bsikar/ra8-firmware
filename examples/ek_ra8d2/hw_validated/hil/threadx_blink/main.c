@@ -45,6 +45,7 @@
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
@@ -136,6 +137,27 @@ static TX_THREAD s_thread_a;
 static TX_THREAD s_thread_b;
 
 /**
+ * @var g_threadx_blink_tick
+ * @brief HIL liveness counter -- incremented by thread A on each
+ *        LED-A toggle. Read externally by hil_jlink_memprobe.sh.
+ *
+ * @details
+ * If ThreadX schedules thread A correctly, the counter advances at
+ * 1/k_blink_a_ticks Hz. The memprobe HIL mode asserts the counter
+ * has advanced over a sample window -- catches "scheduler wedged"
+ * and "thread crashed before first iteration" failure modes that
+ * the plain HIL_MODE=alive check misses.
+ *
+ * `volatile` keeps the increment alive under optimization; the
+ * global (non-static) keeps the symbol linker-visible without
+ * --gc-sections culling.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_threadx_blink_tick = 0U;
+
+/**
  * @brief SysTick exception handler.
  *
  * @details
@@ -182,6 +204,7 @@ static void thread_a_entry(ULONG thread_input)
   (void)thread_input;
   while (1) {
     (void)ra_board_led_toggle(k_ra_board_led1);
+    g_threadx_blink_tick += 1U;
     (void)tx_thread_sleep((ULONG)k_blink_a_ticks);
   }
 }
@@ -294,6 +317,22 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
+  /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick
+   * with a reload of (1 GHz / 1000 - 1) = 999999 cycles per tick
+   * (chip HUM Ch 11 CGC, plus our port/threadx/cortex_m85/
+   * tx_initialize_low_level.S RA_BOOT_CLOCK_HZ value). If the chip
+   * is still on MOCO (~8.4 MHz) at scheduler-enter time, that
+   * 999999-cycle reload takes ~119 ms wallclock instead of 1 ms --
+   * a 119x slowdown, which makes tx_thread_sleep(500 ticks) sleep
+   * for ~60 s and the LED toggle look frozen in any reasonable
+   * HIL window. Bring up the PLL before tx_kernel_enter so the
+   * scheduler tick rate matches what tx_user.h declared. */
+  if (ra_cgc_init() != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+
   /* GPIO init runs with PRIMASK set; ThreadX will re-enable IRQs once
    * its scheduler is up. */
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {

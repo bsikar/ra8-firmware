@@ -34,6 +34,14 @@
 #     HIL_BOOT_S=2                 -- seconds to let the chip run before
 #                                     checking the CPU is still healthy
 #
+#   HIL_MODE=jlink_memprobe
+#     HIL_PROBE_SYMBOL="g_tick"    -- name of a `volatile uint32_t` the
+#                                     firmware increments in its main
+#                                     loop / ISR
+#     HIL_PROBE_MIN_ADVANCE=4      -- minimum delta over the sample window
+#     HIL_PROBE_SECONDS=3          -- sample window length in seconds
+#     For apps that should not pull in a UART (blink-class smoke tests).
+#
 #   HIL_MODE=hil_eth_tcp
 #     HIL_BOARD_IP="192.168.1.42"  -- IPv4 the firmware listens at
 #     HIL_PORT=7                   -- listening TCP port
@@ -177,6 +185,16 @@ run_alive() {
         --boot-seconds "${boot_s}"
 }
 
+run_jlink_memprobe() {
+    local app="$1"
+    bash "${REPO_ROOT}/scripts/hil_jlink_memprobe.sh" \
+        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+        --symbol "${HIL_PROBE_SYMBOL}" \
+        --min-advance "${HIL_PROBE_MIN_ADVANCE:-4}" \
+        --seconds "${HIL_PROBE_SECONDS:-3}" \
+        --app-name "${app}"
+}
+
 run_hil_eth_tcp() {
     local app="$1"
     bash "${REPO_ROOT}/scripts/hil_eth_tcp.sh" \
@@ -210,6 +228,7 @@ for app in "${APPS[@]}"; do
     unset HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK
     unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
     unset HIL_BOOT_S HIL_FAULT_EXPECTED
+    unset HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS
     unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
     # shellcheck disable=SC1090
     source "$conf"
@@ -217,6 +236,7 @@ for app in "${APPS[@]}"; do
            HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK \
            HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
            HIL_BOOT_S HIL_FAULT_EXPECTED \
+           HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
            HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
 
     if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
@@ -231,10 +251,11 @@ for app in "${APPS[@]}"; do
 
     rc=0
     case "$HIL_MODE" in
-        uart_scrape) run_uart_scrape "$app" || rc=$? ;;
-        usb_cdc)     run_usb_cdc     "$app" || rc=$? ;;
-        alive)       run_alive       "$app" || rc=$? ;;
-        hil_eth_tcp) run_hil_eth_tcp "$app" || rc=$? ;;
+        uart_scrape)     run_uart_scrape     "$app" || rc=$? ;;
+        usb_cdc)         run_usb_cdc         "$app" || rc=$? ;;
+        alive)           run_alive           "$app" || rc=$? ;;
+        jlink_memprobe)  run_jlink_memprobe  "$app" || rc=$? ;;
+        hil_eth_tcp)     run_hil_eth_tcp     "$app" || rc=$? ;;
         *)
             echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
             rc=99

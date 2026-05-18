@@ -41,6 +41,30 @@ typedef enum : uint32_t {
 } blink_const_t;
 
 /**
+ * @var g_blink_tick
+ * @brief HIL liveness counter -- incremented each time the LED toggles.
+ *
+ * @details
+ * scripts/hil_jlink_memprobe.sh halts the chip via SWD, reads this
+ * counter, lets the chip run for N seconds, halts again, and asserts
+ * the counter advanced by >= HIL_PROBE_MIN_ADVANCE. This is a much
+ * stronger gate than HIL_MODE=alive (which only checks PC is in MRAM
+ * and CycleCnt advances): a chip stuck in a busy-wait inside
+ * ra_delay_ms would pass alive-mode but fail memprobe because the
+ * main loop never iterated.
+ *
+ * `volatile` keeps the increment out of the optimiser's hands (it
+ * would otherwise hoist or eliminate the dead store, since nothing in
+ * the firmware reads the counter). The symbol is also non-static so
+ * the linker keeps it visible to arm-none-eabi-nm without
+ * @c -Wl,--gc-sections culling it.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_blink_tick = 0U;
+
+/**
  * @brief Park the CPU forever in WFI -- used as a panic stop.
  */
 static void blink_panic_halt(void)
@@ -67,6 +91,7 @@ int32_t main(void)
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
     }
+    g_blink_tick += 1U;
     ra_delay_ms(k_blink_half_period_ms);
   }
 
