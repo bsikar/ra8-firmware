@@ -1141,14 +1141,20 @@ typedef enum : uint16_t {
  * @brief ETHA / RMAC port and PHY MDIO address for the on-board PHY.
  *
  * @details
- * Per UM 6.1 ("Ethernet interface"). The on-board PHY (MaxLinear
- * PEF7071VV16-LLHU, UM Table 27 p 34) is the only device on the MDIO
- * bus and powers up at MDIO address 0; the RA8D2 has two ETHA / RMAC
- * instances, of which port 0 is the one wired to J15.
+ * Per UM 6.1 ("Ethernet interface") and the canonical FSP example
+ * project ``ethernet_ek_ra8d2_ep`` (ra_cfg.txt: "Channel: 1" for both
+ * g_ether0 and g_rmac_phy0). The on-board PHY (MaxLinear PEF7071VV16-
+ * LLHU, UM Table 27 p 34) is the only device on the MDIO bus and
+ * powers up at MDIO address 0; the RA8D2 has two ETHA / RMAC
+ * instances, of which **port 1** (not port 0) is the one wired to the
+ * RJ45 J33 on the EK-RA8D2. Earlier revisions of this header pointed
+ * at port 0 -- that was wrong; the chip-side MDIO controller never saw a
+ * reply because the MDC / MDIO pads on RMAC0 are not routed to the
+ * board's PHY.
  */
 typedef enum : uint8_t {
-  k_ra_board_eth_etha_port = 0U, /**< ETHA0 (k_ra_etha_port_0). UM 6.1.   */
-  k_ra_board_eth_rmac_port = 0U, /**< RMAC0 (k_ra_rmac_port_0). UM 6.1.   */
+  k_ra_board_eth_etha_port = 1U, /**< ETHA1 (k_ra_etha_port_1). UM 6.1.   */
+  k_ra_board_eth_rmac_port = 1U, /**< RMAC1 (k_ra_rmac_port_1). UM 6.1.   */
   k_ra_board_eth_phy_addr  = 0U, /**< MDIO addr of the on-board PHY (HW
                                   *   strap on PEF7071, UM Table 27 p 34). */
 } ra_board_eth_index_t;

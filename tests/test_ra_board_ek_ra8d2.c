@@ -539,9 +539,12 @@ static void test_ethernet_pins(void)
 static void test_ethernet_index_constants(void)
 {
   TEST_BEGIN("ethernet ETHA/RMAC port + PHY addr defaults");
-  /* The on-board PHY is on ETHA0 / RMAC0, MDIO addr 0 (PEF7071 strap). */
-  TEST_ASSERT_EQ(0, k_ra_board_eth_etha_port);
-  TEST_ASSERT_EQ(0, k_ra_board_eth_rmac_port);
+  /* The on-board PHY is on ETHA1 / RMAC1, MDIO addr 0 (PEF7071 strap).
+   * Cross-reference the canonical FSP ethernet_ek_ra8d2_ep project:
+   * every Ethernet pin in its pincfg is "eswm_rgmii1" and the r_rmac
+   * Channel = 1. RMAC0 / ETHA0 are unused on the EK-RA8D2. */
+  TEST_ASSERT_EQ(1, k_ra_board_eth_etha_port);
+  TEST_ASSERT_EQ(1, k_ra_board_eth_rmac_port);
   TEST_ASSERT_EQ(0, k_ra_board_eth_phy_addr);
   TEST_END("ethernet ETHA/RMAC port + PHY addr defaults");
 }

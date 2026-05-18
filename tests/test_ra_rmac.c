@@ -929,6 +929,59 @@ static void test_mcdc_ra_rmac(void)
   TEST_END("rmac MC/DC: phy_args_ok + link_status decisions");
 }
 
+/**
+ * @test test_mcdc_ra_rmac_psmcs_clamp
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_rmac.c:184 in internal_calc_psmcs CITES-OK: MC/DC source citation
+ * ``if (eswclk_hz == 0U || mdc_hz == 0U)`` (2 conditions, ``||``).
+ * Threaded through ``ra_rmac_init`` -> ``internal_program_mac_config``
+ * -> ``internal_calc_psmcs``. The PSMCS field of MPIC (bits 22:16)
+ * reads back as 0x7F (k_ra_rmac_mdc_psmcs_max) whenever the
+ * conservative clamp branch fires, and a valid divider code when both
+ * inputs are non-zero.
+ *
+ * Effective vectors achievable through the public API:
+ *  - V1: cfg.eswclk_hz=125M, cfg.mdc_hz=1M -> internal_calc_psmcs sees
+ *        eswclk=125M, mdc=1M -> dec F -> PSMCS = 61.
+ *  - V2: cfg.eswclk_hz=0,    cfg.mdc_hz=1M -> internal_calc_psmcs sees
+ *        eswclk=0,    mdc=1M -> dec T via C1=T short-circuit -> PSMCS=127.
+ *
+ * The C2-only branch (eswclk!=0 && mdc==0) is unreachable from the
+ * public API because ``internal_program_mac_config`` substitutes the
+ * cfg.mdc_hz==0 sentinel with ``k_ra_rmac_mdc_default_hz`` BEFORE
+ * calling ``internal_calc_psmcs``. The C2=T branch survives as
+ * defensive code for an internal future caller that bypasses the
+ * substitution; per DO-178C 6.4.4.3 a representative-subset vector
+ * set (V1 + V2) is accepted because the unreachable input is
+ * documented as a callable-API impossibility.
+ */
+static void test_mcdc_ra_rmac_psmcs_clamp(void)
+{
+  TEST_BEGIN("rmac MC/DC: psmcs clamp on zero clock inputs");
+  prep();
+  const uint32_t psmcs_shift = 16U;
+  const uint32_t psmcs_mask  = 0x7FUL;
+  /* V1: both inputs valid -> compute path, PSMCS = (125M/1M/2)-1 = 61. */
+  ra_rmac_config_t cfg = default_cfg();
+  cfg.eswclk_hz        = 125000000U;
+  cfg.mdc_hz           = 1000000U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  uint32_t mpic       = ra_rmac(k_ra_rmac_port_0)->MPIC;
+  uint32_t psmcs_read = (mpic >> psmcs_shift) & psmcs_mask;
+  TEST_ASSERT_EQ(61U, psmcs_read);
+  /* V2: eswclk_hz = 0 -> short-circuit via C1=T, PSMCS clamps to max. */
+  prep();
+  cfg            = default_cfg();
+  cfg.eswclk_hz  = 0U;
+  cfg.mdc_hz     = 1000000U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  mpic       = ra_rmac(k_ra_rmac_port_0)->MPIC;
+  psmcs_read = (mpic >> psmcs_shift) & psmcs_mask;
+  TEST_ASSERT_EQ(0x7FU, psmcs_read);
+  TEST_END("rmac MC/DC: psmcs clamp on zero clock inputs");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -959,6 +1012,7 @@ int32_t main(void)
   test_phy_link_status();
   test_deinit();
   test_mcdc_ra_rmac();
+  test_mcdc_ra_rmac_psmcs_clamp();
   (void)fprintf(stderr, "[OK  ] test_ra_rmac.c\n");
   return 0;
 }
