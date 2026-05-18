@@ -223,6 +223,63 @@ static void test_stop_detection_arm_and_fire(void)
   TEST_END("cgc stop detection: handler fires via sim trigger");
 }
 
+/**
+ * @test test_mcdc_eswclk_pdctreswm
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_cgc.c:1883 in ra_cgc_eswclk_init CITES-OK: MC/DC source citation
+ * ``if (((state & PDCSF) == 0U) && ((state & PDPGSF) != 0U))``
+ * (2 conditions, ``&&``). The body issues a write to PDCTRESWM
+ * clearing PDDE; the condition gates whether the power-on kick is
+ * needed at all (when the domain is already powered up there is no
+ * write).
+ *
+ * Verifying the gate is exercised under all combinations is tricky
+ * on the host simulator because PDCTRESWM is plain RAM and the
+ * production code can only observe the read it does itself. Drive
+ * the three branches by pre-seeding PDCTRESWM and re-running
+ * ``ra_cgc_eswclk_init``; the inner write only fires when the
+ * decision evaluates true. N+1 = 3 vectors:
+ *  - V1: PDCTRESWM=0b1000_0001 (PDCSF=0, PDPGSF=1) -> dec T,
+ *        PDDE bit gets cleared.
+ *  - V2: PDCTRESWM=0b1100_0001 (PDCSF=1, PDPGSF=1) -> dec F via
+ *        C1=F (PDCSF != 0 short-circuits the AND).
+ *  - V3: PDCTRESWM=0b0000_0001 (PDCSF=0, PDPGSF=0) -> dec F via
+ *        C2=F (PDCSF=0 but PDPGSF=0).
+ * V1+V2 prove PDCSF independently affects outcome; V1+V3 prove the
+ * same for PDPGSF. Minimal MC/DC vector set.
+ */
+static void test_mcdc_eswclk_pdctreswm(void)
+{
+  TEST_BEGIN("cgc MC/DC: PDCTRESWM power-on decision");
+  const uint8_t pdde_mask   = (uint8_t)(1U << 0U);
+  const uint8_t pdcsf_mask  = (uint8_t)(1U << 6U);
+  const uint8_t pdpgsf_mask = (uint8_t)(1U << 7U);
+  /* V1: domain is gated (PDCSF=0 && PDPGSF=1) -> condition TRUE,
+   * write fires and clears PDDE. The init also asserts CKSREQ/SRDY
+   * for ESWCKCR + ESWPCKCR; the sim handlers handle that. */
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf()     = (uint8_t)(1U << 0U); /* HOCOSF, satisfies HOCO wait. */
+  *ra_sys_pdctreswm() = (uint8_t)(pdde_mask | pdpgsf_mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
+  /* Expect PDDE cleared by the protected write. */
+  TEST_ASSERT_EQ(0U, (*ra_sys_pdctreswm() & pdde_mask));
+  /* V2: PDCSF asserted (C1=F short-circuit) -> condition FALSE, no write. */
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf()     = (uint8_t)(1U << 0U);
+  *ra_sys_pdctreswm() = (uint8_t)(pdde_mask | pdcsf_mask | pdpgsf_mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
+  /* PDDE should be UNTOUCHED (still 1). */
+  TEST_ASSERT_EQ(pdde_mask, *ra_sys_pdctreswm() & pdde_mask);
+  /* V3: PDPGSF clear (C2=F after C1=F not-short-circuit) -> condition FALSE. */
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf()     = (uint8_t)(1U << 0U);
+  *ra_sys_pdctreswm() = pdde_mask;
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
+  TEST_ASSERT_EQ(pdde_mask, *ra_sys_pdctreswm() & pdde_mask);
+  TEST_END("cgc MC/DC: PDCTRESWM power-on decision");
+}
+
 int32_t main(void)
 {
   test_get_clock_hz_null_out();
@@ -234,6 +291,7 @@ int32_t main(void)
   test_use_hoco_timeout();
   test_switch_pll1_target_updates_cpuclk0();
   test_stop_detection_arm_and_fire();
+  test_mcdc_eswclk_pdctreswm();
   (void)fprintf(stderr, "[OK  ] test_ra_cgc.c\n");
   return 0;
 }

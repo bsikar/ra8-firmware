@@ -361,19 +361,16 @@ static ra_err_t internal_resolve_sizes(const ra_eth_cfg_t* cfg,
  */
 static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
 {
-  const ra_rmac_port_t   rmac_port = internal_channel_to_port(cfg->channel);
-  const ra_rmac_config_t rmac_cfg  = {.rx_filter       = k_ra_rmac_mrafc_promiscuous,
-                                      .err_irq_enable  = 0U,
-                                      .mon0_irq_enable = 0U,
-                                      .mon1_irq_enable = 0U,
-                                      .mon2_irq_enable = 0U,
-                                      .phy_interface   = k_ra_rmac_pis_mii,
-                                      .link_speed      = k_ra_rmac_lsc_100mbit,
-                                      .duplex          = k_ra_rmac_duplex_full};
-  const ra_err_t         rmac_err  = ra_rmac_init(rmac_port, &rmac_cfg);
-  RA_RETURN_ON_ERROR(rmac_err, s_tag, "open: rmac init"); /* GCOVR_EXCL_BR_LINE */
-
-  uint8_t mac_copy[k_ra_eth_mac_len];
+  /* The board-level ``ra_board_ethernet_init`` (or its equivalent for
+   * non-EK boards) is expected to have already programmed RMAC's MPIC
+   * (PIS / LSC / PIPP / PSMCS), enabled the MSTP gate, and brought the
+   * matching ETHA into OPERATION mode. Overwriting MPIC here would
+   * clobber the carefully-computed MDC clock divider (PSMCS) and force
+   * the wrong PHY interface mode (MII instead of RGMII). The only
+   * RMAC-level state ``ra_eth_open`` still has to programme is the
+   * MAC address the application chose. */
+  const ra_rmac_port_t rmac_port = internal_channel_to_port(cfg->channel);
+  uint8_t              mac_copy[k_ra_eth_mac_len];
   for (uint8_t i = 0U; i < (uint8_t)k_ra_eth_mac_len; ++i) {
     mac_copy[i] = cfg->mac_address[i];
   }

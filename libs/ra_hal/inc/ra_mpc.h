@@ -96,9 +96,10 @@ typedef enum : uint8_t {
   k_ra_mpc_psel_usbfs      = 0x13U, /**< 10011: USB Full-Speed. */
   k_ra_mpc_psel_usbhs      = 0x14U, /**< 10100: USB High-Speed / GPT2. */
   k_ra_mpc_psel_sdhi       = 0x15U, /**< 10101: SDHI / MMC / GPT3. */
-  k_ra_mpc_psel_ether_mii  = 0x16U, /**< 10110: Ethernet MII / GPT4 / UARTA. */
-  k_ra_mpc_psel_ether_rmii = 0x17U, /**< 10111: Ethernet RMII. */
-  k_ra_mpc_psel_pdc        = 0x18U, /**< 11000: PDC / AGT1 / Ether RGMII. */
+  k_ra_mpc_psel_ether_mii   = 0x16U, /**< 10110: Ethernet MII / GPT4 / UARTA. */
+  k_ra_mpc_psel_ether_rmii  = 0x17U, /**< 10111: Ethernet RMII. */
+  k_ra_mpc_psel_pdc         = 0x18U, /**< 11000: PDC / AGT1 / Ether RGMII (alias). */
+  k_ra_mpc_psel_ether_rgmii = 0x18U, /**< 11000: Ethernet RGMII (preferred name). */
   k_ra_mpc_psel_glcdc      = 0x19U, /**< 11001: graphics LCDC / CAC. */
   k_ra_mpc_psel_trace      = 0x1AU, /**< 11010: ETM debug trace. */
   k_ra_mpc_psel_pdm        = 0x1BU, /**< 11011: PDM / GPT5. */

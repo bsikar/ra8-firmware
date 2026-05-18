@@ -77,11 +77,16 @@ typedef enum : uint16_t {
   k_ra_sys_off_pll2ccr2     = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit). */
   k_ra_sys_off_scickdivcr   = 0x054U, /**< SCICKDIVCR (8-bit). */
   k_ra_sys_off_scickcr      = 0x055U, /**< SCICKCR    (8-bit). */
+  k_ra_sys_off_eswckdivcr   = 0x0D5U, /**< ESWCKDIVCR  (8-bit) -- ESWM module clock div. */
+  k_ra_sys_off_eswpckdivcr  = 0x0D6U, /**< ESWPCKDIVCR (8-bit) -- ESWM-PHY clock div.    */
+  k_ra_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.     */
+  k_ra_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source. */
   k_ra_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider. */
   k_ra_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider. */
   k_ra_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.    */
   k_ra_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.     */
   k_ra_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
+  k_ra_sys_off_pdctreswm    = 0x118U, /**< PDCTRESWM (8-bit) -- ESWM power-domain control.  */
   k_ra_sys_off_pllccr       = 0x0ACU, /**< PLLCCR    (32-bit). */
   k_ra_sys_off_rstsr1       = 0x0C0U, /**< RSTSR1    (32-bit). */
   k_ra_sys_off_pll2ccr =
@@ -157,9 +162,10 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_ra_prcr_key        = 0xA500U, /**< Password in upper byte.           */
   k_ra_prcr_grp0_cgc   = 0x0001U, /**< Group 0: CGC + LVD.               */
-  k_ra_prcr_grp1_lpm   = 0x0002U, /**< Group 1: Low-power modes.         */
+  k_ra_prcr_grp1_lpm   = 0x0002U, /**< Group 1: Low-power modes + power domains. */
   k_ra_prcr_grp2_osc   = 0x0008U, /**< Group 2: LVD reset-detection.     */
   k_ra_prcr_unlock_cgc = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp0_cgc),
+  k_ra_prcr_unlock_lpm = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp1_lpm),
   k_ra_prcr_lock_all   = k_ra_prcr_key,
 } ra_prcr_t;
 
@@ -432,6 +438,115 @@ static inline volatile uint8_t* ra_sys_usb60ckcr(void)
 static inline volatile uint8_t* ra_sys_usb60ckdivcr(void)
 {
   return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_usb60ckdivcr);
+}
+
+/**
+ * @enum ra_eswcksel_t
+ * @brief ESWCKCR.CKSEL source codes (RA8D2 mapping).
+ *
+ * @details
+ * Layout matches USBCKCR / USB60CKCR -- the CGC uses the same
+ * peripheral-clock-source enum for every CKSEL field. The Renesas
+ * FSP confirms this in `bsp_clocks.c` (single `BSP_CLOCKS_SOURCE_CLOCK_*`
+ * enum drives every peripheral clock select).
+ */
+typedef enum : uint8_t {
+  k_ra_eswcksel_hoco  = 0U, /**< HOCO. */
+  k_ra_eswcksel_moco  = 1U, /**< MOCO. */
+  k_ra_eswcksel_loco  = 2U, /**< LOCO. */
+  k_ra_eswcksel_main  = 3U, /**< Main XTAL. */
+  k_ra_eswcksel_pll1p = 5U, /**< PLL1P (preferred for 125 MHz ESWCLK). */
+  k_ra_eswcksel_pll2p = 6U, /**< PLL2P. */
+  k_ra_eswcksel_pll1q = 7U, /**< PLL1Q. */
+  k_ra_eswcksel_pll1r = 8U, /**< PLL1R. */
+  k_ra_eswcksel_pll2q = 9U, /**< PLL2Q. */
+  k_ra_eswcksel_pll2r = 10U,/**< PLL2R. */
+} ra_eswcksel_t;
+
+/**
+ * @enum ra_eswckcr_bit_t
+ * @brief Bit positions in ESWCKCR.
+ */
+typedef enum : uint8_t {
+  k_ra_eswckcr_shift_sel = 0U,    /**< CKSEL field starts at bit 0. */
+  k_ra_eswckcr_mask_sel  = 0x0FU, /**< CKSEL field is 4 bits wide.  */
+  k_ra_eswckcr_bit_sreq  = 6U,    /**< CKSREQ -- request switch.    */
+  k_ra_eswckcr_bit_srdy  = 7U,    /**< CKSRDY -- handshake ready.   */
+} ra_eswckcr_bit_t;
+
+/**
+ * @brief Get pointer to the 8-bit ESWCKCR (Ethernet Switch / RMAC clock source).
+ *
+ * @details
+ * HUM Ch 9.2 "ESWCKCR" -- 8-bit register, layout identical to USB60CKCR:
+ *   - CKSEL[3:0] : clock source code (same enum as ra_usbcksel_t).
+ *   - CKSREQ bit 6 : write 1 to request a switch.
+ *   - CKSRDY bit 7 : read-only handshake-done flag.
+ *
+ * The ESWCLK feeds the Ethernet Switch Module (ESWM) and the per-port
+ * RMAC PHY-management clock divider MPIC.PSMCS. Without a valid ESWCLK
+ * the MDC line never toggles at the rate the PHY expects (max 2.5 MHz
+ * for Clause-22).
+ */
+static inline volatile uint8_t* ra_sys_eswckcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_eswckcr);
+}
+
+/** @brief Get pointer to the 8-bit ESWCKDIVCR (ESWCLK divider; 4-bit CKDIV field). */
+static inline volatile uint8_t* ra_sys_eswckdivcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_eswckdivcr);
+}
+
+/**
+ * @brief Get pointer to the 8-bit ESWPCKCR (Ethernet-PHY clock source).
+ *
+ * @details
+ * ESWPHYCLK is the high-speed clock fed into the per-port RMAC pin pad
+ * timing (in addition to ESWCLK feeding the MDC divider). Without this
+ * clock running, the entire RMAC / ETHA register block reads back as
+ * 0 and writes are silently dropped -- exactly the failure mode seen
+ * when only ESWCKCR is programmed but ESWPCKCR is left at its reset
+ * default of MOCO/1 ~= 8 MHz. Layout identical to ESWCKCR (same
+ * ::ra_eswckcr_bit_t shifts and ::ra_eswcksel_t source enum).
+ */
+static inline volatile uint8_t* ra_sys_eswpckcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_eswpckcr);
+}
+
+/** @brief Get pointer to the 8-bit ESWPCKDIVCR (ESWPHYCLK divider; 4-bit CKDIV field). */
+static inline volatile uint8_t* ra_sys_eswpckdivcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_eswpckdivcr);
+}
+
+/**
+ * @enum ra_pdctreswm_bit_t
+ * @brief Bit positions in PDCTRESWM (ESWM power-domain control).
+ *
+ * @details
+ * HUM Ch 9.2 "General Power Domain ESWM Control Register" + FSP
+ * R_SYSTEM_PDCTRESWM_PDDE_Pos. The PDDE bit is a write-1-to-DISABLE
+ * (counter-intuitive but matches the FSP comment "Turn on the domain
+ * power" by writing PDDE = 0). PDCSF / PDPGSF are read-only status
+ * flags that go to 0 once the requested transition completes.
+ *
+ * Without ``PDDE = 0`` the ESWM peripheral domain stays power-gated
+ * and the per-port RMAC / ETHA register windows read back 0 and
+ * silently drop every write -- observed on EK-RA8D2 hardware.
+ */
+typedef enum : uint8_t {
+  k_ra_pdctr_bit_pdde   = 0U, /**< 1 = power disabled, 0 = power enabled. */
+  k_ra_pdctr_bit_pdcsf  = 6U, /**< Read-only: power-control status flag.  */
+  k_ra_pdctr_bit_pdpgsf = 7U, /**< Read-only: power-gating status flag.   */
+} ra_pdctreswm_bit_t;
+
+/** @brief Get pointer to the 8-bit PDCTRESWM (ESWM power-domain control). */
+static inline volatile uint8_t* ra_sys_pdctreswm(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_pdctreswm);
 }
 
 /* =============================================================================

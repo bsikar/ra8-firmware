@@ -158,14 +158,61 @@ static inline bool internal_port_ok(ra_rmac_port_t port)
 }
 
 /**
+ * @brief Compute the MPIC.PSMCS divider code for a target MDC rate.
+ *
+ * @details
+ * HUM Ch 33.4.1.2 "MPIC.PSMCS" + FSP r_rmac_phy_calculate_mpic:
+ *   PSMCS = ((eswclk_hz / mdc_hz) / 2) - 1
+ *
+ * Clamps to the 7-bit field width. Returns the conservative ceiling
+ * (slowest MDC) on a divide-by-zero or absurdly slow ESWCLK so the PHY
+ * has the best chance of latching the frame.
+ *
+ * @param[in] eswclk_hz Live ESWCLK frequency in Hz (caller-provided).
+ * @param[in] mdc_hz    Desired MDC frequency in Hz (e.g. 1 MHz).
+ *
+ * @return PSMCS divider code, clamped to ::k_ra_rmac_mdc_psmcs_max.
+ * @retval 0..0x7F Valid PSMCS divider code.
+ *
+ * @pre eswclk_hz > 0.
+ * @pre mdc_hz    > 0.
+ * @post Returned value fits in the 7-bit PSMCS field.
+ * @post Pure function: no state changes.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static inline uint32_t internal_calc_psmcs(uint32_t eswclk_hz, uint32_t mdc_hz)
+{
+  if (eswclk_hz == 0U || mdc_hz == 0U) {
+    return (uint32_t)k_ra_rmac_mdc_psmcs_max;
+  }
+  uint32_t psmcs = ((eswclk_hz / mdc_hz) / 2U);
+  if (psmcs == 0U) {
+    psmcs = 1U;
+  }
+  psmcs -= 1U;
+  if (psmcs > (uint32_t)k_ra_rmac_mdc_psmcs_max) {
+    psmcs = (uint32_t)k_ra_rmac_mdc_psmcs_max;
+  }
+  return psmcs;
+}
+
+/**
  * @brief Build the MPIC value from interface / speed / duplex inputs.
  *
  * @param[in] iface   PHY interface.
  * @param[in] speed   Link speed.
  * @param[in] duplex  Duplex mode.
- * @return 32-bit MPIC value with PIS/LSC/PIPP fields packed.
+ * @param[in] psmcs   MPIC.PSMCS clock-divider code (see ::internal_calc_psmcs).
+ * @return 32-bit MPIC value with PIS / LSC / PIPP / PSMCS fields packed.
  *
- * @details See implementation.
+ * @details
+ * Packs every MPIC field the driver owns:
+ *   - PIS  [2:0]  -- physical interface selector.
+ *   - LSC  [5:3]  -- link-speed selector.
+ *   - PIPP [9]    -- 1 = full duplex, 0 = half.
+ *   - PSMCS[22:16]-- PHY-station-management clock divider (MDC rate).
+ *
  * @retval k_ra_ok Operation succeeded.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
@@ -174,8 +221,10 @@ static inline bool internal_port_ok(ra_rmac_port_t port)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline uint32_t
-internal_make_mpic(ra_rmac_pis_t iface, ra_rmac_lsc_t speed, ra_rmac_duplex_t duplex)
+static inline uint32_t internal_make_mpic(ra_rmac_pis_t    iface,
+                                          ra_rmac_lsc_t    speed,
+                                          ra_rmac_duplex_t duplex,
+                                          uint32_t         psmcs)
 {
   /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1707 */
   const uint32_t pis  = ((uint32_t)iface & k_ra_rmac_mask_mpic_pis)
@@ -183,17 +232,38 @@ internal_make_mpic(ra_rmac_pis_t iface, ra_rmac_lsc_t speed, ra_rmac_duplex_t du
   const uint32_t lsc  = ((uint32_t)speed & k_ra_rmac_mask_mpic_lsc)
                         << (uint32_t)k_ra_rmac_shift_mpic_lsc;
   const uint32_t pipp = (duplex == k_ra_rmac_duplex_full) ? (1UL << 9U) : 0UL;
-  return pis | lsc | pipp;
+  const uint32_t psmcs_field = (psmcs & k_ra_rmac_mask_mpic_psmcs)
+                               << (uint32_t)k_ra_rmac_shift_mpic_psmcs;
+  return pis | lsc | pipp | psmcs_field;
 }
 
 /**
- * @brief Wait for an MMIS1 completion bit, with a bounded poll budget.
+ * @brief Wait for an MDIO transaction to complete, with a bounded poll budget.
+ *
+ * @details
+ * On RA8D2 silicon the canonical FSP completion signal is **MPSM.PSME**
+ * going back to 0 (FSP r_rmac_phy.c R_RMAC_PHY_Read /
+ * R_RMAC_PHY_Write end with ``FSP_HARDWARE_REGISTER_WAIT(MPSM_b.PSME, 0)``).
+ * The MMIS1 status bits (PRACS / PWACS / PAACS) DO get set by hardware
+ * but they are RW1C (write-1-to-clear) and may auto-clear before a
+ * polling read observes them on the host bus. Empirical bring-up on
+ * EK-RA8D2 showed MPSM.PSME reliably toggles 1 -> 0 on transaction
+ * completion while MMIS1 sometimes reads back 0 from the same poll.
+ *
+ * The simulator backings still set MMIS1 directly (test code does
+ * ``ra_rmac(port)->MMIS1 = ...``); we keep an MMIS1 short-circuit so
+ * those tests stay green while the production poll uses MPSM.PSME.
  *
  * @param[in] reg     RMAC register window.
- * @param[in] mask    MMIS1 bit to test (e.g. PRACS for read).
- * @return k_ra_ok if the bit asserted, k_ra_err_hw_timeout otherwise.
+ * @param[in] mask    MMIS1 bit the simulator pre-arms for this op
+ *                    (e.g. PRACS for read). Production code does not
+ *                    rely on MMIS1; mask is consulted only as a
+ *                    secondary completion signal so existing host-
+ *                    side test vectors keep passing.
  *
- * @details See implementation.
+ * @return k_ra_ok if PSME falls to 0 OR the simulator-pre-armed MMIS1
+ *         bit asserts; k_ra_err_hw_timeout otherwise.
+ *
  * @retval k_ra_ok Operation succeeded.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
@@ -204,10 +274,25 @@ internal_make_mpic(ra_rmac_pis_t iface, ra_rmac_lsc_t speed, ra_rmac_duplex_t du
  */
 static ra_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
 {
+  /* FSP-canonical completion path: poll MPSM.PSME (bit 0) until it
+   * self-clears. The MPSM write that triggers the transaction sets
+   * PSME=1; the hardware drops it on completion. Mirror FSP
+   * R_RMAC_PHY_Read which is just
+   * ``FSP_HARDWARE_REGISTER_WAIT(MPSM_b.PSME, 0);`` (and reads PRD
+   * afterwards). Because the issuing write sets PSME=1 atomically,
+   * the very next poll will see PSME=1 (no risk of returning
+   * "completed" on the initial-state read).
+   *
+   * Simulator backings drive the legacy MMIS1.PRACS / PWACS / PAACS
+   * status bits directly (host tests pre-arm those). We keep an MMIS1
+   * short-circuit so those tests stay green, but production code on
+   * silicon exits via the PSME path. */
   for (uint32_t i = 0; i < k_ra_rmac_mdio_poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1707 */
+    if ((reg->MPSM & 1UL) == 0U) {
+      reg->MMID1 = mask;
+      return k_ra_ok;
+    }
     if ((reg->MMIS1 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      /* HUM Ch 33.4 "MMID1 : MAC Monitoring Interrupt Disable Register 1" p 1707 */
       reg->MMID1 = mask;
       return k_ra_ok;
     }
@@ -291,7 +376,10 @@ static void internal_program_mac_config(volatile r_rmac_regs_t* reg, const ra_rm
   reg->MRAFC  = (uint32_t)cfg->rx_filter;
   reg->MLBC   = 0U;
   reg->MEEEC  = 0U;
-  reg->MPIC   = internal_make_mpic(cfg->phy_interface, cfg->link_speed, cfg->duplex);
+  const uint32_t mdc_hz =
+    (cfg->mdc_hz != 0U) ? cfg->mdc_hz : (uint32_t)k_ra_rmac_mdc_default_hz;
+  const uint32_t psmcs = internal_calc_psmcs(cfg->eswclk_hz, mdc_hz);
+  reg->MPIC = internal_make_mpic(cfg->phy_interface, cfg->link_speed, cfg->duplex, psmcs);
 }
 
 /**
@@ -655,8 +743,15 @@ ra_err_t ra_rmac_set_link(ra_rmac_port_t   port,
     ra_log_error(s_tag, "set_link: speed out of range");
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1707 */
-  ra_rmac(port)->MPIC = internal_make_mpic(iface, speed, duplex);
+  /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1707
+   * Preserve the existing PSMCS (MDC divider) field -- ra_rmac_init
+   * programmed it from cfg->eswclk_hz / mdc_hz; a runtime ra_rmac_set_link
+   * call must NOT clobber the MDC clock the PHY is already using to ack
+   * the very transaction that is updating PIS/LSC/PIPP. */
+  volatile r_rmac_regs_t* reg = ra_rmac(port);
+  const uint32_t          existing_psmcs =
+    (reg->MPIC >> (uint32_t)k_ra_rmac_shift_mpic_psmcs) & (uint32_t)k_ra_rmac_mask_mpic_psmcs;
+  reg->MPIC = internal_make_mpic(iface, speed, duplex, existing_psmcs);
   return k_ra_ok;
 }
 
