@@ -32,6 +32,7 @@ HIL_APPS=(
     iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo
     power_profiler lpm_idle_demo crypto_aes_demo
     watchdog_demo eth_loopback sdram_benchmark rtc_alarm
+    canfd_loopback can_classic_loopback spi_loopback
 )
 
 UART_DIR="examples/ek_ra8d2/hw_validated/hil"

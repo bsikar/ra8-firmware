@@ -83,7 +83,6 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | dac_b_demo | DAC0 output ramps 0-3.3 V |
 | dac_waveform | DAC0 triangle wave ~8 Hz |
 | doc_demo | LED1 toggles on match, LED2 latches on diverge |
-| ethernet_tcp_echo | echo via Ethernet socket on host |
 | gpio_input_demo | LED1 mirrors SW1 state |
 | gpt_capture_input | LED toggles on SW1 press; captures period |
 | gpt_pwm_demo | LED breathes via GPT PWM duty cycle |
@@ -92,9 +91,7 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | threadx_canfd_demo | LED toggles on each CAN-FD ThreadX frame |
 | threadx_filex_demo | LED1 toggles on each FileX write/read pass |
 | threadx_levelx_demo | LED1 toggles on each LevelX erase/write cycle |
-| threadx_lwip_tcp_echo | TCP echo via Ethernet socket on host |
 | threadx_mpu_partition_demo | LED1 blinks in MPU-partitioned ThreadX thread |
-| threadx_netx_tcp_echo | NetX TCP echo server, verified by host socket |
 | threadx_usbx_cdc_demo | USB CDC echo, verified like the tz_* USB apps |
 | tz_nsc_cgc_usb | TrustZone NSC + USB FS CDC echo |
 | usb_cdc_echo | USB FS CDC echo (older simpler variant of tz_secure_only_usb) |
