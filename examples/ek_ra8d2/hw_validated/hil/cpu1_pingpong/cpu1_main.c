@@ -53,16 +53,34 @@ typedef enum : uint8_t {
   (void)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_recv);
   (void)ra_ipc_channel_for_send(k_ra_ipc_core_cpu1, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_send);
 
+  /* HUM Ch 3.2.14 "IPC0CLR0.RST" p 217 -- writing 1 to RST drains the
+   * receive FIFO and clears STA.RDY/STA.FULL. The IPC peripheral is a
+   * single shared block: CPU0 already issued ``reset_fifo=true`` on
+   * both directions before releasing CPU1 (see ra_cpu1_release ordering
+   * in main.c). If CPU1 also writes RST on ch_recv (= IPC1_0, the
+   * CPU0 -> CPU1 FIFO that CPU0 may have already loaded with 0x1234
+   * during the race window between CPU1ACTCSR.ACT asserting and CPU1
+   * finishing its .data/.bss init), the pending ping gets discarded
+   * and CPU0's bounded ``recv_blocking`` poll on ch 0 never sees a
+   * response -- ``g_cpu1_pingpong_match`` and ``g_cpu1_pingpong_mismatch``
+   * both stayed at zero across the 5 s HIL probe window because the
+   * first ping was lost and every subsequent ping arrived while CPU1
+   * was already past its init blocking. Skip the reset on CPU1; CPU0
+   * is the FIFO owner of both directions. ``clear_status`` is also
+   * dropped because CPU0 already cleared status during its own init
+   * and the only bits that could be set after CPU0's clear are RDY
+   * (set by CPU0's own TXD write -- discarding that is exactly the
+   * race we are avoiding). */
   ra_ipc_config_t cfg_recv = {
     .channel      = ch_recv,
-    .reset_fifo   = true,
-    .clear_status = true,
+    .reset_fifo   = false,
+    .clear_status = false,
     .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
   };
   ra_ipc_config_t cfg_send = {
     .channel      = ch_send,
-    .reset_fifo   = true,
-    .clear_status = true,
+    .reset_fifo   = false,
+    .clear_status = false,
     .event_mask   = 0U,
   };
   (void)ra_ipc_init(&cfg_recv);
