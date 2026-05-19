@@ -12,11 +12,10 @@
  *   1. Brings up CGC + SysTick + UART (SCI8) for log output.
  *   2. Initialises CANFD0 via ``ra_canfd_init`` and programs a
  *      500 kbps nominal bit rate via ``ra_canfd_set_bitrate``.
- *   3. Forces the channel into the silicon's internal-loopback
- *      mode by stamping ``CFDC[0].CTR.CTME=1`` + ``CTMS=01``
- *      directly through the register header (the public HAL does
- *      not yet expose this -- documented as a deliberate raw write
- *      in the comment block below).
+ *   3. Forces the channel into the silicon's Self-test 1 (internal
+ *      loopback) mode by calling ``ra_canfd_set_test_mode`` which
+ *      stamps ``CFDC[0].CTR.CTME=1`` + ``CTMS=11b`` in CH_HALT
+ *      (HUM Ch 41 "CFDCnCTR" p 2710).
  *   4. Once per second, transmits an 8-byte heartbeat frame at
  *      standard ID ``0x123`` and polls the RX FIFO for the
  *      mirrored frame. LED1 toggles on each successful round-trip;
@@ -63,20 +62,10 @@ typedef enum : uint8_t {
   k_canfd_demo_payload_b7 = 0xBEU,
 } canfd_demo_payload_t;
 
-/**
- * @brief CFDC[0].CTR test-mode bits (HUM Ch 41 "CFDCnCTR" p 2762).
- *
- * @details
- * CTME is bit 17, CTMS occupies bits [19:18]. CTMS=01b selects
- * "internal loopback (CAN bus disconnected)" -- the controller
- * routes its own TX back into the RX path so we can prove the IP
- * works without a transceiver attached.
- */
-typedef enum : uint32_t {
-  k_canfd_demo_ctme_bit   = 17U,
-  k_canfd_demo_ctms_shift = 18U,
-  k_canfd_demo_ctms_intl  = 0x1UL, /**< Internal loopback. */
-} canfd_demo_ctr_t;
+/* CFDC[0].CTR test-mode bits live in ra_canfd_set_test_mode() now.
+ * Bit positions (CTME = bit 24, CTMS = bits [26:25]) and the
+ * Self-test 1 / internal-loopback selector (CTMS = 11b) come from
+ * HUM Ch 41 "CFDCnCTR" p 2710. */
 
 /**
  * @var g_canfd_match
@@ -120,32 +109,27 @@ static void canfd_demo_panic_halt(void)
 }
 
 /**
- * @brief Stamp CFDC[0].CTR test-mode bits for internal loopback.
+ * @brief Enable Self-test 1 (internal loopback) on @p channel.
  *
  * @details
- * Done via the public register header rather than the HAL because
- * ``ra_canfd`` does not expose a test-mode setter yet. The channel
- * must already be out of reset before this write lands; we call it
- * after ``ra_canfd_init`` returns.
+ * Forwards to ``ra_canfd_set_test_mode`` which bounces the channel
+ * through CH_HALT to land CTME = 1 and CTMS = 11b in CFDC[0].CTR.
+ * HUM Ch 41 "CFDCnCTR" p 2710 -- CTME / CTMS are only writable in
+ * CH_HALT mode.
  *
- * @retval k_ra_ok Always (raw register write).
+ * @retval k_ra_ok                Bits stamped, channel back in operation.
+ * @retval k_ra_err_invalid_arg   Channel index rejected by the HAL.
  *
- * @pre ``ra_canfd_init(channel)`` returned ``k_ra_ok``.
- * @post ``CFDC[channel].CTR`` has CTME=1, CTMS=01.
+ * @pre  ``ra_canfd_init(channel)`` returned ``k_ra_ok``.
+ * @pre  No TX/RX is in flight on @p channel.
+ * @post ``CFDC[channel].CTR`` has CTME=1, CTMS=11b.
+ * @post Channel is back in CH_OPERATION ready to TX.
  *
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t canfd_demo_enable_internal_loopback(uint8_t channel)
 {
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  uint32_t ctr = reg->CFDC[0].CTR;
-  ctr |= (uint32_t)(1UL << k_canfd_demo_ctme_bit);
-  ctr |= (uint32_t)(k_canfd_demo_ctms_intl << k_canfd_demo_ctms_shift);
-  reg->CFDC[0].CTR = ctr;
-  return k_ra_ok;
+  return ra_canfd_set_test_mode(channel, k_ra_ctms_self_test_1);
 }
 
 /**

@@ -56,12 +56,10 @@ typedef enum : uint8_t {
   k_can_demo_byte_marker_g = 0x40U,
 } can_demo_byte_t;
 
-/** @brief CFDC[0].CTR test-mode bits (HUM Ch 41 "CFDCnCTR" p 2762). */
-typedef enum : uint32_t {
-  k_can_demo_ctme_bit   = 17U,
-  k_can_demo_ctms_shift = 18U,
-  k_can_demo_ctms_intl  = 0x1UL,
-} can_demo_ctr_t;
+/* CFDC[0].CTR test-mode bits live in ra_canfd_set_test_mode() now.
+ * Bit positions (CTME = bit 24, CTMS = bits [26:25]) and the
+ * Self-test 1 / internal-loopback selector (CTMS = 11b) come from
+ * HUM Ch 41 "CFDCnCTR" p 2710. */
 
 /**
  * @var g_can_match
@@ -105,32 +103,26 @@ static void can_demo_panic_halt(void)
 }
 
 /**
- * @brief Stamp internal-loopback into CFDC[0].CTR. See canfd_loopback.
+ * @brief Enable Self-test 1 (internal loopback) on @p channel.
  *
  * @par MC/DC:
  * Decision: ``reg == nullptr``. One atomic condition x 2 vectors --
  * valid channel here, bad-channel covered in
  * test_app_can_classic_loopback.
  *
- * @retval k_ra_ok                Bits stamped.
- * @retval k_ra_err_invalid_arg   Channel out of range (reg == NULL).
+ * @retval k_ra_ok                Bits stamped, channel back in operation.
+ * @retval k_ra_err_invalid_arg   Channel index rejected by the HAL.
  *
- * @pre ra_canfd_init(channel) returned k_ra_ok.
- * @post CFDC[channel].CTR has CTME=1, CTMS=01.
+ * @pre  ra_canfd_init(channel) returned k_ra_ok.
+ * @pre  No TX/RX is in flight on @p channel.
+ * @post CFDC[channel].CTR has CTME=1, CTMS=11b.
+ * @post Channel is back in CH_OPERATION ready to TX.
  *
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t can_demo_enable_internal_loopback(uint8_t channel)
 {
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  uint32_t ctr = reg->CFDC[0].CTR;
-  ctr |= (uint32_t)(1UL << k_can_demo_ctme_bit);
-  ctr |= (uint32_t)(k_can_demo_ctms_intl << k_can_demo_ctms_shift);
-  reg->CFDC[0].CTR = ctr;
-  return k_ra_ok;
+  return ra_canfd_set_test_mode(channel, k_ra_ctms_self_test_1);
 }
 
 /**
