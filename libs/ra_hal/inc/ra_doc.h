@@ -27,7 +27,7 @@ extern "C" {
  * @brief Reset the DOC control register to its reset state.
  *
  * @details
- * Clears `DOCR`, `DODIR`, and `DODSR`. Leaves the block disabled
+ * Clears `DOCR`, `DODIR`, and `DODSR0`. Leaves the block disabled
  * until the first operation.
  *
  * @return `k_ra_ok` on success.
