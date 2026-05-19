@@ -731,7 +731,9 @@ static void demo_panic_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_demo_pin_vbusen, k_ra_psel_usb_fs, "usb_hid.vbusen");
+  /* VBUSEN as GPIO output LOW for USB device mode. Peripheral routing
+   * forces VBUSEN HIGH (host mode) which blocks device enumeration. */
+  err = ra_gpio_output_init(k_demo_pin_vbusen, k_ra_level_low);
   if (err != k_ra_ok) {
     return err;
   }
