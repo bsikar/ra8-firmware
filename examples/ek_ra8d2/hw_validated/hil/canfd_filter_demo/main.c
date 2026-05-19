@@ -17,7 +17,8 @@
  *   2. ``ra_canfd_init`` + ``ra_canfd_set_bitrate`` (500 kbps).
  *   3. ``ra_canfd_filter_set(0, 0x100, 0x7FF, 8)``  -- exact match.
  *   4. ``ra_canfd_filter_set(1, 0x110, 0x7F0, 8)``  -- mask lower 4.
- *   5. Internal loopback test mode (CFDC[0].CTR.CTME=1, CTMS=01).
+ *   5. Self-test 1 / internal loopback (CFDC[0].CTR.CTME=1, CTMS=11b)
+ *      via ``ra_canfd_set_test_mode`` (HUM Ch 41 "CFDCnCTR" p 2710).
  *   6. Loop forever transmitting + checking RX FIFO.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -61,12 +62,10 @@ typedef enum : uint8_t {
   k_canfd_filter_payload_b7 = 0xEFU,
 } canfd_filter_layout_t;
 
-/** @brief Internal-loopback bits in CFDC[0].CTR (HUM Ch 41 p 2762). */
-typedef enum : uint32_t {
-  k_canfd_filter_ctme_bit   = 17U,
-  k_canfd_filter_ctms_shift = 18U,
-  k_canfd_filter_ctms_intl  = 0x1UL,
-} canfd_filter_ctr_t;
+/* CFDC[0].CTR test-mode bits live in ra_canfd_set_test_mode() now.
+ * Bit positions (CTME = bit 24, CTMS = bits [26:25]) and the
+ * Self-test 1 / internal-loopback selector (CTMS = 11b) come from
+ * HUM Ch 41 "CFDCnCTR" p 2710. */
 
 /**
  * @var g_canfd_filter_match
@@ -112,22 +111,24 @@ static void canfd_filter_panic_halt(void)
 }
 
 /**
- * @brief Stamp CFDC[0].CTR test-mode bits for internal loopback.
+ * @brief Enable Self-test 1 (internal loopback) on @p channel.
  *
- * @retval k_ra_ok            Loopback bits programmed.
- * @retval k_ra_err_invalid_arg Channel index rejected.
+ * @details
+ * Forwards to ::ra_canfd_set_test_mode which bounces the channel
+ * through CH_HALT (the only mode where CTME/CTMS are writable per
+ * HUM Ch 41 "CFDCnCTR" p 2710).
+ *
+ * @retval k_ra_ok                Bits stamped, channel back in operation.
+ * @retval k_ra_err_invalid_arg   Channel index rejected by the HAL.
+ *
+ * @pre  ``ra_canfd_init(channel)`` returned ``k_ra_ok``.
+ * @pre  No TX/RX is in flight on @p channel.
+ * @post ``CFDC[channel].CTR`` has CTME=1, CTMS=11b.
+ * @post Channel is back in CH_OPERATION ready to TX.
  */
 [[nodiscard]] static ra_err_t canfd_filter_loopback(uint8_t channel)
 {
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  uint32_t ctr = reg->CFDC[0].CTR;
-  ctr |= (uint32_t)(1UL << k_canfd_filter_ctme_bit);
-  ctr |= (uint32_t)(k_canfd_filter_ctms_intl << k_canfd_filter_ctms_shift);
-  reg->CFDC[0].CTR = ctr;
-  return k_ra_ok;
+  return ra_canfd_set_test_mode(channel, k_ra_ctms_self_test_1);
 }
 
 /**

@@ -2,10 +2,11 @@
 
 CANFD0 internal-loopback smoke test for the bare EK-RA8D2 EVM.
 
-Brings up CANFD0 at 500 kbps, forces the channel into the silicon's
-internal-loopback mode (`CFDC[0].CTR.CTME=1, CTMS=01`), and once a
-second transmits an 8-byte heartbeat frame at standard ID `0x123`,
-polling the RX FIFO for the mirrored frame.
+Brings up CANFD0 at 500 kbps, forces the channel into Self-test 1 /
+internal-loopback mode (`CFDC[0].CTR.CTME=1, CTMS=11b`) via
+`ra_canfd_set_test_mode`, and once a second transmits an 8-byte
+heartbeat frame at standard ID `0x123`, polling the RX FIFO for the
+mirrored frame.
 
 - LED1 toggles on every successful TX/RX round-trip.
 - LED2 toggles on TX or RX failure.

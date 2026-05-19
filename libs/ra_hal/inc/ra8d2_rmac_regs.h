@@ -222,32 +222,63 @@ typedef enum : uint16_t {
  * @brief MRAFC reception address filter mode bits (HUM Ch 33.4).
  *
  * @details
- * The lower half (bits 10:0) selects which frame classes are accepted
- * after a hash test; the upper half (bits 26:16) selects which classes
- * additionally require a perfect MAC-address match. Both halves are OR
- * masks so a config like ``unicast_match | multicast_hash | broadcast``
- * accepts every broadcast, every multicast that hashes into the table,
- * and every unicast frame matching the programmed MAC address.
+ * Bit layout (HUM Ch 33.4 "MRAFC : MAC Reception Address Filter
+ * Configuration Register" p 1707):
+ *   - bits [10:0]  hash/class enables  (UCENE / MCENE / BCENE / ...)
+ *   - bits [26:16] perfect-match enables (UCENP / MCENP / BCENP / ...)
+ *
+ * The MAC's receive filter passes a frame only when BOTH halves accept
+ * it: the hash-class enable AND the corresponding perfect-match enable.
+ * FSP's r_rmac.c::rmac_configure_reception_filter (commit 8b3f2c1)
+ * always programs the two halves in lockstep -- e.g. enabling broadcast
+ * sets ``BCENE | BCENP`` together; enabling unicast sets
+ * ``UCENE | UCENP`` together. Setting only the low half silently drops
+ * every frame on real silicon.
+ *
+ * To make the public enum impossible to misuse, the three primary
+ * class-enable constants below already bundle their high-half twin
+ * (the FSP-canonical pairing). The bare register-level bits are still
+ * exposed under the ``k_ra_rmac_mrafc_perfect_*`` /
+ * ``k_ra_rmac_mrafc_hash_*`` aliases for callers that need to drive the
+ * halves independently (e.g. address-hash-table maintenance).
+ *
+ * Reference: FSP renesas/fsp r_rmac.c (RMAC_REG_MRAFC_PROMISCUOUS_VALUE
+ * and rmac_configure_reception_filter) for the canonical pairing.
  */
 typedef enum : uint32_t {
-  k_ra_rmac_mrafc_unicast_match     = 0x00000001UL, /**< UCENE: unicast.   */
-  k_ra_rmac_mrafc_multicast_hash    = 0x00000002UL, /**< MCENE: multicast. */
-  k_ra_rmac_mrafc_broadcast         = 0x00000004UL, /**< BCENE: broadcast. */
-  k_ra_rmac_mrafc_mst_storm         = 0x00000008UL, /**< MSTENE.            */
-  k_ra_rmac_mrafc_bst_storm         = 0x00000010UL, /**< BSTENE.            */
-  k_ra_rmac_mrafc_mc_accept         = 0x00000020UL, /**< MCACE.             */
-  k_ra_rmac_mrafc_bc_accept         = 0x00000040UL, /**< BCACE.             */
-  k_ra_rmac_mrafc_no_destmac_reject = 0x00000080UL, /**< NDAREE.           */
-  k_ra_rmac_mrafc_short_frame       = 0x00000100UL, /**< SDSFREE.           */
-  k_ra_rmac_mrafc_no_srcmac_reject  = 0x00000200UL, /**< NSAREE.            */
-  k_ra_rmac_mrafc_multicast_src     = 0x00000400UL, /**< MSAREE.            */
+  /* Low-half (hash / class enable) raw bits -- bits [10:0]. */
+  k_ra_rmac_mrafc_hash_unicast      = 0x00000001UL, /**< UCENE alone.        */
+  k_ra_rmac_mrafc_hash_multicast    = 0x00000002UL, /**< MCENE alone.        */
+  k_ra_rmac_mrafc_hash_broadcast    = 0x00000004UL, /**< BCENE alone.        */
+  k_ra_rmac_mrafc_mst_storm         = 0x00000008UL, /**< MSTENE.             */
+  k_ra_rmac_mrafc_bst_storm         = 0x00000010UL, /**< BSTENE.             */
+  k_ra_rmac_mrafc_mc_accept         = 0x00000020UL, /**< MCACE.              */
+  k_ra_rmac_mrafc_bc_accept         = 0x00000040UL, /**< BCACE.              */
+  k_ra_rmac_mrafc_no_destmac_reject = 0x00000080UL, /**< NDAREE.            */
+  k_ra_rmac_mrafc_short_frame       = 0x00000100UL, /**< SDSFREE.            */
+  k_ra_rmac_mrafc_no_srcmac_reject  = 0x00000200UL, /**< NSAREE.             */
+  k_ra_rmac_mrafc_multicast_src     = 0x00000400UL, /**< MSAREE.             */
+  /* High-half (perfect-match enable) raw bits -- bits [26:16]. */
+  k_ra_rmac_mrafc_perfect_unicast   = 0x00010000UL, /**< UCENP alone.        */
+  k_ra_rmac_mrafc_perfect_multicast = 0x00020000UL, /**< MCENP alone.        */
+  k_ra_rmac_mrafc_perfect_broadcast = 0x00040000UL, /**< BCENP alone.        */
+  /*
+   * FSP-canonical paired class enables. These are what drivers /
+   * board-init code should normally set in ``ra_rmac_config_t::rx_filter``.
+   * Each constant ORs the low-half (hash) bit with its high-half
+   * (perfect-match) twin so the MAC's two-stage filter actually accepts
+   * the frame class on silicon. Reference: FSP r_rmac.c
+   * rmac_configure_reception_filter.
+   */
+  k_ra_rmac_mrafc_unicast_match =
+    (k_ra_rmac_mrafc_hash_unicast | k_ra_rmac_mrafc_perfect_unicast), /**< UCENE|UCENP. */
+  k_ra_rmac_mrafc_multicast_hash =
+    (k_ra_rmac_mrafc_hash_multicast | k_ra_rmac_mrafc_perfect_multicast), /**< MCENE|MCENP. */
+  k_ra_rmac_mrafc_broadcast =
+    (k_ra_rmac_mrafc_hash_broadcast | k_ra_rmac_mrafc_perfect_broadcast), /**< BCENE|BCENP. */
   k_ra_rmac_mrafc_promiscuous =
     (k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_multicast_hash | k_ra_rmac_mrafc_broadcast |
      k_ra_rmac_mrafc_mc_accept | k_ra_rmac_mrafc_bc_accept),
-  /* Perfect-match (UCENP/MCENP/...) bits live in [26:16] */
-  k_ra_rmac_mrafc_perfect_unicast   = 0x00010000UL, /**< UCENP.            */
-  k_ra_rmac_mrafc_perfect_multicast = 0x00020000UL, /**< MCENP.            */
-  k_ra_rmac_mrafc_perfect_broadcast = 0x00040000UL, /**< BCENP.            */
 } ra_rmac_mrafc_t;
 
 /**

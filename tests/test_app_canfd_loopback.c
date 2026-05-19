@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors the bring-up flow of examples/ek_ra8d2/canfd_loopback/main.c:
- * ra_canfd_init -> ra_canfd_set_bitrate -> raw CTR write for internal
- * loopback -> transmit + receive cycle. All MMIO is via the host
+ * ra_canfd_init -> ra_canfd_set_bitrate -> ra_canfd_set_test_mode ->
+ * transmit + receive cycle. All MMIO is via the host
  * tests/mocks/ra_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -22,11 +22,13 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_canfd_app_bitrate    = 500000U,
-  k_test_canfd_app_id         = 0x123U,
-  k_test_canfd_app_ctme_bit   = 17U,
-  k_test_canfd_app_ctms_shift = 18U,
-  k_test_canfd_app_ctms_intl  = 0x1UL,
+  k_test_canfd_app_bitrate = 500000U,
+  k_test_canfd_app_id      = 0x123U,
+  /* HUM Ch 41 "CFDCnCTR" p 2710 -- CTME = bit 24, CTMS = bits [26:25],
+   * CTMS = 11b selects Self-test 1 (Internal Loopback). */
+  k_test_canfd_app_ctme_mask  = 1UL << 24U,
+  k_test_canfd_app_ctms_shift = 25U,
+  k_test_canfd_app_ctms_intl  = 0x3UL,
 } test_canfd_app_const_t;
 
 typedef enum : uint8_t {
@@ -62,7 +64,7 @@ static void test_canfd_app_bringup_ok(void)
 }
 
 /**
- * @brief Raw register write enables internal-loopback bits.
+ * @brief ra_canfd_set_test_mode lands the internal-loopback selector.
  *
  * @par MC/DC:
  * Decision under test (in app): ``ra_canfd(channel) == nullptr``.
@@ -74,14 +76,18 @@ static void test_canfd_app_loopback_bits_set(void)
   reset_world();
   TEST_BEGIN("canfd_loopback: CTME / CTMS bits stamped");
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_app_channel));
+  /* The set_test_mode helper polls CFDC[0].STS.CHLTSTS after dropping
+   * the channel into CH_HALT.  Pre-set the sim STS register so the
+   * spin loop sees halt asserted immediately (HUM Ch 41 "CFDCnSTS"
+   * p 2711). */
   volatile r_canfd_t* reg = ra_canfd((uint8_t)k_test_canfd_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  uint32_t ctr = reg->CFDC[0].CTR;
-  ctr |= (uint32_t)(1UL << k_test_canfd_app_ctme_bit);
-  ctr |= (uint32_t)(k_test_canfd_app_ctms_intl << k_test_canfd_app_ctms_shift);
-  reg->CFDC[0].CTR      = ctr;
+  reg->CFDC[0].STS = 0xFFFFFFFFUL;
+  TEST_ASSERT_EQ(
+    k_ra_ok, ra_canfd_set_test_mode((uint8_t)k_test_canfd_app_channel, k_ra_ctms_self_test_1));
   const uint32_t actual = reg->CFDC[0].CTR;
-  TEST_ASSERT((actual & (uint32_t)(1UL << k_test_canfd_app_ctme_bit)) != 0U);
+  /* HUM Ch 41 "CFDCnCTR" p 2710 */ /* CTME bit 24, CTMS at [26:25]. */
+  TEST_ASSERT((actual & (uint32_t)k_test_canfd_app_ctme_mask) != 0U);
   TEST_ASSERT(((actual >> k_test_canfd_app_ctms_shift) & 0x3UL) ==
               (uint32_t)k_test_canfd_app_ctms_intl);
   TEST_END("canfd_loopback: CTME / CTMS bits stamped");
