@@ -226,6 +226,20 @@ volatile uint32_t g_tz_nsc_cgc_usb_match = 0U;
  */
 volatile uint32_t g_tz_nsc_cgc_usb_mismatch = 0U;
 
+/**
+ * @var g_tz_nsc_cgc_usb_init_step
+ * @brief Boot-step tracker. Reads via JLink memprobe localize which
+ *        init call stalled or panic-halted.
+ * @details
+ * 0 = pre-main; 1 = before PLL2 enable; 2 = before USBFS clock;
+ * 3 = before clock-hz query; 4 = before time_init; 5 = before
+ * board_led_init; 6 = before pins_init; 7 = init complete, entering
+ * ThreadX.
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_nsc_cgc_usb_init_step = 0U;
+
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
 /* -------------------------------------------------------------------------- */
@@ -237,11 +251,12 @@ volatile uint32_t g_tz_nsc_cgc_usb_mismatch = 0U;
  * sec 5 + USB 2.0 sec 9.6.
  */
 static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes.
+     bcdUSB = 0x0200; macOS rejects IAD composite devices on USB 1.1. */
   0x12U,
   0x01U,
-  0x10U,
-  0x01U,
+  0x00U,
+  0x02U,
   0xEFU, /* class      = MISC                 */
   0x02U, /* subclass   = common               */
   0x01U, /* protocol   = IAD                  */
@@ -256,15 +271,20 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x03U,
   0x01U,
-  /* Configuration descriptor (67 bytes total). */
+  /* Configuration descriptor (75 bytes total: 9 cfg + 8 IAD + 9 CCI +
+     5 hdr + 5 call-mgmt + 4 ACM + 5 union + 7 EP3 + 9 DCI + 7 EP2 +
+     7 EP1 = 75 = 0x4B). Truncating to 0x43 silently dropped EP1 IN,
+     causing USBX to dereference a NULL endpoint after SET_CONFIG and
+     escalate to lockup (PC=0xEFFFFFFE).  bmAttributes = 0x80 (bus-
+     powered) -- 0xC0 (self-powered) conflicted with bMaxPower=100mA. */
   0x09U,
   0x02U,
-  0x43U,
+  0x4BU,
   0x00U,
   0x02U,
   0x01U,
   0x00U,
-  0xC0U,
+  0x80U,
   0x32U,
   /* Interface association (CDC). */
   0x08U,
@@ -672,7 +692,11 @@ static void demo_panic_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_demo_pin_vbusen, k_ra_psel_usb_fs, "usb_cdc.vbusen");
+  /* VBUSEN as GPIO output LOW for device mode. Peripheral routing
+   * makes the USB module drive VBUSEN HIGH (host-mode supply enable),
+   * which blocks device-side enumeration. See usb_cdc_echo /
+   * tz_secure_only_usb_fs for the same fix. */
+  err = ra_gpio_output_init(k_demo_pin_vbusen, k_ra_level_low);
   if (err != k_ra_ok) {
     return err;
   }
@@ -708,26 +732,33 @@ int32_t main(void)
    * Reset_Handler before this NS main() was entered, so we only need
    * to issue the PLL2 + USB-FS clock + query operations here, all via
    * NSC entries that trap into the Secure world. */
+  g_tz_nsc_cgc_usb_init_step = 1U;
   if (ra_nsc_cgc_pll2_enable((uint8_t)k_demo_pll2_mul_int,
                              (uint8_t)k_demo_pll2_mul_quarters,
                              k_ra_plodiv_div4) != k_ra_ok) {
     demo_panic_halt();
   }
+  g_tz_nsc_cgc_usb_init_step = 2U;
   if (ra_nsc_cgc_usbfs_clock_enable() != k_ra_ok) {
     demo_panic_halt();
   }
+  g_tz_nsc_cgc_usb_init_step = 3U;
   if (ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
+  g_tz_nsc_cgc_usb_init_step = 4U;
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
+  g_tz_nsc_cgc_usb_init_step = 5U;
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     demo_panic_halt();
   }
+  g_tz_nsc_cgc_usb_init_step = 6U;
   if (demo_pins_init() != k_ra_ok) {
     demo_panic_halt();
   }
+  g_tz_nsc_cgc_usb_init_step = 7U;
 
   ra_isr_globals_enable();
 
