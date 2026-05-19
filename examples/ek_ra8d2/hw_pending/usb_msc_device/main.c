@@ -160,11 +160,13 @@ static UCHAR s_msc_product_rev[] = "0001";
  *   9 (config) + 9 (interface) + 7 (EP IN) + 7 (EP OUT) = 32 bytes.
  */
 static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes.
+   * bcdUSB = 0x0200 (USB 2.0); hosts may reject USB 1.1 for
+   * modern composite/class drivers. */
   0x12U,
   0x01U,
-  0x10U,
-  0x01U,
+  0x00U,
+  0x02U,
   0x00U, /* class      = per-interface        */
   0x00U,
   0x00U,
@@ -179,7 +181,9 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x03U,
   0x01U,
-  /* Configuration descriptor (32 bytes total). */
+  /* Configuration descriptor (32 bytes total).
+   * bmAttributes = 0x80 (bus-powered); 0xC0 (self-powered)
+   * with bMaxPower=100mA is self-contradictory. */
   0x09U,
   0x02U,
   0x20U,
@@ -187,7 +191,7 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x01U,
   0x00U,
-  0xC0U,
+  0x80U,
   0x32U,
   /* Interface descriptor -- MSC, SCSI, BBB. */
   0x09U,
