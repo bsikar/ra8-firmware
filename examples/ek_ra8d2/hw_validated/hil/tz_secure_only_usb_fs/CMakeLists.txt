@@ -1,5 +1,5 @@
 #
-# Per-app CMake for the `tz_secure_only_usb` firmware.
+# Per-app CMake for the `tz_secure_only_usb_fs` firmware.
 #
 # Same USB-FS + ThreadX + USBX CDC ACM bring-up as `usb_cdc_echo`,
 # but the entire image runs in the Secure world: the SAU is left
@@ -44,7 +44,7 @@ if(RA_APP_STANDALONE)
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-    project(tz_secure_only_usb
+    project(tz_secure_only_usb_fs
         LANGUAGES C ASM
         VERSION ${RA_PROJECT_VERSION}
         DESCRIPTION "Secure-world-only USB CDC ACM echo experiment for RA8D2"
@@ -77,7 +77,7 @@ else()
 endif()
 
 if(NOT RA_USE_USBX OR NOT RA_USE_THREADX)
-    message(STATUS "tz_secure_only_usb: skipped (RA_USE_USBX=${RA_USE_USBX}, RA_USE_THREADX=${RA_USE_THREADX})")
+    message(STATUS "tz_secure_only_usb_fs: skipped (RA_USE_USBX=${RA_USE_USBX}, RA_USE_THREADX=${RA_USE_THREADX})")
     return()
 endif()
 
@@ -87,7 +87,7 @@ endif()
 # re-introduce the `-mcmse` flag, the `.gnu.sgstubs` veneer section,
 # and the Non-Secure address aliases that we suspect are causing the
 # `ra_cgc_pll2_enable` failure on real silicon.
-set(RA_TRUSTZONE_ENABLE OFF CACHE BOOL "TrustZone disabled for tz_secure_only_usb" FORCE)
+set(RA_TRUSTZONE_ENABLE OFF CACHE BOOL "TrustZone disabled for tz_secure_only_usb_fs" FORCE)
 
 include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 
@@ -95,7 +95,7 @@ include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 # Sources
 #############################################################################
 
-set(RA_APP_NAME tz_secure_only_usb)
+set(RA_APP_NAME tz_secure_only_usb_fs)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c

@@ -50,7 +50,7 @@ MEMORY
     SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K
     SDRAM (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
 
-    /* tz_secure_only_usb experiment: no Non-Secure partition. Every
+    /* tz_secure_only_usb_fs experiment: no Non-Secure partition. Every
      * section lands in the lower (Secure) half of MRAM / SRAM / SDRAM
      * so the CPU sees Secure addresses for every load and store. The
      * NS_MRAM / NS_SRAM placeholders from the dual-world build are
@@ -178,7 +178,7 @@ SECTIONS
 
     g_ra_ls_etext = .;
 
-    /* tz_secure_only_usb experiment: the dual-world build needs a
+    /* tz_secure_only_usb_fs experiment: the dual-world build needs a
      * `.gnu.sgstubs` placement for `-mcmse` veneers and an NSC
      * veneer alias. Both are intentionally omitted here -- this
      * image is built without `-mcmse` and never crosses a security

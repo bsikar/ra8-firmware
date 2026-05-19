@@ -140,7 +140,7 @@ catching that app's failure banner + generic HAL failure strings.
 
 | App                     | VID:PID    | Port (J7/J11)         |
 |-------------------------|-----------|------------------------|
-| `tz_secure_only_usb`    | 1209:000a | J11 (USBFS)            |
+| `tz_secure_only_usb_fs`    | 1209:000a | J11 (USBFS)            |
 | `tz_secure_only_usb_hs` | 1209:000a | J7  (USBHS)            |
 
 ### `hil_eth_tcp` mode

@@ -1,4 +1,4 @@
-# tz_secure_only_usb
+# tz_secure_only_usb_fs
 
 USB-FS device-mode CDC ACM echo running entirely in the Secure world (no
 TrustZone partition, no NSC veneers). The device enumerates as a virtual
@@ -18,11 +18,11 @@ CDC enumeration.
 ## Build
 
 ```sh
-cd examples/ek_ra8d2/tz_secure_only_usb
+cd examples/ek_ra8d2/tz_secure_only_usb_fs
 make build
 ```
 
-Artifacts land under `build/` (`tz_secure_only_usb.elf` / `.hex` / `.bin`).
+Artifacts land under `build/` (`tz_secure_only_usb_fs.elf` / `.hex` / `.bin`).
 
 ## Flash
 

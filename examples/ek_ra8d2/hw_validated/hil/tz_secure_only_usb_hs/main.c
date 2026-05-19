@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * High-Speed sibling of ``tz_secure_only_usb`` (USB-FS on J11). This
+ * High-Speed sibling of ``tz_secure_only_usb_fs`` (USB-FS on J11). This
  * variant brings up the USB 2.0 High-Speed controller (USBHS @
  * 0x40351000, HUM Ch 37) so the EK-RA8D2 USB-C receptacle (J7)
  * enumerates as a CDC-ACM device on the host. The class layer, the

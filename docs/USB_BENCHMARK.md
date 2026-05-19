@@ -3,7 +3,7 @@ USB CDC Echo Throughput Benchmark Results
 
 Hardware:     Renesas EK-RA8D2 (Cortex-M85 @ 1 GHz)
 Host:         Raspberry Pi 5 (Linux 6.8, cdc_acm kernel driver)
-Firmware:     `tz_secure_only_usb` (FS) and `tz_secure_only_usb_hs` (HS),
+Firmware:     `tz_secure_only_usb_fs` (FS) and `tz_secure_only_usb_hs` (HS),
               both under `examples/ek_ra8d2/hw_validated/hil/`.
 Connector:    USBFS on J11 (micro-USB, hub port 4),
               USBHS on J7  (USB-C,    hub port 1).
