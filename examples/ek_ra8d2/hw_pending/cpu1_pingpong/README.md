@@ -41,13 +41,38 @@ default security states, which is the missing piece.
 
 ## How to graduate back
 
-1. Write IPCSAR=0x000F0303 (clear-secure for all IPC channels +
-   NMIs + semaphores) before calling ra_cpu1_release, granting
-   non-secure access to whichever world CPU1 boots in.
-2. Reflash + JTAG-probe; if channel 2 STA.FULL drains and channel
-   0 STA.RDY asserts, the security attribution was the blocker
-   and the per-side ra_ipc_init_attribution / matching IPCPAR
-   bits go into ra_dual_core.c so any dual-core app gets them
-   for free.
-3. Once g_cpu1_pingpong_match advances >=5 per 5 s window with 0
-   mismatch, promote back to hw_validated/hil/.
+### 2026-05-19 attempt: IPCSAR write from main, dropped
+
+Tried `*ra_ipc_ipcsar() = 0x000F0303` immediately after entry to
+`main()`, before `ra_cpu1_release`. JTAG post-flash readback
+showed:
+
+- IPCSAR @ 0x40008610 still 0x00000000 (write silently dropped)
+- IPCPAR @ 0x40008614 = 0x000F0303 (write took)
+
+Both writes used the same secure-alias address pattern and
+adjacent registers in the CPSCU window. The asymmetry says
+**IPCSAR is secure-only-writable** and **IPCPAR is not**. With
+`RA_TRUSTZONE_ENABLE=OFF` the SAU stays in reset and CPU0's
+current security state determines write access -- and on this
+chip CPU0 evidently runs non-secure once the boot ROM hands off,
+because the IPCSAR write is dropped just like an SAU-blocked
+access would be (no SecureFault is taken because no SAU rule
+covers the address).
+
+The fix path is therefore deeper than a single MMIO write:
+
+1. Enable RA_TRUSTZONE_ENABLE for this app and put the SAU in
+   "everything secure" mode so the secure-alias write goes
+   through, then drop CPU1 into the secure world to match. The
+   trustzone_init.c scaffold under `RA_TRUSTZONE_ENABLE` already
+   programs four NS regions -- it needs to either flip to
+   default-secure or carve out a secure subregion that covers
+   0x40008000 (CPSCU) plus the IPC peripheral.
+2. Once IPCSAR sticks, channel 2 should drain on the next ping
+   and `g_cpu1_pingpong_match` will start advancing.
+3. Promote back to hw_validated/hil/ once the probe is steady.
+
+Skipped this turn -- requires non-trivial TrustZone bring-up
+work that overlaps the larger TZ scaffold rewrite tracked
+elsewhere.
