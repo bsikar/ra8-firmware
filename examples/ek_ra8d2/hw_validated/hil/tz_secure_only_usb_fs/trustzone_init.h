@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/tz_secure_only_usb/trustzone_init.h
+ * @file examples/ek_ra8d2/tz_secure_only_usb_fs/trustzone_init.h
  * @brief No-op TrustZone bring-up entry point for the secure-only USB demo
  *
  * @par Tag

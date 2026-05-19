@@ -1,12 +1,12 @@
 #
-# Per-app Makefile for the `tz_secure_only_usb` firmware.
+# Per-app Makefile for the `tz_secure_only_usb_fs` firmware.
 #
 # Standalone use:
-#   cd examples/tz_secure_only_usb/
-#   make             # configure + build -> examples/tz_secure_only_usb/build/tz_secure_only_usb.elf
+#   cd examples/tz_secure_only_usb_fs/
+#   make             # configure + build -> examples/tz_secure_only_usb_fs/build/tz_secure_only_usb_fs.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf examples/tz_secure_only_usb/build
+#   make clean       # rm -rf examples/tz_secure_only_usb_fs/build
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -17,7 +17,7 @@
 
 SHELL     := /bin/bash
 
-APP        := tz_secure_only_usb
+APP        := tz_secure_only_usb_fs
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build

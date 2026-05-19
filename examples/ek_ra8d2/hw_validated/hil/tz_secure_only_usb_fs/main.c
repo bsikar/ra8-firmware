@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/tz_secure_only_usb/main.c
+ * @file examples/ek_ra8d2/tz_secure_only_usb_fs/main.c
  * @brief Secure-world-only ThreadX + USBX CDC ACM echo for EK-RA8D2 (USB-FS)
  *
  * @par Tag
@@ -764,7 +764,7 @@ int32_t main(void)
     demo_panic_halt();
   }
   ra_log_init();
-  ra_log_info(s_demo_tag, "tz_secure_only_usb boot, CGC PLL2 enable OK");
+  ra_log_info(s_demo_tag, "tz_secure_only_usb_fs boot, CGC PLL2 enable OK");
 
   ra_isr_globals_enable();
 

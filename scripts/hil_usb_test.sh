@@ -7,7 +7,7 @@
 # self-hosted gitea/github runner, or on a dev machine that can SSH there.
 #
 # What it does, for each controller:
-#   1. Flash the corresponding "tz_secure_only_usb*" app via the J-Link.
+#   1. Flash the corresponding "tz_secure_only_usb_fs*" app via the J-Link.
 #   2. Power-cycle the board with hil_tapo.sh so the new firmware boots.
 #   3. Wait for the 1209:xxx CDC ACM device to appear on the right hub port.
 #   4. Run scripts/usb_benchmark.py against /dev/ttyACMx for correctness
@@ -236,7 +236,7 @@ else
         # cleanly through the FS PHY, so use the host-side `authorized`
         # toggle ("soft"). MPS = 64. Streaming floor 250 KB/s (target ~360
         # measured, 1 MB/s theoretical wire).
-        run_one_controller "FS" "tz_secure_only_usb"    "1209:000a" "$HUB_PORT_USBFS" "soft" \
+        run_one_controller "FS" "tz_secure_only_usb_fs"    "1209:000a" "$HUB_PORT_USBFS" "soft" \
             64  65536  250 || overall=1
     fi
 
