@@ -104,20 +104,35 @@ typedef enum : uint32_t {
    * peripheral-clock reset rate, on the order of a few MHz before any
    * higher-frequency PLL is selected). A 1-byte opcode + 3-byte
    * address + 8 data bytes = 12 bytes = 96 bits. At 2 MHz that is
-   * ~48 us. A core spin loop at 240 MHz runs roughly 60M iterations
-   * per second, so 48 us = 2880 iterations of the empty poll loop.
-   * We pick 1,000,000 to also cover the long tail when the OCTA
-   * clock is still on the cold-boot LOCO rate (~32 kHz) before
-   * ``ra_cgc_init`` has switched to PLL. Matches the order-of-
-   * magnitude spin used by ``ra_sdhi`` for its CMDCMP wait. The
-   * prior 64-iteration budget timed out before the controller could
-   * ever raise CMDCMP -- masquerading as ``k_ra_err_hw_timeout`` on
-   * every JEDEC opcode and bricking LevelX format on real silicon.
-   * HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986;
-   * IS25LX512M datasheet Ch 8 "Command Set".
+   * ~48 us. The IS25LX512M datasheet Ch 8 "Command Set" lists the
+   * longest *non-write* command (RDID + 3 bytes payload) at well
+   * under 100 us. We pick 50,000 iterations of the tight register
+   * read loop -- at ~5 cycles per iteration on the 1 GHz Cortex-M85
+   * that is roughly 250 us, two orders of magnitude over the longest
+   * command but small enough that a wedged controller (pin route
+   * missing, OSPI not enumerated, etc.) returns ``hw_timeout`` to
+   * the caller within sub-millisecond time instead of stalling the
+   * HIL probe window for tens of seconds. The previous 1,000,000-
+   * iteration budget made each failed round-trip take 5+ seconds, so
+   * ``g_fj_match`` / ``g_fj_mismatch`` both read 0 for the entire
+   * 5 s memprobe window. HUM Ch 44 "Octal Serial Peripheral
+   * Interface (OSPI)" p 2986; IS25LX512M datasheet Ch 8.
    */
-  k_ra_xspi_cmd_spin            = 1000000U, /**< CMDCMP poll budget. */
-  k_ra_flash_program_timeout_us = 1000000U, /**< Max 1 s for a program op. */
+  k_ra_xspi_cmd_spin            = 50000U, /**< CMDCMP poll budget. */
+  /**
+   * @brief WIP-poll iteration cap for program / erase finish.
+   *
+   * @details
+   * Per IS25LX512M datasheet Ch 16 "AC Characteristics", a sector
+   * erase ranges typical 30 ms, max 500 ms; a page program is
+   * typical 75 us, max 700 us. Each iteration of this loop performs
+   * one RDSR command which itself bounds at ``k_ra_xspi_cmd_spin``
+   * iterations (~250 us worst-case). 4,000 outer iterations therefore
+   * yields a ~1 second worst-case wall-clock budget -- comfortably
+   * over the IS25LX512M max-sector-erase spec but bounded enough that
+   * a hung peripheral surfaces to the caller in human time.
+   */
+  k_ra_flash_program_timeout_us = 4000U,   /**< Max ~1 s for program / erase. */
 } ra_xspi_timeouts_t;
 
 /**
