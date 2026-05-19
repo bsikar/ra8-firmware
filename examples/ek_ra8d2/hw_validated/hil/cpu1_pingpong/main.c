@@ -71,6 +71,26 @@ volatile uint32_t g_cpu1_pingpong_match = 0U;
 volatile uint32_t g_cpu1_pingpong_mismatch = 0U;
 
 /**
+ * @var g_cpu1_pingpong_step
+ * @brief Boot progress tracker.
+ * @details
+ * 0 = pre-main; 1 = main() entry; 2 = after ra_cpu1_release;
+ * 3 = after ra_ipc_init; 4 = first loop iteration.
+ * Lets memprobe pinpoint exactly where CPU0 stalls.
+ * @since 0.1.0
+ */
+volatile uint32_t g_cpu1_pingpong_step = 0U;
+
+/**
+ * @var g_cpu1_pingpong_release_err
+ * @brief Captured ra_cpu1_release return code.
+ * @details Stamped right after the call returns so memprobe can read
+ * whichever ra_err_t variant the HAL surfaced.
+ * @since 0.1.0
+ */
+volatile uint32_t g_cpu1_pingpong_release_err = 0xFFFFFFFFU;
+
+/**
  * @brief Drain a single message off an IPC channel with bounded poll.
  * @details Loops up to k_cpu1_pingpong_poll_max times.
  * @param[in]  channel IPC channel id.
@@ -113,7 +133,10 @@ static ra_err_t recv_blocking(uint8_t channel, uint32_t* out_msg)
  */
 int main(void)
 {
+  g_cpu1_pingpong_step = 1U;
   ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
+  g_cpu1_pingpong_release_err = (uint32_t)err;
+  g_cpu1_pingpong_step        = 2U;
   if (err != k_ra_ok) {
     while (1) {
       __asm volatile("nop");
@@ -139,8 +162,10 @@ int main(void)
   };
   (void)ra_ipc_init(&cfg_send);
   (void)ra_ipc_init(&cfg_recv);
+  g_cpu1_pingpong_step = 3U;
 
   while (1) {
+    g_cpu1_pingpong_step = 4U;
     if (ra_ipc_send_message(ch_send, (uint32_t)k_cpu1_pingpong_magic_ping) != k_ra_ok) {
       g_cpu1_pingpong_mismatch += 1U;
       continue;
