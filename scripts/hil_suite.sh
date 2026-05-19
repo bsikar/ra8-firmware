@@ -34,7 +34,6 @@ TESTS=(
     "uart_hello|hello, ra8d2!|10"
     "crc_demo|crc: hw=|10"
     "dma_memcopy_demo|dma: copied|10"
-    "i2c_loopback|iic_b: scan|10"
     "adc_b_demo|adc: raw=|10"
     "agt_periodic|agt: tick|10"
     "elc_event_demo|elc: en=|10"

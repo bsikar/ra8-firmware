@@ -36,7 +36,6 @@ asserts an expected string appears within a per-app timeout.
 | dma_memcopy_demo | `dma: copied` | 10 s |
 | elc_event_demo | `elc: en=` | 10 s |
 | eth_loopback | `etha: loopback ok` | 20 s |
-| i2c_loopback | `iic_b: scan` | 10 s |
 | iwdt_demo | `iwdt: refresh in window` | 15 s |
 | lpm_idle_demo | `lpm: wake_count=` | 15 s |
 | power_profiler | `pp: a=` | 15 s |

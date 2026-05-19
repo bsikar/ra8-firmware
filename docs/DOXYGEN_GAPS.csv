@@ -1,15 +1,3 @@
 source_file,line,function_name,missing_tags,severity
-libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,1945,internal_eth_coma_reset,@brief;@details;@return;@retval;@pre;@post;@note;@since,high
-libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,2006,internal_eth_eswm_select_rgmii,@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,2039,internal_eth_eswm_bring_up,@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,2073,internal_eth_etha_to_config,@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,2116,internal_eth_etha_to_operation,@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,2146,internal_eth_rmac_program,@retval;@post(<2:1),medium
-libs/ra_hal/src/ra_cgc.c,1753,internal_wait_cksrdy,@details;@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_hal/src/ra_cgc.c,1801,internal_switch_eswcr_to_pll1p,@post(<2:1),medium
-libs/ra_hal/src/ra_cgc.c,1839,internal_wait_pdctreswm_clear,@details;@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_hal/src/ra_cgc.c,1871,internal_eswclk_power_on_domain,@pre(<2:1);@post(<2:1),medium
-libs/ra_hal/src/ra_cgc.c,1916,internal_eswclk_program_cks,@pre(<2:1);@post(<2:1),medium
-libs/ra_hal/src/ra_cgc.c,1940,ra_cgc_eswclk_init,@brief;@details;@return;@retval;@pre;@post;@note;@since,high
-libs/ra_hal/src/ra_cgc.c,1974,ra_cgc_eswclk_hz,@brief;@details;@param[out_hz];@return;@retval;@pre;@post;@note;@since,high
-libs/ra_hal/src/ra_rmac.c,182,internal_calc_psmcs,@retval;@post(<2:1),medium
+libs/ra_hal/src/ra_spi_b.c,337,internal_spi_program_regs,@note,low
+libs/ra_hal/src/ra_spi_b.c,371,ra_spi_init,@brief;@details;@param[channel];@param[cfg];@return;@retval;@pre;@post;@note;@since,high

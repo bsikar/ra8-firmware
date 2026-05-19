@@ -6,38 +6,35 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 
 ## Summary
 
-- Total functions audited: 3018
-- Functions with gaps: 14
-- Total missing-tag instances: 54
+- Total functions audited: 3038
+- Functions with gaps: 2
+- Total missing-tag instances: 11
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
-| `@post` | 14 |
-| `@retval` | 11 |
-| `@pre` | 11 |
-| `@details` | 5 |
-| `@brief` | 3 |
-| `@return` | 3 |
-| `@note` | 3 |
-| `@since` | 3 |
-| `@param` | 1 |
+| `@note` | 2 |
+| `@param` | 2 |
+| `@brief` | 1 |
+| `@details` | 1 |
+| `@return` | 1 |
+| `@retval` | 1 |
+| `@pre` | 1 |
+| `@post` | 1 |
+| `@since` | 1 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
-| `libs/ra_hal` | 8 |
-| `libs/ra_board_ek_ra8d2` | 6 |
+| `libs/ra_hal` | 2 |
 
 ## Top 30 files by gap count
 
 | File | Functions with gaps |
 |------|---------------------|
-| `libs/ra_hal/src/ra_cgc.c` | 7 |
-| `libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c` | 6 |
-| `libs/ra_hal/src/ra_rmac.c` | 1 |
+| `libs/ra_hal/src/ra_spi_b.c` | 2 |
 
 ## Severity legend
 
@@ -53,4 +50,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 |------|---------------------|-----------------------|
 | 2026-05-02 (original)                 | 2557 | 20328 |
 | 2026-05-02 (refresh)                  | 663  | 4935  |
-| 2026-05-02 (auditor false-pos fix)    | 14 | 54 |
+| 2026-05-02 (auditor false-pos fix)    | 2 | 11 |
