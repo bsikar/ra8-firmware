@@ -27,7 +27,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 HIL_APPS=(
-    uart_hello crc_demo dma_memcopy_demo i2c_loopback
+    uart_hello crc_demo dma_memcopy_demo
     adc_b_demo agt_periodic elc_event_demo rng_demo
     iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo
     power_profiler lpm_idle_demo crypto_aes_demo
