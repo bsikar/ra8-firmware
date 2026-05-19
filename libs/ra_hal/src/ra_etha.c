@@ -952,6 +952,42 @@ ra_err_t ra_etha_account_traffic(ra_etha_port_t channel,
   return k_ra_ok;
 }
 
+/**
+ * @brief Transition ETHA @p channel into OPERATION and wait for EAMS.
+ *
+ * @details Writes EAMC = OPERATION and polls EAMS.OPS until it matches
+ * (or the bounded budget elapses). Without this wait a TX/RX kick that
+ * follows can fire before the chip has actually entered OPERATION and
+ * silently drop frames.
+ *
+ * @param[in] channel ETHA port (0 or 1).
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok            EAMS observed in OPERATION.
+ * @retval k_ra_err_hw_timeout EAMS never reached OPERATION.
+ *
+ * @pre Caller has validated @p channel.
+ * @pre ETHA block is powered and out of RESET.
+ * @post On success EAMC=EAMS=OPERATION.
+ * @post On failure ETHA may be in any state.
+ * @note Not thread-safe; serialise ETHA mode changes.
+ * @since 0.1.0
+ */
+static ra_err_t internal_etha_to_operation(ra_etha_port_t channel)
+{
+  enum : uint32_t { k_ra_etha_mode_spin = 200000U };
+  /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 +
+   * HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 */
+  volatile r_etha_regs_t* reg = ra_etha(channel);
+  reg->EAMC                   = (uint32_t)k_ra_etha_opc_operation;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_etha_mode_spin; ++i) {
+    if ((reg->EAMS & k_ra_etha_mask_ops) == (uint32_t)k_ra_etha_opc_operation) {
+      return k_ra_ok;
+    }
+  }
+  ra_log_error(s_tag, "etha_to_operation: EAMS never reached OPERATION");
+  return k_ra_err_hw_timeout;
+}
+
 /* ra_etha_open -- see header for full description. */
 ra_err_t
 ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_link_t* out_link)
@@ -965,8 +1001,10 @@ ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_
   /* Map ETHA channel index 1:1 onto the corresponding RMAC port. */
   const ra_rmac_port_t rmac_port = (ra_rmac_port_t)(uint8_t)channel;
 
-  /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
-  ra_etha(channel)->EAMC = (uint32_t)k_ra_etha_opc_operation;
+  const ra_err_t op_err = internal_etha_to_operation(channel);
+  if (op_err != k_ra_ok) {
+    return op_err;
+  }
 
   ra_err_t err = ra_rmac_phy_reset(rmac_port, phy->phy_addr);
   if (err != k_ra_ok) {
