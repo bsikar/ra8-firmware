@@ -1,60 +1,69 @@
 # i2c_loopback
 
 IIC_B (I3C-in-I2C-mode) self-test smoke app for the EK-RA8D2.
-Brings up `ra_iic_b` on channel 0 at 100 kHz Sm and probes the
-on-board PI4IOE5V6408 I/O expander (U15) at 7-bit address `0x43`,
-which is the only I2C peripheral guaranteed populated on a bare
-EK-RA8D2 v1.
-
-Banner on success:
-
-```
-iic_b: scan 0x43 ack=1
-iic_b: scan 0x43 ack=1
-...
-```
-
-LED1 toggles each scan; LED2 latches ON if the controller returns a
-hard error (`hw_timeout`, `hw_error`).
+Brings up `ra_iic_b` on channel 0 and probes the on-board
+PI4IOE5V6408 I/O expander (U15) at 7-bit address `0x43`. Success
+emits `iic_b: scan 0x43 ack=1` once a second.
 
 ## Why this is `hw_pending`
 
-Both pin permutations (channel 0 + P512/P511 with the P109/P311
-pullup-enable, and channel 0 + P400/P401 without it) produce
-`iic_b: scan ERROR` on the live HIL board -- `ra_iic_b_scan`
-times out waiting for `NTST.TDBEF0` after the START condition.
-That points to a physical-board issue rather than a chip-config
-issue:
+Multiple iterations against the live HIL board all produce
+`iic_b: scan ERROR` (the bus times out waiting for `NTST.TDBEF0`
+after START never completes). Tested combinations on **2026-05-19**:
 
-- **EK-RA8D2 v1 Board UM Table 31** ties J27-1/J27-2 to
-  **P400 (SCL0) / P401 (SDA0)** when **SW4-5 is ON (I3C mode)**
-  and **P512 (SCL1) / P511 (SDA1)** when **SW4-5 is OFF
-  (I2C mode)**.
-- **Board UM Table 23 row 1** says the on-board SCL1/SDA1 pull-ups
-  must be software-enabled via push-pull-HIGH on **P109 / P311**
-  in I2C mode.
-- The HIL test board's SW4-5 state is unknown to the firmware --
-  if it is in a state where neither pin pair reaches U15 the bus
-  floats and every scan times out.
+| SW4-5 | Chip pins | Pull-up enable | NCODR | MSTPB9 IIC0 | Result |
+|-------|-----------|----------------|-------|-------------|--------|
+| OFF   | P512/P511 | P109+P311 HIGH | yes   | (pre-fix)   | ERROR  |
+| OFF   | P400/P401 | (none)         | yes   | yes         | ERROR  |
+| OFF   | P512/P511 | P109+P311 HIGH | yes   | yes         | ERROR  |
+| **ON**| P400/P401 | (none)         | yes   | yes         | ERROR  |
+| **ON**| P400/P401 | (none, I3CCLK=8MHz)| yes | yes      | ERROR  |
 
-The HAL fix that landed in the same commit
-(`internal_iic_b_block_bringup` now also ungates **MSTPB9 IIC0**
-alongside MSTPB4 I3C) is still required regardless of which pin
-pair is used, so that part is correct and committed.
+Two **chip-level fixes have already landed** during this debug:
 
-## How to graduate this back to `hw_validated/hil/`
+1. **MSTPB9 IIC0 ungate** -- `ra_iic_b_init` now ungates both
+   MSTPB4 (I3C) AND MSTPB9 (IIC0). Without MSTPB9 the channel-0
+   IIC controller stays powered down. Committed in `0d827f17`.
+2. **HAL clock semantics flagged** -- `ra_iic_b_cfg_t.pclka_hz`
+   is used by `internal_iic_b_half_period` to divide
+   `STDBR.SBR{LO,HO}`, but HUM Ch 9.10.21 (I3CCLK) says the
+   IIC_B controller is actually clocked from **I3CCLK** (MOCO
+   ~8 MHz by reset default, configured via I3CCKCR/I3CCKDIVCR
+   at SYSC + 0x078 / 0x038), NOT PCLKA (~125 MHz). Passing
+   PCLKA clamps STDBR to 0xFF and gives a ~16 kHz bus instead of
+   the requested 100 kHz, but switching the demo to 8 MHz did
+   not unstick the bus, so this is necessary-but-not-sufficient.
 
-1. With the EK-RA8D2 on the bench, run `i2cdetect` from a host
-   wired to either pin pair (e.g. Pi I2C-1 SDA/SCL) and confirm
-   U15 actually ACKs at `0x43` over the same physical lines the
-   firmware drives.
-2. If SW4-5 = OFF (I2C mode), confirm the firmware writes
-   P109 / P311 HIGH and the on-board pull-ups visibly engage
-   (a scope on SCL1 should idle at 3.3 V, not float).
-3. If SW4-5 = ON (I3C mode), confirm `ra_iic_b_init` reaches U15
-   via P400 / P401 with no software pull-up enable.
-4. Once the working pin pair + switch position is identified, set
-   it as the demo's pinout, drop the failed branch, and move the
-   dir back under `examples/ek_ra8d2/hw_validated/hil/`.
+The remaining symptom (no SCL clocking, no TDBEF0, no NACKDF) is
+consistent with the IIC controller never seeing a clock OR the
+chip+bus state having something other than what the schematic
+comment in `ra_board_ek_ra8d2.c` claims about P400/P401 reaching
+U15.
 
-Until that physical check happens this stays under `hw_pending/`.
+## Bench-debug steps needed
+
+What I can't do remotely:
+
+1. Scope SCL/SDA at the EK-RA8D2 IIC test points to see if SCL
+   even toggles when `ra_iic_b_scan` fires. If not, the bus is
+   electrically dead (no pull-ups, no controller clock).
+2. From the host Pi, run `i2cdetect -y 1` on Pi I2C-1 wired in
+   parallel to the EK-RA8D2 IIC pins to confirm U15 actually
+   ACKs `0x43`. If U15 doesn't ACK from the Pi side either, the
+   schematic comment in the board library is wrong about U15
+   being on this bus.
+3. With a J-Link memory probe, dump `STDBR`, `BCTL`, `NTST`,
+   `BST`, `RSTCTL`, `PRTS`, `CECTL` and `I3CCKCR`/`I3CCKDIVCR`
+   to check (a) STDBR is non-zero, (b) BCTL.BUSE=1, (c) the I3C
+   reset bit cleared, (d) PRTS.PRTMD=1, (e) I3CCLK is actually
+   running.
+4. Try forcing I3CCKCR.I3CCKSEL = PLL1P (gives a much higher
+   I3CCLK), recompute STDBR accordingly, and see if the bus
+   clocks.
+
+## How to graduate back to `hw_validated/hil/`
+
+1. Identify whichever set of {SW4-5 state, MCU pins, I3CCLK
+   source, STDBR value} actually makes U15 ACK at 0x43.
+2. Pin the demo + the board lib to that exact configuration.
+3. Move the directory back to `examples/ek_ra8d2/hw_validated/hil/`.
