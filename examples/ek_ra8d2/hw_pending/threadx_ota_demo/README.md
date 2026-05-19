@@ -43,3 +43,25 @@ EK-RA8D2 v1 UM Table 24 "EK-RA8D2 Board LED Functions" p 31).
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual
 (R20UT5523EG0101 Rev 1.01) Table 24 p 31, and HUM (R01UH1065EJ0130)
 Ch "MRAM" + Ch "SysTick".
+
+## HIL plan
+
+**HIL-able after firmware work -- network download path is a stub.**
+The OTA pipeline (`check -> download -> verify -> commit`) currently
+walks an idealised state machine with no real HTTP / TFTP client.
+There is no real artifact being downloaded, so any "OTA OK" banner
+would be vacuous.
+
+Once a real download path lands (HTTP via lwIP or TFTP), the demo
+could emit a per-state UART banner and a `uart_scrape` config could
+walk the state sequence:
+
+```
+HIL_MODE=uart_scrape
+HIL_EXPECT="ota: commit ok"
+HIL_EXPECT_NEGATIVE="ota.*FAIL|HardFault"
+HIL_TIMEOUT_S=30
+```
+
+Stays in `hw_pending/` until the download stub is replaced with a
+real network client.

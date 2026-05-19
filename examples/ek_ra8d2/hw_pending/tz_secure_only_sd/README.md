@@ -46,3 +46,22 @@ sd: card=32 MB
 sd: fs mounted
 sd: roundtrip ok
 ```
+
+## HIL plan
+
+**Requires physical stim -- needs MicroSD card on Pmod2 (J25).** Same
+hardware gap as `threadx_filex_demo`: the bench has no MicroSD card
+installed (out of scope for the user).
+
+If a card were installed, the success banner sequence above is a
+clean `uart_scrape` target:
+
+```
+HIL_MODE=uart_scrape
+HIL_EXPECT="sd: roundtrip ok"
+HIL_EXPECT_NEGATIVE="sd: card not present|sd: mount FAIL|HardFault"
+HIL_TIMEOUT_S=15
+```
+
+Stays in `hw_pending/` -- requires external MicroSD hardware not
+present on the HIL bench.

@@ -50,6 +50,7 @@
 #include "ra_gpio_constants.h"
 #include "ra_iic_b.h"
 #include "ra_isr.h"
+#include "ra_mpc.h"
 #include "ra_mstp.h"
 #include "ra_port_utils.h"
 #include "ra_sci.h"
@@ -161,6 +162,22 @@ static void i2c_demo_pfs_or_halt(void)
     i2c_demo_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_i2c_demo_pin_sda, k_ra_psel_iic, "i2c_loopback.sda1") != k_ra_ok) {
+    i2c_demo_panic_halt();
+  }
+
+  /* HUM Ch 20.2.1 "PmnPFS Register" p 855 + HUM Ch 39 "I2C Bus Interface
+   * (IIC_B)" p 2436: IIC_B requires SCL/SDA to be N-channel open-drain
+   * outputs. ra_pfs_route_peripheral routes the pin to the IIC mux but
+   * leaves NCODR clear (push-pull), which fights the on-board pull-ups
+   * the moment IIC_B drives a START. Symptom: BST.ALF (arbitration loss)
+   * latches and ra_iic_b_scan returns hw_timeout -- "iic_b: scan ERROR".
+   * The matching path used by the board-internal U15 expander
+   * (ra_board_ek_ra8d2.c::internal_io_expander_route_pins) makes the
+   * same NCODR write via ra_mpc_set_open_drain. */
+  if (ra_mpc_set_open_drain(k_ra_port_5, k_ra_pin_12, true) != k_ra_ok) {
+    i2c_demo_panic_halt();
+  }
+  if (ra_mpc_set_open_drain(k_ra_port_5, k_ra_pin_11, true) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
 

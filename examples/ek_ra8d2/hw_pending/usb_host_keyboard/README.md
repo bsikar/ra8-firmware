@@ -99,3 +99,17 @@ balls. SCI8 console on PD02 / PD03 per UM Table 13 p 24.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Tables 13 p 24 / 24 p 31 / 28 p 34, USB HID 1.11 Boot
 Keyboard profile, and HUM (R01UH1065EJ0130) Ch "USBHS".
+
+## HIL plan
+
+**Requires physical stim -- needs an external USB HID keyboard on J7
+(USB-HS).** Same USB-host-mode situation as `usb_host_cdc_echo`: the
+chip is waiting for a USB keyboard to be plugged in, and the HIL
+bench cannot present one. Pi USB gadget (libcomposite g_hid) could
+emulate a keyboard but no such service is configured.
+
+Also blocked by the USB HS SET_ADDRESS stall documented in
+`hw_pending/README.md`.
+
+Stays in `hw_pending/` -- USB HS hardware/firmware blocked AND no Pi
+USB-gadget keyboard scaffolding exists.

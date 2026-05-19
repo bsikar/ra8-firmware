@@ -140,3 +140,24 @@ J1 panel pins follow UM Table 33 p 42.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Tables 24 (LEDs) p 31, 25 (switches) p 32, 31 (SD card),
 33 (GLCDC J1) p 42, and HUM (R01UH1065EJ0130) Ch 53 "GLCDC".
+
+## HIL plan
+
+**HIL-able after significant firmware + harness work.** This is a
+multi-component application (ThreadX + FileX + GUIX + ra_epub +
+GLCDC) that needs the LCD pin table cross-checked, the SD card
+present, and a populated content partition before it can run end to
+end. Even after those gaps close, the only externally-observable
+output is on the 7-inch LCD (visual confirmation, like the other
+display apps in `hw_validated/manual/`).
+
+Realistic path forward:
+- (a) An early-boot UART banner like `ereader: ready` could be
+  added so `uart_scrape` confirms ThreadX scheduled the first
+  ereader task -- detects boot regressions but not rendering.
+- (b) Full validation stays manual; this app belongs in
+  `hw_validated/manual/` once it boots and renders, alongside
+  `display_pal_animation` / `lcd_color_cycle`.
+
+Stays in `hw_pending/` for now -- multiple blocking gaps (FileX SD
+mount, GLCDC pin table, GUIX integration) are not yet closed.

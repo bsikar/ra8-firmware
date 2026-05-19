@@ -245,3 +245,27 @@ on PD02 / PD03 per UM Table 13 p 24.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Tables 13 p 24 / 24 p 31 / 28 p 34, USB CDC PSTN 1.20, and
 HUM (R01UH1065EJ0130) Ch "USBHS".
+
+## HIL plan
+
+**Requires physical stim -- needs an external USB CDC peripheral on
+J7 (USB-HS).** The chip is in USB *host* mode and waits for a USB
+device to be plugged into the J7 Type-C jack. The HIL bench has the
+J7 cable wired back to the Pi, but the Pi is currently configured as
+USB *host* on that cable, not as a USB CDC peripheral. A Pi
+USB-gadget configuration (libcomposite g_serial) could expose a CDC
+peripheral, but that scaffolding does not exist in the harness
+today.
+
+Also blocked by the USB HS bring-up issue documented in
+`hw_pending/README.md` ("chip reaches USB Address state but stalls
+after SET_ADDRESS").
+
+To make this HIL-able: (a) fix the USB HS SET_ADDRESS stall, and
+(b) add a Pi USB-gadget service (configfs-based libcomposite) that
+exposes /dev/ttyGS0 to the chip when the J7 cable is plugged. Then a
+`uart_scrape` mode on the chip's SCI8 console could assert the
+expected enumeration banner appears.
+
+Stays in `hw_pending/` -- USB HS hardware/firmware blocked AND no Pi
+USB-gadget scaffolding exists.
