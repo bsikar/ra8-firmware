@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/clock_check/main.c
- * @brief Clock bring-up smoke test for EK-RA8D2 (CGC: HOCO + PLL)
+ * @brief Clock bring-up HIL test for EK-RA8D2 (CGC: HOCO + PLL)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

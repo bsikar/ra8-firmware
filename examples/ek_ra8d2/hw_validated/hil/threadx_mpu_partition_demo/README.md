@@ -1,6 +1,6 @@
 # threadx_mpu_partition_demo
 
-Eclipse ThreadX + Arm v8-M MPU partition smoke test for the EK-RA8D2.
+Eclipse ThreadX + Arm v8-M MPU partition HIL test for the EK-RA8D2.
 Programs a small static MPU region table at boot via `ra_mpu_configure`
 and then runs a single ThreadX worker that blinks LED1 at 1 Hz to
 prove the MPU configuration did not wedge ordinary code execution.
@@ -17,7 +17,7 @@ prove the MPU configuration did not wedge ordinary code execution.
 declared regions fall through to the architectural defaults; this
 keeps the kernel's bookkeeping pages reachable without having to
 enumerate them. MAIR slots default to `0` (device-nGnRnE) -- adequate
-for a smoke test. A real partitioning policy would split secure /
+for a HIL test. A real partitioning policy would split secure /
 non-secure worlds and add per-thread sub-regions.
 
 ## What it does

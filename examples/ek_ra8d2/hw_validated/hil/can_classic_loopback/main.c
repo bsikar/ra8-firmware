@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/can_classic_loopback/main.c
- * @brief CAN 2.0B (classic, non-FD) internal-loopback smoke test
+ * @brief CAN 2.0B (classic, non-FD) internal-loopback HIL test
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

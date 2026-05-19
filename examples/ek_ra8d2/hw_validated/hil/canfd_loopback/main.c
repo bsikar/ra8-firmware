@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/canfd_loopback/main.c
- * @brief CANFD0 internal-loopback smoke test for EK-RA8D2
+ * @brief CANFD0 internal-loopback HIL test for EK-RA8D2
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

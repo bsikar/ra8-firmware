@@ -1,6 +1,6 @@
 # blink
 
-Minimum-viable LED-blink smoke test for the EK-RA8D2. Standalone
+Minimum-viable LED-blink HIL test for the EK-RA8D2. Standalone
 example app: `examples/ek_ra8d2/hw_validated/hil/blink/main.c` plus its own `vector_table.c`,
 `system_init.c`, `secure_exception.c`, `trustzone_init.c`,
 `linker_script.ld`, `Makefile`, and `CMakeLists.txt`.

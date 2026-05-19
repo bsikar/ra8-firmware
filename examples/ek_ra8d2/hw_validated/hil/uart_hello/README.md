@@ -1,6 +1,6 @@
 # uart_hello
 
-UART smoke test for the EK-RA8D2. Brings up CGC + SCI8 in async mode
+UART HIL test for the EK-RA8D2. Brings up CGC + SCI8 in async mode
 and prints `"hello, ra8d2!\r\n"` once a second while toggling LED1
 as a heartbeat. The on-board J-Link OB on the EK-RA8D2 bridges
 **SCI8 (TXD8 = PD02, RXD8 = PD03) to a USB CDC virtual serial port**

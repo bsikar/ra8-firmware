@@ -1,6 +1,6 @@
 # clock_check
 
-CGC bring-up smoke test for the EK-RA8D2. Brings the chip from
+CGC bring-up HIL test for the EK-RA8D2. Brings the chip from
 reset-default MOCO (~8.4 MHz) up to its rated CPUCLK0 via the CGC
 driver, programmes SysTick against the new clock rate, and toggles
 the user LEDs at 1 Hz so you can stopwatch-verify the clock came up

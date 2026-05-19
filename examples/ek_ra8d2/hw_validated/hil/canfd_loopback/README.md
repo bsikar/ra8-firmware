@@ -1,6 +1,6 @@
 # canfd_loopback
 
-CANFD0 internal-loopback smoke test for the bare EK-RA8D2 EVM.
+CANFD0 internal-loopback HIL test for the bare EK-RA8D2 EVM.
 
 Brings up CANFD0 at 500 kbps, forces the channel into Self-test 1 /
 internal-loopback mode (`CFDC[0].CTR.CTME=1, CTMS=11b`) via
