@@ -168,5 +168,36 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
         COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${CPU1_NAME}.elf> ${CPU1_NAME}.hex
         COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CPU1_NAME}.elf> ${CPU1_NAME}.bin
         COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${CPU1_NAME}.elf>)
+
+    # ------------------------------------------------------------------
+    # Embed the CPU1 binary into the M85 ELF so a single SWD flash drops
+    # both cores' images on the chip in one shot.
+    #
+    # Without this step the CPU1 hex was built but never sent to the
+    # board (scripts/hil_flash.sh / scripts/flash.sh only loadfile the
+    # M85 hex), CPU1 fetched its reset vector from blank MRAM_CPU1
+    # (0xFFFFFFFF), and the ping-pong counter g_cpu1_pingpong_match
+    # stayed at 0 for the entire 5 s HIL probe window.
+    #
+    # arm-none-eabi-objcopy --rename-section .data=.cpu1_image converts
+    # the raw .bin into a relocatable ELF object whose only section is
+    # named .cpu1_image. The M85 linker_script.ld pins that section to
+    # ORIGIN(MRAM_CPU1) so the resulting .hex covers MRAM (0x02000000)
+    # AND MRAM_CPU1 (0x020C0000) in one image.
+    # ------------------------------------------------------------------
+    set(CPU1_BIN ${CMAKE_CURRENT_BINARY_DIR}/${CPU1_NAME}.bin)
+    set(CPU1_BLOB_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${CPU1_NAME}_blob.o)
+    add_custom_command(OUTPUT ${CPU1_BLOB_OBJ}
+        COMMAND ${CMAKE_OBJCOPY}
+            -I binary -O elf32-littlearm -B arm
+            --rename-section .data=.cpu1_image,alloc,load,readonly,contents
+            ${CPU1_BIN} ${CPU1_BLOB_OBJ}
+        DEPENDS ${CPU1_NAME}.elf
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Packing ${CPU1_NAME}.bin as relocatable .cpu1_image object")
+    target_sources(${RA_APP_NAME}.elf PRIVATE ${CPU1_BLOB_OBJ})
+    set_source_files_properties(${CPU1_BLOB_OBJ} PROPERTIES
+        EXTERNAL_OBJECT TRUE
+        GENERATED TRUE)
     add_dependencies(${RA_APP_NAME}.elf ${CPU1_NAME}.elf)
 endif()
