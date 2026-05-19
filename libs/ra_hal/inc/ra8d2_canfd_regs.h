@@ -588,6 +588,21 @@ typedef enum : uint32_t {
 } ra_gaflp1_bits_t;
 
 /**
+ * @enum ra_gaflm_bits_t
+ * @brief CFDGAFLM (Acceptance Filter Mask) layout (HUM Ch 41.2.20 p 2736).
+ *
+ * @details Bit 29 GAFLLB is "Loopback Configuration": when 0 the AFL
+ * entry is only valid for standard non-loopback RX; when 1 the AFL
+ * entry is also valid in Self-test mode 0/1 (HUM Ch 41.5.5 Table
+ * 41.22). For internal-loopback demos (canfd_loopback,
+ * canfd_filter_demo) GAFLLB must be set, otherwise every loopback
+ * frame passes the filter and a no-match round wrongly receives data.
+ */
+typedef enum : uint32_t {
+  k_ra_gaflm_bit_gafllb = 1UL << 29U, /**< Loopback Configuration bit. */
+} ra_gaflm_bits_t;
+
+/**
  * @enum ra_canfd_afl_total_t
  * @brief Maximum number of GAFL filter rules across all paged windows.
  *

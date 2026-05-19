@@ -66,6 +66,7 @@ static const char* s_tag = "CANFD";
  */
 typedef enum : uint32_t {
   k_ra_canfd_spin         = 20000U,  /**< Bounded poll budget in iterations. */
+  k_ra_canfd_tx_spin      = 100000U, /**< TX-completion poll: 500 us @ 1 GHz / 5 cyc. */
   k_ra_canfd_ckcr_spin    = 262144U, /**< CANFDCKCR SREQ/SRDY budget.       */
   k_ra_canfd_tq_search_lo = 8U,      /**< Smallest time-quanta count tried. */
   k_ra_canfd_tq_search_hi = 25U,     /**< Largest time-quanta count tried. */
@@ -934,17 +935,22 @@ ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
    * FSP r_canfd.c line ~724: `p_reg->CFDTMC[idx] = 1`. */
   reg->CFDTMC[k_ra_canfd_tx_mb_default] = k_ra_canfd_tmc_txreq;
 
-  /* Wait for CFDTMSTSj.TMTRF[1:0] != 00 (transmission no longer in
-   * progress). Without this the caller can race the chip and call
-   * receive before the loopback frame is in RX FIFO 0 -- in
-   * canfd_filter_demo the next iteration's no-match round would
-   * then consume the previous round's frame and report mismatch.
-   * 500 kbit/s + 8 bytes = ~240 us, so k_ra_canfd_spin (~100 us at
-   * 1 GHz / 5 cycles per iter) is the right order of magnitude. */
+  /* Wait for CFDTMSTSj.TMTRF[1:0] to read "transmission complete"
+   * (10b) -- HUM Ch 41 "CFDTMSTSj.TMTRF" p ~2756. The previous mask
+   * (0x06) also matched 01b ("transmission requested"), which on
+   * back-to-back TX calls let the second call clobber CFDTMSTS while
+   * the first frame was still in flight; the chip then silently
+   * dropped the second TX and canfd_filter_demo's mask sub-round
+   * (sent immediately after the exact sub-round) saw the frame
+   * disappear. Mask 0x04 keys on TMTRF[1] only, which is only set
+   * once the TX is actually on the wire and the MB is free.
+   *
+   * 500 kbit/s + 8 bytes = ~240 us; k_ra_canfd_tx_spin (~500 us at
+   * 1 GHz / 5 cycles per iter) covers it with margin. */
 #ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    enum : uint8_t { k_ra_tmsts_tmtrf_mask = 0x06U };
-    if ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_mask) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_canfd_tx_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+    enum : uint8_t { k_ra_tmsts_tmtrf_done = 0x04U };
+    if ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_done) != 0U) {
       break;
     }
   }
@@ -1149,48 +1155,74 @@ enum : uint16_t {
 };
 
 /**
- * @brief Bump CFDGAFLCFG0.RNC0 to cover @p new_rnc rules on page 0.
- *
- * @details RNC0 is only writable in GL_RESET (HUM Ch 41.2.18 p 2735),
- * so transition the global block to GL_RESET, rewrite CFDGAFLCFG0,
- * return to GL_OPERATION, and re-enable RX FIFO 0 (which the
- * GL_RESET cycle silently disables; HUM Ch 41 p 2742 says clearing
- * RFE wipes the FIFO pointers).
- *
- * @param[in] reg     CANFD register block (channel 0; AFL is global).
- * @param[in] new_rnc Desired RNC0 value, masked to 5 bits.
- *
- * @return ra_err_t outcome.
- * @retval k_ra_ok            Block back in GL_OPERATION; RFE asserted.
- * @retval k_ra_err_hw_timeout GL_RESET or GL_OPERATION never latched.
- *
- * @pre AFL slot updates between the modes are the caller's responsibility.
- * @pre new_rnc is greater than the current RNC0.
- * @post On success the block is in GL_OPERATION with RX FIFO 0 alive.
- * @post On failure the block may be parked in GL_RESET.
+ * @brief Bump CFDGAFLCFG0.RNC0 to cover @p filter_id rules on page 0.
+ * @details Caller must already have placed the global block in
+ * GL_RESET; RNC0 is RESET-only per HUM Ch 41.2.18 p 2735.
+ * @param[in] reg       CANFD register block (channel 0).
+ * @param[in] filter_id Filter slot index in [0, k_ra_canfd_afl_total).
+ * @pre Block is in GL_RESET.
+ * @pre filter_id < k_ra_canfd_afl_per_page (page-0 only).
+ * @post RNC0 >= filter_id + 1.
+ * @post No global state outside CFDGAFLCFG0 is modified.
  * @note Not thread-safe; serialise filter edits.
  * @since 0.1.0
  */
-static ra_err_t internal_bump_rnc0(volatile r_canfd_t* reg, uint32_t new_rnc)
+static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_id)
 {
-  const ra_err_t reset_err = internal_set_global_mode(reg, k_ra_gctr_value_reset);
-  if (reset_err != k_ra_ok) {
-    return reset_err;
+  if (filter_id >= (uint16_t)k_ra_canfd_afl_per_page) {
+    return;
   }
-  const uint32_t cfg0 = reg->CFDGAFLCFG0;
-  reg->CFDGAFLCFG0    = (cfg0 & ~(k_ra_gaflcfg0_mask_rnc0 << k_ra_gaflcfg0_shift_rnc0)) |
-                     ((new_rnc & k_ra_gaflcfg0_mask_rnc0) << k_ra_gaflcfg0_shift_rnc0);
-  const ra_err_t op_err = internal_set_global_mode(reg, k_ra_gctr_value_operation);
-  if (op_err != k_ra_ok) {
-    return op_err;
+  const uint32_t cur_rnc =
+    (reg->CFDGAFLCFG0 >> k_ra_gaflcfg0_shift_rnc0) & k_ra_gaflcfg0_mask_rnc0;
+  const uint32_t new_rnc = ((uint32_t)filter_id + 1U) & k_ra_gaflcfg0_mask_rnc0;
+  if (cur_rnc < new_rnc) {
+    const uint32_t cfg0 = reg->CFDGAFLCFG0;
+    reg->CFDGAFLCFG0    = (cfg0 & ~(k_ra_gaflcfg0_mask_rnc0 << k_ra_gaflcfg0_shift_rnc0)) |
+                       ((new_rnc & k_ra_gaflcfg0_mask_rnc0) << k_ra_gaflcfg0_shift_rnc0);
   }
-  /* GL_RESET cleared CFDRFCCa.RFE; re-enable so matched frames have a
-   * landing FIFO. HUM Ch 41 p 2742. */
-  internal_enable_rx_fifo0(reg);
-  return k_ra_ok;
 }
 
-/* ra_canfd_filter_set -- see header for full description. */
+/**
+ * @brief Write one CFDGAFL slot (ID/M/P0/P1) with the loopback +
+ * FIFO-0 routing bits set.
+ * @details Mask register OR-includes GAFLLB (bit 29) so the entry is
+ * valid under Self-test mode 0/1 (HUM Ch 41.5.5 Table 41.22); P1
+ * OR-includes GAFLFDP0 so matched frames land in RX FIFO 0 (HUM Ch
+ * 41.2.22 p 2740).
+ * @param[in] reg       CANFD register block.
+ * @param[in] slot      Slot index inside the unlocked page (0..15).
+ * @param[in] accept_id 11/29-bit accept ID.
+ * @param[in] mask      11/29-bit ID mask (caller-provided bits only).
+ * @param[in] dlc       DLC value 0..15.
+ * @pre Global block is in GL_RESET (CFDGAFL entries are RESET-only).
+ * @pre Caller holds the AFL data window unlock (CFDGAFLECTR.AFLDAE=1).
+ * @post CFDGAFL[slot] reflects the caller's accept_id / mask / dlc
+ *       with GAFLLB and GAFLFDP0 set.
+ * @post No other AFL slot is modified.
+ * @note Not thread-safe; caller serialises AFL edits.
+ * @since 0.1.0
+ */
+static void internal_write_afl_slot(volatile r_canfd_t* reg, uint16_t slot,
+                                    uint32_t accept_id, uint32_t mask, uint8_t dlc)
+{
+  reg->CFDGAFL[slot].ID = accept_id;
+  reg->CFDGAFL[slot].M  = mask | (uint32_t)k_ra_gaflm_bit_gafllb;
+  reg->CFDGAFL[slot].P0 = 0U;
+  reg->CFDGAFL[slot].P1 = (((uint32_t)dlc & k_ra_canfd_ptr_mask_dlc) << k_ra_canfd_ptr_shift_dlc)
+                          | (uint32_t)k_ra_gaflp1_bit_gaflfdp0;
+}
+
+/* ra_canfd_filter_set -- see header for full description.
+ *
+ * HUM Ch 41.2.18 / 41.2.20 / 41.2.22 p 2735-2742: CFDGAFLCFG0.RNC0
+ * and the per-slot CFDGAFL.{ID,M,P0,P1} registers are only writable
+ * while the global block is in GL_RESET. Writing them in
+ * GL_OPERATION lands the bits in the register file but the AFL
+ * lookup engine never resamples them, so live filtering keeps using
+ * the snapshot taken at the most recent GL_RESET -> GL_OPERATION
+ * transition. install_default_afl in internal_canfd_open_channel
+ * runs in GL_RESET for that reason; we mirror the same RESET ->
+ * write -> OPERATION transaction here so updates take effect. */
 ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8_t dlc)
 {
   if (filter_id >= k_ra_canfd_afl_total) {
@@ -1210,33 +1242,25 @@ ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t ma
   volatile r_canfd_t* reg = ra_canfd(0U);
   RA_CHECK_NULL_PTR(reg, s_tag, "filter_set: channel0 unavailable");
 
-  /* Bump RNC0 on page 0 if the requested filter_id lies beyond the */
-  /* currently-active rule count. */
-  if (filter_id < (uint16_t)k_ra_canfd_afl_per_page) {
-    const uint32_t cur_rnc =
-      (reg->CFDGAFLCFG0 >> k_ra_gaflcfg0_shift_rnc0) & k_ra_gaflcfg0_mask_rnc0;
-    const uint32_t new_rnc = ((uint32_t)filter_id + 1U) & k_ra_gaflcfg0_mask_rnc0;
-    if (cur_rnc < new_rnc) {
-      const ra_err_t rnc_err = internal_bump_rnc0(reg, new_rnc);
-      if (rnc_err != k_ra_ok) {
-        return rnc_err;
-      }
-    }
+  const ra_err_t reset_err = internal_set_global_mode(reg, k_ra_gctr_value_reset);
+  if (reset_err != k_ra_ok) {
+    return reset_err;
   }
+
+  internal_bump_rnc0_locked(reg, filter_id);
 
   /* HUM Ch 41 "CFDGAFLECTR" p 2734 -- unlock AFL data window. */
   reg->CFDGAFLECTR = ((uint32_t)page & k_ra_gaflectr_mask_aflpn) | k_ra_gaflectr_bit_afldae;
-
-  /* P1 must carry the DLC field AND a non-zero GAFLFDPn routing bit
-   * (HUM Ch 41.2.22 p 2740); without GAFLFDP0=1 a matched frame is
-   * dropped instead of landing in RX FIFO 0. */
-  reg->CFDGAFL[slot].ID = accept_id;
-  reg->CFDGAFL[slot].M  = mask;
-  reg->CFDGAFL[slot].P0 = 0U;
-  reg->CFDGAFL[slot].P1 = (((uint32_t)dlc & k_ra_canfd_ptr_mask_dlc) << k_ra_canfd_ptr_shift_dlc)
-                          | (uint32_t)k_ra_gaflp1_bit_gaflfdp0;
-
+  internal_write_afl_slot(reg, slot, accept_id, mask, dlc);
   reg->CFDGAFLECTR = 0U;
+
+  const ra_err_t op_err = internal_set_global_mode(reg, k_ra_gctr_value_operation);
+  if (op_err != k_ra_ok) {
+    return op_err;
+  }
+  /* GL_RESET cleared CFDRFCCa.RFE (HUM Ch 41 p 2742); re-enable so
+   * matched frames have a landing FIFO once we resume operation. */
+  internal_enable_rx_fifo0(reg);
   return k_ra_ok;
 }
 

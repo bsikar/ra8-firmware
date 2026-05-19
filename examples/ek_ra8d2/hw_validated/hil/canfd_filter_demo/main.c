@@ -46,6 +46,7 @@ typedef enum : uint32_t {
   k_canfd_filter_mask_full  = 0x7FFU,
   k_canfd_filter_id_nomatch = 0x200U,
   k_canfd_filter_rx_spin    = 200000U, /**< ~10 ms RX poll budget at 1 GHz. */
+  k_canfd_filter_drain_max  = 8U,      /**< Bounded RX FIFO drain count.    */
 } canfd_filter_const_t;
 
 /** @brief Channel + filter slots. */
@@ -102,6 +103,52 @@ volatile uint32_t g_canfd_filter_match = 0U;
  * @since 0.1.0
  */
 volatile uint32_t g_canfd_filter_mismatch = 0U;
+
+/**
+ * @var g_canfd_filter_exact_match
+ * @brief Per-sub-round diagnostic: exact-ID (0x100) round succeeded.
+ * @note  Inspected by J-Link memprobe to localize filter regressions.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_exact_match = 0U;
+
+/**
+ * @var g_canfd_filter_exact_mismatch
+ * @brief Per-sub-round diagnostic: exact-ID (0x100) round failed.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_exact_mismatch = 0U;
+
+/**
+ * @var g_canfd_filter_mask_match
+ * @brief Per-sub-round diagnostic: mask-ID (0x110/0x7F0) round succeeded.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_mask_match = 0U;
+
+/**
+ * @var g_canfd_filter_mask_mismatch
+ * @brief Per-sub-round diagnostic: mask-ID (0x110/0x7F0) round failed.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_mask_mismatch = 0U;
+
+/**
+ * @var g_canfd_filter_nomatch_match
+ * @brief Per-sub-round diagnostic: no-match-ID (0x200) round behaved as
+ *        expected (frame was rejected by the filter).
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_nomatch_match = 0U;
+
+/**
+ * @var g_canfd_filter_nomatch_mismatch
+ * @brief Per-sub-round diagnostic: no-match-ID (0x200) frame leaked
+ *        through the filter -- this is the key diagnostic for whether
+ *        GAFLLB+self-test really gates the FIFO.
+ * @since 0.1.0
+ */
+volatile uint32_t g_canfd_filter_nomatch_mismatch = 0U;
 
 /** @brief Park the CPU after a fatal init failure. */
 static void canfd_filter_panic_halt(void)
@@ -238,26 +285,44 @@ int32_t main(void)
   ra_isr_globals_enable();
 
   while (1) {
+    /* Drain any stale frames left in RX FIFO 0 before this iteration's
+     * three sub-rounds. Without this, a late-arriving frame from the
+     * mask round can land in the FIFO while the no-match round is
+     * spinning on ra_canfd_receive and report a false "match" for
+     * what should be a rejected frame. */
+    ra_canfd_frame_t scratch = {};
+    for (uint8_t i = 0U; i < (uint8_t)k_canfd_filter_drain_max; i++) {
+      if (ra_canfd_receive((uint8_t)k_canfd_filter_channel, &scratch) != k_ra_ok) {
+        break;
+      }
+    }
+
     /* Two IDs the filters accept and one they should reject. The
      * loopback path mirrors every TX, but only filter-matched frames
      * land in the RX FIFO. */
     if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_exact) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led1);
+      g_canfd_filter_exact_match += 1U;
       g_canfd_filter_match += 1U;
     } else {
+      g_canfd_filter_exact_mismatch += 1U;
       g_canfd_filter_mismatch += 1U;
     }
     if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_mask) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led1);
+      g_canfd_filter_mask_match += 1U;
       g_canfd_filter_match += 1U;
     } else {
+      g_canfd_filter_mask_mismatch += 1U;
       g_canfd_filter_mismatch += 1U;
     }
     /* No-match: receive should report no_data; if it doesn't, latch LED2. */
     if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_nomatch) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led2);
+      g_canfd_filter_nomatch_mismatch += 1U;
       g_canfd_filter_mismatch += 1U;
     } else {
+      g_canfd_filter_nomatch_match += 1U;
       g_canfd_filter_match += 1U;
     }
     ra_delay_ms(k_canfd_filter_period_ms);
