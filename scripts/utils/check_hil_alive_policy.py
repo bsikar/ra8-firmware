@@ -7,6 +7,7 @@ HIL_MODE to one of:
   - usb_cdc           (Pi-side USB host probe)
   - jlink_memprobe    (named-symbol counter advance via SWD)
   - hil_eth_tcp       (Pi-as-peer TCP/UDP/HTTP probe)
+  - rtt_scrape        (SEGGER RTT banner assertion via JLink mem dump)
   - alive             ONLY if HIL_FAULT_EXPECTED=1 is also set
                       (legitimate fault-recovery test path -- the
                       handler is required to latch CFSR != 0 and the
@@ -38,6 +39,7 @@ ALLOWED_MODES: frozenset[str] = frozenset({
     "usb_cdc",
     "jlink_memprobe",
     "hil_eth_tcp",
+    "rtt_scrape",
 })
 
 
