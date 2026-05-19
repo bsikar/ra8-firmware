@@ -91,7 +91,14 @@ static void test_crc_app_init_ok(void)
 }
 
 /**
- * @brief Reset + compute returns the value driven into CRCDOR.
+ * @brief Reset + compute applies the IEEE-802.3 init / xor-out convention.
+ *
+ * @details
+ * For a 32-bit polynomial ``ra_crc_compute`` pre-seeds CRCDOR with
+ * 0xFFFFFFFF and XORs the readback with 0xFFFFFFFF before returning.
+ * On the sim shim the "engine" leaves the seed in CRCDOR untouched, so
+ * the final ``got`` value collapses to ``seed XOR seed = 0`` -- which
+ * is also the canonical CRC-32 of an empty message.
  *
  * @par MC/DC:
  * Decision: ``ra_crc_compute != ok``. Pairs with the NULL-buffer
@@ -100,15 +107,13 @@ static void test_crc_app_init_ok(void)
 static void test_crc_app_compute_drives_dor(void)
 {
   reset_world();
-  TEST_BEGIN("crc_demo: compute returns DOR contents");
+  TEST_BEGIN("crc_demo: compute applies IEEE seed + xor-out");
   TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
   ra_crc_reset();
-  volatile r_crc_regs_t* reg = ra_crc();
-  reg->CRCDOR                = 0xDEADBEEFUL;
-  uint32_t got               = 0U;
+  uint32_t got = 0xDEADBEEFUL;
   TEST_ASSERT_EQ(k_ra_ok, ra_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
-  TEST_ASSERT_EQ(0xDEADBEEFUL, got);
-  TEST_END("crc_demo: compute returns DOR contents");
+  TEST_ASSERT_EQ(0U, got);
+  TEST_END("crc_demo: compute applies IEEE seed + xor-out");
 }
 
 /**

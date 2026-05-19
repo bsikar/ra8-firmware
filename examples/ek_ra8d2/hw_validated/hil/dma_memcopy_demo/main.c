@@ -187,10 +187,20 @@ static uint8_t dma_demo_verify(void)
 /**
  * @brief Programme + trigger the DMAC channel and wait for completion.
  *
- * @par MC/DC:
- * Compound decision: ``ra_dmac_start != ok || poll exhausted``. Two
- * atomic conditions x N+1 = 3 vectors covered by the host
- * integration test.
+ * @details
+ * In **normal** transfer mode each ``DMREQ.SWREQ`` write asks the
+ * controller for one unit transfer (per HUM Ch 17.2.15 p 744 -- "When
+ * 1 is written to SWREQ bit, a DMA transfer request is generated.
+ * After DMA transfer is started [...] this bit is cleared to 0"). To
+ * copy the whole 256-word buffer with a single software trigger we
+ * run in **block** mode (DMTMD.MD=10b, HUM Ch 17.2.10 p 738) where
+ * one trigger moves a full DMCRAH-sized block. DMCRAH carries the
+ * block size and DMCRBL counts the number of blocks: one block of
+ * ``k_dma_demo_buf_words`` words covers the entire buffer.
+ *
+ * The poll loop watches DMSTS.ACT (HUM Ch 17.2.16 p 745) -- it
+ * de-asserts when the controller finishes the request, which is the
+ * correct completion gate for block mode.
  *
  * @return ``k_ra_ok`` on success, ``k_ra_err_hw_timeout`` if the
  *         channel never drained, or the start error code.
@@ -203,28 +213,34 @@ static uint8_t dma_demo_verify(void)
 [[nodiscard]] static ra_err_t dma_demo_run_copy(void)
 {
   const ra_dmac_config_t cfg = {
-    .src     = (uint32_t)(uintptr_t)s_src,
-    .dst     = (uint32_t)(uintptr_t)s_dst,
-    .count   = (uint16_t)k_dma_demo_buf_words,
-    .width   = k_ra_dmac_width_word,
-    .src_inc = true,
-    .dst_inc = true,
+    .src         = (uint32_t)(uintptr_t)s_src,
+    .dst         = (uint32_t)(uintptr_t)s_dst,
+    .count       = (uint16_t)k_dma_demo_buf_words,
+    .block_count = 1U,
+    .width       = k_ra_dmac_width_word,
+    .src_inc     = true,
+    .dst_inc     = true,
   };
-  const ra_err_t err = ra_dmac_start((uint8_t)k_dma_demo_channel, &cfg);
+  const ra_err_t err = ra_dmac_start_block((uint8_t)k_dma_demo_channel, &cfg);
   if (err != k_ra_ok) {
     return err;
   }
 
-  /* Software trigger: assert DMREQ.SWREQ on the channel. */
+  /* Software trigger: assert DMREQ.SWREQ on the channel.
+   * HUM Ch 17.2.15 p 744: write SWREQ=1 to request one block-mode
+   * transfer. SWREQ auto-clears when the controller accepts the
+   * request (CLRS=0 is the reset default). */
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_dma_demo_channel);
   if (reg == nullptr) {
     return k_ra_err_hw_error;
   }
-  reg->DMREQ = 0x1U;
+  reg->DMREQ = (uint8_t)k_ra_dmreq_swreq_mask;
 
-  /* Poll DMCRA until it drains. */
+  /* Poll DMSTS.ACT until the controller goes idle.
+   * HUM Ch 17.2.16 p 745: "When data transfer in response to one
+   * transfer request is completed" the ACT flag clears. */
   for (uint32_t i = 0U; i < (uint32_t)k_dma_demo_poll_limit; ++i) {
-    if (reg->DMCRA == 0U) {
+    if ((reg->DMSTS & (uint8_t)k_ra_dmsts_act_mask) == 0U) {
       return ra_dmac_stop((uint8_t)k_dma_demo_channel);
     }
   }

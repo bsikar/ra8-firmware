@@ -36,12 +36,12 @@ static void test_init_clears_regs(void)
   volatile r_doc_regs_t* reg = ra_doc();
   reg->DOCR                  = 0xFFU;
   reg->DODIR                 = 0xAAAAU;
-  reg->DODSR                 = 0x5555U;
+  reg->DODSR0                = 0x5555U;
 
   TEST_ASSERT_EQ(k_ra_ok, ra_doc_init());
   TEST_ASSERT_EQ(0, reg->DOCR);
   TEST_ASSERT_EQ(0, reg->DODIR);
-  TEST_ASSERT_EQ(0, reg->DODSR);
+  TEST_ASSERT_EQ(0, reg->DODSR0);
   TEST_END("doc init clears regs");
 }
 
