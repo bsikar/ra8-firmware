@@ -329,6 +329,19 @@ void SystemInit(void)
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
+
+  /* IPCSAR / IPCPAR are not touched here.
+   *
+   * Attempted on 2026-05-19: write PRCR_S = 0xA510 (unlock PRC4) +
+   * write IPCSAR = 0x000F0303 to grant non-secure access to all IPC
+   * channels. The write went through (JTAG readback confirmed
+   * 0x000F0303), but flipping the channels to NS attribution made
+   * CPU0 (which boots Secure on this chip) unable to access them,
+   * which then HardFaulted as soon as ra_cpu1_release wrote to the
+   * IPC NMI register. Reverted -- proper fix needs full TrustZone
+   * partitioning so CPU1 runs Secure too, or NSC veneer wrapping
+   * for the CPU1 -> CPU0 -> CPU1 IPC sequence. Tracked in task #62. */
+
   /* Cache enable, MPU init, and TrustZone bring-up are temporarily
    * disabled -- they HardFault on first reset because the CCSIDR-driven
    * invalidate-by-set/way loop is not yet implemented and the MPU
