@@ -75,3 +75,20 @@ directly via `ra_pfs_route_peripheral`.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual
 (R20UT5523EG0101 Rev 1.01) Table 22 p 30 + Table 24 p 31, HUM
 (R01UH1065EJ0130) Ch "USBFS", and Eclipse USBX CDC ACM class API.
+
+## HIL plan
+
+**HIL-able after firmware fix -- currently halts in
+`ra_exception_halt_loop` during init.** Demoted from
+`hw_validated/hil/` on 2026-05-18 (commit 1f46ad3b) for exactly this
+reason; the existing `hil.conf` is parked at `HIL_MODE=alive` /
+`HIL_BOOT_S=2` and will start passing once the init halt is
+root-caused and fixed.
+
+The Pi can act as USB host today (`scripts/hil_usb_test.sh` already
+covers `usb_cdc_echo`). Once the init halt is fixed, this app
+should run a `hil_usb_cdc_echo` style gate: Pi enumerates the chip
+as `/dev/ttyACMx`, writes a known string, expects an echo within a
+timeout.
+
+Stays in `hw_pending/` until the init halt is root-caused.

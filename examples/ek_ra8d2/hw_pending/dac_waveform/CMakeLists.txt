@@ -1,14 +1,14 @@
 #
-# Per-app CMake for the `kint_demo` firmware.
+# Per-app CMake for the `dac_waveform` firmware.
 #
 # Usable two ways:
-#   1. Standalone, from inside `kint_demo/`:
+#   1. Standalone, from inside `dac_waveform/`:
 #        cmake -S . -B build \
 #              -DCMAKE_TOOLCHAIN_FILE=../../../../cmake/toolchain-ra8d2.cmake
 #        cmake --build build
-#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/kint_demo).
+#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/dac_waveform).
 #
-# Either path produces kint_demo.elf / kint_demo.hex / kint_demo.bin in the
+# Either path produces dac_waveform.elf / dac_waveform.hex / dac_waveform.bin in the
 # build dir.
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -27,15 +27,15 @@ if(NOT _ra_has_parent)
 endif()
 
 if(RA_APP_STANDALONE)
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../" ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
 
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-    project(kint_demo
+    project(dac_waveform
         LANGUAGES C ASM
         VERSION ${RA_PROJECT_VERSION}
-        DESCRIPTION "kint_demo firmware for RA8D2"
+        DESCRIPTION "dac_waveform firmware for RA8D2"
     )
 
     if(NOT CMAKE_BUILD_TYPE)
@@ -56,7 +56,7 @@ if(RA_APP_STANDALONE)
 
     option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 else()
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../" ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
 endif()
 
 include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
@@ -65,7 +65,7 @@ include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 # Sources
 #############################################################################
 
-set(RA_APP_NAME kint_demo)
+set(RA_APP_NAME dac_waveform)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c

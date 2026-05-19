@@ -76,3 +76,19 @@ make -C examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo flash
 ```
 
 The serial console is the J-Link OB VCOM port at 115200 8N1.
+
+## HIL plan
+
+**Requires physical stim -- needs LSM6DSO MikroBUS click on the
+Arduino headers.** Without the click board the I2C bus is unpopulated
+and `WHO_AM_I` reads `0xFF` (no ack). The HIL bench does not have
+the click installed (out of scope for the user).
+
+If the click were installed, the firmware emits
+`lsm6dso: who_am_i=0x6c` immediately on boot, so a `uart_scrape`
+config with `HIL_EXPECT="who_am_i=0x6c"` would be a tight assertion
+that I2C + the click are both functional. That promotion can happen
+when bench hardware is available.
+
+Stays in `hw_pending/` -- requires external IMU hardware not present
+on the HIL bench.

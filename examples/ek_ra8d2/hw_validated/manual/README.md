@@ -3,7 +3,9 @@
 Apps here are hardware-confirmed but cannot be tested automatically by HIL
 CI because they require either:
 - A physical interaction (button press) that CI cannot trigger, or
-- A peripheral not present on the HIL bench (I2C controller, RTT viewer).
+- A peripheral not present on the HIL bench (I2C controller, RTT viewer), or
+- Visual confirmation on the 7-inch LCD that no programmatic check can
+  substitute for.
 
 HIL CI builds these but skips the run/verify step.  Manual sign-off is
 required before promoting an app out of this directory.
@@ -14,9 +16,11 @@ To build: `make <appname>` from the repo root.
 
 | App | Why CI cannot auto-verify |
 |-----|--------------------------|
-| icu_extint_demo | All UART output is triggered by an external interrupt (SW1 / IRQ13); no automatic output at boot |
-| iic_b_peripheral_demo | Peripheral-mode I2C; needs an external I2C controller to initiate transactions |
-| kint_demo | All UART output is triggered by SW1 button press; no automatic output at boot |
-| rtt_log_demo | Output goes to SEGGER RTT over SWD, not to the UART (/dev/ttyACM0) |
-| spi_loopback | Requires COPI/CIPO loopback jumper wired on the SPI header |
-| ssie_audio_loop | Requires an audio codec peripheral connected to the SSIE pins |
+| display_pal_animation | LCD render output -- requires human visual confirmation of animated frames |
+| lcd_color_cycle | LCD render output -- requires human visual confirmation of color cycling |
+| lcd_draw_x | LCD render output -- requires human visual confirmation of drawn 'X' |
+| threadx_guix_demo | LCD render output via GUIX -- requires human visual confirmation |
+
+All other manual-category apps were relocated to `hw_pending/` on 2026-05-19
+because they had not yet been hardware-validated by the author. Their
+HIL-ability assessments live in `hw_pending/<app>/README.md`.

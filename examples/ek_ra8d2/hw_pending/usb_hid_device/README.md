@@ -48,3 +48,21 @@ receptacle (UM Table 22 p 30).
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Table 22 p 30 + Table 24 p 31, USB HID 1.11 Boot Mouse
 profile, and HUM (R01UH1065EJ0130) Ch "USBFS".
+
+## HIL plan
+
+**HIL-able after firmware fix -- currently halts in
+`ra_exception_halt_loop` during init.** Demoted alongside
+`usb_cdc_echo` and `usb_msc_device` on 2026-05-18 (commit 1f46ad3b).
+The existing `hil.conf` is parked at `HIL_MODE=alive` /
+`HIL_BOOT_S=2`.
+
+Proposed promotion gate once the init halt is fixed: Pi enumerates
+the chip as a HID device (`/dev/hidrawX`), reads the report
+descriptor, and confirms the expected vendor-id / usage-page values.
+A new `hil_usb_hid_probe` mode wrapping that flow is the right
+addition. The Pi-as-USB-host hardware setup is the same as
+`usb_cdc_echo` -- one USB cable from the chip's USB-FS connector to
+the Pi.
+
+Stays in `hw_pending/` until the init halt is root-caused.

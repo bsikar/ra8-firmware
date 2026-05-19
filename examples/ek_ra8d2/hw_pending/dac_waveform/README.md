@@ -16,3 +16,15 @@ Build / flash:
 make dac_waveform
 make -C examples/ek_ra8d2/dac_waveform flash
 ```
+
+## HIL plan
+
+**Requires physical stim -- needs scope on DAC0.** Same situation as
+`dac_b_demo`: the only externally-observable signal is the analog
+voltage on DAC_B channel 0, and the Pi has no analog input. A
+`jlink_memprobe` probe on a step-count global would prove the firmware
+called `ra_dac_b_write` in a loop, but NOT prove the analog pin
+actually swung 0..3.3 V on a ~8 Hz triangle.
+
+Relocated from `hw_validated/manual/` on 2026-05-19 -- author has not yet
+visually confirmed the triangle on a scope.

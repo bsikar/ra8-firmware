@@ -60,3 +60,19 @@ console pins are PD02/PD03 per UM Table 13 p 24.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Table 13 p 24 + Table 24 p 31, and HUM (R01UH1065EJ0130)
 SDHI / SCI chapters.
+
+## HIL plan
+
+**Requires physical stim -- needs MicroSD card on Pmod2 (J25).** The
+demo mounts a FAT filesystem on a real SD card and prints success or
+failure banners. The HIL bench does not have a MicroSD card
+installed in the Digilent Pmod MicroSD adapter (out of scope for
+the user).
+
+The existing `hil.conf` (demoted 2026-05-18) documents this. If a
+card were installed, a `uart_scrape` mode with
+`HIL_EXPECT="filex: mount ok"` (and a tight negative regex for the
+mount-failure banners) would be the right gate.
+
+Stays in `hw_pending/` -- requires external MicroSD hardware not
+present on the HIL bench.

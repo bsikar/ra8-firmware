@@ -68,3 +68,24 @@ Pmod1).
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Table 13 p 24 + Table 24 p 31 + Section 6.3 + Table 29 p 35,
 and HUM (R01UH1065EJ0130) Ch "Octo-SPI / OSPI".
+
+## HIL plan
+
+**HIL-able after firmware fix -- alive check currently demoted per
+existing hil.conf.** OSPI flash is on-board (the EK-RA8D2 ships with
+the 64 MB Octo-SPI part on Pmod1 footprint), so no external
+hardware is needed. The blocker is in firmware: the alive check was
+relaxed during the earlier demotion sweep.
+
+Proposed gate once the demoted alive-check is reinstated and the
+LevelX wear-levelling path verified on-bench:
+
+```
+HIL_MODE=uart_scrape
+HIL_EXPECT="levelx: wear-level ok"
+HIL_EXPECT_NEGATIVE="levelx.*FAIL|HardFault"
+HIL_TIMEOUT_S=15
+```
+
+Stays in `hw_pending/` until the OSPI / LevelX wear-levelling path
+is bench-verified.
