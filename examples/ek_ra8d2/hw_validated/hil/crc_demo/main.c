@@ -153,7 +153,7 @@ static void crc_demo_word_to_hex(uint32_t v, uint8_t* dst)
  * @details
  * Bit-serial Sarwate-style implementation; no lookup table so we
  * keep the code review-able and avoid pulling in 1 KB of constants
- * for a smoke-test app. Matches the hardware CRC unit when the
+ * for a HIL test app. Matches the hardware CRC unit when the
  * latter is configured for ``k_ra_crc_poly_32_ieee802_3`` with
  * the standard preset / xor-out.
  *

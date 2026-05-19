@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/uart_hello/main.c
- * @brief UART "hello world" smoke test for EK-RA8D2 (SCI8 @ 115200)
+ * @brief UART "hello world" HIL test for EK-RA8D2 (SCI8 @ 115200)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

@@ -1,6 +1,6 @@
 # threadx_blink
 
-Eclipse ThreadX bring-up smoke test on the EK-RA8D2.
+Eclipse ThreadX bring-up HIL test on the EK-RA8D2.
 
 Two ThreadX threads, each blinking a different LED at a different rate:
 
