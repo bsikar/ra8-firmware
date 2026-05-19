@@ -45,6 +45,7 @@ typedef enum : uint32_t {
   k_canfd_filter_mask_low4  = 0x7F0U,
   k_canfd_filter_mask_full  = 0x7FFU,
   k_canfd_filter_id_nomatch = 0x200U,
+  k_canfd_filter_rx_spin    = 200000U, /**< ~10 ms RX poll budget at 1 GHz. */
 } canfd_filter_const_t;
 
 /** @brief Channel + filter slots. */
@@ -218,11 +219,15 @@ static void canfd_filter_setup_or_halt(void)
   if (ra_canfd_transmit((uint8_t)k_canfd_filter_channel, &tx) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
+  /* Poll for the loopback frame: 500 kbit/s + 8 data bytes is ~240 us
+   * round-trip, so wait up to ~10 ms before declaring no_data. */
   ra_canfd_frame_t rx = {};
-  if (ra_canfd_receive((uint8_t)k_canfd_filter_channel, &rx) != k_ra_ok) {
-    return k_ra_err_no_data;
+  for (uint32_t i = 0U; i < (uint32_t)k_canfd_filter_rx_spin; i++) {
+    if (ra_canfd_receive((uint8_t)k_canfd_filter_channel, &rx) == k_ra_ok) {
+      return k_ra_ok;
+    }
   }
-  return k_ra_ok;
+  return k_ra_err_no_data;
 }
 
 #pragma GCC diagnostic push
