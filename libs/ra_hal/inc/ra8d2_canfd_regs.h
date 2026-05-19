@@ -345,12 +345,32 @@ typedef enum : uint8_t {
   k_ra_cnctr_bit_chmdc = 0U,  /**< Channel Mode Control [1:0].          */
   k_ra_cnctr_bit_cslpr = 2U,  /**< Channel Sleep Request bit 2.         */
   k_ra_cnctr_bit_bom   = 21U, /**< Bus-Off Mode [22:21].                */
+  k_ra_cnctr_bit_ctme  = 24U, /**< Channel Test Mode Enable bit 24.     */
+  k_ra_cnctr_bit_ctms  = 25U, /**< Channel Test Mode Select [26:25].    */
 } ra_cnctr_bit_t;
 
 typedef enum : uint32_t {
-  k_ra_cnctr_mask_chmdc = 0x3UL, /**< 2-bit CHMDC mask.                */
-  k_ra_cnctr_mask_cslpr = 0x4UL, /**< CSLPR (bit 2).                   */
+  k_ra_cnctr_mask_chmdc = 0x3UL,        /**< 2-bit CHMDC mask.              */
+  k_ra_cnctr_mask_cslpr = 0x4UL,        /**< CSLPR (bit 2).                 */
+  k_ra_cnctr_mask_ctme  = 1UL << 24U,   /**< CTME bit 24.                   */
+  k_ra_cnctr_mask_ctms  = 0x3UL << 25U, /**< CTMS[1:0] at bits [26:25].     */
 } ra_cnctr_mask_t;
+
+/**
+ * @enum ra_ctms_mode_t
+ * @brief Channel Test Mode Select values (CFDC[0].CTR.CTMS[1:0]).
+ *
+ * @details
+ * HUM Ch 41 "CFDCnCTR" p 2710 -- CTMS is bits [26:25] of CTR and is
+ * only writable while the channel is in CH_HALT mode.  Selecting any
+ * test mode requires CTME (bit 24) to be set in the same write.
+ */
+typedef enum : uint8_t {
+  k_ra_ctms_basic       = 0U, /**< 00b: Basic test mode (CRC observation). */
+  k_ra_ctms_listen_only = 1U, /**< 01b: Listen-only mode.                  */
+  k_ra_ctms_self_test_0 = 2U, /**< 10b: Self-test 0 (external loopback).   */
+  k_ra_ctms_self_test_1 = 3U, /**< 11b: Self-test 1 (internal loopback).   */
+} ra_ctms_mode_t;
 
 /**
  * @enum ra_chmdc_mode_t

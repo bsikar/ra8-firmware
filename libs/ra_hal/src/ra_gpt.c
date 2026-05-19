@@ -59,6 +59,70 @@ typedef enum : uint32_t {
 } ra_gtwp_t;
 
 /**
+ * @enum ra_gptclkcr_bits_t
+ * @brief GTCLKCR block-level clock-control bits.
+ *
+ * @details
+ * GTCLKCR is the GPT-bank-wide clock-domain register at 0x40323F10
+ * (per ``k_ra_gpt_gtclk_addr`` in ra8d2_gpt_regs.h). HUM Ch 22.2.47
+ * "GTCLKCR : General PWM Timer Clock Control Register", p 974, plus
+ * HUM Ch 22.10.1 "Module-Stop Function Setting", p 1146, require
+ * GTCLKCR to be programmed BEFORE MSTPCRE.MSTPE31 (or any other GPT
+ * MSTP bit) is cleared. Without that step the per-channel bus side
+ * of the GPT block sits in an undefined clock-domain-crossing
+ * state and writes to GTWP / GTCR / etc. silently drop. Symptom on
+ * this chip: every J-Link or firmware read of 0x40322000 onward
+ * returns 0 even after MSTPCR is cleared.
+ *
+ * BPEN = 1 ties GTCLK to PCLKA synchronously, which matches the
+ * project's CGC tree (no separate GPTCLK source via the CGC's
+ * ``GPTCKCR``).
+ */
+typedef enum : uint32_t {
+  k_ra_gptclkcr_bpen = 0x00000001UL, /**< BPEN: PCLKA <-> GTCLK sync. */
+} ra_gptclkcr_bits_t;
+
+/**
+ * @brief Block-level GPT clock-control init (one-shot, MSTP-stopped).
+ *
+ * @details
+ * Programs GTCLKCR.BPEN=1 while every GPT channel's MSTP bit in
+ * MSTPCRE is still asserted (the chip-default reset state). The HUM
+ * Ch 22.10.1 p 1146 explicitly states "Set GTCLKCR register before
+ * releasing the module-stop state" and Ch 22.2.47 p 974 adds "Set
+ * first of initial setting after resetting. If MSTPCRE.MSTPE31 bit
+ * is 0, changing this register is prohibited". This helper must
+ * therefore run before the first ``ra_mstp_enable(k_ra_mstp_gptN)``
+ * call. A static guard makes it idempotent: subsequent
+ * ``ra_gpt_init`` calls on additional channels skip the write.
+ *
+ * @pre At least one GPT channel's MSTP bit is still asserted (any
+ *      channel works -- the register is bank-wide, one instance).
+ * @pre The chip is running secure-mode or the firmware accesses
+ *      0x40323F10 via the secure alias.
+ *
+ * @post GTCLKCR.BPEN == 1; the GPT bus interface is now in a
+ *       defined clock-domain state and subsequent MSTP releases
+ *       leave per-channel registers writable.
+ * @post Subsequent calls become no-ops via the static guard.
+ *
+ * @note Not thread-safe; intended to run from single-threaded
+ *       boot context before any GPT channel is enabled.
+ * @since 0.1.0
+ */
+static void internal_gpt_clock_block_init(void)
+{
+  static bool s_gpt_clock_inited = false;
+  if (s_gpt_clock_inited) {
+    return;
+  }
+  /* HUM Ch 22.2.47 p 974 + Ch 22.10.1 p 1146. */
+  volatile uint32_t* gtclkcr = (volatile uint32_t*)k_ra_gpt_gtclk_addr;
+  *gtclkcr                   = (uint32_t)k_ra_gptclkcr_bpen;
+  s_gpt_clock_inited         = true;
+}
+
+/**
  * @enum ra_gpt_bits_t
  * @brief GTCR / GTSTR / GTSTP / GTST bit positions.
  *
@@ -211,6 +275,10 @@ ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period)
   if (channel >= (uint8_t)k_ra_gpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
+  /* HUM Ch 22.10.1 "Module-Stop Function Setting" p 1146: GTCLKCR
+   * must be programmed BEFORE MSTPCR is cleared, or per-channel
+   * writes silently drop. */
+  internal_gpt_clock_block_init();
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   const ra_err_t mst_err = ra_mstp_enable(s_gpt_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
@@ -262,6 +330,10 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
+  /* HUM Ch 22.10.1 "Module-Stop Function Setting" p 1146: GTCLKCR
+   * must be programmed BEFORE MSTPCR is cleared, or per-channel
+   * writes silently drop. */
+  internal_gpt_clock_block_init();
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   const ra_err_t mst_err = ra_mstp_enable(s_gpt_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */

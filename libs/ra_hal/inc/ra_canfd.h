@@ -273,6 +273,42 @@ ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8
 [[nodiscard]] ra_err_t ra_canfd_set_iso_mode(bool enable);
 
 /**
+ * @brief Enable a CFDC[0].CTR test mode (basic / listen-only / loopback).
+ *
+ * @details
+ * Stamps CTME (bit 24) and CTMS[1:0] (bits [26:25]) in CFDC[0].CTR.
+ * Per HUM Ch 41 "CFDCnCTR" p 2710 these bits are only writable while
+ * the channel is in CH_HALT mode, so the helper:
+ *   1. Drives the channel from CH_OPERATION (the post-init steady
+ *      state) into CH_HALT via CHMDC = 10b and waits for CHLTSTS.
+ *   2. Writes CTME=1 with the requested CTMS value.
+ *   3. Returns the channel to CH_OPERATION via CHMDC = 00b.
+ *
+ * The internal-loopback mode (k_ra_ctms_self_test_1, 11b) is the
+ * documented way to validate the CANFD IP without a transceiver --
+ * the controller routes every TX frame straight to its own RX
+ * acceptance filter (HUM Ch 41 "Self-test mode 1 (Internal Loopback
+ * mode)" p 2710).
+ *
+ * @param[in] channel  Channel index (0..1).
+ * @param[in] mode     Desired CTMS selector (::ra_ctms_mode_t).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               Test mode latched, channel back in operation.
+ * @retval k_ra_err_invalid_arg  @p channel or @p mode out of range.
+ * @retval k_ra_err_hw_timeout   Halt/operation status bit never asserted.
+ *
+ * @pre  ::ra_canfd_init has returned k_ra_ok for @p channel.
+ * @pre  No outstanding TX/RX is in flight on @p channel.
+ * @post CFDC[0].CTR.CTME=1 and CTMS=@p mode.
+ * @post Channel is back in CH_OPERATION ready to TX/RX.
+ *
+ * @note Not thread-safe; caller must serialize with TX/RX.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_canfd_set_test_mode(uint8_t channel, ra_ctms_mode_t mode);
+
+/**
  * @brief Put the CANFD channel into MSTP-gated stop.
  * @since 0.1.0
  */

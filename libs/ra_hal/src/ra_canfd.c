@@ -192,6 +192,88 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
   return k_ra_err_hw_timeout;
 }
 
+/**
+ * @brief Program a default pass-all AFL rule routed into RX FIFO 0.
+ *
+ * @details
+ * Without at least one Acceptance-Filter-List rule active, every
+ * received frame is dropped by the controller before it reaches a
+ * destination buffer (HUM Ch 41 "Acceptance Filter List" p 2731-2740:
+ * routing is governed by the GAFLFDP0/1/8 bits in CFDGAFLP1, and
+ * CFDGAFLCFG0.RNC0 must be non-zero for any rule to be considered).
+ *
+ * This helper installs rule 0 with mask = 0 (every ID matches) and
+ * GAFLFDP0 = 1 (route into RX FIFO 0).  It must run while the global
+ * block is in GL_RESET -- the documented edit window for AFL data and
+ * for CFDGAFLCFG0 (HUM Ch 41 "CFDGAFLCFG0" p 2730 and "CFDGAFLECTR"
+ * p 2729).
+ *
+ * @param[in] reg  Pointer to the CANFD channel register block.
+ *
+ * @pre  Global block is in GL_RESET.
+ * @pre  ``reg`` is non-NULL and points to a CANFD instance.
+ * @post Rule 0 accepts every ID and routes it to RX FIFO 0.
+ * @post CFDGAFLECTR is re-locked (AFLDAE clear) on return.
+ *
+ * @note Internal helper, not exported.
+ * @since 0.1.0
+ */
+static void internal_install_default_afl(volatile r_canfd_t* reg)
+{
+  /* HUM Ch 41 "CFDGAFLCFG0" p 2730 */ /* RNC0 = 1 -> one rule on page 0. */
+  reg->CFDGAFLCFG0 = 1UL << 16U;
+
+  /* HUM Ch 41 "CFDGAFLECTR" p 2729 */ /* page 0, AFLDAE = 1 unlocks edit. */
+  reg->CFDGAFLECTR = k_ra_gaflectr_bit_afldae;
+
+  /* HUM Ch 41 "CFDGAFLID" p 2731 */ /* accept-id ignored: mask = 0. */
+  reg->CFDGAFL[0].ID = 0U;
+  /* HUM Ch 41 "CFDGAFLM" p 2732 */ /* mask = 0 -> accept every ID. */
+  reg->CFDGAFL[0].M = 0U;
+  /* HUM Ch 41 "CFDGAFLP0" p 2733 */ /* no RX-MB routing requested. */
+  reg->CFDGAFL[0].P0 = 0U;
+  /* HUM Ch 41 "CFDGAFLP1" p 2734 */ /* GAFLFDP0 = bit 0 -> RX FIFO 0. */
+  reg->CFDGAFL[0].P1 = 1UL << 0U;
+
+  /* Re-lock the AFL data window. */
+  reg->CFDGAFLECTR = 0U;
+}
+
+/**
+ * @brief Enable RX FIFO 0 with a sensible default depth and payload.
+ *
+ * @details
+ * HUM Ch 41 "CFDRFCCa" p 2741: RFE is the last bit set in the register,
+ * RFDC selects FIFO depth, RFPLS selects per-entry payload bytes.
+ * Writing RFE = 1 while RFDC = 0 silently fails ("This bit can only be
+ * set if the configured FIFO depth is greater than 0x000").
+ *
+ * Programmed values:
+ *   - RFDC[10:8]   = 001b (4 messages)
+ *   - RFPLS[6:4]   = 111b (64-byte CAN-FD payload)
+ *   - RFE          = 1    (FIFO enabled)
+ *
+ * @param[in] reg Pointer to the CANFD channel register block.
+ *
+ * @pre  Global block is in GL_RESET (RFDC / RFPLS only writable here).
+ * @pre  ``reg`` is non-NULL.
+ * @post CFDRFCC[0] reflects depth=4 / payload=64 / RFE=1.
+ * @post CFDRFSTS[0].RFEMP will clear when frames arrive.
+ *
+ * @note Internal helper, not exported.
+ * @since 0.1.0
+ */
+static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
+{
+  /* HUM Ch 41 "CFDRFCCa" p 2741 */ /* Depth+payload in GL_RESET, RFE last. */
+  enum : uint32_t {
+    k_rfcc_rfdc_4msgs = 1UL << 8U, /**< RFDC = 001b -> 4 entries.        */
+    k_rfcc_rfpls_64   = 7UL << 4U, /**< RFPLS = 111b -> 64-byte CAN-FD.  */
+  };
+  reg->CFDRFCC[0] = k_rfcc_rfdc_4msgs | k_rfcc_rfpls_64;
+  reg->CFDRFCC[0] |= k_ra_rfcc_bit_rfe;
+}
+
 /* ra_canfd_init -- see header for full description. */
 ra_err_t ra_canfd_init(uint8_t channel)
 {
@@ -213,11 +295,21 @@ ra_err_t ra_canfd_init(uint8_t channel)
     }
   }
 
-  /* Cancel global sleep -> global reset. (FSP r_canfd.c line ~311.) */
+  /* Cancel global sleep -> global reset. (FSP r_canfd.c line ~311.)
+   * AFL data, CFDGAFLCFG0, and CFDRFCC depth/payload are only writable
+   * while the global block is in GL_RESET (HUM Ch 41 "CFDGAFLECTR"
+   * p 2729 and "CFDRFCCa.RFDC" p 2741). */
   (void)internal_set_global_mode(reg, k_ra_gctr_value_reset);
 
   /* Cancel channel sleep -> channel reset. (FSP r_canfd.c line ~417.) */
   (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
+
+  /* While in GL_RESET, install a pass-all AFL rule that routes every
+   * frame into RX FIFO 0, and configure RX FIFO 0 itself.  Without
+   * these two writes the RX FIFO stays empty even when frames arrive
+   * (HUM Ch 41 "RX FIFO Buffers" p 2734-2742). */
+  internal_install_default_afl(reg);
+  internal_enable_rx_fifo0(reg);
 
   /* Move to global operation, then channel operation. */
   (void)internal_set_global_mode(reg, k_ra_gctr_value_operation);
@@ -387,7 +479,14 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
   if (n_err != k_ra_ok) {
     return n_err;
   }
-  /* HUM Ch 41 "CFDCnNCFG" p 2760 */ /* "CFDCnNCFG" + FSP r_canfd.c line ~422. */
+
+  /* HUM Ch 41 "CFDCnNCFG.NTSEG2" p 2706 -- NCFG / DCFG are only
+   * writable in CH_RESET or CH_HALT.  ra_canfd_init leaves the channel
+   * in CH_OPERATION, so transition back to CH_HALT for the edit then
+   * re-enter CH_OPERATION on the way out. */
+  (void)internal_set_channel_mode(reg, k_ra_chmdc_halt);
+
+  /* HUM Ch 41 "CFDCnNCFG" p 2705 */ /* "CFDCnNCFG" + FSP r_canfd.c line ~422. */
   reg->CFDC[0].NCFG = internal_pack_ncfg(&nominal);
 
   if ((data_bitrate_bps != 0U) && (data_bitrate_bps > bitrate_bps)) {
@@ -396,11 +495,16 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
     const ra_err_t    d_err =
       internal_solve_timing(pclka_hz, data_bitrate_bps, k_ra_canfd_data_prescaler_max, &data);
     if (d_err != k_ra_ok) {
+      /* Best-effort: return the channel to CH_OPERATION so the
+       * caller does not observe a half-applied edit. */
+      (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
       return d_err;
     }
     /* HUM Ch 41 "CFDCnDCFG" p 2785 */ /* "CFDCnDCFG" + FSP r_canfd.c line ~432. */
     reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
   }
+
+  (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
 
   ra_log_info_val(s_tag, "set_bitrate bps", bitrate_bps);
   return k_ra_ok;
@@ -771,6 +875,37 @@ ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t ma
   /* Clear AFLDAE so the AFL window goes back to its locked state. */
   reg->CFDGAFLECTR = 0U;
   return k_ra_ok;
+}
+
+/* ra_canfd_set_test_mode -- see header for full description. */
+ra_err_t ra_canfd_set_test_mode(uint8_t channel, ra_ctms_mode_t mode)
+{
+  volatile r_canfd_t* reg = ra_canfd(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if ((uint8_t)mode > (uint8_t)k_ra_ctms_self_test_1) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 41 "CFDCnCTR" p 2710 -- CTME (bit 24) and CTMS (bits
+   * [26:25]) are only writable in CH_HALT mode.  ra_canfd_init parks
+   * the channel in CH_OPERATION so we transition through CH_HALT to
+   * land the test-mode select, then return to CH_OPERATION. */
+  const ra_err_t halt_err = internal_set_channel_mode(reg, k_ra_chmdc_halt);
+  if (halt_err != k_ra_ok) {
+    /* Best-effort recover the channel before reporting the error. */
+    (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
+    return halt_err;
+  }
+
+  /* Read-modify-write CTR: clear any prior CTME/CTMS, then OR in the
+   * requested selector with CTME = 1. */
+  uint32_t ctr = reg->CFDC[0].CTR;
+  ctr &= ~(k_ra_cnctr_mask_ctme | k_ra_cnctr_mask_ctms);
+  ctr |= k_ra_cnctr_mask_ctme;
+  ctr |= ((uint32_t)mode << (uint32_t)k_ra_cnctr_bit_ctms) & k_ra_cnctr_mask_ctms;
+  reg->CFDC[0].CTR = ctr;
+
+  return internal_set_channel_mode(reg, k_ra_chmdc_operation);
 }
 
 /* ra_canfd_set_brs -- see header for full description. */

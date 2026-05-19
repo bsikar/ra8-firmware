@@ -556,9 +556,52 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
   return k_ra_ok;
 }
 
-/* Drive the page-program register sequence (WREN -> PP -> kick) -- see surrounding code and HUM citations. */
+/**
+ * @brief Stage WREN + page-program header (CDT + CDA only) without kicking.
+ *
+ * @details
+ * Splits the previous "WREN -> build PP header -> KICK" helper so the
+ * caller can load the outgoing payload into ``CDBUF[CDD0]`` /
+ * ``CDBUF[CDD1]`` BEFORE TRREQ is asserted. The earlier code asserted
+ * TRREQ here and only loaded CDD0/CDD1 afterwards, which clocked the
+ * stale CDBUF contents (zeros, or whatever the previous read response
+ * left behind) onto the bus instead of the caller's data. That bug
+ * surfaced as: (a) flash_journal's first round-trip "passing" purely
+ * because CDD0/CDD1 happened to be zero (matching counter=0) while
+ * every subsequent counter mismatched, (b) the threadx_levelx_demo
+ * panicking inside ``lx_nor_flash_format`` because LevelX's free-bit
+ * metadata reads back as the previous transfer's status byte instead
+ * of the bit-pattern it just wrote, and (c) the threadx_filex_levelx_demo
+ * surfacing ``lx_nor_flash_format failed`` for the same reason -- every
+ * LevelX sector-header write to the on-board MX25xxx flash dropped its
+ * payload, so LevelX saw zero usable sectors.
+ *
+ * HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 documents
+ * the manual-command flow as "fill CDBUF, then set CDCTL0.TRREQ"; FSP
+ * ``r_ospi_b_direct_transfer`` (``r_ospi_b.c`` line ~1311) writes the
+ * data words into CDBUF before TRREQ on every PP transfer.
+ *
+ * @param[in] reg        xSPI register block (already gated open).
+ * @param[in] flash_addr Destination flash byte address.
+ * @param[in] len        Bytes to program in this chunk (1..8).
+ *
+ * @return ::ra_err_t outcome of the WREN sub-command.
+ * @retval k_ra_ok       WREN dispatched and CMDCMP cleared.
+ * @retval other         Underlying CMDCMP timeout from WREN.
+ *
+ * @pre ``reg != nullptr`` and the xSPI MSTP gate is open.
+ * @pre ``len`` has been clamped by the caller to ``[1..8]``.
+ * @post On success the controller has accepted WREN and the PP CDT/CDA
+ *       words are staged in CDBUF slot 0 awaiting TRREQ.
+ * @post CDBUF[CDD0]/CDBUF[CDD1] are intentionally NOT touched here so
+ *       the caller can load the payload before kicking.
+ *
+ * @note Not thread-safe; caller serialises bus access.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t
-internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, uint32_t len)
+internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, uint32_t len)
 {
   const ra_err_t wren = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_write_enable);
   if (wren != k_ra_ok) {
@@ -568,7 +611,9 @@ internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
   /* Programme a JEDEC 0x02 page-program with 3-byte address. The
    * outgoing byte count is encoded in CDT.DATASIZE (FSP semantics);
    * leaving the periodic-mode CDCTL1/CDCTL2 PEREXP/PERMSK fields
-   * untouched. */
+   * untouched. The kick (TRREQ) is deferred to the caller so that
+   * CDBUF[CDD0]/CDBUF[CDD1] can be loaded with the payload first --
+   * see this helper's @details for the rationale. */
   const uint8_t chunk =
     (len > (uint32_t)k_ra_xspi_cdt_max_data_bytes) ? k_ra_xspi_cdt_max_data_bytes : (uint8_t)len;
   internal_build_chunk_header(reg,
@@ -576,7 +621,7 @@ internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
                               flash_addr,
                               chunk,
                               k_ra_xspi_cdt_trtype_write);
-  return internal_kick_command(reg);
+  return k_ra_ok;
 }
 
 /* Poll the SPI flash Status Register until WIP == 0 or timeout -- see surrounding code and HUM citations. */
@@ -601,37 +646,41 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
 #endif
 }
 
-/* ra xspi flash program -- see surrounding code and HUM citations. */
-ra_err_t
-ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data, uint32_t len)
+/**
+ * @brief Stage the page-program payload into CDBUF[CDD0] / CDBUF[CDD1].
+ *
+ * @details
+ * HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 + FSP
+ * ``r_ospi_b_direct_transfer`` document the manual-command flow as
+ * "fill CDBUF, then set CDCTL0.TRREQ". The prior implementation
+ * issued the WREN + 0x02 page-program header and asserted TRREQ
+ * BEFORE staging the caller's bytes; the controller therefore
+ * clocked out whatever stale words were left in CDD0/CDD1 from the
+ * previous transfer. Splitting the staging step into this helper
+ * lets ``ra_xspi_flash_program`` write the real payload first and
+ * only then kick the transaction.
+ *
+ * @param[in] reg  xSPI register block (already gated open by the
+ *                 caller).
+ * @param[in] data Caller bytes. Must be non-NULL; ``len`` bytes are
+ *                 read.
+ * @param[in] len  Number of bytes to stage, in ``[1..8]`` (manual-
+ *                 command CDBUF capacity).
+ *
+ * @pre ``reg != nullptr`` and the xSPI MSTPCR gate has been opened.
+ * @pre ``data != nullptr`` and ``len`` is clamped to ``[1..8]``.
+ * @post CDBUF[CDD0] holds bytes ``data[0..min(3,len)]`` packed
+ *       little-endian.
+ * @post CDBUF[CDD1] holds bytes ``data[4..len-1]`` (or zero if
+ *       ``len <= 4``).
+ *
+ * @note Not thread-safe; caller serialises bus access.
+ * @since 0.1.0
+ */
+static void internal_xspi_stage_payload(volatile r_xspi_regs_t* reg,
+                                        const uint8_t*          data,
+                                        uint32_t                len)
 {
-  RA_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
-  if ((len == 0U) || (len > k_ra_xspi_max_xfer)) {
-    return k_ra_err_invalid_arg;
-  }
-  volatile r_xspi_regs_t* reg = ra_xspi(instance);
-  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  const ra_err_t p = internal_flash_start_program(reg, flash_addr, len);
-  if (p != k_ra_ok) {
-    return p;
-  }
-#ifdef RA_SIMULATOR_MODE
-  const ra_err_t rng = internal_sim_range_check(flash_addr, len);
-  if (rng != k_ra_ok) {
-    return rng;
-  }
-  /* AND-only model -- SPI NOR flash can only clear bits, never set
-   * them. Writing the same region twice without an erase will
-   * drop bits. Keeps tests deterministic. */
-  for (uint32_t i = 0U; i < len; i++) {
-    s_fake_flash[instance][flash_addr + i] &= data[i];
-  }
-#else
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Stage outgoing bytes into CDBUF data words 0/1. Up to 8
-   * bytes per manual command; larger writes fall out to the
-   * page-program loop the caller handles above. */
   uint32_t data_lo = 0U;
   uint32_t data_hi = 0U;
   for (uint32_t i = 0U; i < len; i++) {
@@ -644,6 +693,95 @@ ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data
   }
   reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0] = data_lo;
   reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data1] = data_hi;
+}
+
+/**
+ * @brief Erase + page-program a single chunk of bytes to OSPI flash.
+ *
+ * @details
+ * Three-step JEDEC page-program sequence as documented in HUM Ch 44
+ * "Octal Serial Peripheral Interface (OSPI)" p 2986: 0x06 (WREN) +
+ * 0x02 (PP) with 3-byte address + 1..8 bytes payload, then poll
+ * WIP via 0x05 (RDSR). Caller must have ``ra_xspi_init``'d the
+ * instance and erased the destination sector if a fresh write
+ * (SPI NOR can only clear bits, never set them, between erases).
+ *
+ * Splits the operation into two helpers so the host build's
+ * simulator path and the on-target path agree on ordering:
+ *
+ *   1. ``internal_flash_stage_program`` writes WREN, builds the PP
+ *      command header in CDT/CDA, and returns without asserting
+ *      TRREQ.
+ *   2. ``internal_xspi_stage_payload`` packs ``data[]`` into
+ *      CDBUF[CDD0/CDD1] (target build only -- the simulator path
+ *      mutates the fake-flash array directly).
+ *   3. ``internal_kick_command`` asserts CDCTL0.TRREQ and polls
+ *      CMDCMP.
+ *   4. ``internal_poll_wip_clear`` issues 0x05 RDSR until WIP=0.
+ *
+ * @param[in] instance   xSPI instance index (currently only 0).
+ * @param[in] flash_addr Destination flash byte address.
+ * @param[in] data       Payload buffer (1..8 bytes).
+ * @param[in] len        Payload length in bytes; ``[1, 8]``.
+ *
+ * @return ::ra_err_t outcome of the chain.
+ * @retval k_ra_ok               Payload written and WIP clear.
+ * @retval k_ra_err_invalid_arg  ``data`` is NULL, ``len`` is 0, or
+ *                               ``len > 8``.
+ * @retval k_ra_err_not_init     ``ra_xspi_init`` was not called.
+ * @retval k_ra_err_timeout      CMDCMP / WIP poll exceeded its
+ *                               timeout budget.
+ * @retval k_ra_err_hw_error     Underlying staging step failed.
+ *
+ * @pre ``ra_xspi_init(instance, ...)`` has succeeded.
+ * @pre The destination sector has been erased via
+ *      ``ra_xspi_flash_erase_sector`` if any bit needs to be set.
+ *
+ * @post On success ``data[0..len-1]`` is persisted at
+ *       ``flash_addr``.
+ * @post On success the flash status WIP bit is clear (controller
+ *       is idle and ready for the next transaction).
+ *
+ * @note Not thread-safe; caller serialises bus access.
+ * @since 0.1.0
+ */
+ra_err_t
+ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data, uint32_t len)
+{
+  RA_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
+  if ((len == 0U) || (len > k_ra_xspi_max_xfer)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+
+  const ra_err_t p = internal_flash_stage_program(reg, flash_addr, len);
+  if (p != k_ra_ok) {
+    return p;
+  }
+#ifdef RA_SIMULATOR_MODE
+  /* HUM Ch 44 p 2986 -- simulator path: kick first so register-level
+   * test assertions see the on-target sequence, then mutate fake
+   * flash. AND-only model: SPI NOR can only clear bits. */
+  const ra_err_t kick = internal_kick_command(reg);
+  if (kick != k_ra_ok) {
+    return kick;
+  }
+  const ra_err_t rng = internal_sim_range_check(flash_addr, len);
+  if (rng != k_ra_ok) {
+    return rng;
+  }
+  for (uint32_t i = 0U; i < len; i++) {
+    s_fake_flash[instance][flash_addr + i] &= data[i];
+  }
+#else
+  /* HUM Ch 44 p 2986 -- target path: stage CDD0/CDD1 BEFORE TRREQ
+   * (cf. internal_xspi_stage_payload comment block). */
+  internal_xspi_stage_payload(reg, data, len);
+  const ra_err_t kick = internal_kick_command(reg);
+  if (kick != k_ra_ok) {
+    return kick;
+  }
 #endif
   return internal_poll_wip_clear(instance);
 }
