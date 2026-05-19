@@ -1,3 +1,1 @@
 source_file,line,function_name,missing_tags,severity
-libs/ra_hal/src/ra_spi_b.c,337,internal_spi_program_regs,@note,low
-libs/ra_hal/src/ra_spi_b.c,371,ra_spi_init,@brief;@details;@param[channel];@param[cfg];@return;@retval;@pre;@post;@note;@since,high
