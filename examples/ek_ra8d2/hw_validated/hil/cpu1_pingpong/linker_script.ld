@@ -121,6 +121,30 @@ SECTIONS
         KEEP(*(.vectors.*))
     } > MRAM
 
+    /* ---- CPU1 (Cortex-M33) firmware image ----
+     *
+     * The cpu1_pingpong app builds two separate ELFs: this one for the
+     * Cortex-M85 primary core, and ``cpu1_pingpong_cpu1.elf`` for the
+     * Cortex-M33 secondary core. Per HUM Ch 2.6.1.1 "Boot CPU Selection"
+     * p 117 the secondary CPU sits in power-gating at reset and is
+     * released only when CPU0 writes CPU1ACTCSR; it then fetches its
+     * reset vector from CPU1INITVTOR (HUM Ch 2.9.1.7 p 129).
+     *
+     * The CPU1 binary is converted to a relocatable ``.o`` by the
+     * CMakeLists.txt post-build step, which renames its single ``.data``
+     * section to ``.cpu1_image``. We pin that section here at the
+     * MRAM_CPU1 origin (0x020C0000) so a single SWD ``loadfile`` of the
+     * M85 .hex deposits both cores' code into MRAM. Without this
+     * placement the cpu1.hex was built but never flashed, CPU1 fetched
+     * its reset vector from blank MRAM (0xFFFFFFFF), and the ping-pong
+     * counter stayed at 0 across the entire HIL probe window.
+     */
+    .cpu1_image ORIGIN(MRAM_CPU1) : ALIGN(4)
+    {
+        KEEP(*(.cpu1_image))
+        KEEP(*(.cpu1_image.*))
+    } > MRAM_CPU1
+
     /* ---- Code + const data ---- */
     .text : ALIGN(4)
     {

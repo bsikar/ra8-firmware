@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -396,6 +397,17 @@ static void demo_thread_entry(ULONG thread_input)
   (void)thread_input;
 
   demo_print("[fxlx] booting xSPI flash\r\n");
+  /* HUM Ch 20.6 "Multiplexed Pin Function Selector" p 871 + EK-RA8D2
+   * UM Table 29 p 35: the 12 OCTA bus pins (CS, CK, DQS, DQ0..DQ7)
+   * and RESET_L strap come out of reset under PSEL=0 (general-purpose
+   * I/O). Without routing them through PSEL=11100b first, the OSPI
+   * controller ungates correctly when MSTPB16 is cleared but no clock
+   * edges leave the SoC -- every manual command times out at CMDCMP
+   * and lx_nor_flash_format perceives a dead flash. */
+  if (ra_board_xspi_pins_init() != k_ra_ok) {
+    demo_print("[fxlx] xspi pins init failed\r\n");
+    demo_panic_halt();
+  }
   if (ra_xspi_init((uint8_t)0, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
     demo_print("[fxlx] ra_xspi_init failed\r\n");
     demo_panic_halt();

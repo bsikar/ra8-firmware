@@ -326,6 +326,14 @@ static void demo_thread_entry(ULONG thread_input)
   (void)thread_input;
 
   demo_print("[lx] booting xSPI flash\r\n");
+  /* HUM Ch 20.6 + EK-RA8D2 UM Table 29 p 35: route OSPI bus pins
+   * via PSEL=11100b before the controller can issue any clock
+   * edge. The 12 OCTA pins (CS, CK, DQS, DQ0..DQ7) plus RESET_L
+   * default to GPIO out of reset. */
+  if (ra_board_xspi_pins_init() != k_ra_ok) {
+    demo_print("[lx] xspi pins init failed\r\n");
+    demo_panic_halt();
+  }
   if (ra_xspi_init((uint8_t)0, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
     demo_print("[lx] ra_xspi_init failed\r\n");
     demo_panic_halt();

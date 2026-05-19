@@ -179,6 +179,21 @@ int32_t main(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     flash_journal_panic_halt();
   }
+  /* HUM Ch 20.6 "Multiplexed Pin Function Selector" p 871 + EK-RA8D2 UM
+   * Table 29 p 35: the 12 OCTA bus pins (CS/CK/DQS/DQ0..DQ7) come out
+   * of reset under PSEL=0 (general-purpose I/O), so the OSPI controller
+   * cannot drive its IO_n outputs onto the IS25LX512M until they are
+   * re-routed under PSEL=0x1C. The board-init helper also pulses the
+   * active-low RESET_L strap on P106 (IS25LX512M datasheet Ch 9.2),
+   * which is required for the device to enter its standard SPI mode
+   * with a deterministic register state. Without this call the OSPI
+   * register block at 0x4026_8000 ungates correctly but every manual
+   * command times out at CMDCMP because the flash never sees a clock
+   * edge -- the symptom is g_fj_match advancing by exactly 1 (the
+   * blank-sector read) followed by 6 mismatches per probe window. */
+  if (ra_board_xspi_pins_init() != k_ra_ok) {
+    flash_journal_panic_halt();
+  }
   if (ra_xspi_init((uint8_t)k_journal_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
     flash_journal_panic_halt();
   }
