@@ -92,3 +92,17 @@ balls. SCI8 console on PD02 / PD03 per UM Table 13 p 24.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Tables 13 p 24 / 24 p 31 / 28 p 34, USB Mass Storage Class
 Bulk-Only Transport 1.0, and HUM (R01UH1065EJ0130) Ch "USBHS".
+
+## HIL plan
+
+**Requires physical stim -- needs an external USB thumb drive on J7
+(USB-HS).** Same USB-host-mode situation as `usb_host_cdc_echo` and
+`usb_host_keyboard`: the chip is waiting for a USB Mass Storage
+device. Pi USB gadget (libcomposite g_mass_storage backed by a
+file) could emulate one, but no such service is configured.
+
+Also blocked by the USB HS SET_ADDRESS stall documented in
+`hw_pending/README.md`.
+
+Stays in `hw_pending/` -- USB HS hardware/firmware blocked AND no Pi
+USB-gadget mass-storage scaffolding exists.

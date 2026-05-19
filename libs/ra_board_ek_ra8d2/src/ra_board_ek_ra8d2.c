@@ -2283,8 +2283,21 @@ static ra_err_t internal_eth_etha_to_operation(void)
 static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration
+   * Register" p 1707: each frame class has an ENABLE bit (UCENE/BCENE
+   * /MCENE in the [10:0] half + matching UCENP/BCENP/MCENP in the
+   * [26:16] half) AND a separate ACCEPT bit (BCACE bit 6, MCACE bit 5)
+   * that controls whether the MAC actually forwards the matched frame
+   * to the descriptor ring. Without BCACE the chip latches the ARP
+   * broadcast in the perfect-match comparator and then drops it before
+   * the GWCA agent ever sees it, so the host's ARP responder never
+   * sees a "who-has 192.168.1.42" request and never replies. FSP
+   * r_rmac.c::rmac_configure_reception_filter ORs both bits into the
+   * canonical promiscuous mask for the same reason. */
   const ra_rmac_config_t rmac_cfg = {
-    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast),
+    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match
+                                         | k_ra_rmac_mrafc_broadcast
+                                         | k_ra_rmac_mrafc_bc_accept),
     .err_irq_enable  = 0U,
     .mon0_irq_enable = 0U,
     .mon1_irq_enable = 0U,

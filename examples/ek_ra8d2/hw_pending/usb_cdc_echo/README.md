@@ -193,3 +193,20 @@ via `ra_pfs_route_peripheral`.
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
 Rev 1.01) Table 22 p 30 + Table 24 p 31, USB CDC PSTN 1.20, and HUM
 (R01UH1065EJ0130) Ch "USBFS".
+
+## HIL plan
+
+**HIL-able after firmware fix -- currently halts in
+`ra_exception_halt_loop` during init.** Demoted from
+`hw_validated/hil/` on 2026-05-18 alongside `usb_hid_device` /
+`usb_msc_device` (commit 1f46ad3b). The existing `hil.conf` is parked
+at `HIL_MODE=alive` / `HIL_BOOT_S=2` and the harness already has the
+USB-side scaffold ready: `scripts/hil_usb_test.sh` enumerates the
+chip as a USB CDC device, opens `/dev/ttyACMx`, writes a known
+string, and asserts the echo arrives within a timeout.
+
+Once the init halt is root-caused, this is the most-ready USB demo
+to promote back -- the Pi-as-USB-host wiring is the same physical
+setup the existing alive-mode HIL bench already uses.
+
+Stays in `hw_pending/` until the init halt is root-caused.
