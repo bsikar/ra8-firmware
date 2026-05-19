@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/tz_secure_only_usb/vector_table.c
+ * @file examples/ek_ra8d2/tz_secure_only_usb_fs/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details
@@ -40,7 +40,7 @@ extern void ra_isr_dispatch(uint16_t slot);
  * Project convention: linker symbols carry the `g_ra_ls_` prefix so they
  * are not in the reserved leading-underscore namespace that ISO C (and
  * cert-dcl37-c / bugprone-reserved-identifier) reject. The linker script
- * in tz_secure_only_usb/linker_script.ld defines them with this exact spelling.
+ * in tz_secure_only_usb_fs/linker_script.ld defines them with this exact spelling.
  */
 
 extern uint32_t g_ra_ls_stack_top; /**< Top of main stack (linker symbol). */
@@ -64,7 +64,7 @@ extern int32_t main(void);
 
 typedef void (*exc_handler_t)(void);
 
-void SystemInit(void); /* in tz_secure_only_usb/system_init.c */
+void SystemInit(void); /* in tz_secure_only_usb_fs/system_init.c */
 void Reset_Handler(void);
 void Default_Handler(void);
 void HardFault_Handler(void);

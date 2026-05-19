@@ -34,6 +34,6 @@ Same step-tracker pattern used in flash_journal / cpu1_pingpong:
 3. Memprobe `g_usb_step` to find the failing step, then JTAG-dump
    the relevant peripheral state.
 
-`tz_secure_only_usb` and `tz_secure_only_usb_hs` continue to pass
+`tz_secure_only_usb_fs` and `tz_secure_only_usb_hs` continue to pass
 on the simpler non-ThreadX path; the issue is specific to the
 USBX-based stack.

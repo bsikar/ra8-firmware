@@ -1,10 +1,10 @@
 /**
- * @file test_app_tz_secure_only_usb.c
+ * @file test_app_tz_secure_only_usb_fs.c
  * @brief Integration test: secure-world-only USB CDC ACM bring-up
  *
  * @details
  * Mirrors test_app_usb_cdc_echo.c. The production app at
- * examples/ek_ra8d2/tz_secure_only_usb/main.c is a copy of usb_cdc_echo
+ * examples/ek_ra8d2/tz_secure_only_usb_fs/main.c is a copy of usb_cdc_echo
  * with every TrustZone artifact stripped (no SAU programming, no NSC
  * veneer page, no NS_MRAM/NS_SRAM placeholders, RA_TRUSTZONE_ENABLE
  * forced OFF). The runtime call sequence (CGC + PFS + LED + ra_usb_pal)
@@ -48,7 +48,7 @@ typedef enum : uint16_t {
   k_test_tzso_echo_payload = 8U,    /**< Sample echo payload bytes. */
 } test_tzso_const_t;
 
-/** @brief Pin map mirrors examples/ek_ra8d2/tz_secure_only_usb/main.c. */
+/** @brief Pin map mirrors examples/ek_ra8d2/tz_secure_only_usb_fs/main.c. */
 static const ra_port_pin_t k_test_tzso_pin_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
 static const ra_port_pin_t k_test_tzso_pin_vbusen =
@@ -86,14 +86,14 @@ static void reset_world(void)
 static void test_tzso_pfs_routes_four_usbfs_pins(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: PFS routes VBUS/VBUSEN/D+/D-");
+  TEST_BEGIN("tz_secure_only_usb_fs: PFS routes VBUS/VBUSEN/D+/D-");
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_pfs_route_peripheral(k_test_tzso_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_pfs_route_peripheral(k_test_tzso_pin_vbusen, k_ra_psel_usb_fs, "test.vbusen"));
   TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tzso_pin_dp, k_ra_psel_usb_fs, "test.dp"));
   TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tzso_pin_dm, k_ra_psel_usb_fs, "test.dm"));
-  TEST_END("tz_secure_only_usb: PFS routes VBUS/VBUSEN/D+/D-");
+  TEST_END("tz_secure_only_usb_fs: PFS routes VBUS/VBUSEN/D+/D-");
 }
 
 /**
@@ -110,7 +110,7 @@ static void test_tzso_pfs_routes_four_usbfs_pins(void)
 static void test_tzso_full_bringup_chain_ok(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: full bring-up chain");
+  TEST_BEGIN("tz_secure_only_usb_fs: full bring-up chain");
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_pfs_route_peripheral(k_test_tzso_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
   TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tzso_pin_dp, k_ra_psel_usb_fs, "test.dp"));
@@ -121,7 +121,7 @@ static void test_tzso_full_bringup_chain_ok(void)
   ra_usb_pal_state_t state = k_ra_usb_pal_state_detached;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
   TEST_ASSERT_EQ(k_ra_usb_pal_state_attached, state);
-  TEST_END("tz_secure_only_usb: full bring-up chain");
+  TEST_END("tz_secure_only_usb_fs: full bring-up chain");
 }
 
 /**
@@ -139,7 +139,7 @@ static void test_tzso_full_bringup_chain_ok(void)
 static void test_tzso_open_three_endpoints(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: open notify + bulk-IN + bulk-OUT");
+  TEST_BEGIN("tz_secure_only_usb_fs: open notify + bulk-IN + bulk-OUT");
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   TEST_ASSERT_EQ(k_ra_ok,
@@ -157,7 +157,7 @@ static void test_tzso_open_three_endpoints(void)
                                     k_ra_usb_pal_ep_dir_out,
                                     k_ra_usb_pal_ep_type_bulk,
                                     (uint16_t)k_test_tzso_max_packet));
-  TEST_END("tz_secure_only_usb: open notify + bulk-IN + bulk-OUT");
+  TEST_END("tz_secure_only_usb_fs: open notify + bulk-IN + bulk-OUT");
 }
 
 /**
@@ -173,7 +173,7 @@ static void test_tzso_open_three_endpoints(void)
 static void test_tzso_echo_one_packet(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: echo one bulk-IN packet");
+  TEST_BEGIN("tz_secure_only_usb_fs: echo one bulk-IN packet");
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   TEST_ASSERT_EQ(k_ra_ok,
@@ -186,7 +186,7 @@ static void test_tzso_echo_one_packet(void)
     ra_usb_pal_ep_send((uint8_t)k_test_tzso_ep_bulk_in, echo, (uint16_t)k_test_tzso_echo_payload);
   TEST_ASSERT(err == k_ra_ok || err == k_ra_err_no_mem || err == k_ra_err_hw_not_ready ||
               err == k_ra_err_invalid_state);
-  TEST_END("tz_secure_only_usb: echo one bulk-IN packet");
+  TEST_END("tz_secure_only_usb_fs: echo one bulk-IN packet");
 }
 
 /* -------------------------------------------------------------------------
@@ -204,10 +204,10 @@ static void test_tzso_echo_one_packet(void)
 static void test_tzso_pfs_route_invalid_pin_rejected(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: PFS rejects out-of-range port");
+  TEST_BEGIN("tz_secure_only_usb_fs: PFS rejects out-of-range port");
   const ra_port_pin_t bad_pin = (ra_port_pin_t)(((uint16_t)0x0FU << 8) | (uint16_t)k_ra_pin_0);
   TEST_ASSERT(ra_pfs_route_peripheral(bad_pin, k_ra_psel_usb_fs, "test.bad") != k_ra_ok);
-  TEST_END("tz_secure_only_usb: PFS rejects out-of-range port");
+  TEST_END("tz_secure_only_usb_fs: PFS rejects out-of-range port");
 }
 
 /**
@@ -224,14 +224,14 @@ static void test_tzso_pfs_route_invalid_pin_rejected(void)
 static void test_tzso_attach_false_returns_to_detached(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: attach(false) returns to detached");
+  TEST_BEGIN("tz_secure_only_usb_fs: attach(false) returns to detached");
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(false));
   ra_usb_pal_state_t state = k_ra_usb_pal_state_attached;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
   TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
-  TEST_END("tz_secure_only_usb: attach(false) returns to detached");
+  TEST_END("tz_secure_only_usb_fs: attach(false) returns to detached");
 }
 
 /**
@@ -247,7 +247,7 @@ static void test_tzso_attach_false_returns_to_detached(void)
 static void test_tzso_send_null_data_rejected(void)
 {
   reset_world();
-  TEST_BEGIN("tz_secure_only_usb: ep_send rejects NULL data");
+  TEST_BEGIN("tz_secure_only_usb_fs: ep_send rejects NULL data");
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   TEST_ASSERT_EQ(k_ra_ok,
@@ -259,7 +259,7 @@ static void test_tzso_send_null_data_rejected(void)
                                     nullptr,
                                     (uint16_t)k_test_tzso_echo_payload);
   TEST_ASSERT(err != k_ra_ok);
-  TEST_END("tz_secure_only_usb: ep_send rejects NULL data");
+  TEST_END("tz_secure_only_usb_fs: ep_send rejects NULL data");
 }
 
 int main(void)

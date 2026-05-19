@@ -59,7 +59,7 @@ the throughput numbers.
 
 | App | Controller | Connector | Throughput floor |
 |-----|------------|-----------|------------------|
-| tz_secure_only_usb | USBFS | J11 (micro-USB) | 250 KB/s one-way |
+| tz_secure_only_usb_fs | USBFS | J11 (micro-USB) | 250 KB/s one-way |
 | tz_secure_only_usb_hs | USBHS | J7 (USB-C) | 2000 KB/s one-way |
 
 ### Self-validating echoes (CAN / Ethernet / GPIO)
@@ -94,6 +94,6 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | threadx_mpu_partition_demo | LED1 blinks in MPU-partitioned ThreadX thread |
 | threadx_usbx_cdc_demo | USB CDC echo, verified like the tz_* USB apps |
 | tz_nsc_cgc_usb | TrustZone NSC + USB FS CDC echo |
-| usb_cdc_echo | USB FS CDC echo (older simpler variant of tz_secure_only_usb) |
+| usb_cdc_echo | USB FS CDC echo (older simpler variant of tz_secure_only_usb_fs) |
 | usb_hid_device | USB HID report toggles host caps-lock indicator |
 | usb_msc_device | USB MSC volume mounts on host |

@@ -401,9 +401,9 @@ Source: ``examples/ek_ra8d2/tz_nsc_cgc_usb/main.c``
 - L612: ra_time_init  (rank 35)
 - L615: ra_board_led_init  (rank 100)
 
-### tz_secure_only_usb
+### tz_secure_only_usb_fs
 
-Source: ``examples/ek_ra8d2/tz_secure_only_usb/main.c``
+Source: ``examples/ek_ra8d2/tz_secure_only_usb_fs/main.c``
 
 - L585: ra_cgc_init  (rank 10)
 - L601: ra_cgc_get_clock_hz  (rank 10)

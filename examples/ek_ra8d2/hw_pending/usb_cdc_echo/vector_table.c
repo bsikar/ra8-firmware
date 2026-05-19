@@ -119,7 +119,7 @@ extern void SysTick_Handler(void);
  * Default_Handler (which contains ``bkpt #0``). On debug-disabled
  * silicon a stray bkpt escalates to HardFault, so the first USB IRQ
  * after ra_isr_register armed the NVIC line halted the chip. The
- * working tz_secure_only_usb / _hs apps use this dispatching form;
+ * working tz_secure_only_usb_fs / _hs apps use this dispatching form;
  * this app now matches.
  */
 

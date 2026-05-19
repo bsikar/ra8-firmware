@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/tz_secure_only_usb/secure_exception.c
+ * @file examples/ek_ra8d2/tz_secure_only_usb_fs/secure_exception.c
  * @brief No-op SecureFault placeholder for the secure-only USB experiment
  *
  * @par Tag
