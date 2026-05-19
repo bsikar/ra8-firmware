@@ -933,6 +933,22 @@ ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
   /* HUM Ch 41 p 2810 "CFDTMC" -- single-byte transmit-request register.
    * FSP r_canfd.c line ~724: `p_reg->CFDTMC[idx] = 1`. */
   reg->CFDTMC[k_ra_canfd_tx_mb_default] = k_ra_canfd_tmc_txreq;
+
+  /* Wait for CFDTMSTSj.TMTRF[1:0] != 00 (transmission no longer in
+   * progress). Without this the caller can race the chip and call
+   * receive before the loopback frame is in RX FIFO 0 -- in
+   * canfd_filter_demo the next iteration's no-match round would
+   * then consume the previous round's frame and report mismatch.
+   * 500 kbit/s + 8 bytes = ~240 us, so k_ra_canfd_spin (~100 us at
+   * 1 GHz / 5 cycles per iter) is the right order of magnitude. */
+#ifndef RA_SIMULATOR_MODE
+  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+    enum : uint8_t { k_ra_tmsts_tmtrf_mask = 0x06U };
+    if ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_mask) != 0U) {
+      break;
+    }
+  }
+#endif
   return k_ra_ok;
 }
 
