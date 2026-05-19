@@ -42,7 +42,6 @@ asserts an expected string appears within a per-app timeout.
 | rng_demo | `trng: ` | 10 s |
 | rtc_alarm | `rtc: alarm fired` | 30 s |
 | sdram_benchmark | `sdram: w=` | 20 s |
-| threadx_filex_levelx_demo | `fxlx` | 30 s |
 | threadx_ipc_demo | `[ipc_demo]` | 15 s |
 | timer_capture_demo | `gpt: period=` | 15 s |
 | uart_hello | `hello, ra8d2!` | 10 s |
@@ -85,7 +84,6 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | dac_waveform | DAC0 triangle wave ~8 Hz |
 | doc_demo | LED1 toggles on match, LED2 latches on diverge |
 | ethernet_tcp_echo | echo via Ethernet socket on host |
-| flash_journal | LED1 toggles on each successful NOR round-trip |
 | gpio_input_demo | LED1 mirrors SW1 state |
 | gpt_capture_input | LED toggles on SW1 press; captures period |
 | gpt_pwm_demo | LED breathes via GPT PWM duty cycle |
