@@ -82,9 +82,11 @@ typedef enum : uint16_t {
   k_ra_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.     */
   k_ra_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source. */
   k_ra_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider. */
+  k_ra_sys_off_octackdivcr  = 0x06DU, /**< OCTACKDIVCR (8-bit) -- HUM Ch 9.2.40 p 357. */
   k_ra_sys_off_canfdckdivcr = 0x06EU, /**< CANFDCKDIVCR (8-bit) -- HUM Ch 9.2.41 p 363. */
   k_ra_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider. */
   k_ra_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.    */
+  k_ra_sys_off_octackcr     = 0x075U, /**< OCTACKCR    (8-bit) -- HUM Ch 9.2.45 p 360. */
   k_ra_sys_off_canfdckcr    = 0x076U, /**< CANFDCKCR   (8-bit) -- HUM Ch 9.2.46 p 366. */
   k_ra_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.     */
   k_ra_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
@@ -461,6 +463,31 @@ static inline volatile uint8_t* ra_sys_canfdckcr(void)
 static inline volatile uint8_t* ra_sys_canfdckdivcr(void)
 {
   return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_canfdckdivcr);
+}
+
+/** @brief Get pointer to the 8-bit OCTACKCR (Octal-SPI clock source select).
+ *
+ * @details HUM Ch 9.2.45 "OCTACKCR : Octal-SPI Clock Control Register"
+ * p 360. Layout matches USBCKCR / CANFDCKCR: OCTACKSEL[3:0] at [3:0],
+ * OCTACKSREQ at bit 6, OCTACKSRDY at bit 7. Reset value 0x01 selects
+ * MOCO. Per HUM Ch 11.2.7 MSTPCRB Note 3 (p 444) the OSPI MSTPB16 /
+ * MSTPB17 bits must be written AFTER OCTACLK is stable; the SREQ ->
+ * SRDY -> SREQ-clear handshake is the documented way to confirm
+ * stability.
+ */
+static inline volatile uint8_t* ra_sys_octackcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_octackcr);
+}
+
+/** @brief Get pointer to the 8-bit OCTACKDIVCR (Octal-SPI clock divider).
+ *
+ * @details HUM Ch 9.2.40 "OCTACKDIVCR : Octal-SPI Clock Division Control
+ * Register" p 357. OCTACKDIV[3:0] in bits [3:0]; reset value 0 (/1).
+ */
+static inline volatile uint8_t* ra_sys_octackdivcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_octackdivcr);
 }
 
 /**

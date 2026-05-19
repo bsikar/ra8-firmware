@@ -52,10 +52,12 @@
 #include <stdint.h>
 
 #include "ra8d2_ospi_regs.h"
+#include "ra8d2_system_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+#include "ra_register_protection.h"
 
 /** @brief Logging tag for this driver. */
 static const char* s_tag = "XSPI";
@@ -133,6 +135,20 @@ typedef enum : uint32_t {
    * a hung peripheral surfaces to the caller in human time.
    */
   k_ra_flash_program_timeout_us = 4000U,   /**< Max ~1 s for program / erase. */
+  /**
+   * @brief OCTACKCR SREQ/SRDY handshake budget.
+   *
+   * @details
+   * Mirrors ``k_ra_canfd_ckcr_spin`` in ``ra_canfd.c``. Each iteration
+   * reads OCTACKCR; the CGC asserts OCTACKSRDY within a small number
+   * of OCTACLK cycles (HUM Ch 9.2.45 p 360). 262144 iterations on a
+   * 1 GHz Cortex-M85 with ~5 cycles per register-read poll is roughly
+   * 1.3 ms -- two orders of magnitude over the documented wait but
+   * bounded enough that a stuck handshake (e.g. MOCO not running)
+   * surfaces as ``hw_timeout`` in sub-millisecond time. Shares its
+   * order of magnitude with the USB / CANFD CKSRDY waits.
+   */
+  k_ra_xspi_ckcr_spin           = 262144U, /**< OCTACKCR SREQ/SRDY budget. */
 } ra_xspi_timeouts_t;
 
 /**
@@ -228,6 +244,147 @@ static const ra_mstp_t s_xspi_mstp_table[] = {
   k_ra_mstp_ospi1,
 };
 
+/**
+ * @brief Bounded wait on OCTACKCR.OCTACKSRDY reaching ``expected``.
+ *
+ * @details
+ * Mirrors ``internal_wait_canfdcksrdy`` in ``ra_canfd.c`` and
+ * ``internal_wait_usbcksrdy`` in ``ra_cgc.c``. Polls OCTACKCR bit 7
+ * (OCTACKSRDY) until it equals ``expected`` or ``k_ra_xspi_ckcr_spin``
+ * iterations elapse. HUM Ch 9.2.45 "OCTACKCR" p 360 documents
+ * OCTACKSRDY at bit 7 (R) -- "Possible to Switch" flag.
+ *
+ * @param[in] expected 1U after SREQ=1; 0U after SREQ=0.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok             SRDY observed equal to ``expected``.
+ * @retval k_ra_err_hw_timeout SRDY never matched within the budget.
+ *
+ * @pre Caller holds the PRCR-CGC unlock window (PRCR=0xA501).
+ * @pre ``expected`` is 0 or 1.
+ * @post No register state is modified -- this is a read-only poll.
+ * @post On timeout the caller relocks PRCR.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wait_octacksrdy(uint8_t expected)
+{
+  /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSRDY" p 360 -- SRDY is bit 7. */
+  volatile uint8_t* const ckcr = ra_sys_octackcr();
+  const uint8_t           mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
+#ifdef RA_SIMULATOR_MODE
+  /* Sim memory has no hardware ack -- fake OCTACKSRDY toggling so the
+   * host test poll loop converges immediately. Same pattern used by
+   * ``internal_wait_canfdcksrdy`` in ``ra_canfd.c``. */
+  if (expected != 0U) {
+    *ckcr = (uint8_t)(*ckcr | mask);
+  } else {
+    *ckcr = (uint8_t)(*ckcr & (uint8_t)~mask);
+  }
+#endif
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_ckcr_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+    const uint8_t got = (uint8_t)((*ckcr & mask) >> k_ra_usbckcr_bit_srdy);
+    if (got == expected) {                                       /* GCOVR_EXCL_BR_LINE */
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Block-level OCTA clock init -- run BEFORE the first MSTP release.
+ *
+ * @details
+ * HUM Ch 11.2.7 "MSTPCRB" Note 3 (p 444) states that MSTPB16 / MSTPB17
+ * (the per-instance OSPI module-stop bits) must be written AFTER the
+ * OCTACLK is stable. OCTACKCR resets to ``0x01`` (OCTACKSEL = MOCO,
+ * OCTACKSREQ = 0, OCTACKSRDY = 0). MOCO is on at reset, but the RA8D2
+ * CGC requires an explicit SREQ -> SRDY -> SREQ-clear handshake before
+ * the chip raises OCTACKSRDY and declares the clock stable. Without
+ * that handshake the OSPI manual-command engine's internal state
+ * machine cannot retire ``CDCTL0.TRREQ`` after the first
+ * ``CDBUF[0].CDT`` write -- symptom seen on HIL: every
+ * ``ra_xspi_flash_*`` operation surfaces as ``k_ra_err_hw_timeout``
+ * on CMDCMP, and ``flash_journal``'s ``g_fj_match`` /
+ * ``g_fj_mismatch`` counters both read 0 across the 5 s memprobe
+ * window.
+ *
+ * Steps (mirror of ``internal_canfd_clock_block_init`` in
+ * ``ra_canfd.c`` + the USBCKCR pattern in ``ra_cgc.c``, with the
+ * OCTACKCR-specific procedure from HUM Ch 9.2.45 p 360):
+ *   1. Write OCTACKDIVCR = 0 (/1 -- documented reset value).
+ *   2. Set OCTACKCR.OCTACKSREQ = 1 (request switch) while keeping the
+ *      reset-default OCTACKSEL = MOCO.
+ *   3. Poll until OCTACKSRDY = 1.
+ *   4. Re-write OCTACKCR with SREQ=0, source = MOCO -- commits the
+ *      (same) source selection.
+ *   5. Poll until OCTACKSRDY = 0 (handshake done).
+ *
+ * This helper is idempotent via a static guard: only the first caller
+ * performs the handshake; subsequent ``ra_xspi_init`` calls (e.g. for
+ * instance 1 after instance 0) skip it. MOCO -> /1 keeps OCTACLK at
+ * its native MOCO rate (~8 MHz nominal) which is fine for the IS25LX
+ * JEDEC-mode bring-up; a later board-specific tune can switch the
+ * source to a PLL output by reissuing the same handshake.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok             OCTACLK declared stable; safe to release MSTP.
+ * @retval k_ra_err_hw_timeout SRDY handshake stuck.
+ *
+ * @pre Single-threaded init context (no other CGC writes in flight).
+ * @pre MOCO is running -- chip reset default; ra_cgc_init does not
+ *      explicitly stop MOCO.
+ * @post On k_ra_ok the OCTA block clock is stable; MSTPB16/17 may now
+ *       be released.
+ * @post On error the OSPI MSTP gate is NOT touched.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_xspi_clock_block_init(void)
+{
+  static bool s_xspi_clock_inited = false;
+  if (s_xspi_clock_inited) {
+    return k_ra_ok;
+  }
+  ra_err_t err = k_ra_ok;
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* HUM Ch 9.2.40 "OCTACKDIVCR" p 357 -- /1 keeps MOCO at its
+     * native rate (~8 MHz nominal). The IS25LX512M JEDEC bring-up
+     * runs comfortably below 50 MHz so /1 is conservative. */
+    *ra_sys_octackdivcr() = 0U;
+
+    /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSREQ" p 360 -- assert SREQ with
+     * the reset-default source (MOCO, OCTACKSEL = 0001b). */
+    const uint8_t sreq_mask = (uint8_t)(1U << k_ra_usbckcr_bit_sreq);
+    const uint8_t src_moco  = 0x01U;
+    *ra_sys_octackcr()      = (uint8_t)(src_moco | sreq_mask);
+
+    /* Step 3: wait for SRDY = 1 (chip acknowledges the request). */
+    err = internal_wait_octacksrdy(1U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "xspi: OCTACKSRDY=1 timeout");
+      break;
+    }
+    /* Step 4: drop SREQ -- commits the (same) source selection. */
+    *ra_sys_octackcr() = src_moco;
+    /* Step 5: wait for SRDY = 0 -- handshake done. */
+    err = internal_wait_octacksrdy(0U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "xspi: OCTACKSRDY=0 timeout");
+      break;
+    }
+  }
+  if (err == k_ra_ok) {
+    s_xspi_clock_inited = true;
+    ra_log_info(s_tag, "octa block clock stable");
+  }
+  return err;
+}
+
 /* ra xspi init -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 {
@@ -235,6 +392,15 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
   if (instance >= (uint8_t)(sizeof(s_xspi_mstp_table) / sizeof(s_xspi_mstp_table[0]))) {
     return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.7 "MSTPCRB" Note 3 p 444 -- MSTPB16/17 must be written
+   * AFTER OCTACLK is stable. Run the block-level OCTACKCR handshake
+   * first; the helper is idempotent so a second ra_xspi_init call
+   * (e.g. for instance 1) skips it. */
+  const ra_err_t clk_err = internal_xspi_clock_block_init();
+  if (clk_err != k_ra_ok) {
+    return clk_err;
   }
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
