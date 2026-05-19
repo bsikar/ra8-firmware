@@ -14,30 +14,40 @@ JTAG probing on 2026-05-19 confirmed:
 - g_cpu1_pingpong_step = 4 (CPU0 reached the main while loop).
 - g_cpu1_pingpong_release_err = 0.
 
-But g_cpu1_pingpong_match stays at 0 with g_cpu1_pingpong_mismatch
-also at 0. recv_blocking has a 1M-iteration bounded poll
-(~1 ms at 1 GHz) so a 5 s window should produce thousands of
-timeouts. Both counters stay zero, which means CPU0 is blocking
-inside ra_ipc_recv_message and the bounded poll never fires.
+### 2026-05-19 follow-up
 
-Most likely: a peripheral-register read inside ra_ipc_recv_message
-stalls (waiting for some IPC peripheral status bit that never
-flips) instead of returning no_data when the FIFO is empty. The
-RA8D2 IPC peripheral has secure/non-secure attribution via
-IPCSAR/IPCPAR (at 0x40008000) -- if those are mis-programmed,
-reads from the wrong-world alias might never complete.
+Re-probed under the canfd-fix sweep:
+
+- g_cpu1_pingpong_mismatch DOES advance (~1 per 1.5 s), not stuck
+  at 0. The earlier "both zero" reading was a stale snapshot.
+- IPC channel 2 (CPU0 -> CPU1, addr 0x40020100) STA reads
+  0x00030000 (FULL bit 16 + FERR bit 17). CPU0 successfully wrote
+  0x1234 to TXD (visible in JTAG dump) but CPU1 never drains.
+- IPC channel 0 (CPU1 -> CPU0, addr 0x400200C0) STA reads
+  0x01000000 -- some upper status bit, no RDY (bit 0).
+- IPCSAR @ 0x40008610 = 0x00000000. Per
+  ra8d2_ipc_regs.h:267, bit 18 (SAIPCIR2) clear = "channel 2 is
+  secure-only". If CPU1's M33 boots non-secure (default for the
+  secondary core), it cannot read channel 2's RXD even though
+  the FIFO has 0x1234 waiting.
+
+CPU0 is non-secure-tagged (per main.c `{World: NS}`) yet writes
+to channel 2 succeed -- suggesting in the RA_TRUSTZONE_ENABLE=OFF
+build the SAU stays in reset and the IDAU rule (bit 28 of addr)
+governs: 0x40020100 has bit 28 clear, so IDAU says SECURE, but
+with SAU disabled the CPU's current security state determines
+access. CPU0 (M85) and CPU1 (M33) likely boot with DIFFERENT
+default security states, which is the missing piece.
 
 ## How to graduate back
 
-1. Dump IPCSAR / IPCPAR / IPC FIFO registers (HUM Ch 3.2.x) via
-   JTAG and confirm the IPC channels CPU0 + CPU1 use are visible
-   from the world the firmware runs in.
-2. Bound ra_ipc_recv_message's internal polling with the same
-   pattern other RA HALs use (k_ra_*_spin), so the call returns
-   no_data instead of stalling on a never-arriving bit.
-3. Re-run; once g_cpu1_pingpong_match advances >=5 in 5 s, move
-   the dir back to hw_validated/hil/.
-
-The dual-core release path itself (ra_cpu1_release) is verified
-working by the JTAG dump, so step 2 is the only firmware change
-needed.
+1. Write IPCSAR=0x000F0303 (clear-secure for all IPC channels +
+   NMIs + semaphores) before calling ra_cpu1_release, granting
+   non-secure access to whichever world CPU1 boots in.
+2. Reflash + JTAG-probe; if channel 2 STA.FULL drains and channel
+   0 STA.RDY asserts, the security attribution was the blocker
+   and the per-side ra_ipc_init_attribution / matching IPCPAR
+   bits go into ra_dual_core.c so any dual-core app gets them
+   for free.
+3. Once g_cpu1_pingpong_match advances >=5 per 5 s window with 0
+   mismatch, promote back to hw_validated/hil/.
