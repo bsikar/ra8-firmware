@@ -78,6 +78,64 @@ volatile uint32_t g_fj_match = 0U;
  */
 volatile uint32_t g_fj_mismatch = 0U;
 
+/**
+ * @var g_fj_last_step
+ * @brief Last round-trip step value (J-Link memprobe diagnostic).
+ *
+ * @details
+ * Encodes which step of the erase / program / read / compare chain
+ * the firmware completed last. 0 = pre-loop init, 1 = erase ok,
+ * 2 = program ok, 3 = read ok, 4 = match, 5 = erase err, 6 = program
+ * err, 7 = read err, 8 = compare mismatch (echoed != counter). Lets
+ * a memprobe pinpoint which OSPI op fails without UART.
+ *
+ * @note File-scope volatile so the optimiser cannot elide updates;
+ *       read only by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_last_step = 0U;
+
+/**
+ * @var g_fj_last_counter
+ * @brief Last counter the firmware tried to write.
+ *
+ * @details
+ * Lets a memprobe compare against g_fj_last_echoed when
+ * g_fj_last_step lands at 8 (compare mismatch).
+ *
+ * @note Read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_last_counter = 0U;
+
+/**
+ * @var g_fj_last_echoed
+ * @brief Last counter value read back from flash.
+ *
+ * @details
+ * Holds the result of flash_journal_unpack on the read-back record.
+ *
+ * @note Read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_last_echoed = 0U;
+
+/**
+ * @var g_fj_jedec_id
+ * @brief One-shot JEDEC ID read at boot (memprobe diagnostic).
+ *
+ * @details
+ * Stamped once by main right after ra_xspi_init returns. Lets a
+ * memprobe confirm the OSPI controller actually clocks the bus by
+ * reading the IS25LX512M's JEDEC ID (expected manufacturer 0x9D
+ * = ISSI). A value of 0x000000 indicates the chip never returned
+ * an ID; 0xFFFFFF indicates the bus floated (no CIPO drive).
+ *
+ * @note Read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_jedec_id = 0U;
+
 /** @brief Park the CPU after a fatal init failure. */
 static void flash_journal_panic_halt(void)
 {
@@ -138,30 +196,52 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
 {
   uint8_t rec[k_journal_record_bytes];
   uint8_t back[k_journal_record_bytes];
+  g_fj_last_counter = counter;
   flash_journal_pack(counter, rec);
   if (ra_xspi_flash_erase_sector((uint8_t)k_journal_xspi_instance,
                                  (uint32_t)k_journal_record_addr) != k_ra_ok) {
+    g_fj_last_step = 5U;
     return k_ra_err_hw_error;
   }
+  g_fj_last_step = 1U;
   if (ra_xspi_flash_program((uint8_t)k_journal_xspi_instance,
                             (uint32_t)k_journal_record_addr,
                             rec,
                             (uint32_t)k_journal_record_bytes) != k_ra_ok) {
+    g_fj_last_step = 6U;
     return k_ra_err_hw_error;
   }
+  g_fj_last_step = 2U;
   if (ra_xspi_flash_read((uint8_t)k_journal_xspi_instance,
                          (uint32_t)k_journal_record_addr,
                          back,
                          (uint32_t)k_journal_record_bytes) != k_ra_ok) {
+    g_fj_last_step = 7U;
     return k_ra_err_hw_error;
   }
-  *echoed = flash_journal_unpack(back);
+  g_fj_last_step = 3U;
+  *echoed           = flash_journal_unpack(back);
+  g_fj_last_echoed  = *echoed;
   return k_ra_ok;
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+/**
+ * @brief Run all init-time bring-up that must complete before the loop.
+ *
+ * @details
+ * Brings CGC, SysTick, LEDs, OCTA pins, and OSPI controller up, then
+ * does a one-shot JEDEC ID read so a memprobe can confirm the bus is
+ * electrically alive. Panics on any failure other than the JEDEC read
+ * (which is best-effort -- a floating bus returns 0x00FFFFFF and the
+ * loop will surface the same fact via g_fj_last_step = 5).
+ *
+ * @pre Reset_Handler ran C-runtime init.
+ * @post All HAL prereqs for the loop are live.
+ * @since 0.1.0
+ */
+static void flash_journal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra_cgc_init() != k_ra_ok) {
@@ -179,24 +259,24 @@ int32_t main(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     flash_journal_panic_halt();
   }
-  /* HUM Ch 20.6 "Multiplexed Pin Function Selector" p 871 + EK-RA8D2 UM
-   * Table 29 p 35: the 12 OCTA bus pins (CS/CK/DQS/DQ0..DQ7) come out
-   * of reset under PSEL=0 (general-purpose I/O), so the OSPI controller
-   * cannot drive its IO_n outputs onto the IS25LX512M until they are
-   * re-routed under PSEL=0x1C. The board-init helper also pulses the
-   * active-low RESET_L strap on P106 (IS25LX512M datasheet Ch 9.2),
-   * which is required for the device to enter its standard SPI mode
-   * with a deterministic register state. Without this call the OSPI
-   * register block at 0x4026_8000 ungates correctly but every manual
-   * command times out at CMDCMP because the flash never sees a clock
-   * edge -- the symptom is g_fj_match advancing by exactly 1 (the
-   * blank-sector read) followed by 6 mismatches per probe window. */
+  /* OCTA pins come out of reset as GPIO; ra_board_xspi_pins_init
+   * routes them to PSEL=0x1C and pulses RESET_L on P106 so the
+   * IS25LX512M lands in standard-SPI mode with deterministic state.
+   * HUM Ch 20.6 "Multiplexed Pin Function Selector" p 871. */
   if (ra_board_xspi_pins_init() != k_ra_ok) {
     flash_journal_panic_halt();
   }
   if (ra_xspi_init((uint8_t)k_journal_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
     flash_journal_panic_halt();
   }
+  uint32_t jedec_id = 0U;
+  (void)ra_xspi_flash_read_id((uint8_t)k_journal_xspi_instance, &jedec_id);
+  g_fj_jedec_id = jedec_id;
+}
+
+int32_t main(void)
+{
+  flash_journal_setup_or_halt();
   ra_isr_globals_enable();
 
   uint32_t counter = 0U;
@@ -206,9 +286,13 @@ int32_t main(void)
     if (err == k_ra_ok && echoed == counter) {
       (void)ra_board_led_toggle(k_ra_board_led1);
       g_fj_match += 1U;
+      g_fj_last_step = 4U;
     } else {
       (void)ra_board_led_toggle(k_ra_board_led2);
       g_fj_mismatch += 1U;
+      if (err == k_ra_ok) {
+        g_fj_last_step = 8U;
+      }
     }
     counter++;
     ra_delay_ms(k_journal_period_ms);

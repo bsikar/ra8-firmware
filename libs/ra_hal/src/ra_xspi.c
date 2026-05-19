@@ -134,7 +134,7 @@ typedef enum : uint32_t {
    * over the IS25LX512M max-sector-erase spec but bounded enough that
    * a hung peripheral surfaces to the caller in human time.
    */
-  k_ra_flash_program_timeout_us = 4000U,   /**< Max ~1 s for program / erase. */
+  k_ra_flash_program_timeout_us = 32000U,  /**< Max ~8 s for program / erase. */
   /**
    * @brief OCTACKCR SREQ/SRDY handshake budget.
    *
