@@ -8,7 +8,11 @@
  * @details
  * See ra_dual_core.h for the public contract. This file implements the
  * three lifecycle entry points (release / halt / is_running) on top of
- * the SYSC multi-core control registers (LPCSR / VTORC1 / MSPC1).
+ * the CPU_CTRL register window's CPU1INITVTOR / CPU1WAITCR / CPU1ACTCSR
+ * registers (HUM Ch 2.9.1 p 128-130). Earlier drafts used SYSC.LPCSR /
+ * VTORC1 / MSPC1 addresses copied from a different RA-family driver;
+ * those registers do not exist on RA8D2 and silently dropped writes,
+ * which is what made cpu1_pingpong's CPU1 stay in reset forever.
  *
  * Host (RA_SIMULATOR_MODE) builds back the registers with a small
  * static state struct so unit tests can drive the API without a chip.
@@ -42,258 +46,315 @@ typedef enum : uint32_t {
 
 /**
  * @struct ra_dual_core_sim_state_t
- * @brief Host-only mirror of the SYSC multi-core control registers.
+ * @brief Host-only mirror of the CPU_CTRL multi-core registers.
  */
 typedef struct {
-  uint32_t lpcsr;  /**< Mirrors SYSC.LPCSR.            */
-  uint32_t vtorc1; /**< Mirrors SYSC.VTORC1.           */
-  uint32_t mspc1;  /**< Mirrors SYSC.MSPC1.            */
+  uint32_t initvtor; /**< Mirrors CPU1INITVTOR.   */
+  uint16_t actcsr;   /**< Mirrors CPU1ACTCSR.     */
+  uint8_t  waitcr;   /**< Mirrors CPU1WAITCR.     */
 } ra_dual_core_sim_state_t;
 
 /**
  * @var s_sim
- * @brief Host-only register mirror, initialized to "CPU1 stopped" reset state.
- *
- * @details Reset value of LPCSR is LPCSTPCH1=1 (CPU1 stopped) and STAT=1.
+ * @brief Host-only register mirror, initialized to "CPU1 not activated"
+ *        (ACT=0, ACTREQ=0, CPUWAIT=0). On a real chip the secondary CPU
+ *        comes out of system reset with ACT=0.
  */
 static ra_dual_core_sim_state_t s_sim = {
-  .lpcsr  = (uint32_t)k_ra_dual_core_lpcsr_stpch1_mask | (uint32_t)k_ra_dual_core_lpcsr_stat_mask,
-  .vtorc1 = 0U,
-  .mspc1  = 0U,
+  .initvtor = 0U,
+  .actcsr   = 0U,
+  .waitcr   = 0U,
 };
 
 /**
- * @brief Read the simulated LPCSR register.
+ * @brief Read the simulated CPU1ACTCSR register.
  *
- * @details Returns the current contents of ``s_sim.lpcsr``. The host
- * shim mirrors the live-chip read path so test code can drive the
- * release / halt / poll state machine without a real SYSC bank.
+ * @details
+ * Host-build (RA_SIMULATOR_MODE) shim that returns ``s_sim.actcsr``
+ * verbatim. Used to assert the modeled ACT bit follows the expected
+ * release / halt sequence; no hardware access here.
  *
- * @return uint32_t Current 32-bit LPCSR value.
- * @retval 0..UINT32_MAX Whatever the test harness most recently wrote.
+ * @return uint16_t Current 16-bit ACTCSR value.
+ * @retval 0..UINT16_MAX Whatever the test harness most recently wrote.
  *
- * @pre Module file-static state ``s_sim`` is initialized (BSS zero or
- *      the explicit reset value at file scope).
- * @pre Caller does not concurrently mutate ``s_sim.lpcsr`` from another
- *      thread.
+ * @pre Module file-static state ``s_sim`` is initialized.
+ * @pre Caller does not concurrently mutate ``s_sim.actcsr``.
  * @post ``s_sim`` is unchanged.
- * @post Returned value equals ``s_sim.lpcsr`` at call time.
+ * @post Returned value equals ``s_sim.actcsr`` at call time.
  *
- * @note Host-shim only; not thread-safe (single-threaded host tests).
+ * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline uint32_t internal_lpcsr_read(void)
+static inline uint16_t internal_actcsr_read(void)
 {
-  return s_sim.lpcsr;
+  return s_sim.actcsr;
 }
 
 /**
- * @brief Write the simulated LPCSR register.
+ * @brief Write the simulated CPU1ACTCSR register.
  *
- * @details Mirrors the requested STPCH1 bit into the STAT field so
- * bounded-poll loops in the public API observe the transition exactly
- * as the live chip would: writing STPCH1=1 produces STAT=1 (stopped),
- * writing STPCH1=0 produces STAT=0 (running).
+ * @details
+ * Mirrors the chip's KEY gate: writes that do not present
+ * KEY[7:0] == 0xA5 are silently dropped. When the key matches the
+ * lower byte is interpreted and ACT is set on ACTREQ=1.
  *
- * @param[in] value New LPCSR value to latch into the host mirror.
+ * @param[in] value New ACTCSR value to latch into the host mirror.
  *
  * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller serialises mutations of ``s_sim.lpcsr``.
- * @post ``s_sim.lpcsr`` matches ``value`` with the STAT field mirroring
- *       STPCH1.
+ * @pre Caller serialises mutations of ``s_sim.actcsr``.
+ * @post ``s_sim.actcsr`` reflects the write with ACT mirroring ACTREQ.
  * @post No other shim fields are modified.
  *
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_lpcsr_write(uint32_t value)
+static inline void internal_actcsr_write(uint16_t value)
 {
-  uint32_t mirrored = value & ~(uint32_t)k_ra_dual_core_lpcsr_stat_mask;
-  if ((value & (uint32_t)k_ra_dual_core_lpcsr_stpch1_mask) != 0U) {
-    mirrored |= (uint32_t)k_ra_dual_core_lpcsr_stat_mask;
+  const uint16_t key = (uint16_t)((value >> (uint16_t)k_ra_dual_core_actcsr_key_shift) & 0xFFU);
+  if (key != (uint16_t)k_ra_dual_core_actcsr_key_value) {
+    return; /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */
   }
-  s_sim.lpcsr = mirrored;
+  uint16_t actcsr = s_sim.actcsr;
+  if ((value & (uint16_t)k_ra_dual_core_actcsr_actreq_mask) != 0U) {
+    actcsr |= (uint16_t)k_ra_dual_core_actcsr_act_mask;
+  }
+  s_sim.actcsr = actcsr;
 }
 
 /**
- * @brief Write the simulated VTORC1 register.
+ * @brief Write the simulated CPU1WAITCR register.
  *
- * @details Records the CPU1 reset vector base in the host-shim mirror
- * so unit tests can verify ``ra_cpu1_release()`` programmed VTORC1 with
- * the expected entry pointer.
+ * @details
+ * Host-build shim. Stores ``value`` masked to the CPUWAIT bit into
+ * ``s_sim.waitcr``. Mirrors the chip-side single-bit register so
+ * tests can drive ``ra_cpu1_halt`` / ``ra_cpu1_release`` paths.
  *
- * @param[in] value New VTORC1 value.
+ * @param[in] value New 8-bit WAITCR value (only bit 0 is significant).
  *
  * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller serialises mutations of ``s_sim.vtorc1``.
- * @post ``s_sim.vtorc1 == value``.
+ * @pre Caller serialises mutations of ``s_sim.waitcr``.
+ * @post ``s_sim.waitcr == (value & 0x01)``.
  * @post No other shim fields are modified.
  *
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_vtorc1_write(uint32_t value)
+static inline void internal_waitcr_write(uint8_t value)
 {
-  s_sim.vtorc1 = value;
+  s_sim.waitcr = (uint8_t)(value & (uint8_t)k_ra_dual_core_waitcr_cpuwait_mask);
 }
 
 /**
- * @brief Write the simulated MSPC1 register.
+ * @brief Read the simulated CPU1WAITCR register.
  *
- * @details Records the CPU1 initial main-stack pointer in the host-shim
- * mirror so unit tests can verify ``ra_cpu1_release()`` programmed
- * MSPC1 with the expected stack base.
+ * @details
+ * Host-build shim that returns ``s_sim.waitcr`` verbatim so the
+ * scheduler-vs-active queries in ``ra_cpu1_is_running`` resolve
+ * against the simulator state instead of MMIO.
  *
- * @param[in] value New MSPC1 value.
+ * @return uint8_t Current 8-bit WAITCR value (CPUWAIT in bit 0).
+ * @retval 0..1 Whatever the test harness most recently wrote
+ *              (masked to the CPUWAIT bit).
  *
  * @pre Module file-static state ``s_sim`` is initialized.
- * @pre Caller serialises mutations of ``s_sim.mspc1``.
- * @post ``s_sim.mspc1 == value``.
+ * @pre Caller does not concurrently mutate ``s_sim.waitcr``.
+ * @post ``s_sim`` is unchanged.
+ * @post Returned value equals ``s_sim.waitcr`` at call time.
+ *
+ * @note Host-shim only; not thread-safe.
+ * @since 0.1.0
+ */
+static inline uint8_t internal_waitcr_read(void)
+{
+  return s_sim.waitcr;
+}
+
+/**
+ * @brief Write the simulated CPU1INITVTOR register.
+ *
+ * @details
+ * Host-build shim. Stores ``value`` into ``s_sim.initvtor`` so the
+ * test harness can observe the vector-table base the release path
+ * wrote without poking real MMIO.
+ *
+ * @param[in] value New 32-bit vector-table base.
+ *
+ * @pre Module file-static state ``s_sim`` is initialized.
+ * @pre Caller serialises mutations of ``s_sim.initvtor``.
+ * @post ``s_sim.initvtor == value``.
  * @post No other shim fields are modified.
  *
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_mspc1_write(uint32_t value)
+static inline void internal_initvtor_write(uint32_t value)
 {
-  s_sim.mspc1 = value;
+  s_sim.initvtor = value;
 }
 
 #else /* !RA_SIMULATOR_MODE */
 
 /**
- * @brief Address of LPCSR on the live chip.
- * @return Volatile 32-bit pointer to LPCSR.
- * @pre SYSC module clock is on.
+ * @brief Address of CPU1ACTCSR on the live chip.
+ * @return Volatile 16-bit pointer to CPU1ACTCSR.
+ * @pre CPU control window powered.
+ * @pre Caller is on CPU0.
+ * @post No state modified.
+ * @post Pointer is non-NULL and aligned for 16-bit access.
+ * @note Pure address arithmetic.
+ * @since 0.1.0
+ */
+static inline volatile uint16_t* internal_actcsr_ptr(void)
+{
+  return (volatile uint16_t*)((uintptr_t)k_ra_dual_core_ctrl_base_addr +
+                              (uintptr_t)k_ra_dual_core_off_cpu1_actcsr);
+}
+
+/**
+ * @brief Address of CPU1WAITCR on the live chip.
+ * @return Volatile 8-bit pointer to CPU1WAITCR.
+ * @pre CPU control window powered.
+ * @pre Caller is on CPU0.
+ * @post No state modified.
+ * @post Pointer is non-NULL and aligned for 8-bit access.
+ * @note Pure address arithmetic.
+ * @since 0.1.0
+ */
+static inline volatile uint8_t* internal_waitcr_ptr(void)
+{
+  return (volatile uint8_t*)((uintptr_t)k_ra_dual_core_ctrl_base_addr +
+                             (uintptr_t)k_ra_dual_core_off_cpu1_waitcr);
+}
+
+/**
+ * @brief Address of CPU1INITVTOR on the live chip.
+ * @return Volatile 32-bit pointer to CPU1INITVTOR.
+ * @pre CPU control window powered.
  * @pre Caller is on CPU0.
  * @post No state modified.
  * @post Pointer is non-NULL and aligned for 32-bit access.
  * @note Pure address arithmetic.
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_lpcsr_ptr(void)
+static inline volatile uint32_t* internal_initvtor_ptr(void)
 {
-  return (volatile uint32_t*)((uintptr_t)k_ra_dual_core_sysc_base_addr +
-                              (uintptr_t)k_ra_dual_core_off_lpcsr);
+  return (volatile uint32_t*)((uintptr_t)k_ra_dual_core_ctrl_base_addr +
+                              (uintptr_t)k_ra_dual_core_off_cpu1_initvtor);
 }
 
 /**
- * @brief Address of VTORC1 on the live chip.
- * @return Volatile 32-bit pointer to VTORC1.
- * @pre SYSC module clock is on.
- * @pre Caller is on CPU0.
- * @post No state modified.
- * @post Pointer is non-NULL and aligned for 32-bit access.
- * @note Pure address arithmetic.
- * @since 0.1.0
- */
-static inline volatile uint32_t* internal_vtorc1_ptr(void)
-{
-  return (volatile uint32_t*)((uintptr_t)k_ra_dual_core_sysc_base_addr +
-                              (uintptr_t)k_ra_dual_core_off_vtorc1);
-}
-
-/**
- * @brief Address of MSPC1 on the live chip.
- * @return Volatile 32-bit pointer to MSPC1.
- * @pre SYSC module clock is on.
- * @pre Caller is on CPU0.
- * @post No state modified.
- * @post Pointer is non-NULL and aligned for 32-bit access.
- * @note Pure address arithmetic.
- * @since 0.1.0
- */
-static inline volatile uint32_t* internal_mspc1_ptr(void)
-{
-  return (volatile uint32_t*)((uintptr_t)k_ra_dual_core_sysc_base_addr +
-                              (uintptr_t)k_ra_dual_core_off_mspc1);
-}
-
-/**
- * @brief Read the live LPCSR register on the chip.
+ * @brief Read the live CPU1ACTCSR register on the chip.
  *
- * @details Performs a single volatile read through the SYSC base+offset
- * pointer returned by ``internal_lpcsr_ptr()``.
+ * @details
+ * Single-volatile load via the typed accessor. Used by the
+ * ``ra_cpu1_release`` ACT-poll and by ``ra_cpu1_is_running``;
+ * never mutates the register so reentrant reads are safe.
  *
- * @return uint32_t Current LPCSR value.
- * @retval 0..UINT32_MAX Hardware-defined; see HUM Ch 11.4 for field
- *                       layout (STPCH1 @ bit 1, STAT @ bit 17, ...).
+ * @return uint16_t Current ACTCSR value (ACT in bit 7, ACTREQ in bit 0).
+ * @retval 0..UINT16_MAX Whatever the controller exposes; bit 7
+ *                       latches once ACTREQ has been honored.
  *
- * @pre SYSC module clock and power are on.
- * @pre Caller is running on CPU0 (LPCSR lives in the CPU0-side bank).
+ * @pre CPU control window is mapped and powered.
+ * @pre Caller is running on CPU0.
  * @post No registers are modified.
- * @post Returned value reflects the LPCSR contents at the read instant.
+ * @post Returned value reflects ACTCSR at the read instant.
  *
  * @note Re-entrant (read-only volatile access).
  * @since 0.1.0
  */
-static inline uint32_t internal_lpcsr_read(void)
+static inline uint16_t internal_actcsr_read(void)
 {
-  return *internal_lpcsr_ptr();
+  return *internal_actcsr_ptr();
 }
 
 /**
- * @brief Write the live LPCSR register on the chip.
+ * @brief Write the live CPU1ACTCSR register on the chip.
  *
- * @details Performs a single volatile store through the SYSC base+offset
- * pointer returned by ``internal_lpcsr_ptr()``. The hardware updates
- * the STAT mirror asynchronously; callers must poll for the transition.
+ * @details The hardware silently drops writes that do not present
+ * KEY[7:0] == 0xA5 in the upper byte (HUM Ch 2.9.1.9 p 130).
  *
- * @param[in] value New 32-bit LPCSR value.
+ * @param[in] value New 16-bit ACTCSR value (KEY | ACTREQ).
  *
- * @pre SYSC module clock and power are on.
+ * @pre CPU control window is mapped and powered.
  * @pre Caller is running on CPU0.
- * @post LPCSR has been written with ``value``.
- * @post No other SYSC registers are modified.
+ * @post ACTCSR has been written with ``value``; key gating applies.
+ * @post No other CPU_CTRL registers are modified.
  *
  * @note Not thread-safe; serialise CPU1 lifecycle ops at a higher layer.
  * @since 0.1.0
  */
-static inline void internal_lpcsr_write(uint32_t value)
+static inline void internal_actcsr_write(uint16_t value)
 {
-  *internal_lpcsr_ptr() = value;
+  *internal_actcsr_ptr() = value;
 }
 
 /**
- * @brief Write the live VTORC1 register on the chip.
+ * @brief Write the live CPU1WAITCR register on the chip.
+ *
+ * @details
+ * Single-volatile store via the typed accessor. CPU1 stays stalled
+ * while WAITCR.CPUWAIT == 1; clearing the bit lets the released
+ * core start fetching at CPU1INITVTOR.
+ *
+ * @param[in] value New 8-bit WAITCR value (bit 0 = CPUWAIT).
+ *
+ * @pre CPU control window is mapped and powered.
+ * @pre Caller is running on CPU0.
+ * @post WAITCR has been written with ``value``.
+ * @post No other CPU_CTRL registers are modified.
+ *
+ * @note Not thread-safe; serialise CPU1 lifecycle ops.
+ * @since 0.1.0
+ */
+static inline void internal_waitcr_write(uint8_t value)
+{
+  *internal_waitcr_ptr() = value;
+}
+
+/**
+ * @brief Read the live CPU1WAITCR register on the chip.
+ *
+ * @details
+ * Single-volatile load. Drives the stalled-vs-running query in
+ * ``ra_cpu1_is_running``.
+ *
+ * @return uint8_t Current WAITCR value.
+ * @retval 0..1 Bit 0 reflects the CPUWAIT gate; other bits read as
+ *              zero per HUM Ch 2.9.1.10 p 130.
+ *
+ * @pre CPU control window is mapped and powered.
+ * @pre Caller is running on CPU0.
+ * @post No registers are modified.
+ * @post Returned value reflects WAITCR at the read instant.
+ *
+ * @note Re-entrant (read-only volatile access).
+ * @since 0.1.0
+ */
+static inline uint8_t internal_waitcr_read(void)
+{
+  return *internal_waitcr_ptr();
+}
+
+/**
+ * @brief Write the live CPU1INITVTOR register on the chip.
  *
  * @details Programs the CPU1 reset vector base. The Cortex-M33 latches
- * VTORC1 into its VTOR on the next reset-release edge.
+ * INITVTOR into its VTOR on the next reset-release edge and fetches
+ * the initial MSP from offset 0 of the table.
  *
- * @param[in] value New 32-bit VTORC1 value (CPU1 vector table address).
+ * @param[in] value New 32-bit INITVTOR value (CPU1 vector table base).
  *
- * @pre SYSC module clock and power are on.
+ * @pre CPU control window is mapped and powered.
  * @pre Caller is running on CPU0.
- * @post VTORC1 has been written with ``value``.
- * @post No other SYSC registers are modified.
+ * @post INITVTOR has been written with ``value``.
+ * @post No other CPU_CTRL registers are modified.
  *
  * @note Not thread-safe; serialise CPU1 lifecycle ops.
  * @since 0.1.0
  */
-static inline void internal_vtorc1_write(uint32_t value)
+static inline void internal_initvtor_write(uint32_t value)
 {
-  *internal_vtorc1_ptr() = value;
-}
-
-/**
- * @brief Write the live MSPC1 register on the chip.
- *
- * @details Programs the CPU1 initial main-stack pointer. The Cortex-M33
- * latches MSPC1 into its MSP on the next reset-release edge.
- *
- * @param[in] value New 32-bit MSPC1 value (CPU1 main stack base).
- *
- * @pre SYSC module clock and power are on.
- * @pre Caller is running on CPU0.
- * @post MSPC1 has been written with ``value``.
- * @post No other SYSC registers are modified.
- *
- * @note Not thread-safe; serialise CPU1 lifecycle ops.
- * @since 0.1.0
- */
-static inline void internal_mspc1_write(uint32_t value)
-{
-  *internal_mspc1_ptr() = value;
+  *internal_initvtor_ptr() = value;
 }
 
 #endif /* RA_SIMULATOR_MODE */
@@ -302,10 +363,10 @@ static inline void internal_mspc1_write(uint32_t value)
  * @brief Compile-time check that the caller is CPU0.
  *
  * @details
- * On the M33 build (``RA_BUILD_FOR_CPU1``) we refuse to touch the SYSC
- * multi-core registers; CPU1 cannot stop or release itself through this
- * API. On the M85 / host build there is no "other core" so we always
- * return true.
+ * On the M33 build (``RA_BUILD_FOR_CPU1``) we refuse to touch the
+ * CPU1 lifecycle registers; CPU1 cannot release or stall itself
+ * through this API. On the M85 / host build there is no "other core"
+ * so we always return true.
  *
  * @return bool True if running on CPU0, false otherwise.
  * @retval true  Caller is the M85 primary (or host build).
@@ -337,25 +398,33 @@ static inline bool internal_is_cpu0(void)
  *
  * @details See ra_dual_core.h for the full public contract. This
  * implementation validates ``entry`` and ``sp`` (non-NULL, alignment),
- * confirms the caller is CPU0, programs VTORC1 and MSPC1, clears
- * LPCSR.LPCSTPCH1, and bounded-polls LPCSTPCH1_STAT for the running
- * transition.
+ * confirms the caller is CPU0, programs CPU1INITVTOR, clears
+ * CPU1WAITCR.CPUWAIT so CPU1 runs immediately on activation, then
+ * issues a key-protected ACTREQ via CPU1ACTCSR and bounded-polls
+ * ACTCSR.ACT for the active transition. The Cortex-M33 reads its
+ * initial SP from the first word of the vector table at ``entry``
+ * (Armv8-M reset behaviour), so the ``sp`` argument is validated for
+ * alignment only -- ensuring the caller has actually populated
+ * ``entry[0]`` with the intended stack top is the application's
+ * responsibility.
  *
  * @param[in] entry CPU1 reset vector base, 128-byte aligned.
  * @param[in] sp    CPU1 initial main stack pointer, 8-byte aligned.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok                CPU1 released and observed running.
+ * @retval k_ra_ok                CPU1 released and observed active.
  * @retval k_ra_err_null_ptr      ``entry`` or ``sp`` was NULL.
  * @retval k_ra_err_invalid_arg   Alignment check failed.
  * @retval k_ra_err_not_supported Caller is not CPU0.
- * @retval k_ra_err_timeout       LPCSTPCH1_STAT did not clear within bound.
+ * @retval k_ra_err_timeout       ACTCSR.ACT did not assert within bound.
  *
  * @pre Caller is CPU0 (the M85 primary).
- * @pre SYSC module clock and power are on.
- * @post On success, CPU1 is fetching from ``entry`` with MSP == ``sp``.
- * @post On error, no SYSC registers are left half-programmed beyond
- *       VTORC1/MSPC1 (which are harmless until LPCSTPCH1 clears).
+ * @pre CPU control window is powered (it is at boot on this MCU).
+ * @post On success, CPU1 is fetching from ``entry`` with MSP loaded
+ *       from ``entry[0]``.
+ * @post On error, no further CPU_CTRL registers are touched after the
+ *       initial INITVTOR/WAITCR pair (which are harmless until
+ *       ACTREQ fires).
  *
  * @note Not thread-safe; caller must serialise CPU1 lifecycle ops.
  * @see ra_cpu1_halt()
@@ -381,43 +450,56 @@ ra_err_t ra_cpu1_release(void* entry, void* sp)
     return k_ra_err_not_supported;
   }
 
-  /* Step 1: install reset vector + initial stack. */
-  internal_vtorc1_write((uint32_t)(uintptr_t)entry);
-  internal_mspc1_write((uint32_t)(uintptr_t)sp);
+  /* HUM Ch 2.9.1.7 "CPU1INITVTOR" p 128-129: program CPU1's initial
+   * vector-table base. CPU1 will latch this into VTOR on the next
+   * reset-release edge driven by ACTCSR.ACTREQ below. The M33 also
+   * fetches its initial MSP from the first word of this table. */
+  internal_initvtor_write((uint32_t)(uintptr_t)entry);
 
-  /* Step 2: clear LPCSR.LPCSTPCH1 to release CPU1. */
-  uint32_t v = internal_lpcsr_read();
-  v &= ~(uint32_t)k_ra_dual_core_lpcsr_stpch1_mask;
-  internal_lpcsr_write(v);
+  /* HUM Ch 2.9.1.8 "CPU1WAITCR" p 129: make sure CPUWAIT is cleared so
+   * CPU1 begins executing immediately on activation. Reset value is
+   * already 0 but writing it defensively keeps repeated halt/release
+   * cycles deterministic. */
+  internal_waitcr_write(0U);
 
-  /* Step 3: bounded poll for STAT to clear. */
+  /* HUM Ch 2.9.1.9 "CPU1ACTCSR" p 129-130: writes require KEY=0xA5 in
+   * bits 15:8 alongside the ACTREQ bit. Anything else is silently
+   * dropped by the hardware. */
+  const uint16_t actreq = (uint16_t)(((uint16_t)k_ra_dual_core_actcsr_key_value
+                                      << (uint16_t)k_ra_dual_core_actcsr_key_shift) |
+                                     (uint16_t)k_ra_dual_core_actcsr_actreq_mask);
+  internal_actcsr_write(actreq);
+
+  /* Bounded poll for ACT to assert (HUM Ch 2.9.1.9 ACT bit p 130). */
   for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; /* GCOVR_EXCL_BR_LINE */
        ++i) {                                                          /* GCOVR_EXCL_BR_LINE */
-    if ((internal_lpcsr_read() &
-         (uint32_t)k_ra_dual_core_lpcsr_stat_mask) == /* GCOVR_EXCL_BR_LINE */
+    if ((internal_actcsr_read() &
+         (uint16_t)k_ra_dual_core_actcsr_act_mask) != /* GCOVR_EXCL_BR_LINE */
         0U) {                                         /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
-  ra_log_error(s_tag, "release: LPCSTPCH1_STAT did not clear");
+  ra_log_error(s_tag, "release: ACTCSR.ACT did not assert");
   return k_ra_err_timeout;
 }
 
 /**
- * @brief Put CPU1 back into the LPCSTPCH1=1 stopped state.
+ * @brief Park CPU1 by asserting CPU1WAITCR.CPUWAIT.
  *
- * @details See ra_dual_core.h for the public contract. Sets
- * LPCSR.LPCSTPCH1 and bounded-polls LPCSTPCH1_STAT to confirm the chip
- * acknowledged the stop request.
+ * @details See ra_dual_core.h for the public contract. The RA8D2 HUM
+ * does not document a clean "go back to inactive" transition for the
+ * already-activated secondary core, so this driver stalls CPU1 by
+ * writing CPUWAIT=1. The chip remains powered/clocked but no
+ * instructions retire on the M33. ``ra_cpu1_is_running()`` returns
+ * false while CPUWAIT is asserted.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok                CPU1 stopped.
+ * @retval k_ra_ok                CPU1 stalled.
  * @retval k_ra_err_not_supported Caller is not CPU0.
- * @retval k_ra_err_timeout       LPCSTPCH1_STAT did not assert within bound.
  *
  * @pre Caller is CPU0.
  * @pre CPU1 was previously released via ra_cpu1_release().
- * @post On success, CPU1 has stopped fetching.
+ * @post On success, CPU1WAITCR.CPUWAIT reads 1.
  * @post On success, ra_cpu1_is_running() returns false.
  *
  * @note Not thread-safe; caller must serialise CPU1 lifecycle ops.
@@ -431,36 +513,27 @@ ra_err_t ra_cpu1_halt(void)
     return k_ra_err_not_supported;
   }
 
-  uint32_t v = internal_lpcsr_read();
-  v |= (uint32_t)k_ra_dual_core_lpcsr_stpch1_mask;
-  internal_lpcsr_write(v);
-
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; /* GCOVR_EXCL_BR_LINE */
-       ++i) {                                                          /* GCOVR_EXCL_BR_LINE */
-    if ((internal_lpcsr_read() &
-         (uint32_t)k_ra_dual_core_lpcsr_stat_mask) != /* GCOVR_EXCL_BR_LINE */
-        0U) {                                         /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  ra_log_error(s_tag, "halt: LPCSTPCH1_STAT did not assert");
-  return k_ra_err_timeout;
+  internal_waitcr_write((uint8_t)k_ra_dual_core_waitcr_cpuwait_mask);
+  return k_ra_ok;
 }
 
 /**
- * @brief Return whether CPU1 is currently running.
+ * @brief Return whether CPU1 is currently fetching instructions.
  *
- * @details Reads LPCSR and inverts the LPCSTPCH1_STAT bit. STAT=0 means
- * the M33 is fetching; STAT=1 means it is held stopped.
+ * @details Combines two reads: CPU1ACTCSR.ACT tells us the core has
+ * been activated (out of power-gating), and CPU1WAITCR.CPUWAIT tells
+ * us whether the application has subsequently stalled it. CPU1 is
+ * "running" only when ACT=1 and CPUWAIT=0.
  *
- * @return bool True if CPU1 is fetching, false if stopped.
- * @retval true  CPU1 is fetching instructions.
- * @retval false CPU1 is in the stopped state.
+ * @return bool True if CPU1 is fetching, false otherwise.
+ * @retval true  CPU1 active and not stalled.
+ * @retval false CPU1 inactive, or active but CPUWAIT=1.
  *
- * @pre SYSC module clock and power are on.
- * @pre Caller is CPU0 (LPCSR is in the CPU0-side bank).
+ * @pre CPU control window is powered.
+ * @pre Caller is CPU0.
  * @post No registers are modified.
- * @post LPCSR is read once and the boolean result returned.
+ * @post Two registers are sampled once each and the boolean result
+ *       returned.
  *
  * @note Re-entrant (read-only volatile access).
  * @see ra_cpu1_release()
@@ -469,5 +542,15 @@ ra_err_t ra_cpu1_halt(void)
  */
 bool ra_cpu1_is_running(void)
 {
-  return (internal_lpcsr_read() & (uint32_t)k_ra_dual_core_lpcsr_stat_mask) == 0U;
+  /* Sequential ifs so the function has zero compound boolean
+   * decisions -- keeps MC/DC test obligations linear per condition
+   * rather than N+1 combinatorial, and matches the safety-checklist
+   * preference for split conditions in libs/ra_hal/. */
+  const bool active = (internal_actcsr_read() & (uint16_t)k_ra_dual_core_actcsr_act_mask) != 0U;
+  if (!active) {
+    return false;
+  }
+  const bool stalled =
+    (internal_waitcr_read() & (uint8_t)k_ra_dual_core_waitcr_cpuwait_mask) != 0U;
+  return !stalled;
 }
