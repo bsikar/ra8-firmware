@@ -332,7 +332,9 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x03U,
   0x01U,
-  /* Configuration descriptor (USB 2.0 sec 9.6.3) -- 9 bytes. */
+  /* Configuration descriptor (USB 2.0 sec 9.6.3) -- 9 bytes.
+   * bmAttributes = 0x80 (bus-powered). 0xC0 (self-powered)
+   * conflicted with bMaxPower=100mA (50 * 2). */
   0x09U,
   0x02U,
   0x22U,
@@ -340,7 +342,7 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x01U,
   0x00U,
-  0xC0U,
+  0x80U,
   0x32U,
   /* Interface descriptor -- HID, boot subclass, mouse protocol. */
   0x09U,
