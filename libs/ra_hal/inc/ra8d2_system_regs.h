@@ -82,8 +82,10 @@ typedef enum : uint16_t {
   k_ra_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.     */
   k_ra_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source. */
   k_ra_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider. */
+  k_ra_sys_off_canfdckdivcr = 0x06EU, /**< CANFDCKDIVCR (8-bit) -- HUM Ch 9.2.41 p 363. */
   k_ra_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider. */
   k_ra_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.    */
+  k_ra_sys_off_canfdckcr    = 0x076U, /**< CANFDCKCR   (8-bit) -- HUM Ch 9.2.46 p 366. */
   k_ra_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.     */
   k_ra_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
   k_ra_sys_off_pdctreswm    = 0x118U, /**< PDCTRESWM (8-bit) -- ESWM power-domain control.  */
@@ -438,6 +440,27 @@ static inline volatile uint8_t* ra_sys_usb60ckcr(void)
 static inline volatile uint8_t* ra_sys_usb60ckdivcr(void)
 {
   return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_usb60ckdivcr);
+}
+
+/** @brief Get pointer to the 8-bit CANFDCKCR (CANFD core clock source select).
+ *
+ * @details HUM Ch 9.2.46 "CANFDCKCR : CANFD Core Clock Control Register"
+ * p 366. Layout matches USBCKCR: CANFDCKSEL[3:0] at [3:0], CANFDCKSREQ
+ * at bit 6, CANFDCKSRDY at bit 7. Reset value 0x01 selects MOCO.
+ */
+static inline volatile uint8_t* ra_sys_canfdckcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_canfdckcr);
+}
+
+/** @brief Get pointer to the 8-bit CANFDCKDIVCR (CANFD core clock divider).
+ *
+ * @details HUM Ch 9.2.41 "CANFDCKDIVCR : CANFD Core Clock Division Control
+ * Register" p 363. CANFDCKDIV[3:0] in bits [3:0].
+ */
+static inline volatile uint8_t* ra_sys_canfdckdivcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_canfdckdivcr);
 }
 
 /**
