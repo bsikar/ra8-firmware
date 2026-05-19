@@ -92,6 +92,7 @@ typedef struct {
   uint32_t      pclka_hz;  /**< Current PCLKA in Hz (for SPBR calc). */
   ra_spi_mode_t mode;      /**< CPOL / CPHA combination. */
   bool          lsb_first; /**< True for LSB-first transfers. */
+  bool          loopback;  /**< SPCR2.SPLP=1: internal COPI->CIPO tie (no pins). */
 } ra_spi_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

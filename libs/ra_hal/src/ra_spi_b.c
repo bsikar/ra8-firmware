@@ -316,6 +316,60 @@ static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mas
  */
 
 /* Implementation of ra_spi_init (see header for full contract) -- see header for the documented contract. */
+/**
+ * @brief Programme the polling-controller register set with SPE=0.
+ *
+ * @details Writes SPCR3 / SPDECR / SPCR2 / SPCMD0 / SPDCR(2) / SPFCR
+ * in the order the HUM allows while SPE is still 0. SPCR2 carries the
+ * loopback knob (SPLP2 non-inverting); SPSR flags are cleared once
+ * before and once after SPFRST so the first ra_spi_xfer8 sees a clean
+ * SPRF.
+ *
+ * @param[in] reg Channel's register block.
+ * @param[in] cfg Caller-supplied config (already null-checked).
+ *
+ * @pre SPCR.SPE has been cleared.
+ * @pre MSTP is already enabled for the channel.
+ * @post All control registers programmed; SPSR flags clear.
+ * @post SPE is still 0 -- caller writes SPCR with SPE=1.
+ * @note Not thread-safe; caller must serialize access to the channel.
+ * @since 0.1.0
+ */
+static void internal_spi_program_regs(volatile r_spi_regs_t* reg, const ra_spi_cfg_t* cfg)
+{
+  /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
+  reg->SPSRC = k_ra_spsrc_mask_all;
+
+  /* HUM Ch 43.2.6 "SPCR3 : SPI Control Register 3" p 2891 */
+  const uint8_t spbr = internal_spbr(cfg->baud_hz, cfg->pclka_hz);
+  reg->SPCR3 = ((uint32_t)spbr << k_ra_spcr3_bit_spbr) & k_ra_spcr3_mask_spbr;
+
+  /* HUM Ch 43.2.3 "SPDECR : SPI Delay Control Register" p 2883 */
+  reg->SPDECR = 0U;
+
+  /* SPCR2 only honors writes while SPE=0; SPLP2 (bit 17) is the */
+  /* non-inverting loopback (rx = tx).                            */
+  /* HUM Ch 43.2.4 "SPCR2 : SPI Control Register 2" p 2889 */
+  reg->SPCR2 = (cfg->loopback ? (uint32_t)k_ra_spcr2_mask_splp2 : 0U);
+
+  /* HUM Ch 43.2.7 "SPCMDm : SPI Command Register" p 2893 */
+  reg->SPCMD[0] = internal_spcmd(cfg);
+
+  /* HUM Ch 43.2.10 "SPDCR : SPI Data Control Register" p 2896 */
+  reg->SPDCR  = 0U;
+  reg->SPDCR2 = 0U;
+
+  /* HUM Ch 43.2.14 "SPFCR : SPI FIFO Clear Register" p 2906 */
+  reg->SPFCR = k_ra_spfcr_mask_spfrst;
+
+  /* SPFRST drains residual FIFO contents through the shifter and */
+  /* can leave SPRF set with a stale 0x00, so the first xfer8     */
+  /* would race; re-clear SPSR right before the SPE assert.       */
+  /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
+  reg->SPSRC = k_ra_spsrc_mask_all;
+}
+
+/* Implementation of ra_spi_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "spi_init: cfg");
@@ -327,45 +381,16 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
     return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE    */
   }
 
-  /* Power up the SPI channel. */
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra_err_t mst_err = ra_mstp_enable(s_spi_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp"); /* GCOVR_EXCL_BR_LINE */
 
-  /* Disable SPE before reprogramming. */
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
+  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 -- SPE=0 first. */
   reg->SPCR = 0U;
 
-  /* Clear every flag in SPSR via the SPSRC write-1-clears register. */
-  /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
-  reg->SPSRC = k_ra_spsrc_mask_all;
+  internal_spi_program_regs(reg, cfg);
 
-  /* Programme SPCR3 with the new SPBR (bit-rate divider). */
-  /* HUM Ch 43.2.6 "SPCR3 : SPI Control Register 3" p 2891 */
-  const uint8_t  spbr  = internal_spbr(cfg->baud_hz, cfg->pclka_hz);
-  const uint32_t spcr3 = ((uint32_t)spbr << k_ra_spcr3_bit_spbr) & k_ra_spcr3_mask_spbr;
-  reg->SPCR3           = spcr3;
-
-  /* Zero out delays. */
-  /* HUM Ch 43.2.3 "SPDECR : SPI Delay Control Register" p 2883 */
-  reg->SPDECR = 0U;
-
-  /* HUM Ch 43.2.5 "SPCR2 : SPI Control Register 2" p 2889 */
-  reg->SPCR2 = 0U;
-
-  /* HUM Ch 43.2.7 "SPCMDm : SPI Command Register" p 2893 */
-  reg->SPCMD[0] = internal_spcmd(cfg);
-
-  /* HUM Ch 43.2.10 "SPDCR : SPI Data Control Register" p 2896 */
-  reg->SPDCR  = 0U;
-  reg->SPDCR2 = 0U;
-
-  /* Reset both FIFOs before enabling. */
-  /* HUM Ch 43.2.14 "SPFCR : SPI FIFO Clear Register" p 2906 */
-  reg->SPFCR = k_ra_spfcr_mask_spfrst;
-
-  /* Enable SPI: SPE + MSTR + SCKASE. */
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
+  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 -- SPE+MSTR. */
   reg->SPCR = internal_spcr_master();
 
   s_spi_state[channel].cb          = nullptr;
