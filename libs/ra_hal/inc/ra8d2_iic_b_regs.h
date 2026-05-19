@@ -171,6 +171,22 @@ typedef struct {
  */
 
 /**
+ * @enum ra_iic_b_prts_t
+ * @brief PRTS field positions (HUM Ch 40.2.1 "PRTS : Protocol Selection"
+ *        p 2449).
+ *
+ * @details
+ * PRTMD = 0 selects I3C FIFO-buffer transfer (the post-reset default).
+ * PRTMD = 1 selects I2C single-buffer transfer. The polling driver in
+ * ``ra_iic_b.c`` only knows how to drive the I2C single-buffer mode
+ * (it writes NTDTBP0 directly without composing an I3C command queue
+ * entry), so it must set PRTMD = 1 during init.
+ */
+typedef enum : uint8_t {
+  k_ra_iic_b_prts_prtmd_pos = 0U, /**< HUM 40.2.1 PRTS.PRTMD, p 2449 */
+} ra_iic_b_prts_t;
+
+/**
  * @enum ra_iic_b_cectl_t
  * @brief CECTL field positions.
  */
@@ -313,6 +329,7 @@ typedef enum : uint8_t {
  * @brief Composite bit masks used by the polling driver.
  */
 typedef enum : uint32_t {
+  k_ra_iic_b_msk_prts_prtmd     = (uint32_t)(1U << 0U),  /**< HUM 40.2.1 PRTS.PRTMD, p 2449 */
   k_ra_iic_b_msk_cectl_clke     = (uint32_t)(1U << 0U),  /**< HUM 40.2 CECTL.CLKE, p 2453 */
   k_ra_iic_b_msk_bctl_buse      = (uint32_t)(1U << 31U), /**< HUM 40.2 BCTL.BUSE, p 2454 */
   k_ra_iic_b_msk_rstctl_ri3crst = (uint32_t)(1U << 0U),  /**< HUM 40.2 RSTCTL.RI3CRST, p 2456 */
