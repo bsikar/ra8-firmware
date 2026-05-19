@@ -107,7 +107,14 @@ static ra_err_t internal_wait_status_bit(volatile r_canfd_t* reg, uint8_t status
       return k_ra_ok;
     }
   }
+#ifdef RA_SIMULATOR_MODE
+  /* Host sim does not model CFDCnSTS bits flipping in response to
+   * CFDCnCTR.CHMDC writes; on target the same loop is real, so
+   * propagate the timeout there. */
+  return k_ra_ok;
+#else
   return k_ra_err_hw_timeout;
+#endif
 }
 
 /**
@@ -167,20 +174,24 @@ static ra_err_t internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mode
   }
   /* Operation: poll for (CRSTSTS|CHLTSTS) == 0 so a subsequent CHMDC
    * write does not race the in-flight transition. Real silicon
-   * converges within a handful of CANFDCLK ticks; if the bounded
-   * budget elapses anyway, swallow the timeout and return k_ra_ok --
-   * the caller's next CHMDC write polls its own status bit and will
-   * surface the real fault. This matches the original "don't propagate
-   * an operation-mode error" semantics that the unit tests rely on
-   * (the host sim doesn't model the state-machine bits clearing). */
+   * converges within a handful of CANFDCLK ticks. On host (which
+   * does not model the state-machine bits clearing) silently return
+   * ok; on target propagate the timeout so a stuck channel surfaces
+   * here rather than at the next mode write, which is what made
+   * canfd_loopback report a phantom test_mode failure with the real
+   * problem being "channel never reached operation". */
   const uint32_t reset_or_halt = (uint32_t)((1UL << k_ra_cnsts_bit_crstst)
                                             | (1UL << k_ra_cnsts_bit_chltst));
   for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDC[0].STS & reset_or_halt) == 0U) { /* GCOVR_EXCL_BR_LINE */
-      break;
+      return k_ra_ok;
     }
   }
+#ifdef RA_SIMULATOR_MODE
   return k_ra_ok;
+#else
+  return k_ra_err_hw_timeout;
+#endif
 }
 
 /**
@@ -227,24 +238,23 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
     }
     return k_ra_err_hw_timeout;
   }
-  /* HUM Ch 41 p 2746 "CFDGSTS" -- global OPERATION is the state where
-   * BOTH GRSTSTS and GHLTSTS read 0. FSP r_canfd_mode_transition polls
-   * the cleared union before allowing any subsequent channel-side
-   * CHMDC write to take effect; returning early lets a CH_HALT request
-   * race against the in-flight GL_OPERATION handshake and the chip
-   * silently drops the channel write. Symptom seen on HIL prior to
-   * this wait: ra_canfd_set_test_mode times out on CHLTSTS for
-   * can_classic_loopback / canfd_loopback / canfd_filter_demo. The
-   * timeout is swallowed: the next channel-mode write polls its own
-   * status bit and will surface any real fault. */
+  /* Global OPERATION is the state where BOTH GRSTSTS and GHLTSTS
+   * read 0. On host (no FSM model) silently succeed; on target
+   * propagate the timeout so a stuck global block surfaces here
+   * rather than at the next channel-mode write.
+   * HUM Ch 41 p 2746 "CFDGSTS" */
   const uint32_t reset_or_halt = (uint32_t)((1UL << k_ra_gsts_bit_grststs)
                                             | (1UL << k_ra_gsts_bit_ghltsts));
   for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDGSTS & reset_or_halt) == 0U) {     /* GCOVR_EXCL_BR_LINE */
-      break;
+      return k_ra_ok;
     }
   }
+#ifdef RA_SIMULATOR_MODE
   return k_ra_ok;
+#else
+  return k_ra_err_hw_timeout;
+#endif
 }
 
 /**
@@ -464,6 +474,44 @@ static ra_err_t internal_canfd_clock_block_init(void)
 }
 
 /* ra_canfd_init -- see header for full description. */
+/**
+ * @brief Push the CANFD global+channel state machines into OPERATION.
+ *
+ * @details Mirrors FSP r_canfd.c lines ~311..417: cancel global sleep
+ * via GL_RESET, cancel channel sleep via CH_RESET, install a pass-all
+ * AFL + RX FIFO 0 while in GL_RESET (HUM Ch 41 p 2729..2742), then
+ * transition into GL_OPERATION and CH_OPERATION.
+ *
+ * @param[in] reg CANFD register block for the target channel.
+ *
+ * @return ra_err_t outcome of the final state transition.
+ * @retval k_ra_ok               Channel reached CH_OPERATION.
+ * @retval k_ra_err_hw_timeout   GL_OPERATION or CH_OPERATION never latched.
+ *
+ * @pre Clock block and MSTP for the channel are already alive.
+ * @pre GRAMINIT bit has cleared (caller polled).
+ * @post On success the channel is in CH_OPERATION ready for TX/RX.
+ * @post On failure the channel is left in whichever transitional
+ *       state stalled; caller treats it as init-failed.
+ * @note Not thread-safe; caller serialises ra_canfd_init.
+ * @since 0.1.0
+ */
+static ra_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
+{
+  (void)internal_set_global_mode(reg, k_ra_gctr_value_reset);
+  (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
+
+  internal_install_default_afl(reg);
+  internal_enable_rx_fifo0(reg);
+
+  const ra_err_t gop_err = internal_set_global_mode(reg, k_ra_gctr_value_operation);
+  if (gop_err != k_ra_ok) {
+    return gop_err;
+  }
+  return internal_set_channel_mode(reg, k_ra_chmdc_operation);
+}
+
+/* ra_canfd_init -- see header for full description. */
 ra_err_t ra_canfd_init(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -471,10 +519,8 @@ ra_err_t ra_canfd_init(uint8_t channel)
   if (channel >= (uint8_t)(sizeof(s_canfd_mstp_table) / sizeof(s_canfd_mstp_table[0]))) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 11.2.8 "MSTPCRC" Note 4 p 446 -- MSTPC26/27 must be written
-   * AFTER CANFDCLK is stable. Run the block-level CANFDCKCR handshake
-   * first; the helper is idempotent so a second ra_canfd_init call
-   * (e.g. for channel 1) skips it. */
+  /* MSTPC26/27 must be written AFTER CANFDCLK is stable.
+   * HUM Ch 11.2.8 "MSTPCRC" Note 4 p 446 */
   const ra_err_t clk_err = internal_canfd_clock_block_init();
   if (clk_err != k_ra_ok) {
     return clk_err;
@@ -484,35 +530,17 @@ ra_err_t ra_canfd_init(uint8_t channel)
   const ra_err_t mst_err = ra_mstp_enable(s_canfd_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "canfd_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 41 p 2746 "CFDGSTS.GRAMINIT" -- wait for RAM init done.
-   * FSP r_canfd.c uses FSP_HARDWARE_REGISTER_WAIT(GRAMINIT, 0) which
-   * waits for the bit to clear once init has completed. */
+  /* HUM Ch 41 p 2746 "CFDGSTS.GRAMINIT" -- wait for RAM init done. */
   for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                         /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_graminit)) == 0U) { /* GCOVR_EXCL_BR_LINE */
       break;
     }
   }
 
-  /* Cancel global sleep -> global reset. (FSP r_canfd.c line ~311.)
-   * AFL data, CFDGAFLCFG0, and CFDRFCC depth/payload are only writable
-   * while the global block is in GL_RESET (HUM Ch 41 "CFDGAFLECTR"
-   * p 2729 and "CFDRFCCa.RFDC" p 2741). */
-  (void)internal_set_global_mode(reg, k_ra_gctr_value_reset);
-
-  /* Cancel channel sleep -> channel reset. (FSP r_canfd.c line ~417.) */
-  (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
-
-  /* While in GL_RESET, install a pass-all AFL rule that routes every
-   * frame into RX FIFO 0, and configure RX FIFO 0 itself.  Without
-   * these two writes the RX FIFO stays empty even when frames arrive
-   * (HUM Ch 41 "RX FIFO Buffers" p 2734-2742). */
-  internal_install_default_afl(reg);
-  internal_enable_rx_fifo0(reg);
-
-  /* Move to global operation, then channel operation. */
-  (void)internal_set_global_mode(reg, k_ra_gctr_value_operation);
-  (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
-
+  const ra_err_t open_err = internal_canfd_open_channel(reg);
+  if (open_err != k_ra_ok) {
+    return open_err;
+  }
   ra_log_info_val(s_tag, "canfd_init ch", (uint32_t)channel);
   return k_ra_ok;
 }
@@ -678,13 +706,19 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
     return n_err;
   }
 
-  /* HUM Ch 41 "CFDCnNCFG.NTSEG2" p 2706 -- NCFG / DCFG are only
-   * writable in CH_RESET or CH_HALT.  ra_canfd_init leaves the channel
-   * in CH_OPERATION, so transition back to CH_HALT for the edit then
-   * re-enter CH_OPERATION on the way out. */
-  (void)internal_set_channel_mode(reg, k_ra_chmdc_halt);
+  /* NCFG / DCFG are only writable in CH_RESET or CH_HALT.  Cast-to-
+   * void on the halt transition hid the bug: NCFG was written while
+   * still in operation and the chip silently dropped the value, so
+   * the channel was never actually programmed to the requested
+   * bitrate -- the re-enter-operation call eventually failed and
+   * the demo panicked one call later.
+   * HUM Ch 41 "CFDCnNCFG.NTSEG2" p 2706 */
+  const ra_err_t halt_err = internal_set_channel_mode(reg, k_ra_chmdc_halt);
+  if (halt_err != k_ra_ok) {
+    return halt_err;
+  }
 
-  /* HUM Ch 41 "CFDCnNCFG" p 2705 */ /* "CFDCnNCFG" + FSP r_canfd.c line ~422. */
+  /* HUM Ch 41 "CFDCnNCFG" p 2705 */
   reg->CFDC[0].NCFG = internal_pack_ncfg(&nominal);
 
   if ((data_bitrate_bps != 0U) && (data_bitrate_bps > bitrate_bps)) {
@@ -698,11 +732,14 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
       (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
       return d_err;
     }
-    /* HUM Ch 41 "CFDCnDCFG" p 2785 */ /* "CFDCnDCFG" + FSP r_canfd.c line ~432. */
+    /* HUM Ch 41 "CFDCnDCFG" p 2785 */
     reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
   }
 
-  (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
+  const ra_err_t op_err = internal_set_channel_mode(reg, k_ra_chmdc_operation);
+  if (op_err != k_ra_ok) {
+    return op_err;
+  }
 
   ra_log_info_val(s_tag, "set_bitrate bps", bitrate_bps);
   return k_ra_ok;
