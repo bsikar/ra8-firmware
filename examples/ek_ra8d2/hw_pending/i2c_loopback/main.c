@@ -13,29 +13,28 @@
  * v1 (board UM section 4.3.4 "Switch Configuration", p 24). The flow:
  *
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
- *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCL1
- *      (P512) and SDA1 (P511); these are the dedicated I2C pins
- *      shared between the Arduino, mikroBUS, Grove 1, Qwiic and
- *      camera I2C buses on the EK-RA8D2 v1 board (board UM Table
- *      23 "I2C/I3C Pullup Configuration" p 30).
- *   3. Drive **P109 and P311 high as push-pull outputs** -- per
- *      board UM Table 23 (row 1), this is the *required* pull-up
- *      enable sequence for using the I2C bus in default I2C mode
- *      (SW4-5 OFF). Without it the SCL/SDA lines float and the IIC
- *      controller never clocks the bus.
- *   4. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm.
- *   5. ``ra_iic_b_scan`` against ``0x43`` -- the U15 I/O port
+ *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCL0
+ *      (P400) and SDA0 (P401); these are the I3C-mode pins that
+ *      reach U15 when **SW4-5 is ON** (board UM section 5.4.2
+ *      Table 31 row J27-1/J27-2 p ~32). The IIC_B controller
+ *      drives this bus at I2C SDR rates.
+ *   3. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm. The HAL's block
+ *      bring-up now ungates both MSTPB4 (I3C) and MSTPB9 (IIC0)
+ *      so the channel-0 controller is fully powered.
+ *   4. ``ra_iic_b_scan`` against ``0x43`` -- the U15 I/O port
  *      expander ACKs every address-only probe. A successful ACK
  *      proves the bus is alive and the controller is clocking SCL.
- *   6. LED1 toggles on each scan and SCI8 prints
+ *   5. LED1 toggles on each scan and SCI8 prints
  *      ``"iic_b: scan 0x43 ack=1\r\n"`` once a second so a host
  *      terminal can see the heartbeat. LED2 latches ON if the
  *      driver itself returns a hard error (busy / hw_timeout) or
  *      the device fails to ACK (proves the bus isn't reaching U15).
  *
- * Hardware: bare EK-RA8D2 only. The dedicated I2C pull-ups on
- * P511 / P512 are populated on the EVM (R5 / R6) and gated on by
- * P109/P311 (step 3 above); no external wiring is required.
+ * Hardware: bare EK-RA8D2 v1 only, with **SW4-5 ON (I3C mode)**.
+ * In that switch position J27 is routed to P400/P401, the on-
+ * board selector U17 ties U15 onto the bus, and no software
+ * pull-up enable is required (in I2C mode SW4-5 OFF + P109/P311
+ * HIGH would be the equivalent path on P512/P511).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -79,19 +78,16 @@ static const ra_port_pin_t k_i2c_demo_pin_txd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
 static const ra_port_pin_t k_i2c_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-/** @brief Pinout for IIC channel 0 (P512 SCL / P511 SDA on EK-RA8D2). */
+/** @brief Pinout for IIC channel 0 (P400 SCL0 / P401 SDA0 on EK-RA8D2 --
+ *         the I3C-mode wiring when SW4-5 is ON. Board UM section 5.4.2
+ *         Table 31 row J27-1/J27-2 p ~32. U15 (PI4IOE5V6408, I2C addr
+ *         0x43) sits on this bus via the on-board selector U17 --
+ *         board lib uses the same pair in
+ *         ra_board_ek_ra8d2.c::internal_io_expander_route_pins. */
 static const ra_port_pin_t k_i2c_demo_pin_scl =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_12);
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_0);
 static const ra_port_pin_t k_i2c_demo_pin_sda =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_11);
-/** @brief I2C pull-up enable pins (board UM Table 23 row 1). In default
- *         I2C mode (SW4-5 OFF), P109 and P311 must be driven as
- *         push-pull outputs HIGH to enable the on-board pull-ups on
- *         SCL1/SDA1. Without this the bus floats. */
-static const ra_port_pin_t k_i2c_demo_pin_pullup_en_a =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_1 << 8) | (uint16_t)k_ra_pin_9);
-static const ra_port_pin_t k_i2c_demo_pin_pullup_en_b =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_3 << 8) | (uint16_t)k_ra_pin_11);
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_1);
 
 static const uint8_t k_i2c_demo_msg_ack[]  = "iic_b: scan 0x43 ack=1\r\n";
 static const uint8_t k_i2c_demo_msg_nack[] = "iic_b: scan 0x43 ack=0\r\n";
@@ -158,38 +154,23 @@ static void i2c_demo_pfs_or_halt(void)
       k_ra_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_i2c_demo_pin_scl, k_ra_psel_iic, "i2c_loopback.scl1") != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_i2c_demo_pin_scl, k_ra_psel_iic, "i2c_loopback.scl0") != k_ra_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_i2c_demo_pin_sda, k_ra_psel_iic, "i2c_loopback.sda1") != k_ra_ok) {
-    i2c_demo_panic_halt();
-  }
-
-  /* HUM Ch 20.2.1 "PmnPFS Register" p 855 + HUM Ch 39 "I2C Bus Interface
-   * (IIC_B)" p 2436: IIC_B requires SCL/SDA to be N-channel open-drain
-   * outputs. ra_pfs_route_peripheral routes the pin to the IIC mux but
-   * leaves NCODR clear (push-pull), which fights the on-board pull-ups
-   * the moment IIC_B drives a START. Symptom: BST.ALF (arbitration loss)
-   * latches and ra_iic_b_scan returns hw_timeout -- "iic_b: scan ERROR".
-   * The matching path used by the board-internal U15 expander
-   * (ra_board_ek_ra8d2.c::internal_io_expander_route_pins) makes the
-   * same NCODR write via ra_mpc_set_open_drain. */
-  if (ra_mpc_set_open_drain(k_ra_port_5, k_ra_pin_12, true) != k_ra_ok) {
-    i2c_demo_panic_halt();
-  }
-  if (ra_mpc_set_open_drain(k_ra_port_5, k_ra_pin_11, true) != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_i2c_demo_pin_sda, k_ra_psel_iic, "i2c_loopback.sda0") != k_ra_ok) {
     i2c_demo_panic_halt();
   }
 
-  /* Drive the U15 PI4IOE5V6408 pullup-enable pins HIGH so the on-
-   * board SCL1/SDA1 pullups energize (EK-RA8D2 v1 UM Table 23 row 1
-   * + Section 4.3.4 p 24). Without this the bus floats and the IIC_B
-   * arbitration loss bit latches on the first START -- exactly the
-   * "iic_b: scan ERROR" the HIL test surfaced. */
-  if (ra_gpio_output_init(k_i2c_demo_pin_pullup_en_a, k_ra_level_high) != k_ra_ok) {
+  /* IIC_B requires N-channel open-drain on SCL/SDA so the on-board
+   * pullups can win bus arbitration; ra_pfs_route_peripheral routes
+   * the IIC mux but leaves NCODR clear (push-pull). Mirrors the
+   * same NCODR write in
+   * ra_board_ek_ra8d2.c::internal_io_expander_route_pins.
+   * HUM Ch 20.2.1 "PmnPFS Register" p 855 + HUM Ch 40 "IIC_B" p 2436 */
+  if (ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_0, true) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_gpio_output_init(k_i2c_demo_pin_pullup_en_b, k_ra_level_high) != k_ra_ok) {
+  if (ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_1, true) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
 }
