@@ -206,6 +206,31 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
  */
 static UX_SLAVE_CLASS_HID* s_hid_class = UX_NULL;
 
+/**
+ * @var g_usb_hid_match
+ * @brief HIL liveness counter -- incremented on every successful
+ *        ``_ux_device_class_hid_event_set`` (a HID report queued to
+ *        the host).
+ * @details Read externally via SWD by scripts/hil_jlink_memprobe.sh.
+ *          If the host has enumerated the device and the worker is
+ *          pumping reports, this advances at the jiggle-period
+ *          cadence (~50 Hz). If USBX bring-up failed or the host
+ *          isn't attached, it stays at 0.
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_usb_hid_match = 0U;
+
+/**
+ * @var g_usb_hid_mismatch
+ * @brief HIL failure counter -- incremented when
+ *        ``_ux_device_class_hid_event_set`` returns a non-success
+ *        status (queue full, class disconnected mid-loop, ...).
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_usb_hid_mismatch = 0U;
+
 /* -------------------------------------------------------------------------- */
 /* HID Report Descriptor (3-button + X/Y boot mouse)                          */
 /* -------------------------------------------------------------------------- */
@@ -626,6 +651,9 @@ static void demo_jiggle_send(demo_phase_t* phase)
   if (_ux_device_class_hid_event_set(s_hid_class, &hid_event) == UX_SUCCESS) {
     (void)ra_board_led_toggle(k_ra_board_led1);
     *phase = (demo_phase_t)(((uint8_t)(*phase + 1U)) % k_demo_phase_count);
+    g_usb_hid_match += 1U;
+  } else {
+    g_usb_hid_mismatch += 1U;
   }
 }
 
