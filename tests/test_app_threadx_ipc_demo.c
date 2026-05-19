@@ -1,15 +1,17 @@
 /**
  * @file test_app_threadx_ipc_demo.c
- * @brief Integration test: M85 -> M33 IPC ping flow
+ * @brief Surface test: M85 IPC HAL primitives used as a reference
  *
  * @details
- * The production app at examples/ek_ra8d2/threadx_ipc_demo/main.c
- * resolves the send + receive IPC channels via
- * ra_ipc_channel_for_send / ra_ipc_channel_for_recv, initialises them,
- * then loops: push "ping" with ra_ipc_send_message_retry, drain replies
- * with ra_ipc_recv_message. The peer firmware on the M33 is out of
- * scope so the receive side normally returns no_data (HARDWARE_BRINGUP
- * "M33 absent" expected). This test exercises the same M85-side surface.
+ * The production app at examples/ek_ra8d2/threadx_ipc_demo/main.c was
+ * recast to use ThreadX inter-thread queues (TX_QUEUE) because the
+ * original M85 <-> M33 mailbox path could not run without a never-
+ * flashed M33 peer (the send FIFO filled and then every retry
+ * surfaced "send err"). The ra_ipc HAL itself is still exercised by
+ * the wider test suite; this file keeps the channel-resolution + init
+ * + send/recv smoke checks that the old version of the app
+ * needed, so any future regression in ``ra_ipc_channel_for_*`` or
+ * ``ra_ipc_send_message_retry`` is still caught.
  *
  * Exercised modules:
  *   - ra_ipc            (channel resolution, init, send/recv, retry)

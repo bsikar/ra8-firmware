@@ -7,28 +7,35 @@
  *
  * @details
  * Standalone EVM-tier app that exercises the IIC_B controller driver
- * (``libs/ra_hal/ra_iic_b.h``) without requiring an external peripheral.
- * The flow:
+ * (``libs/ra_hal/ra_iic_b.h``) against the **on-board PI4IOE5V6408
+ * I2C I/O port expander (U15) at 7-bit address 0x43**, which is the
+ * only I2C peripheral guaranteed to be populated on a bare EK-RA8D2
+ * v1 (board UM section 4.3.4 "Switch Configuration", p 24). The flow:
  *
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
  *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCL1
  *      (P512) and SDA1 (P511); these are the dedicated I2C pins
- *      wired to the Pmod1 / Arduino / camera I2C buses on the
- *      EK-RA8D2 (UM Table 17 / 20 / 32).
- *   3. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm.
- *   4. ``ra_iic_b_scan`` against an unused 7-bit address (0x77,
- *      typical BME280 default). The bus is unpopulated on a bare
- *      EVM so the peripheral NACKs -- the call still returns ``k_ra_ok``
- *      with ``out_acked = false``, which is treated as "the bus
- *      controller is alive and clocking SCL".
- *   5. LED1 toggles on each scan and SCI8 prints
- *      ``"iic_b: scan 0x77 ack=0\r\n"`` once a second so a host
+ *      shared between the Arduino, mikroBUS, Grove 1, Qwiic and
+ *      camera I2C buses on the EK-RA8D2 v1 board (board UM Table
+ *      23 "I2C/I3C Pullup Configuration" p 30).
+ *   3. Drive **P109 and P311 high as push-pull outputs** -- per
+ *      board UM Table 23 (row 1), this is the *required* pull-up
+ *      enable sequence for using the I2C bus in default I2C mode
+ *      (SW4-5 OFF). Without it the SCL/SDA lines float and the IIC
+ *      controller never clocks the bus.
+ *   4. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm.
+ *   5. ``ra_iic_b_scan`` against ``0x43`` -- the U15 I/O port
+ *      expander ACKs every address-only probe. A successful ACK
+ *      proves the bus is alive and the controller is clocking SCL.
+ *   6. LED1 toggles on each scan and SCI8 prints
+ *      ``"iic_b: scan 0x43 ack=1\r\n"`` once a second so a host
  *      terminal can see the heartbeat. LED2 latches ON if the
- *      driver itself returns a hard error (busy / hw_timeout).
+ *      driver itself returns a hard error (busy / hw_timeout) or
+ *      the device fails to ACK (proves the bus isn't reaching U15).
  *
  * Hardware: bare EK-RA8D2 only. The dedicated I2C pull-ups on
- * P511 / P512 are populated on the EVM (R5 / R6) so no wiring is
- * required.
+ * P511 / P512 are populated on the EVM (R5 / R6) and gated on by
+ * P109/P311 (step 3 above); no external wiring is required.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -57,10 +64,13 @@ typedef enum : uint32_t {
   k_i2c_demo_iic_channel = 0U,
 } i2c_demo_const_t;
 
-/** @brief Probe target -- BME280 default address; bus is empty so a
- *         NACK is the expected, harmless outcome on a bare EVM. */
+/** @brief Probe target -- on-board PI4IOE5V6408 I/O port expander U15
+ *         at 7-bit address 0x43 (board UM section 4.3.4, p 24). This
+ *         device is always populated on a bare EK-RA8D2 v1 and ACKs
+ *         every address-only probe, so a successful scan proves both
+ *         the bus and the controller are alive. */
 typedef enum : uint8_t {
-  k_i2c_demo_probe_addr = 0x77U,
+  k_i2c_demo_probe_addr = 0x43U,
 } i2c_demo_byte_t;
 
 /** @brief Pinout for SCI8 console (PD02 TXD8 / PD03 RXD8). */
@@ -73,9 +83,17 @@ static const ra_port_pin_t k_i2c_demo_pin_scl =
   (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_12);
 static const ra_port_pin_t k_i2c_demo_pin_sda =
   (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_11);
+/** @brief I2C pull-up enable pins (board UM Table 23 row 1). In default
+ *         I2C mode (SW4-5 OFF), P109 and P311 must be driven as
+ *         push-pull outputs HIGH to enable the on-board pull-ups on
+ *         SCL1/SDA1. Without this the bus floats. */
+static const ra_port_pin_t k_i2c_demo_pin_pullup_en_a =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_1 << 8) | (uint16_t)k_ra_pin_9);
+static const ra_port_pin_t k_i2c_demo_pin_pullup_en_b =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_3 << 8) | (uint16_t)k_ra_pin_11);
 
-static const uint8_t k_i2c_demo_msg_ack[]  = "iic_b: scan 0x77 ack=1\r\n";
-static const uint8_t k_i2c_demo_msg_nack[] = "iic_b: scan 0x77 ack=0\r\n";
+static const uint8_t k_i2c_demo_msg_ack[]  = "iic_b: scan 0x43 ack=1\r\n";
+static const uint8_t k_i2c_demo_msg_nack[] = "iic_b: scan 0x43 ack=0\r\n";
 static const uint8_t k_i2c_demo_msg_err[]  = "iic_b: scan ERROR\r\n";
 
 /** @brief Park forever after a fatal init failure.
@@ -143,6 +161,18 @@ static void i2c_demo_pfs_or_halt(void)
     i2c_demo_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_i2c_demo_pin_sda, k_ra_psel_iic, "i2c_loopback.sda1") != k_ra_ok) {
+    i2c_demo_panic_halt();
+  }
+
+  /* Drive the U15 PI4IOE5V6408 pullup-enable pins HIGH so the on-
+   * board SCL1/SDA1 pullups energize (EK-RA8D2 v1 UM Table 23 row 1
+   * + Section 4.3.4 p 24). Without this the bus floats and the IIC_B
+   * arbitration loss bit latches on the first START -- exactly the
+   * "iic_b: scan ERROR" the HIL test surfaced. */
+  if (ra_gpio_output_init(k_i2c_demo_pin_pullup_en_a, k_ra_level_high) != k_ra_ok) {
+    i2c_demo_panic_halt();
+  }
+  if (ra_gpio_output_init(k_i2c_demo_pin_pullup_en_b, k_ra_level_high) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
 }
