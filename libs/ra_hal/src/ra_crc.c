@@ -70,6 +70,83 @@ static inline bool ra_crc_is_32bit_poly(ra_crc_poly_t poly)
   return (poly == k_ra_crc_poly_32_ieee802_3) || (poly == k_ra_crc_poly_32c_rev);
 }
 
+/**
+ * @enum ra_crc_seed_t
+ * @brief Standard init / xor-out value for IEEE-style 32-bit CRCs.
+ *
+ * @details
+ * HUM Ch 48 documents the calculator core but not the
+ * init / xor-out convention -- those are part of the **CRC variant**
+ * spec rather than the hardware. IEEE 802.3 / CRC-32 and Castagnoli /
+ * CRC-32C both use ``init = 0xFFFFFFFF`` and ``xor_out = 0xFFFFFFFF``
+ * (per ITU-T V.42 / RFC 3385 respectively). The on-chip calculator
+ * starts CRCDOR at 0 by default, so the driver must pre-load CRCDOR
+ * with the init value before clocking data through, and XOR the read-
+ * back with the same constant on the way out.
+ */
+typedef enum : uint32_t {
+  k_ra_crc_32bit_seed = 0xFFFFFFFFUL, /**< IEEE-802.3 / Castagnoli init = xor-out. */
+} ra_crc_seed_t;
+
+/**
+ * @brief Feed `len` bytes through the calculator as packed 32-bit words.
+ *
+ * @details
+ * HUM Ch 48.2.3 p 3183 -- for CRC-32 / CRC-32C the engine consumes
+ * 32-bit words. FSP's `R_CRC_Calculate` and the project's mirror loop
+ * pack four bytes little-endian into each CRCDIR write. Trailing bytes
+ * that don't form a full word are ignored (FSP behaviour and HUM
+ * Note 1 p 3180 "This function cannot divide data used in CRC
+ * calculations").
+ *
+ * @param[in] data Pointer to ``len`` bytes (non-NULL).
+ * @param[in] len  Byte count; the low two bits are ignored.
+ *
+ * @pre Driver state has been initialized by ``ra_crc_init``.
+ * @pre CRCDOR pre-seeded by the caller with the desired init value.
+ * @post CRCDOR holds the engine result over the consumed words.
+ * @post No state mutated besides CRCDIR / CRCDOR.
+ * @note Not thread-safe; caller must serialize.
+ * @since 0.1.0
+ */
+static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
+{
+  volatile r_crc_regs_t* reg        = ra_crc();
+  const uint32_t         word_count = len >> 2U;
+  for (uint32_t i = 0U; i < word_count; i++) {
+    const uint32_t base   = i << 2U;
+    const uint32_t packed = (uint32_t)data[base + 0U] | ((uint32_t)data[base + 1U] << 8U) |
+                            ((uint32_t)data[base + 2U] << 16U) |
+                            ((uint32_t)data[base + 3U] << 24U);
+    reg->CRCDIR = packed;
+  }
+}
+
+/**
+ * @brief Feed `len` bytes through the calculator via the 8-bit alias.
+ *
+ * @details
+ * HUM Ch 48.2.3 p 3183 -- CRC-8 / CRC-16 / CRC-CCITT consume one byte
+ * per write through ``CRCDIR_BY`` at offset +0x04.
+ *
+ * @param[in] data Pointer to ``len`` bytes (non-NULL).
+ * @param[in] len  Byte count.
+ *
+ * @pre Driver state has been initialized by ``ra_crc_init``.
+ * @pre CRCDOR pre-seeded with the desired init value (typically 0).
+ * @post CRCDOR holds the engine result over all bytes.
+ * @post No state mutated besides CRCDIR_BY / CRCDOR.
+ * @note Not thread-safe; caller must serialize.
+ * @since 0.1.0
+ */
+static inline void internal_crc_feed_bytes(const uint8_t* data, uint32_t len)
+{
+  volatile r_crc_regs_t* reg = ra_crc();
+  for (uint32_t i = 0U; i < len; i++) {
+    reg->CRCDIR_BY = data[i];
+  }
+}
+
 /* ra_crc_init -- see header for full description. */
 ra_err_t ra_crc_init(ra_crc_poly_t poly)
 {
@@ -109,37 +186,32 @@ ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
   RA_CHECK_NULL_PTR(out_crc, s_tag, "out_crc must not be nullptr");
 
   volatile r_crc_regs_t* reg = ra_crc();
-  /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 */
-  /* GPS lives in the low 3 bits of CRCCR0. */
-  const ra_crc_poly_t poly = (ra_crc_poly_t)(reg->CRCCR0 & k_ra_crccr0_gps_mask);
+  /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 -- GPS lives
+   * in the low 3 bits of CRCCR0. */
+  const ra_crc_poly_t poly      = (ra_crc_poly_t)(reg->CRCCR0 & k_ra_crccr0_gps_mask);
+  const bool          is_32_bit = ra_crc_is_32bit_poly(poly);
 
-  if (ra_crc_is_32bit_poly(poly)) {
-    /* HUM Ch 48.2.3 "CRCDIR : CRC Data Input Register" p 3183 -- for
-     * CRC-32/32C the calculator consumes 32-bit words. FSP requires
-     * 4-byte-aligned length (R_CRC_Calculate cfg-check). We mirror
-     * that by ignoring trailing bytes that don't form a full word. */
-    const uint32_t word_count = len >> 2U;
-    for (uint32_t i = 0U; i < word_count; i++) {
-      const uint32_t base   = i << 2U;
-      const uint32_t packed = (uint32_t)data[base + 0U] | ((uint32_t)data[base + 1U] << 8U) |
-                              ((uint32_t)data[base + 2U] << 16U) |
-                              ((uint32_t)data[base + 3U] << 24U);
-      reg->CRCDIR           = packed;
-    }
-  } else {
-    /* HUM Ch 48.2.3 p 3183, FSP `crc_calculate_polynomial` -- CRC-8,
-     * CRC-16 and CRC-CCITT consume one byte per write through the
-     * `CRCDIR_BY` 8-bit alias at +0x04. */
-    for (uint32_t i = 0U; i < len; i++) {
-      reg->CRCDIR_BY = data[i];
-    }
+  /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 documents
+   * CRCDOR as a 32-bit read/write register; "Because its initial value
+   * is 0x00000000, rewrite the CRCDOR ... register to perform the
+   * calculations using a value other than the initial value." Standard
+   * CRC-32 / CRC-32C use init = 0xFFFFFFFF and xor-out = 0xFFFFFFFF; the
+   * hardware applies neither, so the driver pre-seeds CRCDOR and XORs
+   * the readback on the way out for the 32-bit polynomials. CRC-8 / 16
+   * / CCITT keep the chip's natural init = 0 (HUM example p 3185 shows
+   * the same flow). */
+  if (is_32_bit) {
+    reg->CRCDOR = (uint32_t)k_ra_crc_32bit_seed;
+    internal_crc_feed_words(data, len);
+    *out_crc = reg->CRCDOR ^ (uint32_t)k_ra_crc_32bit_seed;
+    return k_ra_ok;
   }
 
-  /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 -- the
-   * full 32-bit register holds the running result; lower bits mirror
-   * `CRCDOR_HA`/`CRCDOR_BY` aliases. Reading the wide register
-   * matches FSP `crc_calculated_value_get` for the 32-bit polynomial
-   * case and is a superset of the narrower aliases. */
+  internal_crc_feed_bytes(data, len);
+  /* HUM Ch 48.2.4 p 3184 -- the full 32-bit register holds the running
+   * result; lower bits mirror `CRCDOR_HA` / `CRCDOR_BY` aliases.
+   * Reading the wide register matches FSP `crc_calculated_value_get`
+   * and is a superset of the narrower aliases. */
   *out_crc = reg->CRCDOR;
   return k_ra_ok;
 }

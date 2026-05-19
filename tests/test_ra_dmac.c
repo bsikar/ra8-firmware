@@ -301,7 +301,9 @@ static void test_start_block_mode(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   const uint16_t md = (uint16_t)((reg->DMTMD & k_ra_dmtmd_md_mask) >> k_ra_dmtmd_md_pos);
   TEST_ASSERT_EQ(k_ra_dmtmd_md_block, md);
-  TEST_ASSERT_EQ(4, reg->DMCRB);
+  /* HUM Ch 17.2.9 p 737 -- block mode mirrors block_count into both
+   * DMCRBH and DMCRBL, so DMCRB = bc | (bc << 16). */
+  TEST_ASSERT_EQ((4U | (4U << 16U)), reg->DMCRB);
   TEST_END("dmac start_block sets MD=10b and DMCRB");
 }
 

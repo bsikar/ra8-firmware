@@ -370,8 +370,16 @@ static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
   reg->DMDAR = cfg->dst;
   /* HUM 17.2.8 DMCRA. */
   reg->DMCRA = internal_dmcra_value(cfg);
-  /* HUM 17.2.9 DMCRB -- only meaningful in non-normal modes. */
-  reg->DMCRB = (cfg->mode == k_ra_dmac_mode_normal) ? 0U : (uint32_t)cfg->block_count;
+  /* HUM 17.2.9 DMCRB p 737 -- "Set the same value for DMCRBH and DMCRBL
+   * in repeat transfer mode, block transfer mode and repeat-block
+   * transfer mode." Mirror block_count into both halves; normal mode
+   * leaves DMCRB at 0 ("In normal transfer mode, DMCRB is not used"). */
+  if (cfg->mode == k_ra_dmac_mode_normal) {
+    reg->DMCRB = 0U;
+  } else {
+    const uint32_t bc = (uint32_t)cfg->block_count;
+    reg->DMCRB        = bc | (bc << k_ra_dmcra_high_pos);
+  }
   /* HUM 17.2.13 DMOFR p 743 -- offset-addition not exposed. */
   reg->DMOFR = 0U;
   /* HUM 17.2.11 DMINT p 739. */

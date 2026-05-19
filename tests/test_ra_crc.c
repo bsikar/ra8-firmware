@@ -239,9 +239,16 @@ static void test_compute_crc32_reads_dor(void)
   TEST_BEGIN("crc compute crc32 reads dor");
   ra_sim_mmap_reset();
 
-  const uint32_t marker = 0xA5A5A5A5UL;
-  const uint32_t got    = compute_with_preseeded_result(k_ra_crc_poly_32c_rev, marker);
-  TEST_ASSERT_EQ(marker, got);
+  /* For 32-bit polynomials the driver pre-seeds CRCDOR with
+   * 0xFFFFFFFF and XORs the readback with the same constant on the
+   * way out (IEEE 802.3 / Castagnoli convention). On the sim the
+   * "engine" doesn't transform the seed, so the readback equals the
+   * seed and the final out_crc value is `seed XOR seed = 0`. */
+  (void)ra_crc_init(k_ra_crc_poly_32c_rev);
+  uint32_t       got = 0xDEADBEEFUL;
+  const ra_err_t err = ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &got);
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  TEST_ASSERT_EQ(0U, got);
   /* 32-bit poly path packs 4 input bytes into a single CRCDIR write. */
   volatile r_crc_regs_t* reg    = ra_crc();
   const uint32_t         packed = (uint32_t)s_payload[0] | ((uint32_t)s_payload[1] << 8U) |
