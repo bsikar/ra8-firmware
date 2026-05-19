@@ -1,68 +1,52 @@
-# usb_hid_device
+# usb_hid_device (hw_pending)
 
-USB HID boot-protocol mouse smoke test for the EK-RA8D2 USB-FS port.
+USBX HID device demo (3-button boot mouse) for EK-RA8D2.
 
-After flash, the EK-RA8D2 enumerates as a 3-button + X/Y mouse and
-jiggles the host cursor in a 4-pixel right/down/left/up square at 1 Hz.
-LED1 (P6_00) toggles per send.
+## Status (2026-05-19)
 
-## Build
-
-```
-make build
-make flash
-```
-
-## Verify (Linux)
+After fixing VBUSEN routing (now GPIO output LOW instead of
+peripheral function), the chip enumerates on the Pi-side host as
+VID 1209:0001:
 
 ```
-lsusb                # look for "Brighton Sikarskie EK-RA8D2 HID Mouse"
-xinput list          # the mouse appears as an attached pointer
+usb 2-1.3.4: New USB device found, idVendor=1209, idProduct=0001
 ```
 
-The cursor should walk in a 4-pixel square once per second on whatever
-desktop has focus.
-
-## Verify (macOS)
+But the `usbhid` driver fails to bind:
 
 ```
-system_profiler SPUSBDataType | grep -A6 RA8D2
+usbhid 2-1.3.4:1.0: can't add hid device: -110
+usbhid: probe of 2-1.3.4:1.0 failed with error -110
 ```
 
-The cursor moves on screen automatically; no driver install is needed
-(the OS uses its built-in boot-protocol mouse driver).
+`-110 = ETIMEDOUT` -- the kernel times out on a subsequent
+class-specific descriptor read (likely GET_HID_REPORT_DESCRIPTOR).
+USBX is responding to the standard chapter-9 enumeration but
+hanging when the host requests the HID Report Descriptor over EP0.
 
-## VID / PID
+The hand-rolled `internal_wait_frdy` in `libs/ra_hal/src/ra_usb.c`
+is the suspect: in `usb_cdc_echo` we found the same wait was the
+final block before USBX could deliver multi-segment EP0 IN
+transfers. The HID Report Descriptor (s_report_descriptor is 50+
+bytes) gets chunked into multiple EP0 IN packets, and if the FRDY
+wait times out between chunks the kernel sees -110.
 
-VID = 0x1209 (pid.codes free-for-experiments range), PID locally
-chosen. Bench use only -- do not ship hardware that leaves the bench
-with these IDs.
+Counters `g_usb_hid_match` / `g_usb_hid_mismatch` were added so the
+next iteration can use `jlink_memprobe` HIL_MODE to detect when the
+worker actually pushes HID events (will only advance once the host
+opens /dev/hidraw*, which requires the report-descriptor handshake
+to complete).
 
-## BSP usage
+## How to graduate back
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
-v1 UM Table 24 p 31). USB-FS pin set (P407 / P500 / P814 / P815) is
-the only routing the chip exposes for the on-board J11 Type-C USB-FS
-receptacle (UM Table 22 p 30).
-
-Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
-Rev 1.01) Table 22 p 30 + Table 24 p 31, USB HID 1.11 Boot Mouse
-profile, and HUM (R01UH1065EJ0130) Ch "USBFS".
-
-## HIL plan
-
-**HIL-able after firmware fix -- currently halts in
-`ra_exception_halt_loop` during init.** Demoted alongside
-`usb_cdc_echo` and `usb_msc_device` on 2026-05-18 (commit 1f46ad3b).
-The existing `hil.conf` is parked at `HIL_MODE=alive` /
-`HIL_BOOT_S=2`.
-
-Proposed promotion gate once the init halt is fixed: Pi enumerates
-the chip as a HID device (`/dev/hidrawX`), reads the report
-descriptor, and confirms the expected vendor-id / usage-page values.
-A new `hil_usb_hid_probe` mode wrapping that flow is the right
-addition. The Pi-as-USB-host hardware setup is the same as
-`usb_cdc_echo` -- one USB cable from the chip's USB-FS connector to
-the Pi.
-
-Stays in `hw_pending/` until the init halt is root-caused.
+1. Trace the EP0 IN multi-chunk path in `libs/ra_hal/src/ra_usb.c`;
+   compare against the Renesas FSP r_usb implementation of
+   `internal_wait_frdy`. Specifically, after writing a 64-byte
+   chunk into CFIFO, FRDY must clear ("port busy"), then the host
+   reads the chunk and FRDY reasserts. The current wait loop may
+   only check FRDY=1 once instead of the FRDY=0 -> FRDY=1
+   transition the next chunk needs.
+2. Once /dev/hidraw* appears, `usb_benchmark_hid.py` (to be
+   written -- it's not in scripts/ yet) reads the report
+   descriptor and round-trips a feature report.
+3. Promote once `g_usb_hid_match` advances steadily under load.
