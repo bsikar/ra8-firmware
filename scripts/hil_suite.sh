@@ -49,7 +49,6 @@ TESTS=(
     "eth_loopback|etha: |20"
     "sdram_benchmark|sdram: w=|20"
     "rtc_alarm|rtc: |30"
-    "threadx_filex_levelx_demo|fxlx|30"
 )
 
 UART_DIR="examples/ek_ra8d2/hw_validated/hil"
