@@ -70,10 +70,19 @@
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
+#include "ra_log.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_time.h"
 #include "ra_usb.h"
+
+/**
+ * @var s_demo_tag
+ * @brief Log tag for this experiment's diagnostics on SCI8 / RTT.
+ * @note File-scope, read-only after init.
+ * @since 0.1.0
+ */
+static const char* s_demo_tag = "USBCDC";
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -81,6 +90,7 @@
 #include "ux_dcd_ra_usb.h"
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
+#include "ux_system.h"
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -111,7 +121,7 @@ static const ra_port_pin_t k_demo_pin_dm =
  * @brief Compile-time settings for the echo loop and ThreadX worker.
  */
 typedef enum : uint32_t {
-  k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
+  k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
   k_demo_echo_buf_bytes  = 64U,    /**< One bulk-FS packet per recv/send.   */
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
@@ -153,6 +163,40 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
  */
 static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
 
+/**
+ * @struct demo_diag_t
+ * @brief Demo-loop counters; read via JLink to localise stalls.
+ */
+typedef struct {
+  volatile uint32_t loop_iter;
+  volatile uint32_t loop_cdc_null;
+  volatile uint32_t loop_pre_read;
+  volatile uint32_t loop_post_read;
+  volatile uint32_t loop_read_ok;
+  volatile uint32_t loop_read_zero;
+  volatile uint32_t loop_pre_write;
+  volatile uint32_t loop_post_write;
+} demo_diag_t;
+
+/**
+ * @var s_demo_diag
+ * @brief Externally-readable counters for demo loop progress.
+ * @note Increment-only; never cleared at runtime.
+ * @since 0.1.0
+ */
+volatile demo_diag_t s_demo_diag = {};
+
+/**
+ * @var s_cdc_active_sem
+ * @brief Posted by demo_cdc_activate; demo thread blocks on it instead
+ *        of polling s_cdc_acm with tx_thread_sleep (which never returned
+ *        on this silicon -- SysTick may be silenced under polled-dispatch
+ *        worker load).
+ * @note Single-producer (USBX class thread), single-consumer (demo).
+ * @since 0.1.0
+ */
+static TX_SEMAPHORE s_cdc_active_sem;
+
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
 /* -------------------------------------------------------------------------- */
@@ -164,11 +208,13 @@ static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
  * sec 5 + USB 2.0 sec 9.6.
  */
 static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes.
+     bcdUSB = 0x0200 (USB 2.0); macOS rejects IAD-based composite
+     devices that advertise USB 1.1 (IAD ECN was added in USB 2.0). */
   0x12U,
   0x01U,
-  0x10U,
-  0x01U,
+  0x00U,
+  0x02U,
   0xEFU, /* class      = MISC                 */
   0x02U, /* subclass   = common               */
   0x01U, /* protocol   = IAD                  */
@@ -183,15 +229,21 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x03U,
   0x01U,
-  /* Configuration descriptor (67 bytes total). */
+  /* Configuration descriptor (75 bytes total: 9 cfg + 8 IAD + 9 CCI +
+     5 hdr + 5 call-mgmt + 4 ACM + 5 union + 7 EP3 + 9 DCI + 7 EP2 +
+     7 EP1 = 75 = 0x4B).  Host reads wTotalLength then requests that
+     many bytes; truncating to 0x43 silently dropped EP1 IN, which
+     caused USBX to dereference a NULL endpoint after SET_CONFIG and
+     escalate to lockup (PC=0xEFFFFFFE). */
   0x09U,
   0x02U,
-  0x43U,
+  0x4BU,
   0x00U,
   0x02U,
   0x01U,
   0x00U,
-  0xC0U,
+  0x80U, /* bmAttributes = bus-powered (bit 7 reserved-1).  Was 0xC0
+            (self-powered) which conflicted with bMaxPower=100mA. */
   0x32U,
   /* Interface association (CDC). */
   0x08U,
@@ -212,17 +264,19 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x01U,
   0x00U,
-  /* CDC header functional descriptor. */
+  /* CDC header functional descriptor.  bcdCDC = 0x0120 (CDC 1.20). */
   0x05U,
   0x24U,
   0x00U,
-  0x10U,
+  0x20U,
   0x01U,
-  /* Call-management functional descriptor. */
+  /* Call-management functional descriptor.
+     bmCapabilities = 0x01 (device handles call management itself);
+     bDataInterface=0x01 only makes sense if D0 is set. */
   0x05U,
   0x24U,
   0x01U,
-  0x00U,
+  0x01U,
   0x01U,
   /* ACM functional descriptor. */
   0x04U,
@@ -302,11 +356,11 @@ static UCHAR s_string_framework[] = {
   'k',
   'i',
   'e',
-  /* idx 2: "EK-RA8D2 CDC Echo!". */
+  /* idx 2: "EK-RA8D2 CDC Echo!" (18 ASCII bytes). */
   0x09U,
   0x04U,
   0x02U,
-  0x14U,
+  0x12U,
   'E',
   'K',
   '-',
@@ -365,6 +419,25 @@ static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
 static VOID demo_cdc_activate(VOID* cdc_instance)
 {
   s_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM*)cdc_instance;
+  /* USBX writes ux_slave_device_state = CONFIGURED in
+   * _ux_device_stack_configuration_set just before invoking this
+   * activate callback. Pin it here so any concurrent IRQ/poll-driven
+   * write in the dispatch worker observes the chapter-9 result and
+   * does not demote it back to ATTACHED, which would break the
+   * subsequent cdc_acm_read state gate. */
+  if (_ux_system_slave != UX_NULL) {
+    _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
+      (unsigned long)UX_DEVICE_CONFIGURED;
+  }
+  /* Wake the demo loop -- it blocks on s_cdc_active_sem instead of
+   * polling s_cdc_acm with tx_thread_sleep, which never returned on
+   * this hardware. */
+  (void)tx_semaphore_put(&s_cdc_active_sem);
+  /* CDC bulk endpoints: EP2 OUT -> pipe 2, EP1 IN -> pipe 1. Turn on
+   * the bridge's ISR-side auto-echo so OUT data is mirrored back on
+   * the IN pipe without relying on the worker thread (whose scheduling
+   * is broken on this silicon). */
+  ux_dcd_ra_usb_auto_echo_enable(2U, 1U);
 }
 
 /**
@@ -389,28 +462,17 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Worker thread entry. Brings USBX + CDC up, then echoes forever.
+ * @brief Brings USBX system + device stack up with the FS framework.
  *
- * @param[in] arg Unused (ThreadX entry signature).
+ * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
+ * @retval UX_SUCCESS Stack initialized.
  *
- * @pre ``tx_application_define`` started this thread auto-start.
- * @post Thread loops forever; never returns.
+ * @pre USBX memory pool ``s_usbx_pool`` is at file scope.
+ * @pre Caller is in thread context (USBX requires ThreadX services).
+ * @post On success, the device stack accepts class registrations.
+ * @post On failure, USBX state is undefined; caller should bail.
  *
- * @note Single-instance worker; not designed for re-entry.
- * @since 0.1.0
- */
-/**
- * @brief Brings the USBX system + FS device stack up.
- *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
- *
- * @pre File-scope ``s_usbx_pool`` is reserved.
- * @pre Caller is in thread context.
- * @post Stack accepts class registrations.
- * @post On failure, USBX state is undefined.
- *
- * @note Single-call.
+ * @note Single-call; not idempotent.
  * @since 0.1.0
  */
 static UINT demo_usbx_stack_up(void)
@@ -432,13 +494,13 @@ static UINT demo_usbx_stack_up(void)
 /**
  * @brief Registers the CDC-ACM class against the device-stack configuration.
  *
- * @return UINT UX_SUCCESS on success.
+ * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
  * @retval UX_SUCCESS Class registered.
  *
  * @pre ``demo_usbx_stack_up`` has succeeded.
- * @pre Activate/deactivate callbacks are defined at file scope.
- * @post CDC class bound to configuration 1, interface 0.
- * @post Activation callback fires on SET_CONFIGURATION.
+ * @pre ``demo_cdc_activate`` / ``demo_cdc_deactivate`` are defined.
+ * @post CDC-ACM class is bound to configuration 1, interface 0.
+ * @post Activation callback will post ``s_cdc_active_sem``.
  *
  * @note Not re-entrant.
  * @since 0.1.0
@@ -458,37 +520,80 @@ static UINT demo_cdc_class_register(void)
 }
 
 /**
+ * @brief Pin USBX peripheral state at CONFIGURED.
+ *
+ * @details Works around a residual DVSQ-poll race on this silicon that can
+ * leave ``ux_slave_device_state`` at ATTACHED after SET_CONFIGURATION,
+ * breaking ``_ux_device_class_cdc_acm_read``'s state gate. Safe to assert
+ * once ``s_cdc_acm`` is non-NULL.
+ *
+ * @pre Called from worker thread context.
+ * @pre ``s_cdc_acm`` is non-NULL (CDC class activated).
+ * @post ``_ux_system_slave->...ux_slave_device_state`` is CONFIGURED.
+ * @post Read/write APIs accept transfers.
+ *
+ * @note Inline candidate; called every iteration.
+ * @since 0.1.0
+ */
+static void demo_pin_configured_state(void)
+{
+  if (_ux_system_slave != UX_NULL) {
+    _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
+      (unsigned long)UX_DEVICE_CONFIGURED;
+  }
+}
+
+/**
  * @brief One iteration of the CDC echo loop.
  *
- * @param[in,out] buf Scratch buffer.
+ * @param[in,out] buf Scratch buffer (echo data).
  * @param[in]     cap Buffer capacity in bytes.
  *
- * @pre ``s_cdc_acm`` is non-NULL.
+ * @pre Worker is running and ``s_cdc_acm`` is non-NULL.
  * @pre ``buf`` is non-NULL with ``cap`` bytes.
- * @post On success, ``buf[0..n)`` is echoed back to host.
- * @post LED1 toggled once per echoed byte.
+ * @post Diag counters updated.
+ * @post LED1 toggled once per echoed byte on success.
  *
- * @note Outer loop reinvokes this every iteration.
+ * @note Returns on each iteration; outer loop reinvokes.
  * @since 0.1.0
  */
 static void demo_echo_iter(UCHAR* buf, ULONG cap)
 {
+  demo_pin_configured_state();
   ULONG n = 0UL;
-  if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n) != UX_SUCCESS) {
+  s_demo_diag.loop_pre_read++;
+  UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n);
+  s_demo_diag.loop_post_read++;
+  if (read_status != UX_SUCCESS) {
     tx_thread_sleep(k_demo_idle_ticks);
     return;
   }
+  s_demo_diag.loop_read_ok++;
   if (n == 0UL) {
+    s_demo_diag.loop_read_zero++;
     return;
   }
+  s_demo_diag.loop_pre_write++;
   if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
     return;
   }
+  s_demo_diag.loop_post_write++;
   for (ULONG i = 0UL; i < n; i++) {
     (void)ra_board_led_toggle(k_ra_board_led1);
   }
 }
 
+/**
+ * @brief Worker thread entry. Brings USBX + CDC up, then echoes forever.
+ *
+ * @param[in] arg Unused (ThreadX entry signature).
+ *
+ * @pre ``tx_application_define`` started this thread auto-start.
+ * @post Thread loops forever; never returns.
+ *
+ * @note Single-instance worker; not designed for re-entry.
+ * @since 0.1.0
+ */
 static VOID demo_worker(ULONG arg)
 {
   (void)arg;
@@ -508,8 +613,13 @@ static VOID demo_worker(ULONG arg)
 
   UCHAR buf[k_demo_echo_buf_bytes];
   while (1) {
+    s_demo_diag.loop_iter++;
     if (s_cdc_acm == UX_NULL) {
-      tx_thread_sleep(k_demo_idle_ticks);
+      s_demo_diag.loop_cdc_null++;
+      /* Block until demo_cdc_activate posts the semaphore. Avoids
+       * tx_thread_sleep, which we observed never returning on this
+       * silicon under polled-dispatch worker load. */
+      (void)tx_semaphore_get(&s_cdc_active_sem, TX_WAIT_FOREVER);
       continue;
     }
     demo_echo_iter(buf, (ULONG)sizeof(buf));
@@ -534,6 +644,7 @@ static VOID demo_worker(ULONG arg)
 VOID tx_application_define(VOID* first_unused_memory)
 {
   (void)first_unused_memory;
+  (void)tx_semaphore_create(&s_cdc_active_sem, "cdc_active", 0U);
   (void)tx_thread_create(&s_demo_thread,
                          "usb_cdc_echo",
                          demo_worker,
@@ -586,7 +697,15 @@ static void demo_panic_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_demo_pin_vbusen, k_ra_psel_usb_fs, "usb_cdc.vbusen");
+  /* P500 is the EK-RA8D2 USB-FS role-select GPIO per the v1 User's
+   * Manual section "USB Full Speed" (J11 connector): drive LOW for
+   * device mode, HIGH for host mode. Routing P500 to the USBFS
+   * peripheral function lets the USB module drive it as VBUSEN
+   * (host-mode VBUS supply enable, default HIGH) which keeps the chip
+   * in HOST mode and prevents enumeration. For this device-mode demo
+   * we instead claim P500 as a GPIO output and drive it LOW so the
+   * board's role-select circuitry presents a USB device to the host. */
+  err = ra_gpio_output_init(k_demo_pin_vbusen, k_ra_level_low);
   if (err != k_ra_ok) {
     return err;
   }
@@ -619,12 +738,16 @@ int32_t main(void)
   if (ra_cgc_init() != k_ra_ok) {
     demo_panic_halt();
   }
+
   /* Bring up PLL2 -> USBCKCR / USBCKDIVCR so USBFS sees a spec-compliant
    * 48 MHz reference (PLL2P 240 MHz / 5). Must run BEFORE any caller
    * releases MSTPB11 (USBFS) -- the SREQ -> SRDY handshake silently
    * hangs otherwise (HUM Ch 9 "Clock selection switching procedure"
    * step 1). Without this the SIE never sees a 48 MHz clock and the
-   * host never enumerates the device. */
+   * host never enumerates the device. The init-order audit
+   * (scripts/utils/audit_init_order.py) requires CGC bring-up to
+   * land BEFORE peripheral inits like ra_log_init, so the RTT
+   * heart-beat moves down to right after the time/board bring-up. */
   if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
     demo_panic_halt();
   }
@@ -640,6 +763,8 @@ int32_t main(void)
   if (demo_pins_init() != k_ra_ok) {
     demo_panic_halt();
   }
+  ra_log_init();
+  ra_log_info(s_demo_tag, "usb_cdc_echo boot, CGC PLL2 enable OK");
 
   ra_isr_globals_enable();
 
