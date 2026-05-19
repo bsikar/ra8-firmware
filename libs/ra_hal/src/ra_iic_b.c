@@ -551,9 +551,15 @@ static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const r
  */
 static ra_err_t internal_iic_b_block_bringup(volatile r_iic_b_regs_t* reg)
 {
-  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 -- */
+  /* the I3C/IIC_B shared block needs both MSTPB4 (I3C) AND MSTPB9      */
+  /* (IIC0) ungated; ungating only MSTPB4 leaves the channel-0 IIC      */
+  /* controller powered down and any START hangs in BCST before TDBEF0  */
+  /* ever rises. (See ra_board_ek_ra8d2.c::internal_io_expander_apply.) */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp i3c"); /* GCOVR_EXCL_BR_LINE */
+  const ra_err_t iic0_err = ra_mstp_enable(k_ra_mstp_iic0);
+  RA_RETURN_ON_ERROR(iic0_err, s_tag, "iic_b_init: mstp iic0"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 40.2.92 "CECTL : Clock Enable Control Register" p 2543 */
   reg->CECTL = k_ra_iic_b_msk_cectl_clke;
