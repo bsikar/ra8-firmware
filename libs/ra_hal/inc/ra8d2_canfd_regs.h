@@ -564,6 +564,30 @@ typedef enum : uint32_t {
 } ra_gaflectr_bits_t;
 
 /**
+ * @enum ra_gaflcfg0_bits_t
+ * @brief CFDGAFLCFG0 layout (HUM Ch 41.2.18 p 2735).
+ *
+ * @details RNC0[20:16] selects how many rules on page 0 the AFL
+ * consults. Only writable in GL_RESET.
+ */
+typedef enum : uint32_t {
+  k_ra_gaflcfg0_shift_rnc0 = 16U,   /**< Position of RNC0[4:0]. */
+  k_ra_gaflcfg0_mask_rnc0  = 0x1FU, /**< RNC0 field is 5 bits.  */
+} ra_gaflcfg0_bits_t;
+
+/**
+ * @enum ra_gaflp1_bits_t
+ * @brief CFDGAFLP1r layout (HUM Ch 41.2.22 p 2740).
+ *
+ * @details Bit 0 GAFLFDP0 = route matched frame into RX FIFO 0. At
+ * least one of the GAFLFDPn bits MUST be set or the matched frame
+ * is dropped instead of being routed.
+ */
+typedef enum : uint32_t {
+  k_ra_gaflp1_bit_gaflfdp0 = 1UL << 0U, /**< Route to RX FIFO 0. */
+} ra_gaflp1_bits_t;
+
+/**
  * @enum ra_canfd_afl_total_t
  * @brief Maximum number of GAFL filter rules across all paged windows.
  *

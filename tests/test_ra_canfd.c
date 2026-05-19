@@ -759,8 +759,10 @@ static void test_filter_set_writes_id_mask_dlc(void)
   volatile r_canfd_t* reg = ra_canfd(0U);
   TEST_ASSERT_EQ(0x123U, reg->CFDGAFL[0].ID);
   TEST_ASSERT_EQ(0x7FFU, reg->CFDGAFL[0].M);
-  /* DLC=8 packed into [31:28] -> 8 << 28 = 0x80000000. */
-  TEST_ASSERT_EQ(0x80000000U, reg->CFDGAFL[0].P1);
+  /* DLC=8 packed into [31:28] -> 8 << 28 = 0x80000000. P1 bit 0
+   * (GAFLFDP0) is also set so the matched frame is routed into RX
+   * FIFO 0 instead of being dropped. */
+  TEST_ASSERT_EQ(0x80000001U, reg->CFDGAFL[0].P1);
   /* AFLDAE re-locked at exit (CFDGAFLECTR cleared). */
   TEST_ASSERT_EQ(0, reg->CFDGAFLECTR);
   TEST_END("canfd filter_set programs CFDGAFL slot");
