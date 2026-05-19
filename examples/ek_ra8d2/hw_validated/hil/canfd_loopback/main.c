@@ -43,6 +43,7 @@ typedef enum : uint32_t {
   k_canfd_demo_period_ms = 1000U,
   k_canfd_demo_bitrate   = 500000U,
   k_canfd_demo_id        = 0x123U,
+  k_canfd_demo_rx_spin   = 200000U, /**< ~10 ms RX poll budget at 1 GHz CPU. */
 } canfd_demo_const_t;
 
 /** @brief Channel + payload layout. */
@@ -99,6 +100,12 @@ volatile uint32_t g_canfd_match = 0U;
  * @since 0.1.0
  */
 volatile uint32_t g_canfd_mismatch = 0U;
+
+/** @brief Bring-up step tracker: 1=init ok, 2=set_bitrate ok, 3=loopback ok. */
+volatile uint32_t g_canfd_init_step = 0U;
+
+/** @brief NCFG readback latched at end of set_bitrate (proves NCFG write). */
+volatile uint32_t g_canfd_ncfg_after_setbitrate = 0U;
 
 /** @brief Park the CPU forever after fatal init failure. */
 static void canfd_demo_panic_halt(void)
@@ -161,14 +168,19 @@ static void canfd_demo_setup_or_halt(void)
   if (ra_canfd_init((uint8_t)k_canfd_demo_channel) != k_ra_ok) {
     canfd_demo_panic_halt();
   }
+  g_canfd_init_step = 1U;
   if (ra_canfd_set_bitrate((uint8_t)k_canfd_demo_channel,
                            (uint32_t)k_canfd_demo_bitrate,
                            (uint32_t)k_canfd_demo_bitrate) != k_ra_ok) {
     canfd_demo_panic_halt();
   }
+  g_canfd_init_step = 2U;
+  g_canfd_ncfg_after_setbitrate =
+    ra_canfd((uint8_t)k_canfd_demo_channel)->CFDC[0].NCFG;
   if (canfd_demo_enable_internal_loopback((uint8_t)k_canfd_demo_channel) != k_ra_ok) {
     canfd_demo_panic_halt();
   }
+  g_canfd_init_step = 3U;
 }
 
 /**
@@ -201,11 +213,15 @@ static void canfd_demo_setup_or_halt(void)
   if (ra_canfd_transmit((uint8_t)k_canfd_demo_channel, &tx) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
+  /* Poll for the loopback frame: 500 kbit/s + 8 data bytes ~ 240 us
+   * round-trip, so wait up to ~10 ms before declaring no_data. */
   ra_canfd_frame_t rx = {};
-  if (ra_canfd_receive((uint8_t)k_canfd_demo_channel, &rx) != k_ra_ok) {
-    return k_ra_err_no_data;
+  for (uint32_t i = 0U; i < (uint32_t)k_canfd_demo_rx_spin; i++) {
+    if (ra_canfd_receive((uint8_t)k_canfd_demo_channel, &rx) == k_ra_ok) {
+      return k_ra_ok;
+    }
   }
-  return k_ra_ok;
+  return k_ra_err_no_data;
 }
 
 #pragma GCC diagnostic push

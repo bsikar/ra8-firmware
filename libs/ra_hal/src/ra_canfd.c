@@ -150,10 +150,18 @@ static const ra_mstp_t s_canfd_mstp_table[] = {
  */
 static ra_err_t internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mode_t mode)
 {
-  /* HUM Ch 41 p 2762 "CFDCnCTR.CHMDC" -- read-modify-write the CTR
-   * register, mask CHMDC to bits [1:0], stamp the requested mode. */
+  /* Read-modify-write the CTR register, mask CHMDC to bits [1:0],
+   * stamp the requested mode. Also clear CSLPR (bit 2): the channel
+   * comes out of reset with CSLPR=1 (sleep request), and CHMDC
+   * writes are silently ignored while the channel is asleep -- the
+   * state machine stays in CH_RESET, status bits never flip, and
+   * the next mode write times out. JTAG dump after the original
+   * init showed CTR=0x05 / STS=0x05 (CHMDC=01 RESET + CSLPR=1 +
+   * CRSTSTS=1 + CSLPSTS=1) confirming the channel never woke.
+   * Mirrors the GSLPR clear in internal_set_global_mode.
+   * HUM Ch 41 p 2762 "CFDCnCTR.CHMDC" + "CFDCnCTR.CSLPR" */
   uint32_t ctr = reg->CFDC[0].CTR;
-  ctr &= ~k_ra_cnctr_mask_chmdc;
+  ctr &= ~(k_ra_cnctr_mask_chmdc | k_ra_cnctr_mask_cslpr);
   ctr |= ((uint32_t)mode & k_ra_cnctr_mask_chmdc);
   reg->CFDC[0].CTR = ctr;
 
@@ -328,14 +336,39 @@ static void internal_install_default_afl(volatile r_canfd_t* reg)
  * @note Internal helper, not exported.
  * @since 0.1.0
  */
-static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
+static void internal_configure_rx_fifo0(volatile r_canfd_t* reg)
 {
-  /* HUM Ch 41 "CFDRFCCa" p 2741 */ /* Depth+payload in GL_RESET, RFE last. */
+  /* Programme depth + payload in GL_RESET (RFE bit left zero -- it
+   * is only writable in GL_HALT or GL_OPERATION per HUM Ch 41
+   * "CFDRFCCa" p 2741. Setting RFE here would silently no-op, the
+   * FIFO would stay disabled, and every loopback frame would land
+   * in /dev/null instead of the RX FIFO.) */
   enum : uint32_t {
-    k_rfcc_rfdc_4msgs = 1UL << 8U, /**< RFDC = 001b -> 4 entries.        */
-    k_rfcc_rfpls_64   = 7UL << 4U, /**< RFPLS = 111b -> 64-byte CAN-FD.  */
+    k_rfcc_rfdc_4msgs = 1UL << 8U, /**< RFDC = 001b -> 4 entries.       */
+    k_rfcc_rfpls_64   = 7UL << 4U, /**< RFPLS = 111b -> 64-byte CAN-FD. */
   };
   reg->CFDRFCC[0] = k_rfcc_rfdc_4msgs | k_rfcc_rfpls_64;
+}
+
+/**
+ * @brief Enable RX FIFO 0 (RFE=1) -- must run in GL_HALT or GL_OPERATION.
+ *
+ * @details Asserts CFDRFCCa.RFE on RX FIFO 0 to bring the FIFO out of
+ * the disabled / read-and-write-pointer-cleared state.
+ *
+ * @param[in] reg CANFD register block.
+ *
+ * @pre Global block is in GL_OPERATION (or GL_HALT).
+ * @pre internal_configure_rx_fifo0 already programmed depth/payload.
+ * @post CFDRFCC[0].RFE = 1; FIFO accepts inbound frames.
+ * @post No other CFDRFCCa fields are touched (RMW preserves RFDC/RFPLS).
+ * @note Not thread-safe; caller serialises ra_canfd_init.
+ * @since 0.1.0
+ */
+static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
+{
+  /* HUM Ch 41 "CFDRFCCa.RFE" p 2742 -- separate write after the rest of
+   * the CFDRFCCa register has been set, while in GL_OPERATION. */
   reg->CFDRFCC[0] |= k_ra_rfcc_bit_rfe;
 }
 
@@ -502,12 +535,15 @@ static ra_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
   (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
 
   internal_install_default_afl(reg);
-  internal_enable_rx_fifo0(reg);
+  internal_configure_rx_fifo0(reg);
 
   const ra_err_t gop_err = internal_set_global_mode(reg, k_ra_gctr_value_operation);
   if (gop_err != k_ra_ok) {
     return gop_err;
   }
+  /* RFE is only writable in GL_HALT / GL_OPERATION, so enable RX FIFO
+   * 0 only after the global block has actually transitioned. */
+  internal_enable_rx_fifo0(reg);
   return internal_set_channel_mode(reg, k_ra_chmdc_operation);
 }
 
@@ -706,14 +742,14 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
     return n_err;
   }
 
-  /* NCFG / DCFG are only writable in CH_RESET or CH_HALT.  Cast-to-
-   * void on the halt transition hid the bug: NCFG was written while
-   * still in operation and the chip silently dropped the value, so
-   * the channel was never actually programmed to the requested
-   * bitrate -- the re-enter-operation call eventually failed and
-   * the demo panicked one call later.
+  /* NCFG / DCFG are only writable in CH_RESET or CH_HALT.  Use
+   * CH_RESET: halt is a graceful transition that waits for any
+   * in-flight TX to finish, and on internal-loopback bring-up the
+   * channel may be stuck trying to TX onto a bus with no
+   * acknowledger -- halt never converges. CH_RESET is the
+   * immediate abort path, which is what FSP r_canfd does too.
    * HUM Ch 41 "CFDCnNCFG.NTSEG2" p 2706 */
-  const ra_err_t halt_err = internal_set_channel_mode(reg, k_ra_chmdc_halt);
+  const ra_err_t halt_err = internal_set_channel_mode(reg, k_ra_chmdc_reset);
   if (halt_err != k_ra_ok) {
     return halt_err;
   }
@@ -869,6 +905,14 @@ ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
   if (v != k_ra_ok) {
     return v;
   }
+
+  /* Clear the previous transmission's TMTRF before asserting TXREQ:
+   * HUM Ch 41 "CFDTMSTSj.TMTRF" p ~2756 says TMTR is only honored when
+   * TMTRF is 00b. After the first successful TX the chip leaves
+   * TMTRF=10b ("transmission successful") and silently drops every
+   * subsequent TXREQ -- the symptom is the first round-trip working
+   * and every later one returning no_data. */
+  reg->CFDTMSTS[k_ra_canfd_tx_mb_default] = 0U;
 
   /* HUM Ch 41 p 2806 "CFDTMID/CFDTMPTR/CFDTMFDCTR/CFDTMDF" +
    * FSP r_canfd.c line ~668..684. */
