@@ -10,7 +10,7 @@ Brings up SCI8 + LED1 + the LPM block. Loops:
 3. Increments an in-RAM `s_wake_count`, toggles LED1, prints
    `lpm: wake_count=NNNNNNNN` on the J-Link OB CDC channel.
 
-Sleep mode is the safest LPM mode for a bare-EVM smoke test --
+Sleep mode is the safest LPM mode for a bare-EVM HIL test --
 SysTick keeps clocking, no external IRQ pin or RTC alarm has to be
 wired up, and the J-Link debugger stays attached. Software-Standby
 and Deep-Standby need an external wake source, which the bare

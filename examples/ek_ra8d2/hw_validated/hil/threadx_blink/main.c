@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/threadx_blink/main.c
- * @brief Eclipse ThreadX bring-up smoke test on the EK-RA8D2
+ * @brief Eclipse ThreadX bring-up HIL test on the EK-RA8D2
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

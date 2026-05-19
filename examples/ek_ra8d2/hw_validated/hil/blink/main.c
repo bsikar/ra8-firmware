@@ -8,7 +8,7 @@
  * @details
  * Drives the EK-RA8D2 user-LED1 (P600, blue) at 1 Hz using the
  * board-support layer (``libs/ra_board_ek_ra8d2``). This is the
- * smallest possible smoke test that proves the chip booted into
+ * smallest possible HIL test that proves the chip booted into
  * Reset_Handler / SystemInit / main and that the BSP + HAL
  * GPIO/SysTick stack is alive.
  *

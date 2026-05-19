@@ -18,7 +18,7 @@
  *      ``"lpm: wake_count=NNNNNNNN\r\n"`` on the J-Link OB CDC
  *      channel (115200 8N1).
  *
- * Sleep mode is the safest LPM mode for a smoke-test demo because
+ * Sleep mode is the safest LPM mode for a HIL test demo because
  * SysTick keeps running, no external wake source is required, and
  * the JLink debug probe stays attached. Software-Standby /
  * Deep-Standby would require an IRQ pin or RTC alarm wired up,
