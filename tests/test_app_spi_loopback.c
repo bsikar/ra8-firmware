@@ -4,9 +4,10 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/spi_loopback/main.c bring-up:
- * ra_mstp_init -> ra_spi_init -> raw SPCR2.SPLP stamp ->
- * ra_spi_xfer8. All MMIO is via the host tests/mocks/ra_sim_mmap.c
- * shim.
+ * ra_mstp_init -> ra_spi_init(cfg.loopback=true) -> ra_spi_xfer8.
+ * The HAL programmes SPCR2.SPLP while SPE=0 (HUM Ch 43.2.5 p 2889);
+ * a stamp after SPE=1 would be silently dropped. All MMIO is via the
+ * host tests/mocks/ra_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -62,30 +63,30 @@ static void test_spi_app_bringup_ok(void)
 }
 
 /**
- * @brief SPCR2.SPLP bit set raises SPLP -- internal-loopback enable.
+ * @brief cfg.loopback=true causes init to set SPCR2.SPLP.
  *
  * @par MC/DC:
- * Decision under test: ``ra_spi(channel) == nullptr``. One atomic
- * condition x 2 vectors -- valid channel (this) + invalid channel
- * (test_spi_app_bad_channel).
+ * Decision under test: ``cfg->loopback ? SPLP : 0`` in ra_spi_init.
+ * One atomic condition x 2 vectors -- loopback=true (this) +
+ * loopback=false (test_spi_app_bringup_ok, which leaves SPLP clear).
  */
 static void test_spi_app_loopback_bit_set(void)
 {
   reset_world();
-  TEST_BEGIN("spi_loopback: SPCR2.SPLP stamped");
+  TEST_BEGIN("spi_loopback: SPCR2.SPLP programmed by init");
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
   const ra_spi_cfg_t cfg = {
     .baud_hz   = (uint32_t)k_test_spi_app_baud_hz,
     .pclka_hz  = (uint32_t)k_test_spi_app_pclka_hz,
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
+    .loopback  = true,
   };
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
   volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_test_spi_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->SPCR2 |= (uint32_t)k_ra_spcr2_mask_splp;
-  TEST_ASSERT((reg->SPCR2 & (uint32_t)k_ra_spcr2_mask_splp) != 0U);
-  TEST_END("spi_loopback: SPCR2.SPLP stamped");
+  TEST_ASSERT((reg->SPCR2 & (uint32_t)k_ra_spcr2_mask_splp2) != 0U);
+  TEST_END("spi_loopback: SPCR2.SPLP programmed by init");
 }
 
 /**

@@ -13,14 +13,15 @@
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
  *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCI8
  *      console pins (PD02 / PD03).
- *   3. ``ra_spi_init(0, ...)`` at 1 MHz mode-0 MSB-first.
- *   4. Direct register stamp ``SPCR2.SPLP = 1`` so COPI is fed
- *      back into CIPO inside the chip; no need to route or wire
- *      RSPI pins (HUM Ch 43.2.5 p 2889 -- ``k_ra_spcr2_mask_splp``).
- *      The HAL doesn't expose a "loopback" knob today; documenting
- *      the raw write keeps the demo single-file like canfd_loopback.
- *   5. Walk a 16-byte test pattern (``0xA0..0xAF``) through
- *      ``ra_spi_xfer8`` and compare RX vs TX byte-for-byte.
+ *   3. ``ra_spi_init(0, .loopback=true, ...)`` at 1 MHz mode-0
+ *      MSB-first.  The HAL programmes SPCR2.SPLP2=1 BEFORE asserting
+ *      SPCR.SPE so the write is honored (HUM Ch 43.2.4 p 2889 --
+ *      SPCR2 writes require SPE=0).  SPLP2 is the non-inverting
+ *      loopback variant (rx = tx); the inverting SPLP would flip
+ *      every bit.  No external CIPO/COPI wiring needed -- the
+ *      silicon ties COPI back to CIPO internally.
+ *   4. Walk a 16-byte test pattern (``0xA0..0xAF``) through
+ *   5. ``ra_spi_xfer8`` and compare RX vs TX byte-for-byte.
  *      LED1 toggles on each successful round-trip; LED2 latches
  *      ON if any byte mismatches.
  *
@@ -35,7 +36,6 @@
 
 #include <stdint.h>
 
-#include "ra8d2_spi_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -85,28 +85,22 @@ static void spi_demo_panic_halt(void)
 }
 
 /**
- * @brief Bring CGC + SysTick + console + SPI_B up. Panic-halts on fail.
+ * @brief Bring CGC, MSTP and SysTick up. Returns PCLKA Hz via ``out_pclka``.
  *
- * @details
- * Stamps SPCR2.SPLP = 1 directly after ``ra_spi_init`` so the
- * silicon ties COPI to CIPO internally and no external loopback
- * jumper is needed. The HAL surface does not yet expose this knob;
- * the raw write is documented above per the canfd_loopback pattern.
- *
+ * @pre Reset_Handler has finished C-runtime init.
+ * @post CGC, MSTP and SysTick are live; ``*out_pclka`` holds PCLKA in Hz.
  * @since 0.1.0
  */
-static void spi_demo_setup_or_halt(void)
+static void spi_demo_clocks_or_halt(uint32_t* out_pclka)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
-
   if (ra_cgc_init() != k_ra_ok) {
     spi_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     spi_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka) != k_ra_ok) {
     spi_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -115,7 +109,17 @@ static void spi_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     spi_demo_panic_halt();
   }
+}
 
+/**
+ * @brief Bring SCI8 (console) up on PD02 / PD03 with the given PCLKA.
+ *
+ * @pre CGC and MSTP are initialized.
+ * @post SCI8 console is ready to print.
+ * @since 0.1.0
+ */
+static void spi_demo_console_or_halt(uint32_t pclka_hz)
+{
   if (ra_pfs_route_peripheral(k_spi_demo_pin_txd, k_ra_psel_sci_async, "spi_loopback.txd8") !=
       k_ra_ok) {
     spi_demo_panic_halt();
@@ -124,7 +128,6 @@ static void spi_demo_setup_or_halt(void)
       k_ra_ok) {
     spi_demo_panic_halt();
   }
-
   const ra_sci_cfg_t sci_cfg = {
     .baud      = k_spi_demo_baud,
     .data_bits = k_ra_sci_data_8,
@@ -135,19 +138,35 @@ static void spi_demo_setup_or_halt(void)
   if (ra_sci_init((uint8_t)k_spi_demo_sci_channel, &sci_cfg) != k_ra_ok) {
     spi_demo_panic_halt();
   }
+}
+
+/**
+ * @brief Bring CGC + SysTick + console + SPI_B up. Panic-halts on fail.
+ *
+ * @details
+ * Passes ``cfg.loopback = true`` to ``ra_spi_init`` so the HAL
+ * programmes SPCR2.SPLP2=1 while SPE is still 0 (HUM Ch 43.2.4
+ * p 2889).  The silicon then ties COPI to CIPO internally; no
+ * external loopback jumper required.
+ *
+ * @since 0.1.0
+ */
+static void spi_demo_setup_or_halt(void)
+{
+  uint32_t pclka_hz = 0U;
+  spi_demo_clocks_or_halt(&pclka_hz);
+  spi_demo_console_or_halt(pclka_hz);
 
   const ra_spi_cfg_t spi_cfg = {
     .baud_hz   = k_spi_demo_spi_baud_hz,
     .pclka_hz  = pclka_hz,
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
+    .loopback  = true,
   };
   if (ra_spi_init((uint8_t)k_spi_demo_spi_channel, &spi_cfg) != k_ra_ok) {
     spi_demo_panic_halt();
   }
-  /* Internal-loopback: COPI -> CIPO, no external pins required. */
-  ra_spi((uint8_t)k_spi_demo_spi_channel)->SPCR2 |= (uint32_t)k_ra_spcr2_mask_splp;
-
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     spi_demo_panic_halt();
   }
