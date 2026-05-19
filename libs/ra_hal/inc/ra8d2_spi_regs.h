@@ -290,12 +290,13 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_spcr2_mask_t
- * @brief SPCR2 (control 2) masks. HUM Ch 43.2.5 p 2889.
+ * @brief SPCR2 (control 2) masks. HUM Ch 43.2.4 p 2889.
  */
 typedef enum : uint32_t {
-  k_ra_spcr2_mask_splp  = 0x00010000UL, /**< Loopback enable.               */
-  k_ra_spcr2_mask_moife = 0x00200000UL, /**< MOSI Idle Fixed Value Enable.  */
-  k_ra_spcr2_mask_moifv = 0x00100000UL, /**< MOSI Idle Fixed Value.         */
+  k_ra_spcr2_mask_splp  = 0x00010000UL, /**< Inverting loopback (rx = ~tx).    */
+  k_ra_spcr2_mask_splp2 = 0x00020000UL, /**< Non-inverting loopback (rx = tx). */
+  k_ra_spcr2_mask_moife = 0x00200000UL, /**< MOSI Idle Fixed Value Enable.     */
+  k_ra_spcr2_mask_moifv = 0x00100000UL, /**< MOSI Idle Fixed Value.            */
 } ra_spcr2_mask_t;
 
 /**
