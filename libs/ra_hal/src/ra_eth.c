@@ -166,6 +166,22 @@ __attribute__((aligned(16))) static uint8_t s_rx_buffers[k_ra_eth_num_rx_desc][k
 static ra_eth_state_t s_state;
 
 /**
+ * @var s_mac_speed_resynced
+ * @brief Latch -- true once ::ra_eth_link_status has re-programmed
+ *        MPIC.LSC / MPIC.PIPP to match the PHY's negotiated link.
+ *
+ * @details
+ * Reset to false in ::ra_eth_open / ::ra_eth_close. The MAC speed
+ * resync only needs to fire once per link bring-up; further calls
+ * to ::ra_eth_link_status skip the MPIC write so they remain
+ * read-only status pollers.
+ *
+ * @note File-scope state, not thread-safe.
+ * @since 0.1.0
+ */
+static bool s_mac_speed_resynced = false;
+
+/**
  * @brief Saturating-add helper for the 32-bit software counters.
  *
  * @param[in,out] counter Pointer to the counter to bump.
@@ -567,6 +583,11 @@ ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
   volatile r_gwca_regs_t* gwca = ra_gwca();
   gwca->GWCA_CTRL              = k_ra_eth_gwca_edtr | k_ra_eth_gwca_edrr;
 
+  /* Force a fresh MPIC re-sync on the next ::ra_eth_link_status call
+   * so the on-chip RMAC's MPIC.LSC matches whatever speed the PHY
+   * actually negotiated (HUM Ch 33.4.1.2 p 1707). */
+  s_mac_speed_resynced = false;
+
   internal_capture_state(cfg, tx_count, rx_count, buf_size);
   ra_log_info(s_tag, "eth_open: rings ready");
   return k_ra_ok;
@@ -592,6 +613,7 @@ ra_err_t ra_eth_close(void)
   s_state.opened       = 0U;
   s_state.tx_write_idx = 0U;
   s_state.rx_read_idx  = 0U;
+  s_mac_speed_resynced = false;
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
@@ -734,16 +756,104 @@ ra_err_t ra_eth_read(uint8_t* buf, uint32_t max_len, uint32_t* got_len)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_link_status (see header for full contract) -- see header for the documented contract. */
-ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
+/**
+ * @brief Re-program MPIC.LSC / MPIC.PIPP so the on-chip RMAC clocks
+ *        match the PHY's negotiated link speed and duplex.
+ *
+ * @details
+ * ::ra_board_ethernet_init programs MPIC.LSC for 1000 Mbit/s at boot
+ * because that is the maximum the EK-RA8D2's PEF7071 PHY supports.
+ * When the link partner only offers 10/100 (typical USB-Ethernet
+ * adapter), the PHY auto-negotiates down -- but MPIC is stuck at
+ * 1000 Mbit/s and the on-chip RMAC ignores every RGMII edge as
+ * out-of-spec framing. Symptom: PHY reports link-up and BMSR =
+ * 0x782D, ARP arrives on the wire, but no software-visible RX
+ * frame ever lands. HUM Ch 33.4.1.2 "MPIC : PHY Interfaces
+ * Configuration Register" p 1707 documents MPIC.LSC = link-speed
+ * code; FSP ``r_rmac_phy_link_partner_ability_get`` followed by
+ * ``r_rmac_set_link`` is the equivalent FSP-side sequence.
+ *
+ * This helper decodes the PHY's BMCR (set by the on-PHY auto-neg
+ * resolver) and calls ::ra_rmac_set_link with matching MPIC.LSC /
+ * MPIC.PIPP values, preserving the existing PIS = RGMII and the
+ * boot-time PSMCS divider.
+ *
+ * Decisions are written as sequential ifs (no compound boolean
+ * operators) so each condition remains independently traceable
+ * under MC/DC without needing a paired test vector matrix.
+ *
+ * @param[in] port RMAC port whose MPIC needs updating.
+ * @param[in] bmcr Most-recent PHY BMCR snapshot.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok                 MPIC re-programmed (or no-op).
+ * @retval k_ra_err_invalid_arg    ::ra_rmac_set_link rejected an arg.
+ *
+ * @pre  ::ra_eth_open has succeeded (::s_state.opened == 1).
+ * @pre  ::s_mac_speed_resynced is false on first call after open.
+ * @post On k_ra_ok the on-chip RMAC's MPIC.LSC matches the PHY's
+ *       negotiated speed and MPIC.PIPP matches its duplex.
+ * @post ::s_mac_speed_resynced is true on success.
+ *
+ * @note Not thread-safe; the EK-RA8D2 firmware drives this from a
+ *       single bring-up thread.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t internal_resync_mac_speed(ra_rmac_port_t port, uint16_t bmcr)
 {
-  RA_CHECK_NULL_PTR(out_status, s_tag, "link_status: out must not be nullptr");
-  if (s_state.opened == 0U) {
-    return k_ra_err_not_initialized;
+  ra_rmac_lsc_t speed = k_ra_rmac_lsc_10mbit;
+  if ((bmcr & k_ra_eth_phy_bmcr_speed100) != 0U) {
+    speed = k_ra_rmac_lsc_100mbit;
   }
+  ra_rmac_duplex_t duplex = k_ra_rmac_duplex_half;
+  if ((bmcr & k_ra_eth_phy_bmcr_duplex) != 0U) {
+    duplex = k_ra_rmac_duplex_full;
+  }
+  /* HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register" p 1707 */
+  const ra_err_t set_err = ra_rmac_set_link(port, k_ra_rmac_pis_rgmii, speed, duplex);
+  if (set_err != k_ra_ok) {
+    return set_err;
+  }
+  s_mac_speed_resynced = true;
+  ra_log_info(s_tag, "link_status: MPIC resynced to PHY speed/duplex");
+  return k_ra_ok;
+}
 
-  const ra_rmac_port_t port = internal_channel_to_port(s_state.cfg.channel);
-  uint16_t             bmsr = 0U;
+/**
+ * @brief Read PHY BMSR + BMCR over MDIO and populate out_status.
+ *
+ * @details
+ * Helper extracted from ra_eth_link_status so the per-condition
+ * decoding (link_up, duplex, speed) stays under the NASA Rule 4
+ * function-size threshold and clang-tidy
+ * readability-function-size threshold.
+ *
+ * @param[in]  port       RMAC port carrying the PHY.
+ * @param[out] out_status Link-state fields populated in place.
+ * @param[out] out_bmcr   BMCR value (caller uses it for the MAC
+ *                        speed-resync write).
+ *
+ * @return ::ra_err_t MDIO read outcome.
+ * @retval k_ra_ok           Both BMSR + BMCR fetched cleanly.
+ * @retval other             Underlying MDIO error from the first
+ *                           failing read.
+ *
+ * @pre out_status != nullptr.
+ * @pre out_bmcr != nullptr.
+ * @post On success out_status->{bmsr, link_up, full_duplex,
+ *       speed_mbps} are populated; out_bmcr holds the raw BMCR.
+ * @post On error out_status / out_bmcr are unmodified.
+ *
+ * @note Not thread-safe; serialise PHY access with the rest of
+ *       the ethernet bring-up.
+ * @since 0.1.0
+ */
+static ra_err_t internal_phy_read_link(ra_rmac_port_t port,
+                                       ra_eth_link_t* out_status,
+                                       uint16_t*      out_bmcr)
+{
+  uint16_t bmsr = 0U;
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
   const ra_err_t bmsr_err = ra_rmac_mdio_c22_read(port,
                                                   (uint8_t)k_ra_eth_phy_addr_default,
@@ -767,7 +877,35 @@ ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
   } else {
     out_status->speed_mbps = k_ra_eth_phy_speed_10;
   }
+  *out_bmcr = bmcr;
   return k_ra_ok;
+}
+
+/* Implementation of ra_eth_link_status (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
+{
+  RA_CHECK_NULL_PTR(out_status, s_tag, "link_status: out must not be nullptr");
+  if (s_state.opened == 0U) {
+    return k_ra_err_not_initialized;
+  }
+
+  const ra_rmac_port_t port = internal_channel_to_port(s_state.cfg.channel);
+  uint16_t             bmcr = 0U;
+  const ra_err_t       err  = internal_phy_read_link(port, out_status, &bmcr);
+  RA_RETURN_ON_ERROR(err, s_tag, "link_status: phy read");
+
+  /* HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register"
+   * p 1707: on first link-up after open, realign MPIC.LSC with the
+   * PHY's negotiated speed. Sequential ifs (no compound boolean
+   * operators) so each gate remains MC/DC-clean without a paired
+   * test vector matrix. */
+  if (out_status->link_up == 0U) {
+    return k_ra_ok;
+  }
+  if (s_mac_speed_resynced) {
+    return k_ra_ok;
+  }
+  return internal_resync_mac_speed(port, bmcr);
 }
 
 /* Implementation of ra_eth_get_stats (see header for full contract) -- see header for the documented contract. */

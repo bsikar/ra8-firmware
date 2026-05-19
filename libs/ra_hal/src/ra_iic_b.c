@@ -521,18 +521,36 @@ static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const r
   reg->BCTL = k_ra_iic_b_msk_bctl_buse;
 }
 
-/* ra_iic_b_init -- see header for full description. */
-ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
+/**
+ * @brief Bring the IIC_B block up: MSTP release, CECTL clock, reset,
+ *        and switch the I3C IP into I2C single-buffer mode (PRTMD=1).
+ *
+ * @details
+ * Extracted from ra_iic_b_init to stay under the NASA Rule 4 +
+ * clang-tidy readability-function-size thresholds. Step ordering is
+ * fixed by HUM Ch 11.2.7 p 444 + Ch 40.2.92 p 2543 + Ch 40.2.1 p
+ * 2449: MSTP -> CECTL.CLKE -> BCTL clear -> RSTCTL reset -> PRTS.
+ *
+ * @param[in,out] reg IIC_B register block (already resolved by the
+ *                    caller from the channel index).
+ *
+ * @return ::ra_err_t outcome of the chain.
+ * @retval k_ra_ok           Block clocked, reset, PRTMD=1 latched.
+ * @retval other             Underlying MSTP / reset step failed.
+ *
+ * @pre reg != nullptr.
+ * @pre Caller has validated the channel index.
+ * @post On success the IIC_B IP is ready for
+ *       internal_iic_b_apply_init_regs to programme bus timing.
+ * @post On error the partial side effects (MSTP enabled, CECTL
+ *       written) remain -- caller treats this as init-failed and
+ *       does not consume the channel.
+ *
+ * @note Not thread-safe; serialise iic_b bring-up at a higher layer.
+ * @since 0.1.0
+ */
+static ra_err_t internal_iic_b_block_bringup(volatile r_iic_b_regs_t* reg)
 {
-  RA_CHECK_NULL_PTR(cfg, s_tag, "iic_b_init: cfg");
-  if (cfg->bus_hz == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
@@ -545,6 +563,32 @@ ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
 
   const ra_err_t reset_err = internal_iic_b_reset(reg);
   RA_RETURN_ON_ERROR(reset_err, s_tag, "iic_b_init: reset"); /* GCOVR_EXCL_BR_LINE */
+
+  /* HUM Ch 40.2.1 "PRTS : Protocol Selection" p 2449 -- the I3C IP
+   * defaults to PRTMD=0 (I3C FIFO buffer transfer, command-queue
+   * driven). This polling driver writes NTDTBP0 directly, so it must
+   * switch the IP into PRTMD=1 (I2C single-buffer transfer) before
+   * any START / STOP / address byte is issued. Without this write the
+   * peripheral silently swallows writes to NTDTBP0 as stray I3C
+   * FIFO entries and never drives SCL. */
+  reg->PRTS = k_ra_iic_b_msk_prts_prtmd;
+  return k_ra_ok;
+}
+
+/* ra_iic_b_init -- see header for full description. */
+ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "iic_b_init: cfg");
+  if (cfg->bus_hz == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t br_err = internal_iic_b_block_bringup(reg);
+  RA_RETURN_ON_ERROR(br_err, s_tag, "iic_b_init: block bringup"); /* GCOVR_EXCL_BR_LINE */
 
   internal_iic_b_apply_init_regs(reg, cfg);
 
