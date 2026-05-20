@@ -299,6 +299,55 @@ static void test_init_ring(void)
   TEST_END("gwca init_ring");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_set_descriptor_buffer(void)
+{
+  TEST_BEGIN("gwca set_descriptor_buffer");
+  prep();
+  ra_gwca_basic_descriptor_t desc = {};
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_set_descriptor_buffer(nullptr, (void*)0x1000U));
+  uint8_t   buf[16];
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_set_descriptor_buffer(&desc, buf));
+  /* PTR low 32 bits should hold the buffer address. */
+  TEST_ASSERT_EQ((uintptr_t)buf & 0xFFFFFFFFU, desc.ptr_l);
+  TEST_END("gwca set_descriptor_buffer");
+}
+
+/**
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c:620): // CITES-OK: MC/DC gate requires file:line
+ *   ``if (ring_depth < 2U || slot_bytes == 0U)``
+ * Two atomic conditions, N+1 = 3 vectors:
+ *   V_F_F: depth = 4, bytes = 64  -> ok
+ *   V_T_-: depth = 1, bytes = 64  -> invalid_arg (depth too small alone)
+ *   V_F_T: depth = 4, bytes = 0   -> invalid_arg (bytes zero alone)
+ */
+static void test_attach_buffers(void)
+{
+  TEST_BEGIN("gwca attach_buffers");
+  prep();
+  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[4];
+  static uint8_t pool[3U * 64U];
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_attach_buffers(nullptr, 4U, 64U, pool));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_attach_buffers(chain, 4U, 64U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_attach_buffers(chain, 1U, 64U, pool));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_attach_buffers(chain, 4U, 0U, pool));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 4U, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_buffers(chain, 4U, 64U, pool));
+  /* First three slots should now point at pool[0], pool[64], pool[128]. */
+  TEST_ASSERT_EQ((uintptr_t)&pool[0U] & 0xFFFFFFFFU, chain[0].ptr_l);
+  TEST_ASSERT_EQ((uintptr_t)&pool[64U] & 0xFFFFFFFFU, chain[1].ptr_l);
+  TEST_ASSERT_EQ((uintptr_t)&pool[128U] & 0xFFFFFFFFU, chain[2].ptr_l);
+  TEST_END("gwca attach_buffers");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -312,6 +361,8 @@ int32_t main(void)
   test_bring_up();
   test_configure_queue();
   test_init_ring();
+  test_set_descriptor_buffer();
+  test_attach_buffers();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_gwca.c\n");
   return 0;
 }
