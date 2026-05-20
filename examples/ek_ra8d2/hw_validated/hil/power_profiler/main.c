@@ -347,10 +347,22 @@ int32_t main(void)
   while (1) {
     if (!pp_demo_cycle_modes()) {
       (void)ra_board_led_on(k_ra_board_led2);
+      /* Emit a FAIL banner over SCI so the HIL negative regex catches
+       * a silently-broken profile_mark_enter/exit path; without this
+       * line the test would pass on a chip where the LPM tracker was
+       * never actually transitioning regions. */
+      const uint8_t fail_banner[] = "pp: FAIL cycle_modes\r\n";
+      (void)ra_sci_write_polling((uint8_t)k_pp_demo_sci_channel,
+                                 fail_banner,
+                                 (uint32_t)(sizeof(fail_banner) - 1U));
     }
     ra_power_profile_stats_t stats = {};
     if (ra_power_profile_get_stats(&stats) != k_ra_ok) {
       (void)ra_board_led_on(k_ra_board_led2);
+      const uint8_t stats_fail[] = "pp: FAIL get_stats\r\n";
+      (void)ra_sci_write_polling((uint8_t)k_pp_demo_sci_channel,
+                                 stats_fail,
+                                 (uint32_t)(sizeof(stats_fail) - 1U));
     }
     uint8_t        out[k_pp_demo_print_buf] = {};
     const uint32_t off                      = pp_demo_format_line(out, &stats);
