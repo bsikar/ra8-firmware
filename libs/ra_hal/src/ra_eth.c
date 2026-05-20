@@ -97,6 +97,25 @@ typedef enum : uint16_t {
 } ra_eth_layout_t;
 
 /**
+ * @enum ra_eth_step_t
+ * @brief Step values bumped through ::g_ra_eth_open_step for
+ *        bench-side post-mortem via J-Link mem32.
+ *
+ * @details Successful progression uses 0..4. Error codes are
+ * ``0x10 | N`` so a JTAG-attached operator can tell at a glance
+ * whether the chip parked on a happy-path step or an error path.
+ */
+typedef enum : uint32_t {
+  k_ra_eth_step_ok_1   = 1U,
+  k_ra_eth_step_ok_2   = 2U,
+  k_ra_eth_step_ok_3   = 3U,
+  k_ra_eth_step_ok_4   = 4U,
+  k_ra_eth_step_fail_1 = 0x11U,
+  k_ra_eth_step_fail_3 = 0x13U,
+  k_ra_eth_step_fail_4 = 0x14U,
+} ra_eth_step_t;
+
+/**
  * @struct ra_eth_state_t
  * @brief Driver-private NIC state.
  *
@@ -637,6 +656,26 @@ static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg)
 }
 
 /**
+ * @var g_ra_eth_open_step
+ * @brief Bench-side debug trail -- bumped by ::ra_eth_open to record
+ *        the highest open-sub-step the chip reached before parking.
+ *
+ * @details
+ * Read externally via J-Link `mem32` after the firmware halts so the
+ * caller can identify which open-path primitive returned non-ok:
+ *   1 = prep ok (channel/sizes validated, MSTP + RMAC up).
+ *   2 = populated s_gwca_state.
+ *   3 = default_open ok (GWCA in OPERATION).
+ *   4 = mfwd_route_queue ok.
+ *   5 = capture_state ok (final).
+ * Plus the symmetric error codes ``0x10|N`` for failures at step N.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_ra_eth_open_step;
+
+/**
  * @brief Walk the GWCA bring-up + MFWD routing setup for ::ra_eth_open.
  *
  * @details
@@ -646,7 +685,9 @@ static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg)
  * the RX + TX queues and transition GWMC.OPC to OPERATION, then
  * programs ``MFWD.FWPBFCSDC0[port].PBCSD = rx_queue_index`` via
  * ::ra_eth_mfwd_route_queue so port-to-host frames reach the RX
- * queue on real silicon.
+ * queue on real silicon. ``g_ra_eth_open_step`` is bumped along
+ * the way so a JTAG-attached operator can see exactly which sub
+ * primitive failed.
  *
  * @return ::ra_err_t Error code.
  * @retval k_ra_ok              GWCA in OPERATION + MFWD routing live.
@@ -665,10 +706,24 @@ static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg)
  */
 static ra_err_t internal_open_gwca_path(void)
 {
-  ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);
-  RA_RETURN_ON_ERROR(err, s_tag, "open: gwca default_open"); /* GCOVR_EXCL_BR_LINE */
-  err = ra_eth_mfwd_route_queue(s_gwca_state.mac_port, (uint8_t)s_gwca_state.rx_queue_index);
-  RA_RETURN_ON_ERROR(err, s_tag, "open: mfwd route_queue"); /* GCOVR_EXCL_BR_LINE */
+  /* Note: ``ra_board_ethernet_init`` already runs its own COMA reset
+   * (RR pulse + RCEC|ACE enable) via ``internal_eth_coma_reset`` --
+   * the full FSP CABPIRM.BPIOG/BPR handshake is intentionally skipped
+   * there because BPR never asserts on EK-RA8D2 silicon unless GWCA
+   * is also being brought up, and the board can't depend on that. */
+  const ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);
+  if (err != k_ra_ok) {
+    g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_3;
+    return err;
+  }
+  g_ra_eth_open_step             = 3U;
+  const ra_err_t mfwd_err = ra_eth_mfwd_route_queue(s_gwca_state.mac_port,
+                                                    (uint8_t)s_gwca_state.rx_queue_index);
+  if (mfwd_err != k_ra_ok) {
+    g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_4;
+    return mfwd_err;
+  }
+  g_ra_eth_open_step = (uint32_t)k_ra_eth_step_ok_4;
   return k_ra_ok;
 }
 
@@ -677,12 +732,16 @@ ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "open: cfg must not be nullptr");
 
+  g_ra_eth_open_step = 0U;
   const ra_err_t prep_rc = internal_open_prep(cfg);
   if (prep_rc != k_ra_ok) {
+    g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_1;
     return prep_rc;
   }
+  g_ra_eth_open_step = (uint32_t)k_ra_eth_step_ok_1;
 
   internal_populate_gwca_state(cfg);
+  g_ra_eth_open_step = (uint32_t)k_ra_eth_step_ok_2;
 
   const ra_err_t bring_up_rc = internal_open_gwca_path();
   if (bring_up_rc != k_ra_ok) {
