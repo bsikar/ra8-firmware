@@ -183,6 +183,25 @@ static void rng_demo_setup_or_halt(void)
   if (ra_psa_crypto_random(rng, sizeof(rng)) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
+  /* Stuck-bit detector: if every byte in the 32-byte sample is the
+   * same value, the TRNG entropy path is almost certainly broken
+   * (probability of 32 random bytes all matching is 1 in 2^248).
+   * Without this check the demo would happily print "trng: 00...00"
+   * or "trng: ff...ff" forever and the probe would pass. */
+  bool all_same = true;
+  for (uint8_t i = 1U; i < (uint8_t)k_rng_demo_bytes_per_line; ++i) {
+    if (rng[i] != rng[0]) {
+      all_same = false;
+      break;
+    }
+  }
+  if (all_same) {
+    const uint8_t fail_banner[] = "trng: FAIL stuck\r\n";
+    (void)ra_sci_write_polling((uint8_t)k_rng_demo_sci_channel,
+                               fail_banner,
+                               (uint32_t)(sizeof(fail_banner) - 1U));
+    return k_ra_err_hw_error;
+  }
   for (uint8_t i = 0U; i < (uint8_t)k_rng_demo_bytes_per_line; ++i) {
     const size_t hi = (size_t)i * (size_t)k_rng_demo_hex_per_byte;
     hex[hi]         = rng_demo_nibble_to_hex((uint8_t)(rng[i] >> (uint8_t)k_rng_demo_nibble_shift));
