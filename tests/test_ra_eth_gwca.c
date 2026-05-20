@@ -377,6 +377,50 @@ static void test_kick_tx(void)
   TEST_END("gwca kick_tx");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_find_slot(void)
+{
+  TEST_BEGIN("gwca find_slot");
+  prep();
+  __attribute__((aligned(16))) ra_gwca_basic_descriptor_t chain[5];
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 5U, 64U));
+
+  /* Null guards. */
+  uint32_t found = 0U;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_eth_gwca_find_slot(nullptr, 5U, k_ra_gwdcc_dt_fempty, 0U, &found));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_eth_gwca_find_slot(chain, 5U, k_ra_gwdcc_dt_fempty, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_eth_gwca_find_slot(chain, 1U, k_ra_gwdcc_dt_fempty, 0U, &found));
+  /* start_idx == data_slot_count is out of range. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_eth_gwca_find_slot(chain, 5U, k_ra_gwdcc_dt_fempty, 4U, &found));
+
+  /* First FEMPTY at slot 0. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_find_slot(chain, 5U, k_ra_gwdcc_dt_fempty, 0U, &found));
+  TEST_ASSERT_EQ(0U, found);
+
+  /* Wrap-around: start from slot 2, all are FEMPTY, expect 2. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_find_slot(chain, 5U, k_ra_gwdcc_dt_fempty, 2U, &found));
+  TEST_ASSERT_EQ(2U, found);
+
+  /* Mark slot 1 FSINGLE, search from 0 for FSINGLE -> expect 1. */
+  chain[1].dt = (uint8_t)k_ra_gwdcc_dt_fsingle;
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_find_slot(chain, 5U, k_ra_gwdcc_dt_fsingle, 0U, &found));
+  TEST_ASSERT_EQ(1U, found);
+
+  /* Search for an unused DT (FEND) -> no_data. */
+  TEST_ASSERT_EQ(k_ra_err_no_data,
+                 ra_eth_gwca_find_slot(chain, 5U, k_ra_gwdcc_dt_fend, 0U, &found));
+  TEST_END("gwca find_slot");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -393,6 +437,7 @@ int32_t main(void)
   test_set_descriptor_buffer();
   test_attach_buffers();
   test_kick_tx();
+  test_find_slot();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_gwca.c\n");
   return 0;
 }
