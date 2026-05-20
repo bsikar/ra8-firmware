@@ -724,3 +724,255 @@ ra_err_t ra_eth_gwca_find_slot(const ra_gwca_basic_descriptor_t* chain,
   }
   return k_ra_err_no_data;
 }
+
+/**
+ * @brief Decode a descriptor's 40-bit PTR back to a host pointer.
+ *
+ * @details Reverses the ptr_h / ptr_l split applied by
+ * ::ra_eth_gwca_set_descriptor_buffer. On a 32-bit MCU like the
+ * RA8D2 the high byte is always zero, but the function handles the
+ * 40-bit format generically.
+ *
+ * @param[in] desc Descriptor whose PTR to decode.
+ * @return Host-visible buffer pointer or nullptr if desc is null.
+ * @retval pointer Valid buffer address.
+ * @pre desc was previously initialised via attach_buffers or
+ *      set_descriptor_buffer.
+ * @pre desc is non-null.
+ * @post Returned pointer matches the address the descriptor encodes.
+ * @post No state is modified.
+ * @note Pure helper; no thread-safety concerns.
+ * @since 0.1.0
+ */
+static uint8_t* internal_decode_ptr(const ra_gwca_basic_descriptor_t* desc)
+{
+  if (desc == nullptr) {
+    return nullptr;
+  }
+  enum : uintptr_t {
+    k_ra_ptr_upper_shift = 32U,
+    k_ra_ptr_low_mask    = 0xFFFFFFFFULL,
+  };
+  const uintptr_t addr =
+    ((uintptr_t)desc->ptr_h << k_ra_ptr_upper_shift) | ((uintptr_t)desc->ptr_l & k_ra_ptr_low_mask);
+  return (uint8_t*)addr;
+}
+
+/**
+ * @brief Reconstruct the 12-bit DS (descriptor size) field from a basic descriptor.
+ *
+ * @details Reverses the ds_l / ds_h split applied when the chain
+ * is populated. Used by the RX path to know how many bytes the
+ * chip wrote into a buffer before we copy them out.
+ *
+ * @param[in] desc Descriptor whose ds field to read.
+ * @return 12-bit size value.
+ * @retval value Reconstructed DS as a uint32_t.
+ * @pre desc is non-null and previously initialised.
+ * @pre Caller has already validated desc against null.
+ * @post Returned value is in [0, 4095].
+ * @post No state is modified.
+ * @note Pure helper.
+ * @since 0.1.0
+ */
+static uint32_t internal_decode_ds(const ra_gwca_basic_descriptor_t* desc)
+{
+  enum : uint32_t {
+    k_ra_ds_low_mask  = 0xFFU,
+    k_ra_ds_high_shift = 8U,
+    k_ra_ds_high_mask = 0xFU,
+  };
+  return ((uint32_t)desc->ds_l & k_ra_ds_low_mask) |
+         (((uint32_t)desc->ds_h & k_ra_ds_high_mask) << k_ra_ds_high_shift);
+}
+
+/**
+ * @brief Enqueue one frame on a TX queue's descriptor ring.
+ *
+ * @details See header for the canonical contract. Finds the next
+ * FEMPTY slot, memcpy's the frame into the slot's pre-attached
+ * buffer, sets ds to frame_len, flips dt to FSINGLE, and advances
+ * the caller's tail_idx cursor.
+ *
+ * @param[in,out] chain      TX descriptor ring.
+ * @param[in]     ring_depth Ring depth.
+ * @param[in,out] tail_idx   Round-robin write cursor.
+ * @param[in]     frame      Source bytes.
+ * @param[in]     frame_len  Frame length.
+ * @param[in]     slot_bytes Per-slot capacity.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Frame queued; FSINGLE marked.
+ * @retval k_ra_err_no_data     All slots already FSINGLE (queue full).
+ * @retval k_ra_err_invalid_arg Null pointer or frame_len > slot_bytes.
+ * @retval k_ra_err_null_ptr    chain / tail_idx / frame is null.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre chain initialised via init_ring + attach_buffers.
+ * @post On success the chosen slot is FSINGLE with the frame copied.
+ * @post On success ``*tail_idx`` advanced past the chosen slot.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
+                              uint32_t                    ring_depth,
+                              uint32_t*                   tail_idx,
+                              const uint8_t*              frame,
+                              uint32_t                    frame_len,
+                              uint32_t                    slot_bytes)
+{
+  RA_CHECK_NULL_PTR(chain, s_tag, "tx_frame: chain null");
+  RA_CHECK_NULL_PTR(tail_idx, s_tag, "tx_frame: tail_idx null");
+  RA_CHECK_NULL_PTR(frame, s_tag, "tx_frame: frame null");
+  if (frame_len == 0U || frame_len > slot_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  uint32_t       slot = 0U;
+  const ra_err_t err  = ra_eth_gwca_find_slot(chain, ring_depth, k_ra_gwdcc_dt_fempty,
+                                              *tail_idx % (ring_depth - 1U), &slot);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t* const buf = internal_decode_ptr(&chain[slot]);
+  if (buf == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  (void)memcpy(buf, frame, (size_t)frame_len);
+  enum : uint32_t {
+    k_ra_ds_low_byte_mask = 0xFFU,
+    k_ra_ds_high_shift     = 8U,
+    k_ra_ds_high_nibble    = 0xFU,
+  };
+  chain[slot].ds_l = (uint8_t)(frame_len & k_ra_ds_low_byte_mask);
+  chain[slot].ds_h = (uint8_t)((frame_len >> k_ra_ds_high_shift) & k_ra_ds_high_nibble);
+  chain[slot].dt   = (uint8_t)k_ra_gwdcc_dt_fsingle;
+  *tail_idx        = (slot + 1U) % (ring_depth - 1U);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Dequeue one frame from an RX queue's descriptor ring.
+ *
+ * @details See header for the canonical contract. Finds the next
+ * FSINGLE slot (the chip filled it), copies the frame out, flips
+ * dt back to FEMPTY so the chip can refill, and advances head_idx.
+ *
+ * @param[in,out] chain        RX descriptor ring.
+ * @param[in]     ring_depth   Ring depth.
+ * @param[in,out] head_idx     Round-robin read cursor.
+ * @param[out]    out_frame    Destination buffer for the frame.
+ * @param[in]     out_capacity Size of out_frame.
+ * @param[out]    out_len      Frame length written to out_frame.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Frame copied out; slot reset to FEMPTY.
+ * @retval k_ra_err_no_data     No FSINGLE slot yet.
+ * @retval k_ra_err_invalid_arg out_capacity == 0 or frame too large.
+ * @retval k_ra_err_null_ptr    chain / head_idx / out_frame / out_len null.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre RX queue's MFWD forwarding cfg has been programmed.
+ * @post On success the chosen slot is FEMPTY again.
+ * @post On success ``*head_idx`` advanced past the chosen slot.
+ * @post On success ``*out_len`` <= out_capacity.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+/**
+ * @brief Copy out a filled RX slot and reset it to FEMPTY.
+ *
+ * @details Pure helper invoked by ::ra_eth_gwca_rx_frame after the
+ * caller has located an FSINGLE slot. Splits the post-validation
+ * memcpy + state reset path out so the top-level function fits
+ * under the 60-line cap.
+ *
+ * @param[in,out] desc         The FSINGLE slot to drain.
+ * @param[out]    out_frame    Destination buffer.
+ * @param[in]     out_capacity Size of ``out_frame``.
+ * @param[out]    out_len      Bytes actually written.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Slot copied out + reset to FEMPTY.
+ * @retval k_ra_err_invalid_arg buf null or frame > capacity.
+ *
+ * @pre desc is non-null and currently FSINGLE.
+ * @pre out_frame / out_len non-null and out_capacity > 0.
+ * @post Slot dt = FEMPTY on success.
+ * @post out_len contains the frame size on success.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_drain_rx_slot(ra_gwca_basic_descriptor_t* desc,
+                                       uint8_t*                    out_frame,
+                                       uint32_t                    out_capacity,
+                                       uint32_t*                   out_len)
+{
+  const uint8_t* const buf      = internal_decode_ptr(desc);
+  const uint32_t       frame_ds = internal_decode_ds(desc);
+  if (buf == nullptr || frame_ds > out_capacity) {
+    return k_ra_err_invalid_arg;
+  }
+  (void)memcpy(out_frame, buf, (size_t)frame_ds);
+  *out_len = frame_ds;
+  desc->dt = (uint8_t)k_ra_gwdcc_dt_fempty;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Dequeue one frame from an RX queue's descriptor ring.
+ *
+ * @details See header for the canonical contract. Locates the next
+ * FSINGLE slot, delegates the buffer copy + slot reset to
+ * ::internal_drain_rx_slot, and advances the head cursor.
+ *
+ * @param[in,out] chain        RX descriptor ring.
+ * @param[in]     ring_depth   Ring depth.
+ * @param[in,out] head_idx     Round-robin read cursor.
+ * @param[out]    out_frame    Destination buffer for the frame.
+ * @param[in]     out_capacity Size of out_frame.
+ * @param[out]    out_len      Frame length written.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Frame copied; slot reset to FEMPTY.
+ * @retval k_ra_err_no_data     No FSINGLE slot yet.
+ * @retval k_ra_err_invalid_arg out_capacity == 0 or frame > capacity.
+ * @retval k_ra_err_null_ptr    chain / head_idx / out_frame / out_len null.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre RX queue's MFWD forwarding cfg has been programmed.
+ * @post On success the chosen slot is FEMPTY.
+ * @post On success ``*head_idx`` advanced past the chosen slot.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_rx_frame(ra_gwca_basic_descriptor_t* chain,
+                              uint32_t                    ring_depth,
+                              uint32_t*                   head_idx,
+                              uint8_t*                    out_frame,
+                              uint32_t                    out_capacity,
+                              uint32_t*                   out_len)
+{
+  RA_CHECK_NULL_PTR(chain, s_tag, "rx_frame: chain null");
+  RA_CHECK_NULL_PTR(head_idx, s_tag, "rx_frame: head_idx null");
+  RA_CHECK_NULL_PTR(out_frame, s_tag, "rx_frame: out_frame null");
+  RA_CHECK_NULL_PTR(out_len, s_tag, "rx_frame: out_len null");
+  if (out_capacity == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  uint32_t       slot = 0U;
+  const ra_err_t err  = ra_eth_gwca_find_slot(chain, ring_depth, k_ra_gwdcc_dt_fsingle,
+                                              *head_idx % (ring_depth - 1U), &slot);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const ra_err_t drain_err = internal_drain_rx_slot(&chain[slot], out_frame, out_capacity, out_len);
+  if (drain_err != k_ra_ok) {
+    return drain_err;
+  }
+  *head_idx = (slot + 1U) % (ring_depth - 1U);
+  return k_ra_ok;
+}
