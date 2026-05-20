@@ -240,12 +240,24 @@ int32_t main(void)
   while (1) {
     if (ra_elc_software_trigger((uint8_t)k_elc_demo_sw_event_idx) != k_ra_ok) {
       (void)ra_board_led_on(k_ra_board_led2);
+      /* Emit FAIL banner so the HIL negative regex catches a silently
+       * broken SW-trigger path; without this the t=N counter would
+       * stop advancing but the demo would keep emitting "elc: en=1
+       * t=0" indefinitely and the probe would pass. */
+      const uint8_t trig_fail[] = "elc: FAIL trigger\r\n";
+      (void)ra_sci_write_polling((uint8_t)k_elc_demo_sci_channel,
+                                 trig_fail,
+                                 (uint32_t)(sizeof(trig_fail) - 1U));
     } else {
       trig_count++;
     }
     bool enabled = false;
     if (ra_elc_is_enabled(&enabled) != k_ra_ok) {
       (void)ra_board_led_on(k_ra_board_led2);
+      const uint8_t enabled_fail[] = "elc: FAIL is_enabled\r\n";
+      (void)ra_sci_write_polling((uint8_t)k_elc_demo_sci_channel,
+                                 enabled_fail,
+                                 (uint32_t)(sizeof(enabled_fail) - 1U));
     }
     uint8_t        out[k_elc_demo_print_buf] = {};
     const uint32_t off                       = elc_demo_format_line(out, enabled, trig_count);
