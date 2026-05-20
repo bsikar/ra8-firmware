@@ -239,13 +239,28 @@ static inline volatile r_coma_regs_t* ra_coma(void)
  * the per-channel descriptor rings the host uses for TX/RX
  * staging. The + NIC consumer programmes the descriptor
  * rings; this scaffold just covers the lifecycle + IRQ surface.
+ *
+ * @warning Field names here pre-date the FSP R_GWCA0_Type reference
+ * (cloned from github.com/renesas/fsp). The first 16 bytes
+ * actually map to:
+ *   - +0x00: GWMC (Mode Configuration -- OPC bits drive the
+ *            ESWM state machine: 00=RESET, 01=DISABLE, 10=CONFIG,
+ *            11=OPERATION; HUM Ch 34.3.1)
+ *   - +0x04: GWMS (Mode Status -- mirror of OPC)
+ *   - +0x08-0x0C: reserved
+ * The "GWCA_CTRL/STS/IE/ICLR" names below are inherited from the
+ * RA6 EDMAC port and are misnamed for RA8D2 ESWM. The +0x08/+0x0C
+ * fields are NOT separate "IE/ICLR" registers; do not rely on
+ * them. Keep the legacy names for source compatibility with the
+ * existing ra_eth_gwca.c API until the full port lands. The real
+ * register set lives in r_gwca_regs_full_t below.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t GWCA_CTRL; /**< +0x00 CPU Agent Control. */
-  volatile uint32_t GWCA_STS;  /**< +0x04 Status. */
-  volatile uint32_t GWCA_IE;   /**< +0x08 Interrupt Enable. */
-  volatile uint32_t GWCA_ICLR; /**< +0x0C Interrupt Clear. */
+  volatile uint32_t GWCA_CTRL; /**< +0x00 GWMC (Mode Configuration) -- misnamed. */
+  volatile uint32_t GWCA_STS;  /**< +0x04 GWMS (Mode Status) -- misnamed. */
+  volatile uint32_t GWCA_IE;   /**< +0x08 reserved -- misnamed as "IE". */
+  volatile uint32_t GWCA_ICLR; /**< +0x0C reserved -- misnamed as "ICLR". */
 } r_gwca_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -254,6 +269,94 @@ static inline volatile r_gwca_regs_t* ra_gwca(void)
 {
   return (volatile r_gwca_regs_t*)k_ra_gwca0_base_addr;
 }
+
+/**
+ * @enum ra_gwmc_opc_t
+ * @brief GWMC.OPC operation-mode values (HUM Ch 34.3.1 "GWMC" p 1797).
+ *
+ * @details The ESWM state machine accepts mode transitions written
+ * here. The FSP-named LAYER3_SWITCH_AGENT_MODE_xxx enum maps 1:1.
+ * Writing the new mode and polling GWMS.OPS until it reflects the
+ * value is the "transition request" protocol used by the FSP
+ * r_layer3_switch driver.
+ */
+typedef enum : uint32_t {
+  k_ra_gwmc_opc_reset     = 0x0U, /**< RR: Reset request. */
+  k_ra_gwmc_opc_disable   = 0x1U, /**< DR: Disable request. */
+  k_ra_gwmc_opc_config    = 0x2U, /**< CR: Config request -- LINKFIX writable here. */
+  k_ra_gwmc_opc_operation = 0x3U, /**< OR: Operation request -- frames flow. */
+  k_ra_gwmc_opc_mask      = 0x3U,
+} ra_gwmc_opc_t;
+
+/**
+ * @enum ra_gwdcc_dt_t
+ * @brief Descriptor type field values (HUM Ch 34.5.1.2.2 "Descriptor Types").
+ *
+ * @details Set on the 4-bit DT field of every basic descriptor. See
+ * `layer3_switch_basic_descriptor_t` below.
+ */
+typedef enum : uint8_t {
+  k_ra_gwdcc_dt_linkfix    = 0U,  /**< LINKFIX  -- chain head pointer.       */
+  k_ra_gwdcc_dt_fempty_is  = 1U,  /**< FEMPTY_IS -- empty, incremental start.*/
+  k_ra_gwdcc_dt_fempty_ic  = 2U,  /**< FEMPTY_IC -- empty, incremental cont. */
+  k_ra_gwdcc_dt_fempty_nd  = 3U,  /**< FEMPTY_ND -- reject data.             */
+  k_ra_gwdcc_dt_fempty     = 4U,  /**< FEMPTY    -- empty, full frame slot.  */
+  k_ra_gwdcc_dt_fsingle    = 8U,  /**< FSINGLE   -- single-fragment frame.   */
+  k_ra_gwdcc_dt_fstart     = 9U,  /**< FSTART    -- multi-fragment start.    */
+  k_ra_gwdcc_dt_fmid       = 10U, /**< FMID      -- multi-fragment middle.   */
+  k_ra_gwdcc_dt_fend       = 11U, /**< FEND      -- multi-fragment end.      */
+  k_ra_gwdcc_dt_lempty     = 12U, /**< LEMPTY    -- queue disabled.          */
+  k_ra_gwdcc_dt_eempty     = 13U, /**< EEMPTY    -- TX queue paused.         */
+  k_ra_gwdcc_dt_link       = 14U, /**< LINK      -- chain continuation.      */
+  k_ra_gwdcc_dt_eos        = 15U, /**< EOS       -- end-of-set.              */
+} ra_gwdcc_dt_t;
+
+/**
+ * @struct ra_gwca_basic_descriptor_t
+ * @brief 8-byte basic descriptor (HUM Ch 34.5.1.2 "General Formats").
+ *
+ * @details Layout matches the FSP `layer3_switch_basic_descriptor_t`
+ * (r_layer3_switch.h). All fields are little-endian on the LE
+ * targets we support (Cortex-M85 + host x86_64). The chip walks
+ * arrays of these; LINKFIX/LINK entries also use this format with
+ * dt set to k_ra_gwdcc_dt_linkfix or k_ra_gwdcc_dt_link.
+ */
+typedef struct {
+  volatile uint8_t  ds_l;       /**< 0..7   Descriptor size (low byte).   */
+  volatile uint8_t  ds_h  : 4;  /**< 8..11  Descriptor size (high nibble).*/
+  volatile uint8_t  info0 : 4;  /**< 12..15 Information 0.                */
+  volatile uint8_t  err   : 3;  /**< 16..18 Error bits (data/AXI errors). */
+  volatile uint8_t  die   : 1;  /**< 19     Descriptor interrupt enable.  */
+  volatile uint8_t  dt    : 4;  /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
+  volatile uint8_t  ptr_h;      /**< 24..31 Pointer high byte (PTR[39:32]).*/
+  volatile uint32_t ptr_l;      /**< 32..63 Pointer low 32 bits.          */
+} ra_gwca_basic_descriptor_t;
+
+static_assert(sizeof(ra_gwca_basic_descriptor_t) == 8U,
+              "GWCA basic descriptor must be 8 bytes (HUM Ch 34.5.1.2.1).");
+
+/**
+ * @enum ra_gwca_offset_t
+ * @brief Offsets into R_GWCA0 for the registers the upcoming port needs.
+ *
+ * @details Subset of the full R_GWCA0_Type layout from the FSP
+ * `R7KA8D2KF_core0.h` CMSIS header. Reading these via the existing
+ * r_gwca_regs_t legacy view is unsafe (the struct only covers the
+ * first 16 bytes); use explicit pointer arithmetic from
+ * k_ra_gwca0_base_addr + offset until the full struct lands.
+ *
+ * @see reference_fsp_source memory note for the full register list.
+ */
+typedef enum : uint16_t {
+  k_ra_gwca_off_gwmc      = 0x0000U, /**< Mode Configuration.            */
+  k_ra_gwca_off_gwms      = 0x0004U, /**< Mode Status.                   */
+  k_ra_gwca_off_gwarirm   = 0x0150U, /**< AXI Initialization Request.    */
+  k_ra_gwca_off_gwdcbac0  = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
+  k_ra_gwca_off_gwdcbac1  = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
+  k_ra_gwca_off_gwaarss   = 0x01A0U, /**< AXI active read search set.    */
+  k_ra_gwca_off_gwaarsr0  = 0x01A4U, /**< AXI active read search result0.*/
+  k_ra_gwca_off_gwaarsr1  = 0x01A8U, /**< AXI active read search result1.*/
+} ra_gwca_offset_t;
 
 /**
  * @struct r_gptp_regs_t
