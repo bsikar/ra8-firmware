@@ -154,8 +154,9 @@ catching that app's failure banner + generic HAL failure strings.
 | `threadx_netx_tcp_echo`   | 192.168.1.42   | tcp   | 7    |
 
 All ethernet apps are currently **RED** -- the chip's ARP/ICMP path
-does not return; same root cause as the pre-existing Task #31. The
-test config is correct; the firmware fix is a separate work item.
+does not return; same pre-existing root cause as the parked ethernet
+work. The test config is correct; the firmware fix is a separate
+work item.
 
 ### `alive` (fault-recovery only)
 

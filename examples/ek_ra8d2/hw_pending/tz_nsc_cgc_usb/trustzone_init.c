@@ -206,8 +206,7 @@ void ra_trustzone_init(void)
    * couldn't power it up for re-flash -- needed manual recovery
    * through scripts/hil_recover.sh. Cause TBD: probably an
    * SAU-CTRL ordering issue (region 3 marking actively-executing
-   * lower-MRAM as NSC while the SAU was being enabled). Tracked
-   * in task #62. */
+   * lower-MRAM as NSC while the SAU was being enabled). */
   internal_sau_set_region(3U,
                           (uint32_t)k_ra_tz_nsc_veneer_base,
                           (uint32_t)k_ra_tz_nsc_veneer_lim,

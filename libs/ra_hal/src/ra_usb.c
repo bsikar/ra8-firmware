@@ -2056,7 +2056,7 @@ static ra_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_
    * the chip didn't enumerate. Our synchronous multi-chunk push (vs
    * FSP's BRDY-IRQ-per-chunk) apparently requires the explicit BVAL
    * pulse on every chunk to commit each one before the next FRDY
-   * poll. Keep the unconditional write. Task #60. */
+   * poll. Keep the unconditional write. */
   reg->CFIFOCTR = k_ra_fifoctr_bval;
   return k_ra_ok;
 }
