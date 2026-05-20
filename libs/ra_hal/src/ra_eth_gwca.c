@@ -488,3 +488,63 @@ ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_tabl
   internal_set_linkfix_entry(&linkfix_table[queue_index], cfg->chain_head);
   return k_ra_ok;
 }
+
+/**
+ * @brief Initialise a descriptor chain as a ring of FEMPTY slots.
+ *
+ * @details See header for the canonical contract. Walks chain[],
+ * setting every entry except the last to FEMPTY with ds = slot_bytes,
+ * and the last entry to LINK with PTR pointing back at chain[0].
+ *
+ * @param[in,out] chain      Caller-owned descriptor array.
+ * @param[in]     ring_depth Number of entries (>= 2).
+ * @param[in]     slot_bytes Per-slot buffer size in bytes.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Ring initialised.
+ * @retval k_ra_err_null_ptr    chain is null.
+ * @retval k_ra_err_invalid_arg ring_depth < 2 or slot_bytes out of range.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre chain is 8-byte aligned.
+ * @post chain[0..ring_depth-2] have dt = FEMPTY, ds = slot_bytes.
+ * @post chain[ring_depth-1] has dt = LINK with PTR = &chain[0].
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain,
+                               uint32_t                    ring_depth,
+                               uint32_t                    slot_bytes)
+{
+  RA_CHECK_NULL_PTR(chain, s_tag, "init_ring: chain null");
+  enum : uint32_t {
+    k_ra_gwca_ring_min_depth  = 2U,    /**< Need at least one FEMPTY + one LINK. */
+    k_ra_gwca_ring_max_bytes  = 2048U, /**< HUM DS field is 12 bits (max 2048). */
+  };
+  if (ring_depth < k_ra_gwca_ring_min_depth || slot_bytes > k_ra_gwca_ring_max_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* FEMPTY data slots: ds carries the buffer size, dt = FEMPTY. */
+  enum : uint32_t {
+    k_ra_ds_byte_mask  = 0xFFU,  /**< ds_l carries 8 bits.           */
+    k_ra_ds_high_shift = 8U,     /**< ds_h packs the upper 4 bits.   */
+    k_ra_ds_high_mask  = 0xFU,   /**< ds_h field width 4 bits.       */
+  };
+  for (uint32_t i = 0U; i < (ring_depth - 1U); ++i) {
+    (void)memset(&chain[i], 0, sizeof(ra_gwca_basic_descriptor_t));
+    chain[i].dt   = (uint8_t)k_ra_gwdcc_dt_fempty;
+    chain[i].ds_l = (uint8_t)(slot_bytes & k_ra_ds_byte_mask);
+    chain[i].ds_h = (uint8_t)((slot_bytes >> k_ra_ds_high_shift) & k_ra_ds_high_mask);
+    /* ptr_l left at 0 -- caller fills in the per-slot buffer address. */
+  }
+
+  /* Last entry: LINK back to chain[0] so the chip wraps. */
+  internal_set_linkfix_entry(&chain[ring_depth - 1U], &chain[0]);
+  /* Override dt: internal_set_linkfix_entry writes LINKFIX, but for
+   * mid-chain wrap we want LINK (interchangeable per HUM Ch
+   * 34.5.1.3.2; LINK is the standard chain-continuation type). */
+  chain[ring_depth - 1U].dt = (uint8_t)k_ra_gwdcc_dt_link;
+  return k_ra_ok;
+}
