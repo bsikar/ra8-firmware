@@ -238,6 +238,46 @@ typedef struct {
                                                    uint32_t                       queue_index,
                                                    const ra_eth_gwca_queue_cfg_t* cfg);
 
+/**
+ * @brief Initialise a descriptor chain as a ring of FEMPTY slots.
+ *
+ * @details Populates ``chain[0..ring_depth-1]`` as a circular ring
+ * where each entry has dt = FEMPTY (data slot waiting for the chip
+ * to fill, on RX queues, or for the app to fill, on TX queues), and
+ * ds_l/ds_h = ``slot_bytes`` (per-slot buffer size). The chip walks
+ * the ring; on RX queues it converts FEMPTY -> FSINGLE when a frame
+ * lands, and on TX queues the app converts FEMPTY -> FSINGLE when
+ * enqueuing a frame.
+ *
+ * The final entry can either be marked LINK back to chain[0]
+ * (closed ring) or EOS (end-of-set, terminates processing). This
+ * helper marks chain[ring_depth-1] as LINK with PTR = &chain[0].
+ *
+ * Buffer pointers are NOT set here -- caller fills them in via a
+ * subsequent walk that populates each descriptor's ptr_h/ptr_l with
+ * the address of a buffer the chip should read from / write to.
+ *
+ * @param[in,out] chain      Caller-owned descriptor array, 8-byte aligned.
+ * @param[in]     ring_depth Number of entries; must be >= 2.
+ * @param[in]     slot_bytes Per-slot buffer size in bytes (max 2048).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Ring initialised.
+ * @retval k_ra_err_null_ptr    chain is null.
+ * @retval k_ra_err_invalid_arg ring_depth < 2 or slot_bytes > 2048.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre chain is 8-byte aligned (chip requirement for basic descriptors).
+ * @post chain[0..ring_depth-2] have dt = FEMPTY, ds = slot_bytes.
+ * @post chain[ring_depth-1] has dt = LINK, PTR = &chain[0].
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain,
+                                             uint32_t                    ring_depth,
+                                             uint32_t                    slot_bytes);
+
 #ifdef __cplusplus
 }
 #endif
