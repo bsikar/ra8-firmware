@@ -630,3 +630,43 @@ ra_err_t ra_eth_gwca_attach_buffers(ra_gwca_basic_descriptor_t* chain,
   }
   return k_ra_ok;
 }
+
+/**
+ * @brief Kick a TX queue via GWTRC.
+ *
+ * @details See header. Sets the bit for queue_index in GWTRC0
+ * (queues 0..31) or GWTRC1 (queues 32..63). Read-modify-write so
+ * other already-pending TX requests on the same 32-queue word are
+ * preserved.
+ *
+ * @param[in] queue_index TX queue 0..63.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWTRCi bit set.
+ * @retval k_ra_err_invalid_arg queue_index >= 64.
+ *
+ * @pre Queue's chain has at least one FSINGLE descriptor ready.
+ * @pre GWCA is in GWMC.OPC = OPERATION.
+ * @post Matching GWTRC bit is 1.
+ * @post Other already-pending TX requests on the same word are preserved.
+ *
+ * @note Not thread-safe across writes to the same GWTRC word.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_kick_tx(uint32_t queue_index)
+{
+  enum : uint32_t {
+    k_ra_gwca_max_tx_queues = 64U,
+    k_ra_gwca_queues_per_reg = 32U,
+  };
+  if (queue_index >= k_ra_gwca_max_tx_queues) {
+    return k_ra_err_invalid_arg;
+  }
+  const uintptr_t offset = (queue_index < k_ra_gwca_queues_per_reg)
+                             ? (uintptr_t)k_ra_gwca_off_gwtrc0
+                             : (uintptr_t)k_ra_gwca_off_gwtrc1;
+  volatile uint32_t* const gwtrc = (volatile uint32_t*)(k_ra_gwca0_base_addr + offset);
+  const uint32_t bit = 1UL << (queue_index % k_ra_gwca_queues_per_reg);
+  *gwtrc             = *gwtrc | bit;
+  return k_ra_ok;
+}
