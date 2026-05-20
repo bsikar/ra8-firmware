@@ -67,6 +67,38 @@ void ra_eth_mfwd_dispatch(void);
 [[nodiscard]] ra_err_t ra_eth_mfwd_exit_stop(void);
 
 /**
+ * @brief Program the per-port forwarding-destination masks (FWPBFC0).
+ *
+ * @details
+ * Sets ``MFWD.FWPBFC0[i].PBDV = mask`` for each port i in 0..2 (the
+ * two GMAC ports + the host/GWCA port). PBDV is a 7-bit bitmask of
+ * destination ports a frame received on this port is allowed to reach.
+ * Per FSP r_layer3_switch_open this must be programmed BEFORE the
+ * GWCA mode transitions (alongside FWPC10/11/12.DDE).
+ *
+ * The simplest permissive setting is ``0x7F`` (all destinations
+ * allowed) on every port -- that lets wire-to-host RX flow through
+ * the switch without any L3 filtering.
+ *
+ * @param[in] port_masks Array of three masks: index 0 = port 0,
+ *                       index 1 = port 1, index 2 = host port.
+ *                       Caller-owned; only the values are read.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Masks programmed.
+ * @retval k_ra_err_null_ptr port_masks is null.
+ *
+ * @pre ra_eth_mfwd_init or board MSTP setup has run.
+ * @pre Each mask is 7 bits or fewer (extra bits are ignored).
+ * @post FWPBFC0/1/2.PBDV reflect the supplied masks.
+ * @post No other bits of FWPBFC0/1/2 are disturbed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_mfwd_set_forwarding_masks(const uint8_t port_masks[3]);
+
+/**
  * @brief Route inbound frames from a GMAC port into a GWCA RX queue.
  *
  * @details
