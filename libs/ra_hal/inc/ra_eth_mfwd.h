@@ -66,6 +66,35 @@ void ra_eth_mfwd_dispatch(void);
 /** @brief Exit MSTP-gated stop. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_mfwd_exit_stop(void);
 
+/**
+ * @brief Route inbound frames from a GMAC port into a GWCA RX queue.
+ *
+ * @details
+ * Programs ``MFWD.FWPBFCSDC0[port].PBCSD = queue_index`` so the
+ * forwarding engine knows where to deliver port-to-host frames.
+ * Without this call the GWCA RX queue stays empty even when frames
+ * arrive on the wire. Per FSP ``r_layer3_switch_StartDescriptorQueue``
+ * this MUST be programmed after the GWCA queue is in OPERATION and
+ * before the MAC is allowed to receive.
+ *
+ * @param[in] port         GMAC port index (0..1 on RA8D2).
+ * @param[in] queue_index  GWCA queue index that receives the frames (<= 31).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Routing programmed.
+ * @retval k_ra_err_invalid_arg port > 1 or queue_index > 31.
+ *
+ * @pre ra_eth_mfwd_init succeeded earlier (or ra_eth_init brought
+ *      up the shared ESWM gate).
+ * @pre GWCA queue indicated by queue_index has been configured.
+ * @post FWPBFCSDC0[port].PBCSD == queue_index on success.
+ * @post Other bits of FWPBFCSDC0[port] preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_mfwd_route_queue(uint8_t port, uint8_t queue_index);
+
 #ifdef __cplusplus
 }
 #endif

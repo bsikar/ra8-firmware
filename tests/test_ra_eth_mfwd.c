@@ -118,6 +118,33 @@ static void test_power_transition(void)
   TEST_END("mfwd power transition");
 }
 
+/**
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_eth_mfwd.c:166): // CITES-OK: MC/DC gate requires file:line
+ *   ``(port > k_ra_mfwd_max_port) || (queue_index > k_ra_mfwd_max_queue)``
+ * inside ra_eth_mfwd_route_queue. Two-condition decision needs N+1 = 3 vectors.
+ * Vector 1: port=0, queue=0   -> false (both conditions false; happy path).
+ * Vector 2: port=2, queue=0   -> true  (varies port only -> isolates port).
+ * Vector 3: port=0, queue=32  -> true  (varies queue only -> isolates queue).
+ * Vectors 1+2 prove port independently affects the outcome.
+ * Vectors 1+3 prove queue_index independently affects the outcome.
+ */
+static void test_mcdc_route_queue_bounds(void)
+{
+  TEST_BEGIN("mfwd route_queue MC/DC bounds");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_mfwd_init());
+  /* Vector 1: in-range port + queue -> ok. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_mfwd_route_queue(0U, 0U));
+  /* Vector 2: port out of range, queue in range -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_mfwd_route_queue(2U, 0U));
+  /* Vector 3: port in range, queue out of range -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_mfwd_route_queue(0U, 32U));
+  /* Also confirm a second valid port pair lands. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_mfwd_route_queue(1U, 31U));
+  TEST_END("mfwd route_queue MC/DC bounds");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -125,6 +152,7 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
+  test_mcdc_route_queue_bounds();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_mfwd.c\n");
   return 0;
 }
