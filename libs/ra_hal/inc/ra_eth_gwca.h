@@ -148,6 +148,46 @@ void ra_eth_gwca_dispatch(void);
 [[nodiscard]] ra_err_t ra_eth_gwca_install_linkfix(ra_gwca_basic_descriptor_t* linkfix_table,
                                                    uint32_t                    entry_count);
 
+/**
+ * @brief Bring the GWCA from RESET state up to OPERATION with a fresh LINKFIX table.
+ *
+ * @details Single-call wrapper that ties the three foundation
+ * primitives together in the canonical FSP ordering:
+ *
+ *   1. set_operation_mode(DISABLE)  -- park the state machine
+ *   2. set_operation_mode(CONFIG)   -- LINKFIX writable
+ *   3. axi_init()                   -- AXI manager ready
+ *   4. install_linkfix(table, n)    -- table address + LEMPTY init
+ *   5. set_operation_mode(DISABLE)  -- transition back through DISABLE
+ *   6. set_operation_mode(OPERATION) -- queues activate
+ *
+ * If any step fails, the GWCA is left in DISABLE so the chip is in
+ * a predictable state for retry.
+ *
+ * Callers should pass their own (statically allocated, 16-byte
+ * aligned) LINKFIX table sized to the queue count they need. The
+ * table is left in BSS / app SRAM -- the HAL never owns it.
+ *
+ * @param[in,out] linkfix_table Caller-owned LINKFIX table.
+ * @param[in]     entry_count   Queue count (1..32).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             GWCA in OPERATION mode; LINKFIX live.
+ * @retval k_ra_err_invalid_arg Table is null or count out of range.
+ * @retval k_ra_err_hw_timeout One of the state-machine transitions
+ *                              never converged. GWCA left in DISABLE.
+ *
+ * @pre ::ra_eth_gwca_init has been called (MSTP-gate cleared).
+ * @pre Caller is single-threaded with respect to GWCA edits.
+ * @post On success GWMS.OPS == OPERATION and queues are walkable.
+ * @post On failure GWMS.OPS == DISABLE.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_bring_up(ra_gwca_basic_descriptor_t* linkfix_table,
+                                            uint32_t                    entry_count);
+
 #ifdef __cplusplus
 }
 #endif
