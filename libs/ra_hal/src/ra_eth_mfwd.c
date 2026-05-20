@@ -115,3 +115,62 @@ ra_err_t ra_eth_mfwd_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);
 }
+
+/**
+ * @enum ra_eth_mfwd_internal_t
+ * @brief MFWD register offsets used by the routing programming path.
+ *
+ * @details Per CMSIS R7KA8D2KF_core0.h: FWPBFCSDC00 sits at offset
+ * 0x4A04 in the MFWD register window (port 0), with each subsequent
+ * port advancing 0x10 bytes (so port 1 -> 0x4A14, port 2 -> 0x4A24).
+ * PBCSD (Port Based Forwarding CSD) is the low 7 bits.
+ */
+typedef enum : uint32_t {
+  k_ra_mfwd_off_fwpbfcsdc0_base = 0x4A04UL, /**< FWPBFCSDC00 offset. */
+  k_ra_mfwd_fwpbfcsdc_stride    = 0x10UL,   /**< Per-port stride.    */
+  k_ra_mfwd_pbcsd_mask          = 0x7FUL,   /**< PBCSD field mask.   */
+  k_ra_mfwd_max_port            = 1UL,      /**< Highest port index. */
+  k_ra_mfwd_max_queue           = 31UL,     /**< Highest GWCA queue. */
+} ra_eth_mfwd_internal_t;
+
+/**
+ * @brief Return a typed pointer to FWPBFCSDC0[port] inside MFWD.
+ *
+ * @details Helper that computes the register address from the MFWD
+ * base + per-port offset so the caller's body stays readable. Per
+ * project policy hardware register access is via inline accessors,
+ * never preprocessor macros.
+ *
+ * @param[in] port Port index (already bounds-checked by the caller).
+ * @return Volatile pointer to the per-port routing register.
+ *
+ * @pre port <= k_ra_mfwd_max_port.
+ * @pre MFWD MSTP gate is on.
+ * @post Returned pointer maps to the MFWD register window.
+ * @post Returned pointer is non-null.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
+{
+  const uintptr_t addr =
+      (uintptr_t)k_ra_mfwd_base_addr
+      + (uintptr_t)(k_ra_mfwd_off_fwpbfcsdc0_base + ((uint32_t)port * k_ra_mfwd_fwpbfcsdc_stride));
+  return (volatile uint32_t*)addr;
+}
+
+/* Implementation of ra_eth_mfwd_route_queue (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_eth_mfwd_route_queue(uint8_t port, uint8_t queue_index)
+{
+  if ((port > (uint8_t)k_ra_mfwd_max_port) || (queue_index > (uint8_t)k_ra_mfwd_max_queue)) {
+    ra_log_error(s_tag, "mfwd_route_queue: invalid port or queue");
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 -- FWPBFCSDC0[port].PBCSD. */
+  volatile uint32_t* reg = internal_mfwd_fwpbfcsdc(port);
+  const uint32_t     val = (*reg & ~(uint32_t)k_ra_mfwd_pbcsd_mask)
+                       | ((uint32_t)queue_index & (uint32_t)k_ra_mfwd_pbcsd_mask);
+  *reg = val;
+  return k_ra_ok;
+}
