@@ -195,8 +195,19 @@ void ra_trustzone_init(void)
                           (uint32_t)k_ra_tz_ns_sdram_limit,
                           /*is_nsc=*/false);
 
-  /* Region 3: NSC veneer alias ( will place .gnu.sgstubs
-   * here via the linker script). */
+  /* Region 3: NSC veneer slice.
+   *
+   * Reverted on 2026-05-19 after a fix attempt bricked the chip.
+   * The .gnu.sgstubs section actually lives inside lower MRAM
+   * (0x0200F5A0 in the current build), NOT at the 0x10000000
+   * alias this region originally pointed at. Pointing Region 3 at
+   * the real address via linker-exported g_ra_ls_sgstubs_{start,end}
+   * symbols caused the chip to wedge so hard that the J-Link DAP
+   * couldn't power it up for re-flash -- needed manual recovery
+   * through scripts/hil_recover.sh. Cause TBD: probably an
+   * SAU-CTRL ordering issue (region 3 marking actively-executing
+   * lower-MRAM as NSC while the SAU was being enabled). Tracked
+   * in task #62. */
   internal_sau_set_region(3U,
                           (uint32_t)k_ra_tz_nsc_veneer_base,
                           (uint32_t)k_ra_tz_nsc_veneer_lim,
