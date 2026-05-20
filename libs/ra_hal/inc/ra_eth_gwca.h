@@ -188,6 +188,56 @@ void ra_eth_gwca_dispatch(void);
 [[nodiscard]] ra_err_t ra_eth_gwca_bring_up(ra_gwca_basic_descriptor_t* linkfix_table,
                                             uint32_t                    entry_count);
 
+/**
+ * @brief Per-queue configuration descriptor for ::ra_eth_gwca_configure_queue.
+ *
+ * @details Populated by the caller and passed to configure_queue;
+ * holds the four user-facing GWDCC fields plus the chain-head
+ * pointer that goes into the matching LINKFIX entry.
+ */
+typedef struct {
+  uint8_t                     source_mac_port; /**< SM[1:0]: MAC port (0..3). */
+  uint8_t                     priority;        /**< DCP[2:0]: class priority (0..7). */
+  bool                        is_tx;           /**< DQT: true = TX, false = RX. */
+  bool                        stop_on_last;    /**< SL: stop processing on last. */
+  ra_gwca_basic_descriptor_t* chain_head;      /**< First descriptor in the queue. */
+} ra_eth_gwca_queue_cfg_t;
+
+/**
+ * @brief Wire a per-queue config into GWDCC[i] and the matching LINKFIX entry.
+ *
+ * @details Composes the GWDCC[queue_index] value from @p cfg (SM /
+ * DQT / DCP / SL bits), writes it, then points the matching LINKFIX
+ * entry's PTR at @p cfg->chain_head (transitions that entry out of
+ * LEMPTY to LINKFIX so the queue becomes walkable on the next
+ * GWMC.OPC transition to OPERATION).
+ *
+ * Caller must already have invoked ::ra_eth_gwca_install_linkfix
+ * with the table that backs @p linkfix_table[queue_index]. GWDCC[i]
+ * is RESET/CONFIG-only-writable, so caller must be in CONFIG mode
+ * when invoking this.
+ *
+ * @param[in,out] linkfix_table The same table passed to install_linkfix.
+ * @param[in]     queue_index    Queue number 0..31.
+ * @param[in]     cfg            Per-queue settings + chain head pointer.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWDCC[i] + LINKFIX[i] wired.
+ * @retval k_ra_err_invalid_arg ``linkfix_table`` or ``cfg`` null, queue out of range.
+ *
+ * @pre ::ra_eth_gwca_install_linkfix returned ok.
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre ``cfg->chain_head`` points at a descriptor array the chip can DMA from.
+ * @post GWDCC[queue_index] reflects cfg's settings.
+ * @post linkfix_table[queue_index] has dt = LINKFIX with PTR = chain_head.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_table,
+                                                   uint32_t                       queue_index,
+                                                   const ra_eth_gwca_queue_cfg_t* cfg);
+
 #ifdef __cplusplus
 }
 #endif

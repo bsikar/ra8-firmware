@@ -217,6 +217,57 @@ static void test_bring_up(void)
   TEST_END("gwca bring_up full sequence");
 }
 
+/**
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c:480): // CITES-OK: MC/DC gate requires file:line
+ *   ``if ((cfg->source_mac_port > 3U) || (cfg->priority > 7U))``
+ * Two atomic conditions, N+1 = 3 vectors:
+ *   V_F_F: port = 1, priority = 4   -> ok
+ *   V_T_-: port = 7, priority = 4   -> invalid_arg (port out of range alone)
+ *   V_F_T: port = 1, priority = 8   -> invalid_arg (priority out of range alone)
+ */
+static void test_configure_queue(void)
+{
+  TEST_BEGIN("gwca configure_queue");
+  prep();
+  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t table[4];
+  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[2];
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_install_linkfix(table, 4U));
+
+  ra_eth_gwca_queue_cfg_t cfg = {
+    .source_mac_port = 1U,
+    .priority        = 4U,
+    .is_tx           = true,
+    .stop_on_last    = false,
+    .chain_head      = chain,
+  };
+
+  /* Null pointers / out-of-range guards. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_configure_queue(nullptr, 0U, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_configure_queue(table, 0U, nullptr));
+  ra_eth_gwca_queue_cfg_t bad_head = cfg;
+  bad_head.chain_head              = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_configure_queue(table, 0U, &bad_head));
+
+  /* V_T_-: port out of range. */
+  ra_eth_gwca_queue_cfg_t bad_port = cfg;
+  bad_port.source_mac_port         = 7U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_configure_queue(table, 0U, &bad_port));
+
+  /* V_F_T: priority out of range. */
+  ra_eth_gwca_queue_cfg_t bad_prio = cfg;
+  bad_prio.priority                = 8U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_configure_queue(table, 0U, &bad_prio));
+
+  /* Queue index out of range. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_configure_queue(table, 99U, &cfg));
+
+  /* V_F_F: happy path. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_configure_queue(table, 0U, &cfg));
+  TEST_ASSERT_EQ(k_ra_gwdcc_dt_linkfix, table[0].dt);
+  TEST_END("gwca configure_queue");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -228,6 +279,7 @@ int32_t main(void)
   test_axi_init();
   test_install_linkfix();
   test_bring_up();
+  test_configure_queue();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_gwca.c\n");
   return 0;
 }
