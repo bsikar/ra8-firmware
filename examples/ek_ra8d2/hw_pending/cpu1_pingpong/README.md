@@ -85,17 +85,38 @@ non-secure. So the cpu1_pingpong TZ design is fixed:
 
 - CPU0 (M85) is Secure side.
 - CPU1 (M33) is Non-Secure side.
-- IPC channels need correct per-channel attribution to bridge.
 
-The 2026-05-19 experiment that wrote IPCSAR = 0x000F0303
-(everything NS) HardFaulted CPU0 because making channel 2 NS
-blocks Secure access. The correct fix needs:
+### 2026-05-20: SAIPCIRn semantics pinned -- the demo design itself is incompatible
 
-1. Re-read HUM Ch 3.2.1 SAIPCIRn semantics carefully -- does
-   "NS-accessible" mean "S+NS can both access" or "NS-only"?
-2. Set IPCSAR to only the bits that need flipping (probably
-   none of them if S+NS can share NS-attributed channels).
-3. Make sure the PRCR_S.PRC4 unlock pattern from
-   [[ipcsar-prcr-protection]] is in place.
-4. Re-verify via JTAG that channel 2 STA.FULL drains and
-   channel 0 STA.RDY asserts after each round trip.
+Confirmed from HUM Ch 3.2.1 IPCSAR register description that
+SAIPCIRn is **mutually exclusive**:
+
+- 0: Secure -- only Secure code can access the channel's
+  register file (TXD, RXD, STA, ISET, CLR).
+- 1: Non-secure -- only Non-secure code can access them.
+
+So **a single IPC channel cannot bridge CPU0(S) and CPU1(NS)**
+because whichever attribution wins, the other CPU is denied.
+The cpu1_pingpong ping/pong topology (CPU0 writes ch2.TXD, CPU1
+reads ch2.RXD, CPU1 writes ch0.TXD, CPU0 reads ch0.RXD) is
+**architecturally incompatible with the SECEXT-disabled CPU1**.
+
+## How to graduate back
+
+The demo needs a redesign:
+
+1. **NSC veneer wrapper** -- CPU0 exposes secure-side TX/RX
+   functions as NSC veneers, CPU1 calls those instead of doing
+   raw MMIO. Channels stay S-only.
+2. **Shared-NS-SRAM payload + IPCSEMn semaphore** -- payload
+   sits in a shared NS-SRAM region with appropriate cache
+   fences; the IPC layer just signals readiness via
+   IPCSEMn (HUM Ch 3.2.3, has its own SAIPCSEMg attribution
+   that may allow asymmetric S+NS access).
+3. **NMI-only pingpong** -- use IPC0NMI / IPC1NMI for one-shot
+   wake signals, no payload through IPC at all.
+
+Once any of these designs lands and CPU1 actually drains the
+channel-2 FIFO, the existing memprobe + match/mismatch counters
+will validate the round-trip. Move back to hw_validated/hil/
+once g_cpu1_pingpong_match advances at the configured rate.
