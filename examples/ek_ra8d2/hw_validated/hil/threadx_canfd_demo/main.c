@@ -35,6 +35,7 @@
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_canfd.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
@@ -73,6 +74,14 @@ typedef enum : uint16_t {
   k_canfd_heartbeat_dlc   = 8U,     /**< Data length code (bytes).*/
 } canfd_period_t;
 
+/**
+ * @brief CAN-FD channel + bit-rate constants shared by both threads.
+ */
+typedef enum : uint32_t {
+  k_canfd_demo_channel = 0U,      /**< CANFD0 (only channel on this board). */
+  k_canfd_demo_bitrate = 500000U, /**< 500 kbit/s nominal + data rate.      */
+} canfd_link_t;
+
 /* ---------------------------------------------------------------------------
  * SysTick override: forward to the ThreadX kernel-tick handler.
  * --------------------------------------------------------------------------- */
@@ -89,23 +98,32 @@ static TX_THREAD s_thread_rx;
 
 /**
  * @var g_threadx_canfd_match
- * @brief HIL liveness counter -- incremented on every successful
- *        iteration of either ThreadX demo thread.
+ * @brief HIL success counter -- one increment per successful CAN-FD
+ *        transmit (TX thread) or per accepted RX frame (RX thread).
  *
  * @details
  * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
- * sample window, proving the ThreadX scheduler is actually
- * dispatching both threads (the alive-mode check could only prove
- * the chip didn't crash, not that the kernel was running).
+ * sample window, proving real CAN-FD frames are flowing on the
+ * internal-loopback path under ThreadX.
  *
- * @note The current TX/RX threads in this demo are LED-blink stubs --
- *       no real CANFD transmit/receive happens -- so this counter
- *       proves scheduler liveness rather than CAN-FD throughput.
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0
  */
 volatile uint32_t g_threadx_canfd_match = 0U;
+
+/**
+ * @var g_threadx_canfd_mismatch
+ * @brief HIL failure counter -- one increment per TX or RX error.
+ *
+ * @details
+ * Read externally as HIL_PROBE_FAILURE_SYMBOL. Any non-zero reading
+ * means a CAN-FD primitive returned non-ok; the gate fails the run.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_threadx_canfd_mismatch = 0U;
 
 /**
  * @brief SysTick handler -- forwards to ThreadX scheduler tick.
@@ -117,41 +135,85 @@ void SysTick_Handler(void)
 }
 
 /**
- * @brief Heartbeat TX thread: pretend to send a CAN frame, blink LED1.
+ * @brief Heartbeat TX thread: send a CAN-FD frame each period.
+ *
+ * @details
+ * Builds an 8-byte frame at ::k_canfd_heartbeat_id and calls
+ * ::ra_canfd_transmit. The chip is in internal-loopback mode (set in
+ * ::tx_application_define) so the frame appears on the RX FIFO for
+ * ::thread_rx_entry to consume.
  *
  * @param[in] thread_input ThreadX cookie -- unused.
  *
  * @pre ThreadX scheduler is running.
  * @pre LED1 has been configured as an output.
  *
- * @post LED1 toggles every k_canfd_heartbeat_ticks.
+ * @post LED1 toggles after every successful transmit.
+ * @post g_threadx_canfd_match advances after every successful transmit.
+ * @post g_threadx_canfd_mismatch advances on every TX failure.
+ *
+ * @note Not thread-safe; only this thread calls ra_canfd_transmit on
+ *       this channel.
+ * @since 0.1.0
  */
 static void thread_tx_entry(ULONG thread_input)
 {
   (void)thread_input;
+  uint8_t seq = 0U;
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    g_threadx_canfd_match += 1U;
+    ra_canfd_frame_t tx = {
+      .id          = (uint32_t)k_canfd_heartbeat_id,
+      .dlc         = (uint8_t)k_canfd_heartbeat_dlc,
+      .is_extended = 0U,
+      .is_fd       = 0U,
+      .is_brs      = 0U,
+      .data        = {seq, 0xA5U, 0x5AU, 0x12U, 0x34U, 0x56U, 0x78U, 0x9AU},
+    };
+    if (ra_canfd_transmit((uint8_t)k_canfd_demo_channel, &tx) == k_ra_ok) {
+      (void)ra_board_led_toggle(k_ra_board_led1);
+      g_threadx_canfd_match += 1U;
+    } else {
+      g_threadx_canfd_mismatch += 1U;
+    }
+    seq++;
     (void)tx_thread_sleep((ULONG)k_canfd_heartbeat_ticks);
   }
 }
 
 /**
- * @brief RX polling thread: blink LED2 each poll iteration.
+ * @brief RX polling thread: drain the loopback-mirrored frame.
+ *
+ * @details
+ * Polls ::ra_canfd_receive each ::k_canfd_rx_poll_ticks. On a hit
+ * (k_ra_ok), toggles LED2 and bumps ::g_threadx_canfd_match. No-data
+ * returns are expected between TX bursts and never increment either
+ * counter; only genuine HW errors advance the mismatch counter.
  *
  * @param[in] thread_input ThreadX cookie -- unused.
  *
  * @pre ThreadX scheduler is running.
  * @pre LED2 has been configured as an output.
  *
- * @post LED2 toggles every k_canfd_rx_poll_ticks.
+ * @post LED2 toggles after every accepted RX frame.
+ * @post g_threadx_canfd_match advances after every accepted RX frame.
+ * @post g_threadx_canfd_mismatch advances on every receive error.
+ *
+ * @note Not thread-safe; only this thread calls ra_canfd_receive on
+ *       this channel.
+ * @since 0.1.0
  */
 static void thread_rx_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led2);
-    g_threadx_canfd_match += 1U;
+    ra_canfd_frame_t rx = {};
+    const ra_err_t   err = ra_canfd_receive((uint8_t)k_canfd_demo_channel, &rx);
+    if (err == k_ra_ok) {
+      (void)ra_board_led_toggle(k_ra_board_led2);
+      g_threadx_canfd_match += 1U;
+    } else if (err != k_ra_err_no_data) {
+      g_threadx_canfd_mismatch += 1U;
+    }
     (void)tx_thread_sleep((ULONG)k_canfd_rx_poll_ticks);
   }
 }
@@ -241,6 +303,30 @@ int32_t main(void)
       __asm__ volatile("wfi");
     }
   }
+
+  if (ra_canfd_init((uint8_t)k_canfd_demo_channel) != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+  if (ra_canfd_set_bitrate((uint8_t)k_canfd_demo_channel,
+                           (uint32_t)k_canfd_demo_bitrate,
+                           (uint32_t)k_canfd_demo_bitrate) != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+  /* Internal-loopback (HUM Ch 41 "CFDCnCTR" p 2710): TX frames echo
+   * into RX so this single-board demo can validate the round trip
+   * without a second CAN node on the bus. */
+  if (ra_canfd_set_test_mode((uint8_t)k_canfd_demo_channel,
+                             k_ra_ctms_self_test_1) != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+
+  ra_isr_globals_enable();
 
 #ifndef RA_SIMULATOR_MODE
   tx_kernel_enter();
