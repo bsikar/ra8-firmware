@@ -345,9 +345,8 @@ void SystemInit(void)
    * requires SAU + IDAU + something else to be properly
    * configured for accesses to succeed. The right cpu1_pingpong
    * fix needs a full TrustZone bring-up -- not feasible in a
-   * single-iteration loop. Reverted. See task #62 + project
-   * memory project_cpu1_must_be_non_secure.md for the full
-   * background. */
+   * single-iteration loop. Reverted. See project memory
+   * project_cpu1_must_be_non_secure.md for the full background. */
 
   /* Cache enable, MPU init, and TrustZone bring-up are temporarily
    * disabled -- they HardFault on first reset because the CCSIDR-driven
