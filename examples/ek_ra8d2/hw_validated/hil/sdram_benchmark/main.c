@@ -307,6 +307,14 @@ int32_t main(void)
     const uint32_t off                         = sdram_demo_format_line(out, w_mbps, r_mbps);
     if (!match) {
       (void)ra_board_led_on(k_ra_board_led2);
+      /* Emit FAIL banner so the HIL negative regex catches a
+       * read-back mismatch; without this the throughput line still
+       * prints normally and the probe passes on a chip where the
+       * SDRAM is silently corrupting bytes. */
+      const uint8_t fail_banner[] = "sdram: FAIL readback mismatch\r\n";
+      (void)ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel,
+                                 fail_banner,
+                                 (uint32_t)(sizeof(fail_banner) - 1U));
     }
     if (ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel, out, off) != k_ra_ok) {
       break;
