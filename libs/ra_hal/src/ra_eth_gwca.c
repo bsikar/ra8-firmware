@@ -292,3 +292,61 @@ ra_err_t ra_eth_gwca_install_linkfix(ra_gwca_basic_descriptor_t* linkfix_table,
   *gwdcbac1 = lower;
   return k_ra_ok;
 }
+
+/**
+ * @brief Bring the GWCA up to OPERATION with a fresh LINKFIX table.
+ *
+ * @details See header for the canonical contract. Sequence:
+ *   1. set_operation_mode(DISABLE)
+ *   2. set_operation_mode(CONFIG)
+ *   3. axi_init()
+ *   4. install_linkfix(table, n)
+ *   5. set_operation_mode(DISABLE)
+ *   6. set_operation_mode(OPERATION)
+ *
+ * @param[in,out] linkfix_table Caller-owned LINKFIX table.
+ * @param[in]     entry_count   Queue count (1..32).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWCA in OPERATION mode; LINKFIX live.
+ * @retval k_ra_err_invalid_arg Table is null or count out of range.
+ * @retval k_ra_err_hw_timeout  A state-machine transition never converged.
+ *
+ * @pre Module brought up via ::ra_eth_gwca_init.
+ * @pre Caller is single-threaded with respect to GWCA edits.
+ * @post On success GWMS.OPS = OPERATION.
+ * @post On failure GWMS.OPS = DISABLE (best-effort park state).
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_bring_up(ra_gwca_basic_descriptor_t* linkfix_table, uint32_t entry_count)
+{
+  ra_err_t err = ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_disable);
+  RA_RETURN_ON_ERROR(err, s_tag, "bring_up: DISABLE failed"); /* GCOVR_EXCL_BR_LINE */
+
+  err = ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_config);
+  if (err != k_ra_ok) {
+    (void)ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_disable);
+    return err;
+  }
+
+  err = ra_eth_gwca_axi_init();
+  if (err != k_ra_ok) {
+    (void)ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_disable);
+    return err;
+  }
+
+  err = ra_eth_gwca_install_linkfix(linkfix_table, entry_count);
+  if (err != k_ra_ok) {
+    (void)ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_disable);
+    return err;
+  }
+
+  err = ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_disable);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  return ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_operation);
+}

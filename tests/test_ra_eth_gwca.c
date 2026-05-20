@@ -190,6 +190,33 @@ static void test_install_linkfix(void)
   TEST_END("gwca install_linkfix");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_bring_up(void)
+{
+  TEST_BEGIN("gwca bring_up full sequence");
+  prep();
+  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t table[4];
+
+  /* Invalid args propagate. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_bring_up(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_bring_up(table, 33U));
+
+  /* Happy path: state machine walks through DISABLE -> CONFIG ->
+   * AXI init -> LINKFIX install -> DISABLE -> OPERATION. In sim
+   * mode every transition short-circuits to k_ra_ok. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_bring_up(table, 4U));
+  /* Every LINKFIX entry should now be LEMPTY. */
+  for (uint32_t i = 0U; i < 4U; ++i) {
+    TEST_ASSERT_EQ(k_ra_gwdcc_dt_lempty, table[i].dt);
+  }
+  TEST_END("gwca bring_up full sequence");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -200,6 +227,7 @@ int32_t main(void)
   test_set_operation_mode();
   test_axi_init();
   test_install_linkfix();
+  test_bring_up();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_gwca.c\n");
   return 0;
 }
