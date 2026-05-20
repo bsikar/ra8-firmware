@@ -25,6 +25,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8d2_ether_regs.h"
 #include "ra_err.h"
 
 /**
@@ -65,6 +66,53 @@ void ra_eth_gwca_dispatch(void);
 
 /** @brief Exit MSTP-gated stop. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gwca_exit_stop(void);
+
+/**
+ * @brief Transition the GWCA / ESWM state machine to a new OPC mode.
+ *
+ * @details Writes GWMC.OPC[1:0] = @p mode and polls GWMS.OPS[1:0]
+ * until it reflects the new mode (or the bounded poll budget elapses).
+ * This is the canonical state-machine transition for GWCA, used by
+ * the LINKFIX init sequence (RESET -> DISABLE -> CONFIG -> ... ->
+ * OPERATION). Mirrors FSP `r_layer3_switch_update_gwca_operation_mode`.
+ *
+ * @param[in] mode Target operation mode from ::ra_gwmc_opc_t.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             GWMS.OPS now reflects @p mode.
+ * @retval k_ra_err_invalid_arg @p mode is out of range.
+ * @retval k_ra_err_hw_timeout GWMS.OPS never converged.
+ *
+ * @pre ::ra_eth_gwca_init has been called (MSTP-gate cleared).
+ * @pre Caller is single-threaded with respect to GWCA edits.
+ * @post On success GWMC.OPC and GWMS.OPS both equal @p mode.
+ * @post On timeout GWMC.OPC may have been written even if OPS
+ *       never converged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_set_operation_mode(ra_gwmc_opc_t mode);
+
+/**
+ * @brief Request the GWCA AXI bridge to initialize via GWARIRM.ARIOG.
+ *
+ * @details Asserts GWARIRM.ARIOG (bit 0) and polls GWARIRM.ARR
+ * (bit 1) until it reads 1. Called once from the LINKFIX init flow
+ * after entering CONFIG mode. Mirrors the FSP
+ * `r_layer3_switch_initialize_gwca` AXI-init step.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              ARR asserted within the budget.
+ * @retval k_ra_err_hw_timeout ARR never asserted.
+ *
+ * @pre ::ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_config) returned ok.
+ * @post On success ARR=1 indicates the AXI manager is ready.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_axi_init(void);
 
 #ifdef __cplusplus
 }

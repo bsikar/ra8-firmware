@@ -113,3 +113,116 @@ ra_err_t ra_eth_gwca_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);
 }
+
+/**
+ * @brief Bounded poll budget for the GWMS.OPS / GWARIRM.ARR convergence.
+ *
+ * @details ~10 ms ceiling at 1 GHz CPU with ~5 cycles per iter. The
+ * state machine transitions in FSP take a handful of CANFDCLK ticks
+ * on real silicon. On host (RA_SIMULATOR_MODE) the loop runs against
+ * the mmap'd peri region and the bits flip immediately, so the
+ * budget is mostly hit-once.
+ */
+enum : uint32_t {
+  k_ra_eth_gwca_mode_spin = 2000000UL,
+};
+
+/* GWMC.OPC field at bits [1:0], GWMS.OPS field at bits [1:0]. The
+ * full register layout matches FSP R_GWCA0_Type from the cloned
+ * Renesas FSP source. */
+
+/**
+ * @brief Transition the GWCA / ESWM state machine to a new OPC mode.
+ *
+ * @details See header for the canonical contract -- writes GWMC.OPC
+ * and polls GWMS.OPS until convergence. Mirrors FSP
+ * r_layer3_switch_update_gwca_operation_mode.
+ *
+ * @param[in] mode Target operation mode from ::ra_gwmc_opc_t.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWMS.OPS now reflects @p mode.
+ * @retval k_ra_err_invalid_arg @p mode is out of range.
+ * @retval k_ra_err_hw_timeout  GWMS.OPS never converged.
+ *
+ * @pre Module brought up via ::ra_eth_gwca_init.
+ * @pre Caller is single-threaded with respect to GWCA edits.
+ * @post On success GWMC.OPC and GWMS.OPS both equal @p mode.
+ * @post On timeout GWMC.OPC may have been written even if OPS
+ *       never converged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_set_operation_mode(ra_gwmc_opc_t mode)
+{
+  if ((uint32_t)mode > (uint32_t)k_ra_gwmc_opc_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1797 */
+  volatile uint32_t* const gwmc = (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwmc);
+  /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
+  volatile uint32_t* const gwms = (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
+
+  const uint32_t opc = (uint32_t)mode & (uint32_t)k_ra_gwmc_opc_mask;
+  const uint32_t cur = *gwmc & ~(uint32_t)k_ra_gwmc_opc_mask;
+  *gwmc              = cur | opc;
+
+#ifndef RA_SIMULATOR_MODE
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc) {   /* GCOVR_EXCL_BR_LINE */
+      return k_ra_ok;
+    }
+  }
+  ra_log_error(s_tag, "set_operation_mode: GWMS.OPS never converged");
+  return k_ra_err_hw_timeout;
+#else
+  return k_ra_ok;
+#endif
+}
+
+/**
+ * @brief Request the GWCA AXI bridge to initialize via GWARIRM.ARIOG.
+ *
+ * @details See header for the canonical contract -- asserts
+ * GWARIRM.ARIOG and polls GWARIRM.ARR until 1. Mirrors the AXI
+ * init step inside FSP r_layer3_switch_initialize_gwca.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              ARR asserted within the budget.
+ * @retval k_ra_err_hw_timeout  ARR never asserted.
+ *
+ * @pre ::ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_config) returned ok.
+ * @pre Caller is single-threaded with respect to GWCA edits.
+ * @post On success ARR=1 indicates the AXI manager is ready.
+ * @post On failure ARR may still read 0; caller retries.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_axi_init(void)
+{
+  /* HUM Ch 34.3.x "GWARIRM" -- the AXI Manager (vendor name uses
+   * the older M-word) Initialization Request register. ARIOG bit is
+   * the request, ARR bit is the response. Sequence per FSP
+   * r_layer3_switch_initialize_gwca: set ARIOG=1, poll ARR until 1. */
+  enum : uint32_t {
+    k_ra_gwarirm_ariog = 1UL << 0,
+    k_ra_gwarirm_arr   = 1UL << 1,
+  };
+  volatile uint32_t* const gwarirm =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwarirm);
+  *gwarirm = k_ra_gwarirm_ariog;
+
+#ifndef RA_SIMULATOR_MODE
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*gwarirm & k_ra_gwarirm_arr) != 0U) {              /* GCOVR_EXCL_BR_LINE */
+      return k_ra_ok;
+    }
+  }
+  ra_log_error(s_tag, "axi_init: GWARIRM.ARR never asserted");
+  return k_ra_err_hw_timeout;
+#else
+  return k_ra_ok;
+#endif
+}
