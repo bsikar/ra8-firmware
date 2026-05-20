@@ -41,7 +41,7 @@ hardware HIL probe AND the gap below is resolved.
 | App | Blocking reason |
 |-----|-----------------|
 | cpu1_pingpong | IPCSAR is secure-only-writable from CPU0's NS state; needs TrustZone bring-up so the Secure veneer can flip the bits before CPU1 release. See app README + task #62. |
-| ethernet_http_responder | HAL's GWCA stub doesn't wire descriptor list addresses (GWDCBAC0/1 + LINKFIX table per HUM Ch 34.5.1.3). Multi-hour port. See task #61. |
+| ethernet_http_responder | HAL's GWCA stub doesn't wire descriptor list addresses (GWDCBAC0/1 + LINKFIX table per HUM Ch 34.5.1.3). Multi-hour port. See task #61. FSP reference: `r_layer3_switch.c` at github.com/renesas/fsp under `ra/fsp/src/r_layer3_switch/`. |
 | ethernet_tcp_echo | Same. |
 | ethernet_udp_echo | Same. |
 | threadx_lwip_tcp_echo | Same. |
