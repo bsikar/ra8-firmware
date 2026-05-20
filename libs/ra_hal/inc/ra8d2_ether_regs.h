@@ -357,6 +357,8 @@ typedef enum : uint16_t {
   k_ra_gwca_off_gwaarsr0  = 0x01A4U, /**< AXI active read search result0.*/
   k_ra_gwca_off_gwaarsr1  = 0x01A8U, /**< AXI active read search result1.*/
   k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
+  k_ra_gwca_off_gwtrc0     = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
+  k_ra_gwca_off_gwtrc1     = 0x0204U, /**< TX Request Cfg, queues 32..63. */
 } ra_gwca_offset_t;
 
 /**

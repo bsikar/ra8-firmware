@@ -336,6 +336,36 @@ typedef struct {
                                                   uint32_t                    slot_bytes,
                                                   uint8_t*                    pool);
 
+/**
+ * @brief Kick a TX queue -- request the chip to start transmitting.
+ *
+ * @details Sets the matching bit in GWTRC0 (queues 0..31) or
+ * GWTRC1 (queues 32..63) per HUM Ch 34.3.6 + FSP
+ * `R_LAYER3_SWITCH_StartDescriptorQueue`. Must be called after the
+ * app has converted one or more FEMPTY descriptors to FSINGLE
+ * (i.e. has data ready to send). The chip walks the queue, sends
+ * the FSINGLE frames, and may flip them back to FEMPTY when done.
+ *
+ * For RX queues the analogous kick is forwarding-configured via
+ * MFWD.FWPBFCSDCx; this function does not cover that path.
+ *
+ * @param[in] queue_index TX queue 0..63 (must have DQT=1 in GWDCC).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWTRCi bit set.
+ * @retval k_ra_err_invalid_arg queue_index >= 64.
+ *
+ * @pre Caller already filled at least one FSINGLE descriptor in the
+ *      queue's chain.
+ * @pre GWCA is in GWMC.OPC = OPERATION.
+ * @post The matching GWTRC bit reflects the request; chip may begin
+ *       transmitting on the next bus cycle.
+ *
+ * @note Not thread-safe with other GWTRC writes on the same word.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_kick_tx(uint32_t queue_index);
+
 #ifdef __cplusplus
 }
 #endif
