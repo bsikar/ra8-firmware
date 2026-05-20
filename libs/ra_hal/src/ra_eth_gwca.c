@@ -548,3 +548,85 @@ ra_err_t ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain,
   chain[ring_depth - 1U].dt = (uint8_t)k_ra_gwdcc_dt_link;
   return k_ra_ok;
 }
+
+/**
+ * @brief Set a descriptor's data-buffer pointer.
+ *
+ * @details Wraps ::internal_set_linkfix_entry-style address split
+ * for external callers wiring buffer pointers into FEMPTY slots.
+ *
+ * @param[in,out] desc   Descriptor to update.
+ * @param[in]     buffer Buffer address to encode.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           PTR field updated.
+ * @retval k_ra_err_null_ptr desc is null.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre desc was previously zeroed (e.g. by init_ring).
+ * @post desc->ptr_h / ptr_l encode @p buffer.
+ * @post desc->dt / ds / etc unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_set_descriptor_buffer(ra_gwca_basic_descriptor_t* desc, void* buffer)
+{
+  RA_CHECK_NULL_PTR(desc, s_tag, "set_descriptor_buffer: desc null");
+  enum : uintptr_t {
+    k_ra_buf_ptr_upper_shift = 32U,
+    k_ra_buf_ptr_upper_mask  = 0xFFULL,
+    k_ra_buf_ptr_lower_mask  = 0xFFFFFFFFULL,
+  };
+  const uintptr_t addr = (uintptr_t)buffer;
+  desc->ptr_h          = (uint8_t)((uint64_t)addr >> k_ra_buf_ptr_upper_shift)
+                & k_ra_buf_ptr_upper_mask;
+  desc->ptr_l = (uint32_t)addr & k_ra_buf_ptr_lower_mask;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Walk a ring and attach per-slot buffers from a static pool.
+ *
+ * @details See header for the canonical contract. Iterates the
+ * FEMPTY slots (chain[0..ring_depth-2]) and sets each PTR to
+ * pool + i * slot_bytes via ::ra_eth_gwca_set_descriptor_buffer.
+ *
+ * @param[in,out] chain      Ring from init_ring.
+ * @param[in]     ring_depth Same depth as init_ring.
+ * @param[in]     slot_bytes Per-slot buffer size.
+ * @param[in,out] pool       Contiguous buffer pool.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Every FEMPTY slot has its buffer wired.
+ * @retval k_ra_err_null_ptr    chain or pool is null.
+ * @retval k_ra_err_invalid_arg ring_depth < 2 or slot_bytes == 0.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre Pool spans at least (ring_depth - 1) * slot_bytes bytes.
+ * @post Each chain[i].ptr_h/ptr_l (i in [0, ring_depth-1)) encodes
+ *       pool + i * slot_bytes.
+ * @post Chain[ring_depth-1] (the LINK terminator) is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_attach_buffers(ra_gwca_basic_descriptor_t* chain,
+                                    uint32_t                    ring_depth,
+                                    uint32_t                    slot_bytes,
+                                    uint8_t*                    pool)
+{
+  RA_CHECK_NULL_PTR(chain, s_tag, "attach_buffers: chain null");
+  RA_CHECK_NULL_PTR(pool, s_tag, "attach_buffers: pool null");
+  if (ring_depth < 2U || slot_bytes == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  for (uint32_t i = 0U; i < (ring_depth - 1U); ++i) {
+    const size_t   slot_offset = (size_t)i * (size_t)slot_bytes;
+    const ra_err_t err = ra_eth_gwca_set_descriptor_buffer(&chain[i], &pool[slot_offset]);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}

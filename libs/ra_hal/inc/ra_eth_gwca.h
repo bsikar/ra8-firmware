@@ -278,6 +278,64 @@ typedef struct {
                                              uint32_t                    ring_depth,
                                              uint32_t                    slot_bytes);
 
+/**
+ * @brief Set a single descriptor's data-buffer pointer.
+ *
+ * @details Encodes @p buffer as the 40-bit PTR field of @p desc
+ * (high 8 bits in ptr_h, low 32 bits in ptr_l). Used by the caller
+ * during chain init to attach a per-slot buffer to each FEMPTY
+ * descriptor in a ring. Does not touch dt / ds / err / die fields.
+ *
+ * @param[in,out] desc   Descriptor to point at @p buffer.
+ * @param[in]     buffer Address of the per-slot data buffer.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           PTR field updated.
+ * @retval k_ra_err_null_ptr desc is null.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG (descriptor MMIO is RESET/CONFIG-only).
+ * @post desc->ptr_h + desc->ptr_l encode @p buffer.
+ * @post desc->dt / ds / err / die / info0 are unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_set_descriptor_buffer(ra_gwca_basic_descriptor_t* desc,
+                                                         void*                       buffer);
+
+/**
+ * @brief Walk a ring and attach per-slot buffers from a static pool.
+ *
+ * @details Convenience wrapper that calls
+ * ::ra_eth_gwca_set_descriptor_buffer on every FEMPTY slot in the
+ * ring (chain[0..ring_depth-2]), pointing each at a distinct slice
+ * of the caller's buffer pool. The pool must hold at least
+ * ``(ring_depth - 1) * slot_bytes`` bytes of contiguous storage.
+ *
+ * @param[in,out] chain      The ring previously initialized by
+ *                           ::ra_eth_gwca_init_ring.
+ * @param[in]     ring_depth Same depth passed to init_ring.
+ * @param[in]     slot_bytes Per-slot buffer size.
+ * @param[in,out] pool       Caller-owned buffer pool (contiguous).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Every FEMPTY slot points at its buffer.
+ * @retval k_ra_err_null_ptr    chain or pool is null.
+ * @retval k_ra_err_invalid_arg ring_depth < 2 or slot_bytes is 0.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre Pool spans at least (ring_depth - 1) * slot_bytes bytes.
+ * @post Each chain[i].ptr_h/ptr_l (i in [0, ring_depth-1)) encodes
+ *       pool + i * slot_bytes.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_attach_buffers(ra_gwca_basic_descriptor_t* chain,
+                                                  uint32_t                    ring_depth,
+                                                  uint32_t                    slot_bytes,
+                                                  uint8_t*                    pool);
+
 #ifdef __cplusplus
 }
 #endif
