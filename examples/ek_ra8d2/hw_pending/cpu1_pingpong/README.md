@@ -76,3 +76,26 @@ The fix path is therefore deeper than a single MMIO write:
 Skipped this turn -- requires non-trivial TrustZone bring-up
 work that overlaps the larger TZ scaffold rewrite tracked
 elsewhere.
+
+### 2026-05-19 (later): HUM architectural constraint pinned
+
+Read HUM Ch 2 deeper. **CPU1 on this chip is wired with
+SECEXT (Security Extension) disabled** -- it can ONLY run
+non-secure. So the cpu1_pingpong TZ design is fixed:
+
+- CPU0 (M85) is Secure side.
+- CPU1 (M33) is Non-Secure side.
+- IPC channels need correct per-channel attribution to bridge.
+
+The 2026-05-19 experiment that wrote IPCSAR = 0x000F0303
+(everything NS) HardFaulted CPU0 because making channel 2 NS
+blocks Secure access. The correct fix needs:
+
+1. Re-read HUM Ch 3.2.1 SAIPCIRn semantics carefully -- does
+   "NS-accessible" mean "S+NS can both access" or "NS-only"?
+2. Set IPCSAR to only the bits that need flipping (probably
+   none of them if S+NS can share NS-attributed channels).
+3. Make sure the PRCR_S.PRC4 unlock pattern from
+   [[ipcsar-prcr-protection]] is in place.
+4. Re-verify via JTAG that channel 2 STA.FULL drains and
+   channel 0 STA.RDY asserts after each round trip.
