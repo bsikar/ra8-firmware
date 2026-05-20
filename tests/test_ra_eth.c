@@ -22,9 +22,6 @@
  * @brief Driver-private constants used by the tests.
  */
 typedef enum : uint32_t {
-  k_ra_eth_test_tact        = 0x80000000UL, /**< TX descriptor active bit. */
-  k_ra_eth_test_ract        = 0x80000000UL, /**< RX descriptor active bit. */
-  k_ra_eth_test_gwca_run    = 0x00000003UL, /**< GWCA EDTR | EDRR.         */
   k_ra_eth_test_mmis1_pracs = 0x00000004UL, /**< MMIS1.PRACS.              */
   k_ra_eth_test_pkt_size    = 64U,          /**< Test frame size (60..).   */
   k_ra_eth_test_short_size  = 32U,          /**< Below min-frame.          */
@@ -216,9 +213,12 @@ static void test_open_happy_path(void)
 {
   TEST_BEGIN("eth open happy path");
   prep();
+  /* Open + close round-trip proves the GWCA default-state bring-up
+   * (LINKFIX install + queue configure + OPC -> OPERATION) and the
+   * MFWD route_queue programming both succeeded; per-register
+   * assertions live in the dedicated ra_eth_gwca / ra_eth_mfwd
+   * test suites. */
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
-  /* GWCA control bits asserted (EDTR | EDRR). HUM Ch 34 p 1787 */
-  TEST_ASSERT_EQ(k_ra_eth_test_gwca_run, ra_gwca()->GWCA_CTRL);
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_close());
   TEST_END("eth open happy path");
 }
@@ -289,10 +289,7 @@ static void test_write_enqueues_and_advances(void)
     pkt[i] = (uint8_t)i;
   }
 
-  /* GWCA_CTRL was set on open; clear it to confirm write re-asserts EDTR. */
-  ra_gwca()->GWCA_CTRL = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
-  TEST_ASSERT((ra_gwca()->GWCA_CTRL & 0x1U) != 0U);
 
   /* Stats should reflect one tx_ok. */
   ra_eth_stats_t stats = {};
@@ -313,24 +310,23 @@ static void test_write_busy_when_full(void)
 {
   TEST_BEGIN("eth write busy when ring full");
   prep();
-  /* Use a smaller TX ring to make ring-full quicker. */
-  ra_eth_cfg_t cfg       = s_test_cfg;
-  cfg.num_tx_descriptors = 2U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
 
   uint8_t pkt[64];
   (void)memset(pkt, 0x5A, sizeof(pkt));
 
-  /* Fill the ring. Each write leaves a TACT-set descriptor behind. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
-  /* Third write should land back on slot 0 which is still hardware-owned. */
+  /* Fill every data slot. Each write flips one FEMPTY descriptor to
+   * FSINGLE; without a chip-side completion the ring saturates. */
+  for (uint16_t i = 0U; i < (uint16_t)k_ra_eth_num_tx_desc; ++i) {
+    TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
+  }
+  /* The next write finds no FEMPTY slot and gets reported as busy. */
   TEST_ASSERT_EQ(k_ra_err_busy, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
 
   ra_eth_stats_t stats = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_get_stats(&stats));
-  TEST_ASSERT_EQ(2, stats.tx_ok);
-  TEST_ASSERT_EQ(1, stats.tx_err);
+  TEST_ASSERT_EQ(k_ra_eth_num_tx_desc, stats.tx_ok);
+  TEST_ASSERT_EQ(1U, stats.tx_err);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_close());
   TEST_END("eth write busy when ring full");
