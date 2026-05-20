@@ -404,6 +404,79 @@ typedef struct {
                                              uint32_t                          start_idx,
                                              uint32_t*                         out_index);
 
+/**
+ * @brief Enqueue one frame on a TX queue's descriptor ring.
+ *
+ * @details Finds the next FEMPTY slot via ::ra_eth_gwca_find_slot,
+ * memcpy's the frame into the slot's buffer (already attached via
+ * ::ra_eth_gwca_attach_buffers), sets ``ds`` = frame_len, flips
+ * dt to FSINGLE so the chip will send it, and advances the
+ * caller's tail-index cursor. Caller is responsible for calling
+ * ::ra_eth_gwca_kick_tx afterward to actually trigger transmission.
+ *
+ * @param[in,out] chain           TX descriptor ring.
+ * @param[in]     ring_depth      Ring depth.
+ * @param[in,out] tail_idx        Caller's round-robin write cursor.
+ * @param[in]     frame           Frame bytes to send.
+ * @param[in]     frame_len       Frame length (must fit in slot_bytes).
+ * @param[in]     slot_bytes      Per-slot buffer capacity.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Frame queued; FSINGLE marked.
+ * @retval k_ra_err_no_data     All slots FSINGLE (queue full).
+ * @retval k_ra_err_invalid_arg Null pointer or frame_len > slot_bytes.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre chain initialised via init_ring + attach_buffers.
+ * @post On success the chosen slot is FSINGLE with the frame copied.
+ * @post On success ``*tail_idx`` advanced past the chosen slot.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
+                                            uint32_t                    ring_depth,
+                                            uint32_t*                   tail_idx,
+                                            const uint8_t*              frame,
+                                            uint32_t                    frame_len,
+                                            uint32_t                    slot_bytes);
+
+/**
+ * @brief Dequeue one frame from an RX queue's descriptor ring.
+ *
+ * @details Finds the next FSINGLE slot via ::ra_eth_gwca_find_slot
+ * (the chip filled it), memcpy's the frame out of the slot's
+ * buffer into the caller's buffer, flips dt back to FEMPTY so the
+ * chip can refill, and advances the caller's head-index cursor.
+ *
+ * @param[in,out] chain           RX descriptor ring.
+ * @param[in]     ring_depth      Ring depth.
+ * @param[in,out] head_idx        Caller's round-robin read cursor.
+ * @param[out]    out_frame       Destination for the frame bytes.
+ * @param[in]     out_capacity    Size of ``out_frame``.
+ * @param[out]    out_len         Number of bytes actually written.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Frame copied out; FEMPTY marked.
+ * @retval k_ra_err_no_data     No FSINGLE slot (no inbound frame yet).
+ * @retval k_ra_err_invalid_arg Null pointer or frame > out_capacity.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre RX queue's MFWD forwarding cfg has been programmed.
+ * @post On success the chosen slot is FEMPTY again.
+ * @post On success ``*head_idx`` advanced past the chosen slot.
+ * @post On success ``*out_len`` <= out_capacity.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_rx_frame(ra_gwca_basic_descriptor_t* chain,
+                                            uint32_t                    ring_depth,
+                                            uint32_t*                   head_idx,
+                                            uint8_t*                    out_frame,
+                                            uint32_t                    out_capacity,
+                                            uint32_t*                   out_len);
+
 #ifdef __cplusplus
 }
 #endif
