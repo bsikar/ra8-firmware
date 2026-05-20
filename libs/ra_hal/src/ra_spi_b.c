@@ -385,12 +385,14 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(s_spi_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 -- SPE=0 first. */
+  /* Disable (SPE=0) before reprogramming. */
+  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
   reg->SPCR = 0U;
 
   internal_spi_program_regs(reg, cfg);
 
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 -- SPE+MSTR. */
+  /* Re-enable with SPE+MSTR set. */
+  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
   reg->SPCR = internal_spcr_master();
 
   s_spi_state[channel].cb          = nullptr;

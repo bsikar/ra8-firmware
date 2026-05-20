@@ -53,7 +53,8 @@ static const char* s_tag = "DOC";
 static inline void internal_ra_doc_set_mode_16(ra_docr_oms_t mode)
 {
   volatile r_doc_regs_t* reg = ra_doc();
-  /* HUM Ch 57.2.1 p 3519 -- write OMS field, clear DOBW + DCSEL. */
+  /* Write OMS field, clear DOBW + DCSEL. */
+  /* HUM Ch 57.2.1 "DOCR : DOC Control Register" p 3519 */
   reg->DOCR = (uint8_t)mode;
 }
 
@@ -88,9 +89,11 @@ static inline uint16_t internal_ra_doc_run_16(uint16_t seed, uint16_t operand, u
   volatile r_doc_regs_t* reg = ra_doc();
   volatile uint16_t* dodsr0  = (volatile uint16_t*)&reg->DODSR0;
   volatile uint16_t* dodir   = (volatile uint16_t*)&reg->DODIR;
-  /* HUM Ch 57.2.5 p 3521 -- seed the accumulator first. */
+  /* Seed the accumulator first. */
+  /* HUM Ch 57.2.5 "DODSR0 : DOC Data Setting Register 0" p 3521 */
   *dodsr0 = seed;
-  /* HUM Ch 57.2.4 p 3521 -- writing DODIR triggers the operation. */
+  /* Writing DODIR triggers the operation. */
+  /* HUM Ch 57.2.4 "DODIR : DOC Data Input Register" p 3521 */
   *dodir = operand;
 #ifdef RA_SIMULATOR_MODE
   /* The sim DOC has no operation engine, model the result. */
@@ -108,11 +111,14 @@ static inline uint16_t internal_ra_doc_run_16(uint16_t seed, uint16_t operand, u
   RA_RETURN_ON_ERROR(mst_err, s_tag, "doc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_doc_regs_t* reg = ra_doc();
-  /* HUM Ch 57.2.1 p 3519 -- reset DOCR to default (compare/16-bit). */
+  /* Reset DOCR to default (compare/16-bit). */
+  /* HUM Ch 57.2.1 "DOCR : DOC Control Register" p 3519 */
   reg->DOCR = 0U;
-  /* HUM Ch 57.2.3 p 3521 -- clear any stale DOPCF via DOSCR.DOPCFCL. */
+  /* Clear any stale DOPCF via DOSCR.DOPCFCL. */
+  /* HUM Ch 57.2.3 "DOSCR : DOC Status Clear Register" p 3521 */
   reg->DOSCR = (uint8_t)k_ra_doc_mask_dopcfcl;
-  /* HUM Ch 57.2.4 / 57.2.5 / 57.2.6 -- zero data registers. */
+  /* Zero the data registers (DODIR, DODSR0, DODSR1). */
+  /* HUM Ch 57.2.4 "DODIR : DOC Data Input Register" p 3521 */
   reg->DODIR  = 0U;
   reg->DODSR0 = 0U;
   reg->DODSR1 = 0U;

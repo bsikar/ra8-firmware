@@ -167,7 +167,8 @@ ra_err_t ra_eth_mfwd_route_queue(uint8_t port, uint8_t queue_index)
     ra_log_error(s_tag, "mfwd_route_queue: invalid port or queue");
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 -- FWPBFCSDC0[port].PBCSD. */
+  /* FWPBFCSDC0[port].PBCSD -- port-to-host queue routing. */
+  /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
   volatile uint32_t* reg = internal_mfwd_fwpbfcsdc(port);
   const uint32_t     val = (*reg & ~(uint32_t)k_ra_mfwd_pbcsd_mask)
                        | ((uint32_t)queue_index & (uint32_t)k_ra_mfwd_pbcsd_mask);

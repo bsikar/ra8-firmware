@@ -270,7 +270,8 @@ static const ra_mstp_t s_xspi_mstp_table[] = {
  */
 static ra_err_t internal_wait_octacksrdy(uint8_t expected)
 {
-  /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSRDY" p 360 -- SRDY is bit 7. */
+  /* SRDY (clock-source ready) is bit 7 of OCTACKCR. */
+  /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSRDY" p 360 */
   volatile uint8_t* const ckcr = ra_sys_octackcr();
   const uint8_t           mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
 #ifdef RA_SIMULATOR_MODE

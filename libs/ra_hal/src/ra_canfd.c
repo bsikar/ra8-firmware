@@ -404,7 +404,8 @@ static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
  */
 static ra_err_t internal_wait_canfdcksrdy(uint8_t expected)
 {
-  /* HUM Ch 9.2.46 "CANFDCKCR.CANFDCKSRDY" p 366 -- SRDY is bit 7. */
+  /* SRDY (clock-source ready) is bit 7 of CANFDCKCR. */
+  /* HUM Ch 9.2.46 "CANFDCKCR.CANFDCKSRDY" p 366 */
   volatile uint8_t* const ckcr = ra_sys_canfdckcr();
   const uint8_t           mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
 #ifdef RA_SIMULATOR_MODE
@@ -575,7 +576,8 @@ ra_err_t ra_canfd_init(uint8_t channel)
   const ra_err_t mst_err = ra_mstp_enable(s_canfd_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "canfd_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 41 p 2746 "CFDGSTS.GRAMINIT" -- wait for RAM init done. */
+  /* Wait for RAM init done (CFDGSTS.GRAMINIT clears). */
+  /* HUM Ch 41.2 "CFDGSTS : Global Status Register" p 2746 */
   for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                         /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_graminit)) == 0U) { /* GCOVR_EXCL_BR_LINE */
       break;
@@ -1249,7 +1251,8 @@ ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t ma
 
   internal_bump_rnc0_locked(reg, filter_id);
 
-  /* HUM Ch 41 "CFDGAFLECTR" p 2734 -- unlock AFL data window. */
+  /* Unlock AFL data window via AFLDAE bit. */
+  /* HUM Ch 41.2 "CFDGAFLECTR : AFL Entry Control Register" p 2734 */
   reg->CFDGAFLECTR = ((uint32_t)page & k_ra_gaflectr_mask_aflpn) | k_ra_gaflectr_bit_afldae;
   internal_write_afl_slot(reg, slot, accept_id, mask, dlc);
   reg->CFDGAFLECTR = 0U;

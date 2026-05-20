@@ -116,7 +116,9 @@ static void internal_gpt_clock_block_init(void)
   if (s_gpt_clock_inited) {
     return;
   }
-  /* HUM Ch 22.2.47 p 974 + Ch 22.10.1 p 1146. */
+  /* Enable GTCLK source for the GPT block. */
+  /* HUM Ch 22.2.47 "GTCLKCR : Clock Control Register" p 974 */
+  /* HUM Ch 22.10.1 "Clock and Pin Setup" p 1146 */
   volatile uint32_t* gtclkcr = (volatile uint32_t*)k_ra_gpt_gtclk_addr;
   *gtclkcr                   = (uint32_t)k_ra_gptclkcr_bpen;
   s_gpt_clock_inited         = true;
