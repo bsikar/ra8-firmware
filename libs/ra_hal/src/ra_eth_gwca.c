@@ -670,3 +670,57 @@ ra_err_t ra_eth_gwca_kick_tx(uint32_t queue_index)
   *gwtrc             = *gwtrc | bit;
   return k_ra_ok;
 }
+
+/**
+ * @brief Find the next slot in a ring matching a target descriptor type.
+ *
+ * @details See header for the canonical contract. Walks
+ * chain[start_idx .. ring_depth-2] looking for an entry where
+ * dt == match_dt, wrapping around to chain[0..start_idx-1] if
+ * needed. Skips chain[ring_depth-1] (the LINK terminator).
+ *
+ * @param[in]  chain      Ring from init_ring.
+ * @param[in]  ring_depth Same depth as init_ring.
+ * @param[in]  match_dt   Descriptor type to find (FEMPTY / FSINGLE).
+ * @param[in]  start_idx  Slot to start scanning from.
+ * @param[out] out_index  First matching slot.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              ``*out_index`` set.
+ * @retval k_ra_err_no_data     No slot matched ``match_dt``.
+ * @retval k_ra_err_invalid_arg null pointer / ring_depth < 2 /
+ *                              start_idx out of range.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre chain has been initialised via init_ring + attach_buffers.
+ * @post On success ``*out_index`` < ring_depth - 1.
+ * @post On failure ``*out_index`` is unchanged.
+ *
+ * @note Not thread-safe with concurrent chip-side updates.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_find_slot(const ra_gwca_basic_descriptor_t* chain,
+                               uint32_t                          ring_depth,
+                               ra_gwdcc_dt_t                     match_dt,
+                               uint32_t                          start_idx,
+                               uint32_t*                         out_index)
+{
+  RA_CHECK_NULL_PTR(chain, s_tag, "find_slot: chain null");
+  RA_CHECK_NULL_PTR(out_index, s_tag, "find_slot: out_index null");
+  if (ring_depth < 2U) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t data_slot_count = ring_depth - 1U;
+  if (start_idx >= data_slot_count) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Walk from start_idx forward, wrapping once if needed. */
+  for (uint32_t i = 0U; i < data_slot_count; ++i) {
+    const uint32_t slot = (start_idx + i) % data_slot_count;
+    if (chain[slot].dt == (uint8_t)match_dt) {
+      *out_index = slot;
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_no_data;
+}

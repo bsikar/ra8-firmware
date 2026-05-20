@@ -366,6 +366,44 @@ typedef struct {
  */
 [[nodiscard]] ra_err_t ra_eth_gwca_kick_tx(uint32_t queue_index);
 
+/**
+ * @brief Find the next FEMPTY slot in a descriptor ring.
+ *
+ * @details Walks chain[0..ring_depth-2] (the data slots) looking
+ * for the first entry with dt == FEMPTY. The last entry is the
+ * LINK terminator and is skipped. Used by TX paths to find a slot
+ * to fill with the next outgoing frame, and (with a different DT
+ * compare) by RX paths to find a slot the chip has filled.
+ *
+ * @param[in]  chain      Ring previously initialised by init_ring.
+ * @param[in]  ring_depth Same depth passed to init_ring.
+ * @param[in]  match_dt   Descriptor type to match (FEMPTY for TX
+ *                        slot search, FSINGLE for RX completion).
+ * @param[in]  start_idx  Slot index to start scanning from (lets
+ *                        the caller round-robin instead of always
+ *                        starting at 0).
+ * @param[out] out_index  Index of the first matching slot.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              ``*out_index`` holds the slot index.
+ * @retval k_ra_err_no_data     No slot matched ``match_dt``.
+ * @retval k_ra_err_invalid_arg chain/out_index null, ring_depth < 2,
+ *                              or start_idx out of range.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION (descriptors are live).
+ * @post On success ``*out_index`` is a valid slot index in
+ *       [start_idx, ring_depth-1).
+ *
+ * @note Not thread-safe with concurrent chip-side updates; caller
+ *       must drive the search from a single thread.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_find_slot(const ra_gwca_basic_descriptor_t* chain,
+                                             uint32_t                          ring_depth,
+                                             ra_gwdcc_dt_t                     match_dt,
+                                             uint32_t                          start_idx,
+                                             uint32_t*                         out_index);
+
 #ifdef __cplusplus
 }
 #endif
