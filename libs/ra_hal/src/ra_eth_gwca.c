@@ -16,6 +16,7 @@
 #include "ra_eth_gwca.h"
 
 #include <stdint.h>
+#include <string.h>
 
 #include "ra8d2_ether_regs.h"
 #include "ra8d2_mstp_regs.h"
@@ -225,4 +226,69 @@ ra_err_t ra_eth_gwca_axi_init(void)
 #else
   return k_ra_ok;
 #endif
+}
+
+/**
+ * @brief Install a fresh LINKFIX table at GWDCBAC0/1.
+ *
+ * @details See header for the canonical contract -- zeros every
+ * LINKFIX entry, sets each entry's descriptor type to LEMPTY, then
+ * writes the table address into GWDCBAC0 (upper byte) + GWDCBAC1
+ * (lower 32 bits).
+ *
+ * @param[in,out] linkfix_table Caller-owned table; written to LEMPTY.
+ * @param[in]     entry_count   Number of queues to cover (max 32).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWDCBAC0/1 programmed.
+ * @retval k_ra_err_invalid_arg ``linkfix_table`` is null or count > 32.
+ *
+ * @pre Caller has invoked ::ra_eth_gwca_set_operation_mode
+ *      with k_ra_gwmc_opc_config.
+ * @pre Caller has invoked ::ra_eth_gwca_axi_init.
+ * @post Every LINKFIX entry has dt = k_ra_gwdcc_dt_lempty.
+ * @post GWDCBAC0 + GWDCBAC1 point at ``linkfix_table``.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_install_linkfix(ra_gwca_basic_descriptor_t* linkfix_table,
+                                     uint32_t                    entry_count)
+{
+  RA_CHECK_NULL_PTR(linkfix_table, s_tag, "install_linkfix: table must not be null");
+  enum : uint32_t { k_ra_gwca_linkfix_max_entries = 32U };
+  if (entry_count == 0U || entry_count > k_ra_gwca_linkfix_max_entries) {
+    ra_log_error(s_tag, "install_linkfix: entry_count out of range");
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Initialize every entry to LEMPTY (queue disabled). The chip
+   * walks the LINKFIX table at queue-activation time, so any entry
+   * not explicitly populated with a real chain head must look
+   * disabled instead of pointing at random memory. */
+  (void)memset(linkfix_table, 0, (size_t)entry_count * sizeof(ra_gwca_basic_descriptor_t));
+  for (uint32_t i = 0U; i < entry_count; ++i) {
+    linkfix_table[i].dt = (uint8_t)k_ra_gwdcc_dt_lempty;
+  }
+
+  /* HUM Ch 34.3.7.2 / 34.3.7.3 GWDCBAC0/1: split the table's
+   * 40-bit address into PTR[39:32] (GWDCBAC0.DCBAU) and PTR[31:0]
+   * (GWDCBAC1.DCBAL). On this 32-bit MCU the upper byte is always
+   * zero, but the bit-field exists for the device family that uses
+   * 40-bit addresses. */
+  const uintptr_t          addr     = (uintptr_t)linkfix_table;
+  enum : uintptr_t {
+    k_ra_linkfix_upper_shift = 32U,
+    k_ra_linkfix_upper_mask  = 0xFFULL,
+    k_ra_linkfix_lower_mask  = 0xFFFFFFFFULL,
+  };
+  const uint32_t           upper    = (uint32_t)((uint64_t)addr >> k_ra_linkfix_upper_shift) & k_ra_linkfix_upper_mask;
+  const uint32_t           lower    = (uint32_t)addr & k_ra_linkfix_lower_mask;
+  volatile uint32_t* const gwdcbac0 =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwdcbac0);
+  volatile uint32_t* const gwdcbac1 =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwdcbac1);
+  *gwdcbac0 = upper;
+  *gwdcbac1 = lower;
+  return k_ra_ok;
 }
