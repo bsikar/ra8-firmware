@@ -348,6 +348,35 @@ static void test_attach_buffers(void)
   TEST_END("gwca attach_buffers");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_kick_tx(void)
+{
+  TEST_BEGIN("gwca kick_tx");
+  prep();
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_kick_tx(64U));
+  /* Queues 0..31 land in GWTRC0; 32..63 in GWTRC1. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_kick_tx(0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_kick_tx(31U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_kick_tx(32U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_kick_tx(63U));
+
+  /* Verify the GWTRC bits actually landed. */
+  volatile uint32_t* const gwtrc0 =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwtrc0);
+  volatile uint32_t* const gwtrc1 =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwtrc1);
+  TEST_ASSERT_EQ(1UL, *gwtrc0 & 0x1UL);
+  TEST_ASSERT_EQ(1UL << 31, *gwtrc0 & (1UL << 31));
+  TEST_ASSERT_EQ(1UL, *gwtrc1 & 0x1UL);
+  TEST_ASSERT_EQ(1UL << 31, *gwtrc1 & (1UL << 31));
+  TEST_END("gwca kick_tx");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -363,6 +392,7 @@ int32_t main(void)
   test_init_ring();
   test_set_descriptor_buffer();
   test_attach_buffers();
+  test_kick_tx();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_gwca.c\n");
   return 0;
 }
