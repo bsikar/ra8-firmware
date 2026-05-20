@@ -348,17 +348,17 @@ static_assert(sizeof(ra_gwca_basic_descriptor_t) == 8U,
  * @see reference_fsp_source memory note for the full register list.
  */
 typedef enum : uint16_t {
-  k_ra_gwca_off_gwmc      = 0x0000U, /**< Mode Configuration.            */
-  k_ra_gwca_off_gwms      = 0x0004U, /**< Mode Status.                   */
-  k_ra_gwca_off_gwarirm   = 0x0150U, /**< AXI Initialization Request.    */
-  k_ra_gwca_off_gwdcbac0  = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
-  k_ra_gwca_off_gwdcbac1  = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
-  k_ra_gwca_off_gwaarss   = 0x01A0U, /**< AXI active read search set.    */
-  k_ra_gwca_off_gwaarsr0  = 0x01A4U, /**< AXI active read search result0.*/
-  k_ra_gwca_off_gwaarsr1  = 0x01A8U, /**< AXI active read search result1.*/
-  k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
+  k_ra_gwca_off_gwmc       = 0x0000U, /**< Mode Configuration.            */
+  k_ra_gwca_off_gwms       = 0x0004U, /**< Mode Status.                   */
+  k_ra_gwca_off_gwdcbac0   = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
+  k_ra_gwca_off_gwdcbac1   = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
   k_ra_gwca_off_gwtrc0     = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
   k_ra_gwca_off_gwtrc1     = 0x0204U, /**< TX Request Cfg, queues 32..63. */
+  k_ra_gwca_off_gwarirm    = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
+  k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
+  k_ra_gwca_off_gwaarss    = 0x0800U, /**< AXI Addr RAM Searching Setting.*/
+  k_ra_gwca_off_gwaarsr0   = 0x0804U, /**< AXI Addr RAM Searching Result0.*/
+  k_ra_gwca_off_gwaarsr1   = 0x0808U, /**< AXI Addr RAM Searching Result1.*/
 } ra_gwca_offset_t;
 
 /**

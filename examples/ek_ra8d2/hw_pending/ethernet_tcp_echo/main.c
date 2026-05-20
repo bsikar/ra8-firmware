@@ -951,36 +951,112 @@ static void handle_frame(const uint8_t* frame, uint16_t len)
  *
  * @since 0.1.0
  */
-static void eth_tcp_echo_setup_or_halt(void)
+/**
+ * @var g_eth_tcp_echo_init_step
+ * @brief Init progress counter -- read externally via SWD when the
+ *        chip parks in panic_halt to identify which bring-up step
+ *        returned non-ok.
+ *
+ * @details
+ * 0 = cgc_init, 1 = cgc_get cpuclk0, 2 = cgc_get pclka, 3 = time_init,
+ * 4 = led1, 5 = led2, 6 = pfs_route txd, 7 = pfs_route rxd,
+ * 8 = sci_init, 9 = board_ethernet_init, 10 = ra_eth_open, 11 = all-ok.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+/**
+ * @enum eth_tcp_echo_init_step_t
+ * @brief Named step values for ::g_eth_tcp_echo_init_step.
+ *
+ * @details Lets ``eth_tcp_echo_setup_*`` push monotonically advancing
+ * sentinel values without spraying magic numbers around the function.
+ */
+typedef enum : uint32_t {
+  k_eth_tcp_echo_step_cgc_init    = 0U,
+  k_eth_tcp_echo_step_cpuclk0     = 1U,
+  k_eth_tcp_echo_step_pclka       = 2U,
+  k_eth_tcp_echo_step_time_init   = 3U,
+  k_eth_tcp_echo_step_led1        = 4U,
+  k_eth_tcp_echo_step_led2        = 5U,
+  k_eth_tcp_echo_step_pfs_txd     = 6U,
+  k_eth_tcp_echo_step_pfs_rxd     = 7U,
+  k_eth_tcp_echo_step_sci_init    = 8U,
+  k_eth_tcp_echo_step_board_eth   = 9U,
+  k_eth_tcp_echo_step_ra_eth_open = 10U,
+  k_eth_tcp_echo_step_all_ok      = 11U,
+} eth_tcp_echo_init_step_t;
+
+volatile uint32_t g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_cgc_init;
+
+/**
+ * @brief CGC + time + LED bring-up portion of eth_tcp_echo_setup_or_halt.
+ *
+ * @details Returns the PCLKA frequency through @p out_pclka_hz so the
+ * caller can plumb it into the SCI8 config. Bumps
+ * ::g_eth_tcp_echo_init_step at each successful primitive.
+ *
+ * @param[out] out_pclka_hz PCLKA frequency for SCI cfg.
+ *
+ * @pre System is in pre-main state with .data/.bss initialized.
+ * @pre out_pclka_hz is non-null.
+ * @post On any failure the function halts in panic_halt and does not return.
+ * @post On success g_eth_tcp_echo_init_step == 5.
+ *
+ * @since 0.1.0
+ */
+static void eth_tcp_echo_setup_clocks_and_leds(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
+  uint32_t cpuclk0_hz      = 0U;
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_cgc_init;
   if (ra_cgc_init() != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_cpuclk0;
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_pclka;
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_time_init;
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_led1;
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_led2;
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+}
 
-  /* SCI8 logging on PD_02 / PD_03 (J-Link OB CDC bridge). Pins are
-   * file-scope above so the symbolic analyser sees them as immutable
-   * compile-time constants and skips the enum-range warning. */
+/**
+ * @brief SCI8 pin routing + bring-up portion of eth_tcp_echo_setup_or_halt.
+ *
+ * @details Routes PD_02 / PD_03 to SCI8 and initialises the channel at
+ * the demo's baud. Bumps ::g_eth_tcp_echo_init_step.
+ *
+ * @param[in] pclka_hz PCLKA frequency for SCI cfg.
+ *
+ * @pre eth_tcp_echo_setup_clocks_and_leds returned.
+ * @pre pclka_hz is non-zero.
+ * @post On any failure the function halts in panic_halt and does not return.
+ * @post On success g_eth_tcp_echo_init_step == 8.
+ *
+ * @since 0.1.0
+ */
+static void eth_tcp_echo_setup_sci(uint32_t pclka_hz)
+{
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_pfs_txd;
   if (ra_pfs_route_peripheral(k_pin_log_txd, k_ra_psel_sci_async, "eth_tcp_echo.log_tx") !=
       k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_pfs_rxd;
   if (ra_pfs_route_peripheral(k_pin_log_rxd, k_ra_psel_sci_async, "eth_tcp_echo.log_rx") !=
       k_ra_ok) {
     eth_tcp_echo_panic_halt();
@@ -992,11 +1068,20 @@ static void eth_tcp_echo_setup_or_halt(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = pclka_hz,
   };
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_sci_init;
   if (ra_sci_init((uint8_t)k_eth_tcp_echo_sci_channel, &sci_cfg) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+}
+
+static void eth_tcp_echo_setup_or_halt(void)
+{
+  uint32_t pclka_hz = 0U;
+  eth_tcp_echo_setup_clocks_and_leds(&pclka_hz);
+  eth_tcp_echo_setup_sci(pclka_hz);
 
   /* RGMII pinmux per EK-RA8D2 v1 UM Table 26 p 33. */
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_board_eth;
   if (ra_board_ethernet_init() != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
@@ -1008,9 +1093,11 @@ static void eth_tcp_echo_setup_or_halt(void)
     .num_rx_descriptors = 0U,
     .buffer_size        = 0U,
   };
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_ra_eth_open;
   if (ra_eth_open(&eth_cfg) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
+  g_eth_tcp_echo_init_step = (uint32_t)k_eth_tcp_echo_step_all_ok;
 }
 
 /**
