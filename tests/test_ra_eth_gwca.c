@@ -268,6 +268,37 @@ static void test_configure_queue(void)
   TEST_END("gwca configure_queue");
 }
 
+/**
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c:525): // CITES-OK: MC/DC gate requires file:line
+ *   ``if (ring_depth < min || slot_bytes > max)``
+ * Two atomic conditions, N+1 = 3 vectors:
+ *   V_F_F: depth = 4, bytes = 1500  -> ok
+ *   V_T_-: depth = 1, bytes = 1500  -> invalid_arg (depth too small alone)
+ *   V_F_T: depth = 4, bytes = 4096  -> invalid_arg (bytes too large alone)
+ */
+static void test_init_ring(void)
+{
+  TEST_BEGIN("gwca init_ring");
+  prep();
+  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[4];
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_init_ring(nullptr, 4U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_init_ring(chain, 1U, 1500U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_init_ring(chain, 4U, 4096U));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 4U, 1500U));
+  /* First three entries are FEMPTY with ds = 1500. */
+  for (uint32_t i = 0U; i < 3U; ++i) {
+    TEST_ASSERT_EQ(k_ra_gwdcc_dt_fempty, chain[i].dt);
+    const uint32_t ds_actual = (uint32_t)chain[i].ds_l | ((uint32_t)chain[i].ds_h << 8U);
+    TEST_ASSERT_EQ(1500U, ds_actual);
+  }
+  /* Last entry is LINK back to chain[0]. */
+  TEST_ASSERT_EQ(k_ra_gwdcc_dt_link, chain[3].dt);
+  TEST_END("gwca init_ring");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -280,6 +311,7 @@ int32_t main(void)
   test_install_linkfix();
   test_bring_up();
   test_configure_queue();
+  test_init_ring();
   (void)fprintf(stderr, "[OK  ] test_ra_eth_gwca.c\n");
   return 0;
 }
