@@ -749,13 +749,18 @@ static uint8_t* internal_decode_ptr(const ra_gwca_basic_descriptor_t* desc)
   if (desc == nullptr) {
     return nullptr;
   }
-  enum : uintptr_t {
-    k_ra_ptr_upper_shift = 32U,
+  /* PTR is 40 bits across ptr_h (high 8) + ptr_l (low 32). On a
+   * 32-bit target uintptr_t is 32 bits, so shifting by 32 is UB --
+   * promote to uint64_t for the recompose, then back to uintptr_t.
+   * On 32-bit chips ptr_h is always zero so the upper byte is
+   * harmlessly truncated when we cast back. */
+  enum : uint64_t {
+    k_ra_ptr_upper_shift = 32ULL,
     k_ra_ptr_low_mask    = 0xFFFFFFFFULL,
   };
-  const uintptr_t addr =
-    ((uintptr_t)desc->ptr_h << k_ra_ptr_upper_shift) | ((uintptr_t)desc->ptr_l & k_ra_ptr_low_mask);
-  return (uint8_t*)addr;
+  const uint64_t addr64 =
+    ((uint64_t)desc->ptr_h << k_ra_ptr_upper_shift) | ((uint64_t)desc->ptr_l & k_ra_ptr_low_mask);
+  return (uint8_t*)(uintptr_t)addr64;
 }
 
 /**
