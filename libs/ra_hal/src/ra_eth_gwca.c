@@ -350,3 +350,141 @@ ra_err_t ra_eth_gwca_bring_up(ra_gwca_basic_descriptor_t* linkfix_table, uint32_
 
   return ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_operation);
 }
+
+/**
+ * @brief Wire a per-queue config into GWDCC[i] + LINKFIX[i].
+ *
+ * @details See header for the canonical contract. Composes the
+ * GWDCC value from cfg's SM / DQT / DCP / SL bits, writes it, then
+ * promotes the LINKFIX entry from LEMPTY to LINKFIX with PTR
+ * pointing at the queue's chain head.
+ *
+ * @param[in,out] linkfix_table Same table passed to install_linkfix.
+ * @param[in]     queue_index   Queue 0..31.
+ * @param[in]     cfg           Per-queue config (port, priority, dir, head).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWDCC[i] + LINKFIX[i] wired.
+ * @retval k_ra_err_invalid_arg Null pointer or queue out of range.
+ *
+ * @pre ::ra_eth_gwca_install_linkfix returned ok.
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @post GWDCC[queue_index] reflects cfg's settings.
+ * @post linkfix_table[queue_index] has dt = LINKFIX with PTR = chain_head.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+/**
+ * @brief Compose the GWDCC[i] 32-bit value from a queue config.
+ *
+ * @details Pure value composition: SM[1:0] + DQT + DCP[18:16] + SL.
+ * EDE/ETS stay 0 (basic descriptors), BALR stays 0 (default AXI
+ * burst), OSID stays 0 (default stream). No MMIO touched.
+ *
+ * @param[in] cfg Per-queue config.
+ * @return Packed GWDCC value with SM, DQT, SL, DCP bits set per cfg.
+ * @retval value Packed register word.
+ * @pre cfg is non-null with source_mac_port <= 3 and priority <= 7.
+ * @pre Caller validated the bounds before invoking.
+ * @post Returned value reflects all four cfg fields.
+ * @post No global state is modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t internal_compose_gwdcc(const ra_eth_gwca_queue_cfg_t* cfg)
+{
+  /* Compose GWDCC value: SM[1:0] + DQT + DCP[18:16] + SL. EDE/ETS
+   * stay 0 (basic descriptors), BALR stays 0 (default AXI burst),
+   * OSID stays 0 (default stream). */
+  uint32_t value =
+    ((uint32_t)cfg->source_mac_port & k_ra_gwdcc_sm_mask) << k_ra_gwdcc_sm_shift;
+  if (cfg->is_tx) {
+    value |= (uint32_t)k_ra_gwdcc_dqt;
+  }
+  if (cfg->stop_on_last) {
+    value |= (uint32_t)k_ra_gwdcc_sl;
+  }
+  value |= (((uint32_t)cfg->priority << k_ra_gwdcc_dcp_shift) & k_ra_gwdcc_dcp_mask);
+  return value;
+}
+
+/**
+ * @brief Promote a LINKFIX entry from LEMPTY to LINKFIX with chain-head PTR.
+ *
+ * @details Splits the 40-bit chain-head address into ptr_h (high 8
+ * bits) + ptr_l (low 32 bits) and writes them with dt = LINKFIX.
+ * No MMIO is touched -- caller-owned table memory only.
+ *
+ * @param[in,out] entry      LINKFIX entry to rewrite.
+ * @param[in]     chain_head Address to encode into the 40-bit PTR field.
+ * @pre entry is non-null and previously initialised by install_linkfix.
+ * @pre chain_head is the head of the queue's descriptor array.
+ * @post entry->dt == LINKFIX; ptr_h/ptr_l carry the 40-bit address.
+ * @post No other LINKFIX entries are modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t*       entry,
+                                       const ra_gwca_basic_descriptor_t* chain_head)
+{
+  enum : uintptr_t {
+    k_ra_linkfix_ptr_upper_shift = 32U,
+    k_ra_linkfix_ptr_upper_mask  = 0xFFULL,
+    k_ra_linkfix_ptr_lower_mask  = 0xFFFFFFFFULL,
+  };
+  const uintptr_t head_addr = (uintptr_t)chain_head;
+  entry->dt                 = (uint8_t)k_ra_gwdcc_dt_linkfix;
+  entry->ptr_h              = (uint8_t)((uint64_t)head_addr >> k_ra_linkfix_ptr_upper_shift)
+                 & k_ra_linkfix_ptr_upper_mask;
+  entry->ptr_l = (uint32_t)head_addr & k_ra_linkfix_ptr_lower_mask;
+}
+
+/**
+ * @brief Wire a per-queue config into GWDCC[i] + LINKFIX[i].
+ *
+ * @details See header for the canonical contract. Composes the
+ * GWDCC value from cfg's SM / DQT / DCP / SL bits via
+ * internal_compose_gwdcc, writes it to GWDCC[queue_index], then
+ * promotes the LINKFIX entry to LINKFIX via
+ * internal_set_linkfix_entry.
+ *
+ * @param[in,out] linkfix_table Same table passed to install_linkfix.
+ * @param[in]     queue_index    Queue 0..31.
+ * @param[in]     cfg            Per-queue config (port, priority, dir, head).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWDCC[i] + LINKFIX[i] wired.
+ * @retval k_ra_err_invalid_arg Null pointer or queue out of range.
+ * @retval k_ra_err_null_ptr    linkfix_table, cfg, or cfg->chain_head is null.
+ *
+ * @pre ::ra_eth_gwca_install_linkfix returned ok.
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @post GWDCC[queue_index] reflects cfg's settings.
+ * @post linkfix_table[queue_index] has dt = LINKFIX with PTR = chain_head.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_table,
+                                     uint32_t                       queue_index,
+                                     const ra_eth_gwca_queue_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(linkfix_table, s_tag, "configure_queue: table null");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "configure_queue: cfg null");
+  RA_CHECK_NULL_PTR(cfg->chain_head, s_tag, "configure_queue: chain_head null");
+  enum : uint8_t {
+    k_ra_gwdcc_sm_max  = 3U, /**< SM field width 2 bits -> max value 3. */
+    k_ra_gwdcc_dcp_max = 7U, /**< DCP field width 3 bits -> max value 7. */
+  };
+  if ((cfg->source_mac_port > k_ra_gwdcc_sm_max) || (cfg->priority > k_ra_gwdcc_dcp_max)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile uint32_t* const gwdcc = ra_gwca_gwdcc(queue_index);
+  if (gwdcc == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  *gwdcc = internal_compose_gwdcc(cfg);
+  internal_set_linkfix_entry(&linkfix_table[queue_index], cfg->chain_head);
+  return k_ra_ok;
+}
