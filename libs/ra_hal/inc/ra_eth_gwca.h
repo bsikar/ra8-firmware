@@ -114,6 +114,40 @@ void ra_eth_gwca_dispatch(void);
  */
 [[nodiscard]] ra_err_t ra_eth_gwca_axi_init(void);
 
+/**
+ * @brief Install a fresh LINKFIX table at GWDCBAC0/1.
+ *
+ * @details Programs the chip with the address of a SW-side LINKFIX
+ * table (an array of ::ra_gwca_basic_descriptor_t indexed by queue
+ * number, where each entry's PTR is the head of that queue's
+ * descriptor chain). Every entry is initialised to LEMPTY
+ * (descriptor type 12 = "queue disabled") so no queue accidentally
+ * starts active before its chain is wired up.
+ *
+ * GWDCBAC0 carries the upper 8 bits of the 40-bit address
+ * (PTR[39:32]); GWDCBAC1 carries the lower 32 bits (PTR[31:0]).
+ * Caller must already be in CONFIG mode -- LINKFIX address bits
+ * are RESET/CONFIG-only-writable per HUM Ch 34.5.1.3.1.
+ *
+ * @param[in,out] linkfix_table Caller-owned table; written to LEMPTY.
+ * @param[in]     entry_count   Number of queues to cover (max 32).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWDCBAC0/1 programmed.
+ * @retval k_ra_err_invalid_arg ``linkfix_table`` is null or count > 32.
+ *
+ * @pre ::ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_config) returned ok.
+ * @pre ::ra_eth_gwca_axi_init returned ok.
+ * @pre ``linkfix_table`` is 16-byte aligned (chip requirement).
+ * @post Every LINKFIX entry has dt = k_ra_gwdcc_dt_lempty.
+ * @post GWDCBAC0/1 = address of ``linkfix_table``.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_install_linkfix(ra_gwca_basic_descriptor_t* linkfix_table,
+                                                   uint32_t                    entry_count);
+
 #ifdef __cplusplus
 }
 #endif
