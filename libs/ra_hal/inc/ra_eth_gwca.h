@@ -477,6 +477,129 @@ typedef struct {
                                             uint32_t                    out_capacity,
                                             uint32_t*                   out_len);
 
+/**
+ * @brief State block for ::ra_eth_gwca_default_open / _send / _recv.
+ *
+ * @details Caller-owned block holding the LINKFIX table + RX/TX
+ * chain heads + per-queue head/tail cursors that the
+ * default-path API tracks. Sized for one TX + one RX queue.
+ *
+ * @par Layout policy:
+ * All descriptor + buffer storage is caller-supplied (BSS-resident
+ * arrays) so the HAL doesn't pull in any allocator. Caller picks
+ * ring depths and slot sizes at static-allocation time.
+ */
+typedef struct {
+  /** LINKFIX table covering at least 2 queues (RX + TX). */
+  ra_gwca_basic_descriptor_t* linkfix_table;
+  /** Number of LINKFIX entries. */
+  uint32_t                    linkfix_count;
+  /** RX descriptor chain (FEMPTY ring of ``rx_depth`` entries). */
+  ra_gwca_basic_descriptor_t* rx_chain;
+  uint32_t                    rx_depth;
+  uint8_t*                    rx_pool;
+  uint32_t                    rx_slot_bytes;
+  uint32_t                    rx_queue_index; /**< LINKFIX entry + GWDCC[i] index. */
+  uint32_t                    rx_head; /**< Round-robin read cursor. */
+  /** TX descriptor chain (FEMPTY ring of ``tx_depth`` entries). */
+  ra_gwca_basic_descriptor_t* tx_chain;
+  uint32_t                    tx_depth;
+  uint8_t*                    tx_pool;
+  uint32_t                    tx_slot_bytes;
+  uint32_t                    tx_queue_index;
+  uint32_t                    tx_tail; /**< Round-robin write cursor. */
+  /** MAC port (0..3) that frames are sourced from / sent to. */
+  uint8_t                     mac_port;
+} ra_eth_gwca_default_state_t;
+
+/**
+ * @brief One-call GWCA bring-up: install LINKFIX, configure RX + TX, OPERATION.
+ *
+ * @details Wraps the canonical bring-up sequence for an app that
+ * just wants "one RX queue + one TX queue going":
+ *
+ *   ra_eth_gwca_init();
+ *   ra_eth_gwca_init_ring + attach_buffers on RX and TX chains;
+ *   set_operation_mode(CONFIG);
+ *   axi_init();
+ *   install_linkfix(state->linkfix_table, state->linkfix_count);
+ *   configure_queue(RX_QUEUE, rx_cfg);
+ *   configure_queue(TX_QUEUE, tx_cfg);
+ *   set_operation_mode(DISABLE);
+ *   set_operation_mode(OPERATION);
+ *
+ * After this returns ok, callers can start pushing frames with
+ * ::ra_eth_gwca_default_send and polling with
+ * ::ra_eth_gwca_default_recv.
+ *
+ * @param[in,out] state Pre-populated state block with caller-owned
+ *                      LINKFIX + chains + buffer pools.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWCA in OPERATION with queues live.
+ * @retval k_ra_err_invalid_arg state pointer or fields invalid.
+ * @retval k_ra_err_hw_timeout  Mode transition never converged.
+ *
+ * @pre state's chain/pool/table pointers are all valid + 16-byte aligned.
+ * @pre rx_queue_index and tx_queue_index are distinct + < linkfix_count.
+ * @post On success, GWMC.OPC = OPERATION; queues walkable.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_default_open(ra_eth_gwca_default_state_t* state);
+
+/**
+ * @brief One-call TX: enqueue frame on state->tx_chain + kick.
+ *
+ * @details Convenience wrapper around ::ra_eth_gwca_tx_frame +
+ * ::ra_eth_gwca_kick_tx using state->tx_chain/tail/queue_index.
+ *
+ * @param[in,out] state Initialized by default_open.
+ * @param[in]     frame Frame bytes.
+ * @param[in]     len   Frame length.
+ *
+ * @return ra_err_t Error code propagated from tx_frame + kick_tx.
+ * @retval k_ra_ok               Frame queued + TX request fired.
+ * @retval k_ra_err_no_data      Queue full.
+ * @retval k_ra_err_invalid_arg  len > tx_slot_bytes or state invalid.
+ *
+ * @pre default_open returned ok.
+ * @post On success state->tx_tail advanced.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state,
+                                                const uint8_t*               frame,
+                                                uint32_t                     len);
+
+/**
+ * @brief One-call RX: dequeue next frame from state->rx_chain.
+ *
+ * @details Convenience wrapper around ::ra_eth_gwca_rx_frame.
+ *
+ * @param[in,out] state        Initialized by default_open.
+ * @param[out]    out_frame    Destination for the frame.
+ * @param[in]     out_capacity Size of out_frame.
+ * @param[out]    out_len      Frame length written.
+ *
+ * @return ra_err_t Error code propagated from rx_frame.
+ * @retval k_ra_ok               Frame copied; slot reset to FEMPTY.
+ * @retval k_ra_err_no_data      No inbound frame waiting.
+ * @retval k_ra_err_invalid_arg  capacity 0 or frame too large.
+ *
+ * @pre default_open returned ok.
+ * @post On success state->rx_head advanced.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state,
+                                                uint8_t*                     out_frame,
+                                                uint32_t                     out_capacity,
+                                                uint32_t*                    out_len);
+
 #ifdef __cplusplus
 }
 #endif
