@@ -126,11 +126,14 @@ ra_err_t ra_eth_mfwd_exit_stop(void)
  * PBCSD (Port Based Forwarding CSD) is the low 7 bits.
  */
 typedef enum : uint32_t {
-  k_ra_mfwd_off_fwpbfcsdc0_base = 0x4A04UL, /**< FWPBFCSDC00 offset. */
-  k_ra_mfwd_fwpbfcsdc_stride    = 0x10UL,   /**< Per-port stride.    */
-  k_ra_mfwd_pbcsd_mask          = 0x7FUL,   /**< PBCSD field mask.   */
-  k_ra_mfwd_max_port            = 1UL,      /**< Highest port index. */
-  k_ra_mfwd_max_queue           = 31UL,     /**< Highest GWCA queue. */
+  k_ra_mfwd_off_fwpbfc0_base    = 0x4A00UL, /**< FWPBFC0[0] offset.       */
+  k_ra_mfwd_off_fwpbfcsdc0_base = 0x4A04UL, /**< FWPBFCSDC00 offset.      */
+  k_ra_mfwd_fwpbfcsdc_stride    = 0x10UL,   /**< Per-port stride.         */
+  k_ra_mfwd_pbdv_mask           = 0x7FUL,   /**< FWPBFC0.PBDV mask.       */
+  k_ra_mfwd_pbcsd_mask          = 0x7FUL,   /**< PBCSD field mask.        */
+  k_ra_mfwd_port_count          = 3UL,      /**< Port[0] + Port[1] + host.*/
+  k_ra_mfwd_max_port            = 1UL,      /**< Highest GMAC port index. */
+  k_ra_mfwd_max_queue           = 31UL,     /**< Highest GWCA queue.      */
 } ra_eth_mfwd_internal_t;
 
 /**
@@ -158,6 +161,22 @@ static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
       (uintptr_t)k_ra_mfwd_base_addr
       + (uintptr_t)(k_ra_mfwd_off_fwpbfcsdc0_base + ((uint32_t)port * k_ra_mfwd_fwpbfcsdc_stride));
   return (volatile uint32_t*)addr;
+}
+
+/* Implementation of ra_eth_mfwd_set_forwarding_masks (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_eth_mfwd_set_forwarding_masks(const uint8_t port_masks[3])
+{
+  RA_CHECK_NULL_PTR(port_masks, s_tag, "set_forwarding_masks: null arg");
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_mfwd_port_count; ++i) {
+    /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
+    volatile uint32_t* const reg =
+        (volatile uint32_t*)(k_ra_mfwd_base_addr
+                             + (uintptr_t)(k_ra_mfwd_off_fwpbfc0_base
+                                           + (i * k_ra_mfwd_fwpbfcsdc_stride)));
+    const uint32_t cur = *reg & ~(uint32_t)k_ra_mfwd_pbdv_mask;
+    *reg               = cur | ((uint32_t)port_masks[i] & (uint32_t)k_ra_mfwd_pbdv_mask);
+  }
+  return k_ra_ok;
 }
 
 /* Implementation of ra_eth_mfwd_route_queue (see header for full contract) -- see header for the documented contract. */

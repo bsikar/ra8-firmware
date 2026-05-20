@@ -711,12 +711,20 @@ static ra_err_t internal_open_gwca_path(void)
    * the full FSP CABPIRM.BPIOG/BPR handshake is intentionally skipped
    * there because BPR never asserts on EK-RA8D2 silicon unless GWCA
    * is also being brought up, and the board can't depend on that. */
+
+  /* Per FSP r_layer3_switch_open: program the per-port forwarding
+   * destination masks BEFORE bringing the GWCA up. 0x7F = allow all
+   * destinations (permissive baseline; tightens once L3 filtering
+   * lands). */
+  static const uint8_t s_fwpbfc_masks[3] = {0x7FU, 0x7FU, 0x7FU};
+  (void)ra_eth_mfwd_set_forwarding_masks(s_fwpbfc_masks);
+
   const ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);
   if (err != k_ra_ok) {
     g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_3;
     return err;
   }
-  g_ra_eth_open_step             = 3U;
+  g_ra_eth_open_step      = (uint32_t)k_ra_eth_step_ok_3;
   const ra_err_t mfwd_err = ra_eth_mfwd_route_queue(s_gwca_state.mac_port,
                                                     (uint8_t)s_gwca_state.rx_queue_index);
   if (mfwd_err != k_ra_ok) {
