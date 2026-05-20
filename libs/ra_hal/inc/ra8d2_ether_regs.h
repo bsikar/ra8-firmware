@@ -356,7 +356,49 @@ typedef enum : uint16_t {
   k_ra_gwca_off_gwaarss   = 0x01A0U, /**< AXI active read search set.    */
   k_ra_gwca_off_gwaarsr0  = 0x01A4U, /**< AXI active read search result0.*/
   k_ra_gwca_off_gwaarsr1  = 0x01A8U, /**< AXI active read search result1.*/
+  k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
 } ra_gwca_offset_t;
+
+/**
+ * @enum ra_gwdcc_bits_t
+ * @brief Bit positions/masks for GWDCC[i] (HUM Ch 34 + FSP CMSIS header).
+ *
+ * @details Per-queue Descriptor Chain Configuration. SM selects the
+ * source MAC port; EDE / ETS toggle extended descriptors; SL selects
+ * a "stop-on-last" mode; DQT picks TX (1) vs RX (0); DCP carries the
+ * 3-bit class priority; BALR is the AXI burst-length restrict bit;
+ * OSID is the outstanding-transaction stream ID.
+ */
+typedef enum : uint32_t {
+  k_ra_gwdcc_sm_shift   = 0U,   /**< SM[1:0] -- source MAC port.        */
+  k_ra_gwdcc_sm_mask    = 0x3UL,
+  k_ra_gwdcc_ede        = 1UL << 8U,
+  k_ra_gwdcc_ets        = 1UL << 9U,
+  k_ra_gwdcc_sl         = 1UL << 10U,
+  k_ra_gwdcc_dqt        = 1UL << 11U,  /**< 0 = RX queue, 1 = TX queue.  */
+  k_ra_gwdcc_dcp_shift  = 16U,
+  k_ra_gwdcc_dcp_mask   = 0x7UL << 16U,
+  k_ra_gwdcc_balr       = 1UL << 24U,
+  k_ra_gwdcc_osid_shift = 28U,
+  k_ra_gwdcc_osid_mask  = 0x7UL << 28U,
+} ra_gwdcc_bits_t;
+
+/**
+ * @brief Get pointer to GWDCC[queue_index] (per-queue descriptor chain cfg).
+ *
+ * @param[in] queue_index Queue number 0..31.
+ * @return Volatile pointer to GWDCC[queue_index], or nullptr when
+ *         the index is out of range.
+ */
+static inline volatile uint32_t* ra_gwca_gwdcc(uint32_t queue_index)
+{
+  enum : uint32_t { k_ra_gwca_max_queues = 32U };
+  if (queue_index >= k_ra_gwca_max_queues) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwdcc_base +
+                              ((uintptr_t)queue_index * sizeof(uint32_t)));
+}
 
 /**
  * @struct r_gptp_regs_t
