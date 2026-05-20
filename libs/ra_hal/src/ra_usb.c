@@ -2048,7 +2048,15 @@ static ra_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_
   const ra_err_t ready = internal_wait_frdy(reg);
   RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)"); /* GCOVR_EXCL_BR_LINE */
   internal_fifo_write(reg, p, n);
-  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
+   *
+   * 2026-05-20 attempt: FSP r_usb_plibusbip.c only sets BVAL on the
+   * short last chunk (n < MPS), letting hardware auto-flag full-MPS
+   * chunks. Tried that here; usb_cdc_echo dropped off the bus and
+   * the chip didn't enumerate. Our synchronous multi-chunk push (vs
+   * FSP's BRDY-IRQ-per-chunk) apparently requires the explicit BVAL
+   * pulse on every chunk to commit each one before the next FRDY
+   * poll. Keep the unconditional write. Task #60. */
   reg->CFIFOCTR = k_ra_fifoctr_bval;
   return k_ra_ok;
 }
