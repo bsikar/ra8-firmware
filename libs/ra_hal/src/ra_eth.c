@@ -14,13 +14,14 @@
  * ra_mstp keeps a reference count so concurrent enables / disables
  * interleave safely.
  *
- * The descriptor ring is a fixed-size static array allocated in BSS:
- * 8 TX descriptors + 8 RX descriptors, each backed by a 1536-byte
- * buffer, all 16-byte aligned per FSP convention. Hardware ownership
- * is encoded in the descriptor TACT (TX) / RACT (RX) bit -- on TX,
- * software writes the buffer then sets TACT=1; on RX, software polls
- * for RACT=0 and clears the descriptor before handing it back with
- * RACT=1.
+ * The NIC frame path sits on top of the GWCA "default-state" API
+ * (see ra_eth_gwca.h / ra_eth_mfwd.h). One TX queue + one RX queue
+ * are wired through a fixed LINKFIX table, each backed by a static
+ * descriptor chain + per-slot buffer pool in BSS. ra_eth_open walks
+ * the canonical bring-up (LINKFIX install + queue configure + OPC
+ * transition to OPERATION) and programs MFWD so inbound frames land
+ * on the RX queue; ra_eth_write/ra_eth_read delegate to the
+ * default_send/default_recv helpers.
  *
  * Every register access carries a HUM Ch 29 / Ch 34 citation.
  *
@@ -37,6 +38,8 @@
 #include "ra8d2_rmac_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_eth_gwca.h"
+#include "ra_eth_mfwd.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_rmac.h"
@@ -60,27 +63,6 @@ static ra_eth_event_fn_t s_eth_fn;
 static void* s_eth_ctx;
 
 /**
- * @enum ra_eth_internal_t
- * @brief Driver-private constants used by the NIC path.
- *
- * @details
- * Names every bit position / sentinel used by the descriptor ring
- * and the GWCA-side trigger so the source file is free of bare
- * literals (NASA Power-of-10 Rule 8 + project no-magic-numbers
- * policy).
- */
-typedef enum : uint32_t {
-  k_ra_eth_desc_tact      = 0x80000000UL, /**< TX descriptor active bit.  */
-  k_ra_eth_desc_ract      = 0x80000000UL, /**< RX descriptor active bit.  */
-  k_ra_eth_desc_tdle      = 0x40000000UL, /**< TX descriptor end-of-list. */
-  k_ra_eth_desc_rdle      = 0x40000000UL, /**< RX descriptor end-of-list. */
-  k_ra_eth_desc_tfp_ofs   = 0x30000000UL, /**< TX TFP1|TFP0 single-frame. */
-  k_ra_eth_gwca_edtr      = 0x00000001UL, /**< GWCA TX engine enable.     */
-  k_ra_eth_gwca_edrr      = 0x00000002UL, /**< GWCA RX engine enable.     */
-  k_ra_eth_size_field_max = 0x0000FFFFUL, /**< 16-bit length field mask.  */
-} ra_eth_internal_t;
-
-/**
  * @enum ra_eth_phy_t
  * @brief PHY-side MIIM constants used by ::ra_eth_link_status.
  */
@@ -96,68 +78,190 @@ typedef enum : uint16_t {
 } ra_eth_phy_t;
 
 /**
- * @struct ra_eth_descriptor_t
- * @brief Software view of the FSP-style EDMAC TX/RX descriptor.
+ * @enum ra_eth_layout_t
+ * @brief Static layout constants for the GWCA-backed NIC rings.
  *
  * @details
- * The descriptor matches the FSP ``ether_instance_descriptor_t``
- * layout: a 32-bit status word (TACT/RACT + flags), a 16-bit
- * ``size`` field (frame length on TX; RX-side always-empty), a
- * 16-bit ``buffer_size`` field, a buffer pointer, and a next-pointer.
- * Total size 16 bytes, naturally 16-byte aligned. The driver lays
- * the descriptors and buffers contiguously in BSS.
+ * The driver wires one RX queue + one TX queue through a 4-entry
+ * LINKFIX table. RX uses queue index 0, TX uses queue index 1, and
+ * the remaining LINKFIX slots stay LEMPTY (queue disabled). Each
+ * chain has ``k_ra_eth_num_*_desc`` data slots plus one trailing
+ * LINK terminator that ::ra_eth_gwca_init_ring reserves.
  */
-typedef struct ra_eth_descriptor {
-  volatile uint32_t         status;      /**< TACT/RACT + flags.    */
-  volatile uint16_t         size;        /**< Frame size (TX use).  */
-  volatile uint16_t         buffer_size; /**< Buffer size in bytes. */
-  uint8_t*                  p_buffer;    /**< Backing buffer ptr.   */
-  struct ra_eth_descriptor* p_next;      /**< Linked-ring next ptr. */
-} ra_eth_descriptor_t;
+typedef enum : uint16_t {
+  k_ra_eth_linkfix_count = 4U,                              /**< LINKFIX entries.    */
+  k_ra_eth_def_rx_q_idx  = 0U,                              /**< RX LINKFIX index.   */
+  k_ra_eth_def_tx_q_idx  = 1U,                              /**< TX LINKFIX index.   */
+  k_ra_eth_rx_ring_depth = (uint16_t)(k_ra_eth_num_rx_desc + 1U), /**< +1 LINK term. */
+  k_ra_eth_tx_ring_depth = (uint16_t)(k_ra_eth_num_tx_desc + 1U), /**< +1 LINK term. */
+} ra_eth_layout_t;
 
 /**
  * @struct ra_eth_state_t
  * @brief Driver-private NIC state.
  *
  * @details
- * Holds the cached configuration, the static descriptor rings, the
- * software ring pointers (write pointer for TX, read pointer for
- * RX), the cumulative software counters, and an "open" flag.
+ * Holds the cached configuration, the cumulative software counters,
+ * and the "open" flag. The per-queue head/tail cursors live inside
+ * ::s_gwca_state (managed by the GWCA default-state API).
  */
 typedef struct {
-  uint8_t        opened;       /**< 1 once ::ra_eth_open succeeds.  */
-  ra_eth_cfg_t   cfg;          /**< Captured configuration.         */
-  uint16_t       tx_count;     /**< Active TX descriptors.          */
-  uint16_t       rx_count;     /**< Active RX descriptors.          */
-  uint16_t       buf_size;     /**< Per-descriptor buffer size.     */
-  uint16_t       tx_write_idx; /**< Software TX write pointer.      */
-  uint16_t       rx_read_idx;  /**< Software RX read pointer.       */
-  ra_eth_stats_t stats;        /**< Cumulative counters.            */
+  uint8_t        opened; /**< 1 once ::ra_eth_open succeeds. */
+  ra_eth_cfg_t   cfg;    /**< Captured configuration.        */
+  ra_eth_stats_t stats;  /**< Cumulative counters.           */
 } ra_eth_state_t;
 
 /**
- * @var s_tx_descriptors
- * @brief Static TX descriptor ring (16-byte aligned, BSS-resident).
+ * @var s_linkfix_table
+ * @brief Static LINKFIX table covering RX + TX queues + slack.
+ *
+ * @details
+ * Lives in BSS, 16-byte aligned. Slots 0/1 are wired by
+ * ::ra_eth_gwca_default_open to the RX / TX chains; the remaining
+ * slots stay LEMPTY so traffic only reaches the queues we own.
+ *
+ * @note File-scope, not thread-safe.
+ * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_eth_descriptor_t s_tx_descriptors[k_ra_eth_num_tx_desc];
+__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
+  s_linkfix_table[k_ra_eth_linkfix_count];
 
 /**
- * @var s_rx_descriptors
- * @brief Static RX descriptor ring (16-byte aligned, BSS-resident).
+ * @var s_rx_chain
+ * @brief Static RX descriptor chain (BSS, 16-byte aligned).
+ *
+ * @details
+ * ``k_ra_eth_num_rx_desc`` FEMPTY slots + 1 LINK terminator.
+ *
+ * @note File-scope, not thread-safe.
+ * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_eth_descriptor_t s_rx_descriptors[k_ra_eth_num_rx_desc];
+__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
+  s_rx_chain[k_ra_eth_rx_ring_depth];
 
 /**
- * @var s_tx_buffers
- * @brief Static TX buffer pool, one buffer per descriptor.
+ * @var s_tx_chain
+ * @brief Static TX descriptor chain (BSS, 16-byte aligned).
+ *
+ * @details
+ * ``k_ra_eth_num_tx_desc`` FEMPTY slots + 1 LINK terminator.
+ *
+ * @note File-scope, not thread-safe.
+ * @since 0.1.0
  */
-__attribute__((aligned(16))) static uint8_t s_tx_buffers[k_ra_eth_num_tx_desc][k_ra_eth_buf_size];
+__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
+  s_tx_chain[k_ra_eth_tx_ring_depth];
+
+#ifndef UNIT_TEST
+/**
+ * @var s_rx_pool_storage
+ * @brief Static RX buffer pool, one ``k_ra_eth_buf_size`` slice per slot.
+ *
+ * @details
+ * On the chip target the pool lives in BSS, which fits in the 40-bit
+ * PTR field every ::ra_gwca_basic_descriptor_t encodes. On host the
+ * BSS sits above the 40-bit cap; ::internal_eth_rx_pool / _tx_pool
+ * redirect there to the simulator-mmap'd SRAM region instead so the
+ * descriptor PTR round-trips through ::ra_eth_gwca_default_recv.
+ *
+ * @note File-scope, not thread-safe.
+ * @since 0.1.0
+ */
+__attribute__((aligned(16))) static uint8_t
+  s_rx_pool_storage[k_ra_eth_num_rx_desc * k_ra_eth_buf_size];
 
 /**
- * @var s_rx_buffers
- * @brief Static RX buffer pool, one buffer per descriptor.
+ * @var s_tx_pool_storage
+ * @brief Static TX buffer pool, one ``k_ra_eth_buf_size`` slice per slot.
+ *
+ * @details See ::s_rx_pool_storage; the host build steers around BSS.
+ *
+ * @note File-scope, not thread-safe.
+ * @since 0.1.0
  */
-__attribute__((aligned(16))) static uint8_t s_rx_buffers[k_ra_eth_num_rx_desc][k_ra_eth_buf_size];
+__attribute__((aligned(16))) static uint8_t
+  s_tx_pool_storage[k_ra_eth_num_tx_desc * k_ra_eth_buf_size];
+#endif /* UNIT_TEST */
+
+/**
+ * @enum ra_eth_host_pool_layout_t
+ * @brief Host-test pool addresses in the simulator-mmap'd SRAM region.
+ *
+ * @details
+ * The host SRAM mmap window is 2 MiB at 0x22000000; the RX + TX pools
+ * + LINKFIX backing each get a 1 MiB-aligned slice well inside that
+ * window. The chip path never sees these values because the
+ * ::internal_eth_rx_pool / _tx_pool helpers compile to the BSS arrays
+ * when UNIT_TEST is undefined.
+ */
+typedef enum : uintptr_t {
+  k_ra_eth_host_rx_pool_addr = 0x22100000UL, /**< Host RX pool base. */
+  k_ra_eth_host_tx_pool_addr = 0x22180000UL, /**< Host TX pool base. */
+} ra_eth_host_pool_layout_t;
+
+/**
+ * @brief Resolve the RX buffer pool pointer for the current build.
+ *
+ * @return Address of an ``k_ra_eth_num_rx_desc * k_ra_eth_buf_size``
+ *         byte buffer.
+ *
+ * @details See implementation.
+ * @retval pointer Non-null pool base address.
+ * @pre Storage is reserved (BSS on chip; sim-mmap'd SRAM on host).
+ * @pre Caller invokes this once per ::ra_eth_open.
+ * @post Returned pointer is 16-byte aligned.
+ * @post No global state is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline uint8_t* internal_eth_rx_pool(void)
+{
+#ifdef UNIT_TEST
+  return (uint8_t*)k_ra_eth_host_rx_pool_addr;
+#else
+  return s_rx_pool_storage;
+#endif
+}
+
+/**
+ * @brief Resolve the TX buffer pool pointer for the current build.
+ *
+ * @return Address of an ``k_ra_eth_num_tx_desc * k_ra_eth_buf_size``
+ *         byte buffer.
+ *
+ * @details See implementation.
+ * @retval pointer Non-null pool base address.
+ * @pre Storage is reserved (BSS on chip; sim-mmap'd SRAM on host).
+ * @pre Caller invokes this once per ::ra_eth_open.
+ * @post Returned pointer is 16-byte aligned.
+ * @post No global state is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline uint8_t* internal_eth_tx_pool(void)
+{
+#ifdef UNIT_TEST
+  return (uint8_t*)k_ra_eth_host_tx_pool_addr;
+#else
+  return s_tx_pool_storage;
+#endif
+}
+
+/**
+ * @var s_gwca_state
+ * @brief GWCA default-state block backing ::ra_eth_open / write / read.
+ *
+ * @details
+ * Populated by ::ra_eth_open before calling
+ * ::ra_eth_gwca_default_open; carries the rings + buffer pools +
+ * cursors for one RX + one TX queue.
+ *
+ * @note File-scope, not thread-safe.
+ * @since 0.1.0
+ */
+static ra_eth_gwca_default_state_t s_gwca_state;
 
 /**
  * @var s_state
@@ -187,11 +291,11 @@ static bool s_mac_speed_resynced = false;
  * @param[in,out] counter Pointer to the counter to bump.
  *
  * @pre counter is non-null.
+ * @pre Module state is consistent.
  * @post *counter increases by one unless it was already UINT32_MAX.
+ * @post Caller-visible state matches the documented contract.
  *
  * @details See implementation.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
@@ -218,8 +322,8 @@ static inline void internal_stat_inc(uint32_t* counter)
  * @pre dst and src are non-null and do not overlap.
  * @pre n bytes are valid in both buffers.
  * @post First n bytes of dst equal src.
- *
  * @post Caller-visible state matches the documented contract.
+ *
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
@@ -238,10 +342,10 @@ static inline void internal_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t
  *
  * @details See implementation.
  * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
+ * @pre channel was already range-checked by the caller.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @post No global state is mutated.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
@@ -251,57 +355,6 @@ static inline ra_rmac_port_t internal_channel_to_port(uint8_t channel)
     return k_ra_rmac_port_0;
   }
   return k_ra_rmac_port_1;
-}
-
-/**
- * @brief Reset both descriptor rings to a known initial state.
- *
- * @details
- * - Every TX descriptor is cleared (TACT=0, software-owned, ready
- *   for the first ::ra_eth_write call) and the last descriptor
- *   sets TDLE so the EDMAC engine wraps to entry 0.
- * - Every RX descriptor is set hardware-owned (RACT=1) so the
- *   EDMAC engine can fill it as frames arrive; the last descriptor
- *   sets RDLE.
- *
- * @param[in] tx_count Active TX descriptor count.
- * @param[in] rx_count Active RX descriptor count.
- * @param[in] buf_size Bytes available in each backing buffer.
- *
- * @pre tx_count <= k_ra_eth_num_tx_desc.
- * @pre rx_count <= k_ra_eth_num_rx_desc.
- * @post Every TX descriptor has TACT=0 and a valid p_buffer.
- * @post Every RX descriptor has RACT=1 and a valid p_buffer.
- *
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_init_rings(uint16_t tx_count, uint16_t rx_count, uint16_t buf_size)
-{
-  for (uint16_t i = 0U; i < tx_count; ++i) {
-    s_tx_descriptors[i].status      = 0U;
-    s_tx_descriptors[i].size        = 0U;
-    s_tx_descriptors[i].buffer_size = buf_size;
-    s_tx_descriptors[i].p_buffer    = s_tx_buffers[i];
-    s_tx_descriptors[i].p_next      = &s_tx_descriptors[(i + 1U) % tx_count];
-  }
-  /* Mark the last descriptor as the wrap point so EDMAC restarts at 0. */
-  if (tx_count > 0U) {
-    s_tx_descriptors[tx_count - 1U].status |= k_ra_eth_desc_tdle;
-  }
-
-  for (uint16_t i = 0U; i < rx_count; ++i) {
-    /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-    /* RX descriptor handed to hardware via RACT=1. */
-    s_rx_descriptors[i].status      = k_ra_eth_desc_ract;
-    s_rx_descriptors[i].size        = 0U;
-    s_rx_descriptors[i].buffer_size = buf_size;
-    s_rx_descriptors[i].p_buffer    = s_rx_buffers[i];
-    s_rx_descriptors[i].p_next      = &s_rx_descriptors[(i + 1U) % rx_count];
-  }
-  if (rx_count > 0U) {
-    s_rx_descriptors[rx_count - 1U].status |= k_ra_eth_desc_rdle;
-  }
 }
 
 /**
@@ -368,9 +421,9 @@ static ra_err_t internal_resolve_sizes(const ra_eth_cfg_t* cfg,
  *
  * @details See implementation.
  * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
+ * @pre cfg is non-null and cfg->channel is in [0, 1].
+ * @pre Caller has already enabled the ESWM MSTP gate.
+ * @post On success the RMAC port carries cfg->mac_address.
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
@@ -483,38 +536,60 @@ ra_err_t ra_eth_exit_stop(void)
  * -------------------------------------------------------------------- */
 
 /**
- * @brief Capture cfg + ring sizes into ::s_state and reset the counters.
+ * @brief Capture cfg into ::s_state and reset the counters.
  *
- * @param[in] cfg      Validated configuration.
- * @param[in] tx_count Resolved TX descriptor count.
- * @param[in] rx_count Resolved RX descriptor count.
- * @param[in] buf_size Resolved per-descriptor buffer size.
+ * @param[in] cfg Validated configuration.
  *
  * @pre cfg is non-null.
+ * @pre ::ra_eth_gwca_default_open has already succeeded.
  * @post ::s_state holds the new cfg and zeroed counters.
+ * @post ::s_state.opened is 1.
  *
  * @details See implementation.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_capture_state(const ra_eth_cfg_t* cfg,
-                                   uint16_t            tx_count,
-                                   uint16_t            rx_count,
-                                   uint16_t            buf_size)
+static void internal_capture_state(const ra_eth_cfg_t* cfg)
 {
   s_state.opened       = 1U;
   s_state.cfg          = *cfg;
-  s_state.tx_count     = tx_count;
-  s_state.rx_count     = rx_count;
-  s_state.buf_size     = buf_size;
-  s_state.tx_write_idx = 0U;
-  s_state.rx_read_idx  = 0U;
   s_state.stats.tx_ok  = 0U;
   s_state.stats.rx_ok  = 0U;
   s_state.stats.tx_err = 0U;
   s_state.stats.rx_err = 0U;
+}
+
+/**
+ * @brief Populate ::s_gwca_state with the static rings + pools + queue indices.
+ *
+ * @param[in] cfg Already-validated user cfg (channel used as MAC port).
+ *
+ * @pre cfg is non-null and cfg->channel is in [0, 1].
+ * @pre Static descriptors and pools exist (BSS-resident).
+ * @post ::s_gwca_state fields point at the static storage.
+ * @post ::s_gwca_state cursors (rx_head, tx_tail) are zero.
+ *
+ * @details See implementation.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void internal_populate_gwca_state(const ra_eth_cfg_t* cfg)
+{
+  s_gwca_state.linkfix_table  = s_linkfix_table;
+  s_gwca_state.linkfix_count  = (uint32_t)k_ra_eth_linkfix_count;
+  s_gwca_state.rx_chain       = s_rx_chain;
+  s_gwca_state.rx_depth       = (uint32_t)k_ra_eth_rx_ring_depth;
+  s_gwca_state.rx_slot_bytes  = (uint32_t)k_ra_eth_buf_size;
+  s_gwca_state.rx_pool        = internal_eth_rx_pool();
+  s_gwca_state.rx_queue_index = (uint32_t)k_ra_eth_def_rx_q_idx;
+  s_gwca_state.rx_head        = 0U;
+  s_gwca_state.tx_chain       = s_tx_chain;
+  s_gwca_state.tx_depth       = (uint32_t)k_ra_eth_tx_ring_depth;
+  s_gwca_state.tx_slot_bytes  = (uint32_t)k_ra_eth_buf_size;
+  s_gwca_state.tx_pool        = internal_eth_tx_pool();
+  s_gwca_state.tx_queue_index = (uint32_t)k_ra_eth_def_tx_q_idx;
+  s_gwca_state.tx_tail        = 0U;
+  s_gwca_state.mac_port       = cfg->channel;
 }
 
 /**
@@ -523,36 +598,34 @@ static void internal_capture_state(const ra_eth_cfg_t* cfg,
  * @details
  * Rolled out of ::ra_eth_open so that single function stays under
  * the project's clang-tidy function-size threshold. Performs:
- * 1. cfg null-check + channel range check.
- * 2. Ring size resolution (defaults if 0).
+ * 1. cfg channel range check.
+ * 2. Ring size resolution (for ABI validation only; defaults if 0).
  * 3. MSTP gate enable.
  * 4. Per-channel RMAC bring-up + MAC address program.
  *
- * @param[in]  cfg      User configuration (already null-checked by caller).
- * @param[out] tx_count Resolved TX descriptor count.
- * @param[out] rx_count Resolved RX descriptor count.
- * @param[out] buf_size Resolved per-descriptor buffer size.
+ * @param[in]  cfg User configuration (already null-checked by caller).
  *
  * @return ::ra_err_t Error code.
  *
  * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @pre cfg is non-null.
+ * @pre Caller is single-threaded with respect to this driver.
+ * @post On success the ESWM MSTP gate is enabled and the RMAC port
+ *       carries cfg->mac_address.
+ * @post On failure no state is changed visibly to the caller.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg,
-                                   uint16_t*           tx_count,
-                                   uint16_t*           rx_count,
-                                   uint16_t*           buf_size)
+static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg)
 {
   if (cfg->channel > 1U) {
     ra_log_error(s_tag, "open: channel out of range");
     return k_ra_err_invalid_arg;
   }
-  const ra_err_t resolve_rc = internal_resolve_sizes(cfg, tx_count, rx_count, buf_size);
+  uint16_t       tx_count   = 0U;
+  uint16_t       rx_count   = 0U;
+  uint16_t       buf_size   = 0U;
+  const ra_err_t resolve_rc = internal_resolve_sizes(cfg, &tx_count, &rx_count, &buf_size);
   if (resolve_rc != k_ra_ok) {
     return resolve_rc;
   }
@@ -563,33 +636,67 @@ static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg,
   return internal_bring_up_rmac(cfg);
 }
 
+/**
+ * @brief Walk the GWCA bring-up + MFWD routing setup for ::ra_eth_open.
+ *
+ * @details
+ * Splits the GWCA + MFWD wiring out of ::ra_eth_open so the entry
+ * point stays under the function-size budget. Calls
+ * ::ra_eth_gwca_default_open to install the LINKFIX table, configure
+ * the RX + TX queues and transition GWMC.OPC to OPERATION, then
+ * programs ``MFWD.FWPBFCSDC0[port].PBCSD = rx_queue_index`` via
+ * ::ra_eth_mfwd_route_queue so port-to-host frames reach the RX
+ * queue on real silicon.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok              GWCA in OPERATION + MFWD routing live.
+ * @retval k_ra_err_invalid_arg ::s_gwca_state fields invalid.
+ * @retval k_ra_err_hw_timeout  GWMC.OPC transition never converged.
+ *
+ * @pre ::internal_populate_gwca_state has run.
+ * @pre ::internal_open_prep returned ok.
+ * @post On success GWMC.OPC == OPERATION and MFWD routes inbound
+ *       frames from the configured port into the RX queue.
+ * @post On failure GWCA may be in DISABLE; caller may retry by
+ *       re-invoking ::ra_eth_open.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static ra_err_t internal_open_gwca_path(void)
+{
+  ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);
+  RA_RETURN_ON_ERROR(err, s_tag, "open: gwca default_open"); /* GCOVR_EXCL_BR_LINE */
+  err = ra_eth_mfwd_route_queue(s_gwca_state.mac_port, (uint8_t)s_gwca_state.rx_queue_index);
+  RA_RETURN_ON_ERROR(err, s_tag, "open: mfwd route_queue"); /* GCOVR_EXCL_BR_LINE */
+  return k_ra_ok;
+}
+
 /* Implementation of ra_eth_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "open: cfg must not be nullptr");
 
-  uint16_t       tx_count = 0U;
-  uint16_t       rx_count = 0U;
-  uint16_t       buf_size = 0U;
-  const ra_err_t prep_rc  = internal_open_prep(cfg, &tx_count, &rx_count, &buf_size);
+  const ra_err_t prep_rc = internal_open_prep(cfg);
   if (prep_rc != k_ra_ok) {
     return prep_rc;
   }
 
-  internal_init_rings(tx_count, rx_count, buf_size);
+  internal_populate_gwca_state(cfg);
 
-  /* GWCA enable: set the EDTR / EDRR bits so the engine walks the rings.
-   * HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-  volatile r_gwca_regs_t* gwca = ra_gwca();
-  gwca->GWCA_CTRL              = k_ra_eth_gwca_edtr | k_ra_eth_gwca_edrr;
+  const ra_err_t bring_up_rc = internal_open_gwca_path();
+  if (bring_up_rc != k_ra_ok) {
+    return bring_up_rc;
+  }
 
   /* Force a fresh MPIC re-sync on the next ::ra_eth_link_status call
    * so the on-chip RMAC's MPIC.LSC matches whatever speed the PHY
-   * actually negotiated (HUM Ch 33.4.1.2 p 1707). */
+   * actually negotiated (HUM Ch 33.4.1.2 "MPIC : PHY Interfaces
+   * Configuration Register" p 1707). */
   s_mac_speed_resynced = false;
 
-  internal_capture_state(cfg, tx_count, rx_count, buf_size);
-  ra_log_info(s_tag, "eth_open: rings ready");
+  internal_capture_state(cfg);
+  ra_log_info(s_tag, "eth_open: gwca rings ready");
   return k_ra_ok;
 }
 
@@ -600,19 +707,22 @@ ra_err_t ra_eth_close(void)
     return k_ra_err_not_initialized;
   }
 
-  /* Halt the engine: clear EDTR / EDRR. HUM Ch 34 p 1787 */
-  volatile r_gwca_regs_t* gwca = ra_gwca();
-  gwca->GWCA_CTRL              = 0U;
+  /* Park the GWCA state machine in DISABLE. Best-effort -- ignore
+   * the err so teardown always reaches the MSTP-gate balance below.
+   * HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1797 */
+  (void)ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_disable);
 
   /* Tear down the local RMAC port (MSTP-gate ref-counted). */
   const ra_rmac_port_t rmac_port = internal_channel_to_port(s_state.cfg.channel);
-  const ra_err_t       rmac_err  = ra_rmac_deinit(rmac_port);
-  /* Ignore rmac_err on close to keep teardown best-effort. */
-  (void)rmac_err;
+  (void)ra_rmac_deinit(rmac_port);
+
+  /* Balance the second ESWM-MSTP enable that ::ra_eth_gwca_default_open
+   * acquired via ::ra_eth_gwca_init. The first enable, owned by
+   * ::internal_open_prep, is balanced by the final ra_mstp_disable
+   * call below. */
+  (void)ra_eth_gwca_deinit();
 
   s_state.opened       = 0U;
-  s_state.tx_write_idx = 0U;
-  s_state.rx_read_idx  = 0U;
   s_mac_speed_resynced = false;
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
@@ -629,96 +739,18 @@ ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
     return k_ra_err_invalid_arg;
   }
 
-  ra_eth_descriptor_t* const desc = &s_tx_descriptors[s_state.tx_write_idx];
-
-  /* If the descriptor at the write pointer is still hardware-owned
-   * the engine has not finished sending the previous frame yet -- the
-   * caller should retry later. */
-  if ((desc->status & k_ra_eth_desc_tact) != 0U) {
-    internal_stat_inc(&s_state.stats.tx_err);
+  const ra_err_t err = ra_eth_gwca_default_send(&s_gwca_state, buf, len);
+  if (err == k_ra_ok) {
+    internal_stat_inc(&s_state.stats.tx_ok);
+    return k_ra_ok;
+  }
+  internal_stat_inc(&s_state.stats.tx_err);
+  if (err == k_ra_err_no_data) {
+    /* find_slot returns no_data when all FEMPTY slots are exhausted
+     * -- surface that to callers as the documented busy retval. */
     return k_ra_err_busy;
   }
-  if (desc->p_buffer == nullptr) {
-    internal_stat_inc(&s_state.stats.tx_err);
-    return k_ra_err_invalid_arg;
-  }
-
-  uint32_t copy_len = len;
-  if (copy_len > (uint32_t)s_state.buf_size) {
-    copy_len = s_state.buf_size;
-  }
-  internal_byte_copy(desc->p_buffer, buf, copy_len);
-  desc->size = (uint16_t)(copy_len & k_ra_eth_size_field_max);
-
-  /* Hand the descriptor to hardware (TFP1|TFP0 = single-frame TX, TACT=1). */
-  uint32_t status = desc->status & k_ra_eth_desc_tdle;
-  status |= k_ra_eth_desc_tfp_ofs;
-  status |= k_ra_eth_desc_tact;
-  desc->status = status;
-
-  /* Re-assert EDTR in case the engine completed the previous frame
-   * and parked itself. HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-  volatile r_gwca_regs_t* gwca = ra_gwca();
-  gwca->GWCA_CTRL              = gwca->GWCA_CTRL | k_ra_eth_gwca_edtr;
-
-  /* Advance the software write pointer. */
-  s_state.tx_write_idx = (uint16_t)((s_state.tx_write_idx + 1U) % s_state.tx_count);
-
-  internal_stat_inc(&s_state.stats.tx_ok);
-  return k_ra_ok;
-}
-
-/**
- * @brief Hand an RX descriptor back to hardware and re-arm EDRR.
- *
- * @param[in,out] desc Descriptor that was just drained.
- *
- * @pre desc is non-null.
- * @post desc->status has RACT=1 again, RDLE preserved.
- * @post GWCA_CTRL has EDRR set so the engine continues walking the ring.
- *
- * @details See implementation.
- * @pre Module state is consistent.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_release_rx_descriptor(ra_eth_descriptor_t* desc)
-{
-  const uint32_t rdle_bit = desc->status & k_ra_eth_desc_rdle;
-  desc->size              = 0U;
-  desc->status            = rdle_bit | k_ra_eth_desc_ract;
-
-  /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-  volatile r_gwca_regs_t* gwca = ra_gwca();
-  gwca->GWCA_CTRL              = gwca->GWCA_CTRL | k_ra_eth_gwca_edrr;
-}
-
-/**
- * @brief Compute the clamped copy length for an RX pop.
- *
- * @param[in] desc_size Descriptor's stored frame length.
- * @param[in] max_len   Caller buffer capacity.
- * @return min(desc_size, max_len, buffer_size).
- *
- * @details See implementation.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static inline uint32_t internal_clamp_rx_len(uint32_t desc_size, uint32_t max_len)
-{
-  uint32_t copy_len = desc_size;
-  if (copy_len > max_len) {
-    copy_len = max_len;
-  }
-  if (copy_len > (uint32_t)s_state.buf_size) {
-    copy_len = s_state.buf_size;
-  }
-  return copy_len;
+  return err;
 }
 
 /* Implementation of ra_eth_read (see header for full contract) -- see header for the documented contract. */
@@ -733,27 +765,17 @@ ra_err_t ra_eth_read(uint8_t* buf, uint32_t max_len, uint32_t* got_len)
     return k_ra_err_invalid_arg;
   }
 
-  ra_eth_descriptor_t* const desc = &s_rx_descriptors[s_state.rx_read_idx];
-
-  if ((desc->status & k_ra_eth_desc_ract) != 0U) {
-    internal_stat_inc(&s_state.stats.rx_err);
+  const ra_err_t err = ra_eth_gwca_default_recv(&s_gwca_state, buf, max_len, got_len);
+  if (err == k_ra_ok) {
+    internal_stat_inc(&s_state.stats.rx_ok);
+    return k_ra_ok;
+  }
+  internal_stat_inc(&s_state.stats.rx_err);
+  if (err == k_ra_err_no_data) {
     *got_len = 0U;
     return k_ra_err_no_data;
   }
-  if (desc->p_buffer == nullptr) {
-    internal_stat_inc(&s_state.stats.rx_err);
-    *got_len = 0U;
-    return k_ra_err_invalid_arg;
-  }
-
-  const uint32_t copy_len = internal_clamp_rx_len((uint32_t)desc->size, max_len);
-  internal_byte_copy(buf, desc->p_buffer, copy_len);
-  *got_len = copy_len;
-
-  internal_release_rx_descriptor(desc);
-  s_state.rx_read_idx = (uint16_t)((s_state.rx_read_idx + 1U) % s_state.rx_count);
-  internal_stat_inc(&s_state.stats.rx_ok);
-  return k_ra_ok;
+  return err;
 }
 
 /**
@@ -921,28 +943,71 @@ ra_err_t ra_eth_get_stats(ra_eth_stats_t* out_stats)
 
 #ifdef UNIT_TEST
 /**
- * @brief Test-only hook: simulate the EDMAC engine releasing an RX frame.
+ * @enum ra_eth_test_ds_bits_t
+ * @brief 12-bit DS-field packing helpers for the test inject path.
  *
  * @details
- * Copies ``len`` bytes from ``payload`` into the RX descriptor buffer at
- * the head of the ring (``s_rx_descriptors[s_state.rx_read_idx]``), then
- * clears RACT so the next ::ra_eth_read sees a software-owned descriptor
- * and pops it. The host-side simulator has no real EDMAC engine so unit
- * tests need a way to inject frames. This function is gated by
- * ``UNIT_TEST`` so it never reaches the firmware target.
+ * Mirrors the ds_l/ds_h split applied throughout ra_eth_gwca's
+ * descriptor pack/unpack helpers so the inject path can produce a
+ * descriptor that ::ra_eth_gwca_default_recv decodes consistently.
+ */
+typedef enum : uint32_t {
+  k_ra_eth_test_ds_low_mask   = 0xFFU, /**< ds_l: low 8 bits.        */
+  k_ra_eth_test_ds_high_shift = 8U,    /**< ds_h packs bits 8..11.   */
+  k_ra_eth_test_ds_high_mask  = 0x0FU, /**< ds_h field width 4 bits. */
+} ra_eth_test_ds_bits_t;
+
+/**
+ * @brief Resolve the slot index the next inject_rx should target.
+ *
+ * @details
+ * Mirrors the round-robin slot search ::ra_eth_gwca_default_recv
+ * performs: the inject always targets the slot the next read would
+ * pop, so a single inject + read pair round-trips even after
+ * earlier reads have advanced the rx_head cursor.
+ *
+ * @return Slot index in [0, k_ra_eth_num_rx_desc).
+ *
+ * @details See implementation.
+ * @retval index Index of the RX slot to populate.
+ * @pre ::ra_eth_open has succeeded.
+ * @pre ::s_gwca_state.rx_depth > 1 (init_ring enforces this).
+ * @post Returned value is < (rx_depth - 1) (skips the LINK terminator).
+ * @post No global state is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t internal_test_rx_slot(void)
+{
+  const uint32_t data_slots = s_gwca_state.rx_depth - 1U;
+  return s_gwca_state.rx_head % data_slots;
+}
+
+/**
+ * @brief Test-only hook: simulate the GWCA RX engine releasing a frame.
+ *
+ * @details
+ * Drops ``len`` bytes from ``payload`` into the RX buffer slice the
+ * next ::ra_eth_read will pop, then marks the matching descriptor
+ * FSINGLE with the encoded DS so the read returns the bytes. The
+ * pool address is supplied by ::internal_eth_rx_pool which yields
+ * the chip BSS on target builds and the simulator-mmap'd SRAM
+ * region (fits in 40 bits) on host. This function is gated by
+ * ``UNIT_TEST`` so it cannot reach firmware targets.
  *
  * @param[in] payload Bytes to drop into the RX buffer.
- * @param[in] len     Frame length (clamped to buffer_size).
+ * @param[in] len     Frame length (clamped to ::k_ra_eth_buf_size).
  *
  * @return ::ra_err_t Error code.
- * @retval k_ra_ok                 Frame staged.
+ * @retval k_ra_ok                  Frame staged.
  * @retval k_ra_err_not_initialized ::ra_eth_open was not called first.
  * @retval k_ra_err_null_ptr        payload is nullptr.
  *
  * @pre Driver previously brought up via ::ra_eth_open.
  * @pre payload points to len readable bytes.
- * @post Descriptor at the read pointer has RACT=0.
- * @post Descriptor's size field equals min(len, buffer_size).
+ * @post Descriptor at the read pointer has dt = FSINGLE.
+ * @post Descriptor's DS field equals min(len, k_ra_eth_buf_size).
  *
  * @note Test-only; not compiled into firmware builds.
  * @since 0.1.0
@@ -953,15 +1018,22 @@ ra_err_t ra_eth_test_inject_rx(const uint8_t* payload, uint32_t len)
   if (s_state.opened == 0U) {
     return k_ra_err_not_initialized;
   }
-  ra_eth_descriptor_t* const desc     = &s_rx_descriptors[s_state.rx_read_idx];
-  uint32_t                   copy_len = len;
-  if (copy_len > (uint32_t)s_state.buf_size) {
-    copy_len = s_state.buf_size;
+  const uint32_t              slot     = internal_test_rx_slot();
+  ra_gwca_basic_descriptor_t* desc     = &s_rx_chain[slot];
+  uint32_t                    copy_len = len;
+  if (copy_len > (uint32_t)k_ra_eth_buf_size) {
+    copy_len = (uint32_t)k_ra_eth_buf_size;
   }
-  internal_byte_copy(desc->p_buffer, payload, copy_len);
-  desc->size = (uint16_t)(copy_len & k_ra_eth_size_field_max);
-  /* Clear RACT -- pretend the EDMAC engine just landed a frame. */
-  desc->status = desc->status & ~k_ra_eth_desc_ract;
+  /* The descriptor's PTR was set by ::ra_eth_gwca_attach_buffers
+   * during open. ::internal_eth_rx_pool returns the same low-address
+   * (or BSS-on-chip) base; copy the payload to the matching slice so
+   * default_recv pops the same bytes. */
+  uint8_t* const pool_slot = internal_eth_rx_pool() + ((uintptr_t)slot * (uintptr_t)k_ra_eth_buf_size);
+  internal_byte_copy(pool_slot, payload, copy_len);
+  desc->ds_l = (uint8_t)(copy_len & (uint32_t)k_ra_eth_test_ds_low_mask);
+  desc->ds_h = (uint8_t)((copy_len >> (uint32_t)k_ra_eth_test_ds_high_shift)
+                         & (uint32_t)k_ra_eth_test_ds_high_mask);
+  desc->dt   = (uint8_t)k_ra_gwdcc_dt_fsingle;
   return k_ra_ok;
 }
 #endif /* UNIT_TEST */
