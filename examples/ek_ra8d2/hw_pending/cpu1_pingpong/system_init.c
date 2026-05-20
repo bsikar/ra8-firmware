@@ -330,17 +330,24 @@ void SystemInit(void)
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
 
-  /* IPCSAR / IPCPAR are not touched here.
+  /* IPCSAR is left at reset default (0 = all channels secure).
    *
-   * Attempted on 2026-05-19: write PRCR_S = 0xA510 (unlock PRC4) +
-   * write IPCSAR = 0x000F0303 to grant non-secure access to all IPC
-   * channels. The write went through (JTAG readback confirmed
-   * 0x000F0303), but flipping the channels to NS attribution made
-   * CPU0 (which boots Secure on this chip) unable to access them,
-   * which then HardFaulted as soon as ra_cpu1_release wrote to the
-   * IPC NMI register. Reverted -- proper fix needs full TrustZone
-   * partitioning so CPU1 runs Secure too, or NSC veneer wrapping
-   * for the CPU1 -> CPU0 -> CPU1 IPC sequence. Tracked in task #62. */
+   * Attempt 2 on 2026-05-20: set IPCSAR = 0x000F0303 (flip
+   * channels NS) AND switch the HAL accessor to use the NS alias
+   * 0x50020000 (Secure can access NS resources via NS alias on
+   * ARMv8-M). CPU0 still HardFaulted on the first IPC register
+   * touch -- whether via S alias 0x40020100 or NS alias
+   * 0x50020100, the chip refused the access. JTAG confirmed
+   * IPCSAR did land at 0x000F0303 and PC parked in
+   * ra_exception_halt_loop.
+   *
+   * Conclusion: the NS alias is not just a memory-map view, it
+   * requires SAU + IDAU + something else to be properly
+   * configured for accesses to succeed. The right cpu1_pingpong
+   * fix needs a full TrustZone bring-up -- not feasible in a
+   * single-iteration loop. Reverted. See task #62 + project
+   * memory project_cpu1_must_be_non_secure.md for the full
+   * background. */
 
   /* Cache enable, MPU init, and TrustZone bring-up are temporarily
    * disabled -- they HardFault on first reset because the CCSIDR-driven
