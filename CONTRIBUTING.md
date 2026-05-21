@@ -239,6 +239,31 @@ how it was done.
   delta). Paste both reads.
 * **Bench scripts.** The exact `scripts/hil_*.sh` invocations used.
 
+### Rule out environment error first (required)
+
+A bug report is only credible once you have proven the toolchain, the
+build, and -- for a hardware bug -- the bench are themselves sound.
+Otherwise the "bug" may be your setup. **Before filing, run the full
+verification baseline and paste its results into the issue:**
+
+* **Local unit-test suite** -- `make test`. Expect `100% tests passed`.
+* **CI gate suite** -- the jobs in `.github/workflows/firmware.yml`,
+  runnable locally: cross-build every app
+  (`bash scripts/build_all_examples.sh`), clang-tidy
+  (`bash scripts/clang_tidy.sh --check`), clang-format
+  (`bash scripts/format_code.sh --check`), and the citation / ASCII
+  checks under `scripts/utils/`.
+* **HIL suite** (hardware bugs) -- `bash scripts/hil_all.sh`, which
+  flashes and verifies every app under
+  `examples/ek_ra8d2/hw_validated/hil/` on the board. A green HIL run
+  proves the J-Link, the flash path, the UART/USB plumbing, and the
+  bench wiring all work -- so a remaining failure is the firmware, not
+  the rig.
+
+If every baseline step is green and the bug still reproduces, it is a
+genuine defect: state that explicitly in the issue. If a baseline step
+is red, fix it first or explain in the issue why it is unrelated.
+
 ### Template
 
 ```markdown
