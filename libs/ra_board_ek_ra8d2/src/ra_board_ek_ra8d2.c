@@ -1993,7 +1993,8 @@ static ra_err_t internal_eth_route_alt_pins(void)
     }
   }
 
-  /* HUM Ch 20.2.6 "PmnPFS" p 845: RGMII transmit pins need DSCR = 01b. */
+  /* RGMII transmit pins need DSCR = 01b middle drive strength. */
+  /* HUM Ch 20.2.6 "PmnPFS" p 845 */
   static const uint16_t s_eth_tx_pins[] = {
     (uint16_t)k_ra_board_eth_pin_txd0,   (uint16_t)k_ra_board_eth_pin_txd1,
     (uint16_t)k_ra_board_eth_pin_txd2,   (uint16_t)k_ra_board_eth_pin_txd3,
