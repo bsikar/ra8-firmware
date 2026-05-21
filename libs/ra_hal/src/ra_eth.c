@@ -177,12 +177,16 @@ __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
  * @brief Static TX descriptor chain (BSS, 16-byte aligned).
  *
  * @details
- * ``k_ra_eth_num_tx_desc`` FEMPTY slots + 1 LINK terminator.
+ * ``k_ra_eth_num_tx_desc`` FEMPTY slots + 1 LINK terminator. The TX
+ * queue uses 16-byte EXTENDED descriptors (GWDCC.EDE = 1) so each
+ * frame carries its INFO1 routing metadata; hence the element type
+ * is ::ra_gwca_ext_descriptor_t, not the 8-byte basic descriptor the
+ * RX chain and LINKFIX table use.
  *
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
+__attribute__((aligned(16))) static ra_gwca_ext_descriptor_t
   s_tx_chain[k_ra_eth_tx_ring_depth];
 
 #ifndef UNIT_TEST
@@ -909,11 +913,6 @@ ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
     return k_ra_ok;
   }
   internal_stat_inc(&s_state.stats.tx_err);
-  if (err == k_ra_err_no_data) {
-    /* find_slot returns no_data when all FEMPTY slots are exhausted
-     * -- surface that to callers as the documented busy retval. */
-    return k_ra_err_busy;
-  }
   return err;
 }
 
