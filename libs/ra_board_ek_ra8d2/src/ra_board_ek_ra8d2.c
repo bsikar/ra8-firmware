@@ -2348,7 +2348,16 @@ typedef enum : uint16_t {
   k_ra_board_eth_phy_rxskew_mask  = 0x7000U, /**< MIICTRL RXSKEW field [14:12].*/
   k_ra_board_eth_phy_rxskew_1p0ns = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.    */
   k_ra_board_eth_phy_anar_value   = 0x01E1U, /**< Advertise 100F/100H/10F/10H. */
-  k_ra_board_eth_phy_gbcr_value   = 0x0300U, /**< Advertise 1000F/1000H.       */
+  /* GBCR = 0: 1000BASE-T is deliberately NOT advertised so the link
+   * negotiates to 100M full-duplex. The RGMII RX path works at all
+   * speeds, but RGMII TX is bench-broken at 1 Gbps: the RMAC counts
+   * frames transmitted (MTGFCE tracks MRGFCE) yet nothing reaches the
+   * wire (tcpdump on the link partner sees zero frames). The same TX
+   * path works fully at 100M (ARP + ICMP verified), and TXCIDE on/off
+   * makes no difference at 1 Gbps -- so this is a gigabit RGMII TXC
+   * skew issue that needs a scope + the GPY111 RGMII-delay register
+   * map to resolve. Until then the link is pinned to 100M. */
+  k_ra_board_eth_phy_gbcr_value   = 0x0000U, /**< 1000BASE-T NOT advertised (see above). */
   k_ra_board_eth_phy_reset_spin   = 4096U,   /**< BMCR.RESET self-clear cap.   */
 } ra_board_eth_phy_reg_t;
 
