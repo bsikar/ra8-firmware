@@ -57,7 +57,7 @@ static ra_rmac_config_t default_rmac_cfg(void)
     .mon0_irq_enable = 0U,
     .mon1_irq_enable = 0U,
     .mon2_irq_enable = 0U,
-    .phy_interface   = k_ra_rmac_pis_rgmii,
+    .phy_interface   = k_ra_rmac_pis_gmii,
     .link_speed      = k_ra_rmac_lsc_1000mbit,
     .duplex          = k_ra_rmac_duplex_full,
   };

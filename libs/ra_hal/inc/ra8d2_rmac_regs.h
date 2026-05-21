@@ -283,16 +283,25 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_rmac_pis_t
- * @brief Physical interface selector for MPIC.PIS[2:0] (HUM Ch 33.4).
+ * @brief Physical interface selector for MPIC.PIS[2:0].
+ *
+ * @details
+ * HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register"
+ * p 1707: MPIC.PIS[2:0] has only TWO defined encodings -- 000b = MII
+ * and 010b = GMII. All other values are Reserved.
+ *
+ * MPIC.PIS describes the *internal* xMII interface between the RMAC
+ * and the ESWM media mux. For an external RGMII link the ESWM
+ * (MIICRn.MIISEL = 01b, HUM Table 29.11) converts RGMII <-> internal
+ * GMII/MII, so the RMAC still sees MII or GMII. Per Table 29.11 the
+ * RMAC.MPIC.PIS value is purely a function of link speed:
+ *   - 10 / 100 Mbps -> MII  (000b)
+ *   - 1 Gbps        -> GMII (010b)
+ * regardless of whether the external PHY interface is MII or RGMII.
  */
 typedef enum : uint8_t {
-  k_ra_rmac_pis_gmii  = 0U, /**< GMII (1000-Mbps copper).       */
-  k_ra_rmac_pis_mii   = 1U, /**< MII (10/100-Mbps copper).      */
-  k_ra_rmac_pis_rmii  = 2U, /**< RMII (reduced-pin).            */
-  k_ra_rmac_pis_rgmii = 3U, /**< RGMII (reduced-GMII).          */
-  k_ra_rmac_pis_xgmii = 4U, /**< XGMII (10G).                   */
-  k_ra_rmac_pis_xfi   = 5U, /**< XFI / 10GBASE-R.               */
-  k_ra_rmac_pis_count = 6U, /**< Sentinel.                      */
+  k_ra_rmac_pis_mii  = 0U, /**< MII (000b) -- internal xMII for 10/100 Mbps. */
+  k_ra_rmac_pis_gmii = 2U, /**< GMII (010b) -- internal xMII for 1 Gbps.     */
 } ra_rmac_pis_t;
 
 /**

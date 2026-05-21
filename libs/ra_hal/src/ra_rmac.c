@@ -158,6 +158,39 @@ static inline bool internal_port_ok(ra_rmac_port_t port)
 }
 
 /**
+ * @brief Validate an MPIC.PIS interface selector.
+ *
+ * @details HUM Ch 33.4.1.2 p 1707: MPIC.PIS has only two defined
+ * encodings -- MII (000b) and GMII (010b). Everything else is
+ * Reserved. The enum is non-contiguous so this is an explicit
+ * two-value check rather than an upper-bound comparison.
+ *
+ * @param[in] iface Candidate interface selector.
+ *
+ * @return true if iface is MII or GMII; false otherwise.
+ * @retval true  iface == k_ra_rmac_pis_mii or k_ra_rmac_pis_gmii.
+ * @retval false iface is a Reserved encoding.
+ *
+ * @pre None.
+ * @pre iface holds a value of the ra_rmac_pis_t underlying type.
+ * @post Return value reflects whether iface is a defined PIS code.
+ * @post No state is modified.
+ *
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+static inline bool internal_pis_ok(ra_rmac_pis_t iface)
+{
+  if (iface == k_ra_rmac_pis_mii) {
+    return true;
+  }
+  if (iface == k_ra_rmac_pis_gmii) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * @brief Compute the MPIC.PSMCS divider code for a target MDC rate.
  *
  * @details
@@ -501,7 +534,7 @@ ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg)
     ra_log_error(s_tag, "rmac_init: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->phy_interface >= k_ra_rmac_pis_count) {
+  if (!internal_pis_ok(cfg->phy_interface)) {
     ra_log_error(s_tag, "rmac_init: phy_interface out of range");
     return k_ra_err_invalid_arg;
   }
@@ -814,7 +847,7 @@ ra_err_t ra_rmac_set_link(ra_rmac_port_t   port,
     ra_log_error(s_tag, "set_link: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)iface >= k_ra_rmac_pis_count) {
+  if (!internal_pis_ok(iface)) {
     ra_log_error(s_tag, "set_link: iface out of range");
     return k_ra_err_invalid_arg;
   }

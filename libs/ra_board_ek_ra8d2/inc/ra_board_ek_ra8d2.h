@@ -1334,13 +1334,14 @@ typedef enum : uint8_t {
  *    to their ETHERC RGMII alternate functions via
  *    ``ra_pfs_route_peripheral`` (PSEL = ``k_ra_psel_ether_rmii`` --
  *    same PSEL slot covers RMII and RGMII on RA8D2; the per-pin mux
- *    is identical and RMAC.MPIC.PIS picks the data-path mode).
+ *    is identical and the ESWM MIICR1.MIISEL field picks RGMII).
  * 2. Initialises ETHA0 with the default ``ra_etha_config_t`` (RESET
  *    mode, no IRQs enabled) via ``ra_etha_init``.
- * 3. Initialises RMAC0 with ``phy_interface = k_ra_rmac_pis_rgmii``,
+ * 3. Initialises RMAC0 with ``phy_interface = k_ra_rmac_pis_gmii``,
  *    ``link_speed = k_ra_rmac_lsc_1000mbit``, ``duplex = full`` via
  *    ``ra_rmac_init`` (auto-negotiation overrides this once link
- *    comes up).
+ *    comes up; RMAC.MPIC.PIS is GMII for 1 Gbps and MII for
+ *    10/100 Mbps per HUM Table 29.11).
  *
  * The on-board PHY's 25 MHz reference is provided by an external
  * crystal oscillator (UM Table 27 p 34); no chip-side REFCLK output
