@@ -157,6 +157,7 @@ ra_err_t ra_eth_gwca_exit_stop(void)
  */
 enum : uint32_t {
   k_ra_eth_gwca_mode_spin = 2000000UL,
+  k_ra_eth_gwca_balr_spin = 2000000UL, /**< GWDCCi.BALR self-clear poll budget. */
 };
 
 /**
@@ -558,27 +559,33 @@ ra_err_t ra_eth_gwca_bring_up(ra_gwca_basic_descriptor_t* linkfix_table, uint32_
 /**
  * @brief Compose the GWDCC[i] 32-bit value from a queue config.
  *
- * @details Pure value composition: SM[1:0] + DQT + DCP[18:16] + SL.
- * EDE/ETS stay 0 (basic descriptors), BALR stays 0 (default AXI
- * burst), OSID stays 0 (default stream). No MMIO touched.
+ * @details Pure value composition: DQT + DCP[18:16] + SL.
+ *
+ * GWDCC.SM[1:0] (Synchronization Mode) is left at 00b -- "Normal mode
+ * (full descriptor write back)" per HUM Ch 34.3 "GWDCCi" p 9060. SM
+ * is NOT a source-MAC field: 01b is "No-write-back mode (no
+ * descriptor write back)", which would leave every RX descriptor
+ * stuck at FEMPTY because the GWCA never updates it. Bench-confirmed
+ * on EK-RA8D2. EDE/ETS stay 0 (basic descriptors), BALR stays 0
+ * (default AXI burst), OSID stays 0 (default stream). No MMIO
+ * touched.
  *
  * @param[in] cfg Per-queue config.
- * @return Packed GWDCC value with SM, DQT, SL, DCP bits set per cfg.
+ * @return Packed GWDCC value with DQT, SL, DCP bits set per cfg.
  * @retval value Packed register word.
- * @pre cfg is non-null with source_mac_port <= 3 and priority <= 7.
+ * @pre cfg is non-null with priority <= 7.
  * @pre Caller validated the bounds before invoking.
- * @post Returned value reflects all four cfg fields.
+ * @post Returned value reflects the cfg fields; SM stays 00b.
  * @post No global state is modified.
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static uint32_t internal_compose_gwdcc(const ra_eth_gwca_queue_cfg_t* cfg)
 {
-  /* Compose GWDCC value: SM[1:0] + DQT + DCP[18:16] + SL. EDE/ETS
-   * stay 0 (basic descriptors), BALR stays 0 (default AXI burst),
-   * OSID stays 0 (default stream). */
-  uint32_t value =
-    ((uint32_t)cfg->source_mac_port & k_ra_gwdcc_sm_mask) << k_ra_gwdcc_sm_shift;
+  /* GWDCC value: DQT + DCP[18:16] + SL. SM[1:0] stays 00b (Normal
+   * mode -- full descriptor write-back). EDE/ETS stay 0 (basic
+   * descriptors), BALR stays 0 (default AXI burst), OSID 0. */
+  uint32_t value = 0U;
   if (cfg->is_tx) {
     value |= (uint32_t)k_ra_gwdcc_dqt;
   }
@@ -624,14 +631,14 @@ static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t*       entry,
  * @brief Wire a per-queue config into GWDCC[i] + LINKFIX[i].
  *
  * @details See header for the canonical contract. Composes the
- * GWDCC value from cfg's SM / DQT / DCP / SL bits via
+ * GWDCC value from cfg's DQT / DCP / SL bits via
  * internal_compose_gwdcc, writes it to GWDCC[queue_index], then
  * promotes the LINKFIX entry to LINKFIX via
  * internal_set_linkfix_entry.
  *
  * @param[in,out] linkfix_table Same table passed to install_linkfix.
  * @param[in]     queue_index    Queue 0..31.
- * @param[in]     cfg            Per-queue config (port, priority, dir, head).
+ * @param[in]     cfg            Per-queue config (priority, dir, head).
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok              GWDCC[i] + LINKFIX[i] wired.
@@ -654,10 +661,9 @@ ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_tabl
   RA_CHECK_NULL_PTR(cfg, s_tag, "configure_queue: cfg null");
   RA_CHECK_NULL_PTR(cfg->chain_head, s_tag, "configure_queue: chain_head null");
   enum : uint8_t {
-    k_ra_gwdcc_sm_max  = 3U, /**< SM field width 2 bits -> max value 3. */
     k_ra_gwdcc_dcp_max = 7U, /**< DCP field width 3 bits -> max value 7. */
   };
-  if ((cfg->source_mac_port > k_ra_gwdcc_sm_max) || (cfg->priority > k_ra_gwdcc_dcp_max)) {
+  if (cfg->priority > k_ra_gwdcc_dcp_max) {
     return k_ra_err_invalid_arg;
   }
   volatile uint32_t* const gwdcc = ra_gwca_gwdcc(queue_index);
@@ -667,6 +673,56 @@ ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_tabl
   *gwdcc = internal_compose_gwdcc(cfg);
   internal_set_linkfix_entry(&linkfix_table[queue_index], cfg->chain_head);
   return k_ra_ok;
+}
+
+/**
+ * @brief Reload a descriptor queue: pulse GWDCC[i].BALR, wait for clear.
+ *
+ * @details HUM Ch 34.3 "GWDCCi" p 1811 defines BALR (Base Address
+ * Load Request) as the request that resets the AXI address RAM
+ * current_address field for queue i to the chain base
+ * ({GWDCBAC} + i x 8). Until BALR runs, the GWCA never scans the
+ * descriptor chain -- every RX descriptor stays FEMPTY and no frame
+ * is delivered. BALR self-clears once the reload completes. FSP
+ * r_layer3_switch.c::R_LAYER3_SWITCH_StartDescriptorQueue performs
+ * this same pulse, with the GWCA in OPERATION mode.
+ *
+ * @param[in] queue_index GWCA descriptor-queue number 0..63.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             BALR pulsed and self-cleared.
+ * @retval k_ra_err_invalid_arg queue_index has no GWDCC register.
+ * @retval k_ra_err_hw_timeout  BALR never self-cleared.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre ::ra_eth_gwca_configure_queue ran for queue_index.
+ * @post The AXI address RAM current_address for queue_index points at
+ *       the chain base.
+ * @post GWDCC[queue_index].BALR reads 0.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_eth_gwca_reload_queue(uint32_t queue_index)
+{
+  volatile uint32_t* const gwdcc = ra_gwca_gwdcc(queue_index);
+  if (gwdcc == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 34.3 "GWDCCi" p 1811: BALR self-clears once the GWCA has
+   * reset the AXI address RAM current_address pointer. */
+  *gwdcc |= (uint32_t)k_ra_gwdcc_balr;
+#ifndef RA_SIMULATOR_MODE
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_balr_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*gwdcc & (uint32_t)k_ra_gwdcc_balr) == 0U) {       /* GCOVR_EXCL_BR_LINE */
+      return k_ra_ok;
+    }
+  }
+  ra_log_error(s_tag, "reload_queue: GWDCC BALR never cleared");
+  return k_ra_err_hw_timeout;
+#else
+  return k_ra_ok;
+#endif
 }
 
 /**
@@ -1044,9 +1100,17 @@ ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
  * memcpy + state reset path out so the top-level function fits
  * under the 60-line cap.
  *
+ * When the GWCA writes back an FSINGLE descriptor it overwrites the
+ * DS field with the *received* frame length. Re-arming the slot
+ * therefore has to restore DS to the buffer capacity (@p slot_bytes)
+ * -- otherwise the next frame larger than the last one no longer
+ * fits in "one descriptor's area" and the GWCA fragments it into
+ * FSTART/FEND, which ::ra_eth_gwca_rx_frame would then never drain.
+ *
  * @param[in,out] desc         The FSINGLE slot to drain.
  * @param[out]    out_frame    Destination buffer.
  * @param[in]     out_capacity Size of ``out_frame``.
+ * @param[in]     slot_bytes   Buffer capacity to restore into DS.
  * @param[out]    out_len      Bytes actually written.
  *
  * @return ra_err_t Error code.
@@ -1055,7 +1119,7 @@ ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
  *
  * @pre desc is non-null and currently FSINGLE.
  * @pre out_frame / out_len non-null and out_capacity > 0.
- * @post Slot dt = FEMPTY on success.
+ * @post Slot dt = FEMPTY and DS = slot_bytes on success.
  * @post out_len contains the frame size on success.
  *
  * @note Not thread-safe.
@@ -1064,6 +1128,7 @@ ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
 static ra_err_t internal_drain_rx_slot(ra_gwca_basic_descriptor_t* desc,
                                        uint8_t*                    out_frame,
                                        uint32_t                    out_capacity,
+                                       uint32_t                    slot_bytes,
                                        uint32_t*                   out_len)
 {
   const uint8_t* const buf      = internal_decode_ptr(desc);
@@ -1073,7 +1138,14 @@ static ra_err_t internal_drain_rx_slot(ra_gwca_basic_descriptor_t* desc,
   }
   (void)memcpy(out_frame, buf, (size_t)frame_ds);
   *out_len = frame_ds;
-  desc->dt = (uint8_t)k_ra_gwdcc_dt_fempty;
+  enum : uint32_t {
+    k_ra_ds_byte_mask  = 0xFFU, /**< ds_l carries 8 bits.         */
+    k_ra_ds_high_shift = 8U,    /**< ds_h packs the upper 4 bits. */
+    k_ra_ds_high_mask  = 0xFU,  /**< ds_h field width 4 bits.     */
+  };
+  desc->ds_l = (uint8_t)(slot_bytes & k_ra_ds_byte_mask);
+  desc->ds_h = (uint8_t)((slot_bytes >> k_ra_ds_high_shift) & k_ra_ds_high_mask);
+  desc->dt   = (uint8_t)k_ra_gwdcc_dt_fempty;
   return k_ra_ok;
 }
 
@@ -1168,18 +1240,16 @@ static ra_err_t internal_default_open_rings(ra_eth_gwca_default_state_t* state)
  */
 static ra_err_t internal_default_open_queues(ra_eth_gwca_default_state_t* state)
 {
-  const ra_eth_gwca_queue_cfg_t rx_cfg = {.source_mac_port = state->mac_port,
-                                          .priority        = 0U,
-                                          .is_tx           = false,
-                                          .stop_on_last    = false,
-                                          .chain_head      = state->rx_chain};
+  const ra_eth_gwca_queue_cfg_t rx_cfg = {.priority     = 0U,
+                                          .is_tx        = false,
+                                          .stop_on_last = false,
+                                          .chain_head   = state->rx_chain};
   ra_err_t err = ra_eth_gwca_configure_queue(state->linkfix_table, state->rx_queue_index, &rx_cfg);
   RA_RETURN_ON_ERROR(err, s_tag, "default_open: rx config"); /* GCOVR_EXCL_BR_LINE */
-  const ra_eth_gwca_queue_cfg_t tx_cfg = {.source_mac_port = state->mac_port,
-                                          .priority        = 0U,
-                                          .is_tx           = true,
-                                          .stop_on_last    = false,
-                                          .chain_head      = state->tx_chain};
+  const ra_eth_gwca_queue_cfg_t tx_cfg = {.priority     = 0U,
+                                          .is_tx        = true,
+                                          .stop_on_last = false,
+                                          .chain_head   = state->tx_chain};
   return ra_eth_gwca_configure_queue(state->linkfix_table, state->tx_queue_index, &tx_cfg);
 }
 
@@ -1280,6 +1350,20 @@ ra_err_t ra_eth_gwca_default_open(ra_eth_gwca_default_state_t* state)
     return op_err;
   }
   g_ra_eth_gwca_open_step = (uint32_t)k_ra_eth_gwca_step_ok_3;
+
+  /* Arm both queues now the GWCA is in OPERATION: BALR loads the
+   * chain base into the AXI address RAM so the GWCA starts scanning
+   * the descriptor chains (HUM Ch 34.3 "GWDCCi"). */
+  const ra_err_t rx_reload = ra_eth_gwca_reload_queue(state->rx_queue_index);
+  if (rx_reload != k_ra_ok) {
+    g_ra_eth_gwca_open_step = (uint32_t)k_ra_eth_gwca_step_fail_3;
+    return rx_reload;
+  }
+  const ra_err_t tx_reload = ra_eth_gwca_reload_queue(state->tx_queue_index);
+  if (tx_reload != k_ra_ok) {
+    g_ra_eth_gwca_open_step = (uint32_t)k_ra_eth_gwca_step_fail_3;
+    return tx_reload;
+  }
   return k_ra_ok;
 }
 
@@ -1347,7 +1431,7 @@ ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state, uint8_t* o
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_recv: state null");
   return ra_eth_gwca_rx_frame(state->rx_chain, state->rx_depth, &state->rx_head, out_frame,
-                              out_capacity, out_len);
+                              out_capacity, state->rx_slot_bytes, out_len);
 }
 
 /**
@@ -1362,6 +1446,7 @@ ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state, uint8_t* o
  * @param[in,out] head_idx     Round-robin read cursor.
  * @param[out]    out_frame    Destination buffer for the frame.
  * @param[in]     out_capacity Size of out_frame.
+ * @param[in]     slot_bytes   Per-slot buffer capacity restored into DS.
  * @param[out]    out_len      Frame length written.
  *
  * @return ra_err_t Error code.
@@ -1372,7 +1457,7 @@ ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state, uint8_t* o
  *
  * @pre Caller is in GWMC.OPC = OPERATION.
  * @pre RX queue's MFWD forwarding cfg has been programmed.
- * @post On success the chosen slot is FEMPTY.
+ * @post On success the chosen slot is FEMPTY with DS = slot_bytes.
  * @post On success ``*head_idx`` advanced past the chosen slot.
  *
  * @note Not thread-safe.
@@ -1383,6 +1468,7 @@ ra_err_t ra_eth_gwca_rx_frame(ra_gwca_basic_descriptor_t* chain,
                               uint32_t*                   head_idx,
                               uint8_t*                    out_frame,
                               uint32_t                    out_capacity,
+                              uint32_t                    slot_bytes,
                               uint32_t*                   out_len)
 {
   RA_CHECK_NULL_PTR(chain, s_tag, "rx_frame: chain null");
@@ -1398,7 +1484,8 @@ ra_err_t ra_eth_gwca_rx_frame(ra_gwca_basic_descriptor_t* chain,
   if (err != k_ra_ok) {
     return err;
   }
-  const ra_err_t drain_err = internal_drain_rx_slot(&chain[slot], out_frame, out_capacity, out_len);
+  const ra_err_t drain_err =
+    internal_drain_rx_slot(&chain[slot], out_frame, out_capacity, slot_bytes, out_len);
   if (drain_err != k_ra_ok) {
     return drain_err;
   }

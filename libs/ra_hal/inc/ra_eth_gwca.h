@@ -192,30 +192,35 @@ void ra_eth_gwca_dispatch(void);
  * @brief Per-queue configuration descriptor for ::ra_eth_gwca_configure_queue.
  *
  * @details Populated by the caller and passed to configure_queue;
- * holds the four user-facing GWDCC fields plus the chain-head
- * pointer that goes into the matching LINKFIX entry.
+ * holds the user-facing GWDCC fields plus the chain-head pointer
+ * that goes into the matching LINKFIX entry.
+ *
+ * @note GWDCC.SM (Synchronization Mode) is always programmed to 00b
+ * (Normal mode, full descriptor write-back) -- it is NOT a source-MAC
+ * selector. Which port's frames land in this queue is decided by the
+ * MFWD forwarding fabric (FWPBFCSDC0), not by the GWCA queue config.
  */
 typedef struct {
-  uint8_t                     source_mac_port; /**< SM[1:0]: MAC port (0..3). */
-  uint8_t                     priority;        /**< DCP[2:0]: class priority (0..7). */
-  bool                        is_tx;           /**< DQT: true = TX, false = RX. */
-  bool                        stop_on_last;    /**< SL: stop processing on last. */
-  ra_gwca_basic_descriptor_t* chain_head;      /**< First descriptor in the queue. */
+  uint8_t                     priority;     /**< DCP[2:0]: class priority (0..7). */
+  bool                        is_tx;        /**< DQT: true = TX, false = RX. */
+  bool                        stop_on_last; /**< SL: stop processing on last. */
+  ra_gwca_basic_descriptor_t* chain_head;   /**< First descriptor in the queue. */
 } ra_eth_gwca_queue_cfg_t;
 
 /**
  * @brief Wire a per-queue config into GWDCC[i] and the matching LINKFIX entry.
  *
- * @details Composes the GWDCC[queue_index] value from @p cfg (SM /
- * DQT / DCP / SL bits), writes it, then points the matching LINKFIX
- * entry's PTR at @p cfg->chain_head (transitions that entry out of
- * LEMPTY to LINKFIX so the queue becomes walkable on the next
- * GWMC.OPC transition to OPERATION).
+ * @details Composes the GWDCC[queue_index] value from @p cfg (DQT /
+ * DCP / SL bits; SM is always 00b Normal write-back), writes it,
+ * then points the matching LINKFIX entry's PTR at @p cfg->chain_head
+ * (transitions that entry out of LEMPTY to LINKFIX so the queue
+ * becomes walkable on the next GWMC.OPC transition to OPERATION).
  *
  * Caller must already have invoked ::ra_eth_gwca_install_linkfix
  * with the table that backs @p linkfix_table[queue_index]. GWDCC[i]
  * is RESET/CONFIG-only-writable, so caller must be in CONFIG mode
- * when invoking this.
+ * when invoking this. After the GWCA reaches OPERATION the queue
+ * must be armed with ::ra_eth_gwca_reload_queue.
  *
  * @param[in,out] linkfix_table The same table passed to install_linkfix.
  * @param[in]     queue_index    Queue number 0..31.
@@ -237,6 +242,36 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_table,
                                                    uint32_t                       queue_index,
                                                    const ra_eth_gwca_queue_cfg_t* cfg);
+
+/**
+ * @brief Reload (arm) a descriptor queue by pulsing GWDCC[i].BALR.
+ *
+ * @details Sets GWDCC[queue_index].BALR (Base Address Load Request)
+ * and waits for the GWCA to self-clear it. Per HUM Ch 34.3 "GWDCCi",
+ * BALR resets the AXI address RAM current_address field for the
+ * queue to the chain base ({GWDCBAC} + i x 8). Until BALR runs the
+ * GWCA never scans the descriptor chain, so every RX descriptor
+ * stays FEMPTY and no frame is delivered. Must be called after the
+ * GWCA reaches OPERATION (mirrors FSP
+ * R_LAYER3_SWITCH_StartDescriptorQueue).
+ *
+ * @param[in] queue_index GWCA descriptor-queue number 0..63.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              BALR pulsed and self-cleared.
+ * @retval k_ra_err_invalid_arg queue_index has no GWDCC register.
+ * @retval k_ra_err_hw_timeout  GWDCC[i].BALR never self-cleared.
+ *
+ * @pre ::ra_eth_gwca_configure_queue ran for queue_index.
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @post The AXI address RAM current_address for queue_index points at
+ *       the chain base.
+ * @post GWDCC[queue_index].BALR reads 0.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_reload_queue(uint32_t queue_index);
 
 /**
  * @brief Initialise a descriptor chain as a ring of FEMPTY slots.
@@ -446,14 +481,21 @@ typedef struct {
  *
  * @details Finds the next FSINGLE slot via ::ra_eth_gwca_find_slot
  * (the chip filled it), memcpy's the frame out of the slot's
- * buffer into the caller's buffer, flips dt back to FEMPTY so the
- * chip can refill, and advances the caller's head-index cursor.
+ * buffer into the caller's buffer, flips dt back to FEMPTY and
+ * restores the slot's DS field to @p slot_bytes so the chip can
+ * refill, and advances the caller's head-index cursor.
+ *
+ * @p slot_bytes MUST match the value passed to ::ra_eth_gwca_init_ring:
+ * the GWCA overwrites DS with the received length on write-back, so
+ * leaving it un-restored would shrink the descriptor's apparent
+ * capacity and make the next larger frame fragment into FSTART/FEND.
  *
  * @param[in,out] chain           RX descriptor ring.
  * @param[in]     ring_depth      Ring depth.
  * @param[in,out] head_idx        Caller's round-robin read cursor.
  * @param[out]    out_frame       Destination for the frame bytes.
  * @param[in]     out_capacity    Size of ``out_frame``.
+ * @param[in]     slot_bytes      Per-slot buffer capacity (restored into DS).
  * @param[out]    out_len         Number of bytes actually written.
  *
  * @return ra_err_t Error code.
@@ -463,7 +505,7 @@ typedef struct {
  *
  * @pre Caller is in GWMC.OPC = OPERATION.
  * @pre RX queue's MFWD forwarding cfg has been programmed.
- * @post On success the chosen slot is FEMPTY again.
+ * @post On success the chosen slot is FEMPTY with DS = slot_bytes.
  * @post On success ``*head_idx`` advanced past the chosen slot.
  * @post On success ``*out_len`` <= out_capacity.
  *
@@ -475,6 +517,7 @@ typedef struct {
                                             uint32_t*                   head_idx,
                                             uint8_t*                    out_frame,
                                             uint32_t                    out_capacity,
+                                            uint32_t                    slot_bytes,
                                             uint32_t*                   out_len);
 
 /**

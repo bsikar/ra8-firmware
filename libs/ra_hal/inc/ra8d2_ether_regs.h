@@ -51,7 +51,7 @@ typedef enum : uint16_t {
   k_ra_coma_off_ric     = 0x000U, /**< Interrupt Configuration.          */
   k_ra_coma_off_rrc     = 0x004U, /**< Reset Configuration (RR bit 0).   */
   k_ra_coma_off_rcec    = 0x008U, /**< Clock Enable Cfg (RCE bit 16).    */
-  k_ra_coma_off_cabpirm = 0x040U, /**< Buf-pool Init/Reset (BPIOG / BPR).*/
+  k_ra_coma_off_cabpirm = 0x140U, /**< Buf-pool Init/Reset (BPIOG / BPR). HUM Ch 31 p 1599. */
 } ra_coma_offset_t;
 
 /**
@@ -370,15 +370,16 @@ typedef enum : uint16_t {
  * @enum ra_gwdcc_bits_t
  * @brief Bit positions/masks for GWDCC[i] (HUM Ch 34 + FSP CMSIS header).
  *
- * @details Per-queue Descriptor Chain Configuration. SM selects the
- * source MAC port; EDE / ETS toggle extended descriptors; SL selects
- * a "stop-on-last" mode; DQT picks TX (1) vs RX (0); DCP carries the
- * 3-bit class priority; BALR is the AXI burst-length restrict bit;
- * OSID is the outstanding-transaction stream ID.
+ * @details Per-queue Descriptor Chain Configuration. SM[1:0] is the
+ * Synchronization Mode (00b = Normal / full descriptor write-back,
+ * 01b = No-write-back) -- always left 0, so it has no named constant
+ * here. EDE / ETS toggle extended descriptors; SL selects a
+ * "stop-on-last" mode; DQT picks TX (1) vs RX (0); DCP carries the
+ * 3-bit class priority; BALR (Base Address Load Request) reloads the
+ * AXI address RAM current_address to the chain base; OSID is the
+ * outstanding-transaction stream ID.
  */
 typedef enum : uint32_t {
-  k_ra_gwdcc_sm_shift   = 0U,   /**< SM[1:0] -- source MAC port.        */
-  k_ra_gwdcc_sm_mask    = 0x3UL,
   k_ra_gwdcc_ede        = 1UL << 8U,
   k_ra_gwdcc_ets        = 1UL << 9U,
   k_ra_gwdcc_sl         = 1UL << 10U,
