@@ -224,6 +224,18 @@ run_hil_eth_tcp() {
         --probe-timeout "${HIL_PROBE_TIMEOUT_S:-10}"
 }
 
+run_rtt_scrape() {
+    local app="$1"
+    bash "${REPO_ROOT}/scripts/hil_rtt_scrape.sh" \
+        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+        --elf "${HIL_DIR}/${app}/build/${app}.elf" \
+        --expect "${HIL_EXPECT}" \
+        --rtt-buf-symbol "${HIL_RTT_BUF_SYMBOL:-s_rtt_up_buf}" \
+        --rtt-buf-bytes "${HIL_RTT_BUF_BYTES:-1024}" \
+        --expect-negative "${HIL_EXPECT_NEGATIVE:-}" \
+        --timeout "${HIL_TIMEOUT_S:-10}"
+}
+
 declare -i pass=0 fail=0 skipped=0
 declare -a failed_apps=()
 
@@ -248,6 +260,7 @@ for app in "${APPS[@]}"; do
     unset HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS
     unset HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE
     unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
+    unset HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
     # shellcheck disable=SC1090
     source "$conf"
     export HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S \
@@ -256,7 +269,8 @@ for app in "${APPS[@]}"; do
            HIL_BOOT_S HIL_FAULT_EXPECTED \
            HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
            HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE \
-           HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
+           HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S \
+           HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
 
     if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
         (( skipped++ )) || true
@@ -275,6 +289,7 @@ for app in "${APPS[@]}"; do
         alive)           run_alive           "$app" || rc=$? ;;
         jlink_memprobe)  run_jlink_memprobe  "$app" || rc=$? ;;
         hil_eth_tcp)     run_hil_eth_tcp     "$app" || rc=$? ;;
+        rtt_scrape)      run_rtt_scrape      "$app" || rc=$? ;;
         *)
             echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
             rc=99
