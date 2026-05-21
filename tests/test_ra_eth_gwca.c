@@ -219,12 +219,12 @@ static void test_bring_up(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_gwca.c:480): // CITES-OK: MC/DC gate requires file:line
- *   ``if ((cfg->source_mac_port > 3U) || (cfg->priority > 7U))``
- * Two atomic conditions, N+1 = 3 vectors:
- *   V_F_F: port = 1, priority = 4   -> ok
- *   V_T_-: port = 7, priority = 4   -> invalid_arg (port out of range alone)
- *   V_F_T: port = 1, priority = 8   -> invalid_arg (priority out of range alone)
+ * Decision: ``if (cfg->priority > k_ra_gwdcc_dcp_max)`` -- one atomic
+ * condition, 2 vectors:
+ *   V_F: priority = 4   -> ok
+ *   V_T: priority = 8   -> invalid_arg (priority out of range)
+ * GWDCC.SM is always 00b (Normal mode); it is not a configurable
+ * field, so the former source_mac_port condition no longer exists.
  */
 static void test_configure_queue(void)
 {
@@ -235,11 +235,10 @@ static void test_configure_queue(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_install_linkfix(table, 4U));
 
   ra_eth_gwca_queue_cfg_t cfg = {
-    .source_mac_port = 1U,
-    .priority        = 4U,
-    .is_tx           = true,
-    .stop_on_last    = false,
-    .chain_head      = chain,
+    .priority     = 4U,
+    .is_tx        = true,
+    .stop_on_last = false,
+    .chain_head   = chain,
   };
 
   /* Null pointers / out-of-range guards. */
@@ -249,12 +248,7 @@ static void test_configure_queue(void)
   bad_head.chain_head              = nullptr;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_configure_queue(table, 0U, &bad_head));
 
-  /* V_T_-: port out of range. */
-  ra_eth_gwca_queue_cfg_t bad_port = cfg;
-  bad_port.source_mac_port         = 7U;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_configure_queue(table, 0U, &bad_port));
-
-  /* V_F_T: priority out of range. */
+  /* V_T: priority out of range. */
   ra_eth_gwca_queue_cfg_t bad_prio = cfg;
   bad_prio.priority                = 8U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_configure_queue(table, 0U, &bad_prio));
@@ -262,10 +256,28 @@ static void test_configure_queue(void)
   /* Queue index out of range. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_configure_queue(table, 99U, &cfg));
 
-  /* V_F_F: happy path. */
+  /* V_F: happy path. */
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_configure_queue(table, 0U, &cfg));
   TEST_ASSERT_EQ(k_ra_gwdcc_dt_linkfix, table[0].dt);
   TEST_END("gwca configure_queue");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``if (gwdcc == nullptr)`` -- one atomic condition, 2 vectors:
+ *   V_F: queue 0  -> ok (GWDCC register exists; sim short-circuits BALR)
+ *   V_T: queue 99 -> invalid_arg (no GWDCC register for that index)
+ */
+static void test_reload_queue(void)
+{
+  TEST_BEGIN("gwca reload_queue");
+  prep();
+  /* V_T: out-of-range queue index has no GWDCC register. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_reload_queue(99U));
+  /* V_F: in-range queue. Under RA_SIMULATOR_MODE the BALR poll
+   * short-circuits to ok (no real GWCA to self-clear the bit). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_reload_queue(0U));
+  TEST_END("gwca reload_queue");
 }
 
 /**
@@ -490,13 +502,13 @@ static void test_rx_frame(void)
 
   /* No FSINGLE slot yet -> no_data. */
   TEST_ASSERT_EQ(k_ra_err_no_data,
-                 ra_eth_gwca_rx_frame(chain, 4U, &head, out, sizeof(out), &got_len));
+                 ra_eth_gwca_rx_frame(chain, 4U, &head, out, sizeof(out), 128U, &got_len));
 
   /* Argument guards. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_eth_gwca_rx_frame(nullptr, 4U, &head, out, sizeof(out), &got_len));
+                 ra_eth_gwca_rx_frame(nullptr, 4U, &head, out, sizeof(out), 128U, &got_len));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_eth_gwca_rx_frame(chain, 4U, &head, out, 0U, &got_len));
+                 ra_eth_gwca_rx_frame(chain, 4U, &head, out, 0U, 128U, &got_len));
   TEST_END("gwca rx_frame");
 }
 
@@ -512,6 +524,7 @@ int32_t main(void)
   test_install_linkfix();
   test_bring_up();
   test_configure_queue();
+  test_reload_queue();
   test_init_ring();
   test_set_descriptor_buffer();
   test_attach_buffers();
