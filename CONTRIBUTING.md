@@ -202,7 +202,74 @@ finding:
 * **No backward-compatibility shims.** Update every call site in the
   same commit; do not leave deprecated aliases or wrappers.
 
-## 9. Where to ask questions
+## 9. Filing an issue
+
+Issues are the project's long-term memory. Write every issue so a
+reader who is not you -- or you, six months from now -- can reproduce
+the problem from scratch without guessing. An issue that says "TX is
+broken, I used tcpdump" is hearsay; an issue that pastes the exact
+commands and their raw output is evidence. Assume the bench will not
+be in the same state later and the person debugging will not remember
+how it was done.
+
+### Always include
+
+* **Firmware identity.** The exact commit hash (`git rev-parse HEAD`)
+  and branch, which example app, the build command, and the resulting
+  artifact path. "Latest main" is not an identity -- commits move.
+* **Reproduction steps.** Every command, verbatim and in order, so
+  they can be copy-pasted. No paraphrasing.
+* **Raw output.** Paste the actual console output in fenced code
+  blocks -- full dumps, not a summary. Length is fine; truncation is
+  not.
+* **Expected vs. actual.**
+* **What is already ruled out**, and the evidence behind each ruling.
+
+### Extra for hardware / HIL / register-level bugs
+
+* **Bench topology.** The board, the debug probe (J-Link serial
+  number), the host driving it, and any network wiring -- interface
+  name, IP addresses, MAC addresses. Mark which details are specific
+  to your bench versus general to any EK-RA8D2.
+* **Register evidence.** When you read MCU registers, give the J-Link
+  commander script verbatim, the absolute addresses with their HUM
+  chapter/section, and the register semantics that matter (for
+  example many RMAC statistics counters are clear-on-read, so a
+  baseline read followed by a post-event read yields the exact
+  delta). Paste both reads.
+* **Bench scripts.** The exact `scripts/hil_*.sh` invocations used.
+
+### Template
+
+```markdown
+## Summary
+One paragraph: what is wrong and how it manifests.
+
+## Affected firmware
+- Commit / branch: <hash> (<branch>)
+- App: examples/.../<app>
+- Build: <command>
+- Artifact: <path to .hex/.elf>
+
+## Bench setup
+Board / debug probe / host / wiring, with every ID spelled out.
+
+## Reproduction
+Numbered, copy-pasteable commands.
+
+## Observed data
+Raw output, in full, in code blocks.
+
+## Analysis
+What the data proves; what is ruled out and why.
+
+## Next step
+```
+
+GitHub issue #1 ("Ethernet: large-frame TX corrupted post-MAC") is
+the worked example -- match that level of detail.
+
+## 10. Where to ask questions
 
 This is a personal project, not an open community, but issues and
 discussions on the GitHub repository are welcome. For deeper context
