@@ -678,25 +678,25 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /** @brief J21.1 AN  -- analog input. */
-  k_ra_board_mikrobus_an   = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4),
+  k_ra_board_mikrobus_an = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4),
   /** @brief J21.2 RST -- reset out to the Click. P201 also doubles as MD pin. */
-  k_ra_board_mikrobus_rst  = (uint16_t)RA_PIN(k_ra_port_2, k_ra_pin_1),
+  k_ra_board_mikrobus_rst = (uint16_t)RA_PIN(k_ra_port_2, k_ra_pin_1),
   /** @brief J21.3 CS   -- SPI chip-select (SSLB0, SW4-4 ON). */
-  k_ra_board_mikrobus_cs   = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_3),
+  k_ra_board_mikrobus_cs = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_3),
   /** @brief J21.4 SCK  -- SPI clock (RSPCKB, SW4-4 ON). */
-  k_ra_board_mikrobus_sck  = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_2),
+  k_ra_board_mikrobus_sck = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_2),
   /** @brief J21.5 CIPO -- Controller In, Peripheral Out (UM names this MISOB, SW4-4 ON). */ /* LEGACY-OK: MISOB is the UM pin-mux signal name */
   k_ra_board_mikrobus_cipo = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_0),
   /** @brief J21.6 COPI -- Controller Out, Peripheral In (UM names this MOSIB, SW4-4 ON). */ /* LEGACY-OK: MOSIB is the UM pin-mux signal name */
   k_ra_board_mikrobus_copi = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_1),
   /** @brief J22.1 PWM -- GTIOC10A. */
-  k_ra_board_mikrobus_pwm  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_10),
+  k_ra_board_mikrobus_pwm = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_10),
   /** @brief J22.2 INT -- hardware interrupt (IRQ-22). */
-  k_ra_board_mikrobus_int  = (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_1),
+  k_ra_board_mikrobus_int = (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_1),
   /** @brief J22.3 RX  -- UART RX (RXD7, SW4-4 ON). */
-  k_ra_board_mikrobus_rx   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_8),
+  k_ra_board_mikrobus_rx = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_8),
   /** @brief J22.4 TX  -- UART TX (TXD7, SW4-4 ON). */
-  k_ra_board_mikrobus_tx   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_9),
+  k_ra_board_mikrobus_tx = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_9),
 } ra_board_mikrobus_pin_t;
 
 /**

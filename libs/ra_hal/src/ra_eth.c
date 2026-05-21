@@ -33,15 +33,15 @@
 
 #include <stdint.h>
 
-#include "ra8d2_ether_regs.h"
 #include "ra8d2_etha_regs.h"
+#include "ra8d2_ether_regs.h"
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_rmac_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_etha.h"
 #include "ra_eth_gwca.h"
 #include "ra_eth_mfwd.h"
+#include "ra_etha.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_rmac.h"
@@ -103,9 +103,9 @@ typedef enum : uint16_t {
  * LINK terminator that ::ra_eth_gwca_init_ring reserves.
  */
 typedef enum : uint16_t {
-  k_ra_eth_linkfix_count = 4U,                              /**< LINKFIX entries.    */
-  k_ra_eth_def_rx_q_idx  = 0U,                              /**< RX LINKFIX index.   */
-  k_ra_eth_def_tx_q_idx  = 1U,                              /**< TX LINKFIX index.   */
+  k_ra_eth_linkfix_count = 4U,                                    /**< LINKFIX entries.    */
+  k_ra_eth_def_rx_q_idx  = 0U,                                    /**< RX LINKFIX index.   */
+  k_ra_eth_def_tx_q_idx  = 1U,                                    /**< TX LINKFIX index.   */
   k_ra_eth_rx_ring_depth = (uint16_t)(k_ra_eth_num_rx_desc + 1U), /**< +1 LINK term. */
   k_ra_eth_tx_ring_depth = (uint16_t)(k_ra_eth_num_tx_desc + 1U), /**< +1 LINK term. */
 } ra_eth_layout_t;
@@ -156,8 +156,8 @@ typedef struct {
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
-  s_linkfix_table[k_ra_eth_linkfix_count];
+__attribute__((
+  aligned(16))) static ra_gwca_basic_descriptor_t s_linkfix_table[k_ra_eth_linkfix_count];
 
 /**
  * @var s_rx_chain
@@ -169,8 +169,7 @@ __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
-  s_rx_chain[k_ra_eth_rx_ring_depth];
+__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t s_rx_chain[k_ra_eth_rx_ring_depth];
 
 /**
  * @var s_tx_chain
@@ -186,8 +185,7 @@ __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_gwca_ext_descriptor_t
-  s_tx_chain[k_ra_eth_tx_ring_depth];
+__attribute__((aligned(16))) static ra_gwca_ext_descriptor_t s_tx_chain[k_ra_eth_tx_ring_depth];
 
 #ifndef UNIT_TEST
 /**
@@ -204,8 +202,8 @@ __attribute__((aligned(16))) static ra_gwca_ext_descriptor_t
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static uint8_t
-  s_rx_pool_storage[k_ra_eth_num_rx_desc * k_ra_eth_buf_size];
+__attribute__((
+  aligned(16))) static uint8_t s_rx_pool_storage[k_ra_eth_num_rx_desc * k_ra_eth_buf_size];
 
 /**
  * @var s_tx_pool_storage
@@ -216,8 +214,8 @@ __attribute__((aligned(16))) static uint8_t
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static uint8_t
-  s_tx_pool_storage[k_ra_eth_num_tx_desc * k_ra_eth_buf_size];
+__attribute__((
+  aligned(16))) static uint8_t s_tx_pool_storage[k_ra_eth_num_tx_desc * k_ra_eth_buf_size];
 #endif /* UNIT_TEST */
 
 /**
@@ -489,10 +487,9 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
    * to repeat it here so the application-supplied MAC actually lands
    * in MRMAC0/MRMAC1. */
   const ra_rmac_port_t rmac_port = internal_channel_to_port(cfg->channel);
-  const ra_etha_port_t etha_port = (cfg->channel == 0U)
-                                       ? (ra_etha_port_t)k_ra_etha_port_0
-                                       : (ra_etha_port_t)k_ra_etha_port_1;
-  uint8_t              mac_copy[k_ra_eth_mac_len];
+  const ra_etha_port_t etha_port =
+    (cfg->channel == 0U) ? (ra_etha_port_t)k_ra_etha_port_0 : (ra_etha_port_t)k_ra_etha_port_1;
+  uint8_t mac_copy[k_ra_eth_mac_len];
   for (uint8_t i = 0U; i < (uint8_t)k_ra_eth_mac_len; ++i) {
     mac_copy[i] = cfg->mac_address[i];
   }
@@ -825,9 +822,9 @@ static ra_err_t internal_open_gwca_path(void)
     g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_3;
     return err;
   }
-  g_ra_eth_open_step      = (uint32_t)k_ra_eth_step_ok_3;
-  const ra_err_t mfwd_err = ra_eth_mfwd_route_queue(s_gwca_state.mac_port,
-                                                    (uint8_t)s_gwca_state.rx_queue_index);
+  g_ra_eth_open_step = (uint32_t)k_ra_eth_step_ok_3;
+  const ra_err_t mfwd_err =
+    ra_eth_mfwd_route_queue(s_gwca_state.mac_port, (uint8_t)s_gwca_state.rx_queue_index);
   if (mfwd_err != k_ra_ok) {
     g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_4;
     return mfwd_err;
@@ -841,7 +838,7 @@ ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "open: cfg must not be nullptr");
 
-  g_ra_eth_open_step = 0U;
+  g_ra_eth_open_step     = 0U;
   const ra_err_t prep_rc = internal_open_prep(cfg);
   if (prep_rc != k_ra_ok) {
     g_ra_eth_open_step = (uint32_t)k_ra_eth_step_fail_1;
@@ -1173,14 +1170,12 @@ static ra_err_t internal_query_negotiated_speed(ra_rmac_port_t    port,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t internal_program_mpic(ra_rmac_port_t   port,
-                                      ra_rmac_lsc_t    speed,
-                                      ra_rmac_duplex_t duplex)
+static ra_err_t
+internal_program_mpic(ra_rmac_port_t port, ra_rmac_lsc_t speed, ra_rmac_duplex_t duplex)
 {
-  const ra_etha_port_t etha_port = (port == k_ra_rmac_port_0)
-                                       ? (ra_etha_port_t)k_ra_etha_port_0
-                                       : (ra_etha_port_t)k_ra_etha_port_1;
-  ra_err_t err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
+  const ra_etha_port_t etha_port = (port == k_ra_rmac_port_0) ? (ra_etha_port_t)k_ra_etha_port_0
+                                                              : (ra_etha_port_t)k_ra_etha_port_1;
+  ra_err_t             err       = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1281,9 +1276,8 @@ static ra_err_t internal_resync_mac_speed(ra_rmac_port_t port, uint16_t bmcr)
  *       the ethernet bring-up.
  * @since 0.1.0
  */
-static ra_err_t internal_phy_read_link(ra_rmac_port_t port,
-                                       ra_eth_link_t* out_status,
-                                       uint16_t*      out_bmcr)
+static ra_err_t
+internal_phy_read_link(ra_rmac_port_t port, ra_eth_link_t* out_status, uint16_t* out_bmcr)
 {
   uint16_t bmsr = 0U;
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
@@ -1438,11 +1432,12 @@ ra_err_t ra_eth_test_inject_rx(const uint8_t* payload, uint32_t len)
    * during open. ::internal_eth_rx_pool returns the same low-address
    * (or BSS-on-chip) base; copy the payload to the matching slice so
    * default_recv pops the same bytes. */
-  uint8_t* const pool_slot = internal_eth_rx_pool() + ((uintptr_t)slot * (uintptr_t)k_ra_eth_buf_size);
+  uint8_t* const pool_slot =
+    internal_eth_rx_pool() + ((uintptr_t)slot * (uintptr_t)k_ra_eth_buf_size);
   internal_byte_copy(pool_slot, payload, copy_len);
   desc->ds_l = (uint8_t)(copy_len & (uint32_t)k_ra_eth_test_ds_low_mask);
-  desc->ds_h = (uint8_t)((copy_len >> (uint32_t)k_ra_eth_test_ds_high_shift)
-                         & (uint32_t)k_ra_eth_test_ds_high_mask);
+  desc->ds_h = (uint8_t)((copy_len >> (uint32_t)k_ra_eth_test_ds_high_shift) &
+                         (uint32_t)k_ra_eth_test_ds_high_mask);
   desc->dt   = (uint8_t)k_ra_gwdcc_dt_fsingle;
   return k_ra_ok;
 }

@@ -158,8 +158,8 @@ typedef enum : uint32_t {
 static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
 {
   const uintptr_t addr =
-      (uintptr_t)k_ra_mfwd_base_addr
-      + (uintptr_t)(k_ra_mfwd_off_fwpbfcsdc0_base + ((uint32_t)port * k_ra_mfwd_fwpbfcsdc_stride));
+    (uintptr_t)k_ra_mfwd_base_addr +
+    (uintptr_t)(k_ra_mfwd_off_fwpbfcsdc0_base + ((uint32_t)port * k_ra_mfwd_fwpbfcsdc_stride));
   return (volatile uint32_t*)addr;
 }
 
@@ -170,9 +170,8 @@ ra_err_t ra_eth_mfwd_set_forwarding_masks(const uint8_t port_masks[3])
   for (uint32_t i = 0U; i < (uint32_t)k_ra_mfwd_port_count; ++i) {
     /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
     volatile uint32_t* const reg =
-        (volatile uint32_t*)(k_ra_mfwd_base_addr
-                             + (uintptr_t)(k_ra_mfwd_off_fwpbfc0_base
-                                           + (i * k_ra_mfwd_fwpbfcsdc_stride)));
+      (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)(k_ra_mfwd_off_fwpbfc0_base +
+                                                             (i * k_ra_mfwd_fwpbfcsdc_stride)));
     const uint32_t cur = *reg & ~(uint32_t)k_ra_mfwd_pbdv_mask;
     *reg               = cur | ((uint32_t)port_masks[i] & (uint32_t)k_ra_mfwd_pbdv_mask);
   }
@@ -189,8 +188,8 @@ ra_err_t ra_eth_mfwd_route_queue(uint8_t port, uint8_t queue_index)
   /* FWPBFCSDC0[port].PBCSD -- port-to-host queue routing. */
   /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
   volatile uint32_t* reg = internal_mfwd_fwpbfcsdc(port);
-  const uint32_t     val = (*reg & ~(uint32_t)k_ra_mfwd_pbcsd_mask)
-                       | ((uint32_t)queue_index & (uint32_t)k_ra_mfwd_pbcsd_mask);
-  *reg = val;
+  const uint32_t     val = (*reg & ~(uint32_t)k_ra_mfwd_pbcsd_mask) |
+                           ((uint32_t)queue_index & (uint32_t)k_ra_mfwd_pbcsd_mask);
+  *reg                   = val;
   return k_ra_ok;
 }

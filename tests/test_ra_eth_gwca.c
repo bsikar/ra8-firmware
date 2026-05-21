@@ -323,7 +323,7 @@ static void test_set_descriptor_buffer(void)
   prep();
   ra_gwca_basic_descriptor_t desc = {};
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_set_descriptor_buffer(nullptr, (void*)0x1000U));
-  uint8_t   buf[16];
+  uint8_t buf[16];
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_set_descriptor_buffer(&desc, buf));
   /* PTR low 32 bits should hold the buffer address. */
   TEST_ASSERT_EQ((uintptr_t)buf & 0xFFFFFFFFU, desc.ptr_l);
@@ -344,7 +344,7 @@ static void test_attach_buffers(void)
   TEST_BEGIN("gwca attach_buffers");
   prep();
   __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[4];
-  static uint8_t pool[3U * 64U];
+  static uint8_t                                                 pool[3U * 64U];
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_attach_buffers(nullptr, 4U, 64U, pool));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_attach_buffers(chain, 4U, 64U, nullptr));
@@ -454,19 +454,16 @@ static void test_tx_frame(void)
   TEST_BEGIN("gwca tx_frame");
   prep();
   __attribute__((aligned(16))) ra_gwca_basic_descriptor_t chain[4];
-  static uint8_t pool[3U * 128U];
-  static uint8_t frame[64];
-  uint32_t       tail = 0U;
+  static uint8_t                                          pool[3U * 128U];
+  static uint8_t                                          frame[64];
+  uint32_t                                                tail = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 4U, 128U));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_buffers(chain, 4U, 128U, pool));
 
   /* Argument guards. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_eth_gwca_tx_frame(nullptr, 4U, &tail, frame, 64U, 128U));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_eth_gwca_tx_frame(chain, 4U, &tail, frame, 0U, 128U));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_eth_gwca_tx_frame(chain, 4U, &tail, frame, 99U, 64U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_tx_frame(nullptr, 4U, &tail, frame, 64U, 128U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_tx_frame(chain, 4U, &tail, frame, 0U, 128U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_tx_frame(chain, 4U, &tail, frame, 99U, 64U));
   TEST_END("gwca tx_frame");
 }
 
@@ -493,10 +490,10 @@ static void test_rx_frame(void)
   TEST_BEGIN("gwca rx_frame");
   prep();
   __attribute__((aligned(16))) ra_gwca_basic_descriptor_t chain[4];
-  static uint8_t pool[3U * 128U];
-  static uint8_t out[256];
-  uint32_t       head    = 0U;
-  uint32_t       got_len = 0U;
+  static uint8_t                                          pool[3U * 128U];
+  static uint8_t                                          out[256];
+  uint32_t                                                head    = 0U;
+  uint32_t                                                got_len = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 4U, 128U));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_buffers(chain, 4U, 128U, pool));
 

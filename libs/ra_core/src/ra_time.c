@@ -35,9 +35,9 @@ typedef enum : uintptr_t {
    * that ticks every CPU cycle regardless of PRIMASK -- needed by
    * ra_delay_ms when SysTick IRQ can't dispatch (early boot, IRQ-off
    * critical sections). Cortex-M85 documents these addresses. */
-  k_ra_dwt_demcr_addr   = 0xE000EDFCUL, /**< DEMCR: bit 24 TRCENA. */
-  k_ra_dwt_ctrl_addr    = 0xE0001000UL, /**< DWT_CTRL: bit 0 CYCCNTENA. */
-  k_ra_dwt_cyccnt_addr  = 0xE0001004UL, /**< DWT_CYCCNT free-running counter. */
+  k_ra_dwt_demcr_addr  = 0xE000EDFCUL, /**< DEMCR: bit 24 TRCENA. */
+  k_ra_dwt_ctrl_addr   = 0xE0001000UL, /**< DWT_CTRL: bit 0 CYCCNTENA. */
+  k_ra_dwt_cyccnt_addr = 0xE0001004UL, /**< DWT_CYCCNT free-running counter. */
 } ra_systick_addr_t;
 
 typedef enum : uint32_t {

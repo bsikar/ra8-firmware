@@ -103,18 +103,18 @@ typedef enum : uint8_t {
  * @brief DOC_B register window (HUM Ch 57.2 p 3519-3522).
  */
 typedef struct {
-  volatile uint8_t  DOCR;    /**< +0x00 Control (mode, width, DCSEL).      */
-  volatile uint8_t  _r0;     /**< +0x01 padding.                           */
-  volatile uint16_t _r1;     /**< +0x02 padding.                           */
-  volatile uint8_t  DOSR;    /**< +0x04 Status flag (DOPCF).               */
-  volatile uint8_t  _r2;     /**< +0x05 padding.                           */
-  volatile uint16_t _r3;     /**< +0x06 padding.                           */
-  volatile uint8_t  DOSCR;   /**< +0x08 Status clear (DOPCFCL, write-only).*/
-  volatile uint8_t  _r4;     /**< +0x09 padding.                           */
-  volatile uint16_t _r5;     /**< +0x0A padding.                           */
-  volatile uint32_t DODIR;   /**< +0x0C Data input (access at DOBW width). */
-  volatile uint32_t DODSR0;  /**< +0x10 Reference / running result.        */
-  volatile uint32_t DODSR1;  /**< +0x14 Upper window threshold.            */
+  volatile uint8_t  DOCR;   /**< +0x00 Control (mode, width, DCSEL).      */
+  volatile uint8_t  _r0;    /**< +0x01 padding.                           */
+  volatile uint16_t _r1;    /**< +0x02 padding.                           */
+  volatile uint8_t  DOSR;   /**< +0x04 Status flag (DOPCF).               */
+  volatile uint8_t  _r2;    /**< +0x05 padding.                           */
+  volatile uint16_t _r3;    /**< +0x06 padding.                           */
+  volatile uint8_t  DOSCR;  /**< +0x08 Status clear (DOPCFCL, write-only).*/
+  volatile uint8_t  _r4;    /**< +0x09 padding.                           */
+  volatile uint16_t _r5;    /**< +0x0A padding.                           */
+  volatile uint32_t DODIR;  /**< +0x0C Data input (access at DOBW width). */
+  volatile uint32_t DODSR0; /**< +0x10 Reference / running result.        */
+  volatile uint32_t DODSR1; /**< +0x14 Upper window threshold.            */
 } r_doc_regs_t;
 
 /**

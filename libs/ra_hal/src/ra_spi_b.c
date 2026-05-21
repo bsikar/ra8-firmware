@@ -342,7 +342,7 @@ static void internal_spi_program_regs(volatile r_spi_regs_t* reg, const ra_spi_c
 
   /* HUM Ch 43.2.6 "SPCR3 : SPI Control Register 3" p 2891 */
   const uint8_t spbr = internal_spbr(cfg->baud_hz, cfg->pclka_hz);
-  reg->SPCR3 = ((uint32_t)spbr << k_ra_spcr3_bit_spbr) & k_ra_spcr3_mask_spbr;
+  reg->SPCR3         = ((uint32_t)spbr << k_ra_spcr3_bit_spbr) & k_ra_spcr3_mask_spbr;
 
   /* HUM Ch 43.2.3 "SPDECR : SPI Delay Control Register" p 2883 */
   reg->SPDECR = 0U;

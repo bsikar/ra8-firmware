@@ -86,9 +86,9 @@ static inline void internal_ra_doc_set_mode_16(ra_docr_oms_t mode)
  */
 static inline uint16_t internal_ra_doc_run_16(uint16_t seed, uint16_t operand, uint16_t sw_model)
 {
-  volatile r_doc_regs_t* reg = ra_doc();
-  volatile uint16_t* dodsr0  = (volatile uint16_t*)&reg->DODSR0;
-  volatile uint16_t* dodir   = (volatile uint16_t*)&reg->DODIR;
+  volatile r_doc_regs_t* reg    = ra_doc();
+  volatile uint16_t*     dodsr0 = (volatile uint16_t*)&reg->DODSR0;
+  volatile uint16_t*     dodir  = (volatile uint16_t*)&reg->DODIR;
   /* Seed the accumulator first. */
   /* HUM Ch 57.2.5 "DODSR0 : DOC Data Setting Register 0" p 3521 */
   *dodsr0 = seed;

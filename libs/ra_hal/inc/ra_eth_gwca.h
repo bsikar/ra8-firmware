@@ -201,11 +201,11 @@ void ra_eth_gwca_dispatch(void);
  * MFWD forwarding fabric (FWPBFCSDC0), not by the GWCA queue config.
  */
 typedef struct {
-  uint8_t  priority;     /**< DCP[2:0]: class priority (0..7). */
-  bool     is_tx;        /**< DQT: true = TX, false = RX. */
-  bool     stop_on_last; /**< SL: stop processing on last. */
-  bool     extended;     /**< EDE: true = 16-byte extended descriptors. */
-  void*    chain_head;   /**< First descriptor in the queue (basic or extended). */
+  uint8_t priority;     /**< DCP[2:0]: class priority (0..7). */
+  bool    is_tx;        /**< DQT: true = TX, false = RX. */
+  bool    stop_on_last; /**< SL: stop processing on last. */
+  bool    extended;     /**< EDE: true = 16-byte extended descriptors. */
+  void*   chain_head;   /**< First descriptor in the queue (basic or extended). */
 } ra_eth_gwca_queue_cfg_t;
 
 /**
@@ -310,9 +310,8 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain,
-                                             uint32_t                    ring_depth,
-                                             uint32_t                    slot_bytes);
+[[nodiscard]] ra_err_t
+ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain, uint32_t ring_depth, uint32_t slot_bytes);
 
 /**
  * @brief Set a single descriptor's data-buffer pointer.
@@ -537,14 +536,14 @@ typedef struct {
   /** LINKFIX table covering at least 2 queues (RX + TX). */
   ra_gwca_basic_descriptor_t* linkfix_table;
   /** Number of LINKFIX entries. */
-  uint32_t                    linkfix_count;
+  uint32_t linkfix_count;
   /** RX descriptor chain (FEMPTY ring of ``rx_depth`` entries). */
   ra_gwca_basic_descriptor_t* rx_chain;
   uint32_t                    rx_depth;
   uint8_t*                    rx_pool;
   uint32_t                    rx_slot_bytes;
   uint32_t                    rx_queue_index; /**< LINKFIX entry + GWDCC[i] index. */
-  uint32_t                    rx_head; /**< Round-robin read cursor. */
+  uint32_t                    rx_head;        /**< Round-robin read cursor. */
   /** TX descriptor chain -- 16-byte EXTENDED descriptors (EDE = 1).
    *  FEMPTY ring of ``tx_depth`` entries; the last is a LINK
    *  terminator. The TX path uses extended descriptors so each frame
@@ -557,7 +556,7 @@ typedef struct {
   uint32_t                  tx_queue_index;
   uint32_t                  tx_tail; /**< Round-robin write cursor. */
   /** MAC port (0..3) that frames are sourced from / sent to. */
-  uint8_t                     mac_port;
+  uint8_t mac_port;
 } ra_eth_gwca_default_state_t;
 
 /**
@@ -618,9 +617,8 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state,
-                                                const uint8_t*               frame,
-                                                uint32_t                     len);
+[[nodiscard]] ra_err_t
+ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint8_t* frame, uint32_t len);
 
 /**
  * @brief One-call RX: dequeue next frame from state->rx_chain.

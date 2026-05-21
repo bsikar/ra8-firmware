@@ -76,10 +76,8 @@ static const ra_port_pin_t k_imu_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */
-static const ra_port_pin_t k_imu_demo_pin_scl =
-  (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
-static const ra_port_pin_t k_imu_demo_pin_sda =
-  (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
+static const ra_port_pin_t k_imu_demo_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
+static const ra_port_pin_t k_imu_demo_pin_sda = (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
 
 /* =============================================================================
  * Tiny printf-equivalents for HIL log scraping

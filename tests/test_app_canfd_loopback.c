@@ -83,8 +83,8 @@ static void test_canfd_app_loopback_bits_set(void)
   volatile r_canfd_t* reg = ra_canfd((uint8_t)k_test_canfd_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
   reg->CFDC[0].STS = 0xFFFFFFFFUL;
-  TEST_ASSERT_EQ(
-    k_ra_ok, ra_canfd_set_test_mode((uint8_t)k_test_canfd_app_channel, k_ra_ctms_self_test_1));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_set_test_mode((uint8_t)k_test_canfd_app_channel, k_ra_ctms_self_test_1));
   const uint32_t actual = reg->CFDC[0].CTR;
   /* HUM Ch 41 "CFDCnCTR" p 2710 */ /* CTME bit 24, CTMS at [26:25]. */
   TEST_ASSERT((actual & (uint32_t)k_test_canfd_app_ctme_mask) != 0U);

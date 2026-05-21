@@ -120,7 +120,7 @@ typedef enum : uint32_t {
    * 5 s memprobe window. HUM Ch 44 "Octal Serial Peripheral
    * Interface (OSPI)" p 2986; IS25LX512M datasheet Ch 8.
    */
-  k_ra_xspi_cmd_spin            = 50000U, /**< CMDCMP poll budget. */
+  k_ra_xspi_cmd_spin = 50000U, /**< CMDCMP poll budget. */
   /**
    * @brief WIP-poll iteration cap for program / erase finish.
    *
@@ -134,7 +134,7 @@ typedef enum : uint32_t {
    * over the IS25LX512M max-sector-erase spec but bounded enough that
    * a hung peripheral surfaces to the caller in human time.
    */
-  k_ra_flash_program_timeout_us = 32000U,  /**< Max ~8 s for program / erase. */
+  k_ra_flash_program_timeout_us = 32000U, /**< Max ~8 s for program / erase. */
   /**
    * @brief OCTACKCR SREQ/SRDY handshake budget.
    *
@@ -148,7 +148,7 @@ typedef enum : uint32_t {
    * surfaces as ``hw_timeout`` in sub-millisecond time. Shares its
    * order of magnitude with the USB / CANFD CKSRDY waits.
    */
-  k_ra_xspi_ckcr_spin           = 262144U, /**< OCTACKCR SREQ/SRDY budget. */
+  k_ra_xspi_ckcr_spin = 262144U, /**< OCTACKCR SREQ/SRDY budget. */
 } ra_xspi_timeouts_t;
 
 /**
@@ -286,7 +286,7 @@ static ra_err_t internal_wait_octacksrdy(uint8_t expected)
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_ckcr_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     const uint8_t got = (uint8_t)((*ckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) {                                       /* GCOVR_EXCL_BR_LINE */
+    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -859,9 +859,8 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
-static void internal_xspi_stage_payload(volatile r_xspi_regs_t* reg,
-                                        const uint8_t*          data,
-                                        uint32_t                len)
+static void
+internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, uint32_t len)
 {
   uint32_t data_lo = 0U;
   uint32_t data_hi = 0U;

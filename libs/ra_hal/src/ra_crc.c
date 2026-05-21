@@ -116,9 +116,8 @@ static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
   for (uint32_t i = 0U; i < word_count; i++) {
     const uint32_t base   = i << 2U;
     const uint32_t packed = (uint32_t)data[base + 0U] | ((uint32_t)data[base + 1U] << 8U) |
-                            ((uint32_t)data[base + 2U] << 16U) |
-                            ((uint32_t)data[base + 3U] << 24U);
-    reg->CRCDIR = packed;
+                            ((uint32_t)data[base + 2U] << 16U) | ((uint32_t)data[base + 3U] << 24U);
+    reg->CRCDIR           = packed;
   }
 }
 

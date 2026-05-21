@@ -304,7 +304,7 @@ ra_err_t ra_pfs_set_drive_strength(ra_port_pin_t pin, ra_pfs_dscr_t dscr)
    * PMR-clear dance is required only when PSEL changes; a DSCR-only
    * update of an in-function pin does not retouch PSEL. */
   const uint32_t dscr_field =
-      ((uint32_t)dscr << (uint32_t)k_ra_pfs_bit_dscr0) & (uint32_t)k_ra_pfs_mask_dscr;
+    ((uint32_t)dscr << (uint32_t)k_ra_pfs_bit_dscr0) & (uint32_t)k_ra_pfs_mask_dscr;
   ra_pfs_pwpr_unlock();
   *pfs = (*pfs & ~(uint32_t)k_ra_pfs_mask_dscr) | dscr_field;
   ra_pfs_pwpr_lock();

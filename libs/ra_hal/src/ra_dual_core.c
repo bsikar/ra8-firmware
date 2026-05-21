@@ -550,7 +550,6 @@ bool ra_cpu1_is_running(void)
   if (!active) {
     return false;
   }
-  const bool stalled =
-    (internal_waitcr_read() & (uint8_t)k_ra_dual_core_waitcr_cpuwait_mask) != 0U;
+  const bool stalled = (internal_waitcr_read() & (uint8_t)k_ra_dual_core_waitcr_cpuwait_mask) != 0U;
   return !stalled;
 }

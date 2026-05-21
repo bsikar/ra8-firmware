@@ -219,9 +219,9 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
     g_fj_last_step = 7U;
     return k_ra_err_hw_error;
   }
-  g_fj_last_step = 3U;
-  *echoed           = flash_journal_unpack(back);
-  g_fj_last_echoed  = *echoed;
+  g_fj_last_step   = 3U;
+  *echoed          = flash_journal_unpack(back);
+  g_fj_last_echoed = *echoed;
   return k_ra_ok;
 }
 

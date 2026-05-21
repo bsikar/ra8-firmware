@@ -278,7 +278,7 @@ static void mpu_simple_setup_or_halt(void)
 /* Non-static + used: the inline assembly in MemManage_Handler
  * references this symbol by name, so it must survive LTO and the
  * dead-code stripper. */
-void mpu_simple_fault_recover(uint32_t* frame);
+void                       mpu_simple_fault_recover(uint32_t* frame);
 __attribute__((used)) void mpu_simple_fault_recover(uint32_t* frame)
 {
   /* Advance the stacked PC past the faulting store. The compiler
@@ -344,8 +344,7 @@ static const uint8_t k_mpu_simple_banner[] = "mpu: fault handled, recovered\r\n"
  */
 static void mpu_simple_emit_banner(void)
 {
-  (void)ra_board_uart_console_write(k_mpu_simple_banner,
-                                    sizeof(k_mpu_simple_banner) - 1U);
+  (void)ra_board_uart_console_write(k_mpu_simple_banner, sizeof(k_mpu_simple_banner) - 1U);
 }
 
 #pragma GCC diagnostic push

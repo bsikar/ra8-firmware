@@ -279,14 +279,14 @@ int32_t main(void)
   const clock_check_expected_t kExpected[] = {
     {k_ra_clock_id_cpuclk0, (uint32_t)k_ra_cpuclk0_hz},
     {k_ra_clock_id_cpuclk1, (uint32_t)k_ra_cpuclk1_hz},
-    {k_ra_clock_id_iclk,    (uint32_t)k_ra_iclk_hz   },
-    {k_ra_clock_id_pclka,   (uint32_t)k_ra_pclka_hz  },
-    {k_ra_clock_id_pclkb,   (uint32_t)k_ra_pclkb_hz  },
-    {k_ra_clock_id_pclkc,   (uint32_t)k_ra_pclkc_hz  },
-    {k_ra_clock_id_pclkd,   (uint32_t)k_ra_pclkd_hz  },
-    {k_ra_clock_id_pclke,   (uint32_t)k_ra_pclke_hz  },
-    {k_ra_clock_id_fclk,    (uint32_t)k_ra_fclk_hz   },
-    {k_ra_clock_id_mriclk,  (uint32_t)k_ra_mriclk_hz },
+    {k_ra_clock_id_iclk, (uint32_t)k_ra_iclk_hz},
+    {k_ra_clock_id_pclka, (uint32_t)k_ra_pclka_hz},
+    {k_ra_clock_id_pclkb, (uint32_t)k_ra_pclkb_hz},
+    {k_ra_clock_id_pclkc, (uint32_t)k_ra_pclkc_hz},
+    {k_ra_clock_id_pclkd, (uint32_t)k_ra_pclkd_hz},
+    {k_ra_clock_id_pclke, (uint32_t)k_ra_pclke_hz},
+    {k_ra_clock_id_fclk, (uint32_t)k_ra_fclk_hz},
+    {k_ra_clock_id_mriclk, (uint32_t)k_ra_mriclk_hz},
   };
   const uint32_t kExpectedCount = (uint32_t)(sizeof(kExpected) / sizeof(kExpected[0]));
   for (uint32_t i = 0U; i < kExpectedCount; ++i) {
