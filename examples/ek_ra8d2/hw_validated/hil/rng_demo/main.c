@@ -196,7 +196,7 @@ static void rng_demo_setup_or_halt(void)
     }
   }
   if (all_same) {
-    const uint8_t fail_banner[] = "trng: FAIL stuck\r\n";
+    const uint8_t fail_banner[] = "rng_demo: FAIL stuck\r\n";
     (void)ra_sci_write_polling((uint8_t)k_rng_demo_sci_channel,
                                fail_banner,
                                (uint32_t)(sizeof(fail_banner) - 1U));
