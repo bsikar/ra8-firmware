@@ -52,7 +52,7 @@ static ra_rmac_config_t default_cfg(void)
     .mon0_irq_enable = 0x00001FFFU,
     .mon1_irq_enable = 0x0000000FU,
     .mon2_irq_enable = 0x00000007U,
-    .phy_interface   = k_ra_rmac_pis_rgmii,
+    .phy_interface   = k_ra_rmac_pis_gmii,
     .link_speed      = k_ra_rmac_lsc_1000mbit,
     .duplex          = k_ra_rmac_duplex_full,
   };
@@ -119,7 +119,8 @@ static void test_init_bad_interface(void)
   TEST_BEGIN("rmac init bad iface");
   prep();
   ra_rmac_config_t cfg = default_cfg();
-  cfg.phy_interface    = (ra_rmac_pis_t)(uint8_t)k_ra_rmac_pis_count;
+  /* MPIC.PIS has only MII (0) and GMII (2) defined; 1 is Reserved. */
+  cfg.phy_interface = (ra_rmac_pis_t)(uint8_t)1U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   TEST_END("rmac init bad iface");
 }
@@ -245,21 +246,16 @@ static void test_set_link_modes(void)
   const ra_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
-  /* Walk every (interface, speed, duplex) combination. */
+  /* Walk every (interface, speed, duplex) combination. MPIC.PIS has
+   * only MII + GMII defined (HUM Ch 33.4.1.2 p 1707). */
   const ra_rmac_pis_t ifaces[] = {
-    k_ra_rmac_pis_gmii,
     k_ra_rmac_pis_mii,
-    k_ra_rmac_pis_rmii,
-    k_ra_rmac_pis_rgmii,
-    k_ra_rmac_pis_xgmii,
-    k_ra_rmac_pis_xfi,
+    k_ra_rmac_pis_gmii,
   };
   const ra_rmac_lsc_t speeds[] = {
     k_ra_rmac_lsc_10mbit,
     k_ra_rmac_lsc_100mbit,
     k_ra_rmac_lsc_1000mbit,
-    k_ra_rmac_lsc_2500mbit,
-    k_ra_rmac_lsc_10gbit,
   };
   const ra_rmac_duplex_t duplexes[] = {k_ra_rmac_duplex_half, k_ra_rmac_duplex_full};
 
@@ -280,7 +276,7 @@ static void test_set_link_modes(void)
   /* Bad-arg paths */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_rmac_set_link(k_ra_rmac_port_0,
-                                  (ra_rmac_pis_t)(uint8_t)k_ra_rmac_pis_count,
+                                  (ra_rmac_pis_t)(uint8_t)1U, /* 1 = Reserved PIS */
                                   k_ra_rmac_lsc_10mbit,
                                   k_ra_rmac_duplex_full));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
