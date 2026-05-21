@@ -1380,51 +1380,83 @@ ra_err_t ra_eth_gwca_default_open(ra_eth_gwca_default_state_t* state)
  * reloads the chain base and resumes. It is a no-op while the queue
  * is still live.
  *
+ * Critically, the BALR reload resets the GWCA's AXI address-RAM
+ * current_address for the queue back to the chain base (chain[0]) --
+ * see HUM Ch 34.3 "GWDCCi". The caller's software ring cursor must be
+ * snapped back to 0 in lockstep, or the app fills / drains a slot the
+ * GWCA is no longer looking at and the frame is silently lost. FSP
+ * r_layer3_switch.c::R_LAYER3_SWITCH_StartDescriptorQueue does the
+ * same: it pulses BALR and resets head/tail to 0 together. ``cursor``
+ * is that software ring index (tx_tail for a TX queue, rx_head for
+ * RX); it is zeroed only when an actual re-arm happens.
+ *
  * @param[in,out] chain       Descriptor ring (RX or TX).
  * @param[in]     ring_depth  Ring depth (data slots + LINK terminator).
  * @param[in]     queue_index GWCA queue number for the BALR reload.
+ * @param[in,out] cursor      Software ring cursor; zeroed on re-arm.
  *
  * @pre Caller is in GWMC.OPC = OPERATION.
  * @pre chain[ring_depth - 1] is the ring's LINK/LEMPTY terminator.
- * @post If the queue was disabled it is re-armed and scanning again.
+ * @post If the queue was disabled it is re-armed, scanning again, and
+ *       ``*cursor`` is 0 (re-synced with the GWCA scan position).
  * @post If the queue was already live nothing is changed.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static void internal_rearm_queue_if_disabled(ra_gwca_basic_descriptor_t* chain,
-                                             uint32_t ring_depth, uint32_t queue_index)
+                                             uint32_t ring_depth, uint32_t queue_index,
+                                             uint32_t* cursor)
 {
   ra_gwca_basic_descriptor_t* const term = &chain[ring_depth - 1U];
   if (term->dt != (uint8_t)k_ra_gwdcc_dt_lempty) {
     return;
   }
-  /* Restore the LINK terminator (PTR -> chain[0], dt = LINK), then
-   * reload the queue so the GWCA resumes from the chain base. */
+  /* Restore the LINK terminator (PTR -> chain[0], dt = LINK), reload
+   * the queue so the GWCA resumes from the chain base, and snap the
+   * software cursor to 0 so it tracks the GWCA's reset scan position. */
   internal_set_linkfix_entry(term, &chain[0]);
   term->dt = (uint8_t)k_ra_gwdcc_dt_link;
+  *cursor  = 0U;
   (void)ra_eth_gwca_reload_queue(queue_index);
 }
 
 /**
- * @brief One-call TX: enqueue + kick.
+ * @brief One-call TX: deterministic slot-0 enqueue + reload + kick.
  *
- * @details See header. Self-heals a GWCA-disabled TX queue via
- * ::internal_rearm_queue_if_disabled, then wraps tx_frame + kick_tx.
+ * @details See header. The GWCA TX engine does not free-run a scan
+ * cursor across GWTRC kicks -- it transmits starting from wherever
+ * GWDCCi.BALR last placed the queue's AXI address-RAM
+ * current_address. A software ring cursor that drifts away from that
+ * position therefore enqueues a frame the GWCA never scans, and the
+ * frame is silently dropped (no descriptor write-back, no error).
+ * The RX path tolerates drift because its consumer
+ * (::ra_eth_gwca_find_slot) scans the whole ring; the TX consumer is
+ * the GWCA, which does not.
+ *
+ * So every send is made fully deterministic, mirroring FSP
+ * r_layer3_switch.c::R_LAYER3_SWITCH_StartDescriptorQueue (head/tail
+ * reset to 0 + BALR reload + GWTRC on every transmit):
+ *  1. Restore the LINK terminator (in case the queue idle-disabled).
+ *  2. Snap tx_tail to 0 and enqueue the frame into slot 0.
+ *  3. BALR-reload so the GWCA's current_address points at chain[0].
+ *  4. Kick (GWTRC).
  *
  * @param[in,out] state Initialized by default_open.
  * @param[in]     frame Frame bytes.
  * @param[in]     len   Frame length.
  *
- * @return ra_err_t Error code propagated from tx_frame + kick_tx.
+ * @return ra_err_t Error code propagated from tx_frame / reload / kick.
  * @retval k_ra_ok              Frame queued + TX request fired.
  * @retval k_ra_err_no_data     Queue full.
  * @retval k_ra_err_invalid_arg len > tx_slot_bytes.
+ * @retval k_ra_err_hw_timeout  GWDCC[i].BALR never self-cleared.
  * @retval k_ra_err_null_ptr    state or frame null.
  *
  * @pre default_open returned ok.
  * @pre state remains in its post-default_open layout.
- * @post On success state->tx_tail advanced.
+ * @post On success the frame occupies tx_chain slot 0 and the GWCA
+ *       has been reloaded + signalled.
  * @post On success the chip has been signaled.
  *
  * @note Not thread-safe.
@@ -1434,11 +1466,20 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
                                   uint32_t len)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_send: state null");
-  internal_rearm_queue_if_disabled(state->tx_chain, state->tx_depth, state->tx_queue_index);
+  /* Restore the LINK terminator + snap the cursor to slot 0. */
+  ra_gwca_basic_descriptor_t* const term = &state->tx_chain[state->tx_depth - 1U];
+  internal_set_linkfix_entry(term, &state->tx_chain[0]);
+  term->dt       = (uint8_t)k_ra_gwdcc_dt_link;
+  state->tx_tail = 0U;
   const ra_err_t err = ra_eth_gwca_tx_frame(state->tx_chain, state->tx_depth, &state->tx_tail,
                                             frame, len, state->tx_slot_bytes);
   if (err != k_ra_ok) {
     return err;
+  }
+  /* BALR-reload so the GWCA scans from chain[0] where the frame is. */
+  const ra_err_t reload_err = ra_eth_gwca_reload_queue(state->tx_queue_index);
+  if (reload_err != k_ra_ok) {
+    return reload_err;
   }
   return ra_eth_gwca_kick_tx(state->tx_queue_index);
 }
@@ -1476,7 +1517,8 @@ ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state, uint8_t* o
   const ra_err_t err = ra_eth_gwca_rx_frame(state->rx_chain, state->rx_depth, &state->rx_head,
                                             out_frame, out_capacity, state->rx_slot_bytes, out_len);
   if (err == k_ra_err_no_data) {
-    internal_rearm_queue_if_disabled(state->rx_chain, state->rx_depth, state->rx_queue_index);
+    internal_rearm_queue_if_disabled(state->rx_chain, state->rx_depth, state->rx_queue_index,
+                                     &state->rx_head);
   }
   return err;
 }
