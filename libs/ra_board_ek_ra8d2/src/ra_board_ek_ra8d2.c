@@ -1985,41 +1985,6 @@ static ra_err_t internal_eth_route_alt_pins(void)
 }
 
 /**
- * @brief Bring the ESWM Common Agent (COMA) IP out of reset.
- *
- * @details
- * After ESWCLK / ESWPHYCLK are running and the MSTP gates for ESWM /
- * ETHPHYCLK are released and PDCTRESWM has powered the domain on, the
- * RA8D2 still gates the per-port RMAC / ETHA register windows behind
- * the COMA "switch clock" enable. Without this sequence the entire
- * RMAC / ETHA register surface reads back 0 and writes are silently
- * dropped (verified with a J-Link MMIO probe on EK-RA8D2 hardware).
- *
- * The sequence mirrors FSP r_layer3_switch_reset_coma:
- *   1. Pulse COMA.RRC.RR (1 then 0): reset the ESWM IP.
- *   2. Set COMA.RCEC.RCE (bit 16): enable the switch clock.
- *   3. Pulse COMA.CABPIRM.BPIOG (1): initialise the buffer pool.
- *   4. Wait for COMA.CABPIRM.BPR to set (buffer pool ready).
- *
- * The small busy-wait between RRC pulse and RCEC write is required
- * (FSP uses ``R_BSP_SoftwareDelay(1ms)``); 200_000 nops at 1 GHz lands
- * around ~0.5 ms, comfortably above the FSP delay.
- *
- * @return Result code.
- * @retval k_ra_ok               COMA bring-up complete.
- * @retval k_ra_err_hw_timeout   Buffer-pool BPR flag never asserted.
- *
- * @pre  ::ra_cgc_eswclk_init has run (ESWCLK + ESWPHYCLK live, PDDE=0,
- *       MSTPC30 + MSTPC28 released).
- * @pre  Caller is single-threaded init context.
- *
- * @post COMA.RCEC.RCE = 1, buffer pool initialised, per-port RMAC /
- *       ETHA register windows accessible.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @enum ra_board_eth_coma_delay_t
  * @brief Busy-wait iteration counts for the COMA bring-up sequence.
  *
@@ -2029,44 +1994,52 @@ static ra_err_t internal_eth_route_alt_pins(void)
  * ``R_BSP_SoftwareDelay(1, BSP_DELAY_UNITS_MILLISECONDS)`` for the
  * same purpose, so ~1 ms is sufficient -- we keep ~3 ms for margin).
  * 200_000 iters is the equivalent of the FSP 1-us settle delay used
- * between the ETHA EAMC writes.
+ * between the ETHA EAMC writes. ``bpr_poll_max`` bounds the
+ * CABPIRM.BPR poll: HUM Ch 31.3.2.7 says BPR sets at clk_period x 512
+ * from the start of buffer-pool init -- well under a microsecond --
+ * so 1,000,000 register-read iterations is a multi-millisecond
+ * safety ceiling that satisfies NASA P10 Rule 2.
  */
 typedef enum : uint32_t {
-  k_ra_board_eth_coma_delay_iters = 3000000UL, /**< ~1-3 ms busy wait between COMA writes. */
-  k_ra_board_eth_etha_step_iters  = 200000UL,  /**< ~50 us settle between ETHA mode writes.*/
+  k_ra_board_eth_coma_delay_iters  = 3000000UL, /**< ~1-3 ms busy wait between COMA writes. */
+  k_ra_board_eth_etha_step_iters   = 200000UL,  /**< ~50 us settle between ETHA mode writes.*/
+  k_ra_board_eth_coma_bpr_poll_max = 1000000UL, /**< CABPIRM.BPR poll upper bound.          */
 } ra_board_eth_coma_delay_t;
 
 /**
- * @brief Bring the COMA (Common Agent) IP out of reset and enable per-
- *        agent clock fan-out.
+ * @brief Bring the COMA (Common Agent) IP out of reset, initialise the
+ *        buffer pool, and enable per-agent clock fan-out.
  *
  * @details
- * Subset of FSP r_layer3_switch_reset_coma needed for the bare RMAC /
- * ETHA MDIO bring-up. Without this sequence the per-port RMAC / ETHA
- * register windows read back 0 and writes are silently dropped (the
- * COMA switch clock gates them).
+ * Faithful port of FSP r_layer3_switch_reset_coma. Two effects are
+ * essential and were both bench-confirmed on EK-RA8D2:
+ *  - Without the switch + agent clocks the per-port RMAC / ETHA
+ *    register windows read back 0 and writes are silently dropped.
+ *  - Without the CABPIRM.BPIOG -> BPR buffer-pool init the shared
+ *    MFAB pointer pool stays non-operational: the RMAC cannot obtain
+ *    a buffer for an inbound frame, so every RX frame overflows
+ *    (MEIS.REOES, MROVFC climbs) and MRGFCE stays 0.
  *
- * @return Always ::k_ra_ok (no failure paths in the truncated sequence).
- * @retval k_ra_ok COMA RRC pulsed and RCEC=RCE|ACE programmed.
+ * Sequence (HUM Ch 31.4 software flows):
+ *   1. Pulse COMA.RRC.RR (1 then 0): reset the ESWM IP.
+ *   2. Set COMA.RCEC.RCE: enable the switch clock alone.
+ *   3. Write COMA.CABPIRM.BPIOG = 1, poll until CABPIRM.BPR == 1.
+ *   4. Set COMA.RCEC = RCE | ACE[6:0]: fan every per-agent clock out.
+ *
+ * @return Result code.
+ * @retval k_ra_ok             COMA out of reset, buffer pool ready.
+ * @retval k_ra_err_hw_timeout CABPIRM.BPR never asserted.
  *
  * @pre ESWM MSTP gates released (MSTPC30 + MSTPC28).
  * @pre PDCTRESWM.PDDE = 0 (peripheral domain powered).
- * @post COMA.RCEC.RCE = 1 and ACE[6:0] = all-ones.
+ * @post COMA.RCEC.RCE = 1, ACE[6:0] = all-ones, CABPIRM.BPR = 1.
  * @post Per-port RMAC / ETHA register windows are accessible.
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static ra_err_t internal_eth_coma_reset(void)
 {
-  /* Subset of FSP r_layer3_switch_reset_coma -- just the parts the
-   * bare RMAC / ETHA MDIO path needs. The full Layer-3 switch flow
-   * additionally pulses CABPIRM.BPIOG and waits for BPR (the buffer-
-   * pool reset); on EK-RA8D2 hardware BPR never asserts unless GWCA
-   * is also being brought up, so we skip that step. The two we keep:
-   *   1. RRC pulse: resets the ESWM IP and all the per-agent windows.
-   *   2. RCEC = RCE | ACE[6:0]=ALL: fans every per-agent clock out so
-   *      RMAC0/1 + ETHA0/1 + GWCA + MFWD + GPTP all become accessible.
-   */
+  /* Faithful port of FSP r_layer3_switch_reset_coma. */
 
   /* Step 1: RRC pulse + ~1 ms delay. */
   *ra_coma_rrc() = (uint32_t)k_ra_coma_rrc_rr;
@@ -2074,10 +2047,34 @@ static ra_err_t internal_eth_coma_reset(void)
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_delay_iters; ++i) {
     __asm__ volatile("nop");
   }
-  /* Step 2: enable RCE + every ACE bit at once. The Renesas-doc'd
-   * "RCE-alone then RCE|ACE" sequence is only required when the
-   * downstream buffer-pool init has to settle in between; we're
-   * not running that step so a single write is sufficient. */
+
+  /* Step 2: enable the switch clock (RCE) alone, then settle. */
+  *ra_coma_rcec() = (uint32_t)k_ra_coma_rcec_rce;
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_delay_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+
+  /* Step 3: kick the COMA buffer-pool init and wait for BPR.
+   * HUM Ch 31.3.2.7 "CABPIRM" p 1599: writing BPIOG=1 starts the pool
+   * reset; BPR self-sets clk_period x 512 later. Under
+   * RA_SIMULATOR_MODE the CABPIRM register is mmap'd RAM with no
+   * hardware to self-set BPR, so the poll is target-only. */
+  *ra_coma_cabpirm() = (uint32_t)k_ra_coma_cabpirm_bpiog;
+#ifndef RA_SIMULATOR_MODE
+  bool bpr_ready = false;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_bpr_poll_max; ++i) {
+    if ((*ra_coma_cabpirm() & (uint32_t)k_ra_coma_cabpirm_bpr) != 0U) {
+      bpr_ready = true;
+      break;
+    }
+  }
+  if (!bpr_ready) {
+    return k_ra_err_hw_timeout;
+  }
+#endif
+
+  /* Step 4: fan out every per-agent clock (RCE | ACE[6:0]=ALL) so
+   * RMAC0/1 + ETHA0/1 + GWCA + MFWD + GPTP all become accessible. */
   *ra_coma_rcec() = (uint32_t)k_ra_coma_rcec_rce | (uint32_t)k_ra_coma_rcec_ace_mask;
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_delay_iters; ++i) {
     __asm__ volatile("nop");
