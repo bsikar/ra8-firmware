@@ -206,7 +206,7 @@ static void thread_rx_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    ra_canfd_frame_t rx = {};
+    ra_canfd_frame_t rx  = {};
     const ra_err_t   err = ra_canfd_receive((uint8_t)k_canfd_demo_channel, &rx);
     if (err == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led2);
@@ -319,8 +319,7 @@ int32_t main(void)
   /* Internal-loopback (HUM Ch 41 "CFDCnCTR" p 2710): TX frames echo
    * into RX so this single-board demo can validate the round trip
    * without a second CAN node on the bus. */
-  if (ra_canfd_set_test_mode((uint8_t)k_canfd_demo_channel,
-                             k_ra_ctms_self_test_1) != k_ra_ok) {
+  if (ra_canfd_set_test_mode((uint8_t)k_canfd_demo_channel, k_ra_ctms_self_test_1) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }

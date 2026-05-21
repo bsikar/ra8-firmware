@@ -133,8 +133,8 @@ static ra_err_t recv_blocking(uint8_t channel, uint32_t* out_msg)
  */
 int main(void)
 {
-  g_cpu1_pingpong_step = 1U;
-  ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
+  g_cpu1_pingpong_step        = 1U;
+  ra_err_t err                = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
   g_cpu1_pingpong_release_err = (uint32_t)err;
   g_cpu1_pingpong_step        = 2U;
   if (err != k_ra_ok) {

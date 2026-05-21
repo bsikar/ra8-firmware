@@ -1302,8 +1302,7 @@ static ra_err_t internal_io_expander_route_pins(void)
 static ra_err_t internal_io_expander_program_u15(uint8_t output_byte)
 {
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_out;
-  ra_err_t err =
-    internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output, output_byte);
+  ra_err_t err = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output, output_byte);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1734,8 +1733,8 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
    * so the line rate came out 2x too fast. Read PCLKA from CGC at
    * runtime instead so the BRR tracks whatever the application's CGC
    * tree settled on. */
-  uint32_t       pclka_hz = 0U;
-  ra_err_t       err      = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
+  uint32_t pclka_hz = 0U;
+  ra_err_t err      = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1996,13 +1995,16 @@ static ra_err_t internal_eth_route_alt_pins(void)
   /* RGMII transmit pins need DSCR = 01b middle drive strength. */
   /* HUM Ch 20.2.6 "PmnPFS" p 845 */
   static const uint16_t s_eth_tx_pins[] = {
-    (uint16_t)k_ra_board_eth_pin_txd0,   (uint16_t)k_ra_board_eth_pin_txd1,
-    (uint16_t)k_ra_board_eth_pin_txd2,   (uint16_t)k_ra_board_eth_pin_txd3,
-    (uint16_t)k_ra_board_eth_pin_tx_ctl, (uint16_t)k_ra_board_eth_pin_tx_clk,
+    (uint16_t)k_ra_board_eth_pin_txd0,
+    (uint16_t)k_ra_board_eth_pin_txd1,
+    (uint16_t)k_ra_board_eth_pin_txd2,
+    (uint16_t)k_ra_board_eth_pin_txd3,
+    (uint16_t)k_ra_board_eth_pin_tx_ctl,
+    (uint16_t)k_ra_board_eth_pin_tx_clk,
   };
   for (uint32_t i = 0U; i < sizeof(s_eth_tx_pins) / sizeof(s_eth_tx_pins[0]); ++i) {
     const ra_err_t err =
-        ra_pfs_set_drive_strength((ra_port_pin_t)s_eth_tx_pins[i], k_ra_pfs_dscr_middle);
+      ra_pfs_set_drive_strength((ra_port_pin_t)s_eth_tx_pins[i], k_ra_pfs_dscr_middle);
     if (err != k_ra_ok) {
       return err;
     }
@@ -2333,9 +2335,8 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
    * link-speed resync re-programs PIS + LSC to match whatever the
    * PHY auto-negotiates. */
   const ra_rmac_config_t rmac_cfg = {
-    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match
-                                         | k_ra_rmac_mrafc_broadcast
-                                         | k_ra_rmac_mrafc_bc_accept),
+    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast |
+                                         k_ra_rmac_mrafc_bc_accept),
     .err_irq_enable  = 0U,
     .mon0_irq_enable = 0U,
     .mon1_irq_enable = 0U,
@@ -2385,8 +2386,8 @@ typedef enum : uint16_t {
    * MIICR1.TXCIDE delay -- neither is tunable in firmware. Closing
    * the gigabit eye needs a scope on the TX pins or an EEPROM to
    * override the PHY straps; until then the link stays at 100M. */
-  k_ra_board_eth_phy_gbcr_value   = 0x0000U, /**< 1000BASE-T NOT advertised (see above). */
-  k_ra_board_eth_phy_reset_spin   = 4096U,   /**< BMCR.RESET self-clear cap.   */
+  k_ra_board_eth_phy_gbcr_value = 0x0000U, /**< 1000BASE-T NOT advertised (see above). */
+  k_ra_board_eth_phy_reset_spin = 4096U,   /**< BMCR.RESET self-clear cap.   */
 } ra_board_eth_phy_reg_t;
 
 /**
@@ -2419,9 +2420,9 @@ static ra_err_t internal_eth_phy_soft_reset(void)
   for (uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_phy_reset_spin; ++i) {
     uint16_t bmcr = 0U;
     err           = ra_rmac_mdio_c22_read((ra_rmac_port_t)k_ra_board_eth_rmac_port,
-                                (uint8_t)k_ra_board_eth_phy_addr,
-                                (uint8_t)k_ra_board_eth_phy_reg_bmcr,
-                                &bmcr);
+                                          (uint8_t)k_ra_board_eth_phy_addr,
+                                          (uint8_t)k_ra_board_eth_phy_reg_bmcr,
+                                          &bmcr);
     if (err != k_ra_ok) {
       return err;
     }
@@ -2461,8 +2462,8 @@ static ra_err_t internal_eth_phy_set_rgmii_skew(void)
   if (read_err != k_ra_ok) {
     return read_err;
   }
-  miictrl = (uint16_t)((miictrl & (uint16_t)~k_ra_board_eth_phy_rxskew_mask)
-                       | (uint16_t)k_ra_board_eth_phy_rxskew_1p0ns);
+  miictrl = (uint16_t)((miictrl & (uint16_t)~k_ra_board_eth_phy_rxskew_mask) |
+                       (uint16_t)k_ra_board_eth_phy_rxskew_1p0ns);
   return ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
                                 (uint8_t)k_ra_board_eth_phy_addr,
                                 (uint8_t)k_ra_board_eth_phy_reg_miictrl,
@@ -2506,11 +2507,11 @@ static ra_err_t internal_eth_phy_start_autoneg(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
-                                (uint8_t)k_ra_board_eth_phy_addr,
-                                (uint8_t)k_ra_board_eth_phy_reg_bmcr,
-                                (uint16_t)(k_ra_board_eth_phy_bmcr_an_en
-                                           | k_ra_board_eth_phy_bmcr_an_rst));
+  return ra_rmac_mdio_c22_write(
+    (ra_rmac_port_t)k_ra_board_eth_rmac_port,
+    (uint8_t)k_ra_board_eth_phy_addr,
+    (uint8_t)k_ra_board_eth_phy_reg_bmcr,
+    (uint16_t)(k_ra_board_eth_phy_bmcr_an_en | k_ra_board_eth_phy_bmcr_an_rst));
 }
 
 /**

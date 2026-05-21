@@ -174,9 +174,8 @@ static void canfd_demo_setup_or_halt(void)
                            (uint32_t)k_canfd_demo_bitrate) != k_ra_ok) {
     canfd_demo_panic_halt();
   }
-  g_canfd_init_step = 2U;
-  g_canfd_ncfg_after_setbitrate =
-    ra_canfd((uint8_t)k_canfd_demo_channel)->CFDC[0].NCFG;
+  g_canfd_init_step             = 2U;
+  g_canfd_ncfg_after_setbitrate = ra_canfd((uint8_t)k_canfd_demo_channel)->CFDC[0].NCFG;
   if (canfd_demo_enable_internal_loopback((uint8_t)k_canfd_demo_channel) != k_ra_ok) {
     canfd_demo_panic_halt();
   }
