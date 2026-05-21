@@ -1189,7 +1189,15 @@ static ra_err_t internal_program_mpic(ra_rmac_port_t   port,
   if (err != k_ra_ok) {
     return err;
   }
-  const ra_err_t set_err = ra_rmac_set_link(port, k_ra_rmac_pis_rgmii, speed, duplex);
+  /* HUM Table 29.11: MPIC.PIS tracks link speed, not the external
+   * RGMII-ness -- GMII for 1 Gbps, MII for 10/100 Mbps. The ESWM
+   * MIICR1.MIISEL field (programmed once by the board) is what
+   * actually selects external RGMII. */
+  ra_rmac_pis_t pis = k_ra_rmac_pis_mii;
+  if (speed == k_ra_rmac_lsc_1000mbit) {
+    pis = k_ra_rmac_pis_gmii;
+  }
+  const ra_err_t set_err = ra_rmac_set_link(port, pis, speed, duplex);
   const ra_err_t dis_err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
   const ra_err_t op_err  = ra_etha_set_mode(etha_port, k_ra_etha_opc_operation);
   if (set_err != k_ra_ok) {

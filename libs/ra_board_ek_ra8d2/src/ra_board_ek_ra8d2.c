@@ -2294,6 +2294,12 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
    * sees a "who-has 192.168.1.42" request and never replies. FSP
    * r_rmac.c::rmac_configure_reception_filter ORs both bits into the
    * canonical promiscuous mask for the same reason. */
+  /* HUM Table 29.11: for an external RGMII link the RMAC's internal
+   * xMII (MPIC.PIS) is MII for 10/100 Mbps and GMII for 1 Gbps -- the
+   * ESWM media mux (MIICR1.MIISEL = 01b) does the RGMII conversion.
+   * The boot default is 1 Gbps, so PIS = GMII here; ra_eth_open's
+   * link-speed resync re-programs PIS + LSC to match whatever the
+   * PHY auto-negotiates. */
   const ra_rmac_config_t rmac_cfg = {
     .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match
                                          | k_ra_rmac_mrafc_broadcast
@@ -2302,7 +2308,7 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
     .mon0_irq_enable = 0U,
     .mon1_irq_enable = 0U,
     .mon2_irq_enable = 0U,
-    .phy_interface   = k_ra_rmac_pis_rgmii,
+    .phy_interface   = k_ra_rmac_pis_gmii,
     .link_speed      = k_ra_rmac_lsc_1000mbit,
     .duplex          = k_ra_rmac_duplex_full,
     .eswclk_hz       = eswclk_hz,
@@ -2310,6 +2316,68 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
   };
   return ra_rmac_init((ra_rmac_port_t)k_ra_board_eth_rmac_port, &rmac_cfg);
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+}
+
+/**
+ * @enum ra_board_eth_phy_skew_t
+ * @brief GPY111 vendor-register constants for the RGMII RX-skew fix.
+ *
+ * @details
+ * The EK-RA8D2's on-board MaxLinear GPY111 PHY (Renesas part marking
+ * "PEF7071") needs its RGMII receive-path timing skew programmed to
+ * 1.0 ns. The RA8D2 ESWM media-interface mux (MIICR1) can add a
+ * *transmit* clock delay (TXCIDE) but has NO receive-clock delay
+ * control -- so the RX delay MUST come from the PHY. Without it the
+ * MAC samples RGMII RX data at the wrong instant and every inbound
+ * frame is corrupt: MRGFCE (received-good-frame counter) stays 0.
+ *
+ * Mirrors FSP r_rmac_phy_target_gpy111.c::
+ * rmac_phy_target_gpy111_initialize: read MIICTRL (vendor reg 0x17),
+ * clear the RXSKEW field (bits 14:12), set it to 0b010 = 1.0 ns.
+ */
+typedef enum : uint16_t {
+  k_ra_board_eth_phy_reg_miictrl   = 0x17U,   /**< GPY111 MIICTRL vendor reg. */
+  k_ra_board_eth_phy_rxskew_mask   = 0x7000U, /**< MIICTRL RXSKEW field [14:12]. */
+  k_ra_board_eth_phy_rxskew_1p0ns  = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.   */
+} ra_board_eth_phy_skew_t;
+
+/**
+ * @brief Program the GPY111 PHY's RGMII receive-timing skew to 1.0 ns.
+ *
+ * @details
+ * Must run after ETHA1 is in OPERATION (so MDIO can drive MDC) and
+ * after RMAC1's MPIC.PSMCS is set. Reads vendor register 0x17,
+ * rewrites the RXSKEW field, writes it back. See
+ * ::ra_board_eth_phy_skew_t for why this is mandatory on EK-RA8D2.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok            RXSKEW programmed to 1.0 ns.
+ * @retval k_ra_err_hw_timeout An MDIO transaction timed out.
+ *
+ * @pre ETHA1 is in OPERATION mode.
+ * @pre RMAC1 MPIC.PSMCS is non-zero (MDC clock running).
+ * @post GPY111 MIICTRL.RXSKEW == 0b010 (1.0 ns).
+ * @post No other MIICTRL bits are disturbed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_phy_set_rgmii_skew(void)
+{
+  uint16_t       miictrl   = 0U;
+  const ra_err_t read_err  = ra_rmac_mdio_c22_read((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                                                  (uint8_t)k_ra_board_eth_phy_addr,
+                                                  (uint8_t)k_ra_board_eth_phy_reg_miictrl,
+                                                  &miictrl);
+  if (read_err != k_ra_ok) {
+    return read_err;
+  }
+  miictrl = (uint16_t)((miictrl & (uint16_t)~k_ra_board_eth_phy_rxskew_mask)
+                       | (uint16_t)k_ra_board_eth_phy_rxskew_1p0ns);
+  return ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                                (uint8_t)k_ra_board_eth_phy_addr,
+                                (uint8_t)k_ra_board_eth_phy_reg_miictrl,
+                                miictrl);
 }
 
 /* Ra board ethernet init -- see implementation for details. */
@@ -2353,5 +2421,13 @@ ra_err_t ra_board_ethernet_init(void)
     return err;
   }
   /* Step 6: promote ETHA1 to OPERATION so MDIO can drive MDC. */
-  return internal_eth_etha_to_operation();
+  err = internal_eth_etha_to_operation();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Step 7: program the GPY111 PHY's RGMII receive-timing skew to
+   * 1.0 ns. Mandatory -- the ESWM media mux has no RX-clock delay
+   * control, so without the PHY-side skew every inbound RGMII frame
+   * is sampled wrong and dropped (MRGFCE stays 0). */
+  return internal_eth_phy_set_rgmii_skew();
 }

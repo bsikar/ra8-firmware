@@ -850,7 +850,7 @@ static void test_etha_open_eamc_transition(void)
                                  .mon0_irq_enable = 0U,
                                  .mon1_irq_enable = 0U,
                                  .mon2_irq_enable = 0U,
-                                 .phy_interface   = k_ra_rmac_pis_rmii,
+                                 .phy_interface   = k_ra_rmac_pis_mii,
                                  .link_speed      = k_ra_rmac_lsc_100mbit,
                                  .duplex          = k_ra_rmac_duplex_full};
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &rcfg));
