@@ -156,8 +156,9 @@ ra_err_t ra_eth_gwca_exit_stop(void)
  * budget is mostly hit-once.
  */
 enum : uint32_t {
-  k_ra_eth_gwca_mode_spin = 2000000UL,
-  k_ra_eth_gwca_balr_spin = 2000000UL, /**< GWDCCi.BALR self-clear poll budget. */
+  k_ra_eth_gwca_mode_spin    = 2000000UL,
+  k_ra_eth_gwca_balr_spin    = 2000000UL, /**< GWDCCi.BALR self-clear poll budget.   */
+  k_ra_eth_gwca_tx_done_spin = 2000000UL, /**< TX descriptor write-back poll budget. */
 };
 
 /**
@@ -1441,22 +1442,30 @@ static void internal_rearm_queue_if_disabled(ra_gwca_basic_descriptor_t* chain,
  *  2. Snap tx_tail to 0 and enqueue the frame into slot 0.
  *  3. BALR-reload so the GWCA's current_address points at chain[0].
  *  4. Kick (GWTRC).
+ *  5. Block until the GWCA writes slot 0 back (transmit complete).
+ *
+ * Step 5 makes the call synchronous: because every send reuses slot 0
+ * and BALR-reloads the queue, a second send overlapping an in-flight
+ * first send would overwrite the slot-0 buffer mid-DMA and reset the
+ * scan pointer under the running transmit. Waiting for completion
+ * serialises TX and closes that window.
  *
  * @param[in,out] state Initialized by default_open.
  * @param[in]     frame Frame bytes.
  * @param[in]     len   Frame length.
  *
  * @return ra_err_t Error code propagated from tx_frame / reload / kick.
- * @retval k_ra_ok              Frame queued + TX request fired.
+ * @retval k_ra_ok              Frame transmitted (slot 0 written back).
  * @retval k_ra_err_no_data     Queue full.
  * @retval k_ra_err_invalid_arg len > tx_slot_bytes.
- * @retval k_ra_err_hw_timeout  GWDCC[i].BALR never self-cleared.
+ * @retval k_ra_err_hw_timeout  BALR never self-cleared, or the GWCA
+ *                              never wrote slot 0 back.
  * @retval k_ra_err_null_ptr    state or frame null.
  *
  * @pre default_open returned ok.
  * @pre state remains in its post-default_open layout.
- * @post On success the frame occupies tx_chain slot 0 and the GWCA
- *       has been reloaded + signalled.
+ * @post On success the frame has been fully transmitted and slot 0 is
+ *       no longer FSINGLE.
  * @post On success the chip has been signaled.
  *
  * @note Not thread-safe.
@@ -1481,7 +1490,30 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
   if (reload_err != k_ra_ok) {
     return reload_err;
   }
-  return ra_eth_gwca_kick_tx(state->tx_queue_index);
+  const ra_err_t kick_err = ra_eth_gwca_kick_tx(state->tx_queue_index);
+  if (kick_err != k_ra_ok) {
+    return kick_err;
+  }
+  /* Block until the GWCA has consumed slot 0 (FSINGLE -> FEMPTY
+   * write-back). default_send always enqueues into slot 0 and BALR-
+   * reloads the queue, so a second send that started before the
+   * first finished would overwrite the slot-0 buffer mid-DMA and
+   * reset the GWCA's scan pointer under an in-flight transmit --
+   * corrupting or dropping the earlier frame. Making the send
+   * synchronous (one frame fully on the wire before the next is
+   * queued) closes that window. A frame transmits in tens of
+   * microseconds, far inside this budget. */
+#ifndef RA_SIMULATOR_MODE
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_tx_done_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if (state->tx_chain[0].dt != (uint8_t)k_ra_gwdcc_dt_fsingle) { /* GCOVR_EXCL_BR_LINE */
+      return k_ra_ok;
+    }
+  }
+  ra_log_error(s_tag, "default_send: TX completion timeout");
+  return k_ra_err_hw_timeout;
+#else
+  return k_ra_ok;
+#endif
 }
 
 /**
