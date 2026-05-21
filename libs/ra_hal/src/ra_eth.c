@@ -34,15 +34,18 @@
 #include <stdint.h>
 
 #include "ra8d2_ether_regs.h"
+#include "ra8d2_etha_regs.h"
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_rmac_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_etha.h"
 #include "ra_eth_gwca.h"
 #include "ra_eth_mfwd.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_rmac.h"
+#include "ra_time.h"
 
 /**
  * @var s_tag
@@ -67,14 +70,25 @@ static void* s_eth_ctx;
  * @brief PHY-side MIIM constants used by ::ra_eth_link_status.
  */
 typedef enum : uint16_t {
-  k_ra_eth_phy_addr_default  = 0U,      /**< EK-RA8D2 PHY MDC address.   */
-  k_ra_eth_phy_reg_bmcr      = 0U,      /**< BMCR (basic mode control).  */
-  k_ra_eth_phy_reg_bmsr      = 1U,      /**< BMSR (basic mode status).   */
-  k_ra_eth_phy_bmsr_link_up  = 0x0004U, /**< BMSR.LINK_STATUS bit 2.     */
-  k_ra_eth_phy_bmcr_speed100 = 0x2000U, /**< BMCR.SPEED_SELECT bit 13.   */
-  k_ra_eth_phy_bmcr_duplex   = 0x0100U, /**< BMCR.DUPLEX_MODE bit 8.     */
-  k_ra_eth_phy_speed_10      = 10U,     /**< 10 Mbps.                    */
-  k_ra_eth_phy_speed_100     = 100U,    /**< 100 Mbps.                   */
+  k_ra_eth_phy_addr_default   = 0U,      /**< EK-RA8D2 PHY MDC address.    */
+  k_ra_eth_phy_reg_bmcr       = 0U,      /**< BMCR (basic mode control).   */
+  k_ra_eth_phy_reg_bmsr       = 1U,      /**< BMSR (basic mode status).    */
+  k_ra_eth_phy_reg_anlpar     = 5U,      /**< ANLPAR (10/100 link partner).*/
+  k_ra_eth_phy_reg_gbsr       = 10U,     /**< GBSR (1G link-partner ability). */
+  k_ra_eth_phy_bmsr_link_up   = 0x0004U, /**< BMSR.LINK_STATUS bit 2.      */
+  k_ra_eth_phy_bmsr_an_done   = 0x0020U, /**< BMSR.AUTONEG_COMPLETE bit 5. */
+  k_ra_eth_phy_bmcr_speed100  = 0x2000U, /**< BMCR.SPEED_SELECT bit 13.    */
+  k_ra_eth_phy_bmcr_speed1000 = 0x0040U, /**< BMCR.SPEED_MS bit 6 (1Gb).   */
+  k_ra_eth_phy_bmcr_duplex    = 0x0100U, /**< BMCR.DUPLEX_MODE bit 8.      */
+  k_ra_eth_phy_anlpar_10h     = 0x0020U, /**< ANLPAR bit 5: 10BASE-T.      */
+  k_ra_eth_phy_anlpar_10f     = 0x0040U, /**< ANLPAR bit 6: 10BASE-T FD.   */
+  k_ra_eth_phy_anlpar_100h    = 0x0080U, /**< ANLPAR bit 7: 100BASE-TX.    */
+  k_ra_eth_phy_anlpar_100f    = 0x0100U, /**< ANLPAR bit 8: 100BASE-TX FD. */
+  k_ra_eth_phy_gbsr_1000h     = 0x0400U, /**< GBSR bit 10: 1000BASE-T HD.  */
+  k_ra_eth_phy_gbsr_1000f     = 0x0800U, /**< GBSR bit 11: 1000BASE-T FD.  */
+  k_ra_eth_phy_speed_10       = 10U,     /**< 10 Mbps.                     */
+  k_ra_eth_phy_speed_100      = 100U,    /**< 100 Mbps.                    */
+  k_ra_eth_phy_speed_1000     = 1000U,   /**< 1 Gbps.                      */
 } ra_eth_phy_t;
 
 /**
@@ -456,13 +470,56 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
    * clobber the carefully-computed MDC clock divider (PSMCS) and force
    * the wrong PHY interface mode (MII instead of RGMII). The only
    * RMAC-level state ``ra_eth_open`` still has to programme is the
-   * MAC address the application chose. */
+   * MAC address the application chose.
+   *
+   * HUM Ch 33.4 "MRMAC0 / MRMAC1" p 1707 -- the MAC address registers
+   * are paired with MPIC under the same write-once gate: silent on
+   * MAC writes while ETHA is in OPERATION. Bench-confirmed on
+   * EK-RA8D2: without the DISABLE -> CONFIG -> {MAC write} -> DISABLE
+   * -> OPERATION bracket, MRMAC0 / MRMAC1 read back as 0 after
+   * ra_eth_open completes, and every wire-side ARP "who-has 192.168.
+   * .1.42" gets dropped at the RMAC perfect-match comparator before
+   * the GWCA descriptor ring ever sees it.
+   *
+   * The board layer ran the bracket once during ra_rmac_init; we have
+   * to repeat it here so the application-supplied MAC actually lands
+   * in MRMAC0/MRMAC1. */
   const ra_rmac_port_t rmac_port = internal_channel_to_port(cfg->channel);
+  const ra_etha_port_t etha_port = (cfg->channel == 0U)
+                                       ? (ra_etha_port_t)k_ra_etha_port_0
+                                       : (ra_etha_port_t)k_ra_etha_port_1;
   uint8_t              mac_copy[k_ra_eth_mac_len];
   for (uint8_t i = 0U; i < (uint8_t)k_ra_eth_mac_len; ++i) {
     mac_copy[i] = cfg->mac_address[i];
   }
-  return ra_rmac_set_mac_address(rmac_port, mac_copy);
+
+  /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 -- ETHA
+   * mode-transition sequence. DISABLE before CONFIG so the ESWM
+   * accepts the request even if the port was already in OPERATION. */
+  ra_err_t err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_etha_set_mode(etha_port, k_ra_etha_opc_config);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* HUM Ch 33.4 "MRMAC0 / MRMAC1" p 1707 -- writes only stick while
+   * the paired ETHA is in CONFIG. */
+  const ra_err_t mac_err = ra_rmac_set_mac_address(rmac_port, mac_copy);
+
+  /* Always return to OPERATION even on MAC write failure so the chip
+   * doesn't end up parked in CONFIG. */
+  const ra_err_t dis_err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
+  const ra_err_t op_err  = ra_etha_set_mode(etha_port, k_ra_etha_opc_operation);
+  if (mac_err != k_ra_ok) {
+    return mac_err;
+  }
+  if (dis_err != k_ra_ok) {
+    return dis_err;
+  }
+  return op_err;
 }
 
 /* Implementation of ra_eth_init (see header for full contract) -- see header for the documented contract. */
@@ -676,6 +733,46 @@ static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg)
 volatile uint32_t g_ra_eth_open_step;
 
 /**
+ * @var g_ra_eth_phy_bmsr_after_wait
+ * @brief BMSR snapshot AFTER the ::internal_wait_for_autoneg poll.
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint16_t g_ra_eth_phy_bmsr_after_wait;
+
+/**
+ * @var g_ra_eth_anlpar
+ * @brief Last-read ANLPAR (PHY reg 5) snapshot for bench debugging.
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint16_t g_ra_eth_anlpar;
+
+/**
+ * @var g_ra_eth_gbsr
+ * @brief Last-read GBSR (PHY reg 10) snapshot for bench debugging.
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint16_t g_ra_eth_gbsr;
+
+/**
+ * @var g_ra_eth_resync_speed_lsc
+ * @brief Speed-LSC value the resync chose. 0=10M, 1=100M, 2=1000M.
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_ra_eth_resync_speed_lsc;
+
+/**
+ * @var g_ra_eth_resync_duplex
+ * @brief Duplex value the resync chose. 0=half, 1=full.
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_ra_eth_resync_duplex;
+
+/**
  * @brief Walk the GWCA bring-up + MFWD routing setup for ::ra_eth_open.
  *
  * @details
@@ -846,63 +943,302 @@ ra_err_t ra_eth_read(uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 }
 
 /**
- * @brief Re-program MPIC.LSC / MPIC.PIPP so the on-chip RMAC clocks
- *        match the PHY's negotiated link speed and duplex.
+ * @brief Compute the highest auto-negotiated speed + duplex from ANLPAR+GBSR.
  *
  * @details
- * ::ra_board_ethernet_init programs MPIC.LSC for 1000 Mbit/s at boot
- * because that is the maximum the EK-RA8D2's PEF7071 PHY supports.
- * When the link partner only offers 10/100 (typical USB-Ethernet
- * adapter), the PHY auto-negotiates down -- but MPIC is stuck at
- * 1000 Mbit/s and the on-chip RMAC ignores every RGMII edge as
- * out-of-spec framing. Symptom: PHY reports link-up and BMSR =
- * 0x782D, ARP arrives on the wire, but no software-visible RX
- * frame ever lands. HUM Ch 33.4.1.2 "MPIC : PHY Interfaces
- * Configuration Register" p 1707 documents MPIC.LSC = link-speed
- * code; FSP ``r_rmac_phy_link_partner_ability_get`` followed by
- * ``r_rmac_set_link`` is the equivalent FSP-side sequence.
+ * Mirrors FSP r_rmac_phy.c::R_RMAC_PHY_LinkPartnerAbilityGet. Picks
+ * the highest priority intersection of our local PHY advertisement
+ * and the link partner's: 1000F > 100F > 100H > 10F > 10H. BMCR's
+ * speed bits are NOT the negotiated speed -- they reflect what the
+ * host commanded the PHY to be (not what the auto-neg landed on).
  *
- * This helper decodes the PHY's BMCR (set by the on-PHY auto-neg
- * resolver) and calls ::ra_rmac_set_link with matching MPIC.LSC /
- * MPIC.PIPP values, preserving the existing PIS = RGMII and the
- * boot-time PSMCS divider.
+ * @param[in]  anlpar Auto-negotiation Link Partner Ability register.
+ * @param[in]  gbsr   1000BASE-T Status register (link-partner-ability bits).
+ * @param[out] out_speed  Receives the LSC value for ::ra_rmac_set_link.
+ * @param[out] out_duplex Receives the duplex value.
  *
- * Decisions are written as sequential ifs (no compound boolean
- * operators) so each condition remains independently traceable
- * under MC/DC without needing a paired test vector matrix.
+ * @pre out_speed and out_duplex are non-null.
+ * @pre Auto-neg has completed (caller checked BMSR.AN_COMPLETE).
+ * @post On return ``*out_speed`` reflects the highest mutual ability.
+ * @post On return ``*out_duplex`` reflects matching duplex.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_pick_negotiated_speed(uint16_t          anlpar,
+                                           uint16_t          gbsr,
+                                           ra_rmac_lsc_t*    out_speed,
+                                           ra_rmac_duplex_t* out_duplex)
+{
+  /* Default: lowest tier. */
+  *out_speed  = k_ra_rmac_lsc_10mbit;
+  *out_duplex = k_ra_rmac_duplex_half;
+  if ((anlpar & (uint16_t)k_ra_eth_phy_anlpar_10h) != 0U) {
+    *out_speed  = k_ra_rmac_lsc_10mbit;
+    *out_duplex = k_ra_rmac_duplex_half;
+  }
+  if ((anlpar & (uint16_t)k_ra_eth_phy_anlpar_10f) != 0U) {
+    *out_speed  = k_ra_rmac_lsc_10mbit;
+    *out_duplex = k_ra_rmac_duplex_full;
+  }
+  if ((anlpar & (uint16_t)k_ra_eth_phy_anlpar_100h) != 0U) {
+    *out_speed  = k_ra_rmac_lsc_100mbit;
+    *out_duplex = k_ra_rmac_duplex_half;
+  }
+  if ((anlpar & (uint16_t)k_ra_eth_phy_anlpar_100f) != 0U) {
+    *out_speed  = k_ra_rmac_lsc_100mbit;
+    *out_duplex = k_ra_rmac_duplex_full;
+  }
+  if ((gbsr & (uint16_t)k_ra_eth_phy_gbsr_1000h) != 0U) {
+    *out_speed  = k_ra_rmac_lsc_1000mbit;
+    *out_duplex = k_ra_rmac_duplex_half;
+  }
+  if ((gbsr & (uint16_t)k_ra_eth_phy_gbsr_1000f) != 0U) {
+    *out_speed  = k_ra_rmac_lsc_1000mbit;
+    *out_duplex = k_ra_rmac_duplex_full;
+  }
+}
+
+/**
+ * @brief Re-program MPIC.LSC / MPIC.PIPP to match the PHY's auto-neg result.
+ *
+ * @details
+ * The board layer programs MPIC for 1Gbps at boot because that is
+ * the maximum the EK-RA8D2's PEF7071/GPY111 PHY supports. When the
+ * link partner only offers 10/100 (typical USB-Ethernet adapter),
+ * the PHY auto-negotiates down -- but MPIC stays at 1Gbps and the
+ * on-chip RMAC ignores every RGMII edge as out-of-spec framing.
+ * Symptom (bench-confirmed on EK-RA8D2): PHY reports link-up, ARP
+ * arrives on the wire, but MRGFCE stays at 0 and no frame ever
+ * lands in the GWCA RX chain.
+ *
+ * This helper reads the auto-neg result registers (ANLPAR reg 5 +
+ * GBSR reg 10) -- NOT BMCR, whose speed bits are the host command --
+ * picks the highest mutually-supported speed/duplex via
+ * ::internal_pick_negotiated_speed, then brackets the MPIC write
+ * with the ETHA DISABLE -> CONFIG -> {MPIC} -> DISABLE -> OPERATION
+ * transitions required by HUM Ch 33.4.1.2.
+ *
+ * Mirrors FSP r_rmac_phy.c::R_RMAC_PHY_LinkPartnerAbilityGet.
  *
  * @param[in] port RMAC port whose MPIC needs updating.
- * @param[in] bmcr Most-recent PHY BMCR snapshot.
+ * @param[in] bmcr Unused -- kept for API stability with the old caller.
  *
  * @return ::ra_err_t error code.
- * @retval k_ra_ok                 MPIC re-programmed (or no-op).
- * @retval k_ra_err_invalid_arg    ::ra_rmac_set_link rejected an arg.
+ * @retval k_ra_ok              MPIC re-programmed (or no-op).
+ * @retval k_ra_err_invalid_arg ::ra_rmac_set_link rejected an arg.
+ * @retval k_ra_err_hw_timeout  An ETHA mode transition or MDIO timed out.
  *
- * @pre  ::ra_eth_open has succeeded (::s_state.opened == 1).
- * @pre  ::s_mac_speed_resynced is false on first call after open.
+ * @pre ::ra_eth_open has succeeded (::s_state.opened == 1).
+ * @pre ::s_mac_speed_resynced is false on first call after open.
  * @post On k_ra_ok the on-chip RMAC's MPIC.LSC matches the PHY's
  *       negotiated speed and MPIC.PIPP matches its duplex.
  * @post ::s_mac_speed_resynced is true on success.
  *
- * @note Not thread-safe; the EK-RA8D2 firmware drives this from a
- *       single bring-up thread.
+ * @note Not thread-safe; firmware drives this from a single bring-up
+ *       thread.
  *
+ * @since 0.1.0
+ */
+/**
+ * @enum ra_eth_an_poll_t
+ * @brief Bound on the AUTONEG_COMPLETE poll loop.
+ *
+ * @details Spec: auto-neg should complete within ~3 s of link-up.
+ * We poll BMSR.AN_COMPLETE for up to 4 s in 50 ms increments before
+ * giving up and falling back to whatever ANLPAR / GBSR happen to
+ * read (typically zero -> 10M HD).
+ */
+typedef enum : uint32_t {
+  k_ra_eth_an_poll_period_ms = 50U,
+  k_ra_eth_an_poll_max_iters = 80U, /**< 80 * 50 ms = 4 s ceiling.   */
+} ra_eth_an_poll_t;
+
+/**
+ * @brief Poll BMSR.AUTONEG_COMPLETE until it asserts or the budget runs out.
+ *
+ * @details
+ * BMSR.LINK_STATUS can fire before AN_COMPLETE, but ANLPAR / GBSR
+ * only latch the link-partner advertisement at AN_COMPLETE. Reading
+ * them too early returns 0. Polls every k_ra_eth_an_poll_period_ms
+ * for up to k_ra_eth_an_poll_max_iters iterations (~4 s ceiling).
+ *
+ * @param[in] port RMAC port whose PHY to poll.
+ *
+ * @pre Caller is single-threaded.
+ * @pre PHY is enumerated at ::k_ra_eth_phy_addr_default.
+ * @post Returns once AN_COMPLETE is set or the budget is exhausted.
+ * @post Side-effect free apart from the busy-wait loop.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_wait_for_autoneg(ra_rmac_port_t port)
+{
+  uint16_t bmsr = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_eth_an_poll_max_iters; ++i) {
+    if (ra_rmac_mdio_c22_read(port,
+                              (uint8_t)k_ra_eth_phy_addr_default,
+                              (uint8_t)k_ra_eth_phy_reg_bmsr,
+                              &bmsr) != k_ra_ok) {
+      g_ra_eth_phy_bmsr_after_wait = bmsr;
+      return;
+    }
+    if ((bmsr & (uint16_t)k_ra_eth_phy_bmsr_an_done) != 0U) {
+      g_ra_eth_phy_bmsr_after_wait = bmsr;
+      return;
+    }
+    ra_delay_ms((uint32_t)k_ra_eth_an_poll_period_ms);
+  }
+  g_ra_eth_phy_bmsr_after_wait = bmsr;
+}
+
+/**
+ * @brief Read ANLPAR + GBSR and pick the negotiated speed/duplex.
+ *
+ * @details
+ * Helper extracted from ::internal_resync_mac_speed so each function
+ * fits under the 60-line / 40-statement cap. Reads PHY registers 5
+ * (ANLPAR) and 10 (GBSR), snapshots them into the bench-side debug
+ * vars, then calls ::internal_pick_negotiated_speed to compute the
+ * highest mutually-supported speed/duplex.
+ *
+ * @param[in]  port       RMAC port whose PHY to query.
+ * @param[out] out_speed  Receives the LSC value.
+ * @param[out] out_duplex Receives the duplex value.
+ *
+ * @return ::ra_err_t MDIO read outcome (propagated from the first
+ *         failing read).
+ * @retval k_ra_ok            Both registers fetched.
+ * @retval other              MDIO read failure.
+ *
+ * @pre Auto-neg has had a chance to settle (call
+ *      ::internal_wait_for_autoneg first).
+ * @pre out_speed / out_duplex are non-null.
+ * @post On success the resync debug snapshots are updated.
+ * @post On failure ``*out_speed`` / ``*out_duplex`` are unmodified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_query_negotiated_speed(ra_rmac_port_t    port,
+                                                ra_rmac_lsc_t*    out_speed,
+                                                ra_rmac_duplex_t* out_duplex)
+{
+  uint16_t anlpar = 0U;
+  /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
+  const ra_err_t anlpar_err = ra_rmac_mdio_c22_read(port,
+                                                    (uint8_t)k_ra_eth_phy_addr_default,
+                                                    (uint8_t)k_ra_eth_phy_reg_anlpar,
+                                                    &anlpar);
+  if (anlpar_err != k_ra_ok) {
+    return anlpar_err;
+  }
+  uint16_t       gbsr     = 0U;
+  const ra_err_t gbsr_err = ra_rmac_mdio_c22_read(port,
+                                                  (uint8_t)k_ra_eth_phy_addr_default,
+                                                  (uint8_t)k_ra_eth_phy_reg_gbsr,
+                                                  &gbsr);
+  if (gbsr_err != k_ra_ok) {
+    return gbsr_err;
+  }
+  g_ra_eth_anlpar = anlpar;
+  g_ra_eth_gbsr   = gbsr;
+  internal_pick_negotiated_speed(anlpar, gbsr, out_speed, out_duplex);
+  g_ra_eth_resync_speed_lsc = (uint32_t)*out_speed;
+  g_ra_eth_resync_duplex    = (uint32_t)*out_duplex;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Drop ETHA to CONFIG, write MPIC, return to OPERATION.
+ *
+ * @details Bracketed write per HUM Ch 33.4.1.2 -- MPIC only sticks
+ * while ETHA is in CONFIG. Always returns ETHA to OPERATION even if
+ * the MPIC write itself failed, so the chip doesn't park in CONFIG.
+ *
+ * @param[in] port   RMAC port whose MPIC needs updating.
+ * @param[in] speed  Target LSC value.
+ * @param[in] duplex Target duplex value.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok              MPIC programmed.
+ * @retval k_ra_err_hw_timeout  ETHA mode transition timed out.
+ * @retval k_ra_err_invalid_arg ra_rmac_set_link rejected the args.
+ *
+ * @pre Auto-neg result has been read.
+ * @pre port and speed/duplex are in range.
+ * @post On k_ra_ok ETHA is in OPERATION, MPIC reflects the args.
+ * @post On error ETHA is restored to OPERATION before returning.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_program_mpic(ra_rmac_port_t   port,
+                                      ra_rmac_lsc_t    speed,
+                                      ra_rmac_duplex_t duplex)
+{
+  const ra_etha_port_t etha_port = (port == k_ra_rmac_port_0)
+                                       ? (ra_etha_port_t)k_ra_etha_port_0
+                                       : (ra_etha_port_t)k_ra_etha_port_1;
+  ra_err_t err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_etha_set_mode(etha_port, k_ra_etha_opc_config);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const ra_err_t set_err = ra_rmac_set_link(port, k_ra_rmac_pis_rgmii, speed, duplex);
+  const ra_err_t dis_err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
+  const ra_err_t op_err  = ra_etha_set_mode(etha_port, k_ra_etha_opc_operation);
+  if (set_err != k_ra_ok) {
+    return set_err;
+  }
+  if (dis_err != k_ra_ok) {
+    return dis_err;
+  }
+  return op_err;
+}
+
+/**
+ * @brief Resync MPIC.LSC / MPIC.PIPP to match the PHY auto-neg result.
+ *
+ * @details
+ * Top-level helper. Polls for AUTONEG_COMPLETE, reads ANLPAR / GBSR
+ * for the actual negotiated speed/duplex, then writes MPIC inside
+ * the ETHA CONFIG bracket. See ::internal_query_negotiated_speed and
+ * ::internal_program_mpic for the per-step details.
+ *
+ * @param[in] port RMAC port whose MPIC needs updating.
+ * @param[in] bmcr Unused -- kept for API stability with the old caller.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok              MPIC re-programmed.
+ * @retval k_ra_err_invalid_arg ra_rmac_set_link rejected an arg.
+ * @retval k_ra_err_hw_timeout  An ETHA mode transition or MDIO timed out.
+ *
+ * @pre ::ra_eth_open has succeeded (::s_state.opened == 1).
+ * @pre ::s_mac_speed_resynced is false on first call after open.
+ * @post On success MPIC matches the PHY's negotiated speed/duplex.
+ * @post On success ::s_mac_speed_resynced is true.
+ *
+ * @note Not thread-safe; firmware drives this from a single thread.
  * @since 0.1.0
  */
 static ra_err_t internal_resync_mac_speed(ra_rmac_port_t port, uint16_t bmcr)
 {
-  ra_rmac_lsc_t speed = k_ra_rmac_lsc_10mbit;
-  if ((bmcr & k_ra_eth_phy_bmcr_speed100) != 0U) {
-    speed = k_ra_rmac_lsc_100mbit;
-  }
+  (void)bmcr;
+  internal_wait_for_autoneg(port);
+  ra_rmac_lsc_t    speed  = k_ra_rmac_lsc_10mbit;
   ra_rmac_duplex_t duplex = k_ra_rmac_duplex_half;
-  if ((bmcr & k_ra_eth_phy_bmcr_duplex) != 0U) {
-    duplex = k_ra_rmac_duplex_full;
+  const ra_err_t   q_err  = internal_query_negotiated_speed(port, &speed, &duplex);
+  if (q_err != k_ra_ok) {
+    return q_err;
   }
-  /* HUM Ch 33.4.1.2 "MPIC : PHY Interfaces Configuration Register" p 1707 */
-  const ra_err_t set_err = ra_rmac_set_link(port, k_ra_rmac_pis_rgmii, speed, duplex);
-  if (set_err != k_ra_ok) {
-    return set_err;
+  const ra_err_t mpic_err = internal_program_mpic(port, speed, duplex);
+  if (mpic_err != k_ra_ok) {
+    return mpic_err;
   }
   s_mac_speed_resynced = true;
   ra_log_info(s_tag, "link_status: MPIC resynced to PHY speed/duplex");
