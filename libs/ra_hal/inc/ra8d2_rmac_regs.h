@@ -432,6 +432,20 @@ typedef enum : uint32_t {
 } ra_rmac_mmis1_bit_t;
 
 /**
+ * @enum ra_rmac_mpsm_bit_t
+ * @brief MPSM (PHY Station Management Register) control bits.
+ *
+ * @details HUM Ch 33.4.1.1 "MPSM" p 1707. PSME is the start/busy
+ * flag: software writes 1 to launch a PHY register transaction and
+ * the hardware self-clears it to 0 on completion. Writes to MPSM
+ * while PSME is asserted "have no effect" (HUM Note 2), so the
+ * driver must drain PSME to 0 before issuing a new transaction.
+ */
+typedef enum : uint32_t {
+  k_ra_rmac_mpsm_psme = (1UL << 0), /**< PHY Station Management Enable / busy. */
+} ra_rmac_mpsm_bit_t;
+
+/**
  * @enum ra_rmac_mmis2_bit_t
  * @brief MMIS2 wake-on-LAN / EEE bits.
  */
