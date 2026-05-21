@@ -1485,6 +1485,18 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
   if (err != k_ra_ok) {
     return err;
   }
+  /* Data synchronization barrier: the frame buffer + descriptor were
+   * just written to Normal (SRAM) memory; the GWCA kick below is a
+   * Device-memory write. The Armv8-M memory model does NOT order a
+   * Device write after preceding Normal-memory writes without an
+   * explicit DSB -- so the GWCA could begin DMA-ing the frame while
+   * the tail of a long memcpy is still draining the store buffer,
+   * reading stale data. Short frames drain before the GWCA reads;
+   * long frames do not. Bench-confirmed root cause of frame-size-
+   * dependent TX corruption (clean <= ~400 B, lost >= ~700 B). */
+#ifndef RA_SIMULATOR_MODE
+  __asm__ volatile("dsb" ::: "memory");
+#endif
   /* BALR-reload so the GWCA scans from chain[0] where the frame is. */
   const ra_err_t reload_err = ra_eth_gwca_reload_queue(state->tx_queue_index);
   if (reload_err != k_ra_ok) {
