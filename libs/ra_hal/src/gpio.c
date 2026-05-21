@@ -281,6 +281,38 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
   return k_ra_ok;
 }
 
+/* Implementation of ra_pfs_set_drive_strength (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_pfs_set_drive_strength(ra_port_pin_t pin, ra_pfs_dscr_t dscr)
+{
+  const ra_port_t port = RA_PIN_PORT(pin);
+  const ra_pin_t  bit  = RA_PIN_PIN(pin);
+  if ((uint8_t)port > k_ra_port_max) {
+    return k_ra_err_gpio_invalid_port;
+  }
+  if ((uint8_t)bit > k_ra_pin_max) {
+    return k_ra_err_gpio_invalid_pin;
+  }
+
+  volatile uint32_t* pfs = ra_pfs_pmn(port, bit);
+  if (pfs == nullptr) {
+    return k_ra_err_hw_unmapped;
+  }
+
+  /* Read-modify-write only the DSCR[1:0] field; PSEL / PMR / direction
+   * are preserved so an already-routed pin keeps its function.
+   * HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 -- the
+   * PMR-clear dance is required only when PSEL changes; a DSCR-only
+   * update of an in-function pin does not retouch PSEL. */
+  const uint32_t dscr_field =
+      ((uint32_t)dscr << (uint32_t)k_ra_pfs_bit_dscr0) & (uint32_t)k_ra_pfs_mask_dscr;
+  ra_pfs_pwpr_unlock();
+  *pfs = (*pfs & ~(uint32_t)k_ra_pfs_mask_dscr) | dscr_field;
+  ra_pfs_pwpr_lock();
+
+  ra_log_info_val(s_tag, "pin drive strength", (uint32_t)pin);
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * External IRQ attachment
  * =============================================================================
