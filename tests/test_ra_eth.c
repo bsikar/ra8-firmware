@@ -306,30 +306,29 @@ static void test_write_enqueues_and_advances(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_write_busy_when_full(void)
+static void test_write_slot0_reuse(void)
 {
-  TEST_BEGIN("eth write busy when ring full");
+  TEST_BEGIN("eth write slot-0 reuse");
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
 
   uint8_t pkt[64];
   (void)memset(pkt, 0x5A, sizeof(pkt));
 
-  /* Fill every data slot. Each write flips one FEMPTY descriptor to
-   * FSINGLE; without a chip-side completion the ring saturates. */
+  /* The GWCA TX path is synchronous and always reuses extended
+   * descriptor slot 0, so back-to-back writes never saturate a ring
+   * -- every call completes and is counted, none report busy. */
   for (uint16_t i = 0U; i < (uint16_t)k_ra_eth_num_tx_desc; ++i) {
     TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
   }
-  /* The next write finds no FEMPTY slot and gets reported as busy. */
-  TEST_ASSERT_EQ(k_ra_err_busy, ra_eth_write(pkt, (uint32_t)sizeof(pkt)));
 
   ra_eth_stats_t stats = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_get_stats(&stats));
   TEST_ASSERT_EQ(k_ra_eth_num_tx_desc, stats.tx_ok);
-  TEST_ASSERT_EQ(1U, stats.tx_err);
+  TEST_ASSERT_EQ(0U, stats.tx_err);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_close());
-  TEST_END("eth write busy when ring full");
+  TEST_END("eth write slot-0 reuse");
 }
 
 /**
@@ -608,7 +607,7 @@ int32_t main(void)
   test_write_null_rejected();
   test_write_bad_length();
   test_write_enqueues_and_advances();
-  test_write_busy_when_full();
+  test_write_slot0_reuse();
 
   test_read_no_data();
   test_read_null_rejected();

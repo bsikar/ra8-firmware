@@ -247,29 +247,30 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_eth_close(void);
 
 /**
- * @brief Enqueue a frame on the TX descriptor ring.
+ * @brief Transmit a frame through the GWCA TX queue.
  *
  * @details
- * Writes ``len`` bytes from ``buf`` into the buffer associated with
- * the current TX write pointer, then sets TACT=1 to hand the
- * descriptor over to the EDMAC engine. The write pointer advances
- * to the next descriptor regardless of hardware state -- the next
- * call uses a different descriptor.
+ * Copies ``len`` bytes from ``buf`` into the driver-owned TX buffer,
+ * fills the slot-0 extended descriptor (direct format, destination
+ * vector = the bound MAC port), kicks the GWCA, and blocks until the
+ * GWCA writes the descriptor back. Every call reuses descriptor
+ * slot 0, so the send is synchronous: it returns only once the
+ * previous frame has left the queue.
  *
  * @param[in] buf Pointer to frame bytes (MAC header + payload, no FCS).
  * @param[in] len Frame length in bytes (60..1514).
  *
  * @return ::ra_err_t Error code.
- * @retval k_ra_ok                  Frame enqueued.
+ * @retval k_ra_ok                  Frame transmitted.
  * @retval k_ra_err_null_ptr        buf is nullptr.
  * @retval k_ra_err_invalid_arg     len is out of range.
- * @retval k_ra_err_busy            All TX descriptors hardware-owned.
+ * @retval k_ra_err_hw_timeout      GWCA did not complete the descriptor.
  * @retval k_ra_err_not_initialized ::ra_eth_open was not called first.
  *
  * @pre Driver previously brought up via ::ra_eth_open.
  * @pre len is between ::k_ra_eth_min_frame and ::k_ra_eth_max_frame.
- * @post On success, TACT=1 on the descriptor at the write pointer.
- * @post On success, the write pointer has advanced one slot.
+ * @post On success, the frame has been handed to the GWCA TX queue.
+ * @post On success, the tx_ok statistics counter has been incremented.
  *
  * @note Caller copies the data; ``buf`` may be released on return.
  * @see ra_eth_read

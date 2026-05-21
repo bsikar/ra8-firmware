@@ -583,15 +583,19 @@ ra_err_t ra_eth_gwca_bring_up(ra_gwca_basic_descriptor_t* linkfix_table, uint32_
  */
 static uint32_t internal_compose_gwdcc(const ra_eth_gwca_queue_cfg_t* cfg)
 {
-  /* GWDCC value: DQT + DCP[18:16] + SL. SM[1:0] stays 00b (Normal
-   * mode -- full descriptor write-back). EDE/ETS stay 0 (basic
-   * descriptors), BALR stays 0 (default AXI burst), OSID 0. */
+  /* GWDCC value: DQT + DCP[18:16] + SL + EDE. SM[1:0] stays 00b
+   * (Normal mode -- full descriptor write-back). ETS stays 0, BALR
+   * stays 0 (default AXI burst), OSID 0. EDE = 1 when the queue uses
+   * 16-byte extended descriptors (the TX path). */
   uint32_t value = 0U;
   if (cfg->is_tx) {
     value |= (uint32_t)k_ra_gwdcc_dqt;
   }
   if (cfg->stop_on_last) {
     value |= (uint32_t)k_ra_gwdcc_sl;
+  }
+  if (cfg->extended) {
+    value |= (uint32_t)k_ra_gwdcc_ede;
   }
   value |= (((uint32_t)cfg->priority << k_ra_gwdcc_dcp_shift) & k_ra_gwdcc_dcp_mask);
   return value;
@@ -605,7 +609,8 @@ static uint32_t internal_compose_gwdcc(const ra_eth_gwca_queue_cfg_t* cfg)
  * No MMIO is touched -- caller-owned table memory only.
  *
  * @param[in,out] entry      LINKFIX entry to rewrite.
- * @param[in]     chain_head Address to encode into the 40-bit PTR field.
+ * @param[in]     chain_head Address to encode into the 40-bit PTR field
+ *                           (basic or extended descriptor array head).
  * @pre entry is non-null and previously initialised by install_linkfix.
  * @pre chain_head is the head of the queue's descriptor array.
  * @post entry->dt == LINKFIX; ptr_h/ptr_l carry the 40-bit address.
@@ -613,8 +618,8 @@ static uint32_t internal_compose_gwdcc(const ra_eth_gwca_queue_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t*       entry,
-                                       const ra_gwca_basic_descriptor_t* chain_head)
+static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t* entry,
+                                       const void*                 chain_head)
 {
   enum : uintptr_t {
     k_ra_linkfix_ptr_upper_shift = 32U,
@@ -1179,11 +1184,125 @@ static ra_err_t internal_drain_rx_slot(ra_gwca_basic_descriptor_t* desc,
  * @since 0.1.0
  */
 /**
+ * @brief Initialise the extended (16-byte) TX descriptor chain.
+ *
+ * @details The TX queue uses GWCA extended descriptors (EDE = 1) so
+ * every frame carries its INFO1 routing metadata. This helper primes
+ * the chain: entries 0..depth-2 become FEMPTY data slots with
+ * ds = slot_bytes and PTR = pool + i * slot_bytes; the last entry
+ * becomes a LINK terminator wrapping to chain[0]. INFO1 is zeroed
+ * here and populated per-frame by ::ra_eth_gwca_default_send. It is
+ * the 16-byte-descriptor analogue of ::ra_eth_gwca_init_ring +
+ * ::ra_eth_gwca_attach_buffers, which only handle 8-byte basic
+ * descriptors.
+ *
+ * @param[in,out] chain      Caller-owned extended-descriptor array.
+ * @param[in]     depth      Number of entries (>= 2).
+ * @param[in]     slot_bytes Per-slot buffer size in bytes (<= 2048).
+ * @param[in]     pool       Contiguous buffer pool, >= (depth-1)*slot_bytes.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Chain primed.
+ * @retval k_ra_err_null_ptr    chain or pool is null.
+ * @retval k_ra_err_invalid_arg depth < 2 or slot_bytes > 2048.
+ *
+ * @pre Caller is in GWMC.OPC = CONFIG.
+ * @pre chain is 16-byte aligned.
+ * @post chain[0..depth-2] have dt = FEMPTY, ds = slot_bytes, PTR set.
+ * @post chain[depth-1] has dt = LINK with PTR = &chain[0].
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_tx_ext_init(ra_gwca_ext_descriptor_t* chain, uint32_t depth,
+                                     uint32_t slot_bytes, const uint8_t* pool)
+{
+  RA_CHECK_NULL_PTR(chain, s_tag, "tx_ext_init: chain null");
+  RA_CHECK_NULL_PTR(pool, s_tag, "tx_ext_init: pool null");
+  enum : uint32_t {
+    k_tx_ext_min_depth = 2U,    /**< One FEMPTY slot + one LINK terminator. */
+    k_tx_ext_max_bytes = 2048U, /**< HUM DS field is 12 bits.               */
+    k_ds_low_mask      = 0xFFU, /**< ds_l carries 8 bits.                   */
+    k_ds_high_shift    = 8U,    /**< ds_h packs the upper 4 bits.           */
+    k_ds_high_mask     = 0xFU,  /**< ds_h field width.                      */
+  };
+  if (depth < k_tx_ext_min_depth) {
+    return k_ra_err_invalid_arg;
+  }
+  if (slot_bytes > k_tx_ext_max_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  enum : uintptr_t {
+    k_ptr_hi_shift = 32U,    /**< PTR[39:32] lives 32 bits up.  */
+    k_ptr_hi_mask  = 0xFFULL, /**< PTR high byte width.         */
+  };
+  for (uint32_t i = 0U; i < (depth - 1U); ++i) {
+    (void)memset(&chain[i], 0, sizeof(ra_gwca_ext_descriptor_t));
+    chain[i].dt   = (uint8_t)k_ra_gwdcc_dt_fempty;
+    chain[i].ds_l = (uint8_t)(slot_bytes & k_ds_low_mask);
+    chain[i].ds_h = (uint8_t)((slot_bytes >> k_ds_high_shift) & k_ds_high_mask);
+    const uintptr_t buf = (uintptr_t)pool + ((uintptr_t)i * (uintptr_t)slot_bytes);
+    chain[i].ptr_h      = (uint8_t)(((uint64_t)buf >> k_ptr_hi_shift) & (uint64_t)k_ptr_hi_mask);
+    chain[i].ptr_l      = (uint32_t)buf;
+  }
+  ra_gwca_ext_descriptor_t* const term = &chain[depth - 1U];
+  (void)memset(term, 0, sizeof(ra_gwca_ext_descriptor_t));
+  const uintptr_t head = (uintptr_t)&chain[0];
+  term->ptr_h          = (uint8_t)(((uint64_t)head >> k_ptr_hi_shift) & (uint64_t)k_ptr_hi_mask);
+  term->ptr_l          = (uint32_t)head;
+  term->dt             = (uint8_t)k_ra_gwdcc_dt_link;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Re-arm the extended TX queue if the GWCA has disabled it.
+ *
+ * @details The 16-byte-descriptor analogue of
+ * ::internal_rearm_queue_if_disabled. When the TX queue runs dry the
+ * GWCA rewrites the chain's LINK terminator to LEMPTY and stops
+ * scanning; this restores the terminator to LINK (PTR -> chain[0])
+ * and re-pulses GWDCC[i].BALR so the GWCA resumes. A no-op while the
+ * queue is still live. No software cursor to reset -- the extended
+ * TX path always enqueues into slot 0.
+ *
+ * @param[in,out] chain       Extended TX descriptor chain.
+ * @param[in]     depth       Ring depth (data slots + LINK terminator).
+ * @param[in]     queue_index GWCA queue number for the BALR reload.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre chain[depth - 1] is the ring's LINK/LEMPTY terminator.
+ * @post If the queue was disabled it is re-armed and scanning again.
+ * @post If the queue was already live nothing is changed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_tx_ext_rearm(ra_gwca_ext_descriptor_t* chain, uint32_t depth,
+                                  uint32_t queue_index)
+{
+  ra_gwca_ext_descriptor_t* const term = &chain[depth - 1U];
+  if (term->dt != (uint8_t)k_ra_gwdcc_dt_lempty) {
+    return;
+  }
+  enum : uintptr_t {
+    k_ptr_hi_shift = 32U,
+    k_ptr_hi_mask  = 0xFFULL,
+  };
+  const uintptr_t head = (uintptr_t)&chain[0];
+  term->ptr_h          = (uint8_t)(((uint64_t)head >> k_ptr_hi_shift) & (uint64_t)k_ptr_hi_mask);
+  term->ptr_l          = (uint32_t)head;
+  term->dt             = (uint8_t)k_ra_gwdcc_dt_link;
+  (void)ra_eth_gwca_reload_queue(queue_index);
+}
+
+/**
  * @brief Set up the RX + TX descriptor rings for the default-state API.
  *
- * @details Helper called by ra_eth_gwca_default_open. Walks
- * init_ring + attach_buffers for both the RX and TX chains so the
- * top-level function stays under the 60-line / 40-statement budget.
+ * @details Helper called by ra_eth_gwca_default_open. Primes the RX
+ * chain (8-byte basic descriptors) via init_ring + attach_buffers and
+ * the TX chain (16-byte extended descriptors) via
+ * ::internal_tx_ext_init so the top-level function stays under the
+ * 60-line / 40-statement budget.
  *
  * @param[in,out] state Pre-populated state block.
  *
@@ -1211,10 +1330,8 @@ static ra_err_t internal_default_open_rings(ra_eth_gwca_default_state_t* state)
   err = ra_eth_gwca_attach_buffers(state->rx_chain, state->rx_depth, state->rx_slot_bytes,
                                    state->rx_pool);
   RA_RETURN_ON_ERROR(err, s_tag, "default_open: rx attach"); /* GCOVR_EXCL_BR_LINE */
-  err = ra_eth_gwca_init_ring(state->tx_chain, state->tx_depth, state->tx_slot_bytes);
-  RA_RETURN_ON_ERROR(err, s_tag, "default_open: tx init_ring"); /* GCOVR_EXCL_BR_LINE */
-  return ra_eth_gwca_attach_buffers(state->tx_chain, state->tx_depth, state->tx_slot_bytes,
-                                    state->tx_pool);
+  return internal_tx_ext_init(state->tx_chain, state->tx_depth, state->tx_slot_bytes,
+                              state->tx_pool);
 }
 
 /**
@@ -1250,6 +1367,7 @@ static ra_err_t internal_default_open_queues(ra_eth_gwca_default_state_t* state)
   const ra_eth_gwca_queue_cfg_t tx_cfg = {.priority     = 0U,
                                           .is_tx        = true,
                                           .stop_on_last = false,
+                                          .extended     = true,
                                           .chain_head   = state->tx_chain};
   return ra_eth_gwca_configure_queue(state->linkfix_table, state->tx_queue_index, &tx_cfg);
 }
@@ -1423,41 +1541,51 @@ static void internal_rearm_queue_if_disabled(ra_gwca_basic_descriptor_t* chain,
 }
 
 /**
- * @brief One-call TX: deterministic slot-0 enqueue + reload + kick.
+ * @brief Compose the INFO1_hi word of a TX extended descriptor.
  *
- * @details See header. The GWCA TX engine does not free-run a scan
- * cursor across GWTRC kicks -- it transmits starting from wherever
- * GWDCCi.BALR last placed the queue's AXI address-RAM
- * current_address. A software ring cursor that drifts away from that
- * position therefore enqueues a frame the GWCA never scans, and the
- * frame is silently dropped (no descriptor write-back, no error).
- * The RX path tolerates drift because its consumer
- * (::ra_eth_gwca_find_slot) scans the whole ring; the TX consumer is
- * the GWCA, which does not.
+ * @details Pure helper: places the destination vector (a one-hot
+ * port bit, ``1 << mac_port``) into the DV[6:0] field of INFO1.
+ * No MMIO, no global state.
  *
- * So every send is made fully deterministic, mirroring FSP
- * r_layer3_switch.c::R_LAYER3_SWITCH_StartDescriptorQueue (head/tail
- * reset to 0 + BALR reload + GWTRC on every transmit):
- *  1. Restore the LINK terminator (in case the queue idle-disabled).
- *  2. Snap tx_tail to 0 and enqueue the frame into slot 0.
- *  3. BALR-reload so the GWCA's current_address points at chain[0].
- *  4. Kick (GWTRC).
- *  5. Block until the GWCA writes slot 0 back (transmit complete).
+ * @param[in] mac_port Destination MAC port index (0..6).
+ * @return Packed INFO1_hi word with DV set.
+ * @retval value INFO1_hi word.
+ * @pre mac_port <= 6 so the one-hot bit stays inside DV[6:0].
+ * @pre Caller writes the result to ext-descriptor info1_hi.
+ * @post Only the DV field is non-zero.
+ * @post No global state is modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t internal_tx_info1_hi(uint8_t mac_port)
+{
+  const uint32_t dv = (uint32_t)1U << (uint32_t)mac_port;
+  return ((dv << (uint32_t)k_ra_gwca_info1_tx_dv_shift) & (uint32_t)k_ra_gwca_info1_tx_dv_mask);
+}
+
+/**
+ * @brief One-call TX: enqueue an extended descriptor into slot 0 + kick.
  *
- * Step 5 makes the call synchronous: because every send reuses slot 0
- * and BALR-reloads the queue, a second send overlapping an in-flight
- * first send would overwrite the slot-0 buffer mid-DMA and reset the
- * scan pointer under the running transmit. Waiting for completion
- * serialises TX and closes that window.
+ * @details The TX queue uses 16-byte EXTENDED descriptors (EDE = 1):
+ * each frame carries its own INFO1 routing metadata, so the GWCA
+ * sends it without a forwarding-engine lookup. The frame always goes
+ * into slot 0 (deterministic):
+ *  1. Re-arm the queue if the GWCA idle-disabled it.
+ *  2. memcpy the frame into slot 0's buffer; set DS = len.
+ *  3. INFO1: FMT = direct descriptor, DV = 1 << mac_port (the frame's
+ *     one destination port). FI stays 0 so the RMAC appends the FCS.
+ *  4. dt = FSINGLE, then DSB so the SRAM writes land before the kick.
+ *  5. BALR-reload (GWCA scan pointer -> chain[0]) + GWTRC kick.
+ *  6. Block until the GWCA writes slot 0 back (transmit complete) so
+ *     a back-to-back send cannot overwrite the in-flight buffer.
  *
  * @param[in,out] state Initialized by default_open.
  * @param[in]     frame Frame bytes.
- * @param[in]     len   Frame length.
+ * @param[in]     len   Frame length (1 .. tx_slot_bytes).
  *
- * @return ra_err_t Error code propagated from tx_frame / reload / kick.
+ * @return ra_err_t Error code.
  * @retval k_ra_ok              Frame transmitted (slot 0 written back).
- * @retval k_ra_err_no_data     Queue full.
- * @retval k_ra_err_invalid_arg len > tx_slot_bytes.
+ * @retval k_ra_err_invalid_arg len 0 or > tx_slot_bytes.
  * @retval k_ra_err_hw_timeout  BALR never self-cleared, or the GWCA
  *                              never wrote slot 0 back.
  * @retval k_ra_err_null_ptr    state or frame null.
@@ -1475,29 +1603,34 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
                                   uint32_t len)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_send: state null");
-  /* Restore the LINK terminator + snap the cursor to slot 0. */
-  ra_gwca_basic_descriptor_t* const term = &state->tx_chain[state->tx_depth - 1U];
-  internal_set_linkfix_entry(term, &state->tx_chain[0]);
-  term->dt       = (uint8_t)k_ra_gwdcc_dt_link;
-  state->tx_tail = 0U;
-  const ra_err_t err = ra_eth_gwca_tx_frame(state->tx_chain, state->tx_depth, &state->tx_tail,
-                                            frame, len, state->tx_slot_bytes);
-  if (err != k_ra_ok) {
-    return err;
+  RA_CHECK_NULL_PTR(frame, s_tag, "default_send: frame null");
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
   }
-  /* Data synchronization barrier: the frame buffer + descriptor were
-   * just written to Normal (SRAM) memory; the GWCA kick below is a
-   * Device-memory write. The Armv8-M memory model does NOT order a
-   * Device write after preceding Normal-memory writes without an
-   * explicit DSB -- so the GWCA could begin DMA-ing the frame while
-   * the tail of a long memcpy is still draining the store buffer,
-   * reading stale data. Short frames drain before the GWCA reads;
-   * long frames do not. Bench-confirmed root cause of frame-size-
-   * dependent TX corruption (clean <= ~400 B, lost >= ~700 B). */
+  if (len > state->tx_slot_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Re-arm if the GWCA idle-disabled the queue, then fill slot 0. */
+  internal_tx_ext_rearm(state->tx_chain, state->tx_depth, state->tx_queue_index);
+  enum : uint32_t {
+    k_ds_low_mask   = 0xFFU, /**< ds_l carries 8 bits.         */
+    k_ds_high_shift = 8U,    /**< ds_h packs the upper 4 bits. */
+    k_ds_high_mask  = 0xFU,  /**< ds_h field width.            */
+  };
+  ra_gwca_ext_descriptor_t* const d = &state->tx_chain[0];
+  (void)memcpy(state->tx_pool, frame, (size_t)len);
+  d->ds_l     = (uint8_t)(len & k_ds_low_mask);
+  d->ds_h     = (uint8_t)((len >> k_ds_high_shift) & k_ds_high_mask);
+  d->info1_lo = (uint32_t)k_ra_gwca_info1_tx_fmt_direct;
+  d->info1_hi = internal_tx_info1_hi(state->mac_port);
+  d->dt       = (uint8_t)k_ra_gwdcc_dt_fsingle;
+  state->tx_tail = 0U;
+  /* DSB: the descriptor + frame buffer are Normal (SRAM) writes; the
+   * GWCA kick below is a Device write. Armv8-M does not order them
+   * without an explicit barrier. */
 #ifndef RA_SIMULATOR_MODE
   __asm__ volatile("dsb" ::: "memory");
 #endif
-  /* BALR-reload so the GWCA scans from chain[0] where the frame is. */
   const ra_err_t reload_err = ra_eth_gwca_reload_queue(state->tx_queue_index);
   if (reload_err != k_ra_ok) {
     return reload_err;
@@ -1506,15 +1639,8 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
   if (kick_err != k_ra_ok) {
     return kick_err;
   }
-  /* Block until the GWCA has consumed slot 0 (FSINGLE -> FEMPTY
-   * write-back). default_send always enqueues into slot 0 and BALR-
-   * reloads the queue, so a second send that started before the
-   * first finished would overwrite the slot-0 buffer mid-DMA and
-   * reset the GWCA's scan pointer under an in-flight transmit --
-   * corrupting or dropping the earlier frame. Making the send
-   * synchronous (one frame fully on the wire before the next is
-   * queued) closes that window. A frame transmits in tens of
-   * microseconds, far inside this budget. */
+  /* Block until the GWCA writes slot 0 back (FSINGLE -> FEMPTY): the
+   * send always reuses slot 0, so it must finish before the next. */
 #ifndef RA_SIMULATOR_MODE
   for (uint32_t i = 0U; i < k_ra_eth_gwca_tx_done_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
     if (state->tx_chain[0].dt != (uint8_t)k_ra_gwdcc_dt_fsingle) { /* GCOVR_EXCL_BR_LINE */

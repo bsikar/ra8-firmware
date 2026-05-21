@@ -341,6 +341,58 @@ static_assert(sizeof(ra_gwca_basic_descriptor_t) == 8U,
               "GWCA basic descriptor must be 8 bytes (HUM Ch 34.5.1.2.1).");
 
 /**
+ * @struct ra_gwca_ext_descriptor_t
+ * @brief 16-byte extended descriptor (HUM Ch 34.5.1.2 "Extended
+ *        descriptor", GWDCCi.ETS == 0 && GWDCCi.EDE == 1).
+ *
+ * @details Bytes 0..7 are the basic descriptor (identical layout to
+ * ::ra_gwca_basic_descriptor_t -- DS / INFO0 / DT / PTR). Bytes 8..15
+ * are INFO1[63:0]. On a TX queue INFO1 carries the transmit metadata
+ * (matches FSP `layer3_switch_descriptor_t` `info1_tx`): the
+ * descriptor format bit and the destination vector that route the
+ * frame. The two INFO1 words are exposed as plain ``uint32_t`` and
+ * the named fields are composed via ::ra_gwca_info1_tx_t so the
+ * volatile bit-field ABI never varies between toolchains.
+ *
+ * @see ra_gwca_info1_tx_t
+ */
+typedef struct {
+  volatile uint8_t  ds_l;       /**< 0..7   Descriptor size (low byte).      */
+  volatile uint8_t  ds_h  : 4;  /**< 8..11  Descriptor size (high nibble).   */
+  volatile uint8_t  info0 : 4;  /**< 12..15 Information 0.                   */
+  volatile uint8_t  err   : 3;  /**< 16..18 Error bits (data/AXI errors).    */
+  volatile uint8_t  die   : 1;  /**< 19     Descriptor interrupt enable.     */
+  volatile uint8_t  dt    : 4;  /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
+  volatile uint8_t  ptr_h;      /**< 24..31 Pointer high byte (PTR[39:32]).  */
+  volatile uint32_t ptr_l;      /**< 32..63 Pointer low 32 bits.             */
+  volatile uint32_t info1_lo;   /**< 64..95  INFO1[31:0].                    */
+  volatile uint32_t info1_hi;   /**< 96..127 INFO1[63:32].                   */
+} ra_gwca_ext_descriptor_t;
+
+static_assert(sizeof(ra_gwca_ext_descriptor_t) == 16U,
+              "GWCA extended descriptor must be 16 bytes (HUM Ch 34.5.1.2.1).");
+
+/**
+ * @enum ra_gwca_info1_tx_t
+ * @brief Bit composition of the INFO1 half of a TX extended descriptor.
+ *
+ * @details HUM Ch 34.5.3 + FSP `st_info1_tx`. INFO1[63:0] spans
+ * ::ra_gwca_ext_descriptor_t info1_lo (INFO1[31:0]) and info1_hi
+ * (INFO1[63:32]). The two fields the TX path programs:
+ *  - FMT  (INFO1 bit 2, in info1_lo): 0 = ethernet descriptor (the
+ *    MFWD forwarding engine routes by destination MAC), 1 = direct
+ *    descriptor (the DV field routes the frame, forwarding bypassed).
+ *  - DV[6:0] (INFO1 bits 48..54, in info1_hi bits 22..16): the
+ *    destination-port bit vector, used only when FMT = direct.
+ * FI (INFO1 bit 0) stays 0 so the RMAC appends the FCS.
+ */
+typedef enum : uint32_t {
+  k_ra_gwca_info1_tx_fmt_direct = (1UL << 2U), /**< info1_lo: FMT = direct descriptor. */
+  k_ra_gwca_info1_tx_dv_shift   = 16U,         /**< info1_hi: DV[6:0] field shift.     */
+  k_ra_gwca_info1_tx_dv_mask    = 0x7FUL << 16U, /**< info1_hi: DV[6:0] field mask.    */
+} ra_gwca_info1_tx_t;
+
+/**
  * @enum ra_gwca_offset_t
  * @brief Offsets into R_GWCA0 for the registers the upcoming port needs.
  *
