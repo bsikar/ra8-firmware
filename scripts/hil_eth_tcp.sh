@@ -299,6 +299,7 @@ echo -e "${YELLOW}[HIL]${NC} ${BOARD_IP} reachable"
 RESULT="$(
 PROTO="$PROTO" BOARD_IP="$BOARD_IP" PORT="$PORT" \
 PAYLOAD_BYTES="$PAYLOAD_BYTES" PROBE_TIMEOUT_S="$PROBE_TIMEOUT_S" \
+USB_ETH_IFACE="$USB_ETH_IFACE" \
 python3 - <<'PY'
 import os, socket, sys, secrets
 
@@ -307,12 +308,25 @@ ip    = os.environ['BOARD_IP']
 port  = int(os.environ['PORT'])
 n     = int(os.environ['PAYLOAD_BYTES'])
 tmo   = float(os.environ['PROBE_TIMEOUT_S'])
+iface = os.environ.get('USB_ETH_IFACE', '')
+
+def _bind_iface(s):
+    # The HIL Pi runs Tailscale, whose policy routing (ip rule + a
+    # private table) otherwise captures the 192.168.x board subnet --
+    # an unbound socket to the board would leave via tailscale0 and
+    # fail with EHOSTUNREACH. Pin the socket to the USB-Ethernet
+    # interface so probe traffic always uses the direct link.
+    if iface:
+        so_bindtodevice = getattr(socket, 'SO_BINDTODEVICE', 25)
+        s.setsockopt(socket.SOL_SOCKET, so_bindtodevice, iface.encode())
 
 if proto == 'tcp':
     payload = secrets.token_bytes(n)
     try:
-        s = socket.create_connection((ip, port), timeout=tmo)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _bind_iface(s)
         s.settimeout(tmo)
+        s.connect((ip, port))
         s.sendall(payload)
         got = b''
         while len(got) < n:
@@ -334,6 +348,7 @@ if proto == 'tcp':
 if proto == 'udp':
     payload = secrets.token_bytes(min(n, 1024))  # keep below typical MTU
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    _bind_iface(s)
     s.settimeout(tmo)
     try:
         # Some boards drop the very first UDP datagram pending ARP. Retry up to 3x.
@@ -362,8 +377,10 @@ if proto == 'udp':
 if proto == 'http':
     req = f"GET / HTTP/1.1\r\nHost: {ip}\r\nConnection: close\r\n\r\n".encode()
     try:
-        s = socket.create_connection((ip, port), timeout=tmo)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _bind_iface(s)
         s.settimeout(tmo)
+        s.connect((ip, port))
         s.sendall(req)
         buf = b''
         while True:
