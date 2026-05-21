@@ -2374,15 +2374,16 @@ typedef enum : uint16_t {
   k_ra_board_eth_phy_rxskew_mask  = 0x7000U, /**< MIICTRL RXSKEW field [14:12].*/
   k_ra_board_eth_phy_rxskew_1p0ns = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.    */
   k_ra_board_eth_phy_anar_value   = 0x01E1U, /**< Advertise 100F/100H/10F/10H. */
-  /* GBCR = 0: 1000BASE-T is deliberately NOT advertised so the link
-   * negotiates to 100M full-duplex. The RGMII RX path works at all
-   * speeds, but RGMII TX is bench-broken at 1 Gbps: the RMAC counts
-   * frames transmitted (MTGFCE tracks MRGFCE) yet nothing reaches the
-   * wire (tcpdump on the link partner sees zero frames). The same TX
-   * path works fully at 100M (ARP + ICMP verified), and TXCIDE on/off
-   * makes no difference at 1 Gbps -- so this is a gigabit RGMII TXC
-   * skew issue that needs a scope + the GPY111 RGMII-delay register
-   * map to resolve. Until then the link is pinned to 100M. */
+  /* GBCR = 0: 1000BASE-T is not advertised, so the link settles at
+   * 100M full-duplex where it runs at 0 % loss. At 1 Gbps the RGMII
+   * TXC is 125 MHz DDR and the clock-to-data window shrinks to ~1 ns;
+   * bench testing shows 100 % TX loss at gigabit even with the TX
+   * pins at high drive (DSCR = 11b). The remaining skew lives in the
+   * PEF7071's pinstrapped RGMII delay (no EEPROM is fitted, so the
+   * PHY's MIICTRL skew fields are read-only) and the fixed MAC-side
+   * MIICR1.TXCIDE delay -- neither is tunable in firmware. Closing
+   * the gigabit eye needs a scope on the TX pins or an EEPROM to
+   * override the PHY straps; until then the link stays at 100M. */
   k_ra_board_eth_phy_gbcr_value   = 0x0000U, /**< 1000BASE-T NOT advertised (see above). */
   k_ra_board_eth_phy_reset_spin   = 4096U,   /**< BMCR.RESET self-clear cap.   */
 } ra_board_eth_phy_reg_t;
