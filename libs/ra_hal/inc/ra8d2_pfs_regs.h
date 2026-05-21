@@ -122,6 +122,31 @@ typedef enum : uint32_t {
 } ra_pfs_mask_t;
 
 /**
+ * @enum ra_pfs_dscr_t
+ * @brief PmnPFS.DSCR[1:0] port drive-capability encodings.
+ *
+ * @details HUM Ch 20.2.6 "PmnPFS" p 845: the DSCR field selects the
+ * output pad drive strength. The default after reset is
+ * ::k_ra_pfs_dscr_low. High-speed peripheral outputs (RGMII transmit
+ * data/clock/control, parallel display) need a stronger setting --
+ * HUM Ch 20.2.6 explicitly lists DSCR = 01b (middle) for RGMII/3.3 V
+ * and 11b (high) for RGMII/2.5 V; any other value for an RGMII pin
+ * leaves the electrical characteristics unguaranteed.
+ *
+ * @code
+ * ra_pfs_set_drive_strength(k_eth_txd0_pin, k_ra_pfs_dscr_middle);
+ * @endcode
+ *
+ * @see ra_pfs_set_drive_strength()
+ */
+typedef enum : uint8_t {
+  k_ra_pfs_dscr_low             = 0U, /**< 00b: Low drive (reset default). */
+  k_ra_pfs_dscr_middle          = 1U, /**< 01b: Middle drive.              */
+  k_ra_pfs_dscr_high_speed_high = 2U, /**< 10b: High-speed high drive.     */
+  k_ra_pfs_dscr_high            = 3U, /**< 11b: High drive.                */
+} ra_pfs_dscr_t;
+
+/**
  * @brief Get pointer to the `PmnPFS` register for a single pin.
  *
  * @param[in] port Port index (0..`k_ra_port_max`).

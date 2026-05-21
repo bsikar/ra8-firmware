@@ -34,6 +34,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8d2_icu_regs.h"
+#include "ra8d2_pfs_regs.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
@@ -163,6 +164,42 @@ extern "C" {
  */
 [[nodiscard]] ra_err_t
 ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* owner);
+
+/**
+ * @brief Set the output drive strength (PmnPFS.DSCR) of an already-routed pin.
+ *
+ * @details
+ * Read-modify-write of the PmnPFS.DSCR[1:0] field for one pin under a
+ * PWPR write-protect unlock. Only the DSCR field is touched -- the
+ * pin's PSEL / PMR / direction are preserved -- so this is meant to
+ * be called AFTER ::ra_pfs_route_peripheral (or ::ra_gpio_output_init)
+ * has already configured the pin's function.
+ *
+ * High-speed peripheral outputs need more than the reset-default low
+ * drive: HUM Ch 20.2.6 requires DSCR = 01b for RGMII/3.3 V transmit
+ * pins (and 11b for RGMII/2.5 V). Leaving an RGMII transmit pin at
+ * the default 00b leaves its edge timing out of spec -- bench-
+ * confirmed to corrupt the majority of transmitted frames.
+ *
+ * @param[in] pin  Packed port/pin identifier (::RA_PIN).
+ * @param[in] dscr Target drive-capability code (::ra_pfs_dscr_t).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                    DSCR updated.
+ * @retval k_ra_err_gpio_invalid_port port index out of range.
+ * @retval k_ra_err_gpio_invalid_pin  pin index out of range.
+ * @retval k_ra_err_hw_unmapped       pin has no PFS register.
+ *
+ * @pre The pin has already been routed / configured by the caller.
+ * @pre Caller is single-threaded init context.
+ * @post On success the pin's PmnPFS.DSCR equals @p dscr.
+ * @post PSEL / PMR / direction bits are unchanged.
+ *
+ * @note Not thread-safe; intended for boot.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_pfs_set_drive_strength(ra_port_pin_t pin, ra_pfs_dscr_t dscr);
 
 /* =============================================================================
  * External IRQ attachment
