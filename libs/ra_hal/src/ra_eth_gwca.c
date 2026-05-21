@@ -1368,9 +1368,49 @@ ra_err_t ra_eth_gwca_default_open(ra_eth_gwca_default_state_t* state)
 }
 
 /**
+ * @brief Re-arm a descriptor queue if the GWCA has disabled it.
+ *
+ * @details When a descriptor ring runs dry the GWCA disables the
+ * queue by rewriting the ring's LINK terminator to LEMPTY. Once
+ * disabled the GWCA never resumes scanning, so the queue stays dead
+ * (RX stops delivering / TX stops sending) even after the
+ * application services every data descriptor. This helper detects
+ * that state (terminator dt == LEMPTY), restores the terminator to
+ * LINK pointing at chain[0], and re-pulses GWDCC[i].BALR so the GWCA
+ * reloads the chain base and resumes. It is a no-op while the queue
+ * is still live.
+ *
+ * @param[in,out] chain       Descriptor ring (RX or TX).
+ * @param[in]     ring_depth  Ring depth (data slots + LINK terminator).
+ * @param[in]     queue_index GWCA queue number for the BALR reload.
+ *
+ * @pre Caller is in GWMC.OPC = OPERATION.
+ * @pre chain[ring_depth - 1] is the ring's LINK/LEMPTY terminator.
+ * @post If the queue was disabled it is re-armed and scanning again.
+ * @post If the queue was already live nothing is changed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_rearm_queue_if_disabled(ra_gwca_basic_descriptor_t* chain,
+                                             uint32_t ring_depth, uint32_t queue_index)
+{
+  ra_gwca_basic_descriptor_t* const term = &chain[ring_depth - 1U];
+  if (term->dt != (uint8_t)k_ra_gwdcc_dt_lempty) {
+    return;
+  }
+  /* Restore the LINK terminator (PTR -> chain[0], dt = LINK), then
+   * reload the queue so the GWCA resumes from the chain base. */
+  internal_set_linkfix_entry(term, &chain[0]);
+  term->dt = (uint8_t)k_ra_gwdcc_dt_link;
+  (void)ra_eth_gwca_reload_queue(queue_index);
+}
+
+/**
  * @brief One-call TX: enqueue + kick.
  *
- * @details See header. Wraps tx_frame + kick_tx.
+ * @details See header. Self-heals a GWCA-disabled TX queue via
+ * ::internal_rearm_queue_if_disabled, then wraps tx_frame + kick_tx.
  *
  * @param[in,out] state Initialized by default_open.
  * @param[in]     frame Frame bytes.
@@ -1394,6 +1434,7 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
                                   uint32_t len)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_send: state null");
+  internal_rearm_queue_if_disabled(state->tx_chain, state->tx_depth, state->tx_queue_index);
   const ra_err_t err = ra_eth_gwca_tx_frame(state->tx_chain, state->tx_depth, &state->tx_tail,
                                             frame, len, state->tx_slot_bytes);
   if (err != k_ra_ok) {
@@ -1406,6 +1447,8 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
  * @brief One-call RX: dequeue next frame.
  *
  * @details See header. Wraps rx_frame using state->rx_chain/head.
+ * When no frame is waiting it also self-heals a GWCA-disabled RX
+ * queue via ::internal_rearm_rx_if_disabled.
  *
  * @param[in,out] state        Initialized by default_open.
  * @param[out]    out_frame    Destination buffer.
@@ -1430,8 +1473,12 @@ ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state, uint8_t* o
                                   uint32_t out_capacity, uint32_t* out_len)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_recv: state null");
-  return ra_eth_gwca_rx_frame(state->rx_chain, state->rx_depth, &state->rx_head, out_frame,
-                              out_capacity, state->rx_slot_bytes, out_len);
+  const ra_err_t err = ra_eth_gwca_rx_frame(state->rx_chain, state->rx_depth, &state->rx_head,
+                                            out_frame, out_capacity, state->rx_slot_bytes, out_len);
+  if (err == k_ra_err_no_data) {
+    internal_rearm_queue_if_disabled(state->rx_chain, state->rx_depth, state->rx_queue_index);
+  }
+  return err;
 }
 
 /**
