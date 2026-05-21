@@ -2097,25 +2097,24 @@ static ra_err_t internal_eth_coma_reset(void)
  * this evaluation board.
  *
  * The Ethernet Switch Module wraps the per-port MAC pins with a media-
- * interface multiplexer. After power-on reset MIIRR.RGRST1 is 1 (RGMII1
- * held in reset) and MIICR1.MIISEL reads 0 (GMII/MII), so neither the
- * data pins nor the MDC/MDIO line tick until the driver explicitly:
+ * interface multiplexer. After power-on reset MIIRR.RGRST1 reads 0
+ * (RGMII1 block held in reset) and MIICR1.MIISEL reads 0 (GMII/MII),
+ * so the RGMII data path is dead until the driver explicitly:
  *
  *   1. Sets MIICR1.MIISEL = 1 (RGMII) plus TXCIDE = 1 (on-chip TX
  *      delay), matching the FSP "RGMII + 2 ns TX skew" board profile.
- *   2. Clears MIIRR.RGRST1 (release the RGMII1 reset).
+ *   2. Sets MIIRR.RGRST1 = 1 (HUM 29.2.1.2: 1 = Enable, 0 = Reset --
+ *      this is an enable bit, not an active-high reset).
  *
- * Without these two writes ``ra_rmac_mdio_c22_read`` returns
- * k_ra_err_hw_timeout for every PHY address even with a working
- * physical link, because the MDC pad sits in reset alongside the
- * data pads.
+ * Without the RGRST1 enable, TXC is never generated and the RMAC RX
+ * state machine is unclocked -- every RMAC RX counter stays at 0.
  *
  * @return ::k_ra_ok. Two MMIO writes; no failure paths.
  * @retval k_ra_ok Always returned -- no error path.
  * @pre  ESWM module-stop has been released (the RMAC and ESWM share
  *       MSTPCRC.MSTPCESWM; ra_rmac_init takes the ref-count up).
  * @pre  COMA has been brought out of reset (internal_eth_coma_reset).
- * @post MIICR1 = TXCIDE | RGMII, MIIRR.RGRST1 = 0.
+ * @post MIICR1 = TXCIDE | RGMII, MIIRR.RGRST1 = 1 (RGMII1 enabled).
  * @post RMAC1 / ETHA1 data pins ready to clock.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -2123,13 +2122,22 @@ static ra_err_t internal_eth_coma_reset(void)
 static ra_err_t internal_eth_eswm_select_rgmii(void)
 {
   /* HUM Ch 29 "ESWM" + FSP r_rmac_phy_set_mii_type_configuration:
-   * write MIICR before lifting the per-port RGMII reset so the
-   * pin mux is in the correct mode the instant the data pins go live.
+   * write MIICR before enabling the per-port RGMII block so the pin
+   * mux is in the correct mode the instant the data pins go live.
    * MIICR / MIIRR live at the +0x19400 sub-block of the ESWM window
    * (see ra8d2_ether_regs.h ra_eswm_off_miicr1 / ra_eswm_off_miirr). */
   *ra_eswm_miicr1() = (uint32_t)k_ra_eswm_miicr_txcide | (uint32_t)k_ra_eswm_miicr_miisel_rgmii;
-  uint32_t miirr    = *ra_eswm_miirr();
-  miirr &= ~(uint32_t)k_ra_eswm_miirr_rgrst1;
+
+  /* HUM Ch 29.2.1.2 "MIIRR : Media-independent Interface Reset
+   * Register" p 1289: RGRST1 is **0 = Reset, 1 = Enable** -- it is an
+   * enable, not an active-high reset. Bench-confirmed on EK-RA8D2:
+   * with RGRST1 = 0 the RGMII1 block stays in reset, TXC is never
+   * generated, the RMAC RX state machine is unclocked, and every
+   * RMAC RX counter (MRFC, MRGFCE ...) stays at 0. FSP's
+   * r_rmac_phy_set_mii_type_configuration sets this bit with the
+   * comment "Enable TXC generation". SET it. */
+  uint32_t miirr = *ra_eswm_miirr();
+  miirr |= (uint32_t)k_ra_eswm_miirr_rgrst1;
   *ra_eswm_miirr() = miirr;
   return k_ra_ok;
 }
