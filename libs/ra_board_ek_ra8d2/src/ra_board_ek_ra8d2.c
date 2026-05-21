@@ -1952,6 +1952,17 @@ static ra_err_t internal_eth_phy_hw_reset(void)
  * (PSEL field value 0x18, comment "PDC / AGT1 / Ether RGMII" in
  * libs/ra_hal/inc/ra_mpc.h).
  *
+ * After routing, the six RGMII *transmit* pins (TXD0..3, TX_CTL,
+ * TX_CLK) get their PmnPFS.DSCR bumped from the reset-default low
+ * drive to middle drive. HUM Ch 20.2.6 mandates DSCR = 01b for an
+ * RGMII/3.3 V transmit pin; leaving it at 00b is an unsupported
+ * combination -- bench-confirmed on EK-RA8D2 to corrupt ~70 % of
+ * transmitted frames at 100 Mbps and 100 % at 1 Gbps (the receive
+ * pins are inputs, so their drive strength is irrelevant and they
+ * are left at the default). The on-board PEF7071 runs its MII rail
+ * at 3.3 V (MIICTRL.V25_33 strap = 0), hence the 3.3 V row of the
+ * HUM table -> ::k_ra_pfs_dscr_middle.
+ *
  * @return Result code from `ra_pfs_route_peripheral`.
  * @retval k_ra_ok               All 15 alt-function pins routed.
  * @retval k_ra_err_invalid_arg  ra_pfs_route_peripheral rejected one pin.
@@ -1960,6 +1971,7 @@ static ra_err_t internal_eth_phy_hw_reset(void)
  * @pre PFS write-protect is unlocked by ra_pfs_route_peripheral.
  * @post 15 pins (MDC/MDIO/TXDx/RXDx/TX_CTL/RX_CTL/TXCLK/RXCLK/MDINT)
  *       are routed to the RGMII ETHERC alternate.
+ * @post The six RGMII transmit pins are at DSCR = middle drive.
  * @post RSTN stays a GPIO (never touched here).
  *
  * @note Not thread-safe.
@@ -1976,6 +1988,20 @@ static ra_err_t internal_eth_route_alt_pins(void)
     const ra_err_t err = ra_pfs_route_peripheral((ra_port_pin_t)s_eth_routes[i].pin,
                                                  k_ra_psel_ether_rgmii,
                                                  s_eth_routes[i].owner);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+
+  /* HUM Ch 20.2.6 "PmnPFS" p 845: RGMII transmit pins need DSCR = 01b. */
+  static const uint16_t s_eth_tx_pins[] = {
+    (uint16_t)k_ra_board_eth_pin_txd0,   (uint16_t)k_ra_board_eth_pin_txd1,
+    (uint16_t)k_ra_board_eth_pin_txd2,   (uint16_t)k_ra_board_eth_pin_txd3,
+    (uint16_t)k_ra_board_eth_pin_tx_ctl, (uint16_t)k_ra_board_eth_pin_tx_clk,
+  };
+  for (uint32_t i = 0U; i < sizeof(s_eth_tx_pins) / sizeof(s_eth_tx_pins[0]); ++i) {
+    const ra_err_t err =
+        ra_pfs_set_drive_strength((ra_port_pin_t)s_eth_tx_pins[i], k_ra_pfs_dscr_middle);
     if (err != k_ra_ok) {
       return err;
     }
