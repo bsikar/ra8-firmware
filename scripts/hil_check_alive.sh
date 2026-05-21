@@ -214,7 +214,12 @@ else
         issues+=("PC2=0x${PC2} outside MRAM/ITCM")
         ok=0
     fi
-    if (( cyc2_dec <= cyc1_dec )); then
+    # DWT CYCCNT is a free-running 32-bit counter: at 1 GHz it wraps
+    # every ~4.3 s, so cyc2 < cyc1 is a normal wrap, not a stall. Use
+    # the unsigned 32-bit delta -- only an exactly-zero delta means the
+    # counter is genuinely frozen.
+    cyc_delta=$(( (cyc2_dec - cyc1_dec) & 0xFFFFFFFF ))
+    if (( cyc_delta == 0 )); then
         issues+=("CycleCnt did not advance (0x${CYC1} -> 0x${CYC2}); CPU may be stuck")
         ok=0
     fi
