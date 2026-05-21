@@ -2327,43 +2327,90 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 }
 
 /**
- * @enum ra_board_eth_phy_skew_t
- * @brief GPY111 vendor-register constants for the RGMII RX-skew fix.
+ * @enum ra_board_eth_phy_reg_t
+ * @brief GPY111 PHY register addresses + bit constants for chip-init.
  *
  * @details
- * The EK-RA8D2's on-board MaxLinear GPY111 PHY (Renesas part marking
- * "PEF7071") needs its RGMII receive-path timing skew programmed to
- * 1.0 ns. The RA8D2 ESWM media-interface mux (MIICR1) can add a
- * *transmit* clock delay (TXCIDE) but has NO receive-clock delay
- * control -- so the RX delay MUST come from the PHY. Without it the
- * MAC samples RGMII RX data at the wrong instant and every inbound
- * frame is corrupt: MRGFCE (received-good-frame counter) stays 0.
- *
- * Mirrors FSP r_rmac_phy_target_gpy111.c::
- * rmac_phy_target_gpy111_initialize: read MIICTRL (vendor reg 0x17),
- * clear the RXSKEW field (bits 14:12), set it to 0b010 = 1.0 ns.
+ * The EK-RA8D2's on-board MaxLinear GPY111 PHY (Renesas marking
+ * "PEF7071") is brought up by mirroring FSP's R_RMAC_PHY_ChipInit +
+ * R_RMAC_PHY_StartAutoNegotiate: soft-reset the PHY, set the RGMII
+ * receive-timing skew, program the auto-negotiation advertisement,
+ * then restart auto-negotiation so the link re-converges with the
+ * skew applied. The RA8D2 ESWM MIICR1 can add only a *transmit*
+ * clock delay (TXCIDE); the RGMII receive delay MUST come from the
+ * PHY (MIICTRL.RXSKEW).
  */
 typedef enum : uint16_t {
-  k_ra_board_eth_phy_reg_miictrl   = 0x17U,   /**< GPY111 MIICTRL vendor reg. */
-  k_ra_board_eth_phy_rxskew_mask   = 0x7000U, /**< MIICTRL RXSKEW field [14:12]. */
-  k_ra_board_eth_phy_rxskew_1p0ns  = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.   */
-} ra_board_eth_phy_skew_t;
+  k_ra_board_eth_phy_reg_bmcr     = 0U,      /**< BMCR (basic control).        */
+  k_ra_board_eth_phy_reg_anar     = 4U,      /**< Auto-neg advertisement.      */
+  k_ra_board_eth_phy_reg_gbcr     = 9U,      /**< 1000BASE-T control.          */
+  k_ra_board_eth_phy_reg_miictrl  = 0x17U,   /**< GPY111 MIICTRL vendor reg.   */
+  k_ra_board_eth_phy_bmcr_reset   = 0x8000U, /**< BMCR.RESET (self-clearing).  */
+  k_ra_board_eth_phy_bmcr_an_en   = 0x1000U, /**< BMCR.AUTONEG_ENABLE.         */
+  k_ra_board_eth_phy_bmcr_an_rst  = 0x0200U, /**< BMCR.AUTONEG_RESTART.        */
+  k_ra_board_eth_phy_rxskew_mask  = 0x7000U, /**< MIICTRL RXSKEW field [14:12].*/
+  k_ra_board_eth_phy_rxskew_1p0ns = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.    */
+  k_ra_board_eth_phy_anar_value   = 0x01E1U, /**< Advertise 100F/100H/10F/10H. */
+  k_ra_board_eth_phy_gbcr_value   = 0x0300U, /**< Advertise 1000F/1000H.       */
+  k_ra_board_eth_phy_reset_spin   = 4096U,   /**< BMCR.RESET self-clear cap.   */
+} ra_board_eth_phy_reg_t;
 
 /**
- * @brief Program the GPY111 PHY's RGMII receive-timing skew to 1.0 ns.
+ * @brief Soft-reset the GPY111 PHY and wait for the reset to clear.
  *
- * @details
- * Must run after ETHA1 is in OPERATION (so MDIO can drive MDC) and
- * after RMAC1's MPIC.PSMCS is set. Reads vendor register 0x17,
- * rewrites the RXSKEW field, writes it back. See
- * ::ra_board_eth_phy_skew_t for why this is mandatory on EK-RA8D2.
+ * @details Mirrors the soft-reset step in FSP R_RMAC_PHY_ChipInit:
+ * write BMCR.RESET, poll BMCR until the bit self-clears.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok            RXSKEW programmed to 1.0 ns.
+ * @retval k_ra_ok             PHY reset completed.
+ * @retval k_ra_err_hw_timeout BMCR.RESET never self-cleared.
+ *
+ * @pre ETHA1 is in OPERATION mode (MDIO can drive MDC).
+ * @pre RMAC1 MPIC.PSMCS is non-zero.
+ * @post The PHY has completed a register-level soft reset.
+ * @post BMCR.RESET reads 0.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_phy_soft_reset(void)
+{
+  ra_err_t err = ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                                        (uint8_t)k_ra_board_eth_phy_addr,
+                                        (uint8_t)k_ra_board_eth_phy_reg_bmcr,
+                                        (uint16_t)k_ra_board_eth_phy_bmcr_reset);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_phy_reset_spin; ++i) {
+    uint16_t bmcr = 0U;
+    err           = ra_rmac_mdio_c22_read((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                                (uint8_t)k_ra_board_eth_phy_addr,
+                                (uint8_t)k_ra_board_eth_phy_reg_bmcr,
+                                &bmcr);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    if ((bmcr & (uint16_t)k_ra_board_eth_phy_bmcr_reset) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Program the GPY111 RGMII receive-timing skew to 1.0 ns.
+ *
+ * @details Read-modify-write of MIICTRL (vendor reg 0x17): clears the
+ * RXSKEW field (bits 14:12), sets it to 0b010 = 1.0 ns. Mirrors FSP
+ * rmac_phy_target_gpy111_initialize.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             RXSKEW programmed to 1.0 ns.
  * @retval k_ra_err_hw_timeout An MDIO transaction timed out.
  *
  * @pre ETHA1 is in OPERATION mode.
- * @pre RMAC1 MPIC.PSMCS is non-zero (MDC clock running).
+ * @pre internal_eth_phy_soft_reset has completed.
  * @post GPY111 MIICTRL.RXSKEW == 0b010 (1.0 ns).
  * @post No other MIICTRL bits are disturbed.
  *
@@ -2372,8 +2419,8 @@ typedef enum : uint16_t {
  */
 static ra_err_t internal_eth_phy_set_rgmii_skew(void)
 {
-  uint16_t       miictrl   = 0U;
-  const ra_err_t read_err  = ra_rmac_mdio_c22_read((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+  uint16_t       miictrl  = 0U;
+  const ra_err_t read_err = ra_rmac_mdio_c22_read((ra_rmac_port_t)k_ra_board_eth_rmac_port,
                                                   (uint8_t)k_ra_board_eth_phy_addr,
                                                   (uint8_t)k_ra_board_eth_phy_reg_miictrl,
                                                   &miictrl);
@@ -2386,6 +2433,81 @@ static ra_err_t internal_eth_phy_set_rgmii_skew(void)
                                 (uint8_t)k_ra_board_eth_phy_addr,
                                 (uint8_t)k_ra_board_eth_phy_reg_miictrl,
                                 miictrl);
+}
+
+/**
+ * @brief Program the auto-neg advertisement and restart negotiation.
+ *
+ * @details Mirrors FSP R_RMAC_PHY_StartAutoNegotiate: writes ANAR
+ * (10/100 abilities + selector), GBCR (1000BASE-T abilities), then
+ * BMCR = AUTONEG_ENABLE | AUTONEG_RESTART. The restart forces the
+ * GPY111 to re-converge the link AFTER the RGMII RX skew has been
+ * applied, so the running link uses the corrected timing.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             Advertisement programmed, AN restarted.
+ * @retval k_ra_err_hw_timeout An MDIO transaction timed out.
+ *
+ * @pre internal_eth_phy_set_rgmii_skew has completed.
+ * @pre ETHA1 is in OPERATION mode.
+ * @post ANAR / GBCR hold the advertised abilities.
+ * @post Auto-negotiation has been restarted.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_phy_start_autoneg(void)
+{
+  ra_err_t err = ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                                        (uint8_t)k_ra_board_eth_phy_addr,
+                                        (uint8_t)k_ra_board_eth_phy_reg_anar,
+                                        (uint16_t)k_ra_board_eth_phy_anar_value);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                               (uint8_t)k_ra_board_eth_phy_addr,
+                               (uint8_t)k_ra_board_eth_phy_reg_gbcr,
+                               (uint16_t)k_ra_board_eth_phy_gbcr_value);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
+                                (uint8_t)k_ra_board_eth_phy_addr,
+                                (uint8_t)k_ra_board_eth_phy_reg_bmcr,
+                                (uint16_t)(k_ra_board_eth_phy_bmcr_an_en
+                                           | k_ra_board_eth_phy_bmcr_an_rst));
+}
+
+/**
+ * @brief Full GPY111 PHY chip-init: soft-reset, RX skew, restart AN.
+ *
+ * @details Sequences the three FSP-equivalent PHY bring-up steps so
+ * ra_board_ethernet_init stays under the function-size cap.
+ *
+ * @return ra_err_t Error code from the first failing sub-step.
+ * @retval k_ra_ok             PHY initialised, auto-neg restarted.
+ * @retval k_ra_err_hw_timeout An MDIO transaction or reset timed out.
+ *
+ * @pre ETHA1 is in OPERATION mode; RMAC1 MPIC.PSMCS != 0.
+ * @pre The PHY has had its hardware (RSTN) reset.
+ * @post GPY111 RGMII RX skew = 1.0 ns and auto-neg is re-running.
+ * @post The link will re-converge with the corrected RGMII timing.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_eth_phy_chip_init(void)
+{
+  ra_err_t err = internal_eth_phy_soft_reset();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = internal_eth_phy_set_rgmii_skew();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return internal_eth_phy_start_autoneg();
 }
 
 /* Ra board ethernet init -- see implementation for details. */
@@ -2433,9 +2555,9 @@ ra_err_t ra_board_ethernet_init(void)
   if (err != k_ra_ok) {
     return err;
   }
-  /* Step 7: program the GPY111 PHY's RGMII receive-timing skew to
-   * 1.0 ns. Mandatory -- the ESWM media mux has no RX-clock delay
-   * control, so without the PHY-side skew every inbound RGMII frame
-   * is sampled wrong and dropped (MRGFCE stays 0). */
-  return internal_eth_phy_set_rgmii_skew();
+  /* Step 7: GPY111 PHY chip-init -- soft-reset, program the RGMII
+   * receive-timing skew (1.0 ns), then restart auto-negotiation so
+   * the link re-converges with the skew applied. Mirrors FSP
+   * R_RMAC_PHY_ChipInit + R_RMAC_PHY_StartAutoNegotiate. */
+  return internal_eth_phy_chip_init();
 }
