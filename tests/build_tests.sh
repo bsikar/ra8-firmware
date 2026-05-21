@@ -19,7 +19,9 @@
 #
 # Environment overrides:
 #     CMAKE   -- cmake binary (default: cmake on PATH)
-#     CC, CXX -- forwarded to cmake when set
+#     CC, CXX -- host compilers. When unset, a C23-capable compiler is
+#                auto-selected (see pick below); a bare `cc` is often an
+#                older gcc that rejects `typedef enum : uint8_t`.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -47,12 +49,40 @@ else
     LABEL="fast"
 fi
 
-if [[ -n "${CC:-}" ]]; then
-    CMAKE_ARGS+=("-DCMAKE_C_COMPILER=$CC")
+# Auto-select a C23-capable host compiler when the caller has not
+# pinned one. C23 fixed-underlying-type enums (`typedef enum : uint8_t`)
+# require clang >= 17 or gcc >= 13; CMake otherwise defaults to a bare
+# `cc`, which on this host is gcc 12 and rejects the syntax. The probe
+# below compile-tests the feature rather than parsing version strings.
+c23_compiler_ok() {
+    printf 'typedef enum : int { k_x = 0 } e_t;\nint main(void){return (int)k_x;}\n' \
+        | "$1" -std=gnu2x -x c -fsyntax-only - >/dev/null 2>&1
+}
+
+if [[ -z "${CC:-}" ]]; then
+    for _cand in clang-19 clang gcc cc; do
+        if command -v "$_cand" >/dev/null 2>&1 && c23_compiler_ok "$_cand"; then
+            CC="$_cand"
+            break
+        fi
+    done
+    if [[ -z "${CC:-}" ]]; then
+        echo "error: no C23-capable host compiler found (need clang >= 17 or gcc >= 13)" >&2
+        echo "       install clang or set CC=<compiler> explicitly" >&2
+        exit 1
+    fi
+    echo "    auto-selected CC=$CC"
 fi
-if [[ -n "${CXX:-}" ]]; then
-    CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$CXX")
+if [[ -z "${CXX:-}" ]]; then
+    case "$CC" in
+        clang*) CXX="${CC/clang/clang++}" ;;
+        gcc*)   CXX="${CC/gcc/g++}" ;;
+        *)      CXX="c++" ;;
+    esac
 fi
+
+CMAKE_ARGS+=("-DCMAKE_C_COMPILER=$CC")
+CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$CXX")
 
 # Determine parallelism without depending on bash-only or GNU-only
 # coreutils. nproc is Linux; sysctl is macOS; fall back to 4.
