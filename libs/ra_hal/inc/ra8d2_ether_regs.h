@@ -118,10 +118,10 @@ static inline volatile r_eswm_regs_t* ra_eswm(void)
  * R7KA8D2KF_core0.h (R_ESWM_Type members MIIRR and MIICR0/1 at the
  * offsets below). Used by the RMAC PHY bring-up path to:
  *   1. Select RGMII vs RMII vs MII for each MAC port.
- *   2. Release the per-port media-interface reset (MIIRR.RGRST/RMRST).
+ *   2. Enable the per-port media-interface block (MIIRR.RGRST/RMRST).
  *
- * Without MIIRR's port-reset bit set high, MDC will NOT toggle even
- * if MPIC.PSMCS is programmed correctly.
+ * Without MIIRR's per-port enable bit set, the media interface block
+ * stays in reset -- no TXC, no MDC, no RGMII clocking.
  */
 typedef enum : uint32_t {
   k_ra_eswm_off_miirr  = 0x19400UL, /**< Media Interface Reset Register.   */
@@ -132,12 +132,17 @@ typedef enum : uint32_t {
 /**
  * @enum ra_eswm_miirr_bit_t
  * @brief Bit positions in ESWM.MIIRR (Media Interface Reset Register).
+ *
+ * @details HUM Ch 29.2.1.2 "MIIRR" p 1289 -- each RGRSTn / RMRSTn bit
+ * is an ENABLE, not an active-high reset: 0 = Reset (block held in
+ * reset), 1 = Enable (block operational). Set the bit to bring the
+ * media-interface block out of reset.
  */
 typedef enum : uint32_t {
-  k_ra_eswm_miirr_rgrst0 = (1UL << 0U), /**< RGMII0 interface reset (1 = reset). */
-  k_ra_eswm_miirr_rgrst1 = (1UL << 1U), /**< RGMII1 interface reset.             */
-  k_ra_eswm_miirr_rmrst0 = (1UL << 8U), /**< RMII0 interface reset.              */
-  k_ra_eswm_miirr_rmrst1 = (1UL << 9U), /**< RMII1 interface reset.              */
+  k_ra_eswm_miirr_rgrst0 = (1UL << 0U), /**< RGMII0 enable (1 = enable, 0 = reset). */
+  k_ra_eswm_miirr_rgrst1 = (1UL << 1U), /**< RGMII1 enable (1 = enable, 0 = reset). */
+  k_ra_eswm_miirr_rmrst0 = (1UL << 8U), /**< RMII0 enable (1 = enable, 0 = reset).  */
+  k_ra_eswm_miirr_rmrst1 = (1UL << 9U), /**< RMII1 enable (1 = enable, 0 = reset).  */
 } ra_eswm_miirr_bit_t;
 
 /**
