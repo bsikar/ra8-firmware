@@ -189,8 +189,8 @@ static ra_err_t internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mode
    * here rather than at the next mode write, which is what made
    * canfd_loopback report a phantom test_mode failure with the real
    * problem being "channel never reached operation". */
-  const uint32_t reset_or_halt = (uint32_t)((1UL << k_ra_cnsts_bit_crstst)
-                                            | (1UL << k_ra_cnsts_bit_chltst));
+  const uint32_t reset_or_halt =
+    (uint32_t)((1UL << k_ra_cnsts_bit_crstst) | (1UL << k_ra_cnsts_bit_chltst));
   for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDC[0].STS & reset_or_halt) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
@@ -232,8 +232,9 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
   reg->CFDGCTR = gctr;
 
   if (gmdc_value == k_ra_gctr_value_halt) {
-    for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                            /* GCOVR_EXCL_BR_LINE */
-      if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_ghltsts)) != 0U) {     /* GCOVR_EXCL_BR_LINE */
+    for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+      if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_ghltsts)) !=
+          0U) { /* GCOVR_EXCL_BR_LINE */
         return k_ra_ok;
       }
     }
@@ -244,8 +245,9 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
 #endif
   }
   if (gmdc_value == k_ra_gctr_value_reset) {
-    for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                            /* GCOVR_EXCL_BR_LINE */
-      if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_grststs)) != 0U) {     /* GCOVR_EXCL_BR_LINE */
+    for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+      if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_grststs)) !=
+          0U) { /* GCOVR_EXCL_BR_LINE */
         return k_ra_ok;
       }
     }
@@ -260,8 +262,8 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
    * propagate the timeout so a stuck global block surfaces here
    * rather than at the next channel-mode write.
    * HUM Ch 41 p 2746 "CFDGSTS" */
-  const uint32_t reset_or_halt = (uint32_t)((1UL << k_ra_gsts_bit_grststs)
-                                            | (1UL << k_ra_gsts_bit_ghltsts));
+  const uint32_t reset_or_halt =
+    (uint32_t)((1UL << k_ra_gsts_bit_grststs) | (1UL << k_ra_gsts_bit_ghltsts));
   for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->CFDGSTS & reset_or_halt) == 0U) {     /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
@@ -420,7 +422,7 @@ static ra_err_t internal_wait_canfdcksrdy(uint8_t expected)
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra_canfd_ckcr_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     const uint8_t got = (uint8_t)((*ckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) {                                         /* GCOVR_EXCL_BR_LINE */
+    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -1174,13 +1176,12 @@ static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_i
   if (filter_id >= (uint16_t)k_ra_canfd_afl_per_page) {
     return;
   }
-  const uint32_t cur_rnc =
-    (reg->CFDGAFLCFG0 >> k_ra_gaflcfg0_shift_rnc0) & k_ra_gaflcfg0_mask_rnc0;
+  const uint32_t cur_rnc = (reg->CFDGAFLCFG0 >> k_ra_gaflcfg0_shift_rnc0) & k_ra_gaflcfg0_mask_rnc0;
   const uint32_t new_rnc = ((uint32_t)filter_id + 1U) & k_ra_gaflcfg0_mask_rnc0;
   if (cur_rnc < new_rnc) {
     const uint32_t cfg0 = reg->CFDGAFLCFG0;
     reg->CFDGAFLCFG0    = (cfg0 & ~(k_ra_gaflcfg0_mask_rnc0 << k_ra_gaflcfg0_shift_rnc0)) |
-                       ((new_rnc & k_ra_gaflcfg0_mask_rnc0) << k_ra_gaflcfg0_shift_rnc0);
+                          ((new_rnc & k_ra_gaflcfg0_mask_rnc0) << k_ra_gaflcfg0_shift_rnc0);
   }
 }
 
@@ -1204,14 +1205,17 @@ static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_i
  * @note Not thread-safe; caller serialises AFL edits.
  * @since 0.1.0
  */
-static void internal_write_afl_slot(volatile r_canfd_t* reg, uint16_t slot,
-                                    uint32_t accept_id, uint32_t mask, uint8_t dlc)
+static void internal_write_afl_slot(volatile r_canfd_t* reg,
+                                    uint16_t            slot,
+                                    uint32_t            accept_id,
+                                    uint32_t            mask,
+                                    uint8_t             dlc)
 {
   reg->CFDGAFL[slot].ID = accept_id;
   reg->CFDGAFL[slot].M  = mask | (uint32_t)k_ra_gaflm_bit_gafllb;
   reg->CFDGAFL[slot].P0 = 0U;
-  reg->CFDGAFL[slot].P1 = (((uint32_t)dlc & k_ra_canfd_ptr_mask_dlc) << k_ra_canfd_ptr_shift_dlc)
-                          | (uint32_t)k_ra_gaflp1_bit_gaflfdp0;
+  reg->CFDGAFL[slot].P1 = (((uint32_t)dlc & k_ra_canfd_ptr_mask_dlc) << k_ra_canfd_ptr_shift_dlc) |
+                          (uint32_t)k_ra_gaflp1_bit_gaflfdp0;
 }
 
 /* ra_canfd_filter_set -- see header for full description.

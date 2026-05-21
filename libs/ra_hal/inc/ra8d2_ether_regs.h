@@ -301,19 +301,19 @@ typedef enum : uint32_t {
  * `layer3_switch_basic_descriptor_t` below.
  */
 typedef enum : uint8_t {
-  k_ra_gwdcc_dt_linkfix    = 0U,  /**< LINKFIX  -- chain head pointer.       */
-  k_ra_gwdcc_dt_fempty_is  = 1U,  /**< FEMPTY_IS -- empty, incremental start.*/
-  k_ra_gwdcc_dt_fempty_ic  = 2U,  /**< FEMPTY_IC -- empty, incremental cont. */
-  k_ra_gwdcc_dt_fempty_nd  = 3U,  /**< FEMPTY_ND -- reject data.             */
-  k_ra_gwdcc_dt_fempty     = 4U,  /**< FEMPTY    -- empty, full frame slot.  */
-  k_ra_gwdcc_dt_fsingle    = 8U,  /**< FSINGLE   -- single-fragment frame.   */
-  k_ra_gwdcc_dt_fstart     = 9U,  /**< FSTART    -- multi-fragment start.    */
-  k_ra_gwdcc_dt_fmid       = 10U, /**< FMID      -- multi-fragment middle.   */
-  k_ra_gwdcc_dt_fend       = 11U, /**< FEND      -- multi-fragment end.      */
-  k_ra_gwdcc_dt_lempty     = 12U, /**< LEMPTY    -- queue disabled.          */
-  k_ra_gwdcc_dt_eempty     = 13U, /**< EEMPTY    -- TX queue paused.         */
-  k_ra_gwdcc_dt_link       = 14U, /**< LINK      -- chain continuation.      */
-  k_ra_gwdcc_dt_eos        = 15U, /**< EOS       -- end-of-set.              */
+  k_ra_gwdcc_dt_linkfix   = 0U,  /**< LINKFIX  -- chain head pointer.       */
+  k_ra_gwdcc_dt_fempty_is = 1U,  /**< FEMPTY_IS -- empty, incremental start.*/
+  k_ra_gwdcc_dt_fempty_ic = 2U,  /**< FEMPTY_IC -- empty, incremental cont. */
+  k_ra_gwdcc_dt_fempty_nd = 3U,  /**< FEMPTY_ND -- reject data.             */
+  k_ra_gwdcc_dt_fempty    = 4U,  /**< FEMPTY    -- empty, full frame slot.  */
+  k_ra_gwdcc_dt_fsingle   = 8U,  /**< FSINGLE   -- single-fragment frame.   */
+  k_ra_gwdcc_dt_fstart    = 9U,  /**< FSTART    -- multi-fragment start.    */
+  k_ra_gwdcc_dt_fmid      = 10U, /**< FMID      -- multi-fragment middle.   */
+  k_ra_gwdcc_dt_fend      = 11U, /**< FEND      -- multi-fragment end.      */
+  k_ra_gwdcc_dt_lempty    = 12U, /**< LEMPTY    -- queue disabled.          */
+  k_ra_gwdcc_dt_eempty    = 13U, /**< EEMPTY    -- TX queue paused.         */
+  k_ra_gwdcc_dt_link      = 14U, /**< LINK      -- chain continuation.      */
+  k_ra_gwdcc_dt_eos       = 15U, /**< EOS       -- end-of-set.              */
 } ra_gwdcc_dt_t;
 
 /**
@@ -327,14 +327,14 @@ typedef enum : uint8_t {
  * dt set to k_ra_gwdcc_dt_linkfix or k_ra_gwdcc_dt_link.
  */
 typedef struct {
-  volatile uint8_t  ds_l;       /**< 0..7   Descriptor size (low byte).   */
-  volatile uint8_t  ds_h  : 4;  /**< 8..11  Descriptor size (high nibble).*/
-  volatile uint8_t  info0 : 4;  /**< 12..15 Information 0.                */
-  volatile uint8_t  err   : 3;  /**< 16..18 Error bits (data/AXI errors). */
-  volatile uint8_t  die   : 1;  /**< 19     Descriptor interrupt enable.  */
-  volatile uint8_t  dt    : 4;  /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
-  volatile uint8_t  ptr_h;      /**< 24..31 Pointer high byte (PTR[39:32]).*/
-  volatile uint32_t ptr_l;      /**< 32..63 Pointer low 32 bits.          */
+  volatile uint8_t  ds_l;      /**< 0..7   Descriptor size (low byte).   */
+  volatile uint8_t  ds_h : 4;  /**< 8..11  Descriptor size (high nibble).*/
+  volatile uint8_t  info0 : 4; /**< 12..15 Information 0.                */
+  volatile uint8_t  err : 3;   /**< 16..18 Error bits (data/AXI errors). */
+  volatile uint8_t  die : 1;   /**< 19     Descriptor interrupt enable.  */
+  volatile uint8_t  dt : 4;    /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
+  volatile uint8_t  ptr_h;     /**< 24..31 Pointer high byte (PTR[39:32]).*/
+  volatile uint32_t ptr_l;     /**< 32..63 Pointer low 32 bits.          */
 } ra_gwca_basic_descriptor_t;
 
 static_assert(sizeof(ra_gwca_basic_descriptor_t) == 8U,
@@ -357,16 +357,16 @@ static_assert(sizeof(ra_gwca_basic_descriptor_t) == 8U,
  * @see ra_gwca_info1_tx_t
  */
 typedef struct {
-  volatile uint8_t  ds_l;       /**< 0..7   Descriptor size (low byte).      */
-  volatile uint8_t  ds_h  : 4;  /**< 8..11  Descriptor size (high nibble).   */
-  volatile uint8_t  info0 : 4;  /**< 12..15 Information 0.                   */
-  volatile uint8_t  err   : 3;  /**< 16..18 Error bits (data/AXI errors).    */
-  volatile uint8_t  die   : 1;  /**< 19     Descriptor interrupt enable.     */
-  volatile uint8_t  dt    : 4;  /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
-  volatile uint8_t  ptr_h;      /**< 24..31 Pointer high byte (PTR[39:32]).  */
-  volatile uint32_t ptr_l;      /**< 32..63 Pointer low 32 bits.             */
-  volatile uint32_t info1_lo;   /**< 64..95  INFO1[31:0].                    */
-  volatile uint32_t info1_hi;   /**< 96..127 INFO1[63:32].                   */
+  volatile uint8_t  ds_l;      /**< 0..7   Descriptor size (low byte).      */
+  volatile uint8_t  ds_h : 4;  /**< 8..11  Descriptor size (high nibble).   */
+  volatile uint8_t  info0 : 4; /**< 12..15 Information 0.                   */
+  volatile uint8_t  err : 3;   /**< 16..18 Error bits (data/AXI errors).    */
+  volatile uint8_t  die : 1;   /**< 19     Descriptor interrupt enable.     */
+  volatile uint8_t  dt : 4;    /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
+  volatile uint8_t  ptr_h;     /**< 24..31 Pointer high byte (PTR[39:32]).  */
+  volatile uint32_t ptr_l;     /**< 32..63 Pointer low 32 bits.             */
+  volatile uint32_t info1_lo;  /**< 64..95  INFO1[31:0].                    */
+  volatile uint32_t info1_hi;  /**< 96..127 INFO1[63:32].                   */
 } ra_gwca_ext_descriptor_t;
 
 static_assert(sizeof(ra_gwca_ext_descriptor_t) == 16U,
@@ -387,8 +387,8 @@ static_assert(sizeof(ra_gwca_ext_descriptor_t) == 16U,
  * FI (INFO1 bit 0) stays 0 so the RMAC appends the FCS.
  */
 typedef enum : uint32_t {
-  k_ra_gwca_info1_tx_fmt_direct = (1UL << 2U), /**< info1_lo: FMT = direct descriptor. */
-  k_ra_gwca_info1_tx_dv_shift   = 16U,         /**< info1_hi: DV[6:0] field shift.     */
+  k_ra_gwca_info1_tx_fmt_direct = (1UL << 2U),   /**< info1_lo: FMT = direct descriptor. */
+  k_ra_gwca_info1_tx_dv_shift   = 16U,           /**< info1_hi: DV[6:0] field shift.     */
   k_ra_gwca_info1_tx_dv_mask    = 0x7FUL << 16U, /**< info1_hi: DV[6:0] field mask.    */
 } ra_gwca_info1_tx_t;
 
@@ -405,13 +405,13 @@ typedef enum : uint32_t {
  * @see reference_fsp_source memory note for the full register list.
  */
 typedef enum : uint16_t {
-  k_ra_gwca_off_gwmc       = 0x0000U, /**< Mode Configuration.            */
-  k_ra_gwca_off_gwms       = 0x0004U, /**< Mode Status.                   */
-  k_ra_gwca_off_gwdcbac0   = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
-  k_ra_gwca_off_gwdcbac1   = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
-  k_ra_gwca_off_gwtrc0     = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
-  k_ra_gwca_off_gwtrc1     = 0x0204U, /**< TX Request Cfg, queues 32..63. */
-  k_ra_gwca_off_gwarirm    = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
+  k_ra_gwca_off_gwmc     = 0x0000U, /**< Mode Configuration.            */
+  k_ra_gwca_off_gwms     = 0x0004U, /**< Mode Status.                   */
+  k_ra_gwca_off_gwdcbac0 = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
+  k_ra_gwca_off_gwdcbac1 = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
+  k_ra_gwca_off_gwtrc0   = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
+  k_ra_gwca_off_gwtrc1   = 0x0204U, /**< TX Request Cfg, queues 32..63. */
+  k_ra_gwca_off_gwarirm  = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
   k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
   k_ra_gwca_off_gwaarss    = 0x0800U, /**< AXI Addr RAM Searching Setting.*/
   k_ra_gwca_off_gwaarsr0   = 0x0804U, /**< AXI Addr RAM Searching Result0.*/
@@ -435,7 +435,7 @@ typedef enum : uint32_t {
   k_ra_gwdcc_ede        = 1UL << 8U,
   k_ra_gwdcc_ets        = 1UL << 9U,
   k_ra_gwdcc_sl         = 1UL << 10U,
-  k_ra_gwdcc_dqt        = 1UL << 11U,  /**< 0 = RX queue, 1 = TX queue.  */
+  k_ra_gwdcc_dqt        = 1UL << 11U, /**< 0 = RX queue, 1 = TX queue.  */
   k_ra_gwdcc_dcp_shift  = 16U,
   k_ra_gwdcc_dcp_mask   = 0x7UL << 16U,
   k_ra_gwdcc_balr       = 1UL << 24U,

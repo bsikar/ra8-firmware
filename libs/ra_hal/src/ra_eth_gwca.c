@@ -65,11 +65,11 @@ ra_err_t ra_eth_gwca_init(void)
    * never asserts. Mirrors FSP r_layer3_switch open path. */
   /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
   volatile uint32_t* const fwpc10 =
-      (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_mfwd_off_fwpc10);
+    (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_mfwd_off_fwpc10);
   volatile uint32_t* const fwpc11 =
-      (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_mfwd_off_fwpc11);
+    (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_mfwd_off_fwpc11);
   volatile uint32_t* const fwpc12 =
-      (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_mfwd_off_fwpc12);
+    (volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_mfwd_off_fwpc12);
   *fwpc10 = (*fwpc10 & ~(uint32_t)k_ra_mfwd_fwpc_dde) | (uint32_t)k_ra_mfwd_fwpc_dde;
   *fwpc11 = (*fwpc11 & ~(uint32_t)k_ra_mfwd_fwpc_dde) | (uint32_t)k_ra_mfwd_fwpc_dde;
   *fwpc12 = (*fwpc12 & ~(uint32_t)k_ra_mfwd_fwpc_dde) | (uint32_t)k_ra_mfwd_fwpc_dde;
@@ -269,9 +269,11 @@ ra_err_t ra_eth_gwca_set_operation_mode(ra_gwmc_opc_t mode)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1797 */
-  volatile uint32_t* const gwmc = (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwmc);
+  volatile uint32_t* const gwmc =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwmc);
   /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
-  volatile uint32_t* const gwms = (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
+  volatile uint32_t* const gwms =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
 
   const uint32_t opc = (uint32_t)mode & (uint32_t)k_ra_gwmc_opc_mask;
   const uint32_t cur = *gwmc & ~(uint32_t)k_ra_gwmc_opc_mask;
@@ -279,7 +281,7 @@ ra_err_t ra_eth_gwca_set_operation_mode(ra_gwmc_opc_t mode)
 
 #ifndef RA_SIMULATOR_MODE
   for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc) {   /* GCOVR_EXCL_BR_LINE */
+    if ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc) {    /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -384,14 +386,15 @@ ra_err_t ra_eth_gwca_install_linkfix(ra_gwca_basic_descriptor_t* linkfix_table,
    * (GWDCBAC1.DCBAL). On this 32-bit MCU the upper byte is always
    * zero, but the bit-field exists for the device family that uses
    * 40-bit addresses. */
-  const uintptr_t          addr     = (uintptr_t)linkfix_table;
+  const uintptr_t addr = (uintptr_t)linkfix_table;
   enum : uintptr_t {
     k_ra_linkfix_upper_shift = 32U,
     k_ra_linkfix_upper_mask  = 0xFFULL,
     k_ra_linkfix_lower_mask  = 0xFFFFFFFFULL,
   };
-  const uint32_t           upper    = (uint32_t)((uint64_t)addr >> k_ra_linkfix_upper_shift) & k_ra_linkfix_upper_mask;
-  const uint32_t           lower    = (uint32_t)addr & k_ra_linkfix_lower_mask;
+  const uint32_t upper =
+    (uint32_t)((uint64_t)addr >> k_ra_linkfix_upper_shift) & k_ra_linkfix_upper_mask;
+  const uint32_t           lower = (uint32_t)addr & k_ra_linkfix_lower_mask;
   volatile uint32_t* const gwdcbac0 =
     (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwdcbac0);
   volatile uint32_t* const gwdcbac1 =
@@ -618,8 +621,7 @@ static uint32_t internal_compose_gwdcc(const ra_eth_gwca_queue_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t* entry,
-                                       const void*                 chain_head)
+static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t* entry, const void* chain_head)
 {
   enum : uintptr_t {
     k_ra_linkfix_ptr_upper_shift = 32U,
@@ -628,8 +630,8 @@ static void internal_set_linkfix_entry(ra_gwca_basic_descriptor_t* entry,
   };
   const uintptr_t head_addr = (uintptr_t)chain_head;
   entry->dt                 = (uint8_t)k_ra_gwdcc_dt_linkfix;
-  entry->ptr_h              = (uint8_t)((uint64_t)head_addr >> k_ra_linkfix_ptr_upper_shift)
-                 & k_ra_linkfix_ptr_upper_mask;
+  entry->ptr_h =
+    (uint8_t)((uint64_t)head_addr >> k_ra_linkfix_ptr_upper_shift) & k_ra_linkfix_ptr_upper_mask;
   entry->ptr_l = (uint32_t)head_addr & k_ra_linkfix_ptr_lower_mask;
 }
 
@@ -755,14 +757,13 @@ ra_err_t ra_eth_gwca_reload_queue(uint32_t queue_index)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra_err_t ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain,
-                               uint32_t                    ring_depth,
-                               uint32_t                    slot_bytes)
+ra_err_t
+ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain, uint32_t ring_depth, uint32_t slot_bytes)
 {
   RA_CHECK_NULL_PTR(chain, s_tag, "init_ring: chain null");
   enum : uint32_t {
-    k_ra_gwca_ring_min_depth  = 2U,    /**< Need at least one FEMPTY + one LINK. */
-    k_ra_gwca_ring_max_bytes  = 2048U, /**< HUM DS field is 12 bits (max 2048). */
+    k_ra_gwca_ring_min_depth = 2U,    /**< Need at least one FEMPTY + one LINK. */
+    k_ra_gwca_ring_max_bytes = 2048U, /**< HUM DS field is 12 bits (max 2048). */
   };
   if (ring_depth < k_ra_gwca_ring_min_depth || slot_bytes > k_ra_gwca_ring_max_bytes) {
     return k_ra_err_invalid_arg;
@@ -770,9 +771,9 @@ ra_err_t ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain,
 
   /* FEMPTY data slots: ds carries the buffer size, dt = FEMPTY. */
   enum : uint32_t {
-    k_ra_ds_byte_mask  = 0xFFU,  /**< ds_l carries 8 bits.           */
-    k_ra_ds_high_shift = 8U,     /**< ds_h packs the upper 4 bits.   */
-    k_ra_ds_high_mask  = 0xFU,   /**< ds_h field width 4 bits.       */
+    k_ra_ds_byte_mask  = 0xFFU, /**< ds_l carries 8 bits.           */
+    k_ra_ds_high_shift = 8U,    /**< ds_h packs the upper 4 bits.   */
+    k_ra_ds_high_mask  = 0xFU,  /**< ds_h field width 4 bits.       */
   };
   for (uint32_t i = 0U; i < (ring_depth - 1U); ++i) {
     (void)memset(&chain[i], 0, sizeof(ra_gwca_basic_descriptor_t));
@@ -821,8 +822,7 @@ ra_err_t ra_eth_gwca_set_descriptor_buffer(ra_gwca_basic_descriptor_t* desc, voi
     k_ra_buf_ptr_lower_mask  = 0xFFFFFFFFULL,
   };
   const uintptr_t addr = (uintptr_t)buffer;
-  desc->ptr_h          = (uint8_t)((uint64_t)addr >> k_ra_buf_ptr_upper_shift)
-                & k_ra_buf_ptr_upper_mask;
+  desc->ptr_h = (uint8_t)((uint64_t)addr >> k_ra_buf_ptr_upper_shift) & k_ra_buf_ptr_upper_mask;
   desc->ptr_l = (uint32_t)addr & k_ra_buf_ptr_lower_mask;
   return k_ra_ok;
 }
@@ -865,7 +865,7 @@ ra_err_t ra_eth_gwca_attach_buffers(ra_gwca_basic_descriptor_t* chain,
   }
   for (uint32_t i = 0U; i < (ring_depth - 1U); ++i) {
     const size_t   slot_offset = (size_t)i * (size_t)slot_bytes;
-    const ra_err_t err = ra_eth_gwca_set_descriptor_buffer(&chain[i], &pool[slot_offset]);
+    const ra_err_t err         = ra_eth_gwca_set_descriptor_buffer(&chain[i], &pool[slot_offset]);
     if (err != k_ra_ok) {
       return err;
     }
@@ -898,18 +898,18 @@ ra_err_t ra_eth_gwca_attach_buffers(ra_gwca_basic_descriptor_t* chain,
 ra_err_t ra_eth_gwca_kick_tx(uint32_t queue_index)
 {
   enum : uint32_t {
-    k_ra_gwca_max_tx_queues = 64U,
+    k_ra_gwca_max_tx_queues  = 64U,
     k_ra_gwca_queues_per_reg = 32U,
   };
   if (queue_index >= k_ra_gwca_max_tx_queues) {
     return k_ra_err_invalid_arg;
   }
-  const uintptr_t offset = (queue_index < k_ra_gwca_queues_per_reg)
-                             ? (uintptr_t)k_ra_gwca_off_gwtrc0
-                             : (uintptr_t)k_ra_gwca_off_gwtrc1;
-  volatile uint32_t* const gwtrc = (volatile uint32_t*)(k_ra_gwca0_base_addr + offset);
-  const uint32_t bit = 1UL << (queue_index % k_ra_gwca_queues_per_reg);
-  *gwtrc             = *gwtrc | bit;
+  const uintptr_t          offset = (queue_index < k_ra_gwca_queues_per_reg)
+                                      ? (uintptr_t)k_ra_gwca_off_gwtrc0
+                                      : (uintptr_t)k_ra_gwca_off_gwtrc1;
+  volatile uint32_t* const gwtrc  = (volatile uint32_t*)(k_ra_gwca0_base_addr + offset);
+  const uint32_t           bit    = 1UL << (queue_index % k_ra_gwca_queues_per_reg);
+  *gwtrc                          = *gwtrc | bit;
   return k_ra_ok;
 }
 
@@ -1025,9 +1025,9 @@ static uint8_t* internal_decode_ptr(const ra_gwca_basic_descriptor_t* desc)
 static uint32_t internal_decode_ds(const ra_gwca_basic_descriptor_t* desc)
 {
   enum : uint32_t {
-    k_ra_ds_low_mask  = 0xFFU,
+    k_ra_ds_low_mask   = 0xFFU,
     k_ra_ds_high_shift = 8U,
-    k_ra_ds_high_mask = 0xFU,
+    k_ra_ds_high_mask  = 0xFU,
   };
   return ((uint32_t)desc->ds_l & k_ra_ds_low_mask) |
          (((uint32_t)desc->ds_h & k_ra_ds_high_mask) << k_ra_ds_high_shift);
@@ -1076,8 +1076,11 @@ ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
     return k_ra_err_invalid_arg;
   }
   uint32_t       slot = 0U;
-  const ra_err_t err  = ra_eth_gwca_find_slot(chain, ring_depth, k_ra_gwdcc_dt_fempty,
-                                              *tail_idx % (ring_depth - 1U), &slot);
+  const ra_err_t err  = ra_eth_gwca_find_slot(chain,
+                                              ring_depth,
+                                              k_ra_gwdcc_dt_fempty,
+                                              *tail_idx % (ring_depth - 1U),
+                                              &slot);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1088,8 +1091,8 @@ ra_err_t ra_eth_gwca_tx_frame(ra_gwca_basic_descriptor_t* chain,
   (void)memcpy(buf, frame, (size_t)frame_len);
   enum : uint32_t {
     k_ra_ds_low_byte_mask = 0xFFU,
-    k_ra_ds_high_shift     = 8U,
-    k_ra_ds_high_nibble    = 0xFU,
+    k_ra_ds_high_shift    = 8U,
+    k_ra_ds_high_nibble   = 0xFU,
   };
   chain[slot].ds_l = (uint8_t)(frame_len & k_ra_ds_low_byte_mask);
   chain[slot].ds_h = (uint8_t)((frame_len >> k_ra_ds_high_shift) & k_ra_ds_high_nibble);
@@ -1214,8 +1217,10 @@ static ra_err_t internal_drain_rx_slot(ra_gwca_basic_descriptor_t* desc,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t internal_tx_ext_init(ra_gwca_ext_descriptor_t* chain, uint32_t depth,
-                                     uint32_t slot_bytes, const uint8_t* pool)
+static ra_err_t internal_tx_ext_init(ra_gwca_ext_descriptor_t* chain,
+                                     uint32_t                  depth,
+                                     uint32_t                  slot_bytes,
+                                     const uint8_t*            pool)
 {
   RA_CHECK_NULL_PTR(chain, s_tag, "tx_ext_init: chain null");
   RA_CHECK_NULL_PTR(pool, s_tag, "tx_ext_init: pool null");
@@ -1233,14 +1238,14 @@ static ra_err_t internal_tx_ext_init(ra_gwca_ext_descriptor_t* chain, uint32_t d
     return k_ra_err_invalid_arg;
   }
   enum : uintptr_t {
-    k_ptr_hi_shift = 32U,    /**< PTR[39:32] lives 32 bits up.  */
+    k_ptr_hi_shift = 32U,     /**< PTR[39:32] lives 32 bits up.  */
     k_ptr_hi_mask  = 0xFFULL, /**< PTR high byte width.         */
   };
   for (uint32_t i = 0U; i < (depth - 1U); ++i) {
     (void)memset(&chain[i], 0, sizeof(ra_gwca_ext_descriptor_t));
-    chain[i].dt   = (uint8_t)k_ra_gwdcc_dt_fempty;
-    chain[i].ds_l = (uint8_t)(slot_bytes & k_ds_low_mask);
-    chain[i].ds_h = (uint8_t)((slot_bytes >> k_ds_high_shift) & k_ds_high_mask);
+    chain[i].dt         = (uint8_t)k_ra_gwdcc_dt_fempty;
+    chain[i].ds_l       = (uint8_t)(slot_bytes & k_ds_low_mask);
+    chain[i].ds_h       = (uint8_t)((slot_bytes >> k_ds_high_shift) & k_ds_high_mask);
     const uintptr_t buf = (uintptr_t)pool + ((uintptr_t)i * (uintptr_t)slot_bytes);
     chain[i].ptr_h      = (uint8_t)(((uint64_t)buf >> k_ptr_hi_shift) & (uint64_t)k_ptr_hi_mask);
     chain[i].ptr_l      = (uint32_t)buf;
@@ -1277,8 +1282,8 @@ static ra_err_t internal_tx_ext_init(ra_gwca_ext_descriptor_t* chain, uint32_t d
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_tx_ext_rearm(ra_gwca_ext_descriptor_t* chain, uint32_t depth,
-                                  uint32_t queue_index)
+static void
+internal_tx_ext_rearm(ra_gwca_ext_descriptor_t* chain, uint32_t depth, uint32_t queue_index)
 {
   ra_gwca_ext_descriptor_t* const term = &chain[depth - 1U];
   if (term->dt != (uint8_t)k_ra_gwdcc_dt_lempty) {
@@ -1327,10 +1332,14 @@ static ra_err_t internal_default_open_rings(ra_eth_gwca_default_state_t* state)
 {
   ra_err_t err = ra_eth_gwca_init_ring(state->rx_chain, state->rx_depth, state->rx_slot_bytes);
   RA_RETURN_ON_ERROR(err, s_tag, "default_open: rx init_ring"); /* GCOVR_EXCL_BR_LINE */
-  err = ra_eth_gwca_attach_buffers(state->rx_chain, state->rx_depth, state->rx_slot_bytes,
+  err = ra_eth_gwca_attach_buffers(state->rx_chain,
+                                   state->rx_depth,
+                                   state->rx_slot_bytes,
                                    state->rx_pool);
   RA_RETURN_ON_ERROR(err, s_tag, "default_open: rx attach"); /* GCOVR_EXCL_BR_LINE */
-  return internal_tx_ext_init(state->tx_chain, state->tx_depth, state->tx_slot_bytes,
+  return internal_tx_ext_init(state->tx_chain,
+                              state->tx_depth,
+                              state->tx_slot_bytes,
                               state->tx_pool);
 }
 
@@ -1449,7 +1458,7 @@ ra_err_t ra_eth_gwca_default_open(ra_eth_gwca_default_state_t* state)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_open: state null");
   g_ra_eth_gwca_open_step = 0U;
-  ra_err_t err = internal_default_open_pre(state);
+  ra_err_t err            = internal_default_open_pre(state);
   if (err != k_ra_ok) {
     g_ra_eth_gwca_open_step = (uint32_t)k_ra_eth_gwca_step_fail_1;
     return err;
@@ -1524,8 +1533,9 @@ ra_err_t ra_eth_gwca_default_open(ra_eth_gwca_default_state_t* state)
  * @since 0.1.0
  */
 static void internal_rearm_queue_if_disabled(ra_gwca_basic_descriptor_t* chain,
-                                             uint32_t ring_depth, uint32_t queue_index,
-                                             uint32_t* cursor)
+                                             uint32_t                    ring_depth,
+                                             uint32_t                    queue_index,
+                                             uint32_t*                   cursor)
 {
   ra_gwca_basic_descriptor_t* const term = &chain[ring_depth - 1U];
   if (term->dt != (uint8_t)k_ra_gwdcc_dt_lempty) {
@@ -1599,8 +1609,8 @@ static uint32_t internal_tx_info1_hi(uint8_t mac_port)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint8_t* frame,
-                                  uint32_t len)
+ra_err_t
+ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint8_t* frame, uint32_t len)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_send: state null");
   RA_CHECK_NULL_PTR(frame, s_tag, "default_send: frame null");
@@ -1619,11 +1629,11 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
   };
   ra_gwca_ext_descriptor_t* const d = &state->tx_chain[0];
   (void)memcpy(state->tx_pool, frame, (size_t)len);
-  d->ds_l     = (uint8_t)(len & k_ds_low_mask);
-  d->ds_h     = (uint8_t)((len >> k_ds_high_shift) & k_ds_high_mask);
-  d->info1_lo = (uint32_t)k_ra_gwca_info1_tx_fmt_direct;
-  d->info1_hi = internal_tx_info1_hi(state->mac_port);
-  d->dt       = (uint8_t)k_ra_gwdcc_dt_fsingle;
+  d->ds_l        = (uint8_t)(len & k_ds_low_mask);
+  d->ds_h        = (uint8_t)((len >> k_ds_high_shift) & k_ds_high_mask);
+  d->info1_lo    = (uint32_t)k_ra_gwca_info1_tx_fmt_direct;
+  d->info1_hi    = internal_tx_info1_hi(state->mac_port);
+  d->dt          = (uint8_t)k_ra_gwdcc_dt_fsingle;
   state->tx_tail = 0U;
   /* DSB: the descriptor + frame buffer are Normal (SRAM) writes; the
    * GWCA kick below is a Device write. Armv8-M does not order them
@@ -1642,7 +1652,7 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
   /* Block until the GWCA writes slot 0 back (FSINGLE -> FEMPTY): the
    * send always reuses slot 0, so it must finish before the next. */
 #ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_eth_gwca_tx_done_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_tx_done_spin; ++i) {     /* GCOVR_EXCL_BR_LINE */
     if (state->tx_chain[0].dt != (uint8_t)k_ra_gwdcc_dt_fsingle) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
@@ -1680,14 +1690,23 @@ ra_err_t ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state, uint8_t* out_frame,
-                                  uint32_t out_capacity, uint32_t* out_len)
+ra_err_t ra_eth_gwca_default_recv(ra_eth_gwca_default_state_t* state,
+                                  uint8_t*                     out_frame,
+                                  uint32_t                     out_capacity,
+                                  uint32_t*                    out_len)
 {
   RA_CHECK_NULL_PTR(state, s_tag, "default_recv: state null");
-  const ra_err_t err = ra_eth_gwca_rx_frame(state->rx_chain, state->rx_depth, &state->rx_head,
-                                            out_frame, out_capacity, state->rx_slot_bytes, out_len);
+  const ra_err_t err = ra_eth_gwca_rx_frame(state->rx_chain,
+                                            state->rx_depth,
+                                            &state->rx_head,
+                                            out_frame,
+                                            out_capacity,
+                                            state->rx_slot_bytes,
+                                            out_len);
   if (err == k_ra_err_no_data) {
-    internal_rearm_queue_if_disabled(state->rx_chain, state->rx_depth, state->rx_queue_index,
+    internal_rearm_queue_if_disabled(state->rx_chain,
+                                     state->rx_depth,
+                                     state->rx_queue_index,
                                      &state->rx_head);
   }
   return err;
@@ -1738,8 +1757,11 @@ ra_err_t ra_eth_gwca_rx_frame(ra_gwca_basic_descriptor_t* chain,
     return k_ra_err_invalid_arg;
   }
   uint32_t       slot = 0U;
-  const ra_err_t err  = ra_eth_gwca_find_slot(chain, ring_depth, k_ra_gwdcc_dt_fsingle,
-                                              *head_idx % (ring_depth - 1U), &slot);
+  const ra_err_t err  = ra_eth_gwca_find_slot(chain,
+                                              ring_depth,
+                                              k_ra_gwdcc_dt_fsingle,
+                                              *head_idx % (ring_depth - 1U),
+                                              &slot);
   if (err != k_ra_ok) {
     return err;
   }
