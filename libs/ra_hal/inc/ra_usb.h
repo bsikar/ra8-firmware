@@ -499,6 +499,42 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  */
 [[nodiscard]] ra_err_t ra_usb_rearm_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num);
 
+/**
+ * @brief Park an OUT pipe at PID=NAK so an idle pipe stays quiescent.
+ *
+ * @details
+ * The inverse of ::ra_usb_rearm_out_pipe. An OUT pipe left at PID=BUF
+ * with its per-pipe BRDY enabled but with no consumer ready will ACK
+ * the next host OUT token into the pipe FIFO, latch BRDYSTS, and --
+ * because nothing drains it -- hold INTSTS0.BRDY asserted, which
+ * re-fires the USB ISR continuously and starves RTOS thread mode.
+ * Parking the pipe at PID=NAK makes the controller NAK host OUT
+ * tokens (normal USB flow control: the host simply retries), so no
+ * data enters the FIFO, BRDYSTS never latches, and the ISR stays
+ * quiet until a consumer arms the pipe with ::ra_usb_rearm_out_pipe.
+ *
+ * @param[in] speed    Which controller (FS / HS).
+ * @param[in] pipe_num PIPE1..PIPE9 (must not be 0; DCP uses DCPCTR).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok               Pipe parked at PID=NAK.
+ * @retval k_ra_err_invalid_arg  `speed` invalid or `pipe_num` out of range.
+ *
+ * @pre Pipe was previously configured via `ra_usb_configure_endpoint`
+ *      with `dir = k_ra_usb_ep_dir_out`.
+ * @pre No transfer is currently in flight on the pipe.
+ *
+ * @post `PIPECTR[pipe_num-1].PID == NAK`.
+ *
+ * @note Not thread-safe; caller serialises against `ra_usb_rearm_out_pipe`.
+ *
+ * @see ra_usb_rearm_out_pipe
+ * @see ra_usb_configure_endpoint
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_park_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num);
+
 /* =============================================================================
  * Control transfers (EP0 / DCP)
  * =============================================================================
