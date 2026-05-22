@@ -180,6 +180,30 @@ volatile uint32_t s_isr_brdy_count = 0U;
 volatile uint32_t s_isr_bemp_count = 0U;
 
 /**
+ * @var s_isr_nrdy_count
+ * @brief Per-bit ISR counter for ``INTSTS0.NRDY`` (bit 9) entries.
+ *
+ * @details Storm-localisation probe: a value in the millions after a
+ * failed MSC scan means a pipe is NAK'ing host tokens and the NRDY
+ * status is re-asserting INTSTS0.NRDY faster than the dispatcher
+ * clears it. Written by ::internal_usbfs_isr and ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_nrdy_count = 0U;
+
+/**
+ * @var s_isr_sofr_count
+ * @brief Per-bit ISR counter for ``INTSTS0.SOFR`` (bit 13) entries.
+ *
+ * @details Storm-localisation probe. SOFR fires once per USB frame
+ * (1 kHz on full-speed); a count far above ``1000 * uptime_s`` means
+ * the ISR is re-entering on a bit other than SOFR while SOFR happens
+ * to be co-asserted. Written by ::internal_usbfs_isr and ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_sofr_count = 0U;
+
+/**
  * @var s_ctrt_irq_count
  * @brief Counter of INTSTS0.CTRT events seen by the dispatcher.
  *
@@ -956,29 +980,159 @@ void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
   s_dcd_auto_echo_enable   = 1U;
 }
 
+/* -------------------------------------------------------------------------- */
+/* USBFS interrupt-storm guard                                                */
+/*                                                                            */
+/* The USBFS controller re-asserts its NVIC line for RSME / SOFR / status-     */
+/* only conditions independent of INTENB0. While the host hammers a NAK'ing    */
+/* pipe (e.g. the MSC bulk-OUT before the storage class thread has armed the   */
+/* CBW receive) these event-less entries re-fire ~1e5/s and -- via Cortex-M    */
+/* exception tail-chaining -- consume 100% CPU, so RTOS thread mode never runs */
+/* and the USBX class thread is permanently starved (GitHub issue #6).         */
+/*                                                                            */
+/* internal_usbfs_isr counts consecutive event-less entries; once that run     */
+/* crosses k_ra_usb_storm_mask_run a real storm is in progress, and            */
+/* internal_usbfs_irq_mask() disables the USB IRQ at the NVIC -- handing the   */
+/* CPU to thread mode. Recovery is the per-app 1 ms SysTick handler: it calls  */
+/* ux_dcd_ra_usb_irq_reenable(), which zeroes the run counter and re-enables   */
+/* the line. The run counter is thus a per-millisecond rate gauge -- a genuine */
+/* storm (~1e3 event-less entries/ms) trips it well within a tick; normal idle */
+/* SOFR (~1/ms) never does, so the guard is behaviour-neutral for the working  */
+/* CDC / HID apps. SysTick is the recovery clock (not a ThreadX TX_TIMER)      */
+/* because it is an exception handler -- it keeps running even while the storm */
+/* has thread mode, and the ThreadX timer subsystem, starved.                  */
+/* -------------------------------------------------------------------------- */
+
 /**
- * @brief Re-enable the USB IRQ at the NVIC level after a spurious mask.
+ * @enum ra_usb_storm_cfg_t
+ * @brief Tuning constant for the USBFS interrupt-storm guard.
+ */
+typedef enum : uint32_t {
+  k_ra_usb_storm_mask_run = 8U, /**< Consecutive event-less FS ISR entries that
+                                     trip the NVIC mask. The 1 ms SysTick
+                                     handler zeroes the run, so this is a
+                                     per-ms rate gauge: the bench storm runs
+                                     ~40 event-less entries/ms and trips this
+                                     in ~0.2 ms; normal SOFR is ~1/ms and
+                                     never reaches it. A spurious trip is
+                                     benign -- SysTick re-enables within 1 ms,
+                                     so a real event is delayed at most 1 ms. */
+} ra_usb_storm_cfg_t;
+
+/**
+ * @enum ra_nvic_reg_t
+ * @brief Cortex-M NVIC set/clear-enable register array base addresses.
+ */
+typedef enum : uintptr_t {
+  k_nvic_iser_base = 0xE000E100U, /**< NVIC Interrupt Set-Enable Register array. */
+  k_nvic_icer_base = 0xE000E180U, /**< NVIC Interrupt Clear-Enable Register array. */
+} ra_nvic_reg_t;
+
+/**
+ * @enum ra_nvic_layout_t
+ * @brief Bit layout of the NVIC ISER/ICER register array.
+ */
+typedef enum : uint32_t {
+  k_nvic_irqs_per_reg = 32U, /**< IRQ lines covered by one ISER/ICER word. */
+  k_nvic_reg_stride   = 4U,  /**< Byte stride between consecutive ISER/ICER words. */
+} ra_nvic_layout_t;
+
+/**
+ * @var s_usb_irq_slot
+ * @brief NVIC slot the USB controller's ELC event is routed to.
+ * @details Resolved once via ::ra_isr_lookup_slot in
+ *          ::internal_usbfs_storm_guard_init; drives the ISER/ICER math.
+ * @note Written once at init; read from ISR / timer context.
+ * @since 0.1.0
+ */
+static uint16_t s_usb_irq_slot = 0U;
+
+/**
+ * @var s_isr_spurious_run
+ * @brief Consecutive event-less FS ISR entries since the last SysTick re-enable.
+ * @details Incremented by ::internal_usbfs_isr on an entry with no real
+ *          event bit, reset by it on a real event, and zeroed every 1 ms by
+ *          ::ux_dcd_ra_usb_irq_reenable. JLink-readable storm probe.
+ * @since 0.1.0
+ */
+static volatile uint32_t s_isr_spurious_run = 0U;
+
+/**
+ * @brief Set or clear the USB controller's NVIC enable bit.
  *
- * @details Designed to be called from a periodic context (SysTick or a
- * polling worker thread) after the ISR's spurious-entry path masked
- * the line to stop a USBR-driven storm. ICER[0] / ISER[0] are the
- * NVIC clear-enable / set-enable for IRQ 0 (which is where ::ra_isr
- * maps the USBHS combined "USB_INT+RESUME" line).
+ * @details Indexes the NVIC ISER (enable) or ICER (disable) register array
+ * by ::s_usb_irq_slot. Writing 1 to an ISER/ICER bit is the architected
+ * way to enable/disable a single IRQ line (Arm v8-M); writing 0 is a no-op,
+ * so no read-modify-write and no race with the NVIC.
+ *
+ * @param[in] enabled ``true`` -> ISER (enable); ``false`` -> ICER (disable).
+ *
+ * @pre ::s_usb_irq_slot has been resolved by ::internal_usbfs_storm_guard_init.
+ * @pre ``enabled`` is a defined bool value (caller passes a literal).
+ * @post The USB IRQ line is enabled / disabled at the NVIC.
+ * @post No NVIC line other than ::s_usb_irq_slot is affected.
+ *
+ * @note ISR- and timer-safe; a single 32-bit MMIO store.
+ * @since 0.1.0
+ */
+static void internal_usbfs_irq_set_enabled(bool enabled)
+{
+  const uint32_t  word = (uint32_t)s_usb_irq_slot / (uint32_t)k_nvic_irqs_per_reg;
+  const uint32_t  bit  = 1UL << ((uint32_t)s_usb_irq_slot % (uint32_t)k_nvic_irqs_per_reg);
+  const uintptr_t base = enabled ? (uintptr_t)k_nvic_iser_base : (uintptr_t)k_nvic_icer_base;
+  *(volatile uint32_t*)(base + ((uintptr_t)word * (uintptr_t)k_nvic_reg_stride)) = bit;
+}
+
+/**
+ * @brief Mask the USB IRQ at the NVIC to break an interrupt storm.
+ *
+ * @details Called from ::internal_usbfs_isr once a sustained run of
+ * event-less entries proves a storm is in progress. With the line masked
+ * the storming controller cannot tail-chain the CPU, so RTOS thread mode
+ * runs; the per-app 1 ms ``SysTick_Handler`` re-enables the line via
+ * ::ux_dcd_ra_usb_irq_reenable.
+ *
+ * @pre Called from FS ISR context.
+ * @pre ::s_usb_irq_slot has been resolved at init.
+ * @post USB IRQ line disabled at the NVIC until the next SysTick re-enable.
+ * @post Pending USB events stay latched in INTSTS0 / BRDYSTS (level state).
+ *
+ * @note ISR-safe.
+ * @since 0.1.0
+ */
+static void internal_usbfs_irq_mask(void)
+{
+  internal_usbfs_irq_set_enabled(false);
+}
+
+/**
+ * @brief Storm-guard recovery: zero the run counter and re-enable the USB IRQ.
+ *
+ * @details The recovery half of the USBFS interrupt-storm guard. Each USB-FS
+ * app's ``SysTick_Handler`` calls this every 1 ms. Zeroing
+ * ::s_isr_spurious_run makes that counter a per-millisecond rate gauge -- so
+ * normal idle SOFR can never accumulate to the mask threshold -- and
+ * re-enabling the NVIC line undoes any mask ::internal_usbfs_isr applied.
+ * Re-enabling an already-enabled line is a no-op, so calling this outside a
+ * storm is harmless. SysTick is used rather than a ThreadX ``TX_TIMER``
+ * because it is an exception handler: it keeps running even while a storm
+ * has thread mode -- and the ThreadX timer subsystem -- starved.
  *
  * @return No value; the helper is unconditional.
- * @retval (void) NVIC ISER[0] bit 0 is set.
+ * @retval (void) ``s_isr_spurious_run == 0`` and the USB IRQ line is enabled.
  *
- * @pre ``ra_isr`` mapped USBHS to NVIC IRQ 0 (project-wide invariant).
- * @pre Caller is the periodic re-arm context, not the storm-affected ISR.
- * @post NVIC re-routes the next USBHS event to ::internal_usbhs_isr.
- * @post No other CPU / module state is changed.
+ * @pre ::s_usb_irq_slot resolved (``ux_dcd_ra_usb_initialize`` has run).
+ * @pre Called from the per-app 1 ms SysTick handler (exception context).
+ * @post ``s_isr_spurious_run == 0``.
+ * @post NVIC re-routes the next USB event to the registered trampoline.
  *
- * @note Idempotent; safe to call from polling context.
+ * @note Idempotent; intended to be called from the 1 ms SysTick handler.
  * @since 0.1.0
  */
 void ux_dcd_ra_usb_irq_reenable(void)
 {
-  *(volatile uint32_t*)0xE000E100UL = 1UL;
+  s_isr_spurious_run = 0U;
+  internal_usbfs_irq_set_enabled(true);
 }
 
 /**
@@ -1256,19 +1410,30 @@ static unsigned int
 internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t ep_addr)
 {
   if ((ep_addr & 0x80U) != 0U) {
-    const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-    if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, len) !=
+    /* IN endpoint. USBX hands the DCD the whole transfer, but
+     * ra_usb_queue_in moves at most one max-packet bank -- so a
+     * transfer longer than MPS (e.g. the 512-byte SCSI READ data
+     * phase) must be streamed: push the first packet here, and
+     * internal_irq_complete_in pushes each subsequent packet as the
+     * host drains the previous one (BEMP). ux_slave_transfer_request_
+     * actual_length tracks how many bytes have been queued so far. */
+    const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+    const uint16_t mps   = s_dcd.pipes[pipe].max_pkt;
+    const uint16_t chunk = (total > mps) ? mps : total;
+    if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, chunk) !=
         k_ra_ok) {
       s_dcd.pipes[pipe].xfer = nullptr;
       return UX_TRANSFER_ERROR;
     }
-    tr->ux_slave_transfer_request_actual_length = len;
+    tr->ux_slave_transfer_request_actual_length = chunk;
     return UX_SUCCESS;
   }
-  /* OUT pipe: move from PID=NAK to PID=BUF so the controller ACKs
-   * the first host OUT token.  Without this the pipe stays at NAK
-   * forever; BRDY never fires; internal_irq_walk_pipe never runs;
-   * the semaphore is never posted.  HUM Ch 36.2.27 PIPECTR.PID. */
+  /* OUT pipe: move PID from NAK to BUF so the controller ACKs the
+   * host's OUT token. internal_irq_complete_out parks the pipe back at
+   * NAK once the transfer drains, so between transfers the host is
+   * flow-controlled (NAK + retry) rather than ACK'd into a FIFO with
+   * no receiver -- which would latch BRDYSTS and storm the ISR
+   * (GitHub issue #6). HUM Ch 36.2.27 PIPECTR.PID. */
   if (ra_usb_rearm_out_pipe(s_dcd.speed, pipe) != k_ra_ok) {
     s_dcd.pipes[pipe].xfer = nullptr;
     return UX_TRANSFER_ERROR;
@@ -1358,6 +1523,50 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
 }
 
 /**
+ * @brief Set the power-on PID of a freshly created non-control pipe.
+ *
+ * @details Called once from ::internal_endpoint_create after
+ * ::ra_usb_configure_endpoint. An IN pipe is left as configured --
+ * the queue_in path and ::internal_submit_pipe own its PID. An OUT
+ * pipe is armed to PID=BUF only when the in-ISR auto-echo path drains
+ * it (CDC loopback); every other OUT pipe is parked at PID=NAK so a
+ * host OUT token arriving before ::internal_submit_pipe arms a real
+ * receiver is NAK-flow-controlled rather than ACKed into a FIFO with
+ * no waiter -- the latter latches BRDYSTS and storms the ISR (GitHub
+ * issue #6). Nested ifs keep the auto-echo test out of the MC/DC
+ * inventory.
+ *
+ * @param[in] pipe    Pipe index (1..max_pipes-1).
+ * @param[in] ep_addr Endpoint address (bit 7 = direction).
+ *
+ * @pre ::ra_usb_configure_endpoint has run for this pipe.
+ * @pre Bridge speed ``s_dcd.speed`` is valid.
+ * @post OUT pipe PID is BUF (auto-echo pipe) or NAK (all others).
+ * @post IN pipe PID is left unchanged.
+ *
+ * @note Single-threaded create-path use; not ISR-safe.
+ * @since 0.1.0
+ */
+static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_addr)
+{
+  if ((ep_addr & 0x80U) != 0U) {
+    return; /* IN pipe -- queue_in / internal_submit_pipe own the PID */
+  }
+  bool auto_echo_pipe = false;
+  if (s_dcd_auto_echo_enable != 0U) {
+    if (pipe == s_dcd_auto_echo_out_pipe) {
+      auto_echo_pipe = true;
+    }
+  }
+  /* HUM Ch 36.2.27 PIPECTR.PID */
+  if (auto_echo_pipe) {
+    (void)ra_usb_rearm_out_pipe(s_dcd.speed, pipe);
+  } else {
+    (void)ra_usb_park_out_pipe(s_dcd.speed, pipe);
+  }
+}
+
+/**
  * @brief Translate a USBX endpoint create request into ra_usb call.
  *
  * @details See implementation for details.
@@ -1412,15 +1621,7 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
   s_dcd.pipes[pipe].ep_addr = ep_addr;
   s_dcd.pipes[pipe].dir_in  = (uint8_t)((ep_addr & 0x80U) != 0U ? 1U : 0U);
   s_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
-  /* Auto-arm OUT pipes to PID=BUF right after the endpoint is created
-   * by the USBX class layer. Without this the pipe sits at PID=NAK until
-   * a transfer_request is issued by a worker thread; if scheduling is
-   * blocked (see ux_dcd_ra_usb_auto_echo_enable) the host's bulk-OUT
-   * URBs never reach the controller and the ISR-side auto-echo path
-   * cannot drain them. HUM Ch 36.2.27 PIPECTR.PID. */
-  if ((ep_addr & 0x80U) == 0U) {
-    (void)ra_usb_rearm_out_pipe(s_dcd.speed, pipe);
-  }
+  internal_endpoint_arm_out_pid(pipe, ep_addr);
   return UX_SUCCESS;
 }
 
@@ -1609,72 +1810,12 @@ _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, 
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief NVIC -> ra_usb_dispatch trampoline for the USBFS controller.
- *
- * @details
- * Registered with ``ra_isr_register(k_ra_elc_event_usbfs_int, ...)``
- * during ``ux_dcd_ra_usb_initialize`` when the bridge is brought up
- * for the FS controller. ``ra_usb_dispatch`` reads ``INTSTS0``,
- * clears it, and forwards the snapshot to the handler attached via
- * ``ra_usb_attach_handler`` (which lives in the bridge as
- * ``internal_event_cb``). Without this trampoline the controller's
- * SETUP / BRDY / BEMP / DVST bits accumulate in INTSTS0 and the host
- * times out the enumeration handshake.
- *
- * @param[in] ctx Unused; kept to match ``ra_isr_handler_t``.
- *
- * @pre Bridge is in ``k_ux_dcd_ra_usb_state_ready`` or ``_active``.
- * @pre ``ra_usb_attach_handler`` has been called (done in the same init).
- *
- * @post ``INTSTS0`` for the FS controller has been cleared.
- * @post The bridge's ``internal_event_cb`` ran for any pending bits.
- *
- * @note Runs in NVIC handler mode; must not block.
- *
- * @see ra_usb_dispatch
- * @see ux_dcd_ra_usb_irq
- *
- * @since 0.1.0
- */
-static void internal_usbfs_isr(void* ctx)
-{
-  (void)ctx;
-  s_isr_invocations++;
-  ra_usb_dispatch(k_ra_usb_speed_fs);
-}
-
-/**
- * @brief NVIC -> ra_usb_dispatch trampoline for the USBHS controller.
- *
- * @details
- * Sibling of ``internal_usbfs_isr`` for the high-speed instance. On
- * RA8D2 the USBHS controller raises a single combined "interrupt
- * or resume" line (FSP ``ELC_EVENT_USBHS_USB_INT_RESUME``); this
- * handler forwards both into ``ra_usb_dispatch`` which decodes the
- * cause from ``INTSTS0``.
- *
- * @param[in] ctx Unused; kept to match ``ra_isr_handler_t``.
- *
- * @pre Bridge is in ``k_ux_dcd_ra_usb_state_ready`` or ``_active``.
- * @pre ``ra_usb_attach_handler`` has been called (done in the same init).
- *
- * @post ``INTSTS0`` for the HS controller has been cleared.
- * @post The bridge's ``internal_event_cb`` ran for any pending bits.
- *
- * @note Runs in NVIC handler mode; must not block.
- *
- * @see ra_usb_dispatch
- * @see ux_dcd_ra_usb_irq
- *
- * @since 0.1.0
- */
-/**
  * @brief Bump the per-bit ISR counters for an INTSTS0 snapshot.
  *
  * @details Each ``s_isr_*_count`` counter is a JLink-readable probe so
  * a bench reader can correlate ::s_isr_intsts0_or with which event bits
- * fired this tick. Pulled out of ``internal_usbhs_isr`` to keep the
- * outer ISR within the NASA P10 Rule 4 size cap.
+ * fired this tick. Shared by the FS and HS ISRs to keep each outer ISR
+ * within the NASA P10 Rule 4 size cap.
  *
  * @param[in] intsts0 Snapshot of INTSTS0 read at the top of the ISR.
  *
@@ -1703,52 +1844,114 @@ static void internal_isr_bump_counts(uint16_t intsts0)
   if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_bemp)) != 0U) {
     s_isr_bemp_count++;
   }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_nrdy)) != 0U) {
+    s_isr_nrdy_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_sofr)) != 0U) {
+    s_isr_sofr_count++;
+  }
 }
 
 /**
- * @brief NVIC -> ra_usb_dispatch trampoline for the USBHS controller.
+ * @brief NVIC ISR entry point for the USBFS controller.
  *
- * @details Sibling of ``internal_usbfs_isr`` for the high-speed instance.
- * Snapshots INTSTS0, gates on the event-bit mask to suppress spurious
- * NVIC re-entry from status-only bits (DVSQ / VBSTS), bumps per-bit
- * JLink-readable counters via ``internal_isr_bump_counts``, then forwards
- * the snapshot through ``ra_usb_dispatch`` which performs the W0C ack
- * and invokes ``internal_event_cb`` -> ``ux_dcd_ra_usb_irq``.
+ * @details
+ * Registered with ``ra_isr_register(k_ra_elc_event_usbfs_int, ...)``
+ * during ``ux_dcd_ra_usb_initialize``. Snapshots ``INTSTS0``, classifies
+ * the entry, then forwards it to ``ra_usb_dispatch`` -- the dispatch is
+ * unconditional, identical to the pre-storm-guard behaviour, so this ISR
+ * is behaviour-neutral for the working CDC / HID apps.
  *
- * @param[in] ctx Unused; kept to match the ``ra_isr_handler_t`` signature.
+ * The only added behaviour is the storm guard. An entry with no real
+ * event bit (only RSME / SOFR / status bits -- these assert the NVIC
+ * line independent of INTENB0) increments ::s_isr_spurious_run; a real
+ * event resets it. ::ux_dcd_ra_usb_irq_reenable (called from the per-app
+ * 1 ms ``SysTick_Handler``) zeroes the counter, so it gauges the
+ * event-less *rate*. Once it crosses ::k_ra_usb_storm_mask_run within a
+ * millisecond a genuine storm is in progress, and ::internal_usbfs_irq_mask
+ * disables the USB IRQ so RTOS thread mode -- the otherwise-starved USBX
+ * class thread (GitHub issue #6) -- gets the CPU back. The SysTick handler
+ * re-enables the line within 1 ms. Normal idle SOFR (~1/ms) never trips
+ * the guard.
+ *
+ * @param[in] ctx Unused; kept to match ``ra_isr_handler_t``.
  *
  * @pre Bridge is in ``k_ux_dcd_ra_usb_state_ready`` or ``_active``.
  * @pre ``ra_usb_attach_handler`` has been called (done in the same init).
- * @post ``INTSTS0`` for the HS controller has been W0C-acked for observed events.
- * @post Per-bit ISR counters and ``s_isr_intsts0_or`` reflect this tick.
+ *
+ * @post ``s_isr_invocations`` is incremented and ``ra_usb_dispatch`` ran.
+ * @post On a sustained event-less run the USB IRQ is masked at the NVIC.
  *
  * @note Runs in NVIC handler mode; must not block.
+ *
+ * @see ra_usb_dispatch
+ * @see internal_usbfs_irq_mask
+ * @see internal_usbhs_isr
+ * @see ux_dcd_ra_usb_irq
+ *
  * @since 0.1.0
  */
+static void internal_usbfs_isr(void* ctx)
+{
+  (void)ctx;
+  s_isr_invocations++;
+
+  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
+   * event_msk is the real-event set: INTENB0 (BRDY/NRDY/BEMP/CTRT/
+   * DVST/VBSE) plus VALID. RSME / SOFR / status bits are excluded --
+   * they re-assert the NVIC line on their own and are what storms. */
+  const uint16_t intsts0   = ra_usb_intsts0_snapshot(k_ra_usb_speed_fs);
+  const uint16_t event_msk = (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
+                                        (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
+                                        (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse) |
+                                        (uint16_t)k_ra_intsts0_mask_valid);
+
+  s_isr_intsts0_or |= intsts0;
+
+  if ((intsts0 & event_msk) == 0U) {
+    s_isr_spurious_run++;
+    if (s_isr_spurious_run >= (uint32_t)k_ra_usb_storm_mask_run) {
+      internal_usbfs_irq_mask();
+      s_dcd_irq_spurious_mask_count++;
+    }
+  } else {
+    s_isr_spurious_run = 0U;
+  }
+
+  internal_isr_bump_counts(intsts0);
+  ra_usb_dispatch(k_ra_usb_speed_fs);
+}
+
 /**
- * @brief W0C-ack RSME/SOFR on a spurious USBHS ISR re-entry.
+ * @brief W0C-ack RSME/SOFR on a spurious USB ISR re-entry.
  *
- * @details The RA8D2 USBHS combined "USB_INT+RESUME" ELC event line is
- * asserted by the PHY's USBR signal independent of INTENB0, so the IRQ
- * keeps re-firing while the host is in (or just exited) resume
- * signalling. When the snapshot has no event bits set we W0C-clear the
- * stuck RSME/SOFR flags and bump the spurious counter.
+ * @details The RA8D2 USB controller asserts its NVIC line for RSME
+ * (resume detect) and SOFR (start-of-frame) independent of INTENB0 --
+ * on USBHS via the PHY's USBR signal, and on USBFS the same applies
+ * (confirmed on the bench: SOFR/RSME entries occur with INTENB0.SOFR
+ * and INTENB0.RSME both clear). While the host hammers a NAK'ing
+ * pipe the FS resume detector re-asserts RSME continuously, which --
+ * without this short-circuit -- drives the full dispatch + pipe-walk
+ * ~10^5 times/second and starves RTOS thread mode. When the snapshot
+ * has no real event bit we W0C-clear the stuck RSME/SOFR flags, bump
+ * the spurious counter, and return cheaply.
  *
+ * @param[in] speed   Which controller the spurious entry came from.
  * @param[in] intsts0 The just-snapshotted INTSTS0 value.
  *
  * @pre Caller already determined ``(intsts0 & event_msk) == 0``.
- * @pre USBHS module is initialized (``ra_usb_device_init`` has run).
+ * @pre USB module for ``speed`` is initialized (``ra_usb_device_init`` ran).
  * @post ``s_dcd_irq_spurious_mask_count`` is incremented.
  * @post RSME/SOFR bits that were set are cleared via ::ra_usb_clear_status.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-static void internal_ack_spurious_usbhs(uint16_t intsts0)
+static void internal_ack_spurious(ra_usb_speed_t speed, uint16_t intsts0)
 {
   const uint16_t stuck_mask = (uint16_t)((1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
   if ((intsts0 & stuck_mask) != 0U) {
-    (void)ra_usb_clear_status(k_ra_usb_speed_hs, (uint16_t)(intsts0 & stuck_mask));
+    (void)ra_usb_clear_status(speed, (uint16_t)(intsts0 & stuck_mask));
   }
   s_dcd_irq_spurious_mask_count++;
 }
@@ -1758,7 +1961,7 @@ static void internal_ack_spurious_usbhs(uint16_t intsts0)
  *
  * @details Snapshot ``INTSTS0`` and gate the rest of the ISR on the
  * event bits (8..15 plus the VALID flag). Spurious / USBR-driven
- * re-entry is short-circuited via ::internal_ack_spurious_usbhs.
+ * re-entry is short-circuited via ::internal_ack_spurious.
  * Real events are forwarded to ::ra_usb_dispatch, which performs the
  * canonical W0C ack and invokes the USBX-side handler.
  *
@@ -1800,7 +2003,7 @@ static void internal_usbhs_isr(void* ctx)
   s_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
-    internal_ack_spurious_usbhs(intsts0);
+    internal_ack_spurious(k_ra_usb_speed_hs, intsts0);
     return;
   }
 
@@ -2181,8 +2384,9 @@ static void internal_ctrt_handle_valid(ra_usb_speed_t speed)
    * USBINDX/USBLENG mirrors persist (HUM Ch 37.2.21..24 p 2087), so the
    * SETUP stays readable below; but a latched VALID stalls the
    * DCPCTR.PID write gate (HUM Ch 37.2.31 p 2095) and holds the USB IRQ
-   * line asserted -- which storms internal_usbfs_isr (the FS ISR has no
-   * spurious-entry guard). The early clear is also the dedup: a second
+   * line asserted. VALID is a real event bit (in event_msk), so the
+   * ISR spurious-entry gate does not short-circuit it -- it must be
+   * cleared here. The early clear is also the dedup: a second
    * ISR entry for the same physical SETUP sees VALID=0 and
    * internal_handle_ctrt skips this function.
    * HUM Ch 36.2.14 INTSTS0 p 1985 (W0C). */
@@ -2754,10 +2958,39 @@ static void internal_irq_auto_echo(uint8_t i)
 static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
 {
   volatile r_usb_regs_t* reg = (s_dcd.speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
-  if (reg != nullptr) {
-    const uint16_t pipe_bit = (uint16_t)(1U << i);
-    reg->BEMPSTS            = (uint16_t)(~pipe_bit);
+  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speed always maps */
+    return;             /* GCOVR_EXCL_LINE */
   }
+  const uint16_t pipe_bit = (uint16_t)(1U << i);
+  /* Wait for BEMPSTS: it confirms the host has drained the bank just
+   * transmitted. Acting before that would let the next BOT stage (or
+   * the next data packet) be pushed over data the host has not read --
+   * a race that corrupts the transport and surfaces host-side as
+   * DID_ERROR. If BEMP has not fired, leave the transfer stashed and
+   * retry on the next IRQ walk. HUM Ch 36.2.15 BEMPSTS (W0C). */
+  if ((reg->BEMPSTS & pipe_bit) == 0U) {
+    return;
+  }
+  reg->BEMPSTS = (uint16_t)(~pipe_bit);
+
+  /* Multi-packet streaming. ra_usb_queue_in moves at most one MPS
+   * bank, so a transfer longer than MPS is sent one bank per host
+   * drain: push the next bank until the whole requested length is
+   * out, only then post completion. ``actual_length`` is the running
+   * queued-byte count seeded by internal_submit_pipe. */
+  const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t sent  = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+  if (sent < total) {
+    const uint16_t mps   = s_dcd.pipes[i].max_pkt;
+    const uint16_t rem   = (uint16_t)(total - sent);
+    const uint16_t chunk = (rem > mps) ? mps : rem;
+    if (ra_usb_queue_in(s_dcd.speed, i, &tr->ux_slave_transfer_request_data_pointer[sent], chunk) ==
+        k_ra_ok) {
+      tr->ux_slave_transfer_request_actual_length = (ULONG)((uint32_t)sent + (uint32_t)chunk);
+    }
+    return;
+  }
+
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
   s_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
@@ -2786,19 +3019,51 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
  */
 static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
 {
-  uint16_t       len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  /* Multi-packet streaming. ra_usb_queue_out drains at most one MPS
+   * bank, so an OUT transfer longer than MPS (e.g. the 512-byte SCSI
+   * WRITE data phase) is received one bank per host packet:
+   * accumulate into the caller buffer at the running offset, re-arm
+   * the pipe for the next bank, and complete only once the whole
+   * requested length is in -- or the host ends early with a short
+   * (< MPS) packet, which terminates the OUT data phase (this is also
+   * how a 31-byte CBW into a 64-byte request completes). */
+  const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t got   = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+  const uint16_t mps   = s_dcd.pipes[i].max_pkt;
+  uint16_t       want  = (uint16_t)(total - got);
+  if (want > mps) {
+    want = mps;
+  }
+  uint16_t       len = want;
   const ra_err_t qo_err =
-    ra_usb_queue_out(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
+    ra_usb_queue_out(s_dcd.speed, i, &tr->ux_slave_transfer_request_data_pointer[got], &len);
   if (qo_err == k_ra_ok) {
     if (i == 2U) {
       s_diag.irq_walk_pipe2_complete++;
     }
-    tr->ux_slave_transfer_request_actual_length   = len;
-    tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-    s_dcd.pipes[i].xfer                           = nullptr;
+    const uint16_t now                          = (uint16_t)(got + len);
+    tr->ux_slave_transfer_request_actual_length = (ULONG)now;
+    bool done                                   = (now >= total);
+    if (len < mps) {
+      done = true; /* short packet terminates the OUT data phase */
+    }
+    if (done) {
+      /* Transfer complete. Park the pipe at PID=NAK: a host OUT token
+       * that lands before the class layer arms the next receiver is
+       * then NAK'd (host retries) rather than ACK'd into a FIFO with no
+       * waiter -- the latter latches BRDYSTS and storms the ISR
+       * (GitHub issue #6). internal_submit_pipe arms PID=BUF again for
+       * the next transfer_request. HUM Ch 36.2.27 PIPECTR.PID. */
+      (void)ra_usb_park_out_pipe(s_dcd.speed, i);
+      tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+      s_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
-    (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
+      (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
+      return;
+    }
+    /* More packets expected -- re-arm for the next host OUT token. */
+    (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
     return;
   }
   if (qo_err == k_ra_err_no_data) {
@@ -2937,11 +3202,39 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
  * @since 0.1.0
  */
 /**
+ * @brief Resolve the USB controller's NVIC slot for the storm guard.
+ *
+ * @details Looks up the NVIC slot the controller's ELC event was routed to
+ * and records it in ::s_usb_irq_slot, so ::internal_usbfs_irq_set_enabled
+ * (the mask / re-enable) targets the right ISER/ICER bit. No timer is created
+ * here -- the storm guard's recovery clock is the per-app 1 ms
+ * ``SysTick_Handler``, which calls ::ux_dcd_ra_usb_irq_reenable.
+ *
+ * @param[in] speed Which controller was just registered.
+ *
+ * @pre ``ra_isr_register`` for ``speed`` has succeeded.
+ * @pre ``speed`` selects a controller present on this MCU.
+ * @post ::s_usb_irq_slot holds the controller's NVIC slot (0 if lookup fails).
+ * @post No NVIC enable/disable state is changed (slot resolution only).
+ *
+ * @note Not thread-safe; init-time only.
+ * @since 0.1.0
+ */
+static void internal_usbfs_storm_guard_init(ra_usb_speed_t speed)
+{
+  uint16_t slot = 0U;
+  if (ra_isr_lookup_slot(internal_pick_event(speed), &slot) == k_ra_ok) {
+    s_usb_irq_slot = slot;
+  }
+}
+
+/**
  * @brief Bind ``_ux_system_slave->ux_system_slave_dcd`` to this bridge.
  *
  * @details Wires the USBX DCD ownership block to the bridge's dispatcher
- * trampoline, resets the per-pipe transfer stash, then registers the
- * controller's ELC event onto an NVIC line via ``ra_isr_register``.
+ * trampoline, resets the per-pipe transfer stash, registers the
+ * controller's ELC event onto an NVIC line via ``ra_isr_register``, then
+ * arms the FS interrupt-storm guard.
  *
  * @param[in] speed Which controller (FS or HS).
  *
@@ -2986,6 +3279,7 @@ static ra_err_t internal_init_bind_owner(ra_usb_speed_t speed)
                                      nullptr),
                      s_tag,
                      "ra_isr_register");
+  internal_usbfs_storm_guard_init(speed);
   return k_ra_ok;
 }
 
