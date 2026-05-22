@@ -1390,19 +1390,21 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
  * @since 0.1.0
  */
 /**
- * @brief Compute the PIPEBUF word for a bulk pipe (2*MPS region).
+ * @brief Compute the PIPEBUF word for a single-buffered bulk pipe.
  *
  * @details
  * Statically partition the controller's internal FIFO RAM among the
  * bulk pipes. Reserve blocks 0..7 (64-byte units) for the DCP (per
  * FSP/Renesas examples), then pack user pipes in pipe-number order
- * with 2*MPS per pipe so PIPECFG.DBLB has two banks.
+ * with one MPS-sized bank per pipe. PIPECFG.DBLB is not set (see
+ * internal_pipecfg_word), so a single bank per pipe is the matching
+ * buffer allocation.
  *
- *   BUFNMB  = 8 + (pipe_num - 1) * blocks_per_pipe
- *   BUFSIZE = (2 * MPS / 64) - 1
+ *   BUFNMB  = 8 + (pipe_num - 1) * mps_blocks
+ *   BUFSIZE = mps_blocks - 1
  *
- *   HS MPS=512 -> blocks_per_pipe = 16, BUFSIZE = 15
- *   FS MPS=64  -> blocks_per_pipe = 2,  BUFSIZE = 1
+ *   HS MPS=512 -> mps_blocks = 8, BUFSIZE = 7
+ *   FS MPS=64  -> mps_blocks = 1, BUFSIZE = 0
  *
  * @param[in] pipe_num   PIPE number 1..9.
  * @param[in] max_packet Pipe MPS (bytes).
@@ -1423,10 +1425,8 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
 {
   const uint16_t mps_blocks =
     (uint16_t)(((uint32_t)max_packet + (k_ra_pipebuf_block_bytes - 1U)) / k_ra_pipebuf_block_bytes);
-  const uint16_t blocks_per_pipe = (uint16_t)(mps_blocks * 2U);
-  const uint16_t bufsize_field   = (uint16_t)(blocks_per_pipe - 1U);
-  const uint16_t bufnmb_field =
-    (uint16_t)(8U + (uint16_t)((uint16_t)(pipe_num - 1U) * blocks_per_pipe));
+  const uint16_t bufsize_field = (uint16_t)(mps_blocks - 1U);
+  const uint16_t bufnmb_field = (uint16_t)(8U + (uint16_t)((uint16_t)(pipe_num - 1U) * mps_blocks));
   return (uint16_t)((bufsize_field << k_ra_pipebuf_bufsize_shift) |
                     (bufnmb_field & k_ra_pipebuf_bufnmb_mask));
 }
@@ -1435,10 +1435,9 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @brief Pack PIPECFG fields for a configured non-control pipe.
  *
  * @details Encodes endpoint number, direction (DIR), pipe type (TYPE),
- * and, for bulk pipes, the SHTNAK + DBLB flags into the PIPECFG word.
- * HUM Ch 36.2.24 PIPECFG / DBLB; we always enable hardware double-
- * buffering on bulk pipes so the matching PIPEBUF (2*MPS) gives two
- * banks of MPS bytes each.
+ * and, for bulk pipes, the SHTNAK flag into the PIPECFG word. HUM
+ * Ch 36.2.24 PIPECFG. PIPECFG.DBLB is left clear -- bulk pipes run
+ * single-buffered to match the one-bank-per-call queue_out drain.
  *
  * @param[in] ep_addr Endpoint address (low nibble = EP number; bit 7
  *                    direction; the helper reads only the EP number).
@@ -1451,7 +1450,7 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @pre ``ep_addr`` low nibble is the EP number (caller validated 1..15).
  * @pre ``dir`` / ``type`` are valid enum values.
  * @post No global state is touched; the helper is pure.
- * @post For bulk pipes the SHTNAK + DBLB flags are set in the result.
+ * @post For bulk pipes the SHTNAK flag is set in the result (DBLB clear).
  *
  * @note Pure / thread-safe.
  * @since 0.1.0
@@ -1465,13 +1464,14 @@ static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_u
   if (type == k_ra_usb_ep_type_bulk) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_bulk);
     cfg = (uint16_t)(cfg | k_ra_pipecfg_shtnak);
-    /* HUM Ch 36.2.24 PIPECFG.DBLB: enable hardware double-buffering on
-     * bulk pipes. With matching PIPEBUF (2*MPS per pipe) and the
-     * DBLB-aware drain in queue_out's post-BCLR path (drains both
-     * banks before clearing BRDYSTS), the controller can have one
-     * bank on the wire while the CPU loads the other, doubling
-     * sustained throughput. */
-    cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);
+    /* HUM Ch 36.2.24 PIPECFG.DBLB is intentionally NOT set: bulk pipes
+     * run single-buffered. queue_out drains exactly one MPS bank per
+     * call (no two-bank coordination), so DBLB would leave the second
+     * bank holding host OUT data the drainer never reads -- which
+     * wedges the bulk-OUT data phase after the controller fills both
+     * banks (GitHub issue #6). Single-buffer trades pipelined
+     * throughput for a drain path that matches the controller's
+     * one-bank-at-a-time hand-off. */
   } else if (type == k_ra_usb_ep_type_intr) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_intr);
   } else {
@@ -1651,9 +1651,8 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
   /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 1996 */
   reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type);
   /* HUM Ch 36.2.25 "PIPEBUF : Pipe Buffer Setting Register", p 2002.
-   * Bulk pipes get a 2*MPS region so the matching PIPECFG.DBLB has
-   * two banks of MPS bytes each. Interrupt/iso pipes keep the reset
-   * default (single bank). */
+   * Bulk pipes get a single MPS-sized bank (DBLB clear). Interrupt/iso
+   * pipes keep the reset default. */
   if (type == k_ra_usb_ep_type_bulk) {
     reg->PIPEBUF = internal_pipebuf_word(pipe_num, max_packet);
   }
@@ -1994,14 +1993,13 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
   /* THROUGHPUT NOTE.
    * queue_in writes ONE packet (up to MPS bytes) into the IN pipe's
    * CFIFO bank and asserts BVAL. The hardware transmits the bank on
-   * the next IN token from the host. With PIPECFG.DBLB the pipe has
-   * two banks: queue_in can fill bank B while bank A is being TX'd,
-   * doubling sustained throughput on a fast host. Our measured
-   * ceiling (2.66 MB/s on HS) is bounded by the Linux cdc_acm read-
-   * URB completion path on the host, not by this code. See the
-   * matching note in port/usbx/ux_dcd_ra_usb.c (auto-echo block) for
-   * the full chain-of-causality + what it would take to lift the
-   * ceiling. */
+   * the next IN token from the host. Bulk pipes run single-buffered
+   * (PIPECFG.DBLB clear), so the next packet cannot be staged until
+   * the current bank drains. Our measured ceiling (2.66 MB/s on HS)
+   * is bounded by the Linux cdc_acm read-URB completion path on the
+   * host, not by this code. See the matching note in
+   * port/usbx/ux_dcd_ra_usb.c (auto-echo block) for the full
+   * chain-of-causality + what it would take to lift the ceiling. */
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
@@ -2403,6 +2401,43 @@ ra_err_t ra_usb_rearm_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num)
   /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005. Force
    * PID=BUF so the next host OUT token is ACKed. */
   internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of ra_usb_park_out_pipe (see header for full contract).
+ *
+ * @details See the public header for the documented contract; this
+ * definition implements it. Forces PIPECTR.PID = NAK so the controller
+ * NAKs (rather than ACKs) host OUT tokens while the pipe has no
+ * consumer, keeping BRDYSTS clear and the USB ISR quiescent.
+ *
+ * @param[in] speed    See header.
+ * @param[in] pipe_num See header.
+ *
+ * @return Result code.
+ * @retval k_ra_ok              Pipe parked at PID=NAK.
+ * @retval k_ra_err_invalid_arg Argument out of range.
+ *
+ * @pre Speed maps to a real controller.
+ * @pre Pipe 1..9.
+ * @post PIPECTR PID == NAK for `pipe_num`.
+ * @post The host's subsequent OUT tokens on this pipe are NAKed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_park_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register" p 2005 */
+  internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
   return k_ra_ok;
 }
 
