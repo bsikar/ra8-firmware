@@ -79,7 +79,12 @@ command -v arm-none-eabi-nm >/dev/null 2>&1 \
 # Resolve the symbol address from the .elf. Reject if the symbol is
 # undefined, weak, or in a discarded section -- those would silently
 # read 0xFFFFFFFF or constant zero.
-SYM_LINE="$(arm-none-eabi-nm --print-size "$ELF" | awk -v s="$SYMBOL" '$NF==s {print; exit}')"
+#
+# awk must NOT 'exit' on the first match: nm keeps writing, so an early
+# exit closes the pipe and nm dies with SIGPIPE -- which, under
+# 'set -o pipefail', fails the whole script. Match-and-latch instead so
+# awk drains all of nm's output.
+SYM_LINE="$(arm-none-eabi-nm --print-size "$ELF" | awk -v s="$SYMBOL" '$NF==s && !f {print; f=1}')"
 if [[ -z "$SYM_LINE" ]]; then
     echo -e "${RED}[memprobe]${NC} symbol '${SYMBOL}' not found in $(basename "$ELF")"
     exit 1
@@ -95,7 +100,7 @@ fi
 # Same lookup for the optional failure-counter symbol.
 FAIL_ADDR=""
 if [[ -n "$FAILURE_SYMBOL" ]]; then
-    FAIL_LINE="$(arm-none-eabi-nm --print-size "$ELF" | awk -v s="$FAILURE_SYMBOL" '$NF==s {print; exit}')"
+    FAIL_LINE="$(arm-none-eabi-nm --print-size "$ELF" | awk -v s="$FAILURE_SYMBOL" '$NF==s && !f {print; f=1}')"
     if [[ -z "$FAIL_LINE" ]]; then
         echo -e "${RED}[memprobe]${NC} failure-symbol '${FAILURE_SYMBOL}' not found in $(basename "$ELF")"
         exit 1
