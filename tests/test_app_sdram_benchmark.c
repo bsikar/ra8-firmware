@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_pin_validator.h"
 #include "ra_sdramc.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -26,6 +27,7 @@ typedef enum : uint32_t {
 static void reset_world(void)
 {
   ra_sim_mmap_reset();
+  ra_pin_validator_reset();
 }
 
 /** @brief Copy of the app helper to exercise the divide-by-zero clamp. */
