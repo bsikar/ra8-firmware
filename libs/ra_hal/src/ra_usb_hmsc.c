@@ -846,7 +846,7 @@ static ra_err_t internal_send_cbw(const uint8_t* cbw)
  */
 static ra_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 {
-  return ra_usb_queue_out(s_state.speed, k_ra_hmsc_pipe_bulk_in, dst, inout_len);
+  return ra_usb_queue_out(s_state.speed, k_ra_hmsc_pipe_bulk_in, dst, inout_len, true);
 }
 
 /* Build a 6-byte CDB for SCSI INQUIRY -- see surrounding code and HUM citations. */

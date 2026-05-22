@@ -2291,6 +2291,7 @@ internal_check_queue_out_args(uint8_t pipe_num, const uint8_t* out_buf, const ui
  * @param[in] pipe_num See implementation.
  * @param[in] out_buf See implementation.
  * @param[in] inout_len See implementation.
+ * @param[in] rearm See implementation.
  * @return Result code.
  * @retval k_ra_ok Operation succeeded.
  * @pre Module state is consistent.
@@ -2300,8 +2301,11 @@ internal_check_queue_out_args(uint8_t pipe_num, const uint8_t* out_buf, const ui
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra_err_t
-ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint16_t* inout_len)
+ra_err_t ra_usb_queue_out(ra_usb_speed_t speed,
+                          uint8_t        pipe_num,
+                          uint8_t*       out_buf,
+                          uint16_t*      inout_len,
+                          bool           rearm)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) {
@@ -2354,7 +2358,10 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
    * drained `take` bytes; the remainder (if take < available) is lost
    * by design -- our caller passed a buffer large enough for one MPS
    * packet, which is what one bank holds. */
-  internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
+  if (rearm) {
+    /* HUM Ch 36.2.27 PIPECTR.PID. See the header @param note on rearm. */
+    internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
+  }
   return k_ra_ok;
 }
 

@@ -389,7 +389,8 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
   (void)report_id;
 
   uint16_t       inout_len = max_len;
-  const ra_err_t err = ra_usb_queue_out(s_state.speed, k_ra_phid_pipe_intr_out, buf, &inout_len);
+  const ra_err_t err =
+    ra_usb_queue_out(s_state.speed, k_ra_phid_pipe_intr_out, buf, &inout_len, true);
   if (err == k_ra_ok) {
     *got_len = inout_len;
   } else {

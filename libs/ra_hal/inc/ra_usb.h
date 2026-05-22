@@ -432,14 +432,19 @@ ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uin
  *
  * @details
  * Counterpart to `ra_usb_queue_in`. Selects `pipe_num`, waits for
- * `FRDY`, reads up to `*inout_len` bytes from the FIFO, asserts
- * `BCLR` to release the buffer, and re-arms the pipe PID to BUF so
- * the next OUT token is acknowledged.
+ * `FRDY`, and reads up to `*inout_len` bytes from the FIFO. When
+ * `rearm` is true the pipe PID is set back to BUF so the controller
+ * ACKs the next host OUT token; when false the PID is left untouched
+ * so the caller owns the arm/park decision -- re-arming would re-open
+ * the pipe for a window in which a stray host OUT packet could land
+ * with no receiver and storm the ISR.
  *
  * @param[in] speed Which controller.
  * @param[in] pipe_num PIPE number 1..9.
  * @param[out] out_buf Receive buffer.
  * @param[in,out] inout_len On entry: capacity. On exit: bytes read.
+ * @param[in] rearm `true` re-arms PID=BUF after the drain; `false`
+ *                  leaves the PID untouched (caller arms or parks).
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes read.
@@ -450,14 +455,17 @@ ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uin
  * @pre Pipe previously configured for OUT.
  * @pre `out_buf`, `inout_len` non-NULL, `*inout_len > 0`.
  *
- * @post Pipe PID set to BUF.
+ * @post Pipe PID is BUF if `rearm`, otherwise left unchanged.
  * @post `*inout_len` reflects actual byte count delivered.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint16_t* inout_len);
+[[nodiscard]] ra_err_t ra_usb_queue_out(ra_usb_speed_t speed,
+                                        uint8_t        pipe_num,
+                                        uint8_t*       out_buf,
+                                        uint16_t*      inout_len,
+                                        bool           rearm);
 
 /**
  * @brief Re-arm an OUT pipe that the controller has parked at PID=NAK.
@@ -465,13 +473,12 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  * @details
  * The RA8D2 USB-FS / USB-HS pipe state machine auto-flips PID from BUF
  * to NAK after every successful BUF cycle on a single-buffered pipe
- * (HUM Ch 36 -- single-buffered OUT pipes). The drain path in
- * `ra_usb_queue_out` re-arms PID=BUF after a successful read, but
- * between the drain and the next host OUT token there is a window in
- * which the controller may NAK an incoming transaction (NRDYSTS
- * accumulates the NAK responses). This helper clears the per-pipe
- * NRDYSTS bit (W0C) and unconditionally re-asserts PID=BUF so the
- * pipe is ready to ACK the next host OUT token. Safe to call
+ * (HUM Ch 36 -- single-buffered OUT pipes). `ra_usb_queue_out` leaves
+ * the PID untouched after a drain, so the OUT pipe sits at NAK and the
+ * controller NAKs incoming transactions (NRDYSTS accumulates the NAK
+ * responses). This helper clears the per-pipe NRDYSTS bit (W0C) and
+ * unconditionally re-asserts PID=BUF so the pipe is ready to ACK the
+ * next host OUT token. Safe to call
  * proactively from the polled-dispatch worker on every iteration for
  * each OUT pipe that has a pending USBX transfer.
  *

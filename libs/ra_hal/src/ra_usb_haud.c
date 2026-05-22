@@ -858,7 +858,8 @@ ra_err_t ra_usb_haud_recv_samples(uint8_t* buf, uint16_t max_len_bytes, uint16_t
     return k_ra_err_invalid_state;
   }
   uint16_t       inout_len = max_len_bytes;
-  const ra_err_t err = ra_usb_queue_out(s_state.speed, k_ra_haud_pipe_iso_in, buf, &inout_len);
+  const ra_err_t err =
+    ra_usb_queue_out(s_state.speed, k_ra_haud_pipe_iso_in, buf, &inout_len, true);
   if (err == k_ra_ok) {
     *got_len_bytes = inout_len;
   } else {

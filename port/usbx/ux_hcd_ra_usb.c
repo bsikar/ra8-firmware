@@ -185,7 +185,7 @@ static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
       tr->ux_transfer_request_data_pointer != nullptr) {
     uint16_t len = (uint16_t)tr->ux_transfer_request_requested_length;
     if ((setup.bm_request_type & 0x80U) != 0U) {
-      if (ra_usb_queue_out(s_hcd.speed, 0U, tr->ux_transfer_request_data_pointer, &len) !=
+      if (ra_usb_queue_out(s_hcd.speed, 0U, tr->ux_transfer_request_data_pointer, &len, true) !=
           k_ra_ok) {
         return UX_TRANSFER_ERROR;
       }
@@ -228,7 +228,7 @@ static unsigned int internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep
 {
   if ((ep_addr & 0x80U) != 0U) {
     uint16_t len = (uint16_t)tr->ux_transfer_request_requested_length;
-    if (ra_usb_queue_out(s_hcd.speed, pipe, tr->ux_transfer_request_data_pointer, &len) !=
+    if (ra_usb_queue_out(s_hcd.speed, pipe, tr->ux_transfer_request_data_pointer, &len, true) !=
         k_ra_ok) {
       return UX_TRANSFER_ERROR;
     }
