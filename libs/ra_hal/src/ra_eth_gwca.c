@@ -271,15 +271,15 @@ ra_err_t ra_eth_gwca_set_operation_mode(ra_gwmc_opc_t mode)
   /* HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1797 */
   volatile uint32_t* const gwmc =
     (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwmc);
-  /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
-  volatile uint32_t* const gwms =
-    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
 
   const uint32_t opc = (uint32_t)mode & (uint32_t)k_ra_gwmc_opc_mask;
   const uint32_t cur = *gwmc & ~(uint32_t)k_ra_gwmc_opc_mask;
   *gwmc              = cur | opc;
 
 #ifndef RA_SIMULATOR_MODE
+  /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
+  volatile uint32_t* const gwms =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
   for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
     if ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc) {    /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;

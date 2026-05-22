@@ -156,8 +156,7 @@ typedef struct {
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((
-  aligned(16))) static ra_gwca_basic_descriptor_t s_linkfix_table[k_ra_eth_linkfix_count];
+alignas(16) static ra_gwca_basic_descriptor_t s_linkfix_table[k_ra_eth_linkfix_count];
 
 /**
  * @var s_rx_chain
@@ -169,7 +168,7 @@ __attribute__((
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_gwca_basic_descriptor_t s_rx_chain[k_ra_eth_rx_ring_depth];
+alignas(16) static ra_gwca_basic_descriptor_t s_rx_chain[k_ra_eth_rx_ring_depth];
 
 /**
  * @var s_tx_chain
@@ -185,7 +184,7 @@ __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t s_rx_chain[k_ra_e
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((aligned(16))) static ra_gwca_ext_descriptor_t s_tx_chain[k_ra_eth_tx_ring_depth];
+alignas(16) static ra_gwca_ext_descriptor_t s_tx_chain[k_ra_eth_tx_ring_depth];
 
 #ifndef UNIT_TEST
 /**
@@ -202,8 +201,7 @@ __attribute__((aligned(16))) static ra_gwca_ext_descriptor_t s_tx_chain[k_ra_eth
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((
-  aligned(16))) static uint8_t s_rx_pool_storage[k_ra_eth_num_rx_desc * k_ra_eth_buf_size];
+alignas(16) static uint8_t s_rx_pool_storage[k_ra_eth_num_rx_desc * k_ra_eth_buf_size];
 
 /**
  * @var s_tx_pool_storage
@@ -214,8 +212,7 @@ __attribute__((
  * @note File-scope, not thread-safe.
  * @since 0.1.0
  */
-__attribute__((
-  aligned(16))) static uint8_t s_tx_pool_storage[k_ra_eth_num_tx_desc * k_ra_eth_buf_size];
+alignas(16) static uint8_t s_tx_pool_storage[k_ra_eth_num_tx_desc * k_ra_eth_buf_size];
 #endif /* UNIT_TEST */
 
 /**
