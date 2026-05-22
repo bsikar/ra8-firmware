@@ -2359,7 +2359,7 @@ ra_err_t ra_usb_queue_out(ra_usb_speed_t speed,
    * by design -- our caller passed a buffer large enough for one MPS
    * packet, which is what one bank holds. */
   if (rearm) {
-    /* HUM Ch 36.2.27 PIPECTR.PID. See the header @param note on rearm. */
+    /* Re-arm PID=BUF; rearm == false callers own the arm/park decision. */
     internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
   }
   return k_ra_ok;
