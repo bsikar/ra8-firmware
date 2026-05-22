@@ -62,6 +62,27 @@
 #include "ux_dcd_ra_usb.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
+
+/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
+ * counter (for ra_delay_ms) AND ThreadX's timer (for tx_thread_sleep and
+ * semaphore timeouts). The default weak ra_time SysTick handler only advances
+ * the ms counter; without _tx_timer_interrupt ThreadX time never advances and
+ * tx_thread_sleep / USBX class-thread scheduling stall. The project's
+ * tx_initialize_low_level.S configures SysTick but relies on the application
+ * to publish the handler. */
+extern void ra_time_on_tick(void);
+extern void _tx_timer_interrupt(void);
+void        SysTick_Handler(void);
+void        SysTick_Handler(void)
+{
+  ra_time_on_tick();
+  _tx_timer_interrupt();
+  /* Re-enable the USB IRQ at the NVIC level: the bridge's storm guard
+   * masks it to break the USBFS event-less interrupt storm, and this
+   * 1 ms pulse is its recovery clock -- a masked line is re-enabled
+   * within one period so real USB events are never lost. */
+  ux_dcd_ra_usb_irq_reenable();
+}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -96,7 +117,8 @@ typedef enum : uint32_t {
   k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 32768U, /**< USBX memory pool (bytes).           */
   k_demo_block_size      = 512U,   /**< SCSI logical block size (bytes).    */
-  k_demo_block_count     = 8U,     /**< Number of blocks (8 * 512 = 4 KiB). */
+  k_demo_block_count     = 1024U,  /**< Blocks (1024 * 512 = 512 KiB) -- big
+                                         enough for a host mkfs.vfat / mount. */
   k_demo_idle_ticks      = 50U,    /**< Heartbeat back-off (ThreadX ticks). */
 } demo_config_t;
 
