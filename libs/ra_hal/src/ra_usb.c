@@ -275,6 +275,14 @@ static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num,
  */
 static ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
 {
+#ifdef RA_SIMULATOR_MODE
+  /* The host simulator backs CFIFOCTR with plain RAM and cannot model
+   * the controller re-asserting FRDY once the FIFO drains (nor the
+   * BCLR-clears-buffer transition), so the hardware poll below would
+   * never converge. Treat the FIFO as always ready under simulation. */
+  (void)reg;
+  return k_ra_ok;
+#else
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
    * Loop bound is large (~10 ms ceiling at 1 GHz) because the DCP
    * is single-buffered: between consecutive EP0 IN chunks FRDY stays
@@ -286,6 +294,7 @@ static ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
     }
   }
   return k_ra_err_hw_timeout;
+#endif
 }
 
 /**
@@ -2221,6 +2230,15 @@ ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t 
    * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
   internal_select_cfifo(reg, 0U, true);
   s_dcp_cfifoctr_pre = reg->CFIFOCTR;
+
+  /* Discard any stale, unconsumed buffer content before writing the
+   * fresh response. If a previous control-IN payload was never pulled
+   * by the host (a missed response window followed by a SETUP
+   * retransmit), the CFIFO is left non-empty, FRDY write-ready never
+   * re-asserts, and internal_wait_frdy below times out. Mirrors the
+   * hw_usb_set_bclr in FSP usb_pstd_ctrl_read.
+   * HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
 
   ra_err_t err;
   if (len == 0U) {
