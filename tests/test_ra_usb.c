@@ -578,18 +578,18 @@ static void test_queue_out_arg_validation(void)
   uint8_t  buf[8] = {};
   uint16_t len    = 8U;
 
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, nullptr, &len));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, buf, nullptr));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_queue_out((ra_usb_speed_t)9U, 1U, buf, &len));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_queue_out(k_ra_usb_speed_fs, 0U, buf, &len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, nullptr, &len, true));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, buf, nullptr, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_queue_out((ra_usb_speed_t)9U, 1U, buf, &len, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_queue_out(k_ra_usb_speed_fs, 0U, buf, &len, true));
   uint16_t zero = 0U;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, buf, &zero));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, buf, &zero, true));
 
   /* With FRDY asserted but DTLN=0, queue_out reports no_data. */
   volatile r_usb_regs_t* reg = ra_usb_fs();
   reg->CFIFOCTR              = (uint16_t)k_ra_fifoctr_frdy;
   len                        = 8U;
-  TEST_ASSERT_EQ(k_ra_err_no_data, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, buf, &len));
+  TEST_ASSERT_EQ(k_ra_err_no_data, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, buf, &len, true));
   TEST_ASSERT_EQ(0U, len);
   TEST_END("ra_usb_queue_out arg validation");
 }
@@ -677,7 +677,7 @@ static void test_queue_out_fifo_tail_paths(void)
   freg->BRDYSTS                   = pipe_bit;
   freg->CFIFOCTR                  = (uint16_t)(k_ra_fifoctr_frdy | 1U);
   freg->CFIFO                     = (uint16_t)0xBBAAU;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, out, &len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, out, &len, true));
   TEST_ASSERT_EQ(1U, len);
   TEST_ASSERT_EQ(0xAAU, out[0]);
 
@@ -687,7 +687,7 @@ static void test_queue_out_fifo_tail_paths(void)
   freg->BRDYSTS  = pipe_bit;
   freg->CFIFOCTR = (uint16_t)(k_ra_fifoctr_frdy | 2U);
   freg->CFIFO    = (uint16_t)0xDDCCU;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, out, &len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_fs, 1U, out, &len, true));
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0xCCU, out[0]);
   TEST_ASSERT_EQ(0xDDU, out[1]);
@@ -704,7 +704,7 @@ static void test_queue_out_fifo_tail_paths(void)
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 4U);
   *test_usb_cfifo32(hreg) = 0x44332211U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(4U, len);
   TEST_ASSERT_EQ(0x11U, out[0]);
   TEST_ASSERT_EQ(0x22U, out[1]);
@@ -723,7 +723,7 @@ static void test_queue_out_fifo_tail_paths(void)
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 2U);
   *test_usb_cfifo32(hreg) = 0x00006655U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0x55U, out[0]);
   TEST_ASSERT_EQ(0x66U, out[1]);
@@ -735,7 +735,7 @@ static void test_queue_out_fifo_tail_paths(void)
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra_fifoctr_frdy | 3U);
   *test_usb_cfifo32(hreg) = 0x00887766U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_queue_out(k_ra_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(3U, len);
   TEST_ASSERT_EQ(0x66U, out[0]);
   TEST_ASSERT_EQ(0x77U, out[1]);
@@ -1089,14 +1089,16 @@ static void test_mcdc_check_queue_out_args_buf(void)
   /* V1: both pointers valid -> falls through to FRDY/DTLN logic. */
   ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra_err_no_data,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len));
+                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len, true));
   /* V2: out_buf NULL. */
   len = 8U;
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, nullptr, &len));
+  TEST_ASSERT_EQ(
+    k_ra_err_null_ptr,
+    ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, nullptr, &len, true));
   /* V3: inout_len NULL. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_null_ptr,
+    ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, nullptr, true));
   TEST_END("mcdc: queue_out NULL-arg decision");
 }
 
@@ -1123,12 +1125,14 @@ static void test_mcdc_check_queue_out_args_pipe(void)
 
   ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra_err_no_data,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len));
+                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len, true));
   len = 8U;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_lo_bad, buf, &len));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_hi_bad, buf, &len));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_lo_bad, buf, &len, true));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_hi_bad, buf, &len, true));
   TEST_END("mcdc: queue_out pipe_num decision");
 }
 
@@ -1154,13 +1158,14 @@ static void test_mcdc_check_queue_out_args_inout_len(void)
 
   ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra_err_no_data,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len));
+                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len, true));
   uint16_t zero = (uint16_t)k_mcdc_usb_len_zero;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &zero));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &zero, true));
   uint16_t big = (uint16_t)k_mcdc_usb_len_too_big;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &big));
+                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &big, true));
   TEST_END("mcdc: queue_out *inout_len decision");
 }
 

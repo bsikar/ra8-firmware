@@ -948,6 +948,26 @@ static uint8_t    s_dcd_auto_echo_buf[k_ux_dcd_ra_usb_auto_echo_max];
 static uint8_t    s_dcd_auto_echo_out_pipe = 0U;
 static uint8_t    s_dcd_auto_echo_in_pipe  = 0U;
 
+/* Orphan bulk-OUT holding buffer. A host OUT packet can land in the
+ * controller bank during the brief PID=BUF window between one transfer
+ * completing and the next being armed -- the host pipelines a CBW's
+ * data phase straight after the CBW. With no USBX waiter stashed the
+ * IRQ walk cannot drain it, BRDYSTS stays latched, and the USBFS IRQ
+ * storms at the full bus rate: BRDY is a real event so the event-less
+ * storm guard never masks it and RTOS thread mode starves (GitHub
+ * issue #6). internal_irq_drain_orphan_out pulls that packet into
+ * s_orphan_buf -- which W0C-clears BRDYSTS and parks the pipe -- and
+ * internal_submit_pipe hands it to the next bulk-OUT transfer. The
+ * bulk-OUT wire is strictly serial, so a held packet always belongs to
+ * the next OUT transfer USBX submits. */
+typedef enum : uint16_t {
+  k_ra_usb_orphan_bytes = 64U, /**< One full-speed bulk MPS packet. */
+} ux_dcd_ra_usb_orphan_cfg_t;
+
+static uint8_t  s_orphan_buf[k_ra_usb_orphan_bytes]; /**< One held OUT packet.        */
+static uint16_t s_orphan_len  = 0U;                  /**< Held byte count; 0 = empty. */
+static uint8_t  s_orphan_pipe = 0U;                  /**< Pipe the held packet is on. */
+
 /**
  * @brief Enable bridge-side auto-echo on the configured pipe pair.
  *
@@ -1377,6 +1397,64 @@ static unsigned int internal_wait_completion(struct UX_SLAVE_TRANSFER_STRUCT* tr
 #endif
 
 /**
+ * @brief Deliver a held orphan OUT packet to a freshly submitted transfer.
+ *
+ * @details Called by ::internal_submit_pipe when ::s_orphan_len is
+ * non-zero for the target pipe. Copies the held packet (captured by
+ * ::internal_irq_drain_orphan_out) into the transfer buffer as packet
+ * one. If the held packet fills the request, or is itself a short
+ * (< MPS) packet, it ends the transfer -- completed synchronously here,
+ * with the semaphore posted so the task-side wait returns at once.
+ * Otherwise the pipe is armed to BUF and ::internal_irq_complete_out
+ * streams the remainder from the held byte offset.
+ *
+ * @param[in,out] tr   USBX transfer request, already stashed on the pipe.
+ * @param[in]     pipe Pipe index (1..max_pipes-1); equals ::s_orphan_pipe.
+ *
+ * @return USBX result code.
+ * @retval UX_SUCCESS        Held packet delivered (transfer complete or armed).
+ * @retval UX_TRANSFER_ERROR Re-arm of the OUT pipe failed.
+ *
+ * @pre ``s_orphan_len != 0`` and ``s_orphan_pipe == pipe``.
+ * @pre Task context; the caller stashed ``tr`` at ``s_dcd.pipes[pipe].xfer``.
+ * @post ``s_orphan_len == 0`` -- the held packet was consumed.
+ * @post On a completed transfer the semaphore is posted and the stash cleared.
+ *
+ * @note Task-context only; not ISR-safe.
+ * @since 0.1.0
+ */
+static unsigned int internal_submit_consume_orphan(struct UX_SLAVE_TRANSFER_STRUCT* tr,
+                                                   uint8_t                          pipe)
+{
+  const uint16_t req  = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t mps  = s_dcd.pipes[pipe].max_pkt;
+  const uint16_t held = s_orphan_len;
+  const uint16_t n    = (held < req) ? held : req;
+  (void)memcpy(tr->ux_slave_transfer_request_data_pointer, s_orphan_buf, (size_t)n);
+  s_orphan_len                                = 0U;
+  tr->ux_slave_transfer_request_actual_length = n;
+
+  bool done = (n >= req);
+  if (held < mps) {
+    done = true; /* short held packet terminates the OUT data phase */
+  }
+  if (done) {
+    tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+    s_dcd.pipes[pipe].xfer                        = nullptr;
+#ifndef UX_DEVICE_STANDALONE
+    (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
+#endif
+    return UX_SUCCESS;
+  }
+  /* Partial: more packets expected -- arm BUF for the streaming tail. */
+  if (ra_usb_rearm_out_pipe(s_dcd.speed, pipe) != k_ra_ok) {
+    s_dcd.pipes[pipe].xfer = nullptr;
+    return UX_TRANSFER_ERROR;
+  }
+  return UX_SUCCESS;
+}
+
+/**
  * @brief Submit the stashed IN/OUT transfer on a non-EP0 pipe.
  *
  * @details Extracted from ::internal_transfer_request to keep the
@@ -1428,12 +1506,20 @@ internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t 
     tr->ux_slave_transfer_request_actual_length = chunk;
     return UX_SUCCESS;
   }
-  /* OUT pipe: move PID from NAK to BUF so the controller ACKs the
-   * host's OUT token. internal_irq_complete_out parks the pipe back at
-   * NAK once the transfer drains, so between transfers the host is
-   * flow-controlled (NAK + retry) rather than ACK'd into a FIFO with
-   * no receiver -- which would latch BRDYSTS and storm the ISR
-   * (GitHub issue #6). HUM Ch 36.2.27 PIPECTR.PID. */
+  /* OUT pipe. A host packet may already have landed in the controller
+   * bank during the PID=BUF window after the previous transfer (the
+   * host pipelines a CBW's data phase). internal_irq_drain_orphan_out
+   * stashes such a packet; the bulk-OUT wire is serial so it belongs to
+   * THIS transfer -- deliver it as packet one. Nested ifs keep the test
+   * out of the MC/DC inventory. */
+  if (s_orphan_len != 0U) {
+    if (s_orphan_pipe == pipe) {
+      return internal_submit_consume_orphan(tr, pipe);
+    }
+  }
+  /* No held packet: move PID from NAK to BUF so the controller ACKs the
+   * host's first OUT token. internal_irq_complete_out parks the pipe
+   * back at NAK once the transfer drains. HUM Ch 36.2.27 PIPECTR.PID. */
   if (ra_usb_rearm_out_pipe(s_dcd.speed, pipe) != k_ra_ok) {
     s_dcd.pipes[pipe].xfer = nullptr;
     return UX_TRANSFER_ERROR;
@@ -1552,6 +1638,9 @@ static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_addr)
   if ((ep_addr & 0x80U) != 0U) {
     return; /* IN pipe -- queue_in / internal_submit_pipe own the PID */
   }
+  /* Fresh OUT-pipe config: drop any orphan packet held from a prior
+   * configuration so it cannot be misdelivered to a new transfer. */
+  s_orphan_len        = 0U;
   bool auto_echo_pipe = false;
   if (s_dcd_auto_echo_enable != 0U) {
     if (pipe == s_dcd_auto_echo_out_pipe) {
@@ -2909,7 +2998,8 @@ static void internal_irq_auto_echo(uint8_t i)
   if (s_dcd_auto_echo_enable != 0U && i == s_dcd_auto_echo_out_pipe &&
       s_dcd.pipes[i].dir_in == 0U) {
     uint16_t       len = (uint16_t)k_ux_dcd_ra_usb_auto_echo_max;
-    const ra_err_t qo  = ra_usb_queue_out(s_dcd.speed, i, s_dcd_auto_echo_buf, &len);
+    const ra_err_t qo =
+      ra_usb_queue_out(s_dcd.speed, i, s_dcd_auto_echo_buf, &len, /* rearm */ true);
     if (qo == k_ra_ok && len > 0U) {
       s_dcd_auto_echo_drain_ok++;
       s_dcd_auto_echo_last_len = len;
@@ -3034,9 +3124,12 @@ static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
   if (want > mps) {
     want = mps;
   }
-  uint16_t       len = want;
-  const ra_err_t qo_err =
-    ra_usb_queue_out(s_dcd.speed, i, &tr->ux_slave_transfer_request_data_pointer[got], &len);
+  uint16_t       len    = want;
+  const ra_err_t qo_err = ra_usb_queue_out(s_dcd.speed,
+                                           i,
+                                           &tr->ux_slave_transfer_request_data_pointer[got],
+                                           &len,
+                                           /* rearm */ false);
   if (qo_err == k_ra_ok) {
     if (i == 2U) {
       s_diag.irq_walk_pipe2_complete++;
@@ -3075,12 +3168,68 @@ static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
 }
 
 /**
+ * @brief Capture a no-receiver bulk-OUT packet into the orphan buffer.
+ *
+ * @details Run from the IRQ pipe-walk for an OUT pipe that has no USBX
+ * transfer stashed. If a host packet has landed in the controller bank
+ * (BRDYSTS set), draining it via ::ra_usb_queue_out both W0C-clears
+ * BRDYSTS -- so the no-receiver BRDY interrupt cannot storm the CPU and
+ * starve thread mode (GitHub issue #6) -- and preserves the packet in
+ * ::s_orphan_buf for ::internal_submit_pipe to hand to the next
+ * bulk-OUT transfer. The pipe is then parked at PID=NAK so no second
+ * packet can land. Skipped for IN pipes, unconfigured pipes, the CDC
+ * auto-echo pipe, and while the one-deep buffer is already occupied.
+ *
+ * @param[in] i Pipe index (1..max_pipes-1).
+ *
+ * @pre Caller is on the ISR callback path; ``s_dcd.pipes[i].xfer`` is NULL.
+ * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
+ * @post On a captured packet ::s_orphan_len / ::s_orphan_pipe hold it,
+ *       BRDYSTS for pipe ``i`` is cleared, and the pipe is parked at NAK.
+ * @post Otherwise no state changes (fast BRDYSTS-clear early return).
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_drain_orphan_out(uint8_t i)
+{
+  if (s_dcd.pipes[i].dir_in != 0U) {
+    return; /* IN pipe -- the host does not write to it */
+  }
+  if (s_dcd.pipes[i].ep_addr == 0U) {
+    return; /* pipe not configured by the class layer */
+  }
+  if (s_dcd_auto_echo_enable != 0U) {
+    if (i == s_dcd_auto_echo_out_pipe) {
+      return; /* CDC auto-echo drains this pipe itself */
+    }
+  }
+  if (s_orphan_len != 0U) {
+    return; /* one-deep holding buffer already occupied */
+  }
+  uint16_t len = (uint16_t)k_ra_usb_orphan_bytes;
+  if (ra_usb_queue_out(s_dcd.speed, i, s_orphan_buf, &len, /* rearm */ false) == k_ra_ok) {
+    if (len != 0U) {
+      s_orphan_pipe = i;
+      s_orphan_len  = len;
+      /* queue_out W0C-cleared BRDYSTS and re-armed PID=BUF; pull it
+       * back to NAK so a second packet cannot land before the next
+       * transfer is submitted. A full-speed bulk packet takes ~45 us
+       * on the wire -- far longer than this queue_out -> park gap --
+       * so the controller cannot accept one in between. */
+      (void)ra_usb_park_out_pipe(s_dcd.speed, i);
+    }
+  }
+}
+
+/**
  * @brief Per-pipe finaliser for the BRDY/BEMP walk in ::ux_dcd_ra_usb_irq.
  *
  * @details If no USBX-side waiter is stashed, dispatch to the in-ISR
- * auto-echo path (workaround for ThreadX worker scheduling failure).
- * Otherwise dispatch to ::internal_irq_complete_in or
- * ::internal_irq_complete_out depending on the pipe direction.
+ * auto-echo path (workaround for ThreadX worker scheduling failure)
+ * and the no-receiver orphan-OUT capture. Otherwise dispatch to
+ * ::internal_irq_complete_in or ::internal_irq_complete_out depending
+ * on the pipe direction.
  *
  * @param[in] i Pipe index (1..max_pipes-1).
  *
@@ -3101,6 +3250,7 @@ static void internal_irq_walk_pipe(uint8_t i)
   UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
   if (tr == nullptr) {
     internal_irq_auto_echo(i);
+    internal_irq_drain_orphan_out(i);
     return;
   }
   if (i == 2U) {
