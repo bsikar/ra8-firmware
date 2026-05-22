@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Enforce the HIL "honest contract" gate.
 
 Every hil.conf under examples/ek_ra8d2/hw_validated/hil/ must declare

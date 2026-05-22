@@ -62,8 +62,9 @@ if [[ ${#EXPECT} -lt 12 && "${HIL_EXPECT_SHORT_OK:-0}" != "1" ]]; then
     exit 2
 fi
 
-# Resolve the RTT up-buffer address from the ELF.
-NM="${ARM_GNU_NM:-/home/bsikar/opt/arm-gnu-toolchain/bin/arm-none-eabi-nm}"
+# Resolve the RTT up-buffer address from the ELF. Prefer an explicit
+# ARM_GNU_NM override, then PATH (CI runners), then the local install.
+NM="${ARM_GNU_NM:-$(command -v arm-none-eabi-nm || echo /home/bsikar/opt/arm-gnu-toolchain/bin/arm-none-eabi-nm)}"
 BUF_ADDR_HEX=$("$NM" "$ELF" | awk -v s="$BUF_SYM" '$NF == s { print $1; exit }')
 [[ -z "$BUF_ADDR_HEX" ]] && { echo "[HIL-RTT] symbol $BUF_SYM not in $ELF"; exit 2; }
 BUF_ADDR="0x$BUF_ADDR_HEX"
