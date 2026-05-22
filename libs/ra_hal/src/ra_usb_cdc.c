@@ -279,7 +279,9 @@ ra_err_t ra_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
   if (*inout_len == 0U) {
     return k_ra_err_invalid_arg;
   }
-  return ra_usb_queue_out(s_state.speed, k_ra_cdc_pipe_bulk_out, out_buf, inout_len);
+  /* rearm = true: re-arm PID=BUF so the bulk-OUT pipe keeps ACKing
+   * host data between cdc_recv calls (the legacy queue_out behaviour). */
+  return ra_usb_queue_out(s_state.speed, k_ra_cdc_pipe_bulk_out, out_buf, inout_len, true);
 }
 
 /* =============================================================================

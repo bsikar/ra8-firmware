@@ -662,7 +662,8 @@ ra_err_t ra_usb_hcdc_recv(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
     return k_ra_err_invalid_arg;
   }
   uint16_t       inout_len = max_len;
-  const ra_err_t err = ra_usb_queue_out(s_state.speed, k_ra_hcdc_pipe_bulk_in, out_buf, &inout_len);
+  const ra_err_t err =
+    ra_usb_queue_out(s_state.speed, k_ra_hcdc_pipe_bulk_in, out_buf, &inout_len, true);
   if (err == k_ra_ok) {
     *got_len = inout_len;
   } else {
