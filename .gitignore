@@ -124,7 +124,6 @@ venv/
 .env
 .env.local
 .claude/*
-!.claude/CLAUDE.md
 !.claude/agents/
 build_test/
 doxy_run.txt
