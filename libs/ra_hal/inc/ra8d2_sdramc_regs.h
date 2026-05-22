@@ -88,16 +88,16 @@ typedef struct {
   volatile uint16_t SDRFCR; /**< SDRAM Refresh Control.         */
   volatile uint8_t  SDRFEN; /**< SDRAM Auto-Refresh Control.    */
   volatile uint8_t  _rsv2[k_ra_sdramc_off_sdicr - k_ra_sdramc_off_sdrfen - 1];
-  volatile uint8_t  SDICR;  /**< Init Sequence Control.         */
+  volatile uint8_t  SDICR; /**< Init Sequence Control.         */
   volatile uint8_t  _rsv3[k_ra_sdramc_off_sdir - k_ra_sdramc_off_sdicr - 1];
-  volatile uint16_t SDIR;   /**< SDRAM Initialization Register. */
+  volatile uint16_t SDIR; /**< SDRAM Initialization Register. */
   volatile uint8_t  _rsv4[k_ra_sdramc_off_sdadr - k_ra_sdramc_off_sdir - 2];
-  volatile uint8_t  SDADR;  /**< SDRAM Address Register.        */
+  volatile uint8_t  SDADR; /**< SDRAM Address Register.        */
   volatile uint8_t  _rsv5[k_ra_sdramc_off_sdtr - k_ra_sdramc_off_sdadr - 1];
-  volatile uint32_t SDTR;   /**< SDRAM Timing Register.         */
-  volatile uint16_t SDMOD;  /**< SDRAM Mode Register.           */
+  volatile uint32_t SDTR;  /**< SDRAM Timing Register.         */
+  volatile uint16_t SDMOD; /**< SDRAM Mode Register.           */
   volatile uint8_t  _rsv6[k_ra_sdramc_off_sdsr - k_ra_sdramc_off_sdmod - 2];
-  volatile uint8_t  SDSR;   /**< SDRAM Status Register (RO).    */
+  volatile uint8_t  SDSR; /**< SDRAM Status Register (RO).    */
 } r_sdramc_regs_t;
 
 static_assert(offsetof(r_sdramc_regs_t, SDTR) == (size_t)k_ra_sdramc_off_sdtr,
