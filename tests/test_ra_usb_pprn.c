@@ -345,11 +345,11 @@ static void test_mcdc_pprn(void)
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_send(nullptr, 0U));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pprn_send(nullptr, 4U));
-  /* B-V2 + C-V2: forwards into ra_usb_queue_in. The host sim_mmap leaves
-   * CFIFOCTR.FRDY clear, so the FIFO wait returns hw_timeout. The MC/DC
-   * obligation is met because every pre-check inside ra_usb_pprn_send
-   * was exercised end-to-end. */
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_usb_pprn_send(buf, 4U));
+  /* B-V2 + C-V2: forwards into ra_usb_queue_in. Under simulation the
+   * FIFO is modelled ready (see internal_wait_frdy), so a well-formed
+   * call returns k_ra_ok. The MC/DC obligation is met because every
+   * pre-check inside ra_usb_pprn_send was exercised end-to-end. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_send(buf, 4U));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pprn_send(buf, 1024U));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));

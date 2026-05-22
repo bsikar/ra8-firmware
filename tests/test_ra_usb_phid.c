@@ -257,11 +257,12 @@ static void test_send_report_validation(void)
   uint8_t big[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_phid_send_report(0U, big, (uint16_t)sizeof(big)));
 
-  /* Valid argument shape: the host-side mock leaves CFIFOCTR.FRDY clear
-   * so the underlying ra_usb_queue_in returns hw_timeout, but the
-   * arg-validation path is exercised end-to-end (we got past every
-   * pre-check inside ra_usb_phid_send_report). */
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_usb_phid_send_report(0U, buf, 4U));
+  /* Valid argument shape: every pre-check inside ra_usb_phid_send_report
+   * passes and the call forwards into ra_usb_queue_in. Under simulation
+   * the FIFO is modelled ready (see internal_wait_frdy), so a
+   * well-formed call returns k_ra_ok -- the arg-validation path is
+   * exercised end-to-end. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_phid_send_report(0U, buf, 4U));
   TEST_END("ra_usb_phid_send_report validates args");
 }
 
@@ -279,9 +280,10 @@ static void test_send_report_with_id(void)
 
   uint8_t payload[3] = {0xAAU, 0xBBU, 0xCCU};
   /* report_id=2 means framed_len = 1 + 3 = 4, fits inside FS default 8.
-   * Mock leaves FRDY clear so actual queue returns hw_timeout, but the
-   * arg-validation path is fully exercised. */
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_usb_phid_send_report(2U, payload, 3U));
+   * Under simulation the FIFO is modelled ready (see internal_wait_frdy),
+   * so a well-formed call returns k_ra_ok; the arg-validation path is
+   * fully exercised. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_phid_send_report(2U, payload, 3U));
 
   /* report_id != 0, len = 8 -> framed_len 9 > 8, must be rejected. */
   uint8_t big[8] = {};

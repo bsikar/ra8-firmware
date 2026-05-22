@@ -2079,10 +2079,10 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
 /**
  * @brief Drain a fresh SETUP and forward to the chapter-9 dispatcher.
  *
- * @details Body of the ``fingerprint != s_last_dispatched_setup_fp``
- * branch in ``internal_handle_ctrt``. Reads the SETUP via
+ * @details Called by ``internal_ctrt_handle_valid`` for every observed
+ * non-SET_ADDRESS SETUP. Reads the SETUP via
  * ``ra_usb_read_setup_unconditional``, records the fingerprint in the
- * dedup ring, promotes USBX device state to ATTACHED if it has dropped
+ * diagnostic ring, promotes USBX device state to ATTACHED if it dropped
  * below the chapter-9 gate, dispatches via ``internal_dispatch_setup``,
  * and on no-data H2D control transfers (e.g. SET_CONFIGURATION,
  * SET_INTERFACE, SET_FEATURE) pulses CCPL via ``ra_usb_control_response``
@@ -2158,8 +2158,8 @@ static void internal_ctrt_dispatch_fresh_setup(ra_usb_speed_t speed, uint64_t fi
  *
  * @pre Caller has verified the VALID bit in INTSTS0.
  * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
- * @post For SET_ADDRESS, INTSTS0.VALID is W0C-cleared.
- * @post For other fresh SETUPs the dispatcher has run.
+ * @post INTSTS0.VALID is W0C-cleared for every observed SETUP.
+ * @post For non-SET_ADDRESS SETUPs the chapter-9 dispatcher has run.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
@@ -2177,8 +2177,20 @@ static void internal_ctrt_handle_valid(ra_usb_speed_t speed)
   const uint64_t fingerprint  = ((uint64_t)usbreq_live) | ((uint64_t)usbval_live << 16) |
                                 ((uint64_t)usbindx_live << 32) | ((uint64_t)usbleng_live << 48);
 
-  /* SET_ADDRESS short-circuit (HUM Ch 37.3 p 2147). Nested ifs keep
-   * this out of the MC/DC compound-decision inventory. */
+  /* Clear INTSTS0.VALID before anything else. The USBREQ/USBVAL/
+   * USBINDX/USBLENG mirrors persist (HUM Ch 37.2.21..24 p 2087), so the
+   * SETUP stays readable below; but a latched VALID stalls the
+   * DCPCTR.PID write gate (HUM Ch 37.2.31 p 2095) and holds the USB IRQ
+   * line asserted -- which storms internal_usbfs_isr (the FS ISR has no
+   * spurious-entry guard). The early clear is also the dedup: a second
+   * ISR entry for the same physical SETUP sees VALID=0 and
+   * internal_handle_ctrt skips this function.
+   * HUM Ch 36.2.14 INTSTS0 p 1985 (W0C). */
+  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
+
+  /* SET_ADDRESS short-circuit (HUM Ch 37.3 p 2147 -- the SIE owns the
+   * USBADDR latch and the IN-ZLP status stage). Nested ifs keep this
+   * out of the MC/DC compound-decision inventory. */
   bool is_set_address = false;
   if ((usbreq_live & 0xFF00U) == 0x0500U) {
     if ((usbreq_live & 0x00FFU) == 0x0000U) {
@@ -2188,14 +2200,16 @@ static void internal_ctrt_handle_valid(ra_usb_speed_t speed)
     }
   }
   if (is_set_address) {
-    /* W0C-clear VALID so the ISR doesn't keep retriggering on the
-     * latched bit. SIE owns the rest of the SET_ADDRESS sequence. */
-    reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
     return;
   }
-  if (fingerprint != s_last_dispatched_setup_fp) {
-    internal_ctrt_dispatch_fresh_setup(speed, fingerprint);
-  }
+
+  /* Dispatch every observed SETUP, including a host retransmit of
+   * byte-identical bytes after a missed response window. The previous
+   * `fingerprint != s_last_dispatched_setup_fp` skip dropped exactly
+   * those retransmits and -- with the VALID clear also skipped -- left
+   * the controller wedged. The early VALID clear above is the real
+   * dedup; the fingerprint is now recorded for diagnostics only. */
+  internal_ctrt_dispatch_fresh_setup(speed, fingerprint);
 }
 
 /**
