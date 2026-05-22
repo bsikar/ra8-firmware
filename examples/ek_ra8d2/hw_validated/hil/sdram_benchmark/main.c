@@ -8,8 +8,8 @@
  * @details
  * Standalone EVM-tier app that exercises the external SDRAM
  * controller driver (``libs/ra_hal/ra_sdramc.h``). The EK-RA8D2
- * carries a 64 MB Winbond W9825G6KH SDRAM wired to the BUS pins
- * with the controller-mapped window starting at
+ * carries a 64 MB ISSI IS42S32160F SDRAM (16M x 32) wired to the
+ * BUS pins with the controller-mapped window starting at
  * ``k_ra_sdram_base_addr`` (0x68000000). The flow:
  *
  *   1. ``ra_cgc_init`` -- clocks up.
@@ -57,10 +57,30 @@ typedef enum : uint32_t {
 /** @brief Single-byte ASCII conversion constants. */
 typedef enum : uint8_t {
   k_sdram_demo_ascii_zero   = '0',
+  k_sdram_demo_ascii_a      = 'a',
   k_sdram_demo_dec_base     = 10U,
-  k_sdram_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10. */
-  k_sdram_demo_print_buf    = 64U, /**< Max bytes in one print line.    */
+  k_sdram_demo_uint_dec_max = 10U,   /**< Max digits in a uint32 base-10. */
+  k_sdram_demo_print_buf    = 64U,   /**< Max bytes in one throughput line. */
+  k_sdram_demo_fail_buf     = 96U,   /**< Max bytes in the FAIL diag line. */
+  k_sdram_demo_hex_digits   = 8U,    /**< Hex digits in a uint32.          */
+  k_sdram_demo_nyb_bits     = 4U,    /**< Bits per hex nibble.             */
+  k_sdram_demo_nyb_mask     = 0x0FU, /**< Mask for one nibble.           */
 } sdram_demo_byte_t;
+
+/**
+ * @struct sdram_demo_diag_t
+ * @brief First-mismatch diagnostic captured by ::sdram_demo_read_check.
+ *
+ * @details Populated only when a read-back pass finds at least one
+ * corrupt word, so a HIL operator can see the corruption signature
+ * (aliasing, stuck bits, row-boundary) without a debugger.
+ */
+typedef struct {
+  uint32_t count;     /**< Total mismatched words in the pass.       */
+  uint32_t first_idx; /**< Word index of the first mismatch.         */
+  uint32_t expected;  /**< Value that should have been read back.    */
+  uint32_t got;       /**< Value actually read back at first_idx.    */
+} sdram_demo_diag_t;
 
 /** @brief Pattern seed -- recognisable hex word for SWD inspection. */
 typedef enum : uint32_t {
@@ -190,24 +210,57 @@ static uint32_t sdram_demo_write_pass(uint32_t base)
  *
  * @param[in]  base    Seed used by the matching write pass.
  * @param[out] elapsed Receives the elapsed milliseconds.
+ * @param[out] diag    Receives the first-mismatch diagnostic.
  * @return ``true`` if every word matches the expected pattern.
  *
- * @pre ``elapsed`` is non-NULL.
+ * @pre ``elapsed`` and ``diag`` are non-NULL.
  * @post On success ``*elapsed`` holds the read-pass duration.
+ * @post ``diag->count`` holds the total mismatch count.
  * @since 0.1.0
  */
-static bool sdram_demo_read_check(uint32_t base, uint32_t* elapsed)
+static bool sdram_demo_read_check(uint32_t base, uint32_t* elapsed, sdram_demo_diag_t* diag)
 {
   volatile uint32_t* mem      = (volatile uint32_t*)k_ra_sdram_base_addr;
   const uint32_t     start_ms = ra_time_ms();
-  bool               ok       = true;
+  diag->count                 = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_sdram_demo_block_words; i++) {
-    if (mem[i] != base + i) {
-      ok = false;
+    const uint32_t got = mem[i];
+    if (got != base + i) {
+      if (diag->count == 0U) {
+        diag->first_idx = i;
+        diag->expected  = base + i;
+        diag->got       = got;
+      }
+      diag->count++;
     }
   }
   *elapsed = ra_time_ms() - start_ms;
-  return ok;
+  return diag->count == 0U;
+}
+
+/**
+ * @brief Render @p v as exactly 8 lowercase hex digits into @p buf.
+ *
+ * @param[out] buf Destination (must hold >= k_sdram_demo_hex_digits).
+ * @param[in]  v   Value to render.
+ * @return Number of digits written (always k_sdram_demo_hex_digits).
+ *
+ * @pre ``buf`` is non-NULL with >= 8 bytes capacity.
+ * @post No null terminator is written.
+ * @since 0.1.0
+ */
+static uint8_t sdram_demo_uint_to_hex(uint8_t* buf, uint32_t v)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_sdram_demo_hex_digits; i++) {
+    const uint8_t shift =
+      (uint8_t)(((uint8_t)k_sdram_demo_hex_digits - 1U - i) * (uint8_t)k_sdram_demo_nyb_bits);
+    const uint8_t nyb = (uint8_t)((v >> shift) & (uint32_t)k_sdram_demo_nyb_mask);
+    buf[i]            = (nyb < (uint8_t)k_sdram_demo_dec_base)
+                          ? (uint8_t)((uint8_t)k_sdram_demo_ascii_zero + nyb)
+                          : (uint8_t)((uint8_t)k_sdram_demo_ascii_a +
+                                      (uint8_t)(nyb - (uint8_t)k_sdram_demo_dec_base));
+  }
+  return (uint8_t)k_sdram_demo_hex_digits;
 }
 
 /**
@@ -290,6 +343,52 @@ static uint32_t sdram_demo_format_line(uint8_t* out, uint32_t w_mbps, uint32_t r
   return off;
 }
 
+/**
+ * @brief Format the read-back FAIL diagnostic line into @p out.
+ *
+ * @details Emits ``sdram: FAIL idx=<dec> exp=<hex> got=<hex> n=<dec>``
+ * so a HIL log shows the corruption signature. The literal ``sdram:
+ * FAIL`` prefix is what the HIL negative-match regex keys on.
+ *
+ * @param[out] out  Destination buffer (>= k_sdram_demo_fail_buf bytes).
+ * @param[in]  diag First-mismatch diagnostic from sdram_demo_read_check.
+ * @return Number of bytes written (no NUL terminator).
+ *
+ * @pre ``out`` is non-NULL with >= k_sdram_demo_fail_buf capacity.
+ * @pre ``diag->count`` is non-zero (a mismatch was found).
+ * @post No bytes beyond the returned length are touched.
+ * @since 0.1.0
+ */
+static uint32_t sdram_demo_format_fail(uint8_t* out, const sdram_demo_diag_t* diag)
+{
+  uint32_t      off       = 0U;
+  const uint8_t prefix[]  = "sdram: FAIL idx=";
+  const uint8_t exp_tag[] = " exp=";
+  const uint8_t got_tag[] = " got=";
+  const uint8_t n_tag[]   = " n=";
+  const uint8_t suffix[]  = "\r\n";
+  for (uint32_t i = 0U; i < sizeof(prefix) - 1U; i++) {
+    out[off++] = prefix[i];
+  }
+  off += sdram_demo_uint_to_dec(&out[off], diag->first_idx);
+  for (uint32_t i = 0U; i < sizeof(exp_tag) - 1U; i++) {
+    out[off++] = exp_tag[i];
+  }
+  off += sdram_demo_uint_to_hex(&out[off], diag->expected);
+  for (uint32_t i = 0U; i < sizeof(got_tag) - 1U; i++) {
+    out[off++] = got_tag[i];
+  }
+  off += sdram_demo_uint_to_hex(&out[off], diag->got);
+  for (uint32_t i = 0U; i < sizeof(n_tag) - 1U; i++) {
+    out[off++] = n_tag[i];
+  }
+  off += sdram_demo_uint_to_dec(&out[off], diag->count);
+  for (uint32_t i = 0U; i < sizeof(suffix) - 1U; i++) {
+    out[off++] = suffix[i];
+  }
+  return off;
+}
+
 int32_t main(void)
 {
   sdram_demo_setup_or_halt();
@@ -297,24 +396,23 @@ int32_t main(void)
 
   uint32_t base = (uint32_t)k_sdram_demo_pattern_seed;
   while (1) {
-    const uint32_t w_ms   = sdram_demo_write_pass(base);
-    uint32_t       r_ms   = 0U;
-    const bool     match  = sdram_demo_read_check(base, &r_ms);
-    const uint32_t w_mbps = sdram_demo_mbps((uint32_t)k_sdram_demo_block_bytes, w_ms);
-    const uint32_t r_mbps = sdram_demo_mbps((uint32_t)k_sdram_demo_block_bytes, r_ms);
+    const uint32_t    w_ms   = sdram_demo_write_pass(base);
+    uint32_t          r_ms   = 0U;
+    sdram_demo_diag_t diag   = {};
+    const bool        match  = sdram_demo_read_check(base, &r_ms, &diag);
+    const uint32_t    w_mbps = sdram_demo_mbps((uint32_t)k_sdram_demo_block_bytes, w_ms);
+    const uint32_t    r_mbps = sdram_demo_mbps((uint32_t)k_sdram_demo_block_bytes, r_ms);
 
     uint8_t        out[k_sdram_demo_print_buf] = {};
     const uint32_t off                         = sdram_demo_format_line(out, w_mbps, r_mbps);
     if (!match) {
       (void)ra_board_led_on(k_ra_board_led2);
-      /* Emit FAIL banner so the HIL negative regex catches a
-       * read-back mismatch; without this the throughput line still
-       * prints normally and the probe passes on a chip where the
-       * SDRAM is silently corrupting bytes. */
-      const uint8_t fail_banner[] = "sdram: FAIL readback mismatch\r\n";
-      (void)ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel,
-                                 fail_banner,
-                                 (uint32_t)(sizeof(fail_banner) - 1U));
+      /* Emit a FAIL diagnostic so the HIL negative regex catches a
+       * read-back mismatch and a log reader sees the corruption
+       * signature (first index, expected vs got, total count). */
+      uint8_t        fail[k_sdram_demo_fail_buf] = {};
+      const uint32_t fail_off                    = sdram_demo_format_fail(fail, &diag);
+      (void)ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel, fail, fail_off);
     }
     if (ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel, out, off) != k_ra_ok) {
       break;

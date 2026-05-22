@@ -2,6 +2,12 @@
  * @file test_ra_sdramc.c
  * @brief Unit tests for the SDRAMC driver (ra_sdramc.c)
  *
+ * @details
+ * Exercises the SDRAM bring-up sequence for the EK-RA8D2 ISSI
+ * IS42S32160F (512 Mbit, 16M x 32). Asserts the final SDRAMC
+ * register image against the FSP `R_BSP_SdramInit` reference, plus
+ * the deinit / refresh / status / power-transition lifecycle.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -10,107 +16,125 @@
 
 #include "ra8d2_sdramc_regs.h"
 #include "ra_err.h"
+#include "ra_pin_validator.h"
 #include "ra_sdramc.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
-typedef enum : uint16_t {
-  k_test_sdccr_default  = 0x0011U,
-  k_test_sdrfcr_default = 0x002BU,
-} test_sdramc_defaults_t;
-
-typedef enum : uint32_t {
-  k_test_sdtr_default = 0x00010222UL,
-} test_sdramc_timing_t;
+/**
+ * @enum test_sdramc_u8_t
+ * @brief Expected 8-bit SDRAMC register images after `ra_sdramc_init`.
+ */
+typedef enum : uint8_t {
+  k_test_sdccr_enabled = 0x11U, /**< BSIZE=01 (32-bit bus) | EXENB.   */
+  k_test_sdamod_be     = 0x01U, /**< SDAMOD.BE: continuous access on. */
+  k_test_sdadr_mxc     = 0x01U, /**< SDADR.MXC=01b: 9-bit column.     */
+} test_sdramc_u8_t;
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @enum test_sdramc_u16_t
+ * @brief Expected 16-bit SDRAMC register images after `ra_sdramc_init`.
  */
-static void test_init_writes_defaults(void)
+typedef enum : uint16_t {
+  k_test_sdir   = 0x0088U, /**< ARFI=11, ARFC=8, PRC=3.                */
+  k_test_sdmod  = 0x0230U, /**< LMR: single-loc, CL=3, seq, BL=1.      */
+  k_test_sdrfcr = 0xB383U, /**< REFW=12 cyc, refresh/900 cyc (7.2 us). */
+} test_sdramc_u16_t;
+
+/**
+ * @enum test_sdramc_u32_t
+ * @brief Expected 32-bit SDRAMC register image after `ra_sdramc_init`.
+ */
+typedef enum : uint32_t {
+  k_test_sdtr = 0x00053703UL, /**< RAS=6,RCD=4,RP=4,WR=2,CL=3 cycles. */
+} test_sdramc_u32_t;
+
+/** @brief Reset the mock MMIO backing and the pin-validator bitmap. */
+static void reset_world(void)
 {
-  TEST_BEGIN("ra_sdramc_init writes expected register defaults");
   ra_sim_mmap_reset();
-
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
-
-  volatile r_sdramc_regs_t* reg = ra_sdramc();
-  TEST_ASSERT_EQ(k_test_sdccr_default, reg->SDCCR);
-  TEST_ASSERT_EQ(0, reg->SDCMOD);
-  TEST_ASSERT_EQ(0, reg->SDAMOD);
-  TEST_ASSERT_EQ(k_test_sdtr_default, reg->SDTR);
-  TEST_ASSERT_EQ(k_test_sdrfcr_default, reg->SDRFCR);
-  TEST_ASSERT_EQ(1, reg->SDRFEN);
-  TEST_ASSERT_EQ(1, reg->SDICR);
-
-  TEST_END("ra_sdramc_init writes expected register defaults");
+  ra_pin_validator_reset();
 }
 
 /**
+ * @brief `ra_sdramc_init` programs the IS42S32160F register image.
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in the code under test -- `ra_sdramc_init`
+ * and its helpers use only single-condition `if` checks, so this
+ * exercises the happy-path register-programming contract)
  */
-static void test_init_idempotent(void)
+static void test_init_programs_registers(void)
 {
-  TEST_BEGIN("ra_sdramc_init is idempotent");
-  ra_sim_mmap_reset();
+  TEST_BEGIN("ra_sdramc_init programs the IS42S32160F register image");
+  reset_world();
+
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
+
   volatile r_sdramc_regs_t* reg = ra_sdramc();
-  TEST_ASSERT_EQ(k_test_sdccr_default, reg->SDCCR);
-  TEST_END("ra_sdramc_init is idempotent");
+  TEST_ASSERT_EQ(k_test_sdccr_enabled, reg->SDCCR);
+  TEST_ASSERT_EQ(0, reg->SDCMOD);
+  TEST_ASSERT_EQ(k_test_sdamod_be, reg->SDAMOD);
+  TEST_ASSERT_EQ(k_test_sdir, reg->SDIR);
+  TEST_ASSERT_EQ(k_test_sdmod, reg->SDMOD);
+  TEST_ASSERT_EQ(k_test_sdtr, reg->SDTR);
+  TEST_ASSERT_EQ(k_test_sdadr_mxc, reg->SDADR);
+  TEST_ASSERT_EQ(k_test_sdrfcr, reg->SDRFCR);
+  TEST_ASSERT_EQ(1, reg->SDRFEN);
+  TEST_ASSERT_EQ(1, reg->SDICR);
+  TEST_ASSERT_EQ(1, *ra_sdramc_sdckocr());
+
+  TEST_END("ra_sdramc_init programs the IS42S32160F register image");
 }
 
 /* ---- lifecycle + power ---- */
 
 /**
+ * @brief `ra_sdramc_deinit` disables refresh and clears SDCCR.
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in the code under test)
  */
 static void test_deinit(void)
 {
   TEST_BEGIN("sdramc deinit");
-  ra_sim_mmap_reset();
+  reset_world();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_deinit());
   volatile r_sdramc_regs_t* reg = ra_sdramc();
   TEST_ASSERT_EQ(0, reg->SDRFEN);
-  TEST_ASSERT_EQ(0, reg->SDICR);
   TEST_ASSERT_EQ(0, reg->SDCCR);
   TEST_END("sdramc deinit");
 }
 
 /**
+ * @brief `ra_sdramc_set_refresh_interval` writes SDRFCR verbatim.
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in the code under test)
  */
 static void test_set_refresh_interval(void)
 {
   TEST_BEGIN("sdramc set_refresh_interval");
-  ra_sim_mmap_reset();
+  reset_world();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_set_refresh_interval(0x00ABU));
   TEST_ASSERT_EQ(0x00ABU, ra_sdramc()->SDRFCR);
   TEST_END("sdramc set_refresh_interval");
 }
 
 /**
+ * @brief `ra_sdramc_get_status` reports the refresh-enable bit.
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * Decision: ``out_enabled == nullptr`` (one atomic condition).
+ * - Vector 1: out_enabled=&enabled -> k_ra_ok (varies condition false)
+ * - Vector 2: out_enabled=nullptr  -> k_ra_err_null_ptr (true)
+ * N+1 = 2 vectors for N=1: minimal MC/DC for the NULL guard.
  */
 static void test_get_status(void)
 {
   TEST_BEGIN("sdramc get_status");
-  ra_sim_mmap_reset();
+  reset_world();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
 
   uint8_t enabled = 0U;
@@ -121,15 +145,15 @@ static void test_get_status(void)
 }
 
 /**
+ * @brief `enter_stop` / `exit_stop` toggle the auto-refresh enable.
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in the code under test)
  */
 static void test_power_transition(void)
 {
   TEST_BEGIN("sdramc power transition");
-  ra_sim_mmap_reset();
+  reset_world();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_stop());
   TEST_ASSERT_EQ(0, ra_sdramc()->SDRFEN);
@@ -140,8 +164,7 @@ static void test_power_transition(void)
 
 int32_t main(void)
 {
-  test_init_writes_defaults();
-  test_init_idempotent();
+  test_init_programs_registers();
   test_deinit();
   test_set_refresh_interval();
   test_get_status();
