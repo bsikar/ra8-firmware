@@ -37,9 +37,15 @@
 #include <string.h>
 
 #include "nx_api.h"
+#include "nx_arp.h"
+#include "nx_ip.h"
 #include "ra_err.h"
 #include "ra_eth.h"
 #include "tx_api.h"
+
+#ifndef NX_DISABLE_IPV4
+#include "nx_rarp.h"
+#endif
 
 /**
  * @enum nx_ra_eth_constants_t
@@ -314,6 +320,73 @@ static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
 }
 
 /**
+ * @enum nx_ra_eth_ethertype_t
+ * @brief Ethernet II EtherType constants in host byte order.
+ *
+ * @details NetX dispatch keys; matched against the 16-bit ethertype
+ * field at frame offset 12.
+ */
+typedef enum : uint16_t {
+  k_nx_ra_eth_ethertype_ipv4 = 0x0800U, /**< IPv4 frame.                  */
+  k_nx_ra_eth_ethertype_arp  = 0x0806U, /**< ARP frame.                   */
+  k_nx_ra_eth_ethertype_rarp = 0x8035U, /**< RARP frame.                  */
+  k_nx_ra_eth_ethertype_ipv6 = 0x86DDU, /**< IPv6 frame.                  */
+} nx_ra_eth_ethertype_t;
+
+typedef enum : uint16_t {
+  k_nx_ra_eth_hdr_bytes = 14U,
+  k_nx_ra_eth_etype_off = 12U,
+} nx_ra_eth_hdr_t;
+
+/**
+ * @brief Dispatch a received frame into NetX by ethertype.
+ *
+ * @details Mirrors the NetX reference driver's RX path: read the
+ * ethertype, strip the 14-byte ethernet header, then hand the IP
+ * payload to the matching `*_packet_deferred_receive`. Calling
+ * `_nx_ip_packet_deferred_receive` directly routes everything to the
+ * IP path and ARP frames get silently dropped, so the chip never
+ * answers ``who-has`` requests.
+ *
+ * @param[in,out] pkt NX_PACKET containing the raw ethernet frame.
+ *
+ * @pre `pkt` is non-NULL and `pkt->nx_packet_length >= 14`.
+ * @pre s_rx_ip and s_rx_iface have been populated.
+ * @post Header is stripped and the packet is owned by NetX.
+ * @post Unknown ethertypes release the packet rather than leaking.
+ *
+ * @note Not thread-safe; only the RX worker calls this.
+ * @since 0.1.0
+ */
+static void priv_dispatch_to_netx(NX_PACKET* pkt)
+{
+  if (pkt->nx_packet_length < (ULONG)k_nx_ra_eth_hdr_bytes) {
+    (void)nx_packet_release(pkt);
+    return;
+  }
+  const UCHAR*   p   = (const UCHAR*)pkt->nx_packet_prepend_ptr;
+  const uint16_t et  = (uint16_t)(((uint16_t)p[k_nx_ra_eth_etype_off] << 8) |
+                                 (uint16_t)p[(uint16_t)k_nx_ra_eth_etype_off + 1U]);
+  pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + (ULONG)k_nx_ra_eth_hdr_bytes;
+  pkt->nx_packet_length      = pkt->nx_packet_length - (ULONG)k_nx_ra_eth_hdr_bytes;
+  if (et == (uint16_t)k_nx_ra_eth_ethertype_ipv4) {
+    _nx_ip_packet_deferred_receive(s_rx_ip, pkt);
+    return;
+  }
+#ifndef NX_DISABLE_IPV4
+  if (et == (uint16_t)k_nx_ra_eth_ethertype_arp) {
+    _nx_arp_packet_deferred_receive(s_rx_ip, pkt);
+    return;
+  }
+  if (et == (uint16_t)k_nx_ra_eth_ethertype_rarp) {
+    _nx_rarp_packet_deferred_receive(s_rx_ip, pkt);
+    return;
+  }
+#endif
+  (void)nx_packet_release(pkt);
+}
+
+/**
  * @brief Drain the GWCA RX ring and push every frame into NetX.
  *
  * @details One pass of the inner loop -- factored out so the worker
@@ -350,6 +423,12 @@ static void priv_rx_drain(void)
     if (pkt == NX_NULL) {
       continue;
     }
+    /* Slide prepend by 2 bytes so the IP header lands 4-byte aligned
+     * after the driver strips the 14-byte ethernet header. NetX's IP
+     * receive path word-accesses the IP header and silently drops
+     * misaligned frames on Cortex-M parts. */
+    pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + 2U;
+    pkt->nx_packet_append_ptr  = pkt->nx_packet_prepend_ptr;
     UINT app =
       nx_packet_data_append(pkt, (VOID*)s_rx_staging, (ULONG)got, pool, (ULONG)NX_NO_WAIT);
     if (app != NX_SUCCESS) {
@@ -357,7 +436,7 @@ static void priv_rx_drain(void)
       continue;
     }
     pkt->nx_packet_ip_interface = s_rx_iface;
-    _nx_ip_packet_deferred_receive(s_rx_ip, pkt);
+    priv_dispatch_to_netx(pkt);
     g_nx_ether_diag.rx_total += 1U;
   }
 }
@@ -514,6 +593,60 @@ static void priv_handle_uninit(NX_IP_DRIVER* req)
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.
  */
+/**
+ * @brief Pick the ethernet ethertype for a NetX driver SEND command.
+ *
+ * @details NetX hands us the L3 payload (ARP body, IP packet) without
+ * an ethernet header; the driver builds the header. The command kind
+ * implicitly tells us which ethertype goes on the wire.
+ *
+ * @param[in] cmd NetX driver command code.
+ * @return ethertype in host byte order.
+ * @retval 0x0806  cmd was NX_LINK_ARP_SEND or NX_LINK_ARP_RESPONSE_SEND.
+ * @retval 0x8035  cmd was NX_LINK_RARP_SEND.
+ * @retval 0x0800  default (IPv4 -- PACKET_SEND, PACKET_BROADCAST).
+ *
+ * @pre Module state is consistent.
+ * @pre Caller validated `cmd` came from NetX's dispatch.
+ * @post Returns 0x0806/0x8035/0x0800.
+ * @post No side effects.
+ * @note Not thread-safe; pure.
+ * @since 0.1.0
+ */
+static uint16_t priv_ethertype_for_cmd(UINT cmd)
+{
+  if (cmd == NX_LINK_ARP_SEND) {
+    return (uint16_t)k_nx_ra_eth_ethertype_arp;
+  }
+  if (cmd == NX_LINK_ARP_RESPONSE_SEND) {
+    return (uint16_t)k_nx_ra_eth_ethertype_arp;
+  }
+  if (cmd == NX_LINK_RARP_SEND) {
+    return (uint16_t)k_nx_ra_eth_ethertype_rarp;
+  }
+  return (uint16_t)k_nx_ra_eth_ethertype_ipv4;
+}
+
+/**
+ * @brief Handle NX_LINK_PACKET_SEND / ARP_SEND / ARP_RESPONSE_SEND / RARP_SEND.
+ *
+ * @details Constructs the 14-byte ethernet header from
+ * `req->nx_ip_driver_physical_address_msw/lsw` (destination MAC NetX
+ * resolved via ARP for IP, or the broadcast address for ARP-request
+ * etc.) plus `s_local_mac` and an ethertype derived from
+ * `req->nx_ip_driver_command`. The packet's prepend_ptr-to-append_ptr
+ * range is then linearised after the header and fed to `ra_eth_write`.
+ *
+ * @param[in,out] req NetX driver request.
+ *
+ * @pre `s_ra_eth_open != 0U` and `s_link_up != 0U`.
+ * @pre `req->nx_ip_driver_packet` and its chain are valid.
+ * @post `nx_packet_transmit_release` is always called on the packet.
+ * @post `req->nx_ip_driver_status` is NX_SUCCESS / NX_NOT_SUCCESSFUL.
+ *
+ * @note Not thread-safe; only the NetX IP thread calls this.
+ * @since 0.1.0
+ */
 static void priv_handle_send(NX_IP_DRIVER* req)
 {
   NX_PACKET* pkt = req->nx_ip_driver_packet;
@@ -525,16 +658,43 @@ static void priv_handle_send(NX_IP_DRIVER* req)
     return;
   }
 
-  uint32_t len = 0U;
-  if (priv_packet_to_buffer(pkt, s_tx_staging, (uint32_t)sizeof(s_tx_staging), &len) == 0U) {
+  /* Build the 14-byte ethernet header in the staging buffer from the
+   * destination MAC NetX puts in nx_ip_driver_physical_address_msw/lsw,
+   * our local MAC, and the ethertype derived from the dispatch cmd.
+   * NetX hands the link driver the L3 payload only -- the header is
+   * the driver's responsibility (per `nx_arp_packet_send` and the
+   * reference NetX driver). */
+  const ULONG    msw = req->nx_ip_driver_physical_address_msw;
+  const ULONG    lsw = req->nx_ip_driver_physical_address_lsw;
+  const uint16_t et  = priv_ethertype_for_cmd(req->nx_ip_driver_command);
+  s_tx_staging[0]    = (uint8_t)((msw >> 8) & 0xFFU);
+  s_tx_staging[1]    = (uint8_t)(msw & 0xFFU);
+  s_tx_staging[2]    = (uint8_t)((lsw >> 24) & 0xFFU);
+  s_tx_staging[3]    = (uint8_t)((lsw >> 16) & 0xFFU);
+  s_tx_staging[4]    = (uint8_t)((lsw >> 8) & 0xFFU);
+  s_tx_staging[5]    = (uint8_t)(lsw & 0xFFU);
+  s_tx_staging[6]    = s_local_mac[0];
+  s_tx_staging[7]    = s_local_mac[1];
+  s_tx_staging[8]    = s_local_mac[2];
+  s_tx_staging[9]    = s_local_mac[3];
+  s_tx_staging[10]   = s_local_mac[4];
+  s_tx_staging[11]   = s_local_mac[5];
+  s_tx_staging[12]   = (uint8_t)((et >> 8) & 0xFFU);
+  s_tx_staging[13]   = (uint8_t)(et & 0xFFU);
+
+  uint32_t body_len = 0U;
+  if (priv_packet_to_buffer(pkt,
+                            s_tx_staging + k_nx_ra_eth_hdr_bytes,
+                            (uint32_t)sizeof(s_tx_staging) - (uint32_t)k_nx_ra_eth_hdr_bytes,
+                            &body_len)
+      == 0U) {
     (void)nx_packet_transmit_release(pkt);
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
+  uint32_t len = body_len + (uint32_t)k_nx_ra_eth_hdr_bytes;
 
-  /* Pad runt frames up to the 802.3 minimum so the EDMAC engine
-   * does not reject them. The pad bytes are zero per IEEE 802.3-2018
-   * "padding" requirement. */
+  /* Pad runt frames up to the 802.3 minimum. */
   if (len < (uint32_t)k_nx_ra_eth_min_frame) {
     (void)memset((void*)(s_tx_staging + len), 0, (size_t)((uint32_t)k_nx_ra_eth_min_frame - len));
     len = (uint32_t)k_nx_ra_eth_min_frame;
@@ -603,9 +763,7 @@ static void priv_handle_deferred_rx(NX_IP_DRIVER* req)
       continue;
     }
     pkt->nx_packet_ip_interface = req->nx_ip_driver_interface;
-
-    /* Hand to the NetX receive engine (it owns the packet from here). */
-    _nx_ip_packet_deferred_receive(ip_ptr, pkt);
+    priv_dispatch_to_netx(pkt);
   }
   req->nx_ip_driver_status = NX_SUCCESS;
 }
