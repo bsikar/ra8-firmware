@@ -1,9 +1,8 @@
-# Pi-as-peer ethernet apps (hw_pending)
+# Pi-as-peer ethernet app (hw_pending)
 
-ethernet_tcp_echo, ethernet_udp_echo, ethernet_http_responder,
-threadx_netx_tcp_echo all run on the
-EK-RA8D2's GMAC (ETHA1 + RMAC1 + GWCA0) and expect a Pi peer to
-ARP/ICMP/TCP/UDP into them.
+threadx_netx_tcp_echo is the canonical networking demo: it runs on
+the EK-RA8D2's GMAC (ETHA1 + RMAC1 + GWCA0) and expects a Pi peer to
+ARP / ICMP / TCP into it. NetX Duo provides the IPv4 stack.
 
 ## Why these are `hw_pending`
 

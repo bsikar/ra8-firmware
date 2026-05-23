@@ -147,9 +147,6 @@ catching that app's failure banner + generic HAL failure strings.
 
 | App                       | Board IP        | Proto | Port |
 |---------------------------|----------------|-------|------|
-| `ethernet_tcp_echo`       | 192.168.1.42   | tcp   | 7    |
-| `ethernet_udp_echo`       | 192.168.1.43   | udp   | 7    |
-| `ethernet_http_responder` | 192.168.1.44   | http  | 80   |
 | `threadx_netx_tcp_echo`   | 192.168.1.42   | tcp   | 7    |
 
 All ethernet apps are currently **RED** -- the chip's ARP/ICMP path
