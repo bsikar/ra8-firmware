@@ -315,3 +315,16 @@ unusedStructMember:libs/ra_hal/inc/ra_usb_cdc.h
 unusedStructMember:libs/ra_hal/inc/ra_usb_composite.h
 unusedStructMember:libs/ra_hal/inc/ra_usb_paud.h
 unusedStructMember:port/usbx/ux_dcd_ra_usb.c
+
+# ---------------------------------------------------------------------------
+# Weak-extern address compare in the shared SysTick handler. The
+# `if (&g_ra_threadx_systick_ready != ((void*)0))` check gates
+# `_tx_timer_interrupt` so it does not fire before ThreadX is
+# initialised. cppcheck flags the compare as always-true because it
+# does not model weak externs -- but the symbol IS declared as a weak
+# extern and resolves to NULL at link time on apps that do not link
+# the ThreadX port TU (non-ThreadX apps). The conditional then folds
+# at link time. See ea3ee420 + the threadx_netx_tcp_echo eth bring-up
+# commit for the boot-HardFault rationale.
+# ---------------------------------------------------------------------------
+knownConditionTrueFalse:libs/ra_core/src/ra_time.c
