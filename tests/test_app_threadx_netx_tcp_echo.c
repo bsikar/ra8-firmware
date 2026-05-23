@@ -4,8 +4,8 @@
  *
  * @details
  * The production app at examples/ek_ra8d2/threadx_netx_tcp_echo/main.c
- * brings the chip up the same way as ethernet_tcp_echo, hands control
- * to ThreadX, and asks NetX Duo (via the nx_ether_driver_ra_eth shim)
+ * brings the chip up via the ``ra_etha`` HAL, hands control to ThreadX,
+ * and asks NetX Duo (via the nx_ether_driver_ra_eth shim)
  * to drive the NIC. NetX/ThreadX are not in the host test build, so
  * this test exercises the same ra_eth surface the NetX link-driver
  * shim ultimately calls -- with a focus on stats / event-handler

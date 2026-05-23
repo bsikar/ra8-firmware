@@ -945,7 +945,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  * @pre out_stats is a writable pointer.
  * @post out_stats is populated with the live per-port counters.
  *
- * @note Used by ethernet_tcp_echo / threadx_netx_tcp_echo for liveness.
+ * @note Used by threadx_netx_tcp_echo for liveness.
  * @see ra_etha_descriptor_ring_init
  * @since 0.1.0
  */
@@ -985,7 +985,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @details
  * One-shot helper that wraps the per-port bring-up sequence the
- * ethernet_tcp_echo and threadx_netx_tcp_echo apps need. Steps:
+ * threadx_netx_tcp_echo app needs. Steps:
  *   1. EAMC = OPERATION
  *   2. ::ra_rmac_phy_reset(channel, phy->phy_addr)
  *   3. ::ra_rmac_phy_set_advertise(channel, ..., phy->advertise)
