@@ -57,6 +57,49 @@ PI_HOST="${PI_HOST:-star@star.local}"
 JLINK_SN="1086567198"
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 
+# Detect when we are already running on the Pi itself (self-hosted CI
+# runner, or running locally on the bench). In that case we must NOT
+# `ssh $PI_HOST` -- mDNS hostname resolution to `star.local` can fail
+# inside a self-hosted runner's network namespace, and we have direct
+# access to the same files/devices anyway.
+LOCAL_PI=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+    LOCAL_PI=1
+fi
+pi_run() {
+    if (( LOCAL_PI )); then
+        bash -c "$1"
+    else
+        ssh "$PI_HOST" "$1"
+    fi
+}
+pi_run_stdin() {
+    if (( LOCAL_PI )); then
+        bash -s
+    else
+        ssh "$PI_HOST" "bash -s"
+    fi
+}
+pi_pull() {
+    local remote="$1"
+    local local_path="$2"
+    if (( LOCAL_PI )); then
+        cp -f "$remote" "$local_path" 2>/dev/null || : >"$local_path"
+    else
+        scp -q "${PI_HOST}:${remote}" "$local_path" 2>/dev/null || : >"$local_path"
+    fi
+}
+pi_write() {
+    local remote="$1"
+    if (( LOCAL_PI )); then
+        cat > "$remote"
+    else
+        ssh "$PI_HOST" "cat > ${remote}"
+    fi
+}
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -96,7 +139,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Run cat in the background on the Pi for BOOT_S seconds; halt before
 # the J-Link probe begins, since J-Link halt freezes the UART side.
 UART_CAP="/tmp/hil_alive_${APP_NAME}.uart"
-UART_DEV=$(ssh "$PI_HOST" bash -s <<'REMOTE'
+UART_DEV=$(pi_run_stdin <<'REMOTE'
 for dev in /dev/ttyACM*; do
     [[ -e "$dev" ]] || continue
     if udevadm info "$dev" 2>/dev/null | grep -q "ID_MODEL=J-Link"; then
@@ -109,8 +152,8 @@ REMOTE
 )
 UART_DEV="${UART_DEV:-/dev/ttyACM0}"
 echo -e "${YELLOW}[alive]${NC} capturing UART on ${UART_DEV} for ${BOOT_S}s..."
-ssh "$PI_HOST" "stty -F ${UART_DEV} 115200 raw -echo cs8 -cstopb -parenb 2>/dev/null; timeout ${BOOT_S} cat ${UART_DEV} > ${UART_CAP} 2>/dev/null || true"
-scp -q "${PI_HOST}:${UART_CAP}" "${UART_CAP}" 2>/dev/null || : >"${UART_CAP}"
+pi_run "stty -F ${UART_DEV} 115200 raw -echo cs8 -cstopb -parenb 2>/dev/null; timeout ${BOOT_S} cat ${UART_DEV} > ${UART_CAP} 2>/dev/null || true"
+pi_pull "${UART_CAP}" "${UART_CAP}"
 
 # 3. Re-attach via J-Link, snapshot PC + fault status registers.
 # 0x02000000 = MRAM base, 0x02100000 = MRAM end (RA8D2 has 1MB MRAM).
@@ -139,20 +182,13 @@ q
 EOF
 )
 
-RUN_LOCAL=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-    RUN_LOCAL=1
-fi
-
-if (( RUN_LOCAL )); then
+if (( LOCAL_PI )); then
     echo "$JLINK_SCRIPT" > "$PI_TMP"
     JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$PI_TMP" > "$PI_LOG" 2>&1 || true
 else
-    ssh "$PI_HOST" "cat > ${PI_TMP}" <<<"$JLINK_SCRIPT"
-    ssh "$PI_HOST" "JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript ${PI_TMP} > ${PI_LOG} 2>&1 || true"
-    scp -q "${PI_HOST}:${PI_LOG}" "/tmp/hil_alive_${APP_NAME}.log"
+    pi_write "${PI_TMP}" <<<"$JLINK_SCRIPT"
+    pi_run "JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript ${PI_TMP} > ${PI_LOG} 2>&1 || true"
+    pi_pull "${PI_LOG}" "/tmp/hil_alive_${APP_NAME}.log"
     PI_LOG="/tmp/hil_alive_${APP_NAME}.log"
 fi
 
