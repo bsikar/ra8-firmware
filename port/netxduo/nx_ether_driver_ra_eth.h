@@ -44,6 +44,8 @@ extern "C" {
 /* nx_api.h drags in the NX_IP_DRIVER struct definition the function
  * signature below references. Including it here keeps consumers from
  * having to remember the include order. */
+#include <stdint.h>
+
 #include "nx_api.h"
 
 /**
@@ -87,6 +89,33 @@ extern "C" {
  * @since 0.1.0
  */
 void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req);
+
+/**
+ * @brief Install the local MAC address used by the driver at NX_LINK_INITIALIZE.
+ *
+ * @details
+ * `nx_ip_create` calls the driver's INITIALIZE callback synchronously
+ * during IP-thread spin-up, BEFORE the app can call
+ * `nx_ip_interface_physical_address_set`. The interface's
+ * physical_address_msw / _lsw fields read zero at that point, so the
+ * driver has no MAC to program into the RMAC's MRMAC0/MRMAC1
+ * registers and RX silently filters every frame. Apps must call this
+ * function BEFORE nx_ip_create so the driver has the MAC at hand
+ * when INITIALIZE fires.
+ *
+ * @param[in] mac 6-byte unicast MAC in network byte order.
+ *
+ * @pre `mac != nullptr`.
+ * @pre Called from a single-threaded init context (before nx_ip_create).
+ * @post The driver's static cache holds `mac` and will use it during
+ *       its next INITIALIZE callback.
+ * @post Subsequent INITIALIZE callbacks ignore the (zero) interface
+ *       physical_address fields and program the RMAC from the cache.
+ *
+ * @note Not thread-safe; call once during app setup.
+ * @since 0.1.0
+ */
+void nx_ether_driver_ra_eth_set_mac(const uint8_t mac[6]);
 
 #ifdef __cplusplus
 }

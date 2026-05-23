@@ -63,6 +63,20 @@
 static const char* s_tag = "ETHA";
 
 /**
+ * @var g_ra_etha_diag_last_eams
+ * @brief Last EAMS.OPS value observed during the CONFIG-mode poll.
+ *
+ * @details Bench-only debug seam. Indexed by ETHA port (0 / 1). Read
+ * via JLink memprobe to confirm what state the chip's ETHA state
+ * machine actually reaches when ra_etha_set_mode polls for CONFIG.
+ *
+ * @note Not part of the public ABI -- bench/debug only.
+ * @warning Not safe to mutate outside the ETHA driver path.
+ * @since 0.1.0
+ */
+volatile uint32_t g_ra_etha_diag_last_eams[2] = {0U, 0U};
+
+/**
  * @enum ra_etha_local_mask_t
  * @brief Local mask helpers used inside this driver.
  *
@@ -451,15 +465,85 @@ ra_err_t ra_etha_reset(ra_etha_port_t port)
 }
 
 /* ra_etha_set_mode -- see header for full description. */
+/**
+ * @brief Busy-wait until EAMS.OPS catches up to the requested EAMC.OPC.
+ *
+ * @details HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 --
+ * bench-confirmed that EAMS.OPS lags EAMC.OPC by milliseconds while
+ * the state machine settles, and the OPERATION -> DISABLE -> CONFIG
+ * sequence inside ra_eth_open silently drops the CONFIG write if
+ * the DISABLE step has not yet landed. Poll EAMS on every transition
+ * so each EAMC write commits before the next one is issued. Updates
+ * `g_ra_etha_diag_last_eams[port]` on each iteration as a bench debug
+ * seam; reads are bounded by a 500 ms ms-scale budget.
+ *
+ * @param[in] port Port whose ETHA state machine to wait on.
+ * @param[in] reg  MMIO pointer to that port's ETHA register window.
+ * @param[in] mode Mode the caller just wrote into EAMC.OPC.
+ *
+ * @return ra_err_t Result code.
+ * @retval k_ra_ok           EAMS.OPS reached the requested mode in budget.
+ * @retval k_ra_err_hw_timeout EAMS.OPS never caught up; chip is stuck.
+ *
+ * @pre `reg` points at a valid ETHA register window.
+ * @pre Caller already wrote `mode` into `reg->EAMC`.
+ * @post Either EAMS.OPS == `mode` or the chip is stuck.
+ * @post `g_ra_etha_diag_last_eams[port & 1]` reflects the last read.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t
+internal_etha_wait_for_mode(ra_etha_port_t port, volatile r_etha_regs_t* reg, ra_etha_opc_t mode)
+{
+#ifdef RA_SIMULATOR_MODE
+  (void)port;
+  (void)reg;
+  (void)mode;
+  return k_ra_ok;
+#else
+  /* Only CONFIG and DISABLE are load-bearing: writes to MRMAC require
+   * the port to actually be in CONFIG, and the OPERATION -> DISABLE
+   * step has to land before the next CONFIG attempt. RESET and
+   * OPERATION transitions are fire-and-forget on this silicon -- the
+   * bench's eth_loopback test exercises OPERATION on the unwired
+   * ETHA0 port where EAMS never advances past CONFIG (no PHY, no
+   * media); polling there hangs the test. */
+  if (mode != k_ra_etha_opc_config) {
+    if (mode != k_ra_etha_opc_disable) {
+      return k_ra_ok;
+    }
+  }
+  enum : uint32_t {
+    k_ms_budget = 500U,
+    k_inner     = 200000U,
+  };
+  const uint32_t target = (uint32_t)mode & k_ra_etha_mask_ops;
+  for (uint32_t ms = 0U; ms < (uint32_t)k_ms_budget; ++ms) {
+    for (uint32_t i = 0U; i < (uint32_t)k_inner; ++i) {
+      const uint32_t eams                           = reg->EAMS & k_ra_etha_mask_ops;
+      g_ra_etha_diag_last_eams[(uint32_t)port & 1U] = eams;
+      if (eams == target) {
+        return k_ra_ok;
+      }
+    }
+  }
+  ra_log_error(s_tag, "etha_set_mode: EAMS.OPS never reached requested mode");
+  return k_ra_err_hw_timeout;
+#endif
+}
+
+/* ra_etha_set_mode -- see header for full description. */
 ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
 {
   if (!internal_port_ok(port) || (uint32_t)mode > k_ra_etha_mask_opc) {
     ra_log_error(s_tag, "etha_set_mode: bad arg");
     return k_ra_err_invalid_arg;
   }
+  volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
-  ra_etha(port)->EAMC = (uint32_t)mode & k_ra_etha_mask_opc;
-  return k_ra_ok;
+  reg->EAMC = (uint32_t)mode & k_ra_etha_mask_opc;
+  return internal_etha_wait_for_mode(port, reg, mode);
 }
 
 /* ra_etha_set_queue_arb -- see header for full description. */
