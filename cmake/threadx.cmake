@@ -119,6 +119,17 @@ target_include_directories(threadx PUBLIC
 # kernel options when they include <tx_api.h>.
 target_compile_definitions(threadx PUBLIC TX_INCLUDE_USER_DEFINE_FILE)
 
+# Force-pull `_tx_timer_interrupt` out of libthreadx.a even when no
+# strong reference exists in the app's directly-compiled .obj files.
+# The shared SysTick_Handler in libs/ra_core/src/ra_time.c only takes a
+# WEAK reference to it (so non-ThreadX apps still link), and that weak
+# reference is satisfied with NULL if nothing else pulls the symbol in.
+# Without this --undefined the ThreadX time base never advances when an
+# app uses ThreadX via the port-level SysTick path -- Issue #8.
+target_link_options(threadx INTERFACE
+    -Wl,--undefined=_tx_timer_interrupt
+)
+
 # Quiet the upstream sources -- they trigger a handful of warnings that
 # the firmware build elevates to errors. Apply only to C TUs; the .S
 # files are passed through the assembler and reject -W flags.
