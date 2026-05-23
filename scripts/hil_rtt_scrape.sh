@@ -20,6 +20,42 @@ set -euo pipefail
 
 PI_HOST="${PI_HOST:-star@star.local}"
 
+# Detect when we are already running on the Pi itself (self-hosted CI
+# runner, or running locally on the bench). In that case skip the
+# `ssh $PI_HOST` round-trip -- mDNS resolution to `star.local` can fail
+# inside a self-hosted runner's network namespace and we have direct
+# access to the same files / J-Link / TTY here.
+LOCAL_PI=0
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+    LOCAL_PI=1
+fi
+pi_run() {
+    if (( LOCAL_PI )); then
+        bash -c "$1"
+    else
+        ssh "$PI_HOST" "$1"
+    fi
+}
+pi_push() {
+    local local_path="$1"
+    local remote="$2"
+    if (( LOCAL_PI )); then
+        cp -f "$local_path" "$remote"
+    else
+        scp -q "$local_path" "${PI_HOST}:${remote}"
+    fi
+}
+pi_write() {
+    local remote="$1"
+    if (( LOCAL_PI )); then
+        cat > "$remote"
+    else
+        ssh "$PI_HOST" "cat > ${remote}"
+    fi
+}
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -76,14 +112,14 @@ REMOTE_OUT="/tmp/${APP_NAME}.rtt.out"
 
 echo -e "${YELLOW}[HIL-RTT]${NC} app=${APP_NAME}  expect='${EXPECT}'  buf=${BUF_SYM}@${BUF_ADDR}  timeout=${TIMEOUT_S}s"
 
-scp -q "$HEX" "$PI_HOST:$REMOTE_HEX"
+pi_push "$HEX" "$REMOTE_HEX"
 
 # JLinkExe script: flash, go, sleep `timeout` ms to let the firmware
 # fill the RTT up-buffer, then loop multiple halt/dump/go cycles so
 # Cortex-M85 D-cache + JLink-internal caching aliasing on the first
 # post-reset read does not cause a flaky FAIL. Three samples is
 # enough to stabilise on the live HIL board.
-ssh "$PI_HOST" "cat > $REMOTE_SCRIPT" <<JL
+pi_write "$REMOTE_SCRIPT" <<JL
 si 1
 speed 4000
 device R7KA8D2KF_CPU0
@@ -100,7 +136,7 @@ mem $BUF_ADDR $BUF_BYTES
 q
 JL
 
-ssh "$PI_HOST" "JLinkExe -if SWD -CommanderScript $REMOTE_SCRIPT" >"$REMOTE_OUT.local" 2>&1 || true
+pi_run "JLinkExe -if SWD -CommanderScript $REMOTE_SCRIPT" >"$REMOTE_OUT.local" 2>&1 || true
 
 # Pull the ASCII column of the mem dump and concatenate it so a
 # multi-byte expect string can match across the mem-dump 16-byte
