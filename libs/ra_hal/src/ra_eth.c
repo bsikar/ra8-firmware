@@ -808,14 +808,10 @@ static ra_err_t internal_open_gwca_path(void)
    * is also being brought up, and the board can't depend on that. */
 
   /* Per FSP r_layer3_switch_open: program the per-port forwarding
-   * destination masks BEFORE bringing the GWCA up. Restrict CPU
-   * (GWCA0, port 2) outbound to ETHA1 only -- 0x02 = bit 1 = ETHA1.
-   * Bench-confirmed (issue #1): leaving CPU mask at 0x7F (fan-out to
-   * all 7 destinations) inflates MTGFCE 2x and starves the MFWD TX
-   * FIFO on large frames, dropping them at the wire even though the
-   * MAC reports clean TX. ETHA0/ETHA1 inbound stay permissive
-   * (0x7F) so received frames can still reach the CPU. */
-  static const uint8_t s_fwpbfc_masks[3] = {0x7FU, 0x7FU, 0x02U};
+   * destination masks BEFORE bringing the GWCA up. 0x7F = allow all
+   * destinations (permissive baseline; tightens once L3 filtering
+   * lands). */
+  static const uint8_t s_fwpbfc_masks[3] = {0x7FU, 0x7FU, 0x7FU};
   (void)ra_eth_mfwd_set_forwarding_masks(s_fwpbfc_masks);
 
   const ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);
