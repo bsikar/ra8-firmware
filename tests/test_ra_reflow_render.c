@@ -6,7 +6,7 @@
  * The decision under analysis lives inside ``static`` helper
  * ``priv_blit_glyph`` and is not directly reachable from a host test.
  * Per the operand-identical mirror-helper pattern established in
- * ``tests/test_lwip_sys_arch.c``, this file documents the canonical
+ * ``tests/test_ux_dcd_ra_usb.c``, this file documents the canonical
  * N+1 MC/DC vector set and pairs it with a ``static inline`` mirror
  * with identical short-circuit semantics.
  *

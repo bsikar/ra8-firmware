@@ -6,8 +6,8 @@
  * The decision under analysis lives inside a ``static`` helper
  * (``arp_insert``) and is therefore not directly callable from the
  * host unit-test executable. Per the operand-identical mirror-helper
- * pattern established in ``tests/test_lwip_sys_arch.c`` and
- * ``tests/test_ux_dcd_ra_usb.c``, this file documents the canonical
+ * pattern established in ``tests/test_ux_dcd_ra_usb.c``, this file
+ * documents the canonical
  * N+1 MC/DC vector set for the decision and pairs it with a
  * ``static inline`` mirror that has identical short-circuit
  * semantics. Coverage of the production decision is satisfied by:

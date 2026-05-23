@@ -29,7 +29,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 - Cooperative + preemptive RTOS kernel underneath every `examples/ek_ra8d2/threadx_*`
   application, including `threadx_blink`, `threadx_canfd_demo`, `threadx_filex_demo`,
   `threadx_filex_levelx_demo`, `threadx_guix_demo`, `threadx_ipc_demo`,
-  `threadx_levelx_demo`, `threadx_lwip_tcp_echo`, `threadx_mpu_partition_demo`,
+  `threadx_levelx_demo`, `threadx_mpu_partition_demo`,
   `threadx_netx_tcp_echo`, `threadx_ota_demo`, and `threadx_usbx_cdc_demo`.
 - Provides scheduler, synchronization primitives, and timing for FileX,
   NetX Duo, USBX, GUIX, and LevelX (all of which depend on it).

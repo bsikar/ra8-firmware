@@ -6,7 +6,7 @@ A one-paragraph guided tour of every first-party library under
 mandatory Doxygen tag set (see `CLAUDE.md`).
 
 Vendored third-party libraries (mbedTLS, ThreadX, NetX Duo, FileX,
-GuiX, USBX, NimBLE, lwIP, miniz, stb, litehtml, gumbo) live under
+GuiX, USBX, NimBLE, miniz, stb, litehtml, gumbo) live under
 `libs/third_party/` and are documented as SOUP under
 [`docs/SOUP/`](SOUP/) -- they are not enumerated here.
 
@@ -73,17 +73,17 @@ header per se -- the veneer set is split across
 Network platform-abstraction layer over the RA8D2 ESWM block. Owns
 the DMA descriptor rings, MAC bring-up, and the byte pump up to
 the IP-layer handlers in `ra_net`. Stack-agnostic: it is what both
-the in-house `ra_net` adapter and the lwIP/NetX-Duo ports build on.
+the in-house `ra_net` adapter and the NetX Duo port build on.
 
 * Header: `libs/ra_net_pal/inc/ra_net_pal.h`
 * Main entry points: `ra_net_pal_init()`, `ra_net_pal_set_mac_addr()`.
 
 ## ra_net
 
-Tiny lwIP-style TCP/IP adapter on top of `ra_net_pal`. Implements
+Tiny in-house TCP/IP adapter on top of `ra_net_pal`. Implements
 the ARP cache, IPv4 dispatch (ICMP/UDP/TCP), and a minimal DHCP
 client. Designed for the example apps that need basic networking
-without the full lwIP/NetX-Duo footprint.
+without the full NetX Duo footprint.
 
 * Header: `libs/ra_net/inc/ra_net.h`
 * Main entry points: `ra_net_open()`, `ra_net_poll()`,
