@@ -502,6 +502,18 @@ internal_etha_wait_for_mode(ra_etha_port_t port, volatile r_etha_regs_t* reg, ra
   (void)mode;
   return k_ra_ok;
 #else
+  /* Only CONFIG and DISABLE are load-bearing: writes to MRMAC require
+   * the port to actually be in CONFIG, and the OPERATION -> DISABLE
+   * step has to land before the next CONFIG attempt. RESET and
+   * OPERATION transitions are fire-and-forget on this silicon -- the
+   * bench's eth_loopback test exercises OPERATION on the unwired
+   * ETHA0 port where EAMS never advances past CONFIG (no PHY, no
+   * media); polling there hangs the test. */
+  if (mode != k_ra_etha_opc_config) {
+    if (mode != k_ra_etha_opc_disable) {
+      return k_ra_ok;
+    }
+  }
   enum : uint32_t {
     k_ms_budget = 500U,
     k_inner     = 200000U,
