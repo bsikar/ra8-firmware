@@ -18,8 +18,11 @@ on:
     branches: [main]
     paths:
       - 'examples/ek_ra8d2/hw_validated/**'
+      - 'libs/ra_core/**'
       - 'libs/ra_hal/**'
+      - 'port/threadx/**'
       - 'port/usbx/**'
+      - 'cmake/**'
       - 'scripts/hil_*.sh'
       - 'scripts/usb_*.py'
       - '.github/workflows/hil.yml'
@@ -27,8 +30,11 @@ on:
     branches: [main]
     paths:
       - 'examples/ek_ra8d2/hw_validated/**'
+      - 'libs/ra_core/**'
       - 'libs/ra_hal/**'
+      - 'port/threadx/**'
       - 'port/usbx/**'
+      - 'cmake/**'
       - 'scripts/hil_*.sh'
       - 'scripts/usb_*.py'
       - '.github/workflows/hil.yml'
