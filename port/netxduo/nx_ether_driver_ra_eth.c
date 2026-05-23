@@ -37,8 +37,15 @@
 #include <string.h>
 
 #include "nx_api.h"
+#include "nx_arp.h"
+#include "nx_ip.h"
 #include "ra_err.h"
 #include "ra_eth.h"
+#include "tx_api.h"
+
+#ifndef NX_DISABLE_IPV4
+#include "nx_rarp.h"
+#endif
 
 /**
  * @enum nx_ra_eth_constants_t
@@ -159,6 +166,309 @@ static UCHAR s_link_up;
  */
 static uint8_t s_local_mac[k_nx_ra_eth_mac_len];
 
+/**
+ * @var s_local_mac_user_set
+ * @brief Flag indicating whether the app supplied a MAC via the pre-init seam.
+ *
+ * @details Set to 1 once ``nx_ether_driver_ra_eth_set_mac`` runs. The
+ * NX_LINK_INITIALIZE handler prefers ``s_local_mac`` over the (empty)
+ * interface struct when this flag is 1.
+ *
+ * @note Module-private; not exported.
+ * @since 0.1.0
+ */
+static uint8_t s_local_mac_user_set;
+
+/* nx_ether_driver_ra_eth_set_mac -- see header for full description. */
+void nx_ether_driver_ra_eth_set_mac(const uint8_t mac[6])
+{
+  if (mac == nullptr) {
+    return;
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_nx_ra_eth_mac_len; ++i) {
+    s_local_mac[i] = mac[i];
+  }
+  s_local_mac_user_set = 1U;
+}
+
+/**
+ * @struct nx_ether_diag_t
+ * @brief Bench-readable diagnostic counters for the NetX link driver.
+ *
+ * @details Module-internal counters incremented at every dispatch path
+ * into the driver. Read from JLink memprobe / TaskOutput to confirm
+ * whether NetX is actually exercising the link driver.
+ *
+ * @invariant Each counter is mutated only from the NetX IP thread.
+ *
+ * @code
+ *   // JLink: mem32 &g_nx_ether_diag 12
+ * @endcode
+ *
+ * @see g_nx_ether_diag
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t dispatch_total;       /**< total dispatches into the driver.       */
+  uint32_t init_total;           /**< NX_LINK_INITIALIZE dispatches.          */
+  uint32_t enable_total;         /**< NX_LINK_ENABLE dispatches.              */
+  uint32_t send_total;           /**< NX_LINK_PACKET_SEND/_BROADCAST dispatches.*/
+  uint32_t rx_total;             /**< NX_LINK_DEFERRED_PROCESSING dispatches. */
+  uint32_t status_total;         /**< NX_LINK_GET_STATUS dispatches.          */
+  uint32_t last_cmd;             /**< Most recent driver command code.        */
+  uint32_t init_last_status;     /**< Last NetX status priv_handle_init set.  */
+  uint32_t send_last_status;     /**< Last NetX status priv_handle_send set.  */
+  uint32_t enable_last_link_up;  /**< 1 = last set_link_state was UP.         */
+  uint32_t init_ra_eth_open_err; /**< Last ra_eth_open return code.           */
+  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface.  */
+} nx_ether_diag_t;
+
+/**
+ * @var g_nx_ether_diag
+ * @brief Diagnostic counters readable via JLink.
+ *
+ * @details Symbol export is module-private (no header declaration); the
+ * symbol lives in .bss so JLink memprobe can address it via `nm`.
+ *
+ * @note Not safe to mutate outside the NetX IP thread.
+ * @warning Not part of the public ABI -- bench/debug only.
+ * @since 0.1.0
+ */
+volatile nx_ether_diag_t g_nx_ether_diag = {};
+
+/**
+ * @enum nx_ra_eth_worker_t
+ * @brief Sizing constants for the RX-poll worker thread.
+ *
+ * @details Without an IRQ from the GWCA RX path, NetX is never
+ * notified that frames have arrived. A dedicated ThreadX worker
+ * polls ra_eth_read at a short cadence and pushes packets into
+ * NetX via _nx_ip_packet_deferred_receive. 2 ms cadence balances
+ * latency against CPU load on the M85; tighter polls saturate the
+ * NetX packet pool, looser ones add visible RTT to ICMP echo.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_nx_ra_eth_worker_stack_bytes = 4096U,
+  k_nx_ra_eth_worker_priority    = 4U,
+  k_nx_ra_eth_worker_period_ticks = 1U,
+} nx_ra_eth_worker_t;
+
+static TX_THREAD s_rx_thread;
+alignas(8) static uint8_t s_rx_thread_stack[k_nx_ra_eth_worker_stack_bytes];
+static NX_IP*        s_rx_ip          = NX_NULL;
+static NX_INTERFACE* s_rx_iface       = NX_NULL;
+static uint8_t       s_rx_thread_made = 0U;
+
+/**
+ * @brief RX-poll worker entry.
+ *
+ * @details Drains the GWCA RX descriptor ring forever, pushing each
+ * frame into NetX via ``_nx_ip_packet_deferred_receive``. Sleeps one
+ * ThreadX tick between drains so it does not starve other NetX work.
+ *
+ * @param[in] arg Unused.
+ *
+ * @pre s_rx_ip and s_rx_iface have been populated.
+ * @pre ra_eth_open has returned k_ra_ok.
+ * @post Loops forever; never returns.
+ * @post g_nx_ether_diag.rx_total reflects every successful push to NetX.
+ *
+ * @note Runs at priority ``k_nx_ra_eth_worker_priority``.
+ * @since 0.1.0
+ */
+static void priv_rx_worker_entry(ULONG arg);
+
+/**
+ * @brief Spawn the RX-poll worker thread once, idempotent.
+ *
+ * @details The driver has no RX IRQ; this worker is the only path
+ * from the GWCA descriptor ring into NetX. Called from INITIALIZE.
+ *
+ * @param[in] ip    NetX IP control block the worker pushes frames into.
+ * @param[in] iface NetX interface struct the worker tags frames with.
+ *
+ * @pre `ip` and `iface` are non-NULL.
+ * @pre ra_eth_open succeeded (s_ra_eth_open == 1U).
+ * @post On first call, s_rx_thread is running.
+ * @post On later calls, no-op.
+ *
+ * @note Not thread-safe; the dispatch funnel serialises callers.
+ * @since 0.1.0
+ */
+static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
+{
+  if (s_rx_thread_made != 0U) {
+    return;
+  }
+  s_rx_ip    = ip;
+  s_rx_iface = iface;
+  UINT t     = tx_thread_create(&s_rx_thread,
+                            (CHAR*)"ra_eth_rx",
+                            priv_rx_worker_entry,
+                            0,
+                            (VOID*)s_rx_thread_stack,
+                            (ULONG)k_nx_ra_eth_worker_stack_bytes,
+                            (UINT)k_nx_ra_eth_worker_priority,
+                            (UINT)k_nx_ra_eth_worker_priority,
+                            (ULONG)TX_NO_TIME_SLICE,
+                            (UINT)TX_AUTO_START);
+  if (t == TX_SUCCESS) {
+    s_rx_thread_made = 1U;
+  }
+}
+
+/**
+ * @enum nx_ra_eth_ethertype_t
+ * @brief Ethernet II EtherType constants in host byte order.
+ *
+ * @details NetX dispatch keys; matched against the 16-bit ethertype
+ * field at frame offset 12.
+ */
+typedef enum : uint16_t {
+  k_nx_ra_eth_ethertype_ipv4 = 0x0800U, /**< IPv4 frame.                  */
+  k_nx_ra_eth_ethertype_arp  = 0x0806U, /**< ARP frame.                   */
+  k_nx_ra_eth_ethertype_rarp = 0x8035U, /**< RARP frame.                  */
+  k_nx_ra_eth_ethertype_ipv6 = 0x86DDU, /**< IPv6 frame.                  */
+} nx_ra_eth_ethertype_t;
+
+typedef enum : uint16_t {
+  k_nx_ra_eth_hdr_bytes = 14U,
+  k_nx_ra_eth_etype_off = 12U,
+} nx_ra_eth_hdr_t;
+
+/**
+ * @brief Dispatch a received frame into NetX by ethertype.
+ *
+ * @details Mirrors the NetX reference driver's RX path: read the
+ * ethertype, strip the 14-byte ethernet header, then hand the IP
+ * payload to the matching `*_packet_deferred_receive`. Calling
+ * `_nx_ip_packet_deferred_receive` directly routes everything to the
+ * IP path and ARP frames get silently dropped, so the chip never
+ * answers ``who-has`` requests.
+ *
+ * @param[in,out] pkt NX_PACKET containing the raw ethernet frame.
+ *
+ * @pre `pkt` is non-NULL and `pkt->nx_packet_length >= 14`.
+ * @pre s_rx_ip and s_rx_iface have been populated.
+ * @post Header is stripped and the packet is owned by NetX.
+ * @post Unknown ethertypes release the packet rather than leaking.
+ *
+ * @note Not thread-safe; only the RX worker calls this.
+ * @since 0.1.0
+ */
+static void priv_dispatch_to_netx(NX_PACKET* pkt)
+{
+  if (pkt->nx_packet_length < (ULONG)k_nx_ra_eth_hdr_bytes) {
+    (void)nx_packet_release(pkt);
+    return;
+  }
+  const UCHAR*   p   = (const UCHAR*)pkt->nx_packet_prepend_ptr;
+  const uint16_t et  = (uint16_t)(((uint16_t)p[k_nx_ra_eth_etype_off] << 8) |
+                                 (uint16_t)p[(uint16_t)k_nx_ra_eth_etype_off + 1U]);
+  pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + (ULONG)k_nx_ra_eth_hdr_bytes;
+  pkt->nx_packet_length      = pkt->nx_packet_length - (ULONG)k_nx_ra_eth_hdr_bytes;
+  if (et == (uint16_t)k_nx_ra_eth_ethertype_ipv4) {
+    _nx_ip_packet_deferred_receive(s_rx_ip, pkt);
+    return;
+  }
+#ifndef NX_DISABLE_IPV4
+  if (et == (uint16_t)k_nx_ra_eth_ethertype_arp) {
+    _nx_arp_packet_deferred_receive(s_rx_ip, pkt);
+    return;
+  }
+  if (et == (uint16_t)k_nx_ra_eth_ethertype_rarp) {
+    _nx_rarp_packet_deferred_receive(s_rx_ip, pkt);
+    return;
+  }
+#endif
+  (void)nx_packet_release(pkt);
+}
+
+/**
+ * @brief Drain the GWCA RX ring and push every frame into NetX.
+ *
+ * @details One pass of the inner loop -- factored out so the worker
+ * entry stays simple and the function-size gate stays happy.
+ *
+ * @pre s_rx_ip != NX_NULL.
+ * @pre s_ra_eth_open == 1U.
+ * @post Pending RX frames have been dispatched into NetX (drops on alloc fail).
+ * @post g_nx_ether_diag.rx_total reflects successful pushes.
+ *
+ * @note Not thread-safe; only the RX worker calls this.
+ * @since 0.1.0
+ */
+static void priv_rx_drain(void)
+{
+  NX_PACKET_POOL* pool = s_rx_ip->nx_ip_default_packet_pool;
+  if (pool == NX_NULL) {
+    return;
+  }
+  while (1) {
+    uint32_t got = 0U;
+    ra_err_t err = ra_eth_read(s_rx_staging, (uint32_t)sizeof(s_rx_staging), &got);
+    if (err != k_ra_ok) {
+      break;
+    }
+    if (got == 0U) {
+      break;
+    }
+    NX_PACKET* pkt = NX_NULL;
+    UINT       a   = nx_packet_allocate(pool, &pkt, NX_RECEIVE_PACKET, NX_NO_WAIT);
+    if (a != NX_SUCCESS) {
+      continue;
+    }
+    if (pkt == NX_NULL) {
+      continue;
+    }
+    /* Slide prepend by 2 bytes so the IP header lands 4-byte aligned
+     * after the driver strips the 14-byte ethernet header. NetX's IP
+     * receive path word-accesses the IP header and silently drops
+     * misaligned frames on Cortex-M parts. */
+    pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + 2U;
+    pkt->nx_packet_append_ptr  = pkt->nx_packet_prepend_ptr;
+    UINT app =
+      nx_packet_data_append(pkt, (VOID*)s_rx_staging, (ULONG)got, pool, (ULONG)NX_NO_WAIT);
+    if (app != NX_SUCCESS) {
+      (void)nx_packet_release(pkt);
+      continue;
+    }
+    pkt->nx_packet_ip_interface = s_rx_iface;
+    priv_dispatch_to_netx(pkt);
+    g_nx_ether_diag.rx_total += 1U;
+  }
+}
+
+/**
+ * @brief RX-poll worker entry.
+ *
+ * @details Loops forever, draining the GWCA RX ring on every tick.
+ *
+ * @param[in] arg Unused.
+ *
+ * @pre Driver state has been initialised.
+ * @pre s_rx_ip / s_rx_iface populated by priv_spawn_rx_worker.
+ * @post Drains pending RX into NetX whenever the driver is open.
+ * @post Never returns.
+ *
+ * @note Owns no shared state; safe to run alongside the IP thread.
+ * @since 0.1.0
+ */
+static void priv_rx_worker_entry(ULONG arg)
+{
+  (void)arg;
+  while (1) {
+    if (s_rx_ip != NX_NULL) {
+      if (s_ra_eth_open != 0U) {
+        priv_rx_drain();
+      }
+    }
+    tx_thread_sleep((ULONG)k_nx_ra_eth_worker_period_ticks);
+  }
+}
+
 /* Pull the 6-byte MAC out of the NetX interface descriptor -- see implementation for details. */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
@@ -202,10 +512,27 @@ static void priv_handle_init(NX_IP_DRIVER* req)
 {
   NX_INTERFACE* iface = req->nx_ip_driver_interface;
   if (iface == NX_NULL) {
+    g_nx_ether_diag.init_iface_null_hits += 1U;
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
-  priv_unpack_mac(iface, s_local_mac);
+  /* Prefer the app-supplied MAC from nx_ether_driver_ra_eth_set_mac.
+   * If the app did not call it, fall back to the interface struct
+   * (typically zero during INITIALIZE -- nx_ip_create fires this
+   * callback BEFORE the app can call
+   * nx_ip_interface_physical_address_set). */
+  if (s_local_mac_user_set == 0U) {
+    priv_unpack_mac(iface, s_local_mac);
+  }
+  /* Push the MAC into the interface struct so NetX subsystems that
+   * read it later (ARP, sender-MAC stamping) see the right value. */
+  {
+    ULONG msw = ((ULONG)s_local_mac[0] << 8) | (ULONG)s_local_mac[1];
+    ULONG lsw = ((ULONG)s_local_mac[2] << 24) | ((ULONG)s_local_mac[3] << 16) |
+                ((ULONG)s_local_mac[4] << 8)  | (ULONG)s_local_mac[5];
+    iface->nx_interface_physical_address_msw = msw;
+    iface->nx_interface_physical_address_lsw = lsw;
+  }
 
   /* EK-RA8D2 wires its RJ45 to ETHA1 / RMAC1 -- channel 0 is unused
    * on this board. Bench-confirmed: with channel=0 the GWCA goes
@@ -221,7 +548,8 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   };
   (void)memcpy((void*)cfg.mac_address, (const void*)s_local_mac, (size_t)k_nx_ra_eth_mac_len);
 
-  ra_err_t err = ra_eth_open(&cfg);
+  ra_err_t err                         = ra_eth_open(&cfg);
+  g_nx_ether_diag.init_ra_eth_open_err = (uint32_t)err;
   if (err != k_ra_ok) {
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
@@ -230,7 +558,9 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   /* Advertise NetX's framing capabilities for this interface. */
   iface->nx_interface_ip_mtu_size            = (ULONG)k_nx_ra_eth_mtu;
   iface->nx_interface_address_mapping_needed = NX_TRUE;
-  req->nx_ip_driver_status                   = NX_SUCCESS;
+
+  priv_spawn_rx_worker(req->nx_ip_driver_ptr, iface);
+  req->nx_ip_driver_status = NX_SUCCESS;
 }
 
 /* Handle ``NX_LINK_UNINITIALIZE``: close the NIC -- see implementation for details. */
@@ -263,6 +593,60 @@ static void priv_handle_uninit(NX_IP_DRIVER* req)
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.
  */
+/**
+ * @brief Pick the ethernet ethertype for a NetX driver SEND command.
+ *
+ * @details NetX hands us the L3 payload (ARP body, IP packet) without
+ * an ethernet header; the driver builds the header. The command kind
+ * implicitly tells us which ethertype goes on the wire.
+ *
+ * @param[in] cmd NetX driver command code.
+ * @return ethertype in host byte order.
+ * @retval 0x0806  cmd was NX_LINK_ARP_SEND or NX_LINK_ARP_RESPONSE_SEND.
+ * @retval 0x8035  cmd was NX_LINK_RARP_SEND.
+ * @retval 0x0800  default (IPv4 -- PACKET_SEND, PACKET_BROADCAST).
+ *
+ * @pre Module state is consistent.
+ * @pre Caller validated `cmd` came from NetX's dispatch.
+ * @post Returns 0x0806/0x8035/0x0800.
+ * @post No side effects.
+ * @note Not thread-safe; pure.
+ * @since 0.1.0
+ */
+static uint16_t priv_ethertype_for_cmd(UINT cmd)
+{
+  if (cmd == NX_LINK_ARP_SEND) {
+    return (uint16_t)k_nx_ra_eth_ethertype_arp;
+  }
+  if (cmd == NX_LINK_ARP_RESPONSE_SEND) {
+    return (uint16_t)k_nx_ra_eth_ethertype_arp;
+  }
+  if (cmd == NX_LINK_RARP_SEND) {
+    return (uint16_t)k_nx_ra_eth_ethertype_rarp;
+  }
+  return (uint16_t)k_nx_ra_eth_ethertype_ipv4;
+}
+
+/**
+ * @brief Handle NX_LINK_PACKET_SEND / ARP_SEND / ARP_RESPONSE_SEND / RARP_SEND.
+ *
+ * @details Constructs the 14-byte ethernet header from
+ * `req->nx_ip_driver_physical_address_msw/lsw` (destination MAC NetX
+ * resolved via ARP for IP, or the broadcast address for ARP-request
+ * etc.) plus `s_local_mac` and an ethertype derived from
+ * `req->nx_ip_driver_command`. The packet's prepend_ptr-to-append_ptr
+ * range is then linearised after the header and fed to `ra_eth_write`.
+ *
+ * @param[in,out] req NetX driver request.
+ *
+ * @pre `s_ra_eth_open != 0U` and `s_link_up != 0U`.
+ * @pre `req->nx_ip_driver_packet` and its chain are valid.
+ * @post `nx_packet_transmit_release` is always called on the packet.
+ * @post `req->nx_ip_driver_status` is NX_SUCCESS / NX_NOT_SUCCESSFUL.
+ *
+ * @note Not thread-safe; only the NetX IP thread calls this.
+ * @since 0.1.0
+ */
 static void priv_handle_send(NX_IP_DRIVER* req)
 {
   NX_PACKET* pkt = req->nx_ip_driver_packet;
@@ -274,16 +658,43 @@ static void priv_handle_send(NX_IP_DRIVER* req)
     return;
   }
 
-  uint32_t len = 0U;
-  if (priv_packet_to_buffer(pkt, s_tx_staging, (uint32_t)sizeof(s_tx_staging), &len) == 0U) {
+  /* Build the 14-byte ethernet header in the staging buffer from the
+   * destination MAC NetX puts in nx_ip_driver_physical_address_msw/lsw,
+   * our local MAC, and the ethertype derived from the dispatch cmd.
+   * NetX hands the link driver the L3 payload only -- the header is
+   * the driver's responsibility (per `nx_arp_packet_send` and the
+   * reference NetX driver). */
+  const ULONG    msw = req->nx_ip_driver_physical_address_msw;
+  const ULONG    lsw = req->nx_ip_driver_physical_address_lsw;
+  const uint16_t et  = priv_ethertype_for_cmd(req->nx_ip_driver_command);
+  s_tx_staging[0]    = (uint8_t)((msw >> 8) & 0xFFU);
+  s_tx_staging[1]    = (uint8_t)(msw & 0xFFU);
+  s_tx_staging[2]    = (uint8_t)((lsw >> 24) & 0xFFU);
+  s_tx_staging[3]    = (uint8_t)((lsw >> 16) & 0xFFU);
+  s_tx_staging[4]    = (uint8_t)((lsw >> 8) & 0xFFU);
+  s_tx_staging[5]    = (uint8_t)(lsw & 0xFFU);
+  s_tx_staging[6]    = s_local_mac[0];
+  s_tx_staging[7]    = s_local_mac[1];
+  s_tx_staging[8]    = s_local_mac[2];
+  s_tx_staging[9]    = s_local_mac[3];
+  s_tx_staging[10]   = s_local_mac[4];
+  s_tx_staging[11]   = s_local_mac[5];
+  s_tx_staging[12]   = (uint8_t)((et >> 8) & 0xFFU);
+  s_tx_staging[13]   = (uint8_t)(et & 0xFFU);
+
+  uint32_t body_len = 0U;
+  if (priv_packet_to_buffer(pkt,
+                            s_tx_staging + k_nx_ra_eth_hdr_bytes,
+                            (uint32_t)sizeof(s_tx_staging) - (uint32_t)k_nx_ra_eth_hdr_bytes,
+                            &body_len)
+      == 0U) {
     (void)nx_packet_transmit_release(pkt);
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
+  uint32_t len = body_len + (uint32_t)k_nx_ra_eth_hdr_bytes;
 
-  /* Pad runt frames up to the 802.3 minimum so the EDMAC engine
-   * does not reject them. The pad bytes are zero per IEEE 802.3-2018
-   * "padding" requirement. */
+  /* Pad runt frames up to the 802.3 minimum. */
   if (len < (uint32_t)k_nx_ra_eth_min_frame) {
     (void)memset((void*)(s_tx_staging + len), 0, (size_t)((uint32_t)k_nx_ra_eth_min_frame - len));
     len = (uint32_t)k_nx_ra_eth_min_frame;
@@ -352,9 +763,7 @@ static void priv_handle_deferred_rx(NX_IP_DRIVER* req)
       continue;
     }
     pkt->nx_packet_ip_interface = req->nx_ip_driver_interface;
-
-    /* Hand to the NetX receive engine (it owns the packet from here). */
-    _nx_ip_packet_deferred_receive(ip_ptr, pkt);
+    priv_dispatch_to_netx(pkt);
   }
   req->nx_ip_driver_status = NX_SUCCESS;
 }
@@ -422,14 +831,22 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
     return;
   }
 
+  g_nx_ether_diag.dispatch_total += 1U;
+  g_nx_ether_diag.last_cmd = (uint32_t)driver_req->nx_ip_driver_command;
+
   switch (driver_req->nx_ip_driver_command) {
     case NX_LINK_INITIALIZE:
+      g_nx_ether_diag.init_total += 1U;
       priv_handle_init(driver_req);
+      g_nx_ether_diag.init_last_status = (uint32_t)driver_req->nx_ip_driver_status;
       break;
     case NX_LINK_ENABLE:
+      g_nx_ether_diag.enable_total += 1U;
+      g_nx_ether_diag.enable_last_link_up = 1U;
       priv_set_link_state(driver_req, 1U);
       break;
     case NX_LINK_DISABLE:
+      g_nx_ether_diag.enable_last_link_up = 0U;
       priv_set_link_state(driver_req, 0U);
       break;
     case NX_LINK_PACKET_SEND:
@@ -437,12 +854,16 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
     case NX_LINK_ARP_SEND:
     case NX_LINK_ARP_RESPONSE_SEND:
     case NX_LINK_RARP_SEND:
+      g_nx_ether_diag.send_total += 1U;
       priv_handle_send(driver_req);
+      g_nx_ether_diag.send_last_status = (uint32_t)driver_req->nx_ip_driver_status;
       break;
     case NX_LINK_DEFERRED_PROCESSING:
+      g_nx_ether_diag.rx_total += 1U;
       priv_handle_deferred_rx(driver_req);
       break;
     case NX_LINK_GET_STATUS:
+      g_nx_ether_diag.status_total += 1U;
       priv_handle_get_status(driver_req);
       break;
     case NX_LINK_UNINITIALIZE:
@@ -450,9 +871,9 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
       break;
     case NX_LINK_MULTICAST_JOIN:
     case NX_LINK_MULTICAST_LEAVE:
-      /* No multicast filter support on the ESWM block at this layer;
-       * accept the request so NetX does not abort, and let the
-       * software-side IP stack do its own multicast filtering. */
+    case NX_LINK_INTERFACE_ATTACH:
+    case NX_LINK_INTERFACE_DETACH:
+    case NX_LINK_SET_PHYSICAL_ADDRESS:
       driver_req->nx_ip_driver_status = NX_SUCCESS;
       break;
     default:

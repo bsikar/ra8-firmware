@@ -2331,9 +2331,17 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
   /* HUM Table 29.11: for an external RGMII link the RMAC's internal
    * xMII (MPIC.PIS) is MII for 10/100 Mbps and GMII for 1 Gbps -- the
    * ESWM media mux (MIICR1.MIISEL = 01b) does the RGMII conversion.
-   * The boot default is 1 Gbps, so PIS = GMII here; ra_eth_open's
-   * link-speed resync re-programs PIS + LSC to match whatever the
-   * PHY auto-negotiates. */
+   * Default to MII (10/100 Mbps) at init so the on-chip RGMII RX
+   * sample timing matches the most common PHY auto-neg outcome on
+   * this board. Issue #1 bench: starting in GMII (1 Gbps) silently
+   * dropped every RX frame when the PHY negotiated to 100 Mbps with
+   * the Pi USB-Ethernet adapter, and the link-up-gated resync inside
+   * ra_eth_open never fired because chip-side MDIO reads of BMSR
+   * return 0x0000 (the PHY's BMSR.link bit is invisible until skew
+   * + clock are correct). Starting in MII makes RX work for any
+   * 10/100 link the PHY auto-negotiates; for 1 Gbps links the
+   * resync inside ra_eth_link_status will promote PIS to GMII once
+   * MDIO becomes usable. */
   const ra_rmac_config_t rmac_cfg = {
     .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast |
                                          k_ra_rmac_mrafc_bc_accept),
@@ -2341,8 +2349,8 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
     .mon0_irq_enable = 0U,
     .mon1_irq_enable = 0U,
     .mon2_irq_enable = 0U,
-    .phy_interface   = k_ra_rmac_pis_gmii,
-    .link_speed      = k_ra_rmac_lsc_1000mbit,
+    .phy_interface   = k_ra_rmac_pis_mii,
+    .link_speed      = k_ra_rmac_lsc_100mbit,
     .duplex          = k_ra_rmac_duplex_full,
     .eswclk_hz       = eswclk_hz,
     .mdc_hz          = (uint32_t)k_ra_rmac_mdc_default_hz,

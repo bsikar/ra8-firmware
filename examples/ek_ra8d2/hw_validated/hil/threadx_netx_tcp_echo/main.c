@@ -387,6 +387,13 @@ static UINT demo_netx_create_ip(void)
     return s;
   }
 
+  /* Hand the MAC to the link driver BEFORE nx_ip_create so it has it
+   * at INITIALIZE time. nx_ip_create runs INITIALIZE synchronously on
+   * the spawned IP thread, well before the main thread can call
+   * nx_ip_interface_physical_address_set; that ordering was the
+   * issue #1 RX-silent symptom on bench. */
+  nx_ether_driver_ra_eth_set_mac(k_demo_mac);
+
   ULONG ip_addr = demo_pack_ip(k_demo_ip);
   ULONG ip_mask = demo_pack_ip(k_demo_mask);
   s             = nx_ip_create(&s_ip,
@@ -402,7 +409,8 @@ static UINT demo_netx_create_ip(void)
     return s;
   }
 
-  /* Push the local MAC so the link driver picks it up at INITIALIZE. */
+  /* Belt-and-suspenders: also push the MAC through the NetX API in
+   * case any subsystem reads it from the interface struct later. */
   ULONG msw = 0U;
   ULONG lsw = 0U;
   demo_pack_mac(&msw, &lsw);
