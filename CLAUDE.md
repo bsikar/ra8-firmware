@@ -480,7 +480,7 @@ The `RA_*` annotation macros in `libs/ra_core/inc/ra_attributes.h` record archit
 
 - **Register Citations**: Every single register read/write or access MUST have an external Hardware User's Manual (HUM) citation comment immediately above it:
   `/* HUM Ch X.Y "section name" p NNNN */` (or `p NNNN-MMMM`)
-- **In-tree Citations Banned**: Never cite files in this repository by line number (e.g., `libs/foo.c:123` is forbidden). Reference the function or symbol name instead.
+- **In-tree Citations Banned**: Never cite files in this repository by line number (e.g., `libs/foo.c:123` is forbidden). Reference the function or symbol name instead. <!-- CITES-OK: literal example of the banned pattern documenting the rule itself -->
 
 ### Manual review checklist
 

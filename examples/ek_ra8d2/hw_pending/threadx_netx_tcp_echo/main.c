@@ -29,9 +29,10 @@
  *
  * Each accepted byte is logged to SCI8 as
  * ``"echoed N bytes from a.b.c.d\r\n"`` so the J-Link OB CDC port
- * gives visible feedback. This is the exact same hardware
- * scenario as ``examples/ethernet_tcp_echo`` -- but the protocol
- * stack is now NetX Duo instead of our hand-rolled ``ra_net``.
+ * gives visible feedback. NetX Duo is now the only TCP/IP stack
+ * in the tree -- the hand-rolled ``ra_net`` adapter and its
+ * companion ``ethernet_tcp_echo`` / ``ethernet_udp_echo`` /
+ * ``ethernet_http_responder`` apps were retired in #7.
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29

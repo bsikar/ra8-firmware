@@ -25,6 +25,6 @@
 #
 
 # Intentionally empty -- consumers (tests, examples) reach into
-# inc/ and src/ directly, mirroring libs/ra_net and libs/ra_tls.
+# inc/ and src/ directly, mirroring libs/ra_tls.
 # When an app starts to depend on ra_ble_host, wire up an OBJECT or
 # INTERFACE library here.
