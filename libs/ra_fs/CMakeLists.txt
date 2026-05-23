@@ -6,7 +6,7 @@
 # firmware example currently links it directly, so this file exists as a
 # placeholder and to document scope. When an example starts to depend on
 # ra_fs, wire up an OBJECT or INTERFACE library here following the
-# pattern in libs/ra_net/CMakeLists.txt.
+# pattern in libs/ra_tls/CMakeLists.txt.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT

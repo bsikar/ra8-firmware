@@ -21,7 +21,7 @@
 # in tests/CMakeLists.txt picks up ra_epub via the recursive glob plus
 # the third-party additions wired up there. When an example app starts
 # to depend on ra_epub, wire up an OBJECT or INTERFACE library here
-# following libs/ra_net/CMakeLists.txt.
+# following libs/ra_tls/CMakeLists.txt.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
