@@ -486,6 +486,11 @@ ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
   if (mode != k_ra_etha_opc_config) {
     return k_ra_ok;
   }
+#ifdef RA_SIMULATOR_MODE
+  /* The host MMIO stub doesn't model the state machine: EAMS won't
+   * advance after EAMC writes, so polling would always hit timeout. */
+  return k_ra_ok;
+#else
   enum : uint32_t {
     k_ra_etha_set_mode_ms_budget = 50U,
     k_ra_etha_set_mode_inner     = 200000U,
@@ -500,6 +505,7 @@ ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
   }
   ra_log_error(s_tag, "etha_set_mode: EAMS.OPS never reached CONFIG");
   return k_ra_err_hw_timeout;
+#endif
 }
 
 /* ra_etha_set_queue_arb -- see header for full description. */
