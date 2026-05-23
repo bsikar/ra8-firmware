@@ -1390,21 +1390,22 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
  * @since 0.1.0
  */
 /**
- * @brief Compute the PIPEBUF word for a single-buffered bulk pipe.
+ * @brief Compute the PIPEBUF word for a bulk pipe (2*MPS region).
  *
  * @details
  * Statically partition the controller's internal FIFO RAM among the
  * bulk pipes. Reserve blocks 0..7 (64-byte units) for the DCP (per
  * FSP/Renesas examples), then pack user pipes in pipe-number order
- * with one MPS-sized bank per pipe. PIPECFG.DBLB is not set (see
- * internal_pipecfg_word), so a single bank per pipe is the matching
- * buffer allocation.
+ * with 2*MPS per pipe -- IN bulk pipes use both as a double-buffer
+ * (PIPECFG.DBLB set), OUT bulk pipes use only the first block (DBLB
+ * clear). Uniform 2*MPS keeps the BUFNMB arithmetic simple and wastes
+ * at most one block per OUT pipe.
  *
- *   BUFNMB  = 8 + (pipe_num - 1) * mps_blocks
- *   BUFSIZE = mps_blocks - 1
+ *   BUFNMB  = 8 + (pipe_num - 1) * (2 * mps_blocks)
+ *   BUFSIZE = (2 * mps_blocks) - 1
  *
- *   HS MPS=512 -> mps_blocks = 8, BUFSIZE = 7
- *   FS MPS=64  -> mps_blocks = 1, BUFSIZE = 0
+ *   HS MPS=512 -> 2*mps_blocks = 16, BUFSIZE = 15
+ *   FS MPS=64  -> 2*mps_blocks =  2, BUFSIZE =  1
  *
  * @param[in] pipe_num   PIPE number 1..9.
  * @param[in] max_packet Pipe MPS (bytes).
@@ -1425,8 +1426,10 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
 {
   const uint16_t mps_blocks =
     (uint16_t)(((uint32_t)max_packet + (k_ra_pipebuf_block_bytes - 1U)) / k_ra_pipebuf_block_bytes);
-  const uint16_t bufsize_field = (uint16_t)(mps_blocks - 1U);
-  const uint16_t bufnmb_field = (uint16_t)(8U + (uint16_t)((uint16_t)(pipe_num - 1U) * mps_blocks));
+  const uint16_t blocks_per_pipe = (uint16_t)(mps_blocks * 2U);
+  const uint16_t bufsize_field   = (uint16_t)(blocks_per_pipe - 1U);
+  const uint16_t bufnmb_field =
+    (uint16_t)(8U + (uint16_t)((uint16_t)(pipe_num - 1U) * blocks_per_pipe));
   return (uint16_t)((bufsize_field << k_ra_pipebuf_bufsize_shift) |
                     (bufnmb_field & k_ra_pipebuf_bufnmb_mask));
 }
@@ -1435,9 +1438,14 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @brief Pack PIPECFG fields for a configured non-control pipe.
  *
  * @details Encodes endpoint number, direction (DIR), pipe type (TYPE),
- * and, for bulk pipes, the SHTNAK flag into the PIPECFG word. HUM
- * Ch 36.2.24 PIPECFG. PIPECFG.DBLB is left clear -- bulk pipes run
- * single-buffered to match the one-bank-per-call queue_out drain.
+ * and for bulk pipes the SHTNAK flag plus (for IN only) the DBLB flag
+ * into the PIPECFG word. HUM Ch 36.2.24 PIPECFG. The IN/OUT asymmetry
+ * matters: bulk IN needs the second bank so auto-echo and queue_in can
+ * push a data + ZLP pair back-to-back without the second push hitting
+ * a full-bank FRDY stall (CDC L=64 echo regresses without this); bulk
+ * OUT must stay single-buffered, otherwise the controller fills both
+ * banks with host data and the one-bank-per-call ra_usb_queue_out
+ * drainer wedges the data phase (GitHub issue #6).
  *
  * @param[in] ep_addr Endpoint address (low nibble = EP number; bit 7
  *                    direction; the helper reads only the EP number).
@@ -1450,7 +1458,7 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @pre ``ep_addr`` low nibble is the EP number (caller validated 1..15).
  * @pre ``dir`` / ``type`` are valid enum values.
  * @post No global state is touched; the helper is pure.
- * @post For bulk pipes the SHTNAK flag is set in the result (DBLB clear).
+ * @post For bulk pipes SHTNAK is set; DBLB is set iff ``dir == IN``.
  *
  * @note Pure / thread-safe.
  * @since 0.1.0
@@ -1464,14 +1472,11 @@ static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_u
   if (type == k_ra_usb_ep_type_bulk) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_bulk);
     cfg = (uint16_t)(cfg | k_ra_pipecfg_shtnak);
-    /* HUM Ch 36.2.24 PIPECFG.DBLB is intentionally NOT set: bulk pipes
-     * run single-buffered. queue_out drains exactly one MPS bank per
-     * call (no two-bank coordination), so DBLB would leave the second
-     * bank holding host OUT data the drainer never reads -- which
-     * wedges the bulk-OUT data phase after the controller fills both
-     * banks (GitHub issue #6). Single-buffer trades pipelined
-     * throughput for a drain path that matches the controller's
-     * one-bank-at-a-time hand-off. */
+    if (dir == k_ra_usb_ep_dir_in) {
+      /* HUM Ch 36.2.24 PIPECFG.DBLB. Double-buffer IN only -- see the
+       * function header for the IN/OUT asymmetry rationale. */
+      cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);
+    }
   } else if (type == k_ra_usb_ep_type_intr) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_intr);
   } else {
