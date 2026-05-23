@@ -39,6 +39,15 @@
 #                                     jlink_memprobe -- halting the core
 #                                     to read a counter stalls the SIE.
 #
+#   HIL_MODE=usb_msc
+#     HIL_VIDPID="1209:000b"       -- which MSC device to expect (default
+#                                     1209:000b). Flashes, then confirms
+#                                     host-side that the kernel attached
+#                                     the device as a SCSI block device
+#                                     (the marker that the BOT INQUIRY +
+#                                     READ_CAPACITY handshake completed,
+#                                     i.e. the Issue #6 wedge cleared).
+#
 #   HIL_MODE=alive
 #     HIL_BOOT_S=2                 -- seconds to let the chip run before
 #                                     checking the CPU is still healthy
@@ -204,6 +213,13 @@ run_usb_hid() {
         --vidpid "${HIL_VIDPID:-1209:0001}"
 }
 
+run_usb_msc() {
+    local app="$1"
+    bash "${REPO_ROOT}/scripts/hil_msc_test.sh" \
+        --app "${app}" \
+        --vidpid "${HIL_VIDPID:-1209:000b}"
+}
+
 run_alive() {
     local app="$1"
     local boot_s="${HIL_BOOT_S:-2}"
@@ -303,6 +319,7 @@ for app in "${APPS[@]}"; do
         uart_scrape)     run_uart_scrape     "$app" || rc=$? ;;
         usb_cdc)         run_usb_cdc         "$app" || rc=$? ;;
         usb_hid)         run_usb_hid         "$app" || rc=$? ;;
+        usb_msc)         run_usb_msc         "$app" || rc=$? ;;
         alive)           run_alive           "$app" || rc=$? ;;
         jlink_memprobe)  run_jlink_memprobe  "$app" || rc=$? ;;
         hil_eth_tcp)     run_hil_eth_tcp     "$app" || rc=$? ;;

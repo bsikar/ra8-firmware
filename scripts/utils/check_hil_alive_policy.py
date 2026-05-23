@@ -8,6 +8,7 @@ HIL_MODE to one of:
   - uart_scrape       (UART success-banner assertion)
   - usb_cdc           (Pi-side USB host probe)
   - usb_hid           (Pi-side USB HID host-binding probe)
+  - usb_msc           (Pi-side USB Mass Storage SCSI-attach probe)
   - jlink_memprobe    (named-symbol counter advance via SWD)
   - hil_eth_tcp       (Pi-as-peer TCP/UDP/HTTP probe)
   - rtt_scrape        (SEGGER RTT banner assertion via JLink mem dump)
@@ -41,6 +42,7 @@ ALLOWED_MODES: frozenset[str] = frozenset({
     "uart_scrape",
     "usb_cdc",
     "usb_hid",
+    "usb_msc",
     "jlink_memprobe",
     "hil_eth_tcp",
     "rtt_scrape",
