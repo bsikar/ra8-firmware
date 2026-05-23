@@ -7,16 +7,14 @@
 #
 #   tcp   -- open a TCP socket to <board_ip>:<port>, send random N
 #            bytes, read N bytes back, assert byte-exact equality.
-#            (ethernet_tcp_echo, threadx_netx_tcp_echo)
+#            (threadx_netx_tcp_echo)
 #
 #   udp   -- send a random N-byte UDP datagram to <board_ip>:<port>,
 #            wait for a single reply, assert byte-exact equality.
-#            (ethernet_udp_echo)
 #
 #   http  -- issue an HTTP/1.1 GET to <board_ip>:<port>/, expect a
 #            200 OK and assert the response body contains the marker
 #            substring "Hello from RA8D2".
-#            (ethernet_http_responder)
 #
 # Operates analogously to scripts/hil_run_direct.sh: when invoked off
 # the HIL Pi it SCPs the firmware over and re-exec's itself on the Pi.

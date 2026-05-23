@@ -19,8 +19,8 @@ Pmod1 maps to SCI channel 2 (TXD2 on P801, RXD2 on P802), which is
 otherwise unused by every existing demo in this tree.
 
 * Pmod2 (J25) is wired to SCI0, the same channel that the
-  on-board `ethernet_tcp_echo` HIL app already exercises. Avoid the
-  conflict by picking Pmod1.
+  on-board `threadx_netx_tcp_echo` HIL app already exercises. Avoid
+  the conflict by picking Pmod1.
 
 EK-RA8D2 v1 UM section 6 (Pmod connectors) and Table 17 (page 26)
 document the exact pin mapping for Pmod1. Sanity-check with a
