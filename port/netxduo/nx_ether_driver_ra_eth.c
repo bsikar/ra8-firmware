@@ -39,6 +39,7 @@
 #include "nx_api.h"
 #include "ra_err.h"
 #include "ra_eth.h"
+#include "tx_api.h"
 
 /**
  * @enum nx_ra_eth_constants_t
@@ -229,6 +230,166 @@ typedef struct {
  */
 volatile nx_ether_diag_t g_nx_ether_diag = {};
 
+/**
+ * @enum nx_ra_eth_worker_t
+ * @brief Sizing constants for the RX-poll worker thread.
+ *
+ * @details Without an IRQ from the GWCA RX path, NetX is never
+ * notified that frames have arrived. A dedicated ThreadX worker
+ * polls ra_eth_read at a short cadence and pushes packets into
+ * NetX via _nx_ip_packet_deferred_receive. 2 ms cadence balances
+ * latency against CPU load on the M85; tighter polls saturate the
+ * NetX packet pool, looser ones add visible RTT to ICMP echo.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_nx_ra_eth_worker_stack_bytes = 4096U,
+  k_nx_ra_eth_worker_priority    = 4U,
+  k_nx_ra_eth_worker_period_ticks = 1U,
+} nx_ra_eth_worker_t;
+
+static TX_THREAD s_rx_thread;
+alignas(8) static uint8_t s_rx_thread_stack[k_nx_ra_eth_worker_stack_bytes];
+static NX_IP*        s_rx_ip          = NX_NULL;
+static NX_INTERFACE* s_rx_iface       = NX_NULL;
+static uint8_t       s_rx_thread_made = 0U;
+
+/**
+ * @brief RX-poll worker entry.
+ *
+ * @details Drains the GWCA RX descriptor ring forever, pushing each
+ * frame into NetX via ``_nx_ip_packet_deferred_receive``. Sleeps one
+ * ThreadX tick between drains so it does not starve other NetX work.
+ *
+ * @param[in] arg Unused.
+ *
+ * @pre s_rx_ip and s_rx_iface have been populated.
+ * @pre ra_eth_open has returned k_ra_ok.
+ * @post Loops forever; never returns.
+ * @post g_nx_ether_diag.rx_total reflects every successful push to NetX.
+ *
+ * @note Runs at priority ``k_nx_ra_eth_worker_priority``.
+ * @since 0.1.0
+ */
+static void priv_rx_worker_entry(ULONG arg);
+
+/**
+ * @brief Spawn the RX-poll worker thread once, idempotent.
+ *
+ * @details The driver has no RX IRQ; this worker is the only path
+ * from the GWCA descriptor ring into NetX. Called from INITIALIZE.
+ *
+ * @param[in] ip    NetX IP control block the worker pushes frames into.
+ * @param[in] iface NetX interface struct the worker tags frames with.
+ *
+ * @pre `ip` and `iface` are non-NULL.
+ * @pre ra_eth_open succeeded (s_ra_eth_open == 1U).
+ * @post On first call, s_rx_thread is running.
+ * @post On later calls, no-op.
+ *
+ * @note Not thread-safe; the dispatch funnel serialises callers.
+ * @since 0.1.0
+ */
+static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
+{
+  if (s_rx_thread_made != 0U) {
+    return;
+  }
+  s_rx_ip    = ip;
+  s_rx_iface = iface;
+  UINT t     = tx_thread_create(&s_rx_thread,
+                            (CHAR*)"ra_eth_rx",
+                            priv_rx_worker_entry,
+                            0,
+                            (VOID*)s_rx_thread_stack,
+                            (ULONG)k_nx_ra_eth_worker_stack_bytes,
+                            (UINT)k_nx_ra_eth_worker_priority,
+                            (UINT)k_nx_ra_eth_worker_priority,
+                            (ULONG)TX_NO_TIME_SLICE,
+                            (UINT)TX_AUTO_START);
+  if (t == TX_SUCCESS) {
+    s_rx_thread_made = 1U;
+  }
+}
+
+/**
+ * @brief Drain the GWCA RX ring and push every frame into NetX.
+ *
+ * @details One pass of the inner loop -- factored out so the worker
+ * entry stays simple and the function-size gate stays happy.
+ *
+ * @pre s_rx_ip != NX_NULL.
+ * @pre s_ra_eth_open == 1U.
+ * @post Pending RX frames have been dispatched into NetX (drops on alloc fail).
+ * @post g_nx_ether_diag.rx_total reflects successful pushes.
+ *
+ * @note Not thread-safe; only the RX worker calls this.
+ * @since 0.1.0
+ */
+static void priv_rx_drain(void)
+{
+  NX_PACKET_POOL* pool = s_rx_ip->nx_ip_default_packet_pool;
+  if (pool == NX_NULL) {
+    return;
+  }
+  while (1) {
+    uint32_t got = 0U;
+    ra_err_t err = ra_eth_read(s_rx_staging, (uint32_t)sizeof(s_rx_staging), &got);
+    if (err != k_ra_ok) {
+      break;
+    }
+    if (got == 0U) {
+      break;
+    }
+    NX_PACKET* pkt = NX_NULL;
+    UINT       a   = nx_packet_allocate(pool, &pkt, NX_RECEIVE_PACKET, NX_NO_WAIT);
+    if (a != NX_SUCCESS) {
+      continue;
+    }
+    if (pkt == NX_NULL) {
+      continue;
+    }
+    UINT app =
+      nx_packet_data_append(pkt, (VOID*)s_rx_staging, (ULONG)got, pool, (ULONG)NX_NO_WAIT);
+    if (app != NX_SUCCESS) {
+      (void)nx_packet_release(pkt);
+      continue;
+    }
+    pkt->nx_packet_ip_interface = s_rx_iface;
+    _nx_ip_packet_deferred_receive(s_rx_ip, pkt);
+    g_nx_ether_diag.rx_total += 1U;
+  }
+}
+
+/**
+ * @brief RX-poll worker entry.
+ *
+ * @details Loops forever, draining the GWCA RX ring on every tick.
+ *
+ * @param[in] arg Unused.
+ *
+ * @pre Driver state has been initialised.
+ * @pre s_rx_ip / s_rx_iface populated by priv_spawn_rx_worker.
+ * @post Drains pending RX into NetX whenever the driver is open.
+ * @post Never returns.
+ *
+ * @note Owns no shared state; safe to run alongside the IP thread.
+ * @since 0.1.0
+ */
+static void priv_rx_worker_entry(ULONG arg)
+{
+  (void)arg;
+  while (1) {
+    if (s_rx_ip != NX_NULL) {
+      if (s_ra_eth_open != 0U) {
+        priv_rx_drain();
+      }
+    }
+    tx_thread_sleep((ULONG)k_nx_ra_eth_worker_period_ticks);
+  }
+}
+
 /* Pull the 6-byte MAC out of the NetX interface descriptor -- see implementation for details. */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
@@ -308,7 +469,7 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   };
   (void)memcpy((void*)cfg.mac_address, (const void*)s_local_mac, (size_t)k_nx_ra_eth_mac_len);
 
-  ra_err_t err                       = ra_eth_open(&cfg);
+  ra_err_t err                         = ra_eth_open(&cfg);
   g_nx_ether_diag.init_ra_eth_open_err = (uint32_t)err;
   if (err != k_ra_ok) {
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
@@ -318,7 +479,9 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   /* Advertise NetX's framing capabilities for this interface. */
   iface->nx_interface_ip_mtu_size            = (ULONG)k_nx_ra_eth_mtu;
   iface->nx_interface_address_mapping_needed = NX_TRUE;
-  req->nx_ip_driver_status                   = NX_SUCCESS;
+
+  priv_spawn_rx_worker(req->nx_ip_driver_ptr, iface);
+  req->nx_ip_driver_status = NX_SUCCESS;
 }
 
 /* Handle ``NX_LINK_UNINITIALIZE``: close the NIC -- see implementation for details. */
