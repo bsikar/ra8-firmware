@@ -4,7 +4,7 @@
 # Usable two ways:
 #   1. Standalone, from inside `gpt_capture_input/`:
 #        cmake -S . -B build \
-#              -DCMAKE_TOOLCHAIN_FILE=../../../../cmake/toolchain-ra8d2.cmake
+#              -DCMAKE_TOOLCHAIN_FILE=../../../../../cmake/toolchain-ra8d2.cmake
 #        cmake --build build
 #   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/gpt_capture_input).
 #
@@ -27,7 +27,7 @@ if(NOT _ra_has_parent)
 endif()
 
 if(RA_APP_STANDALONE)
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../" ABSOLUTE)
 
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
@@ -56,7 +56,7 @@ if(RA_APP_STANDALONE)
 
     option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 else()
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../" ABSOLUTE)
 endif()
 
 include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
