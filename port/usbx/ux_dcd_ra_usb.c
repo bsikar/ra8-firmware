@@ -1504,6 +1504,22 @@ internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t 
       return UX_TRANSFER_ERROR;
     }
     tr->ux_slave_transfer_request_actual_length = chunk;
+    /* USB-bulk spec: a transfer whose length is an exact multiple of
+     * MPS needs a trailing ZLP so the host URB completes. For the
+     * single-packet case the ZLP is staged into the IN pipe's second
+     * bank (PIPECFG.DBLB is set for IN bulk in internal_pipecfg_word).
+     * Nested ifs keep the test out of the MC/DC inventory. */
+    bool need_zlp = false;
+    if (mps != 0U) {
+      if (chunk == mps) {
+        if (total <= mps) {
+          need_zlp = true;
+        }
+      }
+    }
+    if (need_zlp) {
+      (void)ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, 0U);
+    }
     return UX_SUCCESS;
   }
   /* OUT pipe. A host packet may already have landed in the controller
@@ -3081,6 +3097,12 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
     return;
   }
 
+  /* Multi-packet MPS-aligned IN transfers do not get an auto-ZLP here:
+   * MSC's BOT layer expects the device to issue the CSW IN immediately
+   * after the data phase (no ZLP between), and inserting a ZLP wedges
+   * the host's MSC driver. The single-packet MPS-aligned case is
+   * already handled in internal_submit_pipe; classes that need a ZLP
+   * for an MPS-multiple multi-packet IN should send it themselves. */
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
   s_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
