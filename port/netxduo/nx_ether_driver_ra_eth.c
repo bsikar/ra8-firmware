@@ -184,6 +184,51 @@ void nx_ether_driver_ra_eth_set_mac(const uint8_t mac[6])
   s_local_mac_user_set = 1U;
 }
 
+/**
+ * @struct nx_ether_diag_t
+ * @brief Bench-readable diagnostic counters for the NetX link driver.
+ *
+ * @details Module-internal counters incremented at every dispatch path
+ * into the driver. Read from JLink memprobe / TaskOutput to confirm
+ * whether NetX is actually exercising the link driver.
+ *
+ * @invariant Each counter is mutated only from the NetX IP thread.
+ *
+ * @code
+ *   // JLink: mem32 &g_nx_ether_diag 12
+ * @endcode
+ *
+ * @see g_nx_ether_diag
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t dispatch_total;       /**< total dispatches into the driver.       */
+  uint32_t init_total;           /**< NX_LINK_INITIALIZE dispatches.          */
+  uint32_t enable_total;         /**< NX_LINK_ENABLE dispatches.              */
+  uint32_t send_total;           /**< NX_LINK_PACKET_SEND/_BROADCAST dispatches.*/
+  uint32_t rx_total;             /**< NX_LINK_DEFERRED_PROCESSING dispatches. */
+  uint32_t status_total;         /**< NX_LINK_GET_STATUS dispatches.          */
+  uint32_t last_cmd;             /**< Most recent driver command code.        */
+  uint32_t init_last_status;     /**< Last NetX status priv_handle_init set.  */
+  uint32_t send_last_status;     /**< Last NetX status priv_handle_send set.  */
+  uint32_t enable_last_link_up;  /**< 1 = last set_link_state was UP.         */
+  uint32_t init_ra_eth_open_err; /**< Last ra_eth_open return code.           */
+  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface.  */
+} nx_ether_diag_t;
+
+/**
+ * @var g_nx_ether_diag
+ * @brief Diagnostic counters readable via JLink.
+ *
+ * @details Symbol export is module-private (no header declaration); the
+ * symbol lives in .bss so JLink memprobe can address it via `nm`.
+ *
+ * @note Not safe to mutate outside the NetX IP thread.
+ * @warning Not part of the public ABI -- bench/debug only.
+ * @since 0.1.0
+ */
+volatile nx_ether_diag_t g_nx_ether_diag = {};
+
 /* Pull the 6-byte MAC out of the NetX interface descriptor -- see implementation for details. */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
@@ -227,6 +272,7 @@ static void priv_handle_init(NX_IP_DRIVER* req)
 {
   NX_INTERFACE* iface = req->nx_ip_driver_interface;
   if (iface == NX_NULL) {
+    g_nx_ether_diag.init_iface_null_hits += 1U;
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
@@ -262,7 +308,8 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   };
   (void)memcpy((void*)cfg.mac_address, (const void*)s_local_mac, (size_t)k_nx_ra_eth_mac_len);
 
-  ra_err_t err = ra_eth_open(&cfg);
+  ra_err_t err                       = ra_eth_open(&cfg);
+  g_nx_ether_diag.init_ra_eth_open_err = (uint32_t)err;
   if (err != k_ra_ok) {
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
@@ -463,14 +510,22 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
     return;
   }
 
+  g_nx_ether_diag.dispatch_total += 1U;
+  g_nx_ether_diag.last_cmd = (uint32_t)driver_req->nx_ip_driver_command;
+
   switch (driver_req->nx_ip_driver_command) {
     case NX_LINK_INITIALIZE:
+      g_nx_ether_diag.init_total += 1U;
       priv_handle_init(driver_req);
+      g_nx_ether_diag.init_last_status = (uint32_t)driver_req->nx_ip_driver_status;
       break;
     case NX_LINK_ENABLE:
+      g_nx_ether_diag.enable_total += 1U;
+      g_nx_ether_diag.enable_last_link_up = 1U;
       priv_set_link_state(driver_req, 1U);
       break;
     case NX_LINK_DISABLE:
+      g_nx_ether_diag.enable_last_link_up = 0U;
       priv_set_link_state(driver_req, 0U);
       break;
     case NX_LINK_PACKET_SEND:
@@ -478,12 +533,16 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
     case NX_LINK_ARP_SEND:
     case NX_LINK_ARP_RESPONSE_SEND:
     case NX_LINK_RARP_SEND:
+      g_nx_ether_diag.send_total += 1U;
       priv_handle_send(driver_req);
+      g_nx_ether_diag.send_last_status = (uint32_t)driver_req->nx_ip_driver_status;
       break;
     case NX_LINK_DEFERRED_PROCESSING:
+      g_nx_ether_diag.rx_total += 1U;
       priv_handle_deferred_rx(driver_req);
       break;
     case NX_LINK_GET_STATUS:
+      g_nx_ether_diag.status_total += 1U;
       priv_handle_get_status(driver_req);
       break;
     case NX_LINK_UNINITIALIZE:
@@ -491,9 +550,9 @@ void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
       break;
     case NX_LINK_MULTICAST_JOIN:
     case NX_LINK_MULTICAST_LEAVE:
-      /* No multicast filter support on the ESWM block at this layer;
-       * accept the request so NetX does not abort, and let the
-       * software-side IP stack do its own multicast filtering. */
+    case NX_LINK_INTERFACE_ATTACH:
+    case NX_LINK_INTERFACE_DETACH:
+    case NX_LINK_SET_PHYSICAL_ADDRESS:
       driver_req->nx_ip_driver_status = NX_SUCCESS;
       break;
     default:
