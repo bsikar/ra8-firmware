@@ -493,9 +493,8 @@ ra_err_t ra_etha_reset(ra_etha_port_t port)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t internal_etha_wait_for_mode(ra_etha_port_t          port,
-                                            volatile r_etha_regs_t* reg,
-                                            ra_etha_opc_t           mode)
+static ra_err_t
+internal_etha_wait_for_mode(ra_etha_port_t port, volatile r_etha_regs_t* reg, ra_etha_opc_t mode)
 {
 #ifdef RA_SIMULATOR_MODE
   (void)port;
@@ -510,7 +509,7 @@ static ra_err_t internal_etha_wait_for_mode(ra_etha_port_t          port,
   const uint32_t target = (uint32_t)mode & k_ra_etha_mask_ops;
   for (uint32_t ms = 0U; ms < (uint32_t)k_ms_budget; ++ms) {
     for (uint32_t i = 0U; i < (uint32_t)k_inner; ++i) {
-      const uint32_t eams                            = reg->EAMS & k_ra_etha_mask_ops;
+      const uint32_t eams                           = reg->EAMS & k_ra_etha_mask_ops;
       g_ra_etha_diag_last_eams[(uint32_t)port & 1U] = eams;
       if (eams == target) {
         return k_ra_ok;
