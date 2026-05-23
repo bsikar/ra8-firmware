@@ -102,6 +102,7 @@ add_library(threadx STATIC
     ${RA_THREADX_PORT_ASM}
     ${RA_THREADX_PORT_C}
     ${RA_THREADX_PROJECT_LOW_LEVEL}
+    "${RA_THREADX_PORT_DIR}/cortex_m85/tx_systick_ready.c"
 )
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
@@ -128,6 +129,7 @@ target_compile_definitions(threadx PUBLIC TX_INCLUDE_USER_DEFINE_FILE)
 # app uses ThreadX via the port-level SysTick path -- Issue #8.
 target_link_options(threadx INTERFACE
     -Wl,--undefined=_tx_timer_interrupt
+    -Wl,--undefined=g_ra_threadx_systick_ready
 )
 
 # Quiet the upstream sources -- they trigger a handful of warnings that
