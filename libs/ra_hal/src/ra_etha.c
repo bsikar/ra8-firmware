@@ -457,9 +457,49 @@ ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
     ra_log_error(s_tag, "etha_set_mode: bad arg");
     return k_ra_err_invalid_arg;
   }
+  volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
-  ra_etha(port)->EAMC = (uint32_t)mode & k_ra_etha_mask_opc;
-  return k_ra_ok;
+  reg->EAMC = (uint32_t)mode & k_ra_etha_mask_opc;
+  /* HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631:
+   * EAMS.OPS reports the *active* mode while the state machine
+   * settles. ra_eth_open writes the unicast MAC into MRMAC0/MRMAC1
+   * during the CONFIG window -- but the MAC write is silently
+   * dropped if EAMS.OPS has not yet reached CONFIG when the write
+   * lands. Bench-confirmed on threadx_netx_tcp_echo: MRMAC0/MRMAC1
+   * stay 0 after ra_eth_open returns ok, and RMAC ingress counters
+   * never advance. Poll EAMS.OPS *only* for the CONFIG transition,
+   * which is the only mode whose preconditions other writes depend
+   * on; the DISABLE / RESET / OPERATION transitions are fire-and-
+   * forget on this silicon and the existing `etha_to_operation`
+   * helper already polls for OPERATION at the higher-level open
+   * path. Targeted poll avoids the false-timeout regression that
+   * a polling-every-transition variant introduces on transitions
+   * the chip's state machine does not always observe in EAMS. */
+  /* The ETHA state machine takes MILLISECONDS to land in the new
+   * mode -- bench-confirmed via JLink: writing EAMC=CONFIG followed
+   * by an immediate MRMAC0/MRMAC1 write silently drops the write
+   * because EAMS has not yet advanced from DISABLE. The same write
+   * sequence interleaved with a 100 ms JLink `sleep` succeeds.
+   * After the new EAMC commits we poll EAMS for the matching OPS
+   * value with a ms-scale budget (bounded so we never hang on a
+   * truly stuck state machine). */
+  if (mode != k_ra_etha_opc_config) {
+    return k_ra_ok;
+  }
+  enum : uint32_t {
+    k_ra_etha_set_mode_ms_budget = 50U,
+    k_ra_etha_set_mode_inner     = 200000U,
+  };
+  const uint32_t target = (uint32_t)mode & k_ra_etha_mask_ops;
+  for (uint32_t ms = 0U; ms < (uint32_t)k_ra_etha_set_mode_ms_budget; ++ms) {
+    for (uint32_t i = 0U; i < (uint32_t)k_ra_etha_set_mode_inner; ++i) {
+      if ((reg->EAMS & k_ra_etha_mask_ops) == target) {
+        return k_ra_ok;
+      }
+    }
+  }
+  ra_log_error(s_tag, "etha_set_mode: EAMS.OPS never reached CONFIG");
+  return k_ra_err_hw_timeout;
 }
 
 /* ra_etha_set_queue_arb -- see header for full description. */

@@ -159,6 +159,31 @@ static UCHAR s_link_up;
  */
 static uint8_t s_local_mac[k_nx_ra_eth_mac_len];
 
+/**
+ * @var s_local_mac_user_set
+ * @brief Flag indicating whether the app supplied a MAC via the pre-init seam.
+ *
+ * @details Set to 1 once ``nx_ether_driver_ra_eth_set_mac`` runs. The
+ * NX_LINK_INITIALIZE handler prefers ``s_local_mac`` over the (empty)
+ * interface struct when this flag is 1.
+ *
+ * @note Module-private; not exported.
+ * @since 0.1.0
+ */
+static uint8_t s_local_mac_user_set;
+
+/* nx_ether_driver_ra_eth_set_mac -- see header for full description. */
+void nx_ether_driver_ra_eth_set_mac(const uint8_t mac[6])
+{
+  if (mac == nullptr) {
+    return;
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_nx_ra_eth_mac_len; ++i) {
+    s_local_mac[i] = mac[i];
+  }
+  s_local_mac_user_set = 1U;
+}
+
 /* Pull the 6-byte MAC out of the NetX interface descriptor -- see implementation for details. */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
@@ -205,7 +230,23 @@ static void priv_handle_init(NX_IP_DRIVER* req)
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
-  priv_unpack_mac(iface, s_local_mac);
+  /* Prefer the app-supplied MAC from nx_ether_driver_ra_eth_set_mac.
+   * If the app did not call it, fall back to the interface struct
+   * (typically zero during INITIALIZE -- nx_ip_create fires this
+   * callback BEFORE the app can call
+   * nx_ip_interface_physical_address_set). */
+  if (s_local_mac_user_set == 0U) {
+    priv_unpack_mac(iface, s_local_mac);
+  }
+  /* Push the MAC into the interface struct so NetX subsystems that
+   * read it later (ARP, sender-MAC stamping) see the right value. */
+  {
+    ULONG msw = ((ULONG)s_local_mac[0] << 8) | (ULONG)s_local_mac[1];
+    ULONG lsw = ((ULONG)s_local_mac[2] << 24) | ((ULONG)s_local_mac[3] << 16) |
+                ((ULONG)s_local_mac[4] << 8)  | (ULONG)s_local_mac[5];
+    iface->nx_interface_physical_address_msw = msw;
+    iface->nx_interface_physical_address_lsw = lsw;
+  }
 
   /* EK-RA8D2 wires its RJ45 to ETHA1 / RMAC1 -- channel 0 is unused
    * on this board. Bench-confirmed: with channel=0 the GWCA goes
