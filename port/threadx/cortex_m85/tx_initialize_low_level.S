@@ -125,6 +125,26 @@ _tx_initialize_low_level:
                 LDR     r1, =0x40FF0000
                 STR     r1, [r0, #SHPR3_OFFSET]
 
+                /* Latch the global flag that tells the shared
+                 * SysTick_Handler in libs/ra_core/src/ra_time.c
+                 * that ThreadX has finished priming its timer
+                 * subsystem. Until this is set, the handler MUST
+                 * NOT call _tx_timer_interrupt -- the kernel
+                 * timer infrastructure is uninitialised between
+                 * ra_time_init() (which arms SysTick at 1 kHz
+                 * from C) and tx_kernel_enter() (which runs us);
+                 * a stray timer ISR in that window faults with
+                 * UFSR.INVPC and bricks the boot. Reproduced on
+                 * threadx_netx_tcp_echo because the
+                 * ra_board_ethernet_init() between those two
+                 * calls is long enough that SysTick always
+                 * fires inside it. Storage lives in
+                 * port/threadx/cortex_m85/tx_systick_ready.c
+                 * (zero-initialised in .bss). */
+                LDR     r0, =g_ra_threadx_systick_ready
+                MOV     r1, #1
+                STR     r1, [r0]
+
                 BX      lr
                 .size _tx_initialize_low_level, .-_tx_initialize_low_level
 

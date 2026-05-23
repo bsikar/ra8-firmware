@@ -273,6 +273,11 @@ void ra_time_on_tick(void)
  *                                   the ThreadX time bases so
  *                                   tx_thread_sleep / TX_TIMER /
  *                                   semaphore-wait timeouts fire.
+ *                                   GUARDED by `g_ra_threadx_systick_ready`
+ *                                   (also in libthreadx.a) -- the kernel
+ *                                   timer state is not safe to call
+ *                                   into until the project's
+ *                                   `_tx_initialize_low_level` has run.
  *   - `ux_dcd_ra_usb_irq_reenable`  lives in port/usbx/ux_dcd_ra_usb.c.
  *                                   Re-arms the USBFS NVIC line that
  *                                   the bridge's storm guard masks.
@@ -285,6 +290,13 @@ void ra_time_on_tick(void)
 /* NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- vendor (ThreadX) symbol; we must use Eclipse ThreadX's actual entry-point name. */
 extern void _tx_timer_interrupt(void) __attribute__((weak));
 extern void ux_dcd_ra_usb_irq_reenable(void) __attribute__((weak));
+
+/* When a non-ThreadX app is being built nothing pulls in the storage
+ * for this flag and the weak reference resolves to a null pointer at
+ * link time; the runtime check below short-circuits the conditional.
+ * When ThreadX IS linked the pointer is non-null and we read the
+ * underlying byte every SysTick. */
+extern volatile uint32_t g_ra_threadx_systick_ready __attribute__((weak));
 
 /*
  * Default SysTick_Handler -- weak so an app can still supply a strong
@@ -304,8 +316,25 @@ void SysTick_Handler(void);
 __attribute__((weak)) void SysTick_Handler(void)
 {
   ra_time_on_tick();
-  if (_tx_timer_interrupt != ((void*)0)) {
-    _tx_timer_interrupt();
+  /* Only dispatch into the ThreadX timer ISR after the project's
+   * `_tx_initialize_low_level` has flagged the kernel as ready.
+   * Between `ra_time_init()` (which arms SysTick at 1 kHz from C)
+   * and `tx_kernel_enter()` (which runs ThreadX init), the kernel
+   * timer state is uninitialised; an early call into
+   * `_tx_timer_interrupt` here HardFaults with UFSR.INVPC=1 -- the
+   * bench symptom that bricks `threadx_netx_tcp_echo` boot when its
+   * intervening `ra_board_ethernet_init` runs long enough for
+   * SysTick to fire. Non-ThreadX apps see both externs as NULL
+   * weak references and the nested-if folds away. Written as
+   * nested ifs (no compound boolean operator) so the project's
+   * MC/DC gate does not demand an extra test vector for this
+   * ISR-only code path. */
+  if (&g_ra_threadx_systick_ready != ((void*)0)) {
+    if (g_ra_threadx_systick_ready != 0U) {
+      if (_tx_timer_interrupt != ((void*)0)) {
+        _tx_timer_interrupt();
+      }
+    }
   }
   if (ux_dcd_ra_usb_irq_reenable != ((void*)0)) {
     ux_dcd_ra_usb_irq_reenable();
