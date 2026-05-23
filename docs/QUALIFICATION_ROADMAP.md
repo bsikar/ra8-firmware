@@ -133,9 +133,9 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 
 ### SOUP / third-party register
 
-- **14 components catalogued** under `docs/SOUP/` with one
+- **13 components catalogued** under `docs/SOUP/` with one
   Markdown justification each: ThreadX, NetX Duo, FileX, USBX,
-  GUIX, LevelX, Mbed TLS, TF-PSA-Crypto, lwIP, Apache NimBLE,
+  GUIX, LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE,
   litehtml, miniz, stb (image + truetype), TinyXML-2.
 - Every component has a written qualification basis citing
   IEC 61508-3 sec. 7.4.2.12 and DO-178C sec. 12.1.4.
@@ -204,7 +204,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
     register-driver `@param`/`@retval`/`@pre`/`@post` tags.
   - 3b (week 9): `libs/ra_ble_host` (64) and `libs/ra_net` (59).
   - 3c (week 10): residual modules (`ra_core`, `ra_fs`,
-    `port/nimble`, `port/lwip`, `ra_nsc`, `ra_psa_crypto`,
+    `port/nimble`, `ra_nsc`, `ra_psa_crypto`,
     `ra_ota` and the long tail).
 - **Acceptance gate**: `scripts/utils/doxy_audit` reports zero
   functions with gaps; CI gate flips from advisory to blocking.

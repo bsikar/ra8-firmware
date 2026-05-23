@@ -38,13 +38,13 @@
  *                 |
  *                 v
  *   +---------------------------+ user-supplied BIO callbacks
- *   | Transport (lwIP / NetX)   |
+ *   | Transport (NetX Duo)      |
  *   +---------------------------+
  * @endverbatim
  *
  * The transport is bound through the BIO callbacks on
  * ``ra_tls_session_cfg_t`` -- the facade itself does not know about
- * lwIP or NetX Duo. lwIP and NetX adapters live in follow-up libraries.
+ * NetX Duo. The NetX Duo adapter lives in a follow-up library.
  *
  * ## Threading
  *

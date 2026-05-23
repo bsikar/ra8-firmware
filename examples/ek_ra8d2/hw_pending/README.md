@@ -44,7 +44,6 @@ hardware HIL probe AND the gap below is resolved.
 | ethernet_http_responder | HAL's GWCA stub doesn't wire descriptor list addresses (GWDCBAC0/1 + LINKFIX table per HUM Ch 34.5.1.3). Multi-hour port. FSP reference: `r_layer3_switch.c` at github.com/renesas/fsp under `ra/fsp/src/r_layer3_switch/`. |
 | ethernet_tcp_echo | Same. |
 | ethernet_udp_echo | Same. |
-| threadx_lwip_tcp_echo | Same. |
 | threadx_netx_tcp_echo | Same. |
 | tz_nsc_cgc_usb | NSC veneer path to ra_cgc_pll2_enable returns non-OK from NS context (init step halts at 1). NSC bridge wiring needs investigation. |
 | usb_hid_device | Chip enumerates as 1209:0001 but usbhid driver fails to bind: GET_HID_REPORT_DESCRIPTOR over EP0 multi-chunk returns ETIMEDOUT (-110). |

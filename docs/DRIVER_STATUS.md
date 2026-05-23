@@ -152,7 +152,7 @@ work; subsequent fixes may live in later commits.
 | ra_tsn | r_tsn | scaffold | (pre-sweep) | IEEE 802.1 TSN block |
 | ra_rmac | r_rmac | scaffold | (pre-sweep) | reduced-MAC variant |
 | ra_layer3_switch | r_layer3_switch | placeholder | sweep 11 (`ba54974`) | L3 packet switch; RA8D2 silicon presence unverified |
-| libs/ra_net (IPv4) | (no FSP equivalent; lwIP would be FSP's pick) | wholly-new | sweep 8 (`5e154b9`) | hand-written ARP + IPv4 + ICMP + UDP + TCP stack on top of ra_eth |
+| libs/ra_net (IPv4) | (no FSP equivalent; NetX Duo is the heavy-weight choice) | wholly-new | sweep 8 (`5e154b9`) | hand-written ARP + IPv4 + ICMP + UDP + TCP stack on top of ra_eth |
 
 ## USB
 
@@ -228,7 +228,7 @@ work; subsequent fixes may live in later commits.
 | libs/ra_core | feature-complete | (pre-sweep) | ra_err / ra_check / ra_log / ra_assert substrate |
 | libs/ra_hal | feature-complete | (across all sweeps) | 115 driver source files, 185 headers |
 | libs/ra_nsc | feature-complete | (pre-sweep) | NSC veneers across comms + I/O + key vault + xspi + eth + log |
-| libs/ra_net_pal | feature-complete | (pre-sweep) | lwIP-port glue with in-memory ring fallback |
+| libs/ra_net_pal | feature-complete | (pre-sweep) | NetX Duo port glue with in-memory ring fallback |
 | libs/ra_usb_pal | feature-complete | (pre-sweep) | CherryUSB usb_dc port glue with per-EP ring |
 | libs/ra_net | wholly-new | sweep 8 (`5e154b9`) | hand-written ARP/IPv4/ICMP/UDP/TCP, no third-party stack |
 | libs/ra_fs | feature-complete | sweep 9 (`afeb54a`) | FAT12/16/32 reader+writer, mount/open/read/write/seek/listdir |
