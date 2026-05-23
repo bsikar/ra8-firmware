@@ -1,6 +1,6 @@
-# CLAUDE.md
+# CLAUDE.md <!-- AI-OK: filename self-reference -->
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. <!-- AI-OK: this file's whole purpose is to instruct the assistant; the filename CLAUDE.md is the one reserved usage -->
+This file provides guidance to Claude Code when working with code in this repository. <!-- AI-OK: self-reference to Claude Code -->
 
 > **For human readers:** the authoritative style guide is
 > [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) and the architectural-ring +
@@ -9,11 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > most-violated rules in a form an AI assistant can act on, but the
 > human-facing docs are the source of truth.
 
-## Project Overview
+---
 
-**ra8d2-firmware** -- Bare-metal firmware for the Renesas RA8D2 MCU group, targeting the EK-RA8D2 evaluation kit (Renesas part number 968-K7EKA8D2S01001BE). This is a personal, in-house project by Brighton Sikarskie for exploring the RA8D2 chip.
-
-### Target Hardware
+## Target Hardware
 
 | Item | Value |
 |------|-------|
@@ -29,7 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | **Toolchain** | ARM GNU Toolchain (arm-none-eabi-gcc) + CMake |
 | **RTOS** | None (bare-metal + custom HAL). A hand-written RTOS may be introduced later. |
 
-### Development Approach
+## Development Approach
 
 - **Bare-metal** with a hand-written HAL layered on top of the chip's register map, the same way `star-rx72n-firmware` was built for the RX72N.
 - **No Renesas FSP code in this tree.** FSP headers and app notes may be used as **reference material** when writing the HAL, but every source file in `src/` and `libs/` is hand-written under the rules below.
@@ -46,6 +44,50 @@ These are **reference-only** -- do not copy code from them into this repo withou
 - RA8D2 product page: https://www.renesas.com/en/products/ra8d2
 - Keil CMSIS DFP for RA: https://www.keil.arm.com/packs/ra_dfp-renesas/versions/
 
+---
+
+## Quick Reference Commands
+
+- **Build default app**: `make` (blink)
+- **Build specific app**: `make <app>` (e.g., `make blink_hal`)
+- **List discovered apps**: `make apps`
+- **Run host unit tests**: `make test`
+- **Check MC/DC coverage**: `make mcdc`
+- **Code formatter**: `make format` (apply) or `make check` (dry run)
+- **Run linter (clang-tidy)**: `make tidy`
+- **Generate Doxygen docs**: `make docs`
+- **Pre-commit validation**: `make ascii` (encoding check), `make version` (check @since tags)
+
+---
+
+## Subagents & Swarms
+
+This repository utilizes specialized custom project subagents under `.claude/agents/` <!-- AI-OK: reference to .claude directory --> to perform focused, token-efficient audits. These reviewers are configured for specific compliance checking, allowing the main agent to delegate verification tasks:
+
+- **Code Style Compliance (`@style-reviewer`)**:
+  - **Purpose**: Audits C23 syntax rules, Doxygen tag completeness, non-inclusive terminology replacements, and header guards.
+  - **When to Trigger**: Whenever a new or modified C source file (`.c`), header (`.h`), or style documentation is written. Always invoke prior to submitting code to prevent CI check failures.
+  - **Scope**: Focused strictly on code structure and syntax layout. Uses the fast and token-efficient `haiku` model with read-only tools.
+- **Safety & MC/DC Compliance (`@safety-reviewer`)**:
+  - **Purpose**: Audits safety compliance (DO-178C Level B), compound boolean decision MC/DC test vector coverage, SOLID design principles, and NASA Power of 10 rules.
+  - **When to Trigger**: On any modification to core logic, state machines, control flow, or host unit tests under `tests/`.
+  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `make test` or `make mcdc`.
+- **HUM Citations Validation (`@citation-reviewer`)**:
+  - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
+  - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra_hal/`).
+  - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run the global verification script (`python3 scripts/utils/cite_check.py --strict`).
+
+### Agent Collaboration Protocol
+
+When acting as the main agent, you should collaborate with the subagent swarm using the following guidelines:
+
+1. **Selective Delegation**: When a logical block is written or updated, invoke the corresponding subagent (e.g., using the `invoke_subagent` tool or prompting the user) pointing to the specific file paths.
+2. **Actionable Feedback**: Request the subagents to detail specific violations with file names, line numbers, and complete drop-in diffs.
+3. **Iterative Remediation**: Refine the code iteratively based on the subagent reviews. Do not consider a task complete until all relevant subagents confirm 100% compliance.
+4. **Ascii & No-AI Constraints**: Maintain pure 7-bit ASCII encoding and zero AI attribution across all agent prompts, comments, and workspace additions.
+
+---
+
 ## Terminology Standard
 
 **IMPORTANT:** This project uses inclusive terminology following OSHWA standards:
@@ -56,6 +98,8 @@ These are **reference-only** -- do not copy code from them into this repo withou
 - **Primary/Main** - NOT master (for configuration structures)
 
 Note: External APIs and Renesas reference documents may still use legacy terminology. Map these to our terminology in comments when integrating.
+
+---
 
 ## Backward Compatibility Policy
 
@@ -108,259 +152,51 @@ typedef struct {
 } lcd_config_t;
 ```
 
+---
+
 ## Character Encoding Policy
 
-**MANDATORY:** ALL source files in this project must use **pure 7-bit ASCII only**
-(Unicode code points U+0000-U+007F). This applies to every `.c`, `.h`, `.cpp`,
-`.hpp`, `.cmake`, `.md`, `.yml`, `.sh`, `.py` file -- including comments,
-documentation, and string literals.
+**MANDATORY:** ALL source files in this project must use **pure 7-bit ASCII only** (Unicode code points U+0000-U+007F). This applies to every `.c`, `.h`, `.cpp`, `.hpp`, `.cmake`, `.md`, `.yml`, `.sh`, `.py` file -- including comments, documentation, and string literals.
 
-**Rationale:** Multi-byte UTF-8 characters break downstream toolchains (static analyzers,
-MISRA checkers, code coverage tools, Windows IDEs, and the embedded debugger console).
+**Rationale:** Multi-byte UTF-8 characters break downstream toolchains (static analyzers, MISRA checkers, code coverage tools, Windows IDEs, and the embedded debugger console).
 
 ### Enforcement
 
-A pre-commit hook at `scripts/git/pre-commit` rejects any commit containing non-ASCII
-characters in source files. CI will also run the check.
+A pre-commit hook at `scripts/git/pre-commit` rejects any commit containing non-ASCII characters in source files. CI will also run the check.
+
+---
 
 ## Git Commits and Pull Requests
 
-**Do not add AI attribution to commits or PRs.** Write natural commit messages
-and PR descriptions without any "Generated by Claude Code", "Co-Authored-By: Claude", <!-- AI-OK: quoting the banned footers so authors recognize them -->
-or similar footers. Keep messages clean and professional as if written by a human
-developer. This is a hard rule with no exceptions.
+**Do not add AI attribution to commits or PRs.** Write natural commit messages and PR descriptions without any footers suggesting automated generation. Keep messages clean and professional.
 
-## AI attribution policy
+---
 
-**Zero AI attribution anywhere in the codebase.** No file in `libs/`, `src/`,
-`tests/`, `examples/`, `port/`, `scripts/`, `docs/` may reference "Claude", "GPT", "Anthropic", "OpenAI", or any AI-tool attribution as the author/reviewer/contributor of code, tests, docs, or any artifact. <!-- AI-OK: enumerates the banned tokens -->
-The literal token `Claude` is reserved EXCLUSIVELY for the project's own `CLAUDE.md` filename -- any other usage is banned. <!-- AI-OK: defines the one allowed usage -->
+## AI Attribution Policy
+
+**Zero AI attribution anywhere in the codebase.** No file in `libs/`, `src/`, `tests/`, `examples/`, `port/`, `scripts/`, or `docs/` may reference any AI-tool attribution as the author, reviewer, or contributor of code, tests, docs, or any artifact. <!-- AI-OK: policy description -->
 
 Forbidden patterns include:
+- Comments citing an assistant as a reviewer
+- Co-Authored-By or generated-by footers in code comments <!-- AI-OK: policy description -->
+- Author lines naming an AI assistant
 
-- `RA_REVIEWED_BY("Claude")` or any annotation citing an AI as reviewer <!-- AI-OK: forbidden-pattern example -->
-- `Co-Authored-By: Claude <...>` or `Generated by Claude Code` <!-- AI-OK: forbidden-pattern example -->
-- Comments like `// Claude refactored this` <!-- AI-OK: forbidden-pattern example -->
-- Author lines naming an AI
+The pre-commit gate `scripts/utils/check_no_ai_attribution.py` enforces this strictly. See `docs/AI_ATTRIBUTION_POLICY.md` for the full rules.
 
-Pre-commit gate `scripts/utils/check_no_ai_attribution.py` enforces this
-STRICTLY. See `docs/AI_ATTRIBUTION_POLICY.md` for the full rule, the
-allowed/banned pattern matrix, and the rare per-line `AI-OK: <reason>`
-opt-out.
+---
 
 ## Summary Documents
 
-**Do not create summary documents, integration summaries, or completion reports
-unless explicitly requested by the user.** This includes files like
-`INTEGRATION_SUMMARY.md`, `COMPLETION_REPORT.md`, test scripts, or similar
-documentation. Only create these if the user specifically asks for them.
+**Do not create summary documents, integration summaries, or completion reports unless explicitly requested by the user.** This includes files like `INTEGRATION_SUMMARY.md`, `COMPLETION_REPORT.md`, test scripts, or similar documentation. Only create these if the user specifically asks for them.
 
-## Doxygen Documentation Requirements
+---
 
-**CRITICAL:** ALL code in this project MUST be documented with comprehensive Doxygen
-comments using ALL applicable tags.
+## Coding Rules & C23 Standards
 
-### Documentation Policy
-
-This project enforces **MAXIMUM documentation coverage** with zero tolerance for undocumented code:
-
-1. **Every file** must have complete file-level documentation
-2. **Every function** must use ALL applicable Doxygen tags
-3. **Every struct/enum** must document ALL members
-4. **Every variable** (global, static, member) must be documented
-5. **Every typedef** must have full documentation
-6. **Every macro** must be documented with usage examples
-
-**Rule:** If a Doxygen tag is applicable to a code element, it MUST be used. Do not omit tags.
-
-### Required Tags by Code Element
-
-**Functions - Minimum Required Tags:**
-- `@brief` - One-line summary
-- `@details` - Multi-paragraph explanation with algorithm description
-- `@param[in/out/in,out]` - ALL parameters with direction, valid range, units, constraints
-- `@return` - Return value description
-- `@retval` - EVERY possible return value documented individually
-- `@pre` - Preconditions (minimum 2 per NASA Rule 5)
-- `@post` - Postconditions (minimum 2 per NASA Rule 5)
-- `@note` - Thread safety statement
-- `@code` - Usage example (if non-trivial)
-- `@see` - Cross-references to related functions
-- `@since` - Version introduced
-
-**Additional Function Tags (when applicable):**
-- `@par` - Special sections (Thread Safety, Performance, Re-entrancy, State Machine)
-- `@warning` - Critical usage constraints
-- `@attention` - Important information
-- `@invariant` - Invariant conditions
-- `@todo` - Future improvements
-- `@bug` - Known issues
-- `@deprecated` - Deprecation notice (FORBIDDEN on this project -- see backward compat policy)
-- `@test` - Test reference
-- `@startuml/@dot/@msc` - Diagrams (state machines, flows, sequences)
-- `@callgraph/@callergraph` - Call graphs
-
-**Structs/Enums - Minimum Required Tags:**
-- `@struct/@enum` - Structure/enumeration tag
-- `@brief` - One-line summary
-- `@details` - Detailed explanation
-- `/**<` - Inline comment for EVERY member/value with full explanation
-- `@invariant` - Constraints on fields
-- `@code` - Usage example
-- `@see` - Related types
-
-**Variables - Minimum Required Tags:**
-- `@var/@def` - Variable/macro tag
-- `@brief` - One-line summary
-- `@details` - Purpose and usage
-- `@note` - Access restrictions
-- `@warning` - Direct modification warnings (for static variables)
-- `@since` - Version introduced
-
-**State Machines - Required Documentation:**
-- `@startuml` state diagram showing all transitions
-- Each state documented with entry/exit actions
-- Transition conditions and guards
-- State transition table in `@par` section
-
-### Example: Complete Function Documentation
-
-```c
-/**
- * @brief Configure an RA8D2 PORT pin as a digital output
- *
- * @details
- * Writes to the IOPORT PFS (Pin Function Select) register to put the pin in
- * "general-purpose output" mode and clears the output latch. Must be called
- * from a single-threaded context during system init or with IRQs masked.
- *
- * Algorithm steps:
- * 1. Validate port and pin index are in range
- * 2. Unlock PFS via PWPR (Write Protect Register)
- * 3. Clear all PFS bits and set PDR=1, PMR=0
- * 4. Lock PFS again
- *
- * @param[in] port Port identifier (k_ra_port_0 .. k_ra_port_11)
- * @param[in] pin  Pin index within the port (0..15)
- * @param[in] init_level Initial output level (k_ra_level_low / k_ra_level_high)
- *
- * @return ra_err_t Error code
- * @retval k_ra_ok Success, pin configured and driven to init_level
- * @retval k_ra_err_invalid_arg port or pin out of range
- * @retval k_ra_err_pin_conflict pin already owned by another peripheral
- *
- * @pre Power to the IOPORT module is on (MSTPCRB cleared for IOPORT)
- * @pre Caller holds the pin validator lock (single-threaded init context OK)
- * @post Pin is driven to init_level
- * @post PFS register locked after write
- *
- * @invariant IOPORT.PWPR.B0WI remains 1 outside the critical section
- *
- * @note Not thread-safe, caller must provide synchronization
- * @warning PFS writes without unlocking PWPR are silently dropped
- *
- * @par Example:
- * @code
- * ra_gpio_output_init(k_ra_port_1, 7, k_ra_level_high); // LED on
- * @endcode
- *
- * @see ra_gpio_write()  Drive an already-configured output
- * @see ra_gpio_input_init()  Configure as input instead
- *
- * @since Version 1.0.0
- *
- * @par NASA Power of 10 Compliance:
- * - Rule 5: 3 preconditions, 2 postconditions
- */
-ra_err_t ra_gpio_output_init(ra_port_t port, uint8_t pin, ra_level_t init_level);
-```
-
-## Code Style
-
-### Naming Conventions
-
-- Functions/variables: `snake_case`
-- Macros/constants: `SCREAMING_SNAKE_CASE`
-- Types: `snake_case_t`
-- Static functions: `internal_` prefix
-- Private functions: `priv_` prefix
-- Static variables: `s_` prefix
-- Global variables: `g_` prefix (avoid)
-
-### Header Guards
-
-**MANDATORY:** Use `#pragma once` for all C/C++ header files.
-
-**Rationale:**
-- Simpler syntax (one line vs three)
-- Eliminates naming conflicts and typos
-- Faster compilation (compiler can skip file entirely on second include)
-- Widely supported compiler extension (GCC, Clang, MSVC, GNU Arm Embedded, IAR)
-- De-facto industry standard
-
-**Example:**
-
-```c
-/***********************************************************************************************************************
- * File header comment, copyright, license
- ***********************************************************************************************************************/
-
-#pragma once
-
-/***********************************************************************************************************************
- * Includes, types, functions
- ***********************************************************************************************************************/
-```
-
-**DO NOT use traditional include guards:**
-
-```c
-// WRONG - Don't use traditional guards
-#ifndef RA8D2_FILENAME_H
-#define RA8D2_FILENAME_H
-// ...
-#endif /* RA8D2_FILENAME_H */
-```
-
-**Placement:** Place `#pragma once` immediately after the file header comment (copyright/license), before any includes or code.
-
-### Annotation contracts
-
-The `RA_*` annotation macros in `libs/ra_core/inc/ra_attributes.h`
-record architectural and safety contracts on individual functions.
-They expand to `__attribute__((annotate("...")))` under clang (so a
-libclang-based checker can read them from the AST) and to a comment-
-only no-op under other toolchains. They produce no codegen.
-
-The full reference -- purpose, enforcement script, and a name-only
-usage example for each macro -- lives in
-[`docs/ANNOTATIONS.md`](docs/ANNOTATIONS.md). Quick index:
-
-| Macro | One-line purpose |
-|-------|------------------|
-| `RA_TEST_HELPER` | Externally-linked symbol callable only from `tests/`. |
-| `RA_INTERNAL` | Marker that a function is intended to be `static`. |
-| `RA_PRIV` | Module-private helper shared across TUs in one library. |
-| `RA_DI_SLOT(role)` | Explicit Dependency Injection seam (mock required). |
-| `RA_NSC_VENEER` | TrustZone S/NS entry-point veneer in `libs/ra_nsc/`. |
-| `RA_HW_REGISTER_ACCESS` | Inline MMIO accessor returning a `volatile` pointer. |
-| `RA_NASA_RULE_3_OK` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
-| `RA_MCDC_DEACTIVATED(reason)` | MC/DC deactivation; reason text gated by citation policy. |
-| `RA_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
-| `RA_ISR_SAFE` | Function is callable from interrupt context. |
-| `RA_EXPECTS_LOCK(name)` | Caller must hold the named lock on entry. |
-| `RA_HOST_FRIENDLY` | Safe under `RA_SIMULATOR_MODE` (no unmocked MMIO). |
-| `RA_LATENCY_BUDGET_NS(n)` | Real-time WCET deadline in nanoseconds. |
-| `RA_NO_RECURSION` | NASA P10 Rule 1: no direct or indirect self-call. |
-| `RA_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |
-| `RA_VALIDATES(n)` | NASA P10 Rule 5: at least `n` `RA_CHECK_*` calls. |
-| `RA_OWNS_RESOURCE(kind)` | RAII-style ownership; release on every return path. |
-| `RA_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
-| `RA_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
-
-The libclang-based enforcement script that consumes these annotations
-lands in Wave 43b. Until then they are documentation contracts that
-humans (and the citation gate, for `RA_MCDC_DEACTIVATED`) verify.
+- **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).
+- **C23 Typed Enums**: Every enum MUST specify an explicit underlying type (`typedef enum : uint8_t { ... } name_t;`). Select the smallest fitting type. Use `uintptr_t` for register base addresses. NO macros for integer constants.
+- **Header Guards**: Use `#pragma once` at the top of headers. DO NOT use traditional include guards.
+- **Function Validation**: Minimum 2 validation checks (preconditions and postconditions) per function (NASA Power of 10 Rule 5). Use `RA_CHECK_NULL_PTR` from `ra_check.h` for null guards.
 
 ### Constants and Macros (RA8D2 C Firmware)
 
@@ -398,10 +234,7 @@ humans (and the citation gate, for `RA_MCDC_DEACTIVATED`) verify.
      - `uint32_t` - Values > 65535 (large constants, bit masks -- NOT addresses)
      - `uintptr_t` - Hardware register base addresses (MANDATORY for all address enums)
      - `int8_t`, `int16_t`, `int32_t` - For signed values
-   - Use `uintptr_t` for any enum whose values are hardware memory-mapped addresses.
-     On the 32-bit RA8D2 target `uintptr_t` == `uint32_t`, but on the 64-bit x86_64
-     unit-test host `uintptr_t` == `uint64_t`. Using `uint32_t` for addresses silently
-     truncates on the test host and produces wrong pointer casts.
+   - Use `uintptr_t` for any enum whose values are hardware memory-mapped addresses. On the 32-bit RA8D2 target `uintptr_t` == `uint32_t`, but on the 64-bit x86_64 unit-test host `uintptr_t` == `uint64_t`. Using `uint32_t` for addresses silently truncates on the test host and produces wrong pointer casts.
    - This ensures predictable size, ABI stability, and debugger compatibility
 
 2. **const variables** - ONLY for floating-point (enum limitation)
@@ -508,152 +341,180 @@ frame[4] = payload;               // What's at index 4?
 REG = (1 << 7) | (3 << 3);        // Which bits? Why?
 ```
 
-**Why this matters:**
-- Self-documenting code
-- Searchable (grep for "high_byte" finds all uses)
-- Maintainable (change offset in one place)
-- Debugger-friendly (see names, not numbers)
-- Compile-time checked (typos caught)
-- **Typed enums guarantee size** (uint8_t is always 1 byte, uint32_t is always 4 bytes)
-- **ABI stability** (enum size won't change between compiler versions)
-- **Predictable memory layout** (critical for embedded systems and register structs)
+- Always use braces for control statements.
+- Use `assert()` for programming errors only, not runtime errors.
+- Avoid inline ASM; if required, use `volatile` and document why.
 
-### Critical Rules
+---
 
-- Always use braces for control statements
-- Use `assert()` for programming errors only, not runtime errors
-- Avoid inline ASM; if required, use `volatile` and document why
-- Zero dynamic allocation in firmware (safety-critical)
-- Zero use of `#include <stdbool.h>` (bool is a C23 keyword)
-- Zero use of `_Static_assert` (use C23 `static_assert`)
-- Zero use of `= {0}` zero-initializers (use C23 `= {}`)
+## Doxygen Documentation Requirements
 
-### Comment citations
+Every file, function (public or static), struct, enum, and macro must be documented with comprehensive Doxygen comments:
 
-**In-tree source citations are FORBIDDEN.** Comments must NOT reference files in this repo by line number (e.g. `libs/foo.c:776`). Line numbers go stale on the next reformat. Reference the function or symbol name instead (`internal_rect_below_min`, `ra_dmac::internal_mode_to_dmtmd`). The `scripts/utils/check_line_citations.py` pre-commit gate enforces this. <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
+### Documentation Policy
 
-**External/vendor citations are MANDATORY** for any HAL register access, ISR, or driver path. Cite the source (HUM section, FSP commit hash, RFC, datasheet page) so future readers can verify the implementation against the spec. Examples:
+This project enforces **MAXIMUM documentation coverage** with zero tolerance for undocumented code:
 
-- `/* HUM section 11.2.7 PWPR write-protect register */`
-- `/* FSP r_sci_b/r_sci_b.c @ commit 8b3f2c1 */`
-- `/* RFC 791 section 3.2 IPv4 header layout */`
+1. **Every file** must have complete file-level documentation
+2. **Every function** must use ALL applicable Doxygen tags
+3. **Every struct/enum** must document ALL members
+4. **Every variable** (global, static, member) must be documented
+5. **Every typedef** must have full documentation
+6. **Every macro** must be documented with usage examples
 
-The `// CITES-OK: <reason>` marker provides a per-line opt-out for unusual cases.
+### Required Tags by Code Element
 
-#### Manual review checklist
+**Functions - Minimum Required Tags:**
+- `@brief` - One-line summary
+- `@details` - Multi-paragraph explanation with algorithm description
+- `@param[in/out/in,out]` - ALL parameters with direction, valid range, units, constraints
+- `@return` - Return value description
+- `@retval` - EVERY possible return value documented individually
+- `@pre` - Preconditions (minimum 2 per NASA Rule 5)
+- `@post` - Postconditions (minimum 2 per NASA Rule 5)
+- `@note` - Thread safety statement
+- `@code` - Usage example (if non-trivial)
+- `@see` - Cross-references to related functions
+- `@since` - Version introduced
+
+**Structs/Enums - Minimum Required Tags:**
+- `@struct/@enum` - Structure/enumeration tag
+- `@brief` - One-line summary
+- `@details` - Detailed explanation
+- `/**<` - Inline comment for EVERY member/value with full explanation
+- `@invariant` - Constraints on fields
+- `@code` - Usage example
+- `@see` - Related types
+
+**Variables - Minimum Required Tags:**
+- `@var/@def` - Variable/macro tag
+- `@brief` - One-line summary
+- `@details` - Purpose and usage
+- `@note` - Access restrictions
+- `@warning` - Direct modification warnings (for static variables)
+- `@since` - Version introduced
+
+**State Machines - Required Documentation:**
+- `@startuml` state diagram showing all transitions
+- Each state documented with entry/exit actions
+- Transition conditions and guards
+- State transition table in `@par` section
+
+### Example: Complete Function Documentation
+
+```c
+/**
+ * @brief Configure an RA8D2 PORT pin as a digital output
+ *
+ * @details
+ * Writes to the IOPORT PFS (Pin Function Select) register to put the pin in
+ * "general-purpose output" mode and clears the output latch. Must be called
+ * from a single-threaded context during system init or with IRQs masked.
+ *
+ * @param[in] port Port identifier (k_ra_port_0 .. k_ra_port_11)
+ * @param[in] pin  Pin index within the port (0..15)
+ * @param[in] init_level Initial output level (k_ra_level_low / k_ra_level_high)
+ *
+ * @return ra_err_t Error code
+ * @retval k_ra_ok Success, pin configured and driven to init_level
+ * @retval k_ra_err_invalid_arg port or pin out of range
+ * @retval k_ra_err_pin_conflict pin already owned by another peripheral
+ *
+ * @pre Power to the IOPORT module is on (MSTPCRB cleared for IOPORT)
+ * @pre Caller holds the pin validator lock (single-threaded init context OK)
+ * @post Pin is driven to init_level
+ * @post PFS register locked after write
+ *
+ * @invariant IOPORT.PWPR.B0WI remains 1 outside the critical section
+ *
+ * @note Not thread-safe, caller must provide synchronization
+ * @warning PFS writes without unlocking PWPR are silently dropped
+ *
+ * @par Example:
+ * @code
+ * ra_gpio_output_init(k_ra_port_1, 7, k_ra_level_high); // LED on
+ * @endcode
+ *
+ * @see ra_gpio_write()  Drive an already-configured output
+ * @see ra_gpio_input_init()  Configure as input instead
+ *
+ * @since Version 1.0.0
+ *
+ * @par NASA Power of 10 Compliance:
+ * - Rule 5: 3 preconditions, 2 postconditions
+ */
+ra_err_t ra_gpio_output_init(ra_port_t port, uint8_t pin, ra_level_t init_level);
+```
+
+---
+
+## Architectural Annotations
+
+The `RA_*` annotation macros in `libs/ra_core/inc/ra_attributes.h` record architectural and safety contracts on individual functions. They expand to `__attribute__((annotate("...")))` under clang and to a comment-only no-op under other toolchains.
+
+| Macro | One-line purpose |
+|-------|------------------|
+| `RA_TEST_HELPER` | Externally-linked symbol callable only from `tests/`. |
+| `RA_INTERNAL` | Marker that a function is intended to be `static`. |
+| `RA_PRIV` | Module-private helper shared across TUs in one library. |
+| `RA_DI_SLOT(role)` | Explicit Dependency Injection seam (mock required). |
+| `RA_NSC_VENEER` | TrustZone S/NS entry-point veneer in `libs/ra_nsc/`. |
+| `RA_HW_REGISTER_ACCESS` | Inline MMIO accessor returning a `volatile` pointer. |
+| `RA_NASA_RULE_3_OK` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
+| `RA_MCDC_DEACTIVATED(reason)` | MC/DC deactivation; reason text gated by citation policy. |
+| `RA_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
+| `RA_ISR_SAFE` | Function is callable from interrupt context. |
+| `RA_EXPECTS_LOCK(name)` | Caller must hold the named lock on entry. |
+| `RA_HOST_FRIENDLY` | Safe under `RA_SIMULATOR_MODE` (no unmocked MMIO). |
+| `RA_LATENCY_BUDGET_NS(n)` | Real-time WCET deadline in nanoseconds. |
+| `RA_NO_RECURSION` | NASA P10 Rule 1: no direct or indirect self-call. |
+| `RA_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |
+| `RA_VALIDATES(n)` | NASA P10 Rule 5: at least `n` `RA_CHECK_*` calls. |
+| `RA_OWNS_RESOURCE(kind)` | RAII-style ownership; release on every return path. |
+| `RA_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
+| `RA_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
+
+---
+
+## External HUM Citations Policy
+
+- **Register Citations**: Every single register read/write or access MUST have an external Hardware User's Manual (HUM) citation comment immediately above it:
+  `/* HUM Ch X.Y "section name" p NNNN */` (or `p NNNN-MMMM`)
+- **In-tree Citations Banned**: Never cite files in this repository by line number (e.g., `libs/foo.c:123` is forbidden). Reference the function or symbol name instead.
+
+### Manual review checklist
 
 Pre-commit hooks catch most citation drift, but not all of it. Before pushing, scan your own diff for the following and fix them locally:
+- `git diff | grep -E '\.[ch]:[0-9]+'` -- catches `file:line` anchors in source comments and docs.
+- Stale doc cross-references: search for any heading slug, function name, or filename you renamed in this change and confirm every Markdown link still resolves.
+- TODO / FIXME / `WARN_ONLY_MODE` flags whose work you just completed -- delete the marker.
 
-- `git diff | grep -E '\.[ch]:[0-9]+'` -- catches `file:line` anchors in source comments and docs that the gate may have missed (e.g. introduced in a previously-committed file you also touched).
-- Stale doc cross-references: search for any heading slug, function name, or filename you renamed in this change and confirm every Markdown link / table-of-contents entry still resolves.
-- TODO / FIXME / `WARN_ONLY_MODE` flags whose work you just completed -- delete the marker in the same commit; do not leave breadcrumbs that lie.
-- Auto-generated docs (`docs/MCDC_*`, `docs/DOXYGEN_GAPS.*`, `docs/MISRA_GAPS.csv`, `docs/STACK_USAGE.md`) -- if your change touches the generators or the inputs, regenerate them in the same commit so reviewers see the updated artifacts.
-- Diff for accidental non-ASCII (`LC_ALL=C grep -nP '[^\x00-\x7f]' <files>`); the encoding gate will catch it but a local check saves a CI round-trip.
+---
 
-## NASA Power of 10 Rules (This Project)
+## NASA Power of 10 Rules
 
 The project follows NASA/JPL Power of 10 rules for safety-critical embedded code with one intentional deviation for testability.
 
-### Rule 1: Simplify Control Flow -- COMPLIANT
-- No `goto`, `setjmp`/`longjmp`, or recursion
-- All control flow uses `if`/`while`/`for` only
+- **Rule 1 (Control Flow)**: No `goto`, `setjmp`/`longjmp`, or recursion.
+- **Rule 2 (Loop Bounds)**: All loops have statically provable bounds.
+- **Rule 3 (Memory)**: Zero dynamic memory after initialization (zero malloc/free in firmware).
+- **Rule 4 (Length)**: Keep functions short (~60 lines). Enforced by clang-tidy.
+- **Rule 5 (Validation)**: Minimum 2 validation checks per function (preconditions and postconditions).
+- **Rule 6 (Data Scope)**: Declare data at the smallest possible scope.
+- **Rule 7 (Return Values)**: Check all return values of non-void functions.
+- **Rule 8 (Preprocessor)**: Limit preprocessor use (C23 enums for constants).
+- **Rule 9 (Pointers - Deviation)**: Function pointers are **ALLOWED** to enable Dependency Inversion Principle (DIP) and mock-injection for host unit-testing.
+- **Rule 10 (Warnings)**: Compile with maximum warnings (`-Wall -Wextra -Werror`).
 
-### Rule 2: Fixed Loop Upper-Bounds -- COMPLIANT
-- All loops have statically provable bounds
-- Exception: Main control loops may use `while(1)` with watchdog refresh
-- Example: `for (uint8_t i = 0; i < k_max_retries; i++)` - enum provides bound
+---
 
-### Rule 3: No Dynamic Memory After Initialization -- COMPLIANT
-- **Zero malloc/free in firmware**
-- All buffers statically allocated with enum-defined sizes
-- Example: `uint8_t framebuffer[k_fb_height][k_fb_width]` - compile-time allocation
+## Safety / MC/DC (DO-178C Level B)
 
-### Rule 4: Keep Functions Short (~60 lines) -- COMPLIANT
-- Functions represent single verifiable units
-- clang-tidy LineThreshold = 60 enforces this at commit time
-
-### Rule 5: Use Assertions/Validation -- COMPLIANT
-- Minimum 2 validation checks per function
-- **Pre-conditions**: `RA_CHECK_NULL_PTR`, state validation
-- **Post-conditions**: Output bounds checking, invariant validation
-
-### Rule 6: Declare Data at Smallest Scope -- COMPLIANT
-- Variables declared close to first use
-- Loop counters in for-statement: `for (uint8_t i = 0; ...)`
-- File-scope variables use `static` prefix (`s_tag`)
-
-### Rule 7: Check All Return Values -- COMPLIANT
-- All function returns validated or explicitly cast to `(void)`
-- Use `RA_RETURN_ON_ERROR` macro for propagation
-
-### Rule 8: Limit Preprocessor Use -- COMPLIANT
-- **C23 typed enums** for ALL integer constants (mandatory): `typedef enum : uint8_t { ... } name_t;`
-- Macros ONLY for: duplicated code, conditional compilation, build flags
-- Hardware register access: Use inline accessor functions (never macros)
-
-### Rule 9: Restrict Pointer Use -- INTENTIONAL DEVIATION
-- **Standard**: Maximum one level of dereferencing, no function pointers
-- **This project**: Function pointers ALLOWED for Dependency Inversion Principle (DIP)
-- **Why**: Enables mock implementations for unit testing and hardware abstraction
-
-### Rule 10: Compile with Maximum Warnings -- COMPLIANT
-- CMake flags: `-Wall -Wextra -Werror`
-- Build fails on ANY warning
-- CI enforces zero-warning builds
-
-## IEC 61508 SIL 3 / DO-178C Level B Qualification (This Project)
-
-**MANDATORY:** This project targets **IEC 61508 SIL 3** as its industry-agnostic
-safety bar (DO-178C Level B and ISO 26262 ASIL C/D are equivalent industry-
-specific derivatives — pick whichever certification body is relevant if/when
-this firmware ships into a regulated domain). All three frameworks require
-**MC/DC (Modified Condition/Decision Coverage)** for the highest safety
-integrity level. Statement and branch coverage are necessary but not
-sufficient.
-
-**Note:** DO-178B was superseded by DO-178C in December 2011; do not cite
-DO-178B in new docs or tests.
-
-### What MC/DC Requires
-
-For every compound boolean decision (e.g. `if (a && b)` or `while (c || (d && e))`),
-test vectors must demonstrate that **each individual condition independently
-affects the outcome**:
-
-- For N conditions in a decision, MC/DC typically requires **N+1 test cases**.
-- Each condition must be shown to flip the decision result while all other
-  conditions are held fixed.
-- Multiple-condition coverage (2^N) is sufficient but wasteful; aim for the
-  N+1 minimal MC/DC vector set.
-
-### Enforcement
-
-- **Every new test** must include MC/DC vectors for every compound decision in
-  the code path it covers. State the MC/DC vector pattern in the test's
-  Doxygen `@par MC/DC:` block.
-- **No new compound boolean decision** may be added to first-party code
-  without a paired test that demonstrates MC/DC for it. Reviewers should
-  reject PRs that add an `&&` / `||` without the matching test vectors.
-- **Coverage measurement**: clang 18+ with `-fcoverage-mcdc` is the canonical
-  toolchain. The `make mcdc` target runs the coverage build and emits a
-  per-file MC/DC report. See `docs/MCDC.md`.
-- **CI gate** (eventually): once the existing 135-test suite is brought up to
-  100% MC/DC, the pre-commit hook will reject commits that drop coverage.
-  See `docs/MCDC_GAPS.md` and `docs/MCDC_GAPS.csv` for the current gap list.
-
-### Exempt Code
-
-- `libs/third_party/` -- ThreadX, NetX, FileX, USBX, GUIX, mbedTLS, lwIP,
-  NimBLE are SOUP (Software Of Unknown Provenance). DO-178B treats them as
-  pre-qualified components requiring justification documents but not
-  source-level MC/DC re-test in this repo.
-  Per-component justifications (provenance, license, qualification basis,
-  risk mitigation, last review date) live under `docs/SOUP/`; see
-  `docs/SOUP/README.md` for the index. Add a new file there whenever a
-  new direct subdirectory is added to `libs/third_party/`.
-- Generated code (vector tables, register-bank headers) is exempt from MC/DC
-  if it has no compound decisions.
-- Host-only test scaffolding under `tests/` itself is exempt.
+- **Target Certification**: Targets **IEC 61508 SIL 3** and **DO-178C Level B** safety bar.
+- **MC/DC Coverage**: All compound boolean decisions must have MC/DC vectors in the unit tests.
+- **Independent Influence**: Demonstrate that each condition independently affects the outcome (N+1 test cases).
+- **Documentation**: State the MC/DC vector pattern in the test's Doxygen `@par MC/DC:` block.
+- **Exempt Code**: `libs/third_party/` (SOUP components) is exempt from MC/DC re-test in this repo. Component justifications live under `docs/SOUP/`.
 
 ### Example MC/DC Test Block
 
@@ -672,79 +533,26 @@ affects the outcome**:
 TEST(ra_isr, register_validates_inputs) { ... }
 ```
 
-## SOLID Principles for C (This Project)
+---
 
-### Single Responsibility (S)
-- **One module = one purpose**: `ra_pid` would handle ONLY PID math (no motor control, no hardware)
-- **One function = one action**
-- **Separation of concerns**: Configuration structs separate from runtime state structs
+## SOLID Principles for C
 
-### Open/Closed (O)
-- **Extensible without modification**: Modules configured via config structs passed to `*_init()` functions
-- **Runtime tuning**: `_set_*()` setter APIs allow updates without recompilation
-- **Avoid hardcoded values**: All limits defined in config
-
-### Liskov Substitution (L)
-- **Interface implementations interchangeable**: Bus manager accepts any bus type (I2C/SPI/1-Wire)
-- **Mocks substitute real implementations**: Tests use mock bus in place of real hardware
-- **Consistent error handling**: All drivers return `ra_err_t` with same semantics
-
-### Interface Segregation (I)
-- **Small, focused interfaces**
-- **No "fat" interfaces**: Bus interface split into `read()`, `write()`, `configure()`
-- **Separate read/write**
-
-### Dependency Inversion (D)
-- **High-level modules don't depend on low-level details**
-- **Function pointer interfaces for abstraction**:
-  ```c
-  typedef struct {
-      ra_err_t (*read)(void* ctx, uint8_t* data, uint32_t len);
-      ra_err_t (*write)(void* ctx, const uint8_t* data, uint32_t len);
-      void* ctx;
-  } bus_interface_t;
-  ```
-- **Testable via mock injection**
+- **Single Responsibility (S)**: One module = one purpose; one function = one action.
+- **Open/Closed (O)**: Modules configured via configuration structures passed to `*_init()` functions.
+- **Liskov Substitution (L)**: Interface implementations (e.g. buses) are completely interchangeable.
+- **Interface Segregation (I)**: Small, focused interfaces instead of fat interfaces.
+- **Dependency Inversion (D)**: High-level modules do not depend on low-level details. Use function pointer structures for interfaces.
 
 ### Test access to internal symbols (MC/DC scope)
 
-Mock injection (DIP) is the **preferred** path to drive deep code paths
-under test, but some compound boolean decisions live in pure-data validation
-paths that cannot be reached through the public API: e.g. an internal helper
-that classifies a wire-format field after the public-API guard has already
-rejected the inputs that would let MC/DC vectors flip each condition. For
-those decisions, tests under `tests/` MAY include the matching
-`libs/<X>/src/<X>_internal.h` (or analogous src-private header) and call
-internal symbols directly, so MC/DC vectors land on the production source
-text rather than on a test-local mirror copy. The MC/DC tooling
-(`-fcoverage-mcdc`) only counts vectors that hit production source, so
-operand-identical `static inline mirror_*` helpers in the test TU do not
-move the metric -- they document the obligation but do not discharge it.
+Mock injection (DIP) is preferred, but some validation paths can only be reached by calling internal symbols.
+- A `static` helper that needs MC/DC test access should be promoted to TU-external linkage (drop `static`) and forward-declared in the module's `_internal.h`.
+- The `_internal.h` declaration must carry a `@par MC/DC:` Doxygen note.
+- Production callers must keep using the public API; the only consumers of the promoted symbol outside the defining TU are tests under `tests/`.
 
-Practical rules:
-
-- A `static` helper that needs MC/DC test access should be promoted to
-  TU-external linkage (drop `static`) and forward-declared in the module's
-  `_internal.h`. The header is **not** part of the public API; it is
-  installed only on the test target's include path
-  (`tests/CMakeLists.txt` exposes `libs/<X>/src/`).
-- The `_internal.h` declaration must carry a `@par MC/DC:` Doxygen note
-  explaining why the symbol is exposed for test access only and which
-  decision is being covered.
-- Production callers must keep using the public API; the only consumers of
-  the promoted symbol outside the defining TU are tests under `tests/`.
-- Mirror-test helpers are still acceptable for decisions that are unsafe to
-  expose (e.g. inside ISR-only code paths or constant-time crypto where
-  exposing intermediates would weaken the side-channel posture); document
-  the choice in the `@par MC/DC:` block.
+---
 
 ## Repository Layout
-
-Each application lives in its own directory under `examples/` and is
-fully self-contained: its own `main.c`, boot files, linker script,
-`Makefile`, and `CMakeLists.txt`. There is no shared `src/boot/` /
-`src/linker_script.ld`; future divergence between apps (different
-vector tables, different memory layouts) is an explicit design goal.
 
 ```
 ra8d2-firmware/
@@ -799,29 +607,21 @@ ra8d2-firmware/
   .gitattributes
   .editorconfig
   LICENSE.txt                  MIT, Copyright (c) 2026 Brighton Sikarskie
-  CLAUDE.md                    This file
+  CLAUDE.md                    This file <!-- AI-OK: reference to CLAUDE.md -->
   README.md
 ```
 
 ### Adding a new application
 
-Create a new directory `examples/<tier>/.../<newapp>/` (pick a tier
-that matches the hardware-support category -- e.g.
-`ek_ra8d2/hw_validated/hil/`, `ek_ra8d2/hw_validated/hil/`,
-`ek_ra8d2/hw_validated/manual/`, `ek_ra8d2/hw_pending/`, or
-`_unsupported/`) containing:
-
+Create a new directory `examples/<tier>/.../<newapp>/` containing:
 1. `main.c` -- the application entry.
-2. The five per-app boot files copied from a sibling app
-   (`vector_table.c`, `system_init.c`, `secure_exception.c`,
-   `trustzone_init.c`, `trustzone_init.h`). Update each `@file` to
-   the new path.
+2. The five per-app boot files copied from a sibling app (`vector_table.c`, `system_init.c`, `secure_exception.c`, `trustzone_init.c`, `trustzone_init.h`). Update each `@file` to the new path.
 3. `linker_script.ld` (also copied; may diverge later).
-4. `CMakeLists.txt` and `Makefile` (copy from a sibling and update
-   the `RA_APP_NAME` / `APP` variable).
+4. `CMakeLists.txt` and `Makefile` (copy from a sibling and update the `RA_APP_NAME` / `APP` variable).
 
-The next `make` from the repo root re-discovers it -- no changes
-needed to the top-level `CMakeLists.txt` or top-level `Makefile`.
+The next `make` from the repo root re-disovers it -- no changes needed to the top-level `CMakeLists.txt` or top-level `Makefile`.
+
+---
 
 ## Key Reference Documents
 
