@@ -82,15 +82,11 @@ typedef enum : uint32_t {
   k_canfd_demo_bitrate = 500000U, /**< 500 kbit/s nominal + data rate.      */
 } canfd_link_t;
 
-/* ---------------------------------------------------------------------------
- * SysTick override: forward to the ThreadX kernel-tick handler.
- * --------------------------------------------------------------------------- */
+/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+ * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
+ * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
 #ifndef RA_SIMULATOR_MODE
-/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
-extern void _tx_timer_interrupt(void);
-/* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
-
 static uint8_t   s_thread_tx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
 static uint8_t   s_thread_rx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
 static TX_THREAD s_thread_tx;
@@ -124,15 +120,6 @@ volatile uint32_t g_threadx_canfd_match = 0U;
  * @since 0.1.0
  */
 volatile uint32_t g_threadx_canfd_mismatch = 0U;
-
-/**
- * @brief SysTick handler -- forwards to ThreadX scheduler tick.
- */
-void SysTick_Handler(void);
-void SysTick_Handler(void)
-{
-  _tx_timer_interrupt();
-}
 
 /**
  * @brief Heartbeat TX thread: send a CAN-FD frame each period.
