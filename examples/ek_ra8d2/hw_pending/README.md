@@ -43,5 +43,4 @@ hardware HIL probe AND the gap below is resolved.
 | cpu1_pingpong | IPCSAR is secure-only-writable from CPU0's NS state; needs TrustZone bring-up so the Secure veneer can flip the bits before CPU1 release. See app README. |
 | threadx_netx_tcp_echo | HAL's GWCA stub doesn't wire descriptor list addresses (GWDCBAC0/1 + LINKFIX table per HUM Ch 34.5.1.3). Multi-hour port. FSP reference: `r_layer3_switch.c` at github.com/renesas/fsp under `ra/fsp/src/r_layer3_switch/`. |
 | tz_nsc_cgc_usb | NSC veneer path to ra_cgc_pll2_enable returns non-OK from NS context (init step halts at 1). NSC bridge wiring needs investigation. |
-| usb_hid_device | Chip enumerates as 1209:0001 but usbhid driver fails to bind: GET_HID_REPORT_DESCRIPTOR over EP0 multi-chunk returns ETIMEDOUT (-110). |
-| usb_msc_device | Chip enumerates as 1209:000b and usb-storage attaches, but SCSI INQUIRY / READ_CAPACITY through BBB never completes -- same USBX bulk-handshake issue. |
+| usb_msc_device | Firmware fix landed (issue #6 closed) and bench-validated (mkfs.vfat + mount + 128 KiB roundtrip). Awaiting promotion to `hw_validated/hil/` once `hil_msc_test.sh` is bench-run end-to-end; tracked in #5 / #80. |
