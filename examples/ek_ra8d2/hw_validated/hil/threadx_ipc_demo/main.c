@@ -260,9 +260,9 @@ static void ipc_demo_setup_or_halt(void)
  * --------------------------------------------------------------------------- */
 
 #ifndef RA_SIMULATOR_MODE
-/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
-extern void _tx_timer_interrupt(void);
-/* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
+/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+ * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
+ * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
 /** @brief ThreadX queue control block + backing storage.
  *
@@ -284,20 +284,6 @@ static uint8_t   s_producer_stack[k_ipc_demo_thread_stack] __attribute__((aligne
 /** @brief ThreadX control block + stack for the consumer thread. */
 static TX_THREAD s_consumer_thread;
 static uint8_t   s_consumer_stack[k_ipc_demo_thread_stack] __attribute__((aligned(8)));
-
-/**
- * @brief Route SysTick to the ThreadX timer interrupt.
- *
- * @pre Called from exception context (IPSR == 15).
- * @pre ``_tx_initialize_low_level`` has programmed SysTick.
- * @post One ThreadX tick has elapsed.
- * @post PendSV may be pending if scheduler picked a new thread.
- */
-void SysTick_Handler(void);
-void SysTick_Handler(void)
-{
-  _tx_timer_interrupt();
-}
 
 /**
  * @brief Producer thread body -- 1 Hz "ping" enqueue.
