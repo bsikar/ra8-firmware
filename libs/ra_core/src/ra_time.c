@@ -263,11 +263,34 @@ void ra_time_on_tick(void)
 }
 
 /*
- * Default SysTick_Handler -- weak so that an app linking an RTOS (e.g.
- * Eclipse ThreadX with `_tx_timer_interrupt`) can supply a non-weak
- * override and steer the tick into its own scheduler. When no override
- * is provided the linker keeps this body and the ms counter advances
- * exactly as the bare-metal apps expect.
+ * Per-subsystem tick callouts. These are declared as WEAK EXTERNS: if
+ * the firmware image links a subsystem that defines the symbol, the
+ * weak reference resolves to that strong defn and the function pointer
+ * is non-null; if the subsystem isn't linked the reference remains a
+ * null pointer and the call is skipped.
+ *
+ *   - `_tx_timer_interrupt`         lives in libthreadx.a. Advances
+ *                                   the ThreadX time bases so
+ *                                   tx_thread_sleep / TX_TIMER /
+ *                                   semaphore-wait timeouts fire.
+ *   - `ux_dcd_ra_usb_irq_reenable`  lives in port/usbx/ux_dcd_ra_usb.c.
+ *                                   Re-arms the USBFS NVIC line that
+ *                                   the bridge's storm guard masks.
+ *
+ * Apps that need additional tick work can still publish a strong
+ * SysTick_Handler in their own main.c -- it wins over the weak default
+ * below. The weak-extern trick is what lets a per-app handler go away
+ * once its work is just "tick threadx and tick usb".
+ */
+/* NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- vendor (ThreadX) symbol; we must use Eclipse ThreadX's actual entry-point name. */
+extern void _tx_timer_interrupt(void) __attribute__((weak));
+extern void ux_dcd_ra_usb_irq_reenable(void) __attribute__((weak));
+
+/*
+ * Default SysTick_Handler -- weak so an app can still supply a strong
+ * override when needed. The default already routes ticks into ThreadX
+ * and USB via the weak externs above, so most apps no longer need a
+ * per-app SysTick_Handler at all.
  *
  * The vector_table.c weak alias to Default_Handler is overridden by
  * this stronger weak symbol; an even stronger non-weak one in the
@@ -281,4 +304,10 @@ void SysTick_Handler(void);
 __attribute__((weak)) void SysTick_Handler(void)
 {
   ra_time_on_tick();
+  if (_tx_timer_interrupt != ((void*)0)) {
+    _tx_timer_interrupt();
+  }
+  if (ux_dcd_ra_usb_irq_reenable != ((void*)0)) {
+    ux_dcd_ra_usb_irq_reenable();
+  }
 }
