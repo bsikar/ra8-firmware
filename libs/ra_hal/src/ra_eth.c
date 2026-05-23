@@ -858,6 +858,18 @@ ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
   s_mac_speed_resynced = false;
 
   internal_capture_state(cfg);
+
+  /* Bench-confirmed (issue #1 follow-up): leaving MPIC.PIS at the
+   * default GMII (1000mbit) configured by ra_board_ethernet_init
+   * silently drops every RX frame when the actual link auto-
+   * negotiates to 100 Mbps. The PIS must match the *internal* xMII
+   * timing (MII for 10/100, GMII for 1G). Force a resync at the end
+   * of open so the MAC is ready for RX before the IP stack hits the
+   * driver -- without it MRGFCE stays at zero until something else
+   * calls ra_eth_link_status, which NetX never does at boot. */
+  ra_eth_link_t link = {.link_up = 0U, .speed_mbps = 0U, .full_duplex = 0U, .bmsr = 0U};
+  (void)ra_eth_link_status(&link);
+
   ra_log_info(s_tag, "eth_open: gwca rings ready");
   return k_ra_ok;
 }
