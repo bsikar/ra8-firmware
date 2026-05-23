@@ -42,7 +42,7 @@ pin validator, logging, IRQ-masked critical sections).
 Three distinct roles, often confused:
 
 ```
-examples/<app>/      ← one standalone example application per dir
+examples/<app>/      <- one standalone example application per dir
   main.c               application entry; the only file that differs run-to-run
   vector_table.c       per-app 112-IRQ Cortex-M85 vector table + Reset_Handler
   system_init.c        per-app SystemInit (VTOR, FPU, priority grouping, ...)
@@ -53,22 +53,22 @@ examples/<app>/      ← one standalone example application per dir
   CMakeLists.txt       per-app cmake target (consumed by top-level + standalone)
   Makefile             thin wrapper around cmake + scripts/ helpers
 
-src/                 ← shared internals (everyone uses these)
+src/                 <- shared internals (everyone uses these)
   inc/                 Internal headers shared between TUs
   secure_app/          Ring 5 secure-side code (key vault, secure veneer table)
 
-libs/                ← the standard library (everyone links it)
+libs/                <- the standard library (everyone links it)
   ra_core/             err, log, time, pin validator, register guards (no HW deps)
   ra_hal/              every peripheral driver + register header
   ra_nsc/              TrustZone Non-Secure-Callable veneers
-  ra_net_pal/          Ethernet PAL bridging the HAL to lwIP / similar
+  ra_net_pal/          Ethernet PAL bridging the HAL to NetX Duo / similar
   ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
   ra_display_pal/      Display PAL: one function-pointer iface, two
                          backends -- LCD (ra_glcdc) and IT8951 e-ink
                          stub. Apps swap backends with a one-line
                          change to their `display_cfg_t`.
 
-examples/<tier>/.../<app>/             ← concrete apps shipped today (e.g. .../smoke/blink/, .../smoke/blink_hal/)
+examples/<tier>/.../<app>/             <- concrete apps shipped today (e.g. .../smoke/blink/, .../smoke/blink_hal/)
 ```
 
 ### Why every app is small
@@ -115,7 +115,7 @@ artifacts.
 
 ```
 hosted Linux/macOS C program        ra8d2-firmware
-─────────────────────────────       ─────────────────────────
+-----------------------------       -------------------------
 crt0.o (runtime)                    examples/<app>/{vector_table,system_init,...}.c
 libc / libm                         libs/
 your code (main.c, ...)             examples/<app>/main.c

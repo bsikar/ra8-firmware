@@ -23,7 +23,6 @@ basis.
 | LevelX          | 6.5.0    | Eclipse Foundation          | [levelx.md](levelx.md)             |
 | Mbed TLS        | 4.1.0    | TrustedFirmware.org         | [mbedtls.md](mbedtls.md)           |
 | TF-PSA-Crypto   | 1.1.0    | TrustedFirmware.org         | [tf-psa-crypto.md](tf-psa-crypto.md) |
-| lwIP            | 2.2.0    | Savannah / SICS             | [lwip.md](lwip.md)                 |
 | Apache NimBLE   | 1.9.0    | Apache Software Foundation  | [nimble.md](nimble.md)             |
 | litehtml        | unknown  | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
@@ -47,8 +46,6 @@ basis.
   `libs/ra_tls/` and `libs/ra_ota/`.
 - **TF-PSA-Crypto** -- PSA Crypto API implementation backing TLS, OTA
   signature checks, and the secure-side key vault.
-- **lwIP** -- Alternative TCP/IP stack used by the lwIP echo demo for
-  cross-validation against NetX Duo.
 - **Apache NimBLE** -- Bluetooth 5.4 host + controller stack staged for
   future BLE bring-up; not yet linked to an example.
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.

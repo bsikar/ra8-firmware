@@ -111,7 +111,7 @@ Overall: `[========================================] 704/704`
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_net_pal -- lwIP port glue | DONE | 16/16 | `[====================] 16/16` |
+| ra_net_pal -- NetX Duo port glue | DONE | 16/16 | `[====================] 16/16` |
 | ra_usb_pal -- CherryUSB usb_dc port glue | DONE | 16/16 | `[====================] 16/16` |
 | ra_nsc -- NSC veneer scaffold | DONE | 16/16 | `[====================] 16/16` |
 

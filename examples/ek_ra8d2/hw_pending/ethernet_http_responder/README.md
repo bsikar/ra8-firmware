@@ -1,7 +1,7 @@
 # Pi-as-peer ethernet apps (hw_pending)
 
 ethernet_tcp_echo, ethernet_udp_echo, ethernet_http_responder,
-threadx_lwip_tcp_echo, threadx_netx_tcp_echo all run on the
+threadx_netx_tcp_echo all run on the
 EK-RA8D2's GMAC (ETHA1 + RMAC1 + GWCA0) and expect a Pi peer to
 ARP/ICMP/TCP/UDP into them.
 

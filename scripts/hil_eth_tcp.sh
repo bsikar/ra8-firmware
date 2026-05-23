@@ -7,8 +7,7 @@
 #
 #   tcp   -- open a TCP socket to <board_ip>:<port>, send random N
 #            bytes, read N bytes back, assert byte-exact equality.
-#            (ethernet_tcp_echo, threadx_lwip_tcp_echo,
-#             threadx_netx_tcp_echo)
+#            (ethernet_tcp_echo, threadx_netx_tcp_echo)
 #
 #   udp   -- send a random N-byte UDP datagram to <board_ip>:<port>,
 #            wait for a single reply, assert byte-exact equality.

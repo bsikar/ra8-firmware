@@ -16,7 +16,7 @@ The v0.1.0 baseline lands the hand-written RA8D2 HAL, TrustZone
 substrate (`secure_app` + `ra_nsc` veneer set), the
 `ra_board_ek_ra8d2` BSP, the `ra_net_pal` / `ra_usb_pal` platform
 abstraction layers, vendored ThreadX / FileX / LevelX / NetX / GUIX /
-USBX / lwIP / NimBLE / TF-PSA-Crypto subtrees with hand-written
+USBX / NimBLE / TF-PSA-Crypto subtrees with hand-written
 integration shims, OTA orchestration with secure-side commit veneers,
 the `ra_bootloader` / `ra_epub` / `ra_modem_at` / `ra_psa_crypto` /
 `ra_wdt_supervisor` higher-level libraries, the 36-app
@@ -113,8 +113,8 @@ If it fails, look for:
 
 ### Tier 5 -- Ethernet (needs LAN)
 
-Apps: `ethernet_tcp_echo`, `threadx_lwip_tcp_echo`,
-`threadx_netx_tcp_echo`, `threadx_https_client`, `ptp_master`.
+Apps: `ethernet_tcp_echo`, `threadx_netx_tcp_echo`,
+`threadx_https_client`, `ptp_master`.
 
 Pass criteria:
 - DHCP lease obtained (or static IP banner printed).
@@ -278,7 +278,7 @@ deployment use-case appears.
 - `ra_logging_remote` -- syslog-over-UDP sink for `ra_log`, once a
   deployment use-case appears that needs off-device log aggregation.
 - `ra_coap_client` / MQTT client -- IoT-scenario libraries layered on
-  top of the existing `ra_net_pal` + lwIP / NetX stacks.
+  top of the existing `ra_net_pal` + NetX Duo stack.
 - Multi-instance `ra_board_*` -- if a second Renesas RA board enters
   the tree (e.g. EK-RA8M3), generalize `ra_board_ek_ra8d2` so the
   examples can target either board via a build flag rather than a

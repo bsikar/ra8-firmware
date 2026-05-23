@@ -83,7 +83,7 @@ pre-commit -- do not hand-edit it.
 | 4 | Analog, safety, time | 4 | [x] |
 | 5 | External memory and high-throughput buses | 5 | [x] |
 | 6 | Display, audio, USB controllers, Ethernet MAC | 6 | [x] |
-| 7 | PAL + middleware integration (lwIP, CherryUSB) | 6 | [x] |
+| 7 | PAL + middleware integration (NetX Duo, CherryUSB) | 6 | [x] |
 | 8 | Single-world integration demo + stabilisation | 1-2 | [x] |
 | 9 | TrustZone partitioning | 4-5 | [x] |
 | 10 | Secure-side application + key handling demo | 1-2 | [x] |
@@ -1138,7 +1138,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 
 ## PAL + middleware integration
 
-### ra_net_pal -- lwIP port glue
+### ra_net_pal -- NetX Duo port glue
 
 `[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (+ 7.4 closure)
 
@@ -1177,7 +1177,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Doxygen -- full file + member coverage
 ```
 
-The in-memory loopback lets the lwIP `ethernetif.c` glue land
+The in-memory loopback lets the NetX Duo driver glue land
 against a stable, testable PAL without having to implement the
 full GWCA descriptor ring in Ring 3 first.
 

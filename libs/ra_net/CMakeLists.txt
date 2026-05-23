@@ -1,5 +1,5 @@
 #
-# libs/ra_net -- minimal lwIP-style TCP/IP stack adapter on top of
+# libs/ra_net -- minimal hand-rolled TCP/IP stack adapter on top of
 # ra_net_pal descriptor rings.
 #
 # This library is currently picked up via tests/CMakeLists.txt globbing

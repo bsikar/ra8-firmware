@@ -8,7 +8,7 @@
  * @details
  * scaffold for the ethernet PAL. The PAL sits between the
  * Ring-3 ``ra_eth_*`` driver and any higher-level network stack
- * (lwIP today, possibly TCPDirect or a custom stack later).
+ * (NetX Duo today, possibly TCPDirect or a custom stack later).
  *
  * Responsibilities:
  *
@@ -18,15 +18,15 @@
  * - Track link state and surface it to the stack.
  * - Hide the MSTP / clock-gate dance behind ``ra_net_pal_init``.
  *
- * The PAL is intentionally stack-agnostic. lwIP's ``ethernetif.c``
- * port (added in a later wave) will wrap this API; no lwIP types
- * appear in this header. The same is true for any future TCPDirect
- * or zero-stack consumer.
+ * The PAL is intentionally stack-agnostic. NetX Duo's driver
+ * (``port/netxduo/nx_ether_driver_ra_eth.c``) wraps this API; no
+ * NetX Duo types appear in this header. The same is true for any
+ * future TCPDirect or zero-stack consumer.
  *
  * ## Layering
  *
  * +------------------------+ ra_net_pal_send_frame
- * | network stack (lwIP) | ra_net_pal_recv_frame
+ * | network stack (NetX)  | ra_net_pal_recv_frame
  * +-----------+------------+ ra_net_pal_link_status
  * |
  * v
@@ -55,8 +55,7 @@
  * ``ra_net_pal_recv_frame``. On real hardware the ring is backed
  * by the GWCA descriptor engine; in host tests it is a plain
  * contiguous RAM buffer. The stack-facing contract is identical
- * in either case, so lwIP's ``ethernetif.c`` port talks to the
- * same API.
+ * in either case, so NetX Duo's driver talks to the same API.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

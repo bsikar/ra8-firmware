@@ -7,7 +7,7 @@
  * handlers (``internal_handle_find_info``, ``internal_handle_read_by_type``,
  * ``internal_handle_write``) that are not directly callable from the
  * host. Per the operand-identical mirror-helper pattern established in
- * ``tests/test_lwip_sys_arch.c``, each such decision is paired with a
+ * ``tests/test_ux_dcd_ra_usb.c``, each such decision is paired with a
  * ``static inline`` mirror that exercises the same short-circuit truth
  * table on the host build. The ``ra_ble_host_att_handle_pdu`` guard is
  * exercised directly via the public symbol.

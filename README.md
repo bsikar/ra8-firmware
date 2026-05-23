@@ -86,7 +86,7 @@ unmodified on the x86_64 host. On Apple Silicon the kernel rejects
   extra hardware).
 - `libs/ra_*` -- hand-written HAL, BSP, PALs, crypto, graphics, EPUB,
   NSC veneers.
-- `libs/third_party/` -- vendored ThreadX X-Ware, lwIP, NimBLE, Mbed TLS,
+- `libs/third_party/` -- vendored ThreadX X-Ware, NimBLE, Mbed TLS,
   litehtml, tinyxml2, etc. with integration shims.
 - `src/secure_app/` -- TrustZone secure-side substrate.
 - `tests/` -- host-side unit tests (native gcc/clang, not cross-compiled).

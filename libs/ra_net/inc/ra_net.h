@@ -1,6 +1,6 @@
 /**
  * @file ra_net.h
- * @brief Minimal lwIP-style TCP/IP stack adapter on top of ra_net_pal.
+ * @brief Minimal hand-rolled TCP/IP stack adapter on top of ra_net_pal.
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
@@ -8,8 +8,9 @@
  * @details
  * ``ra_net`` is a tiny, statically-allocated TCP/IPv4 stack that sits
  * on top of the Ring-3 ``ra_eth`` driver via the ``ra_net_pal``
- * descriptor-ring adapter. The goal is _not_ a full lwIP port -- lwIP
- * is roughly 30 KLOC and a substantial dependency to vendor in. This
+ * descriptor-ring adapter. The goal is _not_ a full third-party TCP/IP
+ * port (NetX Duo is the canonical heavy-weight choice; see issue #7).
+ * This
  * stack implements the smallest cross-section of the standard sockets
  * surface that supports the apps in this tree:
  *
