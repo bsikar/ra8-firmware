@@ -207,9 +207,14 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   }
   priv_unpack_mac(iface, s_local_mac);
 
+  /* EK-RA8D2 wires its RJ45 to ETHA1 / RMAC1 -- channel 0 is unused
+   * on this board. Bench-confirmed: with channel=0 the GWCA goes
+   * to OPERATION and ra_eth_open reports k_ra_ok but the on-silicon
+   * MRGFCE/MTGFCE counters on RMAC1 stay zero because frames go to
+   * the unwired ETHA0/RMAC0 port instead. Issue #1 trail. */
   ra_eth_cfg_t cfg = {
     .mac_address        = {0U, 0U, 0U, 0U, 0U, 0U},
-    .channel            = 0U,
+    .channel            = 1U,
     .num_tx_descriptors = 0U,
     .num_rx_descriptors = 0U,
     .buffer_size        = 0U,
