@@ -103,27 +103,11 @@ static const char* s_demo_tag = "TZSECONLYHS";
 #include "ux_device_stack.h"
 #include "ux_system.h"
 
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms) AND ThreadX's timer (for tx_thread_sleep and
- * semaphore timeouts). The default weak ra_time SysTick handler only advances
- * the ms counter; without _tx_timer_interrupt ThreadX time never advances
- * and PendSV / scheduling latency on resumed threads explodes. The project's
- * tx_initialize_low_level.S configures SysTick but relies on the application
- * to publish the handler. */
-extern void ra_time_on_tick(void);
-extern void _tx_timer_interrupt(void);
-void        SysTick_Handler(void);
-void        SysTick_Handler(void)
-{
-  ra_time_on_tick();
-  _tx_timer_interrupt();
-  /* Re-enable the USB IRQ at the NVIC level. The bridge's ISR
-   * spurious-entry path masks it to break the USBR-driven storm
-   * (RA8D2 USBHS combined INT+RESUME line); we tick it back on
-   * every 1 ms ThreadX tick so any real event is processed within
-   * one period. */
-  ux_dcd_ra_usb_irq_reenable();
-}
+/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+ * shared weak SysTick_Handler dispatches into ThreadX (via a weak
+ * extern to `_tx_timer_interrupt`) AND re-arms the USB storm-guard
+ * NVIC line (via a weak extern to `ux_dcd_ra_usb_irq_reenable`), so
+ * no per-app override is needed. Closes Issue #8. */
 #endif
 
 /* -------------------------------------------------------------------------- */

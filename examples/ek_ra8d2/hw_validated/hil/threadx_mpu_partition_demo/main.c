@@ -146,22 +146,15 @@ static const ra_mpu_cfg_t s_mpu_cfg = {
 };
 
 /* ---------------------------------------------------------------------------
- * SysTick override + ThreadX storage.
+ * ThreadX storage.
+ * SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+ * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
+ * to `_tx_timer_interrupt`) so no per-app override is needed.
  * --------------------------------------------------------------------------- */
 
 #ifndef RA_SIMULATOR_MODE
-/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
-extern void _tx_timer_interrupt(void);
-/* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
-
 static uint8_t   s_thread_stack[k_mpu_thread_stack_bytes] __attribute__((aligned(8)));
 static TX_THREAD s_thread;
-
-void SysTick_Handler(void);
-void SysTick_Handler(void)
-{
-  _tx_timer_interrupt();
-}
 
 /**
  * @var g_threadx_mpu_partition_match

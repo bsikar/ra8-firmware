@@ -97,19 +97,7 @@ typedef enum : uint16_t {
   k_blink_b_ticks = 1000U,
 } blink_period_t;
 
-/* ---------------------------------------------------------------------------
- * Vector table override: SysTick_Handler -> _tx_timer_interrupt.
- *
- * `vector_table.c` declares SysTick_Handler weak-aliased to
- * Default_Handler. Providing this strong definition tells the linker to
- * use it instead, so SysTick now drives the ThreadX scheduler tick.
- * --------------------------------------------------------------------------- */
-
 #ifndef RA_SIMULATOR_MODE
-/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) -- ThreadX-supplied symbol. */
-extern void _tx_timer_interrupt(void);
-/* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
-
 /* ---------------------------------------------------------------------------
  * Static thread + stack storage. Only meaningful on the cross build,
  * where TX_THREAD is defined by the ThreadX vendor headers.
@@ -157,31 +145,10 @@ static TX_THREAD s_thread_b;
  */
 volatile uint32_t g_threadx_blink_tick = 0U;
 
-/**
- * @brief SysTick exception handler.
- *
- * @details
- * Tail-calls into the ThreadX timer interrupt so each 1 ms SysTick
- * advances the kernel tick counter, evaluates timers, and pre-empts
- * the running thread when a higher-priority thread becomes ready.
- *
- * @pre Called from exception context (IPSR == 15).
- * @pre `_tx_initialize_low_level` has programmed SysTick.
- *
- * @post `_tx_thread_system_state` and the timer-list head reflect one
- *       elapsed tick.
- * @post On return PendSV may be pending if the scheduler chose a new
- *       thread.
- *
- * @note Runs at the priority programmed in
- *       `tx_initialize_low_level.S` (0x40); IRQs at lower priority
- *       can still pre-empt it through PRIMASK / BASEPRI.
- */
-void SysTick_Handler(void);
-void SysTick_Handler(void)
-{
-  _tx_timer_interrupt();
-}
+/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+ * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
+ * to `_tx_timer_interrupt`) so no per-app override is needed. Closes
+ * Issue #8. */
 
 /* ---------------------------------------------------------------------------
  * Thread bodies.
