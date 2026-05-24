@@ -1,14 +1,21 @@
 #
-# Per-app CMake for the `cpu1_pingpong_ipc` firmware.
+# Per-app CMake for the `cpu1_pingpong_ipc_ipc` firmware.
 #
 # Usable two ways:
-#   1. Standalone, from inside `cpu1_pingpong_ipc/`:
+#   1. Standalone, from inside `cpu1_pingpong_ipc_ipc/`:
 #        cmake -S . -B build \
-#              -DCMAKE_TOOLCHAIN_FILE=../../../../cmake/toolchain-ra8d2.cmake
+#              -DCMAKE_TOOLCHAIN_FILE=../../../../../cmake/toolchain-ra8d2.cmake
 #        cmake --build build
-#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/cpu1_pingpong_ipc).
+#   2. Pulled in by the top-level CMakeLists.txt via auto-discovery.
 #
-# Either path produces cpu1_pingpong_ipc.elf / cpu1_pingpong_ipc.hex / cpu1_pingpong_ipc.bin in the build dir.
+# Either path produces cpu1_pingpong_ipc_ipc.elf / .hex / .bin in the build dir.
+#
+# This app exercises the FSP-style secure-boot scaffolding (SAU init +
+# CPSCU PRCR-unlocked IPCSAR write + BLXNS into the NS world). The
+# secure-boot library is libs/ra_tz_secure_boot/.
+#
+# RA_TRUSTZONE_ENABLE defaults to ON for this app because the IPCSAR
+# write is secure-only -- the single-world build cannot land it.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -55,7 +62,10 @@ if(RA_APP_STANDALONE)
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Og -g3")
     set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-g3")
 
-    option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
+    # This app *requires* TrustZone -- the IPCSAR write its acceptance
+    # criterion depends on is Secure-only. Override the project-wide
+    # default by enabling TZ by default for the standalone build.
+    option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
 else()
     # Embedded mode: parent already set toolchain, std, build type.
     get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
@@ -83,8 +93,16 @@ file(GLOB_RECURSE LIB_RA_CORE_SOURCES   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/r
 file(GLOB_RECURSE LIB_RA_HAL_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_net_pal/src/*.c)
 file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_usb_pal/src/*.c)
-file(GLOB_RECURSE LIB_RA_NSC_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_nsc/src/*.c)
+# Drop the full ra_nsc/ source set when building this app with
+# ``-mcmse``: several existing NSC veneers (ra_nsc_comms.c, ra_nsc_eth.c,
+# etc.) take struct-by-pointer arguments that gcc rejects under
+# ``cmse_nonsecure_entry`` (parameters must be register-sized scalars).
+# This app's TZ scaffold does not use any of those veneers, so excluding
+# the whole library is the cleanest path. Other consumers of ra_nsc are
+# untouched because they don't build with -mcmse.
+set(LIB_RA_NSC_SOURCES "")
 file(GLOB_RECURSE LIB_RA_BOARD_SOURCES  CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
+file(GLOB_RECURSE LIB_RA_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_tz_secure_boot/src/*.c)
 file(GLOB_RECURSE APP_SECURE_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
 
 #############################################################################
@@ -101,6 +119,7 @@ add_executable(${RA_APP_NAME}.elf
     ${LIB_RA_USB_PAL_SOURCES}
     ${LIB_RA_NSC_SOURCES}
     ${LIB_RA_BOARD_SOURCES}
+    ${LIB_RA_TZ_SECURE_BOOT_SOURCES}
     ${APP_SECURE_SOURCES}
 )
 
@@ -124,6 +143,7 @@ target_include_directories(${RA_APP_NAME}.elf PRIVATE
     ${RA_REPO_ROOT}/libs/ra_usb_pal/inc
     ${RA_REPO_ROOT}/libs/ra_nsc/inc
     ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/inc
+    ${RA_REPO_ROOT}/libs/ra_tz_secure_boot/inc
 )
 
 target_link_options(${RA_APP_NAME}.elf PRIVATE

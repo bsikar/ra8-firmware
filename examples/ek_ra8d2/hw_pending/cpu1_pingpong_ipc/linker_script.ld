@@ -123,8 +123,8 @@ SECTIONS
 
     /* ---- CPU1 (Cortex-M33) firmware image ----
      *
-     * The cpu1_pingpong_ipc app builds two separate ELFs: this one for the
-     * Cortex-M85 primary core, and ``cpu1_pingpong_ipc_cpu1.elf`` for the
+     * The cpu1_pingpong app builds two separate ELFs: this one for the
+     * Cortex-M85 primary core, and ``cpu1_pingpong_cpu1.elf`` for the
      * Cortex-M33 secondary core. Per HUM Ch 2.6.1.1 "Boot CPU Selection"
      * p 117 the secondary CPU sits in power-gating at reset and is
      * released only when CPU0 writes CPU1ACTCSR; it then fetches its
@@ -342,4 +342,3 @@ ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
 
 g_ra_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
 g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;
-

@@ -1,55 +1,30 @@
 /**
- * @file examples/ek_ra8d2/blink/trustzone_init.c
- * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
+ * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/trustzone_init.c
+ * @brief Per-app secure-boot wiring for cpu1_pingpong_ipc
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}
  *
  * @details
- * scaffold for the secure / non-secure address-space split.
- * Programs the SAU with four canonical regions and enables it. Called
- * from ``SystemInit`` after the cache + MPU are up but before any
- * non-secure code can run.
+ * Thin wrapper around ``libs/ra_tz_secure_boot/`` -- the per-app file
+ * exists because the auto-discovery glue scans for ``trustzone_init.c``
+ * in each example directory. The actual SAU + CPSCU + BLXNS sequence
+ * lives in ``ra_tz_secure_boot_run`` so other apps can share it.
  *
- * The function is gated behind the ``RA_TRUSTZONE_ENABLE`` build
- * symbol so the single-world build (the ..8 default) does not
- * pay any code-size cost. When the symbol is undefined,
- * ``ra_trustzone_init`` is an empty inline.
+ * When ``RA_TRUSTZONE_ENABLE`` is not defined the function is a no-op
+ * so the single-world build is unaffected. When it is defined the
+ * secure-boot:
+ *   1. Programmes the five-region SAU partition.
+ *   2. Unlocks ``PRCR_S.PRC4`` and writes ``IPCSAR = 0x00050000``
+ *      (SAIPCIR0 + SAIPCIR2 set) so channels 0 and 2 -- the two CPU1
+ *      (always-NS) endpoints -- become NS-accessible.
+ *   3. Re-locks PRCR_S.
+ *   4. BLXNS-es into the NS image starting at ``NS_VECTOR_TABLE``,
+ *      which the linker places at the NS-MRAM base (0x02080000).
  *
- * ## Partition layout (scaffold)
- *
- * The RA8D2 IDAU defines bit 28 of the address as the security
- * attribute by default (S = bit 28 clear, NS = bit 28 set). The
- * SAU overlays additional rules. The partition is:
- *
- * | Region | Range | Attribute |
- * |-------:|:----------------------------|:--------------------|
- * | 0 | 0x02080000..0x020FFFFF | NS (upper MRAM) |
- * | 1 | 0x22100000..0x221FFFFF | NS (upper SRAM) |
- * | 2 | 0x6A000000..0x6BFFFFFF | NS (upper SDRAM) |
- * | 3 | 0x10000000..0x100FFFFF | NSC veneer alias |
- *
- * - Lower MRAM (0x02000000..0x0207FFFF) stays secure -- holds the
- * secure world image.
- * - Lower SRAM (0x22000000..0x220FFFFF) stays secure -- holds the
- * secure-world data + key vault.
- * - Upper MRAM / SRAM / SDRAM are exposed to the NS world for
- * the application.
- * - The NSC veneer page lives in a 1 MB alias the linker maps via
- * the ``.gnu.sgstubs`` section.
- *
- * These addresses are illustrative -- the actual partition lands
- * once the linker script grows the matching memory
- * regions and the veneer section is wired up.
- *
- * @par TrustZone Safety:
- * - **Validates:** SAU_TYPE.SREGION reports >= 4 regions before
- * programming any of them (chip family safety check).
- * - **Trusts:** the Boot ROM left the SAU disabled and the IDAU
- * in its reset state.
- * - **Denies:** any access from NS code to the registers programmed
- * here -- the entire SAU register window lives in the secure
- * region by definition.
+ * Bench validation is NOT performed by this commit -- a human operator
+ * with ``scripts/hil_recover.sh`` warm is the only safe path to flash
+ * the resulting image (see ``project_sau_sgstubs_brick``).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -59,154 +34,98 @@
 
 #include <stdint.h>
 
-#ifdef RA_TRUSTZONE_ENABLE
-
-/* =============================================================================
- * SAU register addresses (System Control Space, secure alias)
- * =============================================================================
- */
-
-typedef enum : uintptr_t {
-  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register. */
-  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register. */
-  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number. */
-  k_ra_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
-  k_ra_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
-  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register. */
-} ra_tz_sau_addr_t;
+#include "ra_err.h"
+#include "ra_log.h"
+#include "ra_tz_secure_boot.h"
 
 /**
- * @enum ra_tz_sau_ctrl_bit_t
- * @brief SAU_CTRL bit positions.
- */
-typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable. */
-  k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
-} ra_tz_sau_ctrl_bit_t;
-
-/**
- * @enum ra_tz_sau_rlar_bit_t
- * @brief SAU_RLAR bit positions.
- */
-typedef enum : uint32_t {
-  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active. */
-  k_ra_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
-} ra_tz_sau_rlar_bit_t;
-
-/**
- * @enum ra_tz_partition_t
- * @brief canonical region addresses.
+ * @enum cpu1_pingpong_ipc_tz_const_t
+ * @brief Constants for the cpu1_pingpong_ipc secure boot.
  *
  * @details
- * SAU regions are 32-byte aligned per ARMv8-M; RLAR holds the
- * upper bound minus 32 OR-ed with the enable bits at write time.
+ *  - ``k_ipcsar_value`` matches the acceptance criterion of issue #22:
+ *    SAIPCIR0 (bit 16) + SAIPCIR2 (bit 18) = 0x00050000.
+ *  - ``k_ipcpar_value`` stays at 0 -- channels remain Privileged-only.
+ *  - ``k_ns_vector_table_addr`` is the linker-pinned start of NS MRAM
+ *    where the NS image's vector table is placed.
+ *
+ * @invariant ``k_ipcsar_value`` must clear bits 17/19 so SAIPCIR1 and
+ *            SAIPCIR3 stay Secure (CPU0 owns those channels).
+ *
+ * @see ra_tz_secure_boot_run
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_tz_ns_mram_base    = 0x02080000UL,
-  k_ra_tz_ns_mram_limit   = 0x020FFFE0UL,
-  k_ra_tz_ns_sram_base    = 0x22100000UL,
-  k_ra_tz_ns_sram_limit   = 0x221FFFE0UL,
-  k_ra_tz_ns_sdram_base   = 0x6A000000UL,
-  k_ra_tz_ns_sdram_limit  = 0x6BFFFFE0UL,
-  k_ra_tz_nsc_veneer_base = 0x10000000UL,
-  k_ra_tz_nsc_veneer_lim  = 0x100FFFE0UL,
-} ra_tz_partition_t;
-
-/* =============================================================================
- * Internal helpers
- * =============================================================================
- */
-
-static inline void internal_dsb(void)
-{
-  __asm__ volatile("dsb 0xF" ::: "memory");
-}
-
-static inline void internal_isb(void)
-{
-  __asm__ volatile("isb 0xF" ::: "memory");
-}
-
-static void internal_write32(uintptr_t addr, uint32_t value)
-{
-  *(volatile uint32_t*)addr = value;
-}
-
-static uint32_t internal_read32(uintptr_t addr)
-{
-  return *(volatile uint32_t*)addr;
-}
+  k_ipcsar_value         = 0x00050000UL, /**< SAIPCIR0 + SAIPCIR2 = NS. */
+  k_ipcpar_value         = 0x00000000UL, /**< Privileged-only (default).*/
+  k_ns_vector_table_addr = 0x02080000UL, /**< NS image entry vectors.   */
+} cpu1_pingpong_ipc_tz_const_t;
 
 /**
- * @brief Programme one SAU region via RNR/RBAR/RLAR.
+ * @var g_cpu1_pingpong_ipc_ipcsar_post
+ * @brief HIL post-secure-boot IPCSAR read-back diagnostic.
  *
- * @param[in] region Region number 0..(SAU_TYPE.SREGION - 1).
- * @param[in] base Start address (32-byte aligned).
- * @param[in] limit Upper bound minus 32 (32-byte aligned).
- * @param[in] is_nsc ``true`` to mark the region as NSC.
+ * @details
+ * Bench scripts read this through SWD: it must hold ``0x00050000``
+ * after the secure boot has finished. The variable is updated from
+ * within ``ra_trustzone_init`` immediately after the IPCSAR write so a
+ * J-Link memprobe can pinpoint whether the write landed even if the
+ * BLXNS later fails.
+ *
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
  */
-static void internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
-{
-  internal_write32(k_ra_sau_rnr_addr, region);
-  internal_write32(k_ra_sau_rbar_addr, base);
-  uint32_t rlar = limit | (uint32_t)k_ra_sau_rlar_enable;
-  if (is_nsc) {
-    rlar |= (uint32_t)k_ra_sau_rlar_nsc;
-  }
-  internal_write32(k_ra_sau_rlar_addr, rlar);
-}
+volatile uint32_t g_cpu1_pingpong_ipc_ipcsar_post = 0U;
 
-/* =============================================================================
- * Public entry point
- * =============================================================================
+/**
+ * @var g_cpu1_pingpong_ipc_tz_step
+ * @brief Mirror of ``ra_tz_secure_boot_get_step`` for SWD readback.
+ *
+ * @details One-shot snapshot taken inside ``ra_trustzone_init`` for
+ *          bench diagnostics. Mirrors the secure-boot library step
+ *          enum (``ra_tz_secure_boot_step_t``).
+ *
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
  */
-
-#endif /* RA_TRUSTZONE_ENABLE */
+volatile uint8_t g_cpu1_pingpong_ipc_tz_step = 0U;
 
 void ra_trustzone_init(void)
 {
 #ifdef RA_TRUSTZONE_ENABLE
-  /* Sanity check: SAU_TYPE.SREGION must report >= 4 implemented
-   * regions for our partition to fit. The Cortex-M85 always has 8,
-   * but a chip-specific override could trim the count. */
-  const uint32_t sau_type = internal_read32(k_ra_sau_type_addr);
-  if ((sau_type & 0xFFU) < 4U) {
-    /* Refuse to bring up TrustZone on an SAU we cannot use. The
-     * caller will see SAU_CTRL.ENABLE clear and fall back to the
-     * single-world model. */
+  /* Pre 1: this function is called from SystemInit, BEFORE the .data
+   * copy / .bss zero. We must not read or write any non-volatile
+   * globals -- the diagnostic stamps below are volatile. */
+  /* Pre 2: the boot ROM left SAU disabled and IDAU in reset state. */
+
+  const uint32_t* ns_vt = (const uint32_t*)(uintptr_t)k_ns_vector_table_addr;
+
+  const ra_err_t err = ra_tz_secure_boot_sau_init();
+  if (err != k_ra_ok) {
+    ra_log_error_val("CPU1IPC", "sau_init failed", (uint32_t)err);
+    const ra_tz_secure_boot_step_t step_fail = ra_tz_secure_boot_get_step();
+    g_cpu1_pingpong_ipc_tz_step              = (uint8_t)step_fail;
     return;
   }
 
-  /* Region 0: NS upper MRAM */
-  internal_sau_set_region(0U,
-                          (uint32_t)k_ra_tz_ns_mram_base,
-                          (uint32_t)k_ra_tz_ns_mram_limit,
-                          /*is_nsc=*/false);
+  (void)ra_tz_secure_boot_security_init((uint32_t)k_ipcsar_value, (uint32_t)k_ipcpar_value);
+  /* HUM Ch 3.2.1 "IPCSAR" p 205 -- read-back so a J-Link memprobe can
+   * confirm the write landed even if BLXNS later wedges. */
+  g_cpu1_pingpong_ipc_ipcsar_post        = *(volatile uint32_t*)0x40008610UL;
+  const ra_tz_secure_boot_step_t step_ok = ra_tz_secure_boot_get_step();
+  g_cpu1_pingpong_ipc_tz_step            = (uint8_t)step_ok;
 
-  /* Region 1: NS upper SRAM */
-  internal_sau_set_region(1U,
-                          (uint32_t)k_ra_tz_ns_sram_base,
-                          (uint32_t)k_ra_tz_ns_sram_limit,
-                          /*is_nsc=*/false);
+  /* On hardware ra_tz_secure_boot_jump_ns does not return. On host
+   * the BLXNS is captured into the secure-boot library's state for
+   * the unit tests to inspect. */
+  (void)ra_tz_secure_boot_jump_ns(ns_vt);
 
-  /* Region 2: NS upper SDRAM */
-  internal_sau_set_region(2U,
-                          (uint32_t)k_ra_tz_ns_sdram_base,
-                          (uint32_t)k_ra_tz_ns_sdram_limit,
-                          /*is_nsc=*/false);
-
-  /* Region 3: NSC veneer alias ( will place .gnu.sgstubs
-   * here via the linker script). */
-  internal_sau_set_region(3U,
-                          (uint32_t)k_ra_tz_nsc_veneer_base,
-                          (uint32_t)k_ra_tz_nsc_veneer_lim,
-                          /*is_nsc=*/true);
-
-  /* Enable the SAU. Leave ALLNS clear: anything we have not
-   * explicitly carved out stays secure (default-deny). */
-  internal_dsb();
-  internal_write32(k_ra_sau_ctrl_addr, (uint32_t)k_ra_sau_ctrl_enable);
-  internal_dsb();
-  internal_isb();
+  /* Post 1: g_cpu1_pingpong_ipc_ipcsar_post == 0x00050000 (bench). */
+  /* Post 2: ra_tz_secure_boot_get_step() == ..._branched (host) /
+   *         control transferred to NS reset_handler (target). */
+#else
+  /* Without RA_TRUSTZONE_ENABLE this is a no-op. */
+  g_cpu1_pingpong_ipc_tz_step     = 0U;
+  g_cpu1_pingpong_ipc_ipcsar_post = 0U;
 #endif
 }
