@@ -445,48 +445,225 @@ static ra_err_t internal_resolve_sizes(const ra_eth_cfg_t* cfg,
 }
 
 /**
+ * @enum ra_eth_etha_queue_t
+ * @brief ETHA per-class TX descriptor queue depth budget.
+ *
+ * @details HUM Ch 29 Table 29.4 ("ESWM / ETHA recommended settings",
+ * p 1306) sets the convention: when QoS is not in use, queue 0 owns
+ * the entire 512-descriptor TX queue budget and queues 1..7 stay at
+ * 0. EATDQDCq.DQD is 11 bits (HUM Ch 32.3.2.7 p 1641); 512 fits.
+ *
+ * Bench trail: with all EATDQDC[q].DQD = 0 (silicon reset value),
+ * the ETHA's per-class TX descriptor RAM cannot accept any
+ * descriptors from the GWCA. Small frames that fit entirely inside
+ * the ETHA's internal MAC FIFO pass through (RMAC's MTGFCE still
+ * advances), but frames that exceed the FIFO depth need a TX
+ * descriptor slot in the ETHA RAM, which never opens. Symptom:
+ * issue #21 (TCP echo times out at >= ~600 byte payloads).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra_eth_etha_q0_depth        = 512U, /**< Queue 0 owns the full TX RAM budget. */
+  k_ra_eth_etha_q_other_depth   = 0U,   /**< Queues 1..7 disabled (no QoS).       */
+  k_ra_eth_etha_active_tc       = 0U,   /**< Direct-format TX always uses TC 0.   */
+  k_ra_eth_etha_tc_count_active = 8U,   /**< EATDQDC array has 8 entries.         */
+} ra_eth_etha_queue_t;
+
+/**
+ * @brief Programme ETHA per-class TX queue depths (issue #21 fix).
+ *
+ * @details Sets ``EATDQDC[0].DQD = 512`` and ``EATDQDC[1..7].DQD = 0``
+ * per the HUM Ch 29 Table 29.4 ("ESWM / ETHA recommended settings"
+ * p 1306) no-QoS convention. Must be called while ETHA is in
+ * CONFIG mode (HUM Ch 32.3.2.7 "EATDQDCq" p 1641 -- writes only
+ * stick in CONFIG). With these registers at silicon reset (0), the
+ * ETHA TX descriptor RAM cannot accept any descriptor from the
+ * GWCA, which manifests as "large frames silently dropped" once a
+ * frame exceeds whatever fits into the ETHA's internal MAC FIFO
+ * (bench-observed crossover near 600 B).
+ *
+ * @param[in] etha_port ETHA port being configured.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               EATDQDC[0..7] programmed.
+ * @retval k_ra_err_invalid_arg  ra_etha_set_queue_depth rejected a class.
+ *
+ * @pre etha_port is in CONFIG mode.
+ * @pre etha_port is a valid ::ra_etha_port_t.
+ * @post EATDQDC[0].DQD == 512, EATDQDC[1..7].DQD == 0.
+ * @post ETHA can now accept TX descriptors from GWCA on TC 0.
+ *
+ * @note Not thread-safe; caller serialises ETHA bring-up.
+ * @since 0.1.0
+ */
+static ra_err_t internal_etha_program_tx_queues(ra_etha_port_t etha_port)
+{
+  /* HUM Ch 32.3.2.7 "EATDQDCq : Per-class TX Queue Depth Cfg" p 1641 */
+  const ra_err_t q0_err = ra_etha_set_queue_depth(etha_port,
+                                                  (ra_etha_tc_t)k_ra_eth_etha_active_tc,
+                                                  (uint16_t)k_ra_eth_etha_q0_depth);
+  if (q0_err != k_ra_ok) {
+    return q0_err;
+  }
+  /* HUM Ch 29 Table 29.4 "ESWM / ETHA recommended settings" p 1306 --
+   * with no QoS, queues 1..7 stay at depth 0 so all of the TX
+   * descriptor RAM budget is reserved for queue 0. */
+  for (uint8_t tc = 1U; tc < (uint8_t)k_ra_eth_etha_tc_count_active; ++tc) {
+    /* HUM Ch 32.3.2.7 "EATDQDCq : Per-class TX Queue Depth Cfg" p 1641 */
+    const ra_err_t err =
+      ra_etha_set_queue_depth(etha_port, (ra_etha_tc_t)tc, (uint16_t)k_ra_eth_etha_q_other_depth);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @struct ra_eth_tx_diag_t
+ * @brief Bench-readable TX-path diagnostics for issue #21.
+ *
+ * @details Module-internal struct populated by ::internal_bring_up_rmac
+ * and ::ra_eth_write so JLink mem32 can verify on the bench:
+ *   - ``etha_q0_depth_programmed`` -- what we asked ra_etha to write.
+ *   - ``etha_q0_eatdqdc_readback`` -- what ETHA reports after the write
+ *     (silently 0 if the CONFIG-mode gate was missed).
+ *   - ``last_tx_len`` -- byte length of the most recent ra_eth_write.
+ *   - ``last_eatdqm_dnq`` -- live EATDQM[0].DNQ snapshot (current
+ *     pending-descriptor count in the ETHA TX RAM) sampled right after
+ *     the GWCA kick. Stays at 0 in the broken (DQD=0) path and rises
+ *     above 0 if the descriptor briefly queued.
+ *   - ``last_eaeis2_dqoes`` -- EAEIS2.DQOES per-class status snapshot
+ *     after the kick; bit q lights if queue q overflowed.
+ *
+ * @invariant Mutated only from the NetX IP thread context (single
+ * writer) so no synchronisation is required for the bench reader.
+ *
+ * @note Bench-only seam; never declared in any header, never read by
+ *       production code. Lives in .bss so the linker map exposes the
+ *       symbol to JLink.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t etha_q0_depth_programmed; /**< Last EATDQDC[0] value we tried to write. */
+  uint32_t etha_q0_eatdqdc_readback; /**< Read-back of EATDQDC[0] post-write.      */
+  uint32_t last_tx_len;              /**< Bytes handed to ra_eth_gwca_default_send. */
+  uint32_t last_eatdqm_dnq;          /**< Most recent EATDQM[0].DNQ sample.        */
+  uint32_t last_eaeis2_dqoes;        /**< EAEIS2 read after the most recent kick.  */
+  uint32_t tx_calls_total;           /**< Total ra_eth_write entries.              */
+  uint32_t tx_calls_above_512;       /**< ra_eth_write entries with len > 512.     */
+} ra_eth_tx_diag_t;
+
+/**
+ * @var g_ra_eth_tx_diag
+ * @brief Bench-readable TX diagnostics; see ::ra_eth_tx_diag_t.
+ *
+ * @note Read externally by JLink only; production code never reads it.
+ * @warning Not part of the public ABI; bench/debug only.
+ * @since 0.1.0
+ */
+volatile ra_eth_tx_diag_t g_ra_eth_tx_diag;
+
+/**
+ * @brief Programme ETHA registers that only stick while in CONFIG mode.
+ *
+ * @details Walks the issue #21 fix steps: programme EATDQDC[0..7] per
+ * HUM Ch 29 Table 29.4 ("ESWM / ETHA recommended settings" p 1306) and
+ * snapshot EATDQDC[0] into the bench-readable diagnostic so JLink can
+ * verify the write landed. Without this step the ETHA's per-class TX
+ * descriptor RAM stays at silicon reset (DQD = 0) and the chip drops
+ * any frame too big to fit its internal MAC FIFO.
+ *
+ * @param[in] etha_port ETHA port currently in CONFIG mode.
+ *
+ * @return ::ra_err_t Error code propagated from the queue programming.
+ * @retval k_ra_ok               EATDQDC programming + diag snapshot done.
+ * @retval k_ra_err_invalid_arg  ra_etha_set_queue_depth rejected an arg.
+ *
+ * @pre etha_port is in CONFIG mode (writes only stick there).
+ * @pre etha_port is a valid ::ra_etha_port_t.
+ * @post g_ra_eth_tx_diag.etha_q0_eatdqdc_readback reflects EATDQDC[0].
+ * @post Returned err matches ::internal_etha_program_tx_queues.
+ *
+ * @note Not thread-safe; caller serialises ETHA bring-up.
+ * @since 0.1.0
+ */
+static ra_err_t internal_etha_config_window(ra_etha_port_t etha_port)
+{
+  /* Issue #21: programme EATDQDC before leaving CONFIG. With
+   * EATDQDC[0..7] all at silicon reset (DQD = 0), the ETHA's per-class
+   * TX descriptor RAM cannot accept any descriptor from the GWCA --
+   * frames small enough to fit the ETHA's internal MAC FIFO still
+   * trickle through (MTGFCE counts them) but frames that exceed the
+   * FIFO stall silently. HUM Ch 29 Table 29.4 ("ESWM / ETHA recommended
+   * settings" p 1306) gives the no-QoS layout used here: queue 0 owns
+   * the full 512-descriptor budget, queues 1..7 stay 0. */
+  g_ra_eth_tx_diag.etha_q0_depth_programmed = (uint32_t)k_ra_eth_etha_q0_depth;
+  const ra_err_t q_err                      = internal_etha_program_tx_queues(etha_port);
+  /* HUM Ch 32.3.2.7 "EATDQDCq : Per-class TX Queue Depth Cfg" p 1641 --
+   * read EATDQDC[0] back so the bench can confirm the write landed. */
+  g_ra_eth_tx_diag.etha_q0_eatdqdc_readback = ra_etha(etha_port)->EATDQDC[0];
+  return q_err;
+}
+
+/**
+ * @brief Resolve the ETHA port that pairs with a channel index.
+ *
+ * @details Channel 0 -> ETHA port 0; channel 1 -> ETHA port 1.
+ *
+ * @param[in] channel Channel id (already bounds-checked).
+ * @return Matching ::ra_etha_port_t.
+ * @retval k_ra_etha_port_0 channel == 0.
+ * @retval k_ra_etha_port_1 channel == 1 (any non-zero value).
+ *
+ * @pre channel <= 1.
+ * @pre Caller is in the eth open path.
+ * @post Returned value is one of k_ra_etha_port_0 / k_ra_etha_port_1.
+ * @post No global state mutated.
+ *
+ * @note Not thread-safe; pure mapping.
+ * @since 0.1.0
+ */
+static inline ra_etha_port_t internal_channel_to_etha_port(uint8_t channel)
+{
+  if (channel == 0U) {
+    return (ra_etha_port_t)k_ra_etha_port_0;
+  }
+  return (ra_etha_port_t)k_ra_etha_port_1;
+}
+
+/**
  * @brief Bring the per-channel RMAC port up and program the MAC address.
  *
  * @param[in] cfg User configuration.
  *
  * @return ::ra_err_t Error code.
  *
- * @details See implementation.
+ * @details Drives the DISABLE -> CONFIG -> {programme MAC + EATDQDC} ->
+ * DISABLE -> OPERATION bracket for the paired ETHA port. The MAC
+ * address only sticks in CONFIG (HUM Ch 33.4 "MRMAC0/1" p 1707) and
+ * EATDQDC only sticks in CONFIG (HUM Ch 32.3.2.7 p 1641). Per-step
+ * details live in the in-line comments + ::internal_etha_config_window.
+ *
  * @retval k_ra_ok Operation succeeded.
  * @pre cfg is non-null and cfg->channel is in [0, 1].
  * @pre Caller has already enabled the ESWM MSTP gate.
  * @post On success the RMAC port carries cfg->mac_address.
- * @post Caller-visible state matches the documented contract.
+ * @post On success ETHA EATDQDC[0].DQD = 512 (issue #21 fix).
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
 static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
 {
-  /* The board-level ``ra_board_ethernet_init`` (or its equivalent for
-   * non-EK boards) is expected to have already programmed RMAC's MPIC
-   * (PIS / LSC / PIPP / PSMCS), enabled the MSTP gate, and brought the
-   * matching ETHA into OPERATION mode. Overwriting MPIC here would
-   * clobber the carefully-computed MDC clock divider (PSMCS) and force
-   * the wrong PHY interface mode (MII instead of RGMII). The only
-   * RMAC-level state ``ra_eth_open`` still has to programme is the
-   * MAC address the application chose.
-   *
-   * HUM Ch 33.4 "MRMAC0 / MRMAC1" p 1707 -- the MAC address registers
-   * are paired with MPIC under the same write-once gate: silent on
-   * MAC writes while ETHA is in OPERATION. Bench-confirmed on
-   * EK-RA8D2: without the DISABLE -> CONFIG -> {MAC write} -> DISABLE
-   * -> OPERATION bracket, MRMAC0 / MRMAC1 read back as 0 after
-   * ra_eth_open completes, and every wire-side ARP "who-has 192.168.
-   * .1.42" gets dropped at the RMAC perfect-match comparator before
-   * the GWCA descriptor ring ever sees it.
-   *
-   * The board layer ran the bracket once during ra_rmac_init; we have
-   * to repeat it here so the application-supplied MAC actually lands
-   * in MRMAC0/MRMAC1. */
+  /* The board-level ``ra_board_ethernet_init`` already programmed
+   * MPIC; this driver only re-programmes the MAC address + EATDQDC
+   * within its own DISABLE -> CONFIG -> ... bracket. See
+   * ::internal_etha_config_window for the issue #21 reasoning. */
   const ra_rmac_port_t rmac_port = internal_channel_to_port(cfg->channel);
-  const ra_etha_port_t etha_port =
-    (cfg->channel == 0U) ? (ra_etha_port_t)k_ra_etha_port_0 : (ra_etha_port_t)k_ra_etha_port_1;
-  uint8_t mac_copy[k_ra_eth_mac_len];
+  const ra_etha_port_t etha_port = internal_channel_to_etha_port(cfg->channel);
+  uint8_t              mac_copy[k_ra_eth_mac_len];
   for (uint8_t i = 0U; i < (uint8_t)k_ra_eth_mac_len; ++i) {
     mac_copy[i] = cfg->mac_address[i];
   }
@@ -503,14 +680,20 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
     return err;
   }
 
+  /* Programme the CONFIG-window registers (EATDQDC + bench diag). */
+  const ra_err_t q_err = internal_etha_config_window(etha_port);
+
   /* HUM Ch 33.4 "MRMAC0 / MRMAC1" p 1707 -- writes only stick while
    * the paired ETHA is in CONFIG. */
   const ra_err_t mac_err = ra_rmac_set_mac_address(rmac_port, mac_copy);
 
-  /* Always return to OPERATION even on MAC write failure so the chip
-   * doesn't end up parked in CONFIG. */
+  /* Always return to OPERATION even on MAC / queue-depth write failure
+   * so the chip doesn't end up parked in CONFIG. */
   const ra_err_t dis_err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
   const ra_err_t op_err  = ra_etha_set_mode(etha_port, k_ra_etha_opc_operation);
+  if (q_err != k_ra_ok) {
+    return q_err;
+  }
   if (mac_err != k_ra_ok) {
     return mac_err;
   }
@@ -901,6 +1084,58 @@ ra_err_t ra_eth_close(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
+/**
+ * @enum ra_eth_tx_diag_threshold_t
+ * @brief Length threshold above which a TX call is flagged "large frame".
+ *
+ * @details Issue #21 cutoff: every TCP-echo payload >= ~600 B fails on
+ * the bench. The bench seam counts ra_eth_write calls with len > 512 so
+ * the JLink reader can confirm the large-frame path was actually
+ * exercised (a value of 0 means the test never sent large frames in
+ * the first place).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra_eth_tx_diag_large_threshold = 512U,
+} ra_eth_tx_diag_threshold_t;
+
+/**
+ * @brief Sample the bench-readable TX diagnostic snapshot.
+ *
+ * @details Capture EATDQM[0].DNQ (live count of pending TX descriptors)
+ * and EAEIS2 (per-class TX-queue overflow / security flags) **after**
+ * the GWCA kick. With the issue #21 fix landed, DNQ should briefly
+ * be 1 (one descriptor sitting in the ETHA TX RAM) and DQOES should
+ * stay 0; before the fix, DNQ stays 0 (queue depth is 0) and the
+ * frame disappears.
+ *
+ * @param[in] channel Logical channel index (matches ::ra_eth_cfg_t).
+ * @param[in] len     Bytes handed to ra_eth_gwca_default_send.
+ *
+ * @pre channel <= 1.
+ * @pre Caller is single-threaded with respect to this driver.
+ * @post g_ra_eth_tx_diag.last_eatdqm_dnq holds the live DNQ snapshot.
+ * @post g_ra_eth_tx_diag.last_eaeis2_dqoes holds the live EAEIS2.
+ *
+ * @note Module-internal bench seam; never exported.
+ * @since 0.1.0
+ */
+static inline void internal_eth_tx_diag_sample(uint8_t channel, uint32_t len)
+{
+  const ra_etha_port_t etha_port =
+    (channel == 0U) ? (ra_etha_port_t)k_ra_etha_port_0 : (ra_etha_port_t)k_ra_etha_port_1;
+  /* HUM Ch 32.3.2.8 "EATDQMq : Per-class TX Queue Monitor" p 1647 */
+  g_ra_eth_tx_diag.last_eatdqm_dnq = ra_etha(etha_port)->EATDQM[0] & k_ra_etha_mask_dnq;
+  /* HUM Ch 32.3 "EAEIS2 : Error Interrupt Status 2 (TX-queue overflow)" p 1659 */
+  g_ra_eth_tx_diag.last_eaeis2_dqoes = ra_etha(etha_port)->EAEIS2;
+  g_ra_eth_tx_diag.last_tx_len       = len;
+  g_ra_eth_tx_diag.tx_calls_total += 1U;
+  if (len > (uint32_t)k_ra_eth_tx_diag_large_threshold) {
+    g_ra_eth_tx_diag.tx_calls_above_512 += 1U;
+  }
+}
+
 /* Implementation of ra_eth_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
 {
@@ -914,6 +1149,7 @@ ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
   }
 
   const ra_err_t err = ra_eth_gwca_default_send(&s_gwca_state, buf, len);
+  internal_eth_tx_diag_sample(s_state.cfg.channel, len);
   if (err == k_ra_ok) {
     internal_stat_inc(&s_state.stats.tx_ok);
     return k_ra_ok;

@@ -8,10 +8,12 @@
 
 #include <string.h>
 
+#include "ra8d2_etha_regs.h"
 #include "ra8d2_ether_regs.h"
 #include "ra8d2_rmac_regs.h"
 #include "ra_err.h"
 #include "ra_eth.h"
+#include "ra_etha.h"
 #include "ra_mstp.h"
 #include "ra_rmac.h"
 #include "ra_sim_mmap.h"
@@ -221,6 +223,83 @@ static void test_open_happy_path(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_close());
   TEST_END("eth open happy path");
+}
+
+/**
+ * @test test_open_programs_etha_tx_queues
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- this is a register-effect
+ * assertion that ::ra_eth_open programmes EATDQDC[0]=512 and
+ * EATDQDC[1..7]=0 per HUM Ch 29 Table 29.4 to fix issue #21).
+ *
+ * @details With EATDQDC[0..7] left at silicon reset (DQD = 0), the
+ * ETHA per-class TX descriptor RAM cannot accept any descriptor from
+ * the GWCA; small frames may still pass through ETHA's internal MAC
+ * FIFO but anything larger stalls silently. This test asserts the
+ * fix landed: queue 0 owns the full 512-descriptor budget, queues
+ * 1..7 stay disabled.
+ */
+static void test_open_programs_etha_tx_queues(void)
+{
+  TEST_BEGIN("eth open programmes EATDQDC[0]=512 (issue #21)");
+  prep();
+  /* Pre-condition: EATDQDC[*] are 0 (simulator mmap reset). */
+  for (uint8_t tc = 0U; tc < 8U; ++tc) {
+    TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EATDQDC[tc]);
+  }
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
+
+  /* Queue 0 must own the full TX descriptor budget. */
+  TEST_ASSERT_EQ(512U, ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
+  /* All other queues stay disabled (no QoS configured). */
+  for (uint8_t tc = 1U; tc < 8U; ++tc) {
+    TEST_ASSERT_EQ(0U, ra_etha(k_ra_etha_port_0)->EATDQDC[tc]);
+  }
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_close());
+  TEST_END("eth open programmes EATDQDC[0]=512 (issue #21)");
+}
+
+/**
+ * @test test_write_large_frame_uses_etha_queue
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- this is a host-side regression
+ * test for the issue #21 large-frame TX path: a frame larger than the
+ * 512 B "small-frame" threshold must still complete and bump tx_ok.
+ * Mirrors the bench-side TCP echo at 700 / 1000 / 1400 B payloads.)
+ */
+static void test_write_large_frame_uses_etha_queue(void)
+{
+  TEST_BEGIN("eth write large frame (>=600 B) completes (issue #21)");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
+
+  /* Confirm the EATDQDC programming actually landed before sending --
+   * the issue #21 fix depends on this register being non-zero. */
+  TEST_ASSERT_EQ(512U, ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
+
+  uint8_t pkt[1400];
+  for (uint16_t i = 0U; i < (uint16_t)sizeof(pkt); ++i) {
+    pkt[i] = (uint8_t)(i & 0xFFU);
+  }
+
+  /* Walk the same length ladder the bench script uses: 64 (control),
+   * 600 (just over the bench-observed failure cutoff), 1000, 1400. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, 600U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, 1000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_write(pkt, 1400U));
+
+  ra_eth_stats_t stats = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_get_stats(&stats));
+  TEST_ASSERT_EQ(4U, stats.tx_ok);
+  TEST_ASSERT_EQ(0U, stats.tx_err);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_eth_close());
+  TEST_END("eth write large frame (>=600 B) completes (issue #21)");
 }
 
 /**
@@ -602,6 +681,8 @@ int32_t main(void)
   test_open_bad_channel();
   test_mcdc_open_ring_size_oversize();
   test_open_happy_path();
+  test_open_programs_etha_tx_queues();
+  test_write_large_frame_uses_etha_queue();
   test_close_without_open();
 
   test_write_null_rejected();
