@@ -2127,8 +2127,14 @@ static ra_err_t internal_eth_coma_reset(void)
  * (RGMII1 block held in reset) and MIICR1.MIISEL reads 0 (GMII/MII),
  * so the RGMII data path is dead until the driver explicitly:
  *
- *   1. Sets MIICR1.MIISEL = 1 (RGMII) plus TXCIDE = 1 (on-chip TX
- *      delay), matching the FSP "RGMII + 2 ns TX skew" board profile.
+ *   1. Sets MIICR1.MIISEL = 1 (RGMII) with TXCIDE = 0 (no on-chip TX
+ *      clock delay). The PHY's RXSKEW (1.0 ns via MIICTRL) supplies
+ *      the full RGMII clock-to-data alignment so the chip-side delay
+ *      stays at zero. Issue #21 iteration #7 bench: TXCIDE = 1 plus
+ *      PHY RXSKEW = 1.0 ns over-skewed the TX eye and dropped
+ *      >~600 B frames silently; TXCIDE = 0 narrows the chain to a
+ *      single 1.0 ns delay so the bench can isolate which path the
+ *      large-frame loss lives on.
  *   2. Sets MIIRR.RGRST1 = 1 (HUM 29.2.1.2: 1 = Enable, 0 = Reset --
  *      this is an enable bit, not an active-high reset).
  *
@@ -2140,7 +2146,7 @@ static ra_err_t internal_eth_coma_reset(void)
  * @pre  ESWM module-stop has been released (the RMAC and ESWM share
  *       MSTPCRC.MSTPCESWM; ra_rmac_init takes the ref-count up).
  * @pre  COMA has been brought out of reset (internal_eth_coma_reset).
- * @post MIICR1 = TXCIDE | RGMII, MIIRR.RGRST1 = 1 (RGMII1 enabled).
+ * @post MIICR1 = MIISEL=RGMII, TXCIDE=0; MIIRR.RGRST1 = 1.
  * @post RMAC1 / ETHA1 data pins ready to clock.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -2151,8 +2157,15 @@ static ra_err_t internal_eth_eswm_select_rgmii(void)
    * write MIICR before enabling the per-port RGMII block so the pin
    * mux is in the correct mode the instant the data pins go live.
    * MIICR / MIIRR live at the +0x19400 sub-block of the ESWM window
-   * (see ra8d2_ether_regs.h ra_eswm_off_miicr1 / ra_eswm_off_miirr). */
-  *ra_eswm_miicr1() = (uint32_t)k_ra_eswm_miicr_txcide | (uint32_t)k_ra_eswm_miicr_miisel_rgmii;
+   * (see ra8d2_ether_regs.h ra_eswm_off_miicr1 / ra_eswm_off_miirr).
+   * Issue #21 iteration #7 Candidate C bench: TXCIDE = 0 (no on-chip TX
+   * clock delay) so the PHY's pinstrapped RGMII RX skew handles the
+   * full clock-to-data alignment. Previously TXCIDE = 1 (~2 ns chip TX
+   * delay PLUS the GPY111's RXSKEW=1.0 ns PHY-side delay) which over-
+   * skewed the TX eye and produced silent loss of >~600 B frames while
+   * <=512 B frames squeezed through. Bench will confirm whether the
+   * reduced skew restores 1400 B TX.  */
+  *ra_eswm_miicr1() = (uint32_t)k_ra_eswm_miicr_miisel_rgmii;
 
   /* HUM Ch 29.2.1.2 "MIIRR : Media-independent Interface Reset
    * Register" p 1289: RGRST1 is **0 = Reset, 1 = Enable** -- it is an
