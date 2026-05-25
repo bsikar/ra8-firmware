@@ -2388,6 +2388,7 @@ typedef enum : uint16_t {
   k_ra_board_eth_phy_bmcr_an_rst  = 0x0200U, /**< BMCR.AUTONEG_RESTART.        */
   k_ra_board_eth_phy_rxskew_mask  = 0x7000U, /**< MIICTRL RXSKEW field [14:12].*/
   k_ra_board_eth_phy_rxskew_1p0ns = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.    */
+  k_ra_board_eth_phy_rxskew_2p0ns = 0x4000U, /**< RXSKEW = 0b100 -> 2.0 ns.    */
   k_ra_board_eth_phy_anar_value   = 0x01E1U, /**< Advertise 100F/100H/10F/10H. */
   /* GBCR = 0: 1000BASE-T is not advertised, so the link settles at
    * 100M full-duplex where it runs at 0 % loss. At 1 Gbps the RGMII
@@ -2475,8 +2476,15 @@ static ra_err_t internal_eth_phy_set_rgmii_skew(void)
   if (read_err != k_ra_ok) {
     return read_err;
   }
+  /* Issue #21 iteration #7 Candidate C variant: try RXSKEW = 2.0 ns
+   * (was 1.0 ns). PHY-side RGMII RX skew is the only TX-eye control
+   * available -- on this board MIICR1.TXCIDE is forced ON (TXCIDE = 0
+   * killed even small-frame ARP, see prior commit) so the only way to
+   * shift the chip TX -> PHY RX clock-to-data alignment is via PHY's
+   * own RXSKEW. 2.0 ns lands the data eye half-way through the +/- 2
+   * ns RGMII spec window. */
   miictrl = (uint16_t)((miictrl & (uint16_t)~k_ra_board_eth_phy_rxskew_mask) |
-                       (uint16_t)k_ra_board_eth_phy_rxskew_1p0ns);
+                       (uint16_t)k_ra_board_eth_phy_rxskew_2p0ns);
   return ra_rmac_mdio_c22_write((ra_rmac_port_t)k_ra_board_eth_rmac_port,
                                 (uint8_t)k_ra_board_eth_phy_addr,
                                 (uint8_t)k_ra_board_eth_phy_reg_miictrl,
