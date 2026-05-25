@@ -536,6 +536,19 @@ static ra_err_t internal_etha_program_tx_queues(ra_etha_port_t etha_port)
  *     above 0 if the descriptor briefly queued.
  *   - ``last_eaeis2_dqoes`` -- EAEIS2.DQOES per-class status snapshot
  *     after the kick; bit q lights if queue q overflowed.
+ *   - ``mrfsce_programmed`` -- SW value written to RMAC.MRFSCE in the
+ *     CONFIG window (EMNS / EMXS packed).
+ *   - ``mrfsce_readback`` -- RMAC.MRFSCE read back so the bench can
+ *     confirm the EMXS write landed (silently 0 if CONFIG-gate missed).
+ *   - ``last_mtgfce`` -- RMAC MTGFCE counter (TX good E-frames). Rises
+ *     by exactly 1 per ra_eth_write that actually pushed a frame out.
+ *   - ``last_mrgfce`` -- RMAC MRGFCE counter (RX good E-frames). Rises
+ *     by 1 per inbound frame the RMAC accepts to the upper layer.
+ *   - ``last_mrgoefc`` -- RMAC MRGOEFC counter (RX good frames >
+ *     MRFSCE.EMXS). Should stay 0 once the EMXS fix lands.
+ *   - ``last_mrboefc`` -- RMAC MRBOEFC counter (RX bad/oversize FCS).
+ *   - ``last_eafsecn`` -- ETHA EAFSECN counter (TX-side frame-size
+ *     reject); bumps when ETHA discards a frame > EATMFSC[q].MFS.
  *
  * @invariant Mutated only from the NetX IP thread context (single
  * writer) so no synchronisation is required for the bench reader.
@@ -554,6 +567,13 @@ typedef struct {
   uint32_t last_eaeis2_dqoes;        /**< EAEIS2 read after the most recent kick.  */
   uint32_t tx_calls_total;           /**< Total ra_eth_write entries.              */
   uint32_t tx_calls_above_512;       /**< ra_eth_write entries with len > 512.     */
+  uint32_t mrfsce_programmed;        /**< Value SW wrote to RMAC.MRFSCE in CONFIG. */
+  uint32_t mrfsce_readback;          /**< RMAC.MRFSCE read back post-write.        */
+  uint32_t last_mtgfce;              /**< MTGFCE (RMAC TX good E-frame counter).   */
+  uint32_t last_mrgfce;              /**< MRGFCE (RMAC RX good E-frame counter).   */
+  uint32_t last_mrgoefc;             /**< MRGOEFC (RMAC RX good oversize cnt).     */
+  uint32_t last_mrboefc;             /**< MRBOEFC (RMAC RX bad oversize cnt).      */
+  uint32_t last_eafsecn;             /**< EAFSECN (ETHA TX frame-size error cnt).  */
 } ra_eth_tx_diag_t;
 
 /**
@@ -609,6 +629,73 @@ static ra_err_t internal_etha_config_window(ra_etha_port_t etha_port)
 }
 
 /**
+ * @enum ra_eth_rmac_frame_size_t
+ * @brief MRFSCE.EMXS / EMNS values the driver programmes.
+ *
+ * @details HUM Ch 33.4.1.16 "MRFSCE : Reception Frame Size Configuration
+ * for E-Frames" p 1722 -- EMXS reset value is 0, and the HUM note says
+ * "A part of received frame which exceeds the set value are truncated".
+ * Empirically (issue #21 bench trail) frames over a few hundred bytes
+ * never make it from RMAC RX into the ETHA when EMXS stays at 0, so
+ * the chip silently drops all large inbound frames. EMXS must be
+ * widened to cover the full untagged-Ethernet MTU before any 600+ B
+ * frame can survive the RMAC's RX path. 1518 = 14 hdr + 1500 MTU + 4
+ * FCS (untagged; the project does not enable VLAN tagging on the EVM).
+ * EMNS stays at 0: there is no hard minimum size (runt frames are
+ * already rejected by the under-min-size counter MRGUEFC).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra_eth_rmac_emxs_bytes = 1518U, /**< Max untagged Ethernet frame inc. FCS. */
+  k_ra_eth_rmac_emns_bytes = 0U,    /**< No lower bound (counter handles it).  */
+} ra_eth_rmac_frame_size_t;
+
+/**
+ * @brief Programme RMAC.MRFSCE so large RX frames are not truncated.
+ *
+ * @details HUM Ch 33.4.1.16 "MRFSCE" p 1722 -- writes only stick while
+ * the paired ETHA is in CONFIG. Sets EMXS = 1518 (full 802.3 untagged
+ * frame including FCS) so the RMAC does not silently truncate frames
+ * larger than EMXS bytes. Without this fix MRFSCE.EMXS stays at its
+ * silicon reset value of 0, which the bench trail for issue #21
+ * showed causes the chip to drop all RX frames whose payload exceeds
+ * the ETHA's internal MAC FIFO (crossover near 600 B). Snapshots the
+ * pre- and post-write values into ::g_ra_eth_tx_diag so JLink can
+ * confirm the write landed.
+ *
+ * @param[in] rmac_port RMAC port paired with the ETHA in CONFIG.
+ *
+ * @return ::ra_err_t Error code propagated from ra_rmac_set_frame_size.
+ * @retval k_ra_ok               MRFSCE programmed + diag snapshot done.
+ * @retval k_ra_err_invalid_arg  ra_rmac_set_frame_size rejected an arg.
+ *
+ * @pre rmac_port is in CONFIG mode (paired ETHA in CONFIG).
+ * @pre rmac_port is a valid ::ra_rmac_port_t.
+ * @post g_ra_eth_tx_diag.mrfsce_readback reflects RMAC.MRFSCE.
+ * @post On success RMAC.MRFSCE.EMXS == 1518.
+ *
+ * @note Not thread-safe; caller serialises RMAC bring-up.
+ * @since 0.1.0
+ */
+static ra_err_t internal_rmac_program_frame_size(ra_rmac_port_t rmac_port)
+{
+  /* HUM Ch 33.4.1.16 "MRFSCE : Reception Frame Size Configuration for
+   * E-Frames" p 1722 -- pack EMXS (max e-frame) + EMNS (min e-frame). */
+  const uint32_t mrfsce_packed =
+    ((uint32_t)k_ra_eth_rmac_emns_bytes << 16U) | (uint32_t)k_ra_eth_rmac_emxs_bytes;
+  g_ra_eth_tx_diag.mrfsce_programmed = mrfsce_packed;
+  const ra_err_t fs_err              = ra_rmac_set_frame_size(rmac_port,
+                                                              false,
+                                                              (uint16_t)k_ra_eth_rmac_emns_bytes,
+                                                              (uint16_t)k_ra_eth_rmac_emxs_bytes);
+  /* HUM Ch 33.4.1.16 "MRFSCE" p 1722 -- read back so the bench can
+   * confirm the write landed. */
+  g_ra_eth_tx_diag.mrfsce_readback = ra_rmac(rmac_port)->MRFSCE;
+  return fs_err;
+}
+
+/**
  * @brief Resolve the ETHA port that pairs with a channel index.
  *
  * @details Channel 0 -> ETHA port 0; channel 1 -> ETHA port 1.
@@ -641,17 +728,20 @@ static inline ra_etha_port_t internal_channel_to_etha_port(uint8_t channel)
  *
  * @return ::ra_err_t Error code.
  *
- * @details Drives the DISABLE -> CONFIG -> {programme MAC + EATDQDC} ->
- * DISABLE -> OPERATION bracket for the paired ETHA port. The MAC
- * address only sticks in CONFIG (HUM Ch 33.4 "MRMAC0/1" p 1707) and
- * EATDQDC only sticks in CONFIG (HUM Ch 32.3.2.7 p 1641). Per-step
- * details live in the in-line comments + ::internal_etha_config_window.
+ * @details Drives the DISABLE -> CONFIG -> {programme MAC + EATDQDC +
+ * MRFSCE} -> DISABLE -> OPERATION bracket for the paired ETHA port.
+ * The MAC address only sticks in CONFIG (HUM Ch 33.4 "MRMAC0/1"
+ * p 1707), EATDQDC only sticks in CONFIG (HUM Ch 32.3.2.7 p 1641),
+ * and MRFSCE only sticks in CONFIG (HUM Ch 33.4.1.16 p 1722). Per-step
+ * details live in the in-line comments + ::internal_etha_config_window
+ * + ::internal_rmac_program_frame_size.
  *
  * @retval k_ra_ok Operation succeeded.
  * @pre cfg is non-null and cfg->channel is in [0, 1].
  * @pre Caller has already enabled the ESWM MSTP gate.
  * @post On success the RMAC port carries cfg->mac_address.
- * @post On success ETHA EATDQDC[0].DQD = 512 (issue #21 fix).
+ * @post On success ETHA EATDQDC[0].DQD = 512 (issue #21 TX fix).
+ * @post On success RMAC MRFSCE.EMXS = 1518 (issue #21 RX fix).
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
@@ -687,6 +777,12 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
    * the paired ETHA is in CONFIG. */
   const ra_err_t mac_err = ra_rmac_set_mac_address(rmac_port, mac_copy);
 
+  /* Issue #21 (large RX frames): MRFSCE.EMXS resets to 0, which makes
+   * the RMAC silently truncate any frame larger than the ETHA's
+   * internal MAC FIFO. HUM Ch 33.4.1.16 "MRFSCE" p 1722 -- writes
+   * only stick while the paired ETHA is in CONFIG. */
+  const ra_err_t fs_err = internal_rmac_program_frame_size(rmac_port);
+
   /* Always return to OPERATION even on MAC / queue-depth write failure
    * so the chip doesn't end up parked in CONFIG. */
   const ra_err_t dis_err = ra_etha_set_mode(etha_port, k_ra_etha_opc_disable);
@@ -696,6 +792,9 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
   }
   if (mac_err != k_ra_ok) {
     return mac_err;
+  }
+  if (fs_err != k_ra_ok) {
+    return fs_err;
   }
   if (dis_err != k_ra_ok) {
     return dis_err;
@@ -1117,6 +1216,8 @@ typedef enum : uint16_t {
  * @pre Caller is single-threaded with respect to this driver.
  * @post g_ra_eth_tx_diag.last_eatdqm_dnq holds the live DNQ snapshot.
  * @post g_ra_eth_tx_diag.last_eaeis2_dqoes holds the live EAEIS2.
+ * @post g_ra_eth_tx_diag.last_mtgfce / last_mrgfce / last_mrgoefc /
+ *       last_mrboefc / last_eafsecn carry live RMAC + ETHA counters.
  *
  * @note Module-internal bench seam; never exported.
  * @since 0.1.0
@@ -1125,11 +1226,25 @@ static inline void internal_eth_tx_diag_sample(uint8_t channel, uint32_t len)
 {
   const ra_etha_port_t etha_port =
     (channel == 0U) ? (ra_etha_port_t)k_ra_etha_port_0 : (ra_etha_port_t)k_ra_etha_port_1;
+  const ra_rmac_port_t rmac_port = internal_channel_to_port(channel);
   /* HUM Ch 32.3.2.8 "EATDQMq : Per-class TX Queue Monitor" p 1647 */
   g_ra_eth_tx_diag.last_eatdqm_dnq = ra_etha(etha_port)->EATDQM[0] & k_ra_etha_mask_dnq;
   /* HUM Ch 32.3 "EAEIS2 : Error Interrupt Status 2 (TX-queue overflow)" p 1659 */
   g_ra_eth_tx_diag.last_eaeis2_dqoes = ra_etha(etha_port)->EAEIS2;
-  g_ra_eth_tx_diag.last_tx_len       = len;
+  /* HUM Ch 32.3.6.3 "EAFSECN : Frame Size Error Counter" p 1657 -- bumps
+   * when ETHA discards a TX frame > EATMFSC[q].MFS. With the EMXS /
+   * EATDQDC fixes landed this should stay at zero. */
+  g_ra_eth_tx_diag.last_eafsecn = ra_etha(etha_port)->EAFSECN;
+  /* HUM Ch 33.4 "RMAC frame counters" p 1748 -- MTGFCE / MRGFCE confirm
+   * whether the frame actually crossed the wire (TX side) and whether
+   * any inbound frame the RMAC accepted (RX side). MRGOEFC / MRBOEFC
+   * bump when a frame larger than MRFSCE.EMXS is received (issue #21
+   * RX truncation symptom). */
+  g_ra_eth_tx_diag.last_mtgfce  = ra_rmac(rmac_port)->MTGFCE;
+  g_ra_eth_tx_diag.last_mrgfce  = ra_rmac(rmac_port)->MRGFCE;
+  g_ra_eth_tx_diag.last_mrgoefc = ra_rmac(rmac_port)->MRGOEFC;
+  g_ra_eth_tx_diag.last_mrboefc = ra_rmac(rmac_port)->MRBOEFC;
+  g_ra_eth_tx_diag.last_tx_len  = len;
   g_ra_eth_tx_diag.tx_calls_total += 1U;
   if (len > (uint32_t)k_ra_eth_tx_diag_large_threshold) {
     g_ra_eth_tx_diag.tx_calls_above_512 += 1U;
