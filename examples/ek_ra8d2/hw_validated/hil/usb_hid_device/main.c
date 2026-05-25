@@ -561,18 +561,6 @@ static void demo_build_jiggle(demo_phase_t phase, UCHAR* report)
 }
 
 /**
- * @brief Worker thread entry. Brings USBX + HID up, then jiggles the
- *        cursor forever.
- *
- * @param[in] arg Unused (ThreadX entry signature).
- *
- * @pre ``tx_application_define`` started this thread auto-start.
- * @post Thread loops forever; never returns.
- *
- * @note Single-instance worker; not designed for re-entry.
- * @since 0.1.0
- */
-/**
  * @brief Brings the USBX system and FS device stack up.
  *
  * @return UINT UX_SUCCESS on success.

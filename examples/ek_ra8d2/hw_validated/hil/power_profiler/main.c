@@ -103,11 +103,6 @@ static uint64_t pp_demo_now_us(void* ctx)
   return (uint64_t)ra_time_ms() * (uint64_t)k_pp_demo_us_per_ms;
 }
 
-/**
- * @brief Bring CGC + SysTick + console + profiler up. Panic-halts on fail.
- *
- * @since 0.1.0
- */
 /** @brief Bring CGC + SysTick + MSTP + console PFS up; return PCLKA. */
 static void pp_demo_clocks_or_halt(uint32_t* out_pclka_hz)
 {
@@ -263,21 +258,6 @@ static uint8_t pp_demo_uint_to_dec(uint8_t* buf, uint64_t v)
   return n;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-/**
- * @brief Application entry. Profiles power modes once a second.
- *
- * @return Never returns.
- *
- * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit has set VTOR, FPU, and priority grouping.
- *
- * @post On clean entry the CPU stays in the profile + blink loop.
- * @post On any HAL hard error LED2 latches ON.
- *
- * @since 0.1.0
- */
 /**
  * @brief Append @p tag then the decimal of @p val to @p buf at @p off.
  *
@@ -339,6 +319,21 @@ static uint32_t pp_demo_format_line(uint8_t* out, const ra_power_profile_stats_t
   return off;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Application entry. Profiles power modes once a second.
+ *
+ * @return Never returns.
+ *
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre SystemInit has set VTOR, FPU, and priority grouping.
+ *
+ * @post On clean entry the CPU stays in the profile + blink loop.
+ * @post On any HAL hard error LED2 latches ON.
+ *
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
   pp_demo_setup_or_halt();
