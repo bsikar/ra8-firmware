@@ -410,7 +410,38 @@ echo "$RESULT"
 if (( PROBE_RC == 0 )); then
     echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}"
     exit 0
-else
-    echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: probe failed"
-    exit 1
 fi
+
+# Probe failed -- before giving up, scrape the bench-readable
+# g_ra_eth_tx_diag struct so the CI log captures the chip's view of
+# what happened. Only meaningful when the app exported the symbol
+# (currently only threadx_netx_tcp_echo), so the scrape is a no-op
+# for other apps. Live mem reads via JLink mem32 require a fresh
+# JLinkExe attach with `-nogui 1 -if SWD` while the chip keeps running.
+ELF_PATH="${HEX%.hex}.elf"
+if [[ -f "$ELF_PATH" ]] && command -v arm-none-eabi-nm >/dev/null 2>&1; then
+    DIAG_ADDR=$(arm-none-eabi-nm "$ELF_PATH" 2>/dev/null \
+        | awk '/ [bBdD] g_ra_eth_tx_diag$/ { print "0x"$1; exit }')
+    if [[ -n "$DIAG_ADDR" ]]; then
+        DIAG_TMP="/tmp/hil_eth_diag_${APP_NAME}.cmd"
+        DIAG_LOG="/tmp/hil_eth_diag_${APP_NAME}.log"
+        # 19 uint32_t fields = 76 bytes = mem32 19 words.
+        cat > "$DIAG_TMP" <<DIAG
+device ${JLINK_DEVICE}
+si SWD
+speed 1000
+connect
+mem32 ${DIAG_ADDR} 19
+q
+DIAG
+        echo -e "${YELLOW}[HIL]${NC} scraping g_ra_eth_tx_diag @ ${DIAG_ADDR} via J-Link..."
+        JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$DIAG_TMP" \
+            > "$DIAG_LOG" 2>&1 || true
+        echo -e "${YELLOW}[HIL]${NC} ---- g_ra_eth_tx_diag (raw mem32) ----"
+        grep -E '^[0-9A-F]{8} = ' "$DIAG_LOG" || sed -n '/mem32/,$p' "$DIAG_LOG" | head -30
+        echo -e "${YELLOW}[HIL]${NC} ---------------------------------------"
+    fi
+fi
+
+echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: probe failed"
+exit 1
