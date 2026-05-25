@@ -1,0 +1,117 @@
+/**
+ * @file examples/ek_ra8d2/cpu1_pingpong/shared_pingpong.h
+ * @brief Shared-SRAM message layout for the CPU0 <-> CPU1 ping-pong demo
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: NS}
+ *
+ * @details
+ * The CPU0 (M85) <-> CPU1 (M33) ping-pong cannot use the IPC channels'
+ * TXD/RXD registers because the chip's IPC security-attribution
+ * (SAIPCIRn) is mutually exclusive S xor NS, and CPU1 has SECEXT
+ * disabled (HUM Ch 2) so it can only execute non-secure. With CPU0
+ * also booting non-secure in this app's build, neither core can write
+ * IPCSAR to flip the channel to NS, and the default secure-only
+ * channel blocks both ends.
+ *
+ * This file pins a small message struct at a fixed SRAM address that
+ * sits in the gap between CPU0's allocated SRAM (ends 0x22100000) and
+ * CPU1's allocated SRAM (starts 0x223F0000). Both CPUs' linker scripts
+ * leave this gap unmapped, so the same physical bytes back the same
+ * struct on both sides.
+ *
+ * Protocol: monotonic sequence counters carry the wakeup signal; the
+ * payload words carry the data.
+ *
+ *   1. CPU0 writes ``ping_payload``, issues DSB, increments ``ping_seq``.
+ *   2. CPU1 spins on ``ping_seq != last_seen_ping``. When it advances,
+ *      CPU1 reads ``ping_payload``, writes ``pong_payload``, issues DSB,
+ *      and sets ``pong_seq = ping_seq``.
+ *   3. CPU0 spins on ``pong_seq != prev_pong``. When it advances, CPU0
+ *      reads ``pong_payload``.
+ *
+ * No IPC peripheral is touched.
+ *
+ * The D-cache is disabled in this app's ``system_init.c`` (see the
+ * ``internal_enable_dcache`` call site -- it's referenced as
+ * ``(void)internal_enable_dcache;`` so the function isn't actually
+ * invoked), so no cache-clean / invalidate dance is needed across the
+ * two CPUs.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @enum cpu1_pingpong_shared_const_t
+ * @brief Compile-time addresses + magics for the shared block.
+ *
+ * @details The shared address sits at the start of SRAM2 (HUM
+ * Ch 58.1 Table 58.1, p 3527 -- system SRAM bank 2 starts at
+ * ``0x22100000``). Both CPU0's linker (which claims SRAM0+SRAM1 =
+ * 1 MiB ending at 0x22100000) and CPU1's linker (which claims a
+ * separate 64 KiB region at 0x223F0000) leave SRAM2 unallocated,
+ * so the same physical bytes back the shared struct on both sides
+ * with no overlap.
+ */
+typedef enum : uint32_t {
+  k_cpu1_pingpong_shared_addr = 0x22100000UL, /**< Start of SRAM2 (shared).      */
+  k_cpu1_pingpong_magic_ping  = 0x1234U,      /**< CPU0 ping payload.            */
+  k_cpu1_pingpong_magic_pong  = 0x4321U,      /**< CPU1 pong payload.            */
+  k_cpu1_pingpong_poll_budget = 2000000UL,    /**< Max spin iters per direction. */
+} cpu1_pingpong_shared_const_t;
+
+/**
+ * @struct cpu1_pingpong_shared_t
+ * @brief Cross-CPU message struct backed by a fixed SRAM address.
+ *
+ * @details Volatile so the compiler emits real memory accesses each
+ * iteration of the poll loops. Aligned to 16 bytes so the struct
+ * starts on a cache-line / strongly-ordered boundary even if the
+ * D-cache is later enabled.
+ *
+ * @invariant ``pong_seq`` only ever lags ``ping_seq`` by 0 or 1.
+ * @invariant Both sequence counters monotonically increase.
+ *
+ * @see g_cpu1_pingpong_shared
+ * @since 0.1.0
+ */
+typedef struct {
+  volatile uint32_t ping_seq;     /**< CPU0 increments after writing payload. */
+  volatile uint32_t pong_seq;     /**< CPU1 sets to match ping_seq after reply.*/
+  volatile uint32_t ping_payload; /**< CPU0 writes, CPU1 reads.               */
+  volatile uint32_t pong_payload; /**< CPU1 writes, CPU0 reads.               */
+} cpu1_pingpong_shared_t;
+
+/**
+ * @brief Typed pointer to the fixed-address shared message block.
+ *
+ * @details Inlined so both CPUs land on identical addressing without
+ * needing a separate translation unit.
+ *
+ * @return Pointer to the shared struct at ::k_cpu1_pingpong_shared_addr.
+ *
+ * @pre None.
+ * @pre Module state is consistent.
+ * @post Returns a valid volatile pointer; never NULL.
+ * @post No side effects.
+ *
+ * @note Both CPUs call this; the pointer arithmetic is identical.
+ * @since 0.1.0
+ */
+static inline volatile cpu1_pingpong_shared_t* cpu1_pingpong_shared(void)
+{
+  return (volatile cpu1_pingpong_shared_t*)(uintptr_t)k_cpu1_pingpong_shared_addr;
+}
+
+#ifdef __cplusplus
+}
+#endif
