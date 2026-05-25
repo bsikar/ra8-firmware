@@ -187,6 +187,12 @@ int32_t main(void)
 
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
   (void)ra_reset_get_cause(&cause);
+  /* Bench-truth: RSTSRn flags are sticky across resets (HUM Ch 6.2 -
+   * the registers note "Only 0 can be written. To clear ..."). With
+   * IWDTRF + WDTRF + SWRF all latched from prior bench cycles the
+   * decoder's IWDTRF-first priority order would mask out the real
+   * cause. Clear every flag so the next reset surfaces cleanly. */
+  (void)ra_reset_clear_cause(0x7FFFFFFFU);
   uint32_t       msg_len = 0U;
   const uint8_t* msg     = wdt_rr_banner_for(cause, &msg_len);
   (void)ra_sci_write_polling((uint8_t)k_wdt_rr_sci_channel, msg, msg_len);
