@@ -549,6 +549,18 @@ static ra_err_t internal_etha_program_tx_queues(ra_etha_port_t etha_port)
  *   - ``last_mrboefc`` -- RMAC MRBOEFC counter (RX bad/oversize FCS).
  *   - ``last_eafsecn`` -- ETHA EAFSECN counter (TX-side frame-size
  *     reject); bumps when ETHA discards a frame > EATMFSC[q].MFS.
+ *   - ``last_mtefc`` -- RMAC MTEFC TX error frame counter; bumps per
+ *     TSLS/TBCIS/TCES/FUES/FOES error.
+ *   - ``last_meis`` -- RMAC MEIS sticky interrupt status snapshot.
+ *   - ``last_mtxbcel`` / ``last_mtxbceu`` -- cumulative TX byte
+ *     counters. If they stay tiny while MTGFCE matches tx_calls_total
+ *     the MAC counted frames but never pushed bytes (MAC-internal
+ *     reject); if they track payload * frames the loss is downstream.
+ *   - ``last_mtufc`` -- TX unicast count; diverges from MTGFCE iff
+ *     the MAC reclassified some outbound frames as bcast/mcast/PFC.
+ *   - ``last_mpim`` -- RMAC MPIM PHY-monitor (PLS link-status bit 0).
+ *     PLS=0 means chip-side link-down -- the MAC gates the line
+ *     driver even though MTGFCE keeps counting attempts.
  *
  * @invariant Mutated only from the NetX IP thread context (single
  * writer) so no synchronisation is required for the bench reader.
@@ -583,6 +595,10 @@ typedef struct {
   uint32_t cabpibwmc0_readback;       /**< CABPIBWMC[0] packed IBSWMPN/IBUWMPN.    */
   uint32_t last_mtefc;                /**< MTEFC (RMAC TX error frame counter).    */
   uint32_t last_meis;                 /**< MEIS (RMAC Error Interrupt Status).     */
+  uint32_t last_mtxbcel;              /**< MTXBCEL (RMAC TX byte count E lower).   */
+  uint32_t last_mtxbceu;              /**< MTXBCEU (RMAC TX byte count E upper).   */
+  uint32_t last_mtufc;                /**< MTUFC  (RMAC TX unicast frame cnt).     */
+  uint32_t last_mpim;                 /**< MPIM   (RMAC PHY Monitor: PLS / LPIA).  */
 } ra_eth_tx_diag_t;
 
 /**
@@ -1426,7 +1442,28 @@ static inline void internal_eth_tx_diag_sample(uint8_t channel, uint32_t len)
   /* HUM Ch 33.4.3.1 "MEIS : Error Interrupt Status" p 1745 -- non-cumulative
    * snapshot of the most recent value (TSLS, FUES, FOES, TBCIS, TCES,
    * PFRROS sticky-status bits). Snap to bench-readable diag. */
-  g_ra_eth_tx_diag.last_meis   = ra_rmac(rmac_port)->MEIS;
+  g_ra_eth_tx_diag.last_meis = ra_rmac(rmac_port)->MEIS;
+  /* HUM Ch 33.4.2.46 "MTXBCEL / MTXBCEU : TX byte counter E" p 1748 --
+   * cumulative TX byte counters (NOT clear-on-read in the same way as
+   * MTGFCE; per HUM these are read-and-clear so accumulate here). The
+   * critical signal: if MTGFCE matches tx_calls_total but MTXBCEL
+   * stays small, the MAC counted the *frame* but never pushed the
+   * *bytes* out the MII pins -- pointing the finger at MAC-internal
+   * FIFO / framer reject for large frames. If MTXBCEL is large, the
+   * bytes did leave the MAC and the loss is downstream (RGMII / PHY). */
+  g_ra_eth_tx_diag.last_mtxbcel += ra_rmac(rmac_port)->MTXBCEL;
+  g_ra_eth_tx_diag.last_mtxbceu += ra_rmac(rmac_port)->MTXBCEU;
+  /* HUM Ch 33.4.2.41 "MTUFC : TX unicast frame counter" p 1746 -- per-call
+   * unicast frame count; should match MTGFCE for a TCP echo since every
+   * reply is unicast. Diverging values mean the MAC re-classified some
+   * outbound frames as broadcast/multicast (or as PFC/control). */
+  g_ra_eth_tx_diag.last_mtufc += ra_rmac(rmac_port)->MTUFC;
+  /* HUM Ch 33.4.1.3 "MPIM : PHY Monitoring" p 1709 -- PLS (bit 0) reports
+   * the chip-side PHY link status, LPIA (bit 1) reports LPI-active. If
+   * PLS reads 0 here the MAC believes the link is *down*, which can
+   * make TXC stop and cause large-frame TX silence even though MTGFCE
+   * still increments (MTGFCE counts attempted; PLS gates the line driver). */
+  g_ra_eth_tx_diag.last_mpim   = ra_rmac(rmac_port)->MPIM;
   g_ra_eth_tx_diag.last_tx_len = len;
   g_ra_eth_tx_diag.tx_calls_total += 1U;
   if (len > (uint32_t)k_ra_eth_tx_diag_large_threshold) {
