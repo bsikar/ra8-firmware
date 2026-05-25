@@ -270,6 +270,337 @@ static void test_no_mstp_channel_power(void)
   TEST_END("agt no-mstp channel power");
 }
 
+/* ---- pulse-output mode ---- */
+
+typedef enum : uint16_t {
+  k_ra_agt_test_pulse_period = 0x4000U,
+  k_ra_agt_test_pulse_duty   = 0x2000U,
+} ra_agt_test_pulse_const_t;
+
+/**
+ * @par MC/DC:
+ * Decision: ``compare == k_ra_agt_pulse_compare_a`` (atomic) inside
+ * `agt_pulse_agtcmsr_value` + `agt_pulse_program_compare`. Three
+ * pulse-mode test cases cover the three enum values -- none, A, B --
+ * giving 100% branch coverage of the compare-selection split.
+ */
+static void test_start_pulse_output_compare_a(void)
+{
+  TEST_BEGIN("agt start_pulse_output compare A");
+  prep_w43();
+  const ra_agt_pulse_cfg_t cfg = {
+    .period   = (uint16_t)k_ra_agt_test_pulse_period,
+    .duty     = (uint16_t)k_ra_agt_test_pulse_duty,
+    .mode     = k_ra_agt_pulse_mode_continuous,
+    .polarity = k_ra_agt_output_polarity_active_high,
+    .compare  = k_ra_agt_pulse_compare_a,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_valid, &cfg));
+  volatile r_agt_regs_t* reg = ra_agt((uint8_t)k_ra_agt_test_channel_valid);
+  TEST_ASSERT_EQ(0x01U, reg->AGTMR1);                    /* TMOD = pulse_output */
+  TEST_ASSERT_EQ(0x05U, reg->AGTIOC);                    /* TOE | TEDGSEL */
+  TEST_ASSERT_EQ(0x03U, reg->AGTCMSR);                   /* TCMEA | TOEA */
+  TEST_ASSERT_EQ(k_ra_agt_test_pulse_duty, reg->AGTCMA); /* duty in A */
+  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMB);                  /* B parked at 0xFFFF */
+  TEST_ASSERT_EQ(k_ra_agt_test_pulse_period, reg->AGT);  /* reload */
+  TEST_ASSERT_EQ(0x01U, reg->AGTCR);                     /* TSTART = 1 */
+  TEST_END("agt start_pulse_output compare A");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``compare == k_ra_agt_pulse_compare_b`` (atomic). Pairs
+ * with `compare_a` and `compare_none` for N+1=3 vectors over the
+ * compare-channel branch.
+ */
+static void test_start_pulse_output_compare_b_inverted(void)
+{
+  TEST_BEGIN("agt start_pulse_output compare B + inverted polarity");
+  prep_w43();
+  const ra_agt_pulse_cfg_t cfg = {
+    .period   = (uint16_t)k_ra_agt_test_pulse_period,
+    .duty     = (uint16_t)k_ra_agt_test_pulse_duty,
+    .mode     = k_ra_agt_pulse_mode_one_shot,
+    .polarity = k_ra_agt_output_polarity_active_low,
+    .compare  = k_ra_agt_pulse_compare_b,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_last, &cfg));
+  volatile r_agt_regs_t* reg = ra_agt((uint8_t)k_ra_agt_test_channel_last);
+  TEST_ASSERT_EQ(0x04U, reg->AGTIOC);                    /* TOE only, no TEDGSEL */
+  TEST_ASSERT_EQ(0x30U, reg->AGTCMSR);                   /* TCMEB | TOEB */
+  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMA);                  /* A parked */
+  TEST_ASSERT_EQ(k_ra_agt_test_pulse_duty, reg->AGTCMB); /* duty in B */
+  TEST_END("agt start_pulse_output compare B + inverted polarity");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``compare == k_ra_agt_pulse_compare_none``. Third vector
+ * for the compare-channel branch; ensures both compare registers are
+ * parked at 0xFFFF as the spec requires.
+ */
+static void test_start_pulse_output_compare_none(void)
+{
+  TEST_BEGIN("agt start_pulse_output no compare");
+  prep_w43();
+  const ra_agt_pulse_cfg_t cfg = {
+    .period   = (uint16_t)k_ra_agt_test_pulse_period,
+    .duty     = 0U,
+    .mode     = k_ra_agt_pulse_mode_continuous,
+    .polarity = k_ra_agt_output_polarity_active_high,
+    .compare  = k_ra_agt_pulse_compare_none,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_valid, &cfg));
+  volatile r_agt_regs_t* reg = ra_agt((uint8_t)k_ra_agt_test_channel_valid);
+  TEST_ASSERT_EQ(0x00U, reg->AGTCMSR); /* nothing armed */
+  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMA);
+  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMB);
+  TEST_END("agt start_pulse_output no compare");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``cfg == nullptr`` (atomic). Pairs with the happy-path
+ * tests for N+1=2 vectors over the NULL-pointer guard.
+ */
+static void test_start_pulse_output_null_cfg(void)
+{
+  TEST_BEGIN("agt start_pulse_output null cfg");
+  prep_w43();
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_valid, nullptr));
+  TEST_END("agt start_pulse_output null cfg");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``channel < 10`` via ``ra_agt(channel) == nullptr`` guard.
+ * Pairs with `compare_a` happy path for 2 vectors.
+ */
+static void test_start_pulse_output_bad_channel(void)
+{
+  TEST_BEGIN("agt start_pulse_output bad channel");
+  prep_w43();
+  const ra_agt_pulse_cfg_t cfg = {
+    .period   = 0U,
+    .duty     = 0U,
+    .mode     = k_ra_agt_pulse_mode_continuous,
+    .polarity = k_ra_agt_output_polarity_active_high,
+    .compare  = k_ra_agt_pulse_compare_none,
+  };
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_bad, &cfg));
+  TEST_END("agt start_pulse_output bad channel");
+}
+
+/**
+ * @test test_mcdc_agt_pulse_compare_enum
+ *
+ * @par MC/DC:
+ * Decision: ``(cfg->compare != k_ra_agt_pulse_compare_none) &&
+ *             (cfg->compare != k_ra_agt_pulse_compare_a) &&
+ *             (cfg->compare != k_ra_agt_pulse_compare_b)``
+ * (3 conditions, libs/ra_hal/src/ra_agt.c:481) // CITES-OK: MC/DC source-line index per docs/MCDC.md
+ * Per DO-178C 6.4.4.3 the representative-subset is N+1 = 4 vectors:
+ * three pulse-mode happy-path tests (compare_a, compare_b,
+ * compare_none) cover each operand evaluating false in turn, and the
+ * out-of-range vector below covers all three operands evaluating
+ * true (decision = true).
+ */
+static void test_start_pulse_output_bad_compare(void)
+{
+  TEST_BEGIN("agt start_pulse_output bad compare enum");
+  prep_w43();
+  const ra_agt_pulse_cfg_t cfg = {
+    .period   = 0U,
+    .duty     = 0U,
+    .mode     = k_ra_agt_pulse_mode_continuous,
+    .polarity = k_ra_agt_output_polarity_active_high,
+    .compare  = (ra_agt_pulse_compare_t)0xFEU,
+  };
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_valid, &cfg));
+  TEST_END("agt start_pulse_output bad compare enum");
+}
+
+/**
+ * @test test_mcdc_agt_pulse_polarity_enum
+ *
+ * @par MC/DC:
+ * Decision: ``(cfg->polarity != k_ra_agt_output_polarity_active_high) &&
+ *             (cfg->polarity != k_ra_agt_output_polarity_active_low)``
+ * (2 conditions, libs/ra_hal/src/ra_agt.c:485) // CITES-OK: MC/DC source-line index per docs/MCDC.md
+ * Per DO-178C 6.4.4.3 the representative-subset is N+1 = 3 vectors:
+ * active_high happy-path covers operand 1 = false, active_low happy-
+ * path covers operand 2 = false (both upstream pulse-mode tests),
+ * and the out-of-range vector below drives both operands true so
+ * the decision evaluates true.
+ */
+static void test_start_pulse_output_bad_polarity(void)
+{
+  TEST_BEGIN("agt start_pulse_output bad polarity enum");
+  prep_w43();
+  const ra_agt_pulse_cfg_t cfg = {
+    .period   = 0U,
+    .duty     = 0U,
+    .mode     = k_ra_agt_pulse_mode_continuous,
+    .polarity = (ra_agt_output_polarity_t)0xFEU,
+    .compare  = k_ra_agt_pulse_compare_none,
+  };
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_valid, &cfg));
+  TEST_END("agt start_pulse_output bad polarity enum");
+}
+
+/* ---- cascade mode ---- */
+
+typedef enum : uint32_t {
+  k_ra_agt_test_cas_reload32 = 0x12345678UL,
+} ra_agt_test_cas_const_t;
+
+typedef enum : uint16_t {
+  k_ra_agt_test_cas_lo16 = 0x5678U,
+  k_ra_agt_test_cas_hi16 = 0x1234U,
+} ra_agt_test_cas_halves_t;
+
+static uint32_t s_cas_cb_count;
+
+static void stub_cas_cb(void* ctx, uint8_t ch)
+{
+  (void)ctx;
+  (void)ch;
+  ++s_cas_cb_count;
+}
+
+/**
+ * @par MC/DC:
+ * Compound decision on ``cfg->on_underflow != nullptr``. Two vectors:
+ * this happy case (non-NULL) + the `cascade_no_callback` test (NULL).
+ */
+static void test_start_cascade_happy(void)
+{
+  TEST_BEGIN("agt start_cascade happy");
+  prep_w43();
+  s_cas_cb_count                 = 0U;
+  const ra_agt_cascade_cfg_t cfg = {
+    .reload32     = (uint32_t)k_ra_agt_test_cas_reload32,
+    .clock        = k_ra_agt_cascade_clk_pclkb,
+    .on_underflow = stub_cas_cb,
+    .ctx          = nullptr,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_cascade(&cfg));
+  volatile r_agt_regs_t* lo = ra_agt(0U);
+  volatile r_agt_regs_t* hi = ra_agt(1U);
+  TEST_ASSERT_EQ(k_ra_agt_test_cas_lo16, lo->AGT);
+  TEST_ASSERT_EQ(k_ra_agt_test_cas_hi16, hi->AGT);
+  TEST_ASSERT_EQ(0x00U, lo->AGTMR1); /* timer mode + PCLKB */
+  TEST_ASSERT_EQ(0x50U, hi->AGTMR1); /* timer mode + AGT0-underflow source */
+  TEST_ASSERT_EQ(0x01U, lo->AGTCR);  /* TSTART */
+  TEST_ASSERT_EQ(0x01U, hi->AGTCR);
+  /* callback installed -> dispatch increments */
+  ra_agt_dispatch(1U);
+  TEST_ASSERT_EQ(1, s_cas_cb_count);
+  TEST_END("agt start_cascade happy");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``cfg->clock == k_ra_agt_cascade_clk_pclkb_div8``. Pairs
+ * with the pclkb-direct case for branch coverage of the switch in
+ * `agt_cascade_clock_to_tck`.
+ */
+static void test_start_cascade_div8(void)
+{
+  TEST_BEGIN("agt start_cascade div8");
+  prep_w43();
+  const ra_agt_cascade_cfg_t cfg = {
+    .reload32     = 0x00010001UL,
+    .clock        = k_ra_agt_cascade_clk_pclkb_div8,
+    .on_underflow = nullptr,
+    .ctx          = nullptr,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_cascade(&cfg));
+  volatile r_agt_regs_t* lo = ra_agt(0U);
+  TEST_ASSERT_EQ(0x10U, lo->AGTMR1); /* TCK = 001b (PCLKB/8) shifted to bit 4 */
+  TEST_END("agt start_cascade div8");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``cfg->clock == k_ra_agt_cascade_clk_pclkb_div2``. Third
+ * vector for the switch-statement branch coverage.
+ */
+static void test_start_cascade_div2(void)
+{
+  TEST_BEGIN("agt start_cascade div2");
+  prep_w43();
+  const ra_agt_cascade_cfg_t cfg = {
+    .reload32     = 0x00010001UL,
+    .clock        = k_ra_agt_cascade_clk_pclkb_div2,
+    .on_underflow = nullptr,
+    .ctx          = nullptr,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_cascade(&cfg));
+  volatile r_agt_regs_t* lo = ra_agt(0U);
+  TEST_ASSERT_EQ(0x30U, lo->AGTMR1); /* TCK = 011b -> 0x30 */
+  TEST_END("agt start_cascade div2");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``cfg == nullptr`` (atomic). Pairs with happy-path tests
+ * for 2 vectors over the NULL guard.
+ */
+static void test_start_cascade_null(void)
+{
+  TEST_BEGIN("agt start_cascade null cfg");
+  prep_w43();
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_agt_start_cascade(nullptr));
+  TEST_END("agt start_cascade null cfg");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``clock`` switch default arm. Pairs with the three good
+ * enumerator tests for 4 vectors = N+1 over the switch.
+ */
+static void test_start_cascade_bad_clock(void)
+{
+  TEST_BEGIN("agt start_cascade bad clock enum");
+  prep_w43();
+  const ra_agt_cascade_cfg_t cfg = {
+    .reload32     = 0U,
+    .clock        = (ra_agt_cascade_clk_t)0xFEU,
+    .on_underflow = nullptr,
+    .ctx          = nullptr,
+  };
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_agt_start_cascade(&cfg));
+  TEST_END("agt start_cascade bad clock enum");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``cfg->on_underflow != nullptr`` (atomic). NULL branch:
+ * the previously-installed callback must not be overwritten.
+ */
+static void test_start_cascade_no_callback(void)
+{
+  TEST_BEGIN("agt start_cascade no callback leaves slot alone");
+  prep_w43();
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_attach_handler(stub_agt_cb, (void*)(uintptr_t)0x99U));
+  const ra_agt_cascade_cfg_t cfg = {
+    .reload32     = 0U,
+    .clock        = k_ra_agt_cascade_clk_pclkb,
+    .on_underflow = nullptr,
+    .ctx          = nullptr,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_cascade(&cfg));
+  /* old shared callback should still fire */
+  ra_agt_dispatch(1U);
+  TEST_ASSERT_EQ(1, s_agt_cb_count);
+  TEST_END("agt start_cascade no callback leaves slot alone");
+}
+
 int32_t main(void)
 {
   test_start_free_run_happy();
@@ -284,6 +615,19 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_power_transition();
   test_no_mstp_channel_power();
+  test_start_pulse_output_compare_a();
+  test_start_pulse_output_compare_b_inverted();
+  test_start_pulse_output_compare_none();
+  test_start_pulse_output_null_cfg();
+  test_start_pulse_output_bad_channel();
+  test_start_pulse_output_bad_compare();
+  test_start_pulse_output_bad_polarity();
+  test_start_cascade_happy();
+  test_start_cascade_div8();
+  test_start_cascade_div2();
+  test_start_cascade_null();
+  test_start_cascade_bad_clock();
+  test_start_cascade_no_callback();
   (void)fprintf(stderr, "[OK ] test_ra_agt.c\n");
   return 0;
 }
