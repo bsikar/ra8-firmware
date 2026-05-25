@@ -407,6 +407,7 @@ typedef enum : uint32_t {
 typedef enum : uint16_t {
   k_ra_gwca_off_gwmc       = 0x0000U, /**< Mode Configuration.            */
   k_ra_gwca_off_gwms       = 0x0004U, /**< Mode Status.                   */
+  k_ra_gwca_off_gwirc      = 0x0010U, /**< GWIRC: IPV Remapping (8x 3-bit fields).*/
   k_ra_gwca_off_gwrdqdc0   = 0x0060U, /**< RX Descriptor Queue Depth Cfg q (q=0..7), stride 4.*/
   k_ra_gwca_off_gwrdqm0    = 0x0080U, /**< RX Descriptor Queue Monitoring q (q=0..7), stride 4.*/
   k_ra_gwca_off_gwdcbac0   = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/

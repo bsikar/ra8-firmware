@@ -617,6 +617,15 @@ volatile ra_eth_tx_diag_t g_ra_eth_tx_diag;
  */
 static ra_err_t internal_etha_config_window(ra_etha_port_t etha_port)
 {
+  /* Issue #21: programme EAIRC = 0 (force all 8 IPV priorities into
+   * descriptor queue 0). HUM Ch 29.4 Table 29.4 "ESWM Hub settings"
+   * p 1306 -- ``EAIRC = 0``: "All frames are directed to descriptor
+   * queue 0". Reset value is the identity mapping (IPVR0=0..IPVR7=7),
+   * which spreads frames across all 8 queues; queues 1..7 then have
+   * EATDQDC[q].DQD == 0 so anything that lands there is rejected. */
+  /* HUM Ch 32.3.2.4 "EAIRC : IPV Remapping Configuration" p 1632 */
+  ra_etha(etha_port)->EAIRC = 0U;
+
   /* Issue #21: programme EATDQDC before leaving CONFIG. With
    * EATDQDC[0..7] all at silicon reset (DQD = 0), the ETHA's per-class
    * TX descriptor RAM cannot accept any descriptor from the GWCA --

@@ -1423,6 +1423,17 @@ static ra_err_t internal_default_open_rings(ra_eth_gwca_default_state_t* state)
  */
 static ra_err_t internal_default_open_queues(ra_eth_gwca_default_state_t* state)
 {
+  /* Issue #21: programme GWIRC = 0 in CONFIG mode -- HUM Ch 29.4
+   * Table 29.4 "ESWM Hub settings" p 1306 prescribes ``GWIRC = 0``
+   * (all 8 PCP/IPV priorities map to descriptor queue 0). Reset
+   * value is the identity mapping (IPVR0=0..IPVR7=7), which spreads
+   * inbound descriptors across all 8 queues; queues 1..7 then have
+   * GWRDQDC[q].DQD == 0 so anything that lands there is dropped. */
+  /* HUM Ch 34.3.2.3 "GWIRC : IPV Remapping Configuration Register" p 1793 */
+  volatile uint32_t* const gwirc =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwirc);
+  *gwirc = 0U;
+
   /* Issue #21: programme GWRDQDC[0..7] in CONFIG mode. With these at
    * silicon reset (DQD = 0) the GWCA cannot buffer any RX descriptor
    * for any queue -- small inbound frames trickle through the per-port
