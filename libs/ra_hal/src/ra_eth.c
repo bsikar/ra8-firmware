@@ -1239,11 +1239,13 @@ static inline void internal_eth_tx_diag_sample(uint8_t channel, uint32_t len)
    * whether the frame actually crossed the wire (TX side) and whether
    * any inbound frame the RMAC accepted (RX side). MRGOEFC / MRBOEFC
    * bump when a frame larger than MRFSCE.EMXS is received (issue #21
-   * RX truncation symptom). */
-  g_ra_eth_tx_diag.last_mtgfce  = ra_rmac(rmac_port)->MTGFCE;
-  g_ra_eth_tx_diag.last_mrgfce  = ra_rmac(rmac_port)->MRGFCE;
-  g_ra_eth_tx_diag.last_mrgoefc = ra_rmac(rmac_port)->MRGOEFC;
-  g_ra_eth_tx_diag.last_mrboefc = ra_rmac(rmac_port)->MRBOEFC;
+   * RX truncation symptom). The RMAC counters are clear-on-read per
+   * HUM Ch 33.4 so we accumulate the deltas here to give the bench a
+   * cumulative-since-boot view rather than a per-call snapshot. */
+  g_ra_eth_tx_diag.last_mtgfce += ra_rmac(rmac_port)->MTGFCE;
+  g_ra_eth_tx_diag.last_mrgfce += ra_rmac(rmac_port)->MRGFCE;
+  g_ra_eth_tx_diag.last_mrgoefc += ra_rmac(rmac_port)->MRGOEFC;
+  g_ra_eth_tx_diag.last_mrboefc += ra_rmac(rmac_port)->MRBOEFC;
   g_ra_eth_tx_diag.last_tx_len  = len;
   g_ra_eth_tx_diag.tx_calls_total += 1U;
   if (len > (uint32_t)k_ra_eth_tx_diag_large_threshold) {
