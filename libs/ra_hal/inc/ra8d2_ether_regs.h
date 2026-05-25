@@ -76,15 +76,15 @@ typedef enum : uint16_t {
  * pool pointers (anything above ~256 bytes).
  */
 typedef enum : uint32_t {
-  k_ra_coma_wm_disable_thr = 512U,    /**< TPC (total pointer count); disables WM. */
-  k_ra_coma_wm_wmcl_shift  = 16U,     /**< CABPWMLC.WMCL field shift.              */
-  k_ra_coma_wm_wmfl_mask   = 0x3FFUL, /**< CABPWMLC.WMFL[9:0].                      */
-  k_ra_coma_wm_wmcl_mask   = 0x3FFUL << 16U, /**< CABPWMLC.WMCL[25:16].             */
-  k_ra_coma_ibwmc_ibswmpn_shift = 16U,    /**< CABPIBWMCi.IBSWMPN field shift.     */
-  k_ra_coma_ibwmc_ibuwmpn_mask  = 0x3FFUL, /**< CABPIBWMCi.IBUWMPN[9:0].            */
+  k_ra_coma_wm_disable_thr      = 512U,           /**< TPC (total pointer count); disables WM. */
+  k_ra_coma_wm_wmcl_shift       = 16U,            /**< CABPWMLC.WMCL field shift.              */
+  k_ra_coma_wm_wmfl_mask        = 0x3FFUL,        /**< CABPWMLC.WMFL[9:0].                      */
+  k_ra_coma_wm_wmcl_mask        = 0x3FFUL << 16U, /**< CABPWMLC.WMCL[25:16].             */
+  k_ra_coma_ibwmc_ibswmpn_shift = 16U,            /**< CABPIBWMCi.IBSWMPN field shift.     */
+  k_ra_coma_ibwmc_ibuwmpn_mask  = 0x3FFUL,        /**< CABPIBWMCi.IBUWMPN[9:0].            */
   k_ra_coma_ibwmc_ibswmpn_mask  = 0x3FFUL << 16U, /**< CABPIBWMCi.IBSWMPN[25:16].   */
-  k_ra_coma_wm_ipv_count        = 8U,     /**< CABPIBWMC array size (IPV 0..7).    */
-  k_ra_coma_wm_stride           = 4U,     /**< CABPIBWMCi stride.                  */
+  k_ra_coma_wm_ipv_count        = 8U,             /**< CABPIBWMC array size (IPV 0..7).    */
+  k_ra_coma_wm_stride           = 4U,             /**< CABPIBWMCi stride.                  */
 } ra_coma_watermark_t;
 
 /**
@@ -438,16 +438,16 @@ typedef enum : uint32_t {
  * @see reference_fsp_source memory note for the full register list.
  */
 typedef enum : uint16_t {
-  k_ra_gwca_off_gwmc       = 0x0000U, /**< Mode Configuration.            */
-  k_ra_gwca_off_gwms       = 0x0004U, /**< Mode Status.                   */
-  k_ra_gwca_off_gwirc      = 0x0010U, /**< GWIRC: IPV Remapping (8x 3-bit fields).*/
-  k_ra_gwca_off_gwrdqdc0   = 0x0060U, /**< RX Descriptor Queue Depth Cfg q (q=0..7), stride 4.*/
-  k_ra_gwca_off_gwrdqm0    = 0x0080U, /**< RX Descriptor Queue Monitoring q (q=0..7), stride 4.*/
-  k_ra_gwca_off_gwdcbac0   = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
-  k_ra_gwca_off_gwdcbac1   = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
-  k_ra_gwca_off_gwtrc0     = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
-  k_ra_gwca_off_gwtrc1     = 0x0204U, /**< TX Request Cfg, queues 32..63. */
-  k_ra_gwca_off_gwarirm    = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
+  k_ra_gwca_off_gwmc     = 0x0000U, /**< Mode Configuration.            */
+  k_ra_gwca_off_gwms     = 0x0004U, /**< Mode Status.                   */
+  k_ra_gwca_off_gwirc    = 0x0010U, /**< GWIRC: IPV Remapping (8x 3-bit fields).*/
+  k_ra_gwca_off_gwrdqdc0 = 0x0060U, /**< RX Descriptor Queue Depth Cfg q (q=0..7), stride 4.*/
+  k_ra_gwca_off_gwrdqm0  = 0x0080U, /**< RX Descriptor Queue Monitoring q (q=0..7), stride 4.*/
+  k_ra_gwca_off_gwdcbac0 = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
+  k_ra_gwca_off_gwdcbac1 = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
+  k_ra_gwca_off_gwtrc0   = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
+  k_ra_gwca_off_gwtrc1   = 0x0204U, /**< TX Request Cfg, queues 32..63. */
+  k_ra_gwca_off_gwarirm  = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
   k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
   k_ra_gwca_off_gwaarss    = 0x0800U, /**< AXI Addr RAM Searching Setting.*/
   k_ra_gwca_off_gwaarsr0   = 0x0804U, /**< AXI Addr RAM Searching Result0.*/

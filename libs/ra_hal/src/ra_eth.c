@@ -560,20 +560,20 @@ static ra_err_t internal_etha_program_tx_queues(ra_etha_port_t etha_port)
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t etha_q0_depth_programmed; /**< Last EATDQDC[0] value we tried to write. */
-  uint32_t etha_q0_eatdqdc_readback; /**< Read-back of EATDQDC[0] post-write.      */
-  uint32_t last_tx_len;              /**< Bytes handed to ra_eth_gwca_default_send. */
-  uint32_t last_eatdqm_dnq;          /**< Most recent EATDQM[0].DNQ sample.        */
-  uint32_t last_eaeis2_dqoes;        /**< EAEIS2 read after the most recent kick.  */
-  uint32_t tx_calls_total;           /**< Total ra_eth_write entries.              */
-  uint32_t tx_calls_above_512;       /**< ra_eth_write entries with len > 512.     */
-  uint32_t mrfsce_programmed;        /**< Value SW wrote to RMAC.MRFSCE in CONFIG. */
-  uint32_t mrfsce_readback;          /**< RMAC.MRFSCE read back post-write.        */
-  uint32_t last_mtgfce;              /**< MTGFCE (RMAC TX good E-frame counter).   */
-  uint32_t last_mrgfce;              /**< MRGFCE (RMAC RX good E-frame counter).   */
-  uint32_t last_mrgoefc;             /**< MRGOEFC (RMAC RX good oversize cnt).     */
-  uint32_t last_mrboefc;             /**< MRBOEFC (RMAC RX bad oversize cnt).      */
-  uint32_t last_eafsecn;             /**< EAFSECN (ETHA TX frame-size error cnt).  */
+  uint32_t etha_q0_depth_programmed;  /**< Last EATDQDC[0] value we tried to write. */
+  uint32_t etha_q0_eatdqdc_readback;  /**< Read-back of EATDQDC[0] post-write.      */
+  uint32_t last_tx_len;               /**< Bytes handed to ra_eth_gwca_default_send. */
+  uint32_t last_eatdqm_dnq;           /**< Most recent EATDQM[0].DNQ sample.        */
+  uint32_t last_eaeis2_dqoes;         /**< EAEIS2 read after the most recent kick.  */
+  uint32_t tx_calls_total;            /**< Total ra_eth_write entries.              */
+  uint32_t tx_calls_above_512;        /**< ra_eth_write entries with len > 512.     */
+  uint32_t mrfsce_programmed;         /**< Value SW wrote to RMAC.MRFSCE in CONFIG. */
+  uint32_t mrfsce_readback;           /**< RMAC.MRFSCE read back post-write.        */
+  uint32_t last_mtgfce;               /**< MTGFCE (RMAC TX good E-frame counter).   */
+  uint32_t last_mrgfce;               /**< MRGFCE (RMAC RX good E-frame counter).   */
+  uint32_t last_mrgoefc;              /**< MRGOEFC (RMAC RX good oversize cnt).     */
+  uint32_t last_mrboefc;              /**< MRBOEFC (RMAC RX bad oversize cnt).      */
+  uint32_t last_eafsecn;              /**< EAFSECN (ETHA TX frame-size error cnt).  */
   uint32_t gwca_q0_rx_depth_readback; /**< GWRDQDC[0].DQD read back post-open.     */
   uint32_t gwca_q1_rx_depth_readback; /**< GWRDQDC[1].DQD read back (should be 0). */
   uint32_t fwpbfc_port0_readback;     /**< FWPBFC0.PBDV[2:0] (port 0 dst vector).  */
@@ -581,6 +581,8 @@ typedef struct {
   uint32_t fwpbfc_port2_readback;     /**< FWPBFC0.PBDV[2:0] (CPU/host vector).    */
   uint32_t cabpwmlc_readback;         /**< CABPWMLC packed WMCL/WMFL post-disable. */
   uint32_t cabpibwmc0_readback;       /**< CABPIBWMC[0] packed IBSWMPN/IBUWMPN.    */
+  uint32_t last_mtefc;                /**< MTEFC (RMAC TX error frame counter).    */
+  uint32_t last_meis;                 /**< MEIS (RMAC Error Interrupt Status).     */
 } ra_eth_tx_diag_t;
 
 /**
@@ -1085,10 +1087,10 @@ volatile uint32_t g_ra_eth_resync_duplex;
  * that NetX never asked it to).
  */
 typedef enum : uint8_t {
-  k_ra_eth_pbdv_port0   = 0x01U, /**< Destination = ETHA0 port.        */
-  k_ra_eth_pbdv_port1   = 0x02U, /**< Destination = ETHA1 port.        */
-  k_ra_eth_pbdv_cpu     = 0x04U, /**< Destination = host (GWCA / CPU). */
-  k_ra_eth_pbdv_mask    = 0x07U, /**< PBDV field width = 3 bits.       */
+  k_ra_eth_pbdv_port0       = 0x01U, /**< Destination = ETHA0 port.        */
+  k_ra_eth_pbdv_port1       = 0x02U, /**< Destination = ETHA1 port.        */
+  k_ra_eth_pbdv_cpu         = 0x04U, /**< Destination = host (GWCA / CPU). */
+  k_ra_eth_pbdv_mask        = 0x07U, /**< PBDV field width = 3 bits.       */
   k_ra_eth_fwpbfc_idx_port0 = 0U,
   k_ra_eth_fwpbfc_idx_port1 = 1U,
   k_ra_eth_fwpbfc_idx_cpu   = 2U,
@@ -1133,9 +1135,8 @@ static void internal_eth_coma_disable_watermark(void)
    * critical and flush watermark functions. */
   volatile uint32_t* const cabpwmlc =
     (volatile uint32_t*)(k_ra_coma_base_addr + (uintptr_t)k_ra_coma_off_cabpwmlc);
-  *cabpwmlc =
-    ((uint32_t)k_ra_coma_wm_disable_thr << (uint32_t)k_ra_coma_wm_wmcl_shift) |
-    (uint32_t)k_ra_coma_wm_disable_thr;
+  *cabpwmlc = ((uint32_t)k_ra_coma_wm_disable_thr << (uint32_t)k_ra_coma_wm_wmcl_shift) |
+              (uint32_t)k_ra_coma_wm_disable_thr;
 
   /* HUM Ch 31.3.2.1 "CABPIBWMCi : Buffer Pool IPV-Based Watermark Cfg"
    * p 1593 -- pack IBSWMPN[25:16] = 512 + IBUWMPN[9:0] = 512 to
@@ -1177,12 +1178,12 @@ static void internal_eth_snapshot_post_open_diag(void)
   /* HUM Ch 34.3.2.7 "GWRDQDCq : Reception Descriptor Queue Depth Cfg" p 1797 */
   g_ra_eth_tx_diag.gwca_q1_rx_depth_readback = (uint32_t)ra_eth_gwca_get_rx_queue_depth(1U);
   enum : uint32_t {
-    k_ra_eth_fwpbfc0_off    = 0x4A00UL,
-    k_ra_eth_fwpbfc_stride  = 0x0010UL,
+    k_ra_eth_fwpbfc0_off   = 0x4A00UL,
+    k_ra_eth_fwpbfc_stride = 0x0010UL,
   };
   /* HUM Ch 30 "FWPBFCi : Port-Based Forwarding Cfg" p 1403 */
-  const volatile uint32_t* const fwpbfc0 = (const volatile uint32_t*)(k_ra_mfwd_base_addr +
-                                                                      (uintptr_t)k_ra_eth_fwpbfc0_off);
+  const volatile uint32_t* const fwpbfc0 =
+    (const volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_eth_fwpbfc0_off);
   /* HUM Ch 30 "FWPBFCi : Port-Based Forwarding Cfg" p 1403 */
   const volatile uint32_t* const fwpbfc1 =
     (const volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_eth_fwpbfc0_off +
@@ -1260,8 +1261,8 @@ static ra_err_t internal_open_gwca_path(void)
    * only 3 bits wide (HUM Ch 30 p 1403); previous code wrote 0x7F into
    * the entire 7-bit-masked field, which kept the self-port bit set. */
   static const uint8_t s_fwpbfc_masks[3] = {
-    (uint8_t)k_ra_eth_pbdv_port1 | (uint8_t)k_ra_eth_pbdv_cpu, /* port 0 -> {port 1, CPU} */
-    (uint8_t)k_ra_eth_pbdv_port0 | (uint8_t)k_ra_eth_pbdv_cpu, /* port 1 -> {port 0, CPU} */
+    (uint8_t)k_ra_eth_pbdv_port1 | (uint8_t)k_ra_eth_pbdv_cpu,   /* port 0 -> {port 1, CPU} */
+    (uint8_t)k_ra_eth_pbdv_port0 | (uint8_t)k_ra_eth_pbdv_cpu,   /* port 1 -> {port 0, CPU} */
     (uint8_t)k_ra_eth_pbdv_port0 | (uint8_t)k_ra_eth_pbdv_port1, /* CPU -> {port 0, port 1} */
   };
   (void)ra_eth_mfwd_set_forwarding_masks(s_fwpbfc_masks);
@@ -1417,6 +1418,15 @@ static inline void internal_eth_tx_diag_sample(uint8_t channel, uint32_t len)
   g_ra_eth_tx_diag.last_mrgfce += ra_rmac(rmac_port)->MRGFCE;
   g_ra_eth_tx_diag.last_mrgoefc += ra_rmac(rmac_port)->MRGOEFC;
   g_ra_eth_tx_diag.last_mrboefc += ra_rmac(rmac_port)->MRBOEFC;
+  /* HUM Ch 33.4.2.40 "MTEFC : Transmitted Error Frame Counter" p 1745 --
+   * accumulates per-call so the bench can see if the chip's MAC counted
+   * any TSLS (transmission stream lost = TX FIFO underrun), TBCIS, TCES,
+   * or PFRROS errors. Clear-on-read like the other RMAC counters. */
+  g_ra_eth_tx_diag.last_mtefc += ra_rmac(rmac_port)->MTEFC;
+  /* HUM Ch 33.4.3.1 "MEIS : Error Interrupt Status" p 1745 -- non-cumulative
+   * snapshot of the most recent value (TSLS, FUES, FOES, TBCIS, TCES,
+   * PFRROS sticky-status bits). Snap to bench-readable diag. */
+  g_ra_eth_tx_diag.last_meis   = ra_rmac(rmac_port)->MEIS;
   g_ra_eth_tx_diag.last_tx_len = len;
   g_ra_eth_tx_diag.tx_calls_total += 1U;
   if (len > (uint32_t)k_ra_eth_tx_diag_large_threshold) {
