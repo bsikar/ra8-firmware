@@ -579,6 +579,8 @@ typedef struct {
   uint32_t fwpbfc_port0_readback;     /**< FWPBFC0.PBDV[2:0] (port 0 dst vector).  */
   uint32_t fwpbfc_port1_readback;     /**< FWPBFC0.PBDV[2:0] (port 1 dst vector).  */
   uint32_t fwpbfc_port2_readback;     /**< FWPBFC0.PBDV[2:0] (CPU/host vector).    */
+  uint32_t cabpwmlc_readback;         /**< CABPWMLC packed WMCL/WMFL post-disable. */
+  uint32_t cabpibwmc0_readback;       /**< CABPIBWMC[0] packed IBSWMPN/IBUWMPN.    */
 } ra_eth_tx_diag_t;
 
 /**
@@ -1093,6 +1095,62 @@ typedef enum : uint8_t {
 } ra_eth_fwpbfc_layout_t;
 
 /**
+ * @brief Disable the COMA buffer-pool watermark so large frames are not dropped.
+ *
+ * @details HUM Ch 31.3.2.2 "CABPWMLC : Buffer Pool Watermark Level
+ * Configuration Register" p 1594 + 31.3.2.1 "CABPIBWMCi : Buffer Pool
+ * IPV Based Watermark Configuration Register i" p 1593. The COMA
+ * buffer pool has 512 128-byte pointers (CABPPCM.TPC fixed at 512).
+ * The watermark functions reject frames whose IPV's threshold
+ * register is smaller than the currently-used pointer count
+ * ``512 - CABPPCM.RPC``. Reset value for every threshold is 0,
+ * which the HUM documents (31.5.1.1 p 1617) as "enabled by the
+ * default configurations for a switch maximum frame size of 256
+ * bytes": as soon as any pointer is in use, every IPV gets rejected.
+ * That explains why small frames (<= 256 B fit in 1-2 pointers and
+ * arrive quickly) pass while large frames (1400 B = 11 pointers)
+ * trigger the watermark and get dropped before reaching the GWCA.
+ *
+ * Setting every threshold to 512 disables the rejection per the HUM
+ * note attached to each register: "Setting this register to 512
+ * disables the watermark flush level function" (and the same for
+ * critical / per-IPV).
+ *
+ * @return void
+ *
+ * @pre COMA MSTP gate is on (k_ra_mstp_eswm enabled).
+ * @pre Caller is bringing the ESWM up; no live RX traffic yet.
+ * @post CABPWMLC.WMFL == 512 and CABPWMLC.WMCL == 512 (both disabled).
+ * @post CABPIBWMC[0..7].IBUWMPN == 512 and IBSWMPN == 512 (per-IPV disabled).
+ *
+ * @note Not thread-safe; caller serialises the ESWM bring-up.
+ * @since 0.1.0
+ */
+static void internal_eth_coma_disable_watermark(void)
+{
+  /* HUM Ch 31.3.2.2 "CABPWMLC : Buffer Pool Watermark Level Cfg" p 1594 --
+   * pack WMCL[25:16] = 512 + WMFL[9:0] = 512 to disable both global
+   * critical and flush watermark functions. */
+  volatile uint32_t* const cabpwmlc =
+    (volatile uint32_t*)(k_ra_coma_base_addr + (uintptr_t)k_ra_coma_off_cabpwmlc);
+  *cabpwmlc =
+    ((uint32_t)k_ra_coma_wm_disable_thr << (uint32_t)k_ra_coma_wm_wmcl_shift) |
+    (uint32_t)k_ra_coma_wm_disable_thr;
+
+  /* HUM Ch 31.3.2.1 "CABPIBWMCi : Buffer Pool IPV-Based Watermark Cfg"
+   * p 1593 -- pack IBSWMPN[25:16] = 512 + IBUWMPN[9:0] = 512 to
+   * disable the per-IPV watermark for every priority q in 0..7. */
+  for (uint8_t q = 0U; q < (uint8_t)k_ra_coma_wm_ipv_count; ++q) {
+    /* HUM Ch 31.3.2.1 "CABPIBWMCi" p 1593 */
+    volatile uint32_t* const reg =
+      (volatile uint32_t*)(k_ra_coma_base_addr + (uintptr_t)k_ra_coma_off_cabpibwmc0 +
+                           ((uintptr_t)q * (uintptr_t)k_ra_coma_wm_stride));
+    *reg = ((uint32_t)k_ra_coma_wm_disable_thr << (uint32_t)k_ra_coma_ibwmc_ibswmpn_shift) |
+           (uint32_t)k_ra_coma_wm_disable_thr;
+  }
+}
+
+/**
  * @brief Snapshot GWRDQDC[0/1] and FWPBFC0/1/2 into the bench diag struct.
  *
  * @details See header for the canonical contract. Reads four MFWD
@@ -1136,6 +1194,14 @@ static void internal_eth_snapshot_post_open_diag(void)
   g_ra_eth_tx_diag.fwpbfc_port0_readback = *fwpbfc0 & (uint32_t)k_ra_eth_pbdv_mask;
   g_ra_eth_tx_diag.fwpbfc_port1_readback = *fwpbfc1 & (uint32_t)k_ra_eth_pbdv_mask;
   g_ra_eth_tx_diag.fwpbfc_port2_readback = *fwpbfc2 & (uint32_t)k_ra_eth_pbdv_mask;
+  /* HUM Ch 31.3.2.2 "CABPWMLC : Buffer Pool Watermark Level Cfg" p 1594 */
+  const volatile uint32_t* const cabpwmlc =
+    (const volatile uint32_t*)(k_ra_coma_base_addr + (uintptr_t)k_ra_coma_off_cabpwmlc);
+  g_ra_eth_tx_diag.cabpwmlc_readback = *cabpwmlc;
+  /* HUM Ch 31.3.2.1 "CABPIBWMCi" p 1593 (q=0 readback) */
+  const volatile uint32_t* const cabpibwmc0 =
+    (const volatile uint32_t*)(k_ra_coma_base_addr + (uintptr_t)k_ra_coma_off_cabpibwmc0);
+  g_ra_eth_tx_diag.cabpibwmc0_readback = *cabpibwmc0;
 }
 
 /**
@@ -1174,6 +1240,16 @@ static ra_err_t internal_open_gwca_path(void)
    * the full FSP CABPIRM.BPIOG/BPR handshake is intentionally skipped
    * there because BPR never asserts on EK-RA8D2 silicon unless GWCA
    * is also being brought up, and the board can't depend on that. */
+
+  /* Disable the COMA buffer-pool watermark before bringing up the
+   * GWCA. Without this, the IPV-based watermark (CABPIBWMCi.IBUWMPN)
+   * sits at its reset value of 0, which the HUM (31.5.1.1 p 1617)
+   * documents as "enabled by default for a switch maximum frame
+   * size of 256 bytes" -- i.e. as soon as the COMA pool has any
+   * pointer in use, every IPV's descriptors get rejected. That
+   * matches exactly the issue-21 size dependency (small frames
+   * trickle through but large frames trip the watermark). */
+  internal_eth_coma_disable_watermark();
 
   /* HUM Ch 29.4 Table 29.4 "ESWM Hub settings" p 1306 -- "All 1s except
    * for FWPBFCi.PBDV which is set to 0" (i.e. each port's destination

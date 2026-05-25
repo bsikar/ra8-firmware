@@ -48,11 +48,44 @@ typedef enum : uintptr_t {
  * FSP r_layer3_switch_reset_coma confirms.
  */
 typedef enum : uint16_t {
-  k_ra_coma_off_ric     = 0x000U, /**< Interrupt Configuration.          */
-  k_ra_coma_off_rrc     = 0x004U, /**< Reset Configuration (RR bit 0).   */
-  k_ra_coma_off_rcec    = 0x008U, /**< Clock Enable Cfg (RCE bit 16).    */
-  k_ra_coma_off_cabpirm = 0x140U, /**< Buf-pool Init/Reset (BPIOG / BPR). HUM Ch 31 p 1599. */
+  k_ra_coma_off_ric        = 0x000U, /**< Interrupt Configuration.          */
+  k_ra_coma_off_rrc        = 0x004U, /**< Reset Configuration (RR bit 0).   */
+  k_ra_coma_off_rcec       = 0x008U, /**< Clock Enable Cfg (RCE bit 16).    */
+  k_ra_coma_off_cabpibwmc0 = 0x020U, /**< Buf-pool IPV-based watermark cfg 0 (i=0..7, stride 4). */
+  k_ra_coma_off_cabpwmlc   = 0x040U, /**< Buf-pool Global Watermark Level Cfg. */
+  k_ra_coma_off_cabpirm    = 0x140U, /**< Buf-pool Init/Reset (BPIOG / BPR). HUM Ch 31 p 1599. */
 } ra_coma_offset_t;
+
+/**
+ * @enum ra_coma_watermark_t
+ * @brief COMA buffer-pool watermark configuration constants.
+ *
+ * @details HUM Ch 31.3.2 "Ethernet Common Agent Function Registers" p 1595.
+ * The IPV-based and global-level watermarks reject frames at the
+ * Forwarding Engine based on how many of the COMA pool's 512
+ * 128-byte pointers are currently in use. Reset value for every
+ * watermark register is 0, which the HUM documents as "enabled by
+ * the default configurations for a switch maximum frame size of
+ * 256 bytes" (31.5.1.1 IPV-based Watermark p 1617) -- i.e. as soon
+ * as any pointer is in use, frames are rejected. Setting the
+ * thresholds to 512 (== TPC) disables the rejection per the HUM
+ * note: "Setting this register to 512 disables the watermark flush
+ * level function" (CABPWMLC, 31.3.2.2 p 1594) and the same for the
+ * per-IPV watermarks. Without this fix the chip silently drops
+ * every frame whose forwarding descriptor requires more than ~1-2
+ * pool pointers (anything above ~256 bytes).
+ */
+typedef enum : uint32_t {
+  k_ra_coma_wm_disable_thr = 512U,    /**< TPC (total pointer count); disables WM. */
+  k_ra_coma_wm_wmcl_shift  = 16U,     /**< CABPWMLC.WMCL field shift.              */
+  k_ra_coma_wm_wmfl_mask   = 0x3FFUL, /**< CABPWMLC.WMFL[9:0].                      */
+  k_ra_coma_wm_wmcl_mask   = 0x3FFUL << 16U, /**< CABPWMLC.WMCL[25:16].             */
+  k_ra_coma_ibwmc_ibswmpn_shift = 16U,    /**< CABPIBWMCi.IBSWMPN field shift.     */
+  k_ra_coma_ibwmc_ibuwmpn_mask  = 0x3FFUL, /**< CABPIBWMCi.IBUWMPN[9:0].            */
+  k_ra_coma_ibwmc_ibswmpn_mask  = 0x3FFUL << 16U, /**< CABPIBWMCi.IBSWMPN[25:16].   */
+  k_ra_coma_wm_ipv_count        = 8U,     /**< CABPIBWMC array size (IPV 0..7).    */
+  k_ra_coma_wm_stride           = 4U,     /**< CABPIBWMCi stride.                  */
+} ra_coma_watermark_t;
 
 /**
  * @enum ra_coma_bit_t

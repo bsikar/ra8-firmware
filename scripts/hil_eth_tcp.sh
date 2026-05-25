@@ -425,13 +425,13 @@ if [[ -f "$ELF_PATH" ]] && command -v arm-none-eabi-nm >/dev/null 2>&1; then
     if [[ -n "$DIAG_ADDR" ]]; then
         DIAG_TMP="/tmp/hil_eth_diag_${APP_NAME}.cmd"
         DIAG_LOG="/tmp/hil_eth_diag_${APP_NAME}.log"
-        # 19 uint32_t fields = 76 bytes = mem32 19 words.
+        # 21 uint32_t fields = 84 bytes = mem32 21 words.
         cat > "$DIAG_TMP" <<DIAG
 device ${JLINK_DEVICE}
 si SWD
 speed 1000
 connect
-mem32 ${DIAG_ADDR} 19
+mem32 ${DIAG_ADDR} 21
 q
 DIAG
         echo -e "${YELLOW}[HIL]${NC} scraping g_ra_eth_tx_diag @ ${DIAG_ADDR} via J-Link..."
