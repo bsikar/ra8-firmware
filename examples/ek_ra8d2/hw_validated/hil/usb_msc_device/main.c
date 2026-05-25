@@ -449,24 +449,6 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Worker thread entry. Brings USBX + MSC up, then sleeps.
- *
- * @details The Mass-Storage class is fully event-driven by USBX's own
- * class thread (started internally by
- * ``_ux_device_class_storage_initialize``). After registration the
- * worker only has to keep ThreadX from idling its only thread so the
- * scheduler stays warm; everything else happens via the read / write
- * media callbacks above.
- *
- * @param[in] arg Unused (ThreadX entry signature).
- *
- * @pre ``tx_application_define`` started this thread auto-start.
- * @post Thread loops forever; never returns.
- *
- * @note Single-instance worker; not designed for re-entry.
- * @since 0.1.0
- */
-/**
  * @brief Brings USBX system + FS device stack up.
  *
  * @return UINT UX_SUCCESS on success.

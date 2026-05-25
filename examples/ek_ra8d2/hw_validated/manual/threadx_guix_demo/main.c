@@ -635,18 +635,6 @@ typedef struct {
 } demo_prompt_row_t;
 
 /**
- * @brief Create the title prompt + four font-sample prompts.
- *
- * @details Each prompt occupies a horizontal stripe inside the
- * canvas.  A zero-size dummy prompt is created FIRST as a
- * workaround for the "first-child-of-parent doesn't render"
- * issue documented next to `s_prompt_dummy`.
- *
- * @pre `demo_guix_canvas_setup` has run.
- * @post Five prompts attached to `s_main_window` (plus the dummy).
- * @since 0.1.0
- */
-/**
  * @var s_prompts
  * @brief Compile-time table of the prompts the demo renders.
  *
