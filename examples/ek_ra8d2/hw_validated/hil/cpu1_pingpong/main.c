@@ -6,9 +6,16 @@
  * [Ring 1 / app] {World: NS}
  *
  * @details
- * CPU0 side: releases CPU1 via ra_cpu1_release, opens IPC channels,
- * sends 0x1234, waits for 0x4321, loops. The CPU1 image lives next to
- * this file as cpu1_main.c (separate ELF target).
+ * CPU0 side: releases CPU1 via ra_cpu1_release, then exchanges
+ * ping/pong via a fixed shared-SRAM message struct (see
+ * shared_pingpong.h). The IPC peripheral is NOT used: this chip
+ * variant has SECEXT disabled on CPU1, IPC channel attribution
+ * (SAIPCIRn) is mutually exclusive S xor NS, and with CPU0 booting
+ * non-secure in this build neither core can flip a channel's
+ * attribution. Shared SRAM at 0x223EE000 (in the gap between CPU0's
+ * 0x22100000 SRAM end and CPU1's 0x223F0000 SRAM start) sidesteps
+ * the IPC security problem entirely while still validating that
+ * CPU1 was released, booted, and is executing user code.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,20 +26,10 @@
 
 #include "ra_dual_core.h"
 #include "ra_err.h"
-#include "ra_ipc.h"
+#include "shared_pingpong.h"
 
 extern uint32_t g_ra_ls_cpu1_mram_start;
 extern uint32_t g_ra_ls_cpu1_stack_top;
-
-typedef enum : uint32_t {
-  k_cpu1_pingpong_magic_ping = 0x1234U,
-  k_cpu1_pingpong_magic_pong = 0x4321U,
-  k_cpu1_pingpong_poll_max   = 1000000U,
-} cpu1_pingpong_const_t;
-
-typedef enum : uint8_t {
-  k_cpu1_pingpong_pair_zero = 0U,
-} cpu1_pingpong_pair_t;
 
 /**
  * @var g_cpu1_pingpong_match
@@ -91,32 +88,32 @@ volatile uint32_t g_cpu1_pingpong_step = 0U;
 volatile uint32_t g_cpu1_pingpong_release_err = 0xFFFFFFFFU;
 
 /**
- * @brief Drain a single message off an IPC channel with bounded poll.
- * @details Loops up to k_cpu1_pingpong_poll_max times.
- * @param[in]  channel IPC channel id.
- * @param[out] out_msg Receives the dequeued 32-bit word.
- * @return ra_err_t Error code.
- * @retval k_ra_ok          Message received.
- * @retval k_ra_err_timeout No message in time.
- * @pre out_msg non-NULL.
- * @pre channel previously initialized via ra_ipc_init.
- * @post On k_ra_ok, *out_msg holds the peer's payload.
- * @post Loop count bounded by k_cpu1_pingpong_poll_max.
- * @note Not thread-safe.
+ * @brief Poll until ``pong_seq`` reaches ``target`` or the budget runs out.
+ *
+ * @param[in] shared Pointer to the shared message struct.
+ * @param[in] target Sequence value to wait for.
+ *
+ * @return Whether the wait observed the target.
+ * @retval true  ``pong_seq == target`` was observed inside the budget.
+ * @retval false ``k_cpu1_pingpong_poll_budget`` iters elapsed first.
+ *
+ * @pre shared != nullptr.
+ * @pre target equals the most recent value the caller wrote to ping_seq.
+ * @post No shared state is mutated.
+ * @post Iteration count bounded by ``k_cpu1_pingpong_poll_budget``.
+ *
+ * @note Not thread-safe. CPU1 must already have been released or this
+ *       always times out.
  * @since 0.1.0
  */
-static ra_err_t recv_blocking(uint8_t channel, uint32_t* out_msg)
+static bool wait_for_pong(volatile cpu1_pingpong_shared_t* shared, uint32_t target)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_cpu1_pingpong_poll_max; ++i) {
-    ra_err_t err = ra_ipc_recv_message(channel, out_msg);
-    if (err == k_ra_ok) {
-      return k_ra_ok;
-    }
-    if (err != k_ra_err_no_data) {
-      return err;
+  for (uint32_t i = 0U; i < (uint32_t)k_cpu1_pingpong_poll_budget; ++i) {
+    if (shared->pong_seq == target) {
+      return true;
     }
   }
-  return k_ra_err_timeout;
+  return false;
 }
 
 /**
@@ -133,6 +130,16 @@ static ra_err_t recv_blocking(uint8_t channel, uint32_t* out_msg)
  */
 int main(void)
 {
+  volatile cpu1_pingpong_shared_t* shared = cpu1_pingpong_shared();
+  /* CPU0 owns initialization of the shared block. Zero everything
+   * before releasing CPU1 so CPU1 can rely on starting from a known
+   * clean state. */
+  shared->ping_seq     = 0U;
+  shared->pong_seq     = 0U;
+  shared->ping_payload = 0U;
+  shared->pong_payload = 0U;
+  __asm volatile("dsb" ::: "memory");
+
   g_cpu1_pingpong_step        = 1U;
   ra_err_t err                = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
   g_cpu1_pingpong_release_err = (uint32_t)err;
@@ -143,42 +150,28 @@ int main(void)
     }
   }
 
-  uint8_t ch_send = 0U;
-  uint8_t ch_recv = 0U;
-  (void)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_send);
-  (void)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_recv);
-
-  ra_ipc_config_t cfg_send = {
-    .channel      = ch_send,
-    .reset_fifo   = true,
-    .clear_status = true,
-    .event_mask   = 0U,
-  };
-  ra_ipc_config_t cfg_recv = {
-    .channel      = ch_recv,
-    .reset_fifo   = true,
-    .clear_status = true,
-    .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
-  };
-  (void)ra_ipc_init(&cfg_send);
-  (void)ra_ipc_init(&cfg_recv);
   g_cpu1_pingpong_step = 3U;
+  uint32_t next_seq    = 1U;
 
   while (1) {
     g_cpu1_pingpong_step = 4U;
-    if (ra_ipc_send_message(ch_send, (uint32_t)k_cpu1_pingpong_magic_ping) != k_ra_ok) {
+    /* Write payload before bumping ping_seq so CPU1 always observes
+     * the new payload on the same iteration the sequence advances. */
+    shared->ping_payload = (uint32_t)k_cpu1_pingpong_magic_ping;
+    __asm volatile("dsb" ::: "memory");
+    shared->ping_seq = next_seq;
+
+    if (!wait_for_pong(shared, next_seq)) {
       g_cpu1_pingpong_mismatch += 1U;
+      next_seq += 1U;
       continue;
     }
-    uint32_t got = 0U;
-    if (recv_blocking(ch_recv, &got) != k_ra_ok) {
+    if (shared->pong_payload != (uint32_t)k_cpu1_pingpong_magic_pong) {
       g_cpu1_pingpong_mismatch += 1U;
-      continue;
-    }
-    if (got != (uint32_t)k_cpu1_pingpong_magic_pong) {
-      g_cpu1_pingpong_mismatch += 1U;
+      next_seq += 1U;
       continue;
     }
     g_cpu1_pingpong_match += 1U;
+    next_seq += 1U;
   }
 }

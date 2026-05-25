@@ -39,6 +39,22 @@ typedef enum : uint32_t {
   k_gpt_capture_min_delta_ms   = 50U,
 } gpt_capture_const_t;
 
+/**
+ * @var g_gpt_capture_tick
+ * @brief HIL liveness counter -- incremented every iteration where
+ *        the GPT counter advanced relative to the previous sample
+ *        (proves GTCNT is actually counting).
+ *
+ * @details Read by hil_jlink_memprobe.sh. SW1-button-driven input
+ * capture is out-of-scope for automated HIL (would need a wire
+ * loopback), so the gate just confirms the free-running counter
+ * the demo uses for delta measurement is alive.
+ *
+ * @note Read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_gpt_capture_tick = 0U;
+
 /** @brief Channel + LED selection. */
 typedef enum : uint8_t {
   k_gpt_capture_channel = 0U,
@@ -130,6 +146,8 @@ int32_t main(void)
 
   ra_board_sw_state_t last_state = k_ra_board_sw_released;
   uint32_t            last_tick  = 0U;
+  uint32_t            prev_count = 0U;
+  bool                have_prev  = false;
 
   while (1) {
     if (gpt_capture_edge(&last_state)) {
@@ -138,6 +156,17 @@ int32_t main(void)
       last_tick                 = now;
       (void)last_delta;
       (void)ra_board_led_toggle(k_ra_board_led1);
+    }
+    /* Liveness check independent of SW1 -- proves GTCNT is counting
+     * even when the button isn't pressed (which it never is on the
+     * unattended HIL bench). */
+    const uint32_t now_count = gpt_capture_read();
+    if (now_count != UINT32_MAX) {
+      if (have_prev && (now_count != prev_count)) {
+        g_gpt_capture_tick += 1U;
+      }
+      prev_count = now_count;
+      have_prev  = true;
     }
     ra_delay_ms(k_gpt_capture_poll_period_ms);
   }

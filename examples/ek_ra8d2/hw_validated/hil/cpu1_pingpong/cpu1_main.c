@@ -5,8 +5,11 @@
  * @par Tag
  * [Ring 1 / app] {World: NS}
  *
- * @details Built as a separate ELF (-mcpu=cortex-m33). Receives 0x1234
- *          on the CPU0 -> CPU1 channel and replies with 0x4321 in a loop.
+ * @details Built as a separate ELF (-mcpu=cortex-m33). Polls the
+ *          shared SRAM struct at 0x223EE000 for a ping_seq advance;
+ *          on each new ping writes the pong payload and acks via
+ *          pong_seq. No IPC peripheral is used -- see
+ *          ``shared_pingpong.h`` for the rationale.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,7 +19,7 @@
 #include <stdint.h>
 
 #include "ra_err.h"
-#include "ra_ipc.h"
+#include "shared_pingpong.h"
 
 extern uint32_t g_ra_ls_cpu1_stack_top;
 extern uint32_t g_ra_ls_cpu1_data_start;
@@ -26,15 +29,6 @@ extern uint32_t g_ra_ls_cpu1_bss_start;
 extern uint32_t g_ra_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
-
-typedef enum : uint32_t {
-  k_cpu1_pingpong_magic_ping = 0x1234U,
-  k_cpu1_pingpong_magic_pong = 0x4321U,
-} cpu1_main_const_t;
-
-typedef enum : uint8_t {
-  k_cpu1_pingpong_pair_zero = 0U,
-} cpu1_main_pair_t;
 
 /**
  * @brief CPU1 application loop.
@@ -48,53 +42,29 @@ typedef enum : uint8_t {
  */
 [[noreturn]] static void cpu1_main(void)
 {
-  uint8_t ch_recv = 0U;
-  uint8_t ch_send = 0U;
-  (void)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_recv);
-  (void)ra_ipc_channel_for_send(k_ra_ipc_core_cpu1, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_send);
-
-  /* HUM Ch 3.2.14 "IPC0CLR0.RST" p 217 -- writing 1 to RST drains the
-   * receive FIFO and clears STA.RDY/STA.FULL. The IPC peripheral is a
-   * single shared block: CPU0 already issued ``reset_fifo=true`` on
-   * both directions before releasing CPU1 (see ra_cpu1_release ordering
-   * in main.c). If CPU1 also writes RST on ch_recv (= IPC1_0, the
-   * CPU0 -> CPU1 FIFO that CPU0 may have already loaded with 0x1234
-   * during the race window between CPU1ACTCSR.ACT asserting and CPU1
-   * finishing its .data/.bss init), the pending ping gets discarded
-   * and CPU0's bounded ``recv_blocking`` poll on ch 0 never sees a
-   * response -- ``g_cpu1_pingpong_match`` and ``g_cpu1_pingpong_mismatch``
-   * both stayed at zero across the 5 s HIL probe window because the
-   * first ping was lost and every subsequent ping arrived while CPU1
-   * was already past its init blocking. Skip the reset on CPU1; CPU0
-   * is the FIFO owner of both directions. ``clear_status`` is also
-   * dropped because CPU0 already cleared status during its own init
-   * and the only bits that could be set after CPU0's clear are RDY
-   * (set by CPU0's own TXD write -- discarding that is exactly the
-   * race we are avoiding). */
-  ra_ipc_config_t cfg_recv = {
-    .channel      = ch_recv,
-    .reset_fifo   = false,
-    .clear_status = false,
-    .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
-  };
-  ra_ipc_config_t cfg_send = {
-    .channel      = ch_send,
-    .reset_fifo   = false,
-    .clear_status = false,
-    .event_mask   = 0U,
-  };
-  (void)ra_ipc_init(&cfg_recv);
-  (void)ra_ipc_init(&cfg_send);
+  volatile cpu1_pingpong_shared_t* shared        = cpu1_pingpong_shared();
+  uint32_t                         last_observed = 0U;
 
   while (1) {
-    uint32_t got = 0U;
-    if (ra_ipc_recv_message(ch_recv, &got) != k_ra_ok) {
-      continue;
+    /* Spin until CPU0 bumps the ping sequence. The reads are volatile,
+     * so the compiler emits a fresh load each iteration. */
+    while (shared->ping_seq == last_observed) {
+      __asm volatile("nop");
     }
+    last_observed = shared->ping_seq;
+
+    /* Read the payload after the sequence advance so we know CPU0's
+     * write of the payload preceded its sequence bump. */
+    uint32_t got = shared->ping_payload;
     if (got != (uint32_t)k_cpu1_pingpong_magic_ping) {
-      continue;
+      /* Wrong magic -- still ack so CPU0's poll doesn't block. CPU0
+       * will count the mismatch via the payload check on its side. */
+      shared->pong_payload = 0U;
+    } else {
+      shared->pong_payload = (uint32_t)k_cpu1_pingpong_magic_pong;
     }
-    (void)ra_ipc_send_message(ch_send, (uint32_t)k_cpu1_pingpong_magic_pong);
+    __asm volatile("dsb" ::: "memory");
+    shared->pong_seq = last_observed;
   }
 }
 
