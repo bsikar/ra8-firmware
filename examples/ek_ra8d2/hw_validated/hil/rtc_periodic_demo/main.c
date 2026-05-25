@@ -194,8 +194,7 @@ int32_t main(void)
      * silicon RCR1.PIE drives an NVIC line, but for this demo we
      * just spin against the status bit. */
     uint8_t       status   = 0U;
-    const uint8_t any_mask = (uint8_t)k_ra_rtc_irq_alarm |
-                             (uint8_t)k_ra_rtc_irq_periodic;
+    const uint8_t any_mask = (uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_periodic;
     do {
       ra_delay_ms(k_rtc_demo_poll_ms);
       if (ra_rtc_get_status(&status) != k_ra_ok) {
@@ -208,8 +207,8 @@ int32_t main(void)
                              (uint32_t)(sizeof(k_rtc_demo_log_msg) - 1U)) != k_ra_ok) {
       break;
     }
-    if (ra_rtc_clear_status((uint8_t)((uint8_t)k_ra_rtc_irq_alarm |
-                                       (uint8_t)k_ra_rtc_irq_periodic)) != k_ra_ok) {
+    if (ra_rtc_clear_status(
+          (uint8_t)((uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_periodic)) != k_ra_ok) {
       break;
     }
     ra_delay_ms((uint32_t)k_rtc_demo_advance_secs * (uint32_t)k_rtc_demo_ms_per_sec);

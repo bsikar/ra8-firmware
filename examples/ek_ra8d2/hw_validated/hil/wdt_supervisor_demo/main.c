@@ -187,12 +187,12 @@ static void wdt_sup_demo_bring_up(void)
     .on_expiry     = k_ra_wdt_on_expiry_nmi,
     .stop_in_sleep = k_ra_wdt_sleep_stop_count,
   };
-  ra_err_t err                       = ra_wdt_init(&wdt_cfg);
+  ra_err_t err                   = ra_wdt_init(&wdt_cfg);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = 1U;
+  g_wdt_supervisor_demo_step     = 1U;
   const ra_wdt_sup_cfg_t sup_cfg = {
     .stack             = s_sup_stack,
     .stack_size_bytes  = (uint32_t)k_wdt_sup_demo_stack_bytes,
@@ -213,15 +213,15 @@ static void wdt_sup_demo_bring_up(void)
     wdt_sup_demo_halt();
   }
   g_wdt_supervisor_demo_step = 3U;
-  err                        = ra_wdt_supervisor_register_thread("worker_b",
+  err = ra_wdt_supervisor_register_thread("worker_b",
                                           (uint32_t)k_wdt_sup_demo_worker_b_deadline_ms,
                                           &s_handle_b);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = 4U;
-  err                        = ra_wdt_supervisor_start();
+  g_wdt_supervisor_demo_step     = 4U;
+  err                            = ra_wdt_supervisor_start();
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();

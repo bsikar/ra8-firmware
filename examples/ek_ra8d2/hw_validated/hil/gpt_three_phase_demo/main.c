@@ -38,11 +38,11 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_3p_demo_period   = 0x0000FFFFU,
-  k_gpt_3p_demo_step_ms  = 20U,
-  k_gpt_3p_demo_duty_u   = 0x00002000U, /**< ~12.5 %. */
-  k_gpt_3p_demo_duty_v   = 0x00006000U, /**< ~37.5 %. */
-  k_gpt_3p_demo_duty_w   = 0x0000A000U, /**< ~62.5 %. */
+  k_gpt_3p_demo_period  = 0x0000FFFFU,
+  k_gpt_3p_demo_step_ms = 20U,
+  k_gpt_3p_demo_duty_u  = 0x00002000U, /**< ~12.5 %. */
+  k_gpt_3p_demo_duty_v  = 0x00006000U, /**< ~37.5 %. */
+  k_gpt_3p_demo_duty_w  = 0x0000A000U, /**< ~62.5 %. */
 } gpt_3p_demo_const_t;
 
 /** @brief Three-phase channel ids. */

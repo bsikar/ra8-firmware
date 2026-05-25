@@ -198,8 +198,7 @@ static bool gpt_dma_demo_run_one(void)
                        (uint16_t)k_gpt_dma_demo_period_count,
                        gpt_dma_demo_on_complete,
                        nullptr,
-                       &dma_chan)
-      != k_ra_ok) {
+                       &dma_chan) != k_ra_ok) {
     return false;
   }
   /* Best-effort wait -- on real IRQ wiring the callback fires fast;

@@ -144,8 +144,7 @@ static bool gpt_os_demo_wait_ovf(void)
       return false;
     }
     if ((status & (uint32_t)k_ra_gpt_status_overflow) != 0U) {
-      (void)ra_gpt_clear_status((uint8_t)k_gpt_os_demo_channel,
-                                (uint32_t)k_ra_gpt_status_overflow);
+      (void)ra_gpt_clear_status((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_ra_gpt_status_overflow);
       return true;
     }
   }
@@ -164,8 +163,8 @@ int32_t main(void)
   }
 
   while (1) {
-    if (ra_gpt_start_free_run((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_gpt_os_demo_period)
-        != k_ra_ok) {
+    if (ra_gpt_start_free_run((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_gpt_os_demo_period) !=
+        k_ra_ok) {
       g_gpt_one_shot_mismatch += 1U;
       ra_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
       continue;

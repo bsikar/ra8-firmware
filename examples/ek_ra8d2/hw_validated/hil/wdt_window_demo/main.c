@@ -90,9 +90,7 @@ static void wdt_window_demo_panic_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_wdt_window_demo_pin_rxd,
-                                 k_ra_psel_sci_async,
-                                 "wdt_window.rxd8");
+  return ra_pfs_route_peripheral(k_wdt_window_demo_pin_rxd, k_ra_psel_sci_async, "wdt_window.rxd8");
 }
 
 static void wdt_window_demo_setup_or_halt(void)
