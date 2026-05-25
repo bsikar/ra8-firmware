@@ -341,3 +341,538 @@ ra_err_t ra_agt_exit_stop(uint8_t channel)
   }
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Pulse-output mode -- HUM Ch 24.3.4 p 1177
+ * =============================================================================
+ */
+
+/**
+ * @brief Translate the pulse-mode polarity enum into an AGTIOC mask.
+ *
+ * @details
+ * HUM Ch 24.2.7 "AGTIOC : AGT I/O Control Register" p 1170 +
+ * Table 24.3 p 1171 ("Pulse output mode": TEDGSEL=0 -> start high,
+ * TEDGSEL=1 -> start low). Always returns TOE = 1 so the AGTOn pin
+ * is enabled when pulse mode is armed.
+ *
+ * @param[in] polarity One of `k_ra_agt_output_polarity_active_high` or
+ *                     `k_ra_agt_output_polarity_active_low`.
+ *
+ * @return uint8_t bit-mask suitable for direct write to AGTIOC.
+ * @retval 0x04 active-low (TOE only, TEDGSEL cleared).
+ * @retval 0x05 active-high (TOE | TEDGSEL).
+ *
+ * @pre ``polarity`` is one of the two enumerators.
+ * @pre Caller will use the result only as an AGTIOC value.
+ *
+ * @post Returned byte has TOE set (bit 2).
+ * @post No global state is touched.
+ *
+ * @note Not thread-safe; pure ALU helper.
+ * @since 0.1.0
+ */
+static uint8_t agt_pulse_agtioc_value(ra_agt_output_polarity_t polarity)
+{
+  uint8_t v = (uint8_t)k_ra_agt_agtioc_toe_msk;
+  if (polarity == k_ra_agt_output_polarity_active_high) {
+    v |= (uint8_t)k_ra_agt_agtioc_tedgsel_msk;
+  }
+  return v;
+}
+
+/**
+ * @brief Build the AGTCMSR mask for a chosen compare-match output.
+ *
+ * @details
+ * HUM Ch 24.2.9 "AGTCMSR" p 1172. Enables compare-match A or B
+ * with the matching pin-output enable and "start-high / normal"
+ * polarity. ``compare = none`` returns zero so the caller leaves
+ * the register cleared.
+ *
+ * @param[in] compare One of `k_ra_agt_pulse_compare_none`,
+ *                    `k_ra_agt_pulse_compare_a`, or
+ *                    `k_ra_agt_pulse_compare_b`.
+ *
+ * @return uint8_t bit-mask suitable for direct write to AGTCMSR.
+ * @retval 0x00 none (no compare-match output armed).
+ * @retval 0x03 compare A (TCMEA | TOEA).
+ * @retval 0x30 compare B (TCMEB | TOEB).
+ *
+ * @pre ``compare`` is one of the three enumerators.
+ * @pre Caller will use the result only as an AGTCMSR value.
+ *
+ * @post Returned byte has either none / A-side / B-side bits set.
+ * @post No global state is touched.
+ *
+ * @note Not thread-safe; pure ALU helper.
+ * @since 0.1.0
+ */
+static uint8_t agt_pulse_agtcmsr_value(ra_agt_pulse_compare_t compare)
+{
+  if (compare == k_ra_agt_pulse_compare_a) {
+    return (uint8_t)(k_ra_agt_agtcmsr_tcmea_msk | k_ra_agt_agtcmsr_toea_msk);
+  }
+  if (compare == k_ra_agt_pulse_compare_b) {
+    return (uint8_t)(k_ra_agt_agtcmsr_tcmeb_msk | k_ra_agt_agtcmsr_toeb_msk);
+  }
+  return 0U;
+}
+
+/**
+ * @brief Programme the AGTCMA / AGTCMB compare register for pulse mode.
+ *
+ * @details
+ * HUM Ch 24.2.2 "AGTCMA : AGT Compare Match A Register" p 1166 and
+ * HUM Ch 24.2.3 "AGTCMB : AGT Compare Match B Register" p 1166. The
+ * unselected register is parked at 0xFFFF as per the spec note.
+ *
+ * @param[in,out] reg     AGT channel window (non-NULL).
+ * @param[in]     compare Compare-match selector (see enum).
+ * @param[in]     duty    16-bit duty value loaded into the selected
+ *                        compare register; the unselected register is
+ *                        loaded with 0xFFFF (parked).
+ *
+ * @pre ``reg`` points at a valid AGT channel window.
+ * @pre ``compare`` is one of the three enumerators.
+ *
+ * @post AGTCMA holds ``duty`` when ``compare == A``, else 0xFFFF.
+ * @post AGTCMB holds ``duty`` when ``compare == B``, else 0xFFFF.
+ *
+ * @note Not thread-safe; ISR-unsafe (touches MMIO).
+ * @since 0.1.0
+ */
+static void
+agt_pulse_program_compare(volatile r_agt_regs_t* reg, ra_agt_pulse_compare_t compare, uint16_t duty)
+{
+  const uint16_t parked = (uint16_t)k_ra_agt_compare_parked_value;
+  /* HUM Ch 24.2.2 "AGTCMA : AGT Compare Match A Register" p 1166 */
+  reg->AGTCMA = (compare == k_ra_agt_pulse_compare_a) ? duty : parked;
+  /* HUM Ch 24.2.3 "AGTCMB : AGT Compare Match B Register" p 1166 */
+  reg->AGTCMB = (compare == k_ra_agt_pulse_compare_b) ? duty : parked;
+}
+
+/**
+ * @brief Validate the enum members of a pulse-output config block.
+ *
+ * @details
+ * The two pulse-mode enums (`compare` and `polarity`) are passed by
+ * the caller and so must be sanity-checked before being mapped onto
+ * register-mask values. ``mode`` is informational and is checked at
+ * the polling layer in the demo, not here.
+ *
+ * @param[in] cfg Configuration block (caller has already null-checked).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Both enum fields hold a documented value.
+ * @retval k_ra_err_invalid_arg ``compare`` or ``polarity`` out of range.
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre Caller will inspect the return value.
+ *
+ * @post No global or MMIO state is touched.
+ * @post Returns OK only when both enum fields hold a documented value.
+ *
+ * @note Not thread-safe; pure validator.
+ * @since 0.1.0
+ */
+static ra_err_t agt_pulse_validate_cfg(const ra_agt_pulse_cfg_t* cfg)
+{
+  if ((cfg->compare != k_ra_agt_pulse_compare_none) && (cfg->compare != k_ra_agt_pulse_compare_a) &&
+      (cfg->compare != k_ra_agt_pulse_compare_b)) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((cfg->polarity != k_ra_agt_output_polarity_active_high) &&
+      (cfg->polarity != k_ra_agt_output_polarity_active_low)) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Write the AGT mode / I/O / compare-match registers for pulse
+ *        output.
+ *
+ * @details
+ * Programmes everything except AGTCR.TSTART (the caller flips that
+ * last). Each register write is preceded by a HUM citation comment.
+ *
+ * @param[in,out] reg AGT channel window (non-NULL).
+ * @param[in]     cfg Validated pulse-output configuration.
+ *
+ * @pre ``reg`` points at a valid AGT channel window.
+ * @pre ``cfg`` has already been validated by `agt_pulse_validate_cfg`.
+ *
+ * @post AGT is loaded with the period, compare-match regs hold duty
+ *       or 0xFFFF.
+ * @post Counter is still stopped (AGTCR.TSTART = 0).
+ *
+ * @note Not thread-safe; ISR-unsafe (touches MMIO).
+ * @since 0.1.0
+ */
+static void agt_pulse_program_registers(volatile r_agt_regs_t* reg, const ra_agt_pulse_cfg_t* cfg)
+{
+  /* Stop first. */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
+  reg->AGTCR = 0U;
+  /* TMOD=001b (pulse output mode), TCK = PCLKB. */
+  /* HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168 */
+  reg->AGTMR1 = (uint8_t)k_ra_agt_agtmr1_tmod_pulse_output;
+  /* HUM Ch 24.2.6 "AGTMR2 : AGT Mode Register 2" p 1169 */
+  reg->AGTMR2 = 0U;
+  /* TOE = 1, polarity from the config. */
+  /* HUM Ch 24.2.7 "AGTIOC : AGT I/O Control Register" p 1170 */
+  reg->AGTIOC = agt_pulse_agtioc_value(cfg->polarity);
+  /* HUM Ch 24.2.9 "AGTCMSR : AGT Compare Match Function Select" p 1172 */
+  reg->AGTCMSR = agt_pulse_agtcmsr_value(cfg->compare);
+  agt_pulse_program_compare(reg, cfg->compare, cfg->duty);
+  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1166 */
+  reg->AGT = cfg->period;
+}
+
+/**
+ * @brief Arm one AGT channel in pulse-output / output-compare mode.
+ *
+ * @details
+ * Implementation of the public API declared in `ra_agt.h`. Validates
+ * the config, ref-counts the MSTP bit for AGT0 / AGT1, programmes
+ * the mode + I/O + compare-match registers, then sets AGTCR.TSTART
+ * to 1. HUM Ch 24.3.4 "Pulse Output Mode" p 1177 is the spec
+ * reference; per-register citations sit on each write below.
+ *
+ * @param[in] channel AGT channel (0..9).
+ * @param[in] cfg     Configuration block; must not be NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Channel armed, AGTOn pin toggling.
+ * @retval k_ra_err_null_ptr    ``cfg`` NULL or ``channel`` >= 10.
+ * @retval k_ra_err_invalid_arg ``cfg->compare`` / ``cfg->polarity``
+ *                              enum out of range.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre Pin function-select has already routed AGTOn etc.
+ *
+ * @post AGTCR.TSTART reads 1 (counter running).
+ * @post AGTMR1.TMOD reads 001b (pulse-output mode).
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
+ */
+ra_err_t ra_agt_start_pulse_output(uint8_t channel, const ra_agt_pulse_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  volatile r_agt_regs_t* reg = ra_agt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+
+  const ra_err_t verr = agt_pulse_validate_cfg(cfg);
+  RA_RETURN_ON_ERROR(verr, s_tag, "agt_pulse: cfg validation");
+
+  if (channel < k_ra_agt_mstp_id_count) {
+    /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
+    const ra_err_t mst_err = ra_mstp_enable(s_agt_mstp_table[channel]);
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  }
+
+  agt_pulse_program_registers(reg, cfg);
+
+  /* TSTART = 1. */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
+  reg->AGTCR = (uint8_t)k_ra_agt_agtcr_tstart_msk;
+
+  /* One-shot mode is implemented at the polling layer: the caller
+   * inspects AGTCR.TUNDF and calls ra_agt_stop() once it sees the
+   * first underflow. The hardware itself only knows continuous
+   * pulse output (HUM Ch 24.3.4 p 1177). */
+  (void)cfg->mode;
+
+  ra_log_info_val(s_tag, "pulse start channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Cascade mode -- HUM Ch 24.1 Table 24.1 p 1164 + Ch 24.2.5 p 1168 note 6
+ * =============================================================================
+ */
+
+/**
+ * @brief Translate the cascade clock enum into an AGTMR1.TCK encoding.
+ *
+ * @details
+ * Maps `ra_agt_cascade_clk_t` onto the AGTMR1.TCK[2:0] bit field
+ * (HUM Ch 24.2.5 p 1168). Only the three PCLKB-derived options are
+ * supported -- AGT1 always uses TCK=101b (AGT0 underflow) so its
+ * source does not come from this helper.
+ *
+ * @param[in]  clock   Cascade clock-source enum value.
+ * @param[out] out_tck Receives the bit-shifted TCK encoding.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              ``*out_tck`` holds the encoded TCK value.
+ * @retval k_ra_err_invalid_arg ``clock`` was out of range.
+ *
+ * @pre ``out_tck`` non-NULL.
+ * @pre Caller will consume ``*out_tck`` only on a k_ra_ok return.
+ *
+ * @post ``*out_tck`` is unchanged when the function returns non-OK.
+ * @post No global state is touched.
+ *
+ * @note Not thread-safe; pure mapping helper.
+ * @since 0.1.0
+ */
+static ra_err_t agt_cascade_clock_to_tck(ra_agt_cascade_clk_t clock, uint8_t* out_tck)
+{
+  switch (clock) {
+    case k_ra_agt_cascade_clk_pclkb:
+      *out_tck = (uint8_t)k_ra_agt_agtmr1_tck_pclkb;
+      return k_ra_ok;
+    case k_ra_agt_cascade_clk_pclkb_div8:
+      *out_tck = (uint8_t)k_ra_agt_agtmr1_tck_pclkb_div8;
+      return k_ra_ok;
+    case k_ra_agt_cascade_clk_pclkb_div2:
+      *out_tck = (uint8_t)k_ra_agt_agtmr1_tck_pclkb_div2;
+      return k_ra_ok;
+    default:
+      return k_ra_err_invalid_arg;
+  }
+}
+
+/**
+ * @brief Reset and arm one cascade half in plain timer mode.
+ *
+ * @details
+ * Writes AGTCR=0 (stop), AGTMR1=tmr1 (timer mode + TCK encoding),
+ * AGTMR2=0 (no CKS divide), AGT=reload, then leaves TSTART low so
+ * the caller can start both halves in the correct order.
+ *
+ * @param[in,out] reg    AGT channel window (non-NULL).
+ * @param[in]     tmr1   Packed AGTMR1 byte (TMOD timer-mode + TCK).
+ * @param[in]     reload 16-bit counter reload value.
+ *
+ * @pre ``reg`` points at a valid AGT channel window.
+ * @pre ``tmr1`` encodes TMOD = timer-mode plus a valid TCK value.
+ *
+ * @post AGT counter is loaded with ``reload``.
+ * @post Counter is still stopped (AGTCR.TSTART = 0).
+ *
+ * @note Not thread-safe; ISR-unsafe (touches MMIO).
+ * @since 0.1.0
+ */
+static void agt_cascade_arm_half(volatile r_agt_regs_t* reg, uint8_t tmr1, uint16_t reload)
+{
+  /* Stop the channel before touching the mode-control regs. */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
+  reg->AGTCR = 0U;
+  /* HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168 */
+  reg->AGTMR1 = tmr1;
+  /* HUM Ch 24.2.6 "AGTMR2 : AGT Mode Register 2" p 1169 */
+  reg->AGTMR2 = 0U;
+  /* No external output in cascade timer mode. */
+  /* HUM Ch 24.2.7 "AGTIOC : AGT I/O Control Register" p 1170 */
+  reg->AGTIOC = 0U;
+  /* No compare-match output. */
+  /* HUM Ch 24.2.9 "AGTCMSR : AGT Compare Match Function Select" p 1172 */
+  reg->AGTCMSR = 0U;
+  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1166 */
+  reg->AGT = reload;
+}
+
+/** @brief Shift / mask used to split the cascade 32-bit reload. */
+typedef enum : uint32_t {
+  k_ra_agt_cascade_lo_mask  = 0xFFFFU,
+  k_ra_agt_cascade_hi_shift = 16U,
+} ra_agt_cascade_split_t;
+
+/**
+ * @brief Power on both halves of the cascade pair.
+ *
+ * @details
+ * Reference-counts the MSTP bits for AGT0 and AGT1 in order so the
+ * peripheral clock arrives before any register write touches them
+ * (HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok             Both MSTP bits are ref-incremented.
+ * @retval k_ra_err_hw_timeout `ra_mstp_enable` read-back failed.
+ *
+ * @pre IRQs masked or init context.
+ * @pre `ra_mstp_init` has been called previously.
+ *
+ * @post Both MSTP bits are now ref-incremented on success.
+ * @post Caller releases via `ra_agt_deinit` per channel.
+ *
+ * @note Not thread-safe; MSTP refcount table is shared with other
+ *       drivers.
+ * @since 0.1.0
+ */
+static ra_err_t agt_cascade_mstp_enable_both(void)
+{
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
+  const ra_err_t m0 = ra_mstp_enable(s_agt_mstp_table[k_ra_agt_cascade_lo_channel]);
+  RA_RETURN_ON_ERROR(m0, s_tag, "cascade: mstp AGT0"); /* GCOVR_EXCL_BR_LINE */
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
+  const ra_err_t m1 = ra_mstp_enable(s_agt_mstp_table[k_ra_agt_cascade_hi_channel]);
+  RA_RETURN_ON_ERROR(m1, s_tag, "cascade: mstp AGT1"); /* GCOVR_EXCL_BR_LINE */
+  return k_ra_ok;
+}
+
+/**
+ * @brief Programme both AGT halves and start them in cascade order.
+ *
+ * @details
+ * Splits ``reload32`` into the two 16-bit reload values, configures
+ * AGT0 in plain timer mode and AGT1 with TCK=101b (AGT0 underflow),
+ * then sets TSTART on AGT1 first and AGT0 second so AGT1 is ready to
+ * sample on the first cycle (HUM Ch 24.2.5 p 1168 note 6).
+ *
+ * @param[in,out] lo       AGT0 channel window.
+ * @param[in,out] hi       AGT1 channel window.
+ * @param[in]     reload32 32-bit virtual reload value.
+ * @param[in]     tck_lo   Pre-encoded AGTMR1 TCK byte for the AGT0 half.
+ *
+ * @pre Both MSTP bits are enabled.
+ * @pre ``tck_lo`` encodes the AGTMR1 TCK field for the AGT0 half.
+ *
+ * @post Both AGTCR.TSTART = 1; cascade is live.
+ * @post AGT1 begins counting on the first AGT0 underflow.
+ *
+ * @note Not thread-safe; ISR-unsafe (touches MMIO).
+ * @since 0.1.0
+ */
+static void agt_cascade_program_and_start(volatile r_agt_regs_t* lo,
+                                          volatile r_agt_regs_t* hi,
+                                          uint32_t               reload32,
+                                          uint8_t                tck_lo)
+{
+  const uint16_t reload_lo = (uint16_t)(reload32 & (uint32_t)k_ra_agt_cascade_lo_mask);
+  const uint16_t reload_hi = (uint16_t)((reload32 >> (uint32_t)k_ra_agt_cascade_hi_shift) &
+                                        (uint32_t)k_ra_agt_cascade_lo_mask);
+
+  /* HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168 */
+  const uint8_t tmr1_lo = (uint8_t)((uint8_t)k_ra_agt_agtmr1_tmod_timer | tck_lo);
+  /* HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168 */
+  const uint8_t tmr1_hi =
+    (uint8_t)((uint8_t)k_ra_agt_agtmr1_tmod_timer | (uint8_t)k_ra_agt_agtmr1_tck_agt0_underflow);
+
+  agt_cascade_arm_half(lo, tmr1_lo, reload_lo);
+  agt_cascade_arm_half(hi, tmr1_hi, reload_hi);
+
+  /* Start AGT1 first so it samples the AGT0 underflow on the very */
+  /* first cycle. */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
+  hi->AGTCR = (uint8_t)k_ra_agt_agtcr_tstart_msk;
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
+  lo->AGTCR = (uint8_t)k_ra_agt_agtcr_tstart_msk;
+}
+
+/**
+ * @brief Install the optional cascade-completion callback.
+ *
+ * @details
+ * Copies ``cfg->on_underflow`` and ``cfg->ctx`` into the global
+ * AGT dispatch slot when ``cfg->on_underflow`` is non-NULL. NULL is
+ * treated as "leave the previously-installed handler in place" so
+ * cascade callers do not stomp on a sibling AGT-channel attach.
+ *
+ * @param[in] cfg Cascade configuration block (non-NULL).
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre IRQs masked or single-threaded init context.
+ *
+ * @post When ``cfg->on_underflow != nullptr`` the global slot is
+ *       overwritten.
+ * @post When ``cfg->on_underflow == nullptr`` the slot is unchanged.
+ *
+ * @note Not thread-safe; shared module-static slot.
+ * @since 0.1.0
+ */
+static void agt_cascade_install_callback(const ra_agt_cascade_cfg_t* cfg)
+{
+  if (cfg->on_underflow != nullptr) {
+    s_agt_fn  = cfg->on_underflow;
+    s_agt_ctx = cfg->ctx;
+  }
+}
+
+/**
+ * @brief Fetch and validate both AGT register windows for cascade.
+ *
+ * @details
+ * Cascade only works on the AGT0 / AGT1 pair (HUM Ch 24.1 Table 24.1
+ * p 1164). This helper resolves the two channel pointers and rejects
+ * any host where the simulator window is missing.
+ *
+ * @param[out] out_lo Receives the AGT0 channel window pointer.
+ * @param[out] out_hi Receives the AGT1 channel window pointer.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok           Both pointers populated.
+ * @retval k_ra_err_null_ptr ``ra_agt(0)`` or ``ra_agt(1)`` returned NULL.
+ *
+ * @pre ``out_lo`` / ``out_hi`` non-NULL.
+ * @pre Caller will inspect the return value.
+ *
+ * @post On OK return both ``*out_lo`` and ``*out_hi`` are non-NULL.
+ * @post No MMIO is touched.
+ *
+ * @note Not thread-safe; pure resolver.
+ * @since 0.1.0
+ */
+static ra_err_t agt_cascade_resolve_halves(volatile r_agt_regs_t** out_lo,
+                                           volatile r_agt_regs_t** out_hi)
+{
+  *out_lo = ra_agt((uint8_t)k_ra_agt_cascade_lo_channel);
+  *out_hi = ra_agt((uint8_t)k_ra_agt_cascade_hi_channel);
+  RA_CHECK_NULL_PTR(*out_lo, s_tag, "cascade: AGT0 unavailable");
+  RA_CHECK_NULL_PTR(*out_hi, s_tag, "cascade: AGT1 unavailable");
+  return k_ra_ok;
+}
+
+/**
+ * @brief Cascade AGT0 and AGT1 into a 32-bit virtual down-counter.
+ *
+ * @details
+ * Implementation of the public API declared in `ra_agt.h`. Validates
+ * the clock enum, ref-counts the AGT0 / AGT1 MSTP bits, splits the
+ * 32-bit reload into two 16-bit halves, programmes both channels in
+ * timer mode (AGT1 with TCK=101b "AGT0 underflow", HUM Ch 24.2.5
+ * p 1168 note 6), then starts AGT1 first so it samples the very
+ * first AGT0 underflow.
+ *
+ * @param[in] cfg Cascade configuration block; must not be NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              AGT0 + AGT1 armed as a 32-bit cascade.
+ * @retval k_ra_err_null_ptr    ``cfg`` NULL or AGT0/AGT1 window missing.
+ * @retval k_ra_err_invalid_arg ``cfg->clock`` enum out of range.
+ * @retval k_ra_err_hw_timeout  MSTP enable read-back failed.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre Caller has not separately armed AGT0 or AGT1.
+ *
+ * @post AGT0.AGTCR.TSTART = 1; AGT1.AGTCR.TSTART = 1.
+ * @post Global handler slot points at ``cfg->on_underflow`` if
+ *       non-NULL.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
+ */
+ra_err_t ra_agt_start_cascade(const ra_agt_cascade_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  uint8_t        tck_lo = 0U;
+  const ra_err_t cerr   = agt_cascade_clock_to_tck(cfg->clock, &tck_lo);
+  RA_RETURN_ON_ERROR(cerr, s_tag, "cascade: bad clock enum");
+
+  volatile r_agt_regs_t* lo   = nullptr;
+  volatile r_agt_regs_t* hi   = nullptr;
+  const ra_err_t         herr = agt_cascade_resolve_halves(&lo, &hi);
+  RA_RETURN_ON_ERROR(herr, s_tag, "cascade: half resolve");
+
+  const ra_err_t merr = agt_cascade_mstp_enable_both();
+  RA_RETURN_ON_ERROR(merr, s_tag, "cascade: mstp enable");
+
+  agt_cascade_program_and_start(lo, hi, cfg->reload32, tck_lo);
+  agt_cascade_install_callback(cfg);
+  ra_log_info_val(s_tag, "cascade start", cfg->reload32);
+  return k_ra_ok;
+}

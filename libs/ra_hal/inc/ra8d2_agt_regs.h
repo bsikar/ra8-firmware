@@ -57,8 +57,71 @@ typedef enum : uint8_t {
   k_ra_agt_agtcr_tstart_msk = 0x01U,
   k_ra_agt_agtcr_tcstf_msk  = 0x02U,
   k_ra_agt_agtcr_tstop_msk  = 0x04U,
+  k_ra_agt_agtcr_tundf_msk  = 0x20U, /**< Underflow flag.        */
+  k_ra_agt_agtcr_tcmaf_msk  = 0x40U, /**< Compare-match A flag.  */
+  k_ra_agt_agtcr_tcmbf_msk  = 0x80U, /**< Compare-match B flag.  */
   k_ra_agt_agtcr_status_msk = 0xF0U, /**< TEDGF|TUNDF|TCMAF|TCMBF */
 } ra_agt_agtcr_masks_t;
+
+/**
+ * @brief AGTMR1 (AGT Mode Register 1) field encodings.
+ * @details HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168.
+ */
+typedef enum : uint8_t {
+  k_ra_agt_agtmr1_tmod_timer         = 0x00U, /**< TMOD = 000b.           */
+  k_ra_agt_agtmr1_tmod_pulse_output  = 0x01U, /**< TMOD = 001b.           */
+  k_ra_agt_agtmr1_tmod_event_count   = 0x02U, /**< TMOD = 010b.           */
+  k_ra_agt_agtmr1_tmod_mask          = 0x07U, /**< TMOD[2:0] field mask.  */
+  k_ra_agt_agtmr1_tck_pclkb          = 0x00U, /**< TCK = 000b @ bit 4.    */
+  k_ra_agt_agtmr1_tck_pclkb_div8     = 0x10U, /**< TCK = 001b @ bit 4.    */
+  k_ra_agt_agtmr1_tck_pclkb_div2     = 0x30U, /**< TCK = 011b @ bit 4.    */
+  k_ra_agt_agtmr1_tck_agt0_underflow = 0x50U, /**< TCK = 101b (AGT1 only).*/
+  k_ra_agt_agtmr1_tck_mask           = 0x70U, /**< TCK[2:0] field mask.   */
+} ra_agt_agtmr1_fields_t;
+
+/**
+ * @brief AGTIOC (AGT I/O Control Register) bit masks.
+ * @details HUM Ch 24.2.7 "AGTIOC : AGT I/O Control Register" p 1170.
+ */
+typedef enum : uint8_t {
+  k_ra_agt_agtioc_tedgsel_msk = 0x01U, /**< Output polarity bit 0.       */
+  k_ra_agt_agtioc_toe_msk     = 0x04U, /**< AGTOn pin output enable.     */
+} ra_agt_agtioc_masks_t;
+
+/**
+ * @brief Compare-match register "parked" sentinel.
+ * @details HUM Ch 24.2.2 "AGTCMA : AGT Compare Match A Register" p 1166
+ *          Note 1: "Set the AGTCMA register to 0xFFFF when compare match
+ *          A is not used." Same applies to AGTCMB (HUM Ch 24.2.3 p 1166).
+ */
+typedef enum : uint16_t {
+  k_ra_agt_compare_parked_value = 0xFFFFU,
+} ra_agt_compare_sentinel_t;
+
+/**
+ * @brief AGTCMSR (AGT Compare Match Function Select) bit masks.
+ * @details HUM Ch 24.2.9 "AGTCMSR : AGT Compare Match Function Select
+ *          Register" p 1172.
+ */
+typedef enum : uint8_t {
+  k_ra_agt_agtcmsr_tcmea_msk  = 0x01U, /**< Compare match A enable.      */
+  k_ra_agt_agtcmsr_toea_msk   = 0x02U, /**< AGTOAn output enable.        */
+  k_ra_agt_agtcmsr_topola_msk = 0x04U, /**< AGTOAn output polarity.      */
+  k_ra_agt_agtcmsr_tcmeb_msk  = 0x10U, /**< Compare match B enable.      */
+  k_ra_agt_agtcmsr_toeb_msk   = 0x20U, /**< AGTOBn output enable.        */
+  k_ra_agt_agtcmsr_topolb_msk = 0x40U, /**< AGTOBn output polarity.      */
+} ra_agt_agtcmsr_masks_t;
+
+/**
+ * @brief Cascade-mode channel indices.
+ * @details RA8D2 only supports cascade on the AGT0 / AGT1 pair --
+ *          AGT1's TCK[2:0] = 101b uses "Underflow event signal from
+ *          AGT0" (HUM Ch 24.2.5 p 1168, Note 6).
+ */
+typedef enum : uint8_t {
+  k_ra_agt_cascade_lo_channel = 0U, /**< Low 16 bits live in AGT0. */
+  k_ra_agt_cascade_hi_channel = 1U, /**< High 16 bits live in AGT1.*/
+} ra_agt_cascade_channels_t;
 
 /**
  * @struct r_agt_regs_t
