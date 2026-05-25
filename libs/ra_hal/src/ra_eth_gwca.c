@@ -684,6 +684,62 @@ ra_err_t ra_eth_gwca_configure_queue(ra_gwca_basic_descriptor_t*    linkfix_tabl
 }
 
 /**
+ * @brief Return a typed volatile pointer to GWRDQDC[queue_index].
+ *
+ * @details Helper that computes the register address from the GWCA0
+ * base + the per-queue offset stride (4 bytes). Per project policy
+ * hardware register access is via inline accessors, never preprocessor
+ * macros.
+ *
+ * @param[in] queue_index RX queue index 0..7.
+ * @return Volatile pointer to GWRDQDC[queue_index].
+ *
+ * @pre queue_index <= 7 (caller already bounds-checked).
+ * @pre GWCA module is powered up.
+ * @post Returned pointer is non-null and maps to GWCA0 register window.
+ * @post No state is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline volatile uint32_t* internal_gwrdqdc(uint8_t queue_index)
+{
+  enum : uint32_t { k_ra_gwrdqdc_stride = 4U };
+  return (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwrdqdc0 +
+                              ((uintptr_t)queue_index * (uintptr_t)k_ra_gwrdqdc_stride));
+}
+
+/* Implementation of ra_eth_gwca_set_rx_queue_depth -- see header for full description. */
+ra_err_t ra_eth_gwca_set_rx_queue_depth(uint8_t queue_index, uint16_t depth)
+{
+  enum : uint8_t { k_ra_gwca_rx_q_max = 7U };
+  if (queue_index > (uint8_t)k_ra_gwca_rx_q_max) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((uint32_t)depth > (uint32_t)k_ra_gwrdqdc_dqd_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 34.3.2.7 "GWRDQDCq : RX Descriptor Queue Depth Cfg" p 1797 --
+   * preserve any non-DQD bits the chip may add in a future stepping
+   * (reset value is 0, but ROR/RAS bits are reserved-write-as-read). */
+  volatile uint32_t* const reg = internal_gwrdqdc(queue_index);
+  const uint32_t           cur = *reg & ~(uint32_t)k_ra_gwrdqdc_dqd_mask;
+  *reg                         = cur | ((uint32_t)depth & (uint32_t)k_ra_gwrdqdc_dqd_mask);
+  return k_ra_ok;
+}
+
+/* Implementation of ra_eth_gwca_get_rx_queue_depth -- see header for full description. */
+uint16_t ra_eth_gwca_get_rx_queue_depth(uint8_t queue_index)
+{
+  enum : uint8_t { k_ra_gwca_rx_q_max = 7U };
+  if (queue_index > (uint8_t)k_ra_gwca_rx_q_max) {
+    return 0U;
+  }
+  /* HUM Ch 34.3.2.7 "GWRDQDCq : RX Descriptor Queue Depth Cfg" p 1797 */
+  return (uint16_t)(*internal_gwrdqdc(queue_index) & (uint32_t)k_ra_gwrdqdc_dqd_mask);
+}
+
+/**
  * @brief Reload a descriptor queue: pulse GWDCC[i].BALR, wait for clear.
  *
  * @details HUM Ch 34.3 "GWDCCi" p 1811 defines BALR (Base Address
@@ -1367,6 +1423,24 @@ static ra_err_t internal_default_open_rings(ra_eth_gwca_default_state_t* state)
  */
 static ra_err_t internal_default_open_queues(ra_eth_gwca_default_state_t* state)
 {
+  /* Issue #21: programme GWRDQDC[0..7] in CONFIG mode. With these at
+   * silicon reset (DQD = 0) the GWCA cannot buffer any RX descriptor
+   * for any queue -- small inbound frames trickle through the per-port
+   * RX FIFO but anything > a few hundred bytes is silently dropped.
+   * HUM Ch 29.4 Table 29.4 "ESWM Hub settings" p 1306 prescribes
+   * ``GWRDQDC[0] = 512`` and 0 for q=1..7 in no-QoS / single-priority
+   * mode; all of the 512-descriptor RAM budget goes to queue 0.
+   * Mirrors the EATDQDC programming on the TX side (also issue #21). */
+  enum : uint16_t { k_ra_gwca_rx_q0_depth = 512U, k_ra_gwca_rx_q_other = 0U };
+  enum : uint8_t { k_ra_gwca_rx_q_count = 8U };
+  /* HUM Ch 34.3.2.7 "GWRDQDCq : Reception Descriptor Queue Depth Cfg" p 1797 */
+  const ra_err_t rxq0 = ra_eth_gwca_set_rx_queue_depth(0U, (uint16_t)k_ra_gwca_rx_q0_depth);
+  RA_RETURN_ON_ERROR(rxq0, s_tag, "default_open: gwrdqdc[0]"); /* GCOVR_EXCL_BR_LINE */
+  for (uint8_t q = 1U; q < (uint8_t)k_ra_gwca_rx_q_count; ++q) {
+    /* HUM Ch 34.3.2.7 "GWRDQDCq : Reception Descriptor Queue Depth Cfg" p 1797 */
+    const ra_err_t e = ra_eth_gwca_set_rx_queue_depth(q, (uint16_t)k_ra_gwca_rx_q_other);
+    RA_RETURN_ON_ERROR(e, s_tag, "default_open: gwrdqdc[q]"); /* GCOVR_EXCL_BR_LINE */
+  }
   const ra_eth_gwca_queue_cfg_t rx_cfg = {.priority     = 0U,
                                           .is_tx        = false,
                                           .stop_on_last = false,

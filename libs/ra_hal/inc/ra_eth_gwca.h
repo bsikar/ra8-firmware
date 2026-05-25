@@ -245,6 +245,57 @@ typedef struct {
                                                    const ra_eth_gwca_queue_cfg_t* cfg);
 
 /**
+ * @brief Program the per-queue RX descriptor queue depth on the GWCA side.
+ *
+ * @details HUM Ch 34.3.2.7 "GWRDQDCq : Reception Descriptor Queue Depth
+ * Configuration Register" p 1797 -- ``DQD[9:0]`` sets the number of
+ * descriptors the GWCA reserves for RX queue ``q``. Reset value is 0,
+ * which means the GWCA cannot accept any RX descriptor for that
+ * queue and large inbound frames get silently dropped the moment
+ * they exceed the per-port RX FIFO (small frames trickle through
+ * anyway). HUM Ch 29.4 Table 29.4 ("ESWM Hub settings" p 1306)
+ * prescribes ``GWRDQDC[0] = 512`` and 0 for q=1..7 when QoS is not
+ * used (all the GWCA RX descriptor RAM goes to priority-0 queue).
+ * Writes only stick while the GWCA is in GWMC.OPC = CONFIG.
+ *
+ * @param[in] queue_index  GWCA RX queue index 0..7.
+ * @param[in] depth        Descriptor count for the queue (0..1023).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              GWRDQDC[queue_index] programmed.
+ * @retval k_ra_err_invalid_arg queue_index > 7 or depth > 0x3FF.
+ *
+ * @pre GWCA is in GWMC.OPC = CONFIG.
+ * @pre Sum of depth across q=0..7 is <= 512.
+ * @post GWRDQDC[queue_index].DQD == ``depth``.
+ * @post Other DQD bits are not modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_eth_gwca_set_rx_queue_depth(uint8_t queue_index, uint16_t depth);
+
+/**
+ * @brief Read back the per-queue RX descriptor queue depth.
+ *
+ * @details HUM Ch 34.3.2.7 -- companion to ::ra_eth_gwca_set_rx_queue_depth
+ * for bench verification.
+ *
+ * @param[in] queue_index GWCA RX queue index 0..7.
+ *
+ * @return uint16_t Current GWRDQDC[queue_index].DQD value (0..1023).
+ *
+ * @pre queue_index <= 7.
+ * @pre GWCA module is powered (MSTPCRC.MSTPC eswm bit cleared).
+ * @post No registers are modified.
+ * @post Return value is the live readback.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] uint16_t ra_eth_gwca_get_rx_queue_depth(uint8_t queue_index);
+
+/**
  * @brief Reload (arm) a descriptor queue by pulsing GWDCC[i].BALR.
  *
  * @details Sets GWDCC[queue_index].BALR (Base Address Load Request)

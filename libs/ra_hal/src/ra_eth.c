@@ -574,6 +574,11 @@ typedef struct {
   uint32_t last_mrgoefc;             /**< MRGOEFC (RMAC RX good oversize cnt).     */
   uint32_t last_mrboefc;             /**< MRBOEFC (RMAC RX bad oversize cnt).      */
   uint32_t last_eafsecn;             /**< EAFSECN (ETHA TX frame-size error cnt).  */
+  uint32_t gwca_q0_rx_depth_readback; /**< GWRDQDC[0].DQD read back post-open.     */
+  uint32_t gwca_q1_rx_depth_readback; /**< GWRDQDC[1].DQD read back (should be 0). */
+  uint32_t fwpbfc_port0_readback;     /**< FWPBFC0.PBDV[2:0] (port 0 dst vector).  */
+  uint32_t fwpbfc_port1_readback;     /**< FWPBFC0.PBDV[2:0] (port 1 dst vector).  */
+  uint32_t fwpbfc_port2_readback;     /**< FWPBFC0.PBDV[2:0] (CPU/host vector).    */
 } ra_eth_tx_diag_t;
 
 /**
@@ -1053,6 +1058,78 @@ volatile uint32_t g_ra_eth_resync_speed_lsc;
 volatile uint32_t g_ra_eth_resync_duplex;
 
 /**
+ * @enum ra_eth_fwpbfc_layout_t
+ * @brief Port-Based Forwarding Configuration register layout used by the open path.
+ *
+ * @details HUM Ch 30 "FWPBFCi : Port i Port Based Forwarding Configuration
+ * Register" p 1403 -- PBDV is only 3 bits wide ([2:0]). One bit per
+ * destination port: bit 0 = ETHA0, bit 1 = ETHA1, bit 2 = host CPU
+ * (the FSP ``BSP_FEATURE_ESWM_GWCA_PORT`` value). HUM Ch 29.4
+ * Table 29.4 ("ESWM Hub settings" p 1306) prescribes "all 1s except
+ * for FWPBFCi.PBDV which is set to 0" -- i.e. each port forwards to
+ * every OTHER port, never back to itself. Self-forwarding makes the
+ * chip re-emit every inbound frame on the same wire (port 1 RX -> port
+ * 1 TX self-loopback), which the issue #21 bench trail observed as
+ * ``MTGFCE > tx_calls_total`` (the chip transmitted phantom frames
+ * that NetX never asked it to).
+ */
+typedef enum : uint8_t {
+  k_ra_eth_pbdv_port0   = 0x01U, /**< Destination = ETHA0 port.        */
+  k_ra_eth_pbdv_port1   = 0x02U, /**< Destination = ETHA1 port.        */
+  k_ra_eth_pbdv_cpu     = 0x04U, /**< Destination = host (GWCA / CPU). */
+  k_ra_eth_pbdv_mask    = 0x07U, /**< PBDV field width = 3 bits.       */
+  k_ra_eth_fwpbfc_idx_port0 = 0U,
+  k_ra_eth_fwpbfc_idx_port1 = 1U,
+  k_ra_eth_fwpbfc_idx_cpu   = 2U,
+} ra_eth_fwpbfc_layout_t;
+
+/**
+ * @brief Snapshot GWRDQDC[0/1] and FWPBFC0/1/2 into the bench diag struct.
+ *
+ * @details See header for the canonical contract. Reads four MFWD
+ * registers and two GWCA RX queue-depth registers and parks the
+ * 16-bit DQD field of each into a 32-bit slot inside
+ * ::g_ra_eth_tx_diag so a JLink-attached operator can confirm the
+ * post-open programming landed. No registers are written.
+ *
+ * @return void
+ *
+ * @pre GWCA bring-up has reached OPERATION (or at least left CONFIG).
+ * @pre MFWD module is powered (MSTP gate on).
+ * @post g_ra_eth_tx_diag.gwca_q0_rx_depth_readback / gwca_q1_rx_depth_readback
+ *       reflect the latched GWRDQDC values.
+ * @post g_ra_eth_tx_diag.fwpbfc_port0/1/2_readback reflect FWPBFC.PBDV bits.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_eth_snapshot_post_open_diag(void)
+{
+  /* HUM Ch 34.3.2.7 "GWRDQDCq : Reception Descriptor Queue Depth Cfg" p 1797 */
+  g_ra_eth_tx_diag.gwca_q0_rx_depth_readback = (uint32_t)ra_eth_gwca_get_rx_queue_depth(0U);
+  /* HUM Ch 34.3.2.7 "GWRDQDCq : Reception Descriptor Queue Depth Cfg" p 1797 */
+  g_ra_eth_tx_diag.gwca_q1_rx_depth_readback = (uint32_t)ra_eth_gwca_get_rx_queue_depth(1U);
+  enum : uint32_t {
+    k_ra_eth_fwpbfc0_off    = 0x4A00UL,
+    k_ra_eth_fwpbfc_stride  = 0x0010UL,
+  };
+  /* HUM Ch 30 "FWPBFCi : Port-Based Forwarding Cfg" p 1403 */
+  const volatile uint32_t* const fwpbfc0 = (const volatile uint32_t*)(k_ra_mfwd_base_addr +
+                                                                      (uintptr_t)k_ra_eth_fwpbfc0_off);
+  /* HUM Ch 30 "FWPBFCi : Port-Based Forwarding Cfg" p 1403 */
+  const volatile uint32_t* const fwpbfc1 =
+    (const volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_eth_fwpbfc0_off +
+                               (uintptr_t)k_ra_eth_fwpbfc_stride);
+  /* HUM Ch 30 "FWPBFCi : Port-Based Forwarding Cfg" p 1403 */
+  const volatile uint32_t* const fwpbfc2 =
+    (const volatile uint32_t*)(k_ra_mfwd_base_addr + (uintptr_t)k_ra_eth_fwpbfc0_off +
+                               (uintptr_t)(2U * k_ra_eth_fwpbfc_stride));
+  g_ra_eth_tx_diag.fwpbfc_port0_readback = *fwpbfc0 & (uint32_t)k_ra_eth_pbdv_mask;
+  g_ra_eth_tx_diag.fwpbfc_port1_readback = *fwpbfc1 & (uint32_t)k_ra_eth_pbdv_mask;
+  g_ra_eth_tx_diag.fwpbfc_port2_readback = *fwpbfc2 & (uint32_t)k_ra_eth_pbdv_mask;
+}
+
+/**
  * @brief Walk the GWCA bring-up + MFWD routing setup for ::ra_eth_open.
  *
  * @details
@@ -1089,11 +1166,19 @@ static ra_err_t internal_open_gwca_path(void)
    * there because BPR never asserts on EK-RA8D2 silicon unless GWCA
    * is also being brought up, and the board can't depend on that. */
 
-  /* Per FSP r_layer3_switch_open: program the per-port forwarding
-   * destination masks BEFORE bringing the GWCA up. 0x7F = allow all
-   * destinations (permissive baseline; tightens once L3 filtering
-   * lands). */
-  static const uint8_t s_fwpbfc_masks[3] = {0x7FU, 0x7FU, 0x7FU};
+  /* HUM Ch 29.4 Table 29.4 "ESWM Hub settings" p 1306 -- "All 1s except
+   * for FWPBFCi.PBDV which is set to 0" (i.e. each port's destination
+   * vector includes every OTHER port but never itself). Self-forwarding
+   * would make the GMAC re-emit every inbound frame on the same wire
+   * (port 1 RX -> port 1 TX self-loopback), the smoking gun for the
+   * issue #21 bench observation ``MTGFCE > tx_calls_total``. PBDV is
+   * only 3 bits wide (HUM Ch 30 p 1403); previous code wrote 0x7F into
+   * the entire 7-bit-masked field, which kept the self-port bit set. */
+  static const uint8_t s_fwpbfc_masks[3] = {
+    (uint8_t)k_ra_eth_pbdv_port1 | (uint8_t)k_ra_eth_pbdv_cpu, /* port 0 -> {port 1, CPU} */
+    (uint8_t)k_ra_eth_pbdv_port0 | (uint8_t)k_ra_eth_pbdv_cpu, /* port 1 -> {port 0, CPU} */
+    (uint8_t)k_ra_eth_pbdv_port0 | (uint8_t)k_ra_eth_pbdv_port1, /* CPU -> {port 0, port 1} */
+  };
   (void)ra_eth_mfwd_set_forwarding_masks(s_fwpbfc_masks);
 
   const ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);
@@ -1109,6 +1194,7 @@ static ra_err_t internal_open_gwca_path(void)
     return mfwd_err;
   }
   g_ra_eth_open_step = (uint32_t)k_ra_eth_step_ok_4;
+  internal_eth_snapshot_post_open_diag();
   return k_ra_ok;
 }
 
@@ -1246,7 +1332,7 @@ static inline void internal_eth_tx_diag_sample(uint8_t channel, uint32_t len)
   g_ra_eth_tx_diag.last_mrgfce += ra_rmac(rmac_port)->MRGFCE;
   g_ra_eth_tx_diag.last_mrgoefc += ra_rmac(rmac_port)->MRGOEFC;
   g_ra_eth_tx_diag.last_mrboefc += ra_rmac(rmac_port)->MRBOEFC;
-  g_ra_eth_tx_diag.last_tx_len  = len;
+  g_ra_eth_tx_diag.last_tx_len = len;
   g_ra_eth_tx_diag.tx_calls_total += 1U;
   if (len > (uint32_t)k_ra_eth_tx_diag_large_threshold) {
     g_ra_eth_tx_diag.tx_calls_above_512 += 1U;

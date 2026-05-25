@@ -405,18 +405,38 @@ typedef enum : uint32_t {
  * @see reference_fsp_source memory note for the full register list.
  */
 typedef enum : uint16_t {
-  k_ra_gwca_off_gwmc     = 0x0000U, /**< Mode Configuration.            */
-  k_ra_gwca_off_gwms     = 0x0004U, /**< Mode Status.                   */
-  k_ra_gwca_off_gwdcbac0 = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
-  k_ra_gwca_off_gwdcbac1 = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
-  k_ra_gwca_off_gwtrc0   = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
-  k_ra_gwca_off_gwtrc1   = 0x0204U, /**< TX Request Cfg, queues 32..63. */
-  k_ra_gwca_off_gwarirm  = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
+  k_ra_gwca_off_gwmc       = 0x0000U, /**< Mode Configuration.            */
+  k_ra_gwca_off_gwms       = 0x0004U, /**< Mode Status.                   */
+  k_ra_gwca_off_gwrdqdc0   = 0x0060U, /**< RX Descriptor Queue Depth Cfg q (q=0..7), stride 4.*/
+  k_ra_gwca_off_gwrdqm0    = 0x0080U, /**< RX Descriptor Queue Monitoring q (q=0..7), stride 4.*/
+  k_ra_gwca_off_gwdcbac0   = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
+  k_ra_gwca_off_gwdcbac1   = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
+  k_ra_gwca_off_gwtrc0     = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
+  k_ra_gwca_off_gwtrc1     = 0x0204U, /**< TX Request Cfg, queues 32..63. */
+  k_ra_gwca_off_gwarirm    = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
   k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
   k_ra_gwca_off_gwaarss    = 0x0800U, /**< AXI Addr RAM Searching Setting.*/
   k_ra_gwca_off_gwaarsr0   = 0x0804U, /**< AXI Addr RAM Searching Result0.*/
   k_ra_gwca_off_gwaarsr1   = 0x0808U, /**< AXI Addr RAM Searching Result1.*/
 } ra_gwca_offset_t;
+
+/**
+ * @enum ra_gwrdqdc_bits_t
+ * @brief Bit field mask for GWRDQDCq.DQD (HUM Ch 34.3.2.7 p 1797).
+ *
+ * @details Per-queue RX Descriptor Queue Depth Configuration. DQD[9:0]
+ * sets the number of descriptors the GWCA can buffer for queue q.
+ * Reset value is 0, which means the GWCA cannot accept any RX
+ * descriptor for that queue. HUM Ch 29.4 Table 29.4 ("ESWM Hub
+ * settings" p 1306) prescribes ``GWRDQDC[0] = 512`` and 0 for q=1..7
+ * when QoS is not used; without this write, the GWCA RX path
+ * silently drops large frames the moment they exceed the
+ * per-port RX FIFO (small frames trickle through anyway). Mirrors
+ * the EATDQDCq programming on the TX side.
+ */
+typedef enum : uint32_t {
+  k_ra_gwrdqdc_dqd_mask = 0x3FFUL, /**< GWRDQDC.DQD field [9:0]. */
+} ra_gwrdqdc_bits_t;
 
 /**
  * @enum ra_gwdcc_bits_t
