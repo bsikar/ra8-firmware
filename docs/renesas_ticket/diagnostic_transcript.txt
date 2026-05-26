@@ -351,10 +351,9 @@ during this session were:
   OEM_PL2 -> OEM_PL0       -> 2026-05-25, via the rfp-cli
                               command at section [1] above
 
-Full incident report and recovery procedure plan is at:
-
-  https://github.com/bsikar/ra8d2-firmware/blob/main/docs/
-  RECOVERY_OEM_PL0_BRICK.md
+Full incident report and recovery procedure plan is in the
+companion file `RECOVERY_OEM_PL0_BRICK.md` attached to this
+support ticket.
 
 ================================================================
 [10] OPEN QUESTIONS FOR RENESAS SUPPORT
