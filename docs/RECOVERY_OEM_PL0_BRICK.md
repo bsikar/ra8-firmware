@@ -146,7 +146,113 @@ These cannot leave Draft until the chip is recovered or replaced:
   on alternate candidates (MFWD source-port self-exclusion, MAC
   flow-control state) is meaningful.
 
-## 5. Lessons for future sessions
+## 5. Post-incident deep research (added 2026-05-26)
+
+Two independent AI deep-research reviews of the recovery surface returned
+the same verdict: there is NO remote-only path out of OEM_PL0 with
+unknown AL keys on RA8D2. Concrete additions to this report from those
+reviews:
+
+### Critical warning -- STOP attempting `-auth` brute force
+
+Per the RA8 boot-firmware notes (R01AN7140 / R01AN7290 / R01AN7547),
+the boot firmware imposes a finite retry counter on failed AL key
+authentication attempts. **Exhausting that counter pushes the device
+into `LCK_BOOT`, a permanent terminal state from which not even Renesas
+RMA can recover the chip.** This session used 21 attempts plus a
+handful more during the post-brick scramble. The exact threshold is
+firmware-revision-dependent and not publicly documented; treat every
+further `-auth` invocation as costly. **Do not run any further
+`rfp-cli -auth AL1KEY` or `-auth AL2KEY` commands on this device.**
+
+### Confirmed-untried-and-failed: SWDMD via J-Link OB UART
+
+Some EK-RA8 boards (notably EK-RA8M1, EK-RA8D1) wire an `SWDMD` signal
+from the on-board J-Link OB to the MCU's MD pin so that
+`rfp-cli -tool jlink -if uart` enters SCI boot mode without a physical
+jumper move. The first research thread flagged this as the one
+untried remote avenue. Tested on 2026-05-26 against this device:
+
+```
+$ rfp-cli -d ra -tool jlink:1086567198 -if uart -s 115200 -rfo
+[Error] E3000105: The device is not responding.
+```
+
+The EK-RA8D2 v1 routes MD differently from EK-RA8M1 -- per the v1
+User's Manual (R20UT5523EG0101 Rev 1.01, Oct 2025), the J-Link OB
+does NOT have any control over MD via SWDMD. Physical access to the
+`J16` jumper is the only path into the boot ROM. This avenue is
+closed.
+
+### Why brute force is mathematically infeasible
+
+AL1KEY and AL2KEY are 128-bit symmetric values stored wrapped by the
+silicon's Hardware Unique Key (HUK). The boot firmware computes an
+HMAC-based challenge-response on each `-auth` call; the chip is
+performing a real cryptographic MAC verification, not a string
+compare. Even if the original developer chose an entropy-poor
+plaintext (e.g. all-zeros), the chip's HUK-wrapped storage means
+the on-device check is over a high-entropy ciphertext derived from
+the plaintext. The full 2^128 keyspace at rfp-cli's per-attempt
+latency (~hundreds of milliseconds for the USB round-trip and
+crypto verify) is computationally infeasible by many orders of
+magnitude. The 21 common defaults tried were the right
+opening-attempt set; the lesson is that the actual AL keys on this
+board are NOT a published default and NOT a developer-chosen weak
+value.
+
+### Why no Renesas vendor-side / RMA key escape exists
+
+The RA8 RSIP-E51A security engine is OEM-rooted. AL keys, RMA_KEY,
+OEM root certificate, and DOTF keys are all customer-injected and
+never escrowed at Renesas. The RMA workflow (`RMA_REQ -> RMA_ACK`)
+relies on a customer-pre-injected `RMA_KEY`; on this board no
+`RMA_KEY` was ever injected (transition to OEM_PL2 -> OEM_PL0 did
+not include a `-rmakey` step), so the RMA workflow cannot be
+initiated. Renesas Customer Support cannot synthesise an unlock
+without the customer-held key material.
+
+### Other items checked and ruled out
+
+- `git log --grep -iE "AL1|AL2|DLM|skmt"` -> no matches: no script
+  in this repo ever explicitly injected AL keys.
+- `find / -name "*.rkey" -o -name "*.sfp" -o -name "*.skmt"` ->
+  no matches anywhere on the dev machine or the Pi.
+- Shell history (bash + zsh, dev + Pi) for `rfp-cli ... al1key`
+  or `al2key` -> no historical invocations.
+- No CVE or PSIRT advisory exists for the RA8 DLM or RSIP-E51A
+  as of May 2026.
+
+The conclusion is that the chip either shipped with AL keys
+pre-programmed (RA8D2 ship state is NOT explicitly listed in the
+Renesas TN-RA*-A0120A/E ship-default document; the assumption that
+RA8D2 ships in SSD with no keys is inferred from RA8D1/M1, not
+documented), OR rfp-cli's `-dlm OEM_PL0` invocation silently auto-
+injected default keys that subsequently mismatch every known default.
+
+### Definitive action sequence
+
+1. **Stop touching the chip.** No `rfp-cli -auth`, no
+   `rfp-cli -dlm`, no JLinkExe halt attempts. Each can degrade
+   the state.
+2. **Open a Renesas Customer Support ticket** at
+   `https://en-support.renesas.com`. Title:
+   *"EK-RA8D2 in OEM_PL0 with unknown AL keys -- request guidance"*.
+   Include the verbatim error codes (E100000E, E3000902), the JLink
+   DP/AP trace, the rfp-cli version, the kit serial, and the chip
+   UID if obtainable. Ask whether the device may already be in
+   `LCK_BOOT` and whether warranty replacement of the EK kit is
+   available. Expected first response: 1-3 business days.
+3. **Plan for board replacement.** EK-RA8D2 is approximately USD
+   200 from Mouser / Digi-Key. This is the only certain recovery.
+4. **For future sessions**: never run `rfp-cli -dlm <state>` on a
+   chip whose AL keys are not committed to a password manager AND
+   a second-location backup. Treat the AL2_KEY as the production
+   root key it actually is. Inject `RMA_KEY` BEFORE the first OEM
+   state transition on any future EVM -- that preserves a
+   Renesas-assisted recovery path.
+
+## 6. Lessons for future sessions
 
 - **Read state-machine docs before any one-way transition.** DLM,
   fuse writes, and OFS programming are all latched permanently.
