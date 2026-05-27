@@ -182,9 +182,17 @@ if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|
     fi
 fi
 
-# Final result check (covers both attempt 1 if it passed, and attempt 2 after Initialize)
-if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "\$LOG"; then
-    echo "---- J-Link log (errors detected) ----" >&2
+# Final result check. Success = "O.K." present (the Downloading-file
+# completion marker) AND no terminal-fatal error patterns.
+#
+# We do NOT fail on "^Error" alone because JLink prints recoverable
+# error lines (e.g. "Error: Failed to initialize DAP" followed by
+# "Attach to CPU failed. Trying connect under reset.") that resolve
+# successfully on retry, with "O.K." appearing later. The terminal-
+# fatal patterns below only fire when the entire connect attempt
+# never recovered.
+if grep -qiE "Could not connect to the target device|RAMCode did not respond|Could not load|Failed to read memory|Could not find core in Coresight" "\$LOG"; then
+    echo "---- J-Link log (fatal errors detected) ----" >&2
     grep -iE "^Error|Warning|could not|failed|O\.K\.|VTref|Cortex|DAP|AP\[|loadfile|Downloading" \
         "\$LOG" >&2 || cat "\$LOG" >&2
     echo "---------------------------------------" >&2
@@ -192,7 +200,7 @@ if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted"
     exit 1
 fi
 if ! grep -q "O\.K\." "\$LOG"; then
-    echo "---- J-Link log (no O.K. confirm) ----" >&2
+    echo "---- J-Link log (no O.K. confirm -- flash never completed) ----" >&2
     cat "\$LOG" >&2
     echo "---------------------------------------" >&2
     exit 1
