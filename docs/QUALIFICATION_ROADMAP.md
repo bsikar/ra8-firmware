@@ -10,9 +10,10 @@ its current advisory-quality posture to a state where the codebase,
 its tests, and its development records would survive a third-party
 qualification audit against the assurance levels named below.
 
-It supersedes ad-hoc references in `docs/ROADMAP.md` and
-`docs/PHASE7_ROADMAP.md` for everything related to certification
-readiness. Engineering roadmap items remain in those files.
+It supersedes ad-hoc references in `docs/ROADMAP.md` (and any
+GitHub-issue-tracked engineering roadmaps with the `roadmap`
+label) for everything related to certification readiness.
+Engineering roadmap items remain in those venues.
 
 ---
 
@@ -57,7 +58,7 @@ whichever sector this firmware ships into first.
 | Code verification (review)  | 7.9.2.7 module review         | Section 6.3.4 code reviews             | Part 6 cl. 9 verification            | PR review history + `clang-tidy`/`cppcheck` gates      |
 | Structural coverage         | Annex C statement+branch (3); MC/DC strong-recommended for SIL 3 | Section 6.4.4.2 MC/DC at Level B | Part 6 cl. 9.4.5 MC/DC at ASIL C/D | `docs/MCDC.md`, `make mcdc`                            |
 | Test cases (req-based)      | 7.4.7 / 7.7 testing           | Section 6.4.2 requirements-based test  | Part 6 cl. 9 test specification      | `tests/test_*.c` (requirements-traced)                 |
-| Integration / HW-SW         | 7.5 integration               | Section 6.4.3 integration test         | Part 6 cl. 10 sw integration         | `docs/HARDWARE_BRINGUP.md`, `make smoke`               |
+| Integration / HW-SW         | 7.5 integration               | Section 6.4.3 integration test         | Part 6 cl. 10 sw integration         | `docs/HARDWARE_BRINGUP.md`, `docs/HIL_SUITE.md` (Pi 5 runner + `scripts/hil_all.sh`) |
 | Configuration management    | 6.2.3 / Annex B.2             | Section 7 SCM process                  | Part 8 cl. 7 sw CM                   | git + signed tags + `docs/qualification/SCMP.md`       |
 | Quality assurance           | 6.2.5                         | Section 8 SQA process                  | Part 2 cl. 5 / Part 8 cl. 5          | CI gates + `docs/qualification/SQAP.md`                |
 | Tool qualification          | 7.4.4 / Annex D               | Section 12.2 + DO-330                  | Part 8 cl. 11                        | Section 5 below                                        |
@@ -153,12 +154,14 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 
 ### EVM application matrix
 
-- **EVM-validated apps**: 27 under `examples/ek_ra8d2/` (smoke
-  harness target).
+- **EVM-validated apps**: 27 under `examples/ek_ra8d2/` (HIL-suite
+  driver target).
 - **Unsupported / shelved apps**: 11 under `examples/_unsupported/`.
-- HW-in-the-loop coverage: `make smoke` exists and is
-  documented in `docs/HARDWARE_BRINGUP.md` but is not yet wired
-  into CI on a self-hosted runner.
+- HW-in-the-loop coverage: `scripts/hil_all.sh` runs on the Pi 5
+  self-hosted runner (`.github/workflows/hil.yml`) for every PR that
+  touches HIL-relevant paths. Contract documented in
+  `docs/HIL_SUITE.md`; developer workflow in
+  `docs/HIL_DEVELOPER_WORKFLOW.md`.
 
 ---
 
@@ -246,21 +249,19 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 ### Phase 6 -- Hardware-in-the-loop coverage (weeks 17-18)
 
 - **Goal**: every PR that touches HAL or example code is gated on a
-  hardware smoke run. **Per the 2026-05-02 decision this is a
-  developer-local workflow, not a CI runner** -- see
-  `docs/HIL_DEVELOPER_WORKFLOW.md` and Section 6 blocker 5 below.
-- **Tasks**:
-  - Land `scripts/hw_smoke_test.sh` (already in tree).
-  - Land `scripts/git/pre-push` opt-in hook gated on
-    `git config ra.hw-smoke true`.
-  - Document the pre-push checklist in
-    `docs/HIL_DEVELOPER_WORKFLOW.md`.
-  - Convert `.github/workflows/hardware-smoke.yml` to a doc-only
-    workflow that explains the policy.
-- **Acceptance gate**: a PR that touches `libs/ra_hal/` or
-  `examples/ek_ra8d2/` carries a `<!-- hw-smoke-comment -->`
-  block in the PR thread, or an explicit no-board declaration
-  from the author.
+  hardware run against a real EK-RA8D2.
+- **Status**: closed by the Pi 5 self-hosted runner. The Pi has the
+  EK-RA8D2 wired to it and runs `.github/workflows/hil.yml`, which
+  drives `scripts/hil_all.sh` over every app under
+  `examples/ek_ra8d2/hw_validated/hil/`. Per-app contracts live in
+  `hil.conf` files; mode helpers (`hil_run_direct.sh`,
+  `hil_usb_test.sh`, `hil_jlink_memprobe.sh`, `hil_eth_tcp.sh`,
+  `hil_check_alive.sh`) cover UART scrape, USB CDC echo, J-Link
+  memprobe, ethernet socket echo, and the fault-recovery probe.
+  Contract documented in `docs/HIL_SUITE.md`; developer-side
+  workflow in `docs/HIL_DEVELOPER_WORKFLOW.md`.
+- **Acceptance gate**: the HIL workflow runs green on `main` and
+  on every PR that touches HIL-relevant paths.
 
 ### Phase 7 -- Formal review packs (weeks 19-22)
 
@@ -336,7 +337,7 @@ Qualification Level (TQL):
 
 | Tool                      | Role                                  | TQL basis | Compensating verification                                                                          |
 |---------------------------|---------------------------------------|-----------|-----------------------------------------------------------------------------------------------------|
-| `arm-none-eabi-gcc`       | Cross-compiler -> production object   | TQL-5     | Object code re-verified against requirements via `make smoke` on real hardware (Phase 6).           |
+| `arm-none-eabi-gcc`       | Cross-compiler -> production object   | TQL-5     | Object code re-verified against requirements via the Pi 5 HIL runner (`scripts/hil_all.sh`, Phase 6). |
 | `clang-18` (host)         | MC/DC instrumentation + host tests    | TQL-5     | Output is test-only; no production code path. Instrumentation re-verified by host tests passing.    |
 | `cppcheck` (with misra)   | MISRA-C 2012 advisory checker         | TQL-5     | Findings reviewed manually + `MISRA_DEVIATIONS.md`. Sole MISRA tool: commercial checkers (LDRA /    |
 |                           |                                       |           | Polyspace / Helix QAC) are explicitly out of scope per `docs/qualification/MISRA_DEVIATIONS.md`.    |
@@ -409,19 +410,13 @@ them.
    in `docs/CERTIFICATION_SCOPE.md` and the
    `docs/qualification/PSAC.md` Section 3.2.1 restatement.
 
-5. **Self-hosted CI runner hardware** -- **CLOSED 2026-05-02:
-   never**. The project will not provision a self-hosted GitHub
-   Actions runner. Hardware-in-the-loop coverage is achieved via a
-   developer-local pre-push workflow:
-   `bash scripts/hw_smoke_test.sh` plus the opt-in
-   `scripts/git/pre-push` hook (enabled with
-   `git config ra.hw-smoke true`). Each contributor with an
-   EK-RA8D2 attached runs the harness before push and pastes the
-   results into the PR per `docs/HIL_DEVELOPER_WORKFLOW.md`. The
-   `.github/workflows/hardware-smoke.yml` workflow is now a
-   documentation stub that explains the policy. Rationale:
-   incompatible with the MIT-licensed, $0 personal/research scope
-   (see `docs/CERTIFICATION_SCOPE.md`).
+5. **Self-hosted CI runner hardware** -- closed by the Pi 5
+   self-hosted runner (`pi5-star-hil`, labels
+   `self-hosted, hil, pi5, ra8d2`) that has the EK-RA8D2 wired to
+   it. HIL coverage runs from `.github/workflows/hil.yml` via
+   `scripts/hil_all.sh` on every PR that touches HIL-relevant
+   paths. Contract documented in `docs/HIL_SUITE.md`; developer
+   workflow in `docs/HIL_DEVELOPER_WORKFLOW.md`.
 
 ---
 
