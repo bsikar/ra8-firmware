@@ -344,9 +344,14 @@ __attribute__((section(".ns_text"), noreturn)) void ns_reset_handler(void)
 {
   /* Zero the NS BSS region. NOLOAD means the linker does not populate
    * initial values from MRAM, and cold-boot SRAM contents are
-   * undefined. */
-  for (uint32_t* p = &g_ra_ls_ns_bss_start; p < &g_ra_ls_ns_bss_end; ++p) {
-    *p = 0U;
+   * undefined. The address comparison is via uintptr_t because the
+   * two linker-provided extern symbols are different objects from a
+   * static-analysis perspective even though the linker guarantees
+   * they bracket a contiguous BSS run. */
+  const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
+  const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
+  for (uintptr_t a = bss_start; a < bss_end; a += sizeof(uint32_t)) {
+    *(volatile uint32_t*)a = 0U;
   }
 
   /* Stamp the entry marker AFTER the bss zero so the bench can tell
