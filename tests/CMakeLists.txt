@@ -188,6 +188,7 @@ file(GLOB_RECURSE RA_WDT_SUPERVISOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra
 file(GLOB_RECURSE RA_MPU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_mpu/src/*.c)
 file(GLOB_RECURSE RA_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE RA_LSM6DSO_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_lsm6dso/src/*.c)
+file(GLOB_RECURSE RA_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tz_secure_boot/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
@@ -217,6 +218,7 @@ add_library(ra_core_hal OBJECT
     ${RA_WDT_SUPERVISOR_SOURCES}
     ${RA_BOARD_EK_RA8D2_SOURCES}
     ${RA_LSM6DSO_SOURCES}
+    ${RA_TZ_SECURE_BOOT_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -254,6 +256,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_wdt_supervisor/inc
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc
     ${FW_ROOT}/libs/ra_lsm6dso/inc
+    ${FW_ROOT}/libs/ra_tz_secure_boot/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -287,6 +290,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_lsm6dso/src
     ${FW_ROOT}/libs/ra_epub/src
     ${FW_ROOT}/libs/ra_reflow/src
+    ${FW_ROOT}/libs/ra_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
 # tinyxml2.cpp + ra_epub_xml_shim.cpp are C++; everything else is C.
@@ -383,6 +387,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_wdt_supervisor/inc
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc
     ${FW_ROOT}/libs/ra_lsm6dso/inc
+    ${FW_ROOT}/libs/ra_tz_secure_boot/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -411,6 +416,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_lsm6dso/src
     ${FW_ROOT}/libs/ra_epub/src
     ${FW_ROOT}/libs/ra_reflow/src
+    ${FW_ROOT}/libs/ra_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
   if(APPLE)

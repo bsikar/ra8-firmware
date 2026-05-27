@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/blink/secure_exception.c
+ * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

@@ -1,6 +1,6 @@
 /**
- * @file examples/ek_ra8d2/blink/system_init.c
- * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
+ * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/system_init.c
+ * @brief Cortex-M85 / RA8D2 core bring-up for cpu1_pingpong_ipc
  *
  * @details
  * `SystemInit()` follows the CMSIS naming convention and runs as the
@@ -343,19 +343,27 @@ void SystemInit(void)
    *
    * Conclusion: the NS alias is not just a memory-map view, it
    * requires SAU + IDAU + something else to be properly
-   * configured for accesses to succeed. The right cpu1_pingpong_ipc
+   * configured for accesses to succeed. The right cpu1_pingpong
    * fix needs a full TrustZone bring-up -- not feasible in a
    * single-iteration loop. Reverted. See project memory
    * project_cpu1_must_be_non_secure.md for the full background. */
 
-  /* Cache enable, MPU init, and TrustZone bring-up are temporarily
-   * disabled -- they HardFault on first reset because the CCSIDR-driven
+  /* Cache enable, MPU init are temporarily disabled -- the CCSIDR-driven
    * invalidate-by-set/way loop is not yet implemented and the MPU
    * regions are unconfigured. Re-enable once those code paths land. */
   (void)internal_enable_icache;
   (void)internal_enable_dcache;
   (void)internal_enable_branch_predictor;
   (void)internal_mpu_init;
-  (void)ra_trustzone_init;
   internal_set_priority_grouping();
+
+#ifdef RA_TRUSTZONE_ENABLE
+  /* TrustZone path: programme SAU, write IPCSAR via PRCR_S unlock,
+   * then BLXNS into the NS image. On the happy path this never
+   * returns -- everything below ``ra_trustzone_init`` runs in the
+   * NS world. */
+  ra_trustzone_init();
+#else
+  (void)ra_trustzone_init;
+#endif
 }
