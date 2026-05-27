@@ -128,15 +128,21 @@ post_check() {
     VTREF=$(grep -oP 'VTref=\K[0-9.]+V' "$log" | head -1 || echo "unknown")
     echo "    VTref : ${VTREF}"
     echo "    log   : ${log}"
-    if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "$log"; then
-        echo "---- J-Link log (errors detected) ----" >&2
+    # Success = "O.K." present (the Downloading-file completion marker)
+    # AND no terminal-fatal error patterns. We do NOT fail on "^Error"
+    # alone because JLink prints recoverable error lines (e.g.
+    # "Error: Failed to initialize DAP" followed by "Attach to CPU
+    # failed. Trying connect under reset.") that resolve successfully
+    # on retry, with "O.K." appearing later in the same log.
+    if grep -qiE "Could not connect to the target device|RAMCode did not respond|Could not load|Failed to read memory|Could not find core in Coresight" "$log"; then
+        echo "---- J-Link log (fatal errors detected) ----" >&2
         grep -iE "^Error|Warning|could not|failed|O\.K\.|VTref|Cortex|DAP|AP\[|loadfile|Downloading" \
             "$log" >&2 || cat "$log" >&2
         echo "---------------------------------------" >&2
         return 1
     fi
     if ! grep -q "O\.K\." "$log"; then
-        echo "---- J-Link log (no O.K. confirm) ----" >&2
+        echo "---- J-Link log (no O.K. confirm -- flash never completed) ----" >&2
         cat "$log" >&2
         echo "---------------------------------------" >&2
         return 1
@@ -144,12 +150,39 @@ post_check() {
     return 0
 }
 
+# Auto-recovery via rfp-cli -erase-chip (boot-firmware Initialize) when
+# the chip is in a TrustZone-locked / LPM-stuck state that gates the
+# AHB-AP. See docs/RECOVERY_OEM_PL0_BRICK.md.
+attempt_recover() {
+    local log="$1"
+    if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|Failed to initialize DAP|Could not read CPUID register|Attach to CPU failed|Could not find core in Coresight" "$log"; then
+        echo "[hil_flash] J-Link halt/DAP failure detected -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
+        rfp-cli -d ra -t "jlink:${JLINK_SN}" -if swd -s 1000000 -erase-chip \
+            > "/tmp/hil_flash_init_${APP}.log" 2>&1 || true
+        if grep -q "Operation successful" "/tmp/hil_flash_init_${APP}.log"; then
+            echo "[hil_flash] Initialize succeeded -- retrying flash..." >&2
+            return 0
+        else
+            echo "[hil_flash] Initialize failed -- see /tmp/hil_flash_init_${APP}.log" >&2
+            return 1
+        fi
+    fi
+    return 1
+}
+
 if (( RUN_LOCAL )); then
     TMP=$(mktemp)
     trap 'rm -f "$TMP"' EXIT
     flash_cmds > "$TMP"
-    JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP" > "$LOG" 2>&1
-    post_check "$LOG" || exit 1
+    JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP" > "$LOG" 2>&1 || true
+    if ! post_check "$LOG"; then
+        if attempt_recover "$LOG"; then
+            JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP" > "$LOG" 2>&1 || true
+            post_check "$LOG" || exit 1
+        else
+            exit 1
+        fi
+    fi
 else
     ssh "$PI_HOST" bash <<REMOTE
 set -uo pipefail
