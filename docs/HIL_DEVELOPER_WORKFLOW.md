@@ -32,9 +32,7 @@ its `hil.conf` manifest. The per-mode helper scripts are:
 Flashing always goes through `scripts/hil_flash.sh`, which ships
 auto-recovery for the AHB-AP-gated / TrustZone-locked / LPM-stuck
 failure modes (see `scripts/hil_dlm_reset.sh` for the full DLM
-recovery flow). For the legacy quick-smoke harness (PC-resolution
-classification only, no hil.conf), `scripts/hw_smoke_test.sh`
-remains in tree.
+recovery flow).
 
 ## Pre-push checklist (HIL-equipped contributors)
 
@@ -47,18 +45,13 @@ runner), you can pre-check your changes before pushing:
    ```
 2. Confirm the EK-RA8D2 is detected (see "Detecting the J-Link OB"
    below).
-3. Run the legacy smoke harness for a fast PC-resolution sweep:
+3. Run the HIL driver locally:
    ```sh
-   bash scripts/hw_smoke_test.sh
+   bash scripts/hil_all.sh
    ```
-4. Verify the exit code (`echo $?`):
-   - `0` -- every app PASS / WIP / UNKNOWN. Push allowed.
-   - `1` -- at least one app FAILED. **Do not push.** Investigate
-     the failing app's `build/smoke/<app>.log`, fix the root cause,
-     re-run, then push.
-   - `2` -- harness misconfiguration (toolchain or board missing).
-     Fix the local environment and re-run.
-5. For HIL-suite-managed apps under
+   Subsets and per-mode runs are documented at the top of
+   `scripts/hil_all.sh`.
+4. For HIL-suite-managed apps under
    `examples/ek_ra8d2/hw_validated/hil/`, run the same per-app
    helper the CI runs (`scripts/hil_run_direct.sh`,
    `scripts/hil_usb_test.sh`, `scripts/hil_jlink_memprobe.sh`,
@@ -106,36 +99,12 @@ JLinkExe -nogui 1 -CommandFile <(echo -e "ShowEmuList\nexit") \
 If `ShowEmuList` returns nothing, the board is not attached or the
 J-Link USB driver is not installed.
 
-## PASS criteria for the legacy `hw_smoke_test.sh`
-
-The smoke harness classifies via halt-PC pattern matching. The
-modern HIL-suite classification (per-app `hil.conf` contract) is
-documented in [`HIL_SUITE.md`](HIL_SUITE.md). The legacy harness
-rubric is:
-
-- **PASS** -- the firmware reached its main loop or a known
-  scheduler entry point. Counts as green.
-- **WIP** -- the firmware reached a caught-error sink
-  (`panic_halt`, `internal_ra_fatal_error`, etc.). Counts as
-  green-with-warning -- the init failed *cleanly*; usually means
-  the app needs a vendor blob (see `docs/VENDOR_BLOBS.md`) or
-  external hardware that the developer does not have wired up.
-- **UNKNOWN** -- the chip is alive but the program counter does not
-  match any known PASS / WIP pattern. Counts as green-with-warning;
-  add a comment to the PR explaining why if you choose to push.
-- **FAIL** -- HardFault, lockup, or fall-through to
-  `Default_Handler`. **Blocks the push.** This is a real bug.
-- **NOBUILD** -- the `.elf` / `.hex` was never built. Re-run
-  `make apps`.
-
 ## Cross-references
 
 - [`HIL_SUITE.md`](HIL_SUITE.md) -- the authoritative HIL contract,
   per-app table, modes, and Pi-runner infrastructure.
 - [`scripts/hil_all.sh`](../scripts/hil_all.sh) -- the
   HIL-suite driver invoked from CI.
-- [`scripts/hw_smoke_test.sh`](../scripts/hw_smoke_test.sh) -- the
-  legacy halt-PC classification harness.
 - [`scripts/hil_flash.sh`](../scripts/hil_flash.sh) -- the
   authoritative flash path with auto-recovery.
 - [`scripts/hil_dlm_reset.sh`](../scripts/hil_dlm_reset.sh) -- DLM
