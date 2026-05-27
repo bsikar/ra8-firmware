@@ -1,0 +1,263 @@
+/**
+ * @file examples/ek_ra8d2/lpm_deep_standby_3_demo/main.c
+ * @brief Deep Software Standby 3 (LPSCR.LPMD = 0xA) entry demo
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * Demonstrates Deep Software Standby variant 3 (LPSCR.LPMD = 0xA per
+ * HUM Ch 11.2.20 p 457) on the EK-RA8D2. Unlike Software Standby
+ * (LPMD = 0x5), Deep Software Standby resets the CPU on wake instead
+ * of resuming -- so the wake path lands in ``Reset_Handler`` and the
+ * banner is re-emitted on every cycle.
+ *
+ * Variant 3 is the deepest standby state on RA8D2 -- on top of the
+ * variant 2 cuts it also stops the LOCO oscillator (HUM Ch 11.1
+ * Table 11.3 p 431..432). Only the always-on wake-up detectors
+ * driven by the sub-clock survive.
+ *
+ * Boot flow:
+ *   1. CGC + SysTick + UART (SCI8) bring-up.
+ *   2. Emit boot banner ``"lpm_dpsby3: boot\r\n"`` -- HIL gate.
+ *   3. RTC init + seed + arm a +5 s alarm + RCR1.AIE.
+ *   4. Arm DPSIER2.DRTCAIE so the alarm cancels Deep Standby.
+ *   5. Arm WUPEN0.RTCALMWUPEN so the alarm reaches the wake matrix.
+ *   6. ``ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_3)``.
+ *
+ * The chip resets on wake -- the next boot lands back in step 1.
+ *
+ * @par SOSC caveat
+ * Same SOSC dependency as ``lpm_software_standby_demo`` (see that
+ * file's header). If the sub-clock crystal is silent the wake never
+ * happens; the HIL gate is boot-banner-only so the firmware build
+ * + bring-up path is still exercised.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_lpm_regs.h"
+#include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_isr.h"
+#include "ra_lpm.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
+#include "ra_rtc.h"
+#include "ra_sci.h"
+#include "ra_time.h"
+
+/** @brief Demo tunables. */
+typedef enum : uint32_t {
+  k_lpm_dpsby3_baud        = 115200U,
+  k_lpm_dpsby3_sci_channel = 8U,
+} lpm_dpsby3_const_t;
+
+/** @brief Single-byte demo constants. */
+typedef enum : uint8_t {
+  k_lpm_dpsby3_alarm_offset_s = 5U,
+  k_lpm_dpsby3_seed_year_lo   = 26U,
+  k_lpm_dpsby3_seed_month     = 1U,
+  k_lpm_dpsby3_seed_day       = 1U,
+  k_lpm_dpsby3_secs_per_min   = 60U,
+  k_lpm_dpsby3_mins_per_hour  = 60U,
+  k_lpm_dpsby3_hours_per_day  = 24U,
+} lpm_dpsby3_byte_t;
+
+/** @brief SCI8 pinout on the EK-RA8D2 J-Link CDC channel. */
+static const ra_port_pin_t k_lpm_dpsby3_pin_txd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+static const ra_port_pin_t k_lpm_dpsby3_pin_rxd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+
+/** @brief Boot banner -- this is the HIL gate string. */
+static const uint8_t k_lpm_dpsby3_boot_msg[] = "lpm_dpsby3: boot\r\n";
+
+static void lpm_dpsby3_panic_halt(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+[[nodiscard]] static ra_err_t lpm_dpsby3_pins_init(void)
+{
+  ra_err_t err =
+    ra_pfs_route_peripheral(k_lpm_dpsby3_pin_txd, k_ra_psel_sci_async, "lpm_dpsby3.txd8");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_pfs_route_peripheral(k_lpm_dpsby3_pin_rxd, k_ra_psel_sci_async, "lpm_dpsby3.rxd8");
+}
+
+/**
+ * @brief Bring CGC + SysTick + SCI8 + RTC + LPM block up.
+ *
+ * @param[out] out_pclka_hz Receives the PCLKA frequency in Hz.
+ *
+ * @pre IRQs disabled.
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ *
+ * @post On success every sub-system is armed; on failure the function
+ *       panic-halts and never returns.
+ * @post RTC seeded to 2026-01-01 00:00:00.
+ *
+ * @since 0.1.0
+ */
+static void lpm_dpsby3_setup_or_halt(uint32_t* out_pclka_hz)
+{
+  uint32_t cpuclk0_hz = 0U;
+  if (ra_cgc_init() != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  if (lpm_dpsby3_pins_init() != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  const ra_sci_cfg_t sci_cfg = {
+    .baud      = k_lpm_dpsby3_baud,
+    .data_bits = k_ra_sci_data_8,
+    .parity    = k_ra_sci_parity_none,
+    .stop_bits = k_ra_sci_stop_1,
+    .pclk_hz   = *out_pclka_hz,
+  };
+  if (ra_sci_init((uint8_t)k_lpm_dpsby3_sci_channel, &sci_cfg) != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  if (ra_rtc_init() != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  const ra_rtc_datetime_t seed = {
+    .year    = (uint16_t)(2000U + (uint16_t)k_lpm_dpsby3_seed_year_lo),
+    .month   = (uint8_t)k_lpm_dpsby3_seed_month,
+    .day     = (uint8_t)k_lpm_dpsby3_seed_day,
+    .weekday = 0U,
+    .hour    = 0U,
+    .minute  = 0U,
+    .second  = 0U,
+  };
+  if (ra_rtc_set(&seed) != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+  const ra_lpm_config_t lpm_cfg = {
+    .io_port_keep     = false,
+    .opa_bus_keep     = true,
+    .sscr_fast_return = false,
+    .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
+    .sscr_low_power   = k_ra_lpm_ss2lp_default,
+  };
+  if (ra_lpm_init(&lpm_cfg) != k_ra_ok) {
+    lpm_dpsby3_panic_halt();
+  }
+}
+
+/**
+ * @brief Compute @p now + 5 s wrapping across seconds/minutes/hours.
+ *
+ * @pre ``out`` is non-NULL.
+ * @pre ``now->second < 60``, ``now->minute < 60``, ``now->hour < 24``.
+ * @post ``out`` reflects ``now`` advanced by 5 seconds.
+ *
+ * @since 0.1.0
+ */
+static void lpm_dpsby3_add_offset(const ra_rtc_datetime_t* now, ra_rtc_datetime_t* out)
+{
+  *out                = *now;
+  const uint16_t s    = (uint16_t)now->second + (uint16_t)k_lpm_dpsby3_alarm_offset_s;
+  out->second         = (uint8_t)(s % (uint16_t)k_lpm_dpsby3_secs_per_min);
+  const uint16_t carm = (uint16_t)(s / (uint16_t)k_lpm_dpsby3_secs_per_min);
+  const uint16_t m    = (uint16_t)now->minute + carm;
+  out->minute         = (uint8_t)(m % (uint16_t)k_lpm_dpsby3_mins_per_hour);
+  const uint16_t carh = (uint16_t)(m / (uint16_t)k_lpm_dpsby3_mins_per_hour);
+  const uint16_t h    = (uint16_t)now->hour + carh;
+  out->hour           = (uint8_t)(h % (uint16_t)k_lpm_dpsby3_hours_per_day);
+}
+
+/**
+ * @brief Arm the +5 s RTC alarm, DPSIER2.DRTCAIE, and WUPEN0.RTCALM.
+ *
+ * @par MC/DC:
+ * Compound decision: ``ra_rtc_set_alarm != ok ||
+ * ra_rtc_set_irq_enable != ok || ra_lpm_arm_dpsier != ok ||
+ * ra_lpm_arm_wupen0_bits != ok``. Four atomic conditions x N+1 = 5
+ * vectors covered in the host unit test.
+ *
+ * @return Error code from the first failing primitive.
+ *
+ * @pre RTC initialised and seeded.
+ * @pre PRC1 unlocked by ra_lpm_init.
+ *
+ * @post On success the RTC alarm fires in 5 s and is wired both into
+ *       the deep-standby cancel matrix (DPSIER2) and the wake-up
+ *       enable matrix (WUPEN0).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t lpm_dpsby3_arm_wake(const ra_rtc_datetime_t* now)
+{
+  ra_rtc_datetime_t a = {};
+  lpm_dpsby3_add_offset(now, &a);
+  ra_err_t err = ra_rtc_set_alarm(&a);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_2, (uint8_t)k_ra_lpm_dpsier2_drtcaie_mask);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_rtcalm);
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  uint32_t pclka_hz = 0U;
+  lpm_dpsby3_setup_or_halt(&pclka_hz);
+  (void)pclka_hz;
+  ra_isr_globals_enable();
+
+  /* Emit boot banner before the deep-standby entry so the HIL gate
+   * confirms the build + bring-up path even if the sub-clock crystal
+   * is silent (see SOSC caveat in the file header). */
+  (void)ra_sci_write_polling((uint8_t)k_lpm_dpsby3_sci_channel,
+                             k_lpm_dpsby3_boot_msg,
+                             (uint32_t)(sizeof(k_lpm_dpsby3_boot_msg) - 1U));
+
+  while (1) {
+    ra_rtc_datetime_t now = {};
+    if (ra_rtc_get(&now) != k_ra_ok) {
+      break;
+    }
+    if (lpm_dpsby3_arm_wake(&now) != k_ra_ok) {
+      break;
+    }
+    /* On hardware this never returns -- Deep Software Standby resets
+     * the CPU on wake, so control re-enters Reset_Handler. On the
+     * host (RA_SIMULATOR_MODE) WFI is a no-op so the loop simply
+     * iterates. */
+    if (ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_3) != k_ra_ok) {
+      break;
+    }
+  }
+  lpm_dpsby3_panic_halt();
+  return 0;
+}
+#pragma GCC diagnostic pop
