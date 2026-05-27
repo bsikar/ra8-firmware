@@ -152,17 +152,37 @@ if (( RUN_LOCAL )); then
     post_check "$LOG" || exit 1
 else
     ssh "$PI_HOST" bash <<REMOTE
-set -euo pipefail
+set -uo pipefail
 TMP=\$(mktemp)
 LOG="${LOG}"
 trap 'rm -f "\$TMP"' EXIT
 cat > "\$TMP" <<JLINK
 $(flash_cmds)
 JLINK
-JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" > "\$LOG" 2>&1
+
+# ---- attempt 1: regular flash --------------------------------------------------
+JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" > "\$LOG" 2>&1 || true
 VTREF=\$(grep -oP 'VTref=\K[0-9.]+V' "\$LOG" | head -1 || echo "unknown")
 echo "    VTref : \${VTREF}"
 echo "    log   : \${LOG}"
+
+# Detect the "chip stuck in LPM / TrustZone-locked" failure mode -- the
+# Cortex-M85 AHB-AP is gated so JLink halt fails. The recovery is the
+# Renesas Flash Programmer Initialize command (rfp-cli -erase-chip),
+# which transitions OEM_PL0/PL1 back to OEM_PL2 and clears MRAM, making
+# the next halt succeed. See docs/RECOVERY_OEM_PL0_BRICK.md.
+if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP" "\$LOG"; then
+    echo "[hil_flash] J-Link halt failed -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
+    rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip > "/tmp/hil_flash_init_${APP}.log" 2>&1 || true
+    if grep -q "Operation successful" "/tmp/hil_flash_init_${APP}.log"; then
+        echo "[hil_flash] Initialize succeeded -- retrying flash..." >&2
+        JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" > "\$LOG" 2>&1 || true
+    else
+        echo "[hil_flash] Initialize failed -- see /tmp/hil_flash_init_${APP}.log" >&2
+    fi
+fi
+
+# Final result check (covers both attempt 1 if it passed, and attempt 2 after Initialize)
 if grep -qiE "^Error|could not load|RAMCode did not respond|could not be halted" "\$LOG"; then
     echo "---- J-Link log (errors detected) ----" >&2
     grep -iE "^Error|Warning|could not|failed|O\.K\.|VTref|Cortex|DAP|AP\[|loadfile|Downloading" \
