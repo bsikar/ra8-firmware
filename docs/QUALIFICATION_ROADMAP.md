@@ -10,9 +10,10 @@ its current advisory-quality posture to a state where the codebase,
 its tests, and its development records would survive a third-party
 qualification audit against the assurance levels named below.
 
-It supersedes ad-hoc references in `docs/ROADMAP.md` and
-`docs/PHASE7_ROADMAP.md` for everything related to certification
-readiness. Engineering roadmap items remain in those files.
+It supersedes ad-hoc references in `docs/ROADMAP.md` (and any
+GitHub-issue-tracked engineering roadmaps with the `roadmap`
+label) for everything related to certification readiness.
+Engineering roadmap items remain in those venues.
 
 ---
 
