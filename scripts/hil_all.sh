@@ -293,6 +293,7 @@ for app in "${APPS[@]}"; do
     unset HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE
     unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
     unset HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
+    unset HIL_POST_INITIALIZE
     # shellcheck disable=SC1090
     source "$conf"
     export HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S \
@@ -302,7 +303,8 @@ for app in "${APPS[@]}"; do
            HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
            HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE \
            HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S \
-           HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
+           HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES \
+           HIL_POST_INITIALIZE
 
     if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
         (( skipped++ )) || true
@@ -337,6 +339,35 @@ for app in "${APPS[@]}"; do
         echo -e "${RED}[hil_all]${NC} ${app} FAIL (rc=${rc})"
         failed_apps+=("$app (mode=${HIL_MODE})")
         (( fail++ )) || true
+    fi
+
+    # ------------------------------------------------------------------------
+    # Per-app post-test recovery hook. Apps that deliberately put the chip
+    # into a state that gates the AHB-AP (e.g. LPM deep modes) set
+    # HIL_POST_INITIALIZE=1 in their hil.conf. After running the test we
+    # invoke `rfp-cli -erase-chip` (the boot-firmware Initialize command,
+    # per docs/RECOVERY_OEM_PL0_BRICK.md) so the next app's flash has a
+    # haltable CPU. Without this, LPM-deep demos cascade-fail every
+    # subsequent test until hil_flash.sh's auto-recovery catches up.
+    if [[ "${HIL_POST_INITIALIZE:-0}" == "1" ]]; then
+        echo -e "${CYAN}[hil_all]${NC} ${app}: HIL_POST_INITIALIZE=1 -- running rfp-cli -erase-chip..."
+        # Detect Pi vs dev-machine (same heuristic as hil_flash.sh)
+        if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
+           || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
+           || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+            rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip \
+                >/tmp/hil_all_post_init_${app}.log 2>&1 || true
+        else
+            ssh -o ConnectTimeout=5 -o BatchMode=yes star@star.local \
+                "rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip" \
+                >/tmp/hil_all_post_init_${app}.log 2>&1 || true
+        fi
+        if grep -q "Operation successful" "/tmp/hil_all_post_init_${app}.log" 2>/dev/null; then
+            echo -e "${GREEN}[hil_all]${NC} ${app}: post-test Initialize OK"
+        else
+            echo -e "${YELLOW}[hil_all]${NC} ${app}: post-test Initialize did not report success"
+            echo -e "${YELLOW}[hil_all]${NC} (see /tmp/hil_all_post_init_${app}.log)"
+        fi
     fi
 done
 
