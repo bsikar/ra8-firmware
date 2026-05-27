@@ -46,6 +46,26 @@ typedef enum : uint8_t {
   k_acmphs_demo_ivrefsel = 0U, /**< Default IVREF selector (CMPSEL1, IVREF). */
 } acmphs_demo_chan_t;
 
+/**
+ * @var g_acmphs_compare_tick
+ * @brief HIL liveness counter -- incremented each comparator read iteration.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD; the script
+ * halts the chip, samples this value, lets the chip run for N seconds,
+ * halts again, and asserts the delta >= HIL_PROBE_MIN_ADVANCE. Catches
+ * the "PC is in MRAM but main loop never iterated" failure mode that
+ * the plain HIL_MODE=alive check misses.
+ *
+ * `volatile` keeps the increment alive under optimization; the global
+ * (non-static) keeps the symbol linker-visible without --gc-sections
+ * culling.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_acmphs_compare_tick = 0U;
+
 /** @brief Park the CPU forever after fatal init failure. */
 static void acmphs_demo_panic_halt(void)
 {
@@ -149,6 +169,7 @@ int32_t main(void)
       (void)ra_board_led_on(k_ra_board_led3);
       break;
     }
+    g_acmphs_compare_tick += 1U;
     ra_delay_ms((uint32_t)k_acmphs_demo_period_ms);
   }
   acmphs_demo_panic_halt();
