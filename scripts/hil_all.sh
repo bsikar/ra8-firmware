@@ -345,10 +345,11 @@ for app in "${APPS[@]}"; do
     # Per-app post-test recovery hook. Apps that deliberately put the chip
     # into a state that gates the AHB-AP (e.g. LPM deep modes) set
     # HIL_POST_INITIALIZE=1 in their hil.conf. After running the test we
-    # invoke `rfp-cli -erase-chip` (the boot-firmware Initialize command,
-    # per docs/RECOVERY_OEM_PL0_BRICK.md) so the next app's flash has a
-    # haltable CPU. Without this, LPM-deep demos cascade-fail every
-    # subsequent test until hil_flash.sh's auto-recovery catches up.
+    # invoke `rfp-cli -erase-chip` (the boot-firmware Initialize command)
+    # so the next app's flash has a haltable CPU. Without this, LPM-deep
+    # demos cascade-fail every subsequent test until hil_flash.sh's
+    # auto-recovery catches up. See scripts/hil_dlm_reset.sh for the
+    # full DLM/AHB-AP recovery flow.
     if [[ "${HIL_POST_INITIALIZE:-0}" == "1" ]]; then
         echo -e "${CYAN}[hil_all]${NC} ${app}: HIL_POST_INITIALIZE=1 -- running rfp-cli -erase-chip..."
         # Detect Pi vs dev-machine (same heuristic as hil_flash.sh)

@@ -152,7 +152,7 @@ post_check() {
 
 # Auto-recovery via rfp-cli -erase-chip (boot-firmware Initialize) when
 # the chip is in a TrustZone-locked / LPM-stuck state that gates the
-# AHB-AP. See docs/RECOVERY_OEM_PL0_BRICK.md.
+# AHB-AP. See scripts/hil_dlm_reset.sh for the full DLM recovery flow.
 attempt_recover() {
     local log="$1"
     if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|Failed to initialize DAP|Could not read CPUID register|Attach to CPU failed|Could not find core in Coresight" "$log"; then
@@ -203,7 +203,8 @@ echo "    log   : \${LOG}"
 # Cortex-M85 AHB-AP is gated so JLink halt fails. The recovery is the
 # Renesas Flash Programmer Initialize command (rfp-cli -erase-chip),
 # which transitions OEM_PL0/PL1 back to OEM_PL2 and clears MRAM, making
-# the next halt succeed. See docs/RECOVERY_OEM_PL0_BRICK.md.
+# the next halt succeed. See scripts/hil_dlm_reset.sh for the full
+# DLM recovery flow.
 if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|Failed to initialize DAP|Could not read CPUID register|Attach to CPU failed|Could not find core in Coresight" "\$LOG"; then
     echo "[hil_flash] J-Link halt/DAP failure detected -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
     rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip > "/tmp/hil_flash_init_${APP}.log" 2>&1 || true

@@ -46,8 +46,8 @@ Status snapshot at the close of sweep 11 (commit `ba54974`):
 
 For the at-a-glance driver-vs-FSP-parity matrix see
 `docs/DRIVER_STATUS.md`. For the residual hardware-blob gap list see
-`docs/VENDOR_BLOBS.md`; for the post-baseline plan see
-`docs/PHASE7_ROADMAP.md`.
+`docs/VENDOR_BLOBS.md`; the post-baseline plan is tracked in the
+GitHub issue tracker (label: `roadmap`).
 
 Status markers:
 
