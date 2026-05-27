@@ -482,17 +482,6 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Worker thread entry. Brings USBX + CDC up, then echoes forever.
- *
- * @param[in] arg Unused (ThreadX entry signature).
- *
- * @pre ``tx_application_define`` started this thread auto-start.
- * @post Thread loops forever; never returns.
- *
- * @note Single-instance worker; not designed for re-entry.
- * @since 0.1.0
- */
-/**
  * @brief Brings the USBX system + FS device stack up.
  *
  * @return UINT UX_SUCCESS on success.

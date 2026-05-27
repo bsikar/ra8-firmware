@@ -183,21 +183,6 @@ static uint8_t elc_demo_uint_to_dec(uint8_t* buf, uint32_t v)
   return n;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-/**
- * @brief Application entry. Fires ELC software events once a second.
- *
- * @return Never returns.
- *
- * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit has set VTOR, FPU, and priority grouping.
- *
- * @post On clean entry the CPU stays in the trigger + blink loop.
- * @post On any HAL hard error LED2 latches ON.
- *
- * @since 0.1.0
- */
 /**
  * @brief Format the per-cycle "elc: en=N trig=NN\r\n" line.
  *
@@ -231,6 +216,21 @@ static uint32_t elc_demo_format_line(uint8_t* out, bool enabled, uint32_t trig_c
   return off;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Application entry. Fires ELC software events once a second.
+ *
+ * @return Never returns.
+ *
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre SystemInit has set VTOR, FPU, and priority grouping.
+ *
+ * @post On clean entry the CPU stays in the trigger + blink loop.
+ * @post On any HAL hard error LED2 latches ON.
+ *
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
   elc_demo_setup_or_halt();

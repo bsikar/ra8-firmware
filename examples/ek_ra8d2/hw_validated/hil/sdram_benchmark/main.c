@@ -295,21 +295,6 @@ static uint8_t sdram_demo_uint_to_dec(uint8_t* buf, uint32_t v)
   return n;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-/**
- * @brief Application entry. Bench-tests SDRAM and prints MB/s.
- *
- * @return Never returns.
- *
- * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit has set VTOR, FPU, and priority grouping.
- *
- * @post On clean entry the CPU stays in the bench + blink loop.
- * @post On read-back mismatch LED2 latches ON.
- *
- * @since 0.1.0
- */
 /**
  * @brief Format the per-cycle MB/s line into @p out, return its length.
  *
@@ -389,6 +374,21 @@ static uint32_t sdram_demo_format_fail(uint8_t* out, const sdram_demo_diag_t* di
   return off;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Application entry. Bench-tests SDRAM and prints MB/s.
+ *
+ * @return Never returns.
+ *
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre SystemInit has set VTOR, FPU, and priority grouping.
+ *
+ * @post On clean entry the CPU stays in the bench + blink loop.
+ * @post On read-back mismatch LED2 latches ON.
+ *
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
   sdram_demo_setup_or_halt();

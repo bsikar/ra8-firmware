@@ -1,0 +1,379 @@
+================================================================
+EK-RA8D2 OEM_PL0 BRICK -- DIAGNOSTIC TRANSCRIPT
+================================================================
+Captured: 2026-05-25 / 2026-05-26
+Bench: Raspberry Pi (host) -> USB -> on-board J-Link OB -> RA8D2
+Chip:  R7KA8D2KFLCAC (RA8D2 group, Cortex-M85 primary)
+Tools: rfp-cli V1.15 (Pkg V3.22.00 [1 Jan 2026])
+       J-Link Commander V9.42
+       J-Link OB-RA4M2 firmware Dec 10 2025 15:52:53
+       arm-none-eabi-gcc 14.3.1
+
+This file is a verbatim transcript of every relevant tool error
+during the brick incident and the recovery attempts that
+followed. No new authentication attempts have been made since
+the retry-counter risk was identified -- the most recent logs
+below are from non-destructive read-only probes.
+
+================================================================
+[1] HOW THE CHIP REACHED OEM_PL0
+================================================================
+The chip was in OEM_PL2 when the operator ran:
+
+  $ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 \
+            -dlm OEM_PL0
+  Renesas Flash Programmer CLI V1.15
+   Module Version: V3.22.00.000
+   Package Version: V3.22.00 [1 Jan 2026]
+  Connecting the tool (J-Link)
+  Connecting the target device
+  Speed: 1,000,000 Hz
+  Connected to R7KA8D2KFLCAC
+  Checking whether the state transition is possible: OK
+  Writing data to the target device
+  Operation successful
+
+The operator had assumed OEM_PL0 was a less-restricted state than
+OEM_PL2; the operator was wrong (OEM_PL0 is the most restricted
+OEM state). After this command, every subsequent SWD operation
+fails with the symptoms below.
+
+================================================================
+[2] JLINK CONNECT TRACE (verbatim)
+================================================================
+
+$ JLinkExe -CommandFile /tmp/jlink_capture.jlink -nogui 1
+SEGGER J-Link Commander V9.42 (Compiled May  6 2026 12:53:45)
+DLL version V9.42, compiled May  6 2026 12:52:27
+
+
+J-Link Command File read successfully.
+Processing script file...
+J-Link>device R7KA8D2KF_CPU0
+J-Link connection not established yet but required for command.
+Connecting to J-Link via USB...O.K.
+Firmware: J-Link OB-RA4M2 compiled Dec 10 2025 15:52:53
+Hardware version: V1.00
+J-Link uptime (since boot): 0d 13h 37m 46s
+S/N: 1086567198
+USB speed mode: Full speed (12 MBit/s)
+VTref=3.300V
+J-Link>si SWD
+Selecting SWD as current target interface.
+J-Link>speed 1000
+Selecting 1000 kHz as target interface speed
+J-Link>connect
+Device "R7KA8D2KF_CPU0" selected.
+
+
+Connecting to target via SWD
+ConfigTargetSettings() start
+Configuring FlashDLNoRMWThreshold=0x200 in order to make sure that option bytes programming is done via read-modify-write
+ConfigTargetSettings() end - Took 26us
+InitTarget() start
+Identifying target device...
+SWD selected. Executing JTAG -> SWD switching sequence...
+Initializing DAP...
+DAP initialized successfully.
+Determining TrustZone configuration...
+  Secure Debug: Disabled (NSECSD)
+  Changing work RAM address to 0x320D0000
+  Instruction set simulation: Disabled
+Enabling secondary core...
+  Secondary core already enabled. Performing attach...
+Determining currently configured transfer type by reading the AHB-AP CSW register.
+  --> Correct transfer type configured. Done.
+Primary CPU:   CPU0 (CM85), OFS bit=0x00000001
+Secondary CPU: CPU1 (CM33)
+Note: Detected primary CPU is based on the 'Device Configuration Information Register for Debug' register. Verify register value if primary/secondary is unexpected (https://kb.segger.com/Renesas_RA8).
+InitTarget() end - Took 703ms
+Found SW-DP with ID 0x6BA02477
+Failed to power up DAP
+ConfigTargetSettings() start
+Configuring FlashDLNoRMWThreshold=0x200 in order to make sure that option bytes programming is done via read-modify-write
+ConfigTargetSettings() end - Took 29us
+InitTarget() start
+Identifying target device...
+SWD selected. Executing JTAG -> SWD switching sequence...
+Initializing DAP...
+DAP initialized successfully.
+Determining TrustZone configuration...
+  Secure Debug: Disabled (NSECSD)
+  Changing work RAM address to 0x320D0000
+  Instruction set simulation: Disabled
+Determining currently configured transfer type by reading the AHB-AP CSW register.
+Transfer type does not match DLM state. Changing transfer type accordingly.
+Primary CPU:   CPU0 (CM85), OFS bit=0x00000001
+Secondary CPU: CPU1 (CM33)
+Note: Detected primary CPU is based on the 'Device Configuration Information Register for Debug' register. Verify register value if primary/secondary is unexpected (https://kb.segger.com/Renesas_RA8).
+InitTarget() end - Took 4.80ms
+Found SW-DP with ID 0x6BA02477
+DPIDR: 0x6BA02477
+CoreSight SoC-400 or earlier
+AP map detection skipped. Manually configured AP map found.
+AP[0]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[1]: APB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[2]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[0]: Skipped. Could not read CPUID register
+Attach to CPU failed. Executing connect under reset.
+DPIDR: 0x6BA02477
+CoreSight SoC-400 or earlier
+AP map detection skipped. Manually configured AP map found.
+AP[0]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[1]: APB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[2]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[0]: Skipped. Could not read CPUID register
+Could not find core in Coresight setup
+Error occurred: Could not connect to the target device.
+For troubleshooting steps visit: https://kb.segger.com/J-Link_Troubleshooting
+J-Link>mem32 0xE000ED00 1
+Target connection not established yet but required for command.
+Device "R7KA8D2KF_CPU0" selected.
+
+
+Connecting to target via SWD
+ConfigTargetSettings() start
+Configuring FlashDLNoRMWThreshold=0x200 in order to make sure that option bytes programming is done via read-modify-write
+ConfigTargetSettings() end - Took 21us
+InitTarget() start
+Identifying target device...
+SWD selected. Executing JTAG -> SWD switching sequence...
+Initializing DAP...
+DAP initialized successfully.
+Determining TrustZone configuration...
+  Secure Debug: Disabled (NSECSD)
+  Changing work RAM address to 0x320D0000
+  Instruction set simulation: Disabled
+Enabling secondary core...
+  Secondary core already enabled. Performing attach...
+Determining currently configured transfer type by reading the AHB-AP CSW register.
+  --> Correct transfer type configured. Done.
+Primary CPU:   CPU0 (CM85), OFS bit=0x00000001
+Secondary CPU: CPU1 (CM33)
+Note: Detected primary CPU is based on the 'Device Configuration Information Register for Debug' register. Verify register value if primary/secondary is unexpected (https://kb.segger.com/Renesas_RA8).
+InitTarget() end - Took 705ms
+Found SW-DP with ID 0x6BA02477
+Failed to power up DAP
+ConfigTargetSettings() start
+Configuring FlashDLNoRMWThreshold=0x200 in order to make sure that option bytes programming is done via read-modify-write
+ConfigTargetSettings() end - Took 29us
+InitTarget() start
+Identifying target device...
+SWD selected. Executing JTAG -> SWD switching sequence...
+Initializing DAP...
+DAP initialized successfully.
+Determining TrustZone configuration...
+  Secure Debug: Disabled (NSECSD)
+  Changing work RAM address to 0x320D0000
+  Instruction set simulation: Disabled
+Determining currently configured transfer type by reading the AHB-AP CSW register.
+Transfer type does not match DLM state. Changing transfer type accordingly.
+Primary CPU:   CPU0 (CM85), OFS bit=0x00000001
+Secondary CPU: CPU1 (CM33)
+Note: Detected primary CPU is based on the 'Device Configuration Information Register for Debug' register. Verify register value if primary/secondary is unexpected (https://kb.segger.com/Renesas_RA8).
+InitTarget() end - Took 5.02ms
+Found SW-DP with ID 0x6BA02477
+DPIDR: 0x6BA02477
+CoreSight SoC-400 or earlier
+AP map detection skipped. Manually configured AP map found.
+AP[0]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[1]: APB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[2]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[0]: Skipped. Could not read CPUID register
+Attach to CPU failed. Executing connect under reset.
+DPIDR: 0x6BA02477
+CoreSight SoC-400 or earlier
+AP map detection skipped. Manually configured AP map found.
+AP[0]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[1]: APB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[2]: AHB-AP (IDR: Not set, ADDR: 0x00000000)
+AP[0]: Skipped. Could not read CPUID register
+Could not find core in Coresight setup
+Error occurred: Could not connect to the target device.
+For troubleshooting steps visit: https://kb.segger.com/J-Link_Troubleshooting
+J-Link>q
+
+Script processing completed.
+
+
+
+================================================================
+[3] rfp-cli -rfo (read flash options) -- PROTECTION ERROR
+================================================================
+$ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -rfo
+Renesas Flash Programmer CLI V1.15
+ Module Version: V3.22.00.000
+ Package Version: V3.22.00 [1 Jan 2026]
+
+Connecting the tool (J-Link)
+      J-Link Firmware: J-Link OB-RA4M2 compiled Dec 10 2025 15:52:53
+   0% [                                                            ]                                                                                Tool: J-Link (SEGGER J-Link (unknown))
+Interface: SWD
+
+Connecting the target device
+Speed: 1,000,000 Hz
+Connected to R7KA8D2KFLCAC
+
+Reading data from the device
+  [Flash Options]     
+   0% [                                                            ]                                                                                    Boundary            
+   0% [                                                            ]                                                                                    DLM State           
+   0% [                                                            ]                                                                                    ARC Configuration   
+   0% [                                                            ]                                                                                
+[Error] E100000E: A protection error occurred in the device. (Command: 4D, Response: E4)
+Disconnecting the tool
+
+
+================================================================
+[4] rfp-cli -dlm <state>  -- E3000902 for EVERY target state
+================================================================
+The operator tried each of these states; all returned E3000902
+"Cannot transition to the specified state from the current state":
+
+  CM       SSD      NSECSD   DPL      LCK_DBG
+  RMA_REQ  RMA_ACK  OEM_PL1  OEM_PL2
+
+Example invocation and verbatim response (CM target shown,
+others identical):
+
+  $ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -dlm CM
+  Renesas Flash Programmer CLI V1.15
+  ...
+  Connected to R7KA8D2KFLCAC
+  Checking whether the state transition is possible: OK
+  Writing data to the target device
+   [Flash Options]
+                 DLM State
+  [Error] E3000902: Cannot transition to the specified state from
+                    the current state.
+  Disconnecting the tool
+
+================================================================
+[5] rfp-cli -erase-chip -- SUCCEEDS BUT DOES NOT RESET DLM
+================================================================
+The mass erase operation succeeds, but a subsequent -rfo still
+returns E100000E (the DLM state is preserved across erase):
+
+  $ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip
+  Renesas Flash Programmer CLI V1.15
+  ...
+  Connected to R7KA8D2KFLCAC
+  Erasing the all device data and clear configuration
+  Disconnecting the tool
+  Operation successful
+
+  $ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -rfo
+  ...
+  [Error] E100000E: A protection error occurred in the device.
+                    (Command: 4D, Response: E4)
+
+================================================================
+[6] AUTH ATTEMPTS (STOPPED -- ~25 USED, RETRY COUNTER CONCERN)
+================================================================
+The operator brute-forced ~21 common AL2KEY defaults (all-zeros,
+all-FFs, 0123456789abcdef..., deadbeef..., a5a5..., 5a5a...,
+sequential, Renesas ASCII, etc.) plus a handful of AL1KEY tries.
+Every attempt returned:
+
+  $ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 \
+            -auth AL2KEY <hex> -dlm SSD
+  Renesas Flash Programmer CLI V1.15
+  ...
+  Connected to R7KA8D2KFLCAC
+  [Warning] Authentication failure
+   [Flash Options]
+                 Enter AL2 Key (16 Bytes)?
+  User Cancelled
+
+NO FURTHER -auth ATTEMPTS HAVE BEEN MADE since the retry-counter
+risk (potential transition to LCK_BOOT) was identified. Total
+failed -auth attempts since the brick: approximately 25.
+
+================================================================
+[7] J-LINK OB SWDMD VIA UART -- TESTED, DOES NOT DRIVE MD ON THIS EK
+================================================================
+Some EK-RA8 boards (EK-RA8M1, EK-RA8D1) wire SWDMD from the
+on-board J-Link OB to the MCU's MD pin so that rfp-cli with
+-if uart auto-enters SCI boot mode without physical jumper
+manipulation. Tested on this EK-RA8D2 v1 board:
+
+  $ rfp-cli -d ra -tool jlink:1086567198 -if uart -s 115200 -rfo
+  Renesas Flash Programmer CLI V1.15
+  Connecting the tool (J-Link)
+        J-Link Firmware: J-Link OB-RA4M2 compiled Dec 10 2025 15:52:53
+  Tool: J-Link (SEGGER J-Link (unknown))
+  Interface: 2 wire UART
+  Connecting the target device
+  [Error] E3000105: The device is not responding.
+  Disconnecting the tool
+
+Per the EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev 1.01,
+Oct 2025), the J-Link OB on this board does NOT have any
+control over MD pin via SWDMD. Physical access to the J16
+jumper is the only path into the boot ROM on this EK board.
+
+================================================================
+[8] WHAT WAS TRIED AND FAILED FOR RECOVERY
+================================================================
+1. JLinkExe RSetType 0, 1, 2, 3 at speeds 100 kHz, 1 MHz, 4 MHz
+   -- all fail with "CPU could not be halted" / "Could not power
+   up DAP"
+2. JLinkExe `r` (RA-specific reset that goes via secure-domain
+   SYSRESETREQ) -- "Reset: SYSRESETREQ has confused core",
+   "Could not halt CPU after reset"
+3. JLinkExe RnReset (assert nSRST pin) + halt -- same result
+4. rfp-cli -erase-chip -- clears MRAM but not DLM
+5. rfp-cli -dlm to every documented state -- E3000902
+6. rfp-cli -dlm OEM_PL0 (the chip is already there) -- "Operation
+   successful" but subsequent reads still fail
+7. Hard power cycle via Tapo smart plug, 45 s and 60 s off
+   durations -- DLM state survives (it is in non-volatile OFS)
+8. USB PPPS port cycling (all 4 EK-RA8D2 USB ports) -- chip
+   stays powered through alternate USB cables; no chip reset
+9. rfp-cli -auth AL2KEY <21 common defaults> -dlm SSD -- all
+   "Authentication failure"
+10. rfp-cli -tool jlink -if uart -rfo -- E3000105 (J-Link OB does
+    not drive MD on this EK board variant)
+
+================================================================
+[9] PROJECT CONTEXT
+================================================================
+Personal hobbyist firmware project (ra8d2-firmware), no AL keys
+were ever intentionally programmed by the developer; no .rkey,
+.sfp, or .skmt files exist in the repo, on the developer
+workstation, or in any backup search.  The OEM transitions
+during this session were:
+
+  Factory/initial state    -> OEM_PL2 (occurred prior to my
+                              involvement; chip was already
+                              at OEM_PL2 when the brick
+                              sequence began)
+  OEM_PL2 -> OEM_PL0       -> 2026-05-25, via the rfp-cli
+                              command at section [1] above
+
+Full incident report and recovery procedure plan is in the
+companion file `RECOVERY_OEM_PL0_BRICK.md` attached to this
+support ticket.
+
+================================================================
+[10] OPEN QUESTIONS FOR RENESAS SUPPORT
+================================================================
+1. Is the device in OEM_PL0 (recoverable with AL2KEY) or already
+   LCK_BOOT (unrecoverable)?
+2. If LCK_BOOT: is warranty replacement of the EK kit available?
+3. If OEM_PL0: is warranty replacement available given the brick
+   was caused by an rfp-cli misuse during evaluation?
+4. What is the documented retry-counter threshold on the RA8D2
+   boot firmware before failed -auth attempts force a transition
+   to LCK_BOOT? (Approximately 25 attempts used.)
+5. Does the RA8D2 ship state match the RA8D1/M1/T1 default in
+   Technical Update TN-RA*-A0120A/E (Oct 2024)? RA8D2 is not
+   listed explicitly in that TN.
+6. Is any boot-firmware Initialize / Secure Storage Erase
+   command, reachable via SCI/UART boot mode (after a future
+   J16 jumper change), able to clear AL keys and DLM state
+   WITHOUT requiring the unknown AL2KEY?
+
+================================================================
+END OF DIAGNOSTIC TRANSCRIPT
+================================================================

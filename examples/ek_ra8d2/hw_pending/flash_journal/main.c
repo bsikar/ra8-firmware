@@ -225,8 +225,6 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
   return k_ra_ok;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Run all init-time bring-up that must complete before the loop.
  *
@@ -274,6 +272,8 @@ static void flash_journal_setup_or_halt(void)
   g_fj_jedec_id = jedec_id;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
   flash_journal_setup_or_halt();

@@ -353,16 +353,6 @@ static void demo_log_echo(ULONG n, ULONG peer_ip)
 }
 
 /**
- * @brief Bring NetX Duo up: pool, IP, ARP, TCP, ICMP, listen socket.
- *
- * @return ``NX_SUCCESS`` on success, propagating NetX error codes.
- *
- * @pre ``nx_system_initialize`` has run.
- * @post On success the listen socket is queued for accept().
- *
- * @since 0.1.0
- */
-/**
  * @brief Creates the NetX packet pool and IP instance with our MAC.
  *
  * @return UINT NX_SUCCESS on success, propagated NetX error otherwise.
