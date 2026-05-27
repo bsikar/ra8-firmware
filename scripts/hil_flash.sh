@@ -171,8 +171,8 @@ echo "    log   : \${LOG}"
 # Renesas Flash Programmer Initialize command (rfp-cli -erase-chip),
 # which transitions OEM_PL0/PL1 back to OEM_PL2 and clears MRAM, making
 # the next halt succeed. See docs/RECOVERY_OEM_PL0_BRICK.md.
-if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP" "\$LOG"; then
-    echo "[hil_flash] J-Link halt failed -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
+if grep -qiE "could not be halted|Failed to configure AP|Failed to power up DAP|Failed to initialize DAP|Could not read CPUID register|Attach to CPU failed|Could not find core in Coresight" "\$LOG"; then
+    echo "[hil_flash] J-Link halt/DAP failure detected -- running rfp-cli -erase-chip (Initialize) auto-recovery..." >&2
     rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip > "/tmp/hil_flash_init_${APP}.log" 2>&1 || true
     if grep -q "Operation successful" "/tmp/hil_flash_init_${APP}.log"; then
         echo "[hil_flash] Initialize succeeded -- retrying flash..." >&2
