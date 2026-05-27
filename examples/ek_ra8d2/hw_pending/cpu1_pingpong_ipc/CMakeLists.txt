@@ -86,6 +86,7 @@ set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/system_init.c
     ${CMAKE_CURRENT_SOURCE_DIR}/secure_exception.c
     ${CMAKE_CURRENT_SOURCE_DIR}/trustzone_init.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c
 )
 
 # Shared library + secure-app sources from the repo root.

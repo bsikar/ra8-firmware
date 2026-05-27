@@ -136,7 +136,17 @@ typedef enum : uint32_t {
   k_ra_tz_part_sram_nsc_limit = 0x1200FFE0U,
   k_ra_tz_part_ns_sram_base   = 0x22100000U,
   k_ra_tz_part_ns_sram_limit  = 0x221FFFE0U,
-  k_ra_tz_part_ns_per_base    = 0x50000000U,
+  /* NS peripheral region needs to cover BOTH the standard Cortex-M
+   * peripheral window at 0x40000000 (where IPC lives at 0x40020000)
+   * AND the alias window at 0x50000000. With the original 0x5xxxxxxx-
+   * only region, CPU1 (NS-only per SECEXT-disabled silicon) cannot
+   * reach any IPC channel even after IPCSAR=0x50000 makes channels
+   * 0/2 NS-attributed at the peripheral level -- the SAU still has
+   * to permit the underlying peripheral address as NS. Bench
+   * evidence on 2026-05-27: with 0x5xxxxxxx-only the ping-pong
+   * counters stay at zero (CPU0 sends, CPU1 SecureFaults on recv);
+   * extending the region down to 0x40000000 unblocks the round-trip. */
+  k_ra_tz_part_ns_per_base    = 0x40000000U,
   k_ra_tz_part_ns_per_limit   = 0x5FFFFFE0U,
 } ra_tz_secure_boot_partition_t;
 

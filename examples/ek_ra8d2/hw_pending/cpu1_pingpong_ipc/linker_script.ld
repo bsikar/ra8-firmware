@@ -39,7 +39,11 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 768K
+    /* Secure MRAM for the S-side image. Shrunk from 768K to 512K so
+     * the NS image at 0x02080000 has dedicated bytes (the linker would
+     * otherwise place S .text into the NS aperture and the BLXNS would
+     * jump into S code). */
+    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 512K
     MRAM_CPU1 (rx) : ORIGIN = 0x020C0000, LENGTH = 256K
     /* Option Setting / OTP block lives in a dedicated config flash
      * area outside main MRAM. Sized to cover 0x0300A000..0x0300B000
@@ -62,7 +66,11 @@ MEMORY
      * (see blink/trustzone_init.c) so the CPU sees them as
      * Non-Secure aliases. With RA_TRUSTZONE_ENABLE off the linker
      * is allowed to place sections in either region freely. */
-    NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
+    /* Non-Secure MRAM for the NS image (vectors + text + rodata).
+     * Shrunk from 512K to 256K so it tiles cleanly between the S
+     * MRAM (ends at 0x0207FFFF) and the CPU1 image (starts at
+     * 0x020C0000). */
+    NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 256K
     NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
 }
 
@@ -73,6 +81,12 @@ MEMORY
  */
 g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
 g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
+
+/* Non-Secure stack tops out at the top of NS_SRAM. The NS image's
+ * vector table places this in slot 0 (initial MSP_NS); BLXNS in
+ * ra_tz_secure_boot_jump_ns issues `msr msp_ns, %0` with the value
+ * the linker computes here. 8 KiB carved at the high end of NS_SRAM. */
+g_ra_ls_ns_stack_top = ORIGIN(NS_SRAM) + LENGTH(NS_SRAM);
 /* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
  * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
  * accidental malloc() call from newlib. */
@@ -144,6 +158,42 @@ SECTIONS
         KEEP(*(.cpu1_image))
         KEEP(*(.cpu1_image.*))
     } > MRAM_CPU1
+
+    /* ---- NS image at 0x02080000 ----
+     *
+     * The S-side ``ra_tz_secure_boot_jump_ns`` BLXNS-es to slot 1 of
+     * ``g_ra_ns_vector_table`` which the linker places here. The NS
+     * code is self-contained (open-coded register IO) so no S-resident
+     * symbol is ever called from NS state.
+     *
+     * NS_MRAM is SAU Region 0 (NS) -- see
+     * ra_tz_secure_boot_sau_init. Bit 28 IDAU rule says 0x02080000 is
+     * S by default, the SAU override flips it to NS for the CPU. */
+    .ns_vectors ORIGIN(NS_MRAM) : ALIGN(8)
+    {
+        KEEP(*(.ns_vectors))
+        KEEP(*(.ns_vectors.*))
+    } > NS_MRAM
+
+    .ns_text : ALIGN(4)
+    {
+        *(.ns_text)
+        *(.ns_text.*)
+    } > NS_MRAM
+
+    .ns_rodata : ALIGN(4)
+    {
+        *(.ns_rodata)
+        *(.ns_rodata.*)
+    } > NS_MRAM
+
+    .ns_bss (NOLOAD) : ALIGN(4)
+    {
+        g_ra_ls_ns_bss_start = .;
+        *(.ns_bss)
+        *(.ns_bss.*)
+        g_ra_ls_ns_bss_end = .;
+    } > NS_SRAM
 
     /* ---- Code + const data ---- */
     .text : ALIGN(4)

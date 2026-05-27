@@ -46,55 +46,56 @@ typedef enum : uint8_t {
  * @note Single-threaded entry.
  * @since 0.1.0
  */
+/* Self-contained IPC for CPU1 -- avoid the M85 HAL whose accessors */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+/* the M33 cannot all reach through its NS-controller view. Channel windows
+ * via the NS alias (bit 28 set) so the IPCSAR-attributed channels are
+ * reachable. HUM Ch 3.2 p 205. */
+typedef enum : uintptr_t {
+  k_cpu1_ipc_ch0_addr = 0x500200C0UL, /**< CPU1 TX to CPU0 (NS alias).   */
+  k_cpu1_ipc_ch2_addr = 0x50020100UL, /**< CPU1 RX from CPU0 (NS alias). */
+} cpu1_ipc_addr_t;
+
+typedef enum : uint8_t {
+  k_cpu1_ipc_off_sta = 0x00U,
+  k_cpu1_ipc_off_txd = 0x08U,
+  k_cpu1_ipc_off_rxd = 0x0CU,
+  k_cpu1_ipc_off_clr = 0x10U,
+} cpu1_ipc_off_t;
+
+typedef enum : uint32_t {
+  k_cpu1_ipc_sta_rdy = 0x00010000UL,
+  k_cpu1_ipc_clr_all = 0x030100FFUL,
+} cpu1_ipc_mask_t;
+
 [[noreturn]] static void cpu1_main(void)
 {
-  uint8_t ch_recv = 0U;
-  uint8_t ch_send = 0U;
-  (void)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu1, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_recv);
-  (void)ra_ipc_channel_for_send(k_ra_ipc_core_cpu1, (uint8_t)k_cpu1_pingpong_pair_zero, &ch_send);
+  *(volatile uint32_t*)0x3210020CUL = 0x11111111UL; /* cpu1_main entry */
 
-  /* HUM Ch 3.2.14 "IPC0CLR0.RST" p 217 -- writing 1 to RST drains the
-   * receive FIFO and clears STA.RDY/STA.FULL. The IPC peripheral is a
-   * single shared block: CPU0 already issued ``reset_fifo=true`` on
-   * both directions before releasing CPU1 (see ra_cpu1_release ordering
-   * in main.c). If CPU1 also writes RST on ch_recv (= IPC1_0, the
-   * CPU0 -> CPU1 FIFO that CPU0 may have already loaded with 0x1234
-   * during the race window between CPU1ACTCSR.ACT asserting and CPU1
-   * finishing its .data/.bss init), the pending ping gets discarded
-   * and CPU0's bounded ``recv_blocking`` poll on ch 0 never sees a
-   * response -- ``g_cpu1_pingpong_match`` and ``g_cpu1_pingpong_mismatch``
-   * both stayed at zero across the 5 s HIL probe window because the
-   * first ping was lost and every subsequent ping arrived while CPU1
-   * was already past its init blocking. Skip the reset on CPU1; CPU0
-   * is the FIFO owner of both directions. ``clear_status`` is also
-   * dropped because CPU0 already cleared status during its own init
-   * and the only bits that could be set after CPU0's clear are RDY
-   * (set by CPU0's own TXD write -- discarding that is exactly the
-   * race we are avoiding). */
-  ra_ipc_config_t cfg_recv = {
-    .channel      = ch_recv,
-    .reset_fifo   = false,
-    .clear_status = false,
-    .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
-  };
-  ra_ipc_config_t cfg_send = {
-    .channel      = ch_send,
-    .reset_fifo   = false,
-    .clear_status = false,
-    .event_mask   = 0U,
-  };
-  (void)ra_ipc_init(&cfg_recv);
-  (void)ra_ipc_init(&cfg_send);
+  /* CPU1 owns ch0 (TX -> CPU0) and ch2 (RX <- CPU0). CPU0's NS side
+   * already reset both channels before releasing CPU1, so there is no
+   * race window. Skipping the reset on CPU1 also avoids the corner
+   * case where CPU1 reset clears a pending ping CPU0 already pushed
+   * into the FIFO. */
+  *(volatile uint32_t*)0x32100214UL = 0x33333333UL; /* skipped init */
 
   while (1) {
-    uint32_t got = 0U;
-    if (ra_ipc_recv_message(ch_recv, &got) != k_ra_ok) {
+    *(volatile uint32_t*)0x32100220UL += 1U; /* loop iter counter */
+    *(volatile uint32_t*)0x32100230UL = 0xAAAAAAAAUL; /* pre-STA-read marker */
+    /* Poll CH2 RX for ping. */
+    const uint32_t sta = *(volatile uint32_t*)(k_cpu1_ipc_ch2_addr + k_cpu1_ipc_off_sta);
+    *(volatile uint32_t*)0x32100234UL = sta; /* STA read survived */
+    if ((sta & (uint32_t)k_cpu1_ipc_sta_rdy) == 0U) {
       continue;
     }
+    const uint32_t got = *(volatile uint32_t*)(k_cpu1_ipc_ch2_addr + k_cpu1_ipc_off_rxd);
+    *(volatile uint32_t*)0x32100224UL = got; /* most recent rxd */
     if (got != (uint32_t)k_cpu1_pingpong_magic_ping) {
       continue;
     }
-    (void)ra_ipc_send_message(ch_send, (uint32_t)k_cpu1_pingpong_magic_pong);
+    /* Push pong onto CH0 TX. */
+    *(volatile uint32_t*)(k_cpu1_ipc_ch0_addr + k_cpu1_ipc_off_txd) =
+      (uint32_t)k_cpu1_pingpong_magic_pong;
+    *(volatile uint32_t*)0x32100228UL += 1U; /* pong sent counter */
   }
 }
 
@@ -128,6 +129,21 @@ typedef enum : uint8_t {
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
+  /* CPU1 NS-alias-side marker. The M33 here has SECEXT disabled so it */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+  /* is hardware-locked to the NS controller state; the dedicated SRAM_CPU1
+   * bank at 0x223F0000 is its physical alias for these BSS reads, but
+   * CPU0's J-Link memprobe sees the same bytes through the standard
+   * 0x223F0000 view. Bench tail: confirm 0xC0DEDEAD before the data
+   * copy starts -- it tells us reset_handler actually ran and the
+   * MRAM_CPU1 fetch worked. */
+  /* Markers placed in NS_SRAM (CPU0 J-Link memprobe can read this view; */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+  /* CPU0's SAU NS_SRAM region 0x22100000-0x221FFFE0 maps NS, and CPU1
+   * as a permanent NS controller can write to the same physical bytes
+   * through the NS alias 0x32100200). The chip's two views of SRAM
+   * see the same backing store. */
+  *(volatile uint32_t*)0x32100200UL = 0xC0DEDEADUL;
+  *(volatile uint32_t*)0x223F0200UL = 0xC0DEDEADUL;
+
   /* Copy .data from MRAM_CPU1 load address into SRAM_CPU1. The linker
    * defines ``g_ra_ls_cpu1_data_load`` as LOADADDR(.data) so this
    * works regardless of the absolute MRAM_CPU1 base. */
@@ -138,12 +154,16 @@ typedef enum : uint8_t {
     dst++;
     src++;
   }
+  *(volatile uint32_t*)0x32100204UL = 0xB055A55AUL; /* survived .data copy */
+
   /* Zero .bss in SRAM_CPU1. */
   uint32_t* bss = &g_ra_ls_cpu1_bss_start;
   while (bss < &g_ra_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
+  *(volatile uint32_t*)0x32100208UL = 0xBEEFCAFEUL; /* survived .bss zero */
+
   cpu1_main();
 }
 

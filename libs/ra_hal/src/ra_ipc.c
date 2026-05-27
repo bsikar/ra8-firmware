@@ -140,7 +140,20 @@ static volatile r_ipc_channel_regs_t* internal_ra_ipc_get_regs(uint8_t channel)
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {
     return nullptr;
   }
+#ifdef RA_BUILD_FOR_CPU1
+  /* CPU1 (M33) has SECEXT disabled and runs as a permanent NS bus    */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+  /* controller. The IPC channels CPU1 owns (ch0 + ch2) are
+   * NS-attributed via IPCSAR=0x00050000 set by CPU0's secure-boot.
+   * The chip routes NS IPC accesses through the bit-28-set NS alias
+   * (0x50020000), not the Secure alias the M85 HAL defaults to.
+   * Without this offset the first ``reg->CLR`` write inside
+   * ra_ipc_init BusFaults and CPU1 wedges in cpu1_fault_handler
+   * (HUM Ch 3.2 p 205 + bench probe pinning PC at 0x020C0020). */
+  const uintptr_t ns_offset = 0x10000000UL;
+  return (volatile r_ipc_channel_regs_t*)((uintptr_t)ra_ipc_channel(channel) + ns_offset);
+#else
   return ra_ipc_channel(channel);
+#endif
 }
 
 /**

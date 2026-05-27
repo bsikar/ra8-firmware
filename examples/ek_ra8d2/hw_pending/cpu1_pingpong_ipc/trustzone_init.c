@@ -34,9 +34,13 @@
 
 #include <stdint.h>
 
+#include "ra_dual_core.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_tz_secure_boot.h"
+
+extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra_ls_cpu1_stack_top;
 
 /**
  * @enum cpu1_pingpong_ipc_tz_const_t
@@ -57,7 +61,7 @@
  */
 typedef enum : uint32_t {
   k_ipcsar_value         = 0x00050000UL, /**< SAIPCIR0 + SAIPCIR2 = NS. */
-  k_ipcpar_value         = 0x00000000UL, /**< Privileged-only (default).*/
+  k_ipcpar_value         = 0x00050000UL, /**< PAIPCIR0+2 = unprivileged-OK */
   k_ns_vector_table_addr = 0x02080000UL, /**< NS image entry vectors.   */
 } cpu1_pingpong_ipc_tz_const_t;
 
@@ -90,6 +94,59 @@ volatile uint32_t g_cpu1_pingpong_ipc_ipcsar_post = 0U;
  */
 volatile uint8_t g_cpu1_pingpong_ipc_tz_step = 0U;
 
+/**
+ * @var g_cpu1_pingpong_ipc_cpu1_release_err
+ * @brief S-side CPU1 release return code captured pre-BLXNS.
+ *
+ * @details
+ * ``ra_cpu1_release`` writes CPU1INITVTOR / CPU1WAITCR / CPU1ACTCSR
+ * which are all in the CPU control register block (0x4000F000). Those
+ * registers are Secure-only on this chip so the release must happen
+ * before BLXNS hands the CPU to the NS image. Bench reads this
+ * counter to confirm CPU1 was successfully released even when the NS
+ * ping-pong loop later misbehaves.
+ *
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_cpu1_pingpong_ipc_cpu1_release_err = 0xFFFFFFFFU;
+
+#ifdef RA_TRUSTZONE_ENABLE
+/**
+ * @brief Release CPU1 with PRCR_S.PRC1 unlocked around the call.
+ *
+ * @details
+ * CPU1INITVTOR / CPU1ACTCSR live in the CPU control window
+ * (0x4000F000) and are gated by PRCR_S.PRC1 (LPM / dual-core
+ * lifecycle). ``ra_tz_secure_boot_security_init`` opens PRC4 for the
+ * IPCSAR write then relocks the whole PRCR_S, so the writes inside
+ * ``ra_cpu1_release`` are silently dropped without an explicit unlock
+ * here. The bench symptom of leaving PRC1 locked was CPU1INITVTOR
+ * reading back as the chip cold-reset 0x02000000 regardless of the
+ * value written and CPU1ACTCSR.ACT staying clear so CPU1 never came
+ * out of reset.
+ *
+ * HUM Ch 9.2.4 "PRCR_S" p 397 + Ch 2.9.1.7 "CPU1INITVTOR" p 128-129 +
+ * Ch 2.9.1.9 "CPU1ACTCSR" p 129-130.
+ *
+ * @pre security_init has already run (PRC4 was opened then relocked).
+ * @pre CPU1 vector table image is staged at ORIGIN(MRAM_CPU1).
+ * @post CPU1 active or rel_err captured in
+ *       ``g_cpu1_pingpong_ipc_cpu1_release_err``.
+ * @post PRCR_S restored to "all locked" (0xA500).
+ *
+ * @since 0.1.0
+ */
+static void internal_release_cpu1(void)
+{
+  g_cpu1_pingpong_ipc_cpu1_release_err = 0xDEADBEEFUL;
+  *(volatile uint16_t*)0x4001E3FAUL    = (uint16_t)0xA512U; /* key | PRC1 | PRC4 */
+  const ra_err_t rel_err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
+  *(volatile uint16_t*)0x4001E3FAUL    = (uint16_t)0xA500U; /* relock all PRCs */
+  g_cpu1_pingpong_ipc_cpu1_release_err = (uint32_t)rel_err;
+}
+#endif
+
 void ra_trustzone_init(void)
 {
 #ifdef RA_TRUSTZONE_ENABLE
@@ -114,6 +171,8 @@ void ra_trustzone_init(void)
   g_cpu1_pingpong_ipc_ipcsar_post        = *(volatile uint32_t*)0x40008610UL;
   const ra_tz_secure_boot_step_t step_ok = ra_tz_secure_boot_get_step();
   g_cpu1_pingpong_ipc_tz_step            = (uint8_t)step_ok;
+
+  internal_release_cpu1();
 
   /* On hardware ra_tz_secure_boot_jump_ns does not return. On host
    * the BLXNS is captured into the secure-boot library's state for
