@@ -191,6 +191,32 @@ The pre-commit gate `scripts/utils/check_no_ai_attribution.py` enforces this str
 
 ---
 
+## Documentation Policy: docs/ is for reference, not scratch
+
+Use GitHub issues for TODO lists, roadmaps, status boards, and follow-up work.
+Do NOT create markdown files in `docs/` for transient state.
+`docs/` is for architecture, policy, reference, and certification artifacts only.
+Anything that would otherwise be a `docs/SOMETHING_TODO.md` or
+`docs/SOMETHING_ROADMAP.md` or `docs/SOMETHING_TICKET.md` must be a
+GitHub issue instead.
+
+Concretely, the following types of file MUST NOT be added to `docs/`:
+
+- Incident reports / brick stories / recovery transcripts (the fix
+  belongs in a script under `scripts/`; the incident itself goes in
+  a GitHub issue closed by the script).
+- Renesas / vendor support-ticket evidence (the ticket is the
+  authoritative record; the public gist preserves it).
+- One-off measurement notes / benchmark snapshots that are not
+  re-run by a `make` target.
+- Per-feature TODO lists or per-phase sprint plans.
+- "What I'd like to build next" docs.
+
+The authoritative tracker for any of the above is a GitHub issue
+with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
+
+---
+
 ## Coding Rules & C23 Standards
 
 - **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).

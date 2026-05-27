@@ -91,7 +91,6 @@ help:
 	@echo "  make ascii     fix-encoding.py --check"
 	@echo "  make version   verify @since tags match the VERSION file"
 	@echo "  make hil       HIL tests: build + flash + verify UART output on Pi"
-	@echo "  make smoke     hardware smoke-test sweep over examples/ek_ra8d2/"
 	@echo "  make stack-usage build EVM apps + aggregate -fstack-usage report"
 	@echo "  make scan-build run clang static analyzer over the host test build"
 	@echo "  make iwyu      run include-what-you-use over the host test build"
@@ -258,13 +257,6 @@ version:
 
 hil:
 	bash scripts/hil_dev.sh
-
-# Hardware smoke test -- builds every EVM-tier app, then flashes each
-# one through the on-board J-Link OB and classifies the halt-PC as
-# PASS / WIP / FAIL. See scripts/hw_smoke_test.sh for the rules.
-# Exits non-zero if any app comes back FAIL (NOBUILD/WIP are warnings).
-smoke: $(EK_APPS)
-	bash scripts/hw_smoke_test.sh
 
 # Stack-usage proof. Builds every EVM-tier app (each is already
 # compiled with -fstack-usage via cmake/ra_warnings.cmake), then runs
