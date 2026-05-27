@@ -56,9 +56,9 @@
  *  - HUM Ch 3.2.10..3.2.14 p 214-216.
  */
 typedef enum : uintptr_t {
-  k_ns_ipc_base       = 0x50020000UL, /**< IPC peripheral base (NS alias). */
-  k_ns_ipc_ch0_addr   = 0x500200C0UL, /**< CPU0 RX from CPU1 (NS alias).   */
-  k_ns_ipc_ch2_addr   = 0x50020100UL, /**< CPU0 TX to   CPU1 (NS alias).   */
+  k_ns_ipc_base     = 0x50020000UL, /**< IPC peripheral base (NS alias). */
+  k_ns_ipc_ch0_addr = 0x500200C0UL, /**< CPU0 RX from CPU1 (NS alias).   */
+  k_ns_ipc_ch2_addr = 0x50020100UL, /**< CPU0 TX to   CPU1 (NS alias).   */
 } ns_ipc_const_t;
 
 /**
@@ -206,8 +206,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_entry_marker
  *       store via the compiler ``memory`` clobber.
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static inline void ns_write32(uintptr_t addr,
-                                                                   uint32_t  value)
+__attribute__((section(".ns_text"))) static inline void ns_write32(uintptr_t addr, uint32_t value)
 {
   *(volatile uint32_t*)addr = value;
 }
@@ -264,8 +263,7 @@ __attribute__((section(".ns_text"))) static void ns_ipc_channel_reset(uintptr_t 
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static void ns_ipc_send(uintptr_t ch_base,
-                                                             uint32_t  msg)
+__attribute__((section(".ns_text"))) static void ns_ipc_send(uintptr_t ch_base, uint32_t msg)
 {
   /* HUM Ch 3.2.12 "IPC0TXD0" p 215-216 -- writes push the word onto
    * the FIFO; FERR is raised separately and is cleared by
@@ -344,19 +342,16 @@ __attribute__((section(".ns_text"), noreturn)) void ns_reset_handler(void);
 
 __attribute__((section(".ns_text"), noreturn)) void ns_reset_handler(void)
 {
-  /* Stamp the entry marker BEFORE BSS zero so the bench can tell
-   * "BLXNS reached NS" apart from "marker happened to land back at 0". */
-  g_ns_pingpong_entry_marker = 0xCAFEBABEUL;
-
-  /* Zero the NS BSS region except the entry marker we just stamped.
-   * NOLOAD means the linker does not populate initial values from
-   * MRAM, and cold-boot SRAM contents are undefined. */
+  /* Zero the NS BSS region. NOLOAD means the linker does not populate
+   * initial values from MRAM, and cold-boot SRAM contents are
+   * undefined. */
   for (uint32_t* p = &g_ra_ls_ns_bss_start; p < &g_ra_ls_ns_bss_end; ++p) {
-    if (p == &g_ns_pingpong_entry_marker) {
-      continue;
-    }
     *p = 0U;
   }
+
+  /* Stamp the entry marker AFTER the bss zero so the bench can tell
+   * "BLXNS reached NS" apart from "marker happened to land back at 0". */
+  g_ns_pingpong_entry_marker = 0xCAFEBABEUL;
 
   g_ns_pingpong_step = 1U;
 
@@ -376,7 +371,7 @@ __attribute__((section(".ns_text"), noreturn)) void ns_reset_handler(void)
       g_ns_pingpong_mismatch += 1U;
       continue;
     }
-    g_ns_pingpong_step = 7U; /* RX got a word */
+    g_ns_pingpong_step     = 7U; /* RX got a word */
     g_ns_pingpong_last_rxd = got;
     if (got != (uint32_t)k_ns_magic_pong) {
       g_ns_pingpong_mismatch += 1U;
@@ -412,12 +407,12 @@ extern uint32_t g_ra_ls_ns_stack_top;
  * @since 0.1.0
  */
 __attribute__((section(".ns_vectors"), used)) const uint32_t g_ra_ns_vector_table[8] = {
-    (uint32_t)(uintptr_t)&g_ra_ls_ns_stack_top, /**< [0] Initial MSP_NS.    */
-    (uint32_t)(uintptr_t)&ns_reset_handler,     /**< [1] Reset handler.     */
-    0U,                                         /**< [2] NMI.               */
-    0U,                                         /**< [3] HardFault.         */
-    0U,                                         /**< [4] MemManage.         */
-    0U,                                         /**< [5] BusFault.          */
-    0U,                                         /**< [6] UsageFault.        */
-    0U,                                         /**< [7] SecureFault.       */
+  (uint32_t)(uintptr_t)&g_ra_ls_ns_stack_top, /**< [0] Initial MSP_NS.    */
+  (uint32_t)(uintptr_t)&ns_reset_handler,     /**< [1] Reset handler.     */
+  0U,                                         /**< [2] NMI.               */
+  0U,                                         /**< [3] HardFault.         */
+  0U,                                         /**< [4] MemManage.         */
+  0U,                                         /**< [5] BusFault.          */
+  0U,                                         /**< [6] UsageFault.        */
+  0U,                                         /**< [7] SecureFault.       */
 };

@@ -102,12 +102,12 @@ typedef enum : uint32_t {
   *(volatile uint32_t*)0x32100214UL = 0x33333333UL; /* SAU configured */
 
   while (1) {
-    *(volatile uint32_t*)0x32100220UL += 1U; /* loop iter counter */
+    *(volatile uint32_t*)0x32100220UL += 1U;          /* loop iter counter */
     *(volatile uint32_t*)0x32100230UL = 0xAAAAAAAAUL; /* pre-IPC-read marker */
     /* TEST: read IPCSEM0 (the simplest IPC reg) first to isolate fault.
      * IPCSEM0 is at 0x40020000 / NS alias 0x50020000.
      * IPCSAR.SAIPCSEM0 (bit 0) was set NS too. */
-    const uint32_t sem = *(volatile uint32_t*)0x50020000UL;
+    const uint32_t sem                = *(volatile uint32_t*)0x50020000UL;
     *(volatile uint32_t*)0x32100238UL = sem; /* IPCSEM0 read survived */
     /* Poll CH2 RX for ping. */
     const uint32_t sta = *(volatile uint32_t*)(k_cpu1_ipc_ch2_addr + k_cpu1_ipc_off_sta);
