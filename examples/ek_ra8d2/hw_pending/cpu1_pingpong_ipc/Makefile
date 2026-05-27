@@ -2,14 +2,16 @@
 # Per-app Makefile for the `cpu1_pingpong_ipc` firmware.
 #
 # Standalone use:
-#   cd examples/cpu1_pingpong_ipc/
-#   make             # configure + build -> examples/cpu1_pingpong_ipc/build/cpu1_pingpong_ipc.elf
-#   make flash       # JLinkExe load via scripts/flash.sh
-#   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf examples/cpu1_pingpong_ipc/build
+#   cd examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/
+#   make             # configure + build -> build/cpu1_pingpong_ipc.elf
+#   make clean       # rm -rf build
 #
-# This file is a thin wrapper around the per-app CMakeLists.txt and
-# the shared scripts/ helpers in the repo root.
+# Builds with RA_TRUSTZONE_ENABLE=ON by default -- the IPCSAR write
+# this app needs is Secure-only, so the secure-boot path is mandatory.
+# This app is hw_pending: bench validation is NOT performed by the
+# host; flashing is left to a human operator who can recover via
+# scripts/hil_recover.sh if the SAU layout turns out to brick the
+# chip (see memory/project_sau_sgstubs_brick.md).
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -37,7 +39,7 @@ help:
 	@echo "$(APP) make targets:"
 	@echo "  build / all  cross-compile $(APP).elf / .hex / .bin (default)"
 	@echo "  clean        rm -rf $(BUILD_DIR)"
-	@echo "  flash        scripts/flash.sh $(HEX)"
+	@echo "  flash        scripts/flash.sh $(HEX)  (BENCH ONLY -- brick risk)"
 	@echo "  ozone        scripts/ozone.sh $(ELF)"
 	@echo "  debug        scripts/debug.sh $(ELF)"
 	@echo "  size         arm-none-eabi-size on the ELF"
@@ -48,6 +50,7 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(HERE)/linker_script.ld
 	$(CMAKE) -S $(HERE) -B $(BUILD_DIR) \
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=Debug \
+	    -DRA_TRUSTZONE_ENABLE=ON \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 	$(CMAKE) --build $(BUILD_DIR)
 

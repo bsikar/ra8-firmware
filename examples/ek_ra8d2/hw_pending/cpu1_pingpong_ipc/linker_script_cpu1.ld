@@ -1,5 +1,5 @@
 /*
- * GNU ld linker script for the CPU1 (Cortex-M33) image of cpu1_pingpong_ipc.
+ * GNU ld linker script for the CPU1 (Cortex-M33) image of cpu1_pingpong.
  *
  * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors
  * SRAM_CPU1 0x223F0000  64 KiB  .data, .bss, M33 main stack
