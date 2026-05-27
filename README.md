@@ -61,7 +61,7 @@ Run `make help` for the authoritative list. Current groups:
   `make ctest`, `make coverage`, `make mcdc` / `make test-cov`
 - Static analysis: `make scan-build`, `make scan-build-strict`,
   `make iwyu`, `make misra`, `make check-annotations`
-- Hardware: `make hil`, `make smoke`, `make stack-usage`
+- Hardware: `make hil`, `make stack-usage`
 - Other: `make fuzz`, `make bench`, `make app-sizes`, `make audit-init`,
   `make docs`, `make dashboard`, `make version`
 

@@ -4,56 +4,22 @@
 **Tool chain**: arm-none-eabi-gcc, JLinkExe (SEGGER)
 **Date**: 2026-05-02
 
-## Automated smoke-test harness (`make smoke`)
+## Hardware-in-the-loop harness
 
 Hand-flashing 26 apps and eyeballing the halt-PC (as the early-May tables
-below were generated) does not scale. The repo now ships an automated
-sweep:
+below were generated) does not scale. The authoritative HIL sweep lives
+on the Pi 5 self-hosted runner (`.github/workflows/hil.yml`) and is
+driven by `scripts/hil_all.sh`, which auto-discovers every app under
+`examples/ek_ra8d2/hw_validated/hil/` and verifies each one against its
+`hil.conf` manifest. The mode-specific helpers (`hil_run_direct.sh` for
+UART scrape, `hil_usb_test.sh` for USB CDC echo, `hil_jlink_memprobe.sh`
+for live counter probe, `hil_eth_tcp.sh` for ethernet socket echo,
+`hil_check_alive.sh` for the fault-recovery demo) are documented in
+[`HIL_SUITE.md`](HIL_SUITE.md) and [`HIL_DEVELOPER_WORKFLOW.md`](HIL_DEVELOPER_WORKFLOW.md).
 
-```
-make smoke
-```
-
-This top-level target:
-
-1. Builds every app under `examples/ek_ra8d2/` (the EVM tier --
-   anything that runs on a stock EK-RA8D2 v1 with no extra hardware).
-2. Invokes `scripts/hw_smoke_test.sh`, which for each app:
-   - Calls `scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex`
-     to program the device.
-   - Sleeps `--settle` seconds (default 5) so init code can run.
-   - Drives a `JLinkExe` script that connects, halts the CPU, and
-     dumps registers.
-   - Resolves the captured PC via `arm-none-eabi-addr2line -e <elf>`.
-   - Classifies the result.
-3. Writes a per-app log to `build/smoke/<app>.log` and an aggregate
-   Markdown table to `build/smoke/results.md`. Exits non-zero if any
-   app comes back `FAIL`.
-
-To spot-check just a couple of apps without sweeping the entire tier:
-
-```
-bash scripts/hw_smoke_test.sh --apps "blink uart_hello"
-```
-
-`--dry-run` skips flashing and JLink entirely (used for harness shape
-verification when no board is attached).
-
-### PASS / WIP / FAIL classification
-
-The harness applies the same rubric the manual sweeps below use:
-
-| Result    | Meaning |
-|-----------|---------|
-| `PASS`    | PC resolves into `tx_thread_schedule.S` (ThreadX idle), `ra_time.c` (`ra_delay_ms` busy-wait), or any user `main.c` / `internal_*` loop that is not a `panic_halt` sink. The firmware is alive in its main loop. |
-| `WIP`     | PC parked in `panic_halt`, `demo_panic_halt`, `usb_hid_panic_halt`, `usb_msc_panic_halt`, or `internal_ra_fatal_error`. The firmware reached its own caught-error sink -- init failed but the chip did not fault. Treated as a warning, not a hard failure. |
-| `FAIL`    | PC == `0xEFFFFFFE` (Cortex-M lockup state) or in `Default_Handler`, `HardFault_Handler`, `MemManage_Handler`, `BusFault_Handler`, `UsageFault_Handler`, `SecureFault_Handler`. The chip took an exception or locked up. `make smoke` exits non-zero. |
-| `NOBUILD` | The `.elf` or `.hex` is missing -- `make <app>` was never run or it failed to link. Warning, not a failure. |
-
-The harness is intentionally conservative: when the addr2line text
-matches none of the patterns above the row is reported as `UNKNOWN`
-(grouped with `WIP` for exit-code purposes) so a real fault is never
-silently graded `PASS`.
+The historical halt-PC sweeps recorded below were captured by hand
+against a developer laptop wired to the EK-RA8D2; they remain as a
+bring-up log, not as a description of the current CI gate.
 
 ## examples/ tier layout
 
@@ -597,8 +563,8 @@ never asserts.
 
 Full smoke sweep of every app under `examples/ek_ra8d2/` (the EVM tier).
 Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
-Per-app procedure (matches `scripts/hw_smoke_test.sh` rubric, executed
-manually because `make smoke` hangs in this environment):
+Per-app procedure (halt-PC classification, executed manually -- the
+since-retired developer-laptop smoke harness hung in this environment):
 
 1. `bash scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
    timeout per flash).
@@ -680,8 +646,8 @@ into a host-visible enumeration AND that no other EVM app regressed
 under the test/doc churn.
 
 Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
-Per-app procedure identical to the evening sweep (`make smoke` still
-hangs in this environment, so executed manually):
+Per-app procedure identical to the evening sweep (executed manually --
+no automated sweep target in this environment):
 
 1. `bash scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
    timeout per flash).

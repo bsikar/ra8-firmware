@@ -53,9 +53,7 @@ asserts an expected string appears within a per-app timeout.
 `scripts/hil_usb_test.sh` flashes the app, waits for the device to
 enumerate as 1209:xxxx, runs correctness + streaming-throughput
 benchmarks against the resulting `/dev/ttyACMx`, and tests
-re-enumeration via PPPS / authorized-toggle. See
-[`docs/USB_BENCHMARK.md`](../../../../../docs/USB_BENCHMARK.md) for
-the throughput numbers.
+re-enumeration via PPPS / authorized-toggle.
 
 | App | Controller | Connector | Throughput floor |
 |-----|------------|-----------|------------------|

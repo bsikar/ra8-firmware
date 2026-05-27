@@ -46,12 +46,6 @@ tests/Unity/
 build/host-cov/
 build/coverage-html/
 
-# Hardware smoke-test outputs (per-app JLink transcripts and the
-# aggregate Markdown summary). Already covered by build/ above; listed
-# explicitly so the directory is greppable and scripts/hw_smoke_test.sh
-# can document where its artifacts land without surprising anyone.
-build/smoke/
-
 # GCC RTL dump files
 *.expand
 
