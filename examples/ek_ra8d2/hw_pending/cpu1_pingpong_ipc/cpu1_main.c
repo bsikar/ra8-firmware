@@ -71,16 +71,44 @@ typedef enum : uint32_t {
 {
   *(volatile uint32_t*)0x3210020CUL = 0x11111111UL; /* cpu1_main entry */
 
-  /* CPU1 owns ch0 (TX -> CPU0) and ch2 (RX <- CPU0). CPU0's NS side
-   * already reset both channels before releasing CPU1, so there is no
-   * race window. Skipping the reset on CPU1 also avoids the corner
-   * case where CPU1 reset clears a pending ping CPU0 already pushed
-   * into the FIFO. */
-  *(volatile uint32_t*)0x32100214UL = 0x33333333UL; /* skipped init */
+  /* CPU1's M33 has its own SAU with 8 regions (SAU_TYPE.SREGION=8).
+   * Out of reset SAU is disabled and IDAU default treats bit-28-clear
+   * as Secure. Programme explicit NS regions for the peripheral
+   * window, NS SRAM, and the CPU1 MRAM image, then enable the SAU. */
+  /* Region 0: peripherals NS alias (0x50000000-0x5FFFFFE0). */
+  *(volatile uint32_t*)0xE000EDD8UL = 0x00000000UL; /* SAU_RNR */
+  *(volatile uint32_t*)0xE000EDDCUL = 0x50000000UL; /* SAU_RBAR */
+  *(volatile uint32_t*)0xE000EDE0UL = 0x5FFFFFE1UL; /* SAU_RLAR limit | enable */
+  /* Region 1: peripherals S alias (0x40000000-0x4FFFFFE0). */
+  *(volatile uint32_t*)0xE000EDD8UL = 0x00000001UL;
+  *(volatile uint32_t*)0xE000EDDCUL = 0x40000000UL;
+  *(volatile uint32_t*)0xE000EDE0UL = 0x4FFFFFE1UL;
+  /* Region 2: NS SRAM range (0x22100000-0x221FFFE0). */
+  *(volatile uint32_t*)0xE000EDD8UL = 0x00000002UL;
+  *(volatile uint32_t*)0xE000EDDCUL = 0x22100000UL;
+  *(volatile uint32_t*)0xE000EDE0UL = 0x221FFFE1UL;
+  /* Region 3: SRAM_CPU1 dedicated bank (0x223F0000-0x223FFFE0). */
+  *(volatile uint32_t*)0xE000EDD8UL = 0x00000003UL;
+  *(volatile uint32_t*)0xE000EDDCUL = 0x223F0000UL;
+  *(volatile uint32_t*)0xE000EDE0UL = 0x223FFFE1UL;
+  /* Region 4: MRAM_CPU1 code (0x020C0000-0x020FFFE0). */
+  *(volatile uint32_t*)0xE000EDD8UL = 0x00000004UL;
+  *(volatile uint32_t*)0xE000EDDCUL = 0x020C0000UL;
+  *(volatile uint32_t*)0xE000EDE0UL = 0x020FFFE1UL;
+  /* Enable SAU (no ALLNS, so unprogrammed defaults to IDAU). */
+  *(volatile uint32_t*)0xE000EDD0UL = 0x00000001UL;
+  __asm__ volatile("dsb 0xf" ::: "memory");
+  __asm__ volatile("isb 0xf" ::: "memory");
+  *(volatile uint32_t*)0x32100214UL = 0x33333333UL; /* SAU configured */
 
   while (1) {
     *(volatile uint32_t*)0x32100220UL += 1U; /* loop iter counter */
-    *(volatile uint32_t*)0x32100230UL = 0xAAAAAAAAUL; /* pre-STA-read marker */
+    *(volatile uint32_t*)0x32100230UL = 0xAAAAAAAAUL; /* pre-IPC-read marker */
+    /* TEST: read IPCSEM0 (the simplest IPC reg) first to isolate fault.
+     * IPCSEM0 is at 0x40020000 / NS alias 0x50020000.
+     * IPCSAR.SAIPCSEM0 (bit 0) was set NS too. */
+    const uint32_t sem = *(volatile uint32_t*)0x50020000UL;
+    *(volatile uint32_t*)0x32100238UL = sem; /* IPCSEM0 read survived */
     /* Poll CH2 RX for ping. */
     const uint32_t sta = *(volatile uint32_t*)(k_cpu1_ipc_ch2_addr + k_cpu1_ipc_off_sta);
     *(volatile uint32_t*)0x32100234UL = sta; /* STA read survived */

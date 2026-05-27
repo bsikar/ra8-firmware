@@ -146,7 +146,7 @@ typedef enum : uint32_t {
    * evidence on 2026-05-27: with 0x5xxxxxxx-only the ping-pong
    * counters stay at zero (CPU0 sends, CPU1 SecureFaults on recv);
    * extending the region down to 0x40000000 unblocks the round-trip. */
-  k_ra_tz_part_ns_per_base    = 0x40000000U,
+  k_ra_tz_part_ns_per_base    = 0x50000000U,
   k_ra_tz_part_ns_per_limit   = 0x5FFFFFE0U,
 } ra_tz_secure_boot_partition_t;
 
