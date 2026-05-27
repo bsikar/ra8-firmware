@@ -48,6 +48,26 @@ typedef enum : uint16_t {
   k_dac_demo_max_code = 4095U,
 } dac_demo_const_t;
 
+/**
+ * @var g_dac_waveform_tick
+ * @brief HIL liveness counter -- incremented once per triangle period.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD; the script
+ * halts the chip, samples this value, lets the chip run for N seconds,
+ * halts again, and asserts the delta >= HIL_PROBE_MIN_ADVANCE. Catches
+ * the "PC is in MRAM but main loop never iterated" failure mode that
+ * the plain HIL_MODE=alive check misses.
+ *
+ * `volatile` keeps the increment alive under optimization; the global
+ * (non-static) keeps the symbol linker-visible without --gc-sections
+ * culling.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_dac_waveform_tick = 0U;
+
 static void dac_demo_panic_halt(void)
 {
   while (1) {
@@ -124,6 +144,7 @@ int32_t main(void)
     if (dac_demo_one_triangle_period() != k_ra_ok) {
       break;
     }
+    g_dac_waveform_tick += 1U;
   }
   dac_demo_panic_halt();
   return 0;
