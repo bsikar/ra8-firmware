@@ -1,12 +1,18 @@
 # EK-RA8D2 OEM_PL0 Brick: Recovery Procedure
 
 **Date of incident:** 2026-05-25
-**Chip state at end of session:** DLM = `OEM_PL0`, debug access entirely denied
-**Cause:** Erroneous `rfp-cli -dlm OEM_PL0` transition from `OEM_PL2` while
-attempting to recover an earlier debug-halt failure.
-**Result:** Chip can no longer be flashed, halted, or debugged via SWD.
-The chip will still run whatever firmware was last flashed, but cannot
-be re-programmed.
+**Date of recovery:** 2026-05-27 (Renesas support case #417141, FAE Fivos)
+**Cause:** Erroneous `rfp-cli -dlm OEM_PL0` transition from `OEM_PL2`,
+then incorrectly chaining further `-dlm` transitions after each
+`-erase-chip` Initialize call that had already silently restored the
+chip to OEM_PL2.
+**Recovery:** Single `rfp-cli -d ra -t jlink -if swd -s 1000000
+-erase-chip` invocation, NOT followed by any further `-dlm` command.
+The chip's `Security Flags: none` (the `ce` "Disable Initialize Command"
+flag was never set) meant the boot-firmware Initialize was available
+from OEM_PL0/AL0 without needing the AL keys.
+**Final state:** DLM = `OEM_PL2`, debug fully restored, `hil_flash.sh`
+operational. See section 6 for the recovery log.
 
 ---
 
@@ -252,7 +258,70 @@ injected default keys that subsequently mismatch every known default.
    state transition on any future EVM -- that preserves a
    Renesas-assisted recovery path.
 
-## 6. Lessons for future sessions
+## 6. RECOVERY (2026-05-27): the chip is unbricked
+
+Renesas support case #417141, FAE Fivos, responded with the
+critical detail every recovery guide on the internet got wrong:
+
+> "Have you tried an initialize command (different from erase)?
+> It should be available in your OEM PL0 AL0 state without
+> knowledge of the AL keys, unless otherwise disabled."
+
+The `rfp-cli -erase-chip` command (per `/opt/rfp/linux-x64/docs/
+rfp-cli.md`) does the following: "Erases all data in the flash
+memory of the device and clears the configuration settings. **If
+the device supports an initialization function, this option will
+also execute the initialization command.**" The RA8D2 supports the
+initialization function. So `-erase-chip` IS the Initialize.
+
+The earlier rfo readout from this session confirmed
+`Security Flags: none`, meaning the `ce` (Disable Initialize
+Command) flag was never set on this chip. Therefore the
+PL0 -> PL2 transition via Initialize was always available.
+
+**Verified bench run, 2026-05-27:**
+
+```
+$ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip
+Renesas Flash Programmer CLI V1.15
+...
+Connected to R7KA8D2KFLCAC
+Erasing the all device data and clear configuration
+Disconnecting the tool
+Operation successful
+
+$ rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -rfo
+...
+Security Flags: none
+DLM State: OEM_PL2            <-- WAS OEM_PL0 BEFORE
+Boundary: 16352,0,0,0,0
+ARC Configuration: FFFFFFFF
+CPU Flags: none
+```
+
+`hil_flash.sh blink` then succeeded -- the chip is fully
+recovered. JLink halt works, MRAM flashes, the full bench
+pipeline is operational.
+
+### Why my earlier `-erase-chip` attempts appeared to fail
+
+The two prior `-erase-chip` invocations during the initial
+recovery scramble (timeline entries 6 and 8 of section 1) DID
+likely succeed in transitioning the chip back to OEM_PL2 each
+time -- but I immediately followed them with further
+`rfp-cli -dlm OEM_PL0` and various DLM-test transitions that put
+the chip back into OEM_PL0 (which was always a legal
+forward-direction transition without needing AL keys). I was
+checking the state AFTER those subsequent re-locks, so I
+incorrectly concluded `-erase-chip` did not transition DLM. It
+did; I un-did it.
+
+Treat `-erase-chip` on a Renesas RA chip with DLM as a
+"factory reset" of the lifecycle state machine plus user flash.
+Do not chain a DLM transition after it expecting the state to
+stick.
+
+## 7. Lessons for future sessions
 
 - **Read state-machine docs before any one-way transition.** DLM,
   fuse writes, and OFS programming are all latched permanently.
