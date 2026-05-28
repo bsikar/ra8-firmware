@@ -477,15 +477,20 @@ static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
  *
  * @details
  * Clears the prior ICSR2.STOP flag (W0C) so the next transaction sees a
- * fresh edge, then sets ICCR2.SP to request the STOP; the hardware
- * drives STOP and releases the bus.
+ * fresh edge, sets ICCR2.SP to request the STOP, then spins (bounded)
+ * until ICSR2.STOP confirms the STOP condition was driven and the bus
+ * released. Waiting for completion is mandatory: ICCR2.SP only *requests*
+ * the STOP, which takes a full SCL period to appear on the bus. Returning
+ * early lets the next transaction issue its START while BBSY is still set,
+ * so that START is silently dropped and its address phase times out --
+ * the cause of intermittent back-to-back-transaction failures.
  *
  * @param[in] reg Channel register block.
  *
  * @pre reg is non-NULL.
  * @pre Channel previously initialized.
- * @post ICCR2.SP is set; hardware issues a STOP and releases the bus.
- * @post ICSR2.STOP is cleared ahead of the new STOP edge.
+ * @post ICCR2.SP is set; hardware has issued a STOP and released the bus.
+ * @post ICSR2.STOP is observed set (or the bounded poll expired).
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
@@ -497,6 +502,17 @@ static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
   reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icsr2_stop);
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
   reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra_i2c_msk_iccr2_sp);
+  /* Spin (bounded) until BBSY clears, i.e. the STOP has been driven and
+   * the bus released. BBSY -- not the ICSR2.STOP flag -- is what the next
+   * transaction's busy gate checks, and it clears a few cycles after the
+   * STOP edge, so returning on the STOP flag alone still lets the next
+   * START race a busy bus (k_ra_err_busy).
+   * HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->ICCR2 & (uint8_t)k_ra_i2c_msk_iccr2_bbsy) == 0U) {  /* GCOVR_EXCL_BR_LINE */
+      break;
+    }
+  }
 }
 
 /**

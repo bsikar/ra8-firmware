@@ -1184,15 +1184,36 @@ static const ra_port_pin_t k_ra_board_io_expander_pin_scl =
 static const ra_port_pin_t k_ra_board_io_expander_pin_sda =
   (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11); /**< SDA1 (P511). */
 
+/**
+ * @brief Pull-up enable pins for the system I2C bus (P109 / P311).
+ *
+ * @details
+ * EK-RA8D2 v1 UM Table 23 ("I2C/I3C Pullup Configuration") routes the
+ * SCL1/SDA1 bus pull-up resistors through P109 and P311: in I2C mode
+ * (SW4-5 OFF, P512/P511) these two pins must be driven as push-pull
+ * outputs HIGH for the bus to have pull-ups at all. Without them SCL1/
+ * SDA1 float, the open-drain bus never reaches a valid high level, and
+ * U15 (and every other I2C peripheral) cannot ACK -- the symptom that
+ * made every RIIC1 transaction time out.
+ */
+static const ra_port_pin_t k_ra_board_io_expander_pin_pullup_a =
+  (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_9); /**< P109 pull-up enable. */
+static const ra_port_pin_t k_ra_board_io_expander_pin_pullup_b =
+  (ra_port_pin_t)RA_PIN(k_ra_port_3, k_ra_pin_11); /**< P311 pull-up enable. */
+
 /* internal_io_expander_write_reg -- see implementation for details. */
 static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
 {
   const uint8_t buf[2] = {reg, val};
+  /* Each PI4IOE5V6408 register write is a complete START..STOP
+   * transaction. Chaining them with repeated-START (send_stop = false)
+   * leaves the bus held and the device's command parser misaligned on the
+   * third back-to-back write, so always close the transaction with a STOP. */
   return ra_i2c_write((uint8_t)k_ra_board_io_expander_iic_channel,
                       (uint8_t)k_ra_board_io_expander_addr,
                       buf,
                       sizeof(buf),
-                      false);
+                      true);
 }
 
 /**
@@ -1232,14 +1253,39 @@ typedef enum : uint32_t {
 } io_exp_probe_step_t;
 
 /**
- * @brief Route P400/P401 to SCL0/SDA0 with N-channel open-drain enabled.
+ * @brief Drive the system-I2C pull-up enable pins (P109/P311) high.
+ * @details EK-RA8D2 v1 UM Table 23 routes the SCL1/SDA1 bus pull-ups
+ *          through P109 and P311; in I2C mode they must be push-pull
+ *          outputs driven high or the open-drain bus has no pull-ups and
+ *          no peripheral can ACK. Run before routing SCL1/SDA1 so the
+ *          bus is pulled up the instant the IIC mux takes the pins.
+ * @return ra_err_t Error code from the first failing sub-call, else k_ra_ok.
+ * @retval k_ra_ok Both pull-up enables are driven high.
+ * @pre IOPORT module powered (reset default).
+ * @pre Caller has not already claimed P109/P311.
+ * @post On success P109 and P311 are push-pull outputs at level high.
+ * @post On failure the first pin may remain claimed (caller aborts boot).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_io_expander_enable_pullups(void)
+{
+  ra_err_t err = ra_gpio_output_init(k_ra_board_io_expander_pin_pullup_a, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_gpio_output_init(k_ra_board_io_expander_pin_pullup_b, k_ra_level_high);
+}
+
+/**
+ * @brief Route P512/P511 to SCL1/SDA1 with N-channel open-drain enabled.
  * @details I2C requires NCODR on both signals; ra_pfs_route_peripheral
  *          leaves NCODR clear, so the route+open-drain pair runs per pin.
  * @return ra_err_t Error code from the first failing sub-call, else k_ra_ok.
  * @retval k_ra_ok All four register writes succeeded.
  * @pre IRQs masked or single-threaded init context.
- * @pre Caller has not already claimed P400/P401.
- * @post On success, P400/P401 are owned by the IIC_B mux in open-drain mode.
+ * @pre Caller has not already claimed P512/P511.
+ * @post On success, P512/P511 are owned by the IIC1 mux in open-drain mode.
  * @post On failure, partially-claimed pins remain claimed (caller aborts boot).
  * @note Not thread-safe.
  * @since 0.1.0
@@ -1333,10 +1379,18 @@ static ra_err_t internal_io_expander_program_u15(uint8_t output_byte)
  */
 static ra_err_t internal_io_expander_apply(uint8_t output_byte)
 {
-  /* Step 1: route P400 -> SCL0 and P401 -> SDA0 with NCODR on both
+  /* Step 0: drive P109/P311 high so the SCL1/SDA1 bus has pull-ups
+   * (EK-RA8D2 v1 UM Table 23). Without this the open-drain bus floats
+   * and U15 cannot ACK. */
+  ra_err_t err = internal_io_expander_enable_pullups();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 1: route P512 -> SCL1 and P511 -> SDA1 with NCODR on both
    * (HUM Ch 20.6 PSEL table p 859). */
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_pfs;
-  ra_err_t err        = internal_io_expander_route_pins();
+  err                 = internal_io_expander_route_pins();
   if (err != k_ra_ok) {
     return err;
   }
