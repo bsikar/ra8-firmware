@@ -136,6 +136,22 @@ volatile uint32_t g_fj_last_echoed = 0U;
  */
 volatile uint32_t g_fj_jedec_id = 0U;
 
+/**
+ * @var g_fj_expander_err
+ * @brief Return code from the best-effort U15 Octo-SPI-active override.
+ *
+ * @details
+ * 0 (k_ra_ok) means the U15 I/O expander accepted the SW4-3-OFF
+ * override and the flash is on the bus via firmware. Non-zero means
+ * the expander did not respond (bench-dependent IIC_B0 bus), so the
+ * physical SW4-3 DIP position governs whether the flash is reachable.
+ * Read externally by J-Link to disambiguate the two paths.
+ *
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_fj_expander_err = 0xFFFFFFFFU;
+
 /** @brief Park the CPU after a fatal init failure. */
 static void flash_journal_panic_halt(void)
 {
@@ -257,6 +273,21 @@ static void flash_journal_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     flash_journal_panic_halt();
   }
+  /* Best-effort: activate the Octo-SPI flash on the board mux BEFORE
+   * touching its pins. The project's default SW4 layout leaves SW4-3
+   * ON (Octo-SPI INACTIVE), which disconnects the IS25LX512M from the
+   * bus -- every flash op then sees a floating CIPO and the JEDEC ID
+   * reads 0x00FFFFFF. The U15 I/O expander override drives SW4-3 OFF
+   * (Octo-SPI active) + SW4-4 OFF (frees the shared OCTA pins)
+   * regardless of the physical DIP positions (UM Table 3 p 16 +
+   * Section 6.3 p 35). The call is best-effort: if the U15 expander
+   * does not ACK (it shares the bench-dependent IIC_B0 bus), the
+   * physical SW4-3 position still governs and the JEDEC read below
+   * surfaces whether the flash is reachable. The result is stamped so
+   * a memprobe can tell "expander override applied" from "relying on
+   * the physical DIP". */
+  const ra_err_t exp_err = ra_board_io_expander_set_octospi_active();
+  g_fj_expander_err      = (uint32_t)exp_err;
   /* OCTA pins come out of reset as GPIO; ra_board_xspi_pins_init
    * routes them to PSEL=0x1C and pulses RESET_L on P106 so the
    * IS25LX512M lands in standard-SPI mode with deterministic state.
