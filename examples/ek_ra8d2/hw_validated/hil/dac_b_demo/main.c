@@ -49,6 +49,26 @@ typedef enum : uint8_t {
   k_dac_b_demo_channel = 0U,
 } dac_b_demo_chan_t;
 
+/**
+ * @var g_dac_b_demo_tick
+ * @brief HIL liveness counter -- incremented each DAC write iteration.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD; the script
+ * halts the chip, samples this value, lets the chip run for N seconds,
+ * halts again, and asserts the delta >= HIL_PROBE_MIN_ADVANCE. Catches
+ * the "PC is in MRAM but main loop never iterated" failure mode that
+ * the plain HIL_MODE=alive check misses.
+ *
+ * `volatile` keeps the increment alive under optimization; the global
+ * (non-static) keeps the symbol linker-visible without --gc-sections
+ * culling.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_dac_b_demo_tick = 0U;
+
 static void dac_b_demo_panic_halt(void)
 {
   while (1) {
@@ -111,6 +131,7 @@ int32_t main(void)
     if (ra_dac_b_write((uint8_t)k_dac_b_demo_channel, code) != k_ra_ok) {
       break;
     }
+    g_dac_b_demo_tick += 1U;
     if (up) {
       if ((uint16_t)(code + (uint16_t)k_dac_b_demo_step) >= (uint16_t)k_dac_b_demo_full_scale) {
         code = (uint16_t)k_dac_b_demo_full_scale;

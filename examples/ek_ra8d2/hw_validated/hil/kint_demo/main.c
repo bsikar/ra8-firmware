@@ -57,7 +57,8 @@ static const ra_port_pin_t k_kint_demo_pin_txd =
 static const ra_port_pin_t k_kint_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
-static const uint8_t k_kint_demo_log_msg[] = "kint: SW1 press\r\n";
+static const uint8_t k_kint_demo_log_msg[]  = "kint: SW1 press\r\n";
+static const uint8_t k_kint_demo_boot_msg[] = "kint_demo: boot\r\n";
 
 static void kint_demo_panic_halt(void)
 {
@@ -147,6 +148,12 @@ int32_t main(void)
   if (kint_demo_arm() != k_ra_ok) {
     kint_demo_panic_halt();
   }
+
+  /* HIL boot banner -- scraped by scripts/hil_run_direct.sh to confirm
+   * the CGC + SCI + ICU bring-up reached the poll loop. */
+  (void)ra_sci_write_polling((uint8_t)k_kint_demo_sci_channel,
+                             k_kint_demo_boot_msg,
+                             (uint32_t)(sizeof(k_kint_demo_boot_msg) - 1U));
 
   ra_board_sw_state_t prev = k_ra_board_sw_released;
   while (1) {
