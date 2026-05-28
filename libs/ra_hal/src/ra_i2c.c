@@ -85,6 +85,21 @@ typedef enum : uint32_t {
 } ra_i2c_brate_t;
 
 /**
+ * @enum ra_i2c_rx_phase_t
+ * @brief Master-receive end-of-frame boundaries (HUM Ch 39.3.4 p 2400).
+ *
+ * @details Drive the WAIT / NACK / STOP arming as the byte countdown
+ * approaches the final byte, mirroring the FSP r_iic_master RXI handler.
+ */
+typedef enum : uint32_t {
+  k_ra_i2c_rx_short_len   = 2U, /**< len <= this: arm WAIT in the dummy phase. */
+  k_ra_i2c_rx_single_len  = 1U, /**< len == this: NACK in the dummy phase. */
+  k_ra_i2c_rx_remain_wait = 3U, /**< bytes-remaining == this: arm WAIT. */
+  k_ra_i2c_rx_remain_nack = 2U, /**< bytes-remaining == this: NACK final byte. */
+  k_ra_i2c_rx_remain_stop = 1U, /**< bytes-remaining == this: request STOP. */
+} ra_i2c_rx_phase_t;
+
+/**
  * @brief Pure predicate: either clock argument is zero.
  *
  * @details Promoted so the OR decision can be driven under MC/DC.
@@ -103,29 +118,6 @@ typedef enum : uint32_t {
 bool ra_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz)
 {
   return (bus_hz == 0U) || (pclkb_hz == 0U);
-}
-
-/**
- * @brief Pure predicate: ``index`` is the second-to-last byte of ``len``.
- *
- * @details Promoted so the AND decision (WAIT-arming on the
- * second-to-last receive byte) can be driven under MC/DC.
- * @param[in] index Zero-based byte index about to be read.
- * @param[in] len   Total bytes to read.
- * @return Boolean WAIT-arm predicate.
- * @retval true  ``index`` is the second-to-last byte (arm WAIT).
- * @retval false Otherwise.
- * @pre None.
- * @pre None.
- * @post No state mutated.
- * @post Return depends solely on inputs.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-bool ra_i2c_internal_is_wait_byte(uint32_t index, uint32_t len)
-{
-  return (len >= (uint32_t)k_ra_i2c_period_split) &&
-         (index == (len - (uint32_t)k_ra_i2c_period_split));
 }
 
 /**
@@ -473,46 +465,104 @@ static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
 }
 
 /**
- * @brief Issue a STOP condition and clear the STOP-detect flag.
+ * @brief Spin (bounded) until the bus is free (ICCR2.BBSY clears).
  *
  * @details
- * Clears the prior ICSR2.STOP flag (W0C) so the next transaction sees a
- * fresh edge, sets ICCR2.SP to request the STOP, then spins (bounded)
- * until ICSR2.STOP confirms the STOP condition was driven and the bus
- * released. Waiting for completion is mandatory: ICCR2.SP only *requests*
- * the STOP, which takes a full SCL period to appear on the bus. Returning
- * early lets the next transaction issue its START while BBSY is still set,
- * so that START is silently dropped and its address phase times out --
- * the cause of intermittent back-to-back-transaction failures.
+ * BBSY -- not the ICSR2.STOP flag -- is what the next transaction's busy
+ * gate checks, and it clears a few cycles after the STOP edge. Waiting on
+ * it before returning keeps a following START from racing a busy bus
+ * (k_ra_err_busy).
  *
  * @param[in] reg Channel register block.
- *
  * @pre reg is non-NULL.
- * @pre Channel previously initialized.
- * @post ICCR2.SP is set; hardware has issued a STOP and released the bus.
- * @post ICSR2.STOP is observed set (or the bounded poll expired).
+ * @pre A STOP has been requested (or the bus is otherwise idle).
+ * @post BBSY is observed clear, or the bounded poll expired.
+ * @post No register is modified (read-only spin).
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
+static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
 {
-  /* Clear the prior STOP-detect flag so the NEXT transaction sees a
-   * fresh edge (W0C).
-   * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icsr2_stop);
-  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-  reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra_i2c_msk_iccr2_sp);
-  /* Spin (bounded) until BBSY clears, i.e. the STOP has been driven and
-   * the bus released. BBSY -- not the ICSR2.STOP flag -- is what the next
-   * transaction's busy gate checks, and it clears a few cycles after the
-   * STOP edge, so returning on the STOP flag alone still lets the next
-   * START race a busy bus (k_ra_err_busy).
-   * HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
+  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
   for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->ICCR2 & (uint8_t)k_ra_i2c_msk_iccr2_bbsy) == 0U) {  /* GCOVR_EXCL_BR_LINE */
       break;
     }
   }
+}
+
+/**
+ * @brief Request a STOP condition without waiting for it to complete.
+ *
+ * @details
+ * Clears the prior ICSR2.STOP flag (W0C) so the next transaction sees a
+ * fresh edge, then sets ICCR2.SP to request the STOP. The receive path
+ * must use this form: during a master read the STOP only actually fires
+ * after the final ICDRR read and the WAIT clear (HUM Ch 39.3.4 step 7),
+ * so waiting for BBSY here would deadlock before the last byte is read.
+ *
+ * @param[in] reg Channel register block.
+ * @pre reg is non-NULL.
+ * @pre Channel previously initialized.
+ * @post ICCR2.SP is set; the STOP fires once preconditions are met.
+ * @post ICSR2.STOP is cleared so the next STOP edge is detectable.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_i2c_stop_request(volatile r_i2c_regs_t* reg)
+{
+  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icsr2_stop);
+  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
+  reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra_i2c_msk_iccr2_sp);
+}
+
+/**
+ * @brief Issue a STOP condition and wait for the bus to be released.
+ *
+ * @details
+ * Requests the STOP then spins until BBSY clears. Used by the transmit
+ * path, where the STOP fires immediately after TEND; returning before
+ * BBSY clears lets the next START race a busy bus and fail with
+ * k_ra_err_busy.
+ *
+ * @param[in] reg Channel register block.
+ * @pre reg is non-NULL.
+ * @pre Channel previously initialized.
+ * @post Hardware has issued a STOP and BBSY is observed clear.
+ * @post The bus is idle and ready for the next START.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
+{
+  internal_i2c_stop_request(reg);
+  internal_i2c_wait_bus_free(reg);
+}
+
+/**
+ * @brief Set ICMR3.ACKBT (transmit NACK) under ACKWP write-enable.
+ *
+ * @details
+ * ACKBT is write-protected by ACKWP; per HUM Ch 39.2.5 Note 1 the
+ * write-enable, the ACKBT set, and the write-disable must be separate
+ * register writes. Used by the receive path to NACK the final byte so
+ * the peripheral stops driving the bus.
+ *
+ * @param[in] reg Channel register block.
+ * @pre reg is non-NULL.
+ * @pre The controller is in master-receive.
+ * @post ICMR3.ACKBT is set; ACKWP is left clear (write-protected again).
+ * @post The next received byte will be answered with a NACK.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_i2c_set_nack(volatile r_i2c_regs_t* reg)
+{
+  /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- ACKWP/ACKBT" p 2376 */
+  reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_ackwp);
+  reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_ackbt);
+  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icmr3_ackwp);
 }
 
 /**
@@ -727,84 +777,77 @@ ra_err_t ra_i2c_write(uint8_t        channel,
 }
 
 /**
- * @brief Arm NACK on the final byte and WAIT on the second-to-last byte.
+ * @brief Drain ``len`` bytes from ICDRR into ``out`` (master receive).
  *
  * @details
- * HUM Ch 39.3.4 steps 4-6 p 2400: insert a WAIT before the
- * second-to-last byte and set ICMR3.ACKBT (NACK, paired with ACKWP)
- * before reading the last byte so the peripheral releases SDA at STOP.
- *
- * @param[in] reg   Channel register block.
- * @param[in] index Zero-based index of the byte about to be read.
- * @param[in] len   Total number of bytes to read.
- *
- * @pre reg is non-NULL and len is non-zero.
- * @pre A receive transaction is in progress.
- * @post For the last byte ICMR3.ACKBT is set under ACKWP.
- * @post For the second-to-last byte ICMR3.WAIT is armed.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static void internal_i2c_rx_ack_phase(volatile r_i2c_regs_t* reg, uint32_t index, uint32_t len)
-{
-  if (ra_i2c_internal_is_wait_byte(index, len)) {
-    /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
-    reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_wait);
-  }
-  if (index == (len - 1U)) {
-    /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- ACKBT" p 2376 */
-    reg->ICMR3 =
-      (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_ackwp | (uint8_t)k_ra_i2c_msk_icmr3_ackbt);
-  }
-}
-
-/**
- * @brief Drain ``len`` bytes from ICDRR into ``out``.
- *
- * @details
- * Mirrors HUM Ch 39.3.4 steps 4-7 p 2400. The first ICDRR read is a
- * dummy that starts the SCL clock; subsequent reads return payload once
- * ICSR2.RDRF sets. The last byte issues STOP before its ICDRR read.
+ * Mirrors the FSP r_iic_master RXI sequence / HUM Ch 39.3.4 p 2400.
+ * After the address-phase RDRF, WAIT (for 1-2 byte reads) and NACK (for
+ * a 1-byte read) are armed before the dummy ICDRR read that starts the
+ * data clock. Per received byte, the end-of-frame controls are armed by
+ * the bytes-remaining countdown: WAIT at remain==3, NACK at remain==2,
+ * and a STOP *request* at remain==1. The STOP must be a request only --
+ * it physically fires after the final ICDRR read and the WAIT clear, so
+ * waiting for BBSY before reading the last byte would deadlock.
  *
  * @param[in]  reg Channel register block.
  * @param[out] out Destination buffer.
  * @param[in]  len Byte count (non-zero).
  * @return ``k_ra_ok`` once all bytes drained, else timeout status.
- * @retval k_ra_ok            All bytes drained and STOP issued.
+ * @retval k_ra_ok            All bytes drained and STOP completed.
  * @retval k_ra_err_hw_timeout RDRF never set within the spin budget.
  *
  * @pre reg and out are non-NULL and len is non-zero.
  * @pre The read address byte was acknowledged.
- * @post STOP has been issued and ICMR3 WAIT/ACKBT defaults restored.
+ * @post STOP has fired, the bus is free, and ICMR3 WAIT/ACKBT are clear.
  * @post ICMR3.WAIT and ICMR3.ACKBT read back zero for the next transfer.
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
 static ra_err_t internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
 {
-  /* Dummy-read ICDRR to start the SCL clock.
+  /* First RDRF marks the address-phase completion. Arm the short-read
+   * end-of-frame controls before the dummy read kicks off the data clock.
    * HUM Ch 39.3.4 "Master Receive Operation" p 2400 */
   ra_err_t err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra_i2c_msk_icsr2_rdrf);
-  if (err == k_ra_ok) {
-    /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
-    (void)reg->ICDRR;
+  if (err != k_ra_ok) {
+    return err;
   }
-  for (uint32_t i = 0U; (err == k_ra_ok) && (i < len); i++) {
-    internal_i2c_rx_ack_phase(reg, i, len);
+  if (len <= (uint32_t)k_ra_i2c_rx_short_len) {
+    /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
+    reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_wait);
+  }
+  if (len == (uint32_t)k_ra_i2c_rx_single_len) {
+    internal_i2c_set_nack(reg);
+  }
+  /* Dummy read starts the data clock.
+   * HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
+  (void)reg->ICDRR;
+
+  for (uint32_t loaded = 0U; loaded < len; loaded++) {
     err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra_i2c_msk_icsr2_rdrf);
     if (err != k_ra_ok) {
       break;
     }
-    if (i == (len - 1U)) {
-      internal_i2c_stop(reg);
+    const uint32_t remain = len - loaded;
+    if (remain == (uint32_t)k_ra_i2c_rx_remain_wait) {
+      /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
+      reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_wait);
+    } else if (remain == (uint32_t)k_ra_i2c_rx_remain_nack) {
+      internal_i2c_set_nack(reg);
+    } else if (remain == (uint32_t)k_ra_i2c_rx_remain_stop) {
+      internal_i2c_stop_request(reg);
+    } else {
+      /* Mid-stream byte: no end-of-frame control to arm. */
     }
     /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
-    out[i] = reg->ICDRR;
+    out[loaded] = reg->ICDRR;
   }
-  /* Restore ICMR3 defaults (no WAIT, ACK) for the next transaction.
+  /* Clear WAIT (lets the requested STOP fire) and ACKBT for the next
+   * transaction, then wait for the bus to be released.
    * HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3" p 2376 */
   reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)((uint8_t)k_ra_i2c_msk_icmr3_wait |
                                                           (uint8_t)k_ra_i2c_msk_icmr3_ackbt));
+  internal_i2c_wait_bus_free(reg);
   return err;
 }
 
