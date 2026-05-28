@@ -148,6 +148,10 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # Renesas FSP `r_iic_b_master_*` API surface references.
     "libs/ra_hal/inc/ra_iic_b.h",
     "libs/ra_hal/src/ra_iic_b.c",
+    # HUM Ch 39 "Master Transmit/Receive Operation" section-name cites
+    # and the FSP `r_iic_master` API name referenced verbatim.
+    "libs/ra_hal/inc/ra_i2c.h",
+    "libs/ra_hal/src/ra_i2c.c",
     # IEEE 1588 PTP master/slave role names appear verbatim in the spec.
     "libs/ra_hal/inc/ra_ptp.h",
     "libs/ra_hal/src/ra_ptp.c",
