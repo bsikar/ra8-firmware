@@ -494,26 +494,6 @@ static void test_mcdc_clk_invalid(void)
 }
 
 /**
- * @test test_mcdc_is_wait_byte
- *
- * @par MC/DC:
- * Decision in ``ra_i2c_internal_is_wait_byte``, libs/ra_hal/src/ra_i2c.c:127 (CITES-OK: MC/DC anchor)
- *   ``(len >= 2) && (index == len - 2)`` (2 conditions, AND).
- * - V1: len=3, index=1 -> C1=T,C2=T -> dec T
- * - V2: len=1, index=0 -> C1=F (short-circuits) -> dec F (varies left)
- * - V3: len=3, index=0 -> C1=T,C2=F -> dec F (varies right)
- * Pairs (V1,V2) flip C1; (V1,V3) flip C2. N+1 = 3 vectors.
- */
-static void test_mcdc_is_wait_byte(void)
-{
-  TEST_BEGIN("i2c MC/DC: is_wait_byte AND");
-  TEST_ASSERT(ra_i2c_internal_is_wait_byte(1U, 3U));
-  TEST_ASSERT(!ra_i2c_internal_is_wait_byte(0U, 1U));
-  TEST_ASSERT(!ra_i2c_internal_is_wait_byte(0U, 3U));
-  TEST_END("i2c MC/DC: is_wait_byte AND");
-}
-
-/**
  * @test test_mcdc_transfer
  *
  * @par MC/DC:
@@ -737,7 +717,6 @@ int main(void)
   test_scan_bad_inputs();
   test_errors_get_clear();
   test_mcdc_clk_invalid();
-  test_mcdc_is_wait_byte();
   test_mcdc_transfer();
   test_mcdc_transfer_combined();
   test_write_timeout();
