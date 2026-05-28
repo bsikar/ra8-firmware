@@ -1400,6 +1400,12 @@ ra_err_t ra_board_io_expander_apply_project_sw4_defaults(void)
   return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_project_default);
 }
 
+/* ra_board_io_expander_set_octospi_active -- see header for full description. */
+ra_err_t ra_board_io_expander_set_octospi_active(void)
+{
+  return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_octospi_active);
+}
+
 /**
  * @var s_usbhs_role_pin_probe
  * @brief Bisect-probe progress counter for the PD07 USB-HS role-select drive.
