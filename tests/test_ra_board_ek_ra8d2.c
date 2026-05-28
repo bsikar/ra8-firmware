@@ -638,7 +638,11 @@ static void test_board_io_expander(void)
 {
   TEST_BEGIN("board_io_expander_set_usbhs_device_mode forwards to hal");
   reset_board_hal_state();
-  TEST_ASSERT_EQ(k_ra_err_busy, ra_board_io_expander_set_usbhs_device_mode());
+  /* The simulator backs the RIIC block with plain memory and never
+   * raises TDRE, so the real ra_i2c controller driver stalls waiting for
+   * the first transmit-data-empty and reports hw_timeout. The contract
+   * being checked is that the BSP propagates the HAL failure unchanged. */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_board_io_expander_set_usbhs_device_mode());
   TEST_END("board_io_expander_set_usbhs_device_mode forwards to hal");
 }
 
