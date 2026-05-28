@@ -56,6 +56,7 @@ static const ra_port_pin_t k_icu_extint_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_icu_extint_demo_msg_press[] = "icu: irq13 press\r\n";
+static const uint8_t k_icu_extint_demo_msg_boot[]  = "icu_extint_demo: boot\r\n";
 
 static void icu_extint_demo_panic_halt(void)
 {
@@ -144,6 +145,12 @@ int32_t main(void)
   if (icu_extint_demo_arm() != k_ra_ok) {
     icu_extint_demo_panic_halt();
   }
+
+  /* HIL boot banner -- scraped by scripts/hil_run_direct.sh to confirm
+   * the CGC + SCI + ICU bring-up reached the main poll loop. */
+  (void)ra_sci_write_polling((uint8_t)k_icu_extint_demo_sci_channel,
+                             k_icu_extint_demo_msg_boot,
+                             (uint32_t)(sizeof(k_icu_extint_demo_msg_boot) - 1U));
 
   while (1) {
     uint8_t irqcr = 0U;
