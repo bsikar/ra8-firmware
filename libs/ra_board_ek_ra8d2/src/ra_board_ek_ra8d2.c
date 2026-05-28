@@ -1201,6 +1201,12 @@ static const ra_port_pin_t k_ra_board_io_expander_pin_pullup_a =
 static const ra_port_pin_t k_ra_board_io_expander_pin_pullup_b =
   (ra_port_pin_t)RA_PIN(k_ra_port_3, k_ra_pin_11); /**< P311 pull-up enable. */
 
+/** @brief Bit-bang bus-recovery tunables for the system I2C bus. */
+typedef enum : uint32_t {
+  k_ra_board_i2c_recover_pulses = 9U,    /**< SCL clocks to flush one stuck byte + ACK. */
+  k_ra_board_i2c_recover_spins  = 2000U, /**< Busy-loop iterations ~= one SCL half-period. */
+} ra_board_i2c_recover_t;
+
 /* internal_io_expander_write_reg -- see implementation for details. */
 static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
 {
@@ -1251,6 +1257,83 @@ typedef enum : uint32_t {
   k_io_exp_probe_pre_write_dir = 5U,
   k_io_exp_probe_success       = 6U,
 } io_exp_probe_step_t;
+
+/**
+ * @brief Crude busy-wait for roughly one I2C SCL half-period.
+ * @details Used only by the bit-bang bus-recovery, which does not need
+ *          precise timing -- any peripheral that clock-stretches will
+ *          release on the slow clocks this produces. Avoids a dependency
+ *          on ra_time being initialized this early in board bring-up.
+ * @pre None.
+ * @pre None.
+ * @post Approximately one SCL half-period of wall-clock time has passed.
+ * @post No register or pin state is modified.
+ * @note Not thread-safe (timing only).
+ * @since 0.1.0
+ */
+static void internal_io_expander_bus_settle(void)
+{
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_i2c_recover_spins; i++) {
+    __asm__ volatile("nop");
+  }
+}
+
+/**
+ * @brief Bit-bang up to 9 SCL clocks to free a wedged system I2C bus.
+ * @details If a previous, aborted transfer left a peripheral (e.g. U15)
+ *          holding SDA low mid-byte, the bus is stuck and every START
+ *          fails. Drive SCL (P512) as a GPIO output and pulse it -- with
+ *          SDA (P511) released as an input -- until SDA reads high or the
+ *          pulse budget is spent, then frame a STOP. Finally release both
+ *          pins so the caller can route them to the IIC mux. Runs before
+ *          every U15 access so a wedged bus self-recovers on the next boot.
+ * @return ra_err_t Error from the first failing GPIO sub-call, else k_ra_ok.
+ * @retval k_ra_ok Recovery sequence completed and pins released.
+ * @pre IOPORT module powered (reset default).
+ * @pre P512/P511 are not currently claimed by another driver.
+ * @post P512/P511 are released (unclaimed), ready for the IIC route.
+ * @post SDA has been clocked toward release and a STOP edge was framed.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_io_expander_bus_recover(void)
+{
+  const ra_port_pin_t scl = k_ra_board_io_expander_pin_scl;
+  const ra_port_pin_t sda = k_ra_board_io_expander_pin_sda;
+  ra_err_t            err = ra_gpio_output_init(scl, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_gpio_input_init(sda, k_ra_pull_up);
+  if (err != k_ra_ok) {
+    (void)ra_gpio_release(scl);
+    return err;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_board_i2c_recover_pulses; i++) {
+    ra_level_t     sda_lvl = k_ra_level_low;
+    const ra_err_t rd      = ra_gpio_read(sda, &sda_lvl);
+    if (rd == k_ra_ok) {
+      if (sda_lvl == k_ra_level_high) {
+        break; /* peripheral released SDA -- bus is free */
+      }
+    }
+    (void)ra_gpio_write(scl, k_ra_level_low);
+    internal_io_expander_bus_settle();
+    (void)ra_gpio_write(scl, k_ra_level_high);
+    internal_io_expander_bus_settle();
+  }
+  /* Frame a STOP (SDA low->high while SCL high) to end any partial frame,
+   * then release both pins for the IIC mux to re-claim. */
+  (void)ra_gpio_release(sda);
+  (void)ra_gpio_output_init(sda, k_ra_level_low);
+  internal_io_expander_bus_settle();
+  (void)ra_gpio_write(scl, k_ra_level_high);
+  (void)ra_gpio_write(sda, k_ra_level_high);
+  internal_io_expander_bus_settle();
+  (void)ra_gpio_release(sda);
+  (void)ra_gpio_release(scl);
+  return k_ra_ok;
+}
 
 /**
  * @brief Drive the system-I2C pull-up enable pins (P109/P311) high.
@@ -1379,10 +1462,17 @@ static ra_err_t internal_io_expander_program_u15(uint8_t output_byte)
  */
 static ra_err_t internal_io_expander_apply(uint8_t output_byte)
 {
+  /* Step -1: clock out any wedged peripheral (stuck SDA) before touching
+   * the bus, so a prior aborted transfer cannot deadlock every START. */
+  ra_err_t err = internal_io_expander_bus_recover();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
   /* Step 0: drive P109/P311 high so the SCL1/SDA1 bus has pull-ups
    * (EK-RA8D2 v1 UM Table 23). Without this the open-drain bus floats
    * and U15 cannot ACK. */
-  ra_err_t err = internal_io_expander_enable_pullups();
+  err = internal_io_expander_enable_pullups();
   if (err != k_ra_ok) {
     return err;
   }
