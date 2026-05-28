@@ -770,6 +770,15 @@ typedef enum : uint8_t {
   /** @brief U15 output byte that drives the SW4 layout above.
    *  Bit n = 1 -> SW4-(n+1) reads OFF; bit n = 0 -> reads ON. */
   k_ra_board_pi4ioe_output_project_default = 0xF2U,
+  /** @brief U15 output byte for Octo-SPI-flash apps. Starts from the
+   *  project default (0xF2) but flips bit 2 (SW4-3 -> OFF = Octo-SPI
+   *  ACTIVE) and bit 3 (SW4-4 -> OFF = Arduino/mikroBUS INACTIVE so the
+   *  shared OCTA pins are freed for the flash). 0xF2 | 0x04 | 0x08 =
+   *  0xFE. The project default leaves SW4-3 ON (Octo-SPI inactive),
+   *  which disconnects the IS25LX512M from the bus -- the symptom is a
+   *  JEDEC-ID readback of 0x00FFFFFF (floating CIPO). See UM Table 3
+   *  p 16 + Section 6.3 p 35. */
+  k_ra_board_pi4ioe_output_octospi_active = 0xFEU,
 } ra_board_pi4ioe_project_t;
 
 /**
@@ -801,6 +810,40 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_io_expander_apply_project_sw4_defaults(void);
+
+/**
+ * @brief Program the U15 I/O expander to activate the Octo-SPI flash.
+ *
+ * @details
+ * Writes ``k_ra_board_pi4ioe_output_octospi_active`` (0xFE) to the U15
+ * output register, forcing SW4-3 OFF (Octo-SPI ACTIVE) and SW4-4 OFF
+ * (Arduino/mikroBUS INACTIVE) regardless of the physical DIP positions.
+ * The project default (``ra_board_io_expander_apply_project_sw4_defaults``)
+ * leaves SW4-3 ON, which disconnects the IS25LX512M Octo-SPI flash from
+ * the bus -- any ``ra_xspi_flash_*`` op then sees a floating CIPO and
+ * the JEDEC ID reads 0x00FFFFFF. Call this once, early in main(), BEFORE
+ * ``ra_board_xspi_pins_init`` / ``ra_xspi_init`` for any app that drives
+ * the on-board Octo-SPI flash.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                All U15 register writes succeeded.
+ * @retval k_ra_err_gpio_conflict P400/P401 already owned by another driver.
+ * @retval k_ra_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra_err_nack          U15 didn't ACK the register write.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ``ra_mstp_init`` has run.
+ * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialized at
+ *       100 kHz; U15.P0..P7 are outputs driven to
+ *       ``k_ra_board_pi4ioe_output_octospi_active``; the OCTA bus pins
+ *       are claimed by the Octo-SPI controller.
+ *
+ * @note Not thread-safe; call once from the boot context before the
+ *       Octo-SPI bring-up.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_io_expander_set_octospi_active(void);
 
 /* =============================================================================
  * 7. USB (UM Section 5.4.1 + 6.2, Tables 22 + 28, p 30 + 34)
