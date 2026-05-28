@@ -770,15 +770,16 @@ typedef enum : uint8_t {
   /** @brief U15 output byte that drives the SW4 layout above.
    *  Bit n = 1 -> SW4-(n+1) reads OFF; bit n = 0 -> reads ON. */
   k_ra_board_pi4ioe_output_project_default = 0xF2U,
-  /** @brief U15 output byte for Octo-SPI-flash apps. Starts from the
-   *  project default (0xF2) but flips bit 2 (SW4-3 -> OFF = Octo-SPI
-   *  ACTIVE) and bit 3 (SW4-4 -> OFF = Arduino/mikroBUS INACTIVE so the
-   *  shared OCTA pins are freed for the flash). 0xF2 | 0x04 | 0x08 =
-   *  0xFE. The project default leaves SW4-3 ON (Octo-SPI inactive),
-   *  which disconnects the IS25LX512M from the bus -- the symptom is a
-   *  JEDEC-ID readback of 0x00FFFFFF (floating CIPO). See UM Table 3
-   *  p 16 + Section 6.3 p 35. */
-  k_ra_board_pi4ioe_output_octospi_active = 0xFEU,
+  /** @brief U15 output byte that enables the on-board Octo-SPI flash.
+   *  Value and bit polarity taken verbatim from the FSP EK-RA8D2
+   *  quickstart ``board_cfg_switch_init`` (writes 0xF8 to the U15 output
+   *  register): "All Output HIGH except OPMOD1/OPMOD0 mode-select and
+   *  OSPI_OE_L which must be LOW." The flash output-enable OSPI_OE_L is
+   *  ACTIVE-LOW, so bits 0/1/2 must be driven LOW (0xF8 = 0b1111_1000)
+   *  to connect the IS25LX512M. The old 0xFE left OSPI_OE_L HIGH, so the
+   *  flash stayed disconnected and JEDEC read 0x00FFFFFF (floating DQ).
+   *  This is the same all-SW4-OFF state FSP expects on the bench. */
+  k_ra_board_pi4ioe_output_octospi_active = 0xF8U,
 } ra_board_pi4ioe_project_t;
 
 /**
@@ -815,25 +816,26 @@ typedef enum : uint8_t {
  * @brief Program the U15 I/O expander to activate the Octo-SPI flash.
  *
  * @details
- * Writes ``k_ra_board_pi4ioe_output_octospi_active`` (0xFE) to the U15
- * output register, forcing SW4-3 OFF (Octo-SPI ACTIVE) and SW4-4 OFF
- * (Arduino/mikroBUS INACTIVE) regardless of the physical DIP positions.
- * The project default (``ra_board_io_expander_apply_project_sw4_defaults``)
- * leaves SW4-3 ON, which disconnects the IS25LX512M Octo-SPI flash from
- * the bus -- any ``ra_xspi_flash_*`` op then sees a floating CIPO and
- * the JEDEC ID reads 0x00FFFFFF. Call this once, early in main(), BEFORE
+ * Writes ``k_ra_board_pi4ioe_output_octospi_active`` (0xF8) to the U15
+ * output register, driving the active-low OSPI_OE_L (plus the Pmod1
+ * mode-select lines) LOW to connect the IS25LX512M Octo-SPI flash to
+ * the OCTA bus, regardless of the physical DIP positions. The value and
+ * polarity match the FSP EK-RA8D2 quickstart ``board_cfg_switch_init``.
+ * With OSPI_OE_L left HIGH the flash is disconnected -- any
+ * ``ra_xspi_flash_*`` op then sees a floating DQ and the JEDEC ID reads
+ * 0x00FFFFFF. Call this once, early in main(), BEFORE
  * ``ra_board_xspi_pins_init`` / ``ra_xspi_init`` for any app that drives
  * the on-board Octo-SPI flash.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                All U15 register writes succeeded.
- * @retval k_ra_err_gpio_conflict P400/P401 already owned by another driver.
- * @retval k_ra_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra_err_busy          RIIC1 bus was held by another controller.
+ * @retval k_ra_err_hw_timeout    U15 did not respond on RIIC1.
  * @retval k_ra_err_nack          U15 didn't ACK the register write.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra_mstp_init`` has run.
- * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialized at
+ * @post P512/P511 are routed to SCL1/SDA1; RIIC1 is initialized at
  *       100 kHz; U15.P0..P7 are outputs driven to
  *       ``k_ra_board_pi4ioe_output_octospi_active``; the OCTA bus pins
  *       are claimed by the Octo-SPI controller.
