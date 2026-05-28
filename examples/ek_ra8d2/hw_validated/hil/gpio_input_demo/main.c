@@ -30,6 +30,26 @@ typedef enum : uint32_t {
   k_gpio_demo_poll_ms = 100U,
 } gpio_demo_const_t;
 
+/**
+ * @var g_gpio_input_tick
+ * @brief HIL liveness counter -- incremented each poll iteration.
+ *
+ * @details
+ * Read externally by scripts/hil_jlink_memprobe.sh via SWD; the script
+ * halts the chip, samples this value, lets the chip run for N seconds,
+ * halts again, and asserts the delta >= HIL_PROBE_MIN_ADVANCE. Catches
+ * the "PC is in MRAM but main loop never iterated" failure mode that
+ * the plain HIL_MODE=alive check misses.
+ *
+ * `volatile` keeps the increment alive under optimization; the global
+ * (non-static) keeps the symbol linker-visible without --gc-sections
+ * culling.
+ *
+ * @note Read externally by J-Link only; firmware never reads back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_gpio_input_tick = 0U;
+
 /** @brief Park the CPU after a fatal init failure. */
 static void gpio_demo_panic_halt(void)
 {
@@ -106,6 +126,7 @@ int32_t main(void)
     if (gpio_demo_one_iter(&s) != k_ra_ok) {
       break;
     }
+    g_gpio_input_tick += 1U;
     ra_delay_ms((uint32_t)k_gpio_demo_poll_ms);
   }
   gpio_demo_panic_halt();
