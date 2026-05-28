@@ -37,8 +37,8 @@
 #include "ra_err.h"
 #include "ra_etha.h"
 #include "ra_gpio_constants.h"
+#include "ra_i2c.h"
 #include "ra_icu.h"
-#include "ra_iic_b.h"
 #include "ra_isr.h"
 #include "ra_mipi_dsi.h"
 #include "ra_mipi_phy.h"
@@ -1156,40 +1156,43 @@ typedef enum : uint8_t {
   k_ra_board_pi4ioe_hiz_none          = 0x00U,
 } ra_board_pi4ioe_magic_t;
 
-/** @brief I2C0 (IIC_B channel 0) configuration shared by every U15 access. */
+/** @brief IIC1 (system I2C) configuration shared by every U15 access. */
 typedef enum : uint32_t {
-  k_ra_board_io_expander_bus_hz   = 100000U,    /**< 100 kHz Sm. */
-  k_ra_board_io_expander_pclka_hz = 125000000U, /**< Reset CGC default. */
+  k_ra_board_io_expander_bus_hz   = 100000U,   /**< 100 kHz Sm. */
+  k_ra_board_io_expander_pclkb_hz = 62500000U, /**< PCLKB = PLL1P/16 post-CGC. */
 } ra_board_io_expander_clk_t;
 
-/** @brief IIC_B channel index used for the U15 expander. */
+/** @brief IIC channel index used for the U15 expander (RIIC channel 1). */
 typedef enum : uint8_t {
-  k_ra_board_io_expander_iic_channel = 0U,
+  k_ra_board_io_expander_iic_channel = 1U,
 } ra_board_io_expander_channel_t;
 
 /**
- * @brief Pins that carry SCL0 / SDA0 to U15 (chip HUM I/O Ports).
+ * @brief Pins that carry SCL1 / SDA1 to U15 (the system I2C bus).
  *
  * @details
- * P400 = SCL0, P401 = SDA0 on the RA8D2 (HUM "Multiplexed Pin Function
- * Selector"). The EK-RA8D2 v1 schematic ties U15's SCL/SDA to this
- * same pair so that one IIC_B channel can drive both U15 and any
- * Pmod1-side I2C peripheral the user wires up.
+ * The EK-RA8D2 v1 wires U15 (and the Grove / Pmod / mikroBUS / Arduino
+ * I2C) to the SYS_I2C bus = RIIC channel 1 on P512 (SCL1) / P511 (SDA1)
+ * -- confirmed against the FSP EK-RA8D2 quickstart board_cfg_switch
+ * (R_IIC_MASTER channel 1, iic1.scl1.p512 / iic1.sda1.p511) and HUM
+ * Ch 39. NOT P400/P401 (those are the I3C bus). The earlier P400/P401
+ * + ra_iic_b (I3C) wiring talked on the wrong peripheral, which is why
+ * every U15 access timed out.
  */
 static const ra_port_pin_t k_ra_board_io_expander_pin_scl =
-  (ra_port_pin_t)RA_PIN(k_ra_port_4, k_ra_pin_0); /**< SCL0 (P400). */
+  (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12); /**< SCL1 (P512). */
 static const ra_port_pin_t k_ra_board_io_expander_pin_sda =
-  (ra_port_pin_t)RA_PIN(k_ra_port_4, k_ra_pin_1); /**< SDA0 (P401). */
+  (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11); /**< SDA1 (P511). */
 
 /* internal_io_expander_write_reg -- see implementation for details. */
 static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
 {
   const uint8_t buf[2] = {reg, val};
-  return ra_iic_b_write((uint8_t)k_ra_board_io_expander_iic_channel,
-                        (uint8_t)k_ra_board_io_expander_addr,
-                        buf,
-                        sizeof(buf),
-                        false);
+  return ra_i2c_write((uint8_t)k_ra_board_io_expander_iic_channel,
+                      (uint8_t)k_ra_board_io_expander_addr,
+                      buf,
+                      sizeof(buf),
+                      false);
 }
 
 /**
@@ -1203,7 +1206,7 @@ static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
  *
  * Step values:
  *   1 = pre-PFS (entered function, before SCL/SDA route)
- *   2 = pre-init (PFS + open-drain done, before ra_iic_b_init)
+ *   2 = pre-init (PFS + open-drain done, before ra_i2c_init)
  *   3 = pre-write-output (init done, before output-latch write)
  *   4 = pre-write-hiz (output-latch written, before Hi-Z clear)
  *   5 = pre-write-iodir (Hi-Z cleared, before iodir write)
@@ -1215,23 +1218,6 @@ static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
  * @since 0.1.0
  */
 volatile uint32_t s_io_expander_probe = 0U;
-
-/**
- * @var s_iic_b_mstp_enabled
- * @brief One-shot guard so the IIC0/I3C MSTP block is only ungated once.
- *
- * @details
- * ra_iic_b_init internally calls ra_mstp_enable(k_ra_mstp_i3c) on every
- * invocation, but the BSP also explicitly ungates IIC0 (MSTPB9) before
- * the very first call so the I3C/IIC_B controller has already been
- * powered when ra_iic_b_init reaches its register-init phase. The flag
- * keeps repeated calls (e.g. host vs device init) from over-counting
- * the MSTP refcount.
- *
- * @note File-scope, only mutated under single-threaded init context.
- * @since 0.1.0
- */
-static bool s_iic_b_mstp_enabled = false;
 
 /**
  * @brief Step values for s_io_expander_probe (see variable docs).
@@ -1261,20 +1247,20 @@ typedef enum : uint32_t {
 static ra_err_t internal_io_expander_route_pins(void)
 {
   ra_err_t err =
-    ra_pfs_route_peripheral(k_ra_board_io_expander_pin_scl, k_ra_psel_iic, "ra_board.io_exp.scl0");
+    ra_pfs_route_peripheral(k_ra_board_io_expander_pin_scl, k_ra_psel_iic, "ra_board.io_exp.scl1");
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_0, true);
+  err = ra_mpc_set_open_drain(k_ra_port_5, k_ra_pin_12, true);
   if (err != k_ra_ok) {
     return err;
   }
   err =
-    ra_pfs_route_peripheral(k_ra_board_io_expander_pin_sda, k_ra_psel_iic, "ra_board.io_exp.sda0");
+    ra_pfs_route_peripheral(k_ra_board_io_expander_pin_sda, k_ra_psel_iic, "ra_board.io_exp.sda1");
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_1, true);
+  return ra_mpc_set_open_drain(k_ra_port_5, k_ra_pin_11, true);
 }
 
 /**
@@ -1292,7 +1278,7 @@ static ra_err_t internal_io_expander_route_pins(void)
  * @return ra_err_t Error code; k_ra_ok if all three writes ack.
  * @retval k_ra_ok U15 driving the requested SW4 layout, P0..P7 outputs.
  * @retval k_ra_err_nack U15 didn't ACK one of the register writes.
- * @pre ra_iic_b_init has already configured channel 0.
+ * @pre ra_i2c_init has already configured channel 1.
  * @pre I2C bus is idle.
  * @post On success, U15 IODIR=0xFF, OUTPUT=output_byte, HIZ=0x00.
  * @post On failure, s_io_expander_probe records the failing step.
@@ -1355,25 +1341,15 @@ static ra_err_t internal_io_expander_apply(uint8_t output_byte)
     return err;
   }
 
-  /* Step 2: ungate IIC0 (MSTPB9, HUM Ch 11.2.7 MSTPCRB p 444) once
-   * before ra_iic_b_init runs any controller register access.
-   * Guarded by a one-shot flag so host + device init paths do not
-   * double-increment the MSTP refcount. */
-  if (!s_iic_b_mstp_enabled) {
-    err = ra_mstp_enable(k_ra_mstp_iic0);
-    if (err != k_ra_ok) {
-      return err;
-    }
-    s_iic_b_mstp_enabled = true;
-  }
-
-  /* Step 3: bring IIC_B channel 0 up at 100 kHz. */
-  s_io_expander_probe      = (uint32_t)k_io_exp_probe_pre_init;
-  const ra_iic_b_cfg_t cfg = {
+  /* Step 2: bring RIIC channel 1 up at 100 kHz. ra_i2c_init ungates
+   * the per-channel MSTP gate (IIC1 = MSTPB8) itself, so no separate
+   * MSTP enable is needed here. */
+  s_io_expander_probe    = (uint32_t)k_io_exp_probe_pre_init;
+  const ra_i2c_cfg_t cfg = {
     .bus_hz   = (uint32_t)k_ra_board_io_expander_bus_hz,
-    .pclka_hz = (uint32_t)k_ra_board_io_expander_pclka_hz,
+    .pclkb_hz = (uint32_t)k_ra_board_io_expander_pclkb_hz,
   };
-  err = ra_iic_b_init((uint8_t)k_ra_board_io_expander_iic_channel, &cfg);
+  err = ra_i2c_init((uint8_t)k_ra_board_io_expander_iic_channel, &cfg);
   if (err != k_ra_ok) {
     return err;
   }
