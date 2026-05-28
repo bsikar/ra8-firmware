@@ -93,6 +93,8 @@ SKIP_PATTERNS = frozenset({
     "libs/ra_hal/inc/ra8d2_vreg_regs.h",
     "libs/ra_hal/inc/ra_iic_b.h",
     "libs/ra_hal/src/ra_iic_b.c",
+    "libs/ra_hal/inc/ra_i2c.h",
+    "libs/ra_hal/src/ra_i2c.c",
     "libs/ra_hal/inc/ra_ptp.h",
     "libs/ra_hal/src/ra_ptp.c",
     "tests/test_ra_ptp.c",
