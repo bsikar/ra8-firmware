@@ -315,7 +315,6 @@ static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mas
  * =============================================================================
  */
 
-/* Implementation of ra_spi_init (see header for full contract) -- see header for the documented contract. */
 /**
  * @brief Programme the polling-controller register set with SPE=0.
  *
@@ -369,7 +368,6 @@ static void internal_spi_program_regs(volatile r_spi_regs_t* reg, const ra_spi_c
   reg->SPSRC = k_ra_spsrc_mask_all;
 }
 
-/* Implementation of ra_spi_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "spi_init: cfg");
@@ -402,7 +400,6 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_spi_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_deinit(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -426,7 +423,6 @@ ra_err_t ra_spi_deinit(uint8_t channel)
  * =============================================================================
  */
 
-/* Implementation of ra_spi_master_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_master_init(uint8_t channel)
 {
   const ra_spi_cfg_t cfg = {
@@ -443,7 +439,6 @@ ra_err_t ra_spi_master_init(uint8_t channel)
   return ra_spi_init(channel, &cfg);
 }
 
-/* Implementation of ra_spi_xfer8 (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
 {
   volatile r_spi_regs_t* reg = ra_spi(channel);
@@ -722,7 +717,6 @@ static ra_err_t internal_xfer_common(uint8_t            channel,
   return k_ra_ok;
 }
 
-/* Implementation of ra_spi_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_write(uint8_t channel, const void* tx, uint32_t len, ra_spi_bit_width_t bit_width)
 {
   if ((tx == nullptr) && (len > 0U)) {
@@ -731,7 +725,6 @@ ra_err_t ra_spi_write(uint8_t channel, const void* tx, uint32_t len, ra_spi_bit_
   return internal_xfer_common(channel, tx, nullptr, len, bit_width);
 }
 
-/* Implementation of ra_spi_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_read(uint8_t channel, void* rx, uint32_t len, ra_spi_bit_width_t bit_width)
 {
   if ((rx == nullptr) && (len > 0U)) {
@@ -740,7 +733,6 @@ ra_err_t ra_spi_read(uint8_t channel, void* rx, uint32_t len, ra_spi_bit_width_t
   return internal_xfer_common(channel, nullptr, rx, len, bit_width);
 }
 
-/* Implementation of ra_spi_write_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_write_read(uint8_t            channel,
                            const void*        tx,
                            void*              rx,
@@ -763,7 +755,6 @@ ra_err_t ra_spi_write_read(uint8_t            channel,
  * =============================================================================
  */
 
-/* Implementation of ra_spi_set_clock (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -789,7 +780,6 @@ ra_err_t ra_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz)
  * =============================================================================
  */
 
-/* Implementation of ra_spi_get_errors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "spi get_errors");
@@ -818,7 +808,6 @@ ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_spi_clear_errors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_clear_errors(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -834,7 +823,6 @@ ra_err_t ra_spi_clear_errors(uint8_t channel)
   return k_ra_ok;
 }
 
-/* Implementation of ra_spi_attach_transfer_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* ctx)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -850,7 +838,6 @@ ra_err_t ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn
  * =============================================================================
  */
 
-/* Implementation of ra_spi_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_enter_stop(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -866,7 +853,6 @@ ra_err_t ra_spi_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_spi_mstp_table[channel]);
 }
 
-/* Implementation of ra_spi_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_exit_stop(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -880,7 +866,6 @@ ra_err_t ra_spi_exit_stop(uint8_t channel)
  * =============================================================================
  */
 
-/* Implementation of ra_spi_write_dma (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_write_dma(uint8_t              channel,
                           const uint8_t*       data,
                           uint16_t             len,
@@ -913,7 +898,6 @@ ra_err_t ra_spi_write_dma(uint8_t              channel,
   return ra_dma_request(&req, out_dma_channel);
 }
 
-/* Implementation of ra_spi_read_dma (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_spi_read_dma(uint8_t              channel,
                          uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
                          uint16_t             len,
@@ -949,7 +933,6 @@ ra_err_t ra_spi_read_dma(uint8_t              channel,
  * =============================================================================
  */
 
-/* Implementation of ra_spi_dispatch_spti (see header for full contract) -- see header for the documented contract. */
 void ra_spi_dispatch_spti(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -958,7 +941,6 @@ void ra_spi_dispatch_spti(uint8_t channel)
   (void)s_spi_state[channel].cb;
 }
 
-/* Implementation of ra_spi_dispatch_spri (see header for full contract) -- see header for the documented contract. */
 void ra_spi_dispatch_spri(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -967,7 +949,6 @@ void ra_spi_dispatch_spri(uint8_t channel)
   (void)s_spi_state[channel].cb;
 }
 
-/* Implementation of ra_spi_dispatch_spei (see header for full contract) -- see header for the documented contract. */
 void ra_spi_dispatch_spei(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {

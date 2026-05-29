@@ -520,7 +520,6 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
   return op_err;
 }
 
-/* Implementation of ra_eth_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -537,7 +536,6 @@ ra_err_t ra_eth_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_deinit(void)
 {
   volatile r_eswm_regs_t* reg = ra_eswm();
@@ -549,7 +547,6 @@ ra_err_t ra_eth_deinit(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -558,7 +555,6 @@ ra_err_t ra_eth_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_clear_status(uint32_t mask)
 {
   volatile r_eswm_regs_t* reg = ra_eswm();
@@ -568,7 +564,6 @@ ra_err_t ra_eth_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_attach_handler(ra_eth_event_fn_t fn, void* ctx)
 {
   s_eth_fn  = fn;
@@ -576,7 +571,6 @@ ra_err_t ra_eth_attach_handler(ra_eth_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_eth_dispatch(void)
 {
   volatile r_eswm_regs_t* reg = ra_eswm();
@@ -591,7 +585,6 @@ void ra_eth_dispatch(void)
   }
 }
 
-/* Implementation of ra_eth_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_enter_stop(void)
 {
   /* HUM Ch 29 "Layer 3 Ethernet Switch Module (ESWM)" p 1287 */
@@ -599,7 +592,6 @@ ra_err_t ra_eth_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);
@@ -830,7 +822,6 @@ static ra_err_t internal_open_gwca_path(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "open: cfg must not be nullptr");
@@ -874,7 +865,6 @@ ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_close(void)
 {
   if (s_state.opened == 0U) {
@@ -901,7 +891,6 @@ ra_err_t ra_eth_close(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "write: buf must not be nullptr");
@@ -922,7 +911,6 @@ ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
   return err;
 }
 
-/* Implementation of ra_eth_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_read(uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "read: buf must not be nullptr");
@@ -1316,7 +1304,6 @@ internal_phy_read_link(ra_rmac_port_t port, ra_eth_link_t* out_status, uint16_t*
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_link_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "link_status: out must not be nullptr");
@@ -1343,7 +1330,6 @@ ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
   return internal_resync_mac_speed(port, bmcr);
 }
 
-/* Implementation of ra_eth_get_stats (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_get_stats(ra_eth_stats_t* out_stats)
 {
   RA_CHECK_NULL_PTR(out_stats, s_tag, "get_stats: out must not be nullptr");

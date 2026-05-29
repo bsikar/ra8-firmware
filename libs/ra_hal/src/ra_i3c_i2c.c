@@ -1,5 +1,5 @@
 /**
- * @file ra_iic_b.c
+ * @file ra_i3c_i2c.c
  * @brief IIC_B (I3C unified IP) master driver implementation
  *
  * @par Tag
@@ -43,14 +43,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "ra_iic_b.h"
+#include "ra_i3c_i2c.h"
 
 #include <stdint.h>
 
-#include "ra8d2_iic_b_regs.h"
+#include "ra8d2_i3c_i2c_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_iic_b_internal.h"
+#include "ra_i3c_i2c_internal.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -69,7 +69,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf)
+bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf)
 {
   return (len != 0U) && (buf == nullptr);
 }
@@ -89,7 +89,7 @@ bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra_iic_b_internal_should_dispatch(uint8_t mask, const void* cb)
+bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb)
 {
   return (mask != 0U) && (cb != nullptr);
 }
@@ -98,45 +98,45 @@ bool ra_iic_b_internal_should_dispatch(uint8_t mask, const void* cb)
 static const char* s_tag = "IIC_B";
 
 /**
- * @enum ra_iic_b_internal_t
+ * @enum internal_i3c_i2c_t
  * @brief Implementation constants -- spin budgets, addressing helpers.
  */
 typedef enum : uint32_t {
   /** Generic spin budget for status-flag polls. ~200k iters keeps the
    * worst-case stall under ~5ms at 250MHz with the load/branch pair
    * the compiler emits for the wait helpers. */
-  k_ra_iic_b_poll_limit = 200000U,
+  k_ra_i3c_i2c_poll_limit = 200000U,
   /** Shift count to convert a 7-bit address into the on-the-wire byte. */
-  k_ra_iic_b_addr_shift = 1U,
+  k_ra_i3c_i2c_addr_shift = 1U,
   /** R/W bit value for a write transaction (0 in LSB). */
-  k_ra_iic_b_addr_rw_write = 0U,
+  k_ra_i3c_i2c_addr_rw_write = 0U,
   /** R/W bit value for a read transaction  (1 in LSB). */
-  k_ra_iic_b_addr_rw_read = 1U,
+  k_ra_i3c_i2c_addr_rw_read = 1U,
   /** 8-bit byte mask for narrowing 32-bit reads from NTDTBP0. */
-  k_ra_iic_b_byte_mask = 0xFFU,
-} ra_iic_b_internal_t;
+  k_ra_i3c_i2c_byte_mask = 0xFFU,
+} internal_i3c_i2c_t;
 
 /**
- * @struct ra_iic_b_state_t
+ * @struct ra_i3c_i2c_state_t
  * @brief Per-channel dispatch state.
  */
 typedef struct {
-  ra_iic_b_complete_fn_t cb;          /**< Callback or NULL.            */
-  void*                  ctx;         /**< Callback context.            */
-  bool                   initialized; /**< Tracks ``ra_iic_b_init`` /
-                                         ``ra_iic_b_deinit``.           */
-  bool                   bus_held;    /**< True when the previous
+  ra_i3c_i2c_complete_fn_t cb;          /**< Callback or NULL.            */
+  void*                    ctx;         /**< Callback context.            */
+  bool                     initialized; /**< Tracks ``internal_i3c_i2c_init`` /
+                                         ``internal_i3c_i2c_deinit``.           */
+  bool                     bus_held;    /**< True when the previous
                                          transaction returned with
                                          ``restart=true`` and the next
                                          call must inject a RESTART
                                          instead of a fresh START.      */
-} ra_iic_b_state_t;
+} ra_i3c_i2c_state_t;
 
 /**
  * @var s_iic_b_state
  * @brief Per-channel state table indexed by channel.
  */
-static ra_iic_b_state_t s_iic_b_state[k_ra_iic_b_channel_count];
+static ra_i3c_i2c_state_t s_iic_b_state[k_ra_i3c_i2c_channel_count];
 
 /**
  * @brief Compute STDBR.SBRLO / SBRHO half-period count from PCLKA.
@@ -164,24 +164,24 @@ static ra_iic_b_state_t s_iic_b_state[k_ra_iic_b_channel_count];
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static uint8_t internal_iic_b_half_period(uint32_t bus_hz, uint32_t pclka_hz)
+static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32_t pclka_hz)
 {
-  /* mcdc-deactivated: both args validated by ra_iic_b_init upstream; defensive duplicate. */
+  /* mcdc-deactivated: both args validated by internal_i3c_i2c_init upstream; defensive duplicate. */
   if ((bus_hz == 0U) || (pclka_hz == 0U)) {
     return 0U;
   }
   enum : uint32_t {
-    k_ra_iic_b_period_split = 2U,
-    k_ra_iic_b_max_field    = 0xFFU,
+    k_ra_i3c_i2c_period_split = 2U,
+    k_ra_i3c_i2c_max_field    = 0xFFU,
   };
   const uint32_t total = pclka_hz / bus_hz;
-  const uint32_t half  = total / k_ra_iic_b_period_split;
+  const uint32_t half  = total / k_ra_i3c_i2c_period_split;
   if (half == 0U) {
     return 0U;
   }
   uint32_t value = half - 1U;
-  if (value > k_ra_iic_b_max_field) {
-    value = k_ra_iic_b_max_field;
+  if (value > k_ra_i3c_i2c_max_field) {
+    value = k_ra_i3c_i2c_max_field;
   }
   return (uint8_t)value;
 }
@@ -205,10 +205,10 @@ static uint8_t internal_iic_b_half_period(uint32_t bus_hz, uint32_t pclka_hz)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t mask)
+static ra_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->NTST & mask) != 0U) {                       /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->NTST & mask) != 0U) {                         /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -216,7 +216,7 @@ static ra_err_t internal_iic_b_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t 
 }
 
 /**
- * @brief Decode latched BST error bits into a ``k_ra_iic_b_err_*`` mask.
+ * @brief Decode latched BST error bits into a ``k_ra_i3c_i2c_err_*`` mask.
  *
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
@@ -232,17 +232,17 @@ static ra_err_t internal_iic_b_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t 
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static uint8_t internal_iic_b_decode_errors(uint32_t bst)
+static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
 {
-  uint8_t mask = k_ra_iic_b_err_none;
-  if ((bst & k_ra_iic_b_msk_bst_alf) != 0U) {
-    mask |= k_ra_iic_b_err_arb_lost;
+  uint8_t mask = k_ra_i3c_i2c_err_none;
+  if ((bst & k_ra_i3c_i2c_msk_bst_alf) != 0U) {
+    mask |= k_ra_i3c_i2c_err_arb_lost;
   }
-  if ((bst & k_ra_iic_b_msk_bst_nackdf) != 0U) {
-    mask |= k_ra_iic_b_err_nack;
+  if ((bst & k_ra_i3c_i2c_msk_bst_nackdf) != 0U) {
+    mask |= k_ra_i3c_i2c_err_nack;
   }
-  if ((bst & k_ra_iic_b_msk_bst_todf) != 0U) {
-    mask |= k_ra_iic_b_err_timeout;
+  if ((bst & k_ra_i3c_i2c_msk_bst_todf) != 0U) {
+    mask |= k_ra_i3c_i2c_err_timeout;
   }
   return mask;
 }
@@ -271,13 +271,13 @@ static uint8_t internal_iic_b_decode_errors(uint32_t bst)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_reset(volatile r_iic_b_regs_t* reg)
+static ra_err_t internal_i3c_i2c_reset(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
-  reg->RSTCTL = k_ra_iic_b_msk_rstctl_ri3crst;
+  reg->RSTCTL = k_ra_i3c_i2c_msk_rstctl_ri3crst;
   reg->RSTCTL = 0U;
-  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) {      /* GCOVR_EXCL_BR_LINE */
-    if ((reg->RSTCTL & k_ra_iic_b_msk_rstctl_ri3crst) == 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_i3c_i2c_poll_limit; i++) {      /* GCOVR_EXCL_BR_LINE */
+    if ((reg->RSTCTL & k_ra_i3c_i2c_msk_rstctl_ri3crst) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -298,10 +298,10 @@ static ra_err_t internal_iic_b_reset(volatile r_iic_b_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_iic_b_start(volatile r_iic_b_regs_t* reg)
+static void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
-  reg->CNDCTL = k_ra_iic_b_msk_cndctl_stcnd;
+  reg->CNDCTL = k_ra_i3c_i2c_msk_cndctl_stcnd;
 }
 
 /**
@@ -321,10 +321,10 @@ static void internal_iic_b_start(volatile r_iic_b_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_iic_b_restart(volatile r_iic_b_regs_t* reg)
+static void internal_i3c_i2c_restart(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
-  reg->CNDCTL = k_ra_iic_b_msk_cndctl_srcnd;
+  reg->CNDCTL = k_ra_i3c_i2c_msk_cndctl_srcnd;
 }
 
 /**
@@ -346,12 +346,12 @@ static void internal_iic_b_restart(volatile r_iic_b_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_iic_b_stop(volatile r_iic_b_regs_t* reg)
+static void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
 {
   /* Clear the prior STOP-detect flag so the NEXT transaction sees a
    * fresh edge. W0C semantics. */
-  reg->BST    = reg->BST & ~k_ra_iic_b_msk_bst_spcnddf;
-  reg->CNDCTL = k_ra_iic_b_msk_cndctl_spcnd;
+  reg->BST    = reg->BST & ~k_ra_i3c_i2c_msk_bst_spcnddf;
+  reg->CNDCTL = k_ra_i3c_i2c_msk_cndctl_spcnd;
 }
 
 /**
@@ -368,15 +368,15 @@ static void internal_iic_b_stop(volatile r_iic_b_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_iic_b_clear_bst(volatile r_iic_b_regs_t* reg)
+static void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
 {
   enum : uint32_t {
-    k_ra_iic_b_bst_clear_mask = k_ra_iic_b_msk_bst_stcnddf | k_ra_iic_b_msk_bst_spcnddf |
-                                k_ra_iic_b_msk_bst_nackdf | k_ra_iic_b_msk_bst_tendf |
-                                k_ra_iic_b_msk_bst_alf | k_ra_iic_b_msk_bst_todf,
+    k_ra_i3c_i2c_bst_clear_mask = k_ra_i3c_i2c_msk_bst_stcnddf | k_ra_i3c_i2c_msk_bst_spcnddf |
+                                  k_ra_i3c_i2c_msk_bst_nackdf | k_ra_i3c_i2c_msk_bst_tendf |
+                                  k_ra_i3c_i2c_msk_bst_alf | k_ra_i3c_i2c_msk_bst_todf,
   };
   /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
-  reg->BST = reg->BST & ~k_ra_iic_b_bst_clear_mask;
+  reg->BST = reg->BST & ~k_ra_i3c_i2c_bst_clear_mask;
 }
 
 /**
@@ -400,11 +400,11 @@ static void internal_iic_b_clear_bst(volatile r_iic_b_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_send_address(volatile r_iic_b_regs_t* reg, uint8_t address_byte)
+static ra_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte)
 {
   /* Wait for first TDBEF0 (set after START condition is on the bus).
    * HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
-  ra_err_t err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_tdbef0);
+  ra_err_t err = internal_i3c_i2c_wait_ntst(reg, k_ra_i3c_i2c_msk_ntst_tdbef0);
   if (err != k_ra_ok) {
     return err;
   }
@@ -431,15 +431,15 @@ static ra_err_t internal_iic_b_send_address(volatile r_iic_b_regs_t* reg, uint8_
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_status_from_bst(uint32_t bst)
+static ra_err_t internal_i3c_i2c_status_from_bst(uint32_t bst)
 {
-  if ((bst & k_ra_iic_b_msk_bst_nackdf) != 0U) {
+  if ((bst & k_ra_i3c_i2c_msk_bst_nackdf) != 0U) {
     return k_ra_err_nack;
   }
-  if ((bst & k_ra_iic_b_msk_bst_alf) != 0U) {
+  if ((bst & k_ra_i3c_i2c_msk_bst_alf) != 0U) {
     return k_ra_err_hw_error;
   }
-  if ((bst & k_ra_iic_b_msk_bst_todf) != 0U) {
+  if ((bst & k_ra_i3c_i2c_msk_bst_todf) != 0U) {
     return k_ra_err_hw_timeout;
   }
   return k_ra_ok;
@@ -465,9 +465,9 @@ static ra_err_t internal_iic_b_status_from_bst(uint32_t bst)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static bool internal_iic_b_bus_free(volatile const r_iic_b_regs_t* reg)
+static bool internal_i3c_i2c_bus_free(volatile const r_i3c_i2c_regs_t* reg)
 {
-  return (reg->BCST & k_ra_iic_b_msk_bcst_bfref) != 0U;
+  return (reg->BCST & k_ra_i3c_i2c_msk_bcst_bfref) != 0U;
 }
 
 /* =============================================================================
@@ -492,33 +492,34 @@ static bool internal_iic_b_bus_free(volatile const r_iic_b_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const ra_iic_b_cfg_t* cfg)
+static void internal_i3c_i2c_apply_init_regs(volatile r_i3c_i2c_regs_t* reg,
+                                             const ra_i3c_i2c_cfg_t*    cfg)
 {
   /* HUM Ch 40.2.14 "REFCKCTL : Reference Clock Control Register" p 2463 */
   reg->REFCKCTL = 0U;
 
   /* HUM Ch 40.2.15 "STDBR : Standard Bit Rate Register" p 2463 */
-  const uint8_t  half  = internal_iic_b_half_period(cfg->bus_hz, cfg->pclka_hz);
-  const uint32_t stdbr = ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrlo_pos) |
-                         ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrho_pos);
+  const uint8_t  half  = internal_i3c_i2c_half_period(cfg->bus_hz, cfg->pclka_hz);
+  const uint32_t stdbr = ((uint32_t)half << (uint32_t)k_ra_i3c_i2c_stdbr_sbrlo_pos) |
+                         ((uint32_t)half << (uint32_t)k_ra_i3c_i2c_stdbr_sbrho_pos);
   reg->STDBR           = stdbr;
 
   /* HUM Ch 40.2.12 "BFCTL : Bus Function Control Register" p 2459 */
   uint32_t bfctl =
-    k_ra_iic_b_msk_bfctl_male | k_ra_iic_b_msk_bfctl_nale | k_ra_iic_b_msk_bfctl_scsyne;
-  if (cfg->bus_hz >= k_ra_iic_b_speed_fast_plus) {
-    bfctl |= k_ra_iic_b_msk_bfctl_fmpe;
+    k_ra_i3c_i2c_msk_bfctl_male | k_ra_i3c_i2c_msk_bfctl_nale | k_ra_i3c_i2c_msk_bfctl_scsyne;
+  if (cfg->bus_hz >= k_ra_i3c_i2c_speed_fast_plus) {
+    bfctl |= k_ra_i3c_i2c_msk_bfctl_fmpe;
   }
   reg->BFCTL = bfctl;
 
   /* HUM Ch 40.2.24 "ACKCTL : Acknowledge Control Register" p 2473 */
-  reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp;
+  reg->ACKCTL = k_ra_i3c_i2c_msk_ackctl_acktwp;
   /* HUM Ch 40.2.25 "SCSTRCTL : SCL Stretch Control Register" p 2474 */
   reg->SCSTRCTL = 0U;
 
   /* BUSE=1: drive the bus.
    * HUM Ch 40.2.2 "BCTL : Bus Control Register" p 2449 */
-  reg->BCTL = k_ra_iic_b_msk_bctl_buse;
+  reg->BCTL = k_ra_i3c_i2c_msk_bctl_buse;
 }
 
 /**
@@ -526,7 +527,7 @@ static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const r
  *        and switch the I3C IP into I2C single-buffer mode (PRTMD=1).
  *
  * @details
- * Extracted from ra_iic_b_init to stay under the NASA Rule 4 +
+ * Extracted from internal_i3c_i2c_init to stay under the NASA Rule 4 +
  * clang-tidy readability-function-size thresholds. Step ordering is
  * fixed by HUM Ch 11.2.7 p 444 + Ch 40.2.92 p 2543 + Ch 40.2.1 p
  * 2449: MSTP -> CECTL.CLKE -> BCTL clear -> RSTCTL reset -> PRTS.
@@ -541,7 +542,7 @@ static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const r
  * @pre reg != nullptr.
  * @pre Caller has validated the channel index.
  * @post On success the IIC_B IP is ready for
- *       internal_iic_b_apply_init_regs to programme bus timing.
+ *       internal_i3c_i2c_apply_init_regs to programme bus timing.
  * @post On error the partial side effects (MSTP enabled, CECTL
  *       written) remain -- caller treats this as init-failed and
  *       does not consume the channel.
@@ -549,7 +550,7 @@ static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const r
  * @note Not thread-safe; serialise iic_b bring-up at a higher layer.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_block_bringup(volatile r_iic_b_regs_t* reg)
+static ra_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_regs_t* reg)
 {
   /* The I3C/IIC_B shared block needs both MSTPB4 (I3C) AND MSTPB9   */
   /* (IIC0) ungated; ungating only MSTPB4 leaves the channel-0 IIC    */
@@ -563,12 +564,12 @@ static ra_err_t internal_iic_b_block_bringup(volatile r_iic_b_regs_t* reg)
   RA_RETURN_ON_ERROR(iic0_err, s_tag, "iic_b_init: mstp iic0"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 40.2.92 "CECTL : Clock Enable Control Register" p 2543 */
-  reg->CECTL = k_ra_iic_b_msk_cectl_clke;
+  reg->CECTL = k_ra_i3c_i2c_msk_cectl_clke;
   /* BUSE=0: detach SCL/SDA before reset.
    * HUM Ch 40.2.2 "BCTL : Bus Control Register" p 2449 */
   reg->BCTL = 0U;
 
-  const ra_err_t reset_err = internal_iic_b_reset(reg);
+  const ra_err_t reset_err = internal_i3c_i2c_reset(reg);
   RA_RETURN_ON_ERROR(reset_err, s_tag, "iic_b_init: reset"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 40.2.1 "PRTS : Protocol Selection" p 2449 -- the I3C IP
@@ -578,26 +579,26 @@ static ra_err_t internal_iic_b_block_bringup(volatile r_iic_b_regs_t* reg)
    * any START / STOP / address byte is issued. Without this write the
    * peripheral silently swallows writes to NTDTBP0 as stray I3C
    * FIFO entries and never drives SCL. */
-  reg->PRTS = k_ra_iic_b_msk_prts_prtmd;
+  reg->PRTS = k_ra_i3c_i2c_msk_prts_prtmd;
   return k_ra_ok;
 }
 
-/* ra_iic_b_init -- see header for full description. */
-ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
+/* internal_i3c_i2c_init -- see header for full description. */
+ra_err_t internal_i3c_i2c_init(uint8_t channel, const ra_i3c_i2c_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "iic_b_init: cfg");
   if (cfg->bus_hz == 0U) {
     return k_ra_err_invalid_arg;
   }
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
 
-  const ra_err_t br_err = internal_iic_b_block_bringup(reg);
+  const ra_err_t br_err = internal_i3c_i2c_block_bringup(reg);
   RA_RETURN_ON_ERROR(br_err, s_tag, "iic_b_init: block bringup"); /* GCOVR_EXCL_BR_LINE */
 
-  internal_iic_b_apply_init_regs(reg, cfg);
+  internal_i3c_i2c_apply_init_regs(reg, cfg);
 
   s_iic_b_state[channel].cb          = nullptr;
   s_iic_b_state[channel].ctx         = nullptr;
@@ -608,10 +609,10 @@ ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_iic_b_deinit -- see header for full description. */
-ra_err_t ra_iic_b_deinit(uint8_t channel)
+/* internal_i3c_i2c_deinit -- see header for full description. */
+ra_err_t internal_i3c_i2c_deinit(uint8_t channel)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
@@ -627,10 +628,10 @@ ra_err_t ra_iic_b_deinit(uint8_t channel)
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
 
-/* ra_iic_b_set_clock -- see header for full description. */
-ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
+/* internal_i3c_i2c_set_clock -- see header for full description. */
+ra_err_t internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
@@ -638,9 +639,9 @@ ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 40.2.15 "STDBR : Standard Bit Rate Register" p 2463 */
-  const uint8_t half = internal_iic_b_half_period(bus_hz, pclka_hz);
-  reg->STDBR         = ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrlo_pos) |
-                       ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrho_pos);
+  const uint8_t half = internal_i3c_i2c_half_period(bus_hz, pclka_hz);
+  reg->STDBR         = ((uint32_t)half << (uint32_t)k_ra_i3c_i2c_stdbr_sbrlo_pos) |
+                       ((uint32_t)half << (uint32_t)k_ra_i3c_i2c_stdbr_sbrho_pos);
   return k_ra_ok;
 }
 
@@ -665,12 +666,12 @@ ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_iic_b_open_phase(volatile r_iic_b_regs_t* reg, bool bus_held)
+static void internal_i3c_i2c_open_phase(volatile r_i3c_i2c_regs_t* reg, bool bus_held)
 {
   if (bus_held) {
-    internal_iic_b_restart(reg);
+    internal_i3c_i2c_restart(reg);
   } else {
-    internal_iic_b_start(reg);
+    internal_i3c_i2c_start(reg);
   }
 }
 
@@ -678,7 +679,7 @@ static void internal_iic_b_open_phase(volatile r_iic_b_regs_t* reg, bool bus_hel
  * @brief Push ``len`` bytes from ``data`` into NTDTBP0.
  *
  * @details
- * TX-side counterpart to ``internal_iic_b_drain_rx``. Each iteration
+ * TX-side counterpart to ``internal_i3c_i2c_drain_rx``. Each iteration
  * waits for TDBEF0 then writes one byte; bails out early on NACK
  * mid-payload (FSP TXI ERI fast-path).
  *
@@ -696,15 +697,15 @@ static void internal_iic_b_open_phase(volatile r_iic_b_regs_t* reg, bool bus_hel
  * @since 0.1.0
  */
 static ra_err_t
-internal_iic_b_drain_tx(volatile r_iic_b_regs_t* reg, const uint8_t* data, uint32_t len)
+internal_i3c_i2c_drain_tx(volatile r_i3c_i2c_regs_t* reg, const uint8_t* data, uint32_t len)
 {
   ra_err_t err = k_ra_ok;
   for (uint32_t i = 0U; i < len; i++) {
-    err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_tdbef0);
+    err = internal_i3c_i2c_wait_ntst(reg, k_ra_i3c_i2c_msk_ntst_tdbef0);
     if (err != k_ra_ok) {
       break;
     }
-    if ((reg->BST & k_ra_iic_b_msk_bst_nackdf) != 0U) {
+    if ((reg->BST & k_ra_i3c_i2c_msk_bst_nackdf) != 0U) {
       break;
     }
     /* HUM Ch 40.2.35 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2481 */
@@ -732,16 +733,18 @@ internal_iic_b_drain_tx(volatile r_iic_b_regs_t* reg, const uint8_t* data, uint3
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void
-internal_iic_b_finalize(volatile r_iic_b_regs_t* reg, uint8_t channel, ra_err_t err, bool restart)
+static void internal_i3c_i2c_finalize(volatile r_i3c_i2c_regs_t* reg,
+                                      uint8_t                    channel,
+                                      ra_err_t                   err,
+                                      bool                       restart)
 {
   if ((err != k_ra_ok) || !restart) {
-    internal_iic_b_stop(reg);
+    internal_i3c_i2c_stop(reg);
     s_iic_b_state[channel].bus_held = false;
   } else {
     s_iic_b_state[channel].bus_held = true;
   }
-  internal_iic_b_clear_bst(reg);
+  internal_i3c_i2c_clear_bst(reg);
 }
 
 /**
@@ -763,46 +766,49 @@ internal_iic_b_finalize(volatile r_iic_b_regs_t* reg, uint8_t channel, ra_err_t 
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_busy_gate(volatile const r_iic_b_regs_t* reg, bool bus_held)
+static ra_err_t internal_i3c_i2c_busy_gate(volatile const r_i3c_i2c_regs_t* reg, bool bus_held)
 {
   if (bus_held) {
     return k_ra_ok;
   }
-  return internal_iic_b_bus_free(reg) ? k_ra_ok : k_ra_err_busy;
+  return internal_i3c_i2c_bus_free(reg) ? k_ra_ok : k_ra_err_busy;
 }
 
-/* ra_iic_b_write -- see header for full description. */
-ra_err_t
-ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len, bool restart)
+/* internal_i3c_i2c_write -- see header for full description. */
+ra_err_t internal_i3c_i2c_write(uint8_t        channel,
+                                uint8_t        target_7b,
+                                const uint8_t* data,
+                                uint32_t       len,
+                                bool           restart)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_write: channel");
   RA_CHECK_NULL_PTR(data, s_tag, "iic_b_write: data");
 
   const bool     bus_held  = s_iic_b_state[channel].bus_held;
-  const ra_err_t busy_gate = internal_iic_b_busy_gate(reg, bus_held);
+  const ra_err_t busy_gate = internal_i3c_i2c_busy_gate(reg, bus_held);
   if (busy_gate != k_ra_ok) {
     return busy_gate;
   }
 
-  internal_iic_b_clear_bst(reg);
-  internal_iic_b_open_phase(reg, bus_held);
+  internal_i3c_i2c_clear_bst(reg);
+  internal_i3c_i2c_open_phase(reg, bus_held);
 
   const uint8_t address_byte =
-    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_rw_write);
-  ra_err_t err = internal_iic_b_send_address(reg, address_byte);
+    (uint8_t)(((uint32_t)target_7b << k_ra_i3c_i2c_addr_shift) | k_ra_i3c_i2c_addr_rw_write);
+  ra_err_t err = internal_i3c_i2c_send_address(reg, address_byte);
   if (err != k_ra_ok) {
-    internal_iic_b_stop(reg);
+    internal_i3c_i2c_stop(reg);
     s_iic_b_state[channel].bus_held = false;
     return err;
   }
 
-  err                    = internal_iic_b_drain_tx(reg, data, len);
-  const ra_err_t bst_err = internal_iic_b_status_from_bst(reg->BST);
+  err                    = internal_i3c_i2c_drain_tx(reg, data, len);
+  const ra_err_t bst_err = internal_i3c_i2c_status_from_bst(reg->BST);
   if (bst_err != k_ra_ok) {
     err = bst_err;
   }
-  internal_iic_b_finalize(reg, channel, err, restart);
+  internal_i3c_i2c_finalize(reg, channel, err, restart);
   return err;
 }
 
@@ -815,7 +821,7 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  * @brief Drain ``len`` bytes from NTDTBP0 into ``out``.
  *
  * @details
- * Helper for ``ra_iic_b_read``. Mirrors FSP rxi_master() data path:
+ * Helper for ``internal_i3c_i2c_read``. Mirrors FSP rxi_master() data path:
  * each iteration waits for RDBFF0 then reads NTDTBP0. On the final
  * byte the master is primed to NACK (via ACKCTL.ACKT paired with
  * ACKTWP) so the slave releases SDA when STOP issues.
@@ -833,20 +839,21 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* out, uint32_t len)
+static ra_err_t
+internal_i3c_i2c_drain_rx(volatile r_i3c_i2c_regs_t* reg, uint8_t* out, uint32_t len)
 {
   ra_err_t err = k_ra_ok;
   for (uint32_t i = 0U; i < len; i++) {
     if (i == (len - 1U)) {
       /* HUM Ch 40.2.24 "ACKCTL : Acknowledge Control Register" p 2473 */
-      reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp | k_ra_iic_b_msk_ackctl_ackt;
+      reg->ACKCTL = k_ra_i3c_i2c_msk_ackctl_acktwp | k_ra_i3c_i2c_msk_ackctl_ackt;
     }
-    err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_rdbff0);
+    err = internal_i3c_i2c_wait_ntst(reg, k_ra_i3c_i2c_msk_ntst_rdbff0);
     if (err != k_ra_ok) {
       break;
     }
     /* HUM Ch 40.2.35 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2481 */
-    out[i] = (uint8_t)(reg->NTDTBP0 & k_ra_iic_b_byte_mask);
+    out[i] = (uint8_t)(reg->NTDTBP0 & k_ra_i3c_i2c_byte_mask);
   }
   return err;
 }
@@ -878,21 +885,23 @@ static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* o
  * @param[in] buf See header declaration for direction and constraints.
  * @param[in] len See header declaration for direction and constraints.
  */
-static ra_err_t internal_iic_b_rx_phase(volatile r_iic_b_regs_t* reg, uint8_t* buf, uint32_t len)
+static ra_err_t
+internal_i3c_i2c_rx_phase(volatile r_i3c_i2c_regs_t* reg, uint8_t* buf, uint32_t len)
 {
-  ra_err_t err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_rdbff0);
+  ra_err_t err = internal_i3c_i2c_wait_ntst(reg, k_ra_i3c_i2c_msk_ntst_rdbff0);
   if (err == k_ra_ok) {
     (void)reg->NTDTBP0;
-    err = internal_iic_b_drain_rx(reg, buf, len);
+    err = internal_i3c_i2c_drain_rx(reg, buf, len);
   }
-  reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp;
+  reg->ACKCTL = k_ra_i3c_i2c_msk_ackctl_acktwp;
   return err;
 }
 
-/* ra_iic_b_read -- see header for full description. */
-ra_err_t ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart)
+/* internal_i3c_i2c_read -- see header for full description. */
+ra_err_t
+internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_read: channel");
   RA_CHECK_NULL_PTR(buf, s_tag, "iic_b_read: buf");
   if (len == 0U) {
@@ -900,29 +909,29 @@ ra_err_t ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_
   }
 
   const bool     bus_held  = s_iic_b_state[channel].bus_held;
-  const ra_err_t busy_gate = internal_iic_b_busy_gate(reg, bus_held);
+  const ra_err_t busy_gate = internal_i3c_i2c_busy_gate(reg, bus_held);
   if (busy_gate != k_ra_ok) {
     return busy_gate;
   }
 
-  internal_iic_b_clear_bst(reg);
-  internal_iic_b_open_phase(reg, bus_held);
+  internal_i3c_i2c_clear_bst(reg);
+  internal_i3c_i2c_open_phase(reg, bus_held);
 
   const uint8_t address_byte =
-    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_rw_read);
-  ra_err_t err = internal_iic_b_send_address(reg, address_byte);
+    (uint8_t)(((uint32_t)target_7b << k_ra_i3c_i2c_addr_shift) | k_ra_i3c_i2c_addr_rw_read);
+  ra_err_t err = internal_i3c_i2c_send_address(reg, address_byte);
   if (err != k_ra_ok) {
-    internal_iic_b_stop(reg);
+    internal_i3c_i2c_stop(reg);
     s_iic_b_state[channel].bus_held = false;
     return err;
   }
 
-  err                    = internal_iic_b_rx_phase(reg, buf, len);
-  const ra_err_t bst_err = internal_iic_b_status_from_bst(reg->BST);
+  err                    = internal_i3c_i2c_rx_phase(reg, buf, len);
+  const ra_err_t bst_err = internal_i3c_i2c_status_from_bst(reg->BST);
   if (bst_err != k_ra_ok) {
     err = bst_err;
   }
-  internal_iic_b_finalize(reg, channel, err, restart);
+  internal_i3c_i2c_finalize(reg, channel, err, restart);
   return err;
 }
 
@@ -931,15 +940,15 @@ ra_err_t ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_
  * =============================================================================
  */
 
-/* ra_iic_b_transfer -- see header for full description. */
-ra_err_t ra_iic_b_transfer(uint8_t        channel,
-                           uint8_t        target_7b,
-                           const uint8_t* tx,
-                           uint32_t       tx_len,
-                           uint8_t*       rx,
-                           uint32_t       rx_len)
+/* internal_i3c_i2c_transfer -- see header for full description. */
+ra_err_t internal_i3c_i2c_transfer(uint8_t        channel,
+                                   uint8_t        target_7b,
+                                   const uint8_t* tx,
+                                   uint32_t       tx_len,
+                                   uint8_t*       rx,
+                                   uint32_t       rx_len)
 {
-  if (ra_iic_b(channel) == nullptr) {
+  if (i3c_i2c_regs(channel) == nullptr) {
     return k_ra_err_null_ptr;
   }
   if ((tx_len == 0U) && (rx_len == 0U)) {
@@ -948,7 +957,7 @@ ra_err_t ra_iic_b_transfer(uint8_t        channel,
   if ((tx_len != 0U) && (tx == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if (ra_iic_b_internal_len_buf_invalid(rx_len, rx)) {
+  if (internal_i3c_i2c_len_buf_invalid(rx_len, rx)) {
     return k_ra_err_null_ptr;
   }
 
@@ -958,7 +967,7 @@ ra_err_t ra_iic_b_transfer(uint8_t        channel,
    * tx phase means "no register-pointer update needed". */
   if (tx_len != 0U) {
     const ra_err_t w_err =
-      ra_iic_b_write(channel, target_7b, tx, tx_len, /*restart=*/(rx_len != 0U));
+      internal_i3c_i2c_write(channel, target_7b, tx, tx_len, /*restart=*/(rx_len != 0U));
     if (w_err != k_ra_ok) {
       return w_err;
     }
@@ -966,7 +975,7 @@ ra_err_t ra_iic_b_transfer(uint8_t        channel,
 
   /* Phase 2: read (close the bus normally). */
   if (rx_len != 0U) {
-    const ra_err_t r_err = ra_iic_b_read(channel, target_7b, rx, rx_len, /*restart=*/false);
+    const ra_err_t r_err = internal_i3c_i2c_read(channel, target_7b, rx, rx_len, /*restart=*/false);
     if (r_err != k_ra_ok) {
       return r_err;
     }
@@ -979,10 +988,10 @@ ra_err_t ra_iic_b_transfer(uint8_t        channel,
  * =============================================================================
  */
 
-/* ra_iic_b_abort -- see header for full description. */
-ra_err_t ra_iic_b_abort(uint8_t channel)
+/* internal_i3c_i2c_abort -- see header for full description. */
+ra_err_t internal_i3c_i2c_abort(uint8_t channel)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
@@ -992,8 +1001,8 @@ ra_err_t ra_iic_b_abort(uint8_t channel)
   reg->BIE  = 0U;
   reg->NTIE = 0U;
 
-  internal_iic_b_stop(reg);
-  internal_iic_b_clear_bst(reg);
+  internal_i3c_i2c_stop(reg);
+  internal_i3c_i2c_clear_bst(reg);
   s_iic_b_state[channel].bus_held = false;
   return k_ra_ok;
 }
@@ -1003,40 +1012,40 @@ ra_err_t ra_iic_b_abort(uint8_t channel)
  * =============================================================================
  */
 
-/* ra_iic_b_scan -- see header for full description. */
-ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
+/* internal_i3c_i2c_scan -- see header for full description. */
+ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_scan: channel");
   RA_CHECK_NULL_PTR(out_acked, s_tag, "iic_b_scan: out_acked");
 
   *out_acked = false;
-  internal_iic_b_clear_bst(reg);
-  internal_iic_b_start(reg);
+  internal_i3c_i2c_clear_bst(reg);
+  internal_i3c_i2c_start(reg);
 
   const uint8_t address_byte =
-    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_rw_write);
-  ra_err_t err = internal_iic_b_send_address(reg, address_byte);
+    (uint8_t)(((uint32_t)target_7b << k_ra_i3c_i2c_addr_shift) | k_ra_i3c_i2c_addr_rw_write);
+  ra_err_t err = internal_i3c_i2c_send_address(reg, address_byte);
   if (err != k_ra_ok) {
-    internal_iic_b_stop(reg);
+    internal_i3c_i2c_stop(reg);
     return err;
   }
 
   /* Wait for either TENDF (slave ACKed the address) or NACKDF. */
   err = k_ra_err_hw_timeout;
-  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     const uint32_t bst = reg->BST;
-    if ((bst & (k_ra_iic_b_msk_bst_tendf | k_ra_iic_b_msk_bst_nackdf)) !=
+    if ((bst & (k_ra_i3c_i2c_msk_bst_tendf | k_ra_i3c_i2c_msk_bst_nackdf)) !=
         0U) { /* GCOVR_EXCL_BR_LINE */
-      *out_acked = (bst & k_ra_iic_b_msk_bst_nackdf) == 0U;
+      *out_acked = (bst & k_ra_i3c_i2c_msk_bst_nackdf) == 0U;
       err        = k_ra_ok;
       break;
     }
   }
 
   /* Stop is best-effort -- record the outcome of the probe regardless. */
-  internal_iic_b_stop(reg);
-  internal_iic_b_clear_bst(reg);
+  internal_i3c_i2c_stop(reg);
+  internal_i3c_i2c_clear_bst(reg);
   return err;
 }
 
@@ -1045,31 +1054,31 @@ ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
  * =============================================================================
  */
 
-/* ra_iic_b_get_errors -- see header for full description. */
-ra_err_t ra_iic_b_get_errors(uint8_t channel, uint8_t* out_mask)
+/* internal_i3c_i2c_get_errors -- see header for full description. */
+ra_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
-  volatile const r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  *out_mask = internal_iic_b_decode_errors(reg->BST);
+  *out_mask = internal_i3c_i2c_decode_errors(reg->BST);
   return k_ra_ok;
 }
 
-/* ra_iic_b_clear_errors -- see header for full description. */
-ra_err_t ra_iic_b_clear_errors(uint8_t channel)
+/* internal_i3c_i2c_clear_errors -- see header for full description. */
+ra_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
   enum : uint32_t {
-    k_ra_iic_b_err_clear_mask =
-      k_ra_iic_b_msk_bst_alf | k_ra_iic_b_msk_bst_nackdf | k_ra_iic_b_msk_bst_todf,
+    k_ra_i3c_i2c_err_clear_mask =
+      k_ra_i3c_i2c_msk_bst_alf | k_ra_i3c_i2c_msk_bst_nackdf | k_ra_i3c_i2c_msk_bst_todf,
   };
-  reg->BST = reg->BST & ~k_ra_iic_b_err_clear_mask;
+  reg->BST = reg->BST & ~k_ra_i3c_i2c_err_clear_mask;
   return k_ra_ok;
 }
 
@@ -1078,10 +1087,10 @@ ra_err_t ra_iic_b_clear_errors(uint8_t channel)
  * =============================================================================
  */
 
-/* ra_iic_b_attach_handler -- see header for full description. */
-ra_err_t ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx)
+/* internal_i3c_i2c_attach_handler -- see header for full description. */
+ra_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra_i3c_i2c_complete_fn_t fn, void* ctx)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
@@ -1093,10 +1102,10 @@ ra_err_t ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, voi
    * when the first interrupt-mode consumer arrives. */
   if (fn != nullptr) {
     /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
-    reg->BIE = k_ra_iic_b_msk_bie_nackdie | k_ra_iic_b_msk_bie_alie | k_ra_iic_b_msk_bie_todie |
-               k_ra_iic_b_msk_bie_tendie;
+    reg->BIE = k_ra_i3c_i2c_msk_bie_nackdie | k_ra_i3c_i2c_msk_bie_alie |
+               k_ra_i3c_i2c_msk_bie_todie | k_ra_i3c_i2c_msk_bie_tendie;
     /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
-    reg->NTIE = k_ra_iic_b_msk_ntie_tdbeie0 | k_ra_iic_b_msk_ntie_rdbfie0;
+    reg->NTIE = k_ra_i3c_i2c_msk_ntie_tdbeie0 | k_ra_i3c_i2c_msk_ntie_rdbfie0;
   } else {
     /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
     reg->BIE = 0U;
@@ -1106,43 +1115,17 @@ ra_err_t ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, voi
   return k_ra_ok;
 }
 
-/* ra_iic_b_dispatch_eri -- see header for full description. */
-void ra_iic_b_dispatch_eri(uint8_t channel)
+/* internal_i3c_i2c_dispatch_eri -- see header for full description. */
+void internal_i3c_i2c_dispatch_eri(uint8_t channel)
 {
-  if ((uint16_t)channel >= k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= k_ra_i3c_i2c_channel_count) {
     return;
   }
   uint8_t mask = 0U;
-  (void)ra_iic_b_get_errors(channel, &mask);
-  (void)ra_iic_b_clear_errors(channel);
-  const ra_iic_b_complete_fn_t cb = s_iic_b_state[channel].cb;
-  if (ra_iic_b_internal_should_dispatch(mask, (const void*)cb)) {
+  (void)internal_i3c_i2c_get_errors(channel, &mask);
+  (void)internal_i3c_i2c_clear_errors(channel);
+  const ra_i3c_i2c_complete_fn_t cb = s_iic_b_state[channel].cb;
+  if (internal_i3c_i2c_should_dispatch(mask, (const void*)cb)) {
     cb(s_iic_b_state[channel].ctx, mask);
   }
-}
-
-/* =============================================================================
- * Legacy NSC entry points -- thin pass-throughs that keep the
- * Ring-4 NSC veneer surface in libs/ra_nsc compiling unchanged.
- * The shims always issue STOP (restart = false) -- chained / repeated-
- * START sequences must use the Ring-3 ra_iic_b_* APIs directly.
- * =============================================================================
- */
-
-/* ra_iic_init -- see header for full description. */
-ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
-{
-  return ra_iic_b_init(channel, cfg);
-}
-
-/* ra_iic_write -- see header for full description. */
-ra_err_t ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len)
-{
-  return ra_iic_b_write(channel, target_7b, data, len, /*restart=*/false);
-}
-
-/* ra_iic_read -- see header for full description. */
-ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t len)
-{
-  return ra_iic_b_read(channel, target_7b, out, len, /*restart=*/false);
 }

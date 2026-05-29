@@ -132,7 +132,6 @@ static inline void internal_wfi(void)
  * =============================================================================
  */
 
-/* Implementation of ra_pwr_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_init(void)
 {
   ra_log_info(s_tag, "ra_pwr_init");
@@ -150,19 +149,16 @@ ra_err_t ra_pwr_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pwr_module_request (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_module_request(ra_mstp_t id)
 {
   return ra_mstp_enable(id);
 }
 
-/* Implementation of ra_pwr_module_release (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_module_release(ra_mstp_t id)
 {
   return ra_mstp_disable(id);
 }
 
-/* Implementation of ra_pwr_set_wake_source (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_set_wake_source(ra_pwr_wake_t source)
 {
   uint8_t reg = 0U;
@@ -178,7 +174,6 @@ ra_err_t ra_pwr_set_wake_source(ra_pwr_wake_t source)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pwr_clear_wake_source (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_clear_wake_source(ra_pwr_wake_t source)
 {
   uint8_t reg = 0U;
@@ -194,7 +189,6 @@ ra_err_t ra_pwr_clear_wake_source(ra_pwr_wake_t source)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pwr_wake_source_is_enabled (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_wake_source_is_enabled(ra_pwr_wake_t source, bool* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "wake_source_is_enabled: out_enabled");
@@ -209,13 +203,11 @@ ra_err_t ra_pwr_wake_source_is_enabled(ra_pwr_wake_t source, bool* out_enabled)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pwr_enter_sleep (see header for full contract) -- see header for the documented contract. */
 void ra_pwr_enter_sleep(void)
 {
   internal_wfi();
 }
 
-/* Implementation of ra_pwr_enter_software_standby (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_enter_software_standby(void)
 {
   /* Validate at least one wake source is armed -- entering Software
@@ -239,7 +231,6 @@ ra_err_t ra_pwr_enter_software_standby(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pwr_get_clock_hz (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz)
 {
   return ra_cgc_get_clock_hz(id, out_hz);

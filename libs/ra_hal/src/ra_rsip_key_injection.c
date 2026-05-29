@@ -416,7 +416,6 @@ static void ki_pack(uint8_t* dst, uint32_t type, const uint8_t* payload, uint32_
   ki_compute_mac(dst, mac_off, dst + mac_off);
 }
 
-/* Implementation of ra_rsip_key_inject_aes (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_key_inject_aes(uint8_t*               installed_key_buf,
                                 const uint8_t*         raw_key,
                                 ra_rsip_aes_key_bits_t key_bits)
@@ -432,7 +431,6 @@ ra_err_t ra_rsip_key_inject_aes(uint8_t*               installed_key_buf,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rsip_key_inject_rsa (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_key_inject_rsa(uint8_t*           installed_key_buf,
                                 const uint8_t*     raw_modulus,
                                 const uint8_t*     raw_exponent,
@@ -469,7 +467,6 @@ ra_err_t ra_rsip_key_inject_rsa(uint8_t*           installed_key_buf,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rsip_key_inject_ecc (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_key_inject_ecc(uint8_t*        installed_key_buf,
                                 ra_rsip_curve_t curve,
                                 const uint8_t*  raw_priv_or_pub,
@@ -490,7 +487,6 @@ ra_err_t ra_rsip_key_inject_ecc(uint8_t*        installed_key_buf,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rsip_key_validate (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_key_validate(const uint8_t*             installed_key_buf,
                               ra_rsip_wrapped_key_type_t expected_type)
 {

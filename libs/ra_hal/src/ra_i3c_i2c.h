@@ -1,5 +1,5 @@
 /**
- * @file ra_iic_b.h
+ * @file ra_i3c_i2c.h
  * @brief IIC_B (I3C unified IP, I2C-only mode) master driver
  *
  * @par Tag
@@ -14,29 +14,23 @@
  *
  * The public surface mirrors FSP ``r_iic_b_master`` minus DTC:
  *
- * - ``ra_iic_b_init``           configure + MSTP enable
- * - ``ra_iic_b_deinit``         disable + MSTP release
- * - ``ra_iic_b_set_clock``      retune SCL without tearing down
- * - ``ra_iic_b_write``          polling write to a 7-bit target,
+ * - ``internal_i3c_i2c_init``           configure + MSTP enable
+ * - ``internal_i3c_i2c_deinit``         disable + MSTP release
+ * - ``internal_i3c_i2c_set_clock``      retune SCL without tearing down
+ * - ``internal_i3c_i2c_write``          polling write to a 7-bit target,
  *                               with optional repeated-START suppression
  *                               of the trailing STOP
- * - ``ra_iic_b_read``           polling read from a 7-bit target,
+ * - ``internal_i3c_i2c_read``           polling read from a 7-bit target,
  *                               with optional repeated-START suppression
  *                               of the trailing STOP
- * - ``ra_iic_b_transfer``       combined write-then-RESTART-then-read
+ * - ``internal_i3c_i2c_transfer``       combined write-then-RESTART-then-read
  *                               (the typical "address a register, read
  *                               its contents" pattern)
- * - ``ra_iic_b_abort``          cancel an in-flight transaction and
+ * - ``internal_i3c_i2c_abort``          cancel an in-flight transaction and
  *                               return the channel to idle
- * - ``ra_iic_b_scan``           probe a 7-bit target without payload
- * - ``ra_iic_b_attach_handler`` register completion / error callback
- * - ``ra_iic_b_get_errors`` / ``ra_iic_b_clear_errors``
- *
- * The Ring-4 NSC veneers in ``libs/ra_nsc/src/ra_nsc_comms.c`` forward
- * to ``ra_iic_init`` / ``ra_iic_write`` / ``ra_iic_read`` here -- those
- * names are kept as thin pass-throughs so the cross-world surface keeps
- * compiling without churn during the retrofit. The pass-throughs use
- * ``restart = false`` (a single, self-contained transaction).
+ * - ``internal_i3c_i2c_scan``           probe a 7-bit target without payload
+ * - ``internal_i3c_i2c_attach_handler`` register completion / error callback
+ * - ``internal_i3c_i2c_get_errors`` / ``internal_i3c_i2c_clear_errors``
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -58,53 +52,53 @@ extern "C" {
  */
 
 /**
- * @enum ra_iic_b_speed_t
+ * @enum ra_i3c_i2c_speed_t
  * @brief Supported bus speeds (I2C compatibility mode).
  *
  * @details
  * Per HUM Ch 40.1.1 Table 40.1 "I2C specifications", p 2445.
  */
 typedef enum : uint32_t {
-  k_ra_iic_b_speed_standard  = 100000U,  /**< 100 kHz Sm. */
-  k_ra_iic_b_speed_fast      = 400000U,  /**< 400 kHz Fm. */
-  k_ra_iic_b_speed_fast_plus = 1000000U, /**< 1 MHz Fm+.  */
-} ra_iic_b_speed_t;
+  k_ra_i3c_i2c_speed_standard  = 100000U,  /**< 100 kHz Sm. */
+  k_ra_i3c_i2c_speed_fast      = 400000U,  /**< 400 kHz Fm. */
+  k_ra_i3c_i2c_speed_fast_plus = 1000000U, /**< 1 MHz Fm+.  */
+} ra_i3c_i2c_speed_t;
 
 /**
- * @struct ra_iic_b_cfg_t
- * @brief Configuration descriptor for ``ra_iic_b_init``.
+ * @struct ra_i3c_i2c_cfg_t
+ * @brief Configuration descriptor for ``internal_i3c_i2c_init``.
  *
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
- * each member is read in ``ra_iic_b_init`` in
- * ``libs/ra_hal/src/ra_iic_b.c``.
+ * each member is read in ``internal_i3c_i2c_init`` in
+ * ``libs/ra_hal/src/ra_i3c_i2c.c``.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t bus_hz;   /**< Target I2C clock rate in Hz. */
   uint32_t pclka_hz; /**< Current PCLKA / I3CCLK frequency for STDBR calc. */
-} ra_iic_b_cfg_t;
+} ra_i3c_i2c_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
- * @enum ra_iic_b_err_mask_t
- * @brief Error-mask bits returned by ``ra_iic_b_get_errors``.
+ * @enum ra_i3c_i2c_err_mask_t
+ * @brief Error-mask bits returned by ``internal_i3c_i2c_get_errors``.
  */
 typedef enum : uint8_t {
-  k_ra_iic_b_err_none     = 0x00U, /**< No latched error. */
-  k_ra_iic_b_err_arb_lost = 0x01U, /**< BST.ALF set.      */
-  k_ra_iic_b_err_nack     = 0x02U, /**< BST.NACKDF set.   */
-  k_ra_iic_b_err_timeout  = 0x04U, /**< BST.TODF set.     */
-} ra_iic_b_err_mask_t;
+  k_ra_i3c_i2c_err_none     = 0x00U, /**< No latched error. */
+  k_ra_i3c_i2c_err_arb_lost = 0x01U, /**< BST.ALF set.      */
+  k_ra_i3c_i2c_err_nack     = 0x02U, /**< BST.NACKDF set.   */
+  k_ra_i3c_i2c_err_timeout  = 0x04U, /**< BST.TODF set.     */
+} ra_i3c_i2c_err_mask_t;
 
 /**
- * @typedef ra_iic_b_complete_fn_t
+ * @typedef ra_i3c_i2c_complete_fn_t
  * @brief Transfer-complete / error callback signature.
  *
  * @param[in] ctx      Caller-supplied context.
- * @param[in] err_mask OR of ``k_ra_iic_b_err_*`` bits; zero on success.
+ * @param[in] err_mask OR of ``k_ra_i3c_i2c_err_*`` bits; zero on success.
  */
-typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
+typedef void (*ra_i3c_i2c_complete_fn_t)(void* ctx, uint8_t err_mask);
 
 /* =============================================================================
  * Lifecycle
@@ -127,12 +121,12 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
  * @post On success ``BCTL.BUSE`` is set and the channel is ready to
- *       service ``ra_iic_b_write`` / ``ra_iic_b_read``.
+ *       service ``internal_i3c_i2c_write`` / ``internal_i3c_i2c_read``.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg);
+[[nodiscard]] ra_err_t internal_i3c_i2c_init(uint8_t channel, const ra_i3c_i2c_cfg_t* cfg);
 
 /**
  * @brief Tear down the IIC_B channel.
@@ -148,7 +142,7 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_deinit(uint8_t channel);
+[[nodiscard]] ra_err_t internal_i3c_i2c_deinit(uint8_t channel);
 
 /**
  * @brief Update the bus clock without tearing the channel down.
@@ -166,7 +160,8 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
+[[nodiscard]] ra_err_t
+internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
 
 /* =============================================================================
  * Polling transfers
@@ -186,7 +181,7 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  * 4. Push each payload byte into NTDTBP0 once NTST.TDBEF0 sets.
  * 5. If ``restart == false`` issue a STOP; otherwise leave the bus
  *    held and return -- the caller is expected to follow this call
- *    immediately with another ``ra_iic_b_write`` / ``ra_iic_b_read``
+ *    immediately with another ``internal_i3c_i2c_write`` / ``internal_i3c_i2c_read``
  *    that will inject a repeated-START rather than a fresh START.
  *
  * State machine:
@@ -220,8 +215,11 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len, bool restart);
+[[nodiscard]] ra_err_t internal_i3c_i2c_write(uint8_t        channel,
+                                              uint8_t        target_7b,
+                                              const uint8_t* data,
+                                              uint32_t       len,
+                                              bool           restart);
 
 /**
  * @brief Polling read of ``len`` bytes from a 7-bit target.
@@ -231,7 +229,7 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  *
  * 1. Reject the call if the bus is busy (BCST.BFREF == 0) AND no
  *    repeated-START is in progress (i.e. caller did not hold the bus
- *    via a prior ``ra_iic_b_write(..., restart=true)``).
+ *    via a prior ``internal_i3c_i2c_write(..., restart=true)``).
  * 2. Issue a START (or RESTART when the bus is already held).
  * 3. Send ``(target_7b << 1) | 1`` as the address byte.
  * 4. Drain ``len`` bytes from NTDTBP0; ACK every byte except the
@@ -262,7 +260,7 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart);
+internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart);
 
 /**
  * @brief Combined write-then-RESTART-then-read in a single bus
@@ -271,8 +269,8 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @details
  * Convenience wrapper for the most common I2C pattern: write a
  * register address, then read its contents back from the same target.
- * Internally invokes ``ra_iic_b_write(..., restart=true)`` followed by
- * ``ra_iic_b_read(..., restart=false)``. State machine:
+ * Internally invokes ``internal_i3c_i2c_write(..., restart=true)`` followed by
+ * ``internal_i3c_i2c_read(..., restart=false)``. State machine:
  *
  * ``IDLE -> ADDR_TX -> DATA_TX -> RESTART -> ADDR_TX(read) -> DATA_RX -> STOP -> IDLE``
  *
@@ -302,12 +300,12 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_transfer(uint8_t        channel,
-                                         uint8_t        target_7b,
-                                         const uint8_t* tx,
-                                         uint32_t       tx_len,
-                                         uint8_t*       rx,
-                                         uint32_t       rx_len);
+[[nodiscard]] ra_err_t internal_i3c_i2c_transfer(uint8_t        channel,
+                                                 uint8_t        target_7b,
+                                                 const uint8_t* tx,
+                                                 uint32_t       tx_len,
+                                                 uint8_t*       rx,
+                                                 uint32_t       rx_len);
 
 /**
  * @brief Cancel any in-flight transaction and return the channel to
@@ -321,7 +319,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * 2. Issue STOP (unconditional). The hardware will eventually drive
  *    SPCNDDF; the polling helpers don't gate on it because no further
  *    bus traffic is expected from this channel until the next
- *    ``ra_iic_b_write`` / ``_read`` clears BST again.
+ *    ``internal_i3c_i2c_write`` / ``_read`` clears BST again.
  * 3. Clear all latched bus-status flags.
  *
  * @param[in] channel Channel index.
@@ -335,7 +333,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_abort(uint8_t channel);
+[[nodiscard]] ra_err_t internal_i3c_i2c_abort(uint8_t channel);
 
 /**
  * @brief Probe whether a 7-bit address ACKs.
@@ -359,7 +357,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked);
+[[nodiscard]] ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked);
 
 /* =============================================================================
  * Status
@@ -370,7 +368,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @brief Read latched error flags from BST (AL / NACKDF / TODF).
  *
  * @param[in]  channel  Channel index.
- * @param[out] out_mask OR of ``k_ra_iic_b_err_*`` bits.
+ * @param[out] out_mask OR of ``k_ra_i3c_i2c_err_*`` bits.
  *
  * @return ``ra_err_t``.
  * @retval k_ra_ok              ``out_mask`` populated.
@@ -379,7 +377,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_get_errors(uint8_t channel, uint8_t* out_mask);
+[[nodiscard]] ra_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask);
 
 /**
  * @brief Clear latched error flags in BST.
@@ -392,7 +390,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_clear_errors(uint8_t channel);
+[[nodiscard]] ra_err_t internal_i3c_i2c_clear_errors(uint8_t channel);
 
 /* =============================================================================
  * Interrupt path
@@ -417,7 +415,7 @@ ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bo
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx);
+internal_i3c_i2c_attach_handler(uint8_t channel, ra_i3c_i2c_complete_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch the bus-error IRQ source.
@@ -425,7 +423,7 @@ ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx);
  * @details
  * Test-callable shim that mirrors the ERI handler in FSP's
  * ``r_iic_b_master``: it samples BST, masks the latched error bits
- * back to ``k_ra_iic_b_err_*``, clears them, and fires the registered
+ * back to ``k_ra_i3c_i2c_err_*``, clears them, and fires the registered
  * callback with that mask if it is non-zero.
  *
  * @param[in] channel Channel index.
@@ -438,64 +436,4 @@ ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx);
  * @post No global state is modified on the error path.
  * @note Thread safety: see the header declaration.
  */
-void ra_iic_b_dispatch_eri(uint8_t channel);
-
-/* =============================================================================
- * Legacy NSC-veneer entry points -- thin pass-throughs
- * =============================================================================
- *
- * The Ring 4 NSC veneers (``ra_nsc_iic_init`` etc.) call ``ra_iic_init``
- * / ``ra_iic_write`` / ``ra_iic_read`` directly. We keep those names
- * one-to-one with the IIC_B implementations so the cross-world
- * surface does not have to be re-wired in the same diff. The legacy
- * shims always issue STOP (``restart == false``) -- a multi-segment
- * transaction in NS code must call ``ra_nsc_iic_*`` once per segment
- * or land its own veneer that takes the ``restart`` flag.
- */
-
-/** @brief Type alias used by the NSC veneer surface. */
-typedef ra_iic_b_cfg_t ra_iic_cfg_t;
-
-/**
- * @brief NSC pass-through: forwards to ``ra_iic_b_init``.
- *
- * @param[in] channel Channel index.
- * @param[in] cfg     Configuration descriptor.
- *
- * @return Forwarded ``ra_err_t``.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg);
-
-/**
- * @brief NSC pass-through: forwards to ``ra_iic_b_write`` with
- *        ``restart = false``.
- *
- * @param[in] channel   Channel index.
- * @param[in] target_7b 7-bit slave address.
- * @param[in] data      Send buffer.
- * @param[in] len       Byte count.
- *
- * @return Forwarded ``ra_err_t``.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t
-ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len);
-
-/**
- * @brief NSC pass-through: forwards to ``ra_iic_b_read`` with
- *        ``restart = false``.
- *
- * @param[in]  channel   Channel index.
- * @param[in]  target_7b 7-bit slave address.
- * @param[out] out       Receive buffer.
- * @param[in]  len       Byte count.
- *
- * @return Forwarded ``ra_err_t``.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t len);
-
-#ifdef __cplusplus
-}
-#endif
+void internal_i3c_i2c_dispatch_eri(uint8_t channel);

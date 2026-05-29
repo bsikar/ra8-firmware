@@ -64,7 +64,6 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
  * ---------------------------------------------------------------------------
  */
 
-/* Implementation of ra_reflow_parse_xhtml (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_parse_xhtml(ra_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len)
 {
   if (engine == nullptr || xhtml_buf == nullptr) {

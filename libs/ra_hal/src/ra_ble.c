@@ -123,9 +123,7 @@ static ra_ble_state_t s_state = {};
  * =============================================================================
  */
 
-/* Implementation of ra_ble_test_reset_capture (see header for full contract) -- see header for the documented contract. */
-void ra_ble_test_reset_capture(void);
-/* Implementation of ra_ble_test_inject_rx (see header for full contract) -- see header for the documented contract. */
+void           ra_ble_test_reset_capture(void);
 void           ra_ble_test_inject_rx(const uint8_t* bytes, uint16_t len);
 const uint8_t* ra_ble_test_tx_capture(uint16_t* out_len);
 
@@ -213,7 +211,6 @@ static uint8_t internal_rx_byte(uint8_t* out)
  * =============================================================================
  */
 
-/* Implementation of ra_ble_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_open(const ra_ble_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be NULL");
@@ -253,7 +250,6 @@ ra_err_t ra_ble_open(const ra_ble_config_t* cfg)
   return k_ra_err_hw_timeout;
 }
 
-/* Implementation of ra_ble_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_close(void)
 {
   if (s_state.open == 0U) {
@@ -272,7 +268,6 @@ ra_err_t ra_ble_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_ble_hci_send_command (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_hci_send_command(uint16_t opcode, const uint8_t* params, uint8_t params_len)
 {
   if (s_state.open == 0U) {
@@ -294,7 +289,6 @@ ra_err_t ra_ble_hci_send_command(uint16_t opcode, const uint8_t* params, uint8_t
   return k_ra_ok;
 }
 
-/* Implementation of ra_ble_hci_send_acl_data (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_hci_send_acl_data(uint16_t handle, const uint8_t* payload, uint16_t len)
 {
   if (s_state.open == 0U) {
@@ -325,7 +319,6 @@ ra_err_t ra_ble_hci_send_acl_data(uint16_t handle, const uint8_t* payload, uint1
  * =============================================================================
  */
 
-/* Implementation of ra_ble_attach_event_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_attach_event_handler(ra_ble_event_fn_t fn, void* ctx)
 {
   s_state.evt_fn  = fn;
@@ -333,7 +326,6 @@ ra_err_t ra_ble_attach_event_handler(ra_ble_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ble_attach_acl_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_attach_acl_handler(ra_ble_acl_fn_t fn, void* ctx)
 {
   s_state.acl_fn  = fn;
@@ -415,7 +407,6 @@ static ra_err_t internal_dispatch_acl(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ble_dispatch (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_dispatch(void)
 {
   if (s_state.open == 0U) {
@@ -448,14 +439,12 @@ ra_err_t ra_ble_dispatch(void)
  * =============================================================================
  */
 
-/* Implementation of ra_ble_set_random_address (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_set_random_address(const uint8_t addr[k_ra_ble_addr_bytes])
 {
   RA_CHECK_NULL_PTR(addr, s_tag, "addr must not be NULL");
   return ra_ble_hci_send_command(k_ra_ble_op_le_set_random_address, addr, k_ra_ble_addr_bytes);
 }
 
-/* Implementation of ra_ble_set_advertising_data (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_set_advertising_data(const uint8_t* data, uint8_t len)
 {
   if (len > k_ra_ble_adv_data_max) {
@@ -476,14 +465,12 @@ ra_err_t ra_ble_set_advertising_data(const uint8_t* data, uint8_t len)
   return ra_ble_hci_send_command(k_ra_ble_op_le_set_adv_data, buf, (uint8_t)(1U + len));
 }
 
-/* Implementation of ra_ble_set_advertising_enable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_set_advertising_enable(uint8_t enable)
 {
   const uint8_t param = (enable != 0U) ? 1U : 0U;
   return ra_ble_hci_send_command(k_ra_ble_op_le_set_adv_enable, &param, 1U);
 }
 
-/* Implementation of ra_ble_scan_start (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_scan_start(uint8_t active, uint16_t interval, uint16_t window)
 {
   if ((interval < k_ra_ble_scan_min) || (interval > k_ra_ble_scan_max)) {
@@ -530,7 +517,6 @@ ra_err_t ra_ble_scan_start(uint8_t active, uint16_t interval, uint16_t window)
  * =============================================================================
  */
 
-/* Implementation of ra_ble_test_reset_capture (see header for full contract) -- see header for the documented contract. */
 void ra_ble_test_reset_capture(void)
 {
   s_state.tx_capture_len = 0U;
@@ -538,7 +524,6 @@ void ra_ble_test_reset_capture(void)
   s_state.rx_inject_pos  = 0U;
 }
 
-/* Implementation of ra_ble_test_inject_rx (see header for full contract) -- see header for the documented contract. */
 void ra_ble_test_inject_rx(const uint8_t* bytes, uint16_t len)
 {
   if ((bytes == nullptr) || (len == 0U)) {

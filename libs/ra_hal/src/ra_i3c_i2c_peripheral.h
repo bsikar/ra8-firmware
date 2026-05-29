@@ -1,12 +1,12 @@
 /**
- * @file ra_iic_b_peripheral.h
+ * @file ra_i3c_i2c_peripheral.h
  * @brief IIC_B (I3C in I2C-only mode) peripheral driver -- mirrors FSP ``r_iic_b_peripheral``
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Peripheral-side companion to ``ra_iic_b`` (controller). The IIC_B block is
+ * Peripheral-side companion to ``ra_i3c_i2c`` (controller). The IIC_B block is
  * documented in HUM Ch 40 "I3C Bus Interface (I3C)" pages 2445..2701.
  * In peripheral mode the host bus controller addresses this device via its
  * 7-bit MTAR / SDA address; matching transactions raise NTST.RDBFF0 /
@@ -14,10 +14,10 @@
  * accordingly.
  *
  * Public surface (mirrors FSP ``R_IIC_B_PERIPHERAL_*``):
- *   - ``ra_iic_b_peripheral_open`` / ``_close``
- *   - ``ra_iic_b_peripheral_send`` -- respond to a controller-read
- *   - ``ra_iic_b_peripheral_receive`` -- consume a controller-write
- *   - ``ra_iic_b_peripheral_status``
+ *   - ``internal_i3c_i2c_peripheral_open`` / ``_close``
+ *   - ``internal_i3c_i2c_peripheral_send`` -- respond to a controller-read
+ *   - ``internal_i3c_i2c_peripheral_receive`` -- consume a controller-write
+ *   - ``internal_i3c_i2c_peripheral_status``
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -34,8 +34,8 @@ extern "C" {
 #include "ra_err.h"
 
 /**
- * @struct ra_iic_b_peripheral_cfg_t
- * @brief Configuration descriptor for ``ra_iic_b_peripheral_open``.
+ * @struct ra_i3c_i2c_peripheral_cfg_t
+ * @brief Configuration descriptor for ``internal_i3c_i2c_peripheral_open``.
  *
  * @details
  * ``peripheral_addr_7b`` is programmed into the controller-target-address-register
@@ -44,28 +44,28 @@ extern "C" {
  * NTST.RDBFF0 / TDBEF0 to flag inbound / outbound bytes.
  *
  * cppcheck cannot see tests/ so it flags every field as unused; each
- * member is read in ``ra_iic_b_peripheral_open`` /
- * ``libs/ra_hal/src/ra_iic_b_peripheral.c``.
+ * member is read in ``internal_i3c_i2c_peripheral_open`` /
+ * ``libs/ra_hal/src/ra_i3c_i2c_peripheral.c``.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t peripheral_addr_7b; /**< 7-bit own address.                        */
   uint8_t general_call;       /**< Non-zero -> answer general-call address.  */
-} ra_iic_b_peripheral_cfg_t;
+} ra_i3c_i2c_peripheral_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
- * @enum ra_iic_b_peripheral_status_t
+ * @enum ra_i3c_i2c_peripheral_status_t
  * @brief Peripheral-side status mask.
  */
 typedef enum : uint8_t {
-  k_ra_iic_b_peripheral_status_idle     = 0x00U, /**< No latched event.          */
-  k_ra_iic_b_peripheral_status_aas      = 0x01U, /**< Address matched.           */
-  k_ra_iic_b_peripheral_status_rx_full  = 0x02U, /**< NTST.RDBFF0 set.           */
-  k_ra_iic_b_peripheral_status_tx_empty = 0x04U, /**< NTST.TDBEF0 set.           */
-  k_ra_iic_b_peripheral_status_stop     = 0x08U, /**< BST.SPCNDDF set.           */
-  k_ra_iic_b_peripheral_status_nack     = 0x10U, /**< BST.NACKDF set.            */
-} ra_iic_b_peripheral_status_t;
+  k_ra_i3c_i2c_peripheral_status_idle     = 0x00U, /**< No latched event.          */
+  k_ra_i3c_i2c_peripheral_status_aas      = 0x01U, /**< Address matched.           */
+  k_ra_i3c_i2c_peripheral_status_rx_full  = 0x02U, /**< NTST.RDBFF0 set.           */
+  k_ra_i3c_i2c_peripheral_status_tx_empty = 0x04U, /**< NTST.TDBEF0 set.           */
+  k_ra_i3c_i2c_peripheral_status_stop     = 0x08U, /**< BST.SPCNDDF set.           */
+  k_ra_i3c_i2c_peripheral_status_nack     = 0x10U, /**< BST.NACKDF set.            */
+} ra_i3c_i2c_peripheral_status_t;
 
 /**
  * @brief Open a channel as an IIC_B peripheral.
@@ -80,8 +80,8 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_peripheral_open(uint8_t                          channel,
-                                                const ra_iic_b_peripheral_cfg_t* cfg);
+[[nodiscard]] ra_err_t internal_i3c_i2c_peripheral_open(uint8_t                            channel,
+                                                        const ra_i3c_i2c_peripheral_cfg_t* cfg);
 
 /**
  * @brief Close the peripheral channel.
@@ -94,7 +94,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_peripheral_close(uint8_t channel);
+[[nodiscard]] ra_err_t internal_i3c_i2c_peripheral_close(uint8_t channel);
 
 /**
  * @brief Push ``len`` bytes into NTDTBP0 in response to a controller-read.
@@ -111,7 +111,8 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len);
+[[nodiscard]] ra_err_t
+internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len);
 
 /**
  * @brief Drain ``len`` bytes from NTDTBP0 after a controller-write.
@@ -128,13 +129,14 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len);
+[[nodiscard]] ra_err_t
+internal_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len);
 
 /**
  * @brief Read latched peripheral-side status mask.
  *
  * @param[in]  channel  Channel index.
- * @param[out] out_mask OR of ``k_ra_iic_b_peripheral_status_*`` bits (non-NULL).
+ * @param[out] out_mask OR of ``k_ra_i3c_i2c_peripheral_status_*`` bits (non-NULL).
  *
  * @return ``ra_err_t``.
  * @retval k_ra_ok               Snapshot populated.
@@ -143,7 +145,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_iic_b_peripheral_status(uint8_t channel, uint8_t* out_mask);
+[[nodiscard]] ra_err_t internal_i3c_i2c_peripheral_status(uint8_t channel, uint8_t* out_mask);
 
 #ifdef __cplusplus
 }

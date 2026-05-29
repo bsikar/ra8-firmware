@@ -417,7 +417,6 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
   return k_ra_ok;
 }
 
-/* Implementation of ra_drw_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_drw_dispatch(void)
 {
   /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */

@@ -84,7 +84,6 @@ static volatile uint8_t* internal_elsegr(uint8_t group)
  * =============================================================================
  */
 
-/* Implementation of ra_elc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_elc_init(void)
 {
   ra_log_info(s_tag, "ra_elc_init");
@@ -112,7 +111,6 @@ ra_err_t ra_elc_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_elc_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_elc_deinit(void)
 {
   /* HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817 */
@@ -120,7 +118,6 @@ ra_err_t ra_elc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_elc);
 }
 
-/* Implementation of ra_elc_link (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_elc_link(uint8_t elsr_index, ra_elc_event_t event)
 {
   if (elsr_index >= k_ra_elc_elsr_count) {
@@ -131,7 +128,6 @@ ra_err_t ra_elc_link(uint8_t elsr_index, ra_elc_event_t event)
   return k_ra_ok;
 }
 
-/* Implementation of ra_elc_unlink (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_elc_unlink(uint8_t elsr_index)
 {
   if (elsr_index >= k_ra_elc_elsr_count) {
@@ -142,7 +138,6 @@ ra_err_t ra_elc_unlink(uint8_t elsr_index)
   return k_ra_ok;
 }
 
-/* Implementation of ra_elc_software_trigger (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_elc_software_trigger(uint8_t event_index)
 {
   if (event_index >= k_ra_elc_segr_count) {
@@ -160,7 +155,6 @@ ra_err_t ra_elc_software_trigger(uint8_t event_index)
   return k_ra_ok;
 }
 
-/* Implementation of ra_elc_is_enabled (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_elc_is_enabled(bool* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "is_enabled out");

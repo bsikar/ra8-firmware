@@ -1364,7 +1364,6 @@ static void internal_ra_mipi_dsi_call_user(ra_mipi_dsi_event_t event, uint32_t m
   }
 }
 
-/* Implementation of ra_mipi_dsi_dispatch_seq0 (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_seq0(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1375,7 +1374,6 @@ void ra_mipi_dsi_dispatch_seq0(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq0, bits);
 }
 
-/* Implementation of ra_mipi_dsi_dispatch_seq1 (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_seq1(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1386,7 +1384,6 @@ void ra_mipi_dsi_dispatch_seq1(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq1, bits);
 }
 
-/* Implementation of ra_mipi_dsi_dispatch_video (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_video(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1404,7 +1401,6 @@ void ra_mipi_dsi_dispatch_video(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_video, bits);
 }
 
-/* Implementation of ra_mipi_dsi_dispatch_receive (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_receive(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1427,7 +1423,6 @@ void ra_mipi_dsi_dispatch_receive(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_receive, bits);
 }
 
-/* Implementation of ra_mipi_dsi_dispatch_fatal (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_fatal(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1438,7 +1433,6 @@ void ra_mipi_dsi_dispatch_fatal(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_fatal, bits);
 }
 
-/* Implementation of ra_mipi_dsi_dispatch_phy (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_phy(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1449,7 +1443,6 @@ void ra_mipi_dsi_dispatch_phy(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_phy, bits);
 }
 
-/* Implementation of ra_mipi_dsi_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch(void)
 {
   /* HUM Ch 65.2 "ISR : Interrupt Status Register", p 3840 */

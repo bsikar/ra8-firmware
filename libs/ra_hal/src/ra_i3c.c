@@ -27,14 +27,14 @@
 
 #include <stdint.h>
 
+#include "ra8d2_i3c_i2c_regs.h"
 #include "ra8d2_i3c_regs.h"
-#include "ra8d2_iic_b_regs.h"
 #include "ra8d2_mstp_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_i3c_i2c.h"
+#include "ra_i3c_i2c_peripheral.h"
 #include "ra_i3c_internal.h"
-#include "ra_iic_b.h"
-#include "ra_iic_b_peripheral.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -103,7 +103,7 @@ typedef struct {
 } ra_i3c_chan_state_t;
 
 /** @brief One state slot per I3C channel (RA8D2 exposes I3C0 only). */
-static ra_i3c_chan_state_t s_i3c_chan[k_ra_iic_b_channel_count];
+static ra_i3c_chan_state_t s_i3c_chan[k_ra_i3c_i2c_channel_count];
 
 /* =============================================================================
  * Private helpers
@@ -304,18 +304,17 @@ static void priv_ra_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_init(uint8_t channel, const ra_i3c_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "i3c_init: cfg");
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
   if (cfg->mode == k_ra_i3c_mode_i2c) {
     /* I2C-compat: delegate bring-up to the legacy IIC_B path. */
-    const ra_iic_b_cfg_t bcfg = {.bus_hz = cfg->bus_hz, .pclka_hz = cfg->pclka_hz};
-    const ra_err_t       e    = ra_iic_b_init(channel, &bcfg);
+    const ra_i3c_i2c_cfg_t bcfg = {.bus_hz = cfg->bus_hz, .pclka_hz = cfg->pclka_hz};
+    const ra_err_t         e    = internal_i3c_i2c_init(channel, &bcfg);
     if (e != k_ra_ok) {
       return e;
     }
@@ -340,15 +339,14 @@ ra_err_t ra_i3c_init(uint8_t channel, const ra_i3c_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_deinit(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   ra_err_t err;
   if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
-    err = ra_iic_b_deinit(channel);
+    err = internal_i3c_i2c_deinit(channel);
   } else {
     volatile r_i3c_regs_t* reg = ra_i3c();
     /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
@@ -365,7 +363,6 @@ ra_err_t ra_i3c_deinit(uint8_t channel)
   return err;
 }
 
-/* Implementation of ra_i3c_set_address (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_set_address(uint32_t addr)
 {
   if (addr > k_ra_i3c_msdvad_addr_max) {
@@ -379,7 +376,6 @@ ra_err_t ra_i3c_set_address(uint32_t addr)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_bus_enable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_bus_enable(bool enable)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -393,7 +389,6 @@ ra_err_t ra_i3c_bus_enable(bool enable)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -402,7 +397,6 @@ ra_err_t ra_i3c_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_clear_status(uint32_t mask)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -412,10 +406,9 @@ ra_err_t ra_i3c_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_attach_handler(uint8_t channel, ra_i3c_event_fn_t fn, void* ctx)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   s_i3c_fn  = fn;
@@ -423,10 +416,9 @@ ra_err_t ra_i3c_attach_handler(uint8_t channel, ra_i3c_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_i3c_dispatch(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return;
   }
   const ra_i3c_event_fn_t fn  = s_i3c_fn;
@@ -434,8 +426,8 @@ void ra_i3c_dispatch(uint8_t channel)
   if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
     /* Surface the latched I2C error mask through the public IIC_B API. */
     uint8_t mask = 0U;
-    (void)ra_iic_b_get_errors(channel, &mask);
-    (void)ra_iic_b_clear_errors(channel);
+    (void)internal_i3c_i2c_get_errors(channel, &mask);
+    (void)internal_i3c_i2c_clear_errors(channel);
     if (fn != nullptr) {
       fn(ctx, (uint32_t)mask);
     }
@@ -450,7 +442,6 @@ void ra_i3c_dispatch(uint8_t channel)
   }
 }
 
-/* Implementation of ra_i3c_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_enter_stop(void)
 {
   /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
@@ -459,7 +450,6 @@ ra_err_t ra_i3c_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
 
-/* Implementation of ra_i3c_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_i3c);
@@ -470,7 +460,6 @@ ra_err_t ra_i3c_exit_stop(void)
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_dynamic_address_assign (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_dynamic_address_assign(ra_i3c_daa_target_t* targets, uint8_t target_count)
 {
   RA_CHECK_NULL_PTR(targets, s_tag, "targets must not be nullptr");
@@ -519,7 +508,6 @@ ra_err_t ra_i3c_dynamic_address_assign(ra_i3c_daa_target_t* targets, uint8_t tar
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_set_dynamic_address (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr)
 {
   if ((static_addr > (uint8_t)k_ra_i3c_addr_mask) || (dynamic_addr > (uint8_t)k_ra_i3c_addr_mask)) {
@@ -539,7 +527,6 @@ ra_err_t ra_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_reset_dynamic_addresses (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_reset_dynamic_addresses(void)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -556,7 +543,6 @@ ra_err_t ra_i3c_reset_dynamic_addresses(void)
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_send_ccc (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payload, uint8_t len)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -594,7 +580,6 @@ ra_err_t ra_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payloa
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_recv_ccc (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len, uint8_t* got_len)
 {
@@ -623,18 +608,17 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, bool restart)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (!s_i3c_chan[channel].initialized) {
     return k_ra_err_invalid_state;
   }
   if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
-    return ra_iic_b_write(channel, addr, data, len, restart);
+    return internal_i3c_i2c_write(channel, addr, data, len, restart);
   }
   (void)restart;
   const uint8_t target_addr = addr;
@@ -670,17 +654,16 @@ ra_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, b
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len, bool restart)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (!s_i3c_chan[channel].initialized) {
     return k_ra_err_invalid_state;
   }
   if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
-    return ra_iic_b_read(channel, addr, buf, len, restart);
+    return internal_i3c_i2c_read(channel, addr, buf, len, restart);
   }
   (void)restart;
   const uint8_t target_addr = addr;
@@ -707,7 +690,6 @@ ra_err_t ra_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len, 
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_transfer (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_transfer(uint8_t        channel,
                          uint8_t        addr,
                          const uint8_t* wr,
@@ -715,73 +697,68 @@ ra_err_t ra_i3c_transfer(uint8_t        channel,
                          uint8_t*       rd,
                          uint32_t       rd_len)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_transfer(channel, addr, wr, wr_len, rd, rd_len);
+  return internal_i3c_i2c_transfer(channel, addr, wr, wr_len, rd, rd_len);
 }
 
-/* Implementation of ra_i3c_set_clock (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_set_clock(channel, bus_hz, pclka_hz);
+  return internal_i3c_i2c_set_clock(channel, bus_hz, pclka_hz);
 }
 
-/* Implementation of ra_i3c_scan (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_scan(uint8_t channel, uint8_t addr, bool* out_acked)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_scan(channel, addr, out_acked);
+  return internal_i3c_i2c_scan(channel, addr, out_acked);
 }
 
-/* Implementation of ra_i3c_get_errors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_get_errors(uint8_t channel, uint8_t* out_mask)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_get_errors(channel, out_mask);
+  return internal_i3c_i2c_get_errors(channel, out_mask);
 }
 
-/* Implementation of ra_i3c_clear_errors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_clear_errors(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_clear_errors(channel);
+  return internal_i3c_i2c_clear_errors(channel);
 }
 
-/* Implementation of ra_i3c_abort (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_abort(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_abort(channel);
+  return internal_i3c_i2c_abort(channel);
 }
 
 /* =============================================================================
@@ -789,18 +766,17 @@ ra_err_t ra_i3c_abort(uint8_t channel)
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_peripheral_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_peripheral_open(uint8_t channel, const ra_i3c_peripheral_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "peripheral_open: cfg");
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   /* Responder open is a self-contained bring-up; mark the channel I2C so
    * the close/send/receive/status guards accept it. */
-  const ra_iic_b_peripheral_cfg_t bcfg = {.peripheral_addr_7b = cfg->peripheral_addr_7b,
-                                          .general_call       = cfg->general_call};
-  const ra_err_t                  err  = ra_iic_b_peripheral_open(channel, &bcfg);
+  const ra_i3c_i2c_peripheral_cfg_t bcfg = {.peripheral_addr_7b = cfg->peripheral_addr_7b,
+                                            .general_call       = cfg->general_call};
+  const ra_err_t                    err  = internal_i3c_i2c_peripheral_open(channel, &bcfg);
   if (err == k_ra_ok) {
     s_i3c_chan[channel].mode        = k_ra_i3c_mode_i2c;
     s_i3c_chan[channel].initialized = true;
@@ -808,52 +784,48 @@ ra_err_t ra_i3c_peripheral_open(uint8_t channel, const ra_i3c_peripheral_cfg_t* 
   return err;
 }
 
-/* Implementation of ra_i3c_peripheral_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_peripheral_close(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_peripheral_close(channel);
+  return internal_i3c_i2c_peripheral_close(channel);
 }
 
-/* Implementation of ra_i3c_peripheral_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_peripheral_send(channel, data, len);
+  return internal_i3c_i2c_peripheral_send(channel, data, len);
 }
 
-/* Implementation of ra_i3c_peripheral_receive (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_peripheral_receive(channel, buf, len);
+  return internal_i3c_i2c_peripheral_receive(channel, buf, len);
 }
 
-/* Implementation of ra_i3c_peripheral_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_peripheral_status(uint8_t channel, uint8_t* out_mask)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+  if ((uint16_t)channel >= (uint16_t)k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
     return k_ra_err_invalid_state;
   }
-  return ra_iic_b_peripheral_status(channel, out_mask);
+  return internal_i3c_i2c_peripheral_status(channel, out_mask);
 }
 
 /* =============================================================================
@@ -861,7 +833,6 @@ ra_err_t ra_i3c_peripheral_status(uint8_t channel, uint8_t* out_mask)
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_set_hdr_mode (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -888,7 +859,6 @@ ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_ibi_enable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_ibi_enable(uint8_t target_addr)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -906,13 +876,11 @@ ra_err_t ra_i3c_ibi_enable(uint8_t target_addr)
   return k_ra_ok;
 }
 
-/* Implementation of ra_i3c_ibi_drain (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi)
 {
   return ra_i3c_ibi_read(ibi);
 }
 
-/* Implementation of ra_i3c_slave_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_slave_open(uint8_t static_addr)
 {
   if (static_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -940,7 +908,6 @@ ra_err_t ra_i3c_slave_open(uint8_t static_addr)
  * =============================================================================
  */
 
-/* Implementation of ra_i3c_ibi_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi)
 {
   RA_CHECK_NULL_PTR(out_ibi, s_tag, "out_ibi must not be nullptr");

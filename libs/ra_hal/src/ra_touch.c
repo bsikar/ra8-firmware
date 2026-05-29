@@ -7,7 +7,7 @@
  *
  * @details
  * GT911-specific implementation of ``ra_touch.h``. Speaks to the IC
- * via ``ra_iic_b`` (the IIC_B I2C compatibility-mode driver) using
+ * via ``ra_i3c_i2c`` (the IIC_B I2C compatibility-mode driver) using
  * the standard "write 16-bit register pointer, RESTART, read N bytes"
  * pattern. The driver carries no per-frame state -- all touch
  * decoding happens against caller-provided buffers.
@@ -21,7 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_iic_b_regs.h"
+#include "ra8d2_i3c_i2c_regs.h"
 #include "ra8d2_touch_gt911_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
@@ -248,7 +248,7 @@ static void priv_decode_block(const uint8_t*    raw,
  */
 static ra_err_t priv_validate_cfg(const ra_touch_cfg_t* cfg)
 {
-  if ((uint16_t)cfg->i2c_channel >= k_ra_iic_b_channel_count) {
+  if ((uint16_t)cfg->i2c_channel >= k_ra_i3c_i2c_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if ((cfg->target_7b != k_ra_touch_gt911_addr_low) &&
@@ -495,7 +495,6 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_touch_dispatch_irq (see header for full contract) -- see header for the documented contract. */
 void ra_touch_dispatch_irq(void)
 {
   const ra_touch_event_fn_t fn  = s_state.cb;

@@ -570,7 +570,6 @@ static ra_err_t internal_step_advance(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hcdc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -594,7 +593,6 @@ ra_err_t ra_usb_hcdc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_hcdc_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_close(void)
 {
   if (!s_state.initialized) {
@@ -616,7 +614,6 @@ ra_err_t ra_usb_hcdc_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hcdc_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_attach_callback(ra_usb_hcdc_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialized) {
@@ -632,7 +629,6 @@ ra_err_t ra_usb_hcdc_attach_callback(ra_usb_hcdc_attach_fn_t on_attach, void* ct
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hcdc_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_send(const uint8_t* data, uint16_t len)
 {
   if (!s_state.initialized) {
@@ -647,7 +643,6 @@ ra_err_t ra_usb_hcdc_send(const uint8_t* data, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_hcdc_pipe_bulk_out, data, len);
 }
 
-/* Implementation of ra_usb_hcdc_recv (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_recv(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "hcdc_recv: out_buf");
@@ -677,7 +672,6 @@ ra_err_t ra_usb_hcdc_recv(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hcdc_set_line_coding (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_set_line_coding(uint32_t                baud,
                                      ra_usb_hcdc_parity_t    parity,
                                      ra_usb_hcdc_stop_bits_t stop_bits)
@@ -725,7 +719,6 @@ ra_err_t ra_usb_hcdc_set_line_coding(uint32_t                baud,
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hcdc_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_step(void)
 {
   if (!s_state.initialized) {

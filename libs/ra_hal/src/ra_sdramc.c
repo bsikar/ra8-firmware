@@ -238,7 +238,6 @@ static ra_err_t internal_sdramc_wait(uint8_t mask)
   return k_ra_err_hw_timeout;
 }
 
-/* Implementation of ra_sdramc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdramc_init(void)
 {
   const ra_err_t pin_err = internal_sdramc_route_pins();
@@ -303,7 +302,6 @@ ra_err_t ra_sdramc_init(void)
  * =============================================================================
  */
 
-/* Implementation of ra_sdramc_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdramc_deinit(void)
 {
   volatile r_sdramc_regs_t* reg = ra_sdramc();
@@ -314,7 +312,6 @@ ra_err_t ra_sdramc_deinit(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_sdramc_set_refresh_interval (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
 {
   /* HUM Ch 15.3.15 "SDRFCR : SDRAM Refresh Control Register" p 607 */
@@ -322,7 +319,6 @@ ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
   return k_ra_ok;
 }
 
-/* Implementation of ra_sdramc_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdramc_get_status(uint8_t* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "out_enabled must not be nullptr");
@@ -331,7 +327,6 @@ ra_err_t ra_sdramc_get_status(uint8_t* out_enabled)
   return k_ra_ok;
 }
 
-/* Implementation of ra_sdramc_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdramc_enter_stop(void)
 {
   /* HUM Ch 15.3.16 "SDRFEN : SDRAM Auto-Refresh Control Register" p 608 */
@@ -339,7 +334,6 @@ ra_err_t ra_sdramc_enter_stop(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_sdramc_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdramc_exit_stop(void)
 {
   /* HUM Ch 15.3.16 "SDRFEN : SDRAM Auto-Refresh Control Register" p 608 */
