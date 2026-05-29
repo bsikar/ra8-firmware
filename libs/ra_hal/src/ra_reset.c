@@ -443,3 +443,138 @@ void ra_reset_software_reset(void)
   /* On host (RA_SIMULATOR_MODE) the function returns so unit tests can
    * inspect the AIRCR write. */
 }
+
+/* =============================================================================
+ * Reset-source masking (SYRSTMSK0/1/2) internals
+ * =============================================================================
+ */
+
+/**
+ * @brief Resolve a reset source to its SYRSTMSKn register + bit mask.
+ *
+ * @details
+ * Maps each ``ra_reset_source_t`` to the volatile pointer of the owning
+ * mask register (SYRSTMSK0/1/2) and the bit mask within it. The accessor
+ * calls compute addresses only -- no register is dereferenced here, so no
+ * HUM citation is required until the caller reads/writes ``*reg``.
+ *
+ * @param[in]  source Reset source to resolve.
+ * @param[out] reg    Receives the owning SYRSTMSKn register pointer.
+ * @param[out] mask   Receives the bit mask within that register.
+ *
+ * @return ``true`` if @p source is valid and resolved; ``false`` otherwise.
+ * @retval true  @p source resolved; ``*reg`` and ``*mask`` are set.
+ * @retval false @p source out of range; ``*reg`` / ``*mask`` untouched.
+ *
+ * @pre @p reg and @p mask are non-NULL (caller-provided locals).
+ * @pre @p source is a ``ra_reset_source_t`` value.
+ * @post On ``true``, ``*reg`` and ``*mask`` identify the mask bit.
+ * @post On ``false``, ``*reg`` / ``*mask`` are left unmodified.
+ * @note Not thread-safe; pure address resolution.
+ * @since 0.1.0
+ */
+static bool internal_source_loc(ra_reset_source_t source, volatile uint8_t** reg, uint8_t* mask)
+{
+  switch (source) {
+    case k_ra_reset_source_iwdt:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_iwdt_msk;
+      return true;
+    case k_ra_reset_source_wdt0:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_wdt0_msk;
+      return true;
+    case k_ra_reset_source_sw:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_sw_msk;
+      return true;
+    case k_ra_reset_source_clu0:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_clu0_msk;
+      return true;
+    case k_ra_reset_source_lm0:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_lm0_msk;
+      return true;
+    case k_ra_reset_source_cm:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_cm_msk;
+      return true;
+    case k_ra_reset_source_bus:
+      *reg  = ra_reset_syrstmsk0();
+      *mask = k_ra_reset_syrstmsk0_bus_msk;
+      return true;
+    case k_ra_reset_source_wdt1:
+      *reg  = ra_reset_syrstmsk1();
+      *mask = k_ra_reset_syrstmsk1_wdt1_msk;
+      return true;
+    case k_ra_reset_source_clu1:
+      *reg  = ra_reset_syrstmsk1();
+      *mask = k_ra_reset_syrstmsk1_clu1_msk;
+      return true;
+    case k_ra_reset_source_lm1:
+      *reg  = ra_reset_syrstmsk1();
+      *mask = k_ra_reset_syrstmsk1_lm1_msk;
+      return true;
+    case k_ra_reset_source_pvd1:
+      *reg  = ra_reset_syrstmsk2();
+      *mask = k_ra_reset_syrstmsk2_pvd1_msk;
+      return true;
+    case k_ra_reset_source_pvd2:
+      *reg  = ra_reset_syrstmsk2();
+      *mask = k_ra_reset_syrstmsk2_pvd2_msk;
+      return true;
+    case k_ra_reset_source_count:
+    default:
+      return false;
+  }
+}
+
+ra_err_t ra_reset_set_source_mask(ra_reset_source_t source, bool disable)
+{
+  volatile uint8_t* reg  = nullptr;
+  uint8_t           mask = 0U;
+  if (!internal_source_loc(source, &reg, &mask)) {
+    ra_log_error(s_tag, "set_source_mask: invalid reset source");
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile uint16_t* prcr = ra_reset_prcr();
+  /* Set PRCR.PRC5 to 1 (write enabled) before rewriting the reset-control
+   * group; preserve the other PRC bits. */
+  /* HUM Ch 6.2.6 "SYRSTMSK0" p 263 */
+  const uint16_t prcr_cur = *prcr;
+  *prcr = (uint16_t)((uint16_t)k_ra_reset_prcr_key |
+                     (uint16_t)(prcr_cur & (uint16_t)k_ra_reset_prcr_pr_bits_msk) |
+                     (uint16_t)k_ra_reset_prcr_prc5_msk);
+
+  /* 1 disables the corresponding reset, 0 enables it. */
+  /* HUM Ch 6.2.6 "System Reset Mask Control" p 262 */
+  const uint8_t before = *reg;
+  *reg                 = disable ? (uint8_t)(before | mask) : (uint8_t)(before & (uint8_t)~mask);
+
+  /* Relock PRCR.PRC5. */
+  /* HUM Ch 6.2.6 "SYRSTMSK0" p 263 */
+  const uint16_t prcr_now = *prcr;
+  *prcr = (uint16_t)((uint16_t)k_ra_reset_prcr_key |
+                     (uint16_t)((prcr_now & (uint16_t)k_ra_reset_prcr_pr_bits_msk) &
+                                (uint16_t)~(uint16_t)k_ra_reset_prcr_prc5_msk));
+  return k_ra_ok;
+}
+
+ra_err_t ra_reset_get_source_mask(ra_reset_source_t source, bool* disabled)
+{
+  RA_CHECK_NULL_PTR(disabled, s_tag, "disabled must not be nullptr");
+
+  volatile uint8_t* reg  = nullptr;
+  uint8_t           mask = 0U;
+  if (!internal_source_loc(source, &reg, &mask)) {
+    ra_log_error(s_tag, "get_source_mask: invalid reset source");
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Reads do not require a PRCR unlock. */
+  /* HUM Ch 6.2.6 "System Reset Mask Control" p 262 */
+  *disabled = ((*reg & mask) != 0U);
+  return k_ra_ok;
+}
