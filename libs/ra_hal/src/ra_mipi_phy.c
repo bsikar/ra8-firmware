@@ -1259,7 +1259,6 @@ static void internal_mipi_phy_cache_state(const ra_mipi_phy_config_t* cfg)
   s_last_sfr         = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
 }
 
-/* ra mipi phy init -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
 {
   const ra_err_t v_err = internal_mipi_phy_validate_init_cfg(cfg);
@@ -1295,7 +1294,6 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
   return k_ra_ok;
 }
 
-/* ra mipi phy deinit -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_deinit(void)
 {
   /* Step 1 -- HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
@@ -1311,7 +1309,6 @@ ra_err_t ra_mipi_phy_deinit(void)
   return k_ra_ok;
 }
 
-/* ra mipi phy reset -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_reset(void)
 {
   /* HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
@@ -1344,7 +1341,6 @@ ra_err_t ra_mipi_phy_reset(void)
   return k_ra_ok;
 }
 
-/* ra mipi phy recover from error -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "recover: cfg must not be nullptr");
@@ -1353,7 +1349,6 @@ ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg)
   return ra_mipi_phy_init(cfg);
 }
 
-/* ra mipi phy get status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -1363,7 +1358,6 @@ ra_err_t ra_mipi_phy_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi phy clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_clear_status(uint32_t mask)
 {
   /* DPHYSFR is read-only on this part (HUM Ch 64.2.6 p 3826) -- nothing to write. */
@@ -1371,21 +1365,18 @@ ra_err_t ra_mipi_phy_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi phy is ldo stable -- see surrounding code and HUM citations. */
 bool ra_mipi_phy_is_ldo_stable(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & k_ra_mipi_phy_sfr_pwrsf) != 0U;
 }
 
-/* ra mipi phy is pll locked -- see surrounding code and HUM citations. */
 bool ra_mipi_phy_is_pll_locked(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & k_ra_mipi_phy_sfr_pllsf) != 0U;
 }
 
-/* ra mipi phy wait ready -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_wait_ready(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
@@ -1393,7 +1384,6 @@ ra_err_t ra_mipi_phy_wait_ready(void)
                                     k_ra_mipi_phy_sfr_ready_mask);
 }
 
-/* ra mipi phy attach handler -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_attach_handler(ra_mipi_phy_event_fn_t fn, void* ctx)
 {
   s_mipi_phy_fn  = fn;
@@ -1401,7 +1391,6 @@ ra_err_t ra_mipi_phy_attach_handler(ra_mipi_phy_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra mipi phy dispatch -- see surrounding code and HUM citations. */
 void ra_mipi_phy_dispatch(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
@@ -1437,21 +1426,18 @@ void ra_mipi_phy_dispatch(void)
   }
 }
 
-/* ra mipi phy enter stop -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_enter_stop(void)
 {
   /* HUM Ch 64.4.1 "Power Gating Control or Software Standby Mode", p 3837 */
   return ra_mipi_phy_deinit();
 }
 
-/* ra mipi phy exit stop -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_exit_stop(const ra_mipi_phy_config_t* cfg)
 {
   /* HUM Ch 64.4.1 "Power Gating Control or Software Standby Mode", p 3837 */
   return ra_mipi_phy_init(cfg);
 }
 
-/* ra mipi phy ldo enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_ldo_enable(void)
 {
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
@@ -1461,7 +1447,6 @@ ra_err_t ra_mipi_phy_ldo_enable(void)
                                     k_ra_mipi_phy_sfr_pwrsf);
 }
 
-/* ra mipi phy ldo disable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_ldo_disable(void)
 {
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
@@ -1469,7 +1454,6 @@ ra_err_t ra_mipi_phy_ldo_disable(void)
   return k_ra_ok;
 }
 
-/* ra mipi phy pll start -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_pll_start(void)
 {
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
@@ -1479,7 +1463,6 @@ ra_err_t ra_mipi_phy_pll_start(void)
                                     k_ra_mipi_phy_sfr_pllsf);
 }
 
-/* ra mipi phy pll stop -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_pll_stop(void)
 {
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
@@ -1487,7 +1470,6 @@ ra_err_t ra_mipi_phy_pll_stop(void)
   return k_ra_ok;
 }
 
-/* ra mipi phy set lane speed -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 {
   RA_CHECK_NULL_PTR(pll, s_tag, "pll must not be nullptr");
@@ -1509,7 +1491,6 @@ ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
                                     k_ra_mipi_phy_sfr_pllsf);
 }
 
-/* ra mipi phy switch mode -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
 {
   if ((mode != k_ra_mipi_phy_mode_dsi_master) && (mode != k_ra_mipi_phy_mode_csi_slave)) {
@@ -1523,7 +1504,6 @@ ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
   return k_ra_ok;
 }
 
-/* ra mipi phy set lane count -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_lane_count(ra_mipi_phy_lane_count_t count)
 {
   if ((count == k_ra_mipi_phy_lane_count_3) || (count == k_ra_mipi_phy_lane_count_4)) {
@@ -1544,13 +1524,11 @@ ra_err_t ra_mipi_phy_set_lane_count(ra_mipi_phy_lane_count_t count)
   return k_ra_ok;
 }
 
-/* ra mipi phy get lane count -- see surrounding code and HUM citations. */
 ra_mipi_phy_lane_count_t ra_mipi_phy_get_lane_count(void)
 {
   return s_lane_count;
 }
 
-/* ra mipi phy set lane enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_lane_enable(ra_mipi_phy_lane_id_t lane, bool enable)
 {
   if ((lane == k_ra_mipi_phy_lane_d2) || (lane == k_ra_mipi_phy_lane_d3)) {
@@ -1583,7 +1561,6 @@ ra_err_t ra_mipi_phy_set_lane_enable(ra_mipi_phy_lane_id_t lane, bool enable)
   return k_ra_ok;
 }
 
-/* ra mipi phy is lane enabled -- see surrounding code and HUM citations. */
 bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane)
 {
   uint8_t bit = 0U;
@@ -1603,7 +1580,6 @@ bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane)
   return (s_lane_enable_mask & (uint8_t)((uint8_t)1U << bit)) != 0U;
 }
 
-/* ra mipi phy set clock mode -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_clock_mode(ra_mipi_phy_clk_mode_t mode)
 {
   if ((mode != k_ra_mipi_phy_clk_continuous) && (mode != k_ra_mipi_phy_clk_noncontinuous)) {
@@ -1613,13 +1589,11 @@ ra_err_t ra_mipi_phy_set_clock_mode(ra_mipi_phy_clk_mode_t mode)
   return k_ra_ok;
 }
 
-/* ra mipi phy get clock mode -- see surrounding code and HUM citations. */
 ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void)
 {
   return s_clk_mode;
 }
 
-/* ra mipi phy set eotp -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_eotp(ra_mipi_phy_eotp_t eotp)
 {
   if ((eotp != k_ra_mipi_phy_eotp_enabled) && (eotp != k_ra_mipi_phy_eotp_disabled)) {
@@ -1629,13 +1603,11 @@ ra_err_t ra_mipi_phy_set_eotp(ra_mipi_phy_eotp_t eotp)
   return k_ra_ok;
 }
 
-/* ra mipi phy get eotp -- see surrounding code and HUM citations. */
 ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void)
 {
   return s_eotp;
 }
 
-/* ra mipi phy set pclka freq -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz)
 {
   /* HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register", p 3822
@@ -1650,7 +1622,6 @@ ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz)
   return k_ra_ok;
 }
 
-/* ra mipi phy set escape divisor -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_set_escape_divisor(uint8_t escdiv)
 {
   /* HUM Ch 64.2.4 "DPHYESCCR : D-PHY Escape Mode Clock Control Register", p 3825 */
@@ -1667,7 +1638,6 @@ ra_err_t ra_mipi_phy_set_escape_divisor(uint8_t escdiv)
                                     k_ra_mipi_phy_sfr_pllsf);
 }
 
-/* ra mipi phy select timing -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
                                    uint8_t                     pclka_mhz,
                                    uint16_t                    rate_mbps,
@@ -1708,7 +1678,6 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
   return k_ra_ok;
 }
 
-/* ra mipi phy validate pll band -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
 {
   RA_CHECK_NULL_PTR(pll, s_tag, "validate_pll_band: pll must not be nullptr");

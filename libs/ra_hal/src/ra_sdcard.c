@@ -370,7 +370,6 @@ static ra_sdcard_card_type_t internal_classify(uint8_t high_capacity, uint32_t b
   return k_ra_sdcard_type_sdhc;
 }
 
-/* Ra sdcard init -- see implementation for details. */
 ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -450,7 +449,6 @@ static uint32_t internal_to_card_address(uint32_t lba)
   return lba;
 }
 
-/* Ra sdcard read blocks -- see implementation for details. */
 ra_err_t ra_sdcard_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -467,7 +465,6 @@ ra_err_t ra_sdcard_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
   return ra_sdhi_read_block(s_sdcard.instance, card_lba, buf, count);
 }
 
-/* Ra sdcard write blocks -- see implementation for details. */
 ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -484,7 +481,6 @@ ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count
   return ra_sdhi_write_block(s_sdcard.instance, card_lba, buf, count);
 }
 
-/* Ra sdcard get capacity -- see implementation for details. */
 ra_err_t ra_sdcard_get_capacity(uint32_t* out_blocks)
 {
   RA_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks");
@@ -495,7 +491,6 @@ ra_err_t ra_sdcard_get_capacity(uint32_t* out_blocks)
   return k_ra_ok;
 }
 
-/* Ra sdcard get type -- see implementation for details. */
 ra_err_t ra_sdcard_get_type(ra_sdcard_card_type_t* out_type)
 {
   RA_CHECK_NULL_PTR(out_type, s_tag, "out_type");
@@ -506,7 +501,6 @@ ra_err_t ra_sdcard_get_type(ra_sdcard_card_type_t* out_type)
   return k_ra_ok;
 }
 
-/* Ra sdcard deinit -- see implementation for details. */
 ra_err_t ra_sdcard_deinit(void)
 {
   if (s_sdcard.initialized == 0U) {

@@ -298,7 +298,6 @@ static void internal_sha256_pull_digest(uint8_t* digest)
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
 }
 
-/* ra rsip init -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -330,7 +329,6 @@ ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
   return k_ra_ok;
 }
 
-/* ra rsip deinit -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_deinit(void)
 {
   /* HUM Ch 52.3.1 "Software Standby Mode" p 3307 */
@@ -348,7 +346,6 @@ ra_err_t ra_rsip_deinit(void)
   return ra_mstp_disable(k_ra_mstp_rsip);
 }
 
-/* ra rsip get status -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_get_status(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -358,7 +355,6 @@ ra_err_t ra_rsip_get_status(uint32_t* out)
   return k_ra_ok;
 }
 
-/* ra rsip clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_clear_status(uint32_t mask)
 {
   if ((mask & ~k_ra_rsip_mask_isr_all) != 0U) {
@@ -373,7 +369,6 @@ ra_err_t ra_rsip_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra rsip attach handler -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_attach_handler(ra_rsip_event_fn_t fn, void* ctx)
 {
   s_rsip_fn  = fn;
@@ -381,7 +376,6 @@ ra_err_t ra_rsip_attach_handler(ra_rsip_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra rsip dispatch -- see surrounding code and HUM citations. */
 void ra_rsip_dispatch(void)
 {
   /* HUM Ch 52.1 "Overview" p 3302 */
@@ -404,7 +398,6 @@ void ra_rsip_dispatch(void)
   }
 }
 
-/* ra rsip trng read -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -453,7 +446,6 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
-/* ra rsip sha256 -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
   RA_CHECK_NULL_PTR(msg, s_tag, "msg must not be nullptr");
@@ -736,7 +728,6 @@ static ra_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, u
 #endif
 }
 
-/* ra rsip sha256 init -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -745,7 +736,6 @@ ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
   return k_ra_ok;
 }
 
-/* ra rsip sha256 update -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -768,7 +758,6 @@ ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, u
   return k_ra_ok;
 }
 
-/* ra rsip sha256 final -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -811,7 +800,6 @@ internal_hmac_prep_key(const uint8_t* key, uint32_t key_len, uint8_t block[k_ra_
   return k_ra_ok;
 }
 
-/* ra rsip hmac sha256 init -- see surrounding code and HUM citations. */
 ra_err_t
 ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uint32_t key_len)
 {
@@ -840,7 +828,6 @@ ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uin
   return k_ra_ok;
 }
 
-/* ra rsip hmac sha256 update -- see surrounding code and HUM citations. */
 ra_err_t
 ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
@@ -893,7 +880,6 @@ static ra_err_t internal_hmac_outer(const uint8_t key_block[k_ra_rsip_sha256_blo
                                   mac_out);
 }
 
-/* ra rsip hmac sha256 final -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_out)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -914,7 +900,6 @@ ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_
   return result;
 }
 
-/* ra rsip enter stop -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_enter_stop(void)
 {
   /* HUM Ch 52.3.1 "Software Standby Mode" p 3307 */
@@ -923,7 +908,6 @@ ra_err_t ra_rsip_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_rsip);
 }
 
-/* ra rsip exit stop -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -1297,7 +1281,6 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
  * ===========================================================================
  */
 
-/* ra rsip aes128 install plain -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1309,7 +1292,6 @@ ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
                               out);
 }
 
-/* ra rsip aes192 install plain -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1321,7 +1303,6 @@ ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
                               out);
 }
 
-/* ra rsip aes256 install plain -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1333,7 +1314,6 @@ ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
                               out);
 }
 
-/* ra rsip chacha20 install plain -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_chacha20_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1345,7 +1325,6 @@ ra_err_t ra_rsip_chacha20_install_plain(const uint8_t* key, ra_rsip_key_handle_t
                               out);
 }
 
-/* ra rsip hmac install plain -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
                                     const uint8_t*        key,
                                     uint32_t              key_len,
@@ -1370,7 +1349,6 @@ ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
   return internal_oem_install(alg, nullptr, key, key_len, out);
 }
 
-/* ra rsip oem install -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
                              const uint8_t*        iv,
                              const uint8_t*        oem_blob,
@@ -1439,7 +1417,6 @@ static uint8_t internal_aes_alg_byte(uint32_t alg)
   }
 }
 
-/* ra rsip aes cipher -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
                             ra_rsip_aes_mode_t          mode,
                             ra_rsip_aes_dir_t           dir,
@@ -1532,7 +1509,6 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
-/* ra rsip aes gcm -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
                          ra_rsip_aes_dir_t           dir,
                          const uint8_t*              iv,
@@ -1565,7 +1541,6 @@ ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
                            tag);
 }
 
-/* ra rsip aes ccm -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
                          ra_rsip_aes_dir_t           dir,
                          const uint8_t*              iv,
@@ -1616,7 +1591,6 @@ static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
     internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra_rsip_trng_word_bytes]);
 }
 
-/* ra rsip chacha20 -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
                           ra_rsip_aes_dir_t           dir,
                           const uint8_t*              nonce,
@@ -1650,7 +1624,6 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
-/* ra rsip chacha20 poly1305 -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
                                    ra_rsip_aes_dir_t           dir,
                                    const uint8_t*              nonce,
@@ -1682,7 +1655,6 @@ ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
                            tag);
 }
 
-/* ra rsip poly1305 -- see surrounding code and HUM citations. */
 ra_err_t
 ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_len, uint8_t* tag)
 {
@@ -1797,7 +1769,6 @@ static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
 }
 
-/* ra rsip hash -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
                       const uint8_t*     msg,
                       uint32_t           msg_len,
@@ -1827,7 +1798,6 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
   return k_ra_ok;
 }
 
-/* ra rsip hmac -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
                       const uint8_t*              msg,
                       uint32_t                    msg_len,
@@ -1907,7 +1877,6 @@ static void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
   }
 }
 
-/* ra rsip rsa sign -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
                           ra_rsip_rsa_size_t          size,
                           const uint8_t*              digest,
@@ -1937,7 +1906,6 @@ ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
-/* ra rsip rsa verify -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
                             ra_rsip_rsa_size_t          size,
                             const uint8_t*              digest,
@@ -2017,7 +1985,6 @@ static uint32_t internal_curve_bytes(ra_rsip_curve_t curve)
   }
 }
 
-/* ra rsip ecdsa sign -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
                             ra_rsip_curve_t             curve,
                             const uint8_t*              digest,
@@ -2047,7 +2014,6 @@ ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
-/* ra rsip ecdsa verify -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
                               ra_rsip_curve_t             curve,
                               const uint8_t*              digest,
@@ -2103,7 +2069,6 @@ static void internal_ecdh_pull_shared(ra_rsip_key_handle_t* out)
   internal_zero_handle_tail(out, out->body_words);
 }
 
-/* ra rsip ecdh compute -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
                               ra_rsip_curve_t             curve,
                               const uint8_t*              peer_x,
@@ -2139,7 +2104,6 @@ ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
  * ===========================================================================
  */
 
-/* ra rsip oem bl version get -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2148,7 +2112,6 @@ ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out)
   return k_ra_ok;
 }
 
-/* ra rsip oem bl version increment -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_oem_bl_version_increment(void)
 {
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
@@ -2161,7 +2124,6 @@ ra_err_t ra_rsip_oem_bl_version_increment(void)
   return k_ra_ok;
 }
 
-/* ra rsip oem bl version lock -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_oem_bl_version_lock(void)
 {
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
@@ -2193,7 +2155,6 @@ static uint8_t s_sim_kv_slots[(uint32_t)k_ra_rsip_kv_slot_count]
                              [k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes];
 #endif
 
-/* ra rsip kv read -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2220,7 +2181,6 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
   return k_ra_ok;
 }
 
-/* ra rsip kv write -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
 {
   RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
@@ -2240,7 +2200,6 @@ ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
   return internal_kv_op(k_ra_rsip_kv_op_write, slot);
 }
 
-/* ra rsip kv erase -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_kv_erase(uint8_t slot)
 {
   if (slot >= (uint8_t)k_ra_rsip_kv_slot_count) {
@@ -2249,7 +2208,6 @@ ra_err_t ra_rsip_kv_erase(uint8_t slot)
   return internal_kv_op(k_ra_rsip_kv_op_erase, slot);
 }
 
-/* ra rsip kv count -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_kv_count(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2310,7 +2268,6 @@ static void internal_kw_push_src(const ra_rsip_key_handle_t* src)
   }
 }
 
-/* ra rsip key wrap -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
                           const uint8_t*              iv,
                           const ra_rsip_key_handle_t* src,
@@ -2354,7 +2311,6 @@ static ra_err_t internal_kw_pull_handle(ra_rsip_key_handle_t* dest)
   return k_ra_ok;
 }
 
-/* ra rsip key unwrap -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
                             const uint8_t*              iv,
                             const uint8_t*              blob,
@@ -2451,7 +2407,6 @@ static void internal_kdf_pull_handle(ra_rsip_key_handle_t* out)
   internal_zero_handle_tail(out, out->body_words);
 }
 
-/* ra rsip kdf -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
                      const ra_rsip_key_handle_t* ikm,
                      const uint8_t*              label,
@@ -2481,7 +2436,6 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
  * ===========================================================================
  */
 
-/* ra rsip life get -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2490,7 +2444,6 @@ ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
   return k_ra_ok;
 }
 
-/* ra rsip life advance -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
 {
   if ((uint32_t)state > k_ra_rsip_life_rma) {
@@ -2505,7 +2458,6 @@ ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
   return k_ra_ok;
 }
 
-/* ra rsip debug level get -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2514,7 +2466,6 @@ ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
   return k_ra_ok;
 }
 
-/* ra rsip debug level set -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
 {
   if ((uint32_t)level > (uint32_t)k_ra_rsip_debug_al2) {
@@ -2530,7 +2481,6 @@ ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
  * ===========================================================================
  */
 
-/* ra rsip tamper enable -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_tamper_enable(uint32_t sources)
 {
   if ((sources & ~k_ra_rsip_tamper_src_all) != 0U) {
@@ -2541,7 +2491,6 @@ ra_err_t ra_rsip_tamper_enable(uint32_t sources)
   return k_ra_ok;
 }
 
-/* ra rsip tamper status -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_tamper_status(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2550,7 +2499,6 @@ ra_err_t ra_rsip_tamper_status(uint32_t* out)
   return k_ra_ok;
 }
 
-/* ra rsip tamper ack -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_tamper_ack(uint32_t mask)
 {
   if (mask == 0U) {
@@ -2564,7 +2512,6 @@ ra_err_t ra_rsip_tamper_ack(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra rsip dpa arm -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_dpa_arm(bool enable)
 {
   /* HUM Ch 51.5 "Side-channel countermeasures" p 3290 */
@@ -2583,7 +2530,6 @@ ra_err_t ra_rsip_dpa_arm(bool enable)
  * ===========================================================================
  */
 
-/* ra rsip dotf route -- see surrounding code and HUM citations. */
 ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
 {
   if (which > 1U) {

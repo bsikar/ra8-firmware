@@ -1238,7 +1238,6 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
 /*  Public API: get_dimensions                                         */
 /* ------------------------------------------------------------------ */
 
-/* ra jpeg sw get dimensions -- see surrounding code and HUM citations. */
 ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
                                    uint32_t       jpeg_len,
                                    uint16_t*      out_w,
@@ -1635,7 +1634,6 @@ dec_dispatch_marker(ra_jpeg_dec_ctx_t* d, bool* got_sof, ra_jpeg_dec_marker_acti
   return dec_skip_segment(d);
 }
 
-/* ra jpeg sw decode -- see surrounding code and HUM citations. */
 ra_err_t ra_jpeg_sw_decode(const uint8_t* jpeg_buf,
                            uint32_t       jpeg_len,
                            uint8_t*       out_buf,
@@ -2357,7 +2355,6 @@ enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_
   return k_ra_ok;
 }
 
-/* ra jpeg sw encode -- see surrounding code and HUM citations. */
 ra_err_t ra_jpeg_sw_encode(const uint8_t* rgb_buf,
                            uint16_t       width,
                            uint16_t       height,

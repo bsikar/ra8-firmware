@@ -195,7 +195,6 @@ static inline bool internal_irq_block_ok(ra_etha_irq_class_t block)
   return (uint8_t)block < k_ra_etha_irq_class_count;
 }
 
-/* ra_etha_init -- see header for full description. */
 ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "etha_init: cfg must not be nullptr");
@@ -232,7 +231,6 @@ ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_etha_deinit -- see header for full description. */
 ra_err_t ra_etha_deinit(ra_etha_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -258,7 +256,6 @@ ra_err_t ra_etha_deinit(ra_etha_port_t port)
   return k_ra_ok;
 }
 
-/* ra_etha_get_status -- see header for full description. */
 ra_err_t ra_etha_get_status(ra_etha_port_t port, ra_etha_status_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "etha_get_status: out must not be nullptr");
@@ -286,7 +283,6 @@ ra_err_t ra_etha_get_status(ra_etha_port_t port, ra_etha_status_t* out)
   return k_ra_ok;
 }
 
-/* ra_etha_clear_status -- see header for full description. */
 ra_err_t ra_etha_clear_status(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask)
 {
   if (!internal_port_ok(port) || !internal_irq_block_ok(block)) {
@@ -321,7 +317,6 @@ ra_err_t ra_etha_clear_status(ra_etha_port_t port, ra_etha_irq_class_t block, ui
   return k_ra_ok;
 }
 
-/* ra_etha_enable_irq -- see header for full description. */
 ra_err_t ra_etha_enable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask)
 {
   if (!internal_port_ok(port) || !internal_irq_block_ok(block)) {
@@ -349,7 +344,6 @@ ra_err_t ra_etha_enable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint
   return k_ra_ok;
 }
 
-/* ra_etha_disable_irq -- see header for full description. */
 ra_err_t ra_etha_disable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask)
 {
   if (!internal_port_ok(port) || !internal_irq_block_ok(block)) {
@@ -377,7 +371,6 @@ ra_err_t ra_etha_disable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uin
   return k_ra_ok;
 }
 
-/* ra_etha_attach_handler -- see header for full description. */
 ra_err_t ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void* ctx)
 {
   if (!internal_port_ok(port)) {
@@ -389,7 +382,6 @@ ra_err_t ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void
   return k_ra_ok;
 }
 
-/* ra_etha_dispatch -- see header for full description. */
 void ra_etha_dispatch(ra_etha_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -425,7 +417,6 @@ void ra_etha_dispatch(ra_etha_port_t port)
   }
 }
 
-/* ra_etha_enter_stop -- see header for full description. */
 ra_err_t ra_etha_enter_stop(ra_etha_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -437,7 +428,6 @@ ra_err_t ra_etha_enter_stop(ra_etha_port_t port)
   return k_ra_ok;
 }
 
-/* ra_etha_exit_stop -- see header for full description. */
 ra_err_t ra_etha_exit_stop(ra_etha_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -449,7 +439,6 @@ ra_err_t ra_etha_exit_stop(ra_etha_port_t port)
   return k_ra_ok;
 }
 
-/* ra_etha_reset -- see header for full description. */
 ra_err_t ra_etha_reset(ra_etha_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -464,7 +453,6 @@ ra_err_t ra_etha_reset(ra_etha_port_t port)
   return k_ra_ok;
 }
 
-/* ra_etha_set_mode -- see header for full description. */
 /**
  * @brief Busy-wait until EAMS.OPS catches up to the requested EAMC.OPC.
  *
@@ -533,7 +521,6 @@ internal_etha_wait_for_mode(ra_etha_port_t port, volatile r_etha_regs_t* reg, ra
 #endif
 }
 
-/* ra_etha_set_mode -- see header for full description. */
 ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
 {
   if (!internal_port_ok(port) || (uint32_t)mode > k_ra_etha_mask_opc) {
@@ -546,7 +533,6 @@ ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
   return internal_etha_wait_for_mode(port, reg, mode);
 }
 
-/* ra_etha_set_queue_arb -- see header for full description. */
 ra_err_t ra_etha_set_queue_arb(ra_etha_port_t port, ra_etha_tc_t tc, uint8_t arb)
 {
   if (!internal_port_ok(port) || !internal_tc_ok(tc) || (uint32_t)arb > k_ra_etha_mask_tdqa) {
@@ -564,7 +550,6 @@ ra_err_t ra_etha_set_queue_arb(ra_etha_port_t port, ra_etha_tc_t tc, uint8_t arb
   return k_ra_ok;
 }
 
-/* ra_etha_set_queue_depth -- see header for full description. */
 ra_err_t ra_etha_set_queue_depth(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t depth)
 {
   if (!internal_port_ok(port) || !internal_tc_ok(tc) || (uint32_t)depth > k_ra_etha_mask_dqd) {
@@ -576,7 +561,6 @@ ra_err_t ra_etha_set_queue_depth(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t 
   return k_ra_ok;
 }
 
-/* ra_etha_get_queue_level -- see header for full description. */
 ra_err_t
 ra_etha_get_queue_level(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t* cur_level, uint16_t* peak)
 {
@@ -595,7 +579,6 @@ ra_etha_get_queue_level(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t* cur_leve
   return k_ra_ok;
 }
 
-/* ra_etha_set_preemption -- see header for full description. */
 ra_err_t
 ra_etha_set_preemption(ra_etha_port_t port, uint8_t preempt, uint8_t cut_thru, ra_etha_afs_t afs)
 {
@@ -614,7 +597,6 @@ ra_etha_set_preemption(ra_etha_port_t port, uint8_t preempt, uint8_t cut_thru, r
   return k_ra_ok;
 }
 
-/* ra_etha_set_max_frame_size -- see header for full description. */
 ra_err_t ra_etha_set_max_frame_size(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t max_bytes)
 {
   if (!internal_port_ok(port) || !internal_tc_ok(tc)) {
@@ -626,7 +608,6 @@ ra_err_t ra_etha_set_max_frame_size(ra_etha_port_t port, ra_etha_tc_t tc, uint16
   return k_ra_ok;
 }
 
-/* ra_etha_set_ipv_remap -- see header for full description. */
 ra_err_t ra_etha_set_ipv_remap(ra_etha_port_t port, const uint8_t* map)
 {
   RA_CHECK_NULL_PTR(map, s_tag, "etha_set_ipv_remap: map null");
@@ -653,7 +634,6 @@ ra_err_t ra_etha_set_ipv_remap(ra_etha_port_t port, const uint8_t* map)
   return k_ra_ok;
 }
 
-/* ra_etha_set_vlan_mode -- see header for full description. */
 ra_err_t ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
 {
   if (!internal_port_ok(port)) {
@@ -668,7 +648,6 @@ ra_err_t ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_v
   return k_ra_ok;
 }
 
-/* ra_etha_set_vlan_tag -- see header for full description. */
 ra_err_t ra_etha_set_vlan_tag(ra_etha_port_t            port,
                               const ra_etha_vlan_tag_t* c_tag,
                               const ra_etha_vlan_tag_t* s_tag_in)
@@ -701,7 +680,6 @@ ra_err_t ra_etha_set_vlan_tag(ra_etha_port_t            port,
   return k_ra_ok;
 }
 
-/* ra_etha_set_rx_tag_filter -- see header for full description. */
 ra_err_t ra_etha_set_rx_tag_filter(ra_etha_port_t port, uint32_t mask)
 {
   if (!internal_port_ok(port)) {
@@ -713,7 +691,6 @@ ra_err_t ra_etha_set_rx_tag_filter(ra_etha_port_t port, uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra_etha_configure_cut_through -- see header for full description. */
 ra_err_t ra_etha_configure_cut_through(ra_etha_port_t port, uint16_t qd, uint8_t dqd)
 {
   if (!internal_port_ok(port) || (uint32_t)dqd > k_ra_etha_mask_ctdqd) {
@@ -728,7 +705,6 @@ ra_err_t ra_etha_configure_cut_through(ra_etha_port_t port, uint16_t qd, uint8_t
   return k_ra_ok;
 }
 
-/* ra_etha_configure_cbs -- see header for full description. */
 ra_err_t ra_etha_configure_cbs(ra_etha_port_t             port,
                                ra_etha_tc_t               tc,
                                uint8_t                    enable,
@@ -767,7 +743,6 @@ ra_err_t ra_etha_configure_cbs(ra_etha_port_t             port,
   return k_ra_ok;
 }
 
-/* ra_etha_get_cbs_state -- see header for full description. */
 ra_err_t ra_etha_get_cbs_state(ra_etha_port_t       port,
                                ra_etha_tc_t         tc,
                                uint8_t*             enabled,
@@ -795,7 +770,6 @@ ra_err_t ra_etha_get_cbs_state(ra_etha_port_t       port,
   return k_ra_ok;
 }
 
-/* ra_etha_set_tas_schedule -- see header for full description. */
 ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
                                   const ra_etha_tas_gate_t* gate_list,
                                   uint16_t                  entry_count,
@@ -845,7 +819,6 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
   return k_ra_ok;
 }
 
-/* ra_etha_enable_tas -- see header for full description. */
 ra_err_t ra_etha_enable_tas(ra_etha_port_t port, uint8_t enable)
 {
   if (!internal_port_ok(port)) {
@@ -862,7 +835,6 @@ ra_err_t ra_etha_enable_tas(ra_etha_port_t port, uint8_t enable)
   return k_ra_ok;
 }
 
-/* ra_etha_read_stats -- see header for full description. */
 ra_err_t ra_etha_read_stats(ra_etha_port_t port, ra_etha_stats_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "etha_read_stats: out null");
@@ -885,7 +857,6 @@ ra_err_t ra_etha_read_stats(ra_etha_port_t port, ra_etha_stats_t* out)
   return k_ra_ok;
 }
 
-/* ra_etha_clear_stats -- see header for full description. */
 ra_err_t ra_etha_clear_stats(ra_etha_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -906,7 +877,6 @@ ra_err_t ra_etha_clear_stats(ra_etha_port_t port)
   return k_ra_ok;
 }
 
-/* ra_etha_set_security -- see header for full description. */
 ra_err_t ra_etha_set_security(ra_etha_port_t port, uint32_t mask)
 {
   if (!internal_port_ok(port)) {
@@ -970,7 +940,6 @@ static inline uint32_t internal_sat_add_u32(uint32_t base, uint32_t inc)
   return base + inc;
 }
 
-/* ra_etha_descriptor_ring_init -- see header for full description. */
 ra_err_t ra_etha_descriptor_ring_init(ra_etha_port_t channel,
                                       uint16_t       num_tx,
                                       uint16_t       num_rx,
@@ -1003,7 +972,6 @@ ra_err_t ra_etha_descriptor_ring_init(ra_etha_port_t channel,
   return k_ra_ok;
 }
 
-/* ra_etha_get_stats -- see header for full description. */
 ra_err_t ra_etha_get_stats(ra_etha_port_t channel, ra_etha_port_stats_t* out_stats)
 {
   RA_CHECK_NULL_PTR(out_stats, s_tag, "etha_get_stats: out_stats null");
@@ -1015,7 +983,6 @@ ra_err_t ra_etha_get_stats(ra_etha_port_t channel, ra_etha_port_stats_t* out_sta
   return k_ra_ok;
 }
 
-/* ra_etha_account_traffic -- see header for full description. */
 ra_err_t ra_etha_account_traffic(ra_etha_port_t channel,
                                  uint32_t       tx_ok,
                                  uint32_t       tx_err,
@@ -1072,7 +1039,6 @@ static ra_err_t internal_etha_to_operation(ra_etha_port_t channel)
   return k_ra_err_hw_timeout;
 }
 
-/* ra_etha_open -- see header for full description. */
 ra_err_t
 ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_link_t* out_link)
 {
@@ -1109,7 +1075,6 @@ ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_
 }
 
 #ifdef RA_SIMULATOR_MODE
-/* ra_etha_test_inject_rx -- see header for full description. */
 ra_err_t ra_etha_test_inject_rx(const uint8_t* frame,
                                 uint32_t       frame_len,
                                 uint8_t        out_dst[6],

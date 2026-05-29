@@ -583,7 +583,6 @@ static ra_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_regs_t* reg)
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_init -- see header for full description. */
 ra_err_t internal_i3c_i2c_init(uint8_t channel, const ra_i3c_i2c_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "iic_b_init: cfg");
@@ -609,7 +608,6 @@ ra_err_t internal_i3c_i2c_init(uint8_t channel, const ra_i3c_i2c_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_deinit -- see header for full description. */
 ra_err_t internal_i3c_i2c_deinit(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -628,7 +626,6 @@ ra_err_t internal_i3c_i2c_deinit(uint8_t channel)
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
 
-/* internal_i3c_i2c_set_clock -- see header for full description. */
 ra_err_t internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -774,7 +771,6 @@ static ra_err_t internal_i3c_i2c_busy_gate(volatile const r_i3c_i2c_regs_t* reg,
   return internal_i3c_i2c_bus_free(reg) ? k_ra_ok : k_ra_err_busy;
 }
 
-/* internal_i3c_i2c_write -- see header for full description. */
 ra_err_t internal_i3c_i2c_write(uint8_t        channel,
                                 uint8_t        target_7b,
                                 const uint8_t* data,
@@ -897,7 +893,6 @@ internal_i3c_i2c_rx_phase(volatile r_i3c_i2c_regs_t* reg, uint8_t* buf, uint32_t
   return err;
 }
 
-/* internal_i3c_i2c_read -- see header for full description. */
 ra_err_t
 internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart)
 {
@@ -940,7 +935,6 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
  * =============================================================================
  */
 
-/* internal_i3c_i2c_transfer -- see header for full description. */
 ra_err_t internal_i3c_i2c_transfer(uint8_t        channel,
                                    uint8_t        target_7b,
                                    const uint8_t* tx,
@@ -988,7 +982,6 @@ ra_err_t internal_i3c_i2c_transfer(uint8_t        channel,
  * =============================================================================
  */
 
-/* internal_i3c_i2c_abort -- see header for full description. */
 ra_err_t internal_i3c_i2c_abort(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -1012,7 +1005,6 @@ ra_err_t internal_i3c_i2c_abort(uint8_t channel)
  * =============================================================================
  */
 
-/* internal_i3c_i2c_scan -- see header for full description. */
 ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -1054,7 +1046,6 @@ ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_ack
  * =============================================================================
  */
 
-/* internal_i3c_i2c_get_errors -- see header for full description. */
 ra_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
@@ -1066,7 +1057,6 @@ ra_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_clear_errors -- see header for full description. */
 ra_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -1087,7 +1077,6 @@ ra_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
  * =============================================================================
  */
 
-/* internal_i3c_i2c_attach_handler -- see header for full description. */
 ra_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra_i3c_i2c_complete_fn_t fn, void* ctx)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -1115,7 +1104,6 @@ ra_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra_i3c_i2c_complete_fn
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_dispatch_eri -- see header for full description. */
 void internal_i3c_i2c_dispatch_eri(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_i3c_i2c_channel_count) {

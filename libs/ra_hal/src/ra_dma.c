@@ -423,7 +423,6 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
 }
 #endif
 
-/* Query whether a channel currently holds an active transfer -- see implementation for details. */
 ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
 {
   RA_CHECK_NULL_PTR(out_busy, s_tag, "out_busy must not be NULL");

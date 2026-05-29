@@ -146,7 +146,6 @@ static inline void internal_crc_feed_bytes(const uint8_t* data, uint32_t len)
   }
 }
 
-/* ra_crc_init -- see header for full description. */
 ra_err_t ra_crc_init(ra_crc_poly_t poly)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
@@ -167,7 +166,6 @@ ra_err_t ra_crc_init(ra_crc_poly_t poly)
   return k_ra_ok;
 }
 
-/* ra_crc_reset -- see header for full description. */
 void ra_crc_reset(void)
 {
   volatile r_crc_regs_t* reg = ra_crc();
@@ -178,7 +176,6 @@ void ra_crc_reset(void)
   reg->CRCCR0 = (uint8_t)(reg->CRCCR0 | k_ra_crccr0_dorclr);
 }
 
-/* ra_crc_compute -- see header for full description. */
 ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
 {
   RA_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
@@ -220,7 +217,6 @@ ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
  * =============================================================================
  */
 
-/* ra_crc_deinit -- see header for full description. */
 ra_err_t ra_crc_deinit(void)
 {
   volatile r_crc_regs_t* reg = ra_crc();
@@ -231,7 +227,6 @@ ra_err_t ra_crc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_crc);
 }
 
-/* ra_crc_set_poly -- see header for full description. */
 ra_err_t ra_crc_set_poly(ra_crc_poly_t poly)
 {
   volatile r_crc_regs_t* reg = ra_crc();
@@ -242,7 +237,6 @@ ra_err_t ra_crc_set_poly(ra_crc_poly_t poly)
   return k_ra_ok;
 }
 
-/* ra_crc_get_status -- see header for full description. */
 ra_err_t ra_crc_get_status(uint8_t* out_poly)
 {
   RA_CHECK_NULL_PTR(out_poly, s_tag, "out_poly must not be nullptr");
@@ -251,7 +245,6 @@ ra_err_t ra_crc_get_status(uint8_t* out_poly)
   return k_ra_ok;
 }
 
-/* ra_crc_enter_stop -- see header for full description. */
 ra_err_t ra_crc_enter_stop(void)
 {
   /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 */
@@ -259,7 +252,6 @@ ra_err_t ra_crc_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_crc);
 }
 
-/* ra_crc_exit_stop -- see header for full description. */
 ra_err_t ra_crc_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_crc);
