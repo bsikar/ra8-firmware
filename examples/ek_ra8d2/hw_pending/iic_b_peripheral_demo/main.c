@@ -29,7 +29,7 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_iic_b_peripheral.h"
+#include "ra_i3c.h"
 #include "ra_isr.h"
 #include "ra_time.h"
 
@@ -70,11 +70,11 @@ static void iic_peripheral_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     iic_peripheral_panic_halt();
   }
-  const ra_iic_b_peripheral_cfg_t cfg = {
+  const ra_i3c_peripheral_cfg_t cfg = {
     .peripheral_addr_7b = (uint8_t)k_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  if (ra_iic_b_peripheral_open((uint8_t)k_iic_peripheral_channel, &cfg) != k_ra_ok) {
+  if (ra_i3c_peripheral_open((uint8_t)k_iic_peripheral_channel, &cfg) != k_ra_ok) {
     iic_peripheral_panic_halt();
   }
 }
@@ -99,20 +99,20 @@ static void iic_peripheral_setup_or_halt(void)
 [[nodiscard]] static ra_err_t iic_peripheral_service(uint8_t* last_byte)
 {
   uint8_t mask = 0U;
-  if (ra_iic_b_peripheral_status((uint8_t)k_iic_peripheral_channel, &mask) != k_ra_ok) {
+  if (ra_i3c_peripheral_status((uint8_t)k_iic_peripheral_channel, &mask) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
   bool did_anything = false;
-  if ((mask & (uint8_t)k_ra_iic_b_peripheral_status_rx_full) != 0U) {
+  if ((mask & (uint8_t)k_ra_i3c_peripheral_status_rx_full) != 0U) {
     uint8_t b = 0U;
-    if (ra_iic_b_peripheral_receive((uint8_t)k_iic_peripheral_channel, &b, 1U) != k_ra_ok) {
+    if (ra_i3c_peripheral_receive((uint8_t)k_iic_peripheral_channel, &b, 1U) != k_ra_ok) {
       return k_ra_err_hw_error;
     }
     *last_byte   = b;
     did_anything = true;
   }
-  if ((mask & (uint8_t)k_ra_iic_b_peripheral_status_tx_empty) != 0U) {
-    if (ra_iic_b_peripheral_send((uint8_t)k_iic_peripheral_channel, last_byte, 1U) != k_ra_ok) {
+  if ((mask & (uint8_t)k_ra_i3c_peripheral_status_tx_empty) != 0U) {
+    if (ra_i3c_peripheral_send((uint8_t)k_iic_peripheral_channel, last_byte, 1U) != k_ra_ok) {
       return k_ra_err_hw_error;
     }
     did_anything = true;

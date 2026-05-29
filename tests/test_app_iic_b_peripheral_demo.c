@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #include "ra_err.h"
-#include "ra_iic_b_peripheral.h"
+#include "ra_i3c.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -32,7 +32,7 @@ static void reset_world(void)
 
 /**
  * @par MC/DC:
- * Decision: ``ra_iic_b_peripheral_open(NULL cfg) != ok``. Pairs with the
+ * Decision: ``ra_i3c_peripheral_open(NULL cfg) != ok``. Pairs with the
  * ok-vector below for N+1 = 2 vectors.
  */
 static void test_iic_peripheral_open_null_cfg_rejected(void)
@@ -40,30 +40,30 @@ static void test_iic_peripheral_open_null_cfg_rejected(void)
   reset_world();
   TEST_BEGIN("iic_b_peripheral_demo: open rejects NULL cfg");
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, nullptr));
+                 ra_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_channel, nullptr));
   TEST_END("iic_b_peripheral_demo: open rejects NULL cfg");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_iic_b_peripheral_open(bad_channel) != ok``. Pairs with
+ * Decision: ``ra_i3c_peripheral_open(bad_channel) != ok``. Pairs with
  * the ok-vector for the channel-out-of-range branch.
  */
 static void test_iic_peripheral_open_bad_channel_rejected(void)
 {
   reset_world();
   TEST_BEGIN("iic_b_peripheral_demo: open rejects bad channel");
-  const ra_iic_b_peripheral_cfg_t cfg = {
+  const ra_i3c_peripheral_cfg_t cfg = {
     .peripheral_addr_7b = (uint8_t)k_test_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  TEST_ASSERT(ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_bad_chan, &cfg) != k_ra_ok);
+  TEST_ASSERT(ra_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_bad_chan, &cfg) != k_ra_ok);
   TEST_END("iic_b_peripheral_demo: open rejects bad channel");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_iic_b_peripheral_open(good) == ok`` (golden). Pairs with
+ * Decision: ``ra_i3c_peripheral_open(good) == ok`` (golden). Pairs with
  * both error vectors above. Also pre-condition for the status read
  * test below.
  */
@@ -71,50 +71,49 @@ static void test_iic_peripheral_open_ok(void)
 {
   reset_world();
   TEST_BEGIN("iic_b_peripheral_demo: open at addr 0x42 ok");
-  const ra_iic_b_peripheral_cfg_t cfg = {
+  const ra_i3c_peripheral_cfg_t cfg = {
     .peripheral_addr_7b = (uint8_t)k_test_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg));
   TEST_END("iic_b_peripheral_demo: open at addr 0x42 ok");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_iic_b_peripheral_status(NULL out_mask) != ok``. Pairs
+ * Decision: ``ra_i3c_peripheral_status(NULL out_mask) != ok``. Pairs
  * with the ok-vector below for N+1 = 2 vectors of the NULL guard.
  */
 static void test_iic_peripheral_status_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("iic_b_peripheral_demo: status rejects NULL out_mask");
-  const ra_iic_b_peripheral_cfg_t cfg = {
+  const ra_i3c_peripheral_cfg_t cfg = {
     .peripheral_addr_7b = (uint8_t)k_test_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  (void)ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
+  (void)ra_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_iic_b_peripheral_status((uint8_t)k_test_iic_peripheral_channel, nullptr));
+                 ra_i3c_peripheral_status((uint8_t)k_test_iic_peripheral_channel, nullptr));
   TEST_END("iic_b_peripheral_demo: status rejects NULL out_mask");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_iic_b_peripheral_status(good) == ok``. Golden path
+ * Decision: ``ra_i3c_peripheral_status(good) == ok``. Golden path
  * vector; mask returned will be idle in the simulator.
  */
 static void test_iic_peripheral_status_idle(void)
 {
   reset_world();
   TEST_BEGIN("iic_b_peripheral_demo: status reports idle on fresh open");
-  const ra_iic_b_peripheral_cfg_t cfg = {
+  const ra_i3c_peripheral_cfg_t cfg = {
     .peripheral_addr_7b = (uint8_t)k_test_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  (void)ra_iic_b_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
+  (void)ra_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
   uint8_t mask = 0xFFU;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_iic_b_peripheral_status((uint8_t)k_test_iic_peripheral_channel, &mask));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_peripheral_status((uint8_t)k_test_iic_peripheral_channel, &mask));
   TEST_END("iic_b_peripheral_demo: status reports idle on fresh open");
 }
 

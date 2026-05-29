@@ -24,9 +24,9 @@
  * ra_nsc_sci_init wraps ra_sci_init
  * ra_nsc_sci_putc wraps ra_sci_putc_polling
  * ra_nsc_sci_getc wraps ra_sci_getc_polling
- * ra_nsc_iic_init wraps ra_iic_init
- * ra_nsc_iic_write wraps ra_iic_write
- * ra_nsc_iic_read wraps ra_iic_read
+ * ra_nsc_iic_init wraps ra_i3c_init
+ * ra_nsc_iic_write wraps ra_i3c_write
+ * ra_nsc_iic_read wraps ra_i3c_read
  * ra_nsc_spi_init wraps ra_spi_init
  * ra_nsc_spi_xfer8 wraps ra_spi_xfer8
  * ra_nsc_usb_init wraps ra_usb_device_init
@@ -53,7 +53,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 #include "ra_nsc_veneer.h"
 #include "ra_sci.h"
 #include "ra_spi.h"
@@ -110,7 +110,7 @@ extern "C" {
  * @brief NSC veneer: bring up an IIC channel.
  * @since 0.1.0
  */
-[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_iic_init(uint8_t channel, const ra_i3c_cfg_t* cfg);
 
 /**
  * @brief NSC veneer: blocking I2C write to a 7-bit target.

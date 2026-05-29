@@ -11,7 +11,7 @@
 #include "ra8d2_sci_regs.h"
 #include "ra8d2_spi_regs.h"
 #include "ra_err.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 #include "ra_mstp.h"
 #include "ra_nsc_comms.h"
 #include "ra_sci.h"
@@ -34,7 +34,8 @@ static const ra_sci_cfg_t k_sci_cfg = {
   .pclk_hz   = 60000000U,
 };
 
-static const ra_iic_cfg_t k_iic_cfg = {
+static const ra_i3c_cfg_t k_iic_cfg = {
+  .mode     = k_ra_i3c_mode_i2c,
   .bus_hz   = 100000U,
   .pclka_hz = 60000000U,
 };

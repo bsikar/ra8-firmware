@@ -20,7 +20,7 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 #include "ra_nsc_veneer.h"
 #include "ra_sci.h"
 #include "ra_spi.h"
@@ -141,7 +141,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_sci_getc(uint8_t channel, uint8_t* out_byte)
  * @brief NSC veneer: bring up an IIC (I2C-B) channel from NS code.
  *
  * @details Validates the NS pointer to ``cfg`` then forwards to
- *   ``ra_iic_init``.
+ *   ``ra_i3c_init``.
  *
  * @param[in] channel IIC channel index.
  * @param[in] cfg     Caller-supplied configuration in NS memory.
@@ -163,18 +163,21 @@ RA_NSC_VENEER ra_err_t ra_nsc_sci_getc(uint8_t channel, uint8_t* out_byte)
  * @note Thread-safe: serialised by the secure IIC driver lock.
  * @since 0.1.0
  */
-RA_NSC_VENEER ra_err_t ra_nsc_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
+RA_NSC_VENEER ra_err_t ra_nsc_iic_init(uint8_t channel, const ra_i3c_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "iic_init: cfg");
   RA_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
-  return ra_iic_init(channel, cfg);
+  /* The IIC veneer is always an I2C-compat controller; force the mode. */
+  ra_i3c_cfg_t local = *cfg;
+  local.mode         = k_ra_i3c_mode_i2c;
+  return ra_i3c_init(channel, &local);
 }
 
 /**
  * @brief NSC veneer: blocking I2C write to a 7-bit target.
  *
  * @details Validates ``[data, data+len)`` lies in NS memory then forwards
- *   to ``ra_iic_write``.
+ *   to ``ra_i3c_write``.
  *
  * @param[in] channel   IIC channel index.
  * @param[in] target_7b 7-bit peripheral address.
@@ -206,14 +209,14 @@ RA_NSC_VENEER ra_err_t ra_nsc_iic_write(uint8_t        channel,
 {
   RA_CHECK_NULL_PTR(data, s_tag, "iic_write: data");
   RA_NSC_CHECK_NS_RANGE_R(data, len);
-  return ra_iic_write(channel, target_7b, data, len);
+  return ra_i3c_write(channel, target_7b, data, len, false);
 }
 
 /**
  * @brief NSC veneer: blocking I2C read from a 7-bit target.
  *
  * @details Validates ``[out_buf, out_buf+len)`` lies in writable NS
- *   memory then forwards to ``ra_iic_read``.
+ *   memory then forwards to ``ra_i3c_read``.
  *
  * @param[in]  channel   IIC channel index.
  * @param[in]  target_7b 7-bit peripheral address.
@@ -244,7 +247,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_iic_read(uint8_t  channel,
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "iic_read: out_buf");
   RA_NSC_CHECK_NS_RANGE_RW(out_buf, len);
-  return ra_iic_read(channel, target_7b, out_buf, len);
+  return ra_i3c_read(channel, target_7b, out_buf, len, false);
 }
 
 /* =============================================================================
