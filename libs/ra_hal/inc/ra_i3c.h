@@ -1,32 +1,39 @@
 /**
  * @file ra_i3c.h
- * @brief I3C Bus Interface driver -- CCC engine + private read/write
+ * @brief I3C Bus Interface driver -- unified native-I3C + I2C-compat modes
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * This module exposes the RA8D2 I3C0 controller as a primary capable
- * of issuing the standard MIPI Common Command Codes (CCCs), private
- * read / write transfers in SDR mode, and reading inbound
- * In-Band-Interrupt (IBI) descriptors from the IBI queue.  The
- * implementation mirrors FSP ``r_i3c`` -- every transfer is built as
- * a 32-bit (or two-word) command descriptor that is pushed into
- * NCMDQP, with payload bytes flowing through NTDTBP0 and IBI events
- * arriving via NIBIQP.  See HUM Ch 40 "I3C Bus Interface (I3C)" pp
- * 2445-2701 for the register-level reference.
+ * Single driver for the RA8D2 I3C peripheral (I3C0 @ 0x4035F000). The
+ * peripheral can run in two modes, selected per channel at init via
+ * ::ra_i3c_cfg_t::mode:
  *
- * Public API:
- * - lifecycle / status / IRQ:  ``ra_i3c_init``, ``_deinit``,
- *   ``_get_status``, ``_clear_status``, ``_attach_handler``,
- *   ``_dispatch``, ``_enter_stop``, ``_exit_stop``,
- *   ``_set_address``, ``_bus_enable``
- * - dynamic address assignment: ``ra_i3c_dynamic_address_assign``
- *   (ENTDAA), ``ra_i3c_set_dynamic_address`` (SETDASA),
- *   ``ra_i3c_reset_dynamic_addresses`` (broadcast RSTDAA)
- * - generic CCC: ``ra_i3c_send_ccc`` / ``ra_i3c_recv_ccc``
- * - private SDR: ``ra_i3c_write`` / ``ra_i3c_read``
- * - IBI inbound: ``ra_i3c_ibi_read``
+ * - ::k_ra_i3c_mode_native -- full MIPI I3C: dynamic address assignment
+ *   (DAA), Common Command Codes (CCC), private SDR read/write, HDR mode,
+ *   In-Band Interrupts (IBI), and peripheral (target) mode. Mirrors FSP
+ *   ``r_i3c`` -- every transfer is a command descriptor pushed to NCMDQP
+ *   with payload through NTDTBP0.
+ * - ::k_ra_i3c_mode_i2c -- legacy I2C-compatibility controller (7-bit static
+ *   addressing, START/RESTART/STOP, ACK/NACK, bus scan, SMBus). Mirrors
+ *   FSP ``r_iic_b``.
+ *
+ * The data path (::ra_i3c_init, ::ra_i3c_write, ::ra_i3c_read,
+ * ::ra_i3c_transfer, ::ra_i3c_deinit) is shared and dispatches on the
+ * channel's configured mode. Mode-specific calls return
+ * ::k_ra_err_invalid_state when used against a channel in the other mode:
+ * - I2C-only: ::ra_i3c_scan, ::ra_i3c_set_clock, ::ra_i3c_get_errors,
+ *   ::ra_i3c_clear_errors, ::ra_i3c_abort.
+ * - Native-only: ::ra_i3c_set_address, ::ra_i3c_bus_enable,
+ *   ::ra_i3c_dynamic_address_assign, ::ra_i3c_set_dynamic_address,
+ *   ::ra_i3c_reset_dynamic_addresses, ::ra_i3c_send_ccc,
+ *   ::ra_i3c_recv_ccc, ::ra_i3c_set_hdr_mode, ::ra_i3c_ibi_enable,
+ *   ::ra_i3c_ibi_drain, ::ra_i3c_ibi_read, ::ra_i3c_slave_open,
+ *   ::ra_i3c_enter_stop, ::ra_i3c_exit_stop.
+ *
+ * See HUM Ch 40 "I3C Bus Interface (I3C)" pp 2445-2701 for the
+ * register-level reference.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -43,29 +50,88 @@ extern "C" {
 #include "ra_err.h"
 
 /**
- * @typedef ra_i3c_event_fn_t
- * @brief I3C event callback fired by ``ra_i3c_dispatch``.
+ * @enum ra_i3c_mode_t
+ * @brief Operating mode selected per channel at ::ra_i3c_init.
  *
- * @param ctx       Opaque user context registered with
- *                  ``ra_i3c_attach_handler``.
- * @param status_mask Snapshot of the INST register at dispatch time.
+ * @details
+ * The I3C peripheral is a single block that can act as a native MIPI I3C
+ * controller/target or as a legacy I2C-compatibility controller. The mode is
+ * fixed for the life of an init/deinit cycle and recorded in the driver's
+ * per-channel state so the shared data-path functions can dispatch.
+ *
+ * @invariant Exactly one mode is active per channel between init/deinit.
+ * @see ra_i3c_cfg_t
+ * @since 0.1.0
  */
-typedef void (*ra_i3c_event_fn_t)(void* ctx, uint32_t status_mask);
+typedef enum : uint8_t {
+  k_ra_i3c_mode_native = 0U, /**< Native MIPI I3C (DAA/CCC/SDR/HDR/IBI). */
+  k_ra_i3c_mode_i2c    = 1U, /**< Legacy I2C-compatibility controller.       */
+} ra_i3c_mode_t;
+
+/**
+ * @struct ra_i3c_cfg_t
+ * @brief Per-channel bring-up configuration for ::ra_i3c_init.
+ *
+ * @details
+ * @p bus_hz and @p pclka_hz are used by the I2C-compat mode to compute
+ * the STDBR bit-rate divider; native mode currently ignores them (SCL is
+ * driven from the I3C clock tree). @p mode selects the operating mode.
+ *
+ * @invariant @p bus_hz and @p pclka_hz are non-zero in I2C mode.
+ * @code
+ * const ra_i3c_cfg_t cfg = {
+ *   .mode = k_ra_i3c_mode_i2c, .bus_hz = 100000U, .pclka_hz = 8000000U };
+ * ra_i3c_init(0U, &cfg);
+ * @endcode
+ * @see ra_i3c_mode_t
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_i3c_mode_t mode;     /**< Operating mode for this channel.          */
+  uint32_t      bus_hz;   /**< Target bus clock in Hz (I2C mode).        */
+  uint32_t      pclka_hz; /**< Source clock for the bit-rate calc (I2C). */
+} ra_i3c_cfg_t;
+
+/**
+ * @enum ra_i3c_err_t
+ * @brief Latched error bits returned by ::ra_i3c_get_errors (I2C mode).
+ *
+ * @details Mirrors the legacy IIC_B status: a bitwise OR of the conditions
+ * latched since the last ::ra_i3c_clear_errors.
+ *
+ * @invariant ::k_ra_i3c_err_none is the all-clear sentinel (0).
+ * @see ra_i3c_get_errors
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_i3c_err_none     = 0x00U, /**< No latched error.            */
+  k_ra_i3c_err_arb_lost = 0x01U, /**< Arbitration lost (BST.ALF).  */
+  k_ra_i3c_err_nack     = 0x02U, /**< NACK received (BST.NACKDF).  */
+  k_ra_i3c_err_timeout  = 0x04U, /**< Bus timeout (BST.TODF).      */
+} ra_i3c_err_t;
+
+/**
+ * @typedef ra_i3c_event_fn_t
+ * @brief Event callback fired by ::ra_i3c_dispatch.
+ *
+ * @param ctx    Opaque context registered with ::ra_i3c_attach_handler.
+ * @param status In native mode the INST snapshot; in I2C mode the latched
+ *               ::ra_i3c_err_t mask.
+ * @since 0.1.0
+ */
+typedef void (*ra_i3c_event_fn_t)(void* ctx, uint32_t status);
 
 /**
  * @struct ra_i3c_daa_target_t
- * @brief One target entry filled in by ENTDAA.
+ * @brief One target entry filled in by ENTDAA (native mode).
  *
- * @details
- * Each row in the array passed to ``ra_i3c_dynamic_address_assign``
- * is filled with the 48-bit Provisional ID, the Bus Characteristic
- * Register, and the Device Characteristic Register read during the
- * "address phase" of ENTDAA, plus the dynamic address that the
- * controller assigned.  Caller must pre-populate ``dynamic_address``
- * with the address that this target should receive.
+ * @details Each row passed to ::ra_i3c_dynamic_address_assign is filled
+ * with the 48-bit Provisional ID, BCR, and DCR read during ENTDAA; the
+ * caller pre-populates @p dynamic_address with the address to hand out.
  *
- * cppcheck cannot see test consumers that read every field, so
- * ``unusedStructMember`` is suppressed via a paired begin/end.
+ * @invariant @p dynamic_address is a valid 7-bit address on entry.
+ * @see ra_i3c_dynamic_address_assign
+ * @since 0.1.0
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
@@ -78,136 +144,455 @@ typedef struct {
 
 /**
  * @enum ra_i3c_ibi_type_t
- * @brief Type encoded in an IBI status descriptor (bit 31 IBI_ST,
- *        bits 1:0 of the IBI ID).
+ * @brief Type encoded in an IBI status descriptor (native mode).
+ *
+ * @invariant Values match the MIPI IBI-ID low bits.
+ * @see ra_i3c_ibi_t
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_i3c_ibi_type_interrupt    = 0U, /**< Peripheral-initiated IBI. */
-  k_ra_i3c_ibi_type_hot_join     = 1U, /**< Hot-join request. */
-  k_ra_i3c_ibi_type_main_request = 2U, /**< Mainship request. */
+  k_ra_i3c_ibi_type_hot_join     = 1U, /**< Hot-join request.         */
+  k_ra_i3c_ibi_type_main_request = 2U, /**< Mainship request.         */
 } ra_i3c_ibi_type_t;
 
 /**
  * @struct ra_i3c_ibi_t
- * @brief Decoded IBI inbound descriptor.
+ * @brief Decoded IBI inbound descriptor (native mode).
  *
- * @details
- * Returned by ``ra_i3c_ibi_read`` -- the 32-bit IBI status
- * descriptor word at NIBIQP is split into the originating address,
- * the type, the payload length, and any payload bytes that were
- * appended to the descriptor (read from the same FIFO).
+ * @details Returned by ::ra_i3c_ibi_read -- the 32-bit IBI status word at
+ * NIBIQP split into address, type, payload length, and payload bytes.
+ *
+ * @invariant @p payload_len <= sizeof(@p payload).
+ * @see ra_i3c_ibi_read
+ * @since 0.1.0
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t           address;     /**< Originating dynamic address. */
-  ra_i3c_ibi_type_t type;        /**< IBI / HJ / MR classification. */
-  uint8_t           payload_len; /**< Bytes that follow in payload[]. */
-  uint8_t           payload[8];  /**< Up to 8 bytes of payload. */
-  uint8_t           last;        /**< 1 if this is the final fragment. */
+  uint8_t           address;     /**< Originating dynamic address.       */
+  ra_i3c_ibi_type_t type;        /**< IBI / HJ / MR classification.      */
+  uint8_t           payload_len; /**< Bytes that follow in payload[].    */
+  uint8_t           payload[8];  /**< Up to 8 bytes of payload.          */
+  uint8_t           last;        /**< 1 if this is the final fragment.   */
 } ra_i3c_ibi_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
- * @brief Initialise the I3C controller.
+ * @enum ra_i3c_hdr_mode_t
+ * @brief HDR transfer-mode selector for ::ra_i3c_set_hdr_mode (native).
+ *
+ * @invariant Values map to NCMDQP word-0 [27:26].
+ * @see ra_i3c_set_hdr_mode
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_i3c_hdr_mode_sdr = 0U, /**< Plain SDR transfer (default). */
+  k_ra_i3c_hdr_mode_ddr = 1U, /**< HDR-DDR.                      */
+  k_ra_i3c_hdr_mode_ts  = 2U, /**< HDR-TS.                       */
+} ra_i3c_hdr_mode_t;
+
+/* =========================================================================
+ * Lifecycle (shared)
+ * =========================================================================
+ */
+
+/**
+ * @brief Initialise an I3C channel in the configured mode.
  *
  * @details
- * Powers the I3C MSTP gate, runs the FSP-mirrored reset sequence,
- * and zeros every status / mask / address register so the bus is
- * left in a deterministic idle state.
+ * Ungates the I3C MSTP, runs the FSP-mirrored bring-up, and -- in I2C mode
+ * -- programmes the bit-rate from @p cfg. The channel's mode is recorded so
+ * later data-path calls dispatch correctly. Native mode leaves the bus
+ * disabled (call ::ra_i3c_bus_enable separately).
  *
- * @retval k_ra_ok            Controller ready for ``ra_i3c_bus_enable``.
- * @retval k_ra_err_*         MSTP enable failed; see ``ra_mstp.h``.
- * @pre  MSTP module is initialized.
- * @pre  No other module owns the I3C peripheral.
- * @post CECTL.CLKE == 1 and INIE == INSTE == 0.
- * @post BCTL.BUSE == 0.
+ * @param[in] channel I3C channel index (0 on RA8D2).
+ * @param[in] cfg     Bring-up configuration; must be non-NULL.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Channel ready in the requested mode.
+ * @retval k_ra_err_null_ptr     @p cfg was NULL.
+ * @retval k_ra_err_invalid_arg  @p channel out of range, or zero clocks in I2C mode.
+ * @retval k_ra_err_hw_init_failed MSTP enable failed.
+ *
+ * @pre MSTP module is initialized.
+ * @pre No other driver owns the I3C peripheral.
+ * @post On success the channel's mode equals @p cfg->mode.
+ * @post On failure no peripheral state is left half-configured.
  * @note Not thread-safe; call from single-threaded init.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_i3c_init(void);
+[[nodiscard]] ra_err_t ra_i3c_init(uint8_t channel, const ra_i3c_cfg_t* cfg);
 
 /**
- * @brief Tear down the I3C controller.
+ * @brief Tear down an I3C channel and gate the peripheral.
+ *
+ * @param[in] channel I3C channel index.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Channel torn down, MSTP gated.
+ * @retval k_ra_err_invalid_arg @p channel out of range.
+ *
+ * @pre @p channel was previously initialized.
+ * @pre Caller is single-threaded with respect to the peripheral.
+ * @post The channel is marked uninitialized.
+ * @post The I3C MSTP is gated when no channel remains active.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_i3c_deinit(void);
+[[nodiscard]] ra_err_t ra_i3c_deinit(uint8_t channel);
+
+/* =========================================================================
+ * Data path (shared, mode-dispatched)
+ * =========================================================================
+ */
 
 /**
- * @brief Programme the active 7-bit primary/peripheral device address.
+ * @brief Write @p len bytes to @p addr.
+ *
+ * @details
+ * In I2C mode this is a controller transmit to 7-bit @p addr with optional
+ * repeated-START framing. In native mode it is a private SDR write to the
+ * dynamic address @p addr; @p restart is ignored.
+ *
+ * @param[in] channel I3C channel index.
+ * @param[in] addr    7-bit target/dynamic address.
+ * @param[in] data    Bytes to transmit; may be NULL only when @p len is 0.
+ * @param[in] len     Byte count.
+ * @param[in] restart True to hold the bus for a following transfer (I2C).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              All bytes transmitted.
+ * @retval k_ra_err_null_ptr    @p data NULL with @p len > 0.
+ * @retval k_ra_err_invalid_arg @p channel or @p addr out of range.
+ * @retval k_ra_err_nack        Target did not acknowledge (I2C).
+ * @retval k_ra_err_hw_timeout  Bus stalled (I2C).
+ *
+ * @pre Channel initialized.
+ * @pre In native mode the bus is enabled.
+ * @post On success the payload has been queued/transmitted.
+ * @post On failure the bus is released (I2C) where possible.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, bool restart);
+
+/**
+ * @brief Read @p len bytes from @p addr.
+ *
+ * @details I2C mode: controller receive from 7-bit @p addr. Native mode:
+ * private SDR read from dynamic address @p addr; @p restart is ignored.
+ *
+ * @param[in]  channel I3C channel index.
+ * @param[in]  addr    7-bit target/dynamic address.
+ * @param[out] buf     Destination buffer; must be non-NULL.
+ * @param[in]  len     Byte count (> 0).
+ * @param[in]  restart True to hold the bus for a following transfer (I2C).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              All bytes received.
+ * @retval k_ra_err_null_ptr    @p buf NULL.
+ * @retval k_ra_err_invalid_arg @p channel/@p addr out of range, or @p len 0.
+ * @retval k_ra_err_nack        Target did not acknowledge (I2C).
+ * @retval k_ra_err_hw_timeout  Bus stalled (I2C).
+ *
+ * @pre Channel initialized.
+ * @pre In native mode the bus is enabled.
+ * @post On success @p buf holds the received bytes.
+ * @post On failure the bus is released (I2C) where possible.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len, bool restart);
+
+/**
+ * @brief Write-then-read with repeated-START framing (I2C mode).
+ *
+ * @details Transmits @p wr_len bytes, issues a repeated START, then reads
+ * @p rd_len bytes from the same address. Native mode returns
+ * ::k_ra_err_invalid_state (use ::ra_i3c_write / ::ra_i3c_read or CCCs).
+ *
+ * @param[in]  channel I3C channel index.
+ * @param[in]  addr    7-bit target address.
+ * @param[in]  wr      Bytes to write; non-NULL when @p wr_len > 0.
+ * @param[in]  wr_len  Write byte count.
+ * @param[out] rd      Read destination; non-NULL when @p rd_len > 0.
+ * @param[in]  rd_len  Read byte count.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Transfer completed.
+ * @retval k_ra_err_null_ptr      A required buffer was NULL.
+ * @retval k_ra_err_invalid_arg   @p channel/@p addr out of range.
+ * @retval k_ra_err_invalid_state Channel is in native mode.
+ * @retval k_ra_err_nack          Target did not acknowledge.
+ *
+ * @pre Channel initialized in I2C mode.
+ * @pre @p wr_len + @p rd_len > 0.
+ * @post On success both phases completed and STOP was issued.
+ * @post On failure the bus is released.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_transfer(uint8_t        channel,
+                                       uint8_t        addr,
+                                       const uint8_t* wr,
+                                       uint32_t       wr_len,
+                                       uint8_t*       rd,
+                                       uint32_t       rd_len);
+
+/* =========================================================================
+ * I2C-mode-only
+ * =========================================================================
+ */
+
+/**
+ * @brief Re-programme the I2C bit rate (I2C mode).
+ *
+ * @param[in] channel  I3C channel index.
+ * @param[in] bus_hz   Target bus clock in Hz.
+ * @param[in] pclka_hz Source clock for the divider calculation.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bit rate updated.
+ * @retval k_ra_err_invalid_arg   @p channel out of range or zero clocks.
+ * @retval k_ra_err_invalid_state Channel is in native mode.
+ *
+ * @pre Channel initialized in I2C mode.
+ * @pre @p bus_hz and @p pclka_hz are non-zero.
+ * @post On success the divider reflects @p bus_hz / @p pclka_hz.
+ * @post On failure the previous divider is unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
+
+/**
+ * @brief Probe whether a 7-bit address acknowledges (I2C mode).
+ *
+ * @param[in]  channel   I3C channel index.
+ * @param[in]  addr      7-bit address to probe.
+ * @param[out] out_acked Set true if the address ACKed; false otherwise.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Probe completed (see @p out_acked).
+ * @retval k_ra_err_null_ptr      @p out_acked NULL.
+ * @retval k_ra_err_invalid_state Channel is in native mode.
+ *
+ * @pre Channel initialized in I2C mode.
+ * @pre @p out_acked is non-NULL.
+ * @post @p out_acked reflects the ACK/NACK outcome.
+ * @post The bus is released with a STOP.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_scan(uint8_t channel, uint8_t addr, bool* out_acked);
+
+/**
+ * @brief Read the latched I2C error mask (I2C mode).
+ *
+ * @param[in]  channel  I3C channel index.
+ * @param[out] out_mask OR of ::ra_i3c_err_t bits since the last clear.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Mask returned.
+ * @retval k_ra_err_null_ptr      @p out_mask NULL.
+ * @retval k_ra_err_invalid_state Channel is in native mode.
+ *
+ * @pre Channel initialized in I2C mode.
+ * @pre @p out_mask is non-NULL.
+ * @post @p out_mask holds the latched error bits.
+ * @post No peripheral state is mutated.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_get_errors(uint8_t channel, uint8_t* out_mask);
+
+/**
+ * @brief Clear latched I2C error bits (I2C mode).
+ *
+ * @param[in] channel I3C channel index.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Errors cleared.
+ * @retval k_ra_err_invalid_state Channel is in native mode.
+ *
+ * @pre Channel initialized in I2C mode.
+ * @pre Caller is single-threaded.
+ * @post The latched error mask reads ::k_ra_i3c_err_none.
+ * @post No transfer is in progress.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_clear_errors(uint8_t channel);
+
+/**
+ * @brief Abort an in-flight I2C transfer and release the bus (I2C mode).
+ *
+ * @param[in] channel I3C channel index.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bus released.
+ * @retval k_ra_err_invalid_state Channel is in native mode.
+ *
+ * @pre Channel initialized in I2C mode.
+ * @pre Caller is single-threaded.
+ * @post The bus is idle and any held state is cleared.
+ * @post A subsequent transfer starts from a clean state.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_abort(uint8_t channel);
+
+/* =========================================================================
+ * IRQ / status (shared)
+ * =========================================================================
+ */
+
+/**
+ * @brief Attach an event callback for a channel.
+ *
+ * @param[in] channel I3C channel index.
+ * @param[in] fn      Callback (NULL to detach).
+ * @param[in] ctx     Opaque context passed back to @p fn.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Handler registered.
+ * @retval k_ra_err_invalid_arg @p channel out of range.
+ *
+ * @pre Channel initialized.
+ * @pre Caller is single-threaded with respect to dispatch.
+ * @post The channel's handler equals @p fn.
+ * @post The channel's context equals @p ctx.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_attach_handler(uint8_t channel, ra_i3c_event_fn_t fn, void* ctx);
+
+/**
+ * @brief Snapshot status and fire the channel's callback.
+ *
+ * @details In native mode reads and clears the INST register and passes the
+ * snapshot to the handler; in I2C mode reads and clears the latched IIC_B
+ * error mask and passes it instead. A no-op when no handler is attached.
+ *
+ * @param[in] channel I3C channel index.
+ *
+ * @pre Channel initialized.
+ * @pre A handler may or may not be attached.
+ * @post The status flags are cleared after snapshot.
+ * @post The handler (if any) has been invoked once.
+ * @note Not thread-safe; call from IRQ or polled context.
+ * @since 0.1.0
+ */
+void ra_i3c_dispatch(uint8_t channel);
+
+/* =========================================================================
+ * Native-mode-only (single I3C0 instance)
+ * =========================================================================
+ */
+
+/**
+ * @brief Programme the primary dynamic address (native mode).
+ * @param[in] addr 7-bit primary address.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Address programmed.
+ * @retval k_ra_err_invalid_arg   @p addr out of range.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post MSDVAD reflects @p addr with the valid bit set.
+ * @post The bus may still be disabled.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_set_address(uint32_t addr);
 
 /**
- * @brief Enable / disable bus-primary operation via BCTL.BUSE.
+ * @brief Enable/disable bus-primary operation via BCTL.BUSE (native mode).
+ * @param[in] enable True to enable primary operation.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                BUSE updated.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post BCTL.BUSE reflects @p enable.
+ * @post No transfer is in progress.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_bus_enable(bool enable);
 
 /**
- * @brief Read the INST status register.
+ * @brief Read the native INST status register (native mode).
+ * @param[out] out_mask INST snapshot.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Status returned.
+ * @retval k_ra_err_null_ptr      @p out_mask NULL.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre @p out_mask non-NULL.
+ * @post @p out_mask holds the INST snapshot.
+ * @post No peripheral state is mutated.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_get_status(uint32_t* out_mask);
 
 /**
- * @brief Clear INST status bits.
+ * @brief Clear native INST status bits (native mode).
+ * @param[in] mask Bits to clear.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bits cleared.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post The requested INST bits read 0.
+ * @post Other bits are unchanged.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_clear_status(uint32_t mask);
 
 /**
- * @brief Attach an I3C event callback.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_i3c_attach_handler(ra_i3c_event_fn_t fn, void* ctx);
-
-/**
- * @brief Dispatch an I3C event -- snapshot status + fire callback.
- * @since 0.1.0
- *
- * @details See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- */
-void ra_i3c_dispatch(void);
-
-/**
- * @brief Put I3C into MSTP-gated stop.
+ * @brief Put native I3C0 into MSTP-gated stop (native mode).
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Stopped.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post BCTL/CECTL cleared and the MSTP gated.
+ * @post The bus is idle.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_enter_stop(void);
 
 /**
- * @brief Exit MSTP-gated stop.
+ * @brief Exit MSTP-gated stop (native mode).
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Resumed.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 was put into stop via ::ra_i3c_enter_stop.
+ * @pre Caller is single-threaded.
+ * @post The I3C MSTP is ungated.
+ * @post The peripheral is ready for re-init of bus state.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_exit_stop(void);
 
 /**
- * @brief Issue ENTDAA (broadcast 0x07) to enumerate I3C targets.
- *
- * @details
- * Builds an "address-assignment" command descriptor for the ENTDAA
- * CCC, pushes it through NCMDQP, and reads back PID/BCR/DCR for
- * each target via NTDTBP0.  Each target row in @p targets must have
- * its ``dynamic_address`` field pre-populated with the address that
- * the controller should hand out.  The PID/BCR/DCR fields are
- * filled from the responses.  See HUM Ch 40 "Enter Dynamic Address
- * Assignment" pp 2445-2701.
- *
- * @param[in,out] targets Caller-allocated array; rows updated in place.
- * @param[in]     target_count Number of valid rows in @p targets.
- *                  Must be in the range 1 .. k_ra_i3c_max_targets.
- *
+ * @brief Issue ENTDAA to enumerate I3C targets (native mode).
+ * @param[in,out] targets      Caller array; rows updated in place.
+ * @param[in]     target_count Number of valid rows (1..max).
+ * @return ra_err_t Error code.
  * @retval k_ra_ok                Command queued; FIFOs read.
- * @retval k_ra_err_null_ptr      @p targets was NULL.
- * @retval k_ra_err_invalid_arg   @p target_count was 0 or out of range.
- * @pre  ``ra_i3c_init`` succeeded.
- * @pre  Bus is enabled (``ra_i3c_bus_enable(true)``).
+ * @retval k_ra_err_null_ptr      @p targets NULL.
+ * @retval k_ra_err_invalid_arg   @p target_count 0 or out of range.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode and bus enabled.
+ * @pre @p targets non-NULL.
  * @post NCMDQP holds the ENTDAA descriptor.
  * @post @p targets reflect responses received before STOP.
  * @note Not thread-safe.
@@ -217,220 +602,161 @@ void ra_i3c_dispatch(void);
                                                      uint8_t              target_count);
 
 /**
- * @brief Issue SETDASA (direct 0x87) to assign one target a dynamic address.
- *
- * @param[in] static_addr  7-bit static address currently used by the target.
+ * @brief Issue SETDASA to assign one target a dynamic address (native mode).
+ * @param[in] static_addr  7-bit static address in use by the target.
  * @param[in] dynamic_addr 7-bit dynamic address to assign.
- *
- * @retval k_ra_ok               Descriptor queued.
- * @retval k_ra_err_invalid_arg  Address out of 7-bit range.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Descriptor queued.
+ * @retval k_ra_err_invalid_arg   Address out of range.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post NCMDQP holds the SETDASA descriptor.
+ * @post The command-queue-empty flag is cleared.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr);
 
 /**
- * @brief Issue RSTDAA (broadcast 0x06) to clear all dynamic addresses.
- * @retval k_ra_ok               Descriptor queued.
+ * @brief Issue RSTDAA to clear all dynamic addresses (native mode).
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Descriptor queued.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post NCMDQP holds the RSTDAA descriptor.
+ * @post The command-queue-empty flag is cleared.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_reset_dynamic_addresses(void);
 
 /**
- * @brief Generic CCC send (broadcast or directed write).
- *
- * @details
- * For broadcast CCCs (opcode < 0x80), @p target_addr is ignored.
- * For directed CCCs (opcode >= 0x80), @p target_addr selects the
- * target.  Up to ``k_ra_i3c_immediate_max_bytes`` of payload may be
- * passed; longer payloads are pushed through NTDTBP0 word-by-word.
- *
- * @param[in] ccc          Common Command Code opcode.
- * @param[in] target_addr  Target dynamic address (directed CCCs only).
- * @param[in] payload      Optional payload buffer; may be NULL when len==0.
+ * @brief Generic CCC send -- broadcast or directed write (native mode).
+ * @param[in] ccc          CCC opcode.
+ * @param[in] target_addr  Dynamic address (directed CCCs only).
+ * @param[in] payload      Optional payload; NULL when @p len is 0.
  * @param[in] len          Payload byte count.
- * @retval k_ra_ok               Descriptor queued.
- * @retval k_ra_err_invalid_arg  Address out of range, or len exceeds queue.
- * @retval k_ra_err_null_ptr     payload NULL but len > 0.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Descriptor queued.
+ * @retval k_ra_err_invalid_arg   Address out of range.
+ * @retval k_ra_err_null_ptr      @p payload NULL with @p len > 0.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded.
+ * @post NCMDQP holds the CCC descriptor.
+ * @post Payload (if any) was pushed to NTDTBP0.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payload, uint8_t len);
 
 /**
- * @brief Generic CCC receive (directed read).
- *
- * @param[in]  ccc         Direct CCC opcode (must have bit 7 set).
- * @param[in]  target_addr Target dynamic address.
- * @param[out] buf         Caller buffer to receive bytes from NTDTBP0.
- * @param[in]  max_len     Maximum bytes to drain.
- * @param[out] got_len     Number of bytes actually drained.
- * @retval k_ra_ok               Read complete.
- * @retval k_ra_err_invalid_arg  Non-direct CCC, or max_len == 0.
- * @retval k_ra_err_null_ptr     Output pointers NULL.
+ * @brief Generic CCC receive -- directed read (native mode).
+ * @param[in]  ccc         Direct CCC opcode (bit 7 set).
+ * @param[in]  target_addr Dynamic address.
+ * @param[out] buf         Destination buffer.
+ * @param[in]  max_len     Maximum bytes to drain (> 0).
+ * @param[out] got_len     Bytes actually drained.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Read complete.
+ * @retval k_ra_err_invalid_arg   Non-direct CCC, address bad, or @p max_len 0.
+ * @retval k_ra_err_null_ptr      Output pointers NULL.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre @p buf and @p got_len non-NULL.
+ * @post @p buf holds the response bytes.
+ * @post @p got_len holds the drained count.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len, uint8_t* got_len);
 
 /**
- * @brief Private write (SDR) to a 7-bit dynamic-addressed target.
- *
- * @param[in] target_addr 7-bit target dynamic address.
- * @param[in] data        Bytes to push through NTDTBP0.
- * @param[in] len         Byte count.  Up to 4 bytes use immediate-data
- *                        transfer; longer transfers use the regular
- *                        FIFO descriptor.
- * @retval k_ra_ok               Descriptor + payload queued.
- * @retval k_ra_err_invalid_arg  Address out of range.
- * @retval k_ra_err_null_ptr     data NULL but len > 0.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_i3c_write(uint8_t target_addr, const uint8_t* data, uint32_t len);
-
-/**
- * @brief Private read (SDR) from a 7-bit dynamic-addressed target.
- *
- * @param[in]  target_addr 7-bit target dynamic address.
- * @param[out] buf         Caller buffer; bytes drained from NTDTBP0.
- * @param[in]  len         Byte count to read.
- * @retval k_ra_ok               Read complete.
- * @retval k_ra_err_invalid_arg  Address out of range, or len == 0.
- * @retval k_ra_err_null_ptr     buf NULL.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len);
-
-/**
- * @enum ra_i3c_hdr_mode_t
- * @brief HDR transfer mode selector for ::ra_i3c_set_hdr_mode.
- *
- * @details
- * Mirrors NCMDQP word-0 [27:26] -- the controller's "transfer mode"
- * field.  HDR-DDR doubles the symbol rate by toggling SDA on both
- * SCL edges; HDR-TS uses ternary-symbol coding.  See HUM Ch 40
- * "Command Descriptor / Transfer Mode" pp 2445-2701.
- *
- * @since 0.1.0
- */
-typedef enum : uint8_t {
-  k_ra_i3c_hdr_mode_sdr = 0U, /**< Plain SDR transfer (default). */
-  k_ra_i3c_hdr_mode_ddr = 1U, /**< HDR-DDR. */
-  k_ra_i3c_hdr_mode_ts  = 2U, /**< HDR-TS. */
-} ra_i3c_hdr_mode_t;
-
-/**
- * @brief Programme NCMDQP transfer-mode field for a target's next transaction.
- *
- * @details
- * Builds an HDR-mode "set" command descriptor whose attribute is a
- * regular transfer with the requested HDR-mode bits in word-0
- * [27:26].  See HUM Ch 40 "Command Descriptor" pp 2445-2701.
- *
- * @param[in] target_addr 7-bit dynamic address of the target.
- * @param[in] mode        HDR mode selector.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok               Descriptor queued.
- * @retval k_ra_err_invalid_arg  @p target_addr or @p mode out of range.
- *
- * @pre  ``ra_i3c_init`` succeeded; bus enabled.
- * @pre  Caller is single-threaded with respect to NCMDQP writes.
- * @post NCMDQP holds an HDR-mode descriptor word for @p target_addr.
- * @post NTST.CMDQEF cleared.
- *
+ * @brief Programme the NCMDQP transfer-mode field for a target (native mode).
+ * @param[in] target_addr 7-bit dynamic address.
+ * @param[in] mode        HDR-mode selector.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Descriptor queued.
+ * @retval k_ra_err_invalid_arg   @p target_addr or @p mode out of range.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode and bus enabled.
+ * @pre Caller is single-threaded.
+ * @post NCMDQP holds an HDR-mode descriptor.
+ * @post The command-queue-empty flag is cleared.
  * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode);
 
 /**
- * @brief Programme NTIBIVCTL.VLCNT to enable inbound IBI capture.
- *
- * @details
- * Sets the per-target valid-count to 1 so a single IBI from
- * @p target_addr can advance through the NIBIQP queue.  See HUM
- * Ch 40 "IBI Valid Control" pp 2445-2701.
- *
+ * @brief Enable inbound IBI capture for a target (native mode).
  * @param[in] target_addr 7-bit dynamic address authorised to push an IBI.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok               IBI capture enabled.
- * @retval k_ra_err_invalid_arg  @p target_addr out of 7-bit range.
- *
- * @pre  ``ra_i3c_init`` succeeded.
- * @pre  Caller is in IRQ-masked or init context.
- * @post NTIBIVCTL.VLCNT == 1 for the requested target.
- * @post Subsequent IBI from @p target_addr will be queued in NIBIQP.
- *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                IBI capture enabled.
+ * @retval k_ra_err_invalid_arg   @p target_addr out of range.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is in IRQ-masked or init context.
+ * @post NTIBIVCTL.VLCNT is set for the target.
+ * @post Subsequent IBIs from the target are queued.
  * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_ibi_enable(uint8_t target_addr);
 
 /**
- * @brief Pop a single inbound IBI from NIBIQP (alias of ::ra_i3c_ibi_read).
- *
- * @details
- * Convenience name FSP-style consumers expect; behaviour is
- * identical to ::ra_i3c_ibi_read.  See HUM Ch 40 "IBI Status
- * Descriptor" pp 2445-2701.
- *
- * @param[out] ibi Caller-supplied descriptor populated on success.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok               One IBI dequeued.
- * @retval k_ra_err_no_data      IBI queue empty.
- * @retval k_ra_err_null_ptr     @p ibi was NULL.
- *
- * @pre  ``ra_i3c_init`` succeeded.
- * @pre  @p ibi non-NULL.
+ * @brief Pop one inbound IBI (alias of ::ra_i3c_ibi_read, native mode).
+ * @param[out] ibi Descriptor populated on success.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                One IBI dequeued.
+ * @retval k_ra_err_no_data       IBI queue empty.
+ * @retval k_ra_err_null_ptr      @p ibi NULL.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre @p ibi non-NULL.
+ * @post On success @p ibi holds the descriptor.
  * @post NTST.IBIQEFF cleared on success.
- * @post @p ibi populated with the dequeued descriptor.
- *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi);
 
 /**
- * @brief Enter peripheral-mode by programming NSDVAD and asserting BCTL.SLVE.
- *
- * @details
- * Bring-up sequence for the I3C controller acting as a target:
- * 1. Drop BCTL.BUSE (primary-mode bus operation off).
- * 2. Programme NSDVAD with the static-address payload + valid bit.
- * 3. Set BCTL.SLVE (bit 16) to enable peripheral-mode reception.
- *
- * See HUM Ch 40 "BCTL : Bus Control Register" + "Peripheral Device
- * Address Register" pp 2445-2701.
- *
+ * @brief Drain one inbound IBI from NIBIQP (native mode).
+ * @param[out] out_ibi Descriptor populated on success.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                One IBI dequeued.
+ * @retval k_ra_err_no_data       IBI queue empty.
+ * @retval k_ra_err_null_ptr      @p out_ibi NULL.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre @p out_ibi non-NULL.
+ * @post On success @p out_ibi holds the descriptor.
+ * @post NTST.IBIQEFF cleared on success.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi);
+
+/**
+ * @brief Enter peripheral (target) mode (native mode).
  * @param[in] static_addr Static (pre-DAA) 7-bit address.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok               Peripheral-mode entered.
- * @retval k_ra_err_invalid_arg  @p static_addr out of 7-bit range.
- *
- * @pre  ``ra_i3c_init`` succeeded.
- * @pre  Caller is single-threaded init context.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Peripheral mode entered.
+ * @retval k_ra_err_invalid_arg   @p static_addr out of range.
+ * @retval k_ra_err_invalid_state I3C0 is not in native mode.
+ * @pre I3C0 initialized in native mode.
+ * @pre Caller is single-threaded init context.
  * @post BCTL.SLVE set; BCTL.BUSE clear.
- * @post NSDVAD reflects @p static_addr with the valid bit asserted.
- *
+ * @post NSDVAD reflects @p static_addr with the valid bit set.
  * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_slave_open(uint8_t static_addr);
-
-/**
- * @brief Drain one inbound IBI from NIBIQP.
- *
- * @param[out] out_ibi Caller-supplied descriptor; populated when
- *                     ``k_ra_ok`` is returned.
- * @retval k_ra_ok               One IBI dequeued.
- * @retval k_ra_err_no_data      IBI queue empty.
- * @retval k_ra_err_null_ptr     out_ibi NULL.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi);
 
 #ifdef __cplusplus
 }

@@ -28,10 +28,12 @@
 #include <stdint.h>
 
 #include "ra8d2_i3c_regs.h"
+#include "ra8d2_iic_b_regs.h"
 #include "ra8d2_mstp_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_i3c_internal.h"
+#include "ra_iic_b.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -89,6 +91,18 @@ static ra_i3c_event_fn_t s_i3c_fn;
 
 /** @brief Opaque context handed back to ``s_i3c_fn``. */
 static void* s_i3c_ctx;
+
+/**
+ * @struct ra_i3c_chan_state_t
+ * @brief Per-channel driver bookkeeping for the unified driver.
+ */
+typedef struct {
+  bool          initialized; /**< Set between ``ra_i3c_init`` / ``_deinit``. */
+  ra_i3c_mode_t mode;        /**< Native vs I2C-compat for this channel.     */
+} ra_i3c_chan_state_t;
+
+/** @brief One state slot per I3C channel (RA8D2 exposes I3C0 only). */
+static ra_i3c_chan_state_t s_i3c_chan[k_ra_iic_b_channel_count];
 
 /* =============================================================================
  * Private helpers
@@ -290,41 +304,64 @@ static void priv_ra_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint
  */
 
 /* Implementation of ra_i3c_init (see header for full contract) -- see header for the documented contract. */
-ra_err_t ra_i3c_init(void)
+ra_err_t ra_i3c_init(uint8_t channel, const ra_i3c_cfg_t* cfg)
 {
-  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
-  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA_CHECK_NULL_PTR(cfg, s_tag, "i3c_init: cfg");
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
 
-  volatile r_i3c_regs_t* reg = ra_i3c();
-  /* HUM Ch 40 "I3C Bus Interface (I3C)" p 2445-2701 */
-  priv_ra_i3c_reset_sequence(reg);
+  if (cfg->mode == k_ra_i3c_mode_i2c) {
+    /* I2C-compat: delegate bring-up to the legacy IIC_B path. */
+    const ra_iic_b_cfg_t bcfg = {.bus_hz = cfg->bus_hz, .pclka_hz = cfg->pclka_hz};
+    const ra_err_t       e    = ra_iic_b_init(channel, &bcfg);
+    if (e != k_ra_ok) {
+      return e;
+    }
+  } else {
+    /* Native I3C bring-up. HUM Ch 11.2.7 "MSTPCRB" p 444 + Ch 40. */
+    const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+    volatile r_i3c_regs_t* reg = ra_i3c();
+    priv_ra_i3c_reset_sequence(reg);
+    /* Clear every status / enable register to a deterministic state.
+     * INSTFC is write-only (force-clear), so we treat it as a clear. */
+    reg->INST   = 0U;
+    reg->INSTE  = 0U;
+    reg->INIE   = 0U;
+    reg->INSTFC = 0U;
+    reg->MSDVAD = 0U;
+  }
 
-  /* Clear every status / enable register to a deterministic state.
-   * INSTFC is write-only (force-clear), so we treat it as a clear. */
-  reg->INST   = 0U;
-  reg->INSTE  = 0U;
-  reg->INIE   = 0U;
-  reg->INSTFC = 0U;
-  reg->MSDVAD = 0U;
-
+  s_i3c_chan[channel].mode        = cfg->mode;
+  s_i3c_chan[channel].initialized = true;
   ra_log_info(s_tag, "i3c_init");
   return k_ra_ok;
 }
 
 /* Implementation of ra_i3c_deinit (see header for full contract) -- see header for the documented contract. */
-ra_err_t ra_i3c_deinit(void)
+ra_err_t ra_i3c_deinit(uint8_t channel)
 {
-  volatile r_i3c_regs_t* reg = ra_i3c();
-  /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
-  reg->INIE  = 0U;
-  reg->INSTE = 0U;
-  reg->BCTL  = 0U;
-  /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
-  reg->CECTL = 0U;
-  s_i3c_fn   = nullptr;
-  s_i3c_ctx  = nullptr;
-  return ra_mstp_disable(k_ra_mstp_i3c);
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_err_t err;
+  if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
+    err = ra_iic_b_deinit(channel);
+  } else {
+    volatile r_i3c_regs_t* reg = ra_i3c();
+    /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
+    reg->INIE  = 0U;
+    reg->INSTE = 0U;
+    reg->BCTL  = 0U;
+    /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
+    reg->CECTL = 0U;
+    s_i3c_fn   = nullptr;
+    s_i3c_ctx  = nullptr;
+    err        = ra_mstp_disable(k_ra_mstp_i3c);
+  }
+  s_i3c_chan[channel].initialized = false;
+  return err;
 }
 
 /* Implementation of ra_i3c_set_address (see header for full contract) -- see header for the documented contract. */
@@ -375,22 +412,38 @@ ra_err_t ra_i3c_clear_status(uint32_t mask)
 }
 
 /* Implementation of ra_i3c_attach_handler (see header for full contract) -- see header for the documented contract. */
-ra_err_t ra_i3c_attach_handler(ra_i3c_event_fn_t fn, void* ctx)
+ra_err_t ra_i3c_attach_handler(uint8_t channel, ra_i3c_event_fn_t fn, void* ctx)
 {
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
   s_i3c_fn  = fn;
   s_i3c_ctx = ctx;
   return k_ra_ok;
 }
 
 /* Implementation of ra_i3c_dispatch (see header for full contract) -- see header for the documented contract. */
-void ra_i3c_dispatch(void)
+void ra_i3c_dispatch(uint8_t channel)
 {
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return;
+  }
+  const ra_i3c_event_fn_t fn  = s_i3c_fn;
+  void* const             ctx = s_i3c_ctx;
+  if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
+    /* Surface the latched I2C error mask through the public IIC_B API. */
+    uint8_t mask = 0U;
+    (void)ra_iic_b_get_errors(channel, &mask);
+    (void)ra_iic_b_clear_errors(channel);
+    if (fn != nullptr) {
+      fn(ctx, (uint32_t)mask);
+    }
+    return;
+  }
   volatile r_i3c_regs_t* reg = ra_i3c();
   /* HUM Ch 40 "INST : Internal Status Register" p 2445-2701 */
-  const uint32_t          mask = reg->INST;
-  const ra_i3c_event_fn_t fn   = s_i3c_fn;
-  void* const             ctx  = s_i3c_ctx;
-  reg->INST                    = 0U;
+  const uint32_t mask = reg->INST;
+  reg->INST           = 0U;
   if (fn != nullptr) {
     fn(ctx, mask);
   }
@@ -570,8 +623,20 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
  */
 
 /* Implementation of ra_i3c_write (see header for full contract) -- see header for the documented contract. */
-ra_err_t ra_i3c_write(uint8_t target_addr, const uint8_t* data, uint32_t len)
+ra_err_t
+ra_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, bool restart)
 {
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_i3c_chan[channel].initialized) {
+    return k_ra_err_invalid_state;
+  }
+  if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
+    return ra_iic_b_write(channel, addr, data, len, restart);
+  }
+  (void)restart;
+  const uint8_t target_addr = addr;
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
     return k_ra_err_invalid_arg;
   }
@@ -605,8 +670,19 @@ ra_err_t ra_i3c_write(uint8_t target_addr, const uint8_t* data, uint32_t len)
 }
 
 /* Implementation of ra_i3c_read (see header for full contract) -- see header for the documented contract. */
-ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
+ra_err_t ra_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len, bool restart)
 {
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_i3c_chan[channel].initialized) {
+    return k_ra_err_invalid_state;
+  }
+  if (s_i3c_chan[channel].mode == k_ra_i3c_mode_i2c) {
+    return ra_iic_b_read(channel, addr, buf, len, restart);
+  }
+  (void)restart;
+  const uint8_t target_addr = addr;
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
     return k_ra_err_invalid_arg;
@@ -623,6 +699,88 @@ ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
   priv_ra_i3c_fifo_read(reg, buf, len);
   reg->NTST = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
   return k_ra_ok;
+}
+
+/* =============================================================================
+ * I2C-compatibility mode (delegates to the legacy IIC_B path)
+ * =============================================================================
+ */
+
+/* Implementation of ra_i3c_transfer (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_transfer(uint8_t        channel,
+                         uint8_t        addr,
+                         const uint8_t* wr,
+                         uint32_t       wr_len,
+                         uint8_t*       rd,
+                         uint32_t       rd_len)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_transfer(channel, addr, wr, wr_len, rd, rd_len);
+}
+
+/* Implementation of ra_i3c_set_clock (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_set_clock(channel, bus_hz, pclka_hz);
+}
+
+/* Implementation of ra_i3c_scan (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_scan(uint8_t channel, uint8_t addr, bool* out_acked)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_scan(channel, addr, out_acked);
+}
+
+/* Implementation of ra_i3c_get_errors (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_get_errors(uint8_t channel, uint8_t* out_mask)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_get_errors(channel, out_mask);
+}
+
+/* Implementation of ra_i3c_clear_errors (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_clear_errors(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_clear_errors(channel);
+}
+
+/* Implementation of ra_i3c_abort (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_abort(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_abort(channel);
 }
 
 /* =============================================================================
