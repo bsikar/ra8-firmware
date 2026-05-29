@@ -27,7 +27,7 @@
  * Flow:
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 and PCLKA up.
  *   2. PFS routing of MikroBUS SDA/SCL and the SCI8 console pins.
- *   3. ``ra_iic_b_init`` on the MikroBUS IIC_B channel at 100 kHz Sm.
+ *   3. ``ra_i3c_init`` on the MikroBUS IIC_B channel at 100 kHz Sm.
  *   4. ``ra_lsm6dso_init`` against the IIC_B-backed transport adapter.
  *   5. Read WHO_AM_I. On success print
  *      ``"lsm6dso: who_am_i=0x6c\r\n"`` (banner line for HIL scrape).
@@ -47,7 +47,7 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 #include "ra_isr.h"
 #include "ra_lsm6dso.h"
 #include "ra_mstp.h"
@@ -184,7 +184,7 @@ typedef struct {
  * @brief Transport adapter: read N bytes starting at register ``reg``.
  *
  * @details
- * Uses ``ra_iic_b_transfer`` which does the write-RESTART-read in one
+ * Uses ``ra_i3c_transfer`` which does the write-RESTART-read in one
  * bus transaction -- this is the I2C pattern the LSM6DSO needs to
  * read an auto-incremented register block.
  *
@@ -193,12 +193,12 @@ typedef struct {
  * @param[out] buf Destination buffer.
  * @param[in]  len Byte count.
  *
- * @return Forwarded ``ra_iic_b_transfer`` return code.
+ * @return Forwarded ``ra_i3c_transfer`` return code.
  */
 static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
 {
   const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
-  return ra_iic_b_transfer(c->channel, c->addr7, &reg, 1U, buf, len);
+  return ra_i3c_transfer(c->channel, c->addr7, &reg, 1U, buf, len);
 }
 
 /**
@@ -206,7 +206,7 @@ static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t
  *
  * @details
  * Stages ``[reg][buf[0..len-1]]`` on a small stack scratch and issues
- * a single ``ra_iic_b_write``. Capped at ``k_imu_demo_iic_tx_cap``
+ * a single ``ra_i3c_write``. Capped at ``k_imu_demo_iic_tx_cap``
  * bytes payload because the LSM6DSO driver never writes more than
  * eight bytes at once.
  *
@@ -215,7 +215,7 @@ static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t
  * @param[in] buf Source buffer.
  * @param[in] len Byte count.
  *
- * @return Forwarded ``ra_iic_b_write`` return code.
+ * @return Forwarded ``ra_i3c_write`` return code.
  */
 typedef enum : uint32_t {
   k_imu_demo_iic_tx_cap = 16U,
@@ -232,7 +232,7 @@ static ra_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, u
     scratch[i + 1U] = buf[i];
   }
   const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
-  return ra_iic_b_write(c->channel, c->addr7, scratch, len + 1U, false);
+  return ra_i3c_write(c->channel, c->addr7, scratch, len + 1U, false);
 }
 
 /* =============================================================================
@@ -315,11 +315,12 @@ static void imu_demo_setup_or_halt(void)
   if (ra_sci_init((uint8_t)k_imu_demo_sci_channel, &sci_cfg) != k_ra_ok) {
     imu_demo_panic_halt();
   }
-  const ra_iic_b_cfg_t iic_cfg = {
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
     .bus_hz   = k_imu_demo_bus_hz,
     .pclka_hz = pclka_hz,
   };
-  if (ra_iic_b_init((uint8_t)k_imu_demo_iic_channel, &iic_cfg) != k_ra_ok) {
+  if (ra_i3c_init((uint8_t)k_imu_demo_iic_channel, &iic_cfg) != k_ra_ok) {
     imu_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
