@@ -8,7 +8,7 @@
  * @details
  * One I3C channel at base ``0x4035_F000`` -- the unified I2C/I3C
  * peripheral. In I2C-only mode this is what the RA8D2 HUM calls the
- * "IIC_B" master driver and what FSP exports as ``r_iic_b_master``.
+ * "IIC_B" controller driver and what FSP exports as ``r_iic_b_master``.
  *
  * This header is hand-derived from the RA8D2 Hardware User's Manual
  * Chapter 40 "I3C Bus Interface (I3C)" register descriptions
@@ -16,7 +16,7 @@
  * CMSIS device header ``R7FA8D1BH.h`` (the closest-cousin part with a
  * matching peripheral block).
  *
- * Only the registers we exercise from the IIC_B master polling driver
+ * Only the registers we exercise from the IIC_B controller polling driver
  * are typed here -- the full I3C dynamic-address table, IBI queue,
  * and high-priority command queue are stubbed as ``volatile uint32_t``
  * holes so the struct still has the correct overall size.
@@ -165,7 +165,7 @@ typedef struct {
 
 /* =============================================================================
  * Bit positions and masks for the registers actually programmed by the
- * polling-mode IIC_B master driver. Names mirror the FSP CMSIS field
+ * polling-mode IIC_B controller driver. Names mirror the FSP CMSIS field
  * macros (R_I3C0_xxx_yyy_Pos / _Msk) -- HUM Ch 40.2, p 2452..2491.
  * =============================================================================
  */

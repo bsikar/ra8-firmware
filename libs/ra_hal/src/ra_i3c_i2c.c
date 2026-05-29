@@ -1,19 +1,19 @@
 /**
  * @file ra_i3c_i2c.c
- * @brief IIC_B (I3C unified IP) master driver implementation
+ * @brief IIC_B (I3C unified IP) controller driver implementation
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Polling-mode master driver for the RA8D2 I3C peripheral operated in
+ * Polling-mode controller driver for the RA8D2 I3C peripheral operated in
  * I2C compatibility mode (HUM Ch 40 "I3C Bus Interface (I3C)",
  * p 2445-2701); ``IIC_B`` is the HUM/FSP name for this mode, not a
  * stale alias. Mirrors the public init / start / write /
  * read / stop flow from FSP's ``r_iic_b_master`` (file
  * ``r_iic_b_master.c``) collapsed into synchronous helpers -- no DTC
  * fast path, no IBI / HDR support, just enough to exchange bytes
- * with a 7-bit-addressed slave.
+ * with a 7-bit-addressed peripheral.
  *
  * The state machine implemented here is a synchronous reduction of
  * FSP's interrupt-driven flow:
@@ -420,7 +420,7 @@ static ra_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, ui
  *
  * @details
  * NACK and arbitration-loss carry distinct codes so a caller can
- * distinguish "slave declined" from "another master won the bus".
+ * distinguish "peripheral declined" from "another controller won the bus".
  *
  * @param[in] bst See header declaration for direction and constraints.
  * @return ``ra_err_t`` error code (or void if the signature returns void).
@@ -453,7 +453,7 @@ static ra_err_t internal_i3c_i2c_status_from_bst(uint32_t bst)
  * @details
  * HUM Ch 40.2.58 "BCST : Bus Condition Status Register" p 2512:
  * ``BFREF`` is 1 when the bus is in the free state. FSP gates new
- * master transactions on this flag (see ``iic_b_master_run_hw_master``
+ * controller transactions on this flag (see ``iic_b_master_run_hw_master``
  * around the ``IIC_B_MASTER_HW_WAIT_BUS_FREE`` block).
  *
  * @param[in] reg See header declaration for direction and constraints.
@@ -821,8 +821,8 @@ ra_err_t internal_i3c_i2c_write(uint8_t        channel,
  * @details
  * Helper for ``internal_i3c_i2c_read``. Mirrors FSP rxi_master() data path:
  * each iteration waits for RDBFF0 then reads NTDTBP0. On the final
- * byte the master is primed to NACK (via ACKCTL.ACKT paired with
- * ACKTWP) so the slave releases SDA when STOP issues.
+ * byte the controller is primed to NACK (via ACKCTL.ACKT paired with
+ * ACKTWP) so the peripheral releases SDA when STOP issues.
  *
  * @param[in] reg See header declaration for direction and constraints.
  * @param[in] out See header declaration for direction and constraints.
@@ -1025,7 +1025,7 @@ ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_ack
     return err;
   }
 
-  /* Wait for either TENDF (slave ACKed the address) or NACKDF. */
+  /* Wait for either TENDF (peripheral ACKed the address) or NACKDF. */
   err = k_ra_err_hw_timeout;
   for (uint32_t i = 0U; i < k_ra_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     const uint32_t bst = reg->BST;
