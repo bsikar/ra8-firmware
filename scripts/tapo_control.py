@@ -18,6 +18,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from kasa import Credentials
+from kasa.exceptions import KasaException
 from kasa.deviceconfig import (
     DeviceConfig,
     DeviceConnectionParameters,
@@ -94,8 +95,23 @@ async def main() -> None:
         else:
             state = "ON" if dev.is_on else "OFF"
             print(f"{dev.alias} ({dev.model}): {state}")
+    except (KasaException, OSError, asyncio.TimeoutError) as exc:
+        # Almost always a reachability problem (wrong VLAN/subnet, plug
+        # offline, or firmware/kasa protocol drift) rather than a logic
+        # bug -- surface a clean one-liner instead of a raw traceback.
+        print(
+            f"tapo_control: could not reach the plug at {TAPO_IP} "
+            f"({type(exc).__name__}: {exc}). Check the Pi and plug are on "
+            f"the same network and the plug is powered.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from exc
     finally:
-        await dev.protocol._transport._http_client.client.close()
+        # Best-effort close; the client may not exist if setup failed early.
+        try:
+            await dev.protocol._transport._http_client.client.close()
+        except Exception:  # noqa: BLE001 - cleanup must never mask the real error
+            pass
 
 
 asyncio.run(main())
