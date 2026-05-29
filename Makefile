@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -96,6 +96,7 @@ help:
 	@echo "  make iwyu      run include-what-you-use over the host test build"
 	@echo "  make fuzz      build + smoke-run libFuzzer harnesses (clang only)"
 	@echo "  make audit-init per-app init-order audit (writes docs/INIT_ORDER_AUDIT.md)"
+	@echo "  make compile_commands  regenerate build/compile_commands.json for clangd"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -139,8 +140,11 @@ apps:
 # and `cd examples/<tier>/<app> && make` produce the exact same artifacts.
 # The per-app dir is looked up via RA_APP_DIR_<app> so callers don't
 # need to know which tier directory the app lives in.
-$(RA_APPS):
+$(RA_APPS): | compile_commands
 	$(MAKE) -C $(RA_APP_DIR_$@) build
+
+compile_commands:
+	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake -B $(ROOT)/build $(ROOT)
 
 clean:
 	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
