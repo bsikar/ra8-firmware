@@ -1,4 +1,4 @@
-# iic_b_peripheral_demo
+# i3c_i2c_peripheral_demo
 
 IIC_B peripheral-mode demo on the EK-RA8D2. The chip listens at a
 fixed 7-bit I2C address on SDA/SCL and toggles LED1 on every
@@ -8,8 +8,8 @@ observable signal.
 Build / flash:
 
 ```
-make iic_b_peripheral_demo
-make -C examples/ek_ra8d2/iic_b_peripheral_demo flash
+make i3c_i2c_peripheral_demo
+make -C examples/ek_ra8d2/i3c_i2c_peripheral_demo flash
 ```
 
 ## HIL plan
