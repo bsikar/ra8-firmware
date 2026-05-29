@@ -6,8 +6,9 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the IIC_B controller driver
- * (``libs/ra_hal/ra_iic_b.h``) against the **on-board PI4IOE5V6408
+ * Standalone EVM-tier app that exercises the ra_i3c controller driver
+ * in I2C-compatibility mode (``libs/ra_hal/inc/ra_i3c.h``) against the
+ * **on-board PI4IOE5V6408
  * I2C I/O port expander (U15) at 7-bit address 0x43**, which is the
  * only I2C peripheral guaranteed to be populated on a bare EK-RA8D2
  * v1 (board UM section 4.3.4 "Switch Configuration", p 24). The flow:
@@ -25,7 +26,7 @@
  *      expander ACKs every address-only probe. A successful ACK
  *      proves the bus is alive and the controller is clocking SCL.
  *   5. LED1 toggles on each scan and SCI8 prints
- *      ``"iic_b: scan 0x43 ack=1\r\n"`` once a second so a host
+ *      ``"i2c: scan 0x43 ack=1\r\n"`` once a second so a host
  *      terminal can see the heartbeat. LED2 latches ON if the
  *      driver itself returns a hard error (busy / hw_timeout) or
  *      the device fails to ACK (proves the bus isn't reaching U15).
@@ -89,9 +90,9 @@ static const ra_port_pin_t k_i2c_demo_pin_scl =
 static const ra_port_pin_t k_i2c_demo_pin_sda =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_1);
 
-static const uint8_t k_i2c_demo_msg_ack[]  = "iic_b: scan 0x43 ack=1\r\n";
-static const uint8_t k_i2c_demo_msg_nack[] = "iic_b: scan 0x43 ack=0\r\n";
-static const uint8_t k_i2c_demo_msg_err[]  = "iic_b: scan ERROR\r\n";
+static const uint8_t k_i2c_demo_msg_ack[]  = "i2c: scan 0x43 ack=1\r\n";
+static const uint8_t k_i2c_demo_msg_nack[] = "i2c: scan 0x43 ack=0\r\n";
+static const uint8_t k_i2c_demo_msg_err[]  = "i2c: scan ERROR\r\n";
 
 /** @brief Park forever after a fatal init failure.
  *
