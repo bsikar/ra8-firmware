@@ -1,41 +1,31 @@
 /**
  * @file examples/ek_ra8d2/i2c_loopback/main.c
- * @brief IIC_B (I3C-in-I2C-mode) self-test smoke app for the EK-RA8D2
+ * @brief RIIC (ra_i2c) controller self-test against the on-board U15
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the ra_i3c controller driver
- * in I2C-compatibility mode (``libs/ra_hal/inc/ra_i3c.h``) against the
- * **on-board PI4IOE5V6408
- * I2C I/O port expander (U15) at 7-bit address 0x43**, which is the
- * only I2C peripheral guaranteed to be populated on a bare EK-RA8D2
- * v1 (board UM section 4.3.4 "Switch Configuration", p 24). The flow:
+ * Standalone EVM-tier app that exercises the ra_i2c (RIIC) controller
+ * driver (``libs/ra_hal/inc/ra_i2c.h``) against the on-board PI4IOE5V6408
+ * I2C I/O port expander (U15) at 7-bit address 0x43 -- the only I2C
+ * peripheral guaranteed to be populated on a bare EK-RA8D2 v1 (board UM
+ * section 4.3.4 "Switch Configuration", p 24). U15 sits on RIIC channel 1
+ * (P512 SCL1 / P511 SDA1), per issue #46. The flow:
  *
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
- *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCL0
- *      (P400) and SDA0 (P401); these are the I3C-mode pins that
- *      reach U15 when **SW4-5 is ON** (board UM section 5.4.2
- *      Table 31 row J27-1/J27-2 p ~32). The IIC_B controller
- *      drives this bus at I2C SDR rates.
- *   3. ``ra_i3c_init(0, ...)`` at 100 kHz Sm. The HAL's block
- *      bring-up now ungates both MSTPB4 (I3C) and MSTPB9 (IIC0)
- *      so the channel-0 controller is fully powered.
- *   4. ``ra_i3c_scan`` against ``0x43`` -- the U15 I/O port
- *      expander ACKs every address-only probe. A successful ACK
- *      proves the bus is alive and the controller is clocking SCL.
- *   5. LED1 toggles on each scan and SCI8 prints
- *      ``"i2c: scan 0x43 ack=1\r\n"`` once a second so a host
- *      terminal can see the heartbeat. LED2 latches ON if the
- *      driver itself returns a hard error (busy / hw_timeout) or
- *      the device fails to ACK (proves the bus isn't reaching U15).
+ *   2. ``ra_pfs_route_peripheral`` for the SCI8 console pins only.
+ *   3. ``ra_board_io_expander_apply_project_sw4_defaults()`` -- the
+ *      board's validated U15 bring-up: bus-recover, P109/P311 pull-ups,
+ *      P512/P511 SCL1/SDA1 route + NCODR, ra_i2c_init(ch1) and a U15
+ *      write. A k_ra_ok return means U15 ACKed.
+ *   4. ``ra_i2c_scan`` against ``0x43`` in a loop -- the U15 expander
+ *      ACKs every address-only probe, proving the bus and controller.
+ *   5. LED1 toggles each scan; SCI8 prints ``"i2c: scan 0x43 ack=1\r\n"``
+ *      once a second so a host terminal sees the heartbeat. LED2 latches
+ *      ON if the driver returns a hard error or U15 fails to ACK.
  *
- * Hardware: bare EK-RA8D2 v1 only, with **SW4-5 ON (I3C mode)**.
- * In that switch position J27 is routed to P400/P401, the on-
- * board selector U17 ties U15 onto the bus, and no software
- * pull-up enable is required (in I2C mode SW4-5 OFF + P109/P311
- * HIGH would be the equivalent path on P512/P511).
+ * Hardware: bare EK-RA8D2 v1 only -- U15 is on-board, no jumpers needed.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -48,7 +38,7 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
-#include "ra_i3c.h"
+#include "ra_i2c.h"
 #include "ra_isr.h"
 #include "ra_mpc.h"
 #include "ra_mstp.h"
@@ -62,7 +52,7 @@ typedef enum : uint32_t {
   k_i2c_demo_period_ms   = 1000U,
   k_i2c_demo_bus_hz      = 100000U,
   k_i2c_demo_sci_channel = 8U,
-  k_i2c_demo_iic_channel = 0U,
+  k_i2c_demo_iic_channel = 1U, /* RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 lives here, per #46 */
 } i2c_demo_const_t;
 
 /** @brief Probe target -- on-board PI4IOE5V6408 I/O port expander U15
@@ -79,16 +69,9 @@ static const ra_port_pin_t k_i2c_demo_pin_txd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
 static const ra_port_pin_t k_i2c_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-/** @brief Pinout for IIC channel 0 (P400 SCL0 / P401 SDA0 on EK-RA8D2 --
- *         the I3C-mode wiring when SW4-5 is ON. Board UM section 5.4.2
- *         Table 31 row J27-1/J27-2 p ~32. U15 (PI4IOE5V6408, I2C addr
- *         0x43) sits on this bus via the on-board selector U17 --
- *         board lib uses the same pair in
- *         ra_board_ek_ra8d2.c::internal_io_expander_route_pins. */
-static const ra_port_pin_t k_i2c_demo_pin_scl =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_i2c_demo_pin_sda =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_1);
+/* RIIC ch1 SCL1/SDA1 (P512/P511) routing + the P109/P311 pull-ups and
+ * NCODR are owned by ra_board_io_expander_apply_project_sw4_defaults(),
+ * the same validated bring-up the board library uses for U15. */
 
 static const uint8_t k_i2c_demo_msg_ack[]  = "i2c: scan 0x43 ack=1\r\n";
 static const uint8_t k_i2c_demo_msg_nack[] = "i2c: scan 0x43 ack=0\r\n";
@@ -155,25 +138,8 @@ static void i2c_demo_pfs_or_halt(void)
       k_ra_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_i2c_demo_pin_scl, k_ra_psel_iic, "i2c_loopback.scl0") != k_ra_ok) {
-    i2c_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_i2c_demo_pin_sda, k_ra_psel_iic, "i2c_loopback.sda0") != k_ra_ok) {
-    i2c_demo_panic_halt();
-  }
-
-  /* IIC_B requires N-channel open-drain on SCL/SDA so the on-board
-   * pullups can win bus arbitration; ra_pfs_route_peripheral routes
-   * the IIC mux but leaves NCODR clear (push-pull). Mirrors the
-   * same NCODR write in
-   * ra_board_ek_ra8d2.c::internal_io_expander_route_pins.
-   * HUM Ch 20.2.1 "PmnPFS Register" p 855 + HUM Ch 40 "IIC_B" p 2436 */
-  if (ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_0, true) != k_ra_ok) {
-    i2c_demo_panic_halt();
-  }
-  if (ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_1, true) != k_ra_ok) {
-    i2c_demo_panic_halt();
-  }
+  /* RIIC ch1 pin routing (P512/P511), pull-ups (P109/P311) and NCODR are
+   * done by ra_board_io_expander_apply_project_sw4_defaults() in setup. */
 }
 
 /**
@@ -201,12 +167,11 @@ static void i2c_demo_setup_or_halt(void)
   if (ra_sci_init((uint8_t)k_i2c_demo_sci_channel, &sci_cfg) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
-  const ra_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
-    .bus_hz   = k_i2c_demo_bus_hz,
-    .pclka_hz = pclka_hz,
-  };
-  if (ra_i3c_init((uint8_t)k_i2c_demo_iic_channel, &iic_cfg) != k_ra_ok) {
+  /* Bring up RIIC ch1 + confirm U15 via the board's validated path
+   * (bus-recover + P109/P311 pull-ups + P512/P511 route + ra_i2c_init +
+   * a U15 write). k_ra_ok means U15 ACKed the project SW4 byte; the bus
+   * is then live for the ra_i2c_scan loop below. */
+  if (ra_board_io_expander_apply_project_sw4_defaults() != k_ra_ok) {
     i2c_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -240,7 +205,7 @@ int32_t main(void)
   while (1) {
     bool           acked = false;
     const ra_err_t err =
-      ra_i3c_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
+      ra_i2c_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
     const uint8_t* msg     = k_i2c_demo_msg_err;
     uint32_t       msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_err) - 1U);
     if (err == k_ra_ok) {
