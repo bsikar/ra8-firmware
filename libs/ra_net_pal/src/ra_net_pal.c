@@ -487,7 +487,6 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
   return k_ra_ok;
 }
 
-/* Read the last observed link state -- see implementation for details. */
 ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "link_status: out_state");

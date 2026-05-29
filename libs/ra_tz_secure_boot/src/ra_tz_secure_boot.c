@@ -198,7 +198,6 @@ typedef struct {
  */
 static ra_tz_secure_boot_host_state_t s_host = {};
 
-/* see header for full description */
 void ra_tz_secure_boot_host_reset(void)
 {
   /* Pre 1: the host state struct lives in BSS so its address is always
@@ -212,7 +211,6 @@ void ra_tz_secure_boot_host_reset(void)
   /* Post 2: progress counter is back at idle. */
 }
 
-/* see header for full description */
 uint32_t ra_tz_secure_boot_host_blxns_target(void)
 {
   /* Pre + post: pure accessor; no state change. */
@@ -221,7 +219,6 @@ uint32_t ra_tz_secure_boot_host_blxns_target(void)
 
 #else /* !RA_SIMULATOR_MODE */
 
-/* see header for full description */
 void ra_tz_secure_boot_host_reset(void)
 {
   /* Pre + post: target build exposes the symbol but the body is a
@@ -230,7 +227,6 @@ void ra_tz_secure_boot_host_reset(void)
   (void)s_tag;
 }
 
-/* see header for full description */
 uint32_t ra_tz_secure_boot_host_blxns_target(void)
 {
   /* Pre + post: target build returns 0 because BLXNS never returns. */
@@ -438,7 +434,6 @@ static void internal_sau_set_region(uint8_t region, uint32_t base, uint32_t limi
 #endif
 }
 
-/* see header for full description */
 ra_err_t ra_tz_secure_boot_sau_init(void)
 {
   /* Pre: SAU_TYPE.SREGION must report >= 5 implemented regions. */
@@ -479,7 +474,6 @@ ra_err_t ra_tz_secure_boot_sau_init(void)
   return k_ra_ok;
 }
 
-/* see header for full description */
 ra_err_t ra_tz_secure_boot_security_init(uint32_t ipcsar_value, uint32_t ipcpar_value)
 {
   /* Pre 1: caller must be in Secure state (architectural; cannot be
@@ -509,7 +503,6 @@ ra_err_t ra_tz_secure_boot_security_init(uint32_t ipcsar_value, uint32_t ipcpar_
   return k_ra_ok;
 }
 
-/* see header for full description */
 ra_err_t ra_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table)
 {
   RA_CHECK_NULL_PTR(ns_vector_table, s_tag, "ns_vector_table");
@@ -553,7 +546,6 @@ ra_err_t ra_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table)
 #endif
 }
 
-/* see header for full description */
 ra_err_t
 ra_tz_secure_boot_run(uint32_t ipcsar_value, uint32_t ipcpar_value, const uint32_t* ns_vector_table)
 {
@@ -573,7 +565,6 @@ ra_tz_secure_boot_run(uint32_t ipcsar_value, uint32_t ipcpar_value, const uint32
   return ra_tz_secure_boot_jump_ns(ns_vector_table);
 }
 
-/* see header for full description */
 ra_tz_secure_boot_step_t ra_tz_secure_boot_get_step(void)
 {
   /* Pre: progress counter lives in BSS so it is always readable. */

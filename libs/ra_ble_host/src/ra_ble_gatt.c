@@ -123,11 +123,10 @@ typedef struct {
 } ra_ble_host_state_t;
 
 ra_ble_host_state_t* ra_ble_host_state(void);
-/* Ra ble host l2cap send -- see implementation for details. */
-ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
-                                uint16_t       cid,
-                                const uint8_t* payload,
-                                uint16_t       payload_len);
+ra_err_t             ra_ble_host_l2cap_send(uint16_t       conn_handle,
+                                            uint16_t       cid,
+                                            const uint8_t* payload,
+                                            uint16_t       payload_len);
 
 /* Provided by ra_ble_att.c -- exposed so ra_ble_host_gatt_set_value can
  * find the attribute row for a given handle without duplicating the

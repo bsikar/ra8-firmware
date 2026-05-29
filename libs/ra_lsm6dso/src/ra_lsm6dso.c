@@ -248,7 +248,6 @@ static ra_err_t internal_lsm6dso_rmw_odr(ra_lsm6dso_t* dev, uint8_t reg, uint8_t
  * =============================================================================
  */
 
-/* ra_lsm6dso_init -- see header for full description. */
 ra_err_t ra_lsm6dso_init(ra_lsm6dso_t* out_dev, const ra_lsm6dso_bus_t* bus)
 {
   RA_CHECK_NULL_PTR(out_dev, k_lsm6dso_tag, "init: out_dev");
@@ -269,7 +268,6 @@ ra_err_t ra_lsm6dso_init(ra_lsm6dso_t* out_dev, const ra_lsm6dso_bus_t* bus)
  * =============================================================================
  */
 
-/* ra_lsm6dso_who_am_i -- see header for full description. */
 ra_err_t ra_lsm6dso_who_am_i(ra_lsm6dso_t* dev, uint8_t* out_id)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "who_am_i: dev");
@@ -285,7 +283,6 @@ ra_err_t ra_lsm6dso_who_am_i(ra_lsm6dso_t* dev, uint8_t* out_id)
  * =============================================================================
  */
 
-/* ra_lsm6dso_set_accel_range -- see header for full description. */
 ra_err_t ra_lsm6dso_set_accel_range(ra_lsm6dso_t* dev, ra_lsm6dso_xl_fs_t fs)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "set_accel_range: dev");
@@ -313,7 +310,6 @@ ra_err_t ra_lsm6dso_set_accel_range(ra_lsm6dso_t* dev, ra_lsm6dso_xl_fs_t fs)
   return k_ra_ok;
 }
 
-/* ra_lsm6dso_set_gyro_range -- see header for full description. */
 ra_err_t ra_lsm6dso_set_gyro_range(ra_lsm6dso_t* dev, ra_lsm6dso_g_fs_t fs)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "set_gyro_range: dev");
@@ -340,7 +336,6 @@ ra_err_t ra_lsm6dso_set_gyro_range(ra_lsm6dso_t* dev, ra_lsm6dso_g_fs_t fs)
   return k_ra_ok;
 }
 
-/* ra_lsm6dso_set_odr -- see header for full description. */
 ra_err_t ra_lsm6dso_set_odr(ra_lsm6dso_t* dev, ra_lsm6dso_odr_t odr)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "set_odr: dev");
@@ -418,7 +413,6 @@ static ra_err_t internal_lsm6dso_read_xyz(ra_lsm6dso_t* dev, uint8_t reg, ra_lsm
   return k_ra_ok;
 }
 
-/* ra_lsm6dso_read_accel -- see header for full description. */
 ra_err_t ra_lsm6dso_read_accel(ra_lsm6dso_t* dev, ra_lsm6dso_xyz_t* out)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_accel: dev");
@@ -428,7 +422,6 @@ ra_err_t ra_lsm6dso_read_accel(ra_lsm6dso_t* dev, ra_lsm6dso_xyz_t* out)
   return internal_lsm6dso_read_xyz(dev, (uint8_t)k_lsm6dso_reg_outx_l_a, out);
 }
 
-/* ra_lsm6dso_read_gyro -- see header for full description. */
 ra_err_t ra_lsm6dso_read_gyro(ra_lsm6dso_t* dev, ra_lsm6dso_xyz_t* out)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_gyro: dev");
@@ -438,7 +431,6 @@ ra_err_t ra_lsm6dso_read_gyro(ra_lsm6dso_t* dev, ra_lsm6dso_xyz_t* out)
   return internal_lsm6dso_read_xyz(dev, (uint8_t)k_lsm6dso_reg_outx_l_g, out);
 }
 
-/* ra_lsm6dso_read_temp -- see header for full description. */
 ra_err_t ra_lsm6dso_read_temp(ra_lsm6dso_t* dev, int32_t* out_centi_c)
 {
   RA_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_temp: dev");
@@ -586,7 +578,6 @@ static ra_err_t internal_lsm6dso_fifo_check_args(ra_lsm6dso_t*   dev,
   return k_ra_ok;
 }
 
-/* ra_lsm6dso_read_xl_gyro_fifo -- see header for full description. */
 ra_err_t ra_lsm6dso_read_xl_gyro_fifo(ra_lsm6dso_t* dev,
                                       uint8_t*      out_buf,
                                       uint32_t      max_words,

@@ -103,7 +103,6 @@ ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb,
   return 0;
 }
 
-/* Ble gattc write flat -- see implementation for details. */
 __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
                                                uint16_t          attr_handle,
                                                const void*       data,
@@ -120,7 +119,6 @@ __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
   return 0;
 }
 
-/* Ble gattc write no rsp flat -- see implementation for details. */
 __attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
                                                       uint16_t    attr_handle,
                                                       const void* data,
@@ -689,15 +687,12 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-/* Ra ble gatt client test inject notify -- see implementation for details. */
-void ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
-                                           uint16_t       attr_handle,
-                                           const uint8_t* data,
-                                           uint16_t       len);
-/* Ra ble gatt client test pending count -- see implementation for details. */
+void     ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
+                                               uint16_t       attr_handle,
+                                               const uint8_t* data,
+                                               uint16_t       len);
 uint32_t ra_ble_gatt_client_test_pending_count(void);
-/* Ra ble gatt client test reset -- see implementation for details. */
-void ra_ble_gatt_client_test_reset(void);
+void     ra_ble_gatt_client_test_reset(void);
 
 /**
  * @brief Test hook -- inject an HVN/HVI on a registered subscription.

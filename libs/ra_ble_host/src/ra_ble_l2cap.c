@@ -157,14 +157,11 @@ static ra_ble_host_state_t s_state;
  */
 
 ra_ble_host_state_t* ra_ble_host_state(void);
-/* Ra ble host dispatch event -- see implementation for details. */
-void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt);
-/* Ra ble host l2cap send -- see implementation for details. */
-ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
-                                uint16_t       cid,
-                                const uint8_t* payload,
-                                uint16_t       payload_len);
-/* Ra ble host att handle pdu -- see implementation for details. */
+void                 ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt);
+ra_err_t             ra_ble_host_l2cap_send(uint16_t       conn_handle,
+                                            uint16_t       cid,
+                                            const uint8_t* payload,
+                                            uint16_t       payload_len);
 void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len);
 
 /* =============================================================================

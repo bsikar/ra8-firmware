@@ -33,7 +33,6 @@
 /** @brief Module log tag. */
 static const char* const s_tag = "ra_display_pal_guix";
 
-/* display_bind_guix -- see header for full description. */
 ra_err_t display_bind_guix(display_handle_t* d, display_guix_attach_t* out)
 {
   RA_CHECK_NULL_PTR(d, s_tag, "d");

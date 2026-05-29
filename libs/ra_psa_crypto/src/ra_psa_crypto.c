@@ -614,7 +614,6 @@ static ra_err_t internal_sim_aead_decrypt(const struct ra_psa_key_handle* slot,
  * =============================================================================
  */
 
-/* Ra psa crypto init -- see implementation for details. */
 ra_err_t ra_psa_crypto_init(void)
 {
   if (s_initialized) {
@@ -638,7 +637,6 @@ ra_err_t ra_psa_crypto_init(void)
   return k_ra_ok;
 }
 
-/* Ra psa crypto deinit -- see implementation for details. */
 ra_err_t ra_psa_crypto_deinit(void)
 {
   if (!s_initialized) {
@@ -744,7 +742,6 @@ static ra_err_t internal_psa_import_into_slot(struct ra_psa_key_handle* slot,
 
 #endif /* !RA_SIMULATOR_MODE */
 
-/* Ra psa key import -- see implementation for details. */
 ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
                            const ra_psa_key_attr_t* attr,
                            const uint8_t*           data,
@@ -787,7 +784,6 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
   return k_ra_ok;
 }
 
-/* Ra psa key destroy -- see implementation for details. */
 ra_err_t ra_psa_key_destroy(ra_psa_key_t handle)
 {
   if (!s_initialized) {
@@ -806,7 +802,6 @@ ra_err_t ra_psa_key_destroy(ra_psa_key_t handle)
   return k_ra_ok;
 }
 
-/* Ra psa hash compute -- see implementation for details. */
 ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
                              const uint8_t* input,
                              size_t         input_len,
@@ -849,7 +844,6 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
   return k_ra_ok;
 }
 
-/* Ra psa sign hash -- see implementation for details. */
 ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
                           ra_psa_alg_t   alg,
                           const uint8_t* hash,
@@ -910,7 +904,6 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
-/* Ra psa verify hash -- see implementation for details. */
 ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
                             ra_psa_alg_t   alg,
                             const uint8_t* hash,
@@ -998,7 +991,6 @@ static ra_err_t internal_aead_encrypt_check(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
-/* Ra psa aead encrypt -- see implementation for details. */
 ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
                              ra_psa_alg_t   alg,
                              const uint8_t* nonce,
@@ -1107,7 +1099,6 @@ static ra_err_t internal_aead_decrypt_check(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
-/* Ra psa aead decrypt -- see implementation for details. */
 ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
                              ra_psa_alg_t   alg,
                              const uint8_t* nonce,

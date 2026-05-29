@@ -88,7 +88,6 @@ static ra_err_t internal_validate_handle(const display_handle_t* d)
  * =============================================================================
  */
 
-/* display_init -- see header for full description. */
 ra_err_t display_init(const display_cfg_t* cfg, display_handle_t** out_handle)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -115,7 +114,6 @@ ra_err_t display_init(const display_cfg_t* cfg, display_handle_t** out_handle)
   return k_ra_ok;
 }
 
-/* display_get_caps -- see header for full description. */
 ra_err_t display_get_caps(const display_handle_t* d, display_caps_t* out)
 {
   const ra_err_t v = internal_validate_handle(d);
@@ -126,7 +124,6 @@ ra_err_t display_get_caps(const display_handle_t* d, display_caps_t* out)
   return s_handle.iface->get_caps(s_handle.ctx, out);
 }
 
-/* display_get_framebuffer -- see header for full description. */
 ra_err_t display_get_framebuffer(display_handle_t* d, display_fb_t* out)
 {
   const ra_err_t v = internal_validate_handle(d);
@@ -137,7 +134,6 @@ ra_err_t display_get_framebuffer(display_handle_t* d, display_fb_t* out)
   return s_handle.iface->get_framebuffer(s_handle.ctx, out);
 }
 
-/* display_flush -- see header for full description. */
 ra_err_t display_flush(display_handle_t* d, display_rect_t rect, display_refresh_hint_t hint)
 {
   const ra_err_t v = internal_validate_handle(d);
@@ -147,7 +143,6 @@ ra_err_t display_flush(display_handle_t* d, display_rect_t rect, display_refresh
   return s_handle.iface->flush(s_handle.ctx, rect, hint);
 }
 
-/* display_clear -- see header for full description. */
 ra_err_t display_clear(display_handle_t* d, uint32_t color)
 {
   const ra_err_t v = internal_validate_handle(d);
@@ -157,7 +152,6 @@ ra_err_t display_clear(display_handle_t* d, uint32_t color)
   return s_handle.iface->clear(s_handle.ctx, color);
 }
 
-/* display_deinit -- see header for full description. */
 ra_err_t display_deinit(display_handle_t* d)
 {
   const ra_err_t v = internal_validate_handle(d);
@@ -174,7 +168,6 @@ ra_err_t display_deinit(display_handle_t* d)
   return err;
 }
 
-/* display_full_rect -- see header for full description. */
 display_rect_t display_full_rect(const display_handle_t* d)
 {
   const display_rect_t empty = {0U, 0U, 0U, 0U};

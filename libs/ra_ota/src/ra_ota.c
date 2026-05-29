@@ -1393,7 +1393,6 @@ ra_err_t ra_ota_run_full_update(void)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
-/* Ra ota system reset hook -- see implementation for details. */
 void ra_ota_system_reset_hook(void)
 {
   /* Intentionally empty. */

@@ -266,7 +266,6 @@ static sd_state_t s_state = {};
  * ===========================================================================
  */
 
-/* SD CRC7 over an arbitrary byte run (SD spec PHY v9 section 4.5) -- see header for full description. */
 uint8_t ra_sdmmc_spi_crc7(const uint8_t* data, uint32_t len)
 {
   uint8_t crc = 0U;
@@ -288,7 +287,6 @@ uint8_t ra_sdmmc_spi_crc7(const uint8_t* data, uint32_t len)
   return crc;
 }
 
-/* SD CRC16-CCITT over an arbitrary byte run (SD spec PHY v9 section 4.5) -- see header for full description. */
 uint16_t ra_sdmmc_spi_crc16(const uint8_t* data, uint32_t len)
 {
   uint16_t crc = 0U;
@@ -806,7 +804,6 @@ static ra_err_t internal_finalize_init(void)
   return k_ra_ok;
 }
 
-/* ra_sdmmc_spi_init -- see header for full description. */
 ra_err_t ra_sdmmc_spi_init(const ra_sdmmc_spi_transport_t* transport)
 {
   ra_err_t err = internal_validate_transport(transport);
@@ -820,7 +817,6 @@ ra_err_t ra_sdmmc_spi_init(const ra_sdmmc_spi_transport_t* transport)
   return k_ra_ok;
 }
 
-/* ra_sdmmc_spi_deinit -- see header for full description. */
 ra_err_t ra_sdmmc_spi_deinit(void)
 {
   s_state.initialized     = false;
@@ -887,7 +883,6 @@ static ra_err_t internal_read_data_phase(uint32_t lba, uint8_t* buf)
   return internal_read_block_crc_check(buf);
 }
 
-/* ra_sdmmc_spi_read_block -- see header for full description. */
 ra_err_t ra_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
@@ -945,7 +940,6 @@ static ra_err_t internal_write_data_phase(const uint8_t* buf)
   return internal_wait_not_busy();
 }
 
-/* ra_sdmmc_spi_write_block -- see header for full description. */
 ra_err_t ra_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
@@ -972,7 +966,6 @@ ra_err_t ra_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf)
   return err;
 }
 
-/* ra_sdmmc_spi_get_capacity -- see header for full description. */
 ra_err_t ra_sdmmc_spi_get_capacity(uint32_t* out_blocks)
 {
   RA_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks is null");
@@ -983,7 +976,6 @@ ra_err_t ra_sdmmc_spi_get_capacity(uint32_t* out_blocks)
   return k_ra_ok;
 }
 
-/* ra_sdmmc_spi_get_card_type -- see header for full description. */
 ra_err_t ra_sdmmc_spi_get_card_type(ra_sdmmc_spi_card_type_t* out_type)
 {
   RA_CHECK_NULL_PTR(out_type, s_tag, "out_type is null");
@@ -1048,7 +1040,6 @@ static ra_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint3
   return k_ra_ok;
 }
 
-/* ra_sdmmc_spi_bind_fs_backend -- see header for full description. */
 ra_err_t ra_sdmmc_spi_bind_fs_backend(ra_fs_backend_t* out_backend)
 {
   RA_CHECK_NULL_PTR(out_backend, s_tag, "out_backend is null");

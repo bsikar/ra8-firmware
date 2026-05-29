@@ -180,7 +180,6 @@ static ra_err_t ra_mpu_validate_cfg(const ra_mpu_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Ra mpu configure -- see implementation for details. */
 ra_err_t ra_mpu_configure(const ra_mpu_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -220,7 +219,6 @@ ra_err_t ra_mpu_configure(const ra_mpu_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Ra mpu enable -- see implementation for details. */
 ra_err_t ra_mpu_enable(void)
 {
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
@@ -229,7 +227,6 @@ ra_err_t ra_mpu_enable(void)
   return k_ra_ok;
 }
 
-/* Ra mpu disable -- see implementation for details. */
 ra_err_t ra_mpu_disable(void)
 {
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
@@ -238,7 +235,6 @@ ra_err_t ra_mpu_disable(void)
   return k_ra_ok;
 }
 
-/* Ra mpu set region -- see implementation for details. */
 ra_err_t ra_mpu_set_region(uint8_t region, const ra_mpu_region_t* region_cfg)
 {
   RA_CHECK_NULL_PTR(region_cfg, s_tag, "region_cfg must not be nullptr");
