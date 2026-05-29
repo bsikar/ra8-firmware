@@ -1954,7 +1954,6 @@ static ra_err_t internal_eswclk_program_cks(void)
   return err;
 }
 
-/* Implementation of ra_cgc_eswclk_init (see header for full description). */
 ra_err_t ra_cgc_eswclk_init(void)
 {
   ra_log_info(s_tag, "eswclk init (PLL1P/4 = 250 MHz, eswphyclk PLL1P/2 = 500 MHz)");
@@ -1988,7 +1987,6 @@ ra_err_t ra_cgc_eswclk_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_cgc_eswclk_hz (see header for full description). */
 ra_err_t ra_cgc_eswclk_hz(uint32_t* out_hz)
 {
   if (out_hz == nullptr) {

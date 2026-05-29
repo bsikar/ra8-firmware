@@ -946,7 +946,6 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
   return k_ra_ok;
 }
 
-/* ra_bkup_dispatch -- see header for full description. */
 void ra_bkup_dispatch(uint8_t tamper_flags)
 {
   const ra_bkup_event_fn_t fn  = s_bkup_fn;

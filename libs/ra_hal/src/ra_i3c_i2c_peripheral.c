@@ -87,7 +87,6 @@ static ra_err_t internal_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mask
   return k_ra_err_hw_timeout;
 }
 
-/* internal_i3c_i2c_peripheral_open -- see header for full description. */
 ra_err_t internal_i3c_i2c_peripheral_open(uint8_t channel, const ra_i3c_i2c_peripheral_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "internal_i3c_i2c_peripheral_open: cfg null");
@@ -108,7 +107,6 @@ ra_err_t internal_i3c_i2c_peripheral_open(uint8_t channel, const ra_i3c_i2c_peri
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_peripheral_close -- see header for full description. */
 ra_err_t internal_i3c_i2c_peripheral_close(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -121,7 +119,6 @@ ra_err_t internal_i3c_i2c_peripheral_close(uint8_t channel)
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_peripheral_send -- see header for full description. */
 ra_err_t internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -142,7 +139,6 @@ ra_err_t internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, 
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_peripheral_receive -- see header for full description. */
 ra_err_t internal_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -163,7 +159,6 @@ ra_err_t internal_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint
   return k_ra_ok;
 }
 
-/* internal_i3c_i2c_peripheral_status -- see header for full description. */
 ra_err_t internal_i3c_i2c_peripheral_status(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "internal_i3c_i2c_peripheral_status: out_mask null");

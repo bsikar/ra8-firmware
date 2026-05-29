@@ -631,7 +631,6 @@ internal_panel_program(uintptr_t fb_addr, uint16_t fb_format, uint16_t fb_w, uin
 }
 
 /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
-/* ra_glcdc_init -- see header for full description. */
 ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -675,7 +674,6 @@ ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_glcdc_start -- see header for full description. */
 ra_err_t ra_glcdc_start(bool enable)
 {
   enum : uint32_t {
@@ -738,7 +736,6 @@ ra_err_t ra_glcdc_start(bool enable)
  * =============================================================================
  */
 
-/* ra_glcdc_set_layer2 -- see header for full description. */
 ra_err_t ra_glcdc_set_layer2(const ra_glcdc_layer2_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -794,7 +791,6 @@ ra_err_t ra_glcdc_set_layer2(const ra_glcdc_layer2_cfg_t* cfg)
  * =============================================================================
  */
 
-/* ra_glcdc_set_blend -- see header for full description. */
 ra_err_t ra_glcdc_set_blend(ra_glcdc_blend_mode_t mode, uint8_t global_alpha)
 {
   uint32_t dispsel = 0U;
@@ -835,7 +831,6 @@ ra_err_t ra_glcdc_set_blend(ra_glcdc_blend_mode_t mode, uint8_t global_alpha)
  * =============================================================================
  */
 
-/* ra_glcdc_set_background_color -- see header for full description. */
 ra_err_t ra_glcdc_set_background_color(uint32_t argb)
 {
   /* BG_BGC is direct-write (not shadow-latched).  Writing it mid-
@@ -1056,7 +1051,6 @@ static volatile uint32_t* internal_clutint_reg(uint8_t layer)
   return ra_glcdc_reg32(k_ra_glcdc_off_gr2_clutint);
 }
 
-/* ra_glcdc_set_clut_double_buffered -- see header for full description. */
 ra_err_t ra_glcdc_set_clut_double_buffered(uint8_t         layer,
                                            const uint32_t* clut,
                                            uint32_t        entries,
@@ -1096,7 +1090,6 @@ ra_err_t ra_glcdc_set_clut_double_buffered(uint8_t         layer,
  * =============================================================================
  */
 
-/* ra_glcdc_set_dithering -- see header for full description. */
 ra_err_t ra_glcdc_set_dithering(ra_glcdc_dither_mode_t mode)
 {
   uint32_t sel;
@@ -1122,7 +1115,6 @@ ra_err_t ra_glcdc_set_dithering(ra_glcdc_dither_mode_t mode)
   return k_ra_ok;
 }
 
-/* ra_glcdc_set_brightness -- see header for full description. */
 ra_err_t ra_glcdc_set_brightness(uint8_t r, uint8_t g, uint8_t b)
 {
   /* HUM Ch 63 "OUT_BRIGHT1.BRTG" p 3744 */ /* green offset. */
@@ -1134,7 +1126,6 @@ ra_err_t ra_glcdc_set_brightness(uint8_t r, uint8_t g, uint8_t b)
   return k_ra_ok;
 }
 
-/* ra_glcdc_set_contrast -- see header for full description. */
 ra_err_t ra_glcdc_set_contrast(uint8_t r, uint8_t g, uint8_t b)
 {
   /* HUM Ch 63 "OUT_CONTRAST.CONTG/CONTB/CONTR" p 3744 */
@@ -1151,7 +1142,6 @@ ra_err_t ra_glcdc_set_contrast(uint8_t r, uint8_t g, uint8_t b)
 static ra_glcdc_event_fn_t s_glcdc_fn;
 static void*               s_glcdc_ctx;
 
-/* ra_glcdc_deinit -- see header for full description. */
 ra_err_t ra_glcdc_deinit(void)
 {
   *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = 0U;
@@ -1162,7 +1152,6 @@ ra_err_t ra_glcdc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_glcdc);
 }
 
-/* ra_glcdc_get_status -- see header for full description. */
 ra_err_t ra_glcdc_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -1170,7 +1159,6 @@ ra_err_t ra_glcdc_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra_glcdc_clear_status -- see header for full description. */
 ra_err_t ra_glcdc_clear_status(uint32_t mask)
 {
   volatile uint32_t* reg = ra_glcdc_reg32(k_ra_glcdc_off_sys_stat);
@@ -1178,7 +1166,6 @@ ra_err_t ra_glcdc_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra_glcdc_attach_handler -- see header for full description. */
 ra_err_t ra_glcdc_attach_handler(ra_glcdc_event_fn_t fn, void* ctx)
 {
   s_glcdc_fn  = fn;
@@ -1186,7 +1173,6 @@ ra_err_t ra_glcdc_attach_handler(ra_glcdc_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra_glcdc_dispatch -- see header for full description. */
 void ra_glcdc_dispatch(void)
 {
   volatile uint32_t*        reg  = ra_glcdc_reg32(k_ra_glcdc_off_sys_stat);
@@ -1199,14 +1185,12 @@ void ra_glcdc_dispatch(void)
   }
 }
 
-/* ra_glcdc_enter_stop -- see header for full description. */
 ra_err_t ra_glcdc_enter_stop(void)
 {
   *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = 0U;
   return ra_mstp_disable(k_ra_mstp_glcdc);
 }
 
-/* ra_glcdc_exit_stop -- see header for full description. */
 ra_err_t ra_glcdc_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_glcdc);

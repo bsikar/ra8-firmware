@@ -172,7 +172,6 @@ static void internal_pool_reset(void)
  * =============================================================================
  */
 
-/* Ra tls global init -- see implementation for details. */
 ra_err_t ra_tls_global_init(void)
 {
   if (s_initialized) {
@@ -200,7 +199,6 @@ ra_err_t ra_tls_global_init(void)
   return k_ra_ok;
 }
 
-/* Ra tls global deinit -- see implementation for details. */
 ra_err_t ra_tls_global_deinit(void)
 {
   if (!s_initialized) {
@@ -332,7 +330,6 @@ static ra_err_t internal_session_mbedtls_setup(struct ra_tls_session_handle* slo
 }
 #endif
 
-/* Ra tls session open -- see implementation for details. */
 ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session_cfg_t* cfg)
 {
   const ra_err_t arg_rc = internal_session_validate_args(out_session, cfg);
@@ -362,7 +359,6 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
   return k_ra_ok;
 }
 
-/* Ra tls session close -- see implementation for details. */
 ra_err_t ra_tls_session_close(ra_tls_session_t session)
 {
   if (!s_initialized) {
@@ -380,7 +376,6 @@ ra_err_t ra_tls_session_close(ra_tls_session_t session)
   return k_ra_ok;
 }
 
-/* Ra tls handshake -- see implementation for details. */
 ra_err_t ra_tls_handshake(ra_tls_session_t session)
 {
   if (!s_initialized) {
@@ -419,7 +414,6 @@ ra_err_t ra_tls_handshake(ra_tls_session_t session)
 #endif
 }
 
-/* Ra tls send -- see implementation for details. */
 ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, size_t* out_sent)
 {
   if (out_sent == nullptr) {
@@ -460,7 +454,6 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
 #endif
 }
 
-/* Ra tls recv -- see implementation for details. */
 ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received)
 {
   if (out_received == nullptr) {

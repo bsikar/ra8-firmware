@@ -648,7 +648,6 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
  * =============================================================================
  */
 
-/* ra usb hmsc build cbw -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_build_cbw(uint8_t        target_lun,
                                uint32_t       data_transfer_length,
                                bool           data_in,
@@ -694,7 +693,6 @@ ra_err_t ra_usb_hmsc_build_cbw(uint8_t        target_lun,
   return k_ra_ok;
 }
 
-/* ra usb hmsc decode csw -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_decode_csw(const uint8_t*            csw,
                                 uint32_t                  expected_tag,
                                 ra_usb_hmsc_csw_status_t* out_status)
@@ -727,7 +725,6 @@ ra_err_t ra_usb_hmsc_decode_csw(const uint8_t*            csw,
  * =============================================================================
  */
 
-/* ra usb hmsc init -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -752,7 +749,6 @@ ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* ra usb hmsc close -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_close(void)
 {
   if (!s_state.initialized) {
@@ -774,7 +770,6 @@ ra_err_t ra_usb_hmsc_close(void)
  * =============================================================================
  */
 
-/* ra usb hmsc attach callback -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_attach_callback(ra_usb_hmsc_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialized) {
@@ -969,7 +964,6 @@ static void internal_decode_inquiry(const uint8_t* raw, ra_usb_hmsc_inquiry_resp
  * =============================================================================
  */
 
-/* ra usb hmsc inquiry -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_inquiry(uint8_t target_lun, ra_usb_hmsc_inquiry_response_t* response)
 {
   RA_CHECK_NULL_PTR(response, s_tag, "inquiry: response");
@@ -988,7 +982,6 @@ ra_err_t ra_usb_hmsc_inquiry(uint8_t target_lun, ra_usb_hmsc_inquiry_response_t*
   return k_ra_ok;
 }
 
-/* ra usb hmsc read capacity -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, uint32_t* block_size)
 {
   RA_CHECK_NULL_PTR(block_count, s_tag, "read_capacity: block_count");
@@ -1016,7 +1009,6 @@ ra_err_t ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, ui
   return k_ra_ok;
 }
 
-/* ra usb hmsc read10 -- see surrounding code and HUM citations. */
 ra_err_t
 ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8_t* out_buf)
 {
@@ -1041,7 +1033,6 @@ ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8
   return k_ra_ok;
 }
 
-/* ra usb hmsc write10 -- see surrounding code and HUM citations. */
 ra_err_t
 ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, const uint8_t* in_buf)
 {
@@ -1068,7 +1059,6 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
  * =============================================================================
  */
 
-/* ra usb hmsc step -- see surrounding code and HUM citations. */
 ra_err_t ra_usb_hmsc_step(void)
 {
   if (!s_state.initialized) {

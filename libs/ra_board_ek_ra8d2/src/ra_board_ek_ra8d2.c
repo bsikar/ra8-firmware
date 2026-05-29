@@ -61,7 +61,6 @@ const char* const k_ra_board_name    = "EK-RA8D2 v1";
 const char* const k_ra_board_doc_rev = "R20UT5523EG0101 Rev 1.01";
 const char* const k_ra_board_mcu     = "R7KA8D2KFLCAC";
 
-/* Ra board get info -- see implementation for details. */
 ra_err_t ra_board_get_info(ra_board_info_t* out)
 {
   if (out == nullptr) {
@@ -91,7 +90,6 @@ static const ra_port_pin_t s_led_pins[k_ra_board_led_count] = {
   [k_ra_board_led3] = (ra_port_pin_t)RA_PIN(k_ra_port_10, k_ra_pin_7), /**< PA07 (red).   */
 };
 
-/* Ra board led pin -- see implementation for details. */
 ra_err_t ra_board_led_pin(ra_board_led_id_t led, ra_port_pin_t* out_pin)
 {
   if (out_pin == nullptr) {
@@ -104,7 +102,6 @@ ra_err_t ra_board_led_pin(ra_board_led_id_t led, ra_port_pin_t* out_pin)
   return k_ra_ok;
 }
 
-/* Ra board led init -- see implementation for details. */
 ra_err_t ra_board_led_init(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -115,7 +112,6 @@ ra_err_t ra_board_led_init(ra_board_led_id_t led)
   return ra_gpio_output_init(pin, k_ra_level_low);
 }
 
-/* Ra board led on -- see implementation for details. */
 ra_err_t ra_board_led_on(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -126,7 +122,6 @@ ra_err_t ra_board_led_on(ra_board_led_id_t led)
   return ra_gpio_write(pin, k_ra_level_high);
 }
 
-/* Ra board led off -- see implementation for details. */
 ra_err_t ra_board_led_off(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -137,7 +132,6 @@ ra_err_t ra_board_led_off(ra_board_led_id_t led)
   return ra_gpio_write(pin, k_ra_level_low);
 }
 
-/* Ra board led toggle -- see implementation for details. */
 ra_err_t ra_board_led_toggle(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -170,7 +164,6 @@ static const uint8_t s_sw_irq_nums[k_ra_board_sw_count] = {
   [k_ra_board_sw2] = (uint8_t)k_ra_board_sw2_irq, /**< 12 (IRQ12-DS). */
 };
 
-/* Ra board sw pin -- see implementation for details. */
 ra_err_t ra_board_sw_pin(ra_board_sw_id_t sw, ra_port_pin_t* out_pin)
 {
   if (out_pin == nullptr) {
@@ -183,7 +176,6 @@ ra_err_t ra_board_sw_pin(ra_board_sw_id_t sw, ra_port_pin_t* out_pin)
   return k_ra_ok;
 }
 
-/* Ra board sw init -- see implementation for details. */
 ra_err_t ra_board_sw_init(ra_board_sw_id_t sw)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -194,7 +186,6 @@ ra_err_t ra_board_sw_init(ra_board_sw_id_t sw)
   return ra_gpio_input_init(pin, k_ra_pull_up);
 }
 
-/* Ra board sw read -- see implementation for details. */
 ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
 {
   if (out_pressed == nullptr) {
@@ -215,7 +206,6 @@ ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
   return k_ra_ok;
 }
 
-/* Ra board sw attach irq -- see implementation for details. */
 ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
 {
   if (cb == nullptr) {
@@ -587,7 +577,6 @@ static void ra_board_glcdc_force_pin_output(ra_port_pin_t pin)
   ra_pfs_pwpr_lock();
 }
 
-/* Ra board glcdc init -- see implementation for details. */
 ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
 {
   const ra_board_glcdc_pin_t* table = nullptr;
@@ -726,7 +715,6 @@ typedef enum : uint32_t {
   k_ra_board_xspi_reset_high_ms = 15U, /**< Wait >= tPUW before first CS.  */
 } ra_board_xspi_reset_timing_t;
 
-/* Ra board xspi pins init -- see implementation for details. */
 ra_err_t ra_board_xspi_pins_init(void)
 {
   /* Step 1: drive RESET_L low while the pin is still GPIO. PSEL=0x00
@@ -919,7 +907,6 @@ internal_audio_build_ssie_cfg(uint8_t channels, ra_ssie_data_word_t dwl, ra_ssie
   };
 }
 
-/* Ra board audio init -- see implementation for details. */
 ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels)
 {
   if (sample_rate_hz == 0U) {
@@ -955,7 +942,6 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
   return k_ra_ok;
 }
 
-/* Ra board audio play sample block -- see implementation for details. */
 ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
 {
   if (buf == nullptr) {
@@ -995,7 +981,6 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
  * =============================================================================
  */
 
-/* Ra board arduino pin init -- see implementation for details. */
 ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_mode_t mode)
 {
   switch (mode) {
@@ -1010,13 +995,11 @@ ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_
   }
 }
 
-/* Ra board arduino gpio write -- see implementation for details. */
 ra_err_t ra_board_arduino_gpio_write(ra_board_arduino_pin_t pin, ra_level_t level)
 {
   return ra_gpio_write((ra_port_pin_t)pin, level);
 }
 
-/* Ra board arduino gpio read -- see implementation for details. */
 ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_level)
 {
   if (out_level == nullptr) {
@@ -1507,7 +1490,6 @@ static ra_err_t internal_io_expander_apply(uint8_t output_byte)
   return k_ra_ok;
 }
 
-/* Ra board io expander set usbhs device mode -- see implementation for details. */
 ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
 {
   return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_all_high);
@@ -1544,7 +1526,6 @@ ra_err_t ra_board_io_expander_apply_project_sw4_defaults(void)
   return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_project_default);
 }
 
-/* ra_board_io_expander_set_octospi_active -- see header for full description. */
 ra_err_t ra_board_io_expander_set_octospi_active(void)
 {
   return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_octospi_active);
@@ -1627,7 +1608,6 @@ static ra_err_t internal_usbhs_role_select_device(void)
   return err;
 }
 
-/* Ra board usbhs device init -- see implementation for details. */
 ra_err_t ra_board_usbhs_device_init(void)
 {
   /* HUM Ch 9 (CGC) USBCKCR p 365 + HUM Ch 11 (MSTP) MSTPCRB12 p 469
@@ -1664,7 +1644,6 @@ ra_err_t ra_board_usbhs_device_init(void)
   return rc_dev;
 }
 
-/* Ra board usbhs host init -- see implementation for details. */
 ra_err_t ra_board_usbhs_host_init(void)
 {
   /* Symmetric to ra_board_usbhs_device_init. EK-RA8D2 v1 UM Rev 1.01
@@ -1778,7 +1757,6 @@ static const ra_mipi_phy_config_t s_mipi_phy_cfg = {
   .p_timing = &s_mipi_phy_timing_placeholder,
 };
 
-/* Ra board mipi dsi init -- see implementation for details. */
 ra_err_t ra_board_mipi_dsi_init(void)
 {
   /* Step 1: PHY first -- HUM Ch 64.3.1 startup procedure. The HAL warns
@@ -1845,7 +1823,6 @@ typedef enum : uint32_t {
   k_ra_board_uart_console_min_pclka_hz = 16000000UL,
 } ra_board_uart_console_clock_t;
 
-/* Ra board uart console init -- see implementation for details. */
 ra_err_t ra_board_uart_console_init(uint32_t baud)
 {
   if (baud == 0U) {
@@ -1901,7 +1878,6 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
   return k_ra_ok;
 }
 
-/* Ra board uart console write -- see implementation for details. */
 ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
 {
   if (len == 0U) {
@@ -1916,7 +1892,6 @@ ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
   return ra_sci_write_polling((uint8_t)k_ra_board_uart_console_sci_channel, data, (uint32_t)len);
 }
 
-/* Ra board uart console read -- see implementation for details. */
 ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
 {
   if (out_len == nullptr) {
@@ -1949,7 +1924,6 @@ ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
   return k_ra_ok;
 }
 
-/* Ra board uart console flush -- see implementation for details. */
 ra_err_t ra_board_uart_console_flush(void)
 {
   if (!s_uart_console_initialized) {
@@ -2679,7 +2653,6 @@ static ra_err_t internal_eth_phy_chip_init(void)
   return internal_eth_phy_start_autoneg();
 }
 
-/* Ra board ethernet init -- see implementation for details. */
 ra_err_t ra_board_ethernet_init(void)
 {
   /* Step 0: hardware-reset the on-board PEF7071 PHY before anything

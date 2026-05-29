@@ -386,7 +386,6 @@ static ra_err_t internal_xspi_clock_block_init(void)
   return err;
 }
 
-/* ra xspi init -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -437,7 +436,6 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
   return k_ra_ok;
 }
 
-/* ra xspi direct command -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_t len)
 {
   RA_CHECK_NULL_PTR(cmd_buf, s_tag, "cmd_buf must not be nullptr");
@@ -687,7 +685,6 @@ static ra_err_t internal_sim_range_check(uint32_t flash_addr, uint32_t len)
 }
 #endif
 
-/* ra xspi flash read -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -967,7 +964,6 @@ ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data
   return internal_poll_wip_clear(instance);
 }
 
-/* ra xspi flash erase sector -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1004,7 +1000,6 @@ ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
   return internal_poll_wip_clear(instance);
 }
 
-/* ra xspi flash read status -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
@@ -1030,7 +1025,6 @@ ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
   return k_ra_ok;
 }
 
-/* ra xspi flash read id -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
 {
   RA_CHECK_NULL_PTR(out_id, s_tag, "out_id must not be nullptr");
@@ -1074,7 +1068,6 @@ typedef struct {
 /** @brief Per-instance callback state (s_ prefix for file-static). */
 static ra_xspi_state_t s_xspi_state[k_ra_xspi_instance_count];
 
-/* ra xspi deinit -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_deinit(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1090,7 +1083,6 @@ ra_err_t ra_xspi_deinit(uint8_t instance)
   return ra_mstp_disable(s_xspi_mstp_table[instance]);
 }
 
-/* ra xspi get status -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_get_status(uint8_t instance, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -1101,7 +1093,6 @@ ra_err_t ra_xspi_get_status(uint8_t instance, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra xspi clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1111,7 +1102,6 @@ ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra xspi attach handler -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* ctx)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -1122,7 +1112,6 @@ ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* c
   return k_ra_ok;
 }
 
-/* ra xspi dispatch -- see surrounding code and HUM citations. */
 void ra_xspi_dispatch(uint8_t instance)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -1146,7 +1135,6 @@ void ra_xspi_dispatch(uint8_t instance)
   }
 }
 
-/* ra xspi enter stop -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_enter_stop(uint8_t instance)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -1155,7 +1143,6 @@ ra_err_t ra_xspi_enter_stop(uint8_t instance)
   return ra_mstp_disable(s_xspi_mstp_table[instance]);
 }
 
-/* ra xspi exit stop -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_exit_stop(uint8_t instance)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -1164,7 +1151,6 @@ ra_err_t ra_xspi_exit_stop(uint8_t instance)
   return ra_mstp_enable(s_xspi_mstp_table[instance]);
 }
 
-/* ra xspi xip enter -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_code)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1187,7 +1173,6 @@ ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_co
   return k_ra_ok;
 }
 
-/* ra xspi xip exit -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_xip_exit(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1250,7 +1235,6 @@ typedef enum : uint32_t {
   k_ra_xspi_calib_spin = 1024U, /**< CCCTL0.CAEN poll budget. */
 } ra_xspi_calib_spin_t;
 
-/* ra xspi set xip mode -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t addr_bytes)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1282,7 +1266,6 @@ ra_err_t ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, u
   return k_ra_ok;
 }
 
-/* ra xspi set dtr mode -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_set_dtr_mode(uint8_t instance, bool enable)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1299,7 +1282,6 @@ ra_err_t ra_xspi_set_dtr_mode(uint8_t instance, bool enable)
   return k_ra_ok;
 }
 
-/* ra xspi calibrate dqs -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1329,7 +1311,6 @@ ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
 #endif
 }
 
-/* ra xspi suspend -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_suspend(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1337,7 +1318,6 @@ ra_err_t ra_xspi_suspend(uint8_t instance)
   return internal_issue_simple_opcode(reg, k_ra_spi_flash_op_suspend);
 }
 
-/* ra xspi resume -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_resume(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -1400,7 +1380,6 @@ internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t
   return internal_kick_command(reg);
 }
 
-/* ra xspi software reset -- see surrounding code and HUM citations. */
 ra_err_t ra_xspi_software_reset(uint8_t instance, uint8_t cmd_bytes)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);

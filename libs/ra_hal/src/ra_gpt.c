@@ -269,7 +269,6 @@ static uint32_t internal_gtcr(ra_gpt_mode_t mode, ra_gpt_prescaler_t ps)
   return ((uint32_t)mode << k_ra_gpt_gtcr_md_shift) | ((uint32_t)ps << k_ra_gpt_gtcr_tpcs_shift);
 }
 
-/* ra_gpt_start_free_run -- see header for full description. */
 ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -297,7 +296,6 @@ ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period)
   return k_ra_ok;
 }
 
-/* ra_gpt_stop -- see header for full description. */
 ra_err_t ra_gpt_stop(uint8_t channel)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -309,7 +307,6 @@ ra_err_t ra_gpt_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_gpt_read -- see header for full description. */
 ra_err_t ra_gpt_read(uint8_t channel, uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -325,7 +322,6 @@ ra_err_t ra_gpt_read(uint8_t channel, uint32_t* out)
  * =============================================================================
  */
 
-/* ra_gpt_init -- see header for full description. */
 ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -362,7 +358,6 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_gpt_deinit -- see header for full description. */
 ra_err_t ra_gpt_deinit(uint8_t channel)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -380,7 +375,6 @@ ra_err_t ra_gpt_deinit(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_gpt_set_period -- see header for full description. */
 ra_err_t ra_gpt_set_period(uint8_t channel, uint32_t period)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -393,7 +387,6 @@ ra_err_t ra_gpt_set_period(uint8_t channel, uint32_t period)
   return k_ra_ok;
 }
 
-/* ra_gpt_set_duty -- see header for full description. */
 ra_err_t ra_gpt_set_duty(uint8_t channel, ra_gpt_ccr_sel_t which, uint32_t value)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -408,7 +401,6 @@ ra_err_t ra_gpt_set_duty(uint8_t channel, ra_gpt_ccr_sel_t which, uint32_t value
   return k_ra_ok;
 }
 
-/* ra_gpt_get_status -- see header for full description. */
 ra_err_t ra_gpt_get_status(uint8_t channel, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -419,7 +411,6 @@ ra_err_t ra_gpt_get_status(uint8_t channel, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra_gpt_clear_status -- see header for full description. */
 ra_err_t ra_gpt_clear_status(uint8_t channel, uint32_t mask)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -431,7 +422,6 @@ ra_err_t ra_gpt_clear_status(uint8_t channel, uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra_gpt_attach_handler -- see header for full description. */
 ra_err_t ra_gpt_attach_handler(uint8_t channel, ra_gpt_event_fn_t fn, void* ctx)
 {
   if (channel >= (uint8_t)k_ra_gpt_channel_count) {
@@ -442,7 +432,6 @@ ra_err_t ra_gpt_attach_handler(uint8_t channel, ra_gpt_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra_gpt_enter_stop -- see header for full description. */
 ra_err_t ra_gpt_enter_stop(uint8_t channel)
 {
   if (channel >= (uint8_t)k_ra_gpt_channel_count) {
@@ -457,7 +446,6 @@ ra_err_t ra_gpt_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_gpt_mstp_table[channel]);
 }
 
-/* ra_gpt_exit_stop -- see header for full description. */
 ra_err_t ra_gpt_exit_stop(uint8_t channel)
 {
   if (channel >= (uint8_t)k_ra_gpt_channel_count) {
@@ -468,7 +456,6 @@ ra_err_t ra_gpt_exit_stop(uint8_t channel)
 
 /* ---- DMA TX / RX ----------------------------------------- */
 
-/* ra_gpt_write_dma -- see header for full description. */
 ra_err_t ra_gpt_write_dma(uint8_t              channel,
                           const uint32_t*      periods,
                           uint16_t             count,
@@ -502,7 +489,6 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
 }
 
 /* out_counts is written by the DMAC engine. */
-/* ra_gpt_read_dma -- see header for full description. */
 ra_err_t ra_gpt_read_dma(uint8_t              channel,
                          uint32_t*            out_counts, // NOLINT(readability-non-const-parameter)
                          uint16_t             count,
@@ -540,7 +526,6 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
  * =============================================================================
  */
 
-/* ra_gpt_period_set -- see header for full description. */
 ra_err_t ra_gpt_period_set(uint8_t channel, uint32_t period_counts)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -559,7 +544,6 @@ ra_err_t ra_gpt_period_set(uint8_t channel, uint32_t period_counts)
   return k_ra_ok;
 }
 
-/* ra_gpt_duty_cycle_set -- see header for full description. */
 ra_err_t ra_gpt_duty_cycle_set(uint8_t channel, ra_gpt_pwm_pin_t pin, uint32_t compare_counts)
 {
   if (pin > k_ra_gpt_pin_b) {
@@ -584,7 +568,6 @@ ra_err_t ra_gpt_duty_cycle_set(uint8_t channel, ra_gpt_pwm_pin_t pin, uint32_t c
   return k_ra_ok;
 }
 
-/* ra_gpt_counter_set -- see header for full description. */
 ra_err_t ra_gpt_counter_set(uint8_t channel, uint32_t value)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -625,7 +608,6 @@ static uint32_t internal_gtio_pattern(ra_gpt_pwm_polarity_t polarity)
   return k_ra_gpt_gtio_active_high;
 }
 
-/* ra_gpt_pwm_pin_configure -- see header for full description. */
 ra_err_t
 ra_gpt_pwm_pin_configure(uint8_t channel, ra_gpt_pwm_pin_t pin, const ra_gpt_pwm_pin_cfg_t* cfg)
 {
@@ -663,7 +645,6 @@ ra_gpt_pwm_pin_configure(uint8_t channel, ra_gpt_pwm_pin_t pin, const ra_gpt_pwm
   return k_ra_ok;
 }
 
-/* ra_gpt_dead_time_set -- see header for full description. */
 ra_err_t ra_gpt_dead_time_set(uint8_t channel, uint32_t rising_dt, uint32_t falling_dt)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -747,7 +728,6 @@ static ra_err_t internal_three_phase_init_subs(const ra_gpt_three_phase_cfg_t* c
   return k_ra_ok;
 }
 
-/* ra_gpt_three_phase_open -- see header for full description. */
 ra_err_t ra_gpt_three_phase_open(const ra_gpt_three_phase_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "three_phase cfg must not be nullptr");
@@ -782,7 +762,6 @@ ra_err_t ra_gpt_three_phase_open(const ra_gpt_three_phase_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_gpt_three_phase_set_duty -- see header for full description. */
 ra_err_t ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty)
 {
   if (!s_three_phase.open) {
@@ -816,7 +795,6 @@ ra_err_t ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t 
   return k_ra_ok;
 }
 
-/* ra_gpt_three_phase_close -- see header for full description. */
 ra_err_t ra_gpt_three_phase_close(void)
 {
   if (!s_three_phase.open) {
@@ -857,25 +835,21 @@ static void internal_dispatch(uint8_t channel, uint32_t status_mask)
   }
 }
 
-/* ra_gpt_dispatch_ovf -- see header for full description. */
 void ra_gpt_dispatch_ovf(uint8_t channel)
 {
   internal_dispatch(channel, k_ra_gpt_status_overflow);
 }
 
-/* ra_gpt_dispatch_und -- see header for full description. */
 void ra_gpt_dispatch_und(uint8_t channel)
 {
   internal_dispatch(channel, k_ra_gpt_status_underflow);
 }
 
-/* ra_gpt_dispatch_ccra -- see header for full description. */
 void ra_gpt_dispatch_ccra(uint8_t channel)
 {
   internal_dispatch(channel, k_ra_gpt_status_ccra);
 }
 
-/* ra_gpt_dispatch_ccrb -- see header for full description. */
 void ra_gpt_dispatch_ccrb(uint8_t channel)
 {
   internal_dispatch(channel, k_ra_gpt_status_ccrb);

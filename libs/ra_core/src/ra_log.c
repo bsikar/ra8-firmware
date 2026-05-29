@@ -451,25 +451,21 @@ static void internal_emit_line_i(const char* level, const char* tag, const char*
 
 /* ---- plain string log -------------------------------------------------- */
 
-/* Ra log error -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_error(const char* tag, const char* message)
 {
   internal_emit_line("ERROR", tag, message);
 }
 
-/* Ra log warn -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_warn(const char* tag, const char* message)
 {
   internal_emit_line("WARN", tag, message);
 }
 
-/* Ra log info -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_info(const char* tag, const char* message)
 {
   internal_emit_line("INFO", tag, message);
 }
 
-/* Ra log debug -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* message)
 {
   internal_emit_line("DEBUG", tag, message);

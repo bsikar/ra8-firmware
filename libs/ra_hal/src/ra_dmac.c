@@ -391,7 +391,6 @@ static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
  * =============================================================================
  */
 
-/* Ra dmac start -- see implementation for details. */
 ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -426,7 +425,6 @@ ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
   return k_ra_ok;
 }
 
-/* Ra dmac stop -- see implementation for details. */
 ra_err_t ra_dmac_stop(uint8_t channel)
 {
   volatile r_dmac_channel_regs_t* reg = ra_dmac(channel);
@@ -473,13 +471,11 @@ internal_start_with_mode(uint8_t channel, const ra_dmac_config_t* cfg, ra_dmac_m
   return ra_dmac_start(channel, &local);
 }
 
-/* Ra dmac start repeat -- see implementation for details. */
 ra_err_t ra_dmac_start_repeat(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   return internal_start_with_mode(channel, cfg, k_ra_dmac_mode_repeat);
 }
 
-/* Ra dmac start block -- see implementation for details. */
 ra_err_t ra_dmac_start_block(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -489,7 +485,6 @@ ra_err_t ra_dmac_start_block(uint8_t channel, const ra_dmac_config_t* cfg)
   return internal_start_with_mode(channel, cfg, k_ra_dmac_mode_block);
 }
 
-/* Ra dmac set address mode -- see implementation for details. */
 ra_err_t ra_dmac_set_address_mode(uint8_t             channel,
                                   ra_dmac_addr_mode_t src_mode,
                                   ra_dmac_addr_mode_t dest_mode)
@@ -511,7 +506,6 @@ ra_err_t ra_dmac_set_address_mode(uint8_t             channel,
   return k_ra_ok;
 }
 
-/* Ra dmac attach half complete handler -- see implementation for details. */
 ra_err_t ra_dmac_attach_half_complete_handler(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx)
 {
   if (channel >= k_ra_dmac_channel_count) {
@@ -522,7 +516,6 @@ ra_err_t ra_dmac_attach_half_complete_handler(uint8_t channel, ra_dmac_callback_
   return k_ra_ok;
 }
 
-/* Ra dmac attach callback -- see implementation for details. */
 ra_err_t ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx)
 {
   if (channel >= k_ra_dmac_channel_count) {
@@ -533,7 +526,6 @@ ra_err_t ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void
   return k_ra_ok;
 }
 
-/* Ra dmac dispatch -- see implementation for details. */
 void ra_dmac_dispatch(uint8_t channel)
 {
   if (channel >= k_ra_dmac_channel_count) {
@@ -546,7 +538,6 @@ void ra_dmac_dispatch(uint8_t channel)
   }
 }
 
-/* Ra dmac dispatch half -- see implementation for details. */
 void ra_dmac_dispatch_half(uint8_t channel)
 {
   if (channel >= k_ra_dmac_channel_count) {

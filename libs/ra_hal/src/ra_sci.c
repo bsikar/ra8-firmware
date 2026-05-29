@@ -446,7 +446,6 @@ static void internal_program_ccr_bank(volatile r_sci_regs_t* reg, const ra_sci_c
   internal_clear_csr_flags(reg);
 }
 
-/* ra sci init -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "sci_init: cfg");
@@ -482,7 +481,6 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* ra sci deinit -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_deinit(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -508,7 +506,6 @@ ra_err_t ra_sci_deinit(uint8_t channel)
 
 /* ---- Polling TX / RX -------------------------------------------------- */
 
-/* ra sci putc polling -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -529,7 +526,6 @@ ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte)
   return k_ra_ok;
 }
 
-/* ra sci getc polling -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte)
 {
   RA_CHECK_NULL_PTR(out_byte, s_tag, "getc: out_byte");
@@ -550,7 +546,6 @@ ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte)
   return k_ra_ok;
 }
 
-/* ra sci write polling -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   if ((data == nullptr) && (len != 0U)) {
@@ -578,7 +573,6 @@ ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len
   return k_ra_ok;
 }
 
-/* ra sci flush -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_flush(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -594,7 +588,6 @@ ra_err_t ra_sci_flush(uint8_t channel)
 
 /* ---- Interrupt handler attach ---------------------------------------- */
 
-/* ra sci attach rx handler -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -614,7 +607,6 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra sci attach tx handler -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -636,7 +628,6 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
 
 /* ---- Error status ----------------------------------------------------- */
 
-/* ra sci get errors -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "get_errors: out");
@@ -661,7 +652,6 @@ ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra sci clear errors -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_clear_errors(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -677,7 +667,6 @@ ra_err_t ra_sci_clear_errors(uint8_t channel)
 
 /* ---- Runtime reconfigure --------------------------------------------- */
 
-/* ra sci set baud -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -699,7 +688,6 @@ ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
 
 /* ---- Power transition ------------------------------------------------- */
 
-/* ra sci enter stop -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_enter_stop(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -711,7 +699,6 @@ ra_err_t ra_sci_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_mstp_table[channel]);
 }
 
-/* ra sci exit stop -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_exit_stop(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {
@@ -740,7 +727,6 @@ typedef enum : uint16_t {
   k_ra_sci_baud_n0_divisor = 32U,  /**< 32 * 2^(2*0). */
 } ra_sci_baud_calc_const_t;
 
-/* ra sci baud calculate -- see surrounding code and HUM citations. */
 ra_err_t
 ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_t* clk_div_out)
 {
@@ -776,7 +762,6 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
   return k_ra_err_invalid_arg;
 }
 
-/* ra sci write -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   if ((data == nullptr) && (len != 0U)) {
@@ -805,7 +790,6 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
   return k_ra_ok;
 }
 
-/* ra sci read -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
 {
   if ((buf == nullptr) && (len != 0U)) {
@@ -835,7 +819,6 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
-/* ra sci abort -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -864,7 +847,6 @@ ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
   return k_ra_ok;
 }
 
-/* ra sci read stop -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
 {
   RA_CHECK_NULL_PTR(remaining, s_tag, "read_stop: remaining");
@@ -887,7 +869,6 @@ ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
   return k_ra_ok;
 }
 
-/* ra sci receive suspend -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_receive_suspend(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -903,7 +884,6 @@ ra_err_t ra_sci_receive_suspend(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra sci receive resume -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_receive_resume(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -943,7 +923,6 @@ static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
   return req;
 }
 
-/* ra sci write dma -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_write_dma(uint8_t              channel,
                           const uint8_t*       data,
                           uint16_t             len,
@@ -973,7 +952,6 @@ ra_err_t ra_sci_write_dma(uint8_t              channel,
 /* out_buf is written by the DMAC engine via the dst_addr path, not
  * through the pointer directly, so clang-tidy would otherwise flag
  * it as a const candidate. */
-/* ra sci read dma -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_read_dma(uint8_t              channel,
                          uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
                          uint16_t             len,
@@ -1001,7 +979,6 @@ ra_err_t ra_sci_read_dma(uint8_t              channel,
 
 /* ---- ISR dispatch ----------------------------------------------------- */
 
-/* ra sci dispatch txi -- see surrounding code and HUM citations. */
 void ra_sci_dispatch_txi(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {
@@ -1057,7 +1034,6 @@ void ra_sci_dispatch_txi(uint8_t channel)
   }
 }
 
-/* ra sci dispatch rxi -- see surrounding code and HUM citations. */
 void ra_sci_dispatch_rxi(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {
@@ -1097,7 +1073,6 @@ void ra_sci_dispatch_rxi(uint8_t channel)
   }
 }
 
-/* ra sci dispatch eri -- see surrounding code and HUM citations. */
 void ra_sci_dispatch_eri(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {

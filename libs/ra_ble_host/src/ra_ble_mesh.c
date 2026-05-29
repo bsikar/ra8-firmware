@@ -38,11 +38,8 @@ typedef enum {
   k_bt_mesh_prov_gatt = 1 << 1,
 } ra_internal_bt_mesh_prov_bearer_t;
 
-/* Bt mesh prov enable -- see implementation for details. */
-extern int bt_mesh_prov_enable(uint32_t bearers);
-/* Bt mesh prov disable -- see implementation for details. */
-extern int bt_mesh_prov_disable(uint32_t bearers);
-/* Bt mesh reset -- see implementation for details. */
+extern int  bt_mesh_prov_enable(uint32_t bearers);
+extern int  bt_mesh_prov_disable(uint32_t bearers);
 extern void bt_mesh_reset(void);
 
 /*
@@ -50,21 +47,18 @@ extern void bt_mesh_reset(void);
  * objects are wired into the per-app build. Strong upstream symbols
  * override these once the mesh stack is brought in.
  */
-/* Bt mesh prov enable -- see implementation for details. */
 __attribute__((weak)) int bt_mesh_prov_enable(uint32_t bearers)
 {
   (void)bearers;
   return 0;
 }
 
-/* Bt mesh prov disable -- see implementation for details. */
 __attribute__((weak)) int bt_mesh_prov_disable(uint32_t bearers)
 {
   (void)bearers;
   return 0;
 }
 
-/* Bt mesh reset -- see implementation for details. */
 __attribute__((weak)) void bt_mesh_reset(void) {}
 #endif
 
@@ -315,7 +309,6 @@ ra_err_t ra_ble_mesh_factory_reset(void)
   return k_ra_ok;
 }
 
-/* Register the application's mesh event handler -- see implementation for details. */
 ra_err_t ra_ble_mesh_attach_event_handler(ra_ble_mesh_event_fn_t fn, void* ctx)
 {
   s_state.event_fn  = fn;
@@ -325,9 +318,7 @@ ra_err_t ra_ble_mesh_attach_event_handler(ra_ble_mesh_event_fn_t fn, void* ctx)
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-/* Ra ble mesh test emit event -- see implementation for details. */
-void ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt);
-/* Ra ble mesh test prov active -- see implementation for details. */
+void    ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt);
 uint8_t ra_ble_mesh_test_prov_active(void);
 
 /**

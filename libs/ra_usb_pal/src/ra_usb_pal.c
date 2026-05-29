@@ -407,7 +407,6 @@ ra_err_t ra_usb_pal_attach(bool attached)
   return k_ra_ok;
 }
 
-/* Read the cached USB device state -- see implementation for details. */
 ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "get_state: out_state");
