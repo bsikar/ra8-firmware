@@ -18,10 +18,10 @@
  *      reach U15 when **SW4-5 is ON** (board UM section 5.4.2
  *      Table 31 row J27-1/J27-2 p ~32). The IIC_B controller
  *      drives this bus at I2C SDR rates.
- *   3. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm. The HAL's block
+ *   3. ``ra_i3c_init(0, ...)`` at 100 kHz Sm. The HAL's block
  *      bring-up now ungates both MSTPB4 (I3C) and MSTPB9 (IIC0)
  *      so the channel-0 controller is fully powered.
- *   4. ``ra_iic_b_scan`` against ``0x43`` -- the U15 I/O port
+ *   4. ``ra_i3c_scan`` against ``0x43`` -- the U15 I/O port
  *      expander ACKs every address-only probe. A successful ACK
  *      proves the bus is alive and the controller is clocking SCL.
  *   5. LED1 toggles on each scan and SCI8 prints
@@ -47,7 +47,7 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 #include "ra_isr.h"
 #include "ra_mpc.h"
 #include "ra_mstp.h"
@@ -200,11 +200,12 @@ static void i2c_demo_setup_or_halt(void)
   if (ra_sci_init((uint8_t)k_i2c_demo_sci_channel, &sci_cfg) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
-  const ra_iic_b_cfg_t iic_cfg = {
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
     .bus_hz   = k_i2c_demo_bus_hz,
     .pclka_hz = pclka_hz,
   };
-  if (ra_iic_b_init((uint8_t)k_i2c_demo_iic_channel, &iic_cfg) != k_ra_ok) {
+  if (ra_i3c_init((uint8_t)k_i2c_demo_iic_channel, &iic_cfg) != k_ra_ok) {
     i2c_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -238,7 +239,7 @@ int32_t main(void)
   while (1) {
     bool           acked = false;
     const ra_err_t err =
-      ra_iic_b_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
+      ra_i3c_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
     const uint8_t* msg     = k_i2c_demo_msg_err;
     uint32_t       msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_err) - 1U);
     if (err == k_ra_ok) {
