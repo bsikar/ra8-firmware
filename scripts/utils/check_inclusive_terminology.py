@@ -145,10 +145,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/inc/ra8d2_ssie_regs.h",
     "libs/ra_hal/inc/ra8d2_vin_regs.h",
     "libs/ra_hal/inc/ra8d2_vreg_regs.h",
-    # Renesas FSP `r_iic_b_master_*` API surface references (the I2C-compat
-    # backend of ra_i3c, folded in as internal_i3c_i2c_*).
-    "libs/ra_hal/src/ra_i3c_i2c.h",
-    "libs/ra_hal/src/ra_i3c_i2c.c",
     # HUM Ch 39 "Master Transmit/Receive Operation" section-name cites
     # and the FSP `r_iic_master` API name referenced verbatim.
     "libs/ra_hal/inc/ra_i2c.h",
