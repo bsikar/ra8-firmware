@@ -363,7 +363,6 @@ static void internal_plot(int32_t x, int32_t y, uint32_t color)
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/* Implementation of ra_gfx_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format)
 {
   if (fb == nullptr) {
@@ -387,7 +386,6 @@ ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t 
   return k_ra_ok;
 }
 
-/* Implementation of ra_gfx_clear (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_clear(uint32_t color)
 {
   if (!s_state.initialized) {
@@ -406,7 +404,6 @@ ra_err_t ra_gfx_clear(uint32_t color)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gfx_pixel (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
 {
   if (!s_state.initialized) {
@@ -419,7 +416,6 @@ ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gfx_line (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color)
 {
   if (!s_state.initialized) {
@@ -453,7 +449,6 @@ ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t co
   return k_ra_ok;
 }
 
-/* Implementation of ra_gfx_rect (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color, bool filled)
 {
   if (!s_state.initialized) {
@@ -539,7 +534,6 @@ internal_circle_filled_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32
   }
 }
 
-/* Implementation of ra_gfx_circle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool filled)
 {
   if (!s_state.initialized) {
@@ -617,7 +611,6 @@ static void internal_render_glyph(int32_t              x,
   }
 }
 
-/* Implementation of ra_gfx_text_out (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_text_out(int32_t              x,
                          int32_t              y,
                          const char*          str,
@@ -646,7 +639,6 @@ ra_err_t ra_gfx_text_out(int32_t              x,
   return k_ra_ok;
 }
 
-/* Implementation of ra_gfx_text_size (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_gfx_text_size(const char* str, const ra_gfx_font_t* font, uint32_t* out_w, uint32_t* out_h)
 {
@@ -666,7 +658,6 @@ ra_gfx_text_size(const char* str, const ra_gfx_font_t* font, uint32_t* out_w, ui
   return k_ra_ok;
 }
 
-/* Implementation of ra_gfx_blit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_blit(const void*     src_buf,
                      uint16_t        src_w,
                      uint16_t        src_h,

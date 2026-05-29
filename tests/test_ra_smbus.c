@@ -5,7 +5,7 @@
  * @details
  * The SMBus layer is pure protocol framing -- it composes wire frames
  * (cmd / count / PEC / etc.) and delegates raw byte movement to
- * ``ra_iic_b``. These tests run against the host-side
+ * ``ra_i3c_i2c``. These tests run against the host-side
  * ``ra_sim_mmap`` substrate exactly the way the IIC_B tests do: they
  * pre-arm NTST.TDBEF0 / NTST.RDBFF0 and BCST.BFREF before every
  * transfer so the polling loops fall through immediately, then
@@ -21,9 +21,9 @@
 
 #include <stdint.h>
 
-#include "ra8d2_iic_b_regs.h"
+#include "ra8d2_i3c_i2c_regs.h"
 #include "ra_err.h"
-#include "ra_iic_b.h"
+#include "ra_i3c_i2c.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "ra_smbus.h"
@@ -43,26 +43,26 @@ typedef enum : uint8_t {
 
 static const ra_smbus_cfg_t k_cfg_no_pec = {
   .channel     = 0U,
-  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_iic_b_speed_fast, .pclka_hz = 60000000U},
+  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_i3c_i2c_speed_fast, .pclka_hz = 60000000U},
   .pec_enabled = false,
 };
 
 static const ra_smbus_cfg_t k_cfg_pec = {
   .channel     = 0U,
-  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_iic_b_speed_fast, .pclka_hz = 60000000U},
+  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_i3c_i2c_speed_fast, .pclka_hz = 60000000U},
   .pec_enabled = true,
 };
 
 /**
  * @brief Pre-arm NTST + BCST so the underlying IIC_B polling loops
  *        fall through immediately. Identical to the helper in the
- *        ra_iic_b unit tests.
+ *        ra_i3c_i2c unit tests.
  */
 static void prime_iic_b(void)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(0U);
-  reg->NTST = (uint32_t)k_ra_iic_b_msk_ntst_tdbef0 | (uint32_t)k_ra_iic_b_msk_ntst_rdbff0;
-  reg->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
+  reg->NTST = (uint32_t)k_ra_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra_i3c_i2c_msk_ntst_rdbff0;
+  reg->BCST = (uint32_t)k_ra_i3c_i2c_msk_bcst_bfref;
 }
 
 /**
@@ -217,7 +217,7 @@ static void test_send_byte_no_pec(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_smbus_send_byte((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_data_a));
   /* Last byte landed in NTDTBP0 must be the data byte (no trailing PEC). */
-  TEST_ASSERT_EQ(k_smbus_test_data_a, (ra_iic_b(0U)->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(k_smbus_test_data_a, (i3c_i2c_regs(0U)->NTDTBP0 & 0xFFU));
   TEST_END("ra_smbus_send_byte: 1 byte payload, no PEC");
 }
 
@@ -237,7 +237,7 @@ static void test_send_byte_with_pec(void)
   /* Expected PEC = CRC8(addr_w, data). addr_w = 0x40 << 1 = 0x80. */
   const uint8_t frame[2] = {0x80U, (uint8_t)k_smbus_test_data_a};
   const uint8_t expect   = ra_smbus_pec(frame, 2U);
-  TEST_ASSERT_EQ(expect, (ra_iic_b(0U)->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(expect, (i3c_i2c_regs(0U)->NTDTBP0 & 0xFFU));
   TEST_END("ra_smbus_send_byte: PEC enabled appends one extra byte");
 }
 
@@ -330,7 +330,7 @@ static void test_write_byte_data_no_pec(void)
                                           (uint8_t)k_smbus_test_cmd,
                                           (uint8_t)k_smbus_test_data_a));
   /* Last byte in NTDTBP0 is the data byte (cmd was earlier, then data). */
-  TEST_ASSERT_EQ(k_smbus_test_data_a, (ra_iic_b(0U)->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(k_smbus_test_data_a, (i3c_i2c_regs(0U)->NTDTBP0 & 0xFFU));
   TEST_END("ra_smbus_write_byte_data: cmd + data, no PEC");
 }
 
@@ -351,7 +351,7 @@ static void test_write_byte_data_with_pec(void)
                                           (uint8_t)k_smbus_test_data_a));
   const uint8_t frame[3] = {0x80U, (uint8_t)k_smbus_test_cmd, (uint8_t)k_smbus_test_data_a};
   const uint8_t expect   = ra_smbus_pec(frame, 3U);
-  TEST_ASSERT_EQ(expect, (ra_iic_b(0U)->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(expect, (i3c_i2c_regs(0U)->NTDTBP0 & 0xFFU));
   TEST_END("ra_smbus_write_byte_data: PEC trailing byte present");
 }
 
@@ -409,7 +409,7 @@ static void test_block_write_no_pec(void)
     k_ra_ok,
     ra_smbus_block_write((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_cmd, payload, 2U));
   /* Last byte in NTDTBP0 is the trailing data byte (data_b). */
-  TEST_ASSERT_EQ(k_smbus_test_data_b, (ra_iic_b(0U)->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(k_smbus_test_data_b, (i3c_i2c_regs(0U)->NTDTBP0 & 0xFFU));
   TEST_END("ra_smbus_block_write: cmd + count + data, no PEC");
 }
 
@@ -457,7 +457,7 @@ static void test_block_write_with_pec(void)
     (uint8_t)k_smbus_test_data_b,
   };
   const uint8_t expect = ra_smbus_pec(frame, 5U);
-  TEST_ASSERT_EQ(expect, (ra_iic_b(0U)->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(expect, (i3c_i2c_regs(0U)->NTDTBP0 & 0xFFU));
   TEST_END("ra_smbus_block_write: PEC trailing byte present");
 }
 
@@ -473,7 +473,7 @@ static void test_block_read_no_pec_happy(void)
   prep(&k_cfg_no_pec);
   prime_iic_b();
   /* The simulator's NTDTBP0 holds whatever byte was last written to it
-   * (here, the read-address byte emitted by ra_iic_b_transfer), so the
+   * (here, the read-address byte emitted by internal_i3c_i2c_transfer), so the
    * in-band "count" byte is non-deterministic. Use the maximum cap
    * (255) so any 8-bit count value fits, then just verify the call
    * succeeded; the framing logic itself is exercised by
@@ -557,7 +557,7 @@ static void test_alert_register_and_dispatch(void)
   TEST_ASSERT_EQ(1, s_alert_count);
   TEST_ASSERT(s_alert_ctx == &marker);
   /* The ARA byte the dispatch reads is whatever residue NTDTBP0 holds
-   * in the simulator (the read-address byte emitted by ra_iic_b_read
+   * in the simulator (the read-address byte emitted by internal_i3c_i2c_read
    * is left latched there), so addr_7b / status are non-deterministic.
    * We just confirm the callback fired with the recorded context. */
   (void)s_alert_addr;

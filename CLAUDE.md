@@ -388,6 +388,41 @@ This project enforces **MAXIMUM documentation coverage** with zero tolerance for
 5. **Every typedef** must have full documentation
 6. **Every macro** must be documented with usage examples
 
+### Definition-site comments (`.c` files)
+
+The authoritative Doxygen block for a function lives on its **declaration in
+the header** -- that is the public contract consumers read. The **definition
+in the `.c`** must NOT duplicate that block.
+
+- **Default: no comment** above the definition. The signature names the
+  function and the header owns the contract; a restating comment adds nothing
+  and rots independently of the header.
+- **If, and only if, you add a definition-site comment**, use the single-line
+  Doxygen form below, and only when the trailing note conveys real
+  implementation-specific information (algorithm, complexity, hardware quirk,
+  HUM citation) that the contract deliberately omits:
+
+  ```c
+  /** @brief Implementation of `ra_err_to_str()` -- linear-scan lookup. */
+  ra_err_t ra_err_to_str(ra_err_t code) { ... }
+  ```
+
+  The function name MUST be in backticks with `()`. The `-- <note>` clause is
+  optional, but drop it entirely rather than leave it empty or generic.
+- To echo the header prose at the definition for a doc build, use Doxygen
+  `@copydoc ra_foo` instead of hand-written restatement -- it cannot drift
+  from the source.
+- **BANNED** (rejected in review): pointer-only boilerplate that restates the
+  obvious or just says "see the header". It carries zero information:
+
+  ```c
+  /* WRONG: duplicates "see header" twice, says nothing the signature does not */
+  /* Implementation of ra_foo (see header for full contract) -- see header for the documented contract. */
+
+  /* WRONG: redundant "(see header for full contract)" with no implementation note */
+  /** @brief Implementation of ra_foo (see header for full contract). */
+  ```
+
 ### Required Tags by Code Element
 
 **Functions - Minimum Required Tags:**

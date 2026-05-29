@@ -788,7 +788,6 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
  * ===========================================================================
  */
 
-/* Implementation of ra_reflow_run_layout (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
 {
   if (engine == nullptr) {
@@ -828,7 +827,6 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
  * ===========================================================================
  */
 
-/* Implementation of ra_reflow_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_init(uint16_t       viewport_w,
                         uint16_t       viewport_h,
                         const uint8_t* font_data,
@@ -864,7 +862,6 @@ ra_err_t ra_reflow_init(uint16_t       viewport_w,
   return k_ra_ok;
 }
 
-/* Implementation of ra_reflow_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_close(ra_reflow_t* engine)
 {
   if (engine == nullptr) {
@@ -883,7 +880,6 @@ ra_err_t ra_reflow_close(ra_reflow_t* engine)
   return k_ra_ok;
 }
 
-/* Implementation of ra_reflow_layout_chapter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
                                   const uint8_t* xhtml_buf,
                                   size_t         xhtml_len,
@@ -918,7 +914,6 @@ ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
   return k_ra_ok;
 }
 
-/* Implementation of ra_reflow_get_page_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count)
 {
   if (engine == nullptr || out_count == nullptr) {
@@ -931,7 +926,6 @@ ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count
   return k_ra_ok;
 }
 
-/* Implementation of ra_reflow_set_font_size (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px)
 {
   if (engine == nullptr) {

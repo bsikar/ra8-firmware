@@ -724,7 +724,7 @@ typedef enum : uint16_t {
  * The P511/P512 pins are its SDA1/SCL1 alternate-function pad pair (the
  * SDA0/SCL0 pads at P401/P400 are gated by SW4-5 and not used here).
  * Firmware that talks to a MikroBUS Click over I2C should call
- * ``ra_iic_b_init`` with this channel.
+ * ``ra_i3c_i2c_init`` with this channel.
  */
 typedef enum : uint8_t {
   k_ra_board_mikrobus_iic_b_channel = 0U,

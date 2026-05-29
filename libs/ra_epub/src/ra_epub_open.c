@@ -52,12 +52,10 @@ typedef struct {
   char opf_path[k_ra_epub_max_path_len];
 } ra_epub_container_result_t;
 
-/* Implementation of ra_epub_xml_parse_container (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_xml_parse_container(const uint8_t*              xml_bytes,
                                      size_t                      xml_len,
                                      ra_epub_container_result_t* out);
 
-/* Implementation of ra_epub_xml_parse_opf (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
 
 /* ---------------------------------------------------------------------------
@@ -281,7 +279,6 @@ static ra_err_t priv_parse_archive(mz_zip_archive* zip,
  * ---------------------------------------------------------------------------
  */
 
-/* Implementation of ra_epub_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_book)
 {
   (void)path;
@@ -323,7 +320,6 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
   return k_ra_ok;
 }
 
-/* Implementation of ra_epub_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_close(ra_epub_book_t* book)
 {
   if (book == nullptr) {

@@ -285,7 +285,6 @@ static ra_err_t priv_render_into(const stbtt_fontinfo* font,
  * ---------------------------------------------------------------------------
  */
 
-/* Implementation of ra_epub_get_chapter_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_get_chapter_count(const ra_epub_book_t* book, uint16_t* out_count)
 {
   if (book == nullptr || out_count == nullptr) {
@@ -298,7 +297,6 @@ ra_err_t ra_epub_get_chapter_count(const ra_epub_book_t* book, uint16_t* out_cou
   return k_ra_ok;
 }
 
-/* Implementation of ra_epub_load_chapter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
                               uint16_t        idx,
                               uint8_t*        out_xhtml,
@@ -327,7 +325,6 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
   return priv_locate_extract(zip, full_path, book->chapter_paths[idx], out_xhtml, max_len, got_len);
 }
 
-/* Implementation of ra_epub_get_metadata (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* out_meta)
 {
   if (book == nullptr || out_meta == nullptr) {
@@ -342,7 +339,6 @@ ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* ou
   return k_ra_ok;
 }
 
-/* Implementation of ra_epub_get_cover_image (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len)
 {
@@ -368,7 +364,6 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
   return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }
 
-/* Implementation of ra_epub_set_font (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t font_size)
 {
   if (book == nullptr || font_data == nullptr) {
@@ -385,7 +380,6 @@ ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t
   return k_ra_ok;
 }
 
-/* Implementation of ra_epub_render_glyph (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_render_glyph(const ra_epub_book_t* book,
                               int32_t               codepoint,
                               float                 font_size,

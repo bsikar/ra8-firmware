@@ -152,6 +152,31 @@ def head_blob(path: str) -> str:
         return ""
 
 
+def rename_map() -> dict[str, str]:
+    """Map each staged rename's new path -> its pre-rename old path.
+
+    A `git mv` followed by interior edits would otherwise make every
+    compound decision in the moved file look brand-new (HEAD has no blob
+    at the new path), forcing re-citation of decisions that already exist
+    unchanged and are already covered by MC/DC vectors. Diffing the staged
+    file against its pre-rename HEAD content restores correct "new vs
+    existing" detection -- genuinely new decisions in a renamed file are
+    still caught."""
+    # 40% similarity: a rename that also renames many interior symbols
+    # (e.g. ra_iic_b_* -> internal_i3c_i2c_*) scores well below git's
+    # default 50% threshold, so use a lower bar to still pair it with its
+    # pre-rename blob. Mispairing only ever suppresses a "new" finding, so
+    # a generous threshold is safe here.
+    out = _git("diff", "--cached", "--name-status", "-M40%", "--diff-filter=R")
+    mapping: dict[str, str] = {}
+    for row in out.splitlines():
+        parts = row.split("\t")
+        if len(parts) == 3 and parts[0].startswith("R"):
+            _status, old, new = parts
+            mapping[new] = old
+    return mapping
+
+
 # ---------------------------------------------------------------------------
 # Decision detection
 # ---------------------------------------------------------------------------
@@ -250,11 +275,12 @@ def main() -> int:
         return 0
 
     citations = collect_test_citations()
+    renamed = rename_map()
 
     findings: list[tuple[str, int, str]] = []
     for path in prod_files:
         staged_text = staged_blob(path)
-        head_text = head_blob(path)
+        head_text = head_blob(renamed.get(path, path))
         if not staged_text:
             continue
         for line_no, normalized in new_decisions(staged_text, head_text):

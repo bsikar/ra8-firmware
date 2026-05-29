@@ -9,7 +9,7 @@
  * Polling, transport-agnostic implementation. All register-level
  * citations point at LSM6DSO DS12140 Rev 4 (Sept 2019). The transport
  * is supplied by the caller (Dependency Inversion) so this TU does
- * not link against ``ra_iic_b`` or ``ra_spi``.
+ * not link against ``ra_i3c_i2c`` or ``ra_spi``.
  *
  * Algorithm style throughout this file:
  *   1. Validate ``dev`` / ``bus`` / output pointer.
