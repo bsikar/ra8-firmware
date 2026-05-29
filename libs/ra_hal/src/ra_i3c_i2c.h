@@ -1,12 +1,12 @@
 /**
  * @file ra_i3c_i2c.h
- * @brief IIC_B (I3C unified IP, I2C-only mode) master driver
+ * @brief IIC_B (I3C unified IP, I2C-only mode) controller driver
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Polling-mode master driver for the RA8D2 I3C peripheral operated in
+ * Polling-mode controller driver for the RA8D2 I3C peripheral operated in
  * I2C compatibility mode (HUM Ch 40 "I3C Bus Interface (I3C)",
  * p 2445-2701). The peripheral name in FSP and in this codebase is
  * ``IIC_B`` -- it replaces the legacy IIC block that older RA parts
@@ -191,7 +191,7 @@ internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
  * unconditionally) and the matching error code is returned.
  *
  * @param[in] channel   Channel index.
- * @param[in] target_7b 7-bit slave address.
+ * @param[in] target_7b 7-bit peripheral address.
  * @param[in] data      Buffer to send (must be non-NULL even when
  *                      ``len`` is zero).
  * @param[in] len       Byte count.
@@ -205,12 +205,12 @@ internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
  * @retval k_ra_err_null_ptr    ``data`` is NULL or channel invalid.
  * @retval k_ra_err_busy        Bus busy at entry (BCST.BFREF clear).
  * @retval k_ra_err_hw_timeout  TDBEF0 / TENDF poll timed out.
- * @retval k_ra_err_nack        Slave NACKed; STOP was issued.
+ * @retval k_ra_err_nack        Peripheral NACKed; STOP was issued.
  * @retval k_ra_err_hw_error    Arbitration lost; STOP was issued.
  *
  * @pre Channel previously initialized.
  * @post On ``k_ra_ok`` and ``restart == false``: STOP issued, bus free.
- * @post On ``k_ra_ok`` and ``restart == true``: bus held by master;
+ * @post On ``k_ra_ok`` and ``restart == true``: bus held by controller;
  *       next call must be on the same channel/target.
  *
  * @since 0.1.0
@@ -240,7 +240,7 @@ internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
  * ``IDLE -> ADDR_TX -> DATA_RX -> { STOP | hold for RESTART } -> IDLE``.
  *
  * @param[in]  channel   Channel index.
- * @param[in]  target_7b 7-bit slave address.
+ * @param[in]  target_7b 7-bit peripheral address.
  * @param[out] buf       Destination buffer (non-NULL).
  * @param[in]  len       Byte count (non-zero).
  * @param[in]  restart   When ``true``, suppress the trailing STOP.
@@ -251,7 +251,7 @@ internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz);
  * @retval k_ra_err_invalid_arg ``len`` is zero.
  * @retval k_ra_err_busy        Bus busy at entry.
  * @retval k_ra_err_hw_timeout  RDBFF0 / TENDF poll timed out.
- * @retval k_ra_err_nack        Slave NACKed the address byte.
+ * @retval k_ra_err_nack        Peripheral NACKed the address byte.
  * @retval k_ra_err_hw_error    Arbitration lost.
  *
  * @pre Channel previously initialized.
@@ -278,7 +278,7 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
  * is skipped (e.g. ``tx_len = 0`` degenerates to a plain read).
  *
  * @param[in]  channel   Channel index.
- * @param[in]  target_7b 7-bit slave address.
+ * @param[in]  target_7b 7-bit peripheral address.
  * @param[in]  tx        Bytes to send first (e.g. register address).
  *                       May be NULL only when ``tx_len == 0``.
  * @param[in]  tx_len    Number of bytes to send.
@@ -292,7 +292,7 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
  *                              channel invalid.
  * @retval k_ra_err_invalid_arg Both ``tx_len`` and ``rx_len`` are zero.
  * @retval k_ra_err_busy        Bus busy at entry.
- * @retval k_ra_err_nack        Slave NACKed.
+ * @retval k_ra_err_nack        Peripheral NACKed.
  * @retval k_ra_err_hw_timeout  Poll timed out.
  *
  * @pre Channel previously initialized.
@@ -344,8 +344,8 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
  * sweep entry.
  *
  * @param[in]  channel   Channel index.
- * @param[in]  target_7b 7-bit slave address.
- * @param[out] out_acked Set to ``true`` when the slave ACKs, ``false``
+ * @param[in]  target_7b 7-bit peripheral address.
+ * @param[out] out_acked Set to ``true`` when the peripheral ACKs, ``false``
  *                       on NACK.
  *
  * @return ``ra_err_t``.
