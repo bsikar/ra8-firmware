@@ -7,7 +7,9 @@
  *
  * @details
  * Polling-mode master driver for the RA8D2 I3C peripheral operated in
- * I2C compatibility mode. Mirrors the public init / start / write /
+ * I2C compatibility mode (HUM Ch 40 "I3C Bus Interface (I3C)",
+ * p 2445-2701); ``IIC_B`` is the HUM/FSP name for this mode, not a
+ * stale alias. Mirrors the public init / start / write /
  * read / stop flow from FSP's ``r_iic_b_master`` (file
  * ``r_iic_b_master.c``) collapsed into synchronous helpers -- no DTC
  * fast path, no IBI / HDR support, just enough to exchange bytes
