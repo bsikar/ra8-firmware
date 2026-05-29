@@ -34,6 +34,7 @@
 #include "ra_err.h"
 #include "ra_i3c_internal.h"
 #include "ra_iic_b.h"
+#include "ra_iic_b_peripheral.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -781,6 +782,78 @@ ra_err_t ra_i3c_abort(uint8_t channel)
     return k_ra_err_invalid_state;
   }
   return ra_iic_b_abort(channel);
+}
+
+/* =============================================================================
+ * I2C-compatibility peripheral (responder) mode
+ * =============================================================================
+ */
+
+/* Implementation of ra_i3c_peripheral_open (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_peripheral_open(uint8_t channel, const ra_i3c_peripheral_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "peripheral_open: cfg");
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Responder open is a self-contained bring-up; mark the channel I2C so
+   * the close/send/receive/status guards accept it. */
+  const ra_iic_b_peripheral_cfg_t bcfg = {.peripheral_addr_7b = cfg->peripheral_addr_7b,
+                                          .general_call       = cfg->general_call};
+  const ra_err_t                  err  = ra_iic_b_peripheral_open(channel, &bcfg);
+  if (err == k_ra_ok) {
+    s_i3c_chan[channel].mode        = k_ra_i3c_mode_i2c;
+    s_i3c_chan[channel].initialized = true;
+  }
+  return err;
+}
+
+/* Implementation of ra_i3c_peripheral_close (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_peripheral_close(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_peripheral_close(channel);
+}
+
+/* Implementation of ra_i3c_peripheral_send (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_peripheral_send(channel, data, len);
+}
+
+/* Implementation of ra_i3c_peripheral_receive (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_peripheral_receive(channel, buf, len);
+}
+
+/* Implementation of ra_i3c_peripheral_status (see header for full contract) -- see header for the documented contract. */
+ra_err_t ra_i3c_peripheral_status(uint8_t channel, uint8_t* out_mask)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_b_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_i3c_chan[channel].mode != k_ra_i3c_mode_i2c) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_iic_b_peripheral_status(channel, out_mask);
 }
 
 /* =============================================================================

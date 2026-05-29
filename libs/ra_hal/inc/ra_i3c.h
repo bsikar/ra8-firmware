@@ -758,6 +758,131 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
  */
 [[nodiscard]] ra_err_t ra_i3c_slave_open(uint8_t static_addr);
 
+/* =========================================================================
+ * I2C-compatibility peripheral (responder) mode
+ * =========================================================================
+ */
+
+/**
+ * @struct ra_i3c_peripheral_cfg_t
+ * @brief Bring-up configuration for I2C-compat responder mode.
+ *
+ * @details Used by ::ra_i3c_peripheral_open to put a channel (configured in
+ * I2C mode) into responder operation answering its own 7-bit address.
+ *
+ * @invariant @p peripheral_addr_7b is a valid 7-bit address.
+ * @see ra_i3c_peripheral_open
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t peripheral_addr_7b; /**< 7-bit own address.                       */
+  uint8_t general_call;       /**< Non-zero -> answer general-call address. */
+} ra_i3c_peripheral_cfg_t;
+
+/**
+ * @enum ra_i3c_peripheral_status_t
+ * @brief Latched responder-mode event bits from ::ra_i3c_peripheral_status.
+ *
+ * @invariant ::k_ra_i3c_peripheral_status_idle is the all-clear sentinel (0).
+ * @see ra_i3c_peripheral_status
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_i3c_peripheral_status_idle     = 0x00U, /**< No latched event.   */
+  k_ra_i3c_peripheral_status_aas      = 0x01U, /**< Address matched.    */
+  k_ra_i3c_peripheral_status_rx_full  = 0x02U, /**< Receive buffer full. */
+  k_ra_i3c_peripheral_status_tx_empty = 0x04U, /**< Transmit buffer empty. */
+  k_ra_i3c_peripheral_status_stop     = 0x08U, /**< STOP detected.      */
+  k_ra_i3c_peripheral_status_nack     = 0x10U, /**< NACK detected.      */
+} ra_i3c_peripheral_status_t;
+
+/**
+ * @brief Open a channel in I2C-compat responder mode.
+ * @param[in] channel I3C channel index.
+ * @param[in] cfg     Responder configuration; non-NULL.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Responder mode entered.
+ * @retval k_ra_err_null_ptr      @p cfg NULL.
+ * @retval k_ra_err_invalid_arg   @p channel or address out of range.
+ * @retval k_ra_err_invalid_state Channel is not in I2C mode.
+ * @pre Channel initialized in I2C mode.
+ * @pre @p cfg non-NULL.
+ * @post The channel answers @p cfg->peripheral_addr_7b.
+ * @post No transfer is in progress.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_peripheral_open(uint8_t channel, const ra_i3c_peripheral_cfg_t* cfg);
+
+/**
+ * @brief Close responder mode on a channel.
+ * @param[in] channel I3C channel index.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Responder mode closed.
+ * @retval k_ra_err_invalid_arg   @p channel out of range.
+ * @retval k_ra_err_invalid_state Channel is not in I2C mode.
+ * @pre Channel was opened in responder mode.
+ * @pre Caller is single-threaded.
+ * @post The channel no longer answers as a responder.
+ * @post The bus is released.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_peripheral_close(uint8_t channel);
+
+/**
+ * @brief Queue bytes for the controller to read (responder mode).
+ * @param[in] channel I3C channel index.
+ * @param[in] data    Bytes to send; non-NULL when @p len > 0.
+ * @param[in] len     Byte count.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bytes queued.
+ * @retval k_ra_err_null_ptr      @p data NULL with @p len > 0.
+ * @retval k_ra_err_invalid_state Channel is not in I2C mode.
+ * @pre Channel opened in responder mode.
+ * @pre @p data valid for @p len.
+ * @post The bytes are staged for the next controller read.
+ * @post No controller transfer is corrupted.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len);
+
+/**
+ * @brief Read bytes the controller wrote (responder mode).
+ * @param[in]  channel I3C channel index.
+ * @param[out] buf     Destination buffer; non-NULL.
+ * @param[in]  len     Byte count (> 0).
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bytes read.
+ * @retval k_ra_err_null_ptr      @p buf NULL.
+ * @retval k_ra_err_invalid_state Channel is not in I2C mode.
+ * @pre Channel opened in responder mode.
+ * @pre @p buf valid for @p len.
+ * @post @p buf holds the received bytes.
+ * @post The receive buffer is drained.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len);
+
+/**
+ * @brief Read the latched responder-mode status (responder mode).
+ * @param[in]  channel  I3C channel index.
+ * @param[out] out_mask OR of ::ra_i3c_peripheral_status_t bits; non-NULL.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Status returned.
+ * @retval k_ra_err_null_ptr      @p out_mask NULL.
+ * @retval k_ra_err_invalid_state Channel is not in I2C mode.
+ * @pre Channel opened in responder mode.
+ * @pre @p out_mask non-NULL.
+ * @post @p out_mask holds the latched event bits.
+ * @post No peripheral state is mutated.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_peripheral_status(uint8_t channel, uint8_t* out_mask);
+
 #ifdef __cplusplus
 }
 #endif
