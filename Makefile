@@ -140,11 +140,24 @@ apps:
 # and `cd examples/<tier>/<app> && make` produce the exact same artifacts.
 # The per-app dir is looked up via RA_APP_DIR_<app> so callers don't
 # need to know which tier directory the app lives in.
-$(RA_APPS): | compile_commands
+# clangd reads build/compile_commands.json. Regenerate it only when the build
+# configuration actually changes (any CMakeLists.txt or cmake/*.cmake), not on
+# every app build -- a full top-level reconfigure costs ~2 s. Listing the file
+# as a normal (not order-only) prerequisite of each app keeps it in sync: make
+# refreshes it before the build when a CMake input is newer, and skips it when
+# nothing changed.
+RA_COMPILE_COMMANDS := $(ROOT)/build/compile_commands.json
+_RA_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
+	$(shell find $(ROOT)/examples -name CMakeLists.txt 2>/dev/null)
+
+$(RA_APPS): $(RA_COMPILE_COMMANDS)
 	$(MAKE) -C $(RA_APP_DIR_$@) build
 
-compile_commands:
+$(RA_COMPILE_COMMANDS): $(_RA_CMAKE_INPUTS)
 	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake -B $(ROOT)/build $(ROOT)
+
+# Convenience alias: `make compile_commands` forces an up-to-date check.
+compile_commands: $(RA_COMPILE_COMMANDS)
 
 clean:
 	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
