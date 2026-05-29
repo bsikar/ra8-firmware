@@ -761,7 +761,6 @@ static ra_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_l
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pmsc_feed_cbw (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_feed_cbw(const uint8_t* cbw)
 {
   RA_CHECK_NULL_PTR(cbw, s_tag, "feed_cbw: cbw");
@@ -902,7 +901,6 @@ static void internal_dispatch_advance_state(uint32_t data_len)
   }
 }
 
-/* Implementation of ra_usb_pmsc_dispatch_command (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_dispatch_command(uint8_t*                  data_buf,
                                       uint32_t                  data_buf_capacity,
                                       uint32_t*                 data_len,
@@ -927,7 +925,6 @@ ra_err_t ra_usb_pmsc_dispatch_command(uint8_t*                  data_buf,
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_pmsc_build_csw (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uint8_t* out_csw)
 {
@@ -945,7 +942,6 @@ ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uin
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_pmsc_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_step(void)
 {
   if (!s_state.initialized) {
@@ -991,7 +987,6 @@ ra_err_t ra_usb_pmsc_step(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pmsc_attach_storage (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
 {
   if (!s_state.initialized) {
@@ -1015,7 +1010,6 @@ ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pmsc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -1051,7 +1045,6 @@ ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_pmsc_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_close(void)
 {
   if (!s_state.initialized) {

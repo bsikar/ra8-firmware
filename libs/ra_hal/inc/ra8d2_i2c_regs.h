@@ -12,7 +12,7 @@
  * ICSR1/2, SARLy/SARUy, ICBRL/ICBRH, ICDRT, ICDRR). It is the
  * peripheral the RA8D2 HUM calls "I2C Bus Interface (IIC)" and that
  * FSP drives with ``r_iic_master`` -- distinct from the I3C unified IP
- * (``ra_i3c`` / ``ra_iic_b``) at ``0x4035_F000``.
+ * (``ra_i3c`` / ``ra_i3c_i2c``) at ``0x4035_F000``.
  *
  * This header is hand-derived from the RA8D2 Hardware User's Manual
  * Chapter 39 "I2C Bus Interface (IIC)" register descriptions

@@ -526,7 +526,6 @@ static void internal_program_irq_block(volatile r_rmac_regs_t* reg, const ra_rma
   reg->MMIE2 = cfg->mon2_irq_enable;
 }
 
-/* Implementation of ra_rmac_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "rmac_init: cfg must not be nullptr");
@@ -559,7 +558,6 @@ ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_deinit(ra_rmac_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -596,7 +594,6 @@ ra_err_t ra_rmac_deinit(ra_rmac_port_t port)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_enter_stop(ra_rmac_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -608,7 +605,6 @@ ra_err_t ra_rmac_enter_stop(ra_rmac_port_t port)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_exit_stop(ra_rmac_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -620,7 +616,6 @@ ra_err_t ra_rmac_exit_stop(ra_rmac_port_t port)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_mac_address (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_mac_address(ra_rmac_port_t port, const uint8_t mac[k_ra_rmac_mac_byte_count])
 {
   RA_CHECK_NULL_PTR(mac, s_tag, "set_mac_address: mac must not be nullptr");
@@ -656,7 +651,6 @@ ra_err_t ra_rmac_set_mac_address(ra_rmac_port_t port, const uint8_t mac[k_ra_rma
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_rx_filter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_rx_filter(ra_rmac_port_t port, ra_rmac_mrafc_t filter)
 {
   if (!internal_port_ok(port)) {
@@ -669,7 +663,6 @@ ra_err_t ra_rmac_set_rx_filter(ra_rmac_port_t port, ra_rmac_mrafc_t filter)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_ptp_filter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_ptp_filter(ra_rmac_port_t port,
                                 uint8_t        index,
                                 uint8_t        byte_offset,
@@ -700,7 +693,6 @@ ra_err_t ra_rmac_set_ptp_filter(ra_rmac_port_t port,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_frame_size (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_rmac_set_frame_size(ra_rmac_port_t port, bool is_pframe, uint16_t min_size, uint16_t max_size)
 {
@@ -724,7 +716,6 @@ ra_rmac_set_frame_size(ra_rmac_port_t port, bool is_pframe, uint16_t min_size, u
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_vlan_framing (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool use_mcrc)
 {
   if (!internal_port_ok(port)) {
@@ -743,7 +734,6 @@ ra_err_t ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool us
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_pause_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_pause_frame(ra_rmac_port_t       port,
                                  ra_rmac_pause_mode_t mode,
                                  uint16_t             pause_time,
@@ -770,7 +760,6 @@ ra_err_t ra_rmac_set_pause_frame(ra_rmac_port_t       port,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_pfc_group (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pcp_mask)
 {
   if (!internal_port_ok(port)) {
@@ -786,7 +775,6 @@ ra_err_t ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, u
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_lpi (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_lpi(ra_rmac_port_t port, bool enable)
 {
   if (!internal_port_ok(port)) {
@@ -802,7 +790,6 @@ ra_err_t ra_rmac_set_lpi(ra_rmac_port_t port, bool enable)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_magic_packet (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_magic_packet(ra_rmac_port_t port, bool enable)
 {
   if (!internal_port_ok(port)) {
@@ -821,7 +808,6 @@ ra_err_t ra_rmac_set_magic_packet(ra_rmac_port_t port, bool enable)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_loopback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_loopback(ra_rmac_port_t port, bool enable)
 {
   if (!internal_port_ok(port)) {
@@ -837,7 +823,6 @@ ra_err_t ra_rmac_set_loopback(ra_rmac_port_t port, bool enable)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_set_link (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_set_link(ra_rmac_port_t   port,
                           ra_rmac_pis_t    iface,
                           ra_rmac_lsc_t    speed,
@@ -867,7 +852,6 @@ ra_err_t ra_rmac_set_link(ra_rmac_port_t   port,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_mdio_c22_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_rmac_mdio_c22_read(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, uint16_t* out_value)
 {
@@ -896,7 +880,6 @@ ra_rmac_mdio_c22_read(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, u
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_mdio_c22_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, uint16_t value)
 {
@@ -915,7 +898,6 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
   return internal_mdio_wait(reg, k_ra_rmac_mmis1_pwacs);
 }
 
-/* Implementation of ra_rmac_mdio_c45_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_mdio_c45_read(ra_rmac_port_t port,
                                uint8_t        phy_addr,
                                uint8_t        dev_addr,
@@ -959,7 +941,6 @@ ra_err_t ra_rmac_mdio_c45_read(ra_rmac_port_t port,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_mdio_c45_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_mdio_c45_write(ra_rmac_port_t port,
                                 uint8_t        phy_addr,
                                 uint8_t        dev_addr,
@@ -992,7 +973,6 @@ ra_err_t ra_rmac_mdio_c45_write(ra_rmac_port_t port,
   return internal_mdio_wait(reg, k_ra_rmac_mmis1_pwacs);
 }
 
-/* Implementation of ra_rmac_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_get_status(ra_rmac_port_t port, ra_rmac_status_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "rmac_get_status: out must not be nullptr");
@@ -1019,7 +999,6 @@ ra_err_t ra_rmac_get_status(ra_rmac_port_t port, ra_rmac_status_t* out)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_clear_status(ra_rmac_port_t port,
                               uint32_t       err_mask,
                               uint32_t       mon0_mask,
@@ -1158,7 +1137,6 @@ static void internal_snapshot_tx(volatile r_rmac_regs_t* reg, ra_rmac_stats_t* o
   out->tx_bytes_p_lower = reg->MTXBCPL;
 }
 
-/* Implementation of ra_rmac_read_stats (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_read_stats(ra_rmac_port_t port, ra_rmac_stats_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "read_stats: out must not be nullptr");
@@ -1174,7 +1152,6 @@ ra_err_t ra_rmac_read_stats(ra_rmac_port_t port, ra_rmac_stats_t* out)
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_attach_handler(ra_rmac_port_t port, ra_rmac_event_fn_t cb, void* ctx)
 {
   if (!internal_port_ok(port)) {
@@ -1186,7 +1163,6 @@ ra_err_t ra_rmac_attach_handler(ra_rmac_port_t port, ra_rmac_event_fn_t cb, void
   return k_ra_ok;
 }
 
-/* Implementation of ra_rmac_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_rmac_dispatch(ra_rmac_port_t port)
 {
   if (!internal_port_ok(port)) {
@@ -1270,7 +1246,6 @@ static ra_rmac_phy_speed_t internal_decode_anlpar(uint16_t anlpar)
   return k_ra_rmac_phy_speed_unknown;
 }
 
-/* Implementation of ra_rmac_phy_reset (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_phy_reset(ra_rmac_port_t port, uint8_t phy_addr)
 {
   if (!internal_phy_args_ok(port, phy_addr)) {
@@ -1303,7 +1278,6 @@ ra_err_t ra_rmac_phy_reset(ra_rmac_port_t port, uint8_t phy_addr)
   return k_ra_err_hw_timeout;
 }
 
-/* Implementation of ra_rmac_phy_set_advertise (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_phy_set_advertise(ra_rmac_port_t port, uint8_t phy_addr, uint16_t capabilities)
 {
   if (!internal_phy_args_ok(port, phy_addr)) {
@@ -1316,7 +1290,6 @@ ra_err_t ra_rmac_phy_set_advertise(ra_rmac_port_t port, uint8_t phy_addr, uint16
   return ra_rmac_mdio_c22_write(port, phy_addr, (uint8_t)k_ra_rmac_phy_reg_anar, anar);
 }
 
-/* Implementation of ra_rmac_phy_auto_neg_start (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_phy_auto_neg_start(ra_rmac_port_t port, uint8_t phy_addr)
 {
   if (!internal_phy_args_ok(port, phy_addr)) {
@@ -1331,7 +1304,6 @@ ra_err_t ra_rmac_phy_auto_neg_start(ra_rmac_port_t port, uint8_t phy_addr)
   return ra_rmac_mdio_c22_write(port, phy_addr, (uint8_t)k_ra_rmac_phy_reg_bmcr, bmcr);
 }
 
-/* Implementation of ra_rmac_phy_auto_neg_wait (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rmac_phy_auto_neg_wait(ra_rmac_port_t      port,
                                    uint8_t             phy_addr,
                                    uint32_t            timeout_ms,
@@ -1380,7 +1352,6 @@ ra_err_t ra_rmac_phy_auto_neg_wait(ra_rmac_port_t      port,
   return k_ra_err_hw_timeout;
 }
 
-/* Implementation of ra_rmac_phy_link_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_rmac_phy_link_status(ra_rmac_port_t port, uint8_t phy_addr, ra_rmac_phy_link_t* out_link)
 {

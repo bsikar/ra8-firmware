@@ -185,7 +185,6 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
  * ===========================================================================
  */
 
-/* Implementation of ra_reflow_render_page (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer)
 {
   (void)framebuffer; /* Reserved hook -- ra_gfx is bound externally. */

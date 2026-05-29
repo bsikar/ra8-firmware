@@ -994,7 +994,7 @@ static ra_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg)
 }
 
 /**
- * @brief Implementation of ra_usb_device_init (see header for full contract).
+ * @brief Implementation of `ra_usb_device_init()`.
  * @details Dispatches FS vs HS bring-up, then programmes shared FIFO,
  *          DCP, and INTENB0 fields.
  * @param[in] speed See implementation.
@@ -1043,7 +1043,7 @@ ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_device_deinit (see header for full contract).
+ * @brief Implementation of `ra_usb_device_deinit()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @return Result code.
@@ -1075,7 +1075,7 @@ ra_err_t ra_usb_device_deinit(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_device_attach (see header for full contract).
+ * @brief Implementation of `ra_usb_device_attach()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] attached See implementation.
@@ -1149,7 +1149,7 @@ ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
  */
 
 /**
- * @brief Implementation of ra_usb_get_status (see header for full contract).
+ * @brief Implementation of `ra_usb_get_status()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] out_mask See implementation.
@@ -1175,7 +1175,7 @@ ra_err_t ra_usb_get_status(ra_usb_speed_t speed, uint16_t* out_mask)
 }
 
 /**
- * @brief Implementation of ra_usb_clear_status (see header for full contract).
+ * @brief Implementation of `ra_usb_clear_status()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] mask See implementation.
@@ -1200,7 +1200,7 @@ ra_err_t ra_usb_clear_status(ra_usb_speed_t speed, uint16_t mask)
 }
 
 /**
- * @brief Implementation of ra_usb_get_device_state (see header for full contract).
+ * @brief Implementation of `ra_usb_get_device_state()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] out_state See implementation.
@@ -1226,7 +1226,7 @@ ra_err_t ra_usb_get_device_state(ra_usb_speed_t speed, ra_usb_dev_state_t* out_s
 }
 
 /**
- * @brief Implementation of ra_usb_set_address (see header for full contract).
+ * @brief Implementation of `ra_usb_set_address()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] address See implementation.
@@ -1255,7 +1255,7 @@ ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address)
 }
 
 /**
- * @brief Implementation of ra_usb_device_busreset_rearm (see header for full contract).
+ * @brief Implementation of `ra_usb_device_busreset_rearm()`.
  *
  * @details Mirrors FSP `usb_pstd_bus_reset` (r_usb_basic/src/driver/r_usb_psignal.c):
  * re-programmes DCPCFG / DCPMAXP / DCPCTR, clears PIPECTR[1..9], and
@@ -1611,7 +1611,7 @@ static void internal_pipe_arm_irq(volatile r_usb_regs_t* reg, uint8_t pipe_num, 
 }
 
 /**
- * @brief Implementation of ra_usb_configure_endpoint (see header for full contract).
+ * @brief Implementation of `ra_usb_configure_endpoint()`.
  * @details See the public header for the documented contract; this
  *          definition implements it. Sequence (FIT
  *          r_usb_creg_abs.c::usb_cstd_pipe_init mirror): quiesce ->
@@ -1674,7 +1674,7 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
 }
 
 /**
- * @brief Implementation of ra_usb_stall_endpoint (see header for full contract).
+ * @brief Implementation of `ra_usb_stall_endpoint()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] pipe_num See implementation.
@@ -1978,7 +1978,7 @@ static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16
 }
 
 /**
- * @brief Implementation of ra_usb_queue_in (see header for full contract).
+ * @brief Implementation of `ra_usb_queue_in()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] pipe_num See implementation.
@@ -2156,7 +2156,7 @@ static ra_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
 }
 
 /**
- * @brief Implementation of ra_usb_dcp_in_data (see header for full contract).
+ * @brief Implementation of `ra_usb_dcp_in_data()`.
  *
  * @details Selects DCP on CFIFO once, then dispatches to either
  * ``internal_dcp_in_zlp`` (zero-length) or ``internal_dcp_in_payload``
@@ -2191,7 +2191,7 @@ volatile uint16_t s_dcp_last_len         = 0U;
 volatile uint8_t  s_dcp_last_err         = 0U; /* 0=ok, 1=frdy timeout, 2=null arg */
 
 /**
- * @brief Implementation of ra_usb_dcp_in_data (see header for full contract).
+ * @brief Implementation of `ra_usb_dcp_in_data()`.
  * @details Push a control-IN data-stage payload (or zero-length packet) into
  *          the DCP FIFO, set BVAL=1 and DCPCTR.PID=BUF so the chip
  *          transmits on the next IN token from the host. Captures
@@ -2290,7 +2290,7 @@ internal_check_queue_out_args(uint8_t pipe_num, const uint8_t* out_buf, const ui
 }
 
 /**
- * @brief Implementation of ra_usb_queue_out (see header for full contract).
+ * @brief Implementation of `ra_usb_queue_out()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] pipe_num See implementation.
@@ -2371,7 +2371,7 @@ ra_err_t ra_usb_queue_out(ra_usb_speed_t speed,
 }
 
 /**
- * @brief Implementation of ra_usb_rearm_out_pipe (see header for full contract).
+ * @brief Implementation of `ra_usb_rearm_out_pipe()`.
  *
  * @details See the public header for the documented contract; this
  * definition implements it. The hardware-required sequence per HUM
@@ -2417,7 +2417,7 @@ ra_err_t ra_usb_rearm_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num)
 }
 
 /**
- * @brief Implementation of ra_usb_park_out_pipe (see header for full contract).
+ * @brief Implementation of `ra_usb_park_out_pipe()`.
  *
  * @details See the public header for the documented contract; this
  * definition implements it. Forces PIPECTR.PID = NAK so the controller
@@ -2459,7 +2459,7 @@ ra_err_t ra_usb_park_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num)
  */
 
 /**
- * @brief Implementation of ra_usb_read_setup_if_valid (see header for full contract).
+ * @brief Implementation of `ra_usb_read_setup_if_valid()`.
  * @details VALID-gated SETUP drain. Returns ::k_ra_err_no_data when
  *          INTSTS0.VALID is clear; otherwise drains USBREQ/USBVAL/
  *          USBINDX/USBLENG and W0C-clears VALID.
@@ -2552,7 +2552,7 @@ ra_err_t ra_usb_read_setup_unconditional(ra_usb_speed_t speed, ra_usb_setup_t* o
 }
 
 /**
- * @brief Implementation of ra_usb_control_response (see header for full contract).
+ * @brief Implementation of `ra_usb_control_response()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] accept See implementation.
@@ -2628,7 +2628,7 @@ static uint8_t internal_cb_slot(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_attach_handler (see header for full contract).
+ * @brief Implementation of `ra_usb_attach_handler()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] fn See implementation.
@@ -2651,7 +2651,7 @@ ra_err_t ra_usb_attach_handler(ra_usb_speed_t speed, ra_usb_event_fn_t fn, void*
 }
 
 /**
- * @brief Implementation of ra_usb_dispatch (see header for full contract).
+ * @brief Implementation of `ra_usb_dispatch()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @pre Module state is consistent.
@@ -2710,7 +2710,7 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_intsts0_snapshot (see header for full contract).
+ * @brief Implementation of `ra_usb_intsts0_snapshot()`.
  * @details Pure MMIO read; no INTSTS0 bits are modified.
  * @param[in] speed See header.
  * @return INTSTS0 raw value.
@@ -2732,7 +2732,7 @@ uint16_t ra_usb_intsts0_snapshot(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_enter_stop (see header for full contract).
+ * @brief Implementation of `ra_usb_enter_stop()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @return Result code.
@@ -2753,7 +2753,7 @@ ra_err_t ra_usb_enter_stop(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_exit_stop (see header for full contract).
+ * @brief Implementation of `ra_usb_exit_stop()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @return Result code.
@@ -2827,7 +2827,7 @@ static uint16_t internal_host_syscfg_word(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_host_init (see header for full contract).
+ * @brief Implementation of `ra_usb_host_init()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @return Result code.
@@ -2888,7 +2888,7 @@ ra_err_t ra_usb_host_init(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_host_deinit (see header for full contract).
+ * @brief Implementation of `ra_usb_host_deinit()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @return Result code.
@@ -2918,7 +2918,7 @@ ra_err_t ra_usb_host_deinit(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Implementation of ra_usb_host_bus_reset (see header for full contract).
+ * @brief Implementation of `ra_usb_host_bus_reset()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] assert_reset See implementation.
@@ -2950,7 +2950,7 @@ ra_err_t ra_usb_host_bus_reset(ra_usb_speed_t speed, bool assert_reset)
 }
 
 /**
- * @brief Implementation of ra_usb_host_set_uact (see header for full contract).
+ * @brief Implementation of `ra_usb_host_set_uact()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] enable See implementation.
@@ -2980,7 +2980,7 @@ ra_err_t ra_usb_host_set_uact(ra_usb_speed_t speed, bool enable)
 }
 
 /**
- * @brief Implementation of ra_usb_host_setup_request (see header for full contract).
+ * @brief Implementation of `ra_usb_host_setup_request()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
  * @param[in] setup See implementation.

@@ -341,7 +341,6 @@ static void internal_subs_clear_all(void)
  * =============================================================================
  */
 
-/* Implementation of ra_wdt_refresh_deferred (see header for full contract) -- see header for the documented contract. */
 void ra_wdt_refresh_deferred(void)
 {
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 */
@@ -548,7 +547,6 @@ void ra_wdt_refresh_deferred(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_wdt_subscriber_count (see header for full contract) -- see header for the documented contract. */
 uint8_t ra_wdt_subscriber_count(void)
 {
   uint8_t count = 0U;
@@ -560,7 +558,6 @@ uint8_t ra_wdt_subscriber_count(void)
   return count;
 }
 
-/* Implementation of ra_wdt_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_wdt_dispatch(void)
 {
   volatile r_wdt_regs_t* reg = ra_wdt();

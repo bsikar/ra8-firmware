@@ -976,7 +976,6 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
   return k_ra_ok;
 }
 
-/* Implementation of ra_sram_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
 {
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
@@ -994,7 +993,6 @@ void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
   }
 }
 
-/* Implementation of ra_sram_dispatch_from_esr (see header for full contract) -- see header for the documented contract. */
 uint16_t ra_sram_dispatch_from_esr(ra_sram_status_t* out_status)
 {
   ra_sram_status_t local = {};

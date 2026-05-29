@@ -201,7 +201,6 @@ static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_cdc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -228,7 +227,6 @@ ra_err_t ra_usb_cdc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_cdc_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_deinit(void)
 {
   if (!s_state.initialized) {
@@ -242,7 +240,6 @@ ra_err_t ra_usb_cdc_deinit(void)
   return err;
 }
 
-/* Implementation of ra_usb_cdc_attach (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_attach(bool attached)
 {
   if (!s_state.initialized) {
@@ -256,7 +253,6 @@ ra_err_t ra_usb_cdc_attach(bool attached)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_cdc_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_send(const uint8_t* data, uint16_t len)
 {
   if (!s_state.initialized) {
@@ -268,7 +264,6 @@ ra_err_t ra_usb_cdc_send(const uint8_t* data, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_cdc_pipe_bulk_in, data, len);
 }
 
-/* Implementation of ra_usb_cdc_recv (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "cdc_recv: out_buf");
@@ -363,7 +358,6 @@ static ra_err_t internal_dispatch_class_setup(const ra_usb_setup_t* setup)
   }
 }
 
-/* Implementation of ra_usb_cdc_handle_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");
@@ -377,7 +371,6 @@ ra_err_t ra_usb_cdc_handle_setup(const ra_usb_setup_t* setup)
   return internal_dispatch_class_setup(setup);
 }
 
-/* Implementation of ra_usb_cdc_get_line_coding (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_get_line_coding(ra_usb_cdc_line_coding_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "get_line_coding: out");
@@ -388,7 +381,6 @@ ra_err_t ra_usb_cdc_get_line_coding(ra_usb_cdc_line_coding_t* out)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_cdc_get_line_state (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_cdc_get_line_state(bool* out_dtr, bool* out_rts)
 {
   RA_CHECK_NULL_PTR(out_dtr, s_tag, "get_line_state: out_dtr");

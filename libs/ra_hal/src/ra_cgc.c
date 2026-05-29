@@ -157,7 +157,6 @@ static void internal_publish_clocks(void)
   s_clock_hz[k_ra_clock_id_mriclk]  = k_ra_mriclk_hz;
 }
 
-/* Implementation of ra_cgc_get_clock_hz (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz)
 {
   if (out_hz == nullptr) {
@@ -823,7 +822,6 @@ static ra_err_t internal_cgc_init_protected(void)
   return err;
 }
 
-/* Implementation of ra_cgc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_init(void)
 {
   ra_log_info(s_tag, "cgc_init -> XTAL -> PLL1 (1 GHz)");
@@ -860,7 +858,6 @@ ra_err_t ra_cgc_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_cgc_use_hoco (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_use_hoco(void)
 {
   volatile uint8_t* const hococr = ra_sys_hococr();
@@ -912,7 +909,6 @@ static void* s_ostd_ctx = nullptr;
  */
 static bool s_ostd_enabled = false;
 
-/* Implementation of ra_cgc_switch_pll1_target (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz)
 {
   if (new_cpuclk_hz == 0U) {
@@ -956,7 +952,6 @@ ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz)
   return k_ra_ok;
 }
 
-/* Implementation of ra_cgc_enable_stop_detection (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx)
 {
   if (handler == nullptr) {
@@ -974,7 +969,6 @@ ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_cgc_disable_stop_detection (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_disable_stop_detection(void)
 {
   s_ostd_handler = nullptr;
@@ -1127,7 +1121,7 @@ static ra_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2c
 }
 
 /**
- * @brief Implementation of ra_cgc_pll2_enable (see header for full contract).
+ * @brief Implementation of `ra_cgc_pll2_enable()`.
  *
  * @details
  * Idempotent: if OSCSF.PLL2SF is already asserted on entry the
@@ -2004,7 +1998,6 @@ ra_err_t ra_cgc_eswclk_hz(uint32_t* out_hz)
   return k_ra_ok;
 }
 
-/* Implementation of ra_cgc_sim_trigger_stop_detection (see header for full contract) -- see header for the documented contract. */
 void ra_cgc_sim_trigger_stop_detection(void)
 {
   if (!s_ostd_enabled) {

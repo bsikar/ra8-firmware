@@ -450,7 +450,6 @@ static ra_err_t internal_step_advance(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hhub_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -474,7 +473,6 @@ ra_err_t ra_usb_hhub_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_hhub_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_close(void)
 {
   if (!s_state.initialized) {
@@ -495,7 +493,6 @@ ra_err_t ra_usb_hhub_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hhub_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_attach_callback(ra_usb_hhub_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialized) {
@@ -511,7 +508,6 @@ ra_err_t ra_usb_hhub_attach_callback(ra_usb_hhub_attach_fn_t on_attach, void* ct
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hhub_get_port_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_get_port_count(uint8_t* count)
 {
   RA_CHECK_NULL_PTR(count, s_tag, "get_port_count: count");
@@ -532,7 +528,6 @@ ra_err_t ra_usb_hhub_get_port_count(uint8_t* count)
  *   wIndex        = port
  *   wLength       = 4
  */
-/* Implementation of ra_usb_hhub_get_port_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_get_port_status(uint8_t port, uint32_t* status)
 {
   RA_CHECK_NULL_PTR(status, s_tag, "get_port_status: status");
@@ -563,7 +558,6 @@ ra_err_t ra_usb_hhub_get_port_status(uint8_t port, uint32_t* status)
  *   wIndex        = port
  *   wLength       = 0
  */
-/* Implementation of ra_usb_hhub_set_port_feature (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_set_port_feature(uint8_t port, ra_usb_hhub_feature_t feature)
 {
   if (!s_state.initialized) {
@@ -592,7 +586,6 @@ ra_err_t ra_usb_hhub_set_port_feature(uint8_t port, ra_usb_hhub_feature_t featur
  *   wIndex        = port
  *   wLength       = 0
  */
-/* Implementation of ra_usb_hhub_clear_port_feature (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_clear_port_feature(uint8_t port, ra_usb_hhub_feature_t feature)
 {
   if (!s_state.initialized) {
@@ -619,7 +612,6 @@ ra_err_t ra_usb_hhub_clear_port_feature(uint8_t port, ra_usb_hhub_feature_t feat
  * =============================================================================
  */
 
-/* Implementation of ra_usb_hhub_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhub_step(void)
 {
   if (!s_state.initialized) {

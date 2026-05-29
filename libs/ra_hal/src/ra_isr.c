@@ -216,7 +216,6 @@ static void internal_ielsr_clear(uint16_t slot)
  * =============================================================================
  */
 
-/* Implementation of ra_isr_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_isr_init(void)
 {
   ra_log_info(s_tag, "ra_isr_init");
@@ -284,7 +283,6 @@ static uint16_t internal_find_free(void)
   return k_ra_isr_slot_none; /* GCOVR_EXCL_LINE -- only hit if 96 slots allocated */
 }
 
-/* Implementation of ra_isr_register (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_isr_register(ra_elc_event_t   event,
                          ra_isr_handler_t handler,
                          void*            ctx,
@@ -326,7 +324,6 @@ ra_err_t ra_isr_register(ra_elc_event_t   event,
   return k_ra_ok;
 }
 
-/* Implementation of ra_isr_unregister (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_isr_unregister(ra_elc_event_t event)
 {
   const uint16_t slot = internal_find_event(event);
@@ -346,7 +343,6 @@ ra_err_t ra_isr_unregister(ra_elc_event_t event)
   return k_ra_ok;
 }
 
-/* Implementation of ra_isr_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_isr_dispatch(uint16_t slot)
 {
   if (slot >= k_ra_isr_slot_count) {
@@ -368,7 +364,6 @@ void ra_isr_dispatch(uint16_t slot)
   }
 }
 
-/* Implementation of ra_isr_set_priority (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_isr_set_priority(ra_elc_event_t event, uint8_t priority)
 {
   if (priority > k_ra_isr_prio_max) {
@@ -383,7 +378,6 @@ ra_err_t ra_isr_set_priority(ra_elc_event_t event, uint8_t priority)
   return k_ra_ok;
 }
 
-/* Implementation of ra_isr_lookup_slot (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_isr_lookup_slot(ra_elc_event_t event, uint16_t* out_slot)
 {
   RA_CHECK_NULL_PTR(out_slot, s_tag, "out_slot must not be NULL");
@@ -391,7 +385,6 @@ ra_err_t ra_isr_lookup_slot(ra_elc_event_t event, uint16_t* out_slot)
   return k_ra_ok;
 }
 
-/* Implementation of ra_isr_globals_enable (see header for full contract) -- see header for the documented contract. */
 void ra_isr_globals_enable(void)
 {
   /* PRIMASK clear -- maskable IRQs may now dispatch. */
@@ -400,7 +393,6 @@ void ra_isr_globals_enable(void)
 #endif
 }
 
-/* Implementation of ra_isr_globals_disable (see header for full contract) -- see header for the documented contract. */
 void ra_isr_globals_disable(void)
 {
   /* PRIMASK set -- subsequent maskable IRQs pend until re-enabled. */

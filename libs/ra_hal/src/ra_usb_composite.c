@@ -410,7 +410,6 @@ static inline ra_err_t internal_require_init(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_composite_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -438,7 +437,6 @@ ra_err_t ra_usb_composite_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_composite_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_close(void)
 {
   if (!s_state.initialized) {
@@ -475,7 +473,6 @@ ra_err_t ra_usb_composite_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_composite_register_class (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_register_class(const ra_usb_composite_class_t* class_layer)
 {
   const ra_err_t init_check = internal_require_init();
@@ -516,7 +513,6 @@ ra_err_t ra_usb_composite_register_class(const ra_usb_composite_class_t* class_l
  * =============================================================================
  */
 
-/* Implementation of ra_usb_composite_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_set_descriptors(const uint8_t* device_desc, const uint8_t* config_desc)
 {
   const ra_err_t init_check = internal_require_init();
@@ -537,7 +533,6 @@ ra_err_t ra_usb_composite_set_descriptors(const uint8_t* device_desc, const uint
  * =============================================================================
  */
 
-/* Implementation of ra_usb_composite_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_step(void)
 {
   const ra_err_t init_check = internal_require_init();
@@ -569,7 +564,6 @@ ra_err_t ra_usb_composite_step(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_composite_dispatch_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_dispatch_setup(const ra_usb_setup_t* setup, uint8_t* out_handler_class)
 {
   const ra_err_t init_check = internal_require_init();
@@ -601,7 +595,6 @@ ra_err_t ra_usb_composite_dispatch_setup(const ra_usb_setup_t* setup, uint8_t* o
   return route_err;
 }
 
-/* Implementation of ra_usb_composite_get_class_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_get_class_count(uint8_t* out_count)
 {
   const ra_err_t init_check = internal_require_init();
@@ -613,7 +606,6 @@ ra_err_t ra_usb_composite_get_class_count(uint8_t* out_count)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_composite_get_device_descriptor (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_get_device_descriptor(const uint8_t** out_desc)
 {
   const ra_err_t init_check = internal_require_init();
@@ -625,7 +617,6 @@ ra_err_t ra_usb_composite_get_device_descriptor(const uint8_t** out_desc)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_composite_get_config_descriptor (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_composite_get_config_descriptor(const uint8_t** out_desc)
 {
   const ra_err_t init_check = internal_require_init();

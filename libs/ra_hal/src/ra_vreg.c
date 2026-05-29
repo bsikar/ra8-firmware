@@ -643,7 +643,6 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   return k_ra_ok;
 }
 
-/* Implementation of ra_vreg_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_vreg_dispatch(void)
 {
   const ra_vreg_event_fn_t fn  = s_vreg_fn;

@@ -74,7 +74,6 @@ static const char* s_ra_ble_patch_tag = "ble_patch";
 /* Public API                                                   */
 /* ============================================================ */
 
-/* Implementation of ra_ble_patch_load (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ble_patch_load(const uint8_t* image, size_t len)
 {
   /* "Probe" path: caller asks if a patch is configured. */
@@ -109,7 +108,6 @@ ra_err_t ra_ble_patch_load(const uint8_t* image, size_t len)
   return k_ra_err_not_supported;
 }
 
-/* Implementation of ra_ble_patch_is_loaded (see header for full contract) -- see header for the documented contract. */
 uint8_t ra_ble_patch_is_loaded(void)
 {
   return s_patch_loaded;
@@ -117,9 +115,7 @@ uint8_t ra_ble_patch_is_loaded(void)
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage; production firmware ignores). */
-/* Implementation of ra_ble_patch_test_reset (see header for full contract) -- see header for the documented contract. */
-void ra_ble_patch_test_reset(void);
-/* Implementation of ra_ble_patch_test_warned (see header for full contract) -- see header for the documented contract. */
+void    ra_ble_patch_test_reset(void);
 uint8_t ra_ble_patch_test_warned(void);
 
 /**

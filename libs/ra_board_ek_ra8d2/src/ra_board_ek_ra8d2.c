@@ -1176,7 +1176,7 @@ typedef enum : uint8_t {
  * -- confirmed against the FSP EK-RA8D2 quickstart board_cfg_switch
  * (R_IIC_MASTER channel 1, iic1.scl1.p512 / iic1.sda1.p511) and HUM
  * Ch 39. NOT P400/P401 (those are the I3C bus). The earlier P400/P401
- * + ra_iic_b (I3C) wiring talked on the wrong peripheral, which is why
+ * + ra_i3c_i2c (I3C) wiring talked on the wrong peripheral, which is why
  * every U15 access timed out.
  */
 static const ra_port_pin_t k_ra_board_io_expander_pin_scl =

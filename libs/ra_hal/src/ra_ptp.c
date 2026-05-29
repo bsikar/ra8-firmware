@@ -109,7 +109,6 @@ static inline uint32_t internal_pack_mac4(uint8_t b0, uint8_t b1, uint8_t b2, ui
          ((uint32_t)b2 << k_ra_ptp_shift_b2) | ((uint32_t)b3 << k_ra_ptp_shift_b3);
 }
 
-/* Implementation of ra_ptp_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_open(const ra_ptp_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -152,7 +151,6 @@ ra_err_t ra_ptp_open(const ra_ptp_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_close(void)
 {
   if (s_state != k_ra_ptp_state_open) {
@@ -167,7 +165,6 @@ ra_err_t ra_ptp_close(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_ptp_set_role (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_set_role(ra_ptp_role_t role)
 {
   if (s_state != k_ra_ptp_state_open) {
@@ -216,21 +213,18 @@ static ra_err_t internal_send(uint32_t trig_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_send_sync (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_send_sync(void)
 {
   /* IEEE 1588-2019 sec 13.6 "Sync and Delay_Req message format". */
   return internal_send(k_ra_ptp_mask_tx_sync);
 }
 
-/* Implementation of ra_ptp_send_announce (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_send_announce(void)
 {
   /* IEEE 1588-2019 sec 13.5 "Announce message format". */
   return internal_send(k_ra_ptp_mask_tx_annc);
 }
 
-/* Implementation of ra_ptp_get_time (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_get_time(uint64_t* sec, uint32_t* nsec)
 {
   RA_CHECK_NULL_PTR(sec, s_tag, "sec must not be nullptr");
@@ -247,7 +241,6 @@ ra_err_t ra_ptp_get_time(uint64_t* sec, uint32_t* nsec)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_set_time (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_set_time(uint64_t sec, uint32_t nsec)
 {
   if (s_state != k_ra_ptp_state_open) {
@@ -264,7 +257,6 @@ ra_err_t ra_ptp_set_time(uint64_t sec, uint32_t nsec)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_adjust_time (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_adjust_time(int32_t delta_ns)
 {
   if (s_state != k_ra_ptp_state_open) {
@@ -292,7 +284,6 @@ ra_err_t ra_ptp_adjust_time(int32_t delta_ns)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_adjust_rate (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_adjust_rate(int32_t ppb)
 {
   if (s_state != k_ra_ptp_state_open) {
@@ -304,7 +295,6 @@ ra_err_t ra_ptp_adjust_rate(int32_t ppb)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_attach_message_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_attach_message_handler(ra_ptp_msg_fn_t fn, void* ctx)
 {
   s_msg_fn  = fn;
@@ -312,7 +302,6 @@ ra_err_t ra_ptp_attach_message_handler(ra_ptp_msg_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_get_offset (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_ptp_get_offset(int32_t* offset_ns)
 {
   RA_CHECK_NULL_PTR(offset_ns, s_tag, "offset_ns must not be nullptr");
@@ -324,7 +313,6 @@ ra_err_t ra_ptp_get_offset(int32_t* offset_ns)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ptp_dispatch_message (see header for full contract) -- see header for the documented contract. */
 void ra_ptp_dispatch_message(ra_ptp_msg_type_t type, uint64_t sec, uint32_t nsec)
 {
   const ra_ptp_msg_fn_t fn  = s_msg_fn;

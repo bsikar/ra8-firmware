@@ -306,7 +306,6 @@ static ra_reset_cause_t internal_decode(const ra_reset_raw_t* raw)
  * =============================================================================
  */
 
-/* Implementation of ra_reset_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reset_init(void)
 {
   internal_read_raw(&s_state.raw);
@@ -346,7 +345,6 @@ void ra_reset_test_only_reset_state(void)
 }
 #endif /* RA_SIMULATOR_MODE */
 
-/* Implementation of ra_reset_get_cause (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reset_get_cause(ra_reset_cause_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -360,7 +358,6 @@ ra_err_t ra_reset_get_cause(ra_reset_cause_t* out)
   return k_ra_ok;
 }
 
-/* Implementation of ra_reset_get_raw (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reset_get_raw(ra_reset_raw_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -372,7 +369,6 @@ ra_err_t ra_reset_get_raw(ra_reset_raw_t* out)
   return k_ra_ok;
 }
 
-/* Implementation of ra_reset_clear_cause (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reset_clear_cause(uint32_t mask)
 {
   /* HUM Ch 6.2.2 "RSTSR0 : Reset Status Register 0" p 258 */
@@ -409,7 +405,6 @@ ra_err_t ra_reset_clear_cause(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_reset_get_attribution (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reset_get_attribution(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -418,7 +413,6 @@ ra_err_t ra_reset_get_attribution(uint32_t* out)
   return k_ra_ok;
 }
 
-/* Implementation of ra_reset_software_reset (see header for full contract) -- see header for the documented contract. */
 void ra_reset_software_reset(void)
 {
   /* HUM Ch 6.1 Table 6.1 p 244 -- "Software reset / Register setting

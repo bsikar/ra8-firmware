@@ -358,7 +358,6 @@ static void internal_accumulate_sums(const ra_touch_cal_point_t* raw,
   }
 }
 
-/* Implementation of ra_touch_cal_compute (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
                               const ra_touch_cal_point_t* screen,
                               uint8_t                     n,
@@ -414,7 +413,6 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
  * ===========================================================================
  */
 
-/* Implementation of ra_touch_cal_run (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix_t* out_matrix)
 {
   if ((cfg == nullptr) || (out_matrix == nullptr)) {
@@ -471,7 +469,6 @@ ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix
  * ===========================================================================
  */
 
-/* Implementation of ra_touch_cal_apply (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
                             const ra_touch_cal_matrix_t* matrix,
                             uint16_t                     screen_width,
@@ -504,7 +501,6 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
  * ===========================================================================
  */
 
-/* Implementation of ra_touch_cal_save (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, size_t dst_size)
 {
   if ((matrix == nullptr) || (dst == nullptr)) {
@@ -542,7 +538,6 @@ ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, si
   return k_ra_ok;
 }
 
-/* Implementation of ra_touch_cal_load (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_load(const uint8_t* src, size_t src_size, ra_touch_cal_matrix_t* out_matrix)
 {
   if ((src == nullptr) || (out_matrix == nullptr)) {

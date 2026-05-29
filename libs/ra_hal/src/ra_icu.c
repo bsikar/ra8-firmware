@@ -58,7 +58,6 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
-/* Implementation of ra_icu_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_init(void)
 {
   ra_log_info(s_tag, "ra_icu_init");
@@ -90,7 +89,6 @@ ra_err_t ra_icu_init(void)
  * =============================================================================
  */
 
-/* Implementation of ra_icu_configure_irq_pin (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_configure_irq_pin(uint8_t irq_num, const ra_icu_irq_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "irq cfg");
@@ -115,7 +113,6 @@ ra_err_t ra_icu_configure_irq_pin(uint8_t irq_num, const ra_icu_irq_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_icu_read_irqcr (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_read_irqcr(uint8_t irq_num, uint8_t* out_val)
 {
   RA_CHECK_NULL_PTR(out_val, s_tag, "irqcr out");
@@ -135,7 +132,6 @@ ra_err_t ra_icu_read_irqcr(uint8_t irq_num, uint8_t* out_val)
  * =============================================================================
  */
 
-/* Implementation of ra_icu_nmi_enable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_nmi_enable(uint32_t mask)
 {
   /* HUM Ch 14.2.14 "NMIER : NMI Enable Register", p 542 */
@@ -144,7 +140,6 @@ ra_err_t ra_icu_nmi_enable(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_icu_nmi_disable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_nmi_disable(uint32_t mask)
 {
   /* HUM Ch 14.2.14 "NMIER : NMI Enable Register", p 542 */
@@ -153,7 +148,6 @@ ra_err_t ra_icu_nmi_disable(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_icu_nmi_clear (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_nmi_clear(uint32_t mask)
 {
   /* HUM Ch 14.2.15 "NMICLR : NMI Status Clear Register", p 544 */
@@ -161,7 +155,6 @@ ra_err_t ra_icu_nmi_clear(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_icu_nmi_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_nmi_status(uint32_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "nmi status out");
@@ -174,7 +167,6 @@ ra_err_t ra_icu_nmi_status(uint32_t* out_status)
  * =============================================================================
  */
 
-/* Implementation of ra_icu_route (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_icu_route(uint16_t nvic_index, ra_elc_event_t event)
 {
   volatile uint32_t* ielsr = ra_icu_ielsr(nvic_index);
@@ -187,7 +179,6 @@ ra_err_t ra_icu_route(uint16_t nvic_index, ra_elc_event_t event)
   return k_ra_ok;
 }
 
-/* Implementation of ra_icu_nvic_enable (see header for full contract) -- see header for the documented contract. */
 void ra_icu_nvic_enable(uint16_t nvic_index)
 {
   const uint16_t     word = nvic_index / (uint16_t)k_ra_nvic_bits_per_word;
@@ -197,7 +188,6 @@ void ra_icu_nvic_enable(uint16_t nvic_index)
   *iser = (uint32_t)(1UL << bit);
 }
 
-/* Implementation of ra_icu_nvic_disable (see header for full contract) -- see header for the documented contract. */
 void ra_icu_nvic_disable(uint16_t nvic_index)
 {
   const uint16_t     word = nvic_index / (uint16_t)k_ra_nvic_bits_per_word;
@@ -207,7 +197,6 @@ void ra_icu_nvic_disable(uint16_t nvic_index)
   *icer = (uint32_t)(1UL << bit);
 }
 
-/* Implementation of ra_icu_nvic_set_priority (see header for full contract) -- see header for the documented contract. */
 void ra_icu_nvic_set_priority(uint16_t nvic_index, uint8_t priority)
 {
   volatile uint8_t* ipr = (volatile uint8_t*)(k_ra_nvic_ipr_base + (uintptr_t)nvic_index);

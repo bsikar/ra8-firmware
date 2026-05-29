@@ -136,7 +136,7 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
 SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # Renesas RA8D2 Hardware User's Manual register-bit name citations.
     # Every k_ra_*_bit_* / k_ra_*_mask_* enum mirrors a HUM bit name.
-    "libs/ra_hal/inc/ra8d2_iic_b_regs.h",
+    "libs/ra_hal/inc/ra8d2_i3c_i2c_regs.h",
     "libs/ra_hal/inc/ra8d2_i3c_regs.h",
     "libs/ra_hal/inc/ra8d2_ospi_regs.h",
     "libs/ra_hal/inc/ra8d2_mipi_phy_regs.h",
@@ -145,9 +145,10 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/inc/ra8d2_ssie_regs.h",
     "libs/ra_hal/inc/ra8d2_vin_regs.h",
     "libs/ra_hal/inc/ra8d2_vreg_regs.h",
-    # Renesas FSP `r_iic_b_master_*` API surface references.
-    "libs/ra_hal/inc/ra_iic_b.h",
-    "libs/ra_hal/src/ra_iic_b.c",
+    # Renesas FSP `r_iic_b_master_*` API surface references (the I2C-compat
+    # backend of ra_i3c, folded in as internal_i3c_i2c_*).
+    "libs/ra_hal/src/ra_i3c_i2c.h",
+    "libs/ra_hal/src/ra_i3c_i2c.c",
     # HUM Ch 39 "Master Transmit/Receive Operation" section-name cites
     # and the FSP `r_iic_master` API name referenced verbatim.
     "libs/ra_hal/inc/ra_i2c.h",

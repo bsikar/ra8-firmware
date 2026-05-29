@@ -29,7 +29,6 @@ static const char* s_tag = "ETHGPT";
 static ra_eth_gptp_event_fn_t s_gptp_fn;
 static void*                  s_gptp_ctx;
 
-/* Implementation of ra_eth_gptp_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -46,7 +45,6 @@ ra_err_t ra_eth_gptp_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gptp_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_deinit(void)
 {
   volatile r_gptp_regs_t* reg = ra_gptp();
@@ -58,7 +56,6 @@ ra_err_t ra_eth_gptp_deinit(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_gptp_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -67,7 +64,6 @@ ra_err_t ra_eth_gptp_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gptp_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_clear_status(uint32_t mask)
 {
   volatile r_gptp_regs_t* reg = ra_gptp();
@@ -77,7 +73,6 @@ ra_err_t ra_eth_gptp_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gptp_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_attach_handler(ra_eth_gptp_event_fn_t fn, void* ctx)
 {
   s_gptp_fn  = fn;
@@ -85,7 +80,6 @@ ra_err_t ra_eth_gptp_attach_handler(ra_eth_gptp_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gptp_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_eth_gptp_dispatch(void)
 {
   volatile r_gptp_regs_t* reg = ra_gptp();
@@ -100,7 +94,6 @@ void ra_eth_gptp_dispatch(void)
   }
 }
 
-/* Implementation of ra_eth_gptp_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_enter_stop(void)
 {
   /* HUM Ch 35 "Ethernet Generic PTP Timer (GPTP)" p 1925 */
@@ -108,7 +101,6 @@ ra_err_t ra_eth_gptp_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_gptp_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gptp_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);
