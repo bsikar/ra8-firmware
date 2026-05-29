@@ -1,14 +1,14 @@
 # i2c_loopback
 
 IIC_B (I3C-in-I2C-mode) self-test smoke app for the EK-RA8D2.
-Brings up `ra_iic_b` on channel 0 and probes the on-board
+Brings up `ra_i3c` on channel 0 and probes the on-board
 PI4IOE5V6408 I/O expander (U15) at 7-bit address `0x43`. Success
-emits `iic_b: scan 0x43 ack=1` once a second.
+emits `i2c: scan 0x43 ack=1` once a second.
 
 ## Why this is `hw_pending`
 
 Multiple iterations against the live HIL board all produce
-`iic_b: scan ERROR` (the bus times out waiting for `NTST.TDBEF0`
+`i2c: scan ERROR` (the bus times out waiting for `NTST.TDBEF0`
 after START never completes). Tested combinations on **2026-05-19**:
 
 | SW4-5 | Chip pins | Pull-up enable | NCODR | MSTPB9 IIC0 | Result |
@@ -21,11 +21,11 @@ after START never completes). Tested combinations on **2026-05-19**:
 
 Two **chip-level fixes have already landed** during this debug:
 
-1. **MSTPB9 IIC0 ungate** -- `ra_iic_b_init` now ungates both
+1. **MSTPB9 IIC0 ungate** -- `ra_i3c_init` now ungates both
    MSTPB4 (I3C) AND MSTPB9 (IIC0). Without MSTPB9 the channel-0
    IIC controller stays powered down. Committed in `0d827f17`.
-2. **HAL clock semantics flagged** -- `ra_iic_b_cfg_t.pclka_hz`
-   is used by `internal_iic_b_half_period` to divide
+2. **HAL clock semantics flagged** -- `ra_i3c_cfg_t.pclka_hz`
+   is used by `internal_i3c_i2c_half_period` to divide
    `STDBR.SBR{LO,HO}`, but HUM Ch 9.10.21 (I3CCLK) says the
    IIC_B controller is actually clocked from **I3CCLK** (MOCO
    ~8 MHz by reset default, configured via I3CCKCR/I3CCKDIVCR
@@ -45,7 +45,7 @@ U15.
 What I can't do remotely:
 
 1. Scope SCL/SDA at the EK-RA8D2 IIC test points to see if SCL
-   even toggles when `ra_iic_b_scan` fires. If not, the bus is
+   even toggles when `ra_i3c_scan` fires. If not, the bus is
    electrically dead (no pull-ups, no controller clock).
 2. From the host Pi, run `i2cdetect -y 1` on Pi I2C-1 wired in
    parallel to the EK-RA8D2 IIC pins to confirm U15 actually
