@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors the bring-up flow of examples/ek_ra8d2/i2c_loopback/main.c:
- * ra_mstp_init -> PFS routing of SCL1/SDA1 -> ra_iic_b_init at 100 kHz
- * -> ra_iic_b_scan against 0x77. All MMIO is via the host
+ * ra_mstp_init -> PFS routing of SCL1/SDA1 -> ra_i3c_init at 100 kHz
+ * -> ra_i3c_scan against 0x77. All MMIO is via the host
  * tests/mocks/ra_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -17,7 +17,7 @@
 
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 #include "ra_mstp.h"
 #include "ra_pin_validator.h"
 #include "ra_port_utils.h"
@@ -65,16 +65,17 @@ static void test_i2c_app_bringup_ok(void)
                  ra_pfs_route_peripheral(k_test_i2c_app_pin_scl, k_ra_psel_iic, "test.scl1"));
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_pfs_route_peripheral(k_test_i2c_app_pin_sda, k_ra_psel_iic, "test.sda1"));
-  const ra_iic_b_cfg_t cfg = {
+  const ra_i3c_cfg_t cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclka_hz = (uint32_t)k_test_i2c_app_pclka_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init((uint8_t)k_test_i2c_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init((uint8_t)k_test_i2c_app_channel, &cfg));
   TEST_END("i2c_loopback: PFS + iic_b_init ok");
 }
 
 /**
- * @brief NULL config rejected by ra_iic_b_init.
+ * @brief NULL config rejected by ra_i3c_init.
  *
  * @par MC/DC:
  * Decision: ``cfg == nullptr``. One atomic condition x 2 vectors --
@@ -84,12 +85,12 @@ static void test_i2c_app_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: NULL cfg rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_iic_b_init((uint8_t)k_test_i2c_app_channel, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_init((uint8_t)k_test_i2c_app_channel, nullptr));
   TEST_END("i2c_loopback: NULL cfg rejected");
 }
 
 /**
- * @brief Bad channel rejected by ra_iic_b_init.
+ * @brief Bad channel rejected by ra_i3c_init.
  *
  * @par MC/DC:
  * Decision: ``channel out-of-range``. One atomic condition x 2
@@ -99,16 +100,17 @@ static void test_i2c_app_init_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: bad channel rejected");
-  const ra_iic_b_cfg_t cfg = {
+  const ra_i3c_cfg_t cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclka_hz = (uint32_t)k_test_i2c_app_pclka_hz,
   };
-  TEST_ASSERT(ra_iic_b_init((uint8_t)k_test_i2c_app_bad_channel, &cfg) != k_ra_ok);
+  TEST_ASSERT(ra_i3c_init((uint8_t)k_test_i2c_app_bad_channel, &cfg) != k_ra_ok);
   TEST_END("i2c_loopback: bad channel rejected");
 }
 
 /**
- * @brief ra_iic_b_scan with NULL out_acked is rejected.
+ * @brief ra_i3c_scan with NULL out_acked is rejected.
  *
  * @par MC/DC:
  * Decision: ``out_acked == nullptr``. One atomic condition x 2
@@ -118,14 +120,15 @@ static void test_i2c_app_scan_null_out_rejected(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: scan rejects NULL out_acked");
-  const ra_iic_b_cfg_t cfg = {
+  const ra_i3c_cfg_t cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclka_hz = (uint32_t)k_test_i2c_app_pclka_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init((uint8_t)k_test_i2c_app_channel, &cfg));
-  TEST_ASSERT(ra_iic_b_scan((uint8_t)k_test_i2c_app_channel,
-                            (uint8_t)k_test_i2c_app_probe_addr,
-                            nullptr) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init((uint8_t)k_test_i2c_app_channel, &cfg));
+  TEST_ASSERT(ra_i3c_scan((uint8_t)k_test_i2c_app_channel,
+                          (uint8_t)k_test_i2c_app_probe_addr,
+                          nullptr) != k_ra_ok);
   TEST_END("i2c_loopback: scan rejects NULL out_acked");
 }
 

@@ -25,8 +25,8 @@
 #include "ra8d2_touch_gt911_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_i3c.h"
 #include "ra_icu.h"
-#include "ra_iic_b.h"
 #include "ra_log.h"
 
 /** @brief Log tag. */
@@ -108,7 +108,7 @@ static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
  * @param[out] buf Destination buffer.
  * @param[in]  len Byte count.
  *
- * @return ``ra_iic_b_transfer`` return code.
+ * @return ``ra_i3c_transfer`` return code.
  *
  * @retval k_ra_ok Operation succeeded.
  * @pre Module state is consistent.
@@ -122,12 +122,12 @@ static ra_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
 {
   uint8_t reg_bytes[k_ra_touch_gt911_reg_ptr_bytes];
   priv_pack_reg(reg, reg_bytes);
-  return ra_iic_b_transfer(s_state.channel,
-                           s_state.target_7b,
-                           reg_bytes,
-                           (uint32_t)k_ra_touch_gt911_reg_ptr_bytes,
-                           buf,
-                           len);
+  return ra_i3c_transfer(s_state.channel,
+                         s_state.target_7b,
+                         reg_bytes,
+                         (uint32_t)k_ra_touch_gt911_reg_ptr_bytes,
+                         buf,
+                         len);
 }
 
 /**
@@ -136,7 +136,7 @@ static ra_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
  * @param[in] reg   Register address.
  * @param[in] value Byte to write.
  *
- * @return ``ra_iic_b_write`` return code.
+ * @return ``ra_i3c_write`` return code.
  *
  * @details See implementation.
  * @retval k_ra_ok Operation succeeded.
@@ -155,11 +155,11 @@ static ra_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
   uint8_t payload[k_payload_len];
   priv_pack_reg(reg, payload);
   payload[k_ra_touch_gt911_reg_ptr_bytes] = value;
-  return ra_iic_b_write(s_state.channel,
-                        s_state.target_7b,
-                        payload,
-                        (uint32_t)k_payload_len,
-                        /*restart=*/false);
+  return ra_i3c_write(s_state.channel,
+                      s_state.target_7b,
+                      payload,
+                      (uint32_t)k_payload_len,
+                      /*restart=*/false);
 }
 
 /**
@@ -327,11 +327,12 @@ static void priv_stash_state(const ra_touch_cfg_t* cfg)
  */
 static ra_err_t priv_bring_up_i2c(uint8_t channel)
 {
-  const ra_iic_b_cfg_t iic_cfg = {
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
     .bus_hz   = k_ra_touch_default_bus_hz,
     .pclka_hz = k_ra_touch_default_pclka_hz,
   };
-  return ra_iic_b_init(channel, &iic_cfg);
+  return ra_i3c_init(channel, &iic_cfg);
 }
 
 /**
@@ -387,7 +388,7 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
 {
   const ra_err_t pid_err = priv_check_product_id();
   if (pid_err != k_ra_ok) {
-    (void)ra_iic_b_deinit(cfg->i2c_channel);
+    (void)ra_i3c_deinit(cfg->i2c_channel);
     return pid_err;
   }
   (void)priv_gt911_write_byte(k_ra_touch_gt911_reg_status, k_ra_touch_gt911_cmd_clear_status);
@@ -472,7 +473,7 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   if (!s_state.opened) {
     return k_ra_err_not_initialized;
   }
-  (void)ra_iic_b_deinit(s_state.channel);
+  (void)ra_i3c_deinit(s_state.channel);
   s_state.cb     = nullptr;
   s_state.ctx    = nullptr;
   s_state.opened = false;

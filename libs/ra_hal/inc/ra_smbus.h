@@ -10,7 +10,7 @@
  * the SMBus 3.2 specification (SBS-IF, December 2018):
  *
  * - section 6.5.1  Quick Command          (not yet wrapped here -- use
- *                                          ra_iic_b_scan instead)
+ *                                          ra_i3c_scan instead)
  * - section 6.5.2  Send Byte
  * - section 6.5.3  Receive Byte
  * - section 6.5.4  Write Byte / Write Word
@@ -28,7 +28,7 @@
  *   4. block transfers carry a leading byte-count field
  *
  * This module owns the protocol framing (count byte, PEC, address
- * stuffing for ARA) and delegates raw byte movement to ``ra_iic_b``.
+ * stuffing for ARA) and delegates raw byte movement to ``ra_i3c``.
  * The IIC_B driver is **not** modified -- SMBus is layered on top.
  *
  * Inclusive terminology: "controller" / "peripheral" replaces the
@@ -47,7 +47,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
-#include "ra_iic_b.h"
+#include "ra_i3c.h"
 
 /* =============================================================================
  * Public types
@@ -75,15 +75,15 @@ typedef enum : uint16_t {
  * @brief Configuration descriptor for ``ra_smbus_init``.
  *
  * @details
- * Lightweight wrapper around ``ra_iic_b_cfg_t`` with the SMBus-specific
+ * Lightweight wrapper around ``ra_i3c_cfg_t`` with the SMBus-specific
  * ``pec_enabled`` flag added. SMBus 3.2 makes PEC optional but strongly
  * recommended for safety-critical traffic (battery / power ICs).
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t        channel;     /**< IIC_B channel (only 0 on RA8D2).      */
-  ra_iic_b_cfg_t iic_cfg;     /**< Underlying I2C bring-up settings.     */
-  bool           pec_enabled; /**< Append + verify PEC on every xfer.    */
+  uint8_t      channel;     /**< IIC_B channel (only 0 on RA8D2).      */
+  ra_i3c_cfg_t iic_cfg;     /**< Underlying I2C bring-up settings.     */
+  bool         pec_enabled; /**< Append + verify PEC on every xfer.    */
 } ra_smbus_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -107,7 +107,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @brief Initialise the SMBus layer and bring up the underlying IIC_B.
  *
  * @details
- * Forwards ``cfg->iic_cfg`` to ``ra_iic_b_init`` and stashes the
+ * Forwards ``cfg->iic_cfg`` to ``ra_i3c_init`` and stashes the
  * remaining policy bits (PEC enable, channel) for later transfers.
  *
  * @param[in] cfg Configuration descriptor.
@@ -116,7 +116,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @retval k_ra_ok              SMBus layer ready.
  * @retval k_ra_err_null_ptr    ``cfg`` is NULL.
  * @retval k_ra_err_invalid_arg Channel out of range.
- * @retval Forwarded codes from ``ra_iic_b_init``.
+ * @retval Forwarded codes from ``ra_i3c_init``.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
@@ -124,7 +124,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  *
  * @note Thread safety: not thread-safe.
  *
- * @see ra_iic_b_init
+ * @see ra_i3c_init
  *
  * @since 0.1.0
  */
@@ -167,7 +167,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @return ``ra_err_t``.
  * @retval k_ra_ok              Byte delivered.
  * @retval k_ra_err_not_initialized Init not run.
- * @retval Forwarded codes from ``ra_iic_b_write``.
+ * @retval Forwarded codes from ``ra_i3c_write``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post STOP is issued, bus is released.
@@ -193,7 +193,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @retval k_ra_err_null_ptr      ``out_data`` is NULL.
  * @retval k_ra_err_not_initialized Init not run.
  * @retval k_ra_err_crc_mismatch  PEC verification failed.
- * @retval Forwarded codes from ``ra_iic_b_read``.
+ * @retval Forwarded codes from ``ra_i3c_read``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post STOP is issued, bus is released.
@@ -217,7 +217,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @return ``ra_err_t``.
  * @retval k_ra_ok              Byte written.
  * @retval k_ra_err_not_initialized Init not run.
- * @retval Forwarded codes from ``ra_iic_b_write``.
+ * @retval Forwarded codes from ``ra_i3c_write``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post STOP is issued.
@@ -246,7 +246,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @retval k_ra_err_null_ptr      ``out_data`` NULL.
  * @retval k_ra_err_not_initialized Init not run.
  * @retval k_ra_err_crc_mismatch  PEC verification failed.
- * @retval Forwarded codes from ``ra_iic_b_write`` / ``ra_iic_b_read``.
+ * @retval Forwarded codes from ``ra_i3c_write`` / ``ra_i3c_read``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post STOP is issued.
@@ -279,7 +279,7 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  * @retval k_ra_err_null_ptr    ``data`` NULL with non-zero ``len``.
  * @retval k_ra_err_invalid_arg ``len`` is 0 or > 255.
  * @retval k_ra_err_not_initialized Init not run.
- * @retval Forwarded codes from ``ra_iic_b_write``.
+ * @retval Forwarded codes from ``ra_i3c_write``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post STOP is issued.
@@ -312,7 +312,7 @@ ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* data, uint8_
  * @retval k_ra_err_invalid_size  Returned count exceeds ``cap``.
  * @retval k_ra_err_not_initialized Init not run.
  * @retval k_ra_err_crc_mismatch  PEC verification failed.
- * @retval Forwarded codes from ``ra_iic_b_write`` / ``ra_iic_b_read``.
+ * @retval Forwarded codes from ``ra_i3c_write`` / ``ra_i3c_read``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post STOP is issued regardless of outcome.
@@ -372,7 +372,7 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
  * @retval k_ra_ok                Dispatch completed (callback fired
  *                                if registered).
  * @retval k_ra_err_not_initialized Init not run.
- * @retval Forwarded codes from ``ra_iic_b_read``.
+ * @retval Forwarded codes from ``ra_i3c_read``.
  *
  * @pre ``ra_smbus_init`` previously succeeded.
  * @post Bus is released.
