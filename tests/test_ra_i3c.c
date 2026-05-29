@@ -25,6 +25,11 @@
 static uint32_t s_i3c_cb_count;
 static uint32_t s_i3c_cb_last_mask;
 
+/** @brief Native-mode bring-up config used by the native-path tests. */
+static const ra_i3c_cfg_t k_native_cfg = {.mode     = k_ra_i3c_mode_native,
+                                          .bus_hz   = 0U,
+                                          .pclka_hz = 0U};
+
 static void stub_i3c_cb(void* ctx, uint32_t mask)
 {
   (void)ctx;
@@ -50,7 +55,7 @@ static void test_init(void)
 {
   TEST_BEGIN("i3c init");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   /* CECTL.CLKE must be set after init. */
   TEST_ASSERT_EQ(1, (ra_i3c()->CECTL & 0x1U));
   /* RSTCTL must be released after init. */
@@ -68,8 +73,8 @@ static void test_deinit(void)
 {
   TEST_BEGIN("i3c deinit");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_deinit(0U));
   TEST_ASSERT_EQ(0, (ra_i3c()->CECTL & 0x1U));
   TEST_END("i3c deinit");
 }
@@ -106,15 +111,15 @@ static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("i3c attach + dispatch");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_attach_handler(stub_i3c_cb, (void*)(uintptr_t)0x13U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_attach_handler(0U, stub_i3c_cb, (void*)(uintptr_t)0x13U));
   ra_i3c()->INST = 0xCAFEU;
-  ra_i3c_dispatch();
+  ra_i3c_dispatch(0U);
   TEST_ASSERT_EQ(1, s_i3c_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_i3c_cb_last_mask);
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_attach_handler(0U, nullptr, nullptr));
   ra_i3c()->INST = 0xBEEFU;
-  ra_i3c_dispatch();
+  ra_i3c_dispatch(0U);
   TEST_ASSERT_EQ(1, s_i3c_cb_count);
   TEST_END("i3c attach + dispatch");
 }
@@ -129,7 +134,7 @@ static void test_set_address(void)
 {
   TEST_BEGIN("i3c set address");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   /* Valid 7-bit address: bits [22:16] hold the value, bit 31 marks valid. */
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_set_address(0x42U));
   const uint32_t expect = (0x42U << 16) | 0x80000000U;
@@ -149,7 +154,7 @@ static void test_bus_enable(void)
 {
   TEST_BEGIN("i3c bus enable");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_bus_enable(true));
   /* BCTL.BUSE is bit 31 per FSP R_I3C0_BCTL_BUSE_Pos = 31. */
   TEST_ASSERT_EQ(1, ((ra_i3c()->BCTL >> 31) & 0x1U));
@@ -168,7 +173,7 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("i3c power transition");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_enter_stop());
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_exit_stop());
   TEST_END("i3c power transition");
@@ -187,7 +192,7 @@ static void test_dynamic_address_assign(void)
 {
   TEST_BEGIN("i3c dynamic_address_assign (ENTDAA)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   /* Pre-stage one PID/BCR/DCR response in the simulated NTDTBP0 cell --
    * with a single backing word the driver's two consecutive reads return
@@ -226,7 +231,7 @@ static void test_set_dynamic_address(void)
 {
   TEST_BEGIN("i3c set_dynamic_address (SETDASA)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_set_dynamic_address(0x12U, 0x34U));
   /* Last write to NCMDQP was the dynamic-address payload byte (cmd2). */
@@ -247,7 +252,7 @@ static void test_reset_dynamic_addresses(void)
 {
   TEST_BEGIN("i3c reset_dynamic_addresses (RSTDAA)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   /* Pre-seed NCMDQP with a sentinel so the driver's two writes (cmd1 +
    * cmd2=0) result in NCMDQP == 0 by the end -- this proves the driver
    * touched the queue at least twice. */
@@ -268,7 +273,7 @@ static void test_send_ccc_broadcast(void)
 {
   TEST_BEGIN("i3c send_ccc broadcast (ENEC, no payload)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   /* Pre-seed NCMDQP with a sentinel; broadcast ENEC + zero payload causes
    * the driver to write cmd1 then cmd2 = 0, so the cell ends as 0 -- proof
    * the queue saw at least one write. */
@@ -289,7 +294,7 @@ static void test_send_ccc_directed_with_payload(void)
 {
   TEST_BEGIN("i3c send_ccc directed with payload");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   const uint8_t payload[3] = {0xAAU, 0xBBU, 0xCCU};
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_send_ccc(0x80U, 0x42U, payload, 3U));
   /* Last NCMDQP write was the immediate-data word (LE pack of payload). */
@@ -310,7 +315,7 @@ static void test_recv_ccc_directed(void)
 {
   TEST_BEGIN("i3c recv_ccc directed");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   /* Pre-load NTDTBP0 with one word of receive data. */
   ra_i3c()->NTDTBP0 = 0x11223344U;
 
@@ -339,13 +344,13 @@ static void test_write_immediate(void)
 {
   TEST_BEGIN("i3c write (immediate-data)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   const uint8_t data[2] = {0xDEU, 0xADU};
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0x55U, data, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0U, 0x55U, data, 2U, false));
   /* Last NCMDQP write is the immediate data packed LE. */
   TEST_ASSERT_EQ(0x0000ADDEU, ra_i3c()->NCMDQP);
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_write(0x80U, data, 2U));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_write(0x55U, nullptr, 2U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_write(0U, 0x80U, data, 2U, false));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_write(0U, 0x55U, nullptr, 2U, false));
   TEST_END("i3c write (immediate-data)");
 }
 
@@ -359,9 +364,9 @@ static void test_write_regular(void)
 {
   TEST_BEGIN("i3c write (regular FIFO)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   const uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0x55U, data, sizeof(data)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0U, 0x55U, data, sizeof(data), false));
   /* The FIFO backing memory holds the LAST word that was written --
    * with the simulated MMIO NTDTBP0 maps to a single 32-bit cell, so
    * the second word ({5,6,7,8}) is what remains. */
@@ -379,17 +384,17 @@ static void test_read_happy(void)
 {
   TEST_BEGIN("i3c read (happy path)");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   ra_i3c()->NTDTBP0 = 0xCAFEBABEU;
   uint8_t buf[4]    = {};
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_read(0x12U, buf, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_read(0U, 0x12U, buf, 4U, false));
   TEST_ASSERT_EQ(0xBEU, buf[0]);
   TEST_ASSERT_EQ(0xBAU, buf[1]);
   TEST_ASSERT_EQ(0xFEU, buf[2]);
   TEST_ASSERT_EQ(0xCAU, buf[3]);
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_read(0x12U, nullptr, 4U));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0x12U, buf, 0U));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0x80U, buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_read(0U, 0x12U, nullptr, 4U, false));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0U, 0x12U, buf, 0U, false));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0U, 0x80U, buf, 4U, false));
   TEST_END("i3c read (happy path)");
 }
 
@@ -403,7 +408,7 @@ static void test_ibi_read_empty(void)
 {
   TEST_BEGIN("i3c ibi_read empty queue");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   ra_i3c_ibi_t ibi = {};
   /* NTST.IBIQEFF (bit 2) is zero by default -> queue empty. */
   TEST_ASSERT_EQ(k_ra_err_no_data, ra_i3c_ibi_read(&ibi));
@@ -421,7 +426,7 @@ static void test_ibi_read_one(void)
 {
   TEST_BEGIN("i3c ibi_read one IBI");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   /* Flag the queue as non-empty (NTST.IBIQEFF bit 2). */
   ra_i3c()->NTST = (uint32_t)k_ra_i3c_ntst_ibiqeff_mask;
@@ -457,7 +462,7 @@ static void test_set_hdr_mode_ddr(void)
 {
   TEST_BEGIN("i3c set_hdr_mode DDR encodes [27:26]=01");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_set_hdr_mode(0x42U, k_ra_i3c_hdr_mode_ddr));
   /* NCMDQP word should carry the DDR mode bits (1U << 26) and the target
@@ -478,7 +483,7 @@ static void test_set_hdr_mode_ts_and_validation(void)
 {
   TEST_BEGIN("i3c set_hdr_mode TS + validation");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_set_hdr_mode(0x10U, k_ra_i3c_hdr_mode_ts));
   TEST_ASSERT(((ra_i3c()->NCMDQP >> 26) & 0x3U) == 2U);
@@ -500,7 +505,7 @@ static void test_ibi_enable_writes_ntibivctl(void)
 {
   TEST_BEGIN("i3c ibi_enable writes NTIBIVCTL.VLCNT=1");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_ibi_enable(0x55U));
   /* VLCNT field [7:0] should equal 1. */
@@ -521,7 +526,7 @@ static void test_ibi_drain_aliases_read(void)
 {
   TEST_BEGIN("i3c ibi_drain mirrors ibi_read semantics");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   /* Empty queue path. */
   ra_i3c_ibi_t ibi = {};
@@ -547,7 +552,7 @@ static void test_slave_open_sets_slve_and_nsdvad(void)
 {
   TEST_BEGIN("i3c slave_open sets BCTL.SLVE and NSDVAD");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_slave_open(0x33U));
   /* BCTL.SLVE (bit 16) set; BCTL.BUSE (bit 31) cleared. */
@@ -590,7 +595,7 @@ static void test_mcdc_i3c(void)
 {
   TEST_BEGIN("i3c MC/DC: three 2-cond arg decisions");
   prep();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
   /* Decision A: dynamic_address_assign */
   ra_i3c_daa_target_t one         = {};
@@ -637,24 +642,25 @@ static void test_mcdc_i3c_write_read_arg_pairs(void)
 {
   TEST_BEGIN("i3c MC/DC: write+read len/ptr pairs");
   prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
   const uint8_t data[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
   uint8_t       buf[8]  = {0U};
 
   /* Write Decision A. */
   /* V1 */
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0x55U, data, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0U, 0x55U, data, 4U, false));
   /* V2 */
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0x55U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_write(0U, 0x55U, nullptr, 0U, false));
   /* V3 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_write(0x55U, nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i3c_write(0U, 0x55U, nullptr, 4U, false));
 
   /* Read Decision B. */
   /* V1 */
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_read(0x55U, buf, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_read(0U, 0x55U, buf, 4U, false));
   /* V2 */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0x55U, buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0U, 0x55U, buf, 0U, false));
   /* V3 */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0x55U, buf, 0x10000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_read(0U, 0x55U, buf, 0x10000U, false));
 
   TEST_END("i3c MC/DC: write+read len/ptr pairs");
 }
