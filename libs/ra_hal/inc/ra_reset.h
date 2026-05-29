@@ -24,23 +24,23 @@
  * | ``ra_reset_clear_cause``         | Software-clear (write 0 after read 1)  |
  * | ``ra_reset_get_attribution``     | Read RSTSAR security attribution    |
  * | ``ra_reset_software_reset``      | Trigger AIRCR.SYSRESETREQ (no return) |
+ * | ``ra_reset_set_source_mask``     | Disable/enable a reset source (SYRSTMSK0/1/2) |
+ * | ``ra_reset_get_source_mask``     | Read a reset source's mask state    |
  *
  * ## Not yet implemented (deferred TODO)
  *
- *   - ``SYRSTMSK0`` / ``SYRSTMSK1`` (per-cause reset disable masks).
- *     HUM Ch 6.2.6 p 263 -- requires PRCR.PRC5 unlock + a dedicated
- *     "lock the watchdog mask while the watchdog is running" guard.
- *     Defer until the safety supervisor needs to disable specific
- *     reset paths at runtime.
- *   - ``TEMPRCR`` / ``TEMPRLR`` temperature reset control. HUM
- *     Ch 6.2.9 / 6.2.10 p 264-265 -- only accepts two writes total
- *     before requiring a real reset, so it belongs in the secure boot
- *     path, not here.
+ *   - ``TEMPRCR`` / ``TEMPRLR`` temperature reset control. The register
+ *     definitions live in ``ra8d2_reset_regs.h`` (HUM Ch 6.2.9 / 6.2.10
+ *     p 264-265) but the write-side bring-up is deferred: ``TEMPRLR``
+ *     accepts only two writes total before requiring a real reset, so
+ *     the enable sequence is call-once-at-boot and belongs in the
+ *     secure-boot / temperature-sensor path, not in the general reset
+ *     HAL.
  *   - Hot-pluggable per-cause callbacks (``ra_reset_attach_handler``).
  *     Reset causes fire **before** the firmware runs, so the only
  *     "callback" is whatever code consumes ``ra_reset_get_cause``
- *     during init. A future iteration may want a thread-safe
- *     publish/subscribe layer; this stub keeps the API small.
+ *     during init. Adding a publish/subscribe layer with no consumer
+ *     would be speculative; deferred until a caller needs it.
  *   - VBATT_POR. The HUM lists VBATT_POR as a separate (non-system)
  *     reset whose flag lives in the VBAT block, not in SYSC. The
  *     existing ``ra_bkup`` driver owns that path.
@@ -368,6 +368,100 @@ void ra_reset_test_only_reset_state(void);
  * @since 0.1.0
  */
 void ra_reset_software_reset(void);
+
+/* =============================================================================
+ * Reset-source masking (SYRSTMSK0/1/2)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_reset_source_t
+ * @brief Reset sources whose occurrence can be individually disabled.
+ *
+ * @details
+ * Each value maps to one mask bit across SYRSTMSK0/1/2 (HUM Ch 6.2.6-6.2.8
+ * p 262-264). Setting a source's mask disables the corresponding reset;
+ * clearing it re-enables the reset (the reset-value of every mask is 0 =
+ * enabled). ``k_ra_reset_source_count`` is a non-source sentinel used for
+ * range validation, never a maskable bit.
+ *
+ * @invariant ``0 <= source < k_ra_reset_source_count`` for every API call.
+ */
+typedef enum : uint8_t {
+  k_ra_reset_source_iwdt  = 0U,  /**< Independent watchdog reset (SYRSTMSK0). */
+  k_ra_reset_source_wdt0  = 1U,  /**< CPU0 watchdog reset (SYRSTMSK0).        */
+  k_ra_reset_source_sw    = 2U,  /**< Software reset (SYRSTMSK0).             */
+  k_ra_reset_source_clu0  = 3U,  /**< CPU0 lockup reset (SYRSTMSK0).          */
+  k_ra_reset_source_lm0   = 4U,  /**< Local-memory-0 error reset (SYRSTMSK0). */
+  k_ra_reset_source_cm    = 5U,  /**< Common-memory error reset (SYRSTMSK0).  */
+  k_ra_reset_source_bus   = 6U,  /**< Bus error reset (SYRSTMSK0).            */
+  k_ra_reset_source_wdt1  = 7U,  /**< CPU1 watchdog reset (SYRSTMSK1).        */
+  k_ra_reset_source_clu1  = 8U,  /**< CPU1 lockup reset (SYRSTMSK1).          */
+  k_ra_reset_source_lm1   = 9U,  /**< Local-memory-1 error reset (SYRSTMSK1). */
+  k_ra_reset_source_pvd1  = 10U, /**< Voltage-monitor-1 reset (SYRSTMSK2).    */
+  k_ra_reset_source_pvd2  = 11U, /**< Voltage-monitor-2 reset (SYRSTMSK2).    */
+  k_ra_reset_source_count = 12U, /**< Sentinel: number of maskable sources.   */
+} ra_reset_source_t;
+
+/**
+ * @brief Enable or disable the occurrence of a specific reset source.
+ *
+ * @details
+ * Sets (``disable == true``) or clears (``disable == false``) the mask bit
+ * for @p source in SYRSTMSK0/1/2. The register group is write-protected by
+ * ``PRCR.PRC5`` (HUM Ch 6.2.6 Note p 262): this function unlocks PRC5,
+ * performs the read-modify-write of the relevant SYRSTMSKn byte, then
+ * relocks PRC5 -- leaving the other PRC bits untouched.
+ *
+ * @param[in] source  Reset source to mask/unmask (< k_ra_reset_source_count).
+ * @param[in] disable ``true`` disables the reset; ``false`` re-enables it.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Mask bit updated.
+ * @retval k_ra_err_invalid_arg   @p source >= k_ra_reset_source_count.
+ *
+ * @pre @p source is a valid ``ra_reset_source_t`` (< count).
+ * @pre Caller is on the secure side (the SYSC reset-control group is
+ *      secure-attributed by default).
+ * @post The SYRSTMSKn mask bit for @p source reads @p disable.
+ * @post PRCR.PRC5 is left re-locked (write-protected) on return.
+ *
+ * @note Thread safety: not thread-safe; serialize SYSC PRCR-gated writes.
+ * @warning Per HUM Ch 6.2.6 p 263, ``IWDTMASK`` cannot be rewritten while the
+ *          independent watchdog is running and ``WDT0MASK`` cannot be
+ *          rewritten while the CPU0 watchdog is running -- the hardware
+ *          silently ignores such writes. Mask those sources before starting
+ *          their watchdogs.
+ * @see ra_reset_get_source_mask
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reset_set_source_mask(ra_reset_source_t source, bool disable);
+
+/**
+ * @brief Read whether a specific reset source is currently masked (disabled).
+ *
+ * @details
+ * Reads the relevant SYRSTMSK0/1/2 byte and returns the mask state for
+ * @p source. Reads do not require a PRCR unlock.
+ *
+ * @param[in]  source   Reset source to query (< k_ra_reset_source_count).
+ * @param[out] disabled Receives ``true`` if the reset is masked/disabled.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Result written to ``*disabled``.
+ * @retval k_ra_err_null_ptr      ``disabled`` was nullptr.
+ * @retval k_ra_err_invalid_arg   @p source >= k_ra_reset_source_count.
+ *
+ * @pre ``disabled != nullptr``.
+ * @pre @p source is a valid ``ra_reset_source_t`` (< count).
+ * @post ``*disabled`` holds the current mask state.
+ * @post No hardware state is modified.
+ *
+ * @note Thread safety: read-only; safe from any context.
+ * @see ra_reset_set_source_mask
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reset_get_source_mask(ra_reset_source_t source, bool* disabled);
 
 #ifdef __cplusplus
 }

@@ -98,12 +98,85 @@ typedef enum : uintptr_t {
  * the shared header does not yet expose.
  */
 typedef enum : uint16_t {
-  k_ra_reset_off_rstsr1 = 0x0C0U, /**< RSTSR1 (32-bit). HUM Ch 6.2.3 p 258.    */
-  k_ra_reset_off_rstsar = 0x3C4U, /**< RSTSAR (32-bit). HUM Ch 6.2.1 p 256.    */
-  k_ra_reset_off_rstsr0 = 0xA40U, /**< RSTSR0 (8-bit).  HUM Ch 6.2.2 p 257.    */
-  k_ra_reset_off_rstsr2 = 0xA44U, /**< RSTSR2 (8-bit).  HUM Ch 6.2.4 p 261.    */
-  k_ra_reset_off_rstsr3 = 0xA48U, /**< RSTSR3 (8-bit).  HUM Ch 6.2.5 p 261.    */
+  k_ra_reset_off_rstsr1    = 0x0C0U, /**< RSTSR1 (32-bit). HUM Ch 6.2.3 p 258.    */
+  k_ra_reset_off_prcr      = 0x3FAU, /**< PRCR (16-bit) write-protect. HUM Ch 11.2.18 p 456. */
+  k_ra_reset_off_rstsar    = 0x3C4U, /**< RSTSAR (32-bit). HUM Ch 6.2.1 p 256.    */
+  k_ra_reset_off_rstsr0    = 0xA40U, /**< RSTSR0 (8-bit).  HUM Ch 6.2.2 p 257.    */
+  k_ra_reset_off_rstsr2    = 0xA44U, /**< RSTSR2 (8-bit).  HUM Ch 6.2.4 p 261.    */
+  k_ra_reset_off_rstsr3    = 0xA48U, /**< RSTSR3 (8-bit).  HUM Ch 6.2.5 p 261.    */
+  k_ra_reset_off_syrstmsk0 = 0xAD0U, /**< SYRSTMSK0 (8-bit). HUM Ch 6.2.6 p 262.  */
+  k_ra_reset_off_syrstmsk1 = 0xAD4U, /**< SYRSTMSK1 (8-bit). HUM Ch 6.2.7 p 263.  */
+  k_ra_reset_off_syrstmsk2 = 0xAD8U, /**< SYRSTMSK2 (8-bit). HUM Ch 6.2.8 p 263.  */
+  k_ra_reset_off_temprcr   = 0xADCU, /**< TEMPRCR (8-bit).  HUM Ch 6.2.9 p 264.   */
+  k_ra_reset_off_temprlr   = 0xAE0U, /**< TEMPRLR (8-bit).  HUM Ch 6.2.10 p 265.  */
 } ra_reset_offset_t;
+
+/**
+ * @enum ra_reset_prcr_bits_t
+ * @brief PRCR (Protect Register) password + PRC5 enable bit.
+ *
+ * @details
+ * SYRSTMSK0/1/2, TEMPRCR and TEMPRLR are write-protected behind
+ * ``PRCR.PRC5``. A 16-bit write must carry the ``0xA5`` password in the
+ * upper byte; PRC5 (bit 5) enables writes to the reset-control group.
+ */
+typedef enum : uint16_t {
+  k_ra_reset_prcr_key         = 0xA500U, /**< Mandatory 0xA5 password, upper byte. */
+  k_ra_reset_prcr_prc5_msk    = 0x0020U, /**< PRC5: reset-control register group.  */
+  k_ra_reset_prcr_pr_bits_msk = 0x00FFU, /**< Writable PR0..PR7 enable bits (low byte). */
+} ra_reset_prcr_bits_t;
+
+/**
+ * @enum ra_reset_syrstmsk0_bits_t
+ * @brief SYRSTMSK0 mask bits (1 = reset disabled). HUM Ch 6.2.6 p 262.
+ */
+typedef enum : uint8_t {
+  k_ra_reset_syrstmsk0_iwdt_msk = 0x01U, /**< IWDTMASK: independent WDT reset.   */
+  k_ra_reset_syrstmsk0_wdt0_msk = 0x02U, /**< WDT0MASK: CPU0 WDT reset.          */
+  k_ra_reset_syrstmsk0_sw_msk   = 0x04U, /**< SWMASK: software reset.            */
+  k_ra_reset_syrstmsk0_clu0_msk = 0x10U, /**< CLU0MASK: CPU0 lockup reset.       */
+  k_ra_reset_syrstmsk0_lm0_msk  = 0x20U, /**< LM0MASK: local-memory-0 error.     */
+  k_ra_reset_syrstmsk0_cm_msk   = 0x40U, /**< CMMASK: common-memory error.       */
+  k_ra_reset_syrstmsk0_bus_msk  = 0x80U, /**< BUSMASK: bus error reset.          */
+} ra_reset_syrstmsk0_bits_t;
+
+/**
+ * @enum ra_reset_syrstmsk1_bits_t
+ * @brief SYRSTMSK1 mask bits (1 = reset disabled). HUM Ch 6.2.7 p 263.
+ */
+typedef enum : uint8_t {
+  k_ra_reset_syrstmsk1_wdt1_msk = 0x02U, /**< WDT1MASK: CPU1 WDT reset.          */
+  k_ra_reset_syrstmsk1_clu1_msk = 0x10U, /**< CLU1MASK: CPU1 lockup reset.       */
+  k_ra_reset_syrstmsk1_lm1_msk  = 0x20U, /**< LM1MASK: local-memory-1 error.     */
+} ra_reset_syrstmsk1_bits_t;
+
+/**
+ * @enum ra_reset_syrstmsk2_bits_t
+ * @brief SYRSTMSK2 mask bits (1 = reset disabled). HUM Ch 6.2.8 p 263.
+ */
+typedef enum : uint8_t {
+  k_ra_reset_syrstmsk2_pvd1_msk = 0x01U, /**< PVD1MASK: voltage-monitor-1 reset. */
+  k_ra_reset_syrstmsk2_pvd2_msk = 0x02U, /**< PVD2MASK: voltage-monitor-2 reset. */
+} ra_reset_syrstmsk2_bits_t;
+
+/**
+ * @enum ra_reset_temprcr_bits_t
+ * @brief TEMPRCR (Temperature Monitor Reset Control) bits. HUM Ch 6.2.9 p 264.
+ */
+typedef enum : uint8_t {
+  k_ra_reset_temprcr_tempren_msk = 0x01U, /**< TEMPREN: temperature reset enable. */
+  k_ra_reset_temprcr_tsnen_msk   = 0x02U, /**< TSNEN: temperature sensor enable.  */
+  k_ra_reset_temprcr_cmpen_msk   = 0x04U, /**< CMPEN: comparator enable.          */
+  k_ra_reset_temprcr_tsnkeep_msk = 0x08U, /**< TSNKEEP: 1 = close sensor latch.   */
+} ra_reset_temprcr_bits_t;
+
+/**
+ * @enum ra_reset_temprlr_bits_t
+ * @brief TEMPRLR (Temperature Monitor Reset Lock) bits. HUM Ch 6.2.10 p 265.
+ */
+typedef enum : uint8_t {
+  k_ra_reset_temprlr_lock_msk = 0x01U, /**< LOCK: 1 = TEMPRCR locked (reset value). */
+} ra_reset_temprlr_bits_t;
 
 /* =============================================================================
  * RSTSR0 -- 8-bit (Power-on / voltage-monitor / Deep-software-standby)
@@ -321,6 +394,60 @@ static inline volatile uint32_t* ra_reset_rstsar(void)
 static inline volatile uint32_t* ra_reset_aircr(void)
 {
   return (volatile uint32_t*)k_ra_reset_scb_aircr_addr;
+}
+
+/**
+ * @brief Pointer to the 16-bit PRCR write-protect register.
+ * @return Volatile pointer to PRCR (gates SYRSTMSKn / TEMPRCR / TEMPRLR via PRC5).
+ */
+static inline volatile uint16_t* ra_reset_prcr(void)
+{
+  return (volatile uint16_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_prcr);
+}
+
+/**
+ * @brief Pointer to the 8-bit SYRSTMSK0 register.
+ * @return Volatile pointer to SYRSTMSK0.
+ */
+static inline volatile uint8_t* ra_reset_syrstmsk0(void)
+{
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_syrstmsk0);
+}
+
+/**
+ * @brief Pointer to the 8-bit SYRSTMSK1 register.
+ * @return Volatile pointer to SYRSTMSK1.
+ */
+static inline volatile uint8_t* ra_reset_syrstmsk1(void)
+{
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_syrstmsk1);
+}
+
+/**
+ * @brief Pointer to the 8-bit SYRSTMSK2 register.
+ * @return Volatile pointer to SYRSTMSK2.
+ */
+static inline volatile uint8_t* ra_reset_syrstmsk2(void)
+{
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_syrstmsk2);
+}
+
+/**
+ * @brief Pointer to the 8-bit TEMPRCR register.
+ * @return Volatile pointer to TEMPRCR.
+ */
+static inline volatile uint8_t* ra_reset_temprcr(void)
+{
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_temprcr);
+}
+
+/**
+ * @brief Pointer to the 8-bit TEMPRLR register.
+ * @return Volatile pointer to TEMPRLR.
+ */
+static inline volatile uint8_t* ra_reset_temprlr(void)
+{
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_temprlr);
 }
 
 #ifdef __cplusplus

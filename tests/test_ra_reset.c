@@ -430,6 +430,140 @@ static void test_software_reset_writes_aircr(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * set_source_mask / get_source_mask (SYRSTMSK0/1/2)
+ * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * The code under test has no compound (`&&` / `||`) decisions -- each
+  * guard is a single condition (range validity, null pointer) and the
+  * disable/enable path is a ternary. Branch coverage is achieved with
+  * valid/invalid source, disable=true/false, and null/non-null vectors.
+ */
+
+static void test_set_source_mask_disable_sets_bit(void)
+{
+  TEST_BEGIN("reset set_source_mask disable sets SYRSTMSK0 bit");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_sw, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_sw_msk, *ra_reset_syrstmsk0());
+  /* PRCR.PRC5 left re-locked. */
+  TEST_ASSERT_EQ(0U, (*ra_reset_prcr() & (uint16_t)k_ra_reset_prcr_prc5_msk));
+
+  TEST_END("reset set_source_mask disable sets SYRSTMSK0 bit");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- single-condition guards + a ternary in the
+ * code under test; no `&&` or `||`)
+ */
+static void test_set_source_mask_enable_clears_bit(void)
+{
+  TEST_BEGIN("reset set_source_mask enable clears SYRSTMSK0 bit");
+  prep();
+
+  *ra_reset_syrstmsk0() =
+    (uint8_t)((uint8_t)k_ra_reset_syrstmsk0_sw_msk | (uint8_t)k_ra_reset_syrstmsk0_bus_msk);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_sw, false));
+  /* SW cleared, BUS preserved. */
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_bus_msk, *ra_reset_syrstmsk0());
+
+  TEST_END("reset set_source_mask enable clears SYRSTMSK0 bit");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- single-condition guards + a ternary in the
+ * code under test; no `&&` or `||`)
+ */
+static void test_set_source_mask_routes_to_syrstmsk1_and_2(void)
+{
+  TEST_BEGIN("reset set_source_mask routes WDT1->MSK1, PVD1->MSK2");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_wdt1, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk1_wdt1_msk, *ra_reset_syrstmsk1());
+  TEST_ASSERT_EQ(0, *ra_reset_syrstmsk0());
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_pvd1, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk2_pvd1_msk, *ra_reset_syrstmsk2());
+
+  TEST_END("reset set_source_mask routes WDT1->MSK1, PVD1->MSK2");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- single range-validity guard in the code
+ * under test; no `&&` or `||`)
+ */
+static void test_set_source_mask_invalid_source_rejected(void)
+{
+  TEST_BEGIN("reset set_source_mask rejects out-of-range source");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_reset_set_source_mask(k_ra_reset_source_count, true));
+  /* No register write happened. */
+  TEST_ASSERT_EQ(0, *ra_reset_syrstmsk0());
+
+  TEST_END("reset set_source_mask rejects out-of-range source");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- null-check + single range-validity guard
+ * in the code under test; no `&&` or `||`)
+ */
+static void test_get_source_mask_reads_state(void)
+{
+  TEST_BEGIN("reset get_source_mask reads SYRSTMSKn bit");
+  prep();
+
+  bool disabled = false;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_source_mask(k_ra_reset_source_iwdt, &disabled));
+  TEST_ASSERT_EQ(false, disabled);
+
+  *ra_reset_syrstmsk0() = (uint8_t)k_ra_reset_syrstmsk0_iwdt_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_source_mask(k_ra_reset_source_iwdt, &disabled));
+  TEST_ASSERT_EQ(true, disabled);
+
+  TEST_END("reset get_source_mask reads SYRSTMSKn bit");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- null-check guard only in the code under
+ * test; no `&&` or `||`)
+ */
+static void test_get_source_mask_null_rejected(void)
+{
+  TEST_BEGIN("reset get_source_mask rejects null out");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reset_get_source_mask(k_ra_reset_source_iwdt, nullptr));
+
+  TEST_END("reset get_source_mask rejects null out");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- null-check + single range-validity guard
+ * in the code under test; no `&&` or `||`)
+ */
+static void test_get_source_mask_invalid_source_rejected(void)
+{
+  TEST_BEGIN("reset get_source_mask rejects out-of-range source");
+  prep();
+
+  bool disabled = true;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_reset_get_source_mask(k_ra_reset_source_count, &disabled));
+
+  TEST_END("reset get_source_mask rejects out-of-range source");
+}
+
+/* ---------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------------
  */
@@ -453,6 +587,13 @@ int32_t main(void)
   test_get_attribution();
   test_get_attribution_null_out();
   test_software_reset_writes_aircr();
+  test_set_source_mask_disable_sets_bit();
+  test_set_source_mask_enable_clears_bit();
+  test_set_source_mask_routes_to_syrstmsk1_and_2();
+  test_set_source_mask_invalid_source_rejected();
+  test_get_source_mask_reads_state();
+  test_get_source_mask_null_rejected();
+  test_get_source_mask_invalid_source_rejected();
 
   (void)fprintf(stderr, "[OK  ] test_ra_reset.c\n");
   return 0;
