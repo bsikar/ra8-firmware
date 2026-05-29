@@ -462,6 +462,17 @@ static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
   reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra_i2c_msk_iccr2_rs);
+  /* RS auto-clears once the restart condition is issued. The slave
+   * address must be written to ICDRT only after RS reads 0 -- a write
+   * while RS = 1 is silently dropped (HUM Ch 39.11 "Issuing a Restart
+   * Condition" Note, p 2434). After a send_stop=false write TDRE is
+   * already 1, so without this wait send_address would write the address
+   * before the restart completed and the transmit would never happen. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->ICCR2 & (uint8_t)k_ra_i2c_msk_iccr2_rs) == 0U) {    /* GCOVR_EXCL_BR_LINE */
+      break;
+    }
+  }
 }
 
 /**
