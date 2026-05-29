@@ -616,8 +616,7 @@ internal_extract_trdtc_payload(const char* capture, uint8_t* buf, size_t cap, si
  * =============================================================================
  */
 
-/* UM-WI-046 section 2.1 "Basic AT Commands": bare ``AT`` returns OK.
- * see header for the documented contract */
+/* UM-WI-046 section 2.1 "Basic AT Commands": bare ``AT`` returns OK. */
 ra_err_t ra_da16600_init(const ra_da16600_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, RA_DA16600_TAG, "cfg");
@@ -664,8 +663,7 @@ ra_err_t ra_da16600_init(const ra_da16600_cfg_t* cfg)
  */
 
 /* UM-WI-046 section 4.1 "Wi-Fi Scan": AT+WFSCAN returns one
- * +WFSCAN:<list> line followed by OK.
- * see header for the documented contract */
+ * +WFSCAN:<list> line followed by OK. */
 ra_err_t ra_da16600_wifi_scan(uint16_t* out_count)
 {
   RA_CHECK_NULL_PTR(out_count, RA_DA16600_TAG, "out_count");
@@ -755,8 +753,7 @@ static ra_err_t internal_wifi_connect_validate(const char* ssid,
   return k_ra_ok;
 }
 
-/* UM-WI-046 section 4.5 "Connect / Disconnect AP": AT+WFJAP.
- * see header for the documented contract */
+/* UM-WI-046 section 4.5 "Connect / Disconnect AP": AT+WFJAP. */
 ra_err_t
 ra_da16600_wifi_connect(const char* ssid, const char* passkey, char* out_ip_str, size_t ip_str_len)
 {
@@ -789,8 +786,7 @@ ra_da16600_wifi_connect(const char* ssid, const char* passkey, char* out_ip_str,
   return internal_parse_wfjap_ip(capture, out_ip_str, ip_str_len);
 }
 
-/* UM-WI-046 section 4.5: AT+WFQAP disassociates.
- * see header for the documented contract */
+/* UM-WI-046 section 4.5: AT+WFQAP disassociates. */
 ra_err_t ra_da16600_wifi_disconnect(void)
 {
   ra_err_t err = internal_require_init();
@@ -805,8 +801,7 @@ ra_err_t ra_da16600_wifi_disconnect(void)
  * =============================================================================
  */
 
-/* UM-WI-046 section 5.2.3 (TRTS: listen) / 5.2.4 (TRTC: client).
- * see header for the documented contract */
+/* UM-WI-046 section 5.2.3 (TRTS: listen) / 5.2.4 (TRTC: client). */
 ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
                              const char*              remote_ip,
                              uint16_t                 port,
@@ -846,8 +841,7 @@ ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
   return internal_parse_socket_cid(capture, out_socket);
 }
 
-/* UM-WI-046 section 5.2.5 "Send Data on TCP": AT+TRDTS=<cid>,<len>,<data>.
- * see header for the documented contract */
+/* UM-WI-046 section 5.2.5 "Send Data on TCP": AT+TRDTS=<cid>,<len>,<data>. */
 ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size_t len)
 {
   if (len == 0U) {
@@ -894,8 +888,7 @@ ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size
 
 /* UM-WI-046 section 5.2.6 "Receive Data on TCP": +TRDTC:<cid>,<len>,<data>
  * arrives asynchronously. We block-poll the AT pipe until the URC is
- * captured or the caller-specified timeout fires.
- * see header for the documented contract */
+ * captured or the caller-specified timeout fires. */
 ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
                              uint8_t*            buf,
                              size_t              cap,
@@ -932,8 +925,7 @@ ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
   return internal_extract_trdtc_payload(capture, buf, cap, out_len);
 }
 
-/* UM-WI-046 section 5.2.7 "Terminate Session": AT+TRTRM=<cid>.
- * see header for the documented contract */
+/* UM-WI-046 section 5.2.7 "Terminate Session": AT+TRTRM=<cid>. */
 ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
 {
   ra_err_t err = internal_require_init();
@@ -958,8 +950,7 @@ ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
  * =============================================================================
  */
 
-/* UM-WI-046 section 7.4 "BLE Advertising Control": AT+BLEADVSTART.
- * see header for the documented contract */
+/* UM-WI-046 section 7.4 "BLE Advertising Control": AT+BLEADVSTART. */
 ra_err_t ra_da16600_ble_advertise_start(void)
 {
   ra_err_t err = internal_require_init();
@@ -969,8 +960,7 @@ ra_err_t ra_da16600_ble_advertise_start(void)
   return ra_modem_at_send_cmd("AT+BLEADVSTART", nullptr, (uint16_t)k_ra_da16600_timeout_ble_ms);
 }
 
-/* UM-WI-046 section 7.4: AT+BLEADVSTOP.
- * see header for the documented contract */
+/* UM-WI-046 section 7.4: AT+BLEADVSTOP. */
 ra_err_t ra_da16600_ble_advertise_stop(void)
 {
   ra_err_t err = internal_require_init();

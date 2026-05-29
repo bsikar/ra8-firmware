@@ -103,13 +103,11 @@ static uint8_t s_refcount[k_ra_mstp_reg_count][k_ra_mstp_bit_count];
  * =============================================================================
  */
 
-/* Implementation of ra_mstp_id_reg (see header for full contract) -- see header for the documented contract. */
 ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id)
 {
   return (ra_mstp_reg_t)(((uint16_t)id >> k_ra_bits_per_byte) & k_ra_mask_byte);
 }
 
-/* Implementation of ra_mstp_id_bit (see header for full contract) -- see header for the documented contract. */
 uint8_t ra_mstp_id_bit(ra_mstp_t id)
 {
   return (uint8_t)((uint16_t)id & k_ra_mask_byte);
@@ -216,7 +214,6 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
  * =============================================================================
  */
 
-/* Implementation of ra_mstp_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mstp_init(void)
 {
   ra_log_info(s_tag, "ra_mstp_init -- gating all modules");
@@ -274,7 +271,6 @@ ra_err_t ra_mstp_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mstp_enable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mstp_enable(ra_mstp_t id)
 {
   uint8_t reg = 0U;
@@ -316,7 +312,6 @@ ra_err_t ra_mstp_enable(ra_mstp_t id)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mstp_disable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mstp_disable(ra_mstp_t id)
 {
   uint8_t reg = 0U;
@@ -357,7 +352,6 @@ ra_err_t ra_mstp_disable(ra_mstp_t id)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mstp_get_refcount (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mstp_get_refcount(ra_mstp_t id, uint8_t* out_ref)
 {
   RA_CHECK_NULL_PTR(out_ref, s_tag, "get_refcount: out_ref");
@@ -370,7 +364,6 @@ ra_err_t ra_mstp_get_refcount(ra_mstp_t id, uint8_t* out_ref)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mstp_is_stopped (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mstp_is_stopped(ra_mstp_t id, bool* out_stopped)
 {
   RA_CHECK_NULL_PTR(out_stopped, s_tag, "is_stopped: out_stopped");

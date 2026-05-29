@@ -31,7 +31,6 @@ typedef struct {
 
 static ra_layer3_switch_state_t s_state = {};
 
-/* Implementation of ra_layer3_switch_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_layer3_switch_open(const ra_layer3_switch_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -50,7 +49,6 @@ ra_err_t ra_layer3_switch_open(const ra_layer3_switch_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_layer3_switch_route_add (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_layer3_switch_route_add(const ra_layer3_switch_route_t* route)
 {
   RA_CHECK_NULL_PTR(route, s_tag, "route must not be nullptr");
@@ -60,7 +58,6 @@ ra_err_t ra_layer3_switch_route_add(const ra_layer3_switch_route_t* route)
   return k_ra_err_not_supported;
 }
 
-/* Implementation of ra_layer3_switch_route_delete (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_layer3_switch_route_delete(uint32_t dst_ip, uint32_t mask)
 {
   (void)dst_ip;
@@ -71,7 +68,6 @@ ra_err_t ra_layer3_switch_route_delete(uint32_t dst_ip, uint32_t mask)
   return k_ra_err_not_supported;
 }
 
-/* Implementation of ra_layer3_switch_status_get (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_layer3_switch_status_get(uint8_t* out_open, uint8_t* out_promisc)
 {
   RA_CHECK_NULL_PTR(out_open, s_tag, "out_open must not be nullptr");
@@ -81,7 +77,6 @@ ra_err_t ra_layer3_switch_status_get(uint8_t* out_open, uint8_t* out_promisc)
   return k_ra_ok;
 }
 
-/* Implementation of ra_layer3_switch_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_layer3_switch_close(void)
 {
   if (!s_state.opened) {

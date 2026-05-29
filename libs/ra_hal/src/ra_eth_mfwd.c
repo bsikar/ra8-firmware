@@ -31,7 +31,6 @@ static const char* s_tag = "ETHMFW";
 static ra_eth_mfwd_event_fn_t s_mfwd_fn;
 static void*                  s_mfwd_ctx;
 
-/* Implementation of ra_eth_mfwd_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -48,7 +47,6 @@ ra_err_t ra_eth_mfwd_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_mfwd_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_deinit(void)
 {
   volatile r_mfwd_regs_t* reg = ra_mfwd();
@@ -60,7 +58,6 @@ ra_err_t ra_eth_mfwd_deinit(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_mfwd_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -69,7 +66,6 @@ ra_err_t ra_eth_mfwd_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_mfwd_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_clear_status(uint32_t mask)
 {
   volatile r_mfwd_regs_t* reg = ra_mfwd();
@@ -79,7 +75,6 @@ ra_err_t ra_eth_mfwd_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_mfwd_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_attach_handler(ra_eth_mfwd_event_fn_t fn, void* ctx)
 {
   s_mfwd_fn  = fn;
@@ -87,7 +82,6 @@ ra_err_t ra_eth_mfwd_attach_handler(ra_eth_mfwd_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_mfwd_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_eth_mfwd_dispatch(void)
 {
   volatile r_mfwd_regs_t* reg = ra_mfwd();
@@ -102,7 +96,6 @@ void ra_eth_mfwd_dispatch(void)
   }
 }
 
-/* Implementation of ra_eth_mfwd_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_enter_stop(void)
 {
   /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
@@ -110,7 +103,6 @@ ra_err_t ra_eth_mfwd_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_mfwd_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);
@@ -163,7 +155,6 @@ static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
   return (volatile uint32_t*)addr;
 }
 
-/* Implementation of ra_eth_mfwd_set_forwarding_masks (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_set_forwarding_masks(const uint8_t port_masks[3])
 {
   RA_CHECK_NULL_PTR(port_masks, s_tag, "set_forwarding_masks: null arg");
@@ -178,7 +169,6 @@ ra_err_t ra_eth_mfwd_set_forwarding_masks(const uint8_t port_masks[3])
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_mfwd_route_queue (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_mfwd_route_queue(uint8_t port, uint8_t queue_index)
 {
   if ((port > (uint8_t)k_ra_mfwd_max_port) || (queue_index > (uint8_t)k_ra_mfwd_max_queue)) {

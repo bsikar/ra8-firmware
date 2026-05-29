@@ -223,7 +223,6 @@ static void internal_thread_entry(ULONG arg)
  * =============================================================================
  */
 
-/* Implementation of ra_wdt_supervisor_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg)
 {
   const ra_err_t cfg_err = internal_validate_cfg(cfg);
@@ -249,7 +248,6 @@ ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_wdt_supervisor_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_deinit(void)
 {
   if (s_state.initialized) {
@@ -301,7 +299,6 @@ static void internal_fill_slot(uint8_t idx, const char* name, uint32_t deadline_
   }
 }
 
-/* Implementation of ra_wdt_supervisor_register_thread (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_t* out_handle)
 {
@@ -339,7 +336,6 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
   return result;
 }
 
-/* Implementation of ra_wdt_supervisor_checkin (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_checkin(uint8_t handle)
 {
   if (handle >= (uint8_t)k_ra_wdt_sup_max_threads) {
@@ -364,7 +360,6 @@ ra_err_t ra_wdt_supervisor_checkin(uint8_t handle)
   return result;
 }
 
-/* Implementation of ra_wdt_supervisor_start (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_start(void)
 {
   if (!s_state.initialized) {
@@ -392,7 +387,6 @@ ra_err_t ra_wdt_supervisor_start(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_wdt_supervisor_tick (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_tick(bool* out_did_refresh)
 {
   if (!s_state.initialized) {
@@ -442,21 +436,18 @@ ra_err_t ra_wdt_supervisor_tick(bool* out_did_refresh)
   return k_ra_ok;
 }
 
-/* Implementation of ra_wdt_supervisor_set_now_hook (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_set_now_hook(ra_wdt_sup_now_fn_t now)
 {
   s_state.now = (now != nullptr) ? now : internal_default_now;
   return k_ra_ok;
 }
 
-/* Implementation of ra_wdt_supervisor_set_refresh_hook (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_wdt_supervisor_set_refresh_hook(ra_wdt_sup_refresh_fn_t refresh)
 {
   s_state.refresh = (refresh != nullptr) ? refresh : internal_default_refresh;
   return k_ra_ok;
 }
 
-/* Implementation of ra_wdt_supervisor_thread_count (see header for full contract) -- see header for the documented contract. */
 uint8_t ra_wdt_supervisor_thread_count(void)
 {
   uint8_t count = 0U;

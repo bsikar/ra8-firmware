@@ -83,7 +83,6 @@ static ra_err_t internal_claim(ra_port_pin_t pin, ra_port_t* out_port, ra_pin_t*
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_output_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_output_init(ra_port_pin_t pin, ra_level_t init_level)
 {
   ra_port_t port = k_ra_port_0;
@@ -112,7 +111,6 @@ ra_err_t ra_gpio_output_init(ra_port_pin_t pin, ra_level_t init_level)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_input_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_input_init(ra_port_pin_t pin, ra_pin_pull_t pull)
 {
   ra_port_t port = k_ra_port_0;
@@ -143,7 +141,6 @@ ra_err_t ra_gpio_input_init(ra_port_pin_t pin, ra_pin_pull_t pull)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_write(ra_port_pin_t pin, ra_level_t level)
 {
   const ra_port_t port = RA_PIN_PORT(pin);
@@ -172,7 +169,6 @@ ra_err_t ra_gpio_write(ra_port_pin_t pin, ra_level_t level)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_toggle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_toggle(ra_port_pin_t pin)
 {
   const ra_port_t port = RA_PIN_PORT(pin);
@@ -201,7 +197,6 @@ ra_err_t ra_gpio_toggle(ra_port_pin_t pin)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level)
 {
   RA_CHECK_NULL_PTR(out_level, s_tag, "out_level must not be nullptr");
@@ -225,13 +220,11 @@ ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level)
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_release (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_release(ra_port_pin_t pin)
 {
   return ra_pin_validator_release(pin);
 }
 
-/* Implementation of ra_pfs_route_peripheral (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* owner)
 {
   RA_CHECK_NULL_PTR(owner, s_tag, "owner must not be nullptr");
@@ -281,7 +274,6 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
   return k_ra_ok;
 }
 
-/* Implementation of ra_pfs_set_drive_strength (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pfs_set_drive_strength(ra_port_pin_t pin, ra_pfs_dscr_t dscr)
 {
   const ra_port_t port = RA_PIN_PORT(pin);
@@ -336,7 +328,6 @@ static ra_elc_event_t internal_event_for_irq(uint8_t irq_num)
   return (ra_elc_event_t)((uint16_t)k_ra_gpio_irq_event_base + (uint16_t)irq_num);
 }
 
-/* Implementation of ra_gpio_attach_irq (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
                             uint8_t                  irq_num,
                             const ra_gpio_irq_cfg_t* cfg,
@@ -386,7 +377,6 @@ ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
   return k_ra_ok;
 }
 
-/* Implementation of ra_gpio_detach_irq (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gpio_detach_irq(ra_port_pin_t pin, uint8_t irq_num)
 {
   if (irq_num > k_ra_gpio_irq_num_max) {

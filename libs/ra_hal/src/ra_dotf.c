@@ -938,7 +938,6 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
   return k_ra_ok;
 }
 
-/* Implementation of ra_dotf_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_dotf_dispatch(uint8_t channel)
 {
   if (!internal_channel_in_range(channel)) {

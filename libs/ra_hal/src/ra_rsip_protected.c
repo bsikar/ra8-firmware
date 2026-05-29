@@ -182,7 +182,6 @@ p_aes_install(const uint8_t* raw_key, ra_rsip_aes_key_bits_t key_bits, ra_rsip_k
   }
 }
 
-/* Implementation of ra_rsip_protected_aes_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
                                     ra_rsip_aes_key_bits_t key_bits,
                                     ra_rsip_aes_mode_t     mode,
@@ -227,7 +226,6 @@ ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
   return k_ra_ok;
 }
 
-/* Implementation of ra_rsip_protected_aes_encrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_encrypt(const uint8_t* plaintext, uint8_t* ciphertext, uint32_t len)
 {
   if (!s_p_aes_active) {
@@ -244,7 +242,6 @@ ra_err_t ra_rsip_protected_aes_encrypt(const uint8_t* plaintext, uint8_t* cipher
                             len);
 }
 
-/* Implementation of ra_rsip_protected_aes_decrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_decrypt(const uint8_t* ciphertext, uint8_t* plaintext, uint32_t len)
 {
   if (!s_p_aes_active) {
@@ -261,7 +258,6 @@ ra_err_t ra_rsip_protected_aes_decrypt(const uint8_t* ciphertext, uint8_t* plain
                             len);
 }
 
-/* Implementation of ra_rsip_protected_aes_finish (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_finish(void)
 {
   if (!s_p_aes_active) {
@@ -357,7 +353,6 @@ static ra_rsip_oem_cmd_t internal_rsa_install_cmd(ra_rsip_rsa_size_t size)
   return k_ra_rsip_oem_cmd_invalid;
 }
 
-/* Implementation of ra_rsip_protected_rsa_decrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
                                        ra_rsip_rsa_size_t size,
                                        const uint8_t*     ciphertext,
@@ -419,7 +414,6 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
   return ra_rsip_rsa_sign(&handle, size, ciphertext, ciphertext_len, plaintext_out);
 }
 
-/* Implementation of ra_rsip_protected_ecdsa_sign (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
                                       ra_rsip_curve_t curve,
                                       const uint8_t*  hash,

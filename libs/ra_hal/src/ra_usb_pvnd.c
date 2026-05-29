@@ -160,7 +160,6 @@ static bool internal_is_vendor_envelope(uint8_t bm)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pvnd_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -183,7 +182,6 @@ ra_err_t ra_usb_pvnd_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_pvnd_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_close(void)
 {
   if (!s_state.initialized) {
@@ -203,7 +201,6 @@ ra_err_t ra_usb_pvnd_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pvnd_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_set_descriptors(const uint8_t* desc, uint16_t desc_len)
 {
   if (!s_state.initialized) {
@@ -223,7 +220,6 @@ ra_err_t ra_usb_pvnd_set_descriptors(const uint8_t* desc, uint16_t desc_len)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pvnd_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_send(const uint8_t* data, uint16_t len)
 {
   if (!s_state.initialized) {
@@ -238,7 +234,6 @@ ra_err_t ra_usb_pvnd_send(const uint8_t* data, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_pvnd_pipe_bulk_in, data, len);
 }
 
-/* Implementation of ra_usb_pvnd_recv (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_recv(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv: buf");
@@ -265,7 +260,6 @@ ra_err_t ra_usb_pvnd_recv(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pvnd_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_attach_setup_handler(ra_usb_pvnd_setup_fn_t setup_fn, void* ctx)
 {
   if (!s_state.initialized) {
@@ -281,7 +275,6 @@ ra_err_t ra_usb_pvnd_attach_setup_handler(ra_usb_pvnd_setup_fn_t setup_fn, void*
  * =============================================================================
  */
 
-/* Implementation of ra_usb_pvnd_handle_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pvnd_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");

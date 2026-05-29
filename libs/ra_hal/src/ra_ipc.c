@@ -866,7 +866,6 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   return k_ra_ok;
 }
 
-/* Implementation of ra_ipc_dispatch_nmi (see header for full contract) -- see header for the documented contract. */
 void ra_ipc_dispatch_nmi(uint8_t unit)
 {
   volatile r_ipc_nmi_regs_t* nmi = internal_ra_ipc_get_nmi(unit);
@@ -918,7 +917,6 @@ void ra_ipc_dispatch_nmi(uint8_t unit)
   return k_ra_ok;
 }
 
-/* Implementation of ra_ipc_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_ipc_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {

@@ -74,7 +74,7 @@
 #include "ra8d2_wdt_regs.h"
 
 /* Serial. */
-#include "ra8d2_iic_b_regs.h"
+#include "ra8d2_i3c_i2c_regs.h"
 #include "ra8d2_sci_regs.h"
 #include "ra8d2_spi_regs.h"
 

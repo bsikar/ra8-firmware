@@ -240,7 +240,6 @@ static bool internal_is_class_envelope(uint8_t bm)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_paud_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -263,7 +262,6 @@ ra_err_t ra_usb_paud_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_paud_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_close(void)
 {
   if (!s_state.initialized) {
@@ -283,7 +281,6 @@ ra_err_t ra_usb_paud_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_paud_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_descriptors(const uint8_t* desc, uint16_t desc_len)
 {
   if (!s_state.initialized) {
@@ -303,7 +300,6 @@ ra_err_t ra_usb_paud_set_descriptors(const uint8_t* desc, uint16_t desc_len)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_paud_send_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_send_frame(const uint8_t* frame, uint16_t len)
 {
   if (!s_state.initialized) {
@@ -318,7 +314,6 @@ ra_err_t ra_usb_paud_send_frame(const uint8_t* frame, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_paud_pipe_iso_in, frame, len);
 }
 
-/* Implementation of ra_usb_paud_recv_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv_frame: buf");
@@ -345,7 +340,6 @@ ra_err_t ra_usb_paud_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_le
  * =============================================================================
  */
 
-/* Implementation of ra_usb_paud_set_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_format(ra_usb_paud_format_t format)
 {
   if (!s_state.initialized) {
@@ -366,7 +360,6 @@ ra_err_t ra_usb_paud_set_format(ra_usb_paud_format_t format)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_paud_get_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_get_format(ra_usb_paud_format_t* out_format)
 {
   RA_CHECK_NULL_PTR(out_format, s_tag, "get_format: out_format");
@@ -377,7 +370,6 @@ ra_err_t ra_usb_paud_get_format(ra_usb_paud_format_t* out_format)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_paud_set_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_volume(int16_t volume_q8_8)
 {
   if (!s_state.initialized) {
@@ -387,7 +379,6 @@ ra_err_t ra_usb_paud_set_volume(int16_t volume_q8_8)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_paud_get_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_get_volume(int16_t* out_volume)
 {
   RA_CHECK_NULL_PTR(out_volume, s_tag, "get_volume: out_volume");
@@ -403,7 +394,6 @@ ra_err_t ra_usb_paud_get_volume(int16_t* out_volume)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_paud_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_attach_setup_handler(ra_usb_paud_setup_fn_t setup_fn, void* ctx)
 {
   if (!s_state.initialized) {
@@ -419,7 +409,6 @@ ra_err_t ra_usb_paud_attach_setup_handler(ra_usb_paud_setup_fn_t setup_fn, void*
  * =============================================================================
  */
 
-/* Implementation of ra_usb_paud_handle_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");

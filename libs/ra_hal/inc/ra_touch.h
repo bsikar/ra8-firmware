@@ -139,7 +139,7 @@ typedef void (*ra_touch_event_fn_t)(void* ctx);
  *   1. Validate ``cfg`` and clamp ``max_points`` to
  *      ::k_ra_touch_max_points.
  *   2. Bring up IIC_B channel ``cfg->i2c_channel`` at fast-mode speed
- *      via ``ra_iic_b_init``.
+ *      via ``ra_i3c_i2c_init``.
  *   3. Read the GT911 PRODUCT_ID register (4 ASCII bytes) to confirm
  *      the IC is alive. If the read fails or the id does not start
  *      with ``'9'``, return ``k_ra_err_hw_init_failed``.
@@ -208,7 +208,7 @@ typedef void (*ra_touch_event_fn_t)(void* ctx);
  * @brief Test-callable IRQ dispatch shim.
  *
  * @details
- * Mirrors the ERI dispatch helper from ``ra_iic_b``: this is the
+ * Mirrors the ERI dispatch helper from ``ra_i3c_i2c``: this is the
  * function the application's IRQ vector should call when the GT911
  * INT pin fires. The shim simply forwards to the registered handler.
  *
@@ -232,7 +232,7 @@ void ra_touch_dispatch_irq(void);
  *
  * @details
  * Sequence:
- *   1. ``ra_iic_b_transfer`` with the 16-bit register pointer to
+ *   1. ``ra_i3c_i2c_transfer`` with the 16-bit register pointer to
  *      ::k_ra_touch_gt911_reg_status, reads 1 status byte.
  *   2. If bit7 is clear (no frame ready), set ``*got_count = 0`` and
  *      return ``k_ra_ok``.

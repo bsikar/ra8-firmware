@@ -10,7 +10,7 @@
  * (channels IIC0/IIC1/IIC2 at ``0x4025_E000 + 0x0100 * n``). This is
  * the classic Renesas RIIC block described in HUM Ch 39 "I2C Bus
  * Interface (IIC)" p 2367-2470, distinct from the I3C unified IP that
- * ``ra_i3c`` / ``ra_iic_b`` drive. The board's Grove / Pmod /
+ * ``ra_i3c`` / ``ra_i3c_i2c`` drive. The board's Grove / Pmod /
  * mikroBUS / Arduino I2C bus and the U15 configuration-switch port
  * expander live on IIC1 (P511/P512).
  *

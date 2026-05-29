@@ -647,7 +647,6 @@ static bool internal_format_ok(uint8_t channel_count, uint8_t bits_per_sample, u
  * =============================================================================
  */
 
-/* Implementation of ra_usb_haud_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -671,7 +670,6 @@ ra_err_t ra_usb_haud_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/* Implementation of ra_usb_haud_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_close(void)
 {
   if (!s_state.initialized) {
@@ -693,7 +691,6 @@ ra_err_t ra_usb_haud_close(void)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_haud_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_attach_callback(ra_usb_haud_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialized) {
@@ -717,7 +714,6 @@ ra_err_t ra_usb_haud_attach_callback(ra_usb_haud_attach_fn_t on_attach, void* ct
  *   wIndex        = endpoint address
  *   wLength       = 3 (24-bit LE sample rate)
  */
-/* Implementation of ra_usb_haud_set_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t sample_rate_hz)
 {
@@ -756,7 +752,6 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  *   wIndex.low    = bInterfaceNumber (AC interface)
  *   wLength       = 2 (signed 16-bit dB in 1/256 step)
  */
-/* Implementation of ra_usb_haud_set_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_set_volume(uint8_t channel, int16_t volume)
 {
   const ra_err_t pre = internal_class_preflight();
@@ -792,7 +787,6 @@ ra_err_t ra_usb_haud_set_volume(uint8_t channel, int16_t volume)
  *   wIndex.low    = bInterfaceNumber (AC interface)
  *   wLength       = 1 (boolean)
  */
-/* Implementation of ra_usb_haud_set_mute (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_set_mute(uint8_t channel, bool mute)
 {
   const ra_err_t pre = internal_class_preflight();
@@ -820,7 +814,6 @@ ra_err_t ra_usb_haud_set_mute(uint8_t channel, bool mute)
  * =============================================================================
  */
 
-/* Implementation of ra_usb_haud_send_samples (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_send_samples(const uint8_t* buf, uint16_t len_bytes)
 {
   if ((buf == nullptr) && (len_bytes != 0U)) {
@@ -842,7 +835,6 @@ ra_err_t ra_usb_haud_send_samples(const uint8_t* buf, uint16_t len_bytes)
   return ra_usb_queue_in(s_state.speed, k_ra_haud_pipe_iso_out, buf, len_bytes);
 }
 
-/* Implementation of ra_usb_haud_recv_samples (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_recv_samples(uint8_t* buf, uint16_t max_len_bytes, uint16_t* got_len_bytes)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv_samples: buf");
@@ -873,7 +865,6 @@ ra_err_t ra_usb_haud_recv_samples(uint8_t* buf, uint16_t max_len_bytes, uint16_t
  * =============================================================================
  */
 
-/* Implementation of ra_usb_haud_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_step(void)
 {
   if (!s_state.initialized) {

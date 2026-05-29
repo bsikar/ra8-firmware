@@ -14,10 +14,10 @@
 
 #include <stdint.h>
 
-#include "ra8d2_iic_b_regs.h"
+#include "ra8d2_i3c_i2c_regs.h"
 #include "ra8d2_touch_gt911_regs.h"
 #include "ra_err.h"
-#include "ra_iic_b.h"
+#include "ra_i3c_i2c.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "ra_touch.h"
@@ -60,16 +60,16 @@ typedef enum : uint8_t {
  * @brief Pre-arm IIC_B status registers so polling helpers fall through.
  *
  * @details
- * Mirrors the prime_ntst() helper in ``test_ra_iic_b.c``: NTST gets the
+ * Mirrors the prime_ntst() helper in ``test_ra_i3c_i2c.c``: NTST gets the
  * "TX buffer empty" + "RX buffer full" bits set so the wait loops exit
  * immediately, and BCST gets the "bus free" bit set so the busy gate
  * does not reject the transaction.
  */
 static void prime_iic_b(void)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(0U);
-  reg->NTST = (uint32_t)k_ra_iic_b_msk_ntst_tdbef0 | (uint32_t)k_ra_iic_b_msk_ntst_rdbff0;
-  reg->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
+  reg->NTST = (uint32_t)k_ra_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra_i3c_i2c_msk_ntst_rdbff0;
+  reg->BCST = (uint32_t)k_ra_i3c_i2c_msk_bcst_bfref;
 }
 
 /**

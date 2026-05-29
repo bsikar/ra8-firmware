@@ -254,6 +254,17 @@ def audit_file(path: Path):
         offset_in_raw = sum(len(l) for l in raw_lines[: line_no - 1])
         block, has_block = find_preceding_doxy(raw, offset_in_raw)
 
+        # Definition-site policy (CLAUDE.md "Definition-site comments"): the
+        # authoritative Doxygen block lives on the function's *declaration* in
+        # the header, which this tool audits when it scans that .h. A
+        # non-static definition in a .c therefore needs no block of its own --
+        # the default is no comment, and a restating block only rots. A
+        # static (TU-local) function has no header to carry the contract, so
+        # it still requires a full definition-site block.
+        if str(path).endswith(".c") and not re.search(r"\bstatic\b", ret):
+            rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, [], "ok"))
+            continue
+
         missing = []
 
         if not has_block:

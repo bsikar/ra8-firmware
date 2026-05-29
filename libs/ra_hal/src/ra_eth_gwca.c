@@ -46,7 +46,6 @@ typedef enum : uint32_t {
   k_ra_mfwd_fwpc_dde   = 0x1UL,   /**< DDE bit position 0.   */
 } ra_eth_gwca_init_layout_t;
 
-/* Implementation of ra_eth_gwca_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -78,7 +77,6 @@ ra_err_t ra_eth_gwca_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gwca_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_deinit(void)
 {
   volatile r_gwca_regs_t* reg = ra_gwca();
@@ -90,7 +88,6 @@ ra_err_t ra_eth_gwca_deinit(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_gwca_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -99,7 +96,6 @@ ra_err_t ra_eth_gwca_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gwca_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_clear_status(uint32_t mask)
 {
   volatile r_gwca_regs_t* reg = ra_gwca();
@@ -109,7 +105,6 @@ ra_err_t ra_eth_gwca_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gwca_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_attach_handler(ra_eth_gwca_event_fn_t fn, void* ctx)
 {
   s_gwca_fn  = fn;
@@ -117,7 +112,6 @@ ra_err_t ra_eth_gwca_attach_handler(ra_eth_gwca_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_eth_gwca_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_eth_gwca_dispatch(void)
 {
   volatile r_gwca_regs_t* reg = ra_gwca();
@@ -132,7 +126,6 @@ void ra_eth_gwca_dispatch(void)
   }
 }
 
-/* Implementation of ra_eth_gwca_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_enter_stop(void)
 {
   /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
@@ -140,7 +133,6 @@ ra_err_t ra_eth_gwca_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/* Implementation of ra_eth_gwca_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_gwca_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);

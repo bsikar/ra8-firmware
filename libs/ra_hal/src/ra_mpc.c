@@ -118,7 +118,6 @@ static void internal_reset_pfs(ra_port_t port, ra_pin_t pin, uint32_t set_mask)
   ra_pfs_pwpr_lock();
 }
 
-/* Implementation of ra_mpc_route_peripheral (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t psel)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -153,7 +152,6 @@ ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t pse
   return k_ra_ok;
 }
 
-/* Implementation of ra_mpc_set_gpio (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_gpio(ra_port_t port, ra_pin_t pin, ra_mpc_dir_t dir)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -165,7 +163,6 @@ ra_err_t ra_mpc_set_gpio(ra_port_t port, ra_pin_t pin, ra_mpc_dir_t dir)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mpc_set_analog (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_analog(ra_port_t port, ra_pin_t pin)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -176,7 +173,6 @@ ra_err_t ra_mpc_set_analog(ra_port_t port, ra_pin_t pin)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mpc_set_irq (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_irq(ra_port_t port, ra_pin_t pin)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -187,7 +183,6 @@ ra_err_t ra_mpc_set_irq(ra_port_t port, ra_pin_t pin)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mpc_set_pull (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_pull(ra_port_t port, ra_pin_t pin, ra_mpc_pull_t pull)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -199,7 +194,6 @@ ra_err_t ra_mpc_set_pull(ra_port_t port, ra_pin_t pin, ra_mpc_pull_t pull)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mpc_set_open_drain (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_open_drain(ra_port_t port, ra_pin_t pin, bool enable)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -214,7 +208,6 @@ ra_err_t ra_mpc_set_open_drain(ra_port_t port, ra_pin_t pin, bool enable)
   return k_ra_ok;
 }
 
-/* Implementation of ra_mpc_read_pfs (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_read_pfs(ra_port_t port, ra_pin_t pin, uint32_t* out_val)
 {
   RA_CHECK_NULL_PTR(out_val, s_tag, "out_val must not be NULL");

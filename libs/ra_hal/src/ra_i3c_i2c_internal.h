@@ -1,6 +1,6 @@
 /**
- * @file ra_iic_b_internal.h
- * @brief Test-access surface for ra_iic_b internal helpers (MC/DC).
+ * @file ra_i3c_i2c_internal.h
+ * @brief Test-access surface for ra_i3c_i2c internal helpers (MC/DC).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,8 +19,8 @@ extern "C" {
  *
  * @details
  * Reusable for both the @c (tx_len != 0 && tx == NULL) and
- * @c (rx_len != 0 && rx == NULL) checks at libs/ra_hal/src/ra_iic_b.c
- * lines 973 and 976 inside @c ra_iic_b_read.
+ * @c (rx_len != 0 && rx == NULL) checks at libs/ra_hal/src/ra_i3c_i2c.c
+ * lines 973 and 976 inside @c internal_i3c_i2c_read.
  *
  * @param[in] len Length in bytes (zero means "not used").
  * @param[in] buf Buffer pointer (NULL means "not provided").
@@ -44,14 +44,14 @@ extern "C" {
  *
  * @since 0.1.0
  */
-bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf);
+bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf);
 
 /**
  * @brief Pure predicate: non-zero error mask AND a non-NULL callback.
  *
  * @details
- * Promoted from the inline AND at libs/ra_hal/src/ra_iic_b.c
- * inside @c ra_iic_b_dispatch_eri.
+ * Promoted from the inline AND at libs/ra_hal/src/ra_i3c_i2c.c
+ * inside @c internal_i3c_i2c_dispatch_eri.
  *
  * @param[in] mask Bitmask of pending error sources.
  * @param[in] cb   Callback pointer (NULL when none registered).
@@ -79,7 +79,7 @@ bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf);
  *
  * @since 0.1.0
  */
-bool ra_iic_b_internal_should_dispatch(uint8_t mask, const void* cb);
+bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb);
 
 #ifdef __cplusplus
 }

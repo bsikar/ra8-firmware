@@ -810,7 +810,6 @@ static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_modem_at_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
 {
   const ra_err_t verr = internal_validate_init_cfg(cfg);
@@ -826,7 +825,6 @@ ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Implementation of ra_modem_at_send_cmd (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, uint16_t timeout_ms)
 {
   if (s_mod.initialized == 0U) {
@@ -846,7 +844,6 @@ ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, ui
                                 0U);
 }
 
-/* Implementation of ra_modem_at_send_cmd_capture (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uint16_t timeout_ms)
 {
@@ -941,7 +938,6 @@ internal_urc_insert(const char* prefix, uint16_t plen, ra_modem_at_urc_fn_t fn, 
   return 0U;
 }
 
-/* Implementation of ra_modem_at_register_unsolicited_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
 {
@@ -965,7 +961,6 @@ ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_
   return k_ra_err_no_mem;
 }
 
-/* Implementation of ra_modem_at_poll (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_poll(void)
 {
   if (s_mod.initialized == 0U) {

@@ -34,7 +34,6 @@ static const char* s_tag = "PDM";
 static ra_pdm_event_fn_t s_pdm_fn;
 static void*             s_pdm_ctx;
 
-/* Implementation of ra_pdm_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -51,7 +50,6 @@ ra_err_t ra_pdm_init(void)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pdm_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_deinit(void)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
@@ -63,7 +61,6 @@ ra_err_t ra_pdm_deinit(void)
   return ra_mstp_disable(k_ra_mstp_pdmif);
 }
 
-/* Implementation of ra_pdm_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -72,7 +69,6 @@ ra_err_t ra_pdm_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pdm_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_clear_status(uint32_t mask)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
@@ -81,7 +77,6 @@ ra_err_t ra_pdm_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pdm_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_attach_handler(ra_pdm_event_fn_t fn, void* ctx)
 {
   s_pdm_fn  = fn;
@@ -89,7 +84,6 @@ ra_err_t ra_pdm_attach_handler(ra_pdm_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Implementation of ra_pdm_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_pdm_dispatch(void)
 {
   volatile r_pdm_regs_t*  reg  = ra_pdm();
@@ -102,14 +96,12 @@ void ra_pdm_dispatch(void)
   }
 }
 
-/* Implementation of ra_pdm_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_enter_stop(void)
 {
   ra_pdm()->PDM_CTRL = 0U;
   return ra_mstp_disable(k_ra_mstp_pdmif);
 }
 
-/* Implementation of ra_pdm_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdm_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_pdmif);

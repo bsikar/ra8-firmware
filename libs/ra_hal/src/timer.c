@@ -16,13 +16,11 @@
 
 #include "ra_time.h"
 
-/* Implementation of ra_now_ms (see header for full contract) -- see header for the documented contract. */
 uint32_t ra_now_ms(void)
 {
   return ra_time_ms();
 }
 
-/* Implementation of ra_sleep_ms (see header for full contract) -- see header for the documented contract. */
 void ra_sleep_ms(uint32_t ms)
 {
   ra_delay_ms(ms);
