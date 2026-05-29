@@ -1,14 +1,14 @@
 #
-# Per-app CMake for the `iic_b_peripheral_demo` firmware.
+# Per-app CMake for the `i3c_i2c_peripheral_demo` firmware.
 #
 # Usable two ways:
-#   1. Standalone, from inside `iic_b_peripheral_demo/`:
+#   1. Standalone, from inside `i3c_i2c_peripheral_demo/`:
 #        cmake -S . -B build \
 #              -DCMAKE_TOOLCHAIN_FILE=../../../../cmake/toolchain-ra8d2.cmake
 #        cmake --build build
-#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/iic_b_peripheral_demo).
+#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/i3c_i2c_peripheral_demo).
 #
-# Either path produces iic_b_peripheral_demo.elf / iic_b_peripheral_demo.hex / iic_b_peripheral_demo.bin in the
+# Either path produces i3c_i2c_peripheral_demo.elf / i3c_i2c_peripheral_demo.hex / i3c_i2c_peripheral_demo.bin in the
 # build dir.
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -32,7 +32,7 @@ if(RA_APP_STANDALONE)
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-    project(iic_b_peripheral_demo
+    project(i3c_i2c_peripheral_demo
         LANGUAGES C ASM
         VERSION ${RA_PROJECT_VERSION}
         DESCRIPTION "HAL-based blink firmware for RA8D2"
@@ -65,7 +65,7 @@ include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 # Sources
 #############################################################################
 
-set(RA_APP_NAME iic_b_peripheral_demo)
+set(RA_APP_NAME i3c_i2c_peripheral_demo)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c

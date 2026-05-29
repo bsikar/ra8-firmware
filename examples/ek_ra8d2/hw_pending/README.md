@@ -22,7 +22,7 @@ hardware HIL probe AND the gap below is resolved.
 | gpio_input_demo | SW1 user button drives the only observable signal; no Pi GPIO is wired to P009 on the HIL bench. |
 | gpt_capture_input | Needs external pulse train on the capture pin; no Pi-side stim wiring. |
 | icu_extint_demo | Same as gpio_input_demo -- needs Pi GPIO wired to SW1 (P009). |
-| iic_b_peripheral_demo | I2C peripheral mode needs an external controller to talk to; bench has no controller wired up. |
+| i3c_i2c_peripheral_demo | I2C peripheral mode needs an external controller to talk to; bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs LSM6DSO IMU on the I2C bus; out-of-scope for this user. |
 | i2c_loopback | U15 expander chip on the bench is unresponsive under all tested SW4-5 configs. |
 | kint_demo | Same as gpio_input_demo / icu_extint_demo -- SW1 stim needed. |
