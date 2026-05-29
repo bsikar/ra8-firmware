@@ -156,7 +156,6 @@ typedef enum : uint8_t {
 static ra_acmphs_event_fn_t s_acmphs_fn;
 static void*                s_acmphs_ctx;
 
-/* ra_acmphs_channel_init -- see header for full description. */
 ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -189,7 +188,6 @@ ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_acmphs_channel_deinit -- see header for full description. */
 ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -207,7 +205,6 @@ ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_acmphs_set_inputs -- see header for full description. */
 ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -221,7 +218,6 @@ ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel)
   return k_ra_ok;
 }
 
-/* ra_acmphs_get_status -- see header for full description. */
 ra_err_t ra_acmphs_get_status(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -235,7 +231,6 @@ ra_err_t ra_acmphs_get_status(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra_acmphs_clear_status -- see header for full description. */
 ra_err_t ra_acmphs_clear_status(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -248,7 +243,6 @@ ra_err_t ra_acmphs_clear_status(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_acmphs_attach_handler -- see header for full description. */
 ra_err_t ra_acmphs_attach_handler(ra_acmphs_event_fn_t fn, void* ctx)
 {
   s_acmphs_fn  = fn;
@@ -256,7 +250,6 @@ ra_err_t ra_acmphs_attach_handler(ra_acmphs_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra_acmphs_enter_stop -- see header for full description. */
 ra_err_t ra_acmphs_enter_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -268,7 +261,6 @@ ra_err_t ra_acmphs_enter_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_acmphs_exit_stop -- see header for full description. */
 ra_err_t ra_acmphs_exit_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -280,7 +272,6 @@ ra_err_t ra_acmphs_exit_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_acmphs_dispatch -- see header for full description. */
 void ra_acmphs_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {

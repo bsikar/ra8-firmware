@@ -840,7 +840,6 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   return k_ra_ok;
 }
 
-/* Ra vin dispatch -- see implementation for details. */
 void ra_vin_dispatch(void)
 {
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989 */

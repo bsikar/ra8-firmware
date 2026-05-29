@@ -112,7 +112,6 @@ static uint8_t pec_update(uint8_t crc, uint8_t b)
   return c;
 }
 
-/* Ra smbus pec -- see implementation for details. */
 uint8_t ra_smbus_pec(const uint8_t* data, uint32_t len)
 {
   if ((data == nullptr) || (len == 0U)) {
@@ -142,7 +141,6 @@ static uint8_t make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
  * =============================================================================
  */
 
-/* Ra smbus init -- see implementation for details. */
 ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "smbus_init: cfg");
@@ -166,7 +164,6 @@ ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* Ra smbus deinit -- see implementation for details. */
 ra_err_t ra_smbus_deinit(void)
 {
   if (!s_state.initialized) {
@@ -184,7 +181,6 @@ ra_err_t ra_smbus_deinit(void)
  * =============================================================================
  */
 
-/* Ra smbus send byte -- see implementation for details. */
 ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
 {
   if (!s_state.initialized) {
@@ -204,7 +200,6 @@ ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
   return ra_i3c_write(s_state.channel, target_7b, buf, len, false);
 }
 
-/* Ra smbus receive byte -- see implementation for details. */
 ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "receive_byte: out_data");
@@ -235,7 +230,6 @@ ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
  * =============================================================================
  */
 
-/* Ra smbus write byte data -- see implementation for details. */
 ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
 {
   if (!s_state.initialized) {
@@ -255,7 +249,6 @@ ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
   return ra_i3c_write(s_state.channel, target_7b, buf, len, false);
 }
 
-/* Ra smbus read byte data -- see implementation for details. */
 ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "read_byte_data: out_data");
@@ -291,7 +284,6 @@ ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_da
  * =============================================================================
  */
 
-/* Ra smbus block write -- see implementation for details. */
 ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* data, uint8_t len)
 {
   if (!s_state.initialized) {
@@ -323,7 +315,6 @@ ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* dat
   return ra_i3c_write(s_state.channel, target_7b, frame, fi, false);
 }
 
-/* Ra smbus block read -- see implementation for details. */
 ra_err_t
 ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, uint8_t* out_len)
 {
@@ -377,7 +368,6 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
  * =============================================================================
  */
 
-/* Ra smbus alert register callback -- see implementation for details. */
 ra_err_t ra_smbus_alert_register_callback(ra_smbus_alert_fn_t fn, void* ctx)
 {
   if (!s_state.initialized) {
@@ -388,7 +378,6 @@ ra_err_t ra_smbus_alert_register_callback(ra_smbus_alert_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* Ra smbus alert dispatch -- see implementation for details. */
 ra_err_t ra_smbus_alert_dispatch(void)
 {
   if (!s_state.initialized) {

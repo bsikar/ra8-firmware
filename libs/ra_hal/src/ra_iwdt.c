@@ -95,7 +95,6 @@ void ra_iwdt_refresh_deferred(void)
   ra_iwdt_refresh();
 }
 
-/* ra_iwdt_get_status -- see header for full description. */
 ra_err_t ra_iwdt_get_status(uint16_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -106,7 +105,6 @@ ra_err_t ra_iwdt_get_status(uint16_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra_iwdt_clear_status -- see header for full description. */
 ra_err_t ra_iwdt_clear_status(void)
 {
   volatile r_iwdt_regs_t* reg = ra_iwdt();
@@ -121,7 +119,6 @@ ra_err_t ra_iwdt_clear_status(void)
   return k_ra_ok;
 }
 
-/* ra_iwdt_get_counter -- see header for full description. */
 ra_err_t ra_iwdt_get_counter(uint16_t* out_counter)
 {
   RA_CHECK_NULL_PTR(out_counter, s_tag, "out_counter must not be nullptr");
@@ -131,7 +128,6 @@ ra_err_t ra_iwdt_get_counter(uint16_t* out_counter)
   return k_ra_ok;
 }
 
-/* ra_iwdt_attach_handler -- see header for full description. */
 ra_err_t ra_iwdt_attach_handler(ra_iwdt_event_fn_t fn, void* ctx)
 {
   s_iwdt_state.fn  = fn;
@@ -139,7 +135,6 @@ ra_err_t ra_iwdt_attach_handler(ra_iwdt_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra_iwdt_dispatch -- see header for full description. */
 void ra_iwdt_dispatch(void)
 {
   volatile r_iwdt_regs_t* reg = ra_iwdt();

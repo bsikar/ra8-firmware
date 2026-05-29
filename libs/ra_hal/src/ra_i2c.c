@@ -753,7 +753,6 @@ internal_i2c_finish_tx(volatile r_i2c_regs_t* reg, uint8_t channel, ra_err_t err
   return err;
 }
 
-/* ra_i2c_write -- see header for full description. */
 ra_err_t ra_i2c_write(uint8_t        channel,
                       uint8_t        peripheral_7b,
                       const uint8_t* data,
@@ -862,7 +861,6 @@ static ra_err_t internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, 
   return err;
 }
 
-/* ra_i2c_read -- see header for full description. */
 ra_err_t ra_i2c_read(uint8_t channel, uint8_t peripheral_7b, uint8_t* data, uint32_t len)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
@@ -901,7 +899,6 @@ ra_err_t ra_i2c_read(uint8_t channel, uint8_t peripheral_7b, uint8_t* data, uint
   return err;
 }
 
-/* ra_i2c_transfer -- see header for full description. */
 ra_err_t ra_i2c_transfer(uint8_t        channel,
                          uint8_t        peripheral_7b,
                          const uint8_t* wr,
@@ -938,7 +935,6 @@ ra_err_t ra_i2c_transfer(uint8_t        channel,
   return k_ra_ok;
 }
 
-/* ra_i2c_scan -- see header for full description. */
 ra_err_t ra_i2c_scan(uint8_t channel, uint8_t peripheral_7b, bool* out_acked)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
@@ -1045,7 +1041,6 @@ static void internal_i2c_apply_init_regs(volatile r_i2c_regs_t* reg,
   reg->ICCR1 = (uint8_t)k_ra_i2c_msk_iccr1_ice;
 }
 
-/* ra_i2c_init -- see header for full description. */
 ra_err_t ra_i2c_init(uint8_t channel, const ra_i2c_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "i2c_init: cfg");
@@ -1079,7 +1074,6 @@ ra_err_t ra_i2c_init(uint8_t channel, const ra_i2c_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/* ra_i2c_deinit -- see header for full description. */
 ra_err_t ra_i2c_deinit(uint8_t channel)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
@@ -1094,7 +1088,6 @@ ra_err_t ra_i2c_deinit(uint8_t channel)
   return ra_mstp_disable(internal_i2c_mstp_id(channel));
 }
 
-/* ra_i2c_set_clock -- see header for full description. */
 ra_err_t ra_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
@@ -1124,7 +1117,6 @@ ra_err_t ra_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz)
  * =============================================================================
  */
 
-/* ra_i2c_get_errors -- see header for full description. */
 ra_err_t ra_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "i2c_get_errors: out_mask");
@@ -1137,7 +1129,6 @@ ra_err_t ra_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra_i2c_clear_errors -- see header for full description. */
 ra_err_t ra_i2c_clear_errors(uint8_t channel)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);

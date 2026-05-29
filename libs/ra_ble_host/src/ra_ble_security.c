@@ -52,14 +52,12 @@
  */
 __attribute__((weak)) struct ble_hs_cfg ble_hs_cfg;
 
-/* Ble gap security initiate -- see implementation for details. */
 __attribute__((weak)) int ble_gap_security_initiate(uint16_t conn_handle)
 {
   (void)conn_handle;
   return 0;
 }
 
-/* Ble sm inject io -- see implementation for details. */
 __attribute__((weak)) int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_io* pkey)
 {
   (void)conn_handle;
@@ -67,7 +65,6 @@ __attribute__((weak)) int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_i
   return 0;
 }
 
-/* Ble store clear -- see implementation for details. */
 __attribute__((weak)) int ble_store_clear(void)
 {
   return 0;
@@ -463,9 +460,7 @@ ra_err_t ra_ble_security_attach_event_handler(ra_ble_security_event_fn_t fn, voi
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-/* Ra ble security test emit event -- see implementation for details. */
 void ra_ble_security_test_emit_event(const ra_ble_security_event_t* evt);
-/* Ra ble security test set bond count -- see implementation for details. */
 void ra_ble_security_test_set_bond_count(uint8_t count);
 
 /**

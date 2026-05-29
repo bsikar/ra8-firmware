@@ -308,11 +308,9 @@ extern volatile uint32_t g_ra_threadx_systick_ready __attribute__((weak));
  * this stronger weak symbol; an even stronger non-weak one in the
  * application file wins above both.
  */
-/* Systick handler -- see implementation for details. */
 void SysTick_Handler(void);
 
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
-/* Systick handler -- see implementation for details. */
 __attribute__((weak)) void SysTick_Handler(void)
 {
   ra_time_on_tick();

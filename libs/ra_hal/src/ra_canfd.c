@@ -518,7 +518,6 @@ static ra_err_t internal_canfd_clock_block_init(void)
   return err;
 }
 
-/* ra_canfd_init -- see header for full description. */
 /**
  * @brief Push the CANFD global+channel state machines into OPERATION.
  *
@@ -559,7 +558,6 @@ static ra_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
   return internal_set_channel_mode(reg, k_ra_chmdc_operation);
 }
 
-/* ra_canfd_init -- see header for full description. */
 ra_err_t ra_canfd_init(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -594,7 +592,6 @@ ra_err_t ra_canfd_init(uint8_t channel)
   return k_ra_ok;
 }
 
-/* ra_canfd_deinit -- see header for full description. */
 ra_err_t ra_canfd_deinit(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -735,7 +732,6 @@ static uint32_t internal_pack_dcfg(const ra_canfd_timing_t* t)
   return brp_field | tseg1_field | tseg2_field | sjw_field;
 }
 
-/* ra_canfd_set_bitrate -- see header for full description. */
 ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t data_bitrate_bps)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -907,7 +903,6 @@ static uint32_t internal_tx_fdctr(const ra_canfd_frame_t* frame)
   return w;
 }
 
-/* ra_canfd_transmit -- see header for full description. */
 ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1015,7 +1010,6 @@ static void internal_decode_rx_header(uint32_t          id_word,
   out->is_brs = ((fdsts_word & k_ra_canfd_fd_brs) != 0U) ? 1U : 0U;
 }
 
-/* ra_canfd_receive -- see header for full description. */
 ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1040,7 +1034,6 @@ ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
   return k_ra_ok;
 }
 
-/* ra_canfd_get_error_state -- see header for full description. */
 ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_err)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1064,7 +1057,6 @@ ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_
 static ra_canfd_event_fn_t s_canfd_fn;
 static void*               s_canfd_ctx;
 
-/* ra_canfd_get_status -- see header for full description. */
 ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -1075,7 +1067,6 @@ ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra_canfd_clear_status -- see header for full description. */
 ra_err_t ra_canfd_clear_status(uint8_t channel, uint32_t mask)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1087,7 +1078,6 @@ ra_err_t ra_canfd_clear_status(uint8_t channel, uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra_canfd_attach_handler -- see header for full description. */
 ra_err_t ra_canfd_attach_handler(ra_canfd_event_fn_t fn, void* ctx)
 {
   s_canfd_fn  = fn;
@@ -1095,7 +1085,6 @@ ra_err_t ra_canfd_attach_handler(ra_canfd_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra_canfd_dispatch -- see header for full description. */
 void ra_canfd_dispatch(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1271,7 +1260,6 @@ ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t ma
   return k_ra_ok;
 }
 
-/* ra_canfd_set_test_mode -- see header for full description. */
 ra_err_t ra_canfd_set_test_mode(uint8_t channel, ra_ctms_mode_t mode)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1302,7 +1290,6 @@ ra_err_t ra_canfd_set_test_mode(uint8_t channel, ra_ctms_mode_t mode)
   return internal_set_channel_mode(reg, k_ra_chmdc_operation);
 }
 
-/* ra_canfd_set_brs -- see header for full description. */
 ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -1310,7 +1297,6 @@ ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate)
   return internal_program_data_phase(reg, fast_bitrate);
 }
 
-/* ra_canfd_set_iso_mode -- see header for full description. */
 ra_err_t ra_canfd_set_iso_mode(bool enable)
 {
   volatile r_canfd_t* reg = ra_canfd(0U);
@@ -1327,7 +1313,6 @@ ra_err_t ra_canfd_set_iso_mode(bool enable)
   return k_ra_ok;
 }
 
-/* ra_canfd_enter_stop -- see header for full description. */
 ra_err_t ra_canfd_enter_stop(uint8_t channel)
 {
   if (channel >= k_ra_canfd_instance_count) {
@@ -1337,7 +1322,6 @@ ra_err_t ra_canfd_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_canfd_mstp_table[channel]);
 }
 
-/* ra_canfd_exit_stop -- see header for full description. */
 ra_err_t ra_canfd_exit_stop(uint8_t channel)
 {
   if (channel >= k_ra_canfd_instance_count) {
@@ -1348,7 +1332,6 @@ ra_err_t ra_canfd_exit_stop(uint8_t channel)
 }
 
 #ifdef RA_SIMULATOR_MODE
-/* ra_canfd_test_inject_frame -- see header for full description. */
 ra_err_t ra_canfd_test_inject_frame(uint8_t        channel,
                                     uint32_t       id_word,
                                     uint32_t       ptr_word,

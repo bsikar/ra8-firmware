@@ -379,7 +379,6 @@ static void internal_program_irq_masks(const ra_mipi_csi_config_t* cfg)
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsie) = cfg->short_irq_mask;
 }
 
-/* ra mipi csi init -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -406,7 +405,6 @@ ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
   return k_ra_ok;
 }
 
-/* ra mipi csi deinit -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_deinit(void)
 {
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
@@ -450,7 +448,6 @@ ra_err_t ra_mipi_csi_deinit(void)
   return ra_mstp_disable(k_ra_mstp_mipi_csi);
 }
 
-/* ra mipi csi reset -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_reset(void)
 {
   /* HUM Ch 66.3.5 "RTCT : Reset Control Register" p 3938 */
@@ -464,7 +461,6 @@ ra_err_t ra_mipi_csi_reset(void)
  * =============================================================================
  */
 
-/* ra mipi csi start receive -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_start_receive(void)
 {
   const ra_err_t state_err = internal_reject_if_running();
@@ -475,7 +471,6 @@ ra_err_t ra_mipi_csi_start_receive(void)
   return k_ra_ok;
 }
 
-/* ra mipi csi stop receive -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_stop_receive(void)
 {
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
@@ -491,7 +486,6 @@ ra_err_t ra_mipi_csi_stop_receive(void)
  * =============================================================================
  */
 
-/* ra mipi csi get status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -500,7 +494,6 @@ ra_err_t ra_mipi_csi_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.13 "RXSC : Receive Status Clear Register" p 3945
@@ -509,7 +502,6 @@ ra_err_t ra_mipi_csi_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi set rx irq enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_rx_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.14 "RXIE : Receive Interrupt Enable Register" p 3946 */
@@ -517,7 +509,6 @@ ra_err_t ra_mipi_csi_set_rx_irq_enable(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi get module irq status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_get_module_irq_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -526,7 +517,6 @@ ra_err_t ra_mipi_csi_get_module_irq_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi get module info -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_get_module_info(ra_mipi_csi_module_info_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -544,7 +534,6 @@ ra_err_t ra_mipi_csi_get_module_info(ra_mipi_csi_module_info_t* out)
  * =============================================================================
  */
 
-/* ra mipi csi set data type filter -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_data_type_filter(uint32_t low_mask, uint32_t high_mask)
 {
   /* HUM Ch 66.3.10 "DTEL : Receive Data Type Enable Low" p 3943 */
@@ -559,7 +548,6 @@ ra_err_t ra_mipi_csi_set_data_type_filter(uint32_t low_mask, uint32_t high_mask)
  * =============================================================================
  */
 
-/* ra mipi csi set ecc mode -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
 {
   const ra_err_t state_err = internal_reject_if_running();
@@ -578,7 +566,6 @@ ra_err_t ra_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
   return k_ra_ok;
 }
 
-/* ra mipi csi set frame error mode -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
 {
   const ra_err_t state_err = internal_reject_if_running();
@@ -606,7 +593,6 @@ ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
  * =============================================================================
  */
 
-/* ra mipi csi set epd -- see surrounding code and HUM citations. */
 ra_err_t
 ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t short_spacer)
 {
@@ -636,7 +622,6 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
   return k_ra_ok;
 }
 
-/* ra mipi csi set lrte -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable)
 {
   if ((uint8_t)vlsien > k_ra_mipi_csi_vlsien_x4) {
@@ -661,7 +646,6 @@ ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable)
  * =============================================================================
  */
 
-/* ra mipi csi dl get status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_dl_get_status(uint8_t lane, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -674,7 +658,6 @@ ra_err_t ra_mipi_csi_dl_get_status(uint8_t lane, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi dl clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_dl_clear_status(uint8_t lane, uint32_t mask)
 {
   if (lane > (uint8_t)k_ra_mipi_csi_dl_max) {
@@ -686,7 +669,6 @@ ra_err_t ra_mipi_csi_dl_clear_status(uint8_t lane, uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi dl set irq enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_dl_set_irq_enable(uint8_t lane, uint32_t mask)
 {
   if (lane > (uint8_t)k_ra_mipi_csi_dl_max) {
@@ -703,7 +685,6 @@ ra_err_t ra_mipi_csi_dl_set_irq_enable(uint8_t lane, uint32_t mask)
  * =============================================================================
  */
 
-/* ra mipi csi vc get status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_vc_get_status(uint8_t vc, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -716,7 +697,6 @@ ra_err_t ra_mipi_csi_vc_get_status(uint8_t vc, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi vc clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_vc_clear_status(uint8_t vc, uint32_t mask)
 {
   if (vc > (uint8_t)k_ra_mipi_csi_vc_max) {
@@ -728,7 +708,6 @@ ra_err_t ra_mipi_csi_vc_clear_status(uint8_t vc, uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi vc set irq enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_vc_set_irq_enable(uint8_t vc, uint32_t mask)
 {
   if (vc > (uint8_t)k_ra_mipi_csi_vc_max) {
@@ -745,7 +724,6 @@ ra_err_t ra_mipi_csi_vc_set_irq_enable(uint8_t vc, uint32_t mask)
  * =============================================================================
  */
 
-/* ra mipi csi pm get status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_pm_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -754,7 +732,6 @@ ra_err_t ra_mipi_csi_pm_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi pm clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_pm_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.22 "PMSC : Power Management Status Clear" p 3955
@@ -763,7 +740,6 @@ ra_err_t ra_mipi_csi_pm_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi pm set irq enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.23 "PMIE : Power Management Interrupt Enable" p 3956 */
@@ -776,7 +752,6 @@ ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask)
  * =============================================================================
  */
 
-/* ra mipi csi short packet configure -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable)
 {
   if ((uint32_t)threshold > k_ra_mipi_csi_gsct_shth_max) {
@@ -791,7 +766,6 @@ ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable
   return k_ra_ok;
 }
 
-/* ra mipi csi short packet set irq enable -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_short_packet_set_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.27 "GSIE : Generic Short Packet Interrupt Enable" p 3958 */
@@ -799,7 +773,6 @@ ra_err_t ra_mipi_csi_short_packet_set_irq_enable(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi short packet get status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_short_packet_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -808,7 +781,6 @@ ra_err_t ra_mipi_csi_short_packet_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi short packet clear status -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_short_packet_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.26 "GSSC : Generic Short Packet Status Clear" p 3958
@@ -817,7 +789,6 @@ ra_err_t ra_mipi_csi_short_packet_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi read short packet -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_read_short_packet(ra_mipi_csi_short_packet_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -842,7 +813,6 @@ ra_err_t ra_mipi_csi_read_short_packet(ra_mipi_csi_short_packet_t* out)
   return k_ra_ok;
 }
 
-/* ra mipi csi short packet clear fifo -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_short_packet_clear_fifo(void)
 {
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960
@@ -865,7 +835,6 @@ ra_err_t ra_mipi_csi_short_packet_clear_fifo(void)
   return err;
 }
 
-/* ra mipi csi short packet re enable store -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_short_packet_re_enable_store(void)
 {
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960 */
@@ -905,7 +874,6 @@ ra_err_t ra_mipi_csi_attach_handler(ra_mipi_csi_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra mipi csi attach dl handler -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_attach_dl_handler(ra_mipi_csi_dl_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_dl_fn  = fn;
@@ -913,7 +881,6 @@ ra_err_t ra_mipi_csi_attach_dl_handler(ra_mipi_csi_dl_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra mipi csi attach vc handler -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_attach_vc_handler(ra_mipi_csi_vc_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_vc_fn  = fn;
@@ -921,7 +888,6 @@ ra_err_t ra_mipi_csi_attach_vc_handler(ra_mipi_csi_vc_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra mipi csi attach pm handler -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_attach_pm_handler(ra_mipi_csi_pm_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_pm_fn  = fn;
@@ -929,7 +895,6 @@ ra_err_t ra_mipi_csi_attach_pm_handler(ra_mipi_csi_pm_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/* ra mipi csi attach short packet handler -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_attach_short_packet_handler(ra_mipi_csi_short_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_gst_fn  = fn;
@@ -937,7 +902,6 @@ ra_err_t ra_mipi_csi_attach_short_packet_handler(ra_mipi_csi_short_event_fn_t fn
   return k_ra_ok;
 }
 
-/* ra mipi csi dispatch -- see surrounding code and HUM citations. */
 void ra_mipi_csi_dispatch(void)
 {
   /* HUM Ch 66.3.12 "RXST : Receive Status Register" p 3944 */
@@ -953,7 +917,6 @@ void ra_mipi_csi_dispatch(void)
   }
 }
 
-/* ra mipi csi dispatch dl -- see surrounding code and HUM citations. */
 void ra_mipi_csi_dispatch_dl(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
@@ -982,7 +945,6 @@ void ra_mipi_csi_dispatch_dl(void)
   }
 }
 
-/* ra mipi csi dispatch vc -- see surrounding code and HUM citations. */
 void ra_mipi_csi_dispatch_vc(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
@@ -1038,7 +1000,6 @@ void ra_mipi_csi_dispatch_vc(void)
   }
 }
 
-/* ra mipi csi dispatch pm -- see surrounding code and HUM citations. */
 void ra_mipi_csi_dispatch_pm(void)
 {
   /* HUM Ch 66.3.21 "PMST : Power Management Status" p 3954 */
@@ -1054,7 +1015,6 @@ void ra_mipi_csi_dispatch_pm(void)
   }
 }
 
-/* ra mipi csi dispatch short packet -- see surrounding code and HUM citations. */
 void ra_mipi_csi_dispatch_short_packet(void)
 {
   /* HUM Ch 66.3.25 "GSST : Generic Short Packet Status" p 3957 */
@@ -1137,7 +1097,6 @@ static void internal_recompute_dt_filter(void)
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dteh) = high;
 }
 
-/* ra mipi csi set virtual channels -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_virtual_channels(uint16_t vc_mask)
 {
   if (vc_mask == 0U) {
@@ -1167,7 +1126,6 @@ ra_err_t ra_mipi_csi_set_virtual_channels(uint16_t vc_mask)
   return k_ra_ok;
 }
 
-/* ra mipi csi set data format -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_set_data_format(uint8_t vc, ra_mipi_csi_data_format_t format)
 {
   if (vc >= (uint8_t)k_ra_mipi_csi_vc_count) {
@@ -1184,7 +1142,6 @@ ra_err_t ra_mipi_csi_set_data_format(uint8_t vc, ra_mipi_csi_data_format_t forma
   return k_ra_ok;
 }
 
-/* ra mipi csi attach error handler -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_attach_error_handler(ra_mipi_csi_error_fn_t fn, void* ctx)
 {
   s_mipi_csi_err_fn  = fn;
@@ -1197,14 +1154,12 @@ ra_err_t ra_mipi_csi_attach_error_handler(ra_mipi_csi_error_fn_t fn, void* ctx)
  * =============================================================================
  */
 
-/* ra mipi csi enter stop -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_enter_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   return ra_mstp_disable(k_ra_mstp_mipi_csi);
 }
 
-/* ra mipi csi exit stop -- see surrounding code and HUM citations. */
 ra_err_t ra_mipi_csi_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */

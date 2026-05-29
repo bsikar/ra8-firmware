@@ -122,7 +122,6 @@ ra_err_t ra_ota_commit_swap_bank(ra_ota_bank_t target)
   return k_ra_ok;
 }
 
-/* Read the currently armed swap-bank target, if any -- see implementation for details. */
 ra_err_t ra_ota_commit_pending(ra_ota_bank_t* out_target)
 {
   RA_CHECK_NULL_PTR(out_target, s_tag, "pending: out_target");
@@ -162,7 +161,6 @@ ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value)
   return k_ra_ok;
 }
 
-/* Read the masked bank-config shadow -- see implementation for details. */
 ra_err_t ra_ota_commit_get_bank_config(uint32_t* out_value)
 {
   RA_CHECK_NULL_PTR(out_value, s_tag, "get_bank_config: out_value");
