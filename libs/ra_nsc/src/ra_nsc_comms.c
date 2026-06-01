@@ -449,42 +449,13 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_read(uint8_t            channel,
   return ra_spi_read(channel, rx, len, bit_width);
 }
 
-/**
- * @brief NSC veneer: multi-frame full-duplex polling SPI exchange.
- *
- * @details Range-checks ``tx`` (read) and ``rx`` (read/write) in NS
- *   memory, then forwards to ``ra_spi_write_read``.
- *
- * @param[in]  channel   SPI channel index.
- * @param[in]  tx        NS source buffer.
- * @param[out] rx        NS destination buffer.
- * @param[in]  len       Frame count.
- * @param[in]  bit_width Frame width (8/16/32).
- *
- * @return ra_err_t outcome.
- * @retval k_ra_ok               Exchange completed.
- * @retval k_ra_err_null_ptr     ``tx`` or ``rx`` was NULL with non-zero ``len``.
- * @retval k_ra_err_invalid_arg  Range outside NS region or bad width.
- *
- * @pre ``ra_nsc_spi_init`` succeeded for ``channel``.
- * @pre Both ``tx`` and ``rx`` ranges lie in NS memory.
- * @post On success the bus exchanged ``len`` frames.
- * @post On failure ``rx`` content is undefined.
- *
- * @par TrustZone:
- *   NS->S boundary via ``cmse_nonsecure_entry``. Both pointers are
- *   ``cmse_check_address_range``-validated so the secure driver never
- *   touches secure-region memory on behalf of a NS caller.
- *
- * @note Thread-safe: serialised by the secure SPI driver lock.
- * @since 0.1.0
- */
-RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint8_t            channel,
-                                             const void*        tx,
-                                             void*              rx,
-                                             uint32_t           len,
-                                             ra_spi_bit_width_t bit_width)
+RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint32_t ch_bw, const void* tx, void* rx, uint32_t len)
 {
+  const uint8_t            channel = (uint8_t)(ch_bw & (uint32_t)k_ra_nsc_spi_byte_msk);
+  const ra_spi_bit_width_t bit_width =
+    (ra_spi_bit_width_t)((ch_bw >> (uint32_t)k_ra_nsc_spi_bw_shift) &
+                         (uint32_t)k_ra_nsc_spi_byte_msk);
+
   if (len > 0U) {
     RA_CHECK_NULL_PTR(tx, s_tag, "spi_write_read: tx");
     RA_CHECK_NULL_PTR(rx, s_tag, "spi_write_read: rx");
