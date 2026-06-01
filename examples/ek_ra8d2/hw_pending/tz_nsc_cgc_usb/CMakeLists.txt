@@ -17,6 +17,14 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
+# This app exercises the NSC veneer wall (NS main calls Secure CGC via
+# cmse_nonsecure_entry trampolines); without TZ the veneers compile as
+# regular functions and the test is meaningless. Default TZ ON in standalone.
+get_directory_property(_ra_p PARENT_DIRECTORY)
+if(NOT _ra_p)
+    option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
+endif()
+
 ra_add_app(NAME tz_nsc_cgc_usb STACK_BYTES 2200
            DESCRIPTION "TrustZone NSC-veneer CGC + USB-FS demo for RA8D2"
            USES threadx usbx)
