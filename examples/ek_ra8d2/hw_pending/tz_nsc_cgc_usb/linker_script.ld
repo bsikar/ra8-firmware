@@ -39,7 +39,11 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
+    /* Secure MRAM for the S-side image. Shrunk from 768K to 512K so
+     * the NS image at 0x02080000 has dedicated bytes (the linker would
+     * otherwise place S .text into the NS aperture and the BLXNS would
+     * jump into S code). */
+    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 512K
     /* Option Setting / OTP block lives in a dedicated config flash
      * area outside main MRAM. Sized to cover 0x0300A000..0x0300B000
      * so every OFS*, SAS, BPS, OTP_* section has a home. */
@@ -58,9 +62,13 @@ MEMORY
      * These regions overlap with MRAM / SRAM in the single-image
      * build because the linker treats them as views of the same
      * physical bytes; the SAU programmes the bit-28 split at boot
-     * (see blink_hal/trustzone_init.c) so the CPU sees them as
+     * (see blink/trustzone_init.c) so the CPU sees them as
      * Non-Secure aliases. With RA_TRUSTZONE_ENABLE off the linker
      * is allowed to place sections in either region freely. */
+    /* Non-Secure MRAM for the NS image (vectors + text + rodata).
+     * Shrunk from 512K to 256K so it tiles cleanly between the S
+     * MRAM (ends at 0x0207FFFF) and the CPU1 image (starts at
+     * 0x020C0000). */
     NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
     NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
 }
@@ -68,26 +76,19 @@ MEMORY
 /*
  * Linker symbols. Named with the g_ra_ls_ prefix so they are NOT in
  * the ISO C reserved leading-underscore namespace. The boot code in
- * blink_hal/vector_table.c declares them with exactly these names.
+ * blink/vector_table.c declares them with exactly these names.
  */
 g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
 g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
+
+/* Non-Secure stack tops out at the top of NS_SRAM. The NS image's
+ * vector table places this in slot 0 (initial MSP_NS); BLXNS in
+ * ra_tz_secure_boot_jump_ns issues `msr msp_ns, %0` with the value
+ * the linker computes here. 8 KiB carved at the high end of NS_SRAM. */
+g_ra_ls_ns_stack_top = ORIGIN(NS_SRAM) + LENGTH(NS_SRAM);
 /* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
  * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
  * accidental malloc() call from newlib. */
-
-/*
- * ThreadX `_tx_initialize_unused_memory` sentinel.
- *
- * The Cortex-M85 port assembly stores this address in the global
- * `_tx_initialize_unused_memory`, which is what `tx_application_define`
- * receives as its `first_unused_memory` argument. The demo only uses
- * static thread stacks so the value is informational, but it must be a
- * valid address inside writable RAM. We point it at the start of the
- * external SDRAM block so any future app that wants to bump-allocate
- * out of it has plenty of room.
- */
-PROVIDE(g_ra_threadx_unused_memory_start = ORIGIN(SDRAM));
 
 /*
  * Option-setting region fixed addresses (HUM section 4).
@@ -132,6 +133,43 @@ SECTIONS
         KEEP(*(.vectors))
         KEEP(*(.vectors.*))
     } > MRAM
+
+
+    /* ---- NS image at 0x02080000 ----
+     *
+     * The S-side ``ra_tz_secure_boot_jump_ns`` BLXNS-es to slot 1 of
+     * ``g_ra_ns_vector_table`` which the linker places here. The NS
+     * code is self-contained (open-coded register IO) so no S-resident
+     * symbol is ever called from NS state.
+     *
+     * NS_MRAM is SAU Region 0 (NS) -- see
+     * ra_tz_secure_boot_sau_init. Bit 28 IDAU rule says 0x02080000 is
+     * S by default, the SAU override flips it to NS for the CPU. */
+    .ns_vectors ORIGIN(NS_MRAM) : ALIGN(8)
+    {
+        KEEP(*(.ns_vectors))
+        KEEP(*(.ns_vectors.*))
+    } > NS_MRAM
+
+    .ns_text : ALIGN(4)
+    {
+        *(.ns_text)
+        *(.ns_text.*)
+    } > NS_MRAM
+
+    .ns_rodata : ALIGN(4)
+    {
+        *(.ns_rodata)
+        *(.ns_rodata.*)
+    } > NS_MRAM
+
+    .ns_bss (NOLOAD) : ALIGN(4)
+    {
+        g_ra_ls_ns_bss_start = .;
+        *(.ns_bss)
+        *(.ns_bss.*)
+        g_ra_ls_ns_bss_end = .;
+    } > NS_SRAM
 
     /* ---- Code + const data ---- */
     .text : ALIGN(4)
@@ -327,3 +365,6 @@ ASSERT(g_ra_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
        "FATAL: MRAM overflow -- .text + .rodata too large")
 ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
+
+g_ra_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
+g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;

@@ -61,8 +61,9 @@ extern "C" {
  */
 #define RA_NSC_CHECK_NS_RANGE_R(ptr, len)                                                          \
   do {                                                                                             \
-    if (cmse_check_address_range((void*)(ptr), (uint32_t)(len), CMSE_NONSECURE | CMSE_MPU_READ) == \
-        nullptr) {                                                                                 \
+    if (cmse_check_address_range((void*)(uintptr_t)(ptr),                                          \
+                                 (uint32_t)(len),                                                  \
+                                 CMSE_NONSECURE | CMSE_MPU_READ) == nullptr) {                     \
       return k_ra_err_invalid_arg;                                                                 \
     }                                                                                              \
   } while (0)
@@ -73,7 +74,7 @@ extern "C" {
  */
 #define RA_NSC_CHECK_NS_RANGE_RW(ptr, len)                                                         \
   do {                                                                                             \
-    if (cmse_check_address_range((void*)(ptr),                                                     \
+    if (cmse_check_address_range((void*)(uintptr_t)(ptr),                                          \
                                  (uint32_t)(len),                                                  \
                                  CMSE_NONSECURE | CMSE_MPU_READWRITE) == nullptr) {                \
       return k_ra_err_invalid_arg;                                                                 \

@@ -1,55 +1,37 @@
 /**
- * @file examples/ek_ra8d2/usb_cdc_echo/trustzone_init.c
- * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
+ * @file examples/ek_ra8d2/hw_pending/tz_nsc_cgc_usb/trustzone_init.c
+ * @brief Single-core TrustZone bring-up: SAU partition + BLXNS into NS
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}
  *
  * @details
- * scaffold for the secure / non-secure address-space split.
- * Programs the SAU with four canonical regions and enables it. Called
- * from ``SystemInit`` after the cache + MPU are up but before any
- * non-secure code can run.
+ * Called from ``SystemInit`` after the cache + MPU + clock tree are
+ * up. Programmes the SAU via ``ra_tz_secure_boot_sau_init`` (FSP-style
+ * 5-region partition with an NS peripheral window at 0x50000000) and
+ * then BLXNS-es into the NS image's reset handler via
+ * ``ra_tz_secure_boot_jump_ns``. BLXNS does not return on hardware;
+ * the S-side ``main()`` fallback runs only if the secure-boot library
+ * bails out earlier.
  *
- * The function is gated behind the ``RA_TRUSTZONE_ENABLE`` build
- * symbol so the single-world build (the ..8 default) does not
- * pay any code-size cost. When the symbol is undefined,
- * ``ra_trustzone_init`` is an empty inline.
+ * This module replaces the previous hand-rolled SAU programming with
+ * the shared ``libs/ra_tz_secure_boot`` implementation so the
+ * peripheral window (Region 4, 0x50000000..0x5FFFFFE0) is available
+ * for future NS-aliased register access (e.g. USB-FS at 0x50250000
+ * in Phase C of #55).
  *
- * ## Partition layout (scaffold)
- *
- * The RA8D2 IDAU defines bit 28 of the address as the security
- * attribute by default (S = bit 28 clear, NS = bit 28 set). The
- * SAU overlays additional rules. The partition is:
- *
- * | Region | Range | Attribute |
- * |-------:|:----------------------------|:--------------------|
- * | 0 | 0x02080000..0x020FFFFF | NS (upper MRAM) |
- * | 1 | 0x22100000..0x221FFFFF | NS (upper SRAM) |
- * | 2 | 0x6A000000..0x6BFFFFFF | NS (upper SDRAM) |
- * | 3 | 0x10000000..0x100FFFFF | NSC veneer alias |
- *
- * - Lower MRAM (0x02000000..0x0207FFFF) stays secure -- holds the
- * secure world image.
- * - Lower SRAM (0x22000000..0x220FFFFF) stays secure -- holds the
- * secure-world data + key vault.
- * - Upper MRAM / SRAM / SDRAM are exposed to the NS world for
- * the application.
- * - The NSC veneer page lives in a 1 MB alias the linker maps via
- * the ``.gnu.sgstubs`` section.
- *
- * These addresses are illustrative -- the actual partition lands
- * once the linker script grows the matching memory
- * regions and the veneer section is wired up.
+ * On a host build (``RA_SIMULATOR_MODE`` defined) this function is a
+ * no-op so the unit-test runner does not perform any TrustZone calls.
  *
  * @par TrustZone Safety:
- * - **Validates:** SAU_TYPE.SREGION reports >= 4 regions before
- * programming any of them (chip family safety check).
- * - **Trusts:** the Boot ROM left the SAU disabled and the IDAU
- * in its reset state.
- * - **Denies:** any access from NS code to the registers programmed
- * here -- the entire SAU register window lives in the secure
- * region by definition.
+ *  - **Validates:** SAU_TYPE.SREGION >= 5 (checked by the library).
+ *  - **Validates:** ``g_ra_ns_vector_table`` is non-NULL + word-aligned
+ *    (checked by ``ra_tz_secure_boot_jump_ns``).
+ *  - **Trusts:** the boot ROM left the SAU disabled and the IDAU in
+ *    its documented reset state.
+ *  - **Denies:** any return path from ``ra_tz_secure_boot_jump_ns``
+ *    on hardware -- the function is marked ``[[noreturn]]`` in
+ *    practice (BLXNS leaves Secure thread mode).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -59,164 +41,40 @@
 
 #include <stdint.h>
 
-#ifdef RA_TRUSTZONE_ENABLE
-
-/* =============================================================================
- * SAU register addresses (System Control Space, secure alias)
- * =============================================================================
- */
-
-typedef enum : uintptr_t {
-  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register. */
-  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register. */
-  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number. */
-  k_ra_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
-  k_ra_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
-  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register. */
-} ra_tz_sau_addr_t;
+#include "ra_err.h"
+#include "ra_tz_secure_boot.h"
 
 /**
- * @enum ra_tz_sau_ctrl_bit_t
- * @brief SAU_CTRL bit positions.
+ * @var g_ra_ns_vector_table
+ * @brief Defined in ``ns_main.c``; lives in ``.ns_vectors`` at
+ *        ``ORIGIN(NS_MRAM)``. Forward-declared here so we can take
+ *        its address and pass it to the secure-boot library.
  */
-typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable. */
-  k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
-} ra_tz_sau_ctrl_bit_t;
-
-/**
- * @enum ra_tz_sau_rlar_bit_t
- * @brief SAU_RLAR bit positions.
- */
-typedef enum : uint32_t {
-  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active. */
-  k_ra_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
-} ra_tz_sau_rlar_bit_t;
-
-/**
- * @enum ra_tz_partition_t
- * @brief canonical region addresses.
- *
- * @details
- * SAU regions are 32-byte aligned per ARMv8-M; RLAR holds the
- * upper bound minus 32 OR-ed with the enable bits at write time.
- */
-typedef enum : uint32_t {
-  k_ra_tz_ns_mram_base    = 0x02080000UL,
-  k_ra_tz_ns_mram_limit   = 0x020FFFE0UL,
-  k_ra_tz_ns_sram_base    = 0x22100000UL,
-  k_ra_tz_ns_sram_limit   = 0x221FFFE0UL,
-  k_ra_tz_ns_sdram_base   = 0x6A000000UL,
-  k_ra_tz_ns_sdram_limit  = 0x6BFFFFE0UL,
-  k_ra_tz_nsc_veneer_base = 0x10000000UL,
-  k_ra_tz_nsc_veneer_lim  = 0x100FFFE0UL,
-} ra_tz_partition_t;
-
-/* =============================================================================
- * Internal helpers
- * =============================================================================
- */
-
-static inline void internal_dsb(void)
-{
-  __asm__ volatile("dsb 0xF" ::: "memory");
-}
-
-static inline void internal_isb(void)
-{
-  __asm__ volatile("isb 0xF" ::: "memory");
-}
-
-static void internal_write32(uintptr_t addr, uint32_t value)
-{
-  *(volatile uint32_t*)addr = value;
-}
-
-static uint32_t internal_read32(uintptr_t addr)
-{
-  return *(volatile uint32_t*)addr;
-}
-
-/**
- * @brief Programme one SAU region via RNR/RBAR/RLAR.
- *
- * @param[in] region Region number 0..(SAU_TYPE.SREGION - 1).
- * @param[in] base Start address (32-byte aligned).
- * @param[in] limit Upper bound minus 32 (32-byte aligned).
- * @param[in] is_nsc ``true`` to mark the region as NSC.
- */
-static void internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
-{
-  internal_write32(k_ra_sau_rnr_addr, region);
-  internal_write32(k_ra_sau_rbar_addr, base);
-  uint32_t rlar = limit | (uint32_t)k_ra_sau_rlar_enable;
-  if (is_nsc) {
-    rlar |= (uint32_t)k_ra_sau_rlar_nsc;
-  }
-  internal_write32(k_ra_sau_rlar_addr, rlar);
-}
-
-/* =============================================================================
- * Public entry point
- * =============================================================================
- */
-
-#endif /* RA_TRUSTZONE_ENABLE */
+extern const uint32_t g_ra_ns_vector_table[];
 
 void ra_trustzone_init(void)
 {
 #ifdef RA_TRUSTZONE_ENABLE
-  /* Sanity check: SAU_TYPE.SREGION must report >= 4 implemented
-   * regions for our partition to fit. The Cortex-M85 always has 8,
-   * but a chip-specific override could trim the count. */
-  const uint32_t sau_type = internal_read32(k_ra_sau_type_addr);
-  if ((sau_type & 0xFFU) < 4U) {
-    /* Refuse to bring up TrustZone on an SAU we cannot use. The
-     * caller will see SAU_CTRL.ENABLE clear and fall back to the
-     * single-world model. */
-    return;
+  /* Programme the SAU with the FSP-style 5-region partition (NSC
+   * code-flash alias, NS MRAM, NSC SRAM alias, NS SRAM, NS peripheral
+   * window). Anything we have not explicitly carved out stays Secure
+   * (default-deny: SAU_CTRL.ALLNS = 0). */
+  if (ra_tz_secure_boot_sau_init() != k_ra_ok) {
+    return; /* Fall through to S-side main() fallback. */
   }
 
-  /* Region 0: NS upper MRAM */
-  internal_sau_set_region(0U,
-                          (uint32_t)k_ra_tz_ns_mram_base,
-                          (uint32_t)k_ra_tz_ns_mram_limit,
-                          /*is_nsc=*/false);
+  /* No IPCSAR / IPCPAR write needed -- this is a single-core S->NS
+   * app, no CPU1 IPC channels to partition. ``ra_tz_secure_boot_run``
+   * would write IPCSAR + IPCPAR; we use the lower-level jump_ns
+   * directly to skip that step. */
 
-  /* Region 1: NS upper SRAM */
-  internal_sau_set_region(1U,
-                          (uint32_t)k_ra_tz_ns_sram_base,
-                          (uint32_t)k_ra_tz_ns_sram_limit,
-                          /*is_nsc=*/false);
+  /* BLXNS into the NS image at 0x02080000 (slot 1 of
+   * g_ra_ns_vector_table). Slot 0 is the initial MSP_NS; the library
+   * loads it into MSP_NS before the BLXNS. Does not return on
+   * hardware. */
+  (void)ra_tz_secure_boot_jump_ns(g_ra_ns_vector_table);
 
-  /* Region 2: NS upper SDRAM */
-  internal_sau_set_region(2U,
-                          (uint32_t)k_ra_tz_ns_sdram_base,
-                          (uint32_t)k_ra_tz_ns_sdram_limit,
-                          /*is_nsc=*/false);
-
-  /* Region 3: NSC veneer slice.
-   *
-   * Reverted on 2026-05-19 after a fix attempt bricked the chip.
-   * The .gnu.sgstubs section actually lives inside lower MRAM
-   * (0x0200F5A0 in the current build), NOT at the 0x10000000
-   * alias this region originally pointed at. Pointing Region 3 at
-   * the real address via linker-exported g_ra_ls_sgstubs_{start,end}
-   * symbols caused the chip to wedge so hard that the J-Link DAP
-   * couldn't power it up for re-flash -- needed manual recovery
-   * through scripts/hil_recover.sh. Cause TBD: probably an
-   * SAU-CTRL ordering issue (region 3 marking actively-executing
-   * lower-MRAM as NSC while the SAU was being enabled). */
-  internal_sau_set_region(3U,
-                          (uint32_t)k_ra_tz_nsc_veneer_base,
-                          (uint32_t)k_ra_tz_nsc_veneer_lim,
-                          /*is_nsc=*/true);
-
-  /* Enable the SAU. Leave ALLNS clear: anything we have not
-   * explicitly carved out stays secure (default-deny). */
-  internal_dsb();
-  internal_write32(k_ra_sau_ctrl_addr, (uint32_t)k_ra_sau_ctrl_enable);
-  internal_dsb();
-  internal_isb();
+  /* If we get here on host (RA_SIMULATOR_MODE) the library returned
+   * after stubbing the BLXNS; on target this is unreachable. */
 #endif
 }
