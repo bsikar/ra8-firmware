@@ -174,18 +174,62 @@ extern "C" {
                                                      ra_spi_bit_width_t bit_width);
 
 /**
+ * @enum ra_nsc_spi_pack_const_t
+ * @brief Bit layout for ``ra_nsc_spi_ch_bw()`` packed argument.
+ */
+typedef enum : uint32_t {
+  k_ra_nsc_spi_byte_msk = 0x000000FFU, /**< Byte mask within the packed word. */
+  k_ra_nsc_spi_bw_shift = 8U,          /**< Bit position of ``bit_width``.    */
+} ra_nsc_spi_pack_const_t;
+
+/**
+ * @brief Pack ``channel`` + ``bit_width`` into a single 32-bit argument.
+ *
+ * @details
+ * ``ra_nsc_spi_write_read`` would naturally have five arguments
+ * (channel, tx, rx, len, bit_width) but ``cmse_nonsecure_entry``
+ * requires every parameter to fit in a register (AAPCS R0..R3). Five
+ * args spill to the stack and the compiler rejects the attribute. We
+ * encode ``channel`` in bits [7:0] and ``bit_width`` in bits [15:8] so
+ * the veneer takes four register-sized arguments.
+ *
+ * @param[in] channel   SPI channel id.
+ * @param[in] bit_width Bus bit width enum value.
+ *
+ * @return Packed ``ch_bw`` value suitable for ``ra_nsc_spi_write_read``.
+ * @retval value ``(channel & 0xFF) | (bit_width << 8)``.
+ *
+ * @pre None.
+ * @pre None.
+ * @post Returned value round-trips: ``(v & 0xFF) == channel`` and
+ *       ``((v >> 8) & 0xFF) == (uint8_t)bit_width``.
+ * @post No side effects.
+ *
+ * @note Pure function; safe from any context.
+ * @since 0.1.0
+ */
+static inline uint32_t ra_nsc_spi_ch_bw(uint8_t channel, ra_spi_bit_width_t bit_width)
+{
+  return ((uint32_t)channel & (uint32_t)k_ra_nsc_spi_byte_msk) |
+         ((uint32_t)bit_width << (uint32_t)k_ra_nsc_spi_bw_shift);
+}
+
+/**
  * @brief NSC veneer: multi-frame full-duplex polling SPI exchange.
+ *
+ * @details
+ * The veneer takes four register-sized arguments; pack ``channel`` and
+ * ``bit_width`` into ``ch_bw`` with ``ra_nsc_spi_ch_bw()``.
  *
  * @par TrustZone Safety:
  * - Validates both buffer ranges are NS-accessible for the requested
  *   direction before forwarding.
  * @since 0.1.0
  */
-[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint8_t            channel,
-                                                           const void*        tx,
-                                                           void*              rx,
-                                                           uint32_t           len,
-                                                           ra_spi_bit_width_t bit_width);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint32_t    ch_bw,
+                                                           const void* tx,
+                                                           void*       rx,
+                                                           uint32_t    len);
 
 /* =============================================================================
  * USB veneers

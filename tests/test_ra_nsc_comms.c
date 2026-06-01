@@ -200,11 +200,14 @@ static void test_spi_bulk_xfers(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_read(0U, nullptr, 4U, k_ra_spi_width_8));
 
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_spi_write_read(0U, tx, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_nsc_spi_write_read(ra_nsc_spi_ch_bw(0U, k_ra_spi_width_8), tx, rx, 4U));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_write_read(0U, nullptr, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_nsc_spi_write_read(ra_nsc_spi_ch_bw(0U, k_ra_spi_width_8), nullptr, rx, 4U));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_nsc_spi_write_read(0U, tx, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_nsc_spi_write_read(ra_nsc_spi_ch_bw(0U, k_ra_spi_width_8), tx, nullptr, 4U));
 
   TEST_END("ra_nsc_spi bulk transfers");
 }
