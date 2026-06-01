@@ -51,6 +51,7 @@
 
 extern const uint32_t g_ra_vector_table_start[];
 
+#include "ra_cgc.h"
 #include "trustzone_init.h"
 
 /* =============================================================================
@@ -355,4 +356,13 @@ void SystemInit(void)
   (void)ra_trustzone_init;
 #endif
   internal_set_priority_grouping();
+
+  /* Bring up the chip's clock tree (XTAL -> PLL1 -> CPUCLK0=1 GHz)
+   * before any application code runs. NS main calls into Secure CGC
+   * via NSC veneers (ra_nsc_cgc_pll2_enable, ra_nsc_cgc_usbfs_clock_enable,
+   * ra_nsc_cgc_get_clock_hz) which all assume the secure-side base
+   * tree is already up. Without this the first PLL2 enable spins
+   * forever waiting for a lock that the missing PLL1 source can't
+   * supply. */
+  (void)ra_cgc_init();
 }
