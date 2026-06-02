@@ -316,6 +316,19 @@ for app in "${APPS[@]}"; do
     echo -e "${CYAN}[hil_all]${NC} ${app} (mode=${HIL_MODE})"
     echo -e "${CYAN}[hil_all]${NC} =========================================="
 
+    # Issue #58: USB-mode tests flake when bus state from a prior test
+    # (or even a non-USB test that left the device in an odd state) leaks
+    # into this enumeration. Soft-PPPS the hub port before any usb_*
+    # test so the kernel starts clean. Safe to repeat; the per-test
+    # runners may PPPS again internally without harm.
+    case "$HIL_MODE" in
+        usb_cdc|usb_hid|usb_msc)
+            bash "${REPO_ROOT}/scripts/hil_ppps.sh" --soft cycle "${HIL_HUB_PORT:-4}" \
+                >/dev/null 2>&1 || true
+            sleep 1
+            ;;
+    esac
+
     rc=0
     case "$HIL_MODE" in
         uart_scrape)     run_uart_scrape     "$app" || rc=$? ;;
