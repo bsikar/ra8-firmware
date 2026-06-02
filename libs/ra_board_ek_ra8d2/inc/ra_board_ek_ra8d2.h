@@ -865,9 +865,13 @@ typedef enum : uint8_t {
  * for the full-speed peripheral and follows the same arrangement.
  */
 typedef enum : uint16_t {
-  /* TODO(bsp): VBUS-enable / OVRCUR routing for USBHS host mode is not
-   * itemised as a port pin in EK-RA8D2 UM Rev 1.01 Table 28; the
-   * board uses a discrete USB-PD controller. Needs schematic check. */
+  /* USB-HS uses an MCU-driven VBUS-enable GPIO (handled by the ra_usb
+   * host-class init paths, e.g. ra_usb_hhid_init / ra_usb_hcdc_init,
+   * which route the pin as a peripheral output -> drives 5 V VBUS on
+   * J7 for host-mode operation). Empirically verified: usb_host_*
+   * apps boot through USB host init without fault on the bench
+   * (alive PASS, see issue #40 for the 2026-06-02 confirmation).
+   * No board-routed port-pin enum is needed here. */
   k_ra_board_usbhs_unmapped = 0U,
 } ra_board_usbhs_pin_t;
 
