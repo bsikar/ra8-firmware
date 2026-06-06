@@ -8,7 +8,7 @@
  * @details
  * Backend-agnostic API that lets applications draw into a
  * framebuffer and push it to a panel without knowing which display
- * controller is on the other end. Today there are two backends:
+ * controller is on the other end. Today there are three backends:
  *
  *   - ``k_display_backend_lcd_ra_glcdc`` -- thin wrapper over
  *     ``libs/ra_hal/src/ra_glcdc.c`` driving the EK-RA8D2 1024x600
@@ -18,6 +18,10 @@
  *     API surface, but returns ``k_ra_err_not_supported`` from
  *     ``display_flush`` / ``display_get_framebuffer`` until the
  *     hardware-side driver lands.
+ *   - ``k_display_backend_host_macos`` -- host-only development
+ *     backend (see ``ra_display_pal_host_macos.h``) that presents the
+ *     framebuffer in a native macOS window, so panel layouts can be
+ *     previewed on a desktop without flashing hardware.
  *
  * Apps swap backends by changing the ``iface`` field of their
  * ``display_cfg_t`` -- no other code touches the underlying
