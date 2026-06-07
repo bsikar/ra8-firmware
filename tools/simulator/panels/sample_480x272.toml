@@ -1,0 +1,12 @@
+# Example of adding a display: a generic 4.3" 480x272 RGB565 LCD.
+# The simulator becomes whatever a config describes -- drop a new .toml in this
+# directory and run `make sim PANEL=<basename>`.
+#
+# Note: the bundled bedroom UI is laid out for 1024x600, so it clips at this
+# size until the UI is made resolution-adaptive -- this config exists to show
+# the display itself is configurable.
+name   = "Generic 4.3in 480x272"
+width  = 480
+height = 272
+format = "rgb565"
+ppi    = 122
