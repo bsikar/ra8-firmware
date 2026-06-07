@@ -42,6 +42,7 @@ typedef enum : uint16_t {
   k_ui_tabs        = 3U,    /**< Tab / screen count.                 */
   k_ui_cards       = 4U,    /**< Stat cards per screen (2x2).        */
   k_ui_cols        = 2U,    /**< Card grid columns.                  */
+  k_ui_card_rows   = 3U,    /**< Text rows per card (label/val/sub). */
   k_ui_pad         = 32U,   /**< Outer content inset.                */
   k_ui_gap         = 24U,   /**< Gap between cards.                  */
   k_ui_grid_top    = 148U,  /**< Card grid top edge.                 */
@@ -364,6 +365,115 @@ static UINT bedroom_create_tabs(void)
 }
 
 /**
+ * @brief Compute one card's absolute rectangle in the 2-column grid.
+ *
+ * @param[in]  i   Card index in [0, k_ui_cards).
+ * @param[out] out Card rectangle (absolute pixels).
+ */
+static void bedroom_card_bounds(uint16_t i, GX_RECTANGLE* out)
+{
+  const UINT grid_rows = (UINT)k_ui_cards / (UINT)k_ui_cols;
+  const UINT col_w     = ((UINT)k_ui_w - (2U * (UINT)k_ui_pad) - (UINT)k_ui_gap) / (UINT)k_ui_cols;
+  const UINT row_h =
+    (((UINT)k_ui_h - (UINT)k_ui_bot_margin) - (UINT)k_ui_grid_top - (UINT)k_ui_gap) / grid_rows;
+  const UINT col = (UINT)i % (UINT)k_ui_cols;
+  const UINT row = (UINT)i / (UINT)k_ui_cols;
+  const UINT x0  = (UINT)k_ui_pad + (col * (col_w + (UINT)k_ui_gap));
+  const UINT y0  = (UINT)k_ui_grid_top + (row * (row_h + (UINT)k_ui_gap));
+  gx_utility_rectangle_define(out,
+                              (GX_VALUE)x0,
+                              (GX_VALUE)y0,
+                              (GX_VALUE)(x0 + col_w - 1U),
+                              (GX_VALUE)(y0 + row_h - 1U));
+}
+
+/**
+ * @brief Create a card's body panel and its top accent strip.
+ *
+ * @param[in] room Room index.
+ * @param[in] i    Card index.
+ * @param[in] card Card rectangle from bedroom_card_bounds.
+ * @return UINT GX_SUCCESS or the first failing GUIX status.
+ */
+static UINT bedroom_create_card_frame(uint16_t room, uint16_t i, const GX_RECTANGLE* card)
+{
+  UINT status = bedroom_make_panel(&s_card[room][i],
+                                   (GX_WIDGET*)&s_screen[room],
+                                   *card,
+                                   (GX_RESOURCE_ID)k_col_card);
+  if (status != GX_SUCCESS) {
+    return status;
+  }
+  GX_RECTANGLE strip;
+  gx_utility_rectangle_define(&strip,
+                              card->gx_rectangle_left,
+                              card->gx_rectangle_top,
+                              card->gx_rectangle_right,
+                              (GX_VALUE)(card->gx_rectangle_top + (GX_VALUE)k_ui_accent_h - 1));
+  return bedroom_make_panel(&s_accent[room][i],
+                            (GX_WIDGET*)&s_card[room][i],
+                            strip,
+                            (GX_RESOURCE_ID)s_cards[room][i].accent);
+}
+
+/**
+ * @brief Create a card's three text rows (label, value, sub-status).
+ *
+ * @param[in] room Room index.
+ * @param[in] i    Card index.
+ * @param[in] card Card rectangle from bedroom_card_bounds.
+ * @return UINT GX_SUCCESS or the first failing GUIX status.
+ */
+static UINT bedroom_create_card_text(uint16_t room, uint16_t i, const GX_RECTANGLE* card)
+{
+  const bedroom_card_t* c  = &s_cards[room][i];
+  const GX_VALUE        y0 = card->gx_rectangle_top;
+  const GX_VALUE        lx = (GX_VALUE)(card->gx_rectangle_left + (GX_VALUE)k_ui_card_inset);
+  const GX_VALUE        rx = (GX_VALUE)(card->gx_rectangle_right - (GX_VALUE)k_ui_card_inset);
+  const struct {
+    GX_PROMPT*     widget;
+    GX_VALUE       dy;
+    GX_VALUE       h;
+    const char*    text;
+    GX_RESOURCE_ID color;
+  } rows[k_ui_card_rows] = {
+    {&s_lbl[room][i],
+     (GX_VALUE)k_ui_lbl_dy,
+     (GX_VALUE)k_ui_lbl_h,
+     c->label,
+     (GX_RESOURCE_ID)k_col_label},
+    {&s_val[room][i],
+     (GX_VALUE)k_ui_val_dy,
+     (GX_VALUE)k_ui_val_h,
+     c->value,
+     (GX_RESOURCE_ID)c->accent},
+    {&s_sub[room][i],
+     (GX_VALUE)k_ui_subv_dy,
+     (GX_VALUE)k_ui_subv_h,
+     c->sub,
+     (GX_RESOURCE_ID)k_col_label},
+  };
+  for (uint16_t k = 0U; k < (uint16_t)k_ui_card_rows; k++) {
+    GX_RECTANGLE r;
+    gx_utility_rectangle_define(&r,
+                                lx,
+                                (GX_VALUE)(y0 + rows[k].dy),
+                                rx,
+                                (GX_VALUE)(y0 + rows[k].dy + rows[k].h));
+    const UINT status = bedroom_make_label(rows[k].widget,
+                                           (GX_WIDGET*)&s_card[room][i],
+                                           r,
+                                           rows[k].text,
+                                           (GX_RESOURCE_ID)k_font_txt,
+                                           rows[k].color);
+    if (status != GX_SUCCESS) {
+      return status;
+    }
+  }
+  return GX_SUCCESS;
+}
+
+/**
  * @brief Create one stat card (body, accent strip, label, value, sub).
  *
  * @param[in] room Room index.
@@ -372,83 +482,13 @@ static UINT bedroom_create_tabs(void)
  */
 static UINT bedroom_create_card(uint16_t room, uint16_t i)
 {
-  const UINT col_w = ((UINT)k_ui_w - (2U * (UINT)k_ui_pad) - (UINT)k_ui_gap) / (UINT)k_ui_cols;
-  const UINT row_h =
-    (((UINT)k_ui_h - (UINT)k_ui_bot_margin) - (UINT)k_ui_grid_top - (UINT)k_ui_gap) / 2U;
-  const UINT col = (UINT)i % (UINT)k_ui_cols;
-  const UINT row = (UINT)i / (UINT)k_ui_cols;
-  const UINT x0  = (UINT)k_ui_pad + (col * (col_w + (UINT)k_ui_gap));
-  const UINT y0  = (UINT)k_ui_grid_top + (row * (row_h + (UINT)k_ui_gap));
-  const UINT x1  = x0 + col_w - 1U;
-  const UINT y1  = y0 + row_h - 1U;
-
-  const bedroom_card_t* c      = &s_cards[room][i];
-  const GX_RESOURCE_ID  accent = (GX_RESOURCE_ID)c->accent;
-  GX_RECTANGLE          r;
-
-  gx_utility_rectangle_define(&r, (GX_VALUE)x0, (GX_VALUE)y0, (GX_VALUE)x1, (GX_VALUE)y1);
-  UINT status = bedroom_make_panel(&s_card[room][i],
-                                   (GX_WIDGET*)&s_screen[room],
-                                   r,
-                                   (GX_RESOURCE_ID)k_col_card);
+  GX_RECTANGLE card;
+  bedroom_card_bounds(i, &card);
+  const UINT status = bedroom_create_card_frame(room, i, &card);
   if (status != GX_SUCCESS) {
     return status;
   }
-
-  gx_utility_rectangle_define(&r,
-                              (GX_VALUE)x0,
-                              (GX_VALUE)y0,
-                              (GX_VALUE)x1,
-                              (GX_VALUE)(y0 + (UINT)k_ui_accent_h - 1U));
-  status = bedroom_make_panel(&s_accent[room][i], (GX_WIDGET*)&s_card[room][i], r, accent);
-  if (status != GX_SUCCESS) {
-    return status;
-  }
-
-  const UINT lx = x0 + (UINT)k_ui_card_inset;
-  const UINT rx = x1 - (UINT)k_ui_card_inset;
-
-  gx_utility_rectangle_define(&r,
-                              (GX_VALUE)lx,
-                              (GX_VALUE)(y0 + (UINT)k_ui_lbl_dy),
-                              (GX_VALUE)rx,
-                              (GX_VALUE)(y0 + (UINT)k_ui_lbl_dy + (UINT)k_ui_lbl_h));
-  status = bedroom_make_label(&s_lbl[room][i],
-                              (GX_WIDGET*)&s_card[room][i],
-                              r,
-                              c->label,
-                              (GX_RESOURCE_ID)k_font_txt,
-                              (GX_RESOURCE_ID)k_col_label);
-  if (status != GX_SUCCESS) {
-    return status;
-  }
-
-  gx_utility_rectangle_define(&r,
-                              (GX_VALUE)lx,
-                              (GX_VALUE)(y0 + (UINT)k_ui_val_dy),
-                              (GX_VALUE)rx,
-                              (GX_VALUE)(y0 + (UINT)k_ui_val_dy + (UINT)k_ui_val_h));
-  status = bedroom_make_label(&s_val[room][i],
-                              (GX_WIDGET*)&s_card[room][i],
-                              r,
-                              c->value,
-                              (GX_RESOURCE_ID)k_font_txt,
-                              accent);
-  if (status != GX_SUCCESS) {
-    return status;
-  }
-
-  gx_utility_rectangle_define(&r,
-                              (GX_VALUE)lx,
-                              (GX_VALUE)(y0 + (UINT)k_ui_subv_dy),
-                              (GX_VALUE)rx,
-                              (GX_VALUE)(y0 + (UINT)k_ui_subv_dy + (UINT)k_ui_subv_h));
-  return bedroom_make_label(&s_sub[room][i],
-                            (GX_WIDGET*)&s_card[room][i],
-                            r,
-                            c->sub,
-                            (GX_RESOURCE_ID)k_font_txt,
-                            (GX_RESOURCE_ID)k_col_label);
+  return bedroom_create_card_text(room, i, &card);
 }
 
 /**

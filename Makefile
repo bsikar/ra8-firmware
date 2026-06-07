@@ -57,6 +57,8 @@ RA_DEFAULT_APP ?= blink
 _RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
                  $(wildcard $(ROOT)/examples/*/*/*/main.c) \
                  $(wildcard $(ROOT)/examples/*/*/*/*/main.c)
+# examples/host/* are macOS-only dev tools, not cross-compiled firmware apps.
+_RA_APP_MAINS := $(filter-out $(ROOT)/examples/host/%,$(_RA_APP_MAINS))
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 

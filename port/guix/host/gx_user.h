@@ -10,6 +10,7 @@
  * included, so the host build also sets it on the command line; the guard
  * below keeps that from being a macro redefinition.
  *
+ * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

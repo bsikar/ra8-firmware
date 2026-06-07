@@ -2,6 +2,9 @@
  * @file main.c
  * @brief Host GUIX 3-tab bedroom UI -- macOS preview of the panel app
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: NS}
+ *
  * @details
  * Drives the shared GUIX UI (``bedroom_ui``) on the macOS host: GUIX renders
  * into an RGB565 framebuffer via the host 565rgb driver behind the display
@@ -50,12 +53,12 @@ static GX_WINDOW_ROOT s_gxroot;
 
 static VOID* host_alloc(ULONG size)
 {
-  return malloc((size_t)size);
+  return malloc((size_t)size); /* alloc-allow: host preview; target uses static pool */
 }
 
 static VOID host_free(VOID* mem)
 {
-  free(mem);
+  free(mem); /* alloc-allow: host preview; target uses static pool */
 }
 
 /**
@@ -120,7 +123,7 @@ static void guix_send_pen(uint16_t x, uint16_t y)
 static int write_ppm(const char* path, const uint16_t* fb, int w, int h)
 {
   FILE* f = fopen(path, "wb");
-  if (f == NULL) {
+  if (f == nullptr) {
     return -1;
   }
   (void)fprintf(f, "P6\n%d %d\n255\n", w, h);
