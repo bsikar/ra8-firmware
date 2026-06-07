@@ -62,6 +62,12 @@ _RA_APP_MAINS := $(filter-out $(ROOT)/examples/host/%,$(_RA_APP_MAINS))
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
+# `make flash-<app>` / `debug-<app>` / `ozone-<app>` shorthands -- build the
+# app, then run the matching per-app Makefile target (local J-Link board).
+RA_FLASH := $(addprefix flash-,$(RA_APPS))
+RA_DEBUG := $(addprefix debug-,$(RA_APPS))
+RA_OZONE := $(addprefix ozone-,$(RA_APPS))
+
 # Host examples (examples/host/<app>/) are macOS-only dev tools built with the
 # native compiler via their own per-app Makefile -- NOT the cross toolchain.
 # `make <app>` builds; `make run-<app>` builds + launches the window.
@@ -87,10 +93,23 @@ help:
 	@echo "  make <host-app>      build a macOS host preview -- one of: $(RA_HOST_APPS)"
 	@echo "  make run-<host-app>  build + launch a host preview window"
 	@echo "  make apps      list every discovered app"
+	@echo "  -- hardware (local J-Link) --"
+	@echo "  make flash-<app>     build + flash an app  (e.g. make flash-blink)"
+	@echo "  make debug-<app>     build + gdb via J-Link"
+	@echo "  make ozone-<app>     build + open in Ozone"
+	@echo "  make flash-ocd APP=<app> / debug-ocd APP=<app>   OpenOCD instead of J-Link"
+	@echo "  -- hardware (remote HIL on the Pi; APP=<app>) --"
+	@echo "  make hil             full HIL suite from this machine (build+flash+verify)"
+	@echo "  make hil-flash APP=<app>     build + flash to the Pi-attached board"
+	@echo "  make hil-recover APP=<app>   recovery flash / make hil-flash-retry APP=<app>"
+	@echo "  make hil-erase / hil-dlm-reset / hil-probe / hil-suite / hil-all"
+	@echo "  make hil-tapo CMD=<status|on|off|cycle>   board power  (hil-ppps for USB)"
 	@echo "  make clean     remove every app build dir and tests/build"
 	@echo "  make format    run clang-format in place"
 	@echo "  make check     run clang-format --dry-run"
 	@echo "  make tidy      run clang-tidy"
+	@echo "  make cppcheck  run the cppcheck gate locally"
+	@echo "  make build-all cross-compile every firmware app (CI's cross-build job)"
 	@echo "  make test      host-compile + run unit tests (tests/build/)"
 	@echo "  make test-cov  alias for make mcdc (tests/build-cov/)"
 	@echo "  make test-docker host-compile + run unit tests in Linux container"
@@ -173,6 +192,17 @@ $(RA_HOST_APPS):
 
 $(RA_HOST_RUN): run-%:
 	$(MAKE) -C $(RA_HOST_APP_DIR_$*) run
+
+# Local J-Link shorthands (board plugged into this machine): build the app
+# first (via the `%` prereq), then forward to the per-app Makefile, which wraps
+# scripts/{flash,debug,ozone}.sh. e.g. `make flash-blink`, `make ozone-blink`.
+.PHONY: $(RA_FLASH) $(RA_DEBUG) $(RA_OZONE)
+$(RA_FLASH): flash-%: %
+	$(MAKE) -C $(RA_APP_DIR_$*) flash
+$(RA_DEBUG): debug-%: %
+	$(MAKE) -C $(RA_APP_DIR_$*) debug
+$(RA_OZONE): ozone-%: %
+	$(MAKE) -C $(RA_APP_DIR_$*) ozone
 
 $(RA_COMPILE_COMMANDS): $(_RA_CMAKE_INPUTS)
 	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake -B $(ROOT)/build $(ROOT)
@@ -267,6 +297,16 @@ mcdc:
 # Not gated by pre-commit yet.
 misra:
 	bash scripts/utils/misra_check.sh
+
+.PHONY: cppcheck build-all
+# `make cppcheck` -- local parity with the CI cppcheck gate.
+cppcheck:
+	bash scripts/cppcheck.sh
+
+# `make build-all` -- cross-compile every firmware app (what CI's
+# "Cross-build all apps" job runs); per-app logs in build/build_all_examples/.
+build-all:
+	bash scripts/build_all_examples.sh
 
 ascii:
 	@for dir in src libs tests; do \
@@ -377,5 +417,69 @@ app-sizes:
 .PHONY: audit-init
 audit-init:
 	python3 scripts/utils/audit_init_order.py --report docs/INIT_ORDER_AUDIT.md
+
+# ---------------------------------------------------------------------------
+# Hardware -- remote HIL (board on the Pi rig, driven over SSH from this box)
+# plus OpenOCD alternates. App-specific targets take APP=<name>; board-level
+# ops take none. The app-specific UART/RTT verification probes are orchestrated
+# by `make hil` / hil-suite / hil-all (each app needs its own expected output),
+# so they are not exposed as individual targets here.
+#
+#   make hil-flash APP=blink     build + flash to the Pi-attached board
+#   make hil-recover APP=blink   recovery flash when the board is wedged
+#   make hil-flash-retry APP=blink  power-cycle (uhubctl) then flash
+#   make hil-erase               mass-erase the MRAM
+#   make hil-dlm-reset           recover from OEM_PL0/PL1 lockout
+#   make hil-probe               quick J-Link + board diagnostic
+#   make hil-suite / hil-all     run the HIL test suite (on the Pi)
+#   make hil-tapo CMD=cycle      board power via Tapo plug (status|on|off|cycle)
+#   make hil-ppps CMD=cycle      per-port USB power (off|on|cycle [port])
+#   make flash-ocd APP=blink     flash via OpenOCD instead of J-Link
+#   make debug-ocd APP=blink     gdb via OpenOCD
+# ---------------------------------------------------------------------------
+.PHONY: hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
+        hil-probe hil-suite hil-all hil-tapo hil-ppps flash-ocd debug-ocd
+
+hil-flash:
+	@test -n "$(APP)" || { echo "usage: make hil-flash APP=<app>"; exit 2; }
+	bash scripts/hil_flash.sh $(APP)
+
+hil-recover:
+	@test -n "$(APP)" || { echo "usage: make hil-recover APP=<app>"; exit 2; }
+	bash scripts/hil_recover.sh $(APP)
+
+hil-flash-retry:
+	@test -n "$(APP)" || { echo "usage: make hil-flash-retry APP=<app>"; exit 2; }
+	bash scripts/hil_flash_retry.sh $(APP)
+
+hil-erase:
+	bash scripts/hil_erase.sh
+
+hil-dlm-reset:
+	bash scripts/hil_dlm_reset.sh
+
+hil-probe:
+	bash scripts/hil_probe.sh
+
+hil-suite:
+	bash scripts/hil_suite.sh
+
+hil-all:
+	bash scripts/hil_all.sh
+
+hil-tapo:
+	bash scripts/hil_tapo.sh $(or $(CMD),status)
+
+hil-ppps:
+	bash scripts/hil_ppps.sh $(or $(CMD),cycle)
+
+flash-ocd:
+	@test -n "$(APP)" || { echo "usage: make flash-ocd APP=<app>"; exit 2; }
+	$(MAKE) $(APP)
+	bash scripts/openocd_flash.sh $(RA_APP_DIR_$(APP))/build/$(APP).hex
+
+debug-ocd:
+	@test -n "$(APP)" || { echo "usage: make debug-ocd APP=<app>"; exit 2; }
+	bash scripts/openocd_debug.sh $(RA_APP_DIR_$(APP))/build/$(APP).elf
 
 all: format tidy test default
