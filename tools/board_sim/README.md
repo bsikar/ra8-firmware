@@ -45,15 +45,19 @@ cross-builds the app and opens its live window. Close the window to exit.
 - **Time**: bare-metal delays are SysTick-driven. Between emulation chunks the
   installed `SysTick_Handler` is cooperatively invoked as a function so the tick
   counter advances and `ra_delay_ms` returns.
-- **Display**: the current frame is read from emulated GLCDC state -- the BG_BGC
-  background colour today -- and presented via a small self-contained Cocoa view.
+- **Display**: the current frame is read from emulated GLCDC state each present
+  -- the BG_BGC background colour, with the GR1 graphics-layer framebuffer
+  (decoded from FLM2/FLM3/FLM5/FLM6) blitted over it out of emulated RAM -- and
+  shown via a small self-contained Cocoa view.
 
 ## Status / limits
 
 - Proven on `lcd_color_cycle`: boots clocks -> SDRAM -> GLCDC and cycles the
   background colour (red/green/blue/white), shown live.
-- Graphics-layer framebuffers in SDRAM (GUIX UIs) are not blitted yet, and
-  ThreadX apps use a different (PendSV-scheduled) boot path not yet modelled.
+- Proven on `display_pal_animation`: its RGB565 GR1 framebuffer in on-chip SRAM
+  is read back and rendered (real drawn pixels, not just a background colour).
+- ThreadX apps use a different (PendSV-scheduled) boot path not yet modelled; a
+  bare-metal (single-threaded) GUIX UI app is the path to viewing the real UI.
 - The peripheral model fakes hardware *handshakes*; it validates "does the
   firmware drive the controller correctly," not real silicon timing. It
   complements HIL, it does not replace it.
