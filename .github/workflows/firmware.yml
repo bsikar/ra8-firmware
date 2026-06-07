@@ -334,6 +334,9 @@ jobs:
           if [ -d examples ]; then
             for d in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
               d="${d%/}"
+              # examples/host/* are macOS-only dev tools (C23 nullptr + AppKit),
+              # not cross-compiled firmware -- skip like the other host gates.
+              case "$d" in examples/host/*) continue ;; esac
               [ -f "$d/main.c" ] && apps+=("$d")
             done
           fi
