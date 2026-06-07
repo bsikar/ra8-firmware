@@ -44,6 +44,7 @@
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
+#include "ra_panel_timing.h"
 #include "ra_time.h"
 
 /* ===========================================================================
@@ -129,6 +130,7 @@ static const display_cfg_t k_app_display_cfg = {
   .width_px          = (uint16_t)k_app_fb_w,
   .height_px         = (uint16_t)k_app_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
+  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
 };
 
 /** @brief PAL handle returned by display_init. */

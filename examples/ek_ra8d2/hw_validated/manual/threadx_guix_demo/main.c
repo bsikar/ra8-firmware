@@ -71,6 +71,7 @@
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
+#include "ra_panel_timing.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 
@@ -215,6 +216,7 @@ static const display_cfg_t k_demo_display_cfg = {
   .width_px          = (uint16_t)k_demo_fb_width,
   .height_px         = (uint16_t)k_demo_fb_height,
   .pixfmt            = k_display_pixfmt_rgb565,
+  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
 };
 
 /** @brief PAL handle returned by ``display_init``. */

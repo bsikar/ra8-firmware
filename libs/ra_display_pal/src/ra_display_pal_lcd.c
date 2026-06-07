@@ -153,6 +153,11 @@ static ra_err_t internal_lcd_validate_cfg(const display_cfg_t* cfg)
   if (cfg->pixfmt != k_display_pixfmt_rgb565) {
     return k_ra_err_not_supported;
   }
+  /* The GLCDC backend needs the panel's RGB timing; the board BSP supplies it
+   * (e.g. &k_ra_panel_ek_ra8d2_timing). Host / e-ink backends leave it null. */
+  if (cfg->panel_timing == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
   const uint32_t need_bytes =
     (uint32_t)cfg->width_px * (uint32_t)cfg->height_px * (uint32_t)k_lcd_rgb565_bpp;
   if (cfg->framebuffer_bytes < need_bytes) {
@@ -206,6 +211,7 @@ static ra_err_t internal_lcd_bringup_panel(const display_cfg_t* cfg)
     .width_px         = cfg->width_px,
     .height_px        = cfg->height_px,
     .format           = k_ra_glcdc_fmt_rgb565,
+    .timing           = *(const ra_glcdc_timing_t*)cfg->panel_timing,
   };
   err = ra_glcdc_init(&glcdc_cfg);
   if (err != k_ra_ok) {

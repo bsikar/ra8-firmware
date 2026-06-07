@@ -13,9 +13,11 @@
  * different board -- e.g. a future e-reader -- swaps in its own descriptor
  * without touching the UI.
  *
- * Scope: UI-facing geometry only. The GLCDC electrical timings (porches /
- * sync) still live in libs/ra_hal/src/ra_glcdc.c; moving them into the BSP so
- * the HAL stops baking in one panel is tracked in issue #66.
+ * Holds the full panel description: UI-facing geometry plus the GLCDC RGB
+ * timing (porches / sync). The geometry + timing values here are plain
+ * constants (host-includable); the GLCDC-typed timing instance the HAL
+ * consumes lives in the companion ra_panel_timing.h (target-only, since it
+ * pulls in the HAL type).
  *
  * Self-contained (no MCU / FSP includes) so host-side previews include it
  * unchanged.
@@ -51,3 +53,22 @@ typedef enum : uint16_t {
   k_panel_height_mm = 86U,   /**< Active-area height (mm, approx). */
   k_panel_ppi       = 169U,  /**< Pixels per inch (approx).        */
 } ra_panel_geometry_t;
+
+/**
+ * @enum ra_panel_timing_t
+ * @brief ER-TFT070-6 RGB timing (porches + sync); active size = the geometry.
+ *
+ * @details Per the LVGL EK-RA8D2 reference for this panel (these differ from
+ * the generic 1024x600 values: h_back 140->160, h_sync 20->4, v_back 20->23).
+ * Assembled into the HAL's ra_glcdc_timing_t in ra_panel_timing.h.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_panel_h_front = 160U, /**< Horizontal front porch (px).   */
+  k_panel_h_back  = 160U, /**< Horizontal back porch (px).    */
+  k_panel_h_sync  = 4U,   /**< HSYNC pulse width (px clocks). */
+  k_panel_v_front = 12U,  /**< Vertical front porch (lines).  */
+  k_panel_v_back  = 23U,  /**< Vertical back porch (lines).   */
+  k_panel_v_sync  = 3U,   /**< VSYNC pulse width (lines).     */
+} ra_panel_timing_t;

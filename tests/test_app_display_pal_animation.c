@@ -28,6 +28,7 @@
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
+#include "ra_panel_timing.h"
 #include "ra_pin_validator.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -61,6 +62,7 @@ static display_cfg_t make_cfg(void)
     .width_px          = (uint16_t)k_test_app_fb_w,
     .height_px         = (uint16_t)k_test_app_fb_h,
     .pixfmt            = k_display_pixfmt_rgb565,
+    .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
   };
   return cfg;
 }

@@ -52,6 +52,7 @@
 #include "ra_glcdc.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
+#include "ra_panel_timing.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
 
@@ -184,6 +185,7 @@ static void lcd_bringup_panel(void)
     .width_px         = (uint16_t)k_lcd_panel_w,
     .height_px        = (uint16_t)k_lcd_panel_h,
     .format           = k_ra_glcdc_fmt_rgb565,
+    .timing           = k_ra_panel_ek_ra8d2_timing,
   };
   if (ra_glcdc_init(&cfg) != k_ra_ok) {
     lcd_panic_halt();
