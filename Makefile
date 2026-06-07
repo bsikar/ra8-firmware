@@ -46,6 +46,14 @@ CLANG_FORMAT ?= clang-format
 DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
+# --- git hooks: active for every clone, every make invocation ----------------
+# A fresh clone has no hooks in .git/hooks, so the commit-msg / pre-commit /
+# pre-push gates (AI-attribution ban, ASCII, Doxygen, copyright, ...) would be
+# silently skipped. Point core.hooksPath at the tracked scripts/git/ hooks on
+# every make run -- idempotent, prints only the first time. `make hooks` too.
+_RA_HOOKS_MSG := $(shell $(ROOT)/scripts/git/install-hooks.sh 2>/dev/null)
+$(if $(_RA_HOOKS_MSG),$(info $(_RA_HOOKS_MSG)))
+
 # Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
 RA_DEFAULT_APP ?= blink
 
@@ -95,6 +103,7 @@ help:
 	@echo "  make run-<host-app>  build + launch a host preview window"
 	@echo "  make sim [PANEL=ek_ra8d2]  build + run the macOS UI simulator (tools/simulator)"
 	@echo "  make simulate-<app>  boot an app's real .elf on the board emulator in a window"
+	@echo "  make hooks     (re)install the tracked git hooks (auto-runs on every make)"
 	@echo "  make apps      list every discovered app"
 	@echo "  -- hardware (local J-Link) --"
 	@echo "  make flash-<app>     build + flash an app  (e.g. make flash-blink)"
@@ -310,6 +319,14 @@ cppcheck:
 # "Cross-build all apps" job runs); per-app logs in build/build_all_examples/.
 build-all:
 	bash scripts/build_all_examples.sh
+
+# `make hooks` -- (re)install the tracked git hooks for this clone. This also
+# runs automatically on every make invocation (see install-hooks.sh near the
+# top); the explicit target is for a one-shot install right after cloning.
+.PHONY: hooks
+hooks:
+	@$(ROOT)/scripts/git/install-hooks.sh
+	@echo "git hooks active: core.hooksPath = $$(git config core.hooksPath)"
 
 # `make sim [PANEL=<name>]` -- build + run the macOS UI simulator companion tool
 # (tools/simulator) on a panel config (tools/simulator/panels/<PANEL>.toml).
