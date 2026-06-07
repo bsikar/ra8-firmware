@@ -18,6 +18,29 @@ extern "C" {
 #include "ra_err.h"
 
 /**
+ * @struct ra_glcdc_timing_t
+ * @brief Panel RGB timing the driver programs (accessory parameters).
+ *
+ * @details
+ * Raw horizontal/vertical timing for the attached RGB panel: active size plus
+ * front porch, back porch, and sync width. These describe the DISPLAY, not the
+ * GLCDC peripheral, so the caller supplies them from the board's BSP and the
+ * driver stays panel-agnostic. The driver derives the line/frame totals.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t h_active; /**< Active pixels per line.        */
+  uint16_t h_front;  /**< Horizontal front porch (px).   */
+  uint16_t h_back;   /**< Horizontal back porch (px).    */
+  uint16_t h_sync;   /**< HSYNC pulse width (px clocks). */
+  uint16_t v_active; /**< Active lines per frame.        */
+  uint16_t v_front;  /**< Vertical front porch (lines).  */
+  uint16_t v_back;   /**< Vertical back porch (lines).   */
+  uint16_t v_sync;   /**< VSYNC pulse width (lines).     */
+} ra_glcdc_timing_t;
+
+/**
  * @struct ra_glcdc_config_t
  * @brief Minimal GLCDC configuration for a single-layer panel.
  *
@@ -32,6 +55,7 @@ typedef struct {
   uint16_t             width_px;         /**< Visible width.         */
   uint16_t             height_px;        /**< Visible height.        */
   ra_glcdc_pixel_fmt_t format;           /**< Pixel format code.     */
+  ra_glcdc_timing_t    timing;           /**< Panel timing (from BSP). */
 } ra_glcdc_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

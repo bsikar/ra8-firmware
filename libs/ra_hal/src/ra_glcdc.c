@@ -331,21 +331,10 @@ typedef enum : uint32_t {
   k_glcdc_alpha_opaque = 0xFFUL, /**< Fully opaque (constant alpha). */
 } ra_glcdc_alpha_priv_t;
 
-/* Panel timing constants for the EK-RA8D2 Parallel Graphics Expansion
- * Board 1 + ER-TFT070-6 panel (1024 x 600).  Confirmed against the
- * LVGL EK-RA8D2 reference project; differ from the generic 1024 x 600
- * values in ra8d2_glcdc_regs.h (h_back 140 -> 160, h_sync 20 -> 4,
- * v_back 20 -> 23). */
-typedef enum : uint32_t {
-  k_glcdc_pgeb1_h_active = 1024U,
-  k_glcdc_pgeb1_h_front  = 160U,
-  k_glcdc_pgeb1_h_back   = 160U,
-  k_glcdc_pgeb1_h_sync   = 4U,
-  k_glcdc_pgeb1_v_active = 600U,
-  k_glcdc_pgeb1_v_front  = 12U,
-  k_glcdc_pgeb1_v_back   = 23U,
-  k_glcdc_pgeb1_v_sync   = 3U,
-} ra_glcdc_pgeb1_timing_t;
+/* Panel timing is supplied by the caller via ra_glcdc_config_t.timing -- it is
+ * accessory data, not a peripheral property, so the panel's values (e.g. the
+ * EK-RA8D2 ER-TFT070-6) live in the board BSP (libs/ra_board_ek_ra8d2), not in
+ * this driver. */
 
 /* OUT_SET.FORMAT[1:0] codes for output bus. */
 typedef enum : uint32_t {
@@ -370,8 +359,8 @@ typedef enum : uint32_t {
 /**
  * @brief Panel timing parameters shared by the per-stage helpers.
  *
- * @details Holds the horizontal and vertical timing for the
- * 1024 x 600 PGEB1 panel.  Computed once in
+ * @details Holds the horizontal and vertical timing derived from the
+ * caller-supplied ra_glcdc_config_t.timing.  Computed once in
  * `internal_panel_program` and threaded through the TCON, BG, GR1,
  * GR2, and OUT helpers so each stage uses the same numbers.
  */
@@ -590,14 +579,15 @@ static void internal_program_out(void)
 /**
  * @brief Program every GLCDC register required to drive the panel.
  *
- * @details Thin orchestrator that builds the panel-timing struct for
- * the 1024 x 600 PGEB1 panel and calls the five per-stage helpers in
+ * @details Thin orchestrator that builds the panel-timing struct from
+ * the caller-supplied @p tm and calls the five per-stage helpers in
  * the order FSP's `r_glcdc_open` uses: TCON, BG, GR1, GR2, OUT.
  *
  * @param[in] fb_addr    Framebuffer base address for GR1.
  * @param[in] fb_format  GR1 framebuffer pixel format.
  * @param[in] fb_w       GR1 framebuffer width (pixels).
  * @param[in] fb_h       GR1 framebuffer height (pixels).
+ * @param[in] tm         Panel RGB timing (from the board BSP).
  *
  * @pre internal_graphics_power_on has been called.
  * @pre GLCDC peripheral clock is active (MSTPCRD enabled).
@@ -608,20 +598,23 @@ static void internal_program_out(void)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
-static void
-internal_panel_program(uintptr_t fb_addr, uint16_t fb_format, uint16_t fb_w, uint16_t fb_h)
+static void internal_panel_program(uintptr_t                fb_addr,
+                                   uint16_t                 fb_format,
+                                   uint16_t                 fb_w,
+                                   uint16_t                 fb_h,
+                                   const ra_glcdc_timing_t* tm)
 {
   const ra_glcdc_panel_timing_t t = {
-    .h_active = (uint32_t)k_glcdc_pgeb1_h_active,
-    .h_back   = (uint32_t)k_glcdc_pgeb1_h_back,
-    .h_sync   = (uint32_t)k_glcdc_pgeb1_h_sync,
-    .h_total  = (uint32_t)k_glcdc_pgeb1_h_active + (uint32_t)k_glcdc_pgeb1_h_front +
-                (uint32_t)k_glcdc_pgeb1_h_back + (uint32_t)k_glcdc_pgeb1_h_sync,
-    .v_active = (uint32_t)k_glcdc_pgeb1_v_active,
-    .v_back   = (uint32_t)k_glcdc_pgeb1_v_back,
-    .v_sync   = (uint32_t)k_glcdc_pgeb1_v_sync,
-    .v_total  = (uint32_t)k_glcdc_pgeb1_v_active + (uint32_t)k_glcdc_pgeb1_v_front +
-                (uint32_t)k_glcdc_pgeb1_v_back + (uint32_t)k_glcdc_pgeb1_v_sync,
+    .h_active = (uint32_t)tm->h_active,
+    .h_back   = (uint32_t)tm->h_back,
+    .h_sync   = (uint32_t)tm->h_sync,
+    .h_total =
+      (uint32_t)tm->h_active + (uint32_t)tm->h_front + (uint32_t)tm->h_back + (uint32_t)tm->h_sync,
+    .v_active = (uint32_t)tm->v_active,
+    .v_back   = (uint32_t)tm->v_back,
+    .v_sync   = (uint32_t)tm->v_sync,
+    .v_total =
+      (uint32_t)tm->v_active + (uint32_t)tm->v_front + (uint32_t)tm->v_back + (uint32_t)tm->v_sync,
   };
   internal_program_tcon(&t);
   internal_program_bg(&t);
@@ -668,7 +661,8 @@ ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
   internal_panel_program(cfg->framebuffer_addr,
                          (uint16_t)cfg->format,
                          cfg->width_px,
-                         cfg->height_px);
+                         cfg->height_px,
+                         &cfg->timing);
 
   ra_log_info_val(s_tag, "glcdc_init fb", cfg->framebuffer_addr);
   return k_ra_ok;
