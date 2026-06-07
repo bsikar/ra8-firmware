@@ -35,10 +35,11 @@
 #include "ra_display_pal_guix.h"
 #include "ra_display_pal_host_macos.h"
 #include "ra_err.h"
+#include "ra_panel.h"
 
 typedef enum : uint16_t {
-  k_w = 1024U,
-  k_h = 600U,
+  k_w = k_panel_width_px,
+  k_h = k_panel_height_px,
 } guix_tabs_geom_t;
 
 typedef enum : uint32_t {

@@ -78,6 +78,7 @@ add_executable(guix_tabs
 target_include_directories(guix_tabs PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${FW_ROOT}/examples/shared/bedroom_ui
+    ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc                # ra_panel.h (BSP panel descriptor)
     ${FW_ROOT}/port/guix                                 # gx_display_driver_host.h
     ${FW_ROOT}/port/guix/host                            # gx_user.h, gx_port.h, gx_host_run.h
     ${FW_ROOT}/libs/third_party/guix/common/inc
