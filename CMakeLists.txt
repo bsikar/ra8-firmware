@@ -37,6 +37,22 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler:   ${CMAKE_C_COMPILER}")
 
+# Activate the tracked git hooks (scripts/git/) for every clone so the
+# commit-msg / pre-commit / pre-push gates run for everyone -- defense in depth
+# with CI. A fresh clone has no hooks installed; point core.hooksPath at the
+# tracked dir at configure time. Idempotent; no-op outside a git work tree
+# (.git absent in a release tarball / vendored copy).
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND git config core.hooksPath scripts/git
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE _ra_hooks_rc
+        OUTPUT_QUIET ERROR_QUIET)
+    if(_ra_hooks_rc EQUAL 0)
+        message(STATUS "Git hooks: core.hooksPath -> scripts/git")
+    endif()
+endif()
+
 # C Standard - C23 (GNU2x)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
