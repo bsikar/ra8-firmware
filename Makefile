@@ -91,6 +91,7 @@ help:
 	@echo "  make <app>     build a specific app -- one of: $(RA_APPS)"
 	@echo "  make <host-app>      build a macOS host preview -- one of: $(RA_HOST_APPS)"
 	@echo "  make run-<host-app>  build + launch a host preview window"
+	@echo "  make sim [PANEL=ek_ra8d2]  build + run the macOS UI simulator (tools/simulator)"
 	@echo "  make apps      list every discovered app"
 	@echo "  -- hardware (local J-Link) --"
 	@echo "  make flash-<app>     build + flash an app  (e.g. make flash-blink)"
@@ -306,6 +307,16 @@ cppcheck:
 # "Cross-build all apps" job runs); per-app logs in build/build_all_examples/.
 build-all:
 	bash scripts/build_all_examples.sh
+
+# `make sim [PANEL=<name>]` -- build + run the macOS UI simulator companion tool
+# (tools/simulator) on a panel config (tools/simulator/panels/<PANEL>.toml).
+SIM_DIR   := $(ROOT)/tools/simulator
+SIM_PANEL ?= ek_ra8d2
+.PHONY: sim
+sim:
+	$(CMAKE) -B $(SIM_DIR)/build -S $(SIM_DIR)
+	$(CMAKE) --build $(SIM_DIR)/build -j
+	$(SIM_DIR)/build/sim --panel $(SIM_DIR)/panels/$(SIM_PANEL).toml
 
 ascii:
 	@for dir in src libs tests; do \
