@@ -62,9 +62,17 @@ _RA_APP_MAINS := $(filter-out $(ROOT)/examples/host/%,$(_RA_APP_MAINS))
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
+# Host examples (examples/host/<app>/) are macOS-only dev tools built with the
+# native compiler via their own per-app Makefile -- NOT the cross toolchain.
+# `make <app>` builds; `make run-<app>` builds + launches the window.
+_RA_HOST_APP_MAINS := $(wildcard $(ROOT)/examples/host/*/main.c)
+RA_HOST_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_HOST_APP_MAINS))))
+RA_HOST_RUN        := $(addprefix run-,$(RA_HOST_APPS))
+$(foreach m,$(_RA_HOST_APP_MAINS),$(eval RA_HOST_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
+
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS) $(RA_HOST_APPS) $(RA_HOST_RUN)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -76,6 +84,8 @@ help:
 	@echo "ra8d2-firmware make targets:"
 	@echo "  make           build the default app ($(RA_DEFAULT_APP))"
 	@echo "  make <app>     build a specific app -- one of: $(RA_APPS)"
+	@echo "  make <host-app>      build a macOS host preview -- one of: $(RA_HOST_APPS)"
+	@echo "  make run-<host-app>  build + launch a host preview window"
 	@echo "  make apps      list every discovered app"
 	@echo "  make clean     remove every app build dir and tests/build"
 	@echo "  make format    run clang-format in place"
@@ -154,6 +164,15 @@ _RA_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
 
 $(RA_APPS): $(RA_COMPILE_COMMANDS)
 	$(MAKE) -C $(RA_APP_DIR_$@) build
+
+# Host examples build natively via their own Makefile (no cross toolchain, no
+# top-level compile_commands reconfigure). `make <app>` builds the binary;
+# `make run-<app>` builds and launches the macOS preview window.
+$(RA_HOST_APPS):
+	$(MAKE) -C $(RA_HOST_APP_DIR_$@)
+
+$(RA_HOST_RUN): run-%:
+	$(MAKE) -C $(RA_HOST_APP_DIR_$*) run
 
 $(RA_COMPILE_COMMANDS): $(_RA_CMAKE_INPUTS)
 	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake -B $(ROOT)/build $(ROOT)
