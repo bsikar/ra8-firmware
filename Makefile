@@ -68,9 +68,8 @@ RA_FLASH := $(addprefix flash-,$(RA_APPS))
 RA_DEBUG := $(addprefix debug-,$(RA_APPS))
 RA_OZONE := $(addprefix ozone-,$(RA_APPS))
 
-# Host examples (examples/host/<app>/) are macOS-only dev tools built with the
-# native compiler via their own per-app Makefile -- NOT the cross toolchain.
-# `make <app>` builds; `make run-<app>` builds + launches the window.
+# Discover host examples (examples/host/<app>/) -- macOS-only dev tools built
+# natively, not cross-compiled. Their build/run targets are defined below.
 _RA_HOST_APP_MAINS := $(wildcard $(ROOT)/examples/host/*/main.c)
 RA_HOST_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_HOST_APP_MAINS))))
 RA_HOST_RUN        := $(addprefix run-,$(RA_HOST_APPS))
