@@ -67,6 +67,8 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 RA_FLASH := $(addprefix flash-,$(RA_APPS))
 RA_DEBUG := $(addprefix debug-,$(RA_APPS))
 RA_OZONE := $(addprefix ozone-,$(RA_APPS))
+# `make simulate-<app>` -- boot the app's real .elf on the board emulator.
+RA_SIMULATE := $(addprefix simulate-,$(RA_APPS))
 
 # Discover host examples (examples/host/<app>/) -- macOS-only dev tools built
 # natively, not cross-compiled. Their build/run targets are defined below.
@@ -92,6 +94,7 @@ help:
 	@echo "  make <host-app>      build a macOS host preview -- one of: $(RA_HOST_APPS)"
 	@echo "  make run-<host-app>  build + launch a host preview window"
 	@echo "  make sim [PANEL=ek_ra8d2]  build + run the macOS UI simulator (tools/simulator)"
+	@echo "  make simulate-<app>  boot an app's real .elf on the board emulator in a window"
 	@echo "  make apps      list every discovered app"
 	@echo "  -- hardware (local J-Link) --"
 	@echo "  make flash-<app>     build + flash an app  (e.g. make flash-blink)"
@@ -317,6 +320,17 @@ sim:
 	$(CMAKE) -B $(SIM_DIR)/build -S $(SIM_DIR)
 	$(CMAKE) --build $(SIM_DIR)/build -j
 	$(SIM_DIR)/build/sim --panel $(SIM_DIR)/panels/$(SIM_PANEL).toml
+
+# `make simulate-<app>` -- cross-build the app, then boot its real .elf on the
+# Unicorn-based board emulator (tools/board_sim) and show the emulated panel in
+# a live macOS window. Same binary that flashes to the EK-RA8D2; close the
+# window to exit. e.g. `make simulate-lcd_color_cycle`.
+BOARD_SIM_DIR := $(ROOT)/tools/board_sim
+.PHONY: $(RA_SIMULATE)
+$(RA_SIMULATE): simulate-%: %
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf --view
 
 ascii:
 	@for dir in src libs tests; do \
