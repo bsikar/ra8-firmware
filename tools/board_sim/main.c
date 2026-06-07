@@ -121,6 +121,25 @@ typedef enum : uint32_t {
   k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.    */
 } view_cfg_t;
 
+/* GLCDC graphics-layer 1 (GR1) framebuffer registers + field decode. The HAL
+ * programs FLM6.FORMAT[30:28], FLM3.LNOFF[31:16] (line stride in bytes), and
+ * FLM5.LNNUM[26:16] (lines - 1); reverse those to recover the framebuffer. */
+typedef enum : uint64_t {
+  k_glcdc_gr1_saddr = 0x4034310CUL, /**< GR[0].FLM2 framebuffer base.       */
+  k_glcdc_gr1_flm3  = 0x40343110UL, /**< GR[0].FLM3 line stride (LNOFF).    */
+  k_glcdc_gr1_flm5  = 0x40343118UL, /**< GR[0].FLM5 lines (LNNUM/DATANUM).  */
+  k_glcdc_gr1_fmt   = 0x4034311CUL, /**< GR[0].FLM6 pixel FORMAT.           */
+} glcdc_gr_t;
+
+typedef enum : uint32_t {
+  k_glcdc_fmt_rgb565  = 2U,      /**< FLM6.FORMAT code for RGB565.            */
+  k_glcdc_fmt_shift   = 28U,     /**< FORMAT[30:28].                          */
+  k_glcdc_fmt_mask    = 0x7U,    /**< FORMAT field width.                     */
+  k_glcdc_high_shift  = 16U,     /**< FLM3 stride / FLM5 lnnum live in [*:16].*/
+  k_glcdc_stride_mask = 0xFFFFU, /**< FLM3.LNOFF is 16 bits.                  */
+  k_glcdc_lnnum_mask  = 0x7FFU,  /**< FLM5.LNNUM is 11 bits.                  */
+} glcdc_decode_t;
+
 /* Sparse model of the Renesas peripheral space. Each touched address gets a
  * slot: control writes are reflected back on read so "configure then verify"
  * works, but once the firmware spins reading one address (a "wait for
@@ -418,14 +437,24 @@ static uint16_t rgb888_to_565(uint32_t rgb)
   return (uint16_t)(((r & 0xF8U) << 8) | ((g & 0xFCU) << 3) | (b >> 3));
 }
 
+/** @brief True if addr is in an emulated RAM region a framebuffer could use. */
+static bool addr_is_ram(uint32_t addr)
+{
+  return (((addr >= 0x20000000U) && (addr < 0x20010000U)) || /* DTCM */
+          ((addr >= 0x22000000U) && (addr < 0x22100000U)) || /* SRAM */
+          ((addr >= 0x68000000U) && (addr < 0x6C000000U)));  /* SDRAM */
+}
+
 /**
  * @brief Build the current display frame (RGB565) from emulated GLCDC state.
  *
  * @details
- * lcd_color_cycle drives a solid background plane, so the frame is the BG_BGC
- * background colour filled across the buffer -- the exact thing the GLCDC would
- * scan out to the panel. (Graphics-layer framebuffers living in emulated SDRAM
- * would be blitted here too, once a GUIX target boots on the emulator.)
+ * Fills the buffer with the BG_BGC background colour (what lcd_color_cycle
+ * scans out), then, if GR1 has an RGB565 framebuffer programmed in emulated
+ * RAM, blits it over the top-left -- so apps that draw real pixels into a
+ * graphics layer (e.g. display_pal_animation) show their actual content. The
+ * GR1 base/stride/lines are read live each call, so a double-buffered or
+ * animating app updates frame to frame.
  *
  * @param[in]  uc Unicorn engine (read-only here).
  * @param[out] fb RGB565 frame buffer of width*height pixels.
@@ -438,6 +467,32 @@ static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t
   const size_t   n  = (size_t)width_px * (size_t)height_px;
   for (size_t i = 0U; i < n; i++) {
     fb[i] = bg;
+  }
+
+  const uint32_t saddr = rd32(uc, (uint64_t)k_glcdc_gr1_saddr);
+  const uint32_t fmt   = (rd32(uc, (uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
+                       (uint32_t)k_glcdc_fmt_mask;
+  if (!addr_is_ram(saddr) || (fmt != (uint32_t)k_glcdc_fmt_rgb565)) {
+    return; /* no graphics layer -- background-only frame */
+  }
+  const uint32_t stride =
+    (rd32(uc, (uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
+    (uint32_t)k_glcdc_stride_mask;
+  const uint32_t lnnum =
+    (rd32(uc, (uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
+    (uint32_t)k_glcdc_lnnum_mask;
+  if (stride < 2U) {
+    return;
+  }
+  const uint32_t fb_w = stride / 2U; /* RGB565: 2 bytes per pixel */
+  const uint32_t fb_h = lnnum + 1U;
+  const uint32_t cw   = (fb_w < (uint32_t)width_px) ? fb_w : (uint32_t)width_px;
+  const uint32_t ch   = (fb_h < (uint32_t)height_px) ? fb_h : (uint32_t)height_px;
+  for (uint32_t y = 0U; y < ch; y++) {
+    (void)uc_mem_read(uc,
+                      (uint64_t)saddr + ((uint64_t)y * (uint64_t)stride),
+                      &fb[(size_t)y * (size_t)width_px],
+                      (size_t)cw * sizeof(uint16_t));
   }
 }
 
