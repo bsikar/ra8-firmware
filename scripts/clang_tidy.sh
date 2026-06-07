@@ -157,6 +157,9 @@ collect_source_files() {
     local entry
     for entry in "$FIRMWARE_DIR"/examples/*/*/main.c; do
         [[ -f "$entry" ]] || continue
+        # examples/host/* are macOS-only dev tools whose AppKit/host includes
+        # are not in the host test compile_commands.json -- skip them.
+        case "$entry" in */examples/host/*) continue ;; esac
         roots+=("$(dirname "$entry")")
     done
     find "${roots[@]}" \

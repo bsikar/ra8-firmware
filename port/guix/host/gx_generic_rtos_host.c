@@ -1,4 +1,4 @@
-/* Generic single-threaded GUIX RTOS binding for the host (macOS) spike.
+/* Generic single-threaded GUIX RTOS binding for the host (macOS) build.
  *
  * GUIX, when built with GX_DISABLE_THREADX_BINDING, calls these gx_generic_*
  * functions instead of ThreadX. We run GUIX single-threaded and drive it from
@@ -9,6 +9,7 @@
  *   - mutex calls are no-ops (single-threaded),
  *   - time comes from the monotonic clock.
  *
+ * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

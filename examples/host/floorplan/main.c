@@ -2,6 +2,9 @@
  * @file main.c
  * @brief Host graphics demo -- tabbed screens on the macOS display PAL backend
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: NS}
+ *
  * @details
  * A 3-tab UI drawn entirely with ``ra_gfx`` (no GUIX): a tab bar across
  * the top plus a per-tab screen below it. Tabs switch on mouse click
@@ -240,6 +243,52 @@ static int32_t tab_hit_test(uint16_t cx, uint16_t cy)
 }
 
 /**
+ * @brief Pump OS events, route clicks to tab switches, present each frame.
+ *
+ * @param[in] disp Bound PAL handle.
+ * @return int 0 on clean (user-closed) exit, 1 on any runtime error.
+ *
+ * @since 0.1.0
+ */
+static int run_event_loop(display_handle_t* disp)
+{
+  bool should_close = false;
+  while (!should_close) {
+    ra_err_t e = ra_display_pal_host_macos_pump(&should_close);
+    if (e != k_ra_ok) {
+      (void)fprintf(stderr, "pump failed: %s\n", ra_err_to_str(e));
+      return 1;
+    }
+    bool     has_click = false;
+    uint16_t cx        = 0U;
+    uint16_t cy        = 0U;
+    e                  = ra_display_pal_host_macos_poll_click(&has_click, &cx, &cy);
+    if (e != k_ra_ok) {
+      (void)fprintf(stderr, "poll_click failed: %s\n", ra_err_to_str(e));
+      return 1;
+    }
+    if (has_click) {
+      const int32_t t = tab_hit_test(cx, cy);
+      if (t >= 0 && (uint16_t)t != s_active_tab) {
+        s_active_tab = (uint16_t)t;
+        e            = draw_scene();
+        if (e != k_ra_ok) {
+          (void)fprintf(stderr, "draw_scene failed: %s\n", ra_err_to_str(e));
+          return 1;
+        }
+      }
+    }
+    e = display_flush(disp, display_full_rect(disp), k_display_refresh_fast);
+    if (e != k_ra_ok) {
+      (void)fprintf(stderr, "display_flush failed: %s\n", ra_err_to_str(e));
+      return 1;
+    }
+    (void)usleep((useconds_t)k_frame_sleep_us);
+  }
+  return 0;
+}
+
+/**
  * @brief Windowed run mode: bind the PAL, draw, present, run the loop.
  *
  * @return int 0 on clean exit, 1 on any setup failure.
@@ -287,44 +336,10 @@ static int run_window(void)
   }
 
   (void)fprintf(stderr, "demo: window open -- click a tab; close it to exit\n");
-  bool should_close = false;
-  while (!should_close) {
-    e = ra_display_pal_host_macos_pump(&should_close);
-    if (e != k_ra_ok) {
-      (void)fprintf(stderr, "pump failed: %s\n", ra_err_to_str(e));
-      break;
-    }
-
-    bool     has_click = false;
-    uint16_t cx        = 0U;
-    uint16_t cy        = 0U;
-    e                  = ra_display_pal_host_macos_poll_click(&has_click, &cx, &cy);
-    if (e != k_ra_ok) {
-      (void)fprintf(stderr, "poll_click failed: %s\n", ra_err_to_str(e));
-      break;
-    }
-    if (has_click) {
-      const int32_t t = tab_hit_test(cx, cy);
-      if (t >= 0 && (uint16_t)t != s_active_tab) {
-        s_active_tab = (uint16_t)t;
-        e            = draw_scene();
-        if (e != k_ra_ok) {
-          (void)fprintf(stderr, "draw_scene failed: %s\n", ra_err_to_str(e));
-          break;
-        }
-      }
-    }
-
-    e = display_flush(disp, display_full_rect(disp), k_display_refresh_fast);
-    if (e != k_ra_ok) {
-      (void)fprintf(stderr, "display_flush failed: %s\n", ra_err_to_str(e));
-      break;
-    }
-    (void)usleep((useconds_t)k_frame_sleep_us);
-  }
+  const int rc = run_event_loop(disp);
 
   (void)display_deinit(disp);
-  return 0;
+  return rc;
 }
 
 /**

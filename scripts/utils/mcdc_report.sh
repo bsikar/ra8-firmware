@@ -291,6 +291,12 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
         fi
     done
 
+    # Files excluded from the MC/DC denominator: vendored trees, the host
+    # test harness, system / libc++ headers, and the macOS-only host display
+    # backend (ra_display_pal_host_macos*) -- a desktop dev-preview tool, not
+    # airborne firmware, so DO-178C MC/DC does not apply to it.
+    mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra_display_pal_host_macos)'
+
     # Per-file MC/DC dump (verbose, for human inspection).
     "$LLVM_COV_BIN" show \
         "${OBJ_ARGS[@]}" \
@@ -298,7 +304,7 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
         -show-mcdc \
         -show-mcdc-summary \
         -format=text \
-        -ignore-filename-regex='(third_party|/tests/|/usr/|c\+\+/v[0-9]+)' \
+        -ignore-filename-regex="$mcdc_ignore_re" \
         > "$TEXT_REPORT" 2>/dev/null || true
 
     # Per-file numeric summary (machine-parseable).
@@ -306,7 +312,7 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
         "${OBJ_ARGS[@]}" \
         -instr-profile="$MERGED_PROFDATA" \
         -show-mcdc-summary \
-        -ignore-filename-regex='(third_party|/tests/|/usr/|c\+\+/v[0-9]+)' \
+        -ignore-filename-regex="$mcdc_ignore_re" \
         > "$SUMMARY_REPORT" 2>/dev/null || true
 
     echo ""
