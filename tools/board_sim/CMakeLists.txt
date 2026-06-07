@@ -1,9 +1,10 @@
 #
-# RA8D2 board emulator (stage 1) -- companion dev tool.
+# RA8D2 board emulator -- companion dev tool.
 #
 # Loads an EK-RA8D2 firmware ELF into an emulated Cortex-M memory map (Unicorn)
-# and boots it, with the RA8D2 peripheral space as logged MMIO. Standalone dev
-# tool under tools/, outside the firmware CI gates.
+# and boots it, with the RA8D2 peripheral space as logged MMIO and SysTick
+# ticked cooperatively so delays advance. Standalone dev tool under tools/,
+# outside the firmware CI gates.
 #
 #   cmake -B build -S . && cmake --build build -j
 #   ./build/board_sim ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
@@ -15,7 +16,7 @@
 #
 
 cmake_minimum_required(VERSION 3.20)
-project(ra8d2_board_sim LANGUAGES C)
+project(ra8d2_board_sim LANGUAGES C OBJC)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -25,8 +26,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Homebrew prefix (Apple Silicon default).
 set(BREW /opt/homebrew)
 
-add_executable(board_sim main.c)
+# board_view.m is the optional live macOS window (--view); the rest is plain C.
+add_executable(board_sim main.c board_view.m)
+set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 target_include_directories(board_sim PRIVATE ${BREW}/include)
 target_link_directories(board_sim PRIVATE ${BREW}/lib)
-target_link_libraries(board_sim PRIVATE unicorn capstone)
+target_link_libraries(board_sim PRIVATE unicorn capstone "-framework Cocoa")
 target_compile_options(board_sim PRIVATE -Wall -Wextra)

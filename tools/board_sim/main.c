@@ -1,18 +1,26 @@
 /**
  * @file main.c
- * @brief RA8D2 board emulator (stage 1) -- boot a real .elf on a CPU emulator
+ * @brief RA8D2 board emulator -- boot a real .elf on a CPU emulator, with ticks
  *
  * @details
  * Loads an EK-RA8D2 firmware ELF into an emulated Cortex-M memory map (Unicorn,
  * QEMU's CPU core as a library) and boots it from the vector table, with the
- * RA8D2 peripheral space modelled as logged MMIO. Stage 1 answers the
- * feasibility question: does the M85-built firmware actually execute on an
- * emulated M-profile core, or does it hit Armv8.1-M instructions the core
- * cannot decode?
+ * RA8D2 peripheral space modelled as logged MMIO.
  *
- * Unicorn 2.x tops out at Cortex-M33 (Armv8-M); the RA8D2 is M85 (Armv8.1-M).
- * If GCC emitted v8.1-M-only opcodes (e.g. low-overhead loops), the invalid-
- * instruction trap below reports exactly where and what.
+ * Feasibility (proven): Unicorn 2.x tops out at Cortex-M33 (Armv8-M) while the
+ * RA8D2 is M85 (Armv8.1-M), yet the GCC-built firmware executes on the M33 core
+ * -- no v8.1-M-only opcode (e.g. low-overhead loops) is emitted on the boot
+ * path. The invalid-instruction trap below still reports exactly where and what
+ * if that ever changes.
+ *
+ * Time: bare-metal delays here are SysTick-driven (``ra_time`` enables SysTick
+ * with TICKINT and counts exceptions). Nothing advances time on a plain memory
+ * model, so the run loop is chunked and, between chunks, cooperatively invokes
+ * the firmware's installed SysTick_Handler as a function -- its tick-counter
+ * memory write persists while the interrupted context's registers are restored,
+ * which is precisely a real SysTick IRQ's observable effect. This carries the
+ * firmware past ``ra_delay_ms`` so it reaches its main loop (e.g. driving the
+ * GLCDC), instead of spinning forever on a tick that never increments.
  *
  *   board_sim <firmware.elf>
  *
@@ -27,7 +35,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 #include <unicorn/unicorn.h>
+
+#include "board_view.h"
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
 typedef struct {
@@ -55,27 +67,117 @@ typedef enum : uint64_t {
 } periph_map_t;
 
 typedef enum : uint32_t {
-  k_run_max_insns  = 20000000U, /**< Instruction budget per run.  */
-  k_run_timeout_us = 5000000U,  /**< Wall-clock budget (5 s).     */
-  k_mmio_log_max   = 40U,       /**< Distinct MMIO addrs to list. */
+  k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.       */
+  k_run_max_chunks  = 6000U,   /**< Chunk budget (~3e9 insns ceiling).      */
+  k_run_wall_s      = 10U,     /**< Wall-clock safety bound (seconds).      */
+  k_systick_insns   = 200000U, /**< Max insns per SysTick handler call.     */
+  k_systick_us      = 100000U, /**< Wall bound per SysTick handler call.    */
+  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.        */
+  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".*/
+  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.    */
 } sim_budget_t;
 
+/* Cortex-M system control space (architectural, all cores) -- inside the PPB. */
+typedef enum : uint64_t {
+  k_syst_csr     = 0xE000E010UL, /**< SysTick control/status.            */
+  k_syst_csr_run = 0x3UL,        /**< ENABLE | TICKINT both set.         */
+  k_scb_vtor     = 0xE000ED08UL, /**< Vector table offset register.      */
+  k_exc_systick  = 15UL,         /**< SysTick exception / vector index.  */
+  k_systick_ret  = 0x4UL,        /**< Sentinel return addr for the call. */
+} cortexm_scs_t;
+
+/* Renesas peripheral quirks that the generic sparse model cannot reproduce.
+ *
+ * MRMS frequency latches: the CGC driver (libs/ra_hal/src/ra_cgc.c,
+ * internal_wait_mrm_freq) writes ``key | freq_mhz`` to MRCFREQ / MREFREQ and
+ * spins until the register reads back == freq_mhz. Real silicon validates the
+ * upper key byte then strips it, so the readback is the bare frequency. The
+ * generic model reflects the full written word (key still in bits[31:24]), so
+ * the readback never equals freq and the poll runs to its 0x40000 timeout ->
+ * lcd_panic_halt. Model the hardware: on readback of these two registers,
+ * return the stored value with the key byte masked off. */
+typedef enum : uint64_t {
+  k_mrms_mrcfreq    = 0x4013C004UL,   /**< MRICLK freq latch (write key 0x1E). */
+  k_mrms_mrefreq    = 0x4013C008UL,   /**< MRPCLK freq latch (write key 0xE1). */
+  k_mrms_freq_mask  = 0x00FFFFFFUL,   /**< Key byte (bits[31:24]) stripped.    */
+} mrms_quirk_t;
+
+/* GLCDC observation point. The lcd_color_cycle demo proves a live panel by
+ * re-writing BG_BGC (background colour) every frame and pulsing BG_EN.VEN to
+ * commit it. The generic model only keeps the last value per address, so the
+ * distinct colours cycled are tracked separately as the tool's success witness.
+ * GLCDC base 0x40342000 + 0x1014 = BG_BGC (HUM Ch 63). */
+typedef enum : uint64_t {
+  k_glcdc_bg_bgc     = 0x40343014UL, /**< GLCDC BG.BGC background colour.       */
+  k_bgc_track_max    = 32UL,         /**< Distinct BG_BGC values remembered.   */
+} glcdc_obs_t;
+
+/* Live-view (--view) and snapshot (--ppm) presentation settings. */
+typedef enum : uint32_t {
+  k_view_default_w     = 1024U,    /**< Default window width (EK-RA8D2 panel).  */
+  k_view_default_h     = 600U,     /**< Default window height (EK-RA8D2 panel). */
+  k_view_present_every = 16U,      /**< Present the frame every Nth chunk.      */
+  k_view_max_chunks    = 4000000U, /**< Cap in --view; closing the window ends. */
+  k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.    */
+} view_cfg_t;
+
+/* Sparse model of the Renesas peripheral space. Each touched address gets a
+ * slot: control writes are reflected back on read so "configure then verify"
+ * works, but once the firmware spins reading one address (a "wait for
+ * ready/idle" poll) past k_mmio_settle, reads alternate 0 / all-ones so a
+ * single-bit poll for either edge (flag set OR flag clear) completes instead
+ * of running to its timeout. */
+static uint64_t s_mmio_addr[k_mmio_slots];
+static uint32_t s_mmio_val[k_mmio_slots];
+static bool     s_mmio_written[k_mmio_slots];
+static uint32_t s_mmio_rcount[k_mmio_slots];
+static uint32_t s_mmio_wcount[k_mmio_slots];
+static uint32_t s_mmio_n;
 static uint32_t s_mmio_reads;
 static uint32_t s_mmio_writes;
-static uint64_t s_mmio_seen[k_mmio_log_max];
-static uint32_t s_mmio_seen_n;
+static uint32_t s_mmio_toggle;
+static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache.*/
+static int      s_mmio_run_slot = -1; /**< Slot of the current read run.      */
+static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.    */
+static uint32_t s_systick_fires;
 
-static void mmio_note(uint64_t addr)
+/* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
+static uint32_t s_bgc_writes;
+static uint32_t s_bgc_distinct[k_bgc_track_max];
+static uint32_t s_bgc_distinct_n;
+
+/** @brief Record a BG_BGC write; remember the value if it is a new colour. */
+static void bgc_track(uint32_t value)
 {
-  for (uint32_t i = 0U; i < s_mmio_seen_n; i++) {
-    if (s_mmio_seen[i] == addr) {
+  s_bgc_writes++;
+  for (uint32_t i = 0U; i < s_bgc_distinct_n; i++) {
+    if (s_bgc_distinct[i] == value) {
       return;
     }
   }
-  if (s_mmio_seen_n < (uint32_t)k_mmio_log_max) {
-    s_mmio_seen[s_mmio_seen_n] = addr;
-    s_mmio_seen_n++;
+  if (s_bgc_distinct_n < (uint32_t)k_bgc_track_max) {
+    s_bgc_distinct[s_bgc_distinct_n++] = value;
   }
+}
+
+/** @brief Find (or add) a slot for a distinct MMIO address; -1 if table full. */
+static int mmio_index(uint64_t addr)
+{
+  if ((s_mmio_cache >= 0) && (s_mmio_addr[s_mmio_cache] == addr)) {
+    return s_mmio_cache;
+  }
+  for (uint32_t i = 0U; i < s_mmio_n; i++) {
+    if (s_mmio_addr[i] == addr) {
+      s_mmio_cache = (int)i;
+      return (int)i;
+    }
+  }
+  if (s_mmio_n < (uint32_t)k_mmio_slots) {
+    s_mmio_addr[s_mmio_n] = addr;
+    s_mmio_cache          = (int)s_mmio_n;
+    return (int)(s_mmio_n++);
+  }
+  return -1;
 }
 
 static uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user)
@@ -84,18 +186,51 @@ static uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* u
   (void)size;
   (void)user;
   s_mmio_reads++;
-  mmio_note(k_periph_base + offset);
-  return 0xFFFFFFFFULL; /* satisfy ready-bit polls so boot proceeds */
+  const int idx = mmio_index((uint64_t)k_periph_base + offset);
+  if (idx >= 0) {
+    s_mmio_rcount[idx]++;
+    if (idx == s_mmio_run_slot) {
+      s_mmio_run++;
+    } else {
+      s_mmio_run_slot = idx;
+      s_mmio_run      = 1U;
+    }
+    /* Reflect a written control value until a spin-poll forces it to settle. */
+    if (s_mmio_written[idx] && (s_mmio_run <= (uint32_t)k_mmio_settle)) {
+      const uint64_t addr = (uint64_t)k_periph_base + offset;
+      /* MRMS frequency latches strip the write key byte on readback so the
+       * driver's "wait until reg == freq" poll completes (see mrms_quirk_t). */
+      if ((addr == (uint64_t)k_mrms_mrcfreq) || (addr == (uint64_t)k_mrms_mrefreq)) {
+        return (uint64_t)(s_mmio_val[idx] & (uint32_t)k_mrms_freq_mask);
+      }
+      return (uint64_t)s_mmio_val[idx];
+    }
+  }
+  s_mmio_toggle ^= 0xFFFFFFFFU;
+  return (uint64_t)s_mmio_toggle;
 }
 
 static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, void* user)
 {
   (void)uc;
   (void)size;
-  (void)value;
   (void)user;
   s_mmio_writes++;
-  mmio_note(k_periph_base + offset);
+  if (((uint64_t)k_periph_base + offset) == (uint64_t)k_glcdc_bg_bgc) {
+    bgc_track((uint32_t)value);
+  }
+  const int idx = mmio_index((uint64_t)k_periph_base + offset);
+  if (idx >= 0) {
+    s_mmio_wcount[idx]++;
+    s_mmio_val[idx]     = (uint32_t)value;
+    s_mmio_written[idx] = true;
+    if (idx == s_mmio_run_slot) {
+      s_mmio_run++; /* same-addr read-modify-write spin accumulates toward settle */
+    } else {
+      s_mmio_run_slot = idx; /* new register -> following reads should see its value */
+      s_mmio_run      = 1U;
+    }
+  }
 }
 
 /** @brief Disassemble + report an instruction the core could not decode. */
@@ -210,13 +345,157 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
   return (loaded > 0) ? 0 : -1;
 }
 
+/** @brief Read a 32-bit little-endian word from emulated memory. */
+static uint32_t rd32(uc_engine* uc, uint64_t addr)
+{
+  uint32_t v = 0U;
+  (void)uc_mem_read(uc, addr, &v, sizeof(v));
+  return v;
+}
+
+/* Integer context saved/restored around a cooperative SysTick handler call. */
+static const int k_ctx_regs[] = {
+  UC_ARM_REG_R0,  UC_ARM_REG_R1, UC_ARM_REG_R2,  UC_ARM_REG_R3, UC_ARM_REG_R4,
+  UC_ARM_REG_R5,  UC_ARM_REG_R6, UC_ARM_REG_R7,  UC_ARM_REG_R8, UC_ARM_REG_R9,
+  UC_ARM_REG_R10, UC_ARM_REG_R11, UC_ARM_REG_R12, UC_ARM_REG_SP, UC_ARM_REG_LR,
+  UC_ARM_REG_PC,  UC_ARM_REG_XPSR,
+};
+
+/**
+ * @brief Cooperatively run one SysTick tick if SysTick is armed.
+ *
+ * @details
+ * Models a SysTick interrupt without a real NVIC: if SYST_CSR has ENABLE and
+ * TICKINT set, the installed SysTick_Handler (vector index 15, relative to
+ * VTOR) is invoked as an ordinary function between emulation chunks. The full
+ * integer context (R0-R12, SP, LR, PC, xPSR) is snapshotted and restored, so
+ * only the handler's memory effect -- the incremented tick counter -- survives,
+ * which is exactly what the interrupted code would observe after a real tick.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base Fallback vector table base if VTOR reads as 0.
+ */
+static void systick_fire(uc_engine* uc, uint32_t vtor_base)
+{
+  if ((rd32(uc, (uint64_t)k_syst_csr) & (uint32_t)k_syst_csr_run) != (uint32_t)k_syst_csr_run) {
+    return; /* SysTick not armed (no enable+tickint) -- nothing to tick */
+  }
+  uint32_t vtor = rd32(uc, (uint64_t)k_scb_vtor);
+  if (vtor == 0U) {
+    vtor = vtor_base;
+  }
+  const uint32_t handler = rd32(uc, (uint64_t)vtor + ((uint32_t)k_exc_systick * 4U)) & ~1U;
+  if ((handler == 0U) || (handler == 0xFFFFFFFEU)) {
+    return; /* no handler installed at the SysTick vector slot */
+  }
+
+  uint32_t save[sizeof(k_ctx_regs) / sizeof(k_ctx_regs[0])];
+  for (size_t i = 0U; i < (sizeof(k_ctx_regs) / sizeof(k_ctx_regs[0])); i++) {
+    (void)uc_reg_read(uc, k_ctx_regs[i], &save[i]);
+  }
+
+  /* Return to a sentinel we stop on; LR bit0=1 keeps Thumb across bx/pop pc. */
+  uint32_t lr = (uint32_t)k_systick_ret | 1U;
+  (void)uc_reg_write(uc, UC_ARM_REG_LR, &lr);
+  (void)uc_emu_start(uc,
+                     (uint64_t)handler | 1U,
+                     (uint64_t)k_systick_ret,
+                     (uint64_t)k_systick_us,
+                     (size_t)k_systick_insns);
+
+  for (size_t i = 0U; i < (sizeof(k_ctx_regs) / sizeof(k_ctx_regs[0])); i++) {
+    (void)uc_reg_write(uc, k_ctx_regs[i], &save[i]);
+  }
+  s_systick_fires++;
+}
+
+/** @brief Pack a 0x00RRGGBB colour into RGB565. */
+static uint16_t rgb888_to_565(uint32_t rgb)
+{
+  const uint32_t r = (rgb >> 16) & 0xFFU;
+  const uint32_t g = (rgb >> 8) & 0xFFU;
+  const uint32_t b = rgb & 0xFFU;
+  return (uint16_t)(((r & 0xF8U) << 8) | ((g & 0xFCU) << 3) | (b >> 3));
+}
+
+/**
+ * @brief Build the current display frame (RGB565) from emulated GLCDC state.
+ *
+ * @details
+ * lcd_color_cycle drives a solid background plane, so the frame is the BG_BGC
+ * background colour filled across the buffer -- the exact thing the GLCDC would
+ * scan out to the panel. (Graphics-layer framebuffers living in emulated SDRAM
+ * would be blitted here too, once a GUIX target boots on the emulator.)
+ *
+ * @param[in]  uc Unicorn engine (read-only here).
+ * @param[out] fb RGB565 frame buffer of width*height pixels.
+ * @param[in]  width_px  Frame width.
+ * @param[in]  height_px Frame height.
+ */
+static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t height_px)
+{
+  const uint16_t bg = rgb888_to_565(rd32(uc, (uint64_t)k_glcdc_bg_bgc) & 0x00FFFFFFU);
+  const size_t   n  = (size_t)width_px * (size_t)height_px;
+  for (size_t i = 0U; i < n; i++) {
+    fb[i] = bg;
+  }
+}
+
+/** @brief Write an RGB565 frame to a binary PPM (P6) for headless inspection. */
+static int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, uint16_t height_px)
+{
+  FILE* f = fopen(path, "wb"); /* alloc-allow: host dev tool, not firmware */
+  if (f == nullptr) {
+    return -1;
+  }
+  (void)fprintf(f, "P6\n%u %u\n255\n", (unsigned)width_px, (unsigned)height_px);
+  const size_t n = (size_t)width_px * (size_t)height_px;
+  for (size_t i = 0U; i < n; i++) {
+    const uint16_t p      = fb[i];
+    const uint32_t r5     = (uint32_t)((p >> 11) & 0x1FU);
+    const uint32_t g6     = (uint32_t)((p >> 5) & 0x3FU);
+    const uint32_t b5     = (uint32_t)(p & 0x1FU);
+    const uint8_t  rgb[3] = {(uint8_t)((r5 << 3) | (r5 >> 2)),
+                             (uint8_t)((g6 << 2) | (g6 >> 4)),
+                             (uint8_t)((b5 << 3) | (b5 >> 2))};
+    (void)fwrite(rgb, 1U, 3U, f);
+  }
+  (void)fclose(f);
+  return 0;
+}
+
 int main(int argc, char** argv)
 {
   if (argc < 2) {
-    (void)fprintf(stderr, "usage: board_sim <firmware.elf>\n");
+    (void)fprintf(stderr,
+                  "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>] [--size WxH]\n"
+                  "  --view        open a macOS window and show the emulated panel live\n"
+                  "  --ppm <file>  write the final frame to a binary PPM (headless ok)\n"
+                  "  --size WxH    frame size in pixels (default 1024x600)\n");
     return 2;
   }
-  const char* elf_path = argv[1];
+  const char* elf_path  = argv[1];
+  bool        want_view = false;
+  const char* ppm_path  = nullptr;
+  uint16_t    view_w    = (uint16_t)k_view_default_w;
+  uint16_t    view_h    = (uint16_t)k_view_default_h;
+  for (int i = 2; i < argc; i++) {
+    if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
+      want_view = true;
+    } else if ((strncmp(argv[i], "--ppm", sizeof("--ppm")) == 0) && ((i + 1) < argc)) {
+      ppm_path = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--size", sizeof("--size")) == 0) && ((i + 1) < argc)) {
+      char*      end = nullptr;
+      const long w   = strtol(argv[i + 1], &end, 10);
+      const long h   = ((end != nullptr) && (*end == 'x')) ? strtol(end + 1, nullptr, 10) : 0L;
+      if ((w > 0L) && (w <= 4096L) && (h > 0L) && (h <= 4096L)) {
+        view_w = (uint16_t)w;
+        view_h = (uint16_t)h;
+      }
+      i++;
+    }
+  }
 
   uc_engine* uc = nullptr;
   if (uc_open(UC_ARCH_ARM, (uc_mode)(UC_MODE_THUMB | UC_MODE_MCLASS), &uc) != UC_ERR_OK) {
@@ -272,35 +551,125 @@ int main(int argc, char** argv)
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
   (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
   (void)fprintf(stderr,
-                "board_sim: reset SP=0x%08X PC=0x%08X -- running (<= %u insns / %u us)\n",
+                "board_sim: reset SP=0x%08X PC=0x%08X -- running (<= %u x %u insns, %u s wall)\n",
                 sp,
                 pc,
-                (unsigned)k_run_max_insns,
-                (unsigned)k_run_timeout_us);
+                (unsigned)k_run_max_chunks,
+                (unsigned)k_run_chunk_insns,
+                (unsigned)k_run_wall_s);
 
   uc_hook h_invalid;
   uc_hook h_unmapped;
   (void)uc_hook_add(uc, &h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
   (void)uc_hook_add(uc, &h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
 
-  const uc_err err = uc_emu_start(uc, pc, 0, (uint64_t)k_run_timeout_us, (size_t)k_run_max_insns);
+  /* Optional live window; the frame buffer also backs the --ppm snapshot. */
+  board_view_t* view  = nullptr;
+  uint16_t*     frame = nullptr;
+  if (want_view) {
+    view = board_view_open(view_w, view_h, "board_sim");
+    if (view == nullptr) {
+      (void)fprintf(stderr, "board_sim: could not open window; continuing headless\n");
+    }
+  }
+  if ((view != nullptr) || (ppm_path != nullptr)) {
+    frame = (uint16_t*)malloc((size_t)view_w * (size_t)view_h * sizeof(uint16_t));
+  }
 
-  uint32_t final_pc = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_PC, &final_pc);
-  (void)fprintf(stderr, "\nboard_sim: stopped -- %s\n", uc_strerror(err));
-  (void)fprintf(stderr, "  final PC   : 0x%08X\n", final_pc);
+  /* Chunked run: emulate a block, tick SysTick, repeat. Headless runs stop on a
+   * chunk budget + wall-clock guard; in --view the loop runs until the window
+   * is closed, presenting the live GLCDC output every k_view_present_every. */
+  const uint32_t vtor_base  = (uint32_t)k_regions[1].base; /* MRAM = vectors */
+  const uint32_t max_chunks =
+    (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
+  const clock_t t0        = clock();
+  uc_err        err       = UC_ERR_OK;
+  uint32_t      run_pc    = pc;
+  uint32_t      chunks    = 0U;
+  bool          timed_out = false;
+  bool          closed    = false;
+  for (; chunks < max_chunks; chunks++) {
+    err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
+    (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+    if (err != UC_ERR_OK) {
+      break;
+    }
+    systick_fire(uc, vtor_base);
+    if (view != nullptr) {
+      if ((chunks % (uint32_t)k_view_present_every) == 0U) {
+        build_frame(uc, frame, view_w, view_h);
+        board_view_present(view, frame, view_w, view_h);
+      }
+      if (board_view_pump(view)) {
+        closed = true;
+        break;
+      }
+    } else if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= (double)k_run_wall_s) {
+      timed_out = true;
+      break;
+    }
+  }
+
   (void)fprintf(stderr,
-                "  MMIO reads : %u   writes: %u   distinct addrs: %u\n",
+                "\nboard_sim: stopped -- %s%s\n",
+                uc_strerror(err),
+                timed_out ? " (wall-clock budget reached)" : "");
+  (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
+  (void)fprintf(stderr, "  chunks run    : %u   SysTick ticks: %u\n", chunks, s_systick_fires);
+  (void)fprintf(stderr,
+                "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
                 s_mmio_reads,
                 s_mmio_writes,
-                s_mmio_seen_n);
-  for (uint32_t i = 0U; i < s_mmio_seen_n; i++) {
-    (void)fprintf(stderr, "    0x%08llX\n", (unsigned long long)s_mmio_seen[i]);
+                s_mmio_n);
+  /* GLCDC colour-cycle witness: BG_BGC write count + the distinct colours. */
+  (void)fprintf(stderr,
+                "  BG_BGC writes : %u   distinct colours: %u   [",
+                s_bgc_writes,
+                s_bgc_distinct_n);
+  for (uint32_t i = 0U; i < s_bgc_distinct_n; i++) {
+    (void)fprintf(stderr, "%s0x%06X", (i == 0U) ? "" : " ", s_bgc_distinct[i]);
   }
-  if (err == UC_ERR_OK) {
+  (void)fprintf(stderr, "]\n");
+  (void)fprintf(stderr, "    %-12s %10s %10s %12s\n", "addr", "reads", "writes", "last-write");
+  const uint32_t shown =
+    (s_mmio_n < (uint32_t)k_mmio_print_max) ? s_mmio_n : (uint32_t)k_mmio_print_max;
+  for (uint32_t i = 0U; i < shown; i++) {
+    if (s_mmio_written[i]) {
+      (void)fprintf(stderr, "    0x%08llX %10u %10u   0x%08X\n", (unsigned long long)s_mmio_addr[i],
+                    s_mmio_rcount[i], s_mmio_wcount[i], s_mmio_val[i]);
+    } else {
+      (void)fprintf(stderr, "    0x%08llX %10u %10u %12s\n", (unsigned long long)s_mmio_addr[i],
+                    s_mmio_rcount[i], s_mmio_wcount[i], "-");
+    }
+  }
+  if (s_mmio_n > shown) {
+    (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
+  }
+  if ((err == UC_ERR_OK) || timed_out) {
     (void)fprintf(stderr,
-                  "  => firmware EXECUTED to the instruction/time budget (no invalid opcode).\n");
+                  "  => firmware EXECUTED to the run budget (no invalid opcode / fault).\n");
   }
+
+  if ((ppm_path != nullptr) && (frame != nullptr)) {
+    build_frame(uc, frame, view_w, view_h);
+    if (write_ppm(ppm_path, frame, view_w, view_h) == 0) {
+      (void)fprintf(stderr, "  wrote %s (%ux%u)\n", ppm_path, (unsigned)view_w, (unsigned)view_h);
+    } else {
+      (void)fprintf(stderr, "  could not write %s\n", ppm_path);
+    }
+  }
+  if (view != nullptr) {
+    if (!closed) { /* run ended on its own -- keep the last frame up until closed */
+      build_frame(uc, frame, view_w, view_h);
+      board_view_present(view, frame, view_w, view_h);
+      (void)fprintf(stderr, "board_sim: run ended; close the window to exit\n");
+      while (!board_view_pump(view)) {
+        (void)usleep((useconds_t)k_view_idle_us);
+      }
+    }
+    board_view_close(view);
+  }
+  free(frame);
   (void)uc_close(uc);
   return 0;
 }
