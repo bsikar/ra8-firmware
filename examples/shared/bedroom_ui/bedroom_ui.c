@@ -28,6 +28,7 @@
 
 #include "gx_api.h"
 #include "ra_err.h"
+#include "ra_panel.h"
 
 /**
  * @enum bedroom_layout_t
@@ -36,30 +37,30 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ui_w           = 1024U, /**< Design width.                       */
-  k_ui_h           = 600U,  /**< Design height.                      */
-  k_ui_tabbar_h    = 56U,   /**< Tab-bar height.                     */
-  k_ui_tabs        = 3U,    /**< Tab / screen count.                 */
-  k_ui_cards       = 4U,    /**< Stat cards per screen (2x2).        */
-  k_ui_cols        = 2U,    /**< Card grid columns.                  */
-  k_ui_card_rows   = 3U,    /**< Text rows per card (label/val/sub). */
-  k_ui_pad         = 32U,   /**< Outer content inset.                */
-  k_ui_gap         = 24U,   /**< Gap between cards.                  */
-  k_ui_grid_top    = 148U,  /**< Card grid top edge.                 */
-  k_ui_bot_margin  = 28U,   /**< Card grid bottom margin.            */
-  k_ui_accent_h    = 6U,    /**< Card top accent-strip height.       */
-  k_ui_card_inset  = 22U,   /**< Text inset inside a card.           */
-  k_ui_head_y      = 70U,   /**< Heading top edge.                   */
-  k_ui_head_h      = 34U,   /**< Heading row height.                 */
-  k_ui_sub_y       = 110U,  /**< Subtitle top edge.                  */
-  k_ui_sub_h       = 24U,   /**< Subtitle row height.                */
-  k_ui_lbl_dy      = 22U,   /**< Card label  y, below card top.      */
-  k_ui_lbl_h       = 24U,   /**< Card label  row height.             */
-  k_ui_val_dy      = 66U,   /**< Card value  y, below card top.      */
-  k_ui_val_h       = 40U,   /**< Card value  row height.             */
-  k_ui_subv_dy     = 120U,  /**< Card sub    y, below card top.      */
-  k_ui_subv_h      = 24U,   /**< Card sub    row height.             */
-  k_ui_tab_id_base = 100U,  /**< First tab button widget id.         */
+  k_ui_w           = k_panel_width_px,  /**< Active panel width.        */
+  k_ui_h           = k_panel_height_px, /**< Active panel height.       */
+  k_ui_tabbar_h    = 56U,               /**< Tab-bar height.                     */
+  k_ui_tabs        = 3U,                /**< Tab / screen count.                 */
+  k_ui_cards       = 4U,                /**< Stat cards per screen (2x2).        */
+  k_ui_cols        = 2U,                /**< Card grid columns.                  */
+  k_ui_card_rows   = 3U,                /**< Text rows per card (label/val/sub). */
+  k_ui_pad         = 32U,               /**< Outer content inset.                */
+  k_ui_gap         = 24U,               /**< Gap between cards.                  */
+  k_ui_grid_top    = 148U,              /**< Card grid top edge.                 */
+  k_ui_bot_margin  = 28U,               /**< Card grid bottom margin.            */
+  k_ui_accent_h    = 6U,                /**< Card top accent-strip height.       */
+  k_ui_card_inset  = 22U,               /**< Text inset inside a card.           */
+  k_ui_head_y      = 70U,               /**< Heading top edge.                   */
+  k_ui_head_h      = 34U,               /**< Heading row height.                 */
+  k_ui_sub_y       = 110U,              /**< Subtitle top edge.                  */
+  k_ui_sub_h       = 24U,               /**< Subtitle row height.                */
+  k_ui_lbl_dy      = 22U,               /**< Card label  y, below card top.      */
+  k_ui_lbl_h       = 24U,               /**< Card label  row height.             */
+  k_ui_val_dy      = 66U,               /**< Card value  y, below card top.      */
+  k_ui_val_h       = 40U,               /**< Card value  row height.             */
+  k_ui_subv_dy     = 120U,              /**< Card sub    y, below card top.      */
+  k_ui_subv_h      = 24U,               /**< Card sub    row height.             */
+  k_ui_tab_id_base = 100U,              /**< First tab button widget id.         */
 } bedroom_layout_t;
 
 /**
