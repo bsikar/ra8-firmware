@@ -30,6 +30,29 @@ typedef enum : uint16_t {
   k_test_layer2_strd  = 640U, /**< 320 * 2bpp (RGB565). */
 } test_glcdc_dim_t;
 
+/* ER-TFT070-6 raw panel timing handed to ra_glcdc_init (the values that used
+ * to be hardcoded in the driver). The expected register layouts below are
+ * derived from these, so this fixture pins the driver's output value-for-value. */
+typedef enum : uint16_t {
+  k_test_glcdc_h_front = 160U,
+  k_test_glcdc_h_back  = 160U,
+  k_test_glcdc_h_sync  = 4U,
+  k_test_glcdc_v_front = 12U,
+  k_test_glcdc_v_back  = 23U,
+  k_test_glcdc_v_sync  = 3U,
+} test_glcdc_timing_t;
+
+static const ra_glcdc_timing_t k_test_glcdc_timing = {
+  .h_active = (uint16_t)k_test_glcdc_width,
+  .h_front  = (uint16_t)k_test_glcdc_h_front,
+  .h_back   = (uint16_t)k_test_glcdc_h_back,
+  .h_sync   = (uint16_t)k_test_glcdc_h_sync,
+  .v_active = (uint16_t)k_test_glcdc_height,
+  .v_front  = (uint16_t)k_test_glcdc_v_front,
+  .v_back   = (uint16_t)k_test_glcdc_v_back,
+  .v_sync   = (uint16_t)k_test_glcdc_v_sync,
+};
+
 typedef enum : uint8_t {
   k_test_alpha_half = 0x80U,
   k_test_layer1     = 0U,
@@ -46,8 +69,8 @@ typedef enum : uint32_t {
   k_test_clut_dist = 0xDEADBEEFUL,
 } test_glcdc_word_t;
 
-/* Packed register layouts the driver writes for the built-in PGEB1 panel
- * (1024x600, h_back=160, v_back=23).  Per HUM Ch 63 BG_HSIZE/BG_VSIZE
+/* Packed register layouts the driver writes for the supplied ER-TFT070-6
+ * timing (1024x600, h_back=160, v_back=23).  Per HUM Ch 63 BG_HSIZE/BG_VSIZE
  * carry `(back+1) << 16 | active`, GR1_LINE carries `(h-1) << 16 | (line_bytes/64 - 1)`,
  * and GR1_FMT carries `format << 28`. */
 typedef enum : uint32_t {
@@ -82,6 +105,7 @@ static void test_init_happy_path(void)
     .width_px         = (uint16_t)k_test_glcdc_width,
     .height_px        = (uint16_t)k_test_glcdc_height,
     .format           = k_ra_glcdc_fmt_rgb565,
+    .timing           = k_test_glcdc_timing,
   };
 
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
@@ -186,7 +210,8 @@ static void test_deinit(void)
   const ra_glcdc_config_t cfg = {.framebuffer_addr = (uint32_t)k_test_glcdc_fb_addr,
                                  .width_px         = (uint16_t)k_test_glcdc_width,
                                  .height_px        = (uint16_t)k_test_glcdc_height,
-                                 .format           = k_ra_glcdc_fmt_rgb565};
+                                 .format           = k_ra_glcdc_fmt_rgb565,
+                                 .timing           = k_test_glcdc_timing};
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_deinit());
   TEST_END("glcdc deinit");
@@ -243,7 +268,8 @@ static void test_power_transition(void)
   const ra_glcdc_config_t cfg = {.framebuffer_addr = (uint32_t)k_test_glcdc_fb_addr,
                                  .width_px         = (uint16_t)k_test_glcdc_width,
                                  .height_px        = (uint16_t)k_test_glcdc_height,
-                                 .format           = k_ra_glcdc_fmt_rgb565};
+                                 .format           = k_ra_glcdc_fmt_rgb565,
+                                 .timing           = k_test_glcdc_timing};
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_enter_stop());
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_exit_stop());
