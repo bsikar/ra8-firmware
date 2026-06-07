@@ -856,6 +856,7 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
+#ifndef RA_SIMULATOR_MODE /* only the on-target program path (below) stages CDBUF */
 static void
 internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, uint32_t len)
 {
@@ -872,6 +873,7 @@ internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, ui
   reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0] = data_lo;
   reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data1] = data_hi;
 }
+#endif /* !RA_SIMULATOR_MODE */
 
 /**
  * @brief Erase + page-program a single chunk of bytes to OSPI flash.
