@@ -110,6 +110,11 @@ foreach(tier ${_ra_tier_entries})
     if(NOT IS_DIRECTORY ${tier_full})
         continue()
     endif()
+    # examples/host/* are macOS-only dev tools (AppKit window backend), not
+    # part of the cross-compiled firmware -- skip them in the unified build.
+    if(tier STREQUAL "host")
+        continue()
+    endif()
     file(GLOB _ra_level2_entries RELATIVE ${tier_full} ${tier_full}/*)
     foreach(l2 ${_ra_level2_entries})
         set(l2_full ${tier_full}/${l2})

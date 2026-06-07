@@ -32,6 +32,10 @@ fi
 apps=()
 while IFS= read -r main_c; do
     d="$(dirname "$main_c")"
+    # examples/host/* are macOS-only dev tools, not cross-compiled firmware.
+    case "$d" in
+        examples/host/* | ./examples/host/*) continue ;;
+    esac
     name="$(basename "$d")"
     if [ -f "$d/Makefile" ]; then
         apps+=("$name")

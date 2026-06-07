@@ -1,9 +1,11 @@
-/* Host (macOS) GUIX port header for the feasibility spike.
+/* Host (macOS) GUIX port header.
  *
- * Adapted from libs/third_party/guix/ports/linux/gnu/inc/gx_port.h, but the
- * ThreadX caller-checking macros are emptied because the host build uses the
- * generic RTOS binding (GX_DISABLE_THREADX_BINDING) and never links ThreadX.
+ * Adapted from libs/third_party/guix/ports/linux/gnu/inc/gx_port.h (Microsoft
+ * / Eclipse ThreadX, MIT), but the ThreadX caller-checking macros are emptied
+ * because the host build uses the generic RTOS binding
+ * (GX_DISABLE_THREADX_BINDING) and never links ThreadX.
  *
+ * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
