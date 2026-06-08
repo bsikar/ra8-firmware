@@ -41,6 +41,7 @@
 
 #include "board_overlay.h"
 #include "board_periph.h"
+#include "board_net.h"
 #include "board_usb.h"
 #include "board_view.h"
 
@@ -828,6 +829,144 @@ static uint8_t* read_file(const char* path, long* out_len)
   return buf;
 }
 
+/* =============================================================================
+ * Ethernet frame seam -- shim the firmware's ra_eth_* API to the virtual
+ * network peer (board_net) instead of modelling the GWCA DMA. main.c hooks the
+ * three exported functions by their ELF symbol address; each hook emulates the
+ * call (reads the AAPCS argument registers, moves the frame, sets the return
+ * value) and returns to the caller via LR.
+ * =============================================================================
+ */
+
+/** @brief Max Ethernet frame the seam marshals between guest memory and board_net. */
+enum : uint32_t {
+  k_eth_seam_buf = 1600U,
+};
+
+/** @brief Resolve a symbol from the ELF .symtab (defined below load_elf). */
+static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name);
+
+/** @brief Emulate "return r0;" from a hooked function: set R0, branch to LR. */
+static void eth_hook_return(uc_engine* uc, uint32_t r0)
+{
+  uint32_t lr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
+  (void)uc_reg_write(uc, UC_ARM_REG_R0, &r0);
+  uint32_t pc = lr & ~1U; /* drop the Thumb bit; the M-class core stays Thumb. */
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
+  (void)uc_emu_stop(uc); /* relaunch from the returned PC (chunk contract). */
+}
+
+/** @brief Hook for ra_eth_link_status(out): report the link up at 100 Mb FD. */
+static void on_eth_link_status(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t out = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R0, &out);
+  if (out != 0U) {
+    /* ra_eth_link_t = { u8 link_up; u16 speed_mbps; u8 full_duplex; u16 bmsr }. */
+    const uint8_t link[8] = {1U, 0U, 100U, 0U, 1U, 0U, 0x2DU, 0x78U};
+    (void)uc_mem_write(uc, out, link, sizeof(link));
+  }
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook for ra_eth_write(buf, len): forward the frame to the peer. */
+static void on_eth_write(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t buf = 0U;
+  uint32_t len = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R0, &buf);
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &len);
+  if ((len > 0U) && (len <= (uint32_t)k_eth_seam_buf)) {
+    uint8_t frame[k_eth_seam_buf];
+    if (uc_mem_read(uc, buf, frame, len) == UC_ERR_OK) {
+      board_net_on_tx(frame, len);
+    }
+  }
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook for ra_eth_read(buf, max, got): deliver a peer frame if any. */
+static void on_eth_read(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t buf = 0U;
+  uint32_t max = 0U;
+  uint32_t got = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R0, &buf);
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &max);
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &got);
+  uint8_t        frame[k_eth_seam_buf];
+  const uint32_t cap = (max < (uint32_t)k_eth_seam_buf) ? max : (uint32_t)k_eth_seam_buf;
+  const uint32_t n   = board_net_poll_rx(frame, cap);
+  if (n > 0U) {
+    (void)uc_mem_write(uc, buf, frame, n);
+    (void)uc_mem_write(uc, got, &n, 4U);
+    eth_hook_return(uc, 0U); /* k_ra_ok */
+  } else {
+    const uint32_t zero = 0U;
+    (void)uc_mem_write(uc, got, &zero, 4U);
+    eth_hook_return(uc, 0x10AU); /* k_ra_err_no_data */
+  }
+}
+
+/** @brief Hook that just returns k_ra_ok -- shims a HW bring-up to a no-op. */
+static void on_eth_ok(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook one symbol (if present) to @p cb; record it for the report. */
+static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name, void* cb)
+{
+  const uint32_t addr = elf_sym_addr(elf, len, name);
+  if (addr == 0U) {
+    return;
+  }
+  static uc_hook handles[8];
+  static uint32_t n;
+  if (n < (uint32_t)(sizeof(handles) / sizeof(handles[0]))) {
+    (void)uc_hook_add(uc, &handles[n], UC_HOOK_CODE, cb, nullptr, addr, addr);
+    n++;
+  }
+}
+
+/** @brief Install the ra_eth frame-seam hooks if the symbols are present. */
+static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+{
+  const uint32_t w = elf_sym_addr(elf, len, "ra_eth_write");
+  const uint32_t r = elf_sym_addr(elf, len, "ra_eth_read");
+  const uint32_t l = elf_sym_addr(elf, len, "ra_eth_link_status");
+  if ((w == 0U) && (r == 0U) && (l == 0U)) {
+    return; /* not a networking firmware -- nothing to shim. */
+  }
+  /* Frame I/O: route to the virtual peer. */
+  eth_seam_hook(uc, elf, len, "ra_eth_write", (void*)on_eth_write);
+  eth_seam_hook(uc, elf, len, "ra_eth_read", (void*)on_eth_read);
+  eth_seam_hook(uc, elf, len, "ra_eth_link_status", (void*)on_eth_link_status);
+  /* HW bring-up / teardown: shim to no-ops so the GWCA/ETHA/PHY sequence the
+   * sparse model cannot satisfy does not fail the demo's setup. */
+  eth_seam_hook(uc, elf, len, "ra_board_ethernet_init", (void*)on_eth_ok);
+  eth_seam_hook(uc, elf, len, "ra_eth_open", (void*)on_eth_ok);
+  eth_seam_hook(uc, elf, len, "ra_eth_close", (void*)on_eth_ok);
+  (void)fprintf(stderr,
+                "  ra_eth seam   : write=0x%08X read=0x%08X link=0x%08X (virtual net peer)\n",
+                w,
+                r,
+                l);
+}
+
 /** @brief Load ELF32 PT_LOAD segments into emulated memory at their LMA. */
 static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
 {
@@ -871,6 +1010,76 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
     loaded++;
   }
   return (loaded > 0) ? 0 : -1;
+}
+
+/**
+ * @brief Resolve a function symbol's entry address from the ELF .symtab.
+ *
+ * @details
+ * Walks the ELF32 section headers for the SHT_SYMTAB table and its linked string
+ * table, then matches @p name and returns its st_value with the Thumb bit
+ * cleared (so it can be used as a UC_HOOK_CODE address). Used to shim the
+ * firmware's ra_eth_* frame API for the virtual network peer. Returns 0 if the
+ * symbol (or a symbol table) is absent.
+ *
+ * @param[in] elf  Mapped ELF image.
+ * @param[in] len  ELF image length in bytes.
+ * @param[in] name NUL-terminated symbol name to find.
+ * @return Even (Thumb-cleared) symbol address, or 0 if not found.
+ */
+static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name)
+{
+  if (len < 52) {
+    return 0U;
+  }
+  uint32_t shoff = 0U;
+  (void)memcpy(&shoff, elf + 32, 4);
+  const uint16_t shentsize = (uint16_t)(elf[46] | (elf[47] << 8));
+  const uint16_t shnum     = (uint16_t)(elf[48] | (elf[49] << 8));
+  const size_t   nlen      = strlen(name) + 1U;
+  if ((shoff == 0U) || (shentsize < 40U)) {
+    return 0U;
+  }
+  for (uint16_t i = 0U; i < shnum; i++) {
+    const uint8_t* sh = elf + shoff + ((uint32_t)i * shentsize);
+    if (((size_t)(sh - elf) + 40U) > (size_t)len) {
+      break;
+    }
+    uint32_t sh_type = 0U;
+    (void)memcpy(&sh_type, sh + 4, 4);
+    if (sh_type != 2U /* SHT_SYMTAB */) {
+      continue;
+    }
+    uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
+    (void)memcpy(&sym_off, sh + 16, 4);
+    (void)memcpy(&sym_size, sh + 20, 4);
+    (void)memcpy(&sym_link, sh + 24, 4);
+    (void)memcpy(&sym_entsize, sh + 36, 4);
+    if ((sym_entsize < 16U) || (sym_link >= shnum)) {
+      continue;
+    }
+    const uint8_t* strsh = elf + shoff + ((uint32_t)sym_link * shentsize);
+    uint32_t       str_off = 0U;
+    (void)memcpy(&str_off, strsh + 16, 4);
+    const uint32_t nsym = sym_size / sym_entsize;
+    for (uint32_t s = 0U; s < nsym; s++) {
+      const uint8_t* sym = elf + sym_off + (s * sym_entsize);
+      if (((size_t)(sym - elf) + 16U) > (size_t)len) {
+        break;
+      }
+      uint32_t st_name = 0U, st_value = 0U;
+      (void)memcpy(&st_name, sym + 0, 4);
+      (void)memcpy(&st_value, sym + 4, 4);
+      const size_t pos = (size_t)str_off + (size_t)st_name;
+      if ((st_name == 0U) || ((pos + nlen) > (size_t)len)) {
+        continue;
+      }
+      if (memcmp(elf + pos, name, nlen) == 0) {
+        return st_value & ~1U; /* clear the Thumb bit for the hook address. */
+      }
+    }
+  }
+  return 0U;
 }
 
 /** @brief Read a 32-bit little-endian word from emulated memory. */
@@ -1732,6 +1941,7 @@ int main(int argc, char** argv)
    * block state. Install the console sink so transmitted bytes reach stdout,
    * and queue any --input as console-channel (SCI8) RX. */
   board_periph_init(want_trace);
+  board_net_init(want_trace);
   board_periph_sci_set_tx_sink(console_tx_sink);
   if (input_str != nullptr) {
     uint8_t        rx[k_uart_line_max];
@@ -1827,6 +2037,9 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_nvic_icer_base,
                     (uint64_t)k_nvic_icer_base + (uint64_t)k_nvic_en_span - 1U);
+  /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
+   * firmware exports those symbols, i.e. a NetX networking example). */
+  eth_seam_install(uc, elf, elf_len);
 
   /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
    * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
@@ -1885,6 +2098,7 @@ int main(int argc, char** argv)
     /* Advance the modelled timers one tick-period and let the ICU pend any IRQ
      * a counter wrap raised; the exception layer below takes it like SysTick. */
     board_periph_tick(uc);
+    board_net_tick();
 
     /* Headless --click: keep one contact armed in the GT911 model until the
      * firmware's real ra_touch_read drains it (board_periph_touch_reported
@@ -1982,6 +2196,7 @@ int main(int argc, char** argv)
   /* Peripheral-model observability: LED transitions, timer totals, IRQ counts,
    * SCI byte totals. */
   board_periph_report(uc);
+  board_net_report();
   (void)fprintf(stderr,
                 "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
                 s_mmio_reads,

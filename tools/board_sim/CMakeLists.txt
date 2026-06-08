@@ -68,6 +68,7 @@ add_executable(board_sim
                board_periph.c
                ${BOARD_PERIPH_BLOCKS}
                board_usb.c
+               board_net.c
                board_overlay.c
                ${BOARD_VIEW_SRC})
 
