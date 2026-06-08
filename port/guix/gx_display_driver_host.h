@@ -40,13 +40,20 @@ extern "C" {
  * @param[in] width_px    Width in pixels (>= 1).
  * @param[in] height_px   Height in pixels (>= 1).
  *
+ * @details Records the framebuffer + dimensions for the next
+ *          ``host_guix_display_driver_setup`` to install into the 565rgb driver.
+ *
  * @return ra_err_t Error code.
  * @retval k_ra_ok              Bound.
  * @retval k_ra_err_null_ptr    framebuffer was NULL.
  * @retval k_ra_err_invalid_arg Zero width or height.
  *
  * @pre Called once before ``gx_display_create``.
+ * @pre ``framebuffer`` holds at least width_px*height_px RGB565 pixels.
  * @post ``host_guix_display_driver_setup`` will target this framebuffer.
+ * @post The bound dimensions size the GUIX display.
+ *
+ * @note Not thread-safe; call once during single-threaded setup.
  *
  * @since 0.1.0
  */
@@ -62,9 +69,15 @@ ra_err_t host_guix_display_driver_bind(void* framebuffer, uint16_t width_px, uin
  * @param[in] display GUIX display being created.
  *
  * @return UINT GX_SUCCESS, or GX_INVALID_VALUE if no framebuffer is bound.
+ * @retval GX_SUCCESS       The 565rgb driver was installed.
+ * @retval GX_INVALID_VALUE No framebuffer bound, or ``display`` was NULL.
  *
  * @pre ``host_guix_display_driver_bind`` has succeeded.
+ * @pre Called by GUIX from ``gx_display_create``.
  * @post ``display`` draws into the bound framebuffer.
+ * @post ``display`` width/height match the bound dimensions.
+ *
+ * @note Not thread-safe; single-threaded host setup.
  *
  * @since 0.1.0
  */

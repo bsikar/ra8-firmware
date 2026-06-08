@@ -38,7 +38,7 @@
  * RA_DISPLAY_PAL_HOST_GUIX and puts the GUIX port headers on the include
  * path. Non-GUIX host builds (the ra_gfx demo, the unit tests) leave
  * bind_guix NULL, exactly like the LCD backend without its GUIX shim. */
-#if defined(RA_DISPLAY_PAL_HOST_GUIX)
+#ifdef RA_DISPLAY_PAL_HOST_GUIX
 #include "gx_display_driver_host.h"
 #endif
 
@@ -264,6 +264,8 @@ static ra_err_t macos_init(const display_cfg_t* cfg, void** out_ctx)
 /**
  * @brief Vtable get_caps -- O(1) copy from ``s_macos_ctx.caps``.
  *
+ * @details Returns the capability struct cached during ``macos_init``.
+ *
  * @param[in]  ctx Backend context.
  * @param[out] out Capabilities snapshot.
  *
@@ -290,6 +292,8 @@ static ra_err_t macos_get_caps(const void* ctx, display_caps_t* out)
 
 /**
  * @brief Vtable get_framebuffer -- hand back the FB descriptor.
+ *
+ * @details Returns the framebuffer descriptor captured during ``macos_init``.
  *
  * @param[in]  ctx Backend context.
  * @param[out] out Framebuffer descriptor.
@@ -396,6 +400,9 @@ static ra_err_t macos_clear(void* ctx, uint32_t color)
 /**
  * @brief Vtable deinit -- close the window and drop state.
  *
+ * @details Closes the desktop window and clears the cached context so a later
+ *          ``macos_init`` starts clean.
+ *
  * @param[in] ctx Backend context.
  *
  * @return ra_err_t Error code from ``ra_macos_window_close`` (or
@@ -448,7 +455,7 @@ ra_err_t ra_display_pal_host_macos_poll_click(bool* out_has_click, uint16_t* out
   return ra_macos_window_poll_click(s_macos_ctx.win, out_has_click, out_x, out_y);
 }
 
-#if defined(RA_DISPLAY_PAL_HOST_GUIX)
+#ifdef RA_DISPLAY_PAL_HOST_GUIX
 
 /**
  * @brief Vtable bind_guix -- forward to the host GUIX 565rgb driver.
@@ -511,7 +518,7 @@ const display_backend_iface_t k_display_backend_host_macos = {
   .flush           = macos_flush,
   .clear           = macos_clear,
   .deinit          = macos_deinit,
-#if defined(RA_DISPLAY_PAL_HOST_GUIX)
+#ifdef RA_DISPLAY_PAL_HOST_GUIX
   .bind_guix = macos_bind_guix,
 #else
   /* No GUIX shim in non-GUIX host builds; display_bind_guix returns

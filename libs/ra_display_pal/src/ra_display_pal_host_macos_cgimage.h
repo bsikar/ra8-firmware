@@ -28,7 +28,7 @@
 extern "C" {
 #endif
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 
 #include <CoreGraphics/CoreGraphics.h>
 #include <stdint.h>
