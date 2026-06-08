@@ -128,6 +128,12 @@ unusedStructMember:libs/ra_hal/inc/ra_wdt.h
 # in the header, which cppcheck cannot follow across the .h boundary.
 unusedStructMember:tools/board_sim/board_overlay.h
 
+# unusedStructMember on the board_sim peripheral-block descriptor struct. Each
+# board_periph_<blk>.c fills a board_periph_block_t and the core reads its
+# fields through the registered pointer; cppcheck's per-TU view of the header
+# alone cannot see those cross-.c uses.
+unusedStructMember:tools/board_sim/board_periph_block.h
+
 # constParameterCallback on ISR trampolines whose signatures are dictated by
 # the registration API (ra_isr_register takes a fixed function-pointer type).
 constParameterCallback:libs/ra_hal/src/ra_ipc.c

@@ -64,15 +64,22 @@ bring-up validation.
   "wait for ready/idle" poll) past a threshold, reads alternate `0` / all-ones so
   a single-bit poll for either edge completes instead of timing out. This generic
   rule satisfies almost every stabilization poll on the boot path.
-- **Register-accurate blocks** (`board_periph.{c,h}`): a per-block model table
-  supersedes the sparse fallback for GPIO/PORT, the AGT/GPT timers, the ICU/NVIC
-  interrupt path, and the **SCI_B UART**. The SCI model captures each TDR write
-  to the console sink, serves a host RX byte queue through RDR (CSR.RDRF tracks
-  availability, CSR.TDRE/TEND stay asserted so the driver's transmit empty/end
-  polls fall through), and raises TXI/TEI/RXI through the same ICU event path so
-  interrupt-driven serial works as well as polled. It also models the NVIC
+- **Register-accurate blocks** (`board_periph.{c,h}` core + one
+  `board_periph_<blk>.c` per block): the core is a *decentralized block
+  registry* + MMIO dispatch + the ICU/NVIC interrupt path; each peripheral block
+  lives in its own file and self-registers with the core, superseding the sparse
+  fallback for its register range. The blocks today are GPIO/PORT
+  (`board_periph_gpio.c`), the GPT + AGT timers (`board_periph_timer.c`), the
+  **SCI_B UART** (`board_periph_sci.c`), and I3C/I2C + the GT911 touch device
+  (`board_periph_i2c.c`). The SCI model captures each TDR write to the console
+  sink, serves a host RX byte queue through RDR (CSR.RDRF tracks availability,
+  CSR.TDRE/TEND stay asserted so the driver's transmit empty/end polls fall
+  through), and raises TXI/TEI/RXI through the core's ICU event path so
+  interrupt-driven serial works as well as polled. The core models the NVIC
   ISER/ICER set-enable / clear-enable semantics so a firmware that enables
-  several IRQ lines (e.g. SCI RXI+TXI+TEI) keeps them all enabled.
+  several IRQ lines (e.g. SCI RXI+TXI+TEI) keeps them all enabled. See
+  [Adding a peripheral block](#adding-a-peripheral-block) for how a new block
+  joins with no central-list edit.
 - **USBFS controller + a virtual USB host** (`board_usb.{c,h}`): models the
   USB-FS device-mode register block (SYSCFG pull-up, INTSTS0 CTSQ/DVSQ/VALID +
   the CTRT/DVST/BRDY event bits, the CFIFO data port with its CFIFOSEL/CFIFOCTR
@@ -107,6 +114,48 @@ bring-up validation.
   region/pixel check, not just visible on screen. main.c reads the state through
   read-only `board_periph` / `board_usb` getters; the Cocoa view only blits the
   result, so the renderer itself is plain, portable, AppKit-free C.
+
+## Adding a peripheral block
+
+The peripheral model is **decentralized**: the `board_periph.c` core owns only
+the block registry, the MMIO dispatch, and the ICU/NVIC routing. It keeps **no
+hand-maintained list of blocks**, so a new block (and several in parallel) can
+be added without touching the core. Adding a block is exactly two steps:
+
+1. **Add `board_periph_<blk>.c`.** Include `board_periph_block.h`, implement the
+   block's `read` / `write` (required) and `tick` / `reset` / `report` (each
+   optional -- use `nullptr` if the block has none), describe the block with a
+   static `board_periph_block_t` (its absolute register `base` / `span`, an
+   `order` from `board_periph_block_order_t`, and the handler pointers), and
+   self-register it from a file-scope constructor:
+
+   ```c
+   static const board_periph_block_t k_my_block = {
+       .base = 0x40xxxxxxUL, .span = 0xNNN, .order = k_block_order_xxx,
+       .read = my_read, .write = my_write,
+       .tick = my_tick, .reset = my_reset, .report = my_report,
+       .name = "MYBLK",
+   };
+   __attribute__((constructor)) static void my_block_register(void) {
+       board_periph_register_block(&k_my_block);
+   }
+   ```
+
+   `board_sim` is a host program, so the constructor runs before `main` and the
+   block is registered by the time `board_periph_init` resets it. To pend an
+   interrupt, call `board_periph_icu_raise_event(uc, <ELC event>)` -- the core
+   owns the IELSR table, the NVIC enable shadow and the IRQ ring; check
+   `board_periph_trace()` before logging.
+
+2. **Add the file to the source list** in `CMakeLists.txt`.
+
+That is all -- no edit to a central block list. MMIO is dispatched by disjoint
+address range (registration order is irrelevant), and `tick` / `reset` /
+`report` run in ascending descriptor `order`, so two blocks added in parallel
+never conflict. If a block needs a board-view getter, declare it in
+`board_periph.h` and implement it in the block file (as the GPIO LED, UART
+last-line and GT911 touch getters already are). Bump `k_block_max` in the core
+only if you exceed the registry capacity.
 
 ## Status / limits
 

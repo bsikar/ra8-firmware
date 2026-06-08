@@ -1,16 +1,27 @@
 /**
  * @file board_periph.c
- * @brief Register-accurate peripheral models + ICU/NVIC routing for board_sim
+ * @brief Peripheral-block registry core + ICU/NVIC routing for board_sim
  *
  * @details
- * Implements the framework declared in board_periph.h: a small table of
- * peripheral blocks (base / size / read / write / state) that the MMIO
- * callbacks dispatch into, superseding the sparse fallback for the modelled
- * registers. The blocks modelled here are GPIO/PORT, the AGT and GPT timers,
- * and the ICU (event-link -> NVIC pend). Each block keeps real state and the
- * timers advance a real counter per emulation chunk, so a non-display example
- * sees genuine peripheral behaviour and real interrupts -- not faked ready
- * bits.
+ * The framework half of the peripheral model: a dynamic registry of peripheral
+ * blocks (board_periph_block.h) that the MMIO callbacks dispatch into by address
+ * range, plus the cross-block machinery the blocks share -- the ICU IELSR
+ * event-link table, the pending-IRQ ring, and the NVIC set-enable shadow. The
+ * block IMPLEMENTATIONS live in their own files (board_periph_gpio.c,
+ * board_periph_timer.c, board_periph_sci.c, board_periph_i2c.c); each
+ * self-registers its descriptor from a constructor, so this core keeps NO
+ * hand-maintained block list and a new block is just a new file + a CMake line.
+ *
+ * Dispatch order: a registered block (by disjoint address range), then the
+ * USBFS model (board_usb.c, forwarded), then the ICU IELSR window the core owns.
+ * Per-chunk tick and the end-of-run report walk the registry in ascending
+ * descriptor order so the historical cadence / section order is preserved
+ * regardless of constructor registration order.
+ *
+ * Design: this module owns no Unicorn engine of its own and takes no AppKit
+ * dependency. main.c passes the engine in where the model must read or write
+ * emulated memory / pend an NVIC line, so board_periph stays plain C and the
+ * exception delivery stays in the one place that already models it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -23,52 +34,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_periph_block.h"
 #include "board_usb.h"
 
 /* =============================================================================
- * RA8D2 peripheral register map (addresses verified against libs/ra_hal regs).
+ * ICU / NVIC register map (addresses verified against libs/ra_hal regs).
  * =============================================================================
  */
-
-/** @brief GPIO/PORT block geometry (ra8d2_port_regs.h). */
-typedef enum : uint64_t {
-  k_port_base   = 0x40400000UL,  /**< PORT0 base.                          */
-  k_port_stride = 0x20UL,        /**< Bytes between adjacent ports.        */
-  k_port_count  = 15UL,          /**< PORT0..PORT14.                       */
-  k_port_span   = 0x20UL * 15UL, /**< Full PORT address window.            */
-  k_port_pcntr1 = 0x00UL,        /**< {PODR[31:16], PDR[15:0]} RW.         */
-  k_port_pcntr2 = 0x04UL,        /**< {EIDR[31:16], PIDR[15:0]} R.         */
-  k_port_pcntr3 = 0x08UL,        /**< {PORR[31:16], POSR[15:0]} W.         */
-  k_port_pcntr4 = 0x0CUL,        /**< {EORR[31:16], EOSR[15:0]} RW.        */
-} port_map_t;
-
-/** @brief AGT block geometry (ra8d2_agt_regs.h, 16-bit view). */
-typedef enum : uint64_t {
-  k_agt_base    = 0x40221000UL, /**< AGT0 base.                           */
-  k_agt_stride  = 0x100UL,      /**< Bytes per AGT channel.               */
-  k_agt_count   = 10UL,         /**< AGT0..AGT9.                          */
-  k_agt_span    = 0x100UL * 10UL,
-  k_agt_off_agt = 0x00UL, /**< AGT counter (16-bit down).           */
-  k_agt_off_cma = 0x02UL, /**< AGTCMA compare-match A.              */
-  k_agt_off_cmb = 0x04UL, /**< AGTCMB compare-match B.              */
-  k_agt_off_cr  = 0x08UL, /**< AGTCR control/status (8-bit).        */
-  k_agt_off_mr1 = 0x09UL, /**< AGTMR1 mode 1 (8-bit).               */
-} agt_map_t;
-
-/** @brief GPT block geometry (ra8d2_gpt_regs.h, 32-bit channels). */
-typedef enum : uint64_t {
-  k_gpt_base      = 0x40322000UL, /**< GPT0 base.                           */
-  k_gpt_stride    = 0x100UL,      /**< Bytes per GPT channel.               */
-  k_gpt_count     = 14UL,         /**< GPT0..GPT13.                         */
-  k_gpt_span      = 0x100UL * 14UL,
-  k_gpt_off_gtstr = 0x04UL, /**< GTSTR software start.                */
-  k_gpt_off_gtstp = 0x08UL, /**< GTSTP software stop.                 */
-  k_gpt_off_gtclr = 0x0CUL, /**< GTCLR software clear.                */
-  k_gpt_off_gtcr  = 0x2CUL, /**< GTCR control (CST bit0).             */
-  k_gpt_off_gtst  = 0x3CUL, /**< GTST status.                         */
-  k_gpt_off_gtcnt = 0x48UL, /**< GTCNT counter (32-bit up).           */
-  k_gpt_off_gtpr  = 0x64UL, /**< GTPR period.                         */
-} gpt_map_t;
 
 /** @brief ICU block geometry (ra8d2_icu_regs.h). */
 typedef enum : uint64_t {
@@ -78,209 +50,12 @@ typedef enum : uint64_t {
   k_icu_span      = 0x6300UL + (96UL * 4UL),
 } icu_map_t;
 
-/** @brief SCI_B block geometry (ra8d2_sci_regs.h, 32-bit-register variant). */
-typedef enum : uint64_t {
-  k_sci_base      = 0x40358000UL, /**< SCI0 base (Secure alias).            */
-  k_sci_stride    = 0x100UL,      /**< Bytes per SCI channel.               */
-  k_sci_count     = 10UL,         /**< SCI0..SCI9.                          */
-  k_sci_span      = 0x100UL * 10UL,
-  k_sci_off_rdr   = 0x00UL, /**< RDR receive data (RDAT[7:0]).         */
-  k_sci_off_tdr   = 0x04UL, /**< TDR transmit data (TDAT[7:0]).        */
-  k_sci_off_ccr0  = 0x08UL, /**< CCR0 (TE/RE/RIE/TIE/TEIE).            */
-  k_sci_off_csr   = 0x48UL, /**< CSR (TDRE/TEND/RDRF + errors).        */
-  k_sci_off_frsr  = 0x50UL, /**< FRSR FIFO receive status.             */
-  k_sci_off_ftsr  = 0x54UL, /**< FTSR FIFO transmit status.            */
-  k_sci_off_cfclr = 0x68UL, /**< CFCLR common flag clear (W1C).       */
-  k_sci_off_ffclr = 0x70UL, /**< FFCLR FIFO flag clear (W1C).         */
-} sci_map_t;
-
-/**
- * @brief I3C-in-I2C-mode (IIC_B) block geometry (ra8d2_i3c_i2c_regs.h).
- *
- * @details
- * The RA8D2 has one I3C channel at 0x4035F000. ra_touch drives the GoodIX GT911
- * touch controller through this peripheral in legacy I2C mode (PRTS.PRTMD=1),
- * and the i3c_loopback example drives the same block as an I2C controller. The
- * polling driver (libs/ra_hal/src/ra_i3c_i2c.c) only touches the registers named
- * here; everything else in the window reflects writes via the shadow. Offsets
- * match the @c r_i3c_i2c_regs_t struct in ra8d2_i3c_i2c_regs.h.
- */
-typedef enum : uint64_t {
-  k_i3c_base        = 0x4035F000UL,  /**< I3C0 base (== IIC_B channel 0).      */
-  k_i3c_span        = 0x214UL,       /**< Through BCST at +0x210.              */
-  k_i3c_off_cndctl  = 0x140UL,       /**< CNDCTL START/RESTART/STOP request.   */
-  k_i3c_off_ntdtbp0 = 0x158UL,       /**< NTDTBP0 transfer data buffer port.   */
-  k_i3c_off_bst     = 0x1D0UL,       /**< BST bus status (W0C flags).          */
-  k_i3c_off_ntst    = 0x1E0UL,       /**< NTST normal-transfer status.         */
-  k_i3c_off_bcst    = 0x210UL,       /**< BCST bus condition status (BFREF).   */
-  k_i3c_reg_words   = 0x214UL / 4UL, /**< Shadow word count for the window.   */
-} i3c_map_t;
-
-/* =============================================================================
- * Register bit fields and model constants.
- * =============================================================================
- */
-
-/** @brief Generic field shifts / masks shared by the PORT halves. */
-typedef enum : uint32_t {
-  k_half_shift = 16U,     /**< High-half (PODR/PORR/EIDR) shift.     */
-  k_half_mask  = 0xFFFFU, /**< 16-bit half mask.                     */
-  k_u16_max    = 0xFFFFU, /**< 16-bit counter wrap value.            */
-} field_t;
-
-/** @brief AGTCR (control/status) bits -- ra_agt_agtcr_bits_t. */
-typedef enum : uint32_t {
-  k_agtcr_tstart = 0x01U, /**< TSTART start request.                 */
-  k_agtcr_tcstf  = 0x02U, /**< TCSTF count-status flag (RO).         */
-  k_agtcr_tundf  = 0x20U, /**< TUNDF underflow flag (RW1C).          */
-  k_agtcr_tcmaf  = 0x40U, /**< TCMAF compare-match A flag (RW1C).    */
-  k_agtcr_tcmbf  = 0x80U, /**< TCMBF compare-match B flag (RW1C).    */
-} agtcr_bit_t;
-
-/** @brief GPT GTCR / GTST bits -- ra_gpt register notes. */
-typedef enum : uint32_t {
-  k_gtcr_cst   = 0x00000001U, /**< GTCR.CST count-start.                 */
-  k_gtst_tcfa  = 0x00000001U, /**< GTST.TCFA compare-match A.            */
-  k_gtst_tcfpo = 0x00000040U, /**< GTST.TCFPO overflow.                  */
-  k_gtst_tcfpu = 0x00000080U, /**< GTST.TCFPU underflow.                 */
-} gpt_bit_t;
-
 /** @brief ICU IELSR layout -- ra_ielsr_bit_t / ra_ielsr_mask_t. */
 typedef enum : uint32_t {
   k_ielsr_iels_mask = 0x000003FFU, /**< IELS event-select field [9:0].    */
   k_ielsr_ir_bit    = 16U,         /**< IR interrupt status flag (RW1C).  */
   k_ielsr_ir_mask   = 0x00010000U, /**< IR bit mask.                      */
 } ielsr_field_t;
-
-/** @brief SCI_B CCR0 interrupt/enable bits (ra_sci_ccr0_bit_t). */
-typedef enum : uint32_t {
-  k_sci_ccr0_re   = 0x00000001U, /**< RE  receive enable (bit 0).        */
-  k_sci_ccr0_te   = 0x00000010U, /**< TE  transmit enable (bit 4).       */
-  k_sci_ccr0_rie  = 0x00010000U, /**< RIE receive-interrupt enable (16). */
-  k_sci_ccr0_tie  = 0x00100000U, /**< TIE transmit-interrupt enable (20).*/
-  k_sci_ccr0_teie = 0x00200000U, /**< TEIE transmit-end int enable (21). */
-} sci_ccr0_bit_t;
-
-/** @brief SCI_B CSR status bits (ra_sci_csr_bit_t). */
-typedef enum : uint32_t {
-  k_sci_csr_rxdmon = 0x00008000U, /**< RXDMON RXD pin monitor (bit 15).   */
-  k_sci_csr_tdre   = 0x20000000U, /**< TDRE transmit-data-empty (bit 29). */
-  k_sci_csr_tend   = 0x40000000U, /**< TEND transmit-end (bit 30).        */
-  k_sci_csr_rdrf   = 0x80000000U, /**< RDRF receive-data-full (bit 31).   */
-} sci_csr_bit_t;
-
-/** @brief SCI_B FIFO status bits used by reads of FRSR / FTSR. */
-typedef enum : uint32_t {
-  k_sci_frsr_dr   = 0x00000001U, /**< FRSR.DR receive-data-ready (bit 0).  */
-  k_sci_frsr_rdf  = 0x00000040U, /**< FRSR.RDF receive-FIFO-data-full (6). */
-  k_sci_ftsr_tdfe = 0x00000040U, /**< FTSR.TDFE transmit-FIFO-empty (6).  */
-} sci_fifo_bit_t;
-
-/** @brief CFCLR / FFCLR write-1-to-clear bits this model honours. */
-typedef enum : uint32_t {
-  k_sci_cfclr_rdrfc = 0x80000000U, /**< RDRFC clear CSR.RDRF (bit 31).    */
-  k_sci_ffclr_drc   = 0x00000001U, /**< DRC clear FRSR.DR (bit 0).        */
-} sci_clr_bit_t;
-
-/** @brief CNDCTL condition-request bits (ra8d2_i3c_i2c_regs.h). */
-typedef enum : uint32_t {
-  k_i3c_cndctl_stcnd = 0x00000001U, /**< STCND issue START.               */
-  k_i3c_cndctl_srcnd = 0x00000002U, /**< SRCND issue repeated-START.      */
-  k_i3c_cndctl_spcnd = 0x00000004U, /**< SPCND issue STOP.                */
-} i3c_cndctl_bit_t;
-
-/** @brief BST (Bus Status) flags the polling driver observes / clears (W0C). */
-typedef enum : uint32_t {
-  k_i3c_bst_stcnddf = 0x00000001U, /**< START-condition detected (bit 0).  */
-  k_i3c_bst_spcnddf = 0x00000002U, /**< STOP-condition detected (bit 1).   */
-  k_i3c_bst_nackdf  = 0x00000010U, /**< NACK detected (bit 4).             */
-  k_i3c_bst_tendf   = 0x00000100U, /**< Transfer-end / address ACK (bit 8).*/
-  k_i3c_bst_alf     = 0x00010000U, /**< Arbitration lost (bit 16).         */
-  k_i3c_bst_todf    = 0x00100000U, /**< Timeout detected (bit 20).         */
-} i3c_bst_bit_t;
-
-/** @brief NTST (Normal Transfer Status) flags. */
-typedef enum : uint32_t {
-  k_i3c_ntst_tdbef0 = 0x00000001U, /**< TX data-buffer empty (bit 0).      */
-  k_i3c_ntst_rdbff0 = 0x00000002U, /**< RX data-buffer full (bit 1).       */
-} i3c_ntst_bit_t;
-
-/** @brief BCST (Bus Condition Status) flags. */
-typedef enum : uint32_t {
-  k_i3c_bcst_bfref = 0x00000001U, /**< Bus-free flag (bit 0): 1 == idle.   */
-} i3c_bcst_bit_t;
-
-/** @brief I2C address-byte layout on the wire (addr<<1 | R/W). */
-typedef enum : uint32_t {
-  k_i3c_addr_shift = 1U,    /**< 7-bit address occupies bits [7:1].       */
-  k_i3c_addr_rnw   = 0x01U, /**< LSB: 1 == read, 0 == write.              */
-  k_i3c_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.               */
-  k_i3c_byte_mask  = 0xFFU, /**< One data byte.                           */
-  k_i3c_dev_rx_max = 64U,   /**< Per-read device response staging cap.    */
-  k_i3c_dev_max    = 4U,    /**< Device-registry capacity on the bus.     */
-} i3c_addr_t;
-
-/**
- * @brief GoodIX GT911 protocol constants (ra8d2_touch_gt911_regs.h + ra_touch.c).
- *
- * @details
- * The GT911 is addressed with a 16-bit big-endian register pointer written
- * first, then read N bytes from that pointer (after a repeated-START). The touch
- * driver reads PRODUCT_ID to confirm the part is alive on open, then each frame
- * reads the STATUS byte (bit7 buffer-ready, bits[3:0] point count) and, when a
- * point is present, the 8-byte POINT[0] record. Writing 0 to STATUS acks the
- * frame. The point record packs x/y little-endian; ra_touch decodes x at byte 0
- * and y at byte 2 of the public point type.
- */
-typedef enum : uint16_t {
-  k_gt911_reg_command = 0x8040U, /**< Command register (sleep/wake/ack).    */
-  k_gt911_reg_product = 0x8140U, /**< 4-byte ASCII product id "911\0".      */
-  k_gt911_reg_status  = 0x814EU, /**< Status: bit7 ready, bits[3:0] count.  */
-  k_gt911_reg_point0  = 0x814FU, /**< First 8-byte per-point record.        */
-} gt911_reg_t;
-
-/** @brief GT911 magic byte values + record geometry. */
-typedef enum : uint32_t {
-  k_gt911_addr_7b      = 0x5DU, /**< EK-RA8D2 carrier GT911 default address. */
-  k_gt911_id0          = 0x39U, /**< '9' -- first product-id byte ra_touch checks. */
-  k_gt911_id1          = 0x31U, /**< '1'.                                   */
-  k_gt911_id2          = 0x31U, /**< '1'.                                   */
-  k_gt911_id3          = 0x00U, /**< NUL terminator.                        */
-  k_gt911_status_ready = 0x80U, /**< Buffer-ready (bit 7).                  */
-  k_gt911_status_one   = 0x01U, /**< One active contact in bits[3:0].       */
-  k_gt911_id_bytes     = 4U,    /**< PRODUCT_ID payload length.             */
-  k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.           */
-  k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.        */
-  k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb). */
-} gt911_const_t;
-
-/** @brief Byte offsets inside one 8-byte GT911 point record (ra_touch.c). */
-typedef enum : uint32_t {
-  k_gt911_pt_track  = 0U, /**< track_id.    */
-  k_gt911_pt_x_lsb  = 1U, /**< X low byte.  */
-  k_gt911_pt_x_msb  = 2U, /**< X high byte. */
-  k_gt911_pt_y_lsb  = 3U, /**< Y low byte.  */
-  k_gt911_pt_y_msb  = 4U, /**< Y high byte. */
-  k_gt911_pt_sz_lsb = 5U, /**< size low (pressure). */
-} gt911_pt_off_t;
-
-/**
- * @brief SCI8 ELC event numbers the console channel raises (FSP ra8d2 bsp_elc).
- *
- * @details
- * RA8D2 ELC event signal table (HUM Ch 19) lays SCI channel events out in
- * RXI / TXI / TEI / ERI / AM order; for the EK-RA8D2 console channel (SCI8,
- * PD02/PD03) these are RXI 0x122, TXI 0x123, TEI 0x124, matching FSP
- * `bsp_elc.h` for ra8d2 (`ELC_EVENT_SCI8_RXI = 0x122`, `_TXI = 0x123`,
- * `_TEI = 0x124`). A firmware that routes one through ra_isr_register writes the
- * same number into an IELSR slot, so the ICU model matches the raised event to
- * that slot exactly as it does for the timer events.
- */
-typedef enum : uint16_t {
-  k_event_sci8_rxi = 0x122U, /**< SCI8 RXI receive-data-full event.       */
-  k_event_sci8_txi = 0x123U, /**< SCI8 TXI transmit-data-empty event.     */
-  k_event_sci8_tei = 0x124U, /**< SCI8 TEI transmit-end event.            */
-} sci_elc_event_t;
 
 /** @brief Cortex-M NVIC register bases (PPB, read straight from memory). */
 typedef enum : uint64_t {
@@ -289,221 +64,91 @@ typedef enum : uint64_t {
   k_nvic_word_bits = 32UL,         /**< Lines per ISER/ISPR word.         */
 } nvic_addr_t;
 
-/**
- * @brief Canonical ELC event numbers the timer models emit (FSP ra8d2 bsp_elc).
- *
- * @details
- * RA8D2 ELC event signal table (HUM Ch 19): GPT0 overflow is 0x0C1 and AGT0
- * combined interrupt (underflow / compare-match) is 0x0DF. A firmware that
- * routes one of these through ra_isr_register writes the same number into an
- * IELSR slot, so the ICU model can match the raised event to that slot.
- */
-typedef enum : uint16_t {
-  k_event_gpt0_ovf = 0x0C1U, /**< GPT0 GTCIV counter-overflow event.      */
-  k_event_agt0_int = 0x0DFU, /**< AGT0 AGTI combined interrupt event.     */
-} elc_event_t;
-
-/** @brief Per-chunk advance for the modelled counters (one chunk == 1 tick). */
+/** @brief Pending-IRQ ring + per-IRQ tracking sizing. */
 typedef enum : uint32_t {
-  k_agt_step_per_chunk = 0x0800U,     /**< AGT down-count per chunk.       */
-  k_gpt_step_per_chunk = 0x00004000U, /**< GPT up-count per chunk.         */
-  k_irq_queue_len      = 32U,         /**< Pending-IRQ ring capacity.      */
-  k_irq_track_max      = 64U,         /**< Distinct IRQ numbers tracked.   */
-} model_tune_t;
+  k_irq_queue_len = 32U, /**< Pending-IRQ ring capacity.      */
+  k_irq_track_max = 64U, /**< Distinct IRQ numbers tracked.   */
+} irq_tune_t;
 
-/** @brief SCI_B model sizing and the EK-RA8D2 console channel. */
+/** @brief Registry capacity + the core's own report slot ordering. */
 typedef enum : uint32_t {
-  k_sci_console_ch   = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).    */
-  k_sci_rx_queue_len = 512U,  /**< Per-channel host->firmware RX capacity. */
-  k_sci_data_mask    = 0xFFU, /**< RDR/TDR data field is 8 bits.          */
-  k_uart_line_cap    = 256U,  /**< Captured last-TX-line buffer capacity.  */
-} sci_tune_t;
-
-/* =============================================================================
- * Block state.
- * =============================================================================
- */
-
-/** @brief One PORT instance: direction + output latch (16 bits each). */
-typedef struct {
-  uint16_t pdr;  /**< Direction: 1 = output, 0 = input. */
-  uint16_t podr; /**< Output-data latch.                */
-} port_state_t;
-
-/** @brief One AGT channel: a 16-bit reloading down-counter + status. */
-typedef struct {
-  uint16_t counter;    /**< Live AGT count.            */
-  uint16_t reload;     /**< Value last written to AGT. */
-  uint16_t cmpa;       /**< AGTCMA compare-match A.    */
-  uint16_t cmpb;       /**< AGTCMB compare-match B.    */
-  uint8_t  cr;         /**< AGTCR control/status.      */
-  uint8_t  mr1;        /**< AGTMR1 mode 1.             */
-  uint32_t underflows; /**< Underflow event count.  */
-} agt_state_t;
-
-/** @brief One GPT channel: a 32-bit saw up-counter + status. */
-typedef struct {
-  uint32_t cnt;       /**< GTCNT live count.         */
-  uint32_t period;    /**< GTPR period.              */
-  uint32_t cr;        /**< GTCR (CST in bit0).       */
-  uint32_t st;        /**< GTST status flags.        */
-  uint32_t overflows; /**< Overflow event count.     */
-} gpt_state_t;
-
-/**
- * @brief One SCI_B channel: control shadow + a host-fed RX byte queue.
- *
- * @details
- * TX is always "drained" in the model (TDRE/TEND read as set), so only the
- * control shadow (@c ccr0) and a transmitted-byte counter are kept on that
- * side. RX is a simple ring of bytes the host queued via
- * ::board_periph_sci_feed_rx; @c rx_head / @c rx_tail bound the live span and
- * @c received counts every byte the firmware has consumed.
- */
-typedef struct {
-  uint32_t ccr0;                   /**< CCR0 shadow (TE/RE/RIE/TIE/TEIE). */
-  uint32_t transmitted;            /**< Bytes captured from TDR writes.  */
-  uint32_t received;               /**< Bytes the firmware read from RDR. */
-  uint8_t  rx[k_sci_rx_queue_len]; /**< Host->firmware byte ring.        */
-  uint32_t rx_head;                /**< Next byte the firmware will read. */
-  uint32_t rx_tail;                /**< Next free slot for a queued byte. */
-  uint32_t rx_dropped;             /**< Bytes dropped on a full RX ring.  */
-} sci_state_t;
+  k_block_max = 16U, /**< Max registered peripheral blocks.    */
+  /* The core prints its NVIC-IRQ section after SCI (order 30) and before the
+   * touch line (order 40), so it slots its report at this synthetic order. */
+  k_core_irq_report_order = 35U, /**< Where the IRQ report sits among blocks. */
+} core_tune_t;
 
 static bool s_trace; /**< --trace: log transitions + IRQs as they happen. */
 
-/**
- * @brief One I3C-in-I2C-mode channel: register shadow + a transfer state machine.
- *
- * @details
- * The model owns the registers the IIC_B polling driver actually touches; the
- * rest of the window reflects writes through @c reg. The transfer fields track
- * one controller transaction: @c busy spans START..STOP (BCST.BFREF reports the
- * complement), @c addr_done latches once the address byte after a (re)START has
- * selected a device, @c target_7b / @c reading record that selection, and the
- * @c rx staging buffer holds the bytes the addressed device produced for the
- * current read (drained one per NTDTBP0 read, after the FSP "dummy" first read).
+/* =============================================================================
+ * Block registry -- decentralized: each block self-registers its descriptor.
+ * =============================================================================
  */
-typedef struct {
-  uint32_t reg[k_i3c_reg_words]; /**< Reflect-on-read register shadow.       */
-  bool     busy;                 /**< True between START and STOP.            */
-  bool     addr_done;            /**< Address phase of the current (re)START done. */
-  bool     acked;                /**< The addressed target ACKed.            */
-  bool     reading;              /**< Current transfer direction is read.    */
-  uint8_t  target_7b;            /**< 7-bit address selected this transfer.  */
-  uint32_t ntst;                 /**< NTST flags (TDBEF0 / RDBFF0).          */
-  uint32_t bst;                  /**< BST flags (NACKDF / TENDF / ...).      */
-  uint8_t  rx[k_i3c_dev_rx_max]; /**< Staged device response for a read.     */
-  uint32_t rx_len;               /**< Valid bytes in @c rx.                  */
-  uint32_t rx_pos;               /**< Next byte index served from @c rx.     */
-  bool     rx_primed;            /**< The FSP dummy first read was consumed.  */
-} i3c_state_t;
 
-/**
- * @brief One GoodIX GT911 touch device on the modelled I2C bus.
- *
- * @details
- * Holds the current 16-bit register pointer (set MSB-first by the write phase)
- * and one armed contact. A status read reports buffer-ready + one point while a
- * contact is armed; the point0 read returns its x/y and clears the contact
- * (counted in @c reported), so a tap is delivered exactly once -- matching the
- * real GT911, which drops the frame once the controller drains and acks it.
- */
-typedef struct {
-  uint16_t reg_ptr;       /**< Active 16-bit register pointer.          */
-  uint8_t  ptr_bytes;     /**< Pointer bytes captured this write (0..2).*/
-  bool     click_pending; /**< A contact is armed and unread.           */
-  uint16_t click_x;       /**< Armed contact X.                         */
-  uint16_t click_y;       /**< Armed contact Y.                         */
-  uint32_t reported;      /**< Contacts the firmware has drained.       */
-} gt911_state_t;
+static const board_periph_block_t* s_blocks[k_block_max];      /**< Registered blocks. */
+static uint32_t                    s_block_count;              /**< Live entries.      */
+static uint8_t                     s_block_order[k_block_max]; /**< Tick/report order. */
+static bool                        s_order_built;              /**< s_block_order valid. */
 
-/**
- * @brief A device on the modelled I2C bus: 7-bit address + read/write callbacks.
- *
- * @details
- * The write callback receives each byte the controller transmits after the
- * address (register pointers, then payload). The read callback fills @p buf with
- * up to @p max response bytes for the device's current state and returns the
- * count; the bus model serves them to the controller one NTDTBP0 read at a time.
- * @c present false means no device answers that address (the bus NACKs).
- */
-typedef struct {
-  bool    present;                                         /**< Slot occupied.  */
-  uint8_t addr_7b;                                         /**< 7-bit address.  */
-  void (*write)(void* ctx, uint8_t byte);                  /**< Controller->device. */
-  uint32_t (*read)(void* ctx, uint8_t* buf, uint32_t max); /**< Device->controller. */
-  void (*stop)(void* ctx);                                 /**< STOP/transfer end. */
-  void* ctx;                                               /**< Device state.   */
-} i2c_device_t;
-
-static port_state_t s_port[k_port_count];
-static agt_state_t  s_agt[k_agt_count];
-static gpt_state_t  s_gpt[k_gpt_count];
-static sci_state_t  s_sci[k_sci_count];
-
-/** @brief The single modelled I3C/IIC_B channel and its bus device registry. */
-static i3c_state_t   s_i3c;
-static i2c_device_t  s_i2c_dev[k_i3c_dev_max];
-static gt911_state_t s_gt911;
-
-/* Forward declarations: the I2C bus registry + GT911 device callbacks live in
- * their own section further down, but board_periph_init (above them) registers
- * the GT911 on the bus, so the names must be visible here. */
-static void     i2c_device_register(uint8_t addr_7b,
-                                    void (*wr)(void*, uint8_t),
-                                    uint32_t (*rd)(void*, uint8_t*, uint32_t),
-                                    void (*stop)(void*),
-                                    void* ctx);
-static void     gt911_write(void* ctx, uint8_t byte);
-static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max);
-static void     gt911_stop(void* ctx);
-
-/* The USBFS model (board_usb.c) pends its controller interrupt by asserting the
- * USBFS_INT ELC event; it goes through the same IELSR -> NVIC path as every
- * other peripheral, so board_periph hands it ::icu_raise_event via a thin
- * wrapper (the engine is the only extra argument the event-raise needs). */
-static void icu_raise_event(uc_engine* uc, uint16_t event);
-
-/** @brief ICU event-raise hook handed to the USB model (see board_usb.h). */
-static void usb_irq_raiser(uc_engine* uc, uint16_t event)
+void board_periph_register_block(const board_periph_block_t* block)
 {
-  icu_raise_event(uc, event);
+  if (block == nullptr) {
+    return;
+  }
+  if (s_block_count >= (uint32_t)k_block_max) {
+    return; /* registry full: extra blocks dropped (raise k_block_max) */
+  }
+  s_blocks[s_block_count] = block;
+  s_block_count++;
+  s_order_built = false; /* a new block invalidates the cached tick/report order */
 }
 
-/** @brief Host sink for transmitted bytes (main.c installs the stdout sink). */
-static void (*s_sci_tx_sink)(uint8_t channel, uint8_t byte);
+/**
+ * @brief Build @c s_block_order: registry indices sorted by descriptor order.
+ *
+ * @details
+ * A stable insertion sort by ::board_periph_block_t::order so the per-chunk tick
+ * and the end-of-run report visit blocks in a deterministic cadence regardless
+ * of the constructor registration order (ties keep registration order). MMIO
+ * dispatch does not use this -- blocks own disjoint address ranges.
+ *
+ * @return Nothing.
+ * @since 0.1.0
+ */
+static void board_periph_build_order(void)
+{
+  for (uint32_t i = 0U; i < s_block_count; i++) {
+    uint32_t j = i;
+    while ((j > 0U) && (s_blocks[s_block_order[j - 1U]]->order > s_blocks[i]->order)) {
+      s_block_order[j] = s_block_order[j - 1U];
+      j--;
+    }
+    s_block_order[j] = (uint8_t)i;
+  }
+  s_order_built = true;
+}
 
-/** @brief RGB565 lit-colour codes for the three board LEDs. */
-typedef enum : uint16_t {
-  k_led_rgb565_blue  = 0x001FU, /**< LED1 blue  (P600) when driven high. */
-  k_led_rgb565_green = 0x07E0U, /**< LED2 green (P303) when driven high. */
-  k_led_rgb565_red   = 0xF800U, /**< LED3 red   (PA07) when driven high. */
-} led_color_t;
+/** @brief True iff @p addr is inside [@p base, @p base + @p span). */
+static bool in_range(uint64_t addr, uint64_t base, uint64_t span)
+{
+  return (addr >= base) && (addr < (base + span));
+}
 
-/** @brief Board LED -> (port index, pin index, lit colour), from the BSP. */
-typedef struct {
-  uint8_t     port;
-  uint8_t     pin;
-  uint16_t    color; /**< RGB565 colour the LED emits when driven high. */
-  const char* name;
-} led_map_t;
+/** @brief Find the registered block owning @p addr, or NULL. */
+static const board_periph_block_t* block_for_addr(uint64_t addr)
+{
+  for (uint32_t i = 0U; i < s_block_count; i++) {
+    if (in_range(addr, s_blocks[i]->base, s_blocks[i]->span)) {
+      return s_blocks[i];
+    }
+  }
+  return nullptr;
+}
 
-static const led_map_t k_led_map[k_board_led_count] = {
-  {6U, 0U, (uint16_t)k_led_rgb565_blue, "LED1 BLUE  P600"},
-  {3U, 3U, (uint16_t)k_led_rgb565_green, "LED2 GREEN P303"},
-  {10U, 7U, (uint16_t)k_led_rgb565_red, "LED3 RED   PA07"},
-};
-
-static uint32_t s_led_level[k_board_led_count];       /**< Last driven level. */
-static uint32_t s_led_transitions[k_board_led_count]; /**< 0->1 / 1->0 count. */
-
-/* Last complete console line, latched on newline so the board view can show
- * what a non-display example printed (e.g. "hello, ra8d2!"). s_uart_pend
- * accumulates the in-flight line; s_uart_last holds the last finished one. */
-static char     s_uart_last[k_uart_line_cap]; /**< Last completed TX line.    */
-static char     s_uart_pend[k_uart_line_cap]; /**< Line being accumulated.    */
-static uint32_t s_uart_pend_len;              /**< Chars buffered in s_uart_pend. */
+/* =============================================================================
+ * Core-owned ICU / NVIC state.
+ * =============================================================================
+ */
 
 /* ICU IELSR event-link table. The ICU registers live inside the callback-MMIO
  * peripheral window (0x40006xxx), so the model owns this state itself rather
@@ -565,69 +210,6 @@ static void nvic_set_pending(uc_engine* uc, uint32_t irq)
   (void)uc_mem_write(uc, word, &ispr, sizeof(ispr));
 }
 
-/** @brief Zero every modelled block's state array (called from the reset). */
-static void board_periph_reset_blocks(void)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_port_count; i++) {
-    s_port[i] = (port_state_t){};
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_agt_count; i++) {
-    s_agt[i] = (agt_state_t){};
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_gpt_count; i++) {
-    s_gpt[i] = (gpt_state_t){};
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_sci_count; i++) {
-    s_sci[i] = (sci_state_t){};
-  }
-  s_i3c   = (i3c_state_t){};
-  s_gt911 = (gt911_state_t){};
-}
-
-/** @brief Zero the observability counters and ICU/NVIC bookkeeping arrays. */
-static void board_periph_reset_counters(void)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
-    s_led_level[i]       = 0U;
-    s_led_transitions[i] = 0U;
-  }
-  s_uart_last[0]  = '\0';
-  s_uart_pend[0]  = '\0';
-  s_uart_pend_len = 0U;
-  for (uint32_t i = 0U; i < (uint32_t)k_icu_ielsr_cnt; i++) {
-    s_ielsr[i] = 0U;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_irq_track_max; i++) {
-    s_irq_taken[i] = 0U;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_nvic_enable_words; i++) {
-    s_nvic_iser_shadow[i] = 0U;
-  }
-}
-
-void board_periph_init(bool trace)
-{
-  s_trace = trace;
-  board_periph_reset_blocks();
-  board_periph_reset_counters();
-  s_sci_tx_sink = nullptr;
-  s_irq_head    = 0U;
-  s_irq_tail    = 0U;
-  s_irq_total   = 0U;
-  /* Populate the modelled I2C bus: the EK-RA8D2 carrier's GT911 touch
-   * controller answers at its default 7-bit address on I3C/IIC_B channel 0, so
-   * the firmware's real ra_touch -> ra_i3c_transfer -> GT911 path returns data
-   * instead of needing a function-level touch stub. */
-  for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
-    s_i2c_dev[i] = (i2c_device_t){};
-  }
-  i2c_device_register((uint8_t)k_gt911_addr_7b, gt911_write, gt911_read, gt911_stop, &s_gt911);
-  /* Bring the USBFS controller model + virtual host up and wire its interrupt
-   * pend through this module's ICU/NVIC path (Phase 3, issue #67). */
-  board_usb_init(trace);
-  board_usb_set_irq_raiser(usb_irq_raiser);
-}
-
 void board_periph_nvic_set_enable(uint32_t irq, bool enable)
 {
   const uint32_t word = irq / 32U;
@@ -639,82 +221,6 @@ void board_periph_nvic_set_enable(uint32_t irq, bool enable)
     s_nvic_iser_shadow[word] |= bit;
   } else {
     s_nvic_iser_shadow[word] &= ~bit;
-  }
-}
-
-/* =============================================================================
- * GPIO / PORT model.
- * =============================================================================
- */
-
-/** @brief Note a board-LED edge when a traced port/pin output latch changes. */
-static void port_trace_leds(uint32_t port_idx, uint16_t before, uint16_t after)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
-    if (k_led_map[i].port != (uint8_t)port_idx) {
-      continue;
-    }
-    const uint16_t mask = (uint16_t)(1U << k_led_map[i].pin);
-    const uint32_t was  = ((before & mask) != 0U) ? 1U : 0U;
-    const uint32_t now  = ((after & mask) != 0U) ? 1U : 0U;
-    if (was != now) {
-      s_led_level[i] = now;
-      s_led_transitions[i]++;
-      if (s_trace) {
-        (void)fprintf(stderr, "  [trace] %s -> %s\n", k_led_map[i].name, now ? "ON" : "OFF");
-      }
-    }
-  }
-}
-
-/** @brief Apply a new PODR value to a port and trace any LED transition. */
-static void port_set_podr(uint32_t port_idx, uint16_t new_podr)
-{
-  const uint16_t old = s_port[port_idx].podr;
-  if (old != new_podr) {
-    port_trace_leds(port_idx, old, new_podr);
-    s_port[port_idx].podr = new_podr;
-  }
-}
-
-/** @brief Dispatch a PORT register read; returns PCNTR value for the port. */
-static uint64_t port_read(uint64_t addr)
-{
-  const uint32_t idx = (uint32_t)((addr - (uint64_t)k_port_base) / (uint64_t)k_port_stride);
-  const uint64_t off = (addr - (uint64_t)k_port_base) % (uint64_t)k_port_stride;
-  if (idx >= (uint32_t)k_port_count) {
-    return 0U;
-  }
-  const port_state_t* p = &s_port[idx];
-  if (off == (uint64_t)k_port_pcntr1) {
-    return ((uint32_t)p->podr << (uint32_t)k_half_shift) | (uint32_t)p->pdr;
-  }
-  if (off == (uint64_t)k_port_pcntr2) {
-    /* PIDR reads the live pin level: an output pin reads back its driven
-     * latch, so a firmware "read what I drove" check observes the real state. */
-    return (uint32_t)(p->podr & p->pdr);
-  }
-  return 0U; /* PCNTR3 is write-only; PCNTR4 unmodelled -> 0. */
-}
-
-/** @brief Dispatch a PORT register write (PCNTR1 direction/latch, PCNTR3 set/clear). */
-static void port_write(uint64_t addr, uint32_t value)
-{
-  const uint32_t idx = (uint32_t)((addr - (uint64_t)k_port_base) / (uint64_t)k_port_stride);
-  const uint64_t off = (addr - (uint64_t)k_port_base) % (uint64_t)k_port_stride;
-  if (idx >= (uint32_t)k_port_count) {
-    return;
-  }
-  if (off == (uint64_t)k_port_pcntr1) {
-    s_port[idx].pdr = (uint16_t)(value & (uint32_t)k_half_mask);
-    port_set_podr(idx, (uint16_t)((value >> (uint32_t)k_half_shift) & (uint32_t)k_half_mask));
-  } else if (off == (uint64_t)k_port_pcntr3) {
-    const uint16_t posr = (uint16_t)(value & (uint32_t)k_half_mask);
-    const uint16_t porr = (uint16_t)((value >> (uint32_t)k_half_shift) & (uint32_t)k_half_mask);
-    uint16_t       podr = s_port[idx].podr;
-    podr |= posr;            /* atomic set  */
-    podr &= (uint16_t)~porr; /* atomic clear */
-    port_set_podr(idx, podr);
   }
 }
 
@@ -734,23 +240,7 @@ static void irq_ring_push(uint32_t irq)
   s_irq_tail             = next;
 }
 
-/**
- * @brief Raise a peripheral ELC event: latch IELSR.IR and pend the NVIC line.
- *
- * @details
- * Scans the ICU IELSR event-link table (owned by this model -- see ::s_ielsr)
- * for the slot whose IELS field equals @p event. On a match the slot's IR flag
- * is set (exactly as hardware latches it), and -- if the matching NVIC line
- * (line == slot index) is enabled in ISER -- the line is pended in NVIC ISPR
- * and queued for the engine to take as a real exception. An event with no
- * linked, enabled slot is dropped, just as on silicon.
- *
- * @param[in,out] uc    Unicorn engine (NVIC ISER/ISPR live in PPB RAM).
- * @param[in]     event ELC event number the peripheral is asserting.
- * @return Nothing.
- * @since 0.1.0
- */
-static void icu_raise_event(uc_engine* uc, uint16_t event)
+void board_periph_icu_raise_event(uc_engine* uc, uint16_t event)
 {
   for (uint32_t slot = 0U; slot < (uint32_t)k_icu_ielsr_cnt; slot++) {
     if ((s_ielsr[slot] & (uint32_t)k_ielsr_iels_mask) != (uint32_t)event) {
@@ -800,638 +290,62 @@ static void icu_write(uint64_t addr, uint32_t value)
   s_ielsr[slot]          = (value & ~(uint32_t)k_ielsr_ir_mask) | ir_keep;
 }
 
-/* =============================================================================
- * AGT timer model -- 16-bit reloading down-counter (ra_agt.c semantics).
- * =============================================================================
- */
+/* The USBFS model (board_usb.c) pends its controller interrupt by asserting the
+ * USBFS_INT ELC event; it goes through the same IELSR -> NVIC path as every
+ * other peripheral, so board_periph hands it the event-raise via a thin wrapper
+ * (the engine is the only extra argument the event-raise needs). */
 
-/** @brief Dispatch an AGT register read for channel @p ch at byte offset @p off. */
-static uint64_t agt_read(uint32_t ch, uint64_t off)
+/** @brief ICU event-raise hook handed to the USB model (see board_usb.h). */
+static void usb_irq_raiser(uc_engine* uc, uint16_t event)
 {
-  const agt_state_t* a = &s_agt[ch];
-  if (off == (uint64_t)k_agt_off_agt) {
-    return a->counter;
-  }
-  if (off == (uint64_t)k_agt_off_cma) {
-    return a->cmpa;
-  }
-  if (off == (uint64_t)k_agt_off_cmb) {
-    return a->cmpb;
-  }
-  if (off == (uint64_t)k_agt_off_cr) {
-    return a->cr;
-  }
-  if (off == (uint64_t)k_agt_off_mr1) {
-    return a->mr1;
-  }
-  return 0U;
-}
-
-/** @brief Dispatch an AGT register write; AGTCR.TSTART arms / status is RW1C. */
-static void agt_write(uint32_t ch, uint64_t off, uint32_t value)
-{
-  agt_state_t* a = &s_agt[ch];
-  if (off == (uint64_t)k_agt_off_agt) {
-    a->counter = (uint16_t)value; /* AGT write both reloads and seeds count */
-    a->reload  = (uint16_t)value;
-  } else if (off == (uint64_t)k_agt_off_cma) {
-    a->cmpa = (uint16_t)value;
-  } else if (off == (uint64_t)k_agt_off_cmb) {
-    a->cmpb = (uint16_t)value;
-  } else if (off == (uint64_t)k_agt_off_cr) {
-    /* TUNDF/TCMAF/TCMBF are write-0-to-clear (ra_agt clears by writing 0);
-     * TSTART is RW. TCSTF tracks TSTART. */
-    const uint8_t status_keep =
-      (uint8_t)(a->cr & (uint8_t)value & (uint8_t)(k_agtcr_tundf | k_agtcr_tcmaf | k_agtcr_tcmbf));
-    const uint8_t start = (uint8_t)(value & (uint8_t)k_agtcr_tstart);
-    a->cr = (uint8_t)(start | (start != 0U ? (uint8_t)k_agtcr_tcstf : 0U) | status_keep);
-  } else if (off == (uint64_t)k_agt_off_mr1) {
-    a->mr1 = (uint8_t)value;
-  }
-}
-
-/** @brief Advance one running AGT channel by one chunk; raise events on wrap. */
-static void agt_tick_channel(uc_engine* uc, uint32_t ch)
-{
-  agt_state_t* a = &s_agt[ch];
-  if ((a->cr & (uint8_t)k_agtcr_tstart) == 0U) {
-    return; /* stopped: counter holds */
-  }
-  const uint32_t step = (uint32_t)k_agt_step_per_chunk;
-  if (a->counter > step) {
-    a->counter = (uint16_t)(a->counter - step);
-    return;
-  }
-  /* Underflow: reload and set TUNDF (and TCMAF if compare-match A is armed). */
-  const uint32_t span    = (uint32_t)a->reload + 1U;
-  const uint32_t deficit = step - a->counter;
-  a->counter             = (uint16_t)(a->reload - ((deficit - 1U) % span));
-  a->cr |= (uint8_t)k_agtcr_tundf;
-  a->underflows++;
-  if (ch == 0U) {
-    icu_raise_event(uc, (uint16_t)k_event_agt0_int);
-  }
+  board_periph_icu_raise_event(uc, event);
 }
 
 /* =============================================================================
- * GPT timer model -- 32-bit saw up-counter (ra_gpt.c semantics).
+ * Shared framework services published to the block files.
  * =============================================================================
  */
 
-/** @brief Dispatch a GPT register read for channel @p ch at byte offset @p off. */
-static uint64_t gpt_read(uint32_t ch, uint64_t off)
+bool board_periph_trace(void)
 {
-  const gpt_state_t* g = &s_gpt[ch];
-  if (off == (uint64_t)k_gpt_off_gtcnt) {
-    return g->cnt;
-  }
-  if (off == (uint64_t)k_gpt_off_gtpr) {
-    return g->period;
-  }
-  if (off == (uint64_t)k_gpt_off_gtcr) {
-    return g->cr;
-  }
-  if (off == (uint64_t)k_gpt_off_gtst) {
-    return g->st;
-  }
-  return 0U; /* GTWP / GTSTR / GTSTP / GTCLR read as 0 in this model */
-}
-
-/** @brief Dispatch a GPT register write; GTSTR/GTSTP gate the counter. */
-static void gpt_write(uint32_t ch, uint64_t off, uint32_t value)
-{
-  gpt_state_t* g = &s_gpt[ch];
-  if (off == (uint64_t)k_gpt_off_gtcnt) {
-    g->cnt = value;
-  } else if (off == (uint64_t)k_gpt_off_gtpr) {
-    g->period = value;
-  } else if (off == (uint64_t)k_gpt_off_gtcr) {
-    g->cr = value; /* CST (bit0) starts / stops the count */
-  } else if (off == (uint64_t)k_gpt_off_gtstr) {
-    if ((value & 1U) != 0U) {
-      g->cr |= (uint32_t)k_gtcr_cst;
-    }
-  } else if (off == (uint64_t)k_gpt_off_gtstp) {
-    if ((value & 1U) != 0U) {
-      g->cr &= ~(uint32_t)k_gtcr_cst;
-    }
-  } else if (off == (uint64_t)k_gpt_off_gtclr) {
-    if ((value & 1U) != 0U) {
-      g->cnt = 0U;
-    }
-  } else if (off == (uint64_t)k_gpt_off_gtst) {
-    /* GTST bits are cleared by writing the value back with target bits zero
-     * (ra_gpt_clear_status), so the model keeps only bits still set. */
-    g->st &= value;
-  }
-}
-
-/** @brief Advance one running GPT channel by one chunk; raise overflow events. */
-static void gpt_tick_channel(uc_engine* uc, uint32_t ch)
-{
-  gpt_state_t* g = &s_gpt[ch];
-  if ((g->cr & (uint32_t)k_gtcr_cst) == 0U) {
-    return; /* stopped */
-  }
-  const uint32_t period = (g->period == 0U) ? (uint32_t)k_u16_max : g->period;
-  const uint32_t step   = (uint32_t)k_gpt_step_per_chunk;
-  if ((g->cnt + step) <= period) {
-    g->cnt += step;
-    return;
-  }
-  /* Overflow past GTPR in saw mode: wrap and set TCFPO. */
-  g->cnt = (uint32_t)((g->cnt + step) - period - 1U);
-  g->st |= (uint32_t)k_gtst_tcfpo;
-  g->overflows++;
-  if (ch == 0U) {
-    icu_raise_event(uc, (uint16_t)k_event_gpt0_ovf);
-  }
+  return s_trace;
 }
 
 /* =============================================================================
- * SCI_B UART model -- capture TX to a host sink, serve a host RX byte queue,
- * and raise TXI / TEI / RXI through the ICU event path (ra_sci.c semantics).
+ * Lifecycle.
  * =============================================================================
  */
 
-void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte))
+void board_periph_init(bool trace)
 {
-  s_sci_tx_sink = sink;
-}
-
-uint8_t board_periph_sci_console_channel(void)
-{
-  return (uint8_t)k_sci_console_ch;
-}
-
-void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len)
-{
-  if ((channel >= (uint32_t)k_sci_count) || (data == nullptr)) {
-    return;
+  s_trace = trace;
+  if (!s_order_built) {
+    board_periph_build_order();
   }
-  sci_state_t* s = &s_sci[channel];
-  for (uint32_t i = 0U; i < len; i++) {
-    const uint32_t next = (s->rx_tail + 1U) % (uint32_t)k_sci_rx_queue_len;
-    if (next == s->rx_head) {
-      s->rx_dropped += (len - i); /* ring full: drop the remaining bytes */
-      if (s_trace) {
-        (void)
-          fprintf(stderr, "  [trace] SCI%u RX queue full, dropped %u bytes\n", channel, len - i);
-      }
-      return;
-    }
-    s->rx[s->rx_tail] = data[i];
-    s->rx_tail        = next;
-  }
-}
-
-/** @brief True iff the channel has a queued, unread host RX byte. */
-static bool sci_rx_available(const sci_state_t* s)
-{
-  return s->rx_head != s->rx_tail;
-}
-
-/** @brief Build the CSR value: TX always drained, RDRF reflects the RX queue. */
-static uint32_t sci_csr_value(const sci_state_t* s)
-{
-  /* TDRE + TEND are held set so ra_sci's "wait for transmit empty / end" polls
-   * (ra_sci_putc_polling on TDRE, internal_wait_tx_end on TEND) fall through.
-   * RXDMON reads high because an idle UART line idles high. RDRF tracks the
-   * host RX queue so ra_sci_getc_polling completes only when a byte is ready. */
-  uint32_t csr = (uint32_t)k_sci_csr_tdre | (uint32_t)k_sci_csr_tend | (uint32_t)k_sci_csr_rxdmon;
-  if (sci_rx_available(s)) {
-    csr |= (uint32_t)k_sci_csr_rdrf;
-  }
-  return csr;
-}
-
-/** @brief Dispatch an SCI read for channel @p ch at byte offset @p off. */
-static uint64_t sci_read(uint32_t ch, uint64_t off)
-{
-  sci_state_t* s = &s_sci[ch];
-  if (off == (uint64_t)k_sci_off_rdr) {
-    if (!sci_rx_available(s)) {
-      return 0U; /* drained: nothing queued */
-    }
-    const uint8_t b = s->rx[s->rx_head];
-    s->rx_head      = (s->rx_head + 1U) % (uint32_t)k_sci_rx_queue_len;
-    s->received++;
-    return (uint64_t)b;
-  }
-  if (off == (uint64_t)k_sci_off_csr) {
-    return sci_csr_value(s);
-  }
-  if (off == (uint64_t)k_sci_off_ccr0) {
-    return s->ccr0;
-  }
-  if (off == (uint64_t)k_sci_off_frsr) {
-    return sci_rx_available(s) ? ((uint32_t)k_sci_frsr_dr | (uint32_t)k_sci_frsr_rdf) : 0U;
-  }
-  if (off == (uint64_t)k_sci_off_ftsr) {
-    return (uint32_t)k_sci_ftsr_tdfe; /* TX FIFO is always empty in the model */
-  }
-  return 0U; /* CFCLR / FFCLR read as 0; other regs unmodelled -> 0 */
-}
-
-/**
- * @brief Accumulate one transmitted byte into the captured last-line buffer.
- *
- * @details
- * Mirrors the host console formatter: a newline latches the pending line into
- * ::s_uart_last (so the board view can show the last complete console line),
- * CR is dropped, and any other byte is appended until the buffer is full. This
- * tracks only the last completed line, independent of the optional TX sink.
- *
- * @param[in] byte The transmitted data byte.
- * @return Nothing.
- * @since 0.1.0
- */
-static void sci_capture_tx_line(uint8_t byte)
-{
-  if (byte == (uint8_t)'\n') {
-    for (uint32_t i = 0U; i < s_uart_pend_len; i++) {
-      s_uart_last[i] = s_uart_pend[i];
-    }
-    s_uart_last[s_uart_pend_len] = '\0';
-    s_uart_pend_len              = 0U;
-    return;
-  }
-  if ((byte != (uint8_t)'\r') && (s_uart_pend_len < (uint32_t)(k_uart_line_cap - 1U))) {
-    s_uart_pend[s_uart_pend_len++] = (char)byte;
-  }
-}
-
-/** @brief Dispatch an SCI write; TDR is captured, CCR0 shadowed, clears no-op. */
-static void sci_write(uint32_t ch, uint64_t off, uint32_t value)
-{
-  sci_state_t* s = &s_sci[ch];
-  if (off == (uint64_t)k_sci_off_tdr) {
-    /* Both the polled (ra_sci_putc_polling) and interrupt (ra_sci_dispatch_txi)
-     * paths launch a frame by writing TDAT[7:0]; FIFO mode also writes TDR. */
-    const uint8_t byte = (uint8_t)(value & (uint32_t)k_sci_data_mask);
-    s->transmitted++;
-    sci_capture_tx_line(byte);
-    if (s_sci_tx_sink != nullptr) {
-      s_sci_tx_sink((uint8_t)ch, byte);
-    }
-  } else if (off == (uint64_t)k_sci_off_ccr0) {
-    s->ccr0 = value;
-  }
-  /* CFCLR / FFCLR are write-1-to-clear: in this model TDRE/TEND stay asserted
-   * and RDRF is derived from the live RX queue, so clearing them is a no-op
-   * (the firmware re-reads the queue-backed state on its next poll). */
-}
-
-/** @brief Raise this channel's enabled SCI interrupts through the ICU. */
-static void sci_tick_channel(uc_engine* uc, uint32_t ch)
-{
-  if (ch != (uint32_t)k_sci_console_ch) {
-    return; /* only the console channel has modelled ELC event numbers */
-  }
-  const sci_state_t* s = &s_sci[ch];
-  /* TX is always empty/ended in the model: while the firmware keeps TIE/TEIE
-   * armed (an interrupt-driven ra_sci_write in flight), re-pend TXI/TEI so the
-   * dispatcher pushes the next byte exactly as a real TDRE/TEND would. */
-  if ((s->ccr0 & (uint32_t)k_sci_ccr0_te) != 0U) {
-    if ((s->ccr0 & (uint32_t)k_sci_ccr0_tie) != 0U) {
-      icu_raise_event(uc, (uint16_t)k_event_sci8_txi);
-    }
-    if ((s->ccr0 & (uint32_t)k_sci_ccr0_teie) != 0U) {
-      icu_raise_event(uc, (uint16_t)k_event_sci8_tei);
+  /* Reset every registered block to its power-on state. */
+  for (uint32_t i = 0U; i < s_block_count; i++) {
+    const board_periph_block_t* b = s_blocks[s_block_order[i]];
+    if (b->reset != nullptr) {
+      b->reset();
     }
   }
-  /* RX: while RIE is armed and a host byte is queued, pend RXI so the firmware
-   * reads it from RDR in handler context (interrupt-driven receive). */
-  if (((s->ccr0 & (uint32_t)k_sci_ccr0_rie) != 0U) && sci_rx_available(s)) {
-    icu_raise_event(uc, (uint16_t)k_event_sci8_rxi);
+  /* Core ICU / NVIC bookkeeping. */
+  for (uint32_t i = 0U; i < (uint32_t)k_icu_ielsr_cnt; i++) {
+    s_ielsr[i] = 0U;
   }
-}
-
-/* =============================================================================
- * I2C bus device registry -- map a 7-bit address to a device model.
- * =============================================================================
- */
-
-/** @brief Find the registered device answering @p addr_7b, or NULL. */
-static i2c_device_t* i2c_device_find(uint8_t addr_7b)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
-    if (s_i2c_dev[i].present && (s_i2c_dev[i].addr_7b == addr_7b)) {
-      return &s_i2c_dev[i];
-    }
+  for (uint32_t i = 0U; i < (uint32_t)k_irq_track_max; i++) {
+    s_irq_taken[i] = 0U;
   }
-  return nullptr;
-}
-
-/** @brief Register a device model in the first free bus slot (drop if full). */
-static void i2c_device_register(uint8_t addr_7b,
-                                void (*wr)(void*, uint8_t),
-                                uint32_t (*rd)(void*, uint8_t*, uint32_t),
-                                void (*stop)(void*),
-                                void* ctx)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
-    if (!s_i2c_dev[i].present) {
-      s_i2c_dev[i] = (i2c_device_t){.present = true,
-                                    .addr_7b = addr_7b,
-                                    .write   = wr,
-                                    .read    = rd,
-                                    .stop    = stop,
-                                    .ctx     = ctx};
-      return;
-    }
+  for (uint32_t i = 0U; i < (uint32_t)k_nvic_enable_words; i++) {
+    s_nvic_iser_shadow[i] = 0U;
   }
-}
-
-/* =============================================================================
- * GT911 touch device model -- 16-bit register pointer, product id, touch frame.
- * =============================================================================
- */
-
-void board_periph_touch_inject(uint16_t x, uint16_t y)
-{
-  s_gt911.click_x       = x;
-  s_gt911.click_y       = y;
-  s_gt911.click_pending = true;
-}
-
-uint32_t board_periph_touch_reported(void)
-{
-  return s_gt911.reported;
-}
-
-uint32_t board_periph_led_level(board_led_id_t led)
-{
-  if ((uint32_t)led >= (uint32_t)k_board_led_count) {
-    return 0U;
-  }
-  return s_led_level[(uint32_t)led];
-}
-
-uint16_t board_periph_led_color_rgb565(board_led_id_t led)
-{
-  if ((uint32_t)led >= (uint32_t)k_board_led_count) {
-    return 0U;
-  }
-  return k_led_map[(uint32_t)led].color;
-}
-
-const char* board_periph_uart_last_line(void)
-{
-  return s_uart_last;
-}
-
-uint32_t board_periph_irq_count(uint32_t irq)
-{
-  if (irq >= (uint32_t)k_irq_track_max) {
-    return 0U;
-  }
-  return s_irq_taken[irq];
-}
-
-uint32_t board_periph_irq_total(void)
-{
-  return s_irq_total;
-}
-
-bool board_periph_touch_last(uint16_t* x, uint16_t* y)
-{
-  if ((x == nullptr) || (y == nullptr) || (s_gt911.reported == 0U)) {
-    return false;
-  }
-  *x = s_gt911.click_x;
-  *y = s_gt911.click_y;
-  return true;
-}
-
-/** @brief Controller -> GT911: pointer bytes first (MSB,LSB), then payload. */
-static void gt911_write(void* ctx, uint8_t byte)
-{
-  gt911_state_t* g = (gt911_state_t*)ctx;
-  if (g->ptr_bytes < (uint8_t)k_gt911_ptr_bytes) {
-    /* 16-bit pointer arrives MSB first: byte 0 is the high byte, byte 1 the low. */
-    g->reg_ptr = (uint16_t)(((uint32_t)g->reg_ptr << 8U) | (uint32_t)byte);
-    g->ptr_bytes++;
-    return;
-  }
-  /* Payload after the pointer: a 0 written to STATUS acks the current frame so
-   * the IC can latch the next one (ra_touch's priv_ack_frame). */
-  if ((g->reg_ptr == (uint16_t)k_gt911_reg_status) && (byte == 0U)) {
-    g->click_pending = false;
-  }
-  if (g->reg_ptr == (uint16_t)k_gt911_reg_command) {
-    /* Wake / soft-reset commands are accepted (no observable side effect). */
-  }
-}
-
-/** @brief Fill @p buf with the GT911 status byte for the current frame. */
-static uint32_t gt911_read_status(gt911_state_t* g, uint8_t* buf)
-{
-  buf[0] = g->click_pending ? (uint8_t)(k_gt911_status_ready | k_gt911_status_one) : 0U;
-  return 1U;
-}
-
-/** @brief Fill @p buf with one GT911 point0 record for the armed contact. */
-static uint32_t gt911_read_point0(gt911_state_t* g, uint8_t* buf, uint32_t max)
-{
-  if (max < (uint32_t)k_gt911_point_bytes) {
-    return 0U;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_gt911_point_bytes; i++) {
-    buf[i] = 0U;
-  }
-  buf[k_gt911_pt_track]  = 0U;
-  buf[k_gt911_pt_x_lsb]  = (uint8_t)(g->click_x & (uint16_t)k_i3c_byte_mask);
-  buf[k_gt911_pt_x_msb]  = (uint8_t)((uint32_t)g->click_x >> 8U);
-  buf[k_gt911_pt_y_lsb]  = (uint8_t)(g->click_y & (uint16_t)k_i3c_byte_mask);
-  buf[k_gt911_pt_y_msb]  = (uint8_t)((uint32_t)g->click_y >> 8U);
-  buf[k_gt911_pt_sz_lsb] = (uint8_t)k_gt911_press;
-  /* The coordinate has now been delivered to the firmware -- count it and drop
-   * the contact so the next frame reads "not ready", exactly as the GT911 does
-   * once a tap is drained. */
-  g->click_pending = false;
-  g->reported++;
-  return (uint32_t)k_gt911_point_bytes;
-}
-
-/** @brief GT911 -> controller: answer a read at the current register pointer. */
-static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max)
-{
-  gt911_state_t* g = (gt911_state_t*)ctx;
-  if (g->reg_ptr == (uint16_t)k_gt911_reg_product) {
-    const uint8_t  id[k_gt911_id_bytes] = {(uint8_t)k_gt911_id0,
-                                           (uint8_t)k_gt911_id1,
-                                           (uint8_t)k_gt911_id2,
-                                           (uint8_t)k_gt911_id3};
-    const uint32_t n = (max < (uint32_t)k_gt911_id_bytes) ? max : (uint32_t)k_gt911_id_bytes;
-    for (uint32_t i = 0U; i < n; i++) {
-      buf[i] = id[i];
-    }
-    return n;
-  }
-  if (g->reg_ptr == (uint16_t)k_gt911_reg_status) {
-    return gt911_read_status(g, buf);
-  }
-  if (g->reg_ptr == (uint16_t)k_gt911_reg_point0) {
-    return gt911_read_point0(g, buf, max);
-  }
-  return 0U;
-}
-
-/** @brief STOP / transfer end: reset the GT911 pointer-capture state. */
-static void gt911_stop(void* ctx)
-{
-  gt911_state_t* g = (gt911_state_t*)ctx;
-  g->ptr_bytes     = 0U;
-}
-
-/* =============================================================================
- * I3C-in-I2C-mode (IIC_B) controller model -- the transfer state machine the
- * ra_i3c_i2c.c polling driver drives (START / addr / write / read / STOP).
- * =============================================================================
- */
-
-/** @brief Index of the I3C shadow word for @p off (already range-checked). */
-static uint32_t i3c_word(uint64_t off)
-{
-  return (uint32_t)(off / 4U);
-}
-
-/** @brief Begin a transaction (START or repeated-START): arm the address phase. */
-static void i3c_open_transfer(void)
-{
-  s_i3c.busy      = true;
-  s_i3c.addr_done = false;
-  s_i3c.acked     = false;
-  s_i3c.reading   = false;
-  s_i3c.rx_len    = 0U;
-  s_i3c.rx_pos    = 0U;
-  s_i3c.rx_primed = false;
-  /* TX buffer is empty so the driver can write the address byte; clear stale
-   * NACK/TEND so the new address phase reports its own outcome. */
-  s_i3c.ntst = (uint32_t)k_i3c_ntst_tdbef0;
-  s_i3c.bst &= ~((uint32_t)k_i3c_bst_nackdf | (uint32_t)k_i3c_bst_tendf);
-}
-
-/** @brief Close a transaction (STOP): release the bus and notify the device. */
-static void i3c_close_transfer(void)
-{
-  if (s_i3c.acked) {
-    i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
-    if ((dev != nullptr) && (dev->stop != nullptr)) {
-      dev->stop(dev->ctx);
-    }
-  }
-  s_i3c.busy      = false;
-  s_i3c.addr_done = false;
-  s_i3c.ntst      = (uint32_t)k_i3c_ntst_tdbef0;
-}
-
-/** @brief Consume the address byte after a (re)START: select + ACK a device. */
-static void i3c_address_phase(uint8_t address_byte)
-{
-  s_i3c.target_7b =
-    (uint8_t)((uint32_t)address_byte >> (uint32_t)k_i3c_addr_shift) & (uint8_t)k_i3c_addr_mask7;
-  s_i3c.reading   = ((uint32_t)address_byte & (uint32_t)k_i3c_addr_rnw) != 0U;
-  s_i3c.addr_done = true;
-
-  i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
-  if (dev == nullptr) {
-    /* No device at this address: NACK the address (scan reports ack=0). */
-    s_i3c.acked = false;
-    s_i3c.bst |= (uint32_t)k_i3c_bst_nackdf;
-    return;
-  }
-  s_i3c.acked = true;
-  s_i3c.bst |= (uint32_t)k_i3c_bst_tendf; /* address ACKed -> scan sees TENDF */
-  if (s_i3c.reading) {
-    /* Pre-fetch the device's response for this read so NTDTBP0 reads serve it. */
-    s_i3c.rx_len    = dev->read(dev->ctx, s_i3c.rx, (uint32_t)k_i3c_dev_rx_max);
-    s_i3c.rx_pos    = 0U;
-    s_i3c.rx_primed = false;
-    s_i3c.ntst |= (uint32_t)k_i3c_ntst_rdbff0; /* RX data ready */
-  } else {
-    s_i3c.ntst |= (uint32_t)k_i3c_ntst_tdbef0; /* ready for the first data byte */
-  }
-}
-
-/** @brief Handle a write to NTDTBP0 (address byte, then controller TX payload). */
-static void i3c_ntdtbp0_write(uint32_t value)
-{
-  const uint8_t byte = (uint8_t)(value & (uint32_t)k_i3c_byte_mask);
-  if (!s_i3c.addr_done) {
-    i3c_address_phase(byte);
-    return;
-  }
-  if (!s_i3c.acked) {
-    return; /* NACKed address: swallow further writes until STOP */
-  }
-  i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
-  if ((dev != nullptr) && (dev->write != nullptr)) {
-    dev->write(dev->ctx, byte);
-  }
-  s_i3c.ntst |= (uint32_t)k_i3c_ntst_tdbef0; /* buffer empty again for the next */
-}
-
-/** @brief Serve one NTDTBP0 read from the staged device response. */
-static uint32_t i3c_ntdtbp0_read(void)
-{
-  if (!s_i3c.rx_primed) {
-    /* FSP rxi_master drops the first RDBFF0 read before real payload. */
-    s_i3c.rx_primed = true;
-    return 0U;
-  }
-  uint8_t b = 0U;
-  if (s_i3c.rx_pos < s_i3c.rx_len) {
-    b = s_i3c.rx[s_i3c.rx_pos];
-    s_i3c.rx_pos++;
-  }
-  s_i3c.ntst |= (uint32_t)k_i3c_ntst_rdbff0; /* keep RX-ready for the next byte */
-  return (uint32_t)b;
-}
-
-/** @brief Dispatch a CNDCTL write -> START / repeated-START / STOP. */
-static void i3c_cndctl_write(uint32_t value)
-{
-  if ((value & ((uint32_t)k_i3c_cndctl_stcnd | (uint32_t)k_i3c_cndctl_srcnd)) != 0U) {
-    i3c_open_transfer();
-  } else if ((value & (uint32_t)k_i3c_cndctl_spcnd) != 0U) {
-    i3c_close_transfer();
-  }
-}
-
-/** @brief Read a register from the modelled I3C/IIC_B channel. */
-static uint64_t i3c_read(uint64_t off)
-{
-  if (off == (uint64_t)k_i3c_off_ntst) {
-    return s_i3c.ntst;
-  }
-  if (off == (uint64_t)k_i3c_off_bst) {
-    return s_i3c.bst;
-  }
-  if (off == (uint64_t)k_i3c_off_bcst) {
-    /* BFREF: 1 when the bus is free. The driver gates new transactions on it. */
-    return s_i3c.busy ? 0U : (uint32_t)k_i3c_bcst_bfref;
-  }
-  if (off == (uint64_t)k_i3c_off_ntdtbp0) {
-    return i3c_ntdtbp0_read();
-  }
-  return s_i3c.reg[i3c_word(off)]; /* reflect every other register */
-}
-
-/** @brief Write a register on the modelled I3C/IIC_B channel. */
-static void i3c_write(uint64_t off, uint32_t value)
-{
-  s_i3c.reg[i3c_word(off)] = value; /* shadow keeps "configure then verify" working */
-  if (off == (uint64_t)k_i3c_off_cndctl) {
-    i3c_cndctl_write(value);
-  } else if (off == (uint64_t)k_i3c_off_ntdtbp0) {
-    i3c_ntdtbp0_write(value);
-  } else if (off == (uint64_t)k_i3c_off_bst) {
-    /* BST condition / fault flags are write-0-to-clear: keep only bits still
-     * written as 1 (the driver clears by reading then masking the bit out). */
-    s_i3c.bst &= value;
-  }
+  s_irq_head  = 0U;
+  s_irq_tail  = 0U;
+  s_irq_total = 0U;
+  /* Bring the USBFS controller model + virtual host up and wire its interrupt
+   * pend through this module's ICU/NVIC path (Phase 3, issue #67). */
+  board_usb_init(trace);
+  board_usb_set_irq_raiser(usb_irq_raiser);
 }
 
 /* =============================================================================
@@ -1439,32 +353,12 @@ static void i3c_write(uint64_t off, uint32_t value)
  * =============================================================================
  */
 
-/** @brief True iff @p addr is inside [@p base, @p base + @p span). */
-static bool in_range(uint64_t addr, uint64_t base, uint64_t span)
-{
-  return (addr >= base) && (addr < (base + span));
-}
-
 uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handled)
 {
-  *handled = true;
-  if (in_range(addr, (uint64_t)k_port_base, (uint64_t)k_port_span)) {
-    return port_read(addr);
-  }
-  if (in_range(addr, (uint64_t)k_agt_base, (uint64_t)k_agt_span)) {
-    const uint32_t ch = (uint32_t)((addr - (uint64_t)k_agt_base) / (uint64_t)k_agt_stride);
-    return agt_read(ch, (addr - (uint64_t)k_agt_base) % (uint64_t)k_agt_stride);
-  }
-  if (in_range(addr, (uint64_t)k_gpt_base, (uint64_t)k_gpt_span)) {
-    const uint32_t ch = (uint32_t)((addr - (uint64_t)k_gpt_base) / (uint64_t)k_gpt_stride);
-    return gpt_read(ch, (addr - (uint64_t)k_gpt_base) % (uint64_t)k_gpt_stride);
-  }
-  if (in_range(addr, (uint64_t)k_sci_base, (uint64_t)k_sci_span)) {
-    const uint32_t ch = (uint32_t)((addr - (uint64_t)k_sci_base) / (uint64_t)k_sci_stride);
-    return sci_read(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride);
-  }
-  if (in_range(addr, (uint64_t)k_i3c_base, (uint64_t)k_i3c_span)) {
-    return i3c_read(addr - (uint64_t)k_i3c_base);
+  *handled                          = true;
+  const board_periph_block_t* block = block_for_addr(addr);
+  if (block != nullptr) {
+    return block->read(uc, addr, size);
   }
   {
     bool           usb_hit = false;
@@ -1474,7 +368,6 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
     }
   }
   if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
-    (void)uc;
     return icu_read(addr);
   }
   *handled = false;
@@ -1483,28 +376,10 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
 
 void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value, bool* handled)
 {
-  *handled = true;
-  if (in_range(addr, (uint64_t)k_port_base, (uint64_t)k_port_span)) {
-    port_write(addr, (uint32_t)value);
-    return;
-  }
-  if (in_range(addr, (uint64_t)k_agt_base, (uint64_t)k_agt_span)) {
-    const uint32_t ch = (uint32_t)((addr - (uint64_t)k_agt_base) / (uint64_t)k_agt_stride);
-    agt_write(ch, (addr - (uint64_t)k_agt_base) % (uint64_t)k_agt_stride, (uint32_t)value);
-    return;
-  }
-  if (in_range(addr, (uint64_t)k_gpt_base, (uint64_t)k_gpt_span)) {
-    const uint32_t ch = (uint32_t)((addr - (uint64_t)k_gpt_base) / (uint64_t)k_gpt_stride);
-    gpt_write(ch, (addr - (uint64_t)k_gpt_base) % (uint64_t)k_gpt_stride, (uint32_t)value);
-    return;
-  }
-  if (in_range(addr, (uint64_t)k_sci_base, (uint64_t)k_sci_span)) {
-    const uint32_t ch = (uint32_t)((addr - (uint64_t)k_sci_base) / (uint64_t)k_sci_stride);
-    sci_write(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride, (uint32_t)value);
-    return;
-  }
-  if (in_range(addr, (uint64_t)k_i3c_base, (uint64_t)k_i3c_span)) {
-    i3c_write(addr - (uint64_t)k_i3c_base, (uint32_t)value);
+  *handled                          = true;
+  const board_periph_block_t* block = block_for_addr(addr);
+  if (block != nullptr) {
+    block->write(uc, addr, size, value);
     return;
   }
   {
@@ -1523,14 +398,11 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
 
 void board_periph_tick(uc_engine* uc)
 {
-  for (uint32_t ch = 0U; ch < (uint32_t)k_agt_count; ch++) {
-    agt_tick_channel(uc, ch);
-  }
-  for (uint32_t ch = 0U; ch < (uint32_t)k_gpt_count; ch++) {
-    gpt_tick_channel(uc, ch);
-  }
-  for (uint32_t ch = 0U; ch < (uint32_t)k_sci_count; ch++) {
-    sci_tick_channel(uc, ch);
+  for (uint32_t i = 0U; i < s_block_count; i++) {
+    const board_periph_block_t* b = s_blocks[s_block_order[i]];
+    if (b->tick != nullptr) {
+      b->tick(uc);
+    }
   }
   /* Step the virtual USB host: it advances the chapter-9 enumeration and pends
    * the USBFS interrupt through ::usb_irq_raiser when it delivers a SETUP. */
@@ -1558,64 +430,24 @@ void board_periph_note_irq_taken(uint32_t irq)
   }
 }
 
+uint32_t board_periph_irq_count(uint32_t irq)
+{
+  if (irq >= (uint32_t)k_irq_track_max) {
+    return 0U;
+  }
+  return s_irq_taken[irq];
+}
+
+uint32_t board_periph_irq_total(void)
+{
+  return s_irq_total;
+}
+
 /* =============================================================================
- * End-of-run summary (LED transitions, timer totals, per-IRQ counts).
+ * End-of-run summary -- each block prints its section in ascending order, with
+ * the core's NVIC-IRQ section slotted between SCI and the touch line, then USB.
  * =============================================================================
  */
-
-/** @brief Print the board-LED final level and transition-count line. */
-static void report_leds(void)
-{
-  (void)fprintf(stderr, "  GPIO LEDs     :");
-  for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
-    (void)fprintf(stderr,
-                  " [%s %s x%u]",
-                  k_led_map[i].name,
-                  s_led_level[i] ? "ON" : "OFF",
-                  s_led_transitions[i]);
-  }
-  (void)fprintf(stderr, "\n");
-}
-
-/** @brief Print one line per AGT / GPT channel that raised any event. */
-static void report_timers(void)
-{
-  for (uint32_t ch = 0U; ch < (uint32_t)k_agt_count; ch++) {
-    if (s_agt[ch].underflows > 0U) {
-      (void)fprintf(stderr,
-                    "  AGT%u          : counter=0x%04X underflows=%u (running=%s)\n",
-                    ch,
-                    s_agt[ch].counter,
-                    s_agt[ch].underflows,
-                    (s_agt[ch].cr & (uint8_t)k_agtcr_tstart) ? "yes" : "no");
-    }
-  }
-  for (uint32_t ch = 0U; ch < (uint32_t)k_gpt_count; ch++) {
-    if (s_gpt[ch].overflows > 0U) {
-      (void)fprintf(stderr,
-                    "  GPT%u          : cnt=0x%08X period=0x%08X overflows=%u\n",
-                    ch,
-                    s_gpt[ch].cnt,
-                    s_gpt[ch].period,
-                    s_gpt[ch].overflows);
-    }
-  }
-}
-
-/** @brief Print one line per SCI channel that moved any bytes. */
-static void report_sci(void)
-{
-  for (uint32_t ch = 0U; ch < (uint32_t)k_sci_count; ch++) {
-    if ((s_sci[ch].transmitted > 0U) || (s_sci[ch].received > 0U)) {
-      (void)fprintf(stderr,
-                    "  SCI%u UART     : TX %u bytes  RX %u bytes  (RX dropped %u)\n",
-                    ch,
-                    s_sci[ch].transmitted,
-                    s_sci[ch].received,
-                    s_sci[ch].rx_dropped);
-    }
-  }
-}
 
 /** @brief Print the per-IRQ taken totals (or a "none fired" note). */
 static void report_irqs(void)
@@ -1635,23 +467,23 @@ static void report_irqs(void)
   (void)fprintf(stderr, "]\n");
 }
 
-/** @brief Print the GT911 touch line when the firmware drained any contact. */
-static void report_touch(void)
-{
-  if (s_gt911.reported > 0U) {
-    (void)fprintf(stderr,
-                  "  I3C/I2C GT911 : %u touch frame(s) drained via ra_touch -> I3C\n",
-                  s_gt911.reported);
-  }
-}
-
 void board_periph_report(uc_engine* uc)
 {
   (void)uc;
-  report_leds();
-  report_timers();
-  report_sci();
-  report_irqs();
-  report_touch();
+  bool irq_done = false;
+  for (uint32_t i = 0U; i < s_block_count; i++) {
+    const board_periph_block_t* b = s_blocks[s_block_order[i]];
+    /* The core's NVIC-IRQ section sits between SCI and the touch line. */
+    if (!irq_done && (b->order >= (uint32_t)k_core_irq_report_order)) {
+      report_irqs();
+      irq_done = true;
+    }
+    if (b->report != nullptr) {
+      b->report();
+    }
+  }
+  if (!irq_done) {
+    report_irqs();
+  }
   board_usb_report();
 }
