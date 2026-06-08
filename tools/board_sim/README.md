@@ -23,7 +23,15 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf> --ppm out.ppm        # write the final frame
 ./build/board_sim <firmware.elf> --panel <file.toml>  # size the window to a display
 ./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
+./build/board_sim <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
 ```
+
+The console UART is captured: every byte the firmware writes to an SCI TDR is
+echoed to stdout (`[uart] SCIn: ...`), so a console app's output is greppable
+(`board_sim uart_hello.elf | grep 'hello'`). `--input <str>` queues bytes into
+the EK-RA8D2 console channel's (SCI8) receive path, with `\n` / `\r` / `\t`
+escapes decoded -- so an echo example like `uart_irq_echo` can be driven
+headlessly.
 
 The display is configurable: `--panel` takes a flat `key = value` descriptor
 (`name`, `width`, `height`, ... -- the same files as `tools/simulator/panels/`),
@@ -51,6 +59,15 @@ bring-up validation.
   "wait for ready/idle" poll) past a threshold, reads alternate `0` / all-ones so
   a single-bit poll for either edge completes instead of timing out. This generic
   rule satisfies almost every stabilization poll on the boot path.
+- **Register-accurate blocks** (`board_periph.{c,h}`): a per-block model table
+  supersedes the sparse fallback for GPIO/PORT, the AGT/GPT timers, the ICU/NVIC
+  interrupt path, and the **SCI_B UART**. The SCI model captures each TDR write
+  to the console sink, serves a host RX byte queue through RDR (CSR.RDRF tracks
+  availability, CSR.TDRE/TEND stay asserted so the driver's transmit empty/end
+  polls fall through), and raises TXI/TEI/RXI through the same ICU event path so
+  interrupt-driven serial works as well as polled. It also models the NVIC
+  ISER/ICER set-enable / clear-enable semantics so a firmware that enables
+  several IRQ lines (e.g. SCI RXI+TXI+TEI) keeps them all enabled.
 - **Targeted quirk**: the MRMS frequency latches (MRCFREQ/MREFREQ) strip a write
   key byte on readback -- modelled directly, since it is an exact-value (not
   edge) poll. This is currently the *only* register needing bespoke behaviour.
@@ -68,6 +85,11 @@ bring-up validation.
   background colour (red/green/blue/white), shown live.
 - Proven on `display_pal_animation`: its RGB565 GR1 framebuffer in on-chip SRAM
   is read back and rendered (real drawn pixels, not just a background colour).
+- Proven on `uart_hello`: the real polled SCI8 TX path is captured -- the
+  `hello, ra8d2!` banner appears on stdout once per loop iteration.
+- Proven on `uart_irq_echo`: the interrupt-driven SCI8 path -- `--input` bytes
+  raise RXI, the ISR echoes them back over TXI, and the echo is captured
+  (IRQ0/RXI + IRQ1/TXI both fire, RX/TX byte counts match).
 - ThreadX apps use a different (PendSV-scheduled) boot path not yet modelled; a
   bare-metal (single-threaded) GUIX UI app is the path to viewing the real UI.
 - The peripheral model fakes hardware *handshakes*; it validates "does the
