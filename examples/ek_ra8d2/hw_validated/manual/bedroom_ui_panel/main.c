@@ -58,6 +58,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
@@ -81,6 +82,7 @@
 #include "ra_display_pal_lcd.h"
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
+#include "ra_touch.h"
 #endif
 
 /* =============================================================================
@@ -135,6 +137,26 @@ typedef enum : uint32_t {
 
 #ifndef RA_SIMULATOR_MODE
 
+/**
+ * @enum bedroom_touch_cfg_t
+ * @brief GT911 touch-controller wiring on the EK-RA8D2 carrier.
+ *
+ * @details
+ * The EK-RA8D2 ereader carrier sits the GoodIX GT911 on IIC_B channel 0 at its
+ * default 7-bit address. We poll the controller from the render loop rather
+ * than taking its INT line, so the IRQ pin is left unset -- ::ra_touch_open
+ * then skips ICU pin programming and ::ra_touch_read drains frames on demand.
+ * Values live here (the application BSP), never hardcoded inside the driver.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_touch_i2c_channel = 0U,                                /**< IIC_B channel 0.        */
+  k_touch_addr_7b     = 0x5DU,                             /**< GT911 default address.  */
+  k_touch_irq_unset   = (uint8_t)k_ra_touch_irq_pin_unset, /**< Polling-only.   */
+  k_touch_max_points  = 1U,                                /**< One contact = one tap.  */
+} bedroom_touch_cfg_t;
+
 /* =============================================================================
  * Module-static state -- no dynamic allocation (NASA P10 Rule 3).
  * =============================================================================
@@ -182,6 +204,29 @@ static display_handle_t* s_display_pal = nullptr;
 static GX_DISPLAY     s_gxdisp;
 static GX_CANVAS      s_canvas;
 static GX_WINDOW_ROOT s_gxroot;
+
+/**
+ * @var s_touch_ready
+ * @brief True once ::ra_touch_open has brought the GT911 up successfully.
+ *
+ * @details
+ * The render loop only polls ::ra_touch_read when this is set, so a board
+ * without a reachable touch IC still renders the UI (touch is simply inert)
+ * instead of churning failing I2C reads every frame.
+ */
+static bool s_touch_ready = false;
+
+/**
+ * @var s_touch_down
+ * @brief Tracks whether the previous poll already saw a contact (debounce).
+ *
+ * @details
+ * The GT911 reports a contact on every frame the finger is held, but GUIX
+ * wants one PEN_DOWN per press. We emit the down/up pair on the rising edge
+ * (no contact -> contact) and ignore subsequent held frames until release, so
+ * one physical tap becomes exactly one GUIX click.
+ */
+static bool s_touch_down = false;
 
 /* =============================================================================
  * Panic-halt
@@ -377,22 +422,153 @@ static void bedroom_bringup_guix(void)
   }
 }
 
+/* =============================================================================
+ * Phase 3 -- GT911 touch bring-up + per-frame pen-event injection
+ * =============================================================================
+ */
+
+/**
+ * @brief Bring up the GT911 touch controller (non-fatal on failure).
+ *
+ * @details
+ * Opens ::ra_touch against the EK-RA8D2 carrier's GT911 (IIC_B channel 0,
+ * polling-only -- see ::bedroom_touch_cfg_t) so the render loop can drain
+ * contacts with ::ra_touch_read. Unlike the clock / panel / GUIX phases this
+ * is deliberately NOT a panic on failure: a board with no reachable touch IC
+ * (or the board emulator, where the I2C transport is not modelled) must still
+ * show the UI. ::s_touch_ready gates the loop's polling so the UI renders
+ * either way; on real hardware ::ra_touch_open succeeds and taps flow through.
+ *
+ * @pre ::bedroom_bringup_clocks has run (MSTP up, IRQs enabled).
+ * @pre ::bedroom_bringup_guix has run (the widget tree exists to receive taps).
+ * @post ::s_touch_ready is true iff the GT911 answered its product-id probe.
+ *
+ * @note Not thread-safe; single-shot startup helper.
+ *
+ * @since 0.1.0
+ */
+static void bedroom_bringup_touch(void)
+{
+  const ra_touch_cfg_t touch_cfg = {
+    .i2c_channel = (uint8_t)k_touch_i2c_channel,
+    .target_7b   = (uint8_t)k_touch_addr_7b,
+    .irq_pin     = (uint8_t)k_touch_irq_unset,
+    .max_points  = (uint8_t)k_touch_max_points,
+  };
+  s_touch_ready = (ra_touch_open(&touch_cfg) == k_ra_ok);
+}
+
+/**
+ * @brief Inject a GUIX pen down/up pair at a panel coordinate.
+ *
+ * @details
+ * Mirrors the host preview's pen path (``examples/host/guix_tabs`` ::guix_send_pen):
+ * build a zeroed GX_EVENT, stamp the contact point into
+ * ``gx_event_payload.gx_event_pointdata``, then send GX_EVENT_PEN_DOWN
+ * followed by GX_EVENT_PEN_UP. GUIX hit-tests the point, routes it to the tab
+ * button under it, and that button emits GX_EVENT_CLICKED -- which the shared
+ * bedroom_ui background handler turns into a tab switch. A tap is exactly this
+ * down-then-up pair, so the same code drives on-panel touch and the host mouse.
+ *
+ * Unlike the host preview, the event's ``gx_event_display_handle`` MUST be set
+ * to this display's ``gx_display_driver_data``: ``_gx_system_top_root_find``
+ * routes a pen event only to a root window whose display handle matches, and the
+ * GLCDC GUIX driver stores a non-NULL auxiliary record there (the host 565rgb
+ * driver leaves it NULL, so the host's zeroed handle matches by luck). Without
+ * this the hit-test finds no root and the tap is silently dropped -- so this is
+ * required for real on-panel touch, not just the emulator.
+ *
+ * @param[in] x Contact X in panel pixels (canvas-relative).
+ * @param[in] y Contact Y in panel pixels (canvas-relative).
+ *
+ * @return Nothing.
+ *
+ * @pre ::bedroom_bringup_guix has run (the GUIX event system is up).
+ * @pre ``x`` / ``y`` are within the canvas (GUIX clips out-of-range hits).
+ * @post A PEN_DOWN then PEN_UP event has been queued to the GUIX event ring.
+ * @post No driver or widget state is mutated directly by this helper.
+ *
+ * @note Not thread-safe; called only from the single render thread.
+ *
+ * @since 0.1.0
+ */
+static void bedroom_send_pen(uint16_t x, uint16_t y)
+{
+  GX_EVENT ev;
+  (void)memset(&ev, 0, sizeof(ev));
+  ev.gx_event_payload.gx_event_pointdata.gx_point_x = (GX_VALUE)x;
+  ev.gx_event_payload.gx_event_pointdata.gx_point_y = (GX_VALUE)y;
+  ev.gx_event_target                                = GX_NULL;
+  ev.gx_event_display_handle = (ULONG)(uintptr_t)s_gxdisp.gx_display_driver_data;
+  ev.gx_event_type           = GX_EVENT_PEN_DOWN;
+  (void)gx_system_event_send(&ev);
+  ev.gx_event_type = GX_EVENT_PEN_UP;
+  (void)gx_system_event_send(&ev);
+}
+
+/**
+ * @brief Poll the GT911 once and turn a fresh contact into a GUIX tap.
+ *
+ * @details
+ * Drains one touch frame with ::ra_touch_read (capacity one -- a tab tap is a
+ * single contact). On the rising edge of contact (none last frame, one this
+ * frame) it injects a pen down/up pair via ::bedroom_send_pen and latches
+ * ::s_touch_down so a finger held across frames produces only one click; when
+ * the frame comes back empty the latch clears, arming the next tap. A failed
+ * read is treated as "no contact" so a transient bus error never wedges the
+ * UI. No-op until ::s_touch_ready, so a board without touch just renders.
+ *
+ * @return Nothing.
+ *
+ * @pre ::bedroom_bringup_touch has run (::s_touch_ready reflects the IC state).
+ * @pre ::bedroom_bringup_guix has run (events have somewhere to go).
+ * @post At most one PEN_DOWN/PEN_UP pair is queued per physical tap.
+ * @post ::s_touch_down mirrors whether a contact is currently held.
+ *
+ * @note Not thread-safe; called only from the single render thread.
+ *
+ * @since 0.1.0
+ */
+static void bedroom_pump_touch(void)
+{
+  if (!s_touch_ready) {
+    return;
+  }
+  ra_touch_point_t pt  = {};
+  uint8_t          got = 0U;
+  if (ra_touch_read(&pt, (uint8_t)k_touch_max_points, &got) != k_ra_ok) {
+    s_touch_down = false;
+    return;
+  }
+  if (got > 0U) {
+    if (!s_touch_down) {
+      bedroom_send_pen(pt.x, pt.y);
+      s_touch_down = true;
+    }
+  } else {
+    s_touch_down = false;
+  }
+}
+
 /**
  * @brief Drive GUIX forever: dispatch events, then refresh the canvas.
  *
  * @details
- * The single-threaded drive the host preview proves: ``gx_host_pump`` drains
- * and dispatches the generic event ring (any future touch / pen events land
- * here), then ``gx_system_canvas_refresh`` repaints dirty widgets into
- * ``s_framebuffer``, which the GLCDC is already scanning out -- so the panel
- * shows the result on the next frame. A short ``ra_delay_ms`` paces the loop
- * (~60 Hz) and keeps SysTick advancing ``ra_time_ms`` for the GUIX timer.
+ * The single-threaded drive the host preview proves: poll the GT911 for a tap
+ * (::bedroom_pump_touch, which injects the matching GUIX pen events), then
+ * ``gx_host_pump`` drains and dispatches the generic event ring (those pen
+ * events land here and become tab switches), then ``gx_system_canvas_refresh``
+ * repaints dirty widgets into ``s_framebuffer``, which the GLCDC is already
+ * scanning out -- so the panel shows the result on the next frame. A short
+ * ``ra_delay_ms`` paces the loop (~60 Hz) and keeps SysTick advancing
+ * ``ra_time_ms`` for the GUIX timer.
  *
  * On the board emulator this reaches its first full paint within the first
  * few chunks; the emulator then runs the loop until its wall-clock budget and
  * snapshots the framebuffer.
  *
  * @pre ::bedroom_bringup_guix has run.
+ * @pre ::bedroom_bringup_touch has run (touch polling is gated, so safe either way).
  * @post Never returns.
  *
  * @since 0.1.0
@@ -406,6 +582,7 @@ static void bedroom_run_forever(void)
   gx_host_pump();
   (void)gx_system_canvas_refresh();
   while (1) {
+    bedroom_pump_touch();
     gx_host_pump();
     (void)gx_system_canvas_refresh();
     ra_delay_ms(k_frame_pace_ms);
@@ -423,14 +600,15 @@ static void bedroom_run_forever(void)
 #pragma GCC diagnostic ignored "-Wmain"
 
 /**
- * @brief Application entry: bring up clocks/SDRAM/GLCDC + GUIX, then loop.
+ * @brief Application entry: bring up clocks/SDRAM/GLCDC + GUIX + touch, then loop.
  *
  * @return Never returns (the drive loop runs forever); 0 only to satisfy the
  *         signature.
  *
  * @pre Reset_Handler has copied .data + zeroed .bss; SystemInit has set VTOR,
  *      FPU, caches and priority grouping.
- * @post The panel shows the bedroom UI (tab 0); GUIX is being driven.
+ * @post The panel shows the bedroom UI (tab 0); GUIX is being driven and GT911
+ *       taps switch tabs (touch bring-up is non-fatal, so the UI shows either way).
  * @post On any HAL / GUIX init failure the function halts in the red-LED panic loop.
  *
  * @since 0.1.0
@@ -441,6 +619,7 @@ int32_t main(void)
   bedroom_bringup_clocks();
   bedroom_bringup_panel();
   bedroom_bringup_guix();
+  bedroom_bringup_touch();
   bedroom_run_forever();
 #endif
 

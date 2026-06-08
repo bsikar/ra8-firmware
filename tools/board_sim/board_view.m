@@ -19,13 +19,24 @@
 #include "board_view.h"
 
 #import <Cocoa/Cocoa.h>
-
 #include <stdint.h>
 #include <stdlib.h>
 
-/** @brief Content view that draws the latest emulated frame. */
-@interface BoardImageView : NSView
+/**
+ * @brief Content view that draws the latest emulated frame and records clicks.
+ */
+@interface                              BoardImageView : NSView
 @property(nonatomic, assign) CGImageRef image;
+/** @brief Framebuffer width in pixels of the currently shown image. */
+@property(nonatomic, assign) uint16_t fbWidth;
+/** @brief Framebuffer height in pixels of the currently shown image. */
+@property(nonatomic, assign) uint16_t fbHeight;
+/** @brief Last unconsumed click column, framebuffer pixels (top-left origin). */
+@property(nonatomic, assign) uint16_t clickX;
+/** @brief Last unconsumed click row, framebuffer pixels (top-left origin). */
+@property(nonatomic, assign) uint16_t clickY;
+/** @brief Set on mouse-down; cleared when polled. */
+@property(nonatomic, assign) BOOL hasClick;
 @end
 
 @implementation BoardImageView
@@ -35,9 +46,9 @@
   if (self.image == NULL) {
     return;
   }
-  CGContextRef ctx = [[NSGraphicsContext currentContext] CGContext];
-  const CGFloat w  = self.bounds.size.width;
-  const CGFloat h  = self.bounds.size.height;
+  CGContextRef  ctx = [[NSGraphicsContext currentContext] CGContext];
+  const CGFloat w   = self.bounds.size.width;
+  const CGFloat h   = self.bounds.size.height;
   /* Flip Y so framebuffer row 0 lands at the top of the window. */
   CGContextSaveGState(ctx);
   CGContextTranslateCTM(ctx, 0.0, h);
@@ -45,6 +56,35 @@
   CGContextSetInterpolationQuality(ctx, kCGInterpolationNone);
   CGContextDrawImage(ctx, CGRectMake(0.0, 0.0, w, h), self.image);
   CGContextRestoreGState(ctx);
+}
+- (void)mouseDown:(NSEvent*)event
+{
+  /* Window coords -> framebuffer pixels (top-left origin). The view is not
+   * flipped, so invert Y; the image fills self.bounds, so scale view points
+   * to framebuffer pixels in case the window was resized away from 1:1. */
+  const NSPoint p  = [self convertPoint:event.locationInWindow fromView:nil];
+  const CGFloat vw = self.bounds.size.width;
+  const CGFloat vh = self.bounds.size.height;
+  if ((vw <= 0.0) || (vh <= 0.0) || (self.fbWidth == 0U) || (self.fbHeight == 0U)) {
+    return;
+  }
+  CGFloat fx = (p.x / vw) * (CGFloat)self.fbWidth;
+  CGFloat fy = ((vh - p.y) / vh) * (CGFloat)self.fbHeight;
+  if (fx < 0.0) {
+    fx = 0.0;
+  }
+  if (fy < 0.0) {
+    fy = 0.0;
+  }
+  if (fx > (CGFloat)(self.fbWidth - 1U)) {
+    fx = (CGFloat)(self.fbWidth - 1U);
+  }
+  if (fy > (CGFloat)(self.fbHeight - 1U)) {
+    fy = (CGFloat)(self.fbHeight - 1U);
+  }
+  self.clickX   = (uint16_t)fx;
+  self.clickY   = (uint16_t)fy;
+  self.hasClick = YES;
 }
 - (void)dealloc
 {
@@ -68,13 +108,13 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-    const NSRect    rect = NSMakeRect(0.0, 0.0, (CGFloat)width_px, (CGFloat)height_px);
+    const NSRect     rect = NSMakeRect(0.0, 0.0, (CGFloat)width_px, (CGFloat)height_px);
     const NSUInteger style =
       NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
     NSWindow* win = [[NSWindow alloc] initWithContentRect:rect
-                                               styleMask:style
-                                                 backing:NSBackingStoreBuffered
-                                                   defer:NO];
+                                                styleMask:style
+                                                  backing:NSBackingStoreBuffered
+                                                    defer:NO];
     if (win == nil) {
       return nullptr;
     }
@@ -98,7 +138,7 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
   }
 }
 
-void board_view_present(board_view_t* view,
+void board_view_present(board_view_t*   view,
                         const uint16_t* rgb565,
                         uint16_t        width_px,
                         uint16_t        height_px)
@@ -122,14 +162,15 @@ void board_view_present(board_view_t* view,
       const uint32_t b  = (b5 << 3) | (b5 >> 2);
       argb[i]           = (r << 16) | (g << 8) | b; /* 0x00RRGGBB, drawn opaque */
     }
-    CGColorSpaceRef cs  = CGColorSpaceCreateDeviceRGB();
-    CGContextRef    bmp = CGBitmapContextCreate(argb,
-                                             (size_t)width_px,
-                                             (size_t)height_px,
-                                             8,
-                                             (size_t)width_px * 4U,
-                                             cs,
-                                             kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGContextRef    bmp =
+      CGBitmapContextCreate(argb,
+                            (size_t)width_px,
+                            (size_t)height_px,
+                            8,
+                            (size_t)width_px * 4U,
+                            cs,
+                            kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
     CGImageRef img = (bmp != NULL) ? CGBitmapContextCreateImage(bmp) : NULL;
     if (bmp != NULL) {
       CGContextRelease(bmp);
@@ -137,8 +178,10 @@ void board_view_present(board_view_t* view,
     CGColorSpaceRelease(cs);
     free(argb);
     if (img != NULL) {
-      CGImageRef old        = view->view.image;
-      view->view.image      = img;
+      CGImageRef old      = view->view.image;
+      view->view.image    = img;
+      view->view.fbWidth  = width_px;
+      view->view.fbHeight = height_px;
       if (old != NULL) {
         CGImageRelease(old);
       }
@@ -162,6 +205,20 @@ bool board_view_pump(board_view_t* view)
     }
     return ![view->window isVisible];
   }
+}
+
+bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
+{
+  if ((view == nullptr) || (view->view == nil) || (x == nullptr) || (y == nullptr)) {
+    return false;
+  }
+  if (!view->view.hasClick) {
+    return false;
+  }
+  *x                  = view->view.clickX;
+  *y                  = view->view.clickY;
+  view->view.hasClick = NO;
+  return true;
 }
 
 void board_view_close(board_view_t* view)
