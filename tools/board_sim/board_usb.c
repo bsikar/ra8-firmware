@@ -915,9 +915,207 @@ static void host_echo_read_in(uc_engine* uc)
   }
 }
 
+/* =============================================================================
+ * MSC Bulk-Only Transport host -- drives SCSI against the device's RAM disk so
+ * usb_msc_device actually serves storage (CBW -> data -> CSW per command).
+ * =============================================================================
+ */
+
+/** @brief MSC BOT per-command phase. */
+typedef enum : uint8_t {
+  k_msc_send  = 0U, /**< Push the next command's CBW.   */
+  k_msc_data  = 1U, /**< Read the data-phase bytes.     */
+  k_msc_csw   = 2U, /**< Read the 13-byte CSW.          */
+  k_msc_done  = 3U, /**< All scripted commands finished.*/
+} msc_phase_t;
+
+/** @brief BOT / SCSI sizing the host uses (USB Mass Storage BBB 1.0). */
+typedef enum : uint32_t {
+  k_msc_cbw_len    = 31U,   /**< Command Block Wrapper length.   */
+  k_msc_csw_len    = 13U,   /**< Command Status Wrapper length.  */
+  k_msc_flag_in    = 0x80U, /**< bmCBWFlags: device-to-host.     */
+  k_msc_settle     = 4U,    /**< Ticks to wait for a phase.      */
+  k_msc_cmd_count  = 3U,    /**< Scripted commands (below).      */
+} msc_const_t;
+
+static uint8_t  s_msc_phase;     /**< ::msc_phase_t for the active command.   */
+static uint8_t  s_msc_cmd;       /**< Index into the SCSI command script.     */
+static uint32_t s_msc_tag;       /**< Running dCBWTag.                        */
+static uint32_t s_msc_data_len;  /**< Expected data-phase length.            */
+static uint32_t s_msc_data_got;  /**< Data-phase bytes read so far.          */
+static uint32_t s_msc_wait;      /**< Phase pacing.                          */
+static uint32_t s_msc_blocks;    /**< Capacity in blocks (READ CAPACITY).    */
+static uint32_t s_msc_block_len; /**< Block size in bytes.                   */
+static uint32_t s_msc_read_ok;   /**< Sector-read data-phase bytes captured. */
+static bool     s_msc_inquiry_ok;/**< INQUIRY data phase completed.          */
+
+/**
+ * @brief Build the SCSI CDB for the scripted command @p cmd.
+ *
+ * @param[in]  cmd      Script index (0=INQUIRY, 1=READ CAPACITY(10), 2=READ(10)).
+ * @param[out] cdb      16-byte command block to fill (pre-zeroed).
+ * @param[out] cdb_len  Length of the CDB.
+ * @param[out] data_len Expected data-phase byte count.
+ */
+static void host_msc_build_cdb(uint8_t cmd, uint8_t* cdb, uint8_t* cdb_len, uint32_t* data_len)
+{
+  for (uint32_t i = 0U; i < 16U; i++) {
+    cdb[i] = 0U;
+  }
+  switch (cmd) {
+    case 0U: /* INQUIRY: standard data, 36-byte allocation. */
+      cdb[0]    = 0x12U;
+      cdb[4]    = 36U;
+      *cdb_len  = 6U;
+      *data_len = 36U;
+      break;
+    case 1U: /* READ CAPACITY (10): 8-byte response (last LBA + block size). */
+      cdb[0]    = 0x25U;
+      *cdb_len  = 10U;
+      *data_len = 8U;
+      break;
+    case 2U: /* READ (10): LBA 0, one block (512 bytes). */
+    default:
+      cdb[0]    = 0x28U;
+      cdb[8]    = 1U; /* transfer length = 1 block (big-endian low byte). */
+      *cdb_len  = 10U;
+      *data_len = 512U;
+      break;
+  }
+}
+
+/** @brief Push the current command's CBW onto the bulk-OUT pipe (raise BRDY). */
+static void host_msc_send_cbw(uc_engine* uc)
+{
+  uint8_t  cdb[16];
+  uint8_t  cdb_len  = 0U;
+  uint32_t data_len = 0U;
+  host_msc_build_cdb(s_msc_cmd, cdb, &cdb_len, &data_len);
+  s_msc_data_len = data_len;
+  s_msc_data_got = 0U;
+  s_msc_tag++;
+
+  usb_out_buf_t* b = &s_usb.pipe_out[k_usb_bulk_out_pipe];
+  uint8_t*       d = b->data;
+  d[0]             = (uint8_t)'U'; /* dCBWSignature 'USBC' (LE 0x43425355). */
+  d[1]             = (uint8_t)'S';
+  d[2]             = (uint8_t)'B';
+  d[3]             = (uint8_t)'C';
+  d[4]             = (uint8_t)(s_msc_tag & 0xFFU);
+  d[5]             = (uint8_t)((s_msc_tag >> 8) & 0xFFU);
+  d[6]             = (uint8_t)((s_msc_tag >> 16) & 0xFFU);
+  d[7]             = (uint8_t)((s_msc_tag >> 24) & 0xFFU);
+  d[8]             = (uint8_t)(data_len & 0xFFU);
+  d[9]             = (uint8_t)((data_len >> 8) & 0xFFU);
+  d[10]            = (uint8_t)((data_len >> 16) & 0xFFU);
+  d[11]            = (uint8_t)((data_len >> 24) & 0xFFU);
+  d[12]            = (uint8_t)k_msc_flag_in; /* all scripted commands read. */
+  d[13]            = 0U;                     /* LUN 0. */
+  d[14]            = cdb_len;
+  for (uint32_t i = 0U; i < 16U; i++) {
+    d[15U + i] = cdb[i];
+  }
+  b->len   = (uint16_t)k_msc_cbw_len;
+  b->rd    = 0U;
+  b->ready = true;
+  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_out_pipe));
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_raise_irq(uc);
+}
+
+/** @brief Consume one IN buffer (data or CSW) and acknowledge it with BEMP. */
+static uint16_t host_msc_take_in(uc_engine* uc, uint8_t* out, uint16_t cap)
+{
+  usb_in_buf_t* b = &s_usb.pipe_in[k_usb_bulk_in_pipe];
+  if (!b->valid) {
+    return 0U;
+  }
+  const uint16_t n = (b->len < cap) ? b->len : cap;
+  for (uint16_t i = 0U; i < n; i++) {
+    out[i] = b->data[i];
+  }
+  b->len   = 0U;
+  b->valid = false;
+  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+  s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+  usb_raise_irq(uc);
+  return n;
+}
+
+/** @brief Parse a READ CAPACITY (10) response into block count + size. */
+static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
+{
+  if (n < 8U) {
+    return;
+  }
+  const uint32_t last_lba = ((uint32_t)d[0] << 24) | ((uint32_t)d[1] << 16) |
+                            ((uint32_t)d[2] << 8) | (uint32_t)d[3];
+  s_msc_block_len = ((uint32_t)d[4] << 24) | ((uint32_t)d[5] << 16) |
+                    ((uint32_t)d[6] << 8) | (uint32_t)d[7];
+  s_msc_blocks = last_lba + 1U;
+}
+
+/** @brief Drive the MSC BOT state machine one tick while CONFIGURED. */
+static void host_msc_drive(uc_engine* uc)
+{
+  uint8_t buf[k_usb_in_cap];
+  switch ((msc_phase_t)s_msc_phase) {
+    case k_msc_send:
+      if (s_msc_cmd >= (uint8_t)k_msc_cmd_count) {
+        s_msc_phase = (uint8_t)k_msc_done;
+        return;
+      }
+      host_msc_send_cbw(uc);
+      s_msc_phase = (uint8_t)k_msc_data;
+      s_msc_wait  = 0U;
+      break;
+    case k_msc_data: {
+      const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
+      if (n > 0U) {
+        if (s_msc_cmd == 1U) {
+          host_msc_parse_capacity(buf, n);
+        } else if (s_msc_cmd == 0U) {
+          s_msc_inquiry_ok = true;
+        } else if (s_msc_cmd == 2U) {
+          s_msc_read_ok += n;
+        }
+        s_msc_data_got += n;
+        s_msc_wait = 0U;
+      } else {
+        s_msc_wait++;
+      }
+      if ((s_msc_data_got >= s_msc_data_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
+        s_msc_phase = (uint8_t)k_msc_csw;
+        s_msc_wait  = 0U;
+      }
+      break;
+    }
+    case k_msc_csw: {
+      const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
+      if ((n >= (uint16_t)k_msc_csw_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
+        s_msc_cmd++;
+        s_msc_phase = (uint8_t)k_msc_send;
+        s_msc_wait  = 0U;
+      } else {
+        s_msc_wait++;
+      }
+      break;
+    }
+    case k_msc_done:
+    default:
+      break;
+  }
+}
+
 /** @brief Phase k_phase_configured: optionally drive the CDC bulk echo. */
 static void host_run_configured_phase(uc_engine* uc)
 {
+  if (s_dev_class == (uint8_t)k_usb_class_msc) {
+    host_msc_drive(uc); /* run the BOT/SCSI script against the RAM disk. */
+    return;
+  }
   host_echo_read_in(uc);
   if (s_dev_class == (uint8_t)k_usb_class_hid) {
     return; /* keep polling the HID interrupt-IN pipe; reports keep flowing. */
@@ -1078,6 +1276,14 @@ void board_usb_report(void)
                   (int)s_hid_cx,
                   (int)s_hid_cy,
                   (unsigned)s_hid_buttons);
+  }
+  if ((s_msc_blocks > 0U) || (s_msc_read_ok > 0U)) {
+    (void)fprintf(stderr,
+                  "  USB MSC       : capacity %u blocks x %uB, INQUIRY %s, sector read %u byte(s)\n",
+                  s_msc_blocks,
+                  s_msc_block_len,
+                  s_msc_inquiry_ok ? "ok" : "--",
+                  s_msc_read_ok);
   }
   if (s_echo_out_len > 0U) {
     (void)fprintf(stderr,
