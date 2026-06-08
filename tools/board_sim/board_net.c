@@ -45,13 +45,25 @@ typedef enum : uint32_t {
   k_net_buf   = 1600U,   /**< Staging buffer size.            */
 } net_frame_t;
 
-/** @brief Peer state machine. */
+/** @brief Peer state machine: ARP -> ping -> TCP connect / echo / close. */
 typedef enum : uint8_t {
-  k_net_init = 0U, /**< Nothing sent yet.                 */
-  k_net_arp  = 1U, /**< ARP request out; awaiting reply.  */
-  k_net_ping = 2U, /**< ICMP echo out; awaiting reply.    */
-  k_net_done = 3U, /**< ICMP done (TCP handled here too). */
+  k_net_init  = 0U, /**< Nothing sent yet.                  */
+  k_net_arp   = 1U, /**< ARP request out; awaiting reply.   */
+  k_net_ping  = 2U, /**< ICMP echo out; awaiting reply.     */
+  k_net_syn   = 3U, /**< TCP SYN out; awaiting SYN-ACK.     */
+  k_net_estab = 4U, /**< Connected; data out, awaiting echo.*/
+  k_net_fin   = 5U, /**< FIN out; awaiting close.           */
+  k_net_done  = 6U, /**< Connection closed.                 */
 } net_state_t;
+
+/** @brief TCP control-bit flags. */
+typedef enum : uint8_t {
+  k_tcp_fin = 0x01U,
+  k_tcp_syn = 0x02U,
+  k_tcp_rst = 0x04U,
+  k_tcp_psh = 0x08U,
+  k_tcp_ack = 0x10U,
+} net_tcp_flag_t;
 
 static const uint8_t s_peer_mac[k_mac_len] = {0x02U, 0x00U, 0x5EU, 0x00U, 0x53U, 0x01U};
 
@@ -66,10 +78,26 @@ static uint16_t s_ping_seq;          /**< ICMP echo sequence.          */
 static uint32_t s_tx_frames;         /**< Frames the firmware sent.    */
 static uint32_t s_polls;             /**< ra_eth_read polls served.    */
 static uint32_t s_delivered;         /**< Frames delivered to firmware.*/
+static uint32_t s_tcp_our_seq;       /**< Our next TCP send sequence.  */
+static uint32_t s_tcp_their_seq;     /**< Their next seq (our ack).    */
+static uint32_t s_tcp_echoed;        /**< Echo payload bytes received. */
+static bool     s_tcp_match;         /**< Echo matched what we sent.   */
+static bool     s_tcp_need_data;     /**< Payload queued to send post-handshake. */
+static uint32_t s_tcp_estab_wait;    /**< Ticks since the connection established. */
 
-/* One-deep TX queue: the next frame the peer wants the firmware to receive. */
-static uint8_t  s_rxq[k_net_buf];
-static uint32_t s_rxq_len;
+/** @brief Payload the peer sends to the firmware's TCP echo server. */
+static const uint8_t s_tcp_payload[] = "hello from board_sim\n";
+
+/* Ring of frames queued for the firmware to receive. The firmware's RX worker
+ * drains all available frames per poll, so a handshake burst (ACK + data) can
+ * queue several at once. */
+enum : uint32_t {
+  k_net_qdepth = 8U,
+};
+static uint8_t  s_rxq[k_net_qdepth][k_net_buf];
+static uint16_t s_rxq_len[k_net_qdepth];
+static uint32_t s_rxq_head;
+static uint32_t s_rxq_tail;
 
 /* =============================================================================
  * Byte / checksum helpers.
@@ -120,14 +148,16 @@ static uint16_t net_checksum(const uint8_t* d, uint32_t len, uint32_t seed)
   return (uint16_t)(~sum & 0xFFFFU);
 }
 
-/** @brief Queue a built frame for the firmware to receive (drops if one waits). */
+/** @brief Queue a built frame for the firmware to receive (drops if ring full). */
 static void net_queue(const uint8_t* frame, uint32_t len)
 {
-  if ((s_rxq_len != 0U) || (len > (uint32_t)k_net_buf)) {
+  const uint32_t next = (s_rxq_tail + 1U) % (uint32_t)k_net_qdepth;
+  if ((next == s_rxq_head) || (len > (uint32_t)k_net_buf)) {
     return;
   }
-  (void)memcpy(s_rxq, frame, len);
-  s_rxq_len = len;
+  (void)memcpy(s_rxq[s_rxq_tail], frame, len);
+  s_rxq_len[s_rxq_tail] = (uint16_t)len;
+  s_rxq_tail            = next;
 }
 
 /** @brief Fill the 14-byte Ethernet header into @p f. */
@@ -225,6 +255,120 @@ static void net_send_ping(void)
 }
 
 /* =============================================================================
+ * TCP -- connect to the firmware's echo server, send a payload, verify the echo.
+ * =============================================================================
+ */
+
+/** @brief Build + queue a TCP segment to the firmware echo port (flags+payload). */
+static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload_len)
+{
+  if (!s_fw_mac_known) {
+    return;
+  }
+  uint8_t        f[k_eth_hdr + k_ip_hdr + 20U + 64U];
+  const uint16_t tcp_len = (uint16_t)(20U + payload_len);
+  if (((uint32_t)k_eth_hdr + (uint32_t)k_ip_hdr + (uint32_t)tcp_len) > sizeof(f)) {
+    return;
+  }
+  (void)memset(f, 0, sizeof(f));
+  net_eth_hdr(f, s_fw_mac, (uint16_t)k_eth_ipv4);
+  net_ip_hdr(&f[k_eth_hdr], (uint8_t)k_ip_proto_tcp, tcp_len);
+  uint8_t* t = &f[k_eth_hdr + k_ip_hdr];
+  put16(&t[0], (uint16_t)k_net_peer_port);
+  put16(&t[2], (uint16_t)k_net_echo_port);
+  put32(&t[4], s_tcp_our_seq);
+  put32(&t[8], s_tcp_their_seq);
+  t[12] = 0x50U; /* data offset = 5 32-bit words (20-byte header). */
+  t[13] = flags;
+  put16(&t[14], 2048U); /* window. */
+  if (payload_len > 0U) {
+    (void)memcpy(&t[20], payload, payload_len);
+  }
+  /* TCP checksum covers the IPv4 pseudo-header + the segment. */
+  const uint32_t pseudo = ((uint32_t)k_net_peer_ip >> 16) + ((uint32_t)k_net_peer_ip & 0xFFFFU) +
+                          ((uint32_t)k_net_fw_ip >> 16) + ((uint32_t)k_net_fw_ip & 0xFFFFU) +
+                          (uint32_t)k_ip_proto_tcp + (uint32_t)tcp_len;
+  put16(&t[16], net_checksum(t, tcp_len, pseudo));
+  net_queue(f, (uint32_t)k_eth_hdr + (uint32_t)k_ip_hdr + (uint32_t)tcp_len);
+}
+
+/** @brief Open the TCP connection: send SYN with our initial sequence number. */
+static void net_send_syn(void)
+{
+  s_tcp_our_seq = 1000U; /* deterministic ISN. */
+  net_send_tcp((uint8_t)k_tcp_syn, nullptr, 0U);
+}
+
+/** @brief Send the test payload to the established echo connection. */
+static void net_send_data(void)
+{
+  const uint16_t n = (uint16_t)(sizeof(s_tcp_payload) - 1U);
+  net_send_tcp((uint8_t)(k_tcp_psh | k_tcp_ack), s_tcp_payload, n);
+  s_tcp_our_seq += (uint32_t)n;
+}
+
+/** @brief Handle an inbound TCP segment: drive the connect / echo / close FSM. */
+static void net_rx_tcp(const uint8_t* t, uint32_t len)
+{
+  if (len < 20U) {
+    return;
+  }
+  if ((get16(&t[0]) != (uint16_t)k_net_echo_port) || (get16(&t[2]) != (uint16_t)k_net_peer_port)) {
+    return;
+  }
+  const uint32_t seq   = get32(&t[4]);
+  const uint8_t  flags = t[13];
+  const uint32_t doff  = (uint32_t)((t[12] >> 4) & 0xFU) * 4U;
+  if ((doff < 20U) || (doff > len)) {
+    return;
+  }
+  const uint32_t plen  = len - doff;
+  const uint8_t* pdata = &t[doff];
+  if (s_trace) {
+    (void)fprintf(stderr,
+                  "  [net] RX TCP flags=0x%02X seq=%u ack=%u plen=%u (state %u)\n",
+                  (unsigned)flags,
+                  seq,
+                  get32(&t[8]),
+                  plen,
+                  (unsigned)s_state);
+  }
+
+  if ((s_state == (uint8_t)k_net_syn) && ((flags & (uint8_t)k_tcp_syn) != 0U) &&
+      ((flags & (uint8_t)k_tcp_ack) != 0U)) {
+    s_tcp_their_seq = seq + 1U; /* their SYN consumes one sequence number. */
+    s_tcp_our_seq += 1U;        /* our SYN consumed one. */
+    net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+    /* Defer the payload a few ticks so the firmware's accept() binds the socket
+     * and the echo thread is waiting in receive() before the data arrives. */
+    s_tcp_need_data  = true;
+    s_tcp_estab_wait = 0U;
+    s_state          = (uint8_t)k_net_estab;
+    return;
+  }
+  if ((s_state == (uint8_t)k_net_estab) && (plen > 0U)) {
+    s_tcp_echoed    = plen;
+    s_tcp_match     = (plen == (uint32_t)(sizeof(s_tcp_payload) - 1U)) &&
+                  (memcmp(pdata, s_tcp_payload, plen) == 0);
+    s_tcp_their_seq = seq + plen;
+    net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+    net_send_tcp((uint8_t)(k_tcp_fin | k_tcp_ack), nullptr, 0U);
+    s_tcp_our_seq += 1U; /* FIN consumes one. */
+    s_state = (uint8_t)k_net_fin;
+    if (s_trace) {
+      (void)fprintf(stderr, "  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
+    }
+    return;
+  }
+  if ((s_state == (uint8_t)k_net_fin) && ((flags & (uint8_t)k_tcp_fin) != 0U)) {
+    s_tcp_their_seq = seq + plen + 1U; /* their FIN consumes one. */
+    net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+    s_state = (uint8_t)k_net_done;
+    return;
+  }
+}
+
+/* =============================================================================
  * RX parsing + the peer state machine.
  * =============================================================================
  */
@@ -261,10 +405,12 @@ static void net_rx_icmp(const uint8_t* ic, uint32_t len)
   if ((len >= (uint32_t)k_icmp_hdr) && (ic[0] == 0U)) { /* echo reply. */
     s_pings++;
     if (s_state == (uint8_t)k_net_ping) {
-      s_state = (uint8_t)k_net_done;
       if (s_trace) {
-        (void)fprintf(stderr, "  [net] ICMP echo reply from 192.168.1.42 -- ping ok\n");
+        (void)fprintf(stderr, "  [net] ICMP echo reply from 192.168.1.42 -- ping ok; opening TCP\n");
       }
+      net_send_syn(); /* ping proven; connect to the echo server. */
+      s_state = (uint8_t)k_net_syn;
+      s_wait  = 0U;
     }
   }
 }
@@ -279,9 +425,20 @@ static void net_rx_ipv4(const uint8_t* ip, uint32_t len)
   if ((ihl < (uint32_t)k_ip_hdr) || (ihl > len)) {
     return;
   }
+  /* Use the IP total-length field, not the frame length: a short frame is padded
+   * to the 60-byte Ethernet minimum, and that padding must not be mistaken for
+   * upper-layer payload (e.g. a bare TCP ACK would otherwise look like 6 data
+   * bytes). */
+  uint32_t       actual   = len;
+  const uint16_t ip_total = get16(&ip[2]);
+  if (((uint32_t)ip_total >= ihl) && ((uint32_t)ip_total <= len)) {
+    actual = (uint32_t)ip_total;
+  }
   const uint8_t proto = ip[9];
   if (proto == (uint8_t)k_ip_proto_icmp) {
-    net_rx_icmp(&ip[ihl], len - ihl);
+    net_rx_icmp(&ip[ihl], actual - ihl);
+  } else if (proto == (uint8_t)k_ip_proto_tcp) {
+    net_rx_tcp(&ip[ihl], actual - ihl);
   }
 }
 
@@ -308,12 +465,15 @@ void board_net_on_tx(const uint8_t* frame, uint32_t len)
 uint32_t board_net_poll_rx(uint8_t* buf, uint32_t max)
 {
   s_polls++;
-  if ((s_rxq_len == 0U) || (s_rxq_len > max)) {
+  if (s_rxq_head == s_rxq_tail) {
+    return 0U; /* ring empty. */
+  }
+  const uint32_t n = s_rxq_len[s_rxq_head];
+  if (n > max) {
     return 0U;
   }
-  const uint32_t n = s_rxq_len;
-  (void)memcpy(buf, s_rxq, n);
-  s_rxq_len = 0U;
+  (void)memcpy(buf, s_rxq[s_rxq_head], n);
+  s_rxq_head = (s_rxq_head + 1U) % (uint32_t)k_net_qdepth;
   s_delivered++;
   return n;
 }
@@ -327,6 +487,15 @@ void board_net_tick(void)
     s_wait  = 0U;
     return;
   }
+  if ((s_state == (uint8_t)k_net_estab) && s_tcp_need_data) {
+    enum : uint32_t { k_net_data_delay = 800U };
+    s_tcp_estab_wait++;
+    if (s_tcp_estab_wait > k_net_data_delay) {
+      net_send_data(); /* connection settled; send the echo payload. */
+      s_tcp_need_data = false;
+    }
+    return;
+  }
   /* Retransmit the pending step if the firmware has not answered for a while
    * (the stack may still be bringing the interface up on the first attempts). */
   enum : uint32_t { k_net_retry = 2000U };
@@ -336,6 +505,8 @@ void board_net_tick(void)
       net_send_arp_request();
     } else if (s_state == (uint8_t)k_net_ping) {
       net_send_ping();
+    } else if (s_state == (uint8_t)k_net_syn) {
+      net_send_syn();
     }
   }
 }
@@ -348,11 +519,18 @@ void board_net_init(bool trace)
   s_arp_replies  = 0U;
   s_pings        = 0U;
   s_wait         = 0U;
-  s_ping_seq     = 0U;
-  s_rxq_len      = 0U;
-  s_tx_frames    = 0U;
-  s_polls        = 0U;
-  s_delivered    = 0U;
+  s_ping_seq      = 0U;
+  s_rxq_head      = 0U;
+  s_rxq_tail      = 0U;
+  s_tx_frames     = 0U;
+  s_polls         = 0U;
+  s_delivered     = 0U;
+  s_tcp_our_seq   = 0U;
+  s_tcp_their_seq = 0U;
+  s_tcp_echoed     = 0U;
+  s_tcp_match      = false;
+  s_tcp_need_data  = false;
+  s_tcp_estab_wait = 0U;
   (void)memset(s_fw_mac, 0, sizeof(s_fw_mac));
 }
 
@@ -371,4 +549,11 @@ void board_net_report(void)
                 s_tx_frames,
                 s_polls,
                 s_delivered);
+  if (s_state >= (uint8_t)k_net_syn) {
+    (void)fprintf(stderr,
+                  "  NET TCP       : port 7 %s; echo %s (%u byte(s))\n",
+                  (s_state >= (uint8_t)k_net_estab) ? "established + data sent" : "SYN sent",
+                  s_tcp_match ? "MATCH" : ((s_tcp_echoed > 0U) ? "MISMATCH" : "pending"),
+                  s_tcp_echoed);
+  }
 }
