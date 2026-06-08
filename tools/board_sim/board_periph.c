@@ -92,6 +92,28 @@ typedef enum : uint64_t {
   k_sci_off_ffclr = 0x70UL, /**< FFCLR FIFO flag clear (W1C).         */
 } sci_map_t;
 
+/**
+ * @brief I3C-in-I2C-mode (IIC_B) block geometry (ra8d2_i3c_i2c_regs.h).
+ *
+ * @details
+ * The RA8D2 has one I3C channel at 0x4035F000. ra_touch drives the GoodIX GT911
+ * touch controller through this peripheral in legacy I2C mode (PRTS.PRTMD=1),
+ * and the i3c_loopback example drives the same block as an I2C controller. The
+ * polling driver (libs/ra_hal/src/ra_i3c_i2c.c) only touches the registers named
+ * here; everything else in the window reflects writes via the shadow. Offsets
+ * match the @c r_i3c_i2c_regs_t struct in ra8d2_i3c_i2c_regs.h.
+ */
+typedef enum : uint64_t {
+  k_i3c_base        = 0x4035F000UL,  /**< I3C0 base (== IIC_B channel 0).      */
+  k_i3c_span        = 0x214UL,       /**< Through BCST at +0x210.              */
+  k_i3c_off_cndctl  = 0x140UL,       /**< CNDCTL START/RESTART/STOP request.   */
+  k_i3c_off_ntdtbp0 = 0x158UL,       /**< NTDTBP0 transfer data buffer port.   */
+  k_i3c_off_bst     = 0x1D0UL,       /**< BST bus status (W0C flags).          */
+  k_i3c_off_ntst    = 0x1E0UL,       /**< NTST normal-transfer status.         */
+  k_i3c_off_bcst    = 0x210UL,       /**< BCST bus condition status (BFREF).   */
+  k_i3c_reg_words   = 0x214UL / 4UL, /**< Shadow word count for the window.   */
+} i3c_map_t;
+
 /* =============================================================================
  * Register bit fields and model constants.
  * =============================================================================
@@ -157,6 +179,88 @@ typedef enum : uint32_t {
   k_sci_cfclr_rdrfc = 0x80000000U, /**< RDRFC clear CSR.RDRF (bit 31).    */
   k_sci_ffclr_drc   = 0x00000001U, /**< DRC clear FRSR.DR (bit 0).        */
 } sci_clr_bit_t;
+
+/** @brief CNDCTL condition-request bits (ra8d2_i3c_i2c_regs.h). */
+typedef enum : uint32_t {
+  k_i3c_cndctl_stcnd = 0x00000001U, /**< STCND issue START.               */
+  k_i3c_cndctl_srcnd = 0x00000002U, /**< SRCND issue repeated-START.      */
+  k_i3c_cndctl_spcnd = 0x00000004U, /**< SPCND issue STOP.                */
+} i3c_cndctl_bit_t;
+
+/** @brief BST (Bus Status) flags the polling driver observes / clears (W0C). */
+typedef enum : uint32_t {
+  k_i3c_bst_stcnddf = 0x00000001U, /**< START-condition detected (bit 0).  */
+  k_i3c_bst_spcnddf = 0x00000002U, /**< STOP-condition detected (bit 1).   */
+  k_i3c_bst_nackdf  = 0x00000010U, /**< NACK detected (bit 4).             */
+  k_i3c_bst_tendf   = 0x00000100U, /**< Transfer-end / address ACK (bit 8).*/
+  k_i3c_bst_alf     = 0x00010000U, /**< Arbitration lost (bit 16).         */
+  k_i3c_bst_todf    = 0x00100000U, /**< Timeout detected (bit 20).         */
+} i3c_bst_bit_t;
+
+/** @brief NTST (Normal Transfer Status) flags. */
+typedef enum : uint32_t {
+  k_i3c_ntst_tdbef0 = 0x00000001U, /**< TX data-buffer empty (bit 0).      */
+  k_i3c_ntst_rdbff0 = 0x00000002U, /**< RX data-buffer full (bit 1).       */
+} i3c_ntst_bit_t;
+
+/** @brief BCST (Bus Condition Status) flags. */
+typedef enum : uint32_t {
+  k_i3c_bcst_bfref = 0x00000001U, /**< Bus-free flag (bit 0): 1 == idle.   */
+} i3c_bcst_bit_t;
+
+/** @brief I2C address-byte layout on the wire (addr<<1 | R/W). */
+typedef enum : uint32_t {
+  k_i3c_addr_shift = 1U,    /**< 7-bit address occupies bits [7:1].       */
+  k_i3c_addr_rnw   = 0x01U, /**< LSB: 1 == read, 0 == write.              */
+  k_i3c_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.               */
+  k_i3c_byte_mask  = 0xFFU, /**< One data byte.                           */
+  k_i3c_dev_rx_max = 64U,   /**< Per-read device response staging cap.    */
+  k_i3c_dev_max    = 4U,    /**< Device-registry capacity on the bus.     */
+} i3c_addr_t;
+
+/**
+ * @brief GoodIX GT911 protocol constants (ra8d2_touch_gt911_regs.h + ra_touch.c).
+ *
+ * @details
+ * The GT911 is addressed with a 16-bit big-endian register pointer written
+ * first, then read N bytes from that pointer (after a repeated-START). The touch
+ * driver reads PRODUCT_ID to confirm the part is alive on open, then each frame
+ * reads the STATUS byte (bit7 buffer-ready, bits[3:0] point count) and, when a
+ * point is present, the 8-byte POINT[0] record. Writing 0 to STATUS acks the
+ * frame. The point record packs x/y little-endian; ra_touch decodes x at byte 0
+ * and y at byte 2 of the public point type.
+ */
+typedef enum : uint16_t {
+  k_gt911_reg_command = 0x8040U, /**< Command register (sleep/wake/ack).    */
+  k_gt911_reg_product = 0x8140U, /**< 4-byte ASCII product id "911\0".      */
+  k_gt911_reg_status  = 0x814EU, /**< Status: bit7 ready, bits[3:0] count.  */
+  k_gt911_reg_point0  = 0x814FU, /**< First 8-byte per-point record.        */
+} gt911_reg_t;
+
+/** @brief GT911 magic byte values + record geometry. */
+typedef enum : uint32_t {
+  k_gt911_addr_7b      = 0x5DU, /**< EK-RA8D2 carrier GT911 default address. */
+  k_gt911_id0          = 0x39U, /**< '9' -- first product-id byte ra_touch checks. */
+  k_gt911_id1          = 0x31U, /**< '1'.                                   */
+  k_gt911_id2          = 0x31U, /**< '1'.                                   */
+  k_gt911_id3          = 0x00U, /**< NUL terminator.                        */
+  k_gt911_status_ready = 0x80U, /**< Buffer-ready (bit 7).                  */
+  k_gt911_status_one   = 0x01U, /**< One active contact in bits[3:0].       */
+  k_gt911_id_bytes     = 4U,    /**< PRODUCT_ID payload length.             */
+  k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.           */
+  k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.        */
+  k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb). */
+} gt911_const_t;
+
+/** @brief Byte offsets inside one 8-byte GT911 point record (ra_touch.c). */
+typedef enum : uint32_t {
+  k_gt911_pt_track  = 0U, /**< track_id.    */
+  k_gt911_pt_x_lsb  = 1U, /**< X low byte.  */
+  k_gt911_pt_x_msb  = 2U, /**< X high byte. */
+  k_gt911_pt_y_lsb  = 3U, /**< Y low byte.  */
+  k_gt911_pt_y_msb  = 4U, /**< Y high byte. */
+  k_gt911_pt_sz_lsb = 5U, /**< size low (pressure). */
+} gt911_pt_off_t;
 
 /**
  * @brief SCI8 ELC event numbers the console channel raises (FSP ra8d2 bsp_elc).
@@ -265,10 +369,92 @@ typedef struct {
 
 static bool s_trace; /**< --trace: log transitions + IRQs as they happen. */
 
+/**
+ * @brief One I3C-in-I2C-mode channel: register shadow + a transfer state machine.
+ *
+ * @details
+ * The model owns the registers the IIC_B polling driver actually touches; the
+ * rest of the window reflects writes through @c reg. The transfer fields track
+ * one controller transaction: @c busy spans START..STOP (BCST.BFREF reports the
+ * complement), @c addr_done latches once the address byte after a (re)START has
+ * selected a device, @c target_7b / @c reading record that selection, and the
+ * @c rx staging buffer holds the bytes the addressed device produced for the
+ * current read (drained one per NTDTBP0 read, after the FSP "dummy" first read).
+ */
+typedef struct {
+  uint32_t reg[k_i3c_reg_words]; /**< Reflect-on-read register shadow.       */
+  bool     busy;                 /**< True between START and STOP.            */
+  bool     addr_done;            /**< Address phase of the current (re)START done. */
+  bool     acked;                /**< The addressed target ACKed.            */
+  bool     reading;              /**< Current transfer direction is read.    */
+  uint8_t  target_7b;            /**< 7-bit address selected this transfer.  */
+  uint32_t ntst;                 /**< NTST flags (TDBEF0 / RDBFF0).          */
+  uint32_t bst;                  /**< BST flags (NACKDF / TENDF / ...).      */
+  uint8_t  rx[k_i3c_dev_rx_max]; /**< Staged device response for a read.     */
+  uint32_t rx_len;               /**< Valid bytes in @c rx.                  */
+  uint32_t rx_pos;               /**< Next byte index served from @c rx.     */
+  bool     rx_primed;            /**< The FSP dummy first read was consumed.  */
+} i3c_state_t;
+
+/**
+ * @brief One GoodIX GT911 touch device on the modelled I2C bus.
+ *
+ * @details
+ * Holds the current 16-bit register pointer (set MSB-first by the write phase)
+ * and one armed contact. A status read reports buffer-ready + one point while a
+ * contact is armed; the point0 read returns its x/y and clears the contact
+ * (counted in @c reported), so a tap is delivered exactly once -- matching the
+ * real GT911, which drops the frame once the controller drains and acks it.
+ */
+typedef struct {
+  uint16_t reg_ptr;       /**< Active 16-bit register pointer.          */
+  uint8_t  ptr_bytes;     /**< Pointer bytes captured this write (0..2).*/
+  bool     click_pending; /**< A contact is armed and unread.           */
+  uint16_t click_x;       /**< Armed contact X.                         */
+  uint16_t click_y;       /**< Armed contact Y.                         */
+  uint32_t reported;      /**< Contacts the firmware has drained.       */
+} gt911_state_t;
+
+/**
+ * @brief A device on the modelled I2C bus: 7-bit address + read/write callbacks.
+ *
+ * @details
+ * The write callback receives each byte the controller transmits after the
+ * address (register pointers, then payload). The read callback fills @p buf with
+ * up to @p max response bytes for the device's current state and returns the
+ * count; the bus model serves them to the controller one NTDTBP0 read at a time.
+ * @c present false means no device answers that address (the bus NACKs).
+ */
+typedef struct {
+  bool    present;                                         /**< Slot occupied.  */
+  uint8_t addr_7b;                                         /**< 7-bit address.  */
+  void (*write)(void* ctx, uint8_t byte);                  /**< Controller->device. */
+  uint32_t (*read)(void* ctx, uint8_t* buf, uint32_t max); /**< Device->controller. */
+  void (*stop)(void* ctx);                                 /**< STOP/transfer end. */
+  void* ctx;                                               /**< Device state.   */
+} i2c_device_t;
+
 static port_state_t s_port[k_port_count];
 static agt_state_t  s_agt[k_agt_count];
 static gpt_state_t  s_gpt[k_gpt_count];
 static sci_state_t  s_sci[k_sci_count];
+
+/** @brief The single modelled I3C/IIC_B channel and its bus device registry. */
+static i3c_state_t   s_i3c;
+static i2c_device_t  s_i2c_dev[k_i3c_dev_max];
+static gt911_state_t s_gt911;
+
+/* Forward declarations: the I2C bus registry + GT911 device callbacks live in
+ * their own section further down, but board_periph_init (above them) registers
+ * the GT911 on the bus, so the names must be visible here. */
+static void     i2c_device_register(uint8_t addr_7b,
+                                    void (*wr)(void*, uint8_t),
+                                    uint32_t (*rd)(void*, uint8_t*, uint32_t),
+                                    void (*stop)(void*),
+                                    void* ctx);
+static void     gt911_write(void* ctx, uint8_t byte);
+static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max);
+static void     gt911_stop(void* ctx);
 
 /** @brief Host sink for transmitted bytes (main.c installs the stdout sink). */
 static void (*s_sci_tx_sink)(uint8_t channel, uint8_t byte);
@@ -364,6 +550,8 @@ static void board_periph_reset_blocks(void)
   for (uint32_t i = 0U; i < (uint32_t)k_sci_count; i++) {
     s_sci[i] = (sci_state_t){};
   }
+  s_i3c   = (i3c_state_t){};
+  s_gt911 = (gt911_state_t){};
 }
 
 /** @brief Zero the observability counters and ICU/NVIC bookkeeping arrays. */
@@ -393,6 +581,14 @@ void board_periph_init(bool trace)
   s_irq_head    = 0U;
   s_irq_tail    = 0U;
   s_irq_total   = 0U;
+  /* Populate the modelled I2C bus: the EK-RA8D2 carrier's GT911 touch
+   * controller answers at its default 7-bit address on I3C/IIC_B channel 0, so
+   * the firmware's real ra_touch -> ra_i3c_transfer -> GT911 path returns data
+   * instead of needing a function-level touch stub. */
+  for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
+    s_i2c_dev[i] = (i2c_device_t){};
+  }
+  i2c_device_register((uint8_t)k_gt911_addr_7b, gt911_write, gt911_read, gt911_stop, &s_gt911);
 }
 
 void board_periph_nvic_set_enable(uint32_t irq, bool enable)
@@ -846,6 +1042,289 @@ static void sci_tick_channel(uc_engine* uc, uint32_t ch)
 }
 
 /* =============================================================================
+ * I2C bus device registry -- map a 7-bit address to a device model.
+ * =============================================================================
+ */
+
+/** @brief Find the registered device answering @p addr_7b, or NULL. */
+static i2c_device_t* i2c_device_find(uint8_t addr_7b)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
+    if (s_i2c_dev[i].present && (s_i2c_dev[i].addr_7b == addr_7b)) {
+      return &s_i2c_dev[i];
+    }
+  }
+  return nullptr;
+}
+
+/** @brief Register a device model in the first free bus slot (drop if full). */
+static void i2c_device_register(uint8_t addr_7b,
+                                void (*wr)(void*, uint8_t),
+                                uint32_t (*rd)(void*, uint8_t*, uint32_t),
+                                void (*stop)(void*),
+                                void* ctx)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
+    if (!s_i2c_dev[i].present) {
+      s_i2c_dev[i] = (i2c_device_t){.present = true,
+                                    .addr_7b = addr_7b,
+                                    .write   = wr,
+                                    .read    = rd,
+                                    .stop    = stop,
+                                    .ctx     = ctx};
+      return;
+    }
+  }
+}
+
+/* =============================================================================
+ * GT911 touch device model -- 16-bit register pointer, product id, touch frame.
+ * =============================================================================
+ */
+
+void board_periph_touch_inject(uint16_t x, uint16_t y)
+{
+  s_gt911.click_x       = x;
+  s_gt911.click_y       = y;
+  s_gt911.click_pending = true;
+}
+
+uint32_t board_periph_touch_reported(void)
+{
+  return s_gt911.reported;
+}
+
+/** @brief Controller -> GT911: pointer bytes first (MSB,LSB), then payload. */
+static void gt911_write(void* ctx, uint8_t byte)
+{
+  gt911_state_t* g = (gt911_state_t*)ctx;
+  if (g->ptr_bytes < (uint8_t)k_gt911_ptr_bytes) {
+    /* 16-bit pointer arrives MSB first: byte 0 is the high byte, byte 1 the low. */
+    g->reg_ptr = (uint16_t)(((uint32_t)g->reg_ptr << 8U) | (uint32_t)byte);
+    g->ptr_bytes++;
+    return;
+  }
+  /* Payload after the pointer: a 0 written to STATUS acks the current frame so
+   * the IC can latch the next one (ra_touch's priv_ack_frame). */
+  if ((g->reg_ptr == (uint16_t)k_gt911_reg_status) && (byte == 0U)) {
+    g->click_pending = false;
+  }
+  if (g->reg_ptr == (uint16_t)k_gt911_reg_command) {
+    /* Wake / soft-reset commands are accepted (no observable side effect). */
+  }
+}
+
+/** @brief Fill @p buf with the GT911 status byte for the current frame. */
+static uint32_t gt911_read_status(gt911_state_t* g, uint8_t* buf)
+{
+  buf[0] = g->click_pending ? (uint8_t)(k_gt911_status_ready | k_gt911_status_one) : 0U;
+  return 1U;
+}
+
+/** @brief Fill @p buf with one GT911 point0 record for the armed contact. */
+static uint32_t gt911_read_point0(gt911_state_t* g, uint8_t* buf, uint32_t max)
+{
+  if (max < (uint32_t)k_gt911_point_bytes) {
+    return 0U;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_gt911_point_bytes; i++) {
+    buf[i] = 0U;
+  }
+  buf[k_gt911_pt_track]  = 0U;
+  buf[k_gt911_pt_x_lsb]  = (uint8_t)(g->click_x & (uint16_t)k_i3c_byte_mask);
+  buf[k_gt911_pt_x_msb]  = (uint8_t)((uint32_t)g->click_x >> 8U);
+  buf[k_gt911_pt_y_lsb]  = (uint8_t)(g->click_y & (uint16_t)k_i3c_byte_mask);
+  buf[k_gt911_pt_y_msb]  = (uint8_t)((uint32_t)g->click_y >> 8U);
+  buf[k_gt911_pt_sz_lsb] = (uint8_t)k_gt911_press;
+  /* The coordinate has now been delivered to the firmware -- count it and drop
+   * the contact so the next frame reads "not ready", exactly as the GT911 does
+   * once a tap is drained. */
+  g->click_pending = false;
+  g->reported++;
+  return (uint32_t)k_gt911_point_bytes;
+}
+
+/** @brief GT911 -> controller: answer a read at the current register pointer. */
+static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max)
+{
+  gt911_state_t* g = (gt911_state_t*)ctx;
+  if (g->reg_ptr == (uint16_t)k_gt911_reg_product) {
+    const uint8_t  id[k_gt911_id_bytes] = {(uint8_t)k_gt911_id0,
+                                           (uint8_t)k_gt911_id1,
+                                           (uint8_t)k_gt911_id2,
+                                           (uint8_t)k_gt911_id3};
+    const uint32_t n = (max < (uint32_t)k_gt911_id_bytes) ? max : (uint32_t)k_gt911_id_bytes;
+    for (uint32_t i = 0U; i < n; i++) {
+      buf[i] = id[i];
+    }
+    return n;
+  }
+  if (g->reg_ptr == (uint16_t)k_gt911_reg_status) {
+    return gt911_read_status(g, buf);
+  }
+  if (g->reg_ptr == (uint16_t)k_gt911_reg_point0) {
+    return gt911_read_point0(g, buf, max);
+  }
+  return 0U;
+}
+
+/** @brief STOP / transfer end: reset the GT911 pointer-capture state. */
+static void gt911_stop(void* ctx)
+{
+  gt911_state_t* g = (gt911_state_t*)ctx;
+  g->ptr_bytes     = 0U;
+}
+
+/* =============================================================================
+ * I3C-in-I2C-mode (IIC_B) controller model -- the transfer state machine the
+ * ra_i3c_i2c.c polling driver drives (START / addr / write / read / STOP).
+ * =============================================================================
+ */
+
+/** @brief Index of the I3C shadow word for @p off (already range-checked). */
+static uint32_t i3c_word(uint64_t off)
+{
+  return (uint32_t)(off / 4U);
+}
+
+/** @brief Begin a transaction (START or repeated-START): arm the address phase. */
+static void i3c_open_transfer(void)
+{
+  s_i3c.busy      = true;
+  s_i3c.addr_done = false;
+  s_i3c.acked     = false;
+  s_i3c.reading   = false;
+  s_i3c.rx_len    = 0U;
+  s_i3c.rx_pos    = 0U;
+  s_i3c.rx_primed = false;
+  /* TX buffer is empty so the driver can write the address byte; clear stale
+   * NACK/TEND so the new address phase reports its own outcome. */
+  s_i3c.ntst = (uint32_t)k_i3c_ntst_tdbef0;
+  s_i3c.bst &= ~((uint32_t)k_i3c_bst_nackdf | (uint32_t)k_i3c_bst_tendf);
+}
+
+/** @brief Close a transaction (STOP): release the bus and notify the device. */
+static void i3c_close_transfer(void)
+{
+  if (s_i3c.acked) {
+    i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
+    if ((dev != nullptr) && (dev->stop != nullptr)) {
+      dev->stop(dev->ctx);
+    }
+  }
+  s_i3c.busy      = false;
+  s_i3c.addr_done = false;
+  s_i3c.ntst      = (uint32_t)k_i3c_ntst_tdbef0;
+}
+
+/** @brief Consume the address byte after a (re)START: select + ACK a device. */
+static void i3c_address_phase(uint8_t address_byte)
+{
+  s_i3c.target_7b =
+    (uint8_t)((uint32_t)address_byte >> (uint32_t)k_i3c_addr_shift) & (uint8_t)k_i3c_addr_mask7;
+  s_i3c.reading   = ((uint32_t)address_byte & (uint32_t)k_i3c_addr_rnw) != 0U;
+  s_i3c.addr_done = true;
+
+  i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
+  if (dev == nullptr) {
+    /* No device at this address: NACK the address (scan reports ack=0). */
+    s_i3c.acked = false;
+    s_i3c.bst |= (uint32_t)k_i3c_bst_nackdf;
+    return;
+  }
+  s_i3c.acked = true;
+  s_i3c.bst |= (uint32_t)k_i3c_bst_tendf; /* address ACKed -> scan sees TENDF */
+  if (s_i3c.reading) {
+    /* Pre-fetch the device's response for this read so NTDTBP0 reads serve it. */
+    s_i3c.rx_len    = dev->read(dev->ctx, s_i3c.rx, (uint32_t)k_i3c_dev_rx_max);
+    s_i3c.rx_pos    = 0U;
+    s_i3c.rx_primed = false;
+    s_i3c.ntst |= (uint32_t)k_i3c_ntst_rdbff0; /* RX data ready */
+  } else {
+    s_i3c.ntst |= (uint32_t)k_i3c_ntst_tdbef0; /* ready for the first data byte */
+  }
+}
+
+/** @brief Handle a write to NTDTBP0 (address byte, then controller TX payload). */
+static void i3c_ntdtbp0_write(uint32_t value)
+{
+  const uint8_t byte = (uint8_t)(value & (uint32_t)k_i3c_byte_mask);
+  if (!s_i3c.addr_done) {
+    i3c_address_phase(byte);
+    return;
+  }
+  if (!s_i3c.acked) {
+    return; /* NACKed address: swallow further writes until STOP */
+  }
+  i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
+  if ((dev != nullptr) && (dev->write != nullptr)) {
+    dev->write(dev->ctx, byte);
+  }
+  s_i3c.ntst |= (uint32_t)k_i3c_ntst_tdbef0; /* buffer empty again for the next */
+}
+
+/** @brief Serve one NTDTBP0 read from the staged device response. */
+static uint32_t i3c_ntdtbp0_read(void)
+{
+  if (!s_i3c.rx_primed) {
+    /* FSP rxi_master drops the first RDBFF0 read before real payload. */
+    s_i3c.rx_primed = true;
+    return 0U;
+  }
+  uint8_t b = 0U;
+  if (s_i3c.rx_pos < s_i3c.rx_len) {
+    b = s_i3c.rx[s_i3c.rx_pos];
+    s_i3c.rx_pos++;
+  }
+  s_i3c.ntst |= (uint32_t)k_i3c_ntst_rdbff0; /* keep RX-ready for the next byte */
+  return (uint32_t)b;
+}
+
+/** @brief Dispatch a CNDCTL write -> START / repeated-START / STOP. */
+static void i3c_cndctl_write(uint32_t value)
+{
+  if ((value & ((uint32_t)k_i3c_cndctl_stcnd | (uint32_t)k_i3c_cndctl_srcnd)) != 0U) {
+    i3c_open_transfer();
+  } else if ((value & (uint32_t)k_i3c_cndctl_spcnd) != 0U) {
+    i3c_close_transfer();
+  }
+}
+
+/** @brief Read a register from the modelled I3C/IIC_B channel. */
+static uint64_t i3c_read(uint64_t off)
+{
+  if (off == (uint64_t)k_i3c_off_ntst) {
+    return s_i3c.ntst;
+  }
+  if (off == (uint64_t)k_i3c_off_bst) {
+    return s_i3c.bst;
+  }
+  if (off == (uint64_t)k_i3c_off_bcst) {
+    /* BFREF: 1 when the bus is free. The driver gates new transactions on it. */
+    return s_i3c.busy ? 0U : (uint32_t)k_i3c_bcst_bfref;
+  }
+  if (off == (uint64_t)k_i3c_off_ntdtbp0) {
+    return i3c_ntdtbp0_read();
+  }
+  return s_i3c.reg[i3c_word(off)]; /* reflect every other register */
+}
+
+/** @brief Write a register on the modelled I3C/IIC_B channel. */
+static void i3c_write(uint64_t off, uint32_t value)
+{
+  s_i3c.reg[i3c_word(off)] = value; /* shadow keeps "configure then verify" working */
+  if (off == (uint64_t)k_i3c_off_cndctl) {
+    i3c_cndctl_write(value);
+  } else if (off == (uint64_t)k_i3c_off_ntdtbp0) {
+    i3c_ntdtbp0_write(value);
+  } else if (off == (uint64_t)k_i3c_off_bst) {
+    /* BST condition / fault flags are write-0-to-clear: keep only bits still
+     * written as 1 (the driver clears by reading then masking the bit out). */
+    s_i3c.bst &= value;
+  }
+}
+
+/* =============================================================================
  * MMIO dispatch -- route an address to its block, else report "not handled".
  * =============================================================================
  */
@@ -874,6 +1353,9 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
   if (in_range(addr, (uint64_t)k_sci_base, (uint64_t)k_sci_span)) {
     const uint32_t ch = (uint32_t)((addr - (uint64_t)k_sci_base) / (uint64_t)k_sci_stride);
     return sci_read(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride);
+  }
+  if (in_range(addr, (uint64_t)k_i3c_base, (uint64_t)k_i3c_span)) {
+    return i3c_read(addr - (uint64_t)k_i3c_base);
   }
   if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
     (void)uc;
@@ -905,6 +1387,10 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
   if (in_range(addr, (uint64_t)k_sci_base, (uint64_t)k_sci_span)) {
     const uint32_t ch = (uint32_t)((addr - (uint64_t)k_sci_base) / (uint64_t)k_sci_stride);
     sci_write(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride, (uint32_t)value);
+    return;
+  }
+  if (in_range(addr, (uint64_t)k_i3c_base, (uint64_t)k_i3c_span)) {
+    i3c_write(addr - (uint64_t)k_i3c_base, (uint32_t)value);
     return;
   }
   if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
@@ -1025,6 +1511,16 @@ static void report_irqs(void)
   (void)fprintf(stderr, "]\n");
 }
 
+/** @brief Print the GT911 touch line when the firmware drained any contact. */
+static void report_touch(void)
+{
+  if (s_gt911.reported > 0U) {
+    (void)fprintf(stderr,
+                  "  I3C/I2C GT911 : %u touch frame(s) drained via ra_touch -> I3C\n",
+                  s_gt911.reported);
+  }
+}
+
 void board_periph_report(uc_engine* uc)
 {
   (void)uc;
@@ -1032,4 +1528,5 @@ void board_periph_report(uc_engine* uc)
   report_timers();
   report_sci();
   report_irqs();
+  report_touch();
 }
