@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_usb.h"
+
 /* =============================================================================
  * RA8D2 peripheral register map (addresses verified against libs/ra_hal regs).
  * =============================================================================
@@ -456,6 +458,18 @@ static void     gt911_write(void* ctx, uint8_t byte);
 static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max);
 static void     gt911_stop(void* ctx);
 
+/* The USBFS model (board_usb.c) pends its controller interrupt by asserting the
+ * USBFS_INT ELC event; it goes through the same IELSR -> NVIC path as every
+ * other peripheral, so board_periph hands it ::icu_raise_event via a thin
+ * wrapper (the engine is the only extra argument the event-raise needs). */
+static void icu_raise_event(uc_engine* uc, uint16_t event);
+
+/** @brief ICU event-raise hook handed to the USB model (see board_usb.h). */
+static void usb_irq_raiser(uc_engine* uc, uint16_t event)
+{
+  icu_raise_event(uc, event);
+}
+
 /** @brief Host sink for transmitted bytes (main.c installs the stdout sink). */
 static void (*s_sci_tx_sink)(uint8_t channel, uint8_t byte);
 
@@ -589,6 +603,10 @@ void board_periph_init(bool trace)
     s_i2c_dev[i] = (i2c_device_t){};
   }
   i2c_device_register((uint8_t)k_gt911_addr_7b, gt911_write, gt911_read, gt911_stop, &s_gt911);
+  /* Bring the USBFS controller model + virtual host up and wire its interrupt
+   * pend through this module's ICU/NVIC path (Phase 3, issue #67). */
+  board_usb_init(trace);
+  board_usb_set_irq_raiser(usb_irq_raiser);
 }
 
 void board_periph_nvic_set_enable(uint32_t irq, bool enable)
@@ -1337,7 +1355,6 @@ static bool in_range(uint64_t addr, uint64_t base, uint64_t span)
 
 uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handled)
 {
-  (void)size;
   *handled = true;
   if (in_range(addr, (uint64_t)k_port_base, (uint64_t)k_port_span)) {
     return port_read(addr);
@@ -1357,6 +1374,13 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
   if (in_range(addr, (uint64_t)k_i3c_base, (uint64_t)k_i3c_span)) {
     return i3c_read(addr - (uint64_t)k_i3c_base);
   }
+  {
+    bool           usb_hit = false;
+    const uint64_t usb_val = board_usb_read(uc, addr, size, &usb_hit);
+    if (usb_hit) {
+      return usb_val;
+    }
+  }
   if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
     (void)uc;
     return icu_read(addr);
@@ -1367,8 +1391,6 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
 
 void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value, bool* handled)
 {
-  (void)size;
-  (void)uc;
   *handled = true;
   if (in_range(addr, (uint64_t)k_port_base, (uint64_t)k_port_span)) {
     port_write(addr, (uint32_t)value);
@@ -1393,6 +1415,13 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
     i3c_write(addr - (uint64_t)k_i3c_base, (uint32_t)value);
     return;
   }
+  {
+    bool usb_hit = false;
+    board_usb_write(uc, addr, size, value, &usb_hit);
+    if (usb_hit) {
+      return;
+    }
+  }
   if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
     icu_write(addr, (uint32_t)value);
     return;
@@ -1411,6 +1440,9 @@ void board_periph_tick(uc_engine* uc)
   for (uint32_t ch = 0U; ch < (uint32_t)k_sci_count; ch++) {
     sci_tick_channel(uc, ch);
   }
+  /* Step the virtual USB host: it advances the chapter-9 enumeration and pends
+   * the USBFS interrupt through ::usb_irq_raiser when it delivers a SETUP. */
+  board_usb_tick(uc);
 }
 
 bool board_periph_next_irq(uint32_t* out_irq)
@@ -1529,4 +1561,5 @@ void board_periph_report(uc_engine* uc)
   report_sci();
   report_irqs();
   report_touch();
+  board_usb_report();
 }

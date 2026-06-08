@@ -24,6 +24,7 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf> --panel <file.toml>  # size the window to a display
 ./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
 ./build/board_sim <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
+./build/board_sim <firmware.elf> --usb-in "ping"      # feed bytes to the USB CDC bulk OUT pipe
 ```
 
 The console UART is captured: every byte the firmware writes to an SCI TDR is
@@ -68,6 +69,19 @@ bring-up validation.
   interrupt-driven serial works as well as polled. It also models the NVIC
   ISER/ICER set-enable / clear-enable semantics so a firmware that enables
   several IRQ lines (e.g. SCI RXI+TXI+TEI) keeps them all enabled.
+- **USBFS controller + a virtual USB host** (`board_usb.{c,h}`): models the
+  USB-FS device-mode register block (SYSCFG pull-up, INTSTS0 CTSQ/DVSQ/VALID +
+  the CTRT/DVST/BRDY event bits, the CFIFO data port with its CFIFOSEL/CFIFOCTR
+  FRDY/BVAL/BCLR/DTLN handshake, USBREQ..USBLENG SETUP latches, DCPCTR PID/CCPL,
+  the bulk pipe FIFOs and BRDYSTS), and drives a virtual host that runs the
+  standard chapter-9 enumeration against the *real* ThreadX + Eclipse USBX
+  CDC-ACM firmware. The host watches SYSCFG.DPRPU, issues a bus reset, then walks
+  GET_DESCRIPTOR / SET_ADDRESS / SET_CONFIGURATION + the CDC line requests --
+  raising the USBFS interrupt through the same ICU->NVIC path so the genuine ISR
+  (`ra_usb_dispatch` -> `ux_dcd_ra_usb_irq`) answers each SETUP, clocking the
+  device's descriptor responses out of the CFIFO until USBX's CDC-ACM activate
+  callback fires. `--usb-in <str>` then drives the bulk OUT pipe and reads the
+  device's echoed bulk IN, so the CDC data path is exercised end-to-end.
 - **Targeted quirk**: the MRMS frequency latches (MRCFREQ/MREFREQ) strip a write
   key byte on readback -- modelled directly, since it is an exact-value (not
   edge) poll. This is currently the *only* register needing bespoke behaviour.
@@ -90,8 +104,17 @@ bring-up validation.
 - Proven on `uart_irq_echo`: the interrupt-driven SCI8 path -- `--input` bytes
   raise RXI, the ISR echoes them back over TXI, and the echo is captured
   (IRQ0/RXI + IRQ1/TXI both fire, RX/TX byte counts match).
-- ThreadX apps use a different (PendSV-scheduled) boot path not yet modelled; a
-  bare-metal (single-threaded) GUIX UI app is the path to viewing the real UI.
+- Proven on `threadx_usbx_cdc_demo` / `usb_cdc_echo`: the real ThreadX + USBX
+  CDC-ACM device fully enumerates against the virtual host -- the step log shows
+  each SETUP (GET_DESCRIPTOR device/config/string -> SET_ADDRESS ->
+  SET_CONFIGURATION), the device reaches CONFIGURED, USBX's CDC-ACM activate
+  callback fires (`USB: device CONFIGURED (CDC-ACM active)`), and with
+  `--usb-in <str>` the bulk bytes round-trip back through the device's echo
+  (`sent N OUT, read N IN`). Final PC sits in the ThreadX run loop, not a panic.
+- ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
+  GUIX UI (`threadx_guix_demo`) renders its real framebuffer (77 distinct
+  colours) and the GUIX/USBX/CDC stacks all execute as the actual cross-compiled
+  `.elf`.
 - The peripheral model fakes hardware *handshakes*; it validates "does the
   firmware drive the controller correctly," not real silicon timing. It
   complements HIL, it does not replace it.
