@@ -35,18 +35,17 @@ set(BREW /opt/homebrew)
 # board view (LEDs / USB / UART / IRQ / touch) into one RGB565 buffer for both
 # --view and --ppm; rest is C.
 #
-# Adding a peripheral block: drop a new board_periph_<blk>.c (it self-registers
-# its descriptor with the core via __attribute__((constructor)) -- see
-# board_periph_block.h) and add it to the source list below. No other file
-# changes -- the core keeps no central block list, so blocks can be added in
-# parallel without conflict.
+# Adding a peripheral block: just drop a new board_periph_<blk>.c (it
+# self-registers its descriptor with the core via __attribute__((constructor))
+# -- see board_periph_block.h). The glob below picks it up automatically; the
+# core keeps no central block list, so blocks can be added in parallel with no
+# edit to this file and no conflict.
+file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/board_periph_*.c")
 add_executable(board_sim
                main.c
                board_periph.c
-               board_periph_gpio.c
-               board_periph_timer.c
-               board_periph_sci.c
-               board_periph_i2c.c
+               ${BOARD_PERIPH_BLOCKS}
                board_usb.c
                board_overlay.c
                board_view.m)
