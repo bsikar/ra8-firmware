@@ -338,16 +338,19 @@ sim:
 	$(CMAKE) --build $(SIM_DIR)/build -j
 	$(SIM_DIR)/build/sim --panel $(SIM_DIR)/panels/$(SIM_PANEL).toml
 
-# `make simulate-<app>` -- cross-build the app, then boot its real .elf on the
-# Unicorn-based board emulator (tools/board_sim) and show the emulated panel in
-# a live macOS window. Same binary that flashes to the EK-RA8D2; close the
-# window to exit. e.g. `make simulate-lcd_color_cycle`.
+# `make simulate-<app> [PANEL=<name>]` -- cross-build the app, then boot its real
+# .elf on the Unicorn-based board emulator (tools/board_sim) and show the
+# emulated panel live in a macOS window, sized by the display descriptor
+# tools/simulator/panels/<PANEL>.toml (default ek_ra8d2 -- swap it to emulate a
+# different screen). Same binary that flashes to the board; close to exit.
+# e.g. `make simulate-lcd_color_cycle` or `make simulate-bedroom_ui_panel`.
 BOARD_SIM_DIR := $(ROOT)/tools/board_sim
 .PHONY: $(RA_SIMULATE)
 $(RA_SIMULATE): simulate-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf --view
+	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
+		--panel $(SIM_DIR)/panels/$(SIM_PANEL).toml --view
 
 ascii:
 	@for dir in src libs tests; do \

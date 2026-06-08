@@ -258,7 +258,7 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
   (void)user;
   uint32_t pc = 0U;
   (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
-  uint8_t code[4] = {0};
+  uint8_t code[4] = {};
   (void)uc_mem_read(uc, pc, code, sizeof(code));
   (void)fprintf(stderr,
                 "  INVALID INSN @ 0x%08X: bytes %02X %02X %02X %02X\n",
@@ -519,38 +519,155 @@ static int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, ui
   return 0;
 }
 
+typedef enum : uint32_t {
+  k_panel_line_max = 256U,  /**< Max panel-config line length.        */
+  k_panel_name_max = 64U,   /**< Max panel name (incl NUL).           */
+  k_panel_dim_max  = 4096U, /**< Sanity cap on a panel dimension.     */
+} panel_limits_t;
+
+/** @brief Display descriptor loaded from a flat key=value panel file. */
+typedef struct {
+  char     name[k_panel_name_max];
+  uint16_t width;
+  uint16_t height;
+} board_panel_t;
+
+/** @brief Trim trailing space/tab/CR/LF in place. */
+static void panel_rstrip(char* s)
+{
+  size_t n = strlen(s);
+  while (n > 0U) {
+    const char c = s[n - 1U];
+    if ((c != ' ') && (c != '\t') && (c != '\r') && (c != '\n')) {
+      break;
+    }
+    s[--n] = '\0';
+  }
+}
+
+/**
+ * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
+ *
+ * @details
+ * Same flat ``key = value`` schema as the tools/simulator panel descriptors, so
+ * the board emulator becomes whatever display a config describes -- not just the
+ * EK-RA8D2 1024x600. Dependency-free bounded parser (strncmp / strtol, no
+ * dynamic allocation beyond the FILE handle); blank lines and '#' comments are
+ * ignored and quotes are stripped from the name.
+ *
+ * @param[in]  path Panel config path.
+ * @param[out] out  Filled descriptor on success.
+ * @return true if a valid width/height were parsed.
+ */
+static bool load_panel(const char* path, board_panel_t* out)
+{
+  (void)memset(out, 0, sizeof(*out));
+  FILE* f = fopen(path, "r"); /* alloc-allow: host dev tool, not firmware */
+  if (f == nullptr) {
+    (void)fprintf(stderr, "board_sim: cannot open panel config %s\n", path);
+    return false;
+  }
+  char line[k_panel_line_max];
+  while (fgets(line, (int)sizeof(line), f) != nullptr) {
+    char* p = line;
+    while ((*p == ' ') || (*p == '\t')) {
+      p++;
+    }
+    if ((*p == '#') || (*p == '\0') || (*p == '\n') || (*p == '\r')) {
+      continue;
+    }
+    char* eq = strchr(p, '=');
+    if (eq == nullptr) {
+      continue;
+    }
+    *eq        = '\0';
+    char* key  = p;
+    char* val  = eq + 1;
+    while ((*val == ' ') || (*val == '\t')) {
+      val++;
+    }
+    panel_rstrip(key);
+    panel_rstrip(val);
+    if (strncmp(key, "width", sizeof("width")) == 0) {
+      out->width = (uint16_t)strtol(val, nullptr, 10);
+    } else if (strncmp(key, "height", sizeof("height")) == 0) {
+      out->height = (uint16_t)strtol(val, nullptr, 10);
+    } else if (strncmp(key, "name", sizeof("name")) == 0) {
+      const char* s = val;
+      size_t      n = strlen(s);
+      if ((n >= 2U) && (s[0] == '"') && (s[n - 1U] == '"')) {
+        s += 1;
+        n -= 2U;
+      }
+      if (n >= sizeof(out->name)) {
+        n = sizeof(out->name) - 1U;
+      }
+      (void)memcpy(out->name, s, n);
+      out->name[n] = '\0';
+    }
+  }
+  (void)fclose(f);
+  if ((out->width == 0U) || (out->width > (uint16_t)k_panel_dim_max) || (out->height == 0U) ||
+      (out->height > (uint16_t)k_panel_dim_max)) {
+    (void)fprintf(stderr, "board_sim: panel %s: width/height missing or out of range\n", path);
+    return false;
+  }
+  return true;
+}
+
 int main(int argc, char** argv)
 {
   if (argc < 2) {
     (void)fprintf(stderr,
-                  "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>] [--size WxH]\n"
-                  "  --view        open a macOS window and show the emulated panel live\n"
-                  "  --ppm <file>  write the final frame to a binary PPM (headless ok)\n"
-                  "  --size WxH    frame size in pixels (default 1024x600)\n");
+                  "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
+                  " [--panel <file.toml>] [--size WxH]\n"
+                  "  --view          open a macOS window and show the emulated panel live\n"
+                  "  --ppm <file>    write the final frame to a binary PPM (headless ok)\n"
+                  "  --panel <file>  display descriptor (name/width/height) to size the window\n"
+                  "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n");
     return 2;
   }
-  const char* elf_path  = argv[1];
-  bool        want_view = false;
-  const char* ppm_path  = nullptr;
-  uint16_t    view_w    = (uint16_t)k_view_default_w;
-  uint16_t    view_h    = (uint16_t)k_view_default_h;
+  const char* elf_path   = argv[1];
+  bool        want_view  = false;
+  const char* ppm_path   = nullptr;
+  const char* panel_path = nullptr;
+  bool        size_set   = false;
+  uint16_t    view_w     = (uint16_t)k_view_default_w;
+  uint16_t    view_h     = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
     } else if ((strncmp(argv[i], "--ppm", sizeof("--ppm")) == 0) && ((i + 1) < argc)) {
       ppm_path = argv[i + 1];
       i++;
+    } else if ((strncmp(argv[i], "--panel", sizeof("--panel")) == 0) && ((i + 1) < argc)) {
+      panel_path = argv[i + 1];
+      i++;
     } else if ((strncmp(argv[i], "--size", sizeof("--size")) == 0) && ((i + 1) < argc)) {
       char*      end = nullptr;
       const long w   = strtol(argv[i + 1], &end, 10);
       const long h   = ((end != nullptr) && (*end == 'x')) ? strtol(end + 1, nullptr, 10) : 0L;
       if ((w > 0L) && (w <= 4096L) && (h > 0L) && (h <= 4096L)) {
-        view_w = (uint16_t)w;
-        view_h = (uint16_t)h;
+        view_w   = (uint16_t)w;
+        view_h   = (uint16_t)h;
+        size_set = true;
       }
       i++;
     }
   }
+
+  /* A --panel descriptor sizes the window to that display (so the emulator can
+   * present any panel, not just 1024x600); an explicit --size still wins. */
+  board_panel_t panel      = {};
+  bool          have_panel = false;
+  if (panel_path != nullptr) {
+    have_panel = load_panel(panel_path, &panel);
+    if (have_panel && !size_set) {
+      view_w = panel.width;
+      view_h = panel.height;
+    }
+  }
+  const char* win_title = (have_panel && (panel.name[0] != '\0')) ? panel.name : "board_sim";
 
   uc_engine* uc = nullptr;
   if (uc_open(UC_ARCH_ARM, (uc_mode)(UC_MODE_THUMB | UC_MODE_MCLASS), &uc) != UC_ERR_OK) {
@@ -622,7 +739,7 @@ int main(int argc, char** argv)
   board_view_t* view  = nullptr;
   uint16_t*     frame = nullptr;
   if (want_view) {
-    view = board_view_open(view_w, view_h, "board_sim");
+    view = board_view_open(view_w, view_h, win_title);
     if (view == nullptr) {
       (void)fprintf(stderr, "board_sim: could not open window; continuing headless\n");
     }
@@ -686,8 +803,8 @@ int main(int argc, char** argv)
   }
   (void)fprintf(stderr, "]\n");
   (void)fprintf(stderr, "    %-12s %10s %10s %12s\n", "addr", "reads", "writes", "last-write");
-  const uint32_t shown =
-    (s_mmio_n < (uint32_t)k_mmio_print_max) ? s_mmio_n : (uint32_t)k_mmio_print_max;
+  const bool     truncated = (s_mmio_n > (uint32_t)k_mmio_print_max);
+  const uint32_t shown     = truncated ? (uint32_t)k_mmio_print_max : s_mmio_n;
   for (uint32_t i = 0U; i < shown; i++) {
     if (s_mmio_written[i]) {
       (void)fprintf(stderr, "    0x%08llX %10u %10u   0x%08X\n", (unsigned long long)s_mmio_addr[i],
@@ -697,7 +814,7 @@ int main(int argc, char** argv)
                     s_mmio_rcount[i], s_mmio_wcount[i], "-");
     }
   }
-  if (s_mmio_n > shown) {
+  if (truncated) {
     (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
   }
   if ((err == UC_ERR_OK) || timed_out) {
