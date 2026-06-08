@@ -114,6 +114,44 @@ void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte));
 void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len);
 
 /**
+ * @brief Arm a pending touch contact for the modelled GT911 device.
+ *
+ * @details
+ * board_sim turns a @c --click argument or a live board_view mouse-down into a
+ * single pending contact here. The contact is answered through the REAL firmware
+ * path: ra_touch_read issues a GT911 status read over ra_i3c_transfer (the I3C
+ * peripheral in legacy I2C mode), and the modelled GT911 device -- registered on
+ * the modelled I3C/I2C bus at its 7-bit address -- reports a status byte with one
+ * point plus a point0 record carrying @p x / @p y. The contact is one-shot: once
+ * the firmware reads the point record it is cleared and ::board_periph_touch_reported
+ * is incremented, so the next frame reads "no frame ready" exactly as the real
+ * controller would after a tap is drained. There is no function-level touch hook;
+ * the firmware's ra_touch -> I3C -> GT911 code runs unchanged.
+ *
+ * @param[in] x Panel X coordinate of the contact (GT911-native units).
+ * @param[in] y Panel Y coordinate of the contact.
+ * @return Nothing.
+ * @post The next GT911 status read reports a buffer-ready frame with one point.
+ * @since 0.1.0
+ */
+void board_periph_touch_inject(uint16_t x, uint16_t y);
+
+/**
+ * @brief Count of touch contacts the firmware has drained from the GT911 model.
+ *
+ * @details
+ * Incremented each time the firmware reads the GT911 point0 record for an armed
+ * contact (i.e. a real ra_touch_read -> I3C -> GT911 point fetch completed). The
+ * run loop uses this -- instead of a stub-side counter -- to know a headless
+ * @c --click has flowed all the way through the real touch path before it drains
+ * the post-click settle window.
+ *
+ * @return Number of contacts reported through the modelled GT911.
+ * @since 0.1.0
+ */
+uint32_t board_periph_touch_reported(void);
+
+/**
  * @brief The SCI channel the EK-RA8D2 console (J-Link OB VCOM) uses.
  *
  * @details
