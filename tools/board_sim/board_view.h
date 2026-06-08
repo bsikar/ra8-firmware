@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -45,7 +44,7 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
  * @param[in] width_px  Framebuffer width in pixels.
  * @param[in] height_px Framebuffer height in pixels.
  */
-void board_view_present(board_view_t* view,
+void board_view_present(board_view_t*   view,
                         const uint16_t* rgb565,
                         uint16_t        width_px,
                         uint16_t        height_px);
@@ -57,6 +56,26 @@ void board_view_present(board_view_t* view,
  * @return true once the user has closed the window (stop the run loop).
  */
 bool board_view_pump(board_view_t* view);
+
+/**
+ * @brief Report the most recent unprocessed left mouse-down, once.
+ *
+ * @details
+ * Latches the framebuffer-pixel coordinate of the last left-button press on
+ * the content view (recorded by the view's mouseDown handler) and returns it
+ * to the caller exactly once -- the latch is cleared on read, so a held button
+ * or repeated polls do not re-report the same press. Coordinates use the
+ * framebuffer's top-left origin (row 0 at the top), matching how
+ * board_view_present uploads pixels; the view's flipped-Y window space is
+ * converted here so the caller never sees AppKit's bottom-left origin. Pump
+ * the window (board_view_pump) first so AppKit has delivered the click.
+ *
+ * @param[in]  view Handle from board_view_open (nullptr reports no click).
+ * @param[out] x    Click column in framebuffer pixels (top-left origin).
+ * @param[out] y    Click row in framebuffer pixels (top-left origin).
+ * @return true if a fresh click was reported (and consumed); false otherwise.
+ */
+bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
 
 /**
  * @brief Close the window and release its resources.

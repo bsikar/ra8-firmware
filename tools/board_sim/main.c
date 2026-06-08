@@ -36,8 +36,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <unicorn/unicorn.h>
+#include <unistd.h>
 
 #include "board_view.h"
 
@@ -86,6 +86,22 @@ typedef enum : uint64_t {
   k_systick_ret  = 0x4UL,        /**< Sentinel return addr for the call. */
 } cortexm_scs_t;
 
+/* ra_touch_read stub: the firmware's ra_touch_read is short-circuited by a
+ * UC_HOOK_CODE at its entry so board_sim supplies the touch coordinates without
+ * modelling the GT911/I2C. AAPCS (R0=out_points, R1=max_count, R2=got_count);
+ * k_ra_ok == 0 (libs/ra_core/inc/ra_err.h). The GT911 point fields the firmware
+ * decodes are x at byte 0 and y at byte 2 of ra_touch_point_t. */
+typedef enum : uint32_t {
+  k_touch_ok        = 0U,  /**< k_ra_ok return value for ra_touch_read.   */
+  k_touch_pt_x_off  = 0U,  /**< ra_touch_point_t.x byte offset.           */
+  k_touch_pt_y_off  = 2U,  /**< ra_touch_point_t.y byte offset.           */
+  k_touch_one_point = 1U,  /**< *got_count written for a single contact.  */
+  k_touch_no_point  = 0U,  /**< *got_count written when no click pending. */
+  k_elf_sht_symtab  = 2U,  /**< SHT_SYMTAB section type.                   */
+  k_elf_sht_strtab  = 3U,  /**< SHT_STRTAB section type.                   */
+  k_elf_thumb_clear = ~1U, /**< Mask off the Thumb bit of st_value.       */
+} touch_stub_t;
+
 /* Renesas peripheral quirks that the generic sparse model cannot reproduce.
  *
  * MRMS frequency latches: the CGC driver (libs/ra_hal/src/ra_cgc.c,
@@ -97,9 +113,9 @@ typedef enum : uint64_t {
  * lcd_panic_halt. Model the hardware: on readback of these two registers,
  * return the stored value with the key byte masked off. */
 typedef enum : uint64_t {
-  k_mrms_mrcfreq    = 0x4013C004UL,   /**< MRICLK freq latch (write key 0x1E). */
-  k_mrms_mrefreq    = 0x4013C008UL,   /**< MRPCLK freq latch (write key 0xE1). */
-  k_mrms_freq_mask  = 0x00FFFFFFUL,   /**< Key byte (bits[31:24]) stripped.    */
+  k_mrms_mrcfreq   = 0x4013C004UL, /**< MRICLK freq latch (write key 0x1E). */
+  k_mrms_mrefreq   = 0x4013C008UL, /**< MRPCLK freq latch (write key 0xE1). */
+  k_mrms_freq_mask = 0x00FFFFFFUL, /**< Key byte (bits[31:24]) stripped.    */
 } mrms_quirk_t;
 
 /* GLCDC observation point. The lcd_color_cycle demo proves a live panel by
@@ -108,8 +124,8 @@ typedef enum : uint64_t {
  * distinct colours cycled are tracked separately as the tool's success witness.
  * GLCDC base 0x40342000 + 0x1014 = BG_BGC (HUM Ch 63). */
 typedef enum : uint64_t {
-  k_glcdc_bg_bgc     = 0x40343014UL, /**< GLCDC BG.BGC background colour.       */
-  k_bgc_track_max    = 32UL,         /**< Distinct BG_BGC values remembered.   */
+  k_glcdc_bg_bgc  = 0x40343014UL, /**< GLCDC BG.BGC background colour.       */
+  k_bgc_track_max = 32UL,         /**< Distinct BG_BGC values remembered.   */
 } glcdc_obs_t;
 
 /* Live-view (--view) and snapshot (--ppm) presentation settings. */
@@ -164,6 +180,16 @@ static uint32_t s_systick_fires;
 static uint32_t s_bgc_writes;
 static uint32_t s_bgc_distinct[k_bgc_track_max];
 static uint32_t s_bgc_distinct_n;
+
+/* Touch injection: a click that the next firmware ra_touch_read should return.
+ * The --view loop sets it from board_view_poll_click; --click sets it once.
+ * The UC_HOOK_CODE on ra_touch_read drains it (AAPCS: R0=out, R2=got). */
+static bool     s_touch_pending;   /**< A click is waiting to be reported.    */
+static uint16_t s_touch_x;         /**< Pending click X (panel pixels).       */
+static uint16_t s_touch_y;         /**< Pending click Y (panel pixels).       */
+static uint64_t s_touch_read_addr; /**< ra_touch_read entry addr (Thumb bit cleared). */
+static uint64_t s_touch_open_addr; /**< ra_touch_open entry addr (Thumb bit cleared). */
+static uint32_t s_touch_injected;  /**< Count of clicks handed to the firmware.*/
 
 /** @brief Record a BG_BGC write; remember the value if it is a new colour. */
 static void bgc_track(uint32_t value)
@@ -252,6 +278,164 @@ static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t v
   }
 }
 
+/* Armv8.1-M conditional-select family (CSEL/CSINC/CSINV/CSNEG). The RA8D2 is
+ * Cortex-M85 (Armv8.1-M) but Unicorn's nearest core is M33 (Armv8-M), which
+ * lacks these. GCC emits them for branchless index/modulo math -- notably in
+ * GUIX's gx_generic_event_post on the touch path -- so the invalid-instruction
+ * hook decodes and executes them and lets the real firmware path continue.
+ * Encoding (T1, two halfwords, little-endian): hw1 = 0xEA5n (n = Rn);
+ * hw2 bit15=1, bit14=0, op=bits[13:12], Rd=bits[11:8], cond=bits[7:4],
+ * Rm=bits[3:0]. Verified against the GNU assembler for armv8.1-m.main. */
+typedef enum : uint32_t {
+  k_cs_hw1_mask  = 0xFFF0U, /**< hw1 high 12 bits identify the group.      */
+  k_cs_hw1_match = 0xEA50U, /**< hw1[15:4] == 0xEA5 for this family.       */
+  k_cs_hw2_b15   = 0x8000U, /**< hw2 bit15 must be 1.                      */
+  k_cs_hw2_b14   = 0x4000U, /**< hw2 bit14 must be 0.                      */
+  k_cs_op_csel   = 0U,      /**< op == 00: Rd = c ? Rn : Rm.               */
+  k_cs_op_csinc  = 1U,      /**< op == 01: Rd = c ? Rn : Rm + 1.           */
+  k_cs_op_csinv  = 2U,      /**< op == 10: Rd = c ? Rn : ~Rm.              */
+  k_cs_op_csneg  = 3U,      /**< op == 11: Rd = c ? Rn : -Rm.              */
+  k_cs_insn_len  = 4U,      /**< Both halfwords: 4 bytes.                  */
+} cond_select_t;
+
+/* APSR condition-flag bit positions inside xPSR. */
+typedef enum : uint32_t {
+  k_apsr_n = 31U, /**< Negative. */
+  k_apsr_z = 30U, /**< Zero.     */
+  k_apsr_c = 29U, /**< Carry.    */
+  k_apsr_v = 28U, /**< Overflow. */
+} apsr_bit_t;
+
+/* ARM register index (0..15) -> Unicorn register id. PC(15)/SP(13)/LR(14) are
+ * never CSx destinations in practice but are mapped for completeness. */
+static const int k_arm_reg_id[16] = {
+  UC_ARM_REG_R0,
+  UC_ARM_REG_R1,
+  UC_ARM_REG_R2,
+  UC_ARM_REG_R3,
+  UC_ARM_REG_R4,
+  UC_ARM_REG_R5,
+  UC_ARM_REG_R6,
+  UC_ARM_REG_R7,
+  UC_ARM_REG_R8,
+  UC_ARM_REG_R9,
+  UC_ARM_REG_R10,
+  UC_ARM_REG_R11,
+  UC_ARM_REG_R12,
+  UC_ARM_REG_SP,
+  UC_ARM_REG_LR,
+  UC_ARM_REG_PC,
+};
+
+/**
+ * @brief Evaluate an ARM condition code against the APSR flags.
+ *
+ * @param[in] cond 4-bit ARM condition code (0..15).
+ * @param[in] xpsr Current xPSR (APSR flags live in the top nibble).
+ * @return true if the condition holds.
+ */
+static bool cond_holds(uint32_t cond, uint32_t xpsr)
+{
+  const bool n = ((xpsr >> (uint32_t)k_apsr_n) & 1U) != 0U;
+  const bool z = ((xpsr >> (uint32_t)k_apsr_z) & 1U) != 0U;
+  const bool c = ((xpsr >> (uint32_t)k_apsr_c) & 1U) != 0U;
+  const bool v = ((xpsr >> (uint32_t)k_apsr_v) & 1U) != 0U;
+  switch (cond & 0xFU) {
+    case 0x0U:
+      return z; /* EQ */
+    case 0x1U:
+      return !z; /* NE */
+    case 0x2U:
+      return c; /* CS/HS */
+    case 0x3U:
+      return !c; /* CC/LO */
+    case 0x4U:
+      return n; /* MI */
+    case 0x5U:
+      return !n; /* PL */
+    case 0x6U:
+      return v; /* VS */
+    case 0x7U:
+      return !v; /* VC */
+    case 0x8U:
+      return c && !z; /* HI */
+    case 0x9U:
+      return !c || z; /* LS */
+    case 0xAU:
+      return n == v; /* GE */
+    case 0xBU:
+      return n != v; /* LT */
+    case 0xCU:
+      return !z && (n == v); /* GT */
+    case 0xDU:
+      return z || (n != v); /* LE */
+    default:
+      return true; /* AL (0xE) / 0xF */
+  }
+}
+
+/**
+ * @brief Emulate one Armv8.1-M conditional-select instruction if present at PC.
+ *
+ * @details
+ * Decodes the CSEL/CSINC/CSINV/CSNEG encoding (see ::cond_select_t), evaluates
+ * the condition against the APSR, computes Rd, writes it back, and advances PC
+ * past the 4-byte instruction. This lets Unicorn's M33 core execute the M85
+ * firmware's branchless index math instead of trapping on an opcode it does not
+ * implement. Anything that is not this family is left untouched.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapped instruction.
+ * @param[in]     code The 4 instruction bytes already read at @p pc.
+ * @return true if a conditional-select was recognised, executed, and PC advanced.
+ */
+static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
+{
+  const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << 8));
+  const uint16_t hw2 = (uint16_t)(code[2] | ((uint16_t)code[3] << 8));
+  if (((hw1 & (uint16_t)k_cs_hw1_mask) != (uint16_t)k_cs_hw1_match) ||
+      ((hw2 & (uint16_t)k_cs_hw2_b15) == 0U) || ((hw2 & (uint16_t)k_cs_hw2_b14) != 0U)) {
+    return false;
+  }
+  const uint32_t rn   = (uint32_t)(hw1 & 0x000FU);
+  const uint32_t op   = (uint32_t)((hw2 >> 12) & 0x3U);
+  const uint32_t rd   = (uint32_t)((hw2 >> 8) & 0xFU);
+  const uint32_t cond = (uint32_t)((hw2 >> 4) & 0xFU);
+  const uint32_t rm   = (uint32_t)(hw2 & 0x000FU);
+
+  uint32_t xpsr = 0U;
+  uint32_t vn   = 0U;
+  uint32_t vm   = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_XPSR, &xpsr);
+  (void)uc_reg_read(uc, k_arm_reg_id[rn], &vn);
+  (void)uc_reg_read(uc, k_arm_reg_id[rm], &vm);
+
+  uint32_t result;
+  if (cond_holds(cond, xpsr)) {
+    result = vn;
+  } else {
+    switch (op) {
+      case (uint32_t)k_cs_op_csinc:
+        result = vm + 1U;
+        break;
+      case (uint32_t)k_cs_op_csinv:
+        result = ~vm;
+        break;
+      case (uint32_t)k_cs_op_csneg:
+        result = (uint32_t)(-(int32_t)vm);
+        break;
+      case (uint32_t)k_cs_op_csel:
+      default:
+        result = vm;
+        break;
+    }
+  }
+  (void)uc_reg_write(uc, k_arm_reg_id[rd], &result);
+  uint32_t next = pc + (uint32_t)k_cs_insn_len;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  return true;
+}
+
 /** @brief Disassemble + report an instruction the core could not decode. */
 static bool on_invalid_insn(uc_engine* uc, void* user)
 {
@@ -260,6 +444,20 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
   (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
   uint8_t code[4] = {};
   (void)uc_mem_read(uc, pc, code, sizeof(code));
+
+  /* The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M); the nearest core
+   * Unicorn offers is M33 (Armv8-M), which lacks the conditional-select family.
+   * GCC emits those for branchless index math on the GUIX touch path, so
+   * execute them here. emulate_cond_select writes Rd and advances PC past the
+   * 4-byte instruction; then uc_emu_stop so the chunked run loop relaunches from
+   * the new PC -- editing PC and continuing in-place corrupts Unicorn's block /
+   * Thumb state (it then misdecodes the next valid instruction), so the
+   * stop-then-relaunch contract the SysTick / touch stubs use is required here. */
+  if (emulate_cond_select(uc, pc, code)) {
+    (void)uc_emu_stop(uc);
+    return true; /* handled -- run loop resumes at the advanced PC */
+  }
+
   (void)fprintf(stderr,
                 "  INVALID INSN @ 0x%08X: bytes %02X %02X %02X %02X\n",
                 pc,
@@ -364,6 +562,104 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
   return (loaded > 0) ? 0 : -1;
 }
 
+/* ELF32 header / section-header / symbol field offsets (little-endian). */
+typedef enum : uint32_t {
+  k_ehdr_shoff     = 32U, /**< e_shoff: section-header table offset.    */
+  k_ehdr_shentsize = 46U, /**< e_shentsize: bytes per section header.   */
+  k_ehdr_shnum     = 48U, /**< e_shnum: section-header count.           */
+  k_shdr_type      = 4U,  /**< sh_type.                                 */
+  k_shdr_offset    = 16U, /**< sh_offset: section file offset.          */
+  k_shdr_size      = 20U, /**< sh_size: section byte size.              */
+  k_shdr_link      = 24U, /**< sh_link: associated strtab section index.*/
+  k_shdr_entsize   = 36U, /**< sh_entsize: bytes per symbol entry.      */
+  k_sym_name       = 0U,  /**< st_name: index into the strtab.          */
+  k_sym_value      = 4U,  /**< st_value: symbol address (Thumb bit set).*/
+  k_sym_entsize    = 16U, /**< sizeof(Elf32_Sym).                       */
+} elf_field_t;
+
+/** @brief Read a 32-bit little-endian word from a raw ELF buffer at @p off. */
+static uint32_t elf_rd32(const uint8_t* elf, uint32_t off)
+{
+  uint32_t v = 0U;
+  (void)memcpy(&v, elf + off, sizeof(v));
+  return v;
+}
+
+/** @brief Read a 16-bit little-endian half from a raw ELF buffer at @p off. */
+static uint16_t elf_rd16(const uint8_t* elf, uint32_t off)
+{
+  return (uint16_t)(elf[off] | ((uint16_t)elf[off + 1U] << 8));
+}
+
+/**
+ * @brief Resolve a function symbol's address from the ELF .symtab.
+ *
+ * @details
+ * Bounded SHT_SYMTAB walk: scan the section-header table for the symbol table,
+ * take its linked string table (sh_link), then compare each entry's st_name
+ * (a strtab offset) against @p name. On a match, return st_value with the Thumb
+ * bit masked off so it can be used as a Unicorn code address. Every file offset
+ * is checked against @p len before it is dereferenced, so a truncated or hostile
+ * ELF cannot read out of bounds.
+ *
+ * @param[in]  elf  Raw ELF image.
+ * @param[in]  len  Image length in bytes.
+ * @param[in]  name Symbol name to find (NUL-terminated).
+ * @param[out] out  Resolved address (Thumb bit cleared) on success.
+ * @return true if the symbol was found.
+ */
+static bool elf_find_symbol(const uint8_t* elf, long len, const char* name, uint64_t* out)
+{
+  if ((elf == nullptr) || (len < 64) || (name == nullptr) || (out == nullptr)) {
+    return false;
+  }
+  const uint32_t ulen      = (uint32_t)len;
+  const uint32_t shoff     = elf_rd32(elf, (uint32_t)k_ehdr_shoff);
+  const uint16_t shentsize = elf_rd16(elf, (uint32_t)k_ehdr_shentsize);
+  const uint16_t shnum     = elf_rd16(elf, (uint32_t)k_ehdr_shnum);
+  if ((shoff == 0U) || (shentsize < 40U) ||
+      (shoff + ((uint32_t)shnum * (uint32_t)shentsize) > ulen)) {
+    return false;
+  }
+  const size_t name_len = strlen(name);
+  for (uint16_t i = 0U; i < shnum; i++) {
+    const uint32_t sh = shoff + ((uint32_t)i * (uint32_t)shentsize);
+    if (elf_rd32(elf, sh + (uint32_t)k_shdr_type) != (uint32_t)k_elf_sht_symtab) {
+      continue;
+    }
+    const uint32_t sym_off = elf_rd32(elf, sh + (uint32_t)k_shdr_offset);
+    const uint32_t sym_sz  = elf_rd32(elf, sh + (uint32_t)k_shdr_size);
+    const uint32_t entsz   = elf_rd32(elf, sh + (uint32_t)k_shdr_entsize);
+    const uint32_t strndx  = elf_rd32(elf, sh + (uint32_t)k_shdr_link);
+    if ((entsz < (uint32_t)k_sym_entsize) || (sym_off + sym_sz > ulen) || (strndx >= shnum)) {
+      continue;
+    }
+    /* The linked string table holds the symbol names. */
+    const uint32_t str_sh  = shoff + (strndx * (uint32_t)shentsize);
+    const uint32_t str_off = elf_rd32(elf, str_sh + (uint32_t)k_shdr_offset);
+    const uint32_t str_sz  = elf_rd32(elf, str_sh + (uint32_t)k_shdr_size);
+    if (str_off + str_sz > ulen) {
+      continue;
+    }
+    for (uint32_t s = 0U; (s + entsz) <= sym_sz; s += entsz) {
+      const uint32_t st_name = elf_rd32(elf, sym_off + s + (uint32_t)k_sym_name);
+      if ((st_name == 0U) || (st_name >= str_sz)) {
+        continue;
+      }
+      /* Bounded compare: the candidate name must fit before the strtab end. */
+      if (((size_t)st_name + name_len + 1U) > (size_t)str_sz) {
+        continue;
+      }
+      if (memcmp(elf + str_off + st_name, name, name_len + 1U) == 0) {
+        const uint32_t st_value = elf_rd32(elf, sym_off + s + (uint32_t)k_sym_value);
+        *out                    = (uint64_t)(st_value & (uint32_t)k_elf_thumb_clear);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** @brief Read a 32-bit little-endian word from emulated memory. */
 static uint32_t rd32(uc_engine* uc, uint64_t addr)
 {
@@ -374,10 +670,23 @@ static uint32_t rd32(uc_engine* uc, uint64_t addr)
 
 /* Integer context saved/restored around a cooperative SysTick handler call. */
 static const int k_ctx_regs[] = {
-  UC_ARM_REG_R0,  UC_ARM_REG_R1, UC_ARM_REG_R2,  UC_ARM_REG_R3, UC_ARM_REG_R4,
-  UC_ARM_REG_R5,  UC_ARM_REG_R6, UC_ARM_REG_R7,  UC_ARM_REG_R8, UC_ARM_REG_R9,
-  UC_ARM_REG_R10, UC_ARM_REG_R11, UC_ARM_REG_R12, UC_ARM_REG_SP, UC_ARM_REG_LR,
-  UC_ARM_REG_PC,  UC_ARM_REG_XPSR,
+  UC_ARM_REG_R0,
+  UC_ARM_REG_R1,
+  UC_ARM_REG_R2,
+  UC_ARM_REG_R3,
+  UC_ARM_REG_R4,
+  UC_ARM_REG_R5,
+  UC_ARM_REG_R6,
+  UC_ARM_REG_R7,
+  UC_ARM_REG_R8,
+  UC_ARM_REG_R9,
+  UC_ARM_REG_R10,
+  UC_ARM_REG_R11,
+  UC_ARM_REG_R12,
+  UC_ARM_REG_SP,
+  UC_ARM_REG_LR,
+  UC_ARM_REG_PC,
+  UC_ARM_REG_XPSR,
 };
 
 /**
@@ -428,6 +737,94 @@ static void systick_fire(uc_engine* uc, uint32_t vtor_base)
   s_systick_fires++;
 }
 
+/**
+ * @brief UC_HOOK_CODE stub for the firmware's ra_touch_read.
+ *
+ * @details
+ * Installed at ra_touch_read's entry so the REAL firmware touch->GUIX path runs
+ * with board_sim supplying the coordinates -- no GT911/I2C is modelled. AAPCS:
+ * R0 = out_points, R1 = max_count, R2 = got_count. If a click is pending, the
+ * x/y are written into the first point (x at +0, y at +2 of ra_touch_point_t),
+ * 1 is written to *got_count, and R0 is set to k_ra_ok; otherwise *got_count is
+ * 0 and R0 is k_ra_ok (an empty-but-successful frame). The stub then returns:
+ * PC = LR & ~1 and uc_emu_stop, so the chunked run loop relaunches from the
+ * return address. Rewriting PC mid-block and continuing would corrupt Unicorn's
+ * block / Thumb state; stop-then-relaunch (as the run loop already does) is the
+ * safe way to "return" from an injected stub.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     address   Hooked address (ra_touch_read entry); unused.
+ * @param[in]     size      Instruction size; unused.
+ * @param[in]     user_data Hook user pointer; unused.
+ */
+static void touch_read_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user_data)
+{
+  (void)address;
+  (void)size;
+  (void)user_data;
+
+  uint32_t r0 = 0U; /* out_points */
+  uint32_t r2 = 0U; /* got_count  */
+  uint32_t lr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R0, &r0);
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &r2);
+  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
+
+  if (s_touch_pending && (r0 != 0U) && (r2 != 0U)) {
+    const uint16_t x = s_touch_x;
+    const uint16_t y = s_touch_y;
+    (void)uc_mem_write(uc, (uint64_t)r0 + (uint64_t)k_touch_pt_x_off, &x, sizeof(x));
+    (void)uc_mem_write(uc, (uint64_t)r0 + (uint64_t)k_touch_pt_y_off, &y, sizeof(y));
+    const uint8_t got = (uint8_t)k_touch_one_point;
+    (void)uc_mem_write(uc, (uint64_t)r2, &got, sizeof(got));
+    s_touch_pending = false;
+    s_touch_injected++;
+  } else if (r2 != 0U) {
+    const uint8_t got = (uint8_t)k_touch_no_point;
+    (void)uc_mem_write(uc, (uint64_t)r2, &got, sizeof(got));
+  }
+
+  uint32_t ret = (uint32_t)k_touch_ok; /* k_ra_ok */
+  (void)uc_reg_write(uc, UC_ARM_REG_R0, &ret);
+
+  /* "Return" from the stub: jump to LR (Thumb bit cleared) and stop so the run
+   * loop relaunches there with a clean block/Thumb state. */
+  uint32_t pc = lr & (uint32_t)k_elf_thumb_clear;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
+  (void)uc_emu_stop(uc);
+}
+
+/**
+ * @brief UC_HOOK_CODE stub for the firmware's ra_touch_open.
+ *
+ * @details
+ * Forces ra_touch_open to return k_ra_ok without modelling the GT911 product-id
+ * probe over I2C (which the sparse MMIO model cannot answer). This makes the
+ * emulator reproduce real hardware faithfully: on the EK-RA8D2 ra_touch_open
+ * succeeds, so the app's product path -- open succeeds, then poll ra_touch_read
+ * every frame -- runs unchanged here, and the read stub (touch_read_hook)
+ * supplies the coordinates. Returns by PC = LR & ~1 + uc_emu_stop, the same
+ * stop-then-relaunch contract the run loop already relies on.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     address   Hooked address (ra_touch_open entry); unused.
+ * @param[in]     size      Instruction size; unused.
+ * @param[in]     user_data Hook user pointer; unused.
+ */
+static void touch_open_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user_data)
+{
+  (void)address;
+  (void)size;
+  (void)user_data;
+  uint32_t lr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
+  uint32_t ret = (uint32_t)k_touch_ok; /* k_ra_ok */
+  (void)uc_reg_write(uc, UC_ARM_REG_R0, &ret);
+  uint32_t pc = lr & (uint32_t)k_elf_thumb_clear;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
+  (void)uc_emu_stop(uc);
+}
+
 /** @brief Pack a 0x00RRGGBB colour into RGB565. */
 static uint16_t rgb888_to_565(uint32_t rgb)
 {
@@ -471,16 +868,14 @@ static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t
 
   const uint32_t saddr = rd32(uc, (uint64_t)k_glcdc_gr1_saddr);
   const uint32_t fmt   = (rd32(uc, (uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
-                       (uint32_t)k_glcdc_fmt_mask;
+                         (uint32_t)k_glcdc_fmt_mask;
   if (!addr_is_ram(saddr) || (fmt != (uint32_t)k_glcdc_fmt_rgb565)) {
     return; /* no graphics layer -- background-only frame */
   }
-  const uint32_t stride =
-    (rd32(uc, (uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
-    (uint32_t)k_glcdc_stride_mask;
-  const uint32_t lnnum =
-    (rd32(uc, (uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
-    (uint32_t)k_glcdc_lnnum_mask;
+  const uint32_t stride = (rd32(uc, (uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
+                          (uint32_t)k_glcdc_stride_mask;
+  const uint32_t lnnum  = (rd32(uc, (uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
+                          (uint32_t)k_glcdc_lnnum_mask;
   if (stride < 2U) {
     return;
   }
@@ -580,9 +975,9 @@ static bool load_panel(const char* path, board_panel_t* out)
     if (eq == nullptr) {
       continue;
     }
-    *eq        = '\0';
-    char* key  = p;
-    char* val  = eq + 1;
+    *eq       = '\0';
+    char* key = p;
+    char* val = eq + 1;
     while ((*val == ' ') || (*val == '\t')) {
       val++;
     }
@@ -620,11 +1015,12 @@ int main(int argc, char** argv)
   if (argc < 2) {
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
-                  " [--panel <file.toml>] [--size WxH]\n"
+                  " [--panel <file.toml>] [--size WxH] [--click X Y]\n"
                   "  --view          open a macOS window and show the emulated panel live\n"
                   "  --ppm <file>    write the final frame to a binary PPM (headless ok)\n"
                   "  --panel <file>  display descriptor (name/width/height) to size the window\n"
-                  "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n");
+                  "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n"
+                  "  --click X Y     headless: inject one touch at X,Y once the UI is up\n");
     return 2;
   }
   const char* elf_path   = argv[1];
@@ -632,6 +1028,9 @@ int main(int argc, char** argv)
   const char* ppm_path   = nullptr;
   const char* panel_path = nullptr;
   bool        size_set   = false;
+  bool        want_click = false;
+  int         click_x    = -1;
+  int         click_y    = -1;
   uint16_t    view_w     = (uint16_t)k_view_default_w;
   uint16_t    view_h     = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
@@ -643,6 +1042,11 @@ int main(int argc, char** argv)
     } else if ((strncmp(argv[i], "--panel", sizeof("--panel")) == 0) && ((i + 1) < argc)) {
       panel_path = argv[i + 1];
       i++;
+    } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
+      click_x    = (int)strtol(argv[i + 1], nullptr, 10);
+      click_y    = (int)strtol(argv[i + 2], nullptr, 10);
+      want_click = (click_x >= 0) && (click_y >= 0);
+      i += 2;
     } else if ((strncmp(argv[i], "--size", sizeof("--size")) == 0) && ((i + 1) < argc)) {
       char*      end = nullptr;
       const long w   = strtol(argv[i + 1], &end, 10);
@@ -708,6 +1112,22 @@ int main(int argc, char** argv)
     free(elf);
     return 1;
   }
+  /* Resolve ra_touch_open / ra_touch_read so UC_HOOK_CODE stubs can short-circuit
+   * them and feed the firmware touch coordinates (see touch_open_hook /
+   * touch_read_hook). Done before freeing the ELF image since the symbol table
+   * lives in the raw file, not in mapped RAM. ra_touch_open is forced to succeed
+   * so the app's "open then poll" product path runs exactly as on hardware. */
+  const bool have_touch_open = elf_find_symbol(elf, elf_len, "ra_touch_open", &s_touch_open_addr);
+  const bool have_touch_read = elf_find_symbol(elf, elf_len, "ra_touch_read", &s_touch_read_addr);
+  if (have_touch_read) {
+    (void)fprintf(stderr,
+                  "board_sim: ra_touch_open @ 0x%08llX  ra_touch_read @ 0x%08llX"
+                  " (touch injection armed)\n",
+                  (unsigned long long)s_touch_open_addr,
+                  (unsigned long long)s_touch_read_addr);
+  } else {
+    (void)fprintf(stderr, "board_sim: ra_touch_read not found in .symtab -- no touch injection\n");
+  }
   free(elf);
 
   /* Cortex-M reset: SP = vectors[0], PC = vectors[1] (Thumb, clear bit0). */
@@ -735,6 +1155,31 @@ int main(int argc, char** argv)
   (void)uc_hook_add(uc, &h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
   (void)uc_hook_add(uc, &h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
 
+  /* Short-circuit ra_touch_open (force success) and ra_touch_read (supply the
+   * click) at their entries so board_sim drives the real firmware touch path
+   * without modelling the GT911/I2C. The begin==end address range restricts each
+   * UC_HOOK_CODE to that one instruction. */
+  uc_hook h_touch_open;
+  uc_hook h_touch_read;
+  if (have_touch_open) {
+    (void)uc_hook_add(uc,
+                      &h_touch_open,
+                      UC_HOOK_CODE,
+                      (void*)touch_open_hook,
+                      nullptr,
+                      s_touch_open_addr,
+                      s_touch_open_addr);
+  }
+  if (have_touch_read) {
+    (void)uc_hook_add(uc,
+                      &h_touch_read,
+                      UC_HOOK_CODE,
+                      (void*)touch_read_hook,
+                      nullptr,
+                      s_touch_read_addr,
+                      s_touch_read_addr);
+  }
+
   /* Optional live window; the frame buffer also backs the --ppm snapshot. */
   board_view_t* view  = nullptr;
   uint16_t*     frame = nullptr;
@@ -744,22 +1189,41 @@ int main(int argc, char** argv)
       (void)fprintf(stderr, "board_sim: could not open window; continuing headless\n");
     }
   }
-  if ((view != nullptr) || (ppm_path != nullptr)) {
+  if ((view != nullptr) || (ppm_path != nullptr) || want_click) {
     frame = (uint16_t*)malloc((size_t)view_w * (size_t)view_h * sizeof(uint16_t));
   }
+
+  /* Headless --click: arm the pending click up front. ra_touch_read is only
+   * called from the render loop (after the UI is fully built), so the hook
+   * consumes it on the first loop iteration -- exactly the tab the firmware's
+   * GUIX hit-test resolves it to. After it lands, a few more chunks let
+   * gx_host_pump dispatch the pen events and gx_system_canvas_refresh repaint. */
+  if (want_click && have_touch_read) {
+    s_touch_x       = (uint16_t)click_x;
+    s_touch_y       = (uint16_t)click_y;
+    s_touch_pending = true;
+    (void)fprintf(stderr, "board_sim: --click armed at (%d,%d)\n", click_x, click_y);
+  }
+  enum : uint32_t {
+    /* ra_delay_ms(16) in the render loop spins on SysTick, which advances one
+     * tick per chunk, so ~16 chunks == one loop iteration. Give the injected
+     * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
+    k_click_settle_chunks = 512U, /**< Extra chunks after the click lands.    */
+  };
 
   /* Chunked run: emulate a block, tick SysTick, repeat. Headless runs stop on a
    * chunk budget + wall-clock guard; in --view the loop runs until the window
    * is closed, presenting the live GLCDC output every k_view_present_every. */
-  const uint32_t vtor_base  = (uint32_t)k_regions[1].base; /* MRAM = vectors */
+  const uint32_t vtor_base = (uint32_t)k_regions[1].base; /* MRAM = vectors */
   const uint32_t max_chunks =
     (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
-  const clock_t t0        = clock();
-  uc_err        err       = UC_ERR_OK;
-  uint32_t      run_pc    = pc;
-  uint32_t      chunks    = 0U;
-  bool          timed_out = false;
-  bool          closed    = false;
+  const clock_t t0          = clock();
+  uc_err        err         = UC_ERR_OK;
+  uint32_t      run_pc      = pc;
+  uint32_t      chunks      = 0U;
+  bool          timed_out   = false;
+  bool          closed      = false;
+  uint32_t      settle_left = 0U; /* >0 once the click landed: chunks to drain. */
   for (; chunks < max_chunks; chunks++) {
     err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
     (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
@@ -768,12 +1232,33 @@ int main(int argc, char** argv)
     }
     systick_fire(uc, vtor_base);
     if (view != nullptr) {
+      /* Live window: each left mouse-down becomes the next ra_touch_read. */
+      uint16_t cx = 0U;
+      uint16_t cy = 0U;
+      if (have_touch_read && board_view_poll_click(view, &cx, &cy)) {
+        s_touch_x       = cx;
+        s_touch_y       = cy;
+        s_touch_pending = true;
+      }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
         build_frame(uc, frame, view_w, view_h);
         board_view_present(view, frame, view_w, view_h);
       }
       if (board_view_pump(view)) {
         closed = true;
+        break;
+      }
+    } else if (want_click) {
+      /* Headless --click: run a bounded tail after the injected tap lands, then
+       * stop deterministically so the dumped frame shows the switched tab. */
+      if (s_touch_injected > 0U) {
+        settle_left = (settle_left == 0U) ? (uint32_t)k_click_settle_chunks : (settle_left - 1U);
+        if (settle_left == 1U) {
+          break;
+        }
+      }
+      if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= (double)k_run_wall_s) {
+        timed_out = true;
         break;
       }
     } else if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= (double)k_run_wall_s) {
@@ -788,6 +1273,7 @@ int main(int argc, char** argv)
                 timed_out ? " (wall-clock budget reached)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
   (void)fprintf(stderr, "  chunks run    : %u   SysTick ticks: %u\n", chunks, s_systick_fires);
+  (void)fprintf(stderr, "  touch clicks  : %u injected via ra_touch_read\n", s_touch_injected);
   (void)fprintf(stderr,
                 "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
                 s_mmio_reads,
@@ -807,11 +1293,19 @@ int main(int argc, char** argv)
   const uint32_t shown     = truncated ? (uint32_t)k_mmio_print_max : s_mmio_n;
   for (uint32_t i = 0U; i < shown; i++) {
     if (s_mmio_written[i]) {
-      (void)fprintf(stderr, "    0x%08llX %10u %10u   0x%08X\n", (unsigned long long)s_mmio_addr[i],
-                    s_mmio_rcount[i], s_mmio_wcount[i], s_mmio_val[i]);
+      (void)fprintf(stderr,
+                    "    0x%08llX %10u %10u   0x%08X\n",
+                    (unsigned long long)s_mmio_addr[i],
+                    s_mmio_rcount[i],
+                    s_mmio_wcount[i],
+                    s_mmio_val[i]);
     } else {
-      (void)fprintf(stderr, "    0x%08llX %10u %10u %12s\n", (unsigned long long)s_mmio_addr[i],
-                    s_mmio_rcount[i], s_mmio_wcount[i], "-");
+      (void)fprintf(stderr,
+                    "    0x%08llX %10u %10u %12s\n",
+                    (unsigned long long)s_mmio_addr[i],
+                    s_mmio_rcount[i],
+                    s_mmio_wcount[i],
+                    "-");
     }
   }
   if (truncated) {
