@@ -825,6 +825,7 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
 #endif
 }
 
+#ifndef RA_SIMULATOR_MODE /* on-target program path only (the #else stages no CDBUF) */
 /**
  * @brief Stage the page-program payload into CDBUF[CDD0] / CDBUF[CDD1].
  *
@@ -856,7 +857,6 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE /* only the on-target program path (below) stages CDBUF */
 static void
 internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, uint32_t len)
 {
