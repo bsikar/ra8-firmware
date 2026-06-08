@@ -148,6 +148,24 @@ void board_usb_tick(uc_engine* uc);
 bool board_usb_configured(void);
 
 /**
+ * @brief One-line, human-readable USB device state for the board view.
+ *
+ * @details Returns a short static string describing the live enumeration state
+ * of the modelled USBFS device -- the INTSTS0.DVSQ stage name (@c "Powered" /
+ * @c "Default" / @c "Address" / @c "Configured" / @c "Suspended"), upgraded to
+ * @c "CONFIGURED (CDC-ACM active)" once SET_CONFIGURATION has completed and
+ * USBX's CDC-ACM activate callback has fired. board_sim's graphical board view
+ * shows this verbatim on its "USB:" status line so a non-display USB example
+ * (e.g. threadx_usbx_cdc_demo) is observable as it enumerates. The returned
+ * pointer is to static storage and must not be freed; it is valid until the
+ * next call.
+ *
+ * @return NUL-terminated state string (never NULL).
+ * @since 0.1.0
+ */
+const char* board_usb_state_string(void);
+
+/**
  * @brief Queue host->device bulk bytes for the CDC data OUT pipe (echo test).
  *
  * @details Used by the secondary CDC-echo check: once the device is configured

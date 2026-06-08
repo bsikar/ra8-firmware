@@ -28,8 +28,10 @@ set(BREW /opt/homebrew)
 
 # board_view.m is the optional live macOS window (--view); board_periph.c is the
 # register-accurate peripheral-model framework (GPIO/timers/ICU); board_usb.c is
-# the USBFS controller model + virtual host (chapter-9 enumeration); rest is C.
-add_executable(board_sim main.c board_periph.c board_usb.c board_view.m)
+# the USBFS controller model + virtual host (chapter-9 enumeration);
+# board_overlay.c composes the panel + status-sidebar board view (LEDs / USB /
+# UART / IRQ / touch) into one RGB565 buffer for both --view and --ppm; rest is C.
+add_executable(board_sim main.c board_periph.c board_usb.c board_overlay.c board_view.m)
 set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 # The USB model includes the firmware's register/ELC headers for the exact
 # offsets + ELC event numbers it must mirror (ra8d2_usb_regs.h, ra8d2_elc_regs.h).

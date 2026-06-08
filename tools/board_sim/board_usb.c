@@ -892,6 +892,14 @@ static const char* usb_dvsq_name(uint16_t dvsq)
   }
 }
 
+const char* board_usb_state_string(void)
+{
+  if (s_configured) {
+    return "CONFIGURED (CDC-ACM active)";
+  }
+  return usb_dvsq_name(s_usb.dvsq);
+}
+
 void board_usb_report(void)
 {
   if ((s_usb_irqs == 0U) && (s_log_n == 0U)) {

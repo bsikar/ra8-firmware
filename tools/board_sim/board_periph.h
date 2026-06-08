@@ -152,6 +152,89 @@ void board_periph_touch_inject(uint16_t x, uint16_t y);
 uint32_t board_periph_touch_reported(void);
 
 /**
+ * @brief Read the last driven output level of a board LED.
+ *
+ * @details
+ * Read-only accessor over the GPIO/PORT model's per-LED latch shadow, so the
+ * graphical board view can light each indicator without reaching into module
+ * internals. The level is the active-high pin drive recorded by the PORT write
+ * path: 1 once the firmware drives the LED's pin high, 0 once it drives it low.
+ *
+ * @param[in] led Board LED identity (::board_led_id_t).
+ * @return 1 if the LED's pin is currently driven high, else 0 (0 for an
+ *         out-of-range @p led).
+ * @since 0.1.0
+ */
+uint32_t board_periph_led_level(board_led_id_t led);
+
+/**
+ * @brief The on-colour of a board LED as a packed RGB565 value.
+ *
+ * @details
+ * Returns the real EK-RA8D2 indicator colour the LED emits when driven high --
+ * LED1 blue (P600), LED2 green (P303), LED3 red (PA07) per the BSP -- encoded
+ * as RGB565 so the board view can fill the indicator in the genuine colour
+ * (and the @c --ppm composite, also RGB565, captures it for verification). The
+ * value is the lit colour regardless of the live level; pair it with
+ * ::board_periph_led_level to decide lit vs dark.
+ *
+ * @param[in] led Board LED identity (::board_led_id_t).
+ * @return RGB565 on-colour (0 for an out-of-range @p led).
+ * @since 0.1.0
+ */
+uint16_t board_periph_led_color_rgb565(board_led_id_t led);
+
+/**
+ * @brief The most recent complete line the firmware transmitted over any SCI.
+ *
+ * @details
+ * The SCI_B TX path captures each transmitted byte into a line buffer that is
+ * latched on newline (CR is dropped), so the board view can show the last
+ * console line a non-display example printed -- e.g. @c "hello, ra8d2!" from
+ * uart_hello -- on its "UART:" status line. Returns a pointer to static
+ * storage holding the last completed line (empty string before the first
+ * newline); the pointer must not be freed and is valid until the next TX byte.
+ *
+ * @return NUL-terminated last UART line (never NULL; empty until one is sent).
+ * @since 0.1.0
+ */
+const char* board_periph_uart_last_line(void);
+
+/**
+ * @brief Number of times a given NVIC line was taken in this run.
+ *
+ * @param[in] irq NVIC line number (0-based).
+ * @return Times the engine vectored in @p irq (0 if never, or out of range).
+ * @since 0.1.0
+ */
+uint32_t board_periph_irq_count(uint32_t irq);
+
+/**
+ * @brief Total NVIC interrupts the ICU has delivered in this run.
+ *
+ * @return Sum of every taken IRQ (the board view's "IRQ" activity total).
+ * @since 0.1.0
+ */
+uint32_t board_periph_irq_total(void);
+
+/**
+ * @brief Report the coordinates of the most recently drained touch contact.
+ *
+ * @details
+ * Read-only accessor over the GT911 model's last-reported point, so the board
+ * view can show @c "touch x,y" for the last tap the firmware drained through
+ * the real ra_touch -> I3C -> GT911 path. Writes nothing when no contact has
+ * been reported yet.
+ *
+ * @param[out] x Receives the last contact's X coordinate (unchanged if none).
+ * @param[out] y Receives the last contact's Y coordinate (unchanged if none).
+ * @return true if at least one contact has been drained (and @p x / @p y were
+ *         written), false otherwise.
+ * @since 0.1.0
+ */
+bool board_periph_touch_last(uint16_t* x, uint16_t* y);
+
+/**
  * @brief The SCI channel the EK-RA8D2 console (J-Link OB VCOM) uses.
  *
  * @details

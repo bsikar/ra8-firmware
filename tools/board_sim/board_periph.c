@@ -316,6 +316,7 @@ typedef enum : uint32_t {
   k_sci_console_ch   = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).    */
   k_sci_rx_queue_len = 512U,  /**< Per-channel host->firmware RX capacity. */
   k_sci_data_mask    = 0xFFU, /**< RDR/TDR data field is 8 bits.          */
+  k_uart_line_cap    = 256U,  /**< Captured last-TX-line buffer capacity.  */
 } sci_tune_t;
 
 /* =============================================================================
@@ -473,21 +474,36 @@ static void usb_irq_raiser(uc_engine* uc, uint16_t event)
 /** @brief Host sink for transmitted bytes (main.c installs the stdout sink). */
 static void (*s_sci_tx_sink)(uint8_t channel, uint8_t byte);
 
-/** @brief Board LED -> (port index, pin index), mirrored from the BSP. */
+/** @brief RGB565 lit-colour codes for the three board LEDs. */
+typedef enum : uint16_t {
+  k_led_rgb565_blue  = 0x001FU, /**< LED1 blue  (P600) when driven high. */
+  k_led_rgb565_green = 0x07E0U, /**< LED2 green (P303) when driven high. */
+  k_led_rgb565_red   = 0xF800U, /**< LED3 red   (PA07) when driven high. */
+} led_color_t;
+
+/** @brief Board LED -> (port index, pin index, lit colour), from the BSP. */
 typedef struct {
   uint8_t     port;
   uint8_t     pin;
+  uint16_t    color; /**< RGB565 colour the LED emits when driven high. */
   const char* name;
 } led_map_t;
 
 static const led_map_t k_led_map[k_board_led_count] = {
-  {6U, 0U, "LED1 BLUE  P600"},
-  {3U, 3U, "LED2 GREEN P303"},
-  {10U, 7U, "LED3 RED   PA07"},
+  {6U, 0U, (uint16_t)k_led_rgb565_blue, "LED1 BLUE  P600"},
+  {3U, 3U, (uint16_t)k_led_rgb565_green, "LED2 GREEN P303"},
+  {10U, 7U, (uint16_t)k_led_rgb565_red, "LED3 RED   PA07"},
 };
 
 static uint32_t s_led_level[k_board_led_count];       /**< Last driven level. */
 static uint32_t s_led_transitions[k_board_led_count]; /**< 0->1 / 1->0 count. */
+
+/* Last complete console line, latched on newline so the board view can show
+ * what a non-display example printed (e.g. "hello, ra8d2!"). s_uart_pend
+ * accumulates the in-flight line; s_uart_last holds the last finished one. */
+static char     s_uart_last[k_uart_line_cap]; /**< Last completed TX line.    */
+static char     s_uart_pend[k_uart_line_cap]; /**< Line being accumulated.    */
+static uint32_t s_uart_pend_len;              /**< Chars buffered in s_uart_pend. */
 
 /* ICU IELSR event-link table. The ICU registers live inside the callback-MMIO
  * peripheral window (0x40006xxx), so the model owns this state itself rather
@@ -575,6 +591,9 @@ static void board_periph_reset_counters(void)
     s_led_level[i]       = 0U;
     s_led_transitions[i] = 0U;
   }
+  s_uart_last[0]  = '\0';
+  s_uart_pend[0]  = '\0';
+  s_uart_pend_len = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_icu_ielsr_cnt; i++) {
     s_ielsr[i] = 0U;
   }
@@ -1014,6 +1033,34 @@ static uint64_t sci_read(uint32_t ch, uint64_t off)
   return 0U; /* CFCLR / FFCLR read as 0; other regs unmodelled -> 0 */
 }
 
+/**
+ * @brief Accumulate one transmitted byte into the captured last-line buffer.
+ *
+ * @details
+ * Mirrors the host console formatter: a newline latches the pending line into
+ * ::s_uart_last (so the board view can show the last complete console line),
+ * CR is dropped, and any other byte is appended until the buffer is full. This
+ * tracks only the last completed line, independent of the optional TX sink.
+ *
+ * @param[in] byte The transmitted data byte.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+static void sci_capture_tx_line(uint8_t byte)
+{
+  if (byte == (uint8_t)'\n') {
+    for (uint32_t i = 0U; i < s_uart_pend_len; i++) {
+      s_uart_last[i] = s_uart_pend[i];
+    }
+    s_uart_last[s_uart_pend_len] = '\0';
+    s_uart_pend_len              = 0U;
+    return;
+  }
+  if ((byte != (uint8_t)'\r') && (s_uart_pend_len < (uint32_t)(k_uart_line_cap - 1U))) {
+    s_uart_pend[s_uart_pend_len++] = (char)byte;
+  }
+}
+
 /** @brief Dispatch an SCI write; TDR is captured, CCR0 shadowed, clears no-op. */
 static void sci_write(uint32_t ch, uint64_t off, uint32_t value)
 {
@@ -1023,6 +1070,7 @@ static void sci_write(uint32_t ch, uint64_t off, uint32_t value)
      * paths launch a frame by writing TDAT[7:0]; FIFO mode also writes TDR. */
     const uint8_t byte = (uint8_t)(value & (uint32_t)k_sci_data_mask);
     s->transmitted++;
+    sci_capture_tx_line(byte);
     if (s_sci_tx_sink != nullptr) {
       s_sci_tx_sink((uint8_t)ch, byte);
     }
@@ -1110,6 +1158,50 @@ void board_periph_touch_inject(uint16_t x, uint16_t y)
 uint32_t board_periph_touch_reported(void)
 {
   return s_gt911.reported;
+}
+
+uint32_t board_periph_led_level(board_led_id_t led)
+{
+  if ((uint32_t)led >= (uint32_t)k_board_led_count) {
+    return 0U;
+  }
+  return s_led_level[(uint32_t)led];
+}
+
+uint16_t board_periph_led_color_rgb565(board_led_id_t led)
+{
+  if ((uint32_t)led >= (uint32_t)k_board_led_count) {
+    return 0U;
+  }
+  return k_led_map[(uint32_t)led].color;
+}
+
+const char* board_periph_uart_last_line(void)
+{
+  return s_uart_last;
+}
+
+uint32_t board_periph_irq_count(uint32_t irq)
+{
+  if (irq >= (uint32_t)k_irq_track_max) {
+    return 0U;
+  }
+  return s_irq_taken[irq];
+}
+
+uint32_t board_periph_irq_total(void)
+{
+  return s_irq_total;
+}
+
+bool board_periph_touch_last(uint16_t* x, uint16_t* y)
+{
+  if ((x == nullptr) || (y == nullptr) || (s_gt911.reported == 0U)) {
+    return false;
+  }
+  *x = s_gt911.click_x;
+  *y = s_gt911.click_y;
+  return true;
 }
 
 /** @brief Controller -> GT911: pointer bytes first (MSB,LSB), then payload. */
