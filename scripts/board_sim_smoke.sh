@@ -52,14 +52,14 @@ apps=("$@")
 if [ "${#apps[@]}" -eq 0 ]; then
     # Bare-metal apps that run identically on the CI runner's Unicorn (2.0.1) and
     # newer builds, exercising the modelled peripherals: GLCDC (display), GR1
-    # framebuffer, GPIO LED, SCI UART, GPT+ICU IRQ, and SSIE (I2S). The
-    # ThreadX/USBX apps (usb_cdc_echo, threadx_usbx_cdc_demo, ...) drive the
-    # hand-rolled exception path on the first context switch, which Unicorn 2.0.1
-    # mis-delivers (UC_ERR_EXCEPTION); they run on a newer Unicorn (macOS / a
-    # source build) -- pass them explicitly there (e.g.
-    # `board_sim_smoke.sh usb_cdc_echo`).
+    # framebuffer, GPIO LED, SCI UART, GPT+ICU IRQ, SSIE (I2S), and the CRC unit
+    # (crc_demo self-checks hw==sw). The ThreadX/USBX apps (usb_cdc_echo,
+    # threadx_usbx_cdc_demo, ...) drive the hand-rolled exception path on the
+    # first context switch, which Unicorn 2.0.1 mis-delivers (UC_ERR_EXCEPTION);
+    # they run on a newer Unicorn (macOS / a source build) -- pass them
+    # explicitly there (e.g. `board_sim_smoke.sh usb_cdc_echo`).
     apps=(blink lcd_color_cycle display_pal_animation bedroom_ui_panel \
-        uart_hello gpt_irq_demo ssie_audio_loop)
+        uart_hello gpt_irq_demo ssie_audio_loop crc_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
