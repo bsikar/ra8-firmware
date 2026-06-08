@@ -26,8 +26,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Homebrew prefix (Apple Silicon default).
 set(BREW /opt/homebrew)
 
-# board_view.m is the optional live macOS window (--view); the rest is plain C.
-add_executable(board_sim main.c board_view.m)
+# board_view.m is the optional live macOS window (--view); board_periph.c is the
+# register-accurate peripheral-model framework (GPIO/timers/ICU); the rest is C.
+add_executable(board_sim main.c board_periph.c board_view.m)
 set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 target_include_directories(board_sim PRIVATE ${BREW}/include)
 target_link_directories(board_sim PRIVATE ${BREW}/lib)

@@ -39,6 +39,7 @@
 #include <unicorn/unicorn.h>
 #include <unistd.h>
 
+#include "board_periph.h"
 #include "board_view.h"
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
@@ -97,6 +98,9 @@ typedef enum : uint64_t {
   k_exc_svcall     = 11UL,         /**< SVCall exception / vector index.      */
   k_exc_pendsv     = 14UL,         /**< PendSV exception / vector index.      */
   k_exc_systick    = 15UL,         /**< SysTick exception / vector index.     */
+  k_nvic_ipr_base  = 0xE000E400UL, /**< NVIC IPR priority bytes (one per IRQ).*/
+  k_nvic_ispr_base = 0xE000E200UL, /**< NVIC ISPR set-pending (per-IRQ bit).  */
+  k_exc_irq_vec0   = 16UL,         /**< Vector index of IRQ0 (16 + IRQn).     */
 } cortexm_scs_t;
 
 /* Armv7E-M / Armv8-M exception model constants (the part Unicorn's Cortex-M33
@@ -281,10 +285,15 @@ static int mmio_index(uint64_t addr)
 
 static uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user)
 {
-  (void)uc;
-  (void)size;
   (void)user;
   s_mmio_reads++;
+  /* A modelled peripheral block answers first; the sparse fallback below is
+   * only reached for addresses no block in board_periph owns. */
+  bool           handled = false;
+  const uint64_t modeled = board_periph_read(uc, (uint64_t)k_periph_base + offset, size, &handled);
+  if (handled) {
+    return modeled;
+  }
   const int idx = mmio_index((uint64_t)k_periph_base + offset);
   if (idx >= 0) {
     s_mmio_rcount[idx]++;
@@ -311,12 +320,18 @@ static uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* u
 
 static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, void* user)
 {
-  (void)uc;
-  (void)size;
   (void)user;
   s_mmio_writes++;
   if (((uint64_t)k_periph_base + offset) == (uint64_t)k_glcdc_bg_bgc) {
     bgc_track((uint32_t)value);
+  }
+  /* A modelled peripheral block consumes the write first (so GPIO latches,
+   * timer control, and ICU event links take real effect); the sparse fallback
+   * still records the write for the MMIO table and unmodelled blocks. */
+  bool handled = false;
+  board_periph_write(uc, (uint64_t)k_periph_base + offset, size, value, &handled);
+  if (handled) {
+    return;
   }
   const int idx = mmio_index((uint64_t)k_periph_base + offset);
   if (idx >= 0) {
@@ -1139,6 +1154,56 @@ static uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num)
 }
 
 /**
+ * @brief Take one pending peripheral NVIC IRQ the ICU has queued, if allowed.
+ *
+ * @details
+ * The peripheral counterpart to the SysTick / PendSV logic in
+ * ::exc_take_pending. board_periph's ICU model queues an IRQ whenever a
+ * peripheral event is event-linked through IELSR and its NVIC line is enabled;
+ * this pops one and -- if its NVIC priority (IPR byte, top nibble used) outranks
+ * the active execution priority -- vectors it in as a real Cortex-M exception
+ * (vector 16 + IRQn read from VTOR), exactly the path a hardware IRQ takes. The
+ * ISR therefore runs in genuine handler context and returns via the same
+ * EXC_RETURN unstack as every other exception. The matching ISPR pending bit is
+ * cleared on activation, as hardware does.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base Fallback vector base when VTOR reads as 0.
+ * @param[in]     active    Current active-handler priority (sentinel if none).
+ * @return true if a peripheral IRQ was taken (PC now points at its ISR).
+ *
+ * @pre @p uc has stopped at an instruction boundary; PRIMASK already checked.
+ * @post At most one IRQ is taken; its ISPR pending bit is cleared if so.
+ * @note If no handler is installed at the vector, the IRQ is dropped, not spun.
+ * @since 0.1.0
+ */
+static bool exc_take_periph_irq(uc_engine* uc, uint32_t vtor_base, uint32_t active)
+{
+  uint32_t irq = 0U;
+  if (!board_periph_next_irq(&irq)) {
+    return false;
+  }
+  const uint8_t  prio_byte = (uint8_t)rd32(uc, (uint64_t)k_nvic_ipr_base + irq);
+  const uint32_t prio      = (uint32_t)(prio_byte >> 4) & 0xFU; /* 4 MSBs used */
+  if (prio >= active) {
+    return false; /* an equal/higher-priority handler is active -- defer */
+  }
+  const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_irq_vec0 + irq);
+  if (handler == 0U) {
+    return false; /* no ISR installed: drop (default handler would just return) */
+  }
+  /* Clear the NVIC ISPR pending bit on activation, as hardware does. */
+  const uint64_t ispr_word = (uint64_t)k_nvic_ispr_base + ((uint64_t)(irq / 32U) * 4U);
+  uint32_t       ispr      = rd32(uc, ispr_word);
+  ispr &= ~(1U << (irq % 32U));
+  wr32(uc, ispr_word, ispr);
+
+  exc_enter(uc, (uint32_t)k_exc_irq_vec0 + irq, handler);
+  board_periph_note_irq_taken(irq);
+  return true;
+}
+
+/**
  * @brief Take the highest-priority pending exception, if one may activate now.
  *
  * @details
@@ -1216,7 +1281,11 @@ static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base)
       }
     }
   }
-  return false;
+
+  /* Peripheral NVIC IRQs queued by the ICU model (timer overflow / underflow
+   * routed through IELSR). Taken last among the modelled exceptions but via the
+   * identical real entry/return path, with NVIC IPR priority honoured. */
+  return exc_take_periph_irq(uc, vtor_base, active);
 }
 
 /**
@@ -1502,7 +1571,8 @@ int main(int argc, char** argv)
                   "  --ppm <file>    write the final frame to a binary PPM (headless ok)\n"
                   "  --panel <file>  display descriptor (name/width/height) to size the window\n"
                   "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n"
-                  "  --click X Y     headless: inject one touch at X,Y once the UI is up\n");
+                  "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
+                  "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
   const char* elf_path   = argv[1];
@@ -1511,6 +1581,7 @@ int main(int argc, char** argv)
   const char* panel_path = nullptr;
   bool        size_set   = false;
   bool        want_click = false;
+  bool        want_trace = false;
   int         click_x    = -1;
   int         click_y    = -1;
   uint16_t    view_w     = (uint16_t)k_view_default_w;
@@ -1518,6 +1589,8 @@ int main(int argc, char** argv)
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
+    } else if (strncmp(argv[i], "--trace", sizeof("--trace")) == 0) {
+      want_trace = true;
     } else if ((strncmp(argv[i], "--ppm", sizeof("--ppm")) == 0) && ((i + 1) < argc)) {
       ppm_path = argv[i + 1];
       i++;
@@ -1582,6 +1655,10 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "mmio_map failed\n");
     return 1;
   }
+
+  /* Reset the peripheral-model framework (GPIO/PORT, AGT/GPT timers, ICU/NVIC)
+   * before the firmware boots so its register writes land in real block state.*/
+  board_periph_init(want_trace);
 
   long           elf_len = 0;
   uint8_t* const elf     = read_file(elf_path, &elf_len);
@@ -1734,6 +1811,10 @@ int main(int argc, char** argv)
      * boundary (or a tail-chain) takes it once interrupts permit. */
     s_systick_pending = true;
 
+    /* Advance the modelled timers one tick-period and let the ICU pend any IRQ
+     * a counter wrap raised; the exception layer below takes it like SysTick. */
+    board_periph_tick(uc);
+
     /* Inner loop: run a chunk, then service exceptions to a steady state before
      * the next chunk. An EXC_RETURN branch is unstacked and the NVIC re-checked
      * so a still-pending lower-priority exception tail-chains (e.g. PendSV right
@@ -1815,6 +1896,8 @@ int main(int argc, char** argv)
                 s_pendsv_takes,
                 s_svc_takes);
   (void)fprintf(stderr, "  touch clicks  : %u injected via ra_touch_read\n", s_touch_injected);
+  /* Peripheral-model observability: LED transitions, timer totals, IRQ counts. */
+  board_periph_report(uc);
   (void)fprintf(stderr,
                 "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
                 s_mmio_reads,
