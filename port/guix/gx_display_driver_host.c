@@ -56,10 +56,24 @@ ra_err_t host_guix_display_driver_bind(void* framebuffer, uint16_t width_px, uin
 /**
  * @brief Single-buffer toggle hook: presentation is the PAL's job.
  *
+ * @details
+ * v1 single-buffer host driver: GUIX has finished drawing into the canvas
+ * memory in place. The macOS window backend presents that buffer separately
+ * (display_flush), so there is nothing to flip here -- the hook is a no-op.
+ *
  * @param[in] canvas     GUIX canvas whose drawing completed (unused).
  * @param[in] dirty_area Touched-pixel bounding box (unused).
+ *
+ * @pre gx_display_create has installed the 565rgb driver.
+ * @pre Called from the GUIX drawing path.
+ * @post No buffer flip occurs; presentation is left to the PAL.
+ * @post Canvas memory is unchanged.
+ *
+ * @note Not thread-safe; single-threaded host drive.
+ *
+ * @since 0.1.0
  */
-static VOID host_guix_buffer_toggle(GX_CANVAS* canvas, GX_RECTANGLE* dirty_area)
+static void host_guix_buffer_toggle(GX_CANVAS* canvas, GX_RECTANGLE* dirty_area)
 {
   (void)canvas;
   (void)dirty_area;
