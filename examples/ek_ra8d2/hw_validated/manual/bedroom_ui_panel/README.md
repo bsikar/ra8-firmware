@@ -78,3 +78,6 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 Success: the final PC is not in the panic-halt range and `/tmp/bedroom.ppm`
 shows the bedroom UI (varied pixels -- cards / text -- not blank or one solid
 colour).
+
+For a live window straight from the repo root: `make emulate-bedroom_ui_panel`
+(cross-builds the app, then boots its `.elf` in the emulator).

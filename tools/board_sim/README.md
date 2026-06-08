@@ -29,9 +29,15 @@ The display is configurable: `--panel` takes a flat `key = value` descriptor
 (`name`, `width`, `height`, ... -- the same files as `tools/simulator/panels/`),
 so the emulator presents any screen, not just the EK-RA8D2 1024x600.
 
-Or from the repo root: `make simulate-<app> [PANEL=<name>]` (e.g.
-`make simulate-bedroom_ui_panel`) cross-builds the app and opens its live window
+Or from the repo root: `make emulate-<app> [PANEL=<name>]` (e.g.
+`make emulate-bedroom_ui_panel`) cross-builds the app and opens its live window
 sized by `tools/simulator/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to exit.
+(`make simulate-<app>` is kept as a backward-compatible alias.)
+
+Don't confuse this with `make sim` (`tools/simulator`): that recompiles the
+shared GUIX UI *natively* on macOS for fast, clickable UI design; `emulate-<app>`
+boots the *real cross-compiled `.elf`* on the CPU emulator for high-fidelity
+bring-up validation.
 
 ## How it works
 
