@@ -196,3 +196,31 @@ only if you exceed the registry capacity.
 - The peripheral model fakes hardware *handshakes*; it validates "does the
   firmware drive the controller correctly," not real silicon timing. It
   complements HIL, it does not replace it.
+
+## Example coverage
+
+Every EK-RA8D2 example was booted on the emulator (`scripts/board_sim_smoke.sh`
+gates a bare-metal subset in CI). **70 of 75 run to their main loop and produce
+their expected output.** The five that do not split into three honest
+categories:
+
+- **A real firmware bug the emulator found (3):** `agt_periodic`,
+  `agt_cascade_demo`, `agt_pulse_demo` fault after exactly 255 timer periods.
+  Each re-arm leaks one `ra_mstp` reference and `ra_mstp_enable` saturates a
+  `uint8_t` refcount at 255; the short HIL run never reaches it, the emulator's
+  longer run does. The emulator is faithful here -- it ran the real firmware long
+  enough to expose the leak. Tracked in issue #68.
+- **Needs a second emulated core (1):** `cpu1_pingpong` copies a CPU1 image to
+  `0x22100000` and releases the second core; the emulator models CPU0 only, so
+  that write is unmapped. Full dual-core execution is future work.
+- **Needs Armv8-M MPU enforcement (1):** `mpu_partition_simple` deliberately
+  writes a read-only MPU region and depends on the MemManage fault firing.
+  Unicorn does not enforce the M-profile MPU (the PPB is plain RAM here), so no
+  fault is raised. Future work.
+
+Host-Unicorn note: the CI runner's Unicorn (2.0.1) does not decode the
+DSB/DMB/ISB barriers (handled as NOPs here) and mis-delivers the hand-rolled
+PendSV entry on a ThreadX first context switch (`UC_ERR_EXCEPTION`). The
+ThreadX/USBX examples therefore run on a newer Unicorn (macOS / a source build),
+not the Linux smoke gate; the gate covers the bare-metal apps that behave
+identically across versions.
