@@ -27,10 +27,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BREW /opt/homebrew)
 
 # board_view.m is the optional live macOS window (--view); board_periph.c is the
-# register-accurate peripheral-model framework (GPIO/timers/ICU); the rest is C.
-add_executable(board_sim main.c board_periph.c board_view.m)
+# register-accurate peripheral-model framework (GPIO/timers/ICU); board_usb.c is
+# the USBFS controller model + virtual host (chapter-9 enumeration); rest is C.
+add_executable(board_sim main.c board_periph.c board_usb.c board_view.m)
 set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
-target_include_directories(board_sim PRIVATE ${BREW}/include)
+# The USB model includes the firmware's register/ELC headers for the exact
+# offsets + ELC event numbers it must mirror (ra8d2_usb_regs.h, ra8d2_elc_regs.h).
+target_include_directories(board_sim PRIVATE ${BREW}/include
+                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra_hal/inc)
 target_link_directories(board_sim PRIVATE ${BREW}/lib)
 target_link_libraries(board_sim PRIVATE unicorn capstone "-framework Cocoa")
 target_compile_options(board_sim PRIVATE -Wall -Wextra)

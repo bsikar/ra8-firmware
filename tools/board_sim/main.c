@@ -40,6 +40,7 @@
 #include <unistd.h>
 
 #include "board_periph.h"
+#include "board_usb.h"
 #include "board_view.h"
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
@@ -1509,13 +1510,15 @@ int main(int argc, char** argv)
   if (argc < 2) {
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
-                  " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>]\n"
+                  " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>]"
+                  " [--usb-in <str>]\n"
                   "  --view          open a macOS window and show the emulated panel live\n"
                   "  --ppm <file>    write the final frame to a binary PPM (headless ok)\n"
                   "  --panel <file>  display descriptor (name/width/height) to size the window\n"
                   "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n"
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
                   "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
+                  "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
@@ -1524,6 +1527,7 @@ int main(int argc, char** argv)
   const char* ppm_path   = nullptr;
   const char* panel_path = nullptr;
   const char* input_str  = nullptr;
+  const char* usb_in_str = nullptr;
   bool        size_set   = false;
   bool        want_click = false;
   bool        want_trace = false;
@@ -1544,6 +1548,9 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--input", sizeof("--input")) == 0) && ((i + 1) < argc)) {
       input_str = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--usb-in", sizeof("--usb-in")) == 0) && ((i + 1) < argc)) {
+      usb_in_str = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, 10);
@@ -1618,6 +1625,14 @@ int main(int argc, char** argv)
                   "board_sim: queued %u byte(s) to SCI%u RX from --input\n",
                   n,
                   board_periph_sci_console_channel());
+  }
+  /* Queue any --usb-in bytes for the virtual host to push over the CDC bulk OUT
+   * pipe once the device is configured; the device echoes them back on bulk IN. */
+  if (usb_in_str != nullptr) {
+    uint8_t        ub[k_uart_line_max];
+    const uint32_t n = decode_escapes(usb_in_str, ub, (uint32_t)sizeof(ub));
+    board_usb_feed_bulk_in(ub, n);
+    (void)fprintf(stderr, "board_sim: queued %u byte(s) to the USB CDC bulk OUT pipe\n", n);
   }
 
   long           elf_len = 0;
