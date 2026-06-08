@@ -133,21 +133,12 @@ typedef enum : uint32_t {
   k_byte_bits       = 8U,          /**< Bits per byte (SHPR field width).    */
 } cortexm_exc_t;
 
-/* ra_touch_read stub: the firmware's ra_touch_read is short-circuited by a
- * UC_HOOK_CODE at its entry so board_sim supplies the touch coordinates without
- * modelling the GT911/I2C. AAPCS (R0=out_points, R1=max_count, R2=got_count);
- * k_ra_ok == 0 (libs/ra_core/inc/ra_err.h). The GT911 point fields the firmware
- * decodes are x at byte 0 and y at byte 2 of ra_touch_point_t. */
-typedef enum : uint32_t {
-  k_touch_ok        = 0U,  /**< k_ra_ok return value for ra_touch_read.   */
-  k_touch_pt_x_off  = 0U,  /**< ra_touch_point_t.x byte offset.           */
-  k_touch_pt_y_off  = 2U,  /**< ra_touch_point_t.y byte offset.           */
-  k_touch_one_point = 1U,  /**< *got_count written for a single contact.  */
-  k_touch_no_point  = 0U,  /**< *got_count written when no click pending. */
-  k_elf_sht_symtab  = 2U,  /**< SHT_SYMTAB section type.                   */
-  k_elf_sht_strtab  = 3U,  /**< SHT_STRTAB section type.                   */
-  k_elf_thumb_clear = ~1U, /**< Mask off the Thumb bit of st_value.       */
-} touch_stub_t;
+/* Touch on the EK-RA8D2 is now modelled end-to-end: the firmware's real
+ * ra_touch_open / ra_touch_read run unchanged and drive the GoodIX GT911 over
+ * ra_i3c_transfer (the I3C peripheral in legacy I2C mode), which board_periph
+ * models as an I2C bus with a GT911 device. board_sim feeds --click / window
+ * clicks into that device (board_periph_touch_inject), so a tap returns through
+ * the genuine ra_touch -> I3C -> GT911 path -- there is no function-level stub. */
 
 /* Renesas peripheral quirks that the generic sparse model cannot reproduce.
  *
@@ -242,16 +233,6 @@ static bool     s_systick_pending;           /**< SysTick exception is pended.  
 static uint32_t s_bgc_writes;
 static uint32_t s_bgc_distinct[k_bgc_track_max];
 static uint32_t s_bgc_distinct_n;
-
-/* Touch injection: a click that the next firmware ra_touch_read should return.
- * The --view loop sets it from board_view_poll_click; --click sets it once.
- * The UC_HOOK_CODE on ra_touch_read drains it (AAPCS: R0=out, R2=got). */
-static bool     s_touch_pending;   /**< A click is waiting to be reported.    */
-static uint16_t s_touch_x;         /**< Pending click X (panel pixels).       */
-static uint16_t s_touch_y;         /**< Pending click Y (panel pixels).       */
-static uint64_t s_touch_read_addr; /**< ra_touch_read entry addr (Thumb bit cleared). */
-static uint64_t s_touch_open_addr; /**< ra_touch_open entry addr (Thumb bit cleared). */
-static uint32_t s_touch_injected;  /**< Count of clicks handed to the firmware.*/
 
 /** @brief Record a BG_BGC write; remember the value if it is a new colour. */
 static void bgc_track(uint32_t value)
@@ -836,104 +817,6 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
   return (loaded > 0) ? 0 : -1;
 }
 
-/* ELF32 header / section-header / symbol field offsets (little-endian). */
-typedef enum : uint32_t {
-  k_ehdr_shoff     = 32U, /**< e_shoff: section-header table offset.    */
-  k_ehdr_shentsize = 46U, /**< e_shentsize: bytes per section header.   */
-  k_ehdr_shnum     = 48U, /**< e_shnum: section-header count.           */
-  k_shdr_type      = 4U,  /**< sh_type.                                 */
-  k_shdr_offset    = 16U, /**< sh_offset: section file offset.          */
-  k_shdr_size      = 20U, /**< sh_size: section byte size.              */
-  k_shdr_link      = 24U, /**< sh_link: associated strtab section index.*/
-  k_shdr_entsize   = 36U, /**< sh_entsize: bytes per symbol entry.      */
-  k_sym_name       = 0U,  /**< st_name: index into the strtab.          */
-  k_sym_value      = 4U,  /**< st_value: symbol address (Thumb bit set).*/
-  k_sym_entsize    = 16U, /**< sizeof(Elf32_Sym).                       */
-} elf_field_t;
-
-/** @brief Read a 32-bit little-endian word from a raw ELF buffer at @p off. */
-static uint32_t elf_rd32(const uint8_t* elf, uint32_t off)
-{
-  uint32_t v = 0U;
-  (void)memcpy(&v, elf + off, sizeof(v));
-  return v;
-}
-
-/** @brief Read a 16-bit little-endian half from a raw ELF buffer at @p off. */
-static uint16_t elf_rd16(const uint8_t* elf, uint32_t off)
-{
-  return (uint16_t)(elf[off] | ((uint16_t)elf[off + 1U] << 8));
-}
-
-/**
- * @brief Resolve a function symbol's address from the ELF .symtab.
- *
- * @details
- * Bounded SHT_SYMTAB walk: scan the section-header table for the symbol table,
- * take its linked string table (sh_link), then compare each entry's st_name
- * (a strtab offset) against @p name. On a match, return st_value with the Thumb
- * bit masked off so it can be used as a Unicorn code address. Every file offset
- * is checked against @p len before it is dereferenced, so a truncated or hostile
- * ELF cannot read out of bounds.
- *
- * @param[in]  elf  Raw ELF image.
- * @param[in]  len  Image length in bytes.
- * @param[in]  name Symbol name to find (NUL-terminated).
- * @param[out] out  Resolved address (Thumb bit cleared) on success.
- * @return true if the symbol was found.
- */
-static bool elf_find_symbol(const uint8_t* elf, long len, const char* name, uint64_t* out)
-{
-  if ((elf == nullptr) || (len < 64) || (name == nullptr) || (out == nullptr)) {
-    return false;
-  }
-  const uint32_t ulen      = (uint32_t)len;
-  const uint32_t shoff     = elf_rd32(elf, (uint32_t)k_ehdr_shoff);
-  const uint16_t shentsize = elf_rd16(elf, (uint32_t)k_ehdr_shentsize);
-  const uint16_t shnum     = elf_rd16(elf, (uint32_t)k_ehdr_shnum);
-  if ((shoff == 0U) || (shentsize < 40U) ||
-      (shoff + ((uint32_t)shnum * (uint32_t)shentsize) > ulen)) {
-    return false;
-  }
-  const size_t name_len = strlen(name);
-  for (uint16_t i = 0U; i < shnum; i++) {
-    const uint32_t sh = shoff + ((uint32_t)i * (uint32_t)shentsize);
-    if (elf_rd32(elf, sh + (uint32_t)k_shdr_type) != (uint32_t)k_elf_sht_symtab) {
-      continue;
-    }
-    const uint32_t sym_off = elf_rd32(elf, sh + (uint32_t)k_shdr_offset);
-    const uint32_t sym_sz  = elf_rd32(elf, sh + (uint32_t)k_shdr_size);
-    const uint32_t entsz   = elf_rd32(elf, sh + (uint32_t)k_shdr_entsize);
-    const uint32_t strndx  = elf_rd32(elf, sh + (uint32_t)k_shdr_link);
-    if ((entsz < (uint32_t)k_sym_entsize) || (sym_off + sym_sz > ulen) || (strndx >= shnum)) {
-      continue;
-    }
-    /* The linked string table holds the symbol names. */
-    const uint32_t str_sh  = shoff + (strndx * (uint32_t)shentsize);
-    const uint32_t str_off = elf_rd32(elf, str_sh + (uint32_t)k_shdr_offset);
-    const uint32_t str_sz  = elf_rd32(elf, str_sh + (uint32_t)k_shdr_size);
-    if (str_off + str_sz > ulen) {
-      continue;
-    }
-    for (uint32_t s = 0U; (s + entsz) <= sym_sz; s += entsz) {
-      const uint32_t st_name = elf_rd32(elf, sym_off + s + (uint32_t)k_sym_name);
-      if ((st_name == 0U) || (st_name >= str_sz)) {
-        continue;
-      }
-      /* Bounded compare: the candidate name must fit before the strtab end. */
-      if (((size_t)st_name + name_len + 1U) > (size_t)str_sz) {
-        continue;
-      }
-      if (memcmp(elf + str_off + st_name, name, name_len + 1U) == 0) {
-        const uint32_t st_value = elf_rd32(elf, sym_off + s + (uint32_t)k_sym_value);
-        *out                    = (uint64_t)(st_value & (uint32_t)k_elf_thumb_clear);
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 /** @brief Read a 32-bit little-endian word from emulated memory. */
 static uint32_t rd32(uc_engine* uc, uint64_t addr)
 {
@@ -1337,94 +1220,6 @@ static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base)
    * routed through IELSR). Taken last among the modelled exceptions but via the
    * identical real entry/return path, with NVIC IPR priority honoured. */
   return exc_take_periph_irq(uc, vtor_base, active);
-}
-
-/**
- * @brief UC_HOOK_CODE stub for the firmware's ra_touch_read.
- *
- * @details
- * Installed at ra_touch_read's entry so the REAL firmware touch->GUIX path runs
- * with board_sim supplying the coordinates -- no GT911/I2C is modelled. AAPCS:
- * R0 = out_points, R1 = max_count, R2 = got_count. If a click is pending, the
- * x/y are written into the first point (x at +0, y at +2 of ra_touch_point_t),
- * 1 is written to *got_count, and R0 is set to k_ra_ok; otherwise *got_count is
- * 0 and R0 is k_ra_ok (an empty-but-successful frame). The stub then returns:
- * PC = LR & ~1 and uc_emu_stop, so the chunked run loop relaunches from the
- * return address. Rewriting PC mid-block and continuing would corrupt Unicorn's
- * block / Thumb state; stop-then-relaunch (as the run loop already does) is the
- * safe way to "return" from an injected stub.
- *
- * @param[in,out] uc        Unicorn engine.
- * @param[in]     address   Hooked address (ra_touch_read entry); unused.
- * @param[in]     size      Instruction size; unused.
- * @param[in]     user_data Hook user pointer; unused.
- */
-static void touch_read_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user_data)
-{
-  (void)address;
-  (void)size;
-  (void)user_data;
-
-  uint32_t r0 = 0U; /* out_points */
-  uint32_t r2 = 0U; /* got_count  */
-  uint32_t lr = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_R0, &r0);
-  (void)uc_reg_read(uc, UC_ARM_REG_R2, &r2);
-  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
-
-  if (s_touch_pending && (r0 != 0U) && (r2 != 0U)) {
-    const uint16_t x = s_touch_x;
-    const uint16_t y = s_touch_y;
-    (void)uc_mem_write(uc, (uint64_t)r0 + (uint64_t)k_touch_pt_x_off, &x, sizeof(x));
-    (void)uc_mem_write(uc, (uint64_t)r0 + (uint64_t)k_touch_pt_y_off, &y, sizeof(y));
-    const uint8_t got = (uint8_t)k_touch_one_point;
-    (void)uc_mem_write(uc, (uint64_t)r2, &got, sizeof(got));
-    s_touch_pending = false;
-    s_touch_injected++;
-  } else if (r2 != 0U) {
-    const uint8_t got = (uint8_t)k_touch_no_point;
-    (void)uc_mem_write(uc, (uint64_t)r2, &got, sizeof(got));
-  }
-
-  uint32_t ret = (uint32_t)k_touch_ok; /* k_ra_ok */
-  (void)uc_reg_write(uc, UC_ARM_REG_R0, &ret);
-
-  /* "Return" from the stub: jump to LR (Thumb bit cleared) and stop so the run
-   * loop relaunches there with a clean block/Thumb state. */
-  uint32_t pc = lr & (uint32_t)k_elf_thumb_clear;
-  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
-  (void)uc_emu_stop(uc);
-}
-
-/**
- * @brief UC_HOOK_CODE stub for the firmware's ra_touch_open.
- *
- * @details
- * Forces ra_touch_open to return k_ra_ok without modelling the GT911 product-id
- * probe over I2C (which the sparse MMIO model cannot answer). This makes the
- * emulator reproduce real hardware faithfully: on the EK-RA8D2 ra_touch_open
- * succeeds, so the app's product path -- open succeeds, then poll ra_touch_read
- * every frame -- runs unchanged here, and the read stub (touch_read_hook)
- * supplies the coordinates. Returns by PC = LR & ~1 + uc_emu_stop, the same
- * stop-then-relaunch contract the run loop already relies on.
- *
- * @param[in,out] uc        Unicorn engine.
- * @param[in]     address   Hooked address (ra_touch_open entry); unused.
- * @param[in]     size      Instruction size; unused.
- * @param[in]     user_data Hook user pointer; unused.
- */
-static void touch_open_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user_data)
-{
-  (void)address;
-  (void)size;
-  (void)user_data;
-  uint32_t lr = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
-  uint32_t ret = (uint32_t)k_touch_ok; /* k_ra_ok */
-  (void)uc_reg_write(uc, UC_ARM_REG_R0, &ret);
-  uint32_t pc = lr & (uint32_t)k_elf_thumb_clear;
-  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
-  (void)uc_emu_stop(uc);
 }
 
 /** @brief Pack a 0x00RRGGBB colour into RGB565. */
@@ -1836,22 +1631,6 @@ int main(int argc, char** argv)
     free(elf);
     return 1;
   }
-  /* Resolve ra_touch_open / ra_touch_read so UC_HOOK_CODE stubs can short-circuit
-   * them and feed the firmware touch coordinates (see touch_open_hook /
-   * touch_read_hook). Done before freeing the ELF image since the symbol table
-   * lives in the raw file, not in mapped RAM. ra_touch_open is forced to succeed
-   * so the app's "open then poll" product path runs exactly as on hardware. */
-  const bool have_touch_open = elf_find_symbol(elf, elf_len, "ra_touch_open", &s_touch_open_addr);
-  const bool have_touch_read = elf_find_symbol(elf, elf_len, "ra_touch_read", &s_touch_read_addr);
-  if (have_touch_read) {
-    (void)fprintf(stderr,
-                  "board_sim: ra_touch_open @ 0x%08llX  ra_touch_read @ 0x%08llX"
-                  " (touch injection armed)\n",
-                  (unsigned long long)s_touch_open_addr,
-                  (unsigned long long)s_touch_read_addr);
-  } else {
-    (void)fprintf(stderr, "board_sim: ra_touch_read not found in .symtab -- no touch injection\n");
-  }
   free(elf);
 
   /* Cortex-M reset: SP = vectors[0], PC = vectors[1] (Thumb, clear bit0). */
@@ -1918,31 +1697,6 @@ int main(int argc, char** argv)
                     (uint64_t)k_nvic_icer_base,
                     (uint64_t)k_nvic_icer_base + (uint64_t)k_nvic_en_span - 1U);
 
-  /* Short-circuit ra_touch_open (force success) and ra_touch_read (supply the
-   * click) at their entries so board_sim drives the real firmware touch path
-   * without modelling the GT911/I2C. The begin==end address range restricts each
-   * UC_HOOK_CODE to that one instruction. */
-  uc_hook h_touch_open;
-  uc_hook h_touch_read;
-  if (have_touch_open) {
-    (void)uc_hook_add(uc,
-                      &h_touch_open,
-                      UC_HOOK_CODE,
-                      (void*)touch_open_hook,
-                      nullptr,
-                      s_touch_open_addr,
-                      s_touch_open_addr);
-  }
-  if (have_touch_read) {
-    (void)uc_hook_add(uc,
-                      &h_touch_read,
-                      UC_HOOK_CODE,
-                      (void*)touch_read_hook,
-                      nullptr,
-                      s_touch_read_addr,
-                      s_touch_read_addr);
-  }
-
   /* Optional live window; the frame buffer also backs the --ppm snapshot. */
   board_view_t* view  = nullptr;
   uint16_t*     frame = nullptr;
@@ -1956,15 +1710,7 @@ int main(int argc, char** argv)
     frame = (uint16_t*)malloc((size_t)view_w * (size_t)view_h * sizeof(uint16_t));
   }
 
-  /* Headless --click: arm the pending click up front. ra_touch_read is only
-   * called from the render loop (after the UI is fully built), so the hook
-   * consumes it on the first loop iteration -- exactly the tab the firmware's
-   * GUIX hit-test resolves it to. After it lands, a few more chunks let
-   * gx_host_pump dispatch the pen events and gx_system_canvas_refresh repaint. */
-  if (want_click && have_touch_read) {
-    s_touch_x       = (uint16_t)click_x;
-    s_touch_y       = (uint16_t)click_y;
-    s_touch_pending = true;
+  if (want_click) {
     (void)fprintf(stderr, "board_sim: --click armed at (%d,%d)\n", click_x, click_y);
   }
   enum : uint32_t {
@@ -1999,6 +1745,15 @@ int main(int argc, char** argv)
     /* Advance the modelled timers one tick-period and let the ICU pend any IRQ
      * a counter wrap raised; the exception layer below takes it like SysTick. */
     board_periph_tick(uc);
+
+    /* Headless --click: keep one contact armed in the GT911 model until the
+     * firmware's real ra_touch_read drains it (board_periph_touch_reported
+     * increments). Re-arming each chunk is needed because ra_touch_open clears
+     * the GT911 status byte during bring-up; once the render loop reads the
+     * point it is consumed once and never re-armed. */
+    if (want_click && (board_periph_touch_reported() == 0U)) {
+      board_periph_touch_inject((uint16_t)click_x, (uint16_t)click_y);
+    }
 
     /* Inner loop: run a chunk, then service exceptions to a steady state before
      * the next chunk. An EXC_RETURN branch is unstacked and the NVIC re-checked
@@ -2035,13 +1790,12 @@ int main(int argc, char** argv)
       break;
     }
     if (view != nullptr) {
-      /* Live window: each left mouse-down becomes the next ra_touch_read. */
+      /* Live window: each left mouse-down arms one GT911 contact, so the
+       * firmware's next real ra_touch_read returns it through the I3C path. */
       uint16_t cx = 0U;
       uint16_t cy = 0U;
-      if (have_touch_read && board_view_poll_click(view, &cx, &cy)) {
-        s_touch_x       = cx;
-        s_touch_y       = cy;
-        s_touch_pending = true;
+      if (board_view_poll_click(view, &cx, &cy)) {
+        board_periph_touch_inject(cx, cy);
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
         build_frame(uc, frame, view_w, view_h);
@@ -2052,9 +1806,9 @@ int main(int argc, char** argv)
         break;
       }
     } else if (want_click) {
-      /* Headless --click: run a bounded tail after the injected tap lands, then
+      /* Headless --click: run a bounded tail after the tap is drained, then
        * stop deterministically so the dumped frame shows the switched tab. */
-      if (s_touch_injected > 0U) {
+      if (board_periph_touch_reported() > 0U) {
         settle_left = (settle_left == 0U) ? (uint32_t)k_click_settle_chunks : (settle_left - 1U);
         if (settle_left == 1U) {
           break;
@@ -2080,7 +1834,9 @@ int main(int argc, char** argv)
                 "  exceptions    : %u PendSV  %u SVCall (real Cortex-M entry/return)\n",
                 s_pendsv_takes,
                 s_svc_takes);
-  (void)fprintf(stderr, "  touch clicks  : %u injected via ra_touch_read\n", s_touch_injected);
+  (void)fprintf(stderr,
+                "  touch clicks  : %u drained via ra_touch -> I3C -> GT911\n",
+                board_periph_touch_reported());
   /* Emit any console bytes still buffered without a trailing newline. */
   console_flush_line(board_periph_sci_console_channel());
   /* Peripheral-model observability: LED transitions, timer totals, IRQ counts,
