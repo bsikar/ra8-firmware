@@ -68,23 +68,62 @@ typedef enum : uint64_t {
 
 typedef enum : uint32_t {
   k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.       */
-  k_run_max_chunks  = 6000U,   /**< Chunk budget (~3e9 insns ceiling).      */
-  k_run_wall_s      = 10U,     /**< Wall-clock safety bound (seconds).      */
-  k_systick_insns   = 200000U, /**< Max insns per SysTick handler call.     */
-  k_systick_us      = 100000U, /**< Wall bound per SysTick handler call.    */
-  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.        */
-  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".*/
-  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.    */
+  k_run_max_chunks  = 40000U,  /**< Chunk budget. Each chunk offers one     */
+                               /**< SysTick, so RTOS apps whose threads     */
+                               /**< sleep on hundreds/thousands of ticks    */
+                               /**< (e.g. ThreadX tx_thread_sleep) need a    */
+                               /**< far larger budget than bare-metal.       */
+  k_run_wall_s     = 120U,     /**< Wall-clock safety bound (seconds).      */
+  k_run_inner_max  = 4096U,    /**< Per-chunk exception-resolve relaunch cap.*/
+  k_mmio_slots     = 2048U,    /**< Distinct MMIO addresses tracked.        */
+  k_mmio_settle    = 8U,       /**< Same-addr reads before a poll "settles".*/
+  k_mmio_print_max = 256U,     /**< Max MMIO rows printed in the summary.    */
 } sim_budget_t;
 
-/* Cortex-M system control space (architectural, all cores) -- inside the PPB. */
+/* Cortex-M system control space (architectural, all cores) -- inside the PPB.
+ * The PPB is mapped as plain RAM here (not callback MMIO), so SCB/NVIC writes
+ * the firmware performs land in memory and read back -- the exception model
+ * below polls/edits these words to model what real M-profile hardware would do
+ * with the NVIC that Unicorn does not implement. */
 typedef enum : uint64_t {
-  k_syst_csr     = 0xE000E010UL, /**< SysTick control/status.            */
-  k_syst_csr_run = 0x3UL,        /**< ENABLE | TICKINT both set.         */
-  k_scb_vtor     = 0xE000ED08UL, /**< Vector table offset register.      */
-  k_exc_systick  = 15UL,         /**< SysTick exception / vector index.  */
-  k_systick_ret  = 0x4UL,        /**< Sentinel return addr for the call. */
+  k_syst_csr       = 0xE000E010UL, /**< SysTick control/status (SYST_CSR).   */
+  k_syst_csr_run   = 0x3UL,        /**< ENABLE | TICKINT both set.           */
+  k_scb_icsr       = 0xE000ED04UL, /**< Interrupt control/state (ICSR).      */
+  k_scb_vtor       = 0xE000ED08UL, /**< Vector table offset register.        */
+  k_scb_shpr2      = 0xE000ED1CUL, /**< System handler priority 2 (SVC=b3).  */
+  k_scb_shpr3      = 0xE000ED20UL, /**< System handler priority 3 (PSV/SYT). */
+  k_icsr_pendsvset = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).  */
+  k_icsr_pendstset = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick). */
+  k_exc_svcall     = 11UL,         /**< SVCall exception / vector index.      */
+  k_exc_pendsv     = 14UL,         /**< PendSV exception / vector index.      */
+  k_exc_systick    = 15UL,         /**< SysTick exception / vector index.     */
 } cortexm_scs_t;
+
+/* Armv7E-M / Armv8-M exception model constants (the part Unicorn's Cortex-M33
+ * core leaves to software here -- it has no NVIC/exception unit). EXC_RETURN
+ * magic values steer the unstack: bit2 picks the return stack (1 = PSP, 0 =
+ * MSP), bit3 the return mode (1 = Thread, 0 = Handler), bit4 the frame type
+ * (1 = no FP extended frame). ThreadX runs with FPCA clear so FType is always
+ * 1 and no S0-S31 are stacked -- see _tx_thread_schedule (TST LR,#0x10 skips
+ * the VFP save/restore for these values). */
+typedef enum : uint32_t {
+  k_exc_frame_words = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.  */
+  k_exc_frame_bytes = 32U,         /**< 8 words * 4 bytes.                    */
+  k_exc_ret_base    = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].  */
+  k_exc_ret_handler = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.         */
+  k_exc_ret_msp     = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.          */
+  k_exc_ret_psp     = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.          */
+  k_exc_ret_spsel   = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP. */
+  k_exc_ret_mode    = 0x8U,        /**< EXC_RETURN bit3: return to Thread.   */
+  k_control_spsel   = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.      */
+  k_xpsr_t_bit      = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.     */
+  k_xpsr_align9     = 0x00000200U, /**< xPSR bit9: stack-frame realignment.  */
+  k_xpsr_ipsr_mask  = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
+  k_exc_prio_none   = 0x100U,      /**< Sentinel "no handler active" prio.   */
+  k_exc_prio_max    = 0xFFU,       /**< Lowest configurable priority value.  */
+  k_exc_nest_max    = 4U,          /**< Tracked active-exception nesting cap.*/
+  k_byte_bits       = 8U,          /**< Bits per byte (SHPR field width).    */
+} cortexm_exc_t;
 
 /* ra_touch_read stub: the firmware's ra_touch_read is short-circuited by a
  * UC_HOOK_CODE at its entry so board_sim supplies the touch coordinates without
@@ -175,6 +214,21 @@ static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache.*/
 static int      s_mmio_run_slot = -1; /**< Slot of the current read run.      */
 static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.    */
 static uint32_t s_systick_fires;
+
+/* Hand-modelled Cortex-M exception state. Unicorn's M33 core has no NVIC /
+ * exception unit, so board_sim takes SysTick / PendSV / SVCall by hand: it
+ * tracks the active-exception priority stack here (everything else -- MSP/PSP/
+ * CONTROL/xPSR/PRIMASK -- is read straight from Unicorn). s_exc_stack holds the
+ * priority of each handler currently active so a higher-priority exception
+ * (e.g. SysTick, prio 0x40) can pre-empt a lower one (PendSV, prio 0xFF) but
+ * not vice-versa, exactly as the real priority logic would nest them. */
+static uint32_t s_exc_stack[k_exc_nest_max]; /**< Active-handler priorities.   */
+static uint32_t s_exc_depth;                 /**< Number of active handlers.   */
+static uint32_t s_pendsv_takes;              /**< PendSV exceptions taken.     */
+static uint32_t s_svc_takes;                 /**< SVCall exceptions taken.     */
+static uint64_t s_exc_return_pc;             /**< Pending EXC_RETURN to unstack.*/
+static bool     s_exc_return_hit;            /**< An EXC_RETURN branch was seen.*/
+static bool     s_systick_pending;           /**< SysTick exception is pended.  */
 
 /* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
 static uint32_t s_bgc_writes;
@@ -436,6 +490,15 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
   return true;
 }
 
+/* Forward declarations for the Cortex-M exception engine (defined below, after
+ * the ELF/memory helpers they build on). The memory hooks above need to vector
+ * SVCall and recognise EXC_RETURN before those definitions appear. */
+static bool     is_exc_return(uint64_t pc);
+static uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num);
+static void     exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
+static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num);
+static uint32_t exc_active_prio(void);
+
 /** @brief Disassemble + report an instruction the core could not decode. */
 static bool on_invalid_insn(uc_engine* uc, void* user)
 {
@@ -485,10 +548,19 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
 static bool
 on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
 {
-  (void)uc;
   (void)size;
   (void)value;
   (void)user;
+  /* A FETCH into the EXC_RETURN range is not a fault -- it is the core taking
+   * an exception return (the handler ran "BX lr" with an EXC_RETURN magic in
+   * LR). Capture it and stop cleanly so the run loop can unstack the frame and
+   * resume; the Unicorn fetch-fault error this produces is expected/handled. */
+  if ((type == UC_MEM_FETCH_UNMAPPED) && is_exc_return(addr)) {
+    s_exc_return_pc  = addr;
+    s_exc_return_hit = true;
+    (void)uc_emu_stop(uc);
+    return false;
+  }
   (void)fprintf(stderr,
                 "  UNMAPPED %s @ 0x%08llX (extend the memory/peripheral map)\n",
                 (type == UC_MEM_READ_UNMAPPED)    ? "read"
@@ -496,6 +568,142 @@ on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t va
                                                   : "fetch",
                 (unsigned long long)addr);
   return false; /* stop emulation and report */
+}
+
+/**
+ * @brief UC_HOOK_INTR handler: take the SVCall exception on an `svc` opcode.
+ *
+ * @details
+ * Unicorn raises UC_HOOK_INTR when the firmware executes the Thumb `svc`
+ * instruction but, lacking an exception unit, does not vector it. This models
+ * SVCall (#11): the basic frame is stacked and the core vectors to SVC_Handler
+ * via ::exc_enter, then emulation is stopped so the chunked run loop relaunches
+ * cleanly from the handler entry (editing PC mid-block and continuing corrupts
+ * Unicorn's block/Thumb state -- the same stop-then-relaunch contract the touch
+ * and conditional-select stubs use). ThreadX in single-mode never issues an
+ * SVC, but bare-metal / future RTOS paths that start the first thread via `svc`
+ * are handled correctly here. PRIMASK does not mask SVCall (it is synchronous),
+ * matching hardware.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     int_no    Interrupt/exception number reported by Unicorn.
+ * @param[in]     user_data Hook user pointer (unused; signature fixed by Unicorn).
+ * @return Nothing.
+ *
+ * @pre @p uc has just executed an `svc` instruction or branched to EXC_RETURN.
+ * @pre The vector table (at VTOR or the MRAM fallback) holds SVC_Handler.
+ * @post Either an exception was taken/returned (PC updated) or, on a missing
+ *       SVC handler, the core is left untouched.
+ * @post Emulation is stopped so the run loop resumes from the new PC.
+ * @note Only the SVC interrupt class is acted on; other int_no values are
+ *       ignored so unrelated traps fall through.
+ * @since 0.1.0
+ */
+static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
+{
+  (void)int_no;
+  uint32_t pc = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
+
+  /* Cortex-M exception RETURN. Unicorn's M-profile core does not pop the
+   * exception frame itself, but it DOES trap a branch to an EXC_RETURN magic
+   * (0xFFFFFFFx) by raising an interrupt with the magic left in PC (Thumb bit
+   * masked off, but the stack/mode selector bits 2/3 intact). Unstack the basic
+   * frame and resume the interrupted context. This is how every handler that
+   * board_sim vectors in (SysTick / PendSV / SVCall) returns. */
+  if (is_exc_return((uint64_t)pc)) {
+    s_exc_return_pc  = (uint64_t)pc;
+    s_exc_return_hit = true;
+    (void)uc_emu_stop(uc);
+    return;
+  }
+
+  /* Otherwise it is a synchronous `svc` -- take SVCall (#11). ThreadX in single
+   * mode never issues one, but bare-metal / future RTOS first-thread-start
+   * paths do. The VTOR fallback is the MRAM vector-table base; the live VTOR
+   * (set by SystemInit) is read inside exc_vector. */
+  (void)user_data;
+  const uint32_t vtor_base = (uint32_t)k_regions[1].base;
+  const uint32_t handler   = exc_vector(uc, vtor_base, (uint32_t)k_exc_svcall);
+  if (handler != 0U) {
+    exc_enter(uc, (uint32_t)k_exc_svcall, handler);
+    s_svc_takes++;
+  }
+  (void)uc_emu_stop(uc);
+}
+
+/**
+ * @brief UC_HOOK_MEM_WRITE handler for SCB ICSR -- take PendSV promptly.
+ *
+ * @details
+ * On hardware, writing ICSR.PENDSVSET pends PendSV, and -- because ThreadX
+ * follows the store with DSB+ISB and PendSV is enabled at a priority above
+ * thread level with interrupts unmasked -- the exception activates at the very
+ * next instruction. board_sim runs the CPU in long chunks, so without help it
+ * would only notice PENDSVSET at the end of a 500k-instruction chunk; by then
+ * the requesting thread (e.g. a thread suspending inside tx_queue_receive) has
+ * run far past the point where it expected to be switched out and observes
+ * inconsistent scheduler state. Stopping the chunk the instant PENDSVSET is
+ * written hands control straight back to the run loop, which takes PendSV at
+ * that boundary -- restoring next-instruction activation semantics. The store
+ * itself has already landed in PPB RAM, so exc_take_pending sees the bit set.
+ *
+ * @param[in,out] uc    Unicorn engine.
+ * @param[in]     type  Memory access type (write); unused.
+ * @param[in]     addr  Faulting/observed address (the ICSR word).
+ * @param[in]     size  Access width in bytes; unused.
+ * @param[in]     value The value being written to ICSR.
+ * @param[in]     user  Hook user pointer; unused.
+ * @return Nothing.
+ *
+ * @pre @p uc is mid-chunk executing the store to ICSR.
+ * @pre The hook is registered for the 4-byte ICSR word only.
+ * @post Emulation is stopped iff the write sets PENDSVSET.
+ * @post The PENDSVSET bit is left in PPB RAM for exc_take_pending to read.
+ * @note PENDSVCLR / status-only writes do not stop the chunk.
+ * @since 0.1.0
+ */
+static void
+on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
+{
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
+  if (((uint32_t)value & (1U << (uint32_t)k_icsr_pendsvset)) == 0U) {
+    return; /* not a PendSV request (e.g. PENDSVCLR / status write) */
+  }
+  /* Only end the chunk when PendSV could actually activate now: interrupts
+   * unmasked and no equal/higher-priority handler already running. If masked
+   * (the store sits inside a ThreadX critical section), do NOT stop -- the run
+   * loop would otherwise relaunch from this same store and re-pend forever,
+   * since uc_emu_stop here leaves PC on the store. With those guards, the run
+   * loop's exc_take_pending takes PendSV and moves PC to the handler, so the
+   * store is never re-executed. The masked case is picked up at the next
+   * boundary once TX_RESTORE re-enables interrupts. */
+  uint32_t primask = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_PRIMASK, &primask);
+  if ((primask & 1U) != 0U) {
+    return;
+  }
+  if (exc_priority(uc, (uint32_t)k_exc_pendsv) >= exc_active_prio()) {
+    return; /* a higher/equal-priority handler is active -- defer */
+  }
+  /* Advance PC past the storing instruction before stopping so the PendSV we
+   * are about to take stacks the return address of the NEXT instruction -- as
+   * real hardware does (PendSV activates after the store retires), not the store
+   * itself. Re-stacking the store would re-pend PendSV on every return and spin.
+   * Thumb length: a halfword whose top 5 bits are 0b111xx with xx != 00 starts a
+   * 32-bit instruction; otherwise it is 16-bit. */
+  uint32_t pc = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
+  uint16_t hw0 = 0U;
+  (void)uc_mem_read(uc, pc, &hw0, sizeof(hw0));
+  const uint32_t op5  = (uint32_t)(hw0 >> 11) & 0x1FU;
+  const uint32_t step = ((op5 == 0x1DU) || (op5 == 0x1EU) || (op5 == 0x1FU)) ? 4U : 2U;
+  uint32_t       next = pc + step;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  (void)uc_emu_stop(uc);
 }
 
 static uint8_t* read_file(const char* path, long* out_len)
@@ -668,73 +876,347 @@ static uint32_t rd32(uc_engine* uc, uint64_t addr)
   return v;
 }
 
-/* Integer context saved/restored around a cooperative SysTick handler call. */
-static const int k_ctx_regs[] = {
-  UC_ARM_REG_R0,
-  UC_ARM_REG_R1,
-  UC_ARM_REG_R2,
-  UC_ARM_REG_R3,
-  UC_ARM_REG_R4,
-  UC_ARM_REG_R5,
-  UC_ARM_REG_R6,
-  UC_ARM_REG_R7,
-  UC_ARM_REG_R8,
-  UC_ARM_REG_R9,
-  UC_ARM_REG_R10,
-  UC_ARM_REG_R11,
-  UC_ARM_REG_R12,
-  UC_ARM_REG_SP,
-  UC_ARM_REG_LR,
-  UC_ARM_REG_PC,
-  UC_ARM_REG_XPSR,
-};
+/** @brief Write a 32-bit little-endian word to emulated memory. */
+static void wr32(uc_engine* uc, uint64_t addr, uint32_t v)
+{
+  (void)uc_mem_write(uc, addr, &v, sizeof(v));
+}
+
+/** @brief Read a Unicorn 32-bit register by its UC_ARM_REG_* id. */
+static uint32_t reg_get(uc_engine* uc, int reg)
+{
+  uint32_t v = 0U;
+  (void)uc_reg_read(uc, reg, &v);
+  return v;
+}
+
+/** @brief Write a Unicorn 32-bit register by its UC_ARM_REG_* id. */
+static void reg_set(uc_engine* uc, int reg, uint32_t v)
+{
+  (void)uc_reg_write(uc, reg, &v);
+}
+
+/** @brief Priority value (lower = higher) of the active handler, or sentinel. */
+static uint32_t exc_active_prio(void)
+{
+  return (s_exc_depth == 0U) ? (uint32_t)k_exc_prio_none : s_exc_stack[s_exc_depth - 1U];
+}
 
 /**
- * @brief Cooperatively run one SysTick tick if SysTick is armed.
+ * @brief Read a system-handler priority byte from an SHPR register.
  *
  * @details
- * Models a SysTick interrupt without a real NVIC: if SYST_CSR has ENABLE and
- * TICKINT set, the installed SysTick_Handler (vector index 15, relative to
- * VTOR) is invoked as an ordinary function between emulation chunks. The full
- * integer context (R0-R12, SP, LR, PC, xPSR) is snapshotted and restored, so
- * only the handler's memory effect -- the incremented tick counter -- survives,
- * which is exactly what the interrupted code would observe after a real tick.
+ * Cortex-M packs four 8-bit handler priorities per SHPRn word. SVCall (#11) is
+ * byte 3 of SHPR2; PendSV (#14) is byte 2 and SysTick (#15) byte 3 of SHPR3.
+ * ThreadX's tx_initialize_low_level programs these (SysTick 0x40, PendSV/SVC
+ * 0xFF), and the value drives whether one exception may pre-empt another. The
+ * PPB is plain RAM here, so the firmware's stores are simply read back.
+ *
+ * @param[in,out] uc      Unicorn engine.
+ * @param[in]     exc_num Exception/vector number (11, 14, or 15).
+ * @return The 8-bit configured priority (0 = highest, 0xFF = lowest).
+ * @retval 0xFF when @p exc_num is not one of the modelled system handlers.
+ *
+ * @pre @p uc is an initialised engine with the PPB mapped as RAM.
+ * @pre SystemInit / tx_initialize_low_level have programmed SHPR2/SHPR3.
+ * @post No register or memory state is modified (read-only).
+ * @post The returned value is in [0, 0xFF].
+ * @note Sub-priority / priority grouping is ignored -- only the raw byte is
+ *       compared, which is sufficient for the SysTick > PendSV nesting ThreadX
+ *       relies on.
+ * @since 0.1.0
+ */
+static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
+{
+  if (exc_num == (uint32_t)k_exc_svcall) {
+    return (rd32(uc, (uint64_t)k_scb_shpr2) >> (3U * (uint32_t)k_byte_bits)) & 0xFFU;
+  }
+  if (exc_num == (uint32_t)k_exc_pendsv) {
+    return (rd32(uc, (uint64_t)k_scb_shpr3) >> (2U * (uint32_t)k_byte_bits)) & 0xFFU;
+  }
+  if (exc_num == (uint32_t)k_exc_systick) {
+    return (rd32(uc, (uint64_t)k_scb_shpr3) >> (3U * (uint32_t)k_byte_bits)) & 0xFFU;
+  }
+  return (uint32_t)k_exc_prio_max;
+}
+
+/**
+ * @brief Enter a Cortex-M exception: stack the basic frame and vector in.
+ *
+ * @details
+ * Reproduces Armv7E-M / Armv8-M exception entry that Unicorn's core does not
+ * model. The active stack is chosen exactly as hardware would: PSP when in
+ * Thread mode with CONTROL.SPSEL set, else MSP. The 8-word basic frame
+ * {R0,R1,R2,R3,R12,LR,PC,xPSR} is pushed with 8-byte alignment (the realign
+ * pad is recorded in the stacked xPSR bit 9 so exit can undo it), the banked SP
+ * is updated, the core is switched to Handler mode on MSP, LR is loaded with
+ * the matching EXC_RETURN, IPSR is set to @p exc_num, and PC is vectored to the
+ * handler fetched from the VTOR-relative table. The handler's priority is
+ * pushed on the active-exception stack so nesting respects priority.
+ *
+ * @param[in,out] uc      Unicorn engine.
+ * @param[in]     exc_num Exception number to take (11, 14, or 15).
+ * @param[in]     handler Handler entry address (Thumb bit ignored).
+ * @return Nothing.
+ *
+ * @pre @p uc has MSP/PSP/CONTROL/xPSR readable and the target stack mapped.
+ * @pre Taking @p exc_num is permitted now (priority/PRIMASK already checked).
+ * @post The core is in Handler mode (IPSR == @p exc_num) running on MSP.
+ * @post LR holds a valid EXC_RETURN and the outgoing frame is on the old stack.
+ * @note FType is forced (no FP frame); valid because ThreadX keeps FPCA clear.
+ * @since 0.1.0
+ */
+static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
+{
+  const uint32_t xpsr_in   = reg_get(uc, UC_ARM_REG_XPSR);
+  const uint32_t control   = reg_get(uc, UC_ARM_REG_CONTROL);
+  const bool     in_thread = (xpsr_in & (uint32_t)k_xpsr_ipsr_mask) == 0U;
+  const bool     use_psp   = in_thread && ((control & (uint32_t)k_control_spsel) != 0U);
+
+  const int sp_reg = use_psp ? UC_ARM_REG_PSP : UC_ARM_REG_MSP;
+  uint32_t  sp     = reg_get(uc, sp_reg);
+
+  /* Hardware aligns the stack pointer to 8 bytes on entry and flags the pad in
+   * the stacked xPSR (bit 9) so the matching exception return can remove it. */
+  uint32_t frame_xpsr = xpsr_in;
+  if ((sp & 0x4U) != 0U) {
+    sp -= 4U;
+    frame_xpsr |= (uint32_t)k_xpsr_align9;
+  } else {
+    frame_xpsr &= ~(uint32_t)k_xpsr_align9;
+  }
+  sp -= (uint32_t)k_exc_frame_bytes;
+
+  wr32(uc, (uint64_t)sp + 0U, reg_get(uc, UC_ARM_REG_R0));
+  wr32(uc, (uint64_t)sp + 4U, reg_get(uc, UC_ARM_REG_R1));
+  wr32(uc, (uint64_t)sp + 8U, reg_get(uc, UC_ARM_REG_R2));
+  wr32(uc, (uint64_t)sp + 12U, reg_get(uc, UC_ARM_REG_R3));
+  wr32(uc, (uint64_t)sp + 16U, reg_get(uc, UC_ARM_REG_R12));
+  wr32(uc, (uint64_t)sp + 20U, reg_get(uc, UC_ARM_REG_LR));
+  wr32(uc, (uint64_t)sp + 24U, reg_get(uc, UC_ARM_REG_PC));
+  wr32(uc, (uint64_t)sp + 28U, frame_xpsr);
+
+  /* Commit the new value of whichever stack the frame went onto. */
+  reg_set(uc, sp_reg, sp);
+
+  /* EXC_RETURN encodes where to unstack: Thread/PSP, Thread/MSP, or (when an
+   * exception pre-empts another) Handler/MSP. */
+  uint32_t exc_ret;
+  if (!in_thread) {
+    exc_ret = (uint32_t)k_exc_ret_handler;
+  } else if (use_psp) {
+    exc_ret = (uint32_t)k_exc_ret_psp;
+  } else {
+    exc_ret = (uint32_t)k_exc_ret_msp;
+  }
+
+  /* Handler mode always runs on MSP with CONTROL.SPSEL clear. */
+  reg_set(uc, UC_ARM_REG_CONTROL, control & ~(uint32_t)k_control_spsel);
+  reg_set(uc, UC_ARM_REG_SP, reg_get(uc, UC_ARM_REG_MSP));
+
+  uint32_t handler_xpsr =
+    (xpsr_in & ~(uint32_t)k_xpsr_ipsr_mask) | (exc_num & (uint32_t)k_xpsr_ipsr_mask);
+  handler_xpsr |= (uint32_t)k_xpsr_t_bit; /* M-profile is always Thumb. */
+  reg_set(uc, UC_ARM_REG_XPSR, handler_xpsr);
+  reg_set(uc, UC_ARM_REG_LR, exc_ret);
+  reg_set(uc, UC_ARM_REG_PC, handler & ~1U);
+
+  if (s_exc_depth < (uint32_t)k_exc_nest_max) {
+    s_exc_stack[s_exc_depth] = exc_priority(uc, exc_num);
+    s_exc_depth++;
+  }
+}
+
+/**
+ * @brief Perform a Cortex-M exception return for an observed EXC_RETURN branch.
+ *
+ * @details
+ * The inverse of ::exc_enter. @p exc_return (the magic value the core branched
+ * to) selects the stack to unstack from (bit2: PSP vs MSP) and the mode to
+ * return to (bit3: Thread vs Handler). The 8-word basic frame is popped, the
+ * recorded 8-byte realignment (stacked xPSR bit 9) is undone, the banked SP and
+ * CONTROL.SPSEL are restored, xPSR (hence IPSR) is reloaded, the active-
+ * exception stack is popped, and PC resumes the interrupted instruction stream.
+ *
+ * @param[in,out] uc      Unicorn engine.
+ * @param[in]     exc_ret The EXC_RETURN value (0xFFFFFFFx) being returned to.
+ * @return Nothing.
+ *
+ * @pre @p uc is in Handler mode with a valid basic frame on the indicated stack.
+ * @pre @p exc_ret is in the range [0xFFFFFFF0, 0xFFFFFFFF].
+ * @post The core has resumed the unstacked context (PC/SP/xPSR restored).
+ * @post The active-exception nesting depth has decreased by one (if non-zero).
+ * @note No FP frame is unstacked -- FType is assumed set, matching ::exc_enter.
+ * @since 0.1.0
+ */
+static void exc_return(uc_engine* uc, uint32_t exc_ret)
+{
+  const bool to_psp    = (exc_ret & (uint32_t)k_exc_ret_spsel) != 0U;
+  const bool to_thread = (exc_ret & (uint32_t)k_exc_ret_mode) != 0U;
+  const int  sp_reg    = to_psp ? UC_ARM_REG_PSP : UC_ARM_REG_MSP;
+  uint32_t   sp        = reg_get(uc, sp_reg);
+
+  const uint32_t r0   = rd32(uc, (uint64_t)sp + 0U);
+  const uint32_t r1   = rd32(uc, (uint64_t)sp + 4U);
+  const uint32_t r2   = rd32(uc, (uint64_t)sp + 8U);
+  const uint32_t r3   = rd32(uc, (uint64_t)sp + 12U);
+  const uint32_t r12  = rd32(uc, (uint64_t)sp + 16U);
+  const uint32_t lr   = rd32(uc, (uint64_t)sp + 20U);
+  const uint32_t pc   = rd32(uc, (uint64_t)sp + 24U);
+  const uint32_t xpsr = rd32(uc, (uint64_t)sp + 28U);
+
+  sp += (uint32_t)k_exc_frame_bytes;
+  if ((xpsr & (uint32_t)k_xpsr_align9) != 0U) {
+    sp += 4U; /* undo the entry-time 8-byte realignment pad */
+  }
+  reg_set(uc, sp_reg, sp);
+
+  reg_set(uc, UC_ARM_REG_R0, r0);
+  reg_set(uc, UC_ARM_REG_R1, r1);
+  reg_set(uc, UC_ARM_REG_R2, r2);
+  reg_set(uc, UC_ARM_REG_R3, r3);
+  reg_set(uc, UC_ARM_REG_R12, r12);
+  reg_set(uc, UC_ARM_REG_LR, lr);
+
+  /* Restore mode: on return to Thread, CONTROL.SPSEL follows EXC_RETURN bit2;
+   * on return to a pre-empted handler the core stays on MSP. */
+  uint32_t control = reg_get(uc, UC_ARM_REG_CONTROL);
+  if (to_thread && to_psp) {
+    control |= (uint32_t)k_control_spsel;
+  } else {
+    control &= ~(uint32_t)k_control_spsel;
+  }
+  reg_set(uc, UC_ARM_REG_CONTROL, control);
+
+  uint32_t new_xpsr = xpsr | (uint32_t)k_xpsr_t_bit;
+  if (to_thread) {
+    new_xpsr &= ~(uint32_t)k_xpsr_ipsr_mask; /* Thread mode: IPSR == 0 */
+  }
+  reg_set(uc, UC_ARM_REG_XPSR, new_xpsr);
+
+  /* Active SP becomes whichever stack the returned-to context uses. */
+  reg_set(uc, UC_ARM_REG_SP, reg_get(uc, to_psp && to_thread ? UC_ARM_REG_PSP : UC_ARM_REG_MSP));
+  reg_set(uc, UC_ARM_REG_PC, pc & ~1U);
+
+  if (s_exc_depth > 0U) {
+    s_exc_depth--;
+  }
+}
+
+/** @brief True if @p pc is an EXC_RETURN magic value (0xFFFFFFF0..0xFFFFFFFF). */
+static bool is_exc_return(uint64_t pc)
+{
+  return (pc & 0xFFFFFFF0ULL) == (uint64_t)k_exc_ret_base;
+}
+
+/**
+ * @brief Read the handler address for an exception from the vector table.
  *
  * @param[in,out] uc        Unicorn engine.
- * @param[in]     vtor_base Fallback vector table base if VTOR reads as 0.
+ * @param[in]     vtor_base Fallback vector base used when VTOR reads as 0.
+ * @param[in]     exc_num   Exception/vector index to look up.
+ * @return Handler entry address with the Thumb bit cleared.
+ * @retval 0 when no usable handler is installed at that vector slot.
+ *
+ * @pre @p uc has the vector table mapped at VTOR (or @p vtor_base).
+ * @pre @p exc_num is a valid vector index (< table length).
+ * @post No engine state is modified (read-only).
+ * @post The returned address (when non-zero) is halfword-aligned code.
+ * @note VTOR lives in PPB RAM here, written by SystemInit at boot.
+ * @since 0.1.0
  */
-static void systick_fire(uc_engine* uc, uint32_t vtor_base)
+static uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num)
 {
-  if ((rd32(uc, (uint64_t)k_syst_csr) & (uint32_t)k_syst_csr_run) != (uint32_t)k_syst_csr_run) {
-    return; /* SysTick not armed (no enable+tickint) -- nothing to tick */
-  }
   uint32_t vtor = rd32(uc, (uint64_t)k_scb_vtor);
   if (vtor == 0U) {
     vtor = vtor_base;
   }
-  const uint32_t handler = rd32(uc, (uint64_t)vtor + ((uint32_t)k_exc_systick * 4U)) & ~1U;
+  const uint32_t handler = rd32(uc, (uint64_t)vtor + (exc_num * 4U)) & ~1U;
   if ((handler == 0U) || (handler == 0xFFFFFFFEU)) {
-    return; /* no handler installed at the SysTick vector slot */
+    return 0U;
+  }
+  return handler;
+}
+
+/**
+ * @brief Take the highest-priority pending exception, if one may activate now.
+ *
+ * @details
+ * The software replacement for the NVIC's "take the highest-priority pending,
+ * enabled exception whose priority is greater than the current execution
+ * priority" rule -- called at every instruction boundary AND immediately after
+ * each exception return (so a lower-priority pend tail-chains exactly as
+ * hardware would instead of returning to the interrupted code first). Two
+ * sources are modelled:
+ *
+ *   - SysTick (#15): periodic. ::s_systick_pending is armed once per tick
+ *     period by the run loop; this routine consumes it and vectors in #15 so
+ *     _tx_timer_interrupt runs in real handler context (correct for ThreadX and
+ *     for bare-metal SysTick handlers alike). Arming it elsewhere -- rather than
+ *     re-deriving "armed" from SYST_CSR on every call -- is what lets a pending
+ *     PendSV run between ticks instead of being starved by a perpetual SysTick.
+ *   - PendSV (#14): level-pending via ICSR.PENDSVSET (ThreadX's context-switch
+ *     request); the bit is cleared on activation, as hardware does.
+ *
+ * SysTick (priority 0x40) outranks PendSV (0xFF), so when both are pending
+ * SysTick activates first and may even pre-empt a PendSV that is spinning in
+ * its idle wait -- exactly the nesting ThreadX relies on to make a sleeping
+ * thread runnable. PRIMASK and the active-priority stack are both honoured.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
+ * @return true if an exception was taken (PC now points at a handler).
+ *
+ * @pre @p uc has stopped at an instruction boundary or just returned.
+ * @pre The PPB (SYST_CSR / ICSR / SHPRn / VTOR) is mapped as RAM.
+ * @post At most one exception is taken per call (the highest-priority due one).
+ * @post ICSR.PENDSVSET / ::s_systick_pending is cleared iff that one was taken.
+ * @note SysTick is dropped (not queued) if SYST_CSR is disarmed when its period
+ *       elapses, matching a masked/disabled SysTick on hardware.
+ * @since 0.1.0
+ */
+static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base)
+{
+  const uint32_t primask = reg_get(uc, UC_ARM_REG_PRIMASK);
+  if ((primask & 1U) != 0U) {
+    return false; /* interrupts masked -- no exception may be taken now */
+  }
+  const uint32_t active = exc_active_prio();
+
+  /* SysTick first: highest-priority of the modelled exceptions, so it can
+   * pre-empt a lower-priority PendSV that is spinning for a runnable thread. */
+  if (s_systick_pending) {
+    const bool armed =
+      (rd32(uc, (uint64_t)k_syst_csr) & (uint32_t)k_syst_csr_run) == (uint32_t)k_syst_csr_run;
+    if (!armed) {
+      s_systick_pending = false; /* disabled SysTick: drop the pended tick */
+    } else if (exc_priority(uc, (uint32_t)k_exc_systick) < active) {
+      const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_systick);
+      if (handler != 0U) {
+        s_systick_pending = false;
+        exc_enter(uc, (uint32_t)k_exc_systick, handler);
+        s_systick_fires++;
+        return true;
+      }
+    }
   }
 
-  uint32_t save[sizeof(k_ctx_regs) / sizeof(k_ctx_regs[0])];
-  for (size_t i = 0U; i < (sizeof(k_ctx_regs) / sizeof(k_ctx_regs[0])); i++) {
-    (void)uc_reg_read(uc, k_ctx_regs[i], &save[i]);
+  /* PendSV: taken when the firmware has requested a context switch. */
+  uint32_t icsr = rd32(uc, (uint64_t)k_scb_icsr);
+  if ((icsr & (1U << (uint32_t)k_icsr_pendsvset)) != 0U) {
+    if (exc_priority(uc, (uint32_t)k_exc_pendsv) < active) {
+      const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_pendsv);
+      if (handler != 0U) {
+        /* Hardware clears PENDSVSET when PendSV is activated. */
+        icsr &= ~(1U << (uint32_t)k_icsr_pendsvset);
+        wr32(uc, (uint64_t)k_scb_icsr, icsr);
+        exc_enter(uc, (uint32_t)k_exc_pendsv, handler);
+        s_pendsv_takes++;
+        return true;
+      }
+    }
   }
-
-  /* Return to a sentinel we stop on; LR bit0=1 keeps Thumb across bx/pop pc. */
-  uint32_t lr = (uint32_t)k_systick_ret | 1U;
-  (void)uc_reg_write(uc, UC_ARM_REG_LR, &lr);
-  (void)uc_emu_start(uc,
-                     (uint64_t)handler | 1U,
-                     (uint64_t)k_systick_ret,
-                     (uint64_t)k_systick_us,
-                     (size_t)k_systick_insns);
-
-  for (size_t i = 0U; i < (sizeof(k_ctx_regs) / sizeof(k_ctx_regs[0])); i++) {
-    (void)uc_reg_write(uc, k_ctx_regs[i], &save[i]);
-  }
-  s_systick_fires++;
+  return false;
 }
 
 /**
@@ -1150,10 +1632,29 @@ int main(int argc, char** argv)
                 (unsigned)k_run_chunk_insns,
                 (unsigned)k_run_wall_s);
 
+  /* MRAM holds the vector table; the run loop passes this as the VTOR fallback
+   * to exc_take_pending (the live VTOR, set by SystemInit, is read inside). */
+  const uint32_t vtor_base = (uint32_t)k_regions[1].base;
+
   uc_hook h_invalid;
   uc_hook h_unmapped;
+  uc_hook h_intr;
+  uc_hook h_icsr;
   (void)uc_hook_add(uc, &h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
   (void)uc_hook_add(uc, &h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
+  /* SVCall / exception-return: Unicorn raises UC_HOOK_INTR on a Thumb `svc` and
+   * on a branch to an EXC_RETURN magic; on_intr vectors / unstacks accordingly. */
+  (void)uc_hook_add(uc, &h_intr, UC_HOOK_INTR, (void*)on_intr, nullptr, 1, 0);
+  /* Watch the ICSR word so a PENDSVSET store ends the chunk at once, giving
+   * PendSV next-instruction activation (see on_icsr_write). ICSR lives in PPB
+   * RAM, so this memory-write hook is the only way to observe the request. */
+  (void)uc_hook_add(uc,
+                    &h_icsr,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_icsr_write,
+                    nullptr,
+                    (uint64_t)k_scb_icsr,
+                    (uint64_t)k_scb_icsr + 3U);
 
   /* Short-circuit ra_touch_open (force success) and ra_touch_read (supply the
    * click) at their entries so board_sim drives the real firmware touch path
@@ -1211,10 +1712,14 @@ int main(int argc, char** argv)
     k_click_settle_chunks = 512U, /**< Extra chunks after the click lands.    */
   };
 
-  /* Chunked run: emulate a block, tick SysTick, repeat. Headless runs stop on a
-   * chunk budget + wall-clock guard; in --view the loop runs until the window
+  /* Chunked run: emulate a block, take a SysTick (and any pending PendSV),
+   * repeat. Within a chunk, exception returns (a handler's "BX lr" into an
+   * EXC_RETURN magic) and SVCalls are resolved inline -- the inner loop unstacks
+   * / vectors and relaunches from the new PC without consuming a chunk -- so a
+   * context switch does not cost a whole scheduling quantum and the once-per-
+   * chunk SysTick cadence (one ThreadX tick) is preserved. Headless runs stop on
+   * a chunk budget + wall-clock guard; in --view the loop runs until the window
    * is closed, presenting the live GLCDC output every k_view_present_every. */
-  const uint32_t vtor_base = (uint32_t)k_regions[1].base; /* MRAM = vectors */
   const uint32_t max_chunks =
     (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
   const clock_t t0          = clock();
@@ -1225,12 +1730,44 @@ int main(int argc, char** argv)
   bool          closed      = false;
   uint32_t      settle_left = 0U; /* >0 once the click landed: chunks to drain. */
   for (; chunks < max_chunks; chunks++) {
-    err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
-    (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-    if (err != UC_ERR_OK) {
+    /* Each outer chunk is one SysTick period: arm the periodic tick so the
+     * boundary (or a tail-chain) takes it once interrupts permit. */
+    s_systick_pending = true;
+
+    /* Inner loop: run a chunk, then service exceptions to a steady state before
+     * the next chunk. An EXC_RETURN branch is unstacked and the NVIC re-checked
+     * so a still-pending lower-priority exception tail-chains (e.g. PendSV right
+     * after SysTick) exactly as hardware would, instead of briefly resuming the
+     * interrupted code. SVCall (taken in on_intr) just leaves PC at the handler,
+     * which the next relaunch runs. */
+    bool faulted = false;
+    for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
+      err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
+      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      if (s_exc_return_hit) {
+        s_exc_return_hit = false;
+        exc_return(uc, (uint32_t)s_exc_return_pc);
+        (void)exc_take_pending(uc, vtor_base); /* tail-chain the next pend */
+        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+        continue;
+      }
+      if (err != UC_ERR_OK) {
+        faulted = true;
+        break;
+      }
+      /* Chunk budget reached at an instruction boundary: take the highest-
+       * priority pending exception (SysTick this period, and/or PendSV). If one
+       * was taken, run it (and resolve its return) within this same chunk so a
+       * context switch does not cost a whole scheduling quantum. */
+      if (exc_take_pending(uc, vtor_base)) {
+        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+        continue;
+      }
       break;
     }
-    systick_fire(uc, vtor_base);
+    if (faulted) {
+      break;
+    }
     if (view != nullptr) {
       /* Live window: each left mouse-down becomes the next ra_touch_read. */
       uint16_t cx = 0U;
@@ -1273,6 +1810,10 @@ int main(int argc, char** argv)
                 timed_out ? " (wall-clock budget reached)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
   (void)fprintf(stderr, "  chunks run    : %u   SysTick ticks: %u\n", chunks, s_systick_fires);
+  (void)fprintf(stderr,
+                "  exceptions    : %u PendSV  %u SVCall (real Cortex-M entry/return)\n",
+                s_pendsv_takes,
+                s_svc_takes);
   (void)fprintf(stderr, "  touch clicks  : %u injected via ra_touch_read\n", s_touch_injected);
   (void)fprintf(stderr,
                 "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
