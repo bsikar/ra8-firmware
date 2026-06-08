@@ -27,11 +27,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BREW /opt/homebrew)
 
 # board_view.m is the optional live macOS window (--view); board_periph.c is the
-# register-accurate peripheral-model framework (GPIO/timers/ICU); board_usb.c is
-# the USBFS controller model + virtual host (chapter-9 enumeration);
-# board_overlay.c composes the panel + status-sidebar board view (LEDs / USB /
-# UART / IRQ / touch) into one RGB565 buffer for both --view and --ppm; rest is C.
-add_executable(board_sim main.c board_periph.c board_usb.c board_overlay.c board_view.m)
+# peripheral-block registry CORE (block dispatch + ICU/NVIC routing); each
+# board_periph_<blk>.c is one register-accurate peripheral block that
+# self-registers with the core (GPIO/PORT, GPT+AGT timers, SCI_B UART,
+# I3C/I2C+GT911); board_usb.c is the USBFS controller model + virtual host
+# (chapter-9 enumeration); board_overlay.c composes the panel + status-sidebar
+# board view (LEDs / USB / UART / IRQ / touch) into one RGB565 buffer for both
+# --view and --ppm; rest is C.
+#
+# Adding a peripheral block: drop a new board_periph_<blk>.c (it self-registers
+# its descriptor with the core via __attribute__((constructor)) -- see
+# board_periph_block.h) and add it to the source list below. No other file
+# changes -- the core keeps no central block list, so blocks can be added in
+# parallel without conflict.
+add_executable(board_sim
+               main.c
+               board_periph.c
+               board_periph_gpio.c
+               board_periph_timer.c
+               board_periph_sci.c
+               board_periph_i2c.c
+               board_usb.c
+               board_overlay.c
+               board_view.m)
 set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 # The USB model includes the firmware's register/ELC headers for the exact
 # offsets + ELC event numbers it must mirror (ra8d2_usb_regs.h, ra8d2_elc_regs.h).
