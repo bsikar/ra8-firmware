@@ -18,14 +18,20 @@ Capstone (`brew install unicorn capstone`).
 
 ```sh
 cd tools/board_sim && cmake -B build -S . && cmake --build build -j
-./build/board_sim <firmware.elf>                 # headless: boot + MMIO report
-./build/board_sim <firmware.elf> --view          # live macOS window
-./build/board_sim <firmware.elf> --ppm out.ppm   # write the final frame
-./build/board_sim <firmware.elf> --size 480x272  # frame size (default 1024x600)
+./build/board_sim <firmware.elf>                      # headless: boot + MMIO report
+./build/board_sim <firmware.elf> --view               # live macOS window
+./build/board_sim <firmware.elf> --ppm out.ppm        # write the final frame
+./build/board_sim <firmware.elf> --panel <file.toml>  # size the window to a display
+./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
 ```
 
-Or from the repo root: `make simulate-<app>` (e.g. `make simulate-lcd_color_cycle`)
-cross-builds the app and opens its live window. Close the window to exit.
+The display is configurable: `--panel` takes a flat `key = value` descriptor
+(`name`, `width`, `height`, ... -- the same files as `tools/simulator/panels/`),
+so the emulator presents any screen, not just the EK-RA8D2 1024x600.
+
+Or from the repo root: `make simulate-<app> [PANEL=<name>]` (e.g.
+`make simulate-bedroom_ui_panel`) cross-builds the app and opens its live window
+sized by `tools/simulator/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to exit.
 
 ## How it works
 
