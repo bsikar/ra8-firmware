@@ -59,6 +59,9 @@ typedef enum : uint64_t {
   k_canfd_off_rf0     = 0x520UL,      /**< CFDRF[0] RX FIFO 0 access window.    */
   k_canfd_off_tm0     = 0x604UL,      /**< CFDTM[0] TX MB 0 access window.      */
   k_canfd_frame_words = 0x4CUL / 4UL, /**< ID+PTR+FDSTS+DF[64] = 19 words.     */
+  k_canfd_off_afl     = 0x120UL,      /**< CFDGAFL[] acceptance-filter window.  */
+  k_canfd_afl_stride  = 0x10UL,       /**< Bytes per CFDGAFL entry (ID/M/P0/P1).*/
+  k_canfd_afl_count   = 16UL,         /**< Entries in one CFDGAFL page window.  */
 } canfd_map_t;
 
 /** @brief Global status (CFDGSTS) bit masks the model drives. */
@@ -180,12 +183,60 @@ static void canfd_apply_channel_mode(canfd_inst_t* c, uint32_t ctr)
   c->reg[canfd_word((uint64_t)k_canfd_off_cnsts)] = sts;
 }
 
+/**
+ * @brief Decide whether @p tx_id passes the programmed acceptance filter.
+ *
+ * @details
+ * Scans the CFDGAFL page-0 entry window (the demos use filter ids < one page,
+ * so paging does not apply). An entry is active when its mask (CFDGAFL.M) is
+ * non-zero; a frame is accepted if it matches any active entry,
+ * @c (tx_id & mask) == (accept_id & mask). With no active entry the filter is
+ * open -- internal loopback that programs no filters (canfd_loopback) keeps
+ * delivering every frame, while canfd_filter_demo's programmed slots drop the
+ * non-matching id.
+ *
+ * @param[in] c     Channel instance whose CFDGAFL window to read.
+ * @param[in] tx_id Transmitted frame id (29-bit field, IDE/RTR masked off).
+ * @return true if the frame is accepted (deliver), false if filtered out.
+ */
+static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
+{
+  bool any_active = false;
+  for (uint32_t slot = 0U; slot < (uint32_t)k_canfd_afl_count; slot++) {
+    const uint64_t ent  = (uint64_t)k_canfd_off_afl + ((uint64_t)slot * (uint64_t)k_canfd_afl_stride);
+    const uint32_t mask = c->reg[canfd_word(ent + 4UL)] & (uint32_t)k_canfd_id_ext;
+    if (mask == 0U) {
+      continue; /* unprogrammed slot */
+    }
+    any_active                = true;
+    const uint32_t accept_id  = c->reg[canfd_word(ent)] & (uint32_t)k_canfd_id_ext;
+    if ((tx_id & mask) == (accept_id & mask)) {
+      return true;
+    }
+  }
+  return !any_active;
+}
+
 /** @brief Copy TX MB 0 into RX FIFO 0 and flag the frame available. */
 static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
 {
-  canfd_inst_t*  c  = &s_canfd[inst];
-  const uint32_t tm = canfd_word((uint64_t)k_canfd_off_tm0);
-  const uint32_t rf = canfd_word((uint64_t)k_canfd_off_rf0);
+  canfd_inst_t*  c     = &s_canfd[inst];
+  const uint32_t tm    = canfd_word((uint64_t)k_canfd_off_tm0);
+  const uint32_t rf    = canfd_word((uint64_t)k_canfd_off_rf0);
+  const uint32_t tx_id = c->reg[tm] & (uint32_t)k_canfd_id_ext;
+  /* The frame is transmitted regardless of the filter; mark TX complete.
+   * CFDTMSTS[0] is a byte at a word-aligned offset, so its low byte carries
+   * TMTRF = 10b ("transmission complete"). */
+  c->reg[canfd_word((uint64_t)k_canfd_off_tmsts0)] = (uint32_t)k_tmsts_done;
+  if (!canfd_frame_accepted(c, tx_id)) {
+    if (board_periph_trace()) {
+      (void)fprintf(stderr,
+                    "  [trace] CANFD%u loopback: TX id=0x%X filtered (no AFL match)\n",
+                    inst,
+                    tx_id);
+    }
+    return; /* filtered out: transmitted but not received */
+  }
   for (uint32_t w = 0U; w < (uint32_t)k_canfd_frame_words; w++) {
     c->reg[rf + w] = c->reg[tm + w];
   }
@@ -194,9 +245,6 @@ static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
   rfsts &= ~(uint32_t)k_rfsts_empty;
   rfsts |= (uint32_t)k_rfsts_if;
   c->reg[canfd_word((uint64_t)k_canfd_off_rfsts0)] = rfsts;
-  /* Mark the transmission complete: CFDTMSTS[0] is a byte at a word-aligned
-   * offset, so its low byte carries TMTRF = 10b ("transmission complete"). */
-  c->reg[canfd_word((uint64_t)k_canfd_off_tmsts0)] = (uint32_t)k_tmsts_done;
   c->loopbacks++;
   if (inst == 0U) {
     board_periph_icu_raise_event(uc, (uint16_t)k_event_can0_rxf);
