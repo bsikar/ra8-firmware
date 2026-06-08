@@ -1,0 +1,49 @@
+name: board-sim-smoke
+
+# board_sim (tools/board_sim) is the Unicorn-based RA8D2 board emulator: it boots
+# the real cross-compiled firmware .elf on an emulated Cortex-M with the RA8D2
+# peripheral space modelled. This gate builds it headless on the Linux runner and
+# boots known-good example images, asserting each reaches its main loop without
+# faulting (no invalid opcode / unmapped access) and is not parked in a
+# panic/fault halt -- guarding the emulator, the GLCDC bring-up path, and the
+# modelled peripheral blocks (GPIO / SCI UART / GPT+ICU IRQ / USB CDC).
+#
+# board_sim needs Unicorn + Capstone. The self-hosted runner has passwordless
+# sudo + apt but no pkg-config, so this installs the system -dev packages (a
+# no-op once present) and the build finds them with CMake's find_library (off the
+# APPLE path -- no pkg-config required). The live --view window is macOS-only
+# (Cocoa); this gate is headless, which board_sim supports via board_view_stub.c.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  board-sim-smoke:
+    name: board_sim boot smoke
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Idempotent: skip apt entirely once the libraries are present on this
+      # long-lived runner, so only the first run pays the install cost.
+      - name: Install Unicorn + Capstone
+        run: |
+          if ! ldconfig -p | grep -q 'libunicorn'; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
+          fi
+
+      - name: board_sim boot smoke
+        run: bash scripts/board_sim_smoke.sh
