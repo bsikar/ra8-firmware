@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 # board_sim -- RA8D2 board emulator (companion dev tool)
 
 Boots the **real, unmodified firmware `.elf`** -- the same image that flashes to
-the EK-RA8D2 -- on an emulated Cortex-M and shows what its GLCDC drives, in a
-macOS window. Unlike `tools/simulator` (which recompiles the GUIX UI natively),
-board_sim runs the actual ARM binary, so it exercises the genuine bring-up and
-peripheral-driver code path.
+the EK-RA8D2 -- on an emulated Cortex-M and shows it in a graphical **board
+view**: the GLCDC panel framebuffer on the left, plus a status sidebar on the
+right with three LED indicators (lit in the real GPIO LED colour) and live
+USB / UART / timer-IRQ / touch state. So a NON-display example (blink, USB,
+UART, timers) is observable graphically, and a display example still shows its
+screen beside the status panel. Unlike `tools/simulator` (which recompiles the
+GUIX UI natively), board_sim runs the actual ARM binary, so it exercises the
+genuine bring-up and peripheral-driver code path.
 
 Standalone tool under `tools/`, outside the firmware CI gates. Needs Unicorn +
 Capstone (`brew install unicorn capstone`).
@@ -19,8 +23,8 @@ Capstone (`brew install unicorn capstone`).
 ```sh
 cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf>                      # headless: boot + MMIO report
-./build/board_sim <firmware.elf> --view               # live macOS window
-./build/board_sim <firmware.elf> --ppm out.ppm        # write the final frame
+./build/board_sim <firmware.elf> --view               # live board view (macOS window)
+./build/board_sim <firmware.elf> --ppm out.ppm        # write the full composite frame
 ./build/board_sim <firmware.elf> --panel <file.toml>  # size the window to a display
 ./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
 ./build/board_sim <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
@@ -90,8 +94,19 @@ bring-up validation.
   counter advances and `ra_delay_ms` returns.
 - **Display**: the current frame is read from emulated GLCDC state each present
   -- the BG_BGC background colour, with the GR1 graphics-layer framebuffer
-  (decoded from FLM2/FLM3/FLM5/FLM6) blitted over it out of emulated RAM -- and
-  shown via a small self-contained Cocoa view.
+  (decoded from FLM2/FLM3/FLM5/FLM6) blitted over it out of emulated RAM.
+- **Board view** (`board_overlay.{c,h}`): each present, the panel frame is
+  composited with a status sidebar into one RGB565 buffer -- three LED dots that
+  light in the real GPIO colour (LED1 blue / LED2 green / LED3 red, read from the
+  GPIO/PORT model) when their pin is driven high, and text lines for the live
+  `USB:` state, the last captured `UART:` line, the `IRQ:` taken counts, and the
+  last `touch` point. The sidebar text is drawn with an embedded 5x7 ASCII font
+  *into the same pixel buffer* the window shows, so a non-display example carries
+  its whole "show" in the sidebar and **`--ppm` captures the full composite**
+  (panel + sidebar) -- the overlay is therefore verifiable headlessly with a
+  region/pixel check, not just visible on screen. main.c reads the state through
+  read-only `board_periph` / `board_usb` getters; the Cocoa view only blits the
+  result, so the renderer itself is plain, portable, AppKit-free C.
 
 ## Status / limits
 
@@ -115,6 +130,14 @@ bring-up validation.
   GUIX UI (`threadx_guix_demo`) renders its real framebuffer (77 distinct
   colours) and the GUIX/USBX/CDC stacks all execute as the actual cross-compiled
   `.elf`.
+- The graphical board view is proven via `--ppm` region checks: `blink` lights
+  the LED1 indicator pure blue (RGB565 0x001F) while P600 is high; the
+  `threadx_usbx_cdc_demo` sidebar shows `USB: CONFIGURED (CDC-ACM active)` once
+  enumeration completes; `uart_hello` shows `UART: hello, ra8d2!`;
+  `gpt_irq_demo` shows `IRQ: 9999 total IRQ0 x9999`; and a display app
+  (`bedroom_ui_panel`) renders its dashboard pixel-correct in the panel region
+  with the sidebar beside it (a `--click` tab switch still diffs ~222k panel
+  pixels and the sidebar reports the `touch` point).
 - The peripheral model fakes hardware *handshakes*; it validates "does the
   firmware drive the controller correctly," not real silicon timing. It
   complements HIL, it does not replace it.

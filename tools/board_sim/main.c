@@ -39,6 +39,7 @@
 #include <unicorn/unicorn.h>
 #include <unistd.h>
 
+#include "board_overlay.h"
 #include "board_periph.h"
 #include "board_usb.h"
 #include "board_view.h"
@@ -1312,6 +1313,67 @@ static int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, ui
   return 0;
 }
 
+/**
+ * @brief Snapshot the live peripheral state into a board-view status struct.
+ *
+ * @details
+ * Reads the read-only board_periph / board_usb getters -- per-LED level + lit
+ * colour, the USB device-state string, the last captured UART line, the NVIC
+ * IRQ totals, and the last drained touch point -- so the overlay can render the
+ * status sidebar without reaching into any model's internals.
+ *
+ * @param[out] st        Status struct to fill.
+ * @param[in]  app_name  Window / app title to caption the sidebar with.
+ * @return Nothing.
+ */
+static void fill_status(board_status_t* st, const char* app_name)
+{
+  static const char* const k_led_labels[k_overlay_led_count] = {"LED1", "LED2", "LED3"};
+  *st                                                        = (board_status_t){};
+  for (uint32_t i = 0U; i < (uint32_t)k_overlay_led_count; i++) {
+    st->leds[i].on    = board_periph_led_level((board_led_id_t)i) != 0U;
+    st->leds[i].color = board_periph_led_color_rgb565((board_led_id_t)i);
+    st->leds[i].label = k_led_labels[i];
+  }
+  st->usb_state = board_usb_state_string();
+  st->uart_line = board_periph_uart_last_line();
+  st->irq_total = board_periph_irq_total();
+  st->irq0      = board_periph_irq_count(0U);
+  st->irq1      = board_periph_irq_count(1U);
+  st->has_touch = board_periph_touch_last(&st->touch_x, &st->touch_y);
+  st->app_name  = app_name;
+}
+
+/**
+ * @brief Build the panel framebuffer, then compose it with the status sidebar.
+ *
+ * @details
+ * Renders the GLCDC panel into @p panel_fb (so a display app's region stays
+ * pixel-correct), snapshots the live peripheral state, and writes the full
+ * composite (panel region + status sidebar) into @p composite -- the single
+ * buffer that backs both the live window and the @c --ppm snapshot.
+ *
+ * @param[in,out] uc        Unicorn engine (read for the GLCDC framebuffer).
+ * @param[out]    panel_fb  Panel RGB565 buffer (@p panel_w by @p panel_h).
+ * @param[out]    composite Composite RGB565 buffer (overlay total dimensions).
+ * @param[in]     panel_w   Panel width in pixels.
+ * @param[in]     panel_h   Panel height in pixels.
+ * @param[in]     app_name  Window / app title for the sidebar caption.
+ * @return Nothing.
+ */
+static void build_composite(uc_engine*  uc,
+                            uint16_t*   panel_fb,
+                            uint16_t*   composite,
+                            uint16_t    panel_w,
+                            uint16_t    panel_h,
+                            const char* app_name)
+{
+  build_frame(uc, panel_fb, panel_w, panel_h);
+  board_status_t st = {};
+  fill_status(&st, app_name);
+  board_overlay_compose(composite, panel_fb, panel_w, panel_h, &st);
+}
+
 typedef enum : uint32_t {
   k_panel_line_max = 256U,  /**< Max panel-config line length.        */
   k_panel_name_max = 64U,   /**< Max panel name (incl NUL).           */
@@ -1512,10 +1574,10 @@ int main(int argc, char** argv)
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
                   " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>]"
                   " [--usb-in <str>]\n"
-                  "  --view          open a macOS window and show the emulated panel live\n"
-                  "  --ppm <file>    write the final frame to a binary PPM (headless ok)\n"
-                  "  --panel <file>  display descriptor (name/width/height) to size the window\n"
-                  "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n"
+                  "  --view          open a macOS window: live board view (panel + status)\n"
+                  "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
+                  "  --panel <file>  display descriptor (name/width/height) to size the panel\n"
+                  "  --size WxH      panel size in pixels; overrides --panel (default 1024x600)\n"
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
                   "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
                   "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
@@ -1712,17 +1774,26 @@ int main(int argc, char** argv)
                     (uint64_t)k_nvic_icer_base,
                     (uint64_t)k_nvic_icer_base + (uint64_t)k_nvic_en_span - 1U);
 
-  /* Optional live window; the frame buffer also backs the --ppm snapshot. */
-  board_view_t* view  = nullptr;
-  uint16_t*     frame = nullptr;
+  /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
+   * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
+   * what both the live window and the --ppm snapshot show. panel_fb holds the
+   * GLCDC render before it is composited into the sidebar-widened composite. */
+  const uint16_t panel_w   = view_w;
+  const uint16_t panel_h   = view_h;
+  const uint16_t comp_w    = board_overlay_total_width(panel_w);
+  const uint16_t comp_h    = board_overlay_total_height(panel_h);
+  board_view_t*  view      = nullptr;
+  uint16_t*      panel_fb  = nullptr;
+  uint16_t*      composite = nullptr;
   if (want_view) {
-    view = board_view_open(view_w, view_h, win_title);
+    view = board_view_open(comp_w, comp_h, win_title);
     if (view == nullptr) {
       (void)fprintf(stderr, "board_sim: could not open window; continuing headless\n");
     }
   }
   if ((view != nullptr) || (ppm_path != nullptr) || want_click) {
-    frame = (uint16_t*)malloc((size_t)view_w * (size_t)view_h * sizeof(uint16_t));
+    panel_fb  = (uint16_t*)malloc((size_t)panel_w * (size_t)panel_h * sizeof(uint16_t));
+    composite = (uint16_t*)malloc((size_t)comp_w * (size_t)comp_h * sizeof(uint16_t));
   }
 
   if (want_click) {
@@ -1813,8 +1884,8 @@ int main(int argc, char** argv)
         board_periph_touch_inject(cx, cy);
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
-        build_frame(uc, frame, view_w, view_h);
-        board_view_present(view, frame, view_w, view_h);
+        build_composite(uc, panel_fb, composite, panel_w, panel_h, win_title);
+        board_view_present(view, composite, comp_w, comp_h);
       }
       if (board_view_pump(view)) {
         closed = true;
@@ -1899,18 +1970,18 @@ int main(int argc, char** argv)
                   "  => firmware EXECUTED to the run budget (no invalid opcode / fault).\n");
   }
 
-  if ((ppm_path != nullptr) && (frame != nullptr)) {
-    build_frame(uc, frame, view_w, view_h);
-    if (write_ppm(ppm_path, frame, view_w, view_h) == 0) {
-      (void)fprintf(stderr, "  wrote %s (%ux%u)\n", ppm_path, (unsigned)view_w, (unsigned)view_h);
+  if ((ppm_path != nullptr) && (composite != nullptr)) {
+    build_composite(uc, panel_fb, composite, panel_w, panel_h, win_title);
+    if (write_ppm(ppm_path, composite, comp_w, comp_h) == 0) {
+      (void)fprintf(stderr, "  wrote %s (%ux%u)\n", ppm_path, (unsigned)comp_w, (unsigned)comp_h);
     } else {
       (void)fprintf(stderr, "  could not write %s\n", ppm_path);
     }
   }
   if (view != nullptr) {
     if (!closed) { /* run ended on its own -- keep the last frame up until closed */
-      build_frame(uc, frame, view_w, view_h);
-      board_view_present(view, frame, view_w, view_h);
+      build_composite(uc, panel_fb, composite, panel_w, panel_h, win_title);
+      board_view_present(view, composite, comp_w, comp_h);
       (void)fprintf(stderr, "board_sim: run ended; close the window to exit\n");
       while (!board_view_pump(view)) {
         (void)usleep((useconds_t)k_view_idle_us);
@@ -1918,7 +1989,8 @@ int main(int argc, char** argv)
     }
     board_view_close(view);
   }
-  free(frame);
+  free(panel_fb);
+  free(composite);
   (void)uc_close(uc);
   return 0;
 }
