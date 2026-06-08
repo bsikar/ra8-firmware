@@ -196,6 +196,127 @@ static void usb_log_count(const char* label, unsigned n)
   usb_log_line(line);
 }
 
+/* =============================================================================
+ * Device-class awareness -- the host detects HID / MSC / CDC from the enumerated
+ * interface descriptor and surfaces the class-specific traffic after CONFIGURED,
+ * so usb_hid_device / usb_msc_device exercise their data path instead of being
+ * mislabelled "CDC-ACM active".
+ * =============================================================================
+ */
+
+/** @brief USB device class the host detected from the interface descriptor. */
+typedef enum : uint8_t {
+  k_usb_class_unknown = 0U, /**< Not yet detected.              */
+  k_usb_class_cdc     = 1U, /**< CDC-ACM (virtual serial).      */
+  k_usb_class_hid     = 2U, /**< HID (boot mouse / keyboard).   */
+  k_usb_class_msc     = 3U, /**< Mass storage (BOT/SCSI).       */
+} usb_dev_class_t;
+
+/** @brief bInterfaceClass codes + the INTERFACE descriptor type (USB 2.0). */
+typedef enum : uint8_t {
+  k_usb_iclass_cdc_comm = 0x02U, /**< Communications (CDC control). */
+  k_usb_iclass_hid      = 0x03U, /**< Human Interface Device.       */
+  k_usb_iclass_msc      = 0x08U, /**< Mass Storage.                 */
+  k_usb_iclass_cdc_data = 0x0AU, /**< CDC data.                     */
+  k_usb_dt_interface    = 0x04U, /**< INTERFACE descriptor type.    */
+} usb_iclass_t;
+
+static uint8_t  s_dev_class;   /**< Detected ::usb_dev_class_t.            */
+static uint32_t s_hid_reports; /**< HID input reports the host has read.   */
+static int32_t  s_hid_cx;      /**< Accumulated HID boot-mouse X.          */
+static int32_t  s_hid_cy;      /**< Accumulated HID boot-mouse Y.          */
+static uint8_t  s_hid_buttons; /**< Last HID button bitmap.                */
+
+/** @brief Human-readable active-class suffix once the device is configured. */
+static const char* usb_class_active_str(void)
+{
+  switch ((usb_dev_class_t)s_dev_class) {
+    case k_usb_class_hid:
+      return "HID active";
+    case k_usb_class_msc:
+      return "MSC active";
+    case k_usb_class_cdc:
+      return "CDC-ACM active";
+    case k_usb_class_unknown:
+    default:
+      return "configured";
+  }
+}
+
+/**
+ * @brief Detect the device class from a returned descriptor, if it is config.
+ *
+ * @details Walks the standard descriptor chain (each entry: bLength,
+ * bDescriptorType, ...). The configuration descriptor carries the interface
+ * descriptor(s); the first interface's bInterfaceClass (offset 5) names the
+ * device class. Called for every control-IN response -- only the configuration
+ * descriptor contains an interface descriptor, so the first hit wins.
+ *
+ * @param[in] d   Descriptor bytes the device returned.
+ * @param[in] len Number of valid bytes in @p d.
+ */
+static void usb_detect_class(const uint8_t* d, uint16_t len)
+{
+  if (s_dev_class != (uint8_t)k_usb_class_unknown) {
+    return;
+  }
+  uint16_t i = 0U;
+  while (((uint32_t)i + 2U) <= (uint32_t)len) {
+    const uint8_t blen  = d[i];
+    const uint8_t btype = d[i + 1U];
+    if (blen == 0U) {
+      break;
+    }
+    if ((btype == (uint8_t)k_usb_dt_interface) && (((uint32_t)i + 6U) <= (uint32_t)len)) {
+      const uint8_t icls = d[i + 5U];
+      if (icls == (uint8_t)k_usb_iclass_hid) {
+        s_dev_class = (uint8_t)k_usb_class_hid;
+        return;
+      }
+      if (icls == (uint8_t)k_usb_iclass_msc) {
+        s_dev_class = (uint8_t)k_usb_class_msc;
+        return;
+      }
+      if ((icls == (uint8_t)k_usb_iclass_cdc_comm) || (icls == (uint8_t)k_usb_iclass_cdc_data)) {
+        s_dev_class = (uint8_t)k_usb_class_cdc;
+        return;
+      }
+    }
+    i = (uint16_t)((uint32_t)i + (uint32_t)blen);
+  }
+}
+
+/**
+ * @brief Decode one HID boot-protocol mouse input report from the device.
+ *
+ * @details The report is { buttons, dx, dy } (USB HID 1.11 sec E.10): byte 0 is
+ * the button bitmap, bytes 1-2 are signed X/Y deltas. The host accumulates the
+ * deltas into a virtual cursor so the report shows real motion (the demo walks
+ * the cursor in a square) -- exactly what a real host driver would render.
+ *
+ * @param[in] d   Report bytes.
+ * @param[in] len Report length (>= 3 for a boot mouse).
+ */
+static void usb_hid_decode_report(const uint8_t* d, uint16_t len)
+{
+  if (len < 3U) {
+    return;
+  }
+  s_hid_buttons = d[0];
+  s_hid_cx += (int32_t)(int8_t)d[1];
+  s_hid_cy += (int32_t)(int8_t)d[2];
+  s_hid_reports++;
+  if (s_trace) {
+    (void)fprintf(stderr,
+                  "  [usb] HID mouse report: btn=0x%02X dx=%+d dy=%+d -> cursor (%d,%d)\n",
+                  (unsigned)s_hid_buttons,
+                  (int)(int8_t)d[1],
+                  (int)(int8_t)d[2],
+                  (int)s_hid_cx,
+                  (int)s_hid_cy);
+  }
+}
+
 /** @brief INTSTS0 value the device reads: event bits OR computed fields. */
 static uint16_t usb_intsts0(void)
 {
@@ -549,6 +670,7 @@ static void host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s)
 static void host_drain_in(void)
 {
   usb_log_count("control-IN: device returned", (unsigned)s_usb.dcp_in.len);
+  usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
   s_usb.dcp_in.len   = 0U;
   s_usb.dcp_in.valid = false;
 }
@@ -760,15 +882,34 @@ static void host_echo_send_out(uc_engine* uc)
   usb_raise_irq(uc);
 }
 
-/** @brief Drain any bytes the device echoed onto the bulk IN pipe. */
-static void host_echo_read_in(void)
+/**
+ * @brief Drain bytes the device queued on the IN pipe; ack the IN transfer.
+ *
+ * @details After consuming the buffer the host raises BEMP for the pipe -- the
+ * "transmit buffer empty" interrupt the RA dcd uses to complete an IN transfer.
+ * Without it the device-side USBX blocks after one packet, so a HID device that
+ * streams reports (the boot mouse) freezes after the first; with it the reports
+ * keep flowing and the cursor walks its square.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the USB interrupt).
+ */
+static void host_echo_read_in(uc_engine* uc)
 {
   usb_in_buf_t* b = &s_usb.pipe_in[k_usb_bulk_in_pipe];
   if (b->valid && (b->len > 0U)) {
-    s_echo_in_got += b->len;
-    usb_log_count("bulk IN: read echoed bytes from data pipe", (unsigned)b->len);
+    if (s_dev_class == (uint8_t)k_usb_class_hid) {
+      usb_hid_decode_report(b->data, b->len); /* interrupt-IN mouse report. */
+    } else {
+      s_echo_in_got += b->len;
+      usb_log_count("bulk IN: read echoed bytes from data pipe", (unsigned)b->len);
+    }
     b->len   = 0U;
     b->valid = false;
+    /* Acknowledge the IN transfer (BEMP) so the device can queue the next. */
+    const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+    s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
+    usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+    usb_raise_irq(uc);
   } else if (b->valid) {
     b->valid = false; /* drained ZLP terminator. */
   }
@@ -777,7 +918,10 @@ static void host_echo_read_in(void)
 /** @brief Phase k_phase_configured: optionally drive the CDC bulk echo. */
 static void host_run_configured_phase(uc_engine* uc)
 {
-  host_echo_read_in();
+  host_echo_read_in(uc);
+  if (s_dev_class == (uint8_t)k_usb_class_hid) {
+    return; /* keep polling the HID interrupt-IN pipe; reports keep flowing. */
+  }
   if (s_echo_out_len == 0U) {
     s_host_phase = (uint8_t)k_phase_done;
     return;
@@ -823,7 +967,7 @@ void board_usb_tick(uc_engine* uc)
       break;
     case k_phase_done:
     default:
-      host_echo_read_in(); /* keep draining any late echo. */
+      host_echo_read_in(uc); /* keep draining any late echo. */
       break;
   }
 }
@@ -895,7 +1039,17 @@ static const char* usb_dvsq_name(uint16_t dvsq)
 const char* board_usb_state_string(void)
 {
   if (s_configured) {
-    return "CONFIGURED (CDC-ACM active)";
+    switch ((usb_dev_class_t)s_dev_class) {
+      case k_usb_class_hid:
+        return "CONFIGURED (HID active)";
+      case k_usb_class_msc:
+        return "CONFIGURED (MSC active)";
+      case k_usb_class_cdc:
+        return "CONFIGURED (CDC-ACM active)";
+      case k_usb_class_unknown:
+      default:
+        return "CONFIGURED";
+    }
   }
   return usb_dvsq_name(s_usb.dvsq);
 }
@@ -912,10 +1066,19 @@ void board_usb_report(void)
   for (uint32_t i = 0U; i < s_log_n; i++) {
     (void)fprintf(stderr, "    usb: %s\n", s_log[i]);
   }
-  (void)fprintf(stderr,
-                "  USB: %s\n",
-                s_configured ? "device CONFIGURED (CDC-ACM active)"
-                             : "enumeration INCOMPLETE (device did not reach CONFIGURED)");
+  if (s_configured) {
+    (void)fprintf(stderr, "  USB: device CONFIGURED (%s)\n", usb_class_active_str());
+  } else {
+    (void)fprintf(stderr, "  USB: enumeration INCOMPLETE (device did not reach CONFIGURED)\n");
+  }
+  if (s_hid_reports > 0U) {
+    (void)fprintf(stderr,
+                  "  USB HID       : %u mouse report(s), cursor (%d,%d) buttons 0x%02X\n",
+                  s_hid_reports,
+                  (int)s_hid_cx,
+                  (int)s_hid_cy,
+                  (unsigned)s_hid_buttons);
+  }
   if (s_echo_out_len > 0U) {
     (void)fprintf(stderr,
                   "  USB CDC echo  : sent %u byte(s) OUT, read %u byte(s) IN\n",
