@@ -74,6 +74,7 @@
 #include "ra_panel_timing.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
+#include "ra_time.h"
 
 /*
  * Cross-build-only includes: the host unit-test harness does not link
@@ -294,23 +295,32 @@ extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
 
 /**
- * @brief SysTick exception handler routed to ThreadX.
+ * @brief SysTick exception handler routed to ThreadX and the HAL time base.
  *
  * @details
  * Each 1 ms SysTick fires `_tx_timer_interrupt`, which advances the
  * kernel tick counter and pre-empts the running thread when a higher-
- * priority thread becomes ready.
+ * priority thread becomes ready.  It ALSO advances the `ra_time`
+ * millisecond counter via `ra_time_on_tick`, so `ra_delay_ms` -- used
+ * inside HAL bring-up paths such as `ra_board_lcd_panel_power_on`
+ * (panel reset/back-light pulses) reached through `display_init` --
+ * makes progress under ThreadX instead of busy-waiting forever on a
+ * `s_tick_ms` that nothing else moves.
  *
  * @pre Called from exception context (IPSR == 15).
  * @pre `_tx_initialize_low_level` has programmed SysTick.
  * @post One ThreadX tick has been credited.
+ * @post The `ra_time` millisecond counter has advanced by one.
  *
+ * @note Both callees are interrupt-safe and need no prior init beyond
+ *       SysTick being armed.
  * @since 0.1.0
  */
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
   _tx_timer_interrupt();
+  ra_time_on_tick();
 }
 
 /* =============================================================================
@@ -454,21 +464,17 @@ static void demo_panic_halt(void)
 static void demo_lcd_panel_bringup(void)
 {
   (void)tx_thread_sleep(500U); /* PLL / panel-POR settle */
-  /* Inline the GPIO sequence with tx_thread_sleep: ra_delay_ms
-   * uses ra_time's tick which is not advanced by the demo's
-   * SysTick (we route it to ThreadX instead). */
-  (void)ra_gpio_output_init(k_ra_pin_lcd_reset_l, k_ra_level_low);
-  (void)tx_thread_sleep(50U);
-  (void)ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
-  (void)tx_thread_sleep(50U);
-  (void)ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
-  (void)tx_thread_sleep(200U); /* let pins settle in output mode */
 
   /* Display PAL: bound to the LCD backend by ``k_demo_display_cfg``.
-   * Folds ``ra_board_glcdc_init`` + ``ra_glcdc_init`` +
-   * ``set_background_color`` + ``start(true)`` + ``layer1_show`` into
-   * a single call.  Switching to e-ink later is a one-line change
-   * in ``k_demo_display_cfg``. */
+   * Folds the panel power-on (``ra_board_lcd_panel_power_on`` --
+   * RESET_L / BLEN strap pulses) + ``ra_board_glcdc_init`` +
+   * ``ra_glcdc_init`` + ``set_background_color`` + ``start(true)`` +
+   * ``layer1_show`` into a single call.  The panel power-on uses
+   * ``ra_delay_ms`` for its reset pulses, which advances here because
+   * ``SysTick_Handler`` also drives ``ra_time_on_tick`` -- so the demo
+   * no longer has to (and must not, or it double-claims RESET_L) inline
+   * the GPIO strap sequence by hand.  Switching to e-ink later is a
+   * one-line change in ``k_demo_display_cfg``. */
   if (display_init(&k_demo_display_cfg, &s_display_pal) != k_ra_ok) {
     demo_panic_halt();
   }
