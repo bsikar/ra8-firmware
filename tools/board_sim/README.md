@@ -15,8 +15,14 @@ screen beside the status panel. Unlike `tools/simulator` (which recompiles the
 GUIX UI natively), board_sim runs the actual ARM binary, so it exercises the
 genuine bring-up and peripheral-driver code path.
 
-Standalone tool under `tools/`, outside the firmware CI gates. Needs Unicorn +
-Capstone (`brew install unicorn capstone`).
+Standalone tool under `tools/`. Needs Unicorn + Capstone: `brew install unicorn
+capstone` on macOS, or `libunicorn-dev` + `libcapstone-dev` (a source install
+works too -- both ship `.pc` files, found via pkg-config) on Linux. The live
+board view (`--view`) is a macOS Cocoa window; every other path -- headless
+boot, the MMIO report, `--ppm`, the console capture -- builds and runs headless
+on Linux as well (the CMake links a no-op window shim off the APPLE path and
+references zero AppKit symbols), which is what lets a board-sim smoke gate run
+on the Linux CI runner.
 
 ## Build & run
 

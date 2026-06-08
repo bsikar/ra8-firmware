@@ -9,30 +9,44 @@
 #   cmake -B build -S . && cmake --build build -j
 #   ./build/board_sim ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
 #
-# Needs: brew install unicorn capstone
+# Needs Unicorn + Capstone:
+#   macOS: brew install unicorn capstone
+#   Linux: libunicorn-dev + libcapstone-dev (or a source install) -- found via
+#          pkg-config, so the board-sim smoke gate runs on the Linux CI runner.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)
-project(ra8d2_board_sim LANGUAGES C OBJC)
+
+# Objective-C (board_view.m) is the macOS live-window backend ONLY, and an OBJC
+# compiler / AppKit may be absent on a Linux CI runner. Enable C unconditionally
+# and add OBJC only on APPLE, where board_view.m is actually compiled.
+project(ra8d2_board_sim LANGUAGES C)
+if(APPLE)
+    enable_language(OBJC)
+endif()
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Homebrew prefix (Apple Silicon default).
+# Homebrew prefix (Apple Silicon default); only used on the APPLE path below.
 set(BREW /opt/homebrew)
 
-# board_view.m is the optional live macOS window (--view); board_periph.c is the
-# peripheral-block registry CORE (block dispatch + ICU/NVIC routing); each
-# board_periph_<blk>.c is one register-accurate peripheral block that
-# self-registers with the core (GPIO/PORT, GPT+AGT timers, SCI_B UART,
-# I3C/I2C+GT911); board_usb.c is the USBFS controller model + virtual host
-# (chapter-9 enumeration); board_overlay.c composes the panel + status-sidebar
-# board view (LEDs / USB / UART / IRQ / touch) into one RGB565 buffer for both
+# board_view is the optional live board window: the Cocoa backend (board_view.m)
+# on macOS, the headless no-op shim (board_view_stub.c) everywhere else. Both
+# satisfy the same plain-C ABI in board_view.h, so exactly one is compiled and
+# the non-APPLE build links zero AppKit/CoreGraphics symbols; --view then
+# cleanly falls back to headless (board_view_open returns nullptr and main.c
+# continues without a window). board_periph.c is the peripheral-block registry
+# CORE (block dispatch + ICU/NVIC routing); each board_periph_<blk>.c is one
+# register-accurate peripheral block that self-registers with the core
+# (GPIO/PORT, GPT+AGT timers, SCI_B UART, I3C/I2C+GT911, ...); board_usb.c is the
+# USBFS controller model + virtual host (chapter-9 enumeration); board_overlay.c
+# composes the panel + status-sidebar board view into one RGB565 buffer for both
 # --view and --ppm; rest is C.
 #
 # Adding a peripheral block: just drop a new board_periph_<blk>.c (it
@@ -42,18 +56,46 @@ set(BREW /opt/homebrew)
 # edit to this file and no conflict.
 file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS
      "${CMAKE_CURRENT_SOURCE_DIR}/board_periph_*.c")
+
+if(APPLE)
+    set(BOARD_VIEW_SRC board_view.m)
+else()
+    set(BOARD_VIEW_SRC board_view_stub.c)
+endif()
+
 add_executable(board_sim
                main.c
                board_periph.c
                ${BOARD_PERIPH_BLOCKS}
                board_usb.c
                board_overlay.c
-               board_view.m)
-set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+               ${BOARD_VIEW_SRC})
+
+if(APPLE)
+    set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+endif()
+
 # The USB model includes the firmware's register/ELC headers for the exact
 # offsets + ELC event numbers it must mirror (ra8d2_usb_regs.h, ra8d2_elc_regs.h).
-target_include_directories(board_sim PRIVATE ${BREW}/include
+target_include_directories(board_sim PRIVATE
                            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra_hal/inc)
-target_link_directories(board_sim PRIVATE ${BREW}/lib)
-target_link_libraries(board_sim PRIVATE unicorn capstone "-framework Cocoa")
+
+# Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
+# use CMake's native find_* (the self-hosted CI runner has no pkg-config). It
+# finds a system install -- the board-sim smoke gate apt-installs libunicorn-dev
+# + libcapstone-dev (headers under /usr/include/{unicorn,capstone}); a custom
+# prefix still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
+if(APPLE)
+    target_include_directories(board_sim PRIVATE ${BREW}/include)
+    target_link_directories(board_sim PRIVATE ${BREW}/lib)
+    target_link_libraries(board_sim PRIVATE unicorn capstone "-framework Cocoa")
+else()
+    find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h REQUIRED)
+    find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h REQUIRED)
+    find_library(UNICORN_LIBRARY unicorn REQUIRED)
+    find_library(CAPSTONE_LIBRARY capstone REQUIRED)
+    target_include_directories(board_sim PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
+    target_link_libraries(board_sim PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
+endif()
+
 target_compile_options(board_sim PRIVATE -Wall -Wextra)
