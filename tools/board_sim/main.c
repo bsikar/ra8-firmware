@@ -942,8 +942,32 @@ static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const cha
   }
 }
 
+/** @brief Trace hook: log a function entry (user = name) without altering it. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_net_trace(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)uc;
+  (void)size;
+  (void)fprintf(stderr, "  [nettrace] %s @ 0x%08X\n", (const char*)user, (unsigned)address);
+}
+
+/** @brief Add an entry-trace hook for @p name (if present); leaves it running. */
+static void eth_trace_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name)
+{
+  const uint32_t addr = elf_sym_addr(elf, len, name);
+  if (addr == 0U) {
+    return;
+  }
+  static uc_hook   th[4];
+  static uint32_t  tn;
+  if (tn < (uint32_t)(sizeof(th) / sizeof(th[0]))) {
+    (void)uc_hook_add(uc, &th[tn], UC_HOOK_CODE, (void*)on_net_trace, (void*)name, addr, addr);
+    tn++;
+  }
+}
+
 /** @brief Install the ra_eth frame-seam hooks if the symbols are present. */
-static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len, bool trace)
 {
   const uint32_t w = elf_sym_addr(elf, len, "ra_eth_write");
   const uint32_t r = elf_sym_addr(elf, len, "ra_eth_read");
@@ -960,6 +984,13 @@ static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   eth_seam_hook(uc, elf, len, "ra_board_ethernet_init", (void*)on_eth_ok);
   eth_seam_hook(uc, elf, len, "ra_eth_open", (void*)on_eth_ok);
   eth_seam_hook(uc, elf, len, "ra_eth_close", (void*)on_eth_ok);
+  /* With --trace, log the NetX echo-loop entries so the app thread's progress
+   * (accept -> receive -> send) is visible -- useful when debugging the stack. */
+  if (trace) {
+    eth_trace_hook(uc, elf, len, "_nx_tcp_server_socket_accept");
+    eth_trace_hook(uc, elf, len, "_nx_tcp_socket_receive");
+    eth_trace_hook(uc, elf, len, "_nx_tcp_socket_send");
+  }
   (void)fprintf(stderr,
                 "  ra_eth seam   : write=0x%08X read=0x%08X link=0x%08X (virtual net peer)\n",
                 w,
@@ -2039,7 +2070,7 @@ int main(int argc, char** argv)
                     (uint64_t)k_nvic_icer_base + (uint64_t)k_nvic_en_span - 1U);
   /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
    * firmware exports those symbols, i.e. a NetX networking example). */
-  eth_seam_install(uc, elf, elf_len);
+  eth_seam_install(uc, elf, elf_len, want_trace);
 
   /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
    * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
