@@ -1,0 +1,214 @@
+/**
+ * @file board_periph_gpio.c
+ * @brief GPIO / PORT peripheral-block model for the board emulator
+ *
+ * @details
+ * Models the RA8D2 GPIO/PORT block (ra8d2_port_regs.h): per-port direction
+ * (PDR) and output latch (PODR), the PCNTR1 combined register the FSP ioport
+ * driver writes, and the PCNTR3 atomic set/clear. The block also tracks the
+ * three EK-RA8D2 user LEDs (LED1 BLUE P600, LED2 GREEN P303, LED3 RED PA07) so
+ * the graphical board view can light each indicator in its real colour and the
+ * run summary can report each LED's level and transition count.
+ *
+ * Self-registers its descriptor (address range + read / write / reset) with the
+ * board_periph core from a file-scope constructor, so the core needs no central
+ * block list -- see board_periph_block.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+#include <stdio.h>
+
+#include "board_periph.h"
+#include "board_periph_block.h"
+
+/** @brief GPIO/PORT block geometry (ra8d2_port_regs.h). */
+typedef enum : uint64_t {
+  k_port_base   = 0x40400000UL,  /**< PORT0 base.                          */
+  k_port_stride = 0x20UL,        /**< Bytes between adjacent ports.        */
+  k_port_count  = 15UL,          /**< PORT0..PORT14.                       */
+  k_port_span   = 0x20UL * 15UL, /**< Full PORT address window.            */
+  k_port_pcntr1 = 0x00UL,        /**< {PODR[31:16], PDR[15:0]} RW.         */
+  k_port_pcntr2 = 0x04UL,        /**< {EIDR[31:16], PIDR[15:0]} R.         */
+  k_port_pcntr3 = 0x08UL,        /**< {PORR[31:16], POSR[15:0]} W.         */
+  k_port_pcntr4 = 0x0CUL,        /**< {EORR[31:16], EOSR[15:0]} RW.        */
+} port_map_t;
+
+/** @brief Generic field shifts / masks shared by the PORT halves. */
+typedef enum : uint32_t {
+  k_half_shift = 16U,     /**< High-half (PODR/PORR/EIDR) shift.     */
+  k_half_mask  = 0xFFFFU, /**< 16-bit half mask.                     */
+} port_field_t;
+
+/** @brief RGB565 lit-colour codes for the three board LEDs. */
+typedef enum : uint16_t {
+  k_led_rgb565_blue  = 0x001FU, /**< LED1 blue  (P600) when driven high. */
+  k_led_rgb565_green = 0x07E0U, /**< LED2 green (P303) when driven high. */
+  k_led_rgb565_red   = 0xF800U, /**< LED3 red   (PA07) when driven high. */
+} led_color_t;
+
+/** @brief One PORT instance: direction + output latch (16 bits each). */
+typedef struct {
+  uint16_t pdr;  /**< Direction: 1 = output, 0 = input. */
+  uint16_t podr; /**< Output-data latch.                */
+} port_state_t;
+
+/** @brief Board LED -> (port index, pin index, lit colour), from the BSP. */
+typedef struct {
+  uint8_t     port;
+  uint8_t     pin;
+  uint16_t    color; /**< RGB565 colour the LED emits when driven high. */
+  const char* name;
+} led_map_t;
+
+static const led_map_t k_led_map[k_board_led_count] = {
+  {6U, 0U, (uint16_t)k_led_rgb565_blue, "LED1 BLUE  P600"},
+  {3U, 3U, (uint16_t)k_led_rgb565_green, "LED2 GREEN P303"},
+  {10U, 7U, (uint16_t)k_led_rgb565_red, "LED3 RED   PA07"},
+};
+
+static port_state_t s_port[k_port_count];
+static uint32_t     s_led_level[k_board_led_count];       /**< Last driven level. */
+static uint32_t     s_led_transitions[k_board_led_count]; /**< 0->1 / 1->0 count. */
+
+/** @brief Note a board-LED edge when a traced port/pin output latch changes. */
+static void port_trace_leds(uint32_t port_idx, uint16_t before, uint16_t after)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
+    if (k_led_map[i].port != (uint8_t)port_idx) {
+      continue;
+    }
+    const uint16_t mask = (uint16_t)(1U << k_led_map[i].pin);
+    const uint32_t was  = ((before & mask) != 0U) ? 1U : 0U;
+    const uint32_t now  = ((after & mask) != 0U) ? 1U : 0U;
+    if (was != now) {
+      s_led_level[i] = now;
+      s_led_transitions[i]++;
+      if (board_periph_trace()) {
+        (void)fprintf(stderr, "  [trace] %s -> %s\n", k_led_map[i].name, now ? "ON" : "OFF");
+      }
+    }
+  }
+}
+
+/** @brief Apply a new PODR value to a port and trace any LED transition. */
+static void port_set_podr(uint32_t port_idx, uint16_t new_podr)
+{
+  const uint16_t old = s_port[port_idx].podr;
+  if (old != new_podr) {
+    port_trace_leds(port_idx, old, new_podr);
+    s_port[port_idx].podr = new_podr;
+  }
+}
+
+/** @brief Dispatch a PORT register read; returns PCNTR value for the port. */
+static uint64_t port_read(uc_engine* uc, uint64_t addr, unsigned size)
+{
+  (void)uc;
+  (void)size;
+  const uint32_t idx = (uint32_t)((addr - (uint64_t)k_port_base) / (uint64_t)k_port_stride);
+  const uint64_t off = (addr - (uint64_t)k_port_base) % (uint64_t)k_port_stride;
+  if (idx >= (uint32_t)k_port_count) {
+    return 0U;
+  }
+  const port_state_t* p = &s_port[idx];
+  if (off == (uint64_t)k_port_pcntr1) {
+    return ((uint32_t)p->podr << (uint32_t)k_half_shift) | (uint32_t)p->pdr;
+  }
+  if (off == (uint64_t)k_port_pcntr2) {
+    /* PIDR reads the live pin level: an output pin reads back its driven
+     * latch, so a firmware "read what I drove" check observes the real state. */
+    return (uint32_t)(p->podr & p->pdr);
+  }
+  return 0U; /* PCNTR3 is write-only; PCNTR4 unmodelled -> 0. */
+}
+
+/** @brief Dispatch a PORT register write (PCNTR1 direction/latch, PCNTR3 set/clear). */
+static void port_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+{
+  (void)uc;
+  (void)size;
+  const uint32_t idx = (uint32_t)((addr - (uint64_t)k_port_base) / (uint64_t)k_port_stride);
+  const uint64_t off = (addr - (uint64_t)k_port_base) % (uint64_t)k_port_stride;
+  if (idx >= (uint32_t)k_port_count) {
+    return;
+  }
+  if (off == (uint64_t)k_port_pcntr1) {
+    s_port[idx].pdr = (uint16_t)(value & (uint32_t)k_half_mask);
+    port_set_podr(idx,
+                  (uint16_t)(((uint32_t)value >> (uint32_t)k_half_shift) & (uint32_t)k_half_mask));
+  } else if (off == (uint64_t)k_port_pcntr3) {
+    const uint16_t posr = (uint16_t)((uint32_t)value & (uint32_t)k_half_mask);
+    const uint16_t porr =
+      (uint16_t)(((uint32_t)value >> (uint32_t)k_half_shift) & (uint32_t)k_half_mask);
+    uint16_t podr = s_port[idx].podr;
+    podr |= posr;            /* atomic set  */
+    podr &= (uint16_t)~porr; /* atomic clear */
+    port_set_podr(idx, podr);
+  }
+}
+
+/** @brief Clear every PORT latch / direction and the per-LED observability state. */
+static void port_reset(void)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_port_count; i++) {
+    s_port[i] = (port_state_t){};
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
+    s_led_level[i]       = 0U;
+    s_led_transitions[i] = 0U;
+  }
+}
+
+uint32_t board_periph_led_level(board_led_id_t led)
+{
+  if ((uint32_t)led >= (uint32_t)k_board_led_count) {
+    return 0U;
+  }
+  return s_led_level[(uint32_t)led];
+}
+
+uint16_t board_periph_led_color_rgb565(board_led_id_t led)
+{
+  if ((uint32_t)led >= (uint32_t)k_board_led_count) {
+    return 0U;
+  }
+  return k_led_map[(uint32_t)led].color;
+}
+
+/** @brief Print the board-LED final level and transition-count line. */
+static void port_report(void)
+{
+  (void)fprintf(stderr, "  GPIO LEDs     :");
+  for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
+    (void)fprintf(stderr,
+                  " [%s %s x%u]",
+                  k_led_map[i].name,
+                  s_led_level[i] ? "ON" : "OFF",
+                  s_led_transitions[i]);
+  }
+  (void)fprintf(stderr, "\n");
+}
+
+/** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
+static const board_periph_block_t k_gpio_block = {
+  .base   = (uint64_t)k_port_base,
+  .span   = (uint64_t)k_port_span,
+  .order  = (uint32_t)k_block_order_gpio,
+  .read   = port_read,
+  .write  = port_write,
+  .tick   = nullptr,
+  .reset  = port_reset,
+  .report = port_report,
+  .name   = "GPIO/PORT",
+};
+
+/** @brief Self-register the GPIO block before main runs (decentralized). */
+__attribute__((constructor)) static void board_periph_gpio_register(void)
+{
+  board_periph_register_block(&k_gpio_block);
+}

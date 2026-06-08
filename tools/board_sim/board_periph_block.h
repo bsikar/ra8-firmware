@@ -1,0 +1,187 @@
+/**
+ * @file board_periph_block.h
+ * @brief Decentralized peripheral-block registry for the board emulator core
+ *
+ * @details
+ * The internal contract between the board_periph core (the block registry +
+ * MMIO dispatch + the ICU/NVIC routing) and each per-block model file
+ * (board_periph_gpio.c, board_periph_timer.c, board_periph_sci.c,
+ * board_periph_i2c.c, and any future block). It is NOT part of the public
+ * board_periph.h surface main.c uses; it exists so a new peripheral block can
+ * join the model with no edit to a hand-maintained central list.
+ *
+ * A block describes itself with a ::board_periph_block_t -- its absolute
+ * register address range plus read / write / tick / reset function pointers --
+ * and registers that descriptor with the core. Registration is decentralized:
+ * each block file self-registers from a file-scope @c __attribute__((constructor))
+ * that runs before @c main (board_sim is a host program, so constructors are a
+ * sound startup mechanism), so ADDING A BLOCK is exactly "(a) a new
+ * board_periph_<blk>.c and (b) a CMakeLists source line" -- no other file
+ * changes. Registration order does not matter: MMIO dispatch is by disjoint
+ * address range, and the per-tick advance is ordered by the descriptor's
+ * ::board_periph_block_t::order field, so two blocks added in parallel never
+ * conflict.
+ *
+ * The core also publishes the shared framework services a block needs back from
+ * it: ::board_periph_icu_raise_event (so a timer / UART block can pend an
+ * interrupt through the one ICU IELSR -> NVIC path the core owns) and
+ * ::board_periph_trace (the --trace flag).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * @since 0.1.0
+ */
+
+#pragma once
+
+#include <stdint.h>
+#include <unicorn/unicorn.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Read handler for a modelled peripheral block.
+ *
+ * @param[in,out] uc   Unicorn engine (a handler may read emulated memory).
+ * @param[in]     addr Absolute peripheral address being read (inside the
+ *                     block's registered range).
+ * @param[in]     size Access width in bytes (1 / 2 / 4).
+ * @return The register value the block reports for @p addr.
+ * @since 0.1.0
+ */
+typedef uint64_t (*board_periph_read_fn)(uc_engine* uc, uint64_t addr, unsigned size);
+
+/**
+ * @brief Write handler for a modelled peripheral block.
+ *
+ * @param[in,out] uc    Unicorn engine (a handler may read emulated memory).
+ * @param[in]     addr  Absolute peripheral address being written (inside the
+ *                      block's registered range).
+ * @param[in]     size  Access width in bytes (1 / 2 / 4).
+ * @param[in]     value Value being written.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+typedef void (*board_periph_write_fn)(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value);
+
+/**
+ * @brief Per-emulation-chunk advance for a block, or NULL if it has none.
+ *
+ * @param[in,out] uc Unicorn engine (the block may raise an ICU event, which
+ *                   reads IELSR / NVIC from PPB).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+typedef void (*board_periph_tick_fn)(uc_engine* uc);
+
+/**
+ * @brief Reset a block to its power-on state, or NULL if it keeps none.
+ *
+ * @return Nothing.
+ * @since 0.1.0
+ */
+typedef void (*board_periph_reset_fn)(void);
+
+/**
+ * @brief Print a block's end-of-run summary section, or NULL if it has none.
+ *
+ * @details Called by the core's ::board_periph_report in ascending
+ * ::board_periph_block_t::order, so the summary keeps its historical section
+ * order (LEDs, timers, UART, ... touch) without a central list.
+ *
+ * @return Nothing.
+ * @since 0.1.0
+ */
+typedef void (*board_periph_report_fn)(void);
+
+/**
+ * @brief A modelled peripheral block's self-description for the core registry.
+ *
+ * @details
+ * @c base / @c span give the block's absolute register window; the core
+ * dispatches an MMIO access to @c read / @c write when its address falls in
+ * @c [base, base + span). @c tick (may be NULL) advances the block once per
+ * emulation chunk and @c reset (may be NULL) returns it to power-on state. The
+ * descriptor must have static lifetime -- the core stores the pointer, not a
+ * copy. @c order makes the per-tick advance deterministic regardless of
+ * registration order: blocks tick in ascending @c order (ties keep registration
+ * order), preserving the historical AGT/GPT-before-SCI cadence.
+ */
+typedef struct {
+  uint64_t               base;   /**< Absolute window base address.            */
+  uint64_t               span;   /**< Window length in bytes.                  */
+  uint32_t               order;  /**< Ascending tick order (lower ticks first).*/
+  board_periph_read_fn   read;   /**< MMIO read handler (required).            */
+  board_periph_write_fn  write;  /**< MMIO write handler (required).           */
+  board_periph_tick_fn   tick;   /**< Per-chunk advance, or NULL.            */
+  board_periph_reset_fn  reset;  /**< Power-on reset, or NULL.               */
+  board_periph_report_fn report; /**< End-of-run summary section, or NULL.   */
+  const char*            name;   /**< Short label (diagnostics only).        */
+} board_periph_block_t;
+
+/**
+ * @brief Recommended @c order values so parallel blocks tick in a stable cadence.
+ *
+ * @details
+ * A block picks one of these for ::board_periph_block_t::order. Spacing leaves
+ * room for new blocks between the existing ones without renumbering. Only the
+ * relative order matters; ties are broken by registration order. The historical
+ * cadence the core preserved was timers (AGT then GPT) before SCI, so the timer
+ * block sits below the SCI block here.
+ */
+typedef enum : uint32_t {
+  k_block_order_gpio  = 10U, /**< GPIO/PORT (no tick today).          */
+  k_block_order_timer = 20U, /**< GPT + AGT timers.                   */
+  k_block_order_sci   = 30U, /**< SCI_B UART.                        */
+  k_block_order_i2c   = 40U, /**< I3C/I2C + GT911 (no tick today).    */
+} board_periph_block_order_t;
+
+/**
+ * @brief Register a peripheral block's descriptor with the core registry.
+ *
+ * @details
+ * Called by each block file from a file-scope @c __attribute__((constructor)),
+ * so every block is registered before @c main runs. The core keeps the supplied
+ * pointer (the descriptor must be static) and dispatches MMIO / tick / reset
+ * through it. Registering more blocks than the fixed registry capacity drops the
+ * extra (a build-time assert in the core guards the common case); registration
+ * order is irrelevant to behaviour.
+ *
+ * @param[in] block Static block descriptor to add (ignored if NULL).
+ * @return Nothing.
+ * @post Subsequent ::board_periph_read / _write / _tick / reset see @p block.
+ * @since 0.1.0
+ */
+void board_periph_register_block(const board_periph_block_t* block);
+
+/**
+ * @brief Raise a peripheral ELC event through the core's ICU -> NVIC path.
+ *
+ * @details
+ * The single entry point a block uses to assert an interrupt: the core owns the
+ * ICU IELSR event-link table, the NVIC enable shadow and the pending-IRQ ring,
+ * so a timer / UART block calls this rather than touching that state. The core
+ * latches IELSR.IR for the slot linked to @p event and, if that NVIC line is
+ * enabled, pends it for the engine to take.
+ *
+ * @param[in,out] uc    Unicorn engine (the ICU reads IELSR / NVIC from PPB).
+ * @param[in]     event ELC event number the block is asserting.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_periph_icu_raise_event(uc_engine* uc, uint16_t event);
+
+/**
+ * @brief Whether --trace is active (blocks log transitions when true).
+ *
+ * @return true when the run was started with --trace, else false.
+ * @since 0.1.0
+ */
+bool board_periph_trace(void);
+
+#ifdef __cplusplus
+}
+#endif
