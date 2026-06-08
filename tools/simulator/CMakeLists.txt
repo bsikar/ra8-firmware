@@ -1,15 +1,28 @@
 #
-# RA8D2 UI simulator -- a config-driven companion development tool (macOS).
+# RA8D2 UI simulator -- a config-driven companion development tool.
 #
 # Standalone instrument (NOT a firmware example): it becomes the display named
 # by a TOML panel config and runs the shared GUIX UI against it, so screens can
 # be built and clicked on the Mac. GUIX renders into an RGB565 framebuffer via
-# the host 565rgb driver behind the display PAL's display_bind_guix seam; the
-# macOS window backend presents it.
+# the host 565rgb driver behind the display PAL's display_bind_guix seam.
+#
+# Two render paths:
+#   --window  live, interactive -- presents through the host PAL's Cocoa
+#             backend. macOS only (needs AppKit / CoreGraphics).
+#   --png     headless -- GUIX renders into the framebuffer and main.c writes a
+#             PPM. No windowing system; builds + runs on Linux for CI.
+#
+# On APPLE both paths build (the .m AppKit shims are compiled and -framework
+# Cocoa is linked). On non-APPLE (Linux CI) the build is headless-only: the
+# AppKit .m shims are dropped in favour of the no-op window shim
+# (ra_display_pal_host_macos_window_sim.c), Cocoa is not linked, and --window
+# is a clean error at runtime (see main.c). No Cocoa/CoreGraphics symbol is
+# referenced off the APPLE path.
 #
 # Build + run:
 #     cmake -B build -S . && cmake --build build -j
-#     ./build/sim --panel panels/ek_ra8d2.toml
+#     ./build/sim --panel panels/ek_ra8d2.toml             # live window (macOS)
+#     ./build/sim --panel panels/ek_ra8d2.toml --png x.ppm # headless (any OS)
 # Or from the repo root: `make sim` (PANEL=<name> to pick a config).
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -17,16 +30,19 @@
 #
 
 cmake_minimum_required(VERSION 3.20)
-project(ra8d2_simulator LANGUAGES C OBJC)
+
+# Objective-C is only needed for the macOS AppKit window shim, and an OBJC
+# compiler may be absent on a Linux CI runner. Enable C unconditionally and
+# add OBJC only where the .m shims are actually compiled (APPLE).
+project(ra8d2_simulator LANGUAGES C)
+if(APPLE)
+    enable_language(OBJC)
+endif()
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-if(NOT APPLE)
-    message(FATAL_ERROR "The simulator uses the macOS window backend; build it on macOS.")
-endif()
 
 # Repo root (two levels up from tools/simulator/).
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -47,14 +63,31 @@ set(RA_CORE_SOURCES
     ${FW_ROOT}/libs/ra_core/src/ra_error_handler.c
 )
 
+# The portable PAL pieces (no Objective-C): the dispatcher, the GUIX bridge,
+# the C backend, and the RGB565->RGBA8888 pixel helper. The window shim is
+# selected per-platform below.
 set(PAL_SOURCES
     ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal.c
     ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_guix.c
     ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos.c
     ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_pixels.c
-    ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_cgimage.m
-    ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_window.m
 )
+
+# Window shim: the real Cocoa/CoreGraphics backend on macOS, the headless
+# no-op shim everywhere else. The C backend (ra_display_pal_host_macos.c)
+# talks to the window only through the C-ABI in
+# ra_display_pal_host_macos_window.h, so exactly one of these satisfies the
+# contract and the non-APPLE build pulls in zero AppKit/CoreGraphics symbols.
+if(APPLE)
+    list(APPEND PAL_SOURCES
+        ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_cgimage.m
+        ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_window.m
+    )
+else()
+    list(APPEND PAL_SOURCES
+        ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_window_sim.c
+    )
+endif()
 
 add_executable(sim
     main.c
@@ -84,11 +117,13 @@ target_compile_options(sim PRIVATE -Wall -Wextra -Wno-unused-function)
 # GUIX is SOUP: compile at C11 with warnings off (per-source overrides win).
 set_source_files_properties(${GUIX_SRC} PROPERTIES COMPILE_OPTIONS "-std=gnu11;-w")
 
-# Objective-C shims need ARC + a C23 dialect.
-set_source_files_properties(
-    ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_cgimage.m
-    ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_window.m
-    PROPERTIES COMPILE_OPTIONS "-fobjc-arc;-std=gnu2x"
-)
-
-target_link_libraries(sim PRIVATE "-framework Cocoa")
+# macOS only: the Objective-C shims need ARC + a C23 dialect, and the live
+# window path links AppKit. Neither is referenced on the non-APPLE build.
+if(APPLE)
+    set_source_files_properties(
+        ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_cgimage.m
+        ${FW_ROOT}/libs/ra_display_pal/src/ra_display_pal_host_macos_window.m
+        PROPERTIES COMPILE_OPTIONS "-fobjc-arc;-std=gnu2x"
+    )
+    target_link_libraries(sim PRIVATE "-framework Cocoa")
+endif()
