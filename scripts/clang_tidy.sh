@@ -210,7 +210,12 @@ run_clang_tidy() {
     if [[ "$(uname -s)" == "Darwin" ]]; then
         local macos_sdk
         if macos_sdk="$(xcrun --show-sdk-path 2>/dev/null)" && [[ -d "$macos_sdk/usr/include" ]]; then
-            extra_sdk_arg=(--extra-arg="-isystem" --extra-arg="$macos_sdk/usr/include")
+            # -isystem resolves the C stdlib headers; -isysroot additionally lets
+            # clang-tidy find the macOS frameworks (CoreGraphics, AppKit) that the
+            # host display backend includes -- without it the Command Line Tools
+            # build reports a spurious "CoreGraphics/CoreGraphics.h file not found".
+            extra_sdk_arg=(--extra-arg="-isysroot" --extra-arg="$macos_sdk"
+                           --extra-arg="-isystem" --extra-arg="$macos_sdk/usr/include")
         fi
     fi
 
