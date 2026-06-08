@@ -100,6 +100,10 @@ typedef enum : uint64_t {
   k_exc_systick    = 15UL,         /**< SysTick exception / vector index.     */
   k_nvic_ipr_base  = 0xE000E400UL, /**< NVIC IPR priority bytes (one per IRQ).*/
   k_nvic_ispr_base = 0xE000E200UL, /**< NVIC ISPR set-pending (per-IRQ bit).  */
+  k_nvic_iser_base = 0xE000E100UL, /**< NVIC ISER set-enable array base.      */
+  k_nvic_icer_base = 0xE000E180UL, /**< NVIC ICER clear-enable array base.    */
+  k_nvic_en_words  = 8UL,          /**< ISER/ICER words modelled (256 lines). */
+  k_nvic_en_span   = 8UL * 4UL,    /**< Byte span of one set/clear array.     */
   k_exc_irq_vec0   = 16UL,         /**< Vector index of IRQ0 (16 + IRQn).     */
 } cortexm_scs_t;
 
@@ -719,6 +723,53 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   uint32_t       next = pc + step;
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
   (void)uc_emu_stop(uc);
+}
+
+/**
+ * @brief UC_HOOK_MEM_WRITE handler for the NVIC ISER / ICER arrays.
+ *
+ * @details
+ * The NVIC set-enable (ISER) and clear-enable (ICER) registers are not normal
+ * read/write words: a written 1 sets (ISER) or clears (ICER) that interrupt
+ * line and a written 0 has no effect, so independent stores accumulate. The PPB
+ * is mapped as plain RAM here, so the raw store would overwrite the whole word
+ * and drop every other enabled line -- which breaks any firmware that enables
+ * more than one line (e.g. the SCI RXI + TXI + TEI of the interrupt-driven UART
+ * path, or several USB controller lines later). This hook decodes the written
+ * bits and folds them into board_periph's authoritative enable shadow, which the
+ * ICU model consults when deciding whether to pend a line. The raw RAM word is
+ * left as-is (nothing reads ISER/ICER back on the modelled paths).
+ *
+ * @param[in,out] uc    Unicorn engine; unused (state lives in board_periph).
+ * @param[in]     type  Memory access type (write); unused.
+ * @param[in]     addr  The ISER/ICER word being written.
+ * @param[in]     size  Access width in bytes; unused.
+ * @param[in]     value The bit-mask the firmware is setting/clearing.
+ * @param[in]     user  Hook user pointer; unused.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+static void on_nvic_en_write(uc_engine*  uc,
+                             uc_mem_type type,
+                             uint64_t    addr,
+                             int         size,
+                             int64_t     value,
+                             void*       user)
+{
+  (void)uc;
+  (void)type;
+  (void)size;
+  (void)user;
+  const bool     is_set = (addr >= (uint64_t)k_nvic_iser_base) &&
+                          (addr < ((uint64_t)k_nvic_iser_base + (uint64_t)k_nvic_en_span));
+  const uint64_t base   = is_set ? (uint64_t)k_nvic_iser_base : (uint64_t)k_nvic_icer_base;
+  const uint32_t word   = (uint32_t)((addr - base) / 4U);
+  const uint32_t bits   = (uint32_t)value;
+  for (uint32_t b = 0U; b < 32U; b++) {
+    if ((bits & (1U << b)) != 0U) {
+      board_periph_nvic_set_enable((word * 32U) + b, is_set);
+    }
+  }
 }
 
 static uint8_t* read_file(const char* path, long* out_len)
@@ -1561,17 +1612,115 @@ static bool load_panel(const char* path, board_panel_t* out)
   return true;
 }
 
+/* Console-UART presentation. The SCI_B model captures every byte the firmware
+ * transmits and hands it to console_tx_sink, which echoes it to stdout with a
+ * clear [uart] prefix so a console example's output is captured and greppable.
+ * The same byte is mirrored raw so piping board_sim's stdout reconstructs the
+ * exact serial stream. RX is fed from --input / stdin into the console channel
+ * (SCI8 on the EK-RA8D2). */
+typedef enum : uint32_t {
+  k_uart_line_max = 256U, /**< Pretty-print line buffer for the [uart] prefix. */
+} console_cfg_t;
+
+static char     s_uart_line[k_uart_line_max]; /**< Pending [uart] line text.   */
+static uint32_t s_uart_line_len;              /**< Chars buffered in the line.  */
+
+/** @brief Flush the pending [uart] line to stdout with its channel prefix. */
+static void console_flush_line(uint8_t channel)
+{
+  if (s_uart_line_len == 0U) {
+    return;
+  }
+  s_uart_line[s_uart_line_len] = '\0';
+  (void)fprintf(stdout, "[uart] SCI%u: %s\n", channel, s_uart_line);
+  (void)fflush(stdout);
+  s_uart_line_len = 0U;
+}
+
+/**
+ * @brief SCI TX sink: print each transmitted byte (prefixed line + raw mirror).
+ *
+ * @details
+ * Installed via board_periph_sci_set_tx_sink. Printable bytes accumulate into a
+ * line that is flushed -- with an @c [uart] SCIn: prefix -- on newline or when
+ * the buffer fills, so console output reads cleanly in the log; CR is dropped
+ * from the pretty line. Every byte is also written verbatim to a raw mirror on
+ * stdout so redirecting board_sim reproduces the exact serial stream.
+ *
+ * @param[in] channel SCI channel that transmitted the byte.
+ * @param[in] byte    The transmitted data byte.
+ * @return Nothing.
+ */
+static void console_tx_sink(uint8_t channel, uint8_t byte)
+{
+  if (byte == (uint8_t)'\n') {
+    console_flush_line(channel);
+    return;
+  }
+  if ((byte != (uint8_t)'\r') && (s_uart_line_len < (uint32_t)(k_uart_line_max - 1U))) {
+    s_uart_line[s_uart_line_len++] = (char)byte;
+  }
+  if (s_uart_line_len == (uint32_t)(k_uart_line_max - 1U)) {
+    console_flush_line(channel); /* avoid an unbounded line on a stream with no LF */
+  }
+}
+
+/**
+ * @brief Decode a C-style escaped --input string into a raw byte buffer.
+ *
+ * @details
+ * Translates @c \\n / @c \\r / @c \\t / @c \\0 / @c \\\\ in @p in so a shell
+ * argument can carry the line endings a console example expects (e.g.
+ * @c --input "ping\r\n"); any other character (including an unrecognised
+ * escape's backslash) is copied verbatim. Bounded by @p cap; never overruns.
+ *
+ * @param[in]  in  NUL-terminated source string.
+ * @param[out] out Destination byte buffer.
+ * @param[in]  cap Capacity of @p out in bytes.
+ * @return Number of bytes written to @p out.
+ */
+static uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap)
+{
+  uint32_t n = 0U;
+  for (uint32_t i = 0U; (in[i] != '\0') && (n < cap); i++) {
+    char c = in[i];
+    if ((c == '\\') && (in[i + 1U] != '\0')) {
+      i++;
+      switch (in[i]) {
+        case 'n':
+          c = '\n';
+          break;
+        case 'r':
+          c = '\r';
+          break;
+        case 't':
+          c = '\t';
+          break;
+        case '0':
+          c = '\0';
+          break;
+        default:
+          c = in[i]; /* \\ -> \, and any other escape is taken literally */
+          break;
+      }
+    }
+    out[n++] = (uint8_t)c;
+  }
+  return n;
+}
+
 int main(int argc, char** argv)
 {
   if (argc < 2) {
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
-                  " [--panel <file.toml>] [--size WxH] [--click X Y]\n"
+                  " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>]\n"
                   "  --view          open a macOS window and show the emulated panel live\n"
                   "  --ppm <file>    write the final frame to a binary PPM (headless ok)\n"
                   "  --panel <file>  display descriptor (name/width/height) to size the window\n"
                   "  --size WxH      frame size in pixels; overrides --panel (default 1024x600)\n"
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
+                  "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
@@ -1579,6 +1728,7 @@ int main(int argc, char** argv)
   bool        want_view  = false;
   const char* ppm_path   = nullptr;
   const char* panel_path = nullptr;
+  const char* input_str  = nullptr;
   bool        size_set   = false;
   bool        want_click = false;
   bool        want_trace = false;
@@ -1596,6 +1746,9 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--panel", sizeof("--panel")) == 0) && ((i + 1) < argc)) {
       panel_path = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--input", sizeof("--input")) == 0) && ((i + 1) < argc)) {
+      input_str = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, 10);
@@ -1656,9 +1809,21 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  /* Reset the peripheral-model framework (GPIO/PORT, AGT/GPT timers, ICU/NVIC)
-   * before the firmware boots so its register writes land in real block state.*/
+  /* Reset the peripheral-model framework (GPIO/PORT, AGT/GPT timers, ICU/NVIC,
+   * SCI UART) before the firmware boots so its register writes land in real
+   * block state. Install the console sink so transmitted bytes reach stdout,
+   * and queue any --input as console-channel (SCI8) RX. */
   board_periph_init(want_trace);
+  board_periph_sci_set_tx_sink(console_tx_sink);
+  if (input_str != nullptr) {
+    uint8_t        rx[k_uart_line_max];
+    const uint32_t n = decode_escapes(input_str, rx, (uint32_t)sizeof(rx));
+    board_periph_sci_feed_rx(board_periph_sci_console_channel(), rx, n);
+    (void)fprintf(stderr,
+                  "board_sim: queued %u byte(s) to SCI%u RX from --input\n",
+                  n,
+                  board_periph_sci_console_channel());
+  }
 
   long           elf_len = 0;
   uint8_t* const elf     = read_file(elf_path, &elf_len);
@@ -1732,6 +1897,26 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_scb_icsr,
                     (uint64_t)k_scb_icsr + 3U);
+  /* NVIC ISER / ICER are set-enable / clear-enable: fold each written bit into
+   * board_periph's enable shadow so enabling several lines does not clobber the
+   * earlier ones (see on_nvic_en_write). The PPB is RAM, so this hook is the
+   * only place the W1S/W1C semantics can be applied. */
+  uc_hook h_nvic_iser;
+  uc_hook h_nvic_icer;
+  (void)uc_hook_add(uc,
+                    &h_nvic_iser,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_nvic_en_write,
+                    nullptr,
+                    (uint64_t)k_nvic_iser_base,
+                    (uint64_t)k_nvic_iser_base + (uint64_t)k_nvic_en_span - 1U);
+  (void)uc_hook_add(uc,
+                    &h_nvic_icer,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_nvic_en_write,
+                    nullptr,
+                    (uint64_t)k_nvic_icer_base,
+                    (uint64_t)k_nvic_icer_base + (uint64_t)k_nvic_en_span - 1U);
 
   /* Short-circuit ra_touch_open (force success) and ra_touch_read (supply the
    * click) at their entries so board_sim drives the real firmware touch path
@@ -1896,7 +2081,10 @@ int main(int argc, char** argv)
                 s_pendsv_takes,
                 s_svc_takes);
   (void)fprintf(stderr, "  touch clicks  : %u injected via ra_touch_read\n", s_touch_injected);
-  /* Peripheral-model observability: LED transitions, timer totals, IRQ counts. */
+  /* Emit any console bytes still buffered without a trailing newline. */
+  console_flush_line(board_periph_sci_console_channel());
+  /* Peripheral-model observability: LED transitions, timer totals, IRQ counts,
+   * SCI byte totals. */
   board_periph_report(uc);
   (void)fprintf(stderr,
                 "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
