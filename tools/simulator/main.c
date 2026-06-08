@@ -168,8 +168,16 @@ static int sim_run_headless(const sim_panel_t* panel, const char* path, uint16_t
   return 0;
 }
 
+#ifdef __APPLE__
+
 /**
  * @brief Live window: GUIX through the PAL on the configured display.
+ *
+ * @details
+ * macOS only: the host display PAL presents through its Cocoa/CoreGraphics
+ * backend. On non-APPLE builds this path is compiled out (the AppKit shims
+ * are not linked) and ``sim_run_window`` instead reports a clean error -- use
+ * ``--png`` for the headless render path, which builds and runs on Linux.
  */
 static int sim_run_window(const sim_panel_t* panel)
 {
@@ -235,6 +243,25 @@ static int sim_run_window(const sim_panel_t* panel)
   (void)display_deinit(disp);
   return 0;
 }
+
+#else /* !__APPLE__ */
+
+/**
+ * @brief Live-window stub for non-macOS builds.
+ *
+ * @details
+ * The interactive window needs the host PAL's Cocoa/CoreGraphics backend,
+ * which is macOS-only. On Linux (the CI path) the simulator builds headless;
+ * report a clean error and direct the caller to ``--png``.
+ */
+static int sim_run_window(const sim_panel_t* panel)
+{
+  (void)panel;
+  (void)fprintf(stderr, "sim: --window needs macOS; use --png for a headless render\n");
+  return 2;
+}
+
+#endif /* __APPLE__ */
 
 static void sim_usage(void)
 {
