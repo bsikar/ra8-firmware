@@ -492,6 +492,53 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
   return true;
 }
 
+/**
+ * @brief Emulate an Armv8-M memory barrier (DSB/DMB/ISB) as a NOP if present.
+ *
+ * @details
+ * Some Unicorn builds -- e.g. 2.0.1, as packaged on the Linux CI runner -- do
+ * not decode the self-synchronising barrier instructions DSB / DMB / ISB and
+ * trap them as invalid, where a newer build executes them. They have no
+ * architectural effect in this single-threaded, in-order emulator (there is no
+ * real memory ordering or pipeline to enforce), so recognising the encoding and
+ * advancing PC past the 4-byte instruction is a faithful NOP. This keeps the
+ * firmware's boot-path barriers (e.g. after a clock / SDRAM register write) from
+ * faulting regardless of the host Unicorn version. Anything else is left
+ * untouched.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapped instruction.
+ * @param[in]     code The 4 instruction bytes already read at @p pc.
+ * @return true if a DSB/DMB/ISB barrier was recognised and PC advanced past it.
+ */
+static bool emulate_barrier(uc_engine* uc, uint32_t pc, const uint8_t* code)
+{
+  enum : uint16_t {
+    k_barrier_hw1       = 0xF3BFU, /**< First half-word of DSB/DMB/ISB.       */
+    k_barrier_hw2_mask  = 0xFF00U, /**< Fixed high byte of the second h-word. */
+    k_barrier_hw2_match = 0x8F00U, /**< 0x8F: the barrier group.              */
+    k_barrier_op_mask   = 0x00F0U, /**< Barrier subtype field, bits [7:4].    */
+    k_barrier_op_dsb    = 0x0040U, /**< DSB.                                  */
+    k_barrier_op_dmb    = 0x0050U, /**< DMB.                                  */
+    k_barrier_op_isb    = 0x0060U, /**< ISB.                                  */
+    k_barrier_len       = 0x0004U, /**< Thumb-2 barrier instruction length.   */
+  };
+  const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << 8));
+  const uint16_t hw2 = (uint16_t)(code[2] | ((uint16_t)code[3] << 8));
+  if ((hw1 != (uint16_t)k_barrier_hw1) ||
+      ((hw2 & (uint16_t)k_barrier_hw2_mask) != (uint16_t)k_barrier_hw2_match)) {
+    return false;
+  }
+  const uint16_t op = (uint16_t)(hw2 & (uint16_t)k_barrier_op_mask);
+  if ((op != (uint16_t)k_barrier_op_dsb) && (op != (uint16_t)k_barrier_op_dmb) &&
+      (op != (uint16_t)k_barrier_op_isb)) {
+    return false;
+  }
+  const uint32_t next = pc + (uint32_t)k_barrier_len;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  return true;
+}
+
 /* Forward declarations for the Cortex-M exception engine (defined below, after
  * the ELF/memory helpers they build on). The memory hooks above need to vector
  * SVCall and recognise EXC_RETURN before those definitions appear. */
@@ -521,6 +568,13 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
   if (emulate_cond_select(uc, pc, code)) {
     (void)uc_emu_stop(uc);
     return true; /* handled -- run loop resumes at the advanced PC */
+  }
+
+  /* Older Unicorn builds (the runner's 2.0.1) trap DSB/DMB/ISB as invalid; a
+   * barrier is a NOP in this emulator, so advance past it and relaunch. */
+  if (emulate_barrier(uc, pc, code)) {
+    (void)uc_emu_stop(uc);
+    return true; /* handled -- run loop resumes past the barrier */
   }
 
   (void)fprintf(stderr,
