@@ -2240,7 +2240,9 @@ int main(int argc, char** argv)
     free(elf);
     return 1;
   }
-  free(elf);
+  /* NB: keep the host-side `elf` buffer alive until after eth_seam_install --
+   * load_elf has copied the image into Unicorn memory, but the eth seam still
+   * scans the ELF symbol table from this buffer (freed right after, below). */
 
   /* Cortex-M reset: SP = vectors[0], PC = vectors[1] (Thumb, clear bit0). */
   uint32_t sp = 0U;
@@ -2308,6 +2310,7 @@ int main(int argc, char** argv)
   /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
    * firmware exports those symbols, i.e. a NetX networking example). */
   eth_seam_install(uc, elf, elf_len, want_trace);
+  free(elf);
 
   /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
    * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
