@@ -86,7 +86,6 @@ section (the latest end-to-end run). Probe: on-board J-Link OB SN
 | threadx_canfd_demo             | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_filex_demo             | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
 | threadx_filex_levelx_demo      | WIP      | 0x0200035C  | `demo_panic_halt` main.c                 |
-| threadx_guix_demo              | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_ipc_demo               | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
 | threadx_levelx_demo            | WIP      | 0x02000326  | `demo_panic_halt` main.c                 |
 | threadx_lwip_tcp_echo          | PASS     | 0x020002A4  | `__tx_ts_wait` tx_thread_schedule.S:294      |

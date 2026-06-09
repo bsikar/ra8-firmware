@@ -405,7 +405,6 @@ verification for these.
 | REQ-APP-009      | threadx_canfd_demo                | `examples/ek_ra8d2/threadx_canfd_demo/main.c`           | `tests/test_app_threadx_canfd_demo.c`      |
 | REQ-APP-010      | threadx_filex_demo                | `examples/ek_ra8d2/threadx_filex_demo/main.c`           | `tests/test_app_threadx_filex_demo.c`      |
 | REQ-APP-011      | threadx_filex_levelx_demo         | `examples/ek_ra8d2/threadx_filex_levelx_demo/main.c`    | `tests/test_app_threadx_filex_levelx_demo.c` |
-| REQ-APP-012      | threadx_guix_demo                 | `examples/ek_ra8d2/threadx_guix_demo/main.c`            | `tests/test_app_threadx_guix_demo.c`       |
 | REQ-APP-013      | threadx_ipc_demo                  | `examples/ek_ra8d2/threadx_ipc_demo/main.c`             | `tests/test_app_threadx_ipc_demo.c`        |
 | REQ-APP-014      | threadx_levelx_demo               | `examples/ek_ra8d2/threadx_levelx_demo/main.c`          | `tests/test_app_threadx_levelx_demo.c`     |
 | REQ-APP-015      | threadx_lwip_tcp_echo             | `examples/ek_ra8d2/threadx_lwip_tcp_echo/main.c`        | `tests/test_app_threadx_lwip_tcp_echo.c`   |

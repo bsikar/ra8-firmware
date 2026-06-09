@@ -93,7 +93,7 @@ three weeks.
 - **Platform abstraction layers** `ra_net_pal` and `ra_usb_pal` with
   in-memory loopback rings, plus `ra_sim_world` host mock.
 - **Third-party stacks vendored as git subtrees**: Eclipse ThreadX kernel,
-  FileX, LevelX, NetX, GUIX, USBX (CDC, HID, MSC, audio, MSC host), lwIP
+  FileX, LevelX, NetX, USBX (CDC, HID, MSC, audio, MSC host), lwIP
   (with ThreadX `sys_arch` port and `ra_etha` netif glue), NimBLE host
   + Mesh + SMP/bonding + GATT client + patch loader stub, mbedTLS / TF-PSA
   -Crypto 4.x, FAT-FS adapter, LiteHTML for the e-reader.
@@ -110,7 +110,7 @@ three weeks.
   `threadx_netx_tcp_echo`, `threadx_lwip_tcp_echo`, `threadx_https_client`,
   `threadx_usbx_cdc`, `threadx_sdcard_demo`, `threadx_canfd_demo`,
   `threadx_ota_demo`, `threadx_mpu_partition_demo`), `ra_bootloader`, and
-  GUIX/IPC/audio/clock samples. Hardware-flashable example sweeps added
+  IPC/audio/clock samples. Hardware-flashable example sweeps added
   six new apps in one batch (Sweep 7).
 - **Tooling**: `tools/ra_qe` JSON-driven configurator (Renesas QE-style),
   `scripts/openocd` GPL alternative to the SEGGER flash/debug path,
@@ -176,7 +176,7 @@ three weeks.
 - **`ra_sdramc`** SDC citation pages reverted to the chapter start
   (Ch 15 p 583).
 - **README audit pass** across 30+ examples (blink/audio/ble/clock,
-  uart/threadx_blink+filex+levelx, guix/https/ipc/lwip/netx,
+  uart/threadx_blink+filex+levelx, https/ipc/lwip/netx,
   nimble/sdcard/ble_central/mesh/usb_audio, ra_bootloader/threadx canfd+
   mpu+ota+usbx_cdc) added validated footers and corrected drift.
 - **Edge-case test coverage** added for `ra_iic_b` (bus-busy, NAK addr/data,

@@ -96,7 +96,7 @@ Use **CPU0** (default) for:
 - Anything requiring Helium / MVE (M85-only).
 - Workloads that want the full 1 GHz clock and the M85 cache.
 - TrustZone-secure side code.
-- All existing HAL drivers, ThreadX apps, networking, USB, GUIX.
+- All existing HAL drivers, ThreadX apps, networking, USB.
 
 Use **CPU1** (opt-in) for:
 - Hard-real-time control loops needing deterministic latency

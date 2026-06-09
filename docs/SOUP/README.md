@@ -19,7 +19,6 @@ basis.
 | NetX Duo        | 6.5.0    | Eclipse Foundation          | [netxduo.md](netxduo.md)           |
 | FileX           | 6.5.0    | Eclipse Foundation          | [filex.md](filex.md)               |
 | USBX            | 6.5.0    | Eclipse Foundation          | [usbx.md](usbx.md)                 |
-| GUIX            | 6.5.0    | Eclipse Foundation          | [guix.md](guix.md)                 |
 | LevelX          | 6.5.0    | Eclipse Foundation          | [levelx.md](levelx.md)             |
 | Mbed TLS        | 4.1.0    | TrustedFirmware.org         | [mbedtls.md](mbedtls.md)           |
 | TF-PSA-Crypto   | 1.1.0    | TrustedFirmware.org         | [tf-psa-crypto.md](tf-psa-crypto.md) |
@@ -40,7 +39,6 @@ basis.
 - **FileX** -- FAT / exFAT file system used by the FileX demos and OTA
   staging.
 - **USBX** -- USB host / device stack for the CDC, HID, and MSC demos.
-- **GUIX** -- Embedded GUI framework, demo-only.
 - **LevelX** -- NOR-flash wear-leveling layer under FileX on Octo-SPI.
 - **Mbed TLS** -- TLS record layer and X.509 handling consumed via
   `libs/ra_tls/` and `libs/ra_ota/`.

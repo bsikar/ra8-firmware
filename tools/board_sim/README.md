@@ -49,10 +49,10 @@ The display is configurable: `--panel` takes a flat `key = value` descriptor
 so the emulator presents any screen, not just the EK-RA8D2 1024x600.
 
 Or from the repo root: `make sim-<app> [PANEL=<name>]` (e.g.
-`make sim-bedroom_ui_panel`) cross-builds the app and opens its live window
+`make sim-ereader_ui`) cross-builds the app and opens its live window
 sized by `tools/board_sim/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to
 exit. board_sim is the single simulator: it boots the *real cross-compiled
-`.elf`*, so a GUIX app like `bedroom_ui_panel` doubles as the UI preview --
+`.elf`*, so a chrome app like `ereader_ui` doubles as the UI preview --
 there is no separate native UI tool.
 
 ## How it works
@@ -179,17 +179,14 @@ only if you exceed the registry capacity.
   `--usb-in <str>` the bulk bytes round-trip back through the device's echo
   (`sent N OUT, read N IN`). Final PC sits in the ThreadX run loop, not a panic.
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
-  GUIX UI (`threadx_guix_demo`) renders its real framebuffer (77 distinct
-  colours) and the GUIX/USBX/CDC stacks all execute as the actual cross-compiled
-  `.elf`.
+  USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
 - The graphical board view is proven via `--ppm` region checks: `blink` lights
   the LED1 indicator pure blue (RGB565 0x001F) while P600 is high; the
   `threadx_usbx_cdc_demo` sidebar shows `USB: CONFIGURED (CDC-ACM active)` once
   enumeration completes; `uart_hello` shows `UART: hello, ra8d2!`;
   `gpt_irq_demo` shows `IRQ: 9999 total IRQ0 x9999`; and a display app
-  (`bedroom_ui_panel`) renders its dashboard pixel-correct in the panel region
-  with the sidebar beside it (a `--click` tab switch still diffs ~222k panel
-  pixels and the sidebar reports the `touch` point).
+  (`ereader_ui`) renders its chrome pixel-correct in the panel region with the
+  sidebar beside it.
 - The peripheral model fakes hardware *handshakes*; it validates "does the
   firmware drive the controller correctly," not real silicon timing. It
   complements HIL, it does not replace it.

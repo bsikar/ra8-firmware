@@ -134,7 +134,6 @@ the `blink_hal` shape harness).
 | IT-APP-TXCAN-001   | `tests/test_app_threadx_canfd_demo.c`        | `examples/ek_ra8d2/threadx_canfd_demo`       |
 | IT-APP-TXFX-001    | `tests/test_app_threadx_filex_demo.c`        | `examples/ek_ra8d2/threadx_filex_demo`       |
 | IT-APP-TXFXLX-001  | `tests/test_app_threadx_filex_levelx_demo.c` | `examples/ek_ra8d2/threadx_filex_levelx_demo`|
-| IT-APP-TXGUIX-001  | `tests/test_app_threadx_guix_demo.c`         | `examples/ek_ra8d2/threadx_guix_demo`        |
 | IT-APP-TXIPC-001   | `tests/test_app_threadx_ipc_demo.c`          | `examples/ek_ra8d2/threadx_ipc_demo`         |
 | IT-APP-TXLX-001    | `tests/test_app_threadx_levelx_demo.c`       | `examples/ek_ra8d2/threadx_levelx_demo`      |
 | IT-APP-TXLWIP-001  | `tests/test_app_threadx_lwip_tcp_echo.c`     | `examples/ek_ra8d2/threadx_lwip_tcp_echo`    |
