@@ -19,7 +19,7 @@
 
 #include "unity_minimal.h"
 
-/** Mirror of line 122: ``if (w > 0 && h > 0)``. */
+/** Mirror of priv_blit_glyph's ``if (w > 0 && h > 0)`` glyph-size guard. */
 static inline uint8_t mirror_priv_blit_glyph_size(int w, int h)
 {
   if (w > 0 && h > 0) {
@@ -33,7 +33,7 @@ static inline uint8_t mirror_priv_blit_glyph_size(int w, int h)
  *
  * @par MC/DC:
  * Decision: ``if (w > 0 && h > 0)``
- * (2 conditions, libs/ra_reflow/src/ra_reflow_render.c line 122)
+ * (2 conditions, libs/ra_reflow/src/ra_reflow_render.c@priv_blit_glyph)
  *
  * Vectors (Chilenski masking-MC/DC, N+1 = 3 for N=2):
  *  - V1: w=10, h=10  -> C1=T, C2=T. Decision T (blit).

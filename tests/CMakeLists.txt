@@ -313,6 +313,19 @@ set_source_files_properties(
     PROPERTIES COMPILE_OPTIONS -w
 )
 
+# Route stb_truetype's per-glyph scratch (vertices, rasteriser edge/point
+# lists) through the no-heap arena in libs/ra_reflow/src/ra_stbtt_alloc.c
+# instead of libc malloc, so the host test build exercises the exact
+# heap-free path the firmware uses. The -include makes the allocator
+# declarations visible inside the vendored single-TU implementation
+# without modifying SOUP. (Appends to the -w set above.)
+set_property(SOURCE ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
+    APPEND PROPERTY COMPILE_OPTIONS
+    -include "${FW_ROOT}/libs/ra_reflow/inc/ra_stbtt_alloc.h"
+    "-DSTBTT_malloc(x,u)=ra_stbtt_malloc(x)"
+    "-DSTBTT_free(x,u)=ra_stbtt_free(x)"
+)
+
 # Strip MC/DC / coverage instrumentation from vendored third_party
 # sources. Under DO-178C these are SOUP (Software Of Unknown
 # Pedigree) and are exempted from MC/DC measurement -- see

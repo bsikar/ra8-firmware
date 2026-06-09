@@ -5,8 +5,12 @@
  * @details
  * Walks the slice of `engine->glyphs[]` belonging to one page and
  * blits each glyph's alpha-8 bitmap into the framebuffer bound by
- * `ra_gfx_init()`. Each glyph is rasterised on demand via
- * `stbtt_GetCodepointBitmap()`; the alpha mask is composited against
+ * `ra_gfx_init()`. Each glyph is rasterised on demand through the
+ * two-step `stbtt_GetCodepointBitmapBox()` + `stbtt_MakeCodepointBitmap()`
+ * path so the glyph bitmap lands in a fixed file-scope mask buffer rather
+ * than a `STBTT_malloc`'d one; stb's remaining per-glyph scratch (vertex /
+ * edge lists) is served by the no-heap static arena in
+ * `ra_stbtt_alloc.c`. The alpha mask is composited against
  * the engine's body / link colour using a simple "alpha >= threshold"
  * test so the output is binary (no per-pixel multiplies). This keeps
  * the render path ARM-Cortex-M cheap while still producing crisp
@@ -43,7 +47,23 @@ typedef enum : uint16_t {
   k_priv_alpha_max_byte      = 255U, /**< Upper bound from stb's mask.    */
   k_priv_underline_offset_px = 2U,   /**< Pixels below baseline for the underline. */
   k_priv_underline_thick_px  = 1U,   /**< Thickness of the anchor underline. */
+  k_priv_glyph_dim_max       = 192U, /**< Mask edge bound = 2 * k_ra_reflow_max_font_px. */
 } priv_render_consts_t;
+
+/**
+ * @brief Fixed glyph rasterisation buffer (tightly-packed alpha-8).
+ *
+ * @details
+ * stb_truetype's one-shot @c stbtt_GetCodepointBitmap() calls
+ * @c STBTT_malloc internally, but the firmware has no heap (@c _sbrk
+ * traps after init). Instead every glyph is rasterised through the
+ * two-step "Box" + "Make" path into this file-scope buffer -- NASA
+ * Power-of-10 Rule 3 (no dynamic allocation). Sized for the largest
+ * accepted font (@c k_ra_reflow_max_font_px) with 2x headroom so wide
+ * glyphs and hinting overshoot always fit; oversized glyphs are
+ * skipped rather than truncated.
+ */
+static uint8_t s_glyph_mask[(size_t)k_priv_glyph_dim_max * (size_t)k_priv_glyph_dim_max];
 
 /**
  * @brief Initialise an stbtt_fontinfo from the engine's font blob.
@@ -157,23 +177,28 @@ static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyp
 static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g)
 {
   const float scale = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
-  int         w     = 0;
-  int         h     = 0;
-  int         xoff  = 0;
-  int         yoff  = 0;
-  /* clang-format off */
-  unsigned char* bitmap = stbtt_GetCodepointBitmap(font, 0.0F, scale, g->cp, &w, &h, &xoff, &yoff); /* alloc-allow: stb_truetype is vendored SOUP; the matching stbtt_FreeBitmap below releases the alloc within the same function. */
-  /* clang-format on */
-  if (bitmap == nullptr) {
-    return;
-  }
-  // mcdc-deactivated: TU-local helper priv_blit_glyph; stbtt_GetCodepointBitmap returns either a non-NULL bitmap with both w > 0 AND h > 0 (well-formed glyph rasterization), or a NULL pointer rejected at the early-return above -- the two bound conditions cannot independently flip on any reachable path.
+  /* Bounded, heap-free glyph rasterisation: the "Box" call reports the
+   * bitmap extent and baseline offsets (x0, y0), then "Make" rasterises
+   * directly into the fixed s_glyph_mask (tightly packed, stride == w,
+   * matching priv_blit_alpha_mask) -- so the bitmap never hits the heap.
+   * stb's internal vertex/edge scratch is served by the static arena in
+   * ra_stbtt_alloc.c (STBTT_malloc is redirected there at build time),
+   * keeping the whole path off libc malloc. */
+  int x0 = 0;
+  int y0 = 0;
+  int x1 = 0;
+  int y1 = 0;
+  stbtt_GetCodepointBitmapBox(font, g->cp, scale, scale, &x0, &y0, &x1, &y1);
+  const int w = x1 - x0;
+  const int h = y1 - y0;
   if (w > 0 && h > 0) {
-    priv_blit_alpha_mask(g, bitmap, w, h, xoff, yoff);
+    /* Skip (do not truncate) any glyph larger than the fixed mask. */
+    const size_t total = (size_t)w * (size_t)h;
+    if (total <= sizeof s_glyph_mask) {
+      stbtt_MakeCodepointBitmap(font, s_glyph_mask, w, h, w, scale, scale, g->cp);
+      priv_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0);
+    }
   }
-  /* clang-format off */
-  stbtt_FreeBitmap(bitmap, nullptr); /* alloc-allow: pairs with the stbtt_GetCodepointBitmap above. */
-  /* clang-format on */
 
   if ((g->style & k_ra_reflow_style_underline) != 0U) {
     priv_draw_underline(font, g, scale);
