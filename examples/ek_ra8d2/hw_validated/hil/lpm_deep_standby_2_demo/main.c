@@ -58,7 +58,7 @@ typedef enum : uint32_t {
 } lpm_dpsby2_const_t;
 
 /** @brief Single-byte demo constants. */
-typedef enum : uint8_t {
+typedef enum : uint16_t {
   k_lpm_dpsby2_alarm_offset_s = 5U,
   k_lpm_dpsby2_seed_year_lo   = 26U,
   k_lpm_dpsby2_year_base      = 2000U, /**< Calendar epoch base for the year field. */

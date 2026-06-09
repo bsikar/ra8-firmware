@@ -55,7 +55,7 @@ typedef enum : uint8_t {
 } rtc_demo_calendar_t;
 
 /** @brief Alarm offset from the current RTC reading. */
-typedef enum : uint8_t {
+typedef enum : uint16_t {
   k_rtc_demo_alarm_offset_s = 5U,
   k_rtc_demo_seed_year_lo   = 26U,   /**< 2026 - 2000. */
   k_rtc_demo_year_base      = 2000U, /**< Calendar epoch base for the year field. */
