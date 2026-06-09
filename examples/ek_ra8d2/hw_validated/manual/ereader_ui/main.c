@@ -1,35 +1,30 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/ereader_ui/main.c
- * @brief E-reader device chrome -- Reading screen (non-GUIX, ra_gfx)
+ * @brief E-reader device chrome -- Library + Reading screens
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * First milestone of the e-reader UI (issue #80): render the device
- * "chrome" -- the application shell around book content -- without GUIX
- * (which is being retired, #81). This app paints the Reading screen
- * directly into the GLCDC framebuffer through ``libs/ra_gfx`` primitives,
- * in the flat 16-level-grayscale / fixed-type-scale visual language of
- * the verified browser proof-of-concept ("PAPYR").
+ * E-reader UI chrome (issue #80). The application
+ * shell is laid out by the bounded box-model engine ``libs/ra_box``
+ * (the #80 box model: stacks, a fixed-column grid, padding/gap, fixed
+ * vs flex sizing), rendered into the GLCDC framebuffer through
+ * ``libs/ra_gfx`` in the flat 16-level-grayscale language of the verified
+ * "PAPYR" proof-of-concept, and navigated through the ``libs/ra_ui``
+ * screen stack. Book content reflow (``libs/ra_reflow``) is a later
+ * milestone; the Reading screen here still uses the bundled bitmap font.
  *
- * Boot phases mirror the other full-panel manual demos:
- *   1. ``app_bringup_clocks``  -- CGC + MSTP + SysTick + board LEDs.
- *   2. ``app_bringup_panel``   -- ``ra_sdramc_init`` (the 1024x600 RGB565
- *      framebuffer lives in external SDRAM) then ``display_init`` (panel
- *      power + GLCDC routing, scanning out ``s_framebuffer``).
- *   3. ``app_bringup_gfx``     -- bind ``ra_gfx`` to that framebuffer.
+ * Two screens:
+ *   - Library: status bar, toolbar (search + count), a 2-column grid of
+ *     book cards (cover + title + author + reading-progress bar), and a
+ *     bottom navigation strip -- all laid out by ra_box.
+ *   - Reading: status bar, body text at the reading margin, footer with
+ *     page label + progress bar.
  *
- * The chrome layout is resolution-adaptive: every region is derived from
- * the framebuffer dimensions the backend reports, so a different panel
- * descriptor reflows the shell without code changes.
- *
- * Scope of THIS file (Phase A): the Reading screen chrome -- status bar,
- * body text area, footer with page count + reading-progress bar. Body
- * text is rendered with the bundled bitmap font here; the next milestone
- * routes real paginated book text through ``libs/ra_reflow`` (stb_truetype
- * glyphs at the 48/34/24/18 type scale) and adds the Library screen plus
- * the page-turn / navigation controller.
+ * Boot: clocks/MSTP/SysTick/LEDs, then SDRAM + GLCDC (the 1024x600 RGB565
+ * framebuffer lives in external SDRAM), then ra_gfx bound to it. Layout
+ * is resolution-adaptive from the framebuffer the backend reports.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -40,6 +35,7 @@
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_box.h"
 #include "ra_cgc.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
@@ -52,6 +48,7 @@
 #include "ra_panel_timing.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
+#include "ra_ui.h"
 
 /* ===========================================================================
  * Compile-time configuration -- typed enums per the no-magic-number rule.
@@ -60,12 +57,6 @@
 /**
  * @enum er_fb_dim_t
  * @brief Framebuffer dimensions, sourced from the BSP panel descriptor.
- *
- * @details
- * A full 1024x600 RGB565 framebuffer is 1024 * 600 * 2 = 1.2 MiB, which
- * does not fit alongside .data/.bss/stack in SRAM, so it lives in
- * external SDRAM (see ``s_framebuffer``). Geometry comes from
- * ``ra_panel.h`` -- a different panel swaps in its own descriptor.
  */
 typedef enum : uint16_t {
   k_er_fb_w = k_panel_width_px,  /**< Framebuffer width  (pixels). */
@@ -85,12 +76,6 @@ typedef enum : uint16_t {
 /**
  * @enum er_color_t
  * @brief PAPYR 16-level grayscale ramp, semantic roles (0xRRGGBB).
- *
- * @details
- * The e-ink design language is grayscale only -- no gradients, shadows,
- * blur, or transparency. These are the working tones from the POC token
- * sheet: paper (g15), ink (g0), muted ink (g5), hairline rule (g10),
- * soft rule (g12), flat fill (g13), deep fill (g8).
  */
 typedef enum : uint32_t {
   k_er_paper     = 0xFFFFFFU, /**< Page background (g15).             */
@@ -98,68 +83,122 @@ typedef enum : uint32_t {
   k_er_ink_muted = 0x555555U, /**< Secondary text / metadata (g5).    */
   k_er_rule      = 0xAAAAAAU, /**< Hairline dividers (g10).           */
   k_er_rule_soft = 0xCCCCCCU, /**< Faintest hairlines / track (g12).  */
-  k_er_fill      = 0xDDDDDDU, /**< Flat fills (g13).                  */
+  k_er_fill      = 0xDDDDDDU, /**< Flat fills / covers (g13).         */
   k_er_fill_deep = 0x888888U, /**< Heavier fill / progress (g8).      */
 } er_color_t;
 
 /**
  * @enum er_layout_t
- * @brief Reading-screen layout metrics (8 px grid), pixels.
- *
- * @details
- * Adapted from the POC token sheet for the landscape dev panel. The
- * bundled font is a fixed 8x16 cell (``ra_gfx_font_8x16``); ``k_er_line_h``
- * gives it generous reading leading. Real type-scale rendering arrives
- * with the ra_reflow body-text milestone.
+ * @brief Shared chrome layout metrics (8 px grid), pixels.
  */
 typedef enum : uint16_t {
-  k_er_statusbar_h  = 64U, /**< Top status-bar band height.         */
-  k_er_footer_h     = 56U, /**< Bottom footer band height.          */
-  k_er_margin_x     = 64U, /**< Reading left/right margin.           */
-  k_er_pad_ui       = 32U, /**< Status-bar / footer side padding.   */
-  k_er_body_gap     = 24U, /**< Gap between band and body text.      */
-  k_er_line_h       = 26U, /**< Body line advance.                  */
-  k_er_glyph_w      = 8U,  /**< Bundled font cell width.            */
-  k_er_glyph_h      = 16U, /**< Bundled font cell height.           */
-  k_er_text_inset_y = 24U, /**< 16 px text centred in a 64 px band. */
-  k_er_hair         = 1U,  /**< Hairline weight.                   */
-  k_er_progress_h   = 6U,  /**< Reading-progress bar height.        */
-  k_er_progress_gap = 12U, /**< Gap above the progress bar.         */
-  k_er_blank_lines  = 2U,  /**< Blank advance after the heading.    */
+  k_er_statusbar_h  = 64U,  /**< Top status-bar band height.         */
+  k_er_footer_h     = 56U,  /**< Reading footer band height.         */
+  k_er_nav_h        = 88U,  /**< Library bottom-nav band height.     */
+  k_er_toolbar_h    = 72U,  /**< Library toolbar band height.        */
+  k_er_margin_x     = 64U,  /**< Reading left/right margin.           */
+  k_er_pad_ui       = 32U,  /**< Side padding for bands / grid.      */
+  k_er_body_gap     = 24U,  /**< Gap between band and body text.      */
+  k_er_line_h       = 26U,  /**< Body line advance.                 */
+  k_er_glyph_w      = 8U,   /**< Bundled font cell width.            */
+  k_er_glyph_h      = 16U,  /**< Bundled font cell height.           */
+  k_er_text_inset_y = 24U,  /**< 16 px text centred in a 64 px band. */
+  k_er_text_pad     = 6U,   /**< Inset for text inside a box.        */
+  k_er_hair         = 1U,   /**< Hairline weight.                   */
+  k_er_border_w     = 2U,   /**< Card / control border weight.       */
+  k_er_progress_h   = 6U,   /**< Reading-progress bar height.        */
+  k_er_progress_gap = 12U,  /**< Gap above the reading progress bar. */
+  k_er_blank_lines  = 2U,   /**< Blank advance after the heading.    */
+  k_er_grid_cols    = 2U,   /**< Library grid column count.           */
+  k_er_grid_gap     = 28U,  /**< Library grid gap.                   */
+  k_er_tile_gap     = 8U,   /**< Gap between a card's stacked parts.  */
+  k_er_card_label_h = 20U,  /**< Card title / author row height.      */
+  k_er_card_bar_h   = 8U,   /**< Card progress-bar height.            */
+  k_er_count_w      = 200U, /**< Toolbar "N books" chip width.        */
 } er_layout_t;
 
 /**
  * @enum er_progress_t
- * @brief Demo reading position (current / total pages).
+ * @brief Reading-position + percentage constants.
  */
 typedef enum : uint16_t {
-  k_er_page_current = 12U,  /**< Current page (1-based).            */
-  k_er_page_total   = 248U, /**< Total pages in the chapter set.    */
+  k_er_page_current = 12U,  /**< Reading current page (1-based).     */
+  k_er_page_total   = 248U, /**< Reading total pages.                */
+  k_er_pct_full     = 100U, /**< Percent denominator.                */
 } er_progress_t;
 
-/* ===========================================================================
- * Static chrome strings (ASCII; book content is public-domain H.G. Wells).
- * =========================================================================== */
-
-/** @brief Wordmark shown at the status-bar left. */
-static const char k_er_wordmark[] = "PAPYR";
-/** @brief Current book title (status-bar centre / footer left). */
-static const char k_er_book_title[] = "The Time Machine";
-/** @brief Status-bar right cluster: clock + battery. */
-static const char k_er_status_right[] = "10:24   98%";
-/** @brief Footer page indicator. */
-static const char k_er_page_label[] = "Page 12 of 248";
-/** @brief Reading-view chapter heading. */
-static const char k_er_chapter[] = "I";
+/**
+ * @enum er_node_cap_t
+ * @brief Box-tree node-storage capacity.
+ */
+typedef enum : uint16_t {
+  k_er_max_nodes = 64U, /**< Upper bound on chrome box nodes.       */
+} er_node_cap_t;
 
 /**
- * @brief Body paragraph lines (pre-wrapped for the bundled font).
- *
- * @details
- * Opening of "The Time Machine" (H.G. Wells, 1895, public domain). These
- * stand in for ra_reflow-paginated EPUB content until the body-text
- * milestone lands; they exercise the full body region with realistic
- * prose at the reading margin.
+ * @enum er_screen_t
+ * @brief Screen ids for the ra_ui navigation stack.
+ */
+typedef enum : uint16_t {
+  k_er_screen_library = 1U, /**< Library / home grid.               */
+  k_er_screen_reading = 2U, /**< Reading view.                      */
+} er_screen_t;
+
+/* ===========================================================================
+ * Static content (ASCII; public-domain titles)
+ * =========================================================================== */
+
+/** @brief Wordmark / status text. */
+static const char k_er_wordmark[]     = "PAPYR";
+static const char k_er_lib_heading[]  = "PAPYR   Library";
+static const char k_er_status_right[] = "10:24   98%";
+static const char k_er_search_hint[]  = "Search";
+static const char k_er_count_text[]   = "6 books";
+static const char k_er_book_title[]   = "The Time Machine";
+static const char k_er_page_label[]   = "Page 12 of 248";
+static const char k_er_chapter[]      = "I";
+
+/** @brief Bottom-nav destinations. */
+static const char* const k_er_nav_items[] = {"Library", "Store", "Notes", "Settings"};
+
+/**
+ * @enum er_nav_count_t
+ * @brief Bottom-nav destination count.
+ */
+typedef enum : uint16_t {
+  k_er_nav_count = (uint16_t)(sizeof(k_er_nav_items) / sizeof(k_er_nav_items[0])),
+} er_nav_count_t;
+
+/**
+ * @struct er_book_t
+ * @brief One library entry: title, author, reading progress percent.
+ */
+typedef struct {
+  const char* title;  /**< Book title.                 */
+  const char* author; /**< Author.                     */
+  uint16_t    pct;    /**< Reading progress (0..100).  */
+} er_book_t;
+
+/** @brief Demo shelf (public-domain works). */
+static const er_book_t k_er_books[] = {
+  {"The Time Machine", "H. G. Wells", 5U},
+  {"Frankenstein", "Mary Shelley", 100U},
+  {"Pride and Prejudice", "Jane Austen", 42U},
+  {"Moby-Dick", "Herman Melville", 12U},
+  {"The Republic", "Plato", 68U},
+  {"Meditations", "M. Aurelius", 30U},
+};
+
+/**
+ * @enum er_book_count_t
+ * @brief Number of demo books.
+ */
+typedef enum : uint16_t {
+  k_er_book_count = (uint16_t)(sizeof(k_er_books) / sizeof(k_er_books[0])),
+} er_book_count_t;
+
+/**
+ * @brief Reading-view body paragraph lines (pre-wrapped for the font).
  */
 static const char* const k_er_body_lines[] = {
   "The Time Traveller (for so it will be convenient to speak of him)",
@@ -169,11 +208,9 @@ static const char* const k_er_body_lines[] = {
   "The fire burnt brightly, and the soft radiance of the incandescent",
   "lights in the lilies of silver caught the bubbles that flashed and",
   "passed in our glasses. Our chairs, being his patents, embraced and",
-  "caressed us rather than submitted to be sat upon, and there was that",
+  "caressed us rather than submitted to be sat upon -- there was that",
   "luxurious after-dinner atmosphere when thought roams gracefully free",
-  "of the trammels of precision. And he put it to us in this way --",
-  "marking the points with a lean forefinger -- as we sat and lazily",
-  "admired his earnestness over this new paradox (as we thought it).",
+  "of the trammels of precision.",
 };
 
 /**
@@ -191,19 +228,11 @@ typedef enum : uint16_t {
 /**
  * @var s_framebuffer
  * @brief RGB565 framebuffer in external SDRAM, AXI-burst aligned.
- *
- * @details
- * Placed in the linker's ``.sdram_data`` (NOLOAD) section so it lands at
- * 0x68000000. ``display_init`` programmes GLCDC GR1 to scan it out; this
- * app paints into it directly via ra_gfx.
  */
 static uint16_t s_framebuffer[(size_t)k_er_fb_h * (size_t)k_er_fb_w]
   __attribute__((section(".sdram_data"), aligned(k_er_fb_align)));
 
-/**
- * @var k_er_display_cfg
- * @brief Display PAL config -- LCD/GLCDC backend over the SDRAM buffer.
- */
+/** @brief Display PAL config -- LCD/GLCDC backend over the SDRAM buffer. */
 static const display_cfg_t k_er_display_cfg = {
   .iface             = &k_display_backend_lcd_ra_glcdc,
   .framebuffer       = s_framebuffer,
@@ -220,6 +249,21 @@ static display_handle_t* s_display = nullptr;
 /** @brief Mutable copy of the FB descriptor; populated at boot. */
 static display_fb_t s_fb;
 
+/** @brief Box-tree node storage for chrome layout. */
+static ra_box_t s_nodes[k_er_max_nodes];
+
+/** @brief Per-node text label (NULL if the node draws no text). */
+static const char* s_label[k_er_max_nodes];
+
+/** @brief Per-node text colour. */
+static uint32_t s_label_col[k_er_max_nodes];
+
+/** @brief Per-node progress percent, or -1 for "not a progress bar". */
+static int16_t s_progress[k_er_max_nodes];
+
+/** @brief Navigation stack (which screen is shown). */
+static ra_ui_nav_t s_nav;
+
 /* ===========================================================================
  * Boot helpers
  * =========================================================================== */
@@ -234,7 +278,7 @@ static display_fb_t s_fb;
  * @post Function never returns; CPU parked in a WFI loop.
  * @post Red LED is on.
  *
- * @note IRQ-safe (no shared state mutated after entry).
+ * @note IRQ-safe.
  * @since 0.1.0
  */
 static void app_panic_halt(void)
@@ -286,15 +330,13 @@ static void app_bringup_clocks(void)
  * @brief Bring up external SDRAM and the GLCDC panel, then cache the FB.
  *
  * @details
- * A settle delay lets the PLLs, SDRAM, and panel POR stabilise.
- * ``ra_sdramc_init`` brings up the 0x68000000 region the framebuffer
- * lives in; ``display_init`` folds panel power-on + GLCDC routing into
- * one call (driving GR1 to scan out ``s_framebuffer``).
+ * Settle delay, ``ra_sdramc_init`` (the framebuffer lives at 0x68000000),
+ * then ``display_init`` (panel power + GLCDC routing). Caches the FB.
  *
  * @pre ``app_bringup_clocks`` has run; IRQs are enabled.
- * @pre ``s_framebuffer`` is reachable (zero-init in SDRAM is fine).
- * @post SDRAM is up; GLCDC scans out ``s_framebuffer`` on GR1.
- * @post ``s_display`` is non-NULL and ``s_fb`` mirrors the backend FB.
+ * @pre ``s_framebuffer`` is reachable.
+ * @post SDRAM is up; GLCDC scans out ``s_framebuffer``.
+ * @post ``s_display`` non-NULL and ``s_fb`` mirrors the backend FB.
  *
  * @note Not thread-safe; single-shot helper.
  * @since 0.1.0
@@ -321,7 +363,7 @@ static void app_bringup_panel(void)
  * @pre ``app_bringup_panel`` has run; ``s_fb.pixels`` is reachable.
  * @pre The framebuffer is RGB565.
  * @post ra_gfx draw calls operate on ``s_framebuffer``.
- * @post On failure the app panic-halts and never returns.
+ * @post On failure the app panic-halts.
  *
  * @note Not thread-safe; single-shot helper.
  * @since 0.1.0
@@ -334,7 +376,7 @@ static void app_bringup_gfx(void)
 }
 
 /* ===========================================================================
- * Chrome rendering -- Reading screen
+ * Text helpers
  * =========================================================================== */
 
 /**
@@ -345,10 +387,10 @@ static void app_bringup_gfx(void)
  * @param[in] str   ASCII string (NUL-terminated).
  * @param[in] color Foreground colour (0xRRGGBB); background is paper.
  *
- * @pre ra_gfx is bound; ``str`` is non-NULL.
- * @pre ``str`` holds only codepoints 0x20..0x7E.
- * @post The run is blitted within the framebuffer (clipped if needed).
- * @post Cells behind the glyphs are filled paper-white.
+ * @pre ra_gfx is bound; ``str`` is non-NULL ASCII 0x20..0x7E.
+ * @pre None.
+ * @post The run is blitted (clipped if needed).
+ * @post Glyph cells are backed with paper-white.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -366,10 +408,10 @@ static void er_text_left(int32_t x, int32_t y, const char* str, uint32_t color)
  * @param[in] str   ASCII string (NUL-terminated).
  * @param[in] color Foreground colour (0xRRGGBB); background is paper.
  *
- * @pre ra_gfx is bound; ``str`` is non-NULL.
- * @pre ``str`` holds only codepoints 0x20..0x7E.
- * @post The run is right-aligned so its last glyph ends near @p right.
- * @post Cells behind the glyphs are filled paper-white.
+ * @pre ra_gfx is bound; ``str`` is non-NULL ASCII 0x20..0x7E.
+ * @pre None.
+ * @post The run is right-aligned to end near @p right.
+ * @post Glyph cells are backed with paper-white.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -384,58 +426,339 @@ static void er_text_right(int32_t right, int32_t y, const char* str, uint32_t co
   er_text_left(right - (int32_t)w, y, str, color);
 }
 
+/* ===========================================================================
+ * Library screen -- built with ra_box, rendered with ra_gfx
+ * =========================================================================== */
+
 /**
- * @brief Paint the top status bar (wordmark, title, clock/battery, rule).
+ * @brief Reset the per-node label / progress side tables.
  *
- * @param[in] width Framebuffer width in pixels.
- *
- * @pre ra_gfx is bound.
- * @pre ``width`` matches the bound framebuffer.
- * @post The status band and its bottom hairline are drawn on paper.
- * @post No pixels below ``k_er_statusbar_h`` are touched.
+ * @pre None.
+ * @pre None.
+ * @post Every node slot has no label and no progress bar.
+ * @post Every label colour defaults to ink.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_draw_status_bar(int32_t width)
+static void er_reset_side_tables(void)
 {
-  const int32_t text_y = (int32_t)k_er_text_inset_y;
-  er_text_left((int32_t)k_er_pad_ui, text_y, k_er_wordmark, (uint32_t)k_er_ink);
-
-  const int32_t title_x =
-    (int32_t)k_er_pad_ui + ((int32_t)sizeof(k_er_wordmark) * (int32_t)k_er_glyph_w);
-  er_text_left(title_x, text_y, k_er_book_title, (uint32_t)k_er_ink_muted);
-
-  er_text_right(width - (int32_t)k_er_pad_ui, text_y, k_er_status_right, (uint32_t)k_er_ink_muted);
-
-  (void)ra_gfx_rect(0,
-                    (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
-                    width,
-                    (int32_t)k_er_hair,
-                    (uint32_t)k_er_rule,
-                    true);
+  for (uint16_t i = 0U; i < (uint16_t)k_er_max_nodes; ++i) {
+    s_label[i]     = nullptr;
+    s_label_col[i] = (uint32_t)k_er_ink;
+    s_progress[i]  = -1;
+  }
 }
 
 /**
- * @brief Paint the reading body: chapter heading then paragraph lines.
+ * @brief Make a leaf box template carrying fill / border.
+ *
+ * @param[in] fixed  Fixed main-axis extent (0 => flex).
+ * @param[in] flex   Flex weight when not fixed.
+ * @param[in] fill   Fill colour, or k_ra_box_no_colour.
+ * @param[in] border Border colour, or k_ra_box_no_colour.
+ *
+ * @return A leaf ra_box_t template.
+ * @retval node Configured leaf node template.
+ *
+ * @pre None.
+ * @pre None.
+ * @post Returned node has kind leaf and the requested sizing/colours.
+ * @post Tree links are left for ra_box_add to set.
+ *
+ * @note Pure.
+ * @since 0.1.0
+ */
+static ra_box_t er_leaf(int16_t fixed, uint16_t flex, uint32_t fill, uint32_t border)
+{
+  ra_box_t n  = {};
+  n.kind      = (uint8_t)k_ra_box_leaf;
+  n.fixed     = fixed;
+  n.flex      = flex;
+  n.fill      = fill;
+  n.border    = border;
+  n.border_w  = (border != (uint32_t)k_ra_box_no_colour) ? (int16_t)k_er_border_w : (int16_t)0;
+  n.grid_cols = 1U;
+  n.tag       = (int16_t)k_ra_box_none;
+  return n;
+}
+
+/**
+ * @brief Make a container box template (stack or grid).
+ *
+ * @param[in] kind  Container kind.
+ * @param[in] fixed Fixed main-axis extent (0 => flex).
+ * @param[in] pad   Inner padding.
+ * @param[in] gap   Gap between children.
+ * @param[in] cols  Grid columns (>= 1).
+ *
+ * @return A container ra_box_t template.
+ * @retval node Configured container node template.
+ *
+ * @pre @p kind is a container kind.
+ * @pre None.
+ * @post Returned node has the requested kind / sizing / spacing.
+ * @post Flex defaults to 1 so it fills its parent unless `fixed` is set.
+ *
+ * @note Pure.
+ * @since 0.1.0
+ */
+static ra_box_t
+er_container(ra_box_kind_t kind, int16_t fixed, int16_t pad, int16_t gap, uint8_t cols)
+{
+  ra_box_t n  = {};
+  n.kind      = (uint8_t)kind;
+  n.fixed     = fixed;
+  n.flex      = 1U;
+  n.pad       = pad;
+  n.gap       = gap;
+  n.grid_cols = (cols >= 1U) ? cols : 1U;
+  n.tag       = (int16_t)k_ra_box_none;
+  return n;
+}
+
+/**
+ * @brief Add the toolbar (search field + book-count chip) under a parent.
+ *
+ * @param[in,out] tree   Tree builder bound to s_nodes.
+ * @param[in]     parent Parent container index (the screen column).
+ *
+ * @pre @p tree references s_nodes; @p parent is a valid container.
+ * @pre Side tables are reset.
+ * @post A horizontal toolbar with two children is appended.
+ * @post Their labels/colours are recorded in the side tables.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_build_toolbar(ra_box_tree_t* tree, int16_t parent)
+{
+  const ra_box_t tb_t = er_container(k_ra_box_stack_h,
+                                     (int16_t)k_er_toolbar_h,
+                                     (int16_t)k_er_pad_ui,
+                                     (int16_t)k_er_pad_ui,
+                                     1U);
+  const int16_t  tb   = ra_box_add(tree, parent, &tb_t);
+
+  const ra_box_t srch_t = er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
+  const int16_t  srch   = ra_box_add(tree, tb, &srch_t);
+  s_label[srch]         = k_er_search_hint;
+  s_label_col[srch]     = (uint32_t)k_er_ink_muted;
+
+  const ra_box_t cnt_t =
+    er_leaf((int16_t)k_er_count_w, 0U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
+  const int16_t cnt = ra_box_add(tree, tb, &cnt_t);
+  s_label[cnt]      = k_er_count_text;
+  s_label_col[cnt]  = (uint32_t)k_er_ink_muted;
+}
+
+/**
+ * @brief Add one book card (cover, title, author, progress) under a grid.
+ *
+ * @param[in,out] tree Tree builder bound to s_nodes.
+ * @param[in]     grid Grid container index.
+ * @param[in]     book Book to render in the card.
+ *
+ * @pre @p tree references s_nodes; @p grid is a valid grid; @p book valid.
+ * @pre Side tables are reset.
+ * @post A vertical card subtree is appended to @p grid.
+ * @post The title/author labels and progress are recorded.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_add_book_tile(ra_box_tree_t* tree, int16_t grid, const er_book_t* book)
+{
+  const ra_box_t tile_t = er_container(k_ra_box_stack_v, 0, 0, (int16_t)k_er_tile_gap, 1U);
+  const int16_t  tile   = ra_box_add(tree, grid, &tile_t);
+
+  const ra_box_t cover_t = er_leaf(0, 1U, (uint32_t)k_er_fill, (uint32_t)k_er_ink);
+  (void)ra_box_add(tree, tile, &cover_t);
+
+  const ra_box_t lbl_t = er_leaf((int16_t)k_er_card_label_h,
+                                 0U,
+                                 (uint32_t)k_ra_box_no_colour,
+                                 (uint32_t)k_ra_box_no_colour);
+  const int16_t  title = ra_box_add(tree, tile, &lbl_t);
+  s_label[title]       = book->title;
+  const int16_t auth   = ra_box_add(tree, tile, &lbl_t);
+  s_label[auth]        = book->author;
+  s_label_col[auth]    = (uint32_t)k_er_ink_muted;
+
+  const ra_box_t bar_t =
+    er_leaf((int16_t)k_er_card_bar_h, 0U, (uint32_t)k_er_rule_soft, (uint32_t)k_ra_box_no_colour);
+  const int16_t bar = ra_box_add(tree, tile, &bar_t);
+  s_progress[bar]   = (int16_t)book->pct;
+}
+
+/**
+ * @brief Add the bottom navigation strip under a parent.
+ *
+ * @param[in,out] tree   Tree builder bound to s_nodes.
+ * @param[in]     parent Parent container index (the screen column).
+ *
+ * @pre @p tree references s_nodes; @p parent is a valid container.
+ * @pre Side tables are reset.
+ * @post A horizontal nav strip with one flex item per destination.
+ * @post The active (first) item is inked, the rest muted.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_build_nav(ra_box_tree_t* tree, int16_t parent)
+{
+  const ra_box_t nav_t = er_container(k_ra_box_stack_h, (int16_t)k_er_nav_h, 0, 0, 1U);
+  const int16_t  nav   = ra_box_add(tree, parent, &nav_t);
+  for (uint16_t i = 0U; i < (uint16_t)k_er_nav_count; ++i) {
+    const ra_box_t item_t =
+      er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_ra_box_no_colour);
+    const int16_t item = ra_box_add(tree, nav, &item_t);
+    s_label[item]      = k_er_nav_items[i];
+    s_label_col[item]  = (i == 0U) ? (uint32_t)k_er_ink : (uint32_t)k_er_ink_muted;
+  }
+}
+
+/**
+ * @brief Build the Library box tree (status bar, toolbar, grid, nav).
+ *
+ * @param[in,out] tree  Tree builder bound to s_nodes.
+ * @param[in]     frame Screen rectangle to lay out within.
+ *
+ * @pre ra_gfx is bound; @p tree references s_nodes.
+ * @pre s_book table populated.
+ * @post `tree` holds the laid-out Library; side tables hold text/progress.
+ * @post Every node has its rect computed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
+{
+  er_reset_side_tables();
+  (void)ra_box_tree_init(tree, s_nodes, (uint16_t)k_er_max_nodes);
+
+  const ra_box_t root_t = er_container(k_ra_box_stack_v, 0, 0, 0, 1U);
+  const int16_t  root   = ra_box_add(tree, (int16_t)k_ra_box_none, &root_t);
+
+  const ra_box_t sb_t = er_leaf((int16_t)k_er_statusbar_h,
+                                0U,
+                                (uint32_t)k_ra_box_no_colour,
+                                (uint32_t)k_ra_box_no_colour);
+  const int16_t  sb   = ra_box_add(tree, root, &sb_t);
+  s_label[sb]         = k_er_lib_heading;
+
+  er_build_toolbar(tree, root);
+
+  const ra_box_t grid_t = er_container(k_ra_box_grid,
+                                       0,
+                                       (int16_t)k_er_pad_ui,
+                                       (int16_t)k_er_grid_gap,
+                                       (uint8_t)k_er_grid_cols);
+  const int16_t  grid   = ra_box_add(tree, root, &grid_t);
+  for (uint16_t i = 0U; i < (uint16_t)k_er_book_count; ++i) {
+    er_add_book_tile(tree, grid, &k_er_books[i]);
+  }
+
+  er_build_nav(tree, root);
+
+  (void)ra_box_layout(tree, root, frame);
+}
+
+/**
+ * @brief Render a laid-out box tree (fills, borders, progress, labels).
+ *
+ * @param[in] tree Laid-out tree whose nodes index the side tables.
+ *
+ * @pre ra_gfx is bound; @p tree laid out; side tables match its nodes.
+ * @pre None.
+ * @post Every node's fill/border/progress/label is drawn.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_render_boxtree(const ra_box_tree_t* tree)
+{
+  for (uint16_t i = 0U; i < tree->count; ++i) {
+    const ra_box_t*    n = &tree->nodes[i];
+    const ra_ui_rect_t r = n->rect;
+    if (n->fill != (uint32_t)k_ra_box_no_colour) {
+      (void)ra_gfx_rect(r.x, r.y, r.w, r.h, n->fill, true);
+    }
+    if ((n->border_w > 0) && (n->border != (uint32_t)k_ra_box_no_colour)) {
+      (void)ra_gfx_rect(r.x, r.y, r.w, r.h, n->border, false);
+    }
+    if (s_progress[i] >= 0) {
+      const int32_t fillw = (r.w * (int32_t)s_progress[i]) / (int32_t)k_er_pct_full;
+      (void)ra_gfx_rect(r.x, r.y, fillw, r.h, (uint32_t)k_er_fill_deep, true);
+    }
+    if (s_label[i] != nullptr) {
+      er_text_left(r.x + (int32_t)k_er_text_pad,
+                   r.y + (int32_t)k_er_text_pad,
+                   s_label[i],
+                   s_label_col[i]);
+    }
+  }
+}
+
+/**
+ * @brief Render the full Library screen.
+ *
+ * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre None.
+ * @post The framebuffer holds the Library screen.
+ * @post Caller flushes the panel to make it visible.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_render_library(void)
+{
+  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  ra_box_tree_t      tree;
+  const ra_ui_rect_t frame = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
+  er_build_library(&tree, &frame);
+  er_render_boxtree(&tree);
+  /* Hairline under the status bar and above the nav, for separation. */
+  (void)ra_gfx_rect(0,
+                    (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
+                    (int32_t)s_fb.width_px,
+                    (int32_t)k_er_hair,
+                    (uint32_t)k_er_rule,
+                    true);
+  (void)ra_gfx_rect(0,
+                    (int32_t)s_fb.height_px - (int32_t)k_er_nav_h,
+                    (int32_t)s_fb.width_px,
+                    (int32_t)k_er_hair,
+                    (uint32_t)k_er_rule,
+                    true);
+  er_text_right((int32_t)s_fb.width_px - (int32_t)k_er_pad_ui,
+                (int32_t)k_er_text_inset_y,
+                k_er_status_right,
+                (uint32_t)k_er_ink_muted);
+}
+
+/* ===========================================================================
+ * Reading screen -- immediate-mode ra_gfx (book reflow is a later milestone)
+ * =========================================================================== */
+
+/**
+ * @brief Paint the Reading body: chapter heading then paragraph lines.
  *
  * @param[in] height Framebuffer height in pixels.
  *
  * @pre ra_gfx is bound.
- * @pre ``height`` matches the bound framebuffer.
+ * @pre @p height matches the bound framebuffer.
  * @post Chapter heading and as many body lines as fit are drawn in ink.
  * @post Drawing stops before the footer band.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_draw_body(int32_t height)
+static void er_draw_reading_body(int32_t height)
 {
   const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
   const int32_t body_bot = height - (int32_t)k_er_footer_h - (int32_t)k_er_body_gap;
-
   er_text_left((int32_t)k_er_margin_x, body_top, k_er_chapter, (uint32_t)k_er_ink);
-
   int32_t y = body_top + ((int32_t)k_er_blank_lines * (int32_t)k_er_line_h);
   for (uint16_t i = 0U; i < (uint16_t)k_er_body_line_count; ++i) {
     if ((y + (int32_t)k_er_glyph_h) > body_bot) {
@@ -447,52 +770,11 @@ static void er_draw_body(int32_t height)
 }
 
 /**
- * @brief Paint the footer: top rule, title, page label, progress bar.
+ * @brief Render the full Reading screen (status bar, body, footer).
  *
- * @param[in] width  Framebuffer width in pixels.
- * @param[in] height Framebuffer height in pixels.
- *
- * @pre ra_gfx is bound.
- * @pre ``width``/``height`` match the bound framebuffer; total pages > 0.
- * @post Footer rule, labels, and a flat reading-progress bar are drawn.
- * @post No pixels above ``height - k_er_footer_h`` are touched.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void er_draw_footer(int32_t width, int32_t height)
-{
-  const int32_t band_top = height - (int32_t)k_er_footer_h;
-
-  (void)ra_gfx_rect(0, band_top, width, (int32_t)k_er_hair, (uint32_t)k_er_rule, true);
-
-  const int32_t text_y = band_top + (int32_t)k_er_progress_gap;
-  er_text_left((int32_t)k_er_pad_ui, text_y, k_er_book_title, (uint32_t)k_er_ink_muted);
-  er_text_right(width - (int32_t)k_er_pad_ui, text_y, k_er_page_label, (uint32_t)k_er_ink_muted);
-
-  const int32_t track_x = (int32_t)k_er_pad_ui;
-  const int32_t track_w = width - (2 * (int32_t)k_er_pad_ui);
-  const int32_t track_y = height - (int32_t)k_er_progress_gap - (int32_t)k_er_progress_h;
-  (void)ra_gfx_rect(track_x,
-                    track_y,
-                    track_w,
-                    (int32_t)k_er_progress_h,
-                    (uint32_t)k_er_rule_soft,
-                    true);
-
-  const int32_t fill_w = (track_w * (int32_t)k_er_page_current) / (int32_t)k_er_page_total;
-  (void)
-    ra_gfx_rect(track_x, track_y, fill_w, (int32_t)k_er_progress_h, (uint32_t)k_er_fill_deep, true);
-}
-
-/**
- * @brief Render the full Reading screen into the framebuffer.
- *
- * @details Clears to paper, then paints status bar, body, and footer.
- *
- * @pre ra_gfx is bound to the panel framebuffer.
- * @pre ``s_fb`` reflects the backend framebuffer geometry.
- * @post Every pixel of the framebuffer holds the Reading screen.
+ * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre None.
+ * @post The framebuffer holds the Reading screen.
  * @post Caller flushes the panel to make it visible.
  *
  * @note Not thread-safe.
@@ -504,9 +786,64 @@ static void er_render_reading(void)
   const int32_t height = (int32_t)s_fb.height_px;
 
   (void)ra_gfx_clear((uint32_t)k_er_paper);
-  er_draw_status_bar(width);
-  er_draw_body(height);
-  er_draw_footer(width, height);
+
+  /* Status bar. */
+  er_text_left((int32_t)k_er_pad_ui, (int32_t)k_er_text_inset_y, k_er_wordmark, (uint32_t)k_er_ink);
+  const int32_t title_x =
+    (int32_t)k_er_pad_ui + ((int32_t)sizeof(k_er_wordmark) * (int32_t)k_er_glyph_w);
+  er_text_left(title_x, (int32_t)k_er_text_inset_y, k_er_book_title, (uint32_t)k_er_ink_muted);
+  er_text_right(width - (int32_t)k_er_pad_ui,
+                (int32_t)k_er_text_inset_y,
+                k_er_status_right,
+                (uint32_t)k_er_ink_muted);
+  (void)ra_gfx_rect(0,
+                    (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
+                    width,
+                    (int32_t)k_er_hair,
+                    (uint32_t)k_er_rule,
+                    true);
+
+  er_draw_reading_body(height);
+
+  /* Footer: rule, chapter title, page label, progress bar. */
+  const int32_t band_top = height - (int32_t)k_er_footer_h;
+  (void)ra_gfx_rect(0, band_top, width, (int32_t)k_er_hair, (uint32_t)k_er_rule, true);
+  const int32_t text_y = band_top + (int32_t)k_er_progress_gap;
+  er_text_left((int32_t)k_er_pad_ui, text_y, k_er_book_title, (uint32_t)k_er_ink_muted);
+  er_text_right(width - (int32_t)k_er_pad_ui, text_y, k_er_page_label, (uint32_t)k_er_ink_muted);
+  const int32_t track_x = (int32_t)k_er_pad_ui;
+  const int32_t track_w = width - (2 * (int32_t)k_er_pad_ui);
+  const int32_t track_y = height - (int32_t)k_er_progress_gap - (int32_t)k_er_progress_h;
+  (void)ra_gfx_rect(track_x,
+                    track_y,
+                    track_w,
+                    (int32_t)k_er_progress_h,
+                    (uint32_t)k_er_rule_soft,
+                    true);
+  const int32_t fill_w = (track_w * (int32_t)k_er_page_current) / (int32_t)k_er_page_total;
+  (void)
+    ra_gfx_rect(track_x, track_y, fill_w, (int32_t)k_er_progress_h, (uint32_t)k_er_fill_deep, true);
+}
+
+/**
+ * @brief Render whichever screen is on top of the navigation stack.
+ *
+ * @pre ra_gfx is bound; ``s_nav`` initialised.
+ * @pre None.
+ * @post The framebuffer holds the current screen.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_render_current(void)
+{
+  uint16_t top = (uint16_t)k_er_screen_library;
+  (void)ra_ui_nav_top(&s_nav, &top);
+  if (top == (uint16_t)k_er_screen_reading) {
+    er_render_reading();
+  } else {
+    er_render_library();
+  }
 }
 
 #pragma GCC diagnostic push
@@ -517,7 +854,8 @@ int32_t main(void)
   app_bringup_panel();
   app_bringup_gfx();
 
-  er_render_reading();
+  (void)ra_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
+  er_render_current();
   (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_init);
 
   while (1) {
