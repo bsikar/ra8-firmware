@@ -34,41 +34,48 @@
 
 #include "board_periph_block.h"
 
+/** @brief Bit-width masks for the CRC unit model. */
+typedef enum : uint32_t {
+  k_u32_all   = 0xFFFFFFFFU, /**< 32-bit all-ones.  */
+  k_u16_mask  = 0xFFFFU,     /**< 16-bit mask.      */
+  k_byte_mask = 0xFFU,       /**< 8-bit mask.       */
+} crc_lit_t;
+
 /** @brief CRC block geometry (ra8d2_crc_regs.h). */
 typedef enum : uint64_t {
-  k_crc_base     = 0x40310000UL, /**< CRC base (HUM Ch 48).        */
-  k_crc_span     = 0x20UL,       /**< Register window.             */
-  k_crc_off_cr0  = 0x00UL,       /**< CRCCR0 (GPS/LMS/DORCLR), 8b. */
-  k_crc_off_cr1  = 0x01UL,       /**< CRCCR1 (snoop), 8b.          */
-  k_crc_off_dir  = 0x04UL,       /**< CRCDIR / CRCDIR_BY data in.  */
-  k_crc_off_dor  = 0x08UL,       /**< CRCDOR result (32b).         */
+  k_crc_base    = 0x40310000UL, /**< CRC base (HUM Ch 48).        */
+  k_crc_span    = 0x20UL,       /**< Register window.             */
+  k_crc_off_cr0 = 0x00UL,       /**< CRCCR0 (GPS/LMS/DORCLR), 8b. */
+  k_crc_off_cr1 = 0x01UL,       /**< CRCCR1 (snoop), 8b.          */
+  k_crc_off_dir = 0x04UL,       /**< CRCDIR / CRCDIR_BY data in.  */
+  k_crc_off_dor = 0x08UL,       /**< CRCDOR result (32b).         */
 } crc_map_t;
 
 /** @brief CRCCR0 fields (ra8d2_crc_regs.h). */
 typedef enum : uint32_t {
-  k_crc_gps_mask  = 0x07U, /**< GPS[2:0] polynomial select.        */
-  k_crc_dorclr    = 0x80U, /**< DORCLR: clear CRCDOR (bit 7).      */
+  k_crc_gps_mask = 0x07U, /**< GPS[2:0] polynomial select.        */
+  k_crc_dorclr   = 0x80U, /**< DORCLR: clear CRCDOR (bit 7).      */
 } crc_cr0_field_t;
 
 /** @brief GPS polynomial encodings (CRCCR0.GPS). */
 typedef enum : uint32_t {
-  k_crc_gps_8        = 1U, /**< CRC-8  (X^8+X^2+X+1).              */
-  k_crc_gps_16       = 2U, /**< CRC-16 (X^16+X^15+X^2+1).         */
-  k_crc_gps_ccitt    = 3U, /**< CRC-CCITT (X^16+X^12+X^5+1).      */
-  k_crc_gps_32       = 4U, /**< CRC-32 (IEEE 802.3).              */
-  k_crc_gps_32c      = 5U, /**< CRC-32C (Castagnoli).            */
+  k_crc_gps_8     = 1U, /**< CRC-8  (X^8+X^2+X+1).              */
+  k_crc_gps_16    = 2U, /**< CRC-16 (X^16+X^15+X^2+1).         */
+  k_crc_gps_ccitt = 3U, /**< CRC-CCITT (X^16+X^12+X^5+1).      */
+  k_crc_gps_32    = 4U, /**< CRC-32 (IEEE 802.3).              */
+  k_crc_gps_32c   = 5U, /**< CRC-32C (Castagnoli).            */
 } crc_gps_t;
 
 /** @brief Reflected (LSB-first) polynomials for the reflected GPS modes. */
 typedef enum : uint32_t {
-  k_crc_poly_16_refl = 0x0000A001U, /**< Reflected 0x8005.        */
-  k_crc_poly_32_refl = 0xEDB88320U, /**< Reflected 0x04C11DB7.    */
+  k_crc_poly_16_refl  = 0x0000A001U, /**< Reflected 0x8005.        */
+  k_crc_poly_32_refl  = 0xEDB88320U, /**< Reflected 0x04C11DB7.    */
   k_crc_poly_32c_refl = 0x82F63B78U, /**< Reflected 0x1EDC6F41.   */
 } crc_poly_refl_t;
 
 /** @brief MSB-first polynomials for the non-reflected GPS modes. */
 typedef enum : uint32_t {
-  k_crc_poly_8_fwd    = 0x00000007U, /**< CRC-8 X^8+X^2+X+1.      */
+  k_crc_poly_8_fwd     = 0x00000007U, /**< CRC-8 X^8+X^2+X+1.      */
   k_crc_poly_ccitt_fwd = 0x00001021U, /**< CRC-CCITT.            */
 } crc_poly_fwd_t;
 
@@ -101,11 +108,11 @@ static uint32_t crc_step_reflected(uint32_t crc, uint8_t byte, uint32_t poly)
 static uint32_t crc_step_forward(uint32_t crc, uint8_t byte, uint32_t poly, uint32_t width)
 {
   const uint32_t top = 1U << (width - 1U);
-  const uint32_t msk = (width >= 32U) ? 0xFFFFFFFFU : ((1U << width) - 1U);
+  const uint32_t msk = (width >= 32U) ? (uint32_t)k_u32_all : ((1U << width) - 1U);
   crc ^= (uint32_t)byte << (width - 8U);
   for (uint32_t i = 0U; i < 8U; i++) {
     const bool set = (crc & top) != 0U;
-    crc           = (crc << 1) & msk;
+    crc            = (crc << 1) & msk;
     if (set) {
       crc ^= poly;
     }
@@ -189,7 +196,7 @@ static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
      * 8-bit feed (CRC-8/16/CCITT) delivers one. */
     const unsigned n = (size > 4U) ? 4U : ((size == 0U) ? 1U : size);
     for (unsigned i = 0U; i < n; i++) {
-      crc_fold_byte((uint8_t)((value >> (8U * i)) & 0xFFU));
+      crc_fold_byte((uint8_t)((value >> (8U * i)) & (uint32_t)k_byte_mask));
     }
     return;
   }
@@ -199,7 +206,7 @@ static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       s_crc.dor = (uint32_t)value;
     } else {
       const uint32_t shift = (uint32_t)(off - (uint64_t)k_crc_off_dor) * 8U;
-      const uint32_t mask  = ((size == 2U) ? 0xFFFFU : 0xFFU) << shift;
+      const uint32_t mask  = ((size == 2U) ? (uint32_t)k_u16_mask : (uint32_t)k_byte_mask) << shift;
       s_crc.dor            = (s_crc.dor & ~mask) | (((uint32_t)value << shift) & mask);
     }
   }

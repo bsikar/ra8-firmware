@@ -119,9 +119,10 @@ INCLUDE_DIRS=(
     -Ilibs/ra_hal/inc
     -Ilibs/ra_nsc/inc
     -Isrc/inc
+    -Itools/board_sim/inc
 )
 
-print_status "Running cppcheck on libs/ and examples/ (excluding libs/third_party/) ..."
+print_status "Running cppcheck on libs/, examples/, tools/board_sim/ (excluding libs/third_party/) ..."
 set +e
 cppcheck \
     --enable=warning,style,performance,portability \
@@ -139,7 +140,7 @@ cppcheck \
     "${ADDON_ARGS[@]}" \
     "${VERBOSE_ARGS[@]}" \
     "${INCLUDE_DIRS[@]}" \
-    libs examples \
+    libs examples tools/board_sim \
     2> "$REPORT"
 RC=$?
 set -e

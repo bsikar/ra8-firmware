@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 # Default values
 CHECK_ONLY=false
 VERBOSE=false
-EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp")
+EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp" "*.m")
 
 # Pin the clang-format binary via env var so CI can lock to a specific
 # major version (Ubuntu 24.04 ships v18 by default; Homebrew on macOS
@@ -111,9 +111,9 @@ parse_args() {
     done
 }
 
-# Auto-discover scan dirs: libs/, src/, tests/, plus every
-# examples/<app>/ directory. The recursive find inside each dir picks
-# up nested sources.
+# Auto-discover scan dirs: libs/, src/, tests/, plus every examples/<app>/ and
+# tools/<tool>/ directory. The recursive find inside each dir picks up nested
+# sources (e.g. tools/board_sim/{inc,src}); the build/ dir is excluded below.
 discover_source_dirs() {
     local out=()
     for entry in libs src tests; do
@@ -122,6 +122,11 @@ discover_source_dirs() {
     if [ -d examples ]; then
         for app in examples/*/*; do
             [ -d "$app" ] && out+=("$app")
+        done
+    fi
+    if [ -d tools ]; then
+        for tool in tools/*; do
+            [ -d "$tool" ] && out+=("$tool")
         done
     fi
     printf '%s\n' "${out[@]}"

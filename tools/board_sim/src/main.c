@@ -35,13 +35,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unicorn/unicorn.h>
 #include <unistd.h>
 
+#include "board_net.h"
 #include "board_overlay.h"
 #include "board_periph.h"
-#include "board_net.h"
 #include "board_usb.h"
 #include "board_view.h"
 
@@ -118,23 +119,63 @@ typedef enum : uint64_t {
  * 1 and no S0-S31 are stacked -- see _tx_thread_schedule (TST LR,#0x10 skips
  * the VFP save/restore for these values). */
 typedef enum : uint32_t {
-  k_exc_frame_words = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.  */
-  k_exc_frame_bytes = 32U,         /**< 8 words * 4 bytes.                    */
-  k_exc_ret_base    = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].  */
-  k_exc_ret_handler = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.         */
-  k_exc_ret_msp     = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.          */
-  k_exc_ret_psp     = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.          */
-  k_exc_ret_spsel   = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP. */
-  k_exc_ret_mode    = 0x8U,        /**< EXC_RETURN bit3: return to Thread.   */
-  k_control_spsel   = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.      */
-  k_xpsr_t_bit      = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.     */
-  k_xpsr_align9     = 0x00000200U, /**< xPSR bit9: stack-frame realignment.  */
-  k_xpsr_ipsr_mask  = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
-  k_exc_prio_none   = 0x100U,      /**< Sentinel "no handler active" prio.   */
-  k_exc_prio_max    = 0xFFU,       /**< Lowest configurable priority value.  */
-  k_exc_nest_max    = 4U,          /**< Tracked active-exception nesting cap.*/
-  k_byte_bits       = 8U,          /**< Bits per byte (SHPR field width).    */
+  k_exc_frame_words  = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.  */
+  k_exc_frame_bytes  = 32U,         /**< 8 words * 4 bytes.                    */
+  k_exc_ret_base     = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].  */
+  k_exc_ret_handler  = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.         */
+  k_exc_ret_msp      = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.          */
+  k_exc_ret_psp      = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.          */
+  k_exc_ret_spsel    = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP. */
+  k_exc_ret_mode     = 0x8U,        /**< EXC_RETURN bit3: return to Thread.   */
+  k_control_spsel    = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.      */
+  k_xpsr_t_bit       = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.     */
+  k_xpsr_align9      = 0x00000200U, /**< xPSR bit9: stack-frame realignment.  */
+  k_xpsr_ipsr_mask   = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
+  k_exc_prio_none    = 0x100U,      /**< Sentinel "no handler active" prio.   */
+  k_exc_prio_max     = 0xFFU,       /**< Lowest configurable priority value.  */
+  k_exc_nest_max     = 4U,          /**< Tracked active-exception nesting cap.*/
+  k_byte_bits        = 8U,          /**< Bits per byte (SHPR field width).   */
+  k_frame_off_r3     = 12U,         /**< Basic exception-frame offset of R3. */
+  k_frame_off_lr     = 20U,         /**< Basic exception-frame offset of LR. */
+  k_frame_off_pc     = 24U,         /**< Basic exception-frame offset of PC. */
+  k_frame_off_xpsr   = 28U,         /**< Basic exception-frame offset of xPSR.*/
+  k_exc_ret_grp_mask = 0xFFFFFFF0U, /**< Masks a PC to the EXC_RETURN group. */
+  k_vector_erased    = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word. */
+  k_nvic_prio_shift  = 4U,          /**< Implemented priority is the 4 MSBs. */
+  k_lo4_mask         = 0xFU,        /**< Low nibble (register / cond field). */
 } cortexm_exc_t;
+
+/**
+ * @enum board_sim_misc_t
+ * @brief Named constants for ELF parsing, Thumb decode, and assorted literals.
+ */
+typedef enum : uint32_t {
+  /* ELF32 layout, in bytes. */
+  k_elf_ehdr_size      = 52U, /**< ELF32 file-header size.            */
+  k_elf_em_arm         = 40U, /**< e_machine == EM_ARM.               */
+  k_elf_e_phoff_off    = 28U, /**< e_phoff in the file header.        */
+  k_elf_ph_paddr_off   = 12U, /**< p_paddr in a program header.       */
+  k_elf_shentsize_min  = 40U, /**< ELF32 section-header entry size.   */
+  k_elf_sh_size_off    = 20U, /**< sh_size in a section header.       */
+  k_elf_sh_link_off    = 24U, /**< sh_link in a section header.       */
+  k_elf_sh_entsize_off = 36U, /**< sh_entsize in a section header.    */
+  /* Thumb / conditional-select instruction decode. */
+  k_thumb_op5_shift = 11U,   /**< op5 = hw0[15:11].                  */
+  k_thumb_op5_mask  = 0x1FU, /**< 5-bit op5 field.                   */
+  k_thumb32_op5_min = 0x1DU, /**< op5 >= this -> 32-bit instruction. */
+  k_cs_op_shift     = 12U,   /**< CSEL-family op = hw2[13:12].       */
+  k_cs_op_mask      = 0x3U,  /**< 2-bit op field.                    */
+  /* Assorted. */
+  k_u32_all_ones    = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).   */
+  k_ra_err_no_data  = 0x10AU,      /**< ra_err_t value: no RX data.        */
+  k_eth_link_speed  = 100U,        /**< Link speed (Mbps) in the link blob.*/
+  k_eth_bmsr_lo     = 0x2DU,       /**< PHY BMSR low byte.                 */
+  k_eth_bmsr_hi     = 0x78U,       /**< PHY BMSR high byte.               */
+  k_strtol_base10   = 10U,         /**< Base-10 radix for strtol.          */
+  k_max_panel_px    = 4096U,       /**< Largest accepted --size dimension. */
+  k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.   */
+  k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).  */
+} board_sim_misc_t;
 
 /* Touch on the EK-RA8D2 is now modelled end-to-end: the firmware's real
  * ra_touch_open / ra_touch_read run unchanged and drive the GoodIX GT911 over
@@ -176,6 +217,12 @@ typedef enum : uint32_t {
   k_view_present_every = 16U,      /**< Present the frame every Nth chunk.      */
   k_view_max_chunks    = 4000000U, /**< Cap in --view; closing the window ends. */
   k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.    */
+  /* --record settings. One outer chunk advances SysTick once (~1 ms of emulated
+   * time at the firmware's 1 kHz tick), so ~1000 chunks == one emulated second.
+   * Recording dumps a frame every k_record_every chunks for k_record_fps fps. */
+  k_record_ms_per_sec = 1000U, /**< Emulated ms (= chunks) per second.      */
+  k_record_fps        = 20U,   /**< Recorded frames per emulated second.    */
+  k_record_every      = 50U,   /**< Chunks between recorded frames (1000/20).*/
 } view_cfg_t;
 
 /* GLCDC graphics-layer 1 (GR1) framebuffer registers + field decode. The HAL
@@ -302,8 +349,31 @@ static uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* u
       return (uint64_t)s_mmio_val[idx];
     }
   }
-  s_mmio_toggle ^= 0xFFFFFFFFU;
+  s_mmio_toggle ^= (uint32_t)k_u32_all_ones;
   return (uint64_t)s_mmio_toggle;
+}
+
+/**
+ * @brief Side-effect-free read of the last value written to a peripheral reg.
+ *
+ * @details
+ * Returns the value last written to @p addr, or 0 if it was never written --
+ * searching the MMIO shadow WITHOUT allocating a slot and WITHOUT advancing the
+ * spin-settle toggle that ::mmio_read uses. board_sim's own introspection (e.g.
+ * ::build_frame reading GLCDC registers to compose the panel) must see stable
+ * state: a firmware that never programs the GLCDC (blink, USB, UART demos) would
+ * otherwise read the status-poll fallthrough (an alternating 0/0xFFFFFFFF), which
+ * made the panel strobe black<->white every frame. A real read of an unwritten
+ * register reset-defaults to 0 here, so the panel is a steady background.
+ */
+static uint32_t mmio_peek(uint64_t addr)
+{
+  for (uint32_t i = 0U; i < s_mmio_n; i++) {
+    if (s_mmio_addr[i] == addr) {
+      return s_mmio_written[i] ? s_mmio_val[i] : 0U;
+    }
+  }
+  return 0U;
 }
 
 static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, void* user)
@@ -391,43 +461,65 @@ static const int k_arm_reg_id[16] = {
  * @param[in] xpsr Current xPSR (APSR flags live in the top nibble).
  * @return true if the condition holds.
  */
+/**
+ * @enum arm_cond_t
+ * @brief ARM/Thumb 4-bit condition-code field encodings (cond[3:0]).
+ */
+typedef enum : uint32_t {
+  k_cond_eq = 0x0U, /**< Equal (Z==1).               */
+  k_cond_ne = 0x1U, /**< Not equal (Z==0).           */
+  k_cond_cs = 0x2U, /**< Carry set / unsigned >=.    */
+  k_cond_cc = 0x3U, /**< Carry clear / unsigned <.   */
+  k_cond_mi = 0x4U, /**< Negative.                   */
+  k_cond_pl = 0x5U, /**< Positive or zero.           */
+  k_cond_vs = 0x6U, /**< Overflow set.               */
+  k_cond_vc = 0x7U, /**< Overflow clear.             */
+  k_cond_hi = 0x8U, /**< Unsigned higher.            */
+  k_cond_ls = 0x9U, /**< Unsigned lower or same.     */
+  k_cond_ge = 0xAU, /**< Signed >=.                  */
+  k_cond_lt = 0xBU, /**< Signed <.                   */
+  k_cond_gt = 0xCU, /**< Signed >.                   */
+  k_cond_le = 0xDU, /**< Signed <=.                  */
+  k_cond_al = 0xEU, /**< Always.                     */
+} arm_cond_t;
+
 static bool cond_holds(uint32_t cond, uint32_t xpsr)
 {
   const bool n = ((xpsr >> (uint32_t)k_apsr_n) & 1U) != 0U;
   const bool z = ((xpsr >> (uint32_t)k_apsr_z) & 1U) != 0U;
   const bool c = ((xpsr >> (uint32_t)k_apsr_c) & 1U) != 0U;
   const bool v = ((xpsr >> (uint32_t)k_apsr_v) & 1U) != 0U;
-  switch (cond & 0xFU) {
-    case 0x0U:
-      return z; /* EQ */
-    case 0x1U:
-      return !z; /* NE */
-    case 0x2U:
-      return c; /* CS/HS */
-    case 0x3U:
-      return !c; /* CC/LO */
-    case 0x4U:
-      return n; /* MI */
-    case 0x5U:
-      return !n; /* PL */
-    case 0x6U:
-      return v; /* VS */
-    case 0x7U:
-      return !v; /* VC */
-    case 0x8U:
-      return c && !z; /* HI */
-    case 0x9U:
-      return !c || z; /* LS */
-    case 0xAU:
-      return n == v; /* GE */
-    case 0xBU:
-      return n != v; /* LT */
-    case 0xCU:
-      return !z && (n == v); /* GT */
-    case 0xDU:
-      return z || (n != v); /* LE */
+  switch (cond & (uint32_t)k_lo4_mask) {
+    case k_cond_eq:
+      return z;
+    case k_cond_ne:
+      return !z;
+    case k_cond_cs:
+      return c;
+    case k_cond_cc:
+      return !c;
+    case k_cond_mi:
+      return n;
+    case k_cond_pl:
+      return !n;
+    case k_cond_vs:
+      return v;
+    case k_cond_vc:
+      return !v;
+    case k_cond_hi:
+      return c && !z;
+    case k_cond_ls:
+      return !c || z;
+    case k_cond_ge:
+      return n == v;
+    case k_cond_lt:
+      return n != v;
+    case k_cond_gt:
+      return !z && (n == v);
+    case k_cond_le:
+      return z || (n != v);
     default:
-      return true; /* AL (0xE) / 0xF */
+      return true; /* AL (k_cond_al) / 0xF */
   }
 }
 
@@ -454,11 +546,11 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
       ((hw2 & (uint16_t)k_cs_hw2_b15) == 0U) || ((hw2 & (uint16_t)k_cs_hw2_b14) != 0U)) {
     return false;
   }
-  const uint32_t rn   = (uint32_t)(hw1 & 0x000FU);
-  const uint32_t op   = (uint32_t)((hw2 >> 12) & 0x3U);
-  const uint32_t rd   = (uint32_t)((hw2 >> 8) & 0xFU);
-  const uint32_t cond = (uint32_t)((hw2 >> 4) & 0xFU);
-  const uint32_t rm   = (uint32_t)(hw2 & 0x000FU);
+  const uint32_t rn   = (uint32_t)(hw1 & (uint32_t)k_lo4_mask);
+  const uint32_t op   = (uint32_t)((hw2 >> (uint32_t)k_cs_op_shift) & (uint32_t)k_cs_op_mask);
+  const uint32_t rd   = (uint32_t)((hw2 >> 8) & (uint32_t)k_lo4_mask);
+  const uint32_t cond = (uint32_t)((hw2 >> 4) & (uint32_t)k_lo4_mask);
+  const uint32_t rm   = (uint32_t)(hw2 & (uint32_t)k_lo4_mask);
 
   uint32_t xpsr = 0U;
   uint32_t vn   = 0U;
@@ -756,8 +848,8 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
   uint16_t hw0 = 0U;
   (void)uc_mem_read(uc, pc, &hw0, sizeof(hw0));
-  const uint32_t op5  = (uint32_t)(hw0 >> 11) & 0x1FU;
-  const uint32_t step = ((op5 == 0x1DU) || (op5 == 0x1EU) || (op5 == 0x1FU)) ? 4U : 2U;
+  const uint32_t op5  = (uint32_t)(hw0 >> (uint32_t)k_thumb_op5_shift) & (uint32_t)k_thumb_op5_mask;
+  const uint32_t step = (op5 >= (uint32_t)k_thumb32_op5_min) ? 4U : 2U;
   uint32_t       next = pc + step;
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
   (void)uc_emu_stop(uc);
@@ -867,7 +959,14 @@ static void on_eth_link_status(uc_engine* uc, uint64_t address, uint32_t size, v
   (void)uc_reg_read(uc, UC_ARM_REG_R0, &out);
   if (out != 0U) {
     /* ra_eth_link_t = { u8 link_up; u16 speed_mbps; u8 full_duplex; u16 bmsr }. */
-    const uint8_t link[8] = {1U, 0U, 100U, 0U, 1U, 0U, 0x2DU, 0x78U};
+    const uint8_t link[8] = {1U,
+                             0U,
+                             (uint8_t)k_eth_link_speed,
+                             0U,
+                             1U,
+                             0U,
+                             (uint8_t)k_eth_bmsr_lo,
+                             (uint8_t)k_eth_bmsr_hi};
     (void)uc_mem_write(uc, out, link, sizeof(link));
   }
   eth_hook_return(uc, 0U); /* k_ra_ok */
@@ -914,7 +1013,7 @@ static void on_eth_read(uc_engine* uc, uint64_t address, uint32_t size, void* us
   } else {
     const uint32_t zero = 0U;
     (void)uc_mem_write(uc, got, &zero, 4U);
-    eth_hook_return(uc, 0x10AU); /* k_ra_err_no_data */
+    eth_hook_return(uc, (uint32_t)k_ra_err_no_data);
   }
 }
 
@@ -934,7 +1033,7 @@ static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const cha
   if (addr == 0U) {
     return;
   }
-  static uc_hook handles[8];
+  static uc_hook  handles[8];
   static uint32_t n;
   if (n < (uint32_t)(sizeof(handles) / sizeof(handles[0]))) {
     (void)uc_hook_add(uc, &handles[n], UC_HOOK_CODE, cb, nullptr, addr, addr);
@@ -958,8 +1057,8 @@ static void eth_trace_hook(uc_engine* uc, const uint8_t* elf, long len, const ch
   if (addr == 0U) {
     return;
   }
-  static uc_hook   th[4];
-  static uint32_t  tn;
+  static uc_hook  th[4];
+  static uint32_t tn;
   if (tn < (uint32_t)(sizeof(th) / sizeof(th[0]))) {
     (void)uc_hook_add(uc, &th[tn], UC_HOOK_CODE, (void*)on_net_trace, (void*)name, addr, addr);
     tn++;
@@ -1001,7 +1100,7 @@ static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len, bool t
 /** @brief Load ELF32 PT_LOAD segments into emulated memory at their LMA. */
 static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
 {
-  if ((len < 52) ||
+  if ((len < (long)k_elf_ehdr_size) ||
       (memcmp(elf,
               "\x7F"
               "ELF",
@@ -1011,12 +1110,12 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
     return -1;
   }
   const uint16_t e_machine = (uint16_t)(elf[18] | (elf[19] << 8));
-  if (e_machine != 40 /* EM_ARM */) {
+  if (e_machine != (uint16_t)k_elf_em_arm) {
     (void)fprintf(stderr, "ELF e_machine %u != ARM(40)\n", e_machine);
     return -1;
   }
   uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + 28, 4);
+  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
   uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
   uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
   int      loaded    = 0;
@@ -1028,7 +1127,7 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
     uint32_t       p_filesz;
     (void)memcpy(&p_type, ph + 0, 4);
     (void)memcpy(&p_offset, ph + 4, 4);
-    (void)memcpy(&p_paddr, ph + 12, 4); /* load address (LMA) */
+    (void)memcpy(&p_paddr, ph + (uint32_t)k_elf_ph_paddr_off, 4); /* load address (LMA) */
     (void)memcpy(&p_filesz, ph + 16, 4);
     if ((p_type != 1U /* PT_LOAD */) || (p_filesz == 0U)) {
       continue;
@@ -1060,7 +1159,7 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
  */
 static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name)
 {
-  if (len < 52) {
+  if (len < (long)k_elf_ehdr_size) {
     return 0U;
   }
   uint32_t shoff = 0U;
@@ -1068,12 +1167,12 @@ static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name)
   const uint16_t shentsize = (uint16_t)(elf[46] | (elf[47] << 8));
   const uint16_t shnum     = (uint16_t)(elf[48] | (elf[49] << 8));
   const size_t   nlen      = strlen(name) + 1U;
-  if ((shoff == 0U) || (shentsize < 40U)) {
+  if ((shoff == 0U) || (shentsize < (uint32_t)k_elf_shentsize_min)) {
     return 0U;
   }
   for (uint16_t i = 0U; i < shnum; i++) {
     const uint8_t* sh = elf + shoff + ((uint32_t)i * shentsize);
-    if (((size_t)(sh - elf) + 40U) > (size_t)len) {
+    if (((size_t)(sh - elf) + (size_t)k_elf_shentsize_min) > (size_t)len) {
       break;
     }
     uint32_t sh_type = 0U;
@@ -1083,13 +1182,13 @@ static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name)
     }
     uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
     (void)memcpy(&sym_off, sh + 16, 4);
-    (void)memcpy(&sym_size, sh + 20, 4);
-    (void)memcpy(&sym_link, sh + 24, 4);
-    (void)memcpy(&sym_entsize, sh + 36, 4);
+    (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
+    (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
+    (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
     if ((sym_entsize < 16U) || (sym_link >= shnum)) {
       continue;
     }
-    const uint8_t* strsh = elf + shoff + ((uint32_t)sym_link * shentsize);
+    const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
     uint32_t       str_off = 0U;
     (void)memcpy(&str_off, strsh + 16, 4);
     const uint32_t nsym = sym_size / sym_entsize;
@@ -1174,13 +1273,16 @@ static uint32_t exc_active_prio(void)
 static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
 {
   if (exc_num == (uint32_t)k_exc_svcall) {
-    return (rd32(uc, (uint64_t)k_scb_shpr2) >> (3U * (uint32_t)k_byte_bits)) & 0xFFU;
+    return (rd32(uc, (uint64_t)k_scb_shpr2) >> (3U * (uint32_t)k_byte_bits)) &
+           (uint32_t)k_byte_mask;
   }
   if (exc_num == (uint32_t)k_exc_pendsv) {
-    return (rd32(uc, (uint64_t)k_scb_shpr3) >> (2U * (uint32_t)k_byte_bits)) & 0xFFU;
+    return (rd32(uc, (uint64_t)k_scb_shpr3) >> (2U * (uint32_t)k_byte_bits)) &
+           (uint32_t)k_byte_mask;
   }
   if (exc_num == (uint32_t)k_exc_systick) {
-    return (rd32(uc, (uint64_t)k_scb_shpr3) >> (3U * (uint32_t)k_byte_bits)) & 0xFFU;
+    return (rd32(uc, (uint64_t)k_scb_shpr3) >> (3U * (uint32_t)k_byte_bits)) &
+           (uint32_t)k_byte_mask;
   }
   return (uint32_t)k_exc_prio_max;
 }
@@ -1235,11 +1337,11 @@ static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
   wr32(uc, (uint64_t)sp + 0U, reg_get(uc, UC_ARM_REG_R0));
   wr32(uc, (uint64_t)sp + 4U, reg_get(uc, UC_ARM_REG_R1));
   wr32(uc, (uint64_t)sp + 8U, reg_get(uc, UC_ARM_REG_R2));
-  wr32(uc, (uint64_t)sp + 12U, reg_get(uc, UC_ARM_REG_R3));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_r3, reg_get(uc, UC_ARM_REG_R3));
   wr32(uc, (uint64_t)sp + 16U, reg_get(uc, UC_ARM_REG_R12));
-  wr32(uc, (uint64_t)sp + 20U, reg_get(uc, UC_ARM_REG_LR));
-  wr32(uc, (uint64_t)sp + 24U, reg_get(uc, UC_ARM_REG_PC));
-  wr32(uc, (uint64_t)sp + 28U, frame_xpsr);
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_lr, reg_get(uc, UC_ARM_REG_LR));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc, reg_get(uc, UC_ARM_REG_PC));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr, frame_xpsr);
 
   /* Commit the new value of whichever stack the frame went onto. */
   reg_set(uc, sp_reg, sp);
@@ -1304,11 +1406,11 @@ static void exc_return(uc_engine* uc, uint32_t exc_ret)
   const uint32_t r0   = rd32(uc, (uint64_t)sp + 0U);
   const uint32_t r1   = rd32(uc, (uint64_t)sp + 4U);
   const uint32_t r2   = rd32(uc, (uint64_t)sp + 8U);
-  const uint32_t r3   = rd32(uc, (uint64_t)sp + 12U);
+  const uint32_t r3   = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_r3);
   const uint32_t r12  = rd32(uc, (uint64_t)sp + 16U);
-  const uint32_t lr   = rd32(uc, (uint64_t)sp + 20U);
-  const uint32_t pc   = rd32(uc, (uint64_t)sp + 24U);
-  const uint32_t xpsr = rd32(uc, (uint64_t)sp + 28U);
+  const uint32_t lr   = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_lr);
+  const uint32_t pc   = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc);
+  const uint32_t xpsr = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr);
 
   sp += (uint32_t)k_exc_frame_bytes;
   if ((xpsr & (uint32_t)k_xpsr_align9) != 0U) {
@@ -1351,7 +1453,7 @@ static void exc_return(uc_engine* uc, uint32_t exc_ret)
 /** @brief True if @p pc is an EXC_RETURN magic value (0xFFFFFFF0..0xFFFFFFFF). */
 static bool is_exc_return(uint64_t pc)
 {
-  return (pc & 0xFFFFFFF0ULL) == (uint64_t)k_exc_ret_base;
+  return (pc & (uint64_t)k_exc_ret_grp_mask) == (uint64_t)k_exc_ret_base;
 }
 
 /**
@@ -1377,7 +1479,7 @@ static uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num)
     vtor = vtor_base;
   }
   const uint32_t handler = rd32(uc, (uint64_t)vtor + (exc_num * 4U)) & ~1U;
-  if ((handler == 0U) || (handler == 0xFFFFFFFEU)) {
+  if ((handler == 0U) || (handler == (uint32_t)k_vector_erased)) {
     return 0U;
   }
   return handler;
@@ -1414,7 +1516,8 @@ static bool exc_take_periph_irq(uc_engine* uc, uint32_t vtor_base, uint32_t acti
     return false;
   }
   const uint8_t  prio_byte = (uint8_t)rd32(uc, (uint64_t)k_nvic_ipr_base + irq);
-  const uint32_t prio      = (uint32_t)(prio_byte >> 4) & 0xFU; /* 4 MSBs used */
+  const uint32_t prio =
+    (uint32_t)(prio_byte >> (uint32_t)k_nvic_prio_shift) & (uint32_t)k_lo4_mask; /* 4 MSBs used */
   if (prio >= active) {
     return false; /* an equal/higher-priority handler is active -- defer */
   }
@@ -1518,21 +1621,55 @@ static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base)
   return exc_take_periph_irq(uc, vtor_base, active);
 }
 
+/**
+ * @enum colour_pack_t
+ * @brief Field masks/shifts for 24-bit RGB888 <-> 16-bit RGB565 packing.
+ */
+typedef enum : uint32_t {
+  k_rgb888_r_shift = 16U,         /**< Red byte position in 0x00RRGGBB.         */
+  k_rgb888_g_shift = 8U,          /**< Green byte position in 0x00RRGGBB.       */
+  k_rgb565_r5_keep = 0xF8U,       /**< Top 5 bits of an 8-bit red channel.      */
+  k_rgb565_g6_keep = 0xFCU,       /**< Top 6 bits of an 8-bit green channel.    */
+  k_rgb565_r_pos   = 8U,          /**< Red field shift when packing RGB565.     */
+  k_rgb565_g_pos   = 3U,          /**< Green field shift when packing RGB565.   */
+  k_rgb565_b_drop  = 3U,          /**< Bits dropped from an 8-bit blue channel. */
+  k_rgb888_mask    = 0x00FFFFFFU, /**< 24-bit colour (BG_BGC low bytes).   */
+  k_rgb565_r_shift = 11U,         /**< Red field position in RGB565.            */
+  k_rgb565_g_shift = 5U,          /**< Green field position in RGB565.          */
+  k_rgb565_5bit    = 0x1FU,       /**< 5-bit channel mask (red / blue).         */
+  k_rgb565_6bit    = 0x3FU,       /**< 6-bit channel mask (green).              */
+} colour_pack_t;
+
 /** @brief Pack a 0x00RRGGBB colour into RGB565. */
 static uint16_t rgb888_to_565(uint32_t rgb)
 {
-  const uint32_t r = (rgb >> 16) & 0xFFU;
-  const uint32_t g = (rgb >> 8) & 0xFFU;
-  const uint32_t b = rgb & 0xFFU;
-  return (uint16_t)(((r & 0xF8U) << 8) | ((g & 0xFCU) << 3) | (b >> 3));
+  const uint32_t r = (rgb >> (uint32_t)k_rgb888_r_shift) & (uint32_t)k_byte_mask;
+  const uint32_t g = (rgb >> (uint32_t)k_rgb888_g_shift) & (uint32_t)k_byte_mask;
+  const uint32_t b = rgb & (uint32_t)k_byte_mask;
+  return (uint16_t)(((r & (uint32_t)k_rgb565_r5_keep) << (uint32_t)k_rgb565_r_pos) |
+                    ((g & (uint32_t)k_rgb565_g6_keep) << (uint32_t)k_rgb565_g_pos) |
+                    (b >> (uint32_t)k_rgb565_b_drop));
 }
+
+/**
+ * @enum ram_region_t
+ * @brief Emulated RAM windows a GLCDC framebuffer may legally live in.
+ */
+typedef enum : uint32_t {
+  k_dtcm_base  = 0x20000000U, /**< Data TCM start.   */
+  k_dtcm_end   = 0x20010000U, /**< Data TCM end.     */
+  k_sram_base  = 0x22000000U, /**< On-chip SRAM start.*/
+  k_sram_end   = 0x22100000U, /**< On-chip SRAM end. */
+  k_sdram_base = 0x68000000U, /**< External SDRAM start.*/
+  k_sdram_end  = 0x6C000000U, /**< External SDRAM end.*/
+} ram_region_t;
 
 /** @brief True if addr is in an emulated RAM region a framebuffer could use. */
 static bool addr_is_ram(uint32_t addr)
 {
-  return (((addr >= 0x20000000U) && (addr < 0x20010000U)) || /* DTCM */
-          ((addr >= 0x22000000U) && (addr < 0x22100000U)) || /* SRAM */
-          ((addr >= 0x68000000U) && (addr < 0x6C000000U)));  /* SDRAM */
+  return (((addr >= (uint32_t)k_dtcm_base) && (addr < (uint32_t)k_dtcm_end)) ||
+          ((addr >= (uint32_t)k_sram_base) && (addr < (uint32_t)k_sram_end)) ||
+          ((addr >= (uint32_t)k_sdram_base) && (addr < (uint32_t)k_sdram_end)));
 }
 
 /**
@@ -1553,21 +1690,24 @@ static bool addr_is_ram(uint32_t addr)
  */
 static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t height_px)
 {
-  const uint16_t bg = rgb888_to_565(rd32(uc, (uint64_t)k_glcdc_bg_bgc) & 0x00FFFFFFU);
+  /* Read GLCDC registers from the stable shadow (mmio_peek), never the guest-
+   * facing toggling read -- otherwise a firmware that never programs the GLCDC
+   * makes the panel strobe black<->white (see mmio_peek). */
+  const uint16_t bg = rgb888_to_565(mmio_peek((uint64_t)k_glcdc_bg_bgc) & (uint32_t)k_rgb888_mask);
   const size_t   n  = (size_t)width_px * (size_t)height_px;
   for (size_t i = 0U; i < n; i++) {
     fb[i] = bg;
   }
 
-  const uint32_t saddr = rd32(uc, (uint64_t)k_glcdc_gr1_saddr);
-  const uint32_t fmt   = (rd32(uc, (uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
+  const uint32_t saddr = mmio_peek((uint64_t)k_glcdc_gr1_saddr);
+  const uint32_t fmt   = (mmio_peek((uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
                          (uint32_t)k_glcdc_fmt_mask;
   if (!addr_is_ram(saddr) || (fmt != (uint32_t)k_glcdc_fmt_rgb565)) {
     return; /* no graphics layer -- background-only frame */
   }
-  const uint32_t stride = (rd32(uc, (uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
+  const uint32_t stride = (mmio_peek((uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
                           (uint32_t)k_glcdc_stride_mask;
-  const uint32_t lnnum  = (rd32(uc, (uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
+  const uint32_t lnnum  = (mmio_peek((uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
                           (uint32_t)k_glcdc_lnnum_mask;
   if (stride < 2U) {
     return;
@@ -1595,9 +1735,9 @@ static int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, ui
   const size_t n = (size_t)width_px * (size_t)height_px;
   for (size_t i = 0U; i < n; i++) {
     const uint16_t p      = fb[i];
-    const uint32_t r5     = (uint32_t)((p >> 11) & 0x1FU);
-    const uint32_t g6     = (uint32_t)((p >> 5) & 0x3FU);
-    const uint32_t b5     = (uint32_t)(p & 0x1FU);
+    const uint32_t r5     = (uint32_t)((p >> (uint32_t)k_rgb565_r_shift) & (uint32_t)k_rgb565_5bit);
+    const uint32_t g6     = (uint32_t)((p >> (uint32_t)k_rgb565_g_shift) & (uint32_t)k_rgb565_6bit);
+    const uint32_t b5     = (uint32_t)(p & (uint32_t)k_rgb565_5bit);
     const uint8_t  rgb[3] = {(uint8_t)((r5 << 3) | (r5 >> 2)),
                              (uint8_t)((g6 << 2) | (g6 >> 4)),
                              (uint8_t)((b5 << 3) | (b5 >> 2))};
@@ -1655,17 +1795,92 @@ static void fill_status(board_status_t* st, const char* app_name)
  * @param[in]     app_name  Window / app title for the sidebar caption.
  * @return Nothing.
  */
+/**
+ * @enum panel_rotate_t
+ * @brief Display rotation (degrees clockwise) applied to the panel for viewing.
+ *
+ * @details The firmware always renders at its compiled resolution; --rotate only
+ * turns the emulated panel for display (e.g. a 1024x600 landscape app shown as a
+ * 600x1024 portrait), so a vertically-mounted screen can be previewed. Clicks
+ * are mapped back to native coordinates via ::unrotate_click.
+ */
+typedef enum : uint32_t {
+  k_rotate_0   = 0U,   /**< Native orientation.              */
+  k_rotate_90  = 90U,  /**< 90 deg clockwise (-> portrait).  */
+  k_rotate_180 = 180U, /**< Upside down.                     */
+  k_rotate_270 = 270U, /**< 90 deg counter-clockwise.        */
+} panel_rotate_t;
+
+/** @brief Rotate a row-major RGB565 panel (@p sw x @p sh) into @p dst, @p deg CW. */
+static void rotate_panel(const uint16_t* src, uint16_t sw, uint16_t sh, uint16_t* dst, uint32_t deg)
+{
+  for (uint16_t y = 0U; y < sh; y++) {
+    for (uint16_t x = 0U; x < sw; x++) {
+      const uint16_t p  = src[(size_t)y * (size_t)sw + (size_t)x];
+      uint32_t       dx = x;
+      uint32_t       dy = y;
+      uint32_t       dw = sw;
+      if (deg == (uint32_t)k_rotate_90) {
+        dx = (uint32_t)(sh - 1U - y);
+        dy = x;
+        dw = sh;
+      } else if (deg == (uint32_t)k_rotate_180) {
+        dx = (uint32_t)(sw - 1U - x);
+        dy = (uint32_t)(sh - 1U - y);
+      } else if (deg == (uint32_t)k_rotate_270) {
+        dx = y;
+        dy = (uint32_t)(sw - 1U - x);
+        dw = sh;
+      }
+      dst[(size_t)dy * (size_t)dw + (size_t)dx] = p;
+    }
+  }
+}
+
+/** @brief Map a click in the rotated displayed panel back to native panel coords. */
+static void unrotate_click(uint16_t  cx,
+                           uint16_t  cy,
+                           uint16_t  panel_w,
+                           uint16_t  panel_h,
+                           uint32_t  deg,
+                           uint16_t* nx,
+                           uint16_t* ny)
+{
+  if (deg == (uint32_t)k_rotate_90) {
+    *nx = cy;
+    *ny = (uint16_t)(panel_h - 1U - cx);
+  } else if (deg == (uint32_t)k_rotate_180) {
+    *nx = (uint16_t)(panel_w - 1U - cx);
+    *ny = (uint16_t)(panel_h - 1U - cy);
+  } else if (deg == (uint32_t)k_rotate_270) {
+    *nx = (uint16_t)(panel_w - 1U - cy);
+    *ny = cx;
+  } else {
+    *nx = cx;
+    *ny = cy;
+  }
+}
+
 static void build_composite(uc_engine*  uc,
                             uint16_t*   panel_fb,
+                            uint16_t*   rot_fb,
                             uint16_t*   composite,
                             uint16_t    panel_w,
                             uint16_t    panel_h,
+                            uint16_t    disp_w,
+                            uint16_t    disp_h,
+                            uint32_t    rotate_deg,
                             const char* app_name)
 {
   build_frame(uc, panel_fb, panel_w, panel_h);
+  const uint16_t* shown = panel_fb;
+  if ((rotate_deg != (uint32_t)k_rotate_0) && (rot_fb != nullptr)) {
+    rotate_panel(panel_fb, panel_w, panel_h, rot_fb, rotate_deg);
+    shown = rot_fb;
+  }
   board_status_t st = {};
   fill_status(&st, app_name);
-  board_overlay_compose(composite, panel_fb, panel_w, panel_h, &st);
+  board_overlay_compose(composite, shown, disp_w, disp_h, &st);
 }
 
 typedef enum : uint32_t {
@@ -1698,7 +1913,7 @@ static void panel_rstrip(char* s)
  * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
  *
  * @details
- * Same flat ``key = value`` schema as the tools/simulator panel descriptors, so
+ * A flat ``key = value`` panel descriptor (see ``tools/board_sim/panels/``), so
  * the board emulator becomes whatever display a config describes -- not just the
  * EK-RA8D2 1024x600. Dependency-free bounded parser (strncmp / strtol, no
  * dynamic allocation beyond the FILE handle); blank lines and '#' comments are
@@ -1738,9 +1953,9 @@ static bool load_panel(const char* path, board_panel_t* out)
     panel_rstrip(key);
     panel_rstrip(val);
     if (strncmp(key, "width", sizeof("width")) == 0) {
-      out->width = (uint16_t)strtol(val, nullptr, 10);
+      out->width = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
     } else if (strncmp(key, "height", sizeof("height")) == 0) {
-      out->height = (uint16_t)strtol(val, nullptr, 10);
+      out->height = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
     } else if (strncmp(key, "name", sizeof("name")) == 0) {
       const char* s = val;
       size_t      n = strlen(s);
@@ -1870,6 +2085,9 @@ int main(int argc, char** argv)
                   " [--usb-in <str>]\n"
                   "  --view          open a macOS window: live board view (panel + status)\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
+                  "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
+                  "  --record-secs N headless: record N emulated seconds, then stop (~20 fps)\n"
+                  "  --rotate DEG    display rotation 90/180/270 (e.g. portrait)\n"
                   "  --panel <file>  display descriptor (name/width/height) to size the panel\n"
                   "  --size WxH      panel size in pixels; overrides --panel (default 1024x600)\n"
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
@@ -1878,19 +2096,22 @@ int main(int argc, char** argv)
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
-  const char* elf_path   = argv[1];
-  bool        want_view  = false;
-  const char* ppm_path   = nullptr;
-  const char* panel_path = nullptr;
-  const char* input_str  = nullptr;
-  const char* usb_in_str = nullptr;
-  bool        size_set   = false;
-  bool        want_click = false;
-  bool        want_trace = false;
-  int         click_x    = -1;
-  int         click_y    = -1;
-  uint16_t    view_w     = (uint16_t)k_view_default_w;
-  uint16_t    view_h     = (uint16_t)k_view_default_h;
+  const char* elf_path    = argv[1];
+  bool        want_view   = false;
+  const char* ppm_path    = nullptr;
+  const char* record_dir  = nullptr;
+  uint32_t    record_secs = 0U;
+  uint32_t    rotate_deg  = (uint32_t)k_rotate_0;
+  const char* panel_path  = nullptr;
+  const char* input_str   = nullptr;
+  const char* usb_in_str  = nullptr;
+  bool        size_set    = false;
+  bool        want_click  = false;
+  bool        want_trace  = false;
+  int         click_x     = -1;
+  int         click_y     = -1;
+  uint16_t    view_w      = (uint16_t)k_view_default_w;
+  uint16_t    view_h      = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
@@ -1898,6 +2119,21 @@ int main(int argc, char** argv)
       want_trace = true;
     } else if ((strncmp(argv[i], "--ppm", sizeof("--ppm")) == 0) && ((i + 1) < argc)) {
       ppm_path = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--record-secs", sizeof("--record-secs")) == 0) &&
+               ((i + 1) < argc)) {
+      const long s = strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
+      record_secs  = (s > 0L) ? (uint32_t)s : 0U;
+      i++;
+    } else if ((strncmp(argv[i], "--record", sizeof("--record")) == 0) && ((i + 1) < argc)) {
+      record_dir = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--rotate", sizeof("--rotate")) == 0) && ((i + 1) < argc)) {
+      const long deg = strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
+      if ((deg == (long)k_rotate_90) || (deg == (long)k_rotate_180) ||
+          (deg == (long)k_rotate_270)) {
+        rotate_deg = (uint32_t)deg;
+      }
       i++;
     } else if ((strncmp(argv[i], "--panel", sizeof("--panel")) == 0) && ((i + 1) < argc)) {
       panel_path = argv[i + 1];
@@ -1909,15 +2145,16 @@ int main(int argc, char** argv)
       usb_in_str = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
-      click_x    = (int)strtol(argv[i + 1], nullptr, 10);
-      click_y    = (int)strtol(argv[i + 2], nullptr, 10);
+      click_x    = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
+      click_y    = (int)strtol(argv[i + 2], nullptr, (int)k_strtol_base10);
       want_click = (click_x >= 0) && (click_y >= 0);
       i += 2;
     } else if ((strncmp(argv[i], "--size", sizeof("--size")) == 0) && ((i + 1) < argc)) {
       char*      end = nullptr;
-      const long w   = strtol(argv[i + 1], &end, 10);
-      const long h   = ((end != nullptr) && (*end == 'x')) ? strtol(end + 1, nullptr, 10) : 0L;
-      if ((w > 0L) && (w <= 4096L) && (h > 0L) && (h <= 4096L)) {
+      const long w   = strtol(argv[i + 1], &end, (int)k_strtol_base10);
+      const long h =
+        ((end != nullptr) && (*end == 'x')) ? strtol(end + 1, nullptr, (int)k_strtol_base10) : 0L;
+      if ((w > 0L) && (w <= (long)k_max_panel_px) && (h > 0L) && (h <= (long)k_max_panel_px)) {
         view_w   = (uint16_t)w;
         view_h   = (uint16_t)h;
         size_set = true;
@@ -2013,7 +2250,7 @@ int main(int argc, char** argv)
   /* M-profile is always Thumb (EPSR.T must be 1). Keep the reset vector's bit0
    * and set the xPSR Thumb bit so Unicorn enters Thumb, not ARM, decoding. */
   pc |= 1U;
-  uint32_t xpsr = (uint32_t)(1UL << 24); /* xPSR.T */
+  uint32_t xpsr = (uint32_t)k_xpsr_t_bit; /* xPSR.T */
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
   (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
@@ -2076,12 +2313,20 @@ int main(int argc, char** argv)
    * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
    * what both the live window and the --ppm snapshot show. panel_fb holds the
    * GLCDC render before it is composited into the sidebar-widened composite. */
-  const uint16_t panel_w   = view_w;
-  const uint16_t panel_h   = view_h;
-  const uint16_t comp_w    = board_overlay_total_width(panel_w);
-  const uint16_t comp_h    = board_overlay_total_height(panel_h);
+  const uint16_t panel_w = view_w;
+  const uint16_t panel_h = view_h;
+  /* --rotate turns the displayed panel for viewing (90/270 swap W and H, so a
+   * landscape app can be shown portrait); the firmware still renders panel_w x
+   * panel_h, which build_composite rotates into rot_fb. */
+  const bool rot_swap =
+    (rotate_deg == (uint32_t)k_rotate_90) || (rotate_deg == (uint32_t)k_rotate_270);
+  const uint16_t disp_w    = rot_swap ? panel_h : panel_w;
+  const uint16_t disp_h    = rot_swap ? panel_w : panel_h;
+  const uint16_t comp_w    = board_overlay_total_width(disp_w);
+  const uint16_t comp_h    = board_overlay_total_height(disp_h);
   board_view_t*  view      = nullptr;
   uint16_t*      panel_fb  = nullptr;
+  uint16_t*      rot_fb    = nullptr;
   uint16_t*      composite = nullptr;
   if (want_view) {
     view = board_view_open(comp_w, comp_h, win_title);
@@ -2089,9 +2334,12 @@ int main(int argc, char** argv)
       (void)fprintf(stderr, "board_sim: could not open window; continuing headless\n");
     }
   }
-  if ((view != nullptr) || (ppm_path != nullptr) || want_click) {
+  if ((view != nullptr) || (ppm_path != nullptr) || want_click || (record_dir != nullptr)) {
     panel_fb  = (uint16_t*)malloc((size_t)panel_w * (size_t)panel_h * sizeof(uint16_t));
     composite = (uint16_t*)malloc((size_t)comp_w * (size_t)comp_h * sizeof(uint16_t));
+    if (rotate_deg != (uint32_t)k_rotate_0) {
+      rot_fb = (uint16_t*)malloc((size_t)disp_w * (size_t)disp_h * sizeof(uint16_t));
+    }
   }
 
   if (want_click) {
@@ -2112,8 +2360,22 @@ int main(int argc, char** argv)
    * chunk SysTick cadence (one ThreadX tick) is preserved. Headless runs stop on
    * a chunk budget + wall-clock guard; in --view the loop runs until the window
    * is closed, presenting the live GLCDC output every k_view_present_every. */
-  const uint32_t max_chunks =
+  uint32_t max_chunks =
     (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
+  /* Headless --record-secs bounds the run to exactly the recording window so the
+   * dumped frame sequence spans the requested emulated duration. */
+  if ((record_dir != nullptr) && (record_secs > 0U) && (view == nullptr)) {
+    max_chunks = record_secs * (uint32_t)k_record_ms_per_sec;
+  }
+  if (record_dir != nullptr) {
+    (void)mkdir(record_dir, (mode_t)k_record_dir_mode);
+    (void)fprintf(stderr,
+                  "board_sim: recording to %s/frame_NNNNNN.ppm (every %u chunks, ~%u fps)\n",
+                  record_dir,
+                  (unsigned)k_record_every,
+                  (unsigned)k_record_fps);
+  }
+  uint32_t      rec_frames  = 0U; /* frames written when --record is active. */
   const clock_t t0          = clock();
   uc_err        err         = UC_ERR_OK;
   uint32_t      run_pc      = pc;
@@ -2137,7 +2399,16 @@ int main(int argc, char** argv)
      * the GT911 status byte during bring-up; once the render loop reads the
      * point it is consumed once and never re-armed. */
     if (want_click && (board_periph_touch_reported() == 0U)) {
-      board_periph_touch_inject((uint16_t)click_x, (uint16_t)click_y);
+      uint16_t cnx = (uint16_t)click_x;
+      uint16_t cny = (uint16_t)click_y;
+      unrotate_click((uint16_t)click_x,
+                     (uint16_t)click_y,
+                     panel_w,
+                     panel_h,
+                     rotate_deg,
+                     &cnx,
+                     &cny);
+      board_periph_touch_inject(cnx, cny);
     }
 
     /* Inner loop: run a chunk, then service exceptions to a steady state before
@@ -2174,16 +2445,49 @@ int main(int argc, char** argv)
     if (faulted) {
       break;
     }
+    /* --record: dump the composite (panel + status) every k_record_every chunks
+     * as a numbered PPM, so the run becomes a frame sequence (assemble to a video
+     * with ffmpeg, e.g. `ffmpeg -framerate 20 -i frame_%06d.ppm out.mp4`). */
+    if ((record_dir != nullptr) && (composite != nullptr) &&
+        ((chunks % (uint32_t)k_record_every) == 0U)) {
+      build_composite(uc,
+                      panel_fb,
+                      rot_fb,
+                      composite,
+                      panel_w,
+                      panel_h,
+                      disp_w,
+                      disp_h,
+                      rotate_deg,
+                      win_title);
+      char fpath[1024];
+      (void)snprintf(fpath, sizeof(fpath), "%s/frame_%06u.ppm", record_dir, (unsigned)rec_frames);
+      if (write_ppm(fpath, composite, comp_w, comp_h) == 0) {
+        rec_frames++;
+      }
+    }
     if (view != nullptr) {
       /* Live window: each left mouse-down arms one GT911 contact, so the
        * firmware's next real ra_touch_read returns it through the I3C path. */
       uint16_t cx = 0U;
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
-        board_periph_touch_inject(cx, cy);
+        uint16_t nx = cx;
+        uint16_t ny = cy;
+        unrotate_click(cx, cy, panel_w, panel_h, rotate_deg, &nx, &ny);
+        board_periph_touch_inject(nx, ny);
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
-        build_composite(uc, panel_fb, composite, panel_w, panel_h, win_title);
+        build_composite(uc,
+                        panel_fb,
+                        rot_fb,
+                        composite,
+                        panel_w,
+                        panel_h,
+                        disp_w,
+                        disp_h,
+                        rotate_deg,
+                        win_title);
         board_view_present(view, composite, comp_w, comp_h);
       }
       if (board_view_pump(view)) {
@@ -2271,16 +2575,43 @@ int main(int argc, char** argv)
   }
 
   if ((ppm_path != nullptr) && (composite != nullptr)) {
-    build_composite(uc, panel_fb, composite, panel_w, panel_h, win_title);
+    build_composite(uc,
+                    panel_fb,
+                    rot_fb,
+                    composite,
+                    panel_w,
+                    panel_h,
+                    disp_w,
+                    disp_h,
+                    rotate_deg,
+                    win_title);
     if (write_ppm(ppm_path, composite, comp_w, comp_h) == 0) {
       (void)fprintf(stderr, "  wrote %s (%ux%u)\n", ppm_path, (unsigned)comp_w, (unsigned)comp_h);
     } else {
       (void)fprintf(stderr, "  could not write %s\n", ppm_path);
     }
   }
+  if (record_dir != nullptr) {
+    (void)fprintf(stderr,
+                  "  recorded %u frame(s) to %s (%ux%u, ~%u fps)\n",
+                  rec_frames,
+                  record_dir,
+                  (unsigned)comp_w,
+                  (unsigned)comp_h,
+                  (unsigned)k_record_fps);
+  }
   if (view != nullptr) {
     if (!closed) { /* run ended on its own -- keep the last frame up until closed */
-      build_composite(uc, panel_fb, composite, panel_w, panel_h, win_title);
+      build_composite(uc,
+                      panel_fb,
+                      rot_fb,
+                      composite,
+                      panel_w,
+                      panel_h,
+                      disp_w,
+                      disp_h,
+                      rotate_deg,
+                      win_title);
       board_view_present(view, composite, comp_w, comp_h);
       (void)fprintf(stderr, "board_sim: run ended; close the window to exit\n");
       while (!board_view_pump(view)) {
@@ -2290,6 +2621,7 @@ int main(int argc, char** argv)
     board_view_close(view);
   }
   free(panel_fb);
+  free(rot_fb);
   free(composite);
   (void)uc_close(uc);
   return 0;

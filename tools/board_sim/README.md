@@ -11,13 +11,13 @@ view**: the GLCDC panel framebuffer on the left, plus a status sidebar on the
 right with three LED indicators (lit in the real GPIO LED colour) and live
 USB / UART / timer-IRQ / touch state. So a NON-display example (blink, USB,
 UART, timers) is observable graphically, and a display example still shows its
-screen beside the status panel. Unlike `tools/simulator` (which recompiles the
-GUIX UI natively), board_sim runs the actual ARM binary, so it exercises the
-genuine bring-up and peripheral-driver code path.
+screen beside the status panel. board_sim runs the actual cross-compiled ARM
+binary, so it exercises the genuine bring-up and peripheral-driver code path --
+the panel/UI you see is exactly what the flashed firmware draws.
 
 Standalone tool under `tools/`. Needs Unicorn + Capstone: `brew install unicorn
 capstone` on macOS, or `libunicorn-dev` + `libcapstone-dev` (a source install
-works too -- both ship `.pc` files, found via pkg-config) on Linux. The live
+works too) on Linux, discovered via CMake's `find_library`/`find_path`. The live
 board view (`--view`) is a macOS Cocoa window; every other path -- headless
 boot, the MMIO report, `--ppm`, the console capture -- builds and runs headless
 on Linux as well (the CMake links a no-op window shim off the APPLE path and
@@ -45,18 +45,15 @@ escapes decoded -- so an echo example like `uart_irq_echo` can be driven
 headlessly.
 
 The display is configurable: `--panel` takes a flat `key = value` descriptor
-(`name`, `width`, `height`, ... -- the same files as `tools/simulator/panels/`),
+(`name`, `width`, `height`, ... -- the files in `tools/board_sim/panels/`),
 so the emulator presents any screen, not just the EK-RA8D2 1024x600.
 
-Or from the repo root: `make emulate-<app> [PANEL=<name>]` (e.g.
-`make emulate-bedroom_ui_panel`) cross-builds the app and opens its live window
-sized by `tools/simulator/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to exit.
-(`make simulate-<app>` is kept as a backward-compatible alias.)
-
-Don't confuse this with `make sim` (`tools/simulator`): that recompiles the
-shared GUIX UI *natively* on macOS for fast, clickable UI design; `emulate-<app>`
-boots the *real cross-compiled `.elf`* on the CPU emulator for high-fidelity
-bring-up validation.
+Or from the repo root: `make sim-<app> [PANEL=<name>]` (e.g.
+`make sim-bedroom_ui_panel`) cross-builds the app and opens its live window
+sized by `tools/board_sim/panels/<PANEL>.toml` (default `ek_ra8d2`). Close to
+exit. board_sim is the single simulator: it boots the *real cross-compiled
+`.elf`*, so a GUIX app like `bedroom_ui_panel` doubles as the UI preview --
+there is no separate native UI tool.
 
 ## How it works
 
@@ -128,7 +125,7 @@ the block registry, the MMIO dispatch, and the ICU/NVIC routing. It keeps **no
 hand-maintained list of blocks**, so a new block (and several in parallel) can
 be added without touching the core. Adding a block is exactly two steps:
 
-1. **Add `board_periph_<blk>.c`.** Include `board_periph_block.h`, implement the
+1. **Add `src/board_periph_<blk>.c`.** Include `board_periph_block.h`, implement the
    block's `read` / `write` (required) and `tick` / `reset` / `report` (each
    optional -- use `nullptr` if the block has none), describe the block with a
    static `board_periph_block_t` (its absolute register `base` / `span`, an

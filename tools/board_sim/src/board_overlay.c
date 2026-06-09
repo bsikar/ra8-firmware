@@ -21,6 +21,18 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/** @brief Status-sidebar layout offsets (pixels). */
+typedef enum : int32_t {
+  k_led_label_dy = 5,   /**< LED label vertical offset within its dot. */
+  k_led_row_dy   = 14,  /**< "LEDS" heading to the LED row.            */
+  k_led_col_dx   = 110, /**< Horizontal spacing between LEDs.          */
+  k_led_row_h    = 30,  /**< LED row height (advance to next block).   */
+  k_sidebar_top  = 14,  /**< Sidebar top margin.                       */
+  k_heading_gap  = 12,  /**< Heading to app-name line.                 */
+  k_appname_gap  = 22,  /**< App-name line to the LED block.           */
+  k_leds_gap     = 10,  /**< LED block to the status-text block.       */
+} overlay_layout_t;
+
 /** @brief Sidebar geometry and palette (RGB565). */
 typedef enum : uint32_t {
   k_ovl_sidebar_w   = 360U,    /**< Sidebar width added on the right.       */
@@ -253,7 +265,7 @@ draw_led(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const boar
             w,
             h,
             x + k_dot + 8,
-            y + 5,
+            y + k_led_label_dy,
             (led->label != nullptr) ? led->label : "LED",
             (uint16_t)k_ovl_text,
             1);
@@ -264,11 +276,11 @@ static int32_t
 draw_leds(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const board_status_t* st)
 {
   draw_text(out, w, h, x, y, "LEDS", (uint16_t)k_ovl_heading, 1);
-  const int32_t row_y = y + 14;
+  const int32_t row_y = y + k_led_row_dy;
   for (uint32_t i = 0U; i < (uint32_t)k_overlay_led_count; i++) {
-    draw_led(out, w, h, x + ((int32_t)i * 110), row_y, &st->leds[i]);
+    draw_led(out, w, h, x + ((int32_t)i * k_led_col_dx), row_y, &st->leds[i]);
   }
-  return row_y + 30;
+  return row_y + k_led_row_h;
 }
 
 /** @brief Paint the USB / UART / IRQ / touch text block; returns next free y. */
@@ -325,9 +337,9 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
     return;
   }
   const int32_t x = (int32_t)panel_w + 16;
-  int32_t       y = 14;
+  int32_t       y = k_sidebar_top;
   draw_text(out, w, h, x, y, "EK-RA8D2 BOARD VIEW", (uint16_t)k_ovl_heading, 1);
-  y += 12;
+  y += k_heading_gap;
   draw_text(out,
             w,
             h,
@@ -336,9 +348,9 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
             (st->app_name != nullptr) ? st->app_name : "",
             (uint16_t)k_ovl_text,
             1);
-  y += 22;
+  y += k_appname_gap;
   y = draw_leds(out, w, h, x, y, st);
-  y += 10;
+  y += k_leds_gap;
   (void)draw_status_lines(out, w, h, x, y, st);
 }
 
