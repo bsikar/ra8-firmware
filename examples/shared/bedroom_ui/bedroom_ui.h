@@ -2,6 +2,9 @@
  * @file bedroom_ui.h
  * @brief Shared GUIX 3-tab bedroom UI (host + EK-RA8D2 panel)
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @details
  * Platform-independent GUIX widget tree: a tab bar of three buttons
  * (Primary / Secondary 1 / Secondary 2 Bedroom) over three swappable

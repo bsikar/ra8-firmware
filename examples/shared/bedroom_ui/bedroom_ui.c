@@ -2,6 +2,9 @@
  * @file bedroom_ui.c
  * @brief Shared GUIX 3-tab bedroom UI (host + EK-RA8D2 panel)
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @par Tag
  * [Ring 5 / APP] {World: NS}
  *

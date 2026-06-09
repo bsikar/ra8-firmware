@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_validated/manual/threadx_guix_demo/main.c
  * @brief Eclipse ThreadX + GUIX hello-world demo on the EK-RA8D2
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @par Tag
  * [Ring 6 / APP] {World: S} -- application-layer code that runs in the
  * Secure world.
@@ -102,6 +105,44 @@
  * visible while the GUIX widgets float on top.  The native panel
  * is 1024 x 600; this buffer maps to the top-left corner.
  */
+/** @brief Vertical layout (pixels) for the demo's prompt rows and bars. */
+typedef enum : uint16_t {
+  k_demo_row_title_bottom     = 36U,
+  k_demo_row_mono_top         = 46U,
+  k_demo_row_mono_bottom      = 74U,
+  k_demo_row_4bpp_top         = 78U,
+  k_demo_row_4bpp_bottom      = 106U,
+  k_demo_row_8bpp_top         = 110U,
+  k_demo_row_8bpp_bottom      = 138U,
+  k_demo_row_arnopro_top      = 142U,
+  k_demo_row_arnopro_bottom   = 170U,
+  k_demo_prompt_left          = 12U,
+  k_demo_prompt_right_inset   = 13U,
+  k_demo_progress_left        = 20U,
+  k_demo_progress_top         = 184U,
+  k_demo_progress_right_inset = 21U,
+  k_demo_progress_bottom      = 210U,
+  k_demo_progress_max_val     = 100U,
+  k_demo_radial_ycenter       = 234U,
+  k_demo_radial_radius        = 26U,
+  k_demo_radial_anchor_deg    = 270U, /**< 12 o'clock. */
+} demo_layout_t;
+
+/** @brief 8-bit colour-channel intensities used by the palette. */
+typedef enum : uint8_t {
+  k_chan_0   = 0x00U, /**< 0%   */
+  k_chan_25  = 0x40U, /**< ~25% */
+  k_chan_38  = 0x60U, /**< ~38% */
+  k_chan_50  = 0x80U, /**< ~50% */
+  k_chan_75  = 0xC0U, /**< ~75% */
+  k_chan_100 = 0xFFU, /**< 100% (also full alpha). */
+} demo_chan_t;
+
+/** @brief GUI thread pacing. */
+typedef enum : uint16_t {
+  k_demo_powerup_ms = 500U, /**< PLL / panel-POR settle. */
+} demo_pace_t;
+
 typedef enum : uint16_t {
   k_demo_fb_width  = 480U, /**< Framebuffer width  (pixels). */
   k_demo_fb_height = 270U, /**< Framebuffer height (pixels). */
@@ -404,8 +445,9 @@ typedef enum : uint8_t {
 
 static inline GX_COLOR demo_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
-  return (GX_COLOR)((0xFFUL << k_demo_color_shift_a) | ((uint32_t)r << k_demo_color_shift_r) |
-                    ((uint32_t)g << k_demo_color_shift_g) | (uint32_t)b);
+  return (GX_COLOR)(((uint32_t)k_chan_100 << k_demo_color_shift_a) |
+                    ((uint32_t)r << k_demo_color_shift_r) | ((uint32_t)g << k_demo_color_shift_g) |
+                    (uint32_t)b);
 }
 
 /**
@@ -463,7 +505,7 @@ static void demo_panic_halt(void)
  */
 static void demo_lcd_panel_bringup(void)
 {
-  (void)tx_thread_sleep(500U); /* PLL / panel-POR settle */
+  (void)tx_thread_sleep(k_demo_powerup_ms); /* PLL / panel-POR settle */
 
   /* Display PAL: bound to the LCD backend by ``k_demo_display_cfg``.
    * Folds the panel power-on (``ra_board_lcd_panel_power_on`` --
@@ -535,11 +577,12 @@ static void demo_guix_install_palette(void)
   for (uint32_t i = 0U; i < 32U; i++) {
     s_color_table[i] = 0x00000000UL;
   }
-  s_color_table[GX_COLOR_ID_CANVAS]      = demo_rgb(0x00U, 0x00U, 0x60U); /* dark navy */
-  s_color_table[GX_COLOR_ID_WINDOW_FILL] = demo_rgb(0x00U, 0x80U, 0xFFU); /* bright cyan */
-  s_color_table[GX_COLOR_ID_TEXT]        = demo_rgb(0xFFU, 0xFFU, 0x00U); /* yellow */
-  s_color_table[GX_COLOR_ID_BTN_UPPER]   = demo_rgb(0xFFU, 0x40U, 0x00U); /* orange */
-  s_color_table[GX_COLOR_ID_BTN_LOWER]   = demo_rgb(0xC0U, 0x00U, 0x00U); /* dark red */
+  s_color_table[GX_COLOR_ID_CANVAS] = demo_rgb(k_chan_0, k_chan_0, k_chan_38); /* dark navy */
+  s_color_table[GX_COLOR_ID_WINDOW_FILL] =
+    demo_rgb(k_chan_0, k_chan_50, k_chan_100); /* bright cyan */
+  s_color_table[GX_COLOR_ID_TEXT]      = demo_rgb(k_chan_100, k_chan_100, k_chan_0); /* yellow */
+  s_color_table[GX_COLOR_ID_BTN_UPPER] = demo_rgb(k_chan_100, k_chan_25, k_chan_0);  /* orange */
+  s_color_table[GX_COLOR_ID_BTN_LOWER] = demo_rgb(k_chan_75, k_chan_0, k_chan_0);    /* dark red */
   if (gx_display_color_table_set(&s_display, s_color_table, 32) != GX_SUCCESS) {
     demo_panic_halt();
   }
@@ -656,35 +699,35 @@ static const demo_prompt_row_t s_prompts[5] = {
    .text     = s_text_title,
    .text_len = (UINT)(sizeof(s_text_title) - 1U),
    .top      = 8,
-   .bottom   = 36,
+   .bottom   = k_demo_row_title_bottom,
    .font_id  = (UINT)k_demo_font_arnopro},
   {.prompt   = &s_prompt_mono,
    .name     = "font-mono",
    .text     = s_text_mono,
    .text_len = (UINT)(sizeof(s_text_mono) - 1U),
-   .top      = 46,
-   .bottom   = 74,
+   .top      = k_demo_row_mono_top,
+   .bottom   = k_demo_row_mono_bottom,
    .font_id  = (UINT)k_demo_font_mono},
   {.prompt   = &s_prompt_4bpp,
    .name     = "font-4bpp",
    .text     = s_text_4bpp,
    .text_len = (UINT)(sizeof(s_text_4bpp) - 1U),
-   .top      = 78,
-   .bottom   = 106,
+   .top      = k_demo_row_4bpp_top,
+   .bottom   = k_demo_row_4bpp_bottom,
    .font_id  = (UINT)k_demo_font_4bpp},
   {.prompt   = &s_prompt_8bpp,
    .name     = "font-8bpp",
    .text     = s_text_8bpp,
    .text_len = (UINT)(sizeof(s_text_8bpp) - 1U),
-   .top      = 110,
-   .bottom   = 138,
+   .top      = k_demo_row_8bpp_top,
+   .bottom   = k_demo_row_8bpp_bottom,
    .font_id  = (UINT)k_demo_font_8bpp},
   {.prompt   = &s_prompt_arnopro,
    .name     = "font-arnopro",
    .text     = s_text_arnopro,
    .text_len = (UINT)(sizeof(s_text_arnopro) - 1U),
-   .top      = 142,
-   .bottom   = 170,
+   .top      = k_demo_row_arnopro_top,
+   .bottom   = k_demo_row_arnopro_bottom,
    .font_id  = (UINT)k_demo_font_arnopro},
 };
 
@@ -701,8 +744,10 @@ static void demo_guix_create_prompts(void)
     demo_panic_halt();
   }
   for (uint32_t i = 0U; i < (sizeof(s_prompts) / sizeof(s_prompts[0])); i++) {
-    const GX_RECTANGLE r =
-      demo_rect(12, s_prompts[i].top, (GX_VALUE)(k_demo_fb_width - 13U), s_prompts[i].bottom);
+    const GX_RECTANGLE r = demo_rect(k_demo_prompt_left,
+                                     s_prompts[i].top,
+                                     (GX_VALUE)(k_demo_fb_width - k_demo_prompt_right_inset),
+                                     s_prompts[i].bottom);
     if (gx_prompt_create(s_prompts[i].prompt,
                          s_prompts[i].name,
                          &s_main_window,
@@ -741,14 +786,18 @@ static void demo_guix_create_prompts(void)
 static void demo_guix_create_progress_widgets(void)
 {
   s_progress_bar_info.gx_progress_bar_info_min_val        = 0;
-  s_progress_bar_info.gx_progress_bar_info_max_val        = 100;
+  s_progress_bar_info.gx_progress_bar_info_max_val        = k_demo_progress_max_val;
   s_progress_bar_info.gx_progress_bar_info_current_val    = 0;
   s_progress_bar_info.gx_progress_bar_font_id             = (GX_RESOURCE_ID)k_demo_font_4bpp;
   s_progress_bar_info.gx_progress_bar_normal_text_color   = GX_COLOR_ID_TEXT;
   s_progress_bar_info.gx_progress_bar_selected_text_color = GX_COLOR_ID_TEXT;
   s_progress_bar_info.gx_progress_bar_disabled_text_color = GX_COLOR_ID_TEXT;
   s_progress_bar_info.gx_progress_bar_fill_pixelmap       = 0;
-  const GX_RECTANGLE progress_rect = demo_rect(20, 184, (GX_VALUE)(k_demo_fb_width - 21U), 210);
+  const GX_RECTANGLE progress_rect =
+    demo_rect(k_demo_progress_left,
+              k_demo_progress_top,
+              (GX_VALUE)(k_demo_fb_width - k_demo_progress_right_inset),
+              k_demo_progress_bottom);
   if (gx_progress_bar_create(&s_progress_bar,
                              "progress",
                              &s_main_window,
@@ -760,11 +809,12 @@ static void demo_guix_create_progress_widgets(void)
   }
 
   s_radial_bar_info.gx_radial_progress_bar_info_xcenter     = (GX_VALUE)(k_demo_fb_width / 2U);
-  s_radial_bar_info.gx_radial_progress_bar_info_ycenter     = 234;
-  s_radial_bar_info.gx_radial_progress_bar_info_radius      = 26;
+  s_radial_bar_info.gx_radial_progress_bar_info_ycenter     = k_demo_radial_ycenter;
+  s_radial_bar_info.gx_radial_progress_bar_info_radius      = k_demo_radial_radius;
   s_radial_bar_info.gx_radial_progress_bar_info_current_val = 0;
-  s_radial_bar_info.gx_radial_progress_bar_info_anchor_val  = 270; /* 12 o'clock */
-  s_radial_bar_info.gx_radial_progress_bar_info_font_id     = (GX_RESOURCE_ID)k_demo_font_4bpp;
+  s_radial_bar_info.gx_radial_progress_bar_info_anchor_val =
+    k_demo_radial_anchor_deg; /* 12 o'clock */
+  s_radial_bar_info.gx_radial_progress_bar_info_font_id = (GX_RESOURCE_ID)k_demo_font_4bpp;
   s_radial_bar_info.gx_radial_progress_bar_info_normal_text_color    = GX_COLOR_ID_TEXT;
   s_radial_bar_info.gx_radial_progress_bar_info_selected_text_color  = GX_COLOR_ID_TEXT;
   s_radial_bar_info.gx_radial_progress_bar_info_disabled_text_color  = GX_COLOR_ID_TEXT;
@@ -859,7 +909,7 @@ static void app_thread_entry(ULONG thread_input)
     k_animation_max     = 100U,
   };
   /* Let GUIX finish its first paint before we start firing updates. */
-  (void)tx_thread_sleep(500U);
+  (void)tx_thread_sleep(k_demo_powerup_ms);
   uint32_t linear_val = 0U;
   uint32_t radial_val = 0U;
   while (1) {

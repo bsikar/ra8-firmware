@@ -1,21 +1,22 @@
 /* Generic single-threaded GUIX RTOS binding for the bare-metal RA8D2 target.
  *
- * Sibling of port/guix/host/gx_generic_rtos_host.c: GUIX, when built with
- * GX_DISABLE_THREADX_BINDING, calls these gx_generic_* functions instead of
- * ThreadX. The firmware runs GUIX single-threaded and drives it from the
- * application loop (gx_host_pump / gx_system_canvas_refresh), so:
+ * DEPRECATED: GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
+ * GUIX, when built with GX_DISABLE_THREADX_BINDING, calls these gx_generic_*
+ * functions instead of ThreadX. The firmware runs GUIX single-threaded and
+ * drives it from the application loop (gx_host_pump / gx_system_canvas_refresh),
+ * so:
  *   - thread_start does NOT spawn anything (main() pumps GUIX),
  *   - the event queue is a small static ring,
  *   - mutex calls are no-ops (single-threaded),
  *   - time comes from the firmware's SysTick-backed millisecond counter.
  *
- * The ONLY difference from the host bind is gx_generic_system_time_get():
- * the host uses clock_gettime (POSIX, host-only); here the time source is
- * ra_time_ms() (libs/ra_core/ra_time.c), the 1 kHz SysTick tick the
- * board_sim advances cooperatively between emulation chunks. A monotonically
- * increasing millisecond value is all GUIX's timer logic needs. The rest of
- * the surface (event ring + gx_host_pump) is copied verbatim so the panel
- * app drives GUIX with the exact same gx_host_pump() the host preview uses.
+ * Time comes from gx_generic_system_time_get(), backed by ra_time_ms()
+ * (libs/ra_core/ra_time.c) -- the 1 kHz SysTick tick the board_sim advances
+ * cooperatively between emulation chunks. A monotonically increasing
+ * millisecond value is all GUIX's timer logic needs. The rest of the surface
+ * (event ring + gx_host_pump) lets the panel app drive GUIX from main().
  *
  * Built only on the cross compile (the host unit-test harness does not link
  * the GUIX vendor tree); guarded with RA_SIMULATOR_MODE like the rest of the
