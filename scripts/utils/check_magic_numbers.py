@@ -88,7 +88,6 @@ EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
-    "port/guix/",
     "/build/",
 )
 

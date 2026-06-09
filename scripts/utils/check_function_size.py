@@ -9,7 +9,7 @@ The project's `.clang-tidy` already configures
 checks files that are present in the build's ``compile_commands.json``.
 Because the host unit-test build (where ``clang_tidy.sh`` runs) drops
 every ARM-cross-compiled translation unit -- anything that pulls in
-ThreadX, GUIX, USBX, NetX, GLCDC register headers, or MCU intrinsics --
+ThreadX, USBX, NetX, GLCDC register headers, or MCU intrinsics --
 those files never see a clang-tidy pass.  Around 90% of ``port/``,
 large parts of ``libs/ra_hal/``, and every cross-compiled example
 ``main.c`` were silently exempt.
@@ -18,7 +18,7 @@ This checker is a backstop that walks the source text directly so the
 gate is enforced for **every** ``.c`` file under ``libs/``, ``src/``,
 ``port/``, and ``examples/`` regardless of which compile database it
 ended up in.  Third-party vendor trees (``libs/third_party/``,
-``port/threadx/``, ``port/guix/``) are excluded -- those are SOUP and
+``port/threadx/``) are excluded -- those are SOUP and
 their function sizes are the upstream maintainer's call, not ours.
 
 Run::
@@ -52,7 +52,6 @@ SCAN_ROOTS = ("libs", "src", "port", "examples")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "port/threadx/",
-    "port/guix/",
     "/build/",
     "_unsupported/",
 )

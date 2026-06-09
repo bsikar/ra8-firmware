@@ -78,25 +78,6 @@ struct display_backend_iface {
 
   /** @brief Tear down. Mirror of ``init``. */
   ra_err_t (*deinit)(void* ctx);
-
-  /**
-   * @brief Optional GUIX bridge. Nullable.
-   *
-   * @details Backends that ship a GUIX driver shim set this to a
-   *          helper that returns the GUIX ``display_driver_setup``
-   *          callback as an opaque function pointer plus the panel
-   *          dimensions. Backends without a GUIX shim leave this
-   *          NULL; the dispatcher reports ``k_ra_err_not_supported``.
-   *
-   *          The setup-fn type is intentionally erased here so this
-   *          header stays free of GUIX types. The public
-   *          ``ra_display_pal_guix.h`` consumer casts back to the
-   *          correct ``UINT (*)(GX_DISPLAY*)`` signature.
-   */
-  ra_err_t (*bind_guix)(void*     ctx,
-                        void**    out_setup_fn,
-                        uint16_t* out_width_px,
-                        uint16_t* out_height_px);
 };
 
 /**
