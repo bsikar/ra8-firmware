@@ -27,8 +27,8 @@
  * ## Layering
  *
  *     +-----------------------------+ display_init / get_framebuffer
- *     | application code (raw)      | display_flush(rect, hint)
- *     | or GUIX through bind_guix() |
+ *     | application code            | display_flush(rect, hint)
+ *     | (ra_gfx / ra_box chrome)    |
  *     +--------------+--------------+
  *                    |
  *                    v

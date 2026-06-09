@@ -3,8 +3,8 @@
  * @brief Unit tests for libs/ra_reflow (HTML+CSS reflow + paginate).
  *
  * @details
- * Loads the vendored Bitstream Vera font from
- * `libs/third_party/guix/fonts/verasans/Vera.ttf`, hands it to the
+ * Loads the vendored Bitstream ArnoPro font from
+ * `libs/fonts/ArnoPro-Regular.otf`, hands it to the
  * reflow engine, and exercises the public surface against a few
  * hand-written XHTML fragments. The test computes the firmware root
  * from `__FILE__` so it works whether cmake is run from `build/tidy`
@@ -111,7 +111,7 @@ static void priv_resolve_fw_root(char* out, size_t out_cap)
 }
 
 /**
- * @brief Load the Vera font into `s_font_buf`.
+ * @brief Load the ArnoPro font into `s_font_buf`.
  *
  * @return true if loaded, false if the font could not be found.
  */
@@ -124,7 +124,7 @@ static bool priv_load_font(void)
   /* GCC's -Wformat-truncation flags the maximally-conservative case
    * where `root` is the full 1 KiB; concatenate manually so the
    * checker can see the bound. */
-  const char* const k_font_rel = "/libs/third_party/guix/fonts/verasans/Vera.ttf";
+  const char* const k_font_rel = "/libs/fonts/ArnoPro-Regular.otf";
   size_t            root_len   = 0U;
   while (root_len + 1U < sizeof(path) && root[root_len] != '\0') {
     path[root_len] = root[root_len];
@@ -938,7 +938,7 @@ int main(void)
      * the suite still validates the public API guards by running the
      * NULL-arg test against a minimal synthetic blob. */
     (void)fprintf(stderr,
-                  "[SKIP] test_ra_reflow: Vera.ttf not loadable -- "
+                  "[SKIP] test_ra_reflow: ArnoPro-Regular.otf not loadable -- "
                   "running guards-only path\n");
     /* Substitute a small synthetic blob so init() succeeds where the
      * size check is the only guard exercised. */

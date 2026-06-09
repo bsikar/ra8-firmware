@@ -197,12 +197,6 @@ unusedStructMember:port/nimble/nimble_npl_threadx.h
 unusedStructMember:libs/ra_core/inc/ra_exception.h
 unusedStructMember:libs/ra_net/src/ra_net_internal.h
 
-# unusedStructMember on the GLCDC GUIX driver aux struct (ra_guix_aux_t). Its
-# width/height/swap_count fields are populated by the GLCDC display driver and
-# read by the GUIX 565rgb setup / buffer-toggle path across TUs cppcheck's
-# per-run view does not connect; reserved[] is explicit padding.
-unusedStructMember:port/guix/gx_display_driver_ra_glcdc.h
-
 # knownConditionTrueFalse in ra_net_udp DNS poll loop. The inner check is
 # a defensive early-out that cppcheck proves redundant from the loop
 # condition, but it documents intent when the surrounding logic evolves.

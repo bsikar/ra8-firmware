@@ -374,8 +374,4 @@ const display_backend_iface_t k_display_backend_eink_it8951 = {
   .flush           = eink_flush,
   .clear           = eink_clear,
   .deinit          = eink_deinit,
-  /* No GUIX shim for the e-ink backend yet -- apps that want GUIX
-   * on e-ink will need a dedicated ``gx_display_driver_ra_it8951``
-   * once the hardware driver lands. */
-  .bind_guix = nullptr,
 };

@@ -408,7 +408,7 @@ static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t v
 /* Armv8.1-M conditional-select family (CSEL/CSINC/CSINV/CSNEG). The RA8D2 is
  * Cortex-M85 (Armv8.1-M) but Unicorn's nearest core is M33 (Armv8-M), which
  * lacks these. GCC emits them for branchless index/modulo math -- notably in
- * GUIX's gx_generic_event_post on the touch path -- so the invalid-instruction
+ * the firmware's event_post on the touch path -- so the invalid-instruction
  * hook decodes and executes them and lets the real firmware path continue.
  * Encoding (T1, two halfwords, little-endian): hw1 = 0xEA5n (n = Rn);
  * hw2 bit15=1, bit14=0, op=bits[13:12], Rd=bits[11:8], cond=bits[7:4],
@@ -652,7 +652,7 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
 
   /* The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M); the nearest core
    * Unicorn offers is M33 (Armv8-M), which lacks the conditional-select family.
-   * GCC emits those for branchless index math on the GUIX touch path, so
+   * GCC emits those for branchless index math on the touch path, so
    * execute them here. emulate_cond_select writes Rd and advances PC past the
    * 4-byte instruction; then uc_emu_stop so the chunked run loop relaunches from
    * the new PC -- editing PC and continuing in-place corrupts Unicorn's block /
