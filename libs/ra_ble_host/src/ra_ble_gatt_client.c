@@ -19,7 +19,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include "ra_ble_gatt_client.h"
 
 #include <stddef.h>
@@ -196,6 +196,12 @@ typedef struct {
   void*                   ctx;
 } ra_ble_gatt_client_sub_t;
 
+/** @brief Little-endian byte packing for 16/32-bit UUIDs and CCCD. */
+typedef enum : uint32_t {
+  k_ble_byte_mask   = 0xFFU, /**< Low-byte mask. */
+  k_ble_shift_byte3 = 24U,   /**< Shift to byte 3 (8/16 are ignored values). */
+} ble_gattc_pack_t;
+
 typedef enum : uint8_t {
   k_ra_gatt_client_max_subs = 4U,
 } ra_ble_gatt_client_internal_t;
@@ -271,14 +277,14 @@ static int internal_disc_trampoline(uint16_t                     conn_handle,
     const ble_uuid_t* u = &service->uuid.u;
     if (u->type == BLE_UUID_TYPE_16) {
       uint16_t v      = ((const ble_uuid16_t*)u)->value;
-      row.uuid_128[0] = (uint8_t)(v & 0xFFU);
-      row.uuid_128[1] = (uint8_t)((v >> 8) & 0xFFU);
+      row.uuid_128[0] = (uint8_t)(v & k_ble_byte_mask);
+      row.uuid_128[1] = (uint8_t)((v >> 8) & k_ble_byte_mask);
     } else if (u->type == BLE_UUID_TYPE_32) {
       uint32_t v      = ((const ble_uuid32_t*)u)->value;
-      row.uuid_128[0] = (uint8_t)(v & 0xFFU);
-      row.uuid_128[1] = (uint8_t)((v >> 8) & 0xFFU);
-      row.uuid_128[2] = (uint8_t)((v >> 16) & 0xFFU);
-      row.uuid_128[3] = (uint8_t)((v >> 24) & 0xFFU);
+      row.uuid_128[0] = (uint8_t)(v & k_ble_byte_mask);
+      row.uuid_128[1] = (uint8_t)((v >> 8) & k_ble_byte_mask);
+      row.uuid_128[2] = (uint8_t)((v >> 16) & k_ble_byte_mask);
+      row.uuid_128[3] = (uint8_t)((v >> k_ble_shift_byte3) & k_ble_byte_mask);
     } else {
       memcpy(row.uuid_128, ((const ble_uuid128_t*)u)->value, sizeof(row.uuid_128));
     }
@@ -673,8 +679,8 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
   }
 
   uint8_t cccd_bytes[2];
-  cccd_bytes[0] = (uint8_t)(cccd_value & 0xFFU);
-  cccd_bytes[1] = (uint8_t)((cccd_value >> 8) & 0xFFU);
+  cccd_bytes[0] = (uint8_t)(cccd_value & k_ble_byte_mask);
+  cccd_bytes[1] = (uint8_t)((cccd_value >> 8) & k_ble_byte_mask);
 
   return ra_ble_gatt_write(conn_handle,
                            cccd_handle,
@@ -789,4 +795,4 @@ void ra_ble_gatt_client_test_reset(void)
 }
 #endif /* UNIT_TEST */
 
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

@@ -47,6 +47,11 @@ static const char* s_tag = "PWR";
  * @enum ra_pwr_dim_t
  * @brief WUPEN address-decode bounds.
  */
+/** @brief Low-byte mask for register/bit decomposition. */
+typedef enum : uint16_t {
+  k_pwr_byte_mask = 0xFFU,
+} pwr_mask_t;
+
 typedef enum : uint8_t {
   k_ra_pwr_wupen_count = 2U,  /**< WUPEN0 + WUPEN1. */
   k_ra_pwr_wupen_bits  = 32U, /**< 32 bits per register. */
@@ -92,8 +97,8 @@ static volatile uint32_t* internal_wupen_ptr(uint8_t reg)
  */
 static bool internal_decode_wake(ra_pwr_wake_t source, uint8_t* out_reg, uint8_t* out_bit)
 {
-  const uint8_t reg = (uint8_t)(((uint16_t)source >> 8) & 0xFFU);
-  const uint8_t bit = (uint8_t)((uint16_t)source & 0xFFU);
+  const uint8_t reg = (uint8_t)(((uint16_t)source >> 8) & k_pwr_byte_mask);
+  const uint8_t bit = (uint8_t)((uint16_t)source & k_pwr_byte_mask);
   if (reg >= k_ra_pwr_wupen_count) {
     return false;
   }

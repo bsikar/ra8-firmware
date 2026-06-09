@@ -56,6 +56,11 @@ static const char* s_tag = "LPM";
  * @enum ra_lpm_status_shift_t
  * @brief Bit shifts used to pack SBYCR / DPSBYCR / LPSCR / SSCR1.
  */
+/** @brief Low-byte mask for the PRCR protect register. */
+typedef enum : uint16_t {
+  k_lpm_byte_mask = 0xFFU,
+} lpm_byte_mask_t;
+
 typedef enum : uint8_t {
   k_ra_lpm_status_shift_sbycr   = 0U,  /**< SBYCR occupies byte 0.        */
   k_ra_lpm_status_shift_dpsbycr = 8U,  /**< DPSBYCR occupies byte 1.      */
@@ -421,7 +426,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
    * the cross-cut write-protect register that gates SBYCR/DPSBYCR/etc. */
   volatile uint16_t* prcr = ra_lpm_sysc_reg16(k_ra_lpm_prcr_off);
   const uint16_t     cur  = *prcr;
-  const uint16_t     mask = (uint16_t)((cur & 0xFFU) | k_ra_lpm_prcr_prc1_msk);
+  const uint16_t     mask = (uint16_t)((cur & k_lpm_byte_mask) | k_ra_lpm_prcr_prc1_msk);
   *prcr                   = (uint16_t)(k_ra_lpm_prcr_key | mask);
   return k_ra_ok;
 }
@@ -431,7 +436,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
   /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
   volatile uint16_t* prcr = ra_lpm_sysc_reg16(k_ra_lpm_prcr_off);
   const uint16_t     cur  = *prcr;
-  const uint16_t     mask = (uint16_t)((cur & 0xFFU) & (uint16_t)~k_ra_lpm_prcr_prc1_msk);
+  const uint16_t     mask = (uint16_t)((cur & k_lpm_byte_mask) & (uint16_t)~k_ra_lpm_prcr_prc1_msk);
   *prcr                   = (uint16_t)(k_ra_lpm_prcr_key | mask);
   return k_ra_ok;
 }

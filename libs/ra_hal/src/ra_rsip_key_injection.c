@@ -29,7 +29,7 @@
 #include "ra_err.h"
 #include "ra_log.h"
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 
 /**
  * @var s_tag
@@ -51,6 +51,20 @@ static const char* s_tag = "RSIP_KI";
  *
  * @since 0.1.0
  */
+/** @brief AES / RSA / ECC key element byte counts. */
+typedef enum : uint16_t {
+  k_aes_192_key_bytes  = 24U,
+  k_rsa_1024_mod_bytes = 128U,
+  k_rsa_2048_mod_bytes = 256U,
+  k_rsa_3072_mod_bytes = 384U,
+  k_rsa_4096_mod_bytes = 512U,
+  k_ecc_256_pub_bytes  = 64U,
+  k_ecc_384_priv_bytes = 48U,
+  k_ecc_384_pub_bytes  = 96U,
+  k_ecc_521_priv_bytes = 66U,
+  k_ecc_521_pub_bytes  = 132U,
+} rsip_ki_size_t;
+
 typedef enum : uint64_t {
   k_ra_rsip_ki_seed      = 0x9E3779B97F4A7C15ULL, /**< Mixer seed.       */
   k_ra_rsip_ki_mul       = 0x2545F4914F6CDD1DULL, /**< xorshift64*.     */
@@ -281,7 +295,7 @@ static bool ki_aes_bytes(ra_rsip_aes_key_bits_t key_bits, uint32_t* out)
       *out = 16U;
       break;
     case k_ra_rsip_aes_key_bits_192:
-      *out = 24U;
+      *out = k_aes_192_key_bytes;
       break;
     case k_ra_rsip_aes_key_bits_256:
       *out = 32U;
@@ -315,16 +329,16 @@ static bool ki_rsa_bytes(ra_rsip_rsa_size_t size, uint32_t* out)
   bool ok = true;
   switch (size) {
     case k_ra_rsip_rsa_1024:
-      *out = 128U;
+      *out = k_rsa_1024_mod_bytes;
       break;
     case k_ra_rsip_rsa_2048:
-      *out = 256U;
+      *out = k_rsa_2048_mod_bytes;
       break;
     case k_ra_rsip_rsa_3072:
-      *out = 384U;
+      *out = k_rsa_3072_mod_bytes;
       break;
     case k_ra_rsip_rsa_4096:
-      *out = 512U;
+      *out = k_rsa_4096_mod_bytes;
       break;
     default:
       ok = false;
@@ -359,17 +373,17 @@ static bool ki_ecc_bytes(ra_rsip_curve_t curve, uint32_t* priv, uint32_t* pub)
     case k_ra_rsip_curve_brain256r1:
     case k_ra_rsip_curve_secp256k1:
       *priv = 32U;
-      *pub  = 64U;
+      *pub  = k_ecc_256_pub_bytes;
       break;
     case k_ra_rsip_curve_secp384r1:
     case k_ra_rsip_curve_brain384r1:
-      *priv = 48U;
-      *pub  = 96U;
+      *priv = k_ecc_384_priv_bytes;
+      *pub  = k_ecc_384_pub_bytes;
       break;
     case k_ra_rsip_curve_secp521r1:
     case k_ra_rsip_curve_brain512r1:
-      *priv = 66U;
-      *pub  = 132U;
+      *priv = k_ecc_521_priv_bytes;
+      *pub  = k_ecc_521_pub_bytes;
       break;
     case k_ra_rsip_curve_ed25519:
       *priv = 32U;
@@ -510,4 +524,4 @@ ra_err_t ra_rsip_key_validate(const uint8_t*             installed_key_buf,
   return match ? k_ra_ok : k_ra_err_hw_error;
 }
 
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

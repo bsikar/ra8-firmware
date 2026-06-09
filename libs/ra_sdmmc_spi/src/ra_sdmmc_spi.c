@@ -57,6 +57,17 @@ static const char* s_tag = "SDSPI";
  * The wire byte is ``0x40 | cmd_index`` per SD spec PHY v9 section 7.3.1.1
  * "Command Format" (bit 7 = 0, bit 6 = 1, bits 5..0 = command index).
  */
+/** @brief SD CSD field masks/shifts and command framing. */
+typedef enum : uint32_t {
+  k_sd_cmd_frame_len  = 5U,    /**< Command bytes preceding the CRC7. */
+  k_sd_csize_msb_mask = 0x3FU, /**< CSD v2 C_SIZE MSB field (6-bit). */
+  k_sd_read_bl_mask   = 0x0FU, /**< READ_BL_LEN (4-bit). */
+  k_sd_csize_shift    = 10U,   /**< CSD v1 C_SIZE high-bits shift. */
+  k_sd_csize_lo_mask  = 0xC0U, /**< CSD v1 C_SIZE low 2 bits (byte 8). */
+  k_sd_mult_lo_mask   = 0x80U, /**< C_SIZE_MULT low bit (byte 10). */
+  k_sd_mult_shift     = 7U,    /**< C_SIZE_MULT low-bit shift. */
+} sd_csd_field_t;
+
 typedef enum : uint8_t {
   k_sd_cmd_go_idle_state      = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
   k_sd_cmd_send_if_cond       = 0x40U | 8U,  /**< CMD8  SEND_IF_COND         */
@@ -382,7 +393,7 @@ static void internal_build_frame(sd_cmd_t cmd, uint32_t arg, uint8_t* out_frame)
   } else if ((cmd == k_sd_cmd_send_if_cond) && (arg == (uint32_t)k_sd_cmd8_arg_check_pattern)) {
     out_frame[k_sd_frame_idx_crc] = (uint8_t)k_sd_crc7_cmd8_byte;
   } else {
-    const uint8_t crc7            = ra_sdmmc_spi_crc7(out_frame, 5U);
+    const uint8_t crc7            = ra_sdmmc_spi_crc7(out_frame, k_sd_cmd_frame_len);
     out_frame[k_sd_frame_idx_crc] = (uint8_t)((crc7 << 1U) | 1U);
   }
 }
@@ -506,7 +517,7 @@ static uint32_t internal_csd_to_blocks(const uint8_t* csd)
   if (version == 1U) {
     /* CSD v2: ``capacity = (C_SIZE + 1) * 512 * 1024 / 512``. */
     const uint32_t c_size =
-      (((uint32_t)csd[k_sd_csd_v2_byte_csize_msb] & 0x3FU) << k_sd_bit_two_byte) |
+      (((uint32_t)csd[k_sd_csd_v2_byte_csize_msb] & k_sd_csize_msb_mask) << k_sd_bit_two_byte) |
       ((uint32_t)csd[k_sd_csd_v2_byte_csize_mid] << k_sd_bit_byte) |
       (uint32_t)csd[k_sd_csd_v2_byte_csize_lsb];
     return (c_size + 1U) << (uint32_t)k_sd_csd_v2_blocks_shift;
@@ -516,11 +527,13 @@ static uint32_t internal_csd_to_blocks(const uint8_t* csd)
      *   capacity = (C_SIZE+1) * 2^(C_SIZE_MULT+2) * 2^READ_BL_LEN / 512.
      * C_SIZE is a 12-bit field spanning csd[6][1:0] (high 2 bits),
      * csd[7] (middle 8 bits), csd[8][7:6] (low 2 bits). */
-    const uint8_t  read_bl_len = (uint8_t)(csd[5] & 0x0FU);
-    const uint32_t c_size      = (((uint32_t)csd[6] & 0x03U) << 10U) | ((uint32_t)csd[7] << 2U) |
-                                 ((uint32_t)(csd[8] & 0xC0U) >> 6U);
+    const uint8_t  read_bl_len = (uint8_t)(csd[5] & k_sd_read_bl_mask);
+    const uint32_t c_size      = (((uint32_t)csd[6] & 0x03U) << k_sd_csize_shift) |
+                                 ((uint32_t)csd[7] << 2U) |
+                                 ((uint32_t)(csd[8] & k_sd_csize_lo_mask) >> 6U);
     const uint8_t  c_size_mult =
-      (uint8_t)((((uint8_t)csd[9] & 0x03U) << 1U) | (((uint8_t)csd[10] & 0x80U) >> 7U));
+      (uint8_t)((((uint8_t)csd[9] & 0x03U) << 1U) |
+                (((uint8_t)csd[10] & k_sd_mult_lo_mask) >> k_sd_mult_shift));
     const uint32_t mult      = (uint32_t)1U << ((uint32_t)c_size_mult + 2U);
     const uint32_t block_len = (uint32_t)1U << (uint32_t)read_bl_len;
     /* Multiply in 64 bits to avoid overflow before dividing by 512. */

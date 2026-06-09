@@ -77,6 +77,12 @@ static ra_flash_runtime_t s_rt = {};
  * limit below is generous enough for the worst-case
  * configuration-set (~9 ms) at the slowest clock.
  */
+/** @brief ARC bit-to-word shift and blank-flash fill byte. */
+typedef enum : uint32_t {
+  k_flash_bits_to_words_shift = 5U,    /**< Divide a bit count by 32 -> words. */
+  k_flash_blank_byte          = 0xFFU, /**< Erased-flash fill byte. */
+} flash_const_t;
+
 typedef enum : uint32_t {
   k_ra_flash_max_mrcfreq_mhz = 0x000000FAUL, /**< MRCMHZ <= 250.            */
   k_ra_flash_max_mrefreq_mhz = 0x0000007DUL, /**< MREMHZ <= 125.            */
@@ -1300,7 +1306,7 @@ static ra_err_t internal_arc_read_locked(ra_flash_arc_id_t id, uint32_t* out_cou
      * BSP_FEATURE_FLASH_ARC_SEC_MAX_COUNT (64) >> 5. The previous loop walked
      * 8 words, which over-counted into adjacent OFS state. */
     const volatile uint32_t* p         = (const volatile uint32_t*)k_ra_flash_ofs_arc_sec_addr;
-    const uint32_t           sec_words = k_ra_arc_sec_max_bits >> 5U;
+    const uint32_t           sec_words = k_ra_arc_sec_max_bits >> k_flash_bits_to_words_shift;
     for (uint32_t w = 0U; w < sec_words; ++w) {
       count += internal_popcount32(p[w]);
     }
@@ -1562,8 +1568,8 @@ ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint3
   uint16_t cfg_words[k_ra_mram_config_set_word_count] = {};
   for (uint32_t i = 0U; i < k_ra_mram_config_set_word_count; ++i) {
     const uint32_t base = i * 2U;
-    const uint8_t  lo   = (base < len) ? src[base] : 0xFFU;
-    const uint8_t  hi   = (base + 1U < len) ? src[base + 1U] : 0xFFU;
+    const uint8_t  lo   = (base < len) ? src[base] : k_flash_blank_byte;
+    const uint8_t  hi   = (base + 1U < len) ? src[base + 1U] : k_flash_blank_byte;
     cfg_words[i]        = (uint16_t)((uint16_t)lo | ((uint16_t)hi << 8U));
   }
   err = ra_flash_config_set_write(mram_addr, cfg_words);

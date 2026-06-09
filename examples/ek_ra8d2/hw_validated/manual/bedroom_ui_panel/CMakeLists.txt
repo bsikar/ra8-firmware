@@ -1,8 +1,8 @@
 #
 # Per-app CMake stub for `bedroom_ui_panel`. Names the app + its first-party
 # deps via the shared cmake/ra_add_app.cmake recipe, then bolts the GUIX core
-# on directly -- the SAME no-ThreadX GUIX build the host preview uses
-# (examples/host/guix_tabs/CMakeLists.txt), but cross-compiled for the RA8D2.
+# on directly -- a single-threaded, no-ThreadX GUIX build cross-compiled for the
+# RA8D2.
 #
 # This deliberately does NOT use `USES guix`: cmake/guix.cmake hard-requires
 # ThreadX (GUIX's gx_system_start binds to ThreadX). This app is single-
@@ -48,7 +48,7 @@ target_compile_options(bedroom_ui_panel.elf PRIVATE
     -Wno-error=builtin-macro-redefined
     -Wno-error)
 
-# ---- GUIX core (no ThreadX), mirroring examples/host/guix_tabs ---------------
+# ---- GUIX core (no ThreadX) -------------------------------------------------
 
 # Every GUIX core TU except the ThreadX bind (gx_generic_rtos_bare.c replaces it).
 file(GLOB _ra_guix_src CONFIGURE_DEPENDS

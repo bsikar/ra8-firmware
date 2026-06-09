@@ -18,7 +18,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity) */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
 
 #include "ra_ether_phy.h"
 
@@ -180,4 +180,4 @@ ra_err_t ra_ether_phy_link_status_get(ra_ether_phy_link_t* out)
   return k_ra_ok;
 }
 
-/* NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity) */
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */

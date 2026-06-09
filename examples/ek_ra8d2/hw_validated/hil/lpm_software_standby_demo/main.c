@@ -61,6 +61,7 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_lpm_swstd_alarm_offset_s = 5U,
   k_lpm_swstd_seed_year_lo   = 26U,
+  k_lpm_swstd_year_base      = 2000U, /**< Calendar epoch base for the year field. */
   k_lpm_swstd_seed_month     = 1U,
   k_lpm_swstd_seed_day       = 1U,
   k_lpm_swstd_secs_per_min   = 60U,
@@ -159,7 +160,7 @@ static void lpm_swstd_setup_or_halt(uint32_t* out_pclka_hz)
     lpm_swstd_panic_halt();
   }
   const ra_rtc_datetime_t seed = {
-    .year    = (uint16_t)(2000U + (uint16_t)k_lpm_swstd_seed_year_lo),
+    .year    = (uint16_t)(k_lpm_swstd_year_base + (uint16_t)k_lpm_swstd_seed_year_lo),
     .month   = (uint8_t)k_lpm_swstd_seed_month,
     .day     = (uint8_t)k_lpm_swstd_seed_day,
     .weekday = 0U,

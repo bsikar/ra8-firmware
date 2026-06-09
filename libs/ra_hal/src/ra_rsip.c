@@ -523,7 +523,6 @@ static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
 }
 
 /* clang-format off */
-/* NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers) */
 /**
  * @brief FIPS PUB 180-4 Section 4.1.2 SHA-256 round constants K[0..63].
  *
@@ -559,7 +558,6 @@ static const uint32_t s_sw_sha256_h0[k_ra_rsip_sw_sha256_state_w] = {
   0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,
   0x510e527fUL, 0x9b05688cUL, 0x1f83d9abUL, 0x5be0cd19UL,
 };
-/* NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers) */
 /* clang-format on */
 
 /* Build the 64-word SHA-256 message schedule from a 64-byte block -- see surrounding code and HUM citations. */
@@ -586,20 +584,51 @@ static void internal_sw_sha256_schedule(uint32_t      w[k_ra_rsip_sw_sha256_roun
 }
 
 /* 64-round SHA-256 main loop running on an a -- see surrounding code and HUM citations. */
+/** @brief FIPS 180-4 6.2.2 SHA-256 working-state lane indices a..h. */
+typedef enum : uint8_t {
+  k_sha256_lane_a = 0U,
+  k_sha256_lane_b = 1U,
+  k_sha256_lane_c = 2U,
+  k_sha256_lane_d = 3U,
+  k_sha256_lane_e = 4U,
+  k_sha256_lane_f = 5U,
+  k_sha256_lane_g = 6U,
+  k_sha256_lane_h = 7U,
+} sha256_lane_t;
+
+/**
+ * @brief Run the 64-round SHA-256 compression loop over one message schedule.
+ *
+ * @details
+ * FIPS PUB 180-4 Section 6.2.2: copies the eight working-state lanes a..h out
+ * of the hash state, iterates the round function across the expanded message
+ * schedule plus the round constants, and folds the results back into the state
+ * in place. Pure software fallback used when the RSIP hardware path is
+ * unavailable.
+ *
+ * @param[in,out] s  Eight-word SHA-256 hash state (lanes a..h), updated in place.
+ * @param[in]     w  Expanded 64-word message schedule for the current block.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static void internal_sw_sha256_rounds(uint32_t       s[k_ra_rsip_sw_sha256_state_w],
                                       const uint32_t w[k_ra_rsip_sw_sha256_round_cnt])
 {
   /* FIPS PUB 180-4 Section 6.2.2: a..h working-state lanes are spec-named
    * indices 0..7 of the 8-word hash state, not arbitrary literals. */
-  /* NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) */
-  uint32_t a = s[0];
-  uint32_t b = s[1];
-  uint32_t c = s[2];
-  uint32_t d = s[3];
-  uint32_t e = s[4];
-  uint32_t f = s[5];
-  uint32_t g = s[6];
-  uint32_t h = s[7];
+  uint32_t a = s[k_sha256_lane_a];
+  uint32_t b = s[k_sha256_lane_b];
+  uint32_t c = s[k_sha256_lane_c];
+  uint32_t d = s[k_sha256_lane_d];
+  uint32_t e = s[k_sha256_lane_e];
+  uint32_t f = s[k_sha256_lane_f];
+  uint32_t g = s[k_sha256_lane_g];
+  uint32_t h = s[k_sha256_lane_h];
   for (uint32_t i = 0U; i < k_ra_rsip_sw_sha256_round_cnt; ++i) {
     const uint32_t s1    = internal_sw_rotr(e, k_ra_rsip_sw_rotr_6) ^
                            internal_sw_rotr(e, k_ra_rsip_sw_rotr_11) ^
@@ -620,15 +649,14 @@ static void internal_sw_sha256_rounds(uint32_t       s[k_ra_rsip_sw_sha256_state
     b                    = a;
     a                    = temp1 + temp2;
   }
-  s[0] = a;
-  s[1] = b;
-  s[2] = c;
-  s[3] = d;
-  s[4] = e;
-  s[5] = f;
-  s[6] = g;
-  s[7] = h;
-  /* NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) */
+  s[k_sha256_lane_a] = a;
+  s[k_sha256_lane_b] = b;
+  s[k_sha256_lane_c] = c;
+  s[k_sha256_lane_d] = d;
+  s[k_sha256_lane_e] = e;
+  s[k_sha256_lane_f] = f;
+  s[k_sha256_lane_g] = g;
+  s[k_sha256_lane_h] = h;
 }
 
 /* Run a single 64-byte SHA-256 compression block -- see surrounding code and HUM citations. */

@@ -194,6 +194,11 @@ static bool s_initialized;
  * Following the project's "no magic numbers" rule -- every literal
  * embedded in the driver code path lives here as a typed enum value.
  */
+/** @brief Low-nibble mask for the DCS command id. */
+typedef enum : uint32_t {
+  k_dsi_cmd_id_mask = 0x0FU,
+} dsi_cmd_mask_t;
+
 typedef enum : uint32_t {
   k_ra_mipi_dsi_clear_all = 0xFFFFFFFFUL, /**< RW1C all-ones write mask. */
   k_ra_mipi_dsi_isr_all   = k_ra_mipi_dsi_isr_sq0 | k_ra_mipi_dsi_isr_sq1 | k_ra_mipi_dsi_isr_vm |
@@ -362,7 +367,7 @@ static uint32_t internal_ra_mipi_dsi_make_dsc_a(const ra_mipi_dsi_command_t* cmd
   uint8_t data1 = 0U;
   /* Long packets put the word count in DATA0/DATA1; short packets put
    * the first two parameter bytes there. */
-  const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & 0x0FU);
+  const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & k_dsi_cmd_id_mask);
   const bool    is_long    = low_nibble > 0x08U;
   if (is_long) {
     data0 = (uint8_t)(cmd->tx_len & k_ra_mipi_dsi_byte_mask);
@@ -891,7 +896,7 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
   if (cmd->low_power) {
     channel = 0U;
   }
-  const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & 0x0FU);
+  const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & k_dsi_cmd_id_mask);
   const bool    is_long    = low_nibble > 0x08U;
 
   if (is_long && (cmd->tx_len > 0U)) {

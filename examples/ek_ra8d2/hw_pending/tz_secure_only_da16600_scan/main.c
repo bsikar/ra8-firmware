@@ -58,10 +58,13 @@
  *  - @c k_demo_at_line_buf_len: AT-line accumulator buffer length.
  */
 typedef enum : uint32_t {
-  k_demo_baud            = 115200U,
-  k_demo_da16600_sci_ch  = 2U,
-  k_demo_at_line_buf_len = 256U,
-  k_demo_cpu_hz_at_reset = 8400000U,
+  k_da16600_decimal_base   = 10U,   /**< Radix for integer-to-ASCII. */
+  k_da16600_u16_max_digits = 5U,    /**< Max decimal digits in a uint16_t. */
+  k_da16600_timeout_ms     = 2000U, /**< Default AT command timeout. */
+  k_demo_baud              = 115200U,
+  k_demo_da16600_sci_ch    = 2U,
+  k_demo_at_line_buf_len   = 256U,
+  k_demo_cpu_hz_at_reset   = 8400000U,
 } da16600_scan_const_t;
 
 /* TXD2/RXD2 live on Pmod1.2 / Pmod1.3 (P801/P802) per EK-RA8D2 v1 UM
@@ -118,9 +121,9 @@ static void demo_format_u16(char* dst, uint16_t value)
     return;
   }
   uint16_t v = value;
-  while ((v > 0U) && (ti < 5U)) {
-    tmp[ti] = (char)('0' + (uint8_t)(v % 10U));
-    v /= 10U;
+  while ((v > 0U) && (ti < k_da16600_u16_max_digits)) {
+    tmp[ti] = (char)('0' + (uint8_t)(v % k_da16600_decimal_base));
+    v /= k_da16600_decimal_base;
     ++ti;
   }
   uint8_t di = 0U;
@@ -217,7 +220,7 @@ static uint32_t demo_da16600_now_ms(void* ctx)
                            .ctx     = nullptr},
     .line_buf           = s_at_line,
     .line_buf_len       = (uint16_t)k_demo_at_line_buf_len,
-    .default_timeout_ms = 2000U,
+    .default_timeout_ms = k_da16600_timeout_ms,
   };
   return ra_da16600_init(&cfg);
 }

@@ -131,8 +131,6 @@
 #define RA_SECTION(name) __attribute__((used, section(name)))
 #endif
 
-/* NOLINTBEGIN(readability-magic-numbers) -- OFS default is 0xFFFFFFFF. */
-
 RA_SECTION(".option_setting_ofs0") static const uint32_t g_ra_ofs0 = BSP_CFG_OPTION_SETTING_OFS0;
 
 RA_SECTION(".option_setting_ofs1") static const uint32_t g_ra_ofs1 = BSP_CFG_OPTION_SETTING_OFS1;
@@ -180,5 +178,3 @@ static const uint32_t g_ra_otp_pbps_sec = BSP_CFG_OPTION_SETTING_OTP_PBPS_SEC;
 
 RA_SECTION(".option_setting_otp_zhuk")
 static const uint32_t g_ra_otp_zhuk = BSP_CFG_OPTION_SETTING_OTP_ZHUK;
-
-/* NOLINTEND(readability-magic-numbers) */

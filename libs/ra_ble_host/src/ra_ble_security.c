@@ -27,7 +27,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size)
+// NOLINTBEGIN(readability-function-size)
 #include "ra_ble_security.h"
 
 #include <stddef.h>
@@ -35,6 +35,11 @@
 #include <string.h>
 
 #include "ra_err.h"
+
+/** @brief Maximum 6-digit BLE passkey. */
+typedef enum : uint32_t {
+  k_ble_passkey_max = 999999U,
+} ble_passkey_t;
 
 #ifdef RA_TARGET_BUILD
 #include "host/ble_gap.h"
@@ -329,7 +334,7 @@ ra_err_t ra_ble_security_passkey_reply(uint16_t conn_handle, uint32_t passkey, u
   if (s_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
-  if (passkey > 999999U) {
+  if (passkey > k_ble_passkey_max) {
     return k_ra_err_invalid_arg;
   }
 #ifdef RA_TARGET_BUILD
@@ -511,4 +516,4 @@ void ra_ble_security_test_set_bond_count(uint8_t count)
 }
 #endif /* UNIT_TEST */
 
-// NOLINTEND(readability-magic-numbers,readability-function-size)
+// NOLINTEND(readability-function-size)

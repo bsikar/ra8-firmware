@@ -194,6 +194,24 @@ if [[ -n "$c_files" ]]; then
         error_found=1
     fi
 
+    # ---- No magic numbers (whole tree) ----------------------------------
+    # Same blind-spot story as function-size: clang-tidy's
+    # readability-magic-numbers only fires for files in the host
+    # compile-db, which contains NO example main.c and silently drops
+    # every ARM-only / cross-compiled code path (Helium intrinsics,
+    # #ifdef __ARM_* blocks).  That is how `ra_delay_ms(500U)` reached
+    # main.  This source-level checker scans libs/, src/, and example
+    # main.c directly (honouring clang-tidy NOLINT waivers).  The tree is
+    # clean, so it runs full-tree like check_function_size.py.
+    if ! python3 scripts/utils/check_magic_numbers.py; then
+        echo "[FAIL] magic number(s) found -- every integer literal must"
+        echo "   be a named typed enum (const only for floats; macros are"
+        echo "   NOT allowed for constants). Genuine exceptions may carry"
+        echo "   a trailing 'MAGIC-OK: <reason>' or a scoped clang-tidy"
+        echo "   NOLINT(readability-magic-numbers)."
+        error_found=1
+    fi
+
     # ---- no redundant casts inside TEST_ASSERT_EQ --------------------------
     test_files=$(echo "$c_files" | grep -E "^tests/" || true)
     if [[ -n "$test_files" ]] && [[ -f scripts/utils/check_assert_casts.py ]]; then

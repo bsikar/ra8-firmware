@@ -39,7 +39,7 @@
 #include "ra_log.h"
 #include "ra_sdhi.h"
 
-/* NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity) */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
 
 /** @brief Module log tag. */
 static const char* s_tag = "SDCARD";
@@ -54,6 +54,23 @@ static const char* s_tag = "SDCARD";
  * response type and data direction from the index for the standard
  * commands used here.
  */
+/** @brief SD CSD register field masks, shifts and block size. */
+typedef enum : uint32_t {
+  k_sd_block_size_bytes  = 512U,         /**< SD logical block size. */
+  k_sd_csd_struct_shift  = 30U,          /**< CSD_STRUCTURE field shift. */
+  k_sd_rca_mask          = 0xFFFFU,      /**< Relative card address (16-bit). */
+  k_sd_read_bl_mask      = 0xFU,         /**< READ_BL_LEN (4-bit). */
+  k_sd_csize_v2_lo_mask  = 0x0000003FUL, /**< CSD v2 C_SIZE byte-2 bits. */
+  k_sd_csize_v2_mid_mask = 0x0000FFFFUL, /**< CSD v2 C_SIZE byte-1 bits. */
+  k_sd_csize_v2_mask     = 0x003FFFFFUL, /**< CSD v2 C_SIZE (22-bit). */
+  k_sd_csize_v1_shift    = 10U,          /**< CSD v1 C_SIZE high-bit shift. */
+  k_sd_csize_v1_lo_shift = 22U,          /**< CSD v1 C_SIZE low-bit shift. */
+  k_sd_csize_v1_lo_mask  = 0x000003FFUL, /**< CSD v1 C_SIZE low 10 bits. */
+  k_sd_csize_v1_mask     = 0xFFFU,       /**< CSD v1 C_SIZE (12-bit). */
+  k_sd_csize_mult_shift  = 7U,           /**< C_SIZE_MULT shift. */
+  k_sd_csize_mult_mask   = 0x7U,         /**< C_SIZE_MULT (3-bit). */
+} sd_csd_field_t;
+
 typedef enum : uint8_t {
   k_ra_sdcard_cmd0_go_idle        = 0U,  /**< CMD0  GO_IDLE_STATE */
   k_ra_sdcard_cmd2_all_send_cid   = 2U,  /**< CMD2  ALL_SEND_CID */
@@ -199,13 +216,14 @@ static ra_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
   /* CSD_STRUCTURE is rsp[3][31:30]. SDHI shifts the response left by
    * 8 (CRC drop), so the architectural CSD[127:126] lands at
    * rsp[3][31:30] -- the same place FSP r_sdhi.c reads it from. */
-  const uint8_t csd_structure = (uint8_t)((rsp[3] >> 30U) & 0x3U);
+  const uint8_t csd_structure = (uint8_t)((rsp[3] >> k_sd_csd_struct_shift) & 0x3U);
   if (csd_structure == 1U) {
     /* CSD v2 (SDHC/SDXC): C_SIZE is bits [69:48], i.e. rsp[1][29:8]
      * once you account for the CRC shift. The 22-bit field needs the
      * low 6 bits of rsp[2] OR'd with the high 16 bits of rsp[1]. */
     const uint32_t c_size =
-      (((rsp[2] & 0x0000003FUL) << 16U) | ((rsp[1] >> 16U) & 0x0000FFFFUL)) & 0x003FFFFFUL;
+      (((rsp[2] & k_sd_csize_v2_lo_mask) << 16U) | ((rsp[1] >> 16U) & k_sd_csize_v2_mid_mask)) &
+      k_sd_csize_v2_mask;
     *out_blocks = (c_size + 1U) * (uint32_t)k_ra_sdcard_csd_v2_blocks_per_unit;
     return k_ra_ok;
   }
@@ -213,15 +231,17 @@ static ra_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
     /* CSD v1 (SDSC): READ_BL_LEN [83:80], C_SIZE [73:62],
      * C_SIZE_MULT [49:47]. Compute capacity in bytes then divide by
      * 512 to land on the block count. */
-    const uint8_t  read_bl_len = (uint8_t)((rsp[2] >> 16U) & 0xFU);
+    const uint8_t  read_bl_len = (uint8_t)((rsp[2] >> 16U) & k_sd_read_bl_mask);
     const uint16_t c_size =
-      (uint16_t)((((rsp[2] & 0x00000003UL) << 10U) | ((rsp[1] >> 22U) & 0x000003FFUL)) & 0xFFFU);
-    const uint8_t  c_size_mult = (uint8_t)((rsp[1] >> 7U) & 0x7U);
-    const uint32_t mult        = 1UL << ((uint32_t)c_size_mult + 2U);
-    const uint32_t block_len   = 1UL << (uint32_t)read_bl_len;
-    const uint32_t blocknr     = ((uint32_t)c_size + 1U) * mult;
+      (uint16_t)((((rsp[2] & 0x00000003UL) << k_sd_csize_v1_shift) |
+                  ((rsp[1] >> k_sd_csize_v1_lo_shift) & k_sd_csize_v1_lo_mask)) &
+                 k_sd_csize_v1_mask);
+    const uint8_t c_size_mult = (uint8_t)((rsp[1] >> k_sd_csize_mult_shift) & k_sd_csize_mult_mask);
+    const uint32_t mult       = 1UL << ((uint32_t)c_size_mult + 2U);
+    const uint32_t block_len  = 1UL << (uint32_t)read_bl_len;
+    const uint32_t blocknr    = ((uint32_t)c_size + 1U) * mult;
     /* Convert to 512-byte sectors. */
-    *out_blocks = (blocknr * block_len) / 512U;
+    *out_blocks = (blocknr * block_len) / k_sd_block_size_bytes;
     return k_ra_ok;
   }
   return k_ra_err_hw_init_failed;
@@ -313,7 +333,7 @@ internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t
   /* CMD3 SEND_RELATIVE_ADDR -- card publishes its RCA in rsp[0][31:16]. */
   const ra_err_t e3 = ra_sdhi_send_command(instance, (uint32_t)k_ra_sdcard_cmd3_send_rca, 0U, rsp);
   RA_RETURN_ON_ERROR(e3, s_tag, "cmd3"); /* GCOVR_EXCL_BR_LINE */
-  const uint16_t rca     = (uint16_t)((rsp[0] >> 16U) & 0xFFFFU);
+  const uint16_t rca     = (uint16_t)((rsp[0] >> 16U) & k_sd_rca_mask);
   const uint32_t rca_arg = ((uint32_t)rca) << 16U;
 
   /* CMD9 SEND_CSD -- arg = RCA<<16; R2 holds the 128-bit CSD. */
@@ -444,7 +464,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
 static uint32_t internal_to_card_address(uint32_t lba)
 {
   if (s_sdcard.type == k_ra_sdcard_type_sdsc) {
-    return lba * 512U;
+    return lba * k_sd_block_size_bytes;
   }
   return lba;
 }
@@ -518,4 +538,4 @@ ra_err_t ra_sdcard_deinit(void)
   return k_ra_ok;
 }
 
-/* NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity) */
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */

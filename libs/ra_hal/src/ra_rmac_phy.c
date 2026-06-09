@@ -15,7 +15,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity) */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
 
 #include "ra_rmac_phy.h"
 
@@ -521,4 +521,4 @@ ra_err_t ra_rmac_phy_lsi_get(ra_rmac_phy_lsi_t* out)
   return k_ra_ok;
 }
 
-/* NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity) */
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */

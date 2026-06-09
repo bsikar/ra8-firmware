@@ -66,6 +66,11 @@ static const char* s_tag = "XSPI";
  * @enum ra_xspi_cmd_limits_t
  * @brief Byte-count limits on raw direct-command buffers.
  */
+/** @brief Low-byte mask for status/JEDEC-id extraction. */
+typedef enum : uint32_t {
+  k_xspi_byte_mask = 0xFFUL,
+} xspi_mask_t;
+
 typedef enum : uint8_t {
   k_ra_xspi_cmd_max_bytes = 16U, /**< A CDBUF slot holds 16 bytes. */
 } ra_xspi_cmd_limits_t;
@@ -1022,7 +1027,7 @@ ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
   *out_status = (uint8_t)(1U << k_ra_flash_status_bit_wel);
 #else
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  *out_status = (uint8_t)(reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0] & 0xFFUL);
+  *out_status = (uint8_t)(reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0] & k_xspi_byte_mask);
 #endif
   return k_ra_ok;
 }
@@ -1048,7 +1053,8 @@ ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
    * Repack into ``(mfr << 16) | (type << 8) | cap`` as documented
    * in the public API header. */
   const uint32_t word = reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0];
-  *out_id = ((word & 0xFFUL) << 16U) | (((word >> 8U) & 0xFFUL) << 8U) | ((word >> 16U) & 0xFFUL);
+  *out_id = ((word & k_xspi_byte_mask) << 16U) | (((word >> 8U) & k_xspi_byte_mask) << 8U) |
+            ((word >> 16U) & k_xspi_byte_mask);
 #endif
   return k_ra_ok;
 }

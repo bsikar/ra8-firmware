@@ -58,7 +58,7 @@
  * `readability-redundant-casting` suppression covers the
  * `(uint8_t)k_ra_jpeg_*_t` form used to make enum membership
  * explicit at use sites that mix multiple enum families. */
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 
 /** @brief Component log tag. */
 static const char* s_tag = "JPEG_SW";
@@ -76,26 +76,81 @@ static const char* s_tag = "JPEG_SW";
  * @brief JPEG segment marker bytes (T.81 sec B.1.1.3 "Marker
  *        assignments"). The high byte is always 0xFF.
  */
+/** @brief Misc JPEG masks / offsets. */
 typedef enum : uint16_t {
-  k_ra_jpeg_marker_soi    = 0xFFD8U, /**< Start of image.            */
-  k_ra_jpeg_marker_eoi    = 0xFFD9U, /**< End of image.              */
-  k_ra_jpeg_marker_sos    = 0xFFDAU, /**< Start of scan.             */
-  k_ra_jpeg_marker_dqt    = 0xFFDBU, /**< Define quantization table. */
-  k_ra_jpeg_marker_dht    = 0xFFC4U, /**< Define Huffman table.      */
-  k_ra_jpeg_marker_dri    = 0xFFDDU, /**< Define restart interval.   */
-  k_ra_jpeg_marker_sof0   = 0xFFC0U, /**< Baseline DCT, Huffman.     */
-  k_ra_jpeg_marker_sof1   = 0xFFC1U, /**< Extended sequential DCT.   */
-  k_ra_jpeg_marker_sof2   = 0xFFC2U, /**< Progressive DCT.           */
-  k_ra_jpeg_marker_sof3   = 0xFFC3U, /**< Lossless.                  */
-  k_ra_jpeg_marker_app0   = 0xFFE0U, /**< JFIF APP0.                 */
-  k_ra_jpeg_marker_com    = 0xFFFEU, /**< Comment.                   */
-  k_ra_jpeg_marker_rst0   = 0xFFD0U, /**< Restart 0.                 */
-  k_ra_jpeg_marker_rst7   = 0xFFD7U, /**< Restart 7.                 */
-  k_ra_jpeg_marker_pad    = 0xFF00U, /**< Stuffed byte (data 0xFF).  */
-  k_ra_jpeg_marker_sof_lo = 0xFFC0U, /**< First SOF marker code.   */
-  k_ra_jpeg_marker_sof_hi = 0xFFCFU, /**< Last SOF marker code.    */
-  k_ra_jpeg_marker_dac    = 0xFFC8U, /**< DAC marker (skipped).    */
-  k_ra_jpeg_marker_high   = 0xFF00U, /**< Marker high-byte mask.   */
+  k_jpeg_byte_mask    = 0xFFU,
+  k_jpeg_nibble_mask  = 0xFU,
+  k_jpeg_reservoir_lo = 24U,
+  k_jpeg_sof_dims_off = 5U,
+  k_jpeg_mcu_align    = 15U,
+  k_jpeg_zrl_symbol   = 0xF0U,
+} jpeg_misc_t;
+
+/** @brief Fixed-point IDCT / YCbCr shift amounts. */
+typedef enum : uint8_t {
+  k_jpeg_idct_p1_bias_sh = 27U,
+  k_jpeg_idct_p1_sh      = 28U,
+  k_jpeg_idct_p2_bias_sh = 13U,
+  k_jpeg_q14_shift       = 14U,
+  k_jpeg_ycc_q15_shift   = 14U,
+} jpeg_dsp_shift_t;
+
+/** @brief Q15 BT.601 YCbCr->RGB coefficients (== Q16 / 2). */
+typedef enum : int16_t {
+  k_cr_r_q15 = 22970, /**< 1.40200 / 2 * 2^15. */
+  k_cb_b_q15 = 29032, /**< 1.77200 / 2 * 2^15. */
+  k_cb_g_q15 = -5638,
+  k_cr_g_q15 = -11700,
+} jpeg_ycc_coeff_t;
+
+/** @brief JPEG SOF marker range and stuffing markers. */
+typedef enum : uint16_t {
+  k_jpeg_marker_sof_lo = 0xFFC0U,
+  k_jpeg_marker_sof1   = 0xFFC1U,
+  k_jpeg_marker_sof_hi = 0xFFCFU,
+  k_jpeg_marker_jpg    = 0xFFC8U,
+  k_jpeg_marker_ff00   = 0xFF00U,
+} jpeg_marker_range_t;
+
+/** @brief JPEG encoder quality scaling and segment field values. */
+typedef enum : uint16_t {
+  k_jpeg_q_scale_low  = 5000U,
+  k_jpeg_q_scale_high = 200U,
+  k_jpeg_q_round_bias = 50U,
+  k_jpeg_q_percent    = 100U,
+  k_jpeg_sof_seg_len  = 17U,
+  k_jpeg_sos_seg_len  = 12U,
+  k_jpeg_spectral_end = 63U,
+} jpeg_enc_t;
+
+/** @brief JPEG component sampling / table-selector bytes (positional). */
+typedef enum : uint8_t {
+  k_jpeg_samp_2x2       = 0x22U,
+  k_jpeg_samp_1x1       = 0x11U,
+  k_jpeg_dht_ac_chroma  = 0x11U,
+  k_jpeg_sos_sel_chroma = 0x11U,
+} jpeg_enc_field_t;
+
+typedef enum : uint16_t {
+  k_ra_jpeg_marker_soi    = 0xFFD8U,              /**< Start of image.            */
+  k_ra_jpeg_marker_eoi    = 0xFFD9U,              /**< End of image.              */
+  k_ra_jpeg_marker_sos    = 0xFFDAU,              /**< Start of scan.             */
+  k_ra_jpeg_marker_dqt    = 0xFFDBU,              /**< Define quantization table. */
+  k_ra_jpeg_marker_dht    = 0xFFC4U,              /**< Define Huffman table.      */
+  k_ra_jpeg_marker_dri    = 0xFFDDU,              /**< Define restart interval.   */
+  k_ra_jpeg_marker_sof0   = 0xFFC0U,              /**< Baseline DCT, Huffman.     */
+  k_ra_jpeg_marker_sof1   = 0xFFC1U,              /**< Extended sequential DCT.   */
+  k_ra_jpeg_marker_sof2   = 0xFFC2U,              /**< Progressive DCT.           */
+  k_ra_jpeg_marker_sof3   = 0xFFC3U,              /**< Lossless.                  */
+  k_ra_jpeg_marker_app0   = 0xFFE0U,              /**< JFIF APP0.                 */
+  k_ra_jpeg_marker_com    = 0xFFFEU,              /**< Comment.                   */
+  k_ra_jpeg_marker_rst0   = 0xFFD0U,              /**< Restart 0.                 */
+  k_ra_jpeg_marker_rst7   = 0xFFD7U,              /**< Restart 7.                 */
+  k_ra_jpeg_marker_pad    = 0xFF00U,              /**< Stuffed byte (data 0xFF).  */
+  k_ra_jpeg_marker_sof_lo = 0xFFC0U,              /**< First SOF marker code.   */
+  k_ra_jpeg_marker_sof_hi = k_jpeg_marker_sof_hi, /**< Last SOF marker code.    */
+  k_ra_jpeg_marker_dac    = 0xFFC8U,              /**< DAC marker (skipped).    */
+  k_ra_jpeg_marker_high   = 0xFF00U,              /**< Marker high-byte mask.   */
 } ra_jpeg_marker_t;
 
 /**
@@ -425,7 +480,7 @@ static inline uint16_t read_be16(const uint8_t* p)
 static inline void write_be16(uint8_t* p, uint16_t v)
 {
   p[0] = (uint8_t)(v >> k_ra_jpeg_byte_shift);
-  p[1] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)(v & k_jpeg_byte_mask);
 }
 
 /* ------------------------------------------------------------------ */
@@ -471,7 +526,7 @@ typedef struct {
  */
 static void br_fill(ra_jpeg_bitreader_t* br)
 {
-  while (br->nbits <= 24U && !br->had_eoi) {
+  while (br->nbits <= k_jpeg_reservoir_lo && !br->had_eoi) {
     if (br->pos >= br->len) {
       br->had_eoi = 1U;
       return;
@@ -768,8 +823,9 @@ static void fwd_dct_1d_norm(const int32_t* in, int32_t* out)
       s += (int64_t)in[n] * (int64_t)s_dct_cos_q14[k][n];
     }
     /* s is Q14*Q0 = Q14; multiply by Q14 weight -> Q28; round to Q0. */
-    int64_t r = (s * (int64_t)s_dct_w_q14[k] + (1LL << 27)) >> 28;
-    out[k]    = (int32_t)r;
+    int64_t r =
+      (s * (int64_t)s_dct_w_q14[k] + (1LL << k_jpeg_idct_p1_bias_sh)) >> k_jpeg_idct_p1_sh;
+    out[k] = (int32_t)r;
   }
 }
 
@@ -796,9 +852,9 @@ static void inv_dct_1d_norm(const int32_t* in, int32_t* out)
     int64_t s = 0;
     for (uint8_t k = 0U; k < (uint8_t)k_ra_jpeg_block_dim; k++) {
       int64_t v = (int64_t)in[k] * (int64_t)s_dct_w_q14[k];
-      s += (v * (int64_t)s_dct_cos_q14[k][n]) >> 14;
+      s += (v * (int64_t)s_dct_cos_q14[k][n]) >> k_jpeg_q14_shift;
     }
-    int64_t r = (s + (1LL << 13)) >> 14;
+    int64_t r = (s + (1LL << k_jpeg_idct_p2_bias_sh)) >> k_jpeg_q14_shift;
     out[n]    = (int32_t)r;
   }
 }
@@ -1120,7 +1176,7 @@ dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* ou
     uint8_t rrrr = (uint8_t)(rs >> k_ra_jpeg_nibble_shift);
     uint8_t ssss = (uint8_t)(rs & k_ra_jpeg_nibble_mask);
     if (ssss == 0U) {
-      if (rrrr == 0xFU) {
+      if (rrrr == k_jpeg_nibble_mask) {
         k = (uint8_t)(k + 16U); /* ZRL: 16 zero coeffs. */
         continue;
       }
@@ -1193,18 +1249,14 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
 {
   uint16_t i = 0U;
   /* Q15 BT.601 coefficients (== Q16 / 2). */
-  const int16_t k_cr_r_q15 = 22970; /* 1.40200 / 2 * 2^15. */
-  const int16_t k_cb_b_q15 = 29032; /* 1.77200 / 2 * 2^15. */
-  const int16_t k_cb_g_q15 = -5638;
-  const int16_t k_cr_g_q15 = -11700;
   while (i + 8U <= n) {
     int16x8_t vy   = vld1q_s16(&y[i]);
     int16x8_t vcb  = vsubq_n_s16(vld1q_s16(&cb[i]), (int16_t)k_ra_jpeg_level_offset);
     int16x8_t vcr  = vsubq_n_s16(vld1q_s16(&cr[i]), (int16_t)k_ra_jpeg_level_offset);
-    int16x8_t vrr  = vshrq_n_s16(vmulq_n_s16(vcr, k_cr_r_q15), 14);
-    int16x8_t vbb  = vshrq_n_s16(vmulq_n_s16(vcb, k_cb_b_q15), 14);
-    int16x8_t vgg1 = vshrq_n_s16(vmulq_n_s16(vcb, k_cb_g_q15), 14);
-    int16x8_t vgg2 = vshrq_n_s16(vmulq_n_s16(vcr, k_cr_g_q15), 14);
+    int16x8_t vrr  = vshrq_n_s16(vmulq_n_s16(vcr, k_cr_r_q15), k_jpeg_ycc_q15_shift);
+    int16x8_t vbb  = vshrq_n_s16(vmulq_n_s16(vcb, k_cb_b_q15), k_jpeg_ycc_q15_shift);
+    int16x8_t vgg1 = vshrq_n_s16(vmulq_n_s16(vcb, k_cb_g_q15), k_jpeg_ycc_q15_shift);
+    int16x8_t vgg2 = vshrq_n_s16(vmulq_n_s16(vcr, k_cr_g_q15), k_jpeg_ycc_q15_shift);
     int16x8_t vr   = vaddq_s16(vy, vrr);
     int16x8_t vg   = vaddq_s16(vy, vaddq_s16(vgg1, vgg2));
     int16x8_t vb   = vaddq_s16(vy, vbb);
@@ -1266,7 +1318,7 @@ ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
       return k_ra_err_protocol_error;
     }
     uint8_t  m  = jpeg_buf[i];
-    uint16_t mk = (uint16_t)(((uint16_t)0xFFU << k_ra_jpeg_byte_shift) | m);
+    uint16_t mk = (uint16_t)(((uint16_t)k_jpeg_byte_mask << k_ra_jpeg_byte_shift) | m);
     i++;
     if (mk == (uint16_t)k_ra_jpeg_marker_soi || mk == (uint16_t)k_ra_jpeg_marker_eoi) {
       continue;
@@ -1287,14 +1339,15 @@ ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
         return k_ra_err_not_supported;
       }
       *out_h = read_be16(&jpeg_buf[i + 3U]);
-      *out_w = read_be16(&jpeg_buf[i + 5U]);
+      *out_w = read_be16(&jpeg_buf[i + k_jpeg_sof_dims_off]);
       if (*out_w == 0U || *out_h == 0U) {
         return k_ra_err_protocol_error;
       }
       return k_ra_ok;
     }
     // mcdc-deactivated: dec_parse_sof0 unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
-    if (mk >= 0xFFC0U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht && mk != 0xFFC8U) {
+    if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof_hi &&
+        mk != (uint16_t)k_ra_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
       return k_ra_err_not_supported;
     }
     i += seglen;
@@ -1592,7 +1645,7 @@ dec_dispatch_marker(ra_jpeg_dec_ctx_t* d, bool* got_sof, ra_jpeg_dec_marker_acti
   }
   uint8_t m = d->src[d->cursor];
   d->cursor++;
-  uint16_t mk = (uint16_t)(0xFF00U | m);
+  uint16_t mk = (uint16_t)(k_jpeg_marker_ff00 | m);
 
   if (mk == (uint16_t)k_ra_jpeg_marker_sof0) {
     ra_err_t e = dec_parse_sof0(d);
@@ -1603,7 +1656,8 @@ dec_dispatch_marker(ra_jpeg_dec_ctx_t* d, bool* got_sof, ra_jpeg_dec_marker_acti
     return k_ra_ok;
     // mcdc-deactivated: dec_decode_scan unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision earlier in this TU -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
   }
-  if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht && mk != 0xFFC8U) {
+  if (mk >= k_jpeg_marker_sof1 && mk <= k_jpeg_marker_sof_hi &&
+      mk != (uint16_t)k_ra_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
     return k_ra_err_not_supported;
   }
   if (mk == (uint16_t)k_ra_jpeg_marker_dqt) {
@@ -1731,7 +1785,7 @@ static void enc_emit_u8(ra_jpeg_enc_ctx_t* e, uint8_t b)
 static void enc_emit_u16(ra_jpeg_enc_ctx_t* e, uint16_t v)
 {
   enc_emit_u8(e, (uint8_t)(v >> k_ra_jpeg_byte_shift));
-  enc_emit_u8(e, (uint8_t)(v & 0xFFU));
+  enc_emit_u8(e, (uint8_t)(v & k_jpeg_byte_mask));
 }
 
 /* Push `n` bits MSB-first into the entropy stream with stuffing -- see surrounding code and HUM citations. */
@@ -1755,7 +1809,7 @@ static void enc_flush_bits(ra_jpeg_enc_ctx_t* e)
   if (e->bit_cnt > 0U) {
     uint32_t pad = (1U << (k_ra_jpeg_byte_shift - e->bit_cnt)) - 1U;
     enc_put_bits(e,
-                 ((e->bit_buf << (k_ra_jpeg_byte_shift - e->bit_cnt)) | pad) & 0xFFU,
+                 ((e->bit_buf << (k_ra_jpeg_byte_shift - e->bit_cnt)) | pad) & k_jpeg_byte_mask,
                  (uint8_t)(k_ra_jpeg_byte_shift - e->bit_cnt));
   }
 }
@@ -1805,16 +1859,16 @@ static void enc_build_codes(const uint8_t* bits,
 static uint16_t enc_quality_scale(uint8_t q)
 {
   if (q < (uint8_t)k_ra_jpeg_quality_pivot) {
-    return (uint16_t)(5000U / q);
+    return (uint16_t)(k_jpeg_q_scale_low / q);
   }
-  return (uint16_t)(200U - 2U * (uint16_t)q);
+  return (uint16_t)(k_jpeg_q_scale_high - 2U * (uint16_t)q);
 }
 
 /* Scale a base quantization table by `scale_pct/100`, clamp 1 -- see surrounding code and HUM citations. */
 static void enc_scale_qtab(const uint8_t* base, uint8_t* dst, uint16_t scale)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_jpeg_block_size; i++) {
-    uint32_t t = ((uint32_t)base[i] * (uint32_t)scale + 50U) / 100U;
+    uint32_t t = ((uint32_t)base[i] * (uint32_t)scale + k_jpeg_q_round_bias) / k_jpeg_q_percent;
     if (t < 1U) {
       t = 1U;
     } else if (t > (uint32_t)k_ra_jpeg_pixel_max) {
@@ -1891,7 +1945,7 @@ static void enc_block(ra_jpeg_enc_ctx_t* e,
     }
     while (run >= 16U) {
       /* ZRL = 0xF0. */
-      enc_put_bits(e, (uint32_t)ac_codes[0xF0U], ac_sizes[0xF0U]);
+      enc_put_bits(e, (uint32_t)ac_codes[k_jpeg_zrl_symbol], ac_sizes[k_jpeg_zrl_symbol]);
       run = (uint8_t)(run - 16U);
     }
     uint8_t mb  = enc_bits_needed(z[k]);
@@ -2153,41 +2207,41 @@ static void enc_emit_headers(ra_jpeg_enc_ctx_t* e,
 
   /* SOF0: 8-bit, 3 components, 4:2:0. */
   enc_emit_u16(e, (uint16_t)k_ra_jpeg_marker_sof0);
-  enc_emit_u16(e, 17U);
+  enc_emit_u16(e, k_jpeg_sof_seg_len);
   enc_emit_u8(e, 8U);
   enc_emit_u16(e, h);
   enc_emit_u16(e, w);
   enc_emit_u8(e, 3U);
   /* Y: id 1, 2x2 sampling, qtab 0. */
   enc_emit_u8(e, 1U);
-  enc_emit_u8(e, 0x22U);
+  enc_emit_u8(e, k_jpeg_samp_2x2);
   enc_emit_u8(e, 0U);
   /* Cb: id 2, 1x1, qtab 1. */
   enc_emit_u8(e, 2U);
-  enc_emit_u8(e, 0x11U);
+  enc_emit_u8(e, k_jpeg_samp_1x1);
   enc_emit_u8(e, 1U);
   /* Cr: id 3, 1x1, qtab 1. */
   enc_emit_u8(e, 3U);
-  enc_emit_u8(e, 0x11U);
+  enc_emit_u8(e, k_jpeg_samp_1x1);
   enc_emit_u8(e, 1U);
 
   enc_emit_dht_one(e, 0x00U, s_hbits_dc_luma, s_hval_dc_luma, total_dc_l);
   enc_emit_dht_one(e, 0x10U, s_hbits_ac_luma, s_hval_ac_luma, total_ac_l);
   enc_emit_dht_one(e, 0x01U, s_hbits_dc_chroma, s_hval_dc_chroma, total_dc_c);
-  enc_emit_dht_one(e, 0x11U, s_hbits_ac_chroma, s_hval_ac_chroma, total_ac_c);
+  enc_emit_dht_one(e, k_jpeg_dht_ac_chroma, s_hbits_ac_chroma, s_hval_ac_chroma, total_ac_c);
 
   /* SOS. */
   enc_emit_u16(e, (uint16_t)k_ra_jpeg_marker_sos);
-  enc_emit_u16(e, 12U);
+  enc_emit_u16(e, k_jpeg_sos_seg_len);
   enc_emit_u8(e, 3U);
   enc_emit_u8(e, 1U);
   enc_emit_u8(e, 0x00U); /* Y: dc=0,ac=0. */
   enc_emit_u8(e, 2U);
-  enc_emit_u8(e, 0x11U); /* Cb. */
+  enc_emit_u8(e, k_jpeg_sos_sel_chroma); /* Cb. */
   enc_emit_u8(e, 3U);
-  enc_emit_u8(e, 0x11U); /* Cr. */
+  enc_emit_u8(e, k_jpeg_sos_sel_chroma); /* Cr. */
   enc_emit_u8(e, 0U);
-  enc_emit_u8(e, 63U);
+  enc_emit_u8(e, k_jpeg_spectral_end);
   enc_emit_u8(e, 0U);
 }
 
@@ -2331,8 +2385,8 @@ enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_
    * keep the host stack small while still respecting NASA Rule 3
    * (no heap). The encoder is single-threaded, so file-scope
    * sharing is safe. */
-  uint16_t pad_w = (uint16_t)((w + 15U) & ~15U);
-  uint16_t pad_h = (uint16_t)((h + 15U) & ~15U);
+  uint16_t pad_w = (uint16_t)((w + k_jpeg_mcu_align) & ~k_jpeg_mcu_align);
+  uint16_t pad_h = (uint16_t)((h + k_jpeg_mcu_align) & ~k_jpeg_mcu_align);
   if ((uint32_t)pad_w > (uint32_t)k_ra_jpeg_enc_max_w) {
     return k_ra_err_invalid_arg;
   }
@@ -2390,4 +2444,4 @@ ra_err_t ra_jpeg_sw_encode(const uint8_t* rgb_buf,
   return k_ra_ok;
 }
 
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)

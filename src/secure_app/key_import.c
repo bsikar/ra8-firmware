@@ -45,6 +45,11 @@ static const char* s_tag = "KEYIMP";
  *
  * @since 0.1.0
  */
+/** @brief 5-bit rotate-amount mask (mod 32). */
+typedef enum : uint8_t {
+  k_rotate_mask_5bit = 31U,
+} rotate_mask_t;
+
 typedef enum : uint8_t {
   k_handle_rotate_bits = 13U,
   k_handle_lo16_mask   = 16U,
@@ -118,7 +123,7 @@ static uint32_t s_salt = (uint32_t)k_initial_salt;
  */
 static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
 {
-  const uint8_t bits = (uint8_t)(amount & (uint8_t)31U);
+  const uint8_t bits = (uint8_t)(amount & (uint8_t)k_rotate_mask_5bit);
   if (bits == 0U) {
     return value;
   }

@@ -62,7 +62,10 @@ typedef enum : uint16_t {
 } lcd_panel_dim_t;
 
 typedef enum : uint32_t {
-  k_lcd_cycle_ms = 500U,
+  k_lcd_cycle_ms        = 500U, /**< Per-color dwell time in the cycle loop. */
+  k_lcd_powerup_ms      = 500U, /**< PLL / SDRAM / panel power-on settle. */
+  k_lcd_sdram_settle_ms = 100U, /**< Post-SDRAM-init settle. */
+  k_lcd_pin_settle_ms   = 200U, /**< Let pins settle in output mode. */
 } lcd_pace_t;
 
 /* BG_BGC format: bits[23:16]=R, [15:8]=G, [7:0]=B; bits[31:24] reserved. */
@@ -160,14 +163,14 @@ static void lcd_bringup_panel(void)
    * a few hundred ms after power-on to settle.  Without these, the
    * GLCDC sometimes starts before LCDCLK is stable and the panel
    * comes up in its no-signal "white" state on cold boot. */
-  ra_delay_ms(500U);
+  ra_delay_ms(k_lcd_powerup_ms);
 
   /* SDRAM is initialized so the framebuffer region at 0x68000000 is
    * accessible for follow-on apps; this demo doesn't use it. */
   if (ra_sdramc_init() != k_ra_ok) {
     lcd_panic_halt();
   }
-  ra_delay_ms(100U);
+  ra_delay_ms(k_lcd_sdram_settle_ms);
 
   if (ra_board_lcd_panel_power_on() != k_ra_ok) {
     lcd_panic_halt();
@@ -175,7 +178,7 @@ static void lcd_bringup_panel(void)
   if (ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888) != k_ra_ok) {
     lcd_panic_halt();
   }
-  ra_delay_ms(200U); /* let pins settle in output mode */
+  ra_delay_ms(k_lcd_pin_settle_ms); /* let pins settle in output mode */
 
   /* GLCDC: BG plane drives the panel on its own with both graphics
    * layers held invisible by the driver, so the framebuffer pointer
