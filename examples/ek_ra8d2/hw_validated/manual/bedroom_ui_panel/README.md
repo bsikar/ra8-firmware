@@ -3,11 +3,11 @@
 Bare-metal (no ThreadX) GUIX firmware that renders the shared `bedroom_ui`
 on the EK-RA8D2 7-inch 1024x600 parallel TFT via GLCDC.
 
-This completes "one codebase, two targets": the GUIX source drawn here is
-**the same** `examples/shared/bedroom_ui/bedroom_ui.c` the macOS host preview
-(`examples/host/guix_tabs`) renders. Only the backend (GLCDC vs the macOS
-window) and the RTOS bind (bare-metal generic vs the host's generic) differ;
-the widget tree, layout, colours, and tab-click handling are identical.
+The GUIX source drawn here is the shared
+`examples/shared/bedroom_ui/bedroom_ui.c` -- the same widget tree, layout,
+colours, and tab-click handling whether it runs on the real panel (GLCDC) or in
+the board emulator (`make sim-bedroom_ui_panel`). Only the display backend and
+RTOS bind are wired per target; the UI code is identical.
 
 ## What to expect
 
@@ -79,5 +79,5 @@ Success: the final PC is not in the panic-halt range and `/tmp/bedroom.ppm`
 shows the bedroom UI (varied pixels -- cards / text -- not blank or one solid
 colour).
 
-For a live window straight from the repo root: `make emulate-bedroom_ui_panel`
+For a live window straight from the repo root: `make sim-bedroom_ui_panel`
 (cross-builds the app, then boots its `.elf` in the emulator).

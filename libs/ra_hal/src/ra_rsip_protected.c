@@ -30,7 +30,7 @@
 #include "ra_rsip_key_injection.h"
 #include "ra_stack_budget.h"
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 
 /**
  * @var s_tag
@@ -52,6 +52,23 @@ static const char* s_tag = "RSIP_P";
  *
  * @since 0.1.0
  */
+/** @brief RSA modulus / ECC private-scalar byte counts. */
+typedef enum : uint16_t {
+  k_rsa_1024_mod_bytes       = 128U,
+  k_rsa_2048_mod_bytes       = 256U,
+  k_rsa_3072_mod_bytes       = 384U,
+  k_rsa_4096_mod_bytes       = 512U,
+  k_ecc_secp384r1_priv_bytes = 48U,
+  k_ecc_secp521r1_priv_bytes = 66U,
+} rsip_prot_size_t;
+
+/** @brief Measured worst-case stack frames (bytes), scrubbed on unwind. */
+typedef enum : uint16_t {
+  k_unwrap_key_stack_bytes   = 1128U,
+  k_rsa4096_priv_stack_bytes = 1720U,
+  k_ecc_priv_stack_bytes     = 1104U,
+} rsip_prot_stack_t;
+
 typedef enum : uint32_t {
   k_ra_rsip_p_off_payload = 20U, /**< Payload offset inside a wrapped blob. */
 } ra_rsip_p_layout_t;
@@ -188,7 +205,7 @@ ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
                                     const uint8_t*         iv)
 {
   /* cppcheck-suppress unknownMacro */
-  RA_STACK_BUDGET(1128); /* unwrapped-key scratch; scrubbed on unwind */
+  RA_STACK_BUDGET(k_unwrap_key_stack_bytes); /* unwrapped-key scratch; scrubbed on unwind */
   RA_CHECK_NULL_PTR(wrapped_key, s_tag, "p_aes_init: wrapped_key");
 
   ra_err_t rc = ra_rsip_key_validate(wrapped_key, k_ra_rsip_wrapped_type_aes);
@@ -298,16 +315,16 @@ static ra_err_t internal_rsa_mod_bytes(ra_rsip_rsa_size_t size, uint32_t* out_by
 {
   switch (size) {
     case k_ra_rsip_rsa_1024:
-      *out_bytes = 128U;
+      *out_bytes = k_rsa_1024_mod_bytes;
       return k_ra_ok;
     case k_ra_rsip_rsa_2048:
-      *out_bytes = 256U;
+      *out_bytes = k_rsa_2048_mod_bytes;
       return k_ra_ok;
     case k_ra_rsip_rsa_3072:
-      *out_bytes = 384U;
+      *out_bytes = k_rsa_3072_mod_bytes;
       return k_ra_ok;
     case k_ra_rsip_rsa_4096:
-      *out_bytes = 512U;
+      *out_bytes = k_rsa_4096_mod_bytes;
       return k_ra_ok;
     default:
       return k_ra_err_invalid_arg;
@@ -361,7 +378,7 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
                                        uint32_t           plaintext_cap)
 {
   /* cppcheck-suppress unknownMacro */
-  RA_STACK_BUDGET(1720); /* RSA-4096 modulus scratch; scrubbed on unwind */
+  RA_STACK_BUDGET(k_rsa4096_priv_stack_bytes); /* RSA-4096 modulus scratch; scrubbed on unwind */
   RA_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_rsa_decrypt: wrapped_priv");
   RA_CHECK_NULL_PTR(ciphertext, s_tag, "p_rsa_decrypt: ciphertext");
   RA_CHECK_NULL_PTR(plaintext_out, s_tag, "p_rsa_decrypt: plaintext_out");
@@ -421,7 +438,7 @@ ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
                                       uint8_t*        sig_out)
 {
   /* cppcheck-suppress unknownMacro */
-  RA_STACK_BUDGET(1104); /* ECC private scalar scratch; scrubbed on unwind */
+  RA_STACK_BUDGET(k_ecc_priv_stack_bytes); /* ECC private scalar scratch; scrubbed on unwind */
   RA_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_ecdsa_sign: wrapped_priv");
   RA_CHECK_NULL_PTR(hash, s_tag, "p_ecdsa_sign: hash");
   RA_CHECK_NULL_PTR(sig_out, s_tag, "p_ecdsa_sign: sig_out");
@@ -445,11 +462,11 @@ ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
       break;
     case k_ra_rsip_curve_secp384r1:
       handle.alg = (uint32_t)k_ra_rsip_oem_cmd_ecc_secp384r1_priv;
-      priv_bytes = 48U;
+      priv_bytes = k_ecc_secp384r1_priv_bytes;
       break;
     case k_ra_rsip_curve_secp521r1:
       handle.alg = (uint32_t)k_ra_rsip_oem_cmd_ecc_secp521r1_priv;
-      priv_bytes = 66U;
+      priv_bytes = k_ecc_secp521r1_priv_bytes;
       break;
     case k_ra_rsip_curve_secp256k1:
       handle.alg = (uint32_t)k_ra_rsip_oem_cmd_ecc_secp256k1_priv;
@@ -470,4 +487,4 @@ ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
   return rc;
 }
 
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

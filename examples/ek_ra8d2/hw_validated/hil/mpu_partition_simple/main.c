@@ -53,6 +53,15 @@
 #include "ra_time.h"
 
 /** @brief Region geometry. */
+/** @brief Thumb-2 first-halfword decode constants. */
+typedef enum : uint16_t {
+  k_thumb_hi5_shift     = 11U,   /**< Shift to the top 5 bits of the halfword. */
+  k_thumb_hi5_mask      = 0x1FU, /**< Mask for the top 5 bits. */
+  k_thumb2_prefix_11101 = 0x1DU, /**< 32-bit Thumb-2 first-halfword prefix 0b11101. */
+  k_thumb2_prefix_11110 = 0x1EU, /**< 32-bit Thumb-2 first-halfword prefix 0b11110. */
+  k_thumb2_prefix_11111 = 0x1FU, /**< 32-bit Thumb-2 first-halfword prefix 0b11111. */
+} thumb_decode_t;
+
 typedef enum : uint32_t {
   k_mpu_simple_region_size = 32U,         /**< Smallest legal Armv8-M MPU region. */
   k_mpu_simple_mair0_word  = 0x000000FFU, /**< Slot 0 = Normal WB RW-allocate.   */
@@ -288,10 +297,11 @@ __attribute__((used)) void mpu_simple_fault_recover(uint32_t* frame)
    * landed on: low 5 bits 0b11101/0b11110/0b11111 mark a 32-bit
    * encoding (Armv8-M ARM A6.3.1 "Thumb instruction set encoding"),
    * everything else is 16-bit. */
-  const uint16_t* insn          = (const uint16_t*)frame[k_mpu_simple_frame_pc_idx];
-  const uint16_t  first_halfwd  = *insn;
-  const uint16_t  hi5           = (uint16_t)((first_halfwd >> 11U) & 0x1FU);
-  const bool      is_thumb2_32b = (hi5 == 0x1DU) || (hi5 == 0x1EU) || (hi5 == 0x1FU);
+  const uint16_t* insn         = (const uint16_t*)frame[k_mpu_simple_frame_pc_idx];
+  const uint16_t  first_halfwd = *insn;
+  const uint16_t  hi5          = (uint16_t)((first_halfwd >> k_thumb_hi5_shift) & k_thumb_hi5_mask);
+  const bool is_thumb2_32b     = (hi5 == k_thumb2_prefix_11101) || (hi5 == k_thumb2_prefix_11110) ||
+                                 (hi5 == k_thumb2_prefix_11111);
   frame[k_mpu_simple_frame_pc_idx] += (is_thumb2_32b ? 4U : 2U);
 
   /* NOTE: we deliberately do NOT clear the MemManage half-word of

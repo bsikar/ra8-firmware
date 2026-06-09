@@ -61,6 +61,12 @@ static const char* s_tag = "RMAC";
  * @enum ra_rmac_internal_t
  * @brief Driver-private constants (poll budgets, sentinel values).
  */
+/** @brief RMAC field constants. */
+typedef enum : uint32_t {
+  k_rmac_pipp_pos   = 9U,    /**< PIPP (in-pause) bit position. */
+  k_rmac_pfrlv_mask = 0x1FU, /**< 5-bit pause-frame retry level. */
+} rmac_field_t;
+
 typedef enum : uint32_t {
   k_ra_rmac_mdio_poll_budget        = 100000UL, /**< Bounded MDIO poll loop.   */
   k_ra_rmac_phy_reset_iter_cap      = 4096UL,   /**< BMCR.RESET self-clear cap.*/
@@ -275,7 +281,7 @@ static inline uint32_t internal_make_mpic(ra_rmac_pis_t    iface,
                                << (uint32_t)k_ra_rmac_shift_mpic_pis;
   const uint32_t lsc         = ((uint32_t)speed & k_ra_rmac_mask_mpic_lsc)
                                << (uint32_t)k_ra_rmac_shift_mpic_lsc;
-  const uint32_t pipp        = (duplex == k_ra_rmac_duplex_full) ? (1UL << 9U) : 0UL;
+  const uint32_t pipp        = (duplex == k_ra_rmac_duplex_full) ? (1UL << k_rmac_pipp_pos) : 0UL;
   const uint32_t psmcs_field = (psmcs & k_ra_rmac_mask_mpic_psmcs)
                                << (uint32_t)k_ra_rmac_shift_mpic_psmcs;
   return pis | lsc | pipp | psmcs_field;
@@ -749,7 +755,8 @@ ra_err_t ra_rmac_set_pause_frame(ra_rmac_port_t       port,
                          << (uint32_t)k_ra_rmac_shift_mtpfc_pt;
   const uint32_t pfrt  = ((uint32_t)retry_time & k_ra_rmac_mask_mtpfc_pfrt)
                          << (uint32_t)k_ra_rmac_shift_mtpfc_pfrt;
-  const uint32_t pfrlv = ((uint32_t)retry_level & 0x1FU) << (uint32_t)k_ra_rmac_shift_mtpfc_pfrlv;
+  const uint32_t pfrlv = ((uint32_t)retry_level & k_rmac_pfrlv_mask)
+                         << (uint32_t)k_ra_rmac_shift_mtpfc_pfrlv;
   /* HUM Ch 33.4 "MTPFC2 : MAC Transmission Pause or PFC Frame Cfg 2" p 1707 */
   uint32_t pfm = 0UL;
   if (mode == k_ra_rmac_pause_mode_pfc) {

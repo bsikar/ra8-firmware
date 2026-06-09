@@ -71,6 +71,10 @@
  * @brief Compile-time settings for the SD round-trip demo.
  */
 typedef enum : uint32_t {
+  k_sd_decimal_base       = 10U,   /**< Radix for integer-to-ASCII. */
+  k_sd_spi_idle_byte      = 0xFFU, /**< Byte clocked out on read-only SPI xfers. */
+  k_sd_prng_byte_shift    = 16U,   /**< Bit shift selecting the PRNG output byte. */
+  k_sd_byte_mask          = 0xFFU, /**< Low-byte mask. */
   k_sd_demo_uart_baud     = 115200U,
   k_sd_demo_uart_channel  = 8U,
   k_sd_demo_spi_channel   = 1U, /**< Pmod2 / J25 is wired to RSPI bus B = SPI ch 1. */
@@ -153,8 +157,8 @@ static void sd_demo_print_u32(uint32_t value)
     buf[--pos] = (uint8_t)'0';
   } else {
     while ((value > 0U) && (pos > 0U)) {
-      buf[--pos] = (uint8_t)('0' + (uint8_t)(value % 10U));
-      value      = value / 10U;
+      buf[--pos] = (uint8_t)('0' + (uint8_t)(value % k_sd_decimal_base));
+      value      = value / k_sd_decimal_base;
     }
   }
   sd_demo_print(&buf[pos], (uint32_t)sizeof(buf) - pos);
@@ -225,7 +229,7 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
   /* Per-byte fallback so callers can shift out idle 0xFF without
    * allocating an rx buffer they don't need. */
   for (uint32_t i = 0U; i < len; i++) {
-    const uint8_t tx_byte = (tx != nullptr) ? tx[i] : 0xFFU;
+    const uint8_t tx_byte = (tx != nullptr) ? tx[i] : k_sd_spi_idle_byte;
     uint8_t       rx_byte = 0U;
     ra_err_t      err     = ra_spi_xfer8((uint8_t)k_sd_demo_spi_channel, tx_byte, &rx_byte);
     if (err != k_ra_ok) {
@@ -349,7 +353,7 @@ static void sd_demo_fill_payload(uint8_t* buf, uint32_t len)
   uint32_t state = (uint32_t)k_sd_demo_prng_seed;
   for (uint32_t i = 0U; i < len; i++) {
     state  = state * (uint32_t)k_sd_demo_prng_mul + (uint32_t)k_sd_demo_prng_add;
-    buf[i] = (uint8_t)((state >> 16U) & 0xFFU);
+    buf[i] = (uint8_t)((state >> k_sd_prng_byte_shift) & k_sd_byte_mask);
   }
 }
 

@@ -63,6 +63,14 @@ static const char* s_tag = "MIPI_PHY";
  * (125 MHz). HUM Ch 64.2.4 p 3825: ESCDIV[4:0] is a 5-bit field.
  * HUM Ch 64.2.2 p 3823: NMUL[8:0] valid range is 40 .. 375.
  */
+/** @brief PLL fixed-point (hundredths) scale and NF fractional table. */
+typedef enum : uint16_t {
+  k_mipi_pll_percent_scale = 100U, /**< Hundredths fixed-point scale. */
+  k_mipi_nf_x100_33        = 33U,  /**< NF = 0.33 (x100). */
+  k_mipi_nf_x100_66        = 66U,  /**< NF = 0.66 (x100). */
+  k_mipi_nf_x100_50        = 50U,  /**< NF = 0.50 (x100). */
+} mipi_pll_frac_t;
+
 typedef enum : uint16_t {
   k_ra_mipi_phy_pclka_min_mhz = 40U,   /**< Lower bound on RFREQ value. */
   k_ra_mipi_phy_pclka_max_mhz = 125U,  /**< Upper bound on RFREQ value. */
@@ -1113,15 +1121,18 @@ static uint32_t internal_mipi_phy_compute_freq(const ra_mipi_phy_pll_t* pll, uin
   /* HUM Ch 64.2.2 p 3823 -- f = fMAIN * I * (NF + N) * P. */
   static const uint8_t  s_idiv_div[]   = {1U, 2U, 3U, 4U};
   static const uint8_t  s_pmul_div[]   = {1U, 2U, 4U, 8U};
-  static const uint16_t s_nfmul_x100[] = {0U, 33U, 66U, 50U}; /* hundredths */
+  static const uint16_t s_nfmul_x100[] = {0U,
+                                          k_mipi_nf_x100_33,
+                                          k_mipi_nf_x100_66,
+                                          k_mipi_nf_x100_50}; /* hundredths */
 
   const uint32_t idiv    = (uint32_t)s_idiv_div[(uint8_t)pll->idiv & 0x3U];
   const uint32_t pmul    = (uint32_t)s_pmul_div[(uint8_t)pll->pmul & 0x3U];
   const uint32_t nf_x100 = (uint32_t)s_nfmul_x100[(uint8_t)pll->nfmul & 0x3U];
-  const uint32_t n_x100  = ((uint32_t)pll->nmul_int * 100U) + nf_x100;
+  const uint32_t n_x100  = ((uint32_t)pll->nmul_int * k_mipi_pll_percent_scale) + nf_x100;
   /* f_mhz = mosc_mhz * (n_x100/100) / idiv / pmul */
   const uint32_t numerator = (uint32_t)mosc_mhz * n_x100;
-  const uint32_t denom     = idiv * pmul * 100U;
+  const uint32_t denom     = idiv * pmul * k_mipi_pll_percent_scale;
   return (denom == 0U) ? 0U : (numerator / denom);
 }
 

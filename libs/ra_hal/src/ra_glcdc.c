@@ -56,6 +56,11 @@ static const char* s_tag = "GLCDC";
  * =============================================================================
  */
 
+/** @brief CLUT entry count (16-bit address space). */
+typedef enum : uint32_t {
+  k_glcdc_clut_size = 0x10000UL,
+} glcdc_clut_t;
+
 typedef enum : uint8_t {
   k_ra_glcdc_layer_count   = 2U,  /**< Number of graphics layers.  */
   k_ra_glcdc_layer1        = 0U,  /**< Layer index for GR[0].      */
@@ -194,14 +199,14 @@ static void internal_graphics_domain_power_on(void)
   *prcr                            = (uint16_t)k_prcr_unlock_lpm;
 
   /* Wait for "fully gated" state before issuing the power-on request. */
-  for (uint32_t i = 0U; i < 0x10000UL; i++) {
+  for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
     if ((*pdctrgd & (uint8_t)k_pdctrgd_status) == (uint8_t)k_pdctrgd_pdpgsf) {
       break;
     }
   }
   *pdctrgd = (uint8_t)k_pdctrgd_on;
   /* Wait for "fully on" state -- both PDCSF and PDPGSF must clear. */
-  for (uint32_t i = 0U; i < 0x10000UL; i++) {
+  for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
     if ((*pdctrgd & (uint8_t)k_pdctrgd_status) == 0U) {
       break;
     }
@@ -233,7 +238,7 @@ static void internal_lcdclk_switch_pll1r(void)
 
   *prcr    = (uint16_t)k_prcr_unlock_cgc;
   *lcdckcr = (uint8_t)k_lcdck_sreq;
-  for (uint32_t i = 0U; i < 0x10000UL; i++) {
+  for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
     if ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) != 0U) {
       break;
     }
@@ -241,7 +246,7 @@ static void internal_lcdclk_switch_pll1r(void)
   *lcdckdivcr = (uint8_t)k_lcdckdivcr_div4;
   *lcdckcr    = (uint8_t)(k_lcdck_sreq | k_lcdck_sel_pll1r);
   *lcdckcr    = (uint8_t)k_lcdck_sel_pll1r;
-  for (uint32_t i = 0U; i < 0x10000UL; i++) {
+  for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
     if ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) == 0U) {
       break;
     }

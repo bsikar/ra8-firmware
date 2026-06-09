@@ -17,7 +17,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size)
+// NOLINTBEGIN(readability-function-size)
 #include "ra_ble_mesh.h"
 
 #include <stddef.h>
@@ -371,4 +371,4 @@ uint8_t ra_ble_mesh_test_prov_active(void)
 }
 #endif
 
-// NOLINTEND(readability-magic-numbers,readability-function-size)
+// NOLINTEND(readability-function-size)

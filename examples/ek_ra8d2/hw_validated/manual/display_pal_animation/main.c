@@ -94,7 +94,12 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   k_app_frame_period_ms = 60U,
+  k_app_powerup_ms      = 500U, /**< PLL / panel power-on settle. */
 } app_pace_t;
+
+typedef enum : uint16_t {
+  k_app_fb_align_bytes = 64U, /**< AXI-burst alignment for clean GLCDC fetches. */
+} app_fb_align_t;
 
 /* ===========================================================================
  * Static storage
@@ -110,7 +115,7 @@ typedef enum : uint16_t {
  *          on flush.
  */
 static uint16_t s_framebuffer[(uint32_t)k_app_fb_w * (uint32_t)k_app_fb_h]
-  __attribute__((aligned(64)));
+  __attribute__((aligned(k_app_fb_align_bytes)));
 
 /**
  * @var k_app_display_cfg
@@ -284,7 +289,7 @@ static void app_paint_bars(uint32_t scroll_offset)
 int32_t main(void)
 {
   app_bringup_clocks();
-  ra_delay_ms(500U);
+  ra_delay_ms(k_app_powerup_ms);
   app_bringup_display();
 
   /* Pick the refresh hint that matches the bound backend.  Continuous-

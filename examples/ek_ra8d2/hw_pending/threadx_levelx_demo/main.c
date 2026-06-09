@@ -70,6 +70,11 @@
 /**
  * @brief Compile-time settings for the LevelX wear-levelling demo.
  */
+/** @brief Heartbeat log cadence. */
+typedef enum : uint32_t {
+  k_lx_log_every_n = 100U, /**< Log once every N loop iterations. */
+} lx_log_pace_t;
+
 typedef enum : uint32_t {
   /** @brief Console baud (matches uart_hello / threadx_filex_demo). */
   k_demo_baud = 115200U,
@@ -354,7 +359,7 @@ static void demo_thread_entry(ULONG thread_input)
       break;
     }
     /* Print every 100 cycles so the SCI8 stream stays readable. */
-    if ((counter % 100U) == 0U) {
+    if ((counter % k_lx_log_every_n) == 0U) {
       demo_print("[lx] cycle #");
       demo_print_u32(counter);
       demo_print(" readback=");

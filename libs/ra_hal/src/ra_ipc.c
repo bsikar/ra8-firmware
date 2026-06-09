@@ -42,6 +42,11 @@ static const char* s_tag = "IPC";
  * @enum ra_ipc_internal_const_t
  * @brief Magic constants used inside the driver only.
  */
+/** @brief Secure->Non-secure address alias offset. */
+typedef enum : uintptr_t {
+  k_ipc_ns_alias_offset = 0x10000000UL,
+} ipc_alias_t;
+
 typedef enum : uint32_t {
   k_ra_ipc_internal_event_full_mask =
     k_ra_ipc_event_irq0 | k_ra_ipc_event_irq1 | k_ra_ipc_event_irq2 | k_ra_ipc_event_irq3 |
@@ -149,7 +154,7 @@ static volatile r_ipc_channel_regs_t* internal_ra_ipc_get_regs(uint8_t channel)
    * Without this offset the first ``reg->CLR`` write inside
    * ra_ipc_init BusFaults and CPU1 wedges in cpu1_fault_handler
    * (HUM Ch 3.2 p 205 + bench probe pinning PC at 0x020C0020). */
-  const uintptr_t ns_offset = 0x10000000UL;
+  const uintptr_t ns_offset = k_ipc_ns_alias_offset;
   return (volatile r_ipc_channel_regs_t*)((uintptr_t)ra_ipc_channel(channel) + ns_offset);
 #else
   return ra_ipc_channel(channel);

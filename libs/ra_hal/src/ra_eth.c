@@ -69,6 +69,11 @@ static void* s_eth_ctx;
  * @enum ra_eth_phy_t
  * @brief PHY-side MIIM constants used by ::ra_eth_link_status.
  */
+/** @brief Per-port FWPBFC filter mask (7-bit). */
+typedef enum : uint8_t {
+  k_eth_fwpbfc_mask = 0x7FU,
+} eth_fwpbfc_t;
+
 typedef enum : uint16_t {
   k_ra_eth_phy_addr_default   = 0U,      /**< EK-RA8D2 PHY MDC address.    */
   k_ra_eth_phy_reg_bmcr       = 0U,      /**< BMCR (basic mode control).   */
@@ -803,7 +808,9 @@ static ra_err_t internal_open_gwca_path(void)
    * destination masks BEFORE bringing the GWCA up. 0x7F = allow all
    * destinations (permissive baseline; tightens once L3 filtering
    * lands). */
-  static const uint8_t s_fwpbfc_masks[3] = {0x7FU, 0x7FU, 0x7FU};
+  static const uint8_t s_fwpbfc_masks[3] = {k_eth_fwpbfc_mask,
+                                            k_eth_fwpbfc_mask,
+                                            k_eth_fwpbfc_mask};
   (void)ra_eth_mfwd_set_forwarding_masks(s_fwpbfc_masks);
 
   const ra_err_t err = ra_eth_gwca_default_open(&s_gwca_state);

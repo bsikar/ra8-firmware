@@ -42,6 +42,11 @@
 #include "ra_wdt.h"
 
 /** @brief Demo tunables. */
+/** @brief Reset-cause flag mask. */
+typedef enum : uint32_t {
+  k_reset_cause_all_mask = 0x7FFFFFFFU, /**< Clear every documented reset-cause flag. */
+} wdt_rr_mask_t;
+
 typedef enum : uint32_t {
   k_wdt_rr_baud        = 115200U,
   k_wdt_rr_sci_channel = 8U,
@@ -192,7 +197,7 @@ int32_t main(void)
    * IWDTRF + WDTRF + SWRF all latched from prior bench cycles the
    * decoder's IWDTRF-first priority order would mask out the real
    * cause. Clear every flag so the next reset surfaces cleanly. */
-  (void)ra_reset_clear_cause(0x7FFFFFFFU);
+  (void)ra_reset_clear_cause(k_reset_cause_all_mask);
   uint32_t       msg_len = 0U;
   const uint8_t* msg     = wdt_rr_banner_for(cause, &msg_len);
   (void)ra_sci_write_polling((uint8_t)k_wdt_rr_sci_channel, msg, msg_len);

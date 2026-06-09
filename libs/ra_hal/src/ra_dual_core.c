@@ -34,6 +34,11 @@
 static const char* const s_tag = "ra_dual_core";
 
 /** @brief Per-module enums replacing magic numbers. */
+/** @brief Low-byte mask for ACTCSR field extraction. */
+typedef enum : uint16_t {
+  k_dc_byte_mask = 0xFFU,
+} dc_mask_t;
+
 typedef enum : uint32_t {
   k_ra_dual_core_align_vtor = 128U, /**< Armv8-M VTOR alignment requirement. */
   k_ra_dual_core_align_sp   = 8U,   /**< AAPCS main-stack alignment.         */
@@ -110,7 +115,8 @@ static inline uint16_t internal_actcsr_read(void)
  */
 static inline void internal_actcsr_write(uint16_t value)
 {
-  const uint16_t key = (uint16_t)((value >> (uint16_t)k_ra_dual_core_actcsr_key_shift) & 0xFFU);
+  const uint16_t key =
+    (uint16_t)((value >> (uint16_t)k_ra_dual_core_actcsr_key_shift) & k_dc_byte_mask);
   if (key != (uint16_t)k_ra_dual_core_actcsr_key_value) {
     return; /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */
   }

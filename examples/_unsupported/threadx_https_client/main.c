@@ -148,16 +148,48 @@ typedef enum : uint8_t {
 } demo_mac_word_shift_t;
 
 /** @brief Locally-administered unicast MAC for this board. */
+/** @brief Demo IPv4 addresses (board, gateway, host) as octet enums. */
+typedef enum : uint16_t {
+  k_demo_ipaddr_0  = 192U, /**< 192.168.1.42 board. */
+  k_demo_ipaddr_1  = 168U,
+  k_demo_ipaddr_2  = 1U,
+  k_demo_ipaddr_3  = 42U,
+  k_demo_netmask_b = 255U, /**< 255.255.255.0 (first three octets). */
+  k_demo_hostip_0  = 93U,  /**< 93.184.216.34 (www.example.com). */
+  k_demo_hostip_1  = 184U,
+  k_demo_hostip_2  = 216U,
+  k_demo_hostip_3  = 34U,
+} demo_ipv4_t;
+
+/** @brief ASCII control bytes used by the HTTP line scanner. */
+typedef enum : uint8_t {
+  k_ascii_cr = 0x0DU, /**< Carriage return. */
+  k_ascii_lf = 0x0AU, /**< Line feed. */
+} http_ascii_t;
+
+/** @brief MAC-address byte indices. */
+typedef enum : uint8_t {
+  k_demo_mac_idx_0 = 0U,
+  k_demo_mac_idx_1 = 1U,
+  k_demo_mac_idx_2 = 2U,
+  k_demo_mac_idx_3 = 3U,
+  k_demo_mac_idx_4 = 4U,
+  k_demo_mac_idx_5 = 5U,
+} demo_mac_idx_t;
+
 static const uint8_t k_demo_mac[6] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x02U};
 
 /** @brief IPv4 address: 192.168.1.42 / 255.255.255.0. */
-static const uint8_t k_demo_ip[4] = {192U, 168U, 1U, 42U};
+static const uint8_t k_demo_ip[4] = {k_demo_ipaddr_0,
+                                     k_demo_ipaddr_1,
+                                     k_demo_ipaddr_2,
+                                     k_demo_ipaddr_3};
 
 /** @brief Subnet mask: 255.255.255.0. */
-static const uint8_t k_demo_mask[4] = {255U, 255U, 255U, 0U};
+static const uint8_t k_demo_mask[4] = {k_demo_netmask_b, k_demo_netmask_b, k_demo_netmask_b, 0U};
 
 /** @brief Default gateway: 192.168.1.1. */
-static const uint8_t k_demo_gw[4] = {192U, 168U, 1U, 1U};
+static const uint8_t k_demo_gw[4] = {k_demo_ipaddr_0, k_demo_ipaddr_1, k_demo_ipaddr_2, 1U};
 
 /**
  * @brief Static IPv4 for ``www.example.com`` (legacy edge-of-net IP).
@@ -168,7 +200,10 @@ static const uint8_t k_demo_gw[4] = {192U, 168U, 1U, 1U};
  * ``-DDEMO_HOST_IPV4_OVERRIDE=0x5DB8D822UL`` etc., or replace this
  * static lookup with a NetX DNS resolver in a future sweep.
  */
-static const uint8_t k_demo_host_ip[4] = {93U, 184U, 216U, 34U};
+static const uint8_t k_demo_host_ip[4] = {k_demo_hostip_0,
+                                          k_demo_hostip_1,
+                                          k_demo_hostip_2,
+                                          k_demo_hostip_3};
 
 /** @brief HTTP/1.1 ``Host`` header literal -- matches the IP pin above. */
 static const char k_demo_host_name[] = "www.example.com";
@@ -342,12 +377,12 @@ static ULONG demo_pack_ip(const uint8_t* octets)
  */
 static void demo_pack_mac(ULONG* msw, ULONG* lsw)
 {
-  *msw = (((ULONG)k_demo_mac[0]) << (ULONG)k_demo_mac_msw_shift_b0) |
-         (((ULONG)k_demo_mac[1]) << (ULONG)k_demo_mac_msw_shift_b1);
-  *lsw = (((ULONG)k_demo_mac[2]) << (ULONG)k_demo_mac_lsw_shift_b2) |
-         (((ULONG)k_demo_mac[3]) << (ULONG)k_demo_mac_lsw_shift_b3) |
-         (((ULONG)k_demo_mac[4]) << (ULONG)k_demo_mac_lsw_shift_b4) |
-         (((ULONG)k_demo_mac[5]) << (ULONG)k_demo_mac_lsw_shift_b5);
+  *msw = (((ULONG)k_demo_mac[k_demo_mac_idx_0]) << (ULONG)k_demo_mac_msw_shift_b0) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_1]) << (ULONG)k_demo_mac_msw_shift_b1);
+  *lsw = (((ULONG)k_demo_mac[k_demo_mac_idx_2]) << (ULONG)k_demo_mac_lsw_shift_b2) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_3]) << (ULONG)k_demo_mac_lsw_shift_b3) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_4]) << (ULONG)k_demo_mac_lsw_shift_b4) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_5]) << (ULONG)k_demo_mac_lsw_shift_b5);
 }
 
 /**
@@ -688,9 +723,9 @@ static int demo_http_get(void)
       /* Walk byte-by-byte looking for CRLFCRLF. */
       for (int i = 0; i < rc; i++) {
         uint8_t c = s_response_buf[i];
-        if ((match == 0U && c == 0x0DU) || (match == 2U && c == 0x0DU)) {
+        if ((match == 0U && c == k_ascii_cr) || (match == 2U && c == k_ascii_cr)) {
           match++;
-        } else if ((match == 1U && c == 0x0AU) || (match == 3U && c == 0x0AU)) {
+        } else if ((match == 1U && c == k_ascii_lf) || (match == 3U && c == k_ascii_lf)) {
           match++;
         } else {
           match = 0U;

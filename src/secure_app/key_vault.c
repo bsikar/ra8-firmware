@@ -32,6 +32,60 @@
 #include "ra_check.h"
 #include "ra_err.h"
 
+/** @brief SHA-256 dimensions (FIPS 180-4). */
+typedef enum : uint16_t {
+  k_sha256_msg_bytes   = 32U, /**< Fixed 32-byte (256-bit) vault input. */
+  k_sha256_words       = 64U, /**< Schedule words / compression rounds. */
+  k_sha256_block_bytes = 64U, /**< One SHA-256 message block in bytes.  */
+} sha256_dim_t;
+
+/** @brief SHA-256 padding layout and big-endian packing. */
+typedef enum : uint8_t {
+  k_sha256_pad_pos        = 32U,   /**< First padding byte (== message length). */
+  k_sha256_pad_marker     = 0x80U, /**< Padding marker 0b1000_0000. */
+  k_sha256_pad_zero_start = 33U,   /**< First zero-fill byte after the marker. */
+  k_sha256_len_b0         = 56U,
+  k_sha256_len_b1         = 57U,
+  k_sha256_len_b2         = 58U,
+  k_sha256_len_b3         = 59U,
+  k_sha256_len_b4         = 60U,
+  k_sha256_len_b5         = 61U,
+  k_sha256_len_b6         = 62U,
+  k_sha256_len_b7         = 63U,   /**< 64-bit big-endian length. */
+  k_sha256_len_hi         = 0x01U, /**< 256-bit length high byte (0x0100). */
+  k_sha256_byte_shift     = 24U,   /**< Byte-3 shift for BE word pack (8/16 ignored). */
+} sha256_pad_t;
+
+/** @brief FIPS 180-4 4.1.2 sigma rotation/shift amounts and back-refs. */
+typedef enum : uint8_t {
+  k_sha256_ssig0_r0 = 7U,
+  k_sha256_ssig0_r1 = 18U,
+  k_sha256_ssig0_sh = 3U,
+  k_sha256_ssig1_r0 = 17U,
+  k_sha256_ssig1_r1 = 19U,
+  k_sha256_ssig1_sh = 10U,
+  k_sha256_bsig1_r0 = 6U,
+  k_sha256_bsig1_r1 = 11U,
+  k_sha256_bsig1_r2 = 25U,
+  k_sha256_bsig0_r0 = 2U,
+  k_sha256_bsig0_r1 = 13U,
+  k_sha256_bsig0_r2 = 22U,
+  k_sha256_back15   = 15U,
+  k_sha256_back7    = 7U,
+} sha256_rot_t;
+
+/** @brief SHA-256 hash-state word indices (a..h). */
+typedef enum : uint8_t {
+  k_sha256_st_a = 0U,
+  k_sha256_st_b = 1U,
+  k_sha256_st_c = 2U,
+  k_sha256_st_d = 3U,
+  k_sha256_st_e = 4U,
+  k_sha256_st_f = 5U,
+  k_sha256_st_g = 6U,
+  k_sha256_st_h = 7U,
+} sha256_state_idx_t;
+
 /**
  * @struct ra_key_vault_slot_t
  * @brief A single symmetric-key slot.
@@ -58,7 +112,7 @@ static const char*         s_tag = "KEYV";
  * routinely written as a single function.
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 
 static const uint32_t k_sha256_k[64] = {
   0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU, 0x59f111f1U, 0x923f82a4U,
@@ -142,22 +196,22 @@ static void internal_sha256_build_block(const uint8_t* in32, uint8_t* block)
   /* Build the 64-byte block: 32 input bytes, 0x80, zeros, then
    * the 64-bit length in bits at the end (SHA-256 uses BIG-endian
    * length). */
-  for (uint32_t i = 0U; i < 32U; ++i) {
+  for (uint32_t i = 0U; i < k_sha256_msg_bytes; ++i) {
     block[i] = in32[i];
   }
-  block[32] = 0x80U;
-  for (uint32_t i = 33U; i < 56U; ++i) {
+  block[k_sha256_pad_pos] = k_sha256_pad_marker;
+  for (uint32_t i = k_sha256_pad_zero_start; i < k_sha256_len_b0; ++i) {
     block[i] = 0U;
   }
   /* Length = 32 bytes = 256 bits = 0x0100 big-endian. */
-  block[56] = 0U;
-  block[57] = 0U;
-  block[58] = 0U;
-  block[59] = 0U;
-  block[60] = 0U;
-  block[61] = 0U;
-  block[62] = 0x01U;
-  block[63] = 0x00U;
+  block[k_sha256_len_b0] = 0U;
+  block[k_sha256_len_b1] = 0U;
+  block[k_sha256_len_b2] = 0U;
+  block[k_sha256_len_b3] = 0U;
+  block[k_sha256_len_b4] = 0U;
+  block[k_sha256_len_b5] = 0U;
+  block[k_sha256_len_b6] = k_sha256_len_hi;
+  block[k_sha256_len_b7] = 0x00U;
 }
 
 /**
@@ -183,15 +237,18 @@ static void internal_sha256_build_block(const uint8_t* in32, uint8_t* block)
 static void internal_sha256_schedule(const uint8_t* block, uint32_t* w)
 {
   for (uint32_t i = 0U; i < 16U; ++i) {
-    w[i] = ((uint32_t)block[(i * 4U) + 0U] << 24U) | ((uint32_t)block[(i * 4U) + 1U] << 16U) |
-           ((uint32_t)block[(i * 4U) + 2U] << 8U) | ((uint32_t)block[(i * 4U) + 3U]);
+    w[i] = ((uint32_t)block[(i * 4U) + 0U] << k_sha256_byte_shift) |
+           ((uint32_t)block[(i * 4U) + 1U] << 16U) | ((uint32_t)block[(i * 4U) + 2U] << 8U) |
+           ((uint32_t)block[(i * 4U) + 3U]);
   }
-  for (uint32_t i = 16U; i < 64U; ++i) {
-    const uint32_t s0 =
-      internal_rotr(w[i - 15U], 7U) ^ internal_rotr(w[i - 15U], 18U) ^ (w[i - 15U] >> 3U);
-    const uint32_t s1 =
-      internal_rotr(w[i - 2U], 17U) ^ internal_rotr(w[i - 2U], 19U) ^ (w[i - 2U] >> 10U);
-    w[i] = w[i - 16U] + s0 + w[i - 7U] + s1;
+  for (uint32_t i = 16U; i < k_sha256_words; ++i) {
+    const uint32_t s0 = internal_rotr(w[i - k_sha256_back15], k_sha256_ssig0_r0) ^
+                        internal_rotr(w[i - k_sha256_back15], k_sha256_ssig0_r1) ^
+                        (w[i - k_sha256_back15] >> k_sha256_ssig0_sh);
+    const uint32_t s1 = internal_rotr(w[i - 2U], k_sha256_ssig1_r0) ^
+                        internal_rotr(w[i - 2U], k_sha256_ssig1_r1) ^
+                        (w[i - 2U] >> k_sha256_ssig1_sh);
+    w[i]              = w[i - 16U] + s0 + w[i - k_sha256_back7] + s1;
   }
 }
 
@@ -219,21 +276,23 @@ static void internal_sha256_schedule(const uint8_t* block, uint32_t* w)
  */
 static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
 {
-  uint32_t a = k_sha256_h0[0];
-  uint32_t b = k_sha256_h0[1];
-  uint32_t c = k_sha256_h0[2];
-  uint32_t d = k_sha256_h0[3];
-  uint32_t e = k_sha256_h0[4];
-  uint32_t f = k_sha256_h0[5];
-  uint32_t g = k_sha256_h0[6];
-  uint32_t h = k_sha256_h0[7];
+  uint32_t a = k_sha256_h0[k_sha256_st_a];
+  uint32_t b = k_sha256_h0[k_sha256_st_b];
+  uint32_t c = k_sha256_h0[k_sha256_st_c];
+  uint32_t d = k_sha256_h0[k_sha256_st_d];
+  uint32_t e = k_sha256_h0[k_sha256_st_e];
+  uint32_t f = k_sha256_h0[k_sha256_st_f];
+  uint32_t g = k_sha256_h0[k_sha256_st_g];
+  uint32_t h = k_sha256_h0[k_sha256_st_h];
 
-  for (uint32_t i = 0U; i < 64U; ++i) {
-    const uint32_t s1    = internal_rotr(e, 6U) ^ internal_rotr(e, 11U) ^ internal_rotr(e, 25U);
-    const uint32_t ch    = (e & f) ^ (~e & g);
+  for (uint32_t i = 0U; i < k_sha256_words; ++i) {
+    const uint32_t s1 = internal_rotr(e, k_sha256_bsig1_r0) ^ internal_rotr(e, k_sha256_bsig1_r1) ^
+                        internal_rotr(e, k_sha256_bsig1_r2);
+    const uint32_t ch = (e & f) ^ (~e & g);
     const uint32_t temp1 = h + s1 + ch + k_sha256_k[i] + w[i];
-    const uint32_t s0    = internal_rotr(a, 2U) ^ internal_rotr(a, 13U) ^ internal_rotr(a, 22U);
-    const uint32_t maj   = (a & b) ^ (a & c) ^ (b & c);
+    const uint32_t s0  = internal_rotr(a, k_sha256_bsig0_r0) ^ internal_rotr(a, k_sha256_bsig0_r1) ^
+                         internal_rotr(a, k_sha256_bsig0_r2);
+    const uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
     const uint32_t temp2 = s0 + maj;
     h                    = g;
     g                    = f;
@@ -246,17 +305,17 @@ static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
   }
 
   const uint32_t hh[8] = {
-    a + k_sha256_h0[0],
-    b + k_sha256_h0[1],
-    c + k_sha256_h0[2],
-    d + k_sha256_h0[3],
-    e + k_sha256_h0[4],
-    f + k_sha256_h0[5],
-    g + k_sha256_h0[6],
-    h + k_sha256_h0[7],
+    a + k_sha256_h0[k_sha256_st_a],
+    b + k_sha256_h0[k_sha256_st_b],
+    c + k_sha256_h0[k_sha256_st_c],
+    d + k_sha256_h0[k_sha256_st_d],
+    e + k_sha256_h0[k_sha256_st_e],
+    f + k_sha256_h0[k_sha256_st_f],
+    g + k_sha256_h0[k_sha256_st_g],
+    h + k_sha256_h0[k_sha256_st_h],
   };
   for (uint32_t i = 0U; i < 8U; ++i) {
-    out32[(i * 4U) + 0U] = (uint8_t)(hh[i] >> 24U);
+    out32[(i * 4U) + 0U] = (uint8_t)(hh[i] >> k_sha256_byte_shift);
     out32[(i * 4U) + 1U] = (uint8_t)(hh[i] >> 16U);
     out32[(i * 4U) + 2U] = (uint8_t)(hh[i] >> 8U);
     out32[(i * 4U) + 3U] = (uint8_t)(hh[i]);
@@ -287,14 +346,14 @@ static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
  */
 static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
 {
-  uint8_t  block[64];
-  uint32_t w[64];
+  uint8_t  block[k_sha256_block_bytes];
+  uint32_t w[k_sha256_words];
   internal_sha256_build_block(in32, block);
   internal_sha256_schedule(block, w);
   internal_sha256_compress(w, out32);
 }
 
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)
 
 /* =============================================================================
  * Public API

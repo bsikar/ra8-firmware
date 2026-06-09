@@ -59,6 +59,16 @@
  * number lint never sees a bare integer. The SCI8 channel matches the
  * on-board J-Link OB CDC bridge pins (PD_02 / PD_03).
  */
+/** @brief MAC-address byte indices. */
+typedef enum : uint8_t {
+  k_mac_byte_0 = 0U,
+  k_mac_byte_1 = 1U,
+  k_mac_byte_2 = 2U,
+  k_mac_byte_3 = 3U,
+  k_mac_byte_4 = 4U,
+  k_mac_byte_5 = 5U,
+} mac_byte_idx_t;
+
 typedef enum : uint32_t {
   k_ptp_time_transmitter_baud         = 115200U, /**< J-Link OB CDC baud.            */
   k_ptp_time_transmitter_sci_channel  = 8U,      /**< SCI8 logging channel.          */
@@ -304,12 +314,12 @@ static void ptp_time_transmitter_eth_or_halt(void)
     ptp_time_transmitter_panic_halt();
   }
   const ra_eth_cfg_t eth_cfg = {
-    .mac_address        = {k_ptp_time_transmitter_mac[0],
-                           k_ptp_time_transmitter_mac[1],
-                           k_ptp_time_transmitter_mac[2],
-                           k_ptp_time_transmitter_mac[3],
-                           k_ptp_time_transmitter_mac[4],
-                           k_ptp_time_transmitter_mac[5]},
+    .mac_address        = {k_ptp_time_transmitter_mac[k_mac_byte_0],
+                           k_ptp_time_transmitter_mac[k_mac_byte_1],
+                           k_ptp_time_transmitter_mac[k_mac_byte_2],
+                           k_ptp_time_transmitter_mac[k_mac_byte_3],
+                           k_ptp_time_transmitter_mac[k_mac_byte_4],
+                           k_ptp_time_transmitter_mac[k_mac_byte_5]},
     .channel            = 0U,
     .num_tx_descriptors = 0U,
     .num_rx_descriptors = 0U,
@@ -335,12 +345,12 @@ static void ptp_time_transmitter_ptp_or_halt(void)
   const ra_ptp_cfg_t ptp_cfg = {
     .domain        = k_ra_ptp_domain_default,
     .sync_interval = k_ra_ptp_sync_int_1,
-    .mac_addr      = {k_ptp_time_transmitter_mac[0],
-                      k_ptp_time_transmitter_mac[1],
-                      k_ptp_time_transmitter_mac[2],
-                      k_ptp_time_transmitter_mac[3],
-                      k_ptp_time_transmitter_mac[4],
-                      k_ptp_time_transmitter_mac[5]},
+    .mac_addr      = {k_ptp_time_transmitter_mac[k_mac_byte_0],
+                      k_ptp_time_transmitter_mac[k_mac_byte_1],
+                      k_ptp_time_transmitter_mac[k_mac_byte_2],
+                      k_ptp_time_transmitter_mac[k_mac_byte_3],
+                      k_ptp_time_transmitter_mac[k_mac_byte_4],
+                      k_ptp_time_transmitter_mac[k_mac_byte_5]},
     .clock_class   = k_ra_ptp_clock_class_default,
   };
   if (ra_ptp_open(&ptp_cfg) != k_ra_ok) {

@@ -67,6 +67,11 @@ static const char* s_tag = "USBCOMP";
  * (STD_DISPATCH | CLASS_DISPATCH) -> DONE -> IDLE. The starter pumps
  * the machine one phase per `ra_usb_composite_step` call.
  */
+/** @brief Low-byte mask for the setup-packet wIndex. */
+typedef enum : uint16_t {
+  k_usbc_byte_mask = 0xFFU,
+} usbc_mask_t;
+
 typedef enum : uint8_t {
   k_ra_usb_composite_state_idle           = 0U, /**< No SETUP in flight.        */
   k_ra_usb_composite_state_setup_rx       = 1U, /**< SETUP arrived.             */
@@ -372,7 +377,7 @@ static ra_err_t internal_handle_standard(const ra_usb_setup_t* setup)
  */
 static ra_err_t internal_route_class(const ra_usb_setup_t* setup, uint8_t* out_idx)
 {
-  const uint8_t  if_num = (uint8_t)(setup->w_index & 0xFFU);
+  const uint8_t  if_num = (uint8_t)(setup->w_index & k_usbc_byte_mask);
   uint8_t        idx    = 0U;
   const ra_err_t err    = internal_lookup_class_for_if(if_num, &idx);
   if (err != k_ra_ok) {

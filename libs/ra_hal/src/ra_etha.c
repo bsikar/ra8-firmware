@@ -85,6 +85,12 @@ volatile uint32_t g_ra_etha_diag_last_eams[2] = {0U, 0U};
  * used by the ETHA driver. Keeps the source file free of bare magic
  * numbers so clang-tidy is happy.
  */
+/** @brief EAVCC/gate-list field constants. */
+typedef enum : uint32_t {
+  k_etha_vem_mask        = 0x7U, /**< 3-bit VLAN egress mode field. */
+  k_etha_cut_through_pos = 28U,  /**< Cut-through enable bit position. */
+} etha_field_t;
+
 typedef enum : uint32_t {
   k_ra_etha_local_all_bits_set = 0xFFFFFFFFUL, /**< W1C-all helper.     */
   k_ra_etha_local_byte_mask    = 0xFFU,        /**< 8-bit field mask.   */
@@ -641,8 +647,8 @@ ra_err_t ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_v
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EAVCC : VLAN Control Configuration" p 1654 */
-  const uint32_t v =
-    ((uint32_t)vim & 0x1U) | (((uint32_t)vem & 0x7U) << (uint32_t)k_ra_etha_eavcc_vem_pos);
+  const uint32_t v = ((uint32_t)vim & 0x1U) |
+                     (((uint32_t)vem & k_etha_vem_mask) << (uint32_t)k_ra_etha_eavcc_vem_pos);
   /* HUM Ch 32.3 "EAVCC : VLAN Control Configuration" p 1654 */
   ra_etha(port)->EAVCC = v;
   return k_ra_ok;
@@ -808,7 +814,7 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
     reg->EATASGL0 = (uint32_t)gate_list[i].gate_state & k_ra_etha_local_byte_mask;
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
     const uint32_t gl1 = (gate_list[i].time_units & k_ra_etha_mask_tas_gtl) |
-                         (gate_list[i].cut_through != 0U ? (1UL << 28) : 0U);
+                         (gate_list[i].cut_through != 0U ? (1UL << k_etha_cut_through_pos) : 0U);
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
     reg->EATASGL1 = gl1;
   }
