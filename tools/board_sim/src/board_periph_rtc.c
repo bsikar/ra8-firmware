@@ -48,6 +48,15 @@
 
 #include "board_periph_block.h"
 
+/** @brief BCD packing + calendar constants for the RTC model. */
+typedef enum : uint32_t {
+  k_bcd_base    = 10U,   /**< Decimal radix for BCD packing.  */
+  k_bcd_shift   = 4U,    /**< Tens nibble shift.              */
+  k_nibble_mask = 0x0FU, /**< Low BCD nibble.                 */
+  k_year_mod    = 100U,  /**< Two-digit year wrap.            */
+  k_year_base   = 2000U, /**< Calendar epoch base year.       */
+} rtc_lit_t;
+
 /**
  * @brief Per-tick order slot for the RTC block.
  *
@@ -156,13 +165,16 @@ static rtc_state_t s_rtc;
 /** @brief Binary 0..99 -> packed BCD. */
 static uint8_t rtc_bin_to_bcd(uint8_t bin)
 {
-  return (uint8_t)(((uint8_t)(bin / 10U) << 4U) | (uint8_t)(bin % 10U));
+  return (uint8_t)(((uint8_t)(bin / (uint8_t)k_bcd_base) << (uint8_t)k_bcd_shift) |
+                   (uint8_t)(bin % (uint8_t)k_bcd_base));
 }
 
 /** @brief Packed BCD -> binary 0..99. */
 static uint8_t rtc_bcd_to_bin(uint8_t bcd)
 {
-  return (uint8_t)((uint8_t)((bcd >> 4U) & 0x0FU) * 10U + (uint8_t)(bcd & 0x0FU));
+  return (uint8_t)((uint8_t)((bcd >> (uint8_t)k_bcd_shift) & (uint8_t)k_nibble_mask) *
+                     (uint8_t)k_bcd_base +
+                   (uint8_t)(bcd & (uint8_t)k_nibble_mask));
 }
 
 /** @brief Refresh the BCD calendar shadow registers from the binary mirror. */
@@ -174,7 +186,8 @@ static void rtc_publish_calendar(void)
   s_rtc.reg[(uint64_t)k_rtc_off_rhrcnt]  = rtc_bin_to_bcd(s_rtc.hour);
   s_rtc.reg[(uint64_t)k_rtc_off_rdaycnt] = rtc_bin_to_bcd(s_rtc.day);
   s_rtc.reg[(uint64_t)k_rtc_off_rmoncnt] = rtc_bin_to_bcd(s_rtc.mon);
-  s_rtc.reg[(uint64_t)k_rtc_off_ryrcnt]  = rtc_bin_to_bcd((uint8_t)(s_rtc.year % 100U));
+  s_rtc.reg[(uint64_t)k_rtc_off_ryrcnt] =
+    rtc_bin_to_bcd((uint8_t)(s_rtc.year % (uint32_t)k_year_mod));
 }
 
 /** @brief Load the binary time mirror from a freshly written BCD calendar. */
@@ -354,7 +367,7 @@ static void rtc_report(void)
   }
   (void)fprintf(stderr,
                 "  RTC           : %04u-%02u-%02u %02u:%02u:%02u alarms=%u periodics=%u\n",
-                (unsigned)(2000U + s_rtc.year),
+                (unsigned)((uint32_t)k_year_base + s_rtc.year),
                 s_rtc.mon,
                 s_rtc.day,
                 s_rtc.hour,

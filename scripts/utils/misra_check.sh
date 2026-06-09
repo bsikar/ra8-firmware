@@ -64,6 +64,7 @@ INCLUDE_DIRS=(
     -Ilibs/ra_hal/inc
     -Ilibs/ra_nsc/inc
     -Isrc/inc
+    -Itools/board_sim/inc
 )
 
 echo "[INFO] cppcheck MISRA-C 2012 audit -- $(cppcheck --version)" >&2

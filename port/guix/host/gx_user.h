@@ -1,8 +1,8 @@
-/* Host (macOS) GUIX configuration.
+/* No-ThreadX GUIX configuration for the bare-metal RA8D2 firmware.
  *
  * Runs GUIX single-threaded with NO ThreadX: GX_DISABLE_THREADX_BINDING
  * switches GUIX onto its generic RTOS surface (the gx_generic_* functions
- * we implement in gx_generic_rtos_host.c). Error checking is disabled so
+ * we implement in gx_generic_rtos_bare.c). Error checking is disabled so
  * the gx_* macros resolve straight to the non-checked _gx_* entry points
  * and never reference ThreadX caller-check state.
  *
@@ -21,6 +21,6 @@
 #define GX_DISABLE_THREADX_BINDING
 #endif
 #define GX_DISABLE_ERROR_CHECKING
-#define GX_SYSTEM_TIMER_MS 20
+#define GX_SYSTEM_TIMER_MS (20)
 
 #endif /* GX_USER_H */

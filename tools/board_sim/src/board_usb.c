@@ -28,6 +28,23 @@
 #include "ra8d2_elc_regs.h"
 #include "ra8d2_usb_regs.h"
 
+/** @brief USB class-request, SCSI command, and CBW-layout constants. */
+typedef enum : uint32_t {
+  k_iface_class_off     = 5U,    /**< bInterfaceClass offset in the iface descriptor. */
+  k_usb_req_class_iface = 0x21U, /**< bmRequestType: class, interface, host->device.  */
+  k_cdc_line_coding_len = 7U,    /**< SET_LINE_CODING wLength.                         */
+  k_scsi_inquiry        = 0x12U, /**< SCSI INQUIRY opcode.                            */
+  k_inquiry_len         = 36U,   /**< INQUIRY allocation length.                      */
+  k_scsi_read_capacity  = 0x25U, /**< SCSI READ CAPACITY(10) opcode.                  */
+  k_scsi_read10         = 0x28U, /**< SCSI READ(10) opcode.                           */
+  k_cdb10_len           = 10U,   /**< 10-byte CDB length.                             */
+  k_sector_bytes        = 512U,  /**< Logical block size.                            */
+  k_usb_shift24         = 24U,   /**< Byte-3 position in a 32-bit word.               */
+  k_cbw_lun_off         = 13U,   /**< CBW bCBWLUN offset.                            */
+  k_cbw_cdblen_off      = 14U,   /**< CBW bCBWCBLength offset.                       */
+  k_cbw_cdb_off         = 15U,   /**< CBW CBWCB (command block) offset.              */
+} usb_lit_t;
+
 /* =============================================================================
  * Window geometry + model sizing.
  * =============================================================================
@@ -268,7 +285,7 @@ static void usb_detect_class(const uint8_t* d, uint16_t len)
       break;
     }
     if ((btype == (uint8_t)k_usb_dt_interface) && (((uint32_t)i + 6U) <= (uint32_t)len)) {
-      const uint8_t icls = d[i + 5U];
+      const uint8_t icls = d[i + k_iface_class_off];
       if (icls == (uint8_t)k_usb_iclass_hid) {
         s_dev_class = (uint8_t)k_usb_class_hid;
         return;
@@ -581,8 +598,13 @@ static const usb_setup_step_t k_enum_script[] = {
    0U,
    0U,
    "SET_CONFIGURATION(1)"},
-  {k_usb_dir_host_to_device | 0x21U, k_cdc_req_set_line_coding, 0U, 0U, 7U, "SET_LINE_CODING"},
-  {k_usb_dir_host_to_device | 0x21U,
+  {k_usb_dir_host_to_device | k_usb_req_class_iface,
+   k_cdc_req_set_line_coding,
+   0U,
+   0U,
+   k_cdc_line_coding_len,
+   "SET_LINE_CODING"},
+  {k_usb_dir_host_to_device | k_usb_req_class_iface,
    k_cdc_req_set_control_line_state,
    0x0003U,
    0U,
@@ -923,31 +945,31 @@ static void host_echo_read_in(uc_engine* uc)
 
 /** @brief MSC BOT per-command phase. */
 typedef enum : uint8_t {
-  k_msc_send  = 0U, /**< Push the next command's CBW.   */
-  k_msc_data  = 1U, /**< Read the data-phase bytes.     */
-  k_msc_csw   = 2U, /**< Read the 13-byte CSW.          */
-  k_msc_done  = 3U, /**< All scripted commands finished.*/
+  k_msc_send = 0U, /**< Push the next command's CBW.   */
+  k_msc_data = 1U, /**< Read the data-phase bytes.     */
+  k_msc_csw  = 2U, /**< Read the 13-byte CSW.          */
+  k_msc_done = 3U, /**< All scripted commands finished.*/
 } msc_phase_t;
 
 /** @brief BOT / SCSI sizing the host uses (USB Mass Storage BBB 1.0). */
 typedef enum : uint32_t {
-  k_msc_cbw_len    = 31U,   /**< Command Block Wrapper length.   */
-  k_msc_csw_len    = 13U,   /**< Command Status Wrapper length.  */
-  k_msc_flag_in    = 0x80U, /**< bmCBWFlags: device-to-host.     */
-  k_msc_settle     = 4U,    /**< Ticks to wait for a phase.      */
-  k_msc_cmd_count  = 3U,    /**< Scripted commands (below).      */
+  k_msc_cbw_len   = 31U,   /**< Command Block Wrapper length.   */
+  k_msc_csw_len   = 13U,   /**< Command Status Wrapper length.  */
+  k_msc_flag_in   = 0x80U, /**< bmCBWFlags: device-to-host.     */
+  k_msc_settle    = 4U,    /**< Ticks to wait for a phase.      */
+  k_msc_cmd_count = 3U,    /**< Scripted commands (below).      */
 } msc_const_t;
 
-static uint8_t  s_msc_phase;     /**< ::msc_phase_t for the active command.   */
-static uint8_t  s_msc_cmd;       /**< Index into the SCSI command script.     */
-static uint32_t s_msc_tag;       /**< Running dCBWTag.                        */
-static uint32_t s_msc_data_len;  /**< Expected data-phase length.            */
-static uint32_t s_msc_data_got;  /**< Data-phase bytes read so far.          */
-static uint32_t s_msc_wait;      /**< Phase pacing.                          */
-static uint32_t s_msc_blocks;    /**< Capacity in blocks (READ CAPACITY).    */
-static uint32_t s_msc_block_len; /**< Block size in bytes.                   */
-static uint32_t s_msc_read_ok;   /**< Sector-read data-phase bytes captured. */
-static bool     s_msc_inquiry_ok;/**< INQUIRY data phase completed.          */
+static uint8_t  s_msc_phase;      /**< ::msc_phase_t for the active command.   */
+static uint8_t  s_msc_cmd;        /**< Index into the SCSI command script.     */
+static uint32_t s_msc_tag;        /**< Running dCBWTag.                        */
+static uint32_t s_msc_data_len;   /**< Expected data-phase length.            */
+static uint32_t s_msc_data_got;   /**< Data-phase bytes read so far.          */
+static uint32_t s_msc_wait;       /**< Phase pacing.                          */
+static uint32_t s_msc_blocks;     /**< Capacity in blocks (READ CAPACITY).    */
+static uint32_t s_msc_block_len;  /**< Block size in bytes.                   */
+static uint32_t s_msc_read_ok;    /**< Sector-read data-phase bytes captured. */
+static bool     s_msc_inquiry_ok; /**< INQUIRY data phase completed.          */
 
 /**
  * @brief Build the SCSI CDB for the scripted command @p cmd.
@@ -964,22 +986,22 @@ static void host_msc_build_cdb(uint8_t cmd, uint8_t* cdb, uint8_t* cdb_len, uint
   }
   switch (cmd) {
     case 0U: /* INQUIRY: standard data, 36-byte allocation. */
-      cdb[0]    = 0x12U;
-      cdb[4]    = 36U;
+      cdb[0]    = (uint8_t)k_scsi_inquiry;
+      cdb[4]    = (uint8_t)k_inquiry_len;
       *cdb_len  = 6U;
-      *data_len = 36U;
+      *data_len = (uint32_t)k_inquiry_len;
       break;
     case 1U: /* READ CAPACITY (10): 8-byte response (last LBA + block size). */
-      cdb[0]    = 0x25U;
-      *cdb_len  = 10U;
+      cdb[0]    = (uint8_t)k_scsi_read_capacity;
+      *cdb_len  = (uint8_t)k_cdb10_len;
       *data_len = 8U;
       break;
     case 2U: /* READ (10): LBA 0, one block (512 bytes). */
     default:
-      cdb[0]    = 0x28U;
+      cdb[0]    = (uint8_t)k_scsi_read10;
       cdb[8]    = 1U; /* transfer length = 1 block (big-endian low byte). */
-      *cdb_len  = 10U;
-      *data_len = 512U;
+      *cdb_len  = (uint8_t)k_cdb10_len;
+      *data_len = (uint32_t)k_sector_bytes;
       break;
   }
 }
@@ -1001,23 +1023,23 @@ static void host_msc_send_cbw(uc_engine* uc)
   d[1]             = (uint8_t)'S';
   d[2]             = (uint8_t)'B';
   d[3]             = (uint8_t)'C';
-  d[4]             = (uint8_t)(s_msc_tag & 0xFFU);
-  d[5]             = (uint8_t)((s_msc_tag >> 8) & 0xFFU);
-  d[6]             = (uint8_t)((s_msc_tag >> 16) & 0xFFU);
-  d[7]             = (uint8_t)((s_msc_tag >> 24) & 0xFFU);
-  d[8]             = (uint8_t)(data_len & 0xFFU);
-  d[9]             = (uint8_t)((data_len >> 8) & 0xFFU);
-  d[10]            = (uint8_t)((data_len >> 16) & 0xFFU);
-  d[11]            = (uint8_t)((data_len >> 24) & 0xFFU);
+  d[4]             = (uint8_t)(s_msc_tag & (uint32_t)k_usb_byte_mask);
+  d[5]             = (uint8_t)((s_msc_tag >> 8) & (uint32_t)k_usb_byte_mask);
+  d[6]             = (uint8_t)((s_msc_tag >> 16) & (uint32_t)k_usb_byte_mask);
+  d[7]             = (uint8_t)((s_msc_tag >> (uint32_t)k_usb_shift24) & (uint32_t)k_usb_byte_mask);
+  d[8]             = (uint8_t)(data_len & (uint32_t)k_usb_byte_mask);
+  d[9]             = (uint8_t)((data_len >> 8) & (uint32_t)k_usb_byte_mask);
+  d[10]            = (uint8_t)((data_len >> 16) & (uint32_t)k_usb_byte_mask);
+  d[11]            = (uint8_t)((data_len >> (uint32_t)k_usb_shift24) & (uint32_t)k_usb_byte_mask);
   d[12]            = (uint8_t)k_msc_flag_in; /* all scripted commands read. */
-  d[13]            = 0U;                     /* LUN 0. */
-  d[14]            = cdb_len;
+  d[k_cbw_lun_off] = 0U;                     /* LUN 0. */
+  d[k_cbw_cdblen_off] = cdb_len;
   for (uint32_t i = 0U; i < 16U; i++) {
-    d[15U + i] = cdb[i];
+    d[k_cbw_cdb_off + i] = cdb[i];
   }
-  b->len   = (uint16_t)k_msc_cbw_len;
-  b->rd    = 0U;
-  b->ready = true;
+  b->len           = (uint16_t)k_msc_cbw_len;
+  b->rd            = 0U;
+  b->ready         = true;
   const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_out_pipe));
   usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
@@ -1035,8 +1057,8 @@ static uint16_t host_msc_take_in(uc_engine* uc, uint8_t* out, uint16_t cap)
   for (uint16_t i = 0U; i < n; i++) {
     out[i] = b->data[i];
   }
-  b->len   = 0U;
-  b->valid = false;
+  b->len           = 0U;
+  b->valid         = false;
   const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
   usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
@@ -1050,11 +1072,11 @@ static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
   if (n < 8U) {
     return;
   }
-  const uint32_t last_lba = ((uint32_t)d[0] << 24) | ((uint32_t)d[1] << 16) |
+  const uint32_t last_lba = ((uint32_t)d[0] << (uint32_t)k_usb_shift24) | ((uint32_t)d[1] << 16) |
                             ((uint32_t)d[2] << 8) | (uint32_t)d[3];
-  s_msc_block_len = ((uint32_t)d[4] << 24) | ((uint32_t)d[5] << 16) |
-                    ((uint32_t)d[6] << 8) | (uint32_t)d[7];
-  s_msc_blocks = last_lba + 1U;
+  s_msc_block_len         = ((uint32_t)d[4] << (uint32_t)k_usb_shift24) | ((uint32_t)d[5] << 16) |
+                            ((uint32_t)d[6] << 8) | (uint32_t)d[7];
+  s_msc_blocks            = last_lba + 1U;
 }
 
 /** @brief Drive the MSC BOT state machine one tick while CONFIGURED. */
@@ -1278,12 +1300,13 @@ void board_usb_report(void)
                   (unsigned)s_hid_buttons);
   }
   if ((s_msc_blocks > 0U) || (s_msc_read_ok > 0U)) {
-    (void)fprintf(stderr,
-                  "  USB MSC       : capacity %u blocks x %uB, INQUIRY %s, sector read %u byte(s)\n",
-                  s_msc_blocks,
-                  s_msc_block_len,
-                  s_msc_inquiry_ok ? "ok" : "--",
-                  s_msc_read_ok);
+    (void)fprintf(
+      stderr,
+      "  USB MSC       : capacity %u blocks x %uB, INQUIRY %s, sector read %u byte(s)\n",
+      s_msc_blocks,
+      s_msc_block_len,
+      s_msc_inquiry_ok ? "ok" : "--",
+      s_msc_read_ok);
   }
   if (s_echo_out_len > 0U) {
     (void)fprintf(stderr,

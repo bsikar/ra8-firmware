@@ -49,36 +49,37 @@ set(BREW /opt/homebrew)
 # composes the panel + status-sidebar board view into one RGB565 buffer for both
 # --view and --ppm; rest is C.
 #
-# Adding a peripheral block: just drop a new board_periph_<blk>.c (it
+# Adding a peripheral block: just drop a new src/board_periph_<blk>.c (it
 # self-registers its descriptor with the core via __attribute__((constructor))
 # -- see board_periph_block.h). The glob below picks it up automatically; the
 # core keeps no central block list, so blocks can be added in parallel with no
 # edit to this file and no conflict.
 file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS
-     "${CMAKE_CURRENT_SOURCE_DIR}/board_periph_*.c")
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/board_periph_*.c")
 
 if(APPLE)
-    set(BOARD_VIEW_SRC board_view.m)
+    set(BOARD_VIEW_SRC src/board_view.m)
 else()
-    set(BOARD_VIEW_SRC board_view_stub.c)
+    set(BOARD_VIEW_SRC src/board_view_stub.c)
 endif()
 
 add_executable(board_sim
-               main.c
-               board_periph.c
+               src/main.c
+               src/board_periph.c
                ${BOARD_PERIPH_BLOCKS}
-               board_usb.c
-               board_net.c
-               board_overlay.c
+               src/board_usb.c
+               src/board_net.c
+               src/board_overlay.c
                ${BOARD_VIEW_SRC})
 
 if(APPLE)
-    set_source_files_properties(board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+    set_source_files_properties(src/board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 
 # The USB model includes the firmware's register/ELC headers for the exact
 # offsets + ELC event numbers it must mirror (ra8d2_usb_regs.h, ra8d2_elc_regs.h).
 target_include_directories(board_sim PRIVATE
+                           ${CMAKE_CURRENT_SOURCE_DIR}/inc
                            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra_hal/inc)
 
 # Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
@@ -89,7 +90,8 @@ target_include_directories(board_sim PRIVATE
 if(APPLE)
     target_include_directories(board_sim PRIVATE ${BREW}/include)
     target_link_directories(board_sim PRIVATE ${BREW}/lib)
-    target_link_libraries(board_sim PRIVATE unicorn capstone "-framework Cocoa")
+    target_link_libraries(board_sim PRIVATE unicorn capstone
+                          "-framework Cocoa" "-framework QuartzCore")
 else()
     find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h REQUIRED)
     find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h REQUIRED)

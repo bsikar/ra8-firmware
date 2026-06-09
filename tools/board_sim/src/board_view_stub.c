@@ -20,9 +20,9 @@
  * @since 0.1.0
  */
 
-#include "board_view.h"
-
 #include <stdint.h>
+
+#include "board_view.h"
 
 /**
  * @brief Report that no desktop window is available on this build.
