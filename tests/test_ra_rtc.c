@@ -302,7 +302,7 @@ static void test_power_transition(void)
  * @brief MC/DC for ra_rtc_set_alarm range guard.
  *
  * @par MC/DC:
- * Decision under test (libs/ra_hal/src/ra_rtc.c:310):  // CITES-OK: MC/DC tracker requires file:line
+ * Decision under test (libs/ra_hal/src/ra_rtc.c@ra_rtc_set_alarm):
  * ``alarm->hour > k_ra_rtc_alarm_max_hr || alarm->minute >
  * k_ra_rtc_alarm_max_min || alarm->second > k_ra_rtc_alarm_max_sec``.
  * Three atomic conditions x N+1 = 4 vectors:

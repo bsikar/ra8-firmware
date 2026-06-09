@@ -165,6 +165,21 @@ To add the vectors, drop new assertions into
 `ra_log.c` should advance as soon as the new tests execute the
 required truth-table rows.
 
+### Citing the decision
+
+The pre-commit gate `check_new_compound_has_mcdc.py` requires every new
+compound decision to be cited from a `test_mcdc_*` function's
+`@par MC/DC:` block, in the form **`path@function`** -- the source path
+and the *enclosing function* of the decision, e.g.
+`libs/ra_ui/src/ra_ui.c@ra_ui_rect_contains`. The gate resolves a
+decision's enclosing function and looks for a citation naming it.
+
+Citing by function (not a line number) is deliberate: unrelated edits
+that shift lines never invalidate the citation, and because the form
+carries no `:line` it is not flagged by `check_line_citations.py` and
+needs no `CITES-OK` escape. Brittle `path:line` anchors are not
+accepted.
+
 ## Currently exempted code (SOUP)
 
 DO-178C Section 12.1.4 ("Software of Unknown Pedigree") allows

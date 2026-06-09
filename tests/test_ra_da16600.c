@@ -544,21 +544,21 @@ static void test_ble_advertise_error(void)
  * inline code carried; the helper names changed and the line numbers
  * shifted, but the truth tables are unchanged and remain covered by
  * the per-public-entry tests already listed in main(). Decisions:
- *   - libs/ra_da16600/src/ra_da16600.c:201 internal_format_u32 loop guard          (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:321 internal_build_wfjap_cmd ssid append    (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:322 internal_build_wfjap_cmd sec append     (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:323 internal_build_wfjap_cmd key append     (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:484 internal_build_tcp_open_cmd TRTS port   (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:491 internal_build_tcp_open_cmd TRTC ip     (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:492 internal_build_tcp_open_cmd TRTC comma  (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:493 internal_build_tcp_open_cmd TRTC port   (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:541 internal_build_trdts_header sock        (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:542 internal_build_trdts_header comma       (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:548 internal_build_trdts_header trailing    (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:605 internal_extract_trdtc_payload cap loop (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:375 internal_parse_wfjap_ip ip-copy loop    (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:750 wifi_connect_validate ssid_len OR-chain (CITES-OK: MC/DC gate requires file:line)
- *   - libs/ra_da16600/src/ra_da16600.c:948 tcp_close TRTRM strcat overflow OR     (CITES-OK: MC/DC gate requires file:line)
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_format_u32 internal_format_u32 loop guard
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_wfjap_cmd internal_build_wfjap_cmd ssid append
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_wfjap_cmd internal_build_wfjap_cmd sec append
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_wfjap_cmd internal_build_wfjap_cmd key append
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_tcp_open_cmd internal_build_tcp_open_cmd TRTS port
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_tcp_open_cmd internal_build_tcp_open_cmd TRTC ip
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_tcp_open_cmd internal_build_tcp_open_cmd TRTC comma
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_tcp_open_cmd internal_build_tcp_open_cmd TRTC port
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_trdts_header internal_build_trdts_header sock
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_trdts_header internal_build_trdts_header comma
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_build_trdts_header internal_build_trdts_header trailing
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_extract_trdtc_payload internal_extract_trdtc_payload cap loop
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_parse_wfjap_ip internal_parse_wfjap_ip ip-copy loop
+ *   - libs/ra_da16600/src/ra_da16600.c@internal_wifi_connect_validate wifi_connect_validate ssid_len OR-chain
+ *   - libs/ra_da16600/src/ra_da16600.c@ra_da16600_tcp_close tcp_close TRTRM strcat overflow OR
  * N+1 vectors
  * for each decision are discharged by the existing public-API tests:
  * format_u32 loop guard is exercised by every test that emits a port
@@ -573,7 +573,7 @@ static void test_ble_advertise_error(void)
  * true) and test_tcp_recv_zero_cap (cap-bound false / early reject).
  * No new behavioural test is added because the helpers are pure code
  * motion: every truth-table outcome was already covered before the
- * refactor. CITES-OK: MC/DC gate requires file:line.
+ * refactor.
  */
 static void test_mcdc_extracted_helpers(void)
 {

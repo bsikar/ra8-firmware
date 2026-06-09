@@ -392,7 +392,7 @@ static void test_init_validates_callbacks(void)
  *   - `validate_transport` OR-chain (vectors documented on
  *     ::test_mcdc_validate_transport_or_chain).
  *   - `internal_build_frame` AND-decision ``cmd == CMD8 && arg == 0x1AA``
- *     (libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c:331). // CITES-OK: MC/DC gate requires file:line
+ *     (libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c@internal_build_frame).
  *     The init path issues
  *     CMD8 with the canonical argument (both operands true; on-wire
  *     byte 5 == published constant 0x87) AND issues CMD0 / CMD55 /
@@ -693,7 +693,7 @@ static void test_bind_fs_backend_uninitialized_rejected(void)
  * Decision: ``if ((transport->set_clock == nullptr) ||
  *                 (transport->cs == nullptr) ||
  *                 (transport->xfer == nullptr))``
- * (3 conditions; libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c:493) // CITES-OK: MC/DC gate requires file:line
+ * (3 conditions; libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c@internal_validate_transport)
  * inside ``internal_validate_transport``.
  *
  * Per DO-178C 6.4.4.3 representative-subset, N+1 = 4 vectors. Each
@@ -748,7 +748,7 @@ static void test_mcdc_validate_transport_or_chain(void)
  *
  * @par MC/DC:
  * Decision: ``if ((block_count == nullptr) || (block_size == nullptr))``
- * (2 conditions; libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c:921) // CITES-OK: MC/DC gate requires file:line
+ * (2 conditions; libs/ra_sdmmc_spi/src/ra_sdmmc_spi.c@internal_fs_get_capacity)
  * inside ``internal_fs_get_capacity``.
  *
  * Per DO-178C 6.4.4.3 N+1 = 3 vectors:

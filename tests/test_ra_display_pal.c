@@ -132,7 +132,7 @@ static void test_init_rejects_null_arguments(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_display_pal/src/ra_display_pal_lcd.c:150): // CITES-OK: MC/DC tracker requires file:line
+ * Decision (libs/ra_display_pal/src/ra_display_pal_lcd.c@internal_lcd_validate_cfg):
  * ``if (cfg->width_px == 0U || cfg->height_px == 0U)`` -- 2 conditions.
  *
  * - V1: w=64, h=32  -> C1=F, C2=F -> decision F (covered by happy path).
@@ -355,7 +355,7 @@ static void test_calls_after_deinit_are_rejected(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_display_pal/src/ra_display_pal_eink.c:117): // CITES-OK: MC/DC tracker requires file:line
+ * Decision (libs/ra_display_pal/src/ra_display_pal_eink.c@internal_eink_validate_cfg):
  * ``if (cfg->width_px == 0U || cfg->height_px == 0U)`` -- 2 conditions.
  *
  * - V1: w=64, h=32 -> C1=F, C2=F -> decision F (covered by happy path

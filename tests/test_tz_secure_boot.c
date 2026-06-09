@@ -171,7 +171,7 @@ static void test_tz_security_init_ipcsar_landed(void)
  *        tables and captures the target on the happy path.
  *
  * @par MC/DC:
- * Decision (libs/ra_tz_secure_boot/src/ra_tz_secure_boot.c:517): // CITES-OK: MC/DC tracker requires file:line
+ * Decision (libs/ra_tz_secure_boot/src/ra_tz_secure_boot.c@ra_tz_secure_boot_jump_ns):
  * ``reset_entry == 0U || reset_entry == UINT32_MAX`` (2 conditions, ``||``).
  * - Vector 1: reset=valid -> false (control: both conditions false)
  * - Vector 2: reset=0        -> true  (varies first condition)

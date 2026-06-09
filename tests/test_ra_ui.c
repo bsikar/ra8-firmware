@@ -67,7 +67,7 @@ static void test_rect_contains_edges(void)
  *
  * @par MC/DC:
  * Decision: `(px >= x) && (px < x+w) && (py >= y) && (py < y+h)`
- * (4 conditions, libs/ra_ui/src/ra_ui.c:39)  // CITES-OK: MC/DC gate requires file:line
+ * (4 conditions, libs/ra_ui/src/ra_ui.c@ra_ui_rect_contains)
  * Standard: DO-178C Table A-7 obj 5. Rect = {x10,y20,w30,h40} -> X in
  * [10,40), Y in [20,60). N+1 = 5 vectors for N=4 short-circuit AND:
  * - V1: (25,40) C1=T C2=T C3=T C4=T -> Decision T (baseline)
@@ -223,7 +223,7 @@ static void test_pager_basic(void)
  *
  * @par MC/DC:
  * Decision: `(total > 0) && (current < total - 1)`
- * (2 conditions, libs/ra_ui/src/ra_ui.c:146)  // CITES-OK: MC/DC gate requires file:line
+ * (2 conditions, libs/ra_ui/src/ra_ui.c@ra_ui_pager_next)
  * Standard: DO-178C Table A-7 obj 5. N+1 = 3 vectors:
  * - V1: total=3,current=0 -> C1=T C2=T -> Decision T (advances)
  * - V2: total=0,current=0 -> C1=F      -> Decision F (C1 flips vs V1)
@@ -254,7 +254,7 @@ static void test_mcdc_pager_next(void)
  *
  * @par MC/DC:
  * Decision: `(total > 0) && (target > total - 1)`  (the clamp guard)
- * (2 conditions, libs/ra_ui/src/ra_ui.c:173)  // CITES-OK: MC/DC gate requires file:line
+ * (2 conditions, libs/ra_ui/src/ra_ui.c@ra_ui_pager_goto)
  * Standard: DO-178C Table A-7 obj 5. N+1 = 3 vectors:
  * - V1: total=3,target=5 -> C1=T C2=T -> Decision T (clamp to 2)
  * - V2: total=0,target=5 -> C1=F      -> Decision F (C1 flips; no clamp)

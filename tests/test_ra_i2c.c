@@ -477,7 +477,7 @@ static void test_errors_get_clear(void)
  * @test test_mcdc_clk_invalid
  *
  * @par MC/DC:
- * Decision in ``ra_i2c_internal_clk_invalid``, libs/ra_hal/src/ra_i2c.c:105 (CITES-OK: MC/DC anchor)
+ * Decision in ``ra_i2c_internal_clk_invalid``, libs/ra_hal/src/ra_i2c.c@ra_i2c_internal_clk_invalid
  *   ``(bus_hz == 0) || (pclkb_hz == 0)`` (2 conditions, OR).
  * - V1: bus!=0, pclkb!=0 -> C1=F,C2=F -> dec F
  * - V2: bus=0,  pclkb!=0 -> C1=T (short-circuits) -> dec T (varies left)
@@ -498,15 +498,15 @@ static void test_mcdc_clk_invalid(void)
  *
  * @par MC/DC:
  * Three 2-condition decisions in ``ra_i2c_transfer``:
- * Decision A libs/ra_hal/src/ra_i2c.c:845 (CITES-OK: MC/DC anchor): ``(wr_len == 0) && (rd_len == 0)``
+ * Decision A libs/ra_hal/src/ra_i2c.c@ra_i2c_transfer: ``(wr_len == 0) && (rd_len == 0)``
  * - V1: wr=0, rd=0       -> C1=T,C2=T -> dec T (-> invalid_arg)
  * - V2: wr!=0            -> C1=F (short-circuits) -> dec F
  * - V3: wr=0, rd!=0      -> C1=T,C2=F -> dec F
- * Decision B libs/ra_hal/src/ra_i2c.c:848 (CITES-OK: MC/DC anchor): ``(wr_len != 0) && (wr == nullptr)``
+ * Decision B libs/ra_hal/src/ra_i2c.c@ra_i2c_transfer: ``(wr_len != 0) && (wr == nullptr)``
  * - V1: wr_len=0          -> C1=F (short-circuits) -> dec F
  * - V2: wr_len!=0, wr!=0  -> C1=T,C2=F -> dec F
  * - V3: wr_len!=0, wr=NULL-> C1=T,C2=T -> dec T (null_ptr)
- * Decision C libs/ra_hal/src/ra_i2c.c:851 (CITES-OK: MC/DC anchor): ``(rd_len != 0) && (rd == nullptr)``
+ * Decision C libs/ra_hal/src/ra_i2c.c@ra_i2c_transfer: ``(rd_len != 0) && (rd == nullptr)``
  * mirrors B with rd_len/rd; same N+1 = 3 vectors.
  */
 static void test_mcdc_transfer(void)
@@ -558,7 +558,7 @@ static void test_mcdc_transfer(void)
  * @par MC/DC:
  * Happy-path masking pairs (decision F vectors) for the three
  * ``ra_i2c_transfer`` decisions and the write-finish OR at
- * libs/ra_hal/src/ra_i2c.c:669 (CITES-OK: MC/DC anchor):
+ * libs/ra_hal/src/ra_i2c.c@internal_i2c_finish_tx:
  *   ``(err != k_ra_ok) || send_stop`` (2 conditions, OR).
  * - V1 (write+read combined, send_stop=false on write phase): C1=F,C2=F
  *   -> dec F (bus held for the RESTART read phase)
@@ -603,7 +603,7 @@ static void test_mcdc_transfer_combined(void)
  *
  * @par MC/DC:
  * Error-path arm (C1=T) of the write-finish OR at
- * libs/ra_hal/src/ra_i2c.c:669 (CITES-OK: MC/DC anchor)
+ * libs/ra_hal/src/ra_i2c.c@internal_i2c_finish_tx
  *   ``(err != k_ra_ok) || send_stop``: with TDRE never pre-armed the
  *   address send times out, so ``err != k_ra_ok`` (C1=T) forces STOP
  *   regardless of send_stop. Complements the C1=F vectors in
@@ -628,12 +628,11 @@ static void test_write_timeout(void)
  * @test test_read_timeout
  *
  * @par MC/DC:
- * Error-path arm of the receive-drain loop guard at
- * libs/ra_hal/src/ra_i2c.c:776 (CITES-OK: MC/DC anchor)
- *   ``(err == k_ra_ok) && (i < len)``: with RDRF never pre-armed the
- *   dummy read times out, so ``err != k_ra_ok`` (C1=F) halts the loop on
- *   its first evaluation. The C1=T,C2=T (drain) and C1=T,C2=F (loop
- *   exit) vectors are covered by test_read_happy.
+ * (no compound decision under test -- the receive-drain loop guard this
+ * case once anchored has been refactored in ra_i2c_read to a
+ * single-condition form, so MC/DC no longer applies. This still
+ * exercises the RDRF-timeout error path: with RDRF never pre-armed the
+ * dummy read times out and ra_i2c_read returns k_ra_err_hw_timeout.)
  */
 static void test_read_timeout(void)
 {
@@ -653,7 +652,7 @@ static void test_read_timeout(void)
  * @test test_mcdc_scan_addr_err
  *
  * @par MC/DC:
- * Decision in ``ra_i2c_scan``, libs/ra_hal/src/ra_i2c.c:892 (CITES-OK: MC/DC anchor)
+ * Decision in ``ra_i2c_scan``, libs/ra_hal/src/ra_i2c.c@ra_i2c_scan
  *   ``(err != k_ra_ok) && (err != k_ra_err_nack)`` (2 conditions, AND).
  * - V1 (address timeout): err=hw_timeout -> C1=T,C2=T -> dec T (hard
  *   error returned). TDRE never armed.

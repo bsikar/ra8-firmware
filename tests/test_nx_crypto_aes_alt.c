@@ -80,7 +80,7 @@ static inline bool internal_mirror_op_kind_guard(uint32_t op)
  *
  * @par MC/DC:
  * Decision: `if (a->op != NX_CRYPTO_ENCRYPT && a->op != NX_CRYPTO_DECRYPT)`
- * (2 conditions, port/netxduo/nx_crypto_aes_alt.c:325)  // CITES-OK: MC/DC gate requires file:line
+ * (2 conditions, port/netxduo/nx_crypto_aes_alt.c@priv_must_fallback)
  *  - C1 = (op != NX_CRYPTO_ENCRYPT)
  *  - C2 = (op != NX_CRYPTO_DECRYPT)
  *

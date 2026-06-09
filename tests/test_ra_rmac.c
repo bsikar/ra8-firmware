@@ -930,7 +930,7 @@ static void test_mcdc_ra_rmac(void)
  *
  * @par MC/DC:
  * Two sequential 1-condition decisions in internal_calc_psmcs
- * (libs/ra_hal/src/ra_rmac.c:184 and :189; CITES-OK: MC/DC source citation):
+ * (libs/ra_hal/src/ra_rmac.c@internal_calc_psmcs):
  *  D1: ``if (eswclk_hz == 0U)`` -- returns clamped PSMCS=127.
  *  D2: ``if (mdc_hz == 0U)``    -- returns clamped PSMCS=127.
  * Each is a 1-condition decision so MC/DC reduces to branch coverage
