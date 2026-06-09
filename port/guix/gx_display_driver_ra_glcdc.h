@@ -2,6 +2,10 @@
  * @file gx_display_driver_ra_glcdc.h
  * @brief Eclipse GUIX display driver shim against the RA8D2 GLCDC + ra_gfx
  *
+ * @deprecated GUIX retirement -- tracked by issue #81. This GUIX driver shim
+ * is replaced by the ra_reflow chrome renderer (issue #80) and is scheduled
+ * for wholesale removal. Do not add new callers.
+ *
  * @par Tag
  * [Ring 4 / DRV] {World: S}
  *
@@ -140,7 +144,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-UINT ra_guix_display_driver_setup(GX_DISPLAY* display);
+[[deprecated("GUIX retirement -- see issue #81")]] UINT
+ra_guix_display_driver_setup(GX_DISPLAY* display);
 
 #endif /* !RA_SIMULATOR_MODE */
 
@@ -172,7 +177,8 @@ UINT ra_guix_display_driver_setup(GX_DISPLAY* display);
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_guix_display_driver_bind(void* fb, uint16_t width, uint16_t height);
+[[nodiscard]] [[deprecated("GUIX retirement -- see issue #81")]] ra_err_t
+ra_guix_display_driver_bind(void* fb, uint16_t width, uint16_t height);
 
 /**
  * @brief Read the current shim auxiliary data (test/debug hook).

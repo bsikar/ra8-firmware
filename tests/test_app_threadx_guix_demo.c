@@ -2,6 +2,9 @@
  * @file test_app_threadx_guix_demo.c
  * @brief Integration test: ThreadX + GUIX hello-world bring-up
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @details
  * The production app at examples/ek_ra8d2/threadx_guix_demo/main.c
  * brings up the GLCDC two-layer pipeline, sets up two ThreadX threads
