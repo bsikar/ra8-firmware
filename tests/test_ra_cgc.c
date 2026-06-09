@@ -227,7 +227,7 @@ static void test_stop_detection_arm_and_fire(void)
  * @test test_mcdc_eswclk_pdctreswm
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_cgc.c:1883 in ra_cgc_eswclk_init CITES-OK: MC/DC source citation
+ * Decision at libs/ra_hal/src/ra_cgc.c@internal_eswclk_power_on_domain in ra_cgc_eswclk_init
  * ``if (((state & PDCSF) == 0U) && ((state & PDPGSF) != 0U))``
  * (2 conditions, ``&&``). The body issues a write to PDCTRESWM
  * clearing PDDE; the condition gates whether the power-on kick is

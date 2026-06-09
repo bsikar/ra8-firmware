@@ -210,13 +210,13 @@ static void test_status(void)
  * @test test_mcdc_ra_i3c_i2c_peripheral
  *
  * @par MC/DC:
- * Decision A (libs/ra_hal/src/ra_i3c_i2c_peripheral.c:179): // CITES-OK: MC/DC tracker requires file:line
+ * Decision A (libs/ra_hal/src/ra_i3c_i2c_peripheral.c@internal_i3c_i2c_peripheral_send):
  * ``if ((len > 0U) && (data == nullptr))`` (2 conditions, ``&&``).
  * N+1 = 3:
  * - V1: len=0,  data=*       -> dec F (ok empty)
  * - V2: len=1,  data=valid   -> dec F (sends)
  * - V3: len=1,  data=NULL    -> dec T (null_ptr)
- * Decision B (libs/ra_hal/src/ra_i3c_i2c_peripheral.c:216): // CITES-OK: MC/DC tracker requires file:line
+ * Decision B (libs/ra_hal/src/ra_i3c_i2c_peripheral.c@internal_i3c_i2c_peripheral_send):
  * ``(len > 0U) && (buf == nullptr)``. Mirror vectors. DO-178C 6.4.4.3.
  */
 static void test_mcdc_ra_i3c_i2c_peripheral(void)

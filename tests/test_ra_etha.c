@@ -1333,7 +1333,7 @@ static void test_mcdc_configure_cut_through_pair(void)
  * @test test_mcdc_test_inject_rx_quad
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_etha.c:1572 ra_etha_test_inject_rx):  // CITES-OK: MC/DC tracker requires file:line
+ * Decision (libs/ra_hal/src/ra_etha.c@ra_etha_test_inject_rx ra_etha_test_inject_rx):
  * 4-condition OR over the four NULL guards
  * ``frame == nullptr || out_dst == nullptr || out_src == nullptr ||
  *   out_etype == nullptr``. Short-circuit MC/DC requires N+1 = 5

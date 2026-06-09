@@ -120,7 +120,7 @@ static void test_power_transition(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_mfwd.c:166): // CITES-OK: MC/DC gate requires file:line
+ * Decision (libs/ra_hal/src/ra_eth_mfwd.c@ra_eth_mfwd_route_queue):
  *   ``(port > k_ra_mfwd_max_port) || (queue_index > k_ra_mfwd_max_queue)``
  * inside ra_eth_mfwd_route_queue. Two-condition decision needs N+1 = 3 vectors.
  * Vector 1: port=0, queue=0   -> false (both conditions false; happy path).

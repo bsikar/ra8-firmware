@@ -1225,8 +1225,8 @@ static void test_mcdc_exit_stop_speed(void)
  *
  * @par MC/DC:
  * Decision: `if ((data == nullptr) && (len != 0U))`
- * (libs/ra_hal/src/ra_usb.c, in ra_usb_dcp_in_data). CITES-OK: MC/DC
- * checker requires file:line citation. Two-condition AND:
+ * (libs/ra_hal/src/ra_usb.c@ra_usb_dcp_in_data).
+ * Two-condition AND:
  *   C1: data == nullptr
  *   C2: len != 0
  * - V1: data=valid, len=4   -> C1=F, C2=T -> outer=F (ok, single-chunk).
