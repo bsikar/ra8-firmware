@@ -529,10 +529,9 @@ ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* frameb
  * @brief Parse the XHTML buffer into the engine's token stream.
  *
  * @details
- * Internal helper used by `ra_reflow_layout_chapter()`. Lives in
- * `ra_reflow_xml_shim.cpp` because it needs C++ to call into tinyxml2.
- * Declared here so `ra_reflow_layout.c` can call it without a
- * forward declaration.
+ * Internal helper used by `ra_reflow_layout_chapter()`. Implemented by the
+ * no-heap streaming tokenizer in `ra_reflow_tokenize.c`. Declared here so
+ * `ra_reflow_layout.c` can call it without a forward declaration.
  *
  * @param[in,out] engine     Engine whose token / text pools will be
  *                           populated.
