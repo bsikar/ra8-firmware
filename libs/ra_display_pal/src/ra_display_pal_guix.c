@@ -2,6 +2,9 @@
  * @file ra_display_pal_guix.c
  * @brief Display PAL -> GUIX bind dispatcher.
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *

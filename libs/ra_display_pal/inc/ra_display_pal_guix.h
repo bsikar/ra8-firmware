@@ -2,6 +2,11 @@
  * @file ra_display_pal_guix.h
  * @brief Optional GUIX bridge for the display PAL
  *
+ * @deprecated GUIX retirement -- tracked by issue #81. The GUIX display path
+ * is being replaced by the ra_reflow chrome renderer (issue #80). Do not add
+ * new callers; this file is scheduled for wholesale removal once the chrome
+ * migration lands.
+ *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
@@ -113,7 +118,9 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t display_bind_guix(display_handle_t* d, display_guix_attach_t* out);
+[[nodiscard]] [[deprecated(
+  "GUIX retirement -- see issue #81; migrating to ra_reflow chrome")]] ra_err_t
+display_bind_guix(display_handle_t* d, display_guix_attach_t* out);
 
 #ifdef __cplusplus
 }

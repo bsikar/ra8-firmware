@@ -3,23 +3,23 @@
  * @brief Bare-metal (no ThreadX) GUIX render of the shared bedroom_ui on the
  *        EK-RA8D2 1024x600 panel via GLCDC
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @par Tag
  * [Ring 5 / APP] {World: NS}
  *
  * @details
- * Completes "one codebase, two targets": the SAME GUIX source that the macOS
- * host preview drives (``examples/host/guix_tabs`` over
- * ``examples/shared/bedroom_ui``) is compiled here for ARM and drawn on the
- * real GLCDC panel. The UI -- a 3-tab smart-room surface -- is byte-for-byte
- * the host's ``bedroom_ui.c``; only the backend (GLCDC vs the macOS window)
- * and the RTOS bind differ.
+ * Draws the shared GUIX UI (``examples/shared/bedroom_ui/bedroom_ui.c``) -- a
+ * 3-tab smart-room surface -- on the real GLCDC panel. The same UI source can be
+ * previewed without hardware by booting this app in the board emulator
+ * (``make sim-bedroom_ui_panel``); only the display backend and RTOS bind are
+ * wired per target, the widget code is identical.
  *
  * This app is single-threaded GUIX with NO ThreadX. It uses GUIX's generic
  * RTOS surface (``GX_DISABLE_THREADX_BINDING``) bound to a bare-metal shim
- * (``port/guix/gx_generic_rtos_bare.c``) -- the target sibling of the host's
- * ``gx_generic_rtos_host.c``, identical except its time source is the
- * SysTick-backed ``ra_time_ms()`` instead of POSIX ``clock_gettime``. The
- * GUIX init + drive sequence is the one the host preview proves:
+ * (``port/guix/gx_generic_rtos_bare.c``) whose time source is the
+ * SysTick-backed ``ra_time_ms()``. The GUIX init + drive sequence:
  *
  *     gx_system_initialize
  *       -> gx_display_create(setup_fn)          (GLCDC 565RGB driver)
@@ -46,7 +46,7 @@
  *
  * Clocks / SDRAM / GLCDC bring-up mirrors ``lcd_color_cycle`` (clocks, MSTP,
  * SysTick, SDRAMC, panel power, GLCDC), folded into the display PAL's
- * ``display_init``; the GUIX bring-up mirrors ``guix_tabs``. On any init
+ * ``display_init``. On any init
  * failure the app latches the red LED and parks in WFI (the panic-halt
  * pattern the other panel examples and the board emulator key off).
  *
@@ -348,9 +348,8 @@ static void bedroom_bringup_panel(void)
  * @brief Stand up GUIX over the SDRAM framebuffer and build the bedroom UI.
  *
  * @details
- * Mirrors the host preview's ``guix_build`` (``examples/host/guix_tabs``) but
- * cross-compiled: ask the display PAL for the GLCDC 565RGB setup-fn through
- * the backend-agnostic ``display_bind_guix`` seam (which also binds
+ * Stands up GUIX on the GLCDC panel: ask the display PAL for the GLCDC 565RGB
+ * setup-fn through the backend-agnostic ``display_bind_guix`` seam (which also binds
  * ``s_framebuffer`` into the driver), initialise GUIX, create the display +
  * canvas (canvas memory == ``s_framebuffer`` == GLCDC scan-out buffer) + root
  * window, then populate the shared ``bedroom_ui`` widget tree. No
@@ -462,8 +461,7 @@ static void bedroom_bringup_touch(void)
  * @brief Inject a GUIX pen down/up pair at a panel coordinate.
  *
  * @details
- * Mirrors the host preview's pen path (``examples/host/guix_tabs`` ::guix_send_pen):
- * build a zeroed GX_EVENT, stamp the contact point into
+ * Injects a GUIX pen event: build a zeroed GX_EVENT, stamp the contact point into
  * ``gx_event_payload.gx_event_pointdata``, then send GX_EVENT_PEN_DOWN
  * followed by GX_EVENT_PEN_UP. GUIX hit-tests the point, routes it to the tab
  * button under it, and that button emits GX_EVENT_CLICKED -- which the shared

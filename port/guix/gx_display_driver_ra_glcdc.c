@@ -2,6 +2,9 @@
  * @file gx_display_driver_ra_glcdc.c
  * @brief Eclipse GUIX <-> ra_glcdc / ra_gfx display-driver shim
  *
+ * @deprecated GUIX retirement -- tracked by issue #81 (replaced by the
+ * ra_reflow chrome renderer, issue #80); scheduled for wholesale removal.
+ *
  * @par Tag
  * [Ring 4 / DRV] {World: S}
  *

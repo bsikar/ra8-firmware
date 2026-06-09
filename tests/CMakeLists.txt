@@ -356,6 +356,10 @@ function(ra_add_test name)
     -Wall
     -Wextra
     -Werror
+    # GUIX retirement (issue #81): host tests that exercise the deprecated
+    # GUIX seam (e.g. test_ra_display_pal.c -> display_bind_guix) must still
+    # build under -Werror. Remove with the GUIX stack.
+    -Wno-error=deprecated-declarations
     -Wno-unused-function
     -Wno-unused-parameter
     -Wno-unused-variable
