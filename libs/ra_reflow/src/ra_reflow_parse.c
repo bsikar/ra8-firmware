@@ -3,15 +3,14 @@
  * @brief HTML-subset parser entry point for ra_reflow.
  *
  * @details
- * The actual DOM walk lives in `ra_reflow_xml_shim.cpp` because it
- * uses tinyxml2 (C++ API). This C TU is the public side of that
- * boundary: `ra_reflow_layout_chapter()` dispatches into
- * `ra_reflow_parse_xhtml()`, which validates arguments and forwards
- * to the shim's `priv_reflow_xml_walk()`.
+ * The actual scan lives in `ra_reflow_tokenize.c` (a no-heap streaming
+ * tokenizer). This C TU is the public entry point:
+ * `ra_reflow_layout_chapter()` dispatches into `ra_reflow_parse_xhtml()`,
+ * which validates arguments, resets the pools, and forwards to
+ * `priv_reflow_xml_walk()`.
  *
- * Keeping the C-side small lets the rest of the library stay in plain
- * C and lets clang-tidy's `readability-function-size` rule act on a
- * single small function.
+ * Keeping this entry point small lets clang-tidy's
+ * `readability-function-size` rule act on a single small function.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,18 +28,17 @@
 #include "ra_reflow.h"
 
 /* ---------------------------------------------------------------------------
- * Cross-TU shim entry point. The C++ implementation lives in
- * ra_reflow_xml_shim.cpp; this declaration keeps it visible to the
- * C-side driver below without dragging the C++ header into this TU.
+ * Cross-TU tokenizer entry point. The implementation lives in
+ * ra_reflow_tokenize.c; this declaration keeps it visible to the driver
+ * below.
  * ---------------------------------------------------------------------------
  */
 
 /**
- * @brief Walk the XHTML DOM and populate `engine->tokens[]`.
+ * @brief Tokenize the XHTML buffer and populate `engine->tokens[]`.
  *
  * @details
- * Defined in `ra_reflow_xml_shim.cpp`. Splitting parse out of the C
- * driver keeps tinyxml2's C++ surface confined to one TU.
+ * Defined in `ra_reflow_tokenize.c`. Single forward pass, no heap, no DOM.
  *
  * @param[in,out] engine    Engine whose token / text pools to populate.
  * @param[in]     xhtml_buf XHTML source bytes.
