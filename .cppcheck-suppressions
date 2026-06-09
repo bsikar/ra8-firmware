@@ -111,6 +111,7 @@ constVariablePointer
 # Justification: cppcheck cannot follow fields across .h boundaries.
 unusedStructMember:libs/ra_touch_cal/inc/ra_touch_cal.h
 unusedStructMember:libs/ra_ui/inc/ra_ui.h
+unusedStructMember:libs/ra_box/inc/ra_box.h
 unusedStructMember:libs/ra_tls/inc/ra_tls.h
 unusedStructMember:libs/ra_hal/inc/ra_sdcard.h
 unusedStructMember:libs/ra_hal/inc/ra_smbus.h
