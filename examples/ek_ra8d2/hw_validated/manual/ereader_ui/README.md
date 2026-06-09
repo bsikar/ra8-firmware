@@ -54,10 +54,19 @@ path, so the navigation is exercised exactly as on hardware.
 - **C (done):** live touch input -- GT911 tap -> `ra_ui_hit_test` ->
   screen change, proven with `board_sim --click`.
 - **Next:** real paginated body text through `libs/ra_reflow` (stb_truetype
-  glyphs at the 48/34/24/18 type scale). Blocked on an allocator decision:
-  `ra_reflow_render` rasterises glyphs with `stbtt` (which `malloc`s per
-  glyph), but the firmware has no heap -- needs a static-arena
-  `STBTT_malloc` (and a token feed that bypasses tinyxml2) or a bounded
-  reader heap. See issue #80.
+  glyphs at the 48/34/24/18 type scale). Allocator blocker for the glyph
+  rasteriser is **solved**: `stb_truetype` allocates per-glyph scratch
+  (vertices + rasteriser edge/point lists) on *both* the one-shot and the
+  Box+Make paths, so `ra_reflow_render` now (a) keeps the glyph bitmap in a
+  fixed buffer via `stbtt_GetCodepointBitmapBox` + `stbtt_MakeCodepointBitmap`
+  and (b) redirects `STBTT_malloc`/`STBTT_free` to the no-heap bump arena in
+  `libs/ra_reflow/src/ra_stbtt_alloc.c` (bump + refcount auto-reset; sized
+  3x the measured 32 KiB worst case). Verified heap-free against the bundled
+  ArnoPro face for the full printable-ASCII set at 96 px.
+  **Remaining for on-target reading text:** (1) the parse path still uses
+  tinyxml2, whose `MemPoolT` grows with `new` for non-trivial chapters --
+  needs a static-arena/operator-new bound or a token feed; (2) wiring the
+  Reading body to drive `ra_reflow_layout_chapter` + `ra_reflow_render_page`
+  in place of the bitmap font. See issue #80 / #46.
 
 See issue #80 for the full chrome plan.
