@@ -18,6 +18,11 @@ uses the bundled bitmap font.
   public-domain opening of *The Time Machine*), footer with page label and
   a flat reading-progress bar.
 
+**Navigation is live:** the loop polls the GT911 touch controller
+(`ra_touch`); a tap is hit-tested against the screen's targets
+(`ra_ui_hit_test`) and drives the `ra_ui` screen stack -- tapping a book
+card opens the Reading view, tapping the Reading status bar goes back.
+
 Layout is resolution-adaptive: every region derives from the framebuffer
 dimensions the display backend reports (`ra_panel.h`), so a different
 panel descriptor reflows the shell with no code change. The full 1024x600
@@ -29,22 +34,30 @@ RGB565 framebuffer lives in external SDRAM (`.sdram_data`).
 make sim-ereader_ui            # boot the real .elf on tools/board_sim
 ```
 
-Headless render proof:
+Headless render + navigation proof:
 
 ```
 make ereader_ui                                  # cross-build the .elf
-tools/board_sim/build/board_sim \
-  examples/ek_ra8d2/hw_validated/manual/ereader_ui/build/ereader_ui.elf \
-  --ppm /tmp/ereader.ppm
+ELF=examples/ek_ra8d2/hw_validated/manual/ereader_ui/build/ereader_ui.elf
+tools/board_sim/build/board_sim "$ELF" --ppm /tmp/library.ppm       # Library
+tools/board_sim/build/board_sim "$ELF" --click 250 250 --ppm /tmp/reading.ppm  # tap a card -> Reading
 ```
+
+`--click` injects a tap through the genuine GT911 -> I2C -> `ra_touch`
+path, so the navigation is exercised exactly as on hardware.
 
 ## Roadmap (this example)
 
 - **A (done):** Reading chrome via `ra_gfx`, verified in `board_sim`.
 - **B (done):** `ra_box` box-model layout + the **Library** screen (book
   grid) + `ra_ui` screen-stack navigation.
+- **C (done):** live touch input -- GT911 tap -> `ra_ui_hit_test` ->
+  screen change, proven with `board_sim --click`.
 - **Next:** real paginated body text through `libs/ra_reflow` (stb_truetype
-  glyphs at the 48/34/24/18 type scale; embedded font); live touch input
-  routing (`ra_ui` hit-testing) for Library <-> Reading on hardware.
+  glyphs at the 48/34/24/18 type scale). Blocked on an allocator decision:
+  `ra_reflow_render` rasterises glyphs with `stbtt` (which `malloc`s per
+  glyph), but the firmware has no heap -- needs a static-arena
+  `STBTT_malloc` (and a token feed that bypasses tinyxml2) or a bounded
+  reader heap. See issue #80.
 
 See issue #80 for the full chrome plan.
