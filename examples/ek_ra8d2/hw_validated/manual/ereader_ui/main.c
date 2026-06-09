@@ -48,6 +48,7 @@
 #include "ra_panel_timing.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
+#include "ra_touch.h"
 #include "ra_ui.h"
 
 /* ===========================================================================
@@ -143,6 +144,40 @@ typedef enum : uint16_t {
   k_er_screen_library = 1U, /**< Library / home grid.               */
   k_er_screen_reading = 2U, /**< Reading view.                      */
 } er_screen_t;
+
+/**
+ * @enum er_action_t
+ * @brief Tap-target action ids (carried on box nodes as their tag).
+ */
+typedef enum : uint16_t {
+  k_er_act_none      = 0U, /**< Not a tap target.                   */
+  k_er_act_open_book = 1U, /**< Library card -> open the reading view. */
+  k_er_act_nav       = 2U, /**< Bottom-nav destination (stay in lib).  */
+} er_action_t;
+
+/**
+ * @enum er_touch_cfg_t
+ * @brief GT911 touch-controller wiring on the EK-RA8D2 carrier.
+ *
+ * @details
+ * The GoodIX GT911 sits on IIC_B channel 0 at its default 7-bit address;
+ * polled from the loop (IRQ pin left unset). board_sim feeds --click /
+ * window taps through this same ra_touch -> I2C -> GT911 path.
+ */
+typedef enum : uint8_t {
+  k_er_touch_channel    = 0U,    /**< IIC_B channel 0.            */
+  k_er_touch_addr_7b    = 0x5DU, /**< GT911 default 7-bit addr.   */
+  k_er_touch_max_points = 1U,    /**< One contact = one tap.      */
+} er_touch_cfg_t;
+
+/**
+ * @enum er_hit_cap_t
+ * @brief Tap-target table capacity and Reading back-affordance size.
+ */
+typedef enum : uint16_t {
+  k_er_max_targets = 32U,  /**< Max collected tap targets.          */
+  k_er_back_w      = 240U, /**< Reading back-region width (px).     */
+} er_hit_cap_t;
 
 /* ===========================================================================
  * Static content (ASCII; public-domain titles)
@@ -264,6 +299,15 @@ static int16_t s_progress[k_er_max_nodes];
 /** @brief Navigation stack (which screen is shown). */
 static ra_ui_nav_t s_nav;
 
+/** @brief Tap targets for the current screen (rect + action id). */
+static ra_ui_target_t s_targets[k_er_max_targets];
+
+/** @brief Number of tap targets currently populated. */
+static uint16_t s_target_count;
+
+/** @brief Debounce: true while a contact is held, to fire once per tap. */
+static bool s_was_touching;
+
 /* ===========================================================================
  * Boot helpers
  * =========================================================================== */
@@ -373,6 +417,33 @@ static void app_bringup_gfx(void)
   if (ra_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra_gfx_format_rgb565) != k_ra_ok) {
     app_panic_halt();
   }
+}
+
+/**
+ * @brief Open the GT911 touch controller (best-effort, polled).
+ *
+ * @details
+ * Boards / sims without the GT911 simply return an error from
+ * ``ra_touch_open``; the UI still renders, just without touch input, so
+ * this is non-fatal (no panic).
+ *
+ * @pre ``app_bringup_clocks`` has run (IIC_B clock + MSTP up).
+ * @pre None.
+ * @post On success the GT911 is configured for polled reads.
+ * @post On failure touch input is simply unavailable.
+ *
+ * @note Not thread-safe; single-shot helper.
+ * @since 0.1.0
+ */
+static void app_bringup_touch(void)
+{
+  const ra_touch_cfg_t cfg = {
+    .i2c_channel = (uint8_t)k_er_touch_channel,
+    .target_7b   = (uint8_t)k_er_touch_addr_7b,
+    .irq_pin     = (uint8_t)k_ra_touch_irq_pin_unset,
+    .max_points  = (uint8_t)k_er_touch_max_points,
+  };
+  (void)ra_touch_open(&cfg);
 }
 
 /* ===========================================================================
@@ -569,8 +640,9 @@ static void er_build_toolbar(ra_box_tree_t* tree, int16_t parent)
  */
 static void er_add_book_tile(ra_box_tree_t* tree, int16_t grid, const er_book_t* book)
 {
-  const ra_box_t tile_t = er_container(k_ra_box_stack_v, 0, 0, (int16_t)k_er_tile_gap, 1U);
-  const int16_t  tile   = ra_box_add(tree, grid, &tile_t);
+  ra_box_t tile_t    = er_container(k_ra_box_stack_v, 0, 0, (int16_t)k_er_tile_gap, 1U);
+  tile_t.tag         = (int16_t)k_er_act_open_book; /* the whole card is a tap target */
+  const int16_t tile = ra_box_add(tree, grid, &tile_t);
 
   const ra_box_t cover_t = er_leaf(0, 1U, (uint32_t)k_er_fill, (uint32_t)k_er_ink);
   (void)ra_box_add(tree, tile, &cover_t);
@@ -701,11 +773,38 @@ static void er_render_boxtree(const ra_box_tree_t* tree)
 }
 
 /**
+ * @brief Collect tap targets from a laid-out tree's tagged nodes.
+ *
+ * @param[in] tree Laid-out box tree.
+ *
+ * @pre @p tree is laid out.
+ * @pre None.
+ * @post ``s_targets`` holds (rect, action) for each tagged node, capped.
+ * @post ``s_target_count`` is the number collected.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_collect_targets(const ra_box_tree_t* tree)
+{
+  s_target_count = 0U;
+  for (uint16_t i = 0U; i < tree->count; ++i) {
+    const ra_box_t* n = &tree->nodes[i];
+    if ((n->tag != (int16_t)k_ra_box_none) && (s_target_count < (uint16_t)k_er_max_targets)) {
+      s_targets[s_target_count].rect      = n->rect;
+      s_targets[s_target_count].action_id = (uint16_t)n->tag;
+      s_targets[s_target_count].reserved  = 0U;
+      s_target_count++;
+    }
+  }
+}
+
+/**
  * @brief Render the full Library screen.
  *
  * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
  * @pre None.
- * @post The framebuffer holds the Library screen.
+ * @post The framebuffer holds the Library screen; ``s_targets`` set.
  * @post Caller flushes the panel to make it visible.
  *
  * @note Not thread-safe.
@@ -717,6 +816,7 @@ static void er_render_library(void)
   ra_box_tree_t      tree;
   const ra_ui_rect_t frame = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
   er_build_library(&tree, &frame);
+  er_collect_targets(&tree);
   er_render_boxtree(&tree);
   /* Hairline under the status bar and above the nav, for separation. */
   (void)ra_gfx_rect(0,
@@ -846,6 +946,77 @@ static void er_render_current(void)
   }
 }
 
+/**
+ * @brief Route a tap to a navigation action for the current screen.
+ *
+ * @param[in] x Tap X (panel pixels).
+ * @param[in] y Tap Y (panel pixels).
+ *
+ * @return true if the tap changed the screen (caller should re-render).
+ * @retval true  Navigation stack changed.
+ * @retval false Tap hit nothing actionable.
+ *
+ * @pre ra_gfx is bound; ``s_nav`` initialised; targets reflect the screen.
+ * @pre None.
+ * @post On a Library card tap the Reading view is pushed; on a Reading
+ *       back-region tap it is popped.
+ * @post On no hit the stack is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool er_handle_tap(int32_t x, int32_t y)
+{
+  uint16_t top = (uint16_t)k_er_screen_library;
+  (void)ra_ui_nav_top(&s_nav, &top);
+  if (top == (uint16_t)k_er_screen_reading) {
+    const ra_ui_rect_t back = {0, 0, (int32_t)k_er_back_w, (int32_t)k_er_statusbar_h};
+    if (ra_ui_rect_contains(&back, x, y)) {
+      uint16_t prev = 0U;
+      return (ra_ui_nav_pop(&s_nav, &prev) == k_ra_ok);
+    }
+    return false;
+  }
+  uint16_t action = (uint16_t)k_er_act_none;
+  bool     hit    = false;
+  (void)ra_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
+  if (hit && (action == (uint16_t)k_er_act_open_book)) {
+    return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_reading) == k_ra_ok);
+  }
+  return false;
+}
+
+/**
+ * @brief Poll the touch controller and dispatch a tap on a fresh press.
+ *
+ * @details Edge-triggered: acts once when a contact first appears, so a
+ *          held finger does not repeat. Re-renders + flushes on a change.
+ *
+ * @pre ra_gfx bound; ``s_nav`` initialised; ``s_display`` valid.
+ * @pre None.
+ * @post On a press that changes the screen, the new screen is shown.
+ * @post ``s_was_touching`` tracks the contact state.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_poll_touch(void)
+{
+  ra_touch_point_t pt  = {};
+  uint8_t          got = 0U;
+  if (ra_touch_read(&pt, (uint8_t)k_er_touch_max_points, &got) != k_ra_ok) {
+    return;
+  }
+  const bool touching = (got > 0U);
+  if (touching && !s_was_touching) {
+    if (er_handle_tap((int32_t)pt.x, (int32_t)pt.y)) {
+      er_render_current();
+      (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_quality);
+    }
+  }
+  s_was_touching = touching;
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
@@ -853,12 +1024,14 @@ int32_t main(void)
   app_bringup_clocks();
   app_bringup_panel();
   app_bringup_gfx();
+  app_bringup_touch();
 
   (void)ra_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
   er_render_current();
   (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_init);
 
   while (1) {
+    er_poll_touch();
     (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_fast);
     (void)ra_board_led_toggle(k_ra_board_led_blue);
     ra_delay_ms((uint32_t)k_er_frame_ms);
