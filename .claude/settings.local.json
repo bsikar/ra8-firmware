@@ -8,8 +8,6 @@
       "Bash(rm -rf /tmp/usbx-vendor/.git)",
       "Bash(mv /tmp/usbx-vendor libs/third_party/usbx)",
       "Bash(git add *)",
-      "Bash(rm -rf /tmp/guix-vendor/.git)",
-      "Bash(mv /tmp/guix-vendor libs/third_party/guix)",
       "Bash(rm -rf /tmp/nimble-vendor/.git)",
       "Bash(mv /tmp/nimble-vendor libs/third_party/nimble)",
       "Bash(rm -rf /tmp/mbedtls-vendor/.git)",

@@ -235,7 +235,7 @@ work; subsequent fixes may live in later commits.
 | libs/ra_tls | partial | sweep 9 (`afeb54a`) | TLS 1.2 client, RSA premaster encrypt awaits real ra_sce RSA path |
 | libs/ra_gfx | feature-complete | sweep 9 (`afeb54a`) | GLCDC framebuffer drawing + 8x16 IBM PC VGA font (95 ASCII glyphs) |
 | libs/ra_ble_host | feature-complete | sweep 10 (`59cc3c3`) | L2CAP fixed channels + ATT server + GATT registration; depends on ra_ble placeholder |
-| libs/ra_display_pal (LCD backend) | feature-complete | 2026-05-12 | One-vtable PAL over ra_glcdc; folds 6-step bring-up + GUIX shim |
+| libs/ra_display_pal (LCD backend) | feature-complete | 2026-05-12 | One-vtable PAL over ra_glcdc; folds 6-step bring-up |
 | libs/ra_display_pal (e-ink backend) | scaffold | 2026-05-12 | IT8951 stub: init/get_caps work; flush/get_fb return `k_ra_err_not_supported` until hardware lands |
 
 ---

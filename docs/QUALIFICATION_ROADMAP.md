@@ -136,7 +136,7 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 
 - **13 components catalogued** under `docs/SOUP/` with one
   Markdown justification each: ThreadX, NetX Duo, FileX, USBX,
-  GUIX, LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE,
+  LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE,
   litehtml, miniz, stb (image + truetype), TinyXML-2.
 - Every component has a written qualification basis citing
   IEC 61508-3 sec. 7.4.2.12 and DO-178C sec. 12.1.4.

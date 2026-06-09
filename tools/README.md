@@ -29,7 +29,7 @@ Flags: `--view` (live macOS window), `--ppm <file>` (headless frame),
 `--panel <file.toml>` / `--size WxH` (model a given display), `--click X Y`
 (inject touch through the real GT911 path). Panel descriptors live in
 `tools/board_sim/panels/<name>.toml`. From the repo root, `make sim-<app>` builds
-the app and opens its live window; a GUIX app (e.g. `make sim-bedroom_ui_panel`)
+the app and opens its live window; a chrome app (e.g. `make sim-ereader_ui`)
 doubles as the UI preview. Layout: `inc/` (headers) + `src/` (sources), matching
 the `libs/` convention. Details: `tools/board_sim/README.md`.
 
@@ -37,7 +37,7 @@ the `libs/` convention. Details: `tools/board_sim/README.md`.
 
 - `scripts/board_sim_smoke.sh` -- boots each display app on the emulator and
   asserts it runs to its main loop without faulting (no invalid opcode / unmapped
-  access, not parked in the panic-halt loop), and for the GUIX UI app renders one
+  access, not parked in the panic-halt loop), and for the chrome UI app renders one
   frame and asserts the panel drew rich content.
 
 Run the tool with `--help`/no args for its full flag set.
