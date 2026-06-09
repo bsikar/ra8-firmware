@@ -74,10 +74,10 @@ print(len({px[o:o + 3] for o in range(0, len(px) - 2, 3)}))
 PY
 }
 
-# UI apps whose rendered frame must be rich (distinct-color floor). bedroom_ui_panel
-# is the GUIX bedroom UI; this replaces the per-panel ui_render_check.sh fill gate.
-render_assert_apps="bedroom_ui_panel"
-min_render_colors=64
+# UI apps whose rendered frame must be rich (distinct-color floor). ereader_ui
+# is the e-reader chrome (ra_box + ra_gfx); this gates that it actually paints.
+render_assert_apps="ereader_ui"
+min_render_colors=6
 
 apps=("$@")
 if [ "${#apps[@]}" -eq 0 ]; then
@@ -90,7 +90,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # first context switch, which Unicorn 2.0.1 mis-delivers (UC_ERR_EXCEPTION);
     # they run on a newer Unicorn (macOS / a source build) -- pass them
     # explicitly there (e.g. `board_sim_smoke.sh usb_cdc_echo`).
-    apps=(blink lcd_color_cycle display_pal_animation bedroom_ui_panel \
+    apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback)
 fi

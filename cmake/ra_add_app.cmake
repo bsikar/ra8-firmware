@@ -28,7 +28,7 @@
 #                       cmake/<m>.cmake (interface lib target <m>) and, when a
 #                       global property RA_<M>_PORT_SOURCES exists, that
 #                       property's bridge sources. Recognised: threadx usbx
-#                       netxduo filex levelx nimble mbedtls guix. In standalone
+#                       netxduo filex levelx nimble mbedtls. In standalone
 #                       builds RA_USE_<M> defaults ON; in the aggregate build it
 #                       stays as the top-level set it, and an app whose
 #                       middleware is OFF skips itself.
@@ -208,7 +208,6 @@ macro(ra_add_app)
     set(_ra_port_lib_filex   filex_port_ra_sdhi)
     set(_ra_port_lib_levelx  levelx_port_ra_xspi)
     set(_ra_port_lib_nimble  nimble_port_threadx)
-    set(_ra_port_lib_guix    guix_port_ra_glcdc)
 
     # Link the middleware interface libraries + pull in their bridge sources.
     foreach(_ra_use ${_RA_APP_USES})

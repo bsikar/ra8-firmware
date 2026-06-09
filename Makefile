@@ -89,7 +89,7 @@ RA_DEBUG := $(addprefix debug-,$(RA_APPS))
 RA_OZONE := $(addprefix ozone-,$(RA_APPS))
 # `make sim-<app>` -- boot the app's real .elf on the Unicorn CPU emulator
 # (tools/board_sim), the single simulator: high-fidelity, runs the genuine
-# bring-up + peripheral-driver path, and (for a GUIX app) IS the UI preview.
+# bring-up + peripheral-driver path, and IS the UI preview for chrome apps.
 RA_SIM := $(addprefix sim-,$(RA_APPS))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
@@ -189,7 +189,7 @@ apps:
 			printf '%s\t%s\t%s\n' "$$group" "$$app" "$$desc"; \
 		done; \
 	done | sort | awk -F'\t' '{ if ($$1 != g) { g=$$1; printf "\n  [%s]\n", g } printf "    %-30s %s\n", $$2, $$3 }'
-	@printf '\nGUIX UI preview: run a GUIX app on the emulator, e.g. make sim-bedroom_ui_panel [PANEL=ek_ra8d2]   (tools/board_sim)\n'
+	@printf '\nUI preview: run the e-reader chrome on the emulator, e.g. make sim-ereader_ui [PANEL=ek_ra8d2]   (tools/board_sim)\n'
 
 # Forward `make <app>` to the per-app Makefile so the top-level shorthand
 # and `cd examples/<tier>/<app> && make` produce the exact same artifacts.
@@ -343,8 +343,8 @@ hooks:
 # the display descriptor tools/board_sim/panels/<PANEL>.toml (default ek_ra8d2 --
 # swap it to emulate a different screen). This is the single simulator: high
 # fidelity (it exercises the genuine bring-up + peripheral-driver path), and for
-# a GUIX app it doubles as the UI preview. Close the window to exit. e.g.
-# `make sim-blink`, `make sim-lcd_color_cycle`, `make sim-bedroom_ui_panel`.
+# the chrome apps it doubles as the UI preview. Close the window to exit. e.g.
+# `make sim-blink`, `make sim-lcd_color_cycle`, `make sim-ereader_ui`.
 BOARD_SIM_DIR := $(ROOT)/tools/board_sim
 # Panel descriptor used by `sim-<app>`: tools/board_sim/panels/<PANEL>.toml.
 # `PANEL=<name>` is the documented knob; `SIM_PANEL` stays accepted as a

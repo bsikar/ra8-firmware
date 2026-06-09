@@ -32,23 +32,6 @@
 #include "ra_log.h"
 #include "ra_time.h"
 
-/* The LCD-side GUIX shim is opt-in: only apps that link the
- * ``port/guix/`` driver provide its header on the include path.
- * Detect it with ``__has_include`` (GCC + clang extension) so apps
- * without GUIX (e.g. ``lcd_draw_x``) compile cleanly. We chain
- * nested ``#if`` directives rather than a compound preprocessor
- * expression so the MC/DC gate sees no compound decision here. */
-#define RA_DISPLAY_PAL_LCD_HAS_GUIX (0)
-#ifndef RA_SIMULATOR_MODE
-#ifdef __has_include
-#if __has_include("gx_display_driver_ra_glcdc.h")
-#undef RA_DISPLAY_PAL_LCD_HAS_GUIX
-#define RA_DISPLAY_PAL_LCD_HAS_GUIX (1)
-#include "gx_display_driver_ra_glcdc.h"
-#endif
-#endif
-#endif
-
 /* =============================================================================
  * Module-static storage
  * =============================================================================
@@ -539,64 +522,6 @@ static ra_err_t lcd_deinit(void* ctx)
   return err;
 }
 
-#if RA_DISPLAY_PAL_LCD_HAS_GUIX
-
-/**
- * @brief LCD-side GUIX bridge -- wires the existing
- *        ``ra_guix_display_driver_bind`` / ``ra_guix_display_driver_setup``
- *        pair into the PAL's opaque bind contract.
- *
- * @details
- * Cross-compile only. Under ``RA_SIMULATOR_MODE`` this function and
- * its header dependency on GUIX vendor types disappear, and the
- * iface's ``bind_guix`` field is initialised to NULL so callers see
- * ``k_ra_err_not_supported``.
- *
- * @param[in]  ctx           LCD backend context (validated upstream).
- * @param[out] out_setup_fn  Cast target for the GUIX setup callback.
- * @param[out] out_width_px  Visible framebuffer width.
- * @param[out] out_height_px Visible framebuffer height.
- *
- * @return ra_err_t Error code.
- * @retval k_ra_ok            Bound; outputs populated.
- * @retval k_ra_err_null_ptr  Any output pointer was NULL.
- * @retval (from ra_guix_*)   Forwarded from the underlying shim.
- *
- * @pre ``ra_glcdc_start(true)`` has succeeded.
- * @pre ``out_setup_fn`` / ``out_width_px`` / ``out_height_px`` writable.
- * @post On success the caller may cast ``*out_setup_fn`` back to
- *       ``UINT (*)(GX_DISPLAY*)`` and pass it to
- *       ``gx_display_create``.
- * @post On non-ok return outputs are untouched.
- *
- * @note Not thread-safe; single-shot bind at GUIX bring-up.
- *
- * @since 0.1.0
- */
-static ra_err_t
-lcd_bind_guix(void* ctx, void** out_setup_fn, uint16_t* out_width_px, uint16_t* out_height_px)
-{
-  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
-  RA_CHECK_NULL_PTR(out_setup_fn, s_tag, "out_setup_fn");
-  RA_CHECK_NULL_PTR(out_width_px, s_tag, "out_width_px");
-  RA_CHECK_NULL_PTR(out_height_px, s_tag, "out_height_px");
-
-  lcd_ctx_t*     c   = (lcd_ctx_t*)ctx;
-  const ra_err_t err = ra_guix_display_driver_bind(c->fb.pixels, c->fb.width_px, c->fb.height_px);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  /* Cast the GUIX-typed setup fn to the opaque ``void*`` slot the PAL
-   * iface uses so this header is the only place GUIX types touch the
-   * PAL layer. */
-  *out_setup_fn  = (void*)ra_guix_display_driver_setup;
-  *out_width_px  = c->fb.width_px;
-  *out_height_px = c->fb.height_px;
-  return k_ra_ok;
-}
-
-#endif /* RA_DISPLAY_PAL_LCD_HAS_GUIX */
-
 /* =============================================================================
  * Public iface instance
  * =============================================================================
@@ -609,12 +534,4 @@ const display_backend_iface_t k_display_backend_lcd_ra_glcdc = {
   .flush           = lcd_flush,
   .clear           = lcd_clear,
   .deinit          = lcd_deinit,
-#if RA_DISPLAY_PAL_LCD_HAS_GUIX
-  .bind_guix = lcd_bind_guix,
-#else
-  /* Apps that do not link the GUIX driver shim (e.g. raw drawing
-   * demos and the host unit-test build) leave this NULL; callers
-   * see ``k_ra_err_not_supported``. */
-  .bind_guix = nullptr,
-#endif
 };

@@ -184,7 +184,7 @@ if [[ -n "$c_files" ]]; then
     # ---- NASA P10 Rule 4 function-size cap -------------------------------
     # The .clang-tidy LineThreshold=60 only fires when a file actually
     # reaches clang-tidy, and the host tidy-build excludes every
-    # cross-compiled translation unit (anything pulling in ThreadX/GUIX/
+    # cross-compiled translation unit (anything pulling in ThreadX/
     # USBX/NetX or MCU register headers).  This source-level checker
     # closes that gap: it scans every .c under libs/, src/, port/,
     # examples/ regardless of compile-db membership.

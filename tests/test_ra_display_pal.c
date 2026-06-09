@@ -12,9 +12,6 @@
  *     can run under host gcc with no real GPIO / GLCDC.
  *   - E-ink backend stub: init / get_caps succeed; flush /
  *     get_framebuffer / clear return ``k_ra_err_not_supported``.
- *   - GUIX bind dispatcher returns ``k_ra_err_not_supported``
- *     under ``RA_SIMULATOR_MODE`` because the LCD GUIX shim is
- *     not linked into the host test build.
  *   - Busy-rejection on a second ``display_init`` without a
  *     preceding ``display_deinit``.
  *
@@ -27,7 +24,6 @@
 
 #include "ra_display_pal.h"
 #include "ra_display_pal_eink.h"
-#include "ra_display_pal_guix.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
@@ -435,34 +431,6 @@ static void test_eink_stub_flush_returns_not_supported(void)
   TEST_END("e-ink stub: flush/get_fb/clear return k_ra_err_not_supported");
 }
 
-/**
- * @par MC/DC:
- * Decision: ``if (d->iface->bind_guix == nullptr)`` in
- * ``display_bind_guix``. Under ``RA_SIMULATOR_MODE`` the LCD GUIX
- * shim is not linked in so ``bind_guix`` is NULL on both backends.
- * The non-NULL branch is exercised on the cross-compile target by
- * ``threadx_guix_demo``.
- */
-static void test_bind_guix_returns_not_supported_in_sim(void)
-{
-  TEST_BEGIN("display_bind_guix returns k_ra_err_not_supported in host tests");
-  harness_reset_world();
-
-  display_handle_t*   d   = nullptr;
-  const display_cfg_t cfg = make_lcd_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, display_init(&cfg, &d));
-
-  display_guix_attach_t attach = {nullptr, 0U, 0U};
-  TEST_ASSERT_EQ(k_ra_err_not_supported, display_bind_guix(d, &attach));
-
-  /* Null arguments are rejected before the iface lookup. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, display_bind_guix(nullptr, &attach));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, display_bind_guix(d, nullptr));
-
-  TEST_ASSERT_EQ(k_ra_ok, display_deinit(d));
-  TEST_END("display_bind_guix returns k_ra_err_not_supported in host tests");
-}
-
 /* =============================================================================
  * Driver
  * =============================================================================
@@ -481,6 +449,5 @@ int main(void)
   test_mcdc_eink_rejects_zero_dimensions();
   test_eink_stub_get_caps_succeeds();
   test_eink_stub_flush_returns_not_supported();
-  test_bind_guix_returns_not_supported_in_sim();
   return 0;
 }
