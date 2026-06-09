@@ -445,8 +445,11 @@ typedef struct {
  *
  * @details
  * Walks the slice of `engine->glyphs[]` that belongs to `page_idx`,
- * rasterises each code point via `stbtt_GetCodepointBitmap()`, and
- * blits the alpha-8 mask into the framebuffer with `ra_gfx_pixel()`.
+ * rasterises each code point through the two-step
+ * `stbtt_GetCodepointBitmapBox()` + `stbtt_MakeCodepointBitmap()` path
+ * (glyph bitmap into a fixed buffer; stb scratch via the no-heap arena in
+ * `ra_stbtt_alloc.c`), and blits the alpha-8 mask into the framebuffer
+ * with `ra_gfx_pixel()`.
  *
  * The framebuffer must already be bound by `ra_gfx_init()`. The
  * background is NOT cleared; the caller chooses the background colour
