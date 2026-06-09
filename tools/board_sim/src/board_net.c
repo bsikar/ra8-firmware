@@ -25,25 +25,60 @@
 
 /** @brief Addressing + protocol constants for the peer and the firmware. */
 typedef enum : uint32_t {
-  k_net_peer_ip = 0xC0A80101UL, /**< 192.168.1.1   (the peer).        */
-  k_net_fw_ip   = 0xC0A8012AUL, /**< 192.168.1.42  (the firmware).    */
-  k_net_echo_port = 7U,         /**< Firmware TCP echo server port.   */
-  k_net_peer_port = 49152U,     /**< Peer ephemeral source port.      */
+  k_net_peer_ip   = 0xC0A80101UL, /**< 192.168.1.1   (the peer).        */
+  k_net_fw_ip     = 0xC0A8012AUL, /**< 192.168.1.42  (the firmware).    */
+  k_net_echo_port = 7U,           /**< Firmware TCP echo server port.   */
+  k_net_peer_port = 49152U,       /**< Peer ephemeral source port.      */
 } net_addr_t;
 
 /** @brief Frame offsets / sizes (Ethernet II + ARP + IPv4 + ICMP + TCP). */
 typedef enum : uint32_t {
-  k_eth_hdr   = 14U,     /**< dst[6] src[6] type[2].          */
-  k_eth_arp   = 0x0806U, /**< ARP ethertype.                  */
-  k_eth_ipv4  = 0x0800U, /**< IPv4 ethertype.                 */
-  k_arp_len   = 28U,     /**< ARP payload length.             */
-  k_ip_hdr    = 20U,     /**< IPv4 header (no options).       */
-  k_icmp_hdr  = 8U,      /**< ICMP echo header.               */
-  k_ip_proto_icmp = 1U,  /**< IPv4 protocol = ICMP.           */
-  k_ip_proto_tcp  = 6U,  /**< IPv4 protocol = TCP.            */
-  k_mac_len   = 6U,      /**< Ethernet address length.        */
-  k_net_buf   = 1600U,   /**< Staging buffer size.            */
+  k_eth_hdr       = 14U,     /**< dst[6] src[6] type[2].          */
+  k_eth_arp       = 0x0806U, /**< ARP ethertype.                  */
+  k_eth_ipv4      = 0x0800U, /**< IPv4 ethertype.                 */
+  k_arp_len       = 28U,     /**< ARP payload length.             */
+  k_ip_hdr        = 20U,     /**< IPv4 header (no options).       */
+  k_icmp_hdr      = 8U,      /**< ICMP echo header.               */
+  k_ip_proto_icmp = 1U,      /**< IPv4 protocol = ICMP.           */
+  k_ip_proto_tcp  = 6U,      /**< IPv4 protocol = TCP.            */
+  k_mac_len       = 6U,      /**< Ethernet address length.        */
+  k_net_buf       = 1600U,   /**< Staging buffer size.            */
 } net_frame_t;
+
+/**
+ * @enum net_proto_t
+ * @brief Protocol field offsets, masks, and well-known values for the frames
+ *        board_net builds/parses (Ethernet / ARP / IPv4 / ICMP / TCP).
+ */
+typedef enum : uint32_t {
+  k_byte_mask         = 0xFFU,   /**< One octet.                          */
+  k_u16_mask          = 0xFFFFU, /**< 16-bit field.                       */
+  k_shift24           = 24U,     /**< Byte-3 position in a 32-bit word.    */
+  k_peer_mac_b2       = 0x5EU,   /**< Peer MAC octet 2 (locally admin).   */
+  k_peer_mac_b4       = 0x53U,   /**< Peer MAC octet 4.                   */
+  k_eth_ethertype_off = 12U,     /**< EtherType offset in the eth header.  */
+  k_arp_plen          = 4U,      /**< ARP protocol-address length (IPv4).  */
+  k_arp_tpa_off       = 24U,     /**< ARP target-protocol-address offset.  */
+  k_ipv4_ver_ihl      = 0x45U,   /**< IPv4 version 4, IHL 5.               */
+  k_ip_ident          = 0x1234U, /**< IPv4 identification (fixed).         */
+  k_ip_flag_df        = 0x4000U, /**< IPv4 don't-fragment flag.            */
+  k_ip_ttl            = 64U,     /**< IPv4 default TTL.                    */
+  k_ip_proto_off      = 9U,      /**< IPv4 protocol-field offset.          */
+  k_ip_csum_off       = 10U,     /**< IPv4 header-checksum offset.         */
+  k_ip_ihl_mask       = 0x0FU,   /**< IHL / data-offset nibble mask.       */
+  k_ihl_word          = 4U,      /**< IHL/data-offset word size (bytes).   */
+  k_icmp_ident        = 0xBEEFU, /**< ICMP echo identifier (fixed).        */
+  k_icmp_pat_base     = 0x40U,   /**< ICMP payload byte-pattern base.      */
+  k_tcp_hdr           = 20U,     /**< TCP header bytes (no options).       */
+  k_tcp_payload_max   = 64U,     /**< Max TCP payload board_net sends.     */
+  k_tcp_off_dataoff   = 12U,     /**< TCP data-offset byte position.       */
+  k_tcp_off_flags     = 13U,     /**< TCP flags byte position.             */
+  k_tcp_off_window    = 14U,     /**< TCP window field position.            */
+  k_tcp_data_off      = 0x50U,   /**< TCP data offset = 5 words.           */
+  k_tcp_window        = 2048U,   /**< TCP advertised window.               */
+  k_tcp_isn           = 1000U,   /**< Deterministic initial seq number.    */
+  k_tcp_doff_shift    = 4U,      /**< TCP data-offset high-nibble shift.   */
+} net_proto_t;
 
 /** @brief Peer state machine: ARP -> ping -> TCP connect / echo / close. */
 typedef enum : uint8_t {
@@ -65,25 +100,26 @@ typedef enum : uint8_t {
   k_tcp_ack = 0x10U,
 } net_tcp_flag_t;
 
-static const uint8_t s_peer_mac[k_mac_len] = {0x02U, 0x00U, 0x5EU, 0x00U, 0x53U, 0x01U};
+static const uint8_t s_peer_mac[k_mac_len] =
+  {0x02U, 0x00U, (uint8_t)k_peer_mac_b2, 0x00U, (uint8_t)k_peer_mac_b4, 0x01U};
 
 static bool     s_trace;
 static uint8_t  s_state;
 static uint8_t  s_fw_mac[k_mac_len]; /**< Learned from ARP.            */
 static bool     s_fw_mac_known;
-static uint32_t s_arp_replies;       /**< ARP replies received.        */
-static uint32_t s_pings;             /**< ICMP echo replies received.  */
-static uint32_t s_wait;              /**< Ticks since the last send.   */
-static uint16_t s_ping_seq;          /**< ICMP echo sequence.          */
-static uint32_t s_tx_frames;         /**< Frames the firmware sent.    */
-static uint32_t s_polls;             /**< ra_eth_read polls served.    */
-static uint32_t s_delivered;         /**< Frames delivered to firmware.*/
-static uint32_t s_tcp_our_seq;       /**< Our next TCP send sequence.  */
-static uint32_t s_tcp_their_seq;     /**< Their next seq (our ack).    */
-static uint32_t s_tcp_echoed;        /**< Echo payload bytes received. */
-static bool     s_tcp_match;         /**< Echo matched what we sent.   */
-static bool     s_tcp_need_data;     /**< Payload queued to send post-handshake. */
-static uint32_t s_tcp_estab_wait;    /**< Ticks since the connection established. */
+static uint32_t s_arp_replies;    /**< ARP replies received.        */
+static uint32_t s_pings;          /**< ICMP echo replies received.  */
+static uint32_t s_wait;           /**< Ticks since the last send.   */
+static uint16_t s_ping_seq;       /**< ICMP echo sequence.          */
+static uint32_t s_tx_frames;      /**< Frames the firmware sent.    */
+static uint32_t s_polls;          /**< ra_eth_read polls served.    */
+static uint32_t s_delivered;      /**< Frames delivered to firmware.*/
+static uint32_t s_tcp_our_seq;    /**< Our next TCP send sequence.  */
+static uint32_t s_tcp_their_seq;  /**< Their next seq (our ack).    */
+static uint32_t s_tcp_echoed;     /**< Echo payload bytes received. */
+static bool     s_tcp_match;      /**< Echo matched what we sent.   */
+static bool     s_tcp_need_data;  /**< Payload queued to send post-handshake. */
+static uint32_t s_tcp_estab_wait; /**< Ticks since the connection established. */
 
 /** @brief Payload the peer sends to the firmware's TCP echo server. */
 static const uint8_t s_tcp_payload[] = "hello from board_sim\n";
@@ -108,16 +144,16 @@ static uint32_t s_rxq_tail;
 static void put16(uint8_t* p, uint16_t v)
 {
   p[0] = (uint8_t)(v >> 8);
-  p[1] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)(v & (uint32_t)k_byte_mask);
 }
 
 /** @brief Store a 32-bit value big-endian at @p p. */
 static void put32(uint8_t* p, uint32_t v)
 {
-  p[0] = (uint8_t)(v >> 24);
-  p[1] = (uint8_t)((v >> 16) & 0xFFU);
-  p[2] = (uint8_t)((v >> 8) & 0xFFU);
-  p[3] = (uint8_t)(v & 0xFFU);
+  p[0] = (uint8_t)(v >> (uint32_t)k_shift24);
+  p[1] = (uint8_t)((v >> 16) & (uint32_t)k_byte_mask);
+  p[2] = (uint8_t)((v >> 8) & (uint32_t)k_byte_mask);
+  p[3] = (uint8_t)(v & (uint32_t)k_byte_mask);
 }
 
 /** @brief Read a big-endian 16-bit value from @p p. */
@@ -129,7 +165,8 @@ static uint16_t get16(const uint8_t* p)
 /** @brief Read a big-endian 32-bit value from @p p. */
 static uint32_t get32(const uint8_t* p)
 {
-  return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+  return ((uint32_t)p[0] << (uint32_t)k_shift24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) |
+         (uint32_t)p[3];
 }
 
 /** @brief 16-bit one's-complement checksum over @p len bytes at @p d. */
@@ -143,9 +180,9 @@ static uint16_t net_checksum(const uint8_t* d, uint32_t len, uint32_t seed)
     sum += (uint32_t)d[len - 1U] << 8;
   }
   while ((sum >> 16) != 0U) {
-    sum = (sum & 0xFFFFU) + (sum >> 16);
+    sum = (sum & (uint32_t)k_u16_mask) + (sum >> 16);
   }
-  return (uint16_t)(~sum & 0xFFFFU);
+  return (uint16_t)(~sum & (uint32_t)k_u16_mask);
 }
 
 /** @brief Queue a built frame for the firmware to receive (drops if ring full). */
@@ -165,7 +202,7 @@ static void net_eth_hdr(uint8_t* f, const uint8_t* dst, uint16_t ethertype)
 {
   (void)memcpy(&f[0], dst, k_mac_len);
   (void)memcpy(&f[6], s_peer_mac, k_mac_len);
-  put16(&f[12], ethertype);
+  put16(&f[k_eth_ethertype_off], ethertype);
 }
 
 /* =============================================================================
@@ -176,15 +213,20 @@ static void net_eth_hdr(uint8_t* f, const uint8_t* dst, uint16_t ethertype)
 /** @brief Build + queue an ARP request asking who-has the firmware's IP. */
 static void net_send_arp_request(void)
 {
-  static const uint8_t bcast[k_mac_len] = {0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU};
+  static const uint8_t bcast[k_mac_len] = {(uint8_t)k_byte_mask,
+                                           (uint8_t)k_byte_mask,
+                                           (uint8_t)k_byte_mask,
+                                           (uint8_t)k_byte_mask,
+                                           (uint8_t)k_byte_mask,
+                                           (uint8_t)k_byte_mask};
   uint8_t              f[k_eth_hdr + k_arp_len];
   (void)memset(f, 0, sizeof(f));
   net_eth_hdr(f, bcast, (uint16_t)k_eth_arp);
   uint8_t* a = &f[k_eth_hdr];
-  put16(&a[0], 1U);                  /* htype = Ethernet.   */
+  put16(&a[0], 1U);                   /* htype = Ethernet.   */
   put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.      */
   a[4] = (uint8_t)k_mac_len;
-  a[5] = 4U;
+  a[5] = (uint8_t)k_arp_plen;
   put16(&a[6], 1U); /* op = request. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
   put32(&a[14], (uint32_t)k_net_peer_ip);
@@ -202,12 +244,12 @@ static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
   put16(&a[0], 1U);
   put16(&a[2], (uint16_t)k_eth_ipv4);
   a[4] = (uint8_t)k_mac_len;
-  a[5] = 4U;
+  a[5] = (uint8_t)k_arp_plen;
   put16(&a[6], 2U); /* op = reply. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
   put32(&a[14], (uint32_t)k_net_peer_ip);
   (void)memcpy(&a[18], to_mac, k_mac_len);
-  put32(&a[24], to_ip);
+  put32(&a[k_arp_tpa_off], to_ip);
   net_queue(f, sizeof(f));
 }
 
@@ -220,15 +262,15 @@ static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
 static void net_ip_hdr(uint8_t* ip, uint8_t proto, uint16_t payload_len)
 {
   (void)memset(ip, 0, k_ip_hdr);
-  ip[0] = 0x45U; /* version 4, IHL 5. */
+  ip[0] = (uint8_t)k_ipv4_ver_ihl; /* version 4, IHL 5. */
   put16(&ip[2], (uint16_t)(k_ip_hdr + payload_len));
-  put16(&ip[4], 0x1234U); /* identification. */
-  put16(&ip[6], 0x4000U); /* don't fragment. */
-  ip[8]  = 64U;           /* TTL. */
-  ip[9]  = proto;
+  put16(&ip[4], (uint16_t)k_ip_ident);    /* identification. */
+  put16(&ip[6], (uint16_t)k_ip_flag_df);  /* don't fragment. */
+  ip[8]              = (uint8_t)k_ip_ttl; /* TTL. */
+  ip[k_ip_proto_off] = proto;
   put32(&ip[12], (uint32_t)k_net_peer_ip);
   put32(&ip[16], (uint32_t)k_net_fw_ip);
-  put16(&ip[10], net_checksum(ip, k_ip_hdr, 0U));
+  put16(&ip[k_ip_csum_off], net_checksum(ip, k_ip_hdr, 0U));
 }
 
 /** @brief Build + queue an ICMP echo request to the firmware. */
@@ -245,10 +287,10 @@ static void net_send_ping(void)
   uint8_t* ic = &f[k_eth_hdr + k_ip_hdr];
   ic[0]       = 8U; /* echo request. */
   s_ping_seq++;
-  put16(&ic[4], 0xBEEFU); /* identifier. */
+  put16(&ic[4], (uint16_t)k_icmp_ident); /* identifier. */
   put16(&ic[6], s_ping_seq);
   for (uint32_t i = 0U; i < 16U; i++) {
-    ic[k_icmp_hdr + i] = (uint8_t)(0x40U + i); /* payload pattern. */
+    ic[k_icmp_hdr + i] = (uint8_t)((uint32_t)k_icmp_pat_base + i); /* payload pattern. */
   }
   put16(&ic[2], net_checksum(ic, icmp_len, 0U));
   net_queue(f, sizeof(f));
@@ -265,8 +307,8 @@ static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload
   if (!s_fw_mac_known) {
     return;
   }
-  uint8_t        f[k_eth_hdr + k_ip_hdr + 20U + 64U];
-  const uint16_t tcp_len = (uint16_t)(20U + payload_len);
+  uint8_t        f[k_eth_hdr + k_ip_hdr + k_tcp_hdr + k_tcp_payload_max];
+  const uint16_t tcp_len = (uint16_t)((uint16_t)k_tcp_hdr + payload_len);
   if (((uint32_t)k_eth_hdr + (uint32_t)k_ip_hdr + (uint32_t)tcp_len) > sizeof(f)) {
     return;
   }
@@ -278,16 +320,17 @@ static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload
   put16(&t[2], (uint16_t)k_net_echo_port);
   put32(&t[4], s_tcp_our_seq);
   put32(&t[8], s_tcp_their_seq);
-  t[12] = 0x50U; /* data offset = 5 32-bit words (20-byte header). */
-  t[13] = flags;
-  put16(&t[14], 2048U); /* window. */
+  t[k_tcp_off_dataoff] = (uint8_t)k_tcp_data_off; /* data offset = 5 32-bit words. */
+  t[k_tcp_off_flags]   = flags;
+  put16(&t[k_tcp_off_window], (uint16_t)k_tcp_window); /* window. */
   if (payload_len > 0U) {
     (void)memcpy(&t[20], payload, payload_len);
   }
   /* TCP checksum covers the IPv4 pseudo-header + the segment. */
-  const uint32_t pseudo = ((uint32_t)k_net_peer_ip >> 16) + ((uint32_t)k_net_peer_ip & 0xFFFFU) +
-                          ((uint32_t)k_net_fw_ip >> 16) + ((uint32_t)k_net_fw_ip & 0xFFFFU) +
-                          (uint32_t)k_ip_proto_tcp + (uint32_t)tcp_len;
+  const uint32_t pseudo =
+    ((uint32_t)k_net_peer_ip >> 16) + ((uint32_t)k_net_peer_ip & (uint32_t)k_u16_mask) +
+    ((uint32_t)k_net_fw_ip >> 16) + ((uint32_t)k_net_fw_ip & (uint32_t)k_u16_mask) +
+    (uint32_t)k_ip_proto_tcp + (uint32_t)tcp_len;
   put16(&t[16], net_checksum(t, tcp_len, pseudo));
   net_queue(f, (uint32_t)k_eth_hdr + (uint32_t)k_ip_hdr + (uint32_t)tcp_len);
 }
@@ -295,7 +338,7 @@ static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload
 /** @brief Open the TCP connection: send SYN with our initial sequence number. */
 static void net_send_syn(void)
 {
-  s_tcp_our_seq = 1000U; /* deterministic ISN. */
+  s_tcp_our_seq = (uint32_t)k_tcp_isn; /* deterministic ISN. */
   net_send_tcp((uint8_t)k_tcp_syn, nullptr, 0U);
 }
 
@@ -310,7 +353,7 @@ static void net_send_data(void)
 /** @brief Handle an inbound TCP segment: drive the connect / echo / close FSM. */
 static void net_rx_tcp(const uint8_t* t, uint32_t len)
 {
-  if (len < 20U) {
+  if (len < (uint32_t)k_tcp_hdr) {
     return;
   }
   if ((get16(&t[0]) != (uint16_t)k_net_echo_port) || (get16(&t[2]) != (uint16_t)k_net_peer_port)) {
@@ -318,8 +361,10 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
   }
   const uint32_t seq   = get32(&t[4]);
   const uint8_t  flags = t[13];
-  const uint32_t doff  = (uint32_t)((t[12] >> 4) & 0xFU) * 4U;
-  if ((doff < 20U) || (doff > len)) {
+  const uint32_t doff =
+    (uint32_t)((t[k_tcp_off_dataoff] >> (uint32_t)k_tcp_doff_shift) & (uint32_t)k_ip_ihl_mask) *
+    (uint32_t)k_ihl_word;
+  if ((doff < (uint32_t)k_tcp_hdr) || (doff > len)) {
     return;
   }
   const uint32_t plen  = len - doff;
@@ -347,16 +392,17 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
     return;
   }
   if ((s_state == (uint8_t)k_net_estab) && (plen > 0U)) {
-    s_tcp_echoed    = plen;
-    s_tcp_match     = (plen == (uint32_t)(sizeof(s_tcp_payload) - 1U)) &&
-                  (memcmp(pdata, s_tcp_payload, plen) == 0);
+    s_tcp_echoed = plen;
+    s_tcp_match =
+      (plen == (uint32_t)(sizeof(s_tcp_payload) - 1U)) && (memcmp(pdata, s_tcp_payload, plen) == 0);
     s_tcp_their_seq = seq + plen;
     net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
     net_send_tcp((uint8_t)(k_tcp_fin | k_tcp_ack), nullptr, 0U);
     s_tcp_our_seq += 1U; /* FIN consumes one. */
     s_state = (uint8_t)k_net_fin;
     if (s_trace) {
-      (void)fprintf(stderr, "  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
+      (void)
+        fprintf(stderr, "  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
     }
     return;
   }
@@ -379,9 +425,9 @@ static void net_rx_arp(const uint8_t* a, uint32_t len)
   if (len < (uint32_t)k_arp_len) {
     return;
   }
-  const uint16_t op     = get16(&a[6]);
-  const uint32_t spa    = get32(&a[14]);
-  const uint32_t tpa    = get32(&a[24]);
+  const uint16_t op  = get16(&a[6]);
+  const uint32_t spa = get32(&a[14]);
+  const uint32_t tpa = get32(&a[24]);
   if (spa == (uint32_t)k_net_fw_ip) {
     (void)memcpy(s_fw_mac, &a[8], k_mac_len); /* sender HW = firmware MAC. */
     s_fw_mac_known = true;
@@ -406,7 +452,8 @@ static void net_rx_icmp(const uint8_t* ic, uint32_t len)
     s_pings++;
     if (s_state == (uint8_t)k_net_ping) {
       if (s_trace) {
-        (void)fprintf(stderr, "  [net] ICMP echo reply from 192.168.1.42 -- ping ok; opening TCP\n");
+        (void)fprintf(stderr,
+                      "  [net] ICMP echo reply from 192.168.1.42 -- ping ok; opening TCP\n");
       }
       net_send_syn(); /* ping proven; connect to the echo server. */
       s_state = (uint8_t)k_net_syn;
@@ -421,7 +468,7 @@ static void net_rx_ipv4(const uint8_t* ip, uint32_t len)
   if (len < (uint32_t)k_ip_hdr) {
     return;
   }
-  const uint32_t ihl = (uint32_t)(ip[0] & 0x0FU) * 4U;
+  const uint32_t ihl = (uint32_t)(ip[0] & (uint32_t)k_ip_ihl_mask) * (uint32_t)k_ihl_word;
   if ((ihl < (uint32_t)k_ip_hdr) || (ihl > len)) {
     return;
   }
@@ -513,20 +560,20 @@ void board_net_tick(void)
 
 void board_net_init(bool trace)
 {
-  s_trace        = trace;
-  s_state        = (uint8_t)k_net_init;
-  s_fw_mac_known = false;
-  s_arp_replies  = 0U;
-  s_pings        = 0U;
-  s_wait         = 0U;
-  s_ping_seq      = 0U;
-  s_rxq_head      = 0U;
-  s_rxq_tail      = 0U;
-  s_tx_frames     = 0U;
-  s_polls         = 0U;
-  s_delivered     = 0U;
-  s_tcp_our_seq   = 0U;
-  s_tcp_their_seq = 0U;
+  s_trace          = trace;
+  s_state          = (uint8_t)k_net_init;
+  s_fw_mac_known   = false;
+  s_arp_replies    = 0U;
+  s_pings          = 0U;
+  s_wait           = 0U;
+  s_ping_seq       = 0U;
+  s_rxq_head       = 0U;
+  s_rxq_tail       = 0U;
+  s_tx_frames      = 0U;
+  s_polls          = 0U;
+  s_delivered      = 0U;
+  s_tcp_our_seq    = 0U;
+  s_tcp_their_seq  = 0U;
   s_tcp_echoed     = 0U;
   s_tcp_match      = false;
   s_tcp_need_data  = false;

@@ -3,12 +3,18 @@
  * @brief Cocoa implementation of the board_sim desktop window (see board_view.h)
  *
  * @details
- * A custom NSView holds a CGImage built from the supplied RGB565 framebuffer
- * and blits it (nearest-neighbour, top-left origin) to fill the window. The
- * app runs cooperatively: board_view_pump drains pending events from the
- * caller's loop rather than taking over with [NSApp run], so the emulator
- * keeps stepping between frames. Built with -fobjc-arc; the CGImageRef (a CF
- * type, not ARC-managed) is released by hand.
+ * A layer-backed NSView whose CALayer ``contents`` is set directly to a CGImage
+ * built from the supplied RGB565 framebuffer. Driving the layer contents (rather
+ * than drawing in ``drawRect:``) lets the window server composite the frame
+ * independently of the run loop, so the picture stays put during the mouse-event
+ * flood of a cursor drag -- the ``drawRect:`` + backing-store path otherwise
+ * re-clears the view on those events and reads as flicker. The redraw policy is
+ * pinned to Never so AppKit never discards the contents to call back into the
+ * view. The app runs cooperatively: board_view_pump drains pending events from
+ * the caller's loop rather than taking over with [NSApp run], so the emulator
+ * keeps stepping between frames; a minimal main menu gives a working Cmd+Q.
+ * Built with -fobjc-arc; CGImageRef (a CF type, not ARC-managed) is released by
+ * hand after the layer takes its own retain.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,14 +25,14 @@
 #include "board_view.h"
 
 #import <Cocoa/Cocoa.h>
+#import <QuartzCore/QuartzCore.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 /**
- * @brief Content view that draws the latest emulated frame and records clicks.
+ * @brief Layer-backed content view that shows the latest frame and records clicks.
  */
-@interface                              BoardImageView : NSView
-@property(nonatomic, assign) CGImageRef image;
+@interface BoardImageView : NSView
 /** @brief Framebuffer width in pixels of the currently shown image. */
 @property(nonatomic, assign) uint16_t fbWidth;
 /** @brief Framebuffer height in pixels of the currently shown image. */
@@ -40,22 +46,11 @@
 @end
 
 @implementation BoardImageView
-- (void)drawRect:(NSRect)dirty
+/* Fully covered by the frame image (black layer background before the first
+ * frame), so report opacity -- AppKit skips erasing the window background. */
+- (BOOL)isOpaque
 {
-  (void)dirty;
-  if (self.image == NULL) {
-    return;
-  }
-  CGContextRef  ctx = [[NSGraphicsContext currentContext] CGContext];
-  const CGFloat w   = self.bounds.size.width;
-  const CGFloat h   = self.bounds.size.height;
-  /* Flip Y so framebuffer row 0 lands at the top of the window. */
-  CGContextSaveGState(ctx);
-  CGContextTranslateCTM(ctx, 0.0, h);
-  CGContextScaleCTM(ctx, 1.0, -1.0);
-  CGContextSetInterpolationQuality(ctx, kCGInterpolationNone);
-  CGContextDrawImage(ctx, CGRectMake(0.0, 0.0, w, h), self.image);
-  CGContextRestoreGState(ctx);
+  return YES;
 }
 - (void)mouseDown:(NSEvent*)event
 {
@@ -86,18 +81,31 @@
   self.clickY   = (uint16_t)fy;
   self.hasClick = YES;
 }
-- (void)dealloc
-{
-  if (_image != NULL) {
-    CGImageRelease(_image);
-  }
-}
 @end
 
 struct board_view {
   NSWindow*       window;
   BoardImageView* view;
 };
+
+/** @brief Install a minimal main menu so Cmd+Q (Quit) works under the manual pump. */
+static void board_view_install_menu(void)
+{
+  if ([NSApp mainMenu] != nil) {
+    return;
+  }
+  NSMenu*     menubar = [[NSMenu alloc] init];
+  NSMenuItem* appItem = [[NSMenuItem alloc] init];
+  [menubar addItem:appItem];
+  NSMenu*     appMenu = [[NSMenu alloc] init];
+  NSString*   name    = [[NSProcessInfo processInfo] processName];
+  NSMenuItem* quit    = [[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:name]
+                                                   action:@selector(terminate:)
+                                            keyEquivalent:@"q"];
+  [appMenu addItem:quit];
+  [appItem setSubmenu:appMenu];
+  [NSApp setMainMenu:menubar];
+}
 
 board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char* title)
 {
@@ -107,6 +115,7 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
   @autoreleasepool {
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    board_view_install_menu();
 
     const NSRect     rect = NSMakeRect(0.0, 0.0, (CGFloat)width_px, (CGFloat)height_px);
     const NSUInteger style =
@@ -123,6 +132,16 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
       [win setTitle:[NSString stringWithUTF8String:title]];
     }
     BoardImageView* v = [[BoardImageView alloc] initWithFrame:rect];
+    /* Layer-backed, contents-driven: the window server composites the frame, so
+     * a cursor drag's event flood cannot make it flicker. Never redraw means
+     * AppKit leaves the contents we set alone; nearest filter keeps pixels crisp
+     * if the window is not 1:1; black background covers the pre-first-frame gap. */
+    v.wantsLayer                = YES;
+    v.layerContentsRedrawPolicy = NSViewLayerContentsRedrawNever;
+    v.layer.magnificationFilter = kCAFilterNearest;
+    v.layer.minificationFilter  = kCAFilterNearest;
+    v.layer.opaque              = YES;
+    v.layer.backgroundColor     = CGColorGetConstantColor(kCGColorBlack);
     [win setContentView:v];
     [win center];
     [win makeKeyAndOrderFront:nil];
@@ -178,14 +197,17 @@ void board_view_present(board_view_t*   view,
     CGColorSpaceRelease(cs);
     free(argb);
     if (img != NULL) {
-      CGImageRef old      = view->view.image;
-      view->view.image    = img;
       view->view.fbWidth  = width_px;
       view->view.fbHeight = height_px;
-      if (old != NULL) {
-        CGImageRelease(old);
-      }
-      [view->view setNeedsDisplay:YES];
+      /* Drive the layer contents directly. Disable implicit actions so the
+       * contents swap is immediate (no default cross-fade) and commit now so the
+       * new frame shows without waiting on the run loop. The layer retains the
+       * image, so our reference can be released straight after. */
+      [CATransaction begin];
+      [CATransaction setDisableActions:YES];
+      view->view.layer.contents = (__bridge id)img;
+      [CATransaction commit];
+      CGImageRelease(img);
     }
   }
 }

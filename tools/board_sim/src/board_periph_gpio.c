@@ -26,6 +26,9 @@
 #include "board_periph.h"
 #include "board_periph_block.h"
 
+/** @brief LED3 PORT/pin coordinates on the EK-RA8D2 (P10_07). */
+typedef enum : uint32_t { k_led3_port = 10U, k_led3_pin = 7U } gpio_lit_t;
+
 /** @brief GPIO/PORT block geometry (ra8d2_port_regs.h). */
 typedef enum : uint64_t {
   k_port_base   = 0x40400000UL,  /**< PORT0 base.                          */
@@ -68,7 +71,7 @@ typedef struct {
 static const led_map_t k_led_map[k_board_led_count] = {
   {6U, 0U, (uint16_t)k_led_rgb565_blue, "LED1 BLUE  P600"},
   {3U, 3U, (uint16_t)k_led_rgb565_green, "LED2 GREEN P303"},
-  {10U, 7U, (uint16_t)k_led_rgb565_red, "LED3 RED   PA07"},
+  {(uint8_t)k_led3_port, (uint8_t)k_led3_pin, (uint16_t)k_led_rgb565_red, "LED3 RED   PA07"},
 };
 
 static port_state_t s_port[k_port_count];

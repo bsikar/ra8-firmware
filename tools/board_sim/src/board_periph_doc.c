@@ -35,25 +35,31 @@
 
 #include "board_periph_block.h"
 
+/** @brief Result-width masks for the DOC unit (32-bit vs 16-bit mode). */
+typedef enum : uint32_t {
+  k_u32_all  = 0xFFFFFFFFU, /**< 32-bit all-ones result mask. */
+  k_u16_full = 0x0000FFFFU, /**< 16-bit result mask.          */
+} doc_lit_t;
+
 /** @brief DOC block geometry (ra8d2_doc_regs.h). */
 typedef enum : uint64_t {
-  k_doc_base      = 0x40311000UL, /**< DOC base (HUM Ch 57.2).      */
-  k_doc_span      = 0x20UL,       /**< Register window.             */
-  k_doc_off_docr  = 0x00UL,       /**< DOCR control (OMS/DOBW/DCSEL), 8b. */
-  k_doc_off_dosr  = 0x04UL,       /**< DOSR status (DOPCF), 8b.     */
-  k_doc_off_doscr = 0x08UL,       /**< DOSCR status clear, 8b.      */
-  k_doc_off_dodir = 0x0CUL,       /**< DODIR data input.            */
-  k_doc_off_dodsr0 = 0x10UL,      /**< DODSR0 reference / result.   */
-  k_doc_off_dodsr1 = 0x14UL,      /**< DODSR1 upper threshold.      */
+  k_doc_base       = 0x40311000UL, /**< DOC base (HUM Ch 57.2).      */
+  k_doc_span       = 0x20UL,       /**< Register window.             */
+  k_doc_off_docr   = 0x00UL,       /**< DOCR control (OMS/DOBW/DCSEL), 8b. */
+  k_doc_off_dosr   = 0x04UL,       /**< DOSR status (DOPCF), 8b.     */
+  k_doc_off_doscr  = 0x08UL,       /**< DOSCR status clear, 8b.      */
+  k_doc_off_dodir  = 0x0CUL,       /**< DODIR data input.            */
+  k_doc_off_dodsr0 = 0x10UL,       /**< DODSR0 reference / result.   */
+  k_doc_off_dodsr1 = 0x14UL,       /**< DODSR1 upper threshold.      */
 } doc_map_t;
 
 /** @brief DOCR / DOSR field masks (ra8d2_doc_regs.h). */
 typedef enum : uint32_t {
-  k_doc_oms_mask   = 0x03U, /**< OMS[1:0] mode select.           */
-  k_doc_dobw_mask  = 0x08U, /**< DOBW: 0 = 16-bit, 1 = 32-bit.   */
-  k_doc_dcsel_mask = 0x70U, /**< DCSEL[2:0] compare condition.   */
-  k_doc_dcsel_shift = 4U,   /**< DCSEL field position.           */
-  k_doc_dopcf      = 0x01U, /**< DOSR DOPCF flag / DOSCR clear.  */
+  k_doc_oms_mask    = 0x03U, /**< OMS[1:0] mode select.           */
+  k_doc_dobw_mask   = 0x08U, /**< DOBW: 0 = 16-bit, 1 = 32-bit.   */
+  k_doc_dcsel_mask  = 0x70U, /**< DCSEL[2:0] compare condition.   */
+  k_doc_dcsel_shift = 4U,    /**< DCSEL field position.           */
+  k_doc_dopcf       = 0x01U, /**< DOSR DOPCF flag / DOSCR clear.  */
 } doc_field_t;
 
 /** @brief DOCR.OMS operation modes. */
@@ -82,7 +88,8 @@ static doc_state_t s_doc;
 /** @brief Width mask selected by DOCR.DOBW (0 = 16-bit, 1 = 32-bit). */
 static uint32_t doc_width_mask(void)
 {
-  return ((s_doc.docr & (uint8_t)k_doc_dobw_mask) != 0U) ? 0xFFFFFFFFU : 0x0000FFFFU;
+  return ((s_doc.docr & (uint8_t)k_doc_dobw_mask) != 0U) ? (uint32_t)k_u32_all
+                                                         : (uint32_t)k_u16_full;
 }
 
 /** @brief Apply one DODIR operand to DODSR0 per the current DOCR.OMS mode. */
@@ -102,10 +109,10 @@ static void doc_apply(uint32_t dodir)
   } else {
     /* Compare: DCSEL selects the relation that latches DOPCF. DCSEL=1 matches
      * on equality; everything else (including 0) latches on mismatch. */
-    const uint32_t dcsel = (uint32_t)((s_doc.docr & (uint8_t)k_doc_dcsel_mask) >>
-                                      (uint32_t)k_doc_dcsel_shift);
-    const bool     equal = (in == cur);
-    const bool     hit   = (dcsel == 1U) ? equal : !equal;
+    const uint32_t dcsel =
+      (uint32_t)((s_doc.docr & (uint8_t)k_doc_dcsel_mask) >> (uint32_t)k_doc_dcsel_shift);
+    const bool equal = (in == cur);
+    const bool hit   = (dcsel == 1U) ? equal : !equal;
     if (hit) {
       s_doc.dopcf = (uint8_t)k_doc_dopcf;
     }

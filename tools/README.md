@@ -5,41 +5,39 @@ SPDX-License-Identifier: MIT
 
 # Developer tooling (`tools/`)
 
-Two ways to *see the bedroom UI / firmware run* without a board, plus the gates
-that keep them honest. They look similar but answer different questions -- pick
-by what you're doing.
+One simulator -- `tools/board_sim` -- runs the real firmware without a board,
+plus the gate that keeps it honest.
 
 | You want to... | Use | How |
 |----------------|-----|-----|
-| Iterate on the **UI** fast, click tabs, try any display size | **`tools/simulator`** (native GUIX recompile) | `make sim [PANEL=<name>]` (alias `make ui`) |
-| Check the **real flashed `.elf`** actually boots + drives the panel | **`tools/board_sim`** (Unicorn CPU emulator) | `make emulate-<app> [PANEL=<name>]` |
-| Preview a **macOS host demo** (floorplan, guix_tabs) | host examples | `make <host-app>` / `make run-<host-app>` |
+| Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/board_sim`** (Unicorn CPU emulator) | `make sim-<app> [PANEL=<name>]` |
 
-`make apps` lists every firmware + host app; `make help` is the grouped target
+`make apps` lists every firmware app; `make help` is the grouped target
 reference. Git hooks auto-install on first `make` (or `make hooks`).
 
-## `tools/simulator` -- UI design simulator
-
-Recompiles the **shared** `examples/shared/bedroom_ui/bedroom_ui.c` *natively on
-macOS* and runs it under real GUIX, in a clickable window. Fast edit-render loop
-for laying out screens; **not** the firmware binary. The display is config-driven
-(`tools/simulator/panels/<name>.toml`: `name`/`width`/`height`/`format`), and the
-UI is resolution-adaptive, so any panel size renders without clipping.
-Headless `--png` for scripted renders. Details: `tools/simulator/README.md`.
-
-## `tools/board_sim` -- board emulator
+## `tools/board_sim` -- the board emulator
 
 Boots the **unmodified cross-compiled firmware `.elf`** on an emulated Cortex-M
 (Unicorn), models the RA8D2 peripheral space, ticks SysTick, and presents the
 real GLCDC output. Highest fidelity -- it exercises the actual bring-up
-(clocks/SDRAM/GLCDC) and driver code. `--view` (live window), `--ppm` (headless
-frame), `--panel <file.toml>` (any display), `--click X Y` (inject touch through
-the real GT911 path). Details: `tools/board_sim/README.md`.
+(clocks/SDRAM/GLCDC) and driver code, so the panel/UI you see is exactly what the
+flashed firmware draws. Because it runs the real binary, the firmware renders at
+the resolution it was *built* for: pointing a fixed-panel app at a different
+`--panel` shows the genuine mismatch, not a magically re-laid-out screen.
 
-## Regression gates
+Flags: `--view` (live macOS window), `--ppm <file>` (headless frame),
+`--panel <file.toml>` / `--size WxH` (model a given display), `--click X Y`
+(inject touch through the real GT911 path). Panel descriptors live in
+`tools/board_sim/panels/<name>.toml`. From the repo root, `make sim-<app>` builds
+the app and opens its live window; a GUIX app (e.g. `make sim-bedroom_ui_panel`)
+doubles as the UI preview. Layout: `inc/` (headers) + `src/` (sources), matching
+the `libs/` convention. Details: `tools/board_sim/README.md`.
+
+## Regression gate
 
 - `scripts/board_sim_smoke.sh` -- boots each display app on the emulator and
   asserts it runs to its main loop without faulting (no invalid opcode / unmapped
-  access, not parked in the panic-halt loop).
+  access, not parked in the panic-halt loop), and for the GUIX UI app renders one
+  frame and asserts the panel drew rich content.
 
-Run either tool with `--help`/no args for its full flag set.
+Run the tool with `--help`/no args for its full flag set.

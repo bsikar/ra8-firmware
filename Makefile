@@ -17,7 +17,7 @@
 #
 #   make            -- build the default app ($(RA_DEFAULT_APP))
 #   make <app>      -- build a cross-compiled firmware app, e.g. `make blink_hal`
-#   make apps       -- list every discovered app (firmware vs host preview)
+#   make apps       -- list every discovered firmware app
 #   make help       -- grouped reference of every top-level target
 #   make clean      -- remove every app build dir and tests/build
 #   make format     -- run clang-format --in-place on the whole tree
@@ -29,15 +29,12 @@
 #   make ascii      -- scan for non-ASCII characters
 #   make version    -- verify @since tags match the VERSION file
 #
-# Three flavours of "see the UI / firmware run", easy to confuse -- keep
-# them straight:
+# Two ways to "see the UI / firmware run":
 #
-#   make <app>            cross-compile firmware -> flash / emulate it
-#   make emulate-<app>    boot that REAL .elf on the Unicorn CPU emulator
-#                         (tools/board_sim) -- high-fidelity bring-up check
-#   make sim              recompile the shared GUIX UI NATIVELY on macOS
-#                         (tools/simulator) -- fast, clickable UI design
-#   make <host-app>       a macOS host preview tool (examples/host/*)
+#   make <app>            cross-compile firmware -> flash it to a board
+#   make sim-<app>        boot that REAL .elf on the Unicorn CPU emulator
+#                         (tools/board_sim) -- the single simulator: high-
+#                         fidelity bring-up + live panel/UI in a macOS window
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -82,8 +79,6 @@ RA_DEFAULT_APP ?= blink
 _RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
                  $(wildcard $(ROOT)/examples/*/*/*/main.c) \
                  $(wildcard $(ROOT)/examples/*/*/*/*/main.c)
-# examples/host/* are macOS-only dev tools, not cross-compiled firmware apps.
-_RA_APP_MAINS := $(filter-out $(ROOT)/examples/host/%,$(_RA_APP_MAINS))
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
@@ -92,21 +87,14 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 RA_FLASH := $(addprefix flash-,$(RA_APPS))
 RA_DEBUG := $(addprefix debug-,$(RA_APPS))
 RA_OZONE := $(addprefix ozone-,$(RA_APPS))
-# `make emulate-<app>` -- boot the app's real .elf on the Unicorn CPU
-# emulator (tools/board_sim). `simulate-<app>` is kept as a back-compat alias.
-RA_EMULATE  := $(addprefix emulate-,$(RA_APPS))
-RA_SIMULATE := $(addprefix simulate-,$(RA_APPS))
-
-# Discover host examples (examples/host/<app>/) -- macOS-only dev tools built
-# natively, not cross-compiled. Their build/run targets are defined below.
-_RA_HOST_APP_MAINS := $(wildcard $(ROOT)/examples/host/*/main.c)
-RA_HOST_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_HOST_APP_MAINS))))
-RA_HOST_RUN        := $(addprefix run-,$(RA_HOST_APPS))
-$(foreach m,$(_RA_HOST_APP_MAINS),$(eval RA_HOST_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
+# `make sim-<app>` -- boot the app's real .elf on the Unicorn CPU emulator
+# (tools/board_sim), the single simulator: high-fidelity, runs the genuine
+# bring-up + peripheral-driver path, and (for a GUIX app) IS the UI preview.
+RA_SIM := $(addprefix sim-,$(RA_APPS))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all ui $(RA_APPS) $(RA_HOST_APPS) $(RA_HOST_RUN)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -115,7 +103,7 @@ _EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/main.c) \
 EK_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_EK_APP_MAINS))))
 
 help:
-	@echo "ra8d2-firmware make targets   ($(words $(RA_APPS)) firmware apps, $(words $(RA_HOST_APPS)) host previews -- 'make apps' for the list)"
+	@echo "ra8d2-firmware make targets   ($(words $(RA_APPS)) firmware apps -- 'make apps' for the list)"
 	@echo ""
 	@echo "BUILD"
 	@echo "  make                   build the default app ($(RA_DEFAULT_APP))"
@@ -124,14 +112,10 @@ help:
 	@echo "  make clean             remove every app build dir and tests/build"
 	@echo "  make compile_commands  regenerate build/compile_commands.json for clangd"
 	@echo ""
-	@echo "RUN / PREVIEW / EMULATE  (no board needed -- see 'make apps')"
-	@echo "  make <host-app>        build a macOS host preview tool (examples/host/*)"
-	@echo "  make run-<host-app>    build + launch that host preview window"
-	@echo "  make sim [PANEL=ek_ra8d2]   recompile the shared GUIX UI NATIVELY on macOS"
-	@echo "                             -- fast, clickable UI design (tools/simulator)"
-	@echo "  make emulate-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn"
-	@echo "                             CPU emulator, live window (tools/board_sim)"
-	@echo "                             (alias: make simulate-<app>)"
+	@echo "RUN / PREVIEW / SIMULATE  (no board needed -- see 'make apps')"
+	@echo "  make sim-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn CPU"
+	@echo "                             emulator, live panel/UI window (tools/board_sim)"
+	@echo "                             e.g. make sim-blink, make sim-bedroom_ui_panel"
 	@echo ""
 	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)"
 	@echo "  make flash-<app>       build + flash an app  (e.g. make flash-blink)"
@@ -175,7 +159,7 @@ help:
 	@echo ""
 	@echo "DEV SETUP / DISCOVERY"
 	@echo "  make hooks             (re)install the tracked git hooks (auto-runs on every make)"
-	@echo "  make apps              list every discovered app (firmware vs host preview)"
+	@echo "  make apps              list every discovered firmware app"
 	@echo "  make help              this grouped reference"
 
 # `make` with no arg builds the default app.
@@ -186,18 +170,15 @@ default: $(RA_DEFAULT_APP)
 # Two families behave differently, so they are listed separately:
 #   * FIRMWARE apps      cross-compiled for the EK-RA8D2. Every one can be
 #                        built (`make <app>`), flashed (`make flash-<app>`)
-#                        and emulated (`make emulate-<app>`). Grouped by the
+#                        and simulated (`make sim-<app>`). Grouped by the
 #                        tier dir, which signals hardware-support maturity
 #                        (hw_validated = confirmed on a stock EVM).
-#   * HOST preview tools macOS-native dev tools (examples/host/*); run with
-#                        `make <name>` / `make run-<name>`. Not flashable.
 # Descriptions: firmware apps come from ra_add_app(DESCRIPTION ...) in each
-# CMakeLists.txt; host tools from the main.c @brief.
+# CMakeLists.txt.
 apps:
-	@printf '== FIRMWARE apps (%s) -- build: make <app> | flash: make flash-<app> | emulate: make emulate-<app>\n' "$(words $(RA_APPS))"
+	@printf '== FIRMWARE apps (%s) -- build: make <app> | flash: make flash-<app> | simulate: make sim-<app>\n' "$(words $(RA_APPS))"
 	@for tier_dir in $(ROOT)/examples/*/; do \
 		tier=$$(basename "$$tier_dir"); \
-		[ "$$tier" = "host" ] && continue; \
 		[ "$$tier" = "shared" ] && continue; \
 		for main in "$$tier_dir"*/main.c "$$tier_dir"*/*/main.c "$$tier_dir"*/*/*/main.c; do \
 			[ -f "$$main" ] || continue; \
@@ -208,14 +189,7 @@ apps:
 			printf '%s\t%s\t%s\n' "$$group" "$$app" "$$desc"; \
 		done; \
 	done | sort | awk -F'\t' '{ if ($$1 != g) { g=$$1; printf "\n  [%s]\n", g } printf "    %-30s %s\n", $$2, $$3 }'
-	@printf '\n== HOST preview tools (%s) -- run: make <name>  or  make run-<name>  (macOS-native, not flashable)\n\n' "$(words $(RA_HOST_APPS))"
-	@for main in $(ROOT)/examples/host/*/main.c; do \
-		[ -f "$$main" ] || continue; \
-		app=$$(basename "$$(dirname "$$main")"); \
-		brief=$$(grep -m1 "@brief" "$$main" 2>/dev/null | sed 's/.*@brief //'); \
-		printf "    %-30s %s\n" "$$app" "$$brief"; \
-	done
-	@printf '\nGUIX UI design (native recompile, clickable): make sim [PANEL=ek_ra8d2]   (tools/simulator)\n'
+	@printf '\nGUIX UI preview: run a GUIX app on the emulator, e.g. make sim-bedroom_ui_panel [PANEL=ek_ra8d2]   (tools/board_sim)\n'
 
 # Forward `make <app>` to the per-app Makefile so the top-level shorthand
 # and `cd examples/<tier>/<app> && make` produce the exact same artifacts.
@@ -233,15 +207,6 @@ _RA_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
 
 $(RA_APPS): $(RA_COMPILE_COMMANDS)
 	$(MAKE) -C $(RA_APP_DIR_$@) build
-
-# Host examples build natively via their own Makefile (no cross toolchain, no
-# top-level compile_commands reconfigure). `make <app>` builds the binary;
-# `make run-<app>` builds and launches the macOS preview window.
-$(RA_HOST_APPS):
-	$(MAKE) -C $(RA_HOST_APP_DIR_$@)
-
-$(RA_HOST_RUN): run-%:
-	$(MAKE) -C $(RA_HOST_APP_DIR_$*) run
 
 # Local J-Link shorthands (board plugged into this machine): build the app
 # first (via the `%` prereq), then forward to the per-app Makefile, which wraps
@@ -275,6 +240,12 @@ check:
 
 tidy:
 	bash scripts/clang_tidy.sh --check
+
+# `make magic` -- full-tree magic-number gate.  Backstops clang-tidy's
+# readability-magic-numbers, which only sees files in the host
+# compile-db (no example main.c, no ARM-only #ifdef code paths).
+magic:
+	python3 scripts/utils/check_magic_numbers.py
 
 test-docker:
 	bash scripts/test-docker.sh
@@ -366,43 +337,26 @@ hooks:
 	@$(ROOT)/scripts/git/install-hooks.sh
 	@echo "git hooks active: core.hooksPath = $$(git config core.hooksPath)"
 
-# `make sim [PANEL=<name>]` -- recompile the shared GUIX UI (examples/shared/
-# bedroom_ui) NATIVELY on macOS via the simulator companion tool
-# (tools/simulator) and run it interactively: click to tap, fast iteration on
-# UI design. This is NOT the firmware -- to boot the real .elf use
-# `make emulate-<app>`. Panel config: tools/simulator/panels/<PANEL>.toml.
-# `make ui` is a clearer alias for the same target.
-SIM_DIR   := $(ROOT)/tools/simulator
-# Panel descriptor used by `sim` / `emulate-<app>`: tools/simulator/panels/
-# <PANEL>.toml. `PANEL=<name>` is the documented knob; `SIM_PANEL` stays
-# accepted as a back-compat spelling. Default ek_ra8d2.
+# `make sim-<app> [PANEL=<name>]` -- cross-build the app, then boot its REAL .elf
+# (the same binary that flashes to the board) on the Unicorn-based CPU emulator
+# (tools/board_sim) and show the emulated panel live in a macOS window, sized by
+# the display descriptor tools/board_sim/panels/<PANEL>.toml (default ek_ra8d2 --
+# swap it to emulate a different screen). This is the single simulator: high
+# fidelity (it exercises the genuine bring-up + peripheral-driver path), and for
+# a GUIX app it doubles as the UI preview. Close the window to exit. e.g.
+# `make sim-blink`, `make sim-lcd_color_cycle`, `make sim-bedroom_ui_panel`.
+BOARD_SIM_DIR := $(ROOT)/tools/board_sim
+# Panel descriptor used by `sim-<app>`: tools/board_sim/panels/<PANEL>.toml.
+# `PANEL=<name>` is the documented knob; `SIM_PANEL` stays accepted as a
+# back-compat spelling. Default ek_ra8d2.
 SIM_PANEL ?= ek_ra8d2
 PANEL     ?= $(SIM_PANEL)
-.PHONY: sim
-sim ui:
-	$(CMAKE) -B $(SIM_DIR)/build -S $(SIM_DIR)
-	$(CMAKE) --build $(SIM_DIR)/build -j
-	$(SIM_DIR)/build/sim --panel $(SIM_DIR)/panels/$(PANEL).toml
-
-# `make emulate-<app> [PANEL=<name>]` -- cross-build the app, then boot its REAL
-# .elf (the same binary that flashes to the board) on the Unicorn-based CPU
-# emulator (tools/board_sim) and show the emulated panel live in a macOS window,
-# sized by the display descriptor tools/simulator/panels/<PANEL>.toml (default
-# ek_ra8d2 -- swap it to emulate a different screen). High fidelity: it exercises
-# the genuine bring-up + peripheral-driver code path. Close to exit. e.g.
-# `make emulate-lcd_color_cycle` or `make emulate-bedroom_ui_panel`.
-# `simulate-<app>` is kept as a backward-compatible alias.
-BOARD_SIM_DIR := $(ROOT)/tools/board_sim
-.PHONY: $(RA_EMULATE) $(RA_SIMULATE)
-$(RA_EMULATE): emulate-%: %
+.PHONY: $(RA_SIM)
+$(RA_SIM): sim-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
-		--panel $(SIM_DIR)/panels/$(PANEL).toml --view
-
-# Back-compat alias: `make simulate-<app>` forwards to `emulate-<app>`.
-$(RA_SIMULATE): simulate-%: emulate-%
-	@:
+		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 ascii:
 	@for dir in src libs tests; do \

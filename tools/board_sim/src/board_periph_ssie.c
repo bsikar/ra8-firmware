@@ -48,10 +48,10 @@ typedef enum : uint64_t {
 
 /** @brief Per-channel register byte offsets (ra8d2_ssie_regs.h). */
 typedef enum : uint64_t {
-  k_ssie_off_ssicr  = 0x00UL, /**< Control (REN/TEN, MST, DWL, SWL ...). */
-  k_ssie_off_ssisr  = 0x04UL, /**< Status (IIRQ + over/underflow flags). */
-  k_ssie_off_ssifcr = 0x10UL, /**< FIFO control (RFRST/TFRST ...).       */
-  k_ssie_off_ssifsr = 0x14UL, /**< FIFO status (RDF, TDE, RDC, TDC).     */
+  k_ssie_off_ssicr   = 0x00UL, /**< Control (REN/TEN, MST, DWL, SWL ...). */
+  k_ssie_off_ssisr   = 0x04UL, /**< Status (IIRQ + over/underflow flags). */
+  k_ssie_off_ssifcr  = 0x10UL, /**< FIFO control (RFRST/TFRST ...).       */
+  k_ssie_off_ssifsr  = 0x14UL, /**< FIFO status (RDF, TDE, RDC, TDC).     */
   k_ssie_off_ssiftdr = 0x18UL, /**< Transmit FIFO data.                  */
   k_ssie_off_ssifrdr = 0x1CUL, /**< Receive FIFO data.                   */
 } ssie_off_t;

@@ -7,8 +7,10 @@
 # then checks the run: no invalid opcode, no unmapped access, the firmware
 # reached the run budget, and the final PC is NOT parked in the lcd_panic_halt
 # loop. A fast regression gate for the emulator + the display bring-up path
-# (clocks / SDRAM / GLCDC). It does not assert pixel content -- that is checked
-# per-app elsewhere; this is the "does it boot and run" smoke layer.
+# (clocks / SDRAM / GLCDC). For the UI apps in $render_assert_apps it ALSO
+# renders one frame to a PPM and asserts the panel drew rich content (a floor on
+# distinct colors) -- this folds in the pixel-content check the retired
+# ui_render_check.sh used to do against the (now removed) native UI simulator.
 #
 #   scripts/board_sim_smoke.sh                 # default display apps
 #   scripts/board_sim_smoke.sh blink lcd_draw_x  # explicit app list
@@ -47,6 +49,35 @@ pc_in_halt_loop() { # elf pcval -> 0 (true) if PC is inside a halt/fault symbol
     done < <(arm-none-eabi-nm -nS "$elf" 2>/dev/null)
     return 1
 }
+
+# Count distinct RGB pixels in a P6 PPM. A blank / failed render collapses to a
+# handful of colors; a real UI frame has dozens+. Python 3 only, so the check
+# runs identically on macOS and the Linux runner.
+count_ppm_colors() { # ppm-path -> distinct color count on stdout (0 on error)
+    python3 - "$1" 2>/dev/null <<'PY' || echo 0
+import pathlib, sys
+d = pathlib.Path(sys.argv[1]).read_bytes()
+if d[:2] != b"P6":
+    print(0); sys.exit(0)
+i, t = 2, []
+while len(t) < 3:
+    while i < len(d) and d[i:i + 1].isspace():
+        i += 1
+    s = i
+    while i < len(d) and not d[i:i + 1].isspace():
+        i += 1
+    t.append(int(d[s:i]))
+i += 1
+w, h, _ = t
+px = d[i:i + w * h * 3]
+print(len({px[o:o + 3] for o in range(0, len(px) - 2, 3)}))
+PY
+}
+
+# UI apps whose rendered frame must be rich (distinct-color floor). bedroom_ui_panel
+# is the GUIX bedroom UI; this replaces the per-panel ui_render_check.sh fill gate.
+render_assert_apps="bedroom_ui_panel"
+min_render_colors=64
 
 apps=("$@")
 if [ "${#apps[@]}" -eq 0 ]; then
@@ -101,6 +132,21 @@ for app in "${apps[@]}"; do
         fail=1
         continue
     fi
+    case " $render_assert_apps " in
+    *" $app "*)
+        ppm="$(mktemp)"
+        "$sim" "$elf" --ppm "$ppm" >/dev/null 2>&1 || true
+        colors="$(count_ppm_colors "$ppm")"
+        rm -f "$ppm"
+        if [ "${colors:-0}" -lt "$min_render_colors" ]; then
+            echo "RENDER SPARSE (pc=$pc, $colors colors < $min_render_colors)"
+            fail=1
+            continue
+        fi
+        echo "OK (pc=$pc, render=$colors colors)"
+        continue
+        ;;
+    esac
     echo "OK (pc=$pc)"
 done
 

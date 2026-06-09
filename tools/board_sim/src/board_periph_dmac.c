@@ -50,6 +50,9 @@
 
 #include "board_periph_block.h"
 
+/** @brief Field mask for the DMAC block-count register. */
+typedef enum : uint32_t { k_u16_mask = 0xFFFFU } dmac_lit_t;
+
 /**
  * @brief Per-tick order slot for the DMAC / DTC windows.
  *
@@ -200,7 +203,7 @@ static uint32_t dmac_total_units(const dmac_chan_t* c)
   if (count == 0U) {
     count = (uint32_t)k_dmac_dmcra_low_mask + 1U; /* DMCRAL==0 means 1024 units */
   }
-  uint32_t blocks = c->dmcrb & 0xFFFFU;
+  uint32_t blocks = c->dmcrb & (uint32_t)k_u16_mask;
   if (blocks == 0U) {
     blocks = 1U; /* normal mode: a single block of `count` units */
   }

@@ -203,13 +203,14 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
 {
   bool any_active = false;
   for (uint32_t slot = 0U; slot < (uint32_t)k_canfd_afl_count; slot++) {
-    const uint64_t ent  = (uint64_t)k_canfd_off_afl + ((uint64_t)slot * (uint64_t)k_canfd_afl_stride);
+    const uint64_t ent =
+      (uint64_t)k_canfd_off_afl + ((uint64_t)slot * (uint64_t)k_canfd_afl_stride);
     const uint32_t mask = c->reg[canfd_word(ent + 4UL)] & (uint32_t)k_canfd_id_ext;
     if (mask == 0U) {
       continue; /* unprogrammed slot */
     }
-    any_active                = true;
-    const uint32_t accept_id  = c->reg[canfd_word(ent)] & (uint32_t)k_canfd_id_ext;
+    any_active               = true;
+    const uint32_t accept_id = c->reg[canfd_word(ent)] & (uint32_t)k_canfd_id_ext;
     if ((tx_id & mask) == (accept_id & mask)) {
       return true;
     }
