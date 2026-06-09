@@ -770,16 +770,15 @@ typedef enum : uint8_t {
   /** @brief U15 output byte that drives the SW4 layout above.
    *  Bit n = 1 -> SW4-(n+1) reads OFF; bit n = 0 -> reads ON. */
   k_ra_board_pi4ioe_output_project_default = 0xF2U,
-  /** @brief U15 output byte that enables the on-board Octo-SPI flash.
-   *  Value and bit polarity taken verbatim from the FSP EK-RA8D2
-   *  quickstart ``board_cfg_switch_init`` (writes 0xF8 to the U15 output
-   *  register): "All Output HIGH except OPMOD1/OPMOD0 mode-select and
-   *  OSPI_OE_L which must be LOW." The flash output-enable OSPI_OE_L is
-   *  ACTIVE-LOW, so bits 0/1/2 must be driven LOW (0xF8 = 0b1111_1000)
-   *  to connect the IS25LX512M. The old 0xFE left OSPI_OE_L HIGH, so the
-   *  flash stayed disconnected and JEDEC read 0x00FFFFFF (floating DQ).
-   *  This is the same all-SW4-OFF state FSP expects on the bench. */
-  k_ra_board_pi4ioe_output_octospi_active = 0xF8U,
+  /** @brief U15 output byte requesting all SW4 channels OFF (= Octo-SPI
+   *  active). The Renesas FSP EK-RA8D2 ``ospi_b`` example requires
+   *  SW4-1..8 all OFF; with the "bit n = 1 -> SW4-(n+1) OFF" polarity that
+   *  is 0xFF. NOTE: the I/O-expander override cannot actually drive these
+   *  lines high -- the physical SW4 switches win (bench-confirmed, see
+   *  ``ra_board_io_expander_set_octospi_active`` @details + issue #44), so
+   *  this value is what the firmware *requests*, not what guarantees the
+   *  flash connects. */
+  k_ra_board_pi4ioe_output_octospi_active = 0xFFU,
 } ra_board_pi4ioe_project_t;
 
 /**
@@ -813,19 +812,23 @@ typedef enum : uint8_t {
 [[nodiscard]] ra_err_t ra_board_io_expander_apply_project_sw4_defaults(void);
 
 /**
- * @brief Program the U15 I/O expander to activate the Octo-SPI flash.
+ * @brief Program the U15 I/O expander to request the Octo-SPI SW4 layout.
  *
  * @details
- * Writes ``k_ra_board_pi4ioe_output_octospi_active`` (0xF8) to the U15
- * output register, driving the active-low OSPI_OE_L (plus the Pmod1
- * mode-select lines) LOW to connect the IS25LX512M Octo-SPI flash to
- * the OCTA bus, regardless of the physical DIP positions. The value and
- * polarity match the FSP EK-RA8D2 quickstart ``board_cfg_switch_init``.
- * With OSPI_OE_L left HIGH the flash is disconnected -- any
- * ``ra_xspi_flash_*`` op then sees a floating DQ and the JEDEC ID reads
- * 0x00FFFFFF. Call this once, early in main(), BEFORE
- * ``ra_board_xspi_pins_init`` / ``ra_xspi_init`` for any app that drives
- * the on-board Octo-SPI flash.
+ * Writes ``k_ra_board_pi4ioe_output_octospi_active`` (0xFF = all SW4 OFF,
+ * the layout the Renesas FSP EK-RA8D2 ``ospi_b`` example requires) to the
+ * U15 output register with the port set to outputs.
+ *
+ * IMPORTANT -- this does NOT, by itself, connect the flash. Bench readback
+ * of U15 over RIIC1 (2026-06) shows the override latches correctly
+ * (output reg 0x05 = 0xFF, IODIR 0x03 = 0xFF, Hi-Z 0x07 = 0x00) yet the
+ * actual pin levels (input reg 0x0F) read 0x00: the **physical SW4 DIP
+ * switches overpower the expander and hold the lines LOW**. The on-board
+ * Octo-SPI flash only connects when SW4 is set OFF *physically*. So this
+ * call is best-effort housekeeping; the real requirement is SW4-1..8 = OFF
+ * on the board. See ``examples/.../flash_journal/README.md`` and issue
+ * #44. (The earlier 0xF8 value was wrong -- copied from a different EK
+ * board -- and is corrected to 0xFF here.)
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                All U15 register writes succeeded.
@@ -837,8 +840,8 @@ typedef enum : uint8_t {
  * @pre ``ra_mstp_init`` has run.
  * @post P512/P511 are routed to SCL1/SDA1; RIIC1 is initialized at
  *       100 kHz; U15.P0..P7 are outputs driven to
- *       ``k_ra_board_pi4ioe_output_octospi_active``; the OCTA bus pins
- *       are claimed by the Octo-SPI controller.
+ *       ``k_ra_board_pi4ioe_output_octospi_active`` (but the physical SW4
+ *       switches still govern the actual line levels -- see @details).
  *
  * @note Not thread-safe; call once from the boot context before the
  *       Octo-SPI bring-up.
