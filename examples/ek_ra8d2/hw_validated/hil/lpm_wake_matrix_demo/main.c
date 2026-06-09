@@ -54,6 +54,11 @@
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
+/** @brief Wake-up enable register masks. */
+typedef enum : uint32_t {
+  k_lpm_wupen_all_mask = 0xFFFFFFFFUL, /**< Clear all WUPEN bits. */
+} lpm_wupen_mask_t;
+
 typedef enum : uint32_t {
   k_lpm_wake_baud        = 115200U,
   k_lpm_wake_sci_channel = 8U,
@@ -318,11 +323,11 @@ static void lpm_wake_setup_or_halt(uint32_t* out_pclka_hz)
  */
 [[nodiscard]] static ra_err_t lpm_wake_disarm_all(void)
 {
-  ra_err_t err = ra_lpm_clear_wupen0_bits(0xFFFFFFFFUL);
+  ra_err_t err = ra_lpm_clear_wupen0_bits(k_lpm_wupen_all_mask);
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_lpm_clear_wupen1_bits(0xFFFFFFFFUL);
+  err = ra_lpm_clear_wupen1_bits(k_lpm_wupen_all_mask);
   if (err != k_ra_ok) {
     return err;
   }

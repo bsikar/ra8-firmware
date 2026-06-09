@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -80,6 +80,16 @@ bool ra_ble_gatt_internal_notify_invalid(uint8_t decl_present, uint8_t props, ui
 
 typedef struct ra_ble_host_attr_t ra_ble_host_attr_t;
 
+/** @brief Low-byte mask for little-endian handle/value packing. */
+typedef enum : uint32_t {
+  k_ble_byte_mask = 0xFFU,
+} ble_gatt_mask_t;
+
+typedef enum : uint16_t {
+  k_ble_gatt_attr_table_len = 96U,
+  k_ble_gatt_reassembly_len = 256U,
+} ble_gatt_table_size_t;
+
 typedef enum : uint8_t {
   k_attr_kind_primary_service = 0U,
   k_attr_kind_char_decl       = 1U,
@@ -106,13 +116,13 @@ typedef struct {
   char                   name[32];
   uint16_t               next_handle;
   uint16_t               last_service_handle;
-  ra_ble_host_attr_t     attrs[96];
+  ra_ble_host_attr_t     attrs[k_ble_gatt_attr_table_len];
   uint8_t                attr_count;
   uint8_t                service_count;
   uint8_t                char_count;
   uint16_t               conn_handle;
   uint16_t               att_mtu;
-  uint8_t                reassembly[256];
+  uint8_t                reassembly[k_ble_gatt_reassembly_len];
   uint16_t               reassembly_len;
   uint16_t               reassembly_expected;
   uint16_t               reassembly_cid;
@@ -189,8 +199,8 @@ static void internal_uuid16_to_128(uint8_t* dst, uint16_t v)
     0x00U,
   };
   (void)memcpy(dst, k_base_le, 16);
-  dst[k_offset_data1_lo] = (uint8_t)(v & 0xFFU);
-  dst[k_offset_data1_hi] = (uint8_t)((v >> 8U) & 0xFFU);
+  dst[k_offset_data1_lo] = (uint8_t)(v & k_ble_byte_mask);
+  dst[k_offset_data1_hi] = (uint8_t)((v >> 8U) & k_ble_byte_mask);
   (void)k_offset_data2_lo;
   (void)k_offset_data2_hi;
   (void)k_offset_data3_lo;
@@ -726,8 +736,8 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
   }
   uint8_t pdu[k_pdu_hdr_bytes + k_max_value_bytes];
   pdu[0] = k_att_op_handle_value_notify;
-  pdu[1] = (uint8_t)(char_handle & 0xFFU);
-  pdu[2] = (uint8_t)((char_handle >> 8U) & 0xFFU);
+  pdu[1] = (uint8_t)(char_handle & k_ble_byte_mask);
+  pdu[2] = (uint8_t)((char_handle >> 8U) & k_ble_byte_mask);
   if (ra_ble_gatt_internal_should_copy(value_len, a->value)) {
     (void)memcpy(&pdu[k_pdu_hdr_bytes], a->value, value_len);
   }
@@ -736,4 +746,4 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
                                 pdu,
                                 (uint16_t)(k_pdu_hdr_bytes + value_len));
 }
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

@@ -65,6 +65,7 @@
  *  - @c k_demo_at_line_buf  : AT line accumulator bytes.
  */
 typedef enum : uint32_t {
+  k_da16600_timeout_ms   = 2000U, /**< Default AT command timeout. */
   k_demo_baud            = 115200U,
   k_demo_da16600_sci     = 2U,
   k_demo_at_line_buf     = 512U,
@@ -175,7 +176,7 @@ static uint32_t demo_da16600_now_ms(void* ctx)
                            .ctx     = nullptr},
     .line_buf           = s_at_line,
     .line_buf_len       = (uint16_t)k_demo_at_line_buf,
-    .default_timeout_ms = 2000U,
+    .default_timeout_ms = k_da16600_timeout_ms,
   };
   return ra_da16600_init(&cfg);
 }

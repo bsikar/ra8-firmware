@@ -710,6 +710,12 @@ static const ra_port_pin_t s_xspi_octa_pins[] = {
  * boot. The pre-release low pulse stays at 1 ms (still 10000x the
  * 100 ns minimum tRLRH, just generous).
  */
+/** @brief MIPI panel PLL bring-up constants (pending datasheet confirm). */
+typedef enum : uint16_t {
+  k_panel_pclka_mhz = 60U, /**< PCLKA assumed CGC reset default. */
+  k_panel_pll_nmul  = 48U, /**< PLL integer multiplier. */
+} panel_pll_const_t;
+
 typedef enum : uint32_t {
   k_ra_board_xspi_reset_low_ms  = 1U,  /**< Hold RESET_L low for >= tRLRH. */
   k_ra_board_xspi_reset_high_ms = 15U, /**< Wait >= tPUW before first CS.  */
@@ -1741,7 +1747,7 @@ static const ra_mipi_phy_timing_t s_mipi_phy_timing_placeholder = {
  */
 static const ra_mipi_phy_config_t s_mipi_phy_cfg = {
   .mode           = k_ra_mipi_phy_mode_dsi_master,
-  .pclka_mhz      = 60U,
+  .pclka_mhz      = k_panel_pclka_mhz,
   .line_rate_mbps = (uint16_t)k_ra_board_mipi_panel_line_rate_mbps,
   .lane_count     = k_ra_mipi_phy_lane_count_2,
   .clk_mode       = k_ra_mipi_phy_clk_noncontinuous,
@@ -1751,7 +1757,7 @@ static const ra_mipi_phy_config_t s_mipi_phy_cfg = {
       .idiv     = k_ra_mipi_phy_idiv_1,
       .pmul     = k_ra_mipi_phy_pmul_4,
       .nfmul    = k_ra_mipi_phy_nfmul_0_00,
-      .nmul_int = 48U, /* TODO(panel-datasheet). */
+      .nmul_int = k_panel_pll_nmul, /* TODO(panel-datasheet). */
     },
   .escdiv   = 0U,
   .p_timing = &s_mipi_phy_timing_placeholder,

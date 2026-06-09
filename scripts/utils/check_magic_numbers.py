@@ -1,0 +1,433 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Gate: no magic numbers -- every integer literal must live in a named
+typed enum; floating-point constants (which C enums cannot hold) use a
+``const``.  Macros are NOT an acceptable home for an integer constant
+(CLAUDE.md "Constants and Macros": enums always, macros only for code
+de-duplication, conditional compilation, or build-configuration flags).
+
+The project's `.clang-tidy` already configures
+``readability-magic-numbers``, but clang-tidy only checks files that are
+present in the build's ``compile_commands.json``.  ``clang_tidy.sh`` runs
+against the host unit-test build, which drops every ARM-cross-compiled
+translation unit and -- crucially -- contains **no** example ``main.c``
+at all.  The result was that every ``examples/<tier>/.../<app>/main.c``
+was invisible to the magic-number check (a bare ``ra_delay_ms(500U)``
+sailed straight through both the pre-commit hook and CI).
+
+This checker is a backstop that walks the source text directly so the
+rule is enforced for **every** ``.c`` file under ``libs/``, ``src/``,
+``port/``, and ``examples/`` regardless of which compile database it
+ended up in.  It is the magic-number analogue of
+``check_function_size.py``.
+
+Detection rules (kept deliberately aligned with the ``.clang-tidy``
+``readability-magic-numbers`` configuration):
+
+* Numeric literals (decimal, ``0x`` hex, ``0b`` binary, octal, and
+  floating-point, with optional ``u``/``l``/``f`` suffixes) are flagged.
+* The ignored-value set matches ``.clang-tidy``:
+  integers ``0;1;2;3;4;6;8;16;32`` and floats ``0.0;1.0``.
+* Literals inside an ``enum`` body are the *allowed* home for a constant
+  and are never flagged.
+* Preprocessor directives (``#define``, ``#if`` ...) are skipped here --
+  but note that an object-like ``#define FOO 500`` is itself a policy
+  violation (integer constants must be enums); the pre-commit hook's
+  "bare numeric #define" gate is what flags that pattern.
+* Numbers embedded in identifiers (``uint8_t``, ``crc32``, ``s_buf2``)
+  are not literals and are never flagged.
+* Comments and string / character literals are stripped before scanning.
+* clang-tidy ``NOLINT`` suppressions are honoured: a
+  ``NOLINT`` / ``NOLINTNEXTLINE`` / ``NOLINTBEGIN`` .. ``NOLINTEND`` that
+  is bare or lists ``readability-magic-numbers`` (or the
+  ``cppcoreguidelines-avoid-magic-numbers`` alias) suppresses the same
+  lines a clang-tidy run would.  A backstop for clang-tidy must respect
+  clang-tidy's own waiver mechanism -- the codebase uses it heavily to
+  exempt the crypto, JPEG-codec, and BLE-host translation units.
+
+Per-line opt-out: append ``MAGIC-OK: <reason>`` to a line to suppress
+it (mirrors the ``LEGACY-OK`` / ``WAVE-OK`` / ``AI-OK`` opt-outs used by
+the sibling gates).  Use it sparingly and only with a written reason;
+prefer a scoped ``NOLINT`` where a whole block is genuinely exempt.
+
+Run::
+
+    check_magic_numbers.py                      # scan the whole tree
+    check_magic_numbers.py path/to/file.c ...   # scan listed files
+
+Exit 0 if no magic numbers remain, exit 1 (with a diagnostic table) if
+any are found.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+from typing import Iterable, List, Tuple
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Roots scanned in full (every ``.c``) when called with no argument.
+SCAN_ROOTS = ("libs", "src")
+
+# Under ``examples/`` only the application ``main.c`` is scanned -- this
+# matches the scope ``clang_tidy.sh`` already uses for examples.  The
+# per-app boot boilerplate (``vector_table.c``, ``system_init.c``,
+# ``secure_exception.c``, ``trustzone_init.c``) is copied verbatim into
+# every app and is full of sequential IRQ-slot indices and fixed vector
+# addresses; flagging it would bury real application magic numbers under
+# ~200 boilerplate hits per app.  Pass such a file explicitly to scan it.
+EXAMPLES_GLOB = "main.c"
+
+# Path fragments that exclude the file from the scan.  Vendor / build
+# trees are SOUP and exempt; their literals are the upstream
+# maintainer's call, not ours.
+EXCLUDE_FRAGMENTS = (
+    "libs/third_party/",
+    "libs/fonts/",
+    "port/threadx/",
+    "port/guix/",
+    "/build/",
+)
+
+# Integer values exempt from the rule.  Mirrors
+# ``.clang-tidy``: readability-magic-numbers.IgnoredIntegerValues.
+IGNORED_INT = {0, 1, 2, 3, 4, 6, 8, 16, 32}
+
+# Floating-point values exempt from the rule.  Mirrors
+# ``.clang-tidy``: readability-magic-numbers.IgnoredFloatingPointValues.
+IGNORED_FLOAT = {0.0, 1.0}
+
+# Per-line opt-out marker.
+OPT_OUT = "MAGIC-OK"
+
+# clang-tidy check names whose NOLINT suppressions this gate honours.  The
+# project uses NOLINTBEGIN/END(readability-magic-numbers, ...) extensively
+# to waive whole files / functions (crypto, JPEG codec, BLE host, ...); a
+# backstop for clang-tidy must respect clang-tidy's own suppression
+# mechanism or it would override author-sanctioned exemptions.
+MAGIC_CHECK_NAMES = (
+    "readability-magic-numbers",
+    "cppcoreguidelines-avoid-magic-numbers",
+)
+
+_NOLINT_BEGIN_RE = re.compile(r"NOLINTBEGIN(?:\(([^)]*)\))?")
+_NOLINT_END_RE = re.compile(r"NOLINTEND(?:\(([^)]*)\))?")
+_NOLINT_NEXT_RE = re.compile(r"NOLINTNEXTLINE(?:\(([^)]*)\))?")
+_NOLINT_INLINE_RE = re.compile(r"NOLINT(?!BEGIN|END|NEXTLINE)(?:\(([^)]*)\))?")
+
+
+def _nolint_applies(arg: str | None) -> bool:
+    """Return True if a NOLINT marker with arg list `arg` suppresses the
+    magic-number check.  A bare ``NOLINT`` (arg is None/empty) suppresses
+    every check, so it applies too."""
+    if arg is None or arg.strip() == "":
+        return True
+    return any(name in arg for name in MAGIC_CHECK_NAMES)
+
+# A numeric literal: hex, binary, octal, float, or decimal, each with an
+# optional integer/float suffix.  Order matters -- hex/binary/float must
+# be tried before the bare-decimal alternative.
+_NUM_RE = re.compile(
+    r"""
+    (?P<hex>0[xX][0-9a-fA-F]+(?:[uUlL]*))
+  | (?P<bin>0[bB][01]+(?:[uUlL]*))
+  | (?P<flt>(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?[fF])
+  | (?P<dec_flt>(?:\d+\.\d*|\.\d+)(?:[eE][+-]?\d+)?[lL]?)
+  | (?P<dec>\d+(?:[uUlL]*))
+    """,
+    re.VERBOSE,
+)
+
+# Characters that, immediately before a match, mean the digits are part
+# of an identifier (uint8_t, crc32) or a larger numeric token rather
+# than a standalone literal.
+_IDENT_BEFORE = re.compile(r"[0-9A-Za-z_.]")
+
+# A "data row": a line (after comment/string stripping) that holds only
+# numeric literals, commas, braces, signs and whitespace -- i.e. a row
+# of a const lookup table (font glyphs, JPEG quant tables, crypto
+# S-boxes, MIPI PHY register sequences).  These are data, not logic; the
+# magic-number rule is meaningless for them, exactly as clang-tidy never
+# saw them (the data-table TUs are absent from the host compile-db).  A
+# real magic number always rides on an identifier or operator
+# (`ra_delay_ms(500U)`, `buf[0] = 500`, `x << 7`), which breaks the
+# pattern below and is still flagged.
+_DATA_ROW_RE = re.compile(r"^[\s{}\[\],0-9a-fA-FxXuUlL.+\-]*$")
+
+# A declaration line carries a storage class, qualifier, or type token.
+# clang-tidy ignores an array-*dimension* literal in a declaration
+# (``uint8_t z[64]``) but still flags an array *subscript* (``b[5]``);
+# the dimension only counts as a magic number on a declaration line.
+_DECL_HINT = re.compile(
+    r"\b(static|const|extern|volatile|register|struct|union|enum|"
+    r"unsigned|signed|void|char|short|int|long|float|double|bool|"
+    r"[A-Za-z_][A-Za-z0-9_]*_t)\b"  # uint8_t, int32_t, size_t, my_type_t, ...
+)
+
+# A `const` float/double definition is the sanctioned home for a
+# floating-point constant (C enums cannot hold floats -- see CLAUDE.md
+# "Constants and Macros").  A float literal initialising such a
+# definition is the named value itself, analogous to an enum member, and
+# is not a magic number -- exactly as `1.0`/`0.0` are already ignored.
+_CONST_FLOAT_DEF = re.compile(r"\bconst\b")
+_FLOAT_TYPE = re.compile(r"\b(float|double)\b")
+
+
+def _strip_comments_and_strings(text: str) -> str:
+    """Replace comment and string/char-literal bytes with spaces while
+    preserving newlines (and therefore line and column positions)."""
+    out: List[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if c == "/" and nxt == "/":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if c == "/" and nxt == "*":
+            out.append("  ")
+            i += 2
+            while i < n and not (text[i] == "*" and i + 1 < n and text[i + 1] == "/"):
+                out.append("\n" if text[i] == "\n" else " ")
+                i += 1
+            if i < n:
+                out.append("  ")
+                i += 2
+            continue
+        if c == '"' or c == "'":
+            quote = c
+            out.append(" ")
+            i += 1
+            while i < n and text[i] != quote:
+                if text[i] == "\\" and i + 1 < n:
+                    out.append("  ")
+                    i += 2
+                    continue
+                out.append("\n" if text[i] == "\n" else " ")
+                i += 1
+            if i < n:
+                out.append(" ")
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _literal_value(match: re.Match) -> Tuple[bool, float]:
+    """Return (is_float, value) for a numeric-literal match, or
+    (False, NaN) if it should be ignored as un-parseable."""
+    raw = match.group(0)
+    group = match.lastgroup
+    # Strip only true literal suffixes -- and never strip `f` from a hex
+    # literal, where it is a hex digit (0xAF), not a float suffix.
+    if group == "hex":
+        body = raw.rstrip("uUlL")
+        return False, float(int(body, 16))
+    if group == "bin":
+        body = raw.rstrip("uUlL")
+        return False, float(int(body, 2))
+    if group in ("flt", "dec_flt"):
+        body = raw.rstrip("fFlL")
+        try:
+            return True, float(body)
+        except ValueError:
+            return False, float("nan")
+    body = raw.rstrip("uUlL")
+    # Leading-zero decimals are octal in C (0700 == 448); fall back to
+    # base 8, then base 10, before giving up.
+    for base in (0, 8, 10):
+        try:
+            return False, float(int(body, base))
+        except ValueError:
+            continue
+    return False, float("nan")
+
+
+def _is_array_dimension(code_line: str, start: int, end: int) -> bool:
+    """Return True if the literal at [start, end) is the sole content of a
+    ``[ ... ]`` on a declaration line -- an array dimension, which
+    clang-tidy does not treat as a magic number."""
+    i = start - 1
+    while i >= 0 and code_line[i].isspace():
+        i -= 1
+    if i < 0 or code_line[i] != "[":
+        return False
+    j = end
+    while j < len(code_line) and code_line[j].isspace():
+        j += 1
+    if j >= len(code_line) or code_line[j] != "]":
+        return False
+    return bool(_DECL_HINT.search(code_line))
+
+
+def _is_ignored(is_float: bool, value: float) -> bool:
+    if value != value:  # NaN -- could not parse, do not flag
+        return True
+    if is_float:
+        return value in IGNORED_FLOAT
+    return int(value) in IGNORED_INT
+
+
+def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
+    """Return a list of (line, column, literal) for every magic number
+    in `path`."""
+    try:
+        text = path.read_text()
+    except (OSError, UnicodeDecodeError):
+        return []
+
+    code = _strip_comments_and_strings(text)
+    code_lines = code.splitlines()
+    orig_lines = text.splitlines()
+
+    violations: List[Tuple[int, int, str]] = []
+    enum_depth = 0       # brace depth while inside an enum body
+    enum_pending = False  # saw `enum` keyword, awaiting its `{`
+    nolint_region = False  # inside a magic-relevant NOLINTBEGIN/END block
+    nolint_next = False    # previous line was a magic-relevant NOLINTNEXTLINE
+
+    for idx, code_line in enumerate(code_lines):
+        stripped = code_line.lstrip()
+        raw = orig_lines[idx] if idx < len(orig_lines) else ""
+
+        # --- clang-tidy NOLINT suppression (honours the project's own
+        # readability-magic-numbers waivers) ---------------------------
+        m_beg = _NOLINT_BEGIN_RE.search(raw)
+        if m_beg and _nolint_applies(m_beg.group(1)):
+            nolint_region = True
+        m_end = _NOLINT_END_RE.search(raw)
+        if m_end and _nolint_applies(m_end.group(1)):
+            nolint_region = False
+        if nolint_region or m_beg or m_end:
+            continue
+        if nolint_next:
+            nolint_next = False
+            continue
+        m_nl = _NOLINT_NEXT_RE.search(raw)
+        if m_nl and _nolint_applies(m_nl.group(1)):
+            nolint_next = True
+            continue
+        m_inl = _NOLINT_INLINE_RE.search(raw)
+        if m_inl and _nolint_applies(m_inl.group(1)):
+            continue
+
+        # Update enum tracking on the raw (comment-stripped) line.
+        if enum_depth == 0 and re.search(r"\benum\b", code_line):
+            enum_pending = True
+        if enum_pending or enum_depth > 0:
+            opens = code_line.count("{")
+            closes = code_line.count("}")
+            if enum_pending and opens > 0:
+                enum_pending = False
+                enum_depth += opens - closes
+                continue  # the `... enum ... {` line itself is a definition
+            enum_depth += opens - closes
+            if enum_depth < 0:
+                enum_depth = 0
+            if enum_depth > 0:
+                continue  # inside enum body: literals are definitions
+
+        # Preprocessor directives are governed by other gates.
+        if stripped.startswith("#"):
+            continue
+
+        # Pure data rows of a const lookup table are not logic.
+        if stripped and _DATA_ROW_RE.match(code_line):
+            continue
+
+        # Per-line opt-out (checked against the original source line).
+        if idx < len(orig_lines) and OPT_OUT in orig_lines[idx]:
+            continue
+
+        for m in _NUM_RE.finditer(code_line):
+            start = m.start()
+            if start > 0 and _IDENT_BEFORE.match(code_line[start - 1]):
+                continue
+            if _is_array_dimension(code_line, start, m.end()):
+                continue
+            is_float, value = _literal_value(m)
+            if _is_ignored(is_float, value):
+                continue
+            if (
+                is_float
+                and _CONST_FLOAT_DEF.search(code_line)
+                and _FLOAT_TYPE.search(code_line)
+            ):
+                continue  # named const float/double definition
+            violations.append((idx + 1, start + 1, m.group(0)))
+
+    return violations
+
+
+def _is_excluded(path: Path) -> bool:
+    p = str(path)
+    return any(frag in p for frag in EXCLUDE_FRAGMENTS)
+
+
+def _enumerate_targets(arg_paths: Iterable[str]) -> List[Path]:
+    """Resolve the list of files to scan from CLI arguments."""
+    args = [a for a in arg_paths if a not in ("--check", "--all")]
+    if args:
+        out: List[Path] = []
+        for raw in args:
+            p = Path(raw)
+            if not p.is_absolute():
+                p = REPO_ROOT / p
+            if p.is_dir():
+                out.extend(p.rglob("*.c"))
+            elif p.suffix == ".c":
+                out.append(p)
+        return [p for p in out if not _is_excluded(p)]
+
+    out = []
+    for root in SCAN_ROOTS:
+        out.extend((REPO_ROOT / root).rglob("*.c"))
+    out.extend((REPO_ROOT / "examples").rglob(EXAMPLES_GLOB))
+    return [p for p in out if not _is_excluded(p)]
+
+
+def main(argv: List[str]) -> int:
+    targets = _enumerate_targets(argv[1:])
+    if not targets:
+        print("check_magic_numbers.py: no files to scan", file=sys.stderr)
+        return 0
+
+    findings: List[Tuple[str, int, int, str]] = []
+    for path in targets:
+        for line_no, col, literal in _scan_file(path):
+            rel = path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path
+            findings.append((str(rel), line_no, col, literal))
+
+    if not findings:
+        print(
+            f"check_magic_numbers.py: {len(targets)} file(s) scanned, "
+            "no magic numbers found."
+        )
+        return 0
+
+    findings.sort()
+    print(
+        f"check_magic_numbers.py: {len(findings)} magic number(s) found "
+        "-- every integer literal must be a named typed enum (use a const "
+        "only for floating-point; macros are not allowed for constants):\n",
+        file=sys.stderr,
+    )
+    print("  file:line:col  literal", file=sys.stderr)
+    for path, line_no, col, literal in findings:
+        print(f"  {path}:{line_no}:{col}  {literal}", file=sys.stderr)
+    print(
+        "\nReplace each literal with a named value. Genuine exceptions may "
+        f"carry a trailing `{OPT_OUT}: <reason>` comment on the line.",
+        file=sys.stderr,
+    )
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

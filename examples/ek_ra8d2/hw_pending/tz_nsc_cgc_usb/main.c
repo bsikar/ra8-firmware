@@ -238,7 +238,23 @@ volatile uint32_t g_tz_nsc_cgc_usb_mismatch = 0U;
  * @note Read externally only.
  * @since 0.1.0
  */
-volatile uint32_t g_tz_nsc_cgc_usb_init_step = 0U;
+/**
+ * @brief Boot-step breadcrumb values for ::g_tz_nsc_cgc_usb_init_step.
+ * @details Each value names the NSC/init operation in progress; read
+ *          back via J-Link memprobe to localize a bring-up hang.
+ */
+typedef enum : uint32_t {
+  k_tz_nsc_step_start       = 0U, /**< Before any init op. */
+  k_tz_nsc_step_pll2_enable = 1U, /**< PLL2 enable via NSC. */
+  k_tz_nsc_step_usbfs_clock = 2U, /**< USB-FS clock enable via NSC. */
+  k_tz_nsc_step_clock_query = 3U, /**< CPUCLK0 frequency query via NSC. */
+  k_tz_nsc_step_time_init   = 4U, /**< System tick init. */
+  k_tz_nsc_step_led_init    = 5U, /**< Board LED init. */
+  k_tz_nsc_step_pins_init   = 6U, /**< USB pin routing. */
+  k_tz_nsc_step_irq_enable  = 7U, /**< Global IRQ enable (init done). */
+} tz_nsc_init_step_t;
+
+volatile uint32_t g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_start;
 
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
@@ -438,7 +454,13 @@ static UCHAR s_string_framework[] = {
  * @brief USBX language-id table -- US English.
  * @since 0.1.0
  */
-static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
+/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
+typedef enum : uint8_t {
+  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
+  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
+} usb_langid_byte_t;
+
+static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
 /* CDC-ACM activate / deactivate callbacks                                    */
@@ -721,33 +743,33 @@ int32_t main(void)
    * Reset_Handler before this NS main() was entered, so we only need
    * to issue the PLL2 + USB-FS clock + query operations here, all via
    * NSC entries that trap into the Secure world. */
-  g_tz_nsc_cgc_usb_init_step = 1U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_pll2_enable;
   if (ra_nsc_cgc_pll2_enable((uint8_t)k_demo_pll2_mul_int,
                              (uint8_t)k_demo_pll2_mul_quarters,
                              k_ra_plodiv_div4) != k_ra_ok) {
     demo_panic_halt();
   }
-  g_tz_nsc_cgc_usb_init_step = 2U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_usbfs_clock;
   if (ra_nsc_cgc_usbfs_clock_enable() != k_ra_ok) {
     demo_panic_halt();
   }
-  g_tz_nsc_cgc_usb_init_step = 3U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_clock_query;
   if (ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  g_tz_nsc_cgc_usb_init_step = 4U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_time_init;
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  g_tz_nsc_cgc_usb_init_step = 5U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_led_init;
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     demo_panic_halt();
   }
-  g_tz_nsc_cgc_usb_init_step = 6U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_pins_init;
   if (demo_pins_init() != k_ra_ok) {
     demo_panic_halt();
   }
-  g_tz_nsc_cgc_usb_init_step = 7U;
+  g_tz_nsc_cgc_usb_init_step = k_tz_nsc_step_irq_enable;
 
   ra_isr_globals_enable();
 

@@ -62,6 +62,7 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
+  k_imu_decimal_base     = 10U, /**< Radix for integer-to-ASCII. */
   k_imu_demo_baud        = 115200U,
   k_imu_demo_period_ms   = 250U,
   k_imu_demo_bus_hz      = 100000U,
@@ -152,8 +153,8 @@ static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
     tmp[n++] = (uint8_t)'0';
   } else {
     while (v > 0 && n < (uint32_t)k_imu_demo_int_str_cap) {
-      tmp[n++] = (uint8_t)('0' + (uint8_t)(v % 10));
-      v /= 10;
+      tmp[n++] = (uint8_t)('0' + (uint8_t)(v % k_imu_decimal_base));
+      v /= k_imu_decimal_base;
     }
   }
   if (neg && n < (uint32_t)k_imu_demo_int_str_cap) {
@@ -195,6 +196,8 @@ typedef struct {
  *
  * @return Forwarded ``ra_i3c_transfer`` return code.
  */
+/* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match
+ * the ra_lsm6dso bus-op function-pointer typedef. */
 static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
 {
   const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
@@ -221,6 +224,8 @@ typedef enum : uint32_t {
   k_imu_demo_iic_tx_cap = 16U,
 } imu_demo_iic_cap_t;
 
+/* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match
+ * the ra_lsm6dso bus-op function-pointer typedef. */
 static ra_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
 {
   if (len > (uint32_t)k_imu_demo_iic_tx_cap - 1U) {

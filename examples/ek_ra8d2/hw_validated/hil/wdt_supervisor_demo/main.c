@@ -81,7 +81,17 @@ volatile uint32_t g_wdt_supervisor_demo_tick = 0U;
  * @note Read externally by J-Link.
  * @since 0.1.0
  */
-volatile uint32_t g_wdt_supervisor_demo_step = 0U;
+/** @brief Bring-up step codes for ::g_wdt_supervisor_demo_step (memprobe). */
+typedef enum : uint32_t {
+  k_wdt_sup_step_start               = 0U, /**< Before init. */
+  k_wdt_sup_step_wdt_init            = 1U, /**< WDT initialised. */
+  k_wdt_sup_step_supervisor_init     = 2U, /**< Supervisor initialised. */
+  k_wdt_sup_step_worker_a_registered = 3U, /**< worker_a registered. */
+  k_wdt_sup_step_worker_b_registered = 4U, /**< worker_b registered. */
+  k_wdt_sup_step_supervisor_started  = 5U, /**< Supervisor started (done). */
+} wdt_sup_step_t;
+
+volatile uint32_t g_wdt_supervisor_demo_step = k_wdt_sup_step_start;
 
 /**
  * @var g_wdt_supervisor_demo_last_err
@@ -93,7 +103,12 @@ volatile uint32_t g_wdt_supervisor_demo_step = 0U;
  * @note Read externally by J-Link.
  * @since 0.1.0
  */
-volatile uint32_t g_wdt_supervisor_demo_last_err = 0xFFFFFFFFU;
+/** @brief Sentinel for ::g_wdt_supervisor_demo_last_err ("none yet"). */
+typedef enum : uint32_t {
+  k_wdt_sup_err_none = 0xFFFFFFFFU,
+} wdt_sup_err_sentinel_t;
+
+volatile uint32_t g_wdt_supervisor_demo_last_err = k_wdt_sup_err_none;
 
 static void wdt_sup_demo_bring_up(void);
 
@@ -192,7 +207,7 @@ static void wdt_sup_demo_bring_up(void)
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step     = 1U;
+  g_wdt_supervisor_demo_step     = k_wdt_sup_step_wdt_init;
   const ra_wdt_sup_cfg_t sup_cfg = {
     .stack             = s_sup_stack,
     .stack_size_bytes  = (uint32_t)k_wdt_sup_demo_stack_bytes,
@@ -204,7 +219,7 @@ static void wdt_sup_demo_bring_up(void)
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = 2U;
+  g_wdt_supervisor_demo_step = k_wdt_sup_step_supervisor_init;
   err = ra_wdt_supervisor_register_thread("worker_a",
                                           (uint32_t)k_wdt_sup_demo_worker_a_deadline_ms,
                                           &s_handle_a);
@@ -212,7 +227,7 @@ static void wdt_sup_demo_bring_up(void)
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = 3U;
+  g_wdt_supervisor_demo_step = k_wdt_sup_step_worker_a_registered;
   err = ra_wdt_supervisor_register_thread("worker_b",
                                           (uint32_t)k_wdt_sup_demo_worker_b_deadline_ms,
                                           &s_handle_b);
@@ -220,13 +235,13 @@ static void wdt_sup_demo_bring_up(void)
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step     = 4U;
+  g_wdt_supervisor_demo_step     = k_wdt_sup_step_worker_b_registered;
   err                            = ra_wdt_supervisor_start();
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
   if (err != k_ra_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = 5U;
+  g_wdt_supervisor_demo_step = k_wdt_sup_step_supervisor_started;
 }
 
 /**

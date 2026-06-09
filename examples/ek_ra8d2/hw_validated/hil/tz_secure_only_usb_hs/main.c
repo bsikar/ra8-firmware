@@ -153,6 +153,12 @@ static const ra_port_pin_t k_demo_pin_pd07_role =
  * @enum demo_config_t
  * @brief Compile-time settings for the echo loop and ThreadX worker.
  */
+/** @brief USBHS security/privilege attribution register addresses. */
+typedef enum : uintptr_t {
+  k_usbhs_psarb_addr = 0x40204004UL, /**< Peripheral Security Attribution B. */
+  k_usbhs_pparb_addr = 0x4020401CUL, /**< Peripheral Privilege Attribution B. */
+} usbhs_sec_reg_addr_t;
+
 typedef enum : uint32_t {
   k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
@@ -735,7 +741,13 @@ static UCHAR s_string_framework[] = {
  * @brief USBX language-id table -- US English.
  * @since 0.1.0
  */
-static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
+/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
+typedef enum : uint8_t {
+  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
+  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
+} usb_langid_byte_t;
+
+static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* Forward declarations -------------------------------------------------- */
 
@@ -979,8 +991,8 @@ static void demo_worker_capture_echo_probes(void)
 {
   s_syscfg_in_echo_loop                  = ra_usb_hs()->SYSCFG;
   s_lpsts_in_echo_loop                   = *ra_usbhs_lpsts();
-  volatile const uint32_t* const psarb_p = (volatile const uint32_t*)0x40204004UL;
-  volatile const uint32_t* const pparb_p = (volatile const uint32_t*)0x4020401CUL;
+  volatile const uint32_t* const psarb_p = (volatile const uint32_t*)k_usbhs_psarb_addr;
+  volatile const uint32_t* const pparb_p = (volatile const uint32_t*)k_usbhs_pparb_addr;
   s_psar_state                           = *psarb_p;
   s_ppar_state                           = *pparb_p;
 }

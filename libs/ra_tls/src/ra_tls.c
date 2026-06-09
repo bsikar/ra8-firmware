@@ -32,7 +32,12 @@
 #include "ra_err.h"
 #include "ra_log.h"
 
-/* NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
+/** @brief TLS record content type: Handshake (22). */
+typedef enum : uint8_t {
+  k_tls_content_handshake = 0x16U,
+} tls_content_type_t;
+
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
 #ifndef RA_SIMULATOR_MODE
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
@@ -399,7 +404,7 @@ ra_err_t ra_tls_handshake(ra_tls_session_t session)
   /* Simulator path: drive a single round-trip through the BIO callbacks
    * so the loopback test exercises the function-pointer plumbing without
    * a real TLS handshake. */
-  uint8_t   sim_byte = 0x16U;
+  uint8_t   sim_byte = k_tls_content_handshake;
   const int send_rc  = session->cfg.bio_send(session->cfg.bio_ctx, &sim_byte, 1U);
   if (send_rc < 0) {
     return k_ra_err_comm_error;
@@ -497,4 +502,4 @@ ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t*
 #endif
 }
 
-/* NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */

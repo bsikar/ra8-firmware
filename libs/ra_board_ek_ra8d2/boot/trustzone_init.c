@@ -68,6 +68,11 @@
  * =============================================================================
  */
 
+/** @brief SAU_TYPE SREGION-count mask (low byte). */
+typedef enum : uint32_t {
+  k_sau_sregion_mask = 0xFFU,
+} sau_type_mask_t;
+
 typedef enum : uintptr_t {
   k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register. */
   k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register. */
@@ -160,7 +165,7 @@ void ra_trustzone_init(void)
    * regions for our partition to fit. The Cortex-M85 always has 8,
    * but a chip-specific override could trim the count. */
   const uint32_t sau_type = ra_boot_read32(k_ra_sau_type_addr);
-  if ((sau_type & 0xFFU) < 4U) {
+  if ((sau_type & k_sau_sregion_mask) < 4U) {
     /* Refuse to bring up TrustZone on an SAU we cannot use. The
      * caller will see SAU_CTRL.ENABLE clear and fall back to the
      * single-world model. */

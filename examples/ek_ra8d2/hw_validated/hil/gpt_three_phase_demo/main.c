@@ -37,6 +37,11 @@
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
+/** @brief Per-step duty advance. */
+typedef enum : uint32_t {
+  k_gpt_duty_advance = 0x200U, /**< Compare-value increment per update. */
+} gpt_demo_duty_t;
+
 typedef enum : uint32_t {
   k_gpt_3p_demo_period  = 0x0000FFFFU,
   k_gpt_3p_demo_step_ms = 20U,
@@ -156,7 +161,7 @@ int32_t main(void)
     } else {
       g_gpt_three_phase_mismatch += 1U;
     }
-    duty_offset = (duty_offset + 0x200U) & period;
+    duty_offset = (duty_offset + k_gpt_duty_advance) & period;
     ra_delay_ms((uint32_t)k_gpt_3p_demo_step_ms);
   }
   gpt_3p_demo_panic_halt();

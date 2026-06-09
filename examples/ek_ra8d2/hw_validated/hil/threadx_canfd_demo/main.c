@@ -53,6 +53,17 @@
 /**
  * @brief Stack size, in bytes, for each CANFD demo thread.
  */
+/** @brief Fixed marker bytes following the sequence counter in the test frame. */
+typedef enum : uint8_t {
+  k_canfd_marker_0 = 0xA5U,
+  k_canfd_marker_1 = 0x5AU,
+  k_canfd_marker_2 = 0x12U,
+  k_canfd_marker_3 = 0x34U,
+  k_canfd_marker_4 = 0x56U,
+  k_canfd_marker_5 = 0x78U,
+  k_canfd_marker_6 = 0x9AU,
+} canfd_marker_t;
+
 typedef enum : uint16_t {
   k_canfd_thread_stack_bytes = 1024U,
 } canfd_stack_t;
@@ -154,7 +165,14 @@ static void thread_tx_entry(ULONG thread_input)
       .is_extended = 0U,
       .is_fd       = 0U,
       .is_brs      = 0U,
-      .data        = {seq, 0xA5U, 0x5AU, 0x12U, 0x34U, 0x56U, 0x78U, 0x9AU},
+      .data        = {seq,
+                      k_canfd_marker_0,
+                      k_canfd_marker_1,
+                      k_canfd_marker_2,
+                      k_canfd_marker_3,
+                      k_canfd_marker_4,
+                      k_canfd_marker_5,
+                      k_canfd_marker_6},
     };
     if (ra_canfd_transmit((uint8_t)k_canfd_demo_channel, &tx) == k_ra_ok) {
       (void)ra_board_led_toggle(k_ra_board_led1);

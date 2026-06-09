@@ -63,6 +63,11 @@ static const char* const s_tag = "ra_display_pal_lcd";
  *
  * @since 0.1.0
  */
+/** @brief RGB565 pixel mask. */
+typedef enum : uint32_t {
+  k_rgb565_mask = 0xFFFFU,
+} disp_lcd_mask_t;
+
 typedef enum : uint32_t {
   k_lcd_bringup_settle_ms = 200U, /**< Pin/clock settle after board_glcdc_init. */
   k_lcd_bg_color_black    = 0U,   /**< 24-bit ARGB for BG plane. */
@@ -491,7 +496,7 @@ static ra_err_t lcd_clear(void* ctx, uint32_t color)
   lcd_ctx_t*     c            = (lcd_ctx_t*)ctx;
   uint16_t*      pixels       = (uint16_t*)c->fb.pixels;
   const uint32_t pixels_total = (uint32_t)c->fb.width_px * (uint32_t)c->fb.height_px;
-  const uint16_t rgb565       = (uint16_t)(color & 0xFFFFU);
+  const uint16_t rgb565       = (uint16_t)(color & k_rgb565_mask);
   for (uint32_t i = 0U; i < pixels_total; ++i) {
     pixels[i] = rgb565;
   }

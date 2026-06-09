@@ -34,15 +34,15 @@
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel_timing.h"
 #include "ra_time.h"
 
 typedef enum : uint16_t {
-  k_fb_w = 512U,
-  k_fb_h = 512U,
+  k_fb_w           = 512U,
+  k_fb_h           = 512U,
+  k_fb_align_bytes = 64U, /**< AXI-burst alignment for clean GLCDC fetches. */
 } lcd_fb_dim_t;
 
 typedef enum : uint16_t {
@@ -55,13 +55,15 @@ typedef enum : uint8_t {
 } lcd_x_param_t;
 
 typedef enum : uint32_t {
-  k_lcd_heartbeat_ms = 500U,
+  k_lcd_powerup_delay_ms = 500U,
+  k_lcd_heartbeat_ms     = 500U,
 } lcd_pace_t;
 
 /* Static framebuffer in SRAM, 64-byte AXI-burst aligned so the GLCDC
  * fetches are clean.  The display PAL takes a pointer to this and
  * forwards it to the GLCDC HAL via ``display_init``. */
-static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h] __attribute__((aligned(64)));
+static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h]
+  __attribute__((aligned(k_fb_align_bytes)));
 
 /**
  * @brief Display PAL config selecting the LCD backend.
@@ -191,7 +193,7 @@ static display_handle_t* lcd_bringup_panel(void)
 int32_t main(void)
 {
   lcd_bringup_clocks();
-  ra_delay_ms(500U);
+  ra_delay_ms(k_lcd_powerup_delay_ms);
 
   lcd_fb_fill(k_color_bg);
   lcd_draw_x(k_color_x);

@@ -113,6 +113,13 @@ static const ra_port_pin_t k_demo_pin_dm =
  * @brief Compile-time settings for the worker thread + USBX pool +
  *        RAM-disk geometry.
  */
+/** @brief SCSI sense triple for an unsupported / out-of-range request. */
+typedef enum : uint8_t {
+  k_scsi_sense_illegal_request = 0x05U, /**< Sense key: ILLEGAL REQUEST. */
+  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range. */
+  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none. */
+} scsi_sense_code_t;
+
 typedef enum : uint32_t {
   k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 32768U, /**< USBX memory pool (bytes).           */
@@ -316,7 +323,13 @@ static UCHAR s_string_framework[] = {
  * @brief USBX language-id table -- US English.
  * @since 0.1.0
  */
-static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
+/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
+typedef enum : uint8_t {
+  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
+  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
+} usb_langid_byte_t;
+
+static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
 /* Storage class media callbacks (read / write / status)                      */
@@ -358,7 +371,9 @@ static UINT demo_msc_read(VOID*  storage,
   (void)storage;
   (void)lun;
   if ((lba + number_blocks) > (ULONG)k_demo_block_count) {
-    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(0x05U, 0x21U, 0x00U);
+    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
+                                                         k_scsi_asc_lba_out_of_range,
+                                                         k_scsi_ascq_none);
     return UX_ERROR;
   }
   (void)memcpy(data_pointer,
@@ -406,7 +421,9 @@ static UINT demo_msc_write(VOID*  storage,
   (void)storage;
   (void)lun;
   if ((lba + number_blocks) > (ULONG)k_demo_block_count) {
-    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(0x05U, 0x21U, 0x00U);
+    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
+                                                         k_scsi_asc_lba_out_of_range,
+                                                         k_scsi_ascq_none);
     return UX_ERROR;
   }
   (void)memcpy(&s_ramdisk[lba * (ULONG)k_demo_block_size],

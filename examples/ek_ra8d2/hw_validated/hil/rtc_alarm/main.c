@@ -57,7 +57,8 @@ typedef enum : uint8_t {
 /** @brief Alarm offset from the current RTC reading. */
 typedef enum : uint8_t {
   k_rtc_demo_alarm_offset_s = 5U,
-  k_rtc_demo_seed_year_lo   = 26U, /**< 2026 - 2000. */
+  k_rtc_demo_seed_year_lo   = 26U,   /**< 2026 - 2000. */
+  k_rtc_demo_year_base      = 2000U, /**< Calendar epoch base for the year field. */
   k_rtc_demo_seed_month     = 1U,
   k_rtc_demo_seed_day       = 1U,
 } rtc_demo_seed_t;
@@ -120,7 +121,7 @@ static void rtc_demo_setup_or_halt(void)
     rtc_demo_panic_halt();
   }
   const ra_rtc_datetime_t seed = {
-    .year    = (uint16_t)(2000U + k_rtc_demo_seed_year_lo),
+    .year    = (uint16_t)(k_rtc_demo_year_base + k_rtc_demo_seed_year_lo),
     .month   = (uint8_t)k_rtc_demo_seed_month,
     .day     = (uint8_t)k_rtc_demo_seed_day,
     .weekday = 0U,

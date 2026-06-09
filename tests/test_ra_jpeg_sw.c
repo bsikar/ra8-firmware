@@ -478,11 +478,12 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
  * @test test_mcdc_decode_pad_and_rst_marker
  * @par MC/DC:
  * Decisions in ra_jpeg_sw_decode and dec_decode_scan:
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1260 D_pad pad-skip                  // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1276 D_sof unsupported (else-if)     // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1302 D_rst RST0..RST7 (else-if)      // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1607 D_sof unsupported (extracted)   // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1631 D_rst RST0..RST7 (extracted)    // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:529  D_res bit-reader refill         // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1314 D_pad pad-skip                  // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1349 D_sof unsupported (else-if)     // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1349 D_rst RST0..RST7 (else-if)      // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1659 D_sof unsupported (extracted)   // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c:1684 D_rst RST0..RST7 (extracted)    // CITES-OK: MC/DC gate requires file:line
  * D_pad pad-skip exercised by encoder round-trip (yields natural padding).
  * D_sof 4-cond unsupported via SOF2 (0xFFC2): co-dependence rationale
  * documented inline in production source (markers >= 0xFFC1 are by spec
@@ -490,7 +491,10 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
  * reachable SOFn). D_rst RST0..RST7 in-band path: exercised structurally
  * by round-trip of restart-free streams (decision stays F throughout the
  * loop). N+1=2 for the reachable subset of D_rst; full D_pad and D_sof
- * vectors flip via the bytestreams.
+ * vectors flip via the bytestreams. D_res (bit-reader reservoir refill)
+ * is driven by the full decode: the refill loop runs while nbits is low
+ * and stops on either the byte budget (first operand F) or end-of-image
+ * (had_eoi T).
  */
 static void test_mcdc_decode_pad_and_rst_marker(void)
 {

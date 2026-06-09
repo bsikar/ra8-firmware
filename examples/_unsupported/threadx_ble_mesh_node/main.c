@@ -52,6 +52,11 @@
  * @enum demo_mesh_cfg_t
  * @brief Numeric configuration constants.
  */
+/** @brief Bluetooth SIG company identifier. */
+typedef enum : uint16_t {
+  k_mesh_company_id_lf = 0x05F1U, /**< Linux Foundation CID. */
+} mesh_company_id_t;
+
 typedef enum : uint32_t {
   k_demo_baud         = 115200U,
   k_demo_sci_channel  = 8U,
@@ -243,7 +248,7 @@ static void demo_ble_or_halt(void)
   }
 
   ra_ble_mesh_config_t mesh_cfg = {};
-  mesh_cfg.cid                  = 0x05F1U; /* Linux Foundation CID. */
+  mesh_cfg.cid                  = k_mesh_company_id_lf; /* Linux Foundation CID. */
   mesh_cfg.pid                  = 0x0001U;
   mesh_cfg.vid                  = 0x0001U;
   memcpy(mesh_cfg.uuid, k_demo_dev_uuid, sizeof(mesh_cfg.uuid));

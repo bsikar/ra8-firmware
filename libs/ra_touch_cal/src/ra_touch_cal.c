@@ -33,7 +33,7 @@
 
 #include "ra_err.h"
 
-/* NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,readability-isolate-declaration,readability-identifier-naming,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result) */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,readability-isolate-declaration,readability-identifier-naming,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result) */
 
 /* ===========================================================================
  * Internal constants
@@ -44,6 +44,30 @@
  * @enum internal_const_t
  * @brief Module-private numeric constants (no magic numbers).
  */
+/** @brief Row-major flat indices of a 3x3 matrix (a[r*3+c]). */
+typedef enum : uint8_t {
+  k_m3_00  = 0U,
+  k_m3_01  = 1U,
+  k_m3_02  = 2U,
+  k_m3_10  = 3U,
+  k_m3_11  = 4U,
+  k_m3_12  = 5U,
+  k_m3_20  = 6U,
+  k_m3_21  = 7U,
+  k_m3_22  = 8U,
+  k_m3_len = 9U,
+} mat3_idx_t;
+
+/** @brief Affine calibration coefficient indices (a..f). */
+typedef enum : uint8_t {
+  k_coeff_a = 0U,
+  k_coeff_b = 1U,
+  k_coeff_c = 2U,
+  k_coeff_d = 3U,
+  k_coeff_e = 4U,
+  k_coeff_f = 5U,
+} affine_coeff_idx_t;
+
 typedef enum : uint32_t {
   k_internal_centre_div    = 2U,          /**< Halve to get panel centre.     */
   k_internal_byte_mask     = 0xFFU,       /**< 8-bit mask for byte extracts.  */
@@ -68,6 +92,9 @@ typedef enum : uint32_t {
  * @note File-scope static; not thread-shared because it is read-only.
  */
 static const float s_min_det = 1.0e-3F;
+
+/** @brief Round-to-nearest bias for float->int conversion. */
+static const float s_round_bias = 0.5F;
 
 /* ===========================================================================
  * Internal helpers
@@ -216,11 +243,11 @@ static uint32_t internal_crc32(const uint8_t* data, size_t len)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_solve3(const float a[9], const float b[3], float x[3], bool* ok)
+static void internal_solve3(const float a[k_m3_len], const float b[3], float x[3], bool* ok)
 {
-  const float det = (a[0] * ((a[4] * a[8]) - (a[5] * a[7]))) -
-                    (a[1] * ((a[3] * a[8]) - (a[5] * a[6]))) +
-                    (a[2] * ((a[3] * a[7]) - (a[4] * a[6])));
+  const float det = (a[k_m3_00] * ((a[k_m3_11] * a[k_m3_22]) - (a[k_m3_12] * a[k_m3_21]))) -
+                    (a[k_m3_01] * ((a[k_m3_10] * a[k_m3_22]) - (a[k_m3_12] * a[k_m3_20]))) +
+                    (a[k_m3_02] * ((a[k_m3_10] * a[k_m3_21]) - (a[k_m3_11] * a[k_m3_20])));
 
   const float abs_det = (det < 0.0F) ? -det : det;
   if (abs_det < s_min_det) {
@@ -228,17 +255,17 @@ static void internal_solve3(const float a[9], const float b[3], float x[3], bool
     return;
   }
 
-  const float dx = (b[0] * ((a[4] * a[8]) - (a[5] * a[7]))) -
-                   (a[1] * ((b[1] * a[8]) - (a[5] * b[2]))) +
-                   (a[2] * ((b[1] * a[7]) - (a[4] * b[2])));
+  const float dx = (b[0] * ((a[k_m3_11] * a[k_m3_22]) - (a[k_m3_12] * a[k_m3_21]))) -
+                   (a[k_m3_01] * ((b[1] * a[k_m3_22]) - (a[k_m3_12] * b[2]))) +
+                   (a[k_m3_02] * ((b[1] * a[k_m3_21]) - (a[k_m3_11] * b[2])));
 
-  const float dy = (a[0] * ((b[1] * a[8]) - (a[5] * b[2]))) -
-                   (b[0] * ((a[3] * a[8]) - (a[5] * a[6]))) +
-                   (a[2] * ((a[3] * b[2]) - (b[1] * a[6])));
+  const float dy = (a[k_m3_00] * ((b[1] * a[k_m3_22]) - (a[k_m3_12] * b[2]))) -
+                   (b[0] * ((a[k_m3_10] * a[k_m3_22]) - (a[k_m3_12] * a[k_m3_20]))) +
+                   (a[k_m3_02] * ((a[k_m3_10] * b[2]) - (b[1] * a[k_m3_20])));
 
-  const float dz = (a[0] * ((a[4] * b[2]) - (b[1] * a[7]))) -
-                   (a[1] * ((a[3] * b[2]) - (b[1] * a[6]))) +
-                   (b[0] * ((a[3] * a[7]) - (a[4] * a[6])));
+  const float dz = (a[k_m3_00] * ((a[k_m3_11] * b[2]) - (b[1] * a[k_m3_21]))) -
+                   (a[k_m3_01] * ((a[k_m3_10] * b[2]) - (b[1] * a[k_m3_20]))) +
+                   (b[0] * ((a[k_m3_10] * a[k_m3_21]) - (a[k_m3_11] * a[k_m3_20])));
 
   x[0] = dx / det;
   x[1] = dy / det;
@@ -488,8 +515,8 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
   const float v  = (matrix->d * xf) + (matrix->e * yf) + matrix->f;
 
   /* Round-to-nearest before clipping. */
-  const int32_t ui = (u >= 0.0F) ? (int32_t)(u + 0.5F) : (int32_t)(u - 0.5F);
-  const int32_t vi = (v >= 0.0F) ? (int32_t)(v + 0.5F) : (int32_t)(v - 0.5F);
+  const int32_t ui = (u >= 0.0F) ? (int32_t)(u + s_round_bias) : (int32_t)(u - s_round_bias);
+  const int32_t vi = (v >= 0.0F) ? (int32_t)(v + s_round_bias) : (int32_t)(v - s_round_bias);
 
   out_screen->x = internal_clip32(ui, 0, (int32_t)screen_width - 1);
   out_screen->y = internal_clip32(vi, 0, (int32_t)screen_height - 1);
@@ -574,13 +601,13 @@ ra_err_t ra_touch_cal_load(const uint8_t* src, size_t src_size, ra_touch_cal_mat
       &src[(size_t)k_ra_touch_cal_off_coeffs + ((size_t)i * sizeof(uint32_t))]);
     coeffs[i] = internal_u32_to_float(bits);
   }
-  out_matrix->a = coeffs[0];
-  out_matrix->b = coeffs[1];
-  out_matrix->c = coeffs[2];
-  out_matrix->d = coeffs[3];
-  out_matrix->e = coeffs[4];
-  out_matrix->f = coeffs[5];
+  out_matrix->a = coeffs[k_coeff_a];
+  out_matrix->b = coeffs[k_coeff_b];
+  out_matrix->c = coeffs[k_coeff_c];
+  out_matrix->d = coeffs[k_coeff_d];
+  out_matrix->e = coeffs[k_coeff_e];
+  out_matrix->f = coeffs[k_coeff_f];
   return k_ra_ok;
 }
 
-/* NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,readability-isolate-declaration,readability-identifier-naming,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result) */
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity,readability-isolate-declaration,readability-identifier-naming,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result) */

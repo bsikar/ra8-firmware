@@ -35,7 +35,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -64,6 +64,11 @@
  * ACL header at 4 bytes; Vol 3 Part F 3.4.2 caps default ATT_MTU at
  * 23. All other values are sized to keep the host self-contained.
  */
+/** @brief GATT attribute pool capacity (worst case ~104, rounded). */
+typedef enum : uint16_t {
+  k_ble_l2cap_attr_cap = 96U,
+} ble_l2cap_cap_t;
+
 typedef enum : uint16_t {
   k_l2cap_cid_att          = 0x0004U, /**< Vol 3 Part A 2.1 Table 2.3.   */
   k_l2cap_cid_le_signaling = 0x0005U, /**< Vol 3 Part A 2.1 Table 2.3.   */
@@ -130,7 +135,7 @@ typedef struct {
   char                   name[32];
   uint16_t               next_handle;
   uint16_t               last_service_handle;
-  ra_ble_host_attr_t     attrs[96];
+  ra_ble_host_attr_t     attrs[k_ble_l2cap_attr_cap];
   uint8_t                attr_count;
   uint8_t                service_count;
   uint8_t                char_count;
@@ -1087,4 +1092,4 @@ void ra_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uint
   internal_evt_trampoline(nullptr, evt_code, params, params_len);
 }
 #endif
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

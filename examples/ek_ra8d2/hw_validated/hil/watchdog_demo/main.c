@@ -48,6 +48,11 @@
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
+/** @brief Time-unit conversion. */
+typedef enum : uint32_t {
+  k_ms_per_sec = 1000U, /**< Milliseconds per second. */
+} wdt_demo_time_unit_t;
+
 typedef enum : uint32_t {
   k_wdt_demo_baud          = 115200U,
   k_wdt_demo_sci_channel   = 8U,
@@ -163,7 +168,7 @@ int32_t main(void)
   (void)ra_sci_write_polling((uint8_t)k_wdt_demo_sci_channel, msg, msg_len);
 
   /* Stage 1: refresh for ``alive_seconds`` seconds. */
-  const uint32_t refreshes_per_sec = 1000U / (uint32_t)k_wdt_demo_refresh_ms;
+  const uint32_t refreshes_per_sec = k_ms_per_sec / (uint32_t)k_wdt_demo_refresh_ms;
   const uint32_t total_refreshes   = (uint32_t)k_wdt_demo_alive_seconds * refreshes_per_sec;
   for (uint32_t i = 0U; i < total_refreshes; ++i) {
     ra_iwdt_refresh_deferred();

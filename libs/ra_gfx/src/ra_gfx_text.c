@@ -29,6 +29,13 @@
  * @enum ra_gfx_color_shifts_t
  * @brief Bit positions for unpacking 0xAARRGGBB colour values.
  */
+/** @brief RGB565 channel masks. */
+typedef enum : uint32_t {
+  k_565_r_mask = 0x1FU, /**< 5-bit red.   */
+  k_565_g_mask = 0x3FU, /**< 6-bit green. */
+  k_565_b_mask = 0x1FU, /**< 5-bit blue.  */
+} gfx_565_mask_t;
+
 typedef enum : uint8_t {
   k_shift_blue  = 0,
   k_shift_green = 8,
@@ -305,9 +312,9 @@ internal_get_pixel(const uint8_t* src, size_t stride, ra_gfx_format_t format, si
   switch (format) {
     case k_ra_gfx_format_rgb565: {
       const uint16_t v = (uint16_t)(p[k_idx_r] | ((uint16_t)p[k_idx_g] << k_glyph_bits_per_byte));
-      const uint32_t r = ((uint32_t)(v >> k_565_r_shift_out) & 0x1FU) << k_565_r_shift_in;
-      const uint32_t g = ((uint32_t)(v >> k_565_g_shift_out) & 0x3FU) << k_565_g_shift_in;
-      const uint32_t b = ((uint32_t)v & 0x1FU) << k_565_b_shift_in;
+      const uint32_t r = ((uint32_t)(v >> k_565_r_shift_out) & k_565_r_mask) << k_565_r_shift_in;
+      const uint32_t g = ((uint32_t)(v >> k_565_g_shift_out) & k_565_g_mask) << k_565_g_shift_in;
+      const uint32_t b = ((uint32_t)v & k_565_b_mask) << k_565_b_shift_in;
       return (r << k_shift_red) | (g << k_shift_green) | (b << k_shift_blue);
     }
     case k_ra_gfx_format_rgb888: {

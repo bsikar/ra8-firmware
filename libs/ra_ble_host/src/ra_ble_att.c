@@ -26,7 +26,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -45,6 +45,12 @@
  *        ra_ble_l2cap.c. The full layout is in that file.
  */
 typedef struct ra_ble_host_attr_t ra_ble_host_attr_t;
+
+/** @brief ATT attribute pool and reassembly buffer sizes. */
+typedef enum : uint16_t {
+  k_ble_att_attr_cap         = 96U,
+  k_ble_att_reassembly_bytes = 256U,
+} ble_att_size_t;
 
 typedef enum : uint8_t {
   k_attr_kind_primary_service = 0U,
@@ -78,13 +84,13 @@ typedef struct {
   char                   name[32];
   uint16_t               next_handle;
   uint16_t               last_service_handle;
-  ra_ble_host_attr_t     attrs[96];
+  ra_ble_host_attr_t     attrs[k_ble_att_attr_cap];
   uint8_t                attr_count;
   uint8_t                service_count;
   uint8_t                char_count;
   uint16_t               conn_handle;
   uint16_t               att_mtu;
-  uint8_t                reassembly[256];
+  uint8_t                reassembly[k_ble_att_reassembly_bytes];
   uint16_t               reassembly_len;
   uint16_t               reassembly_expected;
   uint16_t               reassembly_cid;
@@ -845,4 +851,4 @@ void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16
       break;
   }
 }
-// NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
+// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

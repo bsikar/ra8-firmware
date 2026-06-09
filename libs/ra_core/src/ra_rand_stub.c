@@ -33,6 +33,13 @@
 #include <stdlib.h>
 
 /** Xorshift32 default seed: arbitrary non-zero constant per Marsaglia 2003. */
+/** @brief Marsaglia xorshift32 shift constants. */
+typedef enum : uint32_t {
+  k_xorshift_a = 13U, /**< x ^= x << 13. */
+  k_xorshift_b = 17U, /**< x ^= x >> 17. */
+  k_xorshift_c = 5U,  /**< x ^= x << 5.  */
+} xorshift32_param_t;
+
 typedef enum : uint32_t {
   k_ra_rand_default_seed = 0x9E3779B9UL,
 } ra_rand_const_t;
@@ -89,13 +96,10 @@ int rand(void)
 {
   /* Marsaglia xorshift32 with constants 13/17/5. */
   uint32_t       x      = s_state;
-  const uint32_t k_x13  = 13U;
-  const uint32_t k_x17  = 17U;
-  const uint32_t k_x5   = 5U;
   const uint32_t k_mask = (uint32_t)RAND_MAX;
-  x ^= x << k_x13;
-  x ^= x >> k_x17;
-  x ^= x << k_x5;
+  x ^= x << k_xorshift_a;
+  x ^= x >> k_xorshift_b;
+  x ^= x << k_xorshift_c;
   s_state = x;
   return (int)(x & k_mask);
 }

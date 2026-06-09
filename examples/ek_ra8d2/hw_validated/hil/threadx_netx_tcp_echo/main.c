@@ -130,13 +130,36 @@ typedef enum : uint8_t {
 } demo_decimal_t;
 
 /** @brief Locally-administered unicast MAC for this board. */
+/** @brief Demo IPv4 address + netmask octets and helper masks. */
+typedef enum : uint16_t {
+  k_demo_ipaddr_0   = 192U, /**< 192.168.1.42 */
+  k_demo_ipaddr_1   = 168U,
+  k_demo_ipaddr_2   = 1U,
+  k_demo_ipaddr_3   = 42U,
+  k_demo_netmask_b  = 255U,  /**< 255.255.255.0 (first three octets). */
+  k_demo_octet_mask = 0xFFU, /**< Mask one octet out of a packed IPv4. */
+} demo_ipv4_t;
+
+/** @brief MAC-address byte indices. */
+typedef enum : uint8_t {
+  k_demo_mac_idx_0 = 0U,
+  k_demo_mac_idx_1 = 1U,
+  k_demo_mac_idx_2 = 2U,
+  k_demo_mac_idx_3 = 3U,
+  k_demo_mac_idx_4 = 4U,
+  k_demo_mac_idx_5 = 5U,
+} demo_mac_idx_t;
+
 static const uint8_t k_demo_mac[6] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
 
 /** @brief IPv4 address: 192.168.1.42 / 255.255.255.0. */
-static const uint8_t k_demo_ip[4] = {192U, 168U, 1U, 42U};
+static const uint8_t k_demo_ip[4] = {k_demo_ipaddr_0,
+                                     k_demo_ipaddr_1,
+                                     k_demo_ipaddr_2,
+                                     k_demo_ipaddr_3};
 
 /** @brief Subnet mask: 255.255.255.0. */
-static const uint8_t k_demo_mask[4] = {255U, 255U, 255U, 0U};
+static const uint8_t k_demo_mask[4] = {k_demo_netmask_b, k_demo_netmask_b, k_demo_netmask_b, 0U};
 
 #ifndef RA_SIMULATOR_MODE
 /* NetX Duo state. ThreadX requires statically-allocated control
@@ -280,12 +303,12 @@ static ULONG demo_pack_ip(const uint8_t* octets)
  */
 static void demo_pack_mac(ULONG* msw, ULONG* lsw)
 {
-  *msw = (((ULONG)k_demo_mac[0]) << (ULONG)k_demo_mac_msw_shift_b0) |
-         (((ULONG)k_demo_mac[1]) << (ULONG)k_demo_mac_msw_shift_b1);
-  *lsw = (((ULONG)k_demo_mac[2]) << (ULONG)k_demo_mac_lsw_shift_b2) |
-         (((ULONG)k_demo_mac[3]) << (ULONG)k_demo_mac_lsw_shift_b3) |
-         (((ULONG)k_demo_mac[4]) << (ULONG)k_demo_mac_lsw_shift_b4) |
-         (((ULONG)k_demo_mac[5]) << (ULONG)k_demo_mac_lsw_shift_b5);
+  *msw = (((ULONG)k_demo_mac[k_demo_mac_idx_0]) << (ULONG)k_demo_mac_msw_shift_b0) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_1]) << (ULONG)k_demo_mac_msw_shift_b1);
+  *lsw = (((ULONG)k_demo_mac[k_demo_mac_idx_2]) << (ULONG)k_demo_mac_lsw_shift_b2) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_3]) << (ULONG)k_demo_mac_lsw_shift_b3) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_4]) << (ULONG)k_demo_mac_lsw_shift_b4) |
+         (((ULONG)k_demo_mac[k_demo_mac_idx_5]) << (ULONG)k_demo_mac_lsw_shift_b5);
 }
 
 /**
@@ -330,10 +353,10 @@ static void demo_log_echo(ULONG n, ULONG peer_ip)
     *p = k_mid[i];
     p++;
   }
-  uint8_t a = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_a) & 0xFFU);
-  uint8_t b = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_b) & 0xFFU);
-  uint8_t c = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_c) & 0xFFU);
-  uint8_t d = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_d) & 0xFFU);
+  uint8_t a = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_a) & k_demo_octet_mask);
+  uint8_t b = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_b) & k_demo_octet_mask);
+  uint8_t c = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_c) & k_demo_octet_mask);
+  uint8_t d = (uint8_t)((peer_ip >> (ULONG)k_demo_ip_shift_d) & k_demo_octet_mask);
   p         = demo_append_byte(p, a);
   *p        = '.';
   p++;

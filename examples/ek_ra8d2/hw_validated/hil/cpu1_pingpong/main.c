@@ -85,7 +85,12 @@ volatile uint32_t g_cpu1_pingpong_step = 0U;
  * whichever ra_err_t variant the HAL surfaced.
  * @since 0.1.0
  */
-volatile uint32_t g_cpu1_pingpong_release_err = 0xFFFFFFFFU;
+/** @brief Sentinel for ::g_cpu1_pingpong_release_err ("none yet"). */
+typedef enum : uint32_t {
+  k_cpu1_pingpong_err_none = 0xFFFFFFFFU,
+} cpu1_pingpong_err_sentinel_t;
+
+volatile uint32_t g_cpu1_pingpong_release_err = k_cpu1_pingpong_err_none;
 
 /**
  * @brief Poll until ``pong_seq`` reaches ``target`` or the budget runs out.

@@ -248,6 +248,14 @@ jobs:
           # compile-db, so it covers cross-compiled TUs the host tidy
           # build never sees (ThreadX/GUIX/USBX/NetX/HAL register code).
           python3 scripts/utils/check_function_size.py
+          # check_magic_numbers.py: no magic numbers.  clang-tidy's
+          # readability-magic-numbers only sees files in the host
+          # compile-db (no example main.c, no ARM-only #ifdef paths),
+          # which is how ra_delay_ms(500U) slipped past CI.  This
+          # source-level backstop scans the whole tree (honouring
+          # clang-tidy NOLINT waivers) -- the backlog is cleared so it
+          # runs full-tree like check_function_size.py.
+          python3 scripts/utils/check_magic_numbers.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22

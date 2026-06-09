@@ -93,7 +93,24 @@ volatile uint32_t g_fj_mismatch = 0U;
  *       read only by J-Link.
  * @since 0.1.0
  */
-volatile uint32_t g_fj_last_step = 0U;
+/**
+ * @brief Step codes for ::g_fj_last_step (erase/program/read/compare chain).
+ * @details Low codes are success milestones, high codes are the matching
+ *          failure points; read via J-Link memprobe.
+ */
+typedef enum : uint32_t {
+  k_fj_step_init             = 0U, /**< No round-trip run yet. */
+  k_fj_step_erase_ok         = 1U, /**< Sector erase succeeded. */
+  k_fj_step_program_ok       = 2U, /**< Record program succeeded. */
+  k_fj_step_read_ok          = 3U, /**< Record read-back succeeded. */
+  k_fj_step_compare_ok       = 4U, /**< Read-back matched. */
+  k_fj_step_erase_failed     = 5U, /**< Sector erase failed. */
+  k_fj_step_program_failed   = 6U, /**< Record program failed. */
+  k_fj_step_read_failed      = 7U, /**< Record read-back failed. */
+  k_fj_step_compare_mismatch = 8U, /**< Read-back differed (data error). */
+} fj_step_t;
+
+volatile uint32_t g_fj_last_step = k_fj_step_init;
 
 /**
  * @var g_fj_last_counter
@@ -150,7 +167,12 @@ volatile uint32_t g_fj_jedec_id = 0U;
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
-volatile uint32_t g_fj_expander_err = 0xFFFFFFFFU;
+/** @brief Sentinel for ::g_fj_expander_err meaning "no error captured yet". */
+typedef enum : uint32_t {
+  k_fj_err_none = 0xFFFFFFFFU,
+} fj_err_sentinel_t;
+
+volatile uint32_t g_fj_expander_err = k_fj_err_none;
 
 /** @brief Park the CPU after a fatal init failure. */
 static void flash_journal_panic_halt(void)
@@ -216,26 +238,26 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
   flash_journal_pack(counter, rec);
   if (ra_xspi_flash_erase_sector((uint8_t)k_journal_xspi_instance,
                                  (uint32_t)k_journal_record_addr) != k_ra_ok) {
-    g_fj_last_step = 5U;
+    g_fj_last_step = k_fj_step_erase_failed;
     return k_ra_err_hw_error;
   }
-  g_fj_last_step = 1U;
+  g_fj_last_step = k_fj_step_erase_ok;
   if (ra_xspi_flash_program((uint8_t)k_journal_xspi_instance,
                             (uint32_t)k_journal_record_addr,
                             rec,
                             (uint32_t)k_journal_record_bytes) != k_ra_ok) {
-    g_fj_last_step = 6U;
+    g_fj_last_step = k_fj_step_program_failed;
     return k_ra_err_hw_error;
   }
-  g_fj_last_step = 2U;
+  g_fj_last_step = k_fj_step_program_ok;
   if (ra_xspi_flash_read((uint8_t)k_journal_xspi_instance,
                          (uint32_t)k_journal_record_addr,
                          back,
                          (uint32_t)k_journal_record_bytes) != k_ra_ok) {
-    g_fj_last_step = 7U;
+    g_fj_last_step = k_fj_step_read_failed;
     return k_ra_err_hw_error;
   }
-  g_fj_last_step   = 3U;
+  g_fj_last_step   = k_fj_step_read_ok;
   *echoed          = flash_journal_unpack(back);
   g_fj_last_echoed = *echoed;
   return k_ra_ok;
@@ -317,12 +339,12 @@ int32_t main(void)
     if (err == k_ra_ok && echoed == counter) {
       (void)ra_board_led_toggle(k_ra_board_led1);
       g_fj_match += 1U;
-      g_fj_last_step = 4U;
+      g_fj_last_step = k_fj_step_compare_ok;
     } else {
       (void)ra_board_led_toggle(k_ra_board_led2);
       g_fj_mismatch += 1U;
       if (err == k_ra_ok) {
-        g_fj_last_step = 8U;
+        g_fj_last_step = k_fj_step_compare_mismatch;
       }
     }
     counter++;
