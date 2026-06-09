@@ -153,7 +153,7 @@ static void test_axi_init(void)
  * @test test_mcdc_install_linkfix_count_range
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_gwca.c:260): // CITES-OK: MC/DC gate requires file:line
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c@ra_eth_gwca_install_linkfix):
  *   ``if (entry_count == 0U || entry_count > k_ra_gwca_linkfix_max_entries)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: count = 8   -> false || false  (returns ok)
@@ -282,7 +282,7 @@ static void test_reload_queue(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_gwca.c:525): // CITES-OK: MC/DC gate requires file:line
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c@ra_eth_gwca_init_ring):
  *   ``if (ring_depth < min || slot_bytes > max)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: depth = 4, bytes = 1500  -> ok
@@ -332,7 +332,7 @@ static void test_set_descriptor_buffer(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_gwca.c:620): // CITES-OK: MC/DC gate requires file:line
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c@ra_eth_gwca_attach_buffers):
  *   ``if (ring_depth < 2U || slot_bytes == 0U)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: depth = 4, bytes = 64  -> ok
@@ -435,7 +435,7 @@ static void test_find_slot(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_gwca.c:828): // CITES-OK: MC/DC gate requires file:line
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c@ra_eth_gwca_tx_frame):
  *   ``if (frame_len == 0U || frame_len > slot_bytes)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: frame_len = 64, slot_bytes = 1500 -> ok
@@ -478,7 +478,7 @@ static void test_tx_frame(void)
  * no-data branches are still exercised.
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_eth_gwca.c:915): // CITES-OK: MC/DC gate requires file:line
+ * Decision (libs/ra_hal/src/ra_eth_gwca.c@internal_drain_rx_slot):
  *   ``if (buf == nullptr || frame_ds > out_capacity)``
  * inside internal_drain_rx_slot. The compound is reachable only
  * via rx_frame's full memcpy path which is host-skipped (40-bit

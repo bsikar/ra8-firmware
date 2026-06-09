@@ -478,12 +478,12 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
  * @test test_mcdc_decode_pad_and_rst_marker
  * @par MC/DC:
  * Decisions in ra_jpeg_sw_decode and dec_decode_scan:
- *   - libs/ra_hal/src/ra_jpeg_sw.c:529  D_res bit-reader refill         // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1314 D_pad pad-skip                  // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1349 D_sof unsupported (else-if)     // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1349 D_rst RST0..RST7 (else-if)      // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1659 D_sof unsupported (extracted)   // CITES-OK: MC/DC gate requires file:line
- *   - libs/ra_hal/src/ra_jpeg_sw.c:1684 D_rst RST0..RST7 (extracted)    // CITES-OK: MC/DC gate requires file:line
+ *   - libs/ra_hal/src/ra_jpeg_sw.c@br_fill  D_res bit-reader refill
+ *   - libs/ra_hal/src/ra_jpeg_sw.c@ra_jpeg_sw_get_dimensions D_pad pad-skip
+ *   - libs/ra_hal/src/ra_jpeg_sw.c@ra_jpeg_sw_get_dimensions D_sof unsupported (else-if)
+ *   - libs/ra_hal/src/ra_jpeg_sw.c@ra_jpeg_sw_get_dimensions D_rst RST0..RST7 (else-if)
+ *   - libs/ra_hal/src/ra_jpeg_sw.c@dec_dispatch_marker D_sof unsupported (extracted)
+ *   - libs/ra_hal/src/ra_jpeg_sw.c@dec_dispatch_marker D_rst RST0..RST7 (extracted)
  * D_pad pad-skip exercised by encoder round-trip (yields natural padding).
  * D_sof 4-cond unsupported via SOF2 (0xFFC2): co-dependence rationale
  * documented inline in production source (markers >= 0xFFC1 are by spec

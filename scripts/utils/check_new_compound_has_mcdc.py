@@ -10,18 +10,19 @@ docs/MCDC.md, every compound boolean decision in production code under
 `libs/`, `src/`, `port/` must have a matching MC/DC test vector set in
 `tests/test_<module>.c`. The MC/DC test function (named `test_mcdc_*`)
 declares its vector pattern in a Doxygen `@par MC/DC:` block that cites
-the source `file:line` of the decision.
+the decision as `path@function` -- the source path and the *enclosing
+function* of the decision.
 
 This pre-commit gate is a *static* check: it never builds or runs the
 test suite (so it adds no perceptible latency to `git commit`). It works
 by diffing the staged version of each production file against HEAD and
 flagging compound boolean decisions that are present in the staged
 version but were NOT present in the HEAD version on the same source
-line. For each such NEW decision, the script searches every staged-or-
-already-committed `tests/test_*.c` file for a `@par MC/DC:` block whose
-text contains a citation of the source path and a nearby line number
-(see `LINE_TOLERANCE` below for drift tolerance, since unrelated edits
-can shift the cited line by a handful of rows).
+line. For each such NEW decision, the script resolves the decision's
+enclosing function and searches every staged-or-already-committed
+`tests/test_*.c` file for a `@par MC/DC:` block citing
+`path@that_function`. Citing by function (not line number) means
+unrelated edits that shift lines never invalidate a citation.
 
 If a new compound decision is staged WITHOUT a matching MC/DC test in
 the same commit OR already committed in HEAD, the commit is REJECTED.
@@ -63,14 +64,6 @@ EXCLUDED_SUBSTRINGS: tuple[str, ...] = (
     "/build/",
 )
 
-# Line-number drift tolerance when matching a citation against the actual
-# line of a new compound decision. Tests cite a specific `file:line` but
-# unrelated edits above the decision can shift the cited line by a small
-# number of rows; we accept any cited line within +/- LINE_TOLERANCE of
-# the actual decision line. Citations far outside this window are
-# treated as stale (and the new decision is reported as untested).
-LINE_TOLERANCE = 25
-
 # Regex matching a compound boolean decision on a non-comment line.
 # We require the operator to be surrounded by whitespace or paren so we
 # do not collide with `&` / `|` (bitwise) or `&&` inside string literals
@@ -87,11 +80,14 @@ BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/")
 STRING_LITERAL_RE = re.compile(r'"(?:\\.|[^"\\])*"')
 CHAR_LITERAL_RE = re.compile(r"'(?:\\.|[^'\\])*'")
 
-# Regex matching one citation token inside a `@par MC/DC:` block.
-# We only need to capture the source path and the optional line number;
-# the surrounding text varies (see tests/test_ra_sci.c for examples).
-CITATION_RE = re.compile(
-    r"(?P<path>(?:libs|src|port)/[A-Za-z0-9_./-]+\.c):(?P<line>\d+)"
+# Regex matching one citation token inside a `@par MC/DC:` block. The
+# only accepted form is `path@function_name`: it pins the decision to its
+# enclosing function, so unrelated edits that shift lines never invalidate
+# it, and -- having no `:line` -- it is not flagged by
+# check_line_citations.py. (The legacy `path:line` form is gone; the gate
+# does not accept brittle line-number anchors.)
+SYMBOL_CITATION_RE = re.compile(
+    r"(?P<path>(?:libs|src|port)/[A-Za-z0-9_./-]+\.c)@(?P<sym>[A-Za-z_]\w*)"
 )
 
 # Regex isolating each `@par MC/DC:` block in a test file. The block
@@ -231,35 +227,74 @@ def new_decisions(staged_text: str, head_text: str) -> list[tuple[int, str]]:
 # ---------------------------------------------------------------------------
 
 
-def collect_test_citations() -> list[tuple[str, int]]:
+def collect_test_citations() -> list[tuple[str, str]]:
     """Walk every `tests/test_*.c` file in the working tree (which
     includes both staged additions and already-committed tests) and
-    return the list of (source_path, source_line) citations found
-    inside `@par MC/DC:` Doxygen blocks."""
-    cites: list[tuple[str, int]] = []
+    return the ``(source_path, function_name)`` `path@function` citations
+    found inside `@par MC/DC:` Doxygen blocks."""
+    symbol_cites: list[tuple[str, str]] = []
     tests_dir = Path("tests")
     if not tests_dir.is_dir():
-        return cites
+        return symbol_cites
     for tf in sorted(tests_dir.glob("test_*.c")):
         try:
             text = tf.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
         for block in MCDC_BLOCK_RE.findall(text):
-            for m in CITATION_RE.finditer(block):
-                cites.append((m.group("path"), int(m.group("line"))))
-    return cites
+            for m in SYMBOL_CITATION_RE.finditer(block):
+                symbol_cites.append((m.group("path"), m.group("sym")))
+    return symbol_cites
+
+
+def enclosing_function(src_text: str, decision_line: int) -> str | None:
+    """Return the name of the function that encloses a 1-based source
+    line, or None if it cannot be determined.
+
+    Relies on the repo's clang-format style: a function-definition body
+    opens with ``{`` alone on its own line at column 0, whereas control
+    blocks keep their brace at end-of-line (``if (...) {``) and nested
+    scopes are indented. So the nearest preceding line that is exactly
+    ``{`` is the enclosing function's opening brace; the function name is
+    the last identifier before the ``(`` in the signature above it."""
+    lines = src_text.splitlines()
+    idx = decision_line - 1
+    if idx < 0 or idx >= len(lines):
+        return None
+    # Walk up to the function body's opening brace (a bare "{" at col 0).
+    brace = idx
+    while brace >= 0 and lines[brace] != "{":
+        brace -= 1
+    if brace < 0:
+        return None
+    # Assemble the signature lines just above the brace.
+    sig_parts: list[str] = []
+    j = brace - 1
+    while j >= 0 and lines[j].strip() not in ("", "}", "};", "*/", "/*"):
+        sig_parts.insert(0, lines[j])
+        if "(" in lines[j]:
+            break
+        j -= 1
+    sig = " ".join(part.strip() for part in sig_parts)
+    # The function name is the identifier immediately before the first
+    # parameter-list "(" in the signature.
+    m = re.search(r"([A-Za-z_]\w*)\s*\(", sig)
+    return m.group(1) if m else None
 
 
 def has_matching_citation(
     src_path: str,
     src_line: int,
-    citations: list[tuple[str, int]],
+    src_text: str,
+    symbol_cites: list[tuple[str, str]],
 ) -> bool:
-    """Return True if any (path, line) in `citations` matches the
-    given source decision (same path, line within +/- LINE_TOLERANCE)."""
-    for path, line in citations:
-        if path == src_path and abs(line - src_line) <= LINE_TOLERANCE:
+    """Return True if the decision at ``src_path:src_line`` is cited by a
+    ``path@function`` citation naming its enclosing function."""
+    fn = enclosing_function(src_text, src_line)
+    if fn is None:
+        return False
+    for path, sym in symbol_cites:
+        if path == src_path and sym == fn:
             return True
     return False
 
@@ -274,7 +309,7 @@ def main() -> int:
     if not prod_files:
         return 0
 
-    citations = collect_test_citations()
+    symbol_cites = collect_test_citations()
     renamed = rename_map()
 
     findings: list[tuple[str, int, str]] = []
@@ -284,7 +319,7 @@ def main() -> int:
         if not staged_text:
             continue
         for line_no, normalized in new_decisions(staged_text, head_text):
-            if not has_matching_citation(path, line_no, citations):
+            if not has_matching_citation(path, line_no, staged_text, symbol_cites):
                 findings.append((path, line_no, normalized))
 
     if findings:
@@ -295,11 +330,11 @@ def main() -> int:
         print("       Per docs/MCDC.md, every `&&` / `||` decision under")
         print("       libs/, src/, port/ must have a `test_mcdc_*` function")
         print("       in the matching tests/test_<module>.c whose")
-        print("       `@par MC/DC:` block cites the source file:line.")
+        print("       `@par MC/DC:` block cites the decision as")
+        print("       `path@function` (the enclosing function of the")
+        print("       decision -- a drift-proof anchor, no line numbers).")
         print("")
-        print(f"       Citation drift tolerance: +/- {LINE_TOLERANCE} lines.")
-        print("")
-        print("       Offending decisions:")
+        print("       Offending decisions (path:line is informational):")
         for path, line_no, normalized in findings[:50]:
             snippet = normalized if len(normalized) <= 80 else normalized[:77] + "..."
             print(f"         {path}:{line_no}: {snippet}")
@@ -308,7 +343,7 @@ def main() -> int:
         print("")
         print("       Fix: add a `test_mcdc_<decision>` function in the")
         print("       matching tests/test_<module>.c with N+1 vectors and")
-        print("       a `@par MC/DC:` block citing the source file:line,")
+        print("       a `@par MC/DC:` block citing `path@function`,")
         print("       then re-stage and commit. See docs/MCDC.md for the")
         print("       worked example.")
         return 1

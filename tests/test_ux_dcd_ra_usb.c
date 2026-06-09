@@ -226,7 +226,7 @@ static void test_mcdc_dispatch_setup_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U)`
- * (2 conditions, port/usbx/ux_dcd_ra_usb.c:1348) CITES-OK: MC/DC gate requires file:line
+ * (2 conditions, port/usbx/ux_dcd_ra_usb.c@internal_dvst_default_state)
  *  - C1 = (now_sqmon != 0U)
  *  - C2 = (s_prev_dcpctr_sqmon == 0U)
  *
