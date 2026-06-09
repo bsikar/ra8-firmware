@@ -199,7 +199,7 @@ The salient SDD-level placement decisions are:
 | DTCM (64 KiB)     | `0x20000000` | DMA descriptor pools, `ra_log` ring buffer, scratch tied to ISR fast paths.                             | Per-app linker script.                              |
 | SRAM-S (2 MiB)    | `0x22000000` | `.data`, `.bss`, ThreadX pools (when ThreadX is linked), framebuffers spilled out of SDRAM.              | `libs/ra_core/inc/ra_stack_budget.h`                |
 | SRAM-NS alias     | `0x22100000` | NS-side `.data`/`.bss` for the single-image build.                                                      | Linker script.                                      |
-| SDRAM (64 MiB)    | `0x68000000` | Primary framebuffer (1024x600x4 = 2.34 MiB per layer x N), GUIX heap, GLCDC layer ping-pong.             | `ra_sdramc.c`, `ra_glcdc.c`.                        |
+| SDRAM (64 MiB)    | `0x68000000` | Primary framebuffer (1024x600x4 = 2.34 MiB per layer x N), GLCDC layer ping-pong.             | `ra_sdramc.c`, `ra_glcdc.c`.                        |
 | Octo-SPI XIP      | (TBD enum)   | Optional XIP read window for large rodata blobs (apps that need it).                                     | `ra_xspi.c`.                                        |
 | Peripheral window | `0x40000000` | Hand-written register layouts in `libs/ra_hal/inc/ra8d2_*_regs.h`.                                       | HUM Ch 7+.                                          |
 | Core MPU regs     | `0xE000ED90` | Cortex-M85 MPU control accessed by `libs/ra_mpu/`.                                                       | Armv8-M ARM.                                        |

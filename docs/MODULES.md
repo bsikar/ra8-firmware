@@ -6,7 +6,7 @@ A one-paragraph guided tour of every first-party library under
 mandatory Doxygen tag set (see `CLAUDE.md`).
 
 Vendored third-party libraries (mbedTLS, ThreadX, NetX Duo, FileX,
-GuiX, USBX, NimBLE, miniz, stb, litehtml, gumbo) live under
+USBX, NimBLE, miniz, stb, litehtml, gumbo) live under
 `libs/third_party/` and are documented as SOUP under
 [`docs/SOUP/`](SOUP/) -- they are not enumerated here.
 
