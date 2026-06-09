@@ -9,66 +9,63 @@ Banner on success:
 - `g_fj_jedec_id` reads non-FFFFFF (real JEDEC manufacturer + memory
   type bytes for the IS25LX512M)
 
-## Why this is `hw_pending`
+## Why this is `hw_pending` -- and what the actual root cause is
 
-The OSPI flash chip on the test board is **physically unresponsive**.
-Confirmed via direct J-Link JTAG probing of XSPI0's manual-command
-engine (CDBUF + CDCTL0 + INTS) on 2026-05-19:
+`g_fj_jedec_id` reads `0x00FFFFFF` (bus floating, no CIPO drive). The
+**root cause is the physical SW4 DIP-switch configuration**, NOT a dead
+chip and NOT a firmware bug. The on-board Octo-SPI flash (U16, a Macronix
+**MX25UM25645G**, manufacturer `0xC2`) is electrically isolated from the
+MCU's OCTA bus unless the SW4 switches are set correctly.
+
+Per the Renesas FSP EK-RA8D2 `ospi_b` example, **all 8 SW4 switches must be
+set OFF** to use the on-board Octo-SPI flash. The board ships with them
+otherwise, leaving the flash disconnected.
+
+### The firmware cannot fix this (bench-proven, 2026-06)
+
+This demo drives the **U15 PI4IOE5V6408 I/O expander** to *request* the
+all-OFF layout (`ra_board_io_expander_set_octospi_active`, writes `0xFF`).
+Reading U15 back over RIIC1 shows the override is programmed perfectly but
+**defeated by the physical switches**:
 
 ```
-=== 1S-1S-1S JEDEC ID 0x9F ===
-CDBUF[2] = 0x00FFFFFF   (all data bits float high, no CIPO drive)
-INTS     = 0x00000001   (controller's CMDCMP fired -- it ran the clock)
-
-=== RDSR 0x05 ===
-CDBUF[2] = 0x000000FF   (status byte = 0xFF -- bus floating)
-
-=== 0xAB release from deep-power-down, then RDSR ===
-CDBUF[2] = 0x000000FF   (still floating)
-
-=== SFDP read at 0x00 ===
-CDBUF[2] = 0xFFFFFFFF   (still floating)
-
-=== 1S-8S-8S JEDEC ID ===
-CDBUF[2] = 0x00FFFFFE   (one bit toggled -- bus may have weak drive)
-
-=== XSPI1 manual JEDEC ID ===
-CDBUF[2] = 0x00000000   (lines pulled LOW -- XSPI1 not connected to
-                         this flash at all)
+U15 output latch (reg 0x05) = 0xFF   (we command all lines HIGH = all OFF)
+U15 IODIR        (reg 0x03) = 0xFF   (all pins are outputs)
+U15 Hi-Z         (reg 0x07) = 0x00   (outputs enabled, not Hi-Z)
+U15 input level  (reg 0x0F) = 0x00   (actual pins read LOW -- switches win)
 ```
 
-Interpretation:
-* The OSPI controller itself works -- CMDCMP fires, TRREQ self-
-  clears, all registers programme correctly.
-* Pins are routed correctly: PFS shows P104/CS, P808/CLK, P801/DQS,
-  P100/DQ0, P803/DQ1, etc. all at PSEL=0x1C (OSPI) with PMR=1.
-* MSTPCRB.MSTPB16 (OSPI0) is ungated.
-* OCTACKCR=0x01 (MOCO source, SRDY handshake done).
-* RESET_L (P106) is driven HIGH per PFS=0x07 + PCNTR1.PODR bit 6 = 1.
-* Bus reads float at 0xFF in 1S mode (consistent with the SCL/SDA
-  pull-ups expected for an unpopulated bus on the chip side).
+The expander latches `0xFF` but the pins stay at `0x00`: the physical SW4
+switches overpower the push-pull expander outputs and hold the lines LOW
+(= switches ON = Octo-SPI inactive). So the I/O-expander override is
+best-effort only and **cannot** connect the flash.
 
-That all points to the IS25LX512M chip itself: it is not powered, not
-soldered, dead, or held in some state where it ignores all commands.
+### What was verified correct
 
-## How to graduate back to `hw_validated/hil/`
+* OSPI controller works -- CMDCMP fires, all registers programme.
+* Pin map is correct, cross-checked against the FSP `ospi_b` example
+  pin config: `P100=SIO0, P101=SIO3, P102=SIO4, P103=SIO2, P104=CS1,
+  P106=RESET, P800=SIO5, P801=DQS, P802=SIO6, P803=SIO1, P804=SIO7,
+  P808=SCLK` -- all match the BSP `s_xspi_octa_pins` table.
+* A GPIO bit-bang of `0x9F` (bypassing the OSPI controller entirely) with
+  validated CS/CLK/SI stimulus also reads `0xFF` on every data line --
+  consistent with the bus being disconnected by SW4, not a dead chip.
 
-Physical checks the firmware cannot do:
+> The earlier "JTAG-confirmed dead chip" conclusion (commit `436a3cb6`,
+> 2026-05-19) was **wrong** -- it was confounded by SW4 being in the
+> Octo-SPI-inactive position during testing.
 
-1. Multimeter on U16 VCC pin: confirm 3.3 V is present.
-2. Probe SCLK and CS at U16 while the firmware runs ra_xspi_init +
-   ra_xspi_flash_read_id: SCLK should toggle for 8 cycles
-   (1S mode), CS should pulse low for the duration.
-3. Visual inspection: confirm U16 is populated and pin 1 is in
-   the correct orientation.
-4. If U16 is dead, replacing it with a known-good IS25LX512M (or
-   compatible) lets the existing firmware bring the chip up
-   correctly; the HAL, OCTACKCR handshake, OCTA pin routing, and
-   RESET_L pulse are all already in place.
+## How to use the flash / graduate to `hw_validated/hil/`
 
-The HAL-side diagnostics added to this demo (g_fj_last_step /
-g_fj_last_counter / g_fj_last_echoed / g_fj_jedec_id) remain in
-place for any future bench-debug session.
+1. **Physically set all 8 SW4 switches to OFF** (at minimum SW4-3 and
+   SW4-4). This is the actual fix; the firmware cannot do it.
+2. Re-run `flash_journal`; `g_fj_jedec_id` should read `0xC2...`
+   (Macronix) and `g_fj_match` should advance.
+3. Then flip the hil.conf to a real pass gate and promote.
+
+The HAL-side diagnostics (g_fj_last_step / g_fj_last_counter /
+g_fj_last_echoed / g_fj_jedec_id / g_fj_expander_err) remain for any
+future bench session.
 
 ## Build + flash
 

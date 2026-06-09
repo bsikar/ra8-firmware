@@ -144,9 +144,11 @@ volatile uint32_t g_fj_last_echoed = 0U;
  * @details
  * Stamped once by main right after ra_xspi_init returns. Lets a
  * memprobe confirm the OSPI controller actually clocks the bus by
- * reading the IS25LX512M's JEDEC ID (expected manufacturer 0x9D
- * = ISSI). A value of 0x000000 indicates the chip never returned
- * an ID; 0xFFFFFF indicates the bus floated (no CIPO drive).
+ * reading the on-board flash's JEDEC ID. The EK-RA8D2 ships a Macronix
+ * MX25UM25645G (manufacturer 0xC2), not the ISSI part the older comments
+ * assumed. A value of 0x000000 means no ID returned; 0xFFFFFF means the
+ * bus floated (no CIPO drive) -- on this board that means SW4 is not set
+ * to all-OFF (see README.md / issue #44), NOT a dead chip.
  *
  * @note Read externally by J-Link.
  * @since 0.1.0
@@ -158,11 +160,11 @@ volatile uint32_t g_fj_jedec_id = 0U;
  * @brief Return code from the best-effort U15 Octo-SPI-active override.
  *
  * @details
- * 0 (k_ra_ok) means the U15 I/O expander accepted the SW4-3-OFF
- * override and the flash is on the bus via firmware. Non-zero means
- * the expander did not respond (bench-dependent IIC_B0 bus), so the
- * physical SW4-3 DIP position governs whether the flash is reachable.
- * Read externally by J-Link to disambiguate the two paths.
+ * 0 (k_ra_ok) means the U15 I/O expander ACKed the SW4 override write.
+ * Note this does NOT mean the flash is connected: bench readback proved
+ * the physical SW4 switches overpower the expander, so the physical DIP
+ * still governs reachability. Non-zero means the expander did not respond
+ * on RIIC1. Read externally by J-Link.
  *
  * @note Read externally by J-Link only.
  * @since 0.1.0
@@ -295,19 +297,15 @@ static void flash_journal_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     flash_journal_panic_halt();
   }
-  /* Best-effort: activate the Octo-SPI flash on the board mux BEFORE
-   * touching its pins. The project's default SW4 layout leaves SW4-3
-   * ON (Octo-SPI INACTIVE), which disconnects the IS25LX512M from the
-   * bus -- every flash op then sees a floating CIPO and the JEDEC ID
-   * reads 0x00FFFFFF. The U15 I/O expander override drives SW4-3 OFF
-   * (Octo-SPI active) + SW4-4 OFF (frees the shared OCTA pins)
-   * regardless of the physical DIP positions (UM Table 3 p 16 +
-   * Section 6.3 p 35). The call is best-effort: if the U15 expander
-   * does not ACK (it shares the bench-dependent IIC_B0 bus), the
-   * physical SW4-3 position still governs and the JEDEC read below
-   * surfaces whether the flash is reachable. The result is stamped so
-   * a memprobe can tell "expander override applied" from "relying on
-   * the physical DIP". */
+  /* Request the Octo-SPI SW4 layout via the U15 I/O expander. The
+   * on-board Octo-SPI flash (U16) is connected only when SW4-1..8 are
+   * physically OFF (Renesas FSP EK-RA8D2 ospi_b requirement). This call
+   * drives the U15 outputs to that pattern, BUT bench readback proved the
+   * physical SW4 switches overpower the expander (U15 latches 0xFF while
+   * the actual pin levels read 0x00) -- so this is best-effort only. If
+   * the JEDEC read below still returns 0x00FFFFFF, the physical SW4
+   * switches are not all OFF. See README.md + issue #44. The result is
+   * stamped to g_fj_expander_err for the memprobe. */
   const ra_err_t exp_err = ra_board_io_expander_set_octospi_active();
   g_fj_expander_err      = (uint32_t)exp_err;
   /* OCTA pins come out of reset as GPIO; ra_board_xspi_pins_init
