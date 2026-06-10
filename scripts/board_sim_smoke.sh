@@ -90,6 +90,12 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # first context switch, which Unicorn 2.0.1 mis-delivers (UC_ERR_EXCEPTION);
     # they run on a newer Unicorn (macOS / a source build) -- pass them
     # explicitly there (e.g. `board_sim_smoke.sh usb_cdc_echo`).
+    #
+    # The Octo-SPI LevelX/FileX apps (threadx_levelx_demo,
+    # threadx_filex_levelx_demo) exercise the xSPI flash model
+    # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and FileX FAT
+    # file write+readback round-trip. They are ThreadX, so the same Unicorn
+    # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback)
