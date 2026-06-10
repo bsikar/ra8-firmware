@@ -10,8 +10,8 @@
  * 115200 8N1), then hands control to ThreadX. ``tx_application_define``
  * spawns one worker thread that:
  *
- *   1. Initialises ``ra_xspi`` against the on-board EK-RA8D2 Macronix
- *      MX25LM512 octal-SPI flash chip.
+ *   1. Initialises ``ra_xspi`` against the on-board EK-RA8D2 ISSI
+ *      IS25LX512M octal-SPI flash chip.
  *   2. Calls ``lx_nor_flash_format`` once to lay down a fresh LevelX
  *      partition and ``lx_nor_flash_open`` to mount it.
  *   3. Binds the LevelX flash to the FileX adapter
