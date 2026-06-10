@@ -79,11 +79,12 @@ typedef enum : uint32_t {
                                /**< sleep on hundreds/thousands of ticks    */
                                /**< (e.g. ThreadX tx_thread_sleep) need a    */
                                /**< far larger budget than bare-metal.       */
-  k_run_wall_s     = 120U,     /**< Wall-clock safety bound (seconds).      */
-  k_run_inner_max  = 4096U,    /**< Per-chunk exception-resolve relaunch cap.*/
-  k_mmio_slots     = 2048U,    /**< Distinct MMIO addresses tracked.        */
-  k_mmio_settle    = 8U,       /**< Same-addr reads before a poll "settles".*/
-  k_mmio_print_max = 256U,     /**< Max MMIO rows printed in the summary.    */
+  k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).      */
+  k_run_inner_max   = 4096U,   /**< Per-chunk exception-resolve relaunch cap.*/
+  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.        */
+  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".*/
+  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.    */
+  k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.  */
 } sim_budget_t;
 
 /* Cortex-M system control space (architectural, all cores) -- inside the PPB.
@@ -2377,14 +2378,14 @@ int main(int argc, char** argv)
   {
     const char* e_wall = getenv("BOARD_SIM_WALL_S");
     if (e_wall != nullptr) {
-      const long v = strtol(e_wall, nullptr, 10);
+      const long v = strtol(e_wall, nullptr, (int)k_env_strtol_base);
       if (v > 0L) {
         wall_s = (double)v;
       }
     }
     const char* e_chunks = getenv("BOARD_SIM_MAX_CHUNKS");
     if ((e_chunks != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_chunks, nullptr, 10);
+      const long v = strtol(e_chunks, nullptr, (int)k_env_strtol_base);
       if (v > 0L) {
         max_chunks = (uint32_t)v;
       }

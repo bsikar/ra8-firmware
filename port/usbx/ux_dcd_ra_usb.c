@@ -246,6 +246,14 @@ volatile uint32_t s_dvst_irq_count = 0U;
 volatile uint32_t s_setup_dispatch_count = 0U;
 
 /**
+ * @enum ra_usb_dcd_sentinel_t
+ * @brief "Not yet captured" sentinel for 16-bit register snapshots.
+ */
+typedef enum : uint16_t {
+  k_ra_usb_u16_unset = 0xFFFFU, /**< Snapshot has not been latched yet. */
+} ra_usb_dcd_sentinel_t;
+
+/**
  * @var s_dvstctr0_at_first_dvst
  * @brief Snapshot of DVSTCTR0 (RHST field) on first DVST event.
  *
@@ -257,7 +265,7 @@ volatile uint32_t s_setup_dispatch_count = 0U;
  * @note Latched once on the first DVST after attach; never overwritten.
  * @since 0.1.0
  */
-volatile uint16_t s_dvstctr0_at_first_dvst = 0xFFFFU;
+volatile uint16_t s_dvstctr0_at_first_dvst = (uint16_t)k_ra_usb_u16_unset;
 
 /**
  * @enum ra_usb_dcd_rhst_hist_t
@@ -1227,6 +1235,73 @@ typedef enum : uint16_t {
   k_ra_dcpctr_mask_sqmon = (uint16_t)(1U << 6U), /**< SQMON (bit 6): SETUP-latched flag. */
 } ra_usb_dcpctr_bits_t;
 
+/**
+ * @enum ra_usb_ep_addr_field_t
+ * @brief Bit fields of a USB endpoint address (bEndpointAddress).
+ *
+ * @details USB 2.0 sec 9.6.6: bit 7 is the direction bit (1 = IN), and
+ * bits 3:0 carry the endpoint number; bits 6:4 are reserved.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_ep_addr_dir_in_bit = 0x80U, /**< Direction bit set => IN endpoint. */
+  k_ra_usb_ep_addr_num_mask   = 0x0FU, /**< Endpoint-number field (bits 3:0). */
+} ra_usb_ep_addr_field_t;
+
+/**
+ * @enum ra_usb_dcd_field_mask_t
+ * @brief Small field masks and sentinels used across the DCD bridge.
+ */
+typedef enum : uint16_t {
+  k_ra_usb_dvsq_field_mask = 0x07U,  /**< 3-bit DVSQ/RHST field after shift. */
+  k_ra_usb_state_unknown   = 0xFFUL, /**< Device-state snapshot sentinel.    */
+} ra_usb_dcd_field_mask_t;
+
+/**
+ * @enum ra_usb_setup_usbreq_t
+ * @brief Byte masks and request encodings applied to the USBREQ mirror.
+ *
+ * @details The USBREQ register packs bRequest in its high byte and
+ * bmRequestType in its low byte (HUM Ch 37.2.21 p 2087). The
+ * SET_ADDRESS standard request is bRequest = 5 (0x05) with
+ * bmRequestType = 0, i.e. USBREQ high byte == 0x05 (0x0500 packed).
+ */
+typedef enum : uint16_t {
+  k_ra_usb_usbreq_breq_mask = 0xFF00U, /**< bRequest (high) byte of USBREQ.       */
+  k_ra_usb_usbreq_bmrt_mask = 0x00FFU, /**< bmRequestType (low) byte of USBREQ.   */
+  k_ra_usb_usbreq_set_addr  = 0x0500U, /**< USBREQ high byte == SET_ADDRESS (5).  */
+} ra_usb_setup_usbreq_t;
+
+/**
+ * @enum ra_usb_setup_fp_shift_t
+ * @brief Bit offset of each 16-bit SETUP mirror inside the 64-bit
+ *        SETUP fingerprint word.
+ *
+ * @details USBREQ occupies bits 0-15, USBVAL bits 16-31, USBINDX bits
+ * 32-47 and USBLENG bits 48-63. Only the USBLENG offset falls outside
+ * the ignored small-integer set and needs a name here.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_fp_shift_usbleng = 48U, /**< USBLENG packs into fingerprint bits 48-63. */
+} ra_usb_setup_fp_shift_t;
+
+/**
+ * @enum ra_usb_dispatch_skip_bit_t
+ * @brief Bits ORed into ``s_dispatch_skip_reason`` to record why a
+ *        SETUP dispatch was skipped or how it completed.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_skip_usbreq_unchanged = 0x40U, /**< USBREQ unchanged since last dispatch. */
+  k_ra_usb_skip_process_ok       = 0x80U, /**< control_request_process returned OK.  */
+} ra_usb_dispatch_skip_bit_t;
+
+/**
+ * @enum ra_usb_dcd_ctrl_id_t
+ * @brief Private USBX controller-type id reported by this DCD bridge.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_dcd_controller_id = 99U, /**< RA-USB private controller id. */
+} ra_usb_dcd_ctrl_id_t;
+
 /* -------------------------------------------------------------------------- */
 /* Internal helpers                                                           */
 /* -------------------------------------------------------------------------- */
@@ -1249,7 +1324,7 @@ typedef enum : uint16_t {
  */
 static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
 {
-  const uint8_t ep = ep_addr & (uint8_t)0x0FU;
+  const uint8_t ep = ep_addr & (uint8_t)k_ra_usb_ep_addr_num_mask;
   if (ep == 0U) {
     return 0U;
   }
@@ -1487,7 +1562,7 @@ static unsigned int internal_submit_consume_orphan(struct UX_SLAVE_TRANSFER_STRU
 static unsigned int
 internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t ep_addr)
 {
-  if ((ep_addr & 0x80U) != 0U) {
+  if ((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) != 0U) {
     /* IN endpoint. USBX hands the DCD the whole transfer, but
      * ra_usb_queue_in moves at most one max-packet bank -- so a
      * transfer longer than MPS (e.g. the 512-byte SCSI READ data
@@ -1594,7 +1669,7 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
   }
   if (pipe == 2U) {
     s_diag.xfer_req_pipe2_in++;
-    if ((ep_addr & 0x80U) == 0U) {
+    if ((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) == 0U) {
       s_diag.xfer_req_pipe2_out_dir++;
     }
   }
@@ -1606,7 +1681,8 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
   /* Stash the active transfer so the IRQ path can post completion. */
   s_dcd.pipes[pipe].xfer    = tr;
   s_dcd.pipes[pipe].ep_addr = ep_addr;
-  s_dcd.pipes[pipe].dir_in  = (uint8_t)((ep_addr & 0x80U) != 0U ? 1U : 0U);
+  s_dcd.pipes[pipe].dir_in =
+    (uint8_t)((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) != 0U ? 1U : 0U);
   s_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
   if (pipe == 2U) {
     s_diag.xfer_req_pipe2_stashed++;
@@ -1651,7 +1727,7 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
  */
 static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_addr)
 {
-  if ((ep_addr & 0x80U) != 0U) {
+  if ((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) != 0U) {
     return; /* IN pipe -- queue_in / internal_submit_pipe own the PID */
   }
   /* Fresh OUT-pipe config: drop any orphan packet held from a prior
@@ -1698,7 +1774,9 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
     return UX_SUCCESS;
   }
 
-  ra_usb_ep_dir_t  dir = ((ep_addr & 0x80U) != 0U) ? k_ra_usb_ep_dir_in : k_ra_usb_ep_dir_out;
+  ra_usb_ep_dir_t  dir = ((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) != 0U)
+                           ? k_ra_usb_ep_dir_in
+                           : k_ra_usb_ep_dir_out;
   ra_usb_ep_type_t type;
   switch ((uint8_t)ep->ux_slave_endpoint_descriptor.bmAttributes & 0x03U) {
     case 0x02U:
@@ -1716,7 +1794,7 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
 
   if (ra_usb_configure_endpoint(s_dcd.speed,
                                 pipe,
-                                (uint8_t)(ep_addr & 0x0FU),
+                                (uint8_t)(ep_addr & (uint8_t)k_ra_usb_ep_addr_num_mask),
                                 dir,
                                 type,
                                 (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize) !=
@@ -1724,7 +1802,8 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
     return UX_ERROR;
   }
   s_dcd.pipes[pipe].ep_addr = ep_addr;
-  s_dcd.pipes[pipe].dir_in  = (uint8_t)((ep_addr & 0x80U) != 0U ? 1U : 0U);
+  s_dcd.pipes[pipe].dir_in =
+    (uint8_t)((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) != 0U ? 1U : 0U);
   s_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
   internal_endpoint_arm_out_pid(pipe, ep_addr);
   return UX_SUCCESS;
@@ -2341,7 +2420,7 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
   if (rc != UX_SUCCESS) {
     s_dispatch_skip_reason |= 0x08U;
   } else {
-    s_dispatch_skip_reason |= 0x80U;
+    s_dispatch_skip_reason |= (uint32_t)k_ra_usb_skip_process_ok;
   }
   return rc;
 }
@@ -2439,7 +2518,7 @@ static void internal_ctrt_dispatch_fresh_setup(ra_usb_speed_t speed, uint64_t fi
   }
   s_state_at_dispatch = (uint8_t)(_ux_system_slave != UX_NULL
                                     ? _ux_system_slave->ux_system_slave_device.ux_slave_device_state
-                                    : 0xFFUL);
+                                    : (ULONG)k_ra_usb_state_unknown);
   const unsigned int rc = internal_dispatch_setup(&setup);
 
   /* Drive CCPL for no-data H2D control transfers (SET_ADDRESS,
@@ -2483,7 +2562,8 @@ static void internal_ctrt_handle_valid(ra_usb_speed_t speed)
   const uint16_t usbindx_live = reg->USBINDX;
   const uint16_t usbleng_live = reg->USBLENG;
   const uint64_t fingerprint  = ((uint64_t)usbreq_live) | ((uint64_t)usbval_live << 16) |
-                                ((uint64_t)usbindx_live << 32) | ((uint64_t)usbleng_live << 48);
+                                ((uint64_t)usbindx_live << 32) |
+                                ((uint64_t)usbleng_live << (uint8_t)k_ra_usb_fp_shift_usbleng);
 
   /* Clear INTSTS0.VALID before anything else. The USBREQ/USBVAL/
    * USBINDX/USBLENG mirrors persist (HUM Ch 37.2.21..24 p 2087), so the
@@ -2501,8 +2581,8 @@ static void internal_ctrt_handle_valid(ra_usb_speed_t speed)
    * USBADDR latch and the IN-ZLP status stage). Nested ifs keep this
    * out of the MC/DC compound-decision inventory. */
   bool is_set_address = false;
-  if ((usbreq_live & 0xFF00U) == 0x0500U) {
-    if ((usbreq_live & 0x00FFU) == 0x0000U) {
+  if ((usbreq_live & (uint16_t)k_ra_usb_usbreq_breq_mask) == (uint16_t)k_ra_usb_usbreq_set_addr) {
+    if ((usbreq_live & (uint16_t)k_ra_usb_usbreq_bmrt_mask) == 0x0000U) {
       if (usbleng_live == 0U) {
         is_set_address = true;
       }
@@ -2692,7 +2772,7 @@ static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
 {
   if (usbreq_live == s_last_dispatched_usbreq) {
     /* USBREQ unchanged since last dispatch: do not re-fire. */
-    s_dispatch_skip_reason |= 0x40U;
+    s_dispatch_skip_reason |= (uint32_t)k_ra_usb_skip_usbreq_unchanged;
     return;
   }
   ra_usb_setup_t setup  = {};
@@ -2799,14 +2879,14 @@ static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
   if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
     return (unsigned long)UX_DEVICE_SUSPENDED;
   }
-  switch (dvsq & 0x70U) {
-    case 0x10U: /* Default -- bus reset complete */
+  switch (dvsq & (uint16_t)k_ra_intsts0_mask_dvsq) {
+    case (uint16_t)k_ra_dvsq_default: /* Default -- bus reset complete */
       return (unsigned long)UX_DEVICE_ATTACHED;
-    case 0x20U: /* Address state */
+    case (uint16_t)k_ra_dvsq_address: /* Address state */
       return (unsigned long)UX_DEVICE_ADDRESSED;
-    case 0x30U: /* Configured state */
+    case (uint16_t)k_ra_dvsq_configured: /* Configured state */
       return (unsigned long)UX_DEVICE_CONFIGURED;
-    case 0x00U: /* Powered -- pre-bus-reset */
+    case (uint16_t)k_ra_dvsq_powered: /* Powered -- pre-bus-reset */
     default:
       return (unsigned long)UX_DEVICE_ATTACHED;
   }
@@ -2841,7 +2921,8 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
   /* Trace decoded DVSQ even before USBX is bound. */
   const uint8_t dvst_slot =
     (uint8_t)(s_dvst_state_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
-  s_dvst_state_history[dvst_slot] = (uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) & 0x07U);
+  s_dvst_state_history[dvst_slot] =
+    (uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) & (uint16_t)k_ra_usb_dvsq_field_mask);
   s_dvst_state_history_count++;
 
   /* On Default-state entry (DVSQ == 0x10), re-arm DCP per FSP
@@ -2945,11 +3026,11 @@ static void internal_irq_dvst_prelude(ra_usb_speed_t speed, uint16_t intsts0)
   s_dvst_irq_count++;
   volatile r_usb_regs_t* reg      = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
   const uint16_t         dvstctr0 = reg->DVSTCTR0;
-  if (s_dvstctr0_at_first_dvst == 0xFFFFU) {
+  if (s_dvstctr0_at_first_dvst == (uint16_t)k_ra_usb_u16_unset) {
     s_dvstctr0_at_first_dvst = dvstctr0;
   }
   /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
-  const uint8_t rhst_mask   = 0x07U;
+  const uint8_t rhst_mask   = (uint8_t)k_ra_usb_dvsq_field_mask;
   const uint8_t hist_slot   = (uint8_t)(s_rhst_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
   s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
   s_rhst_history_count++;
@@ -3427,10 +3508,10 @@ static ra_err_t internal_init_bind_owner(ra_usb_speed_t speed)
   if (_ux_system_slave == UX_NULL) {
     return k_ra_err_invalid_state;
   }
-  UX_SLAVE_DCD* owner                     = &_ux_system_slave->ux_system_slave_dcd;
-  owner->ux_slave_dcd_status              = UX_DCD_STATUS_OPERATIONAL;
-  owner->ux_slave_dcd_controller_type     = 99U; /* RA-USB private id. */
-  owner->ux_slave_dcd_function            = _ux_dcd_ra_usb_function;
+  UX_SLAVE_DCD* owner                 = &_ux_system_slave->ux_system_slave_dcd;
+  owner->ux_slave_dcd_status          = UX_DCD_STATUS_OPERATIONAL;
+  owner->ux_slave_dcd_controller_type = (UINT)k_ra_usb_dcd_controller_id; /* RA-USB private id. */
+  owner->ux_slave_dcd_function        = _ux_dcd_ra_usb_function;
   owner->ux_slave_dcd_controller_hardware = (void*)&s_dcd;
 
   s_dcd.speed = speed;
