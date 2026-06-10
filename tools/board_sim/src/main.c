@@ -2369,6 +2369,27 @@ int main(int argc, char** argv)
    * is closed, presenting the live GLCDC output every k_view_present_every. */
   uint32_t max_chunks =
     (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
+  /* Headless runs of heavy apps (e.g. sd_font_render: a 400 KB SD font read
+   * plus stb_truetype rasterisation) can need more than the default budget.
+   * BOARD_SIM_WALL_S / BOARD_SIM_MAX_CHUNKS override the guards without a
+   * recompile; they have no effect in --view (window-driven) mode. */
+  double wall_s = (double)k_run_wall_s;
+  {
+    const char* e_wall = getenv("BOARD_SIM_WALL_S");
+    if (e_wall != nullptr) {
+      const long v = strtol(e_wall, nullptr, 10);
+      if (v > 0L) {
+        wall_s = (double)v;
+      }
+    }
+    const char* e_chunks = getenv("BOARD_SIM_MAX_CHUNKS");
+    if ((e_chunks != nullptr) && (view == nullptr)) {
+      const long v = strtol(e_chunks, nullptr, 10);
+      if (v > 0L) {
+        max_chunks = (uint32_t)v;
+      }
+    }
+  }
   /* Headless --record-secs bounds the run to exactly the recording window so the
    * dumped frame sequence spans the requested emulated duration. */
   if ((record_dir != nullptr) && (record_secs > 0U) && (view == nullptr)) {
@@ -2510,11 +2531,11 @@ int main(int argc, char** argv)
           break;
         }
       }
-      if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= (double)k_run_wall_s) {
+      if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
         timed_out = true;
         break;
       }
-    } else if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= (double)k_run_wall_s) {
+    } else if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
       timed_out = true;
       break;
     }
