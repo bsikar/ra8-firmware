@@ -65,5 +65,25 @@ if echo "$DM" | grep -qiE "input,hidraw[0-9]|hidraw[0-9].*USB HID"; then
     echo -e "${GREEN}[HID PASS]${NC} ${APP}: kernel bound the device as USB HID"
     exit 0
 fi
-echo -e "${RED}[HID FAIL]${NC} ${APP}: no HID (hidraw) binding observed"
+
+# Issue #58: usbhid probe occasionally fails with -32 (EPIPE) when the
+# USB-FS bus state from a previous test leaks into this enumeration.
+# Force a clean re-enum via soft PPPS (authorized toggle on the USBFS
+# hub port 4 -- hard PPPS doesn't bus-reset USBFS reliably; see
+# scripts/hil_ppps.sh header) and check once more before failing.
+echo -e "${YELLOW}[HID]${NC} no hidraw on first attempt; soft-PPPS retry..."
+pi_run "sudo -n dmesg -C" >/dev/null 2>&1 || true
+bash "${SCRIPT_DIR}/hil_ppps.sh" --soft cycle 4 >/dev/null 2>&1 || true
+sleep "${ENUM_WAIT_S}"
+DM="$(pi_run "sudo -n dmesg -T 2>/dev/null" || true)"
+echo "--- host kernel log (HID retry) ---"
+echo "$DM" | grep -iE "New USB device found.*${VID}|hidraw|input:.*HID|usbhid|unable to enumerate" \
+    | tail -8 || true
+echo "--- end ---"
+if echo "$DM" | grep -qiE "input,hidraw[0-9]|hidraw[0-9].*USB HID"; then
+    echo -e "${GREEN}[HID PASS]${NC} ${APP}: kernel bound the device as USB HID (after PPPS retry)"
+    exit 0
+fi
+
+echo -e "${RED}[HID FAIL]${NC} ${APP}: no HID (hidraw) binding observed after retry"
 exit 1
