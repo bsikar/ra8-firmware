@@ -72,7 +72,7 @@ typedef enum : uint32_t {
 
 /** @brief Registry capacity + the core's own report slot ordering. */
 typedef enum : uint32_t {
-  k_block_max = 16U, /**< Max registered peripheral blocks.    */
+  k_block_max = 32U, /**< Max registered peripheral blocks.    */
   /* The core prints its NVIC-IRQ section after SCI (order 30) and before the
    * touch line (order 40), so it slots its report at this synthetic order. */
   k_core_irq_report_order = 35U, /**< Where the IRQ report sits among blocks. */
