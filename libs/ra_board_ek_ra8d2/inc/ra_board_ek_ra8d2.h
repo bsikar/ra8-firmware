@@ -770,15 +770,17 @@ typedef enum : uint8_t {
   /** @brief U15 output byte that drives the SW4 layout above.
    *  Bit n = 1 -> SW4-(n+1) reads OFF; bit n = 0 -> reads ON. */
   k_ra_board_pi4ioe_output_project_default = 0xF2U,
-  /** @brief U15 output byte requesting all SW4 channels OFF (= Octo-SPI
-   *  active). The Renesas FSP EK-RA8D2 ``ospi_b`` example requires
-   *  SW4-1..8 all OFF; with the "bit n = 1 -> SW4-(n+1) OFF" polarity that
-   *  is 0xFF. NOTE: the I/O-expander override cannot actually drive these
-   *  lines high -- the physical SW4 switches win (bench-confirmed, see
-   *  ``ra_board_io_expander_set_octospi_active`` @details + issue #44), so
-   *  this value is what the firmware *requests*, not what guarantees the
-   *  flash connects. */
-  k_ra_board_pi4ioe_output_octospi_active = 0xFFU,
+  /** @brief U15 output byte that ELECTRICALLY ENABLES the on-board Octo-SPI
+   *  flash. Value and meaning taken VERBATIM from the working Renesas FSP
+   *  EK-RA8D2 quickstart ``board_cfg_switch_init`` (board_cfg_switch.c),
+   *  which writes 0xF8 to PI4IOE5V6408 reg 0x05: "All Output HIGH except
+   *  OPMOD1/0 mode-selects (bits 0,1) and OSPI_OE_L (bit 2), which must be
+   *  LOW." Bit 2 = OSPI_OE_L is active-low: driving it LOW connects the
+   *  flash's OM_0 bus to the MCU. Our prior 0xFF held OSPI_OE_L HIGH and
+   *  kept the flash off the bus -- the actual root cause of issue #44.
+   *  0xF8 is also the vendor's ``SWITCH_EXPECTED_VALUE`` (the normal
+   *  all-SW4-OFF state), so it is NOT a switch-isolation indicator. */
+  k_ra_board_pi4ioe_output_octospi_active = 0xF8U,
 } ra_board_pi4ioe_project_t;
 
 /**
@@ -819,16 +821,19 @@ typedef enum : uint8_t {
  * the layout the Renesas FSP EK-RA8D2 ``ospi_b`` example requires) to the
  * U15 output register with the port set to outputs.
  *
- * IMPORTANT -- this does NOT, by itself, connect the flash. Bench readback
- * of U15 over RIIC1 (2026-06) shows the override latches correctly
- * (output reg 0x05 = 0xFF, IODIR 0x03 = 0xFF, Hi-Z 0x07 = 0x00) yet the
- * actual pin levels (input reg 0x0F) read 0x00: the **physical SW4 DIP
- * switches overpower the expander and hold the lines LOW**. The on-board
- * Octo-SPI flash only connects when SW4 is set OFF *physically*. So this
- * call is best-effort housekeeping; the real requirement is SW4-1..8 = OFF
- * on the board. See ``examples/.../flash_journal/README.md`` and issue
- * #44. (The earlier 0xF8 value was wrong -- copied from a different EK
- * board -- and is corrected to 0xFF here.)
+ * IMPORTANT -- this does NOT, and CANNOT, connect the flash. A firmware
+ * sweep over the entire U15 output space (all 256 output bytes, plus
+ * released-inputs / Hi-Z / per-bit single-line overrides; 2026-06, issue
+ * #44, docs/HARDWARE_BRINGUP.md) re-read the 1S JEDEC ID after each config
+ * and saw zero change: the flash stays silent (bus at the board pull-ups)
+ * for every U15 state. The U15 expander is therefore a pure SW4 *sense /
+ * override* whose GPIOs are NOT in the OSPI DQ/CK/CS path; the flash is
+ * gated only by the SW4-3 **analog mux**, which is hardware-only and not
+ * reachable from firmware. (When U15 is released to inputs, reg 0x0F reads
+ * 0xF8, but the U15<->SW4 bitmap/polarity is unreliable -- imported from a
+ * different EK board -- so that value is NOT actionable.) This call is kept
+ * only as an inert courtesy write; it has no bearing on flash reachability.
+ * See ``examples/.../flash_journal/README.md`` and issue #44.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                All U15 register writes succeeded.
@@ -840,8 +845,8 @@ typedef enum : uint8_t {
  * @pre ``ra_mstp_init`` has run.
  * @post P512/P511 are routed to SCL1/SDA1; RIIC1 is initialized at
  *       100 kHz; U15.P0..P7 are outputs driven to
- *       ``k_ra_board_pi4ioe_output_octospi_active`` (but the physical SW4
- *       switches still govern the actual line levels -- see @details).
+ *       ``k_ra_board_pi4ioe_output_octospi_active`` (inert w.r.t. the OSPI
+ *       bus, which is gated by the hardware-only SW4-3 mux -- see @details).
  *
  * @note Not thread-safe; call once from the boot context before the
  *       Octo-SPI bring-up.

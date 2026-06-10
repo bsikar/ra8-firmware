@@ -144,11 +144,14 @@ volatile uint32_t g_fj_last_echoed = 0U;
  * @details
  * Stamped once by main right after ra_xspi_init returns. Lets a
  * memprobe confirm the OSPI controller actually clocks the bus by
- * reading the on-board flash's JEDEC ID. The EK-RA8D2 ships a Macronix
- * MX25UM25645G (manufacturer 0xC2), not the ISSI part the older comments
- * assumed. A value of 0x000000 means no ID returned; 0xFFFFFF means the
- * bus floated (no CIPO drive) -- on this board that means SW4 is not set
- * to all-OFF (see README.md / issue #44), NOT a dead chip.
+ * reading the on-board flash's JEDEC ID. The EK-RA8D2 ships an ISSI
+ * IS25LX512M-JHLE (manufacturer 0x9D; UM Table 29, p 35), so a correct
+ * 1S RDID on a connected part returns 0x9D. A value of 0x000000 means no
+ * ID returned; 0xFFFFFF means the bus floated to the board pull-ups (no
+ * CIPO drive) -- the on-board flash is reached only through the SW4-3
+ * analog mux, which is hardware-only and cannot be moved from firmware
+ * (the U15 expander override does NOT gate the OSPI bus; see issue #44
+ * and docs/HARDWARE_BRINGUP.md), NOT a dead chip.
  *
  * @note Read externally by J-Link.
  * @since 0.1.0
@@ -161,10 +164,13 @@ volatile uint32_t g_fj_jedec_id = 0U;
  *
  * @details
  * 0 (k_ra_ok) means the U15 I/O expander ACKed the SW4 override write.
- * Note this does NOT mean the flash is connected: bench readback proved
- * the physical SW4 switches overpower the expander, so the physical DIP
- * still governs reachability. Non-zero means the expander did not respond
- * on RIIC1. Read externally by J-Link.
+ * Note this does NOT mean the flash is connected: a firmware sweep of the
+ * entire U15 output space (all 256 values, released-inputs, Hi-Z, per-bit)
+ * proved the expander's GPIOs do NOT gate the OSPI bus at all -- the
+ * IS25LX512M is connected only through the hardware-only SW4-3 analog mux.
+ * So this write is inert with respect to flash reachability and kept only
+ * as a no-op courtesy. Non-zero means the expander did not respond on
+ * RIIC1. Read externally by J-Link (see docs/HARDWARE_BRINGUP.md).
  *
  * @note Read externally by J-Link only.
  * @since 0.1.0
@@ -297,15 +303,15 @@ static void flash_journal_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     flash_journal_panic_halt();
   }
-  /* Request the Octo-SPI SW4 layout via the U15 I/O expander. The
-   * on-board Octo-SPI flash (U16) is connected only when SW4-1..8 are
-   * physically OFF (Renesas FSP EK-RA8D2 ospi_b requirement). This call
-   * drives the U15 outputs to that pattern, BUT bench readback proved the
-   * physical SW4 switches overpower the expander (U15 latches 0xFF while
-   * the actual pin levels read 0x00) -- so this is best-effort only. If
-   * the JEDEC read below still returns 0x00FFFFFF, the physical SW4
-   * switches are not all OFF. See README.md + issue #44. The result is
-   * stamped to g_fj_expander_err for the memprobe. */
+  /* Best-effort U15 I/O-expander courtesy write. The on-board Octo-SPI
+   * flash (U3, ISSI IS25LX512M; UM section 6.3 p 35) is connected through
+   * the SW4-3 analog mux, which is hardware-only. A firmware sweep of the
+   * full U15 output space (issue #44; see docs/HARDWARE_BRINGUP.md) proved
+   * the expander's GPIOs do NOT gate the OSPI bus, so this call cannot
+   * affect flash reachability -- it is kept only as a no-op courtesy and
+   * its return code is stamped to g_fj_expander_err for the memprobe. If
+   * the JEDEC read below returns 0x00FFFFFF the bus is sitting at the board
+   * pull-ups (flash not passed through SW4-3), which is a physical check. */
   const ra_err_t exp_err = ra_board_io_expander_set_octospi_active();
   g_fj_expander_err      = (uint32_t)exp_err;
   /* OCTA pins come out of reset as GPIO; ra_board_xspi_pins_init

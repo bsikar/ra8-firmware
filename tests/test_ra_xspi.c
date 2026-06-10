@@ -50,7 +50,9 @@ static void test_init_inst0_happy(void)
   TEST_ASSERT_NOT_NULL(reg);
   TEST_ASSERT_EQ(0, reg->WRAPCFG);
   TEST_ASSERT_EQ(0, reg->COMCFG);
-  TEST_ASSERT_EQ(k_ra_xspi_lio_1s1s1s, reg->LIOCFGCS[0]);
+  /* Protocol config lands in the on-board chip-select's LIOCFGCS slot
+   * (CS1 on the EK-RA8D2). */
+  TEST_ASSERT_EQ(k_ra_xspi_lio_1s1s1s, reg->LIOCFGCS[1]);
   TEST_END("ra_xspi_init instance 0");
 }
 
@@ -68,7 +70,7 @@ static void test_init_inst1_happy(void)
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst1);
   TEST_ASSERT_NOT_NULL(reg);
-  TEST_ASSERT_EQ(k_ra_xspi_lio_1s8s8s, reg->LIOCFGCS[0]);
+  TEST_ASSERT_EQ(k_ra_xspi_lio_1s8s8s, reg->LIOCFGCS[1]);
   TEST_END("ra_xspi_init instance 1");
 }
 

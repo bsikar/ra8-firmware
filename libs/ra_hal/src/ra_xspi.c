@@ -76,6 +76,46 @@ typedef enum : uint8_t {
 } ra_xspi_cmd_limits_t;
 
 /**
+ * @enum ra_xspi_chip_select_t
+ * @brief Which controller chip-select drives the on-board OSPI flash.
+ *
+ * @details
+ * The xSPI controller fans every manual command out to one of two
+ * chip-select devices (CS0 / CS1). Which physical CS strobe pin
+ * that maps to is a board fact, not a per-call knob: on the EK-RA8D2 the
+ * on-board IS25LX512M's chip-select net (OSPI_FLASH_S_L, P104) is wired
+ * to the controller's CS**1** line, and the Renesas FSP EK-RA8D2 OSPI
+ * configuration (``configuration.xml`` ``module.driver.ospi_b.channel``
+ * = ``channel.1``) confirms the vendor drives the part on device 1. The
+ * controller therefore must (a) carry the protocol/timing config in
+ * ``LIOCFGCS[1]`` and (b) assert ``CDCTL0.CSSEL = 1`` on every manual
+ * command, or the CS0 strobe (an unconnected pin) toggles instead, the
+ * flash never sees chip-select, and RDID floats to 0x00FFFFFF on the
+ * board pull-ups. HUM Ch 44 p 2986; EK-RA8D2 UM Table 29 p 35.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_onboard_cs = 1U, /**< IS25LX512M is on controller CS1. */
+} ra_xspi_chip_select_t;
+
+/**
+ * @enum ra_xspi_reset_delay_t
+ * @brief Bounded busy-spin counts for the LIOCTL.RSTCS reset pulse.
+ *
+ * @details
+ * The vendor EK-RA8D2 bring-up (``ospi_flash_issi_is25lx512.c``
+ * ``reset_ospi_device``) holds ``LIOCTL.RSTCS`` low for ~50 us and high
+ * for ~50 us. With no SysTick dependency in this driver the wait is a
+ * bounded register-free busy loop; at ~1 cycle per iteration on the
+ * 1 GHz Cortex-M85 ``k_ra_xspi_reset_spin`` iterations is comfortably
+ * over the IS25LX512M tRLRH/tRHSL minima (100 ns each) while staying in
+ * the tens-of-microseconds the vendor uses. IS25LX512M datasheet Ch 9.2
+ * "Hardware Reset".
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_reset_spin = 100000U, /**< ~tens of us busy-spin per reset edge. */
+} ra_xspi_reset_delay_t;
+
+/**
  * @enum ra_spi_flash_op_t
  * @brief Standard JEDEC NOR-flash command opcodes used by this driver.
  */
@@ -391,6 +431,109 @@ static ra_err_t internal_xspi_clock_block_init(void)
   return err;
 }
 
+/**
+ * @brief Bounded busy-spin used between the RSTCS reset edges.
+ *
+ * @details
+ * Register-free delay (no SysTick dependency from this HAL driver).
+ * ``volatile`` counter so the optimiser cannot elide the loop. Sized by
+ * ``k_ra_xspi_reset_spin`` to span the IS25LX512M tRLRH/tRHSL minima.
+ * IS25LX512M datasheet Ch 9.2 "Hardware Reset".
+ *
+ * @return None.
+ * @pre Called only from the single-threaded xSPI init path.
+ * @pre No interrupt depends on this delay being preempted.
+ * @post At least ``k_ra_xspi_reset_spin`` iterations have elapsed.
+ * @post No registers or shared state are modified.
+ * @note Compiled out under ``RA_SIMULATOR_MODE`` (no real timing there).
+ * @since 0.1.0
+ */
+static void internal_xspi_reset_spin(void)
+{
+#ifndef RA_SIMULATOR_MODE
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_xspi_reset_spin; i++) {
+    /* spin */
+  }
+#endif
+}
+
+/**
+ * @brief Pulse the controller-driven flash RESET (LIOCTL.RSTCS) low->high.
+ *
+ * @details
+ * Mirror of the vendor EK-RA8D2 bring-up (``ospi_b_ep.c`` ``ospi_b_init``
+ * and ``ospi_flash_issi_is25lx512.c`` ``reset_ospi_device``): after the
+ * controller protocol/timing config is in place, drive ``LIOCTL.RSTCS``
+ * low, wait, then high, wait. This issues a hardware reset to the
+ * selected chip-select's flash through the controller's RESET output,
+ * returning a device that a prior loader may have left in OPI/DOPI back
+ * to its power-on 1S SPI protocol. WPCS is held high (write-protect
+ * deasserted) throughout. HUM Ch 44 p 2986.
+ *
+ * @param[in] reg xSPI register block (already gated open by the caller).
+ *
+ * @return None.
+ * @pre ``reg != nullptr`` and the xSPI MSTP gate is open.
+ * @pre The link-IO protocol/timing config has already been written.
+ * @post The on-board flash has seen a RESET low->high pulse and RSTCS is
+ *       left deasserted (1).
+ * @post WPCS remains high (write-protect deasserted).
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static void internal_xspi_reset_device(volatile r_xspi_regs_t* reg)
+{
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* WPCS held high (write-protect deasserted) the whole time; only
+   * RSTCS toggles. */
+  reg->LIOCTL = k_ra_xspi_lioctl_mask_wpcs; /* RSTCS = 0 (asserted, reset) */
+  internal_xspi_reset_spin();
+  reg->LIOCTL = k_ra_xspi_lioctl_mask_wpcs | k_ra_xspi_lioctl_mask_rstcs; /* RSTCS = 1 */
+  internal_xspi_reset_spin();
+}
+
+/**
+ * @brief Apply the manual-command controller config for the on-board flash.
+ *
+ * @details
+ * Wakes the wrapper, idles the common/XiP config, writes the link-IO
+ * protocol mode into the on-board chip-select's ``LIOCFGCS`` slot, and
+ * points the manual-command engine at that CS via ``CDCTL0.CSSEL``.
+ * ``BMCTL0`` is forced disabled so the AHB system-bus path cannot race the
+ * manual-command engine (FSP gates this via ``r_ospi_b_xip(false)``);
+ * leaving it enabled lets the controller NAK ``CDCTL0.TRREQ`` and time out
+ * CMDCMP. ``CMCTLCH[0/1]`` are zeroed so XIPEN is not left armed. The CS is
+ * ``k_ra_xspi_onboard_cs`` (CS1): the EK-RA8D2 IS25LX512M is wired there
+ * (FSP OSPI example ``channel == 1``); an earlier CS0 default strobed an
+ * unconnected pin and floated RDID to 0x00FFFFFF (issue #44).
+ * HUM Ch 44 p 2986.
+ *
+ * @param[in] reg  xSPI register block (already gated open by the caller).
+ * @param[in] mode Link-IO protocol/latency word for ``LIOCFGCS``.
+ *
+ * @return None.
+ * @pre ``reg != nullptr`` and the xSPI MSTP gate is open.
+ * @pre OCTACLK is stable (clock-block handshake done).
+ * @post ``LIOCFGCS[k_ra_xspi_onboard_cs] == mode`` and ``CDCTL0.CSSEL``
+ *       selects that CS; latent interrupt flags are cleared.
+ * @post ``BMCTL0`` is disabled (manual-command path owns the bus).
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static void internal_xspi_apply_config(volatile r_xspi_regs_t* reg, ra_xspi_lio_mode_t mode)
+{
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  reg->BMCTL0                         = (uint32_t)k_ra_xspi_bmctl0_disabled;
+  reg->CMCTLCH[0]                     = 0U;
+  reg->CMCTLCH[1]                     = 0U;
+  reg->WRAPCFG                        = 0U;
+  reg->COMCFG                         = 0U;
+  reg->LIOCFGCS[k_ra_xspi_onboard_cs] = (uint32_t)mode;
+  reg->CDCTL0 =
+    ((uint32_t)k_ra_xspi_onboard_cs << k_ra_xspi_cdctl0_bit_cssel) & k_ra_xspi_cdctl0_mask_cssel;
+  reg->INTC = k_ra_xspi_ints_mask_all;
+}
+
 ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -412,30 +555,8 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
   const ra_err_t mst_err = ra_mstp_enable(s_xspi_mstp_table[instance]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "xspi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Wake the wrapper, idle the common config, set the link-IO
-   * protocol for target 0, and clear any latent interrupt flags.
-   *
-   * BMCTL0 is forced to ``disabled`` here so the AHB system-bus
-   * path to the target window cannot race with the manual-command
-   * engine during JEDEC ID / RDSR / page-program traffic. FSP
-   * performs the equivalent gate via ``r_ospi_b_xip(false)`` before
-   * any manual transfer; without it the controller can NAK
-   * ``CDCTL0.TRREQ`` because the bridge believes a memory-mapped
-   * read is still in flight, which silently times out CMDCMP and
-   * surfaces as ``k_ra_err_hw_timeout`` to LevelX. CMCTLCH[0/1] are
-   * also zeroed so XIPEN cannot be left armed across ra_xspi_init.
-   * CDCTL0 is forced to 0 (CSSEL=0 -> target 0 = on-board IS25LX,
-   * TRREQ=0) so the next manual command starts from a known state.
-   * HUM Ch 44 p 2986 "CDCTL0 : Command Manual Control 0". */
-  reg->BMCTL0      = (uint32_t)k_ra_xspi_bmctl0_disabled;
-  reg->CMCTLCH[0]  = 0U;
-  reg->CMCTLCH[1]  = 0U;
-  reg->WRAPCFG     = 0U;
-  reg->COMCFG      = 0U;
-  reg->LIOCFGCS[0] = (uint32_t)mode;
-  reg->CDCTL0      = 0U;
-  reg->INTC        = k_ra_xspi_ints_mask_all;
+  internal_xspi_apply_config(reg, mode);
+  internal_xspi_reset_device(reg);
 
   ra_log_info_val(s_tag, "xspi_init inst", (uint32_t)instance);
   return k_ra_ok;
@@ -501,11 +622,24 @@ static uint32_t internal_make_cdt(uint8_t opcode,
                                   uint8_t data_bytes,
                                   uint8_t is_write)
 {
+  /* CMD is a 16-bit field at CDT[31:16]. The command-manual engine
+   * transmits CMDSIZE bytes MSB-first starting at bit 31, so an
+   * N-byte command must be LEFT-justified inside the 16-bit field:
+   * a 1-byte opcode belongs at bits [31:24], a 2-byte opcode pair at
+   * [31:16]. Placing a 1-byte opcode at [23:16] (a bare ``opcode <<
+   * 16``) makes the controller clock out the zero byte at [31:24]
+   * instead -- the flash then sees command 0x00 for every 0x9F /
+   * 0x05 / 0x06 / 0x02 / 0x20 op, never answers, and RDID floats to
+   * 0x00FFFFFF even though CMDCMP fires. Mirrors FSP
+   * ``r_ospi_b_direct_transfer`` which stores ``command`` already
+   * left-aligned in the 16-bit CMD field. HUM Ch 44 p 2986. */
+  const uint8_t  cmd_shift = (uint8_t)(8U * (2U - (cmd_bytes & k_ra_xspi_cdt_mask_cmdsize)));
+  const uint32_t cmd_word  = ((uint32_t)opcode << cmd_shift) & (uint32_t)k_ra_xspi_cdt_mask_cmd;
   return (((uint32_t)cmd_bytes & k_ra_xspi_cdt_mask_cmdsize) << k_ra_xspi_cdt_pos_cmdsize) |
          (((uint32_t)addr_bytes & k_ra_xspi_cdt_mask_addsize) << k_ra_xspi_cdt_pos_addsize) |
          (((uint32_t)data_bytes & k_ra_xspi_cdt_mask_datasize) << k_ra_xspi_cdt_pos_datasize) |
          (((uint32_t)is_write & k_ra_xspi_cdt_mask_trtype) << k_ra_xspi_cdt_pos_trtype) |
-         (((uint32_t)opcode) << k_ra_xspi_cdt_pos_cmd);
+         (cmd_word << k_ra_xspi_cdt_pos_cmd);
 }
 
 /**
@@ -1371,7 +1505,10 @@ internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t
    * (opcode + complement). The complement form is what 8D-mode SPI
    * NOR devices require so they can distinguish "real opcode" from
    * "garbage on the bus". */
-  uint16_t cmd_word = opcode;
+  /* CMD is transmitted MSB-first from CDT[31:16]; a 1-byte opcode must
+   * be left-justified to CDT[31:24] (cmd_word << 8), a 2-byte 8D pair
+   * fills the full [31:16] field. Same rule as internal_make_cdt. */
+  uint16_t cmd_word = (uint16_t)(opcode << 8U);
   if (cmd_bytes == (uint8_t)k_ra_xspi_reset_cmd_bytes_8d) {
     cmd_word = (uint16_t)(opcode | (((uint16_t)(uint8_t)~opcode) << 8U));
   }
