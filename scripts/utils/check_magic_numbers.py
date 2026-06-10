@@ -69,9 +69,6 @@ from typing import Iterable, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Roots scanned in full (every ``.c``) when called with no argument.
-SCAN_ROOTS = ("libs", "src")
-
 # Under ``examples/`` only the application ``main.c`` is scanned -- this
 # matches the scope ``clang_tidy.sh`` already uses for examples.  The
 # per-app boot boilerplate (``vector_table.c``, ``system_init.c``,
@@ -83,12 +80,16 @@ EXAMPLES_GLOB = "main.c"
 
 # Path fragments that exclude the file from the scan.  Vendor / build
 # trees are SOUP and exempt; their literals are the upstream
-# maintainer's call, not ours.
+# maintainer's call, not ours.  Test code is exempt too: unit tests are
+# built from literal stimulus and expected-value vectors
+# (``TEST_ASSERT_EQ(0x9D5A1A, ...)``) -- naming every test constant as a
+# typed enum would obscure the vectors, not clarify them.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
     "/build/",
+    "tests/",
 )
 
 # Integer values exempt from the rule.  Mirrors
@@ -384,10 +385,19 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> List[Path]:
                 out.append(p)
         return [p for p in out if not _is_excluded(p)]
 
+    # No-argument mode scans the WHOLE repo so nothing is silently skipped
+    # (new top-level dirs, tools/, port/, etc. are covered automatically --
+    # there is no allowlist to forget to update). The only carve-out is under
+    # examples/, where the per-app boot boilerplate (vector_table.c,
+    # system_init.c, ...) is copied verbatim and full of vector/IRQ-slot
+    # indices; there only the application main.c is scanned. Vendor/build
+    # trees are dropped via EXCLUDE_FRAGMENTS.
     out = []
-    for root in SCAN_ROOTS:
-        out.extend((REPO_ROOT / root).rglob("*.c"))
-    out.extend((REPO_ROOT / "examples").rglob(EXAMPLES_GLOB))
+    for c in REPO_ROOT.rglob("*.c"):
+        rel = c.relative_to(REPO_ROOT)
+        if rel.parts and rel.parts[0] == "examples" and c.name != EXAMPLES_GLOB:
+            continue
+        out.append(c)
     return [p for p in out if not _is_excluded(p)]
 
 

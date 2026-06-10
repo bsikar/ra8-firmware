@@ -50,6 +50,39 @@ static ra_usb_hcd_t s_hcd = {
   .owner = nullptr,
 };
 
+/**
+ * @enum ra_usb_hcd_ep_addr_field_t
+ * @brief Bit fields of a USB endpoint address (bEndpointAddress).
+ *
+ * @details USB 2.0 sec 9.6.6: bit 7 is the direction bit (1 = IN) and
+ * bits 3:0 carry the endpoint number. The same direction bit also
+ * appears as bit 7 of bmRequestType in a SETUP packet (USB 2.0 sec 9.3).
+ */
+typedef enum : uint8_t {
+  k_ra_usb_hcd_ep_addr_dir_in_bit = 0x80U, /**< Direction bit set => IN.          */
+  k_ra_usb_hcd_ep_addr_num_mask   = 0x0FU, /**< Endpoint-number field (bits 3:0). */
+} ra_usb_hcd_ep_addr_field_t;
+
+/**
+ * @enum ra_usb_hcd_pipe_t
+ * @brief Pipe-index bounds for the host bridge.
+ *
+ * @details Hardware exposes the DCP (pipe 0) plus PIPE1..PIPE9, so a
+ * valid pipe index is 0..9; the value 10 is both the count of valid
+ * pipes and the out-of-range sentinel returned by ``internal_ep_to_pipe``.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_hcd_pipe_count = 10U, /**< Valid pipes 0..9; 10 == out-of-range. */
+} ra_usb_hcd_pipe_t;
+
+/**
+ * @enum ra_usb_hcd_ctrl_id_t
+ * @brief Private USBX controller-type id reported by this HCD bridge.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_hcd_controller_id = 99U, /**< RA-USB private controller id. */
+} ra_usb_hcd_ctrl_id_t;
+
 /* -------------------------------------------------------------------------- */
 /* Internal helpers                                                           */
 /* -------------------------------------------------------------------------- */
@@ -75,14 +108,14 @@ static ra_usb_hcd_t s_hcd = {
  */
 static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
 {
-  const uint8_t ep = ep_addr & (uint8_t)0x0FU;
+  const uint8_t ep = ep_addr & (uint8_t)k_ra_usb_hcd_ep_addr_num_mask;
   if (ep == 0U) {
     return 0U;
   }
-  if (ep < 10U) {
+  if (ep < (uint8_t)k_ra_usb_hcd_pipe_count) {
     return ep;
   }
-  return 10U;
+  return (uint8_t)k_ra_usb_hcd_pipe_count;
 }
 
 /**
@@ -111,12 +144,17 @@ static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
   }
   const uint8_t ep_addr = (uint8_t)ep->ux_endpoint_descriptor.bEndpointAddress;
   const uint8_t pipe    = internal_ep_to_pipe(ep_addr);
-  if (pipe == 0U || pipe >= 10U) {
+  if (pipe == 0U) {
     /* DCP is configured during host_init. */
     return UX_SUCCESS;
   }
+  if (pipe >= (uint8_t)k_ra_usb_hcd_pipe_count) {
+    return UX_SUCCESS;
+  }
 
-  ra_usb_ep_dir_t dir = ((ep_addr & 0x80U) != 0U) ? k_ra_usb_ep_dir_in : k_ra_usb_ep_dir_out;
+  ra_usb_ep_dir_t dir = ((ep_addr & (uint8_t)k_ra_usb_hcd_ep_addr_dir_in_bit) != 0U)
+                          ? k_ra_usb_ep_dir_in
+                          : k_ra_usb_ep_dir_out;
 
   ra_usb_ep_type_t type;
   switch ((uint8_t)ep->ux_endpoint_descriptor.bmAttributes & 0x03U) {
@@ -135,7 +173,7 @@ static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
 
   return (ra_usb_configure_endpoint(s_hcd.speed,
                                     pipe,
-                                    (uint8_t)(ep_addr & 0x0FU),
+                                    (uint8_t)(ep_addr & (uint8_t)k_ra_usb_hcd_ep_addr_num_mask),
                                     dir,
                                     type,
                                     (uint16_t)ep->ux_endpoint_descriptor.wMaxPacketSize) == k_ra_ok)
@@ -184,7 +222,7 @@ static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
   if (tr->ux_transfer_request_requested_length != 0U &&
       tr->ux_transfer_request_data_pointer != nullptr) {
     uint16_t len = (uint16_t)tr->ux_transfer_request_requested_length;
-    if ((setup.bm_request_type & 0x80U) != 0U) {
+    if ((setup.bm_request_type & (uint8_t)k_ra_usb_hcd_ep_addr_dir_in_bit) != 0U) {
       if (ra_usb_queue_out(s_hcd.speed, 0U, tr->ux_transfer_request_data_pointer, &len, true) !=
           k_ra_ok) {
         return UX_TRANSFER_ERROR;
@@ -226,7 +264,7 @@ static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
  */
 static unsigned int internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep_addr, uint8_t pipe)
 {
-  if ((ep_addr & 0x80U) != 0U) {
+  if ((ep_addr & (uint8_t)k_ra_usb_hcd_ep_addr_dir_in_bit) != 0U) {
     uint16_t len = (uint16_t)tr->ux_transfer_request_requested_length;
     if (ra_usb_queue_out(s_hcd.speed, pipe, tr->ux_transfer_request_data_pointer, &len, true) !=
         k_ra_ok) {
@@ -274,7 +312,7 @@ static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
   if (pipe == 0U) {
     return internal_control_xfer(tr);
   }
-  if (pipe >= 10U) {
+  if (pipe >= (uint8_t)k_ra_usb_hcd_pipe_count) {
     return UX_TRANSFER_ERROR;
   }
   return internal_bulk_xfer(tr, ep_addr, pipe);
@@ -498,7 +536,7 @@ ra_err_t ux_hcd_ra_usb_initialize(ra_usb_speed_t speed)
     slot++;
   }
   slot->ux_hcd_status              = UX_HCD_STATUS_OPERATIONAL;
-  slot->ux_hcd_controller_type     = 99U;
+  slot->ux_hcd_controller_type     = (UINT)k_ra_usb_hcd_controller_id;
   slot->ux_hcd_nb_root_hubs        = 1U;
   slot->ux_hcd_entry_function      = _ux_hcd_ra_usb_function;
   slot->ux_hcd_controller_hardware = (void*)&s_hcd;

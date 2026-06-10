@@ -97,6 +97,33 @@ typedef enum : uint8_t {
 } nx_ra_eth_mac_word_shift_t;
 
 /**
+ * @enum nx_ra_eth_byte_mask_t
+ * @brief Low-octet mask used when extracting bytes from packed words.
+ */
+typedef enum : uint8_t {
+  k_nx_ra_eth_byte_mask = 0xFFU, /**< Keep the least-significant octet. */
+} nx_ra_eth_byte_mask_t;
+
+/**
+ * @enum nx_ra_eth_hdr_offset_t
+ * @brief Byte offsets of the fields in the 14-byte Ethernet header that
+ *        ``priv_handle_send`` stages into ``s_tx_staging[]``.
+ *
+ * @details
+ * The destination MAC occupies octets 0-5, the source MAC octets 6-11,
+ * and the EtherType octets 12-13. Indices that fall outside the ignored
+ * small-integer set are named here.
+ */
+typedef enum : uint8_t {
+  k_nx_ra_eth_hdr_src_mac_byte1 = 7U,  /**< Source MAC octet 1.   */
+  k_nx_ra_eth_hdr_src_mac_byte3 = 9U,  /**< Source MAC octet 3.   */
+  k_nx_ra_eth_hdr_src_mac_byte4 = 10U, /**< Source MAC octet 4.   */
+  k_nx_ra_eth_hdr_src_mac_byte5 = 11U, /**< Source MAC octet 5.   */
+  k_nx_ra_eth_hdr_ethertype_hi  = 12U, /**< EtherType high octet. */
+  k_nx_ra_eth_hdr_ethertype_lo  = 13U, /**< EtherType low octet.  */
+} nx_ra_eth_hdr_offset_t;
+
+/**
  * @var s_tx_staging
  * @brief Contiguous TX staging buffer.
  *
@@ -250,8 +277,8 @@ volatile nx_ether_diag_t g_nx_ether_diag = {};
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_nx_ra_eth_worker_stack_bytes = 4096U,
-  k_nx_ra_eth_worker_priority    = 4U,
+  k_nx_ra_eth_worker_stack_bytes  = 4096U,
+  k_nx_ra_eth_worker_priority     = 4U,
   k_nx_ra_eth_worker_period_ticks = 1U,
 } nx_ra_eth_worker_t;
 
@@ -305,15 +332,15 @@ static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
   s_rx_ip    = ip;
   s_rx_iface = iface;
   UINT t     = tx_thread_create(&s_rx_thread,
-                            (CHAR*)"ra_eth_rx",
-                            priv_rx_worker_entry,
-                            0,
-                            (VOID*)s_rx_thread_stack,
-                            (ULONG)k_nx_ra_eth_worker_stack_bytes,
-                            (UINT)k_nx_ra_eth_worker_priority,
-                            (UINT)k_nx_ra_eth_worker_priority,
-                            (ULONG)TX_NO_TIME_SLICE,
-                            (UINT)TX_AUTO_START);
+                                (CHAR*)"ra_eth_rx",
+                                priv_rx_worker_entry,
+                                0,
+                                (VOID*)s_rx_thread_stack,
+                                (ULONG)k_nx_ra_eth_worker_stack_bytes,
+                                (UINT)k_nx_ra_eth_worker_priority,
+                                (UINT)k_nx_ra_eth_worker_priority,
+                                (ULONG)TX_NO_TIME_SLICE,
+                                (UINT)TX_AUTO_START);
   if (t == TX_SUCCESS) {
     s_rx_thread_made = 1U;
   }
@@ -364,9 +391,9 @@ static void priv_dispatch_to_netx(NX_PACKET* pkt)
     (void)nx_packet_release(pkt);
     return;
   }
-  const UCHAR*   p   = (const UCHAR*)pkt->nx_packet_prepend_ptr;
-  const uint16_t et  = (uint16_t)(((uint16_t)p[k_nx_ra_eth_etype_off] << 8) |
-                                 (uint16_t)p[(uint16_t)k_nx_ra_eth_etype_off + 1U]);
+  const UCHAR*   p           = (const UCHAR*)pkt->nx_packet_prepend_ptr;
+  const uint16_t et          = (uint16_t)(((uint16_t)p[k_nx_ra_eth_etype_off] << 8) |
+                                          (uint16_t)p[(uint16_t)k_nx_ra_eth_etype_off + 1U]);
   pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + (ULONG)k_nx_ra_eth_hdr_bytes;
   pkt->nx_packet_length      = pkt->nx_packet_length - (ULONG)k_nx_ra_eth_hdr_bytes;
   if (et == (uint16_t)k_nx_ra_eth_ethertype_ipv4) {
@@ -429,8 +456,7 @@ static void priv_rx_drain(void)
      * misaligned frames on Cortex-M parts. */
     pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + 2U;
     pkt->nx_packet_append_ptr  = pkt->nx_packet_prepend_ptr;
-    UINT app =
-      nx_packet_data_append(pkt, (VOID*)s_rx_staging, (ULONG)got, pool, (ULONG)NX_NO_WAIT);
+    UINT app = nx_packet_data_append(pkt, (VOID*)s_rx_staging, (ULONG)got, pool, (ULONG)NX_NO_WAIT);
     if (app != NX_SUCCESS) {
       (void)nx_packet_release(pkt);
       continue;
@@ -472,14 +498,18 @@ static void priv_rx_worker_entry(ULONG arg)
 /* Pull the 6-byte MAC out of the NetX interface descriptor -- see implementation for details. */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
-  ULONG msw                   = iface->nx_interface_physical_address_msw;
-  ULONG lsw                   = iface->nx_interface_physical_address_lsw;
-  mac[k_nx_ra_eth_mac_byte_0] = (uint8_t)((msw >> (ULONG)k_nx_ra_eth_msw_shift_byte0) & 0xFFU);
-  mac[k_nx_ra_eth_mac_byte_1] = (uint8_t)(msw & 0xFFU);
-  mac[k_nx_ra_eth_mac_byte_2] = (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte2) & 0xFFU);
-  mac[k_nx_ra_eth_mac_byte_3] = (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte3) & 0xFFU);
-  mac[k_nx_ra_eth_mac_byte_4] = (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte4) & 0xFFU);
-  mac[k_nx_ra_eth_mac_byte_5] = (uint8_t)(lsw & 0xFFU);
+  ULONG msw = iface->nx_interface_physical_address_msw;
+  ULONG lsw = iface->nx_interface_physical_address_lsw;
+  mac[k_nx_ra_eth_mac_byte_0] =
+    (uint8_t)((msw >> (ULONG)k_nx_ra_eth_msw_shift_byte0) & (ULONG)k_nx_ra_eth_byte_mask);
+  mac[k_nx_ra_eth_mac_byte_1] = (uint8_t)(msw & (ULONG)k_nx_ra_eth_byte_mask);
+  mac[k_nx_ra_eth_mac_byte_2] =
+    (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte2) & (ULONG)k_nx_ra_eth_byte_mask);
+  mac[k_nx_ra_eth_mac_byte_3] =
+    (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte3) & (ULONG)k_nx_ra_eth_byte_mask);
+  mac[k_nx_ra_eth_mac_byte_4] =
+    (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte4) & (ULONG)k_nx_ra_eth_byte_mask);
+  mac[k_nx_ra_eth_mac_byte_5] = (uint8_t)(lsw & (ULONG)k_nx_ra_eth_byte_mask);
 }
 
 /* Linearise a (possibly-chained) NX_PACKET into the staging buffer -- see implementation for details. */
@@ -527,9 +557,12 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   /* Push the MAC into the interface struct so NetX subsystems that
    * read it later (ARP, sender-MAC stamping) see the right value. */
   {
-    ULONG msw = ((ULONG)s_local_mac[0] << 8) | (ULONG)s_local_mac[1];
-    ULONG lsw = ((ULONG)s_local_mac[2] << 24) | ((ULONG)s_local_mac[3] << 16) |
-                ((ULONG)s_local_mac[4] << 8)  | (ULONG)s_local_mac[5];
+    ULONG msw = ((ULONG)s_local_mac[k_nx_ra_eth_mac_byte_0] << (ULONG)k_nx_ra_eth_msw_shift_byte0) |
+                (ULONG)s_local_mac[k_nx_ra_eth_mac_byte_1];
+    ULONG lsw = ((ULONG)s_local_mac[k_nx_ra_eth_mac_byte_2] << (ULONG)k_nx_ra_eth_lsw_shift_byte2) |
+                ((ULONG)s_local_mac[k_nx_ra_eth_mac_byte_3] << (ULONG)k_nx_ra_eth_lsw_shift_byte3) |
+                ((ULONG)s_local_mac[k_nx_ra_eth_mac_byte_4] << (ULONG)k_nx_ra_eth_msw_shift_byte0) |
+                (ULONG)s_local_mac[k_nx_ra_eth_mac_byte_5];
     iface->nx_interface_physical_address_msw = msw;
     iface->nx_interface_physical_address_lsw = lsw;
   }
@@ -667,27 +700,31 @@ static void priv_handle_send(NX_IP_DRIVER* req)
   const ULONG    msw = req->nx_ip_driver_physical_address_msw;
   const ULONG    lsw = req->nx_ip_driver_physical_address_lsw;
   const uint16_t et  = priv_ethertype_for_cmd(req->nx_ip_driver_command);
-  s_tx_staging[0]    = (uint8_t)((msw >> 8) & 0xFFU);
-  s_tx_staging[1]    = (uint8_t)(msw & 0xFFU);
-  s_tx_staging[2]    = (uint8_t)((lsw >> 24) & 0xFFU);
-  s_tx_staging[3]    = (uint8_t)((lsw >> 16) & 0xFFU);
-  s_tx_staging[4]    = (uint8_t)((lsw >> 8) & 0xFFU);
-  s_tx_staging[5]    = (uint8_t)(lsw & 0xFFU);
-  s_tx_staging[6]    = s_local_mac[0];
-  s_tx_staging[7]    = s_local_mac[1];
-  s_tx_staging[8]    = s_local_mac[2];
-  s_tx_staging[9]    = s_local_mac[3];
-  s_tx_staging[10]   = s_local_mac[4];
-  s_tx_staging[11]   = s_local_mac[5];
-  s_tx_staging[12]   = (uint8_t)((et >> 8) & 0xFFU);
-  s_tx_staging[13]   = (uint8_t)(et & 0xFFU);
+  s_tx_staging[k_nx_ra_eth_mac_byte_0] =
+    (uint8_t)((msw >> (ULONG)k_nx_ra_eth_msw_shift_byte0) & (ULONG)k_nx_ra_eth_byte_mask);
+  s_tx_staging[k_nx_ra_eth_mac_byte_1] = (uint8_t)(msw & (ULONG)k_nx_ra_eth_byte_mask);
+  s_tx_staging[k_nx_ra_eth_mac_byte_2] =
+    (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte2) & (ULONG)k_nx_ra_eth_byte_mask);
+  s_tx_staging[k_nx_ra_eth_mac_byte_3] =
+    (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte3) & (ULONG)k_nx_ra_eth_byte_mask);
+  s_tx_staging[k_nx_ra_eth_mac_byte_4] =
+    (uint8_t)((lsw >> (ULONG)k_nx_ra_eth_lsw_shift_byte4) & (ULONG)k_nx_ra_eth_byte_mask);
+  s_tx_staging[k_nx_ra_eth_mac_byte_5]        = (uint8_t)(lsw & (ULONG)k_nx_ra_eth_byte_mask);
+  s_tx_staging[6]                             = s_local_mac[k_nx_ra_eth_mac_byte_0];
+  s_tx_staging[k_nx_ra_eth_hdr_src_mac_byte1] = s_local_mac[k_nx_ra_eth_mac_byte_1];
+  s_tx_staging[8]                             = s_local_mac[k_nx_ra_eth_mac_byte_2];
+  s_tx_staging[k_nx_ra_eth_hdr_src_mac_byte3] = s_local_mac[k_nx_ra_eth_mac_byte_3];
+  s_tx_staging[k_nx_ra_eth_hdr_src_mac_byte4] = s_local_mac[k_nx_ra_eth_mac_byte_4];
+  s_tx_staging[k_nx_ra_eth_hdr_src_mac_byte5] = s_local_mac[k_nx_ra_eth_mac_byte_5];
+  s_tx_staging[k_nx_ra_eth_hdr_ethertype_hi] =
+    (uint8_t)((et >> (uint16_t)k_nx_ra_eth_msw_shift_byte0) & (uint16_t)k_nx_ra_eth_byte_mask);
+  s_tx_staging[k_nx_ra_eth_hdr_ethertype_lo] = (uint8_t)(et & (uint16_t)k_nx_ra_eth_byte_mask);
 
   uint32_t body_len = 0U;
   if (priv_packet_to_buffer(pkt,
                             s_tx_staging + k_nx_ra_eth_hdr_bytes,
                             (uint32_t)sizeof(s_tx_staging) - (uint32_t)k_nx_ra_eth_hdr_bytes,
-                            &body_len)
-      == 0U) {
+                            &body_len) == 0U) {
     (void)nx_packet_transmit_release(pkt);
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;

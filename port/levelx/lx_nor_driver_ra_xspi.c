@@ -562,6 +562,12 @@ static const ra_xspi_pin_ref_t s_ra_xspi_pin_refs[k_ra_xspi_pin_count] = {
   {0xFFU, 0xFFU},                              /**< Reserved sentinel. */
 };
 
+/** @brief Constants for the diagnostic xSPI pin-state capture. */
+typedef enum : uint8_t {
+  k_ra_lx_pin_unobserved = 0xFFU, /**< Sentinel before PFS is read.       */
+  k_ra_lx_pfs_psel_mask  = 0x1FU, /**< PSEL is the low 5 bits of the PFS. */
+} ra_lx_pin_diag_t;
+
 /**
  * @brief Capture the post-init PFS state of every OCTA pin.
  *
@@ -588,8 +594,8 @@ static void priv_capture_xspi_pin_state(void)
     const uint8_t pin                       = s_ra_xspi_pin_refs[i].pin;
     g_ra_xspi_pin_observed[i].port          = port;
     g_ra_xspi_pin_observed[i].pin           = pin;
-    g_ra_xspi_pin_observed[i].psel_observed = 0xFFU;
-    g_ra_xspi_pin_observed[i].pmr_observed  = 0xFFU;
+    g_ra_xspi_pin_observed[i].psel_observed = (uint8_t)k_ra_lx_pin_unobserved;
+    g_ra_xspi_pin_observed[i].pmr_observed  = (uint8_t)k_ra_lx_pin_unobserved;
     g_ra_xspi_pin_observed[i].pfs_raw       = 0U;
     if ((port > (uint8_t)k_ra_port_max) || (pin > (uint8_t)k_ra_pin_max)) {
       continue;
@@ -601,7 +607,7 @@ static void priv_capture_xspi_pin_state(void)
     const uint32_t raw                = *pfs;
     g_ra_xspi_pin_observed[i].pfs_raw = raw;
     g_ra_xspi_pin_observed[i].psel_observed =
-      (uint8_t)((raw >> (uint32_t)k_ra_pfs_bit_psel0) & 0x1FU);
+      (uint8_t)((raw >> (uint32_t)k_ra_pfs_bit_psel0) & (uint32_t)k_ra_lx_pfs_psel_mask);
     g_ra_xspi_pin_observed[i].pmr_observed =
       (uint8_t)(((raw & (uint32_t)k_ra_pfs_mask_pmr) != 0U) ? 1U : 0U);
   }
