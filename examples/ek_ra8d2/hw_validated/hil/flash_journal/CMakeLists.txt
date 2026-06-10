@@ -17,4 +17,4 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-ra_add_app(NAME flash_journal STACK_BYTES 2200 DESCRIPTION "HAL-based blink firmware for RA8D2")
+ra_add_app(NAME flash_journal STACK_BYTES 2200 DESCRIPTION "Octo-SPI flash erase/program/read journal self-test for RA8D2")

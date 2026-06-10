@@ -68,6 +68,30 @@ The self-hosted Pi runner (`star@star.local`) must have:
   - A USB-Ethernet adapter that auto-IPs to `192.168.1.1/24` for the
     `hil_eth_tcp` mode (the helper script handles bring-up).
 
+## Running a single app locally on a Mac (no Pi)
+
+The Pi runners (`hil_run_direct.sh`, `hil_jlink_memprobe.sh`,
+`hil_check_alive.sh`) target the Linux bench and SSH to
+`star@star.local`. When the board is plugged straight into a developer's
+Mac, `scripts/hil_run_local.sh <app>` runs one app's gate entirely on
+that Mac:
+
+```
+scripts/hil_run_local.sh flash_journal
+scripts/hil_run_local.sh threadx_filex_levelx_demo --uart /dev/cu.usbmodemXXXX
+```
+
+It reads the app's `hil.conf`, builds if needed, flashes via the local
+`JLinkExe`, and applies the same pass/fail logic as the Pi runners for
+all three offline modes (`uart_scrape`, `jlink_memprobe`, `alive`). It
+reads the J-Link OB VCOM at `/dev/cu.usbmodem*` (auto-detected; override
+with `--uart`) using only macOS-available tools (`stty -f`, a small
+unbuffered python3 reader that sets 115200/8N1 on the live fd, since
+macOS resets the line discipline on each `open()`). The wire-side Pi
+peer modes (TCP/UDP/HTTP/USB-host) are NOT covered -- those still need
+the Pi rig. This is for spot-checking board-only apps before promoting
+them out of `hw_pending/`; CI still gates on the Pi.
+
 ## Required board switches / jumpers
 
 The board switches/jumpers are documented in `libs/ra_board_ek_ra8d2/inc/ra_board_ek_ra8d2.h` ("Project SW4 layout") and `docs/reference/ek-ra8d2-v1-users-manual.pdf` Tables 3 / 18. The

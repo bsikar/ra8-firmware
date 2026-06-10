@@ -18,7 +18,6 @@ hardware HIL probe AND the gap below is resolved.
 | acmphs_compare | Analog comparator output depends on stim voltage on IVCMP / IVREF pins; bare EVM floats. Needs known reference wired in. |
 | dac_b_demo | DAC output goes to an analog pin; needs scope / ADC ground-truth to verify the waveform. |
 | dac_waveform | Same as dac_b_demo. |
-| flash_journal | IS25LX512M Octo-SPI flash chip on the bench EVM has a dead CIPO line; chip floats. Needs replacement. |
 | gpio_input_demo | SW1 user button drives the only observable signal; no Pi GPIO is wired to P009 on the HIL bench. |
 | gpt_capture_input | Needs external pulse train on the capture pin; no Pi-side stim wiring. |
 | icu_extint_demo | Same as gpio_input_demo -- needs Pi GPIO wired to SW1 (P009). |
@@ -27,8 +26,6 @@ hardware HIL probe AND the gap below is resolved.
 | i2c_loopback | U15 expander chip on the bench is unresponsive under all tested SW4-5 configs. |
 | kint_demo | Same as gpio_input_demo / icu_extint_demo -- SW1 stim needed. |
 | threadx_filex_demo | Needs SD card (FileX over SDHI); out-of-scope for this user. |
-| threadx_filex_levelx_demo | Needs the same dead OSPI flash chip. |
-| threadx_levelx_demo | Needs the same dead OSPI flash chip. |
 | tz_secure_only_sd | Needs SD card; out-of-scope. |
 | usb_host_cdc_echo | Needs a USB-CDC peripheral wired into J7 for the chip to enumerate; needs USB Host stack debugging. |
 | usb_host_keyboard | Needs USB keyboard plus the same USB Host work. |
@@ -41,3 +38,5 @@ hardware HIL probe AND the gap below is resolved.
 | cpu1_pingpong | IPCSAR is secure-only-writable from CPU0's NS state; needs TrustZone bring-up so the Secure veneer can flip the bits before CPU1 release. See app README. |
 | threadx_netx_tcp_echo | HAL's GWCA stub doesn't wire descriptor list addresses (GWDCBAC0/1 + LINKFIX table per HUM Ch 34.5.1.3). Multi-hour port. FSP reference: `r_layer3_switch.c` at github.com/renesas/fsp under `ra/fsp/src/r_layer3_switch/`. |
 | tz_nsc_cgc_usb | NSC veneer path to ra_cgc_pll2_enable returns non-OK from NS context (init step halts at 1). NSC bridge wiring needs investigation. |
+| threadx_filex_levelx_demo | Local HIL (2026-06-10): boots and detects the xSPI flash, but `lx_nor_flash_format failed`. The raw Octo-SPI path works (`flash_journal` round-trips data live, #44 fixed), so the gap is in the LevelX NOR driver layer (`port/levelx/lx_nor_driver_ra_xspi.c`) -- block geometry / format, not the bus. |
+| threadx_levelx_demo | Local HIL (2026-06-10): UART prints `[lx] format failed` then halts in `demo_panic_halt`. Same LevelX NOR format failure as `threadx_filex_levelx_demo` (NOT the clock-init panic previously suspected). Fix the LevelX driver, then both promote together. |
