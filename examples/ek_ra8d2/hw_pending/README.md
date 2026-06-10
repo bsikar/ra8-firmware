@@ -29,8 +29,6 @@ hardware HIL probe AND the gap below is resolved.
 | threadx_filex_demo | Needs SD card (FileX over SDHI); out-of-scope for this user. |
 | threadx_filex_levelx_demo | Needs the same dead OSPI flash chip. |
 | threadx_levelx_demo | Needs the same dead OSPI flash chip. |
-| tz_secure_only_da16600_scan | Needs DA16600 Wi-Fi module; out-of-scope. |
-| tz_secure_only_da16600_tcp_echo | Same. |
 | tz_secure_only_sd | Needs SD card; out-of-scope. |
 | usb_host_cdc_echo | Needs a USB-CDC peripheral wired into J7 for the chip to enumerate; needs USB Host stack debugging. |
 | usb_host_keyboard | Needs USB keyboard plus the same USB Host work. |

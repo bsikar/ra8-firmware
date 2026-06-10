@@ -74,7 +74,7 @@ The board switches/jumpers are documented in `libs/ra_board_ek_ra8d2/inc/ra_boar
 project default `0xF2` (programmed into U15 PI4IOE5V6408 via
 `ra_board_io_expander_apply_project_sw4_defaults()`) maps to:
 
-  - SW4-1 ON  + SW4-2 OFF  -> Pmod1 = UART (Wi-Fi/BLE DA16600 slot)
+  - SW4-1 ON  + SW4-2 OFF  -> Pmod1 = UART (Wi-Fi/BLE Pmod slot)
   - SW4-3 ON               -> Octo-SPI Inactive (frees Arduino pins)
   - SW4-4 ON               -> Arduino + mikroBUS connectors Active
   - SW4-5 OFF              -> I2C on mikroBUS (SDA1/SCL1 = P511/P512)
