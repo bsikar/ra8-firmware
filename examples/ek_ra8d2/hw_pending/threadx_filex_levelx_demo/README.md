@@ -5,16 +5,21 @@ heartbeat demo.
 
 ## Why this is `hw_pending`
 
-LevelX runs against the on-board IS25LX512M Octo-SPI flash (U16),
-which JTAG probing in 2026-05-19 confirmed is physically
-unresponsive (see `examples/ek_ra8d2/hw_pending/flash_journal/
-README.md` for the JTAG evidence). Every LevelX format / mount /
-write call hits the dead chip and times out, so the demo cannot
-get past `fxlx: lx_nor_flash_format` regardless of how the HAL
-is fixed.
+The OSPI flash bring-up that blocked this app is fixed (#44): the
+on-board ISSI IS25LX512M (U16, JEDEC 0x9D5A1A) is on xSPI controller
+**CS1**, and `ra_xspi` now drives it correctly (the earlier "JTAG-
+confirmed dead chip / physically unresponsive" conclusion was wrong --
+it was a controller chip-select bug, see
+`examples/ek_ra8d2/hw_pending/flash_journal/README.md`). LevelX runs
+against that flash through the unchanged `port/levelx/lx_nor_driver_ra_xspi`
+HAL path, so it inherits the fix.
 
-## How to graduate back
+This app stays in `hw_pending` only until a full HIL re-run confirms the
+ThreadX + FileX + LevelX stack mounts/formats/round-trips on the now-live
+flash; `flash_journal` already verifies the underlying erase/program/read.
 
-Same as `flash_journal`: confirm U16 is powered + responsive on
-the bench. Once `make flash_journal` passes its memprobe gate,
-this demo can be promoted back without firmware changes.
+## How to graduate
+
+Run the `hil.conf` uart-scrape gate on the bench: `[fxlx] booting xSPI
+flash` should appear with no failure banner. `make flash_journal`
+already passes its round-trip gate, so the flash itself is proven.

@@ -206,10 +206,11 @@ typedef enum : uint32_t {
  * ``ra_xspi_flash_read_id()``. Tests assert on this exact value.
  */
 typedef enum : uint32_t {
-  k_ra_sim_jedec_manufacturer = 0xC2U,      /**< Macronix manufacturer ID. */
-  k_ra_sim_jedec_memory_type  = 0x20U,      /**< MX25 family. */
-  k_ra_sim_jedec_capacity     = 0x1AU,      /**< 512 Mbit. */
-  k_ra_sim_jedec_id           = 0xC2201AUL, /**< Packed JEDEC ID word. */
+  k_ra_sim_jedec_manufacturer = 0x9DU,      /**< ISSI manufacturer ID.       */
+  k_ra_sim_jedec_memory_type  = 0x5AU,      /**< IS25LX family memory type.   */
+  k_ra_sim_jedec_capacity     = 0x1AU,      /**< 512 Mbit capacity code.      */
+  k_ra_sim_jedec_id           = 0x9D5A1AUL, /**< Packed RDID -- matches the   */
+                                            /**< on-board EK-RA8D2 IS25LX512M.*/
 } ra_xspi_jedec_t;
 
 /**

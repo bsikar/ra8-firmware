@@ -17,7 +17,7 @@
  *
  * The shim lets a FAT volume (``fx_media_open()``) live on top of the
  * LevelX wear-levelling layer that already sits on top of
- * ``ra_xspi_flash_*`` against the on-board EK-RA8D2 Macronix MX25LM512
+ * ``ra_xspi_flash_*`` against the on-board EK-RA8D2 ISSI IS25LX512M
  * octal-SPI NOR flash. The user-visible result is "FAT-on-OSPI" with
  * dynamic block remapping -- exactly what the e-reader's local
  * library wants when no SD card is present.
@@ -40,7 +40,7 @@
  *   ra_xspi_flash_read / program / erase_sector
  *       |
  *       v
- *   MX25LM512 octal-SPI NOR (EK-RA8D2 on-board chip)
+ *   IS25LX512M octal-SPI NOR (EK-RA8D2 on-board chip)
  * @endcode
  *
  * Sector geometry:

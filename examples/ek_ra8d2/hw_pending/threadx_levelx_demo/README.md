@@ -8,8 +8,8 @@ ThreadX + LevelX OSPI-flash wear-levelling demo for the EK-RA8D2.
    115200 8N1 on PD_02 / PD_03).
 2. Hands control over to ThreadX (`tx_kernel_enter`).
 3. The single worker thread:
-   - Initialises `ra_xspi` against the on-board EK-RA8D2 Macronix
-     MX25LM512 octal-SPI flash chip.
+   - Initialises `ra_xspi` against the on-board EK-RA8D2 ISSI
+     IS25LX512M octal-SPI flash chip.
    - Calls `lx_nor_flash_format()` to lay down a fresh LevelX
      partition (64 blocks * 4 KiB = 256 KiB), then `lx_nor_flash_open()`
      to mount it.
@@ -52,11 +52,10 @@ If the top-level `make threadx_levelx_demo` complains about missing
 ThreadX targets, that means the sibling ThreadX port has not
 landed yet -- see `cmake/threadx.cmake`.
 
-Note: the EK-RA8D2 v1 board carries an **Infineon IS25LX512M-JHLE**
-64 MB Octo-SPI flash (UM Section 6.3 + Table 29 p 35), not a Macronix
-MX25LM512 -- the README/main.c reference to "Macronix MX25LM512" is a
-copy-paste from the FSP example and should be read as "the on-board
-Octo-SPI NOR flash" regardless of vendor part.
+Note: the EK-RA8D2 v1 board carries an **ISSI IS25LX512M-JHLE** 64 MB
+Octo-SPI flash (UM Section 6.3 + Table 29 p 35; JEDEC ID 0x9D5A1A,
+hardware-verified). It hangs off xSPI controller CS1 -- see issue #44 for
+the bring-up fix (the part is on CS1, not CS0).
 
 ## BSP usage
 

@@ -1,7 +1,7 @@
 /**
  * @file port/levelx/lx_nor_driver_ra_xspi.h
  * @brief LevelX NOR-flash driver shim that bridges LevelX onto the RA8D2
- *        ``ra_xspi`` HAL (EK-RA8D2 Macronix MX25LM512 octal-SPI flash)
+ *        ``ra_xspi`` HAL (EK-RA8D2 ISSI IS25LX512M octal-SPI flash)
  *
  * @par Tag
  * [Ring 4 / PORT] {World: NS}
@@ -13,7 +13,7 @@
  * during NOR-flash bring-up. The function:
  *
  *   - Programmes ``LX_NOR_FLASH::lx_nor_flash_total_blocks`` and
- *     ``lx_nor_flash_words_per_block`` based on the on-board MX25LM512
+ *     ``lx_nor_flash_words_per_block`` based on the on-board IS25LX512M
  *     geometry (4 KiB sectors, 64 MiB total -> 16384 LevelX blocks).
  *   - Hands LevelX a 512-byte sector RAM scratch buffer pointed to by
  *     ``lx_nor_flash_sector_buffer``.
@@ -23,7 +23,7 @@
  *
  * Sector geometry:
  *
- *   | LevelX concept                  | MX25LM512 mapping                    |
+ *   | LevelX concept                  | IS25LX512M mapping                    |
  *   |---------------------------------|--------------------------------------|
  *   | block (smallest erase unit)     | 4 KiB sector (opcode 0x20)           |
  *   | physical sector                 | 512 bytes (LX_NOR_SECTOR_SIZE words) |
