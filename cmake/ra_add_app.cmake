@@ -148,6 +148,20 @@ macro(ra_add_app)
         list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/${_ra_lib}/inc)
     endforeach()
 
+    # ra_reflow rasterises glyphs through the vendored stb_truetype. Its
+    # implementation TU lives under third_party (not libs/ra_reflow/src), and
+    # STBTT_malloc/free must be redirected to the no-heap bump arena in
+    # ra_stbtt_alloc.c. Wire that automatically when an app pulls in ra_reflow,
+    # mirroring tests/CMakeLists.txt so app + host-test builds stay in step.
+    set(_ra_stb_impl "")
+    if("ra_reflow" IN_LIST _RA_APP_LIBS)
+        set(_ra_stb_impl ${RA_REPO_ROOT}/libs/third_party/stb/stb_truetype_impl.c)
+        list(APPEND _ra_lib_extra ${_ra_stb_impl})
+        list(APPEND _ra_lib_inc
+            ${RA_REPO_ROOT}/libs/third_party/stb
+            ${RA_REPO_ROOT}/libs/ra_reflow/src)
+    endif()
+
     set(_ra_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
     set(_ra_elf ${_RA_APP_NAME}.elf)
 
@@ -160,6 +174,19 @@ macro(ra_add_app)
     if(_ra_lib_extra_sim)
         set_source_files_properties(${_ra_lib_extra_sim}
             PROPERTIES COMPILE_DEFINITIONS "RA_SIMULATOR_MODE")
+    endif()
+
+    # Route stb_truetype's allocations through the heap-free arena (see above).
+    # The vendored header cannot satisfy the first-party -Werror set, so warnings
+    # are disabled for this single third_party TU (-w wins over the project flags).
+    if(_ra_stb_impl)
+        set_property(SOURCE ${_ra_stb_impl} APPEND PROPERTY COMPILE_OPTIONS
+            -w
+            -include "${RA_REPO_ROOT}/libs/ra_reflow/inc/ra_stbtt_alloc.h"
+            "-DSTBTT_malloc(x,u)=ra_stbtt_malloc(x)"
+            "-DSTBTT_free(x,u)=ra_stbtt_free(x)")
+        # stb_truetype pulls in sqrt/floor/ceil from the math library.
+        target_link_libraries(${_ra_elf} PRIVATE m)
     endif()
 
     ra_target_enable_project_warnings(${_ra_elf} STACK_USAGE_BYTES ${_RA_APP_STACK_BYTES})
