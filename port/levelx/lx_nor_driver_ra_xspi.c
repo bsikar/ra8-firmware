@@ -196,13 +196,10 @@ static UINT priv_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
  * Forwards the word-oriented LevelX request to
  * ``ra_xspi_flash_program``. The HAL handles the JEDEC
  * write-enable -> page-program -> WIP-poll dance internally and
- * caps each call at one full erase sector (4 KiB), which matches the
- * largest single LevelX call. ``ra_xspi_flash_program`` does NOT
- * cross page boundaries internally, so the caller (LevelX) is
- * implicitly responsible for staying within one 256-byte page.
- * LevelX's metadata writes are always 4-byte ULONGs; bulk sector
- * writes are at most one ``LX_NOR_SECTOR_SIZE * sizeof(ULONG)`` =
- * 512 bytes which fits in two pages.
+ * chunks arbitrary lengths into per-page (256-byte) manual-command
+ * transfers, so a full ``LX_NOR_SECTOR_SIZE * sizeof(ULONG)`` =
+ * 512-byte sector write (two pages) round-trips intact; LevelX's
+ * 4-byte metadata writes are a single chunk.
  *
  * @param[in] flash_address Destination address (LevelX cookie).
  * @param[in] source        Source RAM buffer.
