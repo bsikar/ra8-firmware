@@ -825,6 +825,70 @@ static ra_err_t internal_sim_range_check(uint32_t flash_addr, uint32_t len)
 }
 #endif
 
+/**
+ * @brief Read one manual-command slot (<= 8 bytes) from flash into ``buf``.
+ *
+ * @details
+ * Issues a single JEDEC 0x03 read of ``chunk`` bytes at ``flash_addr``
+ * and copies the CDBUF data words (CDD0 = bytes 0..3, CDD1 = bytes 4..7)
+ * into ``buf``. ``chunk`` must be <= ``k_ra_xspi_cdt_max_data_bytes`` (8)
+ * because the manual-command engine only carries 8 data bytes per
+ * transfer; ``ra_xspi_flash_read`` loops this helper to cover arbitrary
+ * lengths.
+ *
+ * @param[in]  reg        xSPI register block (already gated open).
+ * @param[in]  instance   xSPI instance index (simulator fake-flash bank).
+ * @param[in]  flash_addr Source flash byte address for this chunk.
+ * @param[out] buf        Destination buffer for ``chunk`` bytes.
+ * @param[in]  chunk      Byte count for this transfer (1..8).
+ *
+ * @return ::ra_err_t outcome of the chunk read.
+ * @retval k_ra_ok            Chunk read and copied.
+ * @retval k_ra_err_invalid_arg Simulator range check failed.
+ * @retval other              CMDCMP timeout from the read command.
+ *
+ * @pre ``reg != nullptr`` and ``buf != nullptr``.
+ * @pre ``chunk`` is in ``[1..8]``.
+ * @post On success ``buf[0..chunk-1]`` holds the flash data.
+ * @post No state outside ``buf`` and the CDBUF slot is modified.
+ *
+ * @note Not thread-safe; caller serialises bus access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_flash_read_chunk(volatile r_xspi_regs_t* reg,
+                                          uint8_t                 instance,
+                                          uint32_t                flash_addr,
+                                          uint8_t*                buf,
+                                          uint32_t                chunk)
+{
+  internal_build_chunk_header(reg,
+                              k_ra_spi_flash_op_read,
+                              flash_addr,
+                              (uint8_t)chunk,
+                              k_ra_xspi_cdt_trtype_read);
+  const ra_err_t wait = internal_kick_command(reg);
+  if (wait != k_ra_ok) {
+    return wait;
+  }
+#ifdef RA_SIMULATOR_MODE
+  const ra_err_t rng = internal_sim_range_check(flash_addr, chunk);
+  if (rng != k_ra_ok) {
+    return rng;
+  }
+  internal_fake_flash_copy(buf, &s_fake_flash[instance][flash_addr], chunk);
+#else
+  (void)instance;
+  /* CDBUF data words: bytes 0..3 in CDD0, bytes 4..7 in CDD1. */
+  for (uint32_t i = 0U; i < chunk; i++) {
+    const uint8_t cdbuf_word_idx =
+      (i < 4U) ? (uint8_t)k_ra_xspi_cdbuf_idx_data0 : (uint8_t)k_ra_xspi_cdbuf_idx_data1;
+    const uint32_t word = reg->CDBUF[cdbuf_word_idx];
+    buf[i]              = (uint8_t)(word >> ((i % 4U) * 8U));
+  }
+#endif
+  return k_ra_ok;
+}
+
 ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -834,44 +898,21 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Programme a JEDEC 0x03 read with 3-byte address. The data byte
-   * count travels in CDT.DATASIZE (FSP encoding) so the controller
-   * knows how many bytes to clock onto CDD0/CDD1. ``len`` is
-   * clamped to 8 here because each manual-command slot only carries
-   * 8 bytes; the higher-level caller handles chunking for arbitrary
-   * lengths in future work (currently bounded by k_ra_xspi_max_xfer
-   * via the simulator path). */
-  const uint8_t chunk =
-    (len > (uint32_t)k_ra_xspi_cdt_max_data_bytes) ? k_ra_xspi_cdt_max_data_bytes : (uint8_t)len;
-  internal_build_chunk_header(reg,
-                              k_ra_spi_flash_op_read,
-                              flash_addr,
-                              chunk,
-                              k_ra_xspi_cdt_trtype_read);
-
-  const ra_err_t wait = internal_kick_command(reg);
-  if (wait != k_ra_ok) {
-    return wait;
+  /* The manual-command engine carries only k_ra_xspi_cdt_max_data_bytes
+   * (8) data bytes per transfer, so walk the request in 8-byte chunks.
+   * (HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986.) */
+  uint32_t off = 0U;
+  while (off < len) {
+    uint32_t chunk = len - off;
+    if (chunk > (uint32_t)k_ra_xspi_cdt_max_data_bytes) {
+      chunk = (uint32_t)k_ra_xspi_cdt_max_data_bytes;
+    }
+    const ra_err_t e = internal_flash_read_chunk(reg, instance, flash_addr + off, &buf[off], chunk);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    off += chunk;
   }
-
-#ifdef RA_SIMULATOR_MODE
-  const ra_err_t rng = internal_sim_range_check(flash_addr, len);
-  if (rng != k_ra_ok) {
-    return rng;
-  }
-  internal_fake_flash_copy(buf, &s_fake_flash[instance][flash_addr], len);
-#else
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Copy the CDBUF data words into the caller buffer (bytes 0..3
-   * live in CDBUF[2], bytes 4..7 live in CDBUF[3]). */
-  for (uint32_t i = 0U; i < len; i++) {
-    const uint8_t cdbuf_word_idx =
-      (i < 4U) ? (uint8_t)k_ra_xspi_cdbuf_idx_data0 : (uint8_t)k_ra_xspi_cdbuf_idx_data1;
-    const uint32_t word = reg->CDBUF[cdbuf_word_idx];
-    buf[i]              = (uint8_t)(word >> ((i % 4U) * 8U));
-  }
-#endif
   return k_ra_ok;
 }
 
@@ -1065,6 +1106,71 @@ internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, ui
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
+/**
+ * @brief Program one page-program slot (<= 8 bytes) at ``flash_addr``.
+ *
+ * @details
+ * Runs the full WREN -> 0x02 page-program -> WIP-poll sequence for a
+ * single manual-command slot of ``chunk`` bytes. ``chunk`` must be
+ * <= ``k_ra_xspi_cdt_max_data_bytes`` (8) and must not cross a
+ * ``k_ra_xspi_page_len`` (256-byte) NOR page boundary; the
+ * ``ra_xspi_flash_program`` loop enforces both before calling.
+ *
+ * @param[in] reg        xSPI register block (already gated open).
+ * @param[in] instance   xSPI instance index (simulator fake-flash bank).
+ * @param[in] flash_addr Destination flash byte address for this chunk.
+ * @param[in] data       Source bytes (``chunk`` of them).
+ * @param[in] chunk      Byte count for this transfer (1..8).
+ *
+ * @return ::ra_err_t outcome of the chunk program.
+ * @retval k_ra_ok            Chunk programmed and WIP cleared.
+ * @retval k_ra_err_invalid_arg Simulator range check failed.
+ * @retval other              WREN/PP/WIP failure from the HAL.
+ *
+ * @pre ``reg != nullptr`` and ``data != nullptr``.
+ * @pre ``chunk`` is in ``[1..8]`` and stays within one 256-byte page.
+ * @post On success ``chunk`` bytes are persisted at ``flash_addr``.
+ * @post On success the flash WIP bit is clear (controller idle).
+ *
+ * @note Not thread-safe; caller serialises bus access.
+ * @since 0.1.0
+ */
+static ra_err_t internal_flash_program_chunk(volatile r_xspi_regs_t* reg,
+                                             uint8_t                 instance,
+                                             uint32_t                flash_addr,
+                                             const uint8_t*          data,
+                                             uint32_t                chunk)
+{
+  const ra_err_t p = internal_flash_stage_program(reg, flash_addr, chunk);
+  if (p != k_ra_ok) {
+    return p;
+  }
+#ifdef RA_SIMULATOR_MODE
+  /* Kick first so register-level test assertions see the on-target
+   * sequence, then mutate fake flash (AND-only: NOR clears bits). */
+  const ra_err_t kick = internal_kick_command(reg);
+  if (kick != k_ra_ok) {
+    return kick;
+  }
+  const ra_err_t rng = internal_sim_range_check(flash_addr, chunk);
+  if (rng != k_ra_ok) {
+    return rng;
+  }
+  for (uint32_t i = 0U; i < chunk; i++) {
+    s_fake_flash[instance][flash_addr + i] &= data[i];
+  }
+#else
+  (void)instance;
+  /* Stage CDD0/CDD1 BEFORE TRREQ (cf. internal_xspi_stage_payload). */
+  internal_xspi_stage_payload(reg, data, chunk);
+  const ra_err_t kick = internal_kick_command(reg);
+  if (kick != k_ra_ok) {
+    return kick;
+  }
+#endif
+  return internal_poll_wip_clear(instance);
+}
+
 ra_err_t
 ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data, uint32_t len)
 {
@@ -1075,35 +1181,30 @@ ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  const ra_err_t p = internal_flash_stage_program(reg, flash_addr, len);
-  if (p != k_ra_ok) {
-    return p;
+  /* Each manual-command page-program carries <= 8 data bytes and a
+   * single PP must not cross a 256-byte NOR page boundary, so walk the
+   * payload in chunks clamped to both limits (HUM Ch 44 p 2986).  This
+   * is what makes a 512-byte LevelX sector write round-trip instead of
+   * persisting only the first 8 bytes. */
+  uint32_t off = 0U;
+  while (off < len) {
+    const uint32_t addr = flash_addr + off;
+    const uint32_t page_left =
+      (uint32_t)k_ra_xspi_page_len - (addr & ((uint32_t)k_ra_xspi_page_len - 1U));
+    uint32_t chunk = len - off;
+    if (chunk > (uint32_t)k_ra_xspi_cdt_max_data_bytes) {
+      chunk = (uint32_t)k_ra_xspi_cdt_max_data_bytes;
+    }
+    if (chunk > page_left) {
+      chunk = page_left;
+    }
+    const ra_err_t e = internal_flash_program_chunk(reg, instance, addr, &data[off], chunk);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    off += chunk;
   }
-#ifdef RA_SIMULATOR_MODE
-  /* HUM Ch 44 p 2986 -- simulator path: kick first so register-level
-   * test assertions see the on-target sequence, then mutate fake
-   * flash. AND-only model: SPI NOR can only clear bits. */
-  const ra_err_t kick = internal_kick_command(reg);
-  if (kick != k_ra_ok) {
-    return kick;
-  }
-  const ra_err_t rng = internal_sim_range_check(flash_addr, len);
-  if (rng != k_ra_ok) {
-    return rng;
-  }
-  for (uint32_t i = 0U; i < len; i++) {
-    s_fake_flash[instance][flash_addr + i] &= data[i];
-  }
-#else
-  /* HUM Ch 44 p 2986 -- target path: stage CDD0/CDD1 BEFORE TRREQ
-   * (cf. internal_xspi_stage_payload comment block). */
-  internal_xspi_stage_payload(reg, data, len);
-  const ra_err_t kick = internal_kick_command(reg);
-  if (kick != k_ra_ok) {
-    return kick;
-  }
-#endif
-  return internal_poll_wip_clear(instance);
+  return k_ra_ok;
 }
 
 ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)

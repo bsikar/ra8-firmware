@@ -29,6 +29,7 @@ typedef enum : uint32_t {
   k_test_xspi_flash_addr_overflow = 0x10000000UL,
   k_test_xspi_len_zero            = 0U,
   k_test_xspi_len_small           = 16U,
+  k_test_xspi_len_multipage       = 320U, /**< > 256-byte page; crosses a page from addr 128. */
   k_test_xspi_len_too_big         = 8192U,
   k_test_xspi_expected_jedec      = 0x9D5A1AUL, /**< ISSI IS25LX512M (on-board). */
   k_test_xspi_expected_status     = 0x02U,      /**< WEL=1 in simulator mode. */
@@ -387,6 +388,47 @@ static void test_flash_program_and_read_round_trip(void)
     TEST_ASSERT_EQ(src[i], dst[i]);
   }
   TEST_END("ra_xspi_flash_program + read round-trip");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path; no `&&` or `||` in the code under test that this case
+ * touches)
+ */
+static void test_flash_program_and_read_multipage(void)
+{
+  TEST_BEGIN("ra_xspi_flash_program + read round-trip across a page boundary");
+  ra_sim_mmap_reset();
+
+  /* Regression for the 8-byte manual-command truncation: a transfer
+   * longer than one CDBUF slot (8 bytes) -- and longer than one 256-byte
+   * NOR page -- must round-trip every byte, not just the first chunk.
+   * 320 bytes from addr 128 spans the 256-byte page boundary. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_xspi_flash_erase_sector((uint8_t)k_test_xspi_valid_inst0,
+                                            (uint32_t)k_test_xspi_flash_addr_start));
+
+  uint8_t src[k_test_xspi_len_multipage];
+  for (uint32_t i = 0U; i < (uint32_t)k_test_xspi_len_multipage; i++) {
+    src[i] = (uint8_t)(i & 0xFFU);
+  }
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
+                                       (uint32_t)k_test_xspi_flash_addr_middle,
+                                       src,
+                                       (uint32_t)k_test_xspi_len_multipage));
+
+  uint8_t dst[k_test_xspi_len_multipage] = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_xspi_flash_read((uint8_t)k_test_xspi_valid_inst0,
+                                    (uint32_t)k_test_xspi_flash_addr_middle,
+                                    dst,
+                                    (uint32_t)k_test_xspi_len_multipage));
+  for (uint32_t i = 0U; i < (uint32_t)k_test_xspi_len_multipage; i++) {
+    TEST_ASSERT_EQ(src[i], dst[i]);
+  }
+  TEST_END("ra_xspi_flash_program + read round-trip across a page boundary");
 }
 
 /**
@@ -973,6 +1015,7 @@ int32_t main(void)
   test_flash_read_past_end();
   test_flash_program_address_overflow();
   test_flash_program_and_read_round_trip();
+  test_flash_program_and_read_multipage();
   test_flash_program_null_data();
   test_flash_program_len_zero();
   test_flash_program_too_large();
