@@ -10,7 +10,7 @@
  * NOR driver callbacks (read / write / block_erase / block_erased_verify)
  * by translating each LevelX ``ULONG``-word request into a matching
  * byte-oriented call into ``libs/ra_hal/inc/ra_xspi.h`` running against
- * the on-board EK-RA8D2 Macronix MX25LM512 octal-SPI flash chip.
+ * the on-board EK-RA8D2 ISSI IS25LX512M octal-SPI flash chip.
  *
  * Address translation:
  *
@@ -25,7 +25,7 @@
  *
  * - LevelX physical sector size = ``LX_NOR_SECTOR_SIZE * sizeof(ULONG)``
  *   = 512 bytes (LevelX default).
- * - LevelX block size = MX25LM512 erase-sector size = 4 KiB.
+ * - LevelX block size = IS25LX512M erase-sector size = 4 KiB.
  * - Words per block = 4096 / sizeof(ULONG) = 1024.
  * - We expose ``k_ra_lx_nor_total_blocks`` blocks (256 KiB total) -- the
  *   first 256 KiB of the 64 MiB flash is reserved for LevelX's
@@ -78,7 +78,7 @@ typedef enum : uint32_t {
  * @brief Compile-time constants for the xSPI <-> LevelX bridge.
  */
 typedef enum : uint32_t {
-  /** @brief xSPI instance routed to the EK-RA8D2 MX25LM512 flash chip. */
+  /** @brief xSPI instance routed to the EK-RA8D2 IS25LX512M flash chip. */
   k_ra_lx_xspi_instance = 0U,
 
   /** @brief Number of LevelX blocks exposed to wear-levelling.
@@ -90,7 +90,7 @@ typedef enum : uint32_t {
    */
   k_ra_lx_nor_total_blocks = 64U,
 
-  /** @brief MX25LM512 erase-sector size (opcode 0x20 / sector erase). */
+  /** @brief IS25LX512M erase-sector size (opcode 0x20 / sector erase). */
   k_ra_lx_nor_block_bytes = 4096U,
 
   /** @brief LevelX words per block (= block_bytes / sizeof(ULONG)). */
@@ -243,7 +243,7 @@ static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @details
  * LevelX numbers blocks 0..(``lx_nor_flash_total_blocks`` - 1). We
  * convert the block index to a flash byte offset by multiplying by
- * the MX25LM512 sector size (4 KiB) and call ``ra_xspi_flash_erase_sector``.
+ * the IS25LX512M sector size (4 KiB) and call ``ra_xspi_flash_erase_sector``.
  * The HAL handles WREN -> SE -> WIP-poll internally. The
  * ``erase_count`` argument is ignored -- LevelX only uses it for its
  * own bookkeeping in higher layers.

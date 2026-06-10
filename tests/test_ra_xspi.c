@@ -30,8 +30,8 @@ typedef enum : uint32_t {
   k_test_xspi_len_zero            = 0U,
   k_test_xspi_len_small           = 16U,
   k_test_xspi_len_too_big         = 8192U,
-  k_test_xspi_expected_jedec      = 0xC2201AUL,
-  k_test_xspi_expected_status     = 0x02U, /**< WEL=1 in simulator mode. */
+  k_test_xspi_expected_jedec      = 0x9D5A1AUL, /**< ISSI IS25LX512M (on-board). */
+  k_test_xspi_expected_status     = 0x02U,      /**< WEL=1 in simulator mode. */
 } test_xspi_vals_t;
 
 /**

@@ -5,7 +5,7 @@
 # bridge between vendored LevelX and our `ra_xspi` HAL. The shim is a
 # thin (~250 LOC) translation of LevelX's NOR driver-callback contract
 # into matching `ra_xspi_flash_*` polled calls against the EK-RA8D2
-# Macronix MX25LM512 octal-SPI flash chip.
+# ISSI IS25LX512M octal-SPI flash chip.
 #
 # Pulled in by `cmake/levelx.cmake` when `RA_USE_LEVELX=ON`. The
 # example app links against `levelx_port_ra_xspi`; it brings its own
