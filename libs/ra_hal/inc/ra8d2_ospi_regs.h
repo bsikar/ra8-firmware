@@ -362,10 +362,11 @@ typedef enum : uint8_t {
  * relying on raw hexadecimal magic numbers.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_cdt_mask_cmdsize  = 0x3UL, /**< CMDSIZE field is 2 bits.       */
-  k_ra_xspi_cdt_mask_addsize  = 0x7UL, /**< ADDSIZE field is 3 bits.       */
-  k_ra_xspi_cdt_mask_datasize = 0xFUL, /**< DATASIZE field is 4 bits.      */
-  k_ra_xspi_cdt_mask_trtype   = 0x1UL, /**< TRTYPE field is 1 bit.         */
+  k_ra_xspi_cdt_mask_cmdsize  = 0x3UL,    /**< CMDSIZE field is 2 bits.       */
+  k_ra_xspi_cdt_mask_addsize  = 0x7UL,    /**< ADDSIZE field is 3 bits.       */
+  k_ra_xspi_cdt_mask_datasize = 0xFUL,    /**< DATASIZE field is 4 bits.      */
+  k_ra_xspi_cdt_mask_trtype   = 0x1UL,    /**< TRTYPE field is 1 bit.         */
+  k_ra_xspi_cdt_mask_cmd      = 0xFFFFUL, /**< CMD[31..16] is a 16-bit field. */
 } ra_xspi_cdt_field_mask_t;
 
 /**
@@ -447,6 +448,28 @@ typedef enum : uint32_t {
   k_ra_xspi_cdctl0_mask_trreq = 1UL << 0U, /**< TRREQ (kick off xfer).       */
   k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target slave).        */
 } ra_xspi_cdctl0_mask_t;
+
+/**
+ * @enum ra_xspi_lioctl_mask_t
+ * @brief Pre-shifted masks for ``LIOCTL`` (link I/O control: WP / RST drive).
+ *
+ * @details
+ * ``LIOCTL`` drives the per-instance write-protect and reset output pins
+ * that fan out to the selected chip-select's flash. Mirrors FSP CMSIS
+ * ``R_XSPI0_LIOCTL_*`` (HUM Ch 44 p 2986): ``WPCS`` at bit 0 drives the
+ * active-low write-protect strap, ``RSTCS`` at bit 16 drives the
+ * active-low hardware-reset strap. Both reset to 1 (deasserted). The
+ * vendor EK-RA8D2 bring-up (``ospi_b_ep.c`` ``ospi_b_init`` and
+ * ``ospi_flash_issi_is25lx512.c`` ``reset_ospi_device``) pulses
+ * ``RSTCS`` low-then-high AFTER the controller protocol/timing config to
+ * return the IS25LX512M to a known SPI protocol state before the first
+ * JEDEC command; without it a device left in OPI/DOPI by a prior loader
+ * never answers a 1S RDID and the bus floats to 0x00FFFFFF.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_lioctl_mask_wpcs  = 1UL << 0U,  /**< WPCS  -- write-protect drive.  */
+  k_ra_xspi_lioctl_mask_rstcs = 1UL << 16U, /**< RSTCS -- hardware-reset drive. */
+} ra_xspi_lioctl_mask_t;
 
 /**
  * @enum ra_xspi_ints_bit_t
