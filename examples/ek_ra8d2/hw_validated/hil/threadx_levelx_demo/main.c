@@ -62,8 +62,6 @@
 #ifndef RA_SIMULATOR_MODE
 #include "lx_api.h"
 #include "lx_nor_driver_ra_xspi.h"
-#include "ra8d2_ospi_regs.h"
-#include "ra_xspi.h"
 #include "tx_api.h"
 #endif
 
@@ -316,6 +314,40 @@ static void demo_print_wear_stats(void)
 }
 
 /**
+ * @brief Emit a one-shot HIL success banner after the first verified heartbeat.
+ *
+ * @details
+ * On the first heartbeat (counter == 1) the worker has written the
+ * counter into LevelX logical sector 0 and read it back. A matching
+ * read-back proves the whole stack (LevelX format + open + sector
+ * write/read over the xSPI NOR) round-tripped real data -- not just
+ * that the chip booted. Emits a distinct success-only banner the HIL
+ * uart_scrape gate keys on, or a MISMATCH banner its negative regex
+ * catches. Does nothing on later heartbeats.
+ *
+ * @param[in] counter  Current heartbeat sequence number.
+ * @param[in] readback Value read back from LevelX logical sector 0.
+ *
+ * @pre Called once per heartbeat from the worker loop.
+ * @post On counter == 1 exactly one banner line is queued to SCI8.
+ *
+ * @since 0.1.0
+ */
+static void demo_report_rw_once(uint32_t counter, uint32_t readback)
+{
+  if (counter != 1U) {
+    return;
+  }
+  if (readback == counter) {
+    demo_print("[lx] sector rw verified readback=");
+    demo_print_u32(readback);
+    demo_print("\r\n");
+  } else {
+    demo_print("[lx] sector rw MISMATCH\r\n");
+  }
+}
+
+/**
  * @brief ThreadX worker entry: format LevelX, run the heartbeat loop, dump stats.
  *
  * @param[in] thread_input Unused.
@@ -331,19 +363,14 @@ static void demo_thread_entry(ULONG thread_input)
   (void)thread_input;
 
   demo_print("[lx] booting xSPI flash\r\n");
-  /* HUM Ch 20.6 + EK-RA8D2 UM Table 29 p 35: route OSPI bus pins
-   * via PSEL=11100b before the controller can issue any clock
-   * edge. The 12 OCTA pins (CS, CK, DQS, DQ0..DQ7) plus RESET_L
-   * default to GPIO out of reset. */
-  if (ra_board_xspi_pins_init() != k_ra_ok) {
-    demo_print("[lx] xspi pins init failed\r\n");
-    demo_panic_halt();
-  }
-  if (ra_xspi_init((uint8_t)0, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
-    demo_print("[lx] ra_xspi_init failed\r\n");
-    demo_panic_halt();
-  }
-
+  /* The LevelX NOR driver owns OCTA bus bring-up: lx_nor_flash_format ->
+   * lx_nor_driver_ra_xspi_initialize -> priv_bus_init_once routes the
+   * pins, runs the 8D/1S software-reset recovery, calls ra_xspi_init,
+   * and probes RDID exactly once. Doing it here as well double-routes
+   * the PFS pins (the validator rejects the second route with
+   * k_ra_err_gpio_conflict), so the driver's initialize bails before
+   * wiring the sector buffer and format returns LX_NO_MEMORY. Let the
+   * driver be the single owner. */
   demo_print("[lx] formatting + opening LevelX partition\r\n");
   demo_lx_format_or_panic();
 
@@ -358,6 +385,7 @@ static void demo_thread_entry(ULONG thread_input)
       demo_print("\r\n");
       break;
     }
+    demo_report_rw_once(counter, (uint32_t)s_demo_sector_io[0]);
     /* Print every 100 cycles so the SCI8 stream stays readable. */
     if ((counter % k_lx_log_every_n) == 0U) {
       demo_print("[lx] cycle #");
