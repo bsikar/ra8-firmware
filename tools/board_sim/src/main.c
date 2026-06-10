@@ -43,6 +43,7 @@
 #include "board_net.h"
 #include "board_overlay.h"
 #include "board_periph.h"
+#include "board_periph_sd.h"
 #include "board_usb.h"
 #include "board_view.h"
 
@@ -2081,7 +2082,7 @@ int main(int argc, char** argv)
   if (argc < 2) {
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
-                  " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>]"
+                  " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
                   " [--usb-in <str>]\n"
                   "  --view          open a macOS window: live board view (panel + status)\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -2143,6 +2144,9 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--usb-in", sizeof("--usb-in")) == 0) && ((i + 1) < argc)) {
       usb_in_str = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--sd", sizeof("--sd")) == 0) && ((i + 1) < argc)) {
+      (void)board_sd_attach(argv[i + 1]); /* serve this FAT image to ra_sdmmc_spi */
       i++;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
