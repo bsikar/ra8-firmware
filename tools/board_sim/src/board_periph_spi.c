@@ -39,6 +39,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "board_periph_sd.h"
 
 /**
  * @brief SPI_B block geometry (ra8d2_spi_regs.h, 32-bit register file).
@@ -146,12 +147,15 @@ static void spi_spcr2_write(spi_state_t* s, uint32_t value)
 static void spi_spdr_write(spi_state_t* s, uint32_t value)
 {
   /* SPLP2 ties the outgoing line back to the receive shifter (rx = tx);
-   * SPLP inverts it (rx = ~tx). Without loopback nothing drives the line, so
-   * the receive shifter clocks in an idle 0. */
+   * SPLP inverts it (rx = ~tx). Without loopback, if a `--sd` card is
+   * attached it answers the exchange (the genuine ra_sdmmc_spi path); else
+   * nothing drives the line and the receive shifter clocks in an idle 0. */
   if ((s->reg[spi_word((uint64_t)k_spi_off_spcr2)] & (uint32_t)k_spi_spcr2_splp) != 0U) {
     s->rx = (~value) & (uint32_t)k_spi_byte_mask;
   } else if (s->loopback) {
     s->rx = value;
+  } else if (board_sd_attached()) {
+    s->rx = (uint32_t)board_sd_exchange((uint8_t)(value & (uint32_t)k_spi_byte_mask));
   } else {
     s->rx = 0U;
   }
@@ -226,6 +230,7 @@ static void spi_reset(void)
   for (uint32_t i = 0U; i < (uint32_t)k_spi_count; i++) {
     s_spi[i] = (spi_state_t){};
   }
+  board_sd_reset(); /* clear any attached SD card's command framing */
 }
 
 /** @brief Print one line per SPI channel that echoed any frame. */
