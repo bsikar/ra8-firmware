@@ -4,7 +4,141 @@
 **Tool chain**: arm-none-eabi-gcc, JLinkExe (SEGGER)
 **Date**: 2026-05-02
 
-## Hardware-in-the-loop harness
+## 2026-06-10 OSPI flash RESOLVED -- JEDEC 0x9D reads, round-trip passes (#44)
+
+**The flash was never a hardware fault. It was a controller chip-select
+bug in our `ra_xspi` driver.** Every prior "hardware" conclusion in this
+file (SW4-3 isolation, missing 1.8 V rail, U15 gating) is **superseded** by
+this entry. Proof the bug was firmware: J-Link's own OSPI flash loader
+erases/programs/verifies arbitrary patterns at the `0x90000000` memory
+bank at ~100 KB/s -- the part is present, powered, and on the bus at all
+times. Our driver simply talked to the wrong chip-select.
+
+### Root cause
+
+The on-board IS25LX512M's chip-select net (`OSPI_FLASH_S_L`, P104; EK-RA8D2
+UM Table 29 p 35) is wired to the xSPI controller's **CS1** line, not CS0.
+The Renesas FSP EK-RA8D2 OSPI example confirms this: its
+`configuration.xml` sets `module.driver.ospi_b.channel = channel.1`, and
+FSP `R_OSPI_B_Open` writes the protocol/timing into
+`LIOCFGCS[p_cfg_extend->channel]` and selects `CDCTL0.CSSEL = channel` on
+every manual command. Our `ra_xspi_init` hard-coded CS0: it wrote the
+protocol into `LIOCFGCS[0]` and left `CDCTL0.CSSEL = 0`. With CSSEL=0 the
+controller strobed the (unconnected) CS0 pin, the flash never saw
+chip-select, and the 1S RDID floated to `0x00FFFFFF` on the board
+pull-ups -- the exact "bus silence" signature mis-attributed to hardware.
+
+A secondary, also-vendor-mandated step: after the controller protocol
+config is in place, the FSP bring-up (`ospi_b_ep.c` `ospi_b_init`,
+`ospi_flash_issi_is25lx512.c` `reset_ospi_device`) pulses
+`LIOCTL.RSTCS` (bit 16) low->high to hardware-reset the flash. A prior
+J-Link OSPI loader run can leave the part in OPI/DOPI; without the RSTCS
+pulse it would not answer a 1S RDID. Both fixes are now in
+`ra_xspi_init`.
+
+### The fix (minimal, in `ra_xspi.c` + `ra8d2_ospi_regs.h`)
+
+- `ra_xspi_init` now writes the protocol mode to `LIOCFGCS[k_ra_xspi_onboard_cs]`
+  (CS1) and sets `CDCTL0.CSSEL = k_ra_xspi_onboard_cs`, so all subsequent
+  manual commands (RDID, RDSR, WREN, PP, SE, read) target the connected
+  device. `k_ra_xspi_onboard_cs = 1` is a documented board fact.
+- `ra_xspi_init` then calls `internal_xspi_reset_device()`, which pulses
+  `LIOCTL.RSTCS` low->high (with `WPCS` held deasserted) to return the
+  flash to its power-on 1S SPI protocol.
+- `ra8d2_ospi_regs.h` gained `k_ra_xspi_lioctl_mask_wpcs` (bit 0) /
+  `k_ra_xspi_lioctl_mask_rstcs` (bit 16) from the FSP CMSIS
+  `R_XSPI0_LIOCTL_*` field definitions.
+
+### On-board verification (flash_journal, J-Link memprobe)
+
+| Symbol | Address | Value |
+| --- | --- | --- |
+| `g_fj_jedec_id` | 0x22000060 | **`0x009D5A1A`** -- mfr **0x9D** (ISSI IS25LX512M) |
+| `g_fj_match` | 0x2200004C | advancing (3 -> 14 -> ... over the run) |
+| `g_fj_mismatch` | 0x22000050 | **0** (zero failures) |
+| `g_fj_last_step` | 0x22000054 | **4** = `k_fj_step_compare_ok` |
+
+Full erase -> program -> read-back -> compare round-trips pass with zero
+mismatches: the JEDEC ID reads 0x9D **and** real data round-trips through
+the part. Issue #44 is resolved in firmware; no hardware rework needed.
+
+---
+
+## 2026-06-10 OSPI flash: exhaustive software-side sweep (issue #44)
+
+Built on the prior conclusion (controller + pins exonerated) by ruling out
+every remaining *software-reachable* cause for the silent on-board
+IS25LX512M Octo-SPI flash. A throwaway `flash_journal/main.c` probe drove
+each experiment and stamped J-Link-readable globals; `main.c` was reverted
+to pristine afterward. All reads were taken over SWD on the live board.
+
+### What was tried (all firmware-only, no physical changes)
+
+1. **U15 expander 256-value output sweep.** For every output byte
+   `0x00..0xFF` (IODIR=0xFF all-outputs, HiZ=0x00), pulse RESET_L (P106),
+   re-init OSPI, read 1S RDID. **Result: zero configs produced a real ID**
+   (`g_sweep_n_nonfloat = 0`). U15 GPIO outputs are NOT in the OSPI bus
+   path.
+2. **U15 released / Hi-Z / per-bit overrides.** IODIR=0x00 (release the
+   override so physical SW4 governs the analog mux unopposed), all-Hi-Z,
+   and each of the 8 lines driven individually 0 then 1. **Result: still
+   no real ID** in any case. With U15 released to inputs, its input
+   register reads **0xF8** -- the same value the previously-rejected decode
+   saw; the U15<->SW4 bitmap/polarity is unreliable (imported from a
+   different board), so this value is NOT actionable and was not used to
+   recommend any switch position.
+3. **Software reset (RSTEN 0x66 + RST 0x99) in BOTH 8D and 1S**, to recover
+   a chip possibly stuck in OPI from a prior boot. After each, re-init 1S
+   and RDID. **Result: no recovery** (RDID stays 0x00000000 / 0x00FFFFFF).
+4. **WREN -> RDSR WEL-toggle test (1S).** Triggered WREN via a sector
+   erase, then read RDSR before/after. **Result: WEL never sets** (RDSR
+   reads 0x00, WEL bit-1 stays 0) -- the flash does not answer WREN.
+5. **GPIO continuity probe of the OCTA lines.** With OSPI de-inited, DQ0
+   (P100), DQ1 (P803, the 1S CIPO), and CS (P104) read **high with both
+   pull-up and no-pull** -- i.e. the board's external bus pull-ups hold
+   the lines high; nothing on the bus is being actively driven low.
+6. **Multi-mode RDID** (1S and 8D): 1S floats `0x00FFFFFF`; 8D times out on
+   DQS.
+
+### Live register evidence (re-confirmed this session)
+
+```
+PFS P104 (CS)    = 0x1C010002   <- PSEL=0x1C (OSPI), PMR=1, routed
+PFS P100 (DQ0)   = 0x1C010002   <- OSPI routed
+PFS P808 (CK)    = 0x1C010000   <- OSPI routed
+PFS P106 (RST_L) = 0x00000007   <- GPIO out, driven HIGH (released)
+PFS P105 (ERR_L) = 0x00000002   <- GPIO in, reads HIGH (no flash error)
+XSPI0 COMSTT     = 0x00770000    XSPI0 INTS = 0x00000000 (CMDCMP cleared)
+U15 devid(0x01)  = 0xA0   IODIR/OUTPUT/HIZ read back exactly as written
+U15 input(0x0F)  = 0xF8 (released)   expander ACKs every txn
+```
+
+### Conclusion
+
+Every software-reachable lever has now been exercised: pin routing, the
+OSPI controller/command engine (CMDCMP completes; CDT opcode
+left-justification fix retained), OCTACLK bring-up, RESET_L timing,
+software-reset in both protocol modes, the WREN/WEL path, and the **entire
+U15 expander configuration space** (all 256 outputs, released-inputs,
+Hi-Z, per-bit). None connects the flash. The U15 expander is proven to be
+a pure SW4 sense/override that does NOT gate the OSPI bus -- so it cannot
+be the fix, and the firmware override of it is irrelevant to reachability.
+
+The flash is electrically silent and the OCTA data lines sit at the board
+pull-up level. The only mechanism that physically connects the IS25LX512M
+DQ/CK/CS to the MCU is the **SW4-3 analog mux**, which is hardware-only and
+not reachable from firmware (the U15 override cannot move it). With the
+controller and firmware fully exonerated by the evidence above, **the one
+remaining check is physical: confirm on the board / with a meter or 'scope
+that the SW4-3 analog switch is actually passing the OSPI DQ/CK/CS lines
+through to U3** (continuity from each MCU OCTA pad to the corresponding
+IS25LX512M pin while a manual command clocks). No further firmware change
+is justified.
+
+> Note on part ID: the on-board part is the **ISSI IS25LX512M (mfr 0x9D)**,
+> not Macronix (0xC2). A correct 1S RDID on a connected part returns 0x9D.
+
+
 
 Hand-flashing 26 apps and eyeballing the halt-PC (as the early-May tables
 below were generated) does not scale. The authoritative HIL sweep lives
@@ -875,6 +1009,62 @@ are now (in order of plausibility):
 All four are logic-analyzer / 'scope class debugging. WIP marked
 permanent for this app pair until that hardware is available.
 
+## 2026-06-09 OSPI chip-select sweep + live-register evidence (issue #44)
+
+Two new firmware-side hypotheses were tested on the bench with the
+user confirming **SW4-1..8 are all physically OFF** (the Octo-SPI
+layout). Both were ruled out, narrowing the fault to the bus/device
+side conclusively.
+
+### Chip-select sweep (CS0 vs CS1)
+
+Hypothesis: the on-board Macronix flash hangs off the OSPI **CS1**
+strobe (P104 = `om_0_cs1` in the FSP `ospi_b` pin map) but the driver
+drove **CS0**, so the controller never selected the chip. Tested by a
+temporary `flash_journal` sweep that re-inited the OSPI once per chip-select
+(`LIOCFGCS[n]` + `CDCTL0.CSSEL`) and stamped the JEDEC ID each time:
+
+```
+g_fj_jedec_id (CS1) = 0x00FFFFFF
+g_fj_jedec_cs0      = 0x00FFFFFF
+g_fj_jedec_cs1      = 0x00FFFFFF
+```
+
+**Both chip-selects float identically.** Chip-select selection is NOT
+the differentiator. (The sweep harness was reverted afterwards; the
+production driver keeps its original CS0 default. Whether the flash
+truly lives on CS0 or CS1 remains unconfirmed against the FSP pincfg,
+but it does not matter while the bus floats on both.)
+
+### Live OSPI controller registers (XSPI0 @ 0x40268000)
+
+Read over SWD while the journal loop was issuing commands:
+
+```
+0x40268070 CDCTL0  = 0x00000008  <- CSSEL=1 selected, TRREQ self-cleared
+0x40268080 CDBUF[0]= 0x00050021  <- last opcode (RDSR 0x05 status poll)
+0x40268088 CDBUF[2]= 0x000000FF  <- data read back = 0xFF (line floats high)
+0x40268184 COMSTT  = 0x00770000  <- per-CS ECS/INT monitors
+0x40268190 INTS    = 0x00000000  <- CMDCMP cleared by driver INTC write
+```
+
+The decisive datum: **`CDCTL0.TRREQ` self-clears** -- the manual-command
+engine *completes* every transfer (the controller clocks CS + opcode and
+finishes), yet `CDBUF` data comes back `0xFF`. The controller is doing
+its job; the flash simply never drives the data line.
+
+### Conclusion
+
+Combined with the 2026-05-02 pin-routing readback, the firmware side is
+now fully exonerated: pins routed (PSEL=0x1C, PMR=1), RESET_L released
+high with correct tRLRH/tRHSL timing, command engine completes on the
+selected CS, and the U15 expander ACKs. The fault is **device/bus-side**
+(power to U16, the SW4/level-shifter mux actually connecting the flash,
+or DQ drive/pull) -- logic-analyzer / continuity-meter / 'scope class,
+exactly as previously documented. No further blind firmware change is
+justified; #44 stays blocked on physical instrumentation. Font storage
+proceeds on the SD-card path instead.
+
 ## 2026-05-02 lcd_demo + ereader root cause
 
 The `lcd_demo` and `ereader` apps both halt at `*_panic_halt` very
@@ -1044,3 +1234,255 @@ wait when USBCKCR was 0 on entry.
 
 The 48 MHz reference now exists; the remaining work is the
 USBCKSRDY handshake hypothesis above.
+
+## 2026-06-09 OSPI JEDEC-ID bring-up: CDT command-byte left-justification fix + exhaustive bus-silence triage (#44)
+
+Goal: make `flash_journal`'s `g_fj_jedec_id` (stamped via
+`ra_xspi_flash_read_id` right after `ra_xspi_init`) read the Macronix
+MX25UM25645G manufacturer ID `0xC2....` instead of the floating
+`0x00FFFFFF`.
+
+### Real firmware bug found + fixed: CDT CMD field was right-justified
+
+`internal_make_cdt` (and the inline builder in
+`internal_issue_reset_opcode`) placed a 1-byte opcode at `CDT[23:16]`
+(`opcode << k_ra_xspi_cdt_pos_cmd`, pos=16). The command-manual engine
+transmits `CMDSIZE` bytes **MSB-first from bit 31**, so with `CMDSIZE=1`
+it was clocking out the **zero** byte at `CDT[31:24]` and the chip saw
+command `0x00` for every 0x9F / 0x05 / 0x06 / 0x02 / 0x20 op.
+
+Confirmed against the FSP gold reference
+`ra/fsp/src/r_ospi_b/r_ospi_b.c::r_ospi_b_direct_transfer`:
+
+```c
+cdtbuf0 |= (1 == command_length) ?
+    ((command & 0xFF)   << 24) :   /* OSPI_B_PRV_CDTBUF_CMD_UPPER_OFFSET = 24 */
+    ((command & 0xFFFF) << 16);    /* OSPI_B_PRV_CDTBUF_CMD_OFFSET       = 16 */
+```
+
+Fix: left-justify the opcode inside the 16-bit CMD field --
+`cmd_shift = 8 * (2 - cmd_bytes)`, so a 1-byte opcode lands at
+`[31:24]` and a 2-byte (8D complementary) pair fills `[31:16]`.
+Verified on HW via a diagnostic global: the live `CDBUF[0].CDT`
+went from `0x009F0061` to `0x9F000061` (opcode now in the high byte).
+This is a genuine correctness bug that also affected RDSR/WREN/PP/SE
+and the 1S software-reset path.
+
+### Exhaustive controller-side triage -- chip still silent on the bus
+
+With the CDT fix in place the chip **still** floats `0x00FFFFFF` in 1S.
+Every firmware-controllable lever was swept on real silicon (J-Link
+SWD, diagnostic `g_fj_probe[16]` array, completion flag in the top
+byte: `0xC0......` = CMDCMP fired, `0x40......` = timeout):
+
+| Lever swept | Result |
+|---|---|
+| CDT opcode at bit24 vs bit16 | both `C0FFFFFF` (CMDCMP fires, floats) |
+| CSSEL=0 (P107/OM_0_CS0, routed in probe) vs CSSEL=1 (P104/OM_0_CS1) | both `C0FFFFFF` |
+| LIOCFGCS CSMIN 0/2/8, CSASTEX, CSNEGEX | no change |
+| LIOCFGCS SDRSMPMD (sample edge), SDRDRV, SDRSMPSFT 0..2 | no change |
+| WRAPCFG DSSFTCS0 sample-shift 0/1/2/4 | no change |
+| OCTASPICLK /1 (~8 MHz) vs /32 (~250 kHz) | no change |
+| BMCTL0 = 0x00 vs 0x0C (FSP default) vs 0x11 vs 0xFF (RW all) | no change |
+| Hardware reset: exact `RA8x1_Reset_OSPI.JLinkScript` P106 PFS pulse (0x40400858: 0x05 high / 0x04 low / 0x05 high) | no change |
+| 1S software reset (RSTEN 0x66 / RST 0x99) | no change |
+| 8D / 8S OPI reads (RDID 0x9F+0x60, 4-byte addr, dummy sweep 0..15) | `C0000000` (lines read low) or TRREQ wedge |
+| Memory-mapped read @ `0x80000000` (OSPI0 area) | `FFFFFFFF`, no bus fault |
+
+Signature: in 1S the DQ/SIO line floats **high** (0xFF, pull-up, chip
+not driving); in 8D it reads **0x00**. CMDCMP retires every 1S transfer
+cleanly. Controller is healthy end-to-end.
+
+### Ruled out this session (with live register evidence)
+
+- **Clock**: `OCTACKCR=0x01` (OCTACKSEL=MOCO, confirmed via FSP
+  `bsp_clocks.h` `BSP_CLOCKS_SOURCE_CLOCK_MOCO=1`), `OCTACKDIVCR=0`
+  (/1), `MOCOCR=0` (running), `OSCSF` MOCOSF=1 (stable). MSTPCRB
+  bit16=0 (OSPI0 ungated). Slowing the clock 32x changed nothing.
+- **Chip-select pins**: P104 PFS (`0x40400850`) reads `0x1C010002`
+  (PSEL=0x1C, PMR=1) -- OM_0_CS1 routed. P107 (OM_0_CS0) routed in the
+  probe; neither CS makes the chip answer.
+- **SW4 mux**: per EK-RA8D2 v1 UM Table 3, Octo-SPI needs SW4-3 OFF
+  (Octo-SPI Active) and SW4-4 OFF (Arduino/mikroBUS **Inactive** ->
+  Octo-SPI prioritised; UM section 6.3 lines: "By default SW4-4 is off
+  which disables connectivity to the Arduino headers, prioritizing
+  Octo-SPI"). So **all-OFF is the correct OSPI configuration** -- the
+  earlier "needs SW4-4 ON" reading was wrong. The U15 (PI4IOE5V6408 @
+  I2C 0x43) override write succeeds on HW (`g_fj_expander_err=0`) and
+  drives the all-OFF (= OSPI-active) pattern. Mux is in the right state.
+- **CSMIN/sampling/BMCTL0/WRAPCFG**: all matched to FSP `R_OSPI_B_Open`
+  defaults; none unblocks the read.
+
+### Net
+
+The CDT command-byte left-justification is a real, FSP-confirmed driver
+fix and is committed. With it, the controller programs and clocks the
+JEDEC read correctly (verified at the register level), but the on-board
+MX25UM25645G does not drive its data lines under any controller
+configuration reachable from firmware -- 1S floats high, OPI reads low,
+memory-mapped reads float. Bus-side silence persists; capturing the
+SCLK/CS/DQ waveforms is the next step to localise whether SCLK is
+physically toggling at the flash pads.
+
+## 2026-06-09 OSPI ROOT CAUSE FOUND: SW4-3 physically ON isolates the flash (#44)
+
+The bus-side silence is now **root-caused with direct evidence**: the
+physical **SW4-3 DIP switch is ON, which sets "Octo-SPI Inactive" and
+electrically isolates the on-board flash (U3) from the MCU's OM_0 bus.**
+No firmware change can read the flash while SW4-3 is ON -- the DQ/CK/CS
+pins are disconnected from the part by the switch.
+
+### Decisive measurement -- physical SW4 state read back over RIIC1
+
+The U15 PI4IOE5V6408 expander (I2C 0x43, RIIC1) is wired across SW4 and
+its input-level register 0x0F reflects the *physical* switch levels. A
+diagnostic in `flash_journal` floated the expander port (IODIR 0x03 =
+0x00 -> all inputs) and read reg 0x0F via `ra_i2c_transfer`:
+
+```
+g_fj_exp_devid = 0x000000A0/A2  <- PI4IOE5V6408 answering (bus healthy)
+g_fj_sw4_input = 0x000000F8     <- reg 0x0F, status byte 0x00 = read OK
+```
+
+`0xF8 = 1111_1000b`. Per the board polarity (**bit n HIGH = SW4-(n+1)
+OFF; bit n LOW = SW4-(n+1) ON**), bit 2 (SW4-3) reads **LOW = ON =
+Octo-SPI Inactive**. SW4-1/SW4-2 also read ON (bits 0,1 = 0); SW4-4..8
+read OFF. This is the first time the physical DIP state was *measured*
+rather than inferred -- it confirms the long-standing hypothesis that
+the expander override cannot overpower the mechanical switch.
+
+### Supporting evidence gathered this session
+
+- **OPI 8D read times out on DQS, not just "reads 0x00":** an 8D-8D-8D
+  RDID (LIOCFGCS=0xBFF: PRTMD=0x3FF + DDREN, opcode 0x9F60, addr4,
+  DATASIZE4, LATE=4) was issued by raw J-Link CDBUF pokes. INTS came
+  back **0x11 = CMDCMP | DSTOCS0** (bit 4, "DS Timeout for CS0":
+  *data not received during the expected read phase*). The flash never
+  toggles DQS because it is not on the bus -- consistent with isolation,
+  not with a wrong OPI latency.
+- **1S WREN->RDSR shows no WEL toggle:** after a clean firmware init,
+  a 0x06 WREN then 0x05 RDSR (poked over SWD) retired CMDCMP but RDSR
+  read back **0xFF** (floating pull-up), i.e. the WEL bit did not become
+  1. A live chip would return 0x02. The chip does not respond in 1S.
+- **xSPI instance + pin route verified CORRECT (rules out HYP-4):** the
+  RA8D2 datasheet pin-function table maps every board OSPI pin to the
+  **OM_0_ (instance 0)** silicon signal -- P104=OM_0_CS1, P107=OM_0_CS0,
+  P106=OM_0_RESET, P100=OM_0_SIO0, P803=OM_0_SIO1, P800=OM_0_SIO5, etc.
+  HUM PFS table: **PSEL 0x1C (11100b) = OSPI, OM_0_** functions. The
+  driver targets instance 0 (XSPI0 @ 0x40268000) and the board routes
+  PSEL=0x1C, both correct.
+
+### EK-RA8D2 v1 UM internal contradiction (documentation defect)
+
+The UM is self-contradictory on SW4-3, which has misled prior triage:
+
+- **Table 3 (p 16):** "SW4-3 OFF = Octo-SPI Active" (and the Table 4
+  conflict matrix marks SW4-3 OFF + SW4-4 ON as *invalid*, only
+  consistent with OFF=Active).
+- **Section 6.3 prose (p 35):** "The Octo-SPI NOR Flash can be isolated
+  from the MCU bus by turning SW4-3 *off*."
+
+Table 3 + the conflict matrix + the FSP `ospi_b` example + this repo's
+expander polarity all agree: **OFF = Active, ON = Inactive/Isolated.**
+The §6.3 prose is the error (stale copy from an older board manual).
+The on-board flash is also listed as ISSI **IS25LX512M-JHLE** (mfr
+**0x9D**) in UM Table 29 -- note the JEDEC mfr is 0x9D, not the Macronix
+0xC2 some code comments assume.
+
+### THE FIX (physical, one switch)
+
+Set **SW4-3 to OFF** (Octo-SPI Active). Required companion: SW4-4 must
+be **OFF** too (SW4-3 OFF + SW4-4 ON is an invalid combination). All
+other SW4 positions are don't-care for OSPI. After flipping SW4-3 OFF,
+re-run `flash_journal`; `g_fj_jedec_id` should read the real device ID
+(ISSI 0x9D... per UM, or 0xC2... if the board carries the Macronix
+variant) instead of `0x00FFFFFF`. Re-reading expander reg 0x0F should
+then show bit 2 = 1 (SW4-3 OFF).
+
+The CDT left-justification driver fix from earlier today stays -- it is
+a genuine, FSP-confirmed correctness bug -- but it cannot be *validated*
+on hardware until SW4-3 is OFF and the flash is on the bus.
+
+## 2026-06-10 Flash POWER audit: rail is fixed/always-on, no SW-reachable enable (#44)
+
+Premise: the user confirmed **all SW4 switches are physically OFF** (so
+SW4-3 = OFF = Octo-SPI Active -- the flash *should* be on the bus), yet
+the part is still electrically silent in every mode. The 2026-06-09
+"SW4-3 is ON" conclusion was inferred from expander reg `0x0F = 0xF8`,
+which is **known-unreliable** for switch state and is hereby retracted as
+the explanation. With the flash on the bus and still dead, the remaining
+software-reachable angle is whether U3's **power** (or a level-shifter
+enable) is gated by something firmware can toggle. This session audited
+that against the authoritative EK-RA8D2 v1 UM (R20UT5523EG0101 Rev 1.01,
+Oct.20.25) and the regulator datasheet. Result: **no software-reachable
+power/enable control exists.**
+
+### Power topology (UM section 5.1, p 18)
+
+The board has exactly **two LDOs in series**, both fixed linear
+regulators with no software gate:
+
+- **ISL80103IRAJZ**: 5 V -> 3.3 V (powers the RA MCU and most logic).
+- **ISL9005AIRCZ-T**: 3.3 V -> **1.8 V** (the rail the 1.8 V IS25LX512M
+  flash runs on). 300 mA current limit.
+
+The ISL9005 (8-Ld DFN) *does* have an active-high `EN` pin (pin 2, VIH
+1.4 V, datasheet FN6315). But on this board `EN` is **not** on the MCU
+GPIO map and **not** on the U15 expander -- it is a power-rail housekeeping
+net tied on for always-on operation. UM section 6.3 (p 35) states the
+flash "is enabled for XIP mode directly **after it is powered on**" --
+i.e. it self-enables at power-up with **no firmware sequence**. The
+Octo-SPI Flash Assignment table (Table 29) lists only signal pins
+(`OSPI_FLASH_RESET_L`=P106, `ERR_L`=P105, `C`=P808, `S_L`=P104, `DQS`=P801,
+`DQ0..DQ7`) -- there is **no power-enable, no load-switch, no shifter-OE**
+pin anywhere in the flash's pin assignment.
+
+### No second I2C device, no PMIC, no I2C load switch
+
+The UM's only I/O-expander / config-switch device is **U15 PI4IOE5V6408 @
+0x43** on the system I2C bus (RIIC1, P512/SCL1, P511/SDA1). The system I2C
+bus otherwise reaches only **unpopulated** ecosystem connectors (Grove J27,
+Qwiic J30, Pmod, mikroBUS, Arduino). The DA7212 audio CODEC (U14) is on a
+separate control path (P405/P406), not the OSPI power. The Ethernet PHY
+(U11) is RGMII/MDIO, not I2C. **There is no PMIC and no I2C-controlled
+load switch** that could gate U3's 1.8 V rail. A live `ra_i2c_scan` sweep
+of 0x08..0x77 on RIIC1 would therefore be expected to ACK at **0x43 only**
+(plus whatever a user has plugged into the Qwiic/Grove headers) -- there is
+no other on-board addressable device to find. (The live sweep could not be
+executed this session: the J-Link/Pi `star@star.local` is not reachable
+from the agent sandbox; the inventory above is from the authoritative UM
+device list, which is exhaustive for on-board parts.)
+
+### The flash power/enable nets, exhaustively (none SW-reachable)
+
+| Candidate enable/power control | Where it lives | SW-reachable? |
+| --- | --- | --- |
+| 1.8 V rail (ISL9005 `EN`) | power-rail net, tied always-on | No (not on GPIO/expander) |
+| 3.3 V rail (ISL80103 `EN`) | power-rail net, tied always-on | No |
+| Flash power-enable GPIO | does not exist (not in Table 29) | N/A |
+| OSPI level-shifter OE | **no level shifter** (MCU OM_0 is 1.8 V, drives the 1.8 V flash directly) | N/A |
+| U15 expander bits | already swept all 256 outputs + Hi-Z + per-bit | No effect (proven) |
+| SW4-3 Octo-SPI Select | **analog *bus* isolation** (DQ/CK/CS), not a power gate; mechanical DIP only | Physical only |
+
+### Conclusion -- flash silence is a genuine hardware-layer fault
+
+With SW4-3 OFF (flash on the bus, per the user) the IS25LX512M is still
+electrically silent. There is **no software-reachable power or enable
+control** for U3 -- the 1.8 V rail is a fixed always-on LDO, there is no
+PMIC / load switch / level-shifter OE, and the only I2C expander (U15)
+provably does not gate the OSPI path. The "nothing driven on any line"
+signature is therefore either (a) the part is not actually receiving its
+1.8 V VCC despite the rail being nominally always-on (a board/solder/rail
+fault), or (b) the SW4-3 analog bus switch is not passing the DQ/CK/CS
+nets even with the DIP OFF (a switch/routing fault). Both are hardware,
+not firmware.
+
+**The single physical measurement that resolves it:** with the board
+powered, put a DMM on U3's VCC pin (the IS25LX512M VCC ball, fed from the
+ISL9005 1.8 V rail -- probe the 1.8 V test point at J32-21/J32-22 too) and
+confirm **1.8 V** is present at the chip. If 1.8 V is absent at U3 -> rail
+/ solder fault (replace/rework). If 1.8 V is present at U3 but DQ0/CS still
+sit at the pull-ups during a clocked RDID -> the SW4-3 analog switch (or
+its routing) is not connecting the bus; scope SCLK/CS/DQ at the U3 pads
+vs. at the MCU pads to localise the break across the switch. No further
+firmware change is warranted for #44.
