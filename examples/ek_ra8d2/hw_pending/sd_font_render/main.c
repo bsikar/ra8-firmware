@@ -25,7 +25,7 @@
  * Flow:
  *   1. CGC + MSTP + SysTick + LEDs.
  *   2. External SDRAM + GLCDC panel (framebuffer at 0x68000000), ra_gfx bound.
- *   3. Pmod2 SPI (J25 / SPI channel 1) routed; chip-select claimed as a GPIO
+ *   3. Pmod2 SPI (J25 / SCI0 Simple-SPI) routed; chip-select claimed as a GPIO
  *      output (SD SPI-mode holds CS across the whole frame).
  *   4. ra_sdmmc_spi card bring-up, then ra_fs mount of the FAT volume.
  *   5. Read @c FONT.OTF off the card into an SDRAM buffer.
@@ -58,6 +58,7 @@
 #include "ra_panel_timing.h"
 #include "ra_port_utils.h"
 #include "ra_reflow.h"
+#include "ra_sci_spi.h"
 #include "ra_sdmmc_spi.h"
 #include "ra_sdramc.h"
 #include "ra_spi.h"
@@ -84,7 +85,7 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_sfr_font_cap     = 512U * 1024U, /**< Max font we will read off the card. */
   k_sfr_font_px      = 18U,          /**< Body font size in pixels.           */
-  k_sfr_spi_chan     = 1U,           /**< Pmod2 / J25 = SPI channel 1.        */
+  k_sfr_spi_chan     = 0U,           /**< Pmod2 / J25 = SCI0 Simple-SPI.      */
   k_sfr_spi_idle     = 0xFFU,        /**< Idle byte clocked on read-only xfer.*/
   k_sfr_paper_argb   = 0xFFFFFFFFU,  /**< Page background the FB is cleared to.*/
   k_sfr_ink_argb     = 0xFF101010U,  /**< Body text colour (near-black ink).  */
@@ -117,7 +118,7 @@ typedef enum : uint32_t {
   k_sfr_stage_reflow_fail = 0x83U, /**< Layout/render failed.       */
 } sfr_stage_t;
 
-/** @brief Pmod2 SPI pins (J25) -- RSPI bus B per UM Table 19 p 27. */
+/** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI per HUM Table 20.13. */
 static const ra_port_pin_t k_sfr_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
 static const ra_port_pin_t k_sfr_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
 static const ra_port_pin_t k_sfr_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
@@ -188,7 +189,7 @@ volatile uint32_t g_sfr_ink = 0U;
 static ra_err_t sfr_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_spi_set_clock((uint8_t)k_sfr_spi_chan, hz, pclka_hz);
+  return ra_sci_spi_set_clock((uint8_t)k_sfr_spi_chan, hz, pclka_hz);
 }
 
 static ra_err_t sfr_spi_cs(void* ctx, bool asserted)
@@ -200,21 +201,7 @@ static ra_err_t sfr_spi_cs(void* ctx, bool asserted)
 static ra_err_t sfr_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
-  if ((tx != nullptr) && (rx != nullptr)) {
-    return ra_spi_write_read((uint8_t)k_sfr_spi_chan, tx, rx, len, k_ra_spi_width_8);
-  }
-  for (uint32_t i = 0U; i < len; i++) {
-    const uint8_t  tx_byte = (tx != nullptr) ? tx[i] : (uint8_t)k_sfr_spi_idle;
-    uint8_t        rx_byte = 0U;
-    const ra_err_t err     = ra_spi_xfer8((uint8_t)k_sfr_spi_chan, tx_byte, &rx_byte);
-    if (err != k_ra_ok) {
-      return err;
-    }
-    if (rx != nullptr) {
-      rx[i] = rx_byte;
-    }
-  }
-  return k_ra_ok;
+  return ra_sci_spi_xfer((uint8_t)k_sfr_spi_chan, tx, rx, len);
 }
 
 /* ===========================================================================
@@ -290,31 +277,37 @@ static void sfr_bringup_panel(void)
   g_sfr_stage = k_sfr_stage_panel_ok;
 }
 
-/** @brief Route Pmod2 SPI pins to RSPI bus B and init SPI channel 1. */
+/** @brief Route Pmod2 pins to SCI0 Simple-SPI and init the channel.
+ *
+ * @details Pmod2 SPI is SCI0 in Simple-SPI mode (HUM Table 20.13: P601..P604
+ * route to SCK0_B / CIPO0_B / COPI0_B at ``PSEL = 00100b``); the RSPI/SPI_B
+ * peripheral has no function on these pins. Verified on the EK-RA8D2: a CMD0
+ * over ::ra_sci_spi returns R1 = 0x01 and ::ra_sdmmc_spi_init enumerates the
+ * card. */
 static void sfr_bringup_spi(void)
 {
-  if (ra_pfs_route_peripheral(k_sfr_pin_sck, k_ra_psel_spi, "sfr.sck") != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_sfr_pin_sck, k_ra_psel_sci_async, "sfr.sck") != k_ra_ok) {
     sfr_panic_halt(k_sfr_stage_card_fail);
   }
-  if (ra_pfs_route_peripheral(k_sfr_pin_cipo, k_ra_psel_spi, "sfr.cipo") != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_sfr_pin_cipo, k_ra_psel_sci_async, "sfr.cipo") != k_ra_ok) {
     sfr_panic_halt(k_sfr_stage_card_fail);
   }
-  if (ra_pfs_route_peripheral(k_sfr_pin_copi, k_ra_psel_spi, "sfr.copi") != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_sfr_pin_copi, k_ra_psel_sci_async, "sfr.copi") != k_ra_ok) {
     sfr_panic_halt(k_sfr_stage_card_fail);
   }
   /* CS as a GPIO output, idle high (deasserted): SD SPI-mode framing needs
-   * CS held across the whole 6-byte command + data trailer, which the RSPI
-   * hardware CS controller cannot do (it pulses per word). */
+   * CS held across the whole 6-byte command + data trailer, which the SCI
+   * hardware chip-select controller cannot do (it pulses per word). */
   if (ra_gpio_output_init(k_sfr_pin_cs, k_ra_level_high) != k_ra_ok) {
     sfr_panic_halt(k_sfr_stage_card_fail);
   }
-  const ra_spi_cfg_t spi_cfg = {
+  const ra_sci_spi_cfg_t spi_cfg = {
     .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclka_hz  = s_pclka_hz,
+    .pclk_hz   = s_pclka_hz,
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  if (ra_spi_init((uint8_t)k_sfr_spi_chan, &spi_cfg) != k_ra_ok) {
+  if (ra_sci_spi_init((uint8_t)k_sfr_spi_chan, &spi_cfg) != k_ra_ok) {
     sfr_panic_halt(k_sfr_stage_card_fail);
   }
 }
