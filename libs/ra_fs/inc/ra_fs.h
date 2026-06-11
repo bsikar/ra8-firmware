@@ -347,6 +347,28 @@ ra_fs_read(ra_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len
 [[nodiscard]] ra_err_t ra_fs_write(ra_fs_file_t* file, const uint8_t* buf, uint32_t len);
 
 /**
+ * @brief Create a whole file in one call (provisioning helper).
+ *
+ * @details Convenience wrapper that creates @p path and writes @p data. On FAT
+ * volumes it opens in write mode, writes, and closes. On exFAT it allocates a
+ * contiguous cluster run and links a fresh directory entry (the only exFAT
+ * write path). It does not overwrite an existing file.
+ *
+ * @param[in] handle Mounted volume.
+ * @param[in] path   Flat root-level file name (ASCII).
+ * @param[in] data   File contents.
+ * @param[in] len    Byte count (> 0).
+ *
+ * @retval k_ra_ok           File created and written.
+ * @retval k_ra_err_null_ptr Any pointer argument was NULL.
+ * @retval k_ra_err_no_mem   Out of contiguous space or directory slots.
+ * @retval k_ra_err_*        Backend error.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_fs_write_file(ra_fs_mount_t* handle, const char* path, const uint8_t* data, uint32_t len);
+
+/**
  * @brief Move the file offset to `offset_bytes` (clamped to size).
  * @retval k_ra_ok            Seek committed.
  * @retval k_ra_err_null_ptr  file is NULL.
