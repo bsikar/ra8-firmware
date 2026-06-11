@@ -71,6 +71,7 @@ typedef enum : uint32_t {
   k_probe_boot_settle_ms  = 2500U,   /**< DA16600 cold-boot settle window.     */
   k_probe_sweep_window_ms = 500U,    /**< RX listen window per baud sweep.     */
   k_probe_reset_pulse_ms  = 200U,    /**< RESET low-pulse width.               */
+  k_probe_reset_boot_ms   = 2000U,   /**< Post-reset boot wait (DA16600 cold). */
   k_probe_banner_wait_ms  = 6000U,   /**< Boot-banner listen window.           */
   k_probe_u15_iic_ch      = 1U,      /**< U15 expander IIC_B channel.          */
   k_probe_u15_addr        = 0x43U,   /**< U15 PI4IOE5V6408 7-bit address.      */
@@ -97,7 +98,19 @@ typedef enum : uint32_t {
   k_probe_baud_div        = 100U,    /**< Sweep label divisor (fits uint16).   */
   k_probe_ascii_del       = 0x7FU,   /**< First non-printable upper ASCII.     */
   k_probe_pass_period_ms  = 5000U,   /**< Idle heartbeat between ladder runs.  */
+  k_probe_p602_pin_bit    = 2U,      /**< Pmod2 RXD0 (P602) bit in PORT6 PIDR.  */
+  k_probe_p603_pin_bit    = 3U,      /**< Pmod2 TXD0 (P603) bit in PORT6 PIDR.  */
 } da16600_probe_const_t;
+
+/* Pmod2 (J25) alternate landing for the US159-DA16600EVZ: SCI0 on PORT6
+ * (TXD0=P603, RXD0=P602), RESET=P410, RTS0=P604. UM Table 19 p 27. An
+ * authentic Renesas/Avnet DA16600 reference plugs the module into Pmod2,
+ * so the probe samples this connector too -- if the module is on Pmod2
+ * its boot edges land here and not on Pmod1's P802. */
+static const ra_port_pin_t k_probe_p2_rxd   = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_2);
+static const ra_port_pin_t k_probe_p2_txd   = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_3);
+static const ra_port_pin_t k_probe_p2_rts   = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_4);
+static const ra_port_pin_t k_probe_p2_reset = (ra_port_pin_t)RA_PIN(k_ra_port_4, k_ra_pin_10);
 
 /** @brief Pmod1 UART pins (J26): TXD2 = P801, RXD2 = P802. */
 static const ra_port_pin_t k_probe_pin_txd = (ra_port_pin_t)k_ra_board_pmod1_uart_txd;
@@ -353,6 +366,20 @@ static void probe_setup_or_halt(void)
    * UM Section 5.5.3 p 32: the expander outputs override the DIP. */
   const ra_err_t sw4 = ra_board_io_expander_apply_project_sw4_defaults();
   probe_log((sw4 == k_ra_ok) ? "sw4: override applied\r\n" : "sw4: override FAILED\r\n");
+  /* Assert host RTS (P804) LOW *before* any wire/edge measurement. The
+   * authentic FSP transport (rm_at_transport_da16xxx_uart) opens the UART
+   * with SCI_UART_FLOW_CONTROL_RTS: host RTS drives the DA16600's CTS
+   * input, and the module gates its TX (boot log + AT replies) on it.
+   * Until this is LOW the module is forbidden to transmit, which reads on
+   * the bus as a dead, edge-free wire even though the module is alive.
+   * P804 doubles as Pmod1 SPI-CS, so it is ours to drive; it is
+   * independent of the P801/P802 pins the edge sampler claims. */
+  const ra_port_pin_t pin_rts = (ra_port_pin_t)k_ra_board_pmod1_uart_rts;
+  if (ra_gpio_output_init(pin_rts, k_ra_level_low) == k_ra_ok) {
+    probe_log("flow: RTS(P804) asserted LOW\r\n");
+  } else {
+    probe_log("flow: RTS(P804) claim FAILED\r\n");
+  }
 }
 
 /**
@@ -601,8 +628,8 @@ static void probe_rung_u15_readback(void)
  *
  * @pre SCI2 is initialized at the listen baud; console is up.
  * @pre P402 is unclaimed.
- * @post One reset pulse has been issued; the dump line is printed.
- * @post P402 is released to an input.
+ * @post One reset cycle has been issued; the dump line is printed.
+ * @post P402 is held a driven output-high (reset de-asserted).
  * @note Diagnostic only.
  * @since 0.1.0
  */
@@ -614,8 +641,13 @@ static void probe_rung_reset_banner(void)
     return;
   }
   ra_delay_ms((uint32_t)k_probe_reset_pulse_ms);
+  /* Release reset HIGH and HOLD it. The authentic FSP transport drives
+   * RESET low ~20 ms then high and keeps it driven; the EK's FSP default
+   * leaves this pin LOW, which parks the module in reset. Floating it to
+   * an input (as before) let it drift back low and re-arm reset, so the
+   * module never finished booting. Keep P402 a driven output-high. */
   (void)ra_gpio_write(pin_rst, k_ra_level_high);
-  (void)ra_pin_validator_release(pin_rst);
+  ra_delay_ms((uint32_t)k_probe_reset_boot_ms);
   uint8_t drain = 0U;
   while (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &drain) == k_ra_ok) {
   }
@@ -1036,6 +1068,59 @@ static void probe_rung_edge_sampler(void)
 }
 
 /**
+ * @brief GPIO logic-analyzer for Pmod2 (J25): watch P602/P603 across a reset.
+ *
+ * @details The mirror of ::probe_rung_edge_sampler for the *other*
+ * software-reachable Pmod. Asserts Pmod2 RTS (P604) LOW, releases P602/P603
+ * to GPIO inputs, pulses the Pmod2 RESET (P410), and tight-samples PORT6's
+ * PIDR across the boot window. If the DA16600 is seated on Pmod2 instead of
+ * Pmod1, its boot-log edges appear here -- proving a wrong-connector config
+ * rather than a dead module, with no board change.
+ *
+ * @pre Console is up; ::ra_time_init has been called.
+ * @pre PORT6 P602/P603/P604 and P410 are claimable.
+ * @post One report line has been printed.
+ * @post P602/P603 are released; P604 stays driven LOW; P410 driven HIGH.
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_rung_pmod2_edge(void)
+{
+  (void)ra_gpio_output_init(k_probe_p2_rts, k_ra_level_low);
+  if (ra_gpio_input_init(k_probe_p2_rxd, k_ra_pull_up) != k_ra_ok) {
+    probe_log("pmod2: rxd claim FAIL\r\n");
+    return;
+  }
+  (void)ra_gpio_input_init(k_probe_p2_txd, k_ra_pull_up);
+  if (ra_gpio_output_init(k_probe_p2_reset, k_ra_level_low) == k_ra_ok) {
+    ra_delay_ms((uint32_t)k_probe_reset_pulse_ms);
+    (void)ra_gpio_write(k_probe_p2_reset, k_ra_level_high);
+  }
+  volatile r_port_regs_t* p6    = ra_port(k_ra_port_6);
+  edge_track_t            rx    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
+  edge_track_t            tx    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
+  uint32_t                iters = 0U;
+  const uint32_t          t0    = ra_time_ms();
+  while ((ra_time_ms() - t0) < (uint32_t)k_probe_edge_window_ms) {
+    const uint32_t now = p6->PCNTR2;
+    probe_edge_step(&rx, (now >> (uint32_t)k_probe_p602_pin_bit) & 1U);
+    probe_edge_step(&tx, (now >> (uint32_t)k_probe_p603_pin_bit) & 1U);
+    iters++;
+  }
+  (void)ra_pin_validator_release(k_probe_p2_rxd);
+  (void)ra_pin_validator_release(k_probe_p2_txd);
+  char digits[k_probe_u16_str_len];
+  probe_log("pmod2: iters/ms=");
+  probe_format_u16(digits, (uint16_t)(iters / (uint32_t)k_probe_edge_window_ms));
+  probe_log(digits);
+  probe_log(" ");
+  probe_edge_report("P602", &rx);
+  probe_log(" |");
+  probe_edge_report(" P603", &tx);
+  probe_log("\r\n");
+}
+
+/**
  * @brief Alt-UART hunt: probe SCI7 on the Arduino D0/D1 header pins.
  *
  * @details The module may be jumper-wired to the Arduino header rather
@@ -1309,6 +1394,7 @@ int32_t main(void)
   probe_rung_u15_readback();
   probe_rung_wire();
   probe_rung_edge_sampler();
+  probe_rung_pmod2_edge();
   probe_uart_setup_or_halt();
   probe_rung_sci2_self();
   probe_rung_arduino_uart();
