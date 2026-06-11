@@ -764,11 +764,14 @@ typedef enum : uint8_t {
  * | 7   | OFF      | Default -- USBFS role toggle in mechanical OFF.        |
  * | 8   | OFF      | Default -- USBHS in Device mode.                       |
  *
- * The user can either flip the physical DIP switches to match, or call
- * ``ra_board_io_expander_apply_project_sw4_defaults`` to have the U15
- * PI4IOE5V6408 expander drive the same pattern in firmware (the
- * expander outputs override the mechanical DIP per UM Section 5.5.3
- * p 32).
+ * The user MUST flip the physical DIP switches to match.
+ * ``ra_board_io_expander_apply_project_sw4_defaults`` programs the same
+ * pattern into the U15 PI4IOE5V6408 expander, but bench measurement
+ * (2026-06-11, da16600_probe ``u15: latch=00F2 pins=0000``; same result
+ * as the issue-#44 investigation) shows the mechanical DIP electrically
+ * overpowers the expander outputs on this board -- the latch accepts
+ * the write while the pins, and therefore the SW4 analog mux, stay at
+ * the switch positions. Treat the expander write as advisory only.
  *
  * @par Reference:
  * EK-RA8D2 v1 UM Rev 1.01 Table 3 p 16 (Switch Configuration Definitions)
