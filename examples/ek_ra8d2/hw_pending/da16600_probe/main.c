@@ -82,6 +82,9 @@ typedef enum : uint32_t {
   k_probe_tx_samples      = 400U,    /**< PIDR samples per transmitted frame.  */
   k_probe_txd2_pin_bit    = 1U,      /**< P801 bit within PORT8 PIDR.          */
   k_probe_rxd2_pin_bit    = 2U,      /**< P802 bit within PORT8 PIDR.          */
+  k_probe_ard_rx_pin_bit  = 8U,      /**< P808 (Arduino D0/RXD7) PIDR bit.     */
+  k_probe_ard_tx_pin_bit  = 9U,      /**< P809 (Arduino D1/TXD7) PIDR bit.     */
+  k_probe_sci7_ch         = 7U,      /**< Arduino D0/D1 UART = SCI7.           */
   k_probe_edge_window_ms  = 8000U,   /**< Edge-sampler listen window.          */
   k_probe_u15_sweep_base  = 0xF8U,   /**< Focused sweep base (bits 3-7 high).  */
   k_probe_u15_sweep_n     = 8U,      /**< All combos of latch bits 0-2.        */
@@ -995,12 +998,16 @@ static void probe_rung_edge_sampler(void)
   volatile r_port_regs_t* p8    = ra_port(k_ra_port_8);
   edge_track_t            tx    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
   edge_track_t            rx    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
+  edge_track_t            a0    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
+  edge_track_t            a1    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
   uint32_t                iters = 0U;
   const uint32_t          t0    = ra_time_ms();
   while ((ra_time_ms() - t0) < (uint32_t)k_probe_edge_window_ms) {
     const uint32_t now = p8->PCNTR2;
     probe_edge_step(&tx, (now >> (uint32_t)k_probe_txd2_pin_bit) & 1U);
     probe_edge_step(&rx, (now >> (uint32_t)k_probe_rxd2_pin_bit) & 1U);
+    probe_edge_step(&a0, (now >> (uint32_t)k_probe_ard_rx_pin_bit) & 1U);
+    probe_edge_step(&a1, (now >> (uint32_t)k_probe_ard_tx_pin_bit) & 1U);
     iters++;
   }
   (void)ra_pin_validator_release(k_probe_pin_txd);
@@ -1013,7 +1020,72 @@ static void probe_rung_edge_sampler(void)
   probe_edge_report("P801", &tx);
   probe_log(" |");
   probe_edge_report(" P802", &rx);
+  probe_log(" |");
+  probe_edge_report(" P808", &a0);
+  probe_log(" |");
+  probe_edge_report(" P809", &a1);
   probe_log("\r\n");
+}
+
+/**
+ * @brief Alt-UART hunt: probe SCI7 on the Arduino D0/D1 header pins.
+ *
+ * @details The module may be jumper-wired to the Arduino header rather
+ * than seated in Pmod1. D0 = P808 = RXD7_B, D1 = P809 = TXD7_B (PSEL
+ * 00101b, EK UM Table 20). Routes the pair, fires ``AT`` at 115200 and
+ * 230400, and reports whether anything answers.
+ *
+ * @pre Console is up; P808/P809 are claimable.
+ * @pre ::ra_time_init has been called.
+ * @post Two verdict lines have been printed.
+ * @post SCI7 stays configured (harmless).
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_rung_arduino_uart(void)
+{
+  const ra_port_pin_t pin_tx = (ra_port_pin_t)k_ra_board_arduino_d1;
+  const ra_port_pin_t pin_rx = (ra_port_pin_t)k_ra_board_arduino_d0;
+  if (ra_pfs_route_peripheral(pin_tx, k_ra_psel_sci_sync, "ard.txd7") != k_ra_ok) {
+    probe_log("ard: txd7 route FAIL\r\n");
+    return;
+  }
+  if (ra_pfs_route_peripheral(pin_rx, k_ra_psel_sci_sync, "ard.rxd7") != k_ra_ok) {
+    probe_log("ard: rxd7 route FAIL\r\n");
+    return;
+  }
+  for (uint32_t b = 0U; b < 2U; b++) {
+    const ra_sci_cfg_t cfg = {
+      .baud      = (b == 0U) ? (uint32_t)k_probe_baud : (uint32_t)k_probe_baud_alt1,
+      .data_bits = k_ra_sci_data_8,
+      .parity    = k_ra_sci_parity_none,
+      .stop_bits = k_ra_sci_stop_1,
+      .pclk_hz   = s_pclka_hz,
+    };
+    if (ra_sci_init((uint8_t)k_probe_sci7_ch, &cfg) != k_ra_ok) {
+      probe_log("ard: sci7 init FAIL\r\n");
+      return;
+    }
+    uint8_t drain = 0U;
+    while (ra_sci_getc_polling((uint8_t)k_probe_sci7_ch, &drain) == k_ra_ok) {
+    }
+    static const char at_cmd[] = "AT\r\n";
+    for (uint32_t i = 0U; at_cmd[i] != '\0'; i++) {
+      (void)ra_sci_putc_polling((uint8_t)k_probe_sci7_ch, (uint8_t)at_cmd[i]);
+    }
+    const uint32_t start = ra_time_ms();
+    uint8_t        got   = 0U;
+    while ((ra_time_ms() - start) < (uint32_t)k_probe_quick_at_ms) {
+      uint8_t byte = 0U;
+      if (ra_sci_getc_polling((uint8_t)k_probe_sci7_ch, &byte) == k_ra_ok) {
+        got = 1U;
+        break;
+      }
+    }
+    probe_log("ard: sci7 ");
+    probe_log((b == 0U) ? "115200" : "230400");
+    probe_log((got == 1U) ? " RX TRAFFIC\r\n" : " silent\r\n");
+  }
 }
 
 /**
@@ -1155,6 +1227,7 @@ int32_t main(void)
   probe_rung_edge_sampler();
   probe_uart_setup_or_halt();
   probe_rung_sci2_self();
+  probe_rung_arduino_uart();
   probe_rung_reset_banner();
   probe_rung_u15_sweep();
   ra_delay_ms((uint32_t)k_probe_boot_settle_ms);
