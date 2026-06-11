@@ -85,6 +85,9 @@ typedef enum : uint32_t {
   k_probe_ard_rx_pin_bit  = 8U,      /**< P808 (Arduino D0/RXD7) PIDR bit.     */
   k_probe_ard_tx_pin_bit  = 9U,      /**< P809 (Arduino D1/TXD7) PIDR bit.     */
   k_probe_sci7_ch         = 7U,      /**< Arduino D0/D1 UART = SCI7.           */
+  k_probe_echo_port       = 7U,      /**< RFC 862 TCP echo port.               */
+  k_probe_echo_buf_len    = 128U,    /**< Echo payload buffer.                 */
+  k_probe_recv_window_ms  = 10000U,  /**< Per-pass TCP recv wait.              */
   k_probe_edge_window_ms  = 8000U,   /**< Edge-sampler listen window.          */
   k_probe_u15_sweep_base  = 0xF8U,   /**< Focused sweep base (bits 3-7 high).  */
   k_probe_u15_sweep_n     = 8U,      /**< All combos of latch bits 0-2.        */
@@ -102,6 +105,11 @@ static const ra_port_pin_t k_probe_pin_rxd = (ra_port_pin_t)k_ra_board_pmod1_uar
 
 /** @brief AT line buffer (caller-owned per ::ra_da16600_cfg_t contract). */
 static uint8_t s_at_line[k_probe_at_line_buf_len];
+
+/** @brief AP fixture credentials (scripts/hil_da16600_setup.md). */
+static const char k_probe_ssid[] = "hil_lab";
+/** @brief AP fixture passphrase. */
+static const char k_probe_pass[] = "test1234";
 
 /** @brief Cached PCLKA rate (Hz) for the late SCI2 bring-up. */
 static uint32_t s_pclka_hz;
@@ -522,7 +530,7 @@ static void probe_sweep_baud(uint32_t baud)
   probe_log("00:");
   const uint32_t start    = ra_time_ms();
   uint32_t       seen     = 0U;
-  char           ascii[2] = {0, 0};
+  char           ascii[2] = {};
   while ((ra_time_ms() - start) < (uint32_t)k_probe_sweep_window_ms) {
     uint8_t b = 0U;
     if (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &b) != k_ra_ok) {
@@ -614,7 +622,7 @@ static void probe_rung_reset_banner(void)
   probe_log("reset: pulsed, banner dump:");
   const uint32_t start    = ra_time_ms();
   uint32_t       seen     = 0U;
-  char           ascii[2] = {0, 0};
+  char           ascii[2] = {};
   while ((ra_time_ms() - start) < (uint32_t)k_probe_banner_wait_ms) {
     uint8_t b = 0U;
     if (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &b) != k_ra_ok) {
@@ -661,7 +669,7 @@ static void probe_replay_bootlog(void)
   probe_format_u16(digits, s_bootlog_len);
   probe_log(digits);
   probe_log(":");
-  char ascii[2] = {0, 0};
+  char ascii[2] = {};
   for (uint16_t i = 0U; i < s_bootlog_len; i++) {
     const uint8_t b = s_bootlog[i];
     if (b >= (uint8_t)' ') {
@@ -1173,6 +1181,82 @@ static ra_err_t probe_rung_ble(void)
 }
 
 /**
+ * @brief Rung 4: join the AP fixture and report the DHCP lease.
+ *
+ * @details Wraps ::ra_da16600_wifi_connect against the hil_lab fixture
+ * (Pi hostapd, scripts/hil_da16600_setup.md) and prints the IPv4
+ * address on success.
+ *
+ * @return ::ra_err_t from the join.
+ * @retval k_ra_ok Associated with a lease.
+ *
+ * @pre Rung 1 (alive) passed.
+ * @pre The AP fixture is on the air.
+ * @post On success the lease line has been printed.
+ * @post On failure the module state is unchanged for retry.
+ * @note Blocking up to the driver's connect timeout.
+ * @since 0.1.0
+ */
+static ra_err_t probe_rung_wifi_join(void)
+{
+  char           ip[k_ra_da16600_ip_str_len] = {};
+  const ra_err_t err = ra_da16600_wifi_connect(k_probe_ssid, k_probe_pass, ip, sizeof ip);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  probe_log("wifi: joined ");
+  probe_log(k_probe_ssid);
+  probe_log(" ip=");
+  probe_log(ip);
+  probe_log("\r\n");
+  return k_ra_ok;
+}
+
+/**
+ * @brief Rung 5: accept one TCP echo round on port 7.
+ *
+ * @details Opens a listening socket (AT+TRTS), waits one recv window
+ * for an inbound payload, echoes it back verbatim, and closes. The HIL
+ * client on the fixture network drives the round trip.
+ *
+ * @return ::ra_err_t from the first failing step.
+ * @retval k_ra_ok One payload was echoed.
+ *
+ * @pre Rung 4 (join) passed.
+ * @pre A client can reach the module's lease address.
+ * @post The socket has been closed.
+ * @post On success "tcp: echoed N" was printed.
+ * @note Blocking for up to the recv window.
+ * @since 0.1.0
+ */
+static ra_err_t probe_rung_tcp_echo(void)
+{
+  ra_da16600_socket_t sock = 0U;
+  ra_err_t            err =
+    ra_da16600_tcp_open(k_ra_da16600_socket_listen, "", (uint16_t)k_probe_echo_port, &sock);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t payload[k_probe_echo_buf_len];
+  size_t  got = 0U;
+  err = ra_da16600_tcp_recv(sock, payload, sizeof payload, &got, (uint16_t)k_probe_recv_window_ms);
+  if (err == k_ra_ok) {
+    if (got > 0U) {
+      err = ra_da16600_tcp_send(sock, payload, got);
+      if (err == k_ra_ok) {
+        char digits[k_probe_u16_str_len];
+        probe_format_u16(digits, (uint16_t)got);
+        probe_log("tcp: echoed ");
+        probe_log(digits);
+        probe_log(" bytes\r\n");
+      }
+    }
+  }
+  (void)ra_da16600_tcp_close(sock);
+  return err;
+}
+
+/**
  * @brief Report one rung's outcome on the console.
  *
  * @details Prints ``<name> ok`` or ``<name> FAIL err=<hex>``.
@@ -1256,6 +1340,12 @@ int32_t main(void)
       (void)probe_report("wifi: scan", scan);
       const ra_err_t ble = probe_rung_ble();
       (void)probe_report("ble: adv", ble);
+      const ra_err_t join = probe_rung_wifi_join();
+      (void)probe_report("wifi: join", join);
+      if (join == k_ra_ok) {
+        const ra_err_t echo = probe_rung_tcp_echo();
+        (void)probe_report("tcp: echo", echo);
+      }
     }
     ra_delay_ms((uint32_t)k_probe_pass_period_ms);
   }
