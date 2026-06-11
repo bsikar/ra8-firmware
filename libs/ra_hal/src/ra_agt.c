@@ -52,16 +52,109 @@ static const ra_mstp_t s_agt_mstp_table[k_ra_agt_mstp_id_count] = {
   k_ra_mstp_agt1,
 };
 
+/**
+ * @var s_agt_mstp_held
+ * @brief Per-channel "this driver holds the MSTP reference" latch (AGT0/AGT1).
+ *
+ * @details
+ * AGT0/AGT1 must hold exactly ONE ::ra_mstp_enable reference for the life of
+ * the channel, not one per (re)start. A free-run periodic demo re-arms every
+ * underflow via ``ra_agt_stop`` + ``ra_agt_start_free_run``; without this latch
+ * each restart took a fresh MSTP reference, leaking the ``uint8_t`` refcount in
+ * ra_mstp.c until it saturated at 255 and the 256th start returned
+ * ``k_ra_err_invalid_state`` (issue #68 -- "AGT free-run demos fault after
+ * exactly 255 periods"). The latch makes the MSTP acquire idempotent: a start
+ * only enables when the channel is not already held, and only deinit /
+ * enter-stop release it.
+ */
+static bool s_agt_mstp_held[k_ra_agt_mstp_id_count];
+
+/**
+ * @brief Acquire the per-channel AGT MSTP reference exactly once (issue #68).
+ *
+ * @details
+ * Idempotent: enables the AGT0/AGT1 module stop reference only when the channel
+ * does not already hold it, so a periodic re-arm (stop + start every underflow)
+ * never leaks a fresh ::ra_mstp_enable reference. Channels 2..9 have no
+ * dedicated MSTP bit and are a no-op. Early returns keep every decision a
+ * single relational test (no compound boolean).
+ *
+ * @param[in] channel AGT channel index (0..9).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok              Reference held (already, or newly acquired), or
+ *                              channel has no dedicated MSTP bit.
+ * @retval k_ra_err_hw_timeout  ``ra_mstp_enable`` read-back failed (target).
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre ``channel`` is a valid AGT channel.
+ * @post On ::k_ra_ok for channels 0/1, ``s_agt_mstp_held[channel]`` is true.
+ * @post No module-stop write is issued when the reference is already held.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t agt_mstp_acquire(uint8_t channel)
+{
+  if (channel >= k_ra_agt_mstp_id_count) {
+    return k_ra_ok;
+  }
+  if (s_agt_mstp_held[channel]) {
+    return k_ra_ok;
+  }
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448. */
+  const ra_err_t err = ra_mstp_enable(s_agt_mstp_table[channel]);
+  if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE -- target-only read-back path */
+    return err;         /* GCOVR_EXCL_LINE */
+  }
+  s_agt_mstp_held[channel] = true;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Release the per-channel AGT MSTP reference if held (issue #68).
+ *
+ * @details
+ * Mirror of ::agt_mstp_acquire: drops the AGT0/AGT1 module-stop reference only
+ * when the channel currently holds it, so a stop after a never-acquired start
+ * (or a double release) cannot underflow the ra_mstp refcount. Channels 2..9
+ * are a no-op. Early returns keep every decision single-condition.
+ *
+ * @param[in] channel AGT channel index (0..9).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok                 Reference released, or nothing was held.
+ * @retval k_ra_err_invalid_state  ``ra_mstp_disable`` underflow (defensive).
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre ``channel`` is a valid AGT channel.
+ * @post On ::k_ra_ok for channels 0/1, ``s_agt_mstp_held[channel]`` is false.
+ * @post No module-stop write is issued when no reference is held.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t agt_mstp_release(uint8_t channel)
+{
+  if (channel >= k_ra_agt_mstp_id_count) {
+    return k_ra_ok;
+  }
+  if (!s_agt_mstp_held[channel]) {
+    return k_ra_ok;
+  }
+  s_agt_mstp_held[channel] = false;
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448. */
+  return ra_mstp_disable(s_agt_mstp_table[channel]);
+}
+
 [[nodiscard]] ra_err_t ra_agt_start_free_run(uint8_t channel, uint16_t reload)
 {
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  if (channel < k_ra_agt_mstp_id_count) {
-    /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
-    const ra_err_t mst_err = ra_mstp_enable(s_agt_mstp_table[channel]);
-    RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
-  }
+  /* Acquire the per-channel MSTP reference once (issue #68). */
+  const ra_err_t mst_err = agt_mstp_acquire(channel);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
@@ -130,10 +223,7 @@ ra_err_t ra_agt_deinit(uint8_t channel)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  if (channel < k_ra_agt_mstp_id_count) {
-    return ra_mstp_disable(s_agt_mstp_table[channel]);
-  }
-  return k_ra_ok;
+  return agt_mstp_release(channel);
 }
 
 /**
@@ -300,10 +390,7 @@ ra_err_t ra_agt_enter_stop(uint8_t channel)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  if (channel < k_ra_agt_mstp_id_count) {
-    return ra_mstp_disable(s_agt_mstp_table[channel]);
-  }
-  return k_ra_ok;
+  return agt_mstp_release(channel);
 }
 
 /**
@@ -336,10 +423,7 @@ ra_err_t ra_agt_exit_stop(uint8_t channel)
   if (ra_agt(channel) == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (channel < k_ra_agt_mstp_id_count) {
-    return ra_mstp_enable(s_agt_mstp_table[channel]);
-  }
-  return k_ra_ok;
+  return agt_mstp_acquire(channel);
 }
 
 /* =============================================================================
@@ -567,11 +651,9 @@ ra_err_t ra_agt_start_pulse_output(uint8_t channel, const ra_agt_pulse_cfg_t* cf
   const ra_err_t verr = agt_pulse_validate_cfg(cfg);
   RA_RETURN_ON_ERROR(verr, s_tag, "agt_pulse: cfg validation");
 
-  if (channel < k_ra_agt_mstp_id_count) {
-    /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
-    const ra_err_t mst_err = ra_mstp_enable(s_agt_mstp_table[channel]);
-    RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable"); /* GCOVR_EXCL_BR_LINE */
-  }
+  /* Acquire the per-channel MSTP reference once (issue #68). */
+  const ra_err_t mst_err = agt_mstp_acquire(channel);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   agt_pulse_program_registers(reg, cfg);
 
@@ -706,11 +788,11 @@ typedef enum : uint32_t {
  */
 static ra_err_t agt_cascade_mstp_enable_both(void)
 {
-  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
-  const ra_err_t m0 = ra_mstp_enable(s_agt_mstp_table[k_ra_agt_cascade_lo_channel]);
+  /* One MSTP reference per channel (issue #68): re-arming the cascade every
+   * AGT1 underflow must not leak a fresh AGT0/AGT1 reference per period. */
+  const ra_err_t m0 = agt_mstp_acquire((uint8_t)k_ra_agt_cascade_lo_channel);
   RA_RETURN_ON_ERROR(m0, s_tag, "cascade: mstp AGT0"); /* GCOVR_EXCL_BR_LINE */
-  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
-  const ra_err_t m1 = ra_mstp_enable(s_agt_mstp_table[k_ra_agt_cascade_hi_channel]);
+  const ra_err_t m1 = agt_mstp_acquire((uint8_t)k_ra_agt_cascade_hi_channel);
   RA_RETURN_ON_ERROR(m1, s_tag, "cascade: mstp AGT1"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
 }
