@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#include "ra8d2_port_regs.h"
+#include "ra8d2_sci_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_da16600.h"
@@ -75,6 +77,12 @@ typedef enum : uint32_t {
   k_probe_u15_reg_out     = 0x05U,   /**< U15 output-latch register.           */
   k_probe_u15_reg_input   = 0x0FU,   /**< U15 input-level register.            */
   k_probe_u15_default     = 0xF2U,   /**< Project-default latch (BSP value).   */
+  k_probe_loop_pattern    = 0xA5U,   /**< Loopback test byte.                  */
+  k_probe_tx_test_bytes   = 24U,     /**< 0x00 frames sent during pin sampling.*/
+  k_probe_tx_samples      = 400U,    /**< PIDR samples per transmitted frame.  */
+  k_probe_txd2_pin_bit    = 1U,      /**< P801 bit within PORT8 PIDR.          */
+  k_probe_rxd2_pin_bit    = 2U,      /**< P802 bit within PORT8 PIDR.          */
+  k_probe_edge_window_ms  = 8000U,   /**< Edge-sampler listen window.          */
   k_probe_u15_sweep_base  = 0xF8U,   /**< Focused sweep base (bits 3-7 high).  */
   k_probe_u15_sweep_n     = 8U,      /**< All combos of latch bits 0-2.        */
   k_probe_u15_full_n      = 256U,    /**< Exhaustive latch state space.        */
@@ -94,6 +102,11 @@ static uint8_t s_at_line[k_probe_at_line_buf_len];
 
 /** @brief Cached PCLKA rate (Hz) for the late SCI2 bring-up. */
 static uint32_t s_pclka_hz;
+
+/** @brief Boot-window RX capture (replayed every ladder pass). */
+static uint8_t s_bootlog[k_probe_at_line_buf_len];
+/** @brief Bytes captured into ::s_bootlog. */
+static uint16_t s_bootlog_len;
 
 /* =============================================================================
  * Console helpers (SCI8 J-Link OB VCOM)
@@ -604,6 +617,10 @@ static void probe_rung_reset_banner(void)
     if (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &b) != k_ra_ok) {
       continue;
     }
+    if (s_bootlog_len < (uint16_t)k_probe_at_line_buf_len) {
+      s_bootlog[s_bootlog_len] = b;
+      s_bootlog_len++;
+    }
     if (b >= (uint8_t)' ') {
       if (b < (uint8_t)k_probe_ascii_del) {
         ascii[0] = (char)b;
@@ -618,6 +635,44 @@ static void probe_rung_reset_banner(void)
     seen++;
   }
   probe_log((seen == 0U) ? " (silence)\r\n" : "\r\n");
+}
+
+/**
+ * @brief Replay the boot-window RX capture on the console.
+ *
+ * @details The VCOM dies with board power, so a cold-boot banner is
+ * invisible live; this replays what the firmware heard at T0 on every
+ * ladder pass so a late-attaching reader still sees it.
+ *
+ * @pre Console is initialized.
+ * @pre ::probe_rung_reset_banner has run once.
+ * @post One replay line has been printed.
+ * @post ::s_bootlog is unmodified.
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_replay_bootlog(void)
+{
+  probe_log("bootlog n=");
+  char digits[k_probe_u16_str_len];
+  probe_format_u16(digits, s_bootlog_len);
+  probe_log(digits);
+  probe_log(":");
+  char ascii[2] = {0, 0};
+  for (uint16_t i = 0U; i < s_bootlog_len; i++) {
+    const uint8_t b = s_bootlog[i];
+    if (b >= (uint8_t)' ') {
+      if (b < (uint8_t)k_probe_ascii_del) {
+        ascii[0] = (char)b;
+        probe_log(ascii);
+        continue;
+      }
+    }
+    probe_log("<");
+    probe_log_hex16((uint16_t)b);
+    probe_log(">");
+  }
+  probe_log("\r\n");
 }
 
 /**
@@ -774,6 +829,194 @@ static void probe_rung_u15_full_sweep(void)
 }
 
 /**
+ * @brief Self-test SCI2 with zero external dependencies.
+ *
+ * @details Two checks that isolate driver bugs from wiring:
+ *  1. Internal loopback: sets CCR1.SPLP (TE/RE held 0 across the CCR1
+ *     write per the SCI restriction), sends one byte, and expects to
+ *     receive it back -- exercising MSTP, clocking, BRR, TX and RX of
+ *     channel 2 end to end inside the silicon.
+ *  2. TX pin sampling: with loopback off, streams 0x00 frames while
+ *     reading PORT8's live PIDR for P801 -- a transmitting UART must
+ *     drag the pin low for the start bit + 8 zero bits of every frame.
+ *
+ * @pre SCI2 is initialized at the working baud; console is up.
+ * @pre P801 is routed to TXD2 (peripheral mode).
+ * @post Two verdict lines have been printed.
+ * @post SCI2 is restored to normal (non-loopback) mode.
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_rung_sci2_self(void)
+{
+  volatile r_sci_regs_t* r = ra_sci((uint8_t)k_probe_da16600_sci_ch);
+  if (r == nullptr) {
+    probe_log("sci2 self: no reg block\r\n");
+    return;
+  }
+  const uint32_t saved_ccr0 = r->CCR0;
+  r->CCR0                   = 0U;
+  r->CCR1                   = r->CCR1 | (1U << (uint32_t)k_ra_sci_ccr1_bit_splp);
+  r->CCR0                   = saved_ccr0;
+  uint8_t drain             = 0U;
+  while (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &drain) == k_ra_ok) {
+  }
+  (void)ra_sci_putc_polling((uint8_t)k_probe_da16600_sci_ch, (uint8_t)k_probe_loop_pattern);
+  uint8_t        echo = 0U;
+  const ra_err_t ge   = ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &echo);
+  uint8_t        pass = 0U;
+  if (ge == k_ra_ok) {
+    if (echo == (uint8_t)k_probe_loop_pattern) {
+      pass = 1U;
+    }
+  }
+  r->CCR0 = 0U;
+  r->CCR1 = r->CCR1 & ~(1U << (uint32_t)k_ra_sci_ccr1_bit_splp);
+  r->CCR0 = saved_ccr0;
+  probe_log((pass == 1U) ? "sci2 self: loopback ok\r\n" : "sci2 self: loopback FAIL\r\n");
+
+  volatile r_port_regs_t* p8   = ra_port(k_ra_port_8);
+  uint32_t                lows = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_probe_tx_test_bytes; i++) {
+    (void)ra_sci_putc_polling((uint8_t)k_probe_da16600_sci_ch, 0U);
+    for (uint32_t j = 0U; j < (uint32_t)k_probe_tx_samples; j++) {
+      const uint32_t pidr = p8->PCNTR2;
+      if ((pidr & (1U << (uint32_t)k_probe_txd2_pin_bit)) == 0U) {
+        lows++;
+      }
+    }
+  }
+  probe_log((lows > 0U) ? "sci2 self: txd2 pin TOGGLES\r\n" : "sci2 self: txd2 pin STUCK HIGH\r\n");
+}
+
+/**
+ * @struct edge_track_t
+ * @brief Per-pin edge/pulse statistics for the GPIO sampler.
+ */
+typedef struct {
+  uint32_t edges;  /**< Level transitions seen.              */
+  uint32_t min_lo; /**< Narrowest low pulse (iterations).    */
+  uint32_t run;    /**< Current low-run length (iterations). */
+  uint32_t prev;   /**< Previous sampled level (0/1).        */
+} edge_track_t;
+
+/**
+ * @brief Fold one sample into a pin's edge statistics.
+ *
+ * @details Counts transitions and tracks the narrowest low pulse.
+ *
+ * @param[in,out] t   Pin statistics.
+ * @param[in]     bit Sampled level (0 or 1).
+ *
+ * @pre @p t was zero-initialized with ``prev`` seeded.
+ * @pre @p bit is 0 or 1.
+ * @post Statistics reflect the new sample.
+ * @post ``t->prev`` holds @p bit.
+ * @note Hot path of the sampler loop.
+ * @since 0.1.0
+ */
+static void probe_edge_step(edge_track_t* t, uint32_t bit)
+{
+  if (bit != t->prev) {
+    t->edges++;
+    if (bit == 1U) {
+      if (t->run < t->min_lo) {
+        t->min_lo = t->run;
+      }
+    }
+    t->run = 0U;
+  } else if (bit == 0U) {
+    t->run++;
+  }
+  t->prev = bit;
+}
+
+/**
+ * @brief Print one pin's edge statistics.
+ *
+ * @details Clamps the 32-bit counters into the uint16 formatter.
+ *
+ * @param[in] name Label for the pin.
+ * @param[in] t    Statistics to print.
+ *
+ * @pre Console is initialized.
+ * @pre @p name and @p t are non-NULL.
+ * @post One fragment has been printed (no newline).
+ * @post No state changes.
+ * @note Diagnostic helper.
+ * @since 0.1.0
+ */
+static void probe_edge_report(const char* name, const edge_track_t* t)
+{
+  char digits[k_probe_u16_str_len];
+  probe_log(name);
+  probe_log(" edges=");
+  probe_format_u16(digits, (uint16_t)((t->edges > (uint32_t)UINT16_MAX) ? UINT16_MAX : t->edges));
+  probe_log(digits);
+  probe_log(" minlo=");
+  probe_format_u16(digits, (uint16_t)((t->min_lo > (uint32_t)UINT16_MAX) ? UINT16_MAX : t->min_lo));
+  probe_log(digits);
+}
+
+/**
+ * @brief GPIO logic-analyzer: watch P801+P802 raw across a module reset.
+ *
+ * @details Releases both UART pins to GPIO inputs (pull-up), pulses the
+ * Pmod1 RESET line, then tight-samples PORT8's PIDR for the whole boot
+ * window. Catches module TX at ANY baud and on EITHER pin -- detecting
+ * both a wrong-baud mismatch and a swapped TX/RX Pmod wiring.
+ *
+ * @pre Console is up; ::ra_time_init has been called.
+ * @pre The Pmod1 pins are claimable.
+ * @post One report line has been printed.
+ * @post P801/P802 are released (caller re-routes them to SCI2).
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_rung_edge_sampler(void)
+{
+  (void)ra_pin_validator_release(k_probe_pin_txd);
+  (void)ra_pin_validator_release(k_probe_pin_rxd);
+  if (ra_gpio_input_init(k_probe_pin_txd, k_ra_pull_up) != k_ra_ok) {
+    probe_log("edges: txd claim FAIL\r\n");
+    return;
+  }
+  if (ra_gpio_input_init(k_probe_pin_rxd, k_ra_pull_up) != k_ra_ok) {
+    probe_log("edges: rxd claim FAIL\r\n");
+    return;
+  }
+  const ra_port_pin_t pin_rst = (ra_port_pin_t)k_ra_board_pmod1_reset;
+  (void)ra_pin_validator_release(pin_rst);
+  if (ra_gpio_output_init(pin_rst, k_ra_level_low) == k_ra_ok) {
+    ra_delay_ms((uint32_t)k_probe_reset_pulse_ms);
+    (void)ra_gpio_write(pin_rst, k_ra_level_high);
+    (void)ra_pin_validator_release(pin_rst);
+  }
+  volatile r_port_regs_t* p8    = ra_port(k_ra_port_8);
+  edge_track_t            tx    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
+  edge_track_t            rx    = {.edges = 0U, .min_lo = UINT32_MAX, .run = 0U, .prev = 1U};
+  uint32_t                iters = 0U;
+  const uint32_t          t0    = ra_time_ms();
+  while ((ra_time_ms() - t0) < (uint32_t)k_probe_edge_window_ms) {
+    const uint32_t now = p8->PCNTR2;
+    probe_edge_step(&tx, (now >> (uint32_t)k_probe_txd2_pin_bit) & 1U);
+    probe_edge_step(&rx, (now >> (uint32_t)k_probe_rxd2_pin_bit) & 1U);
+    iters++;
+  }
+  (void)ra_pin_validator_release(k_probe_pin_txd);
+  (void)ra_pin_validator_release(k_probe_pin_rxd);
+  char digits[k_probe_u16_str_len];
+  probe_log("edges: iters/ms=");
+  probe_format_u16(digits, (uint16_t)(iters / (uint32_t)k_probe_edge_window_ms));
+  probe_log(digits);
+  probe_log(" ");
+  probe_edge_report("P801", &tx);
+  probe_log(" |");
+  probe_edge_report(" P802", &rx);
+  probe_log("\r\n");
+}
+
+/**
  * @brief Rung 1: probe the module with a bare ``AT``.
  *
  * @details Wires the byte transport into ::ra_da16600_init, which sends
@@ -909,14 +1152,21 @@ int32_t main(void)
   probe_log("\r\nda16600: probe boot\r\n");
   probe_rung_u15_readback();
   probe_rung_wire();
+  probe_rung_edge_sampler();
   probe_uart_setup_or_halt();
+  probe_rung_sci2_self();
   probe_rung_reset_banner();
   probe_rung_u15_sweep();
-  probe_rung_u15_full_sweep();
   ra_delay_ms((uint32_t)k_probe_boot_settle_ms);
   uint8_t swept = 0U;
 
+  uint8_t deep = 0U;
   while (1) {
+    probe_replay_bootlog();
+    if (deep == 0U) {
+      deep = 1U;
+      probe_rung_u15_full_sweep();
+    }
     const ra_err_t alive = probe_rung_alive();
     if (alive != k_ra_ok) {
       if (swept == 0U) {
