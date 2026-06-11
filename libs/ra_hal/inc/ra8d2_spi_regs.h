@@ -138,15 +138,16 @@ typedef enum : uint8_t {
  * @brief SPCR bit-masks. HUM Ch 43.2.4 p 2884.
  */
 typedef enum : uint32_t {
-  k_ra_spcr_mask_spe    = 0x00000001UL,
-  k_ra_spcr_mask_modfen = 0x00004000UL,
-  k_ra_spcr_mask_speie  = 0x00010000UL,
-  k_ra_spcr_mask_sprie  = 0x00020000UL,
-  k_ra_spcr_mask_sptie  = 0x00100000UL,
-  k_ra_spcr_mask_cendie = 0x00200000UL,
-  k_ra_spcr_mask_sckase = 0x00001000UL,
-  k_ra_spcr_mask_mstr   = 0x40000000UL,
-  k_ra_spcr_mask_txmd   = 0x30000000UL, /**< [29:28] communication mode.   */
+  k_ra_spcr_mask_spe      = 0x00000001UL,
+  k_ra_spcr_mask_modfen   = 0x00004000UL,
+  k_ra_spcr_mask_speie    = 0x00010000UL,
+  k_ra_spcr_mask_sprie    = 0x00020000UL,
+  k_ra_spcr_mask_sptie    = 0x00100000UL,
+  k_ra_spcr_mask_cendie   = 0x00200000UL,
+  k_ra_spcr_mask_sckase   = 0x00001000UL,
+  k_ra_spcr_mask_spscksel = 0x00000080UL, /**< SPSCKSEL: master RX sample clock. */
+  k_ra_spcr_mask_mstr     = 0x40000000UL,
+  k_ra_spcr_mask_txmd     = 0x30000000UL, /**< [29:28] communication mode.   */
 } ra_spcr_mask_t;
 
 /**
