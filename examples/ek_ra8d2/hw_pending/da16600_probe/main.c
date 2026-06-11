@@ -104,6 +104,9 @@ typedef enum : uint32_t {
   k_probe_p603_pin_bit    = 3U,      /**< Pmod2 TXD0 (P603) bit in PORT6 PIDR.  */
   k_probe_u15_all_high    = 0xFFU,   /**< Drive-test latch: all outputs HIGH.   */
   k_probe_u15_all_low     = 0x00U,   /**< Drive-test latch: all outputs LOW.    */
+  k_probe_wake_pulse_ms   = 20U,     /**< Hold time per wake pulse level.       */
+  k_probe_wake_cycles     = 3U,      /**< Wake L->H->L pulses to emit.          */
+  k_probe_wake_settle_ms  = 200U,    /**< Settle after wake before AT.          */
 } da16600_probe_const_t;
 
 /* Pmod2 (J25) alternate landing for the US159-DA16600EVZ: SCI0 on PORT6
@@ -1093,6 +1096,10 @@ static void probe_rung_edge_sampler(void)
   (void)ra_pin_validator_release(pin_rst);
   if (ra_gpio_output_init(pin_rst, k_ra_level_low) == k_ra_ok) {
     ra_delay_ms((uint32_t)k_probe_reset_pulse_ms);
+    /* Drive RESET HIGH then free the ownership token. The release is
+     * bookkeeping only (ra_pin_validator_release does not touch PFS/PDR),
+     * so the pin physically stays output-HIGH = reset de-asserted through
+     * the sample window, and the later reset rung can re-claim P402. */
     (void)ra_gpio_write(pin_rst, k_ra_level_high);
     (void)ra_pin_validator_release(pin_rst);
   }
@@ -1258,6 +1265,45 @@ static void probe_rung_arduino_uart(void)
  * @note Blocking up to the probe timeout.
  * @since 0.1.0
  */
+/**
+ * @brief Pulse the DA16600 host-wake lines (Pmod1 GPIO_A/GPIO_B) Low->High->Low.
+ *
+ * @details The DA16200/DA16600 RTC_WAKE_UP input wakes the module from DPM
+ * (Dynamic Power Management) sleep on a Low->High->Low transition; UART RX
+ * does NOT wake it. A module that booted into DPM idles its TX high and
+ * ignores AT entirely -- exactly the "powered, mute, zero edges" symptom.
+ * We do not know which of GPIO_A (P412) / GPIO_B (P413) is wired to
+ * RTC_WAKE_UP on this Pmod, so pulse both before every AT attempt.
+ *
+ * @pre Console + ::ra_time_init are up; P412/P413 are claimable.
+ * @post Both lines have seen ::k_probe_wake_cycles L->H->L pulses, left LOW.
+ * @post Both pins are released for re-claim on the next pass.
+ * @note Diagnostic / bring-up; harmless if the pins are not the wake line.
+ * @since 0.1.0
+ */
+static void probe_wake_pulse(void)
+{
+  const ra_port_pin_t pins[2] = {(ra_port_pin_t)k_ra_board_pmod1_gpio_a,
+                                 (ra_port_pin_t)k_ra_board_pmod1_gpio_b};
+  for (uint8_t p = 0U; p < 2U; p++) {
+    (void)ra_pin_validator_release(pins[p]);
+    if (ra_gpio_output_init(pins[p], k_ra_level_low) != k_ra_ok) {
+      continue;
+    }
+    for (uint8_t c = 0U; c < (uint8_t)k_probe_wake_cycles; c++) {
+      (void)ra_gpio_write(pins[p], k_ra_level_low);
+      ra_delay_ms((uint32_t)k_probe_wake_pulse_ms);
+      (void)ra_gpio_write(pins[p], k_ra_level_high);
+      ra_delay_ms((uint32_t)k_probe_wake_pulse_ms);
+      (void)ra_gpio_write(pins[p], k_ra_level_low);
+      ra_delay_ms((uint32_t)k_probe_wake_pulse_ms);
+    }
+    (void)ra_pin_validator_release(pins[p]);
+  }
+  probe_log("wake: GPIO_A/B pulsed L-H-L\r\n");
+  ra_delay_ms((uint32_t)k_probe_wake_settle_ms);
+}
+
 static ra_err_t probe_rung_alive(void)
 {
   const ra_da16600_cfg_t cfg = {
@@ -1472,6 +1518,7 @@ int32_t main(void)
       deep = 1U;
       probe_rung_u15_full_sweep();
     }
+    probe_wake_pulse();
     const ra_err_t alive = probe_rung_alive();
     if (alive != k_ra_ok) {
       if (swept == 0U) {
