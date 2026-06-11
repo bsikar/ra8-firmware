@@ -99,6 +99,51 @@ typedef enum : uint16_t {
 } ra_fs_mbr_off_t;
 
 /**
+ * @enum ra_fs_exfat_off_t
+ * @brief Byte offsets in the exFAT boot sector (VBR) and directory entries.
+ *
+ * @details exFAT (Microsoft exFAT spec) replaces the FAT BPB with a Volume
+ * Boot Record carrying sector-relative region offsets and log2 geometry. The
+ * directory uses 32-byte typed entry sets (File 0x85 + Stream 0xC0 + Name
+ * 0xC1) with UTF-16LE names. Read-only support; fields are little-endian.
+ */
+typedef enum : uint16_t {
+  k_exfat_off_fsname     = 3,    /**< "EXFAT   " filesystem-name field (8 chars). */
+  k_exfat_off_fat_lba    = 0x50, /**< FatOffset (sectors from VBR).             */
+  k_exfat_off_fat_len    = 0x54, /**< FatLength (sectors).                      */
+  k_exfat_off_heap_lba   = 0x58, /**< ClusterHeapOffset (sectors from VBR).     */
+  k_exfat_off_clus_count = 0x5C, /**< ClusterCount.                             */
+  k_exfat_off_root_clus  = 0x60, /**< FirstClusterOfRootDirectory.              */
+  k_exfat_off_bps_shift  = 0x6C, /**< BytesPerSectorShift (log2).               */
+  k_exfat_off_spc_shift  = 0x6D, /**< SectorsPerClusterShift (log2).            */
+  k_exfat_off_num_fats   = 0x6E, /**< NumberOfFats.                             */
+  k_exfat_strm_off_flags = 1,    /**< Stream-ext GeneralSecondaryFlags.         */
+  k_exfat_strm_off_nlen  = 3,    /**< Stream-ext NameLength (UTF-16 units).     */
+  k_exfat_strm_off_clus  = 0x14, /**< Stream-ext FirstCluster.                  */
+  k_exfat_strm_off_dlen  = 0x18, /**< Stream-ext DataLength (low 32 used).      */
+  k_exfat_name_off       = 2,    /**< File-name entry character offset.         */
+} ra_fs_exfat_off_t;
+
+/**
+ * @enum ra_fs_exfat_val_t
+ * @brief exFAT entry-type tags + small magic values used by the reader.
+ */
+typedef enum : uint32_t {
+  k_exfat_entry_eod      = 0x00U,   /**< End-of-directory marker.              */
+  k_exfat_entry_file     = 0x85U,   /**< File directory entry.                 */
+  k_exfat_entry_stream   = 0xC0U,   /**< Stream-extension entry.               */
+  k_exfat_entry_name     = 0xC1U,   /**< File-name entry.                      */
+  k_exfat_secflag_no_fat = 0x02U,   /**< GeneralSecondaryFlags: NoFatChain.    */
+  k_exfat_fsname_len     = 8U,      /**< "EXFAT   " field length.              */
+  k_exfat_name_per_entry = 15U,     /**< UTF-16 units per file-name entry.     */
+  k_exfat_entry_bytes    = 32U,     /**< Directory entry size.                 */
+  k_exfat_bps_shift_512  = 9U,      /**< log2(512) -- the only sector size we do. */
+  k_exfat_scan_limit     = 65536U,  /**< Max dir entries scanned (P10 bound).  */
+  k_exfat_name_cap       = 64U,     /**< Longest path name we compare.         */
+  k_exfat_ascii_hi_mask  = 0xFF00U, /**< UTF-16 unit is non-ASCII if set.     */
+} ra_fs_exfat_val_t;
+
+/**
  * @enum ra_fs_cluster_t
  * @brief Reserved cluster numbers used by the FAT itself.
  */
@@ -1516,6 +1561,418 @@ static uint32_t priv_mbr_part0_lba(const uint8_t* buf)
   return priv_rd32(&buf[k_mbr_off_part0_lba]);
 }
 
+/* ===========================================================================
+ * exFAT (read-only) support
+ * ===========================================================================
+ */
+
+/**
+ * @brief Length of a NUL-terminated string.
+ *
+ * @details Counts bytes up to the NUL terminator.
+ *
+ * @param[in] s NUL-terminated string.
+ * @return Character count before the terminator.
+ * @retval 0..UINT32_MAX String length.
+ * @pre @p s is non-NULL.
+ * @pre @p s is NUL-terminated.
+ * @post No state modified.
+ * @post @p s is unmodified.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static uint32_t priv_strlen(const char* s)
+{
+  uint32_t n = 0U;
+  while (s[n] != '\0') {
+    n++;
+  }
+  return n;
+}
+
+/**
+ * @brief Uppercase an ASCII character (others returned unchanged).
+ *
+ * @details Maps a-z to A-Z; any other byte is returned unchanged.
+ *
+ * @param[in] c Input character.
+ * @return Uppercased character.
+ * @retval c The (possibly) uppercased value.
+ * @pre None.
+ * @pre @p c is a byte value.
+ * @post No state modified.
+ * @post Result depends only on @p c.
+ * @note Avoids compound conditions (MC/DC).
+ * @since 0.1.0
+ */
+static char priv_ascii_upper(char c)
+{
+  if (c < 'a') {
+    return c;
+  }
+  if (c > 'z') {
+    return c;
+  }
+  return (char)(c - ('a' - 'A'));
+}
+
+/**
+ * @brief Detect an exFAT volume from its boot sector.
+ *
+ * @details exFAT stamps the ASCII string "EXFAT   " (5 chars + 3 spaces) at
+ * offset 3 of the VBR, where a FAT BPB carries OEM text.
+ *
+ * @param[in] buf Sector-0 (VBR) contents (>= 512 bytes).
+ * @return 1 if @p buf is an exFAT VBR, else 0.
+ * @retval 1 exFAT signature present.
+ * @retval 0 Not exFAT.
+ * @pre @p buf is non-NULL.
+ * @pre @p buf holds at least one sector.
+ * @post No state modified.
+ * @post @p buf is unmodified.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static uint8_t priv_exfat_is_volume(const uint8_t* buf)
+{
+  static const char sig[k_exfat_fsname_len] = {'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
+  for (uint32_t i = 0U; i < (uint32_t)k_exfat_fsname_len; i++) {
+    if (buf[(uint32_t)k_exfat_off_fsname + i] != (uint8_t)sig[i]) {
+      return 0U;
+    }
+  }
+  return 1U;
+}
+
+/**
+ * @brief Parse an exFAT VBR into the mount's geometry fields.
+ *
+ * @details Maps exFAT's sector-relative region offsets + log2 geometry onto
+ * the shared FAT fields so ::priv_cluster_to_lba / ::priv_fat_get (FAT32 path)
+ * serve the data + FAT regions unchanged. Only 512-byte sectors are supported.
+ *
+ * @param[in,out] m   Mount with backend bound and base LBA set.
+ * @param[in]     buf VBR contents (sector 0 at the volume base).
+ * @return Error code.
+ * @retval k_ra_ok                exFAT geometry stored; ``m->type`` set.
+ * @retval k_ra_err_not_supported BytesPerSectorShift is not 9 (512 B).
+ * @pre @p m and @p buf are non-NULL.
+ * @pre @p buf is a validated exFAT VBR (::priv_exfat_is_volume true).
+ * @post On success ``m`` carries the exFAT region geometry.
+ * @post On failure ``m`` is left unmounted.
+ * @note Not thread-safe; serialize mount operations.
+ * @since 0.1.0
+ */
+static ra_err_t priv_exfat_parse(ra_fs_mount_t* m, const uint8_t* buf)
+{
+  if (buf[k_exfat_off_bps_shift] != (uint8_t)k_exfat_bps_shift_512) {
+    return k_ra_err_not_supported;
+  }
+  m->type                = k_ra_fs_type_exfat;
+  m->bytes_per_sector    = k_ra_fs_bytes_per_sector;
+  m->sectors_per_cluster = 1U << buf[k_exfat_off_spc_shift];
+  m->num_fats            = (uint32_t)buf[k_exfat_off_num_fats];
+  m->fat_size_sectors    = priv_rd32(&buf[k_exfat_off_fat_len]);
+  m->first_fat_lba       = priv_rd32(&buf[k_exfat_off_fat_lba]);
+  m->first_data_lba      = priv_rd32(&buf[k_exfat_off_heap_lba]);
+  m->root_cluster        = priv_rd32(&buf[k_exfat_off_root_clus]);
+  m->count_of_clusters   = priv_rd32(&buf[k_exfat_off_clus_count]);
+  m->reserved_sectors    = 0U;
+  m->root_entries        = 0U;
+  m->first_root_lba      = 0U;
+  m->total_sectors       = 0U;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Parse the volume at the current base: exFAT first, then FAT BPB.
+ *
+ * @details Dispatches to the exFAT parser when the VBR carries the exFAT
+ * signature, else to the FAT BPB parser.
+ *
+ * @param[in,out] m Mount with sector 0 already read into ::s_scratch.
+ * @return Error code from the chosen parser.
+ * @retval k_ra_ok    Volume parsed (FAT or exFAT).
+ * @retval k_ra_err_* No recognizable volume at this base.
+ * @pre @p m is non-NULL and ::s_scratch holds the base sector 0.
+ * @pre ``m->backend`` is bound.
+ * @post On success ``m`` holds the volume geometry + type.
+ * @post On failure ``m`` is left unmounted.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t priv_parse_volume(ra_fs_mount_t* m)
+{
+  if (priv_exfat_is_volume(s_scratch) != 0U) {
+    return priv_exfat_parse(m, s_scratch);
+  }
+  return priv_parse_bpb_into_mount(m);
+}
+
+/**
+ * @struct exfat_cursor_t
+ * @brief Linear cursor over a directory's 32-byte entries.
+ */
+typedef struct {
+  uint32_t cluster;          /**< Current directory cluster.            */
+  uint32_t entry_in_cluster; /**< Next entry index within the cluster.  */
+  uint32_t scanned;          /**< Total entries read (P10 bound).       */
+} exfat_cursor_t;
+
+/**
+ * @brief Fetch the next 32-byte directory entry, following the cluster chain.
+ *
+ * @details Advances across sectors and (via the FAT) clusters. Reports
+ * end-of-directory as ::k_ra_err_not_found when the chain reaches EOC.
+ *
+ * @param[in]     m   Mounted exFAT volume.
+ * @param[in,out] cur Cursor; advanced by one entry on success.
+ * @param[out]    out Receives the 32-byte entry.
+ * @return Error code.
+ * @retval k_ra_ok            ``out`` holds the next entry.
+ * @retval k_ra_err_not_found The directory chain ended (EOC).
+ * @retval k_ra_err_*         Backend or FAT read failure.
+ * @pre @p m, @p cur, and @p out are non-NULL.
+ * @pre ``cur->cluster`` is a valid directory cluster.
+ * @post On success ``cur`` points at the following entry.
+ * @post On failure ``out`` is undefined.
+ * @note Re-reads the sector per entry (simple; dir scans are short).
+ * @since 0.1.0
+ */
+static ra_err_t priv_exfat_next_entry(const ra_fs_mount_t* m, exfat_cursor_t* cur, uint8_t* out)
+{
+  const uint32_t per_cluster =
+    (m->sectors_per_cluster * k_ra_fs_bytes_per_sector) / (uint32_t)k_exfat_entry_bytes;
+  if (cur->entry_in_cluster >= per_cluster) {
+    uint32_t next = 0U;
+    ra_err_t e    = priv_fat_get(m, cur->cluster, &next);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    if (priv_is_eoc(m, next) != 0U) {
+      return k_ra_err_not_found;
+    }
+    cur->cluster          = next;
+    cur->entry_in_cluster = 0U;
+  }
+  const uint32_t byte_off = cur->entry_in_cluster * (uint32_t)k_exfat_entry_bytes;
+  const uint32_t lba = priv_cluster_to_lba(m, cur->cluster) + (byte_off / k_ra_fs_bytes_per_sector);
+  uint8_t        sec[k_ra_fs_bytes_per_sector] = {};
+  ra_err_t       e                             = priv_read_sector(m, lba, sec);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  priv_byte_copy(out, &sec[byte_off % k_ra_fs_bytes_per_sector], (uint32_t)k_exfat_entry_bytes);
+  cur->entry_in_cluster++;
+  cur->scanned++;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Compare one file-name entry's 15 UTF-16 units against an ASCII path.
+ *
+ * @details Case-insensitive ASCII match; any non-ASCII unit fails the match.
+ * Positions at/after @p nlen are treated as already matched (tail padding).
+ *
+ * @param[in] entry 32-byte file-name (0xC1) entry.
+ * @param[in] path  Target path (ASCII).
+ * @param[in] pos   Index of the first name unit this entry covers.
+ * @param[in] nlen  Total name length in UTF-16 units.
+ * @return 1 if this slice matches, else 0.
+ * @retval 1 Slice matches.
+ * @retval 0 Mismatch or non-ASCII unit.
+ * @pre @p entry and @p path are non-NULL.
+ * @pre ``priv_strlen(path) == nlen``.
+ * @post No state modified.
+ * @post Inputs are unmodified.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static uint8_t
+priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, uint32_t nlen)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_exfat_name_per_entry; i++) {
+    if ((pos + i) >= nlen) {
+      return 1U;
+    }
+    const uint32_t b = (uint32_t)k_exfat_name_off + (i * 2U);
+    if (entry[b + 1U] != 0U) {
+      return 0U;
+    }
+    if (priv_ascii_upper((char)entry[b]) != priv_ascii_upper(path[pos + i])) {
+      return 0U;
+    }
+  }
+  return 1U;
+}
+
+/**
+ * @brief Read a stream-ext + name set and test it against @p path.
+ *
+ * @details Called with @p cur positioned just after a 0x85 File entry. Reads
+ * the 0xC0 stream-extension entry and the following 0xC1 name entries; on a
+ * full match fills the file's location fields.
+ *
+ * @param[in]     m         Mounted exFAT volume.
+ * @param[in,out] cur       Cursor (advanced past the consumed entries).
+ * @param[in]     path      Target path (ASCII, flat root name).
+ * @param[out]    out_first First cluster of the matched file.
+ * @param[out]    out_size  File length in bytes (low 32 bits).
+ * @param[out]    out_nofat 1 if the file is contiguous (NoFatChain).
+ * @return Error code.
+ * @retval k_ra_ok            Match; outputs populated.
+ * @retval k_ra_err_not_found This set is not @p path.
+ * @retval k_ra_err_*         Backend read failure.
+ * @pre All pointers are non-NULL; @p cur follows a 0x85 entry.
+ * @pre @p path is a flat (root-level) name.
+ * @post On match the out-params describe the file.
+ * @post On non-match the out-params are untouched.
+ * @note Leftover name entries self-heal in ::priv_exfat_find.
+ * @since 0.1.0
+ */
+static ra_err_t priv_exfat_match_set(const ra_fs_mount_t* m,
+                                     exfat_cursor_t*      cur,
+                                     const char*          path,
+                                     uint32_t*            out_first,
+                                     uint32_t*            out_size,
+                                     uint8_t*             out_nofat)
+{
+  uint8_t  strm[k_exfat_entry_bytes] = {};
+  ra_err_t e                         = priv_exfat_next_entry(m, cur, strm);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  if (strm[0] != (uint8_t)k_exfat_entry_stream) {
+    return k_ra_err_not_found;
+  }
+  const uint32_t nlen = (uint32_t)strm[k_exfat_strm_off_nlen];
+  if (nlen != priv_strlen(path)) {
+    return k_ra_err_not_found;
+  }
+  for (uint32_t pos = 0U; pos < nlen; pos += (uint32_t)k_exfat_name_per_entry) {
+    uint8_t nm[k_exfat_entry_bytes] = {};
+    e                               = priv_exfat_next_entry(m, cur, nm);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    if (nm[0] != (uint8_t)k_exfat_entry_name) {
+      return k_ra_err_not_found;
+    }
+    if (priv_exfat_name_chunk_eq(nm, path, pos, nlen) == 0U) {
+      return k_ra_err_not_found;
+    }
+  }
+  *out_first = priv_rd32(&strm[k_exfat_strm_off_clus]);
+  *out_size  = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  *out_nofat = ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) ? 1U : 0U;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Find a flat root-directory file by name on an exFAT volume.
+ *
+ * @details Streams the root directory entries, matching each File entry set
+ * against @p path; stops at end-of-directory or the scan bound.
+ *
+ * @param[in]  m         Mounted exFAT volume.
+ * @param[in]  path      Target path (ASCII, root-level name).
+ * @param[out] out_first First cluster of the file.
+ * @param[out] out_size  File length in bytes (low 32 bits).
+ * @param[out] out_nofat 1 if the file is contiguous (NoFatChain).
+ * @return Error code.
+ * @retval k_ra_ok            File found; outputs populated.
+ * @retval k_ra_err_not_found No matching entry in the root directory.
+ * @retval k_ra_err_*         Backend read failure.
+ * @pre All pointers are non-NULL; ``m->type`` is exFAT.
+ * @pre ``m->root_cluster`` is valid.
+ * @post On success the out-params describe the file.
+ * @post Scan is bounded by ::k_exfat_scan_limit entries.
+ * @note Only the root directory is searched (flat namespace).
+ * @since 0.1.0
+ */
+static ra_err_t priv_exfat_find(const ra_fs_mount_t* m,
+                                const char*          path,
+                                uint32_t*            out_first,
+                                uint32_t*            out_size,
+                                uint8_t*             out_nofat)
+{
+  exfat_cursor_t cur = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
+  while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
+    uint8_t  entry[k_exfat_entry_bytes] = {};
+    ra_err_t e                          = priv_exfat_next_entry(m, &cur, entry);
+    if (e != k_ra_ok) {
+      return e;
+    }
+    if (entry[0] == (uint8_t)k_exfat_entry_eod) {
+      return k_ra_err_not_found;
+    }
+    if (entry[0] != (uint8_t)k_exfat_entry_file) {
+      continue;
+    }
+    e = priv_exfat_match_set(m, &cur, path, out_first, out_size, out_nofat);
+    if (e == k_ra_ok) {
+      return k_ra_ok;
+    }
+    if (e != k_ra_err_not_found) {
+      return e;
+    }
+  }
+  return k_ra_err_not_found;
+}
+
+/**
+ * @brief Open a file (read-only) on a mounted exFAT volume.
+ *
+ * @details Resolves @p path in the root directory and populates a read handle;
+ * write/append modes are rejected (exFAT is read-only here).
+ *
+ * @param[in]  handle   Mounted exFAT volume.
+ * @param[in]  path     Flat root-level file name (ASCII).
+ * @param[in]  mode     Open mode; only ::k_ra_fs_mode_read is supported.
+ * @param[out] out_file Receives the open handle.
+ * @return Error code.
+ * @retval k_ra_ok                File opened.
+ * @retval k_ra_err_not_supported Write/append requested (exFAT is read-only).
+ * @retval k_ra_err_not_found     No such file.
+ * @retval k_ra_err_no_mem        File table full.
+ * @pre @p handle, @p path, @p out_file are non-NULL; mount is exFAT.
+ * @pre @p handle is in use.
+ * @post On success ``*out_file`` is an in-use read handle.
+ * @post On failure no file slot is consumed.
+ * @note Not thread-safe; callers serialize.
+ * @since 0.1.0
+ */
+static ra_err_t
+priv_exfat_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_file_t** out_file)
+{
+  if (mode != k_ra_fs_mode_read) {
+    return k_ra_err_not_supported;
+  }
+  uint32_t first = 0U;
+  uint32_t size  = 0U;
+  uint8_t  nofat = 0U;
+  ra_err_t e     = priv_exfat_find(handle, path, &first, &size, &nofat);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  ra_fs_file_t* f = priv_alloc_file_slot();
+  if (f == nullptr) {
+    return k_ra_err_no_mem;
+  }
+  f->mount         = handle;
+  f->first_cluster = first;
+  f->cur_cluster   = first;
+  f->size_bytes    = size;
+  f->offset        = 0U;
+  f->dir_entry_lba = 0U;
+  f->dir_entry_idx = 0U;
+  f->mode          = mode;
+  f->no_fat_chain  = nofat;
+  f->in_use        = 1U;
+  *out_file        = f;
+  return k_ra_ok;
+}
+
 /**
  * @brief Read + parse the FAT boot sector, transparently following an MBR.
  *
@@ -1541,7 +1998,7 @@ static ra_err_t priv_read_boot_sector(ra_fs_mount_t* m)
   if (err != k_ra_ok) {
     return err;
   }
-  err = priv_parse_bpb_into_mount(m);
+  err = priv_parse_volume(m);
   if (err == k_ra_ok) {
     return k_ra_ok;
   }
@@ -1554,7 +2011,7 @@ static ra_err_t priv_read_boot_sector(ra_fs_mount_t* m)
   if (err != k_ra_ok) {
     return err;
   }
-  return priv_parse_bpb_into_mount(m);
+  return priv_parse_volume(m);
 }
 
 ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
@@ -1576,9 +2033,13 @@ ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
   if (err != k_ra_ok) {
     return err;
   }
-  err = priv_compute_geometry(m);
-  if (err != k_ra_ok) {
-    return err;
+  /* exFAT geometry is parsed directly in priv_exfat_parse; the FAT-BPB
+   * geometry computation applies only to FAT12/16/32. */
+  if (m->type != k_ra_fs_type_exfat) {
+    err = priv_compute_geometry(m);
+    if (err != k_ra_ok) {
+      return err;
+    }
   }
   m->in_use   = 1;
   *out_handle = m;
@@ -1771,6 +2232,7 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
   f->dir_entry_lba = lba;
   f->dir_entry_idx = off;
   f->mode          = mode;
+  f->no_fat_chain  = 0U;
   f->in_use        = 1;
   if (mode == k_ra_fs_mode_write) {
     ra_err_t err = priv_truncate_existing(handle, f, lba, off);
@@ -1851,6 +2313,7 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
   f->dir_entry_lba = free_lba;
   f->dir_entry_idx = free_off;
   f->mode          = mode;
+  f->no_fat_chain  = 0U;
   f->in_use        = 1;
   *out_file        = f;
   return k_ra_ok;
@@ -1894,6 +2357,9 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   }
   if (handle->in_use == 0U) {
     return k_ra_err_invalid_state;
+  }
+  if (handle->type == k_ra_fs_type_exfat) {
+    return priv_exfat_open(handle, path, mode, out_file);
   }
   uint8_t name83[k_max_8_3_name] = {};
   if (priv_path_to_83(path, name83) == 0U) {
@@ -2026,9 +2492,15 @@ priv_read_one_chunk(ra_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32
   const uint32_t cluster_bytes   = file->mount->sectors_per_cluster * k_ra_fs_bytes_per_sector;
   const uint32_t cluster_idx_now = file->offset / cluster_bytes;
   uint32_t       target          = 0;
-  ra_err_t err = priv_skip_clusters(file->mount, file->first_cluster, cluster_idx_now, &target);
-  if (err != k_ra_ok) {
-    return err;
+  /* exFAT contiguous files (NoFatChain) have no valid FAT chain: clusters are
+   * sequential from the first. FAT files (no_fat_chain == 0) walk the chain. */
+  if (file->no_fat_chain != 0U) {
+    target = file->first_cluster + cluster_idx_now;
+  } else {
+    ra_err_t werr = priv_skip_clusters(file->mount, file->first_cluster, cluster_idx_now, &target);
+    if (werr != k_ra_ok) {
+      return werr;
+    }
   }
   file->cur_cluster                = target;
   const uint32_t off_in_cluster    = file->offset % cluster_bytes;
@@ -2036,7 +2508,7 @@ priv_read_one_chunk(ra_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32
   const uint32_t off_in_sector     = off_in_cluster % k_ra_fs_bytes_per_sector;
   const uint32_t lba = priv_cluster_to_lba(file->mount, file->cur_cluster) + sector_in_cluster;
   uint8_t        sec[k_ra_fs_bytes_per_sector] = {};
-  err                                          = priv_read_sector(file->mount, lba, sec);
+  const ra_err_t err                           = priv_read_sector(file->mount, lba, sec);
   if (err != k_ra_ok) {
     return err;
   }
@@ -2597,6 +3069,9 @@ ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
   }
   if (handle->in_use == 0U) {
     return k_ra_err_invalid_state;
+  }
+  if (handle->type == k_ra_fs_type_exfat) {
+    return k_ra_err_not_supported; /* exFAT is read-only here. */
   }
   uint8_t name83[k_max_8_3_name] = {};
   if (priv_path_to_83(path, name83) == 0U) {
