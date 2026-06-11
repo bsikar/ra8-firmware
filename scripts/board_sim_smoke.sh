@@ -76,8 +76,38 @@ PY
 
 # UI apps whose rendered frame must be rich (distinct-color floor). ereader_ui
 # is the e-reader chrome (ra_box + ra_gfx); this gates that it actually paints.
-render_assert_apps="ereader_ui"
+# sd_font_render reads FONT.OTF off the modelled microSD and reflows it, so its
+# frame must also be non-trivial.
+render_assert_apps="ereader_ui sd_font_render"
 min_render_colors=6
+
+# Apps that need a microSD card attached (board_sim --sd <image>). The harness
+# auto-builds a small FAT16 card image (a font as FONT.OTF) and passes it so
+# sd_font_render can mount + read it. This is how "specify a microSD exists" is
+# exercised in CI: drop the app name here and it runs against a modelled card.
+sd_apps="sd_font_render"
+sd_image=""
+
+# Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
+# in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
+# global $sd_image on success; leaves it empty (apps still run, just card-less)
+# if mkfontimg or the font is unavailable.
+build_sd_image() {
+    local font="$ROOT/libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
+    local mk="$ROOT/tools/mkfontimg"
+    [ -f "$font" ] || return 0
+    cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
+    cmake --build "$mk/build" >/dev/null 2>&1 || return 0
+    sd_image="$(mktemp -t board_sim_sd.XXXXXX.img)"
+    "$mk/build/mkfontimg" "$font" "$sd_image" FONT.OTF >/dev/null 2>&1 || sd_image=""
+}
+
+# Echo the extra board_sim args an app needs (e.g. --sd <image> for SD apps).
+sim_extra_args() { # app -> extra args on stdout
+    case " $sd_apps " in
+    *" $1 "*) [ -n "$sd_image" ] && printf -- '--sd %s' "$sd_image" ;;
+    esac
+}
 
 apps=("$@")
 if [ "${#apps[@]}" -eq 0 ]; then
@@ -106,6 +136,13 @@ cmake -B "$sim_dir/build" -S "$sim_dir" >/dev/null
 cmake --build "$sim_dir/build" -j >/dev/null
 sim="$sim_dir/build/board_sim"
 
+# Build the microSD card image once if any selected app needs it.
+for app in "${apps[@]}"; do
+    case " $sd_apps " in
+    *" $app "*) build_sd_image; break ;;
+    esac
+done
+
 fail=0
 for app in "${apps[@]}"; do
     printf '  %-24s ' "$app"
@@ -120,7 +157,9 @@ for app in "${apps[@]}"; do
         fail=1
         continue
     fi
-    out="$("$sim" "$elf" 2>&1 || true)"
+    # shellcheck disable=SC2046  -- intentional word-split of the extra args
+    extra="$(sim_extra_args "$app")"
+    out="$("$sim" "$elf" $extra 2>&1 || true)"
     if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
         echo "FAULT (invalid opcode / unmapped access)"
         fail=1
@@ -141,7 +180,8 @@ for app in "${apps[@]}"; do
     case " $render_assert_apps " in
     *" $app "*)
         ppm="$(mktemp)"
-        "$sim" "$elf" --ppm "$ppm" >/dev/null 2>&1 || true
+        # shellcheck disable=SC2046  -- intentional word-split of the extra args
+        "$sim" "$elf" --ppm "$ppm" $extra >/dev/null 2>&1 || true
         colors="$(count_ppm_colors "$ppm")"
         rm -f "$ppm"
         if [ "${colors:-0}" -lt "$min_render_colors" ]; then
@@ -155,6 +195,8 @@ for app in "${apps[@]}"; do
     esac
     echo "OK (pc=$pc)"
 done
+
+[ -n "$sd_image" ] && rm -f "$sd_image"
 
 if [ "$fail" -eq 0 ]; then
     echo "board_sim smoke: ALL PASS"
