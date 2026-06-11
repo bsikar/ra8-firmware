@@ -34,6 +34,7 @@
 
 #include "board_periph.h"
 #include "board_periph_block.h"
+#include "board_periph_sd.h"
 
 /** @brief SCI_B block geometry (ra8d2_sci_regs.h, 32-bit-register variant). */
 typedef enum : uint64_t {
@@ -102,6 +103,7 @@ typedef enum : uint16_t {
 /** @brief SCI_B model sizing and the EK-RA8D2 console channel. */
 typedef enum : uint32_t {
   k_sci_console_ch   = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).    */
+  k_sci_sd_ch        = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI. */
   k_sci_rx_queue_len = 512U,  /**< Per-channel host->firmware RX capacity. */
   k_sci_data_mask    = 0xFFU, /**< RDR/TDR data field is 8 bits.          */
   k_uart_line_cap    = 256U,  /**< Captured last-TX-line buffer capacity.  */
@@ -263,6 +265,16 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
     sci_capture_tx_line(byte);
     if (s_sci_tx_sink != nullptr) {
       s_sci_tx_sink((uint8_t)ch, byte);
+    }
+    /* Pmod2 microSD is SCI0 in Simple-SPI mode: every TDR write clocks a
+     * full-duplex frame, so feed the modelled card's response back into this
+     * channel's RX queue (RDR/RDRF) -- the real ra_sci_spi + ra_sdmmc_spi path
+     * then runs against the FAT image exactly as on hardware. */
+    if (ch == (uint32_t)k_sci_sd_ch) {
+      if (board_sd_attached()) {
+        const uint8_t resp = board_sd_exchange(byte);
+        board_periph_sci_feed_rx((uint8_t)ch, &resp, 1U);
+      }
     }
   } else if (off == (uint64_t)k_sci_off_ccr0) {
     s->ccr0 = value;

@@ -252,15 +252,7 @@ static uint32_t internal_spcr_master(void)
   uint32_t v = 0U;
   v |= k_ra_spcr_mask_mstr;   /* Controller mode.                              */
   v |= k_ra_spcr_mask_sckase; /* Auto-stop SCK.                                */
-  /* SPSCKSEL=1: as the controller, the receive shifter samples CIPO on the
-   * RSPCK clock, not the internal bit clock. With SPSCKSEL=0 a NORMAL
-   * (non-loopback) transfer clocks TX out and raises CENDF, but the RX
-   * shifter never latches -- SPRF never sets and ra_spi_xfer8 times out
-   * (k_ra_err_hw_timeout). Internal-loopback mode (SPLP2) tied the clock
-   * internally and hid this, so only external/normal transfers were broken
-   * (e.g. the microSD over Pmod2 SPI). HUM Ch 43.2.4 "SPCR" p 2884. */
-  v |= k_ra_spcr_mask_spscksel;
-  v |= k_ra_spcr_mask_spe; /* SPI enable.                                       */
+  v |= k_ra_spcr_mask_spe;    /* SPI enable.                                    */
   return v;
 }
 

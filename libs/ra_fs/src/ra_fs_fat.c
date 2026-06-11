@@ -86,6 +86,19 @@ typedef enum : uint8_t {
 } ra_fs_sig_t;
 
 /**
+ * @enum ra_fs_mbr_off_t
+ * @brief Byte offsets inside an MBR partition table (when LBA 0 is not a BPB).
+ *
+ * @details A standard SD card is MBR-partitioned: LBA 0 holds a partition
+ * table (four 16-byte entries starting at 0x1BE) and the FAT boot sector
+ * lives at the partition's first LBA. Only partition 0 is consulted.
+ */
+typedef enum : uint16_t {
+  k_mbr_off_part0_type = 0x1C2U, /**< Partition 0 type byte (0 = unused).      */
+  k_mbr_off_part0_lba  = 0x1C6U, /**< Partition 0 first-LBA (4 bytes, LE).     */
+} ra_fs_mbr_off_t;
+
+/**
  * @enum ra_fs_cluster_t
  * @brief Reserved cluster numbers used by the FAT itself.
  */
@@ -332,7 +345,7 @@ static uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n)
  */
 static ra_err_t priv_read_sector(const ra_fs_mount_t* m, uint32_t lba, uint8_t* buf)
 {
-  return m->backend.read_block(m->backend.ctx, lba, 1, buf);
+  return m->backend.read_block(m->backend.ctx, lba + m->partition_base_lba, 1, buf);
 }
 
 /**
@@ -359,7 +372,7 @@ static ra_err_t priv_read_sector(const ra_fs_mount_t* m, uint32_t lba, uint8_t* 
  */
 static ra_err_t priv_write_sector(const ra_fs_mount_t* m, uint32_t lba, const uint8_t* buf)
 {
-  return m->backend.write_block(m->backend.ctx, lba, 1, buf);
+  return m->backend.write_block(m->backend.ctx, lba + m->partition_base_lba, 1, buf);
 }
 
 /* =============================================================================
@@ -1470,6 +1483,80 @@ static ra_err_t priv_compute_geometry(ra_fs_mount_t* m)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Return partition 0's first LBA from an MBR in @p buf, or 0.
+ *
+ * @details Used only after the LBA-0 BPB parse fails: a standard SD card is
+ * MBR-partitioned, so the FAT boot sector lives at partition 0's start LBA,
+ * not at LBA 0. Returns 0 when @p buf is not a usable MBR (no 0x55AA, or an
+ * unused partition 0), which leaves the caller's original error in force.
+ *
+ * @param[in] buf Sector-0 contents (>= 512 bytes).
+ * @return Partition 0 first LBA, or 0 if not an MBR with a live partition 0.
+ * @retval 0 ``buf`` is not a usable MBR (no 0x55AA or an unused partition 0).
+ * @retval non-zero Partition 0's first LBA.
+ * @pre @p buf is non-NULL and holds at least one sector.
+ * @pre @p buf is the contents of LBA 0.
+ * @post No state modified.
+ * @post @p buf is unmodified.
+ * @note Not thread-safe (reads caller-owned memory only).
+ * @since 0.1.0
+ */
+static uint32_t priv_mbr_part0_lba(const uint8_t* buf)
+{
+  if (buf[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
+    return 0U;
+  }
+  if (buf[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
+    return 0U;
+  }
+  if (buf[k_mbr_off_part0_type] == 0U) {
+    return 0U;
+  }
+  return priv_rd32(&buf[k_mbr_off_part0_lba]);
+}
+
+/**
+ * @brief Read + parse the FAT boot sector, transparently following an MBR.
+ *
+ * @details Tries the BPB at the current base (LBA 0 for a superfloppy). If
+ * that parse fails and sector 0 is an MBR, retargets the mount to partition
+ * 0's start LBA and re-parses. Leaves the original error in force when sector
+ * 0 is neither a BPB nor a usable MBR.
+ *
+ * @param[in,out] m Mount with backend bound and ``partition_base_lba == 0``.
+ * @return Error code from the (re-)parse.
+ * @retval k_ra_ok ``m`` holds the volume's BPB fields and base LBA.
+ * @retval k_ra_err_* The backend read failed or no FAT BPB was found.
+ * @pre ``m->partition_base_lba`` is 0 on entry.
+ * @pre ``m->backend`` is bound with a valid ``read_block``.
+ * @post On success ``m`` holds the volume's BPB fields and base LBA.
+ * @post On failure ``m`` is left unmounted.
+ * @note Not thread-safe; serialize mount operations.
+ * @since 0.1.0
+ */
+static ra_err_t priv_read_boot_sector(ra_fs_mount_t* m)
+{
+  ra_err_t err = priv_read_sector(m, 0, s_scratch);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = priv_parse_bpb_into_mount(m);
+  if (err == k_ra_ok) {
+    return k_ra_ok;
+  }
+  const uint32_t base = priv_mbr_part0_lba(s_scratch);
+  if (base == 0U) {
+    return err;
+  }
+  m->partition_base_lba = base;
+  err                   = priv_read_sector(m, 0, s_scratch);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return priv_parse_bpb_into_mount(m);
+}
+
 ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
 {
   if (backend == nullptr || out_handle == nullptr) {
@@ -1483,12 +1570,9 @@ ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
   if (m == nullptr) {
     return k_ra_err_no_mem;
   }
-  m->backend   = *backend;
-  ra_err_t err = priv_read_sector(m, 0, s_scratch);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = priv_parse_bpb_into_mount(m);
+  m->backend            = *backend;
+  m->partition_base_lba = 0U;
+  ra_err_t err          = priv_read_boot_sector(m);
   if (err != k_ra_ok) {
     return err;
   }
