@@ -598,20 +598,28 @@ typedef enum : uint16_t {
  * @brief Pin assignments for Pmod2 (J25) in SPI mode (UM Table 19 p 27).
  *
  * @details
- * Pmod2 uses RSPI bus B for SPI (P601..P604). Both UART and SPI
- * are present; selection is by jumper E10/E14/E15/E16.
+ * Pmod2 SPI on P601..P604 is **SCI0 in Simple-SPI mode**, not the
+ * RSPI/SPI_B peripheral: HUM Table 20.13 (PORT6) routes these pins at
+ * ``PSEL = 00100b`` (k_ra_psel_sci_async) to SCK0_B / CIPO0_B (MISO0_B) /
+ * COPI0_B (MOSI0_B) / SS0_B -- the SPI (``PSEL = 00110b``) function has no
+ * mapping on P601..P604 (RSPCKB/MOSIB/MISOB live on P609..P611). The EK UM
+ * Table 19 labels them RSPCKB/MOSIB/MISOB after the bus role, but the silicon
+ * drives them from SCI0; use ::ra_sci_spi (channel 0) as the controller.
+ * Both UART and Simple-SPI share the SCI function; jumpers E10/E14/E15/E16
+ * select SPI vs UART signalling on pins 1/4.
  */
 typedef enum : uint16_t {
   k_ra_board_pmod2_spi_cs = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4),
-  /**< Pmod2.1 CS   (SSLB0), P604. UM Table 19 p 27. */ /* LEGACY-OK: SSLB0 is the UM pin-mux signal name */
+  /**< Pmod2.1 CS   (SS0_B),  P604. UM Table 19 p 27. */
   k_ra_board_pmod2_spi_copi =
     (uint16_t)RA_PIN(k_ra_port_6,
-                     k_ra_pin_3), /**< Pmod2.2 COPI (MOSIB per UM), P603. UM Table 19 p 27. */
+                     k_ra_pin_3), /**< Pmod2.2 COPI (COPI0_B), P603. UM Table 19 p 27. */
   k_ra_board_pmod2_spi_cipo =
     (uint16_t)RA_PIN(k_ra_port_6,
-                     k_ra_pin_2), /**< Pmod2.3 CIPO (MISOB per UM), P602. UM Table 19 p 27. */
+                     k_ra_pin_2), /**< Pmod2.3 CIPO (CIPO0_B), P602. UM Table 19 p 27. */
   k_ra_board_pmod2_spi_sck =
-    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_1), /**< Pmod2.4 SCK  (RSPCKB),P601. UM Table 19 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_1), /**< Pmod2.4 SCK  (SCK0_B),  P601. UM Table 19 p 27. */
 } ra_board_pmod2_spi_pin_t;
 
 /** @brief Pin assignments for Pmod2 (J25) in UART mode (UM Table 19 p 27). */

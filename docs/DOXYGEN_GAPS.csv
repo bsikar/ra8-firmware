@@ -1,1 +1,6 @@
 source_file,line,function_name,missing_tags,severity
+libs/ra_fs/src/ra_fs_fat.c,1500,priv_mbr_part0_lba,@retval;@pre(<2:1);@post(<2:1);@note,medium
+libs/ra_fs/src/ra_fs_fat.c,1528,priv_read_boot_sector,@retval;@pre(<2:1);@post(<2:1);@note,medium
+libs/ra_hal/src/ra_sci_spi.c,93,internal_resolve_rate,@pre(<2:1);@post(<2:1),medium
+libs/ra_hal/src/ra_sci_spi.c,128,internal_apply_rate,@details;@pre(<2:1);@post(<2:1);@note,medium
+libs/ra_hal/src/ra_sci_spi.c,154,internal_ccr3,@retval;@pre(<2:1);@post(<2:1);@note,medium

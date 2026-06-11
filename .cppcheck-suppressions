@@ -124,6 +124,8 @@ unusedStructMember:libs/ra_hal/inc/ra_rmac.h
 unusedStructMember:libs/ra_hal/inc/ra_touch.h
 unusedStructMember:libs/ra_hal/inc/ra_usb.h
 unusedStructMember:libs/ra_hal/inc/ra_wdt.h
+unusedStructMember:libs/ra_hal/inc/ra_sci_spi.h
+unusedStructMember:libs/ra_fs/inc/ra_fs.h
 
 # unusedStructMember on the board_sim board-view status struct. Its fields are
 # read in tools/board_sim/src/board_overlay.c via a pointer to the struct declared

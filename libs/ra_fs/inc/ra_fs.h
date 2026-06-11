@@ -35,7 +35,8 @@
  *   - Sub-directory creation / removal (`mkdir`, `rmdir`).
  *   - FAT32 FSInfo free-cluster cache (we always linearly scan).
  *   - Date/time stamps on writes (left at 0, like FSP's minimal mode).
- *   - Multi-partition MBR scanning (we treat LBA 0 as the BPB).
+ *   - Multi-partition MBR scanning (only partition 0 is followed; a
+ *     superfloppy BPB at LBA 0 is still supported transparently).
  *
  * Limits (compile-time):
  *   - 4 concurrent open file handles (`k_ra_fs_max_files`).
@@ -194,6 +195,7 @@ typedef struct {
   uint32_t        first_root_lba;      /**< FAT12/16 fixed root-dir start.   */
   uint32_t        first_data_lba;      /**< First sector of the data region. */
   uint32_t        count_of_clusters;   /**< Per MS spec: data_sectors / SPC.*/
+  uint32_t        partition_base_lba;  /**< MBR partition start (0 = superfloppy). */
   uint8_t         in_use;              /**< 0 = slot free, 1 = mounted.      */
 } ra_fs_mount_t;
 
