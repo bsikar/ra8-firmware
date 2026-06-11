@@ -75,7 +75,9 @@ typedef enum : uint32_t {
   k_probe_banner_wait_ms  = 6000U,   /**< Boot-banner listen window.           */
   k_probe_u15_iic_ch      = 1U,      /**< U15 expander IIC_B channel.          */
   k_probe_u15_addr        = 0x43U,   /**< U15 PI4IOE5V6408 7-bit address.      */
+  k_probe_u15_reg_iodir   = 0x03U,   /**< U15 direction (1=output).            */
   k_probe_u15_reg_out     = 0x05U,   /**< U15 output-latch register.           */
+  k_probe_u15_reg_hiz     = 0x07U,   /**< U15 output Hi-Z (1=Hi-Z).            */
   k_probe_u15_reg_input   = 0x0FU,   /**< U15 input-level register.            */
   k_probe_u15_default     = 0xF2U,   /**< Project-default latch (BSP value).   */
   k_probe_loop_pattern    = 0xA5U,   /**< Loopback test byte.                  */
@@ -100,6 +102,8 @@ typedef enum : uint32_t {
   k_probe_pass_period_ms  = 5000U,   /**< Idle heartbeat between ladder runs.  */
   k_probe_p602_pin_bit    = 2U,      /**< Pmod2 RXD0 (P602) bit in PORT6 PIDR.  */
   k_probe_p603_pin_bit    = 3U,      /**< Pmod2 TXD0 (P603) bit in PORT6 PIDR.  */
+  k_probe_u15_all_high    = 0xFFU,   /**< Drive-test latch: all outputs HIGH.   */
+  k_probe_u15_all_low     = 0x00U,   /**< Drive-test latch: all outputs LOW.    */
 } da16600_probe_const_t;
 
 /* Pmod2 (J25) alternate landing for the US159-DA16600EVZ: SCI0 on PORT6
@@ -361,9 +365,10 @@ static void probe_setup_or_halt(void)
     probe_panic_halt();
   }
   /* Force the SW4 layout this project needs (Pmod1 UART + Octo-SPI
-   * inactive) through the U15 expander -- the physical DIP is set for
-   * Octo-SPI on this bench, which mux-steals P801/P802 from Pmod1.
-   * UM Section 5.5.3 p 32: the expander outputs override the DIP. */
+   * inactive) through the U15 expander. UM Sec 4.3.4 p 15: with the
+   * expander port in output mode the software value overrides the SW4
+   * DIP -- verified valid here (the old "DIP overpowers" reading was a
+   * 0x0F-blind-to-outputs artifact; see probe_u15_drive_test). */
   const ra_err_t sw4 = ra_board_io_expander_apply_project_sw4_defaults();
   probe_log((sw4 == k_ra_ok) ? "sw4: override applied\r\n" : "sw4: override FAILED\r\n");
   /* Assert host RTS (P804) LOW *before* any wire/edge measurement. The
@@ -581,10 +586,11 @@ static void probe_sweep_baud(uint32_t baud)
 /**
  * @brief Read back U15's output latch and physical input levels.
  *
- * @details The SW4 override programs the U15 latch; this reads both the
- * latch (reg 0x05) and the live pin levels (reg 0x0F). When the pins do
- * not follow the latch, the mechanical DIP switches are electrically
- * winning and the Pmod1 mux never moved (issue #44 behaviour).
+ * @details The SW4 override programs the U15 latch; this reads back the
+ * latch (reg 0x05), the direction (0x03), Hi-Z (0x07) and the input-level
+ * register (0x0F). NB: 0x0F reads 0x00 for any pin held in output mode on
+ * the PI4IOE5V6408 (see ::probe_u15_drive_test), so a latch!=level result
+ * is the register being blind to outputs, NOT the DIP winning.
  *
  * @pre The SW4 override ran (IIC_B1 is initialized, U15 ACKs).
  * @pre Console is up.
@@ -610,11 +616,66 @@ static void probe_rung_u15_readback(void)
     probe_log("u15: level read FAIL\r\n");
     return;
   }
+  /* Read the direction (0x03) and Hi-Z (0x07) registers too. If the BSP
+   * truly put the pins in push-pull output mode these read iodir=0xFF /
+   * hiz=0x00; if so and pins still differ from latch, the DIP is winning
+   * an actual electrical fight. If they read otherwise, the override
+   * never armed and it is fixable in software. */
+  uint8_t iodir = 0U;
+  uint8_t hiz   = 0U;
+  reg           = (uint8_t)k_probe_u15_reg_iodir;
+  (void)
+    ra_i2c_transfer((uint8_t)k_probe_u15_iic_ch, (uint8_t)k_probe_u15_addr, &reg, 1U, &iodir, 1U);
+  reg = (uint8_t)k_probe_u15_reg_hiz;
+  (void)ra_i2c_transfer((uint8_t)k_probe_u15_iic_ch, (uint8_t)k_probe_u15_addr, &reg, 1U, &hiz, 1U);
   probe_log("u15: latch=");
   probe_log_hex16((uint16_t)latch);
   probe_log(" pins=");
   probe_log_hex16((uint16_t)level);
-  probe_log((latch == level) ? " (override WINNING)\r\n" : " (DIP overpowers)\r\n");
+  probe_log(" iodir=");
+  probe_log_hex16((uint16_t)iodir);
+  probe_log(" hiz=");
+  probe_log_hex16((uint16_t)hiz);
+  probe_log((latch == level) ? " (in==out)\r\n" : " (0x0F blind to outputs)\r\n");
+}
+
+/**
+ * @brief Empirically decide whether U15's input register tracks its outputs.
+ *
+ * @details Drives the latch to 0xFF then 0x00 (pins already iodir=output,
+ * hiz=0) and reads the input-level register (0x0F) after each. If 0x0F
+ * follows (0xFF then 0x00) the expander really drives the SW4 nets and the
+ * mux moves with software -- so a static ``pins=0000`` was a readback that
+ * simply does not reflect output pins, NOT a DIP overpowering the driver.
+ * If 0x0F stays put regardless, the nets are externally pinned. Restores
+ * the project latch on exit.
+ *
+ * @pre ::probe_rung_u15_readback has run; IIC_B1 is up.
+ * @pre Console is initialized.
+ * @post U15 output latch restored to the project default (0xF2).
+ * @post Two probe lines have been printed.
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static ra_err_t probe_u15_write_latch(uint8_t value);
+
+static void probe_u15_drive_test(void)
+{
+  uint8_t reg = (uint8_t)k_probe_u15_reg_input;
+  uint8_t hi  = 0U;
+  uint8_t lo  = 0U;
+  (void)probe_u15_write_latch((uint8_t)k_probe_u15_all_high);
+  ra_delay_ms((uint32_t)k_probe_u15_settle_ms);
+  (void)ra_i2c_transfer((uint8_t)k_probe_u15_iic_ch, (uint8_t)k_probe_u15_addr, &reg, 1U, &hi, 1U);
+  (void)probe_u15_write_latch((uint8_t)k_probe_u15_all_low);
+  ra_delay_ms((uint32_t)k_probe_u15_settle_ms);
+  (void)ra_i2c_transfer((uint8_t)k_probe_u15_iic_ch, (uint8_t)k_probe_u15_addr, &reg, 1U, &lo, 1U);
+  (void)probe_u15_write_latch((uint8_t)k_probe_u15_default);
+  probe_log("u15 drive: out=FF->pins=");
+  probe_log_hex16((uint16_t)hi);
+  probe_log(" out=00->pins=");
+  probe_log_hex16((uint16_t)lo);
+  probe_log((hi != lo) ? " (OUTPUTS LIVE)\r\n" : " (pins pinned)\r\n");
 }
 
 /**
@@ -1392,6 +1453,7 @@ int32_t main(void)
   ra_isr_globals_enable();
   probe_log("\r\nda16600: probe boot\r\n");
   probe_rung_u15_readback();
+  probe_u15_drive_test();
   probe_rung_wire();
   probe_rung_edge_sampler();
   probe_rung_pmod2_edge();
