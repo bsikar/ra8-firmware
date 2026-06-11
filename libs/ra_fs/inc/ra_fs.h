@@ -122,6 +122,7 @@ typedef enum : uint8_t {
   k_ra_fs_type_fat12   = 12, /**< count_of_clusters < 4085. */
   k_ra_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525. */
   k_ra_fs_type_fat32   = 32, /**< count_of_clusters >= 65525. */
+  k_ra_fs_type_exfat   = 64, /**< exFAT (read-only). */
 } ra_fs_type_t;
 
 /* =============================================================================
@@ -213,6 +214,7 @@ typedef struct {
   uint32_t       dir_entry_idx; /**< Byte offset of dir entry within sector.  */
   ra_fs_mode_t   mode;          /**< Open mode.                               */
   uint8_t        in_use;        /**< 0 = slot free, 1 = open.                 */
+  uint8_t        no_fat_chain;  /**< exFAT contiguous file (no FAT walk).     */
 } ra_fs_file_t;
 
 /* =============================================================================
