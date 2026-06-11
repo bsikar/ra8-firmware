@@ -19,11 +19,11 @@
  *      P604 SSLB0) per EK-RA8D2 v1 User's Manual Table 19 p 27.
  *      The chip-select line is claimed as a plain GPIO so the SD
  *      driver can hold it asserted across multi-byte command frames
- *      (RSPI hardware CS pulses per byte, which the SD SPI mode
+ *      (the SCI hardware CS pulses per byte, which the SD SPI mode
  *      protocol cannot tolerate -- SD spec PHY v9 section 7.2.4).
- *   4. ``ra_spi_init`` channel 1 (RSPI bus B) at 400 kHz, mode 0,
- *      MSB-first -- the SD spec mandates the bus opens at <=400 kHz
- *      for the identification phase.
+ *   4. ``ra_sci_spi_init`` channel 0 (SCI0 Simple-SPI) at 400 kHz,
+ *      mode 0, MSB-first -- the SD spec mandates the bus opens at
+ *      <=400 kHz for the identification phase.
  *   5. ``ra_sdmmc_spi_init`` runs the standard SPI-mode SD bring-up
  *      (CMD0 / CMD8 / ACMD41 / CMD58 / CMD9 / CMD16) and escalates
  *      the bus to 25 MHz default-speed on success.
@@ -57,6 +57,7 @@
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_sci.h"
+#include "ra_sci_spi.h"
 #include "ra_sdmmc_spi.h"
 #include "ra_spi.h"
 #include "ra_time.h"
@@ -77,7 +78,7 @@ typedef enum : uint32_t {
   k_sd_byte_mask          = 0xFFU, /**< Low-byte mask. */
   k_sd_demo_uart_baud     = 115200U,
   k_sd_demo_uart_channel  = 8U,
-  k_sd_demo_spi_channel   = 1U, /**< Pmod2 / J25 is wired to RSPI bus B = SPI ch 1. */
+  k_sd_demo_spi_channel   = 0U, /**< Pmod2 / J25 is SCI0 Simple-SPI (HUM Table 20.13). */
   k_sd_demo_payload_bytes = 4096U,
   k_sd_demo_prng_seed     = 0x5EEDC0DEUL,
   k_sd_demo_prng_mul      = 1664525UL, /**< Numerical Recipes LCG.    */
@@ -105,12 +106,12 @@ static const ra_port_pin_t k_sd_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /**
- * @brief Pmod2 SPI pins (J25) -- routed to RSPI bus B per UM Table 19 p 27.
+ * @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI per HUM Table 20.13.
  *
  * @details
- * P604 (SSLB0) is left as a *GPIO* output because SD SPI-mode framing
+ * P604 is left as a *GPIO* output because SD SPI-mode framing
  * requires CS to stay asserted across the 6-byte command + payload +
- * CRC trailer (SD spec PHY v9 section 7.2.4). The RSPI hardware CS
+ * CRC trailer (SD spec PHY v9 section 7.2.4). The SCI hardware CS
  * controller pulses CS between every word, which the SD protocol does
  * not tolerate. Driving CS by hand is the standard workaround.
  */
@@ -199,7 +200,7 @@ static void sd_demo_panic_halt(void)
 static ra_err_t sd_demo_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_spi_set_clock((uint8_t)k_sd_demo_spi_channel, hz, pclka_hz);
+  return ra_sci_spi_set_clock((uint8_t)k_sd_demo_spi_channel, hz, pclka_hz);
 }
 
 /**
@@ -212,34 +213,17 @@ static ra_err_t sd_demo_spi_cs(void* ctx, bool asserted)
 }
 
 /**
- * @brief ``ra_sdmmc_spi_transport_t::xfer`` shim over ``ra_spi_write_read``.
+ * @brief ``ra_sdmmc_spi_transport_t::xfer`` shim over ``ra_sci_spi_xfer``.
  *
  * @details
- * Falls back to per-byte exchange when either buffer is nullptr, since
- * the underlying ``ra_spi_write_read`` requires both. The driver
- * itself already gracefully handles a fall-back path, but doing the
- * fallback inside the transport keeps the driver-side code simpler.
+ * ``ra_sci_spi_xfer`` is full-duplex and already handles a NULL ``tx``
+ * (shifts idle 0xFF) or NULL ``rx`` (discards), so the transport is a
+ * thin pass-through.
  */
 static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
-  if ((tx != nullptr) && (rx != nullptr)) {
-    return ra_spi_write_read((uint8_t)k_sd_demo_spi_channel, tx, rx, len, k_ra_spi_width_8);
-  }
-  /* Per-byte fallback so callers can shift out idle 0xFF without
-   * allocating an rx buffer they don't need. */
-  for (uint32_t i = 0U; i < len; i++) {
-    const uint8_t tx_byte = (tx != nullptr) ? tx[i] : k_sd_spi_idle_byte;
-    uint8_t       rx_byte = 0U;
-    ra_err_t      err     = ra_spi_xfer8((uint8_t)k_sd_demo_spi_channel, tx_byte, &rx_byte);
-    if (err != k_ra_ok) {
-      return err;
-    }
-    if (rx != nullptr) {
-      rx[i] = rx_byte;
-    }
-  }
-  return k_ra_ok;
+  return ra_sci_spi_xfer((uint8_t)k_sd_demo_spi_channel, tx, rx, len);
 }
 
 /* =============================================================================
@@ -260,22 +244,22 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
 }
 
 /**
- * @brief Route Pmod2 SPI pins to RSPI bus B and claim CS as a GPIO output.
+ * @brief Route Pmod2 pins to SCI0 Simple-SPI and claim CS as a GPIO output.
  *
  * @pre IOPORT module is reachable.
- * @post P601/P602/P603 are in RSPI peripheral mode; P604 is a GPIO output.
+ * @post P601/P602/P603 are in SCI0 Simple-SPI mode; P604 is a GPIO output.
  */
 [[nodiscard]] static ra_err_t sd_demo_spi_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_sck, k_ra_psel_spi, "tz_sd.sck");
+  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_sck, k_ra_psel_sci_async, "tz_sd.sck");
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_sd_demo_pin_cipo, k_ra_psel_spi, "tz_sd.cipo");
+  err = ra_pfs_route_peripheral(k_sd_demo_pin_cipo, k_ra_psel_sci_async, "tz_sd.cipo");
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_sd_demo_pin_copi, k_ra_psel_spi, "tz_sd.copi");
+  err = ra_pfs_route_peripheral(k_sd_demo_pin_copi, k_ra_psel_sci_async, "tz_sd.copi");
   if (err != k_ra_ok) {
     return err;
   }
@@ -288,7 +272,7 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  *
  * @param[out] out_pclka_hz Cached PCLKA rate (Hz) for the SPI clock shim.
  *
- * @post On success, the console is ready to print and SPI channel 1 is
+ * @post On success, the console is ready to print and SCI0 Simple-SPI is
  *       configured at 400 kHz mode-0 MSB-first, CS deasserted.
  */
 static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
@@ -324,13 +308,13 @@ static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
   if (sd_demo_spi_pins_init() != k_ra_ok) {
     sd_demo_panic_halt();
   }
-  const ra_spi_cfg_t spi_cfg = {
+  const ra_sci_spi_cfg_t spi_cfg = {
     .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclka_hz  = pclka_hz,
+    .pclk_hz   = pclka_hz,
     .mode      = k_ra_spi_mode_0,
     .lsb_first = false,
   };
-  if (ra_spi_init((uint8_t)k_sd_demo_spi_channel, &spi_cfg) != k_ra_ok) {
+  if (ra_sci_spi_init((uint8_t)k_sd_demo_spi_channel, &spi_cfg) != k_ra_ok) {
     sd_demo_panic_halt();
   }
   *out_pclka_hz = pclka_hz;
