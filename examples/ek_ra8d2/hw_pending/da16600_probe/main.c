@@ -74,6 +74,12 @@ typedef enum : uint32_t {
   k_probe_u15_addr        = 0x43U,   /**< U15 PI4IOE5V6408 7-bit address.      */
   k_probe_u15_reg_out     = 0x05U,   /**< U15 output-latch register.           */
   k_probe_u15_reg_input   = 0x0FU,   /**< U15 input-level register.            */
+  k_probe_u15_default     = 0xF2U,   /**< Project-default latch (BSP value).   */
+  k_probe_u15_sweep_base  = 0xF8U,   /**< Focused sweep base (bits 3-7 high).  */
+  k_probe_u15_sweep_n     = 8U,      /**< All combos of latch bits 0-2.        */
+  k_probe_u15_full_n      = 256U,    /**< Exhaustive latch state space.        */
+  k_probe_u15_settle_ms   = 150U,    /**< Mux/level settle after a latch write.*/
+  k_probe_quick_at_ms     = 400U,    /**< Short AT window inside the sweep.    */
   k_probe_baud_div        = 100U,    /**< Sweep label divisor (fits uint16).   */
   k_probe_ascii_del       = 0x7FU,   /**< First non-printable upper ASCII.     */
   k_probe_pass_period_ms  = 5000U,   /**< Idle heartbeat between ladder runs.  */
@@ -449,6 +455,12 @@ static void probe_rung_wire(void)
                       (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_3));
   probe_wire_test_pin("wire: P804/rts2",
                       (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_4));
+  /* Side-band pins: direct MCU GPIOs to J26 pins 7/9/10, no OSPI pin
+   * sharing and no SW4 involvement. A populated, powered US159 presents
+   * its IRQ/GPIO pins here; if every one floats, no module is seated. */
+  probe_wire_test_pin("wire: P006/irq ", (ra_port_pin_t)k_ra_board_pmod1_irq);
+  probe_wire_test_pin("wire: P412/gpa ", (ra_port_pin_t)k_ra_board_pmod1_gpio_a);
+  probe_wire_test_pin("wire: P413/gpb ", (ra_port_pin_t)k_ra_board_pmod1_gpio_b);
 }
 
 /**
@@ -609,6 +621,159 @@ static void probe_rung_reset_banner(void)
 }
 
 /**
+ * @brief Write a raw value into U15's output latch (reg 0x05).
+ *
+ * @details The PI4IOE5V6408 input-status read is not trustworthy for
+ * output-mode pins, but issue #44 proved latch bit 2 (OSPI_OE_L) has a
+ * real electrical effect. This pokes the latch directly so the sweep
+ * can hunt the bit pattern that routes Pmod1 UART.
+ *
+ * @param[in] value Latch byte to program.
+ * @return ::ra_err_t from the I2C write.
+ * @retval k_ra_ok Latch accepted.
+ *
+ * @pre The SW4 override ran once (IIC_B1 up, U15 configured).
+ * @pre Console is initialized.
+ * @post U15 output latch holds @p value.
+ * @post No other U15 registers change.
+ * @note Diagnostic helper.
+ * @since 0.1.0
+ */
+static ra_err_t probe_u15_write_latch(uint8_t value)
+{
+  uint8_t frame[2];
+  frame[0] = (uint8_t)k_probe_u15_reg_out;
+  frame[1] = value;
+  return ra_i2c_write((uint8_t)k_probe_u15_iic_ch, (uint8_t)k_probe_u15_addr, frame, 2U, true);
+}
+
+/**
+ * @brief Send one ``AT`` and wait briefly for any RX byte.
+ *
+ * @details Raw single-shot used inside the latch sweep: transmits
+ * ``AT\r\n`` and reports whether anything at all came back within the
+ * quick window. Any reply identifies the winning latch value.
+ *
+ * @return 1 when at least one byte arrived, else 0.
+ * @retval 1 RX saw traffic.
+ * @retval 0 Silence.
+ *
+ * @pre SCI2 is initialized at 115200.
+ * @pre ::ra_time_init has been called.
+ * @post The RX FIFO has been drained.
+ * @post No persistent state changes.
+ * @note Diagnostic helper.
+ * @since 0.1.0
+ */
+static uint8_t probe_quick_at(void)
+{
+  uint8_t drain = 0U;
+  while (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &drain) == k_ra_ok) {
+  }
+  static const char at_cmd[] = "AT\r\n";
+  for (uint32_t i = 0U; at_cmd[i] != '\0'; i++) {
+    (void)ra_sci_putc_polling((uint8_t)k_probe_da16600_sci_ch, (uint8_t)at_cmd[i]);
+  }
+  const uint32_t start = ra_time_ms();
+  while ((ra_time_ms() - start) < (uint32_t)k_probe_quick_at_ms) {
+    uint8_t b = 0U;
+    if (ra_sci_getc_polling((uint8_t)k_probe_da16600_sci_ch, &b) == k_ra_ok) {
+      return 1U;
+    }
+  }
+  return 0U;
+}
+
+/**
+ * @brief Sweep all 8 combinations of U15 latch bits 0-2, AT-probing each.
+ *
+ * @details FSP names latch bits 0,1 "OPMOD1/0 mode-selects" and bit 2
+ * "OSPI_OE_L"; the project-default value (0xF2) keeps the flash bus
+ * enabled and may leave Pmod1 in the wrong mode. For each candidate the
+ * sweep programs the latch, settles, GPIO-samples P802, then fires a
+ * quick ``AT``. A reply pins down the routing value.
+ *
+ * @pre SCI2 + console are initialized; U15 is configured.
+ * @pre ::ra_time_init has been called.
+ * @post Eight result lines have been printed.
+ * @post The latch is left at the LAST value that saw RX traffic, or the
+ *       project default when none did.
+ * @note Diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_rung_u15_sweep(void)
+{
+  uint8_t winner = 0U;
+  uint8_t found  = 0U;
+  for (uint8_t combo = 0U; combo < (uint8_t)k_probe_u15_sweep_n; combo++) {
+    const uint8_t value = (uint8_t)((uint8_t)k_probe_u15_sweep_base | combo);
+    if (probe_u15_write_latch(value) != k_ra_ok) {
+      probe_log("u15 sweep: write FAIL\r\n");
+      return;
+    }
+    ra_delay_ms((uint32_t)k_probe_u15_settle_ms);
+    const uint8_t got = probe_quick_at();
+    probe_log("u15 sweep latch=");
+    probe_log_hex16((uint16_t)value);
+    probe_log((got == 1U) ? " RX TRAFFIC\r\n" : " silent\r\n");
+    if (got == 1U) {
+      winner = value;
+      found  = 1U;
+    }
+  }
+  if (found == 1U) {
+    (void)probe_u15_write_latch(winner);
+    probe_log("u15 sweep: winner kept\r\n");
+    return;
+  }
+  (void)probe_u15_write_latch((uint8_t)k_probe_u15_default);
+}
+
+/**
+ * @brief Exhaustive sweep: every U15 latch value 0x00..0xFF, AT each.
+ *
+ * @details Walks the expander's entire output state space -- every
+ * board routing firmware can possibly select -- firing a quick ``AT``
+ * at each value. Prints only the values that produce RX traffic, plus
+ * a final summary. Restores the project-default latch on exit unless a
+ * winner was found (the winner is kept and reported).
+ *
+ * @pre SCI2 + console are initialized; U15 is configured.
+ * @pre ::ra_time_init has been called.
+ * @post A summary line has been printed.
+ * @post The latch holds the winner, or the project default.
+ * @note Runs ~2.5 minutes; diagnostic only.
+ * @since 0.1.0
+ */
+static void probe_rung_u15_full_sweep(void)
+{
+  uint16_t hits   = 0U;
+  uint8_t  winner = 0U;
+  probe_log("u15 full sweep: start\r\n");
+  for (uint32_t v = 0U; v < (uint32_t)k_probe_u15_full_n; v++) {
+    if (probe_u15_write_latch((uint8_t)v) != k_ra_ok) {
+      probe_log("u15 full sweep: write FAIL\r\n");
+      return;
+    }
+    ra_delay_ms((uint32_t)k_probe_u15_settle_ms);
+    if (probe_quick_at() == 1U) {
+      probe_log("u15 full sweep: RX TRAFFIC at latch=");
+      probe_log_hex16((uint16_t)v);
+      probe_log("\r\n");
+      winner = (uint8_t)v;
+      hits++;
+    }
+  }
+  if (hits > 0U) {
+    (void)probe_u15_write_latch(winner);
+    probe_log("u15 full sweep: winner kept\r\n");
+    return;
+  }
+  (void)probe_u15_write_latch((uint8_t)k_probe_u15_default);
+  probe_log("u15 full sweep: all 256 silent\r\n");
+}
+
+/**
  * @brief Rung 1: probe the module with a bare ``AT``.
  *
  * @details Wires the byte transport into ::ra_da16600_init, which sends
@@ -746,6 +911,8 @@ int32_t main(void)
   probe_rung_wire();
   probe_uart_setup_or_halt();
   probe_rung_reset_banner();
+  probe_rung_u15_sweep();
+  probe_rung_u15_full_sweep();
   ra_delay_ms((uint32_t)k_probe_boot_settle_ms);
   uint8_t swept = 0U;
 
