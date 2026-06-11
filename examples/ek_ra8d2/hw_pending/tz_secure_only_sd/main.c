@@ -342,22 +342,21 @@ static void sd_demo_fill_payload(uint8_t* buf, uint32_t len)
 }
 
 /**
- * @brief Write the payload to ``/test.txt`` on the mounted FAT volume.
+ * @brief Write the payload to ``TEST.TXT`` on the mounted volume.
+ *
+ * @details Uses the one-shot ::ra_fs_write_file so the same path works on
+ * FAT and exFAT (exFAT only supports whole-file creation). It does not
+ * overwrite: if ``TEST.TXT`` already exists from a previous run the existing
+ * file is kept, and the read-back below still validates persistence.
  */
 [[nodiscard]] static ra_err_t
 sd_demo_write_payload(ra_fs_mount_t* mount, const uint8_t* payload, uint32_t len)
 {
-  ra_fs_file_t* f   = nullptr;
-  ra_err_t      err = ra_fs_open(mount, "TEST.TXT", k_ra_fs_mode_write, &f);
-  if (err != k_ra_ok) {
-    return err;
+  ra_fs_file_t* existing = nullptr;
+  if (ra_fs_open(mount, "TEST.TXT", k_ra_fs_mode_read, &existing) == k_ra_ok) {
+    return ra_fs_close(existing);
   }
-  err = ra_fs_write(f, payload, len);
-  if (err != k_ra_ok) {
-    (void)ra_fs_close(f);
-    return err;
-  }
-  return ra_fs_close(f);
+  return ra_fs_write_file(mount, "TEST.TXT", payload, len);
 }
 
 /**
