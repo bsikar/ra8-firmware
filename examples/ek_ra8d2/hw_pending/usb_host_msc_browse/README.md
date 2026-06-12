@@ -6,13 +6,17 @@ and the firmware enumerates it, runs a SCSI INQUIRY -> READ_CAPACITY(10)
 -> READ(10) sequence on LBA 0, and dumps the first 64 bytes of the
 device's MBR over the J-Link OB CDC virtual COM port.
 
-Targets **USB-FS** (12 Mbps): simpler PHY than HS and it sidesteps the
-HS SET_ADDRESS-stall blocker. Pins: VBUS P4_07, VBUSEN P5_00 (supplies
-bus power in host mode), D+/D- P8_14/P8_15, all PSEL 0x13.
+Targets **USB-HS** (480 Mbps) on the J7 Type-C jack: only the VBUS sense
+pin (P4_08, PSEL 0x14) is PFS-muxed -- D+/D- are dedicated PHY balls.
+Host power needs PD07 driven HIGH (EK UM Sec 6.2: U18 supplies J7, 2 A)
+and SW4-8 in the Host position (set in software via the U15 expander).
+The same ladder previously passed end to end on USB-FS (12 Mbps); the
+engine is speed-parameterized and both paths share all of the code.
 
-## Bring-up status (2026-06-12): WORKING END TO END
+## Bring-up status (2026-06-12): WORKING END TO END AT HIGH SPEED
 
-The full ladder completes on real hardware, repeatably across resets:
+The full ladder completes on real hardware at 480 Mbps (DVSTCTR0.RHST =
+011b after the chirp handshake), repeatably across resets:
 
 ```
 ra8d2 host: enum attempt won=4
@@ -33,8 +37,11 @@ is legal -- the CSW signature/tag/status are validated per exchange.)
 
 The ladder retries every 5 s, so inserting or reseating a drive is
 picked up automatically. Host-mode learnings (SACK/SIGN-gated SETUP,
-NRDY retry, BCLR-before-status, DATA1 SQSET, CFIFOSEL settle) live in
-`libs/ra_hal/src/ra_usb.c` with HUM citations.
+NRDY retry, BCLR-before-status, DATA1 SQSET, CFIFOSEL settle, and the
+HS additions: full UTMI PHY bring-up + CNEN for host line-state, the
+DVSTCTR0.VBUSEN switch, SUREQCLR recovery, 11-bit PIPEMAXP.MXPS, and
+honoring a pre-latched BRDY so a CSW arriving right behind a full data
+packet is not stranded) live in `libs/ra_hal/src/ra_usb.c`.
 
 This is the hardware-test counterpart to the host-side MSC class
 layer in `libs/ra_hal/src/ra_usb_hmsc.c`.
