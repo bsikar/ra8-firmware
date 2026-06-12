@@ -1210,6 +1210,10 @@ typedef struct {
                                               *   no BEMP; current chunk re-staged.        */
   volatile uint32_t in_stage_fail;           /**< +0x38 queue_in failed while staging an IN
                                               *   chunk from the IRQ walk.                 */
+  volatile uint32_t ep_create_calls;         /**< +0x3C endpoint-create invocations.       */
+  volatile uint32_t ep_create_fail;          /**< +0x40 endpoint-create failures.          */
+  volatile uint32_t chg_state_attached;      /**< +0x44 CHANGE_STATE(ATTACHED) calls.      */
+  volatile uint32_t chg_state_configured;    /**< +0x48 CHANGE_STATE(CONFIGURED) calls.    */
 } ra_usb_dcd_diag_t;
 
 /**
@@ -1250,6 +1254,8 @@ typedef enum : uint32_t {
   k_dcd_trace_cdb_lba_lo = 5U,    /**< CDB byte: LBA bits 7..0.          */
   k_dcd_trace_kind_ocap  = 5U,    /**< Orphan OUT packet captured.       */
   k_dcd_trace_kind_ouse  = 6U,    /**< Orphan packet fed to a transfer.  */
+  k_dcd_trace_nibble     = 0x0FU, /**< Low-nibble mask for packed bytes. */
+  k_dcd_trace_nib_shift  = 4U,    /**< High-nibble shift.                */
 } ra_usb_dcd_trace_t;
 
 /**
@@ -1948,6 +1954,7 @@ static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_addr)
  */
 static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 {
+  s_diag.ep_create_calls++;
   if (ep == nullptr) {
     return UX_ERROR;
   }
@@ -1984,6 +1991,7 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
                                 type,
                                 (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize) !=
       k_ra_ok) {
+    s_diag.ep_create_fail++;
     return UX_ERROR;
   }
   s_dcd.pipes[pipe].ep_addr = ep_addr;
@@ -2115,6 +2123,34 @@ static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPOINT_STRUCT* e
  * @note Runs on the USBX device task context; not ISR-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Count UX_DCD_CHANGE_STATE notifications by target state.
+ *
+ * @details Diagnostic brackets around the chapter-9 configuration
+ * walk: the stack notifies ATTACHED during teardown and CONFIGURED at
+ * the end, so the counter pair shows how far configuration processing
+ * ran (read via JLink alongside ::s_diag).
+ *
+ * @param[in] state The UX device state being announced.
+ *
+ * @pre Called from the DCD function dispatcher only.
+ * @pre ::s_diag is single-writer per counter.
+ * @post The matching counter is incremented (others untouched).
+ * @post No other state changes.
+ *
+ * @note Diagnostic only; never read by production code.
+ * @since 0.1.0
+ */
+static void internal_count_change_state(unsigned long state)
+{
+  if (state == (unsigned long)UX_DEVICE_ATTACHED) {
+    s_diag.chg_state_attached++;
+  }
+  if (state == (unsigned long)UX_DEVICE_CONFIGURED) {
+    s_diag.chg_state_configured++;
+  }
+}
+
 unsigned int
 _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, void* parameter)
 {
@@ -2159,6 +2195,7 @@ _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, 
       return UX_SUCCESS;
 
     case UX_DCD_CHANGE_STATE:
+      internal_count_change_state((unsigned long)parameter);
       s_dcd.state = ((unsigned long)parameter != 0UL) ? k_ux_dcd_ra_usb_state_active
                                                       : k_ux_dcd_ra_usb_state_ready;
       return UX_SUCCESS;
@@ -3079,6 +3116,39 @@ static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
 }
 
 /**
+ * @brief Record one DVST event into the JLink-readable causal history.
+ *
+ * @details One byte per event: high nibble = the raw DVSQ field
+ * (shifted), low nibble = ``ux_slave_device_state`` at IRQ entry
+ * (0xF when USBX is not bound yet). Reading the ring alongside the
+ * SETUP trace reconstructs who demoted/upgraded the chapter-9 state.
+ *
+ * @param[in] dvsq Masked INTSTS0.DVSQ field for this event.
+ *
+ * @pre Called from the DVST IRQ path only (single writer).
+ * @pre ::s_dvst_state_history_count monotonicity is maintained.
+ * @post One ring slot holds the packed event; count incremented.
+ * @post No other state changes.
+ *
+ * @note Diagnostic only; never read by production code.
+ * @since 0.1.0
+ */
+static void internal_dvst_record_history(uint16_t dvsq)
+{
+  const uint8_t dvst_slot =
+    (uint8_t)(s_dvst_state_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
+  uint8_t entry_state = (uint8_t)k_dcd_trace_nibble;
+  if (_ux_system_slave != UX_NULL) {
+    entry_state = (uint8_t)(_ux_system_slave->ux_system_slave_device.ux_slave_device_state &
+                            (unsigned long)k_dcd_trace_nibble);
+  }
+  s_dvst_state_history[dvst_slot] =
+    (uint8_t)((uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) << (uint8_t)k_dcd_trace_nib_shift) |
+              entry_state);
+  s_dvst_state_history_count++;
+}
+
+/**
  * @brief Handle the DVST (device-state-changed) interrupt branch.
  *
  * @details Extracts the DVSQ field from ``intsts0``, records it in the
@@ -3102,14 +3172,13 @@ static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
  */
 static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
 {
+  /* DVSQ field bits 6:4 on BOTH controllers (suspend = bit 6). USBHS
+   * additionally reports VBUS status in bit 7, which must be stripped
+   * -- keeping it made every event decode as "suspended" and the
+   * mirror went inert (bus resets were ignored, see below). */
   const uint16_t dvsq = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
 
-  /* Trace decoded DVSQ even before USBX is bound. */
-  const uint8_t dvst_slot =
-    (uint8_t)(s_dvst_state_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
-  s_dvst_state_history[dvst_slot] =
-    (uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) & (uint16_t)k_ra_usb_dvsq_field_mask);
-  s_dvst_state_history_count++;
+  internal_dvst_record_history(dvsq);
 
   /* On Default-state entry (DVSQ == 0x10), re-arm DCP per FSP
    * usb_pstd_busreset reference flow. Without rearm the IP silently
@@ -3117,25 +3186,49 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
   if (dvsq == (uint16_t)k_ra_dvsq_default) {
     internal_dvst_default_state(speed);
   }
+  /* Suspended sub-states must not be treated as bus transitions. */
 
   if (_ux_system_slave == UX_NULL) {
     return;
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
-  /* DVSQ bits 6:4 mirror the bus state into USBX (chapter-9 gates
-   * EP0 dispatch on device_state in {ATTACHED, ADDRESSED, CONFIGURED}). */
   const unsigned long new_state = internal_dvst_map_dvsq_to_ux_state(dvsq);
   if ((dvsq & (uint16_t)k_ra_dvsq_suspend) == 0U) {
     /* Any non-suspend bus-state transition invalidates the SETUP
-     * fingerprint: the host commonly re-issues GET_DESCRIPTOR(DEVICE)
-     * with the same wire bytes after SET_ADDRESS and after every bus
-     * reset. Without clearing fp here, dedup would skip those
-     * legitimate retries and stall enumeration. */
+     * de-dup fingerprint. */
     s_last_dispatched_setup_fp = 0U;
   }
-  device->ux_slave_device_state = new_state;
-  if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
-    (void)_ux_system_slave->ux_system_slave_change_function(new_state);
+  /* The chapter-9 stack owns the ADDRESSED/CONFIGURED transitions (it
+   * sets them while processing SET_ADDRESS / SET_CONFIGURATION). The
+   * DVSQ mirror must never demote that state asynchronously: USBX
+   * class threads (storage) gate on CONFIGURED and suspend themselves
+   * permanently when they wake to anything else. Mirror policy:
+   *  - suspends are not propagated (traffic pauses, gates keep);
+   *  - upgrades apply directly;
+   *  - any non-suspend DOWNGRADE means the bus went backwards -- a
+   *    (possibly coalesced; at 480 Mbps the default->address hop can
+   *    land before the DVST IRQ is serviced) bus reset. Tear the
+   *    stack's configuration down via _ux_device_stack_disconnect so
+   *    the host's next SET_CONFIGURATION is a full re-configure
+   *    (interface mount + class re-activation -> class thread
+   *    resume); without it the stack treats the re-issued
+   *    SET_CONFIGURATION as a same-value no-op and the storage
+   *    thread parks forever (observed against macOS at HS, whose MSC
+   *    driver resets the device at start-of-probe). */
+  bool apply = false;
+  if (new_state == (unsigned long)UX_DEVICE_SUSPENDED) {
+    apply = false;
+  } else if (new_state > device->ux_slave_device_state) {
+    apply = true; /* upgrade */
+  } else if (new_state < device->ux_slave_device_state) {
+    (void)_ux_device_stack_disconnect(); /* deactivates iff configured */
+    apply = true;
+  }
+  if (apply) {
+    device->ux_slave_device_state = new_state;
+    if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
+      (void)_ux_system_slave->ux_system_slave_change_function(new_state);
+    }
   }
 }
 
