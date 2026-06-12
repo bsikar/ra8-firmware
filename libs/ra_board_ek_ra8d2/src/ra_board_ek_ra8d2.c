@@ -1502,6 +1502,25 @@ ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
 }
 
 /**
+ * @brief Implementation of `ra_board_io_expander_set_usbhs_host_mode()`.
+ * @details See the public header for the documented contract; applies the
+ *          project SW4 layout with SW4-8 (USBHS role) driven ON so the
+ *          board supplies VBUS on J7.
+ * @return Result code.
+ * @retval k_ra_ok U15 is driving the host-role layout.
+ * @pre `ra_mstp_init` has run.
+ * @pre The I2C bus to U15 is reachable.
+ * @post U15 outputs 0x72; J7 is in host role.
+ * @post IIC_B0 is initialized as a side effect of the shared bring-up.
+ * @note Not thread-safe; boot context only.
+ * @since 0.1.0
+ */
+ra_err_t ra_board_io_expander_set_usbhs_host_mode(void)
+{
+  return internal_io_expander_apply((uint8_t)k_ra_board_pi4ioe_output_usbhs_host);
+}
+
+/**
  * @brief Program U15 with this project's SW4 override pattern.
  * @details Writes ``k_ra_board_pi4ioe_output_project_default`` (0xF2) to
  *          the expander's output register, which forces SW4-1 ON +

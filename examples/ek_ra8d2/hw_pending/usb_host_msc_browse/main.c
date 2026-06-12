@@ -182,16 +182,15 @@ typedef enum : uint16_t {
 
 /**
  * @enum usb_host_msc_psel_t
- * @brief PFS PSEL code for routing the USBFS host pins.
+ * @brief PFS PSEL code for routing the USBHS host pin.
  *
- * @details HUM Ch 20.6 "Peripheral Select Settings" gives 0x13 for the
- * Full-Speed controller (USBFS). The drive is on the FS receptacle
- * because FS (12 Mbps) is simpler to bring up than HS (480 Mbps) and
- * sidesteps the HS SET_ADDRESS-stall blocker.
+ * @details HUM Ch 20.6 "Peripheral Select Settings" gives 0x14 for the
+ * High-Speed controller. Only the VBUS sense pin (P4_08) is PFS-muxed;
+ * the HS D+/D- are dedicated PHY package balls.
  */
 typedef enum : uint8_t {
-  k_usb_msc_psel_usb_fs =
-    (uint8_t)k_ra_psel_usb_fs, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
+  k_usb_msc_psel_usb_hs =
+    (uint8_t)k_ra_psel_usb_hs, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
 } usb_host_msc_psel_t;
 
 /**
@@ -238,23 +237,23 @@ static const ra_port_pin_t k_usb_msc_pin_sci_tx =
 static const ra_port_pin_t k_usb_msc_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
-/** @brief USB_FS_VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_usb_msc_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+/** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14) -- the only PFS-muxed
+ *  HS pin; D+/D- are dedicated PHY package balls. */
+static const ra_port_pin_t k_usb_msc_pin_hs_vbus =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
 
-/** @brief USB_FS_VBUSEN host VBUS-supply enable (P5_00, PSEL = 0x13).
- *  Routed as the USB peripheral function so the controller asserts it in
- *  host mode -- this is what actually powers the attached thumb drive. */
-static const ra_port_pin_t k_usb_msc_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS to the
+ *  jack (EK-RA8D2 v1 UM Sec 6.2 p 34, 2 A budget); LOW = device role
+ *  expecting external VBUS. Plain GPIO, not a USB peripheral function. */
+static const ra_port_pin_t k_usb_msc_pin_hs_pwr =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
-/** @brief USB_FS_DP data line (P8_14, PSEL = 0x13). */
-static const ra_port_pin_t k_usb_msc_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+/** @brief Controller this app drives (the drive sits in the HS jack). */
+static const ra_usb_speed_t k_usb_msc_speed = k_ra_usb_speed_hs;
 
-/** @brief USB_FS_DM data line (P8_15, PSEL = 0x13). */
-static const ra_port_pin_t k_usb_msc_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+/** @brief Register window of the controller in use (diagnostics). */
+static volatile const r_usb_regs_t* const k_usb_msc_reg =
+  (volatile const r_usb_regs_t*)(uintptr_t)k_ra_usb_hs0_base_addr;
 
 /* =============================================================================
  * Status messages over SCI8
@@ -263,7 +262,7 @@ static const ra_port_pin_t k_usb_msc_pin_fs_dm =
 
 /** @brief First message after SCI is up. */
 static const uint8_t k_usb_msc_msg_ready[] =
-  "ra8d2 host: ready (USB-FS), plug a USB drive into the FS port\r\n";
+  "ra8d2 host: ready (USB-HS), plug a USB drive into the HS jack\r\n";
 
 /** @brief Static prefix for the per-attach VID/PID print. */
 static const uint8_t k_usb_msc_msg_attach_pre[] = "ra8d2 host: device attached vid=0x";
@@ -342,6 +341,12 @@ static const uint8_t k_usb_msc_msg_sig_bad[] = " (BAD)\r\n";
 static const uint8_t k_usb_msc_msg_step_fail[] = "ra8d2 host: FAIL step=";
 /** @brief Printed when the device accepts and answers at address 1. */
 static const uint8_t k_usb_msc_msg_addr1[] = "ra8d2 host: address 1 assigned\r\n";
+/** @brief BOT phase marker: the CBW transmit failed. */
+static const uint8_t k_usb_msc_msg_bot_cbw[] = "ra8d2 host: bot phase=cbw\r\n";
+/** @brief BOT phase marker: the data-IN stage failed. */
+static const uint8_t k_usb_msc_msg_bot_data[] = "ra8d2 host: bot phase=data\r\n";
+/** @brief BOT phase marker: the CSW read failed. */
+static const uint8_t k_usb_msc_msg_bot_csw[] = "ra8d2 host: bot phase=csw\r\n";
 /** @brief Printed between ladder retry cycles. */
 static const uint8_t k_usb_msc_msg_retry[] =
   "ra8d2 host: retrying in 5 s (reseat the drive any time)\r\n";
@@ -637,29 +642,11 @@ static uint8_t usb_msc_format_decimal_u32(uint32_t value, uint8_t* out)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t usb_msc_pins_fs_init(void)
+[[nodiscard]] static ra_err_t usb_msc_pins_hs_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_usb_msc_pin_fs_vbus,
-                                         (ra_psel_t)k_usb_msc_psel_usb_fs,
-                                         "usb_host_msc_browse.fs_vbus");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_usb_msc_pin_fs_vbusen,
-                                (ra_psel_t)k_usb_msc_psel_usb_fs,
-                                "usb_host_msc_browse.fs_vbusen");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_usb_msc_pin_fs_dp,
-                                (ra_psel_t)k_usb_msc_psel_usb_fs,
-                                "usb_host_msc_browse.fs_dp");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_usb_msc_pin_fs_dm,
-                                 (ra_psel_t)k_usb_msc_psel_usb_fs,
-                                 "usb_host_msc_browse.fs_dm");
+  return ra_pfs_route_peripheral(k_usb_msc_pin_hs_vbus,
+                                 (ra_psel_t)k_usb_msc_psel_usb_hs,
+                                 "usb_host_msc_browse.hs_vbus");
 }
 
 /**
@@ -694,7 +681,7 @@ static void usb_msc_print_reg(const uint8_t* label, uint32_t label_len, uint16_t
  */
 static void usb_msc_print_enum_diag(void)
 {
-  volatile const r_usb_regs_t* fs = (volatile const r_usb_regs_t*)(uintptr_t)k_ra_usb_fs0_base_addr;
+  volatile const r_usb_regs_t* fs   = k_usb_msc_reg;
   const uint16_t               lnst = (uint16_t)(fs->SYSSTS0 & (uint16_t)k_usb_msc_lnst_mask);
   (void)usb_msc_sci_write(k_usb_msc_msg_enum, (uint32_t)(sizeof(k_usb_msc_msg_enum) - 1U));
   (void)usb_msc_print_dec_u32((uint32_t)lnst);
@@ -760,7 +747,7 @@ static void usb_msc_print_enum_diag(void)
     .w_index         = 0U,
     .w_length        = (uint16_t)k_usb_msc_dev_desc_len,
   };
-  return ra_usb_host_control_xfer(k_ra_usb_speed_fs,
+  return ra_usb_host_control_xfer(k_usb_msc_speed,
                                   &setup,
                                   desc,
                                   (uint16_t)k_usb_msc_dev_desc_len,
@@ -794,7 +781,7 @@ static void usb_msc_print_enum_diag(void)
    * device never enters its Default state (it then ignores all tokens:
    * observed as vid=0x0000 with lnst=1). Then apply the >=100 ms
    * attach debounce the USB spec requires before reset. */
-  volatile const r_usb_regs_t* fs = (volatile const r_usb_regs_t*)(uintptr_t)k_ra_usb_fs0_base_addr;
+  volatile const r_usb_regs_t* fs = k_usb_msc_reg;
   const uint32_t               t0 = ra_time_ms();
   while ((fs->SYSSTS0 & (uint16_t)k_usb_msc_lnst_mask) == 0U) {
     if ((ra_time_ms() - t0) > (uint32_t)k_usb_msc_attach_to_ms) {
@@ -814,14 +801,14 @@ static void usb_msc_print_enum_diag(void)
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_usb_msc_enum_tries; attempt++) {
     const bool do_reset = (attempt >= (uint8_t)k_usb_msc_enum_no_rst_tries);
     if (do_reset) {
-      (void)ra_usb_host_bus_reset(k_ra_usb_speed_fs, true);
+      (void)ra_usb_host_bus_reset(k_usb_msc_speed, true);
       ra_delay_ms(k_usb_msc_reset_hold_ms);
-      (void)ra_usb_host_bus_reset(k_ra_usb_speed_fs, false);
+      (void)ra_usb_host_bus_reset(k_usb_msc_speed, false);
     }
-    (void)ra_usb_host_set_uact(k_ra_usb_speed_fs, true);
+    (void)ra_usb_host_set_uact(k_usb_msc_speed, true);
     ra_delay_ms(k_usb_msc_recovery_ms);
     const uint8_t addr = (uint8_t)(attempt & (uint8_t)k_usb_msc_addr_alt_mask);
-    (void)ra_usb_host_set_target(k_ra_usb_speed_fs, addr);
+    (void)ra_usb_host_set_target(k_usb_msc_speed, addr);
     rx  = 0U;
     err = usb_msc_read_dev_desc(desc, &rx);
     if (err == k_ra_ok) {
@@ -862,10 +849,23 @@ static void usb_msc_print_enum_diag(void)
  */
 static void usb_msc_usb_init_or_halt(void)
 {
-  if (usb_msc_pins_fs_init() != k_ra_ok) {
+  /* Put the board's J7 jack into HOST role via the U15 SW4 override
+   * (SW4-8 ON): in the default device role the jack expects VBUS from
+   * an external host and an inserted USB stick stays unpowered
+   * (observed as LNST=0 forever). */
+  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
     usb_msc_panic_halt();
   }
-  if (ra_usb_host_init(k_ra_usb_speed_fs) != k_ra_ok) {
+  /* EK-RA8D2 v1 UM Sec 6.2 p 34: "For a USB Host configuration, set
+   * PD07 to high ... power to J7 is supplied from U18." Without this the
+   * jack stays unpowered and an inserted stick never pulls D+ up. */
+  if (ra_gpio_output_init(k_usb_msc_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+  if (usb_msc_pins_hs_init() != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+  if (ra_usb_host_init(k_usb_msc_speed) != k_ra_ok) {
     usb_msc_panic_halt();
   }
 }
@@ -878,11 +878,11 @@ static void usb_msc_setup_or_halt(void)
   if (ra_cgc_init() != k_ra_ok) {
     usb_msc_panic_halt();
   }
-  /* Bring up PLL2 -> USBCKCR so the USBFS SIE sees a spec-compliant 48 MHz
-   * reference. Must run BEFORE MSTPB11 is released (ra_usb_hmsc_init);
-   * without it DVSTCTR0 writes (UACT) never stick and no SOF is generated,
-   * so an attached device is detected (LNST=1) but never enumerates. */
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  /* Bring up PLL2 -> USB60CLK (PLL2P / 4 = 60 MHz), the USBHS LINK
+   * domain clock. Must run BEFORE MSTPB12 is released (host init); the
+   * PHY UTMI PLL itself takes EXTAL directly and is brought up inside
+   * ra_usb_host_init. */
+  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
     usb_msc_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
@@ -1281,7 +1281,7 @@ usb_msc_walk_config(const uint8_t* cfg, uint16_t len, usb_msc_target_t* out)
     .w_length        = (uint16_t)k_usb_msc_cfg_hdr_len,
   };
   ra_err_t err =
-    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, cfg, (uint16_t)k_usb_msc_cfg_hdr_len, &rx);
+    ra_usb_host_control_xfer(k_usb_msc_speed, &setup, cfg, (uint16_t)k_usb_msc_cfg_hdr_len, &rx);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1293,7 +1293,7 @@ usb_msc_walk_config(const uint8_t* cfg, uint16_t len, usb_msc_target_t* out)
   }
   out->cfg_value = cfg[k_usb_msc_cfg_off_value];
   setup.w_length = total;
-  err            = ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, cfg, total, &rx);
+  err            = ra_usb_host_control_xfer(k_usb_msc_speed, &setup, cfg, total, &rx);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1342,7 +1342,7 @@ usb_msc_configure(const usb_msc_target_t* tgt, uint8_t dev_addr, uint8_t* out_lu
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  ra_err_t err = ra_usb_host_control_xfer(k_ra_usb_speed_fs, &set_cfg, nullptr, 0U, nullptr);
+  ra_err_t err = ra_usb_host_control_xfer(k_usb_msc_speed, &set_cfg, nullptr, 0U, nullptr);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1355,14 +1355,14 @@ usb_msc_configure(const usb_msc_target_t* tgt, uint8_t dev_addr, uint8_t* out_lu
   };
   uint8_t        lun     = 0U;
   uint16_t       lun_rx  = 0U;
-  const ra_err_t lun_err = ra_usb_host_control_xfer(k_ra_usb_speed_fs, &get_lun, &lun, 1U, &lun_rx);
+  const ra_err_t lun_err = ra_usb_host_control_xfer(k_usb_msc_speed, &get_lun, &lun, 1U, &lun_rx);
   *out_lun               = 0U;
   if (lun_err == k_ra_ok) {
     if (lun_rx == 1U) {
       *out_lun = lun;
     }
   }
-  err = ra_usb_host_pipe_setup(k_ra_usb_speed_fs,
+  err = ra_usb_host_pipe_setup(k_usb_msc_speed,
                                (uint8_t)k_usb_msc_pipe_in,
                                dev_addr,
                                tgt->in_ep,
@@ -1371,7 +1371,7 @@ usb_msc_configure(const usb_msc_target_t* tgt, uint8_t dev_addr, uint8_t* out_lu
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_usb_host_pipe_setup(k_ra_usb_speed_fs,
+  err = ra_usb_host_pipe_setup(k_usb_msc_speed,
                                (uint8_t)k_usb_msc_pipe_out,
                                dev_addr,
                                tgt->out_ep,
@@ -1408,17 +1408,20 @@ usb_msc_configure(const usb_msc_target_t* tgt, uint8_t dev_addr, uint8_t* out_lu
 [[nodiscard]] static ra_err_t
 usb_msc_bot(const uint8_t* cbw, uint8_t* data, uint16_t data_len, uint16_t* out_rx)
 {
-  ra_err_t err = ra_usb_host_bulk_out(k_ra_usb_speed_fs,
+  ra_err_t err = ra_usb_host_bulk_out(k_usb_msc_speed,
                                       (uint8_t)k_usb_msc_pipe_out,
                                       cbw,
                                       (uint16_t)k_usb_msc_cbw_len);
   if (err != k_ra_ok) {
+    (void)usb_msc_sci_write(k_usb_msc_msg_bot_cbw, (uint32_t)(sizeof(k_usb_msc_msg_bot_cbw) - 1U));
     return err;
   }
   if (data_len > 0U) {
     uint16_t rx = 0U;
-    err = ra_usb_host_bulk_in(k_ra_usb_speed_fs, (uint8_t)k_usb_msc_pipe_in, data, data_len, &rx);
+    err = ra_usb_host_bulk_in(k_usb_msc_speed, (uint8_t)k_usb_msc_pipe_in, data, data_len, &rx);
     if (err != k_ra_ok) {
+      (void)usb_msc_sci_write(k_usb_msc_msg_bot_data,
+                              (uint32_t)(sizeof(k_usb_msc_msg_bot_data) - 1U));
       return err;
     }
     if (out_rx != nullptr) {
@@ -1427,12 +1430,13 @@ usb_msc_bot(const uint8_t* cbw, uint8_t* data, uint16_t data_len, uint16_t* out_
   }
   uint8_t  csw[k_usb_msc_csw_len] = {};
   uint16_t csw_rx                 = 0U;
-  err                             = ra_usb_host_bulk_in(k_ra_usb_speed_fs,
+  err                             = ra_usb_host_bulk_in(k_usb_msc_speed,
                                                         (uint8_t)k_usb_msc_pipe_in,
                                                         csw,
                                                         (uint16_t)k_usb_msc_csw_len,
                                                         &csw_rx);
   if (err != k_ra_ok) {
+    (void)usb_msc_sci_write(k_usb_msc_msg_bot_csw, (uint32_t)(sizeof(k_usb_msc_msg_bot_csw) - 1U));
     return err;
   }
   if (csw_rx != (uint16_t)k_usb_msc_csw_len) {
@@ -1636,12 +1640,12 @@ usb_msc_bot(const uint8_t* cbw, uint8_t* data, uint16_t data_len, uint16_t* out_
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  ra_err_t err = ra_usb_host_control_xfer(k_ra_usb_speed_fs, &set_addr, nullptr, 0U, nullptr);
+  ra_err_t err = ra_usb_host_control_xfer(k_usb_msc_speed, &set_addr, nullptr, 0U, nullptr);
   if (err != k_ra_ok) {
     return err;
   }
   ra_delay_ms(k_usb_msc_addr_settle_ms);
-  err = ra_usb_host_set_target(k_ra_usb_speed_fs, (uint8_t)k_usb_msc_test_address);
+  err = ra_usb_host_set_target(k_usb_msc_speed, (uint8_t)k_usb_msc_test_address);
   if (err != k_ra_ok) {
     return err;
   }
