@@ -111,6 +111,9 @@ typedef enum : uint32_t {
    * and the FIFO pointer flipping to the other bank when DBLB is on.
    * 256 iters x ~3 cycles == sub-microsecond at 1 GHz. */
   k_ra_usb_dblb_frdy_poll_limit = 256UL,
+  /* CFIFOSEL CURPIPE/ISEL readback settle bound (a handful of bus
+   * clocks; generous to stay simulator-safe). */
+  k_ra_usb_fifosel_settle_limit = 1000UL,
 } ra_usb_internal_lim32_t;
 
 /**
@@ -256,6 +259,18 @@ static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num,
     sel = (uint16_t)(sel | k_ra_fifosel_isel);
   }
   reg->CFIFOSEL = sel;
+  /* FSP (usb_cstd_chg_curpipe) polls the CURPIPE/ISEL readback until the
+   * window switch takes effect; without this a FIFO access issued right
+   * after the select can land on the previous pipe's buffer (observed on
+   * hardware as a bulk-OUT payload stuck with INBUFM set, never sent). */
+  const uint16_t key = (uint16_t)(sel & (uint16_t)(k_ra_fifosel_curpipe | k_ra_fifosel_isel));
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_fifosel_settle_limit; ++i) {
+    const uint16_t now =
+      (uint16_t)(reg->CFIFOSEL & (uint16_t)(k_ra_fifosel_curpipe | k_ra_fifosel_isel));
+    if (now == key) {
+      return;
+    }
+  }
 }
 
 /**
@@ -3144,6 +3159,43 @@ static ra_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t ma
 }
 
 /**
+ * @brief Wait for a DCP IN packet (BRDY), re-arming on NRDY give-ups.
+ *
+ * @details In host mode the SIE retries a NAKed IN a few times, then
+ * latches NRDY and parks the DCP PID at NAK. A device that is still
+ * processing a request (e.g. applying SET_CONFIGURATION before its
+ * status ZLP) NAKs long enough to trip this, so treat NRDY as "retry":
+ * clear it and re-arm PID=BUF until BRDY or the time bound.
+ *
+ * @param[in] reg Selected controller register block.
+ * @return Wait outcome.
+ * @retval k_ra_ok             A packet landed (BRDY).
+ * @retval k_ra_err_hw_timeout No packet before the spin bound.
+ * @pre The DCP receive buffer is free and PID is BUF.
+ * @pre BRDYENB/NRDYENB carry the DCP bit so the status can latch.
+ * @post BRDY is left set for the caller to consume; NRDY is clear.
+ * @post On timeout the DCP PID state is whatever the SIE parked.
+ * @note Blocking; bounded by ::k_ra_usb_ctrl_poll_limit.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
+    if ((reg->BRDYSTS & (uint16_t)k_ra_usb_dcp_pipe0_bit) != 0U) {
+      return k_ra_ok;
+    }
+    if ((reg->DCPCTR & (uint16_t)k_ra_usb_pid_stall_bit) != 0U) {
+      return k_ra_err_hw_error;
+    }
+    if ((reg->NRDYSTS & (uint16_t)k_ra_usb_dcp_pipe0_bit) != 0U) {
+      reg->NRDYSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+      internal_dcp_pid(reg, k_ra_pid_buf);
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
  * @brief Issue the SETUP stage of a host control transfer and wait for it.
  *
  * @details Parks the DCP NAK, programs the target device speed, loads the
@@ -3212,6 +3264,33 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
 }
 
 /**
+ * @brief Arm the DCP to receive a control-read data stage.
+ *
+ * @details Selects the DCP read window, frees the receive buffer (BCLR),
+ * enables the BRDY/NRDY status latches, forces the receive toggle to
+ * DATA1 (FSP usb_hstd_ctrl_read_start: the first data packet after SETUP
+ * is always DATA1, and a stale SQMON makes the SIE silently discard it),
+ * then sets PID=BUF so IN tokens flow.
+ *
+ * @param[in] reg Selected controller register block.
+ * @pre The SETUP stage for an IN request has completed (SACK).
+ * @pre The DCP PID is NAK on entry.
+ * @post The DCP is armed (PID=BUF) with a clean receive buffer.
+ * @post BRDYENB/NRDYENB carry the DCP bit.
+ * @note Helper split out for the clang-tidy size/complexity gate.
+ * @since 0.1.0
+ */
+static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
+{
+  internal_select_cfifo(reg, 0U, false);
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  reg->BRDYENB  = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  reg->NRDYENB  = (uint16_t)(reg->NRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra_dcpctr_bit_sqset), 0U);
+  internal_dcp_pid(reg, k_ra_pid_buf);
+}
+
+/**
  * @brief Run the DATA-IN stage of a host control read into @p data.
  *
  * @details Arms the DCP for IN (PID=BUF, BRDY/NRDY status enabled), then
@@ -3241,14 +3320,9 @@ static ra_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
 {
   uint16_t rx   = 0U;
   bool     done = false;
-  internal_select_cfifo(reg, 0U, false);
-  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
-  /* Enable the DCP BRDY/NRDY status so the polled waits observe them. */
-  reg->BRDYENB = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
-  reg->NRDYENB = (uint16_t)(reg->NRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
-  internal_dcp_pid(reg, k_ra_pid_buf);
+  internal_host_ctrl_data_arm(reg);
   while (!done) {
-    const ra_err_t br = internal_host_wait_sts(&reg->BRDYSTS, k_ra_usb_dcp_pipe0_bit);
+    const ra_err_t br = internal_host_dcp_in_wait(reg);
     if (br != k_ra_ok) {
       internal_dcp_pid(reg, k_ra_pid_nak);
       return br;
@@ -3333,18 +3407,23 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
     internal_rmw16(&reg->DCPCTR, 0U, ccpl);
     return k_ra_ok;
   }
-  /* Control-write / no-data status is an IN: the host receives the device
-   * ZLP, usually signalled by BRDY. Wait for it but do not gate on it. */
+  /* Control-write / no-data status is an IN: free the DCP receive buffer
+   * FIRST -- a stale BSTS blocks the incoming ZLP, the SIE NAKs it
+   * forever, and the request never takes effect on the device (observed
+   * on hardware as SET_CONFIGURATION "passing" while the bulk endpoints
+   * stayed dead). Then arm PID=BUF + CCPL and require the BRDY that
+   * marks the device's status ZLP received. */
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  reg->NRDYSTS  = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
   internal_dcp_pid(reg, k_ra_pid_buf);
   internal_rmw16(&reg->DCPCTR, ccpl, 0U);
-  (void)internal_host_wait_sts(&reg->BRDYSTS, k_ra_usb_dcp_pipe0_bit);
+  const ra_err_t ierr = internal_host_dcp_in_wait(reg);
   internal_dcp_pid(reg, k_ra_pid_nak);
   internal_rmw16(&reg->DCPCTR, 0U, ccpl);
   /* Drain the status ZLP so it cannot alias the next data stage. */
-  internal_select_cfifo(reg, 0U, false);
   reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
   reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
-  return k_ra_ok;
+  return ierr;
 }
 
 /**
