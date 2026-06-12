@@ -60,6 +60,7 @@
 
 #include <stdint.h>
 
+#include "ra8d2_usb_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -82,9 +83,14 @@
  * @brief Compile-time settings for the host-MSC browse demo.
  */
 typedef enum : uint32_t {
-  k_usb_msc_baud        = 115200U, /**< J-Link OB CDC log baud.        */
-  k_usb_msc_sci_channel = 8U,      /**< SCI8 -> J-Link OB CDC bridge.  */
-  k_usb_msc_idle_ms     = 50U,     /**< Idle while waiting for attach. */
+  k_usb_msc_baud          = 115200U, /**< J-Link OB CDC log baud.        */
+  k_usb_msc_sci_channel   = 8U,      /**< SCI8 -> J-Link OB CDC bridge.  */
+  k_usb_msc_idle_ms       = 50U,     /**< Idle while waiting for attach. */
+  k_usb_msc_vbus_ms       = 200U,    /**< VBUS / device power-on settle. */
+  k_usb_msc_reset_hold_ms = 50U,     /**< USB bus-reset hold (>=10 ms).  */
+  k_usb_msc_recovery_ms   = 20U,     /**< Post-reset recovery (TRSTRCY).  */
+  k_usb_msc_enum_to_ms    = 3000U,   /**< Enumeration pump timeout.      */
+  k_usb_msc_ctrt_mask     = (1U << (uint32_t)k_ra_int0_bit_ctrt), /**< INTSTS0 CTRT bit. */
 } usb_host_msc_browse_config_t;
 
 /**
@@ -99,14 +105,16 @@ typedef enum : uint16_t {
 
 /**
  * @enum usb_host_msc_psel_t
- * @brief PFS PSEL code for routing P4_08 to USBHS_VBUS.
+ * @brief PFS PSEL code for routing the USBFS host pins.
  *
- * @details HUM Ch 20.2 "PFS register PSEL field encoding" gives 0x14
- * for USBHS.
+ * @details HUM Ch 20.6 "Peripheral Select Settings" gives 0x13 for the
+ * Full-Speed controller (USBFS). The drive is on the FS receptacle
+ * because FS (12 Mbps) is simpler to bring up than HS (480 Mbps) and
+ * sidesteps the HS SET_ADDRESS-stall blocker.
  */
 typedef enum : uint8_t {
-  k_usb_msc_psel_usb_hs =
-    (uint8_t)k_ra_psel_usb_hs, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
+  k_usb_msc_psel_usb_fs =
+    (uint8_t)k_ra_psel_usb_fs, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
 } usb_host_msc_psel_t;
 
 /**
@@ -129,6 +137,7 @@ typedef enum : uint32_t {
   k_usb_msc_hex_nibble_mask = 0xFU, /**< 4-bit nibble mask.            */
   k_usb_msc_dec_radix       = 10U,  /**< Base for decimal conversion.  */
   k_usb_msc_hex_digit_split = 10U,  /**< Threshold between '0-9'/'A-F'.*/
+  k_usb_msc_lnst_mask       = 0x3U, /**< SYSSTS0.LNST[1:0] line-state. */
 } usb_host_msc_hex_mask_t;
 
 /**
@@ -152,9 +161,23 @@ static const ra_port_pin_t k_usb_msc_pin_sci_tx =
 static const ra_port_pin_t k_usb_msc_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
-/** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_usb_msc_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
+/** @brief USB_FS_VBUS sense pin (P4_07, PSEL = 0x13). */
+static const ra_port_pin_t k_usb_msc_pin_fs_vbus =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+
+/** @brief USB_FS_VBUSEN host VBUS-supply enable (P5_00, PSEL = 0x13).
+ *  Routed as the USB peripheral function so the controller asserts it in
+ *  host mode -- this is what actually powers the attached thumb drive. */
+static const ra_port_pin_t k_usb_msc_pin_fs_vbusen =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+
+/** @brief USB_FS_DP data line (P8_14, PSEL = 0x13). */
+static const ra_port_pin_t k_usb_msc_pin_fs_dp =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+
+/** @brief USB_FS_DM data line (P8_15, PSEL = 0x13). */
+static const ra_port_pin_t k_usb_msc_pin_fs_dm =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /* =============================================================================
  * Status messages over SCI8
@@ -162,7 +185,8 @@ static const ra_port_pin_t k_usb_msc_pin_hs_vbus =
  */
 
 /** @brief First message after SCI is up. */
-static const uint8_t k_usb_msc_msg_ready[] = "ra8d2 host: ready, plug a USB drive into J7\r\n";
+static const uint8_t k_usb_msc_msg_ready[] =
+  "ra8d2 host: ready (USB-FS), plug a USB drive into the FS port\r\n";
 
 /** @brief Static prefix for the per-attach VID/PID print. */
 static const uint8_t k_usb_msc_msg_attach_pre[] = "ra8d2 host: device attached vid=0x";
@@ -203,6 +227,17 @@ static const uint8_t k_usb_msc_msg_scsi_err[] = "ra8d2 host: SCSI op failed err=
 /** @brief A single space (used to format the hex dump). */
 static const uint8_t k_usb_msc_msg_space[] = " ";
 
+/** @brief Enumeration diagnostic prefix. */
+static const uint8_t k_usb_msc_msg_enum[] = "ra8d2 host: enum lnst=";
+/** @brief Enumeration diagnostic: CTRT-count field. */
+static const uint8_t k_usb_msc_msg_enum_ctrt[] = " ctrt=";
+/** @brief Enumeration diagnostic: DVSTCTR0 field. */
+static const uint8_t k_usb_msc_msg_enum_dvst[] = " dvstctr0=0x";
+/** @brief Enumeration diagnostic: INTSTS0 field. */
+static const uint8_t k_usb_msc_msg_enum_ints[] = " intsts0=0x";
+/** @brief Enumeration diagnostic: DCPCTR field. */
+static const uint8_t k_usb_msc_msg_enum_dcp[] = " dcpctr=0x";
+
 /* =============================================================================
  * Attach state shared with the callback
  * =============================================================================
@@ -219,6 +254,9 @@ typedef struct {
 
 /** @brief File-scope state shared between callback + main loop. */
 static volatile usb_host_msc_state_t s_state = {};
+
+/** @brief Count of CTRT dispatch edges seen during enumeration (diag). */
+static volatile uint32_t s_ctrt_count = 0U;
 
 /* =============================================================================
  * Internal helpers
@@ -469,11 +507,17 @@ static uint8_t usb_msc_format_decimal_u32(uint32_t value, uint8_t* out)
 }
 
 /**
- * @brief Route the USBHS_VBUS sense pin (P4_08, PSEL = 0x14).
+ * @brief Route the four USBFS host pins (VBUS, VBUSEN, D+, D-) to PSEL 0x13.
  *
- * @return Error code from `ra_pfs_route_peripheral`.
+ * @details Unlike the HS receptacle (whose D+/D- are dedicated package
+ * balls), the FS controller's data lines P8_14/P8_15 are PFS-muxed and
+ * must be routed. VBUSEN (P5_00) is routed to the USB peripheral function
+ * so the controller drives it HIGH in host mode -- that is what supplies
+ * VBUS to the attached drive.
  *
- * @retval k_ra_ok                     P4_08 is now USBHS_VBUS.
+ * @return Error code from the first failing `ra_pfs_route_peripheral`.
+ *
+ * @retval k_ra_ok                     All four FS pins routed.
  * @retval k_ra_err_gpio_invalid_port  Port index out of range.
  * @retval k_ra_err_gpio_invalid_pin   Pin index out of range.
  * @retval k_ra_err_gpio_conflict      Pin already claimed.
@@ -481,15 +525,33 @@ static uint8_t usb_msc_format_decimal_u32(uint32_t value, uint8_t* out)
  * @pre IOPORT module is reachable.
  * @pre Caller is single-threaded init context.
  *
- * @post On success P4_08 PFS PSEL = 0x14, PMR = 1.
+ * @post On success P4_07/P5_00/P8_14/P8_15 PFS PSEL = 0x13, PMR = 1.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t usb_msc_pins_hs_init(void)
+[[nodiscard]] static ra_err_t usb_msc_pins_fs_init(void)
 {
-  return ra_pfs_route_peripheral(k_usb_msc_pin_hs_vbus,
-                                 (ra_psel_t)k_usb_msc_psel_usb_hs,
-                                 "usb_host_msc_browse.hs_vbus");
+  ra_err_t err = ra_pfs_route_peripheral(k_usb_msc_pin_fs_vbus,
+                                         (ra_psel_t)k_usb_msc_psel_usb_fs,
+                                         "usb_host_msc_browse.fs_vbus");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(k_usb_msc_pin_fs_vbusen,
+                                (ra_psel_t)k_usb_msc_psel_usb_fs,
+                                "usb_host_msc_browse.fs_vbusen");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(k_usb_msc_pin_fs_dp,
+                                (ra_psel_t)k_usb_msc_psel_usb_fs,
+                                "usb_host_msc_browse.fs_dp");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_pfs_route_peripheral(k_usb_msc_pin_fs_dm,
+                                 (ra_psel_t)k_usb_msc_psel_usb_fs,
+                                 "usb_host_msc_browse.fs_dm");
 }
 
 /**
@@ -521,6 +583,126 @@ static void usb_msc_on_attach(void* ctx, const ra_usb_hmsc_device_t* device)
 }
 
 /**
+ * @brief USB event handler -- advance the host-MSC enumeration on CTRT.
+ *
+ * @details Registered with `ra_usb_attach_handler`, so every
+ * `ra_usb_dispatch` call routes here with the live INTSTS0 mask. A
+ * control-transfer-stage transition (CTRT) means the previous SETUP/IN
+ * stage completed, so we kick `ra_usb_hmsc_step` to issue the next
+ * chapter-9 request. The step machine walks idle -> bus_reset ->
+ * set_address -> get descriptors -> set config/interface -> get-max-lun
+ * -> done, firing the attach callback at the end.
+ *
+ * @param[in] ctx     Unused.
+ * @param[in] speed   Controller that fired (unused; single controller).
+ * @param[in] intsts0 INTSTS0 snapshot from the dispatcher.
+ *
+ * @pre `ra_usb_hmsc_init` has run.
+ * @post On a CTRT edge the enumeration step machine advanced one step.
+ * @note Runs in the dispatch (polled here) context; no SCI calls.
+ * @since 0.1.0
+ */
+static void usb_msc_on_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t intsts0)
+{
+  (void)ctx;
+  (void)speed;
+  if ((intsts0 & (uint16_t)k_usb_msc_ctrt_mask) != 0U) {
+    s_ctrt_count++;
+    (void)ra_usb_hmsc_step();
+  }
+}
+
+/**
+ * @brief Drive the host port: bus reset, then pump enumeration to attach.
+ *
+ * @details The host-MSC step machine needs the bus-reset timing injected
+ * by the caller and the dispatcher pumped so CTRT edges advance it.
+ * Sequence: let VBUS settle, kick `ra_usb_hmsc_step` once (idle ->
+ * asserts USBRST), hold the reset, kick again (release + UACT +
+ * SET_ADDRESS), then poll `ra_usb_dispatch` until the attach callback
+ * fires or the timeout elapses.
+ *
+ * @pre `ra_usb_hmsc_init` + `ra_usb_attach_handler` + the attach callback
+ *      are all registered; VBUS is supplied (P5_00 routed).
+ * @post On success `s_state.attached` is true and the device snapshot is
+ *       populated; otherwise it stays false (enumeration timed out).
+ * @note Polled bring-up driver; FS is forgiving of the polling cadence.
+ * @since 0.1.0
+ */
+/**
+ * @brief Print one labelled "<label>0x<hex16>" register field over SCI8.
+ *
+ * @param[in] label NUL-stripped literal (sent without its terminator).
+ * @param[in] label_len Bytes of @p label to send.
+ * @param[in] value 16-bit register value to format as 4 hex digits.
+ *
+ * @pre SCI8 init already ran.
+ * @post One "<label>ABCD" token is queued on SCI8.
+ * @since 0.1.0
+ */
+static void usb_msc_print_reg(const uint8_t* label, uint32_t label_len, uint16_t value)
+{
+  uint8_t hex[k_usb_msc_hex_chars_u16] = {};
+  usb_msc_format_hex_u16(value, hex);
+  (void)usb_msc_sci_write(label, label_len);
+  (void)usb_msc_sci_write(hex, (uint32_t)k_usb_msc_hex_chars_u16);
+}
+
+/**
+ * @brief Dump the host enumeration diagnostic line over SCI8.
+ *
+ * @details Reports SYSSTS0.LNST (1 = FS device pull-up visible), the CTRT
+ * edge count caught by the pump, and the live DVSTCTR0/INTSTS0/DCPCTR so a
+ * stalled enumeration can be localised (e.g. ctrt=0 with SUREQ already
+ * cleared means the SETUP went out but the CTRT-driven advance never ran).
+ *
+ * @pre SCI8 init already ran; the FS controller is clocked.
+ * @post One diagnostic line is queued on SCI8.
+ * @since 0.1.0
+ */
+static void usb_msc_print_enum_diag(void)
+{
+  volatile const r_usb_regs_t* fs = (volatile const r_usb_regs_t*)(uintptr_t)k_ra_usb_fs0_base_addr;
+  const uint16_t               lnst = (uint16_t)(fs->SYSSTS0 & (uint16_t)k_usb_msc_lnst_mask);
+  (void)usb_msc_sci_write(k_usb_msc_msg_enum, (uint32_t)(sizeof(k_usb_msc_msg_enum) - 1U));
+  (void)usb_msc_print_dec_u32((uint32_t)lnst);
+  (void)usb_msc_sci_write(k_usb_msc_msg_enum_ctrt,
+                          (uint32_t)(sizeof(k_usb_msc_msg_enum_ctrt) - 1U));
+  (void)usb_msc_print_dec_u32(s_ctrt_count);
+  usb_msc_print_reg(k_usb_msc_msg_enum_dvst,
+                    (uint32_t)(sizeof(k_usb_msc_msg_enum_dvst) - 1U),
+                    fs->DVSTCTR0);
+  usb_msc_print_reg(k_usb_msc_msg_enum_ints,
+                    (uint32_t)(sizeof(k_usb_msc_msg_enum_ints) - 1U),
+                    fs->INTSTS0);
+  usb_msc_print_reg(k_usb_msc_msg_enum_dcp,
+                    (uint32_t)(sizeof(k_usb_msc_msg_enum_dcp) - 1U),
+                    fs->DCPCTR);
+  (void)usb_msc_sci_write(k_usb_msc_msg_crlf, (uint32_t)(sizeof(k_usb_msc_msg_crlf) - 1U));
+}
+
+static void usb_msc_enumerate(void)
+{
+  ra_delay_ms(k_usb_msc_vbus_ms);
+  (void)ra_usb_hmsc_step(); /* idle: assert USBRST (clears UACT) */
+  ra_delay_ms(k_usb_msc_reset_hold_ms);
+  /* Release reset + re-enable SOF here, then honour the USB reset-recovery
+   * window (TRSTRCY >= 10 ms) before the first transaction. The step
+   * machine couples release + SET_ADDRESS in one call, so injecting the
+   * recovery delay around redundant (idempotent) release/UACT calls is
+   * what gives the device time to be ready. */
+  (void)ra_usb_host_bus_reset(k_ra_usb_speed_fs, false);
+  (void)ra_usb_host_set_uact(k_ra_usb_speed_fs, true);
+  ra_delay_ms(k_usb_msc_recovery_ms);
+  (void)ra_usb_hmsc_step(); /* bus_reset: (release/UACT no-op) + SET_ADDRESS */
+  const uint32_t t0 = ra_time_ms();
+  while (!s_state.attached && ((ra_time_ms() - t0) < (uint32_t)k_usb_msc_enum_to_ms)) {
+    ra_usb_dispatch(k_ra_usb_speed_fs);
+  }
+  usb_msc_print_enum_diag();
+}
+
+/**
  * @brief Bring CGC + SCI + LED1/LED2 + USBHS pins + host-MSC up.
  *        Panic-halts on any failure.
  *
@@ -529,12 +711,44 @@ static void usb_msc_on_attach(void* ctx, const ra_usb_hmsc_device_t* device)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Route the FS USB pins and bring up the host-MSC class + handlers.
+ *        Panic-halts on any failure.
+ *
+ * @pre CGC (incl. USBFS clock) and SCI8 console are already up.
+ * @post P4_07/P5_00/P8_14/P8_15 are USB-FS; host-MSC is initialized; the
+ *       attach callback and the CTRT dispatch handler are registered.
+ * @since 0.1.0
+ */
+static void usb_msc_usb_init_or_halt(void)
+{
+  if (usb_msc_pins_fs_init() != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+  if (ra_usb_hmsc_init(k_ra_usb_speed_fs) != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+  if (ra_usb_hmsc_attach_callback(usb_msc_on_attach, nullptr) != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+  if (ra_usb_attach_handler(k_ra_usb_speed_fs, usb_msc_on_usb_event, nullptr) != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+}
+
 static void usb_msc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
+    usb_msc_panic_halt();
+  }
+  /* Bring up PLL2 -> USBCKCR so the USBFS SIE sees a spec-compliant 48 MHz
+   * reference. Must run BEFORE MSTPB11 is released (ra_usb_hmsc_init);
+   * without it DVSTCTR0 writes (UACT) never stick and no SOF is generated,
+   * so an attached device is detected (LNST=1) but never enumerates. */
+  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
     usb_msc_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
@@ -568,16 +782,7 @@ static void usb_msc_setup_or_halt(void)
     usb_msc_panic_halt();
   }
 
-  if (usb_msc_pins_hs_init() != k_ra_ok) {
-    usb_msc_panic_halt();
-  }
-
-  if (ra_usb_hmsc_init(k_ra_usb_speed_hs) != k_ra_ok) {
-    usb_msc_panic_halt();
-  }
-  if (ra_usb_hmsc_attach_callback(usb_msc_on_attach, nullptr) != k_ra_ok) {
-    usb_msc_panic_halt();
-  }
+  usb_msc_usb_init_or_halt();
 }
 
 /* =============================================================================
@@ -873,6 +1078,11 @@ int32_t main(void)
   bool    announced                              = false;
   bool    browsed                                = false;
   uint8_t sector_buf[k_usb_msc_block_size_bytes] = {};
+
+  /* Drive the bus-reset + enumeration once at boot (the drive is already
+   * inserted in the FS port). If it times out, the loop below still idles
+   * so a later attach print is harmless. */
+  usb_msc_enumerate();
 
   while (1) {
     if (s_state.attached && !announced) {
