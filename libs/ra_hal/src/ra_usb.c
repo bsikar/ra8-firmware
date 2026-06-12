@@ -3146,6 +3146,7 @@ typedef enum : uint16_t {
   k_ra_usb_setup_dir_in  = 0x0080U, /**< bmRequestType device-to-host bit. */
   k_ra_usb_dcpmaxp_mxps  = 0x007FU, /**< DCPMAXP MXPS (max packet) field.  */
   k_ra_usb_rhst_mask     = 0x0007U, /**< DVSTCTR0.RHST connected-speed.    */
+  k_ra_usb_lnst_mask     = 0x0003U, /**< SYSSTS0.LNST line-state field.    */
 } ra_usb_host_ctrl_bits_t;
 
 /** @brief Offsets / shifts for the device-address (DEVADDn) registers. */
@@ -4011,4 +4012,26 @@ ra_err_t ra_usb_host_bulk_in(ra_usb_speed_t speed,
   internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
   *out_received = rx;
   return err;
+}
+
+/**
+ * @brief Implementation of `ra_usb_host_line_state()`.
+ * @details Pure MMIO read of SYSSTS0.LNST; no state is modified.
+ * @param[in] speed See header.
+ * @return LNST[1:0] (0 = SE0 / nothing attached, 1 = J-state).
+ * @retval 0 Invalid speed, controller not powered, or SE0.
+ * @pre Module state is consistent.
+ * @pre The controller is clocked for a meaningful read.
+ * @post No register is modified.
+ * @post Caller-visible state matches the documented contract.
+ * @note Safe to call from any context.
+ * @since 0.1.0
+ */
+uint16_t ra_usb_host_line_state(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return 0U;
+  }
+  return (uint16_t)(reg->SYSSTS0 & (uint16_t)k_ra_usb_lnst_mask);
 }

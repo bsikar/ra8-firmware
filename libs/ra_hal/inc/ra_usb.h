@@ -1007,6 +1007,27 @@ uint16_t ra_usb_intsts0_snapshot(ra_usb_speed_t speed);
 uint8_t ra_usb_host_ctrl_stage(void);
 
 /**
+ * @brief Read the host port's D+/D- line state (SYSSTS0.LNST).
+ *
+ * @details 0 = SE0 (no device pull-up / port idle), 1 = J-state (a
+ * full-speed-signalling device is attached), 2 = K-state. Used by host
+ * class drivers to wait for a device to attach before driving the bus
+ * reset.
+ *
+ * @param[in] speed Which controller (FS or HS).
+ * @return The two-bit line state.
+ * @retval 0 Nothing attached (or invalid speed / unpowered module).
+ * @retval 1 A device's D+ pull-up is visible.
+ * @pre `ra_usb_host_init` ran for a meaningful read.
+ * @pre The controller is clocked.
+ * @post No state is modified.
+ * @post The value is a single-moment snapshot.
+ * @note Safe to call from any context.
+ * @since 0.1.0
+ */
+uint16_t ra_usb_host_line_state(ra_usb_speed_t speed);
+
+/**
  * @brief Retarget the host's default control pipe at a device address.
  *
  * @details

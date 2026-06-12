@@ -19,11 +19,7 @@ The full ladder completes on real hardware at 480 Mbps (DVSTCTR0.RHST =
 011b after the chirp handshake), repeatably across resets:
 
 ```
-ra8d2 host: enum attempt won=4
-ra8d2 host: device attached vid=0x24A9 pid=0x205A max-lun=18
-ra8d2 host: address 1 assigned
-ra8d2 host: msc iface eps in=0x01 out=0x02
-ra8d2 host: configured, pipes ready
+ra8d2 host: device attached vid=0x24A9 pid=0x205A max-lun=0
 ra8d2 host: INQUIRY vendor="        " product="                " rev="    "
 ra8d2 host: capacity blocks=245760000 block_size=512
 ra8d2 host: MBR sector 0 first 64 bytes:
@@ -31,9 +27,9 @@ ra8d2 host: MBR sector 0 first 64 bytes:
 ra8d2 host: mbr sig @510 = 55 AA (ok)
 ```
 
-(The `max-lun` field of the attach line carries the descriptor byte
-count during bring-up; this stick reports blank INQUIRY strings, which
-is legal -- the CSW signature/tag/status are validated per exchange.)
+(This stick reports blank INQUIRY strings, which is legal -- the CSW
+signature/tag/status are validated per exchange. Enumeration runs as a
+single polled ladder via `ra_usb_hmsc_enumerate`.)
 
 The ladder retries every 5 s, so inserting or reseating a drive is
 picked up automatically. Host-mode learnings (SACK/SIGN-gated SETUP,
@@ -138,8 +134,12 @@ Bulk-Only Transport 1.0, and HUM (R01UH1065EJ0130) Ch "USBHS".
 device. Pi USB gadget (libcomposite g_mass_storage backed by a
 file) could emulate one, but no such service is configured.
 
-Also blocked by the USB HS SET_ADDRESS stall documented in
-`hw_pending/README.md`.
+The ladder itself is fully working at 480 Mbps (see bring-up status
+above); the only blocker for automated HIL is the missing USB-gadget
+stimulus. The filesystem-layer counterpart with the same manual-stim
+requirement lives in
+`hw_validated/manual/usb_host_file_ops/` (mount + listdir + write +
+rename + unlink on the inserted drive).
 
-Stays in `hw_pending/` -- USB HS hardware/firmware blocked AND no Pi
-USB-gadget mass-storage scaffolding exists.
+Stays in `hw_pending/` until Pi USB-gadget mass-storage scaffolding
+exists for automated runs.
