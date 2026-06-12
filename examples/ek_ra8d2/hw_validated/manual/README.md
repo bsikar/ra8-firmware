@@ -19,7 +19,7 @@ To build: `make <appname>` from the repo root.
 | display_pal_animation | LCD render output -- requires human visual confirmation of animated frames |
 | lcd_color_cycle | LCD render output -- requires human visual confirmation of color cycling |
 | lcd_draw_x | LCD render output -- requires human visual confirmation of drawn 'X' |
-| usb_host_file_ops | Needs a physical USB thumb drive in J7 (USB-HS); suite mutates a real removable medium |
+| usb_host_file_ops | Needs a physical USB thumb drive in either USB jack; suite mutates a real removable medium |
 
 All other manual-category apps were relocated to `hw_pending/` on 2026-05-19
 because they had not yet been hardware-validated by the author. Their
