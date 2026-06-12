@@ -296,6 +296,40 @@ typedef void (*ra_usb_hmsc_attach_fn_t)(void* ctx, const ra_usb_hmsc_device_t* d
  */
 [[nodiscard]] ra_err_t ra_usb_hmsc_close(void);
 
+/**
+ * @brief Enumerate the attached MSC device end to end (polled).
+ *
+ * @details
+ * Runs the hardware-proven ladder on the controller selected by
+ * `ra_usb_hmsc_init`: waits for the D+ attach, hunts the (reset, address)
+ * combination the device answers at, assigns address 1 when it sat at
+ * the default, reads + parses the configuration descriptor for the MSC
+ * BOT interface and its bulk endpoints, issues SET_CONFIGURATION and a
+ * best-effort GET_MAX_LUN, and configures the bulk pipes. On success the
+ * registered attach callback fires with the device snapshot and the SCSI
+ * entry points (`ra_usb_hmsc_inquiry` / `_read_capacity` / `_read10` /
+ * `_write10`) are ready.
+ *
+ * @param[out] out_device Optional copy of the device snapshot (may be
+ *                        NULL).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                Device enumerated and pipes configured.
+ * @retval k_ra_err_invalid_state `ra_usb_hmsc_init` has not run.
+ * @retval k_ra_err_hw_timeout    Nothing attached / nothing answered.
+ * @retval k_ra_err_hw_error      A stage failed (STALL / short response).
+ *
+ * @pre `ra_usb_hmsc_init` succeeded and VBUS reaches the device.
+ * @pre `ra_time_init` has run (the ladder uses millisecond delays).
+ *
+ * @post On success the attach callback (if registered) has fired.
+ * @post The bulk pipes target the device's MSC endpoints.
+ *
+ * @note Blocking; bounded by the ladder timeouts (a few seconds max).
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_hmsc_enumerate(ra_usb_hmsc_device_t* out_device);
+
 /* =============================================================================
  * Attach callback
  * =============================================================================
@@ -464,30 +498,6 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
  * Test / introspection helpers
  * =============================================================================
  */
-
-/**
- * @brief Drive the enumeration step machine forward by one step.
- *
- * @details
- * Test / debug entry point. The production path drives this from the
- * `ra_usb_dispatch` callback when the controller fires a CTRT or BRDY
- * interrupt; tests call it directly to walk the state machine
- * deterministically.
- *
- * @return `ra_err_t` error code.
- * @retval k_ra_ok Step advanced.
- * @retval k_ra_err_invalid_state Driver not initialized.
- *
- * @pre `ra_usb_hmsc_init` succeeded.
- *
- * @post Internal enumeration step counter advances by one. When the
- *       step machine reaches the terminal state the registered
- *       attach callback fires.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_usb_hmsc_step(void);
 
 /**
  * @brief Construct the 31-byte CBW header for the given SCSI command.

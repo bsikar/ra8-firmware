@@ -22,15 +22,15 @@
  *  - `usb_hmsc_write10`         -> `ra_usb_hmsc_write10`
  *  - `usb_hmsc_set_rw_cbw`      -> `internal_build_rw_cbw`
  *  - `usb_hmsc_set_els_cbw`     -> `internal_build_els_cbw`
- *  - `usb_hmsc_get_max_unit`    -> `internal_setup_get_max_lun`
- *  - `usb_hmsc_class_check`     -> `internal_walk_config_descriptor`
- *  - `usb_hmsc_pipe_info`       -> `internal_configure_pipes`
+ *  - `usb_hmsc_get_max_unit`    -> `internal_enum_configure`
+ *  - `usb_hmsc_class_check`     -> `internal_enum_walk_cfg`
+ *  - `usb_hmsc_pipe_info`       -> `internal_enum_note_endpoint`
  *
- * The starter does CPU-FIFO, single-device, no-hub. Enumeration is
- * driven step-by-step from the controller's CTRT interrupt path
- * (production) or directly via `ra_usb_hmsc_step` (tests). Each step
- * issues exactly one chapter-9 SETUP request via
- * `ra_usb_host_setup_request`; the next CTRT advances the step.
+ * The starter does CPU-FIFO, single-device, no-hub. Enumeration is a
+ * single polled ladder (`ra_usb_hmsc_enumerate`): wait for the D+
+ * attach, hunt the (reset, address) combination the device answers on,
+ * then read descriptors / SET_CONFIGURATION / open the bulk pipes.
+ * Every chapter-9 SETUP goes through `ra_usb_host_setup_request`.
  *
  * BOT (Bulk-Only Transport) state machine -- per command:
  *
@@ -52,6 +52,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_time.h"
 #include "ra_usb.h"
 
 static const char* s_tag = "USBHMSC";
@@ -60,27 +61,6 @@ static const char* s_tag = "USBHMSC";
  * Internal constants
  * =============================================================================
  */
-
-/**
- * @enum ra_usb_hmsc_step_t
- * @brief Enumeration step machine states.
- *
- * @details Mirrors FSP's host-MSC enumeration sequence in
- * `r_usb_hmsc_driver.c`. Each step issues exactly one SETUP via
- * `ra_usb_host_setup_request`; the next CTRT interrupt advances.
- */
-typedef enum : uint8_t {
-  k_ra_hmsc_step_idle          = 0U, /**< Pre-attach.                  */
-  k_ra_hmsc_step_bus_reset     = 1U, /**< Drive USBRST then release.   */
-  k_ra_hmsc_step_set_address   = 2U, /**< SET_ADDRESS to assigned 1.   */
-  k_ra_hmsc_step_get_dev_desc  = 3U, /**< GET_DEVICE_DESCRIPTOR (18 B).*/
-  k_ra_hmsc_step_get_cfg_desc  = 4U, /**< GET_CONFIGURATION_DESCRIPTOR.*/
-  k_ra_hmsc_step_set_config    = 5U, /**< SET_CONFIGURATION (1).       */
-  k_ra_hmsc_step_set_interface = 6U, /**< SET_INTERFACE (0).           */
-  k_ra_hmsc_step_walk_desc     = 7U, /**< Find MSC IF; populate pipes. */
-  k_ra_hmsc_step_get_max_lun   = 8U, /**< Class Get-Max-LUN request.   */
-  k_ra_hmsc_step_done          = 9U, /**< Attach callback fires.       */
-} ra_usb_hmsc_step_t;
 
 /**
  * @enum ra_usb_hmsc_setup_field_t
@@ -285,7 +265,6 @@ typedef struct {
   bool                    initialized;  /**< True after init.            */
   bool                    attached;     /**< True after enum done.       */
   ra_usb_speed_t          speed;        /**< Underlying controller.      */
-  ra_usb_hmsc_step_t      step;         /**< Current enumeration step.   */
   ra_usb_hmsc_attach_fn_t attach_cb;    /**< Attach callback, or NULL.   */
   void*                   attach_ctx;   /**< Attach callback ctx.        */
   ra_usb_hmsc_device_t    device;       /**< Snapshot of attached dev.   */
@@ -327,275 +306,6 @@ static uint32_t internal_next_tag(void)
   const uint32_t tag = s_state.next_cbw_tag;
   ++s_state.next_cbw_tag;
   return tag;
-}
-
-/**
- * @brief Configure the two host-MSC bulk pipes against the attached
- *        device's endpoints.
- *
- * @details Mirrors FSP's `usb_hmsc_pipe_info`. Bulk pipes are PIPE3 +
- * PIPE4 here so they don't clash with the host-CDC class which owns
- * PIPE1 + PIPE2.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Internal helper. Not thread-safe; caller provides synchronisation.
- * @since 0.1.0
- */
-static ra_err_t internal_configure_pipes(void)
-{
-  const uint16_t bulk_mp = internal_bulk_max_packet(s_state.speed);
-
-  ra_err_t err = ra_usb_configure_endpoint(s_state.speed,
-                                           k_ra_hmsc_pipe_bulk_in,
-                                           s_state.device.bulk_in_ep,
-                                           k_ra_usb_ep_dir_in,
-                                           k_ra_usb_ep_type_bulk,
-                                           bulk_mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "hmsc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
-
-  err = ra_usb_configure_endpoint(s_state.speed,
-                                  k_ra_hmsc_pipe_bulk_out,
-                                  s_state.device.bulk_out_ep,
-                                  k_ra_usb_ep_dir_out,
-                                  k_ra_usb_ep_type_bulk,
-                                  bulk_mp);
-  return err;
-}
-
-/* Stage a chapter-9 GET_DESCRIPTOR SETUP request -- see surrounding code and HUM citations. */
-static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length)
-{
-  const ra_usb_setup_t setup = {
-    .bm_request_type = k_ra_hmsc_bm_std_dev_in,
-    .b_request       = k_ra_hmsc_breq_get_descriptor,
-    .w_value         = (uint16_t)((uint16_t)desc_type << k_ra_hmsc_shift_byte1),
-    .w_index         = 0U,
-    .w_length        = length,
-  };
-  return ra_usb_host_setup_request(s_state.speed, &setup);
-}
-
-/* Stage a SET_ADDRESS SETUP request -- see surrounding code and HUM citations. */
-static ra_err_t internal_setup_set_address(uint8_t address)
-{
-  const ra_usb_setup_t setup = {
-    .bm_request_type = k_ra_hmsc_bm_std_dev_out,
-    .b_request       = k_ra_hmsc_breq_set_address,
-    .w_value         = (uint16_t)address,
-    .w_index         = 0U,
-    .w_length        = 0U,
-  };
-  return ra_usb_host_setup_request(s_state.speed, &setup);
-}
-
-/* Stage a SET_CONFIGURATION SETUP request -- see surrounding code and HUM citations. */
-static ra_err_t internal_setup_set_config(uint8_t config_value)
-{
-  const ra_usb_setup_t setup = {
-    .bm_request_type = k_ra_hmsc_bm_std_dev_out,
-    .b_request       = k_ra_hmsc_breq_set_config,
-    .w_value         = (uint16_t)config_value,
-    .w_index         = 0U,
-    .w_length        = 0U,
-  };
-  return ra_usb_host_setup_request(s_state.speed, &setup);
-}
-
-/* Stage a SET_INTERFACE (alt 0, iface 0) SETUP request -- see surrounding code and HUM citations. */
-static ra_err_t internal_setup_set_interface(void)
-{
-  const ra_usb_setup_t setup = {
-    .bm_request_type = k_ra_hmsc_bm_std_iface_out,
-    .b_request       = k_ra_hmsc_breq_set_interface,
-    .w_value         = 0U,
-    .w_index         = 0U,
-    .w_length        = 0U,
-  };
-  return ra_usb_host_setup_request(s_state.speed, &setup);
-}
-
-/**
- * @brief Stage the MSC class Get-Max-LUN SETUP request.
- *
- * @details
- * Per USB MSC BBB rev 1.0 sec 3.2 "Get Max LUN":
- * - bmRequestType = 0xA1 (D2H | Class | Interface).
- * - bRequest      = 0xFE.
- * - wValue        = 0.
- * - wIndex        = bInterfaceNumber.
- * - wLength       = 1.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Internal helper. Not thread-safe; caller provides synchronisation.
- * @since 0.1.0
- */
-static ra_err_t internal_setup_get_max_lun(void)
-{
-  const ra_usb_setup_t setup = {
-    .bm_request_type = k_ra_hmsc_bm_class_iface_in,
-    .b_request       = k_ra_hmsc_req_get_max_lun,
-    .w_value         = 0U,
-    .w_index         = (uint16_t)s_state.device.interface_number,
-    .w_length        = k_ra_hmsc_get_max_lun_len,
-  };
-  return ra_usb_host_setup_request(s_state.speed, &setup);
-}
-
-/**
- * @brief Populate `s_state.device` with stub descriptor data.
- *
- * @details In production this routine would walk the configuration
- * descriptor returned in the GET_CONFIG_DESCRIPTOR data stage and
- * pick out the MSC interface (class=0x08 / subclass=0x06 SCSI /
- * protocol=0x50 BBB) and its bulk endpoints. The starter defaults to
- * the layout most thumb drives advertise: bulk-IN at EP address 1,
- * bulk-OUT at EP address 2, single MSC interface 0. If the attached
- * device deviates, the production path will overwrite these defaults
- * during the descriptor walk.
- *
- * @pre ``s_state.speed`` reflects the negotiated USB bus speed.
- * @pre The GET_CONFIG_DESCRIPTOR data-stage transfer has completed.
- *
- * @post ``s_state.device`` is populated with default MSC endpoint /
- *       interface assignments.
- * @post No hardware register is touched by this helper.
- *
- * @note Internal helper. Not thread-safe; called from the single-threaded
- *       enumeration FSM.
- * @since 0.1.0
- */
-static void internal_walk_config_descriptor(void)
-{
-  s_state.device.device_address      = k_ra_hmsc_assigned_address;
-  s_state.device.interface_number    = 0U;
-  s_state.device.bulk_in_ep          = 1U;
-  s_state.device.bulk_out_ep         = 2U;
-  s_state.device.bulk_in_max_packet  = internal_bulk_max_packet(s_state.speed);
-  s_state.device.bulk_out_max_packet = internal_bulk_max_packet(s_state.speed);
-  /* max_lun stays 0 until Get-Max-LUN data stage lands; majority of
-   * single-LUN devices STALL the request and we'd default to 0. */
-  s_state.device.max_lun = 0U;
-}
-
-/* Step handler -- bus-reset assert -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_idle(void)
-{
-  s_state.step = k_ra_hmsc_step_bus_reset;
-  return ra_usb_host_bus_reset(s_state.speed, true);
-}
-
-/* Step handler -- bus-reset release + SETUP for SET_ADDRESS -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_bus_reset(void)
-{
-  const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
-  RA_RETURN_ON_ERROR(rel, s_tag, "hmsc: release bus reset"); /* GCOVR_EXCL_BR_LINE */
-  /* Re-enable the downstream port (UACT = SOF generation). The reset
-   * assert in internal_do_idle cleared UACT (HUM Ch 36.2.5: setting
-   * USBRST forces UACT low), and releasing reset does not restore it.
-   * Without SOF the attached device sees a suspended/disabled port and
-   * cannot ACK the SET_ADDRESS that follows -- enumeration would stall
-   * at address 0. FSP enables UACT as part of the attach/reset sequence
-   * (usb_hstd_bus_reset). */
-  const ra_err_t act = ra_usb_host_set_uact(s_state.speed, true);
-  RA_RETURN_ON_ERROR(act, s_tag, "hmsc: enable UACT"); /* GCOVR_EXCL_BR_LINE */
-  s_state.step = k_ra_hmsc_step_set_address;
-  return internal_setup_set_address(k_ra_hmsc_assigned_address);
-}
-
-/* function -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_set_address(void)
-{
-  const ra_err_t addr_err = ra_usb_set_address(s_state.speed, k_ra_hmsc_assigned_address);
-  RA_RETURN_ON_ERROR(addr_err, s_tag, "hmsc: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
-  s_state.step = k_ra_hmsc_step_get_dev_desc;
-  return internal_setup_get_descriptor(k_ra_hmsc_desc_device, k_ra_hmsc_dev_desc_len);
-}
-
-/* Step handler -- SETUP for GET_CONFIGURATION_DESCRIPTOR -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_get_dev_desc(void)
-{
-  s_state.step = k_ra_hmsc_step_get_cfg_desc;
-  return internal_setup_get_descriptor(k_ra_hmsc_desc_configuration, k_ra_hmsc_cfg_desc_len);
-}
-
-/* Step handler -- SETUP for SET_CONFIGURATION -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_get_cfg_desc(void)
-{
-  s_state.step = k_ra_hmsc_step_set_config;
-  return internal_setup_set_config(k_ra_hmsc_default_config);
-}
-
-/* Step handler -- SETUP for SET_INTERFACE -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_set_config(void)
-{
-  s_state.step = k_ra_hmsc_step_set_interface;
-  return internal_setup_set_interface();
-}
-
-/* Step handler -- pure software descriptor walk -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_set_interface(void)
-{
-  internal_walk_config_descriptor();
-  s_state.step = k_ra_hmsc_step_walk_desc;
-  return k_ra_ok;
-}
-
-/* Step handler -- finalise pipes + stage Get-Max-LUN -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_walk_desc(void)
-{
-  const ra_err_t pipes_err = internal_configure_pipes();
-  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hmsc: configure pipes"); /* GCOVR_EXCL_BR_LINE */
-  s_state.step = k_ra_hmsc_step_get_max_lun;
-  return internal_setup_get_max_lun();
-}
-
-/* Step handler -- terminal: fire attach callback -- see surrounding code and HUM citations. */
-static ra_err_t internal_do_get_max_lun(void)
-{
-  s_state.attached = true;
-  s_state.step     = k_ra_hmsc_step_done;
-  if (s_state.attach_cb != nullptr) {
-    s_state.attach_cb(s_state.attach_ctx, &s_state.device);
-  }
-  return k_ra_ok;
-}
-
-/* Drive the enumeration step machine forward by one step -- see surrounding code and HUM citations. */
-static ra_err_t internal_step_advance(void)
-{
-  switch (s_state.step) {
-    case k_ra_hmsc_step_idle:
-      return internal_do_idle();
-    case k_ra_hmsc_step_bus_reset:
-      return internal_do_bus_reset();
-    case k_ra_hmsc_step_set_address:
-      return internal_do_set_address();
-    case k_ra_hmsc_step_get_dev_desc:
-      return internal_do_get_dev_desc();
-    case k_ra_hmsc_step_get_cfg_desc:
-      return internal_do_get_cfg_desc();
-    case k_ra_hmsc_step_set_config:
-      return internal_do_set_config();
-    case k_ra_hmsc_step_set_interface:
-      return internal_do_set_interface();
-    case k_ra_hmsc_step_walk_desc:
-      return internal_do_walk_desc();
-    case k_ra_hmsc_step_get_max_lun:
-      return internal_do_get_max_lun();
-    default:
-      /* Already done; idempotent. */
-      return k_ra_ok;
-  }
 }
 
 /* Pack a uint32 into 4 little-endian bytes -- see surrounding code and HUM citations. */
@@ -730,6 +440,532 @@ ra_err_t ra_usb_hmsc_decode_csw(const uint8_t*            csw,
 }
 
 /* =============================================================================
+ * Polled enumeration ladder (hardware-proven; replaces the CTRT machine)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_usb_hmsc_enum_tune_t
+ * @brief Timing / retry tunables for the polled enumeration ladder.
+ */
+typedef enum : uint32_t {
+  k_ra_hmsc_vbus_settle_ms = 200U,  /**< Supply settle before probing.    */
+  k_ra_hmsc_attach_to_ms   = 2000U, /**< Wait for the D+ pull-up.         */
+  k_ra_hmsc_debounce_ms    = 500U,  /**< Post-attach debounce (>=100 ms). */
+  k_ra_hmsc_reset_hold_ms  = 50U,   /**< USB bus-reset hold (>=10 ms).    */
+  k_ra_hmsc_recovery_ms    = 20U,   /**< Post-reset recovery (TRSTRCY).   */
+  k_ra_hmsc_addr_settle_ms = 5U,    /**< Post-SET_ADDRESS recovery.       */
+  k_ra_hmsc_enum_tries     = 8U,    /**< (reset?, addr) hunt attempts.    */
+  k_ra_hmsc_no_reset_tries = 4U,    /**< Attempts before using bus reset. */
+  k_ra_hmsc_addr_alt_mask  = 0x03U, /**< Alternate addr 0..3 per attempt. */
+  k_ra_hmsc_cfg_buf_len    = 128U,  /**< Full-configuration read buffer.  */
+  /** P10 iteration bound on the attach wait: the loop is primarily
+   * ms-bounded via `ra_time_ms`, but if the tick is frozen (simulator
+   * builds, SysTick masked) the spin cap guarantees termination. */
+  k_ra_hmsc_attach_spin_limit = 50000000UL,
+} ra_usb_hmsc_enum_tune_t;
+
+/**
+ * @enum ra_usb_hmsc_walk_off_t
+ * @brief Descriptor-walk byte offsets and identity codes.
+ */
+typedef enum : uint8_t {
+  k_ra_hmsc_off_dlen        = 0U,    /**< Any descriptor: bLength.         */
+  k_ra_hmsc_off_dtype       = 1U,    /**< Any descriptor: bDescriptorType. */
+  k_ra_hmsc_off_iface_num   = 2U,    /**< Interface: bInterfaceNumber.     */
+  k_ra_hmsc_off_iface_class = 5U,    /**< Interface: bInterfaceClass.      */
+  k_ra_hmsc_off_iface_sub   = 6U,    /**< Interface: bInterfaceSubClass.   */
+  k_ra_hmsc_off_iface_proto = 7U,    /**< Interface: bInterfaceProtocol.   */
+  k_ra_hmsc_off_ep_addr     = 2U,    /**< Endpoint: bEndpointAddress.      */
+  k_ra_hmsc_off_ep_attr     = 3U,    /**< Endpoint: bmAttributes.          */
+  k_ra_hmsc_off_ep_mps      = 4U,    /**< Endpoint: wMaxPacketSize LSB.    */
+  k_ra_hmsc_off_cfg_total   = 2U,    /**< Configuration: wTotalLength LSB. */
+  k_ra_hmsc_off_cfg_value   = 5U,    /**< Configuration: bConfigValue.     */
+  k_ra_hmsc_off_dev_vid     = 8U,    /**< Device: idVendor LSB.            */
+  k_ra_hmsc_off_dev_pid     = 10U,   /**< Device: idProduct LSB.           */
+  k_ra_hmsc_ep_dir_in_bit   = 0x80U, /**< bEndpointAddress direction bit.  */
+  k_ra_hmsc_ep_num_mask     = 0x0FU, /**< bEndpointAddress number field.   */
+  k_ra_hmsc_ep_attr_mask    = 0x03U, /**< bmAttributes transfer-type mask. */
+  k_ra_hmsc_ep_attr_bulk    = 0x02U, /**< bmAttributes: bulk transfer.     */
+  k_ra_hmsc_byte_bits       = 8U,    /**< Bit width of one byte.           */
+} ra_usb_hmsc_walk_off_t;
+
+/**
+ * @brief Read the 18-byte device descriptor over the polled control engine.
+ *
+ * @details GET_DESCRIPTOR(DEVICE) at whatever address the DCP currently
+ * targets; requires the full 18 bytes back.
+ *
+ * @param[out] desc Receives the descriptor (18 bytes).
+ * @return Read outcome.
+ * @retval k_ra_ok           All 18 bytes arrived.
+ * @retval k_ra_err_hw_error A short descriptor came back.
+ * @pre The bus is reset and UACT is on.
+ * @pre @p desc holds at least 18 bytes.
+ * @post @p desc carries the device descriptor on success.
+ * @post No state is modified.
+ * @note Blocking (polled control transfer).
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_read_dev_desc(uint8_t* desc)
+{
+  const ra_usb_setup_t setup = {
+    .bm_request_type = k_ra_hmsc_bm_std_dev_in,
+    .b_request       = k_ra_hmsc_breq_get_descriptor,
+    .w_value         = (uint16_t)((uint16_t)k_ra_hmsc_desc_device << k_ra_hmsc_byte_bits),
+    .w_index         = 0U,
+    .w_length        = k_ra_hmsc_dev_desc_len,
+  };
+  uint16_t       rx = 0U;
+  const ra_err_t err =
+    ra_usb_host_control_xfer(s_state.speed, &setup, desc, (uint16_t)k_ra_hmsc_dev_desc_len, &rx);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: dev desc"); /* GCOVR_EXCL_BR_LINE */
+  if (rx != (uint16_t)k_ra_hmsc_dev_desc_len) {
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Wait for a device to attach, then hunt for its address.
+ *
+ * @details Waits for the D+ pull-up (LNST leaves SE0) plus the spec
+ * debounce, then tries each (reset?, address) combination: four gentle
+ * attempts at addresses 0..3 without touching the bus, then four more
+ * with a full bus reset (which also returns a previously addressed
+ * device to address 0). The first combination whose device-descriptor
+ * read returns all 18 bytes wins.
+ *
+ * @param[out] desc     Receives the winning 18-byte device descriptor.
+ * @param[out] out_addr Receives the address the device answered at.
+ * @return Hunt outcome.
+ * @retval k_ra_ok              The device answered.
+ * @retval k_ra_err_hw_timeout  Nothing attached / nothing answered.
+ * @pre ::ra_usb_hmsc_init ran (host mode up, VBUS supplied).
+ * @pre ::ra_time_init has run (the ladder uses millisecond delays).
+ * @post On success the DCP targets `*out_addr` with UACT on.
+ * @post On failure the bus state is whatever the last attempt left.
+ * @note Blocking; worst case a few seconds.
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_hunt(uint8_t* desc, uint8_t* out_addr)
+{
+  ra_delay_ms(k_ra_hmsc_vbus_settle_ms);
+  const uint32_t t0 = ra_time_ms();
+  for (uint32_t spin = 0U; spin < (uint32_t)k_ra_hmsc_attach_spin_limit; spin++) {
+    if (ra_usb_host_line_state(s_state.speed) != 0U) {
+      break;
+    }
+    if ((ra_time_ms() - t0) > (uint32_t)k_ra_hmsc_attach_to_ms) {
+      break;
+    }
+  }
+  ra_delay_ms(k_ra_hmsc_debounce_ms);
+  ra_err_t err = k_ra_err_hw_timeout;
+  for (uint8_t attempt = 0U; attempt < (uint8_t)k_ra_hmsc_enum_tries; attempt++) {
+    if (attempt >= (uint8_t)k_ra_hmsc_no_reset_tries) {
+      (void)ra_usb_host_bus_reset(s_state.speed, true);
+      ra_delay_ms(k_ra_hmsc_reset_hold_ms);
+      (void)ra_usb_host_bus_reset(s_state.speed, false);
+    }
+    (void)ra_usb_host_set_uact(s_state.speed, true);
+    ra_delay_ms(k_ra_hmsc_recovery_ms);
+    const uint8_t addr = (uint8_t)(attempt & (uint8_t)k_ra_hmsc_addr_alt_mask);
+    (void)ra_usb_host_set_target(s_state.speed, addr);
+    err = internal_enum_read_dev_desc(desc);
+    if (err == k_ra_ok) {
+      *out_addr = addr;
+      return k_ra_ok;
+    }
+  }
+  return err;
+}
+
+/**
+ * @brief Move the device to address 1 when it answered at the default.
+ *
+ * @details SET_CONFIGURATION is only legal from the Address state (sticks
+ * STALL it at the default address), so assign address 1, honour the
+ * set-address recovery, and retarget the DCP. Skipped when the hunt
+ * already found the device addressed.
+ *
+ * @param[in,out] dev_addr In: hunt result. Out: the operating address.
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok The DCP targets the operating address.
+ * @pre ::internal_enum_hunt succeeded.
+ * @pre The bus is active (UACT on).
+ * @post `*dev_addr` is non-zero on success.
+ * @post Later transfers carry tokens to the new address.
+ * @note Blocking (one polled control transfer + settle).
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_assign_addr(uint8_t* dev_addr)
+{
+  if (*dev_addr != 0U) {
+    return k_ra_ok;
+  }
+  const ra_usb_setup_t setup = {
+    .bm_request_type = k_ra_hmsc_bm_std_dev_out,
+    .b_request       = k_ra_hmsc_breq_set_address,
+    .w_value         = k_ra_hmsc_assigned_address,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  ra_err_t err = ra_usb_host_control_xfer(s_state.speed, &setup, nullptr, 0U, nullptr);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: set address"); /* GCOVR_EXCL_BR_LINE */
+  ra_delay_ms(k_ra_hmsc_addr_settle_ms);
+  err = ra_usb_host_set_target(s_state.speed, (uint8_t)k_ra_hmsc_assigned_address);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: set target"); /* GCOVR_EXCL_BR_LINE */
+  *dev_addr = (uint8_t)k_ra_hmsc_assigned_address;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Record one bulk endpoint descriptor into the device snapshot.
+ *
+ * @details Filters for bmAttributes == bulk and slots the endpoint into
+ * the IN or OUT position (first match wins) with its wMaxPacketSize.
+ *
+ * @param[in] d Pointer to an endpoint descriptor.
+ * @pre @p d points at a descriptor with bDescriptorType ENDPOINT.
+ * @pre The unfilled `s_state.device` endpoint slots are zero.
+ * @post A matching bulk endpoint is recorded once.
+ * @post Non-bulk endpoints leave the snapshot untouched.
+ * @note Pure helper for the config-descriptor walk.
+ * @since 0.1.0
+ */
+static void internal_enum_note_endpoint(const uint8_t* d)
+{
+  const uint8_t attr = (uint8_t)(d[k_ra_hmsc_off_ep_attr] & (uint8_t)k_ra_hmsc_ep_attr_mask);
+  if (attr != (uint8_t)k_ra_hmsc_ep_attr_bulk) {
+    return;
+  }
+  const uint8_t  ea = d[k_ra_hmsc_off_ep_addr];
+  const uint16_t mps =
+    (uint16_t)((uint16_t)d[k_ra_hmsc_off_ep_mps] |
+               (uint16_t)((uint16_t)d[k_ra_hmsc_off_ep_mps + 1U] << k_ra_hmsc_byte_bits));
+  if ((ea & (uint8_t)k_ra_hmsc_ep_dir_in_bit) != 0U) {
+    if (s_state.device.bulk_in_ep == 0U) {
+      s_state.device.bulk_in_ep         = (uint8_t)(ea & (uint8_t)k_ra_hmsc_ep_num_mask);
+      s_state.device.bulk_in_max_packet = mps;
+    }
+  } else {
+    if (s_state.device.bulk_out_ep == 0U) {
+      s_state.device.bulk_out_ep         = (uint8_t)(ea & (uint8_t)k_ra_hmsc_ep_num_mask);
+      s_state.device.bulk_out_max_packet = mps;
+    }
+  }
+}
+
+/**
+ * @brief Test whether an interface descriptor is MSC SCSI Bulk-Only.
+ *
+ * @details Matches class 0x08 (mass storage), subclass 0x06 (SCSI
+ * transparent), protocol 0x50 (Bulk-Only Transport) -- the trio every
+ * consumer thumb drive reports.
+ *
+ * @param[in] d Interface descriptor bytes (9 valid bytes).
+ * @return true when the interface is MSC SCSI BOT.
+ * @retval false Any of the three class fields differs.
+ * @pre @p d is non-NULL and points at an interface descriptor.
+ * @pre The descriptor passed the walker's length check.
+ * @post No state changes.
+ * @post @p d is unmodified.
+ * @note Pure helper for ::internal_enum_walk_cfg.
+ * @since 0.1.0
+ */
+static bool internal_enum_iface_is_msc(const uint8_t* d)
+{
+  if (d[k_ra_hmsc_off_iface_class] != (uint8_t)k_ra_hmsc_class_msc) {
+    return false;
+  }
+  if (d[k_ra_hmsc_off_iface_sub] != (uint8_t)k_ra_hmsc_subclass_scsi) {
+    return false;
+  }
+  if (d[k_ra_hmsc_off_iface_proto] != (uint8_t)k_ra_hmsc_protocol_bbb) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Walk a configuration blob for the MSC interface + bulk endpoints.
+ *
+ * @details Strides descriptor-by-descriptor; an interface descriptor with
+ * class 0x08 / subclass 0x06 / protocol 0x50 opens the MSC scope, and the
+ * bulk endpoints inside it populate the device snapshot.
+ *
+ * @param[in] cfg Configuration descriptor bytes.
+ * @param[in] len Valid byte count in @p cfg.
+ * @return Walk outcome.
+ * @retval k_ra_ok           Both bulk endpoints were found.
+ * @retval k_ra_err_hw_error No MSC bulk endpoint pair in the blob.
+ * @pre @p cfg is non-NULL with @p len valid bytes.
+ * @pre The device snapshot endpoint slots start zeroed.
+ * @post On k_ra_ok the snapshot carries eps, max packets, and iface.
+ * @post @p cfg is unmodified.
+ * @note Pure helper for ::internal_enum_read_config.
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_walk_cfg(const uint8_t* cfg, uint16_t len)
+{
+  uint16_t off    = 0U;
+  bool     in_msc = false;
+  while (off < len) {
+    const uint8_t dlen = cfg[off + (uint16_t)k_ra_hmsc_off_dlen];
+    if (dlen == 0U) {
+      break;
+    }
+    const uint8_t dtype = cfg[off + (uint16_t)k_ra_hmsc_off_dtype];
+    if (dtype == (uint8_t)k_ra_hmsc_desc_interface) {
+      in_msc = internal_enum_iface_is_msc(&cfg[off]);
+      if (in_msc) {
+        s_state.device.interface_number = cfg[off + (uint16_t)k_ra_hmsc_off_iface_num];
+      }
+    }
+    if (dtype == (uint8_t)k_ra_hmsc_desc_endpoint) {
+      if (in_msc) {
+        internal_enum_note_endpoint(&cfg[off]);
+      }
+    }
+    off = (uint16_t)(off + dlen);
+  }
+  if (s_state.device.bulk_in_ep == 0U) {
+    return k_ra_err_hw_error;
+  }
+  if (s_state.device.bulk_out_ep == 0U) {
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Read + parse the configuration descriptor set.
+ *
+ * @details Reads the 9-byte header for wTotalLength + bConfigurationValue,
+ * re-reads the full set (clamped to the local buffer), and walks it for
+ * the MSC interface and bulk endpoints.
+ *
+ * @param[out] out_cfg_value Receives bConfigurationValue.
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok The device snapshot carries the MSC endpoints.
+ * @pre The device is addressed and answering control reads.
+ * @pre @p out_cfg_value is non-NULL.
+ * @post On success the snapshot endpoints + interface are filled.
+ * @post `*out_cfg_value` holds the value SET_CONFIGURATION needs.
+ * @note Blocking (two polled control reads).
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_read_config(uint8_t* out_cfg_value)
+{
+  uint8_t        cfg[k_ra_hmsc_cfg_buf_len] = {};
+  uint16_t       rx                         = 0U;
+  ra_usb_setup_t setup                      = {
+    .bm_request_type = k_ra_hmsc_bm_std_dev_in,
+    .b_request       = k_ra_hmsc_breq_get_descriptor,
+    .w_value         = (uint16_t)((uint16_t)k_ra_hmsc_desc_configuration << k_ra_hmsc_byte_bits),
+    .w_index         = 0U,
+    .w_length        = k_ra_hmsc_cfg_desc_len,
+  };
+  ra_err_t err =
+    ra_usb_host_control_xfer(s_state.speed, &setup, cfg, (uint16_t)k_ra_hmsc_cfg_desc_len, &rx);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: cfg header"); /* GCOVR_EXCL_BR_LINE */
+  uint16_t total =
+    (uint16_t)((uint16_t)cfg[k_ra_hmsc_off_cfg_total] |
+               (uint16_t)((uint16_t)cfg[k_ra_hmsc_off_cfg_total + 1U] << k_ra_hmsc_byte_bits));
+  if (total > (uint16_t)k_ra_hmsc_cfg_buf_len) {
+    total = (uint16_t)k_ra_hmsc_cfg_buf_len;
+  }
+  *out_cfg_value = cfg[k_ra_hmsc_off_cfg_value];
+  setup.w_length = total;
+  err            = ra_usb_host_control_xfer(s_state.speed, &setup, cfg, total, &rx);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: cfg full"); /* GCOVR_EXCL_BR_LINE */
+  return internal_enum_walk_cfg(cfg, rx);
+}
+
+/**
+ * @brief SET_CONFIGURATION, best-effort GET_MAX_LUN, and pipe setup.
+ *
+ * @details Activates the parsed configuration (strict status), issues the
+ * class GET_MAX_LUN (devices may STALL it, which legally means LUN 0, so
+ * failures default to 0), then programs the bulk pipes against the
+ * snapshot endpoints at @p dev_addr.
+ *
+ * @param[in] dev_addr  Address the device answers at.
+ * @param[in] cfg_value bConfigurationValue to activate.
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok The device is configured and both pipes are ready.
+ * @pre ::internal_enum_read_config filled the snapshot.
+ * @pre The DCP targets @p dev_addr.
+ * @post The bulk pipes are configured (DATA0, parked NAK).
+ * @post `s_state.device.max_lun` is filled (0 on GET_MAX_LUN failure).
+ * @note Blocking (polled control transfers).
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
+{
+  const ra_usb_setup_t set_cfg = {
+    .bm_request_type = k_ra_hmsc_bm_std_dev_out,
+    .b_request       = k_ra_hmsc_breq_set_config,
+    .w_value         = cfg_value,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  ra_err_t err = ra_usb_host_control_xfer(s_state.speed, &set_cfg, nullptr, 0U, nullptr);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: set config"); /* GCOVR_EXCL_BR_LINE */
+  const ra_usb_setup_t get_lun = {
+    .bm_request_type = k_ra_hmsc_bm_class_iface_in,
+    .b_request       = k_ra_hmsc_req_get_max_lun,
+    .w_value         = 0U,
+    .w_index         = s_state.device.interface_number,
+    .w_length        = k_ra_hmsc_get_max_lun_len,
+  };
+  uint8_t        lun     = 0U;
+  uint16_t       lun_rx  = 0U;
+  const ra_err_t lun_err = ra_usb_host_control_xfer(s_state.speed,
+                                                    &get_lun,
+                                                    &lun,
+                                                    (uint16_t)k_ra_hmsc_get_max_lun_len,
+                                                    &lun_rx);
+  s_state.device.max_lun = 0U;
+  if (lun_err == k_ra_ok) {
+    if (lun_rx == (uint16_t)k_ra_hmsc_get_max_lun_len) {
+      s_state.device.max_lun = lun;
+    }
+  }
+  err = ra_usb_host_pipe_setup(s_state.speed,
+                               k_ra_hmsc_pipe_bulk_in,
+                               dev_addr,
+                               s_state.device.bulk_in_ep,
+                               true,
+                               s_state.device.bulk_in_max_packet);
+  RA_RETURN_ON_ERROR(err, s_tag, "enum: pipe in"); /* GCOVR_EXCL_BR_LINE */
+  return ra_usb_host_pipe_setup(s_state.speed,
+                                k_ra_hmsc_pipe_bulk_out,
+                                dev_addr,
+                                s_state.device.bulk_out_ep,
+                                false,
+                                s_state.device.bulk_out_max_packet);
+}
+
+/**
+ * @brief Implementation of `ra_usb_hmsc_enumerate()`.
+ * @details See the public header for the documented contract; runs the
+ *          hardware-proven polled ladder: attach wait, (reset, address)
+ *          hunt, address assignment, configuration parse + activate,
+ *          GET_MAX_LUN, bulk pipe setup, then fires the attach callback.
+ * @param[out] out_device See header (may be NULL).
+ * @return Result code.
+ * @retval k_ra_ok Device enumerated; SCSI calls may follow.
+ * @pre ::ra_usb_hmsc_init succeeded and VBUS reaches the device.
+ * @pre ::ra_time_init has run.
+ * @post On success `s_state.attached` is true and the snapshot is filled.
+ * @post The registered attach callback (if any) has fired.
+ * @note Blocking; bounded by the ladder timeouts.
+ * @since 0.1.0
+ */
+/**
+ * @brief Unpack VID/PID from a device descriptor into the snapshot.
+ *
+ * @details Little-endian 16-bit fields at idVendor/idProduct.
+ *
+ * @param[in] desc Device descriptor bytes (18 valid bytes).
+ * @pre @p desc is non-NULL and holds a device descriptor.
+ * @pre The snapshot was reset for this enumeration pass.
+ * @post `s_state.device.vendor_id` / `.product_id` are filled.
+ * @post @p desc is unmodified.
+ * @note Pure helper for ::ra_usb_hmsc_enumerate.
+ * @since 0.1.0
+ */
+static void internal_enum_fill_ids(const uint8_t* desc)
+{
+  s_state.device.vendor_id =
+    (uint16_t)((uint16_t)desc[k_ra_hmsc_off_dev_vid] |
+               (uint16_t)((uint16_t)desc[k_ra_hmsc_off_dev_vid + 1U] << k_ra_hmsc_byte_bits));
+  s_state.device.product_id =
+    (uint16_t)((uint16_t)desc[k_ra_hmsc_off_dev_pid] |
+               (uint16_t)((uint16_t)desc[k_ra_hmsc_off_dev_pid + 1U] << k_ra_hmsc_byte_bits));
+}
+
+/**
+ * @brief Publish a completed enumeration: snapshot, callback, out-copy.
+ *
+ * @details Stores the address, flips the attached flag, fires the
+ * registered attach callback, and copies the snapshot to the caller.
+ *
+ * @param[in]  dev_addr   Address the device answers at.
+ * @param[out] out_device Caller's snapshot copy (may be NULL).
+ * @pre The bulk pipes are configured and SCSI calls may follow.
+ * @pre The snapshot carries VID/PID, endpoints, and max-LUN.
+ * @post `s_state.attached` is true; the callback (if any) has fired.
+ * @post `*out_device` holds the snapshot when @p out_device is non-NULL.
+ * @note Helper for ::ra_usb_hmsc_enumerate.
+ * @since 0.1.0
+ */
+static void internal_enum_publish(uint8_t dev_addr, ra_usb_hmsc_device_t* out_device)
+{
+  s_state.device.device_address = dev_addr;
+  s_state.attached              = true;
+  if (s_state.attach_cb != nullptr) {
+    s_state.attach_cb(s_state.attach_ctx, &s_state.device);
+  }
+  if (out_device != nullptr) {
+    *out_device = s_state.device;
+  }
+}
+
+/**
+ * @brief Run the enumeration ladder: hunt, address, configure, pipes.
+ *
+ * @details Waits for the attach, hunts the (reset, address) combination
+ * the device answers on, unpacks VID/PID, assigns address 1, parses +
+ * activates the configuration, and programs the bulk pipes.
+ *
+ * @param[out] out_addr Receives the address the device answers at.
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok The device is configured and both pipes are ready.
+ * @pre ::ra_usb_hmsc_init succeeded and VBUS reaches the device.
+ * @pre The snapshot was reset for this enumeration pass.
+ * @post On success the snapshot carries IDs, endpoints, and max-LUN.
+ * @post On failure the controller may need a fresh attach cycle.
+ * @note Helper for ::ra_usb_hmsc_enumerate (statement-count split).
+ * @since 0.1.0
+ */
+static ra_err_t internal_enum_ladder(uint8_t* out_addr)
+{
+  uint8_t  desc[k_ra_hmsc_dev_desc_len] = {};
+  ra_err_t err                          = internal_enum_hunt(desc, out_addr);
+  RA_RETURN_ON_ERROR(err, s_tag, "enumerate: hunt"); /* GCOVR_EXCL_BR_LINE */
+  internal_enum_fill_ids(desc);
+
+  err = internal_enum_assign_addr(out_addr);
+  RA_RETURN_ON_ERROR(err, s_tag, "enumerate: address"); /* GCOVR_EXCL_BR_LINE */
+  uint8_t cfg_value = 0U;
+  err               = internal_enum_read_config(&cfg_value);
+  RA_RETURN_ON_ERROR(err, s_tag, "enumerate: config"); /* GCOVR_EXCL_BR_LINE */
+  err = internal_enum_configure(*out_addr, cfg_value);
+  RA_RETURN_ON_ERROR(err, s_tag, "enumerate: configure"); /* GCOVR_EXCL_BR_LINE */
+  return k_ra_ok;
+}
+
+ra_err_t ra_usb_hmsc_enumerate(ra_usb_hmsc_device_t* out_device)
+{
+  if (!s_state.initialized) {
+    return k_ra_err_invalid_state;
+  }
+  s_state.attached = false;
+  s_state.device   = (ra_usb_hmsc_device_t){};
+
+  uint8_t        dev_addr = 0U;
+  const ra_err_t err      = internal_enum_ladder(&dev_addr);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  internal_enum_publish(dev_addr, out_device);
+  return k_ra_ok;
+}
+
+/* =============================================================================
  * Lifecycle
  * =============================================================================
  */
@@ -746,7 +982,6 @@ ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
   }
 
   s_state.speed        = speed;
-  s_state.step         = k_ra_hmsc_step_idle;
   s_state.attached     = false;
   s_state.attach_cb    = nullptr;
   s_state.attach_ctx   = nullptr;
@@ -770,7 +1005,6 @@ ra_err_t ra_usb_hmsc_close(void)
   s_state.attached    = false;
   s_state.attach_cb   = nullptr;
   s_state.attach_ctx  = nullptr;
-  s_state.step        = k_ra_hmsc_step_idle;
   return err;
 }
 
@@ -828,7 +1062,7 @@ static ra_err_t internal_check_ready(uint8_t target_lun)
  */
 static ra_err_t internal_send_cbw(const uint8_t* cbw)
 {
-  return ra_usb_queue_in(s_state.speed, k_ra_hmsc_pipe_bulk_out, cbw, k_ra_hmsc_cbw_len);
+  return ra_usb_host_bulk_out(s_state.speed, k_ra_hmsc_pipe_bulk_out, cbw, k_ra_hmsc_cbw_len);
 }
 
 /**
@@ -850,7 +1084,8 @@ static ra_err_t internal_send_cbw(const uint8_t* cbw)
  */
 static ra_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 {
-  return ra_usb_queue_out(s_state.speed, k_ra_hmsc_pipe_bulk_in, dst, inout_len, true);
+  const uint16_t cap = *inout_len;
+  return ra_usb_host_bulk_in(s_state.speed, k_ra_hmsc_pipe_bulk_in, dst, cap, inout_len);
 }
 
 /* Build a 6-byte CDB for SCSI INQUIRY -- see surrounding code and HUM citations. */
@@ -898,27 +1133,55 @@ internal_build_rw10_cdb(uint8_t opcode, uint32_t lba, uint16_t block_count, uint
   cdb[k_ra_hmsc_cdb_off_cnt_lsb] = (uint8_t)(block_count & k_ra_hmsc_byte_mask);
 }
 
-/* Treat hw_timeout / no_data as soft (simulator) failures -- see surrounding code and HUM citations. */
-static ra_err_t internal_normalise_xfer_err(ra_err_t err)
-{
-  // mcdc-deactivated: TU-local helper internal_normalise_xfer_err 3-condition err-set membership; ra_err_t is an exhaustive enum and the upstream xfer pathway can only return one of these three success-equivalent codes or one of the hw-error codes. MC/DC vectors that flip individual conditions while keeping the others at false require contradictory enum values that the type system forbids.
-  if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {
-    return k_ra_ok;
-  }
-  return k_ra_err_hw_error;
-}
-
 /* Build CBW + push it on bulk-OUT -- see surrounding code and HUM citations. */
 static ra_err_t internal_issue_cbw(uint8_t        target_lun,
                                    uint32_t       xfer_len,
                                    bool           data_in,
                                    const uint8_t* cdb,
-                                   uint8_t        cdb_len)
+                                   uint8_t        cdb_len,
+                                   uint32_t*      out_tag)
 {
   uint8_t        cbw[k_ra_hmsc_cbw_len] = {};
   const ra_err_t cbw_err = ra_usb_hmsc_build_cbw(target_lun, xfer_len, data_in, cdb, cdb_len, cbw);
   RA_RETURN_ON_ERROR(cbw_err, s_tag, "issue_cbw: build cbw"); /* GCOVR_EXCL_BR_LINE */
-  return internal_normalise_xfer_err(internal_send_cbw(cbw));
+  *out_tag = internal_unpack_u32_le(&cbw[k_ra_hmsc_cbw_off_tag]);
+  return internal_send_cbw(cbw);
+}
+
+/**
+ * @brief Read and validate the 13-byte CSW that closes a BOT exchange.
+ *
+ * @details Pulls the CSW from the bulk-IN pipe, requires the full 13
+ * bytes, validates the signature + tag echo via ::ra_usb_hmsc_decode_csw,
+ * and maps any non-PASSED status to ::k_ra_err_hw_error.
+ *
+ * @param[in] expected_tag dCBWTag of the CBW that opened the exchange.
+ * @return Exchange outcome.
+ * @retval k_ra_ok           CSW signature/tag matched and status PASSED.
+ * @retval k_ra_err_hw_error Short CSW, bad signature/tag, or FAILED status.
+ * @pre The CBW (and any data stage) for this exchange completed.
+ * @pre The bulk pipes are configured (::ra_usb_hmsc_enumerate).
+ * @post The exchange is closed; the device is ready for the next CBW.
+ * @post No state is modified on success.
+ * @note Blocking (one bounded bulk-IN wait).
+ * @since 0.1.0
+ */
+static ra_err_t internal_read_csw(uint32_t expected_tag)
+{
+  uint8_t  csw[k_ra_hmsc_csw_len] = {};
+  uint16_t len                    = k_ra_hmsc_csw_len;
+  ra_err_t err                    = internal_recv_bytes(csw, &len);
+  RA_RETURN_ON_ERROR(err, s_tag, "read_csw: bulk in"); /* GCOVR_EXCL_BR_LINE */
+  if (len != (uint16_t)k_ra_hmsc_csw_len) {
+    return k_ra_err_hw_error;
+  }
+  ra_usb_hmsc_csw_status_t status = k_ra_hmsc_csw_status_phase_error;
+  err                             = ra_usb_hmsc_decode_csw(csw, expected_tag, &status);
+  RA_RETURN_ON_ERROR(err, s_tag, "read_csw: decode"); /* GCOVR_EXCL_BR_LINE */
+  if (status != k_ra_hmsc_csw_status_passed) {
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
 }
 
 /* function -- see surrounding code and HUM citations. */
@@ -928,9 +1191,12 @@ static ra_err_t internal_run_data_in(uint8_t        target_lun,
                                      uint8_t*       out_buf,
                                      uint16_t*      inout_len)
 {
-  const ra_err_t cbw_err = internal_issue_cbw(target_lun, *inout_len, true, cdb, cdb_len);
+  uint32_t       tag     = 0U;
+  const ra_err_t cbw_err = internal_issue_cbw(target_lun, *inout_len, true, cdb, cdb_len, &tag);
   RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_in: issue cbw"); /* GCOVR_EXCL_BR_LINE */
-  return internal_normalise_xfer_err(internal_recv_bytes(out_buf, inout_len));
+  const ra_err_t derr = internal_recv_bytes(out_buf, inout_len);
+  RA_RETURN_ON_ERROR(derr, s_tag, "run_data_in: data"); /* GCOVR_EXCL_BR_LINE */
+  return internal_read_csw(tag);
 }
 
 /* function -- see surrounding code and HUM citations. */
@@ -940,10 +1206,25 @@ static ra_err_t internal_run_data_out(uint8_t        target_lun,
                                       const uint8_t* in_buf,
                                       uint16_t       push_len)
 {
-  const ra_err_t cbw_err = internal_issue_cbw(target_lun, (uint32_t)push_len, false, cdb, cdb_len);
+  uint32_t       tag = 0U;
+  const ra_err_t cbw_err =
+    internal_issue_cbw(target_lun, (uint32_t)push_len, false, cdb, cdb_len, &tag);
   RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_out: issue cbw"); /* GCOVR_EXCL_BR_LINE */
-  return internal_normalise_xfer_err(
-    ra_usb_queue_in(s_state.speed, k_ra_hmsc_pipe_bulk_out, in_buf, push_len));
+  /* The bulk-OUT primitive ships one packet per call: chunk the payload
+   * at the negotiated max packet size. */
+  const uint16_t mps    = internal_bulk_max_packet(s_state.speed);
+  uint16_t       offset = 0U;
+  while (offset < push_len) {
+    uint16_t chunk = (uint16_t)(push_len - offset);
+    if (chunk > mps) {
+      chunk = mps;
+    }
+    const ra_err_t werr =
+      ra_usb_host_bulk_out(s_state.speed, k_ra_hmsc_pipe_bulk_out, &in_buf[offset], chunk);
+    RA_RETURN_ON_ERROR(werr, s_tag, "run_data_out: data chunk"); /* GCOVR_EXCL_BR_LINE */
+    offset = (uint16_t)(offset + chunk);
+  }
+  return internal_read_csw(tag);
 }
 
 /* Decode the 36-byte INQUIRY response into the public struct -- see surrounding code and HUM citations. */
@@ -1061,17 +1342,4 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
     internal_run_data_out(target_lun, cdb, (uint8_t)k_ra_hmsc_cdb10_len, in_buf, push_len);
   RA_RETURN_ON_ERROR(err, s_tag, "write10: bot"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
-}
-
-/* =============================================================================
- * Test / introspection helpers
- * =============================================================================
- */
-
-ra_err_t ra_usb_hmsc_step(void)
-{
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  return internal_step_advance();
 }
