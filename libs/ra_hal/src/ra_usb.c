@@ -3019,3 +3019,365 @@ ra_err_t ra_usb_host_setup_request(ra_usb_speed_t speed, const ra_usb_setup_t* s
   internal_rmw16(&reg->DCPCTR, sureq_bit, 0U);
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Host-mode control-transfer engine (polled, synchronous)
+ *
+ * The RA SIE signals host control-transfer progress through SUREQ-clear
+ * (SETUP done), BRDY (a DATA packet landed in the DCP buffer) and BEMP
+ * (the STATUS stage completed) -- NOT through CTRT, which is a device-mode
+ * control-stage signal. This block composes the existing FIFO/PID helpers
+ * into a blocking GET/SET control transfer over the DCP (pipe 0).
+ * =============================================================================
+ */
+
+/** @brief Tunables for the polled host control-transfer engine. */
+typedef enum : uint32_t {
+  k_ra_usb_ctrl_poll_limit = 2000000UL, /**< Spin bound per control stage. */
+} ra_usb_host_ctrl_lim_t;
+
+/** @brief Stage codes recorded by the host control-transfer engine. */
+typedef enum : uint8_t {
+  k_ra_usb_cs_begin     = 0U, /**< Before the SETUP stage.        */
+  k_ra_usb_cs_setup     = 1U, /**< SETUP stage completed.         */
+  k_ra_usb_cs_data_in   = 2U, /**< DATA-IN stage entered.         */
+  k_ra_usb_cs_data_pkt  = 3U, /**< First DATA packet received.    */
+  k_ra_usb_cs_data_done = 4U, /**< DATA stage completed.          */
+  k_ra_usb_cs_status    = 5U, /**< STATUS stage entered.          */
+  k_ra_usb_cs_done      = 6U, /**< STATUS done; transfer closed.  */
+} ra_usb_host_ctrl_stage_code_t;
+
+/** @brief Last host control-transfer stage reached (bring-up diagnostic). */
+static volatile uint8_t s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_begin;
+
+uint8_t ra_usb_host_ctrl_stage(void)
+{
+  return s_host_ctrl_stage;
+}
+
+/** @brief Bit masks used by the host control-transfer engine. */
+typedef enum : uint16_t {
+  k_ra_usb_dcp_pipe0_bit = 0x0001U, /**< BRDYSTS/BEMPSTS DCP (pipe 0) bit. */
+  k_ra_usb_setup_dir_in  = 0x0080U, /**< bmRequestType device-to-host bit. */
+  k_ra_usb_dcpmaxp_mxps  = 0x007FU, /**< DCPMAXP MXPS (max packet) field.  */
+  k_ra_usb_rhst_mask     = 0x0007U, /**< DVSTCTR0.RHST connected-speed.    */
+} ra_usb_host_ctrl_bits_t;
+
+/** @brief Offsets / shifts for the device-address (DEVADDn) registers. */
+typedef enum : uint32_t {
+  k_ra_usb_devadd0_off  = 0x00D0U, /**< DEVADD0 byte offset from base.    */
+  k_ra_usb_usbspd_shift = 6U,      /**< DEVADDn.USBSPD field position.    */
+} ra_usb_host_devadd_t;
+
+/**
+ * @brief Program DEVADD0.USBSPD with the connected device's link speed.
+ *
+ * @details The RA host SIE will not run IN/OUT transactions to address 0
+ * until the device-address-0 speed is configured. The DEVADDn registers
+ * sit past the modelled register window, so this addresses DEVADD0 by raw
+ * offset and copies DVSTCTR0.RHST (01=LS, 10=FS, 11=HS) into USBSPD[7:6].
+ *
+ * @param[in] reg Selected controller register block (its base address).
+ * @pre The bus reset has completed so RHST reflects the device speed.
+ * @pre @p reg is non-NULL.
+ * @post DEVADD0.USBSPD matches the connected speed; address 0 is usable.
+ * @post No other DEVADD0 field is changed (the rest are reserved/zero).
+ * @note Bring-up enumerates at address 0 only, so just DEVADD0 is set.
+ * @since 0.1.0
+ */
+static void internal_host_set_dev0_speed(volatile r_usb_regs_t* reg)
+{
+  const uint16_t           rhst = (uint16_t)(reg->DVSTCTR0 & (uint16_t)k_ra_usb_rhst_mask);
+  volatile uint16_t* const devadd0 =
+    (volatile uint16_t*)((uintptr_t)reg + (uintptr_t)k_ra_usb_devadd0_off);
+  *devadd0 = (uint16_t)(rhst << (uint16_t)k_ra_usb_usbspd_shift);
+}
+
+/**
+ * @brief Spin until a W0C status bit asserts or the deadline elapses.
+ *
+ * @details Bounded busy-wait over a USB interrupt-status register; the
+ * polled host control engine uses it to gate on DCP BRDY/BEMP edges
+ * without arming the NVIC USB line.
+ *
+ * @param[in] sts  Pointer to the status register (BRDYSTS / BEMPSTS).
+ * @param[in] mask Bit to wait for.
+ * @return k_ra_ok on assertion, k_ra_err_hw_timeout otherwise.
+ * @retval k_ra_ok             The masked bit asserted within the bound.
+ * @retval k_ra_err_hw_timeout The bit never asserted before the deadline.
+ * @pre @p sts points at a live USB status register.
+ * @pre Interrupts for this controller are quiescent (polled driver).
+ * @post No register is modified.
+ * @post On timeout the caller aborts the transfer.
+ * @note Bounded busy-wait; FS control stages settle well inside the bound.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t mask)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
+    if ((*sts & mask) != 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Issue the SETUP stage of a host control transfer and wait for it.
+ *
+ * @details Parks the DCP NAK, programs the target device speed, loads the
+ * USBREQ/VAL/INDX/LENG mirror registers, asserts SUREQ and spins until the
+ * SIE self-clears it (the SETUP token has been delivered + handshaked).
+ *
+ * @param[in] reg   Selected controller register block.
+ * @param[in] setup Setup packet to transmit.
+ * @return k_ra_ok once SUREQ clears, else k_ra_err_busy / k_ra_err_hw_timeout.
+ * @retval k_ra_ok             SETUP delivered and SUREQ cleared.
+ * @retval k_ra_err_busy       A control transfer was already pending.
+ * @retval k_ra_err_hw_timeout SUREQ did not clear before the deadline.
+ * @pre @p reg / @p setup are non-NULL; the bus is reset and UACT is on.
+ * @pre No control transfer is already pending (SUREQ clear).
+ * @post The 8-byte SETUP token has been delivered to the device.
+ * @post Stale DCP BRDY/BEMP status has been cleared.
+ * @note Blocking; bounded by ::k_ra_usb_ctrl_poll_limit.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_usb_setup_t* setup)
+{
+  const uint16_t sureq = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
+  if ((reg->DCPCTR & sureq) != 0U) {
+    return k_ra_err_busy;
+  }
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  internal_host_set_dev0_speed(reg);
+  reg->BEMPSTS       = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  reg->BRDYSTS       = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
+                                  (uint16_t)((uint16_t)setup->b_request << k_ra_usb_byte_bits));
+  reg->USBREQ        = req;
+  reg->USBVAL        = setup->w_value;
+  reg->USBINDX       = setup->w_index;
+  reg->USBLENG       = setup->w_length;
+  internal_rmw16(&reg->DCPCTR, sureq, 0U);
+  /* SUREQ self-clears once the SIE has delivered the SETUP token. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
+    if ((reg->DCPCTR & sureq) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Run the DATA-IN stage of a host control read into @p data.
+ *
+ * @details Arms the DCP for IN (PID=BUF, BRDY/NRDY status enabled), then
+ * loops reading BRDY-gated CFIFO packets via ::internal_fifo_read until a
+ * short packet or @p want bytes, parking the pipe NAK on exit.
+ *
+ * @param[in]  reg     Selected controller register block.
+ * @param[out] data    Destination buffer.
+ * @param[in]  want    Bytes the caller can accept.
+ * @param[in]  mxps    DCP max packet size (short-packet threshold).
+ * @param[out] out_rx  Receives the byte count read from the device.
+ * @return k_ra_ok on a complete/short-packet read, else a timeout code.
+ * @retval k_ra_ok             A short packet or @p want bytes were read.
+ * @retval k_ra_err_hw_timeout No DATA packet arrived before the deadline.
+ * @pre The SETUP stage for an IN request has completed.
+ * @pre @p data holds at least @p want bytes.
+ * @post @p out_rx holds the number of bytes the device returned.
+ * @post The DCP PID is left NAK.
+ * @note Blocking; each packet is bounded by the poll limit.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
+                                           uint8_t*               data,
+                                           uint16_t               want,
+                                           uint16_t               mxps,
+                                           uint16_t*              out_rx)
+{
+  uint16_t rx   = 0U;
+  bool     done = false;
+  internal_select_cfifo(reg, 0U, false);
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  /* Enable the DCP BRDY/NRDY status so the polled waits observe them. */
+  reg->BRDYENB = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  reg->NRDYENB = (uint16_t)(reg->NRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  internal_dcp_pid(reg, k_ra_pid_buf);
+  while (!done) {
+    const ra_err_t br = internal_host_wait_sts(&reg->BRDYSTS, k_ra_usb_dcp_pipe0_bit);
+    if (br != k_ra_ok) {
+      internal_dcp_pid(reg, k_ra_pid_nak);
+      return br;
+    }
+    s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_data_pkt;
+    internal_select_cfifo(reg, 0U, false);
+    if (internal_wait_frdy(reg) != k_ra_ok) {
+      internal_dcp_pid(reg, k_ra_pid_nak);
+      return k_ra_err_hw_timeout;
+    }
+    const uint16_t dtln  = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
+    uint16_t       chunk = dtln;
+    if ((uint16_t)(rx + chunk) > want) {
+      chunk = (uint16_t)(want - rx);
+    }
+    if (chunk > 0U) {
+      internal_fifo_read(reg, &data[rx], chunk);
+    }
+    reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+    rx            = (uint16_t)(rx + dtln);
+    reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+    if (dtln < mxps) {
+      done = true;
+    }
+    if (rx >= want) {
+      done = true;
+    }
+  }
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  *out_rx = rx;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Run the zero-length STATUS stage and complete the control transfer.
+ *
+ * @details Parks the DCP NAK, drains residual data-stage bytes, forces the
+ * DATA1 sequence bit, then asserts CCPL + PID=BUF so the SIE runs the
+ * opposite-direction zero-length status stage; completion is taken from
+ * CCPL self-clearing.
+ *
+ * @param[in] reg       Selected controller register block.
+ * @param[in] write_zlp true => status is OUT (after a data-IN read); false =>
+ *                      status is IN (control write / no-data).
+ * @return k_ra_ok when CCPL clears (status finished), else a timeout code.
+ * @retval k_ra_ok             The status stage closed the control transfer.
+ * @retval k_ra_err_hw_timeout CCPL did not clear before the deadline.
+ * @pre The SETUP (and any DATA) stage has completed.
+ * @pre The DCP PID is NAK on entry.
+ * @post CCPL has been asserted so the SIE closes the control transfer.
+ * @post The DCP PID is left NAK.
+ * @note Blocking; bounded by ::k_ra_usb_ctrl_poll_limit.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write_zlp)
+{
+  const uint16_t ccpl = (uint16_t)(1U << k_ra_dcpctr_bit_ccpl);
+  reg->BEMPSTS        = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  /* Park the DCP NAK and drain any residual data-stage bytes so the SIE
+   * will turn the buffer around to the opposite-direction status stage. */
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  internal_select_cfifo(reg, 0U, write_zlp);
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  /* The status stage is always DATA1; force the DCP sequence bit so the
+   * device does not NAK a toggle mismatch (seen as NRDYSTS bit 0). */
+  const uint16_t sqset = (uint16_t)(1U << k_ra_dcpctr_bit_sqset);
+  internal_rmw16(&reg->DCPCTR, sqset, 0U);
+  /* Set CCPL first (control-transfer-end enable), then PID=BUF so the SIE
+   * runs the controller-generated zero-length status stage and closes the
+   * transfer. CCPL self-clears on completion. */
+  internal_rmw16(&reg->DCPCTR, ccpl, 0U);
+  internal_dcp_pid(reg, k_ra_pid_buf);
+  /* CCPL self-clears when the SIE finishes the status stage and closes
+   * the control transfer -- a direction-agnostic completion signal. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
+    if ((reg->DCPCTR & ccpl) == 0U) {
+      internal_dcp_pid(reg, k_ra_pid_nak);
+      return k_ra_ok;
+    }
+  }
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Decide direction and run the optional DATA stage of a control xfer.
+ *
+ * @details Classifies the request from @p setup: a non-zero IN length with a
+ * destination buffer is a control read, which runs ::internal_host_ctrl_data_in
+ * (clamped to @p data_len); everything else (control write / no-data) skips
+ * the data stage. Reports the classification so the caller picks the right
+ * status-stage direction.
+ *
+ * @param[in]  reg         Selected controller register block.
+ * @param[in]  setup       The SETUP packet just delivered.
+ * @param[out] data        DATA-IN destination (may be NULL).
+ * @param[in]  data_len    Capacity of @p data.
+ * @param[out] out_rx      Receives DATA-IN bytes read (0 if no data stage).
+ * @param[out] out_is_read Set true when a DATA-IN stage ran.
+ * @return k_ra_ok when no data stage ran or it completed, else a timeout.
+ * @retval k_ra_ok             No data stage, or the DATA-IN read finished.
+ * @retval k_ra_err_hw_timeout The DATA-IN stage stalled.
+ * @pre The SETUP stage for @p setup has completed.
+ * @pre @p out_rx / @p out_is_read are non-NULL.
+ * @post @p out_rx / @p out_is_read reflect the data stage outcome.
+ * @post On k_ra_ok the transfer is ready for its status stage.
+ * @note Helper split out of ::ra_usb_host_control_xfer for complexity.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
+                                         const ra_usb_setup_t*  setup,
+                                         uint8_t*               data,
+                                         uint16_t               data_len,
+                                         uint16_t*              out_rx,
+                                         bool*                  out_is_read)
+{
+  *out_rx      = 0U;
+  bool is_read = false;
+  if (setup->w_length > 0U) {
+    if ((setup->bm_request_type & (uint16_t)k_ra_usb_setup_dir_in) != 0U) {
+      if (data != nullptr) {
+        is_read = true;
+      }
+    }
+  }
+  *out_is_read = is_read;
+  if (!is_read) {
+    return k_ra_ok;
+  }
+  uint16_t want = setup->w_length;
+  if (data_len < want) {
+    want = data_len;
+  }
+  const uint16_t mxps = (uint16_t)(reg->DCPMAXP & (uint16_t)k_ra_usb_dcpmaxp_mxps);
+  s_host_ctrl_stage   = (uint8_t)k_ra_usb_cs_data_in;
+  const ra_err_t derr = internal_host_ctrl_data_in(reg, data, want, mxps, out_rx);
+  if (derr == k_ra_ok) {
+    s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_data_done;
+  }
+  return derr;
+}
+
+ra_err_t ra_usb_host_control_xfer(ra_usb_speed_t        speed,
+                                  const ra_usb_setup_t* setup,
+                                  uint8_t*              data,
+                                  uint16_t              data_len,
+                                  uint16_t*             out_received)
+{
+  RA_CHECK_NULL_PTR(setup, s_tag, "host_control_xfer: setup");
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  s_host_ctrl_stage   = (uint8_t)k_ra_usb_cs_begin;
+  const ra_err_t serr = internal_host_ctrl_setup(reg, setup);
+  if (serr != k_ra_ok) {
+    return serr;
+  }
+  s_host_ctrl_stage      = (uint8_t)k_ra_usb_cs_setup;
+  uint16_t       rx      = 0U;
+  bool           is_read = false;
+  const ra_err_t derr    = internal_host_data_phase(reg, setup, data, data_len, &rx, &is_read);
+  if (derr != k_ra_ok) {
+    return derr;
+  }
+  if (out_received != nullptr) {
+    *out_received = rx;
+  }
+  s_host_ctrl_stage    = (uint8_t)k_ra_usb_cs_status;
+  const ra_err_t sterr = internal_host_ctrl_status(reg, is_read);
+  if (sterr == k_ra_ok) {
+    s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_done;
+  }
+  return sterr;
+}

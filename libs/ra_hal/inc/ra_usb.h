@@ -945,6 +945,67 @@ uint16_t ra_usb_intsts0_snapshot(ra_usb_speed_t speed);
  */
 [[nodiscard]] ra_err_t ra_usb_host_setup_request(ra_usb_speed_t speed, const ra_usb_setup_t* setup);
 
+/**
+ * @brief Run a complete host control transfer (SETUP, optional DATA, STATUS).
+ *
+ * @details
+ * Polled, synchronous control transfer over the DCP (pipe 0). Drives the
+ * SETUP stage (SUREQ + wait for self-clear), an optional DATA-IN stage for
+ * device-to-host requests (BRDY-gated CFIFO reads), and the zero-length
+ * STATUS stage (CCPL). Completion is detected via SUREQ-clear / BRDY / BEMP
+ * -- the host-mode signals -- not CTRT, which only fires in device mode.
+ * This is the host counterpart of the device-mode control path and the
+ * primitive the host class drivers (MSC/HID/CDC) build enumeration on.
+ *
+ * @param[in]  speed        Which controller (FS or HS).
+ * @param[in]  setup        The 8-byte SETUP packet.
+ * @param[out] data         Buffer for the DATA-IN stage (may be NULL for
+ *                          no-data / control-write requests).
+ * @param[in]  data_len     Capacity of @p data in bytes.
+ * @param[out] out_received Optional; receives DATA-IN bytes read (0 if none).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok               Transfer completed through the status stage.
+ * @retval k_ra_err_invalid_arg  `speed` out of range.
+ * @retval k_ra_err_null_ptr     `setup` was NULL.
+ * @retval k_ra_err_busy         A control transfer was already pending.
+ * @retval k_ra_err_hw_timeout   A stage did not complete within the bound.
+ *
+ * @pre `ra_usb_host_init` ran; the bus is reset and `DVSTCTR0.UACT = 1`.
+ * @pre `setup` is non-NULL; `data` holds at least `data_len` bytes if used.
+ *
+ * @post On k_ra_ok the device has seen the request and any IN data is in
+ *       @p data with the count in @p out_received.
+ * @post The DCP PID is left NAK.
+ *
+ * @note Blocking; each stage is bounded by an internal spin limit.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_control_xfer(ra_usb_speed_t        speed,
+                                                const ra_usb_setup_t* setup,
+                                                uint8_t*              data,
+                                                uint16_t              data_len,
+                                                uint16_t*             out_received);
+
+/**
+ * @brief Last stage reached by ::ra_usb_host_control_xfer (bring-up diag).
+ *
+ * @details 0=before SETUP, 1=SETUP done, 2=DATA-IN entered, 3=first packet
+ * received, 4=DATA done, 5=STATUS entered, 6=STATUS done. Lets a caller
+ * pinpoint where a timed-out control transfer stalled.
+ *
+ * @return The stage code from the most recent control transfer.
+ * @retval 0 No control transfer has run since reset.
+ * @retval 6 The most recent control transfer closed cleanly.
+ * @pre ::ra_usb_host_init ran for the controller of interest.
+ * @pre At least one ::ra_usb_host_control_xfer may have been attempted.
+ * @post No state is modified.
+ * @post The returned value reflects the last transfer only.
+ * @note Diagnostic only; not part of the transfer contract.
+ * @since 0.1.0
+ */
+uint8_t ra_usb_host_ctrl_stage(void);
+
 #ifdef __cplusplus
 }
 #endif
