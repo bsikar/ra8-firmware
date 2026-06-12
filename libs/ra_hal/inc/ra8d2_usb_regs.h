@@ -491,7 +491,10 @@ typedef enum : uint16_t {
   k_ra_dvsq_default    = 0x0010U, /**< Default (post bus reset).   */
   k_ra_dvsq_address    = 0x0020U, /**< Address assigned.           */
   k_ra_dvsq_configured = 0x0030U, /**< Configured.                 */
-  k_ra_dvsq_suspend    = 0x0040U, /**< Suspended (any sub-state).  */
+  /* Suspend flag is bit 6 on BOTH controllers. USBHS additionally
+   * reports VBUS presence in INTSTS0 bit 7 -- strip it before
+   * comparing DVSQ values (observed live: bit 7 tracks the cable). */
+  k_ra_dvsq_suspend = 0x0040U, /**< Suspended (any sub-state).  */
 } ra_usb_dvsq_t;
 
 /**
