@@ -226,7 +226,8 @@ typedef struct {
  * @typedef ra_fs_listdir_cb_t
  * @brief Callback invoked once per directory entry by `ra_fs_listdir()`.
  *
- * @param[in] name 8.3 short filename, NUL-terminated, max 12 bytes.
+ * @param[in] name NUL-terminated file name (8.3 on FAT volumes; the
+ *                 exFAT name, truncated to the driver buffer).
  * @param[in] attr `ra_fs_attr_t` attribute byte.
  * @param[in] size File size in bytes (0 for directories).
  * @param[in] ctx  Caller-provided cookie.
@@ -404,7 +405,11 @@ ra_fs_write_file(ra_fs_mount_t* handle, const char* path, const uint8_t* data, u
 ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb_t cb, void* ctx);
 
 /**
- * @brief Delete a file: mark its dir entry 0xE5 and free the cluster chain.
+ * @brief Delete a file: mark its dir entry deleted and free its clusters.
+ *
+ * @details FAT12/16/32: 0xE5-marks the entry and frees the FAT chain.
+ * exFAT: clears the in-use bit on the whole entry set and frees the
+ * clusters in the allocation bitmap (the bitmap is authoritative).
  *
  * @retval k_ra_ok               File unlinked.
  * @retval k_ra_err_null_ptr     handle/path NULL.
@@ -412,6 +417,31 @@ ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb_t cb, vo
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path);
+
+/**
+ * @brief Rename a root-level file in place.
+ *
+ * @details FAT12/16/32: rewrites the 11-byte packed 8.3 name in the
+ * existing directory entry. exFAT: patches the Stream entry's NameLength
+ * and NameHash, rebuilds the Name entry, and recomputes the SetChecksum --
+ * supported when both names fit one Name entry (<= 15 characters), which
+ * keeps the entry-set length unchanged. Data clusters never move.
+ *
+ * @param[in] handle   Mount handle.
+ * @param[in] old_path Existing root-level name.
+ * @param[in] new_path Replacement name (must not already exist).
+ *
+ * @retval k_ra_ok                File renamed.
+ * @retval k_ra_err_null_ptr      Any pointer arg is NULL.
+ * @retval k_ra_err_not_found     @p old_path does not exist.
+ * @retval k_ra_err_exists        @p new_path already resolves.
+ * @retval k_ra_err_not_supported exFAT name longer than 15 characters.
+ * @pre The file is not open.
+ * @post On success @p new_path resolves to the same data.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_fs_rename(ra_fs_mount_t* handle, const char* old_path, const char* new_path);
 
 #ifdef __cplusplus
 }
