@@ -91,6 +91,12 @@ typedef enum : uint32_t {
   k_usb_msc_recovery_ms   = 20U,     /**< Post-reset recovery (TRSTRCY).  */
   k_usb_msc_enum_to_ms    = 3000U,   /**< Enumeration pump timeout.      */
   k_usb_msc_ctrt_mask     = (1U << (uint32_t)k_ra_int0_bit_ctrt), /**< INTSTS0 CTRT bit. */
+  k_usb_msc_bmreq_dev_in  = 0x80U,   /**< bmRequestType: dev->host, std. */
+  k_usb_msc_breq_get_desc = 0x06U,   /**< bRequest: GET_DESCRIPTOR.      */
+  k_usb_msc_wval_dev_desc = 0x0100U, /**< wValue: DEVICE descriptor, idx0.*/
+  k_usb_msc_dev_desc_len  = 18U,     /**< Device descriptor length.       */
+  k_usb_msc_desc_vid_off  = 8U,      /**< idVendor LSB offset.            */
+  k_usb_msc_desc_pid_off  = 10U,     /**< idProduct LSB offset.           */
 } usb_host_msc_browse_config_t;
 
 /**
@@ -231,12 +237,16 @@ static const uint8_t k_usb_msc_msg_space[] = " ";
 static const uint8_t k_usb_msc_msg_enum[] = "ra8d2 host: enum lnst=";
 /** @brief Enumeration diagnostic: CTRT-count field. */
 static const uint8_t k_usb_msc_msg_enum_ctrt[] = " ctrt=";
+/** @brief Enumeration diagnostic: host control-transfer stage field. */
+static const uint8_t k_usb_msc_msg_enum_stage[] = " stage=";
 /** @brief Enumeration diagnostic: DVSTCTR0 field. */
 static const uint8_t k_usb_msc_msg_enum_dvst[] = " dvstctr0=0x";
 /** @brief Enumeration diagnostic: INTSTS0 field. */
 static const uint8_t k_usb_msc_msg_enum_ints[] = " intsts0=0x";
 /** @brief Enumeration diagnostic: DCPCTR field. */
 static const uint8_t k_usb_msc_msg_enum_dcp[] = " dcpctr=0x";
+/** @brief Enumeration diagnostic: NRDYSTS field. */
+static const uint8_t k_usb_msc_msg_enum_nrdy[] = " nrdy=0x";
 
 /* =============================================================================
  * Attach state shared with the callback
@@ -666,6 +676,9 @@ static void usb_msc_print_enum_diag(void)
   const uint16_t               lnst = (uint16_t)(fs->SYSSTS0 & (uint16_t)k_usb_msc_lnst_mask);
   (void)usb_msc_sci_write(k_usb_msc_msg_enum, (uint32_t)(sizeof(k_usb_msc_msg_enum) - 1U));
   (void)usb_msc_print_dec_u32((uint32_t)lnst);
+  (void)usb_msc_sci_write(k_usb_msc_msg_enum_stage,
+                          (uint32_t)(sizeof(k_usb_msc_msg_enum_stage) - 1U));
+  (void)usb_msc_print_dec_u32((uint32_t)ra_usb_host_ctrl_stage());
   (void)usb_msc_sci_write(k_usb_msc_msg_enum_ctrt,
                           (uint32_t)(sizeof(k_usb_msc_msg_enum_ctrt) - 1U));
   (void)usb_msc_print_dec_u32(s_ctrt_count);
@@ -678,26 +691,59 @@ static void usb_msc_print_enum_diag(void)
   usb_msc_print_reg(k_usb_msc_msg_enum_dcp,
                     (uint32_t)(sizeof(k_usb_msc_msg_enum_dcp) - 1U),
                     fs->DCPCTR);
+  usb_msc_print_reg(k_usb_msc_msg_enum_nrdy,
+                    (uint32_t)(sizeof(k_usb_msc_msg_enum_nrdy) - 1U),
+                    fs->NRDYSTS);
   (void)usb_msc_sci_write(k_usb_msc_msg_crlf, (uint32_t)(sizeof(k_usb_msc_msg_crlf) - 1U));
 }
+
+/**
+ * @brief Reset the FS bus, then read the device descriptor via the new
+ *        synchronous host control-transfer engine and print VID/PID.
+ *
+ * @details Bring-up milestone for the host control path: drive the bus
+ * reset by hand (assert USBRST, hold, release, enable UACT, honour the
+ * TRSTRCY recovery), then issue GET_DESCRIPTOR(DEVICE) at address 0 with
+ * ::ra_usb_host_control_xfer. A successful read proves SETUP + DATA-IN +
+ * STATUS all work in host mode (the CTRT-driven step machine could not).
+ *
+ * @pre `ra_usb_hmsc_init` ran; VBUS is supplied; the drive is inserted.
+ * @post On success the device descriptor VID/PID are printed.
+ * @post The register diagnostic line is printed regardless.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t usb_msc_print_scsi_err(ra_err_t err);
 
 static void usb_msc_enumerate(void)
 {
   ra_delay_ms(k_usb_msc_vbus_ms);
-  (void)ra_usb_hmsc_step(); /* idle: assert USBRST (clears UACT) */
+  (void)ra_usb_host_bus_reset(k_ra_usb_speed_fs, true);
   ra_delay_ms(k_usb_msc_reset_hold_ms);
-  /* Release reset + re-enable SOF here, then honour the USB reset-recovery
-   * window (TRSTRCY >= 10 ms) before the first transaction. The step
-   * machine couples release + SET_ADDRESS in one call, so injecting the
-   * recovery delay around redundant (idempotent) release/UACT calls is
-   * what gives the device time to be ready. */
   (void)ra_usb_host_bus_reset(k_ra_usb_speed_fs, false);
   (void)ra_usb_host_set_uact(k_ra_usb_speed_fs, true);
   ra_delay_ms(k_usb_msc_recovery_ms);
-  (void)ra_usb_hmsc_step(); /* bus_reset: (release/UACT no-op) + SET_ADDRESS */
-  const uint32_t t0 = ra_time_ms();
-  while (!s_state.attached && ((ra_time_ms() - t0) < (uint32_t)k_usb_msc_enum_to_ms)) {
-    ra_usb_dispatch(k_ra_usb_speed_fs);
+
+  const ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_usb_msc_bmreq_dev_in,
+    .b_request       = (uint8_t)k_usb_msc_breq_get_desc,
+    .w_value         = (uint16_t)k_usb_msc_wval_dev_desc,
+    .w_index         = 0U,
+    .w_length        = (uint16_t)k_usb_msc_dev_desc_len,
+  };
+  uint8_t        desc[k_usb_msc_dev_desc_len] = {};
+  uint16_t       rx                           = 0U;
+  const ra_err_t err =
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, desc, (uint16_t)sizeof desc, &rx);
+  /* Print the VID/PID regardless of the status-stage result: if the
+   * DATA-IN stage delivered the descriptor the identity is already valid
+   * (the rx count rides in the max-lun field for confirmation). */
+  const uint16_t vid = (uint16_t)((uint16_t)desc[k_usb_msc_desc_vid_off] |
+                                  (uint16_t)(desc[k_usb_msc_desc_vid_off + 1U] << 8U));
+  const uint16_t pid = (uint16_t)((uint16_t)desc[k_usb_msc_desc_pid_off] |
+                                  (uint16_t)(desc[k_usb_msc_desc_pid_off + 1U] << 8U));
+  (void)usb_msc_print_attach(vid, pid, (uint8_t)rx);
+  if (err != k_ra_ok) {
+    (void)usb_msc_print_scsi_err(err);
   }
   usb_msc_print_enum_diag();
 }
