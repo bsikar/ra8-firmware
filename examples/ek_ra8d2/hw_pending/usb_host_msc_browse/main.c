@@ -340,6 +340,8 @@ static const uint8_t k_usb_msc_msg_sig_ok[] = " (ok)\r\n";
 static const uint8_t k_usb_msc_msg_sig_bad[] = " (BAD)\r\n";
 /** @brief Prefix for the ladder failure line (step id follows). */
 static const uint8_t k_usb_msc_msg_step_fail[] = "ra8d2 host: FAIL step=";
+/** @brief Printed when the device accepts and answers at address 1. */
+static const uint8_t k_usb_msc_msg_addr1[] = "ra8d2 host: address 1 assigned\r\n";
 /** @brief Printed between ladder retry cycles. */
 static const uint8_t k_usb_msc_msg_retry[] =
   "ra8d2 host: retrying in 5 s (reseat the drive any time)\r\n";
@@ -1604,6 +1606,53 @@ usb_msc_bot(const uint8_t* cbw, uint8_t* data, uint16_t data_len, uint16_t* out_
 }
 
 /**
+ * @brief Move the device from address 0 to address 1 and verify.
+ *
+ * @details SET_CONFIGURATION is only legal from the Address state (the
+ * stick STALLs it at the default address), so assign address 1, honour
+ * the set-address recovery, retarget the DCP, and verify with a full
+ * descriptor re-read at the new address.
+ *
+ * @param[in,out] dev_addr In: address the device answered at. Out: the
+ *                         address after the phase (1 on success).
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok The device answers at address 1.
+ * @pre The enumeration hunt found the device at `*dev_addr`.
+ * @pre The bus is active (UACT on).
+ * @post On success the DCP targets address 1 for all later transfers.
+ * @post On failure the DCP target is left at the hunt's address.
+ * @note Skipped when the hunt already found the device addressed.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t usb_msc_assign_addr(uint8_t* dev_addr)
+{
+  if (*dev_addr != 0U) {
+    return k_ra_ok;
+  }
+  const ra_usb_setup_t set_addr = {
+    .bm_request_type = (uint8_t)k_usb_msc_bmreq_dev_out,
+    .b_request       = (uint8_t)k_usb_msc_breq_set_addr,
+    .w_value         = (uint16_t)k_usb_msc_test_address,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  ra_err_t err = ra_usb_host_control_xfer(k_ra_usb_speed_fs, &set_addr, nullptr, 0U, nullptr);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_delay_ms(k_usb_msc_addr_settle_ms);
+  err = ra_usb_host_set_target(k_ra_usb_speed_fs, (uint8_t)k_usb_msc_test_address);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* No verify read here: the configuration-descriptor read that follows
+   * is the verification, and skipping the extra transfer keeps the
+   * exchange count minimal for protocol-fragile sticks. */
+  *dev_addr = (uint8_t)k_usb_msc_test_address;
+  return usb_msc_sci_write(k_usb_msc_msg_addr1, (uint32_t)(sizeof(k_usb_msc_msg_addr1) - 1U));
+}
+
+/**
  * @brief Report a ladder failure: step id, error code, register snapshot.
  *
  * @details Single failure sink so every step prints the same triple:
@@ -1655,10 +1704,11 @@ static void usb_msc_report_fail(usb_host_msc_step_t step, ra_err_t err)
     usb_msc_report_fail(k_usb_msc_step_dev_desc, err);
     return err;
   }
-  /* Bring-up note: SET_ADDRESS is not issued. The enumeration hunt above
-   * finds the address the device already answers at (a previous run may
-   * have assigned one), and the whole ladder simply targets that address.
-   * A single directly attached device is fully operable this way. */
+  err = usb_msc_assign_addr(&dev_addr);
+  if (err != k_ra_ok) {
+    usb_msc_report_fail(k_usb_msc_step_set_addr, err);
+    return err;
+  }
   usb_msc_target_t tgt = {};
   err                  = usb_msc_read_config(&tgt);
   if (err != k_ra_ok) {
