@@ -1054,6 +1054,7 @@ typedef enum : uint32_t {
 typedef enum : uintptr_t {
   k_nvic_iser_base = 0xE000E100U, /**< NVIC Interrupt Set-Enable Register array. */
   k_nvic_icer_base = 0xE000E180U, /**< NVIC Interrupt Clear-Enable Register array. */
+  k_nvic_ispr_base = 0xE000E200U, /**< NVIC Interrupt Set-Pending Register array. */
 } ra_nvic_reg_t;
 
 /**
@@ -1161,6 +1162,24 @@ void ux_dcd_ra_usb_irq_reenable(void)
 {
   s_isr_spurious_run = 0U;
   internal_usbfs_irq_set_enabled(true);
+  /* Watchdog kick for stalled transfers: a stashed pipe transfer with
+   * no pending controller event generates no IRQ, so the walk -- and
+   * with it the IN-pipe strand recovery -- never runs. Pend the line
+   * once per SysTick while any transfer is stashed; the ISR walk is
+   * idempotent for pipes with nothing to do. */
+  bool stashed = false;
+  for (uint8_t i = 1U; i < (uint8_t)k_ux_dcd_ra_usb_max_pipes; i++) {
+    if (s_dcd.pipes[i].xfer != UX_NULL) {
+      stashed = true;
+    }
+  }
+  if (stashed) {
+    const uint32_t  word = (uint32_t)s_usb_irq_slot / (uint32_t)k_nvic_irqs_per_reg;
+    const uint32_t  bit  = 1UL << ((uint32_t)s_usb_irq_slot % (uint32_t)k_nvic_irqs_per_reg);
+    const uintptr_t addr =
+      (uintptr_t)k_nvic_ispr_base + ((uintptr_t)word * (uintptr_t)k_nvic_reg_stride);
+    *(volatile uint32_t*)addr = bit;
+  }
 }
 
 /**
@@ -1225,6 +1244,12 @@ typedef enum : uint32_t {
   k_dcd_trace_cbw_len    = 31U,   /**< BOT CBW wire length.              */
   k_dcd_trace_cbw_op_off = 15U,   /**< CDB opcode offset inside a CBW.   */
   k_dcd_trace_byte_shift = 8U,    /**< CDB byte-pair packing shift.      */
+  k_dcd_trace_op_read10  = 0x28U, /**< SCSI READ(10) opcode.             */
+  k_dcd_trace_op_write10 = 0x2AU, /**< SCSI WRITE(10) opcode.            */
+  k_dcd_trace_cdb_lba_hi = 4U,    /**< CDB byte: LBA bits 15..8.         */
+  k_dcd_trace_cdb_lba_lo = 5U,    /**< CDB byte: LBA bits 7..0.          */
+  k_dcd_trace_kind_ocap  = 5U,    /**< Orphan OUT packet captured.       */
+  k_dcd_trace_kind_ouse  = 6U,    /**< Orphan packet fed to a transfer.  */
 } ra_usb_dcd_trace_t;
 
 /**
@@ -1579,6 +1604,7 @@ static unsigned int internal_submit_consume_orphan(struct UX_SLAVE_TRANSFER_STRU
   const uint16_t mps  = s_dcd.pipes[pipe].max_pkt;
   const uint16_t held = s_orphan_len;
   const uint16_t n    = (held < req) ? held : req;
+  internal_trace_event((uint8_t)k_dcd_trace_kind_ouse, s_orphan_buf[0], held);
   (void)memcpy(tr->ux_slave_transfer_request_data_pointer, s_orphan_buf, (size_t)n);
   s_orphan_len                                = 0U;
   tr->ux_slave_transfer_request_actual_length = n;
@@ -1600,6 +1626,123 @@ static unsigned int internal_submit_consume_orphan(struct UX_SLAVE_TRANSFER_STRU
     s_dcd.pipes[pipe].xfer = nullptr;
     return UX_TRANSFER_ERROR;
   }
+  return UX_SUCCESS;
+}
+
+/**
+ * @brief Enter a CFIFO critical section: mask interrupts.
+ *
+ * @details The CFIFO port (CFIFOSEL.CURPIPE + the FIFO window) is a
+ * single shared resource. The class thread stages the first chunk of
+ * every bulk-IN transfer through it while the USB ISR walk drains
+ * bulk-OUT packets and stages IN continuations through the same port.
+ * An ISR preempting the thread mid-FIFO-write retargets CURPIPE under
+ * it and the remaining bytes land in the wrong pipe -- framing stays
+ * intact, the payload is garbage (observed against macOS as FAT
+ * sectors reading back zeroed during sustained sequential reads).
+ * Masking interrupts for the short stage (FRDY wait on an empty bank
+ * plus a <= MPS FIFO write, microseconds) closes the race.
+ *
+ * @return The PRIMASK value to pass to ::internal_fifo_unlock.
+ * @retval 0 Interrupts were enabled on entry.
+ * @pre Thread (non-ISR) context.
+ * @pre The section being protected is bounded (no unbounded spins).
+ * @post Interrupts are masked.
+ * @post No other state changes.
+ * @note Pair every call with ::internal_fifo_unlock.
+ * @since 0.1.0
+ */
+static uint32_t internal_fifo_lock(void)
+{
+  uint32_t primask = 0U;
+  __asm__ volatile("mrs %0, primask" : "=r"(primask));
+  __asm__ volatile("cpsid i" ::: "memory");
+  return primask;
+}
+
+/**
+ * @brief Leave a CFIFO critical section: restore the interrupt mask.
+ *
+ * @details Re-enables interrupts only when they were enabled at the
+ * matching ::internal_fifo_lock, so nesting inside an already-masked
+ * region stays masked.
+ *
+ * @param[in] primask PRIMASK snapshot from ::internal_fifo_lock.
+ *
+ * @pre @p primask came from the matching ::internal_fifo_lock call.
+ * @pre The protected FIFO operation has completed.
+ * @post Interrupts are enabled again when they were on entry.
+ * @post No other state changes.
+ *
+ * @note Pair of ::internal_fifo_lock.
+ * @since 0.1.0
+ */
+static void internal_fifo_unlock(uint32_t primask)
+{
+  if ((primask & 1U) == 0U) {
+    __asm__ volatile("cpsie i" ::: "memory");
+  }
+}
+
+/**
+ * @brief Stage the first chunk of an IN transfer (plus single-packet ZLP).
+ *
+ * @details IN endpoint path of ::internal_submit_pipe: USBX hands the
+ * DCD the whole transfer, but ``ra_usb_queue_in`` moves at most one
+ * max-packet bank -- so a transfer longer than MPS is streamed: this
+ * pushes the first packet (atomically against the ISR walk's shared
+ * CFIFO use, see ::internal_fifo_lock) and
+ * ::internal_irq_complete_in pushes each subsequent packet as the
+ * host drains the previous one (BEMP). A single-packet MPS-exact
+ * transfer gets its trailing ZLP staged into the second bank.
+ *
+ * @param[in,out] tr   USBX transfer request, already stashed.
+ * @param[in]     pipe Pipe index the transfer is bound to.
+ *
+ * @return ``UX_SUCCESS`` or ``UX_TRANSFER_ERROR``.
+ * @retval UX_SUCCESS        First chunk (and any ZLP) queued.
+ * @retval UX_TRANSFER_ERROR Bridge rejected the queue; stash cleared.
+ *
+ * @pre ``s_dcd.pipes[pipe].xfer == tr``.
+ * @pre Task (non-ISR) context.
+ * @post On success ``actual_length`` holds the queued byte count.
+ * @post On error ``s_dcd.pipes[pipe].xfer`` is cleared.
+ *
+ * @note Task-context only; masks interrupts for the FIFO stage.
+ * @since 0.1.0
+ */
+static unsigned int internal_submit_in_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe)
+{
+  const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t mps   = s_dcd.pipes[pipe].max_pkt;
+  const uint16_t chunk = (total > mps) ? mps : total;
+  /* The ISR walk shares the CFIFO port; stage atomically (see
+   * internal_fifo_lock). */
+  const uint32_t primask = internal_fifo_lock();
+  if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, chunk) !=
+      k_ra_ok) {
+    internal_fifo_unlock(primask);
+    s_dcd.pipes[pipe].xfer = nullptr;
+    return UX_TRANSFER_ERROR;
+  }
+  tr->ux_slave_transfer_request_actual_length = chunk;
+  /* USB-bulk spec: a transfer whose length is an exact multiple of
+   * MPS needs a trailing ZLP so the host URB completes. For the
+   * single-packet case the ZLP is staged into the IN pipe's second
+   * bank (PIPECFG.DBLB is set for IN bulk in internal_pipecfg_word).
+   * Nested ifs keep the test out of the MC/DC inventory. */
+  bool need_zlp = false;
+  if (mps != 0U) {
+    if (chunk == mps) {
+      if (total <= mps) {
+        need_zlp = true;
+      }
+    }
+  }
+  if (need_zlp) {
+    (void)ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, 0U);
+  }
+  internal_fifo_unlock(primask);
   return UX_SUCCESS;
 }
 
@@ -1637,39 +1780,7 @@ static unsigned int
 internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t ep_addr)
 {
   if ((ep_addr & (uint8_t)k_ra_usb_ep_addr_dir_in_bit) != 0U) {
-    /* IN endpoint. USBX hands the DCD the whole transfer, but
-     * ra_usb_queue_in moves at most one max-packet bank -- so a
-     * transfer longer than MPS (e.g. the 512-byte SCSI READ data
-     * phase) must be streamed: push the first packet here, and
-     * internal_irq_complete_in pushes each subsequent packet as the
-     * host drains the previous one (BEMP). ux_slave_transfer_request_
-     * actual_length tracks how many bytes have been queued so far. */
-    const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-    const uint16_t mps   = s_dcd.pipes[pipe].max_pkt;
-    const uint16_t chunk = (total > mps) ? mps : total;
-    if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, chunk) !=
-        k_ra_ok) {
-      s_dcd.pipes[pipe].xfer = nullptr;
-      return UX_TRANSFER_ERROR;
-    }
-    tr->ux_slave_transfer_request_actual_length = chunk;
-    /* USB-bulk spec: a transfer whose length is an exact multiple of
-     * MPS needs a trailing ZLP so the host URB completes. For the
-     * single-packet case the ZLP is staged into the IN pipe's second
-     * bank (PIPECFG.DBLB is set for IN bulk in internal_pipecfg_word).
-     * Nested ifs keep the test out of the MC/DC inventory. */
-    bool need_zlp = false;
-    if (mps != 0U) {
-      if (chunk == mps) {
-        if (total <= mps) {
-          need_zlp = true;
-        }
-      }
-    }
-    if (need_zlp) {
-      (void)ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, 0U);
-    }
-    return UX_SUCCESS;
+    return internal_submit_in_pipe(tr, pipe);
   }
   /* OUT pipe. A host packet may already have landed in the controller
    * bank during the PID=BUF window after the previous transfer (the
@@ -3392,9 +3503,19 @@ static void internal_irq_finish_out(UX_SLAVE_TRANSFER* tr, uint8_t i, uint16_t n
     const uint8_t* cdb = &tr->ux_slave_transfer_request_data_pointer[k_dcd_trace_cbw_op_off];
     trace_op           = cdb[0];
     /* For CBWs, carry CDB bytes 1..2 instead of the length so VPD
-     * INQUIRY requests (EVPD flag + page code) are visible. */
-    trace_len =
-      (uint16_t)(((uint16_t)cdb[1] << (uint16_t)k_dcd_trace_byte_shift) | (uint16_t)cdb[2]);
+     * INQUIRY requests (EVPD flag + page code) are visible. For
+     * READ(10)/WRITE(10) carry the low 16 LBA bits instead. */
+    uint8_t hi = cdb[1];
+    uint8_t lo = cdb[2];
+    if (cdb[0] == (uint8_t)k_dcd_trace_op_read10) {
+      hi = cdb[k_dcd_trace_cdb_lba_hi];
+      lo = cdb[k_dcd_trace_cdb_lba_lo];
+    }
+    if (cdb[0] == (uint8_t)k_dcd_trace_op_write10) {
+      hi = cdb[k_dcd_trace_cdb_lba_hi];
+      lo = cdb[k_dcd_trace_cdb_lba_lo];
+    }
+    trace_len = (uint16_t)(((uint16_t)hi << (uint16_t)k_dcd_trace_byte_shift) | (uint16_t)lo);
   }
   internal_trace_event((uint8_t)k_dcd_trace_kind_out, trace_op, trace_len);
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
@@ -3517,6 +3638,7 @@ static void internal_irq_drain_orphan_out(uint8_t i)
     if (len != 0U) {
       s_orphan_pipe = i;
       s_orphan_len  = len;
+      internal_trace_event((uint8_t)k_dcd_trace_kind_ocap, s_orphan_buf[0], len);
       /* queue_out W0C-cleared BRDYSTS and re-armed PID=BUF; pull it
        * back to NAK so a second packet cannot land before the next
        * transfer is submitted. A full-speed bulk packet takes ~45 us
