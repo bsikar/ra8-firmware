@@ -97,6 +97,9 @@ typedef enum : uint32_t {
   k_usb_msc_dev_desc_len  = 18U,     /**< Device descriptor length.       */
   k_usb_msc_desc_vid_off  = 8U,      /**< idVendor LSB offset.            */
   k_usb_msc_desc_pid_off  = 10U,     /**< idProduct LSB offset.           */
+  k_usb_msc_bmreq_dev_out = 0x00U,   /**< bmRequestType: host->dev, std.  */
+  k_usb_msc_breq_set_addr = 0x05U,   /**< bRequest: SET_ADDRESS.          */
+  k_usb_msc_test_address  = 1U,      /**< Address to assign in the probe. */
 } usb_host_msc_browse_config_t;
 
 /**
@@ -745,6 +748,17 @@ static void usb_msc_enumerate(void)
   if (err != k_ra_ok) {
     (void)usb_msc_print_scsi_err(err);
   }
+  /* Probe the no-data status path: SET_ADDRESS has an IN status stage,
+   * distinct from the descriptor read's OUT status. The diagnostic stage
+   * field below reflects this transfer (6 == status closed cleanly). */
+  const ra_usb_setup_t set_addr = {
+    .bm_request_type = (uint8_t)k_usb_msc_bmreq_dev_out,
+    .b_request       = (uint8_t)k_usb_msc_breq_set_addr,
+    .w_value         = (uint16_t)k_usb_msc_test_address,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  (void)ra_usb_host_control_xfer(k_ra_usb_speed_fs, &set_addr, nullptr, 0U, nullptr);
   usb_msc_print_enum_diag();
 }
 
