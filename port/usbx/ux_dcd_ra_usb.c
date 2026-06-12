@@ -1185,6 +1185,12 @@ typedef struct {
   volatile uint32_t irq_walk_pipe2_seen;     /**< +0x24 pipe2 walked with non-NULL xfer.   */
   volatile uint32_t irq_walk_pipe2_complete; /**< +0x28 queue_out drained pipe2.           */
   volatile uint32_t irq_walk_pipe2_no_data;  /**< +0x2C queue_out returned no_data.        */
+  volatile uint32_t in_rearm_nak;            /**< +0x30 stashed IN at PID=NAK with a loaded
+                                              *   bank; PID forced back to BUF.            */
+  volatile uint32_t in_restage_nak;          /**< +0x34 stashed IN at PID=NAK, empty bank,
+                                              *   no BEMP; current chunk re-staged.        */
+  volatile uint32_t in_stage_fail;           /**< +0x38 queue_in failed while staging an IN
+                                              *   chunk from the IRQ walk.                 */
 } ra_usb_dcd_diag_t;
 
 /**
@@ -1195,6 +1201,74 @@ typedef struct {
  * @since 0.1.0
  */
 static ra_usb_dcd_diag_t s_diag = {};
+
+/**
+ * @enum ra_usb_dcd_trace_t
+ * @brief Sizing/packing constants for the JLink-readable event ring.
+ *
+ * @details Each ring entry is one uint32 packed as
+ * ``kind<<24 | code<<16 | length``: kind 1 = bulk-OUT transfer
+ * completed (code = SCSI opcode when the transfer is a 31-byte CBW),
+ * kind 2 = bulk-IN transfer completed (code unused), kind 3 = EP0
+ * SETUP received (code = bRequest, length = wValue). Read
+ * ``s_trace_seq`` then ``s_trace[]`` via JLink to reconstruct the
+ * device-side BOT conversation after a host probe.
+ */
+typedef enum : uint32_t {
+  k_dcd_trace_entries    = 64U,   /**< Ring slots (power of two).        */
+  k_dcd_trace_kind_out   = 1U,    /**< Bulk-OUT transfer completed.      */
+  k_dcd_trace_kind_in    = 2U,    /**< Bulk-IN transfer completed.       */
+  k_dcd_trace_kind_setup = 3U,    /**< EP0 SETUP received.               */
+  k_dcd_trace_kind_shift = 24U,   /**< Kind field bit offset.            */
+  k_dcd_trace_code_shift = 16U,   /**< Code field bit offset.            */
+  k_dcd_trace_no_code    = 0xFFU, /**< Code when none applies.           */
+  k_dcd_trace_cbw_len    = 31U,   /**< BOT CBW wire length.              */
+  k_dcd_trace_cbw_op_off = 15U,   /**< CDB opcode offset inside a CBW.   */
+  k_dcd_trace_byte_shift = 8U,    /**< CDB byte-pair packing shift.      */
+} ra_usb_dcd_trace_t;
+
+/**
+ * @var s_trace
+ * @brief JLink-readable ring of packed transfer/SETUP events.
+ * @note ISR-context single writer; readers use JLink memory dumps.
+ * @since 0.1.0
+ */
+static volatile uint32_t s_trace[k_dcd_trace_entries] = {};
+
+/**
+ * @var s_trace_seq
+ * @brief Monotonic count of events written to ::s_trace.
+ * @note ``s_trace_seq % k_dcd_trace_entries`` is the next write slot.
+ * @since 0.1.0
+ */
+static volatile uint32_t s_trace_seq = 0U;
+
+/**
+ * @brief Append one packed event to the JLink-readable trace ring.
+ *
+ * @details Packs ``kind<<24 | code<<16 | length`` into the next ring
+ * slot and bumps the sequence counter. Overwrites the oldest entry
+ * once the ring wraps.
+ *
+ * @param[in] kind   Event kind (::ra_usb_dcd_trace_t kinds).
+ * @param[in] code   Per-kind code byte (opcode / bRequest / none).
+ * @param[in] length Per-kind 16-bit payload (length or wValue).
+ *
+ * @pre Any context; single concurrent writer (IRQ-callback path).
+ * @pre ::s_trace_seq monotonicity is maintained by that single writer.
+ * @post One ring slot holds the packed event; sequence incremented.
+ * @post No other state changes.
+ *
+ * @note Diagnostic only; never read by production code.
+ * @since 0.1.0
+ */
+static void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length)
+{
+  const uint32_t slot = s_trace_seq % (uint32_t)k_dcd_trace_entries;
+  s_trace[slot]       = ((uint32_t)kind << (uint32_t)k_dcd_trace_kind_shift) |
+                  ((uint32_t)code << (uint32_t)k_dcd_trace_code_shift) | (uint32_t)length;
+  s_trace_seq++;
+}
 
 /**
  * @enum ra_setup_byte_idx_t
@@ -2389,6 +2463,7 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
    * USBREQ/USBVAL/USBINDX/USBLENG correctly. */
   internal_pack_setup_le(s_setup_packet_buffer, setup);
   s_setup_packet_count++;
+  internal_trace_event((uint8_t)k_dcd_trace_kind_setup, setup->b_request, setup->w_value);
 
   /* USBX must already be bound to forward the SETUP into the chapter-9
    * dispatcher. If it is not, that is fine for the bench probe path --
@@ -3121,6 +3196,96 @@ static void internal_irq_auto_echo(uint8_t i)
 }
 
 /**
+ * @brief Stage the next IN chunk of a stashed transfer onto the pipe.
+ *
+ * @details Pushes the next MPS-bounded chunk at the running
+ * ``actual_length`` offset via ::ra_usb_queue_in and advances the
+ * offset on success. A failure (typically an FRDY timeout while the
+ * SIE holds the FIFO) is counted in ``s_diag.in_stage_fail`` and
+ * leaves ``actual_length`` unchanged so the caller can retry the same
+ * chunk on a later walk.
+ *
+ * @param[in,out] tr Stashed transfer being streamed.
+ * @param[in]     i  Pipe index.
+ * @return true when the chunk was queued.
+ * @retval false ``ra_usb_queue_in`` failed; nothing was consumed.
+ *
+ * @pre Called from ISR context only.
+ * @pre ``tr->ux_slave_transfer_request_actual_length`` is < requested.
+ * @post On success ``actual_length`` advanced by the staged chunk.
+ * @post On failure ``s_diag.in_stage_fail`` is incremented.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static bool internal_irq_stage_next_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
+{
+  const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t sent  = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+  const uint16_t mps   = s_dcd.pipes[i].max_pkt;
+  const uint16_t rem   = (uint16_t)(total - sent);
+  const uint16_t chunk = (rem > mps) ? mps : rem;
+  if (ra_usb_queue_in(s_dcd.speed, i, &tr->ux_slave_transfer_request_data_pointer[sent], chunk) !=
+      k_ra_ok) {
+    s_diag.in_stage_fail++;
+    return false;
+  }
+  tr->ux_slave_transfer_request_actual_length = (ULONG)((uint32_t)sent + (uint32_t)chunk);
+  return true;
+}
+
+/**
+ * @brief Recover a stashed IN transfer whose pipe fell to PID=NAK.
+ *
+ * @details Strand recovery (seen against macOS hosts): a stashed IN
+ * transfer must never sit with PIPECTR.PID = NAK -- the SIE then NAKs
+ * every IN token, the host eventually suspends the bus, and the class
+ * thread blocks on the semaphore forever. Two recoverable shapes:
+ *  - a loaded bank (INBUFM set) whose PID=BUF arm was lost: re-arm it;
+ *  - an empty bank with no BEMP pending mid-stream: the previous
+ *    staging attempt failed; re-stage the current chunk.
+ * HUM Ch 36.2.27 PIPEnCTR (PID / INBUFM).
+ *
+ * @param[in,out] tr  Stashed transfer being streamed.
+ * @param[in]     i   Pipe index.
+ * @param[in]     reg Controller register window.
+ * @return true when a recovery action was taken (caller returns).
+ * @retval false The pipe is armed normally; continue the walk.
+ *
+ * @pre Called from ISR context only.
+ * @pre ``s_dcd.pipes[i].xfer == tr``.
+ * @post On recovery the pipe is re-armed or the chunk re-staged.
+ * @post ``s_diag`` counters record which recovery fired.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static bool internal_irq_recover_in_nak(UX_SLAVE_TRANSFER* tr, uint8_t i,
+                                        volatile r_usb_regs_t* reg)
+{
+  const uint16_t pipe_bit = (uint16_t)(1U << i);
+  const uint16_t total    = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t sent     = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+  const uint16_t ctr      = reg->PIPECTR[i - 1U];
+  if ((ctr & (uint16_t)k_ra_pipectr_pid_mask) != (uint16_t)k_ra_pid_nak) {
+    return false;
+  }
+  if ((ctr & (uint16_t)k_ra_pipectr_inbufm) != 0U) {
+    s_diag.in_rearm_nak++;
+    (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
+    return true; /* BEMP follows once the re-armed bank drains */
+  }
+  if ((reg->BEMPSTS & pipe_bit) == 0U) {
+    if (sent < total) {
+      s_diag.in_restage_nak++;
+      (void)internal_irq_stage_next_in(tr, i);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * @brief Complete a stashed IN-pipe transfer.
  *
  * @details IN: data was already pushed in TRANSFER_REQUEST. Mark
@@ -3149,6 +3314,13 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
     return;             /* GCOVR_EXCL_LINE */
   }
   const uint16_t pipe_bit = (uint16_t)(1U << i);
+  const uint16_t total    = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+  const uint16_t sent     = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+
+  if (internal_irq_recover_in_nak(tr, i, reg)) {
+    return;
+  }
+
   /* Wait for BEMPSTS: it confirms the host has drained the bank just
    * transmitted. Acting before that would let the next BOT stage (or
    * the next data packet) be pushed over data the host has not read --
@@ -3158,25 +3330,22 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
   if ((reg->BEMPSTS & pipe_bit) == 0U) {
     return;
   }
-  reg->BEMPSTS = (uint16_t)(~pipe_bit);
 
   /* Multi-packet streaming. ra_usb_queue_in moves at most one MPS
    * bank, so a transfer longer than MPS is sent one bank per host
    * drain: push the next bank until the whole requested length is
    * out, only then post completion. ``actual_length`` is the running
-   * queued-byte count seeded by internal_submit_pipe. */
-  const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-  const uint16_t sent  = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+   * queued-byte count seeded by internal_submit_pipe. The BEMPSTS ack
+   * is transactional: it lands only after the next chunk is staged, so
+   * a staging failure keeps the event pending and retries on the next
+   * walk instead of stranding the transfer. */
   if (sent < total) {
-    const uint16_t mps   = s_dcd.pipes[i].max_pkt;
-    const uint16_t rem   = (uint16_t)(total - sent);
-    const uint16_t chunk = (rem > mps) ? mps : rem;
-    if (ra_usb_queue_in(s_dcd.speed, i, &tr->ux_slave_transfer_request_data_pointer[sent], chunk) ==
-        k_ra_ok) {
-      tr->ux_slave_transfer_request_actual_length = (ULONG)((uint32_t)sent + (uint32_t)chunk);
+    if (internal_irq_stage_next_in(tr, i)) {
+      reg->BEMPSTS = (uint16_t)(~pipe_bit);
     }
     return;
   }
+  reg->BEMPSTS = (uint16_t)(~pipe_bit);
 
   /* Multi-packet MPS-aligned IN transfers do not get an auto-ZLP here:
    * MSC's BOT layer expects the device to issue the CSW IN immediately
@@ -3184,6 +3353,50 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
    * the host's MSC driver. The single-packet MPS-aligned case is
    * already handled in internal_submit_pipe; classes that need a ZLP
    * for an MPS-multiple multi-packet IN should send it themselves. */
+  internal_trace_event((uint8_t)k_dcd_trace_kind_in, (uint8_t)k_dcd_trace_no_code, total);
+  tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+  s_dcd.pipes[i].xfer                           = nullptr;
+#ifndef UX_DEVICE_STANDALONE
+  (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
+#endif
+}
+
+/**
+ * @brief Finish a completed OUT transfer: park, trace, wake the waiter.
+ *
+ * @details Parks the pipe at PID=NAK (a host OUT token landing before
+ * the class layer arms the next receiver is then NAK'd rather than
+ * ACK'd into a FIFO with no waiter -- the latter latches BRDYSTS and
+ * storms the ISR, GitHub issue #6), records the transfer in the trace
+ * ring (with the SCSI opcode + CDB bytes 1..2 when it is a 31-byte
+ * CBW), posts UX_SUCCESS, and wakes the waiter.
+ *
+ * @param[in,out] tr  Stashed transfer that just completed.
+ * @param[in]     i   Pipe index.
+ * @param[in]     now Total bytes received for this transfer.
+ *
+ * @pre Called from ISR context only.
+ * @pre ``s_dcd.pipes[i].xfer == tr``.
+ * @post ``s_dcd.pipes[i].xfer == nullptr`` and the waiter is woken.
+ * @post The pipe is parked at PID=NAK.
+ *
+ * @note ISR-only; must not block.
+ * @since 0.1.0
+ */
+static void internal_irq_finish_out(UX_SLAVE_TRANSFER* tr, uint8_t i, uint16_t now)
+{
+  (void)ra_usb_park_out_pipe(s_dcd.speed, i);
+  uint8_t  trace_op  = (uint8_t)k_dcd_trace_no_code;
+  uint16_t trace_len = now;
+  if (now == (uint16_t)k_dcd_trace_cbw_len) {
+    const uint8_t* cdb = &tr->ux_slave_transfer_request_data_pointer[k_dcd_trace_cbw_op_off];
+    trace_op           = cdb[0];
+    /* For CBWs, carry CDB bytes 1..2 instead of the length so VPD
+     * INQUIRY requests (EVPD flag + page code) are visible. */
+    trace_len =
+      (uint16_t)(((uint16_t)cdb[1] << (uint16_t)k_dcd_trace_byte_shift) | (uint16_t)cdb[2]);
+  }
+  internal_trace_event((uint8_t)k_dcd_trace_kind_out, trace_op, trace_len);
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
   s_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
@@ -3244,18 +3457,7 @@ static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
       done = true; /* short packet terminates the OUT data phase */
     }
     if (done) {
-      /* Transfer complete. Park the pipe at PID=NAK: a host OUT token
-       * that lands before the class layer arms the next receiver is
-       * then NAK'd (host retries) rather than ACK'd into a FIFO with no
-       * waiter -- the latter latches BRDYSTS and storms the ISR
-       * (GitHub issue #6). internal_submit_pipe arms PID=BUF again for
-       * the next transfer_request. HUM Ch 36.2.27 PIPECTR.PID. */
-      (void)ra_usb_park_out_pipe(s_dcd.speed, i);
-      tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-      s_dcd.pipes[i].xfer                           = nullptr;
-#ifndef UX_DEVICE_STANDALONE
-      (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
-#endif
+      internal_irq_finish_out(tr, i, now);
       return;
     }
     /* More packets expected -- re-arm for the next host OUT token. */

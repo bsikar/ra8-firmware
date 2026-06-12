@@ -97,6 +97,14 @@ file(GLOB _RA_USBX_MSC_SOURCES CONFIGURE_DEPENDS
 list(FILTER _RA_USBX_MSC_SOURCES
     EXCLUDE REGEX ".*/ux_device_class_pima_storage_.*\\.c$")
 
+# The vendored INQUIRY handler reports RESPONSE DATA FORMAT = 0 (SCSI-1)
+# and ignores the EVPD bit; macOS's SCSI layer rejects both and abandons
+# the device after a BOT reset. Replace that one TU with the SPC-correct
+# first-party override in port/usbx/ (same pattern as the DCD/HCD
+# bridges above -- the vendor tree itself stays untouched).
+list(FILTER _RA_USBX_MSC_SOURCES
+    EXCLUDE REGEX ".*/ux_device_class_storage_inquiry\\.c$")
+
 add_library(usbx_objs OBJECT
     ${_RA_USBX_CORE_SOURCES}
     ${_RA_USBX_CDC_SOURCES}
