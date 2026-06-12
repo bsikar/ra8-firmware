@@ -518,15 +518,16 @@ typedef enum : uint16_t {
  * @brief DCPCTR bit positions used by the device-mode driver.
  */
 typedef enum : uint8_t {
-  k_ra_dcpctr_bit_pid_lo = 0U,  /**< PID[0] (NAK / BUF / STALL).      */
-  k_ra_dcpctr_bit_pid_hi = 1U,  /**< PID[1].                          */
-  k_ra_dcpctr_bit_ccpl   = 2U,  /**< Control transfer end enable.     */
-  k_ra_dcpctr_bit_pbusy  = 5U,  /**< Pipe busy.                       */
-  k_ra_dcpctr_bit_sqmon  = 6U,  /**< Sequence toggle monitor.         */
-  k_ra_dcpctr_bit_sqset  = 7U,  /**< Sequence toggle set.             */
-  k_ra_dcpctr_bit_sqclr  = 8U,  /**< Sequence toggle clear.           */
-  k_ra_dcpctr_bit_sureq  = 14U, /**< Send USB request (host mode).    */
-  k_ra_dcpctr_bit_bsts   = 15U, /**< Buffer status.                   */
+  k_ra_dcpctr_bit_pid_lo   = 0U,  /**< PID[0] (NAK / BUF / STALL).      */
+  k_ra_dcpctr_bit_pid_hi   = 1U,  /**< PID[1].                          */
+  k_ra_dcpctr_bit_ccpl     = 2U,  /**< Control transfer end enable.     */
+  k_ra_dcpctr_bit_pbusy    = 5U,  /**< Pipe busy.                       */
+  k_ra_dcpctr_bit_sqmon    = 6U,  /**< Sequence toggle monitor.         */
+  k_ra_dcpctr_bit_sqset    = 7U,  /**< Sequence toggle set.             */
+  k_ra_dcpctr_bit_sqclr    = 8U,  /**< Sequence toggle clear.           */
+  k_ra_dcpctr_bit_sureqclr = 11U, /**< SUREQ clear (USBHS host only). */
+  k_ra_dcpctr_bit_sureq    = 14U, /**< Send USB request (host mode).    */
+  k_ra_dcpctr_bit_bsts     = 15U, /**< Buffer status.                   */
 } ra_usb_dcpctr_bit_t;
 
 /**

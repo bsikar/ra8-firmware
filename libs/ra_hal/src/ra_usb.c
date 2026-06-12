@@ -2808,6 +2808,7 @@ ra_err_t ra_usb_exit_stop(ra_usb_speed_t speed)
  */
 typedef enum : uint8_t {
   k_ra_dvstctr_bit_uact   = 4U, /**< Bus enable (host SOF generation). */
+  k_ra_dvstctr_bit_vbusen = 9U, /**< External VBUS-switch enable (HS). */
   k_ra_dvstctr_bit_resume = 5U, /**< Resume signal output (host).      */
   k_ra_dvstctr_bit_usbrst = 6U, /**< Bus reset signal (host).          */
   k_ra_dvstctr_bit_rwupe  = 7U, /**< Remote-wake detect enable (host). */
@@ -2842,6 +2843,89 @@ static uint16_t internal_host_syscfg_word(ra_usb_speed_t speed)
 }
 
 /**
+ * @brief Program the host-mode FIFO / DCP / interrupt-enable defaults.
+ *
+ * @details Shared tail of host bring-up for both controller instances:
+ * 16-bit FIFO port widths (the per-access width is re-selected by
+ * ::internal_select_cfifo), DCP defaults with a 64-byte max packet,
+ * USBADDR=0 (newly attached devices answer at the default address), and
+ * the host interrupt-enable mask (per-pipe ENB registers stay clear;
+ * the transfer engines arm exactly what they wait on).
+ *
+ * @param[in] reg Selected controller register block.
+ * @pre SYSCFG already carries the host role (DCFM | DRPD | USBE).
+ * @pre Single-threaded init context.
+ * @post FIFO selects, DCP, USBADDR and INTENB0/1 hold the defaults.
+ * @post BRDYENB / NRDYENB / BEMPENB are cleared.
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static void internal_host_init_defaults(volatile r_usb_regs_t* reg)
+{
+  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  reg->CFIFOSEL  = k_ra_fifosel_mbw_16;
+  reg->D0FIFOSEL = k_ra_fifosel_mbw_16;
+  reg->D1FIFOSEL = k_ra_fifosel_mbw_16;
+
+  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
+  reg->DCPCFG  = 0U;
+  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
+  reg->DCPCTR  = 0U;
+
+  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1988 -- target
+   * device address for the host's outgoing tokens. Default to 0
+   * (newly-attached devices respond at address 0). */
+  reg->USBADDR = 0U;
+
+  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980 */
+  reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
+                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
+  reg->INTENB1 = 0U;
+  reg->BRDYENB = 0U;
+  reg->NRDYENB = 0U;
+  reg->BEMPENB = 0U;
+}
+
+/**
+ * @brief Bring the USBHS instance up in HOST role (PHY + SYSCFG bits).
+ *
+ * @details The HS PHY needs the full UTMI bring-up (CLKSEL, DIRPD and
+ * PLLRESET release, SUSPENDM, PLLLOCK) before the module can operate;
+ * reuse the device-mode sequence, which ends with USBE=1 and the
+ * device-polarity DRPD=0. Then flip the role bits: HUM Ch 37.2.1
+ * requires DCFM to be changed while USBE=0, so drop USBE, set DCFM
+ * (host controller) + DRPD (host pull-downs) + CNEN, and re-enable.
+ * CNEN (single-ended receiver enable) is required for the HS PHY to
+ * report line state / attach at all -- without it LNST reads SE0
+ * forever and no ATTCH ever latches (HUM Ch 37.2.1 p 2062).
+ *
+ * @param[in] reg HS register block (must be the USBHS instance).
+ * @return Passthrough from the PHY bring-up.
+ * @retval k_ra_ok             PHY locked; SYSCFG carries the host role.
+ * @retval k_ra_err_hw_timeout The UTMI PLL never locked.
+ * @pre MSTPB12 is ungated and USB60CLK (PLL2P/4) is running.
+ * @pre Single-threaded init context.
+ * @post SYSCFG = HSE | DCFM | DRPD | CNEN | USBE with the PHY powered.
+ * @post The caller still programs DVSTCTR0 / FIFO / DCP defaults.
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_hs_bringup(volatile r_usb_regs_t* reg)
+{
+  const ra_err_t phy_err = internal_usbhs_phy_bringup(reg);
+  RA_RETURN_ON_ERROR(phy_err, s_tag, "host_init: HS PHY bring-up"); /* GCOVR_EXCL_BR_LINE */
+  internal_rmw16(&reg->SYSCFG, 0U, (uint16_t)(1U << k_ra_syscfg_bit_usbe));
+  internal_rmw16(&reg->SYSCFG,
+                 (uint16_t)((uint16_t)(1U << k_ra_syscfg_bit_dcfm) |
+                            (uint16_t)((uint16_t)(1U << k_ra_syscfg_bit_drpd) |
+                                       (uint16_t)(1U << k_ra_syscfg_bit_cnen))),
+                 0U);
+  internal_rmw16(&reg->SYSCFG, (uint16_t)(1U << k_ra_syscfg_bit_usbe), 0U);
+  return k_ra_ok;
+}
+
+/**
  * @brief Implementation of `ra_usb_host_init()`.
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
@@ -2865,38 +2949,24 @@ ra_err_t ra_usb_host_init(ra_usb_speed_t speed)
   const ra_err_t mst_err = ra_mstp_enable(internal_mstp(speed));
   RA_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
-  /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
-  reg->SYSCFG = internal_host_syscfg_word(speed);
+  if (speed == k_ra_usb_speed_hs) {
+    const ra_err_t hs_err = internal_host_hs_bringup(reg);
+    RA_RETURN_ON_ERROR(hs_err, s_tag, "host_init: HS bring-up"); /* GCOVR_EXCL_BR_LINE */
+  } else {
+    /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
+    reg->SYSCFG = internal_host_syscfg_word(speed);
+  }
 
   /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
   reg->DVSTCTR0 = 0U;
+  if (speed == k_ra_usb_speed_hs) {
+    /* HUM Ch 37.2.5 DVSTCTR0.VBUSEN: the USBHS jack's external VBUS
+     * switch is driven by this bit (FSP hw_usb_hmodule_init); without
+     * it an attached device never powers and LNST stays SE0. */
+    internal_rmw16(&reg->DVSTCTR0, (uint16_t)(1U << k_ra_dvstctr_bit_vbusen), 0U);
+  }
 
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
-  reg->CFIFOSEL  = k_ra_fifosel_mbw_16;
-  reg->D0FIFOSEL = k_ra_fifosel_mbw_16;
-  reg->D1FIFOSEL = k_ra_fifosel_mbw_16;
-
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
-  reg->DCPCFG  = 0U;
-  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
-  reg->DCPCTR  = 0U;
-
-  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1988 -- target
-   * device address for the host's outgoing tokens. Default to 0
-   * (newly-attached devices respond at address 0). */
-  reg->USBADDR = 0U;
-
-  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980 */
-  /* Host needs the same interrupt set as device for transfer
-   * completion + bus events. */
-  reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
-                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
-                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
-  reg->INTENB1 = 0U;
-  reg->BRDYENB = 0U;
-  reg->NRDYENB = 0U;
-  reg->BEMPENB = 0U;
+  internal_host_init_defaults(reg);
 
   ra_log_info_val(s_tag, "usb host init speed", (uint32_t)speed);
   return k_ra_ok;
@@ -3090,7 +3160,9 @@ typedef enum : uint32_t {
 typedef enum : uint16_t {
   k_ra_usb_devsel_shift      = 12U,     /**< DCPMAXP/PIPEMAXP DEVSEL pos.   */
   k_ra_usb_devsel_field_mask = 0x000FU, /**< DEVSEL width once shifted.     */
-  k_ra_usb_pipemaxp_mxps     = 0x01FFU, /**< PIPEMAXP MXPS field.           */
+  k_ra_usb_pipemaxp_mxps     = 0x07FFU, /**< PIPEMAXP MXPS field (the USBHS
+                                             instance carries 11 bits, HUM Ch
+                                             37.2.36; FS uses the low 9).    */
   k_ra_usb_pid_stall_bit     = 0x0002U, /**< PID[1]: set for either STALL.  */
 } ra_usb_host_addr_bits_t;
 
@@ -3219,7 +3291,15 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
 {
   const uint16_t sureq = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
   if ((reg->DCPCTR & sureq) != 0U) {
-    return k_ra_err_busy;
+    /* A SETUP issued with the port inactive (e.g. before any device was
+     * attached) leaves SUREQ wedged. The USBHS instance provides
+     * SUREQCLR to abort it; try that before reporting busy. */
+    if (internal_is_hs(reg)) {
+      internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra_dcpctr_bit_sureqclr), 0U);
+    }
+    if ((reg->DCPCTR & sureq) != 0U) {
+      return k_ra_err_busy;
+    }
   }
   internal_dcp_pid(reg, k_ra_pid_nak);
   /* Clear any stale CCPL left by a prior transfer's status stage. With
@@ -3787,6 +3867,12 @@ static ra_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
   if (werr != k_ra_ok) {
     return werr;
   }
+  /* Acknowledge the BRDY edge BEFORE draining the buffer: at high speed
+   * the device's next packet (e.g. the CSW right behind a full data
+   * packet) lands while the FIFO is being read, and clearing the status
+   * afterwards wipes that new edge (observed as the follow-up packet
+   * stuck with BSTS=1 while the wait times out). */
+  reg->BRDYSTS = (uint16_t)~(uint16_t)(1U << pipe_num);
   internal_select_cfifo(reg, (uint16_t)pipe_num, false);
   const ra_err_t ferr = internal_wait_frdy(reg);
   if (ferr != k_ra_ok) {
@@ -3806,9 +3892,8 @@ static ra_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
   if (dtln == 0U) {
     reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
   }
-  reg->BRDYSTS = (uint16_t)~(uint16_t)(1U << pipe_num);
-  *out_dtln    = dtln;
-  *out_copied  = copy;
+  *out_dtln   = dtln;
+  *out_copied = copy;
   return k_ra_ok;
 }
 
@@ -3914,8 +3999,12 @@ ra_err_t ra_usb_host_bulk_in(ra_usb_speed_t speed,
     return k_ra_err_invalid_state;
   }
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
-  reg->BRDYSTS            = (uint16_t)~pipe_bit;
-  reg->BRDYENB            = (uint16_t)(reg->BRDYENB | pipe_bit);
+  /* Do NOT clear a pending BRDY here: at high speed the device can push
+   * the next packet (e.g. the CSW right behind a full data packet) into
+   * the pipe buffer while the previous transfer is winding down, and its
+   * BRDY is already latched -- clearing it would strand that packet in
+   * the buffer (observed as BSTS=1 with the wait timing out). */
+  reg->BRDYENB = (uint16_t)(reg->BRDYENB | pipe_bit);
   internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
   uint16_t       rx  = 0U;
   const ra_err_t err = internal_host_bulk_rx_loop(reg, pipe_num, buf, max_len, mps, &rx);

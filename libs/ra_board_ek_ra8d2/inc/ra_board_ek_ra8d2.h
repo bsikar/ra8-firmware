@@ -794,6 +794,10 @@ typedef enum : uint8_t {
    *  0xF8 is also the vendor's ``SWITCH_EXPECTED_VALUE`` (the normal
    *  all-SW4-OFF state), so it is NOT a switch-isolation indicator. */
   k_ra_board_pi4ioe_output_octospi_active = 0xF8U,
+  /** @brief Project layout with USBHS in HOST role: the project default
+   *  (0xF2) with bit 7 (SW4-8, USBHS role) driven LOW = ON = Host, so
+   *  the board supplies VBUS on the J7 jack instead of expecting it. */
+  k_ra_board_pi4ioe_output_usbhs_host = 0x72U,
 } ra_board_pi4ioe_project_t;
 
 /**
@@ -944,6 +948,35 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_io_expander_set_usbhs_device_mode(void);
+
+/**
+ * @brief Drive the U15 I/O expander to select USB-HS HOST mode.
+ *
+ * @details
+ * Same U15 mechanism as ``ra_board_io_expander_set_usbhs_device_mode``
+ * (see that function for the expander register convention), but writes
+ * ``k_ra_board_pi4ioe_output_usbhs_host`` (0x72): the project-default
+ * SW4 layout with bit 7 (SW4-8, USBHS role) driven LOW = ON = Host.
+ * In the host position the board's J7 VBUS switch supplies bus power
+ * to an attached device; in the default OFF/device position J7 expects
+ * VBUS from an external host and an attached USB stick stays dark.
+ *
+ * @return ``ra_err_t`` Error code.
+ * @retval k_ra_ok U15 is driving SW4-8 = ON (Host mode).
+ * @retval k_ra_err_gpio_conflict P400/P401 already owned.
+ * @retval k_ra_err_hw_init_failed IIC_B init failed.
+ * @retval k_ra_err_nack U15 didn't ACK a register write.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ``ra_mstp_init`` has run.
+ * @post U15.P0..P7 are outputs driving 0x72; J7 supplies VBUS.
+ * @post P400/P401 are routed to SCL0/SDA0 with IIC_B0 at 100 kHz.
+ *
+ * @note Not thread-safe; call once from the boot context before the
+ *       USB host bring-up.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_io_expander_set_usbhs_host_mode(void);
 
 /**
  * @brief Bring the chip USBHS module up in device mode (HS PHY).
