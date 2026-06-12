@@ -499,6 +499,15 @@ static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
   RA_RETURN_ON_ERROR(rel, s_tag, "hmsc: release bus reset"); /* GCOVR_EXCL_BR_LINE */
+  /* Re-enable the downstream port (UACT = SOF generation). The reset
+   * assert in internal_do_idle cleared UACT (HUM Ch 36.2.5: setting
+   * USBRST forces UACT low), and releasing reset does not restore it.
+   * Without SOF the attached device sees a suspended/disabled port and
+   * cannot ACK the SET_ADDRESS that follows -- enumeration would stall
+   * at address 0. FSP enables UACT as part of the attach/reset sequence
+   * (usb_hstd_bus_reset). */
+  const ra_err_t act = ra_usb_host_set_uact(s_state.speed, true);
+  RA_RETURN_ON_ERROR(act, s_tag, "hmsc: enable UACT"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hmsc_step_set_address;
   return internal_setup_set_address(k_ra_hmsc_assigned_address);
 }
