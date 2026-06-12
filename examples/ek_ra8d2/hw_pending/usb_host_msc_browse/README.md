@@ -1,10 +1,27 @@
 # usb_host_msc_browse
 
 Native USB **host-mode** MSC (Mass Storage Class) browser for the
-EK-RA8D2. Plug a USB thumb drive into the board's USB-HS Type-C jack
-(J7), and the firmware enumerates it, runs a SCSI INQUIRY ->
-READ_CAPACITY(10) -> READ(10) sequence on LBA 0, and dumps the first
-64 bytes of the device's MBR over the J-Link OB CDC virtual COM port.
+EK-RA8D2. Plug a USB thumb drive into the board's **USB-FS** Type-C jack,
+and the firmware enumerates it, runs a SCSI INQUIRY -> READ_CAPACITY(10)
+-> READ(10) sequence on LBA 0, and dumps the first 64 bytes of the
+device's MBR over the J-Link OB CDC virtual COM port.
+
+Targets **USB-FS** (12 Mbps): simpler PHY than HS and it sidesteps the
+HS SET_ADDRESS-stall blocker. Pins: VBUS P4_07, VBUSEN P5_00 (supplies
+bus power in host mode), D+/D- P8_14/P8_15, all PSEL 0x13.
+
+## Bring-up status (2026-06-11)
+
+Hardware-verified working so far: the FS controller is clocked
+(`ra_cgc_usbfs_clock_enable`), VBUS is supplied, an inserted drive is
+detected (`SYSSTS0.LNST=1`, full-speed), SOF is generated
+(`DVSTCTR0.UACT=1`), and the SET_ADDRESS SETUP is transmitted
+(`DCPCTR.SUREQ` clears). **Remaining gap:** the `ra_usb_hmsc` step
+machine advances on `CTRT` (INTSTS0 bit 11), which is a *device-mode*
+control-transfer-stage signal and never fires for *host* control
+transfers -- so enumeration stalls after the SETUP. The host
+control-transfer engine must complete via SUREQ-clear (SETUP) + BRDY/BEMP
+on the DCP (DATA/STATUS), not CTRT. Tracked in the USB-FS host task.
 
 This is the hardware-test counterpart to the host-side MSC class
 layer in `libs/ra_hal/src/ra_usb_hmsc.c`.
