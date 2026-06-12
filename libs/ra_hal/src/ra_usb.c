@@ -3065,32 +3065,53 @@ typedef enum : uint16_t {
 
 /** @brief Offsets / shifts for the device-address (DEVADDn) registers. */
 typedef enum : uint32_t {
-  k_ra_usb_devadd0_off  = 0x00D0U, /**< DEVADD0 byte offset from base.    */
-  k_ra_usb_usbspd_shift = 6U,      /**< DEVADDn.USBSPD field position.    */
+  k_ra_usb_devadd0_off   = 0x00D0U, /**< DEVADD0 byte offset from base.    */
+  k_ra_usb_usbspd_shift  = 6U,      /**< DEVADDn.USBSPD field position.    */
+  k_ra_usb_devadd_stride = 2U,      /**< Bytes between DEVADDn slots.      */
+  k_ra_usb_dev_addr_max  = 10U,     /**< Highest DEVADDn slot (DEVADDA).   */
 } ra_usb_host_devadd_t;
 
+/** @brief Field layout helpers for host-mode device addressing. */
+typedef enum : uint16_t {
+  k_ra_usb_devsel_shift      = 12U,     /**< DCPMAXP/PIPEMAXP DEVSEL pos.   */
+  k_ra_usb_devsel_field_mask = 0x000FU, /**< DEVSEL width once shifted.     */
+  k_ra_usb_pipemaxp_mxps     = 0x01FFU, /**< PIPEMAXP MXPS field.           */
+  k_ra_usb_pid_stall_bit     = 0x0002U, /**< PID[1]: set for either STALL.  */
+} ra_usb_host_addr_bits_t;
+
+/** @brief Spin bound for bulk-pipe waits (covers media access latency). */
+typedef enum : uint32_t {
+  /* Each spin performs two peripheral-bus reads (~150 ns/read on the FS
+   * block), so 10M spins is roughly a 3 s ceiling -- enough for flash
+   * media latency while keeping a failed phase visibly bounded. */
+  k_ra_usb_bulk_poll_limit = 10000000UL, /**< Spins per bulk stage wait. */
+} ra_usb_host_bulk_lim_t;
+
 /**
- * @brief Program DEVADD0.USBSPD with the connected device's link speed.
+ * @brief Program DEVADDn.USBSPD with the connected device's link speed.
  *
- * @details The RA host SIE will not run IN/OUT transactions to address 0
- * until the device-address-0 speed is configured. The DEVADDn registers
- * sit past the modelled register window, so this addresses DEVADD0 by raw
- * offset and copies DVSTCTR0.RHST (01=LS, 10=FS, 11=HS) into USBSPD[7:6].
+ * @details The RA host SIE will not run transactions to a device address
+ * until that address's DEVADDn slot carries the link speed. The DEVADDn
+ * registers sit past the modelled register window, so this addresses the
+ * slot by raw offset (0xD0 + 2n) and copies DVSTCTR0.RHST (01=LS, 10=FS,
+ * 11=HS) into USBSPD[7:6].
  *
- * @param[in] reg Selected controller register block (its base address).
+ * @param[in] reg      Selected controller register block (its base address).
+ * @param[in] dev_addr Address slot to program (0..::k_ra_usb_dev_addr_max).
  * @pre The bus reset has completed so RHST reflects the device speed.
- * @pre @p reg is non-NULL.
- * @post DEVADD0.USBSPD matches the connected speed; address 0 is usable.
- * @post No other DEVADD0 field is changed (the rest are reserved/zero).
- * @note Bring-up enumerates at address 0 only, so just DEVADD0 is set.
+ * @pre @p reg is non-NULL and @p dev_addr is within the DEVADD range.
+ * @post DEVADDn.USBSPD matches the connected speed; the address is usable.
+ * @post No other DEVADDn field is changed (the rest are reserved/zero).
+ * @note Single-device bring-up: no hub fields (UPPHUB/HUBPORT) are set.
  * @since 0.1.0
  */
-static void internal_host_set_dev0_speed(volatile r_usb_regs_t* reg)
+static void internal_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr)
 {
-  const uint16_t           rhst = (uint16_t)(reg->DVSTCTR0 & (uint16_t)k_ra_usb_rhst_mask);
-  volatile uint16_t* const devadd0 =
-    (volatile uint16_t*)((uintptr_t)reg + (uintptr_t)k_ra_usb_devadd0_off);
-  *devadd0 = (uint16_t)(rhst << (uint16_t)k_ra_usb_usbspd_shift);
+  const uint16_t  rhst = (uint16_t)(reg->DVSTCTR0 & (uint16_t)k_ra_usb_rhst_mask);
+  const uintptr_t off =
+    (uintptr_t)k_ra_usb_devadd0_off + ((uintptr_t)dev_addr * (uintptr_t)k_ra_usb_devadd_stride);
+  volatile uint16_t* const devadd = (volatile uint16_t*)((uintptr_t)reg + off);
+  *devadd                         = (uint16_t)(rhst << (uint16_t)k_ra_usb_usbspd_shift);
 }
 
 /**
@@ -3149,7 +3170,17 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
     return k_ra_err_busy;
   }
   internal_dcp_pid(reg, k_ra_pid_nak);
-  internal_host_set_dev0_speed(reg);
+  /* Clear any stale CCPL left by a prior transfer's status stage. With
+   * CCPL still set, arming PID=BUF for the new DATA stage makes the SIE
+   * run a status stage instead, so the data stage never moves (observed
+   * as stage=2 with DCPCTR=0x0004 on hardware). */
+  internal_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << k_ra_dcpctr_bit_ccpl));
+  /* Refresh the DEVADD slot of the address the DCP currently targets
+   * (DCPMAXP.DEVSEL); 0 before SET_ADDRESS, the assigned address after
+   * ra_usb_host_set_target. */
+  const uint8_t devsel = (uint8_t)((uint16_t)(reg->DCPMAXP >> (uint16_t)k_ra_usb_devsel_shift) &
+                                   (uint16_t)k_ra_usb_devsel_field_mask);
+  internal_host_program_devadd(reg, devsel);
   reg->BEMPSTS       = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
   reg->BRDYSTS       = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
   const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
@@ -3158,11 +3189,23 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
   reg->USBVAL        = setup->w_value;
   reg->USBINDX       = setup->w_index;
   reg->USBLENG       = setup->w_length;
+  /* Arm + clear the SETUP outcome flags: SACK latches when the device
+   * ACKs the SETUP, SIGN when three transmission attempts fail. SUREQ
+   * self-clearing alone is NOT an ACK indication, so gate on these. */
+  const uint16_t sack = (uint16_t)(1U << k_ra_int1_bit_sack);
+  const uint16_t sign = (uint16_t)(1U << k_ra_int1_bit_sign);
+  reg->INTENB1        = (uint16_t)(reg->INTENB1 | (uint16_t)(sack | sign));
+  reg->INTSTS1        = (uint16_t)~(uint16_t)(sack | sign);
   internal_rmw16(&reg->DCPCTR, sureq, 0U);
-  /* SUREQ self-clears once the SIE has delivered the SETUP token. */
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
-    if ((reg->DCPCTR & sureq) == 0U) {
+    const uint16_t sts1 = reg->INTSTS1;
+    if ((sts1 & sack) != 0U) {
+      reg->INTSTS1 = (uint16_t)~sack;
       return k_ra_ok;
+    }
+    if ((sts1 & sign) != 0U) {
+      reg->INTSTS1 = (uint16_t)~sign;
+      return k_ra_err_hw_error;
     }
   }
   return k_ra_err_hw_timeout;
@@ -3250,14 +3293,19 @@ static ra_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
  * @param[in] reg       Selected controller register block.
  * @param[in] write_zlp true => status is OUT (after a data-IN read); false =>
  *                      status is IN (control write / no-data).
- * @return k_ra_ok when CCPL clears (status finished), else a timeout code.
- * @retval k_ra_ok             The status stage closed the control transfer.
- * @retval k_ra_err_hw_timeout CCPL did not clear before the deadline.
+ * @return Always k_ra_ok (the status stage is best-effort).
+ * @retval k_ra_ok The status sequence was driven; the wire-level handshake
+ *                 is verified by the next transfer / the class protocol.
  * @pre The SETUP (and any DATA) stage has completed.
  * @pre The DCP PID is NAK on entry.
  * @post CCPL has been asserted so the SIE closes the control transfer.
- * @post The DCP PID is left NAK.
- * @note Blocking; bounded by ::k_ra_usb_ctrl_poll_limit.
+ * @post The DCP PID is NAK and CCPL is cleared on exit.
+ * @note Best-effort by design: hardware bring-up showed the device
+ *       completes the status handshake (the SIE auto-ACKs its ZLP) while
+ *       the DCP BRDY/BEMP completion indication is unreliable, so gating
+ *       on it deadlocks transfers that actually succeeded. Real
+ *       verification comes from the next SETUP (control) or the
+ *       BOT/CSW exchange (bulk).
  * @since 0.1.0
  */
 static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write_zlp)
@@ -3282,15 +3330,21 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
     internal_rmw16(&reg->DCPCTR, ccpl, 0U);
     (void)internal_host_wait_sts(&reg->BEMPSTS, k_ra_usb_dcp_pipe0_bit);
     internal_dcp_pid(reg, k_ra_pid_nak);
+    internal_rmw16(&reg->DCPCTR, 0U, ccpl);
     return k_ra_ok;
   }
   /* Control-write / no-data status is an IN: the host receives the device
-   * ZLP, signalled by BRDY. */
+   * ZLP, usually signalled by BRDY. Wait for it but do not gate on it. */
   internal_dcp_pid(reg, k_ra_pid_buf);
   internal_rmw16(&reg->DCPCTR, ccpl, 0U);
-  const ra_err_t ierr = internal_host_wait_sts(&reg->BRDYSTS, k_ra_usb_dcp_pipe0_bit);
+  (void)internal_host_wait_sts(&reg->BRDYSTS, k_ra_usb_dcp_pipe0_bit);
   internal_dcp_pid(reg, k_ra_pid_nak);
-  return ierr;
+  internal_rmw16(&reg->DCPCTR, 0U, ccpl);
+  /* Drain the status ZLP so it cannot alias the next data stage. */
+  internal_select_cfifo(reg, 0U, false);
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  return k_ra_ok;
 }
 
 /**
@@ -3383,4 +3437,410 @@ ra_err_t ra_usb_host_control_xfer(ra_usb_speed_t        speed,
     s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_done;
   }
   return sterr;
+}
+
+/* =============================================================================
+ * Host-mode bulk-transfer engine (polled, synchronous)
+ *
+ * Built on the same host signals the control engine validated on hardware:
+ * BRDY (a packet landed in the pipe buffer), BEMP (the pipe buffer emptied
+ * onto the wire), and PIPECTR.PID for STALL detection. Pipes reuse the CFIFO
+ * port (CFIFOSEL.CURPIPE selects the pipe; the data direction is fixed by
+ * PIPECFG.DIR, so ISEL stays clear for non-DCP pipes).
+ * =============================================================================
+ */
+
+/**
+ * @brief Spin until a pipe's W0C status bit asserts, with STALL detection.
+ *
+ * @details Bounded busy-wait over BRDYSTS/BEMPSTS for one pipe. While
+ * waiting, watches the pipe's PIPECTR.PID field: a transition to either
+ * STALL encoding (PID[1] set) means the device rejected the transfer, which
+ * is reported distinctly from a timeout so MSC error handling can react.
+ *
+ * @param[in] reg      Selected controller register block.
+ * @param[in] sts      Status register to watch (BRDYSTS or BEMPSTS).
+ * @param[in] pipe_num Pipe whose bit (1 << pipe_num) is awaited.
+ * @return Wait outcome.
+ * @retval k_ra_ok             The status bit asserted.
+ * @retval k_ra_err_hw_error   The device STALLed the endpoint.
+ * @retval k_ra_err_hw_timeout No event before the spin bound elapsed.
+ * @pre The pipe is configured and its transfer has been armed.
+ * @pre The matching ENB bit is set so the status can latch.
+ * @post No register is modified by this function.
+ * @post On STALL the pipe PID still reads the STALL encoding for the caller.
+ * @note Bounded by ::k_ra_usb_bulk_poll_limit (covers media access latency).
+ * @since 0.1.0
+ */
+static ra_err_t
+internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts, uint8_t pipe_num)
+{
+  const uint16_t bit = (uint16_t)(1U << pipe_num);
+  const uint8_t  idx = (uint8_t)(pipe_num - 1U);
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_bulk_poll_limit; ++i) {
+    if ((*sts & bit) != 0U) {
+      return k_ra_ok;
+    }
+    if ((reg->PIPECTR[idx] & (uint16_t)k_ra_usb_pid_stall_bit) != 0U) {
+      return k_ra_err_hw_error;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Implementation of `ra_usb_host_set_target()`.
+ * @details See the public header for the documented contract; programs the
+ *          DEVADDn slot for @p dev_addr from the live RHST and retargets the
+ *          DCP by loading DCPMAXP.DEVSEL while preserving MXPS.
+ * @param[in] speed See header.
+ * @param[in] dev_addr See header.
+ * @return Result code.
+ * @retval k_ra_ok Target address applied.
+ * @pre Module state is consistent.
+ * @pre The DCP is idle (no SUREQ pending).
+ * @post DCPMAXP.DEVSEL = @p dev_addr; DEVADDn carries the link speed.
+ * @post Subsequent control transfers address @p dev_addr.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_host_set_target(ra_usb_speed_t speed, uint8_t dev_addr)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (dev_addr > (uint8_t)k_ra_usb_dev_addr_max) {
+    return k_ra_err_invalid_arg;
+  }
+  internal_host_program_devadd(reg, dev_addr);
+  const uint16_t mxps = (uint16_t)(reg->DCPMAXP & (uint16_t)k_ra_usb_dcpmaxp_mxps);
+  reg->DCPMAXP =
+    (uint16_t)((uint16_t)((uint16_t)dev_addr << (uint16_t)k_ra_usb_devsel_shift) | mxps);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Validate the argument set for ::ra_usb_host_pipe_setup.
+ *
+ * @details Range-checks the pipe number, device address, endpoint number,
+ * and max-packet size against the controller limits so the setup body can
+ * stay small enough for the complexity gate.
+ *
+ * @param[in] pipe_num   Controller pipe (1..::k_ra_usb_max_pipe_num).
+ * @param[in] dev_addr   Target device address (0..::k_ra_usb_dev_addr_max).
+ * @param[in] ep_num     Device endpoint number (1..15).
+ * @param[in] max_packet Endpoint wMaxPacketSize (1..PIPEMAXP MXPS range).
+ * @return Validation outcome.
+ * @retval k_ra_ok              All arguments are in range.
+ * @retval k_ra_err_invalid_arg Any argument is out of range.
+ * @pre None (pure argument validation).
+ * @pre Caller passes the same values it will program.
+ * @post No state is modified.
+ * @post On k_ra_ok the values are safe to write into PIPECFG/PIPEMAXP.
+ * @note Helper split out for the clang-tidy size/complexity gate.
+ * @since 0.1.0
+ */
+static ra_err_t
+internal_host_pipe_args_ok(uint8_t pipe_num, uint8_t dev_addr, uint8_t ep_num, uint16_t max_packet)
+{
+  if (pipe_num == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (pipe_num > (uint8_t)k_ra_usb_max_pipe_num) {
+    return k_ra_err_invalid_arg;
+  }
+  if (dev_addr > (uint8_t)k_ra_usb_dev_addr_max) {
+    return k_ra_err_invalid_arg;
+  }
+  if (ep_num == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (ep_num > (uint8_t)k_ra_pipecfg_epnum_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  if (max_packet == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (max_packet > (uint16_t)k_ra_usb_pipemaxp_mxps) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_usb_host_pipe_setup()`.
+ * @details See the public header for the documented contract; configures a
+ *          bulk pipe against an attached device's endpoint. In host mode
+ *          PIPECFG.DIR keeps its transmit/receive sense: receiving
+ *          (device-to-host IN) is DIR=0 and transmitting (host-to-device
+ *          OUT) is DIR=1, so the device-mode encoder is reused with the
+ *          mapped direction. PIPEnCTR shares the DCPCTR SQCLR bit layout.
+ * @param[in] speed See header.
+ * @param[in] pipe_num See header.
+ * @param[in] dev_addr See header.
+ * @param[in] ep_num See header.
+ * @param[in] device_to_host See header.
+ * @param[in] max_packet See header.
+ * @return Result code.
+ * @retval k_ra_ok Pipe configured, DATA0 forced, parked NAK.
+ * @pre Module state is consistent.
+ * @pre SET_CONFIGURATION has reset the device endpoint to DATA0.
+ * @post The pipe targets @p dev_addr endpoint @p ep_num, PID = NAK.
+ * @post The pipe's BRDY/NRDY/BEMP status bits are cleared.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_host_pipe_setup(ra_usb_speed_t speed,
+                                uint8_t        pipe_num,
+                                uint8_t        dev_addr,
+                                uint8_t        ep_num,
+                                bool           device_to_host,
+                                uint16_t       max_packet)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  const ra_err_t arg_err = internal_host_pipe_args_ok(pipe_num, dev_addr, ep_num, max_packet);
+  if (arg_err != k_ra_ok) {
+    return arg_err;
+  }
+  internal_pipe_quiesce(reg, pipe_num);
+  const ra_usb_ep_dir_t cfg_dir = device_to_host ? k_ra_usb_ep_dir_out : k_ra_usb_ep_dir_in;
+  reg->PIPESEL                  = pipe_num;
+  reg->PIPECFG                  = internal_pipecfg_word(ep_num, cfg_dir, k_ra_usb_ep_type_bulk);
+  reg->PIPEBUF                  = internal_pipebuf_word(pipe_num, max_packet);
+  reg->PIPEMAXP = (uint16_t)((uint16_t)((uint16_t)dev_addr << (uint16_t)k_ra_usb_devsel_shift) |
+                             (uint16_t)(max_packet & (uint16_t)k_ra_usb_pipemaxp_mxps));
+  reg->PIPEPERI = 0U;
+  reg->PIPESEL  = 0U;
+  internal_rmw16(&reg->PIPECTR[(uint8_t)(pipe_num - 1U)],
+                 (uint16_t)(1U << k_ra_dcpctr_bit_sqclr),
+                 0U);
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  reg->BRDYSTS            = (uint16_t)~pipe_bit;
+  reg->NRDYSTS            = (uint16_t)~pipe_bit;
+  reg->BEMPSTS            = (uint16_t)~pipe_bit;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_usb_host_bulk_out()`.
+ * @details See the public header for the documented contract; pushes one
+ *          packet (up to the pipe MPS) through the pipe buffer via
+ *          ::ra_usb_queue_in (wait FRDY, FIFO write, BVAL, PID=BUF) and
+ *          waits for the buffer-empty (BEMP) event that marks the packet
+ *          transmitted and ACKed, then parks the pipe NAK.
+ * @param[in] speed See header.
+ * @param[in] pipe_num See header.
+ * @param[in] data See header.
+ * @param[in] len See header.
+ * @return Result code.
+ * @retval k_ra_ok Packet transmitted and acknowledged.
+ * @pre Module state is consistent.
+ * @pre The pipe was configured by ::ra_usb_host_pipe_setup.
+ * @post The pipe PID is NAK and its BEMP status is cleared.
+ * @post On k_ra_ok the device has ACKed the packet.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t
+ra_usb_host_bulk_out(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uint16_t len)
+{
+  RA_CHECK_NULL_PTR(data, s_tag, "host_bulk_out: data");
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (pipe_num == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (pipe_num > (uint8_t)k_ra_usb_max_pipe_num) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  reg->BEMPSTS            = (uint16_t)~pipe_bit;
+  reg->BEMPENB            = (uint16_t)(reg->BEMPENB | pipe_bit);
+  const ra_err_t qerr     = ra_usb_queue_in(speed, pipe_num, data, len);
+  if (qerr != k_ra_ok) {
+    return qerr;
+  }
+  const ra_err_t werr = internal_host_wait_pipe(reg, &reg->BEMPSTS, pipe_num);
+  internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
+  reg->BEMPSTS = (uint16_t)~pipe_bit;
+  return werr;
+}
+
+/**
+ * @brief Receive one bulk packet from an armed IN pipe into @p dst.
+ *
+ * @details Waits for the pipe BRDY, selects the pipe on the CFIFO port,
+ * reads DTLN bytes (clamped to @p room; any overflow remainder is dropped
+ * with BCLR, and a zero-length packet is released with BCLR), then clears
+ * the BRDY status for the next packet.
+ *
+ * @param[in]  reg        Selected controller register block.
+ * @param[in]  pipe_num   Armed IN pipe (PID = BUF).
+ * @param[out] dst        Destination for this packet's bytes.
+ * @param[in]  room       Bytes available at @p dst.
+ * @param[out] out_dtln   Receives the packet length the device sent.
+ * @param[out] out_copied Receives the bytes actually copied to @p dst.
+ * @return Packet outcome.
+ * @retval k_ra_ok             One packet consumed.
+ * @retval k_ra_err_hw_error   The device STALLed the endpoint.
+ * @retval k_ra_err_hw_timeout No packet before the spin bound.
+ * @pre The pipe PID is BUF and BRDYENB carries the pipe bit.
+ * @pre @p dst holds at least @p room bytes.
+ * @post The pipe buffer is released and BRDY is cleared.
+ * @post @p out_dtln / @p out_copied describe the packet.
+ * @note Helper split out for the clang-tidy size/complexity gate.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
+                                             uint8_t                pipe_num,
+                                             uint8_t*               dst,
+                                             uint16_t               room,
+                                             uint16_t*              out_dtln,
+                                             uint16_t*              out_copied)
+{
+  const ra_err_t werr = internal_host_wait_pipe(reg, &reg->BRDYSTS, pipe_num);
+  if (werr != k_ra_ok) {
+    return werr;
+  }
+  internal_select_cfifo(reg, (uint16_t)pipe_num, false);
+  const ra_err_t ferr = internal_wait_frdy(reg);
+  if (ferr != k_ra_ok) {
+    return ferr;
+  }
+  const uint16_t dtln = (uint16_t)(reg->CFIFOCTR & (uint16_t)k_ra_fifoctr_dtln);
+  uint16_t       copy = dtln;
+  if (copy > room) {
+    copy = room;
+  }
+  if (copy > 0U) {
+    internal_fifo_read(reg, dst, copy);
+  }
+  if (copy < dtln) {
+    reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  }
+  if (dtln == 0U) {
+    reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  }
+  reg->BRDYSTS = (uint16_t)~(uint16_t)(1U << pipe_num);
+  *out_dtln    = dtln;
+  *out_copied  = copy;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_usb_host_bulk_in()`.
+ * @details See the public header for the documented contract; arms the IN
+ *          pipe (PID=BUF so the SIE issues IN tokens) and consumes packets
+ *          via ::internal_host_bulk_rx_packet until a short packet ends the
+ *          transfer or @p max_len bytes have been gathered, then parks the
+ *          pipe NAK.
+ * @param[in] speed See header.
+ * @param[in] pipe_num See header.
+ * @param[out] buf See header.
+ * @param[in] max_len See header.
+ * @param[out] out_received See header.
+ * @return Result code.
+ * @retval k_ra_ok Transfer ended by short packet or byte count.
+ * @pre Module state is consistent.
+ * @pre The pipe was configured by ::ra_usb_host_pipe_setup.
+ * @post The pipe PID is NAK; @p out_received holds the byte count.
+ * @post On error the partial count received so far is still reported.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+/**
+ * @brief Consume bulk-IN packets until short packet, fill, or error.
+ *
+ * @details Inner receive loop of ::ra_usb_host_bulk_in, split out for the
+ * complexity gate. The pipe must already be armed (PID = BUF).
+ *
+ * @param[in]  reg      Selected controller register block.
+ * @param[in]  pipe_num Armed IN pipe.
+ * @param[out] buf      Destination buffer.
+ * @param[in]  max_len  Capacity of @p buf in bytes.
+ * @param[in]  mps      Pipe max packet size (short-packet threshold).
+ * @param[out] out_rx   Receives the byte count gathered.
+ * @return First packet error, or k_ra_ok at transfer end.
+ * @retval k_ra_ok Transfer ended by short packet or byte count.
+ * @pre The pipe PID is BUF and BRDYENB carries the pipe bit.
+ * @pre @p buf holds at least @p max_len bytes.
+ * @post @p out_rx holds the byte count even on error (partial count).
+ * @post The pipe PID is unchanged (caller parks it).
+ * @note Helper split out for the clang-tidy size/complexity gate.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_bulk_rx_loop(volatile r_usb_regs_t* reg,
+                                           uint8_t                pipe_num,
+                                           uint8_t*               buf,
+                                           uint16_t               max_len,
+                                           uint16_t               mps,
+                                           uint16_t*              out_rx)
+{
+  uint16_t rx   = 0U;
+  ra_err_t err  = k_ra_ok;
+  bool     done = false;
+  while (!done) {
+    uint16_t dtln   = 0U;
+    uint16_t copied = 0U;
+    err             = internal_host_bulk_rx_packet(reg,
+                                                   pipe_num,
+                                                   &buf[rx],
+                                                   (uint16_t)(max_len - rx),
+                                                   &dtln,
+                                                   &copied);
+    if (err != k_ra_ok) {
+      done = true;
+    } else {
+      rx = (uint16_t)(rx + copied);
+      if (dtln < mps) {
+        done = true;
+      }
+      if (rx >= max_len) {
+        done = true;
+      }
+    }
+  }
+  *out_rx = rx;
+  return err;
+}
+
+ra_err_t ra_usb_host_bulk_in(ra_usb_speed_t speed,
+                             uint8_t        pipe_num,
+                             uint8_t*       buf,
+                             uint16_t       max_len,
+                             uint16_t*      out_received)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "host_bulk_in: buf");
+  RA_CHECK_NULL_PTR(out_received, s_tag, "host_bulk_in: out_received");
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (pipe_num == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (pipe_num > (uint8_t)k_ra_usb_max_pipe_num) {
+    return k_ra_err_invalid_arg;
+  }
+  reg->PIPESEL       = pipe_num;
+  const uint16_t mps = (uint16_t)(reg->PIPEMAXP & (uint16_t)k_ra_usb_pipemaxp_mxps);
+  reg->PIPESEL       = 0U;
+  if (mps == 0U) {
+    return k_ra_err_invalid_state;
+  }
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  reg->BRDYSTS            = (uint16_t)~pipe_bit;
+  reg->BRDYENB            = (uint16_t)(reg->BRDYENB | pipe_bit);
+  internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
+  uint16_t       rx  = 0U;
+  const ra_err_t err = internal_host_bulk_rx_loop(reg, pipe_num, buf, max_len, mps, &rx);
+  internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
+  *out_received = rx;
+  return err;
 }

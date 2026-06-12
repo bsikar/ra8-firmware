@@ -1006,6 +1006,146 @@ uint16_t ra_usb_intsts0_snapshot(ra_usb_speed_t speed);
  */
 uint8_t ra_usb_host_ctrl_stage(void);
 
+/**
+ * @brief Retarget the host's default control pipe at a device address.
+ *
+ * @details
+ * Programs the DEVADDn slot for @p dev_addr with the connected link speed
+ * (copied from `DVSTCTR0.RHST`) and loads `DCPMAXP.DEVSEL` so subsequent
+ * control transfers carry tokens addressed to @p dev_addr. Call after a
+ * successful SET_ADDRESS control transfer (plus the 2 ms set-address
+ * recovery the USB spec grants the device).
+ *
+ * @param[in] speed    Which controller (FS or HS).
+ * @param[in] dev_addr Address the device was assigned (0..10).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok              The DCP now targets @p dev_addr.
+ * @retval k_ra_err_invalid_arg `speed` or `dev_addr` out of range.
+ *
+ * @pre `ra_usb_host_init` ran; the bus reset completed (RHST valid).
+ * @pre No control transfer is in flight on the DCP.
+ *
+ * @post `DCPMAXP.DEVSEL` equals @p dev_addr with MXPS preserved.
+ * @post The DEVADDn slot for @p dev_addr carries the link speed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_set_target(ra_usb_speed_t speed, uint8_t dev_addr);
+
+/**
+ * @brief Configure a controller pipe against an attached device's bulk endpoint.
+ *
+ * @details
+ * Host-mode counterpart of `ra_usb_configure_endpoint`: programs
+ * PIPECFG (bulk type; DIR mapped so device-to-host = receiving),
+ * PIPEBUF, and PIPEMAXP including `DEVSEL` = @p dev_addr, then forces the
+ * DATA0 sequence (SQCLR) and parks the pipe NAK with its BRDY/NRDY/BEMP
+ * status bits cleared. Use PIPE1 for the device's bulk-IN endpoint and
+ * PIPE2 for its bulk-OUT endpoint in the MSC bring-up.
+ *
+ * @param[in] speed          Which controller (FS or HS).
+ * @param[in] pipe_num       Controller pipe to program (1..9).
+ * @param[in] dev_addr       Target device address (0..10).
+ * @param[in] ep_num         Device endpoint number (1..15, no direction bit).
+ * @param[in] device_to_host `true` for the device's IN endpoint (host
+ *                           receives), `false` for its OUT endpoint.
+ * @param[in] max_packet     Endpoint wMaxPacketSize from the descriptor.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok              Pipe configured, DATA0 forced, parked NAK.
+ * @retval k_ra_err_invalid_arg An argument is out of range.
+ *
+ * @pre `ra_usb_host_init` ran and SET_CONFIGURATION reset the endpoint.
+ * @pre The pipe is not currently armed (no transfer in flight).
+ *
+ * @post The pipe targets @p dev_addr endpoint @p ep_num with PID = NAK.
+ * @post The pipe's BRDY/NRDY/BEMP status bits are cleared.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_pipe_setup(ra_usb_speed_t speed,
+                                              uint8_t        pipe_num,
+                                              uint8_t        dev_addr,
+                                              uint8_t        ep_num,
+                                              bool           device_to_host,
+                                              uint16_t       max_packet);
+
+/**
+ * @brief Transmit one bulk packet to the device and wait for the ACK.
+ *
+ * @details
+ * Single-packet host bulk OUT: stages @p data into the pipe buffer
+ * (FRDY-gated FIFO write + BVAL + PID=BUF via `ra_usb_queue_in`), then
+ * waits for the buffer-empty (BEMP) event that marks the packet on the
+ * wire and acknowledged, and parks the pipe NAK. Sized for protocol
+ * headers such as the 31-byte MSC CBW; @p len must not exceed the pipe's
+ * max packet size.
+ *
+ * @param[in] speed    Which controller (FS or HS).
+ * @param[in] pipe_num Pipe configured by `ra_usb_host_pipe_setup` (OUT).
+ * @param[in] data     Packet payload.
+ * @param[in] len      Payload length in bytes (<= pipe MPS).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok              Packet transmitted and ACKed.
+ * @retval k_ra_err_invalid_arg `speed` / `pipe_num` / `len` out of range.
+ * @retval k_ra_err_null_ptr    `data` was NULL.
+ * @retval k_ra_err_hw_error    The device STALLed the endpoint.
+ * @retval k_ra_err_hw_timeout  No ACK before the spin bound.
+ *
+ * @pre The pipe was configured by `ra_usb_host_pipe_setup`.
+ * @pre The device is configured (SET_CONFIGURATION accepted).
+ *
+ * @post The pipe PID is NAK and its BEMP status is cleared.
+ * @post On k_ra_ok the device has ACKed the packet.
+ *
+ * @note Blocking; bounded by an internal spin limit.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_usb_host_bulk_out(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Receive a bulk transfer from the device into @p buf.
+ *
+ * @details
+ * Arms the IN pipe (PID=BUF, so the SIE issues IN tokens) and consumes
+ * BRDY-gated packets from the CFIFO until the device ends the transfer
+ * with a short packet or @p max_len bytes have arrived, then parks the
+ * pipe NAK. Used for the MSC data stage and the 13-byte CSW.
+ *
+ * @param[in]  speed        Which controller (FS or HS).
+ * @param[in]  pipe_num     Pipe configured by `ra_usb_host_pipe_setup` (IN).
+ * @param[out] buf          Destination buffer.
+ * @param[in]  max_len      Capacity of @p buf in bytes.
+ * @param[out] out_received Receives the byte count gathered.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                Transfer ended (short packet or count).
+ * @retval k_ra_err_invalid_arg   `speed` / `pipe_num` out of range.
+ * @retval k_ra_err_null_ptr      `buf` or `out_received` was NULL.
+ * @retval k_ra_err_invalid_state The pipe has no max-packet programmed.
+ * @retval k_ra_err_hw_error      The device STALLed the endpoint.
+ * @retval k_ra_err_hw_timeout    No packet before the spin bound.
+ *
+ * @pre The pipe was configured by `ra_usb_host_pipe_setup`.
+ * @pre The device is configured and expecting to send (e.g. post-CBW).
+ *
+ * @post The pipe PID is NAK; `*out_received` holds the byte count.
+ * @post On error the partial count gathered so far is still reported.
+ *
+ * @note Blocking; bounded by an internal spin limit per packet.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_bulk_in(ra_usb_speed_t speed,
+                                           uint8_t        pipe_num,
+                                           uint8_t*       buf,
+                                           uint16_t       max_len,
+                                           uint16_t*      out_received);
+
 #ifdef __cplusplus
 }
 #endif

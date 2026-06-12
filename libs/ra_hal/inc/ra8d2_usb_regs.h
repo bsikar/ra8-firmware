@@ -433,6 +433,24 @@ typedef enum : uint8_t {
 } ra_usb_intenb0_bit_t;
 
 /**
+ * @enum ra_usb_intsts1_bit_t
+ * @brief INTSTS1 / INTENB1 host-mode bit positions (HUM Ch 36.2.11/15).
+ *
+ * @details Host-side bus events. SACK / SIGN report the outcome of a
+ * SETUP transaction started with DCPCTR.SUREQ: SACK latches when the
+ * device ACKs the SETUP, SIGN when three transmission attempts fail.
+ */
+typedef enum : uint8_t {
+  k_ra_int1_bit_sack   = 4U,  /**< SETUP transaction ACKed.          */
+  k_ra_int1_bit_sign   = 5U,  /**< SETUP transaction failed (3x).    */
+  k_ra_int1_bit_eoferr = 6U,  /**< EOF error detected.               */
+  k_ra_int1_bit_attch  = 11U, /**< Device attach detected.           */
+  k_ra_int1_bit_dtch   = 12U, /**< Device detach detected.           */
+  k_ra_int1_bit_bchg   = 14U, /**< Bus change.                       */
+  k_ra_int1_bit_ovrcr  = 15U, /**< Overcurrent input change.         */
+} ra_usb_intsts1_bit_t;
+
+/**
  * @enum ra_usb_intenb0_mask_t
  * @brief INTENB0 aggregate masks (HUM Ch 36.2.10 p 1980).
  */
