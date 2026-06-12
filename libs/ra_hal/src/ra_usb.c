@@ -3264,30 +3264,33 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
 {
   const uint16_t ccpl = (uint16_t)(1U << k_ra_dcpctr_bit_ccpl);
   reg->BEMPSTS        = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
-  /* Park the DCP NAK and drain any residual data-stage bytes so the SIE
-   * will turn the buffer around to the opposite-direction status stage. */
-  internal_dcp_pid(reg, k_ra_pid_nak);
-  internal_select_cfifo(reg, 0U, write_zlp);
-  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  reg->BRDYSTS        = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  reg->BEMPENB        = (uint16_t)(reg->BEMPENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  reg->BRDYENB        = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
   /* The status stage is always DATA1; force the DCP sequence bit so the
    * device does not NAK a toggle mismatch (seen as NRDYSTS bit 0). */
-  const uint16_t sqset = (uint16_t)(1U << k_ra_dcpctr_bit_sqset);
-  internal_rmw16(&reg->DCPCTR, sqset, 0U);
-  /* Set CCPL first (control-transfer-end enable), then PID=BUF so the SIE
-   * runs the controller-generated zero-length status stage and closes the
-   * transfer. CCPL self-clears on completion. */
-  internal_rmw16(&reg->DCPCTR, ccpl, 0U);
-  internal_dcp_pid(reg, k_ra_pid_buf);
-  /* CCPL self-clears when the SIE finishes the status stage and closes
-   * the control transfer -- a direction-agnostic completion signal. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
-    if ((reg->DCPCTR & ccpl) == 0U) {
-      internal_dcp_pid(reg, k_ra_pid_nak);
-      return k_ra_ok;
-    }
+  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra_dcpctr_bit_sqset), 0U);
+  internal_select_cfifo(reg, 0U, write_zlp);
+  if (write_zlp) {
+    /* Control-read status is an OUT the host must drive: enqueue a
+     * zero-length packet (BVAL, no CFIFO write) and assert CCPL. This is
+     * best-effort -- the DATA-IN payload the caller wanted is already in
+     * hand, and a fresh SETUP re-syncs the control endpoint regardless, so
+     * a slow/NAKed OUT status does not invalidate the transfer. */
+    reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bval;
+    internal_dcp_pid(reg, k_ra_pid_buf);
+    internal_rmw16(&reg->DCPCTR, ccpl, 0U);
+    (void)internal_host_wait_sts(&reg->BEMPSTS, k_ra_usb_dcp_pipe0_bit);
+    internal_dcp_pid(reg, k_ra_pid_nak);
+    return k_ra_ok;
   }
+  /* Control-write / no-data status is an IN: the host receives the device
+   * ZLP, signalled by BRDY. */
+  internal_dcp_pid(reg, k_ra_pid_buf);
+  internal_rmw16(&reg->DCPCTR, ccpl, 0U);
+  const ra_err_t ierr = internal_host_wait_sts(&reg->BRDYSTS, k_ra_usb_dcp_pipe0_bit);
   internal_dcp_pid(reg, k_ra_pid_nak);
-  return k_ra_err_hw_timeout;
+  return ierr;
 }
 
 /**
