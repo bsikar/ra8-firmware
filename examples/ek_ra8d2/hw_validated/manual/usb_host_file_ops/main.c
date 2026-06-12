@@ -137,8 +137,21 @@ static const ra_port_pin_t k_fileops_pin_hs_vbus =
 static const ra_port_pin_t k_fileops_pin_hs_pwr =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
-/** @brief Controller this app drives (the drive sits in the HS jack). */
-static const ra_usb_speed_t k_fileops_speed = k_ra_usb_speed_hs;
+/** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
+static const ra_port_pin_t k_fileops_pin_fs_vbus =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+
+/** @brief USBFS VBUSEN (P5_00): the USB function drives host VBUS. */
+static const ra_port_pin_t k_fileops_pin_fs_vbusen =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+
+/** @brief USBFS D+ (P8_14) -- PFS-muxed, unlike the dedicated HS balls. */
+static const ra_port_pin_t k_fileops_pin_fs_dp =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+
+/** @brief USBFS D- (P8_15). */
+static const ra_port_pin_t k_fileops_pin_fs_dm =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /* =============================================================================
  * Test fixtures
@@ -983,16 +996,61 @@ static void fileops_probe_layout(void)
  */
 
 /**
- * @brief Bring CGC + USB60CLK + SysTick + SCI8 + LEDs + USB host up.
+ * @brief Route both USB ports' board pins for the host role. Panic-halts.
+ *
+ * @details HS (J7): SW4-8 to Host via the U15 expander, PD07 HIGH (U18
+ * supplies the jack), P4_08 to USBHS_VBUS. FS: P4_07 (VBUS sense),
+ * P5_00 (VBUSEN -- the controller drives host VBUS through it), and the
+ * PFS-muxed data lines P8_14/P8_15.
+ *
+ * @pre IOPORT and the U15 expander are reachable.
+ * @pre Called once from ::fileops_setup_or_halt.
+ * @post Both ports' pins carry their USB peripheral functions.
+ * @post PD07 is HIGH (J7 powered).
+ * @note Panic-halts on any routing failure.
+ * @since 0.1.0
+ */
+static void fileops_route_usb_or_halt(void)
+{
+  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_gpio_output_init(k_fileops_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_pfs_route_peripheral(k_fileops_pin_hs_vbus, k_ra_psel_usb_hs, "fileops.hs_vbus") !=
+      k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_pfs_route_peripheral(k_fileops_pin_fs_vbus, k_ra_psel_usb_fs, "fileops.fs_vbus") !=
+      k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_pfs_route_peripheral(k_fileops_pin_fs_vbusen, k_ra_psel_usb_fs, "fileops.fs_vbusen") !=
+      k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_pfs_route_peripheral(k_fileops_pin_fs_dp, k_ra_psel_usb_fs, "fileops.fs_dp") != k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_pfs_route_peripheral(k_fileops_pin_fs_dm, k_ra_psel_usb_fs, "fileops.fs_dm") != k_ra_ok) {
+    fileops_panic_halt();
+  }
+}
+
+/**
+ * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
  *        Panic-halts on any failure.
  *
- * @details Board steps for the J7 host role: PD07 HIGH (U18 supplies the
- * jack), SW4-8 to Host via the U15 expander, P4_08 routed to USBHS_VBUS,
- * then `ra_usb_hmsc_init` (which runs the full HS PHY bring-up).
+ * @details Enables the USBHS 60 MHz PLL and the USBFS 48 MHz PLL2 clock
+ * (the latter must run before MSTPB11 is released or UACT never sticks),
+ * then routes both ports' pins. The controller itself is brought up per
+ * retry cycle by the ladder (`ra_usb_hmsc_init`), since the app
+ * alternates between the HS and FS ports.
  *
  * @pre Reset_Handler has finished C runtime init.
  * @pre SystemInit has run.
- * @post Console prints work; the USBHS controller is in host mode.
+ * @post Console prints work; both USB ports' pins and clocks are live.
  * @post LED1/LED2 are initialized.
  * @note Called exactly once from main.
  * @since 0.1.0
@@ -1005,6 +1063,9 @@ static void fileops_setup_or_halt(void)
     fileops_panic_halt();
   }
   if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+    fileops_panic_halt();
+  }
+  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
     fileops_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
@@ -1040,48 +1101,52 @@ static void fileops_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     fileops_panic_halt();
   }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
-    fileops_panic_halt();
-  }
-  if (ra_gpio_output_init(k_fileops_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
-    fileops_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_fileops_pin_hs_vbus, k_ra_psel_usb_hs, "fileops.hs_vbus") !=
-      k_ra_ok) {
-    fileops_panic_halt();
-  }
-  if (ra_usb_hmsc_init(k_fileops_speed) != k_ra_ok) {
-    fileops_panic_halt();
-  }
+  fileops_route_usb_or_halt();
 }
 
 /**
- * @brief One full pass: enumerate, mount, run the 9-step file-op suite.
+ * @brief Map a USB speed to the printable port name.
  *
- * @details The mount handle is always released before returning so the
- * static mount-slot pool cannot leak across retry cycles.
- *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The suite printed `ALL FILE OPS PASSED`.
- * @pre ::fileops_setup_or_halt completed.
- * @pre The USB drive is inserted in the HS jack.
- * @post On success LED1 is on and all verdict lines are printed.
- * @post The volume's test files are removed again (suite is self-cleaning).
- * @note Blocking; bounded by the class-layer timeouts.
+ * @param[in] speed Controller selector.
+ * @return Static NUL-terminated name string.
+ * @retval "USB-HS" For ::k_ra_usb_speed_hs.
+ * @pre None -- total over the two host speeds.
+ * @pre @p speed is one of the two host-capable controllers.
+ * @post No state changes.
+ * @post Returned pointer references static storage.
+ * @note Pure function.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fileops_run_ladder(void)
+static const char* fileops_port_name(ra_usb_speed_t speed)
 {
-  ra_usb_hmsc_device_t device = {};
-  ra_err_t             err    = ra_usb_hmsc_enumerate(&device);
+  if (speed == k_ra_usb_speed_hs) {
+    return "USB-HS";
+  }
+  return "USB-FS";
+}
+
+/**
+ * @brief Print "device attached vid=0x.. pid=0x.. port=USB-xS".
+ *
+ * @param[in] device Enumerated device snapshot.
+ * @param[in] speed  Controller the device answered on.
+ * @return ra_err_t propagated from the SCI helpers.
+ * @retval k_ra_ok All chunks queued.
+ * @pre SCI8 init already ran; @p device is non-NULL.
+ * @pre The snapshot was filled by ::ra_usb_hmsc_enumerate.
+ * @post One ASCII line is in the SCI8 TX FIFO.
+ * @post No other state changes.
+ * @note Blocking polled TX.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t fileops_print_attach(const ra_usb_hmsc_device_t* device,
+                                                   ra_usb_speed_t              speed)
+{
+  ra_err_t err = fileops_print("ra8d2 fileops: device attached vid=0x");
   if (err != k_ra_ok) {
     return err;
   }
-  err = fileops_print("ra8d2 fileops: device attached vid=0x");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = fileops_print_hex((uint32_t)device.vendor_id, (uint8_t)k_fileops_hex_chars_u16);
+  err = fileops_print_hex((uint32_t)device->vendor_id, (uint8_t)k_fileops_hex_chars_u16);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1089,7 +1154,47 @@ static void fileops_setup_or_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  err = fileops_print_hex((uint32_t)device.product_id, (uint8_t)k_fileops_hex_chars_u16);
+  err = fileops_print_hex((uint32_t)device->product_id, (uint8_t)k_fileops_hex_chars_u16);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = fileops_print(" port=");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = fileops_print(fileops_port_name(speed));
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return fileops_print("\r\n");
+}
+
+/**
+ * @brief One full pass on one port: host up, enumerate, mount, run the
+ *        9-step file-op suite.
+ *
+ * @details Brings the selected controller up (`ra_usb_hmsc_init`), so the
+ * caller can alternate between the HS and FS ports per retry cycle. On
+ * any failure the controller is closed again before returning; the mount
+ * handle is always released so the static mount-slot pool cannot leak.
+ *
+ * @param[in] speed Controller to drive this cycle (HS or FS port).
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok The suite printed `ALL FILE OPS PASSED`.
+ * @pre ::fileops_setup_or_halt completed.
+ * @pre The USB drive is inserted in either host jack.
+ * @post On success LED1 is on and all verdict lines are printed.
+ * @post The volume's test files are removed again (suite is self-cleaning).
+ * @note Blocking; bounded by the class-layer timeouts.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t fileops_run_ladder(ra_usb_speed_t speed)
+{
+  ra_err_t err = fileops_print("ra8d2 fileops: probing ");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = fileops_print(fileops_port_name(speed));
   if (err != k_ra_ok) {
     return err;
   }
@@ -1097,11 +1202,29 @@ static void fileops_setup_or_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
+  err = ra_usb_hmsc_init(speed);
+  if (err != k_ra_ok) {
+    (void)fileops_print_fail("host init", err);
+    return err;
+  }
+
+  ra_usb_hmsc_device_t device = {};
+  err                         = ra_usb_hmsc_enumerate(&device);
+  if (err != k_ra_ok) {
+    (void)ra_usb_hmsc_close();
+    return err;
+  }
+  err = fileops_print_attach(&device, speed);
+  if (err != k_ra_ok) {
+    (void)ra_usb_hmsc_close();
+    return err;
+  }
 
   ra_fs_mount_t* mount = nullptr;
   err                  = fileops_mount_volume(&mount);
   if (err != k_ra_ok) {
     fileops_probe_layout();
+    (void)ra_usb_hmsc_close();
     return err;
   }
 
@@ -1111,6 +1234,7 @@ static void fileops_setup_or_halt(void)
   }
   (void)ra_fs_unmount(mount);
   if (err != k_ra_ok) {
+    (void)ra_usb_hmsc_close();
     return err;
   }
 
@@ -1130,8 +1254,8 @@ static void fileops_setup_or_halt(void)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 /**
- * @brief Application entry. Brings up the HS host and runs the file-op
- *        suite until it fully passes.
+ * @brief Application entry. Alternates between the HS and FS host ports
+ *        and runs the file-op suite until it fully passes.
  *
  * @return Never returns.
  *
@@ -1148,19 +1272,24 @@ int32_t main(void)
 
   ra_isr_globals_enable();
 
-  if (fileops_print("ra8d2 fileops: ready (USB-HS), plug a USB drive into the HS jack\r\n") !=
-      k_ra_ok) {
+  if (fileops_print("ra8d2 fileops: ready, plug a USB drive into either USB jack\r\n") != k_ra_ok) {
     fileops_panic_halt();
   }
 
-  /* Run the suite until it fully passes: a freshly inserted (or reseated)
-   * drive is picked up by the next retry cycle automatically. */
-  ra_err_t err = fileops_run_ladder();
+  /* Alternate ports until the suite fully passes: a drive inserted in
+   * either jack (or reseated) is picked up by a following cycle. */
+  ra_usb_speed_t speed = k_ra_usb_speed_hs;
+  ra_err_t       err   = fileops_run_ladder(speed);
   while (err != k_ra_ok) {
     (void)fileops_print_fail("ladder", err);
-    (void)fileops_print("ra8d2 fileops: retrying in 5 s (reseat the drive any time)\r\n");
+    (void)fileops_print("ra8d2 fileops: trying the other port in 5 s\r\n");
     ra_delay_ms(k_fileops_retry_ms);
-    err = fileops_run_ladder();
+    if (speed == k_ra_usb_speed_hs) {
+      speed = k_ra_usb_speed_fs;
+    } else {
+      speed = k_ra_usb_speed_hs;
+    }
+    err = fileops_run_ladder(speed);
   }
 
   while (1) {

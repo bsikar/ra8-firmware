@@ -1,11 +1,13 @@
 # usb_host_file_ops
 
 Native USB **host-mode** file-operations exerciser for the EK-RA8D2.
-Plug a USB thumb drive into the **USB-HS** Type-C jack (J7) and the
-firmware enumerates it at 480 Mbps, mounts its FAT/exFAT volume through
-`ra_fs` (block I/O bridged onto the `ra_usb_hmsc` SCSI READ(10)/WRITE(10)
-calls), then proves every core file operation against the real medium
-with a printed verdict per step:
+Plug a USB thumb drive into **either USB jack** -- the firmware
+alternates between the **USB-HS** port (J7, 480 Mbps) and the **USB-FS**
+port (12 Mbps) every retry cycle until a drive answers, printing
+`probing USB-HS` / `probing USB-FS` as it goes. Once attached it mounts
+the drive's FAT/exFAT volume through `ra_fs` (block I/O bridged onto the
+`ra_usb_hmsc` SCSI READ(10)/WRITE(10) calls), then proves every core
+file operation against the real medium with a printed verdict per step:
 
 1. cleanup -- best-effort unlink of leftover test files
 2. `listdir /` -- every root entry printed (name, size, `<dir>`)
@@ -21,14 +23,21 @@ A clean run ends with `ALL FILE OPS PASSED` and a solid LED1. The suite
 is self-cleaning: the drive's directory is bit-identical before and
 after (the test names are removed again).
 
-## Validation status (2026-06-12): PASSING END TO END ON REAL HARDWARE
+## Validation status (2026-06-12): PASSING ON BOTH PORTS, REAL HARDWARE
 
 Validated against a 128 GB consumer stick (vid=0x24A9 pid=0x205A) that
 is **GPT-partitioned** (macOS GUID scheme: protective MBR + EFI System
-Partition + exFAT Basic Data partition):
+Partition + exFAT Basic Data partition), on **both** the USB-HS jack
+(480 Mbps, `port=USB-HS`) and the USB-FS jack (12 Mbps, three
+consecutive clean runs; the failover from the empty HS port is exactly
+the printed flow below):
 
 ```
-ra8d2 fileops: device attached vid=0x24A9 pid=0x205A
+ra8d2 fileops: ready, plug a USB drive into either USB jack
+ra8d2 fileops: probing USB-HS
+ra8d2 fileops: FAIL ladder err=0x00000203
+ra8d2 fileops: probing USB-FS
+ra8d2 fileops: device attached vid=0x24A9 pid=0x205A port=USB-FS
 ra8d2 fileops: mounted fs=exfat base_lba=411648
 ra8d2 fileops: [1/9] cleanup leftovers
 ra8d2 fileops: [2/9] baseline root listing
@@ -63,8 +72,9 @@ identifiable straight from the log.
 
 - **EK-RA8D2** with the on-board J-Link OB powered via the J10 Type-C
   cable (J10 also powers the board).
-- **A USB mass-storage thumb drive** in J7 (USB-HS). FAT12/16/32 and
-  exFAT volumes are supported, on superfloppy, MBR, or GPT layouts.
+- **A USB mass-storage thumb drive** in either the USB-HS jack (J7) or
+  the USB-FS jack. FAT12/16/32 and exFAT volumes are supported, on
+  superfloppy, MBR, or GPT layouts.
 - **A serial terminal** on the J-Link OB CDC port at 115200 8N1.
 
 The suite writes two small files (`USBTEST.TXT`, `USBDONE.TXT`) to the
@@ -87,9 +97,10 @@ but do not use a drive whose contents you cannot afford to risk.
    picocom -b 115200 /dev/ttyACM0               # Linux
    ```
 
-3. Insert a thumb drive into J7. The ladder retries every 5 s, so the
-   drive is picked up automatically; watch the nine step verdicts and
-   the final `ALL FILE OPS PASSED`.
+3. Insert a thumb drive into either USB jack. The app probes USB-HS
+   and USB-FS alternately (one port per 5 s retry cycle), so the drive
+   is picked up automatically wherever it sits; watch the nine step
+   verdicts and the final `ALL FILE OPS PASSED`.
 
 `LED2` (P3_03) toggles per completed step; `LED1` (P6_00) lights solid
 on a full pass. Any failing step prints `FAIL <step> err=0x...` and the
@@ -104,6 +115,10 @@ suite retries from enumeration.
 | USBHS_VBUS sense  | P4_08   | 0x14 (USBHS)            | Only PFS-muxed HS pin.    |
 | USBHSDP / USBHSDM | dedi.   | none                    | Hardwired HS PHY balls.   |
 | J7 host power     | PD_07   | k_ra_psel_gpio (0)      | HIGH = U18 supplies J7.   |
+| USBFS_VBUS sense  | P4_07   | 0x13 (USBFS)            | FS attach detect.         |
+| USB_VBUSEN (FS)   | P5_00   | 0x13 (USBFS)            | Controller drives VBUS.   |
+| USBFS D+          | P8_14   | 0x13 (USBFS)            | PFS-muxed (not a ball).   |
+| USBFS D-          | P8_15   | 0x13 (USBFS)            | PFS-muxed (not a ball).   |
 | LED1 (pass)       | P6_00   | k_ra_psel_gpio (0)      | Solid on full pass.       |
 | LED2 (step)       | P3_03   | k_ra_psel_gpio (0)      | Toggles per step.         |
 
@@ -117,10 +132,11 @@ sense P408 is the only PFS-muxed USBHS pin (UM Table 28 p 34).
 
 ## Why manual
 
-Requires a physical USB thumb drive in J7 -- the HIL bench has no USB
-gadget that can emulate a mass-storage device on the HS jack, and the
-suite intentionally mutates a real removable medium. HIL CI builds the
-app but a human must insert a drive and read the final verdict.
+Requires a physical USB thumb drive in one of the host jacks -- the
+HIL bench has no USB gadget that can emulate a mass-storage device,
+and the suite intentionally mutates a real removable medium. HIL CI
+builds the app but a human must insert a drive and read the final
+verdict.
 
 This is the filesystem-layer counterpart to
 `hw_pending/usb_host_msc_browse` (raw enumerate/INQUIRY/READ ladder);
