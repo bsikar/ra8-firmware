@@ -10,18 +10,31 @@ Targets **USB-FS** (12 Mbps): simpler PHY than HS and it sidesteps the
 HS SET_ADDRESS-stall blocker. Pins: VBUS P4_07, VBUSEN P5_00 (supplies
 bus power in host mode), D+/D- P8_14/P8_15, all PSEL 0x13.
 
-## Bring-up status (2026-06-11)
+## Bring-up status (2026-06-12): WORKING END TO END
 
-Hardware-verified working so far: the FS controller is clocked
-(`ra_cgc_usbfs_clock_enable`), VBUS is supplied, an inserted drive is
-detected (`SYSSTS0.LNST=1`, full-speed), SOF is generated
-(`DVSTCTR0.UACT=1`), and the SET_ADDRESS SETUP is transmitted
-(`DCPCTR.SUREQ` clears). **Remaining gap:** the `ra_usb_hmsc` step
-machine advances on `CTRT` (INTSTS0 bit 11), which is a *device-mode*
-control-transfer-stage signal and never fires for *host* control
-transfers -- so enumeration stalls after the SETUP. The host
-control-transfer engine must complete via SUREQ-clear (SETUP) + BRDY/BEMP
-on the DCP (DATA/STATUS), not CTRT. Tracked in the USB-FS host task.
+The full ladder completes on real hardware, repeatably across resets:
+
+```
+ra8d2 host: enum attempt won=4
+ra8d2 host: device attached vid=0x24A9 pid=0x205A max-lun=18
+ra8d2 host: address 1 assigned
+ra8d2 host: msc iface eps in=0x01 out=0x02
+ra8d2 host: configured, pipes ready
+ra8d2 host: INQUIRY vendor="        " product="                " rev="    "
+ra8d2 host: capacity blocks=245760000 block_size=512
+ra8d2 host: MBR sector 0 first 64 bytes:
+00 00 ... (64 bytes)
+ra8d2 host: mbr sig @510 = 55 AA (ok)
+```
+
+(The `max-lun` field of the attach line carries the descriptor byte
+count during bring-up; this stick reports blank INQUIRY strings, which
+is legal -- the CSW signature/tag/status are validated per exchange.)
+
+The ladder retries every 5 s, so inserting or reseating a drive is
+picked up automatically. Host-mode learnings (SACK/SIGN-gated SETUP,
+NRDY retry, BCLR-before-status, DATA1 SQSET, CFIFOSEL settle) live in
+`libs/ra_hal/src/ra_usb.c` with HUM citations.
 
 This is the hardware-test counterpart to the host-side MSC class
 layer in `libs/ra_hal/src/ra_usb_hmsc.c`.
