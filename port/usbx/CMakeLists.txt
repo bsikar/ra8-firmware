@@ -35,4 +35,5 @@ target_include_directories(usbx_port_ra_usb INTERFACE
 set_property(GLOBAL PROPERTY RA_USBX_PORT_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ux_hcd_ra_usb.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_device_class_storage_inquiry.c
 )
