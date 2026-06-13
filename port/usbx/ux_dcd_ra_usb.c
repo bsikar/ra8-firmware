@@ -1115,13 +1115,14 @@ static void internal_usbfs_irq_set_enabled(bool enabled)
 /**
  * @brief Mask the USB IRQ at the NVIC to break an interrupt storm.
  *
- * @details Called from ::internal_usbfs_isr once a sustained run of
- * event-less entries proves a storm is in progress. With the line masked
- * the storming controller cannot tail-chain the CPU, so RTOS thread mode
- * runs; the per-app 1 ms ``SysTick_Handler`` re-enables the line via
- * ::ux_dcd_ra_usb_irq_reenable.
+ * @details Called from ::internal_usbfs_isr or ::internal_usbhs_isr once
+ * a sustained run of event-less entries proves a storm is in progress.
+ * With the line masked the storming controller cannot tail-chain the
+ * CPU, so RTOS thread mode runs; the per-app 1 ms ``SysTick_Handler``
+ * re-enables the line via ::ux_dcd_ra_usb_irq_reenable. The line masked
+ * is ::s_usb_irq_slot -- whichever controller this DCD instance drives.
  *
- * @pre Called from FS ISR context.
+ * @pre Called from the active controller's ISR context.
  * @pre ::s_usb_irq_slot has been resolved at init.
  * @post USB IRQ line disabled at the NVIC until the next SysTick re-enable.
  * @post Pending USB events stay latched in INTSTS0 / BRDYSTS (level state).
@@ -1254,6 +1255,8 @@ typedef enum : uint32_t {
   k_dcd_trace_cdb_lba_lo = 5U,    /**< CDB byte: LBA bits 7..0.          */
   k_dcd_trace_kind_ocap  = 5U,    /**< Orphan OUT packet captured.       */
   k_dcd_trace_kind_ouse  = 6U,    /**< Orphan packet fed to a transfer.  */
+  k_dcd_trace_kind_ccpl  = 7U,    /**< EP0 H2D status stage driven.      */
+  k_dcd_trace_kind_dvst  = 9U,    /**< DVST event (code = dvsq|state).   */
   k_dcd_trace_nibble     = 0x0FU, /**< Low-nibble mask for packed bytes. */
   k_dcd_trace_nib_shift  = 4U,    /**< High-nibble shift.                */
 } ra_usb_dcd_trace_t;
@@ -1265,6 +1268,25 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 static volatile uint32_t s_trace[k_dcd_trace_entries] = {};
+
+/**
+ * @var s_trace_ts
+ * @brief DWT cycle-count timestamp per ::s_trace slot.
+ * @note Same indexing as ::s_trace; read via JLink for gap analysis.
+ * @since 0.1.0
+ */
+static volatile uint32_t s_trace_ts[k_dcd_trace_entries] = {};
+
+/**
+ * @enum ra_dcd_dwt_t
+ * @brief Armv8-M Data Watchpoint and Trace unit register addresses.
+ */
+typedef enum : uintptr_t {
+  k_dcd_dwt_cyccnt_addr = 0xE0001004U, /**< DWT_CYCCNT free-running cycle counter. */
+} ra_dcd_dwt_t;
+
+/** @brief DWT cycle counter address (Armv8-M DWT_CYCCNT). */
+static volatile uint32_t* const k_dcd_dwt_cyccnt = (volatile uint32_t*)k_dcd_dwt_cyccnt_addr;
 
 /**
  * @var s_trace_seq
@@ -1298,6 +1320,7 @@ static void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length)
   const uint32_t slot = s_trace_seq % (uint32_t)k_dcd_trace_entries;
   s_trace[slot]       = ((uint32_t)kind << (uint32_t)k_dcd_trace_kind_shift) |
                   ((uint32_t)code << (uint32_t)k_dcd_trace_code_shift) | (uint32_t)length;
+  s_trace_ts[slot] = *k_dcd_dwt_cyccnt;
   s_trace_seq++;
 }
 
@@ -1732,22 +1755,16 @@ static unsigned int internal_submit_in_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr,
     return UX_TRANSFER_ERROR;
   }
   tr->ux_slave_transfer_request_actual_length = chunk;
-  /* USB-bulk spec: a transfer whose length is an exact multiple of
-   * MPS needs a trailing ZLP so the host URB completes. For the
-   * single-packet case the ZLP is staged into the IN pipe's second
-   * bank (PIPECFG.DBLB is set for IN bulk in internal_pipecfg_word).
-   * Nested ifs keep the test out of the MC/DC inventory. */
-  bool need_zlp = false;
-  if (mps != 0U) {
-    if (chunk == mps) {
-      if (total <= mps) {
-        need_zlp = true;
-      }
-    }
-  }
-  if (need_zlp) {
-    (void)ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, 0U);
-  }
+  /* Trailing ZLP policy: honor USBX's per-transfer force_zlp flag
+   * (set by ux_device_stack_transfer_request only when the host asked
+   * for MORE than the payload and the payload is MPS-aligned). An
+   * unconditional MPS-exact ZLP corrupts BOT: a 512-byte READ(10)
+   * data phase on a 512-MPS HS bulk pipe is single-packet MPS-exact,
+   * and the spurious ZLP lands where the host expects the CSW
+   * (observed against macOS at HS as a read-LBA0-then-reset loop).
+   * The ZLP itself is staged by internal_irq_complete_in on the data
+   * packet's BEMP -- bulk IN pipes run single-banked, so there is no
+   * second bank to pre-stage it into here. */
   internal_fifo_unlock(primask);
   return UX_SUCCESS;
 }
@@ -2359,6 +2376,19 @@ static void internal_ack_spurious(ra_usb_speed_t speed, uint16_t intsts0)
   if ((intsts0 & stuck_mask) != 0U) {
     (void)ra_usb_clear_status(speed, (uint16_t)(intsts0 & stuck_mask));
   }
+  /* The HS controller latches bus-change/attach/detach in INTSTS1 even
+   * with INTENB1 fully masked; a held latch keeps the shared NVIC line
+   * asserted with INTSTS0 clean (observed live: 440k spurious ISR
+   * entries/s with INTSTS1.BCHG stuck). W0C-ack those bits here. */
+  if (speed == k_ra_usb_speed_hs) {
+    volatile r_usb_regs_t* const reg = ra_usb_hs();
+    if (reg != nullptr) {
+      const uint16_t int1_mask =
+        (uint16_t)((1U << k_ra_int1_bit_bchg) | (1U << k_ra_int1_bit_dtch) |
+                   (1U << k_ra_int1_bit_attch));
+      reg->INTSTS1 = (uint16_t)~int1_mask;
+    }
+  }
   s_dcd_irq_spurious_mask_count++;
 }
 
@@ -2410,8 +2440,20 @@ static void internal_usbhs_isr(void* ctx)
 
   if ((intsts0 & event_msk) == 0U) {
     internal_ack_spurious(k_ra_usb_speed_hs, intsts0);
+    /* Same storm guard as the FS ISR: a sustained run of event-less
+     * entries means a level condition the acks above cannot clear is
+     * holding the NVIC line. Mask it; the per-app 1 ms SysTick handler
+     * re-enables via ux_dcd_ra_usb_irq_reenable, so real USB events
+     * resume within one tick. Without this the HS line stormed at
+     * ~440k entries/s and starved thread mode completely (the USBX
+     * storage thread never got a single timeslice). */
+    s_isr_spurious_run++;
+    if (s_isr_spurious_run >= (uint32_t)k_ra_usb_storm_mask_run) {
+      internal_usbfs_irq_mask();
+    }
     return;
   }
+  s_isr_spurious_run = 0U;
 
   internal_isr_bump_counts(intsts0);
 
@@ -2751,6 +2793,8 @@ static void internal_ctrt_dispatch_fresh_setup(ra_usb_speed_t speed, uint64_t fi
   if ((setup.bm_request_type & (uint8_t)k_ra_usb_setup_dir_mask) == 0U) {
     if (setup.w_length == 0U) {
       (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
+      /* kind 7: H2D status driven -- code = bRequest, len = USBX rc. */
+      internal_trace_event((uint8_t)k_dcd_trace_kind_ccpl, setup.b_request, (uint16_t)rc);
     }
   }
 }
@@ -3142,10 +3186,70 @@ static void internal_dvst_record_history(uint16_t dvsq)
     entry_state = (uint8_t)(_ux_system_slave->ux_system_slave_device.ux_slave_device_state &
                             (unsigned long)k_dcd_trace_nibble);
   }
-  s_dvst_state_history[dvst_slot] =
+  const uint8_t packed =
     (uint8_t)((uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) << (uint8_t)k_dcd_trace_nib_shift) |
               entry_state);
+  s_dvst_state_history[dvst_slot] = packed;
   s_dvst_state_history_count++;
+  internal_trace_event((uint8_t)k_dcd_trace_kind_dvst, packed, 0U);
+}
+
+/**
+ * @brief DVSQ mirror policy: may ``new_state`` be written into USBX?
+ *
+ * @details The chapter-9 stack owns the ADDRESSED/CONFIGURED
+ * transitions (it sets them while processing SET_ADDRESS /
+ * SET_CONFIGURATION) and the mirror must never demote that state
+ * asynchronously: USBX class threads (storage) gate on CONFIGURED and
+ * suspend themselves permanently when they wake to anything else.
+ * Policy: suspends are not propagated (traffic pauses, gates keep);
+ * upgrades apply directly; a disconnect + apply happens ONLY on a
+ * genuine Default-state entry (true bus reset). A generic "any
+ * downgrade is a reset" rule does not work because the hardware DVSQ
+ * LAGS the stack during configuration -- it sits in Address state
+ * until SET_CONFIGURATION's status stage completes, and ISR INTSTS0
+ * snapshots can be staler still -- so it tears the just-built
+ * configuration down microseconds after activation (observed against
+ * macOS at HS as a sub-millisecond configure/deactivate loop with the
+ * storage thread never scheduled). The Default-entry disconnect is
+ * required: macOS's MSC driver resets the device at start-of-probe,
+ * and without the teardown the stack treats the re-issued
+ * SET_CONFIGURATION as a same-value no-op (no interface mount, no
+ * class re-activation) and the storage thread parks forever.
+ *
+ * @param[in,out] device    USBX device instance (state read; on Default
+ *                          entry the configuration is torn down).
+ * @param[in]     dvsq      Masked DVSQ field from the INTSTS0 snapshot.
+ * @param[in]     new_state ``dvsq`` mapped to a UX_DEVICE_* state.
+ *
+ * @return Whether the caller may write ``new_state`` into the stack.
+ * @retval true  Upgrade, or Default-state entry (post-disconnect).
+ * @retval false Suspend or a stale/lagging downgrade; do not touch.
+ *
+ * @pre ``device`` is non-NULL (caller checked ``_ux_system_slave``).
+ * @pre ``new_state`` is the ::internal_dvst_map_dvsq_to_ux_state
+ *      mapping of ``dvsq`` (the pair must describe the same event).
+ * @post On Default-state entry the stack configuration has been torn
+ *       down via ``_ux_device_stack_disconnect`` (no-op if none).
+ * @post ``device->ux_slave_device_state`` itself is NOT written here;
+ *       that is the caller's job iff the return value is true.
+ *
+ * @note ISR-callback context; must not block.
+ * @since 0.1.0
+ */
+static bool
+internal_dvst_policy_apply(UX_SLAVE_DEVICE* device, uint16_t dvsq, unsigned long new_state)
+{
+  bool apply = false;
+  if (new_state == (unsigned long)UX_DEVICE_SUSPENDED) {
+    apply = false;
+  } else if (new_state > device->ux_slave_device_state) {
+    apply = true; /* upgrade */
+  } else if (dvsq == (uint16_t)k_ra_dvsq_default) {
+    (void)_ux_device_stack_disconnect(); /* deactivates iff configured */
+    apply = true;
+  }
+  return apply;
 }
 
 /**
@@ -3153,8 +3257,9 @@ static void internal_dvst_record_history(uint16_t dvsq)
  *
  * @details Extracts the DVSQ field from ``intsts0``, records it in the
  * ring-buffer history for JLink readout, mirrors the decoded state into
- * the USBX device-state field via ``internal_dvst_map_dvsq_to_ux_state``,
- * and re-arms the DCP after bus reset (Default-state entry) per the FSP
+ * the USBX device-state field via ``internal_dvst_map_dvsq_to_ux_state``
+ * under the ::internal_dvst_policy_apply policy, and re-arms the DCP
+ * after bus reset (Default-state entry) per the FSP
  * ``usb_pstd_busreset`` reference flow. Without the rearm the IP silently
  * drops the host's first SETUP token after bus reset.
  *
@@ -3198,33 +3303,9 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
      * de-dup fingerprint. */
     s_last_dispatched_setup_fp = 0U;
   }
-  /* The chapter-9 stack owns the ADDRESSED/CONFIGURED transitions (it
-   * sets them while processing SET_ADDRESS / SET_CONFIGURATION). The
-   * DVSQ mirror must never demote that state asynchronously: USBX
-   * class threads (storage) gate on CONFIGURED and suspend themselves
-   * permanently when they wake to anything else. Mirror policy:
-   *  - suspends are not propagated (traffic pauses, gates keep);
-   *  - upgrades apply directly;
-   *  - any non-suspend DOWNGRADE means the bus went backwards -- a
-   *    (possibly coalesced; at 480 Mbps the default->address hop can
-   *    land before the DVST IRQ is serviced) bus reset. Tear the
-   *    stack's configuration down via _ux_device_stack_disconnect so
-   *    the host's next SET_CONFIGURATION is a full re-configure
-   *    (interface mount + class re-activation -> class thread
-   *    resume); without it the stack treats the re-issued
-   *    SET_CONFIGURATION as a same-value no-op and the storage
-   *    thread parks forever (observed against macOS at HS, whose MSC
-   *    driver resets the device at start-of-probe). */
-  bool apply = false;
-  if (new_state == (unsigned long)UX_DEVICE_SUSPENDED) {
-    apply = false;
-  } else if (new_state > device->ux_slave_device_state) {
-    apply = true; /* upgrade */
-  } else if (new_state < device->ux_slave_device_state) {
-    (void)_ux_device_stack_disconnect(); /* deactivates iff configured */
-    apply = true;
-  }
-  if (apply) {
+  /* Upgrade-only mirror; disconnect + apply on true bus reset only --
+   * rationale in internal_dvst_policy_apply's header. */
+  if (internal_dvst_policy_apply(device, dvsq, new_state)) {
     device->ux_slave_device_state = new_state;
     if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
       (void)_ux_system_slave->ux_system_slave_change_function(new_state);
@@ -3551,12 +3632,16 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
   }
   reg->BEMPSTS = (uint16_t)(~pipe_bit);
 
-  /* Multi-packet MPS-aligned IN transfers do not get an auto-ZLP here:
-   * MSC's BOT layer expects the device to issue the CSW IN immediately
-   * after the data phase (no ZLP between), and inserting a ZLP wedges
-   * the host's MSC driver. The single-packet MPS-aligned case is
-   * already handled in internal_submit_pipe; classes that need a ZLP
-   * for an MPS-multiple multi-packet IN should send it themselves. */
+  /* Multi-packet trailing ZLP: stage it only when USBX's force_zlp
+   * flag asks for one (host expects more than the MPS-aligned
+   * payload), and complete the transfer on the ZLP's own BEMP. BOT
+   * data phases never set the flag (the class sends exactly the
+   * host-requested length), so the CSW always follows the data. */
+  if (tr->ux_slave_transfer_request_force_zlp == (ULONG)UX_TRUE) {
+    tr->ux_slave_transfer_request_force_zlp = (ULONG)UX_FALSE;
+    (void)ra_usb_queue_in(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, 0U);
+    return;
+  }
   internal_trace_event((uint8_t)k_dcd_trace_kind_in, (uint8_t)k_dcd_trace_no_code, total);
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
   s_dcd.pipes[i].xfer                           = nullptr;
