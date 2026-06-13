@@ -1385,6 +1385,19 @@ typedef enum : uint16_t {
 } ra_usb_dcd_field_mask_t;
 
 /**
+ * @enum ra_usb_dcd_rhst_t
+ * @brief DVSTCTR0.RHST[2:0] settled link-speed encodings.
+ * @details HUM Ch 36.2.5 / Ch 37 DVSTCTR0 p 1971: the controller writes
+ * this after the reset/chirp handshake. Only the two settled, addressable
+ * speeds matter to the speed mirror; LS (1), in-reset (4) and undefined
+ * (0) are transient and leave the mirror untouched.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_rhst_fs = 2U, /**< Full speed settled.  */
+  k_ra_usb_rhst_hs = 3U, /**< High speed settled.  */
+} ra_usb_dcd_rhst_t;
+
+/**
  * @enum ra_usb_setup_usbreq_t
  * @brief Byte masks and request encodings applied to the USBREQ mirror.
  *
@@ -3362,13 +3375,67 @@ static void internal_irq_record_snapshot(uint16_t intsts0)
 }
 
 /**
- * @brief Capture DVSTCTR0 / RHST history and dispatch to internal_handle_dvst.
+ * @brief Mirror the negotiated link speed from DVSTCTR0.RHST into USBX.
+ *
+ * @details The HS controller does not know its link speed until the
+ * host's reset/chirp handshake settles: connected to an HS host it
+ * runs at high speed, to an FS host it falls back to full speed. USBX
+ * serves descriptors from the CURRENT framework pointer
+ * (``ux_system_slave_device_framework``), which ``ux_dcd_ra_usb_init``
+ * seeds from the HS slot for the HS controller. If the link settles at
+ * FS, that pointer must be re-aimed at the full-speed framework
+ * (64-byte bulk MPS), otherwise the host reads a 512-byte-MPS bulk
+ * descriptor on a full-speed link and the bulk pipes never carry a CBW
+ * (observed in the chip-to-chip self-loop: an FS host drives the HS
+ * device, device sticks at ADDRESSED, storage class thread never runs
+ * media_read). This mirrors both ``ux_system_slave_speed`` and the
+ * current framework to the settled RHST. Only settled FS/HS values
+ * act; transient RHST (LS / in-reset / undefined) leaves both alone.
+ *
+ * @param[in] rhst Masked DVSTCTR0.RHST[2:0] from the DVST snapshot.
+ *
+ * @return Nothing.
+ * @retval (void) Speed + current framework reflect a settled FS/HS link.
+ *
+ * @pre ``_ux_system_slave`` is bound (init has run).
+ * @pre @p rhst is the 3-bit RHST field (already masked).
+ * @post ``ux_system_slave_speed`` and ``..._device_framework`` match the
+ *       settled link speed, or are unchanged for a transient RHST value.
+ * @post No register or pipe state is touched; USBX bookkeeping only.
+ *
+ * @note ISR-callback context; a few field writes, never blocks.
+ * @since 0.1.0
+ */
+static void internal_dvst_track_speed(uint8_t rhst)
+{
+  if (_ux_system_slave == UX_NULL) {
+    return;
+  }
+  if (rhst == (uint8_t)k_ra_usb_rhst_fs) {
+    _ux_system_slave->ux_system_slave_speed = UX_FULL_SPEED_DEVICE;
+    _ux_system_slave->ux_system_slave_device_framework =
+      _ux_system_slave->ux_system_slave_device_framework_full_speed;
+    _ux_system_slave->ux_system_slave_device_framework_length =
+      _ux_system_slave->ux_system_slave_device_framework_length_full_speed;
+  } else if (rhst == (uint8_t)k_ra_usb_rhst_hs) {
+    _ux_system_slave->ux_system_slave_speed = UX_HIGH_SPEED_DEVICE;
+    _ux_system_slave->ux_system_slave_device_framework =
+      _ux_system_slave->ux_system_slave_device_framework_high_speed;
+    _ux_system_slave->ux_system_slave_device_framework_length =
+      _ux_system_slave->ux_system_slave_device_framework_length_high_speed;
+  } else {
+    /* Transient RHST (LS / in-reset / undefined): leave the mirror. */
+  }
+}
+
+/**
+ * @brief Capture DVSTCTR0 / RHST history, mirror speed, dispatch DVST.
  *
  * @details Pulled out of ``ux_dcd_ra_usb_irq`` so the outer ISR fits in
  * one page. Reads DVSTCTR0 (HUM Ch 36.2.5 p 1971) for RHST history,
  * latches the first-observed value into ``s_dvstctr0_at_first_dvst``,
- * then calls ``internal_handle_dvst`` to perform the actual state-
- * machine update.
+ * mirrors the settled link speed via ``internal_dvst_track_speed``,
+ * then calls ``internal_handle_dvst`` for the state-machine update.
  *
  * @param[in] speed Which controller fired (FS or HS).
  * @param[in] intsts0 INTSTS0 snapshot (forwarded to internal_handle_dvst).
@@ -3376,7 +3443,7 @@ static void internal_irq_record_snapshot(uint16_t intsts0)
  * @pre Caller has already verified the DVST bit is set in ``intsts0``.
  * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
  * @post ``s_dvst_irq_count`` and ``s_rhst_history_count`` incremented.
- * @post ``internal_handle_dvst`` has run.
+ * @post Speed mirror updated and ``internal_handle_dvst`` has run.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
@@ -3391,9 +3458,11 @@ static void internal_irq_dvst_prelude(ra_usb_speed_t speed, uint16_t intsts0)
   }
   /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
   const uint8_t rhst_mask   = (uint8_t)k_ra_usb_dvsq_field_mask;
+  const uint8_t rhst        = (uint8_t)(dvstctr0 & rhst_mask);
   const uint8_t hist_slot   = (uint8_t)(s_rhst_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
-  s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
+  s_rhst_history[hist_slot] = rhst;
   s_rhst_history_count++;
+  internal_dvst_track_speed(rhst);
   internal_handle_dvst(speed, intsts0);
 }
 
