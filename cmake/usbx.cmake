@@ -135,6 +135,21 @@ target_include_directories(usbx INTERFACE
     ${_RA_USBX_PORT_INC})
 target_link_libraries(usbx INTERFACE threadx)
 
+# Maximum logical units the device Mass-Storage class supports. The
+# cortex_m33 port (ux_port.h) defaults this to 1; raise it so a single
+# MSC device can expose several LUNs (the multi-LUN self-loop). The
+# value sizes the UX_SLAVE_CLASS_STORAGE[_PARAMETER] LUN arrays, so it
+# MUST be identical for the class TUs (usbx_objs) and every app that
+# fills the parameter struct -- hence it is set on both the object lib
+# and the public interface. Single-LUN apps are unaffected (they use
+# LUN 0 of a slightly larger array).
+set(RA_USBX_MAX_SLAVE_LUN 2 CACHE STRING
+    "USBX device Mass-Storage class: max logical units per device")
+target_compile_definitions(usbx_objs PUBLIC
+    UX_MAX_SLAVE_LUN=${RA_USBX_MAX_SLAVE_LUN})
+target_compile_definitions(usbx INTERFACE
+    UX_MAX_SLAVE_LUN=${RA_USBX_MAX_SLAVE_LUN})
+
 # Pull in the project's ra_usb <-> USBX bridge.
 add_subdirectory(${RA_REPO_ROOT}/port/usbx
                  ${CMAKE_BINARY_DIR}/port_usbx)
