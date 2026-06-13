@@ -18,5 +18,5 @@ endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME usb_msc_mram_hs STACK_BYTES 2200
-           DESCRIPTION "ThreadX + USBX MSC RAM-disk demo for RA8D2"
+           DESCRIPTION "USB-HS device MSC: onboard MRAM as a read-only drive"
            USES threadx usbx)
