@@ -1453,19 +1453,24 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @brief Pack PIPECFG fields for a configured non-control pipe.
  *
  * @details Encodes endpoint number, direction (DIR), pipe type (TYPE),
- * and for bulk pipes the SHTNAK flag plus (for IN only) the DBLB flag
- * into the PIPECFG word. HUM Ch 36.2.24 PIPECFG. The IN/OUT asymmetry
- * matters: bulk IN needs the second bank so auto-echo and queue_in can
- * push a data + ZLP pair back-to-back without the second push hitting
- * a full-bank FRDY stall (CDC L=64 echo regresses without this); bulk
- * OUT must stay single-buffered, otherwise the controller fills both
- * banks with host data and the one-bank-per-call ra_usb_queue_out
- * drainer wedges the data phase (GitHub issue #6).
+ * and for bulk pipes the SHTNAK flag plus (optionally, IN only) the
+ * DBLB flag into the PIPECFG word. HUM Ch 36.2.24 PIPECFG. Bulk OUT is
+ * always single-buffered, otherwise the controller fills both banks
+ * with host data and the one-bank-per-call ra_usb_queue_out drainer
+ * wedges the data phase (GitHub issue #6). Bulk IN double-banking is
+ * the caller's choice: HOST mode wants it so queue_in can push a
+ * data + ZLP pair back-to-back without the second push hitting a
+ * full-bank FRDY stall; DEVICE mode must run single-banked because the
+ * free-bank handshake after an MPS-exact fill is unreliable (staging
+ * the BOT CSW behind a 512-byte data phase on a 512-MPS HS pipe
+ * FRDY-times-out and the transport wedges, observed live vs macOS).
  *
  * @param[in] ep_addr Endpoint address (low nibble = EP number; bit 7
  *                    direction; the helper reads only the EP number).
  * @param[in] dir     Pipe direction (::k_ra_usb_ep_dir_in or _out).
  * @param[in] type    Pipe type (bulk / interrupt / iso).
+ * @param[in] dblb_in Double-bank bulk IN pipes (host mode true,
+ *                    device mode false; ignored for OUT / non-bulk).
  *
  * @return PIPECFG word ready to write to ``PIPECFG``.
  * @retval 0..0xFFFF Packed configuration word; no error condition.
@@ -1473,12 +1478,14 @@ static uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @pre ``ep_addr`` low nibble is the EP number (caller validated 1..15).
  * @pre ``dir`` / ``type`` are valid enum values.
  * @post No global state is touched; the helper is pure.
- * @post For bulk pipes SHTNAK is set; DBLB is set iff ``dir == IN``.
+ * @post For bulk pipes SHTNAK is set; DBLB only when ``dblb_in`` is
+ *       true with ``dir == IN`` (nested ifs, no compound decision).
  *
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
-static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_usb_ep_type_t type)
+static uint16_t
+internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_usb_ep_type_t type, bool dblb_in)
 {
   uint16_t cfg = (uint16_t)((uint16_t)ep_addr & k_ra_pipecfg_epnum_mask);
   if (dir == k_ra_usb_ep_dir_in) {
@@ -1487,10 +1494,12 @@ static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_u
   if (type == k_ra_usb_ep_type_bulk) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_bulk);
     cfg = (uint16_t)(cfg | k_ra_pipecfg_shtnak);
-    if (dir == k_ra_usb_ep_dir_in) {
-      /* HUM Ch 36.2.24 PIPECFG.DBLB. Double-buffer IN only -- see the
-       * function header for the IN/OUT asymmetry rationale. */
-      cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);
+    /* DBLB only when the caller asks (host-mode IN); device-mode IN
+     * must stay single-banked -- see the function header. */
+    if (dblb_in) {
+      if (dir == k_ra_usb_ep_dir_in) {
+        cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);
+      }
     }
   } else if (type == k_ra_usb_ep_type_intr) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_intr);
@@ -1669,7 +1678,7 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
   /* HUM Ch 36.2.23 "PIPESEL : Pipe Window Select Register", p 1995 */
   reg->PIPESEL = pipe_num;
   /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 1996 */
-  reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type);
+  reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type, false);
   /* HUM Ch 36.2.25 "PIPEBUF : Pipe Buffer Setting Register", p 2002.
    * Bulk pipes get a single MPS-sized bank (DBLB clear). Interrupt/iso
    * pipes keep the reset default. */
@@ -3769,8 +3778,8 @@ ra_err_t ra_usb_host_pipe_setup(ra_usb_speed_t speed,
   internal_pipe_quiesce(reg, pipe_num);
   const ra_usb_ep_dir_t cfg_dir = device_to_host ? k_ra_usb_ep_dir_out : k_ra_usb_ep_dir_in;
   reg->PIPESEL                  = pipe_num;
-  reg->PIPECFG                  = internal_pipecfg_word(ep_num, cfg_dir, k_ra_usb_ep_type_bulk);
-  reg->PIPEBUF                  = internal_pipebuf_word(pipe_num, max_packet);
+  reg->PIPECFG  = internal_pipecfg_word(ep_num, cfg_dir, k_ra_usb_ep_type_bulk, true);
+  reg->PIPEBUF  = internal_pipebuf_word(pipe_num, max_packet);
   reg->PIPEMAXP = (uint16_t)((uint16_t)((uint16_t)dev_addr << (uint16_t)k_ra_usb_devsel_shift) |
                              (uint16_t)(max_packet & (uint16_t)k_ra_usb_pipemaxp_mxps));
   reg->PIPEPERI = 0U;
