@@ -1,6 +1,6 @@
 /**
  * @file board_periph_i2c.c
- * @brief I3C-in-I2C-mode (IIC_B) controller + GT911 touch device model
+ * @brief I3C-in-I2C-mode (IIC_B) controller + GT911 touch + LSM6DSO IMU models
  *
  * @details
  * Models the RA8D2 I3C channel 0 driven in legacy I2C mode (PRTS.PRTMD=1) --
@@ -138,6 +138,28 @@ typedef enum : uint32_t {
 } gt911_pt_off_t;
 
 /**
+ * @brief ST LSM6DSO 6-DoF IMU constants (libs/ra_lsm6dso, DS12140 Rev 4).
+ *
+ * @details
+ * The MikroE 6DOF IMU 12 Click ties SA0 high, so the part answers at 7-bit
+ * 0x6B. Unlike the GT911, the LSM6DSO uses an 8-bit register pointer that
+ * auto-increments across a burst read, so the model is a flat register file:
+ * the driver writes the start register, then reads N consecutive bytes
+ * (WHO_AM_I, then 6-byte gyro / accel bursts). WHO_AM_I (0x0F) must read back
+ * 0x6C or ra_lsm6dso_init() rejects the part.
+ */
+typedef enum : uint32_t {
+  k_lsm6dso_addr_7b      = 0x6BU,   /**< SA0-high 7-bit I2C address.            */
+  k_lsm6dso_reg_who_am_i = 0x0FU,   /**< WHO_AM_I register.                     */
+  k_lsm6dso_who_am_i_val = 0x6CU,   /**< Expected WHO_AM_I value.               */
+  k_lsm6dso_reg_outx_l_g = 0x22U,   /**< First gyro output byte (OUTX_L_G).     */
+  k_lsm6dso_reg_outz_l_a = 0x2CU,   /**< Accel Z low byte (OUTZ_L_A).           */
+  k_lsm6dso_reg_file     = 0x100U,  /**< Flat register-file size (bytes).       */
+  k_lsm6dso_seed_accel_z = 0x4000U, /**< Synthetic accel Z (~+1 g at +-2 g FS).*/
+  k_lsm6dso_seed_gyro_x  = 0x0100U, /**< Synthetic gyro X (small steady rate). */
+} lsm6dso_const_t;
+
+/**
  * @brief One I3C-in-I2C-mode channel: register shadow + a transfer state machine.
  *
  * @details
@@ -184,6 +206,22 @@ typedef struct {
 } gt911_state_t;
 
 /**
+ * @brief One ST LSM6DSO IMU device: a flat auto-incrementing register file.
+ *
+ * @details
+ * @c reg_ptr is set by the first byte of each write phase (the start register)
+ * and advances one per byte for both writes (config) and reads (burst). A read
+ * served past the file end returns 0. @c ptr_set is cleared at STOP so the next
+ * transaction's first write byte is taken as a fresh register pointer.
+ */
+typedef struct {
+  uint8_t  regs[k_lsm6dso_reg_file]; /**< Flat register file.                 */
+  uint16_t reg_ptr;                  /**< Active register pointer.            */
+  bool     ptr_set;                  /**< Start register captured this xfer.  */
+  uint32_t reads;                    /**< Register reads answered (report).   */
+} lsm6dso_state_t;
+
+/**
  * @brief A device on the modelled I2C bus: 7-bit address + read/write callbacks.
  *
  * @details
@@ -203,9 +241,10 @@ typedef struct {
 } i2c_device_t;
 
 /** @brief The single modelled I3C/IIC_B channel and its bus device registry. */
-static i3c_state_t   s_i3c;
-static i2c_device_t  s_i2c_dev[k_i3c_dev_max];
-static gt911_state_t s_gt911;
+static i3c_state_t     s_i3c;
+static i2c_device_t    s_i2c_dev[k_i3c_dev_max];
+static gt911_state_t   s_gt911;
+static lsm6dso_state_t s_lsm6dso;
 
 /* =============================================================================
  * I2C bus device registry -- map a 7-bit address to a device model.
@@ -349,6 +388,66 @@ static void gt911_stop(void* ctx)
 {
   gt911_state_t* g = (gt911_state_t*)ctx;
   g->ptr_bytes     = 0U;
+}
+
+/* =============================================================================
+ * LSM6DSO IMU device model -- 8-bit auto-incrementing register file.
+ * =============================================================================
+ */
+
+/** @brief Store a 16-bit little-endian sample at register @p reg. */
+static void lsm6dso_seed16(lsm6dso_state_t* s, uint8_t reg, uint16_t val)
+{
+  s->regs[reg]                 = (uint8_t)((uint32_t)val & (uint32_t)k_i3c_byte_mask);
+  s->regs[(uint8_t)(reg + 1U)] = (uint8_t)((uint32_t)val >> 8U);
+}
+
+/** @brief Reset the register file: WHO_AM_I + synthetic accel/gyro samples. */
+static void lsm6dso_reset_regs(lsm6dso_state_t* s)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_lsm6dso_reg_file; i++) {
+    s->regs[i] = 0U;
+  }
+  s->regs[(uint8_t)k_lsm6dso_reg_who_am_i] = (uint8_t)k_lsm6dso_who_am_i_val;
+  lsm6dso_seed16(s, (uint8_t)k_lsm6dso_reg_outz_l_a, (uint16_t)k_lsm6dso_seed_accel_z);
+  lsm6dso_seed16(s, (uint8_t)k_lsm6dso_reg_outx_l_g, (uint16_t)k_lsm6dso_seed_gyro_x);
+  s->reg_ptr = 0U;
+  s->ptr_set = false;
+  s->reads   = 0U;
+}
+
+/** @brief Controller -> LSM6DSO: start register first, then config payload. */
+static void lsm6dso_write(void* ctx, uint8_t byte)
+{
+  lsm6dso_state_t* s = (lsm6dso_state_t*)ctx;
+  if (!s->ptr_set) {
+    s->reg_ptr = byte;
+    s->ptr_set = true;
+    return;
+  }
+  if (s->reg_ptr < (uint16_t)k_lsm6dso_reg_file) {
+    s->regs[s->reg_ptr] = byte; /* CTRL config writes land harmlessly. */
+  }
+  s->reg_ptr = (uint16_t)(s->reg_ptr + 1U);
+}
+
+/** @brief LSM6DSO -> controller: burst from the pointer, auto-incrementing. */
+static uint32_t lsm6dso_read(void* ctx, uint8_t* buf, uint32_t max)
+{
+  lsm6dso_state_t* s = (lsm6dso_state_t*)ctx;
+  for (uint32_t i = 0U; i < max; i++) {
+    buf[i]     = (s->reg_ptr < (uint16_t)k_lsm6dso_reg_file) ? s->regs[s->reg_ptr] : 0U;
+    s->reg_ptr = (uint16_t)(s->reg_ptr + 1U);
+  }
+  s->reads++;
+  return max;
+}
+
+/** @brief STOP / transfer end: re-arm pointer capture for the next transfer. */
+static void lsm6dso_stop(void* ctx)
+{
+  lsm6dso_state_t* s = (lsm6dso_state_t*)ctx;
+  s->ptr_set         = false;
 }
 
 /* =============================================================================
@@ -521,14 +620,21 @@ static void i3c_reset(void)
 {
   s_i3c   = (i3c_state_t){};
   s_gt911 = (gt911_state_t){};
+  lsm6dso_reset_regs(&s_lsm6dso);
   /* Populate the modelled I2C bus: the EK-RA8D2 carrier's GT911 touch
    * controller answers at its default 7-bit address on I3C/IIC_B channel 0, so
    * the firmware's real ra_touch -> ra_i3c_transfer -> GT911 path returns data
-   * instead of needing a function-level touch stub. */
+   * instead of needing a function-level touch stub. The LSM6DSO IMU answers at
+   * 0x6B so imu_lsm6dso_demo's WHO_AM_I probe + sample reads succeed too. */
   for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
     s_i2c_dev[i] = (i2c_device_t){};
   }
   i2c_device_register((uint8_t)k_gt911_addr_7b, gt911_write, gt911_read, gt911_stop, &s_gt911);
+  i2c_device_register((uint8_t)k_lsm6dso_addr_7b,
+                      lsm6dso_write,
+                      lsm6dso_read,
+                      lsm6dso_stop,
+                      &s_lsm6dso);
 }
 
 /** @brief Print the GT911 touch line when the firmware drained any contact. */
@@ -538,6 +644,11 @@ static void i3c_report(void)
     (void)fprintf(stderr,
                   "  I3C/I2C GT911 : %u touch frame(s) drained via ra_touch -> I3C\n",
                   s_gt911.reported);
+  }
+  if (s_lsm6dso.reads > 0U) {
+    (void)fprintf(stderr,
+                  "  I3C/I2C LSM6DSO: %u register read(s) answered (WHO_AM_I + samples)\n",
+                  s_lsm6dso.reads);
   }
 }
 
