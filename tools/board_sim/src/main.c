@@ -2210,7 +2210,7 @@ int main(int argc, char** argv)
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
                   " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
-                  " [--usb-in <str>]\n"
+                  " [--usb-in <str>] [--dump-sym <name>]\n"
                   "  --view          open a macOS window: live board view (panel + status)\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
                   "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
@@ -2221,6 +2221,8 @@ int main(int argc, char** argv)
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
                   "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
                   "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
+                  "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
+                  "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
