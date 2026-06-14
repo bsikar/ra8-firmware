@@ -123,30 +123,38 @@ typedef enum : uint64_t {
  * 1 and no S0-S31 are stacked -- see _tx_thread_schedule (TST LR,#0x10 skips
  * the VFP save/restore for these values). */
 typedef enum : uint32_t {
-  k_exc_frame_words  = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.  */
-  k_exc_frame_bytes  = 32U,         /**< 8 words * 4 bytes.                    */
-  k_exc_ret_base     = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].  */
-  k_exc_ret_handler  = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.         */
-  k_exc_ret_msp      = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.          */
-  k_exc_ret_psp      = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.          */
-  k_exc_ret_spsel    = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP. */
-  k_exc_ret_mode     = 0x8U,        /**< EXC_RETURN bit3: return to Thread.   */
-  k_control_spsel    = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.      */
-  k_xpsr_t_bit       = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.     */
-  k_xpsr_align9      = 0x00000200U, /**< xPSR bit9: stack-frame realignment.  */
-  k_xpsr_ipsr_mask   = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
-  k_exc_prio_none    = 0x100U,      /**< Sentinel "no handler active" prio.   */
-  k_exc_prio_max     = 0xFFU,       /**< Lowest configurable priority value.  */
-  k_exc_nest_max     = 4U,          /**< Tracked active-exception nesting cap.*/
-  k_byte_bits        = 8U,          /**< Bits per byte (SHPR field width).   */
-  k_frame_off_r3     = 12U,         /**< Basic exception-frame offset of R3. */
-  k_frame_off_lr     = 20U,         /**< Basic exception-frame offset of LR. */
-  k_frame_off_pc     = 24U,         /**< Basic exception-frame offset of PC. */
-  k_frame_off_xpsr   = 28U,         /**< Basic exception-frame offset of xPSR.*/
-  k_exc_ret_grp_mask = 0xFFFFFFF0U, /**< Masks a PC to the EXC_RETURN group. */
-  k_vector_erased    = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word. */
-  k_nvic_prio_shift  = 4U,          /**< Implemented priority is the 4 MSBs. */
-  k_lo4_mask         = 0xFU,        /**< Low nibble (register / cond field). */
+  k_exc_frame_words   = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.  */
+  k_exc_frame_bytes   = 32U,         /**< 8 words * 4 bytes.                    */
+  k_exc_ret_base      = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].  */
+  k_exc_ret_handler   = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.         */
+  k_exc_ret_msp       = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.          */
+  k_exc_ret_psp       = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.          */
+  k_exc_ret_spsel     = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP. */
+  k_exc_ret_mode      = 0x8U,        /**< EXC_RETURN bit3: return to Thread.   */
+  k_control_spsel     = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.      */
+  k_xpsr_t_bit        = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.     */
+  k_xpsr_align9       = 0x00000200U, /**< xPSR bit9: stack-frame realignment.  */
+  k_xpsr_ipsr_mask    = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
+  k_exc_prio_none     = 0x100U,      /**< Sentinel "no handler active" prio.   */
+  k_exc_prio_max      = 0xFFU,       /**< Lowest configurable priority value.  */
+  k_exc_nest_max      = 4U,          /**< Tracked active-exception nesting cap.*/
+  k_byte_bits         = 8U,          /**< Bits per byte (SHPR field width).   */
+  k_frame_off_r3      = 12U,         /**< Basic exception-frame offset of R3. */
+  k_frame_off_lr      = 20U,         /**< Basic exception-frame offset of LR. */
+  k_frame_off_pc      = 24U,         /**< Basic exception-frame offset of PC. */
+  k_frame_off_xpsr    = 28U,         /**< Basic exception-frame offset of xPSR.*/
+  k_exc_ret_grp_mask  = 0xFFFFFFF0U, /**< Masks a PC to the EXC_RETURN group. */
+  k_vector_erased     = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word. */
+  k_nvic_prio_shift   = 4U,          /**< Implemented priority is the 4 MSBs. */
+  k_lo4_mask          = 0xFU,        /**< Low nibble (register / cond field). */
+  k_armv8m_sg_opcode  = 0xE97FE97FU, /**< Armv8-M `SG` secure-gateway opcode.  */
+  k_thumb2_insn_bytes = 4U,          /**< 32-bit Thumb-2 instruction width.    */
+  k_fpcxtns_push      = 0xCF81ED6DU, /**< `VSTR FPCXTNS,[sp,#-4]!` (LE word).  */
+  k_fpcxtns_pop       = 0xCF81ECFDU, /**< `VLDR FPCXTNS,[sp],#4` (LE word).    */
+  k_word_bytes        = 4U,          /**< One stacked word.                   */
+  k_clrm_hw0          = 0xE89FU,     /**< `CLRM {regs}` first halfword.       */
+  k_vscclrm_hw0_s     = 0xEC9FU,     /**< `VSCCLRM {s..,VPR}` first halfword.  */
+  k_vscclrm_hw0_d     = 0xECDFU,     /**< `VSCCLRM {d..,VPR}` first halfword.  */
 } cortexm_exc_t;
 
 /**
@@ -645,6 +653,39 @@ static void     exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
 static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num);
 static uint32_t exc_active_prio(void);
 
+/**
+ * @brief Emulate the Armv8-M security register-scrub ops as NOPs.
+ *
+ * @details `CLRM {regs}` and `VSCCLRM {s..,VPR}` zero caller-saved core / FP
+ * registers on a Non-Secure-Callable return so Secure data cannot leak to the
+ * Non-Secure caller. board_sim is a single flat domain with one register/FP
+ * bank, so the scrub has no observable effect on a correct caller (the cleared
+ * registers are already caller-saved/clobbered) -- model them as NOPs so the
+ * cmse veneer epilogue runs. Unicorn's M33 rejects both as invalid.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the instruction.
+ * @param[in]     code Four instruction bytes at @p pc.
+ * @return true if @p code was a scrub op (PC advanced past it); false otherwise.
+ * @pre @p code holds the 4 bytes at @p pc.
+ * @pre @p uc is running.
+ * @post On true, PC is advanced one 32-bit instruction.
+ * @post On false, no state changes.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool emulate_sec_scrub(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+{
+  const uint16_t hw0 = (uint16_t)(((uint16_t)code[1] << (uint16_t)k_byte_bits) | (uint16_t)code[0]);
+  if ((hw0 != (uint16_t)k_clrm_hw0) && (hw0 != (uint16_t)k_vscclrm_hw0_s) &&
+      (hw0 != (uint16_t)k_vscclrm_hw0_d)) {
+    return false;
+  }
+  const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  return true;
+}
+
 /** @brief Disassemble + report an instruction the core could not decode. */
 static bool on_invalid_insn(uc_engine* uc, void* user)
 {
@@ -653,6 +694,13 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
   (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
   uint8_t code[4] = {};
   (void)uc_mem_read(uc, pc, code, sizeof(code));
+
+  /* Armv8-M Security Extension register scrub (CLRM / VSCCLRM) on a cmse
+   * Non-Secure-Callable return: a NOP in board_sim's single-domain model. */
+  if (emulate_sec_scrub(uc, pc, code)) {
+    (void)uc_emu_stop(uc);
+    return true;
+  }
 
   /* The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M); the nearest core
    * Unicorn offers is M33 (Armv8-M), which lacks the conditional-select family.
@@ -767,6 +815,52 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
   if (is_exc_return((uint64_t)pc)) {
     s_exc_return_pc  = (uint64_t)pc;
     s_exc_return_hit = true;
+    (void)uc_emu_stop(uc);
+    return;
+  }
+
+  /* Armv8-M secure gateway: every Non-Secure-Callable veneer starts with `SG`
+   * (0xE97FE97F) then `B.W __acle_se_<fn>`. Unicorn's M33 has no Security
+   * Extension, so it raises INTR on the unrecognised SG instead of switching to
+   * Secure state. board_sim has a single flat address space (no S/NS split), so
+   * the faithful model is to treat SG as a NOP and let the following branch reach
+   * the secure entry directly. Without this the SG is mis-taken as an `svc` and
+   * re-taken forever (the firmware has no SVC), looping until the stack
+   * underflows -- the tz_nsc_cgc_usb fault. The matching `BXNS`/`BLXNS` returns
+   * are handled below. */
+  uint32_t insn = 0U;
+  (void)uc_mem_read(uc, (uint64_t)pc, &insn, sizeof(insn));
+
+  /* Armv8-M Security Extension instructions Unicorn's M33 does not implement.
+   * board_sim is a single flat (no Secure/Non-Secure split) address space, so
+   * these reduce to their plain effects here:
+   *   - `SG` (secure gateway, 32-bit): a NOP -- the following B.W reaches the
+   *     __acle_se_ entry directly.
+   *   - `VSTR FPCXTNS,[sp,#-4]!` / `VLDR FPCXTNS,[sp],#4`: the FP context across
+   *     the security boundary is meaningless with one FP bank, so model only the
+   *     stack push/pop they perform (keeping SP balanced for the C frame).
+   * Without this the unrecognised opcode is mis-taken as an `svc`, vectors to
+   * Default_Handler's bkpt, and re-traps forever until the stack underflows
+   * (the tz_nsc_cgc_usb fault). */
+  if (insn == (uint32_t)k_armv8m_sg_opcode) {
+    const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
+    (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+    (void)uc_emu_stop(uc);
+    return;
+  }
+  if ((insn == (uint32_t)k_fpcxtns_push) || (insn == (uint32_t)k_fpcxtns_pop)) {
+    uint32_t sp = 0U;
+    (void)uc_reg_read(uc, UC_ARM_REG_SP, &sp);
+    if (insn == (uint32_t)k_fpcxtns_push) {
+      sp -= (uint32_t)k_word_bytes;
+      const uint32_t zero = 0U;
+      (void)uc_mem_write(uc, (uint64_t)sp, &zero, sizeof(zero));
+    } else {
+      sp += (uint32_t)k_word_bytes;
+    }
+    const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
+    (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
+    (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
     (void)uc_emu_stop(uc);
     return;
   }
