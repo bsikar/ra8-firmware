@@ -100,7 +100,9 @@ golden_dir="$ROOT/tests/golden/ereader_chrome"
 # auto-builds a small FAT16 card image (a font as FONT.OTF) and passes it so
 # sd_font_render can mount + read it. This is how "specify a microSD exists" is
 # exercised in CI: drop the app name here and it runs against a modelled card.
-sd_apps="sd_font_render"
+# tz_secure_only_sd does a write+read+compare roundtrip, so it needs the card
+# (board_sim's SD model now answers CMD24/CMD25 block writes into the image).
+sd_apps="sd_font_render tz_secure_only_sd"
 sd_image=""
 
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small

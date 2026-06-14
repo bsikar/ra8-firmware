@@ -126,9 +126,11 @@ static const ra_port_pin_t k_demo_pin_dm =
  */
 typedef enum : uint32_t {
   k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
-  k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
-  k_demo_echo_buf_bytes  = 64U,    /**< One bulk-FS packet per recv/send.   */
-  k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
+  k_demo_usbx_pool_bytes = 32768U, /**< USBX pool: 16K is too small -- the   */
+                                   /**< CDC-ACM class init then fails with    */
+                                   /**< UX_MEMORY_INSUFFICIENT (board_sim).   */
+  k_demo_echo_buf_bytes = 64U,     /**< One bulk-FS packet per recv/send.   */
+  k_demo_idle_ticks     = 1U,      /**< Idle back-off when no class active. */
 } demo_config_t;
 
 /**
