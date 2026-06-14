@@ -365,6 +365,40 @@ ra_epub_get_toc_entry(const ra_epub_book_t* book, uint16_t idx, ra_epub_toc_entr
   return k_ra_ok;
 }
 
+ra_err_t ra_epub_toc_entry_to_chapter(const ra_epub_book_t* book,
+                                      uint16_t              toc_idx,
+                                      uint16_t*             out_chapter_idx)
+{
+  if (book == nullptr || out_chapter_idx == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (book->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  if (toc_idx >= book->toc_count) {
+    return k_ra_err_out_of_range;
+  }
+
+  /* Match the entry href up to (but excluding) any "#fragment": the spine
+   * stores whole-document paths, while a TOC href may target an anchor. */
+  const char*  href     = book->toc[toc_idx].href;
+  const char*  hash     = strchr(href, '#');
+  const size_t base_len = (hash != nullptr) ? (size_t)(hash - href) : strlen(href);
+
+  for (uint16_t i = 0U; i < book->chapter_count; i++) {
+    const char* path = book->chapter_paths[i];
+    if (strlen(path) != base_len) {
+      continue;
+    }
+    if (strncmp(path, href, base_len) != 0) {
+      continue;
+    }
+    *out_chapter_idx = i;
+    return k_ra_ok;
+  }
+  return k_ra_err_not_found;
+}
+
 ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* out_meta)
 {
   if (book == nullptr || out_meta == nullptr) {
