@@ -150,6 +150,19 @@ target_compile_definitions(usbx_objs PUBLIC
 target_compile_definitions(usbx INTERFACE
     UX_MAX_SLAVE_LUN=${RA_USBX_MAX_SLAVE_LUN})
 
+# Device transfer-request buffer / MSC bulk chunk size. The cortex_m33
+# port defaults this to 2048; the storage class reads each SCSI WRITE in
+# chunks of this size, and the single-buffer device bulk-OUT pipe NAKs
+# the host during the brief re-arm gap between consecutive chunks, timing
+# out the host. Raising it to 4096 keeps a typical SCSI WRITE inside one
+# device transfer (no inter-chunk gap). MUST match usbx_objs and apps.
+set(RA_USBX_REQUEST_DATA_MAX_LENGTH 4096 CACHE STRING
+    "USBX device transfer-request buffer / MSC bulk chunk size (bytes)")
+target_compile_definitions(usbx_objs PUBLIC
+    UX_SLAVE_REQUEST_DATA_MAX_LENGTH=${RA_USBX_REQUEST_DATA_MAX_LENGTH})
+target_compile_definitions(usbx INTERFACE
+    UX_SLAVE_REQUEST_DATA_MAX_LENGTH=${RA_USBX_REQUEST_DATA_MAX_LENGTH})
+
 # Pull in the project's ra_usb <-> USBX bridge.
 add_subdirectory(${RA_REPO_ROOT}/port/usbx
                  ${CMAKE_BINARY_DIR}/port_usbx)
