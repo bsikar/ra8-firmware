@@ -1494,8 +1494,17 @@ internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_usb_ep_type_t typ
   if (type == k_ra_usb_ep_type_bulk) {
     cfg = (uint16_t)(cfg | k_ra_pipecfg_type_bulk);
     cfg = (uint16_t)(cfg | k_ra_pipecfg_shtnak);
-    /* DBLB only when the caller asks (host-mode IN); device-mode IN
-     * must stay single-banked -- see the function header. */
+    /* Device OUT (receive): double-buffer so the host's next packet lands
+     * in bank B while the ISR drains bank A. Single-banked OUT NAKs (and
+     * wedges) the host's next packet during the per-packet re-arm of a
+     * sustained multi-packet WRITE data phase. PIPEBUF already reserves
+     * 2*MPS, and internal_irq_complete_out drains every ready bank per
+     * ISR. Device IN stays single-banked (the free-bank handshake after
+     * an MPS-exact fill is unreliable -- see header). HUM Ch 36.2.24. */
+    if (dir == k_ra_usb_ep_dir_out) {
+      cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);
+    }
+    /* DBLB on bulk IN only when the caller asks (host-mode IN). */
     if (dblb_in) {
       if (dir == k_ra_usb_ep_dir_in) {
         cfg = (uint16_t)(cfg | k_ra_pipecfg_dblb);

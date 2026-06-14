@@ -1210,10 +1210,20 @@ static ra_err_t internal_run_data_out(uint8_t        target_lun,
   const ra_err_t cbw_err =
     internal_issue_cbw(target_lun, (uint32_t)push_len, false, cdb, cdb_len, &tag);
   RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_out: issue cbw"); /* GCOVR_EXCL_BR_LINE */
-  /* The bulk-OUT primitive ships one packet per call: chunk the payload
-   * at the negotiated max packet size. */
-  const uint16_t mps    = internal_bulk_max_packet(s_state.speed);
-  uint16_t       offset = 0U;
+  /* The bulk-OUT primitive ships one packet per call, so chunk at the
+   * DEVICE's enumerated bulk-OUT wMaxPacketSize -- NOT the host
+   * controller's native ceiling. On a HS host driving an FS device (the
+   * self-loop) the controller speed is HS (512) but the endpoint is FS
+   * (64); chunking at 512 advances the offset 8x faster than the 64-byte
+   * packet actually sent, so the device receives only 1/8 of the data
+   * and the WRITE wedges. The pipe's PIPEMAXP is already this value
+   * (see the enum pipe setup). Fall back to the speed ceiling only if
+   * enumeration left it unset. */
+  uint16_t mps = s_state.device.bulk_out_max_packet;
+  if (mps == 0U) {
+    mps = internal_bulk_max_packet(s_state.speed);
+  }
+  uint16_t offset = 0U;
   while (offset < push_len) {
     uint16_t chunk = (uint16_t)(push_len - offset);
     if (chunk > mps) {

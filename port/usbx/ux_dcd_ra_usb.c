@@ -1259,6 +1259,7 @@ typedef enum : uint32_t {
   k_dcd_trace_kind_dvst  = 9U,    /**< DVST event (code = dvsq|state).   */
   k_dcd_trace_nibble     = 0x0FU, /**< Low-nibble mask for packed bytes. */
   k_dcd_trace_nib_shift  = 4U,    /**< High-nibble shift.                */
+  k_dcd_out_drain_max    = 4U,    /**< Max OUT banks drained per ISR pass.*/
 } ra_usb_dcd_trace_t;
 
 /**
@@ -1319,8 +1320,8 @@ static void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length)
 {
   const uint32_t slot = s_trace_seq % (uint32_t)k_dcd_trace_entries;
   s_trace[slot]       = ((uint32_t)kind << (uint32_t)k_dcd_trace_kind_shift) |
-                  ((uint32_t)code << (uint32_t)k_dcd_trace_code_shift) | (uint32_t)length;
-  s_trace_ts[slot] = *k_dcd_dwt_cyccnt;
+                        ((uint32_t)code << (uint32_t)k_dcd_trace_code_shift) | (uint32_t)length;
+  s_trace_ts[slot]    = *k_dcd_dwt_cyccnt;
   s_trace_seq++;
 }
 
@@ -3309,7 +3310,7 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
   if (_ux_system_slave == UX_NULL) {
     return;
   }
-  UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
+  UX_SLAVE_DEVICE*    device    = &_ux_system_slave->ux_system_slave_device;
   const unsigned long new_state = internal_dvst_map_dvsq_to_ux_state(dvsq);
   if ((dvsq & (uint16_t)k_ra_dvsq_suspend) == 0U) {
     /* Any non-suspend bus-state transition invalidates the SETUP
@@ -3614,8 +3615,8 @@ static bool internal_irq_stage_next_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-static bool internal_irq_recover_in_nak(UX_SLAVE_TRANSFER* tr, uint8_t i,
-                                        volatile r_usb_regs_t* reg)
+static bool
+internal_irq_recover_in_nak(UX_SLAVE_TRANSFER* tr, uint8_t i, volatile r_usb_regs_t* reg)
 {
   const uint16_t pipe_bit = (uint16_t)(1U << i);
   const uint16_t total    = (uint16_t)tr->ux_slave_transfer_request_requested_length;
@@ -3802,42 +3803,45 @@ static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_t i)
    * (< MPS) packet, which terminates the OUT data phase (this is also
    * how a 31-byte CBW into a 64-byte request completes). */
   const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-  const uint16_t got   = (uint16_t)tr->ux_slave_transfer_request_actual_length;
   const uint16_t mps   = s_dcd.pipes[i].max_pkt;
-  uint16_t       want  = (uint16_t)(total - got);
-  if (want > mps) {
-    want = mps;
-  }
-  uint16_t       len    = want;
-  const ra_err_t qo_err = ra_usb_queue_out(s_dcd.speed,
-                                           i,
-                                           &tr->ux_slave_transfer_request_data_pointer[got],
-                                           &len,
-                                           /* rearm */ false);
-  if (qo_err == k_ra_ok) {
+  /* Drain every OUT bank the controller currently holds (DBLB presents
+   * up to two back-to-back) before re-arming, so a single BRDY services
+   * as many banks as are ready. One MPS bank per ra_usb_queue_out call;
+   * stop on completion, a short packet, or when no bank is ready. */
+  for (uint32_t pass = 0U; pass < (uint32_t)k_dcd_out_drain_max; pass++) {
+    const uint16_t got  = (uint16_t)tr->ux_slave_transfer_request_actual_length;
+    uint16_t       want = (uint16_t)(total - got);
+    if (want > mps) {
+      want = mps;
+    }
+    uint16_t       len    = want;
+    const ra_err_t qo_err = ra_usb_queue_out(s_dcd.speed,
+                                             i,
+                                             &tr->ux_slave_transfer_request_data_pointer[got],
+                                             &len,
+                                             /* rearm */ false);
+    if (qo_err != k_ra_ok) {
+      if (i == 2U) {
+        s_diag.irq_walk_pipe2_no_data++;
+      }
+      break;
+    }
     if (i == 2U) {
       s_diag.irq_walk_pipe2_complete++;
     }
     const uint16_t now                          = (uint16_t)(got + len);
     tr->ux_slave_transfer_request_actual_length = (ULONG)now;
-    bool done                                   = (now >= total);
-    if (len < mps) {
-      done = true; /* short packet terminates the OUT data phase */
-    }
-    if (done) {
+    if (now >= total) {
       internal_irq_finish_out(tr, i, now);
       return;
     }
-    /* More packets expected -- re-arm for the next host OUT token. */
-    (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
-    return;
-  }
-  if (qo_err == k_ra_err_no_data) {
-    if (i == 2U) {
-      s_diag.irq_walk_pipe2_no_data++;
+    if (len < mps) {
+      internal_irq_finish_out(tr, i, now); /* short packet ends the phase */
+      return;
     }
-    (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
   }
+  /* More packets expected -- re-arm for the next host OUT token(s). */
+  (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
 }
 
 /**
