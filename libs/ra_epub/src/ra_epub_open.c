@@ -22,6 +22,7 @@
 
 #include "miniz.h"
 #include "ra_epub.h"
+#include "ra_epub_internal.h"
 #include "ra_err.h"
 
 /* ---------------------------------------------------------------------------
@@ -57,6 +58,10 @@ ra_err_t ra_epub_xml_parse_container(const uint8_t*              xml_bytes,
                                      ra_epub_container_result_t* out);
 
 ra_err_t ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
+
+ra_err_t ra_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
+
+ra_err_t ra_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
 
 /* ---------------------------------------------------------------------------
  * Helpers.
@@ -222,6 +227,58 @@ static void priv_zip_destroy(mz_zip_archive* zip)
 }
 
 /**
+ * @brief Best-effort: extract and parse the book's TOC document.
+ *
+ * @details
+ * `ra_epub_xml_parse_opf()` records which navigation document to use
+ * (`book->toc_kind`) and its href (`book->toc_path`). This helper joins
+ * that href onto the OPF directory, extracts the entry (falling back to
+ * the bare href for archives that store it un-prefixed), and dispatches
+ * to the NCX or nav parser. Any failure is swallowed: a book missing or
+ * with a malformed TOC is still fully readable via the spine, so this
+ * never propagates an error to `ra_epub_open()`.
+ *
+ * @param[in]     zip     Open archive.
+ * @param[in,out] book    Book whose `toc` table is populated.
+ * @param[out]    scratch Scratch buffer reused for the TOC bytes.
+ * @param[in]     cap     Capacity of @p scratch in bytes.
+ * @pre `book` non-NULL; `zip` initialised; OPF already parsed.
+ * @pre @p scratch non-NULL with @p cap > 0.
+ * @post On success `book->toc_count` reflects the parsed entries.
+ * @post On any failure `book` is left readable with `toc_count == 0`.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void priv_load_toc(mz_zip_archive* zip, ra_epub_book_t* book, uint8_t* scratch, size_t cap)
+{
+  if (book->toc_kind == (uint8_t)k_ra_epub_toc_none) {
+    return;
+  }
+  if (book->toc_path[0] == '\0') {
+    return;
+  }
+
+  char full_path[k_ra_epub_max_path_len];
+  ra_epub_internal_join_path(book->opf_dir, book->toc_path, full_path, sizeof(full_path));
+
+  size_t   got = 0U;
+  ra_err_t err = priv_extract(zip, full_path, scratch, cap, &got);
+  if (err == k_ra_err_not_found) {
+    /* Some EPUBs store the nav/NCX href already rooted at the archive. */
+    err = priv_extract(zip, book->toc_path, scratch, cap, &got);
+  }
+  if (err != k_ra_ok) {
+    return;
+  }
+
+  if (book->toc_kind == (uint8_t)k_ra_epub_toc_nav) {
+    (void)ra_epub_xml_parse_nav(scratch, got, book);
+  } else {
+    (void)ra_epub_xml_parse_ncx(scratch, got, book);
+  }
+}
+
+/**
  * @brief Run the metadata + spine parsers given an already-open zip.
  *
  * Splits out of `ra_epub_open` to keep that function under the
@@ -271,7 +328,15 @@ static ra_err_t priv_parse_archive(mz_zip_archive* zip,
   }
 
   priv_dirname(cres.opf_path, out_book->opf_dir, k_ra_epub_max_path_len);
-  return ra_epub_xml_parse_opf(opf_scratch, opf_got, out_book);
+  err = ra_epub_xml_parse_opf(opf_scratch, opf_got, out_book);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Optional navigation document (NCX / nav.xhtml). Reuses opf_scratch
+   * now that the OPF has been parsed into the book. Best-effort. */
+  priv_load_toc(zip, out_book, opf_scratch, opf_cap);
+  return k_ra_ok;
 }
 
 /* ---------------------------------------------------------------------------
