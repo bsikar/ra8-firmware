@@ -481,6 +481,45 @@ typedef struct {
 ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer);
 
 /**
+ * @brief Render one page offset by `(origin_x, origin_y)` into the bound
+ *        framebuffer.
+ *
+ * @details
+ * Identical to `ra_reflow_render_page()` except every glyph (and link
+ * underline) is shifted by the given origin before it is blitted with
+ * `ra_gfx_pixel()`. This lets the engine paint into a sub-region of a
+ * larger panel -- e.g. an e-reader Reading body inset below a status bar
+ * and above a footer -- without the layout knowing about the chrome:
+ * lay out against the body's `viewport_w`/`viewport_h`, then render at
+ * the body's top-left. `ra_reflow_render_page()` is exactly this with a
+ * `(0, 0)` origin. ra_gfx owns the framebuffer stride, so only an origin
+ * (not a stride) is required.
+ *
+ * @param[in] engine   Laid-out engine.
+ * @param[in] page_idx Page to render (`[0, page_count)`).
+ * @param[in] origin_x Pixel offset added to every glyph's x coordinate.
+ * @param[in] origin_y Pixel offset added to every glyph's y coordinate.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Rendered.
+ * @retval k_ra_err_null_ptr          `engine` is NULL.
+ * @retval k_ra_err_not_initialized   `engine->in_use == 0`.
+ * @retval k_ra_err_out_of_range      `page_idx >= page_count`.
+ * @retval k_ra_err_validation_failed Font blob malformed.
+ *
+ * @pre  `ra_gfx_init()` has been called and a chapter laid out.
+ * @pre  The offset region lies within the bound framebuffer.
+ * @post Glyph pixels of the requested page are blitted at the offset.
+ * @post Pixels that fall outside the framebuffer are dropped by ra_gfx.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_render_page_at(const ra_reflow_t* engine,
+                                                uint32_t           page_idx,
+                                                int32_t            origin_x,
+                                                int32_t            origin_y);
+
+/**
  * @brief Report the laid-out page count.
  *
  * @param[in]  engine    Laid-out engine.

@@ -103,6 +103,8 @@ static ra_err_t priv_init_font(const ra_reflow_t* engine, stbtt_fontinfo* out_fo
  * @param[in] h See implementation.
  * @param[in] xoff See implementation.
  * @param[in] yoff See implementation.
+ * @param[in] ox Pixel offset added to every glyph x.
+ * @param[in] oy Pixel offset added to every glyph y.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -115,7 +117,9 @@ static void priv_blit_alpha_mask(const ra_reflow_glyph_t* g,
                                  int                      w,
                                  int                      h,
                                  int                      xoff,
-                                 int                      yoff)
+                                 int                      yoff,
+                                 int32_t                  ox,
+                                 int32_t                  oy)
 {
   for (int row = 0; row < h; ++row) {
     for (int col = 0; col < w; ++col) {
@@ -123,8 +127,8 @@ static void priv_blit_alpha_mask(const ra_reflow_glyph_t* g,
       if (alpha < k_priv_alpha_threshold) {
         continue;
       }
-      const int32_t px = g->x + (int32_t)col + (int32_t)xoff;
-      const int32_t py = g->y + (int32_t)row + (int32_t)yoff;
+      const int32_t px = g->x + (int32_t)col + (int32_t)xoff + ox;
+      const int32_t py = g->y + (int32_t)row + (int32_t)yoff + oy;
       (void)ra_gfx_pixel(px, py, g->color);
     }
   }
@@ -137,6 +141,8 @@ static void priv_blit_alpha_mask(const ra_reflow_glyph_t* g,
  * @param[in] font See implementation.
  * @param[in] g See implementation.
  * @param[in] scale See implementation.
+ * @param[in] ox Pixel offset added to the underline x.
+ * @param[in] oy Pixel offset added to the underline y.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -144,15 +150,19 @@ static void priv_blit_alpha_mask(const ra_reflow_glyph_t* g,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g, float scale)
+static void priv_draw_underline(const stbtt_fontinfo*    font,
+                                const ra_reflow_glyph_t* g,
+                                float                    scale,
+                                int32_t                  ox,
+                                int32_t                  oy)
 {
   int advance_units = 0;
   int lsb           = 0;
   stbtt_GetCodepointHMetrics(font, g->cp, &advance_units, &lsb);
   const int32_t advance = (int32_t)((float)advance_units * scale);
-  const int32_t y_under = g->y + (int32_t)k_priv_underline_offset_px;
+  const int32_t y_under = g->y + (int32_t)k_priv_underline_offset_px + oy;
   for (int32_t i = 0; i < advance; ++i) {
-    (void)ra_gfx_pixel(g->x + i, y_under, g->color);
+    (void)ra_gfx_pixel(g->x + i + ox, y_under, g->color);
   }
 }
 
@@ -167,6 +177,8 @@ static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyp
  *
  * @param[in] font See implementation.
  * @param[in] g See implementation.
+ * @param[in] ox Pixel offset added to every glyph x.
+ * @param[in] oy Pixel offset added to every glyph y.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -174,7 +186,8 @@ static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyp
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g)
+static void
+priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g, int32_t ox, int32_t oy)
 {
   const float scale = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
   /* Bounded, heap-free glyph rasterisation: the "Box" call reports the
@@ -196,12 +209,12 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
     const size_t total = (size_t)w * (size_t)h;
     if (total <= sizeof s_glyph_mask) {
       stbtt_MakeCodepointBitmap(font, s_glyph_mask, w, h, w, scale, scale, g->cp);
-      priv_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0);
+      priv_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0, ox, oy);
     }
   }
 
   if ((g->style & k_ra_reflow_style_underline) != 0U) {
-    priv_draw_underline(font, g, scale);
+    priv_draw_underline(font, g, scale, ox, oy);
   }
 }
 
@@ -210,9 +223,27 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
  * ===========================================================================
  */
 
-ra_err_t ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer)
+/**
+ * @brief Render one page, offsetting every glyph by (ox, oy).
+ *
+ * @details Shared body for `ra_reflow_render_page` (origin 0,0) and
+ *          `ra_reflow_render_page_at` (caller-chosen origin).
+ * @param[in] engine See public API.
+ * @param[in] page_idx See public API.
+ * @param[in] ox Pixel offset added to every glyph x.
+ * @param[in] oy Pixel offset added to every glyph y.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static ra_err_t
+priv_render_page(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {
-  (void)framebuffer; /* Reserved hook -- ra_gfx is bound externally. */
   if (engine == nullptr) {
     return k_ra_err_null_ptr;
   }
@@ -232,7 +263,21 @@ ra_err_t ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, voi
   const ra_reflow_page_t* page = &engine->pages[page_idx];
   for (uint32_t i = 0U; i < page->glyph_count; ++i) {
     const ra_reflow_glyph_t* g = &engine->glyphs[page->glyph_first + i];
-    priv_blit_glyph(&font, g);
+    priv_blit_glyph(&font, g, ox, oy);
   }
   return k_ra_ok;
+}
+
+ra_err_t ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer)
+{
+  (void)framebuffer; /* Reserved hook -- ra_gfx is bound externally. */
+  return priv_render_page(engine, page_idx, 0, 0);
+}
+
+ra_err_t ra_reflow_render_page_at(const ra_reflow_t* engine,
+                                  uint32_t           page_idx,
+                                  int32_t            origin_x,
+                                  int32_t            origin_y)
+{
+  return priv_render_page(engine, page_idx, origin_x, origin_y);
 }
