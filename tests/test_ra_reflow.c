@@ -54,6 +54,8 @@ typedef enum : uint32_t {
   k_test_color_body     = 0x00FFFFFFU,           /**< Body colour (white).        */
   k_test_color_link     = 0x000000FFU,           /**< Link colour (blue).         */
   k_test_root_path_max  = 1024U,                 /**< Max derived firmware-root path.    */
+  k_test_origin_dx      = 120U,                  /**< Render-origin test x offset (px).  */
+  k_test_origin_dy      = 80U,                   /**< Render-origin test y offset (px).  */
 } test_reflow_sizes_t;
 
 /* Static storage so the host stack stays small. */
@@ -357,6 +359,71 @@ static void test_render_pixels_around_title(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
 
   TEST_END("test_render_pixels_around_title");
+}
+
+/**
+ * @brief `ra_reflow_render_page_at` shifts the whole page by the origin;
+ *        `ra_reflow_render_page` equals it at origin (0,0).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_render_at_origin(void)
+{
+  TEST_BEGIN("test_render_at_origin");
+
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_reflow_init(k_test_viewport_w,
+                                k_test_viewport_h,
+                                s_font_buf,
+                                s_font_len,
+                                k_test_font_px,
+                                k_test_color_body,
+                                k_test_color_link,
+                                &s_engine));
+  uint32_t pages = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_reflow_layout_chapter(&s_engine,
+                                          (const uint8_t*)k_xhtml_simple,
+                                          strlen(k_xhtml_simple),
+                                          &pages));
+  TEST_ASSERT(s_engine.glyph_count > 0U);
+
+  const int32_t fbw = (int32_t)k_test_viewport_w;
+  const int32_t fbh = (int32_t)k_test_viewport_h;
+  const int32_t dx  = (int32_t)k_test_origin_dx;
+  const int32_t dy  = (int32_t)k_test_origin_dy;
+
+  /* render_page() must equal render_page_at(0, 0): same origin, identical
+   * output (a self-consistency check independent of any clipping). */
+  priv_bind_gfx();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page_at(&s_engine, 0U, 0, 0));
+  const uint32_t lit_at0 = priv_count_lit_pixels(0, 0, fbw, fbh);
+  TEST_ASSERT(lit_at0 > 0U);
+  priv_bind_gfx();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
+  TEST_ASSERT_EQ(lit_at0, priv_count_lit_pixels(0, 0, fbw, fbh));
+
+  /* At origin (0,0) the text occupies the top-left corner box. */
+  priv_bind_gfx();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page_at(&s_engine, 0U, 0, 0));
+  TEST_ASSERT(priv_count_lit_pixels(0, 0, dx, dy) > 0U);
+
+  /* Offset by (dx, dy): the pre-offset corner is now empty (every glyph
+   * shifted past it) and ink lands in the shifted region. This proves the
+   * origin translation without depending on edge clipping (the large h1
+   * line clips at the top at origin, so total pixel counts are not equal
+   * across offsets). */
+  priv_bind_gfx();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page_at(&s_engine, 0U, dx, dy));
+  TEST_ASSERT_EQ(0U, priv_count_lit_pixels(0, 0, dx, dy));
+  TEST_ASSERT(priv_count_lit_pixels(dx, dy, fbw, fbh) > 0U);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
+
+  TEST_END("test_render_at_origin");
 }
 
 /**
@@ -951,6 +1018,7 @@ int main(void)
   test_null_and_preinit_guards();
   test_simple_layout();
   test_render_pixels_around_title();
+  test_render_at_origin();
   test_multi_paragraph();
   test_bold_italic_toggling();
   test_set_font_size_reflows();
