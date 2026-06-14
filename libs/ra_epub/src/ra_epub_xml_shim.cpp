@@ -79,9 +79,29 @@ ra_err_t ra_epub_xml_parse_container(const uint8_t*              xml_bytes,
  * @brief Parse the OPF document and fill in metadata, cover, and spine.
  *
  * `book` is mutated in-place: `chapter_count`, `chapter_paths`,
- * `title`, `author`, `language`, `cover_path` are written.
+ * `title`, `author`, `language`, `cover_path`, `toc_path`, `toc_kind`
+ * are written.
  */
 ra_err_t ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
+
+/**
+ * @brief Parse an EPUB 2 NCX document into `book->toc` / `book->toc_count`.
+ *
+ * Walks `<navMap>` depth-first; each `<navPoint>` contributes one entry
+ * (`<navLabel><text>` -> title, `<content src>` -> href) and nested
+ * `<navPoint>` elements increase the entry depth.
+ */
+ra_err_t ra_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
+
+/**
+ * @brief Parse an EPUB 3 nav document into `book->toc` / `book->toc_count`.
+ *
+ * Locates the `<nav epub:type="toc">` element (falling back to the first
+ * `<nav>`), then walks its `<ol>`/`<li>` tree; each `<li>` contributes
+ * one entry (`<a>` text -> title, `<a href>` -> href) and nested `<ol>`
+ * elements increase the entry depth.
+ */
+ra_err_t ra_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
 
 } /* extern "C" */
 
@@ -236,6 +256,125 @@ const char* find_cover_by_meta(const XMLElement* metadata, const XMLElement* man
   return nullptr;
 }
 
+/**
+ * @brief Test whether an element's local name (prefix stripped) equals
+ *        `local`.
+ */
+bool elem_local_is(const XMLElement* elem, const char* local)
+{
+  if (elem == nullptr || local == nullptr) {
+    return false;
+  }
+  const char* name = elem->Name();
+  if (name == nullptr) {
+    return false;
+  }
+  const char* colon = std::strrchr(name, ':');
+  const char* tail  = (colon != nullptr) ? (colon + 1) : name;
+  return std::strcmp(tail, local) == 0;
+}
+
+/**
+ * @brief Find the manifest item declaring `properties="nav"` and return
+ *        its href (the EPUB 3 navigation document).
+ */
+const char* find_nav_manifest_href(const XMLElement* manifest)
+{
+  if (manifest == nullptr) {
+    return nullptr;
+  }
+  for (const XMLElement* item = manifest->FirstChildElement(); item != nullptr;
+       item                   = item->NextSiblingElement()) {
+    const char* props = item->Attribute("properties");
+    /* The reserved manifest property is the bare token "nav"; no other
+     * reserved EPUB 3 property string contains that substring, so a
+     * substring test is sufficient and tolerates a token list. */
+    if (props != nullptr && std::strstr(props, "nav") != nullptr) {
+      return item->Attribute("href");
+    }
+  }
+  return nullptr;
+}
+
+/**
+ * @brief Append one TOC entry to the book, honouring the static cap.
+ */
+void toc_emit(ra_epub_book_t* book, const char* title, const char* href, std::uint8_t depth)
+{
+  if (book->toc_count >= static_cast<std::uint16_t>(k_ra_epub_max_toc)) {
+    return;
+  }
+  ra_epub_toc_entry_t* entry = &book->toc[book->toc_count];
+  copy_bounded(entry->title, k_ra_epub_meta_len, title);
+  copy_bounded(entry->href, k_ra_epub_max_path_len, href);
+  entry->depth    = depth;
+  book->toc_count = static_cast<std::uint16_t>(book->toc_count + 1U);
+}
+
+/**
+ * @brief Depth-first walk of NCX `<navPoint>` siblings under `parent`.
+ */
+void ncx_walk(const XMLElement* parent, ra_epub_book_t* book, std::uint8_t depth)
+{
+  for (const XMLElement* np = parent->FirstChildElement(); np != nullptr;
+       np                   = np->NextSiblingElement()) {
+    if (!elem_local_is(np, "navPoint")) {
+      continue;
+    }
+    const XMLElement* label   = find_child(np, "navLabel");
+    const XMLElement* text    = (label != nullptr) ? find_child(label, "text") : nullptr;
+    const XMLElement* content = find_child(np, "content");
+    const char*       title   = (text != nullptr) ? text->GetText() : nullptr;
+    const char*       src     = (content != nullptr) ? content->Attribute("src") : nullptr;
+    toc_emit(book, title, src, depth);
+    ncx_walk(np, book, static_cast<std::uint8_t>(depth + 1U));
+  }
+}
+
+/**
+ * @brief Recursively find the first `<nav>` whose `epub:type` token list
+ *        contains `type` (e.g. "toc").
+ */
+const XMLElement* find_nav_by_type(const XMLElement* root, const char* type)
+{
+  for (const XMLElement* child = root->FirstChildElement(); child != nullptr;
+       child                   = child->NextSiblingElement()) {
+    if (elem_local_is(child, "nav")) {
+      const char* attr = child->Attribute("epub:type");
+      if (attr != nullptr && std::strstr(attr, type) != nullptr) {
+        return child;
+      }
+    }
+    const XMLElement* deeper = find_nav_by_type(child, type);
+    if (deeper != nullptr) {
+      return deeper;
+    }
+  }
+  return nullptr;
+}
+
+/**
+ * @brief Depth-first walk of nav `<li>` siblings under an `<ol>`.
+ */
+void nav_walk(const XMLElement* ordered_list, ra_epub_book_t* book, std::uint8_t depth)
+{
+  for (const XMLElement* li = ordered_list->FirstChildElement(); li != nullptr;
+       li                   = li->NextSiblingElement()) {
+    if (!elem_local_is(li, "li")) {
+      continue;
+    }
+    const XMLElement* anchor = find_child(li, "a");
+    const XMLElement* label  = (anchor != nullptr) ? anchor : find_child(li, "span");
+    const char*       title  = (label != nullptr) ? label->GetText() : nullptr;
+    const char*       href   = (anchor != nullptr) ? anchor->Attribute("href") : nullptr;
+    toc_emit(book, title, href, depth);
+    const XMLElement* nested = find_child(li, "ol");
+    if (nested != nullptr) {
+      nav_walk(nested, book, static_cast<std::uint8_t>(depth + 1U));
+    }
+  }
+}
+
 } /* namespace */
 
 extern "C" ra_err_t ra_epub_xml_parse_container(const uint8_t*              xml_bytes,
@@ -348,5 +487,85 @@ ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* 
     ++count;
   }
   book->chapter_count = count;
+
+  /* ---- table-of-contents source --------------------------------------- */
+  /* Prefer the EPUB 3 nav document (manifest properties="nav"); fall back
+   * to the EPUB 2 NCX referenced by the spine's `toc` attribute. The TOC
+   * document itself is extracted and parsed by the caller (open path). */
+  const char* nav_href = find_nav_manifest_href(manifest);
+  if (nav_href != nullptr) {
+    copy_bounded(book->toc_path, k_ra_epub_max_path_len, nav_href);
+    book->toc_kind = static_cast<std::uint8_t>(k_ra_epub_toc_nav);
+  } else {
+    const char* toc_id   = spine->Attribute("toc");
+    const char* ncx_href = (toc_id != nullptr) ? manifest_href_by_id(manifest, toc_id) : nullptr;
+    if (ncx_href != nullptr) {
+      copy_bounded(book->toc_path, k_ra_epub_max_path_len, ncx_href);
+      book->toc_kind = static_cast<std::uint8_t>(k_ra_epub_toc_ncx);
+    }
+  }
+  return k_ra_ok;
+}
+
+extern "C" ra_err_t
+ra_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book)
+{
+  if (xml_bytes == nullptr || book == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (xml_len == 0U) {
+    return k_ra_err_invalid_size;
+  }
+
+  book->toc_count = 0U;
+
+  XMLDocument doc;
+  if (doc.Parse(reinterpret_cast<const char*>(xml_bytes), xml_len) != tinyxml2::XML_SUCCESS) {
+    return k_ra_err_validation_failed;
+  }
+  const XMLElement* root = doc.RootElement();
+  if (root == nullptr) {
+    return k_ra_err_validation_failed;
+  }
+  const XMLElement* nav_map = find_descendant(root, "navMap");
+  if (nav_map == nullptr) {
+    return k_ra_err_validation_failed;
+  }
+  ncx_walk(nav_map, book, 0U);
+  return k_ra_ok;
+}
+
+extern "C" ra_err_t
+ra_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book)
+{
+  if (xml_bytes == nullptr || book == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (xml_len == 0U) {
+    return k_ra_err_invalid_size;
+  }
+
+  book->toc_count = 0U;
+
+  XMLDocument doc;
+  if (doc.Parse(reinterpret_cast<const char*>(xml_bytes), xml_len) != tinyxml2::XML_SUCCESS) {
+    return k_ra_err_validation_failed;
+  }
+  const XMLElement* root = doc.RootElement();
+  if (root == nullptr) {
+    return k_ra_err_validation_failed;
+  }
+  const XMLElement* nav = find_nav_by_type(root, "toc");
+  if (nav == nullptr) {
+    nav = find_descendant(root, "nav");
+  }
+  if (nav == nullptr) {
+    return k_ra_err_validation_failed;
+  }
+  const XMLElement* ordered_list = find_child(nav, "ol");
+  if (ordered_list == nullptr) {
+    return k_ra_err_validation_failed;
+  }
+  nav_walk(ordered_list, book, 0U);
   return k_ra_ok;
 }

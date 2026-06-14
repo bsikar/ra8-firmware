@@ -84,11 +84,50 @@ extern "C" {
  */
 typedef enum : uint16_t {
   k_ra_epub_max_chapters = 64,  /**< Max spine length we accept.            */
+  k_ra_epub_max_toc      = 64,  /**< Max table-of-contents entries we keep. */
   k_ra_epub_max_path_len = 192, /**< Max `href` length (incl. NUL).         */
   k_ra_epub_meta_len     = 128, /**< Max bytes per metadata field.          */
   k_ra_epub_zip_archive_bytes =
     256, /**< Inline storage for `mz_zip_archive` (sizeof on miniz 3.0.2 is 112; cushion for upstream growth; static_assert in .c). */
 } ra_epub_limits_t;
+
+/**
+ * @enum ra_epub_toc_kind_t
+ * @brief Which navigation document the table of contents was parsed from.
+ *
+ * @details
+ * EPUB 2 books ship an NCX (`toc.ncx`, referenced by the spine's `toc`
+ * attribute); EPUB 3 books ship an XHTML navigation document (the
+ * manifest item carrying `properties="nav"`). When both are present the
+ * reader prefers the EPUB 3 nav document. `k_ra_epub_toc_none` means no
+ * usable TOC was found (the book is still readable via the spine).
+ */
+typedef enum : uint8_t {
+  k_ra_epub_toc_none = 0, /**< No table of contents parsed.            */
+  k_ra_epub_toc_ncx  = 1, /**< Parsed from an EPUB 2 NCX document.     */
+  k_ra_epub_toc_nav  = 2, /**< Parsed from an EPUB 3 nav.xhtml.        */
+} ra_epub_toc_kind_t;
+
+/**
+ * @struct ra_epub_toc_entry_t
+ * @brief One titled entry in the table of contents.
+ *
+ * @details
+ * `href` is stored exactly as the navigation document wrote it, relative
+ * to the OPF directory (the same convention as
+ * `ra_epub_book_t::chapter_paths`), and may carry a `#fragment` that
+ * points at an anchor inside a chapter. `depth` is the nesting level: a
+ * top-level entry is `0`, a sub-entry `1`, and so on, so a renderer can
+ * indent a hierarchical TOC.
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  char title[k_ra_epub_meta_len]; /**< Navigation label text ("" if none).  */
+  // cppcheck-suppress unusedStructMember
+  char href[k_ra_epub_max_path_len]; /**< Target href (rel. to OPF dir).    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t depth; /**< Nesting level; 0 == top level.                   */
+} ra_epub_toc_entry_t;
 
 /**
  * @enum ra_epub_render_t
@@ -194,6 +233,16 @@ typedef struct {
   /* --- OPF base directory --------------------------------------------- */
   // cppcheck-suppress unusedStructMember
   char opf_dir[k_ra_epub_max_path_len]; /**< Directory portion of the OPF. */
+
+  /* --- Table of contents ---------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
+  char toc_path[k_ra_epub_max_path_len]; /**< Nav/NCX href (rel. to OPF dir); "" if none. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t toc_kind; /**< `ra_epub_toc_kind_t`: source of the TOC.      */
+  // cppcheck-suppress unusedStructMember
+  uint16_t toc_count; /**< Number of entries stored in `toc`.          */
+  // cppcheck-suppress unusedStructMember
+  ra_epub_toc_entry_t toc[k_ra_epub_max_toc]; /**< Flattened TOC, document order. */
 
   /* --- Optional embedded font for glyph rendering --------------------- */
   // cppcheck-suppress unusedStructMember
@@ -343,6 +392,78 @@ typedef struct {
                                             uint8_t*        out_xhtml,
                                             size_t          max_len,
                                             size_t*         got_len);
+
+/* ===========================================================================
+ * Public API -- table of contents
+ * ===========================================================================
+ */
+
+/**
+ * @brief Report which navigation document the TOC was parsed from.
+ *
+ * @param[in]  book     Open book.
+ * @param[out] out_kind Receives a `ra_epub_toc_kind_t` value.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Reported.
+ * @retval k_ra_err_null_ptr        Any pointer NULL.
+ * @retval k_ra_err_not_initialized `book->in_use == 0`.
+ *
+ * @pre `book` non-NULL, `out_kind` non-NULL.
+ * @pre `book->in_use == 1`.
+ * @post `*out_kind` is one of the `ra_epub_toc_kind_t` enumerators.
+ * @post `*out_kind == k_ra_epub_toc_none` iff `toc_count == 0`.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_get_toc_kind(const ra_epub_book_t* book, uint8_t* out_kind);
+
+/**
+ * @brief Report how many table-of-contents entries the book exposes.
+ *
+ * @details
+ * The count is the flattened (depth-first) entry total parsed from the
+ * book's NCX or nav document; `0` means no usable TOC was found. Use
+ * `ra_epub_get_toc_entry()` to read each entry's title, href, and depth.
+ *
+ * @param[in]  book      Open book.
+ * @param[out] out_count Entry count.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Reported.
+ * @retval k_ra_err_null_ptr        Any pointer NULL.
+ * @retval k_ra_err_not_initialized `book->in_use == 0`.
+ *
+ * @pre `book` non-NULL, `out_count` non-NULL.
+ * @pre `book->in_use == 1`.
+ * @post `*out_count <= k_ra_epub_max_toc`.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_get_toc_count(const ra_epub_book_t* book, uint16_t* out_count);
+
+/**
+ * @brief Copy one table-of-contents entry into the caller's struct.
+ *
+ * @param[in]  book      Open book.
+ * @param[in]  idx       Entry index, `[0, toc_count)`.
+ * @param[out] out_entry Destination entry (title, href, depth) on success.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Entry copied.
+ * @retval k_ra_err_null_ptr        Any pointer NULL.
+ * @retval k_ra_err_not_initialized `book->in_use == 0`.
+ * @retval k_ra_err_out_of_range    `idx >= toc_count`.
+ *
+ * @pre `book` non-NULL, `out_entry` non-NULL.
+ * @pre `book->in_use == 1`.
+ * @post On success, `*out_entry` is a NUL-terminated, bounded copy.
+ * @post On failure, `*out_entry` is left unmodified.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_epub_get_toc_entry(const ra_epub_book_t* book, uint16_t idx, ra_epub_toc_entry_t* out_entry);
 
 /* ===========================================================================
  * Public API -- metadata + cover + glyph rasterise
