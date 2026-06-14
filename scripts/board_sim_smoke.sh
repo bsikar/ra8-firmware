@@ -20,6 +20,13 @@
 #
 set -euo pipefail
 
+# board_sim's run log and `arm-none-eabi-nm` output can carry non-UTF-8 bytes
+# (register dumps, the SD font image echoed back). Under a UTF-8 locale BSD sed
+# (macOS) aborts those pipelines with "RE error: illegal byte sequence"; force
+# the C locale so every text tool here treats input as raw bytes. GNU tools on
+# the Linux runner are unaffected either way.
+export LC_ALL=C
+
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 sim_dir="$ROOT/tools/board_sim"
