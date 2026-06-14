@@ -375,9 +375,6 @@ function(ra_add_test name)
     -Wall
     -Wextra
     -Werror
-    # Host tests may exercise APIs marked [[deprecated]]; keep them
-    # building under -Werror.
-    -Wno-error=deprecated-declarations
     -Wno-unused-function
     -Wno-unused-parameter
     -Wno-unused-variable
