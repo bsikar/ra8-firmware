@@ -182,6 +182,15 @@ for app in "${apps[@]}"; do
         fail=1
         continue
     fi
+    # A firmware BKPT (Default_Handler's bkpt, a failed assert, a fault give-up)
+    # is a halt regardless of which symbol it sits in -- board_sim stops on it
+    # and prints this line. Catch it directly so a bare assert outside the named
+    # *panic_halt / *_halt_loop symbols pc_in_halt_loop() knows about still fails.
+    if echo "$out" | grep -q "executed a BKPT"; then
+        echo "BKPT HALT ($(echo "$out" | sed -n 's/.*executed a BKPT @ *\(0x[0-9A-Fa-f]*\).*/\1/p' | head -1))"
+        fail=1
+        continue
+    fi
     if ! echo "$out" | grep -q "EXECUTED to the run budget"; then
         echo "DID NOT REACH THE RUN BUDGET"
         fail=1
