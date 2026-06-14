@@ -12,8 +12,9 @@
  * vs flex sizing), rendered into the GLCDC framebuffer through
  * ``libs/ra_gfx`` in the flat 16-level-grayscale language of the verified
  * "PAPYR" proof-of-concept, and navigated through the ``libs/ra_ui``
- * screen stack. Book content reflow (``libs/ra_reflow``) is a later
- * milestone; the Reading screen here still uses the bundled bitmap font.
+ * screen stack. The Reading body renders real reflowed book text through
+ * ``libs/ra_reflow`` when a font is present on the microSD (``FONT.OTF``);
+ * with no card it falls back to the bundled ``ra_gfx`` bitmap font (#83).
  *
  * Two screens:
  *   - Library: status bar, toolbar (search + count), a 2-column grid of
@@ -40,13 +41,20 @@
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
+#include "ra_fs.h"
 #include "ra_gfx.h"
 #include "ra_gfx_font.h"
+#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
+#include "ra_port_utils.h"
+#include "ra_reflow.h"
+#include "ra_sci_spi.h"
+#include "ra_sdmmc_spi.h"
 #include "ra_sdramc.h"
+#include "ra_spi.h"
 #include "ra_time.h"
 #include "ra_touch.h"
 #include "ra_ui.h"
@@ -249,6 +257,43 @@ static const char* const k_er_body_lines[] = {
 };
 
 /**
+ * @brief Reading-view chapter as XHTML, reflowed by ra_reflow when an SD
+ *        font is present (the same prose as ::k_er_body_lines, but laid out
+ *        live at the proportional type scale instead of pre-wrapped bitmap
+ *        lines). Kept short so the software glyph rasteriser stays quick
+ *        under the board_sim CPU emulator.
+ */
+static const char k_er_chapter_xhtml[] =
+  "<html><body><h1>The Time Machine</h1>"
+  "<p>The Time Traveller (for so it will be convenient to speak of him) was "
+  "expounding a recondite matter to us. His pale grey eyes shone and twinkled, "
+  "and his usually pale face was flushed and animated.</p>"
+  "<p>The fire burnt brightly, and the soft radiance of the incandescent lights "
+  "in the lilies of silver caught the bubbles that flashed and passed in our "
+  "glasses. Our chairs, being his patents, embraced and caressed us rather than "
+  "submitted to be sat upon, and thought roamed gracefully free of the trammels "
+  "of precision.</p></body></html>";
+
+/**
+ * @enum er_reflow_cfg_t
+ * @brief SD-font load + ra_reflow body-render tunables (no magic numbers).
+ */
+typedef enum : uint32_t {
+  k_er_font_cap    = 512U * 1024U, /**< Max font read off the card (bytes).  */
+  k_er_font_min    = 16U,          /**< Smallest plausible font blob (bytes).*/
+  k_er_reflow_px   = 22U,          /**< Body type size (pixels).             */
+  k_er_spi_chan    = 0U,           /**< Pmod2 / J25 = SCI0 Simple-SPI.       */
+  k_er_reflow_ink  = 0xFF101010U,  /**< Body text colour (near-black ARGB).  */
+  k_er_reflow_link = 0xFF2A52BEU,  /**< Anchor colour (cerulean ARGB).       */
+} er_reflow_cfg_t;
+
+/** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI, per sd_font_render. */
+static const ra_port_pin_t k_er_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
+static const ra_port_pin_t k_er_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
+static const ra_port_pin_t k_er_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
+static const ra_port_pin_t k_er_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+
+/**
  * @enum er_body_count_t
  * @brief Number of pre-wrapped body lines.
  */
@@ -307,6 +352,21 @@ static uint16_t s_target_count;
 
 /** @brief Debounce: true while a contact is held, to fire once per tap. */
 static bool s_was_touching;
+
+/** @brief Font blob read off the SD card -- lives in SDRAM (hundreds of KiB). */
+static uint8_t s_font_buf[k_er_font_cap] __attribute__((section(".sdram_data")));
+
+/** @brief ra_reflow engine for the Reading body (page / glyph / token pools). */
+static ra_reflow_t s_reflow_engine;
+
+/** @brief Bytes of font read off the card (0 if none). */
+static uint32_t s_font_len;
+
+/** @brief True once an SD font is loaded; gates the ra_reflow body render. */
+static bool s_have_font;
+
+/** @brief Cached PCLKA rate (Hz) for the SD SPI clock shim. */
+static uint32_t s_pclka_hz;
 
 /* ===========================================================================
  * Boot helpers
@@ -444,6 +504,174 @@ static void app_bringup_touch(void)
     .max_points  = (uint8_t)k_er_touch_max_points,
   };
   (void)ra_touch_open(&cfg);
+}
+
+/* ===========================================================================
+ * Optional SD-loaded font for the ra_reflow Reading body
+ * =========================================================================== */
+
+/**
+ * @brief ra_sdmmc_spi set-clock shim onto ra_sci_spi.
+ *
+ * @param[in] ctx Pointer to the cached PCLKA rate (Hz).
+ * @param[in] hz  Requested SPI clock (Hz).
+ * @return ra_err_t from ra_sci_spi_set_clock.
+ * @retval k_ra_ok Clock applied.
+ * @pre ra_sci_spi_init has run for the channel.
+ * @pre @p ctx points at a valid PCLKA rate.
+ * @post The SCI0 Simple-SPI bit rate matches @p hz as closely as the divisors allow.
+ * @post No other channel state changes.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+/* cppcheck-suppress constParameterCallback */
+static ra_err_t er_spi_set_clock(void* ctx, uint32_t hz)
+{
+  const uint32_t pclka_hz = *(const uint32_t*)ctx;
+  return ra_sci_spi_set_clock((uint8_t)k_er_spi_chan, hz, pclka_hz);
+}
+
+/**
+ * @brief ra_sdmmc_spi chip-select shim (active-low, GPIO-held).
+ *
+ * @param[in] ctx      Unused.
+ * @param[in] asserted true selects the card (CS low); false deselects (CS high).
+ * @return ra_err_t from ra_gpio_write.
+ * @retval k_ra_ok CS level driven.
+ * @pre k_er_pin_cs is a GPIO output.
+ * @pre None.
+ * @post The CS line reflects @p asserted.
+ * @post No other pin changes.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t er_spi_cs(void* ctx, bool asserted)
+{
+  (void)ctx;
+  return ra_gpio_write(k_er_pin_cs, asserted ? k_ra_level_low : k_ra_level_high);
+}
+
+/**
+ * @brief ra_sdmmc_spi full-duplex transfer shim onto ra_sci_spi.
+ *
+ * @param[in]  ctx Unused.
+ * @param[in]  tx  Bytes to clock out (may be NULL for read-only).
+ * @param[out] rx  Bytes clocked in (may be NULL for write-only).
+ * @param[in]  len Transfer length in bytes.
+ * @return ra_err_t from ra_sci_spi_xfer.
+ * @retval k_ra_ok Transfer complete.
+ * @pre ra_sci_spi_init has run for the channel.
+ * @pre @p tx / @p rx hold @p len bytes when non-NULL.
+ * @post @p rx holds the bytes shifted in when non-NULL.
+ * @post The bus is left idle (CS unchanged by this call).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t er_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+{
+  (void)ctx;
+  return ra_sci_spi_xfer((uint8_t)k_er_spi_chan, tx, rx, len);
+}
+
+/**
+ * @brief Route Pmod2 to SCI0 Simple-SPI and bring the channel up.
+ *
+ * @details Mirrors sd_font_render: caches PCLKA, routes SCK/CIPO/COPI to
+ *          SCI0, claims CS as a GPIO output held high, then inits the
+ *          channel at the SD power-on clock.
+ *
+ * @return ra_err_t -- the first failing step, or k_ra_ok.
+ * @retval k_ra_ok SPI ready for ra_sdmmc_spi.
+ * @pre app_bringup_clocks has run (PCLKA + MSTP up).
+ * @pre The Pmod2 pins are free (no other peripheral routed).
+ * @post On success SCI0 Simple-SPI is initialised and CS idles high.
+ * @post On failure the channel is left unconfigured; caller skips the SD font.
+ * @note Not thread-safe; single-shot helper.
+ * @since 0.1.0
+ */
+static ra_err_t er_setup_sd_spi(void)
+{
+  ra_err_t err = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &s_pclka_hz);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(k_er_pin_sck, k_ra_psel_sci_async, "er.sck");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(k_er_pin_cipo, k_ra_psel_sci_async, "er.cipo");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(k_er_pin_copi, k_ra_psel_sci_async, "er.copi");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_gpio_output_init(k_er_pin_cs, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const ra_sci_spi_cfg_t cfg = {
+    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
+    .pclk_hz   = s_pclka_hz,
+    .mode      = k_ra_spi_mode_0,
+    .lsb_first = false,
+  };
+  return ra_sci_spi_init((uint8_t)k_er_spi_chan, &cfg);
+}
+
+/**
+ * @brief Best-effort: bring up the SD card and read FONT.OTF into s_font_buf.
+ *
+ * @details
+ * Entirely non-fatal: any failure (no Pmod, no card, no FONT.OTF) leaves
+ * ::s_have_font false and the Reading view falls back to the bundled bitmap
+ * font, so the chrome is never broken by the absence of an SD card. On
+ * success ::s_font_buf / ::s_font_len hold the face for ra_reflow.
+ *
+ * @pre app_bringup_clocks has run.
+ * @pre ::s_font_buf is reachable (SDRAM).
+ * @post On success ::s_have_font is true and ::s_font_len > 0.
+ * @post On any failure ::s_have_font stays false (no panic).
+ * @note Not thread-safe; single-shot helper.
+ * @since 0.1.0
+ */
+static void er_try_load_font(void)
+{
+  if (er_setup_sd_spi() != k_ra_ok) {
+    return;
+  }
+  const ra_sdmmc_spi_transport_t transport = {
+    .set_clock = er_spi_set_clock,
+    .cs        = er_spi_cs,
+    .xfer      = er_spi_xfer,
+    .ctx       = &s_pclka_hz,
+  };
+  if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
+    return;
+  }
+  ra_fs_backend_t backend = {};
+  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
+    return;
+  }
+  ra_fs_mount_t* mount = nullptr;
+  if (ra_fs_mount(&backend, &mount) != k_ra_ok) {
+    return;
+  }
+  ra_fs_file_t* file = nullptr;
+  if (ra_fs_open(mount, "FONT.OTF", k_ra_fs_mode_read, &file) != k_ra_ok) {
+    return;
+  }
+  uint32_t       got = 0U;
+  const ra_err_t err = ra_fs_read(file, s_font_buf, (uint32_t)k_er_font_cap, &got);
+  (void)ra_fs_close(file);
+  if (err != k_ra_ok) {
+    return;
+  }
+  if (got >= (uint32_t)k_er_font_min) {
+    s_font_len  = got;
+    s_have_font = true;
+  }
 }
 
 /* ===========================================================================
@@ -838,17 +1066,76 @@ static void er_render_library(void)
 }
 
 /* ===========================================================================
- * Reading screen -- immediate-mode ra_gfx (book reflow is a later milestone)
+ * Reading screen -- ra_reflow body text (SD font) with a bitmap fallback
  * =========================================================================== */
 
 /**
- * @brief Paint the Reading body: chapter heading then paragraph lines.
+ * @brief Render the Reading body through ra_reflow when an SD font is loaded.
+ *
+ * @details Lays the chapter XHTML out against the body rectangle (inset
+ *          below the status bar, above the footer) and paints page 0 there
+ *          via ra_reflow_render_page_at. er_render_reading has already
+ *          cleared the framebuffer to paper and the body colour is dark
+ *          ink, so the text shows (the ra_reflow_init colour args are the
+ *          text colours, not the background).
+ *
+ * @param[in] body_top Top y of the body band (pixels).
+ * @param[in] height   Framebuffer height (pixels).
+ * @return true if reflowed text was painted; false to use the bitmap fallback.
+ * @retval true  ra_reflow rendered the body.
+ * @retval false No font / init / layout failure -- caller draws the bitmap body.
+ * @pre ra_gfx is bound and the body region is cleared to paper.
+ * @pre @p height matches the bound framebuffer.
+ * @post On true, page 0 of the chapter is blitted into the body rect.
+ * @post On false, nothing is drawn.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
+{
+  if (!s_have_font) {
+    return false;
+  }
+  const int32_t body_w = (int32_t)s_fb.width_px - ((int32_t)k_er_margin_x * 2);
+  const int32_t body_h =
+    height - (int32_t)k_er_statusbar_h - (int32_t)k_er_footer_h - ((int32_t)k_er_body_gap * 2);
+  if (body_w <= 0) {
+    return false;
+  }
+  if (body_h <= 0) {
+    return false;
+  }
+  if (ra_reflow_init((uint16_t)body_w,
+                     (uint16_t)body_h,
+                     s_font_buf,
+                     s_font_len,
+                     (uint16_t)k_er_reflow_px,
+                     (uint32_t)k_er_reflow_ink,
+                     (uint32_t)k_er_reflow_link,
+                     &s_reflow_engine) != k_ra_ok) {
+    return false;
+  }
+  uint32_t pages = 0U;
+  if (ra_reflow_layout_chapter(&s_reflow_engine,
+                               (const uint8_t*)k_er_chapter_xhtml,
+                               (uint32_t)(sizeof(k_er_chapter_xhtml) - 1U),
+                               &pages) != k_ra_ok) {
+    (void)ra_reflow_close(&s_reflow_engine);
+    return false;
+  }
+  (void)ra_reflow_render_page_at(&s_reflow_engine, 0U, (int32_t)k_er_margin_x, body_top);
+  (void)ra_reflow_close(&s_reflow_engine);
+  return true;
+}
+
+/**
+ * @brief Paint the Reading body: reflowed SD-font text, else bitmap lines.
  *
  * @param[in] height Framebuffer height in pixels.
  *
  * @pre ra_gfx is bound.
  * @pre @p height matches the bound framebuffer.
- * @post Chapter heading and as many body lines as fit are drawn in ink.
+ * @post The body band holds reflowed text (SD font) or the bitmap fallback.
  * @post Drawing stops before the footer band.
  *
  * @note Not thread-safe.
@@ -857,6 +1144,10 @@ static void er_render_library(void)
 static void er_draw_reading_body(int32_t height)
 {
   const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
+  if (er_draw_reading_body_reflow(body_top, height)) {
+    return; /* Live proportional text from the SD-loaded font. */
+  }
+  /* Fallback: the bundled 8x16 bitmap font (no SD card / no FONT.OTF). */
   const int32_t body_bot = height - (int32_t)k_er_footer_h - (int32_t)k_er_body_gap;
   er_text_left((int32_t)k_er_margin_x, body_top, k_er_chapter, (uint32_t)k_er_ink);
   int32_t y = body_top + ((int32_t)k_er_blank_lines * (int32_t)k_er_line_h);
@@ -1025,6 +1316,7 @@ int32_t main(void)
   app_bringup_panel();
   app_bringup_gfx();
   app_bringup_touch();
+  er_try_load_font(); /* Best-effort SD font for the ra_reflow Reading body. */
 
   (void)ra_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
   er_render_current();
