@@ -69,9 +69,11 @@ path, so the navigation is exercised exactly as on hardware.
   reading text:** (1) provision a TTF for the body -- only the bitmap
   `ra_gfx_font` is embedded today, ra_reflow needs an stb_truetype face baked
   in as a `static const` array or loaded off the microSD; (2) render into the
-  body sub-region -- `ra_reflow_render_page()` targets a viewport-width
-  framebuffer at origin (0,0), so it needs a destination stride + (x0,y0) to
-  sit below the status bar and above the footer; (3) wire the Reading body to
+  body sub-region -- `ra_reflow_render_page()` blits each glyph via
+  `ra_gfx_pixel` at the layout's `(g->x, g->y)` from origin (0,0) (ra_gfx owns
+  the framebuffer stride), so it needs an `(x0, y0)` origin offset on those
+  blits -- a render-page-at-origin variant -- to sit below the status bar and
+  above the footer; (3) wire the Reading body to
   `ra_reflow_layout_chapter` + `ra_reflow_render_page` in place of the bitmap
   font. Tracked as #83 (see also #80).
 
