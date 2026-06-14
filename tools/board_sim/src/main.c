@@ -2786,7 +2786,7 @@ int main(int argc, char** argv)
   if (truncated) {
     (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
   }
-  if ((err == UC_ERR_OK) || timed_out) {
+  if (((err == UC_ERR_OK) || timed_out) && !s_bkpt_hit) {
     (void)fprintf(stderr,
                   "  => firmware EXECUTED to the run budget (no invalid opcode / fault).\n");
   }
