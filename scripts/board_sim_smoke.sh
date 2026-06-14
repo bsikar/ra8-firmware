@@ -136,7 +136,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
-        canfd_loopback)
+        canfd_loopback imu_lsm6dso_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
