@@ -394,9 +394,11 @@ static void test_get_metadata(void)
   TEST_ASSERT(meta.title != nullptr);
   TEST_ASSERT(meta.author != nullptr);
   TEST_ASSERT(meta.language != nullptr);
+  TEST_ASSERT(meta.identifier != nullptr);
   TEST_ASSERT_EQ(0, strcmp(meta.title, "Test Book"));
   TEST_ASSERT_EQ(0, strcmp(meta.author, "Brighton Sikarskie"));
   TEST_ASSERT_EQ(0, strcmp(meta.language, "en"));
+  TEST_ASSERT_EQ(0, strcmp(meta.identifier, "urn:test:book"));
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub get_metadata returns Dublin Core");
 }
