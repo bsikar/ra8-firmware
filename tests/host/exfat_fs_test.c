@@ -64,6 +64,7 @@ static ra_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
   return k_ra_ok;
 }
 
+static char g_names[1024];
 static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
 {
   (void)attr;
@@ -72,6 +73,20 @@ static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
   if (strcmp(name, "HELLO.TXT") == 0) {
     g_found_hello = 1;
   }
+  if ((strlen(g_names) + strlen(name) + 2U) < sizeof(g_names)) {
+    strcat(g_names, name);
+    strcat(g_names, "|");
+  }
+}
+
+/* Re-list the root and report whether `name` is currently an entry. */
+static int name_present(ra_fs_mount_t* mnt, const char* name)
+{
+  char needle[64];
+  g_names[0] = '\0';
+  (void)ra_fs_listdir(mnt, "/", on_entry, nullptr);
+  (void)snprintf(needle, sizeof(needle), "%s|", name);
+  return strstr(g_names, needle) != nullptr;
 }
 
 static void check(int cond, const char* what)
@@ -102,6 +117,35 @@ static void check_open_reads_hello(ra_fs_mount_t* mnt, const char* path)
   if (ok == 0) {
     g_fail = 1;
   }
+}
+
+/* exFAT write/create/rename/unlink round-trip, all with leading slashes
+ * (#93 covered read; create + rename also have to strip the slash). */
+static void check_write_path(ra_fs_mount_t* mnt)
+{
+  const char*    data = "exFAT write-path payload 0123456789ABCDEF";
+  const uint32_t len  = (uint32_t)strlen(data);
+
+  check(ra_fs_write_file(mnt, "/W83.TXT", (const uint8_t*)data, len) == k_ra_ok,
+        "write_file(\"/W83.TXT\") with leading slash");
+  check(name_present(mnt, "W83.TXT"), "created file stored without the slash");
+
+  ra_fs_file_t* fp = nullptr;
+  if (ra_fs_open(mnt, "/W83.TXT", k_ra_fs_mode_read, &fp) == k_ra_ok) {
+    uint8_t  buf[64] = {};
+    uint32_t got     = 0U;
+    ra_err_t e       = ra_fs_read(fp, buf, sizeof(buf) - 1U, &got);
+    (void)ra_fs_close(fp);
+    check((e == k_ra_ok) && (got == len) && (memcmp(buf, data, len) == 0),
+          "written file reads back byte-identical");
+  } else {
+    check(0, "reopen written file");
+  }
+
+  check(ra_fs_rename(mnt, "/W83.TXT", "/W83R.TXT") == k_ra_ok, "rename with leading slashes");
+  check(name_present(mnt, "W83R.TXT") && !name_present(mnt, "W83.TXT"), "rename moved the entry");
+  check(ra_fs_unlink(mnt, "/W83R.TXT") == k_ra_ok, "unlink with leading slash");
+  check(!name_present(mnt, "W83R.TXT"), "unlink removed the entry");
 }
 
 int main(int argc, char** argv)
@@ -144,6 +188,8 @@ int main(int argc, char** argv)
   ra_fs_file_t* nf = nullptr;
   check(ra_fs_open(mnt, "/NOPE.TXT", k_ra_fs_mode_read, &nf) == k_ra_err_not_found,
         "missing file -> not_found");
+
+  check_write_path(mnt);
 
   printf("\n%s\n", g_fail ? "RESULT: FAIL" : "RESULT: PASS");
   return g_fail;
