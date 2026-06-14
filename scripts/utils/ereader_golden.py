@@ -89,9 +89,13 @@ def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
     """Run board_sim for one screen and return its cropped-panel PPM bytes."""
     with tempfile.NamedTemporaryFile(suffix=".ppm") as tmp:
         cmd = [str(board_sim), str(elf), *extra, "--ppm", tmp.name]
-        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        # Capture as bytes, not text: board_sim's diagnostic stream can carry
+        # raw bytes (e.g. 0xFF SPI idle bytes from an SD bring-up with no card),
+        # which would crash a UTF-8 text decode.
+        proc = subprocess.run(cmd, capture_output=True, check=False)
         if proc.returncode != 0:
-            raise RuntimeError(f"board_sim failed: {' '.join(cmd)}\n{proc.stderr}")
+            err = proc.stderr.decode("utf-8", "replace")
+            raise RuntimeError(f"board_sim failed: {' '.join(cmd)}\n{err}")
         return crop_panel(*read_ppm(Path(tmp.name)))
 
 

@@ -19,4 +19,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_ui STACK_BYTES 4400
            DESCRIPTION "E-reader device chrome (ra_box + ra_gfx) for RA8D2"
-           LIBS ra_gfx ra_ui ra_box ra_display_pal)
+           LIBS ra_gfx ra_ui ra_box ra_display_pal ra_reflow ra_sdmmc_spi ra_fs)

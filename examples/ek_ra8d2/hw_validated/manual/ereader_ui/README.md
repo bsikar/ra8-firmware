@@ -53,28 +53,24 @@ path, so the navigation is exercised exactly as on hardware.
   grid) + `ra_ui` screen-stack navigation.
 - **C (done):** live touch input -- GT911 tap -> `ra_ui_hit_test` ->
   screen change, proven with `board_sim --click`.
-- **Next:** real paginated body text through `libs/ra_reflow` (stb_truetype
-  glyphs at the 48/34/24/18 type scale). Allocator blocker for the glyph
-  rasteriser is **solved**: `stb_truetype` allocates per-glyph scratch
-  (vertices + rasteriser edge/point lists) on *both* the one-shot and the
-  Box+Make paths, so `ra_reflow_render` now (a) keeps the glyph bitmap in a
-  fixed buffer via `stbtt_GetCodepointBitmapBox` + `stbtt_MakeCodepointBitmap`
-  and (b) redirects `STBTT_malloc`/`STBTT_free` to the no-heap bump arena in
-  `libs/ra_reflow/src/ra_stbtt_alloc.c` (bump + refcount auto-reset; sized
-  3x the measured 32 KiB worst case). Verified heap-free against the bundled
-  ArnoPro face for the full printable-ASCII set at 96 px.
-  The old tinyxml2 parse blocker is **also solved**: `ra_reflow` now parses
-  with the no-heap streaming tokenizer (`ra_reflow_tokenize.c`, #82), so there
-  is no `MemPoolT`/`new` growth on the chapter path. **Remaining for on-target
-  reading text:** (1) provision a TTF for the body -- only the bitmap
-  `ra_gfx_font` is embedded today, ra_reflow needs an stb_truetype face baked
-  in as a `static const` array or loaded off the microSD; (2) render into the
-  body sub-region -- `ra_reflow_render_page()` blits each glyph via
-  `ra_gfx_pixel` at the layout's `(g->x, g->y)` from origin (0,0) (ra_gfx owns
-  the framebuffer stride), so it needs an `(x0, y0)` origin offset on those
-  blits -- a render-page-at-origin variant -- to sit below the status bar and
-  above the footer; (3) wire the Reading body to
-  `ra_reflow_layout_chapter` + `ra_reflow_render_page` in place of the bitmap
-  font. Tracked as #83 (see also #80).
+- **D (done, #83):** real reflowed body text through `libs/ra_reflow`. When a
+  font is present on the microSD (`FONT.OTF`, the SD-load path proven by
+  `sd_font_render`), the Reading body is laid out live by `ra_reflow`
+  (`ra_reflow_init` against the body rect -> `ra_reflow_layout_chapter` ->
+  `ra_reflow_render_page_at(margin_x, body_top)`) at the proportional type
+  scale, inset below the status bar and above the footer. The whole pipeline
+  is heap-free (glyph arena in `ra_stbtt_alloc.c`; no-heap tokenizer
+  `ra_reflow_tokenize.c`, #82). The font load is **best-effort**: with no card
+  / no `FONT.OTF` the body falls back to the bundled `ra_gfx` 8x16 bitmap
+  lines, so the chrome never regresses (the no-SD render still matches the
+  checked-in golden, #84). Verify the reflow path with a card image, e.g.
+  `tools/mkfontimg/build/mkfontimg libs/fonts/ArnoPro-Regular.otf /tmp/font.img FONT.OTF`
+  then `board_sim <elf> --click 250 250 --sd /tmp/font.img --ppm out.ppm`
+  (give it a generous `BOARD_SIM_MAX_CHUNKS` -- the ~400 KB SPI font read is
+  slow under emulation; instant on real hardware).
+- **Next:** page-turn taps (render `ra_reflow` pages beyond page 0) and a
+  Latin-1 **subset font baked into internal flash** so reflowed text works
+  without an SD card (the full ArnoPro face is ~400 KB and external OSPI is
+  blocked by #44).
 
 See issue #80 for the full chrome plan.
