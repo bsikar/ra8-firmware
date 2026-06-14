@@ -59,7 +59,7 @@ static const mem_region_t k_regions[] = {
   {"MRAM", 0x02000000UL, 0x00100000UL}, /* 1 MiB code flash + vectors    */
   {"OFS", 0x0300A000UL, 0x00001000UL},  /* option-setting flash          */
   {"DTCM", 0x20000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled data   */
-  {"SRAM", 0x22000000UL, 0x00100000UL}, /* 1 MiB on-chip SRAM            */
+  {"SRAM", 0x22000000UL, 0x00400000UL}, /* CPU0 1 MiB + SRAM2/shared + CPU1 SRAM */
   {"DATA_FLASH", 0x27000000UL, 0x00004000UL},
   {"SDRAM", 0x68000000UL, 0x04000000UL}, /* 64 MiB external SDRAM         */
   {"PPB", 0xE0000000UL, 0x00100000UL},   /* ARM private peripheral bus    */
@@ -99,6 +99,8 @@ typedef enum : uint64_t {
   k_scb_vtor       = 0xE000ED08UL, /**< Vector table offset register.        */
   k_scb_shpr2      = 0xE000ED1CUL, /**< System handler priority 2 (SVC=b3).  */
   k_scb_shpr3      = 0xE000ED20UL, /**< System handler priority 3 (PSV/SYT). */
+  k_mpu_type       = 0xE000ED90UL, /**< MPU_TYPE (DREGION in bits 15:8).     */
+  k_mpu_type_seed  = 0x00000800UL, /**< 8 data regions (matches the M85 MPU).*/
   k_icsr_pendsvset = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).  */
   k_icsr_pendstset = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick). */
   k_exc_svcall     = 11UL,         /**< SVCall exception / vector index.      */
@@ -2208,6 +2210,14 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "mmio_map failed\n");
     return 1;
   }
+
+  /* Seed read-only/hardwired SCS registers the firmware reads back. The PPB is
+   * plain RAM here, so MPU_TYPE would otherwise read 0 (DREGION=0) and
+   * ra_mpu_configure() would reject any region (region_count > 0 implemented),
+   * panicking mpu_partition_simple. Hardwire DREGION to the M85's 8 data
+   * regions so the configure path validates; board_sim does not yet *enforce*
+   * MPU permissions, so the app then takes its documented no-trap host path. */
+  wr32(uc, (uint64_t)k_mpu_type, (uint32_t)k_mpu_type_seed);
 
   /* Reset the peripheral-model framework (GPIO/PORT, AGT/GPT timers, ICU/NVIC,
    * SCI UART) before the firmware boots so its register writes land in real
