@@ -63,10 +63,16 @@ path, so the navigation is exercised exactly as on hardware.
   `libs/ra_reflow/src/ra_stbtt_alloc.c` (bump + refcount auto-reset; sized
   3x the measured 32 KiB worst case). Verified heap-free against the bundled
   ArnoPro face for the full printable-ASCII set at 96 px.
-  **Remaining for on-target reading text:** (1) the parse path still uses
-  tinyxml2, whose `MemPoolT` grows with `new` for non-trivial chapters --
-  needs a static-arena/operator-new bound or a token feed; (2) wiring the
-  Reading body to drive `ra_reflow_layout_chapter` + `ra_reflow_render_page`
-  in place of the bitmap font. See issue #80 / #46.
+  The old tinyxml2 parse blocker is **also solved**: `ra_reflow` now parses
+  with the no-heap streaming tokenizer (`ra_reflow_tokenize.c`, #82), so there
+  is no `MemPoolT`/`new` growth on the chapter path. **Remaining for on-target
+  reading text:** (1) provision a TTF for the body -- only the bitmap
+  `ra_gfx_font` is embedded today, ra_reflow needs an stb_truetype face baked
+  in as a `static const` array or loaded off the microSD; (2) render into the
+  body sub-region -- `ra_reflow_render_page()` targets a viewport-width
+  framebuffer at origin (0,0), so it needs a destination stride + (x0,y0) to
+  sit below the status bar and above the footer; (3) wire the Reading body to
+  `ra_reflow_layout_chapter` + `ra_reflow_render_page` in place of the bitmap
+  font. Tracked as #83 (see also #80).
 
 See issue #80 for the full chrome plan.
