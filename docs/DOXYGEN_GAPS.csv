@@ -1,6 +1,1 @@
 source_file,line,function_name,missing_tags,severity
-libs/ra_hal/inc/ra_usb.h,1003,ra_usb_host_ctrl_stage,@retval;@pre(<2:1);@post(<2:1),medium
-libs/ra_hal/src/ra_usb.c,3109,internal_host_wait_sts,@details;@retval,medium
-libs/ra_hal/src/ra_usb.c,3132,internal_host_ctrl_setup,@details;@retval,medium
-libs/ra_hal/src/ra_usb.c,3174,internal_host_ctrl_data_in,@details;@retval,medium
-libs/ra_hal/src/ra_usb.c,3237,internal_host_ctrl_status,@details;@retval,medium
