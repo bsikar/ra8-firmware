@@ -552,6 +552,37 @@ endif()
 add_test(NAME test_ra_epub_xml_shim COMMAND test_ra_epub_xml_shim)
 
 # ---------------------------------------------------------------------------
+# exFAT host test (#85 read support / #93 leading-slash open regression).
+# Standalone: links ONLY ra_fs_fat.c (no ra_core_hal -> no ra_time
+# weak-extern), so it builds and runs on macOS and Linux alike. The fixture
+# is a tiny real exFAT image checked in gzipped; it is decompressed to the
+# build dir at build time and its path injected via RA_EXFAT_FIXTURE.
+# ---------------------------------------------------------------------------
+set(RA_EXFAT_FIXTURE_GZ ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ra_fs/exfat_small.img.gz)
+set(RA_EXFAT_FIXTURE_IMG ${CMAKE_CURRENT_BINARY_DIR}/exfat_small.img)
+add_custom_command(
+  OUTPUT ${RA_EXFAT_FIXTURE_IMG}
+  COMMAND bash -c "gunzip -c '${RA_EXFAT_FIXTURE_GZ}' > '${RA_EXFAT_FIXTURE_IMG}'"
+  DEPENDS ${RA_EXFAT_FIXTURE_GZ}
+  COMMENT "Decompressing exFAT test fixture"
+  VERBATIM
+)
+add_custom_target(ra_exfat_fixture DEPENDS ${RA_EXFAT_FIXTURE_IMG})
+add_executable(test_ra_fs_exfat
+  ${CMAKE_CURRENT_SOURCE_DIR}/host/exfat_fs_test.c
+  ${FW_ROOT}/libs/ra_fs/src/ra_fs_fat.c
+)
+add_dependencies(test_ra_fs_exfat ra_exfat_fixture)
+target_compile_options(test_ra_fs_exfat PRIVATE -Wall -Wextra)
+target_include_directories(test_ra_fs_exfat PRIVATE
+  ${FW_ROOT}/libs/ra_fs/inc
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_hal/inc
+)
+target_compile_definitions(test_ra_fs_exfat PRIVATE RA_EXFAT_FIXTURE="${RA_EXFAT_FIXTURE_IMG}")
+add_test(NAME test_ra_fs_exfat COMMAND test_ra_fs_exfat)
+
+# ---------------------------------------------------------------------------
 # Optional libFuzzer harnesses (opt-in via -DRA_FUZZ=ON; clang-only).
 # Each fuzz target is built as a separate executable that links against
 # the existing ra_core_hal OBJECT library and adds
