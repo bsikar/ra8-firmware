@@ -275,6 +275,40 @@ bool elem_local_is(const XMLElement* elem, const char* local)
 }
 
 /**
+ * @brief Return the text of the canonical `<dc:identifier>`.
+ *
+ * @details
+ * Prefers the identifier whose `id` matches the package's
+ * `unique-identifier` attribute (@p uid); falls back to the first
+ * `<dc:identifier>` element. Sequential guards (no compound decision) so
+ * the helper stays outside the MC/DC obligation.
+ */
+const char* find_identifier(const XMLElement* metadata, const char* uid)
+{
+  const XMLElement* first = nullptr;
+  for (const XMLElement* m = metadata->FirstChildElement(); m != nullptr;
+       m                   = m->NextSiblingElement()) {
+    if (!elem_local_is(m, "identifier")) {
+      continue;
+    }
+    if (first == nullptr) {
+      first = m;
+    }
+    const char* id = m->Attribute("id");
+    if (id == nullptr) {
+      continue;
+    }
+    if (uid == nullptr) {
+      continue;
+    }
+    if (std::strcmp(id, uid) == 0) {
+      return m->GetText();
+    }
+  }
+  return (first != nullptr) ? first->GetText() : nullptr;
+}
+
+/**
  * @brief Find the manifest item declaring `properties="nav"` and return
  *        its href (the EPUB 3 navigation document).
  */
@@ -449,6 +483,10 @@ ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* 
     if (language != nullptr) {
       copy_bounded(book->language, k_ra_epub_meta_len, language->GetText());
     }
+    /* The canonical unique id is the <dc:identifier> whose id matches the
+     * package's unique-identifier attribute. */
+    const char* uid = package->Attribute("unique-identifier");
+    copy_bounded(book->identifier, k_ra_epub_meta_len, find_identifier(metadata, uid));
   }
 
   /* ---- manifest ------------------------------------------------------- */

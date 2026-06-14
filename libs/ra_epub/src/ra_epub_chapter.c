@@ -407,9 +407,10 @@ ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* ou
   if (book->in_use == 0U) {
     return k_ra_err_not_initialized;
   }
-  out_meta->title    = book->title;
-  out_meta->author   = book->author;
-  out_meta->language = book->language;
+  out_meta->title      = book->title;
+  out_meta->author     = book->author;
+  out_meta->language   = book->language;
+  out_meta->identifier = book->identifier;
   return k_ra_ok;
 }
 
