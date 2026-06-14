@@ -59,7 +59,7 @@ typedef enum : uint16_t {
   k_test_synth_font_bytes  = 16,    /**< Synthetic font payload length.          */
   k_test_synth_cover_bytes = 4,     /**< Synthetic cover payload length.         */
   k_test_expected_chapters = 2,     /**< Spine length in the synthetic EPUB.     */
-  k_test_expected_toc      = 2,     /**< Nav TOC entry count in the synthetic EPUB. */
+  k_test_expected_toc      = 3,     /**< Nav TOC entry count in the synthetic EPUB. */
   k_test_codepoint_a       = 'A',   /**< Render-glyph code point.                */
 } test_ra_epub_sizes_t;
 
@@ -105,13 +105,17 @@ static const char* const k_synth_ch1 =
 static const char* const k_synth_ch2 =
   "<?xml version=\"1.0\"?><html><body><h1>Chapter Two</h1><p>World.</p></body></html>";
 
+/* The first entry carries a "#fragment" (exercises fragment-stripping in
+ * ra_epub_toc_entry_to_chapter) and the last entry targets a document that
+ * is NOT in the spine (exercises the not_found resolution path). */
 static const char* const k_synth_nav =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">\n"
   "<head><title>Contents</title></head><body>\n"
   "<nav epub:type=\"toc\"><ol>\n"
-  "  <li><a href=\"ch1.xhtml\">Chapter One</a></li>\n"
+  "  <li><a href=\"ch1.xhtml#start\">Chapter One</a></li>\n"
   "  <li><a href=\"ch2.xhtml\">Chapter Two</a></li>\n"
+  "  <li><a href=\"appendix.xhtml\">Appendix</a></li>\n"
   "</ol></nav></body></html>\n";
 
 static const uint8_t k_synth_cover_bytes[]                       = {0x89U, 0x50U, 0x4EU, 0x47U};
@@ -325,18 +329,52 @@ static void test_toc(void)
   ra_epub_toc_entry_t entry = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_toc_entry(&book, 0U, &entry));
   TEST_ASSERT_EQ(0, strcmp(entry.title, "Chapter One"));
-  TEST_ASSERT_EQ(0, strcmp(entry.href, "ch1.xhtml"));
+  TEST_ASSERT_EQ(0, strcmp(entry.href, "ch1.xhtml#start"));
   TEST_ASSERT_EQ(0, entry.depth);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_toc_entry(&book, 1U, &entry));
   TEST_ASSERT_EQ(0, strcmp(entry.title, "Chapter Two"));
   TEST_ASSERT_EQ(0, strcmp(entry.href, "ch2.xhtml"));
 
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_toc_entry(&book, 2U, &entry));
+  TEST_ASSERT_EQ(0, strcmp(entry.title, "Appendix"));
+  TEST_ASSERT_EQ(0, strcmp(entry.href, "appendix.xhtml"));
+
   /* Out-of-range entry index. */
   TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_epub_get_toc_entry(&book, 99U, &entry));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ra_epub parses the EPUB3 nav TOC");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_toc_to_chapter(void)
+{
+  TEST_BEGIN("ra_epub resolves TOC entries to spine chapters");
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
+
+  uint16_t chapter = 0xFFFFU;
+  /* Entry 0 carries "ch1.xhtml#start" -- the fragment must be stripped. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_toc_entry_to_chapter(&book, 0U, &chapter));
+  TEST_ASSERT_EQ(0, chapter);
+  /* Entry 1 is "ch2.xhtml" -> spine index 1. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_toc_entry_to_chapter(&book, 1U, &chapter));
+  TEST_ASSERT_EQ(1, chapter);
+
+  /* Entry 2 ("appendix.xhtml") is not in the spine. */
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_epub_toc_entry_to_chapter(&book, 2U, &chapter));
+  /* Out-of-range TOC index. */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_epub_toc_entry_to_chapter(&book, 99U, &chapter));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+  TEST_END("ra_epub resolves TOC entries to spine chapters");
 }
 
 /**
@@ -711,6 +749,31 @@ static void test_mcdc_toc_entry_null_or(void)
 }
 
 /**
+ * @test test_mcdc_toc_to_chapter_null_or
+ *
+ * @par MC/DC:
+ * Decision: `if (book == NULL || out_chapter_idx == NULL)`
+ * (2 conditions, libs/ra_epub/src/ra_epub_chapter.c@ra_epub_toc_entry_to_chapter)
+ * - V1 book=ok, out=ok   -> C1=F, C2=F. Decision F (proceeds).
+ * - V2 book=NULL         -> C1=T short-circuits. T -> null_ptr.
+ * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
+ * V1+V2 isolate C1; V1+V3 isolate C2.
+ */
+static void test_mcdc_toc_to_chapter_null_or(void)
+{
+  TEST_BEGIN("mcdc toc_entry_to_chapter NULL OR");
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
+  uint16_t chapter = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_toc_entry_to_chapter(&book, 0U, &chapter));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_toc_entry_to_chapter(nullptr, 0U, &chapter));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_toc_entry_to_chapter(&book, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+  TEST_END("mcdc toc_entry_to_chapter NULL OR");
+}
+
+/**
  * @test test_mcdc_cover_image_null_or3
  *
  * @par MC/DC:
@@ -903,6 +966,7 @@ int main(void)
   test_chapter_count();
   test_load_chapter();
   test_toc();
+  test_toc_to_chapter();
   test_get_metadata();
   test_get_cover_image();
   test_render_glyph_paths();
@@ -915,6 +979,7 @@ int main(void)
   test_mcdc_toc_kind_null_or();
   test_mcdc_toc_count_null_or();
   test_mcdc_toc_entry_null_or();
+  test_mcdc_toc_to_chapter_null_or();
   test_mcdc_cover_image_null_or3();
   test_mcdc_set_font_null_or();
   test_mcdc_render_glyph_null_or4();

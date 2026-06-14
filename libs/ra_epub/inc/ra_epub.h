@@ -465,6 +465,39 @@ typedef struct {
 [[nodiscard]] ra_err_t
 ra_epub_get_toc_entry(const ra_epub_book_t* book, uint16_t idx, ra_epub_toc_entry_t* out_entry);
 
+/**
+ * @brief Resolve a TOC entry to the spine chapter index it points into.
+ *
+ * @details
+ * Makes the parsed TOC navigable: a TOC entry's `href` is an OPF-relative
+ * path with an optional `#fragment` (e.g. `ch3.xhtml#sec2`), whereas
+ * `ra_epub_load_chapter()` is indexed by spine position. This strips any
+ * fragment from the entry href and returns the index of the first spine
+ * chapter (`chapter_paths`) whose path matches, suitable to hand to
+ * `ra_epub_load_chapter()`.
+ *
+ * @param[in]  book            Open book.
+ * @param[in]  toc_idx         TOC entry index, `[0, toc_count)`.
+ * @param[out] out_chapter_idx Spine chapter index on success.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Resolved; `*out_chapter_idx < chapter_count`.
+ * @retval k_ra_err_null_ptr        Any pointer NULL.
+ * @retval k_ra_err_not_initialized `book->in_use == 0`.
+ * @retval k_ra_err_out_of_range    `toc_idx >= toc_count`.
+ * @retval k_ra_err_not_found       The entry points outside the spine.
+ *
+ * @pre `book` non-NULL, `out_chapter_idx` non-NULL.
+ * @pre `book->in_use == 1`.
+ * @post On success, `*out_chapter_idx` indexes a valid spine chapter.
+ * @post On failure, `*out_chapter_idx` is left unmodified.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_toc_entry_to_chapter(const ra_epub_book_t* book,
+                                                    uint16_t              toc_idx,
+                                                    uint16_t*             out_chapter_idx);
+
 /* ===========================================================================
  * Public API -- metadata + cover + glyph rasterise
  * ===========================================================================
