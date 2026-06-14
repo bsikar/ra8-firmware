@@ -8,14 +8,13 @@
 #
 # Layout:
 #   inc/ra_reflow.h                public API
-#   src/ra_reflow_parse.c          DOM-walker (HTML subset -> token stream)
+#   src/ra_reflow_parse.c          parser entry point (resets pools, dispatches)
+#   src/ra_reflow_tokenize.c       no-heap streaming HTML-subset tokenizer
 #   src/ra_reflow_layout.c         line-break + page-break engine
 #   src/ra_reflow_render.c         glyph rasterise via stb_truetype
-#   src/ra_reflow_xml_shim.cpp     C-callable wrapper around tinyxml2
 #
 # Vendored dependencies (already at libs/third_party/):
 #   stb_truetype.h     -- glyph rasteriser
-#   tinyxml2.h/.cpp    -- HTML/XML parser
 #
 # Like the other domain libs in this tree (ra_fs, ra_ble_host,
 # ra_epub), consumers reach into inc/ + src/ directly. The host unit
@@ -31,7 +30,7 @@
 # v1 vs v2 (LiteHTML) selection
 # =============================================================================
 #
-# The v1 engine (src/*.c + ra_reflow_xml_shim.cpp) is the hand-rolled
+# The v1 engine (src/*.c) is the hand-rolled
 # greedy line-break / page-break implementation that was validated
 # against the EK-RA8D2 panel. v2 lives in v2/ and uses
 # LiteHTML (vendored at libs/third_party/litehtml/) as the rendering
