@@ -225,6 +225,8 @@ typedef struct {
   char author[k_ra_epub_meta_len]; /**< Dublin Core `<dc:creator>`.   */
   // cppcheck-suppress unusedStructMember
   char language[k_ra_epub_meta_len]; /**< Dublin Core `<dc:language>`.  */
+  // cppcheck-suppress unusedStructMember
+  char identifier[k_ra_epub_meta_len]; /**< Dublin Core `<dc:identifier>` (unique book id). */
 
   /* --- Cover ----------------------------------------------------------- */
   // cppcheck-suppress unusedStructMember
@@ -271,6 +273,8 @@ typedef struct {
   const char* author; /**< NUL-terminated creator; "" if absent.    */
   // cppcheck-suppress unusedStructMember
   const char* language; /**< NUL-terminated language tag; "" if absent.*/
+  // cppcheck-suppress unusedStructMember
+  const char* identifier; /**< NUL-terminated unique id; "" if absent.  */
 } ra_epub_metadata_t;
 
 /* ===========================================================================
