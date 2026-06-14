@@ -169,7 +169,7 @@ typedef enum : uint8_t {
  * @brief Parsed token classification.
  *
  * @details
- * The parser converts the DOM into a flat token stream. Block-start
+ * The parser converts the markup into a flat token stream. Block-start
  * and block-end tokens carry an `ra_reflow_html_tag_t`; inline tokens
  * carry text (a slice of the engine text pool) plus a font-style
  * stamp.
@@ -399,14 +399,14 @@ typedef struct {
  * @brief Parse + lay out one chapter of XHTML.
  *
  * @details
- * Walks the XHTML once with tinyxml2, emits a token stream, then runs
+ * Walks the XHTML once with the no-heap streaming tokenizer, emits a token stream, then runs
  * the greedy line-break + page-break engine to produce a flat list of
  * positioned glyphs grouped by page. The engine caches the input
  * buffer so `ra_reflow_set_font_size()` can re-flow without the caller
  * re-supplying it.
  *
  * Algorithm summary:
- *   1. Parse XHTML via tinyxml2; recursively walk the DOM emitting
+ *   1. Tokenize the XHTML in a single no-heap forward pass, emitting
  *      tokens (`block_start` / `text` / `break` / ...).
  *   2. For each token, if it is a text run, walk word-by-word.
  *   3. Measure `word_width = sum(stbtt advance per glyph)`.
