@@ -155,6 +155,10 @@ typedef enum : uint32_t {
   k_clrm_hw0          = 0xE89FU,     /**< `CLRM {regs}` first halfword.       */
   k_vscclrm_hw0_s     = 0xEC9FU,     /**< `VSCCLRM {s..,VPR}` first halfword.  */
   k_vscclrm_hw0_d     = 0xECDFU,     /**< `VSCCLRM {d..,VPR}` first halfword.  */
+  k_lo16_mask         = 0xFFFFU,     /**< Low halfword of a 32-bit fetch.     */
+  k_bkpt_hw_base      = 0xBE00U,     /**< `BKPT #imm8` halfword (imm free).   */
+  k_bkpt_hw_mask      = 0xFF00U,     /**< Mask isolating the BKPT opcode.     */
+  k_thumb_bx_lr       = 0x4770U,     /**< `BX LR` (stub a function to return).*/
 } cortexm_exc_t;
 
 /**
@@ -187,6 +191,7 @@ typedef enum : uint32_t {
   k_max_panel_px    = 4096U,       /**< Largest accepted --size dimension. */
   k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.   */
   k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).  */
+  k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.    */
 } board_sim_misc_t;
 
 /* Touch on the EK-RA8D2 is now modelled end-to-end: the firmware's real
@@ -290,6 +295,8 @@ static uint32_t s_svc_takes;                 /**< SVCall exceptions taken.     *
 static uint64_t s_exc_return_pc;             /**< Pending EXC_RETURN to unstack.*/
 static bool     s_exc_return_hit;            /**< An EXC_RETURN branch was seen.*/
 static bool     s_systick_pending;           /**< SysTick exception is pended.  */
+static bool     s_bkpt_hit;                  /**< Firmware executed a BKPT.     */
+static uint32_t s_bkpt_pc;                   /**< PC of the BKPT that halted.   */
 
 /* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
 static uint32_t s_bgc_writes;
@@ -865,6 +872,21 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
     return;
   }
 
+  /* A `BKPT` (0xBExx) is a deliberate firmware trap -- Default_Handler's
+   * `bkpt #0`, a failed assert, or a fault give-up. It is NOT an `svc`: taking
+   * SVCall here would stack a frame, vector to the (often Default_Handler) SVC
+   * slot, return to the same bkpt, and re-trap forever -- the stack grows until
+   * it underflows (the historical tz_nsc_cgc_usb storm). Model it as a halt:
+   * record the site and stop so the run loop ends and the report shows where the
+   * firmware trapped. */
+  if (((uint16_t)(insn & (uint32_t)k_lo16_mask) & (uint16_t)k_bkpt_hw_mask) ==
+      (uint16_t)k_bkpt_hw_base) {
+    s_bkpt_hit = true;
+    s_bkpt_pc  = pc;
+    (void)uc_emu_stop(uc);
+    return;
+  }
+
   /* Otherwise it is a synchronous `svc` -- take SVCall (#11). ThreadX in single
    * mode never issues one, but bare-metal / future RTOS first-thread-start
    * paths do. The VTOR fallback is the MRAM vector-table base; the live VTOR
@@ -1034,7 +1056,7 @@ enum : uint32_t {
 };
 
 /** @brief Resolve a symbol from the ELF .symtab (defined below load_elf). */
-static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name);
+static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out);
 
 /** @brief Emulate "return r0;" from a hooked function: set R0, branch to LR. */
 static void eth_hook_return(uc_engine* uc, uint32_t r0)
@@ -1127,7 +1149,7 @@ static void on_eth_ok(uc_engine* uc, uint64_t address, uint32_t size, void* user
 /** @brief Hook one symbol (if present) to @p cb; record it for the report. */
 static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name, void* cb)
 {
-  const uint32_t addr = elf_sym_addr(elf, len, name);
+  const uint32_t addr = elf_sym_addr(elf, len, name, nullptr);
   if (addr == 0U) {
     return;
   }
@@ -1151,7 +1173,7 @@ static void on_net_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
 /** @brief Add an entry-trace hook for @p name (if present); leaves it running. */
 static void eth_trace_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name)
 {
-  const uint32_t addr = elf_sym_addr(elf, len, name);
+  const uint32_t addr = elf_sym_addr(elf, len, name, nullptr);
   if (addr == 0U) {
     return;
   }
@@ -1166,9 +1188,9 @@ static void eth_trace_hook(uc_engine* uc, const uint8_t* elf, long len, const ch
 /** @brief Install the ra_eth frame-seam hooks if the symbols are present. */
 static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len, bool trace)
 {
-  const uint32_t w = elf_sym_addr(elf, len, "ra_eth_write");
-  const uint32_t r = elf_sym_addr(elf, len, "ra_eth_read");
-  const uint32_t l = elf_sym_addr(elf, len, "ra_eth_link_status");
+  const uint32_t w = elf_sym_addr(elf, len, "ra_eth_write", nullptr);
+  const uint32_t r = elf_sym_addr(elf, len, "ra_eth_read", nullptr);
+  const uint32_t l = elf_sym_addr(elf, len, "ra_eth_link_status", nullptr);
   if ((w == 0U) && (r == 0U) && (l == 0U)) {
     return; /* not a networking firmware -- nothing to shim. */
   }
@@ -1250,13 +1272,17 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
  * firmware's ra_eth_* frame API for the virtual network peer. Returns 0 if the
  * symbol (or a symbol table) is absent.
  *
- * @param[in] elf  Mapped ELF image.
- * @param[in] len  ELF image length in bytes.
- * @param[in] name NUL-terminated symbol name to find.
+ * @param[in]  elf      Mapped ELF image.
+ * @param[in]  len      ELF image length in bytes.
+ * @param[in]  name     NUL-terminated symbol name to find.
+ * @param[out] size_out If non-NULL, receives the symbol's st_size (0 if absent).
  * @return Even (Thumb-cleared) symbol address, or 0 if not found.
  */
-static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name)
+static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out)
 {
+  if (size_out != nullptr) {
+    *size_out = 0U;
+  }
   if (len < (long)k_elf_ehdr_size) {
     return 0U;
   }
@@ -1295,14 +1321,18 @@ static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name)
       if (((size_t)(sym - elf) + 16U) > (size_t)len) {
         break;
       }
-      uint32_t st_name = 0U, st_value = 0U;
+      uint32_t st_name = 0U, st_value = 0U, st_size = 0U;
       (void)memcpy(&st_name, sym + 0, 4);
       (void)memcpy(&st_value, sym + 4, 4);
+      (void)memcpy(&st_size, sym + 8, 4);
       const size_t pos = (size_t)str_off + (size_t)st_name;
       if ((st_name == 0U) || ((pos + nlen) > (size_t)len)) {
         continue;
       }
       if (memcmp(elf + pos, name, nlen) == 0) {
+        if (size_out != nullptr) {
+          *size_out = st_size;
+        }
         return st_value & ~1U; /* clear the Thumb bit for the hook address. */
       }
     }
@@ -2194,22 +2224,25 @@ int main(int argc, char** argv)
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
-  const char* elf_path    = argv[1];
-  bool        want_view   = false;
-  const char* ppm_path    = nullptr;
-  const char* record_dir  = nullptr;
-  uint32_t    record_secs = 0U;
-  uint32_t    rotate_deg  = (uint32_t)k_rotate_0;
-  const char* panel_path  = nullptr;
-  const char* input_str   = nullptr;
-  const char* usb_in_str  = nullptr;
-  bool        size_set    = false;
-  bool        want_click  = false;
-  bool        want_trace  = false;
-  int         click_x     = -1;
-  int         click_y     = -1;
-  uint16_t    view_w      = (uint16_t)k_view_default_w;
-  uint16_t    view_h      = (uint16_t)k_view_default_h;
+  const char* elf_path                       = argv[1];
+  bool        want_view                      = false;
+  const char* ppm_path                       = nullptr;
+  const char* record_dir                     = nullptr;
+  uint32_t    record_secs                    = 0U;
+  uint32_t    rotate_deg                     = (uint32_t)k_rotate_0;
+  const char* panel_path                     = nullptr;
+  const char* input_str                      = nullptr;
+  const char* usb_in_str                     = nullptr;
+  const char* dump_sym_names[k_dump_sym_max] = {}; /* --dump-sym globals to read.  */
+  uint32_t    dump_sym_addrs[k_dump_sym_max] = {}; /* resolved while ELF is alive. */
+  uint32_t    dump_sym_n                     = 0U;
+  bool        size_set                       = false;
+  bool        want_click                     = false;
+  bool        want_trace                     = false;
+  int         click_x                        = -1;
+  int         click_y                        = -1;
+  uint16_t    view_w                         = (uint16_t)k_view_default_w;
+  uint16_t    view_h                         = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
@@ -2244,6 +2277,12 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--sd", sizeof("--sd")) == 0) && ((i + 1) < argc)) {
       (void)board_sd_attach(argv[i + 1]); /* serve this FAT image to ra_sdmmc_spi */
+      i++;
+    } else if ((strncmp(argv[i], "--dump-sym", sizeof("--dump-sym")) == 0) && ((i + 1) < argc)) {
+      if (dump_sym_n < (uint32_t)k_dump_sym_max) {
+        dump_sym_names[dump_sym_n] = argv[i + 1];
+        dump_sym_n++;
+      }
       i++;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
@@ -2352,6 +2391,41 @@ int main(int argc, char** argv)
   /* NB: keep the host-side `elf` buffer alive until after eth_seam_install --
    * load_elf has copied the image into Unicorn memory, but the eth seam still
    * scans the ELF symbol table from this buffer (freed right after, below). */
+
+  /* Resolve any --dump-sym globals to addresses now, while the ELF symbol table
+   * is still in `elf`; the values are read back from Unicorn memory after the
+   * run (the software analog of the JLink memprobe HIL mode). */
+  for (uint32_t d = 0U; d < dump_sym_n; d++) {
+    dump_sym_addrs[d] = elf_sym_addr(elf, elf_len, dump_sym_names[d], nullptr);
+    if (dump_sym_addrs[d] == 0U) {
+      (void)fprintf(stderr,
+                    "board_sim: --dump-sym %s not found in symbol table\n",
+                    dump_sym_names[d]);
+    }
+  }
+
+  /* TrustZone NSC pointer validation. The Non-Secure-Callable veneers guard
+   * their pointer args with cmse_check_address_range(), which issues Armv8-M
+   * `TT`/`TTA` (Test Target) instructions to read an address's security/MPU
+   * attribution and then checks the Non-Secure read/write bit. Unicorn's M33
+   * has no SAU/IDAU configured (board_sim maps the PPB as plain RAM, so the
+   * core's internal SAU stays at its reset all-Secure state); a native TT thus
+   * reports every address as Secure, the NS range-check fails, and the veneer
+   * returns k_ra_err_invalid_arg -- stalling CGC/SD bring-up. board_sim collapses
+   * the Secure/Non-Secure split into one flat, fully-accessible domain, so every
+   * NS pointer the veneers pass (each already null-checked before the range check)
+   * is valid. Model that by patching the routine's entry to `BX LR`: r0 still
+   * holds the first argument (the pointer `p`) at entry, so an immediate return
+   * yields p != NULL == "address OK". This is a one-time 2-byte memory patch
+   * (the function image is already copied into Unicorn memory by load_elf), not a
+   * UC_HOOK_CODE -- a code hook forces Unicorn to single-step the whole run
+   * (~10x slower), whereas the patch has zero steady-state cost. Absent in
+   * non-TZ firmware (symbol not found -> no patch). */
+  const uint32_t cmse_check_addr = elf_sym_addr(elf, elf_len, "cmse_check_address_range", nullptr);
+  if (cmse_check_addr != 0U) {
+    const uint16_t bx_lr = (uint16_t)k_thumb_bx_lr;
+    (void)uc_mem_write(uc, (uint64_t)cmse_check_addr, &bx_lr, sizeof(bx_lr));
+  }
 
   /* Cortex-M reset: SP = vectors[0], PC = vectors[1] (Thumb, clear bit0). */
   uint32_t sp = 0U;
@@ -2554,6 +2628,10 @@ int main(int argc, char** argv)
     for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
       err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      if (s_bkpt_hit) {
+        faulted = true; /* firmware trapped on a BKPT -- end the run, report it. */
+        break;
+      }
       if (s_exc_return_hit) {
         s_exc_return_hit = false;
         exc_return(uc, (uint32_t)s_exc_return_pc);
@@ -2651,6 +2729,12 @@ int main(int argc, char** argv)
                 uc_strerror(err),
                 timed_out ? " (wall-clock budget reached)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
+  if (s_bkpt_hit) {
+    (void)fprintf(stderr,
+                  "  => firmware executed a BKPT @ 0x%08X (deliberate trap: "
+                  "Default_Handler / failed assert / fault give-up)\n",
+                  s_bkpt_pc);
+  }
   (void)fprintf(stderr, "  chunks run    : %u   SysTick ticks: %u\n", chunks, s_systick_fires);
   (void)fprintf(stderr,
                 "  exceptions    : %u PendSV  %u SVCall (real Cortex-M entry/return)\n",
@@ -2705,6 +2789,30 @@ int main(int argc, char** argv)
   if ((err == UC_ERR_OK) || timed_out) {
     (void)fprintf(stderr,
                   "  => firmware EXECUTED to the run budget (no invalid opcode / fault).\n");
+  }
+
+  /* --dump-sym: read each resolved global from Unicorn memory and print its
+   * 32-bit value (and the address), so a test can probe firmware state (e.g. an
+   * init-step or mismatch counter) after the run without a debugger. */
+  for (uint32_t d = 0U; d < dump_sym_n; d++) {
+    if (dump_sym_addrs[d] == 0U) {
+      (void)fprintf(stderr, "  dump-sym      : %s = <unresolved>\n", dump_sym_names[d]);
+      continue;
+    }
+    uint32_t v = 0U;
+    if (uc_mem_read(uc, (uint64_t)dump_sym_addrs[d], &v, sizeof(v)) == UC_ERR_OK) {
+      (void)fprintf(stderr,
+                    "  dump-sym      : %s @0x%08X = %u (0x%08X)\n",
+                    dump_sym_names[d],
+                    dump_sym_addrs[d],
+                    v,
+                    v);
+    } else {
+      (void)fprintf(stderr,
+                    "  dump-sym      : %s @0x%08X = <unreadable>\n",
+                    dump_sym_names[d],
+                    dump_sym_addrs[d]);
+    }
   }
 
   if ((ppm_path != nullptr) && (composite != nullptr)) {
