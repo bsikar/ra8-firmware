@@ -20,3 +20,18 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME ereader_ui STACK_BYTES 4400
            DESCRIPTION "E-reader device chrome (ra_box + ra_gfx) for RA8D2"
            LIBS ra_gfx ra_ui ra_box ra_display_pal ra_reflow ra_sdmmc_spi ra_fs)
+
+# Bake the Latin-1 subset font (libs/fonts/arnopro_latin1.otf) into .rodata so
+# the Reading body reflows real text with no microSD card (see baked_font.h).
+# The hex array is generated at build time -- not committed -- so the 56 KB of
+# byte literals never reach the QC gates. ${_d} is the repo root resolved above.
+set(_ra_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra_font_arnopro_latin1.c")
+add_custom_command(
+    OUTPUT "${_ra_baked_font_c}"
+    COMMAND ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/utils/font_to_c.py"
+            "${_d}/libs/fonts/arnopro_latin1.otf" "${_ra_baked_font_c}"
+            g_ra_font_arnopro_latin1
+    DEPENDS "${_d}/libs/fonts/arnopro_latin1.otf" "${_d}/scripts/utils/font_to_c.py"
+    COMMENT "Generating baked Latin-1 font array (ereader_ui)")
+target_sources(ereader_ui.elf PRIVATE "${_ra_baked_font_c}")
+target_include_directories(ereader_ui.elf PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")

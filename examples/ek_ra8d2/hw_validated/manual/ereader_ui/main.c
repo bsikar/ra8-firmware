@@ -35,6 +35,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "baked_font.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_box.h"
 #include "ra_cgc.h"
@@ -1102,11 +1103,13 @@ static void er_render_library(void)
  */
 static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
 {
-  if (!s_have_font) {
-    return false;
-  }
-  const int32_t body_w = (int32_t)s_fb.width_px - ((int32_t)k_er_margin_x * 2);
-  const int32_t body_h =
+  /* Reflow from the SD-loaded font if present, else the Latin-1 face baked into
+   * flash (#66) -- so the Reading body shows real proportional text with no card
+   * at all. Only a reflow-engine failure falls through to the bitmap body. */
+  const uint8_t* font_data = s_have_font ? s_font_buf : g_ra_font_arnopro_latin1;
+  const uint32_t font_len  = s_have_font ? s_font_len : g_ra_font_arnopro_latin1_len;
+  const int32_t  body_w    = (int32_t)s_fb.width_px - ((int32_t)k_er_margin_x * 2);
+  const int32_t  body_h =
     height - (int32_t)k_er_statusbar_h - (int32_t)k_er_footer_h - ((int32_t)k_er_body_gap * 2);
   if (body_w <= 0) {
     return false;
@@ -1116,8 +1119,8 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
   }
   if (ra_reflow_init((uint16_t)body_w,
                      (uint16_t)body_h,
-                     s_font_buf,
-                     s_font_len,
+                     font_data,
+                     font_len,
                      (uint16_t)k_er_reflow_px,
                      (uint32_t)k_er_reflow_ink,
                      (uint32_t)k_er_reflow_link,
@@ -1145,23 +1148,26 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
 }
 
 /**
- * @brief Paint the Reading body: reflowed SD-font text, else bitmap lines.
+ * @brief Paint the Reading body: reflowed text (SD or baked font), else bitmap.
  *
  * @param[in] height Framebuffer height in pixels.
  *
+ * @return true if the body was reflowed (paginated); false on the bitmap fallback.
+ * @retval true  ra_reflow painted the current page (SD font or the baked font).
+ * @retval false The bundled bitmap lines were drawn (reflow-engine failure).
  * @pre ra_gfx is bound.
  * @pre @p height matches the bound framebuffer.
- * @post The body band holds reflowed text (SD font) or the bitmap fallback.
+ * @post The body band holds reflowed text or the bitmap fallback.
  * @post Drawing stops before the footer band.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_draw_reading_body(int32_t height)
+static bool er_draw_reading_body(int32_t height)
 {
   const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
   if (er_draw_reading_body_reflow(body_top, height)) {
-    return; /* Live proportional text from the SD-loaded font. */
+    return true; /* Live proportional text (SD font, else the baked flash font). */
   }
   /* Fallback: the bundled 8x16 bitmap font (no SD card / no FONT.OTF). */
   const int32_t body_bot = height - (int32_t)k_er_footer_h - (int32_t)k_er_body_gap;
@@ -1174,6 +1180,7 @@ static void er_draw_reading_body(int32_t height)
     er_text_left((int32_t)k_er_margin_x, y, k_er_body_lines[i], (uint32_t)k_er_ink);
     y += (int32_t)k_er_line_h;
   }
+  return false; /* bitmap fallback -- the body is not paginated */
 }
 
 /**
@@ -1210,7 +1217,7 @@ static void er_render_reading(void)
                     (uint32_t)k_er_rule,
                     true);
 
-  er_draw_reading_body(height);
+  const bool reflowed = er_draw_reading_body(height);
 
   /* Footer: rule, chapter title, page label, progress bar. */
   const int32_t band_top = height - (int32_t)k_er_footer_h;
@@ -1228,9 +1235,9 @@ static void er_render_reading(void)
                     (uint32_t)k_er_rule_soft,
                     true);
   /* In the reflow path the bar tracks the live page; the bitmap fallback keeps
-   * the static placeholder ratio so the no-card golden image is unchanged. */
-  const int32_t pg_cur = s_have_font ? (int32_t)(s_reading_page + 1U) : (int32_t)k_er_page_current;
-  const int32_t pg_tot = s_have_font ? (int32_t)s_reading_pages : (int32_t)k_er_page_total;
+   * the static placeholder ratio. */
+  const int32_t pg_cur = reflowed ? (int32_t)(s_reading_page + 1U) : (int32_t)k_er_page_current;
+  const int32_t pg_tot = reflowed ? (int32_t)s_reading_pages : (int32_t)k_er_page_total;
   const int32_t fill_w = (track_w * pg_cur) / pg_tot;
   (void)
     ra_gfx_rect(track_x, track_y, fill_w, (int32_t)k_er_progress_h, (uint32_t)k_er_fill_deep, true);
