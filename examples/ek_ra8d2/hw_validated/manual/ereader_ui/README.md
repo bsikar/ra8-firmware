@@ -60,17 +60,25 @@ path, so the navigation is exercised exactly as on hardware.
   `ra_reflow_render_page_at(margin_x, body_top)`) at the proportional type
   scale, inset below the status bar and above the footer. The whole pipeline
   is heap-free (glyph arena in `ra_stbtt_alloc.c`; no-heap tokenizer
-  `ra_reflow_tokenize.c`, #82). The font load is **best-effort**: with no card
-  / no `FONT.OTF` the body falls back to the bundled `ra_gfx` 8x16 bitmap
-  lines, so the chrome never regresses (the no-SD render still matches the
-  checked-in golden, #84). Verify the reflow path with a card image, e.g.
+  `ra_reflow_tokenize.c`, #82). A `FONT.OTF` on the microSD overrides the baked
+  face; verify that path with a card image, e.g.
   `tools/mkfontimg/build/mkfontimg libs/fonts/ArnoPro-Regular.otf /tmp/font.img FONT.OTF`
   then `board_sim <elf> --click 250 250 --sd /tmp/font.img --ppm out.ppm`
   (give it a generous `BOARD_SIM_MAX_CHUNKS` -- the ~400 KB SPI font read is
   slow under emulation; instant on real hardware).
-- **Next:** page-turn taps (render `ra_reflow` pages beyond page 0) and a
-  Latin-1 **subset font baked into internal flash** so reflowed text works
-  without an SD card (the full ArnoPro face is ~400 KB and external OSPI is
-  blocked by #44).
+- **E (done, #66):** a **Latin-1 subset of ArnoPro baked into internal flash**
+  (`libs/fonts/arnopro_latin1.otf`, ~56 KB, generated into `.rodata` at build
+  time by `scripts/utils/font_to_c.py`; see `baked_font.h`). So the Reading body
+  reflows **real proportional text with no SD card at all** -- with no `FONT.OTF`
+  the body is now the baked reflow, not the old bitmap fallback (which remains
+  only for a reflow-engine failure). The no-card golden (#84) was regenerated to
+  the reflowed render. Reading from flash also sidesteps the slow emulated-SPI
+  read, so `board_sim <elf> --click 250 250 --ppm out.ppm` (no `--sd`) shows live
+  text.
+- **F (done, #78/#80):** page-turn taps -- a tap in the right half of the body
+  advances a `ra_reflow` page, the left half goes back (`ra_reflow_render_page_at`
+  with a live page index; footer progress tracks it).
+- **Next:** a Latin-1 face larger than the subset / full Unicode coverage would
+  need external OSPI (blocked by #44); EPUB-driven chapter content (#69).
 
 See issue #80 for the full chrome plan.
