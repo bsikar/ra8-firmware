@@ -2161,6 +2161,11 @@ static ra_err_t priv_exfat_find(const ra_fs_mount_t* m,
                                 uint32_t*            out_size,
                                 uint8_t*             out_nofat)
 {
+  /* Leading slashes are not part of the name; match FAT's priv_path_to_83
+   * behavior so ra_fs_open("/name") resolves on exFAT too (#93). */
+  while (*path == '/') {
+    path++;
+  }
   exfat_cursor_t cur = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
     uint8_t  entry[k_exfat_entry_bytes] = {};
@@ -3057,6 +3062,10 @@ static ra_err_t priv_exfat_find_set(const ra_fs_mount_t* m,
                                     uint8_t*             file_copy,
                                     uint8_t*             strm_copy)
 {
+  /* Strip leading slashes so a "/name" path matches (#93), as FAT does. */
+  while (*path == '/') {
+    path++;
+  }
   exfat_cursor_t cur  = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
   const uint32_t nlen = priv_strlen(path);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
