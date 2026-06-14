@@ -295,6 +295,7 @@ static uint32_t s_svc_takes;                 /**< SVCall exceptions taken.     *
 static uint64_t s_exc_return_pc;             /**< Pending EXC_RETURN to unstack.*/
 static bool     s_exc_return_hit;            /**< An EXC_RETURN branch was seen.*/
 static bool     s_systick_pending;           /**< SysTick exception is pended.  */
+static bool     s_pendsv_stop;               /**< Chunk ended on a PENDSVSET.   */
 static bool     s_bkpt_hit;                  /**< Firmware executed a BKPT.     */
 static uint32_t s_bkpt_pc;                   /**< PC of the BKPT that halted.   */
 
@@ -972,6 +973,13 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   const uint32_t step = (op5 >= (uint32_t)k_thumb32_op5_min) ? 4U : 2U;
   uint32_t       next = pc + step;
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  /* Mark this as a context-switch stop so the run loop takes PendSV WITHOUT
+   * advancing the SysTick: a context switch consumes no modelled time, so a
+   * thread that suspends (e.g. tx_thread_sleep) must not have its tick-based
+   * wait expired the instant it yields -- that would starve lower-priority
+   * ready threads. Time (SysTick) advances only on a full-budget run (genuine
+   * execution / idle spin). See the run loop's inner dispatch. */
+  s_pendsv_stop = true;
   (void)uc_emu_stop(uc);
 }
 
@@ -1689,8 +1697,17 @@ static bool exc_take_periph_irq(uc_engine* uc, uint32_t vtor_base, uint32_t acti
  * its idle wait -- exactly the nesting ThreadX relies on to make a sleeping
  * thread runnable. PRIMASK and the active-priority stack are both honoured.
  *
- * @param[in,out] uc        Unicorn engine.
- * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
+ * @param[in,out] uc            Unicorn engine.
+ * @param[in]     vtor_base     Fallback vector base if VTOR reads as 0.
+ * @param[in]     allow_systick When false, the armed SysTick is left pending
+ *                              (not taken) so modelled time does NOT advance.
+ *                              The run loop passes false on a context-switch
+ *                              stop (a PENDSVSET write consumes no time), so a
+ *                              thread that just suspended on a tick-based wait
+ *                              is not woken before lower-priority ready threads
+ *                              run. Passes true on a full-budget boundary,
+ *                              where genuine execution (or an idle spin) has
+ *                              elapsed a tick's worth of time.
  * @return true if an exception was taken (PC now points at a handler).
  *
  * @pre @p uc has stopped at an instruction boundary or just returned.
@@ -1701,7 +1718,7 @@ static bool exc_take_periph_irq(uc_engine* uc, uint32_t vtor_base, uint32_t acti
  *       elapses, matching a masked/disabled SysTick on hardware.
  * @since 0.1.0
  */
-static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base)
+static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
 {
   const uint32_t primask = reg_get(uc, UC_ARM_REG_PRIMASK);
   if ((primask & 1U) != 0U) {
@@ -1710,8 +1727,10 @@ static bool exc_take_pending(uc_engine* uc, uint32_t vtor_base)
   const uint32_t active = exc_active_prio();
 
   /* SysTick first: highest-priority of the modelled exceptions, so it can
-   * pre-empt a lower-priority PendSV that is spinning for a runnable thread. */
-  if (s_systick_pending) {
+   * pre-empt a lower-priority PendSV that is spinning for a runnable thread.
+   * Skipped on a context-switch stop (allow_systick == false) so the tick does
+   * not advance while ready threads still have work to run. */
+  if (allow_systick && s_systick_pending) {
     const bool armed =
       (rd32(uc, (uint64_t)k_syst_csr) & (uint32_t)k_syst_csr_run) == (uint32_t)k_syst_csr_run;
     if (!armed) {
@@ -2648,7 +2667,8 @@ int main(int argc, char** argv)
      * which the next relaunch runs. */
     bool faulted = false;
     for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
-      err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
+      s_pendsv_stop = false; /* set by on_icsr_write iff this run ends on PENDSVSET */
+      err           = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
       if (s_bkpt_hit) {
         faulted = true; /* firmware trapped on a BKPT -- end the run, report it. */
@@ -2657,7 +2677,11 @@ int main(int argc, char** argv)
       if (s_exc_return_hit) {
         s_exc_return_hit = false;
         exc_return(uc, (uint32_t)s_exc_return_pc);
-        (void)exc_take_pending(uc, vtor_base); /* tail-chain the next pend */
+        /* Tail-chain the next pend, but do NOT advance the SysTick: an exception
+         * return consumes no modelled time, so time advances only on a full
+         * instruction budget (below). This keeps a deferred tick from firing the
+         * instant a PendSV context switch unstacks into the new thread. */
+        (void)exc_take_pending(uc, vtor_base, false);
         (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
         continue;
       }
@@ -2665,11 +2689,22 @@ int main(int argc, char** argv)
         faulted = true;
         break;
       }
-      /* Chunk budget reached at an instruction boundary: take the highest-
-       * priority pending exception (SysTick this period, and/or PendSV). If one
-       * was taken, run it (and resolve its return) within this same chunk so a
-       * context switch does not cost a whole scheduling quantum. */
-      if (exc_take_pending(uc, vtor_base)) {
+      if (s_pendsv_stop) {
+        /* Context-switch stop: a thread wrote PENDSVSET to yield. Take PendSV
+         * but do NOT advance the SysTick -- a context switch consumes no
+         * modelled time, so a thread that just suspended on a tick wait keeps
+         * waiting and the scheduler runs the highest-priority READY thread. This
+         * is what lets a low-priority worker (e.g. the NetX echo thread) run to
+         * completion before a higher-priority sleeper's tick expires. */
+        (void)exc_take_pending(uc, vtor_base, false);
+        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+        continue;
+      }
+      /* Full instruction budget elapsed: a tick's worth of genuine execution (or
+       * an idle spin) has passed, so advance time -- take the highest-priority
+       * pending exception (SysTick this period, and/or PendSV) and resolve it in
+       * this same chunk so a context switch does not cost a scheduling quantum. */
+      if (exc_take_pending(uc, vtor_base, true)) {
         (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
         continue;
       }
