@@ -358,6 +358,33 @@ $(RA_SIM): sim-%: %
 	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
+# ---------------------------------------------------------------------------
+# E-reader chrome golden-image regression gate (issue #84).
+#
+# board_sim renders the ereader_ui framebuffer deterministically, so the
+# Library + Reading chrome can be pinned with checked-in golden images
+# (tests/golden/ereader_chrome/). `make ereader-golden` cross-builds the .elf,
+# builds board_sim, and compares; `make ereader-golden-update` regenerates the
+# goldens after an intentional chrome change. The same comparison runs in CI via
+# scripts/board_sim_smoke.sh.
+# ---------------------------------------------------------------------------
+EREADER_GOLDEN_ELF := $(RA_APP_DIR_ereader_ui)/build/ereader_ui.elf
+EREADER_GOLDEN_DIR := $(ROOT)/tests/golden/ereader_chrome
+.PHONY: ereader-golden ereader-golden-update
+ereader-golden: ereader_ui
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	python3 scripts/utils/ereader_golden.py check \
+		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
+		--golden-dir $(EREADER_GOLDEN_DIR) --out-dir /tmp/ereader_golden_out
+
+ereader-golden-update: ereader_ui
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	python3 scripts/utils/ereader_golden.py update \
+		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
+		--golden-dir $(EREADER_GOLDEN_DIR)
+
 ascii:
 	@for dir in src libs tests; do \
 		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
