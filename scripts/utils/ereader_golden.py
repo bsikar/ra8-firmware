@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""ereader_golden.py -- golden-image regression gate for the e-reader chrome.
+
+The ``ereader_ui`` example (issue #80) paints its Library and Reading screens
+into the GLCDC framebuffer. ``tools/board_sim`` renders that firmware
+framebuffer deterministically, so we can pin the chrome with checked-in golden
+images and fail CI (or a local ``make`` target) when an unrelated change shifts
+a pixel.
+
+board_sim's ``--ppm`` snapshot is the panel framebuffer PLUS a fixed-width debug
+sidebar on the right (LED / USB / IRQ state). The chrome golden must test the
+*firmware* output, not board_sim's overlay, so every snapshot is cropped to the
+panel region (total width minus the sidebar) before it is hashed or stored. The
+golden bytes are gzipped (the flat 16-level-grayscale chrome compresses ~30x).
+
+Usage
+-----
+    ereader_golden.py check  --elf E --board-sim B --golden-dir D [--out-dir O]
+    ereader_golden.py update --elf E --board-sim B --golden-dir D
+
+``check`` renders each screen, crops it, and compares against
+``<golden-dir>/<name>.ppm.gz``; mismatches are reported (with the actual image
+written to ``--out-dir`` for inspection) and exit status is non-zero.
+``update`` regenerates the goldens in place.
+
+The script is stdlib-only (gzip / subprocess / argparse) so it runs anywhere the
+board_sim binary and the cross-built ``.elf`` exist.
+"""
+from __future__ import annotations
+
+import argparse
+import gzip
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+# Width board_sim appends on the right of the panel for its status sidebar.
+# Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/board_overlay.c; the crop
+# removes it so the golden depends only on the firmware chrome.
+SIDEBAR_W = 360
+
+# The screens to capture: (golden name, board_sim extra args). Reading is
+# reached by tapping a Library book card via the genuine touch path.
+SCREENS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("library", ()),
+    ("reading", ("--click", "250", "250")),
+)
+
+
+def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
+    """Parse a binary (P6) PPM into (width, height, maxval, pixel-bytes)."""
+    data = path.read_bytes()
+    if data[:2] != b"P6":
+        raise ValueError(f"{path}: not a P6 PPM")
+    idx = 2
+    tokens: list[int] = []
+    while len(tokens) < 3:
+        while idx < len(data) and data[idx] in b" \t\n\r":
+            idx += 1
+        start = idx
+        while idx < len(data) and data[idx] not in b" \t\n\r":
+            idx += 1
+        tokens.append(int(data[start:idx]))
+    idx += 1  # single whitespace byte separating the header from the raster
+    width, height, maxval = tokens
+    pixels = data[idx : idx + width * height * 3]
+    if len(pixels) != width * height * 3:
+        raise ValueError(f"{path}: truncated raster")
+    return width, height, maxval, pixels
+
+
+def crop_panel(width: int, height: int, maxval: int, pixels: bytes) -> bytes:
+    """Return a P6 PPM of the panel region (left ``width - SIDEBAR_W`` columns)."""
+    panel_w = width - SIDEBAR_W
+    if panel_w <= 0:
+        raise ValueError(f"width {width} <= sidebar {SIDEBAR_W}")
+    out = bytearray()
+    for row in range(height):
+        off = row * width * 3
+        out += pixels[off : off + panel_w * 3]
+    header = b"P6\n%d %d\n%d\n" % (panel_w, height, maxval)
+    return header + bytes(out)
+
+
+def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
+    """Run board_sim for one screen and return its cropped-panel PPM bytes."""
+    with tempfile.NamedTemporaryFile(suffix=".ppm") as tmp:
+        cmd = [str(board_sim), str(elf), *extra, "--ppm", tmp.name]
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if proc.returncode != 0:
+            raise RuntimeError(f"board_sim failed: {' '.join(cmd)}\n{proc.stderr}")
+        return crop_panel(*read_ppm(Path(tmp.name)))
+
+
+def golden_path(golden_dir: Path, name: str) -> Path:
+    return golden_dir / f"{name}.ppm.gz"
+
+
+def do_update(args: argparse.Namespace) -> int:
+    args.golden_dir.mkdir(parents=True, exist_ok=True)
+    for name, extra in SCREENS:
+        panel = render_panel(args.board_sim, args.elf, extra)
+        golden_path(args.golden_dir, name).write_bytes(gzip.compress(panel, 9))
+        print(f"  updated {name}.ppm.gz ({len(panel)} bytes -> gz)")
+    return 0
+
+
+def do_check(args: argparse.Namespace) -> int:
+    failures = 0
+    for name, extra in SCREENS:
+        gpath = golden_path(args.golden_dir, name)
+        if not gpath.exists():
+            print(f"  [FAIL] {name}: golden missing ({gpath}); run 'update'")
+            failures += 1
+            continue
+        actual = render_panel(args.board_sim, args.elf, extra)
+        expected = gzip.decompress(gpath.read_bytes())
+        if actual == expected:
+            print(f"  [PASS] {name}: chrome matches golden")
+            continue
+        failures += 1
+        msg = "size differs" if len(actual) != len(expected) else "pixels differ"
+        print(f"  [FAIL] {name}: {msg} (actual {len(actual)} vs golden {len(expected)})")
+        if args.out_dir is not None:
+            args.out_dir.mkdir(parents=True, exist_ok=True)
+            out = args.out_dir / f"{name}.actual.ppm"
+            out.write_bytes(actual)
+            print(f"         wrote {out} for inspection")
+    if failures != 0:
+        print(f"[FAIL] ereader chrome golden: {failures} screen(s) drifted.")
+        return 1
+    print("[PASS] ereader chrome golden: all screens match.")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("mode", choices=("check", "update"))
+    parser.add_argument("--elf", type=Path, required=True, help="cross-built ereader_ui.elf")
+    parser.add_argument("--board-sim", type=Path, required=True, help="board_sim binary")
+    parser.add_argument("--golden-dir", type=Path, required=True, help="golden image directory")
+    parser.add_argument("--out-dir", type=Path, default=None, help="where to dump mismatches")
+    args = parser.parse_args()
+
+    if not args.elf.exists():
+        print(f"error: elf not found: {args.elf}", file=sys.stderr)
+        return 2
+    if not args.board_sim.exists():
+        print(f"error: board_sim not found: {args.board_sim}", file=sys.stderr)
+        return 2
+
+    return do_update(args) if args.mode == "update" else do_check(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -81,6 +81,14 @@ PY
 render_assert_apps="ereader_ui sd_font_render"
 min_render_colors=6
 
+# Apps whose rendered chrome is pinned to a checked-in golden image (exact
+# pixel match of the panel framebuffer, a strictly stronger check than the
+# distinct-color floor above). board_sim renders deterministically, so any
+# unintended chrome change fails here. Regenerate after an intentional change
+# with `make ereader-golden-update`. See scripts/utils/ereader_golden.py (#84).
+golden_apps="ereader_ui"
+golden_dir="$ROOT/tests/golden/ereader_chrome"
+
 # Apps that need a microSD card attached (board_sim --sd <image>). The harness
 # auto-builds a small FAT16 card image (a font as FONT.OTF) and passes it so
 # sd_font_render can mount + read it. This is how "specify a microSD exists" is
@@ -189,6 +197,19 @@ for app in "${apps[@]}"; do
             fail=1
             continue
         fi
+        case " $golden_apps " in
+        *" $app "*)
+            if python3 "$ROOT/scripts/utils/ereader_golden.py" check \
+                --elf "$elf" --board-sim "$sim" --golden-dir "$golden_dir" \
+                --out-dir /tmp/ereader_golden_out >"/tmp/golden_$app.log" 2>&1; then
+                echo "OK (pc=$pc, render=$colors colors, golden OK)"
+            else
+                echo "GOLDEN DRIFT (pc=$pc; see /tmp/golden_$app.log)"
+                fail=1
+            fi
+            continue
+            ;;
+        esac
         echo "OK (pc=$pc, render=$colors colors)"
         continue
         ;;
