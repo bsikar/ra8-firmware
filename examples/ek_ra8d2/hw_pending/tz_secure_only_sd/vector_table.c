@@ -95,26 +95,51 @@ void PendSV_Handler(void) __attribute__((weak));
 /* SysTick provided by libs/ra_core/src/ra_time.c (weak) so RTOS apps may override. */
 extern void SysTick_Handler(void);
 
+/* Each peripheral IRQ trampoline forwards to the ra_isr substrate dispatcher so
+ * drivers that called ra_isr_register run in NVIC handler-mode. */
+extern void ra_isr_dispatch(uint16_t slot);
+
 /* =============================================================================
  * Peripheral IRQ handlers
  * =============================================================================
  *
  * The RA Interrupt Control Unit exposes 112 routable interrupt lines
- * to the NVIC (per HUM table 13.x). We declare them all weak-aliased
- * to Default_Handler so a driver can override any single one.
+ * to the NVIC (per HUM table 13.x).
+ *
+ * Each peripheral IRQ vector forwards to ra_isr_dispatch(slot) so any
+ * (handler, ctx) registered through the substrate (ra_isr_register)
+ * runs in NVIC handler-mode. Slots that were never registered land in
+ * the dispatcher's bounds-checked no-op path. The trampolines are
+ * weak so a driver can still install a fully-custom IRQ handler by
+ * defining a non-weak ``IRQ<n>_Handler``. HUM Ch 13 NVIC + Ch 14 ICU
+ * IELSR.
+ *
+ * NB: a prior revision aliased every IRQn_Handler directly to
+ * Default_Handler (which contains ``bkpt #0``). On debug-disabled
+ * silicon a stray bkpt escalates to HardFault, so the first SCI/SPI IRQ
+ * the ra_sdmmc_spi driver armed via ra_isr_register would halt the chip.
+ * The dispatching form below avoids that and matches the working apps.
  */
 
 enum : uint16_t {
   k_ra_irq_count = 112U,
 };
 
-/* Mach-O does not support `alias`; on Apple hosts we keep only
- * `weak` so the symbols exist but are not aliased. The host build
- * never invokes these vectors. */
+/* On Apple host syntax-check we drop ra_isr_dispatch (host build
+ * never branches through these) and keep only a weak empty body. */
 #ifndef __APPLE__
-#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak, alias("Default_Handler")))
+#define RA_IRQ_STUB(n)                                                                             \
+  void                       IRQ##n##_Handler(void);                                               \
+  __attribute__((weak)) void IRQ##n##_Handler(void)                                                \
+  {                                                                                                \
+    ra_isr_dispatch((uint16_t)(n));                                                                \
+  }                                                                                                \
+  static_assert(1, "ra_irq_stub_" #n)
 #else
-#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak))
+#define RA_IRQ_STUB(n)                                                                             \
+  void                       IRQ##n##_Handler(void);                                               \
+  __attribute__((weak)) void IRQ##n##_Handler(void) {}                                             \
+  static_assert(1, "ra_irq_stub_" #n)
 #endif
 
 RA_IRQ_STUB(0);
