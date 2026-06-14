@@ -2871,6 +2871,11 @@ priv_exfat_link(ra_fs_mount_t* m, const char* path, uint32_t nlen, uint32_t star
 static ra_err_t
 priv_exfat_create(ra_fs_mount_t* m, const char* path, const uint8_t* data, uint32_t len)
 {
+  /* Strip leading slashes so the stored name matches what the matchers
+   * search for (#93); otherwise the file is created but cannot be reopened. */
+  while (*path == '/') {
+    path++;
+  }
   const uint32_t nlen = priv_strlen(path);
   if (nlen == 0U) {
     return k_ra_err_invalid_arg;
@@ -3322,6 +3327,14 @@ static ra_err_t priv_exfat_apply_rename(const ra_fs_mount_t*  m,
 static ra_err_t
 priv_exfat_rename(const ra_fs_mount_t* m, const char* old_path, const char* new_path)
 {
+  /* Strip leading slashes on both paths so the old name matches and the new
+   * name is stored without a slash (#93), consistent with create/find. */
+  while (*old_path == '/') {
+    old_path++;
+  }
+  while (*new_path == '/') {
+    new_path++;
+  }
   const uint32_t old_len = priv_strlen(old_path);
   const uint32_t new_len = priv_strlen(new_path);
   if (old_len > (uint32_t)k_exfat_name_per_entry) {
