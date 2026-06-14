@@ -102,7 +102,7 @@ static ra_err_t agt_mstp_acquire(uint8_t channel)
   if (s_agt_mstp_held[channel]) {
     return k_ra_ok;
   }
-  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448. */
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
   const ra_err_t err = ra_mstp_enable(s_agt_mstp_table[channel]);
   if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE -- target-only read-back path */
     return err;         /* GCOVR_EXCL_LINE */
@@ -143,7 +143,7 @@ static ra_err_t agt_mstp_release(uint8_t channel)
     return k_ra_ok;
   }
   s_agt_mstp_held[channel] = false;
-  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448. */
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
   return ra_mstp_disable(s_agt_mstp_table[channel]);
 }
 
