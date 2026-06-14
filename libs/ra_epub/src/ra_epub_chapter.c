@@ -325,6 +325,46 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
   return priv_locate_extract(zip, full_path, book->chapter_paths[idx], out_xhtml, max_len, got_len);
 }
 
+ra_err_t ra_epub_get_toc_kind(const ra_epub_book_t* book, uint8_t* out_kind)
+{
+  if (book == nullptr || out_kind == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (book->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  *out_kind = book->toc_kind;
+  return k_ra_ok;
+}
+
+ra_err_t ra_epub_get_toc_count(const ra_epub_book_t* book, uint16_t* out_count)
+{
+  if (book == nullptr || out_count == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (book->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  *out_count = book->toc_count;
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_epub_get_toc_entry(const ra_epub_book_t* book, uint16_t idx, ra_epub_toc_entry_t* out_entry)
+{
+  if (book == nullptr || out_entry == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (book->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  if (idx >= book->toc_count) {
+    return k_ra_err_out_of_range;
+  }
+  *out_entry = book->toc[idx];
+  return k_ra_ok;
+}
+
 ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* out_meta)
 {
   if (book == nullptr || out_meta == nullptr) {
