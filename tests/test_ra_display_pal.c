@@ -10,8 +10,10 @@
  *     clear, flush, deinit. The LCD backend's hardware accesses
  *     are intercepted by ``ra_sim_mmap`` so the bring-up sequence
  *     can run under host gcc with no real GPIO / GLCDC.
- *   - E-ink backend stub: init / get_caps succeed; flush /
- *     get_framebuffer / clear return ``k_ra_err_not_supported``.
+ *   - E-ink (IT8951) backend end-to-end against the simulator-backed
+ *     ``ra_epaper`` driver: init / get_caps / get_framebuffer / clear /
+ *     flush / deinit all succeed, plus the RGB565 -> 8bpp luma
+ *     conversion the flush path relies on.
  *   - Busy-rejection on a second ``display_init`` without a
  *     preceding ``display_deinit``.
  *
@@ -25,6 +27,7 @@
 #include "ra_display_pal.h"
 #include "ra_display_pal_eink.h"
 #include "ra_display_pal_lcd.h"
+#include "ra_epaper.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_panel_timing.h"
@@ -73,6 +76,24 @@ static display_cfg_t make_lcd_cfg(void)
   return cfg;
 }
 
+/* IT8951 descriptor the board BSP would supply through panel_timing,
+ * sized to the test framebuffer. In host tests this drives the
+ * simulator-backed ra_epaper (SPI/HRDY short-circuited under sim). */
+typedef enum : uint32_t {
+  k_eink_spi_baud_hz = 12000000U,  /**< 12 MHz SPI clock. */
+  k_eink_pclka_hz    = 100000000U, /**< 100 MHz PCLKA.    */
+} test_eink_const_t;
+
+static const ra_epaper_cfg_t s_eink_panel_cfg = {
+  .spi_channel  = 0U,
+  .spi_baud_hz  = (uint32_t)k_eink_spi_baud_hz,
+  .pclka_hz     = (uint32_t)k_eink_pclka_hz,
+  .reset_pin    = 0U,
+  .busy_pin     = 0U,
+  .panel_width  = (uint16_t)k_test_fb_width,
+  .panel_height = (uint16_t)k_test_fb_height,
+};
+
 static display_cfg_t make_eink_cfg(void)
 {
   const display_cfg_t cfg = {
@@ -82,6 +103,7 @@ static display_cfg_t make_eink_cfg(void)
     .width_px          = (uint16_t)k_test_fb_width,
     .height_px         = (uint16_t)k_test_fb_height,
     .pixfmt            = k_display_pixfmt_rgb565,
+    .panel_timing      = &s_eink_panel_cfg,
   };
   return cfg;
 }
@@ -382,13 +404,14 @@ static void test_mcdc_eink_rejects_zero_dimensions(void)
 
 /**
  * @par MC/DC:
- * E-ink backend init runs the same validation path as the LCD
- * backend; this test covers the happy path so the validation-rejection
- * vectors are exercised the same way.
+ * E-ink backend init runs the same validation path as the LCD backend;
+ * this test covers the happy path (init brings up the simulator-backed
+ * IT8951 via ra_epaper) so the validation-rejection vectors are
+ * exercised the same way.
  */
-static void test_eink_stub_get_caps_succeeds(void)
+static void test_eink_init_get_caps(void)
 {
-  TEST_BEGIN("e-ink stub: init + get_caps succeed");
+  TEST_BEGIN("e-ink: init + get_caps succeed");
   harness_reset_world();
 
   display_handle_t*   d   = nullptr;
@@ -400,19 +423,22 @@ static void test_eink_stub_get_caps_succeeds(void)
   TEST_ASSERT_EQ(k_test_fb_width, caps.width_px);
   TEST_ASSERT(caps.refresh_latency_us_typ > 0U);
   TEST_ASSERT(!caps.continuous_refresh);
+  TEST_ASSERT(caps.supports_partial_update);
 
   TEST_ASSERT_EQ(k_ra_ok, display_deinit(d));
-  TEST_END("e-ink stub: init + get_caps succeed");
+  TEST_END("e-ink: init + get_caps succeed");
 }
 
 /**
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the e-ink stub's
- * not_supported contract on flush / get_framebuffer / clear)
+ * (no compound decisions in this test -- exercises the wired e-ink
+ * vtable: get_framebuffer hands back the RGB565 buffer, clear fills it,
+ * flush converts + pushes to the simulator-backed IT8951, and an
+ * out-of-bounds rect is rejected by the simple bounds checks.)
  */
-static void test_eink_stub_flush_returns_not_supported(void)
+static void test_eink_flush_clear_get_fb(void)
 {
-  TEST_BEGIN("e-ink stub: flush/get_fb/clear return k_ra_err_not_supported");
+  TEST_BEGIN("e-ink: get_fb + clear + flush succeed");
   harness_reset_world();
 
   display_handle_t*   d   = nullptr;
@@ -420,15 +446,44 @@ static void test_eink_stub_flush_returns_not_supported(void)
   TEST_ASSERT_EQ(k_ra_ok, display_init(&cfg, &d));
 
   display_fb_t fb = {};
-  TEST_ASSERT_EQ(k_ra_err_not_supported, display_get_framebuffer(d, &fb));
+  TEST_ASSERT_EQ(k_ra_ok, display_get_framebuffer(d, &fb));
+  TEST_ASSERT(fb.pixels == s_test_fb);
+  TEST_ASSERT_EQ(k_test_fb_width, fb.width_px);
 
-  TEST_ASSERT_EQ(k_ra_err_not_supported,
-                 display_flush(d, display_full_rect(d), k_display_refresh_quality));
+  /* clear fills the framebuffer (does not touch the panel). */
+  TEST_ASSERT_EQ(k_ra_ok, display_clear(d, 0x8410U));
+  TEST_ASSERT_EQ(0x8410U, s_test_fb[0]);
+  TEST_ASSERT_EQ(0x8410U, s_test_fb[k_test_fb_pixels - 1U]);
 
-  TEST_ASSERT_EQ(k_ra_err_not_supported, display_clear(d, 0xAAU));
+  /* full-screen flush converts + pushes to the IT8951 (sim SPI). */
+  TEST_ASSERT_EQ(k_ra_ok, display_flush(d, display_full_rect(d), k_display_refresh_quality));
+  /* a fast partial flush also succeeds. */
+  const display_rect_t part = {.x = 0U, .y = 0U, .w = 8U, .h = 8U};
+  TEST_ASSERT_EQ(k_ra_ok, display_flush(d, part, k_display_refresh_fast));
+  /* an out-of-bounds rect is rejected. */
+  const display_rect_t oob = {.x = 0U, .y = 0U, .w = (uint16_t)(k_test_fb_width + 1U), .h = 1U};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, display_flush(d, oob, k_display_refresh_quality));
 
   TEST_ASSERT_EQ(k_ra_ok, display_deinit(d));
-  TEST_END("e-ink stub: flush/get_fb/clear return k_ra_err_not_supported");
+  TEST_END("e-ink: get_fb + clear + flush succeed");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- pins the RGB565 -> 8bpp luma
+ * conversion the e-ink flush path relies on against known endpoints.)
+ */
+static void test_eink_luma_conversion(void)
+{
+  TEST_BEGIN("e-ink: RGB565 -> 8bpp luma");
+  /* White -> 255, black -> 0 (the weights sum to 256). */
+  TEST_ASSERT_EQ(255U, ra_display_pal_eink_luma_from_rgb565(0xFFFFU));
+  TEST_ASSERT_EQ(0U, ra_display_pal_eink_luma_from_rgb565(0x0000U));
+  /* Pure primaries hit their Rec.601 weights (R 77, G 150, B 29 / 256). */
+  TEST_ASSERT_EQ(76U, ra_display_pal_eink_luma_from_rgb565(0xF800U));
+  TEST_ASSERT_EQ(149U, ra_display_pal_eink_luma_from_rgb565(0x07E0U));
+  TEST_ASSERT_EQ(28U, ra_display_pal_eink_luma_from_rgb565(0x001FU));
+  TEST_END("e-ink: RGB565 -> 8bpp luma");
 }
 
 /* =============================================================================
@@ -447,7 +502,8 @@ int main(void)
   test_init_rejects_double_init();
   test_calls_after_deinit_are_rejected();
   test_mcdc_eink_rejects_zero_dimensions();
-  test_eink_stub_get_caps_succeeds();
-  test_eink_stub_flush_returns_not_supported();
+  test_eink_init_get_caps();
+  test_eink_flush_clear_get_fb();
+  test_eink_luma_conversion();
   return 0;
 }
