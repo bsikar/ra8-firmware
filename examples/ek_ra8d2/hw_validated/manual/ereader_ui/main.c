@@ -350,6 +350,12 @@ static ra_ui_target_t s_targets[k_er_max_targets];
 /** @brief Number of tap targets currently populated. */
 static uint16_t s_target_count;
 
+/** @brief Reading view: current reflow page index (0-based). */
+static uint32_t s_reading_page;
+
+/** @brief Reading view: total reflow pages from the last layout (>= 1). */
+static uint32_t s_reading_pages = 1U;
+
 /** @brief Debounce: true while a contact is held, to fire once per tap. */
 static bool s_was_touching;
 
@@ -1073,11 +1079,13 @@ static void er_render_library(void)
  * @brief Render the Reading body through ra_reflow when an SD font is loaded.
  *
  * @details Lays the chapter XHTML out against the body rectangle (inset
- *          below the status bar, above the footer) and paints page 0 there
- *          via ra_reflow_render_page_at. er_render_reading has already
- *          cleared the framebuffer to paper and the body colour is dark
- *          ink, so the text shows (the ra_reflow_init colour args are the
- *          text colours, not the background).
+ *          below the status bar, above the footer) and paints the current
+ *          page (::s_reading_page) there via ra_reflow_render_page_at.
+ *          er_render_reading has already cleared the framebuffer to paper
+ *          and the body colour is dark ink, so the text shows (the
+ *          ra_reflow_init colour args are the text colours, not the
+ *          background). Publishes the layout's page count to ::s_reading_pages
+ *          and clamps ::s_reading_page into range.
  *
  * @param[in] body_top Top y of the body band (pixels).
  * @param[in] height   Framebuffer height (pixels).
@@ -1086,7 +1094,8 @@ static void er_render_library(void)
  * @retval false No font / init / layout failure -- caller draws the bitmap body.
  * @pre ra_gfx is bound and the body region is cleared to paper.
  * @pre @p height matches the bound framebuffer.
- * @post On true, page 0 of the chapter is blitted into the body rect.
+ * @post On true, ::s_reading_page of the chapter is blitted into the body rect
+ *       and ::s_reading_pages holds the total page count.
  * @post On false, nothing is drawn.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -1123,7 +1132,14 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
     (void)ra_reflow_close(&s_reflow_engine);
     return false;
   }
-  (void)ra_reflow_render_page_at(&s_reflow_engine, 0U, (int32_t)k_er_margin_x, body_top);
+  /* Publish the page count (>= 1) for the footer + page-turn taps, and clamp the
+   * current page in case the chapter now paginates shorter than before. */
+  s_reading_pages = pages;
+  if (s_reading_page >= pages) {
+    s_reading_page = pages - 1U;
+  }
+  (void)
+    ra_reflow_render_page_at(&s_reflow_engine, s_reading_page, (int32_t)k_er_margin_x, body_top);
   (void)ra_reflow_close(&s_reflow_engine);
   return true;
 }
@@ -1211,7 +1227,11 @@ static void er_render_reading(void)
                     (int32_t)k_er_progress_h,
                     (uint32_t)k_er_rule_soft,
                     true);
-  const int32_t fill_w = (track_w * (int32_t)k_er_page_current) / (int32_t)k_er_page_total;
+  /* In the reflow path the bar tracks the live page; the bitmap fallback keeps
+   * the static placeholder ratio so the no-card golden image is unchanged. */
+  const int32_t pg_cur = s_have_font ? (int32_t)(s_reading_page + 1U) : (int32_t)k_er_page_current;
+  const int32_t pg_tot = s_have_font ? (int32_t)s_reading_pages : (int32_t)k_er_page_total;
+  const int32_t fill_w = (track_w * pg_cur) / pg_tot;
   (void)
     ra_gfx_rect(track_x, track_y, fill_w, (int32_t)k_er_progress_h, (uint32_t)k_er_fill_deep, true);
 }
@@ -1266,12 +1286,29 @@ static bool er_handle_tap(int32_t x, int32_t y)
       uint16_t prev = 0U;
       return (ra_ui_nav_pop(&s_nav, &prev) == k_ra_ok);
     }
+    /* Page-turn: a tap in the right half of the body advances a page, the left
+     * half goes back. No-ops at the ends and in the bitmap fallback (where
+     * s_reading_pages stays 1), so a tap there leaves the screen unchanged. */
+    const int32_t mid  = (int32_t)s_fb.width_px / 2;
+    uint32_t      want = s_reading_page;
+    if (x >= mid) {
+      if ((s_reading_page + 1U) < s_reading_pages) {
+        want = s_reading_page + 1U;
+      }
+    } else if (s_reading_page > 0U) {
+      want = s_reading_page - 1U;
+    }
+    if (want != s_reading_page) {
+      s_reading_page = want;
+      return true; /* re-render at the new page */
+    }
     return false;
   }
   uint16_t action = (uint16_t)k_er_act_none;
   bool     hit    = false;
   (void)ra_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
   if (hit && (action == (uint16_t)k_er_act_open_book)) {
+    s_reading_page = 0U; /* always open a book at its first page */
     return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_reading) == k_ra_ok);
   }
   return false;
