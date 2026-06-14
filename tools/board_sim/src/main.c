@@ -2584,14 +2584,34 @@ int main(int argc, char** argv)
                   (unsigned)k_record_every,
                   (unsigned)k_record_fps);
   }
-  uint32_t      rec_frames  = 0U; /* frames written when --record is active. */
-  const clock_t t0          = clock();
-  uc_err        err         = UC_ERR_OK;
-  uint32_t      run_pc      = pc;
-  uint32_t      chunks      = 0U;
-  bool          timed_out   = false;
-  bool          closed      = false;
-  uint32_t      settle_left = 0U; /* >0 once the click landed: chunks to drain. */
+  /* BOARD_SIM_IDLE_STOP=N: in a plain headless run, stop early once observable
+   * state has not changed for N consecutive chunks -- the firmware has reached
+   * steady-state idle (an RTOS idle spin, a `while(1) wfi`), so there is nothing
+   * left to run. Off (0) by default, so normal runs are unaffected; opt in for
+   * RTOS/idle apps that would otherwise burn the whole wall-clock budget. The
+   * tracked counters (peripheral MMIO reads/writes, PendSV/SVCall, peripheral
+   * IRQs) are all monotonic, so an unchanged sum means none of them advanced. */
+  uint32_t idle_stop_chunks = 0U;
+  {
+    const char* e_idle = getenv("BOARD_SIM_IDLE_STOP");
+    if ((e_idle != nullptr) && (view == nullptr)) {
+      const long v = strtol(e_idle, nullptr, (int)k_env_strtol_base);
+      if (v > 0L) {
+        idle_stop_chunks = (uint32_t)v;
+      }
+    }
+  }
+  uint64_t      idle_sig_prev = 0U;
+  uint32_t      idle_run      = 0U;
+  bool          idle_stopped  = false;
+  uint32_t      rec_frames    = 0U; /* frames written when --record is active. */
+  const clock_t t0            = clock();
+  uc_err        err           = UC_ERR_OK;
+  uint32_t      run_pc        = pc;
+  uint32_t      chunks        = 0U;
+  bool          timed_out     = false;
+  bool          closed        = false;
+  uint32_t      settle_left   = 0U; /* >0 once the click landed: chunks to drain. */
   for (; chunks < max_chunks; chunks++) {
     /* Each outer chunk is one SysTick period: arm the periodic tick so the
      * boundary (or a tail-chain) takes it once interrupts permit. */
@@ -2720,16 +2740,37 @@ int main(int argc, char** argv)
         timed_out = true;
         break;
       }
-    } else if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
-      timed_out = true;
-      break;
+    } else { /* plain headless run (no window, no scripted click) */
+      /* Steady-state idle early-stop (opt-in; not while recording, which must
+       * span its full window). All tracked counters are monotonic, so an
+       * unchanged sum means no MMIO / IRQ / context switch happened this chunk. */
+      if ((idle_stop_chunks > 0U) && (record_dir == nullptr)) {
+        const uint64_t idle_sig = (uint64_t)s_mmio_reads + (uint64_t)s_mmio_writes +
+                                  (uint64_t)s_pendsv_takes + (uint64_t)s_svc_takes +
+                                  (uint64_t)board_periph_irq_total();
+        if (idle_sig == idle_sig_prev) {
+          idle_run++;
+          if (idle_run >= idle_stop_chunks) {
+            idle_stopped = true;
+            break;
+          }
+        } else {
+          idle_sig_prev = idle_sig;
+          idle_run      = 0U;
+        }
+      }
+      if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
+        timed_out = true;
+        break;
+      }
     }
   }
 
   (void)fprintf(stderr,
-                "\nboard_sim: stopped -- %s%s\n",
+                "\nboard_sim: stopped -- %s%s%s\n",
                 uc_strerror(err),
-                timed_out ? " (wall-clock budget reached)" : "");
+                timed_out ? " (wall-clock budget reached)" : "",
+                idle_stopped ? " (idle steady-state)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
   if (s_bkpt_hit) {
     (void)fprintf(stderr,
@@ -2788,9 +2829,17 @@ int main(int argc, char** argv)
   if (truncated) {
     (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
   }
-  if (((err == UC_ERR_OK) || timed_out) && !s_bkpt_hit) {
-    (void)fprintf(stderr,
-                  "  => firmware EXECUTED to the run budget (no invalid opcode / fault).\n");
+  if (((err == UC_ERR_OK) || timed_out || idle_stopped) && !s_bkpt_hit) {
+    if (idle_stopped) {
+      (void)fprintf(stderr,
+                    "  => firmware EXECUTED to the run budget (idle steady-state: no "
+                    "observable change for %u chunks, stopped at chunk %u).\n",
+                    idle_stop_chunks,
+                    chunks);
+    } else {
+      (void)fprintf(stderr,
+                    "  => firmware EXECUTED to the run budget (no invalid opcode / fault).\n");
+    }
   }
 
   /* --dump-sym: read each resolved global from Unicorn memory and print its
