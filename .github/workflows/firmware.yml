@@ -92,6 +92,19 @@ jobs:
         run: bash scripts/clang_tidy.sh --check --verbose
 
   # ---------------------------------------------------------------------------
+  # NSC veneers must stay -mcmse-clean so the TrustZone HIL path keeps building
+  # (#54). No app links the comms/eth veneers yet, so only this gate would catch
+  # an over-4-arg cmse_nonsecure_entry veneer regression.
+  # ---------------------------------------------------------------------------
+  nsc-cmse:
+    name: NSC veneers (-mcmse)
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile ra_nsc veneers under -mcmse
+        run: bash scripts/utils/check_nsc_cmse.sh
+
+  # ---------------------------------------------------------------------------
   # Host unit tests (ctest) -- aggregates tests/build_tests.sh + run_tests.sh
   # ---------------------------------------------------------------------------
   unit-tests:

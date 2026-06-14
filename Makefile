@@ -319,10 +319,16 @@ mcdc:
 misra:
 	bash scripts/utils/misra_check.sh
 
-.PHONY: cppcheck build-all
+.PHONY: cppcheck build-all nsc-cmse-check
 # `make cppcheck` -- local parity with the CI cppcheck gate.
 cppcheck:
 	bash scripts/cppcheck.sh
+
+# `make nsc-cmse-check` -- compile every libs/ra_nsc veneer under -mcmse
+# (TrustZone-on) so the Non-Secure-Callable trampolines stay buildable for the
+# TZ HIL path (#54); local parity with the CI "NSC veneers (-mcmse)" job.
+nsc-cmse-check:
+	bash scripts/utils/check_nsc_cmse.sh
 
 # `make build-all` -- cross-compile every firmware app (what CI's
 # "Cross-build all apps" job runs); per-app logs in build/build_all_examples/.
