@@ -42,6 +42,7 @@ asserts an expected string appears within a per-app timeout.
 | rng_demo | `trng: ` | 10 s |
 | rtc_alarm | `rtc: alarm fired` | 30 s |
 | sdram_benchmark | `sdram: w=` | 20 s |
+| threadx_filex_demo | `ospi FAT roundtrip ok` | 20 s |
 | threadx_ipc_demo | `[ipc_demo]` | 15 s |
 | timer_capture_demo | `gpt: period=` | 15 s |
 | tz_secure_only_sd | `sd: roundtrip ok` | 20 s |
@@ -98,12 +99,11 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | mpu_partition_simple | LED2 on MemFault (expected), LED3 on no-fault |
 | threadx_blink | LED1/LED2 toggle from two ThreadX threads |
 | threadx_canfd_demo | LED toggles on each CAN-FD ThreadX frame |
-| threadx_filex_demo | LED1 toggles on each FileX write/read pass |
 | threadx_levelx_demo | LED1 toggles on each LevelX erase/write cycle |
 | threadx_mpu_partition_demo | LED1 blinks in MPU-partitioned ThreadX thread |
 
 Device-mode USB apps that need a separate USB host to verify (CDC / HID / MSC
 device, the `tz_secure_only_usb_*` and `usb_msc_mram*` images) now live in
 [`../manual/`](../manual/) -- the self-loop self-tests above cover the same
-classes board-only. `tz_nsc_cgc_usb` and `threadx_filex_demo` remain in
-[`../../hw_pending/`](../../hw_pending/) (TrustZone partition gap / SD-over-SDHI).
+classes board-only. `tz_nsc_cgc_usb` remains in
+[`../../hw_pending/`](../../hw_pending/) (the TrustZone partition gap, #60).
