@@ -82,8 +82,18 @@ extern "C" {
  * p 1965 and HUM Ch 37 "USB 2.0 High-Speed Module (USBHS)" p 2059.
  */
 typedef enum : uintptr_t {
+#ifdef RA_PERIPH_NS_ALIAS
+  /* TrustZone Non-secure build (two-project NS image, #96): reach the
+   * controllers through the IDAU bit[28]=1 Non-secure alias (HUM "PSCU_NS =
+   * 0x5020_4000" pattern, +0x1000_0000) so the SAU NS peripheral region
+   * (0x5000_0000-0xDFFF_FFFF) permits the access. The Secure side marks USBFS0
+   * Non-secure in PSARB (PSARB11) so the alias actually responds. */
+  k_ra_usb_fs0_base_addr = 0x50250000UL, /**< USB-FS base (NS alias bit[28]=1). */
+  k_ra_usb_hs0_base_addr = 0x50351000UL, /**< USB-HS base (NS alias bit[28]=1). */
+#else
   k_ra_usb_fs0_base_addr = 0x40250000UL, /**< USB Full-Speed base.   */
   k_ra_usb_hs0_base_addr = 0x40351000UL, /**< USB High-Speed base.   */
+#endif
 } ra_usb_addr_t;
 
 /**

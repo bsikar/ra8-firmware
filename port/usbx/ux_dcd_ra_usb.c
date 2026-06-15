@@ -4097,6 +4097,7 @@ static ra_err_t internal_init_bind_owner(ra_usb_speed_t speed)
     s_dcd.pipes[i].xfer = nullptr;
   }
 
+#ifndef RA_USB_POLLED_ONLY
   /* Wire the controller's ELC event onto an NVIC line. ra_isr_init is
    * idempotent. HUM Ch 13 NVIC + Ch 14 ICU IELSR. */
   RA_RETURN_ON_ERROR(ra_isr_init(), s_tag, "ra_isr_init");
@@ -4108,6 +4109,15 @@ static ra_err_t internal_init_bind_owner(ra_usb_speed_t speed)
                      s_tag,
                      "ra_isr_register");
   internal_usbfs_storm_guard_init(speed);
+#else
+  /* RA_USB_POLLED_ONLY (TrustZone NS image, #96): the worker drives the
+   * controller by calling ra_usb_dispatch() in a tight loop instead of taking
+   * the USB NVIC line. The ICU IELSR + NVIC are Secure-attributed and would
+   * fault from Non-secure state, so skip ra_isr_register entirely. Bus events,
+   * chapter-9 SETUP handling, and bulk auto-echo all run inside the polled
+   * dispatch -> internal_event_cb -> ux_dcd_ra_usb_irq path. */
+  (void)speed;
+#endif
   return k_ra_ok;
 }
 

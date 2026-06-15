@@ -42,12 +42,19 @@ target_link_options(tz_nsc_cgc_usb.elf PRIVATE
 # ---- Non-Secure executable ------------------------------------------------
 include(${_d}/cmake/threadx_ns.cmake)
 
-add_executable(tz_nsc_cgc_usb_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
+add_executable(tz_nsc_cgc_usb_ns.elf
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_usb.c)
 
 # Match the toolchain ABI of the Secure side but build for the NS world: no
 # -mcmse (NS emits no veneers), no startup files (the Secure boot copies .data
 # and ns_reset_handler zeros .bss), and the NS-image linker script.
-target_compile_definitions(tz_nsc_cgc_usb_ns.elf PRIVATE RA_TRUSTZONE_ENABLE)
+#   RA_PERIPH_NS_ALIAS -- ra_usb/ra_mstp reach the controllers through the IDAU
+#                         bit[28]=1 Non-secure alias (0x5025_0000 / 0x5020_3000).
+#   RA_USB_POLLED_ONLY -- ux_dcd_ra_usb skips the Secure-attributed USB NVIC line;
+#                         the worker drives the controller via ra_usb_dispatch.
+target_compile_definitions(tz_nsc_cgc_usb_ns.elf PRIVATE
+    RA_TRUSTZONE_ENABLE RA_PERIPH_NS_ALIAS RA_USB_POLLED_ONLY)
 target_compile_options(tz_nsc_cgc_usb_ns.elf PRIVATE -fshort-enums -ffreestanding)
 target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -77,14 +84,17 @@ list(FILTER _ns_usbx_core EXCLUDE REGEX ".*/ux_(dcd_sim_slave|hcd_sim_host)_.*\\
 file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
      "${_ra_usbx_root}/common/usbx_device_classes/src/ux_device_class_cdc_acm_*.c")
 
+# ra_time.c is intentionally NOT linked: its ra_time_init reprograms the SysTick
+# ThreadX owns, and its delay path waits on a tick the ThreadX SysTick handler
+# never bumps. ns_usb.c provides a ThreadX-backed ra_delay_ms instead (the only
+# ra_time symbol ra_usb references).
 set(_ns_usb_srcs
     ${_ns_usbx_core}
     ${_ns_usbx_cdc}
     ${RA_REPO_ROOT}/port/usbx/ux_dcd_ra_usb.c
     ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb.c
     ${RA_REPO_ROOT}/libs/ra_hal/src/ra_mstp.c
-    ${RA_REPO_ROOT}/libs/ra_core/src/ra_log.c
-    ${RA_REPO_ROOT}/libs/ra_core/src/ra_time.c)
+    ${RA_REPO_ROOT}/libs/ra_core/src/ra_log.c)
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
 # Vendored USBX + ra_usb predate the first-party -Werror set.
 set_source_files_properties(${_ns_usb_srcs} PROPERTIES COMPILE_OPTIONS "-w")
