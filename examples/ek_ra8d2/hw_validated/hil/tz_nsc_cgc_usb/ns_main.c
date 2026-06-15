@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/tz_nsc_cgc_usb/ns_main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/tz_nsc_cgc_usb/ns_main.c
  * @brief Non-Secure image: prove the NSC CGC veneers return OK from NS (#60).
  *
  * @par Tag
@@ -51,7 +51,42 @@
 
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_nsc_cgc.h"
+
+/* =============================================================================
+ * NS-side import view of the NSC CGC veneers (by SG-stub address)
+ * =============================================================================
+ *
+ * The NS code must enter Secure through the Secure-Gateway (SG) veneers that
+ * gcc/ld place in ``.gnu.sgstubs`` (``ra_nsc_cgc_*`` at runtime). But this is a
+ * SINGLE secure ELF (no separate non-secure link / CMSE import library), and ld
+ * rewrites EVERY internal reference to a ``cmse_nonsecure_entry`` symbol --
+ * direct call AND address-of alike -- onto the secure body ``__acle_se_*``,
+ * bypassing the SG veneer. From genuine NS state that enters Secure non-SG
+ * memory and faults INVEP.
+ *
+ * The one symbol ld does NOT rewrite is the plain linker symbol
+ * ``g_ra_ls_sgstubs_start`` (the base of ``.gnu.sgstubs``). So the NS image
+ * reaches each veneer by ADDRESS: ``sgstubs_start + <slot offset>``, called
+ * through a ``volatile`` function pointer. The per-veneer offsets below
+ * (get_clock_hz / pll2_enable / usbfs_clock_enable, 8 bytes each) are pinned by
+ * matching ``ASSERT``s in ``linker_script.ld`` that compare each veneer symbol
+ * to ``g_ra_ls_sgstubs_start + offset`` -- if ld ever reorders the stubs the
+ * link FAILS, forcing both this enum and the ASSERTs to be updated in step.
+ */
+typedef ra_err_t (*ns_cgc_pll2_fn_t)(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p_div_code);
+typedef ra_err_t (*ns_cgc_usbfs_fn_t)(void);
+typedef ra_err_t (*ns_cgc_clk_fn_t)(ra_clock_id_t id, uint32_t* hz_out);
+
+/** @brief Base of the ``.gnu.sgstubs`` SG veneer block (linker symbol). */
+extern uint32_t g_ra_ls_sgstubs_start;
+
+/** @brief Per-veneer byte offsets within ``.gnu.sgstubs`` (8 bytes each). */
+typedef enum : uint32_t {
+  k_sg_off_get_clock_hz = 0U,  /**< ra_nsc_cgc_get_clock_hz SG stub.      */
+  k_sg_off_pll2_enable  = 8U,  /**< ra_nsc_cgc_pll2_enable SG stub.       */
+  k_sg_off_usbfs        = 16U, /**< ra_nsc_cgc_usbfs_clock_enable SG stub.*/
+  k_sg_thumb_bit        = 1U,  /**< Thumb bit for the call target.        */
+} ns_sg_offset_t;
 
 /* =============================================================================
  * NS-resident state (all .ns_bss -> NS_SRAM, J-Link readable)
@@ -185,17 +220,27 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
     *(volatile uint32_t*)addr = 0U;
   }
 
-  /* ---- Phase C veneer milestone: call the 3 NSC CGC veneers from NS. ---- */
+  /* ---- Phase C veneer milestone: call the 3 NSC CGC veneers from NS. ----
+   * Through volatile function pointers built from g_ra_ls_sgstubs_start + the
+   * per-veneer slot offset (the SG stub address) so the call goes via the
+   * secure gateway -- see the import-view note above. */
+  const uintptr_t sg = (uintptr_t)&g_ra_ls_sgstubs_start;
+  ns_cgc_pll2_fn_t volatile fp_pll2 =
+    (ns_cgc_pll2_fn_t)(sg + (uintptr_t)k_sg_off_pll2_enable + (uintptr_t)k_sg_thumb_bit);
+  ns_cgc_usbfs_fn_t volatile fp_usbfs =
+    (ns_cgc_usbfs_fn_t)(sg + (uintptr_t)k_sg_off_usbfs + (uintptr_t)k_sg_thumb_bit);
+  ns_cgc_clk_fn_t volatile fp_clk =
+    (ns_cgc_clk_fn_t)(sg + (uintptr_t)k_sg_off_get_clock_hz + (uintptr_t)k_sg_thumb_bit);
+
   g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_pll2;
-  if (ra_nsc_cgc_pll2_enable((uint8_t)k_ns_pll2_mul_int,
-                             (uint8_t)k_ns_pll2_mul_quarters,
-                             k_ra_plodiv_div4) != k_ra_ok) {
+  if (fp_pll2((uint8_t)k_ns_pll2_mul_int, (uint8_t)k_ns_pll2_mul_quarters, k_ra_plodiv_div4) !=
+      k_ra_ok) {
     g_tz_nsc_cgc_usb_mismatch += 1U;
     ns_park();
   }
 
   g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_usbfs;
-  if (ra_nsc_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (fp_usbfs() != k_ra_ok) {
     g_tz_nsc_cgc_usb_mismatch += 1U;
     ns_park();
   }
@@ -210,8 +255,7 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
   /* hz_out points at an NS-resident global (in .ns_bss, inside the SAU NS
    * region) rather than a stack local near MSP_NS, so the veneer's
    * cmse_check_address_range guard passes. */
-  if (ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0,
-                              (uint32_t*)(uintptr_t)&g_tz_nsc_cgc_usb_clock_hz) != k_ra_ok) {
+  if (fp_clk(k_ra_clock_id_cpuclk0, (uint32_t*)(uintptr_t)&g_tz_nsc_cgc_usb_clock_hz) != k_ra_ok) {
     g_tz_nsc_cgc_usb_mismatch += 1U;
     ns_park();
   }

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/tz_nsc_cgc_usb/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/tz_nsc_cgc_usb/main.c
  * @brief CPU0 (M85) Secure fallback entry for the single-core S->NS demo.
  *
  * @par Tag
