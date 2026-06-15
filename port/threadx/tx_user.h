@@ -46,7 +46,17 @@
 #define TX_DISABLE_REDUNDANT_CLEARING
 #define TX_DISABLE_NOTIFY_CALLBACKS
 
-/* Single-mode-secure: no calls into a Non-Secure side, so ThreadX can
- * compile out the secure-stack-context machinery. Matches the project's
- * current Secure-world-only build. */
+/* Single-mode selection.
+ *
+ * Most apps run ThreadX in the Secure world only (no Non-Secure partition
+ * is loaded), so ThreadX compiles out the secure-stack-context machinery
+ * (TX_SINGLE_MODE_SECURE). The `threadx_ns` library variant -- used by
+ * tz_nsc_cgc_usb to run ThreadX INSIDE the Non-Secure image (#96) --
+ * defines RA_THREADX_NON_SECURE so ThreadX builds for the Non-Secure side
+ * instead. Selecting exactly one single-mode keeps the scheduler off the
+ * dual-world secure-stack path. */
+#if defined(RA_THREADX_NON_SECURE)
+#define TX_SINGLE_MODE_NON_SECURE
+#else
 #define TX_SINGLE_MODE_SECURE
+#endif
