@@ -142,9 +142,9 @@ SECTIONS
      * Flashed into NS_LOAD (Secure MRAM); the secure boot copies
      * [g_ra_ls_ns_load_start, g_ra_ls_ns_load_end) to g_ra_ls_ns_run_start
      * (0x3210_0000) after SRAMSABAR2 marks SRAM2 Non-secure, then BLXNS-es
-     * to slot 1 of ``g_ra_ns_vector_table`` (VMA 0x3210_0000). The NS code
-     * is self-contained (open-coded register IO + cmse_nonsecure_entry
-     * veneer calls) so no S-resident symbol is ever called from NS state. */
+     * to slot 1 of ``g_ra_ns_vector_table`` (VMA 0x3210_0000). The NS image
+     * carries its own ThreadX kernel (libthreadx_ns.a, routed below) + libc;
+     * it crosses into Secure only through the cmse_nonsecure_entry veneers. */
     .ns_vectors ORIGIN(NS_SRAM_RUN) : ALIGN(8)
     {
         g_ra_ls_ns_run_start = .;
@@ -152,32 +152,68 @@ SECTIONS
         KEEP(*(.ns_vectors.*))
     } > NS_SRAM_RUN AT > NS_LOAD
 
-    .ns_text : ALIGN(4)
+    /* Phase C (#96): ThreadX runs INSIDE the NS image, so libthreadx_ns.a and
+     * the libc/libgcc it pulls in must execute from the NS region too (NS
+     * cannot call Secure code without a veneer). Route those archives'
+     * sections here alongside ns_main.c. The Secure side is libc-clean, so
+     * libc lands only on the NS side. */
+    .ns_text : ALIGN(8)
     {
         *(.ns_text)
         *(.ns_text.*)
+        *libthreadx_ns.a:*(.text .text.* .glue_7 .glue_7t)
+        *libc.a:*(.text .text.*)
+        *libc_nano.a:*(.text .text.*)
+        *libg_nano.a:*(.text .text.*)
+        *libm.a:*(.text .text.*)
+        *libnosys.a:*(.text .text.*)
     } > NS_SRAM_RUN AT > NS_LOAD
 
-    .ns_rodata : ALIGN(4)
+    .ns_rodata : ALIGN(8)
     {
         *(.ns_rodata)
         *(.ns_rodata.*)
+        *libthreadx_ns.a:*(.rodata .rodata.*)
+        *libc.a:*(.rodata .rodata.*)
+        *libc_nano.a:*(.rodata .rodata.*)
+        *libg_nano.a:*(.rodata .rodata.*)
+        *libm.a:*(.rodata .rodata.*)
+    } > NS_SRAM_RUN AT > NS_LOAD
+
+    .ns_data : ALIGN(8)
+    {
         *(.ns_data)
         *(.ns_data.*)
+        *libthreadx_ns.a:*(.data .data.*)
+        *libc.a:*(.data .data.*)
+        *libc_nano.a:*(.data .data.*)
+        *libg_nano.a:*(.data .data.*)
         g_ra_ls_ns_run_end = .;
     } > NS_SRAM_RUN AT > NS_LOAD
 
     /* LMA bounds of the loaded NS image (in MRAM) for the secure copy. */
     g_ra_ls_ns_load_start = LOADADDR(.ns_vectors);
-    g_ra_ls_ns_load_end   = LOADADDR(.ns_rodata) + SIZEOF(.ns_rodata);
+    g_ra_ls_ns_load_end   = LOADADDR(.ns_data) + SIZEOF(.ns_data);
 
-    .ns_bss (NOLOAD) : ALIGN(4)
+    .ns_bss (NOLOAD) : ALIGN(8)
     {
         g_ra_ls_ns_bss_start = .;
         *(.ns_bss)
         *(.ns_bss.*)
+        *libthreadx_ns.a:*(.bss .bss.* COMMON)
+        *libc.a:*(.bss .bss.* COMMON)
+        *libc_nano.a:*(.bss .bss.* COMMON)
+        *libg_nano.a:*(.bss .bss.* COMMON)
         g_ra_ls_ns_bss_end = .;
+        . = ALIGN(8);
+        /* ThreadX gets the rest of NS_SRAM_RUN as its free pool (thread
+         * stacks etc.), passed via _tx_initialize_unused_memory. */
+        g_ra_threadx_unused_memory_start = .;
     } > NS_SRAM_RUN
+
+    /* ThreadX port symbols (NS view): the system stack is the NS vector
+     * table's initial-SP slot; both resolve to the NS image. */
+    g_ra_vector_table_start = ORIGIN(NS_SRAM_RUN);
 
     /* ---- Code + const data ---- */
     .text : ALIGN(4)

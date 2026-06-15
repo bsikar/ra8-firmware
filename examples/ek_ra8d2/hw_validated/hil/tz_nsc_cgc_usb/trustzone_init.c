@@ -352,7 +352,14 @@ void ra_trustzone_init(void)
   /* 3. Copy the NS image into the now-Non-secure SRAM alias. */
   tz_copy_ns_image();
 
-  /* 4. BLXNS into the NS reset vector (slot 1 of g_ra_ns_vector_table at
+  /* 4. Clear the Secure PRIMASK before handing off. SystemInit masked IRQs
+   *    (CPSID i) for secure bring-up; a set PRIMASK_S boosts the execution
+   *    priority and masks NON-secure exceptions too, so the NS ThreadX
+   *    PendSV / SysTick would never fire. The NS side cannot clear PRIMASK_S
+   *    (it is Secure-banked), so do it here, right before BLXNS. */
+  __asm__ volatile("cpsie i" ::: "memory");
+
+  /* 5. BLXNS into the NS reset vector (slot 1 of g_ra_ns_vector_table at
    *    VMA 0x3210_0000). Does not return on hardware. */
   (void)ra_tz_secure_boot_jump_ns(g_ra_ns_vector_table);
 

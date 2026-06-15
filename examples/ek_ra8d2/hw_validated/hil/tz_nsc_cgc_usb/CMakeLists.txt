@@ -41,6 +41,13 @@ ra_add_app(NAME tz_nsc_cgc_usb STACK_BYTES 2200
 # per-app source list because most apps don't have a NS half; add it here.
 target_sources(tz_nsc_cgc_usb.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
 
+# Phase C (#96), milestone 1: run ThreadX INSIDE the Non-Secure image. Link the
+# Non-Secure ThreadX variant (TX_SINGLE_MODE_NON_SECURE); linker_script.ld
+# routes libthreadx_ns.a + the libc it pulls into the NS regions so the RTOS
+# executes from the SRAM NS alias alongside ns_main.c.
+include(${_d}/cmake/threadx_ns.cmake)
+target_link_libraries(tz_nsc_cgc_usb.elf PRIVATE threadx_ns)
+
 # Post-build: ns_main.c calls the NSC CGC veneers by address
 # (g_ra_ls_sgstubs_start + k_sg_off_*), so verify ld has not reordered the
 # .gnu.sgstubs slots. The check reads the final symbol table (where the SG-stub

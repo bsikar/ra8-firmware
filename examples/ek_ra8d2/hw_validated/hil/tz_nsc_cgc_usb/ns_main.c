@@ -51,6 +51,7 @@
 
 #include "ra_cgc.h"
 #include "ra_err.h"
+#include "tx_api.h" /* Non-Secure ThreadX (threadx_ns, TX_SINGLE_MODE_NON_SECURE) -- #96 */
 
 /* =============================================================================
  * NS-side import view of the NSC CGC veneers (by SG-stub address)
@@ -170,6 +171,12 @@ typedef enum : uint8_t {
 extern uint32_t g_ra_ls_ns_stack_top; /**< Linker symbol: top of NS stack.   */
 extern uint32_t g_ra_ls_ns_bss_start; /**< Linker symbol: start of .ns_bss.  */
 extern uint32_t g_ra_ls_ns_bss_end;   /**< Linker symbol: end of .ns_bss.    */
+extern uint32_t g_ra_ls_ns_run_start; /**< Linker symbol: NS vector table base.*/
+
+/** @brief NS-state VTOR (0xE000ED08 is the current-domain alias in NS). */
+typedef enum : uintptr_t {
+  k_ns_scb_vtor_addr = 0xE000ED08U,
+} ns_scb_addr_t;
 
 /**
  * @brief Park the NS core in WFI forever (a veneer faulted or returned non-OK).
@@ -263,10 +270,130 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
   /* All three veneers SG-trapped into Secure, ran ra_cgc_*, and returned OK
    * with an NS-resident pointer arg. The NSC wall works from real NS memory. */
   g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_veneers_ok;
-  while (1) {
-    g_tz_nsc_cgc_usb_ns_alive += 1U;
-    g_tz_nsc_cgc_usb_match += 1U;
+
+  /* Point VTOR_NS at the NS vector table so ThreadX's PendSV / SysTick
+   * exceptions vector to the NS handlers. ThreadX's tx_initialize_low_level
+   * deliberately leaves VTOR alone (it expects a SystemInit, which the NS
+   * image has no equivalent of), so set it here in NS state -- 0xE000ED08 is
+   * the current-domain (NS) VTOR alias. */
+  *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra_ls_ns_run_start;
+
+  /* Phase C (#96) milestone 1: hand off to ThreadX, running entirely inside
+   * the NS image. tx_kernel_enter() initialises the kernel, calls
+   * tx_application_define() (which spawns the worker below), and starts the
+   * scheduler -- it never returns. The worker advances g_tz_nsc_cgc_usb_match,
+   * so a continuing advance proves the NS-resident RTOS is scheduling. */
+  tx_kernel_enter();
+  ns_park(); /* Unreachable -- tx_kernel_enter() does not return. */
+}
+
+/* =============================================================================
+ * ThreadX worker + SysTick (NS-resident RTOS) -- #96 milestone 1
+ * =============================================================================
+ */
+
+/** @brief ThreadX context-switch handler (in libthreadx_ns.a NS text). */
+extern void PendSV_Handler(void);
+extern void _tx_timer_interrupt(void); /**< @brief ThreadX 1 ms tick worker. */
+/** @brief Set by the kernel once tx_initialize_low_level has run. */
+extern volatile uint32_t g_ra_threadx_systick_ready;
+
+/** @brief Worker-thread tunables. */
+typedef enum : uint32_t {
+  k_ns_thread_stack_bytes = 2048U, /**< Worker thread stack size.            */
+  k_ns_thread_priority    = 8U,    /**< Priority + preemption threshold.     */
+} ns_thread_cfg_t;
+
+/**
+ * @var s_ns_thread
+ * @brief Worker thread control block (NS BSS).
+ * @note Read/written only by ThreadX in the NS image.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) static TX_THREAD s_ns_thread;
+
+/**
+ * @var s_ns_stack
+ * @brief Worker thread stack (NS BSS).
+ * @note Owned by ::s_ns_thread.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) static uint8_t s_ns_stack[k_ns_thread_stack_bytes];
+
+/**
+ * @var s_ns_thread_name
+ * @brief Worker thread name (writable NS data; ThreadX name_ptr is CHAR*).
+ * @details Lives in .ns_data (NS-resident, loaded) so the NS-side kernel can
+ *          read it; a const literal would land in Secure .data and fault.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_data"))) static CHAR s_ns_thread_name[] = "ns_worker";
+
+/**
+ * @brief NS SysTick handler -- drives the ThreadX 1 ms time base.
+ * @details Slot 15 of the NS vector table. Forwards to _tx_timer_interrupt once
+ *          ::g_ra_threadx_systick_ready is set (the kernel sets it after
+ *          tx_initialize_low_level), so an early tick cannot enter the kernel.
+ * @return void.
+ * @pre Entered from the NS SysTick exception.
+ * @pre The NS image is running (post-BLXNS).
+ * @post One ThreadX tick is processed once the kernel is ready.
+ * @post No effect before the kernel is ready.
+ * @note Runs at SysTick exception priority in NS.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_text"))) static void ns_systick_handler(void)
+{
+  if (g_ra_threadx_systick_ready != 0U) {
+    _tx_timer_interrupt();
   }
+}
+
+/**
+ * @brief ThreadX worker -- advances the bench counter from a real NS thread.
+ * @param[in] input Unused thread entry argument.
+ * @return Never returns.
+ * @pre The scheduler auto-started this thread.
+ * @pre CPU is in NS thread mode (DSCSR.CDS=0).
+ * @post ::g_tz_nsc_cgc_usb_match advances ~1000/s (one per 1 ms tick).
+ * @post ::g_tz_nsc_cgc_usb_ns_alive mirrors it.
+ * @note Sleeping one tick per loop exercises SysTick + timer + scheduler.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_text"))) static void ns_worker(ULONG input)
+{
+  (void)input;
+  while (1) {
+    g_tz_nsc_cgc_usb_match += 1U;
+    g_tz_nsc_cgc_usb_ns_alive += 1U;
+    (void)tx_thread_sleep(1U);
+  }
+}
+
+/**
+ * @brief ThreadX application-define callback -- spawns the worker thread.
+ * @param[in] first_unused_memory ThreadX free-RAM base (unused; static stack).
+ * @return void.
+ * @pre Called by tx_kernel_enter() after kernel init.
+ * @pre CPU is in NS state.
+ * @post One auto-started worker thread exists at ::k_ns_thread_priority.
+ * @post The scheduler will run ::ns_worker.
+ * @note Single-threaded init context.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_text"))) void tx_application_define(void* first_unused_memory)
+{
+  (void)first_unused_memory;
+  (void)tx_thread_create(&s_ns_thread,
+                         s_ns_thread_name,
+                         ns_worker,
+                         0UL,
+                         s_ns_stack,
+                         (ULONG)k_ns_thread_stack_bytes,
+                         (UINT)k_ns_thread_priority,
+                         (UINT)k_ns_thread_priority,
+                         TX_NO_TIME_SLICE,
+                         TX_AUTO_START);
 }
 
 /* =============================================================================
@@ -303,11 +430,10 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_nmi_halt(void)
 /**
  * @var g_ra_ns_vector_table
  * @brief Non-Secure vector table; run-time VMA ``NS_SRAM_RUN`` (0x32100000).
- * @details Slot 0 = initial ``MSP_NS``, slot 1 = ``ns_reset_handler``. The
- *          veneer milestone keeps IRQs masked, so the fault/SVCall/PendSV/
- *          SysTick slots stay halt vectors (Phase C-full repoints 11/14/15 at
- *          ThreadX once the RTOS comes up in NS). 8-byte aligned per ARMv8-M
- *          B3.10 (``.ns_vectors`` aligns to 8).
+ * @details Slot 0 = initial ``MSP_NS``, slot 1 = ``ns_reset_handler``. Slots
+ *          14 (PendSV) and 15 (SysTick) drive the NS-resident ThreadX kernel
+ *          (#96); fault slots halt. 8-byte aligned per ARMv8-M B3.10
+ *          (``.ns_vectors`` aligns to 8).
  * @since 0.1.0
  */
 __attribute__((section(".ns_vectors"), used)) const ns_exc_handler_t g_ra_ns_vector_table[16] = {
@@ -322,9 +448,9 @@ __attribute__((section(".ns_vectors"), used)) const ns_exc_handler_t g_ra_ns_vec
   0,                                       /* 8  Reserved.                      */
   0,                                       /* 9  Reserved.                      */
   0,                                       /* 10 Reserved.                      */
-  ns_nmi_halt,                             /* 11 SVCall -- halt.                */
+  ns_nmi_halt,                             /* 11 SVCall -- unused (TX single).  */
   ns_nmi_halt,                             /* 12 DebugMonitor -- halt.          */
   0,                                       /* 13 Reserved.                      */
-  ns_nmi_halt,                             /* 14 PendSV -- halt.                */
-  ns_nmi_halt,                             /* 15 SysTick -- halt.               */
+  PendSV_Handler,                          /* 14 PendSV -- ThreadX ctx switch.  */
+  ns_systick_handler,                      /* 15 SysTick -- ThreadX tick.       */
 };
