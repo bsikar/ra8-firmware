@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/usb_selftest_hid/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/main.c
  * @brief USB self-loop: HS host reads + verifies a HID device's interrupt reports
  *
  * @par Tag

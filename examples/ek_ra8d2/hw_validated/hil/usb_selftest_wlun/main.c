@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/usb_selftest_wlun/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_wlun/main.c
  * @brief USB self-loop: HS host WRITE(10)s + reads back a RAM-backed device
  *
  * @par Tag
