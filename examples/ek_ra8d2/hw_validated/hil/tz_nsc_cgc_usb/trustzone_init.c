@@ -30,7 +30,7 @@
  *   4. BLXNS into the NS reset vector via ``ra_tz_secure_boot_jump_ns``.
  *
  * This file does NOT use ``ra_tz_secure_boot_sau_init`` -- that function's
- * region table is tuned for cpu1_pingpong_ipc (CPU1 is the NS master) and
+ * region table is tuned for cpu1_pingpong_ipc (CPU1 is the NS core) and
  * is shared; the bit[28] model here is app-local so that validated app is
  * untouched. Only the generic ``ra_tz_secure_boot_jump_ns`` primitive is
  * reused.
@@ -316,7 +316,7 @@ static ra_err_t tz_sau_program(void)
  * @details Plain word copy of [g_ra_ls_ns_load_start, g_ra_ls_ns_load_end)
  *          to g_ra_ls_ns_run_start (0x3210_0000). Runs AFTER the SAU and
  *          SRAMSABAR have marked the destination Non-secure, so the store
- *          is a (permitted) Secure-master Non-secure access.
+ *          is a (permitted) Secure-side Non-secure access.
  *
  * @pre ``tz_sram_ns_boundary`` and ``tz_sau_program`` have run.
  * @pre The load and run ranges are word-aligned and equal in length.

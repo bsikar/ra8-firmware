@@ -1,65 +1,55 @@
-# tz_nsc_cgc_usb (hw_pending)
+# tz_nsc_cgc_usb (hw_validated/hil)
 
-Non-Secure variant of `usb_cdc_echo` that proves the three NSC
-veneers (`ra_nsc_cgc_pll2_enable`, `ra_nsc_cgc_usbfs_clock_enable`,
-`ra_nsc_cgc_get_clock_hz`) really do trap into the Secure world
-and forward to the underlying `ra_cgc_*` drivers.
+Single-core (CPU0) TrustZone demo that proves the three Non-Secure-Callable
+CGC veneers -- `ra_nsc_cgc_pll2_enable`, `ra_nsc_cgc_usbfs_clock_enable`,
+`ra_nsc_cgc_get_clock_hz` -- really trap from **genuine Non-Secure state**
+into the Secure world via the Secure-Gateway and forward to the underlying
+`ra_cgc_*` drivers.
 
-## Status (2026-05-19)
+## What it validates
 
-Newer probing pinned the failure precisely:
+The secure boot (`trustzone_init.c`) programs `SRAMSABAR` + the SAU, copies a
+RAM-resident NS image into the SRAM Non-secure alias `0x32100000`, and
+`BLXNS`-es into it. The NS image (`ns_main.c`) then calls the three NSC CGC
+veneers and, on full success, advances `g_tz_nsc_cgc_usb_match` forever.
 
-- `g_tz_nsc_cgc_usb_init_step` halts at **1** -- meaning the very
-  first call, `ra_nsc_cgc_pll2_enable`, returns non-OK and the
-  demo hits `demo_panic_halt()` immediately. The chip never gets
-  to USBX bring-up, so no enumeration happens.
-- The Secure side's `ra_cgc_pll2_enable` works fine
-  (`tz_secure_only_usb_fs` calls the equivalent function from the
-  Secure world and the chip enumerates as 1209:000a). The bug is
-  on the NSC bridge, not the Secure-side driver.
+On-chip readout while it runs (J-Link halt):
 
-Likely root causes:
+| Signal | Value | Meaning |
+|--------|-------|---------|
+| `DSCSR.CDS` | `0` | CPU is in **Non-Secure** state |
+| `g_tz_nsc_cgc_usb_init_step` | `4` | all three veneers returned `k_ra_ok` |
+| `g_tz_nsc_cgc_usb_match` | climbing | success loop running |
+| `g_tz_nsc_cgc_usb_mismatch` | `0` | no veneer returned non-OK |
+| `g_tz_nsc_cgc_usb_sp_probe` | `0x3217FFD8` | MSP_NS on the NS stack |
+| `g_tz_nsc_cgc_usb_clock_hz` | `0x3B9ACA00` | CPUCLK0 = 1 GHz, via the veneer |
 
-1. The NSC veneer table in `libs/ra_nsc/` isn't being linked into
-   the Secure-side image, so the NS-side call lands on a stub
-   that returns `k_ra_err_not_supported`.
-2. The SAU configuration doesn't route the veneer-page address
-   alias (the 0x10000000 NSC veneer alias defined in
-   `trustzone_init.c`) to the actual veneer code in MRAM. The NS
-   call resolves to an undefined branch and the cmse_nonsecure
-   entry returns an error word.
-3. The Secure-side state isn't in the right mode at the time of
-   the veneer call (e.g. PRCR locked, MSTPB clock-gate set).
+## Two things that made it work (see #60)
 
-## What landed this turn
+1. **The RA8 IDAU is fixed by address bit[28]** (HUM s51.3.3.1): bit[28]=0 is
+   Secure/NSC and the SAU cannot downgrade it, so an "NS" image at `0x02..` /
+   `0x22..` always runs Secure. Real NS lives at the bit[28]=1 aliases. SRAM's
+   secure/NS split is the **runtime** `SRAMSABAR` register, so the NS image is
+   RAM-resident -- no persistent option bytes, no brick risk.
+2. **GNU ld rewrites `cmse_nonsecure_entry` symbol references** (call and
+   address-of) onto the secure body `__acle_se_*` inside one secure ELF,
+   bypassing the SG veneer and faulting INVEP. `ns_main.c` therefore reaches
+   each veneer **by address** (`g_ra_ls_sgstubs_start + slot offset`, via a
+   `volatile` function pointer -- the one symbol ld does not rewrite). The slot
+   offsets are pinned by `scripts/utils/check_sg_offsets.py`, run POST_BUILD.
 
-The USB-descriptor fixes that unblocked `usb_cdc_echo` and
-`threadx_usbx_cdc_demo` have been applied to this main.c too --
-once the NSC bring-up is correct the demo will enumerate as
-1209:000a immediately:
+## Build + validate
 
-- Device descriptor bcdUSB = 0x0200 (was 0x0110: USB 1.1 is
-  silently rejected by macOS for IAD-based composite devices).
-- Configuration descriptor wTotalLength = 0x4B / 75 bytes (was
-  0x43 / 67 bytes: dropped EP1 IN, causing USBX to deref a NULL
-  endpoint after SET_CONFIG).
-- bmAttributes = 0x80 (bus-powered) instead of 0xC0
-  (self-powered with bMaxPower=100mA -- a self-contradictory
-  combination some hosts reject).
-- VBUSEN routed as GPIO output LOW (peripheral routing makes the
-  USB module drive VBUSEN HIGH = host mode, blocking device
-  enumeration).
-- `g_tz_nsc_cgc_usb_init_step` boot-step tracker added so the
-  next iteration can localize which veneer call is failing.
+```sh
+make tz_nsc_cgc_usb                       # builds; POST_BUILD checks SG slots
+bash scripts/hil_run_local.sh tz_nsc_cgc_usb   # flash + HIL gate (local Mac)
+```
 
-## How to graduate back
+The HIL gate (`hil.conf`) passes when `g_tz_nsc_cgc_usb_match` advances by at
+least 100 across a 3 s window with `g_tz_nsc_cgc_usb_mismatch == 0`.
 
-1. Resolve the NSC veneer wiring: confirm
-   `libs/ra_nsc/src/ra_nsc_cgc.c` is linked into the Secure
-   image, and that `trustzone_init.c` programs an SAU region
-   marking the veneer page as NSC (RLAR.NSC = 1).
-2. Re-flash; if `g_tz_nsc_cgc_usb_init_step` advances past 7 and
-   `g_tz_nsc_cgc_usb_match` starts climbing, the bridge works.
-3. Promote back to `hw_validated/hil/` once enumeration is
-   steady (VID 1209:000a / 32/32 round-trip on
-   `usb_benchmark.py --quick`).
+## Follow-up (optional)
+
+Running ThreadX + USBX *inside* the NS image (issue #55 / #60's original Phase
+C title) is a separate enhancement and is not required for this NSC-veneer-wall
+validation.
