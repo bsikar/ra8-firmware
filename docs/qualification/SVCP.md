@@ -144,7 +144,6 @@ the `blink_hal` shape harness).
 | IT-APP-UART-001    | `tests/test_app_uart_hello.c`                | `examples/ek_ra8d2/uart_hello`               |
 | IT-APP-USBCDC-001  | `tests/test_app_usb_cdc_echo.c`              | `examples/ek_ra8d2/usb_cdc_echo`             |
 | IT-APP-USBHID-001  | `tests/test_app_usb_hid_device.c`            | `examples/ek_ra8d2/usb_hid_device`           |
-| IT-APP-USBHCDC-001 | `tests/test_app_usb_host_cdc_echo.c`         | `examples/ek_ra8d2/usb_host_cdc_echo`        |
 | IT-APP-USBHKBD-001 | `tests/test_app_usb_host_keyboard.c`         | `examples/ek_ra8d2/usb_host_keyboard`        |
 | IT-APP-USBHMSC-001 | `tests/test_app_usb_host_msc_browse.c`       | `examples/ek_ra8d2/usb_host_msc_browse`      |
 | IT-APP-USBMSCD-001 | `tests/test_app_usb_msc_device.c`            | `examples/ek_ra8d2/usb_msc_device`           |

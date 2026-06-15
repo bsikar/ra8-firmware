@@ -24,8 +24,8 @@ firmware as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - USB host and device stack used by `examples/ek_ra8d2/threadx_usbx_cdc_demo`,
-  `usb_cdc_echo`, `usb_hid_device`, `usb_msc_device`, `usb_host_cdc_echo`,
-  `usb_host_keyboard`, and `usb_host_msc_browse`.
+  `usb_cdc_echo`, `usb_hid_device`, `usb_msc_device`, `usb_host_keyboard`,
+  `usb_host_msc_browse`, and the `usb_selftest_*` self-loop suite.
 - Class drivers used: CDC-ACM (device + host), HID (device + host), MSC
   (device + host).
 - Integrity claim category: data-handling (USB transfer payloads,
