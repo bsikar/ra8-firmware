@@ -6,10 +6,11 @@
  * [Ring 6 / APP] {World: NS}
  *
  * @details
- * After the S-side ``trustzone_init`` programmes the SAU it BLXNS-es to
- * ``ns_reset_handler`` here. Once CPU0 is in NS state, the SAU's NS regions
- * (upper MRAM / SRAM / SDRAM + the NSC veneer alias) are reachable; any access
- * to S-only memory faults.
+ * After the S-side ``trustzone_init`` copies this image into the SRAM
+ * Non-secure alias (0x3210_0000) and programmes the SAU, it BLXNS-es to
+ * ``ns_reset_handler`` here. Once CPU0 is in NS state, the SAU's NS region
+ * (0x3000_0000-0x3FFF_FFFF) and the NSC veneer alias are reachable; any
+ * access to S-only memory faults.
  *
  * Phase A+B proved the BLXNS landed (``ns_alive`` advances). This image adds the
  * Phase C veneer milestone: from genuine NS memory it calls the three NSC CGC
@@ -32,11 +33,14 @@
  *
  * ## Memory layout
  *
- * | Symbol                           | Section         | Address          |
+ * | Symbol                           | Section         | Address (VMA)    |
  * |----------------------------------|-----------------|------------------|
- * | ``g_ra_ns_vector_table``         | ``.ns_vectors`` | 0x02080000       |
- * | ``ns_reset_handler``             | ``.ns_text``    | 0x02080000+      |
- * | NS counters / step              | ``.ns_bss``     | 0x22100000+      |
+ * | ``g_ra_ns_vector_table``         | ``.ns_vectors`` | 0x32100000       |
+ * | ``ns_reset_handler``             | ``.ns_text``    | 0x32100000+      |
+ * | NS counters / step              | ``.ns_bss``     | 0x32100000+      |
+ *
+ * (Run-time VMA in the SRAM NS alias; the image is flashed in Secure MRAM
+ * at the LMA 0x02080000 and copied here by the secure ``trustzone_init``.)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -91,9 +95,9 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_mismatch;
 /**
  * @var g_tz_nsc_cgc_usb_clock_hz
  * @brief NS-resident output slot for ::ra_nsc_cgc_get_clock_hz.
- * @details Lives in .ns_bss (NS_SRAM 0x22100000), squarely inside the SAU
- *          NS-SRAM region, so the veneer's NS-pointer check passes (a stack
- *          local near MSP_NS lands above the region limit).
+ * @details Lives in .ns_bss (SRAM NS alias 0x32100000+), squarely inside
+ *          the SAU NS region (0x30000000-0x3FFFFFFF), so the veneer's
+ *          NS-pointer check passes.
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
@@ -197,7 +201,9 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
   }
 
   /* Capture an NS stack address so a J-Link read confirms where MSP_NS sits
-   * relative to the SAU NS-SRAM region (0x22100000..0x221FFFE0). */
+   * relative to the SRAM NS alias (MSP_NS top = 0x32180000). A genuine NS
+   * stack reads back in 0x321xxxxx; the old broken build showed a Secure
+   * 0x220xxxxx stack here. */
   uint32_t sp_local          = 0U;
   g_tz_nsc_cgc_usb_sp_probe  = (uint32_t)(uintptr_t)&sp_local;
   g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_query;
@@ -252,7 +258,7 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_nmi_halt(void)
 
 /**
  * @var g_ra_ns_vector_table
- * @brief Non-Secure vector table, pinned to ``NS_MRAM`` (0x02080000).
+ * @brief Non-Secure vector table; run-time VMA ``NS_SRAM_RUN`` (0x32100000).
  * @details Slot 0 = initial ``MSP_NS``, slot 1 = ``ns_reset_handler``. The
  *          veneer milestone keeps IRQs masked, so the fault/SVCall/PendSV/
  *          SysTick slots stay halt vectors (Phase C-full repoints 11/14/15 at
