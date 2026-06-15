@@ -1,43 +1,48 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/usb_selftest_hs_host/main.c
- * @brief USB self-loop config A: HS host reads the FS device's MSC MRAM disk
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/main.c
+ * @brief USB self-loop config B: FS host reads the HS device's MSC MRAM disk
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * The board's two USB ports are cabled to EACH OTHER and one firmware
- * image runs BOTH sides of the link:
+ * The role-flipped twin of `usb_selftest_hs_host`. The board's two USB
+ * ports are cabled to EACH OTHER and one firmware image runs BOTH sides
+ * of the link, with the host and device roles SWAPPED versus config A:
  *
- *  - USBFS (J11) = DEVICE: the ThreadX + USBX Mass-Storage class from
- *    `usb_msc_mram`, exposing the 1 MiB MRAM window at 0x02000000 as a
- *    read-only synthesized FAT16 volume with one file ``MRAM.BIN``.
- *    IRQ-driven through the `port/usbx/ux_dcd_ra_usb` bridge.
- *  - USBHS (J7) = HOST: the polled first-party host stack from
+ *  - USBHS (J7) = DEVICE: the ThreadX + USBX Mass-Storage class from
+ *    `usb_msc_mram_hs`, exposing the 1 MiB MRAM window at 0x02000000 as
+ *    a read-only synthesized FAT16 volume with one file ``MRAM.BIN``.
+ *    IRQ-driven through the `port/usbx/ux_dcd_ra_usb` bridge on the
+ *    USBHS controller; it ships both the HS and the FS-fallback
+ *    frameworks so it can serve a full-speed host.
+ *  - USBFS (J11) = HOST: the polled first-party host stack from
  *    `usb_host_file_ops` (`ra_usb_hmsc` + `ra_fs`), running in a
- *    low-priority ThreadX thread. It enumerates the FS device over the
- *    cable, mounts the FAT16 volume, streams ``MRAM.BIN`` back, and
- *    memcmp's every chunk against the SAME MRAM bytes read directly --
- *    a fully on-chip end-to-end proof that the USB transport returns
- *    the truth. A WRITE(10) must come back rejected (the LUN is
- *    write-protected) and the transport must still read afterwards.
+ *    low-priority ThreadX thread. It enumerates the HS device over the
+ *    cable, mounts the FAT16 volume, streams the data region back with
+ *    raw multi-block READ(10), and memcmp's every burst against the
+ *    SAME MRAM bytes read directly -- a fully on-chip end-to-end proof
+ *    that the USB transport returns the truth. A WRITE(10) into the
+ *    read-only LUN must come back rejected.
  *
- * The link itself runs at 12 Mbps: the FS device is the ceiling, and
- * the HS host's root port serves a full-speed downstream device
- * (RHST = FS) -- coverage the Mac-attached ladders never exercised.
+ * The link runs at 12 Mbps: the FS host is the ceiling, so the HS
+ * device falls back to full speed (its FS framework, 64-byte bulk MPS)
+ * -- the USBHS-device-at-full-speed path, which neither the Mac ladders
+ * (HS) nor config A (FS device) exercised.
  *
  * Verdicts stream over SCI8 (J-Link OB CDC console, 115200) and are
  * mirrored in J-Link-readable probes (``s_dbg_*``).
  *
  * ## Pinout
  *
- * FS device: P4_07 VBUS sense, P5_00 VBUSEN as GPIO LOW (device role),
- * P8_14 D+, P8_15 D- (PSEL usb_fs). HS host: SW4-8 to Host via the U15
- * expander, PD07 HIGH (U18 supplies J7 VBUS), P4_08 USBHS_VBUS
- * (PSEL usb_hs). Console: PD_02/PD_03 SCI8 (PSEL sci_async).
+ * HS device: P4_08 USBHS_VBUS sense (PSEL usb_hs), PD07 driven LOW
+ * (J7 role = Device, so U18 does not back-feed VBUS); D+/D- are
+ * dedicated PHY balls. FS host: P4_07 VBUS sense, P5_00 VBUSEN
+ * peripheral-routed (the USBFS controller sources J11 VBUS), P8_14 D+,
+ * P8_15 D- (PSEL usb_fs). Console: PD_02/PD_03 SCI8 (PSEL sci_async).
  *
  * @author Brighton Sikarskie
- * @date 2026-06-12
+ * @date 2026-06-13
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -105,7 +110,8 @@ void SysTick_Handler(void)
 static const ra_port_pin_t k_selftest_pin_fs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
 
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
+/** @brief USBFS VBUSEN (P5_00) -- peripheral-routed; the FS host
+ *         controller sources J11 VBUS through it (config B host role). */
 static const ra_port_pin_t k_selftest_pin_fs_vbusen =
   (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
 
@@ -121,8 +127,9 @@ static const ra_port_pin_t k_selftest_pin_fs_dm =
 static const ra_port_pin_t k_selftest_pin_hs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
 
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_selftest_pin_hs_pwr =
+/** @brief J7 role strap (PD07): LOW = Device, so U18 does not back-feed
+ *         VBUS into the FS host's cable (config B device role, UM 6.2). */
+static const ra_port_pin_t k_selftest_pin_hs_role =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
@@ -211,7 +218,7 @@ typedef enum : uint32_t {
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.      */
   k_selftest_phase_verify    = 4U, /**< Streaming + comparing MRAM.BIN. */
   k_selftest_phase_wp        = 5U, /**< Write-protect rejection test.   */
-  k_selftest_phase_pass      = 6U, /**< Full config A pass.             */
+  k_selftest_phase_pass      = 6U, /**< Full config B pass.             */
 } selftest_phase_t;
 
 /**
@@ -401,14 +408,107 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 /** @brief Device-side media_read invocations. */
 static volatile uint32_t s_dbg_read_calls;
+/** @brief Device-side ux_slave_device_state sample (3 = CONFIGURED). */
+static volatile uint32_t s_dbg_dev_state;
+/** @brief Device-side USBX negotiated speed (0 = HS, 1 = FS in UX terms). */
+static volatile uint32_t s_dbg_ux_speed;
+/** @brief Storage class thread ThreadX run-count (0 = never scheduled). */
+static volatile uint32_t s_dbg_thr_runs;
+/** @brief Storage class thread ThreadX state (see tx_api TX_* states). */
+static volatile uint32_t s_dbg_thr_state;
+/** @brief Times the device sampler observed UX_DEVICE_CONFIGURED. */
+static volatile uint32_t s_dbg_state3_seen;
+/** @brief Current device framework pointer (HS vs FS array address). */
+static volatile uint32_t s_dbg_framework;
+/** @brief Current device framework length (32 = FS cfg, 42 = HS cfg). */
+static volatile uint32_t s_dbg_fw_len;
+/** @brief Address of the FS framework array (compare vs s_dbg_framework). */
+static volatile uint32_t s_dbg_fw_fs_addr;
+/** @brief Address of the HS framework array (compare vs s_dbg_framework). */
+static volatile uint32_t s_dbg_fw_hs_addr;
 
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
 /* -------------------------------------------------------------------------- */
 
-/* Single-interface MSC config: bulk-only transport, SCSI command set.
- * EP1 IN + EP2 OUT, 64-byte MPS. PID 0x000E marks the self-test
- * identity apart from the Mac-facing usb_msc_mram (0x000C). */
+/* High-speed framework for the USBHS device controller: the device
+ * descriptor + the mandatory Device Qualifier (USB 2.0 sec 9.6.2) +
+ * 512-byte bulk wMaxPacketSize. The FS host enumerates this device at
+ * full speed, so the stack actually serves the FS framework below; the
+ * HS framework is still required for _ux_device_stack_initialize's
+ * primary (HS) slot. PID 0x000F marks config B apart from config A
+ * (0x000E) and the Mac-facing MRAM apps (0x000C / 0x000D). */
+static UCHAR s_device_framework_hs[] = {
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  0x12U,
+  0x01U,
+  0x00U,
+  0x02U,
+  0x00U, /* class      = per-interface        */
+  0x00U,
+  0x00U,
+  0x40U,
+  0x09U,
+  0x12U,
+  0x0FU, /* PID = 0x000F (pid.codes test).    */
+  0x00U,
+  0x00U,
+  0x01U,
+  0x01U,
+  0x02U,
+  0x03U,
+  0x01U,
+  /* Device Qualifier descriptor (USB 2.0 sec 9.6.2) -- 10 bytes. */
+  0x0AU,
+  0x06U,
+  0x00U,
+  0x02U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x40U,
+  0x01U,
+  0x00U,
+  /* Configuration descriptor (32 bytes total). */
+  0x09U,
+  0x02U,
+  0x20U,
+  0x00U,
+  0x01U,
+  0x01U,
+  0x00U,
+  0x80U,
+  0x32U,
+  /* Interface descriptor -- MSC, SCSI, BBB. */
+  0x09U,
+  0x04U,
+  0x00U,
+  0x00U,
+  0x02U,
+  0x08U,
+  0x06U,
+  0x50U,
+  0x00U,
+  /* Bulk-IN endpoint (EP1 IN, 512-byte MPS at HS). */
+  0x07U,
+  0x05U,
+  0x81U,
+  0x02U,
+  0x00U,
+  0x02U,
+  0x00U,
+  /* Bulk-OUT endpoint (EP2 OUT, 512-byte MPS at HS). */
+  0x07U,
+  0x05U,
+  0x02U,
+  0x02U,
+  0x00U,
+  0x02U,
+  0x00U,
+};
+
+/* Full-speed (fallback) framework -- what the FS host actually
+ * enumerates. EP1 IN + EP2 OUT, 64-byte MPS. */
 static UCHAR s_device_framework_fs[] = {
   /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
   0x12U,
@@ -421,7 +521,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x0EU, /* PID = 0x000E (pid.codes test).    */
+  0x0FU, /* PID = 0x000F (pid.codes test).    */
   0x00U,
   0x00U,
   0x01U,
@@ -529,7 +629,7 @@ static UCHAR s_string_framework[] = {
   '0',
   '0',
   '0',
-  '4',
+  '6',
 };
 
 /* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
@@ -1468,11 +1568,11 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
 [[nodiscard]] static ra_err_t selftest_host_enumerate(ra_usb_hmsc_device_t* out_device)
 {
   s_dbg_phase  = (uint32_t)k_selftest_phase_host_init;
-  ra_err_t err = selftest_print("ra8d2 selftest: host up on USB-HS, probing the loop...\r\n");
+  ra_err_t err = selftest_print("ra8d2 selftest: host up on USB-FS, probing the loop...\r\n");
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_usb_hmsc_init(k_ra_usb_speed_hs);
+  err = ra_usb_hmsc_init(k_ra_usb_speed_fs);
   if (err != k_ra_ok) {
     (void)selftest_print_fail("host init", err);
     return err;
@@ -1511,7 +1611,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * is closed so the next retry starts from a clean attach.
  *
  * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed CONFIG A PASS.
+ * @retval k_ra_ok The pass printed CONFIG B PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -1558,7 +1658,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
 
   s_dbg_phase = (uint32_t)k_selftest_phase_pass;
   s_dbg_pass_count++;
-  err = selftest_print("ra8d2 selftest: USB SELFTEST CONFIG A PASS\r\n");
+  err = selftest_print("ra8d2 selftest: USB SELFTEST CONFIG B PASS\r\n");
   if (err != k_ra_ok) {
     return err;
   }
@@ -1592,8 +1692,8 @@ static UINT selftest_usbx_stack_up(void)
   if (_ux_system_initialize(s_usbx_pool, k_selftest_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
+  return _ux_device_stack_initialize(s_device_framework_hs,
+                                     sizeof(s_device_framework_hs),
                                      s_device_framework_fs,
                                      sizeof(s_device_framework_fs),
                                      s_string_framework,
@@ -1654,17 +1754,18 @@ static UINT selftest_msc_class_register(void)
 }
 
 /**
- * @brief Device-side worker: bring the FS device stack up, then park.
+ * @brief Device-side worker: bring the HS device stack up, then park.
  *
  * @details USBX system + device stack + MSC class + DCD bridge on the
- * USBFS controller, then DPRPU attach. USBX runs the SCSI/BBB state
- * machine on its own class threads after this.
+ * USBHS controller, then DPRPU attach. The FS host downstream forces a
+ * full-speed link, so the stack serves the FS-fallback framework. USBX
+ * runs the SCSI/BBB state machine on its own class threads after this.
  *
  * @param[in] arg ThreadX entry argument (unused).
  *
  * @pre tx_application_define created this thread.
- * @pre USB-FS pins + 48 MHz clock are up (main did both).
- * @post The FS device is attached and serviceable.
+ * @pre USB-HS pins + UTMI PLL are up (main did both).
+ * @post The HS device is attached and serviceable.
  * @post On any bring-up failure the thread exits (probes show where).
  *
  * @note Runs once; loops forever on success.
@@ -1680,16 +1781,35 @@ static VOID selftest_device_worker(ULONG arg)
   if (selftest_msc_class_register() != UX_SUCCESS) {
     return;
   }
-  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
+  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
     return;
   }
-  if (ra_usb_device_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+  if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
     return;
   }
 
-  /* Idle. USBX runs the SCSI/BBB state machine on its own threads. */
+  /* Sample device-side USBX state into J-Link probes so the HS device's
+   * FS-fallback bring-up is observable, and kick the storage class
+   * thread if it parks SUSPENDED while the device is CONFIGURED. */
+  s_dbg_fw_fs_addr = (uint32_t)(uintptr_t)s_device_framework_fs;
+  s_dbg_fw_hs_addr = (uint32_t)(uintptr_t)s_device_framework_hs;
   while (1) {
-    tx_thread_sleep(k_selftest_idle_ticks);
+    s_dbg_dev_state = (uint32_t)_ux_system_slave->ux_system_slave_device.ux_slave_device_state;
+    s_dbg_ux_speed  = (uint32_t)_ux_system_slave->ux_system_slave_speed;
+    s_dbg_framework = (uint32_t)(uintptr_t)_ux_system_slave->ux_system_slave_device_framework;
+    s_dbg_fw_len    = (uint32_t)_ux_system_slave->ux_system_slave_device_framework_length;
+    s_dbg_thr_state = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
+                        .ux_slave_class_thread.tx_thread_state;
+    s_dbg_thr_runs  = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
+                        .ux_slave_class_thread.tx_thread_run_count;
+    if (s_dbg_dev_state == (uint32_t)UX_DEVICE_CONFIGURED) {
+      s_dbg_state3_seen++;
+      if (s_dbg_thr_state == (uint32_t)TX_SUSPENDED) {
+        (void)tx_thread_resume(
+          &_ux_system_slave->ux_system_slave_class_array[0].ux_slave_class_thread);
+      }
+    }
+    tx_thread_sleep(1U);
   }
 }
 
@@ -1697,14 +1817,14 @@ static VOID selftest_device_worker(ULONG arg)
  * @brief Host-side worker: retry the full pass until it succeeds.
  *
  * @details Waits for the device side to attach, then loops
- * ::selftest_host_pass with a retry pause until the whole config A
+ * ::selftest_host_pass with a retry pause until the whole config B
  * ladder passes; afterwards parks so the verdict stays on the wire.
  *
  * @param[in] arg ThreadX entry argument (unused).
  *
  * @pre tx_application_define created this thread (lower priority than
  *      the USBX device-side threads).
- * @pre The HS host pins, expander switch, and PLL are up (main).
+ * @pre The FS host pins, VBUSEN, and 48 MHz clock are up (main).
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
@@ -1795,29 +1915,39 @@ static void selftest_panic_halt(void)
 }
 
 /**
- * @brief Route both ports' pins: FS as device, HS as host.
+ * @brief Route both ports' pins: HS as device, FS as host (config B).
  *
- * @details FS device: P4_07 VBUS sense (PSEL), P5_00 VBUSEN held LOW as
- * GPIO (peripheral routing would force host-style VBUSEN HIGH and block
- * device enumeration), P8_14/P8_15 data. HS host: SW4-8 to Host via the
- * U15 expander, PD07 HIGH (U18 supplies J7), P4_08 VBUS sense.
+ * @details HS device: P4_08 VBUS sense (PSEL usb_hs), PD07 driven LOW
+ * so J7's role is Device and U18 does not back-feed VBUS into the FS
+ * host's cable; D+/D- are dedicated PHY balls (no PFS routing). FS
+ * host: P4_07 VBUS sense, P5_00 VBUSEN peripheral-routed so the USBFS
+ * controller sources J11 VBUS, P8_14/P8_15 data -- all PSEL usb_fs.
  *
- * @pre IOPORT and the U15 expander are reachable.
+ * @pre IOPORT is reachable.
  * @pre Called once from ::selftest_setup_or_halt.
- * @post FS pins carry the device role, HS pins the host role.
- * @post PD07 is HIGH (J7 powered).
+ * @post HS pins carry the device role, FS pins the host role.
+ * @post PD07 is LOW (J7 device, not self-powered).
  *
  * @note Panic-halts on any routing failure.
  * @since 0.1.0
  */
 static void selftest_route_usb_or_halt(void)
 {
-  /* FS port: device role. */
+  /* HS port: device role. PD07 LOW so U18 does not back-feed VBUS. */
+  if (ra_pfs_route_peripheral(k_selftest_pin_hs_vbus, k_ra_psel_usb_hs, "selftest.hs_vbus") !=
+      k_ra_ok) {
+    selftest_panic_halt();
+  }
+  if (ra_gpio_output_init(k_selftest_pin_hs_role, k_ra_level_low) != k_ra_ok) {
+    selftest_panic_halt();
+  }
+  /* FS port: host role. P5_00 VBUSEN peripheral-routed sources J11. */
   if (ra_pfs_route_peripheral(k_selftest_pin_fs_vbus, k_ra_psel_usb_fs, "selftest.fs_vbus") !=
       k_ra_ok) {
     selftest_panic_halt();
   }
-  if (ra_gpio_output_init(k_selftest_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_selftest_pin_fs_vbusen, k_ra_psel_usb_fs, "selftest.fs_vbusen") !=
+      k_ra_ok) {
     selftest_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_selftest_pin_fs_dp, k_ra_psel_usb_fs, "selftest.fs_dp") !=
@@ -1825,17 +1955,6 @@ static void selftest_route_usb_or_halt(void)
     selftest_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_selftest_pin_fs_dm, k_ra_psel_usb_fs, "selftest.fs_dm") !=
-      k_ra_ok) {
-    selftest_panic_halt();
-  }
-  /* HS port: host role. */
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
-    selftest_panic_halt();
-  }
-  if (ra_gpio_output_init(k_selftest_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
-    selftest_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_selftest_pin_hs_vbus, k_ra_psel_usb_hs, "selftest.hs_vbus") !=
       k_ra_ok) {
     selftest_panic_halt();
   }

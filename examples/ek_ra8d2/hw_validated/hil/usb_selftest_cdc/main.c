@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/usb_selftest_cdc/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/main.c
  * @brief USB self-loop: HS host writes bytes to a CDC-ACM device, reads the echo
  *
  * @par Tag

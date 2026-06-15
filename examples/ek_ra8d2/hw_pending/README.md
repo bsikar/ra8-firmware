@@ -1,39 +1,39 @@
 # examples/ek_ra8d2/hw_pending/
 
 Apps here compile and pass all CI gates but have **not yet been confirmed
-working on hardware end-to-end** or have a documented gap blocking
-sign-off. These are the apps to work through next when bench time is
-available.
+working on hardware end-to-end** -- each is blocked by a peripheral that
+isn't on the bench, or by a documented firmware gap. These are the apps to
+work through next when the missing hardware is available.
 
-To build: `make <appname>` from the repo root, e.g. `make dac_waveform`.
+To build: `make <appname>` from the repo root, e.g. `make sd_font_render`.
 Move an app to `hw_validated/hil/` (with a `git mv`) once it passes a
 hardware HIL probe AND the gap below is resolved.
 
-## Apps and blocking reasons (current as of 2026-05-19)
+## Apps and blocking reasons (current as of 2026-06-15)
 
-### Blocked by physical hardware on the bench
-
-| App | Blocking reason |
-|-----|-----------------|
-| acmphs_compare | Analog comparator output depends on stim voltage on IVCMP / IVREF pins; bare EVM floats. Needs known reference wired in. |
-| dac_b_demo | DAC output goes to an analog pin; needs scope / ADC ground-truth to verify the waveform. |
-| dac_waveform | Same as dac_b_demo. |
-| gpio_input_demo | SW1 user button drives the only observable signal; no Pi GPIO is wired to P009 on the HIL bench. |
-| gpt_capture_input | Needs external pulse train on the capture pin; no Pi-side stim wiring. |
-| icu_extint_demo | Same as gpio_input_demo -- needs Pi GPIO wired to SW1 (P009). |
-| i3c_i2c_peripheral_demo | I2C peripheral mode needs an external controller to talk to; bench has no controller wired up. |
-| imu_lsm6dso_demo | Needs LSM6DSO IMU on the I2C bus; out-of-scope for this user. |
-| i2c_loopback | U15 expander chip on the bench is unresponsive under all tested SW4-5 configs. |
-| kint_demo | Same as gpio_input_demo / icu_extint_demo -- SW1 stim needed. |
-| threadx_filex_demo | Needs SD card (FileX over SDHI); out-of-scope for this user. |
-| tz_secure_only_sd | Needs SD card; out-of-scope. |
-| usb_host_cdc_echo | Needs a USB-CDC peripheral wired into J7 for the chip to enumerate; needs USB Host stack debugging. |
-| usb_host_keyboard | Needs USB keyboard plus the same USB Host work. |
-| usb_host_msc_browse | Needs USB mass-storage device plus USB Host work. |
-
-### Blocked by firmware-side gaps (substantial work)
+### Blocked by a peripheral not on the bench
 
 | App | Blocking reason |
 |-----|-----------------|
-| threadx_netx_tcp_echo | HAL's GWCA stub doesn't wire descriptor list addresses (GWDCBAC0/1 + LINKFIX table per HUM Ch 34.5.1.3). Multi-hour port. FSP reference: `r_layer3_switch.c` at github.com/renesas/fsp under `ra/fsp/src/r_layer3_switch/`. |
-| tz_nsc_cgc_usb | Local HIL (2026-06-10): reaches init **step 3** (`ra_nsc_cgc_get_clock_hz`), not step 1 -- `ra_nsc_cgc_pll2_enable` and `ra_nsc_cgc_usbfs_clock_enable` pass. The first veneer that takes a pointer fails: `cmse_check_address_range(&cpuclk0_hz, CMSE_NONSECURE)` rejects the arg because the app's `.data`/`.bss`/stack live in the **secure** lower SRAM (0x22000000), while the SAU marks NS as 0x22100000+. A blanket linker repoint to NS_SRAM faults the secure boot (no S/NS separation in this single image). Needs the real #60 partition: separate secure + NS stacks/.bss and a proper BLXNS transition. Tracked in #60 / #54. |
+| i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
+| imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
+| sd_font_render | Needs a microSD card carrying `FONT.OTF`; the bench card is not provisioned for this app (board_sim covers it with a synthetic card image). |
+| threadx_filex_demo | FileX over SDHI; needs a microSD card. |
+| tz_secure_only_sd | Needs a microSD card (plus the TrustZone split). |
+| usb_host_cdc_echo | Needs a real USB-CDC peripheral on the port; the two USB jacks are cabled to each other for the self-loop self-tests, and a CDC **host** class is not yet first-party. |
+| usb_host_keyboard | Needs a real USB keyboard, plus a first-party HID-keyboard host class. |
+| usb_host_msc_browse | Needs a real USB mass-storage device (the MSC host path itself is validated on the self-loop -- see `hw_validated/hil/usb_selftest_*`). |
+
+### Blocked by a module / firmware gap
+
+| App | Blocking reason |
+|-----|-----------------|
+| da16600_probe | The DA16600 Wi-Fi/BLE module ships factory firmware that does not answer AT commands; it needs the AT-command SDK flashed first. Not an RA8D2-side wiring issue. |
+| tz_nsc_cgc_usb | Needs the real TrustZone secure / non-secure partition (separate S + NS stacks/.bss and a proper BLXNS transition): the NS-pointer veneer check rejects args whose `.data`/`.bss`/stack live in secure SRAM. Tracked in #60 / #54. |
+
+## Recently promoted
+
+The on-board **USB self-loop self-tests** (`usb_selftest_hs_host`, `_fs_host`,
+`_cdc`, `_hid`, `_microsd`, `_mlun`, `_wlun`, `_ospi`, `_ospi_rw`, `_soak`) were
+validated on real hardware (FS jack cabled to HS jack, the board both hosts and
+devices itself) and moved to `hw_validated/hil/`.
