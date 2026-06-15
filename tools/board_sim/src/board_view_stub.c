@@ -88,6 +88,20 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
 }
 
 /**
+ * @brief No-op key poll (no window can report a keystroke).
+ *
+ * @param[in]  view Always nullptr from board_view_open (unused).
+ * @param[out] ch   Keystroke byte (unused, never written).
+ * @return Always false -- a headless build reports no keys.
+ */
+bool board_view_poll_key(board_view_t* view, char* ch)
+{
+  (void)view;
+  (void)ch;
+  return false;
+}
+
+/**
  * @brief No-op window close (nothing was opened).
  *
  * @param[in] view Always nullptr from board_view_open (unused).
