@@ -40,6 +40,7 @@
 #include <unicorn/unicorn.h>
 #include <unistd.h>
 
+#include "board_input.h"
 #include "board_net.h"
 #include "board_overlay.h"
 #include "board_periph.h"
@@ -2691,6 +2692,7 @@ int main(int argc, char** argv)
                   "  --size WxH      panel size in pixels; overrides --panel (default 1024x600)\n"
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
                   "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
+                  "  --keys <str>    type <str> via the window-key path -> console UART RX\n"
                   "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
                   "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
                   "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
@@ -2706,6 +2708,7 @@ int main(int argc, char** argv)
   uint32_t    rotate_deg                     = (uint32_t)k_rotate_0;
   const char* panel_path                     = nullptr;
   const char* input_str                      = nullptr;
+  const char* keys_str                       = nullptr;
   const char* usb_in_str                     = nullptr;
   const char* dump_sym_names[k_dump_sym_max] = {}; /* --dump-sym globals to read.  */
   uint32_t    dump_sym_addrs[k_dump_sym_max] = {}; /* resolved while ELF is alive. */
@@ -2746,6 +2749,9 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--input", sizeof("--input")) == 0) && ((i + 1) < argc)) {
       input_str = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--keys", sizeof("--keys")) == 0) && ((i + 1) < argc)) {
+      keys_str = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--usb-in", sizeof("--usb-in")) == 0) && ((i + 1) < argc)) {
       usb_in_str = argv[i + 1];
@@ -2872,6 +2878,18 @@ int main(int argc, char** argv)
                   "board_sim: queued %u byte(s) to SCI%u RX from --input\n",
                   n,
                   board_periph_sci_console_channel());
+  }
+  /* --keys: push a scripted string through the SAME keystroke FIFO the live
+   * --view window feeds, so the run loop drains it to the console UART RX over
+   * the identical path -- a headless, deterministic test of the keyboard input
+   * (no window, no OS key events). */
+  if (keys_str != nullptr) {
+    uint8_t        kb[k_uart_line_max];
+    const uint32_t n = decode_escapes(keys_str, kb, (uint32_t)sizeof(kb));
+    for (uint32_t k = 0U; k < n; k++) {
+      board_input_push_key((char)kb[k]);
+    }
+    (void)fprintf(stderr, "board_sim: queued %u keystroke(s) via --keys (window-key path)\n", n);
   }
   /* Queue any --usb-in bytes for the virtual host to push over the CDC bulk OUT
    * pipe once the device is configured; the device echoes them back on bulk IN. */
@@ -3155,6 +3173,16 @@ int main(int argc, char** argv)
     board_periph_tick(uc);
     board_net_tick();
 
+    /* Drain any buffered keystrokes into the console UART RX (the same SCI
+     * channel --input targets). Sources are the live --view window (keyDown)
+     * and the headless --keys injector, both via board_input -- so the keyboard
+     * path is identical whether typed in the window or scripted on the CLI. */
+    char key_byte = 0;
+    while (board_input_pop_key(&key_byte)) {
+      const uint8_t kb = (uint8_t)key_byte;
+      board_periph_sci_feed_rx(board_periph_sci_console_channel(), &kb, 1U);
+    }
+
     /* Headless --click: keep one contact armed in the GT911 model until the
      * firmware's real ra_touch_read drains it (board_periph_touch_reported
      * increments). Re-arming each chunk is needed because ra_touch_open clears
@@ -3294,13 +3322,6 @@ int main(int argc, char** argv)
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
         (void)route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
-      }
-      /* Keystrokes typed into the window feed the console UART RX (the same SCI
-       * channel --input targets), so an interactive UART app reads them live. */
-      char kc = 0;
-      while (board_view_poll_key(view, &kc)) {
-        const uint8_t kb = (uint8_t)kc;
-        board_periph_sci_feed_rx(board_periph_sci_console_channel(), &kb, 1U);
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
         build_composite(uc,

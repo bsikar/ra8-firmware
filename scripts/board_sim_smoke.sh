@@ -275,6 +275,27 @@ case " ${apps[*]} " in
         echo "BUTTON CLICK NO-OP (on-screen SW1 did not light LED1 via GPIO)"
         fail=1
     fi
+
+    # Keyboard path (#39): --keys pushes a scripted string through the SAME
+    # board_input FIFO the live --view window's keyDown feeds; the run loop drains
+    # it to the console UART RX. uart_irq_echo echoes RX back, so the typed marker
+    # must reappear on its UART line -- a headless, deterministic test of the
+    # keyboard input with no window and no OS key events (gates board_input +
+    # the run-loop key drain).
+    printf '  %-24s ' "--keys -> UART echo"
+    if make uart_irq_echo >/tmp/smoke_build_uart_irq_echo.log 2>&1; then
+        kelf="$(find examples -path '*/uart_irq_echo/build/uart_irq_echo.elf' 2>/dev/null | head -1)"
+        kout="$(BOARD_SIM_IDLE_STOP=6000 "$sim" "$kelf" --keys 'KBDSMOKE\r\n' 2>&1 || true)"
+        if echo "$kout" | grep -qE "\[uart\] SCI8: KBDSMOKE"; then
+            echo "OK (--keys -> board_input -> SCI8 RX -> echo)"
+        else
+            echo "KEYS NO-OP (--keys did not reach the UART echo)"
+            fail=1
+        fi
+    else
+        echo "BUILD FAIL (see /tmp/smoke_build_uart_irq_echo.log)"
+        fail=1
+    fi
     ;;
 esac
 
