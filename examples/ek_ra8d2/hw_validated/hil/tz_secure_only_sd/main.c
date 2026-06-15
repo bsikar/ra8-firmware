@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/tz_secure_only_sd/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/main.c
  * @brief SPI-mode SD card round-trip HIL demo for the EK-RA8D2
  *
  * @par Tag
