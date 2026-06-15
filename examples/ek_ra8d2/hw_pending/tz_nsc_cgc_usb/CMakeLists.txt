@@ -32,8 +32,9 @@ endif()
 # NS_MRAM and the USB-FS peripheral is NS-attributed via an extra SAU
 # region.
 ra_add_app(NAME tz_nsc_cgc_usb STACK_BYTES 2200
-           DESCRIPTION "TrustZone NSC-veneer + CGC USB-FS demo (Phase A+B BLXNS scaffold)"
-           LIBS ra_tz_secure_boot)
+           DESCRIPTION "TrustZone NSC-veneer + CGC USB-FS demo (Phase C: NSC CGC veneers from NS)"
+           LIBS ra_tz_secure_boot
+           NSC_SRCS ra_nsc_cgc.c)
 
 # ns_main.c is the Non-Secure image (vector table + reset handler at
 # NS_MRAM 0x02080000). It's not in ra_add_app's per-app source list

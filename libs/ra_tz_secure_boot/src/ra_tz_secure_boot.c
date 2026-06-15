@@ -535,11 +535,19 @@ ra_err_t ra_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table)
 #else
   /* ARMv8-M MSR_NS / BLXNS sequence -- set MSP_NS, then branch into
    * the NS world via BLXNS. The compiler does NOT emit BLXNS through
-   * a regular function-pointer call; we need inline asm. */
+   * a regular function-pointer call; we need inline asm.
+   *
+   * BLXNS switches to Non-Secure state only when bit[0] of the target
+   * register is 0; bit[0] == 1 keeps the call Secure (it is the
+   * function-descriptor "Secure" marker, not the Thumb bit). The NS reset
+   * vector carries the Thumb bit set, so it MUST be cleared here -- otherwise
+   * the "NS" image executes in Secure state on the Secure stack and every
+   * NS-pointer cmse check in the NSC veneers misfires. */
+  const uint32_t ns_entry = reset_entry & ~(uint32_t)1U;
   __asm__ volatile("msr msp_ns, %0\n"
                    "blxns %1\n"
                    :
-                   : "r"(initial_sp), "r"(reset_entry)
+                   : "r"(initial_sp), "r"(ns_entry)
                    : "memory");
   /* Unreachable on target. */
   return k_ra_ok;

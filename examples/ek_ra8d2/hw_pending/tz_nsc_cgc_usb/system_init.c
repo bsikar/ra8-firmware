@@ -347,22 +347,22 @@ void SystemInit(void)
   (void)internal_enable_dcache;
   (void)internal_enable_branch_predictor;
   (void)internal_mpu_init;
+  internal_set_priority_grouping();
+
+  /* Bring up the Secure clock tree (XTAL -> PLL1 -> CPUCLK0 = 1 GHz) BEFORE the
+   * SAU + BLXNS below. ra_trustzone_init() does NOT return on hardware (BLXNS
+   * leaves Secure thread mode), so anything sequenced after it never runs on the
+   * Secure side. The NS-side NSC CGC veneers (ra_nsc_cgc_pll2_enable etc.) trap
+   * back into this Secure CGC driver, which needs PLL1 already locked -- without
+   * it the first PLL2 enable fails because its PLL1 source is missing. */
+  (void)ra_cgc_init();
+
 #ifdef RA_TRUSTZONE_ENABLE
-  /* Programme the SAU before any NS code can be reached. The NSC
-   * veneers in libs/ra_nsc/ depend on the SAU being live so the
-   * ``cmse_nonsecure_entry`` traps land on the secure side. */
+  /* Programme the SAU, then BLXNS into the NS image. The NSC veneers depend on
+   * the SAU being live so the cmse_nonsecure_entry traps land on the Secure
+   * side. Does not return on hardware. */
   ra_trustzone_init();
 #else
   (void)ra_trustzone_init;
 #endif
-  internal_set_priority_grouping();
-
-  /* Bring up the chip's clock tree (XTAL -> PLL1 -> CPUCLK0=1 GHz)
-   * before any application code runs. NS main calls into Secure CGC
-   * via NSC veneers (ra_nsc_cgc_pll2_enable, ra_nsc_cgc_usbfs_clock_enable,
-   * ra_nsc_cgc_get_clock_hz) which all assume the secure-side base
-   * tree is already up. Without this the first PLL2 enable spins
-   * forever waiting for a lock that the missing PLL1 source can't
-   * supply. */
-  (void)ra_cgc_init();
 }
