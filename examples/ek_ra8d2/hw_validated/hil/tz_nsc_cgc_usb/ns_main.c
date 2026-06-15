@@ -272,37 +272,6 @@ extern void _tx_timer_interrupt(void); /**< @brief ThreadX 1 ms tick worker. */
 /** @brief Set by the kernel once tx_initialize_low_level has run. */
 extern volatile uint32_t g_ra_threadx_systick_ready;
 
-/** @brief Worker-thread tunables. */
-typedef enum : uint32_t {
-  k_ns_thread_stack_bytes = 2048U, /**< Worker thread stack size.            */
-  k_ns_thread_priority    = 8U,    /**< Priority + preemption threshold.     */
-} ns_thread_cfg_t;
-
-/**
- * @var s_ns_thread
- * @brief Worker thread control block (NS BSS).
- * @note Read/written only by ThreadX in the NS image.
- * @since 0.1.0
- */
-__attribute__((section(".ns_bss"))) static TX_THREAD s_ns_thread;
-
-/**
- * @var s_ns_stack
- * @brief Worker thread stack (NS BSS).
- * @note Owned by ::s_ns_thread.
- * @since 0.1.0
- */
-__attribute__((section(".ns_bss"))) static uint8_t s_ns_stack[k_ns_thread_stack_bytes];
-
-/**
- * @var s_ns_thread_name
- * @brief Worker thread name (writable NS data; ThreadX name_ptr is CHAR*).
- * @details Lives in .ns_data (NS-resident, loaded) so the NS-side kernel can
- *          read it; a const literal would land in Secure .data and fault.
- * @since 0.1.0
- */
-__attribute__((section(".ns_data"))) static CHAR s_ns_thread_name[] = "ns_worker";
-
 /**
  * @brief NS SysTick handler -- drives the ThreadX 1 ms time base.
  * @details Slot 15 of the NS vector table. Forwards to _tx_timer_interrupt once
@@ -323,52 +292,10 @@ __attribute__((section(".ns_text"))) static void ns_systick_handler(void)
   }
 }
 
-/**
- * @brief ThreadX worker -- advances the bench counter from a real NS thread.
- * @param[in] input Unused thread entry argument.
- * @return Never returns.
- * @pre The scheduler auto-started this thread.
- * @pre CPU is in NS thread mode (DSCSR.CDS=0).
- * @post ::g_tz_nsc_cgc_usb_match advances ~1000/s (one per 1 ms tick).
- * @post ::g_tz_nsc_cgc_usb_ns_alive mirrors it.
- * @note Sleeping one tick per loop exercises SysTick + timer + scheduler.
- * @since 0.1.0
- */
-__attribute__((section(".ns_text"))) static void ns_worker(ULONG input)
-{
-  (void)input;
-  while (1) {
-    g_tz_nsc_cgc_usb_match += 1U;
-    g_tz_nsc_cgc_usb_ns_alive += 1U;
-    (void)tx_thread_sleep(1U);
-  }
-}
-
-/**
- * @brief ThreadX application-define callback -- spawns the worker thread.
- * @param[in] first_unused_memory ThreadX free-RAM base (unused; static stack).
- * @return void.
- * @pre Called by tx_kernel_enter() after kernel init.
- * @pre CPU is in NS state.
- * @post One auto-started worker thread exists at ::k_ns_thread_priority.
- * @post The scheduler will run ::ns_worker.
- * @note Single-threaded init context.
- * @since 0.1.0
- */
-__attribute__((section(".ns_text"))) void tx_application_define(void* first_unused_memory)
-{
-  (void)first_unused_memory;
-  (void)tx_thread_create(&s_ns_thread,
-                         s_ns_thread_name,
-                         ns_worker,
-                         0UL,
-                         s_ns_stack,
-                         (ULONG)k_ns_thread_stack_bytes,
-                         (UINT)k_ns_thread_priority,
-                         (UINT)k_ns_thread_priority,
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
-}
+/* The single ThreadX ``tx_application_define`` for this NS image lives in
+ * ns_usb.c -- it spawns the USBX CDC worker, which advances
+ * ``g_tz_nsc_cgc_usb_match`` (the HIL gate) from inside the polled-dispatch
+ * loop. tx_kernel_enter() (called by ns_reset_handler above) invokes it. */
 
 /* =============================================================================
  * NS vector table

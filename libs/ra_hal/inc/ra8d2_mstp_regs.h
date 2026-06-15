@@ -64,7 +64,16 @@ extern "C" {
  */
 
 typedef enum : uintptr_t {
+#ifdef RA_PERIPH_NS_ALIAS
+  /* TrustZone Non-secure build (#96): reach MSTPCRA..E through the IDAU
+   * bit[28]=1 Non-secure alias (+0x1000_0000). Per-bit module-stop security
+   * follows the peripheral's PSAR attribution, so once the Secure side marks
+   * USBFS0 Non-secure (PSARB11) the NS image may clear MSTPCRB.MSTPB11 here;
+   * Secure-owned bits in the same word are write-ignored from NS. */
+  k_ra_mstp_base_addr = 0x50203000UL, /**< R_MSTP block base (NS alias bit[28]=1). */
+#else
   k_ra_mstp_base_addr = 0x40203000UL, /**< R_MSTP block base. */
+#endif
 } ra_mstp_addr_t;
 
 /**
