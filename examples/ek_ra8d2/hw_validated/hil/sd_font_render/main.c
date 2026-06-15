@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/sd_font_render/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/sd_font_render/main.c
  * @brief Load a TTF/OTF font off an SD card and render text with ra_reflow.
  *
  * @par Tag
@@ -16,25 +16,24 @@
  *
  *   @code
  *   tools/mkfontimg/build/mkfontimg libs/fonts/ArnoPro-Regular.otf /tmp/font.img
- *   make -C examples/ek_ra8d2/hw_pending/sd_font_render
+ *   make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
  *   tools/board_sim/build/board_sim \
- *     examples/ek_ra8d2/hw_pending/sd_font_render/build/sd_font_render.elf \
+ *     examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
  *     --sd /tmp/font.img --ppm /tmp/out.ppm
  *   @endcode
  *
  * Flow:
  *   1. CGC + MSTP + SysTick + LEDs.
  *   2. External SDRAM + GLCDC panel (framebuffer at 0x68000000), ra_gfx bound.
- *   3. Pmod2 SPI (J25 / SCI0 Simple-SPI) routed; chip-select claimed as a GPIO
- *      output (SD SPI-mode holds CS across the whole frame).
- *   4. ra_sdmmc_spi card bring-up, then ra_fs mount of the FAT volume.
- *   5. Read @c FONT.OTF off the card into an SDRAM buffer.
- *   6. ra_reflow_init / layout_chapter / render_page -> framebuffer.
- *   7. Idle; GLCDC scans out the rendered page (board_sim snapshots it).
+ *   3. @ref ra_sdfont_load brings up the Pmod2 SD card (J25 / SCI0 Simple-SPI),
+ *      mounts the FAT volume, and reads @c FONT.OTF into an SDRAM buffer --
+ *      self-provisioning the file from a baked Latin-1 font when the card is blank.
+ *   4. ra_reflow_init / layout_chapter / render_page -> framebuffer.
+ *   5. Idle; GLCDC scans out the rendered page (board_sim snapshots it).
  *
- * On the physical board this needs a Digilent PMOD MicroSD in J25 with a
- * FAT-formatted card carrying @c FONT.OTF; in board_sim the @c --sd image
- * stands in for the card.
+ * Because the font self-provisions, any FAT-formatted microSD works -- the card
+ * need not be pre-loaded with @c FONT.OTF. On the physical board this needs a
+ * Digilent PMOD MicroSD in J25; in board_sim the @c --sd image stands in.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -44,24 +43,20 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "arnopro_latin1.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
-#include "ra_fs.h"
 #include "ra_gfx.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
-#include "ra_port_utils.h"
 #include "ra_reflow.h"
-#include "ra_sci_spi.h"
-#include "ra_sdmmc_spi.h"
+#include "ra_sdfont.h"
 #include "ra_sdramc.h"
-#include "ra_spi.h"
 #include "ra_time.h"
 
 /* ===========================================================================
@@ -177,32 +172,12 @@ volatile uint32_t g_sfr_font_len = 0U;
 volatile uint32_t g_sfr_pages = 0U;
 /** @brief Inked (non-paper) pixel count after render -- liveness proof. */
 volatile uint32_t g_sfr_ink = 0U;
-
-/* ===========================================================================
- * SPI -> ra_sdmmc_spi transport adapter
- * =========================================================================== */
-
-/* cppcheck-suppress constParameterCallback
- * Reason: bound to ra_sdmmc_spi_transport_t::set_clock, whose signature is
- * `ra_err_t (*)(void*, uint32_t)`; const-qualifying ctx would break the
- * function-pointer type shared by every transport binding. */
-static ra_err_t sfr_spi_set_clock(void* ctx, uint32_t hz)
-{
-  const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_sfr_spi_chan, hz, pclka_hz);
-}
-
-static ra_err_t sfr_spi_cs(void* ctx, bool asserted)
-{
-  (void)ctx;
-  return ra_gpio_write(k_sfr_pin_cs, asserted ? k_ra_level_low : k_ra_level_high);
-}
-
-static ra_err_t sfr_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
-{
-  (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_sfr_spi_chan, tx, rx, len);
-}
+/** @brief Font provenance (::ra_sdfont_source_t): 0 = on-card, 1 = provisioned. */
+volatile uint32_t g_sfr_source = 0U;
+/** @brief Last ::ra_err_t from ::ra_sdfont_load (0 = k_ra_ok), for SWD triage. */
+volatile uint32_t g_sfr_err = 0U;
+/** @brief Idle-loop heartbeat; advances only after a clean render (HIL gate). */
+volatile uint32_t g_sfr_heartbeat = 0U;
 
 /* ===========================================================================
  * Boot helpers
@@ -277,81 +252,36 @@ static void sfr_bringup_panel(void)
   g_sfr_stage = k_sfr_stage_panel_ok;
 }
 
-/** @brief Route Pmod2 pins to SCI0 Simple-SPI and init the channel.
+/** @brief Load FONT.OTF off the Pmod2 card (self-provisioning) into ::s_font_buf.
  *
- * @details Pmod2 SPI is SCI0 in Simple-SPI mode (HUM Table 20.13: P601..P604
- * route to SCK0_B / CIPO0_B / COPI0_B at ``PSEL = 00100b``); the RSPI/SPI_B
- * peripheral has no function on these pins. Verified on the EK-RA8D2: a CMD0
- * over ::ra_sci_spi returns R1 = 0x01 and ::ra_sdmmc_spi_init enumerates the
- * card. */
-static void sfr_bringup_spi(void)
+ * @details Delegates the Pmod2 SPI bring-up, FAT mount, and font read to
+ * @ref ra_sdfont_load, which writes the baked Latin-1 font to the card and reads
+ * it back when @c FONT.OTF is absent -- so any FAT-formatted card just works. The
+ * raw ::ra_err_t is stashed in ::g_sfr_err for SWD triage; on failure the panel
+ * is flooded a stage-coded gray and the app halts. */
+static void sfr_load_font_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_sfr_pin_sck, k_ra_psel_sci_async, "sfr.sck") != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_card_fail);
-  }
-  if (ra_pfs_route_peripheral(k_sfr_pin_cipo, k_ra_psel_sci_async, "sfr.cipo") != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_card_fail);
-  }
-  if (ra_pfs_route_peripheral(k_sfr_pin_copi, k_ra_psel_sci_async, "sfr.copi") != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_card_fail);
-  }
-  /* CS as a GPIO output, idle high (deasserted): SD SPI-mode framing needs
-   * CS held across the whole 6-byte command + data trailer, which the SCI
-   * hardware chip-select controller cannot do (it pulses per word). */
-  if (ra_gpio_output_init(k_sfr_pin_cs, k_ra_level_high) != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_card_fail);
-  }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclk_hz   = s_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
-    .lsb_first = false,
+  const ra_sdfont_cfg_t cfg = {
+    .spi_channel    = (uint8_t)k_sfr_spi_chan,
+    .sck            = k_sfr_pin_sck,
+    .cipo           = k_sfr_pin_cipo,
+    .copi           = k_sfr_pin_copi,
+    .cs             = k_sfr_pin_cs,
+    .pclka_hz       = s_pclka_hz,
+    .filename       = "FONT.OTF",
+    .provision_blob = g_ra_font_arnopro_latin1,
+    .provision_len  = g_ra_font_arnopro_latin1_len,
   };
-  if (ra_sci_spi_init((uint8_t)k_sfr_spi_chan, &spi_cfg) != k_ra_ok) {
+  uint32_t           got = 0U;
+  ra_sdfont_source_t src = k_ra_sdfont_source_card;
+  const ra_err_t     err = ra_sdfont_load(&cfg, s_font_buf, (uint32_t)k_sfr_font_cap, &got, &src);
+  g_sfr_err              = (uint32_t)err;
+  if (err != k_ra_ok) {
     sfr_panic_halt(k_sfr_stage_card_fail);
-  }
-}
-
-/** @brief Bring up the SD card, mount FAT, read FONT.OTF into ::s_font_buf. */
-static ra_fs_mount_t* sfr_load_font_or_halt(void)
-{
-  const ra_sdmmc_spi_transport_t transport = {
-    .set_clock = sfr_spi_set_clock,
-    .cs        = sfr_spi_cs,
-    .xfer      = sfr_spi_xfer,
-    .ctx       = &s_pclka_hz,
-  };
-  if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_card_fail);
-  }
-  g_sfr_stage = k_sfr_stage_card_ok;
-
-  ra_fs_backend_t backend = {};
-  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_mount_fail);
-  }
-  ra_fs_mount_t* mount = nullptr;
-  if (ra_fs_mount(&backend, &mount) != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_mount_fail);
-  }
-  g_sfr_stage = k_sfr_stage_mount_ok;
-
-  ra_fs_file_t* f = nullptr;
-  if (ra_fs_open(mount, "FONT.OTF", k_ra_fs_mode_read, &f) != k_ra_ok) {
-    sfr_panic_halt(k_sfr_stage_font_fail);
-  }
-  uint32_t got = 0U;
-  if (ra_fs_read(f, s_font_buf, (uint32_t)k_sfr_font_cap, &got) != k_ra_ok) {
-    (void)ra_fs_close(f);
-    sfr_panic_halt(k_sfr_stage_font_fail);
-  }
-  (void)ra_fs_close(f);
-  if (got < 16U) {
-    sfr_panic_halt(k_sfr_stage_font_fail);
   }
   g_sfr_font_len = got;
+  g_sfr_source   = (uint32_t)src;
   g_sfr_stage    = k_sfr_stage_font_ok;
-  return mount;
 }
 
 /** @brief Reflow the body XHTML with the SD font into the framebuffer. */
@@ -403,14 +333,16 @@ int32_t main(void)
 {
   sfr_bringup_clocks();
   sfr_bringup_panel();
-  sfr_bringup_spi();
-  (void)sfr_load_font_or_halt();
+  sfr_load_font_or_halt();
   sfr_render_or_halt();
 
   /* The page is rendered; GLCDC scans out the framebuffer continuously.
-   * board_sim snapshots it via --ppm. Idle with a heartbeat. */
+   * board_sim snapshots it via --ppm. Idle with a heartbeat that advances only
+   * on this success path -- the panic-halt loop does not bump it -- so a J-Link
+   * memprobe gate proves the full SD-font render pipeline ran end to end. */
   while (1) {
     ra_delay_ms((uint32_t)k_sfr_frame_ms);
+    g_sfr_heartbeat++;
   }
 }
 #pragma GCC diagnostic pop

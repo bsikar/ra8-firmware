@@ -99,6 +99,7 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | gpt_capture_input | LED toggles on SW1 press; captures period |
 | gpt_pwm_demo | LED breathes via GPT PWM duty cycle |
 | mpu_partition_simple | LED2 on MemFault (expected), LED3 on no-fault |
+| sd_font_render | `g_sfr_heartbeat` advances (J-Link memprobe, after a 12 s render dwell) only once the SD-font render reaches its idle loop -- proves the whole microSD -> ra_sdfont (self-provision) -> ra_reflow -> framebuffer path. Any failure stage parks in `sfr_panic_halt` and the counter freezes |
 | threadx_blink | LED1/LED2 toggle from two ThreadX threads |
 | threadx_canfd_demo | LED toggles on each CAN-FD ThreadX frame |
 | threadx_levelx_demo | LED1 toggles on each LevelX erase/write cycle |
