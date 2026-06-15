@@ -193,6 +193,24 @@ uint32_t board_periph_led_level(board_led_id_t led);
 void board_periph_gpio_set_input(uint8_t port, uint8_t pin, bool level);
 
 /**
+ * @brief Read the externally-injected input level of a GPIO pin.
+ *
+ * @details Returns the level last set by ::board_periph_gpio_set_input for @p
+ * pin (the board's switches idle high). Lets an interactive caller toggle a
+ * push-button by reading the current state and writing its inverse -- e.g. an
+ * on-screen SW1 click flips P009 between released (high) and pressed (low).
+ *
+ * @param[in] port PORT index (0-based; PORT0 == 0).
+ * @param[in] pin  Pin number within the port (0..15).
+ * @return The injected level (true = high, false = low); false if out of range.
+ *
+ * @pre The peripheral model has been initialised.
+ * @note Not thread-safe; single-threaded harness use.
+ * @since 0.1.0
+ */
+bool board_periph_gpio_get_input(uint8_t port, uint8_t pin);
+
+/**
  * @brief The on-colour of a board LED as a packed RGB565 value.
  *
  * @details

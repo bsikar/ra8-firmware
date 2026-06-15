@@ -201,6 +201,13 @@ typedef enum : uint32_t {
   k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.    */
 } board_sim_misc_t;
 
+/** @brief EK-RA8D2 user-switch GPIO coordinates (active-low): SW1 P009, SW2 P008. */
+typedef enum : uint8_t {
+  k_sim_sw_port = 0U, /**< Both user switches sit on PORT0. */
+  k_sim_sw1_pin = 9U, /**< SW1 -> P009.                     */
+  k_sim_sw2_pin = 8U, /**< SW2 -> P008.                     */
+} sim_sw_pin_t;
+
 /* Touch on the EK-RA8D2 is now modelled end-to-end: the firmware's real
  * ra_touch_open / ra_touch_read run unchanged and drive the GoodIX GT911 over
  * ra_i3c_transfer (the I3C peripheral in legacy I2C mode), which board_periph
@@ -2246,7 +2253,10 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->irq0      = board_periph_irq_count(0U);
   st->irq1      = board_periph_irq_count(1U);
   st->has_touch = board_periph_touch_last(&st->touch_x, &st->touch_y);
-  st->app_name  = app_name;
+  /* User switches are active-low: a held button reads its pin low. */
+  st->sw1_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw1_pin);
+  st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw2_pin);
+  st->app_name    = app_name;
 }
 
 /**
@@ -2330,6 +2340,50 @@ static void unrotate_click(uint16_t  cx,
     *nx = cx;
     *ny = cy;
   }
+}
+
+/** @brief Toggle a user switch's pressed level (active-low) for an on-screen button. */
+static void toggle_switch(board_overlay_btn_t btn)
+{
+  const uint8_t pin =
+    (btn == k_board_overlay_btn_sw2) ? (uint8_t)k_sim_sw2_pin : (uint8_t)k_sim_sw1_pin;
+  const bool level = board_periph_gpio_get_input((uint8_t)k_sim_sw_port, pin);
+  board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, !level);
+}
+
+/**
+ * @brief Route a composite-space click to the right input model.
+ *
+ * @details An on-screen SW1 / SW2 button toggles that user switch (active-low);
+ * any other click is mapped back through @ref unrotate_click and injected as a
+ * GT911 touch -- the same path the firmware's real ra_touch_read drains. This is
+ * shared by the live window and the headless @c --click so both behave alike.
+ *
+ * @param[in] cx         Click column in composite pixels.
+ * @param[in] cy         Click row in composite pixels.
+ * @param[in] panel_w    Native panel width (for the touch unrotate).
+ * @param[in] panel_h    Native panel height (for the touch unrotate).
+ * @param[in] disp_w     Displayed panel width (the sidebar origin for buttons).
+ * @param[in] rotate_deg Active display rotation.
+ * @return The button hit, or ::k_board_overlay_btn_none for a panel touch.
+ */
+static board_overlay_btn_t route_click(uint16_t cx,
+                                       uint16_t cy,
+                                       uint16_t panel_w,
+                                       uint16_t panel_h,
+                                       uint16_t disp_w,
+                                       uint32_t rotate_deg)
+{
+  const board_overlay_btn_t btn = board_overlay_hit_button(cx, cy, disp_w);
+  if (btn != k_board_overlay_btn_none) {
+    toggle_switch(btn);
+    return btn;
+  }
+  uint16_t nx = cx;
+  uint16_t ny = cy;
+  unrotate_click(cx, cy, panel_w, panel_h, rotate_deg, &nx, &ny);
+  board_periph_touch_inject(nx, ny);
+  return k_board_overlay_btn_none;
 }
 
 static void build_composite(uc_engine*  uc,
@@ -2627,7 +2681,8 @@ int main(int argc, char** argv)
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
                   " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
                   " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>]\n"
-                  "  --view          open a macOS window: live board view (panel + status)\n"
+                  "  --view          open a macOS window: live board view; click panel"
+                  " (touch) or on-screen SW1/SW2\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
                   "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
                   "  --record-secs N headless: record N emulated seconds, then stop (~20 fps)\n"
@@ -2802,13 +2857,8 @@ int main(int argc, char** argv)
    * boots, so a button-polling app (e.g. gpio_input_demo: SW1 -> LED1) takes
    * its pressed path. SW1 = P009, SW2 = P008. */
   if (button_press != 0) {
-    enum : uint8_t {
-      k_main_sw_port = 0U, /**< User switches on PORT0. */
-      k_main_sw1_pin = 9U, /**< SW1 -> P009.            */
-      k_main_sw2_pin = 8U, /**< SW2 -> P008.            */
-    };
-    const uint8_t pin = (button_press == 2) ? (uint8_t)k_main_sw2_pin : (uint8_t)k_main_sw1_pin;
-    board_periph_gpio_set_input((uint8_t)k_main_sw_port, pin, false);
+    const uint8_t pin = (button_press == 2) ? (uint8_t)k_sim_sw2_pin : (uint8_t)k_sim_sw1_pin;
+    board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, false);
     (void)fprintf(stderr,
                   "board_sim: --button %d held (SW pin P00%u low/pressed)\n",
                   button_press,
@@ -3089,6 +3139,12 @@ int main(int argc, char** argv)
   bool          timed_out     = false;
   bool          closed        = false;
   uint32_t      settle_left   = 0U; /* >0 once the click landed: chunks to drain. */
+  /* Classify a headless --click once: an on-screen sidebar button toggles a user
+   * switch (fired once); anything else is a panel touch (re-armed until drained).*/
+  const board_overlay_btn_t click_btn =
+    want_click ? board_overlay_hit_button((uint16_t)click_x, (uint16_t)click_y, disp_w)
+               : k_board_overlay_btn_none;
+  bool button_fired = false;
   for (; chunks < max_chunks; chunks++) {
     /* Each outer chunk is one SysTick period: arm the periodic tick so the
      * boundary (or a tail-chain) takes it once interrupts permit. */
@@ -3104,7 +3160,12 @@ int main(int argc, char** argv)
      * increments). Re-arming each chunk is needed because ra_touch_open clears
      * the GT911 status byte during bring-up; once the render loop reads the
      * point it is consumed once and never re-armed. */
-    if (want_click && (board_periph_touch_reported() == 0U)) {
+    if (want_click && (click_btn != k_board_overlay_btn_none)) {
+      if (!button_fired) {
+        toggle_switch(click_btn); /* on-screen SW1/SW2: press once, then hold. */
+        button_fired = true;
+      }
+    } else if (want_click && (board_periph_touch_reported() == 0U)) {
       uint16_t cnx = (uint16_t)click_x;
       uint16_t cny = (uint16_t)click_y;
       unrotate_click((uint16_t)click_x,
@@ -3226,15 +3287,13 @@ int main(int argc, char** argv)
       }
     }
     if (view != nullptr) {
-      /* Live window: each left mouse-down arms one GT911 contact, so the
+      /* Live window: a left mouse-down on an on-screen SW1/SW2 button toggles
+       * that user switch; anywhere on the panel arms one GT911 contact, so the
        * firmware's next real ra_touch_read returns it through the I3C path. */
       uint16_t cx = 0U;
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
-        uint16_t nx = cx;
-        uint16_t ny = cy;
-        unrotate_click(cx, cy, panel_w, panel_h, rotate_deg, &nx, &ny);
-        board_periph_touch_inject(nx, ny);
+        (void)route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
         build_composite(uc,
@@ -3254,9 +3313,13 @@ int main(int argc, char** argv)
         break;
       }
     } else if (want_click) {
-      /* Headless --click: run a bounded tail after the tap is drained, then
-       * stop deterministically so the dumped frame shows the switched tab. */
-      if (board_periph_touch_reported() > 0U) {
+      /* Headless --click: run a bounded tail after the input lands (a drained
+       * touch, or a fired on-screen button), then stop deterministically so the
+       * dumped frame shows the switched tab / lit LED. */
+      const bool click_acted = (click_btn != k_board_overlay_btn_none)
+                                 ? button_fired
+                                 : (board_periph_touch_reported() > 0U);
+      if (click_acted) {
         settle_left = (settle_left == 0U) ? (uint32_t)k_click_settle_chunks : (settle_left - 1U);
         if (settle_left == 1U) {
           break;

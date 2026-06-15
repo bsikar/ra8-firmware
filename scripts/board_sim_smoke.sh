@@ -258,6 +258,26 @@ done
 
 [ -n "$sd_image" ] && rm -f "$sd_image"
 
+# On-screen SW1 button (#39 interactive --view input layer): a click on the
+# sidebar's SW1 push-button must route to the user-switch model (drive P009 low),
+# NOT the touch panel -- so gpio_input_demo lights LED1 (SW1 -> LED1) while
+# draining zero GT911 touches. The SW1 button face centre sits at composite
+# (1115,224) on the default 1024x600 panel; this gates board_overlay_hit_button +
+# route_click. Only when gpio_input_demo is in the run set (its ELF is built).
+case " ${apps[*]} " in
+*" gpio_input_demo "*)
+    printf '  %-24s ' "on-screen SW1 click"
+    gelf="$(find examples -path '*/gpio_input_demo/build/gpio_input_demo.elf' 2>/dev/null | head -1)"
+    bout="$("$sim" "$gelf" --click 1115 224 2>&1 || true)"
+    if echo "$bout" | grep -qE "LED1[^]]*ON" && echo "$bout" | grep -qE "touch clicks  : 0 "; then
+        echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
+    else
+        echo "BUTTON CLICK NO-OP (on-screen SW1 did not light LED1 via GPIO)"
+        fail=1
+    fi
+    ;;
+esac
+
 if [ "$fail" -eq 0 ]; then
     echo "board_sim smoke: ALL PASS"
     exit 0
