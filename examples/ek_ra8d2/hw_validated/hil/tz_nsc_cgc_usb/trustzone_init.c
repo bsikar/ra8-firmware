@@ -54,7 +54,13 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
+#include "ra_gpio_constants.h"
+#include "ra_pin_validator.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
 #include "ra_tz_secure_boot.h"
 
 /* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
@@ -101,6 +107,7 @@ typedef enum : uintptr_t {
   k_tz_sau_rlar_addr   = 0xE000EDE0U, /**< SAU Region Limit Address.        */
   k_tz_sramsabar0_addr = 0x40008400U, /**< CPSCU SRAMSABAR0 (+4*n for n>0). */
   k_tz_prcr_s_addr     = 0x4001E3FAU, /**< SYSC PRCR_S (16-bit).            */
+  k_tz_psarb_addr      = 0x40204004U, /**< PSCU PSARB (peripheral S/NS attr).*/
 } tz_reg_addr_t;
 
 /**
@@ -111,12 +118,73 @@ typedef enum : uintptr_t {
  *            occupies bits [31:5] (ARMv8-M 32-byte region quantum).
  */
 typedef enum : uint32_t {
-  k_tz_sau_ctrl_enable = 0x00000001U, /**< SAU_CTRL.ENABLE, ALLNS = 0.      */
-  k_tz_sau_rlar_enable = 0x00000001U, /**< SAU_RLAR.ENABLE.                 */
-  k_tz_sau_rlar_nsc    = 0x00000002U, /**< SAU_RLAR.NSC (Non-secure call).  */
-  k_tz_sau_limit_mask  = 0xFFFFFFE0U, /**< 32-byte-aligned limit mask.      */
-  k_tz_sau_type_mask   = 0x000000FFU, /**< SAU_TYPE.SREGION field mask.     */
+  k_tz_sau_ctrl_enable      = 0x00000001U, /**< SAU_CTRL.ENABLE, ALLNS = 0.      */
+  k_tz_sau_rlar_enable      = 0x00000001U, /**< SAU_RLAR.ENABLE.                 */
+  k_tz_sau_rlar_nsc         = 0x00000002U, /**< SAU_RLAR.NSC (Non-secure call).  */
+  k_tz_sau_limit_mask       = 0xFFFFFFE0U, /**< 32-byte-aligned limit mask.      */
+  k_tz_sau_type_mask        = 0x000000FFU, /**< SAU_TYPE.SREGION field mask.     */
+  k_tz_psarb_usbfs_ns       = 0x00000800U, /**< PSARB11 = 1: USBFS0 Non-secure.  */
+  k_tz_psarb_usbhs_ns       = 0x00001000U, /**< PSARB12 = 1: USBHS Non-secure.   */
+  k_tz_psarb_usb_ns         = 0x00001800U, /**< PSARB11|12: both USB ctrls NS.   */
+  k_tz_psarb_readback_spins = 1000U,       /**< Bounded read-back confirm loop.  */
 } tz_field_t;
+
+/**
+ * @enum tz_usb_pin_t
+ * @brief Packed ``ra_port_pin_t`` codes for the four EK-RA8D2 USB-FS pins.
+ *
+ * @details Packing is ``(port << 8) | pin`` (matches ::ra_port_pin_t). The
+ *          Secure side routes these to the USBFS peripheral function before
+ *          BLXNS so the Non-secure USB stack drives a live PHY; PFS ownership
+ *          (PMSAR) stays Secure but the muxed signal still reaches the
+ *          (Non-secure-attributed) USBFS controller.
+ *
+ * @invariant Matches the EK-RA8D2 v1 User's Manual USB-FS (J11) pin map.
+ */
+typedef enum : uint16_t {
+  k_tz_usb_pin_vbus   = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7,  /**< P4_07 FS VBUS. */
+  k_tz_usb_pin_vbusen = ((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0,  /**< P5_00 FS role. */
+  k_tz_usb_pin_dp     = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14, /**< P8_14 FS D+.   */
+  k_tz_usb_pin_dm     = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15, /**< P8_15 FS D-.   */
+  k_tz_usb_pin_hs_vbus = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8, /**< P4_08 HS VBUS. */
+  k_tz_usb_pin_hs_pwr  = ((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7, /**< PD07 J7 pwr.  */
+} tz_usb_pin_t;
+
+/**
+ * @var g_tz_usb_psarb_readback
+ * @brief PSARB value read back after marking USBFS0 Non-secure (J-Link probe).
+ * @details Secure-side .bss. HUM "Security Bit Write Timing" p3301 requires
+ *          reading the attribution register until it matches the written value;
+ *          this captures that confirmed value so a bench halt can verify the
+ *          USBFS NS delegation landed even if the NS image later faults.
+ * @note Written once by ::tz_usb_handoff_prepare; read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_usb_psarb_readback;
+
+/**
+ * @var g_tz_usb_pins_err
+ * @brief First non-OK ``ra_err_t`` from the deterministic USB pin + PLL setup
+ *        (FS/HS pins, J7 VBUS GPIO, USBHS PLL; 0 = OK). The I/O-expander is
+ *        tracked separately in ::g_tz_usb_expander_err.
+ * @note Written once by ::tz_usb_handoff_prepare; read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_usb_pins_err;
+
+/**
+ * @var g_tz_usb_expander_err
+ * @brief Last ``ra_err_t`` from the U15 I/O-expander host-mode write after the
+ *        bounded retry loop (0 = OK).
+ * @details Decoupled from ::g_tz_usb_pins_err because the RIIC1 BBSY flag can
+ *          survive a warm reset (SYSRESETREQ), making the first expander write
+ *          report k_ra_err_busy until the bus-recovery in a later retry (or a
+ *          cold boot) clears it. The external PI4IOE latches its host-mode
+ *          output, so the USBHS host role persists across the MCU warm reset.
+ * @note Written once by ::tz_usb_handoff_prepare; read externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_usb_expander_err;
 
 /**
  * @enum tz_prcr_t
@@ -343,11 +411,122 @@ static void tz_copy_ns_image(void)
   }
 }
 
+/**
+ * @brief Hand BOTH USB controllers to the Non-secure world before BLXNS.
+ *
+ * @details The NS image runs the USB CDC self-loop: USBFS (J11) is the CDC-ACM
+ *          DEVICE, USBHS (J7) is the polled HOST, and the two jacks are cabled
+ *          together so the chip enumerates + echoes against itself. This routine
+ *          does the Secure-only bring-up the NS image cannot:
+ *          1. Route the four USB-FS pins (device role: P5_00 LOW).
+ *          2. Set USBHS to host mode: U15 I/O-expander SW4-8 -> Host, PD07 HIGH
+ *             (U18 supplies J7 VBUS), and route P4_08 USBHS_VBUS.
+ *          3. Enable the USBHS UTMI PLL (``ra_cgc_usbhs_pll_enable`` -- CGC is
+ *             Secure-only; the 48 MHz USBFS clock is enabled by the NS image via
+ *             the NSC CGC veneer).
+ *          4. Mark BOTH controllers Non-secure in PSARB (bits 11 + 12) under the
+ *             PRC4 gate, so the NS image reaches USBFS/USBHS through the
+ *             0x5025_0000 / 0x5035_0000 aliases and may clear their
+ *             MSTPCRB.MSTPB11/12 module-stop bits itself.
+ *
+ * @return void.
+ * @pre Caller is in Secure state with full peripheral access (pre-BLXNS).
+ * @pre ``ra_cgc_init`` has run (PLL1 locked -- USBHS PLL needs it).
+ * @post The USB pins are muxed and PD07 is HIGH (or ::g_tz_usb_pins_err records
+ *       the first failing step).
+ * @post PSARB.PSARB11|PSARB12 = 1 (both USB controllers Non-secure);
+ *       ::g_tz_usb_psarb_readback holds the confirmed value.
+ * @note Not thread-safe; secure-boot only.
+ * @since 0.1.0
+ */
+static void tz_usb_handoff_prepare(void)
+{
+  /* 0. Establish the pin-validator baseline. The Secure boot never runs
+   *    ra_infrastructure_init (its main() is dead -- BLXNS does not return), so
+   *    the validator bitmap is in an uninitialised-contract state and warm
+   *    resets leave stale claims (SRAM survives SYSRESETREQ; PFS does not), which
+   *    would make the USB-pin claims spuriously conflict. Reset it first. */
+  ra_pin_validator_reset();
+
+  /* 1. Route the USB-FS pins as the DEVICE (Secure owns PFS). P5_00 LOW = dev. */
+  ra_err_t err =
+    ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_vbus, k_ra_psel_usb_fs, "tz_usb.fs_vbus");
+  if (err == k_ra_ok) {
+    err = ra_gpio_output_init((ra_port_pin_t)k_tz_usb_pin_vbusen, k_ra_level_low);
+  }
+  if (err == k_ra_ok) {
+    err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_dp, k_ra_psel_usb_fs, "tz_usb.fs_dp");
+  }
+  if (err == k_ra_ok) {
+    err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_dm, k_ra_psel_usb_fs, "tz_usb.fs_dm");
+  }
+
+  /* 2. USBHS host pins: PD07 HIGH (U18 supplies J7 VBUS), route P4_08
+   *    USBHS_VBUS. (The host-mode mux is the U15 expander -- step 4 below.) */
+  if (err == k_ra_ok) {
+    err = ra_gpio_output_init((ra_port_pin_t)k_tz_usb_pin_hs_pwr, k_ra_level_high);
+  }
+  if (err == k_ra_ok) {
+    err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_hs_vbus,
+                                  k_ra_psel_usb_hs,
+                                  "tz_usb.hs_vbus");
+  }
+
+  /* 3. Enable the USBHS UTMI PLL (Secure CGC; PLL1 already locked). A warm
+   *    reset leaves the CGC PLL domain running, so a re-enable reports
+   *    k_ra_err_busy ("already locked"); the clock is up either way, so treat
+   *    busy as success. */
+  if (err == k_ra_ok) {
+    const ra_err_t pll_err = ra_cgc_usbhs_pll_enable();
+    if ((pll_err != k_ra_ok) && (pll_err != k_ra_err_busy)) {
+      err = pll_err;
+    }
+  }
+  g_tz_usb_pins_err = (uint32_t)err;
+
+  /* 4. Set the U15 I/O-expander to USBHS host mode (SW4-8 -> Host). Decoupled
+   *    from the deterministic setup above and best-effort: on a cold boot the
+   *    single I2C write lands (probe -> success); after a warm reset RIIC1's
+   *    BBSY can still be set, reporting k_ra_err_busy. The external PI4IOE
+   *    latches its host-mode output, so the USBHS host role persists across the
+   *    MCU warm reset -- the self-loop still enumerates (the HIL gate proves
+   *    it). A retry cannot help here: the expander claims the SCL1/SDA1 pins on
+   *    the first try and a second try would fault the pin validator. */
+  const ra_err_t exp_err = ra_board_io_expander_set_usbhs_host_mode();
+  g_tz_usb_expander_err  = (uint32_t)exp_err;
+
+  /* 4. Mark BOTH USB controllers Non-secure in PSARB (bits 11 + 12). */
+  /* HUM Ch 51.8.1 "PSARB : Peripheral Security Attribution Register B" p 3284
+   * -- PSARB11 = USBFS0, PSARB12 = USBHS (+ their MSTPCRB.MSTPB11/12 bits);
+   * 0 = Secure, 1 = Non-secure. PSARx share the PRCR_S.PRC4 write gate with
+   * SRAMSABARn (HUM Ch 13.2.1 "Association between PRCR bits and use of
+   * registers" p 521), so the gate must be open across the write; HUM "Security
+   * or Privilege Bit Write Timing" p 3301 then requires reading back until the
+   * value matches. */
+  /* HUM Ch 9.2.4 "PRCR_S" p 397 -- open PRC4. */
+  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
+  const uint32_t want                   = tz_read32(k_tz_psarb_addr) | (uint32_t)k_tz_psarb_usb_ns;
+  tz_write32(k_tz_psarb_addr, want);
+  uint32_t seen = 0U;
+  for (uint32_t spin = 0U; spin < (uint32_t)k_tz_psarb_readback_spins; spin += 1U) {
+    seen = tz_read32(k_tz_psarb_addr);
+    if (seen == want) {
+      break;
+    }
+  }
+  /* HUM Ch 9.2.4 "PRCR_S" p 397 -- re-lock PRC4. */
+  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
+  g_tz_usb_psarb_readback               = seen;
+}
+
 #endif /* RA_TRUSTZONE_ENABLE */
 
 void ra_trustzone_init(void)
 {
 #ifdef RA_TRUSTZONE_ENABLE
+  /* 0. Hand USB-FS (pins + PSARB NS attribution) to the NS world. */
+  tz_usb_handoff_prepare();
+
   /* 1. Carve the SRAM2 NS aperture via the runtime SRAMSABAR boundary. */
   tz_sram_ns_boundary();
 
