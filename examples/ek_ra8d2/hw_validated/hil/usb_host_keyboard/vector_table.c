@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_host_keyboard/vector_table.c
+ * @file examples/ek_ra8d2/usb_msc_device/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details
@@ -26,6 +26,13 @@
 
 #include <stdint.h>
 
+#ifndef __APPLE__
+/* On the firmware target every IRQ vector slot forwards to the
+ * substrate dispatcher so drivers that called ra_isr_register get
+ * their (handler, ctx) pair invoked. HUM Ch 14 ICU + IELSR. */
+extern void ra_isr_dispatch(uint16_t slot);
+#endif
+
 /* =============================================================================
  * Linker-provided symbols
  * =============================================================================
@@ -33,7 +40,7 @@
  * Project convention: linker symbols carry the `g_ra_ls_` prefix so they
  * are not in the reserved leading-underscore namespace that ISO C (and
  * cert-dcl37-c / bugprone-reserved-identifier) reject. The linker script
- * in usb_host_keyboard/linker_script.ld defines them with this exact spelling.
+ * in uart_hello/linker_script.ld defines them with this exact spelling.
  */
 
 extern uint32_t g_ra_ls_stack_top; /**< Top of main stack (linker symbol). */
@@ -57,7 +64,7 @@ extern int32_t main(void);
 
 typedef void (*exc_handler_t)(void);
 
-void SystemInit(void); /* in usb_host_keyboard/system_init.c */
+void SystemInit(void); /* in uart_hello/system_init.c */
 void Reset_Handler(void);
 void Default_Handler(void);
 void HardFault_Handler(void);
@@ -98,21 +105,43 @@ extern void SysTick_Handler(void);
  * =============================================================================
  *
  * The RA Interrupt Control Unit exposes 112 routable interrupt lines
- * to the NVIC (per HUM table 13.x). We declare them all weak-aliased
- * to Default_Handler so a driver can override any single one.
+ * to the NVIC (per HUM table 13.x).
+ *
+ * Each peripheral IRQ vector forwards to ra_isr_dispatch(slot) so any
+ * (handler, ctx) registered through the substrate (ra_isr_register)
+ * runs in NVIC handler-mode. Slots that were never registered land in
+ * the dispatcher's bounds-checked no-op path. The trampolines are
+ * weak so a driver can still install a fully-custom IRQ handler by
+ * defining a non-weak ``IRQ<n>_Handler``. HUM Ch 13 NVIC + Ch 14 ICU
+ * IELSR.
+ *
+ * NB: a prior revision aliased every IRQn_Handler directly to
+ * Default_Handler (which contains ``bkpt #0``). On debug-disabled
+ * silicon a stray bkpt escalates to HardFault, so the first USB IRQ
+ * after ra_isr_register armed the NVIC line halted the chip. The
+ * working tz_secure_only_usb_fs / _hs apps use this dispatching form;
+ * this app now matches.
  */
 
 enum : uint16_t {
   k_ra_irq_count = 112U,
 };
 
-/* Mach-O does not support `alias`; on Apple hosts we keep only
- * `weak` so the symbols exist but are not aliased. The host build
- * never invokes these vectors. */
+/* On Apple host syntax-check we drop ra_isr_dispatch (host build
+ * never branches through these) and keep only a weak empty body. */
 #ifndef __APPLE__
-#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak, alias("Default_Handler")))
+#define RA_IRQ_STUB(n)                                                                             \
+  void                       IRQ##n##_Handler(void);                                               \
+  __attribute__((weak)) void IRQ##n##_Handler(void)                                                \
+  {                                                                                                \
+    ra_isr_dispatch((uint16_t)(n));                                                                \
+  }                                                                                                \
+  static_assert(1, "ra_irq_stub_" #n)
 #else
-#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak))
+#define RA_IRQ_STUB(n)                                                                             \
+  void                       IRQ##n##_Handler(void);                                               \
+  __attribute__((weak)) void IRQ##n##_Handler(void) {}                                             \
+  static_assert(1, "ra_irq_stub_" #n)
 #endif
 
 RA_IRQ_STUB(0);

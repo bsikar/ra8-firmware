@@ -1,6 +1,6 @@
 #
-# Per-app CMake stub for `usb_host_keyboard`. All build logic lives in the shared
-# cmake/ra_add_app.cmake recipe; this file only names the app.
+# Per-app CMake stub for `usb_host_keyboard`. All build logic lives in the
+# shared cmake/ra_add_app.cmake recipe; this file only names the app + deps.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
@@ -17,4 +17,7 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-ra_add_app(NAME usb_host_keyboard STACK_BYTES 2200 DESCRIPTION "usb_host_keyboard firmware for RA8D2")
+ra_add_app(NAME usb_host_keyboard STACK_BYTES 4000
+           DESCRIPTION "USB self-loop: HS host bulk-writes a CDC-ACM FS device and reads the echo"
+           USES threadx usbx
+          )

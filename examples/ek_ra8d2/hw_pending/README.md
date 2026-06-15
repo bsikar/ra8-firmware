@@ -19,7 +19,6 @@ hardware HIL probe AND the gap below is resolved.
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
 | sd_font_render | Needs a microSD card carrying `FONT.OTF`; the bench card is not provisioned for this app (board_sim covers it with a synthetic card image). |
 | usb_host_cdc_echo | Redundant with the loop-validated `hw_validated/hil/usb_selftest_cdc` (CDC host echoing a simulated CDC device over the loop); this standalone app is kept as the real-external-CDC-device demo. To self-loop, re-base it on the dual-stack scaffold like `usb_host_msc_browse`. |
-| usb_host_keyboard | To self-loop, pair `ra_usb_hhid` (host) with a simulated boot-**keyboard** device and decode keycodes -- distinct from `usb_selftest_hid` (mouse reports). Not yet done. |
 
 ### Blocked by a module / firmware gap
 
@@ -49,3 +48,7 @@ moved to `hw_validated/hil/`.
 the MSC peripheral over the J7<->J11 cable, no external drive): the host
 enumerates, mounts, and BROWSES the device's FAT root before read-verify
 (`USB HOST MSC BROWSE PASS`), and moved to `hw_validated/hil/`.
+
+`usb_host_keyboard` was likewise re-based onto the self-loop: the board simulates
+a boot-keyboard device and the host decodes its keycodes back to "RA8D2"
+(`USB HOST KEYBOARD PASS`), and moved to `hw_validated/hil/`.
