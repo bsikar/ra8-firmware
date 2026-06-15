@@ -2626,7 +2626,7 @@ int main(int argc, char** argv)
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
                   " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
-                  " [--usb-in <str>] [--dump-sym <name>]\n"
+                  " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>]\n"
                   "  --view          open a macOS window: live board view (panel + status)\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
                   "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
@@ -2637,6 +2637,7 @@ int main(int argc, char** argv)
                   "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
                   "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
                   "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
+                  "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
                   "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
                   "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
@@ -2659,6 +2660,7 @@ int main(int argc, char** argv)
   bool        want_trace                     = false;
   int         click_x                        = -1;
   int         click_y                        = -1;
+  int         button_press                   = 0; /* 1=SW1, 2=SW2, 0=none. */
   uint16_t    view_w                         = (uint16_t)k_view_default_w;
   uint16_t    view_h                         = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
@@ -2707,6 +2709,9 @@ int main(int argc, char** argv)
       click_y    = (int)strtol(argv[i + 2], nullptr, (int)k_strtol_base10);
       want_click = (click_x >= 0) && (click_y >= 0);
       i += 2;
+    } else if ((strncmp(argv[i], "--button", sizeof("--button")) == 0) && ((i + 1) < argc)) {
+      button_press = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
+      i += 1;
     } else if ((strncmp(argv[i], "--size", sizeof("--size")) == 0) && ((i + 1) < argc)) {
       char*      end = nullptr;
       const long w   = strtol(argv[i + 1], &end, (int)k_strtol_base10);
@@ -2793,6 +2798,22 @@ int main(int argc, char** argv)
   board_periph_init(want_trace);
   board_net_init(want_trace);
   board_periph_sci_set_tx_sink(console_tx_sink);
+  /* --button N: hold a user switch pressed (active-low) before the firmware
+   * boots, so a button-polling app (e.g. gpio_input_demo: SW1 -> LED1) takes
+   * its pressed path. SW1 = P009, SW2 = P008. */
+  if (button_press != 0) {
+    enum : uint8_t {
+      k_main_sw_port = 0U, /**< User switches on PORT0. */
+      k_main_sw1_pin = 9U, /**< SW1 -> P009.            */
+      k_main_sw2_pin = 8U, /**< SW2 -> P008.            */
+    };
+    const uint8_t pin = (button_press == 2) ? (uint8_t)k_main_sw2_pin : (uint8_t)k_main_sw1_pin;
+    board_periph_gpio_set_input((uint8_t)k_main_sw_port, pin, false);
+    (void)fprintf(stderr,
+                  "board_sim: --button %d held (SW pin P00%u low/pressed)\n",
+                  button_press,
+                  (unsigned)pin);
+  }
   if (input_str != nullptr) {
     uint8_t        rx[k_uart_line_max];
     const uint32_t n = decode_escapes(input_str, rx, (uint32_t)sizeof(rx));
