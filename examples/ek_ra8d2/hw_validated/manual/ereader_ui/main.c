@@ -35,27 +35,22 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "baked_font.h"
+#include "arnopro_latin1.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_box.h"
 #include "ra_cgc.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_err.h"
-#include "ra_fs.h"
 #include "ra_gfx.h"
 #include "ra_gfx_font.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
-#include "ra_port_utils.h"
 #include "ra_reflow.h"
-#include "ra_sci_spi.h"
-#include "ra_sdmmc_spi.h"
+#include "ra_sdfont.h"
 #include "ra_sdramc.h"
-#include "ra_spi.h"
 #include "ra_time.h"
 #include "ra_touch.h"
 #include "ra_ui.h"
@@ -518,167 +513,46 @@ static void app_bringup_touch(void)
  * =========================================================================== */
 
 /**
- * @brief ra_sdmmc_spi set-clock shim onto ra_sci_spi.
- *
- * @param[in] ctx Pointer to the cached PCLKA rate (Hz).
- * @param[in] hz  Requested SPI clock (Hz).
- * @return ra_err_t from ra_sci_spi_set_clock.
- * @retval k_ra_ok Clock applied.
- * @pre ra_sci_spi_init has run for the channel.
- * @pre @p ctx points at a valid PCLKA rate.
- * @post The SCI0 Simple-SPI bit rate matches @p hz as closely as the divisors allow.
- * @post No other channel state changes.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/* cppcheck-suppress constParameterCallback */
-static ra_err_t er_spi_set_clock(void* ctx, uint32_t hz)
-{
-  const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_er_spi_chan, hz, pclka_hz);
-}
-
-/**
- * @brief ra_sdmmc_spi chip-select shim (active-low, GPIO-held).
- *
- * @param[in] ctx      Unused.
- * @param[in] asserted true selects the card (CS low); false deselects (CS high).
- * @return ra_err_t from ra_gpio_write.
- * @retval k_ra_ok CS level driven.
- * @pre k_er_pin_cs is a GPIO output.
- * @pre None.
- * @post The CS line reflects @p asserted.
- * @post No other pin changes.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t er_spi_cs(void* ctx, bool asserted)
-{
-  (void)ctx;
-  return ra_gpio_write(k_er_pin_cs, asserted ? k_ra_level_low : k_ra_level_high);
-}
-
-/**
- * @brief ra_sdmmc_spi full-duplex transfer shim onto ra_sci_spi.
- *
- * @param[in]  ctx Unused.
- * @param[in]  tx  Bytes to clock out (may be NULL for read-only).
- * @param[out] rx  Bytes clocked in (may be NULL for write-only).
- * @param[in]  len Transfer length in bytes.
- * @return ra_err_t from ra_sci_spi_xfer.
- * @retval k_ra_ok Transfer complete.
- * @pre ra_sci_spi_init has run for the channel.
- * @pre @p tx / @p rx hold @p len bytes when non-NULL.
- * @post @p rx holds the bytes shifted in when non-NULL.
- * @post The bus is left idle (CS unchanged by this call).
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t er_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
-{
-  (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_er_spi_chan, tx, rx, len);
-}
-
-/**
- * @brief Route Pmod2 to SCI0 Simple-SPI and bring the channel up.
- *
- * @details Mirrors sd_font_render: caches PCLKA, routes SCK/CIPO/COPI to
- *          SCI0, claims CS as a GPIO output held high, then inits the
- *          channel at the SD power-on clock.
- *
- * @return ra_err_t -- the first failing step, or k_ra_ok.
- * @retval k_ra_ok SPI ready for ra_sdmmc_spi.
- * @pre app_bringup_clocks has run (PCLKA + MSTP up).
- * @pre The Pmod2 pins are free (no other peripheral routed).
- * @post On success SCI0 Simple-SPI is initialised and CS idles high.
- * @post On failure the channel is left unconfigured; caller skips the SD font.
- * @note Not thread-safe; single-shot helper.
- * @since 0.1.0
- */
-static ra_err_t er_setup_sd_spi(void)
-{
-  ra_err_t err = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &s_pclka_hz);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_er_pin_sck, k_ra_psel_sci_async, "er.sck");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_er_pin_cipo, k_ra_psel_sci_async, "er.cipo");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_er_pin_copi, k_ra_psel_sci_async, "er.copi");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_gpio_output_init(k_er_pin_cs, k_ra_level_high);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const ra_sci_spi_cfg_t cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclk_hz   = s_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
-    .lsb_first = false,
-  };
-  return ra_sci_spi_init((uint8_t)k_er_spi_chan, &cfg);
-}
-
-/**
- * @brief Best-effort: bring up the SD card and read FONT.OTF into s_font_buf.
+ * @brief Best-effort: load FONT.OTF off the Pmod2 SD card into s_font_buf.
  *
  * @details
- * Entirely non-fatal: any failure (no Pmod, no card, no FONT.OTF) leaves
- * ::s_have_font false and the Reading view falls back to the bundled bitmap
- * font, so the chrome is never broken by the absence of an SD card. On
- * success ::s_font_buf / ::s_font_len hold the face for ra_reflow.
+ * Delegates the Pmod2 SPI bring-up, FAT mount, and font read to
+ * @ref ra_sdfont_load. Entirely non-fatal: any failure (no Pmod, no card, no
+ * FONT.OTF) leaves ::s_have_font false and the Reading view falls back to the
+ * baked Latin-1 font (or the bundled bitmap), so the chrome is never broken by
+ * the absence of an SD card. Provisioning is left disabled (NULL blob): the
+ * e-reader reads whatever the user's card already holds and never writes to it
+ * -- unlike `sd_font_render`, which self-provisions a blank card.
  *
  * @pre app_bringup_clocks has run.
  * @pre ::s_font_buf is reachable (SDRAM).
  * @post On success ::s_have_font is true and ::s_font_len > 0.
- * @post On any failure ::s_have_font stays false (no panic).
+ * @post On any failure ::s_have_font stays false (no panic, no card write).
  * @note Not thread-safe; single-shot helper.
  * @since 0.1.0
  */
 static void er_try_load_font(void)
 {
-  if (er_setup_sd_spi() != k_ra_ok) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &s_pclka_hz) != k_ra_ok) {
     return;
   }
-  const ra_sdmmc_spi_transport_t transport = {
-    .set_clock = er_spi_set_clock,
-    .cs        = er_spi_cs,
-    .xfer      = er_spi_xfer,
-    .ctx       = &s_pclka_hz,
+  const ra_sdfont_cfg_t cfg = {
+    .spi_channel    = (uint8_t)k_er_spi_chan,
+    .sck            = k_er_pin_sck,
+    .cipo           = k_er_pin_cipo,
+    .copi           = k_er_pin_copi,
+    .cs             = k_er_pin_cs,
+    .pclka_hz       = s_pclka_hz,
+    .filename       = "FONT.OTF",
+    .provision_blob = nullptr, /* read-only: never write to the user's card */
+    .provision_len  = 0U,
   };
-  if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
+  uint32_t got = 0U;
+  if (ra_sdfont_load(&cfg, s_font_buf, (uint32_t)k_er_font_cap, &got, nullptr) != k_ra_ok) {
     return;
   }
-  ra_fs_backend_t backend = {};
-  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
-    return;
-  }
-  ra_fs_mount_t* mount = nullptr;
-  if (ra_fs_mount(&backend, &mount) != k_ra_ok) {
-    return;
-  }
-  ra_fs_file_t* file = nullptr;
-  if (ra_fs_open(mount, "FONT.OTF", k_ra_fs_mode_read, &file) != k_ra_ok) {
-    return;
-  }
-  uint32_t       got = 0U;
-  const ra_err_t err = ra_fs_read(file, s_font_buf, (uint32_t)k_er_font_cap, &got);
-  (void)ra_fs_close(file);
-  if (err != k_ra_ok) {
-    return;
-  }
-  if (got >= (uint32_t)k_er_font_min) {
-    s_font_len  = got;
-    s_have_font = true;
-  }
+  s_font_len  = got;
+  s_have_font = true;
 }
 
 /* ===========================================================================

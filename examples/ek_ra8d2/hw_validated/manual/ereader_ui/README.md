@@ -68,7 +68,7 @@ path, so the navigation is exercised exactly as on hardware.
   slow under emulation; instant on real hardware).
 - **E (done, #66):** a **Latin-1 subset of ArnoPro baked into internal flash**
   (`libs/fonts/arnopro_latin1.otf`, ~56 KB, generated into `.rodata` at build
-  time by `scripts/utils/font_to_c.py`; see `baked_font.h`). So the Reading body
+  time by `scripts/utils/font_to_c.py`; see `libs/fonts/arnopro_latin1.h`). So the Reading body
   reflows **real proportional text with no SD card at all** -- with no `FONT.OTF`
   the body is now the baked reflow, not the old bitmap fallback (which remains
   only for a reflow-engine failure). The no-card golden (#84) was regenerated to
