@@ -1,48 +1,43 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/usb_selftest_ospi/main.c
- * @brief USB self-loop: the onboard OSPI flash exposed as a USB drive
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/main.c
+ * @brief USB self-loop config A: HS host reads the FS device's MSC MRAM disk
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the **onboard 64 MiB Octo-SPI flash (IS25LX512M, U16)** up as a
- * USB drive and verifies it against itself on-chip -- no PC in the loop.
- * The two USB ports are cabled to EACH OTHER and one firmware image runs
- * both USB stacks PLUS the xSPI flash:
+ * The board's two USB ports are cabled to EACH OTHER and one firmware
+ * image runs BOTH sides of the link:
  *
- *  - At boot the device side ERASES + PROGRAMS a 1 MiB region of the
- *    OSPI (offset 0x100000) with a deterministic, sector-derived
- *    pattern via `ra_xspi` (the same driver flash_journal validated) --
- *    so the flash genuinely holds known content.
- *  - USBFS (J11) = DEVICE: a ThreadX + USBX Mass-Storage class exposes
- *    that OSPI region as a read-only synthesized FAT16 volume with one
- *    file ``OSPI.BIN``; media-read pulls each sector straight off the
- *    flash with `ra_xspi_flash_read`.
- *  - USBHS (J7) = HOST: the polled first-party host stack (`ra_usb_hmsc`
- *    + `ra_fs`) enumerates the device over the cable, mounts the volume,
- *    streams the data region back with raw multi-block READ(10), and
- *    checks every sector against the SAME deterministic pattern formula
- *    -- so the host never touches the single xSPI controller (no
- *    contention) yet proves the OSPI erase + program + read round-trips
- *    intact over USB. A WRITE(10) into the read-only LUN is rejected.
+ *  - USBFS (J11) = DEVICE: the ThreadX + USBX Mass-Storage class from
+ *    `usb_msc_mram`, exposing the 1 MiB MRAM window at 0x02000000 as a
+ *    read-only synthesized FAT16 volume with one file ``MRAM.BIN``.
+ *    IRQ-driven through the `port/usbx/ux_dcd_ra_usb` bridge.
+ *  - USBHS (J7) = HOST: the polled first-party host stack from
+ *    `usb_host_file_ops` (`ra_usb_hmsc` + `ra_fs`), running in a
+ *    low-priority ThreadX thread. It enumerates the FS device over the
+ *    cable, mounts the FAT16 volume, streams ``MRAM.BIN`` back, and
+ *    memcmp's every chunk against the SAME MRAM bytes read directly --
+ *    a fully on-chip end-to-end proof that the USB transport returns
+ *    the truth. A WRITE(10) must come back rejected (the LUN is
+ *    write-protected) and the transport must still read afterwards.
  *
- * The link runs at 12 Mbps (FS device ceiling; HS host serves an FS
- * downstream device, RHST = FS).
+ * The link itself runs at 12 Mbps: the FS device is the ceiling, and
+ * the HS host's root port serves a full-speed downstream device
+ * (RHST = FS) -- coverage the Mac-attached ladders never exercised.
  *
  * Verdicts stream over SCI8 (J-Link OB CDC console, 115200) and are
  * mirrored in J-Link-readable probes (``s_dbg_*``).
  *
  * ## Pinout
  *
- * OSPI: OCTA pins routed by `ra_board_xspi_pins_init` (PSEL 0x1C) on
- * xSPI CS1 (IS25LX512M). FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO
- * LOW (device role), P8_14 D+, P8_15 D- (PSEL usb_fs). HS host: SW4-8 to
- * Host via the U15 expander, PD07 HIGH (U18 supplies J7 VBUS), P4_08
- * USBHS_VBUS (PSEL usb_hs). Console: PD_02/PD_03 SCI8 (PSEL sci_async).
+ * FS device: P4_07 VBUS sense, P5_00 VBUSEN as GPIO LOW (device role),
+ * P8_14 D+, P8_15 D- (PSEL usb_fs). HS host: SW4-8 to Host via the U15
+ * expander, PD07 HIGH (U18 supplies J7 VBUS), P4_08 USBHS_VBUS
+ * (PSEL usb_hs). Console: PD_02/PD_03 SCI8 (PSEL sci_async).
  *
  * @author Brighton Sikarskie
- * @date 2026-06-13
+ * @date 2026-06-12
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -63,7 +58,6 @@
 #include "ra_time.h"
 #include "ra_usb.h"
 #include "ra_usb_hmsc.h"
-#include "ra_xspi.h"
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -215,43 +209,19 @@ typedef enum : uint32_t {
   k_selftest_phase_host_init = 1U, /**< ra_usb_hmsc_init issued.        */
   k_selftest_phase_enum      = 2U, /**< Enumerating the FS device.      */
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.      */
-  k_selftest_phase_verify    = 4U, /**< Streaming + checking OSPI.BIN.   */
+  k_selftest_phase_verify    = 4U, /**< Streaming + comparing MRAM.BIN. */
   k_selftest_phase_wp        = 5U, /**< Write-protect rejection test.   */
-  k_selftest_phase_pass      = 6U, /**< Full OSPI self-loop pass.        */
+  k_selftest_phase_pass      = 6U, /**< Full config A pass.             */
 } selftest_phase_t;
 
 /**
- * @enum selftest_ospi_t
- * @brief OSPI flash geometry the device-side volume is backed by.
- *
- * @details The 1 MiB window the device programs + exposes lives at
- * offset 0x100000 in the IS25LX512M (clear of flash_journal's offset-0
- * record). ra_xspi addresses the chip 0-based. Erase granularity is the
- * IS25LX512M 4 KiB sector.
+ * @enum selftest_mram_t
+ * @brief The MRAM window the device-side volume exposes.
  */
 typedef enum : uint32_t {
-  k_ospi_instance     = 0U,          /**< xSPI controller instance.        */
-  k_ospi_test_offset  = 0x00100000U, /**< 1 MiB into the chip (scratch).   */
-  k_ospi_bytes        = 0x00100000U, /**< 1 MiB exposed window size.       */
-  k_ospi_erase_sector = 0x00001000U, /**< IS25LX512M 4 KiB erase sector.   */
-  k_ospi_erase_count  = 256U,        /**< 1 MiB / 4 KiB = 256 erases.      */
-} selftest_ospi_t;
-
-/**
- * @enum selftest_pattern_t
- * @brief Deterministic sector-pattern coefficients (device + host agree).
- *
- * @details Sector @p s, byte @p i holds
- * ``(s * smul + i * imul + bias) & 0xFF``. Both the boot programmer and
- * the host verifier compute this identically, so the host never has to
- * read the OSPI (single-controller contention-free).
- */
-typedef enum : uint32_t {
-  k_ospi_pat_smul = 31U,   /**< Per-sector multiplier.  */
-  k_ospi_pat_imul = 131U,  /**< Per-byte multiplier.    */
-  k_ospi_pat_bias = 0xA5U, /**< Constant bias.          */
-  k_ospi_pat_mask = 0xFFU, /**< Byte mask.              */
-} selftest_pattern_t;
+  k_mram_base_addr = 0x02000000U, /**< MRAM code window base address.   */
+  k_mram_bytes     = 0x00100000U, /**< 1 MiB window size.               */
+} selftest_mram_t;
 
 /** @brief SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
@@ -286,8 +256,8 @@ typedef enum : uint32_t {
   k_fat_data_lba         = 50U,     /**< First data sector (cluster 2).      */
   k_fat_total_sectors    = 4146U,   /**< 1 + 17 + 32 + 4096.                 */
   k_fat_first_cluster    = 2U,      /**< FAT data area starts at cluster 2.  */
-  k_fat_data_clusters    = 2048U,   /**< Clusters backed by MRAM (1 MiB).    */
-  k_fat_last_data_clus   = 2049U,   /**< Last cluster of MRAM.BIN.           */
+  k_fat_mram_clusters    = 2048U,   /**< Clusters backed by MRAM (1 MiB).    */
+  k_fat_last_mram_clus   = 2049U,   /**< Last cluster of MRAM.BIN.           */
   k_fat_entries_per_sec  = 256U,    /**< FAT16 entries per 512-byte sector.  */
   k_fat_eoc              = 0xFFFFU, /**< End-of-chain marker.              */
   k_fat_entry0           = 0xFFF8U, /**< FAT[0]: media F8 + filler.        */
@@ -400,20 +370,20 @@ static UCHAR s_usbx_pool[k_selftest_usbx_pool_bytes];
 
 /* SCSI INQUIRY strings -- 8 / 16 / 4 byte fields per SBC-3. */
 static UCHAR s_msc_vendor_id[]   = "RA8D2   ";
-static UCHAR s_msc_product_id[]  = "SELFTEST OSPI RO";
+static UCHAR s_msc_product_id[]  = "SELFTEST MRAM RO";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /** @brief Boot-sector OEM name (8 bytes, space padded). */
 static const UCHAR s_fat_oem_name[8] = {'R', 'A', '8', 'D', '2', 'F', 'W', ' '};
 
 /** @brief Volume label, 11 bytes space padded (also the root entry). */
-static const UCHAR s_fat_volume_label[11] = {'R', 'A', '8', 'D', '2', ' ', 'O', 'S', 'P', 'I', ' '};
+static const UCHAR s_fat_volume_label[11] = {'R', 'A', '8', 'D', '2', ' ', 'M', 'R', 'A', 'M', ' '};
 
 /** @brief Filesystem-type tag, 8 bytes space padded. */
 static const UCHAR s_fat_fs_type[8] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
 
-/** @brief 8.3 directory name of the exposed file: "OSPI.BIN". */
-static const UCHAR s_fat_file_name[11] = {'O', 'S', 'P', 'I', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
+/** @brief 8.3 directory name of the exposed file: "MRAM.BIN". */
+static const UCHAR s_fat_file_name[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes                                                              */
@@ -431,10 +401,6 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 /** @brief Device-side media_read invocations. */
 static volatile uint32_t s_dbg_read_calls;
-/** @brief OSPI JEDEC id read at boot (IS25LX512M = 0x009D5A1A). */
-static volatile uint32_t s_dbg_ospi_id;
-/** @brief OSPI provisioning result (sentinel = pending, 0 = done, else err). */
-static volatile uint32_t s_dbg_ospi_prov = (uint32_t)k_selftest_no_mismatch;
 
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
@@ -455,7 +421,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x10U, /* PID = 0x0010 (pid.codes test).    */
+  0x0EU, /* PID = 0x000E (pid.codes test).    */
   0x00U,
   0x00U,
   0x01U,
@@ -562,8 +528,8 @@ static UCHAR s_string_framework[] = {
   '0',
   '0',
   '0',
-  '1',
   '0',
+  '4',
 };
 
 /* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
@@ -697,9 +663,9 @@ static void selftest_fat_fill_fat(uint32_t fat_sector, UCHAR* out)
       value = (uint16_t)k_fat_entry0;
     } else if (entry == 1U) {
       value = (uint16_t)k_fat_eoc;
-    } else if (entry < (uint32_t)k_fat_last_data_clus) {
+    } else if (entry < (uint32_t)k_fat_last_mram_clus) {
       value = (uint16_t)(entry + 1U);
-    } else if (entry == (uint32_t)k_fat_last_data_clus) {
+    } else if (entry == (uint32_t)k_fat_last_mram_clus) {
       value = (uint16_t)k_fat_eoc;
     } else {
       value = 0U;
@@ -739,56 +705,26 @@ static void selftest_fat_fill_root(uint32_t root_sector, UCHAR* out)
   (void)memcpy(entry, s_fat_file_name, (size_t)k_dir_name_bytes);
   entry[k_dir_off_attr] = (UCHAR)k_dir_attr_read_only;
   selftest_put16(&entry[k_dir_off_cluster_lo], (uint16_t)k_fat_first_cluster);
-  selftest_put32(&entry[k_dir_off_size], (uint32_t)k_ospi_bytes);
-}
-
-/**
- * @brief Compute the deterministic pattern for one window data sector.
- *
- * @details Fills @p out with ``(win_sector * smul + i * imul + bias)``
- * per byte (see ::selftest_pattern_t). This is the single source of
- * truth: the boot programmer writes it into OSPI and the host verifier
- * recomputes it -- so the host never reads the flash and there is no
- * single-controller contention.
- *
- * @param[in]  win_sector 0-based sector index within the OSPI window.
- * @param[out] out        512-byte destination buffer.
- *
- * @pre @p out has 512 writable bytes.
- * @post @p out holds the sector's pattern bytes.
- * @post No global state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void selftest_pattern_fill(uint32_t win_sector, UCHAR* out)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_selftest_block_size; i++) {
-    const uint32_t v = (win_sector * (uint32_t)k_ospi_pat_smul) + (i * (uint32_t)k_ospi_pat_imul) +
-                       (uint32_t)k_ospi_pat_bias;
-    out[i]           = (UCHAR)(v & (uint32_t)k_ospi_pat_mask);
-  }
+  selftest_put32(&entry[k_dir_off_size], (uint32_t)k_mram_bytes);
 }
 
 /**
  * @brief Synthesize one 512-byte sector of the read-only volume.
  *
  * @details Dispatches on the LBA: boot sector, FAT, root directory, or
- * data region. Data sectors are pulled straight off the OSPI flash with
- * ``ra_xspi_flash_read`` (the bytes the boot programmer wrote); padding
- * clusters past the chain read as zeros. A flash read error leaves the
- * zero-fill in place so the host sees a mismatch rather than stale data.
+ * data region. Data sectors inside the MRAM.BIN chain are copied
+ * straight out of the 1 MiB MRAM window; padding clusters past the
+ * chain read as zeros.
  *
  * @param[in]  lba Logical block address inside the volume.
  * @param[out] out 512-byte destination buffer.
  *
  * @pre @p lba is below ::k_fat_total_sectors (caller-checked).
  * @pre @p out has 512 writable bytes.
- * @pre The OSPI window was erased + programmed at boot.
  * @post @p out holds the synthesized sector content.
- * @post No other state changes (OSPI is read, never written here).
+ * @post No other state changes.
  *
- * @note Reads OSPI via ra_xspi (command-based); runs on the class thread.
+ * @note Reads chip MRAM directly; no caching.
  * @since 0.1.0
  */
 static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
@@ -807,14 +743,11 @@ static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
     return;
   }
   const uint32_t cluster = (lba - (uint32_t)k_fat_data_lba) + (uint32_t)k_fat_first_cluster;
-  if (cluster <= (uint32_t)k_fat_last_data_clus) {
-    const uint32_t win_sector = cluster - (uint32_t)k_fat_first_cluster;
-    const uint32_t flash_addr =
-      (uint32_t)k_ospi_test_offset + (win_sector * (uint32_t)k_selftest_block_size);
-    (void)ra_xspi_flash_read((uint8_t)k_ospi_instance,
-                             flash_addr,
-                             out,
-                             (uint32_t)k_selftest_block_size);
+  if (cluster <= (uint32_t)k_fat_last_mram_clus) {
+    const uint32_t offset =
+      (cluster - (uint32_t)k_fat_first_cluster) * (uint32_t)k_selftest_block_size;
+    const UCHAR* mram = (const UCHAR*)(uintptr_t)((uint32_t)k_mram_base_addr + offset);
+    (void)memcpy(out, mram, (size_t)k_selftest_block_size);
   }
 }
 
@@ -1346,27 +1279,26 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
 /**
  * @brief Raw multi-block READ(10) of the MRAM data region vs MRAM.
  *
- * @details Streams the 1 MiB OSPI data region through the SCSI READ(10)
- * entry point in 8-block (4 KiB) bursts -- one CBW per burst, not per
- * sector -- and checks every 512-byte sector against the deterministic
- * pattern the device programmed into the flash (::selftest_pattern_fill).
- * The host recomputes the expected bytes rather than reading the OSPI
- * itself, so the single xSPI controller has exactly one user (the
- * device class thread) and there is no contention. This is the direct
- * integrity proof: "the bytes the device wrote to OSPI come back intact
- * over USB". The mount step (separate phase) already proved the host
- * can PARSE the FAT16 volume over the loop. ra_fs is bypassed here
- * because its per-cluster metadata re-reads throttle a 1 MiB sweep.
+ * @details Streams the 1 MiB data region straight through the SCSI
+ * READ(10) entry point in 8-block (4 KiB) bursts -- one CBW per burst,
+ * not per sector -- and memcmp's each burst against the same offset of
+ * the real MRAM window at 0x02000000. This deliberately bypasses
+ * ra_fs: the filesystem walk re-reads FAT/metadata sectors per cluster
+ * (a ~250x device-read amplification that throttled the loop to under
+ * 1 sector/s), whereas the raw path is the direct integrity proof --
+ * "the SCSI transport returns the chip's flash byte for byte" -- and
+ * runs at the cable's real rate. The mount step (separate phase)
+ * already proved the host can PARSE the FAT16 volume over the loop.
  *
- * Data region: FAT16 LBA ::k_fat_data_lba is cluster 2 = OSPI window
- * sector 0, so LBA (data_lba + b) holds window sector b.
+ * Data region: FAT16 LBA ::k_fat_data_lba is cluster 2 = MRAM offset 0,
+ * so LBA (data_lba + b) holds MRAM[b * 512].
  *
  * @return ra_err_t verdict.
- * @retval k_ra_ok            All 1 MiB matched the pattern.
- * @retval k_ra_err_invalid_state A byte differed from the pattern.
+ * @retval k_ra_ok            All 1 MiB matched byte for byte.
+ * @retval k_ra_err_invalid_state A byte differed from MRAM.
  *
  * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
- * @pre The device programmed the OSPI window at boot.
+ * @pre The device side exposes the synthesized MRAM volume.
  * @post ::s_dbg_verified_bytes / ::s_dbg_verify_ms / ::s_dbg_mismatch_off
  *       reflect the outcome.
  * @post No filesystem handle is held (raw SCSI path).
@@ -1374,15 +1306,14 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * @note Blocking; 256 four-KiB READ(10) bursts over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_verify_ospi_raw(void)
+[[nodiscard]] static ra_err_t selftest_verify_mram_raw(void)
 {
   static uint8_t s_burst[k_selftest_burst_bytes] = {};
-  static uint8_t s_expect[k_selftest_block_size] = {};
 
   s_dbg_verified_bytes = 0U;
   s_dbg_mismatch_off   = (uint32_t)k_selftest_no_mismatch;
   const uint32_t t0    = ra_time_ms();
-  for (uint32_t blk = 0U; blk < (uint32_t)k_fat_data_clusters;
+  for (uint32_t blk = 0U; blk < (uint32_t)k_fat_mram_clusters;
        blk += (uint32_t)k_selftest_burst_blocks) {
     const uint32_t lba = (uint32_t)k_fat_data_lba + blk;
     ra_err_t       err = ra_usb_hmsc_read10((uint8_t)k_selftest_target_lun,
@@ -1393,18 +1324,14 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
       (void)selftest_print_fail("READ(10) burst", err);
       return err;
     }
-    for (uint32_t s = 0U; s < (uint32_t)k_selftest_burst_blocks; s++) {
-      const uint32_t win_sector = blk + s;
-      selftest_pattern_fill(win_sector, s_expect);
-      const uint32_t boff = s * (uint32_t)k_selftest_block_size;
-      if (memcmp(&s_burst[boff], s_expect, (size_t)k_selftest_block_size) != 0) {
-        s_dbg_mismatch_off = win_sector * (uint32_t)k_selftest_block_size;
-        (void)selftest_print_fail("OSPI pattern mismatch at 0x", (ra_err_t)s_dbg_mismatch_off);
-        return k_ra_err_invalid_state;
-      }
+    const uint32_t offset = blk * (uint32_t)k_selftest_block_size;
+    const uint8_t* mram   = (const uint8_t*)(uintptr_t)((uint32_t)k_mram_base_addr + offset);
+    if (memcmp(s_burst, mram, (size_t)k_selftest_burst_bytes) != 0) {
+      s_dbg_mismatch_off = offset;
+      (void)selftest_print_fail("content mismatch at 0x", (ra_err_t)offset);
+      return k_ra_err_invalid_state;
     }
-    s_dbg_verified_bytes =
-      (blk + (uint32_t)k_selftest_burst_blocks) * (uint32_t)k_selftest_block_size;
+    s_dbg_verified_bytes = offset + (uint32_t)k_selftest_burst_bytes;
   }
   s_dbg_verify_ms = ra_time_ms() - t0;
   return k_ra_ok;
@@ -1436,7 +1363,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
   if (err != k_ra_ok) {
     return err;
   }
-  err = selftest_print(" bytes vs OSPI pattern in ");
+  err = selftest_print(" bytes vs MRAM in ");
   if (err != k_ra_ok) {
     return err;
   }
@@ -1515,7 +1442,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
   if (err != k_ra_ok) {
     return err;
   }
-  return selftest_print("), OSPI window read-only\r\n");
+  return selftest_print("), MRAM protected\r\n");
 }
 
 /**
@@ -1584,7 +1511,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * is closed so the next retry starts from a clean attach.
  *
  * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed OSPI PASS.
+ * @retval k_ra_ok The pass printed CONFIG A PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -1616,7 +1543,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
   (void)ra_fs_unmount(mount);
 
   s_dbg_phase = (uint32_t)k_selftest_phase_verify;
-  err         = selftest_verify_ospi_raw();
+  err         = selftest_verify_mram_raw();
   if (err == k_ra_ok) {
     err = selftest_print_verify_verdict();
   }
@@ -1631,7 +1558,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
 
   s_dbg_phase = (uint32_t)k_selftest_phase_pass;
   s_dbg_pass_count++;
-  err = selftest_print("ra8d2 selftest: USB SELFTEST OSPI PASS\r\n");
+  err = selftest_print("ra8d2 selftest: USB SELFTEST CONFIG A PASS\r\n");
   if (err != k_ra_ok) {
     return err;
   }
@@ -1727,104 +1654,17 @@ static UINT selftest_msc_class_register(void)
 }
 
 /**
- * @brief Erase the OSPI window and program the deterministic pattern.
+ * @brief Device-side worker: bring the FS device stack up, then park.
  *
- * @details Erases ::k_ospi_erase_count 4 KiB sectors at
- * ::k_ospi_test_offset, then programs the 1 MiB window with the
- * ::selftest_pattern_fill bytes, one 4 KiB page-group per
- * ``ra_xspi_flash_program`` (the sector pattern packed 8-per-erase).
- *
- * @return First failing flash op's error, or k_ra_ok.
- * @retval k_ra_ok The window holds the deterministic pattern.
- *
- * @pre ``ra_xspi_init`` has succeeded for ::k_ospi_instance.
- * @pre Single caller (the device worker, before USB attach).
- * @post On k_ra_ok every window sector reads back its pattern.
- * @post Only the window region is touched; the rest of the chip is left.
- *
- * @note Blocking; ~256 sector erases (seconds). Runs once at boot.
- * @since 0.1.0
- */
-static ra_err_t selftest_ospi_write_pattern(void)
-{
-  static UCHAR   chunk[k_ospi_erase_sector] = {};
-  const uint32_t sec_per_erase = (uint32_t)k_ospi_erase_sector / (uint32_t)k_selftest_block_size;
-  for (uint32_t e = 0U; e < (uint32_t)k_ospi_erase_count; e++) {
-    const uint32_t addr = (uint32_t)k_ospi_test_offset + (e * (uint32_t)k_ospi_erase_sector);
-    const ra_err_t err  = ra_xspi_flash_erase_sector((uint8_t)k_ospi_instance, addr);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  for (uint32_t e = 0U; e < (uint32_t)k_ospi_erase_count; e++) {
-    for (uint32_t s = 0U; s < sec_per_erase; s++) {
-      selftest_pattern_fill((e * sec_per_erase) + s, &chunk[s * (uint32_t)k_selftest_block_size]);
-    }
-    const uint32_t addr = (uint32_t)k_ospi_test_offset + (e * (uint32_t)k_ospi_erase_sector);
-    const ra_err_t err =
-      ra_xspi_flash_program((uint8_t)k_ospi_instance, addr, chunk, (uint32_t)k_ospi_erase_sector);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Bring the OSPI flash up and provision the test pattern.
- *
- * @details Mirrors flash_journal's bring-up: U15 expander courtesy
- * write, ``ra_board_xspi_pins_init`` (OCTA pins + RESET pulse),
- * ``ra_xspi_init`` in 1S-1S-1S mode, JEDEC-id readback (stamped to
- * ::s_dbg_ospi_id for the bench), then ::selftest_ospi_write_pattern.
- *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok OSPI is up and the window holds the pattern.
- *
- * @pre CGC is initialized (main ran ra_cgc_init).
- * @pre Single caller (the device worker, before USB attach).
- * @post ::s_dbg_ospi_id / ::s_dbg_ospi_prov reflect the outcome.
- * @post The 1 MiB OSPI window is erased + programmed on success.
- *
- * @note Blocking; runs once at boot before USB attach.
- * @since 0.1.0
- */
-static ra_err_t selftest_ospi_provision(void)
-{
-  (void)ra_board_io_expander_set_octospi_active();
-  ra_err_t err = ra_board_xspi_pins_init();
-  if (err != k_ra_ok) {
-    s_dbg_ospi_prov = (uint32_t)err;
-    return err;
-  }
-  err = ra_xspi_init((uint8_t)k_ospi_instance, k_ra_xspi_lio_1s1s1s);
-  if (err != k_ra_ok) {
-    s_dbg_ospi_prov = (uint32_t)err;
-    return err;
-  }
-  uint32_t id = 0U;
-  (void)ra_xspi_flash_read_id((uint8_t)k_ospi_instance, &id);
-  s_dbg_ospi_id   = id;
-  err             = selftest_ospi_write_pattern();
-  s_dbg_ospi_prov = (uint32_t)err;
-  return err;
-}
-
-/**
- * @brief Device-side worker: provision OSPI, bring the FS device up.
- *
- * @details First erases + programs the OSPI window with the test
- * pattern (::selftest_ospi_provision), THEN brings USBX + the device
- * stack + MSC class + DCD bridge up on the USBFS controller and
- * DPRPU-attaches. Provisioning runs before attach so the volume is
- * fully populated the moment the host can read it. USBX runs the
- * SCSI/BBB state machine on its own class threads after this.
+ * @details USBX system + device stack + MSC class + DCD bridge on the
+ * USBFS controller, then DPRPU attach. USBX runs the SCSI/BBB state
+ * machine on its own class threads after this.
  *
  * @param[in] arg ThreadX entry argument (unused).
  *
  * @pre tx_application_define created this thread.
- * @pre USB-FS pins + 48 MHz clock + CGC are up (main did them).
- * @post The OSPI window is provisioned and the FS device is attached.
+ * @pre USB-FS pins + 48 MHz clock are up (main did both).
+ * @post The FS device is attached and serviceable.
  * @post On any bring-up failure the thread exits (probes show where).
  *
  * @note Runs once; loops forever on success.
@@ -1834,9 +1674,6 @@ static VOID selftest_device_worker(ULONG arg)
 {
   (void)arg;
 
-  if (selftest_ospi_provision() != k_ra_ok) {
-    return;
-  }
   if (selftest_usbx_stack_up() != UX_SUCCESS) {
     return;
   }

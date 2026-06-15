@@ -1,33 +1,34 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/usb_selftest_microsd/main.c
- * @brief USB self-loop: HS host reads the microSD card as a read-only MSC
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/main.c
+ * @brief USB self-loop: HS host WRITE(10)s + reads back the onboard OSPI flash
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Exposes the onboard Pmod2 microSD card as a USB drive and verifies it
- * against itself on-chip -- no PC in the loop. The two USB ports are
- * cabled to EACH OTHER and one firmware image runs both USB stacks plus
- * the SCI0 Simple-SPI SD driver:
+ * The WRITABLE OSPI MSC self-loop -- it exercises the host->device
+ * bulk-OUT data path (SCSI WRITE(10)) landing on real non-volatile
+ * storage. The two USB ports are cabled to EACH OTHER and one firmware
+ * image runs both USB stacks:
  *
- *  - AT BOOT the device snapshots SD LBA 0..63 (the FAT/exFAT boot
- *    region) into a RAM buffer with ``ra_sdmmc_spi_read_block`` and
- *    confirms the ``0x55AA`` boot signature. The card is NEVER written
- *    (strictly read-only) so the user's filesystem is untouched.
- *  - USBFS (J11) = DEVICE: a ThreadX + USBX Mass-Storage class exposes
- *    that 64-sector window as a single READ-ONLY logical unit
- *    (``GET_MAX_LUN`` = 0); media-read serves the boot snapshot (no live
- *    card access on the class thread). IRQ-driven through the
+ *  - USBFS (J11) = DEVICE: a ThreadX + USBX Mass-Storage class that
+ *    exposes one WRITABLE logical unit (``GET_MAX_LUN`` = 0) backed by a
+ *    64-sector (32 KiB) window of the onboard OSPI flash (IS25LX512M at
+ *    xSPI CS1, offset 0x00200000). media_write programs host data into the
+ *    flash window; media_read serves it back. IRQ-driven through the
  *    `port/usbx/ux_dcd_ra_usb` bridge.
  *  - USBHS (J7) = HOST: the first-party polled host MSC stack
- *    (`ra_usb_hmsc`) enumerates the device, READ_CAPACITY + a full
- *    raw READ(10) sweep, and byte-checks every sector against the SD
- *    snapshot -- proving the SD read path AND the USB transport deliver
- *    the card's real content intact, end to end on chip.
+ *    (`ra_usb_hmsc`). It enumerates the device, WRITE(10)s a
+ *    deterministic per-LBA pattern across the whole window, then READ(10)s
+ *    it back and byte-checks every sector -- proving the device bulk-OUT
+ *    WRITE data phase round-trips intact onto flash, end to end on chip.
  *
- * No filesystem parsing is involved (raw SCSI READ(10)); this is a pure
- * read-path test that needs no host WRITE support and no SD writes.
+ * No filesystem is involved (raw SCSI WRITE(10)/READ(10)); this is the
+ * non-volatile write-path counterpart to the read-only MSC self-loops,
+ * and the on-bench validation for the device bulk-OUT WRITE(10) driver
+ * fix against persistent storage. The window (0x00200000) is a scratch
+ * region clear of flash_journal (offset 0) and the read-only OSPI image
+ * (offset 0x00100000); it is erased then rewritten every run.
  *
  * The link runs at 12 Mbps (FS device ceiling; HS host serves an FS
  * downstream device).
@@ -40,8 +41,7 @@
  * FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW (device role),
  * P8_14 D+, P8_15 D- (PSEL usb_fs). HS host: SW4-8 to Host via the U15
  * expander, PD07 HIGH (U18 supplies J7 VBUS), P4_08 USBHS_VBUS
- * (PSEL usb_hs). Console: PD_02/PD_03 SCI8. microSD: Pmod2 SCI0
- * Simple-SPI (SCK/CIPO/COPI PSEL sci_async, CS GPIO idle high).
+ * (PSEL usb_hs). Console: PD_02/PD_03 SCI8 (PSEL sci_async).
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
@@ -61,12 +61,10 @@
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_sci.h"
-#include "ra_sci_spi.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_spi.h"
 #include "ra_time.h"
 #include "ra_usb.h"
 #include "ra_usb_hmsc.h"
+#include "ra_xspi.h"
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -108,131 +106,125 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_microsd_pin_fs_vbus =
+static const ra_port_pin_t k_ospirw_pin_fs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_microsd_pin_fs_vbusen =
+static const ra_port_pin_t k_ospirw_pin_fs_vbusen =
   (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_microsd_pin_fs_dp =
+static const ra_port_pin_t k_ospirw_pin_fs_dp =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_microsd_pin_fs_dm =
+static const ra_port_pin_t k_ospirw_pin_fs_dm =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_microsd_pin_hs_vbus =
+static const ra_port_pin_t k_ospirw_pin_hs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
 
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_microsd_pin_hs_pwr =
+static const ra_port_pin_t k_ospirw_pin_hs_pwr =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_microsd_pin_sci_tx =
+static const ra_port_pin_t k_ospirw_pin_sci_tx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
 
 /** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_microsd_pin_sci_rx =
+static const ra_port_pin_t k_ospirw_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
-/** @brief Pmod2 microSD SPI clock (SCI0, Simple-SPI). */
-static const ra_port_pin_t k_microsd_pin_sd_sck = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
-/** @brief Pmod2 microSD SPI CIPO (card -> MCU). */
-static const ra_port_pin_t k_microsd_pin_sd_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
-/** @brief Pmod2 microSD SPI COPI (MCU -> card). */
-static const ra_port_pin_t k_microsd_pin_sd_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
-/** @brief Pmod2 microSD chip-select (GPIO, idle high). */
-static const ra_port_pin_t k_microsd_pin_sd_cs = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables                                                                   */
 /* -------------------------------------------------------------------------- */
 
 /**
- * @enum microsd_config_t
+ * @enum ospirw_config_t
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_microsd_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_microsd_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_microsd_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_microsd_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_microsd_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_microsd_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_microsd_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_microsd_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_microsd_sd_spi_channel  = 0U,      /**< SCI0 Simple-SPI -> Pmod2 microSD. */
-  k_microsd_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_microsd_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
-  k_microsd_host_priority   = 24U,     /**< Host worker priority (below USBX). */
-} microsd_config_t;
+  k_ospirw_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
+  k_ospirw_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
+  k_ospirw_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
+  k_ospirw_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
+  k_ospirw_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
+  k_ospirw_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
+  k_ospirw_baud            = 115200U, /**< J-Link OB CDC log baud.           */
+  k_ospirw_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
+  k_ospirw_print_cap       = 160U,    /**< Bound for console-string scans.   */
+  k_ospirw_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_ospirw_host_priority   = 24U,     /**< Host worker priority (below USBX). */
+} ospirw_config_t;
 
 /**
- * @enum microsd_hex_t
+ * @enum ospirw_hex_t
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_microsd_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_microsd_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_microsd_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_microsd_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_microsd_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
-} microsd_hex_t;
+  k_ospirw_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
+  k_ospirw_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
+  k_ospirw_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
+  k_ospirw_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
+  k_ospirw_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+} ospirw_hex_t;
 
 /**
- * @enum microsd_mask_t
+ * @enum ospirw_mask_t
  * @brief Bit-mask constants used by the text formatters.
  */
 typedef enum : uint32_t {
-  k_microsd_nibble_mask = 0xFU, /**< 4-bit nibble mask.           */
-  k_microsd_dec_radix   = 10U,  /**< Base for decimal conversion. */
-} microsd_mask_t;
+  k_ospirw_nibble_mask = 0xFU, /**< 4-bit nibble mask.           */
+  k_ospirw_dec_radix   = 10U,  /**< Base for decimal conversion. */
+} ospirw_mask_t;
 
 /**
- * @enum microsd_geom_t
+ * @enum ospirw_geom_t
  * @brief LUN geometry + verification constants.
  */
 typedef enum : uint32_t {
-  k_microsd_count        = 1U,          /**< Single read-only logical unit.   */
-  k_microsd_sectors      = 64U,         /**< Exposed sectors (LBA 0..63).     */
-  k_microsd_block_size   = 512U,        /**< SCSI logical block size.         */
-  k_microsd_burst_blocks = 8U,          /**< Blocks per READ(10) burst.       */
-  k_microsd_burst_bytes  = 4096U,       /**< 8 x 512 B burst buffer.          */
-  k_microsd_target_lun0  = 0U,          /**< First LUN index.                 */
-  k_microsd_no_mismatch  = 0xFFFFFFFFU, /**< Probe: no mismatch.              */
-  k_microsd_snap_bytes   = 64U * 512U,  /**< RAM snapshot of LBA 0..63.       */
-  k_microsd_bootsig_off  = 510U,        /**< FAT/exFAT 0x55AA at byte 510.    */
-  k_microsd_bootsig_lo   = 0x55U,       /**< Boot-signature byte 510.         */
-  k_microsd_bootsig_hi   = 0xAAU,       /**< Boot-signature byte 511.         */
-} microsd_geom_t;
+  k_ospirw_count              = 1U,          /**< Logical units exposed (single writable). */
+  k_ospirw_sectors            = 64U,         /**< 512-byte sectors (OSPI window = 32 KiB). */
+  k_ospirw_block_size         = 512U,        /**< SCSI logical block size.       */
+  k_ospirw_burst_blocks       = 8U,          /**< Blocks per READ(10) burst.     */
+  k_ospirw_burst_bytes        = 4096U,       /**< 8 x 512 B burst buffer.        */
+  k_ospirw_target_lun0        = 0U,          /**< First LUN index.               */
+  k_ospirw_no_mismatch        = 0xFFFFFFFFU, /**< Probe: no mismatch.            */
+  k_ospirw_pat_lun_mul        = 97U,         /**< Per-LUN pattern multiplier.    */
+  k_ospirw_pat_lba_mul        = 7U,          /**< Per-LBA pattern multiplier.    */
+  k_ospirw_pat_bias           = 0x5AU,       /**< Pattern constant bias.         */
+  k_ospirw_byte_mask          = 0xFFU,       /**< Byte mask.                     */
+  k_ospirw_mismatch_lun_shift = 24U,         /**< s_dbg_mismatch: LUN in bits 31:24. */
+  k_ospirw_instance           = 0U,          /**< xSPI controller instance.      */
+  k_ospirw_offset             = 0x00200000U, /**< 2 MiB into the chip (scratch). */
+  k_ospirw_erase_sector       = 0x00001000U, /**< IS25LX512M 4 KiB erase sector. */
+} ospirw_geom_t;
 
 /**
- * @enum microsd_phase_t
+ * @enum ospirw_phase_t
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_microsd_phase_boot   = 0U, /**< Host thread not started.   */
-  k_microsd_phase_init   = 1U, /**< ra_usb_hmsc_init issued.   */
-  k_microsd_phase_enum   = 2U, /**< Enumerating.               */
-  k_microsd_phase_verify = 3U, /**< Reading + checking LUNs.   */
-  k_microsd_phase_pass   = 4U, /**< All LUNs verified.         */
-} microsd_phase_t;
+  k_ospirw_phase_boot   = 0U, /**< Host thread not started.   */
+  k_ospirw_phase_init   = 1U, /**< ra_usb_hmsc_init issued.   */
+  k_ospirw_phase_enum   = 2U, /**< Enumerating.               */
+  k_ospirw_phase_verify = 3U, /**< Reading + checking LUNs.   */
+  k_ospirw_phase_pass   = 4U, /**< All LUNs verified.         */
+} ospirw_phase_t;
 
 /**
- * @enum microsd_dev_step_t
+ * @enum ospirw_dev_step_t
  * @brief J-Link probe values marking device-worker bring-up progress.
  */
 typedef enum : uint32_t {
-  k_microsd_dev_step_stack  = 1U, /**< USBX system + device stack up. */
-  k_microsd_dev_step_class  = 2U, /**< MSC class registered.          */
-  k_microsd_dev_step_dcd    = 3U, /**< DCD bridge initialized.        */
-  k_microsd_dev_step_attach = 4U, /**< Device attached (DPRPU).       */
-  k_microsd_dev_step_parked = 5U, /**< Bring-up done; worker parked.  */
-} microsd_dev_step_t;
+  k_ospirw_dev_step_stack  = 1U, /**< USBX system + device stack up. */
+  k_ospirw_dev_step_class  = 2U, /**< MSC class registered.          */
+  k_ospirw_dev_step_dcd    = 3U, /**< DCD bridge initialized.        */
+  k_ospirw_dev_step_attach = 4U, /**< Device attached (DPRPU).       */
+  k_ospirw_dev_step_parked = 5U, /**< Bring-up done; worker parked.  */
+} ospirw_dev_step_t;
 
 /** @brief SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
@@ -262,7 +254,7 @@ static TX_THREAD s_device_thread;
  * @brief Stack backing storage for ::s_device_thread.
  * @since 0.1.0
  */
-static UCHAR s_device_stack[k_microsd_thread_stack];
+static UCHAR s_device_stack[k_ospirw_thread_stack];
 
 /**
  * @var s_host_thread
@@ -277,60 +269,58 @@ static TX_THREAD s_host_thread;
  * @brief Stack backing storage for ::s_host_thread.
  * @since 0.1.0
  */
-static UCHAR s_host_stack[k_microsd_host_stack];
+static UCHAR s_host_stack[k_ospirw_host_stack];
 
 /**
  * @var s_usbx_pool
  * @brief USBX memory pool (USBX uses ``tx_byte_pool`` internally).
  * @since 0.1.0
  */
-static UCHAR s_usbx_pool[k_microsd_usbx_pool_bytes];
+static UCHAR s_usbx_pool[k_ospirw_usbx_pool_bytes];
 
 /* SCSI INQUIRY strings -- 8 / 16 / 4 byte fields per SBC-3. */
 static UCHAR s_msc_vendor_id[]   = "RA8D2   ";
-static UCHAR s_msc_product_id[]  = "MICROSD CARD RO ";
+static UCHAR s_msc_product_id[]  = "WRITABLE OSPI RW";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** @brief Host-ladder phase marker (::microsd_phase_t). */
+/** @brief Host-ladder phase marker (::ospirw_phase_t). */
 static volatile uint32_t s_dbg_phase;
-/** @brief Sectors that read back matching the SD snapshot this pass. */
+/** @brief Sectors that read back correctly after the write pass. */
 static volatile uint32_t s_dbg_luns_ok;
 /** @brief Device-reported GET_MAX_LUN value (expect 0, single LUN). */
 static volatile uint32_t s_dbg_max_lun;
-/** @brief First mismatching sector, or ::k_microsd_no_mismatch. */
-static volatile uint32_t s_dbg_mismatch = (uint32_t)k_microsd_no_mismatch;
+/** @brief First mismatching sector, or ::k_ospirw_no_mismatch. */
+static volatile uint32_t s_dbg_mismatch = (uint32_t)k_ospirw_no_mismatch;
 /** @brief Completed full passes (sticky success counter). */
 static volatile uint32_t s_dbg_pass_count;
 /** @brief Device-side media_read invocations. */
 static volatile uint32_t s_dbg_read_calls;
+/** @brief Device-side media_write invocations (WRITE(10) data received). */
+static volatile uint32_t s_dbg_write_calls;
+/** @brief Total 512-B blocks the device media_write callback stored. */
+static volatile uint32_t s_dbg_write_blocks;
 /** @brief Device worker progress: 1 stack, 2 class, 3 dcd, 4 attach, 5 parked. */
 static volatile uint32_t s_dbg_dev_step;
 /** @brief Device worker first failing return code (0 = none). */
 static volatile uint32_t s_dbg_dev_err;
-/** @brief SD bring-up result: 0 = card read into snapshot OK, else error. */
-static volatile uint32_t s_dbg_sd_err = (uint32_t)k_microsd_no_mismatch;
-/** @brief SD card capacity in 512-B blocks (sanity probe). */
-static volatile uint32_t s_dbg_sd_blocks;
-/** @brief 1 = LBA0 carries the 0x55AA FAT/exFAT boot signature. */
-static volatile uint32_t s_dbg_sd_bootsig;
 
-/** @brief PCLKA in Hz, captured at setup for the SD SPI clock adapter. */
-static uint32_t s_pclka_hz = 0U;
-/** @brief Read-only RAM snapshot of SD LBA 0..63, taken once at boot. */
-static UCHAR s_sd_snapshot[k_microsd_snap_bytes];
+/** @brief OSPI bring-up + window pre-erase result (0 = ready, else error). */
+static volatile uint32_t s_dbg_ospi_prov = (uint32_t)k_ospirw_no_mismatch;
+/** @brief OSPI JEDEC id read back at boot (sanity probe). */
+static volatile uint32_t s_dbg_ospi_id;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (single-interface MSC; multi-LUN is a BOT-level concept)   */
+/* USB descriptors (single-interface MSC; one writable logical unit)         */
 /* -------------------------------------------------------------------------- */
 
 /* MSC config: bulk-only transport, SCSI command set, EP1 IN + EP2 OUT,
  * 64-byte MPS. The number of LUNs is a class-registration parameter, not
  * a descriptor field, so this framework is the standard single-interface
- * MSC blob. PID 0x0015 marks the microSD self-test identity. */
+ * MSC blob. PID 0x0016 marks the writable-OSPI self-test identity. */
 static UCHAR s_device_framework_fs[] = {
   /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
   0x12U,
@@ -343,7 +333,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x15U, /* PID = 0x0015 (pid.codes test).    */
+  0x16U, /* PID = 0x0016 (pid.codes test).    */
   0x00U,
   0x00U,
   0x01U,
@@ -468,219 +458,134 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* microSD over SCI0 Simple-SPI -- READ-ONLY backing snapshot                  */
-/* -------------------------------------------------------------------------- */
-
-/* cppcheck-suppress-begin [constParameterCallback] -- these three hooks
- * are bound to the ra_sdmmc_spi_transport_t vtable, whose signatures take
- * a non-const void* ctx; const-qualifying would break the type. */
-
-/**
- * @brief SD transport hook: program the Simple-SPI bit clock.
- *
- * @param[in] ctx PCLKA-Hz pointer (::s_pclka_hz).
- * @param[in] hz  Requested SCLK frequency in Hz.
- *
- * @return ra_err_t from ::ra_sci_spi_set_clock.
- * @retval k_ra_ok Clock applied.
- *
- * @pre ::ra_sci_spi_init has run for the SD channel.
- * @pre @p ctx is non-null.
- * @post SCI0 Simple-SPI baud reflects @p hz.
- * @post No other state changes.
- *
- * @note Boot context; not ISR-safe.
- * @since 0.1.0
- */
-static ra_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
-{
-  const uint32_t pclka = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_microsd_sd_spi_channel, hz, pclka);
-}
-
-/**
- * @brief SD transport hook: drive the chip-select line.
- *
- * @param[in] ctx Unused.
- * @param[in] asserted true = select (CS low), false = deselect (CS high).
- *
- * @return ra_err_t from ::ra_gpio_write.
- * @retval k_ra_ok CS level updated.
- *
- * @pre CS was configured as a GPIO output.
- * @pre The pin maps to the Pmod2 microSD CS.
- * @post CS reflects @p asserted (active-low).
- * @post No other state changes.
- *
- * @note SD SPI framing needs CS held across the whole command.
- * @since 0.1.0
- */
-static ra_err_t microsd_spi_cs(void* ctx, bool asserted)
-{
-  (void)ctx;
-  return ra_gpio_write(k_microsd_pin_sd_cs, asserted ? k_ra_level_low : k_ra_level_high);
-}
-
-/**
- * @brief SD transport hook: full-duplex SPI byte exchange.
- *
- * @param[in]  ctx Unused.
- * @param[in]  tx  Bytes to clock out (may be null for read-only).
- * @param[out] rx  Bytes clocked in (may be null for write-only).
- * @param[in]  len Transfer length in bytes.
- *
- * @return ra_err_t from ::ra_sci_spi_xfer.
- * @retval k_ra_ok Transfer complete.
- *
- * @pre ::ra_sci_spi_init has run for the SD channel.
- * @pre CS is asserted by the caller around the framed command.
- * @post @p rx holds the clocked-in bytes when non-null.
- * @post No other state changes.
- *
- * @note Boot context; not ISR-safe.
- * @since 0.1.0
- */
-static ra_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
-{
-  (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_microsd_sd_spi_channel, tx, rx, len);
-}
-/* cppcheck-suppress-end [constParameterCallback] */
-
-/**
- * @brief Route Pmod2 SCI0 pins and open the Simple-SPI controller for the card.
- *
- * @details SCK/CIPO/COPI go to the SCI async PSEL; CS is a plain GPIO held
- * across each multi-byte SD command (the SCI hardware CS pulses per word
- * and cannot frame an SD transaction), idle high. Boots SPI at the slow
- * init clock; ::ra_sdmmc_spi_init negotiates up afterwards.
- *
- * @return ra_err_t verdict.
- * @retval k_ra_ok SCI0 Simple-SPI controller is up.
- * @retval (other) A pin route, GPIO, or SPI-init step failed.
- *
- * @pre ::s_pclka_hz holds the live PCLKA frequency.
- * @pre The Pmod2 microSD module is seated.
- * @post SCI0 Simple-SPI is initialized; CS idles high.
- * @post Pmod2 SPI pins carry the SCI peripheral function.
- *
- * @note Boot context; single-threaded.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t microsd_sd_spi_open(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_microsd_pin_sd_sck, k_ra_psel_sci_async, "microsd.sck");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_microsd_pin_sd_cipo, k_ra_psel_sci_async, "microsd.cipo");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_microsd_pin_sd_copi, k_ra_psel_sci_async, "microsd.copi");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_gpio_output_init(k_microsd_pin_sd_cs, k_ra_level_high);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclk_hz   = s_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
-    .lsb_first = false,
-  };
-  return ra_sci_spi_init((uint8_t)k_microsd_sd_spi_channel, &spi_cfg);
-}
-
-/**
- * @brief Bring the card up and snapshot LBA 0..63 into RAM (read-only).
- *
- * @details Opens the SPI controller, inits ::ra_sdmmc_spi (card enumeration),
- * records capacity, then reads the exposed window into ::s_sd_snapshot
- * with ::ra_sdmmc_spi_read_block. NEVER writes the card. Stamps the SD
- * probes and flags the FAT/exFAT 0x55AA boot signature on LBA 0.
- *
- * @return ra_err_t verdict.
- * @retval k_ra_ok Snapshot captured; ::s_sd_snapshot is valid.
- * @retval (other) First failing bring-up or block-read step.
- *
- * @pre ::s_pclka_hz is set; the console is up for diagnostics.
- * @pre A card is seated in the Pmod2 slot.
- * @post ::s_sd_snapshot holds LBA 0..63; SD probes reflect the outcome.
- * @post The card is untouched (no writes).
- *
- * @note Boot context; runs once before the kernel starts.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t microsd_sd_snapshot(void)
-{
-  ra_err_t err = microsd_sd_spi_open();
-  if (err != k_ra_ok) {
-    s_dbg_sd_err = (uint32_t)err;
-    return err;
-  }
-  const ra_sdmmc_spi_transport_t transport = {
-    .set_clock = microsd_spi_set_clock,
-    .cs        = microsd_spi_cs,
-    .xfer      = microsd_spi_xfer,
-    .ctx       = &s_pclka_hz,
-  };
-  err = ra_sdmmc_spi_init(&transport);
-  if (err != k_ra_ok) {
-    s_dbg_sd_err = (uint32_t)err;
-    return err;
-  }
-  uint32_t blocks = 0U;
-  (void)ra_sdmmc_spi_get_capacity(&blocks);
-  s_dbg_sd_blocks = blocks;
-  for (uint32_t lba = 0U; lba < (uint32_t)k_microsd_sectors; lba++) {
-    err = ra_sdmmc_spi_read_block(lba, &s_sd_snapshot[lba * (uint32_t)k_microsd_block_size]);
-    if (err != k_ra_ok) {
-      s_dbg_sd_err = (uint32_t)err;
-      return err;
-    }
-  }
-  const bool sig   = (s_sd_snapshot[k_microsd_bootsig_off] == (UCHAR)k_microsd_bootsig_lo) &&
-                     (s_sd_snapshot[k_microsd_bootsig_off + 1U] == (UCHAR)k_microsd_bootsig_hi);
-  s_dbg_sd_bootsig = sig ? 1U : 0U;
-  s_dbg_sd_err     = 0U;
-  return k_ra_ok;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (single read-only microSD LUN)        */
+/* Shared per-(LUN,LBA) pattern                                               */
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Storage media-read callback: serve the boot-time SD snapshot.
+ * @brief Fill one 512-byte sector with this LUN/LBA's deterministic bytes.
  *
- * @details Bound-checks the request against the exposed window, then
- * copies the bytes straight out of ::s_sd_snapshot (the read-only image
- * of SD LBA 0..63 captured at boot). No live card access happens on the
- * class thread. LED1 toggles per call so loop traffic is visible.
+ * @details Byte i = ``(lun*97 + lba*7 + i + 0x5A) & 0xFF``. Distinct per
+ * LUN and per LBA so the host can prove it addressed the right logical
+ * unit and sector. The device media-read and the host verifier compute
+ * it identically.
+ *
+ * @param[in]  lun The logical unit (0..1).
+ * @param[in]  lba The logical block address within the LUN.
+ * @param[out] out 512-byte destination buffer.
+ *
+ * @pre @p out has ::k_ospirw_block_size writable bytes.
+ * @pre @p lun and @p lba are within the exposed geometry.
+ * @post @p out holds the sector's pattern bytes.
+ * @post No global state changes.
+ *
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static void ospirw_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_ospirw_block_size; i++) {
+    const uint32_t v = (lun * (uint32_t)k_ospirw_pat_lun_mul) +
+                       (lba * (uint32_t)k_ospirw_pat_lba_mul) + i + (uint32_t)k_ospirw_pat_bias;
+    out[i]           = (UCHAR)(v & (uint32_t)k_ospirw_byte_mask);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Storage class media callbacks (single writable OSPI-flash LUN)             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Storage media-read callback: read the OSPI flash window back.
+ *
+ * @details Bound-checks the request against the LUN geometry, then reads
+ * @p number_blocks sectors from the OSPI window at ::k_ospirw_offset with
+ * ::ra_xspi_flash_read into the USBX buffer. One callback serves the
+ * single LUN. LED1 toggles per call so loop traffic is visible.
  *
  * @param[in,out] storage      USBX storage class instance (unused).
- * @param[in]     lun          Logical unit number (unused; single LUN).
+ * @param[in]     lun          Logical unit number (0..1).
  * @param[out]    data_pointer USBX-owned destination buffer.
  * @param[in]     number_blocks Number of 512-byte blocks to produce.
  * @param[in]     lba          Starting LBA.
  * @param[out]    media_status Filled with sense status word.
  *
- * @return ``UX_SUCCESS`` if the request fits the window; else ``UX_ERROR``.
- * @retval UX_SUCCESS Read completed from the snapshot.
+ * @return ``UX_SUCCESS`` if the request fits the LUN; else ``UX_ERROR``.
+ * @retval UX_SUCCESS Read completed.
  * @retval UX_ERROR   Out-of-range LBA / count.
  *
  * @pre ``data_pointer`` / ``media_status`` are non-NULL (USBX guarantee).
- * @pre ::s_sd_snapshot was populated by ::microsd_sd_snapshot.
- * @post Either the blocks were copied or media_status is non-zero.
+ * @pre @p lun is below ::k_ospirw_count.
+ * @post Either the blocks were synthesized or media_status is non-zero.
  * @post ::s_dbg_read_calls advanced.
  *
  * @note Called from the USBX storage class thread.
  * @since 0.1.0
  */
-static UINT microsd_msc_read(VOID*  storage,
+static UINT ospirw_msc_read(VOID*  storage,
+                            ULONG  lun,
+                            UCHAR* data_pointer,
+                            ULONG  number_blocks,
+                            ULONG  lba,
+                            ULONG* media_status)
+{
+  (void)storage;
+  (void)lun;
+  s_dbg_read_calls++;
+  if ((lba + number_blocks) > (ULONG)k_ospirw_sectors) {
+    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
+                                                         k_scsi_asc_lba_out_of_range,
+                                                         k_scsi_ascq_none);
+    return UX_ERROR;
+  }
+  const uint32_t addr = (uint32_t)k_ospirw_offset + ((uint32_t)lba * (uint32_t)k_ospirw_block_size);
+  const ra_err_t rerr = ra_xspi_flash_read((uint8_t)k_ospirw_instance,
+                                           addr,
+                                           data_pointer,
+                                           (uint32_t)number_blocks * (uint32_t)k_ospirw_block_size);
+  if (rerr != k_ra_ok) {
+    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
+                                                         k_scsi_asc_lba_out_of_range,
+                                                         k_scsi_ascq_none);
+    return UX_ERROR;
+  }
+  *media_status = 0UL;
+  (void)ra_board_led_toggle(k_ra_board_led1);
+  return UX_SUCCESS;
+}
+
+/**
+ * @brief Storage media-write callback: program host data into OSPI flash.
+ *
+ * @details The LUN is writable; the host's WRITE(10) data-OUT phase lands
+ * here. Programs @p number_blocks sectors from the USBX buffer into the
+ * OSPI window at ::k_ospirw_offset with ::ra_xspi_flash_program. The
+ * window is ERASED once at boot, so this is a fast program-only path (no
+ * per-write 4 KiB erase, which would exceed the host's BOT timeout).
+ * Bumps ::s_dbg_write_calls / ::s_dbg_write_blocks.
+ *
+ * @param[in,out] storage      USBX storage class instance (unused).
+ * @param[in]     lun          Logical unit number (unused; single LUN).
+ * @param[in]     data_pointer USBX-owned source buffer (received OUT data).
+ * @param[in]     number_blocks Number of 512-byte blocks the host wrote.
+ * @param[in]     lba          Starting LBA.
+ * @param[out]    media_status Filled with the sense status word.
+ *
+ * @return ``UX_SUCCESS`` if the request fits the window; else ``UX_ERROR``.
+ * @retval UX_SUCCESS Blocks programmed into the OSPI window.
+ * @retval UX_ERROR   Out-of-range LBA / count.
+ *
+ * @pre ``data_pointer`` / ``media_status`` are non-NULL (USBX guarantee).
+ * @pre The OUT data phase delivered ``number_blocks * 512`` bytes.
+ * @post The OSPI window holds the written sectors; counters advanced.
+ * @post ``*media_status`` is 0 on success.
+ *
+ * @note Called from the USBX storage class thread.
+ * @since 0.1.0
+ */
+/* cppcheck-suppress-begin [constParameterCallback] -- USBX's
+ * ux_slave_class_storage_media_write function-pointer signature takes
+ * non-const UCHAR*; we cannot const-qualify the parameter. */
+static UINT ospirw_msc_write(VOID*  storage,
                              ULONG  lun,
                              UCHAR* data_pointer,
                              ULONG  number_blocks,
@@ -689,65 +594,29 @@ static UINT microsd_msc_read(VOID*  storage,
 {
   (void)storage;
   (void)lun;
-  s_dbg_read_calls++;
-  if ((lba + number_blocks) > (ULONG)k_microsd_sectors) {
+  s_dbg_write_calls++;
+  if ((lba + number_blocks) > (ULONG)k_ospirw_sectors) {
     *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
                                                          k_scsi_asc_lba_out_of_range,
                                                          k_scsi_ascq_none);
     return UX_ERROR;
   }
-  (void)memcpy(data_pointer,
-               &s_sd_snapshot[lba * (ULONG)k_microsd_block_size],
-               (size_t)(number_blocks * (ULONG)k_microsd_block_size));
+  const uint32_t addr = (uint32_t)k_ospirw_offset + ((uint32_t)lba * (uint32_t)k_ospirw_block_size);
+  const ra_err_t werr =
+    ra_xspi_flash_program((uint8_t)k_ospirw_instance,
+                          addr,
+                          data_pointer,
+                          (uint32_t)number_blocks * (uint32_t)k_ospirw_block_size);
+  if (werr != k_ra_ok) {
+    *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
+                                                         k_scsi_asc_lba_out_of_range,
+                                                         k_scsi_ascq_none);
+    return UX_ERROR;
+  }
+  s_dbg_write_blocks += (uint32_t)number_blocks;
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra_board_led_toggle(k_ra_board_led2);
   return UX_SUCCESS;
-}
-
-/**
- * @brief Storage media-write callback: reject (all LUNs are read-only).
- *
- * @details The single microSD-backed volume is read-only; any WRITE(10)
- * is refused with DATA PROTECT. Hosts honouring the MODE SENSE WP bit
- * never call this.
- *
- * @param[in,out] storage      USBX storage class instance (unused).
- * @param[in]     lun          Logical unit number (unused).
- * @param[in]     data_pointer USBX-owned source buffer (unused).
- * @param[in]     number_blocks Number of blocks the host tried (unused).
- * @param[in]     lba          Starting LBA (unused).
- * @param[out]    media_status Filled with DATA PROTECT sense.
- *
- * @return Always ``UX_ERROR``.
- * @retval UX_ERROR The medium is write-protected.
- *
- * @pre ``media_status`` is non-NULL (USBX guarantee).
- * @pre The LUN reports write-protected via MODE SENSE.
- * @post ``*media_status`` carries the DATA PROTECT sense triple.
- * @post No synthesized content changes.
- *
- * @note Hosts honouring the MODE SENSE WP bit never call this.
- * @since 0.1.0
- */
-/* cppcheck-suppress-begin [constParameterCallback] -- USBX's
- * ux_slave_class_storage_media_write function-pointer signature takes
- * non-const UCHAR*; we cannot const-qualify the parameter. */
-static UINT microsd_msc_write(VOID*  storage,
-                              ULONG  lun,
-                              UCHAR* data_pointer,
-                              ULONG  number_blocks,
-                              ULONG  lba,
-                              ULONG* media_status)
-{
-  (void)storage;
-  (void)lun;
-  (void)data_pointer;
-  (void)number_blocks;
-  (void)lba;
-  *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_data_protect,
-                                                       k_scsi_asc_write_protected,
-                                                       k_scsi_ascq_none);
-  return UX_ERROR;
 }
 /* cppcheck-suppress-end [constParameterCallback] */
 
@@ -772,7 +641,7 @@ static UINT microsd_msc_write(VOID*  storage,
  * @note Synthesized volumes; never report media-not-present.
  * @since 0.1.0
  */
-static UINT microsd_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_status)
+static UINT ospirw_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_status)
 {
   (void)storage;
   (void)lun;
@@ -803,16 +672,16 @@ static UINT microsd_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* 
  * @note Pure function.
  * @since 0.1.0
  */
-static uint8_t microsd_nibble_to_hex(uint32_t nibble)
+static uint8_t ospirw_nibble_to_hex(uint32_t nibble)
 {
-  if (nibble < k_microsd_hex_digit_split) {
+  if (nibble < k_ospirw_hex_digit_split) {
     return (uint8_t)((uint8_t)'0' + (uint8_t)nibble);
   }
-  return (uint8_t)((uint8_t)'A' + (uint8_t)nibble - (uint8_t)k_microsd_hex_digit_split);
+  return (uint8_t)((uint8_t)'A' + (uint8_t)nibble - (uint8_t)k_ospirw_hex_digit_split);
 }
 
 /**
- * @brief Bounded ASCII string length (cap ::k_microsd_print_cap).
+ * @brief Bounded ASCII string length (cap ::k_ospirw_print_cap).
  *
  * @details Linear scan with a hard upper bound.
  *
@@ -824,15 +693,15 @@ static uint8_t microsd_nibble_to_hex(uint32_t nibble)
  * @pre @p text is non-NULL.
  * @pre @p text points to readable storage of at least the length.
  * @post No state changes.
- * @post Return value never exceeds ::k_microsd_print_cap.
+ * @post Return value never exceeds ::k_ospirw_print_cap.
  *
  * @note Bounded scan.
  * @since 0.1.0
  */
-static uint32_t microsd_str_len(const char* text)
+static uint32_t ospirw_str_len(const char* text)
 {
   uint32_t len = 0U;
-  while (len < (uint32_t)k_microsd_print_cap) {
+  while (len < (uint32_t)k_ospirw_print_cap) {
     if (text[len] == '\0') {
       break;
     }
@@ -860,15 +729,15 @@ static uint32_t microsd_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra_err_t ospirw_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_sci_write_polling((uint8_t)k_microsd_sci_channel, data, len);
+  return ra_sci_write_polling((uint8_t)k_ospirw_sci_channel, data, len);
 }
 
 /**
  * @brief Print a NUL-terminated ASCII string over the console.
  *
- * @details Length-bounded by ::microsd_str_len.
+ * @details Length-bounded by ::ospirw_str_len.
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
@@ -876,16 +745,16 @@ static uint32_t microsd_str_len(const char* text)
  * @retval k_ra_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
- * @pre @p text is NUL-terminated within ::k_microsd_print_cap bytes.
+ * @pre @p text is NUL-terminated within ::k_ospirw_print_cap bytes.
  * @post The string bytes are in the SCI8 TX FIFO.
  * @post No other state changes.
  *
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_print(const char* text)
+[[nodiscard]] static ra_err_t ospirw_print(const char* text)
 {
-  return microsd_sci_write((const uint8_t*)text, microsd_str_len(text));
+  return ospirw_sci_write((const uint8_t*)text, ospirw_str_len(text));
 }
 
 /**
@@ -906,28 +775,28 @@ static uint32_t microsd_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_print_dec(uint32_t value)
+[[nodiscard]] static ra_err_t ospirw_print_dec(uint32_t value)
 {
-  uint8_t  scratch[k_microsd_dec_chars_u32] = {};
-  uint8_t  out[k_microsd_dec_chars_u32]     = {};
-  uint8_t  count                            = 0U;
-  uint32_t v                                = value;
+  uint8_t  scratch[k_ospirw_dec_chars_u32] = {};
+  uint8_t  out[k_ospirw_dec_chars_u32]     = {};
+  uint8_t  count                           = 0U;
+  uint32_t v                               = value;
   if (v == 0U) {
     out[0] = (uint8_t)'0';
-    return microsd_sci_write(out, 1U);
+    return ospirw_sci_write(out, 1U);
   }
   while (v != 0U) {
-    if (count >= (uint8_t)k_microsd_dec_chars_u32) {
+    if (count >= (uint8_t)k_ospirw_dec_chars_u32) {
       break;
     }
-    scratch[count] = (uint8_t)((uint8_t)'0' + (uint8_t)(v % k_microsd_dec_radix));
-    v              = v / k_microsd_dec_radix;
+    scratch[count] = (uint8_t)((uint8_t)'0' + (uint8_t)(v % k_ospirw_dec_radix));
+    v              = v / k_ospirw_dec_radix;
     count++;
   }
   for (uint8_t i = 0U; i < count; i++) {
     out[i] = scratch[count - 1U - i];
   }
-  return microsd_sci_write(out, (uint32_t)count);
+  return ospirw_sci_write(out, (uint32_t)count);
 }
 
 /**
@@ -942,25 +811,25 @@ static uint32_t microsd_str_len(const char* text)
  * @retval k_ra_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
- * @pre @p digits is at most ::k_microsd_hex_chars_u32.
+ * @pre @p digits is at most ::k_ospirw_hex_chars_u32.
  * @post One fixed-width hex token is in the SCI8 TX FIFO.
  * @post No other state changes.
  *
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] static ra_err_t ospirw_print_hex(uint32_t value, uint8_t digits)
 {
-  uint8_t out[k_microsd_hex_chars_u32] = {};
-  uint8_t width                        = digits;
-  if (width > (uint8_t)k_microsd_hex_chars_u32) {
-    width = (uint8_t)k_microsd_hex_chars_u32;
+  uint8_t out[k_ospirw_hex_chars_u32] = {};
+  uint8_t width                       = digits;
+  if (width > (uint8_t)k_ospirw_hex_chars_u32) {
+    width = (uint8_t)k_ospirw_hex_chars_u32;
   }
   for (uint8_t i = 0U; i < width; i++) {
-    const uint8_t shift = (uint8_t)((width - 1U - i) * k_microsd_nibble_bits);
-    out[i]              = microsd_nibble_to_hex((value >> shift) & k_microsd_nibble_mask);
+    const uint8_t shift = (uint8_t)((width - 1U - i) * k_ospirw_nibble_bits);
+    out[i]              = ospirw_nibble_to_hex((value >> shift) & k_ospirw_nibble_mask);
   }
-  return microsd_sci_write(out, (uint32_t)width);
+  return ospirw_sci_write(out, (uint32_t)width);
 }
 
 /**
@@ -982,29 +851,29 @@ static uint32_t microsd_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] static ra_err_t ospirw_print_fail(const char* what, ra_err_t err)
 {
-  ra_err_t e = microsd_print("ra8d2 microsd: FAIL ");
+  ra_err_t e = ospirw_print("ra8d2 ospirw: FAIL ");
   if (e != k_ra_ok) {
     return e;
   }
-  e = microsd_print(what);
+  e = ospirw_print(what);
   if (e != k_ra_ok) {
     return e;
   }
-  e = microsd_print(" err=0x");
+  e = ospirw_print(" err=0x");
   if (e != k_ra_ok) {
     return e;
   }
-  e = microsd_print_hex((uint32_t)err, (uint8_t)k_microsd_hex_chars_u32);
+  e = ospirw_print_hex((uint32_t)err, (uint8_t)k_ospirw_hex_chars_u32);
   if (e != k_ra_ok) {
     return e;
   }
-  return microsd_print("\r\n");
+  return ospirw_print("\r\n");
 }
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX MSC with one read-only microSD LUN                        */
+/* Device side: USBX MSC with two LUNs                                         */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -1023,9 +892,9 @@ static uint32_t microsd_str_len(const char* text)
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT microsd_usbx_stack_up(void)
+static UINT ospirw_usbx_stack_up(void)
 {
-  if (_ux_system_initialize(s_usbx_pool, k_microsd_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
+  if (_ux_system_initialize(s_usbx_pool, k_ospirw_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
   return _ux_device_stack_initialize((UCHAR*)UX_NULL,
@@ -1040,53 +909,53 @@ static UINT microsd_usbx_stack_up(void)
 }
 
 /**
- * @brief Populate the LUN parameter slot with geometry + callbacks.
+ * @brief Populate the writable LUN parameter slot with geometry + callbacks.
  *
- * @details The single LUN is a read-only FAT-disk-typed,
- * removable, 64-sector microSD-backed volume whose media callbacks
- * serve the boot SD snapshot.
+ * @details The LUN is a writable FAT-disk-typed,
+ * removable, 64-sector OSPI-backed volume whose media callbacks program
+ * and read the OSPI flash window.
  *
  * @param[in,out] p   The class parameter block.
  * @param[in]     idx LUN slot index (0..1).
  *
  * @pre @p p is zeroed and being filled before class register.
- * @pre @p idx is below ::k_microsd_count.
+ * @pre @p idx is below ::k_ospirw_count.
  * @post Slot @p idx carries the geometry + media callbacks.
  * @post No other slot is touched.
  *
  * @note Helper to keep the register function within the size cap.
  * @since 0.1.0
  */
-static void microsd_fill_lun(UX_SLAVE_CLASS_STORAGE_PARAMETER* p, uint32_t idx)
+static void ospirw_fill_lun(UX_SLAVE_CLASS_STORAGE_PARAMETER* p, uint32_t idx)
 {
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_last_lba =
-    (ULONG)k_microsd_sectors - 1UL;
+    (ULONG)k_ospirw_sectors - 1UL;
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_block_length =
-    (ULONG)k_microsd_block_size;
+    (ULONG)k_ospirw_block_size;
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_type =
     UX_SLAVE_CLASS_STORAGE_MEDIA_FAT_DISK;
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_removable_flag =
     UX_SLAVE_CLASS_STORAGE_MEDIA_IS_REMOVABLE;
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_read_only_flag =
-    UX_TRUE;
-  p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_read = microsd_msc_read;
+    UX_FALSE;
+  p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_read = ospirw_msc_read;
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_write =
-    microsd_msc_write;
+    ospirw_msc_write;
   p->ux_slave_class_storage_parameter_lun[idx].ux_slave_class_storage_media_status =
-    microsd_msc_status;
+    ospirw_msc_status;
 }
 
 /**
- * @brief Register the Mass-Storage class with one read-only LUN.
+ * @brief Register the Mass-Storage class with one writable LUN.
  *
- * @details Sets ``number_lun`` = 1 and fills the single LUN slot via
- * ::microsd_fill_lun, so the host's GET_MAX_LUN returns 0. One LUN is the
- * minimal read-only microSD exposure.
+ * @details Sets ``number_lun`` = 1 and fills the LUN slot via
+ * ::ospirw_fill_lun, so the host's GET_MAX_LUN returns 0. One is the
+ * single writable unit this self-loop exercises.
  *
  * @return UINT UX_SUCCESS on success.
  * @retval UX_SUCCESS Class registered.
  *
- * @pre ::microsd_usbx_stack_up has succeeded.
+ * @pre ::ospirw_usbx_stack_up has succeeded.
  * @pre Media callbacks are defined.
  * @post MSC class bound to configuration 1, interface 0, with 1 LUN.
  * @post GET_MAX_LUN will report 0.
@@ -1094,16 +963,16 @@ static void microsd_fill_lun(UX_SLAVE_CLASS_STORAGE_PARAMETER* p, uint32_t idx)
  * @note Not re-entrant.
  * @since 0.1.0
  */
-static UINT microsd_class_register(void)
+static UINT ospirw_class_register(void)
 {
   UX_SLAVE_CLASS_STORAGE_PARAMETER msc_params;
   (void)memset(&msc_params, 0, sizeof(msc_params));
-  msc_params.ux_slave_class_storage_parameter_number_lun  = (ULONG)k_microsd_count;
+  msc_params.ux_slave_class_storage_parameter_number_lun  = (ULONG)k_ospirw_count;
   msc_params.ux_slave_class_storage_parameter_vendor_id   = s_msc_vendor_id;
   msc_params.ux_slave_class_storage_parameter_product_id  = s_msc_product_id;
   msc_params.ux_slave_class_storage_parameter_product_rev = s_msc_product_rev;
-  for (uint32_t idx = 0U; idx < (uint32_t)k_microsd_count; idx++) {
-    microsd_fill_lun(&msc_params, idx);
+  for (uint32_t idx = 0U; idx < (uint32_t)k_ospirw_count; idx++) {
+    ospirw_fill_lun(&msc_params, idx);
   }
   return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_storage",
                                          _ux_device_class_storage_entry,
@@ -1113,128 +982,223 @@ static UINT microsd_class_register(void)
 }
 
 /**
- * @brief Device-side worker: bring the read-only SD FS device up, then park.
+ * @brief Bring the OSPI flash up and erase the writable window.
  *
- * @details USBX system + device stack + MSC class (1 LUN) + DCD bridge
- * on the USBFS controller, then DPRPU attach. USBX runs the SCSI/BBB
- * state machine on its own class threads after this.
+ * @details Mirrors the read-only OSPI self-loop's bring-up: U15 expander
+ * courtesy write, ``ra_board_xspi_pins_init`` (OCTA pins + RESET pulse),
+ * ``ra_xspi_init`` 1S-1S-1S, JEDEC-id readback (::s_dbg_ospi_id), then a
+ * one-shot erase of the ::k_ospirw_sectors window at ::k_ospirw_offset so
+ * the per-write path is fast program-only. The host owns the data.
+ *
+ * @return First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok OSPI is up and the write window is erased.
+ * @retval (other) A pins / init / erase step failed.
+ *
+ * @pre CGC is initialized (main ran ra_cgc_init).
+ * @pre Single caller (the device worker, before USB attach).
+ * @post ::s_dbg_ospi_id / ::s_dbg_ospi_prov reflect the outcome.
+ * @post The 32 KiB OSPI window is erased (0xFF) on success.
+ *
+ * @note Blocking; runs once at boot before USB attach.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t ospirw_ospi_provision(void)
+{
+  (void)ra_board_io_expander_set_octospi_active();
+  ra_err_t err = ra_board_xspi_pins_init();
+  if (err != k_ra_ok) {
+    s_dbg_ospi_prov = (uint32_t)err;
+    return err;
+  }
+  err = ra_xspi_init((uint8_t)k_ospirw_instance, k_ra_xspi_lio_1s1s1s);
+  if (err != k_ra_ok) {
+    s_dbg_ospi_prov = (uint32_t)err;
+    return err;
+  }
+  uint32_t id = 0U;
+  (void)ra_xspi_flash_read_id((uint8_t)k_ospirw_instance, &id);
+  s_dbg_ospi_id = id;
+  const uint32_t windows =
+    ((uint32_t)k_ospirw_sectors * (uint32_t)k_ospirw_block_size) / (uint32_t)k_ospirw_erase_sector;
+  for (uint32_t e = 0U; e < windows; e++) {
+    const uint32_t addr = (uint32_t)k_ospirw_offset + (e * (uint32_t)k_ospirw_erase_sector);
+    err                 = ra_xspi_flash_erase_sector((uint8_t)k_ospirw_instance, addr);
+    if (err != k_ra_ok) {
+      s_dbg_ospi_prov = (uint32_t)err;
+      return err;
+    }
+  }
+  s_dbg_ospi_prov = 0U;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Device-side worker: bring OSPI + the writable device up, then park.
+ *
+ * @details Provisions the OSPI write window (::ospirw_ospi_provision), then
+ * USBX system + device stack + writable MSC class + DCD bridge on the
+ * USBFS controller, then DPRPU attach. USBX runs the SCSI/BBB state
+ * machine on its own class threads after this.
  *
  * @param[in] arg ThreadX entry argument (unused).
  *
  * @pre tx_application_define created this thread.
  * @pre USB-FS pins + 48 MHz clock are up (main did both).
- * @post The FS device is attached and serviceable on its single LUN.
+ * @post OSPI window erased, FS device attached + serviceable on its LUN.
  * @post On any bring-up failure the thread exits.
  *
  * @note Runs once; loops forever on success.
  * @since 0.1.0
  */
-static VOID microsd_device_worker(ULONG arg)
+static VOID ospirw_device_worker(ULONG arg)
 {
   (void)arg;
 
-  UINT ux = microsd_usbx_stack_up();
+  if (ospirw_ospi_provision() != k_ra_ok) {
+    return; /* s_dbg_ospi_prov records the failure; host READ/WRITE will FAIL */
+  }
+  UINT ux = ospirw_usbx_stack_up();
   if (ux != UX_SUCCESS) {
     s_dbg_dev_err = (uint32_t)ux;
     return;
   }
-  s_dbg_dev_step = (uint32_t)k_microsd_dev_step_stack;
-  ux             = microsd_class_register();
+  s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_stack;
+  ux             = ospirw_class_register();
   if (ux != UX_SUCCESS) {
     s_dbg_dev_err = (uint32_t)ux;
     return;
   }
-  s_dbg_dev_step = (uint32_t)k_microsd_dev_step_class;
+  s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_class;
   ra_err_t e     = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
   if (e != k_ra_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
-  s_dbg_dev_step = (uint32_t)k_microsd_dev_step_dcd;
+  s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_dcd;
   e              = ra_usb_device_attach(k_ra_usb_speed_fs, true);
   if (e != k_ra_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
-  s_dbg_dev_step = (uint32_t)k_microsd_dev_step_attach;
+  s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_attach;
 
   while (1) {
-    s_dbg_dev_step = (uint32_t)k_microsd_dev_step_parked;
-    tx_thread_sleep(k_microsd_idle_ticks);
+    s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_parked;
+    tx_thread_sleep(k_ospirw_idle_ticks);
   }
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + per-LUN read/verify                     */
+/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify              */
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Read + verify the LUN's sectors against the SD snapshot.
+ * @brief WRITE(10) the per-LBA pattern across the whole OSPI window.
  *
- * @details READ_CAPACITY (must report ::k_microsd_sectors), confirm the SD
- * boot signature, then a raw multi-block READ(10) sweep in 8-block
- * against the boot-time SD snapshot (::s_sd_snapshot).
+ * @details Fills an 8-block burst from ::ospirw_pattern_fill and pushes it
+ * with raw ::ra_usb_hmsc_write10 until every sector is written. This is
+ * the host data-OUT phase that drives the device bulk-OUT receive path
+ * (the gating mechanism for every writable / repeated-bulk matrix item).
  *
- * @param[in] lun Logical unit to verify (0..1).
+ * @param[in] lun Logical unit to write (0).
  *
  * @return ra_err_t verdict.
- * @retval k_ra_ok            Every sector matched the SD snapshot.
- * @retval k_ra_err_invalid_size  READ_CAPACITY reported wrong geometry.
- * @retval k_ra_err_invalid_state A byte differed from the snapshot.
+ * @retval k_ra_ok The whole window was written.
+ * @retval k_ra_err_hw_timeout A WRITE(10) data-OUT phase did not complete.
  *
  * @pre The host has enumerated the device.
- * @pre @p lun is below ::k_microsd_count.
- * @post ::s_dbg_mismatch records (lun<<24 | sector) on mismatch.
- * @post Nothing is retained between LUNs.
+ * @pre The LUN is writable (read_only_flag = UX_FALSE).
+ * @post The device OSPI window holds the pattern on success.
+ * @post On failure the offending step printed its error.
  *
- * @note Blocking; 32 four-KiB READ(10) bursts over the self-loop.
+ * @note Blocking; 8 four-KiB WRITE(10) bursts over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_verify_one(uint32_t lun)
+[[nodiscard]] static ra_err_t ospirw_write_disk(uint32_t lun)
 {
-  static uint8_t s_burst[k_microsd_burst_bytes] = {};
-
-  uint32_t block_count = 0U;
-  uint32_t block_size  = 0U;
-  ra_err_t err         = ra_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
-  if (err != k_ra_ok) {
-    (void)microsd_print_fail("read_capacity", err);
-    return err;
-  }
-  if (block_count != (uint32_t)k_microsd_sectors) {
-    (void)microsd_print_fail("capacity mismatch", k_ra_err_invalid_size);
-    return k_ra_err_invalid_size;
-  }
-  if (s_dbg_sd_bootsig == 0U) {
-    (void)microsd_print_fail("no 0x55AA boot sig on SD LBA0", k_ra_err_invalid_state);
-    return k_ra_err_invalid_state;
-  }
-  for (uint32_t blk = 0U; blk < (uint32_t)k_microsd_sectors;
-       blk += (uint32_t)k_microsd_burst_blocks) {
-    err = ra_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_microsd_burst_blocks, s_burst);
-    if (err != k_ra_ok) {
-      (void)microsd_print_fail("READ(10)", err);
-      return err;
+  static uint8_t s_wbuf[k_ospirw_burst_bytes] = {};
+  for (uint32_t blk = 0U; blk < (uint32_t)k_ospirw_sectors;
+       blk += (uint32_t)k_ospirw_burst_blocks) {
+    for (uint32_t s = 0U; s < (uint32_t)k_ospirw_burst_blocks; s++) {
+      ospirw_pattern_fill(lun, blk + s, &s_wbuf[s * (uint32_t)k_ospirw_block_size]);
     }
-    const uint32_t off = blk * (uint32_t)k_microsd_block_size;
-    if (memcmp(s_burst, &s_sd_snapshot[off], (size_t)k_microsd_burst_bytes) != 0) {
-      s_dbg_mismatch = blk;
-      (void)microsd_print_fail("SD data mismatch vs snapshot", k_ra_err_invalid_state);
-      return k_ra_err_invalid_state;
+    const ra_err_t err =
+      ra_usb_hmsc_write10((uint8_t)lun, blk, (uint16_t)k_ospirw_burst_blocks, s_wbuf);
+    if (err != k_ra_ok) {
+      (void)ospirw_print_fail("WRITE(10)", err);
+      return err;
     }
   }
   return k_ra_ok;
 }
 
 /**
- * @brief Print "LUN n OK (256 sectors)" for a verified logical unit.
+ * @brief Read + verify one LUN's full sector range against its pattern.
+ *
+ * @details READ_CAPACITY (must report ::k_ospirw_sectors), then a raw
+ * multi-block READ(10) sweep in 8-block bursts, checking each sector
+ * against ::ospirw_pattern_fill for this @p lun.
+ *
+ * @param[in] lun Logical unit to verify (0..1).
+ *
+ * @return ra_err_t verdict.
+ * @retval k_ra_ok            The whole LUN matched its pattern.
+ * @retval k_ra_err_invalid_size  READ_CAPACITY reported wrong geometry.
+ * @retval k_ra_err_invalid_state A byte differed from the pattern.
+ *
+ * @pre The host has enumerated the device.
+ * @pre @p lun is below ::k_ospirw_count.
+ * @post ::s_dbg_mismatch records (lun<<24 | sector) on mismatch.
+ * @post Nothing is retained between LUNs.
+ *
+ * @note Blocking; 32 four-KiB READ(10) bursts over the self-loop.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t ospirw_verify_one(uint32_t lun)
+{
+  static uint8_t s_burst[k_ospirw_burst_bytes] = {};
+  static uint8_t s_expect[k_ospirw_block_size] = {};
+
+  uint32_t block_count = 0U;
+  uint32_t block_size  = 0U;
+  ra_err_t err         = ra_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
+  if (err != k_ra_ok) {
+    (void)ospirw_print_fail("read_capacity", err);
+    return err;
+  }
+  if (block_count != (uint32_t)k_ospirw_sectors) {
+    (void)ospirw_print_fail("capacity mismatch", k_ra_err_invalid_size);
+    return k_ra_err_invalid_size;
+  }
+  for (uint32_t blk = 0U; blk < (uint32_t)k_ospirw_sectors;
+       blk += (uint32_t)k_ospirw_burst_blocks) {
+    err = ra_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_ospirw_burst_blocks, s_burst);
+    if (err != k_ra_ok) {
+      (void)ospirw_print_fail("READ(10)", err);
+      return err;
+    }
+    for (uint32_t s = 0U; s < (uint32_t)k_ospirw_burst_blocks; s++) {
+      ospirw_pattern_fill(lun, blk + s, s_expect);
+      const uint32_t boff = s * (uint32_t)k_ospirw_block_size;
+      if (memcmp(&s_burst[boff], s_expect, (size_t)k_ospirw_block_size) != 0) {
+        s_dbg_mismatch = (lun << (uint32_t)k_ospirw_mismatch_lun_shift) | (blk + s);
+        (void)ospirw_print_fail("LUN data mismatch", k_ra_err_invalid_state);
+        return k_ra_err_invalid_state;
+      }
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Print "LUN n OK" for the verified writable unit.
  *
  * @param[in] lun The LUN that just verified.
  *
  * @return ra_err_t propagated from the SCI helpers.
  * @retval k_ra_ok The line is queued.
  *
- * @pre ::microsd_verify_one returned k_ra_ok for @p lun.
+ * @pre ::ospirw_verify_one returned k_ra_ok for @p lun.
  * @pre SCI8 init already ran.
  * @post One ASCII line is in the SCI8 TX FIFO.
  * @post No other state changes.
@@ -1242,17 +1206,17 @@ static VOID microsd_device_worker(ULONG arg)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_print_lun_ok(uint32_t lun)
+[[nodiscard]] static ra_err_t ospirw_print_lun_ok(uint32_t lun)
 {
-  ra_err_t err = microsd_print("ra8d2 microsd: LUN ");
+  ra_err_t err = ospirw_print("ra8d2 ospirw: LUN ");
   if (err != k_ra_ok) {
     return err;
   }
-  err = microsd_print_dec(lun);
+  err = ospirw_print_dec(lun);
   if (err != k_ra_ok) {
     return err;
   }
-  return microsd_print(" OK (64 sectors, SD vs snapshot)\r\n");
+  return ospirw_print(" OK (64 sectors, write+read verified)\r\n");
 }
 
 /**
@@ -1276,43 +1240,43 @@ static VOID microsd_device_worker(ULONG arg)
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_host_enumerate(ra_usb_hmsc_device_t* device)
+[[nodiscard]] static ra_err_t ospirw_host_enumerate(ra_usb_hmsc_device_t* device)
 {
-  s_dbg_phase  = (uint32_t)k_microsd_phase_enum;
+  s_dbg_phase  = (uint32_t)k_ospirw_phase_enum;
   ra_err_t err = ra_usb_hmsc_enumerate(device);
   if (err != k_ra_ok) {
-    (void)microsd_print_fail("enumerate", err);
+    (void)ospirw_print_fail("enumerate", err);
     (void)ra_usb_hmsc_close();
     return err;
   }
   s_dbg_max_lun = (uint32_t)device->max_lun;
-  err           = microsd_print("ra8d2 microsd: enumerated pid=0x");
+  err           = ospirw_print("ra8d2 ospirw: enumerated pid=0x");
   if (err != k_ra_ok) {
     return err;
   }
-  err = microsd_print_hex((uint32_t)device->product_id, (uint8_t)k_microsd_hex_chars_u16);
+  err = ospirw_print_hex((uint32_t)device->product_id, (uint8_t)k_ospirw_hex_chars_u16);
   if (err != k_ra_ok) {
     return err;
   }
-  err = microsd_print(", GET_MAX_LUN=");
+  err = ospirw_print(", GET_MAX_LUN=");
   if (err != k_ra_ok) {
     return err;
   }
-  err = microsd_print_dec(s_dbg_max_lun);
+  err = ospirw_print_dec(s_dbg_max_lun);
   if (err != k_ra_ok) {
     return err;
   }
-  return microsd_print("\r\n");
+  return ospirw_print("\r\n");
 }
 
 /**
- * @brief One full host-side pass: enumerate, verify the SD snapshot.
+ * @brief One full host-side pass: enumerate, WRITE(10) then verify.
  *
- * @details Phases mirror ::microsd_phase_t. On any failure the host
+ * @details Phases mirror ::ospirw_phase_t. On any failure the host
  * controller is closed so the next retry starts from a clean attach.
  *
  * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed MICROSD PASS.
+ * @retval k_ra_ok The pass printed WRITABLE-OSPI PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -1322,43 +1286,48 @@ static VOID microsd_device_worker(ULONG arg)
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_host_pass(void)
+[[nodiscard]] static ra_err_t ospirw_host_pass(void)
 {
-  s_dbg_phase  = (uint32_t)k_microsd_phase_init;
-  ra_err_t err = microsd_print("ra8d2 microsd: host up on USB-HS, probing the loop...\r\n");
+  s_dbg_phase  = (uint32_t)k_ospirw_phase_init;
+  ra_err_t err = ospirw_print("ra8d2 ospirw: host up on USB-HS, probing the loop...\r\n");
   if (err != k_ra_ok) {
     return err;
   }
   err = ra_usb_hmsc_init(k_ra_usb_speed_hs);
   if (err != k_ra_ok) {
-    (void)microsd_print_fail("host init", err);
+    (void)ospirw_print_fail("host init", err);
     return err;
   }
 
   ra_usb_hmsc_device_t device = {};
-  err                         = microsd_host_enumerate(&device);
+  err                         = ospirw_host_enumerate(&device);
   if (err != k_ra_ok) {
     return err;
   }
 
-  s_dbg_phase   = (uint32_t)k_microsd_phase_verify;
+  s_dbg_phase   = (uint32_t)k_ospirw_phase_verify;
   s_dbg_luns_ok = 0U;
-  for (uint32_t lun = 0U; lun < (uint32_t)k_microsd_count; lun++) {
-    err = microsd_verify_one(lun);
+  for (uint32_t lun = 0U; lun < (uint32_t)k_ospirw_count; lun++) {
+    err = ospirw_write_disk(lun);
+    if (err != k_ra_ok) {
+      (void)ra_usb_hmsc_close();
+      return err;
+    }
+    err = ospirw_verify_one(lun);
     if (err != k_ra_ok) {
       (void)ra_usb_hmsc_close();
       return err;
     }
     s_dbg_luns_ok++;
-    err = microsd_print_lun_ok(lun);
+    err = ospirw_print_lun_ok(lun);
     if (err != k_ra_ok) {
       return err;
     }
   }
 
-  s_dbg_phase = (uint32_t)k_microsd_phase_pass;
+  s_dbg_phase = (uint32_t)k_ospirw_phase_pass;
   s_dbg_pass_count++;
-  err = microsd_print("ra8d2 microsd: USB SELFTEST MICROSD PASS\r\n");
+  err = ospirw_print("ra8d2 ospirw: USB SELFTEST WRITABLE-OSPI PASS\r\n");
   if (err != k_ra_ok) {
     return err;
   }
@@ -1370,7 +1339,7 @@ static VOID microsd_device_worker(ULONG arg)
  * @brief Host-side worker: retry the full pass until it succeeds.
  *
  * @details Waits for the device side to attach, then loops
- * ::microsd_host_pass with a retry pause until the SD LUN verifies;
+ * ::ospirw_host_pass with a retry pause until the writable LUN verifies;
  * afterwards parks so the verdict stays on the wire.
  *
  * @param[in] arg ThreadX entry argument (unused).
@@ -1383,20 +1352,20 @@ static VOID microsd_device_worker(ULONG arg)
  * @note Blocking calls; ms timeouts via ra_time.
  * @since 0.1.0
  */
-static VOID microsd_host_worker(ULONG arg)
+static VOID ospirw_host_worker(ULONG arg)
 {
   (void)arg;
 
-  tx_thread_sleep(k_microsd_boot_wait_ticks);
+  tx_thread_sleep(k_ospirw_boot_wait_ticks);
   for (;;) {
-    const ra_err_t err = microsd_host_pass();
+    const ra_err_t err = ospirw_host_pass();
     if (err == k_ra_ok) {
       break;
     }
-    tx_thread_sleep(k_microsd_retry_ticks);
+    tx_thread_sleep(k_ospirw_retry_ticks);
   }
   while (1) {
-    tx_thread_sleep(k_microsd_idle_ticks);
+    tx_thread_sleep(k_ospirw_idle_ticks);
   }
 }
 
@@ -1422,23 +1391,23 @@ VOID tx_application_define(VOID* first_unused_memory)
   (void)first_unused_memory;
   s_tx_kernel_up = true;
   (void)tx_thread_create(&s_device_thread,
-                         "microsd_device",
-                         microsd_device_worker,
+                         "ospirw_device",
+                         ospirw_device_worker,
                          0UL,
                          s_device_stack,
-                         k_microsd_thread_stack,
-                         (UINT)k_microsd_dev_priority,
-                         (UINT)k_microsd_dev_priority,
+                         k_ospirw_thread_stack,
+                         (UINT)k_ospirw_dev_priority,
+                         (UINT)k_ospirw_dev_priority,
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
   (void)tx_thread_create(&s_host_thread,
-                         "microsd_host",
-                         microsd_host_worker,
+                         "ospirw_host",
+                         ospirw_host_worker,
                          0UL,
                          s_host_stack,
-                         k_microsd_host_stack,
-                         (UINT)k_microsd_host_priority,
-                         (UINT)k_microsd_host_priority,
+                         k_ospirw_host_stack,
+                         (UINT)k_ospirw_host_priority,
+                         (UINT)k_ospirw_host_priority,
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
@@ -1461,7 +1430,7 @@ VOID tx_application_define(VOID* first_unused_memory)
  * @note Not reachable post-boot.
  * @since 0.1.0
  */
-static void microsd_panic_halt(void)
+static void ospirw_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -1477,37 +1446,37 @@ static void microsd_panic_halt(void)
  * HIGH (U18 supplies J7), P4_08 VBUS sense.
  *
  * @pre IOPORT and the U15 expander are reachable.
- * @pre Called once from ::microsd_setup_or_halt.
+ * @pre Called once from ::ospirw_setup_or_halt.
  * @post FS pins carry the device role, HS pins the host role.
  * @post PD07 is HIGH (J7 powered).
  *
  * @note Panic-halts on any routing failure.
  * @since 0.1.0
  */
-static void microsd_route_usb_or_halt(void)
+static void ospirw_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_microsd_pin_fs_vbus, k_ra_psel_usb_fs, "microsd.fs_vbus") !=
+  if (ra_pfs_route_peripheral(k_ospirw_pin_fs_vbus, k_ra_psel_usb_fs, "ospirw.fs_vbus") !=
       k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
-  if (ra_gpio_output_init(k_microsd_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_gpio_output_init(k_ospirw_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+    ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_fs_dp, k_ra_psel_usb_fs, "microsd.fs_dp") != k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_pfs_route_peripheral(k_ospirw_pin_fs_dp, k_ra_psel_usb_fs, "ospirw.fs_dp") != k_ra_ok) {
+    ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_fs_dm, k_ra_psel_usb_fs, "microsd.fs_dm") != k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_pfs_route_peripheral(k_ospirw_pin_fs_dm, k_ra_psel_usb_fs, "ospirw.fs_dm") != k_ra_ok) {
+    ospirw_panic_halt();
   }
   if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
-  if (ra_gpio_output_init(k_microsd_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_gpio_output_init(k_ospirw_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+    ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_hs_vbus, k_ra_psel_usb_hs, "microsd.hs_vbus") !=
+  if (ra_pfs_route_peripheral(k_ospirw_pin_hs_vbus, k_ra_psel_usb_hs, "ospirw.hs_vbus") !=
       k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
 }
 
@@ -1525,58 +1494,51 @@ static void microsd_route_usb_or_halt(void)
  * @note Panic-halts on any failure; called once from main.
  * @since 0.1.0
  */
-static void microsd_setup_or_halt(void)
+static void ospirw_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
   if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
   if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
-  s_pclka_hz = pclka_hz;
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_sci_tx, k_ra_psel_sci_async, "microsd.txd8") !=
-      k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_pfs_route_peripheral(k_ospirw_pin_sci_tx, k_ra_psel_sci_async, "ospirw.txd8") != k_ra_ok) {
+    ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_sci_rx, k_ra_psel_sci_async, "microsd.rxd8") !=
-      k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_pfs_route_peripheral(k_ospirw_pin_sci_rx, k_ra_psel_sci_async, "ospirw.rxd8") != k_ra_ok) {
+    ospirw_panic_halt();
   }
   const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_microsd_baud,
+    .baud      = k_ospirw_baud,
     .data_bits = k_ra_sci_data_8,
     .parity    = k_ra_sci_parity_none,
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = pclka_hz,
   };
-  if (ra_sci_init((uint8_t)k_microsd_sci_channel, &sci_cfg) != k_ra_ok) {
-    microsd_panic_halt();
+  if (ra_sci_init((uint8_t)k_ospirw_sci_channel, &sci_cfg) != k_ra_ok) {
+    ospirw_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
-    microsd_panic_halt();
+    ospirw_panic_halt();
   }
-  /* Snapshot SD LBA 0..63 into RAM (read-only) before the kernel starts.
-   * On failure s_dbg_sd_err records it and the host verifier reports the
-   * missing boot signature -- the board does not hang. */
-  (void)microsd_sd_snapshot();
-  microsd_route_usb_or_halt();
+  ospirw_route_usb_or_halt();
 }
 
 #pragma GCC diagnostic push
@@ -1599,7 +1561,7 @@ static void microsd_setup_or_halt(void)
  */
 int32_t main(void)
 {
-  microsd_setup_or_halt();
+  ospirw_setup_or_halt();
 
   ra_isr_globals_enable();
 
@@ -1607,7 +1569,7 @@ int32_t main(void)
   tx_kernel_enter();
 #endif
 
-  microsd_panic_halt();
+  ospirw_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop
