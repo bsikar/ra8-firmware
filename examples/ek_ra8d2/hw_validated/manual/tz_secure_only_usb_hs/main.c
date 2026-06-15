@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_usb_hs/main.c
+ * @file examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/main.c
  * @brief Secure-world-only ThreadX + USBX CDC ACM echo for EK-RA8D2 (USB-HS)
  *
  * @par Tag

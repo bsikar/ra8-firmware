@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_usb_hs/secure_exception.c
+ * @file examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/secure_exception.c
  * @brief No-op SecureFault placeholder for the secure-only USB experiment
  *
  * @par Tag

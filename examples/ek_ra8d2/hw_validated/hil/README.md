@@ -16,7 +16,7 @@ listen to audio) live in [`../manual/`](../manual/).
 ## Build
 
 `make <appname>` from the repo root, e.g. `make blink`, `make
-uart_hello`, `make tz_secure_only_usb_hs`. The top-level Makefile
+uart_hello`, `make usb_selftest_soak`. The top-level Makefile
 auto-discovers everything in this directory; no enumeration here is
 required to add a new app.
 
@@ -44,21 +44,32 @@ asserts an expected string appears within a per-app timeout.
 | sdram_benchmark | `sdram: w=` | 20 s |
 | threadx_ipc_demo | `[ipc_demo]` | 15 s |
 | timer_capture_demo | `gpt: period=` | 15 s |
+| tz_secure_only_sd | `sd: roundtrip ok` | 20 s |
 | uart_hello | `hello, ra8d2!` | 10 s |
 | ulpt_demo | `ulpt: wake` | 15 s |
 | watchdog_demo | `wdt: boot reason=power_on` | 15 s |
 
-### USB CDC echo (auto-validated via `/dev/ttyACM*`)
+### USB self-loop self-tests (board-only, no external host)
 
-`scripts/hil_usb_test.sh` flashes the app, waits for the device to
-enumerate as 1209:xxxx, runs correctness + streaming-throughput
-benchmarks against the resulting `/dev/ttyACMx`, and tests
-re-enumeration via PPPS / authorized-toggle.
+The board's two USB jacks (J7 HS, J11 FS) are cabled **to each other** and one
+image runs BOTH roles, so the whole USB data path is validated on-chip with no
+PC -- the preferred HIL transport (it exercises the host stack AND the device
+stack together). `scripts/hil_run_local.sh <app>` flashes, then scrapes the pass
+banner on SCI8. Device-mode apps that need a separate USB host to verify live in
+[`../manual/`](../manual/).
 
-| App | Controller | Connector | Throughput floor |
-|-----|------------|-----------|------------------|
-| tz_secure_only_usb_fs | USBFS | J11 (micro-USB) | 250 KB/s one-way |
-| tz_secure_only_usb_hs | USBHS | J7 (USB-C) | 2000 KB/s one-way |
+| App | Roles (J7 / J11) | Pass banner |
+|-----|------------------|-------------|
+| usb_selftest_hs_host | HS host / FS device (MSC MRAM) | `USB SELFTEST CONFIG A PASS` |
+| usb_selftest_fs_host | FS host / HS device (MSC MRAM) | `USB SELFTEST CONFIG B PASS` |
+| usb_selftest_cdc | HS host / FS device (CDC-ACM echo) | `USB SELFTEST CDC-ECHO PASS` |
+| usb_selftest_hid | HS host / FS device (HID reports) | `USB SELFTEST HID PASS` |
+| usb_selftest_microsd | HS host / FS device (Pmod2 microSD) | `USB SELFTEST MICROSD PASS` |
+| usb_selftest_mlun | HS host / FS device (2-LUN MSC) | `USB SELFTEST MULTI-LUN PASS` |
+| usb_selftest_wlun | HS host / FS device (writable RAM LUN) | `USB SELFTEST WRITABLE-LUN PASS` |
+| usb_selftest_ospi | HS host / FS device (OSPI drive RO) | `USB SELFTEST OSPI PASS` |
+| usb_selftest_ospi_rw | HS host / FS device (OSPI writable) | `USB SELFTEST WRITABLE-OSPI PASS` |
+| usb_selftest_soak | HS host / FS device (endurance + benchmark) | `USB SELFTEST SOAK PASS` |
 
 ### Self-validating echoes (CAN / Ethernet / GPIO)
 
@@ -90,8 +101,9 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | threadx_filex_demo | LED1 toggles on each FileX write/read pass |
 | threadx_levelx_demo | LED1 toggles on each LevelX erase/write cycle |
 | threadx_mpu_partition_demo | LED1 blinks in MPU-partitioned ThreadX thread |
-| threadx_usbx_cdc_demo | USB CDC echo, verified like the tz_* USB apps |
-| tz_nsc_cgc_usb | TrustZone NSC + USB FS CDC echo |
-| usb_cdc_echo | USB FS CDC echo (older simpler variant of tz_secure_only_usb_fs) |
-| usb_hid_device | USB HID report toggles host caps-lock indicator |
-| usb_msc_device | USB MSC volume mounts on host |
+
+Device-mode USB apps that need a separate USB host to verify (CDC / HID / MSC
+device, the `tz_secure_only_usb_*` and `usb_msc_mram*` images) now live in
+[`../manual/`](../manual/) -- the self-loop self-tests above cover the same
+classes board-only. `tz_nsc_cgc_usb` and `threadx_filex_demo` remain in
+[`../../hw_pending/`](../../hw_pending/) (TrustZone partition gap / SD-over-SDHI).
