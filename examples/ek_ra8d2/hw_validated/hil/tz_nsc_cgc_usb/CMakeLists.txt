@@ -65,6 +65,37 @@ set_target_properties(tz_nsc_cgc_usb_ns.elf PROPERTIES
 # The import library is produced by the Secure link, so build that first.
 add_dependencies(tz_nsc_cgc_usb_ns.elf tz_nsc_cgc_usb.elf)
 
+# ---- USBX + ra_usb, compiled NS-private into the NS ELF (#96 M2) -----------
+# USBX core + CDC-ACM, the ra_usb<->USBX DCD bridge, the ra_usb register driver
+# and the HAL modules ra_usb pulls in (ra_mstp/ra_log/ra_time/ra_usbhs). These
+# are compiled FRESH into the NS image so it has its own copies -- the Secure
+# side uses ra_log/ra_mstp/ra_time too, and a shared single-ELF copy would
+# fault INVTRAN across the S/NS boundary.
+set(_ra_usbx_root ${RA_REPO_ROOT}/libs/third_party/usbx)
+file(GLOB _ns_usbx_core CONFIGURE_DEPENDS "${_ra_usbx_root}/common/core/src/*.c")
+list(FILTER _ns_usbx_core EXCLUDE REGEX ".*/ux_(dcd_sim_slave|hcd_sim_host)_.*\\.c$")
+file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
+     "${_ra_usbx_root}/common/usbx_device_classes/src/ux_device_class_cdc_acm_*.c")
+
+set(_ns_usb_srcs
+    ${_ns_usbx_core}
+    ${_ns_usbx_cdc}
+    ${RA_REPO_ROOT}/port/usbx/ux_dcd_ra_usb.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_mstp.c
+    ${RA_REPO_ROOT}/libs/ra_core/src/ra_log.c
+    ${RA_REPO_ROOT}/libs/ra_core/src/ra_time.c)
+target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
+# Vendored USBX + ra_usb predate the first-party -Werror set.
+set_source_files_properties(${_ns_usb_srcs} PROPERTIES COMPILE_OPTIONS "-w")
+target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
+    ${_ra_usbx_root}/common/core/inc
+    ${_ra_usbx_root}/common/usbx_device_classes/inc
+    ${_ra_usbx_root}/ports/cortex_m33/gnu/inc
+    ${RA_REPO_ROOT}/port/usbx
+    ${RA_REPO_ROOT}/libs/ra_usb_pal/inc
+    ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/inc)
+
 # ---- Combine: Secure image + NS image -> one flashable hex ----------------
 # objcopy each ELF to ihex (stripping the Secure side's option-setting records,
 # which the J-Link/MRAM flasher cannot write), then merge -- the Secure image
