@@ -1437,7 +1437,7 @@ both speeds before the next class begins.
 | # | Capability                     | FS (J11) | HS (J7) | Demo path                                            |
 |---|--------------------------------|---------|---------|------------------------------------------------------|
 | 1 | CDC ACM device (USB serial)    | DONE    | WIP     | `examples/ek_ra8d2/tz_secure_only_usb_fs{,_hs}/`        |
-| 2 | USB host (CDC ACM enumerator)  | TODO    | TODO    | `examples/ek_ra8d2/usb_host_cdc_echo/`               |
+| 2 | USB host (CDC ACM enumerator)  | DONE    | DONE    | `examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/` (self-loop) |
 | 3 | MSC device (mass storage)      | TODO    | TODO    | `examples/ek_ra8d2/usb_msc_device/`                  |
 | 4 | HID device (keyboard / mouse)  | TODO    | TODO    | `examples/ek_ra8d2/usb_hid_device/`                  |
 | 5 | Audio device (UAC1)            | TODO    | TODO    | `examples/_unsupported/usb_audio_device/`            |

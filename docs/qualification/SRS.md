@@ -415,7 +415,6 @@ verification for these.
 | REQ-APP-020      | uart_hello                        | `examples/ek_ra8d2/uart_hello/main.c`                   | `tests/test_app_uart_hello.c`              |
 | REQ-APP-021      | usb_cdc_echo                      | `examples/ek_ra8d2/usb_cdc_echo/main.c`                 | `tests/test_app_usb_cdc_echo.c`            |
 | REQ-APP-022      | usb_hid_device                    | `examples/ek_ra8d2/usb_hid_device/main.c`               | `tests/test_app_usb_hid_device.c`          |
-| REQ-APP-023      | usb_host_cdc_echo                 | `examples/ek_ra8d2/usb_host_cdc_echo/main.c`            | `tests/test_app_usb_host_cdc_echo.c`       |
 | REQ-APP-024      | usb_host_keyboard                 | `examples/ek_ra8d2/usb_host_keyboard/main.c`            | `tests/test_app_usb_host_keyboard.c`       |
 | REQ-APP-025      | usb_host_msc_browse               | `examples/ek_ra8d2/usb_host_msc_browse/main.c`          | `tests/test_app_usb_host_msc_browse.c`     |
 | REQ-APP-026      | usb_msc_device                    | `examples/ek_ra8d2/usb_msc_device/main.c`               | `tests/test_app_usb_msc_device.c`          |
