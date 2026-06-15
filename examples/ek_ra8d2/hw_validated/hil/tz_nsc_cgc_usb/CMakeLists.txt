@@ -36,7 +36,20 @@ ra_add_app(NAME tz_nsc_cgc_usb STACK_BYTES 2200
            LIBS ra_tz_secure_boot
            NSC_SRCS ra_nsc_cgc.c)
 
-# ns_main.c is the Non-Secure image (vector table + reset handler at
-# NS_MRAM 0x02080000). It's not in ra_add_app's per-app source list
-# because most apps don't have a NS half; add it explicitly here.
+# ns_main.c is the Non-Secure image (vector table + reset handler whose
+# run-time VMA is the SRAM NS alias 0x32100000). It's not in ra_add_app's
+# per-app source list because most apps don't have a NS half; add it here.
 target_sources(tz_nsc_cgc_usb.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
+
+# Post-build: ns_main.c calls the NSC CGC veneers by address
+# (g_ra_ls_sgstubs_start + k_sg_off_*), so verify ld has not reordered the
+# .gnu.sgstubs slots. The check reads the final symbol table (where the SG-stub
+# addresses are correct, unlike a linker ASSERT which sees __acle_se_*).
+find_program(RA_PYTHON3 NAMES python3 python)
+if(RA_PYTHON3)
+    add_custom_command(TARGET tz_nsc_cgc_usb.elf POST_BUILD
+        COMMAND ${RA_PYTHON3} ${_d}/scripts/utils/check_sg_offsets.py
+                $<TARGET_FILE:tz_nsc_cgc_usb.elf>
+        VERBATIM
+        COMMENT "Verifying NSC SG-veneer slot offsets")
+endif()

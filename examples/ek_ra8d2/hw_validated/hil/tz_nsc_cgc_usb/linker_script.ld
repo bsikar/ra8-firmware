@@ -379,5 +379,13 @@ ASSERT(g_ra_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
 ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
 
+/* NOTE: the NS image (ns_main.c) reaches each NSC CGC veneer by ADDRESS as
+ * g_ra_ls_sgstubs_start + <slot offset> because ld rewrites every cmse symbol
+ * reference inside one secure image onto the secure body. The slot offsets are
+ * verified AFTER the link (where the symbol table holds the true SG-stub
+ * addresses) by scripts/utils/check_sg_offsets.py, run as a POST_BUILD step in
+ * this app's CMakeLists.txt -- a linker ASSERT cannot be used because the cmse
+ * symbol resolves to __acle_se_* in script context. */
+
 g_ra_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
 g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;
