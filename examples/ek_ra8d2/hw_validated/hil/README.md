@@ -72,6 +72,7 @@ banner on SCI8. Device-mode apps that need a separate USB host to verify live in
 | usb_selftest_ospi_rw | HS host / FS device (OSPI writable) | `USB SELFTEST WRITABLE-OSPI PASS` |
 | usb_selftest_soak | HS host / FS device (endurance + benchmark) | `USB SELFTEST SOAK PASS` |
 | usb_host_msc_browse | HS host browses the simulated FS MSC device's FAT | `USB HOST MSC BROWSE PASS` |
+| usb_host_keyboard | HS host decodes a simulated FS boot-keyboard's keycodes | `USB HOST KEYBOARD PASS` |
 
 ### Self-validating echoes (CAN / Ethernet / GPIO)
 
