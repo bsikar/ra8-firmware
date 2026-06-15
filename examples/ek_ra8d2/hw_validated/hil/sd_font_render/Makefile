@@ -2,7 +2,7 @@
 # Per-app Makefile for the `sd_font_render` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/sd_font_render/
+#   cd examples/ek_ra8d2/hw_validated/hil/sd_font_render/
 #   make             # configure + build -> build/sd_font_render.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
