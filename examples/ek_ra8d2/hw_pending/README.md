@@ -18,9 +18,8 @@ hardware HIL probe AND the gap below is resolved.
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
 | sd_font_render | Needs a microSD card carrying `FONT.OTF`; the bench card is not provisioned for this app (board_sim covers it with a synthetic card image). |
-| usb_host_cdc_echo | Needs a real USB-CDC peripheral on the port; the two USB jacks are cabled to each other for the self-loop self-tests, and a CDC **host** class is not yet first-party. |
-| usb_host_keyboard | Needs a real USB keyboard, plus a first-party HID-keyboard host class. |
-| usb_host_msc_browse | Needs a real USB mass-storage device (the MSC host path itself is validated on the self-loop -- see `hw_validated/hil/usb_selftest_*`). |
+| usb_host_cdc_echo | The first-party CDC **host** class is not yet implemented; its loopback counterpart (CDC host echoing a simulated CDC device) is `hw_validated/hil/usb_selftest_cdc`. |
+| usb_host_keyboard | Needs a first-party HID boot-**keyboard** host decoder; the HID host path is loop-validated for mouse reports in `hw_validated/hil/usb_selftest_hid`. |
 
 ### Blocked by a module / firmware gap
 
@@ -45,3 +44,8 @@ devices itself) and moved to `hw_validated/hil/`.
 (LevelX) instead of the unreachable SDHI card path, validated on real hardware
 (format -> FAT -> create/list/read-verify/delete -> `ospi FAT roundtrip ok`), and
 moved to `hw_validated/hil/`.
+
+`usb_host_msc_browse` was re-based onto the self-loop (board hosts AND simulates
+the MSC peripheral over the J7<->J11 cable, no external drive): the host
+enumerates, mounts, and BROWSES the device's FAT root before read-verify
+(`USB HOST MSC BROWSE PASS`), and moved to `hw_validated/hil/`.
