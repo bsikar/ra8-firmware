@@ -121,6 +121,15 @@ macro(ra_add_app)
         endif()
     endforeach()
 
+    # Optional app-local helper translation units: every .c under the app's
+    # src/ subdirectory is compiled into this app, so a large single-file app
+    # can be split into focused TUs (their headers sit alongside; src/ is added
+    # to the include path below). Opt-in -- apps without a src/ dir are
+    # unaffected, and app-root .c files (e.g. a cpu1_main.c built separately)
+    # are never swept in.
+    file(GLOB _ra_app_local CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
+    list(APPEND _ra_src ${_ra_app_local})
+
     file(GLOB_RECURSE _ra_lib_core    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_core/src/*.c)
     file(GLOB_RECURSE _ra_lib_hal     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_hal/src/*.c)
     file(GLOB_RECURSE _ra_lib_net_pal CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_net_pal/src/*.c)
@@ -215,6 +224,7 @@ macro(ra_add_app)
 
     target_include_directories(${_ra_elf} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${RA_REPO_ROOT}/src
         ${RA_REPO_ROOT}/src/inc
         ${RA_REPO_ROOT}/src/secure_app
