@@ -18,8 +18,8 @@ hardware HIL probe AND the gap below is resolved.
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
 | sd_font_render | Needs a microSD card carrying `FONT.OTF`; the bench card is not provisioned for this app (board_sim covers it with a synthetic card image). |
-| usb_host_cdc_echo | The first-party CDC **host** class is not yet implemented; its loopback counterpart (CDC host echoing a simulated CDC device) is `hw_validated/hil/usb_selftest_cdc`. |
-| usb_host_keyboard | Needs a first-party HID boot-**keyboard** host decoder; the HID host path is loop-validated for mouse reports in `hw_validated/hil/usb_selftest_hid`. |
+| usb_host_cdc_echo | Redundant with the loop-validated `hw_validated/hil/usb_selftest_cdc` (CDC host echoing a simulated CDC device over the loop); this standalone app is kept as the real-external-CDC-device demo. To self-loop, re-base it on the dual-stack scaffold like `usb_host_msc_browse`. |
+| usb_host_keyboard | To self-loop, pair `ra_usb_hhid` (host) with a simulated boot-**keyboard** device and decode keycodes -- distinct from `usb_selftest_hid` (mouse reports). Not yet done. |
 
 ### Blocked by a module / firmware gap
 
