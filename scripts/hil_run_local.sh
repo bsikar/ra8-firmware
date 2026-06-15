@@ -87,7 +87,7 @@ CONF="${APP_DIR}/hil.conf"
 # shellcheck disable=SC1090
 HIL_MODE="" HIL_EXPECT="" HIL_EXPECT_NEGATIVE="" HIL_TIMEOUT_S=""
 HIL_BOOT_S="" HIL_PROBE_SYMBOL="" HIL_PROBE_MIN_ADVANCE="" HIL_PROBE_SECONDS=""
-HIL_PROBE_FAILURE_SYMBOL="" HIL_PROBE_MAX_FAILURE=""
+HIL_PROBE_FAILURE_SYMBOL="" HIL_PROBE_MAX_FAILURE="" HIL_PROBE_BOOT_S=""
 source "$CONF"
 MODE="${HIL_MODE:-}"
 [[ -n "$MODE" ]] || { echo -e "${RED}[local]${NC} hil.conf has no HIL_MODE"; exit 2; }
@@ -243,19 +243,28 @@ sym_addr() {  # sym_addr <symbol> -> prints hex addr, or empty
 run_memprobe() {
     local sym="${HIL_PROBE_SYMBOL:-}" min="${HIL_PROBE_MIN_ADVANCE:-4}" win="${HIL_PROBE_SECONDS:-3}"
     local fsym="${HIL_PROBE_FAILURE_SYMBOL:-}" fmax="${HIL_PROBE_MAX_FAILURE:-0}"
+    # Boot dwell: let the app reach steady state before the FIRST read. Apps with
+    # a slow bring-up (e.g. sd_font_render renders for ~6 s before its idle-loop
+    # counter starts advancing) need this -- otherwise both reads straddle the
+    # init phase (counter still 0, or stale SRAM from the prior image) and the
+    # advance check is meaningless.
+    local boot="${HIL_PROBE_BOOT_S:-0}"
     [[ -n "$sym" ]] || { echo -e "${RED}[local]${NC} memprobe needs HIL_PROBE_SYMBOL"; return 2; }
-    local saddr faddr; saddr="$(sym_addr "$sym")"
+    local saddr faddr=""; saddr="$(sym_addr "$sym")"
     [[ -n "$saddr" ]] || { echo -e "${RED}[local]${NC} symbol '${sym}' not in ${APP}.elf"; return 1; }
     [[ -n "$fsym" ]] && faddr="$(sym_addr "$fsym")"
-    echo -e "${YELLOW}[local]${NC} memprobe symbol=${sym}@0x${saddr} min_advance=${min} window=${win}s${fsym:+ fail=${fsym}@0x${faddr}}"
+    echo -e "${YELLOW}[local]${NC} memprobe symbol=${sym}@0x${saddr} min_advance=${min} window=${win}s boot_dwell=${boot}s${fsym:+ fail=${fsym}@0x${faddr}}"
     if ! flash_local; then return 1; fi
     local log="/tmp/hil_local_${APP}_memprobe.log"
     local script="device ${JLINK_DEVICE}
 si SWD
 speed ${JLINK_SPEED}
 connect
-halt
-mem32 0x${saddr} 1"
+halt"
+    (( boot > 0 )) && script+=$'\n'"go
+sleep $(( boot * 1000 ))
+halt"
+    script+=$'\n'"mem32 0x${saddr} 1"
     [[ -n "$faddr" ]] && script+=$'\n'"mem32 0x${faddr} 1"
     script+=$'\n'"go
 sleep $(( win * 1000 ))
@@ -266,14 +275,18 @@ mem32 0x${saddr} 1"
     jlink_run "$script" "$log"
     mapfile -t HITS < <(grep -iE "^${saddr}" "$log" | awk '{print $3}' | tr 'a-f' 'A-F')
     (( ${#HITS[@]} >= 2 )) || { echo -e "${RED}[local]${NC} could not read ${sym} twice"; tail -20 "$log" >&2; return 1; }
+    # Signed delta: a counter that goes BACKWARDS (post < pre) means the target
+    # reset between the two reads -- not "steadily advancing" -- so it must fail,
+    # not wrap around to a huge positive delta. These liveness counters never
+    # legitimately wrap uint32 (4 billion ticks), so post < pre is always a reset.
     local pre=$((16#${HITS[0]})) post=$((16#${HITS[1]})) delta
-    delta=$(( (post - pre) & 0xFFFFFFFF ))
+    delta=$(( post - pre ))
     local fdelta=0 fpre="" fpost=""
     if [[ -n "$faddr" ]]; then
         mapfile -t FH < <(grep -iE "^${faddr}" "$log" | awk '{print $3}' | tr 'a-f' 'A-F')
         (( ${#FH[@]} >= 2 )) || { echo -e "${RED}[local]${NC} could not read ${fsym} twice"; tail -20 "$log" >&2; return 1; }
         fpre="${FH[0]}"; fpost="${FH[1]}"
-        fdelta=$(( ( (16#${FH[1]}) - (16#${FH[0]}) ) & 0xFFFFFFFF ))
+        fdelta=$(( (16#${FH[1]}) - (16#${FH[0]}) ))
     fi
     local ok=1
     (( delta < min )) && ok=0
