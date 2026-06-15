@@ -18,8 +18,7 @@ hardware HIL probe AND the gap below is resolved.
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
 | sd_font_render | Needs a microSD card carrying `FONT.OTF`; the bench card is not provisioned for this app (board_sim covers it with a synthetic card image). |
-| threadx_filex_demo | FileX over SDHI; needs a microSD card. |
-| tz_secure_only_sd | Needs a microSD card (plus the TrustZone split). |
+| threadx_filex_demo | FileX expects the card on SDHI, but the board's microSD is on Pmod2 / SCI0 Simple-SPI -- wrong interface, so `fx_media_open` faults. To be rewritten to run FileX over the OSPI flash (LevelX). |
 | usb_host_cdc_echo | Needs a real USB-CDC peripheral on the port; the two USB jacks are cabled to each other for the self-loop self-tests, and a CDC **host** class is not yet first-party. |
 | usb_host_keyboard | Needs a real USB keyboard, plus a first-party HID-keyboard host class. |
 | usb_host_msc_browse | Needs a real USB mass-storage device (the MSC host path itself is validated on the self-loop -- see `hw_validated/hil/usb_selftest_*`). |
@@ -37,3 +36,8 @@ The on-board **USB self-loop self-tests** (`usb_selftest_hs_host`, `_fs_host`,
 `_cdc`, `_hid`, `_microsd`, `_mlun`, `_wlun`, `_ospi`, `_ospi_rw`, `_soak`) were
 validated on real hardware (FS jack cabled to HS jack, the board both hosts and
 devices itself) and moved to `hw_validated/hil/`.
+
+`tz_secure_only_sd` was also validated -- a real SPI-mode microSD round-trip
+(SCI0 Simple-SPI -> `ra_sdmmc_spi` -> `ra_fs`: init, mount, write+read+compare,
+`sd: roundtrip ok`) on the Pmod2 card -- and moved to `hw_validated/hil/` with a
+`uart_scrape` gate.
