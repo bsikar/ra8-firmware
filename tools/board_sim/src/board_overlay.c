@@ -44,11 +44,35 @@ typedef enum : uint32_t {
   k_ovl_heading     = 0xFFFFU, /**< White heading text.                     */
   k_ovl_led_off     = 0x2104U, /**< Unlit LED dot.                          */
   k_ovl_led_ring    = 0x6B4DU, /**< LED dot outline.                        */
+  k_ovl_btn_border  = 0x8430U, /**< On-screen button outline.               */
+  k_ovl_btn_up      = 0x3186U, /**< Button face, released.                  */
+  k_ovl_btn_down    = 0x05E0U, /**< Button face, pressed (green).           */
+  k_ovl_btn_label   = 0xFFFFU, /**< Button caption text.                    */
   k_ovl_glyph_w     = 5U,      /**< Font glyph width in pixels.             */
   k_ovl_glyph_h     = 7U,      /**< Font glyph height in pixels.            */
   k_ovl_glyph_first = 0x20U,   /**< First glyph in the font table (space).  */
   k_ovl_glyph_last  = 0x7EU,   /**< Last glyph in the font table (tilde).   */
 } board_overlay_cfg_t;
+
+/**
+ * @brief Fixed layout of the on-screen SW1 / SW2 buttons (sidebar-relative px).
+ *
+ * @details Both ::draw_buttons and ::board_overlay_hit_button derive the button
+ * rectangles from these constants, so the drawn face and the click hit-box stay
+ * in lock-step. The block sits below the status-text block (which ends near y
+ * 166 for any panel) and above the minimum composite height, so it is on-screen
+ * for every panel size.
+ */
+typedef enum : int32_t {
+  k_btn_x_dx    = 16,  /**< Button column inset from the sidebar origin.  */
+  k_btn_head_y  = 190, /**< "BUTTONS" heading row.                        */
+  k_btn_y       = 206, /**< Button face top.                              */
+  k_btn_w       = 150, /**< Button face width.                            */
+  k_btn_h       = 36,  /**< Button face height.                           */
+  k_btn_gap     = 16,  /**< Horizontal gap between SW1 and SW2.           */
+  k_btn_label_x = 12,  /**< Caption inset within the button face.         */
+  k_btn_label_y = 12,  /**< Caption top inset within the button face.     */
+} overlay_btn_layout_t;
 
 /* 5x7 column-major font, ASCII 0x20..0x7E. Five bytes per glyph; bit b of a
  * column byte lights row b (0 = top). A public-domain 5x7 cell font. */
@@ -320,6 +344,38 @@ static int32_t draw_status_lines(uint16_t*             out,
   return cy + step;
 }
 
+/** @brief Draw one labelled push-button face at @p x (green when @p pressed). */
+static void
+draw_button(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const char* label, bool pressed)
+{
+  const uint16_t face = pressed ? (uint16_t)k_ovl_btn_down : (uint16_t)k_ovl_btn_up;
+  fill_rect(out,
+            w,
+            h,
+            x - 1,
+            (int32_t)k_btn_y - 1,
+            (int32_t)k_btn_w + 2,
+            (int32_t)k_btn_h + 2,
+            (uint16_t)k_ovl_btn_border);
+  fill_rect(out, w, h, x, (int32_t)k_btn_y, (int32_t)k_btn_w, (int32_t)k_btn_h, face);
+  draw_text(out,
+            w,
+            h,
+            x + (int32_t)k_btn_label_x,
+            (int32_t)k_btn_y + (int32_t)k_btn_label_y,
+            label,
+            (uint16_t)k_ovl_btn_label,
+            2);
+}
+
+/** @brief Paint the "BUTTONS" heading and the clickable SW1 / SW2 buttons. */
+static void draw_buttons(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
+{
+  draw_text(out, w, h, x, (int32_t)k_btn_head_y, "BUTTONS (click)", (uint16_t)k_ovl_heading, 1);
+  draw_button(out, w, h, x, "SW1", st->sw1_pressed);
+  draw_button(out, w, h, x + (int32_t)k_btn_w + (int32_t)k_btn_gap, "SW2", st->sw2_pressed);
+}
+
 /** @brief Paint the sidebar background, divider, heading and all status rows. */
 static void
 draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const board_status_t* st)
@@ -352,6 +408,7 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
   y = draw_leds(out, w, h, x, y, st);
   y += k_leds_gap;
   (void)draw_status_lines(out, w, h, x, y, st);
+  draw_buttons(out, w, h, x, st);
 }
 
 void board_overlay_compose(uint16_t*             out,
@@ -367,4 +424,22 @@ void board_overlay_compose(uint16_t*             out,
   const uint16_t h = board_overlay_total_height(panel_h);
   blit_panel(out, w, h, panel, panel_w, panel_h);
   draw_sidebar(out, w, h, panel_w, st);
+}
+
+board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t panel_w)
+{
+  const int32_t cx = (int32_t)x;
+  const int32_t cy = (int32_t)y;
+  if ((cy < (int32_t)k_btn_y) || (cy >= ((int32_t)k_btn_y + (int32_t)k_btn_h))) {
+    return k_board_overlay_btn_none;
+  }
+  const int32_t bx1 = (int32_t)panel_w + (int32_t)k_btn_x_dx;
+  if ((cx >= bx1) && (cx < (bx1 + (int32_t)k_btn_w))) {
+    return k_board_overlay_btn_sw1;
+  }
+  const int32_t bx2 = bx1 + (int32_t)k_btn_w + (int32_t)k_btn_gap;
+  if ((cx >= bx2) && (cx < (bx2 + (int32_t)k_btn_w))) {
+    return k_board_overlay_btn_sw2;
+  }
+  return k_board_overlay_btn_none;
 }
