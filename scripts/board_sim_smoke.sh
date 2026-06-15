@@ -88,6 +88,11 @@ PY
 render_assert_apps="ereader_ui sd_font_render"
 min_render_colors=6
 
+# Apps driven with an injected user-button press (board_sim --button 1 holds
+# SW1/P009 low). gpio_input_demo mirrors SW1 -> LED1, so with the button held
+# its LED1 must read ON -- this gates the GPIO input-injection path (#39).
+button_apps="gpio_input_demo"
+
 # Apps whose rendered chrome is pinned to a checked-in golden image (exact
 # pixel match of the panel framebuffer, a strictly stronger check than the
 # distinct-color floor above). board_sim renders deterministically, so any
@@ -124,6 +129,9 @@ sim_extra_args() { # app -> extra args on stdout
     case " $sd_apps " in
     *" $1 "*) [ -n "$sd_image" ] && printf -- '--sd %s' "$sd_image" ;;
     esac
+    case " $button_apps " in
+    *" $1 "*) printf -- '--button 1' ;;
+    esac
 }
 
 apps=("$@")
@@ -145,7 +153,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
-        canfd_loopback imu_lsm6dso_demo)
+        canfd_loopback imu_lsm6dso_demo gpio_input_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -203,6 +211,19 @@ for app in "${apps[@]}"; do
         fail=1
         continue
     fi
+    case " $button_apps " in
+    *" $app "*)
+        # The app ran with --button held (see sim_extra_args). gpio_input_demo
+        # mirrors SW1 -> LED1, so the injected press must light LED1.
+        if echo "$out" | grep -qE "LED1[^]]*ON"; then
+            echo "OK (pc=$pc, --button -> LED1 ON)"
+        else
+            echo "BUTTON NO-OP (pc=$pc; --button did not light LED1)"
+            fail=1
+        fi
+        continue
+        ;;
+    esac
     case " $render_assert_apps " in
     *" $app "*)
         ppm="$(mktemp)"
