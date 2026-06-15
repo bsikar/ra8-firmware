@@ -29,6 +29,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "board_input.h"
+
 /**
  * @brief Layer-backed content view that shows the latest frame and records clicks.
  */
@@ -43,18 +45,9 @@
 @property(nonatomic, assign) uint16_t clickY;
 /** @brief Set on mouse-down; cleared when polled. */
 @property(nonatomic, assign) BOOL hasClick;
-/** @brief Pop one buffered keystroke into @p out; returns NO if the FIFO is empty. */
-- (BOOL)popKey:(char*)out;
 @end
 
-@implementation BoardImageView {
-  /* Small keystroke FIFO: keyDown appends, popKey drains (oldest first). A ring
-   * so a burst of typing between run-loop drains is not lost; on overflow the
-   * newest key is dropped (the firmware is the slow consumer here). */
-  char     _keyRing[64];
-  uint32_t _keyHead;
-  uint32_t _keyTail;
-}
+@implementation BoardImageView
 /* Fully covered by the frame image (black layer background before the first
  * frame), so report opacity -- AppKit skips erasing the window background. */
 - (BOOL)isOpaque
@@ -67,6 +60,9 @@
 {
   return YES;
 }
+/* A typed key is just another keystroke source: push each accepted character
+ * into the shared board_input FIFO, exactly as the --keys injector does, so the
+ * run loop drains both through one path into the console UART RX. */
 - (void)keyDown:(NSEvent*)event
 {
   NSString* s = event.characters;
@@ -78,24 +74,10 @@
     const BOOL printable = (u >= 0x20U) && (u < 0x7FU);
     const BOOL control =
       (u == (unichar)'\r') || (u == (unichar)'\n') || (u == (unichar)'\t') || (u == 0x08U);
-    if (!printable && !control) {
-      continue; /* drop non-ASCII / other control keys */
-    }
-    const uint32_t next = (_keyTail + 1U) % (uint32_t)sizeof(_keyRing);
-    if (next != _keyHead) {
-      _keyRing[_keyTail] = (char)u;
-      _keyTail           = next;
+    if (printable || control) {
+      board_input_push_key((char)u);
     }
   }
-}
-- (BOOL)popKey:(char*)out
-{
-  if ((out == NULL) || (_keyHead == _keyTail)) {
-    return NO;
-  }
-  *out     = _keyRing[_keyHead];
-  _keyHead = (_keyHead + 1U) % (uint32_t)sizeof(_keyRing);
-  return YES;
 }
 - (void)mouseDown:(NSEvent*)event
 {
@@ -287,14 +269,6 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
   *y                  = view->view.clickY;
   view->view.hasClick = NO;
   return true;
-}
-
-bool board_view_poll_key(board_view_t* view, char* ch)
-{
-  if ((view == nullptr) || (view->view == nil) || (ch == nullptr)) {
-    return false;
-  }
-  return [view->view popKey:ch] == YES;
 }
 
 void board_view_close(board_view_t* view)

@@ -78,23 +78,6 @@ bool board_view_pump(board_view_t* view);
 bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
 
 /**
- * @brief Pop one buffered keystroke typed into the window, if any.
- *
- * @details The content view records characters from its keyDown handler into a
- * small FIFO; this returns them one byte at a time (oldest first) so the run
- * loop can feed them to the console UART RX -- the same SCI channel @c --input
- * targets -- letting a user type live into an interactive UART app in the
- * window. Returns ASCII bytes; non-ASCII / control keys other than CR/LF/Tab/BS
- * are dropped by the recorder. Pump the window first so AppKit has delivered the
- * key events.
- *
- * @param[in]  view Handle from board_view_open (nullptr reports no key).
- * @param[out] ch   Receives one keystroke byte when true is returned.
- * @return true if a buffered key was returned (and consumed); false otherwise.
- */
-bool board_view_poll_key(board_view_t* view, char* ch);
-
-/**
  * @brief Close the window and release its resources.
  *
  * @param[in] view Handle from board_view_open (nullptr is a no-op).
