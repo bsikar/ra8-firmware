@@ -349,6 +349,37 @@ static bool         s_mpu_fault;                      /**< RO write trapped.    
 static uint32_t     s_mpu_fault_pc;                   /**< PC of faulting store. */
 static uint32_t     s_mpu_fault_addr;                 /**< Address written.     */
 
+/**
+ * @enum dual_core_t
+ * @brief CPU_CTRL registers + activation bit for the second core (cpu1).
+ *
+ * @details
+ * The RA8D2 boots cpu0 (Cortex-M85); the application releases cpu1
+ * (Cortex-M33) by writing CPU1INITVTOR (its vector table) then
+ * CPU1ACTCSR.ACTREQ. board_sim emulates cpu1 in a second Unicorn engine
+ * that shares the on-chip SRAM with cpu0 (host-backed), so cpu1_pingpong's
+ * cross-core IPC over shared SRAM actually runs. Inert unless the firmware
+ * carries a cpu1 image and asserts ACTREQ.
+ */
+typedef enum : uint64_t {
+  k_cpu1_initvtor_addr = 0x4000F044UL, /**< CPU_CTRL.CPU1INITVTOR (32-bit).  */
+  k_cpu1_actcsr_addr   = 0x4000F064UL, /**< CPU_CTRL.CPU1ACTCSR  (16-bit).   */
+  k_cpu1_mram_base     = 0x020C0000UL, /**< MRAM_CPU1: cpu1 image base.      */
+  k_cpu1_mram_end      = 0x02100000UL, /**< MRAM_CPU1 end (256 KiB).         */
+} dual_core_addr_t;
+
+typedef enum : uint32_t {
+  k_cpu1_actcsr_actreq = 1U << 0U, /**< CPU1ACTCSR.ACTREQ -> release cpu1. */
+  k_cpu1_chunk_insns   = 100000U,  /**< cpu1 instructions per interleave.  */
+} dual_core_bits_t;
+
+static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared).   */
+static uc_engine* s_cpu1_uc;          /**< 2nd engine for cpu1 (NULL if N/A).   */
+static bool       s_cpu1_active;      /**< cpu1 released and stepping.          */
+static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.         */
+static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.         */
+static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.      */
+
 /* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
 static uint32_t s_bgc_writes;
 static uint32_t s_bgc_distinct[k_bgc_track_max];
@@ -450,7 +481,17 @@ static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t v
 {
   (void)user;
   s_mmio_writes++;
-  if (((uint64_t)k_periph_base + offset) == (uint64_t)k_glcdc_bg_bgc) {
+  const uint64_t mmio_abs = (uint64_t)k_periph_base + offset;
+  /* Dual-core release: the firmware stages cpu1's vector table in
+   * CPU1INITVTOR, then asserts CPU1ACTCSR.ACTREQ to start cpu1. Capture both
+   * so the run loop can boot the second engine (see cpu1_engine_init). */
+  if (mmio_abs == (uint64_t)k_cpu1_initvtor_addr) {
+    s_cpu1_initvtor = (uint32_t)value;
+  } else if ((mmio_abs == (uint64_t)k_cpu1_actcsr_addr) &&
+             (((uint32_t)value & (uint32_t)k_cpu1_actcsr_actreq) != 0U)) {
+    s_cpu1_release_req = true;
+  }
+  if (mmio_abs == (uint64_t)k_glcdc_bg_bgc) {
     bgc_track((uint32_t)value);
   }
   /* A modelled peripheral block consumes the write first (so GPIO latches,
@@ -2091,6 +2132,7 @@ typedef enum : uint32_t {
   k_sram_end   = 0x22100000U, /**< On-chip SRAM end. */
   k_sdram_base = 0x68000000U, /**< External SDRAM start.*/
   k_sdram_end  = 0x6C000000U, /**< External SDRAM end.*/
+  k_page_size  = 0x1000U,     /**< 4 KiB host-map alignment for SRAM buffer. */
 } ram_region_t;
 
 /** @brief True if addr is in an emulated RAM region a framebuffer could use. */
@@ -2505,6 +2547,79 @@ static uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap)
   return n;
 }
 
+/**
+ * @brief Create the second emulator engine for cpu1 (Cortex-M33), if present.
+ *
+ * @details
+ * Only dual-core firmware (one exporting ``cpu1_reset_handler``) gets a cpu1
+ * engine, so single-core apps pay nothing. The engine maps the same regions as
+ * cpu0 but binds the on-chip SRAM to the shared host buffer (::s_sram_buf) so
+ * cross-core IPC over shared SRAM is coherent; the full ELF (which carries
+ * cpu1's image at MRAM_CPU1) is loaded so cpu1 can boot from its own vector
+ * table when released. The engine is left idle -- the run loop boots it on the
+ * CPU1ACTCSR release.
+ *
+ * @param[in] elf     The firmware image (cpu0 + cpu1).
+ * @param[in] elf_len Length of @p elf, bytes.
+ *
+ * @return The cpu1 engine, or NULL if this is not a dual-core image (or setup
+ *         failed -- cpu0 then runs alone, exactly as before).
+ * @retval NULL Not a dual-core image / engine setup failed.
+ *
+ * @pre ::s_sram_buf is allocated (cpu0 SRAM is host-backed).
+ * @pre @p elf is a valid ELF still resident (called before it is freed).
+ * @post On success a Cortex-M33 engine mirrors cpu0's map with shared SRAM.
+ * @post No cpu1 instruction has executed yet (idle until released).
+ * @note cpu1's PPB / peripheral writes stay private to its engine.
+ * @since 0.1.0
+ */
+static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
+{
+  /* Dual-core only: cpu1's image is embedded as raw bytes (.cpu1_image, not a
+   * cpu0 symbol), so detect it by a PT_LOAD segment in the MRAM_CPU1 window. */
+  uint32_t phoff = 0U;
+  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
+  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
+  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
+  bool           has_cpu1  = false;
+  for (uint16_t i = 0U; i < phnum; i++) {
+    const uint8_t* ph = elf + phoff + ((uint32_t)i * phentsize);
+    uint32_t       p_type;
+    uint32_t       p_paddr;
+    (void)memcpy(&p_type, ph + 0, 4);
+    (void)memcpy(&p_paddr, ph + (uint32_t)k_elf_ph_paddr_off, 4);
+    if ((p_type == 1U) && (p_paddr >= (uint32_t)k_cpu1_mram_base) &&
+        (p_paddr < (uint32_t)k_cpu1_mram_end)) {
+      has_cpu1 = true;
+      break;
+    }
+  }
+  if (!has_cpu1) {
+    return nullptr; /* single-core firmware -- no second engine. */
+  }
+  uc_engine* c1 = nullptr;
+  if (uc_open(UC_ARCH_ARM, (uc_mode)(UC_MODE_THUMB | UC_MODE_MCLASS), &c1) != UC_ERR_OK) {
+    return nullptr;
+  }
+  (void)uc_ctl_set_cpu_model(c1, UC_CPU_ARM_CORTEX_M33);
+  for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
+    uc_err mr =
+      (k_regions[i].base == (uint64_t)k_sram_base)
+        ? uc_mem_map_ptr(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf)
+        : uc_mem_map(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
+    if (mr != UC_ERR_OK) {
+      (void)uc_close(c1);
+      return nullptr;
+    }
+  }
+  if (load_elf(c1, elf, elf_len) != 0) {
+    (void)uc_close(c1);
+    return nullptr;
+  }
+  (void)fprintf(stderr, "  cpu1 engine   : Cortex-M33, shared SRAM (dual-core)\n");
+  return c1;
+}
+
 int main(int argc, char** argv)
 {
   if (argc < 2) {
@@ -2628,7 +2743,23 @@ int main(int argc, char** argv)
   (void)uc_ctl_set_cpu_model(uc, UC_CPU_ARM_CORTEX_M33);
 
   for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
-    if (uc_mem_map(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL) != UC_ERR_OK) {
+    /* On-chip SRAM is host-backed so a second engine (cpu1) can share the same
+     * physical bytes -- the two cores' IPC over shared SRAM is then coherent.
+     * Transparent for cpu0 (uc_mem_map_ptr behaves like uc_mem_map otherwise).*/
+    uc_err mr = UC_ERR_OK;
+    if (k_regions[i].base == (uint64_t)k_sram_base) {
+      s_sram_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
+      if (s_sram_buf == nullptr) {
+        (void)fprintf(stderr, "SRAM host buffer alloc failed\n");
+        return 1;
+      }
+      (void)memset(s_sram_buf, 0, (size_t)k_regions[i].size);
+      mr =
+        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf);
+    } else {
+      mr = uc_mem_map(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
+    }
+    if (mr != UC_ERR_OK) {
       (void)fprintf(stderr,
                     "map %s @0x%08llX failed\n",
                     k_regions[i].name,
@@ -2816,6 +2947,10 @@ int main(int argc, char** argv)
   /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
    * firmware exports those symbols, i.e. a NetX networking example). */
   eth_seam_install(uc, elf, elf_len, want_trace);
+  /* Spin up the cpu1 engine for dual-core firmware (shares SRAM with cpu0).
+   * NULL for single-core apps -- cpu0 then runs exactly as before. Must run
+   * before free(elf): it loads cpu1's image from the same buffer. */
+  s_cpu1_uc = cpu1_engine_init(elf, elf_len);
   free(elf);
 
   /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
@@ -3023,6 +3158,30 @@ int main(int argc, char** argv)
     }
     if (faulted) {
       break;
+    }
+
+    /* Dual-core: boot cpu1 on the CPU1ACTCSR release (SP/PC from its vector
+     * table at CPU1INITVTOR), then step it interleaved with cpu0. cpu1 shares
+     * the on-chip SRAM, so its poll of the ping struct sees cpu0's writes and
+     * its pong reply is visible back to cpu0 -- a real second core, not a model.
+     * cpu1 is a tight poll loop (no interrupts), so a plain stepped run suffices;
+     * a cpu1 fault just stops cpu1 (cpu0 keeps running). */
+    if (s_cpu1_uc != nullptr) {
+      if (s_cpu1_release_req && !s_cpu1_active) {
+        s_cpu1_release_req     = false;
+        const uint32_t cpu1_sp = rd32(s_cpu1_uc, (uint64_t)s_cpu1_initvtor);
+        s_cpu1_pc              = rd32(s_cpu1_uc, (uint64_t)s_cpu1_initvtor + 4U);
+        (void)uc_reg_write(s_cpu1_uc, UC_ARM_REG_SP, &cpu1_sp);
+        s_cpu1_active = true;
+      }
+      if (s_cpu1_active) {
+        const uc_err e1 =
+          uc_emu_start(s_cpu1_uc, (uint64_t)s_cpu1_pc | 1U, 0, 0, (size_t)k_cpu1_chunk_insns);
+        (void)uc_reg_read(s_cpu1_uc, UC_ARM_REG_PC, &s_cpu1_pc);
+        if (e1 != UC_ERR_OK) {
+          s_cpu1_active = false; /* cpu1 hit a fault -- halt it, cpu0 continues */
+        }
+      }
     }
     /* --record: dump the composite (panel + status) every k_record_every chunks
      * as a numbered PPM, so the run becomes a frame sequence (assemble to a video
