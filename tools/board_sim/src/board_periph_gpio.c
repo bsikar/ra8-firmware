@@ -201,6 +201,15 @@ void board_periph_gpio_set_input(uint8_t port, uint8_t pin, bool level)
   }
 }
 
+bool board_periph_gpio_get_input(uint8_t port, uint8_t pin)
+{
+  if ((uint32_t)port >= (uint32_t)k_port_count || (uint32_t)pin >= (uint32_t)k_pins_per_port) {
+    return false;
+  }
+  const uint16_t bit = (uint16_t)(1U << (uint32_t)pin);
+  return (s_port[port].in_lvl & bit) != 0U;
+}
+
 uint32_t board_periph_led_level(board_led_id_t led)
 {
   if ((uint32_t)led >= (uint32_t)k_board_led_count) {

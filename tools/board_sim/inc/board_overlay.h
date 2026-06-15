@@ -38,6 +38,19 @@ typedef enum : uint32_t {
 } board_overlay_dims_t;
 
 /**
+ * @brief On-screen sidebar control a click landed on.
+ *
+ * @details ::board_overlay_hit_button classifies a composite-space click into
+ * one of the sidebar's interactive controls (or none), so the caller can route
+ * a window / @c --click tap to the user-switch model instead of the touch panel.
+ */
+typedef enum : uint32_t {
+  k_board_overlay_btn_none = 0U, /**< Click did not land on a control.  */
+  k_board_overlay_btn_sw1  = 1U, /**< On-screen SW1 (P009) push-button. */
+  k_board_overlay_btn_sw2  = 2U, /**< On-screen SW2 (P008) push-button. */
+} board_overlay_btn_t;
+
+/**
  * @brief One board LED's live state for the status sidebar.
  *
  * @details A lit indicator is filled with @c color when @c on is true and drawn
@@ -66,6 +79,8 @@ typedef struct {
   bool               has_touch;                 /**< A touch has been drained.  */
   uint16_t           touch_x;                   /**< Last touch X (if any).     */
   uint16_t           touch_y;                   /**< Last touch Y (if any).     */
+  bool               sw1_pressed;               /**< On-screen SW1 held down.   */
+  bool               sw2_pressed;               /**< On-screen SW2 held down.   */
   const char*        app_name;                  /**< App / window title.        */
 } board_status_t;
 
@@ -121,6 +136,24 @@ void board_overlay_compose(uint16_t*             out,
                            uint16_t              panel_w,
                            uint16_t              panel_h,
                            const board_status_t* st);
+
+/**
+ * @brief Classify a composite-space click against the sidebar's on-screen buttons.
+ *
+ * @details The interactive board view draws SW1 / SW2 push-buttons in the status
+ * sidebar at a fixed layout (the same constants ::board_overlay_compose draws
+ * them with). Given a click in composite pixels and the @p panel_w used to
+ * compose the frame, this reports which button the click hit so the caller can
+ * drive the user-switch model rather than injecting a panel touch. Out-of-band
+ * clicks (the panel, sidebar text) return ::k_board_overlay_btn_none.
+ *
+ * @param[in] x       Click column in composite pixels (top-left origin).
+ * @param[in] y       Click row in composite pixels (top-left origin).
+ * @param[in] panel_w Panel width the composite was built with (sidebar origin).
+ * @return The button hit, or ::k_board_overlay_btn_none.
+ * @since 0.1.0
+ */
+board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t panel_w);
 
 #ifdef __cplusplus
 }
