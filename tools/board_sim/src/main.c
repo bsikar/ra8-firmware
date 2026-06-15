@@ -2682,7 +2682,7 @@ int main(int argc, char** argv)
                   " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
                   " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>]\n"
                   "  --view          open a macOS window: live board view; click panel"
-                  " (touch) or on-screen SW1/SW2\n"
+                  " (touch) / on-screen SW1/SW2, type -> UART\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
                   "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
                   "  --record-secs N headless: record N emulated seconds, then stop (~20 fps)\n"
@@ -3294,6 +3294,13 @@ int main(int argc, char** argv)
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
         (void)route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
+      }
+      /* Keystrokes typed into the window feed the console UART RX (the same SCI
+       * channel --input targets), so an interactive UART app reads them live. */
+      char kc = 0;
+      while (board_view_poll_key(view, &kc)) {
+        const uint8_t kb = (uint8_t)kc;
+        board_periph_sci_feed_rx(board_periph_sci_console_channel(), &kb, 1U);
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
         build_composite(uc,

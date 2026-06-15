@@ -43,13 +43,58 @@
 @property(nonatomic, assign) uint16_t clickY;
 /** @brief Set on mouse-down; cleared when polled. */
 @property(nonatomic, assign) BOOL hasClick;
+/** @brief Pop one buffered keystroke into @p out; returns NO if the FIFO is empty. */
+- (BOOL)popKey:(char*)out;
 @end
 
-@implementation BoardImageView
+@implementation BoardImageView {
+  /* Small keystroke FIFO: keyDown appends, popKey drains (oldest first). A ring
+   * so a burst of typing between run-loop drains is not lost; on overflow the
+   * newest key is dropped (the firmware is the slow consumer here). */
+  char     _keyRing[64];
+  uint32_t _keyHead;
+  uint32_t _keyTail;
+}
 /* Fully covered by the frame image (black layer background before the first
  * frame), so report opacity -- AppKit skips erasing the window background. */
 - (BOOL)isOpaque
 {
+  return YES;
+}
+/* Must be the first responder for keyDown: to be delivered (NSView is NO by
+ * default); board_view_open also makes this view the window's first responder. */
+- (BOOL)acceptsFirstResponder
+{
+  return YES;
+}
+- (void)keyDown:(NSEvent*)event
+{
+  NSString* s = event.characters;
+  for (NSUInteger i = 0U; i < s.length; i++) {
+    unichar u = [s characterAtIndex:i];
+    if (u == 0x7FU) {
+      u = 0x08U; /* map the Delete key to ASCII backspace */
+    }
+    const BOOL printable = (u >= 0x20U) && (u < 0x7FU);
+    const BOOL control =
+      (u == (unichar)'\r') || (u == (unichar)'\n') || (u == (unichar)'\t') || (u == 0x08U);
+    if (!printable && !control) {
+      continue; /* drop non-ASCII / other control keys */
+    }
+    const uint32_t next = (_keyTail + 1U) % (uint32_t)sizeof(_keyRing);
+    if (next != _keyHead) {
+      _keyRing[_keyTail] = (char)u;
+      _keyTail           = next;
+    }
+  }
+}
+- (BOOL)popKey:(char*)out
+{
+  if ((out == NULL) || (_keyHead == _keyTail)) {
+    return NO;
+  }
+  *out     = _keyRing[_keyHead];
+  _keyHead = (_keyHead + 1U) % (uint32_t)sizeof(_keyRing);
   return YES;
 }
 - (void)mouseDown:(NSEvent*)event
@@ -145,6 +190,7 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
     [win setContentView:v];
     [win center];
     [win makeKeyAndOrderFront:nil];
+    [win makeFirstResponder:v]; /* route keyDown: to the content view (UART typing) */
     [NSApp activateIgnoringOtherApps:YES];
 
     board_view_t* bv = (board_view_t*)calloc(1U, sizeof(*bv));
@@ -241,6 +287,14 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
   *y                  = view->view.clickY;
   view->view.hasClick = NO;
   return true;
+}
+
+bool board_view_poll_key(board_view_t* view, char* ch)
+{
+  if ((view == nullptr) || (view->view == nil) || (ch == nullptr)) {
+    return false;
+  }
+  return [view->view popKey:ch] == YES;
 }
 
 void board_view_close(board_view_t* view)
