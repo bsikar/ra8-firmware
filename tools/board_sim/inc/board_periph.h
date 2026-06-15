@@ -168,6 +168,31 @@ uint32_t board_periph_touch_reported(void);
 uint32_t board_periph_led_level(board_led_id_t led);
 
 /**
+ * @brief Drive a GPIO pin's input level from outside the firmware.
+ *
+ * @details
+ * Lets the harness inject a pin level that the firmware reads back through PIDR
+ * (PCNTR2) -- the model for a physical input such as a user push-button. The
+ * board's active-low switches SW1 (P009) / SW2 (P008) idle high (released) and
+ * are pulled low to model a press, so ``--button`` (and a live-view key) can
+ * exercise button-driven firmware paths (e.g. gpio_input_demo: SW1 -> LED1).
+ * Only the named pin's input is affected; output pins still read their latch.
+ *
+ * @param[in] port  PORT index (0-based; PORT0 == 0).
+ * @param[in] pin   Pin number within the port (0..15).
+ * @param[in] level Injected level: true = high, false = low.
+ * @return Nothing.
+ *
+ * @pre The peripheral model has been initialised.
+ * @pre @p port / @p pin are within range (out-of-range is ignored).
+ * @post Subsequent PIDR reads of @p pin (when configured as input) see @p level.
+ * @post Output pins are unaffected (they read their driven latch).
+ * @note Not thread-safe; single-threaded harness use.
+ * @since 0.1.0
+ */
+void board_periph_gpio_set_input(uint8_t port, uint8_t pin, bool level);
+
+/**
  * @brief The on-colour of a board LED as a packed RGB565 value.
  *
  * @details

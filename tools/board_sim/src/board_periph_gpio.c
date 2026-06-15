@@ -43,9 +43,17 @@ typedef enum : uint64_t {
 
 /** @brief Generic field shifts / masks shared by the PORT halves. */
 typedef enum : uint32_t {
-  k_half_shift = 16U,     /**< High-half (PODR/PORR/EIDR) shift.     */
-  k_half_mask  = 0xFFFFU, /**< 16-bit half mask.                     */
+  k_half_shift    = 16U,     /**< High-half (PODR/PORR/EIDR) shift.   */
+  k_half_mask     = 0xFFFFU, /**< 16-bit half mask.                   */
+  k_pins_per_port = 16U,     /**< Pins per PORT instance.             */
 } port_field_t;
+
+/** @brief EK-RA8D2 user-switch pins (PORT0): SW1=P009, SW2=P008 (UM Tbl 25). */
+typedef enum : uint32_t {
+  k_sw_port = 0U, /**< Both user switches are on PORT0. */
+  k_sw1_pin = 9U, /**< SW1 -> P009.                     */
+  k_sw2_pin = 8U, /**< SW2 -> P008.                     */
+} sw_pin_t;
 
 /** @brief RGB565 lit-colour codes for the three board LEDs. */
 typedef enum : uint16_t {
@@ -56,8 +64,10 @@ typedef enum : uint16_t {
 
 /** @brief One PORT instance: direction + output latch (16 bits each). */
 typedef struct {
-  uint16_t pdr;  /**< Direction: 1 = output, 0 = input. */
-  uint16_t podr; /**< Output-data latch.                */
+  uint16_t pdr;    /**< Direction: 1 = output, 0 = input.            */
+  uint16_t podr;   /**< Output-data latch.                          */
+  uint16_t in_ovr; /**< Pins whose input level is externally driven.*/
+  uint16_t in_lvl; /**< Driven input level for the in_ovr pins.     */
 } port_state_t;
 
 /** @brief Board LED -> (port index, pin index, lit colour), from the BSP. */
@@ -123,9 +133,13 @@ static uint64_t port_read(uc_engine* uc, uint64_t addr, unsigned size)
     return ((uint32_t)p->podr << (uint32_t)k_half_shift) | (uint32_t)p->pdr;
   }
   if (off == (uint64_t)k_port_pcntr2) {
-    /* PIDR reads the live pin level: an output pin reads back its driven
-     * latch, so a firmware "read what I drove" check observes the real state. */
-    return (uint32_t)(p->podr & p->pdr);
+    /* PIDR reads the live pin level: an output pin reads back its driven latch
+     * (so a "read what I drove" check is honest); an input pin reads any
+     * externally-injected level (user buttons -- see board_periph_gpio_set_input),
+     * else 0. */
+    const uint16_t driven = (uint16_t)(p->podr & p->pdr);
+    const uint16_t inputs = (uint16_t)((uint16_t)(~p->pdr) & p->in_ovr & p->in_lvl);
+    return (uint32_t)(uint16_t)(driven | inputs);
   }
   return 0U; /* PCNTR3 is write-only; PCNTR4 unmodelled -> 0. */
 }
@@ -161,9 +175,29 @@ static void port_reset(void)
   for (uint32_t i = 0U; i < (uint32_t)k_port_count; i++) {
     s_port[i] = (port_state_t){};
   }
+  /* EK-RA8D2 user switches are active-low with pull-ups: idle (released) reads
+   * high. Seed P009/P008 (SW1/SW2) high so a firmware poll sees "not pressed"
+   * until board_periph_gpio_set_input() drives them low (a --button press). */
+  const uint16_t sw_mask = (uint16_t)((1U << (uint32_t)k_sw1_pin) | (1U << (uint32_t)k_sw2_pin));
+  s_port[k_sw_port].in_ovr |= sw_mask;
+  s_port[k_sw_port].in_lvl |= sw_mask;
   for (uint32_t i = 0U; i < (uint32_t)k_board_led_count; i++) {
     s_led_level[i]       = 0U;
     s_led_transitions[i] = 0U;
+  }
+}
+
+void board_periph_gpio_set_input(uint8_t port, uint8_t pin, bool level)
+{
+  if ((uint32_t)port >= (uint32_t)k_port_count || (uint32_t)pin >= (uint32_t)k_pins_per_port) {
+    return;
+  }
+  const uint16_t bit = (uint16_t)(1U << (uint32_t)pin);
+  s_port[port].in_ovr |= bit;
+  if (level) {
+    s_port[port].in_lvl |= bit;
+  } else {
+    s_port[port].in_lvl &= (uint16_t)~bit;
   }
 }
 
