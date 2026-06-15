@@ -18,6 +18,10 @@
  *   - @c image-out path of the raw FAT image to write
  *   - @c dest-name 8.3 name on the card (default @c FONT.OTF)
  *
+ * Or:    @c mkfontimg --blank <image-out>
+ *   Writes a formatted-but-empty FAT16 image (no font) -- the "random card"
+ *   case used to exercise @ref ra_sdfont_load's self-provisioning path.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
@@ -116,8 +120,86 @@ static void build_fat16(uint8_t* b)
   b[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;
 }
 
+/**
+ * @brief Format a 4 MiB FAT16 image, optionally write a font, dump to disk.
+ *
+ * @param[in] image_out Output path for the raw FAT image.
+ * @param[in] font      Font bytes to write, or NULL for a blank card.
+ * @param[in] font_len  Length of @p font (ignored when @p font is NULL).
+ * @param[in] dest_name 8.3 name on the card (ignored when @p font is NULL).
+ * @return 0 on success, 1 on any allocation / ra_fs / I/O failure.
+ */
+static int
+build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, const char* dest_name)
+{
+  s_disk.block_count = (uint32_t)k_blocks_fat16;
+  s_disk.bytes       = (uint8_t*)calloc(1U, (size_t)k_blocks_fat16 * (size_t)k_block_size);
+  if (s_disk.bytes == nullptr) {
+    (void)fprintf(stderr, "mkfontimg: out of memory (disk)\n");
+    return 1;
+  }
+  build_fat16(s_disk.bytes);
+
+  const ra_fs_backend_t backend = {.read_block   = mem_read,
+                                   .write_block  = mem_write,
+                                   .get_capacity = mem_cap,
+                                   .ctx          = &s_disk};
+
+  /* Write the font (if any) through the real ra_fs so the on-card layout
+   * matches exactly what the firmware app will read. */
+  ra_fs_mount_t* mnt = nullptr;
+  if (ra_fs_mount(&backend, &mnt) != k_ra_ok) {
+    (void)fprintf(stderr, "mkfontimg: ra_fs_mount failed\n");
+    free(s_disk.bytes);
+    return 1;
+  }
+  if (font != nullptr) {
+    ra_fs_file_t* f = nullptr;
+    if (ra_fs_open(mnt, dest_name, k_ra_fs_mode_write, &f) != k_ra_ok) {
+      (void)fprintf(stderr, "mkfontimg: ra_fs_open(%s) failed\n", dest_name);
+      free(s_disk.bytes);
+      return 1;
+    }
+    if (ra_fs_write(f, font, (uint32_t)font_len) != k_ra_ok) {
+      (void)fprintf(stderr, "mkfontimg: ra_fs_write failed\n");
+      free(s_disk.bytes);
+      return 1;
+    }
+    (void)ra_fs_close(f);
+  }
+  (void)ra_fs_unmount(mnt);
+
+  FILE* fout = fopen(image_out, "wb");
+  if (fout == nullptr) {
+    (void)fprintf(stderr, "mkfontimg: cannot write %s\n", image_out);
+    free(s_disk.bytes);
+    return 1;
+  }
+  size_t wrote = fwrite(s_disk.bytes, 1U, (size_t)k_blocks_fat16 * (size_t)k_block_size, fout);
+  (void)fclose(fout);
+  free(s_disk.bytes);
+  if (wrote != (size_t)k_blocks_fat16 * (size_t)k_block_size) {
+    (void)fprintf(stderr, "mkfontimg: short write to %s\n", image_out);
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char** argv)
 {
+  /* Blank-card mode: format an empty FAT16 image with no font. */
+  if ((argc >= 2) && (strcmp(argv[1], "--blank") == 0)) {
+    if (argc != 3) {
+      (void)fprintf(stderr, "usage: %s --blank <image-out>\n", argv[0]);
+      return 2;
+    }
+    if (build_and_dump(argv[2], nullptr, 0U, nullptr) != 0) {
+      return 1;
+    }
+    (void)fprintf(stderr, "mkfontimg: wrote %s (blank FAT16, no font)\n", argv[2]);
+    return 0;
+  }
+
   if (argc < 3) {
     (void)fprintf(stderr, "usage: %s <font-in> <image-out> [dest-name]\n", argv[0]);
     return 2;
@@ -146,60 +228,9 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  /* Format an in-memory FAT16 image. */
-  s_disk.block_count = (uint32_t)k_blocks_fat16;
-  s_disk.bytes       = (uint8_t*)calloc(1U, (size_t)k_blocks_fat16 * (size_t)k_block_size);
-  if (s_disk.bytes == nullptr) {
-    (void)fprintf(stderr, "mkfontimg: out of memory (disk)\n");
-    free(font);
-    return 1;
-  }
-  build_fat16(s_disk.bytes);
-
-  const ra_fs_backend_t backend = {.read_block   = mem_read,
-                                   .write_block  = mem_write,
-                                   .get_capacity = mem_cap,
-                                   .ctx          = &s_disk};
-
-  /* Write the font through the real ra_fs so the on-card layout matches
-   * exactly what the firmware app will read. */
-  ra_fs_mount_t* mnt = nullptr;
-  if (ra_fs_mount(&backend, &mnt) != k_ra_ok) {
-    (void)fprintf(stderr, "mkfontimg: ra_fs_mount failed\n");
-    free(s_disk.bytes);
-    free(font);
-    return 1;
-  }
-  ra_fs_file_t* f = nullptr;
-  if (ra_fs_open(mnt, dest_name, k_ra_fs_mode_write, &f) != k_ra_ok) {
-    (void)fprintf(stderr, "mkfontimg: ra_fs_open(%s) failed\n", dest_name);
-    free(s_disk.bytes);
-    free(font);
-    return 1;
-  }
-  if (ra_fs_write(f, font, (uint32_t)font_len) != k_ra_ok) {
-    (void)fprintf(stderr, "mkfontimg: ra_fs_write failed\n");
-    free(s_disk.bytes);
-    free(font);
-    return 1;
-  }
-  (void)ra_fs_close(f);
-  (void)ra_fs_unmount(mnt);
-
-  /* Dump the image. */
-  FILE* fout = fopen(image_out, "wb");
-  if (fout == nullptr) {
-    (void)fprintf(stderr, "mkfontimg: cannot write %s\n", image_out);
-    free(s_disk.bytes);
-    free(font);
-    return 1;
-  }
-  size_t wrote = fwrite(s_disk.bytes, 1U, (size_t)k_blocks_fat16 * (size_t)k_block_size, fout);
-  (void)fclose(fout);
-  free(s_disk.bytes);
+  const int rc = build_and_dump(image_out, font, font_len, dest_name);
   free(font);
-  if (wrote != (size_t)k_blocks_fat16 * (size_t)k_block_size) {
-    (void)fprintf(stderr, "mkfontimg: short write to %s\n", image_out);
+  if (rc != 0) {
     return 1;
   }
   (void)fprintf(stderr, "mkfontimg: wrote %s (%s = %zu bytes)\n", image_out, dest_name, font_len);

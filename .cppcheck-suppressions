@@ -94,6 +94,32 @@ missingInclude:src/main.c
 unusedStructMember:libs/ra_hal/inc/ra8d2_*_regs.h
 
 # ---------------------------------------------------------------------------
+# unusedStructMember on the ra_sdfont config struct.
+#
+# Justification: every ra_sdfont_cfg_t field IS consumed in
+# libs/ra_sdfont/src/ra_sdfont.c (spi_channel/pclka_hz copied into the
+# transport ctx, sck/cipo/copi/cs routed, filename selected, provision_blob/
+# provision_len gated in the self-provision guards). cppcheck's per-file flow
+# analysis does not reliably track members read across the .h/.c boundary --
+# especially those copied into another struct or compared in guard chains --
+# and flags them. The struct is the public DI seam, so the fields cannot be
+# dropped.
+# ---------------------------------------------------------------------------
+unusedStructMember:libs/ra_sdfont/inc/ra_sdfont.h
+
+# ---------------------------------------------------------------------------
+# constParameterCallback on the ra_sdfont transport shims.
+#
+# Justification: sdfont_set_clock/cs/xfer take `void* ctx` because they are
+# bound to the ra_sdmmc_spi transport function-pointer types, whose ctx
+# parameter is `void*`. cppcheck suggests const-qualifying it, but that would
+# make the shim incompatible with the shared callback typedef. Suppressed via
+# the list (not inline) so the Doxygen block stays adjacent to the function for
+# the doc-coverage audit.
+# ---------------------------------------------------------------------------
+constParameterCallback:libs/ra_sdfont/src/ra_sdfont.c
+
+# ---------------------------------------------------------------------------
 # constParameterPointer / constVariablePointer suggestions are informational
 # only. The firmware already uses `volatile` on every MMIO pointer -- adding
 # `const` on top is valid but generates no code-quality improvement and
