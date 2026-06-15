@@ -246,6 +246,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
     ${FW_ROOT}/libs/ra_sdmmc_spi/inc
+    ${FW_ROOT}/libs/ra_sdfont/inc
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_ui/inc
     ${FW_ROOT}/libs/ra_box/inc
@@ -392,6 +393,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
     ${FW_ROOT}/libs/ra_sdmmc_spi/inc
+    ${FW_ROOT}/libs/ra_sdfont/inc
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_ui/inc
     ${FW_ROOT}/libs/ra_box/inc
