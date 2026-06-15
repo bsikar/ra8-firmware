@@ -160,8 +160,16 @@ stop_reader() {
 flash_local() {
     local stripped="/tmp/hil_local_${APP}_mram.hex"
     local log="/tmp/hil_local_${APP}_flash.log"
-    arm-none-eabi-objcopy --remove-section='.option_setting*' -O ihex "$ELF" "$stripped" 2>/dev/null \
-        || cp "$HEX" "$stripped"
+    # Two-project TrustZone apps (a sibling <app>_ns.elf exists) merge their
+    # Secure + Non-Secure images into <app>.hex at build time; flash that
+    # directly. Otherwise objcopy the single ELF, stripping option-setting
+    # records the MRAM flasher cannot write.
+    if [[ -f "${APP_DIR}/build/${APP}_ns.elf" ]]; then
+        cp "$HEX" "$stripped"
+    else
+        arm-none-eabi-objcopy --remove-section='.option_setting*' -O ihex "$ELF" "$stripped" 2>/dev/null \
+            || cp "$HEX" "$stripped"
+    fi
     local jl="/tmp/hil_local_${APP}_flash.jlink"
     cat > "$jl" <<EOF
 device ${JLINK_DEVICE}
@@ -237,7 +245,11 @@ run_uart_scrape() {
 # Mode: jlink_memprobe
 # =============================================================================
 sym_addr() {  # sym_addr <symbol> -> prints hex addr, or empty
-    arm-none-eabi-nm --print-size "$ELF" \
+    # Check the main ELF and, for two-project TrustZone apps, the Non-Secure
+    # ELF (where the NS-resident bench globals live).
+    local elfs="$ELF"
+    [[ -f "${APP_DIR}/build/${APP}_ns.elf" ]] && elfs="$elfs ${APP_DIR}/build/${APP}_ns.elf"
+    arm-none-eabi-nm --print-size $elfs \
         | awk -v s="$1" '$NF==s && !f {print $1; f=1}'
 }
 run_memprobe() {

@@ -57,23 +57,28 @@
 #include "ra_err.h"
 #include "ra_tz_secure_boot.h"
 
-/**
- * @var g_ra_ns_vector_table
- * @brief Defined in ``ns_main.c``; lives in ``.ns_vectors`` whose VMA the
- *        linker pins at ``ORIGIN(NS_SRAM_RUN)`` = 0x3210_0000. Forward-
- *        declared here so we can pass its address to the secure-boot
- *        library after the NS image has been copied into place.
- */
-extern const uint32_t g_ra_ns_vector_table[];
-
-/* Linker-provided bounds of the NS load image (LMA in Secure MRAM) and the
- * run-time destination (VMA = SRAM NS alias 0x3210_0000). */
-extern uint32_t g_ra_ls_ns_load_start; /**< LMA start of NS image (MRAM).   */
-extern uint32_t g_ra_ls_ns_load_end;   /**< LMA end of NS image (MRAM).     */
-extern uint32_t g_ra_ls_ns_run_start;  /**< VMA start of NS image (SRAM NS).*/
-/* Bounds of the NSC veneer stubs (.gnu.sgstubs) in Secure MRAM. */
+/* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
 extern uint32_t g_ra_ls_sgstubs_start; /**< Veneer-region start (NSC).      */
 extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).        */
+
+/**
+ * @enum tz_ns_image_t
+ * @brief Fixed NS-image addresses (two-project build, #96).
+ *
+ * @details The NS image is a SEPARATE ELF (tz_nsc_cgc_usb_ns.elf), so the
+ *          Secure side has none of its linker symbols. Its load (MRAM) and run
+ *          (SRAM2 NS alias) bases are fixed by ns_image.ld; the Secure boot
+ *          copies a fixed window large enough for the NS image (ThreadX + USBX
+ *          + ra_usb fit well under 192 KB) and BLXNS-es to slot 1 of the NS
+ *          vector table at the run base.
+ *
+ * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image.ld.
+ */
+typedef enum : uintptr_t {
+  k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).          */
+  k_tz_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).       */
+  k_tz_ns_copy_size = 0x00030000U, /**< Bytes copied LMA->VMA (192 KB).      */
+} tz_ns_image_t;
 
 #ifdef RA_TRUSTZONE_ENABLE
 
@@ -313,23 +318,25 @@ static ra_err_t tz_sau_program(void)
 /**
  * @brief Copy the NS image from its MRAM LMA into the SRAM NS alias.
  *
- * @details Plain word copy of [g_ra_ls_ns_load_start, g_ra_ls_ns_load_end)
- *          to g_ra_ls_ns_run_start (0x3210_0000). Runs AFTER the SAU and
- *          SRAMSABAR have marked the destination Non-secure, so the store
- *          is a (permitted) Secure-side Non-secure access.
+ * @details Plain word copy of the fixed ::k_tz_ns_copy_size window from
+ *          ::k_tz_ns_load_base (MRAM) to ::k_tz_ns_run_base (0x3210_0000).
+ *          Runs AFTER the SAU and SRAMSABAR have marked the destination
+ *          Non-secure, so the store is a (permitted) Secure-side Non-secure
+ *          access. A fixed window is used because the NS image is a separate
+ *          ELF (#96); copying more than the image is harmless.
  *
  * @pre ``tz_sram_ns_boundary`` and ``tz_sau_program`` have run.
- * @pre The load and run ranges are word-aligned and equal in length.
- * @post The NS vector table + text + rodata are live at 0x3210_0000.
+ * @pre The NS image fits within ::k_tz_ns_copy_size.
+ * @post The NS vector table + text + rodata + data are live at 0x3210_0000.
  * @post The source MRAM image is unchanged.
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
 static void tz_copy_ns_image(void)
 {
-  const uintptr_t src_start = (uintptr_t)&g_ra_ls_ns_load_start;
-  const uintptr_t src_end   = (uintptr_t)&g_ra_ls_ns_load_end;
-  uintptr_t       dst       = (uintptr_t)&g_ra_ls_ns_run_start;
+  const uintptr_t src_start = (uintptr_t)k_tz_ns_load_base;
+  const uintptr_t src_end   = src_start + (uintptr_t)k_tz_ns_copy_size;
+  uintptr_t       dst       = (uintptr_t)k_tz_ns_run_base;
   for (uintptr_t src = src_start; src < src_end; src += sizeof(uint32_t)) {
     *(volatile uint32_t*)dst = *(const volatile uint32_t*)src;
     dst += sizeof(uint32_t);
@@ -359,9 +366,9 @@ void ra_trustzone_init(void)
    *    (it is Secure-banked), so do it here, right before BLXNS. */
   __asm__ volatile("cpsie i" ::: "memory");
 
-  /* 5. BLXNS into the NS reset vector (slot 1 of g_ra_ns_vector_table at
-   *    VMA 0x3210_0000). Does not return on hardware. */
-  (void)ra_tz_secure_boot_jump_ns(g_ra_ns_vector_table);
+  /* 5. BLXNS into the NS reset vector (slot 1 of the NS vector table at the
+   *    fixed run base 0x3210_0000). Does not return on hardware. */
+  (void)ra_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_tz_ns_run_base);
 
   /* On host (RA_SIMULATOR_MODE) the library stubs BLXNS and returns; on
    * target this is unreachable. */

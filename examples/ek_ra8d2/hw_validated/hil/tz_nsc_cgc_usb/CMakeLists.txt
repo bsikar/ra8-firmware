@@ -1,9 +1,12 @@
 #
-# Per-app CMake stub for `tz_nsc_cgc_usb`. All build logic lives in the shared
-# cmake/ra_add_app.cmake recipe; this file only names the app + its deps.
+# Per-app CMake for `tz_nsc_cgc_usb` -- a TWO-PROJECT TrustZone build (#96).
 #
-# Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
-# Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
+# The Secure ELF (ra_add_app) holds the secure boot + the NSC CGC veneers and
+# emits a CMSE import library (--out-implib). A SEPARATE Non-Secure executable
+# (tz_nsc_cgc_usb_ns.elf) links ns_main + ThreadX (+ USBX/ra_usb later) against
+# that import library and its own private libc/libgcc, placed at the NS
+# addresses. The two images are merged into one flashable hex. NS->Secure calls
+# go only through the import library's SG veneers.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -16,47 +19,64 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-# This app's whole point is the NSC veneer wall (NS main calls Secure CGC
-# via cmse_nonsecure_entry trampolines); without TZ the veneers compile as
-# regular functions and the test is meaningless. Default TZ ON in standalone.
 get_directory_property(_ra_p PARENT_DIRECTORY)
 if(NOT _ra_p)
     option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
 endif()
 
-# Phase A+B (#55) is a minimal S->NS BLXNS scaffold: linker partitions
-# MRAM/SRAM into Secure + Non-Secure halves, secure SystemInit BLXNS-es
-# into the NS image's reset handler, NS image runs a counter loop the
-# bench can probe. ThreadX + USBX (USES threadx usbx) come back in
-# Phase C once the linker can place their vendored object files inside
-# NS_MRAM and the USB-FS peripheral is NS-attributed via an extra SAU
-# region.
+# ---- Secure ELF -----------------------------------------------------------
+# Secure boot + NSC CGC veneers. ns_main / ThreadX are NOT here -- they are the
+# Non-Secure executable below.
 ra_add_app(NAME tz_nsc_cgc_usb STACK_BYTES 2200
-           DESCRIPTION "TrustZone NSC-veneer + CGC USB-FS demo (Phase C: NSC CGC veneers from NS)"
+           DESCRIPTION "TrustZone two-project: Secure side (CGC veneers + NS boot)"
            LIBS ra_tz_secure_boot
            NSC_SRCS ra_nsc_cgc.c)
 
-# ns_main.c is the Non-Secure image (vector table + reset handler whose
-# run-time VMA is the SRAM NS alias 0x32100000). It's not in ra_add_app's
-# per-app source list because most apps don't have a NS half; add it here.
-target_sources(tz_nsc_cgc_usb.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
+# Emit the CMSE import library so the NS link can bind the veneer names to the
+# Secure-Gateway stubs.
+set(_ra_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o)
+target_link_options(tz_nsc_cgc_usb.elf PRIVATE
+    -Wl,--cmse-implib
+    -Wl,--out-implib=${_ra_tz_implib})
 
-# Phase C (#96), milestone 1: run ThreadX INSIDE the Non-Secure image. Link the
-# Non-Secure ThreadX variant (TX_SINGLE_MODE_NON_SECURE); linker_script.ld
-# routes libthreadx_ns.a + the libc it pulls into the NS regions so the RTOS
-# executes from the SRAM NS alias alongside ns_main.c.
+# ---- Non-Secure executable ------------------------------------------------
 include(${_d}/cmake/threadx_ns.cmake)
-target_link_libraries(tz_nsc_cgc_usb.elf PRIVATE threadx_ns)
 
-# Post-build: ns_main.c calls the NSC CGC veneers by address
-# (g_ra_ls_sgstubs_start + k_sg_off_*), so verify ld has not reordered the
-# .gnu.sgstubs slots. The check reads the final symbol table (where the SG-stub
-# addresses are correct, unlike a linker ASSERT which sees __acle_se_*).
-find_program(RA_PYTHON3 NAMES python3 python)
-if(RA_PYTHON3)
-    add_custom_command(TARGET tz_nsc_cgc_usb.elf POST_BUILD
-        COMMAND ${RA_PYTHON3} ${_d}/scripts/utils/check_sg_offsets.py
-                $<TARGET_FILE:tz_nsc_cgc_usb.elf>
-        VERBATIM
-        COMMENT "Verifying NSC SG-veneer slot offsets")
-endif()
+add_executable(tz_nsc_cgc_usb_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
+
+# Match the toolchain ABI of the Secure side but build for the NS world: no
+# -mcmse (NS emits no veneers), no startup files (the Secure boot copies .data
+# and ns_reset_handler zeros .bss), and the NS-image linker script.
+target_compile_definitions(tz_nsc_cgc_usb_ns.elf PRIVATE RA_TRUSTZONE_ENABLE)
+target_compile_options(tz_nsc_cgc_usb_ns.elf PRIVATE -fshort-enums -ffreestanding)
+target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${RA_REPO_ROOT}/libs/ra_core/inc
+    ${RA_REPO_ROOT}/libs/ra_hal/inc
+    ${RA_REPO_ROOT}/libs/ra_nsc/inc)
+target_link_libraries(tz_nsc_cgc_usb_ns.elf PRIVATE threadx_ns)
+target_link_options(tz_nsc_cgc_usb_ns.elf PRIVATE
+    -nostartfiles
+    -T${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
+    -Wl,--Map=tz_nsc_cgc_usb_ns.map
+    ${_ra_tz_implib})
+set_target_properties(tz_nsc_cgc_usb_ns.elf PROPERTIES
+    LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld;${_ra_tz_implib}")
+# The import library is produced by the Secure link, so build that first.
+add_dependencies(tz_nsc_cgc_usb_ns.elf tz_nsc_cgc_usb.elf)
+
+# ---- Combine: Secure image + NS image -> one flashable hex ----------------
+# objcopy each ELF to ihex (stripping the Secure side's option-setting records,
+# which the J-Link/MRAM flasher cannot write), then merge -- the Secure image
+# lives at 0x0200_0000+ and the NS image's LMA at 0x0208_0000, so they do not
+# overlap. The merged hex overwrites the app hex so the existing flash flow
+# (hil_run_local / flash.sh) picks up BOTH halves.
+add_custom_command(TARGET tz_nsc_cgc_usb_ns.elf POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
+            $<TARGET_FILE:tz_nsc_cgc_usb.elf> tz_nsc_cgc_usb_secure.hex
+    COMMAND ${CMAKE_OBJCOPY} -O ihex
+            $<TARGET_FILE:tz_nsc_cgc_usb_ns.elf> tz_nsc_cgc_usb_ns.hex
+    COMMAND ${RA_REPO_ROOT}/scripts/utils/merge_ihex.py
+            tz_nsc_cgc_usb_secure.hex tz_nsc_cgc_usb_ns.hex tz_nsc_cgc_usb.hex
+    VERBATIM
+    COMMENT "Merging Secure + Non-Secure images into tz_nsc_cgc_usb.hex")
