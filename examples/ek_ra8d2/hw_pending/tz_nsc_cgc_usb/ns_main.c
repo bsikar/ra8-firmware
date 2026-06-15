@@ -1,32 +1,34 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/tz_nsc_cgc_usb/ns_main.c
- * @brief Minimal Non-Secure image at 0x02080000 for the single-core
- *        Secure->NS BLXNS scaffolding (#55 Phase A+B).
+ * @brief Non-Secure image: prove the NSC CGC veneers return OK from NS (#60).
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
  * @details
  * After the S-side ``trustzone_init`` programmes the SAU it BLXNS-es to
- * ``ns_reset_handler`` here. Once CPU0 is in NS state, the SAU's NS
- * regions (upper MRAM / SRAM / SDRAM + NSC alias) are reachable; any
- * access to S-only memory (the lower halves) faults.
+ * ``ns_reset_handler`` here. Once CPU0 is in NS state, the SAU's NS regions
+ * (upper MRAM / SRAM / SDRAM + the NSC veneer alias) are reachable; any access
+ * to S-only memory faults.
  *
- * The Phase A+B image is intentionally minimal -- it does not call any
- * function whose code lives in S MRAM (no ThreadX, no USBX, no
- * ra_log). It only:
+ * Phase A+B proved the BLXNS landed (``ns_alive`` advances). This image adds the
+ * Phase C veneer milestone: from genuine NS memory it calls the three NSC CGC
+ * veneers --
  *
- *   1. Zeros its NS BSS (a single counter).
- *   2. Increments ``g_tz_nsc_cgc_usb_ns_alive`` in a tight loop.
- *   3. Spins in WFI between increments.
+ *   - ``ra_nsc_cgc_pll2_enable``
+ *   - ``ra_nsc_cgc_usbfs_clock_enable``
+ *   - ``ra_nsc_cgc_get_clock_hz``
  *
- * Bench memprobe of ``g_tz_nsc_cgc_usb_ns_alive`` proves that the
- * S->NS BLXNS landed, the NS code began executing from NS_MRAM, and
- * NS writes to NS_SRAM succeed. With this checkpoint in place,
- * Phase C re-introduces the real ThreadX + USBX app (preserved in
- * ``ns_app_phase_c.c.disabled``) by extending the linker to place the
- * vendored ThreadX / USBX object files into ``NS_MRAM`` and the
- * SAU to NS-attribute the USB-FS peripheral.
+ * -- which SG-trap into the Secure world, run the real ``ra_cgc_*`` driver, and
+ * return. This is the app's whole point and the original blocker: the
+ * ``cmse_check_address_range`` pointer guard inside the ``get_clock_hz`` veneer
+ * used to REJECT the ``&hz`` argument because it pointed into Secure SRAM (no
+ * real NS partition existed). With a genuine NS stack the pointer is NS-resident
+ * and the guard passes.
+ *
+ * ``g_tz_nsc_cgc_usb_init_step`` is stamped before each veneer so a J-Link halt
+ * pinpoints which one (if any) faults or returns non-OK. On success the worker
+ * advances ``g_tz_nsc_cgc_usb_match`` forever (the HIL gate symbol).
  *
  * ## Memory layout
  *
@@ -34,7 +36,7 @@
  * |----------------------------------|-----------------|------------------|
  * | ``g_ra_ns_vector_table``         | ``.ns_vectors`` | 0x02080000       |
  * | ``ns_reset_handler``             | ``.ns_text``    | 0x02080000+      |
- * | ``g_tz_nsc_cgc_usb_ns_alive``    | ``.ns_bss``     | 0x22100000+      |
+ * | NS counters / step              | ``.ns_bss``     | 0x22100000+      |
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -43,27 +45,83 @@
 
 #include <stdint.h>
 
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_nsc_cgc.h"
+
 /* =============================================================================
- * NS-resident state
+ * NS-resident state (all .ns_bss -> NS_SRAM, J-Link readable)
  * =============================================================================
  */
 
 /**
  * @var g_tz_nsc_cgc_usb_ns_alive
- * @brief NS-resident heartbeat counter. Incremented forever once the
- *        BLXNS lands. Read by J-Link to gate the HIL probe.
- *
- * @details
- * Placed in ``.ns_bss`` so the linker pins it into ``NS_SRAM``
- * (0x22100000+) which the SAU marks Non-Secure. The counter starts at
- * zero (BSS-zeroed by ``ns_reset_handler``) and advances at roughly
- * one tick per CPU loop iteration; the HIL probe checks for at least
- * a few hundred ticks across a 3 s window.
- *
+ * @brief BLXNS-landed heartbeat (Phase A+B). Advances once NS code runs.
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
 __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_ns_alive;
+
+/**
+ * @var g_tz_nsc_cgc_usb_init_step
+ * @brief Boot-step breadcrumb: which NSC veneer the NS code last reached.
+ * @details 0 = before any veneer; 1 = entering pll2_enable; 2 = entering
+ *          usbfs_clock_enable; 3 = entering get_clock_hz; 4 = all three OK.
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_init_step;
+
+/**
+ * @var g_tz_nsc_cgc_usb_match
+ * @brief Success counter: advances forever once all three veneers returned OK.
+ * @note Read externally by J-Link only; the HIL gate probes this symbol.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_match;
+
+/**
+ * @var g_tz_nsc_cgc_usb_mismatch
+ * @brief Failure counter: a veneer returned non-OK (vs faulting outright).
+ * @note Read externally by J-Link only; the HIL gate fails if this is non-zero.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_mismatch;
+
+/**
+ * @var g_tz_nsc_cgc_usb_clock_hz
+ * @brief NS-resident output slot for ::ra_nsc_cgc_get_clock_hz.
+ * @details Lives in .ns_bss (NS_SRAM 0x22100000), squarely inside the SAU
+ *          NS-SRAM region, so the veneer's NS-pointer check passes (a stack
+ *          local near MSP_NS lands above the region limit).
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_clock_hz;
+
+/**
+ * @var g_tz_nsc_cgc_usb_sp_probe
+ * @brief Diagnostic: address of an NS stack local (to confirm MSP_NS placement).
+ * @note Read externally by J-Link only.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_sp_probe;
+
+/* =============================================================================
+ * Veneer-milestone constants
+ * =============================================================================
+ */
+
+/** @brief NSC veneer-call tunables + step breadcrumbs. */
+typedef enum : uint8_t {
+  k_ns_pll2_mul_int      = 80U, /**< PLL2 multiplier integer part.       */
+  k_ns_pll2_mul_quarters = 0U,  /**< PLL2 multiplier quarter part.       */
+  k_ns_step_start        = 0U,  /**< Before any veneer.                  */
+  k_ns_step_pll2         = 1U,  /**< Entering ra_nsc_cgc_pll2_enable.    */
+  k_ns_step_usbfs        = 2U,  /**< Entering ra_nsc_cgc_usbfs_clock_enable. */
+  k_ns_step_query        = 3U,  /**< Entering ra_nsc_cgc_get_clock_hz.   */
+  k_ns_step_veneers_ok   = 4U,  /**< All three veneers returned OK.      */
+} ns_step_t;
 
 /* =============================================================================
  * NS Reset handler
@@ -75,56 +133,89 @@ extern uint32_t g_ra_ls_ns_bss_start; /**< Linker symbol: start of .ns_bss.  */
 extern uint32_t g_ra_ls_ns_bss_end;   /**< Linker symbol: end of .ns_bss.    */
 
 /**
+ * @brief Park the NS core in WFI forever (a veneer faulted or returned non-OK).
+ * @details Leaves ::g_tz_nsc_cgc_usb_init_step / ::g_tz_nsc_cgc_usb_mismatch
+ *          frozen so a J-Link halt shows exactly where the NSC path broke.
+ * @return Never returns.
+ * @pre Reached from a failing veneer step.
+ * @pre CPU is in NS thread mode.
+ * @post The core spins in WFI; the bench counters stop advancing.
+ * @post No further veneer calls are issued.
+ * @note Single-threaded.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_text"), noreturn)) static void ns_park(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/**
  * @brief NS-world reset handler -- entered via BLXNS from the S side.
  *
  * @details
- * The S-side ``ra_tz_secure_boot_jump_ns`` writes the address of this
- * function into ``LR`` with bit 0 set to Thumb, programmes the SAU,
- * loads ``MSP_NS`` from slot 0 of ``g_ra_ns_vector_table`` (linker
- * symbol ``g_ra_ls_ns_stack_top``), and issues ``BLXNS``. When this
- * function returns, the CPU is in NS thread mode with an NS-attributed
- * stack and PC.
- *
- * Per the ARMv8-M C runtime contract, BSS must be zeroed and any
- * initialised globals copied from their LMA to VMA before user code
- * runs. The Phase A+B image has only one NS global (``ns_alive``,
- * uninitialised BSS) and no NS .data section, so this handler just
- * zeros ``.ns_bss`` and enters the counter loop.
+ * Zeros ``.ns_bss``, then exercises the three NSC CGC veneers from NS memory
+ * (stamping ::g_tz_nsc_cgc_usb_init_step before each so a fault/error is
+ * localised). On full success it advances ::g_tz_nsc_cgc_usb_match (and the
+ * legacy ::g_tz_nsc_cgc_usb_ns_alive) forever; any veneer error parks the core.
  *
  * @return Never returns.
  *
- * @pre BLXNS from S side landed here with ``MSP_NS`` set to
- *      ``g_ra_ls_ns_stack_top`` and CPU in NS thread mode.
- * @pre The SAU partition makes ``NS_MRAM`` and ``NS_SRAM`` reachable
- *      from this code.
+ * @pre BLXNS from S side landed here with ``MSP_NS`` = ``g_ra_ls_ns_stack_top``.
+ * @pre The SAU exposes the NSC veneer alias + NS MRAM/SRAM to this code.
  * @post ``.ns_bss`` is zeroed.
- * @post ``g_tz_nsc_cgc_usb_ns_alive`` advances continually.
+ * @post On success ::g_tz_nsc_cgc_usb_match advances continually.
  *
- * @note Single-threaded; no concurrency.
+ * @note Single-threaded; IRQs stay masked (no ThreadX/USBX yet).
  * @since 0.1.0
  */
 __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void)
 {
-  /* Zero the NS BSS. Reset_Handler on the S side does this for the S
-   * regions; the NS region has its own [start, end] linker symbols.
-   * Walk via uintptr_t arithmetic rather than raw pointer arithmetic
-   * because cppcheck (correctly) flags pointer comparisons between
-   * two distinct externs as ISO C UB even though the linker fixes
-   * them up to contiguous addresses. */
+  /* Zero the NS BSS via uintptr_t arithmetic (cppcheck flags pointer
+   * comparison between two distinct externs as ISO C UB even though the
+   * linker fixes them to a contiguous range). */
   const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
   const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
   for (uintptr_t addr = bss_start; addr < bss_end; addr += sizeof(uint32_t)) {
     *(volatile uint32_t*)addr = 0U;
   }
 
-  /* Heartbeat loop -- bench probes ``g_tz_nsc_cgc_usb_ns_alive`` to
-   * verify NS execution. Runs at CPU speed (~MHz cadence); the SWD
-   * probe samples twice across a 3 s window and easily sees hundreds
-   * of millions of increments. No ``WFI`` between iterations: with
-   * IRQs masked at NS entry, ``WFI`` would sleep until a debug halt
-   * and the counter would barely move between two probe samples. */
+  /* ---- Phase C veneer milestone: call the 3 NSC CGC veneers from NS. ---- */
+  g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_pll2;
+  if (ra_nsc_cgc_pll2_enable((uint8_t)k_ns_pll2_mul_int,
+                             (uint8_t)k_ns_pll2_mul_quarters,
+                             k_ra_plodiv_div4) != k_ra_ok) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
+    ns_park();
+  }
+
+  g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_usbfs;
+  if (ra_nsc_cgc_usbfs_clock_enable() != k_ra_ok) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
+    ns_park();
+  }
+
+  /* Capture an NS stack address so a J-Link read confirms where MSP_NS sits
+   * relative to the SAU NS-SRAM region (0x22100000..0x221FFFE0). */
+  uint32_t sp_local          = 0U;
+  g_tz_nsc_cgc_usb_sp_probe  = (uint32_t)(uintptr_t)&sp_local;
+  g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_query;
+  /* hz_out points at an NS-resident global (in .ns_bss, inside the SAU NS
+   * region) rather than a stack local near MSP_NS, so the veneer's
+   * cmse_check_address_range guard passes. */
+  if (ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0,
+                              (uint32_t*)(uintptr_t)&g_tz_nsc_cgc_usb_clock_hz) != k_ra_ok) {
+    g_tz_nsc_cgc_usb_mismatch += 1U;
+    ns_park();
+  }
+
+  /* All three veneers SG-trapped into Secure, ran ra_cgc_*, and returned OK
+   * with an NS-resident pointer arg. The NSC wall works from real NS memory. */
+  g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_veneers_ok;
   while (1) {
     g_tz_nsc_cgc_usb_ns_alive += 1U;
+    g_tz_nsc_cgc_usb_match += 1U;
   }
 }
 
@@ -140,21 +231,16 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
 typedef void (*ns_exc_handler_t)(void);
 
 /**
- * @var g_ra_ns_vector_table
- * @brief Non-Secure vector table, pinned to ``NS_MRAM`` (0x02080000).
- *
- * @details
- * The S-side ``ra_tz_secure_boot_jump_ns`` reads slot 0 (initial
- * ``MSP_NS``) and BLXNS-es to slot 1 (``ns_reset_handler``). Slots
- * 2..15 are stub exception handlers; the Phase A+B image masks IRQs in
- * its ``WFI`` loop so none of them should ever fire. Slot 2 (NMI)
- * remains a vector since NMIs cannot be masked; we point it at a halt
- * loop to keep the table self-consistent.
- *
- * The table must be 8-byte aligned per ARMv8-M B3.10 (the alignment
- * matches the lower 7 bits clear in ``VTOR_NS``); the ``.ns_vectors``
- * output section in the linker script aligns to 8.
- *
+ * @brief NMI / fault halt vector for the NS table.
+ * @details Any unmasked NS fault (incl. a SecureFault escalated to NS) lands
+ *          here and parks, so a J-Link halt + ::g_tz_nsc_cgc_usb_init_step read
+ *          shows which veneer step faulted.
+ * @return Never returns.
+ * @pre Reached from an NS exception vector.
+ * @pre IRQs are otherwise masked in the main path.
+ * @post The core spins in WFI.
+ * @post Bench counters reflect the last step reached.
+ * @note Shared by every non-reset NS vector slot.
  * @since 0.1.0
  */
 __attribute__((section(".ns_text"), noreturn)) static void ns_nmi_halt(void)
@@ -164,6 +250,16 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_nmi_halt(void)
   }
 }
 
+/**
+ * @var g_ra_ns_vector_table
+ * @brief Non-Secure vector table, pinned to ``NS_MRAM`` (0x02080000).
+ * @details Slot 0 = initial ``MSP_NS``, slot 1 = ``ns_reset_handler``. The
+ *          veneer milestone keeps IRQs masked, so the fault/SVCall/PendSV/
+ *          SysTick slots stay halt vectors (Phase C-full repoints 11/14/15 at
+ *          ThreadX once the RTOS comes up in NS). 8-byte aligned per ARMv8-M
+ *          B3.10 (``.ns_vectors`` aligns to 8).
+ * @since 0.1.0
+ */
 __attribute__((section(".ns_vectors"), used)) const ns_exc_handler_t g_ra_ns_vector_table[16] = {
   (ns_exc_handler_t)&g_ra_ls_ns_stack_top, /* 0  Initial NS main stack pointer. */
   ns_reset_handler,                        /* 1  NS Reset vector.               */

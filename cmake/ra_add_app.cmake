@@ -50,7 +50,7 @@
 set(_RA_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 macro(ra_add_app)
-    cmake_parse_arguments(_RA_APP "NO_NSC" "NAME;STACK_BYTES;DESCRIPTION" "USES;LIBS;SIM_LIBS" ${ARGN})
+    cmake_parse_arguments(_RA_APP "NO_NSC" "NAME;STACK_BYTES;DESCRIPTION" "USES;LIBS;SIM_LIBS;NSC_SRCS" ${ARGN})
 
     if(NOT _RA_APP_NAME)
         message(FATAL_ERROR "ra_add_app(): NAME is required")
@@ -138,6 +138,15 @@ macro(ra_add_app)
     file(GLOB_RECURSE _ra_secure_app  CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
     if(_RA_APP_NO_NSC)
         set(_ra_lib_nsc "")
+    elseif(_RA_APP_NSC_SRCS)
+        # Compile only the named ra_nsc sources (e.g. just ra_nsc_cgc.c) instead
+        # of globbing all of libs/ra_nsc/src -- lets an app pull the CGC veneers
+        # without dragging in ra_nsc_comms/ra_nsc_eth, which don't compile under
+        # -mcmse (#54).
+        set(_ra_lib_nsc "")
+        foreach(_ra_nsc_src ${_RA_APP_NSC_SRCS})
+            list(APPEND _ra_lib_nsc ${RA_REPO_ROOT}/libs/ra_nsc/src/${_ra_nsc_src})
+        endforeach()
     else()
         file(GLOB_RECURSE _ra_lib_nsc CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_nsc/src/*.c)
     endif()
