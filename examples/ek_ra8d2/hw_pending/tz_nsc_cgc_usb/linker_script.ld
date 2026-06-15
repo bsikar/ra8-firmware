@@ -54,23 +54,25 @@ MEMORY
     SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K
     SDRAM (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
 
-    /* Non-Secure partition placeholders. Lower halves of
-     * MRAM and SRAM stay Secure (they hold the HAL + secure data);
-     * the upper halves are exposed to the NS application
-     * (lwIP / CherryUSB / src/main.c after the relocation lands).
+    /* ---- RAM-resident Non-Secure image (real bit[28] NS aliases) ----
      *
-     * These regions overlap with MRAM / SRAM in the single-image
-     * build because the linker treats them as views of the same
-     * physical bytes; the SAU programmes the bit-28 split at boot
-     * (see blink/trustzone_init.c) so the CPU sees them as
-     * Non-Secure aliases. With RA_TRUSTZONE_ENABLE off the linker
-     * is allowed to place sections in either region freely. */
-    /* Non-Secure MRAM for the NS image (vectors + text + rodata).
-     * Shrunk from 512K to 256K so it tiles cleanly between the S
-     * MRAM (ends at 0x0207FFFF) and the CPU1 image (starts at
-     * 0x020C0000). */
-    NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
-    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
+     * The RA8 IDAU is FIXED by address bit[28] (HUM section 51, p3265):
+     * bit[28]=0 is Secure/NSC and the SAU cannot downgrade it to NS, so
+     * an "NS" image at 0x0208_0000 / 0x2210_0000 always executes Secure.
+     * Real NS lives at the bit[28]=1 aliases (0x12.. MRAM, 0x32.. SRAM).
+     *
+     * MRAM's secure/NS split needs persistent (brick-risky) option bytes,
+     * but SRAM's split is the RUNTIME SRAMSABAR register, so the NS image
+     * is RAM-resident: it is flashed into Secure MRAM (NS_LOAD, the LMA)
+     * and the secure boot copies it into the SRAM NS alias (NS_SRAM_RUN,
+     * the VMA = physical SRAM2 0x10_0000..0x18_0000) after programming
+     * SRAMSABAR2 to mark SRAM2 Non-secure. No option bytes, no brick. */
+    /* Load home in Secure MRAM (the flasher writes physical MRAM here;
+     * it sits above the 512K Secure image and below the CPU1 image at
+     * 0x020C_0000). */
+    NS_LOAD (rx) : ORIGIN = 0x02080000, LENGTH = 256K
+    /* Run-time home: SRAM2 accessed via the bit[28] Non-secure alias. */
+    NS_SRAM_RUN (rwx) : ORIGIN = 0x32100000, LENGTH = 512K
 }
 
 /*
@@ -81,11 +83,11 @@ MEMORY
 g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
 g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 
-/* Non-Secure stack tops out at the top of NS_SRAM. The NS image's
- * vector table places this in slot 0 (initial MSP_NS); BLXNS in
- * ra_tz_secure_boot_jump_ns issues `msr msp_ns, %0` with the value
- * the linker computes here. 8 KiB carved at the high end of NS_SRAM. */
-g_ra_ls_ns_stack_top = ORIGIN(NS_SRAM) + LENGTH(NS_SRAM);
+/* Non-Secure stack tops out at the top of NS_SRAM_RUN (the SRAM2 NS
+ * alias, 0x3218_0000). The NS image's vector table places this in slot
+ * 0 (initial MSP_NS); BLXNS in ra_tz_secure_boot_jump_ns issues
+ * `msr msp_ns, %0` with the value the linker computes here. */
+g_ra_ls_ns_stack_top = ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN);
 /* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
  * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
  * accidental malloc() call from newlib. */
@@ -135,33 +137,39 @@ SECTIONS
     } > MRAM
 
 
-    /* ---- NS image at 0x02080000 ----
+    /* ---- RAM-resident NS image: VMA in SRAM2 NS alias, LMA in MRAM ----
      *
-     * The S-side ``ra_tz_secure_boot_jump_ns`` BLXNS-es to slot 1 of
-     * ``g_ra_ns_vector_table`` which the linker places here. The NS
-     * code is self-contained (open-coded register IO) so no S-resident
-     * symbol is ever called from NS state.
-     *
-     * NS_MRAM is SAU Region 0 (NS) -- see
-     * ra_tz_secure_boot_sau_init. Bit 28 IDAU rule says 0x02080000 is
-     * S by default, the SAU override flips it to NS for the CPU. */
-    .ns_vectors ORIGIN(NS_MRAM) : ALIGN(8)
+     * Flashed into NS_LOAD (Secure MRAM); the secure boot copies
+     * [g_ra_ls_ns_load_start, g_ra_ls_ns_load_end) to g_ra_ls_ns_run_start
+     * (0x3210_0000) after SRAMSABAR2 marks SRAM2 Non-secure, then BLXNS-es
+     * to slot 1 of ``g_ra_ns_vector_table`` (VMA 0x3210_0000). The NS code
+     * is self-contained (open-coded register IO + cmse_nonsecure_entry
+     * veneer calls) so no S-resident symbol is ever called from NS state. */
+    .ns_vectors ORIGIN(NS_SRAM_RUN) : ALIGN(8)
     {
+        g_ra_ls_ns_run_start = .;
         KEEP(*(.ns_vectors))
         KEEP(*(.ns_vectors.*))
-    } > NS_MRAM
+    } > NS_SRAM_RUN AT > NS_LOAD
 
     .ns_text : ALIGN(4)
     {
         *(.ns_text)
         *(.ns_text.*)
-    } > NS_MRAM
+    } > NS_SRAM_RUN AT > NS_LOAD
 
     .ns_rodata : ALIGN(4)
     {
         *(.ns_rodata)
         *(.ns_rodata.*)
-    } > NS_MRAM
+        *(.ns_data)
+        *(.ns_data.*)
+        g_ra_ls_ns_run_end = .;
+    } > NS_SRAM_RUN AT > NS_LOAD
+
+    /* LMA bounds of the loaded NS image (in MRAM) for the secure copy. */
+    g_ra_ls_ns_load_start = LOADADDR(.ns_vectors);
+    g_ra_ls_ns_load_end   = LOADADDR(.ns_rodata) + SIZEOF(.ns_rodata);
 
     .ns_bss (NOLOAD) : ALIGN(4)
     {
@@ -169,7 +177,7 @@ SECTIONS
         *(.ns_bss)
         *(.ns_bss.*)
         g_ra_ls_ns_bss_end = .;
-    } > NS_SRAM
+    } > NS_SRAM_RUN
 
     /* ---- Code + const data ---- */
     .text : ALIGN(4)
@@ -240,10 +248,15 @@ SECTIONS
      * single-image build still loads cleanly. */
     .gnu.sgstubs : ALIGN(32)
     {
-        g_ra_ls_sgstubs_start = .;
         *(.gnu.sgstubs*)
-        g_ra_ls_sgstubs_end = .;
     } > MRAM
+    /* ld inserts the CMSE secure-gateway veneers into .gnu.sgstubs AFTER
+     * any in-section `. ` symbols are evaluated, so bracketing the input
+     * with `g_ra_ls_sgstubs_start = .` collapses to a zero-length range.
+     * Derive the bounds from the finished section instead (ADDR/SIZEOF),
+     * which the SAU NSC region in trustzone_init.c needs to cover. */
+    g_ra_ls_sgstubs_start = ADDR(.gnu.sgstubs);
+    g_ra_ls_sgstubs_end   = ADDR(.gnu.sgstubs) + SIZEOF(.gnu.sgstubs);
 
     /* ---- Option setting regions (fixed flash addresses) ----
      *
