@@ -191,6 +191,7 @@ file(GLOB_RECURSE RA_MPU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_mpu
 file(GLOB_RECURSE RA_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE RA_LSM6DSO_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_lsm6dso/src/*.c)
 file(GLOB_RECURSE RA_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tz_secure_boot/src/*.c)
+file(GLOB_RECURSE RA_DFU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_dfu/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
@@ -223,6 +224,7 @@ add_library(ra_core_hal OBJECT
     ${RA_BOARD_EK_RA8D2_SOURCES}
     ${RA_LSM6DSO_SOURCES}
     ${RA_TZ_SECURE_BOOT_SOURCES}
+    ${RA_DFU_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -253,6 +255,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/libs/ra_ota/inc
+    ${FW_ROOT}/libs/ra_dfu/inc
     ${FW_ROOT}/libs/ra_display_pal/inc
     ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
@@ -287,6 +290,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
     ${FW_ROOT}/libs/ra_ota/src
+    ${FW_ROOT}/libs/ra_dfu/src
     ${FW_ROOT}/libs/ra_display_pal/src
     ${FW_ROOT}/libs/ra_power_profile/src
     ${FW_ROOT}/libs/ra_touch_cal/src
@@ -400,6 +404,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/libs/ra_ota/inc
+    ${FW_ROOT}/libs/ra_dfu/inc
     ${FW_ROOT}/libs/ra_display_pal/inc
     ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
@@ -429,6 +434,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
     ${FW_ROOT}/libs/ra_ota/src
+    ${FW_ROOT}/libs/ra_dfu/src
     ${FW_ROOT}/libs/ra_display_pal/src
     ${FW_ROOT}/libs/ra_power_profile/src
     ${FW_ROOT}/libs/ra_touch_cal/src
