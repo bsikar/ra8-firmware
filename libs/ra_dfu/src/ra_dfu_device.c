@@ -259,6 +259,9 @@ ra_err_t ra_dfu_device_worker_step(void)
    * end-of-download (zero-length DFU_DNLOAD). The self-test twins use DFU_ABORT
    * instead of a manifest, so they never reach this branch -- only the
    * bootloader's real download path does. */
+  // mcdc-deactivated: this whole TU is #ifndef RA_SIMULATOR_MODE (USBX is not in
+  // the host build), so the 4-condition manifest/commit guard is outside the
+  // host MC/DC scope; it is exercised by the dfu_bootloader DFU-program path.
   if (s_dev.manifest && !s_dev.committed && s_dev.prepared && (s_dev.prog_err == k_ra_ok)) {
     uint32_t other_seq = 0U;
     (void)ra_dfu_slot_seq(ra_dfu_other_slot(s_dev.target), &other_seq);

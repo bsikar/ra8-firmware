@@ -38,6 +38,10 @@ extern "C" {
 /**
  * @brief Select the slot DFU_DNLOAD programs into / DFU_UPLOAD reads from.
  *
+ * @details Records the INACTIVE slot all subsequent DFU transfers act on; an
+ * out-of-range value is ignored so the default (Slot B) stands. Set once during
+ * init, before ::ra_dfu_device_start.
+ *
  * @param[in] target_slot Slot A or B (must NOT be the slot the caller runs from).
  *
  * @pre Called before ::ra_dfu_device_start. @pre `target_slot` is A or B.

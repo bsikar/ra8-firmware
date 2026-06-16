@@ -170,6 +170,11 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot)
    * ra_dfu_hdr_valid rejects on the length anyway, and we must not read past
    * the slot. */
   uint32_t crc = 0U;
+  // mcdc-deactivated: ra_dfu_slot_valid length-bound AND (3 conditions) is a
+  // defensive duplicate of ra_dfu_hdr_valid's len_ok, which IS MC/DC-tested in
+  // test_ra_dfu_boot.c. Its false branches guard a stray MRAM over-read; driving
+  // them needs a header whose img_len ra_dfu_program_commit refuses to program,
+  // so no in-simulator vector can flip a single condition independently here.
   if ((hdr.img_len != 0U) && (hdr.img_len <= (uint32_t)k_ra_dfu_img_max) &&
       ((hdr.img_len % (uint32_t)k_ra_dfu_page_size) == 0U)) {
     crc = ra_dfu_crc32((const uint8_t*)base, hdr.img_len);
