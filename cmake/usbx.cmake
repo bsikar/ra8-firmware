@@ -105,11 +105,16 @@ list(FILTER _RA_USBX_MSC_SOURCES
 list(FILTER _RA_USBX_MSC_SOURCES
     EXCLUDE REGEX ".*/ux_device_class_storage_inquiry\\.c$")
 
+# DFU device class (used by usb_selftest_dfu).
+file(GLOB _RA_USBX_DFU_SOURCES CONFIGURE_DEPENDS
+    "${_RA_USBX_DEV_CLS_SRC}/ux_device_class_dfu_*.c")
+
 add_library(usbx_objs OBJECT
     ${_RA_USBX_CORE_SOURCES}
     ${_RA_USBX_CDC_SOURCES}
     ${_RA_USBX_HID_SOURCES}
-    ${_RA_USBX_MSC_SOURCES})
+    ${_RA_USBX_MSC_SOURCES}
+    ${_RA_USBX_DFU_SOURCES})
 
 target_include_directories(usbx_objs PUBLIC
     ${_RA_USBX_COMMON_INC}
