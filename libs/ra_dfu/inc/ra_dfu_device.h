@@ -134,6 +134,16 @@ bool ra_dfu_device_manifested(void);
  */
 ra_err_t ra_dfu_device_last_error(void);
 
+/**
+ * @brief Whether the image header has been committed (slot now bootable).
+ * @details Goes true after ::ra_dfu_device_worker_step writes the header on
+ * end-of-download. A bootloader polls this to know when it is safe to reset
+ * into the freshly programmed slot.
+ * @return true once the target slot's header is programmed.
+ * @pre None. @post None. @note JLink-readable. @since 0.1.0
+ */
+bool ra_dfu_device_committed(void);
+
 #ifdef __cplusplus
 }
 #endif

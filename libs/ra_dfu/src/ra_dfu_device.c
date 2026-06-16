@@ -292,4 +292,9 @@ ra_err_t ra_dfu_device_last_error(void)
   return s_dev.prog_err;
 }
 
+bool ra_dfu_device_committed(void)
+{
+  return s_dev.committed;
+}
+
 #endif /* !RA_SIMULATOR_MODE */
