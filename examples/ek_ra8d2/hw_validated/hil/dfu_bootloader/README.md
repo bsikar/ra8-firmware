@@ -122,6 +122,15 @@ jump were validated locally over the J-Link OB:
   commit, boot decision, jump) is validated on bench; only the literal external
   `dfu-util` tool is unused, because the bench self-loops the two jacks.
 
+- **Unattended HIL gate** (`hil.conf`, `HIL_MODE=alive`). Flashed standalone,
+  the bootloader either jumps to a valid slot or brings up the USB-FS DFU device
+  -- both are healthy, busy-spinning states, so the slot contents (which the
+  flash does not control) never make the outcome flaky. `scripts/hil_run_local.sh
+  dfu_bootloader` flashes, dwells, then asserts via the J-Link that the PC is in
+  code, CycleCnt is advancing, CFSR/HFSR are clean, and the PC is not parked in a
+  fault spinner. Local run: `PASS` with `PC=0x02020022` -- the bootloader found a
+  valid Slot A and jumped into it, spinning cleanly with no fault.
+
 ## Recovery
 
 The bootloader region is never erased by DFU, so a normal SWD re-flash of this
