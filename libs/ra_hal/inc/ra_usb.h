@@ -683,6 +683,71 @@ ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uin
  */
 [[nodiscard]] ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t len);
 
+/**
+ * @brief Arm the DCP (EP0) to receive a host-to-device control data stage.
+ *
+ * @details The non-blocking front half of the control-OUT receive (the OUT
+ * counterpart of ::ra_usb_dcp_in_data). Clears any stale DCP BRDY latch,
+ * enables the DCP BRDY interrupt, and sets `DCPCTR.PID = BUF` so the SIE ACKs
+ * the host's OUT token. Returns immediately -- the host's OUT packet then
+ * raises a fresh USB IRQ where ::ra_usb_dcp_out_read drains the bank. The
+ * arm/read split is mandatory on the USB self-loop, where the FS device ISR
+ * and the HS host worker thread share one CPU: a blocking receive in the
+ * SETUP ISR would spin out the very thread that must send the data.
+ *
+ * @param[in] speed Which controller (FS or HS).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok              DCP armed (BRDY enabled, PID = BUF).
+ * @retval k_ra_err_invalid_arg @p speed selects no controller.
+ * @retval k_ra_err_hw_timeout  BRDYENB read-back did not latch the DCP bit.
+ *
+ * @pre `ra_usb_device_init` ran for this `speed`.
+ * @pre A control-OUT SETUP with `wLength > 0` was just observed and VALID cleared.
+ *
+ * @post DCP BRDY is enabled and `DCPCTR.PID = BUF`.
+ * @post The host's OUT data is ACKed into the DCP bank on arrival.
+ *
+ * @note Non-blocking; ISR-safe. Not thread-safe against a concurrent EP0 user.
+ * @see ra_usb_dcp_out_read
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_dcp_out_arm(ra_usb_speed_t speed);
+
+/**
+ * @brief Drain an armed control-OUT data stage from the DCP (EP0).
+ *
+ * @details The back half of the control-OUT receive: call from the BRDY ISR
+ * once ::ra_usb_dcp_out_arm armed the DCP and the host's OUT packet landed
+ * (DCP BRDY asserted). Disables the one-shot DCP BRDY, drains one buffer bank
+ * via the CFIFO into @p buf, and parks `DCPCTR.PID = NAK`. Used for class
+ * requests that carry a host->device data stage (e.g. DFU_DNLOAD); the
+ * control-write status stage is driven separately via the CCPL pulse.
+ *
+ * @param[in]  speed  Which controller (FS or HS).
+ * @param[out] buf    Destination for the received bytes (non-NULL).
+ * @param[in]  cap    Capacity of @p buf in bytes.
+ * @param[out] out_rx Receives the host's packet length in bytes (non-NULL).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok              A packet (possibly zero-length) was drained.
+ * @retval k_ra_err_invalid_arg Bad speed, or @p buf / @p out_rx NULL.
+ * @retval k_ra_err_no_data     DCP BRDY is not set; the OUT packet has not landed.
+ * @retval k_ra_err_hw_timeout  CFIFO never reported FRDY for the DCP bank.
+ *
+ * @pre ::ra_usb_dcp_out_arm armed the DCP for this transfer.
+ * @pre Caller observed the DCP BRDY interrupt (or polls it via the no-data return).
+ *
+ * @post @p out_rx holds the host's DTLN; @p buf holds `min(DTLN, cap)` bytes.
+ * @post DCP BRDY is disabled + cleared and `DCPCTR.PID = NAK`.
+ *
+ * @note Non-blocking past a bounded CFIFO FRDY wait; ISR-safe.
+ * @see ra_usb_dcp_out_arm
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_usb_dcp_out_read(ra_usb_speed_t speed, uint8_t* buf, uint16_t cap, uint16_t* out_rx);
+
 /* =============================================================================
  * IRQ delivery
  * =============================================================================

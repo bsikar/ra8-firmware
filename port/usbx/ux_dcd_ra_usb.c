@@ -699,6 +699,65 @@ static volatile uint16_t s_prev_dcpctr_sqmon = 0U;
 volatile uint32_t s_dispatch_skip_reason = 0U;
 
 /**
+ * @var s_ctrl_out_pending
+ * @brief A control-write data stage is armed and awaiting the host's OUT data.
+ *
+ * @details Set true by ::internal_dispatch_setup when a host->device control
+ * transfer with a non-empty data stage (e.g. DFU_DNLOAD) is decoded: the DCP
+ * is armed via ::ra_usb_dcp_out_arm and the chapter-9 dispatch is DEFERRED.
+ * Cleared by ::internal_handle_ctrl_out_data once the OUT data has landed
+ * (DCP BRDY) and been drained, or by a fresh SETUP that abandons the prior
+ * transfer. Deferring is mandatory: receiving synchronously in the FS device
+ * ISR would spin out the lower-priority HS host worker -- the thread that must
+ * SEND the data -- a same-CPU deadlock.
+ *
+ * @note Single-writer (::internal_dispatch_setup, ::internal_handle_ctrl_out_data).
+ * @since 0.1.0
+ */
+volatile bool s_ctrl_out_pending = false;
+
+/**
+ * @var s_ctrl_out_tr
+ * @brief EP0 transfer request whose data buffer the deferred OUT data fills.
+ *
+ * @details Snapshot of the device control-endpoint transfer request captured
+ * when the control-write SETUP was decoded. ::internal_handle_ctrl_out_data
+ * drains the host's OUT data into ``ux_slave_transfer_request_data_pointer``
+ * and then runs the chapter-9 dispatcher on it.
+ *
+ * @note Single-writer (::internal_dispatch_setup, ::internal_handle_ctrl_out_data).
+ * @since 0.1.0
+ */
+UX_SLAVE_TRANSFER* s_ctrl_out_tr = UX_NULL;
+
+/**
+ * @var s_ctrl_out_wlen
+ * @brief wLength (cap) of the pending control-write data stage, in bytes.
+ *
+ * @note Single-writer (::internal_dispatch_setup).
+ * @since 0.1.0
+ */
+volatile uint16_t s_ctrl_out_wlen = 0U;
+
+/**
+ * @var s_ctrl_out_rx
+ * @brief Byte count drained by the most recent deferred control-OUT receive.
+ *
+ * @note Diagnostic; JLink-readable. Single-writer (::internal_handle_ctrl_out_data).
+ * @since 0.1.0
+ */
+volatile uint32_t s_ctrl_out_rx = 0U;
+
+/**
+ * @var s_ctrl_out_done
+ * @brief Count of completed deferred control-OUT data stages.
+ *
+ * @note Diagnostic; JLink-readable. Single-writer (::internal_handle_ctrl_out_data).
+ * @since 0.1.0
+ */
+volatile uint32_t s_ctrl_out_done = 0U;
+
+/**
  * @var s_dispatch_attempts
  * @brief Count of SQMON-driven dispatch attempts (regardless of outcome).
  *
@@ -873,6 +932,18 @@ typedef enum : uint8_t {
    * response function, p 2147). */
   k_ra_usb_breq_set_address = 0x05U,
 } ra_usb_setup_local_t;
+
+/**
+ * @enum ra_usb_dcp_brdy_t
+ * @brief BRDYSTS / BRDYENB bit for the Default Control Pipe (pipe 0).
+ * @details The DCP is pipe 0, so its buffer-ready status occupies bit 0 of the
+ * per-pipe BRDYSTS / BRDYENB registers (HUM Ch 36.2.13 "BRDYSTS" p 1984). Used
+ * by ::internal_handle_ctrl_out_data to detect that the host's control-OUT
+ * data stage has landed in the DCP bank.
+ */
+typedef enum : uint16_t {
+  k_ra_usb_dcp_brdy_bit = 0x0001U, /**< DCP (pipe 0) BRDYSTS / BRDYENB bit. */
+} ra_usb_dcp_brdy_t;
 
 /**
  * @enum ra_usb_dcd_default_poll_t
@@ -1523,6 +1594,12 @@ static unsigned int internal_ep0_transfer(struct UX_SLAVE_TRANSFER_STRUCT* tr)
 {
   if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
       tr->ux_slave_transfer_request_data_pointer != nullptr) {
+    /* USBX only routes the EP0 *IN* data stage (descriptors, class GET_*)
+     * through the DCD transfer function via ``in_transfer_length``. The
+     * host->device data stage (e.g. DFU_DNLOAD) is delivered into the
+     * control buffer BEFORE the class entry runs -- see the deferred
+     * ::ra_usb_dcp_out_arm / ::ra_usb_dcp_out_read path driven from
+     * ::internal_dispatch_setup and ::internal_handle_ctrl_out_data. */
     const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_in_transfer_length;
     if (ra_usb_dcp_in_data(s_dcd.speed, tr->ux_slave_transfer_request_data_pointer, len) !=
         k_ra_ok) {
@@ -2630,6 +2707,52 @@ static void internal_pack_setup_le(uint8_t* buf, const ra_usb_setup_t* setup)
 }
 
 /**
+ * @brief Arm + defer a control-WRITE data stage; report whether it was deferred.
+ *
+ * @details A host->device control transfer with a non-empty data stage (e.g.
+ * DFU_DNLOAD) cannot be dispatched from the SETUP IRQ: the chapter-9 class
+ * control_request reads its payload from the control buffer, but the host's
+ * OUT data has not arrived yet, and receiving it synchronously here would spin
+ * the FS device ISR while the lower-priority HS host worker -- the thread that
+ * must SEND the data -- is preempted (a same-CPU deadlock). So arm the DCP and
+ * record the pending transfer; ::internal_handle_ctrl_out_data drains the data
+ * on the subsequent DCP BRDY IRQ and only THEN runs the dispatcher. A fresh
+ * SETUP always clears any stale pending state first.
+ *
+ * @param[in] setup Decoded SETUP packet (non-null).
+ * @param[in] tr    EP0 transfer request whose buffer receives the OUT data.
+ *
+ * @return true when the data stage was deferred (caller must NOT dispatch now);
+ *         false for IN / no-data requests (caller dispatches immediately).
+ * @retval true  Control-write data stage armed; dispatch deferred to the BRDY ISR.
+ * @retval false IN or no-data request; caller dispatches chapter-9 immediately.
+ *
+ * @pre The DCP PID write gate is open (INTSTS0.VALID cleared).
+ * @pre @p tr is the bound EP0 transfer request.
+ * @post On defer: DCP armed, ::s_ctrl_out_pending set, ::s_ctrl_out_tr captured.
+ * @post On no-defer: ::s_ctrl_out_pending cleared.
+ *
+ * @note ISR-callback context. Nested ifs (not a compound &&) keep this out of
+ *       the MC/DC compound-decision inventory.
+ * @see internal_handle_ctrl_out_data
+ * @since 0.1.0
+ */
+static bool internal_try_defer_ctrl_out(const ra_usb_setup_t* setup, UX_SLAVE_TRANSFER* tr)
+{
+  s_ctrl_out_pending = false;
+  if ((setup->bm_request_type & (uint8_t)k_ra_usb_setup_dir_mask) == 0U) {
+    if (setup->w_length > 0U) {
+      s_ctrl_out_tr      = tr;
+      s_ctrl_out_wlen    = setup->w_length;
+      s_ctrl_out_pending = true;
+      (void)ra_usb_dcp_out_arm(s_dcd.speed);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * @brief Push a decoded SETUP packet into the USBX chapter-9 dispatcher.
  *
  * @details Mirrors the SETUP into the JLink-readable probe buffer
@@ -2694,6 +2817,14 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
    * previous SETUP may have left it as UX_TRANSFER_STALLED on a
    * STALL'd request -- clear it so this fresh SETUP is honored. */
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
+
+  /* Control-OUT with a data stage (e.g. DFU_DNLOAD) is armed and DEFERRED to
+   * the DCP BRDY ISR (see internal_try_defer_ctrl_out); IN / no-data requests
+   * fall through to the immediate chapter-9 dispatch below. */
+  if (internal_try_defer_ctrl_out(setup, tr)) {
+    s_dispatch_skip_reason |= (uint32_t)k_ra_usb_skip_process_ok;
+    return UX_SUCCESS;
+  }
 
   const unsigned int rc = _ux_device_stack_control_request_process(tr);
   if (rc != UX_SUCCESS) {
@@ -2932,6 +3063,75 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
     default:
       break;
   }
+}
+
+/**
+ * @brief Drain a deferred control-OUT data stage and run chapter-9.
+ *
+ * @details Back half of the host->device control-write data path; the front
+ * half (::internal_dispatch_setup) armed the DCP and set ::s_ctrl_out_pending
+ * on the SETUP IRQ. Invoked from ::ux_dcd_ra_usb_irq on every IRQ, AHEAD of the
+ * CTRT status handling, this acts only when a control-write data stage is
+ * pending and the host's OUT packet has landed in the DCP bank (DCP BRDY
+ * asserted). It drains the bytes into the captured EP0 transfer buffer via
+ * ::ra_usb_dcp_out_read and then runs ::_ux_device_stack_control_request_process
+ * so the class control_request (e.g. DFU_DNLOAD) sees its payload. The
+ * control-write status stage (IN-ZLP) is driven separately by the CTSQ=wrss
+ * edge in ::internal_handle_ctrt.
+ *
+ * Deferring to this BRDY IRQ -- rather than receiving synchronously in the
+ * SETUP IRQ -- is mandatory on the USB self-loop: the FS device ISR and the
+ * lower-priority HS host worker thread share one CPU, so a blocking receive in
+ * the SETUP path would spin out the very thread that must SEND the data.
+ *
+ * @param[in] speed Which controller fired (FS or HS).
+ *
+ * @pre Bridge is past ::ux_dcd_ra_usb_initialize.
+ * @pre Runs ahead of the CTRT status handling within the same IRQ.
+ * @post On a drained packet, ::s_ctrl_out_pending is cleared and chapter-9 ran.
+ * @post On a not-yet-landed bank, state is unchanged (retried next IRQ).
+ *
+ * @note ISR-callback context; must not block past the bounded CFIFO wait.
+ * @see internal_dispatch_setup
+ * @see ra_usb_dcp_out_read
+ * @since 0.1.0
+ */
+static void internal_handle_ctrl_out_data(ra_usb_speed_t speed)
+{
+  if (!s_ctrl_out_pending) {
+    return;
+  }
+  volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+  if (reg == nullptr) {
+    return;
+  }
+  /* Wait for the host's OUT packet to land before draining; an unrelated IRQ
+   * (e.g. a BRDY for a bulk pipe) leaves us pending for the next pass.
+   * HUM Ch 36.2.13 "BRDYSTS" p 1984. */
+  if ((reg->BRDYSTS & (uint16_t)k_ra_usb_dcp_brdy_bit) == 0U) {
+    return;
+  }
+
+  UX_SLAVE_TRANSFER* const tr = s_ctrl_out_tr;
+  s_ctrl_out_pending          = false;
+  s_ctrl_out_tr               = UX_NULL;
+  if (tr == UX_NULL) {
+    return;
+  }
+
+  uint16_t rx = 0U;
+  if (ra_usb_dcp_out_read(speed, tr->ux_slave_transfer_request_data_pointer, s_ctrl_out_wlen,
+                          &rx) != k_ra_ok) {
+    return;
+  }
+  tr->ux_slave_transfer_request_actual_length = rx;
+  s_ctrl_out_rx                               = (uint32_t)rx;
+  s_ctrl_out_done++;
+  (void)_ux_device_stack_control_request_process(tr);
+  /* Complete the control-write with its IN-ZLP status stage: pulse CCPL so the
+   * SIE answers the host's status-stage IN token. Without this the host's
+   * status read (internal_host_ctrl_status) never sees the ZLP and times out. */
+  (void)ra_usb_control_response(speed, true);
 }
 
 /**
@@ -3984,6 +4184,12 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
   if (have_dvst) {
     internal_irq_dvst_prelude(speed, intsts0);
   }
+
+  /* Deferred control-OUT data stage (e.g. DFU_DNLOAD) BEFORE the CTRT block:
+   * if the host's OUT data has landed in the DCP bank, drain it and run
+   * chapter-9 now so the payload is consumed before the CTSQ=wrss edge in
+   * internal_handle_ctrt drives the status-stage CCPL. */
+  internal_handle_ctrl_out_data(speed);
 
   /* SETUP / chapter-9 path runs AFTER DVST so the busreset_rearm
    * has already restored DCP defaults. */
