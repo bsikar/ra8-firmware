@@ -1,39 +1,41 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/main.c
- * @brief USB self-loop: HS host DFU-downloads firmware to an FS DFU device, uploads + verifies
+ * @file examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/main.c
+ * @brief USB self-loop config B: FS host DFU-downloads firmware to an HS DFU device, uploads + verifies
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Rehearses a firmware-update-over-USB path entirely on-chip. The two USB ports
- * are cabled to EACH OTHER and one image runs both stacks:
+ * Rehearses a firmware-update-over-USB path entirely on-chip, with the host and
+ * device roles SWAPPED versus config A (``dfu_selftest_hs_host``). The two USB
+ * ports are cabled to EACH OTHER and one image runs both stacks:
  *
- *  - USBFS (J11) = DEVICE: a ThreadX + USBX DFU class in DFU mode
+ *  - USBHS (J7) = DEVICE: a ThreadX + USBX DFU class in DFU mode
  *    (bInterfaceProtocol 0x02, so it enumerates straight into dfuIDLE -- no
- *    runtime/detach round-trip). Its write callback captures each downloaded
- *    block into a RAM "firmware" image; its read callback serves the image back
- *    on UPLOAD. DFU runs entirely over EP0 control transfers (no data
- *    endpoints).
- *  - USBHS (J7) = HOST: a self-contained polled host on the first-party
+ *    runtime/detach round-trip). Its write callback programs each downloaded
+ *    block straight into the inactive MRAM slot (libs/ra_dfu); its read callback
+ *    serves the slot body back on UPLOAD. DFU runs entirely over EP0 control
+ *    transfers (no data endpoints).
+ *  - USBFS (J11) = HOST: a self-contained polled host on the first-party
  *    ``ra_usb_host_*`` primitives. It enumerates the device, DFU_DNLOADs a
- *    deterministic multi-block image (with DFU_GETSTATUS polling + the
- *    zero-length manifest block), then DFU_UPLOADs it back and byte-checks it --
- *    proving the control-OUT firmware path round-trips intact.
+ *    deterministic multi-block image (with DFU_GETSTATUS polling), DFU_ABORTs
+ *    back to dfuIDLE, then DFU_UPLOADs it back and byte-checks it -- proving the
+ *    MRAM program/read-back path round-trips intact.
  *
- * The download exercises the host control-OUT data stage added to
- * ``ra_usb_host_control_xfer`` for this app (DFU_DNLOAD carries the firmware
- * block in the SETUP data stage host -> device).
+ * The download exercises the host control-OUT data stage of
+ * ``ra_usb_host_control_xfer`` (DFU_DNLOAD carries the firmware block in the
+ * SETUP data stage host -> device).
  *
  * Verdicts stream over SCI8 (J-Link OB CDC console, 115200) and are mirrored in
  * J-Link-readable probes (``s_dbg_*``).
  *
  * ## Pinout
  *
- * FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW (device role), P8_14 D+,
- * P8_15 D- (PSEL usb_fs). HS host: SW4-8 to Host via the U15 expander, PD07
- * HIGH (U18 supplies J7 VBUS), P4_08 USBHS_VBUS (PSEL usb_hs). Console: PD_02/
- * PD_03 SCI8 (PSEL sci_async).
+ * HS device: P4_08 USBHS_VBUS sense (PSEL usb_hs), PD07 driven LOW so J7's role
+ * is Device and U18 does not back-feed VBUS; D+/D- are dedicated PHY balls. FS
+ * host: P4_07 VBUS sense, P5_00 VBUSEN peripheral-routed so the USBFS controller
+ * sources J11 VBUS, P8_14 D+, P8_15 D- (PSEL usb_fs). Console: PD_02/PD_03 SCI8
+ * (PSEL sci_async).
  *
  * @author Brighton Sikarskie
  * @date 2026-06-15
@@ -97,7 +99,7 @@ void SysTick_Handler(void)
 static const ra_port_pin_t k_dfu_pin_fs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
 
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
+/** @brief USBFS VBUSEN (P5_00) -- peripheral-routed; the FS host sources J11 VBUS. */
 static const ra_port_pin_t k_dfu_pin_fs_vbusen =
   (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
 
@@ -113,8 +115,8 @@ static const ra_port_pin_t k_dfu_pin_fs_dm =
 static const ra_port_pin_t k_dfu_pin_hs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
 
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS. */
-static const ra_port_pin_t k_dfu_pin_hs_pwr =
+/** @brief J7 role strap (PD07): LOW = Device, so U18 does not back-feed VBUS. */
+static const ra_port_pin_t k_dfu_pin_hs_role =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
@@ -419,8 +421,8 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
  * @param[in] arg ThreadX entry argument (unused).
  * @return Never returns.
  * @pre tx_application_define created this thread.
- * @pre USB-FS pins + 48 MHz clock are up (main did both).
- * @post The FS device is attached in DFU mode; the DFU class services EP0.
+ * @pre USB-HS pins + PHY PLL are up (main did both).
+ * @post The HS device is attached in DFU mode; the DFU class services EP0.
  * @post On any bring-up failure the thread exits (s_dbg_dev_step frozen).
  * @note The DFU class runs its own thread; this worker only brings it up.
  * @since 0.1.0
@@ -429,10 +431,10 @@ static VOID dfu_device_worker(ULONG arg)
 {
   (void)arg;
 
-  /* Config A device half: the FS controller runs the DFU device class wired
+  /* Config B device half: the HS controller runs the DFU device class wired
    * to real MRAM (libs/ra_dfu). DFU_DNLOAD programs the inactive Slot B. */
   ra_dfu_device_set_target(k_ra_dfu_slot_b);
-  const ra_err_t e = ra_dfu_device_start(k_ra_usb_speed_fs,
+  const ra_err_t e = ra_dfu_device_start(k_ra_usb_speed_hs,
                                          s_usbx_pool,
                                          (uint32_t)sizeof(s_usbx_pool),
                                          s_device_framework,
@@ -697,7 +699,7 @@ typedef enum : uint32_t {
 [[nodiscard]] static ra_err_t dfu_host_pass(void)
 {
   s_dbg_phase  = (uint32_t)k_dfu_phase_init;
-  ra_err_t err = dfu_print("ra8d2 dfu: host up on USB-HS, probing the loop...\r\n");
+  ra_err_t err = dfu_print("ra8d2 dfu: host up on USB-FS, probing the loop...\r\n");
   if (err != k_ra_ok) {
     return err;
   }
@@ -710,7 +712,7 @@ typedef enum : uint32_t {
 
   s_dbg_phase              = (uint32_t)k_dfu_phase_download;
   ra_dfu_host_result_t res = {};
-  err       = ra_dfu_host_run(k_ra_usb_speed_hs, s_dfu_image, (uint32_t)k_dfu_image_bytes, &res);
+  err       = ra_dfu_host_run(k_ra_usb_speed_fs, s_dfu_image, (uint32_t)k_dfu_image_bytes, &res);
   s_dbg_pid = res.pid;
   s_dbg_blocks_ok = res.blocks_ok;
   s_dbg_mismatch  = res.mismatch;
@@ -738,7 +740,7 @@ typedef enum : uint32_t {
   }
   if (err == k_ra_ok) {
     err =
-      dfu_print(" blocks DFU-programmed to MRAM + verified -- USB SELFTEST DFU CONFIG A PASS\r\n");
+      dfu_print(" blocks DFU-programmed to MRAM + verified -- USB SELFTEST DFU CONFIG B PASS\r\n");
   }
   if (err != k_ra_ok) {
     return err;
@@ -752,7 +754,7 @@ typedef enum : uint32_t {
  * @param[in] arg ThreadX entry argument (unused).
  * @return Never returns.
  * @pre tx_application_define created this thread.
- * @pre The HS host pins, expander switch, and PLL are up (main).
+ * @pre The FS host pins and clock are up (main).
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  * @note Blocking calls; ms timeouts via ra_time.
@@ -836,36 +838,40 @@ static void dfu_panic_halt(void)
 }
 
 /**
- * @brief Route both ports' pins: FS as device, HS as host.
+ * @brief Route both ports' pins: HS as device, FS as host (config B).
  * @return void.
- * @pre IOPORT and the U15 expander are reachable.
+ * @details HS device: P4_08 VBUS sense (PSEL usb_hs), PD07 driven LOW so J7's
+ * role is Device and U18 does not back-feed VBUS into the FS host's cable; D+/D-
+ * are dedicated PHY balls (no PFS routing). FS host: P4_07 VBUS sense, P5_00
+ * VBUSEN peripheral-routed so the USBFS controller sources J11 VBUS, P8_14/P8_15
+ * data -- all PSEL usb_fs.
+ * @pre IOPORT is reachable.
  * @pre Called once from ::dfu_setup_or_halt.
- * @post FS pins carry the device role, HS pins the host role, PD07 HIGH.
- * @post Panic-halts on any routing failure.
+ * @post HS pins carry the device role, FS pins the host role.
+ * @post PD07 is LOW (J7 device, not self-powered).
  * @note Panic-halts on any routing failure.
  * @since 0.1.0
  */
 static void dfu_route_usb_or_halt(void)
 {
+  /* HS port: device role. PD07 LOW so U18 does not back-feed VBUS. */
+  if (ra_pfs_route_peripheral(k_dfu_pin_hs_vbus, k_ra_psel_usb_hs, "dfu.hs_vbus") != k_ra_ok) {
+    dfu_panic_halt();
+  }
+  if (ra_gpio_output_init(k_dfu_pin_hs_role, k_ra_level_low) != k_ra_ok) {
+    dfu_panic_halt();
+  }
+  /* FS port: host role. P5_00 VBUSEN peripheral-routed sources J11. */
   if (ra_pfs_route_peripheral(k_dfu_pin_fs_vbus, k_ra_psel_usb_fs, "dfu.fs_vbus") != k_ra_ok) {
     dfu_panic_halt();
   }
-  if (ra_gpio_output_init(k_dfu_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra_pfs_route_peripheral(k_dfu_pin_fs_vbusen, k_ra_psel_usb_fs, "dfu.fs_vbusen") != k_ra_ok) {
     dfu_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_dfu_pin_fs_dp, k_ra_psel_usb_fs, "dfu.fs_dp") != k_ra_ok) {
     dfu_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_dfu_pin_fs_dm, k_ra_psel_usb_fs, "dfu.fs_dm") != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  if (ra_gpio_output_init(k_dfu_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_dfu_pin_hs_vbus, k_ra_psel_usb_hs, "dfu.hs_vbus") != k_ra_ok) {
     dfu_panic_halt();
   }
 }
