@@ -17,16 +17,16 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_flash_regs.h"
 #include "ra_dfu.h"
 #include "ra_err.h"
 #include "unity_minimal.h"
 
 /** @brief Test image geometry. */
 typedef enum : uint32_t {
-  k_test_img_len  = 0x00000100U, /**< 256-byte image (8 DFU blocks of 32).   */
-  k_test_seq      = 0x00000005U, /**< Sequence number stamped in the header. */
-  k_test_off_bad  = 0x00000001U, /**< A non-32-aligned offset.               */
-  k_test_overflow = 0x00077FC0U, /**< img_max - 32: a 32-write here overflows.*/
+  k_test_img_len = 0x00000100U, /**< 256-byte image (8 DFU blocks of 32).   */
+  k_test_seq     = 0x00000005U, /**< Sequence number stamped in the header. */
+  k_test_off_bad = 0x00000001U, /**< A non-32-aligned offset.               */
 } test_prog_const_t;
 
 /** @brief Fill `buf` with a deterministic byte pattern. */
@@ -35,6 +35,21 @@ static void fill_pattern(uint8_t* buf, uint32_t len)
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)((i * 7U) + 3U);
   }
+}
+
+/**
+ * @brief Mark the simulated MRAM controller "program-ready" (MRCPS.ABUFEMP).
+ *
+ * @details The host simulator backs MRCPS with plain memory and has no real
+ * controller to drive the program handshake, so ra_flash's commit-wait would
+ * spin to a timeout. Priming ABUFEMP (and leaving PRGBSYC/ABUFFULL clear) lets
+ * the program path complete -- the same accommodation test_ra_flash.c uses.
+ * `ra_flash_open` clears MRCPS as part of bring-up, so this must run AFTER
+ * ::ra_dfu_program_prepare and before any program/commit.
+ */
+static void sim_mark_program_ready(void)
+{
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_abufemp;
 }
 
 /**
@@ -72,6 +87,7 @@ static void test_program_roundtrip(void)
   fill_pattern(img, (uint32_t)k_test_img_len);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_program_prepare(k_ra_dfu_slot_b));
+  sim_mark_program_ready();
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_program_image(k_ra_dfu_slot_b, 0U, img, (uint32_t)k_test_img_len));
   TEST_ASSERT_EQ(
     k_ra_ok,
@@ -131,6 +147,7 @@ static void test_program_guards_mcdc(void)
   uint8_t buf[64];
   fill_pattern(buf, (uint32_t)sizeof(buf));
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_program_prepare(k_ra_dfu_slot_a));
+  sim_mark_program_ready();
 
   /* program_image OR-guard MC/DC. */
   TEST_ASSERT_EQ(
