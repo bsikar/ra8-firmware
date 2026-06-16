@@ -46,7 +46,7 @@ static ra_dfu_img_hdr_t mk_hdr(uint32_t magic, uint32_t seq, uint32_t len, uint3
   h.seq              = seq;
   h.img_len          = len;
   h.img_crc32        = crc;
-  h.entry            = (uint32_t)k_ra_dfu_slot_a_base + (uint32_t)k_ra_dfu_hdr_size;
+  h.entry            = (uint32_t)k_ra_dfu_slot_a_base;
   return h;
 }
 
