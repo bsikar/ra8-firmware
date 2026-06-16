@@ -25,11 +25,14 @@
  * ## Bank layout (1 MiB MRAM, fixed bootloader + software A/B slots)
  *
  * ```
- * 0x02000000  bootloader   64 KiB  (immutable; never erased by DFU)
- * 0x02010000  Slot A      480 KiB  [app image | 32B header (last page)]
- * 0x02088000  Slot B      480 KiB  [app image | 32B header (last page)]
+ * 0x02000000  bootloader  128 KiB  (immutable; never erased by DFU)
+ * 0x02020000  Slot A      448 KiB  [app image | 32B header (last page)]
+ * 0x02090000  Slot B      448 KiB  [app image | 32B header (last page)]
  * 0x02100000  (end)
  * ```
+ *
+ * The bootloader is 128 KiB so a full USBX + ThreadX DFU device fits inside the
+ * immutable region; the two app slots fill the rest of the 1 MiB array.
  *
  * The image header is the slot's LAST 32-byte page, not its first, so the
  * application's vector table lands at the 64 KiB-aligned `slot_base` (a valid
@@ -77,14 +80,14 @@ extern "C" {
 typedef enum : uint32_t {
   k_ra_dfu_mram_base     = 0x02000000U, /**< Code-MRAM window base.            */
   k_ra_dfu_mram_size     = 0x00100000U, /**< Code-MRAM window size (1 MiB).    */
-  k_ra_dfu_bl_size       = 0x00010000U, /**< Immutable bootloader size (64K).  */
-  k_ra_dfu_slot_a_base   = 0x02010000U, /**< Slot A base (app vectors here).   */
-  k_ra_dfu_slot_b_base   = 0x02088000U, /**< Slot B base (app vectors here).   */
-  k_ra_dfu_slot_size     = 0x00078000U, /**< Per-slot size (480 KiB).          */
+  k_ra_dfu_bl_size       = 0x00020000U, /**< Immutable bootloader size (128K). */
+  k_ra_dfu_slot_a_base   = 0x02020000U, /**< Slot A base (app vectors here).   */
+  k_ra_dfu_slot_b_base   = 0x02090000U, /**< Slot B base (app vectors here).   */
+  k_ra_dfu_slot_size     = 0x00070000U, /**< Per-slot size (448 KiB).          */
   k_ra_dfu_page_size     = 0x00000020U, /**< MRAM program page (32 bytes).     */
   k_ra_dfu_hdr_size      = 0x00000020U, /**< Image header size (32 bytes).     */
-  k_ra_dfu_img_max       = 0x00077FE0U, /**< Max image bytes (slot - header).  */
-  k_ra_dfu_hdr_offset    = 0x00077FE0U, /**< Header offset (slot's last page). */
+  k_ra_dfu_img_max       = 0x0006FFE0U, /**< Max image bytes (slot - header).  */
+  k_ra_dfu_hdr_offset    = 0x0006FFE0U, /**< Header offset (slot's last page). */
   k_ra_dfu_hdr_magic     = 0x52413844U, /**< Valid-image header magic ("RA8D").*/
   k_ra_dfu_trigger_magic = 0xDF00B007U, /**< No-init SRAM DFU-request magic.   */
 } ra_dfu_layout_t;
@@ -94,8 +97,8 @@ typedef enum : uint32_t {
  * @brief Application-slot identifier.
  */
 typedef enum : uint8_t {
-  k_ra_dfu_slot_a    = 0U, /**< Slot A (0x02010000). */
-  k_ra_dfu_slot_b    = 1U, /**< Slot B (0x02088000). */
+  k_ra_dfu_slot_a    = 0U, /**< Slot A (0x02020000). */
+  k_ra_dfu_slot_b    = 1U, /**< Slot B (0x02090000). */
   k_ra_dfu_slot_none = 2U, /**< No valid slot present. */
 } ra_dfu_slot_t;
 
