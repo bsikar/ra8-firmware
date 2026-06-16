@@ -447,6 +447,9 @@ static uint32_t blc_str_len(const char* text)
  */
 static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
 {
+  if (out_target == nullptr) {
+    return k_ra_dfu_action_dfu; /* safe fallback: never jump on a bad caller */
+  }
   const bool trig = (g_dfu_trigger == (uint32_t)k_ra_dfu_trigger_magic);
   g_dfu_trigger   = 0U; /* one-shot: consume the request */
 
@@ -454,6 +457,8 @@ static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
   const bool b_valid = ra_dfu_slot_valid(k_ra_dfu_slot_b);
   uint32_t   a_seq   = 0U;
   uint32_t   b_seq   = 0U;
+  /* A failed read leaves seq at 0 (treated as oldest) -- a safe default that
+   * never wins the higher-seq tiebreak, so the discarded return is intentional. */
   (void)ra_dfu_slot_seq(k_ra_dfu_slot_a, &a_seq);
   (void)ra_dfu_slot_seq(k_ra_dfu_slot_b, &b_seq);
 
@@ -491,6 +496,8 @@ static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
   const uint32_t reset_entry = ((const volatile uint32_t*)base)[1];
 
   __asm__ volatile("cpsid i" ::: "memory");
+  /* ARMv8-M ARM B3.2.2 "VTOR, Vector Table Offset Register" at 0xE000ED08 --
+   * the Renesas HUM defers Cortex-M85 core (SCB) registers to the ARMv8-M ARM. */
   *(volatile uint32_t*)(uintptr_t)k_blc_scb_vtor_addr = (uint32_t)base;
   __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
   __asm__ volatile("msr msp, %0\n"
@@ -515,8 +522,12 @@ static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
 [[noreturn]] static void blc_system_reset(void)
 {
   __asm__ volatile("dsb 0xF" ::: "memory");
+  /* HUM Ch 6.1 Table 6.1 p 244 "Software reset (AIRCR.SYSRESETREQ)"; the
+   * Cortex-M85 AIRCR itself is defined in ARMv8-M ARM B3.2.6 at 0xE000ED0C. */
   *(volatile uint32_t*)(uintptr_t)k_blc_scb_aircr_addr = (uint32_t)k_blc_aircr_sysreset;
   __asm__ volatile("dsb 0xF" ::: "memory");
+  /* NASA Rule 2 exemption: spin until the reset lands (a few cycles); the
+   * function is [[noreturn]] and never iterates unboundedly in practice. */
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -554,6 +565,8 @@ static VOID blc_device_worker(ULONG arg)
   s_dbg_dev_step = 4U;
   (void)blc_print("dfu-bootloader: DFU device up on USB-FS, awaiting DFU_DNLOAD...\r\n");
 
+  /* NASA Rule 2 exemption: deliberate RTOS service loop. It exits only via
+   * blc_system_reset() once an image commits (that call does not return). */
   while (1) {
     (void)ra_dfu_device_worker_step();
     if (ra_dfu_device_committed() && (ra_dfu_device_last_error() == k_ra_ok)) {
@@ -607,6 +620,7 @@ VOID tx_application_define(VOID* first_unused_memory)
  */
 [[noreturn]] static void blc_panic_halt(void)
 {
+  /* NASA Rule 2 exemption: terminal panic spin -- intentionally never exits. */
   while (1) {
     __asm__ volatile("wfi");
   }
