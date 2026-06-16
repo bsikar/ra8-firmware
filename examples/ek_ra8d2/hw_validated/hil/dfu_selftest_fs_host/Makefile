@@ -17,7 +17,7 @@
 
 SHELL     := /bin/bash
 
-APP        := dfu_selftest_hs_host
+APP        := dfu_selftest_fs_host
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
