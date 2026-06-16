@@ -111,10 +111,16 @@ jump were validated locally over the J-Link OB:
   J-Link probes confirmed the hand-off executed: `mem32 0x22040000 = 600D600D`
   (the slot's reset stub ran) and `mem32 0xE000ED08 (VTOR) = 0x02020000`.
 
-The `dfu-util`-over-USB program-then-reset path needs a USB host on a
-non-self-looped jack; on this bench the two jacks are cabled to each other for
-the HIL twins, so that step is a manual re-cable. The DFU device program path it
-exercises is the same `libs/ra_dfu` code the twins already validate on bench.
+- **Full DFU flash -> boot cycle**, end to end, with no external `dfu-util`:
+  the board is its own DFU host over the self-loop
+  ([`dfu_selftest_boot`](../../hw_validated/hil/dfu_selftest_boot)). The HS host
+  DFU_DNLOADs the same bootable Slot-A payload and sends a manifest; the FS DFU
+  device programs **and commits** the slot header (`USB SELFTEST DFU-BOOT COMMIT
+  PASS`). Flashing this bootloader afterward (Slot A untouched) and resetting
+  then boots the DFU-committed image -- `jumping to Slot A` + `mem32 0x22040000
+  = 600D600D`. So every code path the real `dfu-util` exercises (program,
+  commit, boot decision, jump) is validated on bench; only the literal external
+  `dfu-util` tool is unused, because the bench self-loops the two jacks.
 
 ## Recovery
 

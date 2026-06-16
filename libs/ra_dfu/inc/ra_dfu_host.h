@@ -75,6 +75,39 @@ typedef struct {
                                        uint32_t              img_len,
                                        ra_dfu_host_result_t* out);
 
+/**
+ * @brief Enumerate, DFU_DNLOAD @p img, then a zero-length DFU_DNLOAD (manifest).
+ *
+ * @details The real DFU flash flow -- what `dfu-util` does -- rather than the
+ * self-test round-trip of ::ra_dfu_host_run. Brings the host controller up,
+ * enumerates the DFU device, downloads @p img one 64-byte block at a time, then
+ * issues a zero-length DFU_DNLOAD that signals end-of-download so the DEVICE
+ * commits the slot header (via its worker) and enters dfuMANIFEST. There is no
+ * UPLOAD/ABORT: the caller drives the device half on the SAME chip (self-loop)
+ * and confirms the commit with ::ra_dfu_device_committed + ::ra_dfu_slot_valid.
+ *
+ * @param[in]  host_speed Which controller acts as host (FS or HS).
+ * @param[in]  img        Bootable slot image to flash (non-NULL).
+ * @param[in]  img_len    Image length; non-zero multiple of 64.
+ * @param[out] out        Result/diagnostics (non-NULL; `pid` populated).
+ *
+ * @return `ra_err_t` outcome (also mirrored in `out->last_err`).
+ * @retval k_ra_ok               Image downloaded and the manifest accepted.
+ * @retval k_ra_err_null_ptr     `img` or `out` was NULL.
+ * @retval k_ra_err_invalid_arg  `img_len` is 0 or not a multiple of 64.
+ * @retval k_ra_err_*            The failing enumerate / transfer code.
+ *
+ * @pre The two USB jacks are cabled together; `host_speed` is the host jack.
+ * @pre `ra_time_init` has run; the device half targets the slot to commit.
+ * @post On failure the host controller is deinitialized for a clean retry.
+ * @post The device has been told to commit; the caller polls for completion.
+ * @note Blocking; runs on the host worker thread. @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dfu_host_program(ra_usb_speed_t        host_speed,
+                                           const uint8_t*        img,
+                                           uint32_t              img_len,
+                                           ra_dfu_host_result_t* out);
+
 #ifdef __cplusplus
 }
 #endif

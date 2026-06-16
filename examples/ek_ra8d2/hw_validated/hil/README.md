@@ -75,6 +75,7 @@ banner on SCI8. Device-mode apps that need a separate USB host to verify live in
 | usb_host_keyboard | HS host decodes a simulated FS boot-keyboard's keycodes | `USB HOST KEYBOARD PASS` |
 | dfu_selftest_hs_host | HS host / FS device (DFU programs + verifies real MRAM) | `USB SELFTEST DFU CONFIG A PASS` |
 | dfu_selftest_fs_host | FS host / HS device (DFU programs + verifies real MRAM) | `USB SELFTEST DFU CONFIG B PASS` |
+| dfu_selftest_boot | HS host / FS device (DFU-flash + commit a bootable Slot A; the board is its own dfu-util) | `USB SELFTEST DFU-BOOT COMMIT PASS` |
 
 ### Self-validating echoes (CAN / Ethernet / GPIO)
 
