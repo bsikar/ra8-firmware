@@ -5,8 +5,8 @@ either **boots the valid application slot** (software A/B select + jump) or, whe
 no slot is bootable (or an app requested it), brings up a **USB-DFU device** and
 programs the inactive slot. Built on the controller-agnostic
 [`libs/ra_dfu`](../../../../../libs/ra_dfu) core that the bidirectional HIL twins
-([`dfu_selftest_hs_host`](../../hw_validated/hil/dfu_selftest_hs_host) /
-[`dfu_selftest_fs_host`](../../hw_validated/hil/dfu_selftest_fs_host)) validate
+([`dfu_selftest_hs_host`](../dfu_selftest_hs_host) /
+[`dfu_selftest_fs_host`](../dfu_selftest_fs_host)) validate
 on both USB controllers.
 
 ## Bank layout (1 MiB MRAM)
@@ -113,7 +113,7 @@ jump were validated locally over the J-Link OB:
 
 - **Full DFU flash -> boot cycle**, end to end, with no external `dfu-util`:
   the board is its own DFU host over the self-loop
-  ([`dfu_selftest_boot`](../../hw_validated/hil/dfu_selftest_boot)). The HS host
+  ([`dfu_selftest_boot`](../dfu_selftest_boot)). The HS host
   DFU_DNLOADs the same bootable Slot-A payload and sends a manifest; the FS DFU
   device programs **and commits** the slot header (`USB SELFTEST DFU-BOOT COMMIT
   PASS`). Flashing this bootloader afterward (Slot A untouched) and resetting

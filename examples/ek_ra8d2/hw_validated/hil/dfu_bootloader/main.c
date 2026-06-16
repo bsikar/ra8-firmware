@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dfu_bootloader/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/main.c
  * @brief Real USB-DFU MRAM bootloader: boot the active app slot, or accept a DFU update.
  *
  * @par Tag
