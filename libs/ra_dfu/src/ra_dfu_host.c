@@ -233,6 +233,35 @@ static ra_err_t internal_download_all(ra_usb_speed_t speed, const uint8_t* img, 
   return internal_wait_state(speed, (uint8_t)k_rdh_state_idle);
 }
 
+/** @brief Download the whole image, then a zero-length DFU_DNLOAD (manifest). */
+static ra_err_t
+internal_download_manifest(ra_usb_speed_t speed, const uint8_t* img, uint32_t img_len)
+{
+  const uint16_t blocks = (uint16_t)(img_len / (uint32_t)k_rdh_xfer_size);
+  for (uint16_t b = 0U; b < blocks; b++) {
+    uint8_t blk[k_rdh_xfer_size] = {};
+    (void)memcpy(blk, &img[(uint32_t)b * (uint32_t)k_rdh_xfer_size], (size_t)k_rdh_xfer_size);
+    const ra_err_t err = internal_dnload_block(speed, b, blk, (uint16_t)k_rdh_xfer_size);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  /* Zero-length DFU_DNLOAD = end-of-download: the device commits the slot header
+   * and enters dfuMANIFEST. This is the real flash flow (what dfu-util does),
+   * versus internal_download_all's DFU_ABORT that the self-test round-trip uses
+   * to keep the device enumerable for the UPLOAD comparison. The caller drives
+   * the device half on the same chip, so it polls ::ra_dfu_device_committed
+   * rather than waiting on a manifest-state GETSTATUS here. */
+  const ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_rdh_bm_class_if_out,
+    .b_request       = (uint8_t)k_rdh_breq_dnload,
+    .w_value         = blocks,
+    .w_index         = (uint16_t)k_rdh_intf,
+    .w_length        = 0U,
+  };
+  return ra_usb_host_control_xfer(speed, &setup, nullptr, 0U, nullptr);
+}
+
 /** @brief DFU_UPLOAD each block and byte-compare to @p img. */
 static ra_err_t internal_upload_verify(ra_usb_speed_t        speed,
                                        const uint8_t*        img,
@@ -319,6 +348,59 @@ ra_err_t ra_dfu_host_run(ra_usb_speed_t        host_speed,
     return err;
   }
   err           = internal_run_seq(host_speed, img, img_len, out);
+  out->last_err = err;
+  if (err != k_ra_ok) {
+    (void)ra_usb_host_deinit(host_speed);
+  }
+  return err;
+}
+
+/** @brief Enumerate + download + manifest (real DFU flash, no host teardown). */
+static ra_err_t internal_program_seq(ra_usb_speed_t        speed,
+                                     const uint8_t*        img,
+                                     uint32_t              img_len,
+                                     ra_dfu_host_result_t* out)
+{
+  uint8_t  desc[k_rdh_dev_desc_len] = {};
+  ra_err_t err                      = internal_enum_hunt(speed, desc);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  out->pid = (uint32_t)desc[k_rdh_off_dev_pid] |
+             ((uint32_t)desc[(uint32_t)k_rdh_off_dev_pid + 1U] << (uint32_t)k_rdh_byte_bits);
+  err      = internal_set_address(speed);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = internal_set_config(speed);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return internal_download_manifest(speed, img, img_len);
+}
+
+ra_err_t ra_dfu_host_program(ra_usb_speed_t        host_speed,
+                             const uint8_t*        img,
+                             uint32_t              img_len,
+                             ra_dfu_host_result_t* out)
+{
+  if ((img == nullptr) || (out == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  out->pid       = 0U;
+  out->blocks_ok = 0U;
+  out->mismatch  = (uint32_t)k_rdh_mismatch_none;
+  out->last_err  = k_ra_ok;
+  if ((img_len == 0U) || ((img_len % (uint32_t)k_rdh_xfer_size) != 0U)) {
+    out->last_err = k_ra_err_invalid_arg;
+    return k_ra_err_invalid_arg;
+  }
+  ra_err_t err = ra_usb_host_init(host_speed);
+  if (err != k_ra_ok) {
+    out->last_err = err;
+    return err;
+  }
+  err           = internal_program_seq(host_speed, img, img_len, out);
   out->last_err = err;
   if (err != k_ra_ok) {
     (void)ra_usb_host_deinit(host_speed);
