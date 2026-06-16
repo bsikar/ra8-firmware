@@ -145,10 +145,10 @@ ra_err_t ra_dfu_read_header(ra_dfu_slot_t slot, ra_dfu_img_hdr_t* out_hdr)
   if (base == 0U) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 59.1 "Code-MRAM" p 3543 -- the slot header is the first 32-byte
-   * data page of the slot; this is a plain MRAM data read, not a control
-   * register access. */
-  (void)memcpy(out_hdr, (const void*)base, sizeof(*out_hdr));
+  /* HUM Ch 59.1 "Code-MRAM" p 3543 -- the slot header is the LAST 32-byte data
+   * page of the slot (so the app vector table can sit at the aligned base);
+   * this is a plain MRAM data read, not a control register access. */
+  (void)memcpy(out_hdr, (const void*)(base + (uintptr_t)k_ra_dfu_hdr_offset), sizeof(*out_hdr));
   return k_ra_ok;
 }
 
@@ -172,7 +172,7 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot)
   uint32_t crc = 0U;
   if ((hdr.img_len != 0U) && (hdr.img_len <= (uint32_t)k_ra_dfu_img_max) &&
       ((hdr.img_len % (uint32_t)k_ra_dfu_page_size) == 0U)) {
-    crc = ra_dfu_crc32((const uint8_t*)(base + (uintptr_t)k_ra_dfu_hdr_size), hdr.img_len);
+    crc = ra_dfu_crc32((const uint8_t*)base, hdr.img_len);
   }
   return ra_dfu_hdr_valid(&hdr, crc);
 }
@@ -230,7 +230,7 @@ ra_dfu_program_image(ra_dfu_slot_t inactive, uint32_t img_offset, const uint8_t*
   if (((uint64_t)img_offset + (uint64_t)len) > (uint64_t)k_ra_dfu_img_max) {
     return k_ra_err_invalid_arg;
   }
-  const uintptr_t dst = base + (uintptr_t)k_ra_dfu_hdr_size + (uintptr_t)img_offset;
+  const uintptr_t dst = base + (uintptr_t)img_offset;
   return internal_write_secure(dst, data, len);
 }
 
@@ -244,19 +244,20 @@ ra_err_t ra_dfu_program_commit(ra_dfu_slot_t inactive, uint32_t img_len, uint32_
       ((img_len % (uint32_t)k_ra_dfu_page_size) != 0U)) {
     return k_ra_err_invalid_arg;
   }
-  const uint32_t body_crc =
-    ra_dfu_crc32((const uint8_t*)(base + (uintptr_t)k_ra_dfu_hdr_size), img_len);
-  ra_dfu_img_hdr_t hdr = {};
-  hdr.magic            = (uint32_t)k_ra_dfu_hdr_magic;
-  hdr.seq              = seq;
-  hdr.img_len          = img_len;
-  hdr.img_crc32        = body_crc;
-  hdr.entry            = (uint32_t)(base + (uintptr_t)k_ra_dfu_hdr_size);
-  /* Header programmed LAST so a torn write leaves the slot header erased
-   * (invalid), never a valid header over a partial image. internal_write_secure
-   * masks IRQs across the page program so no ISR fetches code-MRAM while the
-   * header page is being written. */
-  return internal_write_secure(base, (const uint8_t*)&hdr, (uint32_t)k_ra_dfu_hdr_size);
+  const uint32_t   body_crc = ra_dfu_crc32((const uint8_t*)base, img_len);
+  ra_dfu_img_hdr_t hdr      = {};
+  hdr.magic                 = (uint32_t)k_ra_dfu_hdr_magic;
+  hdr.seq                   = seq;
+  hdr.img_len               = img_len;
+  hdr.img_crc32             = body_crc;
+  hdr.entry                 = (uint32_t)base;
+  /* Header programmed LAST, into the slot's last page, so a torn write leaves
+   * the header erased (invalid), never a valid header over a partial image.
+   * internal_write_secure masks IRQs across the page program so no ISR fetches
+   * code-MRAM while the header page is being written. */
+  return internal_write_secure(base + (uintptr_t)k_ra_dfu_hdr_offset,
+                               (const uint8_t*)&hdr,
+                               (uint32_t)k_ra_dfu_hdr_size);
 }
 
 ra_err_t ra_dfu_program_verify(ra_dfu_slot_t slot)

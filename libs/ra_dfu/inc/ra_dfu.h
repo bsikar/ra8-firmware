@@ -26,10 +26,17 @@
  *
  * ```
  * 0x02000000  bootloader   64 KiB  (immutable; never erased by DFU)
- * 0x02010000  Slot A      480 KiB  [32B header | app image]
- * 0x02088000  Slot B      480 KiB  [32B header | app image]
+ * 0x02010000  Slot A      480 KiB  [app image | 32B header (last page)]
+ * 0x02088000  Slot B      480 KiB  [app image | 32B header (last page)]
  * 0x02100000  (end)
  * ```
+ *
+ * The image header is the slot's LAST 32-byte page, not its first, so the
+ * application's vector table lands at the 64 KiB-aligned `slot_base` (a valid
+ * `VTOR.TBLOFF`); a header prepended at `slot_base` would push the vectors to a
+ * misaligned `slot_base + 0x20`. The payload therefore links at `ORIGIN =
+ * slot_base` with the last page reserved, and the bootloader jumps to
+ * `entry == slot_base`.
  *
  * The bootloader is never swapped (no BTFLG / startup-area swap); it
  * reads both slot headers and jumps to the valid slot with the higher
@@ -71,12 +78,13 @@ typedef enum : uint32_t {
   k_ra_dfu_mram_base     = 0x02000000U, /**< Code-MRAM window base.            */
   k_ra_dfu_mram_size     = 0x00100000U, /**< Code-MRAM window size (1 MiB).    */
   k_ra_dfu_bl_size       = 0x00010000U, /**< Immutable bootloader size (64K).  */
-  k_ra_dfu_slot_a_base   = 0x02010000U, /**< Slot A base (header first).       */
-  k_ra_dfu_slot_b_base   = 0x02088000U, /**< Slot B base (header first).       */
+  k_ra_dfu_slot_a_base   = 0x02010000U, /**< Slot A base (app vectors here).   */
+  k_ra_dfu_slot_b_base   = 0x02088000U, /**< Slot B base (app vectors here).   */
   k_ra_dfu_slot_size     = 0x00078000U, /**< Per-slot size (480 KiB).          */
   k_ra_dfu_page_size     = 0x00000020U, /**< MRAM program page (32 bytes).     */
   k_ra_dfu_hdr_size      = 0x00000020U, /**< Image header size (32 bytes).     */
   k_ra_dfu_img_max       = 0x00077FE0U, /**< Max image bytes (slot - header).  */
+  k_ra_dfu_hdr_offset    = 0x00077FE0U, /**< Header offset (slot's last page). */
   k_ra_dfu_hdr_magic     = 0x52413844U, /**< Valid-image header magic ("RA8D").*/
   k_ra_dfu_trigger_magic = 0xDF00B007U, /**< No-init SRAM DFU-request magic.   */
 } ra_dfu_layout_t;
@@ -106,14 +114,15 @@ typedef enum : uint8_t {
  * @brief 32-byte application-image header at the base of each slot.
  *
  * @details
- * Programmed last (after the image body) so a torn write leaves an
- * invalid (CRC-mismatching) slot rather than a half-valid one. The
- * image body starts at `slot_base + k_ra_dfu_hdr_size`; `img_crc32`
- * covers exactly `[slot_base + hdr_size, slot_base + hdr_size + img_len)`.
+ * Stored in the slot's LAST 32-byte page (`slot_base + k_ra_dfu_hdr_offset`)
+ * and programmed last (after the image body) so a torn write leaves an
+ * invalid (CRC-mismatching) slot rather than a half-valid one. The image body
+ * starts at `slot_base`; `img_crc32` covers exactly
+ * `[slot_base, slot_base + img_len)`.
  *
  * @invariant `img_len` is a non-zero multiple of `k_ra_dfu_page_size`
  *            and `<= k_ra_dfu_img_max` for a valid image.
- * @invariant `entry == slot_base + k_ra_dfu_hdr_size` for a valid image.
+ * @invariant `entry == slot_base` for a valid image.
  *
  * @par Example:
  * @code
@@ -129,7 +138,7 @@ typedef struct {
   uint32_t seq;       /**< Monotonic sequence; higher valid slot wins.       */
   uint32_t img_len;   /**< Image body length in bytes (32-byte multiple).    */
   uint32_t img_crc32; /**< CRC32 (IEEE) over the image body.                 */
-  uint32_t entry;     /**< App vector-table address (slot_base + hdr_size).  */
+  uint32_t entry;     /**< App vector-table address (== slot_base).          */
   uint32_t rsv0;      /**< Reserved; programmed 0.                           */
   uint32_t rsv1;      /**< Reserved; programmed 0.                           */
   uint32_t rsv2;      /**< Reserved; programmed 0.                           */
@@ -372,11 +381,11 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot);
 /**
  * @brief Program one image chunk into the inactive slot's body.
  *
- * @details Writes `len` bytes at `slot_base + k_ra_dfu_hdr_size + img_offset`
- * through the SECURE MRAM gate (`k_ra_flash_world_s`). Each 32-byte page is
- * erased to 0xFF then programmed, IRQ-masked, by the SRAM-resident
- * `internal_write_secure` (ra_dfu_program.c). The header region
- * (`[slot_base, slot_base + hdr_size)`) is left untouched until
+ * @details Writes `len` bytes at `slot_base + img_offset` through the SECURE
+ * MRAM gate (`k_ra_flash_world_s`). Each 32-byte page is erased to 0xFF then
+ * programmed, IRQ-masked, by the SRAM-resident `internal_write_secure`
+ * (ra_dfu_program.c). The header page (the slot's last page, at
+ * `slot_base + k_ra_dfu_hdr_offset`) is left untouched until
  * ::ra_dfu_program_commit, so a torn download never leaves a valid-looking
  * header over a partial image.
  *
@@ -407,9 +416,9 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot);
  *
  * @details Folds ::ra_dfu_crc32 over the just-programmed body in MRAM, builds
  * a ::ra_dfu_img_hdr_t (magic, the given `seq`, `img_len`, that CRC, and
- * `entry = slot_base + hdr_size`), and programs the 32-byte header LAST. After
- * this the slot is bootable; a power loss before the header lands leaves the
- * slot header erased (invalid) -- never half-valid.
+ * `entry = slot_base`), and programs the 32-byte header LAST into the slot's
+ * last page. After this the slot is bootable; a power loss before the header
+ * lands leaves the slot header erased (invalid) -- never half-valid.
  *
  * @param[in] inactive Slot being committed.
  * @param[in] img_len  Total image-body length programmed; 32-byte multiple.

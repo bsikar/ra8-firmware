@@ -80,19 +80,17 @@ static void test_program_roundtrip(void)
   TEST_ASSERT(ra_dfu_slot_valid(k_ra_dfu_slot_b));
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_program_verify(k_ra_dfu_slot_b));
 
-  /* Image bytes landed at slot_base + header_size. */
-  const uint8_t* body =
-    (const uint8_t*)((uintptr_t)k_ra_dfu_slot_b_base + (uintptr_t)k_ra_dfu_hdr_size);
+  /* Image bytes landed at slot_base (header-last layout: app vectors at base). */
+  const uint8_t* body = (const uint8_t*)((uintptr_t)k_ra_dfu_slot_b_base);
   TEST_ASSERT_EQ(0, memcmp(body, img, (size_t)k_test_img_len));
 
-  /* Header fields. */
+  /* Header is the slot's last page; entry points at the aligned slot base. */
   ra_dfu_img_hdr_t h = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_read_header(k_ra_dfu_slot_b, &h));
   TEST_ASSERT_EQ((uint32_t)k_ra_dfu_hdr_magic, h.magic);
   TEST_ASSERT_EQ((uint32_t)k_test_seq, h.seq);
   TEST_ASSERT_EQ((uint32_t)k_test_img_len, h.img_len);
-  TEST_ASSERT_EQ((uint32_t)((uintptr_t)k_ra_dfu_slot_b_base + (uintptr_t)k_ra_dfu_hdr_size),
-                 h.entry);
+  TEST_ASSERT_EQ((uint32_t)((uintptr_t)k_ra_dfu_slot_b_base), h.entry);
 
   uint32_t seq = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_slot_seq(k_ra_dfu_slot_b, &seq));
