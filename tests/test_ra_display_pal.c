@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_spi_regs.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_eink.h"
 #include "ra_display_pal_lcd.h"
@@ -60,6 +61,13 @@ static void harness_reset_world(void)
   ra_pin_validator_reset();
   (void)ra_mstp_init();
   (void)memset(s_test_fb, 0, sizeof(s_test_fb));
+  /* The e-ink backend drives the IT8951 over SPI (ra_spi_xfer8), whose sim
+   * wait_spsr returns OK only when the status flags are set -- the sim backs
+   * SPSR with zeroed memory and has no controller to assert them. Prime SPI ch0
+   * "TX-empty + RX-full" once; ra_spi_xfer8 never writes SPSR in the sim (its
+   * SPSRC clears hit a separate register), so a single prime carries every
+   * transfer of an e-ink bring-up. Same accommodation test_ra_spi_b.c uses. */
+  ra_spi((uint8_t)0)->SPSR = (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
 }
 
 static display_cfg_t make_lcd_cfg(void)

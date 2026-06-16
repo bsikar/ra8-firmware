@@ -168,6 +168,11 @@ static void stub_agt_cb(void* ctx, uint8_t ch)
 static void prep_w43(void)
 {
   ra_sim_mmap_reset();
+  /* Drain the per-channel AGT MSTP latch (ra_agt's s_agt_mstp_held) so it stays
+   * in sync with the ra_mstp refcount that ra_mstp_init() is about to zero.
+   * Otherwise a stale held=true over a fresh refcount=0 makes a later
+   * ra_agt_deinit -> ra_mstp_disable underflow and return invalid_state. */
+  (void)ra_agt_deinit((uint8_t)k_ra_agt_test_channel_valid);
   (void)ra_mstp_init();
   s_agt_cb_count   = 0U;
   s_agt_cb_last_ch = 0U;
