@@ -17,7 +17,6 @@ hardware HIL probe AND the gap below is resolved.
 |-----|-----------------|
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
-| dfu_bootloader | **Fully bench-validated** (boot decision -> DFU, boot decision -> jump, and the complete DFU program -> commit -> boot cycle) -- see its README. The "needs an external dfu-util" gap is closed: the board is its own DFU host over the self-loop via [`dfu_selftest_boot`](../hw_validated/hil/dfu_selftest_boot), which DFU-flashes + commits a bootable Slot A, then this bootloader boots it (J-Link sentinel). Validation is a multi-step bench sequence (driver -> flash bootloader -> J-Link probe), so it belongs in `hw_validated/manual/`; kept here pending that `git mv` promotion. |
 
 ### Blocked by a module / firmware gap
 
@@ -60,6 +59,16 @@ enumerates, mounts, and BROWSES the device's FAT root before read-verify
 `usb_host_keyboard` was likewise re-based onto the self-loop: the board simulates
 a boot-keyboard device and the host decodes its keycodes back to "RA8D2"
 (`USB HOST KEYBOARD PASS`), and moved to `hw_validated/hil/`.
+
+`dfu_bootloader` was **fully bench-validated** end-to-end and moved to
+`hw_validated/hil/`. The "needs an external dfu-util" gap is closed: the board is
+its own DFU host over the J7<->J11 self-loop via
+[`dfu_selftest_boot`](../hw_validated/hil/dfu_selftest_boot), which DFU-flashes +
+commits a bootable Slot A; flashing the bootloader afterward (Slot A untouched)
+then boots it (J-Link sentinel `0x600D600D` @ `0x22040000`). The bootloader itself
+is gated in HIL with an `alive` probe (boots + runs its A/B boot decision without
+faulting -- PC in code, CycleCnt advancing, CFSR/HFSR clean), deterministic
+regardless of slot state, so it needs no human in the loop.
 
 ## Retired
 
