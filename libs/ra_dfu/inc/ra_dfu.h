@@ -342,24 +342,28 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot);
 [[nodiscard]] ra_err_t ra_dfu_slot_seq(ra_dfu_slot_t slot, uint32_t* out_seq);
 
 /**
- * @brief Open ra_flash, fence writes to one slot, and erase that slot.
+ * @brief Open ra_flash and fence all writes to one slot's window.
  *
- * @details Opens the MRAM controller (::ra_flash_open), sets the software
+ * @details Opens the MRAM controller (::ra_flash_open) and sets the software
  * access window (::ra_flash_set_window) to exactly the inactive slot so any
- * stray write/erase outside it is rejected, then erases the whole slot to
- * 0xFF. Brick defense: the bootloader region and the active slot are outside
- * the window and cannot be touched.
+ * stray write outside it is rejected. It does NOT erase: there is no full-slot
+ * erase (which would block USB long enough to time out the host's
+ * DFU_GETSTATUS), and no header pre-erase either. Instead ::ra_dfu_program_image
+ * erases each 32-byte page to 0xFF immediately before programming its body, and
+ * ::ra_dfu_program_commit writes the header LAST -- so a torn download leaves
+ * the OLD header over a NEW partial image, whose CRC will not match -> invalid.
+ * Brick defense: the bootloader region and the active slot are outside the
+ * window and untouchable.
  *
  * @param[in] inactive The slot to (re)program (A or B; must NOT be the running one).
  * @return `ra_err_t` outcome.
- * @retval k_ra_ok              Slot opened, fenced, and erased.
+ * @retval k_ra_ok              Slot opened and the write window fenced to it.
  * @retval k_ra_err_invalid_arg `inactive` is none/invalid.
- * @retval k_ra_err_hw_error    Controller reported a program/erase error.
- * @retval k_ra_err_hw_timeout  Controller never completed an erase.
+ * @retval k_ra_err_hw_error    Controller bring-up reported an error.
  *
  * @pre `inactive` is A or B and is not the slot the caller is executing from.
  * @pre Caller runs from SRAM (firmware) -- the program loop must not be in MRAM.
- * @post On success the whole slot reads 0xFF and the access window is the slot.
+ * @post On success the access window is exactly `[slot_base, slot_base + size)`.
  * @post The MRAM program-control gate is locked on every exit path.
  * @note Not thread-safe; single programmer. @since 0.1.0
  */
@@ -369,8 +373,10 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot);
  * @brief Program one image chunk into the inactive slot's body.
  *
  * @details Writes `len` bytes at `slot_base + k_ra_dfu_hdr_size + img_offset`
- * via ::ra_flash_write (page-chunked internally). The header region
- * (`[slot_base, slot_base + hdr_size)`) is left erased until
+ * through the SECURE MRAM gate (`k_ra_flash_world_s`). Each 32-byte page is
+ * erased to 0xFF then programmed, IRQ-masked, by the SRAM-resident
+ * `internal_write_secure` (ra_dfu_program.c). The header region
+ * (`[slot_base, slot_base + hdr_size)`) is left untouched until
  * ::ra_dfu_program_commit, so a torn download never leaves a valid-looking
  * header over a partial image.
  *
