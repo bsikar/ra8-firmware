@@ -149,8 +149,7 @@ internal_dfu_read(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULON
   if (remain > (uint32_t)length) {
     remain = (uint32_t)length;
   }
-  const uintptr_t src =
-    ra_dfu_slot_base(s_dev.target) + (uintptr_t)k_ra_dfu_hdr_size + (uintptr_t)off;
+  const uintptr_t src = ra_dfu_slot_base(s_dev.target) + (uintptr_t)off;
   (void)memcpy(data, (const void*)src, (size_t)remain);
   *actual_length = (ULONG)remain;
   return UX_SUCCESS;
