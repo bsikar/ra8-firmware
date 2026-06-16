@@ -544,6 +544,19 @@ typedef enum : uint8_t {
 } ra_usb_dcpctr_bit_t;
 
 /**
+ * @enum ra_usb_dcpcfg_bit_t
+ * @brief DCPCFG bit positions used by the control-transfer engine.
+ * @details In host mode DIR selects the data-stage token direction the
+ * controller issues on the DCP: 0 = IN (host receives, e.g. GET_DESCRIPTOR),
+ * 1 = OUT (host transmits, e.g. DFU_DNLOAD). The default DCPCFG = 0 issues
+ * IN tokens, so a control-WRITE data stage MUST set DIR before sending or the
+ * device sees an IN token in its write-data stage and flags CTSQ = SQER.
+ */
+typedef enum : uint8_t {
+  k_ra_dcpcfg_bit_dir = 4U, /**< Transfer direction (host: 0 = IN, 1 = OUT). */
+} ra_usb_dcpcfg_bit_t;
+
+/**
  * @enum ra_usb_pid_t
  * @brief Response PID values written into the low two bits of DCPCTR /
  * PIPECTR.

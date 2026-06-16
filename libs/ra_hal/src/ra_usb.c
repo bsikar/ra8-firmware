@@ -3148,6 +3148,7 @@ typedef enum : uint8_t {
   k_ra_usb_cs_data_done = 4U, /**< DATA stage completed.          */
   k_ra_usb_cs_status    = 5U, /**< STATUS stage entered.          */
   k_ra_usb_cs_done      = 6U, /**< STATUS done; transfer closed.  */
+  k_ra_usb_cs_data_out  = 7U, /**< DATA-OUT stage entered.        */
 } ra_usb_host_ctrl_stage_code_t;
 
 /** @brief Last host control-transfer stage reached (bring-up diagnostic). */
@@ -3488,6 +3489,14 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
   reg->BRDYSTS        = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
   reg->BEMPENB        = (uint16_t)(reg->BEMPENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
   reg->BRDYENB        = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  /* A control-WRITE data stage left DCPCFG.DIR = 1 (OUT tokens); its IN-ZLP
+   * status stage needs DIR = 0 so the host issues an IN token to collect the
+   * device's status ZLP. Restore it for the write / no-data status (the
+   * control-READ OUT-ZLP status keeps the default DIR and is best-effort).
+   * HUM Ch 36.2.18 "DCPCFG : DCP Configuration" p 1989. */
+  if (!write_zlp) {
+    internal_rmw16(&reg->DCPCFG, 0U, (uint16_t)(1U << (uint8_t)k_ra_dcpcfg_bit_dir));
+  }
   /* The status stage is always DATA1; force the DCP sequence bit so the
    * device does not NAK a toggle mismatch (seen as NRDYSTS bit 0). */
   internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra_dcpctr_bit_sqset), 0U);
@@ -3550,6 +3559,202 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
  * @note Helper split out of ::ra_usb_host_control_xfer for complexity.
  * @since 0.1.0
  */
+/**
+ * @brief Run the DATA-OUT stage of a host control write from @p data.
+ *
+ * @details The host-side mirror of ::internal_host_ctrl_data_in: selects the
+ * DCP write window, discards any stale bank, forces the DATA1 start toggle
+ * (the first data packet after a SETUP is always DATA1), then pushes the
+ * payload to the device in MPS-sized CFIFO packets via ::internal_dcp_push_chunk
+ * (BVAL) + PID=BUF, waiting for the buffer-empty (BEMP) event after each, and
+ * parks the DCP NAK on exit. This is what lets a class control write carry a
+ * data stage host -> device -- e.g. a DFU_DNLOAD firmware block.
+ *
+ * @param[in] reg  Selected controller register block.
+ * @param[in] data Source payload (host -> device).
+ * @param[in] want Bytes to send (the SETUP wLength, clamped to the buffer).
+ * @param[in] mxps DCP max packet size (per-packet chunk bound).
+ * @return k_ra_ok when the whole payload was transmitted, else a timeout code.
+ * @retval k_ra_ok             All @p want bytes were sent and the buffer drained.
+ * @retval k_ra_err_hw_timeout A packet never drained (BEMP) before the deadline.
+ * @pre The SETUP stage for an OUT request with wLength > 0 completed (SACK).
+ * @pre @p data holds at least @p want bytes; the DCP PID is NAK on entry.
+ * @post The whole payload was driven to the device; the DCP PID is left NAK.
+ * @post BEMPENB carries the DCP bit; BEMPSTS is cleared.
+ * @note Blocking; each packet is bounded by the control poll limit.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
+                                            const uint8_t*         data,
+                                            uint16_t               want,
+                                            uint16_t               mxps)
+{
+  /* Host DCP issues IN tokens by default (DCPCFG.DIR = 0, which serves the
+   * common control-READ data stage). A control-WRITE data stage must flip
+   * DIR = 1 so the controller issues OUT tokens; otherwise the device sees an
+   * IN token in its write-data stage and flags CTSQ = SQER, dropping the
+   * payload (CFIFOSEL.ISEL only sets the CPU FIFO-access direction, not the
+   * wire token direction). HUM Ch 36.2.18 "DCPCFG : DCP Configuration" p 1989. */
+  internal_rmw16(&reg->DCPCFG, (uint16_t)(1U << (uint8_t)k_ra_dcpcfg_bit_dir), 0U);
+  internal_select_cfifo(reg, 0U, true);
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 -- discard
+   * any stale bank so FRDY re-asserts for the fresh write. */
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  /* First data packet after SETUP is DATA1; force the DCP sequence bit so the
+   * device does not drop it on a toggle mismatch. */
+  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra_dcpctr_bit_sqset), 0U);
+  reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  reg->BEMPENB = (uint16_t)(reg->BEMPENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+
+  const uint16_t step = (mxps == 0U) ? (uint16_t)1U : mxps;
+  uint16_t       off  = 0U;
+  while (off < want) {
+    uint16_t chunk = (uint16_t)(want - off);
+    if (chunk > step) {
+      chunk = step;
+    }
+    const ra_err_t perr = internal_dcp_push_chunk(reg, &data[off], chunk);
+    if (perr != k_ra_ok) {
+      internal_dcp_pid(reg, k_ra_pid_nak);
+      return perr;
+    }
+    internal_dcp_pid(reg, k_ra_pid_buf);
+    /* Best-effort drain wait. The DCP BEMP completion indication is unreliable
+     * on this silicon (see ::internal_host_ctrl_status) -- gating hard on it
+     * deadlocks an OUT that actually landed. Give the bank a bounded window to
+     * drain (back-pressure for multi-packet) but proceed regardless; the IN
+     * status stage + the class protocol (DFU_GETSTATUS) confirm delivery. */
+    (void)internal_host_wait_sts(&reg->BEMPSTS, (uint16_t)k_ra_usb_dcp_pipe0_bit);
+    reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+    off          = (uint16_t)(off + chunk);
+  }
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_usb_dcp_out_arm()` -- arm the DCP for control-OUT.
+ * @details Prepares the DCP (EP0) to receive the data stage of a host-to-device
+ *          control transfer (e.g. a DFU_DNLOAD firmware block) WITHOUT blocking:
+ *          clears any stale DCP BRDY latch, enables the DCP BRDY interrupt so the
+ *          host's OUT packet raises a fresh USB IRQ, and sets PID=BUF so the SIE
+ *          ACKs the OUT token (until then the host NAK-retries the data packet).
+ *          The matching `ra_usb_dcp_out_read()` drains the bank from the BRDY ISR.
+ *          Splitting arm from read is mandatory on the self-loop: the FS device
+ *          ISR and the HS host worker share one CPU, so a blocking receive in the
+ *          SETUP ISR would spin out the very thread that must SEND the data.
+ * @param[in] speed Controller (FS/HS) the control transfer is on.
+ * @return k_ra_ok when the DCP is armed, else an arg/HW code.
+ * @retval k_ra_ok              DCP armed; BRDY enabled and PID=BUF.
+ * @retval k_ra_err_invalid_arg @p speed selects no controller.
+ * @retval k_ra_err_hw_timeout  BRDYENB read-back did not latch the DCP bit.
+ * @pre A SETUP for an OUT request with wLength > 0 has just been decoded.
+ * @pre INTSTS0.VALID has been cleared (the PID write gate is open).
+ * @post DCP BRDY is enabled and PID=BUF; the host's OUT data is ACKed on arrival.
+ * @note Non-blocking; ISR-safe. Device-side only.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_dcp_out_arm(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Receiving the data stage of a control-WRITE on the DCP. The first data
+   * packet after a SETUP is ALWAYS DATA1 (USB 2.0 sec 8.6); a stale DCP
+   * sequence toggle makes the SIE silently ACK-and-discard the host's packet
+   * with NO BRDY -- the exact failure the host read-arm guards against in
+   * ::internal_host_ctrl_data_arm. So clear the stale BRDY latch, select the
+   * DCP read window, clear the receive bank (BCLR), enable the DCP BRDY
+   * interrupt, force the receive toggle to DATA1 via DCPCTR.SQSET, and set
+   * PID=BUF so the SIE ACKs the OUT token.
+   * HUM Ch 36.2.21 "DCPCTR" p 1991 (SQSET) / Ch 36.2.11 "BRDYENB" p 1982 /
+   * Ch 36.2.8 "CFIFOCTR" p 1979 (BCLR). */
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  /* Clear any stale CCPL left by the previous transfer's status stage. With
+   * CCPL still set, arming PID=BUF makes the SIE run a status stage instead of
+   * accepting the data stage -- CTSQ goes to SQER and the OUT data never lands.
+   * Device-side mirror of the host guard in ::internal_host_ctrl_setup.
+   * HUM Ch 36.2.21 "DCPCTR : DCP Control Register" p 1991 (CCPL). */
+  internal_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << (uint8_t)k_ra_dcpctr_bit_ccpl));
+  reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  internal_select_cfifo(reg, 0U, false);
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  reg->BRDYENB  = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << (uint8_t)k_ra_dcpctr_bit_sqset), 0U);
+  internal_dcp_pid(reg, k_ra_pid_buf);
+  if ((reg->BRDYENB & (uint16_t)k_ra_usb_dcp_pipe0_bit) == 0U) {
+    return k_ra_err_hw_timeout;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_usb_dcp_out_read()` -- drain an armed control-OUT.
+ * @details Drains one buffer-bank's worth of control-OUT data from the DCP (EP0)
+ *          after `ra_usb_dcp_out_arm()` armed it and the host's OUT packet landed
+ *          (DCP BRDY asserted). Disables the one-shot DCP BRDY, W0C-clears the
+ *          latch, drains via the CFIFO, and parks the DCP NAK. Does NOT re-arm
+ *          (unlike the old blocking variant): the caller is the BRDY ISR, so the
+ *          bank is already full. Single bank (one packet up to the DCP MPS); the
+ *          control-write status stage is driven separately via the CCPL pulse.
+ * @param[in]  speed  Controller (FS/HS) the transfer is on.
+ * @param[out] buf    Destination for the received bytes.
+ * @param[in]  cap    Capacity of @p buf in bytes.
+ * @param[out] out_rx Receives the byte count the host sent (DTLN).
+ * @return k_ra_ok on a drained packet (incl. a ZLP), else a no-data/timeout code.
+ * @retval k_ra_ok              A packet (possibly zero-length) was drained.
+ * @retval k_ra_err_invalid_arg @p speed invalid or @p buf / @p out_rx NULL.
+ * @retval k_ra_err_no_data     DCP BRDY is not set; the OUT packet has not landed.
+ * @retval k_ra_err_hw_timeout  CFIFO never reported FRDY for the DCP bank.
+ * @pre `ra_usb_dcp_out_arm()` armed the DCP for this transfer.
+ * @pre Caller observed the DCP BRDY interrupt (or polls it via the no-data return).
+ * @post @p out_rx holds the host's packet length; @p buf holds min(DTLN, cap).
+ * @post DCP BRDY is disabled + cleared and the DCP PID is left NAK.
+ * @note Non-blocking past a bounded CFIFO FRDY wait; ISR-safe. Device-side only.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_dcp_out_read(ra_usb_speed_t speed, uint8_t* buf, uint16_t cap, uint16_t* out_rx)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((buf == nullptr) || (out_rx == nullptr)) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_rx = 0U;
+
+  /* The BRDY ISR only calls this once the DCP BRDY latch is set; if it is
+   * not, the OUT packet has not landed -- report no-data so the caller can
+   * retry on the next IRQ rather than draining a stale or empty bank. */
+  if ((reg->BRDYSTS & (uint16_t)k_ra_usb_dcp_pipe0_bit) == 0U) {
+    return k_ra_err_no_data;
+  }
+  /* Disable the one-shot DCP BRDY and W0C-clear the latch before draining
+   * (FSP order; protects DBLB bank edges and prevents an ISR re-storm).
+   * HUM Ch 36.2.11 "BRDYENB" p 1982 / Ch 36.2.13 "BRDYSTS" p 1984. */
+  reg->BRDYENB = (uint16_t)(reg->BRDYENB & (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit);
+  reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+
+  internal_select_cfifo(reg, 0U, false);
+  if (internal_wait_frdy(reg) != k_ra_ok) {
+    internal_dcp_pid(reg, k_ra_pid_nak);
+    return k_ra_err_hw_timeout;
+  }
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  const uint16_t dtln = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
+  if (dtln == 0U) {
+    reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+  } else {
+    const uint16_t take = (dtln < cap) ? dtln : cap;
+    internal_fifo_read(reg, buf, take);
+  }
+  *out_rx = dtln;
+  internal_dcp_pid(reg, k_ra_pid_nak);
+  return k_ra_ok;
+}
+
 static ra_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
                                          const ra_usb_setup_t*  setup,
                                          uint8_t*               data,
@@ -3566,15 +3771,25 @@ static ra_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
       }
     }
   }
-  *out_is_read = is_read;
-  if (!is_read) {
-    return k_ra_ok;
-  }
-  uint16_t want = setup->w_length;
+  *out_is_read        = is_read;
+  const uint16_t mxps = (uint16_t)(reg->DCPMAXP & (uint16_t)k_ra_usb_dcpmaxp_mxps);
+  uint16_t       want = setup->w_length;
   if (data_len < want) {
     want = data_len;
   }
-  const uint16_t mxps = (uint16_t)(reg->DCPMAXP & (uint16_t)k_ra_usb_dcpmaxp_mxps);
+  /* Control-OUT with a data stage (e.g. DFU_DNLOAD): drive the payload to the
+   * device; the opposite-direction (IN) zero-length status stage follows. */
+  if ((setup->w_length > 0U) && !is_read && (data != nullptr)) {
+    s_host_ctrl_stage   = (uint8_t)k_ra_usb_cs_data_out;
+    const ra_err_t oerr = internal_host_ctrl_data_out(reg, data, want, mxps);
+    if (oerr == k_ra_ok) {
+      s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_data_done;
+    }
+    return oerr;
+  }
+  if (!is_read) {
+    return k_ra_ok;
+  }
   s_host_ctrl_stage   = (uint8_t)k_ra_usb_cs_data_in;
   const ra_err_t derr = internal_host_ctrl_data_in(reg, data, want, mxps, out_rx);
   if (derr == k_ra_ok) {
