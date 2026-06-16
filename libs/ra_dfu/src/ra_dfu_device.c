@@ -1,0 +1,298 @@
+/**
+ * @file ra_dfu_device.c
+ * @brief USBX DFU device class wired to the ra_dfu MRAM program path.
+ *
+ * @par Tag
+ * [Ring 4 / Service] {World: S}
+ *
+ * @details
+ * Registers the vendored USBX DFU class and backs its callbacks with real
+ * MRAM. `dfu_write` only stages a 64-byte block + marks it pending (ISR-safe);
+ * the caller's device-worker thread drains it via ::ra_dfu_device_worker_step,
+ * which prepares the slot on the first block, programs each block, and commits
+ * the header on end-of-download. `dfu_get_status` reports dfuDNBUSY until the
+ * worker catches up; `dfu_read` serves DFU_UPLOAD straight out of the target
+ * slot's MRAM body. The whole TU is firmware-only (the host test build defines
+ * `RA_SIMULATOR_MODE` and has no USBX).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_dfu_device.h"
+
+#ifndef RA_SIMULATOR_MODE
+
+#include <string.h>
+
+#include "ra_dfu.h"
+#include "ra_usb.h"
+#include "ux_api.h"
+#include "ux_dcd_ra_usb.h"
+#include "ux_device_class_dfu.h"
+#include "ux_device_stack.h"
+
+/** @brief DFU transfer geometry + class-registration constants. */
+typedef enum : uint32_t {
+  k_ra_dfu_dev_block_bytes = 64U,         /**< wTransferSize: bytes per block. */
+  k_ra_dfu_dev_page_mask   = 0x0000001FU, /**< 32-byte page round-up mask.     */
+} ra_dfu_dev_geom_t;
+
+/** @brief USBX class-register interface index / config arguments. */
+typedef enum : uint8_t {
+  k_ra_dfu_dev_reg_interface = 1U, /**< Interface number passed to register. */
+  k_ra_dfu_dev_reg_config    = 0U, /**< Configuration number.                */
+} ra_dfu_dev_reg_t;
+
+/**
+ * @struct ra_dfu_dev_ctx_t
+ * @brief Single-instance device state shared between the DFU callbacks (ISR)
+ *        and the program worker (thread).
+ */
+typedef struct {
+  ra_dfu_slot_t     target;                          /**< Slot to program / serve.   */
+  ra_usb_speed_t    speed;                           /**< Bound controller.          */
+  volatile bool     pending;                         /**< A staged block awaits prog.*/
+  volatile bool     busy;                            /**< Worker mid-program.        */
+  volatile bool     prepared;                        /**< Slot erased once.          */
+  volatile bool     manifest;                        /**< End-of-download seen.      */
+  volatile bool     committed;                       /**< Header committed.          */
+  volatile uint32_t stage_off;                       /**< Image offset of staged blk.*/
+  volatile uint32_t stage_len;                       /**< Staged (padded) length.    */
+  volatile uint32_t img_len;                         /**< Total bytes accepted.      */
+  volatile uint32_t writes;                          /**< Programmed-block counter.  */
+  volatile ra_err_t prog_err;                        /**< Latched program error.     */
+  uint8_t           stage[k_ra_dfu_dev_block_bytes]; /**< One-block staging buffer.  */
+} ra_dfu_dev_ctx_t;
+
+/** @brief The single DFU device instance state. */
+static ra_dfu_dev_ctx_t s_dev = {
+  .target = k_ra_dfu_slot_b,
+};
+
+void ra_dfu_device_set_target(ra_dfu_slot_t target_slot)
+{
+  if ((target_slot == k_ra_dfu_slot_a) || (target_slot == k_ra_dfu_slot_b)) {
+    s_dev.target = target_slot;
+  }
+}
+
+/** @brief DFU activate callback -- nothing to do (state lives at file scope). */
+static VOID internal_dfu_activate(VOID* dfu)
+{
+  (void)dfu;
+}
+
+/** @brief DFU deactivate callback -- retain captured image for inspection. */
+static VOID internal_dfu_deactivate(VOID* dfu)
+{
+  (void)dfu;
+}
+
+/**
+ * @brief DFU write callback -- stage one DNLOAD block (ISR-safe, no MRAM here).
+ * @details Length 0 marks end-of-download; otherwise the block is copied into
+ * the staging buffer (padded up to a 32-byte page with 0xFF) and flagged
+ * pending for the worker. The host's DFU_GETSTATUS will see dfuDNBUSY until the
+ * worker programs it.
+ */
+static UINT
+internal_dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* media_status)
+{
+  (void)dfu;
+  if (length == 0UL) {
+    s_dev.manifest = true;
+  } else {
+    uint32_t len = (uint32_t)length;
+    if (len > (uint32_t)k_ra_dfu_dev_block_bytes) {
+      len = (uint32_t)k_ra_dfu_dev_block_bytes;
+    }
+    (void)memcpy(s_dev.stage, data, (size_t)len);
+    /* Pad the tail of a short final block to a 32-byte page with the erased
+     * value so ra_flash_write's 32-byte granularity is satisfied. */
+    const uint32_t plen =
+      (uint32_t)((len + (uint32_t)k_ra_dfu_dev_page_mask) & ~(uint32_t)k_ra_dfu_dev_page_mask);
+    for (uint32_t i = len; i < plen; i++) {
+      s_dev.stage[i] = 0xFFU;
+    }
+    s_dev.stage_off = (uint32_t)block_number * (uint32_t)k_ra_dfu_dev_block_bytes;
+    s_dev.stage_len = plen;
+    if ((s_dev.stage_off + plen) > s_dev.img_len) {
+      s_dev.img_len = s_dev.stage_off + plen;
+    }
+    s_dev.pending = true;
+  }
+  *media_status = (s_dev.prog_err == k_ra_ok) ? (ULONG)UX_SLAVE_CLASS_DFU_MEDIA_STATUS_OK
+                                              : (ULONG)UX_SLAVE_CLASS_DFU_MEDIA_STATUS_ERROR;
+  return UX_SUCCESS;
+}
+
+/** @brief DFU read callback -- serve DFU_UPLOAD from the target slot's MRAM body. */
+static UINT
+internal_dfu_read(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* actual_length)
+{
+  (void)dfu;
+  const uint32_t off = (uint32_t)block_number * (uint32_t)k_ra_dfu_dev_block_bytes;
+  if (off >= s_dev.img_len) {
+    *actual_length = 0UL;
+    return UX_SUCCESS;
+  }
+  uint32_t remain = s_dev.img_len - off;
+  if (remain > (uint32_t)length) {
+    remain = (uint32_t)length;
+  }
+  const uintptr_t src =
+    ra_dfu_slot_base(s_dev.target) + (uintptr_t)k_ra_dfu_hdr_size + (uintptr_t)off;
+  (void)memcpy(data, (const void*)src, (size_t)remain);
+  *actual_length = (ULONG)remain;
+  return UX_SUCCESS;
+}
+
+/** @brief DFU get-status callback -- BUSY while programming, ERROR on a fault. */
+static UINT internal_dfu_get_status(VOID* dfu, ULONG* media_status)
+{
+  (void)dfu;
+  if (s_dev.prog_err != k_ra_ok) {
+    *media_status = (ULONG)UX_SLAVE_CLASS_DFU_MEDIA_STATUS_ERROR;
+  } else if (s_dev.pending || s_dev.busy) {
+    *media_status = (ULONG)UX_SLAVE_CLASS_DFU_MEDIA_STATUS_BUSY;
+  } else {
+    *media_status = (ULONG)UX_SLAVE_CLASS_DFU_MEDIA_STATUS_OK;
+  }
+  return UX_SUCCESS;
+}
+
+/** @brief DFU notify callback -- latch end-of-download for the worker commit. */
+static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
+{
+  (void)dfu;
+  if (notification == (ULONG)UX_SLAVE_CLASS_DFU_NOTIFICATION_END_DOWNLOAD) {
+    s_dev.manifest = true;
+  }
+  return UX_SUCCESS;
+}
+
+/** @brief Register the USBX DFU class with the MRAM-backed callbacks. */
+static UINT internal_class_register(unsigned char* framework, uint32_t framework_len)
+{
+  UX_SLAVE_CLASS_DFU_PARAMETER p = {
+    .ux_slave_class_dfu_parameter_will_detach = 0UL,
+    .ux_slave_class_dfu_parameter_capabilities =
+      (ULONG)(UX_SLAVE_CLASS_DFU_CAPABILITY_CAN_DOWNLOAD |
+              UX_SLAVE_CLASS_DFU_CAPABILITY_CAN_UPLOAD),
+    .ux_slave_class_dfu_parameter_instance_activate   = internal_dfu_activate,
+    .ux_slave_class_dfu_parameter_instance_deactivate = internal_dfu_deactivate,
+    .ux_slave_class_dfu_parameter_read                = internal_dfu_read,
+    .ux_slave_class_dfu_parameter_write               = internal_dfu_write,
+    .ux_slave_class_dfu_parameter_get_status          = internal_dfu_get_status,
+    .ux_slave_class_dfu_parameter_notify              = internal_dfu_notify,
+    .ux_slave_class_dfu_parameter_framework           = (UCHAR*)framework,
+    .ux_slave_class_dfu_parameter_framework_length    = (ULONG)framework_len,
+  };
+  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_dfu",
+                                         _ux_device_class_dfu_entry,
+                                         (ULONG)k_ra_dfu_dev_reg_interface,
+                                         (ULONG)k_ra_dfu_dev_reg_config,
+                                         &p);
+}
+
+ra_err_t ra_dfu_device_start(ra_usb_speed_t speed,
+                             void*          usbx_pool,
+                             uint32_t       pool_bytes,
+                             unsigned char* framework,
+                             uint32_t       framework_len,
+                             unsigned char* strings,
+                             uint32_t       strings_len,
+                             unsigned char* langids,
+                             uint32_t       langids_len)
+{
+  if ((usbx_pool == nullptr) || (framework == nullptr) || (strings == nullptr) ||
+      (langids == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  if (_ux_system_initialize(usbx_pool, (ULONG)pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
+    return k_ra_err_invalid_state;
+  }
+  if (_ux_device_stack_initialize((UCHAR*)UX_NULL,
+                                  0,
+                                  (UCHAR*)framework,
+                                  (ULONG)framework_len,
+                                  (UCHAR*)strings,
+                                  (ULONG)strings_len,
+                                  (UCHAR*)langids,
+                                  (ULONG)langids_len,
+                                  UX_NULL) != UX_SUCCESS) {
+    return k_ra_err_invalid_state;
+  }
+  if (internal_class_register(framework, framework_len) != UX_SUCCESS) {
+    return k_ra_err_invalid_state;
+  }
+  s_dev.speed      = speed;
+  ra_err_t dcd_err = ux_dcd_ra_usb_initialize(speed);
+  if (dcd_err != k_ra_ok) {
+    return dcd_err;
+  }
+  return ra_usb_device_attach(speed, true);
+}
+
+ra_err_t ra_dfu_device_worker_step(void)
+{
+  if (s_dev.pending && !s_dev.busy) {
+    s_dev.busy = true;
+    if (!s_dev.prepared) {
+      const ra_err_t pe = ra_dfu_program_prepare(s_dev.target);
+      if (pe != k_ra_ok) {
+        s_dev.prog_err = pe;
+        s_dev.pending  = false;
+        s_dev.busy     = false;
+        return pe;
+      }
+      s_dev.prepared = true;
+    }
+    const ra_err_t we =
+      ra_dfu_program_image(s_dev.target, s_dev.stage_off, s_dev.stage, s_dev.stage_len);
+    if (we != k_ra_ok) {
+      s_dev.prog_err = we;
+    } else {
+      s_dev.writes++;
+    }
+    s_dev.pending = false;
+    s_dev.busy    = false;
+    return we;
+  }
+  if (s_dev.manifest && !s_dev.committed && s_dev.prepared && (s_dev.prog_err == k_ra_ok)) {
+    s_dev.busy         = true;
+    uint32_t other_seq = 0U;
+    (void)ra_dfu_slot_seq(ra_dfu_other_slot(s_dev.target), &other_seq);
+    const ra_err_t ce = ra_dfu_program_commit(s_dev.target, s_dev.img_len, other_seq + 1U);
+    if (ce != k_ra_ok) {
+      s_dev.prog_err = ce;
+    }
+    s_dev.committed = true;
+    s_dev.busy      = false;
+    return ce;
+  }
+  return s_dev.prog_err;
+}
+
+uint32_t ra_dfu_device_image_len(void)
+{
+  return s_dev.img_len;
+}
+
+uint32_t ra_dfu_device_block_writes(void)
+{
+  return s_dev.writes;
+}
+
+bool ra_dfu_device_manifested(void)
+{
+  return s_dev.manifest;
+}
+
+ra_err_t ra_dfu_device_last_error(void)
+{
+  return s_dev.prog_err;
+}
+
+#endif /* !RA_SIMULATOR_MODE */
