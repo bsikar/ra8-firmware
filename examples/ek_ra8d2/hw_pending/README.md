@@ -17,6 +17,7 @@ hardware HIL probe AND the gap below is resolved.
 |-----|-----------------|
 | i3c_i2c_peripheral_demo | I2C/I3C peripheral mode needs an external controller to talk to; the bench has no controller wired up. |
 | imu_lsm6dso_demo | Needs an LSM6DSO IMU on the I2C/I3C bus; not fitted. |
+| dfu_bootloader | Boot decision + slot jump ARE bench-validated over J-Link (see its README); the `dfu-util`-over-USB program-then-reset path needs a USB host on a non-self-looped jack -- the bench cables the two jacks to each other for the HIL twins, so that one step is a manual re-cable. The DFU device program path it uses is the same `libs/ra_dfu` code the twins validate on bench. |
 
 ### Blocked by a module / firmware gap
 
