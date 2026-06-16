@@ -287,6 +287,16 @@ void ra_time_on_tick(void)
  * below. The weak-extern trick is what lets a per-app handler go away
  * once its work is just "tick threadx and tick usb".
  */
+/* The default SysTick_Handler below and its weak externs are firmware-only.
+ * The host unit-test build (RA_SIMULATOR_MODE) has no SysTick ISR, never calls
+ * this handler, and must not drag in the ThreadX / USB weak externs: the macOS
+ * test linker (ld64) does NOT resolve an undefined `weak` reference to NULL the
+ * way the ELF firmware linker does, so leaving them visible breaks every host
+ * test that links ra_time.c. Compile the whole ISR + its externs for the
+ * firmware target only; on ELF the `weak` references still fold to NULL when a
+ * subsystem is absent and to its strong defn when present. */
+#ifndef RA_SIMULATOR_MODE
+
 /* NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- vendor (ThreadX) symbol; we must use Eclipse ThreadX's actual entry-point name. */
 extern void _tx_timer_interrupt(void) __attribute__((weak));
 extern void ux_dcd_ra_usb_irq_reenable(void) __attribute__((weak));
@@ -338,3 +348,20 @@ __attribute__((weak)) void SysTick_Handler(void)
     ux_dcd_ra_usb_irq_reenable();
   }
 }
+
+#else /* RA_SIMULATOR_MODE */
+
+/* Host unit-test build: test_ra_time exercises SysTick_Handler directly, so the
+ * symbol must exist -- but there is no ThreadX kernel or USB bridge to tick,
+ * and the macOS test linker (ld64) cannot resolve the firmware handler's
+ * undefined weak externs. Provide a minimal handler that does only the
+ * tick-counter work the test observes. */
+void SysTick_Handler(void);
+
+/* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
+__attribute__((weak)) void SysTick_Handler(void)
+{
+  ra_time_on_tick();
+}
+
+#endif /* RA_SIMULATOR_MODE -- firmware vs host-test SysTick_Handler */
