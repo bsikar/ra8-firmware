@@ -202,6 +202,7 @@ typedef enum : uint32_t {
   k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).  */
   k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.    */
   k_trace_sym_max   = 16U,         /**< Max --trace-sym functions per run. */
+  k_sectors_per_mib = 2048U,       /**< 512-byte sectors per MiB (--sd-new). */
 } board_sim_misc_t;
 
 /** @brief EK-RA8D2 user-switch GPIO coordinates (active-low): SW1 P009, SW2 P008. */
@@ -2872,6 +2873,7 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->sw1_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw1_pin);
   st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw2_pin);
   st->app_name    = app_name;
+  board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
 }
 
 /**
@@ -3292,27 +3294,31 @@ static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
 int main(int argc, char** argv)
 {
   if (argc < 2) {
-    (void)fprintf(stderr,
-                  "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
-                  " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
-                  " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>] [--trace-sym <name>]\n"
-                  "  --view          open a macOS window: live board view; click panel"
-                  " (touch) / on-screen SW1/SW2, type -> UART\n"
-                  "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
-                  "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
-                  "  --record-secs N headless: record N emulated seconds, then stop (~20 fps)\n"
-                  "  --rotate DEG    display rotation 90/180/270 (e.g. portrait)\n"
-                  "  --panel <file>  display descriptor (name/width/height) to size the panel\n"
-                  "  --size WxH      panel size in pixels; overrides --panel (default 1024x600)\n"
-                  "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
-                  "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
-                  "  --keys <str>    type <str> via the window-key path -> console UART RX\n"
-                  "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
-                  "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
-                  "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
-                  "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
-                  "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
-                  "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
+    (void)fprintf(
+      stderr,
+      "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
+      " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
+      " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>] [--trace-sym <name>]"
+      " [--sd-new <M[:fat16|fat32]>] [--save-sd <out>]\n"
+      "  --view          open a macOS window: live board view; click panel"
+      " (touch) / on-screen SW1/SW2, type -> UART\n"
+      "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
+      "  --record <dir>  record frames (panel + status) to <dir>/frame_NNNNNN.ppm\n"
+      "  --record-secs N headless: record N emulated seconds, then stop (~20 fps)\n"
+      "  --rotate DEG    display rotation 90/180/270 (e.g. portrait)\n"
+      "  --panel <file>  display descriptor (name/width/height) to size the panel\n"
+      "  --size WxH      panel size in pixels; overrides --panel (default 1024x600)\n"
+      "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
+      "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
+      "  --keys <str>    type <str> via the window-key path -> console UART RX\n"
+      "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
+      "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
+      "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
+      "  --sd-new <M[:fat16|fat32]>  create + attach a blank M-MiB FAT card (no image)\n"
+      "  --save-sd <out> after the run, dump the SD card image (with firmware writes)\n"
+      "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
+      "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
+      "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
   const char* elf_path                         = argv[1];
@@ -3330,6 +3336,7 @@ int main(int argc, char** argv)
   uint32_t    dump_sym_n                       = 0U;
   const char* trace_sym_names[k_trace_sym_max] = {}; /* --trace-sym functions to log.*/
   uint32_t    trace_sym_n                      = 0U;
+  const char* save_sd_path                     = nullptr; /* --save-sd dump path.      */
   bool        size_set                         = false;
   bool        want_click                       = false;
   bool        want_trace                       = false;
@@ -3375,6 +3382,22 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--sd", sizeof("--sd")) == 0) && ((i + 1) < argc)) {
       (void)board_sd_attach(argv[i + 1]); /* serve this FAT image to ra_sdmmc_spi */
+      i++;
+    } else if ((strncmp(argv[i], "--sd-new", sizeof("--sd-new")) == 0) && ((i + 1) < argc)) {
+      /* "<MB>[:fat16|fat32]" -- create + attach a blank formatted card. Default
+       * the format by size (FAT32 for >= 512 MB), like a real SD card. */
+      char*      endp = nullptr;
+      const long mb   = strtol(argv[i + 1], &endp, (int)k_strtol_base10);
+      uint8_t    fat  = (mb >= 512L) ? (uint8_t)32U : (uint8_t)16U;
+      if ((endp != nullptr) && (*endp == ':')) {
+        fat = (strstr(endp, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
+      }
+      if (mb > 0L) {
+        (void)board_sd_attach_blank((uint32_t)mb * (uint32_t)k_sectors_per_mib, fat, "BOARDSIM");
+      }
+      i++;
+    } else if ((strncmp(argv[i], "--save-sd", sizeof("--save-sd")) == 0) && ((i + 1) < argc)) {
+      save_sd_path = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--dump-sym", sizeof("--dump-sym")) == 0) && ((i + 1) < argc)) {
       if (dump_sym_n < (uint32_t)k_dump_sym_max) {
@@ -4118,6 +4141,26 @@ int main(int argc, char** argv)
                 s_mmio_reads,
                 s_mmio_writes,
                 s_mmio_n);
+  /* Device summary: surface the attached microSD card so a headless run shows
+   * its size / format the same way the --view sidebar does. */
+  {
+    bool        sd_att = false;
+    uint32_t    sd_b   = 0U;
+    uint8_t     sd_f   = 0U;
+    const char* sd_l   = nullptr;
+    board_sd_info(&sd_att, &sd_b, &sd_f, &sd_l);
+    if (sd_att && (sd_f != 0U)) {
+      (void)fprintf(stderr,
+                    "  SD card       : %u MB FAT%u '%s' (created by --sd-new)\n",
+                    (unsigned)(sd_b / (1024U * 1024U)),
+                    (unsigned)sd_f,
+                    (sd_l != nullptr) ? sd_l : "");
+    } else if (sd_att) {
+      (void)fprintf(stderr,
+                    "  SD card       : %u MB image attached\n",
+                    (unsigned)(sd_b / (1024U * 1024U)));
+    }
+  }
   /* GLCDC colour-cycle witness: BG_BGC write count + the distinct colours. */
   (void)fprintf(stderr,
                 "  BG_BGC writes : %u   distinct colours: %u   [",
@@ -4237,6 +4280,10 @@ int main(int argc, char** argv)
       }
     }
     board_view_close(view);
+  }
+  /* --save-sd: dump the (possibly firmware-modified) SD card image for reuse. */
+  if (save_sd_path != nullptr) {
+    (void)board_sd_save(save_sd_path);
   }
   free(panel_fb);
   free(rot_fb);

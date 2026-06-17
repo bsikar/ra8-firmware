@@ -341,6 +341,21 @@ static int32_t draw_status_lines(uint16_t*             out,
     (void)snprintf(buf, sizeof(buf), "touch -");
   }
   draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
+  cy += step;
+  if (!st->sd_attached) {
+    (void)snprintf(buf, sizeof(buf), "SD:   -");
+  } else if (st->sd_fat_bits != 0U) {
+    (void)snprintf(buf,
+                   sizeof(buf),
+                   "SD:   %u MB FAT%u %s",
+                   (unsigned)(st->sd_bytes / (1024U * 1024U)),
+                   (unsigned)st->sd_fat_bits,
+                   (st->sd_label != nullptr) ? st->sd_label : "");
+  } else {
+    (void)
+      snprintf(buf, sizeof(buf), "SD:   %u MB (image)", (unsigned)(st->sd_bytes / (1024U * 1024U)));
+  }
+  draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
   return cy + step;
 }
 
