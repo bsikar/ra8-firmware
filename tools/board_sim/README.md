@@ -35,7 +35,17 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
 ./build/board_sim <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
 ./build/board_sim <firmware.elf> --usb-in "ping"      # feed bytes to the USB CDC bulk OUT pipe
+./build/board_sim <firmware.elf> --trace-sym ra_usb_device_attach   # log each entry to a function
 ```
+
+`--trace-sym <name>` is a debugging instrument: it arms a code hook on a symbol's
+entry address and logs every time control reaches it (with the calling LR), so a
+multi-stage bring-up that stalls is visible without a full instruction trace --
+e.g. tracing the USBX device worker (`ux_dcd_ra_usb_initialize`,
+`ra_usb_device_attach`, the USBX `_ux_*` calls) pinpoints exactly which init step
+a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
+32-bit global after the run) and `BOARD_SIM_MAX_CHUNKS` / `BOARD_SIM_IDLE_STOP`
+(bound an otherwise forever-looping RTOS app) for headless post-mortems.
 
 The console UART is captured: every byte the firmware writes to an SCI TDR is
 echoed to stdout (`[uart] SCIn: ...`), so a console app's output is greppable
@@ -178,6 +188,15 @@ only if you exceed the registry capacity.
   callback fires (`USB: device CONFIGURED (CDC-ACM active)`), and with
   `--usb-in <str>` the bulk bytes round-trip back through the device's echo
   (`sent N OUT, read N IN`). Final PC sits in the ThreadX run loop, not a panic.
+  This is now a **regression gate**: `scripts/board_sim_smoke.sh usb_cdc_echo
+  threadx_usbx_cdc_demo` asserts the `device CONFIGURED` milestone, so a change
+  that breaks USB enumeration fails the smoke suite -- no hardware needed. The
+  gate earned its keep immediately: `--trace-sym` traced the USBX device worker
+  and showed both apps were silently stalling in `_ux_device_class_cdc_acm_initialize`
+  with `UX_MEMORY_INSUFFICIENT` -- their 16 KiB USBX pool could not satisfy the
+  CDC-ACM cache-safe 1 KiB IN buffer, so the device never asserted its pull-up.
+  Raising the pool to 32 KiB (matching the HIL-validated `usb_selftest_cdc`)
+  restored full enumeration; the gate keeps it from regressing again.
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
   USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
 - The graphical board view is proven via `--ppm` region checks: `blink` lights

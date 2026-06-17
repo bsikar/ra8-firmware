@@ -200,6 +200,7 @@ typedef enum : uint32_t {
   k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.   */
   k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).  */
   k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.    */
+  k_trace_sym_max   = 16U,         /**< Max --trace-sym functions per run. */
 } board_sim_misc_t;
 
 /** @brief EK-RA8D2 user-switch GPIO coordinates (active-low): SW1 P009, SW2 P008. */
@@ -1473,6 +1474,73 @@ static void on_net_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
   (void)fprintf(stderr, "  [nettrace] %s @ 0x%08X\n", (const char*)user, (unsigned)address);
 }
 
+/**
+ * @brief Generic `--trace-sym` hook: log the first time control reaches a named
+ *        symbol, plus the calling LR, so a stuck bring-up sequence is visible.
+ *
+ * @details Installed by ::sym_trace_install over each `--trace-sym <name>`. The
+ * UC_HOOK_CODE fires on every execution of the symbol's entry address; we print
+ * the entry address and the link register (return address) so a poll loop that
+ * re-enters, or a thread that reaches step N but never N+1, is obvious in the
+ * log without a full instruction trace.
+ *
+ * @param[in] uc      Active Unicorn engine (read for LR).
+ * @param[in] address Entry address that fired the hook.
+ * @param[in] size    Decoded instruction size (unused).
+ * @param[in] user    The symbol name passed at install (stable argv pointer).
+ *
+ * @pre @p user names the hooked symbol.
+ * @post One stderr line is emitted per hit.
+ *
+ * @note Not thread-safe; the run loop is single-threaded host-side.
+ * @since 0.1.0
+ */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)size;
+  uint32_t lr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
+  (void)fprintf(stderr,
+                "  [symtrace] %s @ 0x%08X  (LR 0x%08X)\n",
+                (const char*)user,
+                (unsigned)address,
+                lr);
+}
+
+/**
+ * @brief Install a `--trace-sym` entry hook for every requested symbol present.
+ *
+ * @param[in,out] uc    Active Unicorn engine.
+ * @param[in]     elf   Loaded ELF image (for symbol resolution).
+ * @param[in]     len   ELF image length in bytes.
+ * @param[in]     names Symbol names from the CLI (stable for the run).
+ * @param[in]     count Number of names in @p names.
+ *
+ * @pre @p uc is initialised and @p elf holds @p len valid bytes.
+ * @post A UC_HOOK_CODE fires ::on_sym_trace at each resolved symbol's entry.
+ *
+ * @note A name that does not resolve is reported once and skipped.
+ * @since 0.1.0
+ */
+static void sym_trace_install(uc_engine*         uc,
+                              const uint8_t*     elf,
+                              long               len,
+                              const char* const* names,
+                              uint32_t           count)
+{
+  static uc_hook th[k_trace_sym_max];
+  for (uint32_t i = 0U; (i < count) && (i < (uint32_t)k_trace_sym_max); i++) {
+    const uint32_t addr = elf_sym_addr(elf, len, names[i], nullptr);
+    if (addr == 0U) {
+      (void)fprintf(stderr, "  [symtrace] %s: symbol not found -- skipped\n", names[i]);
+      continue;
+    }
+    (void)uc_hook_add(uc, &th[i], UC_HOOK_CODE, (void*)on_sym_trace, (void*)names[i], addr, addr);
+    (void)fprintf(stderr, "  [symtrace] %s armed @ 0x%08X\n", names[i], (unsigned)addr);
+  }
+}
+
 /** @brief Add an entry-trace hook for @p name (if present); leaves it running. */
 static void eth_trace_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name)
 {
@@ -2681,7 +2749,7 @@ int main(int argc, char** argv)
     (void)fprintf(stderr,
                   "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
                   " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
-                  " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>]\n"
+                  " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>] [--trace-sym <name>]\n"
                   "  --view          open a macOS window: live board view; click panel"
                   " (touch) / on-screen SW1/SW2, type -> UART\n"
                   "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -2697,30 +2765,33 @@ int main(int argc, char** argv)
                   "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
                   "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
                   "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
+                  "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
                   "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
     return 2;
   }
-  const char* elf_path                       = argv[1];
-  bool        want_view                      = false;
-  const char* ppm_path                       = nullptr;
-  const char* record_dir                     = nullptr;
-  uint32_t    record_secs                    = 0U;
-  uint32_t    rotate_deg                     = (uint32_t)k_rotate_0;
-  const char* panel_path                     = nullptr;
-  const char* input_str                      = nullptr;
-  const char* keys_str                       = nullptr;
-  const char* usb_in_str                     = nullptr;
-  const char* dump_sym_names[k_dump_sym_max] = {}; /* --dump-sym globals to read.  */
-  uint32_t    dump_sym_addrs[k_dump_sym_max] = {}; /* resolved while ELF is alive. */
-  uint32_t    dump_sym_n                     = 0U;
-  bool        size_set                       = false;
-  bool        want_click                     = false;
-  bool        want_trace                     = false;
-  int         click_x                        = -1;
-  int         click_y                        = -1;
-  int         button_press                   = 0; /* 1=SW1, 2=SW2, 0=none. */
-  uint16_t    view_w                         = (uint16_t)k_view_default_w;
-  uint16_t    view_h                         = (uint16_t)k_view_default_h;
+  const char* elf_path                         = argv[1];
+  bool        want_view                        = false;
+  const char* ppm_path                         = nullptr;
+  const char* record_dir                       = nullptr;
+  uint32_t    record_secs                      = 0U;
+  uint32_t    rotate_deg                       = (uint32_t)k_rotate_0;
+  const char* panel_path                       = nullptr;
+  const char* input_str                        = nullptr;
+  const char* keys_str                         = nullptr;
+  const char* usb_in_str                       = nullptr;
+  const char* dump_sym_names[k_dump_sym_max]   = {}; /* --dump-sym globals to read.  */
+  uint32_t    dump_sym_addrs[k_dump_sym_max]   = {}; /* resolved while ELF is alive. */
+  uint32_t    dump_sym_n                       = 0U;
+  const char* trace_sym_names[k_trace_sym_max] = {}; /* --trace-sym functions to log.*/
+  uint32_t    trace_sym_n                      = 0U;
+  bool        size_set                         = false;
+  bool        want_click                       = false;
+  bool        want_trace                       = false;
+  int         click_x                          = -1;
+  int         click_y                          = -1;
+  int         button_press                     = 0; /* 1=SW1, 2=SW2, 0=none. */
+  uint16_t    view_w                           = (uint16_t)k_view_default_w;
+  uint16_t    view_h                           = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
@@ -2763,6 +2834,12 @@ int main(int argc, char** argv)
       if (dump_sym_n < (uint32_t)k_dump_sym_max) {
         dump_sym_names[dump_sym_n] = argv[i + 1];
         dump_sym_n++;
+      }
+      i++;
+    } else if ((strncmp(argv[i], "--trace-sym", sizeof("--trace-sym")) == 0) && ((i + 1) < argc)) {
+      if (trace_sym_n < (uint32_t)k_trace_sym_max) {
+        trace_sym_names[trace_sym_n] = argv[i + 1];
+        trace_sym_n++;
       }
       i++;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
@@ -3036,6 +3113,10 @@ int main(int argc, char** argv)
   /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
    * firmware exports those symbols, i.e. a NetX networking example). */
   eth_seam_install(uc, elf, elf_len, want_trace);
+  /* Arm any --trace-sym entry hooks (debugging instrument: watch a bring-up
+   * sequence reach -- or stall before -- a given function). Done while the
+   * host-side `elf` buffer is still alive for symbol resolution. */
+  sym_trace_install(uc, elf, elf_len, trace_sym_names, trace_sym_n);
   /* Spin up the cpu1 engine for dual-core firmware (shares SRAM with cpu0).
    * NULL for single-core apps -- cpu0 then runs exactly as before. Must run
    * before free(elf): it loads cpu1's image from the same buffer. */
