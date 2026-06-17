@@ -1280,6 +1280,189 @@ static ra_err_t priv_dir_find(const ra_fs_mount_t* m,
   return k_ra_err_not_found;
 }
 
+/* ===========================================================================
+ * VFAT long-filename (LFN) read support
+ *
+ * A long name is stored as a chain of attr-0x0F entries IMMEDIATELY before the
+ * 8.3 short entry, in reverse order: the entry tagged 0x40 (last logical group)
+ * is physically first, then group N-1 ... group 1, then the 8.3 entry. Each LFN
+ * entry carries 13 UTF-16LE chars (offsets 1/3/5/7/9, 14/16/18/20/22/24, 28/30)
+ * and a checksum of the 8.3 name (offset 13) that ties the chain to its entry.
+ * This is READ-only: 8.3 creation/writes are unchanged (see #101).
+ * ===========================================================================
+ */
+
+/** @brief LFN directory-entry field offsets, sequence masks, and reassembly caps. */
+typedef enum : uint32_t {
+  k_lfn_off_seq        = 0U,      /**< Sequence/order byte (LDIR_Ord).         */
+  k_lfn_off_checksum   = 13U,     /**< Checksum of the matching 8.3 name.      */
+  k_lfn_seq_order_mask = 0x1FU,   /**< Order = seq & 0x1F (1..20).             */
+  k_lfn_seq_last       = 0x40U,   /**< Set on the last logical group.          */
+  k_lfn_chars_per_ent  = 13U,     /**< UTF-16 chars carried per LFN entry.     */
+  k_lfn_max_entries    = 19U,     /**< Cap so 19*13 = 247 chars fits the buffer. */
+  k_lfn_name_cap       = 256U,    /**< Reassembled-name buffer capacity.       */
+  k_lfn_unicode_pad    = 0xFFFFU, /**< Slot padding past the name terminator. */
+  k_lfn_ascii_max      = 0x7FU,   /**< Highest code point we keep verbatim.    */
+} ra_fs_lfn_t;
+
+/** @brief In-progress reassembly of one LFN chain across the directory scan. */
+typedef struct {
+  char    name[k_lfn_name_cap]; /**< Reassembled name (NUL-terminated).      */
+  uint8_t checksum;             /**< 8.3 checksum the chain claims.          */
+  uint8_t have;                 /**< 1 once any group has been accumulated.  */
+} lfn_state_t;
+
+/** @brief The 8.3 short-name checksum the LFN entries carry (MS FAT spec sec 7). */
+static uint8_t priv_sfn_checksum(const uint8_t* name83)
+{
+  uint8_t sum = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_dir_name_field_len; i++) {
+    sum =
+      (uint8_t)((((sum & 1U) != 0U) ? 0x80U : 0U) + (uint32_t)(sum >> 1U) + (uint32_t)name83[i]);
+  }
+  return sum;
+}
+
+/** @brief Reset the reassembly state for a fresh chain. */
+static void priv_lfn_reset(lfn_state_t* s)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_lfn_name_cap; i++) {
+    s->name[i] = '\0';
+  }
+  s->checksum = 0U;
+  s->have     = 0U;
+}
+
+/** @brief Fold one LFN entry's 13 chars into @p s at their sequence offset. */
+static void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
+{
+  static const uint8_t k_off[k_lfn_chars_per_ent] =
+    {1U, 3U, 5U, 7U, 9U, 14U, 16U, 18U, 20U, 22U, 24U, 28U, 30U};
+  const uint32_t order = (uint32_t)(ent[k_lfn_off_seq] & (uint8_t)k_lfn_seq_order_mask);
+  if ((order < 1U) || (order > (uint32_t)k_lfn_max_entries)) {
+    return; /* out-of-range sequence -> corrupt chain, ignore this entry */
+  }
+  s->checksum         = ent[k_lfn_off_checksum];
+  s->have             = 1U;
+  const uint32_t base = (order - 1U) * (uint32_t)k_lfn_chars_per_ent;
+  for (uint32_t i = 0U; i < (uint32_t)k_lfn_chars_per_ent; i++) {
+    const uint32_t off = (uint32_t)k_off[i];
+    const uint32_t val = (uint32_t)ent[off] | ((uint32_t)ent[off + 1U] << 8U);
+    const uint32_t pos = base + i;
+    if (pos >= ((uint32_t)k_lfn_name_cap - 1U)) {
+      break;
+    }
+    if ((val == 0U) || (val == (uint32_t)k_lfn_unicode_pad)) {
+      s->name[pos] = '\0'; /* terminator / padding ends this group's name */
+      break;
+    }
+    s->name[pos] = (val <= (uint32_t)k_lfn_ascii_max) ? (char)val : '?';
+  }
+}
+
+/**
+ * @brief Long name of the chain that precedes @p name83, or NULL if none/mismatch.
+ * @details Returns the reassembled name only when a chain was accumulated and its
+ *          checksum matches @p name83 (so a stray chain never aliases an entry).
+ */
+static const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83)
+{
+  if ((s->have == 0U) || (s->name[0] == '\0')) {
+    return nullptr;
+  }
+  if (s->checksum != priv_sfn_checksum(name83)) {
+    return nullptr;
+  }
+  return s->name;
+}
+
+/** @brief Case-insensitive ASCII equality of two NUL-terminated names. */
+static uint8_t priv_name_ieq(const char* a, const char* b)
+{
+  while ((*a != '\0') && (*b != '\0')) {
+    if (priv_to_upper(*a) != priv_to_upper(*b)) {
+      return 0U;
+    }
+    a++;
+    b++;
+  }
+  return ((*a == '\0') && (*b == '\0')) ? 1U : 0U;
+}
+
+/**
+ * @brief Find a directory entry by its VFAT long name (case-insensitive).
+ *
+ * @details Walks the root directory, reassembling each LFN chain (carried across
+ *          sector boundaries), and matches @p want against the long name of the
+ *          following 8.3 entry. The fallback ra_fs_open uses when an 8.3 lookup
+ *          misses -- so a `.epub` (4-char extension) opens by its real name.
+ *
+ * @param[in]  m             Mount providing geometry and backend.
+ * @param[in]  want          Requested name (a leading '/' is ignored).
+ * @param[out] out_lba       Sector containing the matched 8.3 entry.
+ * @param[out] out_entry_off Byte offset within the sector.
+ * @param[out] out_entry     32 bytes of the matched 8.3 entry.
+ *
+ * @return Error code.
+ * @retval k_ra_ok            Long name matched; out parameters populated.
+ * @retval k_ra_err_not_found No entry's long name equals @p want.
+ * @retval k_ra_err_*         Backend error.
+ *
+ * @pre All pointers are non-NULL; @p want is NUL-terminated.
+ * @post On success the out parameters identify the on-disk 8.3 entry.
+ * @since 0.1.0
+ */
+static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
+                                   const char*          want,
+                                   uint32_t*            out_lba,
+                                   uint32_t*            out_entry_off,
+                                   uint8_t              out_entry[k_ra_fs_dir_entry_bytes])
+{
+  const char* needle = want;
+  if (needle[0] == '/') {
+    needle++; /* flat root: ignore a leading slash */
+  }
+  dir_walk_t w = {};
+  priv_dir_walk_init_root(m, &w);
+  lfn_state_t lfn = {};
+  priv_lfn_reset(&lfn);
+  uint8_t eod                           = 0;
+  uint8_t buf[k_ra_fs_bytes_per_sector] = {};
+  while (eod == 0U) {
+    ra_err_t err = priv_read_sector(m, w.cur_lba, buf);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
+      uint8_t* ent = &buf[(size_t)e * (size_t)k_ra_fs_dir_entry_bytes];
+      if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
+        return k_ra_err_not_found;
+      }
+      if (ent[k_dir_off_name] == k_dir_marker_free_used) {
+        priv_lfn_reset(&lfn); /* a deleted slot breaks the chain */
+        continue;
+      }
+      if (ent[k_dir_off_attr] == k_ra_fs_attr_lfn) {
+        priv_lfn_add(&lfn, ent);
+        continue;
+      }
+      const char* lname = priv_lfn_name_for(&lfn, ent);
+      if ((lname != nullptr) && (priv_name_ieq(needle, lname) != 0U)) {
+        *out_lba       = w.cur_lba;
+        *out_entry_off = e * (uint32_t)k_ra_fs_dir_entry_bytes;
+        priv_byte_copy(out_entry, ent, k_ra_fs_dir_entry_bytes);
+        return k_ra_ok;
+      }
+      priv_lfn_reset(&lfn); /* 8.3 entry consumed -> next chain starts fresh */
+    }
+    err = priv_dir_walk_next_sector(m, &w, &eod);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_err_not_found;
+}
+
 /**
  * @brief Locate the first free entry slot in the root directory.
  *
@@ -3878,14 +4061,22 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   if (handle->type == k_ra_fs_type_exfat) {
     return priv_exfat_open(handle, path, mode, out_file);
   }
-  uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(path, name83) == 0U) {
-    return k_ra_err_invalid_arg;
-  }
+  uint8_t       name83[k_max_8_3_name] = {};
+  const uint8_t have83                 = priv_path_to_83(path, name83);
+
   uint32_t lba                            = 0;
   uint32_t off                            = 0;
   uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
-  ra_err_t err                            = priv_dir_find(handle, name83, &lba, &off, entry);
+  ra_err_t err                            = k_ra_err_not_found;
+  if (have83 != 0U) {
+    err = priv_dir_find(handle, name83, &lba, &off, entry);
+  }
+  if (err == k_ra_err_not_found) {
+    /* VFAT long-name fallback: a name that is not 8.3-representable (e.g. a
+     * 4-char ".epub" extension), or an 8.3 lookup that missed, can still match a
+     * file's long name. */
+    err = priv_dir_find_long(handle, path, &lba, &off, entry);
+  }
   if (err == k_ra_ok) {
     return priv_open_existing(handle, entry, lba, off, mode, out_file);
   }
@@ -3894,6 +4085,10 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   }
   if (mode == k_ra_fs_mode_read) {
     return k_ra_err_not_found;
+  }
+  /* Creation needs an 8.3-representable name (LFN write is out of scope, #101). */
+  if (have83 == 0U) {
+    return k_ra_err_invalid_arg;
   }
   return priv_create_new(handle, name83, mode, out_file);
 }
@@ -4504,7 +4699,8 @@ ra_err_t ra_fs_size(const ra_fs_file_t* file, uint32_t* out_bytes)
  *
  * @since 0.1.0
  */
-static uint8_t priv_listdir_visit_sector(const uint8_t* buf, ra_fs_listdir_cb_t cb, void* ctx)
+static uint8_t
+priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra_fs_listdir_cb_t cb, void* ctx)
 {
   for (uint32_t e = 0; e < (uint32_t)k_dir_entries_per_sector; e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra_fs_dir_entry_bytes];
@@ -4512,15 +4708,20 @@ static uint8_t priv_listdir_visit_sector(const uint8_t* buf, ra_fs_listdir_cb_t 
       return 1U;
     }
     if (ent[k_dir_off_name] == k_dir_marker_free_used) {
+      priv_lfn_reset(lfn); /* a deleted slot breaks any in-progress chain */
       continue;
     }
     if (ent[k_dir_off_attr] == k_ra_fs_attr_lfn) {
+      priv_lfn_add(lfn, ent);
       continue;
     }
-    char name[k_ra_fs_short_name_len] = {};
-    priv_83_to_str(&ent[k_dir_off_name], name);
-    const uint32_t size = priv_rd32(&ent[k_dir_off_file_size]);
-    cb(name, ent[k_dir_off_attr], size, ctx);
+    char short_name[k_ra_fs_short_name_len] = {};
+    priv_83_to_str(&ent[k_dir_off_name], short_name);
+    /* Report the VFAT long name when the preceding chain matches; else the 8.3. */
+    const char*    lname = priv_lfn_name_for(lfn, &ent[k_dir_off_name]);
+    const uint32_t size  = priv_rd32(&ent[k_dir_off_file_size]);
+    cb((lname != nullptr) ? lname : short_name, ent[k_dir_off_attr], size, ctx);
+    priv_lfn_reset(lfn);
   }
   return 0U;
 }
@@ -4569,6 +4770,8 @@ ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb
   }
   dir_walk_t w = {};
   priv_dir_walk_init_root(handle, &w);
+  lfn_state_t lfn = {}; /* persists across sectors -- LFN chains can straddle them */
+  priv_lfn_reset(&lfn);
   uint8_t eod                           = 0;
   uint8_t buf[k_ra_fs_bytes_per_sector] = {};
   while (eod == 0U) {
@@ -4576,7 +4779,7 @@ ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb
     if (err != k_ra_ok) {
       return err;
     }
-    if (priv_listdir_visit_sector(buf, cb, ctx) != 0U) {
+    if (priv_listdir_visit_sector(buf, &lfn, cb, ctx) != 0U) {
       return k_ra_ok;
     }
     err = priv_dir_walk_next_sector(handle, &w, &eod);
