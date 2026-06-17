@@ -134,6 +134,25 @@ sim_extra_args() { # app -> extra args on stdout
     esac
 }
 
+# Echo the UART substring an app must print for its peripheral to count as
+# "meaningfully exercised" (board_sim emits SCI TX as `[uart] SCIn: ...`), or
+# nothing for apps with no such banner (display / button / render apps). This
+# upgrades the gate from "booted without faulting" to "produced the right
+# peripheral data" -- e.g. crc_demo's hw CRC must equal its sw CRC, dma_memcopy
+# must actually copy, adc must read midscale, the RTC alarm must fire.
+uart_expect() { # app -> expected UART substring on stdout
+    case "$1" in
+    uart_hello)         printf 'hello, ra8d2!' ;;
+    crc_demo)           printf 'match=Y' ;;
+    adc_b_demo)         printf 'adc: raw=' ;;
+    agt_periodic)       printf 'agt: tick' ;;
+    dma_memcopy_demo)   printf 'dma: copied 1024B match=Y' ;;
+    rtc_alarm)          printf 'rtc: alarm fired' ;;
+    elc_event_demo)     printf 'elc: en=1 trig=' ;;
+    timer_capture_demo) printf 'gpt: period=' ;;
+    esac
+}
+
 apps=("$@")
 if [ "${#apps[@]}" -eq 0 ]; then
     # Bare-metal apps that run identically on the CI runner's Unicorn (2.0.1) and
@@ -153,7 +172,9 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
-        canfd_loopback imu_lsm6dso_demo gpio_input_demo)
+        canfd_loopback imu_lsm6dso_demo gpio_input_demo \
+        adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
+        timer_capture_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -253,6 +274,18 @@ for app in "${apps[@]}"; do
         continue
         ;;
     esac
+    # Peripheral apps: assert the app actually produced its real SCI output, not
+    # just that it reached the run budget (the #67 "exercise it meaningfully" bar).
+    want="$(uart_expect "$app")"
+    if [ -n "$want" ]; then
+        if echo "$out" | grep -qF "$want"; then
+            echo "OK (pc=$pc, uart: '$want')"
+        else
+            echo "UART MISMATCH (pc=$pc; expected '$want' in the SCI output)"
+            fail=1
+        fi
+        continue
+    fi
     echo "OK (pc=$pc)"
 done
 
