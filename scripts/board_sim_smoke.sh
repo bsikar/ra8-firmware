@@ -113,13 +113,14 @@ sd_image=""
 # USB device-enumeration apps (#67 Phase 3 -- the headline USB-debugging goal).
 # board_sim's virtual USB host (board_usb.c) watches SYSCFG.DPRPU and drives the
 # real chapter-9 SETUP sequence (GET_DESCRIPTOR -> SET_ADDRESS -> SET_CONFIGURATION
-# -> CDC line requests) against the firmware's actual USBX device stack + USBFS
-# DCD register model. For these apps we assert the device reaches CONFIGURED with
-# its class active -- i.e. enumeration completed end to end, with no hardware.
+# plus the class-specific traffic) against the firmware's actual USBX device stack
+# + USBFS DCD register model. For these apps we assert the device reaches
+# CONFIGURED with its class active -- i.e. enumeration completed end to end, with
+# no hardware: CDC-ACM, HID (boot mouse), and MSC (BOT/SCSI + a sector read).
 # They are ThreadX/USBX, so (like the LevelX/FileX apps) they need a newer Unicorn
 # than the CI runner's 2.0.1 and a bounded budget; pass them explicitly, e.g.
-# `scripts/board_sim_smoke.sh usb_cdc_echo`.
-usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo"
+# `scripts/board_sim_smoke.sh usb_cdc_echo usb_msc_device`.
+usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device"
 
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
@@ -217,11 +218,15 @@ for app in "${apps[@]}"; do
     # shellcheck disable=SC2046  -- intentional word-split of the extra args
     extra="$(sim_extra_args "$app")"
     # USB device-enumeration apps: the virtual host drives chapter-9; assert the
-    # device reaches CONFIGURED. Bounded budget + idle-stop so the forever-looping
-    # RTOS app settles quickly once enumeration is done (no display/UART check).
+    # device reaches CONFIGURED. BOARD_SIM_USB_STOP stops the run a short settle
+    # window after enumeration completes -- these apps never idle (HID jiggles its
+    # mouse, MSC keeps answering polls), so this is what keeps the gate fast and
+    # deterministic. MAX_CHUNKS is the failure cap (no CONFIGURED -> run ends ->
+    # ENUM FAIL); the WALL_S floor stops the wall-clock guard truncating first.
     case " $usb_enum_apps " in
     *" $app "*)
-        uout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_IDLE_STOP=1200 "$sim" "$elf" 2>&1 || true)"
+        uout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_USB_STOP=300 BOARD_SIM_WALL_S=300 \
+            "$sim" "$elf" 2>&1 || true)"
         if echo "$uout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
             echo "FAULT (during USB bring-up)"
             fail=1
