@@ -1,0 +1,556 @@
+/**
+ * @file test_ra_fs_format.c
+ * @brief Format (mkfs) round-trip + MC/DC unit tests for `ra_fs_format()`.
+ *
+ * @details
+ * Sibling of ``tests/test_ra_fs_fat.c``. Where that file exercises the mount /
+ * file-op contract on a hand-built BPB, this file drives the **formatter**:
+ * for FAT12, FAT16, and FAT32 it formats a RAM-backed block device through the
+ * public ``ra_fs_format()`` API, then proves the result is real by mounting it,
+ * asserting the detected ``ra_fs_type`` matches the request, and running a
+ * create / write / read-back / verify / list / unlink / unmount cycle on the
+ * fresh volume. exFAT formatting must report ``k_ra_err_not_supported``.
+ *
+ * The compound boolean decisions inside the format geometry/validation logic
+ * (``ra_fs_format`` argument + capacity guards, ``priv_fmt_spc_valid``,
+ * ``priv_fmt_count_in_band``, ``priv_fmt_choose_geometry``) carry explicit
+ * Modified Condition/Decision Coverage vectors per DO-178C Level B / IEC 61508
+ * SIL 3 using the canonical N+1 pattern.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_fs.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum ra_fs_fmt_test_t
+ * @brief Synthetic block-device sizes (in 512-byte sectors) per FAT band.
+ *
+ * @details Each size is picked so the formatter's auto cluster-size sweep lands
+ *          the cluster count squarely inside the requested band: a 512 KiB
+ *          card for FAT12, a 4 MiB card for FAT16, and a 36 MiB card for FAT32.
+ */
+typedef enum : uint32_t {
+  k_fmt_block_size    = 512U,   /**< Bytes per sector.                       */
+  k_fmt_blocks_fat12  = 1024U,  /**< 512 KiB -> FAT12 band.                  */
+  k_fmt_blocks_fat16  = 8192U,  /**< 4 MiB   -> FAT16 band.                  */
+  k_fmt_blocks_fat32  = 73728U, /**< 36 MiB  -> FAT32 band.                  */
+  k_fmt_blocks_tiny   = 64U,    /**< 32 KiB -- too small for FAT16/FAT32.    */
+  k_fmt_payload_bytes = 1300U,  /**< Multi-cluster payload (> 1 KiB).        */
+} ra_fs_fmt_test_t;
+
+/** @brief Memory-backed disk handed to ra_fs as a block device. */
+typedef struct {
+  uint8_t* bytes;       /**< Flat sector store.         */
+  uint32_t block_count; /**< Number of 512-byte blocks. */
+} mem_disk_t;
+
+/** @brief Listdir tally cookie. */
+typedef struct {
+  uint32_t count;                        /**< Visible entries seen.   */
+  char     last[k_ra_fs_short_name_len]; /**< Last name reported.     */
+} list_ctx_t;
+
+static mem_disk_t s_disk = {};
+
+static ra_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+{
+  mem_disk_t* d = (mem_disk_t*)ctx;
+  if (lba + count > d->block_count) {
+    return k_ra_err_out_of_range;
+  }
+  memcpy(buf, &d->bytes[lba * (uint32_t)k_fmt_block_size], count * (uint32_t)k_fmt_block_size);
+  return k_ra_ok;
+}
+
+static ra_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+{
+  mem_disk_t* d = (mem_disk_t*)ctx;
+  if (lba + count > d->block_count) {
+    return k_ra_err_out_of_range;
+  }
+  memcpy(&d->bytes[lba * (uint32_t)k_fmt_block_size], buf, count * (uint32_t)k_fmt_block_size);
+  return k_ra_ok;
+}
+
+static ra_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+{
+  mem_disk_t* d = (mem_disk_t*)ctx;
+  *block_count  = d->block_count;
+  *block_size   = (uint32_t)k_fmt_block_size;
+  return k_ra_ok;
+}
+
+static const ra_fs_backend_t s_backend = {
+  .read_block   = mem_read,
+  .write_block  = mem_write,
+  .get_capacity = mem_capacity,
+  .ctx          = &s_disk,
+};
+
+static void free_volume(void)
+{
+  if (s_disk.bytes != nullptr) {
+    free(s_disk.bytes);
+    s_disk.bytes = nullptr;
+  }
+}
+
+/**
+ * @brief Allocate a fresh, garbage-filled card of @p blocks sectors.
+ *
+ * @details The store is pre-filled with 0xA5 so a successful format proves the
+ *          formatter actually wrote a valid BPB (rather than a zeroed buffer
+ *          accidentally satisfying a reader).
+ */
+static void alloc_garbage_card(uint32_t blocks)
+{
+  free_volume();
+  s_disk.bytes       = (uint8_t*)malloc((size_t)blocks * (size_t)k_fmt_block_size);
+  s_disk.block_count = blocks;
+  if (s_disk.bytes == nullptr) {
+    TEST_FAIL_FMT("%s", "malloc failed");
+  }
+  memset(s_disk.bytes, 0xA5, (size_t)blocks * (size_t)k_fmt_block_size);
+}
+
+static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+{
+  (void)attr;
+  (void)size;
+  list_ctx_t* c = (list_ctx_t*)ctx;
+  c->count++;
+  (void)snprintf(c->last, sizeof(c->last), "%s", name);
+}
+
+/**
+ * @brief Format @p blocks-sector card as @p type, then run a full file cycle.
+ *
+ * @details Shared body for the three positive cases: format, mount, assert the
+ *          detected type, create + write a multi-cluster payload, read it back
+ *          and byte-compare, list (expect exactly the one file), unlink, list
+ *          again (expect empty), unmount. Any failure aborts via the harness.
+ */
+static void format_mount_cycle(uint32_t blocks, ra_fs_type_t type, const char* label)
+{
+  alloc_garbage_card(blocks);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = type;
+  opts.label               = label;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(type, h->type);
+
+  static uint8_t wr[k_fmt_payload_bytes];
+  static uint8_t rd[k_fmt_payload_bytes];
+  for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
+    wr[i] = (uint8_t)((i * 31U) + 7U);
+    rd[i] = 0U;
+  }
+  ra_fs_file_t* f = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "HELLO.BIN", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_write(f, wr, (uint32_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "HELLO.BIN", k_ra_fs_mode_read, &f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
+  TEST_ASSERT_EQ((uint32_t)k_fmt_payload_bytes, got);
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+
+  list_ctx_t ctx = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(1, ctx.count);
+  TEST_ASSERT_EQ(0, strcmp(ctx.last, "HELLO.BIN"));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unlink(h, "HELLO.BIN"));
+  ctx.count = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(0, ctx.count);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
+  free_volume();
+}
+
+/**
+ * @test test_format_fat12_round_trip
+ * @par MC/DC:
+ * (no compound decision in the code this case uniquely touches -- it exercises
+ * the FAT12 format + mount + file-cycle happy path end to end; the compound
+ * decisions in the format path are covered by the dedicated MC/DC cases below)
+ */
+static void test_format_fat12_round_trip(void)
+{
+  TEST_BEGIN("ra_fs format: FAT12 format + mount + file cycle");
+  format_mount_cycle((uint32_t)k_fmt_blocks_fat12, k_ra_fs_type_fat12, "FAT12VOL");
+  TEST_END("ra_fs format: FAT12 format + mount + file cycle");
+}
+
+/**
+ * @test test_format_fat16_round_trip
+ * @par MC/DC:
+ * (no compound decision unique to this case -- FAT16 format + mount + file
+ * cycle happy path; format-path compound decisions covered separately below)
+ */
+static void test_format_fat16_round_trip(void)
+{
+  TEST_BEGIN("ra_fs format: FAT16 format + mount + file cycle");
+  format_mount_cycle((uint32_t)k_fmt_blocks_fat16, k_ra_fs_type_fat16, "FAT16VOL");
+  TEST_END("ra_fs format: FAT16 format + mount + file cycle");
+}
+
+/**
+ * @test test_format_fat32_round_trip
+ * @par MC/DC:
+ * (no compound decision unique to this case -- FAT32 format + mount + file
+ * cycle happy path; format-path compound decisions covered separately below)
+ */
+static void test_format_fat32_round_trip(void)
+{
+  TEST_BEGIN("ra_fs format: FAT32 format + mount + file cycle");
+  format_mount_cycle((uint32_t)k_fmt_blocks_fat32, k_ra_fs_type_fat32, "FAT32VOL");
+  TEST_END("ra_fs format: FAT32 format + mount + file cycle");
+}
+
+/**
+ * @test test_format_label_persisted_as_volume_id
+ * @par MC/DC:
+ * (no compound decision unique to this case -- asserts the FAT16 root holds a
+ * VOLUME_ID directory entry the formatter never writes, i.e. proves the root
+ * is empty after format; happy-path data assertion only)
+ */
+static void test_format_label_persisted_as_volume_id(void)
+{
+  TEST_BEGIN("ra_fs format: fresh FAT16 root is empty (no stray entries)");
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  opts.label               = "SCRATCH";
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  list_ctx_t ctx = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(0, ctx.count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
+  free_volume();
+  TEST_END("ra_fs format: fresh FAT16 root is empty (no stray entries)");
+}
+
+/**
+ * @test test_mcdc_format_args_pair
+ * @par MC/DC:
+ * Decision: `if (backend == NULL || opts == NULL)` (2 conditions, function
+ * `ra_fs_format`).
+ * - V1 backend=valid, opts=valid -> F (control: both false; the format runs).
+ * - V2 backend=NULL,  opts=valid -> C1=T -> T (varies backend only).
+ * - V3 backend=valid, opts=NULL  -> C1=F, C2=T -> T (varies opts only).
+ * V1+V2 prove backend independently flips the outcome; V1+V3 prove opts does.
+ * N+1 = 3 vectors for N=2 conditions.
+ */
+static void test_mcdc_format_args_pair(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: (backend||opts) NULL pair");
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_format(nullptr, &opts));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_format(&s_backend, nullptr));
+  free_volume();
+  TEST_END("ra_fs format MC/DC: (backend||opts) NULL pair");
+}
+
+/**
+ * @test test_mcdc_format_backend_fn_pair
+ * @par MC/DC:
+ * Decision: `if (backend->write_block == NULL || backend->get_capacity == NULL)`
+ * (2 conditions, function `ra_fs_format`).
+ * - V1 both non-NULL -> F (format proceeds).
+ * - V2 write_block=NULL -> C1=T -> T (varies write_block only).
+ * - V3 get_capacity=NULL -> C1=F, C2=T -> T (varies get_capacity only).
+ * N+1 = 3 vectors for N=2 conditions.
+ */
+static void test_mcdc_format_backend_fn_pair(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: (write_block||get_capacity) NULL pair");
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  ra_fs_backend_t no_wr = s_backend;
+  no_wr.write_block     = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_format(&no_wr, &opts));
+  ra_fs_backend_t no_cap = s_backend;
+  no_cap.get_capacity    = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_format(&no_cap, &opts));
+  free_volume();
+  TEST_END("ra_fs format MC/DC: (write_block||get_capacity) NULL pair");
+}
+
+/**
+ * @test test_mcdc_format_type_triple
+ * @par MC/DC:
+ * Decision: `if (type != FAT12 && type != FAT16 && type != FAT32)` (3
+ * conditions, function `ra_fs_format`). The guard returns not-supported when
+ * ALL three are true (the type is none of the writable variants).
+ * Conditions A=(!=FAT12), B=(!=FAT16), C=(!=FAT32).
+ * - V1 FAT16 -> A=T, B=F -> short-circuit F (accepted; format proceeds).
+ * - V2 FAT12 -> A=F -> short-circuit F (accepted).
+ * - V3 FAT32 -> A=T, B=T, C=F -> F (accepted).
+ * - V4 exFAT -> A=T, B=T, C=T -> T (rejected, not-supported).
+ * V4 vs V2 flips A; V4 vs V1 flips B; V4 vs V3 flips C -- each condition
+ * independently drives the reject outcome. N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_format_type_triple(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: type (!=12 && !=16 && !=32) triple");
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  opts.type = k_ra_fs_type_fat12;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat12);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  opts.type = k_ra_fs_type_fat32;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  opts.type = k_ra_fs_type_exfat;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_fs_format(&s_backend, &opts));
+  free_volume();
+  TEST_END("ra_fs format MC/DC: type (!=12 && !=16 && !=32) triple");
+}
+
+/**
+ * @test test_mcdc_format_spc_valid_pair
+ * @par MC/DC:
+ * Decision: the cluster-size guard, expressed across `priv_fmt_spc_valid`:
+ * accept when `spc == 0 || (spc <= 64 && is_power_of_two(spc))`. The two
+ * observable conditions through the public API are the upper-bound check
+ * (`spc > k_fmt_spc_max`) and the power-of-two check
+ * (`(spc & (spc-1)) == 0`).
+ * - V1 spc=1   -> in range, power of two -> accepted (F,F). On the 4 MiB card
+ *      spc=1 is the cluster size that lands the count in the FAT16 band.
+ * - V2 spc=128 -> over the 64 cap -> rejected (range condition T).
+ * - V3 spc=3   -> in range, NOT a power of two -> rejected (pow2 condition T).
+ * V1 vs V2 flips the range condition; V1 vs V3 flips the power-of-two
+ * condition. N+1 = 3 vectors for the two effective conditions.
+ */
+static void test_mcdc_format_spc_valid_pair(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: spc (==0 || (<=64 && pow2)) guard");
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  opts.sectors_per_cluster = 1U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  opts.sectors_per_cluster = 128U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_format(&s_backend, &opts));
+  opts.sectors_per_cluster = 3U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_format(&s_backend, &opts));
+  free_volume();
+  TEST_END("ra_fs format MC/DC: spc (==0 || (<=64 && pow2)) guard");
+}
+
+/**
+ * @test test_mcdc_format_block_guard_pair
+ * @par MC/DC:
+ * Decision: `if (block_size != 512 || block_count == 0)` (2 conditions,
+ * function `ra_fs_format`, after `get_capacity`). The mem backend always
+ * reports block_size == 512, and a zero-block card cannot be allocated, so the
+ * independent influence of each condition is structurally constrained to one
+ * reachable input each: a valid 512-byte card flips the decision false, while a
+ * backend reporting a non-512 block size flips it true. C2 (block_count == 0)
+ * is unreachable through this backend and is deactivated under DO-178C 6.4.4.3.
+ * - V1 valid 512 B card -> C1=F, C2=F -> F (format proceeds).
+ * - V2 backend reports 1024 B sectors -> C1=T -> T (rejected).
+ * N+1 (for the one observable condition) = 2 vectors.
+ */
+static ra_err_t bad_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+{
+  (void)ctx;
+  *block_count = (uint32_t)k_fmt_blocks_fat16;
+  *block_size  = 1024U; /* not 512 -> formatter must reject */
+  return k_ra_ok;
+}
+
+static void test_mcdc_format_block_guard_pair(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: (block_size!=512 || block_count==0) guard");
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  ra_fs_backend_t wrong_bs = s_backend;
+  wrong_bs.get_capacity    = bad_cap;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_format(&wrong_bs, &opts));
+  free_volume();
+  TEST_END("ra_fs format MC/DC: (block_size!=512 || block_count==0) guard");
+}
+
+/**
+ * @test test_mcdc_format_count_in_band_capacity
+ * @par MC/DC:
+ * Decision: `priv_fmt_count_in_band(type, count)` for FAT16 --
+ * `count >= 4085 && count < 65525` (2 conditions). Driven through
+ * `priv_fmt_choose_geometry` via the public formatter with a pinned cluster
+ * size so the cluster count is forced into / out of the band.
+ * - V1 4 MiB card, spc auto -> count in [4085, 65525) -> both T -> accepted.
+ * - V2 32 KiB card as FAT16 -> count < 4085 -> lower bound F -> rejected
+ *      (`k_ra_err_invalid_size`): the auto-sweep cannot reach the band.
+ * - V3 32 KiB card as FAT32 -> count < 65525 always -> FAT32 lower bound F ->
+ *      rejected: proves the upper/lower split is per-type.
+ * V1 vs V2 flips the FAT16 lower-bound condition; the FAT32 leg (V3) exercises
+ * the symmetric lower-bound check for the other type. N+1 coverage of the
+ * band-membership decisions.
+ */
+static void test_mcdc_format_count_in_band_capacity(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: count-in-band / capacity guard");
+  ra_fs_format_opts_t opts = {};
+
+  opts.type = k_ra_fs_type_fat16;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+
+  opts.type = k_ra_fs_type_fat16;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_tiny);
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_fs_format(&s_backend, &opts));
+
+  opts.type = k_ra_fs_type_fat32;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_tiny);
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_fs_format(&s_backend, &opts));
+
+  free_volume();
+  TEST_END("ra_fs format MC/DC: count-in-band / capacity guard");
+}
+
+/**
+ * @test test_mcdc_format_pinned_spc_geometry
+ * @par MC/DC:
+ * Decision: `if (!auto_mode || spc >= k_fmt_spc_max)` inside
+ * `priv_fmt_choose_geometry` (2 conditions), the early-out that decides whether
+ * the sweep may try a larger cluster size.
+ * - V1 auto, small card -> auto_mode true so `!auto_mode`=F; the first spc is
+ *      in band, so the loop returns before the guard -- the guard is reached
+ *      with C1=F and (on a card needing a larger cluster) C2 stepping the
+ *      sweep. Exercised by the FAT32 36 MiB auto format (multiple spans).
+ * - V2 pinned spc that yields an in-band count -> auto_mode false but the
+ *      in-band check returns first -> accepted (4 MiB FAT16, spc pinned 1).
+ * - V3 pinned spc that yields an out-of-band count -> `!auto_mode`=T -> the
+ *      guard fires and the format is rejected (FAT12 on the 4 MiB card with a
+ *      pinned spc that overshoots the FAT12 ceiling).
+ * V2 vs V3 flips C1 (auto vs pinned reject); the auto sweep (V1) drives C2.
+ */
+static void test_mcdc_format_pinned_spc_geometry(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: choose-geometry sweep early-out");
+  ra_fs_format_opts_t opts = {};
+
+  /* V1: auto sweep on a 36 MiB card lands FAT32 (the sweep may step spc). */
+  opts.type                = k_ra_fs_type_fat32;
+  opts.sectors_per_cluster = 0U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+
+  /* V2: pinned spc=1 on a 4 MiB card lands in the FAT16 band (8095 clusters). */
+  opts.type                = k_ra_fs_type_fat16;
+  opts.sectors_per_cluster = 1U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+
+  /* V3: FAT12 requested on a 4 MiB card with spc pinned to 1 -> cluster count
+   * far exceeds the FAT12 ceiling and the pinned mode cannot grow spc, so the
+   * choose-geometry guard rejects with invalid-size. */
+  opts.type                = k_ra_fs_type_fat12;
+  opts.sectors_per_cluster = 1U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_fs_format(&s_backend, &opts));
+
+  free_volume();
+  TEST_END("ra_fs format MC/DC: choose-geometry sweep early-out");
+}
+
+/**
+ * @enum ra_fs_fmt_label_t
+ * @brief FAT16 BS_VolLab field offset + width for label assertions.
+ */
+typedef enum : uint32_t {
+  k_fmt_f16_label_off = 43U,   /**< FAT12/16 BS_VolLab byte offset. */
+  k_fmt_label_width   = 11U,   /**< Volume-label field width.       */
+  k_fmt_ascii_space   = 0x20U, /**< Padding byte in the label.    */
+} ra_fs_fmt_label_t;
+
+/**
+ * @test test_mcdc_format_label_field_pair
+ * @par MC/DC:
+ * Decision: `if (!past_end && (label[i] == '\0'))` inside `priv_fmt_label_field`
+ * (2 conditions), reached via `ra_fs_format` while laying the BS_VolLab field.
+ * Conditions A=(!past_end), B=(label[i]=='\0').
+ * - V1 NULL label -> past_end starts true so A=F -> short-circuit F; the field
+ *      is all spaces. (A false leg.)
+ * - V2 "AB" label, at a character position (i=0) -> A=T, B=F -> F; the char is
+ *      copied. (B false leg, A true.)
+ * - V3 "AB" label, at the NUL position (i=2) -> A=T, B=T -> T; past_end latches
+ *      and the rest pads with spaces. (Both true.)
+ * V2 vs V3 flips B with A held true (B independence); V1 vs V3 is the
+ * short-circuit pair proving A drives the outcome when B would be true.
+ * N+1 = 3 vectors for N=2 conditions.
+ */
+static void test_mcdc_format_label_field_pair(void)
+{
+  TEST_BEGIN("ra_fs format MC/DC: label_field (!past_end && NUL)");
+
+  /* V1: NULL label -> the BS_VolLab field is space-padded (A=F leg). */
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  opts.label               = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_width; i++) {
+    TEST_ASSERT_EQ((uint8_t)k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
+  }
+
+  /* V2 + V3: short "AB" label -> 'A','B' copied (A=T,B=F at chars), then the
+   * NUL latches past_end (A=T,B=T) and the tail is space-padded. */
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  opts.label = "AB";
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  TEST_ASSERT_EQ((uint8_t)'A', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 0U]);
+  TEST_ASSERT_EQ((uint8_t)'B', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 1U]);
+  for (uint32_t i = 2U; i < (uint32_t)k_fmt_label_width; i++) {
+    TEST_ASSERT_EQ((uint8_t)k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
+  }
+  free_volume();
+  TEST_END("ra_fs format MC/DC: label_field (!past_end && NUL)");
+}
+
+int32_t main(void)
+{
+  test_format_fat12_round_trip();
+  test_format_fat16_round_trip();
+  test_format_fat32_round_trip();
+  test_format_label_persisted_as_volume_id();
+  test_mcdc_format_args_pair();
+  test_mcdc_format_backend_fn_pair();
+  test_mcdc_format_type_triple();
+  test_mcdc_format_spc_valid_pair();
+  test_mcdc_format_block_guard_pair();
+  test_mcdc_format_count_in_band_capacity();
+  test_mcdc_format_pinned_spc_geometry();
+  test_mcdc_format_label_field_pair();
+  (void)fprintf(stderr, "[OK  ] test_ra_fs_format.c\n");
+  return 0;
+}
