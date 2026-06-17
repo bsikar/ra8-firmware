@@ -50,8 +50,11 @@ post-mortems: `BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
 unchanged for N chunks -- an RTOS idle spin), `BOARD_SIM_USB_STOP=N` (stop N
 chunks after the virtual host reports the device CONFIGURED -- the USB device
 apps never idle, so this is what makes the enumeration gate fast and
-deterministic), and `BOARD_SIM_USBH_STOP=N` (the host-mode counterpart: stop N
-chunks after the virtual boot keyboard has streamed its reports).
+deterministic), `BOARD_SIM_USBH_STOP=N` (the host-mode counterpart: stop N
+chunks after the virtual boot keyboard has streamed its reports / the MSC host
+reaches its read-only write test), and `BOARD_SIM_STOP_ON="<substr>"` (a generic
+banner stop: end the run as soon as the console UART's last line contains
+`<substr>` -- used to stop an app that loops forever after a success line).
 
 The console UART is captured: every byte the firmware writes to an SCI TDR is
 echoed to stdout (`[uart] SCIn: ...`), so a console app's output is greppable
@@ -224,11 +227,19 @@ only if you exceed the registry capacity.
   enumerates it, `READ_CAPACITY`s, mounts the FAT16 over `ra_fs`, browses the root
   directory (finds `MRAM.BIN`, 1 MiB), content-verifies all 1 048 576 bytes against
   MRAM, and confirms a `WRITE(10)` is rejected (read-only) -- `ra8d2 host: USB HOST
-  MSC BROWSE PASS`. Both host apps are gated: `scripts/board_sim_smoke.sh
-  usb_host_keyboard usb_host_msc_browse` asserts each PASS banner. The seam picks
-  the virtual device's class from the firmware's linked host stack (`ra_usb_hmsc_*`
-  -> disk, else `ra_usb_host_*` -> keyboard) and is symbol-gated, so device-mode
-  apps are entirely unaffected.
+  MSC BROWSE PASS`.
+- Proven on `usb_host_file_ops`: the same MSC disk made **read-write**. When the
+  firmware links `fileops_backend_write` the virtual disk accepts `WRITE(10)` into
+  a small sector overlay (a host file touches only a handful of FAT / root / data
+  sectors), so the host's `ra_fs` can create, read back, rename, and unlink a
+  file: the app runs its full nine-step ladder (write `USBTEST.TXT`, verify the
+  payload, rename to `USBDONE.TXT`, unlink) and prints `ra8d2 fileops: ALL FILE
+  OPS PASSED`. All three host apps are gated: `scripts/board_sim_smoke.sh
+  usb_host_keyboard usb_host_msc_browse usb_host_file_ops` asserts each PASS
+  banner. The seam picks the virtual device's class + writability from the
+  firmware's linked host stack (`ra_usb_hmsc_*` -> disk, `fileops_backend_write`
+  -> writable, else `ra_usb_host_*` -> keyboard) and is symbol-gated, so
+  device-mode apps are entirely unaffected.
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
   USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
 - The graphical board view is proven via `--ppm` region checks: `blink` lights
