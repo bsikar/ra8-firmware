@@ -47,9 +47,11 @@ a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
 32-bit global after the run) and the headless run-bounding env vars for
 post-mortems: `BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
 (wall-clock floor), `BOARD_SIM_IDLE_STOP=N` (stop once observable state is
-unchanged for N chunks -- an RTOS idle spin), and `BOARD_SIM_USB_STOP=N` (stop N
-chunks after the virtual host reports the device CONFIGURED -- the USB apps never
-idle, so this is what makes the enumeration gate fast and deterministic).
+unchanged for N chunks -- an RTOS idle spin), `BOARD_SIM_USB_STOP=N` (stop N
+chunks after the virtual host reports the device CONFIGURED -- the USB device
+apps never idle, so this is what makes the enumeration gate fast and
+deterministic), and `BOARD_SIM_USBH_STOP=N` (the host-mode counterpart: stop N
+chunks after the virtual boot keyboard has streamed its reports).
 
 The console UART is captured: every byte the firmware writes to an SCI TDR is
 echoed to stdout (`[uart] SCIn: ...`), so a console app's output is greppable
@@ -204,6 +206,17 @@ only if you exceed the registry capacity.
   those pools to 32 KiB (matching the HIL-validated `usb_selftest_cdc` and the
   already-correct `usb_msc_device`) restored full enumeration; the gate keeps it
   from regressing again.
+- Proven on `usb_host_keyboard`: the inverse path -- the firmware as USB **host**.
+  The USBHS host controller (`0x40351000`) is unmodelled, so board_sim seams the
+  first-party `ra_usb_host_*` primitives to a **virtual HID boot keyboard** (the
+  same function-seam it uses for `ra_eth_*`, since the register model "cannot
+  satisfy" that sequence either). The firmware's real host stack enumerates the
+  virtual device (device + config + HID descriptors -> SET_ADDRESS ->
+  SET_CONFIGURATION), opens the interrupt-IN pipe, reads the boot-keyboard input
+  reports and decodes the keycodes -- `ra8d2 hid: host decoded keys "RA8D2" ...
+  USB HOST KEYBOARD PASS`. Also a gate: `scripts/board_sim_smoke.sh
+  usb_host_keyboard` asserts that PASS banner. (The seam is symbol-gated on
+  `ra_usb_host_control_xfer`, so device-mode apps are entirely unaffected.)
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
   USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
 - The graphical board view is proven via `--ppm` region checks: `blink` lights

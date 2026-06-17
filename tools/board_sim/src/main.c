@@ -1588,6 +1588,229 @@ static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len, bool t
                 l);
 }
 
+/* ============================================================================
+ * Virtual USB host-mode device: a HID boot keyboard behind the ra_usb_host_*
+ * seam.
+ *
+ * board_usb.c models the USBFS controller in DEVICE mode (a virtual host drives
+ * the firmware's device stack). The inverse case -- the firmware acting as USB
+ * HOST -- drives the USBHS controller (0x40351000, unmodelled) through the
+ * first-party `ra_usb_host_*` primitives, and with no peer the control transfer
+ * wedges (SUREQ never acked -> k_ra_err_busy). Rather than model a second
+ * controller register-by-register, seam those primitives the same way ra_eth_*
+ * is seamed to a virtual net peer (the register model "cannot satisfy" that
+ * sequence either): present a virtual boot keyboard that answers chapter-9
+ * enumeration and streams interrupt-IN reports. This lets a host example
+ * (usb_host_keyboard) enumerate + read reports end to end with no hardware --
+ * validating the host stack's control/data logic, not silicon timing.
+ * ==========================================================================*/
+
+/** @brief bRequest / descriptor-type / sizing constants for the virtual device. */
+typedef enum : uint16_t {
+  k_vkbd_breq_get_descriptor = 0x06U, /**< Standard GET_DESCRIPTOR bRequest.   */
+  k_vkbd_dt_device           = 0x01U, /**< DEVICE descriptor (wValue hi byte). */
+  k_vkbd_dt_config           = 0x02U, /**< CONFIGURATION descriptor.           */
+  k_vkbd_dt_string           = 0x03U, /**< STRING descriptor.                  */
+  k_vkbd_dt_hid_report       = 0x22U, /**< HID REPORT descriptor.              */
+  k_vkbd_lnst_attached       = 0x02U, /**< SYSSTS0.LNST J-state (device on bus).*/
+  k_vkbd_report_len          = 8U,    /**< Boot-keyboard input report width.   */
+  k_vkbd_dev_desc_len        = 18U,   /**< DEVICE descriptor length.           */
+  k_vkbd_cfg_desc_len        = 34U,   /**< Full CONFIGURATION descriptor length.*/
+  k_vkbd_stop_reports        = 8U,    /**< Reports streamed before USB_STOP fires.*/
+} vkbd_const_t;
+
+/** @brief 18-byte DEVICE descriptor: class defined at interface, EP0 MPS 64. */
+static const uint8_t k_vkbd_device_desc[k_vkbd_dev_desc_len] = {
+  0x12,
+  0x01,
+  0x00,
+  0x02,
+  0x00,
+  0x00,
+  0x00,
+  0x40, /* len,DEVICE,bcdUSB2.00,class0,MPS64 */
+  0x6A,
+  0x1A,
+  0x88,
+  0x42,
+  0x00,
+  0x01,
+  0x00,
+  0x00, /* idVendor 0x1A6A, idProduct 0x4288  */
+  0x00,
+  0x01, /* bcdDevice, iM/iP/iS=0, 1 config     */
+};
+
+/** @brief 34-byte CONFIGURATION: 1 HID boot-keyboard iface, 1 interrupt-IN EP1. */
+static const uint8_t k_vkbd_config_desc[k_vkbd_cfg_desc_len] = {
+  0x09, 0x02, 0x22, 0x00, 0x01, 0x01, 0x00, 0xA0, 0x32, /* CONFIG: wTotalLen 34, 1 iface */
+  0x09, 0x04, 0x00, 0x00, 0x01, 0x03, 0x01, 0x01, 0x00, /* IFACE: HID, boot, keyboard    */
+  0x09, 0x21, 0x11, 0x01, 0x00, 0x01, 0x22, 0x3F, 0x00, /* HID: report desc len 0x3F     */
+  0x07, 0x05, 0x81, 0x03, 0x40, 0x00, 0x01,             /* EP1 IN, interrupt, MPS64, 1ms */
+};
+
+/** @brief Standard boot-keyboard HID REPORT descriptor (63 bytes, USB HID 1.11 E.6). */
+static const uint8_t k_vkbd_report_desc[63] = {
+  0x05, 0x01, 0x09, 0x06, 0xA1, 0x01, 0x05, 0x07, 0x19, 0xE0, 0x29, 0xE7, 0x15, 0x00, 0x25, 0x01,
+  0x75, 0x01, 0x95, 0x08, 0x81, 0x02, 0x95, 0x01, 0x75, 0x08, 0x81, 0x01, 0x95, 0x05, 0x75, 0x01,
+  0x05, 0x08, 0x19, 0x01, 0x29, 0x05, 0x91, 0x02, 0x95, 0x01, 0x75, 0x03, 0x91, 0x01, 0x95, 0x06,
+  0x75, 0x08, 0x15, 0x00, 0x25, 0x65, 0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00, 0xC0,
+};
+
+/** @brief HID Usage-Table keycodes the virtual keyboard "types": R A 8 D 2. */
+static const uint8_t k_vkbd_keycodes[5] = {0x15U, 0x04U, 0x25U, 0x07U, 0x1FU};
+
+static uint8_t  s_vkbd_seq           = 0U; /**< Rolling report seq (report byte 0). */
+static uint32_t s_vkbd_ctrl_serviced = 0U; /**< Control transfers answered.         */
+static uint32_t s_vkbd_reports_sent  = 0U; /**< Interrupt-IN reports streamed.      */
+
+/** @brief Read the 5th (stack-passed) argument of an AAPCS call: mem32[SP]. */
+static uint32_t usbh_arg5(uc_engine* uc)
+{
+  uint32_t sp = 0U;
+  uint32_t p  = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_SP, &sp);
+  (void)uc_mem_read(uc, (uint64_t)sp, &p, sizeof(p));
+  return p;
+}
+
+/** @brief Hook a host primitive that just succeeds (init / reset / target / pipe). */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_usbh_ok(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook ra_usb_host_line_state(): report the virtual device attached. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_usbh_line_state(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  eth_hook_return(uc, (uint32_t)k_vkbd_lnst_attached);
+}
+
+/** @brief Hook ra_usb_host_control_xfer(): answer chapter-9 from the virtual device. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_usbh_control_xfer(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t setup_ptr = 0U;
+  uint32_t data_ptr  = 0U;
+  uint32_t data_len  = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &setup_ptr);
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &data_ptr);
+  (void)uc_reg_read(uc, UC_ARM_REG_R3, &data_len);
+  const uint32_t out_ptr = usbh_arg5(uc);
+
+  uint8_t s[8] = {};
+  (void)uc_mem_read(uc, (uint64_t)setup_ptr, s, sizeof(s));
+  const uint8_t  b_request = s[1];
+  const uint8_t  desc_type = s[3]; /* wValue high byte = descriptor type. */
+  const uint8_t* src       = nullptr;
+  uint16_t       src_len   = 0U;
+  if (b_request == (uint8_t)k_vkbd_breq_get_descriptor) {
+    if (desc_type == (uint8_t)k_vkbd_dt_device) {
+      src     = k_vkbd_device_desc;
+      src_len = (uint16_t)k_vkbd_dev_desc_len;
+    } else if (desc_type == (uint8_t)k_vkbd_dt_config) {
+      src     = k_vkbd_config_desc;
+      src_len = (uint16_t)k_vkbd_cfg_desc_len;
+    } else if (desc_type == (uint8_t)k_vkbd_dt_hid_report) {
+      src     = k_vkbd_report_desc;
+      src_len = (uint16_t)sizeof(k_vkbd_report_desc);
+    }
+  }
+  uint16_t n = 0U;
+  if ((src != nullptr) && (data_ptr != 0U)) {
+    n = (src_len < (uint16_t)data_len) ? src_len : (uint16_t)data_len;
+    (void)uc_mem_write(uc, (uint64_t)data_ptr, src, n);
+  }
+  /* No-data control writes (SET_ADDRESS / SET_CONFIGURATION / SET_IDLE /
+   * SET_PROTOCOL) just leave n = 0; the host treats that as a successful ack. */
+  if (out_ptr != 0U) {
+    (void)uc_mem_write(uc, (uint64_t)out_ptr, &n, sizeof(n));
+  }
+  s_vkbd_ctrl_serviced++;
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook ra_usb_host_bulk_in(): stream one boot-keyboard input report. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t buf     = 0U;
+  uint32_t max_len = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &buf);
+  (void)uc_reg_read(uc, UC_ARM_REG_R3, &max_len);
+  const uint32_t out_ptr = usbh_arg5(uc);
+  /* Boot-keyboard report: [seq][reserved 0][keycodes R A 8 D 2][0]. The host
+   * ignores byte 0 and pattern-checks bytes 1.. -- it streams "RA8D2". */
+  uint8_t rep[k_vkbd_report_len] = {};
+  rep[0]                         = s_vkbd_seq++;
+  for (uint32_t i = 0U; i < 5U; i++) {
+    rep[2U + i] = k_vkbd_keycodes[i];
+  }
+  uint16_t n = (uint16_t)k_vkbd_report_len;
+  if ((uint32_t)n > max_len) {
+    n = (uint16_t)max_len;
+  }
+  if (buf != 0U) {
+    (void)uc_mem_write(uc, (uint64_t)buf, rep, n);
+  }
+  if (out_ptr != 0U) {
+    (void)uc_mem_write(uc, (uint64_t)out_ptr, &n, sizeof(n));
+  }
+  s_vkbd_reports_sent++;
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/**
+ * @brief Install the virtual HID-keyboard seam if the host primitives are linked.
+ *
+ * @details Gated on ra_usb_host_control_xfer being present (a USB-host-capable
+ * firmware). Device-mode apps link the symbol but never call it, so the hooks
+ * are inert there; the existing board_usb.c device-mode virtual host is
+ * untouched. Seams line_state (attach), the control transfer (descriptors), the
+ * interrupt-IN read (reports), and the bus-control primitives (succeed).
+ *
+ * @param[in,out] uc  Active Unicorn engine.
+ * @param[in]     elf Loaded ELF image (symbol resolution).
+ * @param[in]     len ELF image length in bytes.
+ *
+ * @pre @p uc is initialised and @p elf holds @p len bytes.
+ * @post On a host app, ra_usb_host_* answers a virtual boot keyboard.
+ *
+ * @note No effect on device-mode apps (the hooked symbols are never called).
+ * @since 0.1.0
+ */
+static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+{
+  const uint32_t cx = elf_sym_addr(elf, len, "ra_usb_host_control_xfer", nullptr);
+  if (cx == 0U) {
+    return; /* not a USB-host-capable firmware -- nothing to seam. */
+  }
+  eth_seam_hook(uc, elf, len, "ra_usb_host_line_state", (void*)on_usbh_line_state);
+  eth_seam_hook(uc, elf, len, "ra_usb_host_control_xfer", (void*)on_usbh_control_xfer);
+  eth_seam_hook(uc, elf, len, "ra_usb_host_bulk_in", (void*)on_usbh_bulk_in);
+  eth_seam_hook(uc, elf, len, "ra_usb_host_bus_reset", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra_usb_host_set_uact", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra_usb_host_set_target", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra_usb_host_pipe_setup", (void*)on_usbh_ok);
+  (void)fprintf(stderr,
+                "  usb-host seam : control=0x%08X (virtual HID boot keyboard \"RA8D2\")\n",
+                cx);
+}
+
 /** @brief Load ELF32 PT_LOAD segments into emulated memory at their LMA. */
 static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
 {
@@ -3113,6 +3336,9 @@ int main(int argc, char** argv)
   /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
    * firmware exports those symbols, i.e. a NetX networking example). */
   eth_seam_install(uc, elf, elf_len, want_trace);
+  /* Virtual USB host-mode device (HID boot keyboard): inert unless the firmware
+   * links the ra_usb_host_* primitives, so device-mode apps are unaffected. */
+  usbh_seam_install(uc, elf, elf_len);
   /* Arm any --trace-sym entry hooks (debugging instrument: watch a bring-up
    * sequence reach -- or stall before -- a given function). Done while the
    * host-side `elf` buffer is still alive for symbol resolution. */
@@ -3243,10 +3469,25 @@ int main(int argc, char** argv)
       }
     }
   }
+  /* BOARD_SIM_USBH_STOP=N: as above but for a USB HOST-mode app -- stop N chunks
+   * after the virtual host-mode keyboard has streamed its reports. Kept distinct
+   * from USB_STOP so a host app that also runs a device worker is not stopped by
+   * that worker reaching CONFIGURED before the host side completes. */
+  uint32_t usbh_stop_settle = 0U;
+  {
+    const char* e_usbh = getenv("BOARD_SIM_USBH_STOP");
+    if ((e_usbh != nullptr) && (view == nullptr)) {
+      const long v = strtol(e_usbh, nullptr, (int)k_env_strtol_base);
+      if (v > 0L) {
+        usbh_stop_settle = (uint32_t)v;
+      }
+    }
+  }
   uint64_t      idle_sig_prev = 0U;
   uint32_t      idle_run      = 0U;
   bool          idle_stopped  = false;
   uint32_t      usb_stop_run  = 0U;
+  uint32_t      usbh_stop_run = 0U;
   bool          usb_stopped   = false;
   uint32_t      rec_frames    = 0U; /* frames written when --record is active. */
   const clock_t t0            = clock();
@@ -3475,11 +3716,23 @@ int main(int argc, char** argv)
           idle_run      = 0U;
         }
       }
-      /* USB-enumeration early-stop: once the device is CONFIGURED, run a short
-       * settle window (for the first class traffic + report line) and stop. */
+      /* USB device-mode early-stop: once the device reaches CONFIGURED, run a
+       * short settle window (for the first class traffic + report line), stop. */
       if ((usb_stop_settle > 0U) && (record_dir == nullptr) && board_usb_configured()) {
         usb_stop_run++;
         if (usb_stop_run >= usb_stop_settle) {
+          usb_stopped = true;
+          break;
+        }
+      }
+      /* USB host-mode early-stop: once the virtual keyboard has streamed its
+       * reports the host has its data; settle (for the PASS banner) and stop.
+       * Separate from USB_STOP because a host app may ALSO run a device worker,
+       * whose CONFIGURED would otherwise stop the run before the host finishes. */
+      if ((usbh_stop_settle > 0U) && (record_dir == nullptr) &&
+          (s_vkbd_reports_sent >= (uint32_t)k_vkbd_stop_reports)) {
+        usbh_stop_run++;
+        if (usbh_stop_run >= usbh_stop_settle) {
           usb_stopped = true;
           break;
         }
