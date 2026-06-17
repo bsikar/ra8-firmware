@@ -17,6 +17,14 @@
  * engine reproduces the live layout **glyph-for-glyph and page-for-page**,
  * and that bumping the font size invalidates the cached blob.
  *
+ * It also drives the **full container pipeline** for #79's real-book corpus:
+ * a real EPUB (public-domain Project Gutenberg prose -- H.G. Wells'
+ * *The Time Machine*) is assembled in memory with miniz (the
+ * `tests/test_ra_epub.c` pattern), opened with `ra_epub_open()`, and each
+ * spine chapter is pulled with `ra_epub_load_chapter()` and run through the
+ * same layout -> cache -> restore identity check. A truncated archive must be
+ * rejected without a crash.
+ *
  * The font is located relative to `__FILE__` (mirrors
  * `tests/test_ra_fs_font_reflow.c`); if it is missing the test SKIPs
  * rather than failing, so the suite stays green on a bare checkout.
@@ -29,6 +37,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "miniz.h"
+#include "ra_epub.h"
 #include "ra_err.h"
 #include "ra_reflow.h"
 #include "ra_reflow_cache.h"
@@ -260,11 +270,212 @@ static void test_corpus_malformed_robust(void)
   TEST_END("reflow_corpus: malformed inputs robust");
 }
 
+/* =========================================================================
+ * Real EPUB container corpus (#79): a public-domain Project Gutenberg book
+ * (H.G. Wells, "The Time Machine") assembled in memory with miniz, opened via
+ * ra_epub, and run chapter-by-chapter through the same layout -> cache check.
+ * ========================================================================= */
+
+typedef enum : size_t {
+  k_c_epub_cap    = 32U * 1024U, /**< In-memory .epub ZIP buffer.        */
+  k_c_chapter_cap = 16U * 1024U, /**< Per-chapter XHTML staging buffer.  */
+} c_epub_size_t;
+
+static uint8_t s_epub_buf[k_c_epub_cap];
+static size_t  s_epub_size;
+static uint8_t s_chapter[k_c_chapter_cap];
+
+static const char* const k_g_mimetype = "application/epub+zip";
+
+static const char* const k_g_container =
+  "<?xml version=\"1.0\"?>\n"
+  "<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n"
+  "  <rootfiles><rootfile full-path=\"OEBPS/content.opf\" "
+  "media-type=\"application/oebps-package+xml\"/></rootfiles>\n"
+  "</container>\n";
+
+static const char* const k_g_opf =
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+  "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"id\">\n"
+  "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+  "    <dc:title>The Time Machine</dc:title>\n"
+  "    <dc:creator>H. G. Wells</dc:creator>\n"
+  "    <dc:language>en</dc:language>\n"
+  "    <dc:identifier id=\"id\">urn:gutenberg:35</dc:identifier>\n"
+  "  </metadata>\n"
+  "  <manifest>\n"
+  "    <item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>\n"
+  "    <item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>\n"
+  "    <item id=\"c2\" href=\"c2.xhtml\" media-type=\"application/xhtml+xml\"/>\n"
+  "  </manifest>\n"
+  "  <spine><itemref idref=\"c1\"/><itemref idref=\"c2\"/></spine>\n"
+  "</package>\n";
+
+static const char* const k_g_nav =
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+  "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">\n"
+  "<head><title>Contents</title></head><body>\n"
+  "<nav epub:type=\"toc\"><ol>\n"
+  "  <li><a href=\"c1.xhtml\">Introduction</a></li>\n"
+  "  <li><a href=\"c2.xhtml\">The Machine</a></li>\n"
+  "</ol></nav></body></html>\n";
+
+/* Real public-domain prose (Project Gutenberg #35), exercising the v1 tag
+ * subset; ASCII transcription (em-dashes as "--", straight quotes). */
+static const char* const k_g_chapter1 =
+  "<?xml version=\"1.0\"?><html><body>"
+  "<h1>I. Introduction</h1>"
+  "<p>The Time Traveller (for so it will be convenient to speak of him) was "
+  "expounding a <em>recondite</em> matter to us. His pale grey eyes shone and "
+  "twinkled, and his usually pale face was flushed and animated.</p>"
+  "<p>The fire burned brightly, and the soft radiance of the incandescent "
+  "lights in the lilies of silver caught the bubbles that flashed and passed "
+  "in our glasses.</p>"
+  "<blockquote>You must follow me carefully. I shall have to controvert one or "
+  "two ideas that are almost universally accepted.</blockquote>"
+  "<p>The geometry, for instance, they taught you at school is founded on a "
+  "<strong>misconception</strong>.</p>"
+  "</body></html>";
+
+static const char* const k_g_chapter2 =
+  "<?xml version=\"1.0\"?><html><body>"
+  "<h2>II. The Machine</h2>"
+  "<p>I am afraid I cannot convey the peculiar sensations of time travelling. "
+  "They are excessively unpleasant. There is a feeling exactly like that one "
+  "has upon a switchback -- of a helpless headlong motion!</p>"
+  "<ul><li>I felt the same horrible anticipation, too, of an imminent smash.</li>"
+  "<li>As I put on pace, night followed day like the flapping of a black wing.</li>"
+  "<li>The jerking sun became a streak of fire, the moon a fainter band.</li></ul>"
+  "<p>I saw trees growing and changing like puffs of vapour, now brown, now "
+  "green; they grew, spread, shivered, and passed away.</p>"
+  "</body></html>";
+
+/**
+ * @brief Assemble the in-memory EPUB into s_epub_buf (miniz writer).
+ * @return 1 on success, 0 on a miniz failure.
+ */
+static int build_gutenberg_epub(void)
+{
+  mz_zip_archive zip;
+  memset(&zip, 0, sizeof(zip));
+  s_epub_size = 0U;
+  if (mz_zip_writer_init_heap(&zip, 0U, (size_t)k_c_epub_cap) != MZ_TRUE) {
+    return 0;
+  }
+  struct {
+    const char* path;
+    const char* data;
+    mz_uint     flags;
+  } entries[] = {
+    {"mimetype", k_g_mimetype, MZ_NO_COMPRESSION},
+    {"META-INF/container.xml", k_g_container, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/content.opf", k_g_opf, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/nav.xhtml", k_g_nav, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/c1.xhtml", k_g_chapter1, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/c2.xhtml", k_g_chapter2, MZ_DEFAULT_COMPRESSION},
+  };
+  for (size_t i = 0U; i < (sizeof(entries) / sizeof(entries[0])); ++i) {
+    if (mz_zip_writer_add_mem(&zip,
+                              entries[i].path,
+                              entries[i].data,
+                              strlen(entries[i].data),
+                              entries[i].flags) != MZ_TRUE) {
+      mz_zip_writer_end(&zip);
+      return 0;
+    }
+  }
+  void*  heap_buf  = nullptr;
+  size_t heap_size = 0U;
+  if (mz_zip_writer_finalize_heap_archive(&zip, &heap_buf, &heap_size) != MZ_TRUE) {
+    mz_zip_writer_end(&zip);
+    return 0;
+  }
+  if ((heap_buf == nullptr) || (heap_size == 0U) || (heap_size > sizeof(s_epub_buf))) {
+    mz_zip_writer_end(&zip);
+    return 0;
+  }
+  memcpy(s_epub_buf, heap_buf, heap_size);
+  s_epub_size = heap_size;
+  mz_zip_writer_end(&zip);
+  return 1;
+}
+
+/**
+ * @test test_corpus_real_epub_pipeline
+ * @brief Open a real EPUB container, then for every spine chapter prove the
+ *        live layout caches and restores glyph/page-identically -- the full
+ *        ra_epub -> ra_reflow -> ra_reflow_cache pipeline for #79's real-book
+ *        corpus.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it exercises the container ->
+ * layout -> cache acceptance path; ra_epub guards have `test_mcdc_*` vectors
+ * in tests/test_ra_epub_*.c and cache guards in tests/test_ra_reflow_cache.c.)
+ */
+static void test_corpus_real_epub_pipeline(void)
+{
+  TEST_BEGIN("reflow_corpus: real EPUB container -> layout -> cache");
+  if (load_font() == 0) {
+    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping epub corpus\n");
+    TEST_END("reflow_corpus: real EPUB container -> layout -> cache");
+    return;
+  }
+  TEST_ASSERT(build_gutenberg_epub() == 1);
+
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, "the_time_machine.epub", &book));
+
+  uint16_t chapters = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_chapter_count(&book, &chapters));
+  TEST_ASSERT_EQ(2U, chapters);
+
+  for (uint16_t i = 0U; i < chapters; ++i) {
+    size_t   got = 0U;
+    ra_err_t err = ra_epub_load_chapter(&book, i, s_chapter, (size_t)k_c_chapter_cap - 1U, &got);
+    TEST_ASSERT_EQ(k_ra_ok, err);
+    TEST_ASSERT(got > 0U);
+    s_chapter[got] = (uint8_t)'\0'; /* NUL-terminate for the strlen-based helpers */
+
+    uint32_t pages = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, layout_live((const char*)s_chapter, (uint16_t)k_c_font_px, &pages));
+    TEST_ASSERT(pages >= 1U);
+    TEST_ASSERT(s_live.glyph_count > 0U);
+    assert_cache_identical((const char*)s_chapter);
+  }
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+  TEST_END("reflow_corpus: real EPUB container -> layout -> cache");
+}
+
+/**
+ * @test test_corpus_truncated_epub_rejected
+ * @brief A truncated/garbage archive is rejected by ra_epub_open without a
+ *        crash (the malformed-file half of #79's corpus).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- robustness of the container open
+ * path; ra_epub_open guards have `test_mcdc_*` vectors in test_ra_epub_open.c.)
+ */
+static void test_corpus_truncated_epub_rejected(void)
+{
+  TEST_BEGIN("reflow_corpus: truncated EPUB rejected");
+  TEST_ASSERT(build_gutenberg_epub() == 1);
+
+  /* Lop off the central directory -> not a valid archive. */
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size / 2U};
+  const ra_err_t            err   = ra_epub_open(&media, "truncated.epub", &book);
+  TEST_ASSERT(err != k_ra_ok); /* rejected, not crashed */
+  TEST_END("reflow_corpus: truncated EPUB rejected");
+}
+
 int32_t main(void)
 {
   test_corpus_live_cache_identity();
   test_corpus_font_size_invalidates();
   test_corpus_malformed_robust();
+  test_corpus_real_epub_pipeline();
+  test_corpus_truncated_epub_rejected();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_corpus.c\n");
   return 0;
 }
