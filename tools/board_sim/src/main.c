@@ -3227,9 +3227,27 @@ int main(int argc, char** argv)
       }
     }
   }
+  /* BOARD_SIM_USB_STOP=N: stop a plain headless run N chunks after the virtual USB
+   * host reports the device CONFIGURED. The USB device apps never go idle -- HID
+   * jiggles its boot mouse forever, MSC keeps answering host polls -- so the
+   * idle-stop above never fires for them. This makes the smoke gate fast and
+   * deterministic: it runs exactly long enough to confirm enumeration + the first
+   * class traffic, then stops, instead of burning the whole chunk/wall budget. */
+  uint32_t usb_stop_settle = 0U;
+  {
+    const char* e_usb = getenv("BOARD_SIM_USB_STOP");
+    if ((e_usb != nullptr) && (view == nullptr)) {
+      const long v = strtol(e_usb, nullptr, (int)k_env_strtol_base);
+      if (v > 0L) {
+        usb_stop_settle = (uint32_t)v;
+      }
+    }
+  }
   uint64_t      idle_sig_prev = 0U;
   uint32_t      idle_run      = 0U;
   bool          idle_stopped  = false;
+  uint32_t      usb_stop_run  = 0U;
+  bool          usb_stopped   = false;
   uint32_t      rec_frames    = 0U; /* frames written when --record is active. */
   const clock_t t0            = clock();
   uc_err        err           = UC_ERR_OK;
@@ -3457,6 +3475,15 @@ int main(int argc, char** argv)
           idle_run      = 0U;
         }
       }
+      /* USB-enumeration early-stop: once the device is CONFIGURED, run a short
+       * settle window (for the first class traffic + report line) and stop. */
+      if ((usb_stop_settle > 0U) && (record_dir == nullptr) && board_usb_configured()) {
+        usb_stop_run++;
+        if (usb_stop_run >= usb_stop_settle) {
+          usb_stopped = true;
+          break;
+        }
+      }
       if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
         timed_out = true;
         break;
@@ -3465,10 +3492,11 @@ int main(int argc, char** argv)
   }
 
   (void)fprintf(stderr,
-                "\nboard_sim: stopped -- %s%s%s\n",
+                "\nboard_sim: stopped -- %s%s%s%s\n",
                 uc_strerror(err),
                 timed_out ? " (wall-clock budget reached)" : "",
-                idle_stopped ? " (idle steady-state)" : "");
+                idle_stopped ? " (idle steady-state)" : "",
+                usb_stopped ? " (USB enumerated)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
   if (s_bkpt_hit) {
     (void)fprintf(stderr,
@@ -3533,6 +3561,11 @@ int main(int argc, char** argv)
                     "  => firmware EXECUTED to the run budget (idle steady-state: no "
                     "observable change for %u chunks, stopped at chunk %u).\n",
                     idle_stop_chunks,
+                    chunks);
+    } else if (usb_stopped) {
+      (void)fprintf(stderr,
+                    "  => firmware EXECUTED to the run budget (USB enumerated: device "
+                    "CONFIGURED, stopped at chunk %u).\n",
                     chunks);
     } else {
       (void)fprintf(stderr,

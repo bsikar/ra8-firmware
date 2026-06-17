@@ -130,7 +130,7 @@ static const ra_port_pin_t k_demo_pin_dm =
  */
 typedef enum : uint32_t {
   k_demo_thread_stack        = 4096U,  /**< Worker thread stack (bytes).        */
-  k_demo_usbx_pool_bytes     = 16384U, /**< USBX memory pool (bytes).           */
+  k_demo_usbx_pool_bytes     = 32768U, /**< USBX pool: 32 KiB; HID enum exhausts 16 KiB. */
   k_demo_jiggle_period_ticks = 100U,   /**< ThreadX ticks between sends.      */
 } demo_config_t;
 
