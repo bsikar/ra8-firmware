@@ -15,9 +15,11 @@
  *     valid -> stay in DFU; otherwise jump to the valid slot with the higher
  *     sequence number (Slot A on a tie).
  *
- * On a JUMP it points VTOR at the slot base, loads the slot's initial MSP, and
- * branches to its reset vector -- a same-world (Secure) hand-off, since both the
- * bootloader and the application live in Secure MRAM. On DFU it brings up the
+ * On a JUMP it copies the slot's image body to a fixed SRAM run base
+ * (::k_ra_dfu_run_base), points VTOR there, loads the image's initial MSP, and
+ * branches to its reset vector -- a same-world (Secure) hand-off. Copy-to-run
+ * means an app is linked ONCE at the run base and the same image boots from
+ * either slot (no per-slot build). On DFU it brings up the
  * USBX DFU device (libs/ra_dfu) on USB-FS (J11), programs the INACTIVE slot as
  * the host DFU_DNLOADs it, and soft-resets once the image header is committed so
  * the next boot decision selects the freshly written slot.
@@ -27,9 +29,10 @@
  * the bootloader is always available. The DFU path writes only the inactive
  * slot -- no BTFLG, no option-setting, nothing irreversible.
  *
- * @note An app runs in-place from its slot, so it is linked at the slot base
- *       (linker MRAM ORIGIN); see this app's README for the two literal slot
- *       bases and the staging procedure.
+ * @note An app is copied to SRAM and run there, so it is linked at the single
+ *       ::k_ra_dfu_run_base (linker ORIGIN), not at a slot base; the identical
+ *       image boots from either slot. See this app's README for the run base
+ *       and the staging procedure.
  *
  * ## Pinout (USB-FS device + console only)
  *
@@ -150,14 +153,14 @@ typedef enum : uint32_t {
 
 /**
  * @enum blc_scb_t
- * @brief Cortex-M85 System Control Block addresses + keys used by the hand-off.
+ * @brief Cortex-M85 System Control Block address used by the DFU-commit reset.
  *
  * @details Accessed by absolute address (the project does not vendor a CMSIS
- * SCB struct). VTOR is the Secure alias since the bootloader runs Secure.
+ * SCB struct). AIRCR is the Secure alias since the bootloader runs Secure. The
+ * copy-to-run hand-off's VTOR write lives in ::ra_dfu_launch.
  */
 typedef enum : uintptr_t {
-  k_blc_scb_vtor_addr  = 0xE000ED08U, /**< SCB->VTOR (Secure vector-table base). */
-  k_blc_scb_aircr_addr = 0xE000ED0CU, /**< SCB->AIRCR (reset control).           */
+  k_blc_scb_aircr_addr = 0xE000ED0CU, /**< SCB->AIRCR (reset control). */
 } blc_scb_t;
 
 /** @brief AIRCR write to request a system reset (VECTKEY 0x05FA | SYSRESETREQ). */
@@ -469,43 +472,37 @@ static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
 }
 
 /**
- * @brief Hand off to an application slot (same-world Secure jump). Never returns.
+ * @brief Copy a validated slot's image to the SRAM run base and launch it.
  *
- * @details Loads the slot's initial MSP and reset vector from its vector table
- * at @p base, points the Secure VTOR at @p base, and branches. Both bootloader
- * and application are Secure, so this is an ordinary branch (the reset vector's
- * Thumb bit is kept) -- not a BLXNS. Interrupts are masked across the switch;
- * the application re-enables them after its own bring-up. The MSP/VTOR change
- * and the branch run as one inline-asm block so the compiler never touches the
- * abandoned stack between switching SP and branching.
+ * @details
+ * Reads the slot header for its `img_len` / `entry`, then delegates to the
+ * shared ::ra_dfu_launch, which cross-checks the run target, copies the image
+ * body from the slot to ::k_ra_dfu_run_base in SRAM, and branches to it. Because
+ * an app is linked ONCE at the run base, the same image boots from either slot.
+ * ::ra_dfu_launch returns here only when the run target fails validation (a
+ * corrupted `entry`/length), in which case `main` drops to DFU.
  *
- * @param[in] base Slot base address (== the application's vector table).
+ * @param[in] slot Slot to boot (A or B); already passed ::ra_dfu_slot_valid.
  *
- * @return Does not return (control passes to the application).
+ * @return void -- returns to the caller ONLY when the run target is invalid
+ *         (so `main` drops to DFU); on a valid image it does not return.
  *
- * @pre @p base is a 64 KiB-aligned slot base whose image passed CRC validation.
- * @pre The slot's vector[1] (reset) carries the Thumb bit, per the C ABI.
- * @post Control is in the application; the bootloader frame is gone.
+ * @pre @p slot is A or B and passed CRC validation in ::blc_decide.
+ * @pre The image was linked at ::k_ra_dfu_run_base (its header `entry` records it).
+ * @post On a valid image, control is in the application at the run base.
+ * @post On an invalid run target, no copy/jump happens and control returns.
  *
  * @note Not thread-safe; the final hand-off of a single-threaded boot.
  * @since 0.1.0
  */
-[[noreturn]] static void blc_jump(uintptr_t base)
+static void blc_boot_slot(ra_dfu_slot_t slot)
 {
-  const uint32_t initial_sp  = ((const volatile uint32_t*)base)[0];
-  const uint32_t reset_entry = ((const volatile uint32_t*)base)[1];
-
-  __asm__ volatile("cpsid i" ::: "memory");
-  /* ARMv8-M ARM B3.2.2 "VTOR, Vector Table Offset Register" at 0xE000ED08 --
-   * the Renesas HUM defers Cortex-M85 core (SCB) registers to the ARMv8-M ARM. */
-  *(volatile uint32_t*)(uintptr_t)k_blc_scb_vtor_addr = (uint32_t)base;
-  __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
-  __asm__ volatile("msr msp, %0\n"
-                   "bx %1\n"
-                   :
-                   : "r"(initial_sp), "r"(reset_entry)
-                   : "memory");
-  __builtin_unreachable();
+  ra_dfu_img_hdr_t hdr = {};
+  if (ra_dfu_read_header(slot, &hdr) != k_ra_ok) {
+    return; /* unreadable header -> let main fall through to DFU */
+  }
+  ra_dfu_launch(ra_dfu_slot_base(slot), hdr.img_len, hdr.entry);
+  /* Returns only if ra_dfu_run_target_valid rejected the image -> main -> DFU. */
 }
 
 #ifndef RA_SIMULATOR_MODE
@@ -728,20 +725,20 @@ int32_t main(void)
   s_dbg_target                 = (uint32_t)target;
 
   if (action == k_ra_dfu_action_jump_a) {
-    (void)blc_print("dfu-bootloader: jumping to Slot A @0x");
-    (void)blc_print_hex((uint32_t)k_ra_dfu_slot_a_base);
+    (void)blc_print("dfu-bootloader: Slot A -> copy-to-run @0x");
+    (void)blc_print_hex((uint32_t)k_ra_dfu_run_base);
     (void)blc_print("\r\n");
-    blc_jump((uintptr_t)k_ra_dfu_slot_a_base);
+    blc_boot_slot(k_ra_dfu_slot_a); /* returns only if the run target is invalid */
   }
   if (action == k_ra_dfu_action_jump_b) {
-    (void)blc_print("dfu-bootloader: jumping to Slot B @0x");
-    (void)blc_print_hex((uint32_t)k_ra_dfu_slot_b_base);
+    (void)blc_print("dfu-bootloader: Slot B -> copy-to-run @0x");
+    (void)blc_print_hex((uint32_t)k_ra_dfu_run_base);
     (void)blc_print("\r\n");
-    blc_jump((uintptr_t)k_ra_dfu_slot_b_base);
+    blc_boot_slot(k_ra_dfu_slot_b); /* returns only if the run target is invalid */
   }
 
-  /* k_ra_dfu_action_dfu: no valid slot (or a trigger) -- accept a DFU update
-   * into the inactive slot over USB-FS. */
+  /* k_ra_dfu_action_dfu (or a slot whose run target failed validation): no
+   * bootable slot -- accept a DFU update into the inactive slot over USB-FS. */
   (void)blc_print("dfu-bootloader: no bootable slot -- entering DFU\r\n");
 #ifndef RA_SIMULATOR_MODE
   ra_dfu_device_set_target(target);
