@@ -168,6 +168,44 @@ typedef struct {
 } ra_fs_backend_t;
 
 /* =============================================================================
+ * Format (mkfs) options
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_fs_format_opts_t
+ * @brief Tunables for `ra_fs_format()` (the on-disk geometry of a fresh volume).
+ *
+ * @details
+ * Open/Closed seam for the formatter: callers select the FAT variant and
+ * label, and may optionally pin the cluster size. Zero-initialise the struct
+ * (`= {}`) for sane defaults -- a zero `sectors_per_cluster` asks the formatter
+ * to pick the smallest power-of-two that lands the cluster count inside the
+ * range valid for `type` on the backend's capacity.
+ *
+ * @invariant `type` is one of `k_ra_fs_type_fat12`, `_fat16`, `_fat32`
+ *            (exFAT formatting is not implemented -- see `ra_fs_format()`).
+ * @invariant `sectors_per_cluster`, when non-zero, is a power of two in the
+ *            closed range 1..128.
+ *
+ * @par Example:
+ * @code
+ * ra_fs_format_opts_t opts = {};
+ * opts.type  = k_ra_fs_type_fat32;
+ * opts.label = "DATA";
+ * ra_err_t e = ra_fs_format(&backend, &opts);  // auto cluster size
+ * @endcode
+ *
+ * @see ra_fs_format()
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_fs_type_t type;                /**< FAT variant to lay down (12/16/32).      */
+  const char*  label;               /**< 0..11 char volume label, or NULL.        */
+  uint8_t      sectors_per_cluster; /**< Cluster size; 0 = auto-select.          */
+} ra_fs_format_opts_t;
+
+/* =============================================================================
  * Mount / file handle (opaque-ish)
  * =============================================================================
  */
@@ -233,6 +271,86 @@ typedef struct {
  * @param[in] ctx  Caller-provided cookie.
  */
 typedef void (*ra_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t size, void* ctx);
+
+/* =============================================================================
+ * Public API -- format (mkfs)
+ * =============================================================================
+ */
+
+/**
+ * @brief Format a block device as a fresh, empty FAT12/FAT16/FAT32 volume.
+ *
+ * @details
+ * Lays down a complete superfloppy (no MBR) FAT volume at LBA 0 so the very
+ * next `ra_fs_mount()` on the same backend detects exactly `opts->type`:
+ *   - a full BPB (jump prologue, OEM name, `BytsPerSec`, `SecPerClus`,
+ *     `RsvdSecCnt`, `NumFATs`, `RootEntCnt` or `RootClus`, `TotSec`, media
+ *     descriptor, `FATSz`, volume label, filesystem-type string, and the
+ *     `0x55 0xAA` boot signature);
+ *   - the reserved `FAT[0]` media descriptor and `FAT[1]` end-of-chain marker
+ *     in every FAT copy (plus the root-cluster EOC and an `FSInfo` sector for
+ *     FAT32);
+ *   - a zeroed root directory (FAT12/16 fixed root, or the FAT32 root cluster).
+ *
+ * The cluster size is chosen (when `opts->sectors_per_cluster == 0`) so the
+ * resulting `count_of_clusters` lands in the band the requested type requires
+ * per Microsoft "FAT: General Overview of On-Disk Format" sec 3.5
+ * (FAT12 < 4085, 4085 <= FAT16 < 65525, FAT32 >= 65525). If the backend's
+ * capacity cannot satisfy `opts->type` -- too small for FAT16/FAT32, or too
+ * large for FAT12/FAT16 even at the maximum cluster size -- the call fails
+ * without writing anything.
+ *
+ * exFAT (`k_ra_fs_type_exfat`) is intentionally NOT formatted by this routine
+ * (ra_fs reads exFAT but the exFAT mkfs on-disk format -- up-case table,
+ * allocation bitmap, boot-region checksum -- is a separate body of work tracked
+ * as a roadmap follow-up). It returns `k_ra_err_not_supported` so callers can
+ * branch cleanly.
+ *
+ * @param[in] backend Block-device implementation (read/write/get_capacity all
+ *                    non-NULL). Its `write_block` is driven during the format.
+ * @param[in] opts    Format options. `type` selects the variant; `label` is an
+ *                    optional 0..11 char volume label; `sectors_per_cluster`
+ *                    pins the cluster size (0 = auto-select).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Volume formatted; ready to mount.
+ * @retval k_ra_err_null_ptr          `backend` or `opts` is NULL.
+ * @retval k_ra_err_invalid_arg       Backend has NULL callbacks, the reported
+ *                                    block size is not 512, or
+ *                                    `sectors_per_cluster` is non-zero and not
+ *                                    a power of two in 1..128.
+ * @retval k_ra_err_not_supported     `opts->type` is exFAT or unknown.
+ * @retval k_ra_err_invalid_size      Capacity cannot satisfy `opts->type`.
+ * @retval k_ra_err_*                 Backend read/write failure (volume may be
+ *                                    partially written on a mid-format I/O
+ *                                    error).
+ *
+ * @pre `backend->write_block` and `backend->get_capacity` are non-NULL.
+ * @pre No volume from this backend is currently mounted (the caller has
+ *      unmounted it first; formatting under a live mount corrupts cached
+ *      geometry).
+ * @post On success the backend's first sectors hold a valid `opts->type` BPB,
+ *       FAT, and an empty root directory.
+ * @post On `k_ra_err_invalid_size` / argument errors, the backend is untouched.
+ *
+ * @note Not thread-safe. Destroys all data on the device.
+ *
+ * @par Example:
+ * @code
+ * ra_fs_format_opts_t opts = {};
+ * opts.type  = k_ra_fs_type_fat16;
+ * opts.label = "SCRATCH";
+ * if (ra_fs_format(&backend, &opts) == k_ra_ok) {
+ *   ra_fs_mount_t* mnt = nullptr;
+ *   (void)ra_fs_mount(&backend, &mnt);  // mnt->type == k_ra_fs_type_fat16
+ * }
+ * @endcode
+ *
+ * @see ra_fs_mount()  Detects the type this routine wrote.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_fs_format(const ra_fs_backend_t*     backend,
+                                    const ra_fs_format_opts_t* opts);
 
 /* =============================================================================
  * Public API -- mount / unmount

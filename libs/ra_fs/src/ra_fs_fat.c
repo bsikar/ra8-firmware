@@ -203,6 +203,75 @@ typedef enum : uint32_t {
 } ra_fs_cluster_t;
 
 /**
+ * @enum ra_fs_fmt_off_t
+ * @brief Extra BPB byte offsets written only by the formatter (`ra_fs_format`).
+ *
+ * @details Complements `ra_fs_bpb_off_t` (the read path) with the boot-prologue,
+ *          media, extended-signature, label, and filesystem-type fields that the
+ *          mount path never reads but a valid on-disk volume must carry. Offsets
+ *          follow Microsoft "FAT: General Overview of On-Disk Format" sec 3.
+ */
+typedef enum : uint16_t {
+  k_fmt_off_jmp0        = 0,   /**< Jump-boot byte 0 (0xEB).                 */
+  k_fmt_off_jmp1        = 1,   /**< Jump-boot byte 1 (offset).              */
+  k_fmt_off_jmp2        = 2,   /**< Jump-boot byte 2 (0x90 NOP).            */
+  k_fmt_off_oem         = 3,   /**< OEM name field (8 bytes).               */
+  k_fmt_off_media       = 21,  /**< BPB_Media descriptor.                   */
+  k_fmt_off_sec_per_trk = 24,  /**< BPB_SecPerTrk.                          */
+  k_fmt_off_num_heads   = 26,  /**< BPB_NumHeads.                           */
+  k_fmt_off_f16_drvnum  = 36,  /**< FAT12/16 BS_DrvNum.                     */
+  k_fmt_off_f16_bootsig = 38,  /**< FAT12/16 BS_BootSig (0x29).             */
+  k_fmt_off_f16_volid   = 39,  /**< FAT12/16 BS_VolID (4 bytes).           */
+  k_fmt_off_f16_label   = 43,  /**< FAT12/16 BS_VolLab (11 bytes).         */
+  k_fmt_off_f16_fstype  = 54,  /**< FAT12/16 BS_FilSysType (8 bytes).      */
+  k_fmt_off_f32_fsinfo  = 48,  /**< FAT32 BPB_FSInfo sector number.        */
+  k_fmt_off_f32_bkboot  = 50,  /**< FAT32 BPB_BkBootSec (backup boot).     */
+  k_fmt_off_f32_drvnum  = 64,  /**< FAT32 BS_DrvNum.                       */
+  k_fmt_off_f32_bootsig = 66,  /**< FAT32 BS_BootSig (0x29).               */
+  k_fmt_off_f32_volid   = 67,  /**< FAT32 BS_VolID (4 bytes).              */
+  k_fmt_off_f32_label   = 71,  /**< FAT32 BS_VolLab (11 bytes).            */
+  k_fmt_off_f32_fstype  = 82,  /**< FAT32 BS_FilSysType (8 bytes).         */
+  k_fmt_fsi_off_lead    = 0,   /**< FSInfo FSI_LeadSig offset.             */
+  k_fmt_fsi_off_struct  = 484, /**< FSInfo FSI_StrucSig offset.            */
+  k_fmt_fsi_off_free    = 488, /**< FSInfo FSI_Free_Count offset.          */
+  k_fmt_fsi_off_nxtfree = 492, /**< FSInfo FSI_Nxt_Free offset.            */
+  k_fmt_fsi_off_trail   = 508, /**< FSInfo FSI_TrailSig offset.            */
+} ra_fs_fmt_off_t;
+
+/**
+ * @enum ra_fs_fmt_val_t
+ * @brief Magic values + geometry limits used by the formatter (`ra_fs_format`).
+ */
+typedef enum : uint32_t {
+  k_fmt_jmp_byte0       = 0xEBU,       /**< Short jump opcode.                 */
+  k_fmt_jmp_byte1       = 0x58U,       /**< Jump displacement (to +0x5A).      */
+  k_fmt_jmp_byte2       = 0x90U,       /**< NOP padding.                       */
+  k_fmt_media_fixed     = 0xF8U,       /**< Media descriptor: non-removable.   */
+  k_fmt_drvnum_hd       = 0x80U,       /**< BS_DrvNum: first fixed disk.       */
+  k_fmt_ext_bootsig     = 0x29U,       /**< Extended boot signature present.   */
+  k_fmt_sec_per_trk     = 63U,         /**< Conventional CHS sectors/track.    */
+  k_fmt_num_heads       = 255U,        /**< Conventional CHS heads.            */
+  k_fmt_num_fats        = 2U,          /**< Two FAT copies, like every mkfs.   */
+  k_fmt_root_ents_f16   = 512U,        /**< FAT12/16 root-directory entries.   */
+  k_fmt_resv_f16        = 1U,          /**< FAT12/16 reserved (boot) sectors.  */
+  k_fmt_resv_f32        = 32U,         /**< FAT32 reserved sectors.            */
+  k_fmt_root_clus_f32   = 2U,          /**< FAT32 root directory cluster.      */
+  k_fmt_fsinfo_sector   = 1U,          /**< FAT32 FSInfo sector LBA.           */
+  k_fmt_bkboot_sector   = 6U,          /**< FAT32 backup boot sector LBA.      */
+  k_fmt_volid_base      = 0x52A8D200U, /**< Arbitrary volume-serial base.      */
+  k_fmt_fsi_lead_sig    = 0x41615252U, /**< FSInfo lead signature "RRaA".      */
+  k_fmt_fsi_struct_sig  = 0x61417272U, /**< FSInfo struct signature "rrAa".    */
+  k_fmt_fsi_trail_sig   = 0xAA550000U, /**< FSInfo trailing signature.         */
+  k_fmt_label_len       = 11U,         /**< Volume-label field width (bytes).  */
+  k_fmt_spc_max         = 64U,         /**< Largest sectors-per-cluster we set. */
+  k_fmt_fat16_entry_cap = 256U,        /**< 512-byte sector / 2-byte FAT16 ent. */
+  k_fmt_fat32_entry_cap = 128U,        /**< 512-byte sector / 4-byte FAT32 ent. */
+  k_fmt_fat32_clus_cap  = 0x0FFFFFF0U, /**< Max FAT32 cluster count we accept.  */
+  k_fmt_fsi_unknown     = 0xFFFFFFFFU, /**< FSInfo free-count "unknown".        */
+  k_fmt_fat32_nxt_free  = 3U,          /**< First allocatable FAT32 cluster.    */
+} ra_fs_fmt_val_t;
+
+/**
  * @enum ra_fs_misc_t
  * @brief Misc small constants used by parsing/formatting code.
  */
@@ -3663,6 +3732,646 @@ static ra_err_t priv_exfat_listdir(const ra_fs_mount_t* m, ra_fs_listdir_cb_t cb
     cb(name, attr, size, ctx);
   }
   return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: format (mkfs)
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_fs_fmt_geom_t
+ * @brief Computed on-disk geometry for one `ra_fs_format()` run.
+ *
+ * @details Filled by `priv_fmt_choose_geometry()` from the requested type and
+ *          the backend capacity, then consumed by the BPB / FAT writers. All
+ *          counts are in 512-byte sectors.
+ *
+ * @invariant `sectors_per_cluster` is a power of two in 1..`k_fmt_spc_max`.
+ * @invariant `count_of_clusters` lands in the band valid for `type`.
+ */
+typedef struct {
+  ra_fs_type_t type;                /**< Resolved FAT variant.                  */
+  uint32_t     total_sectors;       /**< Whole-device sector count.             */
+  uint32_t     sectors_per_cluster; /**< Chosen cluster size (sectors).         */
+  uint32_t     reserved_sectors;    /**< Boot + (FAT32) FSInfo/backup region.   */
+  uint32_t     fat_size_sectors;    /**< Sectors per FAT copy.                  */
+  uint32_t     root_entries;        /**< FAT12/16 root entries (0 on FAT32).    */
+  uint32_t     root_sectors;        /**< FAT12/16 fixed-root sector span.       */
+  uint32_t     count_of_clusters;   /**< Resulting data-region cluster count.   */
+} ra_fs_fmt_geom_t;
+
+/**
+ * @brief Map a requested FAT type to its reserved-sector count.
+ *
+ * @details FAT32 reserves a 32-sector region (boot + FSInfo + backup);
+ *          FAT12/16 reserve only the single boot sector.
+ *
+ * @param[in] type Requested FAT variant.
+ *
+ * @return Reserved-sector count for @p type.
+ * @retval k_fmt_resv_f32 @p type is FAT32.
+ * @retval k_fmt_resv_f16 @p type is FAT12 or FAT16.
+ *
+ * @pre @p type is one of FAT12/FAT16/FAT32.
+ * @pre Caller has rejected exFAT/unknown beforehand.
+ * @post No state modified.
+ * @post Result is purely a function of @p type.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+static uint32_t priv_fmt_reserved_for(ra_fs_type_t type)
+{
+  return (type == k_ra_fs_type_fat32) ? (uint32_t)k_fmt_resv_f32 : (uint32_t)k_fmt_resv_f16;
+}
+
+/**
+ * @brief Compute the cluster count for a trial cluster size.
+ *
+ * @details Mirrors the mount-side geometry: subtracts the reserved, FAT, and
+ *          fixed-root regions from the device, then divides the remaining data
+ *          sectors by @p spc. The FAT size is sized to index every data
+ *          cluster (`entries_per_sector * spc + 2` accounts for the two
+ *          reserved entries) and is reported back so the caller can store it.
+ *
+ * @param[in]  g   Geometry holding total/reserved/root spans and the type.
+ * @param[in]  spc Trial sectors-per-cluster (power of two).
+ * @param[out] out_fatsz Sectors per FAT copy for this @p spc.
+ *
+ * @return Resulting data-cluster count, or 0 if the device is too small.
+ * @retval 0            Reserved + FAT + root already exceed the device.
+ * @retval 1..UINT32_MAX Cluster count for @p spc.
+ *
+ * @pre @p g and @p out_fatsz are non-NULL.
+ * @pre @p spc is non-zero.
+ * @post `*out_fatsz` holds the FAT size for @p spc.
+ * @post No other state modified.
+ *
+ * @note Pure aside from `*out_fatsz`; thread-safe vs other readers.
+ *
+ * @since 0.1.0
+ */
+static uint32_t priv_fmt_clusters_for(const ra_fs_fmt_geom_t* g, uint32_t spc, uint32_t* out_fatsz)
+{
+  const uint32_t entry_cap = (g->type == k_ra_fs_type_fat32) ? (uint32_t)k_fmt_fat32_entry_cap
+                                                             : (uint32_t)k_fmt_fat16_entry_cap;
+  const uint32_t overhead  = g->reserved_sectors + g->root_sectors;
+  if (g->total_sectors <= overhead) {
+    *out_fatsz = 0U;
+    return 0U;
+  }
+  const uint32_t avail     = g->total_sectors - overhead;
+  const uint32_t denom     = (entry_cap * spc) + (uint32_t)k_fmt_num_fats;
+  const uint32_t fatsz     = (avail + denom - 1U) / denom;
+  *out_fatsz               = fatsz;
+  const uint32_t fat_total = (uint32_t)k_fmt_num_fats * fatsz;
+  if (avail <= fat_total) {
+    return 0U;
+  }
+  return (avail - fat_total) / spc;
+}
+
+/**
+ * @brief Test whether a cluster count is valid for a given FAT type.
+ *
+ * @details Applies the MS FAT spec sec 3.5 thresholds: FAT12 needs
+ *          `count < 4085`, FAT16 needs `4085 <= count < 65525`, FAT32 needs
+ *          `65525 <= count <= k_fmt_fat32_clus_cap`.
+ *
+ * @param[in] type  Requested FAT variant.
+ * @param[in] count Trial cluster count.
+ *
+ * @return Whether @p count lands in @p type's valid band.
+ * @retval true  @p count is valid for @p type.
+ * @retval false @p count is outside @p type's band.
+ *
+ * @pre @p type is FAT12/FAT16/FAT32.
+ * @pre @p count was produced by `priv_fmt_clusters_for()`.
+ * @post No state modified.
+ * @post Result is purely a function of inputs.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+static bool priv_fmt_count_in_band(ra_fs_type_t type, uint32_t count)
+{
+  if (type == k_ra_fs_type_fat12) {
+    return count < (uint32_t)k_cluster_count_fat12_max;
+  }
+  if (type == k_ra_fs_type_fat16) {
+    return (count >= (uint32_t)k_cluster_count_fat12_max) &&
+           (count < (uint32_t)k_cluster_count_fat16_max);
+  }
+  return (count >= (uint32_t)k_cluster_count_fat16_max) &&
+         (count <= (uint32_t)k_fmt_fat32_clus_cap);
+}
+
+/**
+ * @brief Pick the cluster size that lands the count in the requested band.
+ *
+ * @details Sweeps `spc` upward through powers of two (1, 2, 4, ... up to
+ *          `k_fmt_spc_max`). For FAT32 the count shrinks with larger clusters,
+ *          so the first `spc` whose count is in-band (or below
+ *          `k_fmt_fat32_clus_cap`) wins. For FAT12/16 a too-large count fails
+ *          the lower clusters and a too-small count fails the larger ones, so
+ *          the sweep accepts the first in-band hit. On success the geometry's
+ *          `sectors_per_cluster`, `fat_size_sectors`, and `count_of_clusters`
+ *          are populated.
+ *
+ * @param[in,out] g        Geometry with `type`, `total_sectors`, `reserved_sectors`,
+ *                         `root_entries`, and `root_sectors` pre-filled.
+ * @param[in]     spc_hint Caller-pinned cluster size (0 = auto-sweep).
+ *
+ * @return Error code.
+ * @retval k_ra_ok            Geometry chosen and stored.
+ * @retval k_ra_err_invalid_size No cluster size yields a count in @p g->type's band.
+ *
+ * @pre @p g is non-NULL with the input fields set.
+ * @pre @p spc_hint is 0 or a validated power of two in 1..128.
+ * @post On success the three output fields are consistent and in-band.
+ * @post On failure @p g is left partially written (caller discards it).
+ *
+ * @note Bounded loop (NASA Rule 2): at most 8 iterations (1..128).
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_fmt_choose_geometry(ra_fs_fmt_geom_t* g, uint32_t spc_hint)
+{
+  uint32_t spc       = (spc_hint != 0U) ? spc_hint : 1U;
+  bool     auto_mode = (spc_hint == 0U);
+  for (uint32_t guard = 0U; guard <= (uint32_t)k_fmt_spc_max; guard++) {
+    uint32_t       fatsz = 0U;
+    const uint32_t count = priv_fmt_clusters_for(g, spc, &fatsz);
+    if (priv_fmt_count_in_band(g->type, count)) {
+      g->sectors_per_cluster = spc;
+      g->fat_size_sectors    = fatsz;
+      g->count_of_clusters   = count;
+      return k_ra_ok;
+    }
+    if (!auto_mode || spc >= (uint32_t)k_fmt_spc_max) {
+      return k_ra_err_invalid_size;
+    }
+    spc *= 2U;
+  }
+  return k_ra_err_invalid_size;
+}
+
+/**
+ * @brief Write the shared boot prologue (jump + OEM) into the scratch sector.
+ *
+ * @details Lays the 3-byte short-jump opcode and the 8-byte OEM name at the
+ *          head of the boot sector. The scratch buffer must be zeroed first.
+ *
+ * @param[out] sec Zeroed 512-byte boot sector under construction.
+ *
+ * @pre @p sec is non-NULL and at least 512 bytes, pre-zeroed.
+ * @pre The caller owns @p sec for the duration.
+ * @post Bytes 0..2 and 3..10 hold the jump + OEM fields.
+ * @post No bytes past offset 10 are touched.
+ *
+ * @note Not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+static void priv_fmt_boot_prologue(uint8_t* sec)
+{
+  static const uint8_t k_oem[k_filename_base_len] = {'M', 'S', 'D', 'O', 'S', '5', '.', '0'};
+  sec[k_fmt_off_jmp0]                             = (uint8_t)k_fmt_jmp_byte0;
+  sec[k_fmt_off_jmp1]                             = (uint8_t)k_fmt_jmp_byte1;
+  sec[k_fmt_off_jmp2]                             = (uint8_t)k_fmt_jmp_byte2;
+  priv_byte_copy(&sec[k_fmt_off_oem], k_oem, (uint32_t)k_filename_base_len);
+}
+
+/**
+ * @brief Pad an ASCII volume label into the 11-byte 8.3 label field.
+ *
+ * @details Copies @p label up to its NUL (or 11 chars) then space-fills the
+ *          remainder, matching the BS_VolLab convention. A NULL label yields
+ *          an all-spaces field.
+ *
+ * @param[out] dst   Destination 11-byte label field.
+ * @param[in]  label Source label, or NULL for an empty (spaces) label.
+ *
+ * @pre @p dst is non-NULL and at least 11 bytes.
+ * @pre @p label is NUL-terminated when non-NULL.
+ * @post @p dst holds the padded 11-byte label.
+ * @post No bytes past offset 10 of @p dst are touched.
+ *
+ * @note Bounded loop (NASA Rule 2): exactly 11 iterations.
+ *
+ * @since 0.1.0
+ */
+static void priv_fmt_label_field(uint8_t* dst, const char* label)
+{
+  bool past_end = (label == nullptr);
+  for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_len; i++) {
+    if (!past_end && (label[i] == '\0')) {
+      past_end = true;
+    }
+    dst[i] = past_end ? (uint8_t)' ' : (uint8_t)label[i];
+  }
+}
+
+/**
+ * @brief Write a totals/FAT-size pair into the BPB, choosing 16- vs 32-bit.
+ *
+ * @details `BPB_TotSec16`/`BPB_FATSz16` hold values that fit 16 bits; larger
+ *          values spill to `BPB_TotSec32`/`BPB_FATSz32` with the 16-bit field
+ *          left zero (FAT12/16). FAT32 always uses the 32-bit fields. The
+ *          caller passes the already-resolved type to drive that choice.
+ *
+ * @param[out] sec     Boot sector under construction.
+ * @param[in]  g       Geometry with totals + FAT size.
+ *
+ * @pre @p sec and @p g are non-NULL.
+ * @pre BPB common fields were already written.
+ * @post The total-sectors and FAT-size BPB fields reflect @p g.
+ * @post Exactly one width (16- or 32-bit) is non-zero per field.
+ *
+ * @note Not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+static void priv_fmt_write_totals(uint8_t* sec, const ra_fs_fmt_geom_t* g)
+{
+  if (g->type == k_ra_fs_type_fat32) {
+    priv_wr32(&sec[k_bpb_off_tot_sec_32], g->total_sectors);
+    priv_wr32(&sec[k_bpb_off_fat_sz_32], g->fat_size_sectors);
+    return;
+  }
+  if (g->total_sectors < (uint32_t)(k_word_mask + 1U)) {
+    priv_wr16(&sec[k_bpb_off_tot_sec_16], (uint16_t)g->total_sectors);
+  } else {
+    priv_wr32(&sec[k_bpb_off_tot_sec_32], g->total_sectors);
+  }
+  priv_wr16(&sec[k_bpb_off_fat_sz_16], (uint16_t)g->fat_size_sectors);
+}
+
+/**
+ * @brief Build the FAT12/FAT16 boot sector into the scratch buffer.
+ *
+ * @details Writes the full BPB: bytes-per-sector, the chosen cluster size,
+ *          one reserved sector, two FATs, the 512-entry root directory, media
+ *          descriptor, geometry, an extended boot signature with volume serial
+ *          + label, the "FAT12   "/"FAT16   " type string, and the 0x55AA boot
+ *          signature.
+ *
+ * @param[out] sec   Zeroed boot sector under construction.
+ * @param[in]  g     Resolved geometry.
+ * @param[in]  label Optional volume label.
+ *
+ * @pre @p sec, @p g are non-NULL; @p sec pre-zeroed.
+ * @pre @p g->type is FAT12 or FAT16.
+ * @post @p sec holds a complete FAT12/16 boot sector.
+ * @post Byte 510/511 hold the 0x55/0xAA signature.
+ *
+ * @note Not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+static void priv_fmt_build_bpb_f16(uint8_t* sec, const ra_fs_fmt_geom_t* g, const char* label)
+{
+  static const uint8_t k_t12[k_filename_base_len] = {'F', 'A', 'T', '1', '2', ' ', ' ', ' '};
+  static const uint8_t k_t16[k_filename_base_len] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
+  priv_fmt_boot_prologue(sec);
+  priv_wr16(&sec[k_bpb_off_bytes_per_sec], (uint16_t)k_ra_fs_bytes_per_sector);
+  sec[k_bpb_off_sec_per_clus] = (uint8_t)g->sectors_per_cluster;
+  priv_wr16(&sec[k_bpb_off_rsvd_sec_cnt], (uint16_t)g->reserved_sectors);
+  sec[k_bpb_off_num_fats] = (uint8_t)k_fmt_num_fats;
+  priv_wr16(&sec[k_bpb_off_root_ent_cnt], (uint16_t)g->root_entries);
+  sec[k_fmt_off_media] = (uint8_t)k_fmt_media_fixed;
+  priv_fmt_write_totals(sec, g);
+  priv_wr16(&sec[k_fmt_off_sec_per_trk], (uint16_t)k_fmt_sec_per_trk);
+  priv_wr16(&sec[k_fmt_off_num_heads], (uint16_t)k_fmt_num_heads);
+  sec[k_fmt_off_f16_drvnum]  = (uint8_t)k_fmt_drvnum_hd;
+  sec[k_fmt_off_f16_bootsig] = (uint8_t)k_fmt_ext_bootsig;
+  priv_wr32(&sec[k_fmt_off_f16_volid], (uint32_t)k_fmt_volid_base | g->total_sectors);
+  priv_fmt_label_field(&sec[k_fmt_off_f16_label], label);
+  priv_byte_copy(&sec[k_fmt_off_f16_fstype],
+                 (g->type == k_ra_fs_type_fat12) ? k_t12 : k_t16,
+                 (uint32_t)k_filename_base_len);
+  sec[k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
+  sec[k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
+}
+
+/**
+ * @brief Build the FAT32 boot sector into the scratch buffer.
+ *
+ * @details Writes the FAT32 BPB: zero root entries, 32-bit totals + FAT size,
+ *          root cluster 2, the FSInfo sector number, the backup-boot location,
+ *          an extended boot signature with serial + label, the "FAT32   " type
+ *          string, and the 0x55AA signature.
+ *
+ * @param[out] sec   Zeroed boot sector under construction.
+ * @param[in]  g     Resolved geometry (FAT32).
+ * @param[in]  label Optional volume label.
+ *
+ * @pre @p sec, @p g are non-NULL; @p sec pre-zeroed.
+ * @pre @p g->type is FAT32.
+ * @post @p sec holds a complete FAT32 boot sector.
+ * @post Byte 510/511 hold the 0x55/0xAA signature.
+ *
+ * @note Not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra_fs_fmt_geom_t* g, const char* label)
+{
+  static const uint8_t k_t32[k_filename_base_len] = {'F', 'A', 'T', '3', '2', ' ', ' ', ' '};
+  priv_fmt_boot_prologue(sec);
+  priv_wr16(&sec[k_bpb_off_bytes_per_sec], (uint16_t)k_ra_fs_bytes_per_sector);
+  sec[k_bpb_off_sec_per_clus] = (uint8_t)g->sectors_per_cluster;
+  priv_wr16(&sec[k_bpb_off_rsvd_sec_cnt], (uint16_t)g->reserved_sectors);
+  sec[k_bpb_off_num_fats] = (uint8_t)k_fmt_num_fats;
+  sec[k_fmt_off_media]    = (uint8_t)k_fmt_media_fixed;
+  priv_fmt_write_totals(sec, g);
+  priv_wr16(&sec[k_fmt_off_sec_per_trk], (uint16_t)k_fmt_sec_per_trk);
+  priv_wr16(&sec[k_fmt_off_num_heads], (uint16_t)k_fmt_num_heads);
+  priv_wr32(&sec[k_bpb_off_root_clus], (uint32_t)k_fmt_root_clus_f32);
+  priv_wr16(&sec[k_fmt_off_f32_fsinfo], (uint16_t)k_fmt_fsinfo_sector);
+  priv_wr16(&sec[k_fmt_off_f32_bkboot], (uint16_t)k_fmt_bkboot_sector);
+  sec[k_fmt_off_f32_drvnum]  = (uint8_t)k_fmt_drvnum_hd;
+  sec[k_fmt_off_f32_bootsig] = (uint8_t)k_fmt_ext_bootsig;
+  priv_wr32(&sec[k_fmt_off_f32_volid], (uint32_t)k_fmt_volid_base | g->total_sectors);
+  priv_fmt_label_field(&sec[k_fmt_off_f32_label], label);
+  priv_byte_copy(&sec[k_fmt_off_f32_fstype], k_t32, (uint32_t)k_filename_base_len);
+  sec[k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
+  sec[k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
+}
+
+/**
+ * @brief Zero a run of sectors on the backend, one sector at a time.
+ *
+ * @details Reuses the module scratch buffer (zeroed once) and the backend's
+ *          single-sector write. Bounds the loop by the caller's count.
+ *
+ * @param[in] backend Block-device backend.
+ * @param[in] lba     First sector to clear.
+ * @param[in] count   Number of sectors to clear.
+ *
+ * @return Backend error code (first failure aborts).
+ * @retval k_ra_ok    All @p count sectors zeroed.
+ * @retval k_ra_err_* Backend write failure at some sector.
+ *
+ * @pre @p backend and `backend->write_block` are non-NULL.
+ * @pre @p lba + @p count does not exceed the device.
+ * @post On success sectors @p lba .. @p lba+count-1 are all-zero.
+ * @post `s_scratch` is left zeroed.
+ *
+ * @note Bounded loop (NASA Rule 2): exactly @p count iterations.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_fmt_zero_run(const ra_fs_backend_t* backend, uint32_t lba, uint32_t count)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  for (uint32_t s = 0U; s < count; s++) {
+    const ra_err_t err = backend->write_block(backend->ctx, lba + s, 1U, s_scratch);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Seed the reserved FAT entries (and FAT32 root-cluster EOC) per copy.
+ *
+ * @details Builds one zeroed FAT sector holding `FAT[0]` (media descriptor in
+ *          the low byte, the rest 1-bits) and `FAT[1]` (a clean end-of-chain),
+ *          plus -- on FAT32 -- `FAT[2]` marking the root cluster as a
+ *          terminated single-cluster chain. The same first sector is written
+ *          to the start of every FAT copy.
+ *
+ * @param[in] backend Block-device backend.
+ * @param[in] g       Resolved geometry.
+ *
+ * @return Backend error code.
+ * @retval k_ra_ok    All FAT copies seeded.
+ * @retval k_ra_err_* Backend write failure.
+ *
+ * @pre @p backend, @p g are non-NULL.
+ * @pre @p g->fat_size_sectors and `reserved_sectors` are set.
+ * @post FAT[0]/FAT[1] (and FAT[2] on FAT32) are valid in every copy.
+ * @post `s_scratch` holds the last FAT seed sector.
+ *
+ * @note Bounded loop (NASA Rule 2): `k_fmt_num_fats` iterations.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_fmt_seed_fats(const ra_fs_backend_t* backend, const ra_fs_fmt_geom_t* g)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  if (g->type == k_ra_fs_type_fat32) {
+    priv_wr32(&s_scratch[0], (uint32_t)k_cluster_eoc_min_fat32 | (uint32_t)k_fmt_media_fixed);
+    priv_wr32(&s_scratch[4], (uint32_t)k_cluster_eoc_write_fat32);
+    priv_wr32(&s_scratch[8], (uint32_t)k_cluster_eoc_write_fat32);
+  } else if (g->type == k_ra_fs_type_fat16) {
+    priv_wr16(&s_scratch[0],
+              (uint16_t)((uint32_t)k_cluster_eoc_min_fat16 | (uint32_t)k_fmt_media_fixed));
+    priv_wr16(&s_scratch[2], (uint16_t)k_cluster_eoc_write_fat16);
+  } else {
+    /* FAT12: 1.5-byte entries. FAT[0]=0xF<media>, FAT[1]=0xFFF, packed LE. */
+    s_scratch[0] = (uint8_t)k_fmt_media_fixed;
+    s_scratch[1] = (uint8_t)k_byte_mask;
+    s_scratch[2] = (uint8_t)k_byte_mask;
+  }
+  for (uint32_t f = 0U; f < (uint32_t)k_fmt_num_fats; f++) {
+    const uint32_t fat_lba = g->reserved_sectors + (f * g->fat_size_sectors);
+    const ra_err_t err     = backend->write_block(backend->ctx, fat_lba, 1U, s_scratch);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Write the FAT32 FSInfo sector (and the backup boot sector copy).
+ *
+ * @details Lays the FSInfo lead/struct/trail signatures and a best-effort free
+ *          count + next-free hint, then copies the boot sector to the backup
+ *          location. No-op for FAT12/16 (they have no FSInfo).
+ *
+ * @param[in] backend  Block-device backend.
+ * @param[in] g        Resolved geometry (FAT32).
+ * @param[in] boot_sec The freshly built boot sector (512 bytes) to back up.
+ *
+ * @return Backend error code.
+ * @retval k_ra_ok    FSInfo + backup written (or nothing for FAT12/16).
+ * @retval k_ra_err_* Backend write failure.
+ *
+ * @pre @p backend, @p g, @p boot_sec are non-NULL.
+ * @pre @p g->type is FAT32 for any write to occur.
+ * @post On FAT32, the FSInfo + backup-boot sectors are valid.
+ * @post `s_scratch` is clobbered.
+ *
+ * @note Not reentrant against the module scratch buffer.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_fmt_write_fsinfo(const ra_fs_backend_t*  backend,
+                                      const ra_fs_fmt_geom_t* g,
+                                      const uint8_t*          boot_sec)
+{
+  if (g->type != k_ra_fs_type_fat32) {
+    return k_ra_ok;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  priv_wr32(&s_scratch[k_fmt_fsi_off_lead], (uint32_t)k_fmt_fsi_lead_sig);
+  priv_wr32(&s_scratch[k_fmt_fsi_off_struct], (uint32_t)k_fmt_fsi_struct_sig);
+  const uint32_t free_count =
+    (g->count_of_clusters > 0U) ? (g->count_of_clusters - 1U) : (uint32_t)k_fmt_fsi_unknown;
+  priv_wr32(&s_scratch[k_fmt_fsi_off_free], free_count);
+  priv_wr32(&s_scratch[k_fmt_fsi_off_nxtfree], (uint32_t)k_fmt_fat32_nxt_free);
+  priv_wr32(&s_scratch[k_fmt_fsi_off_trail], (uint32_t)k_fmt_fsi_trail_sig);
+  ra_err_t err = backend->write_block(backend->ctx, (uint32_t)k_fmt_fsinfo_sector, 1U, s_scratch);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return backend->write_block(backend->ctx, (uint32_t)k_fmt_bkboot_sector, 1U, boot_sec);
+}
+
+/**
+ * @brief Validate a caller-pinned sectors-per-cluster value.
+ *
+ * @details A zero value defers to the auto-sweep. A non-zero value must be a
+ *          power of two in the closed range 1..`k_fmt_spc_max`.
+ *
+ * @param[in] spc Requested cluster size.
+ *
+ * @return Whether @p spc is acceptable.
+ * @retval true  @p spc is 0 (auto) or a power of two in 1..128.
+ * @retval false @p spc is non-zero and not a valid power of two.
+ *
+ * @pre None (total function over uint8_t).
+ * @pre Caller treats false as `k_ra_err_invalid_arg`.
+ * @post No state modified.
+ * @post Result is purely a function of @p spc.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+static bool priv_fmt_spc_valid(uint8_t spc)
+{
+  if (spc == 0U) {
+    return true;
+  }
+  if (spc > (uint32_t)k_fmt_spc_max) {
+    return false;
+  }
+  return ((uint32_t)spc & ((uint32_t)spc - 1U)) == 0U;
+}
+
+/**
+ * @brief Lay down the boot sector, FAT seeds, FSInfo, and the empty root.
+ *
+ * @details The write phase of `ra_fs_format()`, split out to keep the public
+ *          entry under the NASA Rule 4 length budget. Builds the type-specific
+ *          BPB in scratch, persists it at LBA 0, seeds the FATs, writes any
+ *          FAT32 FSInfo + backup, and zeroes the root directory region.
+ *
+ * @param[in] backend Block-device backend.
+ * @param[in] g       Resolved geometry.
+ * @param[in] label   Optional volume label.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Volume image fully written.
+ * @retval k_ra_err_* Backend write failure mid-format.
+ *
+ * @pre @p backend, @p g are non-NULL with geometry resolved.
+ * @pre @p g->type is FAT12/FAT16/FAT32.
+ * @post On success the device holds a mountable @p g->type volume.
+ * @post On failure the device may be partially written.
+ *
+ * @note Not thread-safe; serialise with mounts on the same backend.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t
+priv_fmt_emit_volume(const ra_fs_backend_t* backend, const ra_fs_fmt_geom_t* g, const char* label)
+{
+  uint8_t boot[k_ra_fs_bytes_per_sector] = {};
+  if (g->type == k_ra_fs_type_fat32) {
+    priv_fmt_build_bpb_f32(boot, g, label);
+  } else {
+    priv_fmt_build_bpb_f16(boot, g, label);
+  }
+  ra_err_t err = backend->write_block(backend->ctx, 0U, 1U, boot);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Wipe the whole FAT region first so no garbage entries survive on a card
+   * that was not pre-zeroed -- otherwise a stale non-zero FAT word reads back
+   * as an allocated (orphan) cluster. The seed below then rewrites FAT sector
+   * 0 of each copy with the media + EOC reserved entries. */
+  const uint32_t fat_total = (uint32_t)k_fmt_num_fats * g->fat_size_sectors;
+  err                      = priv_fmt_zero_run(backend, g->reserved_sectors, fat_total);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = priv_fmt_seed_fats(backend, g);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = priv_fmt_write_fsinfo(backend, g, boot);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const uint32_t fat_end = g->reserved_sectors + fat_total;
+  if (g->type == k_ra_fs_type_fat32) {
+    return priv_fmt_zero_run(backend, fat_end, g->sectors_per_cluster);
+  }
+  return priv_fmt_zero_run(backend, fat_end, g->root_sectors);
+}
+
+ra_err_t ra_fs_format(const ra_fs_backend_t* backend, const ra_fs_format_opts_t* opts)
+{
+  if (backend == nullptr || opts == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (backend->write_block == nullptr || backend->get_capacity == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (opts->type != k_ra_fs_type_fat12 && opts->type != k_ra_fs_type_fat16 &&
+      opts->type != k_ra_fs_type_fat32) {
+    return k_ra_err_not_supported;
+  }
+  if (!priv_fmt_spc_valid(opts->sectors_per_cluster)) {
+    return k_ra_err_invalid_arg;
+  }
+  uint32_t block_count = 0U;
+  uint32_t block_size  = 0U;
+  ra_err_t err         = backend->get_capacity(backend->ctx, &block_count, &block_size);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (block_size != (uint32_t)k_ra_fs_bytes_per_sector || block_count == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_fs_fmt_geom_t geom = {};
+  geom.type             = opts->type;
+  geom.total_sectors    = block_count;
+  geom.reserved_sectors = priv_fmt_reserved_for(opts->type);
+  geom.root_entries     = (opts->type == k_ra_fs_type_fat32) ? 0U : (uint32_t)k_fmt_root_ents_f16;
+  geom.root_sectors     = ((geom.root_entries * (uint32_t)k_ra_fs_dir_entry_bytes) +
+                           ((uint32_t)k_ra_fs_bytes_per_sector - 1U)) /
+                          (uint32_t)k_ra_fs_bytes_per_sector;
+  err                   = priv_fmt_choose_geometry(&geom, opts->sectors_per_cluster);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return priv_fmt_emit_volume(backend, &geom, opts->label);
 }
 
 /**
