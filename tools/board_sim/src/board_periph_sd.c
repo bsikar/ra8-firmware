@@ -26,10 +26,13 @@
 
 #include "board_periph_sd.h"
 
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 /**
  * @enum board_sd_const_t
@@ -69,7 +72,8 @@ typedef enum : uint16_t {
 
 /** @brief SD sizing constants that exceed 16 bits. */
 typedef enum : uint32_t {
-  k_sd_csd_unit = 512U * 1024U, /**< CSD v2.0 C_SIZE capacity unit: 512 KiB. */
+  k_sd_csd_unit       = 512U * 1024U,               /**< CSD v2.0 C_SIZE unit: 512 KiB.  */
+  k_sd_save_max_bytes = 2U * 1024U * 1024U * 1024U, /**< --save-sd cap: 2 GiB.    */
 } board_sd_const32_t;
 
 /**
@@ -105,9 +109,11 @@ typedef enum : uint8_t {
  * @brief The modelled card: backing image + command/response framing.
  */
 typedef struct {
-  uint8_t*            image;      /**< Backing card image (host file contents).   */
-  uint32_t            image_len;  /**< Image size in bytes.                       */
+  uint8_t*            image;      /**< Backing card image (malloc or mmap-sparse). */
+  uint64_t            image_len;  /**< Image size in bytes (64-bit: cards > 4 GB). */
   bool                attached;   /**< A `--sd` image is loaded.                  */
+  bool                mmapped;    /**< image is a sparse mmap (--sd-new) vs malloc.*/
+  int                 map_fd;     /**< Backing temp-file fd when mmapped, else -1. */
   uint8_t             fat_bits;   /**< 12/16/32 if formatted by --sd-new, else 0. */
   char                label[12];  /**< Volume label (11 chars + NUL), for the GUI.*/
   bool                collecting; /**< Mid command-frame collection.              */
@@ -120,12 +126,30 @@ typedef struct {
   uint32_t            resp_pos;
   board_sd_wr_phase_t wr_phase; /**< CMD24/CMD25 write sub-state.       */
   bool                wr_multi; /**< Write is CMD25 (multi-block).      */
-  uint32_t            wr_off;   /**< Byte offset of the current block.  */
+  uint64_t            wr_off;   /**< Byte offset of the current block.  */
   uint32_t            wr_cnt;   /**< Bytes seen in the data/CRC phase.  */
 } board_sd_state_t;
 
 /** @brief The single modelled SD card. */
 static board_sd_state_t s_sd;
+
+/** @brief Release the current backing image (munmap a sparse card, else free). */
+static void board_sd_release_image(void)
+{
+  if (s_sd.image != nullptr) {
+    if (s_sd.mmapped) {
+      (void)munmap(s_sd.image, (size_t)s_sd.image_len);
+      if (s_sd.map_fd >= 0) {
+        (void)close(s_sd.map_fd);
+      }
+    } else {
+      free(s_sd.image);
+    }
+  }
+  s_sd.image   = nullptr;
+  s_sd.mmapped = false;
+  s_sd.map_fd  = -1;
+}
 
 /**
  * @brief CRC16-CCITT (poly 0x1021, init 0) over a buffer.
@@ -213,7 +237,7 @@ static void board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg,
   c->resp_len = 1U;
   c->wr_phase = k_sd_wr_token;
   c->wr_multi = (idx == (uint8_t)k_sd_idx_cmd25);
-  c->wr_off   = arg * (uint32_t)k_sd_block;
+  c->wr_off   = (uint64_t)arg * (uint64_t)k_sd_block;
   c->wr_cnt   = 0U;
 }
 
@@ -257,7 +281,7 @@ static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
     return (uint8_t)k_sd_idle;
   }
   if (c->wr_phase == k_sd_wr_data) {
-    const uint32_t a = c->wr_off + c->wr_cnt;
+    const uint64_t a = c->wr_off + (uint64_t)c->wr_cnt;
     if (a < c->image_len) {
       c->image[a] = tx;
     }
@@ -278,7 +302,7 @@ static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
     c->resp_pos = 0U;
     c->wr_cnt   = 0U;
     if (c->wr_multi) {
-      c->wr_off += (uint32_t)k_sd_block; /* next block of the multi-write. */
+      c->wr_off += (uint64_t)k_sd_block; /* next block of the multi-write. */
       c->wr_phase = k_sd_wr_token;
     } else {
       c->wr_phase = k_sd_wr_idle;
@@ -367,9 +391,9 @@ static void board_sd_process_cmd(board_sd_state_t* c)
     }
     case (uint8_t)k_sd_idx_cmd17: { /* READ_SINGLE_BLOCK (SDHC: arg = block). */
       uint8_t        blk[k_sd_block] = {};
-      const uint32_t off             = arg * (uint32_t)k_sd_block;
+      const uint64_t off             = (uint64_t)arg * (uint64_t)k_sd_block;
       for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
-        const uint32_t a = off + i;
+        const uint64_t a = off + (uint64_t)i;
         blk[i]           = (a < c->image_len) ? c->image[a] : 0U;
       }
       board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
@@ -404,9 +428,10 @@ bool board_sd_attach(const char* path)
     (void)fprintf(stderr, "board_sim: --sd: empty image '%s'\n", path);
     return false;
   }
-  free(s_sd.image);
-  s_sd       = (board_sd_state_t){};
-  s_sd.image = (uint8_t*)malloc((size_t)size);
+  board_sd_release_image();
+  s_sd        = (board_sd_state_t){};
+  s_sd.map_fd = -1;
+  s_sd.image  = (uint8_t*)malloc((size_t)size);
   if (s_sd.image == nullptr) {
     (void)fclose(fp);
     return false;
@@ -414,11 +439,10 @@ bool board_sd_attach(const char* path)
   const size_t got = fread(s_sd.image, 1U, (size_t)size, fp);
   (void)fclose(fp);
   if (got != (size_t)size) {
-    free(s_sd.image);
-    s_sd.image = nullptr;
+    board_sd_release_image();
     return false;
   }
-  s_sd.image_len = (uint32_t)size;
+  s_sd.image_len = (uint64_t)size;
   s_sd.attached  = true;
   (void)fprintf(stderr, "board_sim: SD card attached (%ld bytes) from %s\n", size, path);
   return true;
@@ -437,14 +461,15 @@ bool board_sd_attached(void)
 
 /** @brief FAT BPB field offsets + format constants. */
 typedef enum : uint32_t {
-  k_fmt_sec_bytes = 512U,        /**< Bytes per sector.                    */
-  k_fmt_fat16_max = 65524U,      /**< Max FAT16 data clusters.             */
-  k_fmt_fat16_min = 4085U,       /**< Min FAT16 data clusters.             */
-  k_fmt_spc_max   = 64U,         /**< Largest sectors-per-cluster we pick. */
-  k_fmt_root_ents = 512U,        /**< FAT16 root-directory entries.        */
-  k_fmt_volid     = 0x52A8D200U, /**< Arbitrary volume serial base.        */
-  k_fmt_resv_f16  = 1U,          /**< FAT16 reserved sectors (boot).       */
-  k_fmt_resv_f32  = 32U,         /**< FAT32 reserved sectors.              */
+  k_fmt_sec_bytes  = 512U,        /**< Bytes per sector.                    */
+  k_fmt_fat16_max  = 65524U,      /**< Max FAT16 data clusters.             */
+  k_fmt_fat16_min  = 4085U,       /**< Min FAT16 data clusters.             */
+  k_fmt_spc_max    = 64U,         /**< Largest sectors-per-cluster we pick. */
+  k_fmt_fat32_pref = 4194304U,    /**< FAT32: preferred max clusters (bumps spc). */
+  k_fmt_root_ents  = 512U,        /**< FAT16 root-directory entries.        */
+  k_fmt_volid      = 0x52A8D200U, /**< Arbitrary volume serial base.        */
+  k_fmt_resv_f16   = 1U,          /**< FAT16 reserved sectors (boot).       */
+  k_fmt_resv_f32   = 32U,         /**< FAT32 reserved sectors.              */
 } sd_fmt_const_t;
 
 /** @brief Little-endian 16-bit store into the image. */
@@ -544,11 +569,16 @@ static uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char
   uint32_t clusters = 0U;
   for (;;) {
     const uint32_t tmp1 = total_sectors - (uint32_t)k_fmt_resv_f32;
-    const uint32_t tmp2 = (128U * spc) + 2U; /* 128 = 512 bytes / 4-byte FAT32 entry. */
+    /* Microsoft FAT32 FAT-size divisor: ((256*spc) + NumFATs) / 2 = 128*spc + 1.
+     * (Using +2 can undersize the FAT by a sector on large volumes.) */
+    const uint32_t tmp2 = (128U * spc) + 1U;
     fatsz               = (tmp1 + tmp2 - 1U) / tmp2;
     const uint32_t data = total_sectors - (uint32_t)k_fmt_resv_f32 - (2U * fatsz);
     clusters            = data / spc;
-    if (clusters <= 0x0FFFFFF0U) {
+    /* Grow the cluster size for big cards so the FAT stays bounded and the
+     * cluster size is realistic (8 KiB at ~2 GiB, 32 KiB at ~8 GiB+), capped at
+     * the FAT32 cluster ceiling. k_fmt_fat32_pref keeps small cards at 1 spc. */
+    if (clusters <= (uint32_t)k_fmt_fat32_pref) {
       break;
     }
     spc *= 2U;
@@ -603,33 +633,72 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
     (void)fprintf(stderr, "board_sim: --sd-new: size too small (need >= 32 KiB)\n");
     return false;
   }
-  const size_t bytes = (size_t)total_sectors * (size_t)k_fmt_sec_bytes;
-  uint8_t*     img   = (uint8_t*)calloc(1U, bytes);
-  if (img == nullptr) {
-    (void)fprintf(stderr, "board_sim: --sd-new: out of memory for %zu bytes\n", bytes);
+  const uint64_t bytes = (uint64_t)total_sectors * (uint64_t)k_fmt_sec_bytes;
+  /* Back the card with a sparse mmap'd temp file: a multi-GB card only ever
+   * materialises the few sectors the formatter + firmware actually touch, so
+   * selecting e.g. 30 GB costs kilobytes of host RAM, not 30 GB. */
+  char tmpl[] = "/tmp/board_sim_sd.XXXXXX";
+  int  fd     = mkstemp(tmpl);
+  if (fd < 0) {
+    (void)fprintf(stderr, "board_sim: --sd-new: mkstemp failed\n");
+    return false;
+  }
+  (void)unlink(tmpl); /* anonymous: the storage lives until the fd is closed. */
+  if (ftruncate(fd, (off_t)bytes) != 0) {
+    (void)close(fd);
+    (void)fprintf(stderr,
+                  "board_sim: --sd-new: ftruncate to %llu bytes failed\n",
+                  (unsigned long long)bytes);
+    return false;
+  }
+  uint8_t* img = (uint8_t*)mmap(nullptr, (size_t)bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (img == MAP_FAILED) {
+    (void)close(fd);
+    (void)fprintf(stderr,
+                  "board_sim: --sd-new: mmap of %llu bytes failed\n",
+                  (unsigned long long)bytes);
     return false;
   }
   const uint32_t spc = (fat_bits == 32U) ? sd_format_fat32(img, total_sectors, label)
                                          : sd_format_fat16(img, total_sectors, label);
-  free(s_sd.image);
+  board_sd_release_image();
   s_sd           = (board_sd_state_t){};
   s_sd.image     = img;
-  s_sd.image_len = (uint32_t)bytes;
+  s_sd.image_len = bytes;
+  s_sd.mmapped   = true;
+  s_sd.map_fd    = fd;
   s_sd.attached  = true;
   s_sd.fat_bits  = (fat_bits == 32U) ? 32U : 16U;
   sd_label_field((uint8_t*)s_sd.label, label);
   s_sd.label[11] = '\0';
-  (void)fprintf(stderr,
-                "board_sim: SD card created (%u MiB FAT%u, %u sec/clus) blank + attached\n",
-                (unsigned)(bytes / (1024U * 1024U)),
-                (unsigned)s_sd.fat_bits,
-                (unsigned)spc);
+  if (bytes >= (1024ULL * 1024ULL * 1024ULL)) {
+    (void)fprintf(stderr,
+                  "board_sim: SD card created (%llu GiB FAT%u, %u sec/clus) sparse + attached\n",
+                  (unsigned long long)(bytes / (1024ULL * 1024ULL * 1024ULL)),
+                  (unsigned)s_sd.fat_bits,
+                  (unsigned)spc);
+  } else {
+    (void)fprintf(stderr,
+                  "board_sim: SD card created (%llu MiB FAT%u, %u sec/clus) sparse + attached\n",
+                  (unsigned long long)(bytes / (1024ULL * 1024ULL)),
+                  (unsigned)s_sd.fat_bits,
+                  (unsigned)spc);
+  }
   return true;
 }
 
 bool board_sd_save(const char* path)
 {
   if ((path == nullptr) || !s_sd.attached || (s_sd.image == nullptr)) {
+    return false;
+  }
+  /* A sparse multi-GB card would dump GBs of mostly-zeros; cap the dump so
+   * --save-sd stays sane. Inspect a large card by its live mount instead. */
+  if (s_sd.image_len > (uint64_t)k_sd_save_max_bytes) {
+    (void)fprintf(stderr,
+                  "board_sim: --save-sd: card is %llu MiB (> %u MiB cap) -- skipped\n",
+                  (unsigned long long)(s_sd.image_len / (1024ULL * 1024ULL)),
+                  (unsigned)((uint64_t)k_sd_save_max_bytes / (1024ULL * 1024ULL)));
     return false;
   }
   FILE* fp = fopen(path, "wb");
@@ -642,11 +711,14 @@ bool board_sd_save(const char* path)
   if (put != (size_t)s_sd.image_len) {
     return false;
   }
-  (void)fprintf(stderr, "board_sim: SD card image saved (%u bytes) to %s\n", s_sd.image_len, path);
+  (void)fprintf(stderr,
+                "board_sim: SD card image saved (%llu bytes) to %s\n",
+                (unsigned long long)s_sd.image_len,
+                path);
   return true;
 }
 
-void board_sd_info(bool* attached, uint32_t* bytes, uint8_t* fat_bits, const char** label)
+void board_sd_info(bool* attached, uint64_t* bytes, uint8_t* fat_bits, const char** label)
 {
   if (attached != nullptr) {
     *attached = s_sd.attached;
