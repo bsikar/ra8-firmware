@@ -1,0 +1,113 @@
+/**
+ * @file examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/main.c
+ * @brief Copy-to-run HIL demo: launch one embedded image at the SRAM run base.
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * The unattended, self-contained proof of the dfu_bootloader's **copy-to-run**
+ * scheme (issue #97): an image linked ONCE at the SRAM run base
+ * (::k_ra_dfu_run_base) runs from wherever it is staged, with no per-slot build.
+ *
+ * This app embeds that image (`payload_image.h`, generated from `payload.c` by
+ * `build_payload.sh`) and hands it to the shared ::ra_dfu_launch -- the exact
+ * launcher the bootloader uses for a validated slot. ra_dfu_launch copies the
+ * image to ::k_ra_dfu_run_base and branches there; the payload then spins in the
+ * SRAM run window forever (writing a sentinel + heartbeat at a fixed probe word).
+ *
+ * ## How HIL verifies it (alive gate)
+ *
+ * `hil.conf` is `HIL_MODE=alive`. After the hand-off the PC lives in the SRAM
+ * copy-to-run window (0x22020000+) -- a region only reachable BY copying-to-run
+ * and branching there, since this app's own code is in MRAM. So "PC in the SRAM
+ * run window, CycleCnt advancing, CFSR/HFSR clean, not in a fault spinner" is a
+ * specific proof that copy-to-run executed. If the launch's run-target check
+ * fails (it never should: a fixed run base + a valid length), control returns
+ * and parks in ::dcr_panic_halt, which the alive gate flags as a fault spinner.
+ *
+ * Unlike the bootloader's alive gate (which can also pass via the DFU-device
+ * fallback when no slot is valid), this app ALWAYS copies-to-run, so its alive
+ * pass is unambiguous.
+ *
+ * @author Brighton Sikarskie
+ * @date 2026-06-16
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "payload_image.h"
+#include "ra_dfu.h"
+
+/**
+ * @enum dcr_vt_t
+ * @brief Sanity-check masks for the embedded image's vector table.
+ */
+typedef enum : uint32_t {
+  k_dcr_sram_mask = 0xFF000000U, /**< Top byte of an SRAM address.        */
+  k_dcr_sram_base = 0x22000000U, /**< SRAM window base (initial-SP check). */
+  k_dcr_thumb_bit = 0x00000001U, /**< Reset vector must carry the Thumb bit. */
+} dcr_vt_t;
+
+/**
+ * @brief Park forever in WFI -- copy-to-run did not happen (alive gate fails).
+ * @return Does not return.
+ * @pre Reached only when ::ra_dfu_launch returned (run-target check failed).
+ * @pre Interrupts are in any state.
+ * @post The CPU spins; the alive gate sees a fault-spinner PC and fails.
+ * @post No further app code runs.
+ * @note Named `*panic_halt` so the HIL alive gate's fault-spinner check matches.
+ * @since 0.1.0
+ */
+[[noreturn]] static void dcr_panic_halt(void)
+{
+  /* NASA Rule 2 exemption: terminal panic spin -- intentionally never exits. */
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Entry: launch the embedded copy-to-run image; never returns on success.
+ * @return Never returns (control passes to the launched image, or parks).
+ * @pre Reset_Handler copied .data and zeroed .bss; SystemInit ran.
+ * @pre The embedded image's first two words are a valid MSP + Thumb reset vector.
+ * @post On success, control is at the image's reset vector in the SRAM run window.
+ * @post On a failed run-target check, control parks in ::dcr_panic_halt.
+ * @note Single entry point; not re-entrant.
+ * @since 0.1.0
+ */
+int32_t main(void)
+{
+  static_assert(sizeof(g_payload_image) >= (2U * sizeof(uint32_t)),
+                "payload image must contain at least the 2-word vector table");
+
+  uint32_t initial_sp  = 0U;
+  uint32_t reset_entry = 0U;
+  memcpy(&initial_sp, &g_payload_image[0], sizeof(initial_sp));
+  memcpy(&reset_entry, &g_payload_image[sizeof(initial_sp)], sizeof(reset_entry));
+  /* Preconditions (NASA Rule 5): the embedded image must carry a plausible SRAM
+   * stack pointer and a Thumb reset vector before we hand off to it. */
+  if ((initial_sp & (uint32_t)k_dcr_sram_mask) != (uint32_t)k_dcr_sram_base) {
+    dcr_panic_halt();
+  }
+  if ((reset_entry & (uint32_t)k_dcr_thumb_bit) == 0U) {
+    dcr_panic_halt();
+  }
+
+  /* Copy-to-run: ra_dfu_launch copies the image to k_ra_dfu_run_base and branches
+   * there. It returns only if the run-target check fails (it should not). */
+  ra_dfu_launch((uintptr_t)g_payload_image,
+                (uint32_t)sizeof(g_payload_image),
+                (uint32_t)k_ra_dfu_run_base);
+
+  dcr_panic_halt();
+  return 0;
+}
+#pragma GCC diagnostic pop

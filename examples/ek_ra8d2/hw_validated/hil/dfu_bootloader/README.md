@@ -1,9 +1,11 @@
 # dfu_bootloader -- immutable USB-DFU MRAM bootloader
 
 The first **128 KiB** of code-MRAM. It never erases itself: at every reset it
-either **boots the valid application slot** (software A/B select + jump) or, when
-no slot is bootable (or an app requested it), brings up a **USB-DFU device** and
-programs the inactive slot. Built on the controller-agnostic
+either **boots the valid application slot** (software A/B select +
+**copy-to-run**: the slot body is copied to a fixed SRAM run base and launched
+there, so one image boots from either slot -- see below) or, when no slot is
+bootable (or an app requested it), brings up a **USB-DFU device** and programs
+the inactive slot. Built on the controller-agnostic
 [`libs/ra_dfu`](../../../../../libs/ra_dfu) core that the bidirectional HIL twins
 ([`dfu_selftest_hs_host`](../dfu_selftest_hs_host) /
 [`dfu_selftest_fs_host`](../dfu_selftest_fs_host)) validate
@@ -18,12 +20,13 @@ on both USB controllers.
 0x02100000  (end)
 ```
 
-The image **header is the slot's last 32-byte page** (`slot_base + 0x6FFE0`), not
-its first, so the application's vector table lands at the 64 KiB-aligned
-`slot_base` -- a valid `VTOR.TBLOFF`. The header is
-`magic | seq | img_len | img_crc32 | entry(=slot_base) | reserved`, programmed
-**last** so a torn download leaves an invalid (CRC-mismatching) slot, never a
-half-valid one.
+The image **header is the slot's last 32-byte page** (`slot_base + 0x6FFE0`), so
+the image body starts at `slot_base`. The header is
+`magic | seq | img_len | img_crc32 | entry(=k_ra_dfu_run_base) | reserved`,
+programmed **last** so a torn download leaves an invalid (CRC-mismatching) slot,
+never a half-valid one. (With copy-to-run the body is copied to the SRAM run base
+before execution, so header-last is kept purely for that torn-write atomicity --
+not for vector-table alignment.)
 
 ## Boot decision (pure, MC/DC-tested in `tests/test_ra_dfu_boot.c`)
 
@@ -31,7 +34,7 @@ half-valid one.
 2. Validate both slots: `magic` ok **and** `img_len` in range **and** software
    CRC32 over `[slot_base, slot_base + img_len)` equals `img_crc32`.
 3. `ra_dfu_boot_decide`: trigger set **or** neither slot valid -> stay in DFU;
-   otherwise jump to the valid slot with the higher `seq` (Slot A on a tie).
+   otherwise copy-to-run the valid slot with the higher `seq` (Slot A on a tie).
 
 A freshly written bad slot fails its CRC, so the older valid slot still boots --
 brick-safe by construction. The bootloader region is never written by DFU, so
@@ -48,53 +51,50 @@ and soft-resets -- so the next boot decision selects the freshly written slot.
 dfu-util -a 0 -D <app>_slotX.bin     # body only; the bootloader writes the header
 ```
 
-## Per-slot payload builds
+## One image, either slot (copy-to-run, issue #97)
 
-Because an in-place A/B image runs from its slot's absolute address, an
-application must be **linked at its slot base** (no position independence yet --
-that is tracked as PIC follow-up
-[issue #97](https://github.com/bsikar/ra8d2-firmware/issues/97), which would let a
-single `.bin` flash to either slot and remove this per-slot step).
+A slot is **staging only**. On a valid-slot boot the bootloader **copies** the
+slot body to a single fixed SRAM run base and launches it there, via the shared
+`ra_dfu_launch`:
 
 ```
-Slot A base = 0x02020000   (app vector table at 0x02020000, header at 0x0208FFE0)
-Slot B base = 0x02090000   (app vector table at 0x02090000, header at 0x020FFFE0)
+k_ra_dfu_run_base = 0x22020000   (SRAM; clears the bootloader's low .bss, well
+                                  below its stack at the top of SRAM)
 ```
 
-Build the app for a slot by pointing its linker `MRAM` region at the slot base,
-then objcopy to a raw `.bin`:
+So a payload is **linked once**, at the run base -- the *identical* `.bin` boots
+from Slot A or Slot B, with no per-slot build and no "which slot?" footgun. This
+sidesteps true position-independent code (ROPI/RWPI), which cannot relocate the
+absolute function pointers this codebase's interface structs store in `.rodata`.
+The header's `entry` records the run base; the bootloader copies to the trusted
+`k_ra_dfu_run_base` constant (not to `entry`), so a corrupted `entry` only fails
+the `ra_dfu_run_target_valid` cross-check and drops the boot to DFU.
+
+Build the one image and stage it (the demo payload + builder live in
+[`../dfu_copy_to_run`](../dfu_copy_to_run)):
 
 ```
-# Slot A: in the payload app's linker_script.ld set
-#   MRAM (rx) : ORIGIN = 0x02020000, LENGTH = 448K
-# Slot B: ORIGIN = 0x02090000, LENGTH = 448K
+# Link the payload ONCE at the run base (its linker_script.ld):
+#   RUN (rwx) : ORIGIN = 0x22020000, LENGTH = ...
 make <app>
-arm-none-eabi-objcopy -O binary <app>.elf <app>_slotA.bin
-```
+arm-none-eabi-objcopy -O binary <app>.elf <app>.bin
 
-`LENGTH` must be `448K` (not the default 1 MiB) so the link-time MRAM-overflow
-ASSERT fires if the image would run past the slot. Then either let the
-bootloader's DFU device program it (the operator path) or stage it directly over
-J-Link (the no-host path):
+# Then either let the bootloader's DFU device program it (operator path):
+dfu-util -a 0 -D <app>.bin
 
-```
-# Operator path -- the bootloader writes the header on DFU commit:
-dfu-util -a 0 -D <app>_slotA.bin
-
-# No-host path -- wrap the body with its header and flash the slot directly:
-python3 stage_slot_image.py --payload <app>_slotA.bin --slot a --seq 1 --out slotA.hex
+# ...or stage the SAME .bin to either slot directly over J-Link (no host):
+python3 stage_slot_image.py --payload <app>.bin --slot a --seq 1 --out slotA.hex
+python3 stage_slot_image.py --payload <app>.bin --slot b --seq 2 --out slotB.hex
 JLinkExe ... loadfile slotA.hex      # body @slot_base + header @slot_base+0x6FFE0
 ```
 
-> The per-slot link base is the manual step that PIC follow-up
-> [issue #97](https://github.com/bsikar/ra8d2-firmware/issues/97) removes; until
-> then each slot needs its own `ORIGIN`.
+The same `<app>.bin` produces both slot images (identical body CRC).
 
 ## Validation (on-bench, EK-RA8D2, 2026-06-16)
 
 The DFU **program/read-back** path is validated in both directions by the HIL
 twins (Config A HS->FS, Config B FS->HS). The bootloader's own boot decision and
-jump were validated locally over the J-Link OB:
+copy-to-run were validated locally over the J-Link OB:
 
 - **No bootable slot -> DFU** (both slots erased). SCI8:
   ```
@@ -102,34 +102,35 @@ jump were validated locally over the J-Link OB:
   dfu-bootloader: no bootable slot -- entering DFU
   dfu-bootloader: DFU device up on USB-FS, awaiting DFU_DNLOAD...
   ```
-- **Valid slot -> jump**. A 64-byte Slot-A image (vector table + a reset stub
-  that writes `0x600D600D` to `0x22040000`) was staged with `stage_slot_image.py`
-  and flashed. After reset:
+- **One image, EITHER slot -> copy-to-run.** The *identical*
+  [`dfu_copy_to_run`](../dfu_copy_to_run) `payload.bin` (body CRC `0x2869B9D7`,
+  `entry=0x22020000`) was staged to Slot A (seq 10 > B) and, separately, to Slot B
+  (seq 20 > A), then the bootloader was flashed and reset for each:
   ```
-  dfu-bootloader: jumping to Slot A @0x02020000
+  RUN 1  dfu-bootloader: Slot A -> copy-to-run @0x22020000   PC=0x22020010
+  RUN 2  dfu-bootloader: Slot B -> copy-to-run @0x22020000   PC=0x22020010
   ```
-  J-Link probes confirmed the hand-off executed: `mem32 0x22040000 = 600D600D`
-  (the slot's reset stub ran) and `mem32 0xE000ED08 (VTOR) = 0x02020000`.
+  In both runs J-Link confirmed the hand-off: the PC landed in the SRAM run
+  window (`0x22020010`, reachable only by copying-to-run) and the payload's
+  sentinel `mem32 0x22010000 = 9710C0DE` with an advancing heartbeat at
+  `0x22010004`. Same `.bin`, both slots -- issue #97 closed.
 
-- **Full DFU flash -> boot cycle**, end to end, with no external `dfu-util`:
-  the board is its own DFU host over the self-loop
-  ([`dfu_selftest_boot`](../dfu_selftest_boot)). The HS host
-  DFU_DNLOADs the same bootable Slot-A payload and sends a manifest; the FS DFU
-  device programs **and commits** the slot header (`USB SELFTEST DFU-BOOT COMMIT
-  PASS`). Flashing this bootloader afterward (Slot A untouched) and resetting
-  then boots the DFU-committed image -- `jumping to Slot A` + `mem32 0x22040000
-  = 600D600D`. So every code path the real `dfu-util` exercises (program,
-  commit, boot decision, jump) is validated on bench; only the literal external
-  `dfu-util` tool is unused, because the bench self-loops the two jacks.
+- **DFU program + commit**, end to end with no external `dfu-util`: the board is
+  its own DFU host over the self-loop ([`dfu_selftest_boot`](../dfu_selftest_boot))
+  -- the HS host DFU_DNLOADs a payload + manifest and the FS DFU device programs
+  **and commits** the slot header (`USB SELFTEST DFU-BOOT COMMIT PASS`). A commit
+  stamps `entry=k_ra_dfu_run_base`, i.e. the *exact* header format the
+  copy-to-run proof above boots -- so the DFU-committed and J-Link-staged paths
+  converge on the same bootable slot.
 
-- **Unattended HIL gate** (`hil.conf`, `HIL_MODE=alive`). Flashed standalone,
-  the bootloader either jumps to a valid slot or brings up the USB-FS DFU device
-  -- both are healthy, busy-spinning states, so the slot contents (which the
-  flash does not control) never make the outcome flaky. `scripts/hil_run_local.sh
-  dfu_bootloader` flashes, dwells, then asserts via the J-Link that the PC is in
-  code, CycleCnt is advancing, CFSR/HFSR are clean, and the PC is not parked in a
-  fault spinner. Local run: `PASS` with `PC=0x02020022` -- the bootloader found a
-  valid Slot A and jumped into it, spinning cleanly with no fault.
+- **Unattended HIL gates** (`hil.conf`, `HIL_MODE=alive`). The dedicated
+  [`dfu_copy_to_run`](../dfu_copy_to_run) app *always* copies-to-run, so its alive
+  pass (PC in the SRAM run window) is an unambiguous copy-to-run proof. This
+  bootloader's own alive gate (`scripts/hil_run_local.sh dfu_bootloader`) asserts
+  PC in code, CycleCnt advancing, CFSR/HFSR clean, not in a fault spinner -- it
+  passes whether the boot copies-to-run a valid slot or falls back to the DFU
+  device. Local run: `PASS` with `PC=0x22020010` (it copied-to-run the valid slot
+  into the SRAM run window, spinning cleanly with no fault).
 
 ## Recovery
 

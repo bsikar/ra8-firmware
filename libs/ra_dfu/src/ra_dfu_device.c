@@ -21,7 +21,12 @@
 
 #include "ra_dfu_device.h"
 
-#ifndef RA_SIMULATOR_MODE
+/* Firmware + USBX only. The host test build defines RA_SIMULATOR_MODE (no USBX),
+ * and a firmware build that does not pull in USBX -- e.g. dfu_copy_to_run, which
+ * only needs the ra_dfu core (boot/program/launch) -- has no ux_api.h on the
+ * include path. In both cases this whole TU is empty; the only consumers of the
+ * DFU device API are apps that `USES usbx`. */
+#if !defined(RA_SIMULATOR_MODE) && __has_include("ux_api.h")
 
 #include <string.h>
 

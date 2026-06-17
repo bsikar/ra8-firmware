@@ -255,7 +255,7 @@ ra_err_t ra_dfu_program_commit(ra_dfu_slot_t inactive, uint32_t img_len, uint32_
   hdr.seq                   = seq;
   hdr.img_len               = img_len;
   hdr.img_crc32             = body_crc;
-  hdr.entry                 = (uint32_t)base;
+  hdr.entry                 = (uint32_t)k_ra_dfu_run_base;
   /* Header programmed LAST, into the slot's last page, so a torn write leaves
    * the header erased (invalid), never a valid header over a partial image.
    * internal_write_secure masks IRQs across the page program so no ISR fetches

@@ -34,12 +34,25 @@
  * The bootloader is 128 KiB so a full USBX + ThreadX DFU device fits inside the
  * immutable region; the two app slots fill the rest of the 1 MiB array.
  *
- * The image header is the slot's LAST 32-byte page, not its first, so the
- * application's vector table lands at the 64 KiB-aligned `slot_base` (a valid
- * `VTOR.TBLOFF`); a header prepended at `slot_base` would push the vectors to a
- * misaligned `slot_base + 0x20`. The payload therefore links at `ORIGIN =
- * slot_base` with the last page reserved, and the bootloader jumps to
- * `entry == slot_base`.
+ * ## Copy-to-run (one image, either slot)
+ *
+ * A slot is *staging* only: the image body occupies `[slot_base, slot_base +
+ * img_len)` and the 32-byte header is the slot's LAST page (`slot_base +
+ * k_ra_dfu_hdr_offset`), programmed last so a torn download leaves an invalid
+ * (CRC-mismatching) slot rather than a half-valid one. On a valid-slot boot the
+ * bootloader COPIES the body to a single fixed SRAM run base
+ * (::k_ra_dfu_run_base) and launches it there. A payload is therefore linked
+ * ONCE, at the run base, and the *identical* image boots from either slot -- no
+ * per-slot build and no "which slot am I building for?" footgun. This sidesteps
+ * true position-independent code (ROPI/RWPI), which cannot relocate the absolute
+ * function pointers this codebase's interface structs store in `.rodata`.
+ *
+ * The header's `entry` records that run base. The bootloader copies to the
+ * trusted ::k_ra_dfu_run_base constant (not to `entry`), so a corrupted `entry`
+ * cannot redirect the copy -- it only fails the ::ra_dfu_run_target_valid
+ * cross-check, which drops the boot to DFU. (Header-last is kept purely for the
+ * torn-write atomicity above; the old VTOR-alignment reason no longer applies,
+ * since VTOR is set to the aligned run base, not the slot.)
  *
  * The bootloader is never swapped (no BTFLG / startup-area swap); it
  * reads both slot headers and jumps to the valid slot with the higher
@@ -93,6 +106,26 @@ typedef enum : uint32_t {
 } ra_dfu_layout_t;
 
 /**
+ * @enum ra_dfu_run_t
+ * @brief Fixed SRAM copy-to-run execution base.
+ *
+ * @details
+ * On a valid-slot boot the bootloader copies the staged image body out of the
+ * slot to this single SRAM address and launches it there, so every payload is
+ * linked at exactly this base and one image runs from either slot. The value
+ * clears the bootloader's own low-SRAM footprint (< 64 KiB) with margin, and a
+ * maximum `k_ra_dfu_img_max` image copied here ends well below the bootloader's
+ * stack at the top of SRAM -- so the copy never clobbers live bootloader state.
+ * The payload's linker `ORIGIN` MUST equal this value.
+ *
+ * @invariant `k_ra_dfu_run_base` lies in the 2 MiB SRAM window (0x22000000) and
+ *            `k_ra_dfu_run_base + k_ra_dfu_img_max` stays inside it.
+ */
+typedef enum : uint32_t {
+  k_ra_dfu_run_base = 0x22020000U, /**< SRAM copy-to-run / payload link base. */
+} ra_dfu_run_t;
+
+/**
  * @enum ra_dfu_slot_t
  * @brief Application-slot identifier.
  */
@@ -125,23 +158,24 @@ typedef enum : uint8_t {
  *
  * @invariant `img_len` is a non-zero multiple of `k_ra_dfu_page_size`
  *            and `<= k_ra_dfu_img_max` for a valid image.
- * @invariant `entry == slot_base` for a valid image.
+ * @invariant `entry == k_ra_dfu_run_base` for a valid image (copy-to-run).
  *
  * @par Example:
  * @code
  * ra_dfu_img_hdr_t h = { .magic = k_ra_dfu_hdr_magic, .seq = 7,
  *                        .img_len = 0x4000, .img_crc32 = crc,
- *                        .entry = k_ra_dfu_slot_a_base + k_ra_dfu_hdr_size };
+ *                        .entry = k_ra_dfu_run_base };
  * @endcode
  *
  * @see ra_dfu_hdr_valid
+ * @see ra_dfu_run_target_valid
  */
 typedef struct {
   uint32_t magic;     /**< Must equal ::k_ra_dfu_hdr_magic.                  */
   uint32_t seq;       /**< Monotonic sequence; higher valid slot wins.       */
   uint32_t img_len;   /**< Image body length in bytes (32-byte multiple).    */
   uint32_t img_crc32; /**< CRC32 (IEEE) over the image body.                 */
-  uint32_t entry;     /**< App vector-table address (== slot_base).          */
+  uint32_t entry;     /**< SRAM run base (== ::k_ra_dfu_run_base).           */
   uint32_t rsv0;      /**< Reserved; programmed 0.                           */
   uint32_t rsv1;      /**< Reserved; programmed 0.                           */
   uint32_t rsv2;      /**< Reserved; programmed 0.                           */
@@ -204,6 +238,73 @@ uint32_t ra_dfu_crc32(const uint8_t* data, uint32_t len);
  * @since 0.1.0
  */
 bool ra_dfu_hdr_valid(const ra_dfu_img_hdr_t* hdr, uint32_t computed_crc);
+
+/**
+ * @brief Decide whether a validated slot's image may be copied-to-run.
+ *
+ * @details
+ * The boot-time cross-check before the bootloader copies a slot body to SRAM
+ * and launches it: the header's `entry` must be the fixed ::k_ra_dfu_run_base
+ * (so the image was linked for the run base, and a corrupted `entry` is caught),
+ * and `img_len` must be a non-zero 32-byte multiple within
+ * `[k_ra_dfu_page_size, k_ra_dfu_img_max]` (so the copy length is sane and the
+ * image fits the SRAM run window). Pure -- the bootloader still copies to the
+ * trusted ::k_ra_dfu_run_base constant, never to `entry` itself.
+ *
+ * @param[in] entry   The candidate image's header `entry` field.
+ * @param[in] img_len The candidate image's body length, bytes.
+ *
+ * @return `true` iff the image may be copied to ::k_ra_dfu_run_base and run.
+ * @retval true  `entry == k_ra_dfu_run_base` and `img_len` is in range/aligned.
+ * @retval false `entry` is not the run base, or `img_len` is zero / too large /
+ *               not a 32-byte multiple.
+ *
+ * @pre `entry` and `img_len` are the live header fields of a slot that already
+ *      passed ::ra_dfu_hdr_valid (magic + length + body CRC).
+ * @post No state is mutated.
+ *
+ * @note Thread-safe (pure). Compound decision -- MC/DC vectors in the test.
+ * @see ra_dfu_hdr_valid
+ * @since 0.1.0
+ */
+bool ra_dfu_run_target_valid(uint32_t entry, uint32_t img_len);
+
+/**
+ * @brief Copy an image to the SRAM run base and branch to it (copy-to-run).
+ *
+ * @details
+ * The shared copy-to-run hand-off (firmware only): validates `entry` /
+ * `img_len` with ::ra_dfu_run_target_valid, copies `img_len` bytes from `src`
+ * to the trusted ::k_ra_dfu_run_base, then sets the Secure VTOR to the run base,
+ * loads the image's initial MSP, and branches to its reset vector. Used by the
+ * `dfu_bootloader` (launching a slot body) and the `dfu_copy_to_run` HIL demo
+ * (launching an embedded image). The copy destination is always the run-base
+ * constant, never `entry`, so a corrupted `entry` cannot redirect it.
+ *
+ * Interrupts are masked across the copy and switch; the launched image re-enables
+ * them after its own bring-up. Under `RA_SIMULATOR_MODE` the branch is elided (a
+ * host cannot reset MSP/VTOR), so the function validates and returns.
+ *
+ * @param[in] src     Source image base (image body, vector table first); non-zero.
+ * @param[in] img_len Image body length in bytes; a non-zero 32-byte multiple.
+ * @param[in] entry   The image's recorded run base; must equal ::k_ra_dfu_run_base.
+ *
+ * @return void -- returns to the caller ONLY when the inputs fail validation
+ *         (`src == 0`, or ::ra_dfu_run_target_valid is false); on a valid image
+ *         it does not return (control passes to the image).
+ *
+ * @pre `src` points at a readable image whose first two words are MSP + reset.
+ * @pre The image was linked at ::k_ra_dfu_run_base; the caller masks nothing
+ *      special (this masks IRQs itself).
+ * @post On a valid image, control is at the image's reset vector with VTOR / MSP
+ *       pointing at the run base.
+ * @post On invalid inputs, no copy or branch happens and control returns.
+ *
+ * @note Firmware only (inline MSP/VTOR/branch); not thread-safe.
+ * @see ra_dfu_run_target_valid
+ * @since 0.1.0
+ */
+void ra_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry);
 
 /**
  * @brief Pick the active slot from the two slots' validity + sequence.
@@ -419,7 +520,7 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot);
  *
  * @details Folds ::ra_dfu_crc32 over the just-programmed body in MRAM, builds
  * a ::ra_dfu_img_hdr_t (magic, the given `seq`, `img_len`, that CRC, and
- * `entry = slot_base`), and programs the 32-byte header LAST into the slot's
+ * `entry = k_ra_dfu_run_base`), and programs the 32-byte header LAST into the slot's
  * last page. After this the slot is bootable; a power loss before the header
  * lands leaves the slot header erased (invalid) -- never half-valid.
  *
