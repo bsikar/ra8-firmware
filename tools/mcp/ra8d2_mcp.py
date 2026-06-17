@@ -331,6 +331,72 @@ def tool_quality_gate(args: dict[str, Any]) -> str:
     return run_command(argv, timeout=timeout)
 
 
+def tool_coverage(args: dict[str, Any]) -> str:
+    """Run the DO-178C Level B MC/DC coverage build (``make mcdc``) and return its tail.
+
+    MC/DC (modified condition / decision coverage) is the certification bar this
+    tree targets; the tail carries the per-decision summary and any gaps.
+    """
+    del args  # no arguments; signature kept uniform for the dispatcher
+    return run_command(["make", "mcdc"], timeout=1200)
+
+
+def tool_sim_app(args: dict[str, Any]) -> str:
+    """Boot one app's real ``.elf`` on the board_sim Unicorn emulator -- no hardware.
+
+    Runs ``scripts/board_sim_smoke.sh <app>`` headlessly: it builds the app + the
+    emulator, runs the firmware, and asserts it reaches its run budget without
+    faulting -- plus its real peripheral UART banner where known. Returns the
+    per-app verdict + log tail. The single way to exercise an app without a board.
+    """
+    app = require_app(str(args.get("app", "")).strip())
+    return run_command(["bash", "scripts/board_sim_smoke.sh", app["name"]], timeout=900)
+
+
+def _capture(argv: list[str], timeout: int = 20) -> str:
+    """Return the stripped stdout of ``argv`` (or a short error marker)."""
+    try:
+        proc = subprocess.run(argv, cwd=str(REPO_ROOT), stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, text=True, timeout=timeout, check=False)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        return f"[not run: {exc}]"
+    return (proc.stdout or "").strip() or "(no output)"
+
+
+def tool_git_status(args: dict[str, Any]) -> str:
+    """Read-only repo state: current branch, working-tree status, recent commits, open PRs."""
+    del args  # no arguments
+    branch = _capture(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    status = _capture(["git", "status", "--short", "--branch"])
+    commits = _capture(["git", "log", "--oneline", "-8"])
+    prs = _capture(["gh", "pr", "list", "--state", "open", "--limit", "10",
+                    "--json", "number,title,headRefName",
+                    "--template", "{{range .}}#{{.number}} {{.title}} ({{.headRefName}})\n{{end}}"]) \
+        if which("gh") else "(gh not on PATH)"
+    return (f"branch:  {branch}\n\n"
+            f"--- working tree ---\n{status}\n\n"
+            f"--- recent commits ---\n{commits}\n\n"
+            f"--- open PRs ---\n{prs}\n")
+
+
+def tool_hum_citation(args: dict[str, Any]) -> str:
+    """Emit the HUM register-citation skeleton the project requires above every MMIO access."""
+    chapter = str(args.get("chapter", "")).strip()
+    section = str(args.get("section", "")).strip()
+    page = str(args.get("page", "")).strip()
+    if not chapter:
+        raise ValueError("chapter is required, e.g. '38.2.3' (use hum_lookup to find it)")
+    sect = f' "{section}"' if section else ' "<section name>"'
+    pg = f" p {page}" if page else " p <NNNN>"
+    return (
+        f"/* HUM Ch {chapter}{sect}{pg} */\n\n"
+        "Place this comment IMMEDIATELY above the register read/write (CLAUDE.md\n"
+        "External HUM Citations policy). Fill the section name + page range from\n"
+        "docs/reference/CHAPTER_MAP.md (the hum_lookup tool / chapter-map resource).\n"
+        "Cite the Hardware User's Manual, never an in-tree file:line."
+    )
+
+
 def tool_flash_app(args: dict[str, Any]) -> str:
     """Build and flash an app to a locally attached EK-RA8D2 (hardware write).
 
@@ -478,6 +544,41 @@ TOOLS: list[dict[str, Any]] = [
         }, ["action"]),
         "handler": tool_hil,
     },
+    {
+        "name": "sim_app",
+        "description": "Boot one app's real .elf on the board_sim Unicorn emulator (no "
+                       "hardware): build + run headless, assert it reaches its run budget "
+                       "without faulting plus its peripheral UART banner. Returns the verdict.",
+        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}},
+                               ["app"]),
+        "handler": tool_sim_app,
+    },
+    {
+        "name": "coverage",
+        "description": "Run the DO-178C Level B MC/DC coverage build (make mcdc) and return "
+                       "the per-decision summary tail.",
+        "inputSchema": _schema({}),
+        "handler": tool_coverage,
+    },
+    {
+        "name": "git_status",
+        "description": "Read-only repo state: current branch, working-tree status, the last "
+                       "few commits, and open GitHub PRs.",
+        "inputSchema": _schema({}),
+        "handler": tool_git_status,
+    },
+    {
+        "name": "hum_citation",
+        "description": "Emit the HUM register-citation comment skeleton the project requires "
+                       "immediately above every MMIO access. Args: chapter (e.g. 38.2.3), "
+                       "optional section + page.",
+        "inputSchema": _schema({
+            "chapter": {"type": "string", "description": "HUM chapter, e.g. 38.2.3"},
+            "section": {"type": "string", "description": "section name (optional)"},
+            "page": {"type": "string", "description": "page or range, e.g. 2181 (optional)"},
+        }, ["chapter"]),
+        "handler": tool_hum_citation,
+    },
 ]
 
 TOOL_INDEX: dict[str, dict[str, Any]] = {t["name"]: t for t in TOOLS}
@@ -515,12 +616,73 @@ RESOURCES: list[dict[str, Any]] = [
     {"uri": "ra8d2://reference/chapter-map", "name": "HUM chapter map",
      "description": "Hardware User's Manual chapter-to-page ranges for citations.",
      "mimeType": "text/markdown", "reader": _resource_doc("docs/reference/CHAPTER_MAP.md")},
+    {"uri": "ra8d2://doc/hil", "name": "docs/HIL_SUITE.md",
+     "description": "Hardware-in-the-loop suite + how each app is verified in CI.",
+     "mimeType": "text/markdown", "reader": _resource_doc("docs/HIL_SUITE.md")},
+    {"uri": "ra8d2://doc/ai-attribution", "name": "docs/AI_ATTRIBUTION_POLICY.md",
+     "description": "The zero-AI-attribution policy enforced across the tree.",
+     "mimeType": "text/markdown", "reader": _resource_doc("docs/AI_ATTRIBUTION_POLICY.md")},
     {"uri": "ra8d2://apps/catalogue", "name": "Firmware app catalogue",
      "description": "Live list of every discovered firmware app.",
      "mimeType": "text/plain", "reader": _resource_catalogue},
 ]
 
 RESOURCE_INDEX: dict[str, dict[str, Any]] = {r["uri"]: r for r in RESOURCES}
+
+
+# ---------------------------------------------------------------------------
+# Prompt registry -- reusable review flows the assistant can invoke by name.
+# Each ``template`` is filled with the call's arguments by handle_prompts_get.
+# ---------------------------------------------------------------------------
+PROMPTS: list[dict[str, Any]] = [
+    {
+        "name": "audit_register_access",
+        "description": "Audit a direct MMIO register access for a valid HUM citation + style.",
+        "arguments": [{"name": "code", "description": "the register read/write line(s)",
+                       "required": True}],
+        "template": (
+            "Audit this RA8D2 register access against the project rules: every direct "
+            "register read/write MUST be immediately preceded by a HUM citation comment "
+            "`/* HUM Ch X.Y \"section\" p NNNN */`, must go through an inline accessor "
+            "(never a macro address), and must be pure 7-bit ASCII. Report each violation "
+            "with a concrete fix.\n\n```c\n{code}\n```"
+        ),
+    },
+    {
+        "name": "mcdc_vectors",
+        "description": "Write minimal MC/DC test vectors for a compound boolean decision.",
+        "arguments": [{"name": "decision", "description": "the C boolean decision",
+                       "required": True}],
+        "template": (
+            "Write the minimal (N+1) MC/DC test vectors for this decision, demonstrating "
+            "that each condition independently affects the outcome, formatted as the "
+            "project's `@par MC/DC:` Doxygen block.\n\n```c\n{decision}\n```"
+        ),
+    },
+]
+
+PROMPT_INDEX: dict[str, dict[str, Any]] = {p["name"]: p for p in PROMPTS}
+
+
+def handle_prompts_list() -> dict[str, Any]:
+    listed = [{"name": p["name"], "description": p["description"],
+               "arguments": p["arguments"]} for p in PROMPTS]
+    return {"prompts": listed}
+
+
+def handle_prompts_get(params: dict[str, Any]) -> dict[str, Any]:
+    name = str(params.get("name", ""))
+    prompt = PROMPT_INDEX.get(name)
+    if prompt is None:
+        raise ValueError(f"unknown prompt: {name}")
+    arguments = params.get("arguments") or {}
+    try:
+        text = prompt["template"].format(**{a["name"]: str(arguments.get(a["name"], ""))
+                                            for a in prompt["arguments"]})
+    except (KeyError, IndexError) as exc:
+        raise ValueError(f"bad prompt arguments: {exc}") from exc
+    return {"description": prompt["description"],
+            "messages": [{"role": "user", "content": {"type": "text", "text": text}}]}
 
 
 # ---------------------------------------------------------------------------
@@ -538,7 +700,7 @@ def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
     requested = str(params.get("protocolVersion") or PROTOCOL_VERSION_DEFAULT)
     return {
         "protocolVersion": requested,
-        "capabilities": {"tools": {}, "resources": {}},
+        "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
         "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
     }
 
@@ -606,8 +768,10 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | None:
             return _result(request_id, handle_resources_list())
         if method == "resources/read":
             return _result(request_id, handle_resources_read(params))
-        if method in ("prompts/list",):
-            return _result(request_id, {"prompts": []})
+        if method == "prompts/list":
+            return _result(request_id, handle_prompts_list())
+        if method == "prompts/get":
+            return _result(request_id, handle_prompts_get(params))
         if method in ("resources/templates/list",):
             return _result(request_id, {"resourceTemplates": []})
         return _error(request_id, ERR_METHOD_NOT_FOUND, f"method not found: {method}")
@@ -688,6 +852,25 @@ def selftest() -> int:
     unknown = dispatch({"jsonrpc": "2.0", "id": 8, "method": "no/such/method"})
     checks.append(("unknown method -> method-not-found",
                    unknown["error"]["code"] == ERR_METHOD_NOT_FOUND))
+
+    cite = dispatch({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+                     "params": {"name": "hum_citation", "arguments": {"chapter": "38.2.3"}}})
+    checks.append(("hum_citation emits a HUM skeleton",
+                   "HUM Ch 38.2.3" in cite["result"]["content"][0]["text"]))
+
+    badsim = dispatch({"jsonrpc": "2.0", "id": 10, "method": "tools/call",
+                       "params": {"name": "sim_app", "arguments": {"app": "no_such_app"}}})
+    checks.append(("sim_app rejects an unknown app (no build)",
+                   badsim["result"]["isError"] is True))
+
+    plist = dispatch({"jsonrpc": "2.0", "id": 11, "method": "prompts/list"})
+    pnames = {p["name"] for p in plist["result"]["prompts"]}
+    checks.append(("prompts/list advertises every prompt", pnames == set(PROMPT_INDEX)))
+
+    pget = dispatch({"jsonrpc": "2.0", "id": 12, "method": "prompts/get",
+                     "params": {"name": "audit_register_access", "arguments": {"code": "x"}}})
+    checks.append(("prompts/get fills the template",
+                   "HUM" in pget["result"]["messages"][0]["content"]["text"]))
 
     ok = True
     for label, passed in checks:
