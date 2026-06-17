@@ -1807,9 +1807,61 @@ static const uint8_t k_vmsc_label[11] = {'R', 'A', '8', 'D', '2', ' ', 'M', 'R',
 static const uint8_t k_vmsc_fstype[8] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
 static const uint8_t k_vmsc_fname[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
 
-/** @brief Set once the host attempts a WRITE(10) -- the read-only test, which is
- *  the last host step before its PASS banner (read by the USBH_STOP guard). */
+/** @brief Set once the host attempts a WRITE(10) into the READ-ONLY disk -- the
+ *  last host step before usb_host_msc_browse's PASS (read by the USBH_STOP guard).*/
 static bool s_vmsc_write_seen = false;
+
+/** @brief True when the virtual disk is writable (usb_host_file_ops links
+ *  `fileops_backend_write`); else the disk is read-only and WRITE(10) is rejected.*/
+static bool s_vmsc_writable = false;
+
+/**
+ * @struct vmsc_overlay_t
+ * @brief One overwritten sector of the otherwise-synthesized FAT16 volume.
+ * @details A writable host (usb_host_file_ops) creates a file: ra_fs rewrites a
+ * few FAT / root / data sectors. We keep those writes in a small overlay so the
+ * read-back reads them back; everything else is still synthesized on the fly.
+ */
+typedef struct {
+  uint32_t lba;                     /**< Overwritten LBA.            */
+  bool     valid;                   /**< Slot in use.                */
+  uint8_t  data[k_vmsc_block_size]; /**< The written 512-byte sector.*/
+} vmsc_overlay_t;
+
+/** @brief Write overlay for the writable disk (file_ops touches only a handful). */
+static vmsc_overlay_t s_vmsc_overlay[64];
+
+/** @brief Return an overwritten sector if @p lba is in the overlay. */
+static bool vmsc_overlay_get(uint32_t lba, uint8_t* out)
+{
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_vmsc_overlay) / sizeof(s_vmsc_overlay[0])); i++) {
+    if (s_vmsc_overlay[i].valid && (s_vmsc_overlay[i].lba == lba)) {
+      (void)memcpy(out, s_vmsc_overlay[i].data, (size_t)k_vmsc_block_size);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief Record an overwritten sector (update existing slot or take a free one). */
+static void vmsc_overlay_put(uint32_t lba, const uint8_t* in)
+{
+  const uint32_t slots = (uint32_t)(sizeof(s_vmsc_overlay) / sizeof(s_vmsc_overlay[0]));
+  for (uint32_t i = 0U; i < slots; i++) {
+    if (s_vmsc_overlay[i].valid && (s_vmsc_overlay[i].lba == lba)) {
+      (void)memcpy(s_vmsc_overlay[i].data, in, (size_t)k_vmsc_block_size);
+      return;
+    }
+  }
+  for (uint32_t i = 0U; i < slots; i++) {
+    if (!s_vmsc_overlay[i].valid) {
+      s_vmsc_overlay[i].lba   = lba;
+      s_vmsc_overlay[i].valid = true;
+      (void)memcpy(s_vmsc_overlay[i].data, in, (size_t)k_vmsc_block_size);
+      return;
+    }
+  }
+}
 
 /** @brief Little-endian 16-bit store into a sector buffer. */
 static void vmsc_put16(uint8_t* p, uint16_t v)
@@ -1981,7 +2033,9 @@ static void on_hmsc_read10(uc_engine* uc, uint64_t address, uint32_t size, void*
   count &= 0xFFFFU; /* block_count is a uint16_t argument. */
   for (uint32_t i = 0U; (i < count) && (buf != 0U); i++) {
     uint8_t sec[k_vmsc_block_size];
-    vmsc_fill_sector(uc, lba + i, sec);
+    if (!vmsc_overlay_get(lba + i, sec)) { /* a host WRITE(10) wins over the synthesis. */
+      vmsc_fill_sector(uc, lba + i, sec);
+    }
     (void)uc_mem_write(uc,
                        (uint64_t)buf + ((uint64_t)i * (uint64_t)k_vmsc_block_size),
                        sec,
@@ -1997,8 +2051,32 @@ static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void
   (void)address;
   (void)size;
   (void)user;
-  s_vmsc_write_seen = true;
-  eth_hook_return(uc, (uint32_t)k_ra_err_inval_st); /* write protected */
+  if (!s_vmsc_writable) {
+    /* Read-only disk (usb_host_msc_browse): reject. This is that app's last step
+     * before PASS, so flag it for the host early-stop. */
+    s_vmsc_write_seen = true;
+    eth_hook_return(uc, (uint32_t)k_ra_err_inval_st); /* write protected */
+    return;
+  }
+  /* Writable disk (usb_host_file_ops): stash the written sectors in the overlay
+   * so the host's read-back sees them, and accept. The write is mid-ladder here,
+   * so do NOT trip the write-seen early-stop -- that app stops on its banner. */
+  uint32_t lba   = 0U;
+  uint32_t count = 0U;
+  uint32_t buf   = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &lba);
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &count);
+  (void)uc_reg_read(uc, UC_ARM_REG_R3, &buf);
+  count &= 0xFFFFU;
+  for (uint32_t i = 0U; (i < count) && (buf != 0U); i++) {
+    uint8_t sec[k_vmsc_block_size];
+    (void)uc_mem_read(uc,
+                      (uint64_t)buf + ((uint64_t)i * (uint64_t)k_vmsc_block_size),
+                      sec,
+                      sizeof(sec));
+    vmsc_overlay_put(lba + i, sec);
+  }
+  eth_hook_return(uc, 0U); /* k_ra_ok -- write accepted */
 }
 
 /**
@@ -2025,6 +2103,9 @@ static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
   const uint32_t msc = elf_sym_addr(elf, len, "ra_usb_hmsc_read10", nullptr);
   if (msc != 0U) {
+    /* usb_host_file_ops creates a file (it links fileops_backend_write) -> the
+     * virtual disk is writable; usb_host_msc_browse tests a read-only LUN. */
+    s_vmsc_writable = (elf_sym_addr(elf, len, "fileops_backend_write", nullptr) != 0U);
     eth_seam_hook(uc, elf, len, "ra_usb_hmsc_init", (void*)on_hmsc_ok);
     eth_seam_hook(uc, elf, len, "ra_usb_hmsc_enumerate", (void*)on_hmsc_enumerate);
     eth_seam_hook(uc, elf, len, "ra_usb_hmsc_read_capacity", (void*)on_hmsc_read_capacity);
@@ -2032,8 +2113,9 @@ static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
     eth_seam_hook(uc, elf, len, "ra_usb_hmsc_write10", (void*)on_hmsc_write10);
     eth_seam_hook(uc, elf, len, "ra_usb_hmsc_close", (void*)on_hmsc_ok);
     (void)fprintf(stderr,
-                  "  usb-host seam : hmsc=0x%08X (virtual MSC FAT16 disk, file MRAM.BIN)\n",
-                  msc);
+                  "  usb-host seam : hmsc=0x%08X (virtual MSC FAT16 disk, file MRAM.BIN, %s)\n",
+                  msc,
+                  s_vmsc_writable ? "read-write" : "read-only");
     return;
   }
   const uint32_t cx = elf_sym_addr(elf, len, "ra_usb_host_control_xfer", nullptr);
@@ -3724,6 +3806,14 @@ int main(int argc, char** argv)
       }
     }
   }
+  /* BOARD_SIM_STOP_ON="<substr>": stop the headless run as soon as the console
+   * UART's last line contains <substr> -- a generic "stop on a banner" guard for
+   * apps that loop forever after a success line (e.g. usb_host_file_ops retries
+   * its ladder every 5 s). Empty / unset disables it. */
+  const char* stop_on = getenv("BOARD_SIM_STOP_ON");
+  if ((stop_on != nullptr) && ((stop_on[0] == '\0') || (view != nullptr))) {
+    stop_on = nullptr;
+  }
   uint64_t      idle_sig_prev = 0U;
   uint32_t      idle_run      = 0U;
   bool          idle_stopped  = false;
@@ -3977,6 +4067,14 @@ int main(int argc, char** argv)
       if ((usbh_stop_settle > 0U) && (record_dir == nullptr) && usbh_done) {
         usbh_stop_run++;
         if (usbh_stop_run >= usbh_stop_settle) {
+          usb_stopped = true;
+          break;
+        }
+      }
+      /* Generic banner stop: the success line has been printed to the console. */
+      if (stop_on != nullptr) {
+        const char* last = board_periph_uart_last_line();
+        if ((last != nullptr) && (strstr(last, stop_on) != nullptr)) {
           usb_stopped = true;
           break;
         }
