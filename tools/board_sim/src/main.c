@@ -31,6 +31,7 @@
  */
 
 #include <capstone/capstone.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -3299,7 +3300,7 @@ int main(int argc, char** argv)
       "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
       " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
       " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>] [--trace-sym <name>]"
-      " [--sd-new <M[:fat16|fat32]>] [--save-sd <out>]\n"
+      " [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>]\n"
       "  --view          open a macOS window: live board view; click panel"
       " (touch) / on-screen SW1/SW2, type -> UART\n"
       "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -3314,7 +3315,7 @@ int main(int argc, char** argv)
       "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
       "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
       "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
-      "  --sd-new <M[:fat16|fat32]>  create + attach a blank M-MiB FAT card (no image)\n"
+      "  --sd-new <N[k|m|g][:fat16|fat32]>  blank FAT card of N MiB (k/m/g unit; e.g. 30g)\n"
       "  --save-sd <out> after the run, dump the SD card image (with firmware writes)\n"
       "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
       "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
@@ -3384,16 +3385,32 @@ int main(int argc, char** argv)
       (void)board_sd_attach(argv[i + 1]); /* serve this FAT image to ra_sdmmc_spi */
       i++;
     } else if ((strncmp(argv[i], "--sd-new", sizeof("--sd-new")) == 0) && ((i + 1) < argc)) {
-      /* "<MB>[:fat16|fat32]" -- create + attach a blank formatted card. Default
-       * the format by size (FAT32 for >= 512 MB), like a real SD card. */
+      /* "<N>[k|m|g|t][:fat16|fat32]" -- create + attach a blank formatted card.
+       * A bare number is MiB; a k/m/g/t suffix sets the unit (so "30g" = 30 GiB).
+       * Format defaults by size (FAT32 >= 512 MiB) like a real SD card; FAT16
+       * cannot exceed its cluster ceiling, so multi-GB cards are FAT32. */
       char*      endp = nullptr;
-      const long mb   = strtol(argv[i + 1], &endp, (int)k_strtol_base10);
-      uint8_t    fat  = (mb >= 512L) ? (uint8_t)32U : (uint8_t)16U;
-      if ((endp != nullptr) && (*endp == ':')) {
-        fat = (strstr(endp, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
+      const long num  = strtol(argv[i + 1], &endp, (int)k_strtol_base10);
+      uint64_t   mult = (uint64_t)k_sectors_per_mib * 512ULL; /* default unit: MiB. */
+      const char unit = ((endp != nullptr) && (*endp != '\0')) ? (char)tolower((int)*endp) : 'm';
+      if (unit == 'k') {
+        mult = 1024ULL;
+      } else if (unit == 'g') {
+        mult = 1024ULL * 1024ULL * 1024ULL;
+      } else if (unit == 't') {
+        mult = 1024ULL * 1024ULL * 1024ULL * 1024ULL;
       }
-      if (mb > 0L) {
-        (void)board_sd_attach_blank((uint32_t)mb * (uint32_t)k_sectors_per_mib, fat, "BOARDSIM");
+      const uint64_t bytes   = (num > 0L) ? ((uint64_t)num * mult) : 0ULL;
+      const uint64_t sectors = bytes / 512ULL;
+      const char*    colon   = (endp != nullptr) ? strchr(endp, ':') : nullptr;
+      uint8_t        fat = (bytes >= (512ULL * 1024ULL * 1024ULL)) ? (uint8_t)32U : (uint8_t)16U;
+      if (colon != nullptr) {
+        fat = (strstr(colon, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
+      }
+      if ((sectors > 0ULL) && (sectors <= 0xFFFFFFFFULL)) {
+        (void)board_sd_attach_blank((uint32_t)sectors, fat, "BOARDSIM");
+      } else if (sectors > 0xFFFFFFFFULL) {
+        (void)fprintf(stderr, "board_sim: --sd-new: size exceeds the 2 TiB FAT limit\n");
       }
       i++;
     } else if ((strncmp(argv[i], "--save-sd", sizeof("--save-sd")) == 0) && ((i + 1) < argc)) {
@@ -4145,20 +4162,23 @@ int main(int argc, char** argv)
    * its size / format the same way the --view sidebar does. */
   {
     bool        sd_att = false;
-    uint32_t    sd_b   = 0U;
+    uint64_t    sd_b   = 0U;
     uint8_t     sd_f   = 0U;
     const char* sd_l   = nullptr;
     board_sd_info(&sd_att, &sd_b, &sd_f, &sd_l);
+    const bool          sd_gb = (sd_b >= (1024ULL * 1024ULL * 1024ULL));
+    const unsigned long sd_sz = sd_gb ? (unsigned long)(sd_b / (1024ULL * 1024ULL * 1024ULL))
+                                      : (unsigned long)(sd_b / (1024ULL * 1024ULL));
+    const char*         sd_u  = sd_gb ? "GB" : "MB";
     if (sd_att && (sd_f != 0U)) {
       (void)fprintf(stderr,
-                    "  SD card       : %u MB FAT%u '%s' (created by --sd-new)\n",
-                    (unsigned)(sd_b / (1024U * 1024U)),
+                    "  SD card       : %lu %s FAT%u '%s' (created by --sd-new)\n",
+                    sd_sz,
+                    sd_u,
                     (unsigned)sd_f,
                     (sd_l != nullptr) ? sd_l : "");
     } else if (sd_att) {
-      (void)fprintf(stderr,
-                    "  SD card       : %u MB image attached\n",
-                    (unsigned)(sd_b / (1024U * 1024U)));
+      (void)fprintf(stderr, "  SD card       : %lu %s image attached\n", sd_sz, sd_u);
     }
   }
   /* GLCDC colour-cycle witness: BG_BGC write count + the distinct colours. */

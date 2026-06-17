@@ -94,7 +94,7 @@ bool board_sd_save(const char* path);
  * @brief Read back the attached card's summary (for the status view / report).
  *
  * @param[out] attached Receives whether a card is attached (may be NULL).
- * @param[out] bytes    Receives the card size in bytes (may be NULL).
+ * @param[out] bytes    Receives the card size in bytes, 64-bit for >4 GB (NULL ok).
  * @param[out] fat_bits Receives 12/16/32 if formatted by --sd-new, else 0 (NULL ok).
  * @param[out] label    Receives a pointer to the NUL-terminated label (NULL ok).
  * @pre None.
@@ -102,7 +102,7 @@ bool board_sd_save(const char* path);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void board_sd_info(bool* attached, uint32_t* bytes, uint8_t* fat_bits, const char** label);
+void board_sd_info(bool* attached, uint64_t* bytes, uint8_t* fat_bits, const char** label);
 
 /**
  * @brief Exchange one full-duplex SPI byte with the modelled card.

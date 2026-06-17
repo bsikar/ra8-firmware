@@ -342,18 +342,22 @@ static int32_t draw_status_lines(uint16_t*             out,
   }
   draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
   cy += step;
+  const bool          sd_gb = (st->sd_bytes >= (1024ULL * 1024ULL * 1024ULL));
+  const unsigned long sd_sz = sd_gb ? (unsigned long)(st->sd_bytes / (1024ULL * 1024ULL * 1024ULL))
+                                    : (unsigned long)(st->sd_bytes / (1024ULL * 1024ULL));
+  const char*         sd_u  = sd_gb ? "GB" : "MB";
   if (!st->sd_attached) {
     (void)snprintf(buf, sizeof(buf), "SD:   -");
   } else if (st->sd_fat_bits != 0U) {
     (void)snprintf(buf,
                    sizeof(buf),
-                   "SD:   %u MB FAT%u %s",
-                   (unsigned)(st->sd_bytes / (1024U * 1024U)),
+                   "SD:   %lu %s FAT%u %s",
+                   sd_sz,
+                   sd_u,
                    (unsigned)st->sd_fat_bits,
                    (st->sd_label != nullptr) ? st->sd_label : "");
   } else {
-    (void)
-      snprintf(buf, sizeof(buf), "SD:   %u MB (image)", (unsigned)(st->sd_bytes / (1024U * 1024U)));
+    (void)snprintf(buf, sizeof(buf), "SD:   %lu %s (image)", sd_sz, sd_u);
   }
   draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
   return cy + step;
