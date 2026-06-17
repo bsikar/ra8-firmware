@@ -122,6 +122,15 @@ sd_image=""
 # `scripts/board_sim_smoke.sh usb_cdc_echo usb_msc_device`.
 usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device"
 
+# USB HOST-mode apps (#67 Phase 3, the inverse path). board_sim seams the
+# first-party ra_usb_host_* primitives to a virtual HID boot keyboard (the same
+# function-seam technique it uses for ra_eth_*), since the USBHS host controller
+# (0x40351000) is unmodelled. The firmware's real host stack enumerates the
+# virtual device, opens the interrupt-IN pipe, and decodes its reports -- we
+# assert the app's end-to-end PASS banner. ThreadX, so newer-Unicorn-only; pass
+# explicitly, e.g. `scripts/board_sim_smoke.sh usb_host_keyboard`.
+usb_host_apps="usb_host_keyboard"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -235,6 +244,28 @@ for app in "${apps[@]}"; do
             echo "OK (USB enumerated -> CONFIGURED, $klass)"
         else
             echo "USB ENUM FAIL (device did not reach CONFIGURED)"
+            fail=1
+        fi
+        continue
+        ;;
+    esac
+    # USB host-mode apps: the firmware's host stack enumerates board_sim's virtual
+    # boot keyboard and decodes its reports. BOARD_SIM_USBH_STOP settles the run
+    # after the virtual device has streamed its reports (kept distinct from
+    # USB_STOP: a host app also runs a device worker whose CONFIGURED would stop
+    # the run early). Assert the app's own end-to-end PASS banner.
+    case " $usb_host_apps " in
+    *" $app "*)
+        hout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_USBH_STOP=400 BOARD_SIM_WALL_S=300 \
+            "$sim" "$elf" 2>&1 || true)"
+        if echo "$hout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+            echo "FAULT (during USB host bring-up)"
+            fail=1
+        elif echo "$hout" | grep -q "USB HOST KEYBOARD PASS"; then
+            keys="$(echo "$hout" | sed -n 's/.*host decoded keys "\([^"]*\)".*/\1/p' | head -1)"
+            echo "OK (USB host enumerated + decoded \"$keys\")"
+        else
+            echo "USB HOST FAIL (host did not reach its PASS banner)"
             fail=1
         fi
         continue
