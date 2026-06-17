@@ -44,8 +44,12 @@ multi-stage bring-up that stalls is visible without a full instruction trace --
 e.g. tracing the USBX device worker (`ux_dcd_ra_usb_initialize`,
 `ra_usb_device_attach`, the USBX `_ux_*` calls) pinpoints exactly which init step
 a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
-32-bit global after the run) and `BOARD_SIM_MAX_CHUNKS` / `BOARD_SIM_IDLE_STOP`
-(bound an otherwise forever-looping RTOS app) for headless post-mortems.
+32-bit global after the run) and the headless run-bounding env vars for
+post-mortems: `BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
+(wall-clock floor), `BOARD_SIM_IDLE_STOP=N` (stop once observable state is
+unchanged for N chunks -- an RTOS idle spin), and `BOARD_SIM_USB_STOP=N` (stop N
+chunks after the virtual host reports the device CONFIGURED -- the USB apps never
+idle, so this is what makes the enumeration gate fast and deterministic).
 
 The console UART is captured: every byte the firmware writes to an SCI TDR is
 echoed to stdout (`[uart] SCIn: ...`), so a console app's output is greppable
@@ -188,15 +192,18 @@ only if you exceed the registry capacity.
   callback fires (`USB: device CONFIGURED (CDC-ACM active)`), and with
   `--usb-in <str>` the bulk bytes round-trip back through the device's echo
   (`sent N OUT, read N IN`). Final PC sits in the ThreadX run loop, not a panic.
-  This is now a **regression gate**: `scripts/board_sim_smoke.sh usb_cdc_echo
-  threadx_usbx_cdc_demo` asserts the `device CONFIGURED` milestone, so a change
-  that breaks USB enumeration fails the smoke suite -- no hardware needed. The
-  gate earned its keep immediately: `--trace-sym` traced the USBX device worker
-  and showed both apps were silently stalling in `_ux_device_class_cdc_acm_initialize`
+  This is now a **regression gate** across all three device classes:
+  `scripts/board_sim_smoke.sh usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device
+  usb_msc_device` asserts the `device CONFIGURED` milestone for CDC-ACM, HID
+  (boot mouse), and MSC (BOT/SCSI + a sector read), so a change that breaks USB
+  enumeration fails the smoke suite -- no hardware needed. The gate earned its
+  keep immediately: `--trace-sym` traced the USBX device worker and showed the
+  CDC and HID demos were silently stalling in `_ux_device_class_*_initialize`
   with `UX_MEMORY_INSUFFICIENT` -- their 16 KiB USBX pool could not satisfy the
-  CDC-ACM cache-safe 1 KiB IN buffer, so the device never asserted its pull-up.
-  Raising the pool to 32 KiB (matching the HIL-validated `usb_selftest_cdc`)
-  restored full enumeration; the gate keeps it from regressing again.
+  class's cache-safe IN buffer, so the device never asserted its pull-up. Raising
+  those pools to 32 KiB (matching the HIL-validated `usb_selftest_cdc` and the
+  already-correct `usb_msc_device`) restored full enumeration; the gate keeps it
+  from regressing again.
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
   USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
 - The graphical board view is proven via `--ppm` region checks: `blink` lights
