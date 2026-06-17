@@ -83,7 +83,7 @@ typedef struct {
   bool               sw2_pressed;               /**< On-screen SW2 held down.   */
   const char*        app_name;                  /**< App / window title.        */
   bool               sd_attached;               /**< A microSD card is attached.*/
-  uint32_t           sd_bytes;                  /**< SD card size in bytes.     */
+  uint64_t           sd_bytes;                  /**< SD card size in bytes (>4GB).*/
   uint8_t            sd_fat_bits;               /**< 12/16/32 if --sd-new, else 0.*/
   const char*        sd_label;                  /**< SD volume label (--sd-new).*/
 } board_status_t;

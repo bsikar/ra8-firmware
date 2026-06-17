@@ -45,13 +45,19 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 
 The microSD card is set up at launch with no pre-built image required:
 
-- `--sd-new <MiB>[:fat16|fat32]` formats a **blank FAT volume of any size** in
-  memory and attaches it -- e.g. `--sd-new 64:fat32`, `--sd-new 8:fat16`. The
-  format defaults by size (FAT32 at >= 512 MiB) like a real SD card; the BPB is
-  complete enough for a host `fsck_msdos` and the firmware's `ra_fs` mount alike,
-  and the modelled card's CSD reports the chosen capacity (so the firmware sees
-  the real size, not a fixed 8 MiB). `--sd <image>` still attaches a pre-built
-  image when you need specific contents.
+- `--sd-new <N>[k|m|g][:fat16|fat32]` formats a **blank FAT volume of any size**
+  and attaches it. A bare number is MiB; a `k`/`m`/`g` suffix sets the unit, so
+  multi-GB cards are easy: `--sd-new 64:fat32`, `--sd-new 8:fat16`, `--sd-new 10g`,
+  `--sd-new 30g`. The format defaults by size (FAT32 at >= 512 MiB) like a real
+  card -- FAT16/FAT12 cannot exceed their cluster ceilings, so big cards are
+  FAT32; cluster size grows with capacity (8 KiB at ~2 GiB, 32 KiB at ~8 GiB+).
+  The backing store is a **sparse mmap**, so a 30 GiB card costs ~kilobytes of
+  host RAM (only the sectors the formatter + firmware actually touch are
+  materialised -- a full 30 GiB run measured ~18 MiB RSS). The BPB is complete
+  enough for a host `fsck_msdos` and the firmware's `ra_fs` mount alike, and the
+  modelled card's CSD reports the chosen capacity (so the firmware sees the real
+  size -- `sd: card=30720 MB` for `--sd-new 30g`). `--sd <image>` still attaches a
+  pre-built image when you need specific contents.
 - `--save-sd <out>` writes the card image (with whatever the firmware wrote) out
   after the run -- inspect it with `fsck_msdos out` / `hdiutil attach out`, or
   feed it back in with `--sd out` next time.
