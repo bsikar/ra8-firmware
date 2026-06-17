@@ -67,6 +67,11 @@ typedef enum : uint16_t {
   k_sd_crc_msb     = 0x8000U, /**< Top bit of the 16-bit CRC register.     */
 } board_sd_const_t;
 
+/** @brief SD sizing constants that exceed 16 bits. */
+typedef enum : uint32_t {
+  k_sd_csd_unit = 512U * 1024U, /**< CSD v2.0 C_SIZE capacity unit: 512 KiB. */
+} board_sd_const32_t;
+
 /**
  * @enum board_sd_cmd_idx_t
  * @brief SD SPI command indices answered by the model (low 6 bits of byte 0).
@@ -103,6 +108,8 @@ typedef struct {
   uint8_t*            image;      /**< Backing card image (host file contents).   */
   uint32_t            image_len;  /**< Image size in bytes.                       */
   bool                attached;   /**< A `--sd` image is loaded.                  */
+  uint8_t             fat_bits;   /**< 12/16/32 if formatted by --sd-new, else 0. */
+  char                label[12];  /**< Volume label (11 chars + NUL), for the GUI.*/
   bool                collecting; /**< Mid command-frame collection.              */
   bool                app_cmd;    /**< Previous command was CMD55 (APP_CMD).      */
   bool                ready;      /**< ACMD41 has completed.                      */
@@ -344,8 +351,17 @@ static void board_sd_process_cmd(board_sd_state_t* c)
     case (uint8_t)k_sd_idx_cmd9: { /* SEND_CSD: 16-byte CSD v2.0 data block. */
       uint8_t csd[k_sd_csd_len];
       memset(csd, 0, sizeof(csd));
-      csd[0]            = (uint8_t)k_sd_csd_v2;
-      csd[k_sd_csd_off] = (uint8_t)k_sd_csd_csize;
+      csd[0] = (uint8_t)k_sd_csd_v2;
+      /* CSD v2.0 capacity = (C_SIZE + 1) * 512 KiB. Derive C_SIZE (22-bit field
+       * in bytes 7..9) from the actual image so --sd / --sd-new present their real
+       * size to the firmware instead of a fixed 8 MiB. */
+      uint32_t csize = (uint32_t)k_sd_csd_csize; /* fallback: 8 MiB. */
+      if (c->image_len >= (uint32_t)k_sd_csd_unit) {
+        csize = (c->image_len / (uint32_t)k_sd_csd_unit) - 1U;
+      }
+      csd[7]            = (uint8_t)((csize >> 16) & 0x3FU);
+      csd[8]            = (uint8_t)((csize >> 8) & (uint16_t)k_sd_byte_mask);
+      csd[k_sd_csd_off] = (uint8_t)(csize & (uint16_t)k_sd_byte_mask);
       board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
       break;
     }
@@ -411,6 +427,239 @@ bool board_sd_attach(const char* path)
 bool board_sd_attached(void)
 {
   return s_sd.attached;
+}
+
+/* ----------------------------------------------------------------------------
+ * Blank-card creation (--sd-new): format an empty FAT volume in memory so a
+ * size/format can be set up with no pre-built image. The BPB is complete enough
+ * to satisfy a host `fsck_msdos` and the firmware's ra_fs mount alike.
+ * --------------------------------------------------------------------------*/
+
+/** @brief FAT BPB field offsets + format constants. */
+typedef enum : uint32_t {
+  k_fmt_sec_bytes = 512U,        /**< Bytes per sector.                    */
+  k_fmt_fat16_max = 65524U,      /**< Max FAT16 data clusters.             */
+  k_fmt_fat16_min = 4085U,       /**< Min FAT16 data clusters.             */
+  k_fmt_spc_max   = 64U,         /**< Largest sectors-per-cluster we pick. */
+  k_fmt_root_ents = 512U,        /**< FAT16 root-directory entries.        */
+  k_fmt_volid     = 0x52A8D200U, /**< Arbitrary volume serial base.        */
+  k_fmt_resv_f16  = 1U,          /**< FAT16 reserved sectors (boot).       */
+  k_fmt_resv_f32  = 32U,         /**< FAT32 reserved sectors.              */
+} sd_fmt_const_t;
+
+/** @brief Little-endian 16-bit store into the image. */
+static void sd_put16(uint8_t* p, uint16_t v)
+{
+  p[0] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)((v >> 8) & 0xFFU);
+}
+
+/** @brief Little-endian 32-bit store into the image. */
+static void sd_put32(uint8_t* p, uint32_t v)
+{
+  p[0] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[2] = (uint8_t)((v >> 16) & 0xFFU);
+  p[3] = (uint8_t)((v >> 24) & 0xFFU);
+}
+
+/** @brief Write the shared boot prologue (jump + OEM) and the 0x55AA signature. */
+static void sd_boot_frame(uint8_t* img, const char* oem)
+{
+  img[0] = 0xEBU;
+  img[1] = 0x58U;
+  img[2] = 0x90U;
+  (void)memcpy(&img[3], oem, 8U);
+  img[510] = 0x55U;
+  img[511] = 0xAAU;
+}
+
+/** @brief Pad an ASCII volume label to the 11-byte 8.3 field (space-filled). */
+static void sd_label_field(uint8_t* dst, const char* label)
+{
+  bool past_end = (label == nullptr);
+  for (uint32_t i = 0U; i < 11U; i++) {
+    if (!past_end && (label[i] == '\0')) {
+      past_end = true; /* stop reading at the NUL; pad the rest with spaces. */
+    }
+    dst[i] = past_end ? (uint8_t)' ' : (uint8_t)label[i];
+  }
+}
+
+/** @brief Format an empty FAT16 volume; returns the chosen sectors-per-cluster. */
+static uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label)
+{
+  const uint32_t root_sectors = (((uint32_t)k_fmt_root_ents * 32U) + 511U) / 512U;
+  uint32_t       spc          = 1U;
+  uint32_t       fatsz        = 1U;
+  for (;;) {
+    const uint32_t tmp1 = total_sectors - ((uint32_t)k_fmt_resv_f16 + root_sectors);
+    const uint32_t tmp2 = (256U * spc) + 2U; /* 256 = 512 bytes / 2-byte FAT16 entry. */
+    fatsz               = (tmp1 + tmp2 - 1U) / tmp2;
+    const uint32_t data = total_sectors - (uint32_t)k_fmt_resv_f16 - (2U * fatsz) - root_sectors;
+    const uint32_t clus = data / spc;
+    if (clus <= (uint32_t)k_fmt_fat16_max) {
+      break;
+    }
+    spc *= 2U;
+    if (spc >= (uint32_t)k_fmt_spc_max) {
+      spc = (uint32_t)k_fmt_spc_max;
+      break;
+    }
+  }
+  sd_boot_frame(img, "MSDOS5.0");
+  sd_put16(&img[11], (uint16_t)k_fmt_sec_bytes);
+  img[13] = (uint8_t)spc;
+  sd_put16(&img[14], (uint16_t)k_fmt_resv_f16);
+  img[16] = 2U; /* number of FATs */
+  sd_put16(&img[17], (uint16_t)k_fmt_root_ents);
+  if (total_sectors < 0x10000U) {
+    sd_put16(&img[19], (uint16_t)total_sectors);
+  } else {
+    sd_put32(&img[32], total_sectors);
+  }
+  img[21] = 0xF8U; /* media: fixed disk */
+  sd_put16(&img[22], (uint16_t)fatsz);
+  sd_put16(&img[24], 63U);  /* sectors per track */
+  sd_put16(&img[26], 255U); /* heads */
+  img[36] = 0x80U;          /* drive number */
+  img[38] = 0x29U;          /* extended boot signature */
+  sd_put32(&img[39], (uint32_t)k_fmt_volid | total_sectors);
+  sd_label_field(&img[43], label);
+  (void)memcpy(&img[54], "FAT16   ", 8U);
+  /* FAT[0] media + FAT[1] EOC, in both FAT copies. */
+  for (uint32_t f = 0U; f < 2U; f++) {
+    uint8_t* fat = &img[((uint32_t)k_fmt_resv_f16 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
+    sd_put16(&fat[0], 0xFFF8U);
+    sd_put16(&fat[2], 0xFFFFU);
+  }
+  return spc;
+}
+
+/** @brief Format an empty FAT32 volume; returns the chosen sectors-per-cluster. */
+static uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label)
+{
+  uint32_t spc      = 1U;
+  uint32_t fatsz    = 1U;
+  uint32_t clusters = 0U;
+  for (;;) {
+    const uint32_t tmp1 = total_sectors - (uint32_t)k_fmt_resv_f32;
+    const uint32_t tmp2 = (128U * spc) + 2U; /* 128 = 512 bytes / 4-byte FAT32 entry. */
+    fatsz               = (tmp1 + tmp2 - 1U) / tmp2;
+    const uint32_t data = total_sectors - (uint32_t)k_fmt_resv_f32 - (2U * fatsz);
+    clusters            = data / spc;
+    if (clusters <= 0x0FFFFFF0U) {
+      break;
+    }
+    spc *= 2U;
+    if (spc >= (uint32_t)k_fmt_spc_max) {
+      spc = (uint32_t)k_fmt_spc_max;
+      break;
+    }
+  }
+  sd_boot_frame(img, "MSDOS5.0");
+  sd_put16(&img[11], (uint16_t)k_fmt_sec_bytes);
+  img[13] = (uint8_t)spc;
+  sd_put16(&img[14], (uint16_t)k_fmt_resv_f32);
+  img[16] = 2U;             /* number of FATs */
+  sd_put16(&img[17], 0U);   /* root entries: 0 for FAT32 */
+  sd_put16(&img[19], 0U);   /* totsec16: 0, use totsec32 */
+  img[21] = 0xF8U;          /* media */
+  sd_put16(&img[22], 0U);   /* fatsz16: 0 for FAT32 */
+  sd_put16(&img[24], 63U);  /* sectors per track */
+  sd_put16(&img[26], 255U); /* heads */
+  sd_put32(&img[32], total_sectors);
+  sd_put32(&img[36], fatsz); /* BPB_FATSz32 */
+  sd_put32(&img[44], 2U);    /* root cluster = 2 */
+  sd_put16(&img[48], 1U);    /* FSInfo sector */
+  sd_put16(&img[50], 6U);    /* backup boot sector */
+  img[64] = 0x80U;           /* drive number */
+  img[66] = 0x29U;           /* extended boot signature */
+  sd_put32(&img[67], (uint32_t)k_fmt_volid | total_sectors);
+  sd_label_field(&img[71], label);
+  (void)memcpy(&img[82], "FAT32   ", 8U);
+  /* FSInfo sector (lead + struct + trail signatures). */
+  uint8_t* fsi = &img[1U * (uint32_t)k_fmt_sec_bytes];
+  sd_put32(&fsi[0], 0x41615252U);
+  sd_put32(&fsi[484], 0x61417272U);
+  sd_put32(&fsi[488], (clusters > 0U) ? (clusters - 1U) : 0xFFFFFFFFU); /* free clusters  */
+  sd_put32(&fsi[492], 3U);                                              /* next free cluster */
+  sd_put32(&fsi[508], 0xAA550000U);
+  /* Backup boot copy at sector 6. */
+  (void)memcpy(&img[6U * (uint32_t)k_fmt_sec_bytes], img, (size_t)k_fmt_sec_bytes);
+  /* FAT[0..2]: media + EOC + root-cluster EOC, in both FAT copies. */
+  for (uint32_t f = 0U; f < 2U; f++) {
+    uint8_t* fat = &img[((uint32_t)k_fmt_resv_f32 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
+    sd_put32(&fat[0], 0x0FFFFFF8U);
+    sd_put32(&fat[4], 0x0FFFFFFFU);
+    sd_put32(&fat[8], 0x0FFFFFFFU);
+  }
+  return spc;
+}
+
+bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char* label)
+{
+  if (total_sectors < 64U) {
+    (void)fprintf(stderr, "board_sim: --sd-new: size too small (need >= 32 KiB)\n");
+    return false;
+  }
+  const size_t bytes = (size_t)total_sectors * (size_t)k_fmt_sec_bytes;
+  uint8_t*     img   = (uint8_t*)calloc(1U, bytes);
+  if (img == nullptr) {
+    (void)fprintf(stderr, "board_sim: --sd-new: out of memory for %zu bytes\n", bytes);
+    return false;
+  }
+  const uint32_t spc = (fat_bits == 32U) ? sd_format_fat32(img, total_sectors, label)
+                                         : sd_format_fat16(img, total_sectors, label);
+  free(s_sd.image);
+  s_sd           = (board_sd_state_t){};
+  s_sd.image     = img;
+  s_sd.image_len = (uint32_t)bytes;
+  s_sd.attached  = true;
+  s_sd.fat_bits  = (fat_bits == 32U) ? 32U : 16U;
+  sd_label_field((uint8_t*)s_sd.label, label);
+  s_sd.label[11] = '\0';
+  (void)fprintf(stderr,
+                "board_sim: SD card created (%u MiB FAT%u, %u sec/clus) blank + attached\n",
+                (unsigned)(bytes / (1024U * 1024U)),
+                (unsigned)s_sd.fat_bits,
+                (unsigned)spc);
+  return true;
+}
+
+bool board_sd_save(const char* path)
+{
+  if ((path == nullptr) || !s_sd.attached || (s_sd.image == nullptr)) {
+    return false;
+  }
+  FILE* fp = fopen(path, "wb");
+  if (fp == nullptr) {
+    (void)fprintf(stderr, "board_sim: --save-sd: cannot write '%s'\n", path);
+    return false;
+  }
+  const size_t put = fwrite(s_sd.image, 1U, (size_t)s_sd.image_len, fp);
+  (void)fclose(fp);
+  if (put != (size_t)s_sd.image_len) {
+    return false;
+  }
+  (void)fprintf(stderr, "board_sim: SD card image saved (%u bytes) to %s\n", s_sd.image_len, path);
+  return true;
+}
+
+void board_sd_info(bool* attached, uint32_t* bytes, uint8_t* fat_bits, const char** label)
+{
+  if (attached != nullptr) {
+    *attached = s_sd.attached;
+  }
+  if (bytes != nullptr) {
+    *bytes = s_sd.image_len;
+  }
+  if (fat_bits != nullptr) {
+    *fat_bits = s_sd.fat_bits;
+  }
+  if (label != nullptr) {
+    *label = s_sd.label;
+  }
 }
 
 uint8_t board_sd_exchange(uint8_t tx)
