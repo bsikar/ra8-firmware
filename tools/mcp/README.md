@@ -42,6 +42,10 @@ corrupt the protocol stream.
 | `build_app` | `make <app>` cross-compile, returns the log tail | no |
 | `run_tests` | `make test` host unit tests | no |
 | `quality_gate` | one of: format-check, tidy, ascii, version, cppcheck, check-annotations, mcdc, cite-check, ai-attribution, inclusive | no |
+| `sim_app` | boot an app's real `.elf` on the board_sim Unicorn emulator (headless smoke) | no |
+| `coverage` | `make mcdc` -- DO-178C Level B MC/DC coverage summary | no |
+| `git_status` | branch, working-tree status, recent commits, open PRs (read-only) | no |
+| `hum_citation` | emit the `/* HUM Ch X.Y "..." p NNNN */` citation skeleton | no |
 | `flash_app` | `make flash-<app>` to a local J-Link board | **yes** |
 | `hil` | drive the Pi rig: flash / recover / flash-retry / erase / probe / dlm-reset | **yes** |
 
@@ -58,8 +62,17 @@ tool call can never inject a foreign target.
 | `ra8d2://doc/style-guide` | `docs/STYLE_GUIDE.md` |
 | `ra8d2://doc/ring-and-world` | `docs/RING_AND_WORLD.md` |
 | `ra8d2://doc/contributing` | `CONTRIBUTING.md` |
+| `ra8d2://doc/hil` | `docs/HIL_SUITE.md` -- how each app is verified in CI |
+| `ra8d2://doc/ai-attribution` | `docs/AI_ATTRIBUTION_POLICY.md` |
 | `ra8d2://reference/chapter-map` | HUM chapter-to-page map |
 | `ra8d2://apps/catalogue` | live list of every firmware app |
+
+### Prompts (reusable review flows, by name)
+
+| Prompt | Fills | Purpose |
+|--------|-------|---------|
+| `audit_register_access` | `code` | audit an MMIO access for a valid HUM citation + style |
+| `mcdc_vectors` | `decision` | write minimal MC/DC vectors for a compound boolean |
 
 ## Wiring it into an MCP client
 
