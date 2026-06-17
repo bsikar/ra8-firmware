@@ -58,6 +58,53 @@ bool board_sd_attach(const char* path);
 bool board_sd_attached(void);
 
 /**
+ * @brief Create a blank, FAT-formatted SD card in memory and attach it.
+ *
+ * @details Formats an empty FAT16 or FAT32 volume (complete BPB + FAT media /
+ * EOC markers, valid to a host `fsck_msdos` and the firmware's ra_fs) so a card
+ * of an arbitrary size / format can be set up with no pre-built image.
+ *
+ * @param[in] total_sectors Card size in 512-byte sectors (>= 64).
+ * @param[in] fat_bits      16 for FAT16, 32 for FAT32 (other values -> FAT16).
+ * @param[in] label         Up to 11-char volume label (NULL -> blank).
+ *
+ * @return true on success (a blank card is attached and serving).
+ * @retval false Size too small or allocation failed.
+ * @pre Called once during board_sim start-up (single-threaded).
+ * @post On success @ref board_sd_attached returns true.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char* label);
+
+/**
+ * @brief Write the current SD-card image (with any firmware writes) to a file.
+ *
+ * @param[in] path Output path for the raw card image.
+ * @return true on success.
+ * @retval false No card attached, or the file could not be written.
+ * @pre A card is attached.
+ * @post The host file holds the current card contents.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+bool board_sd_save(const char* path);
+
+/**
+ * @brief Read back the attached card's summary (for the status view / report).
+ *
+ * @param[out] attached Receives whether a card is attached (may be NULL).
+ * @param[out] bytes    Receives the card size in bytes (may be NULL).
+ * @param[out] fat_bits Receives 12/16/32 if formatted by --sd-new, else 0 (NULL ok).
+ * @param[out] label    Receives a pointer to the NUL-terminated label (NULL ok).
+ * @pre None.
+ * @post No card state is modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+void board_sd_info(bool* attached, uint32_t* bytes, uint8_t* fat_bits, const char** label);
+
+/**
  * @brief Exchange one full-duplex SPI byte with the modelled card.
  *
  * @details Drives the SD SPI-mode state machine: command bytes are framed

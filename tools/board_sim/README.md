@@ -35,8 +35,31 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf> --size 480x272       # explicit size (overrides --panel)
 ./build/board_sim <firmware.elf> --input "ping\r\n"   # feed bytes to the console UART RX
 ./build/board_sim <firmware.elf> --usb-in "ping"      # feed bytes to the USB CDC bulk OUT pipe
+./build/board_sim <firmware.elf> --sd <image>         # attach a pre-built FAT image as the microSD
+./build/board_sim <firmware.elf> --sd-new 64:fat32    # create + attach a blank 64 MiB FAT32 card
+./build/board_sim <firmware.elf> --sd-new 16 --save-sd out.img  # blank card, then dump it after
 ./build/board_sim <firmware.elf> --trace-sym ra_usb_device_attach   # log each entry to a function
 ```
+
+### Configuring the simulated devices
+
+The microSD card is set up at launch with no pre-built image required:
+
+- `--sd-new <MiB>[:fat16|fat32]` formats a **blank FAT volume of any size** in
+  memory and attaches it -- e.g. `--sd-new 64:fat32`, `--sd-new 8:fat16`. The
+  format defaults by size (FAT32 at >= 512 MiB) like a real SD card; the BPB is
+  complete enough for a host `fsck_msdos` and the firmware's `ra_fs` mount alike,
+  and the modelled card's CSD reports the chosen capacity (so the firmware sees
+  the real size, not a fixed 8 MiB). `--sd <image>` still attaches a pre-built
+  image when you need specific contents.
+- `--save-sd <out>` writes the card image (with whatever the firmware wrote) out
+  after the run -- inspect it with `fsck_msdos out` / `hdiutil attach out`, or
+  feed it back in with `--sd out` next time.
+- Both work **headless and in `--view`**: the end-of-run report prints an `SD
+  card : <N> MB FAT<bits> '<label>'` line, and the live sidebar shows the same
+  `SD:` row alongside the USB / UART / IRQ state, so the configured devices are
+  always visible. (`fsck_msdos`-validated FAT16 and FAT32; `tz_secure_only_sd`
+  mounts a freshly-created card and round-trips a file in-sim, no hardware.)
 
 `--trace-sym <name>` is a debugging instrument: it arms a code hook on a symbol's
 entry address and logs every time control reaches it (with the calling LR), so a
