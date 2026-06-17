@@ -192,6 +192,7 @@ typedef enum : uint32_t {
   /* Assorted. */
   k_u32_all_ones    = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).   */
   k_ra_err_no_data  = 0x10AU,      /**< ra_err_t value: no RX data.        */
+  k_ra_err_inval_st = 0x104U,      /**< ra_err_t value: invalid state.     */
   k_eth_link_speed  = 100U,        /**< Link speed (Mbps) in the link blob.*/
   k_eth_bmsr_lo     = 0x2DU,       /**< PHY BMSR low byte.                 */
   k_eth_bmsr_hi     = 0x78U,       /**< PHY BMSR high byte.               */
@@ -1457,7 +1458,7 @@ static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const cha
   if (addr == 0U) {
     return;
   }
-  static uc_hook  handles[8];
+  static uc_hook  handles[24];
   static uint32_t n;
   if (n < (uint32_t)(sizeof(handles) / sizeof(handles[0]))) {
     (void)uc_hook_add(uc, &handles[n], UC_HOOK_CODE, cb, nullptr, addr, addr);
@@ -1774,27 +1775,267 @@ static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void
   eth_hook_return(uc, 0U); /* k_ra_ok */
 }
 
+/* ----------------------------------------------------------------------------
+ * Virtual USB host-mode MSC device: a read-only FAT16 disk whose one file
+ * MRAM.BIN is the 1 MiB MRAM code window. Seams the first-party `ra_usb_hmsc_*`
+ * class API (one level above the BOT/SCSI bulk transport) so a host MSC app
+ * (usb_host_msc_browse) enumerates, READ_CAPACITYs, mounts the FAT16, browses
+ * the root directory, and content-verifies MRAM.BIN -- all with no peer device.
+ * The boot/FAT/root sectors are a byte-identical replica of the device's
+ * selftest_fat_fill_sector; the data region is read live from emulated MRAM, so
+ * it matches the host's own MRAM compare byte-for-byte.
+ * --------------------------------------------------------------------------*/
+
+/** @brief FAT16 geometry + boot/dir layout for the virtual MSC volume. */
+typedef enum : uint32_t {
+  k_vmsc_block_size     = 512U,        /**< Logical block size.              */
+  k_vmsc_total_sectors  = 4146U,       /**< 1 reserved + 17 FAT + 32 root + 4096.*/
+  k_vmsc_root_lba       = 18U,         /**< First root-directory LBA.        */
+  k_vmsc_data_lba       = 50U,         /**< First data-region LBA (cluster 2).*/
+  k_vmsc_first_cluster  = 2U,          /**< FAT data area starts at cluster 2.*/
+  k_vmsc_last_mram_clus = 2049U,       /**< Last cluster of MRAM.BIN.         */
+  k_vmsc_entries_per_fs = 256U,        /**< FAT16 entries per 512-byte sector.*/
+  k_vmsc_mram_base      = 0x02000000U, /**< MRAM window base (MRAM.BIN data). */
+  k_vmsc_fat_entry0     = 0xFFF8U,     /**< FAT[0]: media F8 + filler.        */
+  k_vmsc_fat_eoc        = 0xFFFFU,     /**< End-of-chain marker.              */
+  k_vmsc_file_bytes     = 0x00100000U, /**< MRAM.BIN size: 1 MiB.             */
+  k_vmsc_volid          = 0x52A8D20AU, /**< Boot-sector volume serial.        */
+} vmsc_const_t;
+
+static const uint8_t k_vmsc_oem[8]    = {'R', 'A', '8', 'D', '2', 'F', 'W', ' '};
+static const uint8_t k_vmsc_label[11] = {'R', 'A', '8', 'D', '2', ' ', 'M', 'R', 'A', 'M', ' '};
+static const uint8_t k_vmsc_fstype[8] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
+static const uint8_t k_vmsc_fname[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
+
+/** @brief Set once the host attempts a WRITE(10) -- the read-only test, which is
+ *  the last host step before its PASS banner (read by the USBH_STOP guard). */
+static bool s_vmsc_write_seen = false;
+
+/** @brief Little-endian 16-bit store into a sector buffer. */
+static void vmsc_put16(uint8_t* p, uint16_t v)
+{
+  p[0] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)((v >> 8) & 0xFFU);
+}
+
+/** @brief Little-endian 32-bit store into a sector buffer. */
+static void vmsc_put32(uint8_t* p, uint32_t v)
+{
+  p[0] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[2] = (uint8_t)((v >> 16) & 0xFFU);
+  p[3] = (uint8_t)((v >> 24) & 0xFFU);
+}
+
+/** @brief Synthesize the FAT16 boot sector (BPB), mirroring the device side. */
+static void vmsc_fill_boot(uint8_t* out)
+{
+  out[0] = 0xEBU;
+  out[1] = 0x3CU;
+  out[2] = 0x90U; /* jmp + nop */
+  (void)memcpy(&out[3], k_vmsc_oem, sizeof(k_vmsc_oem));
+  vmsc_put16(&out[11], (uint16_t)k_vmsc_block_size);
+  out[13] = 1U;               /* sectors/cluster */
+  vmsc_put16(&out[14], 1U);   /* reserved sectors */
+  out[16] = 1U;               /* number of FATs */
+  vmsc_put16(&out[17], 512U); /* root entries */
+  vmsc_put16(&out[19], (uint16_t)k_vmsc_total_sectors);
+  out[21] = 0xF8U;           /* media descriptor */
+  vmsc_put16(&out[22], 17U); /* sectors per FAT */
+  vmsc_put16(&out[24], 32U); /* sectors per track */
+  vmsc_put16(&out[26], 16U); /* heads */
+  out[36] = 0x80U;           /* drive number */
+  out[38] = 0x29U;           /* extended boot signature */
+  vmsc_put32(&out[39], (uint32_t)k_vmsc_volid);
+  (void)memcpy(&out[43], k_vmsc_label, sizeof(k_vmsc_label));
+  (void)memcpy(&out[54], k_vmsc_fstype, sizeof(k_vmsc_fstype));
+  out[510] = 0x55U;
+  out[511] = 0xAAU;
+}
+
+/** @brief Synthesize one FAT sector: MRAM.BIN chains clusters 2..2049. */
+static void vmsc_fill_fat(uint32_t fat_sector, uint8_t* out)
+{
+  const uint32_t first = fat_sector * (uint32_t)k_vmsc_entries_per_fs;
+  for (uint32_t j = 0U; j < (uint32_t)k_vmsc_entries_per_fs; j++) {
+    const uint32_t entry = first + j;
+    uint16_t       value = 0U;
+    if (entry == 0U) {
+      value = (uint16_t)k_vmsc_fat_entry0;
+    } else if (entry == 1U) {
+      value = (uint16_t)k_vmsc_fat_eoc;
+    } else if (entry < (uint32_t)k_vmsc_last_mram_clus) {
+      value = (uint16_t)(entry + 1U);
+    } else if (entry == (uint32_t)k_vmsc_last_mram_clus) {
+      value = (uint16_t)k_vmsc_fat_eoc;
+    }
+    vmsc_put16(&out[j * 2U], value);
+  }
+}
+
+/** @brief Synthesize root-directory sector 0: volume label + MRAM.BIN entry. */
+static void vmsc_fill_root(uint32_t root_sector, uint8_t* out)
+{
+  if (root_sector != 0U) {
+    return;
+  }
+  (void)memcpy(&out[0], k_vmsc_label, sizeof(k_vmsc_label));
+  out[11]    = 0x08U; /* volume-label attribute */
+  uint8_t* e = &out[32];
+  (void)memcpy(e, k_vmsc_fname, sizeof(k_vmsc_fname));
+  e[11] = 0x01U; /* read-only attribute */
+  vmsc_put16(&e[26], (uint16_t)k_vmsc_first_cluster);
+  vmsc_put32(&e[28], (uint32_t)k_vmsc_file_bytes);
+}
+
+/** @brief Fill one 512-byte volume sector (boot / FAT / root / live MRAM data). */
+static void vmsc_fill_sector(uc_engine* uc, uint32_t lba, uint8_t* out)
+{
+  (void)memset(out, 0, (size_t)k_vmsc_block_size);
+  if (lba == 0U) {
+    vmsc_fill_boot(out);
+  } else if (lba < (uint32_t)k_vmsc_root_lba) {
+    vmsc_fill_fat(lba - 1U, out);
+  } else if (lba < (uint32_t)k_vmsc_data_lba) {
+    vmsc_fill_root(lba - (uint32_t)k_vmsc_root_lba, out);
+  } else {
+    const uint32_t cluster = (lba - (uint32_t)k_vmsc_data_lba) + (uint32_t)k_vmsc_first_cluster;
+    if (cluster <= (uint32_t)k_vmsc_last_mram_clus) {
+      const uint32_t off = (cluster - (uint32_t)k_vmsc_first_cluster) * (uint32_t)k_vmsc_block_size;
+      (void)
+        uc_mem_read(uc, (uint64_t)k_vmsc_mram_base + (uint64_t)off, out, (size_t)k_vmsc_block_size);
+    }
+  }
+}
+
+/** @brief Hook a host MSC primitive that just succeeds (init / close). */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_hmsc_ok(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook ra_usb_hmsc_enumerate(out_device*): report the virtual disk. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t dev_ptr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R0, &dev_ptr);
+  if (dev_ptr != 0U) {
+    /* ra_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
+     * out_mps,vid,pid. */
+    uint8_t d[14] = {};
+    d[0]          = 1U;          /* device_address */
+    d[1]          = 1U;          /* bulk_in_ep     */
+    d[2]          = 2U;          /* bulk_out_ep    */
+    vmsc_put16(&d[6], 64U);      /* bulk_in_max_packet  */
+    vmsc_put16(&d[8], 64U);      /* bulk_out_max_packet */
+    vmsc_put16(&d[10], 0x1A6AU); /* vendor_id           */
+    vmsc_put16(&d[12], 0x4288U); /* product_id          */
+    (void)uc_mem_write(uc, (uint64_t)dev_ptr, d, sizeof(d));
+  }
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook ra_usb_hmsc_read_capacity(lun, *block_count, *block_size). */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_hmsc_read_capacity(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t bc_ptr = 0U;
+  uint32_t bs_ptr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &bc_ptr);
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &bs_ptr);
+  const uint32_t block_count = (uint32_t)k_vmsc_total_sectors;
+  const uint32_t block_size  = (uint32_t)k_vmsc_block_size;
+  if (bc_ptr != 0U) {
+    (void)uc_mem_write(uc, (uint64_t)bc_ptr, &block_count, sizeof(block_count));
+  }
+  if (bs_ptr != 0U) {
+    (void)uc_mem_write(uc, (uint64_t)bs_ptr, &block_size, sizeof(block_size));
+  }
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook ra_usb_hmsc_read10(lun, lba, count, out_buf): serve sectors. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_hmsc_read10(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t lba   = 0U;
+  uint32_t count = 0U;
+  uint32_t buf   = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &lba);
+  (void)uc_reg_read(uc, UC_ARM_REG_R2, &count);
+  (void)uc_reg_read(uc, UC_ARM_REG_R3, &buf);
+  count &= 0xFFFFU; /* block_count is a uint16_t argument. */
+  for (uint32_t i = 0U; (i < count) && (buf != 0U); i++) {
+    uint8_t sec[k_vmsc_block_size];
+    vmsc_fill_sector(uc, lba + i, sec);
+    (void)uc_mem_write(uc,
+                       (uint64_t)buf + ((uint64_t)i * (uint64_t)k_vmsc_block_size),
+                       sec,
+                       sizeof(sec));
+  }
+  eth_hook_return(uc, 0U); /* k_ra_ok */
+}
+
+/** @brief Hook ra_usb_hmsc_write10(): reject -- the volume is read-only. */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  s_vmsc_write_seen = true;
+  eth_hook_return(uc, (uint32_t)k_ra_err_inval_st); /* write protected */
+}
+
 /**
- * @brief Install the virtual HID-keyboard seam if the host primitives are linked.
+ * @brief Install the virtual USB host-mode device seam if the host stack is linked.
  *
- * @details Gated on ra_usb_host_control_xfer being present (a USB-host-capable
- * firmware). Device-mode apps link the symbol but never call it, so the hooks
- * are inert there; the existing board_usb.c device-mode virtual host is
- * untouched. Seams line_state (attach), the control transfer (descriptors), the
- * interrupt-IN read (reports), and the bus-control primitives (succeed).
+ * @details Picks the virtual device class from the firmware's linked host stack:
+ * an MSC host (links `ra_usb_hmsc_read10`) gets a read-only FAT16 disk seamed at
+ * the `ra_usb_hmsc_*` class API; otherwise a USB-host-capable firmware (links
+ * `ra_usb_host_control_xfer`) gets a HID boot keyboard seamed at the
+ * `ra_usb_host_*` primitives. Device-mode apps link neither call path, so the
+ * hooks are inert there and board_usb.c's device-mode virtual host is untouched.
  *
  * @param[in,out] uc  Active Unicorn engine.
  * @param[in]     elf Loaded ELF image (symbol resolution).
  * @param[in]     len ELF image length in bytes.
  *
  * @pre @p uc is initialised and @p elf holds @p len bytes.
- * @post On a host app, ra_usb_host_* answers a virtual boot keyboard.
+ * @post On a host app, the linked host API answers a virtual device.
  *
  * @note No effect on device-mode apps (the hooked symbols are never called).
  * @since 0.1.0
  */
 static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
+  const uint32_t msc = elf_sym_addr(elf, len, "ra_usb_hmsc_read10", nullptr);
+  if (msc != 0U) {
+    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_init", (void*)on_hmsc_ok);
+    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_enumerate", (void*)on_hmsc_enumerate);
+    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_read_capacity", (void*)on_hmsc_read_capacity);
+    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_read10", (void*)on_hmsc_read10);
+    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_write10", (void*)on_hmsc_write10);
+    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_close", (void*)on_hmsc_ok);
+    (void)fprintf(stderr,
+                  "  usb-host seam : hmsc=0x%08X (virtual MSC FAT16 disk, file MRAM.BIN)\n",
+                  msc);
+    return;
+  }
   const uint32_t cx = elf_sym_addr(elf, len, "ra_usb_host_control_xfer", nullptr);
   if (cx == 0U) {
     return; /* not a USB-host-capable firmware -- nothing to seam. */
@@ -3725,12 +3966,15 @@ int main(int argc, char** argv)
           break;
         }
       }
-      /* USB host-mode early-stop: once the virtual keyboard has streamed its
-       * reports the host has its data; settle (for the PASS banner) and stop.
-       * Separate from USB_STOP because a host app may ALSO run a device worker,
-       * whose CONFIGURED would otherwise stop the run before the host finishes. */
-      if ((usbh_stop_settle > 0U) && (record_dir == nullptr) &&
-          (s_vkbd_reports_sent >= (uint32_t)k_vkbd_stop_reports)) {
+      /* USB host-mode early-stop: once the virtual device has served the host
+       * its last request -- the keyboard streamed its reports, or the MSC host
+       * reached its read-only WRITE(10) test (the step right before PASS) --
+       * settle (for the PASS banner) and stop. Separate from USB_STOP because a
+       * host app may ALSO run a device worker whose CONFIGURED would otherwise
+       * stop the run before the host side finishes. */
+      const bool usbh_done =
+        (s_vkbd_reports_sent >= (uint32_t)k_vkbd_stop_reports) || s_vmsc_write_seen;
+      if ((usbh_stop_settle > 0U) && (record_dir == nullptr) && usbh_done) {
         usbh_stop_run++;
         if (usbh_stop_run >= usbh_stop_settle) {
           usb_stopped = true;
