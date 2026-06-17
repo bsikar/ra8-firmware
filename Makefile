@@ -160,6 +160,7 @@ help:
 	@echo "DEV SETUP / DISCOVERY"
 	@echo "  make hooks             (re)install the tracked git hooks (auto-runs on every make)"
 	@echo "  make apps              list every discovered firmware app"
+	@echo "  make mcp               self-test the MCP dev server (tools/mcp; see .mcp.json)"
 	@echo "  make help              this grouped reference"
 
 # `make` with no arg builds the default app.
@@ -342,6 +343,14 @@ build-all:
 hooks:
 	@$(ROOT)/scripts/git/install-hooks.sh
 	@echo "git hooks active: core.hooksPath = $$(git config core.hooksPath)"
+
+# `make mcp` -- self-test the Model Context Protocol dev server (tools/mcp).
+# The server itself is launched by an MCP client over stdio (see .mcp.json and
+# tools/mcp/README.md); this target exercises its dispatcher in-process so the
+# protocol surface stays covered without a client or any hardware.
+.PHONY: mcp
+mcp:
+	@python3 $(ROOT)/tools/mcp/ra8d2_mcp.py --selftest
 
 # `make sim-<app> [PANEL=<name>]` -- cross-build the app, then boot its REAL .elf
 # (the same binary that flashes to the board) on the Unicorn-based CPU emulator
