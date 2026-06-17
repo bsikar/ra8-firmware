@@ -131,6 +131,17 @@ usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device"
 # explicitly, e.g. `scripts/board_sim_smoke.sh usb_host_keyboard`.
 usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 
+# microSD FORMAT apps: exercise the ra_fs_format() mkfs path end to end. These
+# reformat the modelled card themselves (once per FAT type), so they take a
+# blank card via board_sim's --sd-new (not a pre-built --sd image). board_sim's
+# SD model answers the block writes the formatter and ra_fs emit, and its CSD
+# reports the --sd-new size so the SD bring-up sees a real capacity.
+# fs_format_mount formats + mounts + file-cycles FAT12, FAT16, and FAT32 and
+# prints "FS FORMAT+MOUNT ALL PASS". Bare-metal (no ThreadX), so it runs on the
+# CI runner's Unicorn too, but it is opt-in like the other card apps: pass it
+# explicitly, e.g. `scripts/board_sim_smoke.sh fs_format_mount`.
+sd_format_apps="fs_format_mount"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -268,6 +279,37 @@ for app in "${apps[@]}"; do
             echo "OK ($banner)"
         else
             echo "USB HOST FAIL (host did not reach its PASS banner)"
+            fail=1
+        fi
+        continue
+        ;;
+    esac
+    # microSD FORMAT apps: attach a blank 64 MiB card with --sd-new (the app
+    # reformats it as FAT12/FAT16/FAT32 in turn), then assert the app's own
+    # PASS banner. 64 MiB is large enough that the formatter's auto cluster-size
+    # sweep lands every type in its valid band. The app loops forever after the
+    # banner, so BOARD_SIM_STOP_ON ends the run as soon as ALL PASS prints.
+    case " $sd_format_apps " in
+    *" $app "*)
+        # The SD apps interleave SPI-bus noise -- including NUL bytes -- on the
+        # modelled SCI8 TX, which bash command-substitution mangles (it drops
+        # NULs and can split the banner). Strip non-printables at the pipe,
+        # before bash captures the text, so the ASCII banner survives intact.
+        # The SCI8 "TX <n> bytes" total printed by board_sim is the independent
+        # completeness signal; this grep is the readable assertion.
+        fclean="$({ BOARD_SIM_MAX_CHUNKS=40000 BOARD_SIM_STOP_ON='ALL PASS' BOARD_SIM_WALL_S=300 \
+            "$sim" "$elf" --sd-new 64:fat32 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+        # Match with here-strings, not `echo ... | grep -q`: the run log is large
+        # and `grep -q` closes the pipe on first match, so under `pipefail` the
+        # upstream `echo` dies with SIGPIPE and fails the whole compound command
+        # (a false negative). A here-string has no pipe to break.
+        if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$fclean"; then
+            echo "FAULT (during format/mount)"
+            fail=1
+        elif grep -q "FS FORMAT+MOUNT ALL PASS" <<<"$fclean"; then
+            echo "OK (FS FORMAT+MOUNT ALL PASS -- FAT12/16/32)"
+        else
+            echo "FS FORMAT FAIL (did not reach ALL PASS banner)"
             fail=1
         fi
         continue
