@@ -4,9 +4,10 @@
  *
  * @details
  * Covers `ra_dfu_crc32` (against published CRC32 check values),
- * `ra_dfu_hdr_valid`, `ra_dfu_select_slot`, and `ra_dfu_boot_decide`.
- * Every compound boolean decision in the production source carries its
- * MC/DC test vector pattern in the relevant `@par MC/DC:` block.
+ * `ra_dfu_hdr_valid`, `ra_dfu_run_target_valid`, `ra_dfu_select_slot`, and
+ * `ra_dfu_boot_decide`. Every compound boolean decision in the production
+ * source carries its MC/DC test vector pattern in the relevant `@par MC/DC:`
+ * block.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,7 +38,7 @@ typedef enum : uint32_t {
 } test_hdr_const_t;
 
 /**
- * @brief Build a header with the given fields (entry fixed to Slot A).
+ * @brief Build a header with the given fields (entry fixed to the run base).
  */
 static ra_dfu_img_hdr_t mk_hdr(uint32_t magic, uint32_t seq, uint32_t len, uint32_t crc)
 {
@@ -46,7 +47,7 @@ static ra_dfu_img_hdr_t mk_hdr(uint32_t magic, uint32_t seq, uint32_t len, uint3
   h.seq              = seq;
   h.img_len          = len;
   h.img_crc32        = crc;
-  h.entry            = (uint32_t)k_ra_dfu_slot_a_base;
+  h.entry            = (uint32_t)k_ra_dfu_run_base;
   return h;
 }
 
@@ -154,6 +155,51 @@ static void test_hdr_valid_mcdc(void)
 }
 
 /**
+ * @brief `ra_dfu_run_target_valid` entry + length gate, with MC/DC vectors.
+ *
+ * @par MC/DC:
+ * Outer decision: `entry_ok && len_ok` (2 conditions, AND).
+ * - V1: T T -> true  (control: both true)
+ * - V2: F T -> false (varies entry_ok: entry != run base)
+ * - V3: T F -> false (varies len_ok: len == 0)
+ * Inner decision `len_ok = (len!=0) && (len<=max) && (len%page==0)`
+ * (3 conditions, all AND), driven with entry_ok=T (result == len_ok):
+ * - L1: 0x4000        -> true  (control: all true)
+ * - L2: 0             -> false (varies len!=0)
+ * - L3: img_max+page  -> false (varies len<=max)
+ * - L4: 0x21          -> false (varies len%page==0)
+ * N+1 vectors per AND: minimal MC/DC. Boundary img_max -> true (<= inclusive).
+ *
+ * @pre None.
+ * @pre None.
+ * @post No persistent side effects.
+ * @post No global state changes.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_run_target_valid_mcdc(void)
+{
+  TEST_BEGIN("ra_dfu: run_target_valid entry/len (MC/DC)");
+
+  const uint32_t run       = (uint32_t)k_ra_dfu_run_base;
+  const uint32_t bad_entry = (uint32_t)k_ra_dfu_slot_a_base; /* a real address != run base */
+
+  /* Outer AND: entry_ok && len_ok. */
+  TEST_ASSERT(ra_dfu_run_target_valid(run, (uint32_t)k_test_len_ok));        /* T T -> true  */
+  TEST_ASSERT(!ra_dfu_run_target_valid(bad_entry, (uint32_t)k_test_len_ok)); /* F T -> false */
+  TEST_ASSERT(!ra_dfu_run_target_valid(run, 0U));                            /* T F -> false */
+
+  /* Inner len_ok vectors (entry_ok=T held, so result == len_ok). */
+  TEST_ASSERT(!ra_dfu_run_target_valid(run, (uint32_t)k_test_len_toobig));  /* len > max   */
+  TEST_ASSERT(!ra_dfu_run_target_valid(run, (uint32_t)k_test_len_unalign)); /* len%page!=0 */
+
+  /* Boundary: exactly img_max (page-aligned) is valid. */
+  TEST_ASSERT(ra_dfu_run_target_valid(run, (uint32_t)k_ra_dfu_img_max));
+
+  TEST_END("ra_dfu: run_target_valid entry/len (MC/DC)");
+}
+
+/**
  * @brief `ra_dfu_select_slot` A/B/none selection, with MC/DC vectors.
  *
  * @par MC/DC:
@@ -235,6 +281,7 @@ int main(void)
 {
   test_crc32_known_vectors();
   test_hdr_valid_mcdc();
+  test_run_target_valid_mcdc();
   test_select_slot_mcdc();
   test_boot_decide_mcdc();
   return 0;

@@ -1,0 +1,5 @@
+# Build artifacts from build_payload.sh / stage_slot_image.py.
+# payload_image.h is GENERATED but committed (the demo embeds it); do not ignore.
+payload.bin
+payload.elf
+*.hex

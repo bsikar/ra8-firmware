@@ -346,9 +346,13 @@ q"
     local ok=1 issues=()
     if [[ -z "$pc1" || -z "$cyc1" ]]; then issues+=("could not parse PC/CycleCnt"); ok=0; else
         local mram_lo=$((16#02000000)) mram_hi=$((16#02100000)) itcm_lo=0 itcm_hi=$((16#00010000))
-        in_code() { local p=$1; { (( p>=mram_lo && p<mram_hi )) || (( p>=itcm_lo && p<itcm_hi )); }; }
-        in_code $((16#$pc1)) || { issues+=("PC1=0x${pc1} outside MRAM/ITCM"); ok=0; }
-        in_code $((16#$pc2)) || { issues+=("PC2=0x${pc2} outside MRAM/ITCM"); ok=0; }
+        # dfu_bootloader copy-to-run target: a booted payload runs from the SRAM
+        # window at k_ra_dfu_run_base (0x22020000), so accept that as live code too
+        # (real faults are still caught by the CFSR/HFSR + fault-spinner checks).
+        local srun_lo=$((16#22020000)) srun_hi=$((16#22100000))
+        in_code() { local p=$1; { (( p>=mram_lo && p<mram_hi )) || (( p>=itcm_lo && p<itcm_hi )) || (( p>=srun_lo && p<srun_hi )); }; }
+        in_code $((16#$pc1)) || { issues+=("PC1=0x${pc1} outside MRAM/ITCM/SRAM-run"); ok=0; }
+        in_code $((16#$pc2)) || { issues+=("PC2=0x${pc2} outside MRAM/ITCM/SRAM-run"); ok=0; }
         (( ( (16#$cyc2) - (16#$cyc1) ) & 0xFFFFFFFF )) || { issues+=("CycleCnt frozen (0x${cyc1}->0x${cyc2})"); ok=0; }
     fi
     local spinner='(panic_halt|halt_loop|exception_halt|Default_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|spin_forever|hang_forever|_die|__assert_fail)'

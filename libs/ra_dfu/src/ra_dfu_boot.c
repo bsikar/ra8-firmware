@@ -64,6 +64,14 @@ bool ra_dfu_hdr_valid(const ra_dfu_img_hdr_t* hdr, uint32_t computed_crc)
   return magic_ok && len_ok && crc_ok;
 }
 
+bool ra_dfu_run_target_valid(uint32_t entry, uint32_t img_len)
+{
+  const bool entry_ok = (entry == (uint32_t)k_ra_dfu_run_base);
+  const bool len_ok   = (img_len != 0U) && (img_len <= (uint32_t)k_ra_dfu_img_max) &&
+                        ((img_len % (uint32_t)k_ra_dfu_page_size) == 0U);
+  return entry_ok && len_ok;
+}
+
 ra_dfu_slot_t ra_dfu_select_slot(bool a_valid, uint32_t a_seq, bool b_valid, uint32_t b_seq)
 {
   if (!a_valid && !b_valid) {

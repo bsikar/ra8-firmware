@@ -97,7 +97,8 @@ CAN driver on the Pi) and tracked in [`docs/HIL.md`](../../../../../docs/HIL.md)
 | cpu1_pingpong | LED1/LED2 toggle as M85/M33 ping-pong messages |
 | dac_b_demo | DAC0 output ramps 0-3.3 V |
 | dac_waveform | DAC0 triangle wave ~8 Hz |
-| dfu_bootloader | alive: boots + runs its A/B boot decision (jump to a valid slot, or the USB-FS DFU device) without faulting -- PC in code, CycleCnt advancing, CFSR/HFSR clean. Full DFU program/commit/jump validated by `dfu_selftest_boot` (self-loop) + the J-Link sentinel in its README |
+| dfu_bootloader | alive: boots + runs its A/B boot decision (copy-to-run a valid slot into the SRAM run window, or the USB-FS DFU device) without faulting -- PC in code, CycleCnt advancing, CFSR/HFSR clean. DFU program/commit validated by `dfu_selftest_boot`; copy-to-run from either slot by `dfu_copy_to_run` + the J-Link sentinel in its README |
+| dfu_copy_to_run | alive: copy-to-run proof (#97) -- embeds one image, hands it to `ra_dfu_launch` (the bootloader's launcher), which copies it to the SRAM run base and branches there; PASS == PC in the SRAM run window (0x22020000+), reachable only by copying-to-run |
 | doc_demo | LED1 toggles on match, LED2 latches on diverge |
 | gpio_input_demo | LED1 mirrors SW1 state |
 | gpt_capture_input | LED toggles on SW1 press; captures period |

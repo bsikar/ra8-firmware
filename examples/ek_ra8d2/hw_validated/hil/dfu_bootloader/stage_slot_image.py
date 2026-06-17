@@ -6,20 +6,24 @@
 # slot image: the body at the slot base, plus the 32-byte image header in the
 # slot's LAST page (slot_base + 0x6FFE0). Emits an Intel HEX you can flash with
 # J-Link (loadfile) to stage a slot WITHOUT a USB host, e.g. to bench-validate
-# the bootloader's jump path. The real operator path is dfu-util: the bootloader
-# itself writes the header on DFU commit, so for that path you only need the
-# body binary (this tool's --body-hex), not the header.
+# the bootloader's copy-to-run path. The real operator path is dfu-util: the
+# bootloader itself writes the header on DFU commit, so for that path you only
+# need the body binary, not the header.
+#
+# Copy-to-run: the bootloader copies the slot body to the fixed SRAM run base
+# (RUN_BASE) and launches it there, so the SAME image boots from either slot --
+# stage the identical app.bin to slot a OR slot b.
 #
 # The header layout and CRC must match libs/ra_dfu (header-last):
 #   magic(u32=0x52413844) seq(u32) img_len(u32, mult of 32)
-#   img_crc32(u32 = CRC32 over [slot_base, slot_base+img_len)) entry(u32=slot_base)
+#   img_crc32(u32 = CRC32 over [slot_base, slot_base+img_len)) entry(u32=RUN_BASE)
 #   reserved(12 bytes, 0). CRC32 is the standard reflected zlib polynomial.
 #
 # Usage:
 #   stage_slot_image.py --payload app.bin --slot a [--seq 1] --out slotA.hex
 #
-# The application MUST be linked so its vector table sits at the slot base
-# (ORIGIN = slot base); see this app's README "Per-slot payload builds".
+# The application MUST be linked at the SRAM run base (ORIGIN = RUN_BASE), NOT at
+# a slot base; see this app's README "One image, either slot (copy-to-run)".
 
 import argparse
 import struct
@@ -31,6 +35,7 @@ SLOT_BASE = {"a": 0x02020000, "b": 0x02090000}
 SLOT_SIZE = 0x00070000
 HDR_OFFSET = 0x0006FFE0
 HDR_MAGIC = 0x52413844
+RUN_BASE = 0x22020000  # k_ra_dfu_run_base: SRAM copy-to-run / payload link base
 PAGE = 0x20
 
 
@@ -51,7 +56,8 @@ def ihex_records(data: bytes, base: int) -> list:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Stage a dfu_bootloader slot image.")
-    ap.add_argument("--payload", required=True, help="raw app binary, linked at the slot base")
+    ap.add_argument("--payload", required=True,
+                    help="raw app binary, linked at the SRAM run base 0x22020000")
     ap.add_argument("--slot", required=True, choices=("a", "b"), help="target slot")
     ap.add_argument("--seq", type=int, default=1, help="monotonic sequence number")
     ap.add_argument("--out", required=True, help="output Intel HEX path")
@@ -66,7 +72,9 @@ def main() -> int:
         return 2
 
     crc = zlib.crc32(bytes(body)) & 0xFFFFFFFF
-    hdr = struct.pack("<5I", HDR_MAGIC, args.seq, len(body), crc, base) + b"\x00" * 12
+    # entry == RUN_BASE (copy-to-run): the bootloader copies the body there and
+    # launches it; the same image is valid in either slot.
+    hdr = struct.pack("<5I", HDR_MAGIC, args.seq, len(body), crc, RUN_BASE) + b"\x00" * 12
 
     records = ihex_records(bytes(body), base)
     records += ihex_records(hdr, base + HDR_OFFSET)
