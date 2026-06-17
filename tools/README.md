@@ -12,6 +12,7 @@ board, plus the gate that keeps them honest.
 |----------------|-----|-----|
 | Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/board_sim`** (Unicorn CPU emulator) | `make sim-<app> [PANEL=<name>]` |
 | Build a FAT **SD-card image** carrying a font (for `board_sim --sd` or a real card) | **`tools/mkfontimg`** | `cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build` |
+| Give an **MCP-aware assistant** live repo context (app catalogue, build/test/HIL workflows, code search, project docs) | **`tools/mcp`** (zero-dependency MCP server) | `make mcp` self-tests it; an MCP client auto-loads it via the repo `.mcp.json` |
 
 `make apps` lists every firmware app; `make help` is the grouped target
 reference. Git hooks auto-install on first `make` (or `make hooks`).

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ra8d2-firmware": {
+      "command": "python3",
+      "args": ["tools/mcp/ra8d2_mcp.py"]
+    }
+  }
+}
