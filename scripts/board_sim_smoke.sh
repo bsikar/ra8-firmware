@@ -110,6 +110,17 @@ golden_dir="$ROOT/tests/golden/ereader_chrome"
 sd_apps="sd_font_render tz_secure_only_sd"
 sd_image=""
 
+# USB device-enumeration apps (#67 Phase 3 -- the headline USB-debugging goal).
+# board_sim's virtual USB host (board_usb.c) watches SYSCFG.DPRPU and drives the
+# real chapter-9 SETUP sequence (GET_DESCRIPTOR -> SET_ADDRESS -> SET_CONFIGURATION
+# -> CDC line requests) against the firmware's actual USBX device stack + USBFS
+# DCD register model. For these apps we assert the device reaches CONFIGURED with
+# its class active -- i.e. enumeration completed end to end, with no hardware.
+# They are ThreadX/USBX, so (like the LevelX/FileX apps) they need a newer Unicorn
+# than the CI runner's 2.0.1 and a bounded budget; pass them explicitly, e.g.
+# `scripts/board_sim_smoke.sh usb_cdc_echo`.
+usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -205,6 +216,25 @@ for app in "${apps[@]}"; do
     fi
     # shellcheck disable=SC2046  -- intentional word-split of the extra args
     extra="$(sim_extra_args "$app")"
+    # USB device-enumeration apps: the virtual host drives chapter-9; assert the
+    # device reaches CONFIGURED. Bounded budget + idle-stop so the forever-looping
+    # RTOS app settles quickly once enumeration is done (no display/UART check).
+    case " $usb_enum_apps " in
+    *" $app "*)
+        uout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_IDLE_STOP=1200 "$sim" "$elf" 2>&1 || true)"
+        if echo "$uout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+            echo "FAULT (during USB bring-up)"
+            fail=1
+        elif echo "$uout" | grep -q "device CONFIGURED"; then
+            klass="$(echo "$uout" | sed -n 's/.*device CONFIGURED (\(.*\)).*/\1/p' | head -1)"
+            echo "OK (USB enumerated -> CONFIGURED, $klass)"
+        else
+            echo "USB ENUM FAIL (device did not reach CONFIGURED)"
+            fail=1
+        fi
+        continue
+        ;;
+    esac
     out="$("$sim" "$elf" $extra 2>&1 || true)"
     if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
         echo "FAULT (invalid opcode / unmapped access)"
