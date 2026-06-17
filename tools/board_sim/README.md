@@ -214,9 +214,21 @@ only if you exceed the registry capacity.
   virtual device (device + config + HID descriptors -> SET_ADDRESS ->
   SET_CONFIGURATION), opens the interrupt-IN pipe, reads the boot-keyboard input
   reports and decodes the keycodes -- `ra8d2 hid: host decoded keys "RA8D2" ...
-  USB HOST KEYBOARD PASS`. Also a gate: `scripts/board_sim_smoke.sh
-  usb_host_keyboard` asserts that PASS banner. (The seam is symbol-gated on
-  `ra_usb_host_control_xfer`, so device-mode apps are entirely unaffected.)
+  USB HOST KEYBOARD PASS`.
+- Proven on `usb_host_msc_browse`: the host as USB **mass-storage host**. board_sim
+  seams the higher-level `ra_usb_hmsc_*` class API (one level above BOT/SCSI) to a
+  **virtual read-only FAT16 disk** whose single file `MRAM.BIN` is the live 1 MiB
+  MRAM window -- the boot/FAT/root sectors are a byte-exact replica of the device's
+  synthesis, and the data region is read straight out of emulated MRAM, so it
+  matches the host's own MRAM compare byte-for-byte. The firmware's real host stack
+  enumerates it, `READ_CAPACITY`s, mounts the FAT16 over `ra_fs`, browses the root
+  directory (finds `MRAM.BIN`, 1 MiB), content-verifies all 1 048 576 bytes against
+  MRAM, and confirms a `WRITE(10)` is rejected (read-only) -- `ra8d2 host: USB HOST
+  MSC BROWSE PASS`. Both host apps are gated: `scripts/board_sim_smoke.sh
+  usb_host_keyboard usb_host_msc_browse` asserts each PASS banner. The seam picks
+  the virtual device's class from the firmware's linked host stack (`ra_usb_hmsc_*`
+  -> disk, else `ra_usb_host_*` -> keyboard) and is symbol-gated, so device-mode
+  apps are entirely unaffected.
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
   USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
 - The graphical board view is proven via `--ppm` region checks: `blink` lights
