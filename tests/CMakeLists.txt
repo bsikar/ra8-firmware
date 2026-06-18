@@ -152,7 +152,10 @@ file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/
 # (LiteHTML-backed, RA_REFLOW_USE_LITEHTML=ON). Only one set is compiled.
 option(RA_REFLOW_USE_LITEHTML "Use the LiteHTML v2 ra_reflow engine" OFF)
 if(RA_REFLOW_USE_LITEHTML)
-    set(RA_REFLOW_C_SOURCES    "")
+    # The static stb_truetype arena allocator (ra_stbtt_malloc/free) is shared:
+    # both v1 and the litehtml v2 engine rasterise glyphs through stb_truetype,
+    # so this one file stays in even when the v1 reflow engine is excluded.
+    set(RA_REFLOW_C_SOURCES    ${FW_ROOT}/libs/ra_reflow/src/ra_stbtt_alloc.c)
     set(RA_REFLOW_CPP_SOURCES  ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp)
     enable_language(CXX)
     set(_RA_SAVED_C_FLAGS   "${CMAKE_C_FLAGS}")
