@@ -139,7 +139,7 @@ typedef enum : uint8_t {
  * USB MSC, mock) fills these in and passes the struct to `ra_fs_mount()`.
  *
  * @invariant `read_block`, `write_block`, `get_capacity` are non-NULL for
- *            a usable backend. `ctx` may be NULL.
+ *            a usable backend. `erase_blocks` and `ctx` may be NULL.
  */
 typedef struct {
   /**
@@ -162,6 +162,22 @@ typedef struct {
    * @param[out] block_size  Bytes per block (must equal 512).
    */
   ra_err_t (*get_capacity)(void* ctx, uint32_t* block_count, uint32_t* block_size);
+
+  /**
+   * @brief OPTIONAL: bulk-erase `count` blocks at `lba` to all-zero bytes.
+   *
+   * @details May be NULL. When non-NULL and it returns ::k_ra_ok, the range
+   * `[lba, lba+count)` is guaranteed to read back as `0x00` -- letting the
+   * formatter skip an explicit zero-write of that region (much faster on flash
+   * media that erases internally). A backend that cannot guarantee a zero
+   * post-erase value (or does not implement erase) must return
+   * ::k_ra_err_not_supported so the formatter falls back to writing zeros; any
+   * other non-OK error aborts the format.
+   * @param[in] ctx   Backend cookie.
+   * @param[in] lba   First block to erase.
+   * @param[in] count Number of blocks to erase.
+   */
+  ra_err_t (*erase_blocks)(void* ctx, uint32_t lba, uint32_t count);
 
   /** @brief Caller-owned context passed back into the function pointers. */
   void* ctx;

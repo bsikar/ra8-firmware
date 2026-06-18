@@ -4209,6 +4209,54 @@ static ra_err_t priv_fmt_zero_run(const ra_fs_backend_t* backend, uint32_t lba, 
 }
 
 /**
+ * @brief Clear `count` blocks at `lba` to zero -- bulk-erase if the backend can.
+ *
+ * @details Tries `backend->erase_blocks` first: on flash media (SD) that erases
+ *          a region internally in one operation, this avoids streaming tens of
+ *          MB of zeros (~30 MB of FAT on a 128 GB FAT32 card). The erase path is
+ *          only taken when the backend guarantees a zero read-back -- it signals
+ *          inability with ::k_ra_err_not_supported, on which (or when no erase
+ *          hook is bound) this falls back to `priv_fmt_zero_run`. Any other
+ *          backend error aborts.
+ *
+ * @param[in] backend Block-device backend.
+ * @param[in] lba     First block to clear.
+ * @param[in] count   Number of blocks to clear.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    The range now reads back as all-zero bytes.
+ * @retval k_ra_err_* A backend write/erase failure (other than not_supported).
+ *
+ * @pre @p backend is non-NULL with a non-NULL `write_block`.
+ * @pre @p count blocks starting at @p lba lie within the device.
+ * @post On success `[lba, lba+count)` reads back as zero.
+ * @post No metadata is written; caller seeds the FAT afterwards.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @par MC/DC:
+ * Decision: `if ((erase_blocks != nullptr) && (erase_blocks(...) == k_ra_ok))`
+ * (short-circuit AND). Erase is a pure optimization: any non-OK result (no hook,
+ * not_supported, a card that erases to ones, or a hardware error) falls through
+ * to the proven zero-write -- so erase failure is never fatal. Vectors:
+ * - erase_blocks == NULL          -> C1 false (short-circuit) -> zero-run.
+ * - erase_blocks returns k_ra_ok  -> C1 true, C2 true         -> return ok (no zeroing).
+ * - erase_blocks returns non-ok   -> C1 true, C2 false        -> zero-run.
+ * (NULL,ok) prove C1 independence; (ok,non-ok) prove C2 independence.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_fmt_clear_region(const ra_fs_backend_t* backend, uint32_t lba, uint32_t count)
+{
+  if ((backend->erase_blocks != nullptr) &&
+      (backend->erase_blocks(backend->ctx, lba, count) == k_ra_ok)) {
+    return k_ra_ok; /* erased and verified zero -- skip the zero-write */
+  }
+  /* No erase hook, or erase could not guarantee a zero read-back: write zeros. */
+  return priv_fmt_zero_run(backend, lba, count);
+}
+
+/**
  * @brief Seed the reserved FAT entries (and FAT32 root-cluster EOC) per copy.
  *
  * @details Builds one zeroed FAT sector holding `FAT[0]` (media descriptor in
@@ -4346,9 +4394,11 @@ static bool priv_fmt_spc_valid(uint8_t spc)
  * @brief Lay down the boot sector, FAT seeds, FSInfo, and the empty root.
  *
  * @details The write phase of `ra_fs_format()`, split out to keep the public
- *          entry under the NASA Rule 4 length budget. Builds the type-specific
- *          BPB in scratch, persists it at LBA 0, seeds the FATs, writes any
- *          FAT32 FSInfo + backup, and zeroes the root directory region.
+ *          entry under the NASA Rule 4 length budget. Clears the FAT + root
+ *          region (bulk-erase or zero-write) first, then builds the
+ *          type-specific BPB and persists it at LBA 0, seeds the FATs, and
+ *          writes any FAT32 FSInfo + backup. The root region is left zero by the
+ *          initial clear.
  *
  * @param[in] backend Block-device backend.
  * @param[in] g       Resolved geometry.
@@ -4376,16 +4426,21 @@ priv_fmt_emit_volume(const ra_fs_backend_t* backend, const ra_fs_fmt_geom_t* g, 
   } else {
     priv_fmt_build_bpb_f16(boot, g, label);
   }
-  ra_err_t err = backend->write_block(backend->ctx, 0U, 1U, boot);
+  /* Clear the FAT region plus the (contiguous) root region first, so no stale
+   * non-zero FAT word survives as an orphan cluster. Erase the whole span in
+   * one go when the card guarantees zero-after-erase, else stream zeros. Doing
+   * this BEFORE the metadata writes means an erase that rounds into the reserved
+   * region cannot clobber the boot sector / FSInfo written below. */
+  const uint32_t fat_total = (uint32_t)k_fmt_num_fats * g->fat_size_sectors;
+  const uint32_t root_span =
+    (g->type == k_ra_fs_type_fat32) ? g->sectors_per_cluster : g->root_sectors;
+  ra_err_t err = priv_fmt_clear_region(backend, g->reserved_sectors, fat_total + root_span);
   if (err != k_ra_ok) {
     return err;
   }
-  /* Wipe the whole FAT region first so no garbage entries survive on a card
-   * that was not pre-zeroed -- otherwise a stale non-zero FAT word reads back
-   * as an allocated (orphan) cluster. The seed below then rewrites FAT sector
-   * 0 of each copy with the media + EOC reserved entries. */
-  const uint32_t fat_total = (uint32_t)k_fmt_num_fats * g->fat_size_sectors;
-  err                      = priv_fmt_zero_run(backend, g->reserved_sectors, fat_total);
+  /* Now lay the metadata: boot sector, FAT seeds (rewrite FAT sector 0 of each
+   * copy with the media + EOC reserved entries), then FAT32 FSInfo + backup. */
+  err = backend->write_block(backend->ctx, 0U, 1U, boot);
   if (err != k_ra_ok) {
     return err;
   }
@@ -4393,15 +4448,7 @@ priv_fmt_emit_volume(const ra_fs_backend_t* backend, const ra_fs_fmt_geom_t* g, 
   if (err != k_ra_ok) {
     return err;
   }
-  err = priv_fmt_write_fsinfo(backend, g, boot);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const uint32_t fat_end = g->reserved_sectors + fat_total;
-  if (g->type == k_ra_fs_type_fat32) {
-    return priv_fmt_zero_run(backend, fat_end, g->sectors_per_cluster);
-  }
-  return priv_fmt_zero_run(backend, fat_end, g->root_sectors);
+  return priv_fmt_write_fsinfo(backend, g, boot);
 }
 
 ra_err_t ra_fs_format(const ra_fs_backend_t* backend, const ra_fs_format_opts_t* opts)
