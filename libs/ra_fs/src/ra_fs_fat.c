@@ -264,6 +264,7 @@ typedef enum : uint32_t {
   k_fmt_fsi_trail_sig   = 0xAA550000U, /**< FSInfo trailing signature.         */
   k_fmt_label_len       = 11U,         /**< Volume-label field width (bytes).  */
   k_fmt_spc_max         = 64U,         /**< Largest sectors-per-cluster we set. */
+  k_fmt_zero_chunk_secs = 32U,         /**< Sectors zeroed per multi-block write.*/
   k_fmt_fat16_entry_cap = 256U,        /**< 512-byte sector / 2-byte FAT16 ent. */
   k_fmt_fat32_entry_cap = 128U,        /**< 512-byte sector / 4-byte FAT32 ent. */
   k_fmt_fat32_clus_cap  = 0x0FFFFFF0U, /**< Max FAT32 cluster count we accept.  */
@@ -4102,11 +4103,18 @@ static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra_fs_fmt_geom_t* g, cons
   sec[k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
 }
 
+/** @brief All-zero source for the chunked FAT/root wipe (read-only, in flash). */
+static const uint8_t
+  k_fmt_zero_chunk[(uint32_t)k_fmt_zero_chunk_secs * (uint32_t)k_ra_fs_bytes_per_sector] = {};
+
 /**
- * @brief Zero a run of sectors on the backend, one sector at a time.
+ * @brief Zero a run of sectors on the backend in multi-sector chunks.
  *
- * @details Reuses the module scratch buffer (zeroed once) and the backend's
- *          single-sector write. Bounds the loop by the caller's count.
+ * @details Writes up to ::k_fmt_zero_chunk_secs sectors per `write_block` call
+ *          from a read-only all-zero buffer, so an SD backend can clear the
+ *          whole region with CMD25 multi-block writes instead of one slow CMD24
+ *          single-block write per sector (a 32 MB FAT on a 128 GB card drops
+ *          from minutes to seconds). Bounds the loop by the caller's count.
  *
  * @param[in] backend Block-device backend.
  * @param[in] lba     First sector to clear.
@@ -4114,27 +4122,29 @@ static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra_fs_fmt_geom_t* g, cons
  *
  * @return Backend error code (first failure aborts).
  * @retval k_ra_ok    All @p count sectors zeroed.
- * @retval k_ra_err_* Backend write failure at some sector.
+ * @retval k_ra_err_* Backend write failure within the run.
  *
  * @pre @p backend and `backend->write_block` are non-NULL.
  * @pre @p lba + @p count does not exceed the device.
  * @post On success sectors @p lba .. @p lba+count-1 are all-zero.
- * @post `s_scratch` is left zeroed.
  *
- * @note Bounded loop (NASA Rule 2): exactly @p count iterations.
+ * @note Bounded loop (NASA Rule 2): at most @p count iterations.
  *
  * @since 0.1.0
  */
 static ra_err_t priv_fmt_zero_run(const ra_fs_backend_t* backend, uint32_t lba, uint32_t count)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
-    s_scratch[i] = 0U;
-  }
-  for (uint32_t s = 0U; s < count; s++) {
-    const ra_err_t err = backend->write_block(backend->ctx, lba + s, 1U, s_scratch);
+  uint32_t done = 0U;
+  while (done < count) {
+    uint32_t chunk = count - done;
+    if (chunk > (uint32_t)k_fmt_zero_chunk_secs) {
+      chunk = (uint32_t)k_fmt_zero_chunk_secs;
+    }
+    const ra_err_t err = backend->write_block(backend->ctx, lba + done, chunk, k_fmt_zero_chunk);
     if (err != k_ra_ok) {
       return err;
     }
+    done += chunk;
   }
   return k_ra_ok;
 }

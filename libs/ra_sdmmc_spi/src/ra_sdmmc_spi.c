@@ -69,19 +69,20 @@ typedef enum : uint32_t {
 } sd_csd_field_t;
 
 typedef enum : uint8_t {
-  k_sd_cmd_go_idle_state      = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
-  k_sd_cmd_send_if_cond       = 0x40U | 8U,  /**< CMD8  SEND_IF_COND         */
-  k_sd_cmd_send_csd           = 0x40U | 9U,  /**< CMD9  SEND_CSD             */
-  k_sd_cmd_send_cid           = 0x40U | 10U, /**< CMD10 SEND_CID             */
-  k_sd_cmd_stop_transmission  = 0x40U | 12U, /**< CMD12 STOP_TRANSMISSION    */
-  k_sd_cmd_set_blocklen       = 0x40U | 16U, /**< CMD16 SET_BLOCKLEN         */
-  k_sd_cmd_read_single_block  = 0x40U | 17U, /**< CMD17 READ_SINGLE_BLOCK    */
-  k_sd_cmd_read_multi_block   = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
-  k_sd_cmd_write_single_block = 0x40U | 24U, /**< CMD24 WRITE_BLOCK          */
-  k_sd_cmd_write_multi_block  = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK */
-  k_sd_cmd_app_cmd            = 0x40U | 55U, /**< CMD55 APP_CMD              */
-  k_sd_cmd_read_ocr           = 0x40U | 58U, /**< CMD58 READ_OCR             */
-  k_sd_acmd_sd_send_op_cond   = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND     */
+  k_sd_cmd_go_idle_state           = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
+  k_sd_cmd_send_if_cond            = 0x40U | 8U,  /**< CMD8  SEND_IF_COND         */
+  k_sd_cmd_send_csd                = 0x40U | 9U,  /**< CMD9  SEND_CSD             */
+  k_sd_cmd_send_cid                = 0x40U | 10U, /**< CMD10 SEND_CID             */
+  k_sd_cmd_stop_transmission       = 0x40U | 12U, /**< CMD12 STOP_TRANSMISSION    */
+  k_sd_cmd_set_blocklen            = 0x40U | 16U, /**< CMD16 SET_BLOCKLEN         */
+  k_sd_cmd_read_single_block       = 0x40U | 17U, /**< CMD17 READ_SINGLE_BLOCK    */
+  k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
+  k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24 WRITE_BLOCK          */
+  k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK */
+  k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55 APP_CMD              */
+  k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58 READ_OCR             */
+  k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND     */
+  k_sd_acmd_set_wr_blk_erase_count = 0x40U | 23U, /**< ACMD23 pre-erase count */
 } sd_cmd_t;
 
 /**
@@ -151,6 +152,7 @@ typedef enum : uint32_t {
   k_sd_max_busy_poll_bytes  = 100000U, /**< Worst-case write timeout. */
   k_sd_max_acmd41_attempts  = 1000U,   /**< 1 s at 1 ms / attempt. */
   k_sd_init_dummy_clocks    = 80U,     /**< 80 clocks = 10 bytes of 0xFF (>=74 required). */
+  k_sd_recover_flush_bytes  = 530U,    /**< >= 512 data + 2 CRC + token to flush a stuck write. */
 } sd_protocol_const_t;
 
 /**
@@ -561,6 +563,35 @@ static ra_err_t internal_validate_transport(const ra_sdmmc_spi_transport_t* tran
   return k_ra_ok;
 }
 
+/**
+ * @brief Best-effort recovery for a card stranded mid-write by an interrupted
+ *        transaction (e.g. an MCU reset during a long format).
+ *
+ * @details With CS asserted, sends a stop-tran token (aborts a wedged CMD25
+ * multi-block write) then >= 512 + CRC idle bytes (completes a wedged CMD24
+ * single-block data phase, so the card programs the slack and returns to idle),
+ * then waits out the programming. Harmless to an already-idle card: 0xFD and
+ * 0xFF are both non-command bytes, so they clock past as idle. Run once before
+ * the wake/CMD0 so a stuck card can re-init without a physical power cycle.
+ *
+ * @return None.
+ * @pre The transport is bound (called from the init probe).
+ * @post Any in-flight write transaction is terminated and the bus is idle.
+ * @post CS is released.
+ * @note Not thread-safe; part of single-threaded init.
+ * @since 0.1.0
+ */
+static void internal_recover_stuck_card(void)
+{
+  if (s_state.transport.cs(s_state.transport.ctx, true) != k_ra_ok) {
+    return;
+  }
+  (void)internal_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
+  (void)internal_send_idle((uint32_t)k_sd_recover_flush_bytes);
+  (void)internal_wait_not_busy();
+  (void)s_state.transport.cs(s_state.transport.ctx, false);
+}
+
 /* Drive >= 74 dummy clocks with CS high to wake the card (SD spec section 7.2.1) -- see implementation for details. */
 static ra_err_t internal_wake_card(void)
 {
@@ -744,10 +775,20 @@ static ra_sdmmc_spi_card_type_t internal_classify_card(bool is_v2, bool is_hc)
 static ra_err_t internal_probe_card(bool* out_is_v2, bool* out_is_hc)
 {
   ra_err_t err = internal_wake_card();
-  if (err != k_ra_ok) {
-    return err;
+  if (err == k_ra_ok) {
+    err = internal_send_cmd0();
   }
-  err = internal_send_cmd0();
+  if (err != k_ra_ok) {
+    /* First CMD0 failed: the card may be stranded mid-write from an interrupted
+     * transaction. Flush it and retry once. A healthy card never reaches here,
+     * so the recovery cannot disturb a normal bring-up. */
+    internal_recover_stuck_card();
+    err = internal_wake_card();
+    if (err != k_ra_ok) {
+      return err;
+    }
+    err = internal_send_cmd0();
+  }
   if (err != k_ra_ok) {
     return err;
   }
@@ -913,13 +954,13 @@ ra_err_t ra_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf)
 }
 
 /* Stream one data block out (token + payload + CRC16) and check -- see implementation for details. */
-static ra_err_t internal_write_data_phase(const uint8_t* buf)
+static ra_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_token)
 {
   ra_err_t err = internal_send_idle(1U); /* N_WR pad (spec >= 1 byte). */
   if (err != k_ra_ok) {
     return err;
   }
-  err = internal_xfer_one((uint8_t)k_sd_token_data_start_single, nullptr);
+  err = internal_xfer_one(start_token, nullptr);
   if (err != k_ra_ok) {
     return err;
   }
@@ -974,7 +1015,85 @@ ra_err_t ra_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf)
     (void)internal_cs_release();
     return k_ra_err_protocol_error;
   }
-  err = internal_write_data_phase(buf);
+  err = internal_write_data_block(buf, (uint8_t)k_sd_token_data_start_single);
+  (void)internal_cs_release();
+  return err;
+}
+
+/* Stream @p count blocks then the stop token inside an open CMD25 -- see implementation for details. */
+static ra_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
+{
+  for (uint32_t i = 0U; i < count; i++) {
+    const ra_err_t err =
+      internal_write_data_block(&buf[(size_t)i * (size_t)k_ra_sdmmc_spi_block_size],
+                                (uint8_t)k_sd_token_data_start_multi);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  (void)internal_send_idle(1U);
+  (void)internal_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
+  (void)internal_send_idle(1U);
+  return internal_wait_not_busy();
+}
+
+/**
+ * @brief Write @p count contiguous 512-byte blocks with one CMD25 transaction.
+ *
+ * @details The fast bulk-write path: an optional ACMD23 pre-erase hint, then a
+ * single WRITE_MULTIPLE_BLOCK (CMD25) streaming every block with the multi-block
+ * data-start token (0xFC), terminated by the stop-tran token (0xFD). One command
+ * for the whole run instead of @p count single-block CMD24 writes -- the SD spec
+ * fast path for clearing a large region (e.g. a multi-MB FAT during format).
+ *
+ * @param[in] lba   First logical block address.
+ * @param[in] buf   Source buffer of @p count * 512 bytes.
+ * @param[in] count Number of contiguous blocks (>= 1).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok All @p count blocks were accepted and programmed.
+ * @retval k_ra_err_null_ptr      @p buf is NULL.
+ * @retval k_ra_err_invalid_state The driver is not initialised.
+ * @retval k_ra_err_out_of_range  @p lba + @p count exceeds the card capacity.
+ * @retval k_ra_err_protocol_error A command R1 or data-response token rejected.
+ *
+ * @pre The driver is initialised and a card is present.
+ * @pre @p buf holds at least @p count * 512 bytes.
+ * @post The stop token has been sent and the card is no longer busy.
+ * @post CS is released on every return path.
+ *
+ * @note Not thread-safe; serialise card access. ACMD23 is best-effort -- a card
+ *       that rejects it still gets a correct (if unpre-erased) CMD25 stream.
+ * @since 0.1.0
+ */
+ra_err_t ra_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
+  if (!s_state.initialized) {
+    return k_ra_err_invalid_state;
+  }
+  if (count == 0U) {
+    return k_ra_ok;
+  }
+  if ((lba >= s_state.capacity_blocks) || (count > (s_state.capacity_blocks - lba))) {
+    return k_ra_err_out_of_range;
+  }
+  if (count == 1U) {
+    return ra_sdmmc_spi_write_block(lba, buf);
+  }
+  ra_err_t err = internal_cs_assert();
+  RA_RETURN_ON_ERROR(err, s_tag, "cs assert");
+  /* Pre-erase hint (ACMD23): best-effort -- ignore the response so a card that
+   * does not implement it still streams correctly below. */
+  uint8_t acmd_r1 = 0U;
+  (void)internal_send_acmd(k_sd_acmd_set_wr_blk_erase_count, count, &acmd_r1);
+  uint8_t r1 = 0U;
+  err        = internal_send_command(k_sd_cmd_write_multi_block, internal_lba_to_arg(lba), &r1);
+  if ((err != k_ra_ok) || (r1 != 0U)) {
+    (void)internal_cs_release();
+    return (err != k_ra_ok) ? err : k_ra_err_protocol_error;
+  }
+  err = internal_write_multi_stream(buf, count);
   (void)internal_cs_release();
   return err;
 }
@@ -1028,14 +1147,9 @@ static ra_err_t internal_fs_write_block(void* ctx, uint32_t lba, uint32_t count,
   if (buf == nullptr) {
     return k_ra_err_null_ptr;
   }
-  for (uint32_t i = 0U; i < count; i++) {
-    ra_err_t err =
-      ra_sdmmc_spi_write_block(lba + i, &buf[(size_t)i * (size_t)k_ra_sdmmc_spi_block_size]);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
+  /* One CMD25 multi-block transaction for the whole run (fast); the single-block
+   * path is used only for a lone block. */
+  return ra_sdmmc_spi_write_blocks(lba, buf, count);
 }
 
 /* ``get_capacity`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */

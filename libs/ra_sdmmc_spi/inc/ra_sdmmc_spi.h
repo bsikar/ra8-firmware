@@ -289,6 +289,35 @@ typedef struct {
  */
 [[nodiscard]] ra_err_t ra_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf);
 
+/**
+ * @brief Write @p count contiguous 512-byte blocks in one CMD25 transaction.
+ *
+ * @details The fast bulk-write path: ACMD23 pre-erase hint (best-effort) plus a
+ * single WRITE_MULTIPLE_BLOCK streaming every block, terminated by the stop
+ * token. One command for the whole run instead of @p count CMD24 single-block
+ * writes -- far faster for clearing a large region such as a multi-MB FAT during
+ * format. Falls back to ::ra_sdmmc_spi_write_block when @p count == 1.
+ *
+ * @param[in] lba   First LBA in 512-byte units. ``lba + count <= capacity``.
+ * @param[in] buf   Source buffer of exactly ``count * 512`` bytes.
+ * @param[in] count Number of contiguous blocks to write (>= 1).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                 All blocks written and the card became idle.
+ * @retval k_ra_err_null_ptr       ``buf`` is NULL.
+ * @retval k_ra_err_invalid_state  Driver not initialized.
+ * @retval k_ra_err_out_of_range   ``lba + count`` exceeds capacity.
+ * @retval k_ra_err_protocol_error A command R1 or data-response token rejected.
+ *
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @pre  ``buf`` holds at least ``count * 512`` bytes.
+ * @post On success, the card's storage at ``lba .. lba+count-1`` matches ``buf``.
+ * @post Card remains in ``tran`` state.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count);
+
 /* =============================================================================
  * Status queries
  * =============================================================================
