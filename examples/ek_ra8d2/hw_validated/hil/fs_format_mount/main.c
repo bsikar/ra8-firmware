@@ -134,6 +134,10 @@ static const uint8_t k_msg_fail_type[]   = " FAIL type-mismatch\r\n";
 static const uint8_t k_msg_fail_write[]  = " FAIL write\r\n";
 static const uint8_t k_msg_fail_rename[] = " FAIL rename\r\n";
 static const uint8_t k_msg_fail_unlink[] = " FAIL unlink\r\n";
+/* Not a failure: the card capacity is outside this FAT type's cluster band
+ * (e.g. FAT12/FAT16 on a multi-GB card). Worded without "FAIL" so the HIL
+ * negative-match does not trip. */
+static const uint8_t k_msg_skip_size[] = " SKIP: capacity out of range for this type\r\n";
 
 /** @brief Test file names (8.3, root level). */
 static const char k_name_a[] = "FMTTEST.BIN";
@@ -524,7 +528,11 @@ fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
   opts.label               = "RAFSFMT";
   ra_err_t err             = ra_fs_format(&backend, &opts);
   if (err != k_ra_ok) {
-    fs_fmt_print_line(type, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
+    /* invalid_size == the card cannot hold this FAT type (too large/small): the
+     * caller treats that as a SKIP, not a FAIL, so do not print the FAIL line. */
+    if (err != k_ra_err_invalid_size) {
+      fs_fmt_print_line(type, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
+    }
     return err;
   }
   ra_fs_mount_t* mount = nullptr;
@@ -596,10 +604,21 @@ int32_t main(void)
     k_ra_fs_type_fat16,
     k_ra_fs_type_fat32,
   };
+  uint32_t passed = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_fs_fmt_idx_count; i++) {
-    if (fs_fmt_run_one_type(k_types[i]) != k_ra_ok) {
-      fs_fmt_panic_halt();
+    const ra_err_t r = fs_fmt_run_one_type(k_types[i]);
+    if (r == k_ra_ok) {
+      passed++;
+    } else if (r == k_ra_err_invalid_size) {
+      /* This FAT type does not fit this card's capacity -- skip it, do not halt.
+       * A big card (e.g. 128 GB) takes only FAT32; a tiny one only FAT12/16. */
+      fs_fmt_print_line(k_types[i], k_msg_skip_size, (uint32_t)sizeof(k_msg_skip_size) - 1U);
+    } else {
+      fs_fmt_panic_halt(); /* a real failure (mount / write / verify). */
     }
+  }
+  if (passed == 0U) {
+    fs_fmt_panic_halt(); /* no FAT type fit the card -- unexpected. */
   }
   fs_fmt_print(k_msg_all_pass, (uint32_t)sizeof(k_msg_all_pass) - 1U);
   fs_fmt_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
