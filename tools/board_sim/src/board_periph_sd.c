@@ -88,6 +88,9 @@ typedef enum : uint8_t {
   k_sd_idx_cmd17  = 17U, /**< READ_SINGLE.     */
   k_sd_idx_cmd24  = 24U, /**< WRITE_SINGLE.    */
   k_sd_idx_cmd25  = 25U, /**< WRITE_MULTIPLE.  */
+  k_sd_idx_cmd32  = 32U, /**< ERASE_WR_BLK_START. */
+  k_sd_idx_cmd33  = 33U, /**< ERASE_WR_BLK_END.   */
+  k_sd_idx_cmd38  = 38U, /**< ERASE.              */
   k_sd_idx_acmd41 = 41U, /**< SD_SEND_OP_COND. */
   k_sd_idx_cmd55  = 55U, /**< APP_CMD.         */
   k_sd_idx_cmd58  = 58U, /**< READ_OCR.        */
@@ -124,10 +127,12 @@ typedef struct {
   uint8_t             resp[k_sd_resp_cap];
   uint32_t            resp_len;
   uint32_t            resp_pos;
-  board_sd_wr_phase_t wr_phase; /**< CMD24/CMD25 write sub-state.       */
-  bool                wr_multi; /**< Write is CMD25 (multi-block).      */
-  uint64_t            wr_off;   /**< Byte offset of the current block.  */
-  uint32_t            wr_cnt;   /**< Bytes seen in the data/CRC phase.  */
+  board_sd_wr_phase_t wr_phase;    /**< CMD24/CMD25 write sub-state.       */
+  bool                wr_multi;    /**< Write is CMD25 (multi-block).      */
+  uint64_t            wr_off;      /**< Byte offset of the current block.  */
+  uint32_t            wr_cnt;      /**< Bytes seen in the data/CRC phase.  */
+  uint32_t            erase_start; /**< CMD32 ERASE_WR_BLK_START block.    */
+  uint32_t            erase_end;   /**< CMD33 ERASE_WR_BLK_END block.      */
 } board_sd_state_t;
 
 /** @brief The single modelled SD card. */
@@ -403,6 +408,29 @@ static void board_sd_process_cmd(board_sd_state_t* c)
     case (uint8_t)k_sd_idx_cmd25: /* WRITE_MULTIPLE_BLOCK */
       board_sd_begin_write(c, idx, arg, r1);
       break;
+    case (uint8_t)k_sd_idx_cmd32: /* ERASE_WR_BLK_START (SDHC: arg = block). */
+      c->erase_start = arg;
+      c->resp[0]     = r1;
+      c->resp_len    = 1U;
+      break;
+    case (uint8_t)k_sd_idx_cmd33: /* ERASE_WR_BLK_END (SDHC: arg = block). */
+      c->erase_end = arg;
+      c->resp[0]   = r1;
+      c->resp_len  = 1U;
+      break;
+    case (uint8_t)k_sd_idx_cmd38: { /* ERASE: zero [start, end] -- model a zero-erase card. */
+      if (c->erase_end >= c->erase_start) {
+        const uint64_t lo  = (uint64_t)c->erase_start * (uint64_t)k_sd_block;
+        const uint64_t hi  = ((uint64_t)c->erase_end + 1U) * (uint64_t)k_sd_block;
+        const uint64_t end = (hi < c->image_len) ? hi : c->image_len;
+        if (lo < end) {
+          memset(&c->image[lo], 0, (size_t)(end - lo));
+        }
+      }
+      c->resp[0]  = r1;
+      c->resp_len = 1U;
+      break;
+    }
     default:
       c->resp[0]  = r1;
       c->resp_len = 1U;

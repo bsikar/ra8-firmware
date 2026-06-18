@@ -318,6 +318,45 @@ typedef struct {
  */
 [[nodiscard]] ra_err_t ra_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count);
 
+/**
+ * @brief Bulk-erase @p count blocks at @p lba, guaranteeing a zero read-back.
+ *
+ * @details The CMD32/CMD33/CMD38 erase sequence. The card erases the range
+ * internally in one operation -- vastly faster than streaming zeros for a large
+ * region (e.g. the ~30 MB FAT of a 128 GB FAT32 card). The post-erase value is
+ * card-dependent (``0x00`` on some cards, ``0xFF`` on others), and the SCR
+ * ``DATA_STAT_AFTER_ERASE`` bit's polarity is unreliable in practice, so this
+ * call **probes**: it erases only the first block, reads it back, and proceeds
+ * to erase the rest of the range only when that block is actually all-zero. A
+ * non-zero probe yields ::k_ra_err_not_supported (the card erases to ones),
+ * letting the caller fall back to writing zeros without having wasted a
+ * full-region erase. A ::k_ra_ok return is therefore a verified "this region
+ * now reads as all-zero bytes".
+ *
+ * @param[in] lba   First LBA in 512-byte units. ``lba + count <= capacity``.
+ * @param[in] count Number of contiguous blocks to erase (>= 1).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                 Range erased AND verified to read back as zero.
+ * @retval k_ra_err_invalid_state  Driver not initialized.
+ * @retval k_ra_err_invalid_arg    ``count`` is 0.
+ * @retval k_ra_err_out_of_range   ``lba + count`` exceeds capacity.
+ * @retval k_ra_err_not_supported  Card erases to a non-zero value (read-back != 0).
+ * @retval k_ra_err_protocol_error A command R1 was rejected.
+ * @retval k_ra_err_hw_timeout     The post-erase busy wait timed out.
+ *
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @pre  ``lba + count <= capacity`` (in 512-byte blocks).
+ * @post On ::k_ra_ok, ``lba .. lba+count-1`` read back as ``0x00``.
+ * @post Card remains in ``tran`` state.
+ *
+ * @note Erase granularity is the card's internal AU; the spec guarantees the
+ *       addressed range is fully erased without disturbing blocks outside it.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_erase_blocks(uint32_t lba, uint32_t count);
+
 /* =============================================================================
  * Status queries
  * =============================================================================

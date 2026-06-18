@@ -155,6 +155,7 @@ typedef enum : uint8_t {
   k_test_r1_illegal_cmd       = 0x05U,
   k_test_data_token_start     = 0xFEU,
   k_test_data_response_accept = 0x05U,
+  k_test_busy_done            = 0xFFU, /**< Not-busy token after CMD38 erase. */
 } test_resp_const_t;
 
 typedef enum : uint32_t {
@@ -256,8 +257,8 @@ static void queue_csd_read(const uint8_t* csd)
 /**
  * @brief Walk the driver through a successful CMD0..CMD16 init sequence.
  *
- * Helper used by the block-I/O tests that don't care about init
- * coverage. SDHC v2 card with 32 GiB capacity.
+ * Helper used by the block-I/O tests that don't care about init coverage. SDHC
+ * v2 card with 32 GiB capacity.
  */
 static void queue_full_init_sdhc_32gib(void)
 {
@@ -659,6 +660,7 @@ static void test_bind_fs_backend_populates_struct(void)
   TEST_ASSERT_NOT_NULL((void*)(uintptr_t)backend.read_block);
   TEST_ASSERT_NOT_NULL((void*)(uintptr_t)backend.write_block);
   TEST_ASSERT_NOT_NULL((void*)(uintptr_t)backend.get_capacity);
+  TEST_ASSERT_NOT_NULL((void*)(uintptr_t)backend.erase_blocks);
 
   uint32_t blocks = 0U;
   uint32_t bsize  = 0U;
@@ -777,6 +779,92 @@ static void test_mcdc_fs_get_capacity_null_or(void)
   TEST_END("MC/DC: fs_get_capacity null OR");
 }
 
+/**
+ * @brief Queue a successful CMD32 + CMD33 + CMD38 erase sequence.
+ *
+ * @details CMD32 (ERASE_WR_BLK_START) and CMD33 (ERASE_WR_BLK_END) are plain
+ * R1 commands; CMD38 (ERASE) is an R1 command followed by a busy wait that the
+ * mock clears immediately with a single not-busy (0xFF) byte.
+ */
+static void queue_erase_blocks_ok(void)
+{
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD32 */
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD33 */
+  /* CMD38: cs_assert idle + frame echo + R1 + not-busy token + cs_release idle. */
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_ready);
+  mock_queue_byte((uint8_t)k_test_busy_done);
+  mock_queue_idle(1U);
+}
+
+/**
+ * @brief Queue an ra_sdmmc_spi_read_block response delivering @p block.
+ *
+ * @details Models the CMD17 read the erase path uses to verify the post-erase
+ * value: R1 + data-start token + 512 payload + a correct CRC16 trailer.
+ */
+static void queue_read_back(const uint8_t* block)
+{
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD17 R1 */
+  mock_queue_byte((uint8_t)k_test_data_token_start);
+  mock_queue_bytes(block, (uint32_t)k_ra_sdmmc_spi_block_size);
+  const uint16_t crc = ra_sdmmc_spi_crc16(block, (uint32_t)k_ra_sdmmc_spi_block_size);
+  mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
+  mock_queue_byte((uint8_t)(crc & 0xFFU));
+}
+
+/**
+ * @test test_erase_blocks_verifies_zero
+ *
+ * @par MC/DC:
+ * Decision: the read-back verify loop ``if (blk[i] != 0U) return not_supported;``
+ * decides success. The SD post-erase value is card-dependent, so a ::k_ra_ok
+ * return must be *measured*, not assumed. The probe erases one block, reads it
+ * back, and only erases the rest of the range when that block is zero.
+ *   - V1: probe block reads back all-zero -> loop never trips -> erase the rest -> k_ra_ok.
+ *   - V2: probe block reads back non-zero  -> loop trips        -> k_ra_err_not_supported.
+ * The case also covers the argument guards (uninitialized, count == 0,
+ * out-of-range) that precede the erase.
+ */
+static void test_erase_blocks_verifies_zero(void)
+{
+  TEST_BEGIN("erase_blocks probes + verifies a zero read-back");
+
+  /* Uninitialized driver -> invalid_state (guard before the erase). */
+  per_test_setup();
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_erase_blocks(0U, 64U));
+
+  /* V1: probe block reads back all-zero -> erase the rest -> k_ra_ok. The probe
+   * erases [0,1) then, after the zero read-back, the remaining [1,64) -- two
+   * CMD32/33/38 sequences bracketing the read-back. */
+  per_test_setup();
+  queue_full_init_sdhc_32gib();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdmmc_spi_erase_blocks(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_erase_blocks(cap, 1U));
+  queue_erase_blocks_ok(); /* probe erase [0,1) */
+  uint8_t zeros[k_ra_sdmmc_spi_block_size] = {};
+  queue_read_back(zeros);  /* probe read-back: all zero */
+  queue_erase_blocks_ok(); /* erase the rest [1,64) */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_erase_blocks(0U, 64U));
+
+  /* V2: probe block reads back 0xFF (card erases to ones) -> not_supported, and
+   * the rest of the range is NOT erased (no wasted full-region erase). */
+  per_test_setup();
+  queue_full_init_sdhc_32gib();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
+  queue_erase_blocks_ok(); /* probe erase [0,1) */
+  uint8_t ones[k_ra_sdmmc_spi_block_size];
+  memset(ones, 0xFFU, sizeof(ones));
+  queue_read_back(ones); /* probe read-back: non-zero -> stop */
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_sdmmc_spi_erase_blocks(0U, 64U));
+
+  TEST_END("erase_blocks probes + verifies a zero read-back");
+}
+
 /* ===========================================================================
  * Main
  * ===========================================================================
@@ -800,6 +888,7 @@ int main(void)
   test_write_block_detects_write_error();
   test_bind_fs_backend_populates_struct();
   test_bind_fs_backend_uninitialized_rejected();
+  test_erase_blocks_verifies_zero();
   (void)fprintf(stderr, "[OK ] all ra_sdmmc_spi tests passed\n");
   return 0;
 }
