@@ -9,7 +9,9 @@
  * public ``ra_fs_format()`` API, then proves the result is real by mounting it,
  * asserting the detected ``ra_fs_type`` matches the request, and running a
  * create / write / read-back / verify / list / unlink / unmount cycle on the
- * fresh volume. exFAT formatting must report ``k_ra_err_not_supported``.
+ * fresh volume. exFAT formatting is also exercised (format + mount + empty-root;
+ * ra_fs writes exFAT but does not yet create files in it), with the produced
+ * image independently validated fsck.exfat-clean.
  *
  * The compound boolean decisions inside the format geometry/validation logic
  * (``ra_fs_format`` argument + capacity guards, ``priv_fmt_spc_valid``,
@@ -39,13 +41,31 @@
  *          card for FAT12, a 4 MiB card for FAT16, and a 36 MiB card for FAT32.
  */
 typedef enum : uint32_t {
-  k_fmt_block_size    = 512U,   /**< Bytes per sector.                       */
-  k_fmt_blocks_fat12  = 1024U,  /**< 512 KiB -> FAT12 band.                  */
-  k_fmt_blocks_fat16  = 8192U,  /**< 4 MiB   -> FAT16 band.                  */
-  k_fmt_blocks_fat32  = 73728U, /**< 36 MiB  -> FAT32 band.                  */
-  k_fmt_blocks_tiny   = 64U,    /**< 32 KiB -- too small for FAT16/FAT32.    */
-  k_fmt_payload_bytes = 1300U,  /**< Multi-cluster payload (> 1 KiB).        */
+  k_fmt_block_size    = 512U,    /**< Bytes per sector.                       */
+  k_fmt_blocks_fat12  = 1024U,   /**< 512 KiB -> FAT12 band.                  */
+  k_fmt_blocks_fat16  = 8192U,   /**< 4 MiB   -> FAT16 band.                  */
+  k_fmt_blocks_fat32  = 73728U,  /**< 36 MiB  -> FAT32 band.                  */
+  k_fmt_blocks_tiny   = 64U,     /**< 32 KiB -- too small for FAT16/FAT32.    */
+  k_fmt_payload_bytes = 1300U,   /**< Multi-cluster payload (> 1 KiB).        */
+  k_fmt_blocks_exfat  = 131072U, /**< 64 MiB -> exFAT (spc-shift 3).         */
 } ra_fs_fmt_test_t;
+
+/**
+ * @enum ra_fs_exfat_tier_t
+ * @brief Card sizes (512-byte sectors) and the exFAT SectorsPerClusterShift
+ *        each must select (Microsoft default table, MS exFAT spec sec 12.1).
+ */
+typedef enum : uint32_t {
+  k_exfat_de_spc_off = 109U,        /**< VBR byte: SectorsPerClusterShift.   */
+  k_exfat_blk_64m    = 131072U,     /**< 64 MB  -> spc-shift 3 (4 KB).       */
+  k_exfat_blk_1g     = 2097152U,    /**< 1 GB   -> spc-shift 6 (32 KB).      */
+  k_exfat_blk_64g    = 134217728U,  /**< 64 GB  -> spc-shift 8 (128 KB).     */
+  k_exfat_blk_512g   = 1073741824U, /**< 512 GB -> spc-shift 9 (256 KB).     */
+  k_exfat_spc_64m    = 3U,          /**< Expected shift for 64 MB.           */
+  k_exfat_spc_1g     = 6U,          /**< Expected shift for 1 GB.            */
+  k_exfat_spc_64g    = 8U,          /**< Expected shift for 64 GB.           */
+  k_exfat_spc_512g   = 9U,          /**< Expected shift for 512 GB.          */
+} ra_fs_exfat_tier_t;
 
 /** @brief Memory-backed disk handed to ra_fs as a block device. */
 typedef struct {
@@ -762,6 +782,79 @@ static void test_erase_clear_region_modes(void)
   TEST_END("ra_fs format: erase-or-zero clear_region");
 }
 
+/**
+ * @test test_format_exfat_mount_empty
+ *
+ * @brief Format an exFAT volume, mount it, and confirm an empty root.
+ *
+ * @details ra_fs writes (but does not yet create files in) exFAT, so this
+ *          exercises the mkfs end-to-end on the read side: format, mount, assert
+ *          the detected type is exFAT, list the root (the bitmap / up-case /
+ *          label system entries must NOT surface as files -> empty), unmount.
+ *          The on-disk image this produces is fsck.exfat-clean (validated
+ *          out-of-band against macOS fsck_exfat).
+ */
+static void test_format_exfat_mount_empty(void)
+{
+  TEST_BEGIN("ra_fs format: exFAT format + mount + empty root");
+  alloc_garbage_card((uint32_t)k_fmt_blocks_exfat);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_exfat;
+  opts.label               = "RAEXFAT";
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(k_ra_fs_type_exfat, h->type);
+
+  list_ctx_t ctx = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(0, ctx.count); /* freshly formatted -> no files */
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
+  free_volume();
+  TEST_END("ra_fs format: exFAT format + mount + empty root");
+}
+
+/**
+ * @test test_exfat_spc_shift_tiers
+ *
+ * @brief exFAT must pick a size-appropriate cluster size per the MS table.
+ *
+ * @par MC/DC:
+ * `priv_exfat_spc_shift` is a 4-way size cascade. One mid-tier capacity per
+ * branch (64 MB / 1 / 64 / 512 GB) is formatted through the write-sink (which
+ * reports a huge capacity without a multi-GB malloc and captures only the VBR),
+ * and the VBR's SectorsPerClusterShift byte is asserted: 3 / 6 / 8 / 9.
+ */
+static void test_exfat_spc_shift_tiers(void)
+{
+  TEST_BEGIN("ra_fs format: exFAT SectorsPerClusterShift tiers");
+  static const uint32_t k_blocks[] = {
+    (uint32_t)k_exfat_blk_64m,
+    (uint32_t)k_exfat_blk_1g,
+    (uint32_t)k_exfat_blk_64g,
+    (uint32_t)k_exfat_blk_512g,
+  };
+  static const uint8_t k_want[] = {
+    (uint8_t)k_exfat_spc_64m,
+    (uint8_t)k_exfat_spc_1g,
+    (uint8_t)k_exfat_spc_64g,
+    (uint8_t)k_exfat_spc_512g,
+  };
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_exfat;
+  opts.label               = "TIER";
+  const uint32_t n         = (uint32_t)(sizeof(k_blocks) / sizeof(k_blocks[0]));
+  for (uint32_t i = 0U; i < n; i++) {
+    s_sink_blocks = k_blocks[i];
+    memset(s_sink_boot, 0, sizeof s_sink_boot);
+    TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_sink_backend, &opts));
+    TEST_ASSERT_EQ((uint32_t)k_want[i], (uint32_t)s_sink_boot[(uint32_t)k_exfat_de_spc_off]);
+  }
+  TEST_END("ra_fs format: exFAT SectorsPerClusterShift tiers");
+}
+
 int32_t main(void)
 {
   test_format_fat12_round_trip();
@@ -778,6 +871,8 @@ int32_t main(void)
   test_mcdc_format_label_field_pair();
   test_fat32_cluster_size_table();
   test_erase_clear_region_modes();
+  test_format_exfat_mount_empty();
+  test_exfat_spc_shift_tiers();
   (void)fprintf(stderr, "[OK  ] test_ra_fs_format.c\n");
   return 0;
 }

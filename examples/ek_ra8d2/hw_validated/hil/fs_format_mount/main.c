@@ -11,7 +11,7 @@
  * `ra_sdmmc_spi` SPI-mode driver (the same Pmod2 / SCI0 Simple-SPI transport
  * adapter as `tz_secure_only_sd`) and, for each FAT variant `ra_fs` can write:
  *
- *   - FAT12, FAT16, FAT32 (exFAT is read-only in ra_fs, so it is skipped),
+ *   - FAT12, FAT16, FAT32,
  *
  * it runs this cycle on the card:
  *
@@ -24,12 +24,16 @@
  *   6. unlink the file and confirm `listdir` no longer shows it;
  *   7. unmount.
  *
+ * It then runs an exFAT trial: format + mount + assert type + confirm an empty
+ * root (ra_fs writes exFAT but does not yet create files in it, so the trial
+ * stops at the read side).
+ *
  * On a clean pass for a type it prints `... FS <TYPE> FORMAT+MOUNT PASS`; after
- * all three it prints `FS FORMAT+MOUNT ALL PASS`. The HIL runner (and the
+ * all of them it prints `FS FORMAT+MOUNT ALL PASS`. The HIL runner (and the
  * board_sim smoke gate) scrape for that banner. Any failure prints a `FAIL ...`
  * diagnostic and parks the CPU.
  *
- * The flow re-formats the card three times, so the card's initial contents are
+ * The flow re-formats the card several times, so the card's initial contents are
  * irrelevant -- on the bench insert any microSD; under board_sim attach a blank
  * card with `--sd-new <MiB>` (e.g. `--sd-new 64:fat32`). A 64 MiB card is large
  * enough that the auto cluster-size sweep lands every type in its valid band.
@@ -124,6 +128,7 @@ static const uint8_t k_msg_eol[]       = "\r\n";
 static const uint8_t k_msg_fat12[] = "FAT12";
 static const uint8_t k_msg_fat16[] = "FAT16";
 static const uint8_t k_msg_fat32[] = "FAT32";
+static const uint8_t k_msg_exfat[] = "EXFAT";
 
 static const uint8_t k_msg_pass_pre[]    = "fsfmt: FS ";
 static const uint8_t k_msg_pass_suf[]    = " FORMAT+MOUNT PASS\r\n";
@@ -204,6 +209,10 @@ static const uint8_t* fs_fmt_label(ra_fs_type_t type, uint32_t* out_len)
   if (type == k_ra_fs_type_fat16) {
     *out_len = (uint32_t)sizeof(k_msg_fat16) - 1U;
     return k_msg_fat16;
+  }
+  if (type == k_ra_fs_type_exfat) {
+    *out_len = (uint32_t)sizeof(k_msg_exfat) - 1U;
+    return k_msg_exfat;
   }
   *out_len = (uint32_t)sizeof(k_msg_fat32) - 1U;
   return k_msg_fat32;
@@ -569,6 +578,87 @@ fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
   return k_ra_ok;
 }
 
+/**
+ * @var s_exfat_listed
+ * @brief Root-directory entry tally for the exFAT trial.
+ * @note File-scope; reset before each `ra_fs_listdir` call.
+ * @since 0.1.0
+ */
+static uint32_t s_exfat_listed = 0U;
+
+/** @brief `ra_fs_listdir` callback: tally visible entries for the exFAT trial. */
+static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+{
+  (void)name;
+  (void)attr;
+  (void)size;
+  (void)ctx;
+  s_exfat_listed++;
+}
+
+/**
+ * @brief Format the card as exFAT, mount, assert the type, and list an empty root.
+ *
+ * @details exFAT is read-only in ra_fs (no file creation), so unlike
+ *          `fs_fmt_run_one_type` this trial stops at the read side: it formats
+ *          the volume, mounts it, asserts the detected type is exFAT, and
+ *          confirms a freshly-formatted root lists zero files (the allocation
+ *          bitmap / up-case / volume-label system entries must not surface).
+ *          The image the formatter writes is independently fsck.exfat-clean.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Format + mount + empty-root all passed.
+ * @retval k_ra_err_invalid_size Card capacity cannot hold an exFAT volume (SKIP).
+ * @retval k_ra_err_*            The first failing step's code.
+ *
+ * @pre The SD card is initialised and the bus is up.
+ * @post The card is left formatted as exFAT.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t fs_fmt_run_exfat(void)
+{
+  ra_fs_backend_t backend = {};
+  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
+    fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
+    return k_ra_err_hw_error;
+  }
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_exfat;
+  opts.label               = "RAFSFMT";
+  ra_err_t err             = ra_fs_format(&backend, &opts);
+  if (err != k_ra_ok) {
+    if (err != k_ra_err_invalid_size) {
+      fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
+    }
+    return err;
+  }
+  ra_fs_mount_t* mount = nullptr;
+  err                  = ra_fs_mount(&backend, &mount);
+  if (err != k_ra_ok) {
+    fs_fmt_print_line(k_ra_fs_type_exfat,
+                      k_msg_fail_mount,
+                      (uint32_t)sizeof(k_msg_fail_mount) - 1U);
+    return err;
+  }
+  if (mount->type != k_ra_fs_type_exfat) {
+    fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_fail_type, (uint32_t)sizeof(k_msg_fail_type) - 1U);
+    (void)ra_fs_unmount(mount);
+    return k_ra_err_validation_failed;
+  }
+  s_exfat_listed = 0U;
+  err            = ra_fs_listdir(mount, "/", fs_fmt_count_cb, nullptr);
+  if ((err != k_ra_ok) || (s_exfat_listed != 0U)) {
+    fs_fmt_print_line(k_ra_fs_type_exfat,
+                      k_msg_fail_mount,
+                      (uint32_t)sizeof(k_msg_fail_mount) - 1U);
+    (void)ra_fs_unmount(mount);
+    return (err != k_ra_ok) ? err : k_ra_err_validation_failed;
+  }
+  (void)ra_fs_unmount(mount);
+  fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_pass_suf, (uint32_t)sizeof(k_msg_pass_suf) - 1U);
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * Main
  * =============================================================================
@@ -616,6 +706,15 @@ int32_t main(void)
     } else {
       fs_fmt_panic_halt(); /* a real failure (mount / write / verify). */
     }
+  }
+  /* exFAT trial (read-side: format + mount + empty-root); same SKIP semantics. */
+  const ra_err_t ex = fs_fmt_run_exfat();
+  if (ex == k_ra_ok) {
+    passed++;
+  } else if (ex == k_ra_err_invalid_size) {
+    fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_skip_size, (uint32_t)sizeof(k_msg_skip_size) - 1U);
+  } else {
+    fs_fmt_panic_halt();
   }
   if (passed == 0U) {
     fs_fmt_panic_halt(); /* no FAT type fit the card -- unexpected. */
