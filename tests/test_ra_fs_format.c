@@ -96,6 +96,45 @@ static const ra_fs_backend_t s_backend = {
   .ctx          = &s_disk,
 };
 
+/* Multi-GB cards cannot be RAM-backed (a 128 GB malloc is impossible), so the
+ * cluster-size-table test uses a write-sink that reports a huge capacity, keeps
+ * only the boot sector (LBA 0), and black-holes every other write. ra_fs_format
+ * never reads back during a format, so a zero-returning read stub suffices. */
+static uint8_t  s_sink_boot[k_fmt_block_size] = {};
+static uint32_t s_sink_blocks                 = 0U;
+
+static ra_err_t sink_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+{
+  (void)ctx;
+  (void)lba;
+  memset(buf, 0, (size_t)count * (size_t)k_fmt_block_size);
+  return k_ra_ok;
+}
+
+static ra_err_t sink_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+{
+  (void)ctx;
+  if (lba == 0U && count >= 1U) {
+    memcpy(s_sink_boot, buf, (size_t)k_fmt_block_size);
+  }
+  return k_ra_ok; /* every other sector is discarded */
+}
+
+static ra_err_t sink_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+{
+  (void)ctx;
+  *block_count = s_sink_blocks;
+  *block_size  = (uint32_t)k_fmt_block_size;
+  return k_ra_ok;
+}
+
+static const ra_fs_backend_t s_sink_backend = {
+  .read_block   = sink_read,
+  .write_block  = sink_write,
+  .get_capacity = sink_capacity,
+  .ctx          = nullptr,
+};
+
 static void free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
@@ -537,6 +576,74 @@ static void test_mcdc_format_label_field_pair(void)
   TEST_END("ra_fs format MC/DC: label_field (!past_end && NUL)");
 }
 
+/**
+ * @enum ra_fs_fmt_spc_tier_t
+ * @brief Card sizes (512-byte sectors) and the FAT32 cluster size each must pick.
+ *
+ * @details One representative capacity per branch of the Microsoft
+ *          ``DskSzToSecPerClus`` table implemented by
+ *          ``priv_fmt_fat32_default_spc``: 256 MB, 4 GB, 12 GB, 24 GB, 128 GB.
+ *          Each is mid-tier (not on a boundary) so the expected cluster size is
+ *          unambiguous.
+ */
+typedef enum : uint32_t {
+  k_test_bpb_off_spc = 13U,        /**< BPB_SecPerClus byte offset.        */
+  k_test_blk_256m    = 524288U,    /**< 256 MB -> spc 1  (<= 260 MB tier). */
+  k_test_blk_4g      = 8388608U,   /**< 4 GB   -> spc 8  (<= 8 GB tier).   */
+  k_test_blk_12g     = 25165824U,  /**< 12 GB  -> spc 16 (<= 16 GB tier).  */
+  k_test_blk_24g     = 50331648U,  /**< 24 GB  -> spc 32 (<= 32 GB tier).  */
+  k_test_blk_128g    = 268435456U, /**< 128 GB -> spc 64 (> 32 GB tier).   */
+  k_test_spc_256m    = 1U,         /**< Expected spc for the 256 MB card.  */
+  k_test_spc_4g      = 8U,         /**< Expected spc for the 4 GB card.    */
+  k_test_spc_12g     = 16U,        /**< Expected spc for the 12 GB card.   */
+  k_test_spc_24g     = 32U,        /**< Expected spc for the 24 GB card.   */
+  k_test_spc_128g    = 64U,        /**< Expected spc for the 128 GB card.  */
+} ra_fs_fmt_spc_tier_t;
+
+/**
+ * @test test_fat32_cluster_size_table
+ *
+ * @brief A large card must auto-pick a size-appropriate FAT32 cluster size.
+ *
+ * @details Regression for the bug where the FAT32 auto-sweep started at
+ *          ``spc=1`` and accepted the first in-band count: a 128 GB card landed
+ *          on 512-byte clusters, producing a ~1 GB FAT per copy that took many
+ *          minutes to zero over SPI. ``priv_fmt_fat32_default_spc`` now seeds the
+ *          sweep from the Microsoft ``DskSzToSecPerClus`` table. Each branch of
+ *          that table is exercised with a mid-tier capacity (256 MB / 4 / 12 /
+ *          24 / 128 GB) and the formatted BPB's ``BPB_SecPerClus`` is asserted.
+ */
+static void test_fat32_cluster_size_table(void)
+{
+  TEST_BEGIN("ra_fs format: FAT32 cluster-size table (DskSzToSecPerClus)");
+  static const uint32_t k_blocks[] = {
+    (uint32_t)k_test_blk_256m,
+    (uint32_t)k_test_blk_4g,
+    (uint32_t)k_test_blk_12g,
+    (uint32_t)k_test_blk_24g,
+    (uint32_t)k_test_blk_128g,
+  };
+  static const uint8_t k_want_spc[] = {
+    (uint8_t)k_test_spc_256m,
+    (uint8_t)k_test_spc_4g,
+    (uint8_t)k_test_spc_12g,
+    (uint8_t)k_test_spc_24g,
+    (uint8_t)k_test_spc_128g,
+  };
+  const uint32_t      n    = (uint32_t)(sizeof(k_blocks) / sizeof(k_blocks[0]));
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat32;
+  opts.sectors_per_cluster = 0U; /* auto -- exercise the table */
+  opts.label               = "BIGCARD";
+  for (uint32_t i = 0U; i < n; i++) {
+    s_sink_blocks = k_blocks[i];
+    memset(s_sink_boot, 0, sizeof s_sink_boot);
+    TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_sink_backend, &opts));
+    TEST_ASSERT_EQ((uint32_t)k_want_spc[i], (uint32_t)s_sink_boot[(uint32_t)k_test_bpb_off_spc]);
+  }
+  TEST_END("ra_fs format: FAT32 cluster-size table (DskSzToSecPerClus)");
+}
+
 int32_t main(void)
 {
   test_format_fat12_round_trip();
@@ -551,6 +658,7 @@ int32_t main(void)
   test_mcdc_format_count_in_band_capacity();
   test_mcdc_format_pinned_spc_geometry();
   test_mcdc_format_label_field_pair();
+  test_fat32_cluster_size_table();
   (void)fprintf(stderr, "[OK  ] test_ra_fs_format.c\n");
   return 0;
 }
