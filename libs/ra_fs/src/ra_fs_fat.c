@@ -270,6 +270,19 @@ typedef enum : uint32_t {
   k_fmt_fat32_clus_cap  = 0x0FFFFFF0U, /**< Max FAT32 cluster count we accept.  */
   k_fmt_fsi_unknown     = 0xFFFFFFFFU, /**< FSInfo free-count "unknown".        */
   k_fmt_fat32_nxt_free  = 3U,          /**< First allocatable FAT32 cluster.    */
+  /* Microsoft FAT spec "DskSzToSecPerClus" table (fatgen103 sec 3.3), in
+   * 512-byte sectors. Picking the cluster size by disk size keeps the FAT
+   * small: a 128 GB card at spc=1 would need a ~1 GB FAT per copy, but at
+   * spc=64 (32 KB clusters) only ~15 MB. */
+  k_fmt_f32_thr_260m = 532480U,   /**< <= 260 MB  -> spc 1  (512 B).       */
+  k_fmt_f32_thr_8g   = 16777216U, /**< <= 8 GB    -> spc 8  (4 KB).        */
+  k_fmt_f32_thr_16g  = 33554432U, /**< <= 16 GB   -> spc 16 (8 KB).        */
+  k_fmt_f32_thr_32g  = 67108864U, /**< <= 32 GB   -> spc 32 (16 KB).       */
+  k_fmt_f32_spc_512b = 1U,        /**< spc for <= 260 MB cards.            */
+  k_fmt_f32_spc_4k   = 8U,        /**< spc for <= 8 GB cards.              */
+  k_fmt_f32_spc_8k   = 16U,       /**< spc for <= 16 GB cards.             */
+  k_fmt_f32_spc_16k  = 32U,       /**< spc for <= 32 GB cards.             */
+  k_fmt_f32_spc_32k  = 64U,       /**< spc for > 32 GB cards.              */
 } ra_fs_fmt_val_t;
 
 /**
@@ -3899,10 +3912,56 @@ static bool priv_fmt_count_in_band(ra_fs_type_t type, uint32_t count)
  *
  * @since 0.1.0
  */
+/**
+ * @brief Default FAT32 cluster size for a device, per the Microsoft table.
+ *
+ * @details Implements the `DskSzToSecPerClus` tiers from the MS FAT spec
+ *          (fatgen103 sec 3.3). Used as the *starting* cluster size for the
+ *          FAT32 auto-sweep so a large card does not land on `spc=1` (which the
+ *          cluster cap technically allows but which produces a multi-hundred-MB
+ *          FAT that takes minutes to zero over SPI). The sweep can still grow
+ *          `spc` further for cards above the table's range.
+ *
+ * @param[in] total_sectors Whole-device 512-byte sector count.
+ *
+ * @return Sectors-per-cluster (power of two in 1..`k_fmt_spc_max`).
+ * @retval 1  Device is <= 260 MB.
+ * @retval 64 Device is > 32 GB.
+ *
+ * @pre @p total_sectors is the card capacity in 512-byte blocks.
+ * @pre The result is always a validated power of two.
+ * @post Return value is in `[1, k_fmt_spc_max]`.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+static uint32_t priv_fmt_fat32_default_spc(uint32_t total_sectors)
+{
+  if (total_sectors <= (uint32_t)k_fmt_f32_thr_260m) {
+    return (uint32_t)k_fmt_f32_spc_512b;
+  }
+  if (total_sectors <= (uint32_t)k_fmt_f32_thr_8g) {
+    return (uint32_t)k_fmt_f32_spc_4k;
+  }
+  if (total_sectors <= (uint32_t)k_fmt_f32_thr_16g) {
+    return (uint32_t)k_fmt_f32_spc_8k;
+  }
+  if (total_sectors <= (uint32_t)k_fmt_f32_thr_32g) {
+    return (uint32_t)k_fmt_f32_spc_16k;
+  }
+  return (uint32_t)k_fmt_f32_spc_32k;
+}
+
 static ra_err_t priv_fmt_choose_geometry(ra_fs_fmt_geom_t* g, uint32_t spc_hint)
 {
-  uint32_t spc       = (spc_hint != 0U) ? spc_hint : 1U;
   bool     auto_mode = (spc_hint == 0U);
+  uint32_t spc       = spc_hint;
+  if (auto_mode) {
+    /* FAT32 starts the sweep at the size-appropriate cluster (MS table) so a
+     * big card gets a small FAT; FAT12/16 start at the minimum and grow. */
+    spc = (g->type == k_ra_fs_type_fat32) ? priv_fmt_fat32_default_spc(g->total_sectors) : 1U;
+  }
   for (uint32_t guard = 0U; guard <= (uint32_t)k_fmt_spc_max; guard++) {
     uint32_t       fatsz = 0U;
     const uint32_t count = priv_fmt_clusters_for(g, spc, &fatsz);
