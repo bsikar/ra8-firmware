@@ -153,6 +153,8 @@ typedef enum : uint32_t {
   k_sd_max_acmd41_attempts  = 1000U,   /**< 1 s at 1 ms / attempt. */
   k_sd_init_dummy_clocks    = 80U,     /**< 80 clocks = 10 bytes of 0xFF (>=74 required). */
   k_sd_recover_flush_bytes  = 530U,    /**< >= 512 data + 2 CRC + token to flush a stuck write. */
+  k_sd_recover_idle_bytes   = 64U,     /**< 512 CS-released clocks to drain busy + reset framing. */
+  k_sd_max_recover_attempts = 4U,      /**< Re-flush + retry CMD0 this many times before failing. */
 } sd_protocol_const_t;
 
 /**
@@ -567,29 +569,53 @@ static ra_err_t internal_validate_transport(const ra_sdmmc_spi_transport_t* tran
  * @brief Best-effort recovery for a card stranded mid-write by an interrupted
  *        transaction (e.g. an MCU reset during a long format).
  *
- * @details With CS asserted, sends a stop-tran token (aborts a wedged CMD25
- * multi-block write) then >= 512 + CRC idle bytes (completes a wedged CMD24
- * single-block data phase, so the card programs the slack and returns to idle),
- * then waits out the programming. Harmless to an already-idle card: 0xFD and
- * 0xFF are both non-command bytes, so they clock past as idle. Run once before
- * the wake/CMD0 so a stuck card can re-init without a physical power cycle.
+ * @details Four phases, each safe to run against an already-idle card (0xFD and
+ * 0xFF are both non-command bytes that clock past as idle, and CMD12 on an idle
+ * card is a no-op that returns to idle):
+ * 1. CS released, a long idle burst -- lets a card still BUSY (programming) from
+ *    the interrupted write drain its internal timer, and resets the card's byte
+ *    framing for the next CS assertion (a reset mid-byte can leave it misaligned).
+ * 2. CS asserted, a stop-tran token then >= 512 + CRC idle bytes -- aborts a
+ *    wedged CMD25 multi-block write and completes a wedged CMD24 single-block
+ *    data phase, so the card programs the slack and returns to the transfer
+ *    state; then wait out the programming.
+ * 3. CMD12 STOP_TRANSMISSION -- aborts any open multi-block transfer the card
+ *    still believes is active; wait out the trailing busy.
+ * 4. CS released, a final idle burst to settle framing before the wake/CMD0.
+ *
+ * Run before each wake/CMD0 retry so a stuck card can re-init without a physical
+ * power cycle. (Limits: cannot recover a card whose controller needs a true
+ * power-on reset, since the MCU cannot remove card VBUS.)
  *
  * @return None.
  * @pre The transport is bound (called from the init probe).
- * @post Any in-flight write transaction is terminated and the bus is idle.
+ * @post Any in-flight write/read transaction is terminated and the bus is idle.
  * @post CS is released.
  * @note Not thread-safe; part of single-threaded init.
  * @since 0.1.0
  */
 static void internal_recover_stuck_card(void)
 {
+  /* Phase 1: drain busy + reset byte framing with CS released. */
+  (void)s_state.transport.cs(s_state.transport.ctx, false);
+  (void)internal_send_idle((uint32_t)k_sd_recover_idle_bytes);
+
+  /* Phase 2: complete/abort a wedged data phase with CS asserted. */
   if (s_state.transport.cs(s_state.transport.ctx, true) != k_ra_ok) {
     return;
   }
   (void)internal_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
   (void)internal_send_idle((uint32_t)k_sd_recover_flush_bytes);
   (void)internal_wait_not_busy();
+
+  /* Phase 3: explicit STOP_TRANSMISSION for any open multi-block transfer. */
+  uint8_t r1 = 0U;
+  (void)internal_send_command(k_sd_cmd_stop_transmission, 0U, &r1);
+  (void)internal_wait_not_busy();
   (void)s_state.transport.cs(s_state.transport.ctx, false);
+
+  /* Phase 4: settle framing before the caller's wake/CMD0. */
+  (void)internal_send_idle((uint32_t)k_sd_recover_idle_bytes);
 }
 
 /* Drive >= 74 dummy clocks with CS high to wake the card (SD spec section 7.2.1) -- see implementation for details. */
@@ -778,16 +804,17 @@ static ra_err_t internal_probe_card(bool* out_is_v2, bool* out_is_hc)
   if (err == k_ra_ok) {
     err = internal_send_cmd0();
   }
-  if (err != k_ra_ok) {
-    /* First CMD0 failed: the card may be stranded mid-write from an interrupted
-     * transaction. Flush it and retry once. A healthy card never reaches here,
-     * so the recovery cannot disturb a normal bring-up. */
+  /* CMD0 failed: the card may be stranded mid-write from an interrupted
+   * transaction. Flush it and retry, escalating across a few attempts. A
+   * healthy card answers CMD0 on the first pass and never enters this loop, so
+   * the recovery cannot disturb a normal bring-up. */
+  for (uint32_t attempt = 0U; (err != k_ra_ok) && (attempt < (uint32_t)k_sd_max_recover_attempts);
+       attempt++) {
     internal_recover_stuck_card();
     err = internal_wake_card();
-    if (err != k_ra_ok) {
-      return err;
+    if (err == k_ra_ok) {
+      err = internal_send_cmd0();
     }
-    err = internal_send_cmd0();
   }
   if (err != k_ra_ok) {
     return err;
