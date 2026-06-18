@@ -182,6 +182,87 @@ typedef enum : uint32_t {
 } ra_fs_exfat_val_t;
 
 /**
+ * @enum ra_fs_exfat_fmt_off_t
+ * @brief VBR + directory-entry byte offsets written by the exFAT formatter.
+ *
+ * @details Companion to the reader's `ra_fs_exfat_off_t`; covers the fields the
+ *          reader never touches (boot signatures, serial, label entry, ...).
+ *          Microsoft exFAT spec sections 3 (Main Boot Sector) and 7 (directory
+ *          entries).
+ */
+typedef enum : uint16_t {
+  k_exfat_foff_jump      = 0U,   /**< JumpBoot (3 bytes).                       */
+  k_exfat_foff_part_off  = 64U,  /**< PartitionOffset (64-bit).                 */
+  k_exfat_foff_vol_len   = 72U,  /**< VolumeLength (64-bit).                    */
+  k_exfat_foff_serial    = 100U, /**< VolumeSerialNumber (32-bit).              */
+  k_exfat_foff_fs_rev    = 104U, /**< FileSystemRevision (16-bit).              */
+  k_exfat_foff_vol_flags = 106U, /**< VolumeFlags (16-bit).                     */
+  k_exfat_foff_drive     = 111U, /**< DriveSelect.                             */
+  k_exfat_foff_percent   = 112U, /**< PercentInUse.                            */
+  k_exfat_foff_ext_sig   = 508U, /**< ExtendedBootSignature (extended sectors). */
+  k_exfat_foff_boot_sig  = 510U, /**< BootSignature 0xAA55 (16-bit).            */
+  k_exfat_de_second      = 32U,  /**< Offset of the 2nd dir entry in a set.     */
+  k_exfat_de_third       = 64U,  /**< Offset of the 3rd dir entry in a set.     */
+  k_exfat_de_first_clus  = 20U,  /**< Bitmap/Up-case entry: FirstCluster.       */
+  k_exfat_de_data_len    = 24U,  /**< Bitmap/Up-case entry: DataLength (64-bit).*/
+  k_exfat_de_upc_csum    = 4U,   /**< Up-case entry: TableChecksum (32-bit).    */
+  k_exfat_de_lbl_cnt     = 1U,   /**< Volume-label entry: CharacterCount.       */
+  k_exfat_de_lbl_name    = 2U,   /**< Volume-label entry: UTF-16 label.         */
+} ra_fs_exfat_fmt_off_t;
+
+/**
+ * @enum ra_fs_exfat_fmt_val_t
+ * @brief Magic values + geometry constants used by the exFAT formatter.
+ */
+typedef enum : uint32_t {
+  k_exfat_entry_upcase    = 0x82U,       /**< Up-case Table directory entry.      */
+  k_exfat_entry_label     = 0x83U,       /**< Volume Label directory entry.       */
+  k_exfat_fmt_jump0       = 0xEBU,       /**< JumpBoot byte 0.                     */
+  k_exfat_fmt_jump1       = 0x76U,       /**< JumpBoot byte 1.                     */
+  k_exfat_fmt_jump2       = 0x90U,       /**< JumpBoot byte 2.                     */
+  k_exfat_fmt_fs_rev      = 0x0100U,     /**< FileSystemRevision = 1.00.          */
+  k_exfat_fmt_drive       = 0x80U,       /**< DriveSelect (first fixed disk).     */
+  k_exfat_fmt_percent     = 0xFFU,       /**< PercentInUse = "not available".     */
+  k_exfat_fmt_boot_sig    = 0xAA55U,     /**< BootSignature (sector 0).           */
+  k_exfat_fmt_ext_sig     = 0xAA550000U, /**< ExtendedBootSignature (sectors 1-8).*/
+  k_exfat_fmt_fat_media   = 0xFFFFFFF8U, /**< FatEntry[0] media descriptor.       */
+  k_exfat_fmt_fat_eoc     = 0xFFFFFFFFU, /**< FatEntry end-of-chain.              */
+  k_exfat_fmt_first_clus  = 2U,          /**< First cluster of the heap.          */
+  k_exfat_fmt_num_fats    = 1U,          /**< exFAT uses a single FAT.            */
+  k_exfat_fmt_boot_secs   = 24U,         /**< 12 main + 12 backup boot sectors.   */
+  k_exfat_fmt_backup_lba  = 12U,         /**< Backup boot region start.           */
+  k_exfat_fmt_ext_first   = 1U,          /**< First extended boot sector.         */
+  k_exfat_fmt_ext_count   = 8U,          /**< Extended boot sector count.         */
+  k_exfat_fmt_oem_lba     = 9U,          /**< OEM Parameters sector.              */
+  k_exfat_fmt_resv_lba    = 10U,         /**< Reserved sector.                    */
+  k_exfat_fmt_csum_lba    = 11U,         /**< Boot Checksum sector.               */
+  k_exfat_fmt_csum_skip0  = 106U,        /**< Checksum-excluded byte: VolumeFlags. */
+  k_exfat_fmt_csum_skip1  = 107U,        /**< Checksum-excluded byte: VolumeFlags. */
+  k_exfat_fmt_csum_skip2  = 112U,        /**< Checksum-excluded byte: PercentInUse.*/
+  k_exfat_fmt_csum_hibit  = 0x80000000U, /**< Rotate-right wrap bit (32-bit).    */
+  k_exfat_fmt_csum_copies = 128U,        /**< 512 / 4 checksum words per sector.  */
+  k_exfat_fmt_thr_256m    = 524288U,     /**< <= 256 MB -> 4 KB clusters.         */
+  k_exfat_fmt_thr_32g     = 67108864U,   /**< <= 32 GB -> 32 KB clusters.         */
+  k_exfat_fmt_thr_256g    = 536870912U,  /**< <= 256 GB -> 128 KB clusters.       */
+  k_exfat_fmt_spc_4k      = 3U,          /**< SectorsPerClusterShift for 4 KB.    */
+  k_exfat_fmt_spc_32k     = 6U,          /**< ... 32 KB.                          */
+  k_exfat_fmt_spc_128k    = 8U,          /**< ... 128 KB.                         */
+  k_exfat_fmt_spc_256k    = 9U,          /**< ... 256 KB (> 256 GB cards).        */
+  k_exfat_fmt_geom_iters  = 4U,          /**< Fixed-point geometry passes.        */
+  k_exfat_fmt_upc_marker  = 0xFFFFU,     /**< Up-case run-length compression tag. */
+  k_exfat_fmt_upc_id0     = 0x0061U,     /**< Identity run length: 0x0000-0x0060. */
+  k_exfat_fmt_upc_id1     = 0xFF85U,     /**< Identity run length: 0x007B-0xFFFF. */
+  k_exfat_fmt_upc_a       = 0x0061U,     /**< 'a' (first compressed lower-case).  */
+  k_exfat_fmt_upc_z       = 0x007AU,     /**< 'z' (last compressed lower-case).   */
+  k_exfat_fmt_upc_au      = 0x0041U,     /**< 'A' (up-cased 'a').                 */
+  k_exfat_fmt_upc_bytes   = 60U,         /**< Compressed table size (30 u16).     */
+  k_exfat_fmt_serial      = 0x52A8E47AU, /**< Arbitrary volume-serial base.       */
+  k_exfat_fmt_label_max   = 11U,         /**< Volume-label cap (UTF-16 units).    */
+  k_exfat_fmt_byte_bits   = 8U,          /**< Bits per bitmap byte.               */
+  k_exfat_fmt_byte_full   = 0xFFU,       /**< A fully-allocated bitmap byte.      */
+} ra_fs_exfat_fmt_val_t;
+
+/**
  * @enum ra_fs_cluster_t
  * @brief Reserved cluster numbers used by the FAT itself.
  */
@@ -4451,6 +4532,442 @@ priv_fmt_emit_volume(const ra_fs_backend_t* backend, const ra_fs_fmt_geom_t* g, 
   return priv_fmt_write_fsinfo(backend, g, boot);
 }
 
+/* ===========================================================================
+ * exFAT format (mkfs)
+ * ===========================================================================
+ */
+
+/**
+ * @struct exfat_geom_t
+ * @brief Resolved exFAT volume geometry produced by `priv_exfat_geometry`.
+ */
+typedef struct {
+  uint32_t total_sectors;   /**< Whole-device sector count (VolumeLength).     */
+  uint8_t  spc_shift;       /**< SectorsPerClusterShift (log2).                */
+  uint32_t spc;             /**< Sectors per cluster (1 << spc_shift).         */
+  uint32_t fat_offset;      /**< FatOffset (sectors from VBR).                 */
+  uint32_t fat_length;      /**< FatLength (sectors).                          */
+  uint32_t heap_offset;     /**< ClusterHeapOffset (sectors from VBR).         */
+  uint32_t cluster_count;   /**< ClusterCount.                                 */
+  uint32_t bitmap_bytes;    /**< Allocation-bitmap logical size (DataLength).  */
+  uint32_t bitmap_clusters; /**< Clusters the bitmap occupies.                 */
+  uint32_t upcase_cluster;  /**< First cluster of the up-case table.           */
+  uint32_t root_cluster;    /**< First cluster of the root directory.          */
+  uint32_t used_clusters;   /**< bitmap + up-case + root (pre-allocated).      */
+} exfat_geom_t;
+
+/**
+ * @brief exFAT 32-bit rotate-right-add checksum (boot region / up-case table).
+ *
+ * @details `checksum = ror1(checksum) + byte` per the Microsoft exFAT spec
+ *          (sections 3.4 and 8.2.2). The boot-region checksum excludes three
+ *          bytes (VolumeFlags + PercentInUse); the caller skips them by
+ *          checksumming the surrounding byte ranges, so this loop carries no
+ *          compound decision.
+ *
+ * @param[in] cs  Running checksum (0 to start).
+ * @param[in] buf Bytes to fold in.
+ * @param[in] len Number of bytes.
+ *
+ * @return Updated checksum.
+ * @retval 0..UINT32_MAX The folded checksum.
+ *
+ * @pre @p buf holds at least @p len bytes.
+ * @pre @p len is the exact span to fold.
+ * @post No state modified (pure).
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+static uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len)
+{
+  for (uint32_t i = 0U; i < len; i++) {
+    cs = (((cs & 1U) != 0U) ? (uint32_t)k_exfat_fmt_csum_hibit : 0U) + (cs >> 1) + (uint32_t)buf[i];
+  }
+  return cs;
+}
+
+/** @brief exFAT default SectorsPerClusterShift by volume size (MS spec sec 12.1). */
+static uint8_t priv_exfat_spc_shift(uint32_t total_sectors)
+{
+  if (total_sectors <= (uint32_t)k_exfat_fmt_thr_256m) {
+    return (uint8_t)k_exfat_fmt_spc_4k;
+  }
+  if (total_sectors <= (uint32_t)k_exfat_fmt_thr_32g) {
+    return (uint8_t)k_exfat_fmt_spc_32k;
+  }
+  if (total_sectors <= (uint32_t)k_exfat_fmt_thr_256g) {
+    return (uint8_t)k_exfat_fmt_spc_128k;
+  }
+  return (uint8_t)k_exfat_fmt_spc_256k;
+}
+
+/**
+ * @brief Resolve the exFAT region geometry for a device of @p total_sectors.
+ *
+ * @details Picks the cluster size, fixed-points the FAT length against the
+ *          cluster count (the FAT shrinks the heap which shrinks the count
+ *          which shrinks the FAT), then lays the allocation bitmap, up-case
+ *          table, and root directory as the first contiguous clusters of the
+ *          heap.
+ *
+ * @param[in]  total_sectors Whole-device 512-byte sector count.
+ * @param[out] g             Receives the resolved geometry.
+ *
+ * @return Error code.
+ * @retval k_ra_ok               Geometry resolved.
+ * @retval k_ra_err_invalid_size Device too small to hold a volume.
+ *
+ * @pre @p g is non-NULL.
+ * @pre @p total_sectors is the backend capacity in blocks.
+ * @post On success every field of @p g is consistent and in range.
+ *
+ * @note Bounded loop (NASA Rule 2): `k_exfat_fmt_geom_iters` passes.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_exfat_geometry(uint32_t total_sectors, exfat_geom_t* g)
+{
+  g->total_sectors = total_sectors;
+  g->spc_shift     = priv_exfat_spc_shift(total_sectors);
+  g->spc           = 1U << g->spc_shift;
+  g->fat_offset    = (uint32_t)k_exfat_fmt_boot_secs;
+  if (total_sectors <= g->fat_offset) {
+    return k_ra_err_invalid_size;
+  }
+  uint32_t clusters = (total_sectors - g->fat_offset) / g->spc;
+  g->fat_length     = 0U;
+  g->heap_offset    = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_exfat_fmt_geom_iters; i++) {
+    const uint64_t fat_bytes = ((uint64_t)clusters + 2U) * 4U;
+    const uint32_t fat_len   = (uint32_t)((fat_bytes + (uint32_t)k_ra_fs_bytes_per_sector - 1U) /
+                                          (uint32_t)k_ra_fs_bytes_per_sector);
+    const uint32_t heap      = g->fat_offset + fat_len;
+    if (total_sectors <= heap) {
+      return k_ra_err_invalid_size;
+    }
+    const uint32_t next = (total_sectors - heap) / g->spc;
+    g->fat_length       = fat_len;
+    g->heap_offset      = heap;
+    if (next == clusters) {
+      break;
+    }
+    clusters = next;
+  }
+  g->cluster_count             = (total_sectors - g->heap_offset) / g->spc;
+  const uint32_t cluster_bytes = g->spc * (uint32_t)k_ra_fs_bytes_per_sector;
+  g->bitmap_bytes =
+    (g->cluster_count + (uint32_t)k_exfat_fmt_byte_bits - 1U) / (uint32_t)k_exfat_fmt_byte_bits;
+  g->bitmap_clusters = (g->bitmap_bytes + cluster_bytes - 1U) / cluster_bytes;
+  g->upcase_cluster  = (uint32_t)k_exfat_fmt_first_clus + g->bitmap_clusters;
+  g->root_cluster    = g->upcase_cluster + 1U;
+  g->used_clusters   = g->bitmap_clusters + 2U; /* bitmap + up-case + root */
+  if (g->cluster_count < g->used_clusters) {
+    return k_ra_err_invalid_size;
+  }
+  return k_ra_ok;
+}
+
+/** @brief Build the 512-byte exFAT Main Boot Sector (VBR) into @p sec. */
+static void priv_exfat_build_vbr(uint8_t* sec, const exfat_geom_t* g)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    sec[i] = 0U;
+  }
+  sec[(uint32_t)k_exfat_foff_jump]         = (uint8_t)k_exfat_fmt_jump0;
+  sec[(uint32_t)k_exfat_foff_jump + 1U]    = (uint8_t)k_exfat_fmt_jump1;
+  sec[(uint32_t)k_exfat_foff_jump + 2U]    = (uint8_t)k_exfat_fmt_jump2;
+  static const char nm[k_exfat_fsname_len] = {'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
+  for (uint32_t i = 0U; i < (uint32_t)k_exfat_fsname_len; i++) {
+    sec[(uint32_t)k_exfat_off_fsname + i] = (uint8_t)nm[i];
+  }
+  priv_wr32(&sec[k_exfat_foff_vol_len], g->total_sectors);
+  priv_wr32(&sec[k_exfat_off_fat_lba], g->fat_offset);
+  priv_wr32(&sec[k_exfat_off_fat_len], g->fat_length);
+  priv_wr32(&sec[k_exfat_off_heap_lba], g->heap_offset);
+  priv_wr32(&sec[k_exfat_off_clus_count], g->cluster_count);
+  priv_wr32(&sec[k_exfat_off_root_clus], g->root_cluster);
+  priv_wr32(&sec[k_exfat_foff_serial], (uint32_t)k_exfat_fmt_serial ^ g->total_sectors);
+  priv_wr16(&sec[k_exfat_foff_fs_rev], (uint16_t)k_exfat_fmt_fs_rev);
+  sec[k_exfat_off_bps_shift]          = (uint8_t)k_exfat_bps_shift_512;
+  sec[k_exfat_off_spc_shift]          = g->spc_shift;
+  sec[k_exfat_off_num_fats]           = (uint8_t)k_exfat_fmt_num_fats;
+  sec[(uint32_t)k_exfat_foff_drive]   = (uint8_t)k_exfat_fmt_drive;
+  sec[(uint32_t)k_exfat_foff_percent] = (uint8_t)k_exfat_fmt_percent;
+  priv_wr16(&sec[k_exfat_foff_boot_sig], (uint16_t)k_exfat_fmt_boot_sig);
+}
+
+/** @brief Write @p buf to @p lba and to its backup copy (lba + 12). */
+static ra_err_t priv_exfat_wr_dual(const ra_fs_backend_t* b, uint32_t lba, const uint8_t* buf)
+{
+  const ra_err_t err = b->write_block(b->ctx, lba, 1U, buf);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return b->write_block(b->ctx, lba + (uint32_t)k_exfat_fmt_backup_lba, 1U, buf);
+}
+
+/**
+ * @brief Write the Main + Backup boot regions and their boot checksums.
+ *
+ * @details Builds the VBR, eight extended boot sectors (ext-boot signature
+ *          only), the OEM + reserved sectors, accumulates the rotate-add boot
+ *          checksum over sectors 0-10 (excluding VolumeFlags + PercentInUse via
+ *          range boundaries), then stamps every word of the checksum sector.
+ *          Each sector is written to both the main (LBA 0) and backup (LBA 12)
+ *          regions.
+ *
+ * @param[in] backend Block-device backend.
+ * @param[in] g       Resolved geometry.
+ *
+ * @return Backend error code (k_ra_ok on success).
+ * @retval k_ra_ok    Both boot regions written.
+ * @retval k_ra_err_* Backend write failure.
+ *
+ * @pre @p backend, @p g are non-NULL with a non-NULL write_block.
+ * @pre `s_scratch` is available as a sector buffer.
+ * @post Sectors 0-23 hold the main + backup boot regions.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
+/** @brief Write a 32-bit FAT/checksum word at entry index @p idx of @p buf. */
+static void priv_exfat_put32(uint8_t* buf, uint32_t idx, uint32_t val)
+{
+  priv_wr32(&buf[(size_t)idx * 4U], val);
+}
+
+/** @brief Write boot sectors 1-10 + the checksum sector (main + backup) from @p cs. */
+static ra_err_t priv_exfat_write_boot_tail(const ra_fs_backend_t* backend, uint32_t cs)
+{
+  /* Sectors 1-8: extended boot (ext-boot signature only). */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  priv_wr32(&s_scratch[k_exfat_foff_ext_sig], (uint32_t)k_exfat_fmt_ext_sig);
+  for (uint32_t s = (uint32_t)k_exfat_fmt_ext_first;
+       s < (uint32_t)k_exfat_fmt_ext_first + (uint32_t)k_exfat_fmt_ext_count;
+       s++) {
+    cs               = priv_exfat_csum32(cs, s_scratch, (uint32_t)k_ra_fs_bytes_per_sector);
+    const ra_err_t e = priv_exfat_wr_dual(backend, s, s_scratch);
+    if (e != k_ra_ok) {
+      return e;
+    }
+  }
+  /* Sectors 9 (OEM) + 10 (reserved): all zero. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  cs           = priv_exfat_csum32(cs, s_scratch, (uint32_t)k_ra_fs_bytes_per_sector);
+  ra_err_t err = priv_exfat_wr_dual(backend, (uint32_t)k_exfat_fmt_oem_lba, s_scratch);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  cs  = priv_exfat_csum32(cs, s_scratch, (uint32_t)k_ra_fs_bytes_per_sector);
+  err = priv_exfat_wr_dual(backend, (uint32_t)k_exfat_fmt_resv_lba, s_scratch);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Sector 11: every 32-bit word = the boot checksum. */
+  for (uint32_t i = 0U; i < (uint32_t)k_exfat_fmt_csum_copies; i++) {
+    priv_exfat_put32(s_scratch, i, cs);
+  }
+  return priv_exfat_wr_dual(backend, (uint32_t)k_exfat_fmt_csum_lba, s_scratch);
+}
+
+static ra_err_t priv_exfat_write_boot(const ra_fs_backend_t* backend, const exfat_geom_t* g)
+{
+  priv_exfat_build_vbr(s_scratch, g);
+  /* Boot checksum over sector 0 skips bytes 106,107 (VolumeFlags) and 112
+   * (PercentInUse): fold [0,106), [108,112), [113,512). */
+  uint32_t cs = priv_exfat_csum32(0U, &s_scratch[0], (uint32_t)k_exfat_fmt_csum_skip0);
+  cs = priv_exfat_csum32(cs,
+                         &s_scratch[k_exfat_off_bps_shift],
+                         (uint32_t)k_exfat_fmt_csum_skip2 - (uint32_t)k_exfat_off_bps_shift);
+  cs =
+    priv_exfat_csum32(cs,
+                      &s_scratch[(uint32_t)k_exfat_fmt_csum_skip2 + 1U],
+                      (uint32_t)k_ra_fs_bytes_per_sector - ((uint32_t)k_exfat_fmt_csum_skip2 + 1U));
+  const ra_err_t err = priv_exfat_wr_dual(backend, 0U, s_scratch);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return priv_exfat_write_boot_tail(backend, cs);
+}
+
+/** @brief Zero the FAT, then seed FAT[0]/FAT[1] + the bitmap/up-case/root chains. */
+static ra_err_t priv_exfat_write_fat(const ra_fs_backend_t* backend, const exfat_geom_t* g)
+{
+  ra_err_t err = priv_fmt_clear_region(backend, g->fat_offset, g->fat_length);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  priv_exfat_put32(s_scratch, 0U, (uint32_t)k_exfat_fmt_fat_media);
+  priv_exfat_put32(s_scratch, 1U, (uint32_t)k_exfat_fmt_fat_eoc);
+  const uint32_t bmp_last = (uint32_t)k_exfat_fmt_first_clus + g->bitmap_clusters - 1U;
+  for (uint32_t c = (uint32_t)k_exfat_fmt_first_clus; c <= bmp_last; c++) {
+    const uint32_t next = (c < bmp_last) ? (c + 1U) : (uint32_t)k_exfat_fmt_fat_eoc;
+    priv_exfat_put32(s_scratch, c, next);
+  }
+  priv_exfat_put32(s_scratch, g->upcase_cluster, (uint32_t)k_exfat_fmt_fat_eoc);
+  priv_exfat_put32(s_scratch, g->root_cluster, (uint32_t)k_exfat_fmt_fat_eoc);
+  return backend->write_block(backend->ctx, g->fat_offset, 1U, s_scratch);
+}
+
+/** @brief Zero the allocation bitmap region, then mark the pre-allocated clusters. */
+static ra_err_t priv_exfat_write_bitmap(const ra_fs_backend_t* backend, const exfat_geom_t* g)
+{
+  const uint32_t bmp_lba     = g->heap_offset;
+  const uint32_t bmp_sectors = g->bitmap_clusters * g->spc;
+  ra_err_t       err         = priv_fmt_clear_region(backend, bmp_lba, bmp_sectors);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  const uint32_t full = g->used_clusters / (uint32_t)k_exfat_fmt_byte_bits;
+  for (uint32_t i = 0U; i < full; i++) {
+    s_scratch[i] = (uint8_t)k_exfat_fmt_byte_full;
+  }
+  const uint32_t rem = g->used_clusters % (uint32_t)k_exfat_fmt_byte_bits;
+  if (rem != 0U) {
+    s_scratch[full] = (uint8_t)((1U << rem) - 1U);
+  }
+  return backend->write_block(backend->ctx, bmp_lba, 1U, s_scratch);
+}
+
+/** @brief Write the compressed up-case table; return its rotate-add checksum. */
+static ra_err_t
+priv_exfat_write_upcase(const ra_fs_backend_t* backend, const exfat_geom_t* g, uint32_t* out_csum)
+{
+  const uint32_t lba =
+    g->heap_offset + ((g->upcase_cluster - (uint32_t)k_exfat_fmt_first_clus) * g->spc);
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  uint32_t off = 0U;
+  priv_wr16(&s_scratch[off], (uint16_t)k_exfat_fmt_upc_marker);
+  off += 2U;
+  priv_wr16(&s_scratch[off], (uint16_t)k_exfat_fmt_upc_id0); /* identity 0x0000-0x0060 */
+  off += 2U;
+  for (uint16_t u = (uint16_t)k_exfat_fmt_upc_a; u <= (uint16_t)k_exfat_fmt_upc_z; u++) {
+    priv_wr16(&s_scratch[off],
+              (uint16_t)((uint16_t)k_exfat_fmt_upc_au + (u - (uint16_t)k_exfat_fmt_upc_a)));
+    off += 2U;
+  }
+  priv_wr16(&s_scratch[off], (uint16_t)k_exfat_fmt_upc_marker);
+  off += 2U;
+  priv_wr16(&s_scratch[off], (uint16_t)k_exfat_fmt_upc_id1); /* identity 0x007B-0xFFFF */
+  *out_csum = priv_exfat_csum32(0U, s_scratch, (uint32_t)k_exfat_fmt_upc_bytes);
+  return backend->write_block(backend->ctx, lba, 1U, s_scratch);
+}
+
+/** @brief Pack a volume label (<= 11 chars) as UTF-16 into @p dst; return the count. */
+static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
+{
+  uint32_t n = 0U;
+  if (label != nullptr) {
+    for (; (label[n] != '\0') && (n < (uint32_t)k_exfat_fmt_label_max); n++) {
+      dst[(size_t)n * 2U]        = (uint8_t)label[n];
+      dst[((size_t)n * 2U) + 1U] = 0U;
+    }
+  }
+  return n;
+}
+
+/** @brief Write the root directory entry set: bitmap, up-case, volume label. */
+static ra_err_t priv_exfat_write_root(const ra_fs_backend_t* backend,
+                                      const exfat_geom_t*    g,
+                                      uint32_t               upcase_csum,
+                                      const char*            label)
+{
+  const uint32_t lba =
+    g->heap_offset + ((g->root_cluster - (uint32_t)k_exfat_fmt_first_clus) * g->spc);
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
+    s_scratch[i] = 0U;
+  }
+  /* Allocation Bitmap entry (0x81). */
+  s_scratch[0] = (uint8_t)k_exfat_entry_bitmap;
+  priv_wr32(&s_scratch[k_exfat_de_first_clus], (uint32_t)k_exfat_fmt_first_clus);
+  priv_wr32(&s_scratch[k_exfat_de_data_len], g->bitmap_bytes);
+  /* Up-case Table entry (0x82). */
+  uint8_t* upc = &s_scratch[k_exfat_de_second];
+  upc[0]       = (uint8_t)k_exfat_entry_upcase;
+  priv_wr32(&upc[k_exfat_de_upc_csum], upcase_csum);
+  priv_wr32(&upc[k_exfat_de_first_clus], g->upcase_cluster);
+  priv_wr32(&upc[k_exfat_de_data_len], (uint32_t)k_exfat_fmt_upc_bytes);
+  /* Volume Label entry (0x83). */
+  uint8_t*       lbl      = &s_scratch[k_exfat_de_third];
+  const uint32_t n        = priv_exfat_label_utf16(&lbl[k_exfat_de_lbl_name], label);
+  lbl[0]                  = (uint8_t)k_exfat_entry_label;
+  lbl[k_exfat_de_lbl_cnt] = (uint8_t)n;
+  return backend->write_block(backend->ctx, lba, 1U, s_scratch);
+}
+
+/**
+ * @brief Format the backend as an exFAT volume (#102).
+ *
+ * @details Lays the full exFAT layout: main + backup boot regions with boot
+ *          checksums, the single FAT (bitmap/up-case/root chains), the
+ *          allocation bitmap with the system clusters pre-marked, the compressed
+ *          up-case table + its checksum, and the root directory entry set.
+ *
+ * @param[in] backend       Block-device backend.
+ * @param[in] total_sectors Device capacity in 512-byte blocks.
+ * @param[in] label         Optional volume label (<= 11 chars), may be NULL.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                A mountable exFAT volume was written.
+ * @retval k_ra_err_invalid_size  Device too small for an exFAT volume.
+ * @retval k_ra_err_not_supported System cluster chains exceed FAT sector 0.
+ * @retval k_ra_err_*             Backend write failure.
+ *
+ * @pre @p backend has a non-NULL write_block; @p total_sectors > 0.
+ * @pre 512-byte sectors (the only exFAT sector size this code emits).
+ * @post On success sectors 0..root hold a complete, fsck-clean exFAT volume.
+ *
+ * @note Not thread-safe; serialize with mounts on the same backend.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t
+priv_exfat_format(const ra_fs_backend_t* backend, uint32_t total_sectors, const char* label)
+{
+  exfat_geom_t g   = {};
+  ra_err_t     err = priv_exfat_geometry(total_sectors, &g);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* The bitmap/up-case/root chains are seeded in FAT sector 0 only. */
+  if ((g.root_cluster * 4U) >= (uint32_t)k_ra_fs_bytes_per_sector) {
+    return k_ra_err_not_supported;
+  }
+  err = priv_exfat_write_boot(backend, &g);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = priv_exfat_write_fat(backend, &g);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = priv_exfat_write_bitmap(backend, &g);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint32_t upcase_csum = 0U;
+  err                  = priv_exfat_write_upcase(backend, &g, &upcase_csum);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return priv_exfat_write_root(backend, &g, upcase_csum, label);
+}
+
 ra_err_t ra_fs_format(const ra_fs_backend_t* backend, const ra_fs_format_opts_t* opts)
 {
   if (backend == nullptr || opts == nullptr) {
@@ -4460,7 +4977,7 @@ ra_err_t ra_fs_format(const ra_fs_backend_t* backend, const ra_fs_format_opts_t*
     return k_ra_err_invalid_arg;
   }
   if (opts->type != k_ra_fs_type_fat12 && opts->type != k_ra_fs_type_fat16 &&
-      opts->type != k_ra_fs_type_fat32) {
+      opts->type != k_ra_fs_type_fat32 && opts->type != k_ra_fs_type_exfat) {
     return k_ra_err_not_supported;
   }
   if (!priv_fmt_spc_valid(opts->sectors_per_cluster)) {
@@ -4474,6 +4991,9 @@ ra_err_t ra_fs_format(const ra_fs_backend_t* backend, const ra_fs_format_opts_t*
   }
   if (block_size != (uint32_t)k_ra_fs_bytes_per_sector || block_count == 0U) {
     return k_ra_err_invalid_arg;
+  }
+  if (opts->type == k_ra_fs_type_exfat) {
+    return priv_exfat_format(backend, block_count, opts->label);
   }
   ra_fs_fmt_geom_t geom = {};
   geom.type             = opts->type;

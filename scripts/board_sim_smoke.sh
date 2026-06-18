@@ -136,7 +136,8 @@ usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 # blank card via board_sim's --sd-new (not a pre-built --sd image). board_sim's
 # SD model answers the block writes the formatter and ra_fs emit, and its CSD
 # reports the --sd-new size so the SD bring-up sees a real capacity.
-# fs_format_mount formats + mounts + file-cycles FAT12, FAT16, and FAT32 and
+# fs_format_mount formats + mounts + file-cycles FAT12, FAT16, FAT32 (+ an
+# exFAT format + mount + empty-root trial) and
 # prints "FS FORMAT+MOUNT ALL PASS". Bare-metal (no ThreadX), so it runs on the
 # CI runner's Unicorn too, but it is opt-in like the other card apps: pass it
 # explicitly, e.g. `scripts/board_sim_smoke.sh fs_format_mount`.
@@ -307,7 +308,7 @@ for app in "${apps[@]}"; do
             echo "FAULT (during format/mount)"
             fail=1
         elif grep -q "FS FORMAT+MOUNT ALL PASS" <<<"$fclean"; then
-            echo "OK (FS FORMAT+MOUNT ALL PASS -- FAT12/16/32)"
+            echo "OK (FS FORMAT+MOUNT ALL PASS -- FAT12/16/32 + exFAT)"
         else
             echo "FS FORMAT FAIL (did not reach ALL PASS banner)"
             fail=1
