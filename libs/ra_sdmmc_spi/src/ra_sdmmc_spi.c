@@ -79,6 +79,9 @@ typedef enum : uint8_t {
   k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
   k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24 WRITE_BLOCK          */
   k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK */
+  k_sd_cmd_erase_wr_blk_start      = 0x40U | 32U, /**< CMD32 ERASE_WR_BLK_START   */
+  k_sd_cmd_erase_wr_blk_end        = 0x40U | 33U, /**< CMD33 ERASE_WR_BLK_END     */
+  k_sd_cmd_erase                   = 0x40U | 38U, /**< CMD38 ERASE                */
   k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55 APP_CMD              */
   k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58 READ_OCR             */
   k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND     */
@@ -155,6 +158,7 @@ typedef enum : uint32_t {
   k_sd_recover_flush_bytes  = 530U,    /**< >= 512 data + 2 CRC + token to flush a stuck write. */
   k_sd_recover_idle_bytes   = 64U,     /**< 512 CS-released clocks to drain busy + reset framing. */
   k_sd_max_recover_attempts = 4U,      /**< Re-flush + retry CMD0 this many times before failing. */
+  k_sd_max_erase_poll_bytes = 5000000U, /**< Busy ceiling for a bulk CMD38 erase (seconds). */
 } sd_protocol_const_t;
 
 /**
@@ -493,10 +497,10 @@ static ra_err_t internal_wait_data_token(void)
   return k_ra_err_hw_timeout;
 }
 
-/* Wait for the card to release the busy token (CIPO returns to 0xFF) -- see implementation for details. */
-static ra_err_t internal_wait_not_busy(void)
+/* Wait for the card to release busy (CIPO -> 0xFF), bounded by @p max_polls -- see implementation for details. */
+static ra_err_t internal_wait_not_busy_bounded(uint32_t max_polls)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_sd_max_busy_poll_bytes; i++) {
+  for (uint32_t i = 0U; i < max_polls; i++) {
     uint8_t  byte = 0U;
     ra_err_t err  = internal_xfer_one((uint8_t)k_sd_token_idle, &byte);
     if (err != k_ra_ok) {
@@ -507,6 +511,12 @@ static ra_err_t internal_wait_not_busy(void)
     }
   }
   return k_ra_err_hw_timeout;
+}
+
+/* Wait for the card to release the busy token (CIPO returns to 0xFF) -- see implementation for details. */
+static ra_err_t internal_wait_not_busy(void)
+{
+  return internal_wait_not_busy_bounded((uint32_t)k_sd_max_busy_poll_bytes);
 }
 
 /* ===========================================================================
@@ -915,6 +925,58 @@ static uint32_t internal_lba_to_arg(uint32_t lba)
   return lba * (uint32_t)k_ra_sdmmc_spi_block_size;
 }
 
+/* Send a one-shot command and require R1 == 0 (CS asserted around it) -- see implementation for details. */
+static ra_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t arg)
+{
+  ra_err_t err = internal_cs_assert();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t r1 = 0U;
+  err        = internal_send_command(cmd, arg, &r1);
+  (void)internal_cs_release();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (r1 != 0U) {
+    return k_ra_err_protocol_error;
+  }
+  return k_ra_ok;
+}
+
+/* Drive the CMD32/CMD33/CMD38 erase sequence over [lba, lba+count) -- see implementation for details. */
+static ra_err_t internal_erase_range(uint32_t lba, uint32_t count)
+{
+  ra_err_t err = internal_cmd_require_ready(k_sd_cmd_erase_wr_blk_start, internal_lba_to_arg(lba));
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err =
+    internal_cmd_require_ready(k_sd_cmd_erase_wr_blk_end, internal_lba_to_arg((lba + count) - 1U));
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* CMD38 then a long busy wait -- a bulk erase can hold the card busy for
+   * seconds, far longer than a single-block write. */
+  err = internal_cs_assert();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t r1 = 0U;
+  err        = internal_send_command(k_sd_cmd_erase, 0U, &r1);
+  if (err != k_ra_ok) {
+    (void)internal_cs_release();
+    return err;
+  }
+  if (r1 != 0U) {
+    (void)internal_cs_release();
+    return k_ra_err_protocol_error;
+  }
+  err = internal_wait_not_busy_bounded((uint32_t)k_sd_max_erase_poll_bytes);
+  (void)internal_cs_release();
+  return err;
+}
+
 /* Drain 512 payload bytes from the card into ``buf`` -- see implementation for details. */
 static ra_err_t internal_read_block_payload(uint8_t* buf)
 {
@@ -1125,6 +1187,47 @@ ra_err_t ra_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t co
   return err;
 }
 
+ra_err_t ra_sdmmc_spi_erase_blocks(uint32_t lba, uint32_t count)
+{
+  if (!s_state.initialized) {
+    return k_ra_err_invalid_state;
+  }
+  if (count == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((lba >= s_state.capacity_blocks) || (count > (s_state.capacity_blocks - lba))) {
+    return k_ra_err_out_of_range;
+  }
+  /* Probe: erase only the FIRST block and read it back. The SD post-erase value
+   * is card-dependent (0x00 on some, 0xFF on others), and the SCR
+   * DATA_STAT_AFTER_ERASE bit's polarity is unreliable in practice, so measure
+   * it. A non-zero read-back means this card erases to ones: report "not
+   * supported" so the caller writes zeros -- and skip erasing the rest, which
+   * would be wasted work (a one-block probe instead of the whole region). */
+  ra_err_t err = internal_erase_range(lba, 1U);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t blk[k_ra_sdmmc_spi_block_size] = {};
+  err                                    = ra_sdmmc_spi_read_block(lba, blk);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
+    if (blk[i] != 0U) {
+      return k_ra_err_not_supported;
+    }
+  }
+  /* The card erases to zero: erase the remaining range in one operation. */
+  if (count > 1U) {
+    err = internal_erase_range(lba + 1U, count - 1U);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
 ra_err_t ra_sdmmc_spi_get_capacity(uint32_t* out_blocks)
 {
   RA_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks is null");
@@ -1179,6 +1282,13 @@ static ra_err_t internal_fs_write_block(void* ctx, uint32_t lba, uint32_t count,
   return ra_sdmmc_spi_write_blocks(lba, buf, count);
 }
 
+/* ``erase_blocks`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */
+static ra_err_t internal_fs_erase_block(void* ctx, uint32_t lba, uint32_t count)
+{
+  (void)ctx;
+  return ra_sdmmc_spi_erase_blocks(lba, count);
+}
+
 /* ``get_capacity`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */
 static ra_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
@@ -1203,6 +1313,7 @@ ra_err_t ra_sdmmc_spi_bind_fs_backend(ra_fs_backend_t* out_backend)
   out_backend->read_block   = internal_fs_read_block;
   out_backend->write_block  = internal_fs_write_block;
   out_backend->get_capacity = internal_fs_get_capacity;
+  out_backend->erase_blocks = internal_fs_erase_block;
   out_backend->ctx          = nullptr;
   return k_ra_ok;
 }

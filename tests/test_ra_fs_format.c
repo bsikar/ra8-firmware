@@ -135,6 +135,44 @@ static const ra_fs_backend_t s_sink_backend = {
   .ctx          = nullptr,
 };
 
+/**
+ * @enum erase_mode_t
+ * @brief How the erase-capable mock answers `erase_blocks` (drives clear_region).
+ */
+typedef enum : uint8_t {
+  k_erase_mode_zero        = 0U, /**< Zero the range, return k_ra_ok (card zeroes). */
+  k_erase_mode_unsupported = 1U, /**< Return not_supported -> formatter zero-writes. */
+  k_erase_mode_error       = 2U, /**< Return a real error -> format must abort.      */
+} erase_mode_t;
+
+static erase_mode_t s_erase_mode  = k_erase_mode_zero;
+static uint32_t     s_erase_calls = 0U;
+
+static ra_err_t mem_erase(void* ctx, uint32_t lba, uint32_t count)
+{
+  mem_disk_t* d = (mem_disk_t*)ctx;
+  s_erase_calls++;
+  if (s_erase_mode == k_erase_mode_unsupported) {
+    return k_ra_err_not_supported;
+  }
+  if (s_erase_mode == k_erase_mode_error) {
+    return k_ra_err_out_of_range; /* a real backend error -- must abort the format */
+  }
+  if (lba + count > d->block_count) {
+    return k_ra_err_out_of_range;
+  }
+  memset(&d->bytes[lba * (uint32_t)k_fmt_block_size], 0, count * (uint32_t)k_fmt_block_size);
+  return k_ra_ok;
+}
+
+static const ra_fs_backend_t s_backend_erase = {
+  .read_block   = mem_read,
+  .write_block  = mem_write,
+  .get_capacity = mem_capacity,
+  .erase_blocks = mem_erase,
+  .ctx          = &s_disk,
+};
+
 static void free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
@@ -178,16 +216,18 @@ static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
  *          and byte-compare, list (expect exactly the one file), unlink, list
  *          again (expect empty), unmount. Any failure aborts via the harness.
  */
-static void format_mount_cycle(uint32_t blocks, ra_fs_type_t type, const char* label)
+/**
+ * @brief Mount @p be, assert the detected type, and run a full file cycle.
+ *
+ * @details Mount-side half of the round-trip, factored so both the RAM-backed
+ *          happy-path tests and the erase-capable backend test can reuse it:
+ *          create + write a multi-cluster payload, read it back and byte-compare,
+ *          list (expect the one file), unlink, list again (empty), unmount.
+ */
+static void verify_mount_file_cycle(const ra_fs_backend_t* be, ra_fs_type_t type)
 {
-  alloc_garbage_card(blocks);
-  ra_fs_format_opts_t opts = {};
-  opts.type                = type;
-  opts.label               = label;
-  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
-
   ra_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(be, &h));
   TEST_ASSERT_EQ(type, h->type);
 
   static uint8_t wr[k_fmt_payload_bytes];
@@ -219,6 +259,16 @@ static void format_mount_cycle(uint32_t blocks, ra_fs_type_t type, const char* l
   TEST_ASSERT_EQ(0, ctx.count);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
+}
+
+static void format_mount_cycle(uint32_t blocks, ra_fs_type_t type, const char* label)
+{
+  alloc_garbage_card(blocks);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = type;
+  opts.label               = label;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  verify_mount_file_cycle(&s_backend, type);
   free_volume();
 }
 
@@ -644,6 +694,74 @@ static void test_fat32_cluster_size_table(void)
   TEST_END("ra_fs format: FAT32 cluster-size table (DskSzToSecPerClus)");
 }
 
+/**
+ * @test test_erase_clear_region_modes
+ *
+ * @brief A backend that can erase-to-zero must short-circuit FAT zeroing, while
+ *        a non-erasing or failing backend must still yield a valid (or aborted)
+ *        format.
+ *
+ * @par MC/DC:
+ * Decision (in `priv_fmt_clear_region`): `(erase_blocks != nullptr) &&
+ * (erase_blocks(...) == k_ra_ok)` (short-circuit AND). Erase is a pure
+ * optimization, so any non-OK erase result falls back to the zero-write.
+ * Independent-influence vectors:
+ * - erase == NULL (plain backend) -> C1 false -> zero-run. `s_erase_calls == 0`.
+ * - erase returns k_ra_ok          -> C1 true, C2 true  -> skip zero-run; valid.
+ * - erase returns non-OK           -> C1 true, C2 false -> zero-run; valid.
+ * (NULL, ok) prove C1 independence; (ok, non-OK) prove C2 independence. The
+ * not_supported and error vectors are both C2-false and additionally show the
+ * fallback yields a valid volume regardless of *why* erase declined.
+ * `priv_fmt_clear_region` runs exactly once per format (FAT + root cleared as
+ * one contiguous span), so `s_erase_calls == 1` pins that erase was consulted.
+ */
+static void test_erase_clear_region_modes(void)
+{
+  TEST_BEGIN("ra_fs format: erase-or-zero clear_region");
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat32;
+  opts.label               = "ERASEVOL";
+
+  /* Vector: NULL erase hook -> zero-run only, never consults erase. */
+  s_erase_calls = 0U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
+  TEST_ASSERT_EQ(0U, s_erase_calls);
+  verify_mount_file_cycle(&s_backend, k_ra_fs_type_fat32);
+  free_volume();
+
+  /* Vector: erase zeroes the range -> fast path taken, volume valid. */
+  s_erase_mode  = k_erase_mode_zero;
+  s_erase_calls = 0U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend_erase, &opts));
+  TEST_ASSERT_EQ(1U, s_erase_calls);
+  verify_mount_file_cycle(&s_backend_erase, k_ra_fs_type_fat32);
+  free_volume();
+
+  /* Vector: erase says not_supported -> fall back to zero-run, volume valid. */
+  s_erase_mode  = k_erase_mode_unsupported;
+  s_erase_calls = 0U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend_erase, &opts));
+  TEST_ASSERT_EQ(1U, s_erase_calls);
+  verify_mount_file_cycle(&s_backend_erase, k_ra_fs_type_fat32);
+  free_volume();
+
+  /* Vector: erase returns a real error -> still falls back (erase is a pure
+   * optimization), format succeeds and the volume is valid. */
+  s_erase_mode  = k_erase_mode_error;
+  s_erase_calls = 0U;
+  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend_erase, &opts));
+  TEST_ASSERT_EQ(1U, s_erase_calls);
+  verify_mount_file_cycle(&s_backend_erase, k_ra_fs_type_fat32);
+  free_volume();
+
+  s_erase_mode = k_erase_mode_zero; /* restore default for any later test */
+  TEST_END("ra_fs format: erase-or-zero clear_region");
+}
+
 int32_t main(void)
 {
   test_format_fat12_round_trip();
@@ -659,6 +777,7 @@ int32_t main(void)
   test_mcdc_format_pinned_spc_geometry();
   test_mcdc_format_label_field_pair();
   test_fat32_cluster_size_table();
+  test_erase_clear_region_modes();
   (void)fprintf(stderr, "[OK  ] test_ra_fs_format.c\n");
   return 0;
 }
