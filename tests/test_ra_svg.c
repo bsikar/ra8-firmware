@@ -3,9 +3,9 @@
  * @brief Host unit tests for the minimal SVG subset (#112).
  *
  * @details Exercises the SVG sniff, the cover-wrapper `<image>` href
- * extraction, and the `<rect>`/`<circle>`/`<line>`/`<polygon>` rasteriser
- * (rendered into a host ra_gfx framebuffer and checked pixel-by-pixel), plus the
- * null/arg guards.
+ * extraction, and the `<rect>`/`<circle>`/`<line>`/`<polygon>`/`<path>`
+ * rasteriser (rendered into a host ra_gfx framebuffer and checked
+ * pixel-by-pixel), plus the null/arg guards.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -130,6 +130,23 @@ static void test_render_polygon(void)
 }
 
 /**
+ * @test test_render_path
+ * @brief A `<path>` of M/L/V/H/Z line commands fills as a polygon.
+ */
+static void test_render_path(void)
+{
+  TEST_BEGIN("svg render path");
+  fb_reset();
+  /* Square (10,10)-(90,90) in a 100x100 viewBox -> screen (20,20)-(180,180). */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 10 L90 10 V90 H10 Z\" fill=\"#00aacc\"/></svg>"));
+  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 100)); /* inside the square     */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* left of x=20 -> white  */
+  TEST_END("svg render path");
+}
+
+/**
  * @test test_render_fill_none
  * @brief `fill="none"` rects draw nothing; default fill is black.
  */
@@ -173,6 +190,7 @@ int32_t main(void)
   test_image_href();
   test_render_shapes();
   test_render_polygon();
+  test_render_path();
   test_render_fill_none();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");
