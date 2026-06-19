@@ -56,6 +56,17 @@
  *   external fixture's responsibility.
  * - BSDL parsing -- handled in host tooling, not on the MCU.
  *
+ * ## Validation
+ *
+ * The CPU-side contract (IDCODE constant cross-check, opcode validation,
+ * lifecycle, NULL guards) is exercised by the host unit tests in
+ * ``tests/test_ra_bscan.c`` and by the on-silicon self-test example
+ * ``examples/.../hil/bscan_selftest`` (prints
+ * ``bscan: idcode=085DA447 checks=17 PASS``). The actual boundary-scan
+ * vectors are validated externally by an IEEE-1149.1 JTAG fixture using the
+ * device's BSDL file -- there is no firmware example for the scan chain
+ * itself because it is not CPU-reachable (HUM Ch 50.2.3 p 3259).
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
