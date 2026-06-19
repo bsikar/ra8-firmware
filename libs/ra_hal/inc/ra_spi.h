@@ -24,6 +24,15 @@
  * - ``ra_spi_enter_stop / exit_stop`` -- power transition
  * - ``ra_spi_dispatch_spti / spri / spei`` -- ISR entry points
  *
+ * @note On RA8D2 the SPI_B block is the *only* SPI peripheral instance:
+ *       there is no separate legacy ``ra_spi`` driver to demonstrate. This
+ *       header is the public API and ``ra_spi_b.c`` is its implementation;
+ *       ``test_ra_spi.c`` and ``test_ra_spi_b.c`` both exercise it. The
+ *       on-silicon example/HIL is ``examples/.../hil/spi_loopback`` (it
+ *       includes this header, runs the internal-loopback path, and prints
+ *       ``spi: pass``). A separate ``spi_b_loopback`` example would link the
+ *       same ``.c`` and duplicate ``spi_loopback`` verbatim, so none exists.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
