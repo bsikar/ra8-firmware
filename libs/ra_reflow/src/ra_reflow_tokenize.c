@@ -79,9 +79,11 @@ typedef struct {
   ra_reflow_t* engine;                        /**< Target engine pools.        */
   uint8_t      style;                         /**< Current inline-style bits.  */
   uint8_t      active_link;                   /**< 1-based link id (0 = none).  */
+  uint32_t     color;                         /**< Current CSS colour / inherit.*/
   uint8_t      stack_tag[k_priv_max_depth];   /**< Open-element tag stack.      */
   uint8_t      stack_style[k_priv_max_depth]; /**< Style to restore on pop.    */
   uint8_t      stack_link[k_priv_max_depth];  /**< Link id to restore on pop.  */
+  uint32_t     stack_color[k_priv_max_depth]; /**< Colour to restore on pop.   */
   uint32_t     sp;                            /**< Stack depth.                */
   bool         saw_element;                   /**< At least one element seen.  */
 } tok_ctx_t;
@@ -410,6 +412,7 @@ static bool priv_emit(ra_reflow_t*           engine,
   tok->reserved          = 0U;
   tok->text_off          = off;
   tok->text_len          = len;
+  tok->color             = (uint32_t)k_ra_reflow_color_inherit;
   engine->token_count++;
   return true;
 }
@@ -759,6 +762,7 @@ static ra_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
   const ra_reflow_html_tag_t tag = (ra_reflow_html_tag_t)ctx->stack_tag[ctx->sp];
   ctx->style                     = ctx->stack_style[ctx->sp];
   ctx->active_link               = ctx->stack_link[ctx->sp];
+  ctx->color                     = ctx->stack_color[ctx->sp];
   if (priv_is_block(tag) &&
       !priv_emit(ctx->engine, k_ra_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
     return k_ra_err_no_mem;
@@ -1199,6 +1203,56 @@ static bool priv_handle_void(tok_ctx_t*           ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Run the content-CSS cascade for a just-pushed element and apply it.
+ *
+ * @details Builds the element's CSS identity + inherited run style + colour,
+ * cascades author `<style>` rules + inline style over it (#111 / #140), emits
+ * the block-start (via priv_open_attrs) carrying the cascaded alignment, and
+ * updates the context run style + colour for descendant text. Unstyled content
+ * lays out byte-identically to the pre-CSS engine. Factored out of
+ * priv_handle_start to keep each function within the NASA Rule 4 size budget.
+ *
+ * @param[in,out] ctx    Tokenizer context (element already pushed).
+ * @param[in]     tagbuf Raw tag span starting at '<'.
+ * @param[in]     span   Length of @p tagbuf, bytes.
+ * @param[in]     tag    Classified tag.
+ * @param[in]     block  True iff @p tag is a block element.
+ * @return k_ra_ok, or k_ra_err_no_mem on a block-start token-pool overflow.
+ * @retval k_ra_err_no_mem Block-start token pool full.
+ * @pre `ctx`, `tagbuf` are non-null; `ctx->sp > 0` (element already pushed).
+ * @pre `span` spans the element's `<...>` start tag.
+ * @post `ctx->style` / `ctx->color` reflect the element's computed style.
+ * @post A block element emitted its block-start with the cascaded alignment.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
+                                 const uint8_t*       tagbuf,
+                                 size_t               span,
+                                 ra_reflow_html_tag_t tag,
+                                 bool                 block)
+{
+  const uint8_t          base = (uint8_t)(ctx->style | priv_style_for(tag));
+  const ra_css_element_t el   = priv_css_element(tag, tagbuf, span);
+  ra_css_style_t         inh  = {.set = (uint8_t)k_priv_style_mask, .style = base};
+  if (ctx->color != (uint32_t)k_ra_reflow_color_inherit) {
+    inh.set   = (uint8_t)(inh.set | (uint8_t)k_ra_css_set_color);
+    inh.color = ctx->color;
+  }
+  const ra_css_style_t inl  = priv_css_inline(tagbuf, span);
+  const ra_css_style_t comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
+  const ra_err_t       aerr = priv_open_attrs(ctx, tagbuf, span, tag, block, &comp);
+  if (aerr != k_ra_ok) {
+    return aerr;
+  }
+  ctx->style = (uint8_t)(comp.style & (uint8_t)k_priv_style_mask);
+  ctx->color = ((comp.set & (uint8_t)k_ra_css_set_color) != 0U)
+                 ? comp.color
+                 : (uint32_t)k_ra_reflow_color_inherit;
+  return k_ra_ok;
+}
+
 static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   const size_t               tag_lt    = *pi; /* index of '<' before parse */
@@ -1230,26 +1284,10 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   ctx->stack_tag[ctx->sp]   = (uint8_t)tag;
   ctx->stack_style[ctx->sp] = ctx->style;
   ctx->stack_link[ctx->sp]  = ctx->active_link;
+  ctx->stack_color[ctx->sp] = ctx->color;
   ctx->sp++;
   const size_t span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
-
-  /* Content-CSS cascade (#111): fold the parent run style + this tag's intrinsic
-   * emphasis (the inherited base), then author `<style>` rules + inline style,
-   * into the element's computed run style + block alignment. The result feeds
-   * the existing per-run style bitmask and per-block alignment byte, so unstyled
-   * content lays out byte-identically to the pre-CSS engine. */
-  const uint8_t          base = (uint8_t)(ctx->style | priv_style_for(tag));
-  const ra_css_element_t el   = priv_css_element(tag, &buf[tag_lt], span);
-  const ra_css_style_t   inh  = {.set = (uint8_t)k_priv_style_mask, .style = base};
-  const ra_css_style_t   inl  = priv_css_inline(&buf[tag_lt], span);
-  const ra_css_style_t   comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
-
-  const ra_err_t aerr = priv_open_attrs(ctx, &buf[tag_lt], span, tag, block, &comp);
-  if (aerr != k_ra_ok) {
-    return aerr;
-  }
-  ctx->style = (uint8_t)(comp.style & (uint8_t)k_priv_style_mask);
-  return k_ra_ok;
+  return priv_open_styled(ctx, &buf[tag_lt], span, tag, block);
 }
 
 /**
@@ -1414,6 +1452,7 @@ static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, s
     return false;
   }
   ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = ctx->active_link;
+  ctx->engine->tokens[ctx->engine->token_count - 1U].color    = ctx->color;
   return true;
 }
 
@@ -1438,6 +1477,7 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
   tok_ctx_t ctx = {};
   ctx.engine    = engine;
   ctx.style     = (uint8_t)k_ra_reflow_style_normal;
+  ctx.color     = (uint32_t)k_ra_reflow_color_inherit;
 
   size_t i = 0U;
   while (i < xhtml_len) {

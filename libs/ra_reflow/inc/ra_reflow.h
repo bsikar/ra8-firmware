@@ -222,6 +222,19 @@ typedef enum : uint8_t {
  */
 
 /**
+ * @enum ra_reflow_color_t
+ * @brief Sentinel marking a token / run with no CSS colour.
+ *
+ * @details A text token's `color` field holds a 0xRRGGBB CSS colour (#111 /
+ * #140) or this sentinel, in which case the renderer falls back to the engine
+ * body colour (or link colour for an `<a>` run). 0xFFFFFFFF is outside the
+ * 24-bit RGB range, so it can never collide with a real colour.
+ */
+typedef enum : uint32_t {
+  k_ra_reflow_color_inherit = 0xFFFFFFFFU, /**< No per-run CSS colour. */
+} ra_reflow_color_t;
+
+/**
  * @struct ra_reflow_token_t
  * @brief One parsed token in the engine's token stream.
  *
@@ -237,11 +250,13 @@ typedef struct {
   // cppcheck-suppress unusedStructMember
   uint8_t style; /**< Font-style bitmask.                 */
   // cppcheck-suppress unusedStructMember
-  uint8_t reserved; /**< Padding to 4-byte align.            */
+  uint8_t reserved; /**< Block align / `<a>` link id.        */
   // cppcheck-suppress unusedStructMember
   uint32_t text_off; /**< Byte offset into the text pool.     */
   // cppcheck-suppress unusedStructMember
   uint32_t text_len; /**< Byte length within the text pool.   */
+  // cppcheck-suppress unusedStructMember
+  uint32_t color; /**< 0xRRGGBB CSS colour, or k_ra_reflow_color_inherit. */
 } ra_reflow_token_t;
 
 /**

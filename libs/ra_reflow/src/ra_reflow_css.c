@@ -41,6 +41,36 @@ typedef enum : uint16_t {
   k_priv_rank_id        = 4U, /**< `#id` selector rank.                */
 } priv_css_consts_t;
 
+/**
+ * @enum priv_css_hex_t
+ * @brief Hex-colour parsing constants (`#rgb` / `#rrggbb`).
+ */
+typedef enum : uint8_t {
+  k_priv_hex_base = 16U, /**< Base + "not a hex digit" sentinel. */
+  k_priv_hex_a10  = 10U, /**< Value of hex 'a'/'A'.             */
+  k_priv_hex3_len = 3U,  /**< `#rgb` short-form digit count.    */
+  k_priv_hex6_len = 6U,  /**< `#rrggbb` digit count.            */
+  k_priv_hex_nib  = 4U,  /**< Bits per hex nibble.              */
+  k_priv_hex_chan = 8U,  /**< Bits per colour channel.          */
+} priv_css_hex_t;
+
+/**
+ * @enum priv_css_color_t
+ * @brief Common named CSS colours + the "not a colour" sentinel.
+ */
+typedef enum : uint32_t {
+  k_priv_col_black   = 0x000000U,   /**< CSS `black`.                       */
+  k_priv_col_white   = 0xFFFFFFU,   /**< CSS `white`.                       */
+  k_priv_col_red     = 0xFF0000U,   /**< CSS `red`.                         */
+  k_priv_col_green   = 0x008000U,   /**< CSS `green`.                       */
+  k_priv_col_blue    = 0x0000FFU,   /**< CSS `blue`.                        */
+  k_priv_col_gray    = 0x808080U,   /**< CSS `gray` / `grey`.               */
+  k_priv_col_silver  = 0xC0C0C0U,   /**< CSS `silver`.                      */
+  k_priv_col_maroon  = 0x800000U,   /**< CSS `maroon`.                      */
+  k_priv_col_navy    = 0x000080U,   /**< CSS `navy`.                        */
+  k_priv_col_invalid = 0xFFFFFFFFU, /**< Sentinel: not a parseable colour. */
+} priv_css_color_t;
+
 /* ===========================================================================
  * Small pure string helpers
  * ===========================================================================
@@ -117,6 +147,88 @@ static const char* priv_trim(const char* s, size_t* len)
  * ===========================================================================
  */
 
+/** @brief Hex value of one ASCII digit, or k_priv_hex_base if not a hex digit. */
+static uint8_t priv_hex_val(char c)
+{
+  if ((c >= '0') && (c <= '9')) {
+    return (uint8_t)(c - '0');
+  }
+  const char l = priv_lower(c);
+  if ((l >= 'a') && (l <= 'f')) {
+    return (uint8_t)((l - 'a') + (int)k_priv_hex_a10);
+  }
+  return (uint8_t)k_priv_hex_base;
+}
+
+/** @brief Parse `rgb` / `rrggbb` hex digits (no `#`) to 0xRRGGBB, or invalid. */
+static uint32_t priv_parse_hex_color(const char* s, size_t len)
+{
+  uint32_t rgb = 0U;
+  if (len == (size_t)k_priv_hex6_len) {
+    /* Bounded: exactly k_priv_hex6_len digits. */
+    for (size_t i = 0U; i < len; ++i) {
+      const uint8_t v = priv_hex_val(s[i]);
+      if (v >= (uint8_t)k_priv_hex_base) {
+        return (uint32_t)k_priv_col_invalid;
+      }
+      rgb = (rgb << (uint32_t)k_priv_hex_nib) | (uint32_t)v;
+    }
+    return rgb;
+  }
+  if (len == (size_t)k_priv_hex3_len) {
+    /* Bounded: exactly k_priv_hex3_len digits; each expands d -> dd. */
+    for (size_t i = 0U; i < len; ++i) {
+      const uint8_t v = priv_hex_val(s[i]);
+      if (v >= (uint8_t)k_priv_hex_base) {
+        return (uint32_t)k_priv_col_invalid;
+      }
+      rgb = (rgb << (uint32_t)k_priv_hex_chan) | ((uint32_t)v << (uint32_t)k_priv_hex_nib) |
+            (uint32_t)v;
+    }
+    return rgb;
+  }
+  return (uint32_t)k_priv_col_invalid;
+}
+
+/** @brief Parse a CSS colour value (`#rgb` / `#rrggbb` / a named keyword). */
+static uint32_t priv_parse_color(const char* s, size_t len)
+{
+  if ((s == nullptr) || (len == 0U)) {
+    return (uint32_t)k_priv_col_invalid;
+  }
+  if (s[0] == '#') {
+    return priv_parse_hex_color(&s[1], len - 1U);
+  }
+  if (priv_ci_eq(s, len, "black")) {
+    return (uint32_t)k_priv_col_black;
+  }
+  if (priv_ci_eq(s, len, "white")) {
+    return (uint32_t)k_priv_col_white;
+  }
+  if (priv_ci_eq(s, len, "red")) {
+    return (uint32_t)k_priv_col_red;
+  }
+  if (priv_ci_eq(s, len, "green")) {
+    return (uint32_t)k_priv_col_green;
+  }
+  if (priv_ci_eq(s, len, "blue")) {
+    return (uint32_t)k_priv_col_blue;
+  }
+  if (priv_ci_eq(s, len, "gray") || priv_ci_eq(s, len, "grey")) {
+    return (uint32_t)k_priv_col_gray;
+  }
+  if (priv_ci_eq(s, len, "silver")) {
+    return (uint32_t)k_priv_col_silver;
+  }
+  if (priv_ci_eq(s, len, "maroon")) {
+    return (uint32_t)k_priv_col_maroon;
+  }
+  if (priv_ci_eq(s, len, "navy")) {
+    return (uint32_t)k_priv_col_navy;
+  }
+  return (uint32_t)k_priv_col_invalid;
+}
+
 /** @brief Apply one trimmed `prop:value` pair to @p out (sets a `set` bit). */
 static void
 priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra_css_style_t* out)
@@ -149,6 +261,12 @@ priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra_
       out->align = (uint8_t)k_ra_reflow_align_justify;
     } else {
       out->align = (uint8_t)k_ra_reflow_align_left;
+    }
+  } else if (priv_ci_eq(prop, plen, "color")) {
+    const uint32_t rgb = priv_parse_color(val, vlen);
+    if (rgb != (uint32_t)k_priv_col_invalid) {
+      out->set   = (uint8_t)(out->set | (uint8_t)k_ra_css_set_color);
+      out->color = rgb;
     }
   } else {
     /* Unknown property -> ignore (no set bit). */
@@ -504,6 +622,12 @@ ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
   if (awin != nullptr) {
     out.set   = (uint8_t)(out.set | (uint8_t)k_ra_css_set_align);
     out.align = awin->align;
+  }
+  const ra_css_style_t* cwin =
+    priv_resolve((uint8_t)k_ra_css_set_color, &inherited, sheet, matched, &inline_decl);
+  if (cwin != nullptr) {
+    out.set   = (uint8_t)(out.set | (uint8_t)k_ra_css_set_color);
+    out.color = cwin->color;
   }
   return out;
 }

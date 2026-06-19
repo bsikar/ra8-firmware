@@ -91,6 +91,7 @@ typedef enum : uint8_t {
   k_ra_css_set_italic    = 1U << 1U, /**< `font-style` was declared.      */
   k_ra_css_set_underline = 1U << 2U, /**< `text-decoration` was declared. */
   k_ra_css_set_align     = 1U << 3U, /**< `text-align` was declared.      */
+  k_ra_css_set_color     = 1U << 4U, /**< `color` was declared.           */
 } ra_css_set_t;
 
 /**
@@ -103,10 +104,11 @@ typedef enum : uint8_t {
  * present in `set`.
  */
 typedef struct {
-  uint8_t set;   /**< ::ra_css_set_t bitmask: which properties are present. */
-  uint8_t style; /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul). */
-  uint8_t align; /**< ::ra_reflow_align_t (valid iff `set & align`).        */
-  uint8_t pad;   /**< Padding to 4-byte stride.                             */
+  uint8_t  set;   /**< ::ra_css_set_t bitmask: which properties are present. */
+  uint8_t  style; /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul). */
+  uint8_t  align; /**< ::ra_reflow_align_t (valid iff `set & align`).        */
+  uint8_t  pad;   /**< Padding.                                              */
+  uint32_t color; /**< 0xRRGGBB text colour (valid iff `set & color`).       */
 } ra_css_style_t;
 
 /**

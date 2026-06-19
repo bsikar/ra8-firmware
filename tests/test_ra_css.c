@@ -285,6 +285,49 @@ static void test_cascade_null_mcdc(void)
 }
 
 /**
+ * @test test_parse_color
+ * @brief `color` parses #rrggbb / #rgb / named keywords; bad values are ignored.
+ */
+static void test_parse_color(void)
+{
+  TEST_BEGIN("css parse color");
+  load("p { color: #ff8800; } .a { color: #abc; } #b { color: navy; } em { color: bogus; }");
+  /* p: #ff8800 */
+  TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_color) != 0U);
+  TEST_ASSERT_EQ(0xFF8800, (int)s_sheet.rules[0].decl.color);
+  /* .a: #abc -> 0xaabbcc */
+  TEST_ASSERT_EQ(0xAABBCC, (int)s_sheet.rules[1].decl.color);
+  /* #b: navy -> 0x000080 */
+  TEST_ASSERT_EQ(0x000080, (int)s_sheet.rules[2].decl.color);
+  /* em: bogus -> color NOT set (invalid value ignored) */
+  TEST_ASSERT((s_sheet.rules[3].decl.set & (uint8_t)k_ra_css_set_color) == 0U);
+  TEST_END("css parse color");
+}
+
+/**
+ * @test test_cascade_color
+ * @brief Colour cascades by specificity and inherits parent -> child.
+ */
+static void test_cascade_color(void)
+{
+  TEST_BEGIN("css cascade color");
+  load("p { color: red; } .hi { color: #00ff00; }");
+  /* .hi (class) beats p (type) -> green */
+  ra_css_element_t el = elem(k_ra_reflow_tag_p, nullptr, "hi");
+  ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_color) != 0U);
+  TEST_ASSERT_EQ(0x00FF00, (int)r.color);
+  /* a child with no colour rule inherits the parent's colour */
+  ra_css_style_t parent = {};
+  parent.set            = (uint8_t)k_ra_css_set_color;
+  parent.color          = 0x123456U;
+  ra_css_element_t kid  = elem(k_ra_reflow_tag_strong, nullptr, nullptr);
+  ra_css_style_t   rk   = ra_css_cascade(&s_sheet, &kid, parent, no_inline());
+  TEST_ASSERT_EQ(0x123456, (int)rk.color);
+  TEST_END("css cascade color");
+}
+
+/**
  * @test test_resolve_skip_mcdc
  * @brief MC/DC for the priv_resolve per-rule skip guard (driven via cascade).
  *
@@ -383,6 +426,8 @@ int32_t main(void)
   test_cascade_source_order();
   test_cascade_inheritance();
   test_cascade_null_mcdc();
+  test_parse_color();
+  test_cascade_color();
   test_resolve_skip_mcdc();
   test_resolve_winner_mcdc();
   test_null_guards();

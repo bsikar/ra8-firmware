@@ -625,10 +625,13 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
   const uint8_t* base    = engine->text_pool + tok->text_off;
   const uint32_t len     = tok->text_len;
   const uint8_t  link_id = tok->reserved; /* 1-based `<a>` link id (0 = none) */
-  /* Link colour is keyed on actual link membership, not the underline style bit:
-   * CSS `text-decoration: underline` (#111) underlines non-link text, which must
-   * still render in the body colour. */
-  const uint32_t color = (link_id != 0U) ? engine->link_color : engine->body_color;
+  /* Colour precedence: an explicit CSS `color` (#140) wins; otherwise a link run
+   * uses the link colour and ordinary text the body colour. Link colour is keyed
+   * on actual link membership, not the underline style bit, so CSS
+   * `text-decoration: underline` (#111) on non-link text keeps the body colour. */
+  const uint32_t fallback = (link_id != 0U) ? engine->link_color : engine->body_color;
+  const uint32_t color =
+    (tok->color != (uint32_t)k_ra_reflow_color_inherit) ? tok->color : fallback;
 
   /* Pre-scan to find each word boundary. Greedy: if word_w + cursor_x
    * exceeds the right margin AND the line already has content, break
