@@ -3,8 +3,9 @@
  * @brief Host unit tests for the minimal SVG subset (#112).
  *
  * @details Exercises the SVG sniff, the cover-wrapper `<image>` href
- * extraction, and the `<rect>`/`<circle>`/`<line>` rasteriser (rendered into a
- * host ra_gfx framebuffer and checked pixel-by-pixel), plus the null/arg guards.
+ * extraction, and the `<rect>`/`<circle>`/`<line>`/`<polygon>` rasteriser
+ * (rendered into a host ra_gfx framebuffer and checked pixel-by-pixel), plus the
+ * null/arg guards.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -112,6 +113,23 @@ static void test_render_shapes(void)
 }
 
 /**
+ * @test test_render_polygon
+ * @brief A `<polygon>` is filled by the scanline rasteriser (inside vs outside).
+ */
+static void test_render_polygon(void)
+{
+  TEST_BEGIN("svg render polygon");
+  fb_reset();
+  /* Downward triangle in a 100x100 viewBox -> 2x: screen (20,20)(180,20)(100,180). */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<polygon points=\"10,10 90,10 50,90\" fill=\"#ff00ff\"/></svg>"));
+  TEST_ASSERT_EQ(0xFF00FF, (int)px(100, 100)); /* inside the triangle (x 60..140) */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(30, 100));  /* left of the left edge -> white   */
+  TEST_END("svg render polygon");
+}
+
+/**
  * @test test_render_fill_none
  * @brief `fill="none"` rects draw nothing; default fill is black.
  */
@@ -154,6 +172,7 @@ int32_t main(void)
   test_is_svg();
   test_image_href();
   test_render_shapes();
+  test_render_polygon();
   test_render_fill_none();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");
