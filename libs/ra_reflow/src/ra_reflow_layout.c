@@ -196,8 +196,10 @@ typedef struct {
   uint16_t indent_px;        /**< Active left indent (li, blockquote). */
   uint32_t page_first_glyph; /**< First glyph index of the active page. */
   uint32_t page_first_image; /**< First image-box index of the active page. */
+  uint32_t line_first_glyph; /**< First glyph index of the active line. */
   uint8_t  line_has_content; /**< 1 once any glyph landed on this line. */
-  uint8_t  reserved8[3];     /**< Padding. */
+  uint8_t  align;            /**< Active block alignment (ra_reflow_align_t). */
+  uint8_t  reserved8[2];     /**< Padding. */
 } priv_cursor_t;
 
 /* ===========================================================================
@@ -404,11 +406,109 @@ static bool priv_finish_page(ra_reflow_t* engine, priv_cursor_t* cur)
   engine->page_count++;
   cur->page_first_glyph = engine->glyph_count;
   cur->page_first_image = engine->image_box_count;
+  cur->line_first_glyph = engine->glyph_count;
   cur->y                = (int32_t)k_ra_reflow_margin_px;
   cur->line_top         = cur->y;
   cur->x                = (int32_t)k_ra_reflow_margin_px + (int32_t)cur->indent_px;
   cur->line_has_content = 0U;
   return true;
+}
+
+/**
+ * @brief Spread @p slack across the inter-word gaps of glyphs `[lo, hi)`.
+ *
+ * @details Each space glyph absorbs an equal share of the slack (with the
+ * remainder spread one pixel at a time across the leftmost gaps); every glyph
+ * shifts right by the accumulated widening to its left, so the run's right edge
+ * lands at the margin with an even gap distribution.
+ *
+ * @param[in,out] engine Engine whose glyph x positions are adjusted.
+ * @param[in]     lo     First glyph index (inclusive).
+ * @param[in]     hi     One past the last glyph index.
+ * @param[in]     slack  Total pixels to distribute (> 0).
+ * @return None.
+ * @pre `hi > lo`; the run contains at least one space to justify against.
+ * @pre `slack > 0`.
+ * @post Glyph x positions in `[lo, hi)` are widened by up to @p slack total.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_justify_glyphs(ra_reflow_t* engine, uint32_t lo, uint32_t hi, int32_t slack)
+{
+  uint32_t spaces = 0U;
+  for (uint32_t i = lo; i < hi; ++i) {
+    if (engine->glyphs[i].cp == (int32_t)' ') {
+      spaces++;
+    }
+  }
+  if (spaces == 0U) {
+    return;
+  }
+  const int32_t per   = slack / (int32_t)spaces;
+  const int32_t rem   = slack % (int32_t)spaces;
+  int32_t       added = 0;
+  uint32_t      seen  = 0U;
+  for (uint32_t i = lo; i < hi; ++i) {
+    engine->glyphs[i].x += added;
+    if (engine->glyphs[i].cp == (int32_t)' ') {
+      added += per;
+      if ((int32_t)seen < rem) {
+        added += 1;
+      }
+      seen++;
+    }
+  }
+}
+
+/**
+ * @brief Apply the active block alignment to the just-completed line.
+ *
+ * @details Left is a no-op (the default). Centre/right shift every glyph on the
+ * line so its content edge meets the centre / right margin. Justify distributes
+ * the slack across inter-word gaps -- but only on wrapped lines (@p allow_justify
+ * is false for the last line of a paragraph, which stays left). A trailing space
+ * left at the break is excluded from the content extent.
+ *
+ * @param[in,out] engine        Engine whose laid-out glyphs are aligned.
+ * @param[in]     cur           Cursor (line range + alignment + pen x).
+ * @param[in]     allow_justify True on a wrapped line, false on a paragraph end.
+ * @return None.
+ * @pre `cur->line_first_glyph <= engine->glyph_count`.
+ * @pre `cur->align` is a valid ra_reflow_align_t.
+ * @post Glyph x positions on the line are adjusted per the alignment.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_finish_line(ra_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
+{
+  if (cur->align == (uint8_t)k_ra_reflow_align_left) {
+    return;
+  }
+  const uint32_t lo = cur->line_first_glyph;
+  uint32_t       hi = engine->glyph_count;
+  if (hi <= lo) {
+    return;
+  }
+  int32_t content_right = cur->x;
+  if (engine->glyphs[hi - 1U].cp == (int32_t)' ') {
+    content_right = engine->glyphs[hi - 1U].x;
+    hi--;
+  }
+  const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra_reflow_margin_px;
+  const int32_t slack       = right_limit - content_right;
+  if ((hi <= lo) || (slack <= 0)) {
+    return;
+  }
+  if (cur->align == (uint8_t)k_ra_reflow_align_justify) {
+    if (allow_justify) {
+      priv_justify_glyphs(engine, lo, hi, slack);
+    }
+    return;
+  }
+  const int32_t offset = (cur->align == (uint8_t)k_ra_reflow_align_center) ? (slack / 2) : slack;
+  for (uint32_t i = lo; i < hi; ++i) {
+    engine->glyphs[i].x += offset;
+  }
 }
 
 /**
@@ -426,12 +526,14 @@ static bool priv_finish_page(ra_reflow_t* engine, priv_cursor_t* cur)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool priv_newline(ra_reflow_t* engine, priv_cursor_t* cur)
+static bool priv_newline(ra_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
 {
+  priv_finish_line(engine, cur, allow_justify);
   cur->y += (int32_t)cur->line_height_px;
   cur->line_top         = cur->y;
   cur->x                = (int32_t)k_ra_reflow_margin_px + (int32_t)cur->indent_px;
   cur->line_has_content = 0U;
+  cur->line_first_glyph = engine->glyph_count;
 
   const int32_t bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra_reflow_margin_px;
   if (cur->y + (int32_t)cur->line_height_px > bottom_limit) {
@@ -477,7 +579,7 @@ static ra_err_t priv_emit_char(ra_reflow_t*          engine,
                                               advance_clamped,
                                               right_limit,
                                               cur->line_has_content)) {
-    if (!priv_newline(engine, cur)) {
+    if (!priv_newline(engine, cur, true)) { /* wrap -> previous line may justify */
       return k_ra_err_no_mem;
     }
   }
@@ -552,7 +654,7 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
                                                 word_w,
                                                 right_limit,
                                                 cur->line_has_content)) {
-      if (!priv_newline(engine, cur)) {
+      if (!priv_newline(engine, cur, true)) { /* wrap -> previous line may justify */
         return k_ra_err_no_mem;
       }
     }
@@ -587,10 +689,13 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
 static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_reflow_token_t* tok)
 {
   if (cur->line_has_content != 0U) {
-    if (!priv_newline(engine, cur)) {
+    if (!priv_newline(engine, cur, false)) {
       return false;
     }
   }
+  /* The block's text alignment travels in the block-start token's reserved byte
+   * (set by the tokenizer from `style="text-align:..."`). */
+  cur->align = tok->reserved;
   /* Record an `id=` anchor (carried in the block-start token's slice) at this
    * block's page + top, for same-chapter `#fragment` jumps. */
   if ((tok->text_len > 0U) && (engine->anchor_count < (uint32_t)k_ra_reflow_max_anchors)) {
@@ -629,7 +734,7 @@ static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_re
 static bool priv_close_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_reflow_token_t* tok)
 {
   if (cur->line_has_content != 0U) {
-    if (!priv_newline(engine, cur)) {
+    if (!priv_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -670,7 +775,7 @@ static bool priv_close_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
 static bool priv_apply_rule(ra_reflow_t* engine, priv_cursor_t* cur)
 {
   if (cur->line_has_content != 0U) {
-    if (!priv_newline(engine, cur)) {
+    if (!priv_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -703,7 +808,7 @@ static bool priv_apply_image_placeholder(ra_reflow_t* engine, priv_cursor_t* cur
                                               advance,
                                               right_limit,
                                               cur->line_has_content)) {
-    if (!priv_newline(engine, cur)) {
+    if (!priv_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -884,7 +989,7 @@ static bool priv_place_image(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
   }
   /* Block-level: drop below the current line, then page-break if needed. */
   if (cur->line_has_content != 0U) {
-    if (!priv_newline(engine, cur)) {
+    if (!priv_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -1052,7 +1157,7 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
     case k_ra_reflow_tok_text:
       return priv_layout_text(engine, cur, font, tok);
     case k_ra_reflow_tok_break:
-      return priv_newline(engine, cur) ? k_ra_ok : k_ra_err_no_mem;
+      return priv_newline(engine, cur, false) ? k_ra_ok : k_ra_err_no_mem;
     case k_ra_reflow_tok_rule:
       return priv_apply_rule(engine, cur) ? k_ra_ok : k_ra_err_no_mem;
     case k_ra_reflow_tok_image:
@@ -1091,8 +1196,10 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
     .indent_px        = 0U,
     .page_first_glyph = 0U,
     .page_first_image = 0U,
+    .line_first_glyph = 0U,
     .line_has_content = 0U,
-    .reserved8        = {0U, 0U, 0U},
+    .align            = (uint8_t)k_ra_reflow_align_left,
+    .reserved8        = {0U, 0U},
   };
 
   for (uint32_t i = 0U; i < engine->token_count; ++i) {

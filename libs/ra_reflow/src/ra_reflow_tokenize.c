@@ -876,6 +876,46 @@ priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* v
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Locate a named attribute's quoted value span within a tag (no copy).
+ *
+ * @details The non-copying core of priv_capture_attr(): returns the value's
+ * offset + length *within @p tag* so callers can either copy it to the pool or
+ * scan it in place (e.g. an inline `style`).
+ *
+ * @param[in]  tag      Raw tag span starting at '<'.
+ * @param[in]  tag_len  Length of @p tag, bytes.
+ * @param[in]  name     Lower-case attribute name to find.
+ * @param[in]  name_len Length of @p name, bytes.
+ * @param[out] out_voff Receives the value offset within @p tag.
+ * @param[out] out_vlen Receives the value length, bytes.
+ * @return true iff a quoted @p name value was found.
+ * @retval true  `*out_voff` / `*out_vlen` describe the value within @p tag.
+ * @retval false Attribute absent or malformed.
+ * @pre `tag`, `name`, `out_voff`, `out_vlen` are non-null.
+ * @post No state mutated.
+ * @note Pure read of @p tag.
+ * @since 0.1.0
+ */
+static bool priv_find_attr(const uint8_t* tag,
+                           size_t         tag_len,
+                           const char*    name,
+                           size_t         name_len,
+                           size_t*        out_voff,
+                           size_t*        out_vlen)
+{
+  if (tag_len < name_len) {
+    return false;
+  }
+  for (size_t i = 0U; (i + name_len) <= tag_len; ++i) {
+    if (priv_attr_name_at(tag, i, name, name_len) &&
+        priv_attr_quoted_value(tag, tag_len, i + name_len, out_voff, out_vlen)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void priv_capture_attr(ra_reflow_t*   engine,
                               const uint8_t* tag,
                               size_t         tag_len,
@@ -884,30 +924,94 @@ static void priv_capture_attr(ra_reflow_t*   engine,
                               uint32_t*      out_off,
                               uint32_t*      out_len)
 {
-  *out_off = 0U;
-  *out_len = 0U;
-  if (tag_len < name_len) {
+  *out_off      = 0U;
+  *out_len      = 0U;
+  size_t vstart = 0U;
+  size_t vlen   = 0U;
+  if (!priv_find_attr(tag, tag_len, name, name_len, &vstart, &vlen)) {
     return;
   }
-  /* Bounded scan for the attribute name (NASA Rule 2: tag_len <= input). */
-  for (size_t i = 0U; (i + name_len) <= tag_len; ++i) {
-    size_t vstart = 0U;
-    size_t vlen   = 0U;
-    if (!priv_attr_name_at(tag, i, name, name_len) ||
-        !priv_attr_quoted_value(tag, tag_len, i + name_len, &vstart, &vlen)) {
+  if ((vlen == 0U) ||
+      ((size_t)engine->text_pool_used + vlen > (size_t)k_ra_reflow_text_pool_bytes)) {
+    return;
+  }
+  const uint32_t off = engine->text_pool_used;
+  memcpy(&engine->text_pool[off], &tag[vstart], vlen);
+  engine->text_pool_used += (uint32_t)vlen;
+  *out_off = off;
+  *out_len = (uint32_t)vlen;
+}
+
+/**
+ * @brief Parse a `text-align` value out of an inline `style` attribute value.
+ *
+ * @details Scans @p style for "text-align", skips to past the ':', and maps the
+ * first value letter: j->justify, c->centre, r->right, anything else->left.
+ * Bounded, case-insensitive, zero-alloc.
+ *
+ * @param[in] style Inline style value bytes (the part inside the quotes).
+ * @param[in] len   Length of @p style, bytes.
+ * @return The parsed alignment, or ::k_ra_reflow_align_left if unset.
+ * @retval k_ra_reflow_align_left No usable `text-align` found.
+ * @pre `style` is non-null and holds @p len bytes.
+ * @post No state mutated.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static ra_reflow_align_t priv_parse_text_align(const uint8_t* style, size_t len)
+{
+  static const char k_key[] = "text-align";
+  const size_t      klen    = sizeof(k_key) - 1U;
+  for (size_t i = 0U; (i + klen) <= len; ++i) {
+    if (!priv_attr_name_at(style, i, k_key, klen)) {
       continue;
     }
-    if ((vlen == 0U) ||
-        ((size_t)engine->text_pool_used + vlen > (size_t)k_ra_reflow_text_pool_bytes)) {
-      return;
+    size_t j = i + klen;
+    while ((j < len) && (style[j] != ':')) {
+      ++j;
     }
-    const uint32_t off = engine->text_pool_used;
-    memcpy(&engine->text_pool[off], &tag[vstart], vlen);
-    engine->text_pool_used += (uint32_t)vlen;
-    *out_off = off;
-    *out_len = (uint32_t)vlen;
-    return;
+    ++j; /* past ':' */
+    while ((j < len) && ra_reflow_tok_is_xml_whitespace((char)style[j])) {
+      ++j;
+    }
+    if (j >= len) {
+      return k_ra_reflow_align_left;
+    }
+    const char value = (char)(style[j] | 0x20U);
+    if (value == 'j') {
+      return k_ra_reflow_align_justify;
+    }
+    if (value == 'c') {
+      return k_ra_reflow_align_center;
+    }
+    if (value == 'r') {
+      return k_ra_reflow_align_right;
+    }
+    return k_ra_reflow_align_left;
   }
+  return k_ra_reflow_align_left;
+}
+
+/**
+ * @brief Resolve a block element's text alignment from its inline `style`.
+ *
+ * @param[in] tag  Raw tag span starting at '<'.
+ * @param[in] span Length of @p tag, bytes.
+ * @return The block's alignment (left when no `style="text-align:..."`).
+ * @retval k_ra_reflow_align_left No alignment declared.
+ * @pre `tag` is non-null.
+ * @post No state mutated.
+ * @note Pure read of @p tag.
+ * @since 0.1.0
+ */
+static ra_reflow_align_t priv_block_align(const uint8_t* tag, size_t span)
+{
+  size_t voff = 0U;
+  size_t vlen = 0U;
+  if (!priv_find_attr(tag, span, "style", sizeof("style") - 1U, &voff, &vlen)) {
+    return k_ra_reflow_align_left;
+  }
+  return priv_parse_text_align(&tag[voff], vlen);
 }
 
 /**
@@ -971,9 +1075,14 @@ static ra_err_t priv_open_attrs(tok_ctx_t*           ctx,
     uint32_t id_off = 0U;
     uint32_t id_len = 0U;
     priv_capture_attr(ctx->engine, tag, span, "id", sizeof("id") - 1U, &id_off, &id_len);
-    return priv_emit(ctx->engine, k_ra_reflow_tok_block_start, kind, ctx->style, id_off, id_len)
-             ? k_ra_ok
-             : k_ra_err_no_mem;
+    if (!priv_emit(ctx->engine, k_ra_reflow_tok_block_start, kind, ctx->style, id_off, id_len)) {
+      return k_ra_err_no_mem;
+    }
+    /* Stash the block's text alignment in the block-start token's reserved byte
+     * (left = 0, so unstyled blocks lay out byte-identically). */
+    const ra_reflow_align_t align                               = priv_block_align(tag, span);
+    ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = (uint8_t)align;
+    return k_ra_ok;
   }
   if (kind == k_ra_reflow_tag_a) {
     uint32_t href_off = 0U;
