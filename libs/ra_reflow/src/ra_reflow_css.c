@@ -55,6 +55,18 @@ typedef enum : uint8_t {
 } priv_css_hex_t;
 
 /**
+ * @enum priv_css_fs_t
+ * @brief `font-size` parsing constants (decimal + unit scaling).
+ */
+typedef enum : uint16_t {
+  k_priv_fs_dec  = 10U,   /**< Decimal base.                          */
+  k_priv_fs_pct1 = 100U,  /**< Hundredths scale; 1em in percent.      */
+  k_priv_fs_frac = 2U,    /**< Fractional digits kept.                */
+  k_priv_fs_max  = 9999U, /**< Clamp for a parsed font-size number.   */
+  k_priv_fs_ulen = 2U,    /**< Length of the "px" / "em" unit suffix. */
+} priv_css_fs_t;
+
+/**
  * @enum priv_css_color_t
  * @brief Common named CSS colours + the "not a colour" sentinel.
  */
@@ -229,44 +241,147 @@ static uint32_t priv_parse_color(const char* s, size_t len)
   return (uint32_t)k_priv_col_invalid;
 }
 
+/** @brief Scan a decimal number into hundredths (e.g. "1.2" -> 120); advance @p i. */
+static uint32_t priv_scan_hundredths(const char* s, size_t len, size_t* i, bool* any)
+{
+  uint32_t hund = 0U;
+  /* Bounded: integer digits, i advances by 1 each step, capped by len. */
+  while ((*i < len) && (s[*i] >= '0') && (s[*i] <= '9')) {
+    hund = (hund * (uint32_t)k_priv_fs_dec) + (uint32_t)(s[*i] - '0');
+    *any = true;
+    ++(*i);
+  }
+  hund *= (uint32_t)k_priv_fs_pct1; /* integer part -> hundredths */
+  if ((*i < len) && (s[*i] == '.')) {
+    ++(*i);
+    uint32_t place = (uint32_t)k_priv_fs_pct1 / (uint32_t)k_priv_fs_dec; /* tenths */
+    size_t   fd    = 0U;
+    /* Bounded: at most k_priv_fs_frac fractional digits. */
+    while ((*i < len) && (s[*i] >= '0') && (s[*i] <= '9') && (fd < (size_t)k_priv_fs_frac)) {
+      hund += (uint32_t)(s[*i] - '0') * place;
+      place /= (uint32_t)k_priv_fs_dec;
+      *any = true;
+      ++fd;
+      ++(*i);
+    }
+    /* Bounded: skip any remaining fractional digits, i capped by len. */
+    while ((*i < len) && (s[*i] >= '0') && (s[*i] <= '9')) {
+      ++(*i);
+    }
+  }
+  return hund;
+}
+
+/** @brief Clamp a hundredths value to a whole number in [0, k_priv_fs_max]. */
+static uint16_t priv_fs_whole(uint32_t hund)
+{
+  const uint32_t whole = hund / (uint32_t)k_priv_fs_pct1;
+  return (uint16_t)((whole > (uint32_t)k_priv_fs_max) ? (uint32_t)k_priv_fs_max : whole);
+}
+
+/** @brief Parse `Npx` / `N%` / `Nem` (N may be fractional) into value + unit. */
+static bool priv_parse_fontsize(const char* s, size_t len, uint16_t* out_val, uint8_t* out_unit)
+{
+  size_t   i    = 0U;
+  bool     any  = false;
+  uint32_t hund = priv_scan_hundredths(s, len, &i, &any);
+  if (!any) {
+    return false;
+  }
+  const size_t rem = len - i;
+  if ((rem == (size_t)k_priv_fs_ulen) && priv_ci_eq(&s[i], rem, "px")) {
+    *out_val  = priv_fs_whole(hund);
+    *out_unit = (uint8_t)k_ra_css_font_px;
+    return true;
+  }
+  if ((rem == 1U) && (s[i] == '%')) {
+    *out_val  = priv_fs_whole(hund);
+    *out_unit = (uint8_t)k_ra_css_font_pct;
+    return true;
+  }
+  if ((rem == (size_t)k_priv_fs_ulen) && priv_ci_eq(&s[i], rem, "em")) {
+    /* 1em = 100%; `hund` is value*100, which is already the percent. */
+    *out_val  = (uint16_t)((hund > (uint32_t)k_priv_fs_max) ? (uint32_t)k_priv_fs_max : hund);
+    *out_unit = (uint8_t)k_ra_css_font_pct;
+    return true;
+  }
+  return false;
+}
+
 /** @brief Apply one trimmed `prop:value` pair to @p out (sets a `set` bit). */
-static void
-priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra_css_style_t* out)
+/** @brief Set / clear @p stylebit in @p out, marking @p setbit present. */
+static void priv_set_emphasis(ra_css_style_t* out, uint8_t setbit, uint8_t stylebit, bool on)
+{
+  out->set   = (uint8_t)(out->set | setbit);
+  out->style = (uint8_t)(on ? (out->style | stylebit) : (out->style & (uint8_t)~stylebit));
+}
+
+/** @brief Apply a boolean-emphasis property (font-weight/style/decoration); false if other. */
+static bool priv_apply_emphasis(const char*     prop,
+                                size_t          plen,
+                                const char*     val,
+                                size_t          vlen,
+                                ra_css_style_t* out)
 {
   if (priv_ci_eq(prop, plen, "font-weight")) {
-    out->set      = (uint8_t)(out->set | (uint8_t)k_ra_css_set_bold);
     const bool on = priv_ci_eq(val, vlen, "bold") || priv_ci_eq(val, vlen, "bolder") ||
                     priv_ci_eq(val, vlen, "600") || priv_ci_eq(val, vlen, "700") ||
                     priv_ci_eq(val, vlen, "800") || priv_ci_eq(val, vlen, "900");
-    out->style    = (uint8_t)(on ? (out->style | (uint8_t)k_ra_reflow_style_bold)
-                                 : (out->style & (uint8_t)~(uint8_t)k_ra_reflow_style_bold));
-  } else if (priv_ci_eq(prop, plen, "font-style")) {
-    out->set      = (uint8_t)(out->set | (uint8_t)k_ra_css_set_italic);
+    priv_set_emphasis(out, (uint8_t)k_ra_css_set_bold, (uint8_t)k_ra_reflow_style_bold, on);
+    return true;
+  }
+  if (priv_ci_eq(prop, plen, "font-style")) {
     const bool on = priv_ci_eq(val, vlen, "italic") || priv_ci_eq(val, vlen, "oblique");
-    out->style    = (uint8_t)(on ? (out->style | (uint8_t)k_ra_reflow_style_italic)
-                                 : (out->style & (uint8_t)~(uint8_t)k_ra_reflow_style_italic));
-  } else if (priv_ci_eq(prop, plen, "text-decoration") ||
-             priv_ci_eq(prop, plen, "text-decoration-line")) {
-    out->set      = (uint8_t)(out->set | (uint8_t)k_ra_css_set_underline);
+    priv_set_emphasis(out, (uint8_t)k_ra_css_set_italic, (uint8_t)k_ra_reflow_style_italic, on);
+    return true;
+  }
+  if (priv_ci_eq(prop, plen, "text-decoration") || priv_ci_eq(prop, plen, "text-decoration-line")) {
     const bool on = priv_ci_contains(val, vlen, "underline");
-    out->style    = (uint8_t)(on ? (out->style | (uint8_t)k_ra_reflow_style_underline)
-                                 : (out->style & (uint8_t)~(uint8_t)k_ra_reflow_style_underline));
-  } else if (priv_ci_eq(prop, plen, "text-align")) {
-    out->set = (uint8_t)(out->set | (uint8_t)k_ra_css_set_align);
-    if (priv_ci_eq(val, vlen, "right")) {
-      out->align = (uint8_t)k_ra_reflow_align_right;
-    } else if (priv_ci_eq(val, vlen, "center")) {
-      out->align = (uint8_t)k_ra_reflow_align_center;
-    } else if (priv_ci_eq(val, vlen, "justify")) {
-      out->align = (uint8_t)k_ra_reflow_align_justify;
-    } else {
-      out->align = (uint8_t)k_ra_reflow_align_left;
-    }
+    priv_set_emphasis(out,
+                      (uint8_t)k_ra_css_set_underline,
+                      (uint8_t)k_ra_reflow_style_underline,
+                      on);
+    return true;
+  }
+  return false;
+}
+
+/** @brief Apply a parsed `text-align` value to @p out. */
+static void priv_apply_align(const char* val, size_t vlen, ra_css_style_t* out)
+{
+  out->set = (uint8_t)(out->set | (uint8_t)k_ra_css_set_align);
+  if (priv_ci_eq(val, vlen, "right")) {
+    out->align = (uint8_t)k_ra_reflow_align_right;
+  } else if (priv_ci_eq(val, vlen, "center")) {
+    out->align = (uint8_t)k_ra_reflow_align_center;
+  } else if (priv_ci_eq(val, vlen, "justify")) {
+    out->align = (uint8_t)k_ra_reflow_align_justify;
+  } else {
+    out->align = (uint8_t)k_ra_reflow_align_left;
+  }
+}
+
+static void
+priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra_css_style_t* out)
+{
+  if (priv_apply_emphasis(prop, plen, val, vlen, out)) {
+    return;
+  }
+  if (priv_ci_eq(prop, plen, "text-align")) {
+    priv_apply_align(val, vlen, out);
   } else if (priv_ci_eq(prop, plen, "color")) {
     const uint32_t rgb = priv_parse_color(val, vlen);
     if (rgb != (uint32_t)k_priv_col_invalid) {
       out->set   = (uint8_t)(out->set | (uint8_t)k_ra_css_set_color);
       out->color = rgb;
+    }
+  } else if (priv_ci_eq(prop, plen, "font-size")) {
+    uint16_t fv = 0U;
+    uint8_t  fu = 0U;
+    if (priv_parse_fontsize(val, vlen, &fv, &fu)) {
+      out->set       = (uint8_t)(out->set | (uint8_t)k_ra_css_set_fontsize);
+      out->font_val  = fv;
+      out->font_unit = fu;
     }
   } else {
     /* Unknown property -> ignore (no set bit). */
@@ -628,6 +743,16 @@ ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
   if (cwin != nullptr) {
     out.set   = (uint8_t)(out.set | (uint8_t)k_ra_css_set_color);
     out.color = cwin->color;
+  }
+  /* font-size: resolved from rules + inline only; inheritance is applied by the
+   * caller against the parent's resolved pixel size (a `%` cannot be resolved in
+   * this pure pass), so the caller does not seed `inherited` with a font-size. */
+  const ra_css_style_t* fwin =
+    priv_resolve((uint8_t)k_ra_css_set_fontsize, &inherited, sheet, matched, &inline_decl);
+  if (fwin != nullptr) {
+    out.set       = (uint8_t)(out.set | (uint8_t)k_ra_css_set_fontsize);
+    out.font_val  = fwin->font_val;
+    out.font_unit = fwin->font_unit;
   }
   return out;
 }

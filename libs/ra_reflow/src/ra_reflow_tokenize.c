@@ -80,10 +80,12 @@ typedef struct {
   uint8_t      style;                         /**< Current inline-style bits.  */
   uint8_t      active_link;                   /**< 1-based link id (0 = none).  */
   uint32_t     color;                         /**< Current CSS colour / inherit.*/
+  uint16_t     css_font_px;                   /**< Inherited CSS font px (0=none).*/
   uint8_t      stack_tag[k_priv_max_depth];   /**< Open-element tag stack.      */
   uint8_t      stack_style[k_priv_max_depth]; /**< Style to restore on pop.    */
   uint8_t      stack_link[k_priv_max_depth];  /**< Link id to restore on pop.  */
   uint32_t     stack_color[k_priv_max_depth]; /**< Colour to restore on pop.   */
+  uint16_t     stack_font[k_priv_max_depth];  /**< CSS font px to restore on pop.*/
   uint32_t     sp;                            /**< Stack depth.                */
   bool         saw_element;                   /**< At least one element seen.  */
 } tok_ctx_t;
@@ -413,6 +415,8 @@ static bool priv_emit(ra_reflow_t*           engine,
   tok->text_off          = off;
   tok->text_len          = len;
   tok->color             = (uint32_t)k_ra_reflow_color_inherit;
+  tok->css_font_px       = 0U;
+  tok->reserved16        = 0U;
   engine->token_count++;
   return true;
 }
@@ -763,6 +767,7 @@ static ra_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
   ctx->style                     = ctx->stack_style[ctx->sp];
   ctx->active_link               = ctx->stack_link[ctx->sp];
   ctx->color                     = ctx->stack_color[ctx->sp];
+  ctx->css_font_px               = ctx->stack_font[ctx->sp];
   if (priv_is_block(tag) &&
       !priv_emit(ctx->engine, k_ra_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
     return k_ra_err_no_mem;
@@ -1083,6 +1088,8 @@ static uint8_t priv_intern_link(ra_reflow_t* engine, uint32_t href_off, uint32_t
  * @param[in]     span Length of @p tag, bytes.
  * @param[in]     kind Classified tag.
  * @param[in]     block True iff @p kind is a block element.
+ * @param[in]     comp Cascaded style (supplies the block alignment).
+ * @param[in]     css_font_px Block CSS font px to stamp (0 = UA default).
  * @return k_ra_ok, or k_ra_err_no_mem on a token-pool overflow.
  * @retval k_ra_err_no_mem Block-start token pool full.
  * @pre `ctx` and `tag` are non-null.
@@ -1097,7 +1104,8 @@ static ra_err_t priv_open_attrs(tok_ctx_t*            ctx,
                                 size_t                span,
                                 ra_reflow_html_tag_t  kind,
                                 bool                  block,
-                                const ra_css_style_t* comp)
+                                const ra_css_style_t* comp,
+                                uint16_t              css_font_px)
 {
   if (block) {
     uint32_t id_off = 0U;
@@ -1106,12 +1114,14 @@ static ra_err_t priv_open_attrs(tok_ctx_t*            ctx,
     if (!priv_emit(ctx->engine, k_ra_reflow_tok_block_start, kind, ctx->style, id_off, id_len)) {
       return k_ra_err_no_mem;
     }
-    /* Stash the block's cascaded text alignment in the block-start token's
-     * reserved byte (left = 0, so unstyled blocks lay out byte-identically). */
-    const uint8_t align = ((comp->set & (uint8_t)k_ra_css_set_align) != 0U)
-                            ? comp->align
-                            : (uint8_t)k_ra_reflow_align_left;
-    ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = align;
+    /* Stash the block's cascaded alignment + CSS font px on the block-start token
+     * (left + 0 = unstyled defaults, so unstyled blocks lay out byte-identically). */
+    const uint8_t      align = ((comp->set & (uint8_t)k_ra_css_set_align) != 0U)
+                                 ? comp->align
+                                 : (uint8_t)k_ra_reflow_align_left;
+    ra_reflow_token_t* bst   = &ctx->engine->tokens[ctx->engine->token_count - 1U];
+    bst->reserved            = align;
+    bst->css_font_px         = css_font_px;
     return k_ra_ok;
   }
   if (kind == k_ra_reflow_tag_a) {
@@ -1204,14 +1214,50 @@ static bool priv_handle_void(tok_ctx_t*           ctx,
  * @since 0.1.0
  */
 /**
+ * @brief Resolve an element's effective CSS font px from the cascade + inherited.
+ *
+ * @details Returns the inherited size (0 = none -> UA default) when no font-size
+ * is declared, else resolves the declared value: an absolute `px`, or a `%`/`em`
+ * of the parent size (the inherited px, or the body size when no ancestor set
+ * one). The result clamps to [k_ra_reflow_min_font_px, k_ra_reflow_max_font_px].
+ *
+ * @param[in] ctx  Tokenizer context (carries the inherited font px + body size).
+ * @param[in] comp The element's cascaded style.
+ * @return The element's effective CSS font px, or 0 for "use the UA default".
+ * @pre `ctx` and `comp` are non-null.
+ * @pre `ctx->engine->font_px` is the body font size.
+ * @post No state mutated.
+ * @note Pure aside from reading @p ctx.
+ * @since 0.1.0
+ */
+static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra_css_style_t* comp)
+{
+  if ((comp->set & (uint8_t)k_ra_css_set_fontsize) == 0U) {
+    return ctx->css_font_px; /* inherit (0 = none -> UA default) */
+  }
+  const uint16_t parent = (ctx->css_font_px != 0U) ? ctx->css_font_px : ctx->engine->font_px;
+  uint32_t px = ((ra_css_font_unit_t)comp->font_unit == k_ra_css_font_pct)
+                  ? (((uint32_t)parent * (uint32_t)comp->font_val) / (uint32_t)k_ra_reflow_pct_full)
+                  : (uint32_t)comp->font_val;
+  if (px < (uint32_t)k_ra_reflow_min_font_px) {
+    px = (uint32_t)k_ra_reflow_min_font_px;
+  }
+  if (px > (uint32_t)k_ra_reflow_max_font_px) {
+    px = (uint32_t)k_ra_reflow_max_font_px;
+  }
+  return (uint16_t)px;
+}
+
+/**
  * @brief Run the content-CSS cascade for a just-pushed element and apply it.
  *
  * @details Builds the element's CSS identity + inherited run style + colour,
  * cascades author `<style>` rules + inline style over it (#111 / #140), emits
- * the block-start (via priv_open_attrs) carrying the cascaded alignment, and
- * updates the context run style + colour for descendant text. Unstyled content
- * lays out byte-identically to the pre-CSS engine. Factored out of
- * priv_handle_start to keep each function within the NASA Rule 4 size budget.
+ * the block-start (via priv_open_attrs) carrying the cascaded alignment + font
+ * size, and updates the context run style + colour + font px for descendant
+ * content. Unstyled content lays out byte-identically to the pre-CSS engine.
+ * Factored out of priv_handle_start to keep each function within the NASA Rule 4
+ * size budget.
  *
  * @param[in,out] ctx    Tokenizer context (element already pushed).
  * @param[in]     tagbuf Raw tag span starting at '<'.
@@ -1242,14 +1288,16 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
   }
   const ra_css_style_t inl  = priv_css_inline(tagbuf, span);
   const ra_css_style_t comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
-  const ra_err_t       aerr = priv_open_attrs(ctx, tagbuf, span, tag, block, &comp);
+  const uint16_t       fpx  = priv_css_font_px(ctx, &comp);
+  const ra_err_t       aerr = priv_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx);
   if (aerr != k_ra_ok) {
     return aerr;
   }
-  ctx->style = (uint8_t)(comp.style & (uint8_t)k_priv_style_mask);
-  ctx->color = ((comp.set & (uint8_t)k_ra_css_set_color) != 0U)
-                 ? comp.color
-                 : (uint32_t)k_ra_reflow_color_inherit;
+  ctx->style       = (uint8_t)(comp.style & (uint8_t)k_priv_style_mask);
+  ctx->color       = ((comp.set & (uint8_t)k_ra_css_set_color) != 0U)
+                       ? comp.color
+                       : (uint32_t)k_ra_reflow_color_inherit;
+  ctx->css_font_px = fpx;
   return k_ra_ok;
 }
 
@@ -1285,6 +1333,7 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   ctx->stack_style[ctx->sp] = ctx->style;
   ctx->stack_link[ctx->sp]  = ctx->active_link;
   ctx->stack_color[ctx->sp] = ctx->color;
+  ctx->stack_font[ctx->sp]  = ctx->css_font_px;
   ctx->sp++;
   const size_t span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
   return priv_open_styled(ctx, &buf[tag_lt], span, tag, block);
