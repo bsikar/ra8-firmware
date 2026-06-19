@@ -71,6 +71,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_reflow_css.h"   /* ra_css_sheet_t for the content-CSS cascade (#111) */
 #include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch */
 
 /* ===========================================================================
@@ -497,6 +498,10 @@ typedef struct {
   ra_reflow_anchor_t anchors[k_ra_reflow_max_anchors]; /**< id= anchor positions.   */
   // cppcheck-suppress unusedStructMember
   uint32_t anchor_count; /**< Anchor positions used.               */
+
+  /* --- content CSS cascade (#111) ------------------------------------ */
+  // cppcheck-suppress unusedStructMember
+  ra_css_sheet_t css; /**< Parsed `<style>` rules for the chapter. */
 
   /* --- lifecycle ------------------------------------------------------ */
   // cppcheck-suppress unusedStructMember

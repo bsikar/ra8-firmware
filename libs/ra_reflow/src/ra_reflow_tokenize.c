@@ -67,6 +67,8 @@ typedef enum : uint32_t {
   k_priv_base_dec      = 10U,       /**< Decimal numeric-entity base.            */
   k_priv_base_hex      = 16U,       /**< Hexadecimal numeric-entity base.        */
   k_priv_hex_offset    = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
+  k_priv_style_mask    = ((uint32_t)k_ra_reflow_style_bold | (uint32_t)k_ra_reflow_style_italic |
+                          (uint32_t)k_ra_reflow_style_underline), /**< Run-style bits. */
 } priv_tok_consts_t;
 
 /**
@@ -640,6 +642,36 @@ static size_t priv_skip_past(const uint8_t* buf, size_t i, size_t len, const cha
   return len;
 }
 
+/**
+ * @brief Return the index of the first occurrence of `lit` (its start), or len.
+ *
+ * @details Like ::priv_skip_past but returns the literal's START offset, so the
+ * caller can both bound the preceding content and resume past the literal.
+ *
+ * @param[in] buf Source buffer.
+ * @param[in] i   Offset to search from.
+ * @param[in] len Total buffer length.
+ * @param[in] lit NUL-terminated literal to find.
+ * @return Start index of `lit`, or `len` if absent.
+ * @retval len The literal does not occur in `[i, len)`.
+ * @pre `buf` and `lit` are non-null.
+ * @pre `i <= len`.
+ * @post No state is modified (pure).
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static size_t priv_find_lit(const uint8_t* buf, size_t i, size_t len, const char* lit)
+{
+  const size_t n = strlen(lit);
+  while ((i + n) <= len) {
+    if (memcmp(&buf[i], lit, n) == 0) {
+      return i;
+    }
+    ++i;
+  }
+  return len;
+}
+
 /* ===========================================================================
  * Markup handlers (advance *pi)
  * ===========================================================================
@@ -951,75 +983,58 @@ static void priv_capture_attr(ra_reflow_t*   engine,
 }
 
 /**
- * @brief Parse a `text-align` value out of an inline `style` attribute value.
+ * @brief Build a CSS element identity from a just-opened tag's attributes.
  *
- * @details Scans @p style for "text-align", skips to past the ':', and maps the
- * first value letter: j->justify, c->centre, r->right, anything else->left.
- * Bounded, case-insensitive, zero-alloc.
+ * @details Locates the `id` and `class` attribute value spans in place (no
+ * copy) so the cascade can match `#id` / `.class` selectors; the returned
+ * pointers alias @p tag. A missing attribute leaves its pointer NULL.
  *
- * @param[in] style Inline style value bytes (the part inside the quotes).
- * @param[in] len   Length of @p style, bytes.
- * @return The parsed alignment, or ::k_ra_reflow_align_left if unset.
- * @retval k_ra_reflow_align_left No usable `text-align` found.
- * @pre `style` is non-null and holds @p len bytes.
- * @post No state mutated.
- * @note Pure function.
+ * @param[in] kind Classified tag.
+ * @param[in] tag  Raw tag span starting at '<'.
+ * @param[in] span Length of @p tag, bytes.
+ * @return The element identity for ra_css_cascade().
+ * @pre `tag` is non-null and holds @p span bytes.
+ * @post No state mutated; returned pointers alias @p tag.
+ * @note Pure read of @p tag.
  * @since 0.1.0
  */
-static ra_reflow_align_t priv_parse_text_align(const uint8_t* style, size_t len)
+static ra_css_element_t priv_css_element(ra_reflow_html_tag_t kind, const uint8_t* tag, size_t span)
 {
-  static const char k_key[] = "text-align";
-  const size_t      klen    = sizeof(k_key) - 1U;
-  for (size_t i = 0U; (i + klen) <= len; ++i) {
-    if (!priv_attr_name_at(style, i, k_key, klen)) {
-      continue;
-    }
-    size_t j = i + klen;
-    while ((j < len) && (style[j] != ':')) {
-      ++j;
-    }
-    ++j; /* past ':' */
-    while ((j < len) && ra_reflow_tok_is_xml_whitespace((char)style[j])) {
-      ++j;
-    }
-    if (j >= len) {
-      return k_ra_reflow_align_left;
-    }
-    const char value = (char)(style[j] | 0x20U);
-    if (value == 'j') {
-      return k_ra_reflow_align_justify;
-    }
-    if (value == 'c') {
-      return k_ra_reflow_align_center;
-    }
-    if (value == 'r') {
-      return k_ra_reflow_align_right;
-    }
-    return k_ra_reflow_align_left;
+  ra_css_element_t el = {};
+  el.tag              = (uint8_t)kind;
+  size_t off          = 0U;
+  size_t len          = 0U;
+  if (priv_find_attr(tag, span, "id", sizeof("id") - 1U, &off, &len)) {
+    el.id     = (const char*)&tag[off];
+    el.id_len = (uint16_t)len;
   }
-  return k_ra_reflow_align_left;
+  if (priv_find_attr(tag, span, "class", sizeof("class") - 1U, &off, &len)) {
+    el.class_str = (const char*)&tag[off];
+    el.class_len = (uint16_t)len;
+  }
+  return el;
 }
 
 /**
- * @brief Resolve a block element's text alignment from its inline `style`.
+ * @brief Parse a just-opened tag's inline `style="..."` into a CSS declaration.
  *
  * @param[in] tag  Raw tag span starting at '<'.
  * @param[in] span Length of @p tag, bytes.
- * @return The block's alignment (left when no `style="text-align:..."`).
- * @retval k_ra_reflow_align_left No alignment declared.
- * @pre `tag` is non-null.
+ * @return The inline declaration (empty `set` if no `style` attribute).
+ * @pre `tag` is non-null and holds @p span bytes.
  * @post No state mutated.
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
-static ra_reflow_align_t priv_block_align(const uint8_t* tag, size_t span)
+static ra_css_style_t priv_css_inline(const uint8_t* tag, size_t span)
 {
-  size_t voff = 0U;
-  size_t vlen = 0U;
-  if (!priv_find_attr(tag, span, "style", sizeof("style") - 1U, &voff, &vlen)) {
-    return k_ra_reflow_align_left;
+  ra_css_style_t inl = {};
+  size_t         off = 0U;
+  size_t         len = 0U;
+  if (priv_find_attr(tag, span, "style", sizeof("style") - 1U, &off, &len)) {
+    (void)ra_css_parse_inline((const char*)&tag[off], (uint32_t)len, &inl);
   }
-  return priv_parse_text_align(&tag[voff], vlen);
+  return inl;
 }
 
 /**
@@ -1073,11 +1088,12 @@ static uint8_t priv_intern_link(ra_reflow_t* engine, uint32_t href_off, uint32_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t priv_open_attrs(tok_ctx_t*           ctx,
-                                const uint8_t*       tag,
-                                size_t               span,
-                                ra_reflow_html_tag_t kind,
-                                bool                 block)
+static ra_err_t priv_open_attrs(tok_ctx_t*            ctx,
+                                const uint8_t*        tag,
+                                size_t                span,
+                                ra_reflow_html_tag_t  kind,
+                                bool                  block,
+                                const ra_css_style_t* comp)
 {
   if (block) {
     uint32_t id_off = 0U;
@@ -1086,10 +1102,12 @@ static ra_err_t priv_open_attrs(tok_ctx_t*           ctx,
     if (!priv_emit(ctx->engine, k_ra_reflow_tok_block_start, kind, ctx->style, id_off, id_len)) {
       return k_ra_err_no_mem;
     }
-    /* Stash the block's text alignment in the block-start token's reserved byte
-     * (left = 0, so unstyled blocks lay out byte-identically). */
-    const ra_reflow_align_t align                               = priv_block_align(tag, span);
-    ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = (uint8_t)align;
+    /* Stash the block's cascaded text alignment in the block-start token's
+     * reserved byte (left = 0, so unstyled blocks lay out byte-identically). */
+    const uint8_t align = ((comp->set & (uint8_t)k_ra_css_set_align) != 0U)
+                            ? comp->align
+                            : (uint8_t)k_ra_reflow_align_left;
+    ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = align;
     return k_ra_ok;
   }
   if (kind == k_ra_reflow_tag_a) {
@@ -1213,13 +1231,96 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   ctx->stack_style[ctx->sp] = ctx->style;
   ctx->stack_link[ctx->sp]  = ctx->active_link;
   ctx->sp++;
-  const size_t   span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
-  const ra_err_t aerr = priv_open_attrs(ctx, &buf[tag_lt], span, tag, block);
+  const size_t span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
+
+  /* Content-CSS cascade (#111): fold the parent run style + this tag's intrinsic
+   * emphasis (the inherited base), then author `<style>` rules + inline style,
+   * into the element's computed run style + block alignment. The result feeds
+   * the existing per-run style bitmask and per-block alignment byte, so unstyled
+   * content lays out byte-identically to the pre-CSS engine. */
+  const uint8_t          base = (uint8_t)(ctx->style | priv_style_for(tag));
+  const ra_css_element_t el   = priv_css_element(tag, &buf[tag_lt], span);
+  const ra_css_style_t   inh  = {.set = (uint8_t)k_priv_style_mask, .style = base};
+  const ra_css_style_t   inl  = priv_css_inline(&buf[tag_lt], span);
+  const ra_css_style_t   comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
+
+  const ra_err_t aerr = priv_open_attrs(ctx, &buf[tag_lt], span, tag, block, &comp);
   if (aerr != k_ra_ok) {
     return aerr;
   }
-  ctx->style = (uint8_t)(ctx->style | priv_style_for(tag));
+  ctx->style = (uint8_t)(comp.style & (uint8_t)k_priv_style_mask);
   return k_ra_ok;
+}
+
+/**
+ * @brief True iff `<name` starts at `buf[i]` and is followed by a tag delimiter.
+ *
+ * @details Distinguishes `<style ...>` / `<script>` from look-alikes such as a
+ * hypothetical `<styled>` by requiring `>`, `/`, whitespace, or end-of-buffer
+ * after the name.
+ *
+ * @param[in] buf  Source buffer.
+ * @param[in] i    Offset of the leading '<'.
+ * @param[in] len  Total buffer length.
+ * @param[in] name Literal element open including '<' (e.g. "<style").
+ * @return true iff the element name matches with a following delimiter.
+ * @retval false No match, or a longer name continues past @p name.
+ * @pre `buf` and `name` are non-null.
+ * @post No state is modified (pure).
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static bool priv_tag_is(const uint8_t* buf, size_t i, size_t len, const char* name)
+{
+  if (!priv_starts_with(buf, i, len, name)) {
+    return false;
+  }
+  const size_t n = strlen(name);
+  if ((i + n) >= len) {
+    return true;
+  }
+  const char c = (char)buf[i + n];
+  return (c == '>') || (c == '/') || ra_reflow_tok_is_xml_whitespace(c);
+}
+
+/**
+ * @brief Consume a raw-text element (`<style>` / `<script>`) without emitting.
+ *
+ * @details Per HTML raw-text rules the content runs verbatim (no nested
+ * elements) to the matching lowercase close tag. `<style>` content is parsed
+ * into the engine stylesheet (#111); `<script>` content is discarded. A missing
+ * close tag consumes to end-of-buffer. Lowercase close literals match valid
+ * XHTML (XML is case-sensitive and requires lowercase element names).
+ *
+ * @param[in,out] ctx       Tokenizer context (engine stylesheet).
+ * @param[in]     buf       Source buffer.
+ * @param[in,out] pi        Cursor at '<'; advanced past the close tag.
+ * @param[in]     len       Total buffer length.
+ * @param[in]     close_lit Lowercase close tag literal (e.g. "</style>").
+ * @param[in]     is_style  True to parse the content as CSS, false to discard.
+ * @pre `ctx`, `buf`, `pi`, `close_lit` are non-null.
+ * @pre `buf[*pi] == '<'`.
+ * @post `*pi` advances past the element (or to `len`).
+ * @post For `<style>` any parsed rules are appended to `ctx->engine->css`.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_handle_raw_text(tok_ctx_t*     ctx,
+                                 const uint8_t* buf,
+                                 size_t*        pi,
+                                 size_t         len,
+                                 const char*    close_lit,
+                                 bool           is_style)
+{
+  ctx->saw_element      = true;
+  const size_t open_end = priv_skip_past(buf, *pi, len, ">");
+  const size_t close_at = priv_find_lit(buf, open_end, len, close_lit);
+  if (is_style && (close_at > open_end)) {
+    (void)ra_css_parse(&ctx->engine->css,
+                       (const char*)&buf[open_end],
+                       (uint32_t)(close_at - open_end));
+  }
+  *pi = (close_at < len) ? (close_at + strlen(close_lit)) : len;
 }
 
 /**
@@ -1256,6 +1357,14 @@ static ra_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, s
   }
   if (priv_starts_with(buf, *pi, len, "<!")) {
     *pi = priv_skip_past(buf, *pi + 2U, len, ">");
+    return k_ra_ok;
+  }
+  if (priv_tag_is(buf, *pi, len, "<style")) {
+    priv_handle_raw_text(ctx, buf, pi, len, "</style>", true);
+    return k_ra_ok;
+  }
+  if (priv_tag_is(buf, *pi, len, "<script")) {
+    priv_handle_raw_text(ctx, buf, pi, len, "</script>", false);
     return k_ra_ok;
   }
   if (((*pi + 1U) < len) && (buf[*pi + 1U] == '/')) {
@@ -1323,6 +1432,8 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
   if (xhtml_len == 0U) {
     return k_ra_err_invalid_size;
   }
+
+  (void)ra_css_sheet_reset(&engine->css); /* fresh CSS rules per chapter (#111) */
 
   tok_ctx_t ctx = {};
   ctx.engine    = engine;
