@@ -172,9 +172,15 @@ macro(ra_add_app)
     # ra_stbtt_alloc.c. Wire that automatically when an app pulls in ra_reflow,
     # mirroring tests/CMakeLists.txt so app + host-test builds stay in step.
     set(_ra_stb_impl "")
+    set(_ra_stb_img_impl "")
     if("ra_reflow" IN_LIST _RA_APP_LIBS)
         set(_ra_stb_impl ${RA_REPO_ROOT}/libs/third_party/stb/stb_truetype_impl.c)
-        list(APPEND _ra_lib_extra ${_ra_stb_impl})
+        # ra_reflow also decodes raster <img> / cover art through the vendored
+        # stb_image, whose allocator is redirected to the heap-free bump arena in
+        # ra_img_arena.c. That single-TU build (stb_image_impl.c) is self-contained
+        # (the STBI_* macros are defined inside it), so it needs no -include here.
+        set(_ra_stb_img_impl ${RA_REPO_ROOT}/libs/third_party/stb/stb_image_impl.c)
+        list(APPEND _ra_lib_extra ${_ra_stb_impl} ${_ra_stb_img_impl})
         list(APPEND _ra_lib_inc
             ${RA_REPO_ROOT}/libs/third_party/stb
             ${RA_REPO_ROOT}/libs/ra_reflow/src)
@@ -205,6 +211,13 @@ macro(ra_add_app)
             "-DSTBTT_free(x,u)=ra_stbtt_free(x)")
         # stb_truetype pulls in sqrt/floor/ceil from the math library.
         target_link_libraries(${_ra_elf} PRIVATE m)
+    endif()
+
+    # Same treatment for the stb_image single-TU build: a vendored TU that
+    # cannot satisfy the first-party -Werror set, so warnings are disabled.
+    # The STBI_* allocator macros are defined inside stb_image_impl.c itself.
+    if(_ra_stb_img_impl)
+        set_property(SOURCE ${_ra_stb_img_impl} APPEND PROPERTY COMPILE_OPTIONS -w)
     endif()
 
     ra_target_enable_project_warnings(${_ra_elf} STACK_USAGE_BYTES ${_RA_APP_STACK_BYTES})

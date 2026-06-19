@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "arnopro_latin1.h"
+#include "figure_fixture.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_box.h"
 #include "ra_cgc.h"
@@ -49,6 +50,7 @@
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
 #include "ra_reflow.h"
+#include "ra_reflow_image.h"
 #include "ra_sdfont.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
@@ -261,6 +263,7 @@ static const char* const k_er_body_lines[] = {
  */
 static const char k_er_chapter_xhtml[] =
   "<html><body><h1>The Time Machine</h1>"
+  "<img src=\"fig.png\"/>"
   "<p>The Time Traveller (for so it will be convenient to speak of him) was "
   "expounding a recondite matter to us. His pale grey eyes shone and twinkled, "
   "and his usually pale face was flushed and animated.</p>"
@@ -275,12 +278,13 @@ static const char k_er_chapter_xhtml[] =
  * @brief SD-font load + ra_reflow body-render tunables (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_er_font_cap    = 512U * 1024U, /**< Max font read off the card (bytes).  */
-  k_er_font_min    = 16U,          /**< Smallest plausible font blob (bytes).*/
-  k_er_reflow_px   = 22U,          /**< Body type size (pixels).             */
-  k_er_spi_chan    = 0U,           /**< Pmod2 / J25 = SCI0 Simple-SPI.       */
-  k_er_reflow_ink  = 0xFF101010U,  /**< Body text colour (near-black ARGB).  */
-  k_er_reflow_link = 0xFF2A52BEU,  /**< Anchor colour (cerulean ARGB).       */
+  k_er_font_cap    = 512U * 1024U,       /**< Max font read off the card (bytes).  */
+  k_er_font_min    = 16U,                /**< Smallest plausible font blob (bytes).*/
+  k_er_reflow_px   = 22U,                /**< Body type size (pixels).             */
+  k_er_spi_chan    = 0U,                 /**< Pmod2 / J25 = SCI0 Simple-SPI.       */
+  k_er_reflow_ink  = 0xFF101010U,        /**< Body text colour (near-black ARGB).  */
+  k_er_reflow_link = 0xFF2A52BEU,        /**< Anchor colour (cerulean ARGB).       */
+  k_er_img_arena   = 2U * 1024U * 1024U, /**< SDRAM image-decode scratch.    */
 } er_reflow_cfg_t;
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI, per sd_font_render. */
@@ -358,6 +362,9 @@ static bool s_was_touching;
 /** @brief Font blob read off the SD card -- lives in SDRAM (hundreds of KiB). */
 static uint8_t s_font_buf[k_er_font_cap] __attribute__((section(".sdram_data")));
 
+/** @brief Image-decode bump arena in SDRAM (covers / figures are megabytes). */
+static uint8_t s_img_arena_buf[k_er_img_arena] __attribute__((section(".sdram_data")));
+
 /** @brief ra_reflow engine for the Reading body (page / glyph / token pools). */
 static ra_reflow_t s_reflow_engine;
 
@@ -366,6 +373,42 @@ static uint32_t s_font_len;
 
 /** @brief True once an SD font is loaded; gates the ra_reflow body render. */
 static bool s_have_font;
+
+/**
+ * @brief ra_reflow image loader: resolve any `<img src>` to the baked figure.
+ *
+ * @details The mock library has no EPUB ZIP to read resources from, so every
+ * `<img>` in the demo chapter resolves to the one bundled figure
+ * (::k_er_figure_png). A real EPUB-backed build would map @p href to a manifest
+ * item and return its bytes; the engine contract is identical either way.
+ *
+ * @param[in]  ctx      Unused loader context.
+ * @param[in]  href     Image src (unused; single bundled figure).
+ * @param[in]  href_len Length of @p href.
+ * @param[out] out_bytes Receives the encoded PNG bytes.
+ * @param[out] out_len   Receives the encoded byte count.
+ * @return k_ra_ok always (the figure is always available).
+ * @retval k_ra_ok The bundled figure bytes were returned.
+ * @pre @p out_bytes and @p out_len are non-null.
+ * @pre The bundled figure is a valid encoded image.
+ * @post `*out_bytes` / `*out_len` describe ::k_er_figure_png.
+ * @post No state mutated.
+ * @note Not thread-safe (single-threaded UI loop).
+ * @since 0.1.0
+ */
+static ra_err_t er_image_loader(void*           ctx,
+                                const char*     href,
+                                uint32_t        href_len,
+                                const uint8_t** out_bytes,
+                                size_t*         out_len)
+{
+  (void)ctx;
+  (void)href;
+  (void)href_len;
+  *out_bytes = k_er_figure_png;
+  *out_len   = (size_t)k_er_figure_png_len;
+  return k_ra_ok;
+}
 
 /** @brief Cached PCLKA rate (Hz) for the SD SPI clock shim. */
 static uint32_t s_pclka_hz;
@@ -1001,6 +1044,14 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
                      &s_reflow_engine) != k_ra_ok) {
     return false;
   }
+  /* Bind the image loader + SDRAM decode arena so the chapter's <img> renders
+   * (decode -> scale -> blit). Without this the engine reserves a placeholder. */
+  static ra_img_arena_t s_reflow_img_arena;
+  s_reflow_img_arena = (ra_img_arena_t){.base   = s_img_arena_buf,
+                                        .cap    = (size_t)k_er_img_arena,
+                                        .offset = 0U,
+                                        .live   = 0U};
+  (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
   uint32_t pages = 0U;
   if (ra_reflow_layout_chapter(&s_reflow_engine,
                                (const uint8_t*)k_er_chapter_xhtml,

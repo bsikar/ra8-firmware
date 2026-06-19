@@ -67,6 +67,7 @@ typedef enum : uint32_t {
   k_priv_base_dec      = 10U,       /**< Decimal numeric-entity base.            */
   k_priv_base_hex      = 16U,       /**< Hexadecimal numeric-entity base.        */
   k_priv_hex_offset    = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
+  k_priv_img_src_min   = 3U,        /**< Length of the "src" attribute name.     */
 } priv_tok_consts_t;
 
 /**
@@ -770,6 +771,138 @@ priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
 }
 
 /**
+ * @brief True iff a `src` attribute name begins at `tag[i]`.
+ *
+ * @details Case-insensitive "src" with a non-name byte (or the leading '<')
+ * immediately before it, so a substring like "xsrc" is not matched.
+ *
+ * @param[in] tag Raw tag span.
+ * @param[in] i   Candidate start offset (`i + 3` must be within bounds).
+ * @return true iff `tag[i..i+2]` is the `src` attribute name.
+ * @retval true  Match.
+ * @retval false No match.
+ * @pre `tag` is non-null and `tag[i..i+2]` are readable.
+ * @pre `i` indexes within the tag span.
+ * @post No state mutated.
+ * @post Return value depends solely on the inputs.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static bool priv_is_src_at(const uint8_t* tag, size_t i)
+{
+  const bool is_src =
+    (((tag[i] | 0x20U) == 's') && ((tag[i + 1U] | 0x20U) == 'r') && ((tag[i + 2U] | 0x20U) == 'c'));
+  if (!is_src) {
+    return false;
+  }
+  const char prev = (i == 0U) ? '<' : (char)tag[i - 1U];
+  return !(((prev >= 'a') && (prev <= 'z')) || ((prev >= 'A') && (prev <= 'Z')));
+}
+
+/**
+ * @brief Parse `= "value"` after an attribute name; return the value span.
+ *
+ * @details Skips whitespace, requires `=`, skips whitespace, requires a quote,
+ * then scans to the matching quote. The span excludes the quotes.
+ *
+ * @param[in]  tag     Raw tag span.
+ * @param[in]  tag_len Length of @p tag, bytes.
+ * @param[in]  pos     Offset just past the attribute name.
+ * @param[out] vstart  Receives the value start offset.
+ * @param[out] vlen    Receives the value length, bytes.
+ * @return true iff a quoted value was found.
+ * @retval true  `*vstart` / `*vlen` describe the value.
+ * @retval false No `= "..."` followed the name.
+ * @pre `tag`, `vstart`, `vlen` are non-null.
+ * @pre `pos <= tag_len`.
+ * @post On true, `[*vstart, *vstart+*vlen)` lies within the tag span.
+ * @post On false, the outputs are unspecified (caller ignores them).
+ * @note Pure read of @p tag.
+ * @since 0.1.0
+ */
+static bool
+priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* vstart, size_t* vlen)
+{
+  size_t j = pos;
+  while ((j < tag_len) && ra_reflow_tok_is_xml_whitespace((char)tag[j])) {
+    ++j;
+  }
+  if ((j >= tag_len) || (tag[j] != '=')) {
+    return false;
+  }
+  ++j;
+  while ((j < tag_len) && ra_reflow_tok_is_xml_whitespace((char)tag[j])) {
+    ++j;
+  }
+  if ((j >= tag_len) || ((tag[j] != '"') && (tag[j] != '\''))) {
+    return false;
+  }
+  const uint8_t quote = tag[j];
+  ++j;
+  *vstart = j;
+  while ((j < tag_len) && (tag[j] != quote)) {
+    ++j;
+  }
+  *vlen = j - *vstart;
+  return true;
+}
+
+/**
+ * @brief Extract the `src` attribute value from a start-tag span into the pool.
+ *
+ * @details Scans the raw `<img ...>` span for a `src` attribute (case-
+ * insensitive, not preceded by another name character) and copies its quoted
+ * value verbatim into the engine text pool. The stored slice is what the layout
+ * pass hands to the image loader. On no `src`, a malformed attribute, or a full
+ * pool the outputs are zeroed, which the layout pass treats as "no image"
+ * (placeholder fallback).
+ *
+ * @param[in,out] engine  Engine whose text pool receives the href bytes.
+ * @param[in]     tag     Raw tag span starting at '<'.
+ * @param[in]     tag_len Length of @p tag, bytes.
+ * @param[out]    out_off Receives the text-pool offset of the href (0 if none).
+ * @param[out]    out_len Receives the href byte length (0 if none).
+ * @return None.
+ * @pre `engine`, `tag`, `out_off`, `out_len` are non-null.
+ * @pre `engine->text_pool_used <= k_ra_reflow_text_pool_bytes`.
+ * @post `*out_len > 0` iff a quoted `src` value was stored in the pool.
+ * @post The pool grows by `*out_len` bytes when a value is stored.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_capture_img_src(ra_reflow_t*   engine,
+                                 const uint8_t* tag,
+                                 size_t         tag_len,
+                                 uint32_t*      out_off,
+                                 uint32_t*      out_len)
+{
+  *out_off = 0U;
+  *out_len = 0U;
+  if (tag_len < (size_t)k_priv_img_src_min) {
+    return;
+  }
+  /* Bounded scan for a `src` attribute name (NASA Rule 2: tag_len <= input). */
+  for (size_t i = 0U; (i + (size_t)k_priv_img_src_min) <= tag_len; ++i) {
+    size_t vstart = 0U;
+    size_t vlen   = 0U;
+    if (!priv_is_src_at(tag, i) ||
+        !priv_attr_quoted_value(tag, tag_len, i + (size_t)k_priv_img_src_min, &vstart, &vlen)) {
+      continue;
+    }
+    if ((vlen == 0U) ||
+        ((size_t)engine->text_pool_used + vlen > (size_t)k_ra_reflow_text_pool_bytes)) {
+      return;
+    }
+    const uint32_t off = engine->text_pool_used;
+    memcpy(&engine->text_pool[off], &tag[vstart], vlen);
+    engine->text_pool_used += (uint32_t)vlen;
+    *out_off = off;
+    *out_len = (uint32_t)vlen;
+    return;
+  }
+}
+
+/**
  * @brief Handle an opening / void / self-closing start tag.
  *
  * @details Void tags (br/hr/img) emit a single token; self-closing block
@@ -791,6 +924,7 @@ priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
  */
 static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
+  const size_t               tag_lt    = *pi; /* index of '<' before parse */
   bool                       selfclose = false;
   const ra_reflow_html_tag_t tag       = priv_parse_start(buf, pi, len, &selfclose);
   ctx->saw_element                     = true;
@@ -804,8 +938,13 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
                                                                                  : k_ra_err_no_mem;
   }
   if (tag == k_ra_reflow_tag_img) {
-    return priv_emit(ctx->engine, k_ra_reflow_tok_image, tag, ctx->style, 0U, 0U) ? k_ra_ok
-                                                                                  : k_ra_err_no_mem;
+    uint32_t     src_off = 0U;
+    uint32_t     src_len = 0U;
+    const size_t span    = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
+    priv_capture_img_src(ctx->engine, &buf[tag_lt], span, &src_off, &src_len);
+    return priv_emit(ctx->engine, k_ra_reflow_tok_image, tag, ctx->style, src_off, src_len)
+             ? k_ra_ok
+             : k_ra_err_no_mem;
   }
 
   const bool block = priv_is_block(tag);

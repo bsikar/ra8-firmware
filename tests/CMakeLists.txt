@@ -155,7 +155,11 @@ if(RA_REFLOW_USE_LITEHTML)
     # The static stb_truetype arena allocator (ra_stbtt_malloc/free) is shared:
     # both v1 and the litehtml v2 engine rasterise glyphs through stb_truetype,
     # so this one file stays in even when the v1 reflow engine is excluded.
-    set(RA_REFLOW_C_SOURCES    ${FW_ROOT}/libs/ra_reflow/src/ra_stbtt_alloc.c)
+    # ra_img_arena.c (the stb_image bump arena) is likewise shared: the always-on
+    # stb_image_impl.c TU in RA_EPUB_THIRD_PARTY references its symbols.
+    set(RA_REFLOW_C_SOURCES
+        ${FW_ROOT}/libs/ra_reflow/src/ra_stbtt_alloc.c
+        ${FW_ROOT}/libs/ra_reflow/src/ra_img_arena.c)
     set(RA_REFLOW_CPP_SOURCES  ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp)
     enable_language(CXX)
     set(_RA_SAVED_C_FLAGS   "${CMAKE_C_FLAGS}")
@@ -185,6 +189,7 @@ set(RA_EPUB_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/miniz/miniz.c
     ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
     ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
+    ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
 )
 file(GLOB_RECURSE RA_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 file(GLOB_RECURSE RA_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_touch_cal/src/*.c)

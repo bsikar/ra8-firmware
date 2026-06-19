@@ -1,0 +1,286 @@
+/**
+ * @file test_ra_reflow_image.c
+ * @brief Host unit tests + MC/DC for libs/ra_reflow/src/ra_reflow_image.c (#106).
+ *
+ * @details
+ * Exercises the zero-heap raster decode + nearest-neighbour scale + blit path
+ * end to end against the real ra_gfx framebuffer:
+ *  - ra_img_probe_size() reads a baked 2x2 PNG's dimensions.
+ *  - ra_img_decode_blit() decodes + blits it 1:1 and 2x, and the test reads the
+ *    framebuffer back to assert exact pixels.
+ *  - The caller-bound bump arena fully drains after every call (success AND
+ *    failure), proving the decode reaches no `malloc` (NASA P10 Rule 3).
+ *  - MC/DC for the new compound decisions: the public argument-precondition
+ *    (3-condition OR, driven through the real API) plus mirror helpers for the
+ *    two TU-private decisions (fit-box branch, decode-failure classify).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_gfx.h"
+#include "ra_reflow_image.h"
+#include "unity_minimal.h"
+
+/**
+ * @brief A 2x2 RGB PNG: TL red, TR green, BL blue, BR white.
+ * @details Baked from PIL; the smallest fixture that proves channel order and
+ * row order survive decode + blit.
+ */
+static const uint8_t s_png_2x2[] = {
+  137, 80,  78,  71, 13,  10,  26,  10,  0,   0,   0,   13,  73,  72,  68,  82,  0,   0,  0,   2,
+  0,   0,   0,   2,  8,   2,   0,   0,   0,   253, 212, 154, 115, 0,   0,   0,   22,  73, 68,  65,
+  84,  120, 156, 99, 248, 207, 192, 192, 240, 159, 129, 145, 129, 225, 255, 255, 255, 12, 0,   30,
+  246, 4,   253, 9,  237, 52,  62,  0,   0,   0,   0,   73,  69,  78,  68,  174, 66,  96, 130,
+};
+
+/** @brief Eight bytes that are not any image format stb_image accepts. */
+static const uint8_t s_junk[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+
+/* RGB565 colour helpers: ra_gfx packs 0x00RRGGBB -> 565; reading back, compare
+ * against the same quantisation the framebuffer stores. */
+enum : uint32_t {
+  k_red   = 0xFF0000U,
+  k_green = 0x00FF00U,
+  k_blue  = 0x0000FFU,
+  k_white = 0xFFFFFFU,
+};
+
+/** @brief Read an RGB888 framebuffer pixel back as 0x00RRGGBB. */
+static uint32_t fb_px(const uint8_t* fb, int32_t w, int32_t x, int32_t y)
+{
+  const size_t i = ((size_t)y * (size_t)w + (size_t)x) * 3U;
+  return ((uint32_t)fb[i] << 16) | ((uint32_t)fb[i + 1U] << 8) | (uint32_t)fb[i + 2U];
+}
+
+/**
+ * @test test_probe_size_png
+ * @brief ra_img_probe_size reads 2x2 and rejects NULL arguments.
+ */
+static void test_probe_size_png(void)
+{
+  TEST_BEGIN("ra_img_probe_size: 2x2 PNG + null guards");
+  int32_t w = 0;
+  int32_t h = 0;
+  TEST_ASSERT_EQ(k_ra_ok, ra_img_probe_size(s_png_2x2, sizeof s_png_2x2, &w, &h));
+  TEST_ASSERT_EQ(2, w);
+  TEST_ASSERT_EQ(2, h);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_img_probe_size(NULL, 1U, &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_img_probe_size(s_png_2x2, sizeof s_png_2x2, NULL, &h));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_img_probe_size(s_junk, sizeof s_junk, &w, &h));
+  TEST_END("ra_img_probe_size: 2x2 PNG + null guards");
+}
+
+/**
+ * @test test_decode_blit_pixels
+ * @brief Decode + blit the 2x2 PNG 1:1 and 2x; assert exact framebuffer pixels.
+ */
+static void test_decode_blit_pixels(void)
+{
+  TEST_BEGIN("ra_img_decode_blit: exact pixels 1:1 and 2x");
+  static uint8_t scratch[64U * 1024U];
+  ra_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+
+  static uint8_t fb[4 * 4 * 3];
+  memset(fb, 0, sizeof fb);
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(fb, 4, 4, k_ra_gfx_format_rgb888));
+
+  int32_t ow = 0;
+  int32_t oh = 0;
+  /* 1:1 into a 2x2 box. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 2, &ow, &oh));
+  TEST_ASSERT_EQ(2, ow);
+  TEST_ASSERT_EQ(2, oh);
+  TEST_ASSERT_EQ((int64_t)k_red, fb_px(fb, 4, 0, 0));
+  TEST_ASSERT_EQ((int64_t)k_green, fb_px(fb, 4, 1, 0));
+  TEST_ASSERT_EQ((int64_t)k_blue, fb_px(fb, 4, 0, 1));
+  TEST_ASSERT_EQ((int64_t)k_white, fb_px(fb, 4, 1, 1));
+  /* Arena fully drained -> zero heap. */
+  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
+  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+
+  /* 2x nearest-neighbour upscale into a 4x4 box: corners preserved. */
+  memset(fb, 0, sizeof fb);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, &ow, &oh));
+  TEST_ASSERT_EQ(4, ow);
+  TEST_ASSERT_EQ(4, oh);
+  TEST_ASSERT_EQ((int64_t)k_red, fb_px(fb, 4, 0, 0));
+  TEST_ASSERT_EQ((int64_t)k_green, fb_px(fb, 4, 3, 0));
+  TEST_ASSERT_EQ((int64_t)k_blue, fb_px(fb, 4, 0, 3));
+  TEST_ASSERT_EQ((int64_t)k_white, fb_px(fb, 4, 3, 3));
+  TEST_END("ra_img_decode_blit: exact pixels 1:1 and 2x");
+}
+
+/**
+ * @test test_decode_blit_precondition_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (len == 0 || box_w < 1 || box_h < 1)` (3 conditions, OR;
+ * libs/ra_reflow/src/ra_reflow_image.c@ra_img_decode_blit). Driven directly
+ * through the public API by its return code -- production-source MC/DC.
+ *
+ * Vectors (Chilenski masking-MC/DC, N+1 = 4 for N=3):
+ *  - V1: len=N, box_w=2, box_h=2 -> all F -> decision F (decodes -> k_ra_ok).
+ *  - V2: len=0, box_w=2, box_h=2 -> C1 T -> decision T (k_ra_err_invalid_arg).
+ *  - V3: len=N, box_w=0, box_h=2 -> C2 T -> decision T (k_ra_err_invalid_arg).
+ *  - V4: len=N, box_w=2, box_h=0 -> C3 T -> decision T (k_ra_err_invalid_arg).
+ *
+ * Independence: V1 vs V2/V3/V4 each flip exactly one condition and the outcome,
+ * with the other two held at their false (control) value.
+ */
+static void test_decode_blit_precondition_mcdc(void)
+{
+  TEST_BEGIN("ra_img_decode_blit precondition MC/DC: len==0||box_w<1||box_h<1");
+  static uint8_t scratch[64U * 1024U];
+  ra_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+  static uint8_t fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(fb, 4, 4, k_ra_gfx_format_rgb888));
+
+  /* V1: control -- all conditions false -> decodes. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 2, NULL, NULL));
+  /* V2: len == 0. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_img_decode_blit(&arena, s_png_2x2, 0U, 0, 0, 2, 2, NULL, NULL));
+  /* V3: box_w < 1. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 0, 2, NULL, NULL));
+  /* V4: box_h < 1. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 0, NULL, NULL));
+  /* Null guards (separate earlier decisions). */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_img_decode_blit(NULL, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 2, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_img_decode_blit(&arena, NULL, sizeof s_png_2x2, 0, 0, 2, 2, NULL, NULL));
+  TEST_END("ra_img_decode_blit precondition MC/DC: len==0||box_w<1||box_h<1");
+}
+
+/** @brief Mirror of internal_fit_box's branch selector (size-clamp decision). */
+static uint8_t mirror_fit_width_limited(int32_t box_w, int32_t src_h, int32_t box_h, int32_t src_w)
+{
+  if (((int64_t)box_w * (int64_t)src_h) <= ((int64_t)box_h * (int64_t)src_w)) {
+    return 1U; /* width-limited branch */
+  }
+  return 0U; /* height-limited branch */
+}
+
+/**
+ * @test test_fit_box_branch_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (box_w*src_h <= box_h*src_w)` (1 condition; the size-clamp
+ * branch in libs/ra_reflow/src/ra_reflow_image.c@internal_fit_box). A
+ * single-condition decision needs 2 vectors (each value, each outcome). The
+ * mirror has operand-identical int64 semantics; real behaviour is also pinned
+ * below via decode out_w/out_h for a square source.
+ *
+ * Vectors:
+ *  - V1: box 2x4, src 2x2 -> 2*2 <= 4*2 (4<=8) T -> width-limited.
+ *  - V2: box 4x2, src 2x2 -> 4*2 <= 2*2 (8<=4) F -> height-limited.
+ */
+static void test_fit_box_branch_mcdc(void)
+{
+  TEST_BEGIN("internal_fit_box branch MC/DC: box_w*src_h <= box_h*src_w");
+  TEST_ASSERT_EQ(1, mirror_fit_width_limited(2, 2, 4, 2)); /* V1: width-limited */
+  TEST_ASSERT_EQ(0, mirror_fit_width_limited(4, 2, 2, 2)); /* V2: height-limited */
+
+  /* Real path: a square 2x2 into a wide and a tall box both fit to 2x2. */
+  static uint8_t scratch[64U * 1024U];
+  ra_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+  static uint8_t fb[8 * 8 * 3];
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(fb, 8, 8, k_ra_gfx_format_rgb888));
+  int32_t ow = 0;
+  int32_t oh = 0;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 8, &ow, &oh));
+  TEST_ASSERT_EQ(2, ow); /* width-limited: capped at box_w */
+  TEST_ASSERT_EQ(2, oh);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 8, 2, &ow, &oh));
+  TEST_ASSERT_EQ(2, ow); /* height-limited: capped at box_h */
+  TEST_ASSERT_EQ(2, oh);
+  TEST_END("internal_fit_box branch MC/DC: box_w*src_h <= box_h*src_w");
+}
+
+/** @brief Mirror of internal_decode_fail's OOM classify (2-condition AND). */
+static uint8_t mirror_decode_is_oom(const char* reason)
+{
+  if ((reason != NULL) && (strstr(reason, "outofmem") != NULL)) {
+    return 1U; /* -> k_ra_err_no_mem */
+  }
+  return 0U; /* -> k_ra_err_not_supported */
+}
+
+/**
+ * @test test_decode_fail_classify_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (reason != NULL && strstr(reason,"outofmem") != NULL)`
+ * (2 conditions, AND; libs/ra_reflow/src/ra_reflow_image.c@internal_decode_fail).
+ *
+ * Vectors (N+1 = 3 for N=2):
+ *  - V1: reason="outofmem"      -> C1 T, C2 T -> decision T (no_mem).
+ *  - V2: reason=NULL            -> C1 F shorts -> decision F (not_supported).
+ *  - V3: reason="bad png sig"   -> C1 T, C2 F -> decision F (not_supported).
+ * V1 vs V2 vary C1 (C2 held T); V1 vs V3 vary C2 (C1 held T).
+ */
+static void test_decode_fail_classify_mcdc(void)
+{
+  TEST_BEGIN("internal_decode_fail MC/DC: reason!=NULL && strstr(outofmem)");
+  TEST_ASSERT_EQ(1, mirror_decode_is_oom("outofmem"));
+  TEST_ASSERT_EQ(0, mirror_decode_is_oom(NULL));
+  TEST_ASSERT_EQ(0, mirror_decode_is_oom("bad png sig"));
+  TEST_END("internal_decode_fail MC/DC: reason!=NULL && strstr(outofmem)");
+}
+
+/**
+ * @test test_arena_drained_and_no_mem
+ * @brief Arena drains on the decode-failure path; a tiny arena yields no_mem.
+ */
+static void test_arena_drained_and_no_mem(void)
+{
+  TEST_BEGIN("ra_img_decode_blit: arena drain on failure + tiny-arena no_mem");
+  static uint8_t scratch[64U * 1024U];
+  ra_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+  static uint8_t fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(fb, 4, 4, k_ra_gfx_format_rgb888));
+
+  /* Undecodable bytes -> not_supported, arena still drained. */
+  TEST_ASSERT_EQ(k_ra_err_not_supported,
+                 ra_img_decode_blit(&arena, s_junk, sizeof s_junk, 0, 0, 4, 4, NULL, NULL));
+  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
+  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+
+  /* Arena far too small for the decode -> no_mem (or not_supported), drained. */
+  static uint8_t tiny[48];
+  ra_img_arena_t small = {.base = tiny, .cap = sizeof tiny, .offset = 0U, .live = 0U};
+  const ra_err_t e =
+    ra_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL);
+  TEST_ASSERT((e == k_ra_err_no_mem) || (e == k_ra_err_not_supported));
+  TEST_ASSERT_EQ(0, (int64_t)small.offset);
+  TEST_ASSERT_EQ(0, (int64_t)small.live);
+  TEST_END("ra_img_decode_blit: arena drain on failure + tiny-arena no_mem");
+}
+
+/**
+ * @brief Test entry point.
+ * @return 0 on success; unity macros exit(1) on the first failure.
+ */
+int32_t main(void)
+{
+  test_probe_size_png();
+  test_decode_blit_pixels();
+  test_decode_blit_precondition_mcdc();
+  test_fit_box_branch_mcdc();
+  test_decode_fail_classify_mcdc();
+  test_arena_drained_and_no_mem();
+  (void)fprintf(stderr, "[OK ] test_ra_reflow_image.c\n");
+  return 0;
+}
