@@ -51,6 +51,17 @@ static uint8_t key_of_kind(ra_kbd_key_kind_t kind)
   return (uint8_t)k_ra_kbd_no_hit;
 }
 
+/** @brief Find the layer-toggle key that switches to layer @p aux. */
+static uint8_t key_of_layer(uint8_t aux)
+{
+  for (uint8_t i = 0U; i < s_kb.count; i++) {
+    if ((s_kb.keys[i].kind == k_ra_kbd_key_layer) && (s_kb.keys[i].aux == aux)) {
+      return i;
+    }
+  }
+  return (uint8_t)k_ra_kbd_no_hit;
+}
+
 /** @brief Tap a key's centre and apply it. */
 static void tap(ra_kbd_text_t* t, uint8_t idx)
 {
@@ -112,20 +123,77 @@ static void test_typing_layers(void)
   TEST_ASSERT(!s_kb.shift);
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi"));
 
-  /* SPACE, then 123 -> numbers layer, type '9', then ABC -> letters. */
+  /* SPACE, then 123 -> numbers, type '9'. */
   tap(&t, key_of_kind(k_ra_kbd_key_space));
-  tap(&t, key_of_kind(k_ra_kbd_key_layer)); /* 123 -> numbers */
+  tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_numbers)); /* 123 */
   TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_numbers, (int32_t)s_kb.layer);
   type_lc(&t, "9");
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9"));
-  tap(&t, key_of_kind(k_ra_kbd_key_layer)); /* ABC -> letters */
+
+  /* #+= -> symbols, type '['; then 123 -> numbers; then ABC -> letters. */
+  tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_symbols)); /* #+= */
+  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_symbols, (int32_t)s_kb.layer);
+  type_lc(&t, "[");
+  TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9["));
+  tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_numbers)); /* 123 (from symbols) */
+  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_numbers, (int32_t)s_kb.layer);
+  tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_letters)); /* ABC */
   TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_letters, (int32_t)s_kb.layer);
 
-  /* RETURN commits. */
+  /* BACKSPACE removes the '['; RETURN commits. */
+  tap(&t, key_of_kind(k_ra_kbd_key_backspace));
+  TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9"));
   TEST_ASSERT(!t.committed);
   tap(&t, key_of_kind(k_ra_kbd_key_enter));
   TEST_ASSERT(t.committed);
   TEST_END("keyboard typing: case + layer toggle + digit + commit");
+}
+
+/** @brief Is char @p c reachable as a char key on the active layer? */
+static bool reachable_here(char c)
+{
+  for (uint8_t i = 0U; i < s_kb.count; i++) {
+    if ((s_kb.keys[i].kind == k_ra_kbd_key_char) && (s_kb.keys[i].ch_lower == c)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @test test_all_ascii_symbols
+ * @brief Every printable ASCII symbol + digit is reachable across the layers.
+ */
+static void test_all_ascii_symbols(void)
+{
+  TEST_BEGIN("keyboard covers every printable ASCII symbol + digit");
+  const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
+  /* The 32 printable ASCII symbols (0x21..0x2F, 0x3A..0x40, 0x5B..0x60,
+   * 0x7B..0x7E) plus the ten digits. */
+  static const char k_all[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~0123456789";
+  ra_kbd_text_t     tmp;
+  for (uint32_t i = 0U; k_all[i] != '\0'; i++) {
+    const char c     = k_all[i];
+    bool       found = false;
+    /* Letters layer. */
+    TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
+    TEST_ASSERT_EQ(k_ra_ok, ra_kbd_text_init(&tmp));
+    found = reachable_here(c);
+    /* -> numbers (123). */
+    if (!found) {
+      TEST_ASSERT_EQ(k_ra_ok,
+                     ra_kbd_apply(&tmp, &s_kb, key_of_layer((uint8_t)k_ra_kbd_layer_numbers)));
+      found = reachable_here(c);
+    }
+    /* -> symbols (#+=). */
+    if (!found) {
+      TEST_ASSERT_EQ(k_ra_ok,
+                     ra_kbd_apply(&tmp, &s_kb, key_of_layer((uint8_t)k_ra_kbd_layer_symbols)));
+      found = reachable_here(c);
+    }
+    TEST_ASSERT(found);
+  }
+  TEST_END("keyboard covers every printable ASCII symbol + digit");
 }
 
 /**
@@ -213,6 +281,7 @@ int32_t main(void)
 {
   test_layout_letters();
   test_typing_layers();
+  test_all_ascii_symbols();
   test_glyph_and_edges();
   test_frame_reject_mcdc();
   test_null_guards();

@@ -22,19 +22,22 @@ static const char* s_tag = "KBD";
  * @brief Row geometry in 20ths of the width ("half-units"), iOS proportions.
  */
 typedef enum : int32_t {
-  k_kbd_hu_div   = 20, /**< Half-units per row (a normal key = 2 hu).      */
-  k_kbd_key_hu   = 2,  /**< Normal key width (half-units).                 */
-  k_kbd_wide_hu  = 3,  /**< SHIFT / BACKSPACE width.                       */
-  k_kbd_inset_hu = 1,  /**< Home-row inset each side.                      */
-  k_kbd_act_hu   = 4,  /**< 123 / ABC / RETURN width.                      */
-  k_kbd_space_hu = 12, /**< SPACE width.                                   */
-  k_kbd_top_keys = 10, /**< Keys in rows 0 and 1.                          */
-  k_kbd_mid_keys = 9,  /**< Keys in the inset home row.                    */
-  k_kbd_r2_lett  = 7,  /**< Letters in row 2.                              */
-  k_kbd_r2_syms  = 8,  /**< Symbol keys in the numbers row 2.             */
-  k_kbd_row1     = 1,  /**< Row index 1.                                   */
-  k_kbd_row2     = 2,  /**< Row index 2.                                   */
-  k_kbd_row3     = 3,  /**< Row index 3.                                   */
+  k_kbd_hu_div    = 20, /**< Half-units per row (a normal key = 2 hu).      */
+  k_kbd_key_hu    = 2,  /**< Normal key width (half-units).                 */
+  k_kbd_wide_hu   = 3,  /**< SHIFT / BACKSPACE width.                       */
+  k_kbd_inset_hu  = 1,  /**< Home-row inset each side.                      */
+  k_kbd_act_hu    = 4,  /**< 123 / ABC / RETURN width.                      */
+  k_kbd_space_hu  = 12, /**< SPACE width.                                   */
+  k_kbd_top_keys  = 10, /**< Keys in rows 0 and 1.                         */
+  k_kbd_mid_keys  = 9,  /**< Keys in the inset home row.                   */
+  k_kbd_r2_lett   = 7,  /**< Letters in letters row 2.                     */
+  k_kbd_punct_n   = 5,  /**< Punctuation keys (. , ? ! ') in row 2.        */
+  k_kbd_punct_hu0 = 5,  /**< Centred start for the 5 punctuation keys.     */
+  k_kbd_sym1_n    = 7,  /**< Symbols row 1 keys (_ \\ | ~ < > `).          */
+  k_kbd_sym1_hu0  = 3,  /**< Centred start for symbols row 1.              */
+  k_kbd_row1      = 1,  /**< Row index 1.                                  */
+  k_kbd_row2      = 2,  /**< Row index 2.                                  */
+  k_kbd_row3      = 3,  /**< Row index 3.                                  */
 } kbd_geom_t;
 
 /* Letters layer rows. */
@@ -44,10 +47,16 @@ static const char k_l_r1_lo[] = "asdfghjkl";
 static const char k_l_r1_hi[] = "ASDFGHJKL";
 static const char k_l_r2_lo[] = "zxcvbnm";
 static const char k_l_r2_hi[] = "ZXCVBNM";
-/* Numbers / symbols layer rows (no shift effect: upper == lower). */
+/* Numbers layer rows (no shift effect: upper == lower). */
 static const char k_n_r0[] = "1234567890";
 static const char k_n_r1[] = "-/:;()$&@\"";
-static const char k_n_r2[] = ".,?!'[]{";
+/* Symbols layer rows. Goal: every printable 7-bit ASCII symbol is reachable.
+ * The 32 ASCII symbols are split across the numbers row 1 (10), the shared
+ * punctuation row (5), and these two symbols rows (10 + 7) = 32, no repeats. */
+static const char k_s_r0[] = "[]{}#%^*+=";
+static const char k_s_r1[] = "<>\\_`|~";
+/* Shared third-row punctuation for the numbers + symbols layers. */
+static const char k_punct[] = ".,?!'";
 
 /** @brief Append one key (bounded by k_ra_kbd_max_keys). */
 static void priv_add(ra_kbd_layout_t*  kb,
@@ -112,7 +121,46 @@ static void priv_span(ra_kbd_layout_t*    kb,
   priv_add(kb, x0, priv_hx(f, b) - x0, y, rh, 0, 0, kind, aux);
 }
 
-/** @brief Build the letters layer. */
+/** @brief Row 2 for the numbers/symbols layers: a layer toggle, ., ! etc, del. */
+static void
+priv_row_punct(ra_kbd_layout_t* kb, const ra_ui_rect_t* f, int32_t y, int32_t rh, uint8_t tog_aux)
+{
+  priv_span(kb, 0, (int32_t)k_kbd_act_hu, f, y, rh, k_ra_kbd_key_layer, tog_aux);
+  priv_place(kb, k_punct, nullptr, (int32_t)k_kbd_punct_n, (int32_t)k_kbd_punct_hu0, f, y, rh);
+  priv_span(kb,
+            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
+            (int32_t)k_kbd_hu_div,
+            f,
+            y,
+            rh,
+            k_ra_kbd_key_backspace,
+            0U);
+}
+
+/** @brief Bottom row: a layer toggle (123/ABC), SPACE, RETURN. */
+static void
+priv_row_bottom(ra_kbd_layout_t* kb, const ra_ui_rect_t* f, int32_t y, int32_t rh, uint8_t left_aux)
+{
+  priv_span(kb, 0, (int32_t)k_kbd_act_hu, f, y, rh, k_ra_kbd_key_layer, left_aux);
+  priv_span(kb,
+            (int32_t)k_kbd_act_hu,
+            (int32_t)k_kbd_act_hu + (int32_t)k_kbd_space_hu,
+            f,
+            y,
+            rh,
+            k_ra_kbd_key_space,
+            0U);
+  priv_span(kb,
+            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
+            (int32_t)k_kbd_hu_div,
+            f,
+            y,
+            rh,
+            k_ra_kbd_key_enter,
+            0U);
+}
+
+/** @brief Build the letters layer (QWERTY + SHIFT + 123). */
 static void priv_build_letters(ra_kbd_layout_t* kb, const ra_ui_rect_t* f, int32_t rh)
 {
   const int32_t fy = f->y;
@@ -136,74 +184,27 @@ static void priv_build_letters(ra_kbd_layout_t* kb, const ra_ui_rect_t* f, int32
             rh,
             k_ra_kbd_key_backspace,
             0U);
-  const int32_t y3 = fy + ((int32_t)k_kbd_row3 * rh);
-  priv_span(kb,
-            0,
-            (int32_t)k_kbd_act_hu,
-            f,
-            y3,
-            rh,
-            k_ra_kbd_key_layer,
-            (uint8_t)k_ra_kbd_layer_numbers);
-  priv_span(kb,
-            (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_act_hu + (int32_t)k_kbd_space_hu,
-            f,
-            y3,
-            rh,
-            k_ra_kbd_key_space,
-            0U);
-  priv_span(kb,
-            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_hu_div,
-            f,
-            y3,
-            rh,
-            k_ra_kbd_key_enter,
-            0U);
+  priv_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra_kbd_layer_numbers);
 }
 
-/** @brief Build the numbers / symbols layer. */
+/** @brief Build the numbers layer (digits + common symbols; #+= toggles syms). */
 static void priv_build_numbers(ra_kbd_layout_t* kb, const ra_ui_rect_t* f, int32_t rh)
 {
   const int32_t fy = f->y;
   priv_place(kb, k_n_r0, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
   priv_place(kb, k_n_r1, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy + rh, rh);
-  const int32_t y2 = fy + ((int32_t)k_kbd_row2 * rh);
-  priv_place(kb, k_n_r2, nullptr, (int32_t)k_kbd_r2_syms, 0, f, y2, rh);
-  priv_span(kb,
-            (int32_t)k_kbd_r2_syms * (int32_t)k_kbd_key_hu,
-            (int32_t)k_kbd_hu_div,
-            f,
-            y2,
-            rh,
-            k_ra_kbd_key_backspace,
-            0U);
-  const int32_t y3 = fy + ((int32_t)k_kbd_row3 * rh);
-  priv_span(kb,
-            0,
-            (int32_t)k_kbd_act_hu,
-            f,
-            y3,
-            rh,
-            k_ra_kbd_key_layer,
-            (uint8_t)k_ra_kbd_layer_letters);
-  priv_span(kb,
-            (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_act_hu + (int32_t)k_kbd_space_hu,
-            f,
-            y3,
-            rh,
-            k_ra_kbd_key_space,
-            0U);
-  priv_span(kb,
-            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_hu_div,
-            f,
-            y3,
-            rh,
-            k_ra_kbd_key_enter,
-            0U);
+  priv_row_punct(kb, f, fy + ((int32_t)k_kbd_row2 * rh), rh, (uint8_t)k_ra_kbd_layer_symbols);
+  priv_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra_kbd_layer_letters);
+}
+
+/** @brief Build the symbols layer (brackets / math; 123 toggles numbers). */
+static void priv_build_symbols(ra_kbd_layout_t* kb, const ra_ui_rect_t* f, int32_t rh)
+{
+  const int32_t fy = f->y;
+  priv_place(kb, k_s_r0, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
+  priv_place(kb, k_s_r1, nullptr, (int32_t)k_kbd_sym1_n, (int32_t)k_kbd_sym1_hu0, f, fy + rh, rh);
+  priv_row_punct(kb, f, fy + ((int32_t)k_kbd_row2 * rh), rh, (uint8_t)k_ra_kbd_layer_numbers);
+  priv_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra_kbd_layer_letters);
 }
 
 /** @brief Lay the active layer's keys into the saved frame. */
@@ -213,6 +214,8 @@ static void priv_build_layer(ra_kbd_layout_t* kb)
   const int32_t rh = kb->frame.h / (int32_t)k_ra_kbd_rows;
   if (kb->layer == (uint8_t)k_ra_kbd_layer_numbers) {
     priv_build_numbers(kb, &kb->frame, rh);
+  } else if (kb->layer == (uint8_t)k_ra_kbd_layer_symbols) {
+    priv_build_symbols(kb, &kb->frame, rh);
   } else {
     priv_build_letters(kb, &kb->frame, rh);
   }
