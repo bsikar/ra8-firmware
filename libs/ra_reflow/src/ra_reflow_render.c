@@ -27,10 +27,12 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ra_err.h"
 #include "ra_gfx.h"
 #include "ra_reflow.h"
+#include "ra_reflow_svg.h"
 #include "stb_truetype.h"
 
 /* ===========================================================================
@@ -48,6 +50,7 @@ typedef enum : uint16_t {
   k_priv_underline_offset_px = 2U,   /**< Pixels below baseline for the underline. */
   k_priv_underline_thick_px  = 1U,   /**< Thickness of the anchor underline. */
   k_priv_glyph_dim_max       = 192U, /**< Mask edge bound = 2 * k_ra_reflow_max_font_px. */
+  k_priv_svg_href_max        = 256U, /**< Max unwrapped SVG cover-image href length. */
 } priv_render_consts_t;
 
 /**
@@ -242,6 +245,63 @@ priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g, int32_t 
  * @note Not thread-safe (the decode arena uses a file-static current-arena).
  * @since 0.1.0
  */
+/**
+ * @brief Render an SVG image box (#112): unwrap a cover `<image>`, else shapes.
+ *
+ * @details A cover-wrapper SVG (`<svg><image href=.../></svg>`) re-loads the
+ * referenced raster through @p engine's image loader and decodes it; any other
+ * SVG is drawn as `<rect>`/`<circle>`/`<line>` shapes via ra_svg_render. The
+ * href is copied out before the second loader call because that call may
+ * overwrite the SVG buffer.
+ */
+static void priv_render_svg(const ra_reflow_t* engine,
+                            const uint8_t*     svg,
+                            size_t             len,
+                            int32_t            x,
+                            int32_t            y,
+                            int32_t            w,
+                            int32_t            h)
+{
+  size_t hoff = 0U;
+  size_t hlen = 0U;
+  if (ra_svg_image_href(svg, len, &hoff, &hlen) != k_ra_ok) {
+    (void)ra_svg_render(svg, len, x, y, w, h);
+    return;
+  }
+  char href[k_priv_svg_href_max] = {};
+  if (hlen >= sizeof(href)) {
+    return;
+  }
+  (void)memcpy(href, &svg[hoff], hlen);
+  const uint8_t* rbytes = nullptr;
+  size_t         rlen   = 0U;
+  if (engine->img_loader(engine->img_loader_ctx, href, (uint32_t)hlen, &rbytes, &rlen) == k_ra_ok) {
+    (void)ra_img_decode_blit(engine->img_arena, rbytes, rlen, x, y, w, h, nullptr, nullptr);
+  }
+}
+
+/** @brief Render one image box: SVG-route or raster-decode at the page offset. */
+static void priv_render_one_image(const ra_reflow_t*           engine,
+                                  const ra_reflow_image_box_t* box,
+                                  int32_t                      ox,
+                                  int32_t                      oy)
+{
+  const char*    href  = (const char*)&engine->text_pool[box->src_off];
+  const uint8_t* bytes = nullptr;
+  size_t         blen  = 0U;
+  if (engine->img_loader(engine->img_loader_ctx, href, box->src_len, &bytes, &blen) != k_ra_ok) {
+    return;
+  }
+  const int32_t bx = box->x + ox;
+  const int32_t by = box->y + oy;
+  if (ra_svg_is_svg(bytes, blen)) {
+    priv_render_svg(engine, bytes, blen, bx, by, box->w, box->h);
+    return;
+  }
+  (void)
+    ra_img_decode_blit(engine->img_arena, bytes, blen, bx, by, box->w, box->h, nullptr, nullptr);
+}
+
 static void priv_render_images(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {
   if ((engine->img_loader == nullptr) || (engine->img_arena == nullptr)) {
@@ -249,24 +309,9 @@ static void priv_render_images(const ra_reflow_t* engine, uint32_t page_idx, int
   }
   for (uint32_t i = 0U; i < engine->image_box_count; ++i) {
     const ra_reflow_image_box_t* box = &engine->image_boxes[i];
-    if (box->page_index != page_idx) {
-      continue;
+    if (box->page_index == page_idx) {
+      priv_render_one_image(engine, box, ox, oy);
     }
-    const char*    href  = (const char*)&engine->text_pool[box->src_off];
-    const uint8_t* bytes = nullptr;
-    size_t         blen  = 0U;
-    if (engine->img_loader(engine->img_loader_ctx, href, box->src_len, &bytes, &blen) != k_ra_ok) {
-      continue;
-    }
-    (void)ra_img_decode_blit(engine->img_arena,
-                             bytes,
-                             blen,
-                             box->x + ox,
-                             box->y + oy,
-                             box->w,
-                             box->h,
-                             nullptr,
-                             nullptr);
   }
 }
 
