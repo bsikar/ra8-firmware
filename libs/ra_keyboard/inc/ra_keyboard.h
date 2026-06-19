@@ -58,7 +58,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_kbd_layer_letters = 0U, /**< QWERTY letters (with one-shot SHIFT). */
-  k_ra_kbd_layer_numbers = 1U, /**< Digits + symbols.                    */
+  k_ra_kbd_layer_numbers = 1U, /**< Digits + common symbols (123).        */
+  k_ra_kbd_layer_symbols = 2U, /**< Brackets / math symbols (#+=).        */
 } ra_kbd_layer_t;
 
 /**

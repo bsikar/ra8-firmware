@@ -1322,7 +1322,13 @@ static const char* er_kbd_label(uint8_t idx, char* s)
     case k_ra_kbd_key_shift:
       return "shift";
     case k_ra_kbd_key_layer:
-      return (s_kb.keys[idx].aux == (uint8_t)k_ra_kbd_layer_numbers) ? "123" : "ABC";
+      if (s_kb.keys[idx].aux == (uint8_t)k_ra_kbd_layer_numbers) {
+        return "123";
+      }
+      if (s_kb.keys[idx].aux == (uint8_t)k_ra_kbd_layer_symbols) {
+        return "#+=";
+      }
+      return "ABC";
     default:
       s[0] = ra_kbd_key_glyph(&s_kb, idx);
       s[1] = '\0';
