@@ -147,6 +147,25 @@ static void test_render_path(void)
 }
 
 /**
+ * @test test_render_cubic
+ * @brief A `<path>` cubic `C` is flattened (collinear controls == a line edge).
+ */
+static void test_render_cubic(void)
+{
+  TEST_BEGIN("svg render cubic path");
+  fb_reset();
+  /* M..C..L..L..Z where C's controls are collinear -> the top edge is straight,
+   * giving the rectangle (10,10)-(90,90); exercises priv_flatten_cubic. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    render("<svg viewBox=\"0 0 100 100\">"
+           "<path d=\"M10 10 C30 10 70 10 90 10 L90 90 L10 90 Z\" fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white      */
+  TEST_END("svg render cubic path");
+}
+
+/**
  * @test test_render_fill_none
  * @brief `fill="none"` rects draw nothing; default fill is black.
  */
@@ -191,6 +210,7 @@ int32_t main(void)
   test_render_shapes();
   test_render_polygon();
   test_render_path();
+  test_render_cubic();
   test_render_fill_none();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");

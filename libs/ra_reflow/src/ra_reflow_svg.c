@@ -46,7 +46,21 @@ typedef enum : uint32_t {
   k_svg_path_ep   = 2U,          /**< Endpoint pair size (x, y); M/L/T. */
   k_svg_argc_quad = 4U,          /**< Arg count of `S` / `Q`.          */
   k_svg_argc_cube = 6U,          /**< Arg count of `C`.                */
+  k_svg_curve_seg = 12U,         /**< Segments per cubic-Bezier flatten.*/
+  k_svg_cube_ey   = 5U,          /**< `C` endpoint-y argument index.   */
 } priv_svg_consts_t;
+
+/** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
+static const float s_svg_bez3 = 3.0F;
+
+/**
+ * @struct svg_pt_t
+ * @brief A 2-D point in SVG user space (an x/y pair).
+ */
+typedef struct {
+  int32_t x; /**< X coordinate. */
+  int32_t y; /**< Y coordinate. */
+} svg_pt_t;
 
 /**
  * @struct svg_xform_t
@@ -547,13 +561,70 @@ priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, i
   *cy              = rel ? (*cy + ey) : ey;
 }
 
+/** @brief One axis of a cubic Bezier at parameter @p tt (control points c0..c3). */
+static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
+{
+  const float mt = 1.0F - tt;
+  return ((mt * mt * mt) * c0) + (s_svg_bez3 * (mt * mt) * tt * c1) +
+         (s_svg_bez3 * mt * (tt * tt) * c2) + ((tt * tt * tt) * c3);
+}
+
+/** @brief Flatten a cubic Bezier (P0..P3, user space) into @p (xs,ys); grow @p n. */
+static void priv_flatten_cubic(const svg_xform_t* t,
+                               svg_pt_t           p0,
+                               svg_pt_t           p1,
+                               svg_pt_t           p2,
+                               svg_pt_t           p3,
+                               int32_t*           xs,
+                               int32_t*           ys,
+                               int32_t*           n)
+{
+  /* Bounded: k_svg_curve_seg samples, capped by k_svg_poly_max. */
+  for (int32_t j = 1; (j <= (int32_t)k_svg_curve_seg) && (*n < (int32_t)k_svg_poly_max); ++j) {
+    const float tt = (float)j / (float)k_svg_curve_seg;
+    const float bx = priv_bezier1(tt, (float)p0.x, (float)p1.x, (float)p2.x, (float)p3.x);
+    const float by = priv_bezier1(tt, (float)p0.y, (float)p1.y, (float)p2.y, (float)p3.y);
+    xs[*n]         = priv_mx(t, (int32_t)bx);
+    ys[*n]         = priv_my(t, (int32_t)by);
+    ++(*n);
+  }
+}
+
+/** @brief Resolve an absolute/relative point from arg pair @p (ax,ay) about @p (cx,cy). */
+static svg_pt_t priv_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_t ay)
+{
+  const svg_pt_t p = {.x = rel ? (cx + ax) : ax, .y = rel ? (cy + ay) : ay};
+  return p;
+}
+
+/** @brief Flatten a `C`/`c` cubic into the vertex list; advance the point + count. */
+static int32_t priv_path_cubic(const svg_xform_t* t,
+                               bool               rel,
+                               const int32_t*     args,
+                               int32_t*           cx,
+                               int32_t*           cy,
+                               int32_t*           xs,
+                               int32_t*           ys,
+                               int32_t            n)
+{
+  const svg_pt_t p0 = {.x = *cx, .y = *cy};
+  const svg_pt_t p1 = priv_arg_pt(rel, *cx, *cy, args[0], args[1]);
+  const svg_pt_t p2 = priv_arg_pt(rel, *cx, *cy, args[2], args[3]);
+  const svg_pt_t p3 = priv_arg_pt(rel, *cx, *cy, args[4], args[(int32_t)k_svg_cube_ey]);
+  int32_t        m  = n;
+  priv_flatten_cubic(t, p0, p1, p2, p3, xs, ys, &m);
+  *cx = p3.x;
+  *cy = p3.y;
+  return m;
+}
+
 /**
  * @brief Parse a path `d` value into framebuffer-space vertices; return count.
  *
  * @details Handles M/L/H/V/Z exactly (absolute + relative, with implicit-L
- * repeats after M); C/S/Q/T/A contribute only their endpoint (curves are
- * approximated by chords -- full flattening is tracked in #141). Multiple
- * subpaths are merged into one polygon.
+ * repeats after M); the cubic `C`/`c` is flattened into line segments, while
+ * S/Q/T/A contribute only their endpoint chord (#141). Multiple subpaths are
+ * merged into one polygon.
  */
 /** @brief Resolve the next path command at @p d[*i] (explicit letter, or an
  *         implicit repeat of @p *last); advances @p i past a letter; 0 at end. */
@@ -598,10 +669,14 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
     for (int32_t a = 0; a < na; ++a) {
       args[a] = priv_num(d, dlen, &i);
     }
-    priv_path_step(u, rel, args, na, &cx, &cy);
-    xs[n] = priv_mx(t, cx);
-    ys[n] = priv_my(t, cy);
-    ++n;
+    if (u == 'c') {
+      n = priv_path_cubic(t, rel, args, &cx, &cy, xs, ys, n); /* flatten the curve */
+    } else {
+      priv_path_step(u, rel, args, na, &cx, &cy);
+      xs[n] = priv_mx(t, cx);
+      ys[n] = priv_my(t, cy);
+      ++n;
+    }
     if (u == 'm') {
       last = rel ? 'l' : 'L'; /* implicit coords after M are line-tos */
     }
