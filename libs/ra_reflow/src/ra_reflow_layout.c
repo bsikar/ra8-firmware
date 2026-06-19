@@ -358,7 +358,8 @@ static bool priv_push_glyph(ra_reflow_t* engine,
                             int32_t      cp,
                             uint16_t     font_px,
                             uint8_t      style,
-                            uint32_t     color)
+                            uint32_t     color,
+                            uint8_t      link_id)
 {
   if (engine->glyph_count >= k_ra_reflow_max_glyphs) {
     return false;
@@ -370,7 +371,7 @@ static bool priv_push_glyph(ra_reflow_t* engine,
   g->color             = color;
   g->font_px           = font_px;
   g->style             = style;
-  g->reserved          = 0U;
+  g->reserved          = link_id; /* 1-based `<a>` link id (0 = not a link) */
   engine->glyph_count++;
   return true;
 }
@@ -464,7 +465,8 @@ static ra_err_t priv_emit_char(ra_reflow_t*          engine,
                                priv_cursor_t*        cur,
                                const stbtt_fontinfo* font,
                                int32_t               cp,
-                               uint32_t              color)
+                               uint32_t              color,
+                               uint8_t               link_id)
 {
   const int32_t advance = priv_glyph_advance(font, cur->active_font_px, cp);
   const int32_t advance_clamped =
@@ -479,7 +481,14 @@ static ra_err_t priv_emit_char(ra_reflow_t*          engine,
       return k_ra_err_no_mem;
     }
   }
-  if (!priv_push_glyph(engine, cur->x, cur->y, cp, cur->active_font_px, cur->active_style, color)) {
+  if (!priv_push_glyph(engine,
+                       cur->x,
+                       cur->y,
+                       cp,
+                       cur->active_font_px,
+                       cur->active_style,
+                       color,
+                       link_id)) {
     return k_ra_err_no_mem;
   }
   cur->x += advance_clamped;
@@ -510,9 +519,10 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
                                  const stbtt_fontinfo*    font,
                                  const ra_reflow_token_t* tok)
 {
-  const uint8_t* base  = engine->text_pool + tok->text_off;
-  const uint32_t len   = tok->text_len;
-  const uint32_t color = (cur->in_link != 0U) ? engine->link_color : engine->body_color;
+  const uint8_t* base    = engine->text_pool + tok->text_off;
+  const uint32_t len     = tok->text_len;
+  const uint32_t color   = (cur->in_link != 0U) ? engine->link_color : engine->body_color;
+  const uint8_t  link_id = tok->reserved; /* 1-based `<a>` link id (0 = none) */
 
   /* Pre-scan to find each word boundary. Greedy: if word_w + cursor_x
    * exceeds the right margin AND the line already has content, break
@@ -522,7 +532,7 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
     /* Emit any leading whitespace as one space (already collapsed by
      * the parser). */
     if (base[i] == ' ') {
-      ra_err_t err = priv_emit_char(engine, cur, font, ' ', color);
+      ra_err_t err = priv_emit_char(engine, cur, font, ' ', color, link_id);
       if (err != k_ra_ok) {
         return err;
       }
@@ -547,7 +557,7 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
       }
     }
     while (i < word_end) {
-      ra_err_t err = priv_emit_char(engine, cur, font, (int32_t)base[i], color);
+      ra_err_t err = priv_emit_char(engine, cur, font, (int32_t)base[i], color, link_id);
       if (err != k_ra_ok) {
         return err;
       }
@@ -580,6 +590,16 @@ static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_re
     if (!priv_newline(engine, cur)) {
       return false;
     }
+  }
+  /* Record an `id=` anchor (carried in the block-start token's slice) at this
+   * block's page + top, for same-chapter `#fragment` jumps. */
+  if ((tok->text_len > 0U) && (engine->anchor_count < (uint32_t)k_ra_reflow_max_anchors)) {
+    ra_reflow_anchor_t* anchor = &engine->anchors[engine->anchor_count];
+    anchor->id_off             = tok->text_off;
+    anchor->id_len             = tok->text_len;
+    anchor->page_index         = engine->page_count;
+    anchor->y                  = cur->y;
+    engine->anchor_count++;
   }
   cur->active_font_px = priv_block_font_px(engine->font_px, (ra_reflow_html_tag_t)tok->tag);
   cur->line_height_px = priv_line_height(cur->active_font_px);
@@ -914,6 +934,89 @@ static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
 }
 
 /**
+ * @brief Record one tappable link rect spanning glyphs `[lo, hi)`.
+ *
+ * @details The glyphs are a same-link, same-baseline run on one page. The rect
+ * spans from the first glyph's left to the last glyph's right edge, with a
+ * generous vertical band (~1.5 em around the baseline) for forgiving taps.
+ *
+ * @param[in,out] engine Engine whose link-rect pool grows.
+ * @param[in]     font   Font, to measure the last glyph's advance.
+ * @param[in]     lo     First glyph index (inclusive).
+ * @param[in]     hi     One past the last glyph index.
+ * @param[in]     link   1-based link id; stored target is `link - 1`.
+ * @param[in]     page   Page index the rect belongs to.
+ * @return None.
+ * @pre `hi > lo` and both index `engine->glyphs[]`.
+ * @pre `link > 0`.
+ * @post One link rect is appended unless the pool is full.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_emit_link_rect(ra_reflow_t*          engine,
+                                const stbtt_fontinfo* font,
+                                uint32_t              lo,
+                                uint32_t              hi,
+                                uint8_t               link,
+                                uint32_t              page)
+{
+  if (engine->link_rect_count >= (uint32_t)k_ra_reflow_max_link_rects) {
+    return;
+  }
+  const ra_reflow_glyph_t* gfirst = &engine->glyphs[lo];
+  const ra_reflow_glyph_t* glast  = &engine->glyphs[hi - 1U];
+  const int32_t            fpx    = (int32_t)gfirst->font_px;
+  const int32_t            x1     = glast->x + priv_glyph_advance(font, glast->font_px, glast->cp);
+  ra_reflow_link_rect_t*   rect   = &engine->link_rects[engine->link_rect_count];
+  rect->x                         = gfirst->x;
+  rect->y                         = gfirst->y - fpx;
+  rect->w                         = (x1 > gfirst->x) ? (x1 - gfirst->x) : 1;
+  rect->h                         = fpx + (fpx / 2);
+  rect->target                    = (uint32_t)(link - 1U); /* 1-based -> 0-based */
+  rect->page_index                = page;
+  engine->link_rect_count++;
+}
+
+/**
+ * @brief Post-layout pass: group link-tagged glyphs into tappable rects.
+ *
+ * @details Walks each page's glyphs; consecutive glyphs sharing a non-zero link
+ * id and baseline `y` form one rect (a wrapped link yields one rect per line).
+ *
+ * @param[in,out] engine Engine holding laid-out glyphs / pages.
+ * @param[in]     font   Font for last-glyph advance measurement.
+ * @return None.
+ * @pre `engine->pages[]` / `engine->glyphs[]` are populated.
+ * @pre `engine->link_rect_count == 0` on entry (reset by run_layout).
+ * @post `engine->link_rects[]` holds the page-local tappable rectangles.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_build_link_rects(ra_reflow_t* engine, const stbtt_fontinfo* font)
+{
+  for (uint32_t p = 0U; p < engine->page_count; ++p) {
+    const ra_reflow_page_t* page = &engine->pages[p];
+    const uint32_t          base = page->glyph_first;
+    uint32_t                k    = 0U;
+    while (k < page->glyph_count) {
+      const uint8_t link = engine->glyphs[base + k].reserved;
+      if (link == 0U) {
+        ++k;
+        continue;
+      }
+      const int32_t y = engine->glyphs[base + k].y;
+      uint32_t      e = k + 1U;
+      while ((e < page->glyph_count) && (engine->glyphs[base + e].reserved == link) &&
+             (engine->glyphs[base + e].y == y)) {
+        ++e;
+      }
+      priv_emit_link_rect(engine, font, base + k, base + e, link, p);
+      k = e;
+    }
+  }
+}
+
+/**
  * @brief Dispatch one parsed token through the layout cursor.
  *
  * @details
@@ -1023,10 +1126,12 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
     return k_ra_err_not_initialized;
   }
 
-  /* Wipe glyph, page and image state but keep the token stream. */
+  /* Wipe glyph, page, image, link and anchor state but keep the token stream. */
   engine->glyph_count     = 0U;
   engine->page_count      = 0U;
   engine->image_box_count = 0U;
+  engine->link_rect_count = 0U;
+  engine->anchor_count    = 0U;
 
   stbtt_fontinfo font;
   ra_err_t       err = priv_init_font(engine, &font);
@@ -1046,6 +1151,8 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
     engine->pages[0].glyph_count = engine->glyph_count;
     engine->page_count           = (uint32_t)k_priv_min_chapter_pages;
   }
+  /* Build tappable link rectangles from the link-tagged glyphs (#110). */
+  priv_build_link_rects(engine, &font);
   return k_ra_ok;
 }
 

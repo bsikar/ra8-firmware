@@ -157,9 +157,12 @@ if(RA_REFLOW_USE_LITEHTML)
     # so this one file stays in even when the v1 reflow engine is excluded.
     # ra_img_arena.c (the stb_image bump arena) is likewise shared: the always-on
     # stb_image_impl.c TU in RA_EPUB_THIRD_PARTY references its symbols.
+    # ra_reflow_link.c is pure query logic over engine fields (no layout/stbtt),
+    # so the #110 link/anchor API is available under v2 as well.
     set(RA_REFLOW_C_SOURCES
         ${FW_ROOT}/libs/ra_reflow/src/ra_stbtt_alloc.c
-        ${FW_ROOT}/libs/ra_reflow/src/ra_img_arena.c)
+        ${FW_ROOT}/libs/ra_reflow/src/ra_img_arena.c
+        ${FW_ROOT}/libs/ra_reflow/src/ra_reflow_link.c)
     set(RA_REFLOW_CPP_SOURCES  ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp)
     enable_language(CXX)
     set(_RA_SAVED_C_FLAGS   "${CMAKE_C_FLAGS}")
