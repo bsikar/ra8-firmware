@@ -181,6 +181,7 @@ uart_expect() { # app -> expected UART substring on stdout
     ereader_link_hil)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
     ereader_align_hil)  printf 'ereader-align-hil: glyphs=210 geom=D4C9657E' ;;
     ereader_table_hil)  printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
+    reflow_content_hil) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
     crc_demo)           printf 'match=Y' ;;
     adc_b_demo)         printf 'adc: raw=' ;;
     agt_periodic)       printf 'agt: tick' ;;
@@ -210,6 +211,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         ereader_chrome_hil ereader_image_hil ereader_link_hil ereader_align_hil ereader_table_hil \
+        reflow_content_hil \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback imu_lsm6dso_demo gpio_input_demo \
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
