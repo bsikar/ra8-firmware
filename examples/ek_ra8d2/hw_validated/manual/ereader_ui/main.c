@@ -47,6 +47,7 @@
 #include "ra_gfx.h"
 #include "ra_gfx_font.h"
 #include "ra_isr.h"
+#include "ra_keyboard.h"
 #include "ra_mstp.h"
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
@@ -148,18 +149,26 @@ typedef enum : uint16_t {
  * @brief Screen ids for the ra_ui navigation stack.
  */
 typedef enum : uint16_t {
-  k_er_screen_library = 1U, /**< Library / home grid.               */
-  k_er_screen_reading = 2U, /**< Reading view.                      */
+  k_er_screen_library  = 1U, /**< Library / home grid.               */
+  k_er_screen_reading  = 2U, /**< Reading view.                      */
+  k_er_screen_keyboard = 3U, /**< On-screen keyboard (search entry). */
 } er_screen_t;
 
 /**
  * @enum er_action_t
  * @brief Tap-target action ids (carried on box nodes as their tag).
+ *
+ * @details
+ * Keyboard key taps use the contiguous block ``k_er_act_key_base ..
+ * k_er_act_key_base + 28`` so the dispatcher recovers the key index by
+ * subtraction; nothing else may occupy that range.
  */
 typedef enum : uint16_t {
-  k_er_act_none      = 0U, /**< Not a tap target.                   */
-  k_er_act_open_book = 1U, /**< Library card -> open the reading view. */
-  k_er_act_nav       = 2U, /**< Bottom-nav destination (stay in lib).  */
+  k_er_act_none      = 0U,   /**< Not a tap target.                      */
+  k_er_act_open_book = 1U,   /**< Library card -> open the reading view. */
+  k_er_act_nav       = 2U,   /**< Bottom-nav destination (stay in lib).  */
+  k_er_act_search    = 3U,   /**< Toolbar Search -> open the keyboard.   */
+  k_er_act_key_base  = 100U, /**< Keyboard key i -> base + i.            */
 } er_action_t;
 
 /**
@@ -389,6 +398,12 @@ static ra_ui_target_t s_targets[k_er_max_targets];
 
 /** @brief Number of tap targets currently populated. */
 static uint16_t s_target_count;
+
+/** @brief On-screen keyboard grid (built by er_render_keyboard, read on tap). */
+static ra_kbd_layout_t s_kb;
+
+/** @brief Live search query typed on the keyboard; filters the Library shelf. */
+static ra_kbd_text_t s_query;
 
 /** @brief Reading view: current reflow page index (0-based). */
 static uint32_t s_reading_page;
@@ -818,10 +833,11 @@ static void er_build_toolbar(ra_box_tree_t* tree, int16_t parent)
                                      1U);
   const int16_t  tb   = ra_box_add(tree, parent, &tb_t);
 
-  const ra_box_t srch_t = er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
-  const int16_t  srch   = ra_box_add(tree, tb, &srch_t);
-  s_label[srch]         = k_er_search_hint;
-  s_label_col[srch]     = (uint32_t)k_er_ink_muted;
+  ra_box_t srch_t    = er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
+  srch_t.tag         = (int16_t)k_er_act_search; /* tap the Search field -> keyboard */
+  const int16_t srch = ra_box_add(tree, tb, &srch_t);
+  s_label[srch]      = k_er_search_hint;
+  s_label_col[srch]  = (uint32_t)k_er_ink_muted;
 
   const ra_box_t cnt_t =
     er_leaf((int16_t)k_er_count_w, 0U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
@@ -897,6 +913,45 @@ static void er_build_nav(ra_box_tree_t* tree, int16_t parent)
   }
 }
 
+/** @enum er_filter_t @brief Search-filter scan bound (NASA Rule 2). */
+typedef enum : uint32_t {
+  k_er_match_scan_max = 256U, /**< Max title chars scanned for a match. */
+} er_filter_t;
+
+/** @brief Lower-case an ASCII letter (identity for non-letters). */
+static char er_lc(char c)
+{
+  return ((c >= 'A') && (c <= 'Z')) ? (char)((c - 'A') + 'a') : c;
+}
+
+/** @brief Case-insensitive: does @p needle occur within @p hay? */
+static bool er_ci_contains(const char* hay, const char* needle)
+{
+  if (needle[0] == '\0') {
+    return true;
+  }
+  for (uint32_t i = 0U; (i < (uint32_t)k_er_match_scan_max) && (hay[i] != '\0'); i++) {
+    uint32_t j = 0U;
+    while ((j < (uint32_t)k_ra_kbd_text_max) && (needle[j] != '\0') && (hay[i + j] != '\0') &&
+           (er_lc(hay[i + j]) == er_lc(needle[j]))) {
+      j++;
+    }
+    if (needle[j] == '\0') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief Does @p book pass the committed search query (true if no filter)? */
+static bool er_book_matches(const er_book_t* book)
+{
+  if (!s_query.committed || (s_query.len == 0U)) {
+    return true;
+  }
+  return er_ci_contains(book->title, s_query.buf);
+}
+
 /**
  * @brief Build the Library box tree (status bar, toolbar, grid, nav).
  *
@@ -935,6 +990,9 @@ static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
                                        (uint8_t)k_er_grid_cols);
   const int16_t  grid   = ra_box_add(tree, root, &grid_t);
   for (uint16_t i = 0U; i < (uint16_t)k_er_book_count; ++i) {
+    if (!er_book_matches(&k_er_books[i])) {
+      continue; /* hidden by the committed search query */
+    }
     er_add_book_tile(tree, grid, &k_er_books[i]);
   }
 
@@ -1232,12 +1290,97 @@ static void er_render_reading(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/** @enum er_kbd_render_t @brief 8x16 glyph metrics for keyboard labels. */
+typedef enum : int32_t {
+  k_er_kbd_glyph_w = 8,  /**< ra_gfx_font_8x16 glyph width.   */
+  k_er_kbd_glyph_h = 16, /**< ra_gfx_font_8x16 glyph height.  */
+  k_er_kbd_qlabel  = 72, /**< "Search:" label column width.   */
+} er_kbd_render_t;
+
+/** @brief Write a key's drawn label (char, or a short word for specials). */
+static void er_kbd_label(const ra_kbd_key_t* k, char* out)
+{
+  switch (k->kind) {
+    case k_ra_kbd_key_space:
+      out[0] = 'S';
+      out[1] = 'P';
+      out[2] = 'C';
+      out[3] = '\0';
+      break;
+    case k_ra_kbd_key_backspace:
+      out[0] = 'B';
+      out[1] = 'K';
+      out[2] = '\0';
+      break;
+    case k_ra_kbd_key_enter:
+      out[0] = 'O';
+      out[1] = 'K';
+      out[2] = '\0';
+      break;
+    default:
+      out[0] = k->ch;
+      out[1] = '\0';
+      break;
+  }
+}
+
+/** @brief Draw one key: a rect outline with a centred label. */
+static void er_draw_key(const ra_kbd_key_t* k)
+{
+  char lab[8] = {};
+  er_kbd_label(k, lab);
+  (void)ra_gfx_rect(k->rect.x, k->rect.y, k->rect.w, k->rect.h, (uint32_t)k_er_ink, false);
+  const int32_t lw = (int32_t)strlen(lab) * (int32_t)k_er_kbd_glyph_w;
+  const int32_t lx = k->rect.x + ((k->rect.w - lw) / 2);
+  const int32_t ly = k->rect.y + ((k->rect.h - (int32_t)k_er_kbd_glyph_h) / 2);
+  er_text_left(lx, ly, lab, (uint32_t)k_er_ink);
+}
+
+/**
+ * @brief Render the on-screen keyboard screen + collect its key targets.
+ *
+ * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre None.
+ * @post The framebuffer holds the keyboard; ``s_kb`` + ``s_targets`` set.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_render_keyboard(void)
+{
+  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  const int32_t qy = (int32_t)k_er_statusbar_h + (int32_t)k_er_text_pad;
+  er_text_left((int32_t)k_er_pad_ui, qy, "Search:", (uint32_t)k_er_ink_muted);
+  const char* shown = (s_query.len > 0U) ? s_query.buf : k_er_search_hint;
+  er_text_left((int32_t)k_er_pad_ui + (int32_t)k_er_kbd_qlabel, qy, shown, (uint32_t)k_er_ink);
+
+  const int32_t ky = (int32_t)k_er_statusbar_h + (int32_t)k_er_toolbar_h + (int32_t)k_er_pad_ui;
+  const ra_ui_rect_t frame = {.x = (int32_t)k_er_pad_ui,
+                              .y = ky,
+                              .w = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_pad_ui),
+                              .h = (int32_t)s_fb.height_px - ky - (int32_t)k_er_pad_ui};
+  (void)ra_kbd_layout_init(&s_kb, &frame);
+
+  s_target_count = 0U;
+  for (uint8_t i = 0U; i < s_kb.count; i++) {
+    er_draw_key(&s_kb.keys[i]);
+    if (s_target_count < (uint16_t)k_er_max_targets) {
+      s_targets[s_target_count].rect      = s_kb.keys[i].rect;
+      s_targets[s_target_count].action_id = (uint16_t)((uint16_t)k_er_act_key_base + (uint16_t)i);
+      s_targets[s_target_count].reserved  = 0U;
+      s_target_count++;
+    }
+  }
+}
+
 static void er_render_current(void)
 {
   uint16_t top = (uint16_t)k_er_screen_library;
   (void)ra_ui_nav_top(&s_nav, &top);
   if (top == (uint16_t)k_er_screen_reading) {
     er_render_reading();
+  } else if (top == (uint16_t)k_er_screen_keyboard) {
+    er_render_keyboard();
   } else {
     er_render_library();
   }
@@ -1433,12 +1576,40 @@ static bool er_handle_reading_tap(int32_t x, int32_t y)
   return false;
 }
 
+/**
+ * @brief Route a tap on the keyboard screen: type a key, or commit on ENTER.
+ *
+ * @param[in] x Tap X (panel pixels).
+ * @param[in] y Tap Y (panel pixels).
+ * @return true if the screen must re-render (a key changed the query, or the
+ *         committed query popped back to the filtered Library).
+ */
+static bool er_handle_keyboard_tap(int32_t x, int32_t y)
+{
+  uint16_t action = (uint16_t)k_er_act_none;
+  bool     hit    = false;
+  (void)ra_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
+  if (!hit || (action < (uint16_t)k_er_act_key_base)) {
+    return false;
+  }
+  const uint8_t idx = (uint8_t)(action - (uint16_t)k_er_act_key_base);
+  (void)ra_kbd_apply(&s_query, &s_kb, idx);
+  if (s_query.committed) {
+    uint16_t prev = (uint16_t)k_er_screen_library;
+    return (ra_ui_nav_pop(&s_nav, &prev) == k_ra_ok); /* ENTER -> filtered Library */
+  }
+  return true; /* re-render to show the updated query */
+}
+
 static bool er_handle_tap(int32_t x, int32_t y)
 {
   uint16_t top = (uint16_t)k_er_screen_library;
   (void)ra_ui_nav_top(&s_nav, &top);
   if (top == (uint16_t)k_er_screen_reading) {
     return er_handle_reading_tap(x, y);
+  }
+  if (top == (uint16_t)k_er_screen_keyboard) {
+    return er_handle_keyboard_tap(x, y);
   }
   uint16_t action = (uint16_t)k_er_act_none;
   bool     hit    = false;
@@ -1448,6 +1619,10 @@ static bool er_handle_tap(int32_t x, int32_t y)
     s_chapter_idx    = 0U; /* and its first chapter */
     s_loc_back_count = 0U; /* with a fresh navigation back-stack */
     return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_reading) == k_ra_ok);
+  }
+  if (hit && (action == (uint16_t)k_er_act_search)) {
+    (void)ra_kbd_text_init(&s_query); /* fresh query each time Search opens */
+    return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_keyboard) == k_ra_ok);
   }
   return false;
 }
