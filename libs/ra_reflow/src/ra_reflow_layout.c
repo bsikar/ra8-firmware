@@ -194,7 +194,6 @@ typedef struct {
   uint16_t line_height_px;   /**< Active line height in pixels. */
   uint16_t active_font_px;   /**< Active font size (body or heading). */
   uint8_t  active_style;     /**< Active inline-style stamp. */
-  uint8_t  in_link;          /**< 1 while inside an `<a>` block. */
   uint16_t indent_px;        /**< Active left indent (li, blockquote). */
   uint32_t page_first_glyph; /**< First glyph index of the active page. */
   uint32_t page_first_image; /**< First image-box index of the active page. */
@@ -625,8 +624,11 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
 {
   const uint8_t* base    = engine->text_pool + tok->text_off;
   const uint32_t len     = tok->text_len;
-  const uint32_t color   = (cur->in_link != 0U) ? engine->link_color : engine->body_color;
   const uint8_t  link_id = tok->reserved; /* 1-based `<a>` link id (0 = none) */
+  /* Link colour is keyed on actual link membership, not the underline style bit:
+   * CSS `text-decoration: underline` (#111) underlines non-link text, which must
+   * still render in the body colour. */
+  const uint32_t color = (link_id != 0U) ? engine->link_color : engine->body_color;
 
   /* Pre-scan to find each word boundary. Greedy: if word_w + cursor_x
    * exceeds the right margin AND the line already has content, break
@@ -1150,7 +1152,6 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
                                  const ra_reflow_token_t* tok)
 {
   cur->active_style = tok->style;
-  cur->in_link      = ((tok->style & k_ra_reflow_style_underline) != 0U) ? 1U : 0U;
   switch (tok->kind) {
     case k_ra_reflow_tok_block_start:
       return priv_open_block(engine, cur, tok) ? k_ra_ok : k_ra_err_no_mem;
@@ -1523,7 +1524,6 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
     .line_height_px   = priv_line_height(engine->font_px),
     .active_font_px   = engine->font_px,
     .active_style     = k_ra_reflow_style_normal,
-    .in_link          = 0U,
     .indent_px        = 0U,
     .page_first_glyph = 0U,
     .page_first_image = 0U,
