@@ -1,12 +1,12 @@
 /**
  * @file test_ra_keyboard.c
- * @brief Host unit tests + MC/DC for the on-screen keyboard widget (#105).
+ * @brief Host unit tests + MC/DC for the iOS-style keyboard widget (#105).
  *
  * @details
- * Lays the QWERTY grid into a frame and asserts the key count + a sample
- * geometry, then drives the typing model: tapping key centres builds a string,
- * BACKSPACE deletes, SPACE inserts, ENTER commits. Plus MC/DC vectors for the
- * compound frame-rejection decision in ra_kbd_layout_init.
+ * Lays the letters layer and asserts the key count + in-frame geometry, then
+ * drives the typing model: lowercase, one-shot SHIFT (uppercase), the 123/ABC
+ * layer toggle (digits + symbols), BACKSPACE, SPACE, RETURN. Plus MC/DC vectors
+ * for the compound frame-rejection decision in ra_kbd_layout_init.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,21 +19,21 @@
 #include "unity_minimal.h"
 
 enum : int32_t {
-  k_fx          = 0,
-  k_fy          = 600,
-  k_fw          = 1024,
-  k_fh          = 360,
-  k_expect_keys = 29, /* 10 + 9 + 8 + 2 */
+  k_fx             = 0,
+  k_fy             = 600,
+  k_fw             = 1024,
+  k_fh             = 360,
+  k_expect_letters = 31, /* 10 + 9 + (1+7+1) + (1+1+1) */
 };
 
-/** @brief Shared laid-out grid (kept off the stack). */
+/** @brief Shared laid-out grid. */
 static ra_kbd_layout_t s_kb;
 
-/** @brief Find the key index for printable @p ch, or k_ra_kbd_no_hit. */
+/** @brief Find the char key whose unshifted char is @p ch in the active layer. */
 static uint8_t key_of(char ch)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
-    if ((s_kb.keys[i].kind == k_ra_kbd_key_char) && (s_kb.keys[i].ch == ch)) {
+    if ((s_kb.keys[i].kind == k_ra_kbd_key_char) && (s_kb.keys[i].ch_lower == ch)) {
       return i;
     }
   }
@@ -51,99 +51,113 @@ static uint8_t key_of_kind(ra_kbd_key_kind_t kind)
   return (uint8_t)k_ra_kbd_no_hit;
 }
 
-/** @brief Tap a key's centre and apply it to @p t. */
-static void tap_key(ra_kbd_text_t* t, uint8_t idx)
+/** @brief Tap a key's centre and apply it. */
+static void tap(ra_kbd_text_t* t, uint8_t idx)
 {
   const ra_ui_rect_t* r  = &s_kb.keys[idx].rect;
   const int32_t       cx = r->x + (r->w / 2);
   const int32_t       cy = r->y + (r->h / 2);
   TEST_ASSERT_EQ((int32_t)idx, (int32_t)ra_kbd_hit(&s_kb, cx, cy));
-  TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(t, &s_kb, ra_kbd_hit(&s_kb, cx, cy)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(t, &s_kb, idx));
 }
 
-/** @brief Type a printable string by tapping each key. */
-static void type_str(ra_kbd_text_t* t, const char* s)
+/** @brief Type lowercase printable chars (must be on the active layer). */
+static void type_lc(ra_kbd_text_t* t, const char* s)
 {
   for (uint32_t i = 0U; s[i] != '\0'; i++) {
-    tap_key(t, key_of(s[i]));
+    tap(t, key_of(s[i]));
   }
 }
 
 /**
- * @test test_layout_grid
- * @brief The grid lays 29 keys into the frame and every rect is inside it.
+ * @test test_layout_letters
+ * @brief 31 keys in-frame; lowercase letters, SHIFT, and a 123 layer key.
  */
-static void test_layout_grid(void)
+static void test_layout_letters(void)
 {
-  TEST_BEGIN("keyboard layout: 29 keys inside the frame");
+  TEST_BEGIN("keyboard letters layer: 31 keys, lowercase + shift + 123");
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
-  TEST_ASSERT_EQ(k_expect_keys, (int32_t)s_kb.count);
+  TEST_ASSERT_EQ(k_expect_letters, (int32_t)s_kb.count);
+  TEST_ASSERT(!s_kb.shift);
+  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_letters, (int32_t)s_kb.layer);
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     const ra_ui_rect_t* r = &s_kb.keys[i].rect;
     TEST_ASSERT((r->x >= k_fx) && ((r->x + r->w) <= (k_fx + k_fw)));
     TEST_ASSERT((r->y >= k_fy) && ((r->y + r->h) <= (k_fy + k_fh)));
   }
-  /* Q is the first key, top-left of the frame. */
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_key_char, (int32_t)s_kb.keys[0].kind);
-  TEST_ASSERT_EQ((int32_t)'Q', (int32_t)s_kb.keys[0].ch);
-  TEST_ASSERT_EQ(k_fx, s_kb.keys[0].rect.x);
-  TEST_END("keyboard layout: 29 keys inside the frame");
+  TEST_ASSERT(key_of('q') != (uint8_t)k_ra_kbd_no_hit);
+  TEST_ASSERT(key_of_kind(k_ra_kbd_key_shift) != (uint8_t)k_ra_kbd_no_hit);
+  TEST_ASSERT(key_of_kind(k_ra_kbd_key_layer) != (uint8_t)k_ra_kbd_no_hit);
+  TEST_ASSERT(key_of('9') == (uint8_t)k_ra_kbd_no_hit); /* digits are on the 123 layer */
+  TEST_END("keyboard letters layer: 31 keys, lowercase + shift + 123");
 }
 
 /**
- * @test test_typing
- * @brief Tapping key centres builds a query; backspace/space/enter behave.
+ * @test test_typing_layers
+ * @brief Case + the 123/ABC layer toggle (digit) + commit.
  */
-static void test_typing(void)
+static void test_typing_layers(void)
 {
-  TEST_BEGIN("keyboard typing: build + edit + commit a query");
+  TEST_BEGIN("keyboard typing: case + layer toggle + digit + commit");
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
   ra_kbd_text_t t;
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_text_init(&t));
 
-  type_str(&t, "HELLO");
-  TEST_ASSERT_EQ(0, strcmp(t.buf, "HELLO"));
-  /* SPACE then WORLD. */
-  tap_key(&t, key_of_kind(k_ra_kbd_key_space));
-  type_str(&t, "WORLD");
-  TEST_ASSERT_EQ(0, strcmp(t.buf, "HELLO WORLD"));
-  /* BACKSPACE removes the last char. */
-  tap_key(&t, key_of_kind(k_ra_kbd_key_backspace));
-  TEST_ASSERT_EQ(0, strcmp(t.buf, "HELLO WORL"));
+  /* One-shot SHIFT capitalises only the next char: "Hi". */
+  tap(&t, key_of_kind(k_ra_kbd_key_shift));
+  TEST_ASSERT(s_kb.shift);
+  type_lc(&t, "hi");
+  TEST_ASSERT(!s_kb.shift);
+  TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi"));
+
+  /* SPACE, then 123 -> numbers layer, type '9', then ABC -> letters. */
+  tap(&t, key_of_kind(k_ra_kbd_key_space));
+  tap(&t, key_of_kind(k_ra_kbd_key_layer)); /* 123 -> numbers */
+  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_numbers, (int32_t)s_kb.layer);
+  type_lc(&t, "9");
+  TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9"));
+  tap(&t, key_of_kind(k_ra_kbd_key_layer)); /* ABC -> letters */
+  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_letters, (int32_t)s_kb.layer);
+
+  /* RETURN commits. */
   TEST_ASSERT(!t.committed);
-  /* ENTER commits. */
-  tap_key(&t, key_of_kind(k_ra_kbd_key_enter));
+  tap(&t, key_of_kind(k_ra_kbd_key_enter));
   TEST_ASSERT(t.committed);
-  TEST_END("keyboard typing: build + edit + commit a query");
+  TEST_END("keyboard typing: case + layer toggle + digit + commit");
 }
 
 /**
- * @test test_edge_cases
- * @brief Backspace on empty + a miss tap are no-ops; full buffer stops.
+ * @test test_glyph_and_edges
+ * @brief ra_kbd_key_glyph tracks SHIFT; empty backspace + overflow are no-ops.
  */
-static void test_edge_cases(void)
+static void test_glyph_and_edges(void)
 {
-  TEST_BEGIN("keyboard edges: empty backspace, miss, overflow");
+  TEST_BEGIN("keyboard glyph/case + edge no-ops");
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
+  const uint8_t q = key_of('q');
+  TEST_ASSERT_EQ((int32_t)'q', (int32_t)ra_kbd_key_glyph(&s_kb, q));
+  s_kb.shift = true;
+  TEST_ASSERT_EQ((int32_t)'Q', (int32_t)ra_kbd_key_glyph(&s_kb, q));
+  s_kb.shift = false;
+  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(&s_kb, key_of_kind(k_ra_kbd_key_enter)));
+  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(nullptr, 0U));
+
   ra_kbd_text_t t;
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_text_init(&t));
-  /* Backspace on empty: no-op. */
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(&t, &s_kb, key_of_kind(k_ra_kbd_key_backspace)));
   TEST_ASSERT_EQ(0, (int32_t)t.len);
-  /* A tap that hits nothing returns the sentinel and applies as a no-op. */
   TEST_ASSERT_EQ((int32_t)k_ra_kbd_no_hit, (int32_t)ra_kbd_hit(&s_kb, -100, -100));
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(&t, &s_kb, (uint8_t)k_ra_kbd_no_hit));
   TEST_ASSERT_EQ(0, (int32_t)t.len);
-  /* Overflow guard: hammer 'A' past capacity; len caps at text_max-1. */
-  const uint8_t a = key_of('A');
+  const uint8_t a = key_of('a');
   for (uint32_t i = 0U; i < 200U; i++) {
     TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(&t, &s_kb, a));
   }
   TEST_ASSERT_EQ((int32_t)k_ra_kbd_text_max - 1, (int32_t)t.len);
-  TEST_END("keyboard edges: empty backspace, miss, overflow");
+  TEST_END("keyboard glyph/case + edge no-ops");
 }
 
 /** @brief Mirror of the frame-rejection decision: (w<=0) || (h<=0). */
@@ -171,7 +185,6 @@ static void test_frame_reject_mcdc(void)
   TEST_ASSERT_EQ(0, mirror_reject(10, 10));
   TEST_ASSERT_EQ(1, mirror_reject(0, 10));
   TEST_ASSERT_EQ(1, mirror_reject(10, 0));
-  /* And the real function rejects a zero-area frame. */
   const ra_ui_rect_t bad = {.x = 0, .y = 0, .w = 0, .h = 10};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_kbd_layout_init(&s_kb, &bad));
   TEST_END("layout frame-reject MC/DC: w<=0 || h<=0");
@@ -198,9 +211,9 @@ static void test_null_guards(void)
  */
 int32_t main(void)
 {
-  test_layout_grid();
-  test_typing();
-  test_edge_cases();
+  test_layout_letters();
+  test_typing_layers();
+  test_glyph_and_edges();
   test_frame_reject_mcdc();
   test_null_guards();
   (void)fprintf(stderr, "[OK ] test_ra_keyboard.c\n");

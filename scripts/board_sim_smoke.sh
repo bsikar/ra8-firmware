@@ -194,7 +194,7 @@ uart_expect() { # app -> expected UART substring on stdout
     reflow_content_hil) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
     ereader_input_hil)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
     bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
-    keyboard_hil)       printf 'kbd: q=HELLO WORL commit=1 taps=13 PASS' ;;
+    keyboard_hil)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
     touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
     smbus_demo)         printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
     crc_demo)           printf 'match=Y' ;;

@@ -5,13 +5,14 @@
  * @details
  * Drives the real `ra_keyboard` model with synthetic taps -- the same
  * input-injection pattern as `ereader_input_hil` (#118), but for text entry.
- * It lays the QWERTY grid into a frame, then "taps" the centre of each key in
- * a target phrase, routing every tap through `ra_kbd_hit` -> `ra_kbd_apply`
- * exactly as a finger on the panel would. It types `HELLO WORLD`, deletes one
- * char with BACKSPACE, and commits with ENTER, then asserts the resulting
- * query and prints a banner on the SCI8 J-Link OB console:
+ * It lays the iOS-style key grid into a frame, then "taps" key centres to type
+ * the string `Hi 9` -- exercising one-shot SHIFT (the capital `H`), SPACE, and
+ * the 123 layer toggle to reach a digit (`9`) -- routing every tap through
+ * `ra_kbd_hit` -> `ra_kbd_apply` exactly as a finger on the panel would, then
+ * commits with ENTER and asserts the query before printing a banner on the
+ * SCI8 J-Link OB console:
  *
- *   `kbd: q=HELLO WORL commit=1 taps=13 PASS`
+ *   `kbd: q=Hi 9 commit=1 taps=7 PASS`
  *
  * No panel / SD / touch hardware is needed -- the widget is pure layout +
  * hit-test + text-buffer logic, so the banner is identical on host, board_sim,
@@ -61,9 +62,10 @@ static const ra_port_pin_t k_kb_pin_rxd =
 /** @brief The laid-out keyboard (large -- file-scope, not on the stack). */
 static ra_kbd_layout_t s_kb;
 
-/** @brief Target phrase typed key-by-key, then one BACKSPACE + ENTER. */
-static const char k_kb_phrase[]   = "HELLO WORLD";
-static const char k_kb_expected[] = "HELLO WORL"; /* after one backspace */
+/** @brief Lowercase letters typed (with SHIFT before the first) -> "Hi". */
+static const char k_kb_word[] = "hi";
+/** @brief Expected query after the SHIFT / SPACE / 123-layer / digit sequence. */
+static const char k_kb_expected[] = "Hi 9";
 
 static const uint8_t k_msg_boot[] = "keyboard-hil: boot\r\n";
 static const uint8_t k_msg_fail[] = "keyboard-hil: FAIL init\r\n";
@@ -113,7 +115,7 @@ static void kb_print_uint(uint32_t value)
 static uint8_t kb_key_of(char ch)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
-    if ((s_kb.keys[i].kind == k_ra_kbd_key_char) && (s_kb.keys[i].ch == ch)) {
+    if ((s_kb.keys[i].kind == k_ra_kbd_key_char) && (s_kb.keys[i].ch_lower == ch)) {
       return i;
     }
   }
@@ -225,14 +227,17 @@ int32_t main(void)
     kb_panic_halt(k_msg_lay, (uint32_t)sizeof(k_msg_lay) - 1U);
   }
 
+  /* Type "Hi 9" -- exercises one-shot SHIFT (caps), SPACE, and the 123 layer
+   * toggle to reach a digit, then commits with RETURN. */
   uint32_t taps = 0U;
-  for (uint32_t i = 0U; i < (uint32_t)(sizeof(k_kb_phrase) - 1U); i++) {
-    const char    ch = k_kb_phrase[i];
-    const uint8_t k  = (ch == ' ') ? kb_key_of_kind(k_ra_kbd_key_space) : kb_key_of(ch);
-    kb_tap(&t, k, &taps);
+  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_shift), &taps); /* -> capitalise next */
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(k_kb_word) - 1U); i++) {
+    kb_tap(&t, kb_key_of(k_kb_word[i]), &taps); /* h -> H (one-shot), then i */
   }
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_backspace), &taps);
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_enter), &taps);
+  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_space), &taps);
+  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_layer), &taps); /* 123 -> numbers layer */
+  kb_tap(&t, kb_key_of('9'), &taps);                     /* digit, now reachable */
+  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_enter), &taps); /* RETURN commits */
 
   if (!kb_streq(t.buf, k_kb_expected) || !t.committed) {
     kb_panic_halt(k_msg_miss, (uint32_t)sizeof(k_msg_miss) - 1U);
