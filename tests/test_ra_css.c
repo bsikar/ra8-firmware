@@ -68,8 +68,9 @@ static void test_parse_props(void)
   TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_italic) != 0U);
   TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_underline) != 0U);
   TEST_ASSERT_EQ((int)k_ra_reflow_align_justify, (int)d.align);
-  TEST_ASSERT_EQ((int)k_ra_css_sel_type, (int)s_sheet.rules[0].sel_kind);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag); /* type only */
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].class_len);
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].id_len);
   TEST_END("css parse properties");
 }
 
@@ -100,23 +101,30 @@ static void test_parse_selectors(void)
   load("/* hello */ * { font-style: italic; }\n"
        ".note , #lead { font-weight: bold; }");
   TEST_ASSERT_EQ(3, (int)s_sheet.rule_count); /* * , .note , #lead */
-  TEST_ASSERT_EQ((int)k_ra_css_sel_universal, (int)s_sheet.rules[0].sel_kind);
-  TEST_ASSERT_EQ((int)k_ra_css_sel_class, (int)s_sheet.rules[1].sel_kind);
-  TEST_ASSERT_EQ((int)k_ra_css_sel_id, (int)s_sheet.rules[2].sel_kind);
+  /* universal: no type / class / id constraint */
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_unknown, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].class_len);
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].id_len);
+  /* .note: class constraint only */
+  TEST_ASSERT(s_sheet.rules[1].class_len > 0U);
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[1].id_len);
+  /* #lead: id constraint only */
+  TEST_ASSERT(s_sheet.rules[2].id_len > 0U);
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[2].class_len);
   TEST_END("css parse selectors");
 }
 
 /**
  * @test test_parse_unsupported_skipped
- * @brief Compound / descendant / unknown-tag selectors are dropped, not errored.
+ * @brief Descendant / multi-class / unknown-tag selectors are dropped, not errored.
  */
 static void test_parse_unsupported_skipped(void)
 {
   TEST_BEGIN("css unsupported selectors skipped");
-  load("p.note { font-weight: bold; }" /* compound -> skip */
-       "div p { font-style: italic; }" /* descendant -> skip */
-       "div { text-align: center; }"   /* unknown tag -> skip */
-       "h1 { text-align: right; }");   /* OK */
+  load("p a { font-style: italic; }" /* descendant combinator -> skip */
+       ".a.b { color: red; }"        /* two classes -> skip           */
+       "div { text-align: center; }" /* unknown tag -> skip           */
+       "h1 { text-align: right; }"); /* OK                            */
   TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
   TEST_ASSERT_EQ((int)k_ra_reflow_tag_h1, (int)s_sheet.rules[0].sel_tag);
   TEST_END("css unsupported selectors skipped");
@@ -460,6 +468,38 @@ static void test_display(void)
 }
 
 /**
+ * @test test_compound_selectors
+ * @brief `type.class` / `type#id` match all parts; specificity sums; `.a.b` skipped.
+ */
+static void test_compound_selectors(void)
+{
+  TEST_BEGIN("css compound selectors");
+  load("p.note { color: #ff0000; }"               /* type + class            */
+       "a#x { text-align: center; }"              /* type + id              */
+       ".a.b { color: #0000ff; }"                 /* two classes -> dropped */
+       "p { color: #00ff00; }");                  /* plain type             */
+  TEST_ASSERT_EQ(3, (int)s_sheet.rule_count);     /* .a.b dropped */
+  const ra_css_rule_t* rnote = &s_sheet.rules[0]; /* p.note */
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)rnote->sel_tag);
+  TEST_ASSERT(rnote->class_len > 0U);
+
+  /* p.note matches only when BOTH the tag and the class match. */
+  ra_css_element_t p_note  = elem(k_ra_reflow_tag_p, nullptr, "intro note");
+  ra_css_element_t p_plain = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_element_t h1_note = elem(k_ra_reflow_tag_h1, nullptr, "note");
+  TEST_ASSERT(ra_css_rule_matches(rnote, &p_note, &s_sheet));   /* tag + class */
+  TEST_ASSERT(!ra_css_rule_matches(rnote, &p_plain, &s_sheet)); /* tag, no class */
+  TEST_ASSERT(!ra_css_rule_matches(rnote, &h1_note, &s_sheet)); /* class, wrong tag */
+
+  /* Specificity: p.note (type+class) beats the plain p rule. */
+  ra_css_style_t r1 = ra_css_cascade(&s_sheet, &p_note, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ(0xFF0000, (int)r1.color); /* p.note wins */
+  ra_css_style_t r2 = ra_css_cascade(&s_sheet, &p_plain, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ(0x00FF00, (int)r2.color); /* only p matches */
+  TEST_END("css compound selectors");
+}
+
+/**
  * @test test_resolve_skip_mcdc
  * @brief MC/DC for the priv_resolve per-rule skip guard (driven via cascade).
  *
@@ -554,6 +594,7 @@ int32_t main(void)
   test_inline();
   test_match_mcdc();
   test_match_class_universal_type();
+  test_compound_selectors();
   test_cascade_specificity();
   test_cascade_source_order();
   test_cascade_inheritance();

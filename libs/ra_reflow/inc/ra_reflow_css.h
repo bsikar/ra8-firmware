@@ -68,17 +68,6 @@ typedef enum : uint16_t {
 } ra_css_limits_t;
 
 /**
- * @enum ra_css_sel_kind_t
- * @brief The four simple-selector kinds v1 understands.
- */
-typedef enum : uint8_t {
-  k_ra_css_sel_universal = 0U, /**< `*` -- matches every element.       */
-  k_ra_css_sel_type      = 1U, /**< `tag` -- matches by element kind.   */
-  k_ra_css_sel_class     = 2U, /**< `.class` -- matches a class token.  */
-  k_ra_css_sel_id        = 3U, /**< `#id` -- matches the element id.    */
-} ra_css_sel_kind_t;
-
-/**
  * @enum ra_css_set_t
  * @brief Which properties a declaration block actually set (presence bits).
  *
@@ -130,15 +119,25 @@ typedef struct {
 
 /**
  * @struct ra_css_rule_t
- * @brief One `selector { ... }` rule: a simple selector plus its declarations.
+ * @brief One `selector { ... }` rule: a compound selector plus its declarations.
+ *
+ * @details The selector is a compound of up to one type + one class + one id
+ * constraint (e.g. `p`, `.note`, `#x`, `p.note`, `p#x`); an element matches when
+ * every present constraint matches. A constraint is "present" when its field is
+ * non-default: `sel_tag != k_ra_reflow_tag_unknown`, `class_len > 0`,
+ * `id_len > 0`. No constraint at all (`*`) matches every element. Multiple
+ * classes (`.a.b`), descendant combinators (`div p`) and pseudo selectors are
+ * not parsed (the rule is dropped).
  */
 typedef struct {
-  uint8_t        sel_kind; /**< ::ra_css_sel_kind_t.                          */
-  uint8_t        sel_tag;  /**< ::ra_reflow_html_tag_t for a type selector.   */
-  uint16_t       name_off; /**< class/id name slice offset into `names`.      */
-  uint16_t       name_len; /**< class/id name slice length, bytes.            */
-  uint16_t       order;    /**< Source order (lower = earlier; ties to later).*/
-  ra_css_style_t decl;     /**< Declared properties.                          */
+  uint8_t        sel_tag;   /**< Type tag, or k_ra_reflow_tag_unknown = no type. */
+  uint8_t        pad8;      /**< Padding.                                        */
+  uint16_t       class_off; /**< Class name slice offset (class_len 0 = none).   */
+  uint16_t       class_len; /**< Class name slice length, bytes.                 */
+  uint16_t       id_off;    /**< Id name slice offset (id_len 0 = none).         */
+  uint16_t       id_len;    /**< Id name slice length, bytes.                    */
+  uint16_t       order;     /**< Source order (lower = earlier; ties to later).  */
+  ra_css_style_t decl;      /**< Declared properties.                            */
 } ra_css_rule_t;
 
 /**
