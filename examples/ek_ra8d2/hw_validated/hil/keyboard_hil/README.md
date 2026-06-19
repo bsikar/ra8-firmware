@@ -5,19 +5,23 @@ the text-entry model behind the e-reader Library search.
 
 ## What it does
 
-`ra_keyboard` is a pure, rendering-free model: it lays a QWERTY grid
-(`QWERTYUIOP` / `ASDFGHJKL` / `ZXCVBNM`+BACKSPACE / SPACE+ENTER) into a frame as
+`ra_keyboard` is a pure, rendering-free model modelled on the iOS keyboard: a
+**letters** layer (`qwertyuiop` / `asdfghjkl` inset / SHIFT + `zxcvbnm` +
+BACKSPACE / 123 + SPACE + RETURN) and a **numbers** layer (digits + symbols),
+toggled by the 123 / ABC key. It lays the active layer into a frame as
 `ra_ui_rect_t` key rects, maps a tap to a key (`ra_kbd_hit`, via the shared
-`ra_ui_rect_contains`), and mutates a text buffer (`ra_kbd_apply`). The caller
-owns drawing + tap routing; this is the deterministic logic underneath.
+`ra_ui_rect_contains`), and mutates a text buffer + one-shot SHIFT + active
+layer (`ra_kbd_apply`). The caller owns drawing + tap routing; this is the
+deterministic logic underneath.
 
 This HIL drives that model with **synthetic key-centre taps** -- the same
 input-injection pattern as `ereader_input_hil` (#118), for text entry. It types
-`HELLO WORLD`, deletes one char with BACKSPACE, commits with ENTER, asserts the
-result, and prints on the SCI8 J-Link OB console:
+`Hi 9` -- exercising one-shot SHIFT (capital `H`), SPACE, and the `123` layer
+toggle to reach a digit (`9`) -- commits with RETURN, asserts the result, and
+prints on the SCI8 J-Link OB console:
 
 ```
-kbd: q=HELLO WORL commit=1 taps=13 PASS
+kbd: q=Hi 9 commit=1 taps=7 PASS
 ```
 
 No panel / SD / touch hardware is needed (pure layout + hit-test + buffer), so
@@ -35,14 +39,15 @@ scripts/hil_run_local.sh keyboard_hil      # flash + scrape the banner
 
 ```
 keyboard-hil: boot
-kbd: q=HELLO WORL commit=1 taps=13 PASS
+kbd: q=Hi 9 commit=1 taps=7 PASS
 ```
 
 `scripts/board_sim_smoke.sh keyboard_hil` PASS (final PC in the `main` WFI idle
-loop; 13 synthetic taps routed through `ra_kbd_hit` -> `ra_kbd_apply`). The
-widget logic is covered on the host by `tests/test_ra_keyboard.c` (ASan + MC/DC
-for the frame-rejection decision); the same model + the same string produce the
-same banner, so host == board_sim == silicon.
+loop; 7 synthetic taps routed through `ra_kbd_hit` -> `ra_kbd_apply`). The
+widget logic -- case toggle, the 123/ABC layer switch, digits, edits -- is
+covered on the host by `tests/test_ra_keyboard.c` (ASan + MC/DC for the
+frame-rejection decision); the same model + the same sequence produce the same
+banner, so host == board_sim == silicon.
 
 ## Relationship to #105
 

@@ -1290,50 +1290,84 @@ static void er_render_reading(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-/** @enum er_kbd_render_t @brief 8x16 glyph metrics for keyboard labels. */
+/** @enum er_kbd_render_t @brief Keyboard chrome metrics (8x16 glyphs + keys). */
 typedef enum : int32_t {
-  k_er_kbd_glyph_w = 8,  /**< ra_gfx_font_8x16 glyph width.   */
-  k_er_kbd_glyph_h = 16, /**< ra_gfx_font_8x16 glyph height.  */
-  k_er_kbd_qlabel  = 72, /**< "Search:" label column width.   */
+  k_er_kbd_glyph_w   = 8,  /**< ra_gfx_font_8x16 glyph width.        */
+  k_er_kbd_glyph_h   = 16, /**< ra_gfx_font_8x16 glyph height.       */
+  k_er_kbd_qlabel    = 72, /**< "Search:" label column width.        */
+  k_er_kbd_gap       = 6,  /**< Inset gap around each key.           */
+  k_er_kbd_radius    = 10, /**< Key corner radius (rounded, iOS).    */
+  k_er_kbd_shadow_dy = 3,  /**< Key drop-shadow offset (down).       */
+  k_er_kbd_lab_max   = 8,  /**< Key-label scratch size.              */
 } er_kbd_render_t;
 
-/** @brief Write a key's drawn label (char, or a short word for specials). */
-static void er_kbd_label(const ra_kbd_key_t* k, char* out)
+/** @enum er_kbd_color_t @brief Apple-style grayscale keyboard palette. */
+typedef enum : uint32_t {
+  k_er_kbd_bg    = 0xCCCCCCU, /**< Keyboard background.        */
+  k_er_kbd_keylt = 0xFFFFFFU, /**< Light (letter/space) key.   */
+  k_er_kbd_keydk = 0xAAAAAAU, /**< Dark (special) key.         */
+  k_er_kbd_keysh = 0x909090U, /**< Key drop shadow.            */
+} er_kbd_color_t;
+
+/** @brief Label for key @p idx (a static word, or the live-case char in @p s). */
+static const char* er_kbd_label(uint8_t idx, char* s)
 {
-  switch (k->kind) {
+  switch (s_kb.keys[idx].kind) {
     case k_ra_kbd_key_space:
-      out[0] = 'S';
-      out[1] = 'P';
-      out[2] = 'C';
-      out[3] = '\0';
-      break;
+      return "space";
     case k_ra_kbd_key_backspace:
-      out[0] = 'B';
-      out[1] = 'K';
-      out[2] = '\0';
-      break;
+      return "del";
     case k_ra_kbd_key_enter:
-      out[0] = 'O';
-      out[1] = 'K';
-      out[2] = '\0';
-      break;
+      return "return";
+    case k_ra_kbd_key_shift:
+      return "shift";
+    case k_ra_kbd_key_layer:
+      return (s_kb.keys[idx].aux == (uint8_t)k_ra_kbd_layer_numbers) ? "123" : "ABC";
     default:
-      out[0] = k->ch;
-      out[1] = '\0';
-      break;
+      s[0] = ra_kbd_key_glyph(&s_kb, idx);
+      s[1] = '\0';
+      return s;
   }
 }
 
-/** @brief Draw one key: a rect outline with a centred label. */
-static void er_draw_key(const ra_kbd_key_t* k)
+/** @brief Filled rounded rect (rect cross + four corner discs). */
+static void er_round_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t c)
 {
-  char lab[8] = {};
-  er_kbd_label(k, lab);
-  (void)ra_gfx_rect(k->rect.x, k->rect.y, k->rect.w, k->rect.h, (uint32_t)k_er_ink, false);
-  const int32_t lw = (int32_t)strlen(lab) * (int32_t)k_er_kbd_glyph_w;
-  const int32_t lx = k->rect.x + ((k->rect.w - lw) / 2);
-  const int32_t ly = k->rect.y + ((k->rect.h - (int32_t)k_er_kbd_glyph_h) / 2);
-  er_text_left(lx, ly, lab, (uint32_t)k_er_ink);
+  const int32_t r = (int32_t)k_er_kbd_radius;
+  (void)ra_gfx_rect(x + r, y, w - (2 * r), h, c, true);
+  (void)ra_gfx_rect(x, y + r, w, h - (2 * r), c, true);
+  (void)ra_gfx_circle(x + r, y + r, r, c, true);
+  (void)ra_gfx_circle((x + w - r) - 1, y + r, r, c, true);
+  (void)ra_gfx_circle(x + r, (y + h - r) - 1, r, c, true);
+  (void)ra_gfx_circle((x + w - r) - 1, (y + h - r) - 1, r, c, true);
+}
+
+/** @brief True for keys drawn dark (SHIFT / BACKSPACE / 123-ABC / RETURN). */
+static bool er_key_is_special(ra_kbd_key_kind_t kind)
+{
+  return (kind != k_ra_kbd_key_char) && (kind != k_ra_kbd_key_space);
+}
+
+/** @brief Draw key @p idx Apple-style: a shadowed rounded key + centred label. */
+static void er_draw_key(uint8_t idx)
+{
+  const ra_ui_rect_t      r    = s_kb.keys[idx].rect;
+  const int32_t           g    = (int32_t)k_er_kbd_gap;
+  const int32_t           kx   = r.x + g;
+  const int32_t           ky   = r.y + g;
+  const int32_t           kw   = r.w - (2 * g);
+  const int32_t           kh   = r.h - (2 * g);
+  const ra_kbd_key_kind_t kind = s_kb.keys[idx].kind;
+  const uint32_t          fill =
+    er_key_is_special(kind) ? (uint32_t)k_er_kbd_keydk : (uint32_t)k_er_kbd_keylt;
+  er_round_rect(kx, ky + (int32_t)k_er_kbd_shadow_dy, kw, kh, (uint32_t)k_er_kbd_keysh);
+  er_round_rect(kx, ky, kw, kh, fill);
+  char          scratch[k_er_kbd_lab_max] = {};
+  const char*   lab                       = er_kbd_label(idx, scratch);
+  const int32_t lw                        = (int32_t)strlen(lab) * (int32_t)k_er_kbd_glyph_w;
+  const int32_t lx                        = kx + ((kw - lw) / 2);
+  const int32_t ly                        = ky + ((kh - (int32_t)k_er_kbd_glyph_h) / 2);
+  (void)ra_gfx_text_out(lx, ly, lab, &ra_gfx_font_8x16, (uint32_t)k_er_ink, fill);
 }
 
 /**
@@ -1354,7 +1388,16 @@ static void er_render_keyboard(void)
   const char* shown = (s_query.len > 0U) ? s_query.buf : k_er_search_hint;
   er_text_left((int32_t)k_er_pad_ui + (int32_t)k_er_kbd_qlabel, qy, shown, (uint32_t)k_er_ink);
 
-  const int32_t ky = (int32_t)k_er_statusbar_h + (int32_t)k_er_toolbar_h + (int32_t)k_er_pad_ui;
+  /* Fill the keyboard band with the iOS-style gray backdrop. */
+  const int32_t band_y = (int32_t)k_er_statusbar_h + (int32_t)k_er_toolbar_h;
+  (void)ra_gfx_rect(0,
+                    band_y,
+                    (int32_t)s_fb.width_px,
+                    (int32_t)s_fb.height_px - band_y,
+                    (uint32_t)k_er_kbd_bg,
+                    true);
+
+  const int32_t      ky    = band_y + (int32_t)k_er_pad_ui;
   const ra_ui_rect_t frame = {.x = (int32_t)k_er_pad_ui,
                               .y = ky,
                               .w = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_pad_ui),
@@ -1363,7 +1406,7 @@ static void er_render_keyboard(void)
 
   s_target_count = 0U;
   for (uint8_t i = 0U; i < s_kb.count; i++) {
-    er_draw_key(&s_kb.keys[i]);
+    er_draw_key(i);
     if (s_target_count < (uint16_t)k_er_max_targets) {
       s_targets[s_target_count].rect      = s_kb.keys[i].rect;
       s_targets[s_target_count].action_id = (uint16_t)((uint16_t)k_er_act_key_base + (uint16_t)i);

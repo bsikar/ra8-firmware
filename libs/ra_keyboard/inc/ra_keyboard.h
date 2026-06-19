@@ -1,25 +1,30 @@
 /**
  * @file ra_keyboard.h
- * @brief On-screen QWERTY keyboard widget -- layout, hit-test, text buffer.
+ * @brief On-screen keyboard widget -- iOS-style layers, shift, hit-test.
  *
  * @par Tag
  * [Ring 4 / UI] {World: NS}
  *
  * @details
  * An immediate-mode on-screen keyboard for text entry (e-reader search /
- * filter, #105). The widget is split into pure, testable logic with no
- * rendering dependency:
+ * filter, #105), modelled on the iOS keyboard. Pure, rendering-free logic:
  *
- * - ::ra_kbd_layout_init lays a fixed QWERTY grid (3 letter rows + a row with
- *   SPACE and ENTER, BACKSPACE trailing the bottom letter row) into a caller
- *   frame, computing one ::ra_ui_rect_t per key.
- * - ::ra_kbd_hit maps a tap (px,py) to a key index via ::ra_ui_rect_contains.
- * - ::ra_kbd_apply mutates a ::ra_kbd_text_t (append / backspace / space /
- *   commit) for a hit key.
+ * - ::ra_kbd_layout_init lays the **letters** layer into a caller frame:
+ *   `qwertyuiop` / `asdfghjkl` (inset) / SHIFT + `zxcvbnm` + BACKSPACE /
+ *   123 + SPACE + RETURN, with the home row inset and SHIFT/BACKSPACE/123/
+ *   RETURN widened, like iOS.
+ * - The **123** key switches to the numbers/symbols layer (`1234567890` /
+ *   `-/:;()$&@"` / symbols + BACKSPACE / ABC + SPACE + RETURN); **ABC**
+ *   switches back. Tapping a layer key re-lays the grid in place.
+ * - SHIFT is one-shot: it capitalises the next letter only (so `Hello`), then
+ *   clears.
+ * - ::ra_kbd_hit maps a tap to a key index; ::ra_kbd_apply mutates the text
+ *   buffer, the SHIFT state, and the active layer; ::ra_kbd_key_glyph gives a
+ *   renderer the current-case character for a key.
  *
- * The caller owns rendering (draw each key's rect + glyph through `ra_gfx`)
- * and tap routing; this module is the deterministic model behind it, so the
- * typing logic is unit-testable and HIL-gateable with synthetic taps.
+ * The caller owns rendering (draw each key + its glyph) and tap routing; this
+ * is the deterministic model underneath, unit-testable and HIL-gateable with
+ * synthetic taps.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -41,40 +46,57 @@ extern "C" {
  * @brief Static capacities for the keyboard widget.
  */
 typedef enum : uint8_t {
-  k_ra_kbd_rows     = 4U,   /**< Key rows (3 letter rows + SPACE/ENTER row). */
-  k_ra_kbd_max_keys = 32U,  /**< Key-rect slots (29 used).                  */
+  k_ra_kbd_rows     = 4U,   /**< Key rows per layer.                        */
+  k_ra_kbd_max_keys = 40U,  /**< Key-rect slots (<= 31 used per layer).     */
   k_ra_kbd_text_max = 64U,  /**< Text buffer capacity incl. NUL.            */
   k_ra_kbd_no_hit   = 255U, /**< ::ra_kbd_hit "no key" sentinel.           */
 } ra_kbd_limits_t;
+
+/**
+ * @enum ra_kbd_layer_t
+ * @brief Which key set is shown.
+ */
+typedef enum : uint8_t {
+  k_ra_kbd_layer_letters = 0U, /**< QWERTY letters (with one-shot SHIFT). */
+  k_ra_kbd_layer_numbers = 1U, /**< Digits + symbols.                    */
+} ra_kbd_layer_t;
 
 /**
  * @enum ra_kbd_key_kind_t
  * @brief What a key does when tapped.
  */
 typedef enum : uint8_t {
-  k_ra_kbd_key_char      = 0U, /**< Append `ch`.                  */
-  k_ra_kbd_key_space     = 1U, /**< Append a space.               */
-  k_ra_kbd_key_backspace = 2U, /**< Delete the last char.         */
-  k_ra_kbd_key_enter     = 3U, /**< Commit the query.             */
+  k_ra_kbd_key_char      = 0U, /**< Append the shift-correct char.   */
+  k_ra_kbd_key_space     = 1U, /**< Append a space.                  */
+  k_ra_kbd_key_backspace = 2U, /**< Delete the last char.            */
+  k_ra_kbd_key_enter     = 3U, /**< Commit the query (RETURN).       */
+  k_ra_kbd_key_shift     = 4U, /**< Toggle the one-shot SHIFT.       */
+  k_ra_kbd_key_layer     = 5U, /**< Switch to the layer in `aux`.    */
 } ra_kbd_key_kind_t;
 
 /**
  * @struct ra_kbd_key_t
- * @brief One key: a hit rectangle, a printable char, and a kind.
+ * @brief One key: a hit rectangle, its unshifted + shifted chars, a kind, and
+ *        (for layer keys) the target layer in @c aux.
  */
 typedef struct {
-  ra_ui_rect_t      rect; /**< Hit / draw rectangle.                  */
-  char              ch;   /**< Printable char for char keys; 0 else.  */
-  ra_kbd_key_kind_t kind; /**< Key behaviour.                         */
+  ra_ui_rect_t      rect;     /**< Hit / draw rectangle.                      */
+  char              ch_lower; /**< Unshifted char (char keys); 0 else.        */
+  char              ch_upper; /**< Shifted char (char keys); 0 else.          */
+  ra_kbd_key_kind_t kind;     /**< Key behaviour.                             */
+  uint8_t           aux;      /**< Target ::ra_kbd_layer_t for a layer key.   */
 } ra_kbd_key_t;
 
 /**
  * @struct ra_kbd_layout_t
- * @brief The full key grid laid into a frame.
+ * @brief The key grid for the active layer, plus SHIFT / layer / frame state.
  */
 typedef struct {
-  ra_kbd_key_t keys[k_ra_kbd_max_keys]; /**< Key rects + chars.   */
-  uint8_t      count;                   /**< Keys in use.         */
+  ra_kbd_key_t keys[k_ra_kbd_max_keys]; /**< Keys for the active layer.   */
+  uint8_t      count;                   /**< Keys in use.                 */
+  bool         shift;                   /**< One-shot SHIFT armed.        */
+  uint8_t      layer;                   /**< Active ::ra_kbd_layer_t.     */
+  ra_ui_rect_t frame;                   /**< Saved frame (re-lay on swap).*/
 } ra_kbd_layout_t;
 
 /**
@@ -86,19 +108,14 @@ typedef struct {
 typedef struct {
   char    buf[k_ra_kbd_text_max]; /**< NUL-terminated query.     */
   uint8_t len;                    /**< Chars before the NUL.     */
-  bool    committed;              /**< ENTER was applied.        */
+  bool    committed;              /**< RETURN was applied.       */
 } ra_kbd_text_t;
 
 /**
- * @brief Lay the QWERTY key grid into @p frame.
+ * @brief Lay the letters layer into @p frame; clear SHIFT.
  *
- * @details
- * Rows are stacked top-to-bottom inside @p frame; letter keys are evenly
- * spaced across the row width. Row layout: `QWERTYUIOP` / `ASDFGHJKL` /
- * `ZXCVBNM` + BACKSPACE / SPACE + ENTER.
- *
- * @param[out] kb    Receives the laid-out grid.
- * @param[in]  frame Pixel rectangle to fill (w,h > 0).
+ * @param[out] kb    Receives the laid-out grid (letters layer, SHIFT cleared).
+ * @param[in]  frame Pixel rectangle to fill (w,h > 0); saved for layer swaps.
  *
  * @return ra_err_t
  * @retval k_ra_ok              Grid laid out.
@@ -107,7 +124,7 @@ typedef struct {
  *
  * @pre @p kb, @p frame non-NULL.
  * @pre `frame->w > 0 && frame->h > 0`.
- * @post On success `kb->count == 29`.
+ * @post On success `kb->layer == k_ra_kbd_layer_letters` and `!kb->shift`.
  * @post Every key rect lies within @p frame.
  *
  * @note Pure; not thread-safe relative to @p kb.
@@ -136,6 +153,24 @@ typedef struct {
 [[nodiscard]] uint8_t ra_kbd_hit(const ra_kbd_layout_t* kb, int32_t px, int32_t py);
 
 /**
+ * @brief Effective character a char key emits given the live SHIFT state.
+ *
+ * @param[in] kb      Laid-out grid (for SHIFT).
+ * @param[in] key_idx Key index.
+ *
+ * @return The shift-correct char for a char key, or 0 for a non-char / invalid
+ *         key (or NULL @p kb).
+ *
+ * @pre @p kb is laid out (or NULL, handled).
+ * @pre None.
+ * @post No state modified.
+ *
+ * @note Pure; lets a renderer label keys in the current case.
+ * @since 0.1.0
+ */
+[[nodiscard]] char ra_kbd_key_glyph(const ra_kbd_layout_t* kb, uint8_t key_idx);
+
+/**
  * @brief Reset a text buffer to empty / uncommitted.
  *
  * @param[out] t Buffer to clear.
@@ -155,15 +190,16 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_kbd_text_init(ra_kbd_text_t* t);
 
 /**
- * @brief Apply key @p key_idx to the text buffer.
+ * @brief Apply key @p key_idx to the text buffer, SHIFT, and active layer.
  *
  * @details
- * Char/space append when there is room; backspace deletes the last char when
- * non-empty; enter sets `committed`. Out-of-range or full/empty edge cases are
- * no-ops (still `k_ra_ok`).
+ * A char/space appends (shift-correct) and clears one-shot SHIFT; SHIFT
+ * toggles `kb->shift`; a layer key swaps the layer (re-laying the grid in
+ * place); backspace deletes; RETURN sets `committed`. Out-of-range / capacity
+ * edges are no-ops (still `k_ra_ok`).
  *
  * @param[in,out] t       Text buffer.
- * @param[in]     kb      Laid-out grid (for the key's kind/char).
+ * @param[in,out] kb      Laid-out grid (SHIFT / layer / keys may change).
  * @param[in]     key_idx Key index from ::ra_kbd_hit.
  *
  * @return ra_err_t
@@ -173,12 +209,12 @@ typedef struct {
  * @pre @p t, @p kb non-NULL.
  * @pre @p key_idx is a hit index or ::k_ra_kbd_no_hit (no-op).
  * @post `t->buf` stays NUL-terminated and `t->len < k_ra_kbd_text_max`.
- * @post `committed` is true iff an ENTER key was applied.
+ * @post `committed` is true iff a RETURN key was applied.
  *
- * @note Not thread-safe relative to @p t.
+ * @note Not thread-safe relative to @p t / @p kb.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_kbd_apply(ra_kbd_text_t* t, const ra_kbd_layout_t* kb, uint8_t key_idx);
+[[nodiscard]] ra_err_t ra_kbd_apply(ra_kbd_text_t* t, ra_kbd_layout_t* kb, uint8_t key_idx);
 
 #ifdef __cplusplus
 }
