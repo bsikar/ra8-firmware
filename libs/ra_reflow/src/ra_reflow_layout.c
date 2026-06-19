@@ -195,6 +195,7 @@ typedef struct {
   uint8_t  in_link;          /**< 1 while inside an `<a>` block. */
   uint16_t indent_px;        /**< Active left indent (li, blockquote). */
   uint32_t page_first_glyph; /**< First glyph index of the active page. */
+  uint32_t page_first_image; /**< First image-box index of the active page. */
   uint8_t  line_has_content; /**< 1 once any glyph landed on this line. */
   uint8_t  reserved8[3];     /**< Padding. */
 } priv_cursor_t;
@@ -401,6 +402,7 @@ static bool priv_finish_page(ra_reflow_t* engine, priv_cursor_t* cur)
   page->glyph_count       = count;
   engine->page_count++;
   cur->page_first_glyph = engine->glyph_count;
+  cur->page_first_image = engine->image_box_count;
   cur->y                = (int32_t)k_ra_reflow_margin_px;
   cur->line_top         = cur->y;
   cur->x                = (int32_t)k_ra_reflow_margin_px + (int32_t)cur->indent_px;
@@ -658,9 +660,10 @@ static bool priv_apply_rule(ra_reflow_t* engine, priv_cursor_t* cur)
 }
 
 /**
- * @brief Apply an `<img>` token: reserve a placeholder rectangle.
+ * @brief Apply an `<img>` token without a bound loader: placeholder advance.
  *
- * @details See implementation.
+ * @details See implementation. Historical v1 behaviour, kept so image-free
+ * content (and content laid out before a loader is bound) is byte-identical.
  * @param[in] engine See implementation.
  * @param[in] cur See implementation.
  * @return Result code.
@@ -672,7 +675,7 @@ static bool priv_apply_rule(ra_reflow_t* engine, priv_cursor_t* cur)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur)
+static bool priv_apply_image_placeholder(ra_reflow_t* engine, priv_cursor_t* cur)
 {
   const int32_t advance     = (int32_t)k_priv_image_placeholder_px;
   const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra_reflow_margin_px;
@@ -687,6 +690,227 @@ static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur)
   cur->x += advance;
   cur->line_has_content = 1U;
   return true;
+}
+
+/**
+ * @brief True iff the page under construction already holds glyphs or images.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @return Boolean.
+ * @retval true Page has content.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post No state mutated.
+ * @post No state mutated.
+ * @note Pure read.
+ * @since 0.1.0
+ */
+static bool priv_page_has_content(const ra_reflow_t* engine, const priv_cursor_t* cur)
+{
+  return (engine->glyph_count > cur->page_first_glyph) ||
+         (engine->image_box_count > cur->page_first_image);
+}
+
+/**
+ * @brief Scale an intrinsic image size to fit the text column (no upscaling).
+ *
+ * @details See implementation. Caps width at the column, height at one page;
+ * preserves aspect ratio with int64 products to avoid overflow.
+ * @param[in] iw See implementation.
+ * @param[in] ih See implementation.
+ * @param[in] col_w See implementation.
+ * @param[in] avail_h See implementation.
+ * @param[out] out_w See implementation.
+ * @param[out] out_h See implementation.
+ * @return None.
+ * @pre `iw > 0` and `ih > 0`.
+ * @pre `col_w > 0` and `avail_h > 0`.
+ * @post `*out_w` in [1, col_w] and `*out_h` in [1, avail_h].
+ * @post Aspect ratio preserved within integer rounding.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static void priv_image_fit(int32_t  iw,
+                           int32_t  ih,
+                           int32_t  col_w,
+                           int32_t  avail_h,
+                           int32_t* out_w,
+                           int32_t* out_h)
+{
+  int32_t bw = (iw < col_w) ? iw : col_w;
+  int32_t bh = (int32_t)(((int64_t)ih * (int64_t)bw) / (int64_t)iw);
+  if (bh > avail_h) {
+    bh = avail_h;
+    bw = (int32_t)(((int64_t)iw * (int64_t)bh) / (int64_t)ih);
+  }
+  *out_w = (bw < 1) ? 1 : bw;
+  *out_h = (bh < 1) ? 1 : bh;
+}
+
+/**
+ * @brief Resolve an image token to a column-fitted box size via the loader.
+ *
+ * @details See implementation. Calls the bound loader for the encoded bytes,
+ * probes the intrinsic size (zero-alloc), and fits it to the column.
+ * @param[in] engine See implementation.
+ * @param[in] tok See implementation.
+ * @param[out] out_w See implementation.
+ * @param[out] out_h See implementation.
+ * @return Boolean.
+ * @retval true Box size resolved.
+ * @retval false Loader failed, probe failed, or viewport too small.
+ * @pre `engine->img_loader != nullptr`.
+ * @pre `tok->text_len > 0`.
+ * @post On true, `*out_w`/`*out_h` are a valid column-fit box.
+ * @post On false, no box is produced (caller falls back).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool priv_image_resolve_size(ra_reflow_t*             engine,
+                                    const ra_reflow_token_t* tok,
+                                    int32_t*                 out_w,
+                                    int32_t*                 out_h)
+{
+  const char*    href  = (const char*)&engine->text_pool[tok->text_off];
+  const uint8_t* bytes = nullptr;
+  size_t         blen  = 0U;
+  if (engine->img_loader(engine->img_loader_ctx, href, tok->text_len, &bytes, &blen) != k_ra_ok) {
+    return false;
+  }
+  int32_t iw = 0;
+  int32_t ih = 0;
+  if ((ra_img_probe_size(bytes, blen, &iw, &ih) != k_ra_ok) || (iw <= 0) || (ih <= 0)) {
+    return false;
+  }
+  const int32_t col_w   = (int32_t)engine->viewport_w - (2 * (int32_t)k_ra_reflow_margin_px);
+  const int32_t avail_h = (int32_t)engine->viewport_h - (2 * (int32_t)k_ra_reflow_margin_px);
+  if ((col_w < 1) || (avail_h < 1)) {
+    return false;
+  }
+  priv_image_fit(iw, ih, col_w, avail_h, out_w, out_h);
+  return true;
+}
+
+/**
+ * @brief Record a laid-out image box and advance the cursor below it.
+ *
+ * @details See implementation. Stores the box at the left margin / current
+ * baseline tagged with the active page, then drops the cursor past it.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] tok See implementation.
+ * @param[in] bw See implementation.
+ * @param[in] bh See implementation.
+ * @return None.
+ * @pre `engine->image_box_count < k_ra_reflow_max_images`.
+ * @pre `bw >= 1` and `bh >= 1`.
+ * @post One image box appended; `image_box_count` incremented.
+ * @post Cursor advanced below the image, line reset to the left margin.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_image_record(ra_reflow_t*             engine,
+                              priv_cursor_t*           cur,
+                              const ra_reflow_token_t* tok,
+                              int32_t                  bw,
+                              int32_t                  bh)
+{
+  ra_reflow_image_box_t* box = &engine->image_boxes[engine->image_box_count];
+  box->x                     = (int32_t)k_ra_reflow_margin_px;
+  box->y                     = cur->y;
+  box->w                     = bw;
+  box->h                     = bh;
+  box->src_off               = tok->text_off;
+  box->src_len               = tok->text_len;
+  box->page_index            = engine->page_count;
+  box->reserved              = 0U;
+  engine->image_box_count++;
+
+  cur->y += bh + (int32_t)k_ra_reflow_paragraph_gap_px;
+  cur->line_top         = cur->y;
+  cur->x                = (int32_t)k_ra_reflow_margin_px + (int32_t)cur->indent_px;
+  cur->line_has_content = 0U;
+}
+
+/**
+ * @brief Lay out a real `<img>` as a block: size it, page-break, record it.
+ *
+ * @details See implementation. Returns false (caller falls back to the
+ * placeholder) on a full image pool, unresolved src, or a flush overflow.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] tok See implementation.
+ * @return Boolean.
+ * @retval true Image placed and recorded.
+ * @retval false Could not place; caller uses the placeholder.
+ * @pre `engine->img_loader != nullptr` and `engine->img_arena != nullptr`.
+ * @pre `tok->text_len > 0`.
+ * @post On true, one image box exists and the cursor sits below it.
+ * @post On false, engine image state is unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool priv_place_image(ra_reflow_t* engine, priv_cursor_t* cur, const ra_reflow_token_t* tok)
+{
+  if (engine->image_box_count >= (uint32_t)k_ra_reflow_max_images) {
+    return false;
+  }
+  int32_t bw = 0;
+  int32_t bh = 0;
+  if (!priv_image_resolve_size(engine, tok, &bw, &bh)) {
+    return false;
+  }
+  /* Block-level: drop below the current line, then page-break if needed. */
+  if (cur->line_has_content != 0U) {
+    if (!priv_newline(engine, cur)) {
+      return false;
+    }
+  }
+  const int32_t bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra_reflow_margin_px;
+  if (((cur->y + bh) > bottom_limit) && priv_page_has_content(engine, cur)) {
+    if (!priv_finish_page(engine, cur)) {
+      return false;
+    }
+  }
+  priv_image_record(engine, cur, tok, bw, bh);
+  if (((cur->y + (int32_t)cur->line_height_px) > bottom_limit) &&
+      priv_page_has_content(engine, cur)) {
+    if (!priv_finish_page(engine, cur)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Apply an `<img>` token: real image when a loader is bound, else a
+ *        placeholder.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] tok See implementation.
+ * @return Boolean.
+ * @retval true Token applied (image placed or placeholder reserved).
+ * @retval false Pool overflow propagated from a sub-step.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur, const ra_reflow_token_t* tok)
+{
+  if ((engine->img_loader != nullptr) && (engine->img_arena != nullptr) && (tok->text_len > 0U)) {
+    if (priv_place_image(engine, cur, tok)) {
+      return true;
+    }
+    /* Resolution / pool overflow: fall back to the placeholder advance. */
+  }
+  return priv_apply_image_placeholder(engine, cur);
 }
 
 /**
@@ -729,7 +953,7 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
     case k_ra_reflow_tok_rule:
       return priv_apply_rule(engine, cur) ? k_ra_ok : k_ra_err_no_mem;
     case k_ra_reflow_tok_image:
-      return priv_apply_image(engine, cur) ? k_ra_ok : k_ra_err_no_mem;
+      return priv_apply_image(engine, cur, tok) ? k_ra_ok : k_ra_err_no_mem;
     default:
       return k_ra_ok;
   }
@@ -763,6 +987,7 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
     .in_link          = 0U,
     .indent_px        = 0U,
     .page_first_glyph = 0U,
+    .page_first_image = 0U,
     .line_has_content = 0U,
     .reserved8        = {0U, 0U, 0U},
   };
@@ -774,8 +999,9 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
     }
   }
 
-  /* Flush the final page if it has content. */
-  if (engine->glyph_count > cur.page_first_glyph) {
+  /* Flush the final page if it has glyph or image content. */
+  if ((engine->glyph_count > cur.page_first_glyph) ||
+      (engine->image_box_count > cur.page_first_image)) {
     if (!priv_finish_page(engine, &cur)) {
       return k_ra_err_no_mem;
     }
@@ -797,9 +1023,10 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
     return k_ra_err_not_initialized;
   }
 
-  /* Wipe glyph and page state but keep the token stream. */
-  engine->glyph_count = 0U;
-  engine->page_count  = 0U;
+  /* Wipe glyph, page and image state but keep the token stream. */
+  engine->glyph_count     = 0U;
+  engine->page_count      = 0U;
+  engine->image_box_count = 0U;
 
   stbtt_fontinfo font;
   ra_err_t       err = priv_init_font(engine, &font);
@@ -870,13 +1097,31 @@ ra_err_t ra_reflow_close(ra_reflow_t* engine)
   if (engine->in_use == 0U) {
     return k_ra_err_not_initialized;
   }
-  engine->in_use         = 0U;
-  engine->page_count     = 0U;
-  engine->glyph_count    = 0U;
-  engine->token_count    = 0U;
-  engine->text_pool_used = 0U;
-  engine->xhtml_buf      = nullptr;
-  engine->xhtml_len      = 0U;
+  engine->in_use          = 0U;
+  engine->page_count      = 0U;
+  engine->glyph_count     = 0U;
+  engine->token_count     = 0U;
+  engine->text_pool_used  = 0U;
+  engine->image_box_count = 0U;
+  engine->xhtml_buf       = nullptr;
+  engine->xhtml_len       = 0U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_reflow_set_image_loader(ra_reflow_t*              engine,
+                                    ra_reflow_image_loader_fn loader,
+                                    void*                     ctx,
+                                    ra_img_arena_t*           arena)
+{
+  if (engine == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (engine->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  engine->img_loader     = loader;
+  engine->img_loader_ctx = ctx;
+  engine->img_arena      = arena;
   return k_ra_ok;
 }
 

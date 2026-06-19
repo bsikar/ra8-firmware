@@ -218,6 +218,58 @@ priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g, int32_t 
   }
 }
 
+/**
+ * @brief Decode + blit every laid-out image that belongs to one page.
+ *
+ * @details
+ * Walks `engine->image_boxes[]`, and for each box tagged with @p page_idx
+ * re-fetches its encoded bytes through the bound loader and blits it
+ * nearest-neighbour scaled into the box rectangle (offset by the page origin)
+ * via ra_img_decode_blit(). The decode is on-demand -- decoded pixels are never
+ * stored -- and uses the caller-bound arena (zero heap). A box whose loader or
+ * decode fails is skipped, leaving a blank gap rather than aborting the page.
+ * No-op when image rendering is not bound.
+ *
+ * @param[in] engine   Engine handle (image state read-only here).
+ * @param[in] page_idx Page being rendered.
+ * @param[in] ox       Pixel offset added to every box x.
+ * @param[in] oy       Pixel offset added to every box y.
+ * @return None.
+ * @pre `engine` is non-null and initialized.
+ * @pre A framebuffer is bound via `ra_gfx_init()`.
+ * @post Every decodable image on @p page_idx is blitted into the framebuffer.
+ * @post Engine state is unchanged (the arena drains after each decode).
+ * @note Not thread-safe (the decode arena uses a file-static current-arena).
+ * @since 0.1.0
+ */
+static void priv_render_images(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
+{
+  if ((engine->img_loader == nullptr) || (engine->img_arena == nullptr)) {
+    return;
+  }
+  for (uint32_t i = 0U; i < engine->image_box_count; ++i) {
+    const ra_reflow_image_box_t* box = &engine->image_boxes[i];
+    if (box->page_index != page_idx) {
+      continue;
+    }
+    const char*    href  = (const char*)&engine->text_pool[box->src_off];
+    const uint8_t* bytes = nullptr;
+    size_t         blen  = 0U;
+    if (engine->img_loader(engine->img_loader_ctx, href, box->src_len, &bytes, &blen) != k_ra_ok) {
+      continue;
+    }
+    (void)ra_img_decode_blit(engine->img_arena,
+                             bytes,
+                             blen,
+                             box->x + ox,
+                             box->y + oy,
+                             box->w,
+                             box->h,
+                             nullptr,
+                             nullptr);
+  }
+}
+
 /* ===========================================================================
  * Public API -- render
  * ===========================================================================
@@ -265,6 +317,7 @@ priv_render_page(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32
     const ra_reflow_glyph_t* g = &engine->glyphs[page->glyph_first + i];
     priv_blit_glyph(&font, g, ox, oy);
   }
+  priv_render_images(engine, page_idx, ox, oy);
   return k_ra_ok;
 }
 
