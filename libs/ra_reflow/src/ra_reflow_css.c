@@ -383,6 +383,9 @@ priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra_
       out->font_val  = fv;
       out->font_unit = fu;
     }
+  } else if (priv_ci_eq(prop, plen, "display")) {
+    out->set     = (uint8_t)(out->set | (uint8_t)k_ra_css_set_display);
+    out->display = priv_ci_eq(val, vlen, "none") ? 1U : 0U;
   } else {
     /* Unknown property -> ignore (no set bit). */
   }
@@ -698,6 +701,69 @@ static const ra_css_style_t* priv_resolve(uint8_t               setbit,
   return win;
 }
 
+/** @brief Resolve the bold / italic / underline emphasis bits into @p out. */
+static void priv_cascade_emphasis(ra_css_style_t*       out,
+                                  const ra_css_sheet_t* sheet,
+                                  const bool*           matched,
+                                  const ra_css_style_t* inherited,
+                                  const ra_css_style_t* inl)
+{
+  static const struct {
+    uint8_t setbit;
+    uint8_t stylebit;
+  } k_props[3] = {
+    {(uint8_t)k_ra_css_set_bold, (uint8_t)k_ra_reflow_style_bold},
+    {(uint8_t)k_ra_css_set_italic, (uint8_t)k_ra_reflow_style_italic},
+    {(uint8_t)k_ra_css_set_underline, (uint8_t)k_ra_reflow_style_underline},
+  };
+  for (size_t p = 0U; p < (sizeof(k_props) / sizeof(k_props[0])); ++p) {
+    const ra_css_style_t* win = priv_resolve(k_props[p].setbit, inherited, sheet, matched, inl);
+    if (win != nullptr) {
+      out->set = (uint8_t)(out->set | k_props[p].setbit);
+      if ((win->style & k_props[p].stylebit) != 0U) {
+        out->style = (uint8_t)(out->style | k_props[p].stylebit);
+      }
+    }
+  }
+}
+
+/** @brief Resolve the scalar properties (align / colour / font-size / display). */
+static void priv_cascade_scalars(ra_css_style_t*       out,
+                                 const ra_css_sheet_t* sheet,
+                                 const bool*           matched,
+                                 const ra_css_style_t* inherited,
+                                 const ra_css_style_t* inl)
+{
+  const ra_css_style_t* awin =
+    priv_resolve((uint8_t)k_ra_css_set_align, inherited, sheet, matched, inl);
+  if (awin != nullptr) {
+    out->set   = (uint8_t)(out->set | (uint8_t)k_ra_css_set_align);
+    out->align = awin->align;
+  }
+  const ra_css_style_t* cwin =
+    priv_resolve((uint8_t)k_ra_css_set_color, inherited, sheet, matched, inl);
+  if (cwin != nullptr) {
+    out->set   = (uint8_t)(out->set | (uint8_t)k_ra_css_set_color);
+    out->color = cwin->color;
+  }
+  /* font-size + display resolve from rules + inline only -- not inherited via
+   * this pure pass (a `%` is applied by the caller against the parent's resolved
+   * px, so seeding `inherited` would double-apply it). */
+  const ra_css_style_t* fwin =
+    priv_resolve((uint8_t)k_ra_css_set_fontsize, inherited, sheet, matched, inl);
+  if (fwin != nullptr) {
+    out->set       = (uint8_t)(out->set | (uint8_t)k_ra_css_set_fontsize);
+    out->font_val  = fwin->font_val;
+    out->font_unit = fwin->font_unit;
+  }
+  const ra_css_style_t* dwin =
+    priv_resolve((uint8_t)k_ra_css_set_display, inherited, sheet, matched, inl);
+  if (dwin != nullptr) {
+    out->set     = (uint8_t)(out->set | (uint8_t)k_ra_css_set_display);
+    out->display = dwin->display;
+  }
+}
+
 ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
                               const ra_css_element_t* el,
                               ra_css_style_t          inherited,
@@ -711,48 +777,8 @@ ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
   for (uint16_t i = 0U; i < sheet->rule_count; ++i) {
     matched[i] = ra_css_rule_matches(&sheet->rules[i], el, sheet);
   }
-
   ra_css_style_t out = {};
-  /* Boolean style properties: (presence bit, style-value bit). */
-  static const struct {
-    uint8_t setbit;
-    uint8_t stylebit;
-  } k_props[3] = {
-    {(uint8_t)k_ra_css_set_bold, (uint8_t)k_ra_reflow_style_bold},
-    {(uint8_t)k_ra_css_set_italic, (uint8_t)k_ra_reflow_style_italic},
-    {(uint8_t)k_ra_css_set_underline, (uint8_t)k_ra_reflow_style_underline},
-  };
-  for (size_t p = 0U; p < (sizeof(k_props) / sizeof(k_props[0])); ++p) {
-    const ra_css_style_t* win =
-      priv_resolve(k_props[p].setbit, &inherited, sheet, matched, &inline_decl);
-    if (win != nullptr) {
-      out.set = (uint8_t)(out.set | k_props[p].setbit);
-      if ((win->style & k_props[p].stylebit) != 0U) {
-        out.style = (uint8_t)(out.style | k_props[p].stylebit);
-      }
-    }
-  }
-  const ra_css_style_t* awin =
-    priv_resolve((uint8_t)k_ra_css_set_align, &inherited, sheet, matched, &inline_decl);
-  if (awin != nullptr) {
-    out.set   = (uint8_t)(out.set | (uint8_t)k_ra_css_set_align);
-    out.align = awin->align;
-  }
-  const ra_css_style_t* cwin =
-    priv_resolve((uint8_t)k_ra_css_set_color, &inherited, sheet, matched, &inline_decl);
-  if (cwin != nullptr) {
-    out.set   = (uint8_t)(out.set | (uint8_t)k_ra_css_set_color);
-    out.color = cwin->color;
-  }
-  /* font-size: resolved from rules + inline only; inheritance is applied by the
-   * caller against the parent's resolved pixel size (a `%` cannot be resolved in
-   * this pure pass), so the caller does not seed `inherited` with a font-size. */
-  const ra_css_style_t* fwin =
-    priv_resolve((uint8_t)k_ra_css_set_fontsize, &inherited, sheet, matched, &inline_decl);
-  if (fwin != nullptr) {
-    out.set       = (uint8_t)(out.set | (uint8_t)k_ra_css_set_fontsize);
-    out.font_val  = fwin->font_val;
-    out.font_unit = fwin->font_unit;
-  }
+  priv_cascade_emphasis(&out, sheet, matched, &inherited, &inline_decl);
+  priv_cascade_scalars(&out, sheet, matched, &inherited, &inline_decl);
   return out;
 }

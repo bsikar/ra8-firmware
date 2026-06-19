@@ -275,8 +275,9 @@ static const char* const k_er_body_lines[] = {
 static const char k_er_chapter_xhtml[] =
   "<html><head><style>h1 { text-align: center; color: maroon; }"
   ".byline { text-align: right; text-decoration: underline; color: #808080; font-size: 14px; }"
-  ".lead { font-size: 130%; }</style></head>"
+  ".lead { font-size: 130%; } .draft { display: none; }</style></head>"
   "<body><h1>The Time Machine</h1>"
+  "<p class=\"draft\">INTERNAL DRAFT -- NOT FOR DISTRIBUTION</p>"
   "<p class=\"byline\">by H. G. Wells</p>"
   "<img src=\"fig.png\"/>"
   "<p class=\"lead\">The Time Traveller (for so it will be convenient to speak of him) was "

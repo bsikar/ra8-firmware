@@ -87,6 +87,7 @@ typedef struct {
   uint32_t     stack_color[k_priv_max_depth]; /**< Colour to restore on pop.   */
   uint16_t     stack_font[k_priv_max_depth];  /**< CSS font px to restore on pop.*/
   uint32_t     sp;                            /**< Stack depth.                */
+  uint32_t     suppress_sp;                   /**< display:none subtree depth (0=off).*/
   bool         saw_element;                   /**< At least one element seen.  */
 } tok_ctx_t;
 
@@ -374,6 +375,12 @@ static uint8_t priv_style_for(ra_reflow_html_tag_t tag)
     default:
       return 0U;
   }
+}
+
+/** @brief True while inside a `display:none` subtree (#140): all emits dropped. */
+static bool priv_suppressed(const tok_ctx_t* ctx)
+{
+  return ctx->suppress_sp != 0U;
 }
 
 /**
@@ -711,7 +718,7 @@ static ra_err_t priv_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   while (((close + 3U) <= len) && (memcmp(&buf[close], "]]>", 3U) != 0)) {
     ++close;
   }
-  if (ctx->sp > 0U) {
+  if ((ctx->sp > 0U) && !priv_suppressed(ctx)) {
     uint32_t off     = ctx->engine->text_pool_used;
     bool     last_ws = true;
     for (size_t k = inner; k < close; ++k) {
@@ -768,9 +775,13 @@ static ra_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
   ctx->active_link               = ctx->stack_link[ctx->sp];
   ctx->color                     = ctx->stack_color[ctx->sp];
   ctx->css_font_px               = ctx->stack_font[ctx->sp];
-  if (priv_is_block(tag) &&
+  if (priv_is_block(tag) && !priv_suppressed(ctx) &&
       !priv_emit(ctx->engine, k_ra_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
     return k_ra_err_no_mem;
+  }
+  /* Exited the display:none subtree once we pop back above its depth. */
+  if ((ctx->suppress_sp != 0U) && (ctx->sp < ctx->suppress_sp)) {
+    ctx->suppress_sp = 0U;
   }
   return k_ra_ok;
 }
@@ -1107,6 +1118,9 @@ static ra_err_t priv_open_attrs(tok_ctx_t*            ctx,
                                 const ra_css_style_t* comp,
                                 uint16_t              css_font_px)
 {
+  if (priv_suppressed(ctx)) {
+    return k_ra_ok; /* inside a display:none subtree -> emit nothing */
+  }
   if (block) {
     uint32_t id_off = 0U;
     uint32_t id_len = 0U;
@@ -1162,6 +1176,12 @@ static bool priv_handle_void(tok_ctx_t*           ctx,
                              ra_reflow_html_tag_t tag,
                              ra_err_t*            out_err)
 {
+  const bool is_void =
+    (tag == k_ra_reflow_tag_br) || (tag == k_ra_reflow_tag_hr) || (tag == k_ra_reflow_tag_img);
+  if (is_void && priv_suppressed(ctx)) {
+    *out_err = k_ra_ok; /* void tag inside a display:none subtree -> drop */
+    return true;
+  }
   if (tag == k_ra_reflow_tag_br) {
     *out_err = priv_emit(ctx->engine, k_ra_reflow_tok_break, tag, ctx->style, 0U, 0U)
                  ? k_ra_ok
@@ -1289,7 +1309,14 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
   const ra_css_style_t inl  = priv_css_inline(tagbuf, span);
   const ra_css_style_t comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
   const uint16_t       fpx  = priv_css_font_px(ctx, &comp);
-  const ra_err_t       aerr = priv_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx);
+  /* display:none (#140): begin suppressing this element + its subtree at the
+   * current depth; priv_open_attrs and the emit sites then drop every token
+   * until the matching close pops back above this depth. */
+  const bool hidden = ((comp.set & (uint8_t)k_ra_css_set_display) != 0U) && (comp.display != 0U);
+  if (hidden && (ctx->suppress_sp == 0U)) {
+    ctx->suppress_sp = ctx->sp;
+  }
+  const ra_err_t aerr = priv_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx);
   if (aerr != k_ra_ok) {
     return aerr;
   }
@@ -1315,7 +1342,7 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
 
   const bool block = priv_is_block(tag);
   if (selfclose) {
-    if (block) {
+    if (block && !priv_suppressed(ctx)) {
       if (!priv_emit(ctx->engine, k_ra_reflow_tok_block_start, tag, ctx->style, 0U, 0U)) {
         return k_ra_err_no_mem;
       }
@@ -1481,8 +1508,8 @@ static ra_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, s
  */
 static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, size_t end)
 {
-  if (ctx->sp == 0U) {
-    return true;
+  if ((ctx->sp == 0U) || priv_suppressed(ctx)) {
+    return true; /* outside any element, or inside display:none -> drop */
   }
   uint32_t off = 0U;
   uint32_t tln = 0U;
