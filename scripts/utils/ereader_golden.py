@@ -43,10 +43,12 @@ from pathlib import Path
 SIDEBAR_W = 360
 
 # The screens to capture: (golden name, board_sim extra args). Reading is
-# reached by tapping a Library book card via the genuine touch path.
+# reached by tapping a Library book card; keyboard by tapping the toolbar
+# Search field -- both via the genuine touch path.
 SCREENS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("library", ()),
     ("reading", ("--click", "250", "250")),
+    ("keyboard", ("--click", "200", "100")),
 )
 
 
