@@ -141,6 +141,7 @@ file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src
 file(GLOB_RECURSE RA_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_sdmmc_spi/src/*.c)
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_UI_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ui/src/*.c)
+file(GLOB_RECURSE RA_KEYBOARD_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_keyboard/src/*.c)
 file(GLOB_RECURSE RA_BOX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_box/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_OTA_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ota/src/*.c)
@@ -217,6 +218,7 @@ add_library(ra_core_hal OBJECT
     ${RA_SDMMC_SPI_SOURCES}
     ${RA_GFX_SOURCES}
     ${RA_UI_SOURCES}
+    ${RA_KEYBOARD_SOURCES}
     ${RA_BOX_SOURCES}
     ${RA_NSC_SOURCES}
     ${RA_OTA_SOURCES}
@@ -262,6 +264,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_sdfont/inc
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_ui/inc
+    ${FW_ROOT}/libs/ra_keyboard/inc
     ${FW_ROOT}/libs/ra_box/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
@@ -411,6 +414,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_sdfont/inc
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_ui/inc
+    ${FW_ROOT}/libs/ra_keyboard/inc
     ${FW_ROOT}/libs/ra_box/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc

@@ -1,0 +1,52 @@
+# keyboard_hil
+
+On-silicon **HIL gate** for the on-screen keyboard widget `ra_keyboard` (#105) --
+the text-entry model behind the e-reader Library search.
+
+## What it does
+
+`ra_keyboard` is a pure, rendering-free model: it lays a QWERTY grid
+(`QWERTYUIOP` / `ASDFGHJKL` / `ZXCVBNM`+BACKSPACE / SPACE+ENTER) into a frame as
+`ra_ui_rect_t` key rects, maps a tap to a key (`ra_kbd_hit`, via the shared
+`ra_ui_rect_contains`), and mutates a text buffer (`ra_kbd_apply`). The caller
+owns drawing + tap routing; this is the deterministic logic underneath.
+
+This HIL drives that model with **synthetic key-centre taps** -- the same
+input-injection pattern as `ereader_input_hil` (#118), for text entry. It types
+`HELLO WORLD`, deletes one char with BACKSPACE, commits with ENTER, asserts the
+result, and prints on the SCI8 J-Link OB console:
+
+```
+kbd: q=HELLO WORL commit=1 taps=13 PASS
+```
+
+No panel / SD / touch hardware is needed (pure layout + hit-test + buffer), so
+the banner is identical on host, `board_sim`, and silicon. A mismatch prints a
+FAIL banner and halts on a BKPT before the PASS line.
+
+## Build + run
+
+```
+make keyboard_hil
+scripts/hil_run_local.sh keyboard_hil      # flash + scrape the banner
+```
+
+## Result (validated 2026-06-19, board_sim)
+
+```
+keyboard-hil: boot
+kbd: q=HELLO WORL commit=1 taps=13 PASS
+```
+
+`scripts/board_sim_smoke.sh keyboard_hil` PASS (final PC in the `main` WFI idle
+loop; 13 synthetic taps routed through `ra_kbd_hit` -> `ra_kbd_apply`). The
+widget logic is covered on the host by `tests/test_ra_keyboard.c` (ASan + MC/DC
+for the frame-rejection decision); the same model + the same string produce the
+same banner, so host == board_sim == silicon.
+
+## Relationship to #105
+
+This gate validates the keyboard **widget** (layout / hit-test / text buffer) on
+silicon. The remaining `#105` acceptance item -- wiring `Search` in the
+`ereader_ui` Library toolbar to open this keyboard and filter the shelf, plus a
+golden snapshot of the rendered keyboard screen -- consumes this same model.

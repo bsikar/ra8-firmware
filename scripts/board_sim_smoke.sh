@@ -194,6 +194,7 @@ uart_expect() { # app -> expected UART substring on stdout
     reflow_content_hil) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
     ereader_input_hil)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
     bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
+    keyboard_hil)       printf 'kbd: q=HELLO WORL commit=1 taps=13 PASS' ;;
     touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
     smbus_demo)         printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
     crc_demo)           printf 'match=Y' ;;
@@ -225,7 +226,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         ereader_chrome_hil ereader_image_hil ereader_link_hil ereader_align_hil ereader_table_hil \
-        reflow_content_hil ereader_input_hil bscan_selftest touch_demo \
+        reflow_content_hil ereader_input_hil bscan_selftest keyboard_hil touch_demo \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback imu_lsm6dso_demo smbus_demo gpio_input_demo \
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
