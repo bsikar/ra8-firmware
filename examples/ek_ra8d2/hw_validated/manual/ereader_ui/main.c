@@ -280,7 +280,7 @@ static const char k_er_chapter_xhtml[] =
   "<body><h1>The Time Machine</h1>"
   "<p class=\"draft\">INTERNAL DRAFT -- NOT FOR DISTRIBUTION</p>"
   "<p class=\"byline\">by H. G. Wells</p>"
-  "<img src=\"fig.png\"/>"
+  "<img src=\"logo.svg\"/>"
   "<p class=\"lead\">The Time Traveller (for so it will be convenient to speak of him) was "
   "expounding a recondite matter to us. See the "
   "<a href=\"#note\">editor's note</a> for context. His pale grey eyes shone "
@@ -472,6 +472,25 @@ static bool s_have_font;
  * @note Not thread-safe (single-threaded UI loop).
  * @since 0.1.0
  */
+/**
+ * @brief In-content SVG (#112): a navy field, a gold disc, and a crimson block.
+ *
+ * @details Returned by ::er_image_loader for any `*.svg` `<img src>`; rendered as
+ * vector `<rect>`/`<circle>` shapes by ra_svg_render (no raster decode).
+ */
+static const char k_er_logo_svg[] =
+  "<svg viewBox=\"0 0 120 80\">"
+  "<rect x=\"0\" y=\"0\" width=\"120\" height=\"80\" fill=\"#283C82\"/>"
+  "<circle cx=\"34\" cy=\"40\" r=\"24\" fill=\"#E6C84B\"/>"
+  "<rect x=\"66\" y=\"18\" width=\"46\" height=\"44\" fill=\"#C03A37\"/>"
+  "</svg>";
+
+/** @brief SVG fixture size + the `.svg` extension length for href routing. */
+typedef enum : uint32_t {
+  k_er_logo_svg_len = (uint32_t)(sizeof(k_er_logo_svg) - 1U), /**< SVG byte count.      */
+  k_er_ext_len      = 4U,                                     /**< Length of ".svg".    */
+} er_svg_len_t;
+
 static ra_err_t er_image_loader(void*           ctx,
                                 const char*     href,
                                 uint32_t        href_len,
@@ -479,8 +498,13 @@ static ra_err_t er_image_loader(void*           ctx,
                                 size_t*         out_len)
 {
   (void)ctx;
-  (void)href;
-  (void)href_len;
+  /* `*.svg` -> the vector logo; everything else -> the baked raster figure. */
+  if ((href_len >= (uint32_t)k_er_ext_len) &&
+      (memcmp(&href[href_len - (uint32_t)k_er_ext_len], ".svg", (size_t)k_er_ext_len) == 0)) {
+    *out_bytes = (const uint8_t*)k_er_logo_svg;
+    *out_len   = (size_t)k_er_logo_svg_len;
+    return k_ra_ok;
+  }
   *out_bytes = k_er_figure_png;
   *out_len   = (size_t)k_er_figure_png_len;
   return k_ra_ok;

@@ -28,6 +28,7 @@
 #include "ra_gfx.h"
 #include "ra_img_arena.h"
 #include "ra_log.h"
+#include "ra_reflow_svg.h"
 #include "stb_image.h"
 
 /** @brief Log tag for the image decode/blit module. */
@@ -59,6 +60,11 @@ ra_err_t ra_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, int
   RA_CHECK_NULL_PTR(bytes, s_tag_img, "probe: null bytes");
   RA_CHECK_NULL_PTR(out_w, s_tag_img, "probe: null out_w");
   RA_CHECK_NULL_PTR(out_h, s_tag_img, "probe: null out_h");
+
+  /* SVG is not a raster: take its intrinsic size from the document (#112). */
+  if (ra_svg_is_svg(bytes, len)) {
+    return ra_svg_size(bytes, len, out_w, out_h);
+  }
 
   int x    = 0;
   int y    = 0;
