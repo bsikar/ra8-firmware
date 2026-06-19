@@ -327,6 +327,113 @@ static void test_cascade_color(void)
   TEST_END("css cascade color");
 }
 
+/** @brief Parse an inline `font-size: <value>` and return the declaration. */
+static ra_css_style_t fs(const char* value)
+{
+  char buf[80] = {};
+  (void)snprintf(buf, sizeof buf, "font-size:%s", value);
+  ra_css_style_t d = {};
+  (void)ra_css_parse_inline(buf, (uint32_t)strlen(buf), &d);
+  return d;
+}
+
+/**
+ * @test test_parse_fontsize
+ * @brief font-size parses px/%/em (incl. fractional) with MC/DC for unit dispatch.
+ *
+ * @par MC/DC:
+ * Three 2-condition AND unit dispatches in priv_parse_fontsize (each N+1 = 3):
+ *   px:  `(rem == k_priv_fs_ulen) && ci_eq("px")`
+ *   pct: `(rem == 1)              && (s[i] == '%')`
+ *   em:  `(rem == k_priv_fs_ulen) && ci_eq("em")`
+ * plus the fractional-digit loop's `fd < k_priv_fs_frac` upper bound:
+ *  - "16px"    -> px=16     (px both true)
+ *  - "16pt"    -> unset     (px cond2 false: rem==2, not "px"; em cond2 false)
+ *  - "120%"    -> pct=120   (pct both true)
+ *  - "9x"      -> unset     (pct cond2 false: rem==1, char != '%')
+ *  - "16"      -> unset     (all cond1 false: rem==0, no unit)
+ *  - "1.5em"   -> pct=150   (em both true; px cond2 false)
+ *  - "1.5pt"   -> unset     (em cond2 false: rem==2, not "em")
+ *  - "1.567em" -> pct=156   (fractional loop stops via fd>=k_priv_fs_frac)
+ *  - "99999px" -> px=9999   (integer accumulation saturates to k_priv_fs_max)
+ *  - "huge"    -> unset     (no digits)
+ */
+static void test_parse_fontsize(void)
+{
+  TEST_BEGIN("css parse font-size");
+  const uint8_t  fset = (uint8_t)k_ra_css_set_fontsize;
+  ra_css_style_t d;
+  d = fs("16px");
+  TEST_ASSERT((d.set & fset) != 0U);
+  TEST_ASSERT_EQ(16, (int)d.font_val);
+  TEST_ASSERT_EQ((int)k_ra_css_font_px, (int)d.font_unit);
+  TEST_ASSERT((fs("16pt").set & fset) == 0U); /* rem==2, not "px"/"em" */
+  d = fs("120%");
+  TEST_ASSERT_EQ(120, (int)d.font_val);
+  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)d.font_unit);
+  TEST_ASSERT((fs("9x").set & fset) == 0U); /* rem==1, char != '%' */
+  TEST_ASSERT((fs("16").set & fset) == 0U); /* rem==0, no unit */
+  d = fs("1.5em");
+  TEST_ASSERT_EQ(150, (int)d.font_val); /* 1.5em -> 150% */
+  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)d.font_unit);
+  TEST_ASSERT((fs("1.5pt").set & fset) == 0U); /* rem==2, not "em" */
+  d = fs("1.567em");
+  TEST_ASSERT_EQ(156, (int)d.font_val); /* 3rd frac digit dropped (fd cap) */
+  d = fs("99999px");
+  TEST_ASSERT_EQ(9999, (int)d.font_val);      /* saturates to k_priv_fs_max */
+  TEST_ASSERT((fs("huge").set & fset) == 0U); /* no digits */
+  TEST_END("css parse font-size");
+}
+
+/**
+ * @test test_decoration_line_alias
+ * @brief `text-decoration-line` is accepted alongside `text-decoration`.
+ *
+ * @par MC/DC:
+ * Decision: `ci_eq("text-decoration") || ci_eq("text-decoration-line")` (OR; N+1=3):
+ *  - "text-decoration"      -> true  (cond1 true)
+ *  - "text-decoration-line" -> true  (cond1 false, cond2 true)
+ *  - "text-transform"       -> false (both false: property ignored)
+ */
+static void test_decoration_line_alias(void)
+{
+  TEST_BEGIN("css text-decoration-line alias MC/DC");
+  ra_css_style_t d1 = {};
+  (void)ra_css_parse_inline("text-decoration:underline",
+                            (uint32_t)strlen("text-decoration:underline"),
+                            &d1);
+  TEST_ASSERT((d1.style & (uint8_t)k_ra_reflow_style_underline) != 0U); /* cond1 */
+  ra_css_style_t d2 = {};
+  (void)ra_css_parse_inline("text-decoration-line:underline",
+                            (uint32_t)strlen("text-decoration-line:underline"),
+                            &d2);
+  TEST_ASSERT((d2.style & (uint8_t)k_ra_reflow_style_underline) != 0U); /* cond2 */
+  ra_css_style_t d3 = {};
+  (void)ra_css_parse_inline("text-transform:upper", (uint32_t)strlen("text-transform:upper"), &d3);
+  TEST_ASSERT(d3.set == 0U); /* neither -> ignored */
+  TEST_END("css text-decoration-line alias MC/DC");
+}
+
+/**
+ * @test test_cascade_fontsize
+ * @brief font-size cascades by specificity (class beats type); raw value carried.
+ */
+static void test_cascade_fontsize(void)
+{
+  TEST_BEGIN("css cascade font-size");
+  load("p { font-size: 14px; } .big { font-size: 200%; }");
+  ra_css_element_t el = elem(k_ra_reflow_tag_p, nullptr, "big");
+  ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_fontsize) != 0U);
+  TEST_ASSERT_EQ(200, (int)r.font_val); /* .big wins */
+  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)r.font_unit);
+  ra_css_element_t el2 = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_style_t   r2  = ra_css_cascade(&s_sheet, &el2, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ(14, (int)r2.font_val);
+  TEST_ASSERT_EQ((int)k_ra_css_font_px, (int)r2.font_unit);
+  TEST_END("css cascade font-size");
+}
+
 /**
  * @test test_resolve_skip_mcdc
  * @brief MC/DC for the priv_resolve per-rule skip guard (driven via cascade).
@@ -428,6 +535,9 @@ int32_t main(void)
   test_cascade_null_mcdc();
   test_parse_color();
   test_cascade_color();
+  test_parse_fontsize();
+  test_decoration_line_alias();
+  test_cascade_fontsize();
   test_resolve_skip_mcdc();
   test_resolve_winner_mcdc();
   test_null_guards();

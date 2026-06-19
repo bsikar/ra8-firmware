@@ -713,7 +713,12 @@ static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_re
     anchor->y                  = cur->y;
     engine->anchor_count++;
   }
-  cur->active_font_px = priv_block_font_px(engine->font_px, (ra_reflow_html_tag_t)tok->tag);
+  /* CSS `font-size` (#140) on the block-start token wins; else the UA default
+   * (body size or heading scale). 0 = no CSS font, so unstyled content is
+   * byte-identical. */
+  cur->active_font_px = (tok->css_font_px != 0U)
+                          ? tok->css_font_px
+                          : priv_block_font_px(engine->font_px, (ra_reflow_html_tag_t)tok->tag);
   cur->line_height_px = priv_line_height(cur->active_font_px);
   if (ra_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
     cur->indent_px = k_ra_reflow_indent_px;

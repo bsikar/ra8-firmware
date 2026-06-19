@@ -92,7 +92,20 @@ typedef enum : uint8_t {
   k_ra_css_set_underline = 1U << 2U, /**< `text-decoration` was declared. */
   k_ra_css_set_align     = 1U << 3U, /**< `text-align` was declared.      */
   k_ra_css_set_color     = 1U << 4U, /**< `color` was declared.           */
+  k_ra_css_set_fontsize  = 1U << 5U, /**< `font-size` was declared.       */
 } ra_css_set_t;
+
+/**
+ * @enum ra_css_font_unit_t
+ * @brief How a declared `font-size` value is interpreted.
+ *
+ * @details `em` is normalised to a percentage at parse time (1em = 100%), so the
+ * engine only ever stores absolute pixels or a percentage of the inherited size.
+ */
+typedef enum : uint8_t {
+  k_ra_css_font_px  = 0U, /**< Value is an absolute pixel size.        */
+  k_ra_css_font_pct = 1U, /**< Value is a percentage of inherited px.  */
+} ra_css_font_unit_t;
 
 /**
  * @struct ra_css_style_t
@@ -104,11 +117,13 @@ typedef enum : uint8_t {
  * present in `set`.
  */
 typedef struct {
-  uint8_t  set;   /**< ::ra_css_set_t bitmask: which properties are present. */
-  uint8_t  style; /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul). */
-  uint8_t  align; /**< ::ra_reflow_align_t (valid iff `set & align`).        */
-  uint8_t  pad;   /**< Padding.                                              */
-  uint32_t color; /**< 0xRRGGBB text colour (valid iff `set & color`).       */
+  uint8_t  set;       /**< ::ra_css_set_t bitmask: which properties are present.  */
+  uint8_t  style;     /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul).  */
+  uint8_t  align;     /**< ::ra_reflow_align_t (valid iff `set & align`).         */
+  uint8_t  font_unit; /**< ::ra_css_font_unit_t (valid iff `set & fontsize`).     */
+  uint32_t color;     /**< 0xRRGGBB text colour (valid iff `set & color`).        */
+  uint16_t font_val;  /**< font-size number: px or % (valid iff `set & fontsize`).*/
+  uint16_t pad;       /**< Padding.                                               */
 } ra_css_style_t;
 
 /**
