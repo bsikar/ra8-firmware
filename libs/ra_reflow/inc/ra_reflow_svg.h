@@ -10,14 +10,15 @@
  *      `<image xlink:href="cover.jpg"/>`. ::ra_svg_image_href returns that href
  *      so the caller can decode the referenced raster through the existing
  *      ra_img_decode_blit path (no new decoder needed).
- *   2. **Simple in-content vector graphics** -- `<rect>`, `<circle>`, `<line>`
- *      with solid `fill` / `stroke`. ::ra_svg_render maps them from the SVG
- *      `viewBox` (or width/height) into a caller box and draws them through the
- *      bound ra_gfx framebuffer.
+ *   2. **Simple in-content vector graphics** -- `<rect>`, `<circle>`, `<line>`,
+ *      `<polygon>` (scanline-filled), `<polyline>` (stroked), with solid
+ *      `fill` / `stroke`. ::ra_svg_render maps them from the SVG `viewBox` (or
+ *      width/height) into a caller box and draws them through the bound ra_gfx
+ *      framebuffer.
  *
  * Out of scope (documented limitations, tracked as follow-ups): `<path>`,
- * `<polygon>`/`<polyline>`, gradients, transforms, opacity, CSS styling, and
- * fractional coordinates (numbers are truncated to integers).
+ * gradients, transforms, opacity, CSS styling, stroke width, and fractional
+ * coordinates (numbers are truncated to integers).
  *
  * The parser is pure string scanning over the caller's byte buffer (no DOM, no
  * heap); ::ra_svg_render's only side effect is drawing through ra_gfx.
@@ -120,12 +121,13 @@ ra_svg_image_href(const uint8_t* svg, size_t len, size_t* out_off, size_t* out_l
 [[nodiscard]] ra_err_t ra_svg_size(const uint8_t* svg, size_t len, int32_t* out_w, int32_t* out_h);
 
 /**
- * @brief Render an SVG's `<rect>`/`<circle>`/`<line>` shapes into a box.
+ * @brief Render an SVG's vector shapes into a box.
  *
  * @details Establishes a coordinate transform from the SVG `viewBox` (or its
  * `width`/`height`, defaulting to the box) onto the caller box @p (x,y,w,h),
- * then walks the shapes and draws each through the bound ra_gfx framebuffer with
- * its `fill` (rect/circle) or `stroke` (line) colour. `fill="none"` shapes are
+ * then walks the supported shapes (`<rect>` / `<circle>` / `<polygon>` filled,
+ * `<line>` / `<polyline>` stroked) and draws each through the bound ra_gfx
+ * framebuffer with its `fill` or `stroke` colour. `fill="none"` shapes are
  * skipped. Coordinates outside the box are clipped by ra_gfx.
  *
  * @param[in] svg SVG document bytes.

@@ -482,7 +482,7 @@ static const char k_er_logo_svg[] =
   "<svg viewBox=\"0 0 120 80\">"
   "<rect x=\"0\" y=\"0\" width=\"120\" height=\"80\" fill=\"#283C82\"/>"
   "<circle cx=\"34\" cy=\"40\" r=\"24\" fill=\"#E6C84B\"/>"
-  "<rect x=\"66\" y=\"18\" width=\"46\" height=\"44\" fill=\"#C03A37\"/>"
+  "<polygon points=\"66,62 112,62 89,16\" fill=\"#C03A37\"/>"
   "</svg>";
 
 /** @brief SVG fixture size + the `.svg` extension length for href routing. */

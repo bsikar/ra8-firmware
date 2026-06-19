@@ -2,8 +2,9 @@
  * @file ra_reflow_svg.c
  * @brief Implementation of the minimal SVG subset (#112).
  *
- * @details Pure string-scanning SVG parser + a `<rect>`/`<circle>`/`<line>`
- * rasteriser over ra_gfx. No DOM, no heap. See ra_reflow_svg.h for the scope.
+ * @details Pure string-scanning SVG parser + a `<rect>`/`<circle>`/`<line>`/
+ * `<polygon>`/`<polyline>` rasteriser over ra_gfx (with a scanline polygon
+ * fill). No DOM, no heap. See ra_reflow_svg.h for the scope.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,6 +40,8 @@ typedef enum : uint32_t {
   k_svg_bom1      = 0xBBU,       /**< UTF-8 BOM byte 1.                  */
   k_svg_bom2      = 0xBFU,       /**< UTF-8 BOM byte 2.                  */
   k_svg_bom_len   = 3U,          /**< UTF-8 BOM length.                 */
+  k_svg_poly_max  = 64U,         /**< Max points / scanline crossings.  */
+  k_svg_poly_min  = 3U,          /**< Min points for a fillable polygon.*/
 } priv_svg_consts_t;
 
 /**
@@ -374,9 +377,142 @@ static void priv_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
 }
 
 /* ===========================================================================
+ * Polygon / polyline (a `points` list + a scanline polygon fill)
+ * ===========================================================================
+ */
+
+/** @brief Parse a `points` value into framebuffer-space vertices; return count. */
+static int32_t
+priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
+{
+  size_t  k = 0U;
+  int32_t n = 0;
+  /* Bounded: <= k_svg_poly_max pairs; k advances past each number. */
+  while (n < (int32_t)k_svg_poly_max) {
+    while ((k < vlen) && (priv_ws((char)v[k]) || (v[k] == ','))) {
+      ++k;
+    }
+    if (k >= vlen) {
+      break;
+    }
+    const int32_t ux = priv_num(v, vlen, &k);
+    const int32_t uy = priv_num(v, vlen, &k);
+    xs[n]            = priv_mx(t, ux);
+    ys[n]            = priv_my(t, uy);
+    ++n;
+  }
+  return n;
+}
+
+/** @brief Ascending insertion sort of @p m int32 values (small @p m). */
+static void priv_sort_i32(int32_t* a, int32_t m)
+{
+  /* Bounded: m <= k_svg_poly_max. */
+  for (int32_t i = 1; i < m; ++i) {
+    const int32_t key = a[i];
+    int32_t       j   = i - 1;
+    while ((j >= 0) && (a[j] > key)) {
+      a[j + 1] = a[j];
+      --j;
+    }
+    a[j + 1] = key;
+  }
+}
+
+/** @brief Collect the x-coords where polygon edges cross scanline @p y. */
+static int32_t
+priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int32_t* xint)
+{
+  int32_t m = 0;
+  /* Bounded: one test per polygon edge (n edges). */
+  for (int32_t i = 0; (i < n) && (m < (int32_t)k_svg_poly_max); ++i) {
+    const int32_t j  = (i + 1) % n;
+    const int32_t y0 = ys[i];
+    const int32_t y1 = ys[j];
+    if (((y0 <= y) && (y < y1)) || ((y1 <= y) && (y < y0))) {
+      const int32_t x0 = xs[i];
+      const int32_t x1 = xs[j];
+      xint[m] = x0 + (int32_t)(((int64_t)(y - y0) * (int64_t)(x1 - x0)) / (int64_t)(y1 - y0));
+      ++m;
+    }
+  }
+  return m;
+}
+
+/** @brief Even-odd scanline fill of polygon @p (xs,ys)[0..n) with @p color. */
+static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color)
+{
+  if (n < (int32_t)k_svg_poly_min) {
+    return;
+  }
+  int32_t ymin = ys[0];
+  int32_t ymax = ys[0];
+  for (int32_t i = 1; i < n; ++i) {
+    ymin = (ys[i] < ymin) ? ys[i] : ymin;
+    ymax = (ys[i] > ymax) ? ys[i] : ymax;
+  }
+  /* Bounded: ymax - ymin <= the framebuffer-box height. */
+  for (int32_t y = ymin; y <= ymax; ++y) {
+    int32_t       xint[k_svg_poly_max] = {};
+    const int32_t m                    = priv_scanline_x(xs, ys, n, y, xint);
+    priv_sort_i32(xint, m);
+    for (int32_t k = 0; (k + 1) < m; k += 2) {
+      (void)ra_gfx_line(xint[k], y, xint[k + 1], y, color);
+    }
+  }
+}
+
+/** @brief Draw one `<polygon>` (span @p s[0..len)) as a filled polygon. */
+static void priv_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
+{
+  const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
+  size_t         off  = 0U;
+  size_t         vl   = 0U;
+  if ((fill == (uint32_t)k_svg_no_paint) || !priv_attr(s, len, "points", &off, &vl)) {
+    return;
+  }
+  int32_t       xs[k_svg_poly_max] = {};
+  int32_t       ys[k_svg_poly_max] = {};
+  const int32_t n                  = priv_parse_points(&s[off], vl, t, xs, ys);
+  priv_fill_poly(xs, ys, n, fill);
+}
+
+/** @brief Draw one `<polyline>` (span @p s[0..len)) as connected stroke segments. */
+static void priv_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
+{
+  const uint32_t stroke = priv_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
+  size_t         off    = 0U;
+  size_t         vl     = 0U;
+  if ((stroke == (uint32_t)k_svg_no_paint) || !priv_attr(s, len, "points", &off, &vl)) {
+    return;
+  }
+  int32_t       xs[k_svg_poly_max] = {};
+  int32_t       ys[k_svg_poly_max] = {};
+  const int32_t n                  = priv_parse_points(&s[off], vl, t, xs, ys);
+  /* Bounded: n - 1 segments. */
+  for (int32_t i = 0; (i + 1) < n; ++i) {
+    (void)ra_gfx_line(xs[i], ys[i], xs[i + 1], ys[i + 1], stroke);
+  }
+}
+
+/* ===========================================================================
  * Document parsing + render walk
  * ===========================================================================
  */
+
+/** @brief True iff element @p name begins at @p s[at] with a delimiter after. */
+static bool priv_elem_at(const uint8_t* s, size_t len, size_t at, const char* name)
+{
+  if (!priv_starts_ci(s, len, at, name)) {
+    return false;
+  }
+  const size_t after = at + strlen(name);
+  if (after >= len) {
+    return true;
+  }
+  const char c = (char)s[after];
+  return priv_ws(c) || (c == '>') || (c == '/');
+}
 
 /** @brief Return the span [*open, *close) of the element @p name at/after @p from. */
 static bool priv_tag_span(const uint8_t* s,
@@ -437,37 +573,44 @@ static void priv_read_viewbox(const uint8_t* s, size_t len, svg_xform_t* t)
   }
 }
 
-/** @brief Walk + draw every `<rect>`/`<circle>`/`<line>` in document order. */
+/** @brief Dispatch one element span @p s[at..close) to its shape drawer. */
+static void
+priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const svg_xform_t* t)
+{
+  const uint8_t* tag  = &s[at];
+  const size_t   tlen = (close > at) ? (close - at) : 0U;
+  if (priv_elem_at(s, len, at, "<rect")) {
+    priv_draw_rect(tag, tlen, t);
+  } else if (priv_elem_at(s, len, at, "<circle")) {
+    priv_draw_circle(tag, tlen, t);
+  } else if (priv_elem_at(s, len, at, "<polygon")) {
+    priv_draw_polygon(tag, tlen, t);
+  } else if (priv_elem_at(s, len, at, "<polyline")) {
+    priv_draw_polyline(tag, tlen, t);
+  } else if (priv_elem_at(s, len, at, "<line")) {
+    priv_draw_line(tag, tlen, t);
+  } else {
+    /* Unsupported element -> skip. */
+  }
+}
+
+/** @brief Walk every element in document order and draw the supported shapes. */
 static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   size_t i = 0U;
-  /* Bounded: each iteration advances past one shape (close+1) or breaks at EOF. */
+  /* Bounded: each iteration advances past one '<...>' element or breaks at EOF. */
   while (i < len) {
-    size_t open  = 0U;
-    size_t close = 0U;
-    /* Find the nearest of the three shape kinds from i. */
-    size_t r_at = priv_find_ci(s, len, i, "<rect");
-    size_t c_at = priv_find_ci(s, len, i, "<circle");
-    size_t l_at = priv_find_ci(s, len, i, "<line");
-    size_t next = (r_at < c_at) ? r_at : c_at;
-    next        = (l_at < next) ? l_at : next;
-    if (next >= len) {
+    while ((i < len) && (s[i] != '<')) {
+      ++i;
+    }
+    if (i >= len) {
       break;
     }
-    (void)priv_tag_span(s, len, next, "<", &open, &close);
-    open = next;
+    size_t close = i;
     while ((close < len) && (s[close] != '>')) {
       ++close;
     }
-    const uint8_t* tag  = &s[open];
-    const size_t   tlen = (close > open) ? (close - open) : 0U;
-    if (next == r_at) {
-      priv_draw_rect(tag, tlen, t);
-    } else if (next == c_at) {
-      priv_draw_circle(tag, tlen, t);
-    } else {
-      priv_draw_line(tag, tlen, t);
-    }
+    priv_dispatch_shape(s, len, i, close, t);
     i = (close < len) ? (close + 1U) : len;
   }
 }
