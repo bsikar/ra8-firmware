@@ -174,6 +174,8 @@ typedef enum : uint16_t {
   k_priv_hr_thickness_px      = 2U,  /**< Pixel thickness of an `<hr>` (placeholder).*/
   k_priv_image_placeholder_px = 32U, /**< Side length of `<img>` placeholder.     */
   k_priv_min_chapter_pages    = 1U,  /**< Floor for non-empty input.                */
+  k_priv_cell_pad_px          = 6U,  /**< Left/right inset inside a table cell.    */
+  k_priv_row_gap_px           = 4U,  /**< Vertical gap between table rows.         */
 } priv_layout_consts_t;
 
 /* ===========================================================================
@@ -1167,6 +1169,335 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
   }
 }
 
+/* ===========================================================================
+ * Table layout (#107): equal-column grid, per-cell text flow, row page-break
+ * ===========================================================================
+ */
+
+/**
+ * @brief Find the block-end token matching the block-start at @p start.
+ *
+ * @details Tracks nesting of the start token's tag, so it returns the correct
+ * close even with nested same-tag elements. Returns @p limit if unmatched.
+ *
+ * @param[in] engine Engine holding the token stream.
+ * @param[in] start  Index of a block-start token.
+ * @param[in] limit  Exclusive scan bound.
+ * @return Index of the matching block-end, or @p limit if none.
+ */
+static uint32_t priv_match_block_end(const ra_reflow_t* engine, uint32_t start, uint32_t limit)
+{
+  const uint8_t tag   = engine->tokens[start].tag;
+  int32_t       depth = 1;
+  for (uint32_t i = start + 1U; i < limit; ++i) {
+    const ra_reflow_token_t* tok = &engine->tokens[i];
+    if (tok->tag != tag) {
+      continue;
+    }
+    if (tok->kind == (uint8_t)k_ra_reflow_tok_block_start) {
+      depth++;
+    } else if (tok->kind == (uint8_t)k_ra_reflow_tok_block_end) {
+      depth--;
+      if (depth == 0) {
+        return i;
+      }
+    }
+  }
+  return limit;
+}
+
+/** @brief True iff token @p i opens a table cell (`<td>` / `<th>`). */
+static bool priv_is_cell_start(const ra_reflow_t* engine, uint32_t i)
+{
+  const ra_reflow_token_t* tok = &engine->tokens[i];
+  return (tok->kind == (uint8_t)k_ra_reflow_tok_block_start) &&
+         ((tok->tag == (uint8_t)k_ra_reflow_tag_td) || (tok->tag == (uint8_t)k_ra_reflow_tag_th));
+}
+
+/** @brief True iff token @p i opens a table row (`<tr>`). */
+static bool priv_is_row_start(const ra_reflow_t* engine, uint32_t i)
+{
+  const ra_reflow_token_t* tok = &engine->tokens[i];
+  return (tok->kind == (uint8_t)k_ra_reflow_tok_block_start) &&
+         (tok->tag == (uint8_t)k_ra_reflow_tag_tr);
+}
+
+/**
+ * @brief Column count = the maximum number of cells in any row of the table.
+ *
+ * @param[in] engine Engine holding the token stream.
+ * @param[in] start  Index of the table block-start.
+ * @param[in] end    Index of the table block-end.
+ * @return Column count (0 if the table has no cells).
+ */
+static uint32_t priv_table_columns(const ra_reflow_t* engine, uint32_t start, uint32_t end)
+{
+  uint32_t cols = 0U;
+  uint32_t i    = start + 1U;
+  while (i < end) {
+    if (!priv_is_row_start(engine, i)) {
+      i++;
+      continue;
+    }
+    const uint32_t tr_end = priv_match_block_end(engine, i, end);
+    uint32_t       cells  = 0U;
+    for (uint32_t j = i + 1U; j < tr_end; ++j) {
+      if (priv_is_cell_start(engine, j)) {
+        cells++;
+      }
+    }
+    if (cells > cols) {
+      cols = cells;
+    }
+    i = tr_end + 1U;
+  }
+  return cols;
+}
+
+/**
+ * @brief Lay out one cell's text tokens within a fixed column box (left-flow).
+ *
+ * @details Greedy word-wrap within `[cell_x, cell_x + cell_w)` from @p top_y;
+ * pushes glyphs to the engine pool and returns the line count. Non-text tokens
+ * inside the cell are ignored (v1 cells hold text).
+ *
+ * @param[in,out] engine   Engine whose glyph pool grows.
+ * @param[in]     font     Font for metrics.
+ * @param[in]     cell_x   Cell content left edge, pixels.
+ * @param[in]     cell_w   Cell content width, pixels.
+ * @param[in]     top_y    Cell top baseline, pixels.
+ * @param[in]     color    Glyph colour.
+ * @param[in]     tstart   First token index of the cell content.
+ * @param[in]     tend     One past the last token index.
+ * @return Number of lines the cell occupies (>= 1).
+ */
+/**
+ * @brief Flow one text token inside a cell box, wrapping at the column edge.
+ *
+ * @details Greedy word-wrap from `*cx`/`*cy` within `[cell_x, cell_right)`,
+ * pushing glyphs and advancing the running pen + line count. Factored out of
+ * priv_layout_cell() to keep each within the cognitive-complexity budget.
+ *
+ * @param[in,out] engine     Engine whose glyph pool grows.
+ * @param[in]     font       Font for metrics.
+ * @param[in]     tok        The text token to flow.
+ * @param[in]     cell_x     Cell content left edge.
+ * @param[in]     cell_right Cell content right edge.
+ * @param[in]     font_px    Glyph size.
+ * @param[in]     color      Glyph colour.
+ * @param[in,out] cx         Running pen x.
+ * @param[in,out] cy         Running pen baseline y.
+ * @param[in,out] lines      Running line count.
+ */
+static void priv_cell_text(ra_reflow_t*             engine,
+                           const stbtt_fontinfo*    font,
+                           const ra_reflow_token_t* tok,
+                           int32_t                  cell_x,
+                           int32_t                  cell_right,
+                           uint16_t                 font_px,
+                           uint32_t                 color,
+                           int32_t*                 cx,
+                           int32_t*                 cy,
+                           uint32_t*                lines)
+{
+  const int32_t  line_h = (int32_t)priv_line_height(font_px);
+  const uint8_t* base   = engine->text_pool + tok->text_off;
+  const uint32_t len    = tok->text_len;
+  uint32_t       i      = 0U;
+  while (i < len) {
+    if (base[i] == ' ') {
+      const int32_t adv = priv_glyph_advance(font, font_px, (int32_t)' ');
+      if ((*cx > cell_x) && ((*cx + adv) <= cell_right)) {
+        (void)priv_push_glyph(engine, *cx, *cy, (int32_t)' ', font_px, 0U, color, 0U);
+        *cx += adv;
+      }
+      ++i;
+      continue;
+    }
+    uint32_t word_end = i;
+    int32_t  word_w   = 0;
+    while ((word_end < len) && (base[word_end] != ' ')) {
+      word_w += priv_glyph_advance(font, font_px, (int32_t)base[word_end]);
+      ++word_end;
+    }
+    if (((*cx + word_w) > cell_right) && (*cx > cell_x)) {
+      *cx = cell_x;
+      *cy += line_h;
+      (*lines)++;
+    }
+    while (i < word_end) {
+      const int32_t adv = priv_glyph_advance(font, font_px, (int32_t)base[i]);
+      (void)priv_push_glyph(engine, *cx, *cy, (int32_t)base[i], font_px, 0U, color, 0U);
+      *cx += adv;
+      ++i;
+    }
+  }
+}
+
+static uint32_t priv_layout_cell(ra_reflow_t*          engine,
+                                 const stbtt_fontinfo* font,
+                                 int32_t               cell_x,
+                                 int32_t               cell_w,
+                                 int32_t               top_y,
+                                 uint32_t              color,
+                                 uint32_t              tstart,
+                                 uint32_t              tend)
+{
+  const int32_t  cell_right = cell_x + cell_w;
+  const uint16_t font_px    = engine->font_px;
+  int32_t        cx         = cell_x;
+  int32_t        cy         = top_y;
+  uint32_t       lines      = 1U;
+  for (uint32_t t = tstart; t < tend; ++t) {
+    const ra_reflow_token_t* tok = &engine->tokens[t];
+    if (tok->kind == (uint8_t)k_ra_reflow_tok_text) {
+      priv_cell_text(engine, font, tok, cell_x, cell_right, font_px, color, &cx, &cy, &lines);
+    }
+  }
+  return lines;
+}
+
+/**
+ * @brief Lay out every cell of one row at @p row_y; return the row's line count.
+ *
+ * @details Cells map to equal columns of width @p col_w; each is flowed via
+ * priv_layout_cell() inside a `k_priv_cell_pad_px` inset. The returned line
+ * count is the tallest cell (the row height in lines).
+ *
+ * @param[in,out] engine  Engine whose glyph pool grows.
+ * @param[in]     font    Font for metrics.
+ * @param[in]     tr_start Index of the row's `<tr>` block-start.
+ * @param[in]     tr_end   Index of the row's `<tr>` block-end.
+ * @param[in]     col_w   Column width, pixels.
+ * @param[in]     row_y   Row top baseline, pixels.
+ * @return Max cell line count in the row (>= 1).
+ */
+static uint32_t priv_row_cells(ra_reflow_t*          engine,
+                               const stbtt_fontinfo* font,
+                               uint32_t              tr_start,
+                               uint32_t              tr_end,
+                               int32_t               col_w,
+                               int32_t               row_y)
+{
+  const int32_t  pad   = (int32_t)k_priv_cell_pad_px;
+  const uint32_t color = engine->body_color;
+  uint32_t       rows  = 1U;
+  uint32_t       col   = 0U;
+  uint32_t       i     = tr_start + 1U;
+  while (i < tr_end) {
+    if (!priv_is_cell_start(engine, i)) {
+      i++;
+      continue;
+    }
+    const uint32_t cell_end = priv_match_block_end(engine, i, tr_end);
+    const int32_t  cell_x   = (int32_t)k_ra_reflow_margin_px + ((int32_t)col * col_w) + pad;
+    const int32_t  cell_w   = col_w - (2 * pad);
+    const uint32_t lines =
+      priv_layout_cell(engine, font, cell_x, cell_w, row_y, color, i + 1U, cell_end);
+    if (lines > rows) {
+      rows = lines;
+    }
+    col++;
+    i = cell_end + 1U;
+  }
+  return rows;
+}
+
+/**
+ * @brief Lay out one table row, page-breaking before it if it would overflow.
+ *
+ * @details Lays the row at the cursor, measures its height, and -- if the row
+ * starts mid-page and overruns the bottom margin -- rolls back its glyphs,
+ * flushes the page, and re-lays the row at the top of the next page (so a tall
+ * table breaks between rows). Advances the cursor past the row.
+ *
+ * @param[in,out] engine   Engine whose glyph / page pools grow.
+ * @param[in,out] cur      Layout cursor.
+ * @param[in]     font     Font for metrics.
+ * @param[in]     tr_start Index of the row's `<tr>` block-start.
+ * @param[in]     table_end Index of the table block-end (scan bound).
+ * @param[in]     col_w    Column width, pixels.
+ * @return Index just past the row's `<tr>` block-end.
+ */
+static uint32_t priv_layout_row(ra_reflow_t*          engine,
+                                priv_cursor_t*        cur,
+                                const stbtt_fontinfo* font,
+                                uint32_t              tr_start,
+                                uint32_t              table_end,
+                                int32_t               col_w)
+{
+  const uint32_t tr_end       = priv_match_block_end(engine, tr_start, table_end);
+  const int32_t  line_h       = (int32_t)priv_line_height(engine->font_px);
+  const int32_t  bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra_reflow_margin_px;
+
+  const uint32_t glyphs_before = engine->glyph_count;
+  uint32_t       row_lines     = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
+  int32_t        row_h         = (int32_t)row_lines * line_h;
+
+  if (((cur->y + row_h) > bottom_limit) && (cur->y > (int32_t)k_ra_reflow_margin_px)) {
+    engine->glyph_count = glyphs_before; /* roll the row back ... */
+    (void)priv_finish_page(engine, cur); /* ... flush the page (cur->y -> margin) ... */
+    row_lines = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y); /* ... re-lay it */
+    row_h     = (int32_t)row_lines * line_h;
+  }
+  cur->y += row_h + (int32_t)k_priv_row_gap_px;
+  return tr_end + 1U;
+}
+
+/**
+ * @brief Lay out a `<table>` token range as an equal-column grid.
+ *
+ * @details Flushes the current line, computes the column count + width, lays
+ * each row (with row-level page breaks), then resumes linear flow after the
+ * table. Sets @p out_next to the token index past the table block-end.
+ *
+ * @param[in,out] engine   Engine whose glyph / page pools grow.
+ * @param[in,out] cur      Layout cursor.
+ * @param[in]     font     Font for metrics.
+ * @param[in]     start    Index of the table block-start.
+ * @param[out]    out_next Receives the index past the table block-end.
+ * @return k_ra_ok, or k_ra_err_no_mem on a line-flush overflow.
+ */
+static ra_err_t priv_layout_table(ra_reflow_t*          engine,
+                                  priv_cursor_t*        cur,
+                                  const stbtt_fontinfo* font,
+                                  uint32_t              start,
+                                  uint32_t*             out_next)
+{
+  if (cur->line_has_content != 0U) {
+    if (!priv_newline(engine, cur, false)) {
+      return k_ra_err_no_mem;
+    }
+  }
+  const uint32_t end  = priv_match_block_end(engine, start, engine->token_count);
+  const uint32_t cols = priv_table_columns(engine, start, end);
+  if (cols == 0U) {
+    *out_next = (end < engine->token_count) ? (end + 1U) : engine->token_count;
+    return k_ra_ok;
+  }
+  const int32_t content_w = (int32_t)engine->viewport_w - (2 * (int32_t)k_ra_reflow_margin_px);
+  const int32_t col_w     = content_w / (int32_t)cols;
+
+  uint32_t i = start + 1U;
+  while (i < end) {
+    if (priv_is_row_start(engine, i)) {
+      i = priv_layout_row(engine, cur, font, i, end, col_w);
+    } else {
+      i++;
+    }
+  }
+
+  /* Resume linear flow below the table. */
+  cur->x                = (int32_t)k_ra_reflow_margin_px + (int32_t)cur->indent_px;
+  cur->align            = (uint8_t)k_ra_reflow_align_left;
+  cur->line_has_content = 0U;
+  cur->y += (int32_t)k_ra_reflow_paragraph_gap_px;
+  cur->line_top         = cur->y;
+  cur->line_first_glyph = engine->glyph_count;
+  *out_next             = (end < engine->token_count) ? (end + 1U) : engine->token_count;
+  return k_ra_ok;
+}
+
 /**
  * @brief Run one pass over the token stream populating `engine->glyphs[]`
  *        and `engine->pages[]`.
@@ -1202,10 +1533,21 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
     .reserved8        = {0U, 0U},
   };
 
-  for (uint32_t i = 0U; i < engine->token_count; ++i) {
-    ra_err_t err = priv_apply_token(engine, &cur, font, &engine->tokens[i]);
-    if (err != k_ra_ok) {
-      return err;
+  uint32_t i = 0U;
+  while (i < engine->token_count) {
+    const ra_reflow_token_t* tok = &engine->tokens[i];
+    if ((tok->kind == (uint8_t)k_ra_reflow_tok_block_start) &&
+        (tok->tag == (uint8_t)k_ra_reflow_tag_table)) {
+      ra_err_t err = priv_layout_table(engine, &cur, font, i, &i);
+      if (err != k_ra_ok) {
+        return err;
+      }
+    } else {
+      ra_err_t err = priv_apply_token(engine, &cur, font, tok);
+      if (err != k_ra_ok) {
+        return err;
+      }
+      i++;
     }
   }
 

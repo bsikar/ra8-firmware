@@ -27,13 +27,19 @@
  *
  *   - Block-flow tags:    `<p>`, `<h1>` .. `<h6>`, `<blockquote>`,
  *                          `<ul>`, `<ol>`, `<li>`, `<hr>`.
+ *   - Tables:             `<table>` / `<tr>` / `<td>` / `<th>` -- an
+ *                          equal-column grid with per-cell text flow and
+ *                          row-level page breaks (#107).
  *   - Inline tags:        `<em>`, `<strong>`, `<b>`, `<i>`, `<a>`,
- *                          `<br>`.
- *   - Replaced elements:  `<img>` -- rendered as a 1-pixel placeholder
- *                          rectangle (image decoding is deferred).
- *   - Everything else (CSS, scripts, `<div>`, `<span>`) is treated as
- *     a transparent flow-pass-through; child content is still laid
- *     out, the wrapping element itself contributes no styling.
+ *                          `<br>`. `<a href>` links are hit-testable and
+ *                          followable (#110).
+ *   - Replaced elements:  `<img>` -- decoded + scaled + blitted when an
+ *                          image loader is bound, else a placeholder (#106).
+ *   - Alignment:          `text-align` (left / right / centre / justify)
+ *                          from an inline `style` on a block (#108).
+ *   - Everything else (the rest of CSS, scripts, `<div>`, `<span>`) is
+ *     treated as a transparent flow-pass-through; child content is still
+ *     laid out, the wrapping element itself contributes no styling.
  *
  * ## Lifecycle
  *
@@ -150,6 +156,10 @@ typedef enum : uint8_t {
   k_ra_reflow_tag_blockquote = 17U, /**< Blockquote indent.               */
   k_ra_reflow_tag_a          = 18U, /**< Anchor (renders underlined).     */
   k_ra_reflow_tag_img        = 19U, /**< Image (placeholder rect).        */
+  k_ra_reflow_tag_table      = 20U, /**< Table (grid layout).             */
+  k_ra_reflow_tag_tr         = 21U, /**< Table row.                       */
+  k_ra_reflow_tag_td         = 22U, /**< Table cell.                      */
+  k_ra_reflow_tag_th         = 23U, /**< Table header cell.               */
 } ra_reflow_html_tag_t;
 
 /**

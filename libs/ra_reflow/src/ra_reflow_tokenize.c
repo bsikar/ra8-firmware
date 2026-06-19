@@ -195,6 +195,10 @@ ra_reflow_html_tag_t ra_reflow_tok_classify(const char* name, size_t len)
     {"blockquote", k_ra_reflow_tag_blockquote},
     {"a", k_ra_reflow_tag_a},
     {"img", k_ra_reflow_tag_img},
+    {"table", k_ra_reflow_tag_table},
+    {"tr", k_ra_reflow_tag_tr},
+    {"td", k_ra_reflow_tag_td},
+    {"th", k_ra_reflow_tag_th},
   };
   for (size_t k = 0U; k < (sizeof(k_map) / sizeof(k_map[0])); ++k) {
     if (strcmp(lower, k_map[k].word) == 0) {
@@ -324,6 +328,10 @@ static bool priv_is_block(ra_reflow_html_tag_t tag)
     case k_ra_reflow_tag_ol:
     case k_ra_reflow_tag_li:
     case k_ra_reflow_tag_blockquote:
+    case k_ra_reflow_tag_table:
+    case k_ra_reflow_tag_tr:
+    case k_ra_reflow_tag_td:
+    case k_ra_reflow_tag_th:
       return true;
     default:
       return false;
