@@ -170,6 +170,23 @@ typedef enum : uint8_t {
 } ra_reflow_font_style_t;
 
 /**
+ * @enum ra_reflow_align_t
+ * @brief Block text alignment (from an inline `style="text-align:..."`).
+ *
+ * @details Carried on a block-start token (its `reserved` byte) and applied as
+ * a per-line pass: centre/right shift every glyph on the line; justify spreads
+ * the slack across inter-word gaps on full (wrapped) lines, leaving the last
+ * line of a paragraph left-aligned. The default is left (identical to the
+ * historical greedy layout, so unaligned content is byte-stable).
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_align_left    = 0U, /**< Left (default, ragged right).        */
+  k_ra_reflow_align_right   = 1U, /**< Right-aligned.                       */
+  k_ra_reflow_align_center  = 2U, /**< Centred.                            */
+  k_ra_reflow_align_justify = 3U, /**< Justified (last line left-aligned).  */
+} ra_reflow_align_t;
+
+/**
  * @enum ra_reflow_token_kind_t
  * @brief Parsed token classification.
  *
