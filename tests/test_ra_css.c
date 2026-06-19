@@ -1,0 +1,391 @@
+/**
+ * @file test_ra_css.c
+ * @brief Host unit tests + MC/DC for the minimal content-CSS cascade (#111).
+ *
+ * @details
+ * Exercises the v1 CSS subset: selector parsing (universal / type / class / id,
+ * comma groups, comments, unsupported-selector skip), inline declarations, the
+ * property grammar (font-weight / font-style / text-decoration / text-align),
+ * selector matching, and the full cascade (specificity, source order,
+ * inheritance, inline override). MC/DC vectors cover the compound decisions in
+ * rule matching and the cascade entry guard.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_reflow.h"
+#include "ra_reflow_css.h"
+#include "unity_minimal.h"
+
+/** @brief Shared parsed stylesheet for the matching / cascade tests. */
+static ra_css_sheet_t s_sheet;
+
+/** @brief Parse @p css into the shared sheet (reset first); assert success. */
+static void load(const char* css)
+{
+  TEST_ASSERT_EQ(k_ra_ok, ra_css_sheet_reset(&s_sheet));
+  TEST_ASSERT_EQ(k_ra_ok, ra_css_parse(&s_sheet, css, (uint32_t)strlen(css)));
+}
+
+/** @brief Build an element identity (NULL id/class allowed). */
+static ra_css_element_t elem(ra_reflow_html_tag_t tag, const char* id, const char* cls)
+{
+  ra_css_element_t e = {};
+  e.tag              = (uint8_t)tag;
+  e.id               = id;
+  e.id_len           = (id != nullptr) ? (uint16_t)strlen(id) : 0U;
+  e.class_str        = cls;
+  e.class_len        = (cls != nullptr) ? (uint16_t)strlen(cls) : 0U;
+  return e;
+}
+
+/** @brief The empty inline declaration (nothing set). */
+static ra_css_style_t no_inline(void)
+{
+  return (ra_css_style_t){};
+}
+
+/**
+ * @test test_parse_props
+ * @brief Each v1 property parses into the right set bit + value.
+ */
+static void test_parse_props(void)
+{
+  TEST_BEGIN("css parse properties");
+  load("p { font-weight: bold; font-style: italic; text-decoration: underline; "
+       "text-align: justify; }");
+  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  const ra_css_style_t d = s_sheet.rules[0].decl;
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_bold) != 0U);
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_italic) != 0U);
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_underline) != 0U);
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_align) != 0U);
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_bold) != 0U);
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_italic) != 0U);
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_underline) != 0U);
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_justify, (int)d.align);
+  TEST_ASSERT_EQ((int)k_ra_css_sel_type, (int)s_sheet.rules[0].sel_kind);
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_END("css parse properties");
+}
+
+/**
+ * @test test_parse_normal_resets
+ * @brief `normal` / `none` declare the property but clear the value bit.
+ */
+static void test_parse_normal_resets(void)
+{
+  TEST_BEGIN("css parse normal/none resets");
+  load("em { font-weight: normal; font-style: normal; text-decoration: none; }");
+  const ra_css_style_t d = s_sheet.rules[0].decl;
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_bold) != 0U);        /* declared */
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_bold) == 0U); /* but off */
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_italic) != 0U);
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_italic) == 0U);
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_underline) == 0U);
+  TEST_END("css parse normal/none resets");
+}
+
+/**
+ * @test test_parse_selectors
+ * @brief Universal / class / id selectors, comma groups, comment skip.
+ */
+static void test_parse_selectors(void)
+{
+  TEST_BEGIN("css parse selectors");
+  load("/* hello */ * { font-style: italic; }\n"
+       ".note , #lead { font-weight: bold; }");
+  TEST_ASSERT_EQ(3, (int)s_sheet.rule_count); /* * , .note , #lead */
+  TEST_ASSERT_EQ((int)k_ra_css_sel_universal, (int)s_sheet.rules[0].sel_kind);
+  TEST_ASSERT_EQ((int)k_ra_css_sel_class, (int)s_sheet.rules[1].sel_kind);
+  TEST_ASSERT_EQ((int)k_ra_css_sel_id, (int)s_sheet.rules[2].sel_kind);
+  TEST_END("css parse selectors");
+}
+
+/**
+ * @test test_parse_unsupported_skipped
+ * @brief Compound / descendant / unknown-tag selectors are dropped, not errored.
+ */
+static void test_parse_unsupported_skipped(void)
+{
+  TEST_BEGIN("css unsupported selectors skipped");
+  load("p.note { font-weight: bold; }" /* compound -> skip */
+       "div p { font-style: italic; }" /* descendant -> skip */
+       "div { text-align: center; }"   /* unknown tag -> skip */
+       "h1 { text-align: right; }");   /* OK */
+  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_h1, (int)s_sheet.rules[0].sel_tag);
+  TEST_END("css unsupported selectors skipped");
+}
+
+/**
+ * @test test_inline
+ * @brief Inline `style=""` parses without a selector or braces.
+ */
+static void test_inline(void)
+{
+  TEST_BEGIN("css inline declaration");
+  ra_css_style_t d = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_css_parse_inline("font-weight:bold;text-align:center",
+                                     (uint32_t)strlen("font-weight:bold;text-align:center"),
+                                     &d));
+  TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_bold) != 0U);
+  TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_bold) != 0U);
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)d.align);
+  TEST_END("css inline declaration");
+}
+
+/**
+ * @test test_match_mcdc
+ * @brief Selector matching, with MC/DC for the id 3-condition AND.
+ *
+ * @par MC/DC:
+ * Decision (id match): `(el->id != NULL) && (el->id_len == name_len) &&
+ * (memcmp == 0)` (3 conditions, AND; N+1 = 4 vectors):
+ *  - id="lead",len=4,bytes==      -> true  (control: all true)
+ *  - id=NULL                      -> false (varies cond 1)
+ *  - id="leadX",len=5             -> false (varies cond 2)
+ *  - id="xxxx",len=4,bytes!=      -> false (varies cond 3)
+ * Vectors 1+2 isolate cond 1; 1+3 cond 2; 1+4 cond 3.
+ */
+static void test_match_mcdc(void)
+{
+  TEST_BEGIN("css match (id 3-AND MC/DC)");
+  load("#lead { font-weight: bold; }");
+  const ra_css_rule_t* r  = &s_sheet.rules[0];
+  ra_css_element_t     v1 = elem(k_ra_reflow_tag_p, "lead", nullptr);
+  ra_css_element_t     v2 = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_element_t     v3 = elem(k_ra_reflow_tag_p, "leadX", nullptr);
+  ra_css_element_t     v4 = elem(k_ra_reflow_tag_p, "xxxx", nullptr);
+  TEST_ASSERT(ra_css_rule_matches(r, &v1, &s_sheet));  /* all true  */
+  TEST_ASSERT(!ra_css_rule_matches(r, &v2, &s_sheet)); /* cond1 false */
+  TEST_ASSERT(!ra_css_rule_matches(r, &v3, &s_sheet)); /* cond2 false */
+  TEST_ASSERT(!ra_css_rule_matches(r, &v4, &s_sheet)); /* cond3 false */
+  TEST_END("css match (id 3-AND MC/DC)");
+}
+
+/**
+ * @test test_match_class_universal_type
+ * @brief Class-list membership, universal-always, type-by-tag.
+ */
+static void test_match_class_universal_type(void)
+{
+  TEST_BEGIN("css match class/universal/type");
+  load(".note { font-weight: bold; } * { font-style: italic; } h2 { text-align: center; }");
+  const ra_css_rule_t* rc = &s_sheet.rules[0];
+  const ra_css_rule_t* ru = &s_sheet.rules[1];
+  const ra_css_rule_t* rt = &s_sheet.rules[2];
+  ra_css_element_t     a  = elem(k_ra_reflow_tag_p, nullptr, "intro note last");
+  ra_css_element_t     b  = elem(k_ra_reflow_tag_p, nullptr, "introduction");
+  ra_css_element_t     h2 = elem(k_ra_reflow_tag_h2, nullptr, nullptr);
+  TEST_ASSERT(ra_css_rule_matches(rc, &a, &s_sheet));  /* "note" present */
+  TEST_ASSERT(!ra_css_rule_matches(rc, &b, &s_sheet)); /* substring only -> no */
+  TEST_ASSERT(ra_css_rule_matches(ru, &b, &s_sheet));  /* universal */
+  TEST_ASSERT(ra_css_rule_matches(rt, &h2, &s_sheet)); /* h2 type match */
+  TEST_ASSERT(!ra_css_rule_matches(rt, &a, &s_sheet)); /* p != h2 */
+  TEST_END("css match class/universal/type");
+}
+
+/**
+ * @test test_cascade_specificity
+ * @brief id > class > type > universal > inherited; inline beats all.
+ */
+static void test_cascade_specificity(void)
+{
+  TEST_BEGIN("css cascade specificity");
+  load("* { text-align: left; }"
+       "p { text-align: right; }"
+       ".c { text-align: center; }"
+       "#i { text-align: justify; }");
+  ra_css_element_t el = elem(k_ra_reflow_tag_p, "i", "c");
+  ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_justify, (int)r.align); /* #i wins */
+
+  ra_css_element_t el2 = elem(k_ra_reflow_tag_p, nullptr, "c");
+  ra_css_style_t   r2  = ra_css_cascade(&s_sheet, &el2, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r2.align); /* .c beats p, * */
+
+  ra_css_style_t inl = {};
+  inl.set            = (uint8_t)k_ra_css_set_align;
+  inl.align          = (uint8_t)k_ra_reflow_align_left;
+  ra_css_style_t r3  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, inl);
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_left, (int)r3.align); /* inline beats #i */
+  TEST_END("css cascade specificity");
+}
+
+/**
+ * @test test_cascade_source_order
+ * @brief Equal-specificity ties go to the later rule.
+ */
+static void test_cascade_source_order(void)
+{
+  TEST_BEGIN("css cascade source order");
+  load("p { text-align: right; } p { text-align: center; }");
+  ra_css_element_t el = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r.align); /* later wins */
+  TEST_END("css cascade source order");
+}
+
+/**
+ * @test test_cascade_inheritance
+ * @brief Inheritable props flow from parent; a child rule overrides; normal resets.
+ */
+static void test_cascade_inheritance(void)
+{
+  TEST_BEGIN("css cascade inheritance");
+  load("em { font-weight: normal; }");
+  /* Parent computed: bold on, italic on (inherited into the child). */
+  ra_css_style_t parent = {};
+  parent.set            = (uint8_t)((uint8_t)k_ra_css_set_bold | (uint8_t)k_ra_css_set_italic);
+  parent.style = (uint8_t)((uint8_t)k_ra_reflow_style_bold | (uint8_t)k_ra_reflow_style_italic);
+
+  ra_css_element_t child = elem(k_ra_reflow_tag_em, nullptr, nullptr);
+  ra_css_style_t   r     = ra_css_cascade(&s_sheet, &child, parent, no_inline());
+  /* em rule turns bold OFF; italic still inherited ON. */
+  TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_bold) != 0U);
+  TEST_ASSERT((r.style & (uint8_t)k_ra_reflow_style_bold) == 0U);
+  TEST_ASSERT((r.style & (uint8_t)k_ra_reflow_style_italic) != 0U);
+  TEST_END("css cascade inheritance");
+}
+
+/**
+ * @test test_cascade_null_mcdc
+ * @brief Cascade guard returns the inherited style on a NULL sheet or element.
+ *
+ * @par MC/DC:
+ * Decision: `(sheet == NULL) || (el == NULL)` (2 conditions, OR; N+1 = 3):
+ *  - sheet!=NULL, el!=NULL -> false (control: cascade runs)
+ *  - sheet==NULL, el!=NULL -> true  (varies cond 1)
+ *  - sheet!=NULL, el==NULL -> true  (varies cond 2)
+ */
+static void test_cascade_null_mcdc(void)
+{
+  TEST_BEGIN("css cascade null guard MC/DC");
+  load("p { text-align: center; }");
+  ra_css_element_t el  = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_style_t   inh = {};
+  inh.set              = (uint8_t)k_ra_css_set_align;
+  inh.align            = (uint8_t)k_ra_reflow_align_right;
+  /* both non-NULL -> cascade runs, p rule wins -> center */
+  ra_css_style_t r0 = ra_css_cascade(&s_sheet, &el, inh, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r0.align);
+  /* sheet NULL -> returns inherited (right) */
+  ra_css_style_t r1 = ra_css_cascade(nullptr, &el, inh, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_right, (int)r1.align);
+  /* el NULL -> returns inherited (right) */
+  ra_css_style_t r2 = ra_css_cascade(&s_sheet, nullptr, inh, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_right, (int)r2.align);
+  TEST_END("css cascade null guard MC/DC");
+}
+
+/**
+ * @test test_resolve_skip_mcdc
+ * @brief MC/DC for the priv_resolve per-rule skip guard (driven via cascade).
+ *
+ * @par MC/DC:
+ * Decision: `!matched[i] || ((rule.decl.set & setbit) == 0)` (2 conditions, OR;
+ * N+1 = 3 vectors), observed by resolving the ALIGN property of a `<p>`:
+ *  - V1: a `p` rule that sets text-align       -> false (participates -> center)
+ *  - V2: an `h1` rule that sets text-align     -> true  (skipped: !matched alone)
+ *  - V3: a `p` rule that sets only font-weight -> true  (skipped: set&align==0)
+ * V1 vs V2 isolates condition 1 (matched); V1 vs V3 isolates condition 2.
+ */
+static void test_resolve_skip_mcdc(void)
+{
+  TEST_BEGIN("css resolve skip-guard MC/DC");
+  ra_css_element_t p = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  load("p { text-align: center; }"); /* V1: matches + sets align -> participates */
+  ra_css_style_t r1 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((r1.set & (uint8_t)k_ra_css_set_align) != 0U);
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r1.align);
+  load("h1 { text-align: center; }"); /* V2: sets align but does NOT match -> skip */
+  ra_css_style_t r2 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((r2.set & (uint8_t)k_ra_css_set_align) == 0U);
+  load("p { font-weight: bold; }"); /* V3: matches but does NOT set align -> skip */
+  ra_css_style_t r3 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((r3.set & (uint8_t)k_ra_css_set_align) == 0U);
+  TEST_END("css resolve skip-guard MC/DC");
+}
+
+/**
+ * @test test_resolve_winner_mcdc
+ * @brief MC/DC for the priv_resolve winner-selection (driven via cascade).
+ *
+ * @par MC/DC:
+ * Decision: `(!have) || (rank > best_rank) ||
+ *            ((rank == best_rank) && (order >= best_order))` (3 conditions;
+ * N+1 = 4 vectors), resolving ALIGN; rules are processed in source order:
+ *  - V1 control: higher-specificity rule first, lower after -> all three false
+ *    (no override): `#i{center} p{right}` on `<p id=i>` -> center.
+ *  - V2 (!have):  first matching setter wins: `p{right}` on `<p>` -> right.
+ *  - V3 (rank>best_rank): higher rule after lower overrides:
+ *    `p{right} #i{center}` on `<p id=i>` -> center.
+ *  - V4 (rank==best && order>=best_order): later same-specificity wins:
+ *    `p{right} p{center}` on `<p>` -> center.
+ */
+static void test_resolve_winner_mcdc(void)
+{
+  TEST_BEGIN("css resolve winner-selection MC/DC");
+  ra_css_element_t pid = elem(k_ra_reflow_tag_p, "i", nullptr);
+  ra_css_element_t p   = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  load("#i { text-align: center; } p { text-align: right; }"); /* V1 control */
+  ra_css_style_t v1 = ra_css_cascade(&s_sheet, &pid, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)v1.align);
+  load("p { text-align: right; }"); /* V2: !have */
+  ra_css_style_t v2 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_right, (int)v2.align);
+  load("p { text-align: right; } #i { text-align: center; }"); /* V3: rank>best */
+  ra_css_style_t v3 = ra_css_cascade(&s_sheet, &pid, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)v3.align);
+  load("p { text-align: right; } p { text-align: center; }"); /* V4: order tiebreak */
+  ra_css_style_t v4 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)v4.align);
+  TEST_END("css resolve winner-selection MC/DC");
+}
+
+/**
+ * @test test_null_guards
+ * @brief NULL arguments are rejected by the parse / reset API.
+ */
+static void test_null_guards(void)
+{
+  TEST_BEGIN("css null guards");
+  ra_css_style_t d = {};
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_css_sheet_reset(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_css_parse(nullptr, "p{}", 3U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_css_parse(&s_sheet, nullptr, 3U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_css_parse_inline(nullptr, 0U, &d));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_css_parse_inline("x", 1U, nullptr));
+  TEST_ASSERT(!ra_css_rule_matches(nullptr, nullptr, nullptr));
+  TEST_END("css null guards");
+}
+
+/**
+ * @brief Test entry point.
+ * @return 0 on success; unity macros exit(1) on the first failure.
+ */
+int32_t main(void)
+{
+  test_parse_props();
+  test_parse_normal_resets();
+  test_parse_selectors();
+  test_parse_unsupported_skipped();
+  test_inline();
+  test_match_mcdc();
+  test_match_class_universal_type();
+  test_cascade_specificity();
+  test_cascade_source_order();
+  test_cascade_inheritance();
+  test_cascade_null_mcdc();
+  test_resolve_skip_mcdc();
+  test_resolve_winner_mcdc();
+  test_null_guards();
+  (void)fprintf(stderr, "[OK ] test_ra_css.c\n");
+  return 0;
+}
