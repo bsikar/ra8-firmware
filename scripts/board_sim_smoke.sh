@@ -93,6 +93,13 @@ min_render_colors=6
 # its LED1 must read ON -- this gates the GPIO input-injection path (#39).
 button_apps="gpio_input_demo"
 
+# Apps driven with an injected panel tap (board_sim --click X Y arms one GT911
+# contact, re-armed each chunk until the firmware's real ra_touch_read drains
+# it). touch_demo brings up the GT911 and decodes that tap, so the injected
+# coordinate must come back in its banner -- this gates the GT911 touch path
+# end to end (#122). 250,250 maps 1:1 on the default panel (no rotation).
+touch_click_apps="touch_demo"
+
 # Apps whose rendered chrome is pinned to a checked-in golden image (exact
 # pixel match of the panel framebuffer, a strictly stronger check than the
 # distinct-color floor above). board_sim renders deterministically, so any
@@ -165,6 +172,9 @@ sim_extra_args() { # app -> extra args on stdout
     case " $button_apps " in
     *" $1 "*) printf -- '--button 1' ;;
     esac
+    case " $touch_click_apps " in
+    *" $1 "*) printf -- '--click 250 250' ;;
+    esac
 }
 
 # Echo the UART substring an app must print for its peripheral to count as
@@ -184,6 +194,7 @@ uart_expect() { # app -> expected UART substring on stdout
     reflow_content_hil) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
     ereader_input_hil)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
     bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
+    touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
     crc_demo)           printf 'match=Y' ;;
     adc_b_demo)         printf 'adc: raw=' ;;
     agt_periodic)       printf 'agt: tick' ;;
@@ -213,7 +224,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
         ereader_chrome_hil ereader_image_hil ereader_link_hil ereader_align_hil ereader_table_hil \
-        reflow_content_hil ereader_input_hil bscan_selftest \
+        reflow_content_hil ereader_input_hil bscan_selftest touch_demo \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback imu_lsm6dso_demo gpio_input_demo \
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
