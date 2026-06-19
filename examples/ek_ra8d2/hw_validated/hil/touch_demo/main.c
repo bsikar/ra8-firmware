@@ -1,0 +1,215 @@
+/**
+ * @file examples/ek_ra8d2/hw_validated/hil/touch_demo/main.c
+ * @brief Standalone GoodIX GT911 capacitive-touch bring-up demo + HIL (#122).
+ *
+ * @details
+ * `ra_touch` (GT911 over IIC_B channel 0) was only ever exercised *inside*
+ * `ereader_ui` -- there was no standalone example and no CI gate for the touch
+ * driver itself. This app is that gate: it brings up the GT911 end-to-end
+ * (I2C probe + product-id wake), then polls for a touch frame and reports the
+ * first decoded contact on the SCI8 J-Link OB console:
+ *
+ *   `touch: open=OK pts=1 x=<X> y=<Y>`
+ *
+ * The bring-up half (`open=OK`) is the deterministic, finger-free part of the
+ * gate -- it proves the real `ra_touch_open` -> IIC_B -> GT911 path reached the
+ * product-id check. The point half is exercised under `board_sim`, which models
+ * the GT911 on the modelled I2C bus and injects a tap via `--click X Y`; that
+ * tap returns through the genuine `ra_touch_read` decode, so the banner carries
+ * a real decoded coordinate. On a bare bench with no finger the poll loop times
+ * out and reports `pts=0`, but `open=OK` still holds -- so `hil.conf` asserts
+ * only the bring-up substring, which is stable either way.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * [Ring 7 / App] {World: NS}
+ *
+ * @since 0.1.0
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_isr.h"
+#include "ra_mstp.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
+#include "ra_sci.h"
+#include "ra_time.h"
+#include "ra_touch.h"
+
+/** @enum td_consts_t @brief Console / GT911 / poll knobs (no magic numbers). */
+typedef enum : uint32_t {
+  k_td_uart_chan  = 8U,      /**< SCI8 J-Link OB console.              */
+  k_td_uart_baud  = 115200U, /**< Console baud.                        */
+  k_td_i2c_chan   = 0U,      /**< IIC_B channel 0 (GT911 bus).         */
+  k_td_gt911_addr = 0x5DU,   /**< GT911 default 7-bit address.         */
+  k_td_max_points = 5U,      /**< Read up to the GT911 capacity.       */
+  k_td_poll_max   = 20000U,  /**< Bounded poll iterations (NASA R2).   */
+  k_td_dec_ten    = 10U,     /**< Decimal radix / small-buf cap.       */
+} td_consts_t;
+
+/** @brief SCI8 console TXD = PD02. */
+static const ra_port_pin_t k_td_pin_txd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+/** @brief SCI8 console RXD = PD03. */
+static const ra_port_pin_t k_td_pin_rxd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+
+static const uint8_t k_msg_boot[] = "touch-demo: boot\r\n";
+static const uint8_t k_msg_fail[] = "touch-demo: FAIL init\r\n";
+static const uint8_t k_msg_open[] = "touch: FAIL open\r\n";
+static const uint8_t k_msg_pre[]  = "touch: open=OK pts=";
+static const uint8_t k_msg_x[]    = " x=";
+static const uint8_t k_msg_y[]    = " y=";
+static const uint8_t k_msg_eol[]  = "\r\n";
+
+/** @brief Emit a byte run on the SCI8 console. */
+static void td_print(const uint8_t* msg, uint32_t len)
+{
+  (void)ra_sci_write_polling((uint8_t)k_td_uart_chan, msg, len);
+}
+
+/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+static void td_panic_halt(const uint8_t* msg, uint32_t len)
+{
+  td_print(msg, len);
+  __asm__ volatile("bkpt #0");
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/** @brief Route the SCI8 console pins to async mode. */
+[[nodiscard]] static ra_err_t td_console_pins_init(void)
+{
+  ra_err_t err = ra_pfs_route_peripheral(k_td_pin_txd, k_ra_psel_sci_async, "td.txd8");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_pfs_route_peripheral(k_td_pin_rxd, k_ra_psel_sci_async, "td.rxd8");
+}
+
+/** @brief Print a small unsigned integer in decimal. */
+static void td_print_uint(uint32_t value)
+{
+  uint8_t  buf[k_td_dec_ten];
+  uint32_t n = 0U;
+  if (value == 0U) {
+    buf[n] = '0';
+    n++;
+  }
+  while ((value > 0U) && (n < (uint32_t)k_td_dec_ten)) {
+    buf[n] = (uint8_t)('0' + (value % (uint32_t)k_td_dec_ten));
+    n++;
+    value /= (uint32_t)k_td_dec_ten;
+  }
+  for (uint32_t i = 0U; i < n; i++) {
+    td_print(&buf[n - 1U - i], 1U);
+  }
+}
+
+/**
+ * @brief Poll the GT911 for one touch frame; report the first contact.
+ *
+ * @details
+ * Calls `ra_touch_read` up to ::k_td_poll_max times (statically bounded).
+ * board_sim re-arms an injected `--click` each SysTick chunk until the
+ * firmware drains it, so the loop catches the tap within a few chunks; on a
+ * bare bench with no finger it exhausts and reports zero points.
+ *
+ * @param[out] out_x Receives the first contact's X (0 if none).
+ * @param[out] out_y Receives the first contact's Y (0 if none).
+ * @return Number of points seen in the caught frame (0 or >=1).
+ */
+static uint8_t td_poll_points(uint16_t* out_x, uint16_t* out_y)
+{
+  ra_touch_point_t pts[k_td_max_points] = {};
+  uint8_t          seen                 = 0U;
+  *out_x                                = 0U;
+  *out_y                                = 0U;
+  for (uint32_t i = 0U; (i < (uint32_t)k_td_poll_max) && (seen == 0U); i++) {
+    uint8_t got = 0U;
+    if ((ra_touch_read(pts, (uint8_t)k_td_max_points, &got) == k_ra_ok) && (got >= 1U)) {
+      *out_x = pts[0].x;
+      *out_y = pts[0].y;
+      seen   = got;
+    }
+  }
+  return seen;
+}
+
+/** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
+static void td_setup_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  uint32_t pclka_hz   = 0U;
+  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  }
+  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
+      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  }
+  if (td_console_pins_init() != k_ra_ok) {
+    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  }
+  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_td_uart_baud,
+                            .data_bits = k_ra_sci_data_8,
+                            .parity    = k_ra_sci_parity_none,
+                            .stop_bits = k_ra_sci_stop_1,
+                            .pclk_hz   = pclka_hz};
+  if (ra_sci_init((uint8_t)k_td_uart_chan, &cfg) != k_ra_ok) {
+    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief App entry: bring up the GT911, poll a touch frame, print the banner.
+ *
+ * @return Never returns.
+ *
+ * @pre Reset_Handler copied .data and zeroed .bss.
+ * @pre SystemInit set VTOR / FPU / priority grouping.
+ * @post The open=OK touch banner is emitted; the CPU then loops in WFI.
+ * @since 0.1.0
+ */
+int32_t main(void)
+{
+  td_setup_or_halt();
+  ra_isr_globals_enable();
+  td_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
+
+  const ra_touch_cfg_t cfg = {.i2c_channel = (uint8_t)k_td_i2c_chan,
+                              .target_7b   = (uint8_t)k_td_gt911_addr,
+                              .irq_pin     = (uint8_t)k_ra_touch_irq_pin_unset,
+                              .max_points  = (uint8_t)k_td_max_points};
+  if (ra_touch_open(&cfg) != k_ra_ok) {
+    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+
+  uint16_t      px   = 0U;
+  uint16_t      py   = 0U;
+  const uint8_t seen = td_poll_points(&px, &py);
+
+  td_print(k_msg_pre, (uint32_t)sizeof(k_msg_pre) - 1U);
+  td_print_uint((uint32_t)seen);
+  td_print(k_msg_x, (uint32_t)sizeof(k_msg_x) - 1U);
+  td_print_uint((uint32_t)px);
+  td_print(k_msg_y, (uint32_t)sizeof(k_msg_y) - 1U);
+  td_print_uint((uint32_t)py);
+  td_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
+
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+#pragma GCC diagnostic pop
