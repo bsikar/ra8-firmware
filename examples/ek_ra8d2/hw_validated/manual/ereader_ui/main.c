@@ -34,6 +34,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "arnopro_latin1.h"
 #include "figure_fixture.h"
@@ -275,7 +276,42 @@ static const char k_er_chapter_xhtml[] =
   "submitted to be sat upon, and thought roamed gracefully free of the trammels "
   "of precision.</p>"
   "<p id=\"note\">Editor's note: this passage introduces the frame narrator "
-  "before the Traveller's account begins.</p></body></html>";
+  "before the Traveller's account begins. <a href=\"ch2.xhtml\">Continue to "
+  "Chapter II</a>.</p></body></html>";
+
+/** @brief Reading-view chapter two (cross-chapter `<a href>` link target). */
+static const char k_er_chapter2_xhtml[] =
+  "<html><body><h1>Chapter II</h1>"
+  "<p>The Machine, said the Time Traveller, holding the lamp aloft, is the thing "
+  "I have been at work upon these many years; and now at last it is built.</p>"
+  "<p>He took one of the small octahedral things from the table and handed it to "
+  "us. <a href=\"ch1.xhtml\">Back to Chapter I</a>.</p></body></html>";
+
+/**
+ * @struct er_chapter_t
+ * @brief One mock-spine chapter: its XHTML, length, and resolving href.
+ */
+typedef struct {
+  const char* xhtml;    /**< Chapter XHTML body.                  */
+  uint32_t    len;      /**< Length of @ref xhtml (excl. NUL).    */
+  const char* href;     /**< Manifest href that links to it.      */
+  uint32_t    href_len; /**< Length of @ref href (excl. NUL).     */
+} er_chapter_t;
+
+/** @brief Two-chapter mock spine for in-content cross-chapter navigation (#110). */
+static const er_chapter_t k_er_spine[] = {
+  {k_er_chapter_xhtml,
+   (uint32_t)(sizeof(k_er_chapter_xhtml) - 1U),
+   "ch1.xhtml",
+   (uint32_t)(sizeof("ch1.xhtml") - 1U)},
+  {k_er_chapter2_xhtml,
+   (uint32_t)(sizeof(k_er_chapter2_xhtml) - 1U),
+   "ch2.xhtml",
+   (uint32_t)(sizeof("ch2.xhtml") - 1U)},
+};
+
+/** @brief Index of the chapter currently shown in the Reading view. */
+static uint32_t s_chapter_idx;
 
 /**
  * @enum er_reflow_cfg_t
@@ -363,11 +399,20 @@ static uint32_t s_reading_pages = 1U;
 /** @brief Debounce: true while a contact is held, to fire once per tap. */
 static bool s_was_touching;
 
-/** @brief Reading-page back-stack for footnote-link round-trips (#110). */
-static uint32_t s_page_back[k_er_page_back_cap];
+/**
+ * @struct er_loc_t
+ * @brief A reading location (chapter + page) for the navigation back-stack.
+ */
+typedef struct {
+  uint32_t chapter; /**< Spine chapter index. */
+  uint32_t page;    /**< Page within chapter. */
+} er_loc_t;
 
-/** @brief Entries used in ::s_page_back. */
-static uint32_t s_page_back_count;
+/** @brief Reading back-stack for link round-trips (footnote + chapter) (#110). */
+static er_loc_t s_loc_back[k_er_page_back_cap];
+
+/** @brief Entries used in ::s_loc_back. */
+static uint32_t s_loc_back_count;
 
 /** @brief Font blob read off the SD card -- lives in SDRAM (hundreds of KiB). */
 static uint8_t s_font_buf[k_er_font_cap] __attribute__((section(".sdram_data")));
@@ -1062,11 +1107,10 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
                                         .offset = 0U,
                                         .live   = 0U};
   (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
-  uint32_t pages = 0U;
-  if (ra_reflow_layout_chapter(&s_reflow_engine,
-                               (const uint8_t*)k_er_chapter_xhtml,
-                               (uint32_t)(sizeof(k_er_chapter_xhtml) - 1U),
-                               &pages) != k_ra_ok) {
+  uint32_t            pages = 0U;
+  const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
+  if (ra_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
+      k_ra_ok) {
     (void)ra_reflow_close(&s_reflow_engine);
     return false;
   }
@@ -1199,24 +1243,83 @@ static void er_render_current(void)
   }
 }
 
+/** @brief Push the current (chapter, page) on the back-stack, capacity permitting. */
+static void er_push_loc(void)
+{
+  if (s_loc_back_count < (uint32_t)k_er_page_back_cap) {
+    s_loc_back[s_loc_back_count].chapter = s_chapter_idx;
+    s_loc_back[s_loc_back_count].page    = s_reading_page;
+    s_loc_back_count++;
+  }
+}
+
+/**
+ * @brief Follow a same-chapter `#fragment`: jump to the anchored page.
+ * @param[in] off      Href text-pool offset.
+ * @param[in] frag_off Fragment offset within the href.
+ * @param[in] frag_len Fragment length.
+ * @return true iff the page changed (old location pushed for Back).
+ */
+static bool er_nav_fragment(uint32_t off, uint32_t frag_off, uint32_t frag_len)
+{
+  uint32_t page = 0U;
+  if (ra_reflow_find_anchor(&s_reflow_engine,
+                            (const char*)&s_reflow_engine.text_pool[off + frag_off],
+                            frag_len,
+                            &page) != k_ra_ok) {
+    return false;
+  }
+  if (page == s_reading_page) {
+    return false;
+  }
+  er_push_loc();
+  s_reading_page = page;
+  return true;
+}
+
+/**
+ * @brief Follow a cross-chapter link: resolve the path against the mock spine.
+ * @param[in] off      Href text-pool offset.
+ * @param[in] path_len Length of the path part (excluding any fragment).
+ * @return true iff a different chapter was loaded (old location pushed for Back).
+ */
+static bool er_nav_chapter(uint32_t off, uint32_t path_len)
+{
+  const char*    path  = (const char*)&s_reflow_engine.text_pool[off];
+  const uint32_t count = (uint32_t)(sizeof(k_er_spine) / sizeof(k_er_spine[0]));
+  for (uint32_t i = 0U; i < count; ++i) {
+    if ((k_er_spine[i].href_len != path_len) ||
+        (memcmp(path, k_er_spine[i].href, (size_t)path_len) != 0)) {
+      continue;
+    }
+    if (i == s_chapter_idx) {
+      return false;
+    }
+    er_push_loc();
+    s_chapter_idx  = i;
+    s_reading_page = 0U;
+    return true;
+  }
+  return false;
+}
+
 /**
  * @brief Follow an in-content `<a>` tap in the Reading body (#110).
  *
  * @details Hit-tests the laid-out reflow links at the panel tap (mapped to the
- * body's page-local space) via ra_reflow_hit_test_link(); on a same-chapter
- * `#fragment` it resolves the anchor page with ra_reflow_find_anchor() and jumps
- * there, pushing the current page on ::s_page_back so Back can return. The mock
- * library has a single chapter, so cross-chapter targets are left to the caller.
+ * body's page-local space) via ra_reflow_hit_test_link(), classifies the href
+ * with ra_reflow_href_split(), and routes a same-chapter `#fragment` to
+ * er_nav_fragment() or a cross-chapter target to er_nav_chapter(). The prior
+ * location is pushed on ::s_loc_back so Back can return.
  *
  * @param[in] x Tap X (panel pixels).
  * @param[in] y Tap Y (panel pixels).
- * @return true iff the tap followed a link and changed the page.
- * @retval true  A fragment link was followed; ::s_reading_page updated.
- * @retval false No link hit, or a non-fragment / unresolved target.
+ * @return true iff the tap followed a link and changed the reading location.
+ * @retval true  A link was followed; chapter/page updated.
+ * @retval false No link hit, or an unresolved / external target.
  * @pre The Reading body was laid out (link rects reflect the chapter).
  * @pre ::s_reading_page is the visible page.
- * @post On true ::s_reading_page is the anchor's page and the old page is
- *       pushed on ::s_page_back (capacity permitting).
+ * @post On true the reading location changed and the old one is on ::s_loc_back.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -1245,22 +1348,13 @@ static bool er_reading_link_tap(int32_t x, int32_t y)
                            &frag_len) != k_ra_ok) {
     return false;
   }
-  if ((kind != k_ra_reflow_href_fragment) && (kind != k_ra_reflow_href_chapter_fragment)) {
-    return false;
+  if (kind == k_ra_reflow_href_fragment) {
+    return er_nav_fragment(off, frag_off, frag_len);
   }
-  uint32_t page = 0U;
-  if (ra_reflow_find_anchor(&s_reflow_engine,
-                            (const char*)&s_reflow_engine.text_pool[off + frag_off],
-                            frag_len,
-                            &page) != k_ra_ok) {
-    return false;
+  if ((kind == k_ra_reflow_href_chapter) || (kind == k_ra_reflow_href_chapter_fragment)) {
+    return er_nav_chapter(off, path_len);
   }
-  if ((page != s_reading_page) && (s_page_back_count < (uint32_t)k_er_page_back_cap)) {
-    s_page_back[s_page_back_count] = s_reading_page;
-    s_page_back_count++;
-  }
-  s_reading_page = page;
-  return true;
+  return false;
 }
 
 /**
@@ -1282,49 +1376,77 @@ static bool er_reading_link_tap(int32_t x, int32_t y)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Handle a tap while the Reading view is on top.
+ *
+ * @details In priority order: the back-region (return from a link jump, else
+ * pop to the Library), an in-content `<a>` link (er_reading_link_tap), then a
+ * left/right page-turn. Split out of er_handle_tap() to keep each within the
+ * cognitive-complexity budget.
+ *
+ * @param[in] x Tap X (panel pixels).
+ * @param[in] y Tap Y (panel pixels).
+ * @return true iff the tap changed the reading location / screen.
+ * @retval true  Re-render required.
+ * @retval false Tap hit nothing actionable.
+ * @pre The Reading view is on top of ::s_nav.
+ * @pre ra_gfx is bound and the chapter is laid out.
+ * @post The navigation / page state may change.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool er_handle_reading_tap(int32_t x, int32_t y)
+{
+  const ra_ui_rect_t back = {0, 0, (int32_t)k_er_back_w, (int32_t)k_er_statusbar_h};
+  if (ra_ui_rect_contains(&back, x, y)) {
+    /* Back returns from a link jump (footnote or chapter) first, then pops the
+     * screen back to the Library (#110). */
+    if (s_loc_back_count > 0U) {
+      s_loc_back_count--;
+      s_chapter_idx  = s_loc_back[s_loc_back_count].chapter;
+      s_reading_page = s_loc_back[s_loc_back_count].page;
+      return true;
+    }
+    uint16_t prev = 0U;
+    return (ra_ui_nav_pop(&s_nav, &prev) == k_ra_ok);
+  }
+  /* Follow an in-content `<a>` link before falling back to page-turn. */
+  if (er_reading_link_tap(x, y)) {
+    return true;
+  }
+  /* Page-turn: a tap in the right half of the body advances a page, the left
+   * half goes back. No-ops at the ends and in the bitmap fallback (where
+   * s_reading_pages stays 1), so a tap there leaves the screen unchanged. */
+  const int32_t mid  = (int32_t)s_fb.width_px / 2;
+  uint32_t      want = s_reading_page;
+  if (x >= mid) {
+    if ((s_reading_page + 1U) < s_reading_pages) {
+      want = s_reading_page + 1U;
+    }
+  } else if (s_reading_page > 0U) {
+    want = s_reading_page - 1U;
+  }
+  if (want != s_reading_page) {
+    s_reading_page = want;
+    return true; /* re-render at the new page */
+  }
+  return false;
+}
+
 static bool er_handle_tap(int32_t x, int32_t y)
 {
   uint16_t top = (uint16_t)k_er_screen_library;
   (void)ra_ui_nav_top(&s_nav, &top);
   if (top == (uint16_t)k_er_screen_reading) {
-    const ra_ui_rect_t back = {0, 0, (int32_t)k_er_back_w, (int32_t)k_er_statusbar_h};
-    if (ra_ui_rect_contains(&back, x, y)) {
-      /* Back returns from a footnote jump first, then pops the screen (#110). */
-      if (s_page_back_count > 0U) {
-        s_page_back_count--;
-        s_reading_page = s_page_back[s_page_back_count];
-        return true;
-      }
-      uint16_t prev = 0U;
-      return (ra_ui_nav_pop(&s_nav, &prev) == k_ra_ok);
-    }
-    /* Follow an in-content `<a>` link before falling back to page-turn. */
-    if (er_reading_link_tap(x, y)) {
-      return true;
-    }
-    /* Page-turn: a tap in the right half of the body advances a page, the left
-     * half goes back. No-ops at the ends and in the bitmap fallback (where
-     * s_reading_pages stays 1), so a tap there leaves the screen unchanged. */
-    const int32_t mid  = (int32_t)s_fb.width_px / 2;
-    uint32_t      want = s_reading_page;
-    if (x >= mid) {
-      if ((s_reading_page + 1U) < s_reading_pages) {
-        want = s_reading_page + 1U;
-      }
-    } else if (s_reading_page > 0U) {
-      want = s_reading_page - 1U;
-    }
-    if (want != s_reading_page) {
-      s_reading_page = want;
-      return true; /* re-render at the new page */
-    }
-    return false;
+    return er_handle_reading_tap(x, y);
   }
   uint16_t action = (uint16_t)k_er_act_none;
   bool     hit    = false;
   (void)ra_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
   if (hit && (action == (uint16_t)k_er_act_open_book)) {
-    s_reading_page = 0U; /* always open a book at its first page */
+    s_reading_page   = 0U; /* always open a book at its first page */
+    s_chapter_idx    = 0U; /* and its first chapter */
+    s_loc_back_count = 0U; /* with a fresh navigation back-stack */
     return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_reading) == k_ra_ok);
   }
   return false;
