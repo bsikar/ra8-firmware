@@ -3,8 +3,8 @@
  * @brief Implementation of the minimal SVG subset (#112).
  *
  * @details Pure string-scanning SVG parser + a `<rect>`/`<circle>`/`<line>`/
- * `<polygon>`/`<polyline>` rasteriser over ra_gfx (with a scanline polygon
- * fill). No DOM, no heap. See ra_reflow_svg.h for the scope.
+ * `<polygon>`/`<polyline>`/`<path>` rasteriser over ra_gfx (with a scanline
+ * polygon fill). No DOM, no heap. See ra_reflow_svg.h for the scope.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -42,6 +42,10 @@ typedef enum : uint32_t {
   k_svg_bom_len   = 3U,          /**< UTF-8 BOM length.                 */
   k_svg_poly_max  = 64U,         /**< Max points / scanline crossings.  */
   k_svg_poly_min  = 3U,          /**< Min points for a fillable polygon.*/
+  k_svg_path_args = 7U,          /**< Max args of a path command (`A`). */
+  k_svg_path_ep   = 2U,          /**< Endpoint pair size (x, y); M/L/T. */
+  k_svg_argc_quad = 4U,          /**< Arg count of `S` / `Q`.          */
+  k_svg_argc_cube = 6U,          /**< Arg count of `C`.                */
 } priv_svg_consts_t;
 
 /**
@@ -496,6 +500,131 @@ static void priv_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* 
 }
 
 /* ===========================================================================
+ * Path (`d` mini-language; curves approximated by their endpoint chords)
+ * ===========================================================================
+ */
+
+/** @brief Argument count of an upper-cased path command, or -1 if unknown. */
+static int32_t priv_cmd_argc(char u)
+{
+  switch (u) {
+    case 'm':
+    case 'l':
+    case 't':
+      return (int32_t)k_svg_path_ep;
+    case 'h':
+    case 'v':
+      return 1;
+    case 'c':
+      return (int32_t)k_svg_argc_cube;
+    case 's':
+    case 'q':
+      return (int32_t)k_svg_argc_quad;
+    case 'a':
+      return (int32_t)k_svg_path_args;
+    case 'z':
+      return 0;
+    default:
+      return -1;
+  }
+}
+
+/** @brief Advance the current point @p (cx,cy) to a command's endpoint. */
+static void
+priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, int32_t* cy)
+{
+  if (u == 'h') {
+    *cx = rel ? (*cx + args[0]) : args[0];
+    return;
+  }
+  if (u == 'v') {
+    *cy = rel ? (*cy + args[0]) : args[0];
+    return;
+  }
+  const int32_t ex = args[na - (int32_t)k_svg_path_ep];
+  const int32_t ey = args[na - 1];
+  *cx              = rel ? (*cx + ex) : ex;
+  *cy              = rel ? (*cy + ey) : ey;
+}
+
+/**
+ * @brief Parse a path `d` value into framebuffer-space vertices; return count.
+ *
+ * @details Handles M/L/H/V/Z exactly (absolute + relative, with implicit-L
+ * repeats after M); C/S/Q/T/A contribute only their endpoint (curves are
+ * approximated by chords -- full flattening is tracked in #141). Multiple
+ * subpaths are merged into one polygon.
+ */
+/** @brief Resolve the next path command at @p d[*i] (explicit letter, or an
+ *         implicit repeat of @p *last); advances @p i past a letter; 0 at end. */
+static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
+{
+  while ((*i < dlen) && (priv_ws((char)d[*i]) || (d[*i] == ','))) {
+    ++(*i);
+  }
+  if (*i >= dlen) {
+    return 0;
+  }
+  const char c = (char)d[*i];
+  if (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'))) {
+    *last = c;
+    ++(*i);
+    return c;
+  }
+  return *last;
+}
+
+static int32_t
+priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
+{
+  int32_t n    = 0;
+  int32_t cx   = 0;
+  int32_t cy   = 0;
+  char    last = 0;
+  size_t  i    = 0U;
+  /* Bounded: <= k_svg_poly_max commands; i advances past each command's args. */
+  while ((i < dlen) && (n < (int32_t)k_svg_poly_max)) {
+    const char    c   = priv_next_cmd(d, dlen, &i, &last);
+    const char    u   = priv_lc(c);
+    const bool    rel = (c >= 'a') && (c <= 'z');
+    const int32_t na  = (c != 0) ? priv_cmd_argc(u) : -1;
+    if (na < 0) {
+      break; /* unknown / no current command */
+    }
+    if (u == 'z') {
+      continue; /* close: the fill closes implicitly */
+    }
+    int32_t args[k_svg_path_args] = {};
+    for (int32_t a = 0; a < na; ++a) {
+      args[a] = priv_num(d, dlen, &i);
+    }
+    priv_path_step(u, rel, args, na, &cx, &cy);
+    xs[n] = priv_mx(t, cx);
+    ys[n] = priv_my(t, cy);
+    ++n;
+    if (u == 'm') {
+      last = rel ? 'l' : 'L'; /* implicit coords after M are line-tos */
+    }
+  }
+  return n;
+}
+
+/** @brief Draw one `<path>` (span @p s[0..len)) as a filled polygon. */
+static void priv_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t)
+{
+  const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
+  size_t         off  = 0U;
+  size_t         vl   = 0U;
+  if ((fill == (uint32_t)k_svg_no_paint) || !priv_attr(s, len, "d", &off, &vl)) {
+    return;
+  }
+  int32_t       xs[k_svg_poly_max] = {};
+  int32_t       ys[k_svg_poly_max] = {};
+  const int32_t n                  = priv_parse_path(&s[off], vl, t, xs, ys);
+  priv_fill_poly(xs, ys, n, fill);
+}
+
+/* ===========================================================================
  * Document parsing + render walk
  * ===========================================================================
  */
@@ -587,6 +716,8 @@ priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const
     priv_draw_polygon(tag, tlen, t);
   } else if (priv_elem_at(s, len, at, "<polyline")) {
     priv_draw_polyline(tag, tlen, t);
+  } else if (priv_elem_at(s, len, at, "<path")) {
+    priv_draw_path(tag, tlen, t);
   } else if (priv_elem_at(s, len, at, "<line")) {
     priv_draw_line(tag, tlen, t);
   } else {
