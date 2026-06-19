@@ -435,6 +435,31 @@ static void test_cascade_fontsize(void)
 }
 
 /**
+ * @test test_display
+ * @brief `display:none` parses + cascades; other display values are visible.
+ */
+static void test_display(void)
+{
+  TEST_BEGIN("css display");
+  load(".h { display: none; } .v { display: block; } p { display: none; }");
+  /* .h: display declared, none */
+  TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_display) != 0U);
+  TEST_ASSERT_EQ(1, (int)s_sheet.rules[0].decl.display);
+  /* .v: display declared, visible (block != none) */
+  TEST_ASSERT((s_sheet.rules[1].decl.set & (uint8_t)k_ra_css_set_display) != 0U);
+  TEST_ASSERT_EQ(0, (int)s_sheet.rules[1].decl.display);
+  /* cascade: a matching p{display:none} hides; a non-matching element does not */
+  ra_css_element_t p  = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_style_t   rp = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((rp.set & (uint8_t)k_ra_css_set_display) != 0U);
+  TEST_ASSERT_EQ(1, (int)rp.display);
+  ra_css_element_t h1  = elem(k_ra_reflow_tag_h1, nullptr, nullptr);
+  ra_css_style_t   rh1 = ra_css_cascade(&s_sheet, &h1, (ra_css_style_t){}, no_inline());
+  TEST_ASSERT((rh1.set & (uint8_t)k_ra_css_set_display) == 0U); /* no rule -> unset */
+  TEST_END("css display");
+}
+
+/**
  * @test test_resolve_skip_mcdc
  * @brief MC/DC for the priv_resolve per-rule skip guard (driven via cascade).
  *
@@ -538,6 +563,7 @@ int32_t main(void)
   test_parse_fontsize();
   test_decoration_line_alias();
   test_cascade_fontsize();
+  test_display();
   test_resolve_skip_mcdc();
   test_resolve_winner_mcdc();
   test_null_guards();

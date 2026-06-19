@@ -93,6 +93,7 @@ typedef enum : uint8_t {
   k_ra_css_set_align     = 1U << 3U, /**< `text-align` was declared.      */
   k_ra_css_set_color     = 1U << 4U, /**< `color` was declared.           */
   k_ra_css_set_fontsize  = 1U << 5U, /**< `font-size` was declared.       */
+  k_ra_css_set_display   = 1U << 6U, /**< `display` was declared.         */
 } ra_css_set_t;
 
 /**
@@ -123,7 +124,8 @@ typedef struct {
   uint8_t  font_unit; /**< ::ra_css_font_unit_t (valid iff `set & fontsize`).     */
   uint32_t color;     /**< 0xRRGGBB text colour (valid iff `set & color`).        */
   uint16_t font_val;  /**< font-size number: px or % (valid iff `set & fontsize`).*/
-  uint16_t pad;       /**< Padding.                                               */
+  uint8_t  display;   /**< 1 = `display:none` (valid iff `set & display`).        */
+  uint8_t  pad;       /**< Padding.                                               */
 } ra_css_style_t;
 
 /**

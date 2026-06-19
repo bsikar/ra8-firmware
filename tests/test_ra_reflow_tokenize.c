@@ -235,6 +235,57 @@ static void test_walk_end_to_end(void)
   TEST_END("priv_reflow_xml_walk end-to-end");
 }
 
+/** @brief True iff some text token's pool slice contains @p needle. */
+static bool text_has(const char* needle)
+{
+  const size_t nl = strlen(needle);
+  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
+    if (s_engine.tokens[i].kind != (uint8_t)k_ra_reflow_tok_text) {
+      continue;
+    }
+    const char*    t  = (const char*)&s_engine.text_pool[s_engine.tokens[i].text_off];
+    const uint32_t tl = s_engine.tokens[i].text_len;
+    if (nl > (size_t)tl) {
+      continue;
+    }
+    for (uint32_t j = 0U; ((size_t)j + nl) <= (size_t)tl; ++j) {
+      if (memcmp(&t[j], needle, nl) == 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * @test test_display_none_suppressed
+ * @brief `display:none` (#140) drops the element's whole subtree from the stream.
+ */
+static void test_display_none_suppressed(void)
+{
+  TEST_BEGIN("display:none suppresses subtree");
+  TEST_ASSERT_EQ(k_ra_ok,
+                 walk("<html><body><p>visibleone</p>"
+                      "<div style=\"display:none\"><p>hiddentext</p><img src=\"x\"/></div>"
+                      "<p>visibletwo</p></body></html>"));
+  TEST_ASSERT(text_has("visibleone"));  /* before the hidden div */
+  TEST_ASSERT(text_has("visibletwo"));  /* after the hidden div  */
+  TEST_ASSERT(!text_has("hiddentext")); /* inside -> suppressed   */
+  bool saw_img = false;
+  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
+    saw_img = saw_img || (s_engine.tokens[i].kind == (uint8_t)k_ra_reflow_tok_image);
+  }
+  TEST_ASSERT(!saw_img); /* hidden <img> dropped too */
+
+  /* Suppression clears: a visible element after the hidden one still emits. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 walk("<html><body><p style=\"display:none\">gone</p>"
+                      "<p>stays</p></body></html>"));
+  TEST_ASSERT(!text_has("gone"));
+  TEST_ASSERT(text_has("stays"));
+  TEST_END("display:none suppresses subtree");
+}
+
 int32_t main(void)
 {
   test_is_xml_whitespace();
@@ -242,6 +293,7 @@ int32_t main(void)
   test_decode_entity();
   test_utf8_encode();
   test_walk_end_to_end();
+  test_display_none_suppressed();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_tokenize.c\n");
   return 0;
 }
