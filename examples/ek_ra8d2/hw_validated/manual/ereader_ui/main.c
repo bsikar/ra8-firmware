@@ -273,8 +273,8 @@ static const char* const k_er_body_lines[] = {
  *        under the board_sim CPU emulator.
  */
 static const char k_er_chapter_xhtml[] =
-  "<html><head><style>h1 { text-align: center; }"
-  ".byline { text-align: right; text-decoration: underline; }</style></head>"
+  "<html><head><style>h1 { text-align: center; color: maroon; }"
+  ".byline { text-align: right; text-decoration: underline; color: #808080; }</style></head>"
   "<body><h1>The Time Machine</h1>"
   "<p class=\"byline\">by H. G. Wells</p>"
   "<img src=\"fig.png\"/>"
