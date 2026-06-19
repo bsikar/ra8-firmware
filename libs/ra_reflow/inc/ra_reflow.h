@@ -257,6 +257,10 @@ typedef struct {
   uint32_t text_len; /**< Byte length within the text pool.   */
   // cppcheck-suppress unusedStructMember
   uint32_t color; /**< 0xRRGGBB CSS colour, or k_ra_reflow_color_inherit. */
+  // cppcheck-suppress unusedStructMember
+  uint16_t css_font_px; /**< Block-start CSS font px (0 = none -> UA default). */
+  // cppcheck-suppress unusedStructMember
+  uint16_t reserved16; /**< Padding to 4-byte stride. */
 } ra_reflow_token_t;
 
 /**
