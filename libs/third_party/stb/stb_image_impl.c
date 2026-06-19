@@ -1,0 +1,53 @@
+/*
+ * stb_image_impl.c -- single-TU build of stb_image's implementation.
+ *
+ * stb is a header-only library; consumers usually paste
+ *
+ *     #define STB_IMAGE_IMPLEMENTATION
+ *     #include "stb_image.h"
+ *
+ * into one source file and just include the header in others. Doing
+ * the implementation include from inside libs/ra_reflow/src/ would drag
+ * stb's dense magic-number style and multi-thousand-line functions
+ * through clang-tidy on every CI run; instead we keep the include here
+ * under libs/third_party/stb/, which scripts/clang_tidy.sh and
+ * scripts/format_code.sh already exclude via their third_party filter.
+ *
+ * Configuration:
+ *   - Only the four raster formats EPUB covers + figures actually use
+ *     (JPEG, PNG, GIF, BMP) are compiled in; the rest are excluded to
+ *     keep the firmware image small.
+ *   - No stdio (decode from memory only); no HDR / linear float path.
+ *   - STBI_MALLOC / STBI_FREE / STBI_REALLOC_SIZED are redirected to the
+ *     heap-free bump arena in libs/ra_reflow/ (see ra_img_arena.h), so the
+ *     decoder never reaches libc malloc (NASA P10 Rule 3).
+ *
+ * Public-domain (per stb's "unlicense"). See the header for the
+ * upstream copyright notice.
+ */
+
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
+#define STBI_ONLY_GIF
+#define STBI_ONLY_BMP
+#define STBI_NO_STDIO
+#define STBI_NO_LINEAR
+#define STBI_NO_HDR
+#define STBI_ASSERT(x) ((void)0)
+
+/*
+ * Single-threaded bare-metal firmware: stb_image otherwise makes its global
+ * failure-reason + flag state `_Thread_local`, which the compiler lowers to
+ * emulated TLS (__emutls_get_address). There is no TLS runtime on this target,
+ * so reaching one of those globals during a decode HardFaults. Force plain
+ * `static` globals instead -- correct because decoding is never concurrent here.
+ */
+#define STBI_NO_THREAD_LOCALS
+
+#define STBI_MALLOC(sz)                     ra_img_arena_malloc(sz)
+#define STBI_FREE(p)                        ra_img_arena_free(p)
+#define STBI_REALLOC_SIZED(p, oldsz, newsz) ra_img_arena_realloc_sized((p), (oldsz), (newsz))
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "ra_img_arena.h"
+#include "stb_image.h"

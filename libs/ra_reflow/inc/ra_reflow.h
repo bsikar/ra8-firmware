@@ -65,6 +65,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch */
 
 /* ===========================================================================
  * Compile-time limits
@@ -86,6 +87,7 @@ typedef enum : uint32_t {
   k_ra_reflow_max_glyphs         = 32768U, /**< Total positioned glyphs.     */
   k_ra_reflow_max_pages          = 256U,   /**< Max paginated pages.         */
   k_ra_reflow_max_lines_per_page = 96U,    /**< Lines per page upper bound.  */
+  k_ra_reflow_max_images         = 64U,    /**< Max laid-out `<img>` boxes.  */
 } ra_reflow_limits_t;
 
 /**
@@ -248,6 +250,64 @@ typedef struct {
   uint32_t glyph_count; /**< Number of glyphs in this page.     */
 } ra_reflow_page_t;
 
+/**
+ * @struct ra_reflow_image_box_t
+ * @brief One laid-out `<img>` rectangle (decoded + blitted at render time).
+ *
+ * @details
+ * Produced by the layout pass when an image loader + decode arena are bound
+ * (see ra_reflow_set_image_loader()). Coordinates are page-local -- the same
+ * space as ra_reflow_glyph_t -- so render offsets them by the page origin.
+ * The `src_off` / `src_len` slice indexes the engine text pool and is handed
+ * back to the loader at render time to re-fetch the encoded bytes (the decoded
+ * pixels are never stored -- decode is on-demand per page flip).
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  int32_t x; /**< Page-local left edge, pixels.       */
+  // cppcheck-suppress unusedStructMember
+  int32_t y; /**< Page-local top edge, pixels.        */
+  // cppcheck-suppress unusedStructMember
+  int32_t w; /**< Scaled box width, pixels.           */
+  // cppcheck-suppress unusedStructMember
+  int32_t h; /**< Scaled box height, pixels.          */
+  // cppcheck-suppress unusedStructMember
+  uint32_t src_off; /**< Href slice offset into text pool.   */
+  // cppcheck-suppress unusedStructMember
+  uint32_t src_len; /**< Href slice length, bytes.           */
+  // cppcheck-suppress unusedStructMember
+  uint32_t page_index; /**< Page this image belongs to.         */
+  // cppcheck-suppress unusedStructMember
+  uint32_t reserved; /**< Padding to 32-byte stride.          */
+} ra_reflow_image_box_t;
+
+/**
+ * @brief Resolve an `<img src>` href to its encoded image bytes.
+ *
+ * @details Dependency-injection seam (NASA P10 Rule 9 deviation: function
+ * pointer for testability / DIP). The consumer wires this to its EPUB resource
+ * loader; the engine calls it at layout time (to probe intrinsic size) and at
+ * render time (to fetch bytes for the decode). The returned buffer must remain
+ * valid until the call returns and is only read, never freed, by the engine.
+ *
+ * @param[in]  ctx       Opaque context passed to ra_reflow_set_image_loader().
+ * @param[in]  href      Image src string (not NUL-terminated).
+ * @param[in]  href_len  Length of @p href, bytes.
+ * @param[out] out_bytes Receives a pointer to the encoded image bytes.
+ * @param[out] out_len   Receives the encoded byte count.
+ *
+ * @return ra_err_t; ::k_ra_ok on success, any error to skip the image.
+ *
+ * @note The engine treats any non-::k_ra_ok return as "image unavailable" and
+ *       falls back to a placeholder advance.
+ * @since 0.1.0
+ */
+typedef ra_err_t (*ra_reflow_image_loader_fn)(void*           ctx,
+                                              const char*     href,
+                                              uint32_t        href_len,
+                                              const uint8_t** out_bytes,
+                                              size_t*         out_len);
+
 /* ===========================================================================
  * Engine handle
  * ===========================================================================
@@ -313,6 +373,18 @@ typedef struct {
   ra_reflow_page_t pages[k_ra_reflow_max_pages]; /**< Page index ranges. */
   // cppcheck-suppress unusedStructMember
   uint32_t page_count; /**< Pages used.                           */
+
+  /* --- image rendering (#106) ---------------------------------------- */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_image_loader_fn img_loader; /**< `<img>` byte loader (NULL = off).  */
+  // cppcheck-suppress unusedStructMember
+  void* img_loader_ctx; /**< Opaque context for `img_loader`.   */
+  // cppcheck-suppress unusedStructMember
+  ra_img_arena_t* img_arena; /**< Decode scratch (NULL = off).       */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_image_box_t image_boxes[k_ra_reflow_max_images]; /**< Laid-out images. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t image_box_count; /**< Image boxes used.                  */
 
   /* --- lifecycle ------------------------------------------------------ */
   // cppcheck-suppress unusedStructMember
@@ -389,6 +461,42 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reflow_close(ra_reflow_t* engine);
+
+/**
+ * @brief Bind an `<img>` byte loader + decode arena to enable image rendering.
+ *
+ * @details
+ * Without this binding (the default), `<img>` elements reserve a small
+ * placeholder advance and draw nothing -- the historical v1 behaviour, kept so
+ * image-free content lays out byte-identically. Once a loader + arena are
+ * bound, the layout pass resolves each `<img src>` to its intrinsic size,
+ * reserves a scaled block (text flows below), and the render pass decodes +
+ * blits the image on demand. Pass @p loader == NULL or @p arena == NULL to
+ * disable again.
+ *
+ * @param[in,out] engine Initialized engine handle.
+ * @param[in]     loader Resolves an href to encoded image bytes (NULL = off).
+ * @param[in]     ctx    Opaque context handed back to @p loader.
+ * @param[in]     arena  Caller-owned decode scratch (NULL = off); sized for the
+ *                       largest image (a few KiB SRAM .. a few MiB SDRAM).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Binding recorded.
+ * @retval k_ra_err_null_ptr        @p engine is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ *
+ * @pre  @p engine is non-NULL and initialized.
+ * @pre  If non-NULL, @p arena->base addresses @p arena->cap writable bytes.
+ * @post On success the engine uses (@p loader, @p ctx, @p arena) for `<img>`.
+ * @post Binding takes effect on the next ra_reflow_layout_chapter() / re-flow.
+ *
+ * @note Not thread-safe; bind before laying out.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_set_image_loader(ra_reflow_t*              engine,
+                                                  ra_reflow_image_loader_fn loader,
+                                                  void*                     ctx,
+                                                  ra_img_arena_t*           arena);
 
 /* ===========================================================================
  * Public API -- layout
