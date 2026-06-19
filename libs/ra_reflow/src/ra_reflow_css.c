@@ -31,14 +31,18 @@
 
 /**
  * @enum priv_css_consts_t
- * @brief Cascade specificity ranks (inheritance lowest, id highest).
+ * @brief Cascade specificity weights (packed id > class > type > universal).
+ *
+ * @details A rule's specificity is the sum of one weight per present constraint
+ * (id + class + type), each at most 1 in our compound model; the packed value
+ * orders the cascade. Inheritance is the lowest priority (weight 0); a universal
+ * selector (no constraints) is also 0 but beats inheritance on source order.
  */
 typedef enum : uint16_t {
-  k_priv_rank_inherited = 0U, /**< Inheritance is the lowest priority. */
-  k_priv_rank_universal = 1U, /**< `*` selector rank.                  */
-  k_priv_rank_type      = 2U, /**< `tag` selector rank.                */
-  k_priv_rank_class     = 3U, /**< `.class` selector rank.             */
-  k_priv_rank_id        = 4U, /**< `#id` selector rank.                */
+  k_priv_rank_inherited = 0U,     /**< Inheritance / universal weight.    */
+  k_priv_spec_type      = 1U,     /**< A type constraint adds this.       */
+  k_priv_spec_class     = 100U,   /**< A class constraint adds this.      */
+  k_priv_spec_id        = 10000U, /**< An id constraint adds this.        */
 } priv_css_consts_t;
 
 /**
@@ -445,11 +449,66 @@ static bool priv_intern_name(ra_css_sheet_t* sheet, const char* s, size_t len, u
   return true;
 }
 
+/** @brief Parse the optional leading type / `*` of a compound selector. */
+static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra_css_rule_t* rule)
+{
+  if (s[*i] == '*') {
+    ++(*i); /* universal: no type constraint */
+    return true;
+  }
+  size_t start = *i;
+  /* Bounded: i advances over name chars, capped by len. */
+  while ((*i < len) && priv_is_name_char(s[*i])) {
+    ++(*i);
+  }
+  const ra_reflow_html_tag_t tag = ra_reflow_tok_classify(&s[start], *i - start);
+  if (tag == k_ra_reflow_tag_unknown) {
+    return false; /* unrecognised tag -> drop the rule */
+  }
+  rule->sel_tag = (uint8_t)tag;
+  return true;
+}
+
+/** @brief Parse one `.class` / `#id` part at @p s[*i] into @p rule; advance @p i. */
+static bool priv_parse_sel_part(ra_css_sheet_t* sheet,
+                                const char*     s,
+                                size_t          len,
+                                size_t*         i,
+                                ra_css_rule_t*  rule)
+{
+  const char kind = s[*i];
+  ++(*i);
+  const size_t start = *i;
+  while ((*i < len) && priv_is_name_char(s[*i])) {
+    ++(*i);
+  }
+  const size_t nlen = *i - start;
+  uint16_t     off  = 0U;
+  if ((nlen == 0U) || !priv_intern_name(sheet, &s[start], nlen, &off)) {
+    return false;
+  }
+  if (kind == '.') {
+    if (rule->class_len != 0U) {
+      return false; /* a second class -> unsupported in v1 */
+    }
+    rule->class_off = off;
+    rule->class_len = (uint16_t)nlen;
+    return true;
+  }
+  if (rule->id_len != 0U) {
+    return false; /* a second id */
+  }
+  rule->id_off = off;
+  rule->id_len = (uint16_t)nlen;
+  return true;
+}
+
 /**
- * @brief Parse ONE trimmed simple selector into @p rule; false if unsupported.
+ * @brief Parse ONE trimmed compound selector into @p rule; false if unsupported.
  *
- * @details Accepts `*`, `tag`, `.class`, `#id` only. Compound (`p.x`),
- * descendant (`a b`) and pseudo selectors fail (the caller drops the rule).
+ * @details Accepts one type + one class + one id in CSS order, e.g. `*`, `p`,
+ * `.note`, `#x`, `p.note`, `p#x`, `.note#x`. Two classes (`.a.b`), descendant
+ * combinators (`div p`) and pseudo selectors fail (the caller drops the rule).
  */
 static bool
 priv_parse_selector(ra_css_sheet_t* sheet, const char* s, size_t len, ra_css_rule_t* rule)
@@ -457,40 +516,22 @@ priv_parse_selector(ra_css_sheet_t* sheet, const char* s, size_t len, ra_css_rul
   if (len == 0U) {
     return false;
   }
-  if ((len == 1U) && (s[0] == '*')) {
-    rule->sel_kind = (uint8_t)k_ra_css_sel_universal;
-    return true;
-  }
-  const char first = s[0];
-  if ((first == '.') || (first == '#')) {
-    /* Class / id: the remainder must be a single bare name. */
-    for (size_t k = 1U; k < len; ++k) {
-      if (!priv_is_name_char(s[k])) {
-        return false;
-      }
-    }
-    uint16_t off = 0U;
-    if (!priv_intern_name(sheet, &s[1], len - 1U, &off)) {
+  size_t i   = 0U;
+  bool   any = false;
+  if (priv_is_name_char(s[0]) || (s[0] == '*')) {
+    if (!priv_parse_sel_type(s, len, &i, rule)) {
       return false;
     }
-    rule->sel_kind = (uint8_t)((first == '.') ? k_ra_css_sel_class : k_ra_css_sel_id);
-    rule->name_off = off;
-    rule->name_len = (uint16_t)(len - 1U);
-    return true;
+    any = true;
   }
-  /* Type selector: every byte must be a bare name char (rejects compounds). */
-  for (size_t k = 0U; k < len; ++k) {
-    if (!priv_is_name_char(s[k])) {
-      return false;
+  /* Then a run of `.class` / `#id` parts (at most one of each). */
+  while (i < len) {
+    if (((s[i] != '.') && (s[i] != '#')) || !priv_parse_sel_part(sheet, s, len, &i, rule)) {
+      return false; /* combinator / pseudo / dup / bad name -> unsupported */
     }
+    any = true;
   }
-  const ra_reflow_html_tag_t tag = ra_reflow_tok_classify(s, len);
-  if (tag == k_ra_reflow_tag_unknown) {
-    return false; /* cannot target an unrecognised tag reliably */
-  }
-  rule->sel_kind = (uint8_t)k_ra_css_sel_type;
-  rule->sel_tag  = (uint8_t)tag;
-  return true;
+  return any;
 }
 
 /** @brief Append one fully-built rule to the sheet; drop silently if full. */
@@ -624,40 +665,41 @@ bool ra_css_rule_matches(const ra_css_rule_t*    rule,
   if ((rule == nullptr) || (el == nullptr) || (sheet == nullptr)) {
     return false;
   }
-  switch ((ra_css_sel_kind_t)rule->sel_kind) {
-    case k_ra_css_sel_universal:
-      return true;
-    case k_ra_css_sel_type:
-      return el->tag == rule->sel_tag;
-    case k_ra_css_sel_id: {
-      const char* nm = (const char*)&sheet->names[rule->name_off];
-      return (el->id != nullptr) && (el->id_len == rule->name_len) &&
-             (memcmp(el->id, nm, rule->name_len) == 0);
-    }
-    case k_ra_css_sel_class: {
-      const char* nm = (const char*)&sheet->names[rule->name_off];
-      return (el->class_str != nullptr) &&
-             priv_class_list_has(el->class_str, el->class_len, nm, rule->name_len);
-    }
-    default:
-      return false;
+  /* Every present constraint must match (no constraint = universal). */
+  if ((rule->sel_tag != (uint8_t)k_ra_reflow_tag_unknown) && (el->tag != rule->sel_tag)) {
+    return false;
   }
+  if (rule->class_len != 0U) {
+    const char* nm = (const char*)&sheet->names[rule->class_off];
+    if ((el->class_str == nullptr) ||
+        !priv_class_list_has(el->class_str, el->class_len, nm, rule->class_len)) {
+      return false;
+    }
+  }
+  if (rule->id_len != 0U) {
+    const char* nm = (const char*)&sheet->names[rule->id_off];
+    if ((el->id == nullptr) || (el->id_len != rule->id_len) ||
+        (memcmp(el->id, nm, rule->id_len) != 0)) {
+      return false;
+    }
+  }
+  return true;
 }
 
-/** @brief Specificity rank (+1 over inheritance) for a rule's selector kind. */
-static uint16_t priv_rule_rank(uint8_t sel_kind)
+/** @brief Packed specificity (id*10000 + class*100 + type) of a compound rule. */
+static uint16_t priv_rule_rank(const ra_css_rule_t* rule)
 {
-  switch ((ra_css_sel_kind_t)sel_kind) {
-    case k_ra_css_sel_type:
-      return (uint16_t)k_priv_rank_type;
-    case k_ra_css_sel_class:
-      return (uint16_t)k_priv_rank_class;
-    case k_ra_css_sel_id:
-      return (uint16_t)k_priv_rank_id;
-    case k_ra_css_sel_universal:
-    default:
-      return (uint16_t)k_priv_rank_universal;
+  uint16_t spec = 0U;
+  if (rule->sel_tag != (uint8_t)k_ra_reflow_tag_unknown) {
+    spec = (uint16_t)(spec + (uint16_t)k_priv_spec_type);
   }
+  if (rule->class_len != 0U) {
+    spec = (uint16_t)(spec + (uint16_t)k_priv_spec_class);
+  }
+  if (rule->id_len != 0U) {
+    spec = (uint16_t)(spec + (uint16_t)k_priv_spec_id);
+  }
+  return spec;
 }
 
 /**
@@ -686,7 +728,7 @@ static const ra_css_style_t* priv_resolve(uint8_t               setbit,
     if (!matched[i] || ((sheet->rules[i].decl.set & setbit) == 0U)) {
       continue;
     }
-    const uint16_t rank = priv_rule_rank(sheet->rules[i].sel_kind);
+    const uint16_t rank = priv_rule_rank(&sheet->rules[i]);
     if ((!have) || (rank > best_rank) ||
         ((rank == best_rank) && (sheet->rules[i].order >= best_order))) {
       win        = &sheet->rules[i].decl;
