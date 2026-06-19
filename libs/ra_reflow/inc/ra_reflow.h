@@ -88,6 +88,9 @@ typedef enum : uint32_t {
   k_ra_reflow_max_pages          = 256U,   /**< Max paginated pages.         */
   k_ra_reflow_max_lines_per_page = 96U,    /**< Lines per page upper bound.  */
   k_ra_reflow_max_images         = 64U,    /**< Max laid-out `<img>` boxes.  */
+  k_ra_reflow_max_links          = 255U,   /**< Max distinct `<a href>` per chapter. */
+  k_ra_reflow_max_link_rects     = 512U,   /**< Max positioned link rectangles.      */
+  k_ra_reflow_max_anchors        = 256U,   /**< Max `id=` anchor positions.          */
 } ra_reflow_limits_t;
 
 /**
@@ -308,6 +311,74 @@ typedef ra_err_t (*ra_reflow_image_loader_fn)(void*           ctx,
                                               const uint8_t** out_bytes,
                                               size_t*         out_len);
 
+/**
+ * @struct ra_reflow_link_target_t
+ * @brief One distinct `<a href>` destination interned during a parse.
+ *
+ * @details The href string is stored as a slice into the engine text pool.
+ * Multiple positioned rectangles (::ra_reflow_link_rect_t) can reference the
+ * same target by index (a wrapped link spans several rects).
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  uint32_t href_off; /**< Href slice offset into the text pool. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t href_len; /**< Href slice length, bytes.            */
+} ra_reflow_link_target_t;
+
+/**
+ * @struct ra_reflow_link_rect_t
+ * @brief One tappable rectangle covering a run of `<a>` glyphs on a page.
+ *
+ * @details Page-local coordinates (the same space as ra_reflow_glyph_t). A link
+ * that wraps across lines produces one rect per line segment, all pointing at
+ * the same `target` index in `engine->link_targets[]`.
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  int32_t x; /**< Page-local left edge, pixels.       */
+  // cppcheck-suppress unusedStructMember
+  int32_t y; /**< Page-local top edge, pixels.        */
+  // cppcheck-suppress unusedStructMember
+  int32_t w; /**< Rect width, pixels.                 */
+  // cppcheck-suppress unusedStructMember
+  int32_t h; /**< Rect height, pixels.                */
+  // cppcheck-suppress unusedStructMember
+  uint32_t target; /**< Index into `engine->link_targets[]`. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t page_index; /**< Page this rect belongs to.          */
+} ra_reflow_link_rect_t;
+
+/**
+ * @struct ra_reflow_anchor_t
+ * @brief A laid-out element `id`, for same-chapter `#fragment` jumps.
+ *
+ * @details Records where a block element carrying `id="..."` landed, so a
+ * fragment link can navigate to its page. The id string is a text-pool slice.
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  uint32_t id_off; /**< Id slice offset into the text pool. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t id_len; /**< Id slice length, bytes.             */
+  // cppcheck-suppress unusedStructMember
+  uint32_t page_index; /**< Page the id landed on.              */
+  // cppcheck-suppress unusedStructMember
+  int32_t y; /**< Page-local top y of the element.    */
+} ra_reflow_anchor_t;
+
+/**
+ * @enum ra_reflow_href_kind_t
+ * @brief Classification of an in-content `<a href>` target.
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_href_empty            = 0U, /**< Empty / whitespace-only href.        */
+  k_ra_reflow_href_fragment         = 1U, /**< "#id" -- same-chapter anchor.        */
+  k_ra_reflow_href_chapter          = 2U, /**< "path" -- another chapter, no frag.  */
+  k_ra_reflow_href_chapter_fragment = 3U, /**< "path#id" -- chapter + anchor.       */
+  k_ra_reflow_href_external         = 4U, /**< Has a URI scheme (http:, mailto:).   */
+} ra_reflow_href_kind_t;
+
 /* ===========================================================================
  * Engine handle
  * ===========================================================================
@@ -385,6 +456,20 @@ typedef struct {
   ra_reflow_image_box_t image_boxes[k_ra_reflow_max_images]; /**< Laid-out images. */
   // cppcheck-suppress unusedStructMember
   uint32_t image_box_count; /**< Image boxes used.                  */
+
+  /* --- hyperlinks + anchors (#110) ----------------------------------- */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_link_target_t link_targets[k_ra_reflow_max_links]; /**< Distinct hrefs. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t link_target_count; /**< Interned link targets.           */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_link_rect_t link_rects[k_ra_reflow_max_link_rects]; /**< Tappable rects. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t link_rect_count; /**< Positioned link rects used.        */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_anchor_t anchors[k_ra_reflow_max_anchors]; /**< id= anchor positions.   */
+  // cppcheck-suppress unusedStructMember
+  uint32_t anchor_count; /**< Anchor positions used.               */
 
   /* --- lifecycle ------------------------------------------------------ */
   // cppcheck-suppress unusedStructMember
@@ -497,6 +582,106 @@ typedef struct {
                                                   ra_reflow_image_loader_fn loader,
                                                   void*                     ctx,
                                                   ra_img_arena_t*           arena);
+
+/**
+ * @brief Hit-test a point on a page against the laid-out `<a>` link rectangles.
+ *
+ * @details Walks `engine->link_rects[]` for @p page_idx and returns the href of
+ * the first rectangle containing @p (x, y). Coordinates are page-local (the
+ * same space ra_reflow_render_page() uses); subtract the render origin first if
+ * the page was drawn at an offset. The href is returned as a slice into the
+ * engine text pool -- read `&engine->...text...[*out_href_off]` for @p *out_href_len
+ * bytes via the engine, or pass it straight to ra_reflow_href_split().
+ *
+ * @param[in]  engine       Initialized engine handle.
+ * @param[in]  page_idx     Page to test.
+ * @param[in]  x            Page-local x, pixels.
+ * @param[in]  y            Page-local y, pixels.
+ * @param[out] out_href_off Receives the href text-pool offset.
+ * @param[out] out_href_len Receives the href length, bytes.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok            A link rect contains the point; outputs set.
+ * @retval k_ra_err_null_ptr  A required pointer is NULL.
+ * @retval k_ra_err_not_found No link rect on @p page_idx contains the point.
+ *
+ * @pre  @p engine is initialized and laid out.
+ * @pre  @p out_href_off / @p out_href_len are writable.
+ * @post On success the outputs slice the engine text pool.
+ * @post On failure the outputs are unchanged.
+ *
+ * @note Read-only; safe to call between render passes.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_hit_test_link(const ra_reflow_t* engine,
+                                               uint32_t           page_idx,
+                                               int32_t            x,
+                                               int32_t            y,
+                                               uint32_t*          out_href_off,
+                                               uint32_t*          out_href_len);
+
+/**
+ * @brief Find the page of a same-chapter `id` anchor (for `#fragment` jumps).
+ *
+ * @details Linear-scans `engine->anchors[]` for an element whose captured `id`
+ * equals @p id (exact byte compare). Used to resolve a `#frag` link to the page
+ * holding the target element.
+ *
+ * @param[in]  engine   Initialized engine handle.
+ * @param[in]  id       Fragment id bytes (no leading '#').
+ * @param[in]  id_len   Length of @p id, bytes.
+ * @param[out] out_page Receives the page index of the anchor.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok            Anchor found; @p *out_page set.
+ * @retval k_ra_err_null_ptr  A required pointer is NULL.
+ * @retval k_ra_err_invalid_arg @p id_len is 0.
+ * @retval k_ra_err_not_found No anchor matches @p id.
+ *
+ * @pre  @p engine is laid out; @p id / @p out_page are valid.
+ * @pre  @p id_len > 0.
+ * @post On success @p *out_page < engine page count.
+ *
+ * @note Read-only.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_find_anchor(const ra_reflow_t* engine,
+                                             const char*        id,
+                                             uint32_t           id_len,
+                                             uint32_t*          out_page);
+
+/**
+ * @brief Split + classify an `<a href>` into a path part and a `#fragment`.
+ *
+ * @details Pure string logic (no engine state): detects a URI scheme (external,
+ * unsupported), a leading '#' (same-chapter fragment), or an embedded '#'
+ * (chapter + fragment). The path part is `href[0 .. *out_path_len)`; the
+ * fragment, if any, is `href[*out_frag_off .. *out_frag_off + *out_frag_len)`
+ * (excluding the '#').
+ *
+ * @param[in]  href         Href bytes (not NUL-terminated).
+ * @param[in]  len          Length of @p href, bytes.
+ * @param[out] out_kind     Receives the classification.
+ * @param[out] out_path_len Receives the path-part length (0 for fragment-only).
+ * @param[out] out_frag_off Receives the fragment start offset (0 if none).
+ * @param[out] out_frag_len Receives the fragment length (0 if none).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok           Classified; all outputs set.
+ * @retval k_ra_err_null_ptr A required pointer is NULL.
+ *
+ * @pre  @p href holds @p len bytes; all out pointers are writable.
+ * @post `*out_kind` reflects the href shape; the spans index within @p href.
+ *
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_href_split(const char*            href,
+                                            uint32_t               len,
+                                            ra_reflow_href_kind_t* out_kind,
+                                            uint32_t*              out_path_len,
+                                            uint32_t*              out_frag_off,
+                                            uint32_t*              out_frag_len);
 
 /* ===========================================================================
  * Public API -- layout

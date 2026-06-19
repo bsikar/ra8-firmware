@@ -181,8 +181,9 @@ typedef enum : uint8_t {
  * @brief Tap-target table capacity and Reading back-affordance size.
  */
 typedef enum : uint16_t {
-  k_er_max_targets = 32U,  /**< Max collected tap targets.          */
-  k_er_back_w      = 240U, /**< Reading back-region width (px).     */
+  k_er_max_targets   = 32U,  /**< Max collected tap targets.          */
+  k_er_back_w        = 240U, /**< Reading back-region width (px).     */
+  k_er_page_back_cap = 16U,  /**< Footnote-jump back-stack depth.     */
 } er_hit_cap_t;
 
 /* ===========================================================================
@@ -265,13 +266,16 @@ static const char k_er_chapter_xhtml[] =
   "<html><body><h1>The Time Machine</h1>"
   "<img src=\"fig.png\"/>"
   "<p>The Time Traveller (for so it will be convenient to speak of him) was "
-  "expounding a recondite matter to us. His pale grey eyes shone and twinkled, "
-  "and his usually pale face was flushed and animated.</p>"
+  "expounding a recondite matter to us. See the "
+  "<a href=\"#note\">editor's note</a> for context. His pale grey eyes shone "
+  "and twinkled, and his usually pale face was flushed and animated.</p>"
   "<p>The fire burnt brightly, and the soft radiance of the incandescent lights "
   "in the lilies of silver caught the bubbles that flashed and passed in our "
   "glasses. Our chairs, being his patents, embraced and caressed us rather than "
   "submitted to be sat upon, and thought roamed gracefully free of the trammels "
-  "of precision.</p></body></html>";
+  "of precision.</p>"
+  "<p id=\"note\">Editor's note: this passage introduces the frame narrator "
+  "before the Traveller's account begins.</p></body></html>";
 
 /**
  * @enum er_reflow_cfg_t
@@ -358,6 +362,12 @@ static uint32_t s_reading_pages = 1U;
 
 /** @brief Debounce: true while a contact is held, to fire once per tap. */
 static bool s_was_touching;
+
+/** @brief Reading-page back-stack for footnote-link round-trips (#110). */
+static uint32_t s_page_back[k_er_page_back_cap];
+
+/** @brief Entries used in ::s_page_back. */
+static uint32_t s_page_back_count;
 
 /** @brief Font blob read off the SD card -- lives in SDRAM (hundreds of KiB). */
 static uint8_t s_font_buf[k_er_font_cap] __attribute__((section(".sdram_data")));
@@ -1190,6 +1200,70 @@ static void er_render_current(void)
 }
 
 /**
+ * @brief Follow an in-content `<a>` tap in the Reading body (#110).
+ *
+ * @details Hit-tests the laid-out reflow links at the panel tap (mapped to the
+ * body's page-local space) via ra_reflow_hit_test_link(); on a same-chapter
+ * `#fragment` it resolves the anchor page with ra_reflow_find_anchor() and jumps
+ * there, pushing the current page on ::s_page_back so Back can return. The mock
+ * library has a single chapter, so cross-chapter targets are left to the caller.
+ *
+ * @param[in] x Tap X (panel pixels).
+ * @param[in] y Tap Y (panel pixels).
+ * @return true iff the tap followed a link and changed the page.
+ * @retval true  A fragment link was followed; ::s_reading_page updated.
+ * @retval false No link hit, or a non-fragment / unresolved target.
+ * @pre The Reading body was laid out (link rects reflect the chapter).
+ * @pre ::s_reading_page is the visible page.
+ * @post On true ::s_reading_page is the anchor's page and the old page is
+ *       pushed on ::s_page_back (capacity permitting).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool er_reading_link_tap(int32_t x, int32_t y)
+{
+  const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
+  uint32_t      off      = 0U;
+  uint32_t      len      = 0U;
+  if (ra_reflow_hit_test_link(&s_reflow_engine,
+                              s_reading_page,
+                              x - (int32_t)k_er_margin_x,
+                              y - body_top,
+                              &off,
+                              &len) != k_ra_ok) {
+    return false;
+  }
+  ra_reflow_href_kind_t kind     = k_ra_reflow_href_empty;
+  uint32_t              path_len = 0U;
+  uint32_t              frag_off = 0U;
+  uint32_t              frag_len = 0U;
+  if (ra_reflow_href_split((const char*)&s_reflow_engine.text_pool[off],
+                           len,
+                           &kind,
+                           &path_len,
+                           &frag_off,
+                           &frag_len) != k_ra_ok) {
+    return false;
+  }
+  if ((kind != k_ra_reflow_href_fragment) && (kind != k_ra_reflow_href_chapter_fragment)) {
+    return false;
+  }
+  uint32_t page = 0U;
+  if (ra_reflow_find_anchor(&s_reflow_engine,
+                            (const char*)&s_reflow_engine.text_pool[off + frag_off],
+                            frag_len,
+                            &page) != k_ra_ok) {
+    return false;
+  }
+  if ((page != s_reading_page) && (s_page_back_count < (uint32_t)k_er_page_back_cap)) {
+    s_page_back[s_page_back_count] = s_reading_page;
+    s_page_back_count++;
+  }
+  s_reading_page = page;
+  return true;
+}
+
+/**
  * @brief Route a tap to a navigation action for the current screen.
  *
  * @param[in] x Tap X (panel pixels).
@@ -1215,8 +1289,18 @@ static bool er_handle_tap(int32_t x, int32_t y)
   if (top == (uint16_t)k_er_screen_reading) {
     const ra_ui_rect_t back = {0, 0, (int32_t)k_er_back_w, (int32_t)k_er_statusbar_h};
     if (ra_ui_rect_contains(&back, x, y)) {
+      /* Back returns from a footnote jump first, then pops the screen (#110). */
+      if (s_page_back_count > 0U) {
+        s_page_back_count--;
+        s_reading_page = s_page_back[s_page_back_count];
+        return true;
+      }
       uint16_t prev = 0U;
       return (ra_ui_nav_pop(&s_nav, &prev) == k_ra_ok);
+    }
+    /* Follow an in-content `<a>` link before falling back to page-turn. */
+    if (er_reading_link_tap(x, y)) {
+      return true;
     }
     /* Page-turn: a tap in the right half of the body advances a page, the left
      * half goes back. No-ops at the ends and in the bitmap fallback (where

@@ -74,10 +74,12 @@ ra_err_t ra_reflow_parse_xhtml(ra_reflow_t* engine, const uint8_t* xhtml_buf, si
     return k_ra_err_invalid_size;
   }
 
-  /* Reset the token + text pools before each parse. The layout pool
-   * is cleared separately by ra_reflow_run_layout(). */
-  engine->token_count    = 0U;
-  engine->text_pool_used = 0U;
+  /* Reset the token + text pools and the link-target table before each parse.
+   * The layout pools (glyphs/pages/images/link-rects/anchors) are cleared
+   * separately by ra_reflow_run_layout(). */
+  engine->token_count       = 0U;
+  engine->text_pool_used    = 0U;
+  engine->link_target_count = 0U;
 
   return priv_reflow_xml_walk(engine, xhtml_buf, xhtml_len);
 }

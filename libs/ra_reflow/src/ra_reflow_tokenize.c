@@ -67,7 +67,6 @@ typedef enum : uint32_t {
   k_priv_base_dec      = 10U,       /**< Decimal numeric-entity base.            */
   k_priv_base_hex      = 16U,       /**< Hexadecimal numeric-entity base.        */
   k_priv_hex_offset    = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
-  k_priv_img_src_min   = 3U,        /**< Length of the "src" attribute name.     */
 } priv_tok_consts_t;
 
 /**
@@ -77,8 +76,10 @@ typedef enum : uint32_t {
 typedef struct {
   ra_reflow_t* engine;                        /**< Target engine pools.        */
   uint8_t      style;                         /**< Current inline-style bits.  */
+  uint8_t      active_link;                   /**< 1-based link id (0 = none).  */
   uint8_t      stack_tag[k_priv_max_depth];   /**< Open-element tag stack.      */
   uint8_t      stack_style[k_priv_max_depth]; /**< Style to restore on pop.    */
+  uint8_t      stack_link[k_priv_max_depth];  /**< Link id to restore on pop.  */
   uint32_t     sp;                            /**< Stack depth.                */
   bool         saw_element;                   /**< At least one element seen.  */
 } tok_ctx_t;
@@ -717,6 +718,7 @@ static ra_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
   ctx->sp--;
   const ra_reflow_html_tag_t tag = (ra_reflow_html_tag_t)ctx->stack_tag[ctx->sp];
   ctx->style                     = ctx->stack_style[ctx->sp];
+  ctx->active_link               = ctx->stack_link[ctx->sp];
   if (priv_is_block(tag) &&
       !priv_emit(ctx->engine, k_ra_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
     return k_ra_err_no_mem;
@@ -771,29 +773,32 @@ priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
 }
 
 /**
- * @brief True iff a `src` attribute name begins at `tag[i]`.
+ * @brief True iff attribute @p name (case-insensitive) begins at `tag[i]`.
  *
- * @details Case-insensitive "src" with a non-name byte (or the leading '<')
- * immediately before it, so a substring like "xsrc" is not matched.
+ * @details Matches @p name with a non-name byte (or the leading '<')
+ * immediately before it, so a substring like "xsrc" does not match "src" and
+ * "xid" does not match "id".
  *
- * @param[in] tag Raw tag span.
- * @param[in] i   Candidate start offset (`i + 3` must be within bounds).
- * @return true iff `tag[i..i+2]` is the `src` attribute name.
+ * @param[in] tag      Raw tag span.
+ * @param[in] i        Candidate start offset (`i + name_len` must be in range).
+ * @param[in] name     Lower-case attribute name to match.
+ * @param[in] name_len Length of @p name, bytes.
+ * @return true iff `tag[i..i+name_len)` equals @p name as an attribute name.
  * @retval true  Match.
  * @retval false No match.
- * @pre `tag` is non-null and `tag[i..i+2]` are readable.
- * @pre `i` indexes within the tag span.
+ * @pre `tag`, `name` are non-null and `tag[i..i+name_len)` are readable.
+ * @pre `i + name_len <= tag span length`.
  * @post No state mutated.
  * @post Return value depends solely on the inputs.
- * @note Pure function.
+ * @note Pure function; @p name must already be lower-case.
  * @since 0.1.0
  */
-static bool priv_is_src_at(const uint8_t* tag, size_t i)
+static bool priv_attr_name_at(const uint8_t* tag, size_t i, const char* name, size_t name_len)
 {
-  const bool is_src =
-    (((tag[i] | 0x20U) == 's') && ((tag[i + 1U] | 0x20U) == 'r') && ((tag[i + 2U] | 0x20U) == 'c'));
-  if (!is_src) {
-    return false;
+  for (size_t k = 0U; k < name_len; ++k) {
+    if ((tag[i + k] | 0x20U) != (uint8_t)name[k]) {
+      return false;
+    }
   }
   const char prev = (i == 0U) ? '<' : (char)tag[i - 1U];
   return !(((prev >= 'a') && (prev <= 'z')) || ((prev >= 'A') && (prev <= 'Z')));
@@ -848,45 +853,48 @@ priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* v
 }
 
 /**
- * @brief Extract the `src` attribute value from a start-tag span into the pool.
+ * @brief Extract a named attribute's quoted value from a tag span into the pool.
  *
- * @details Scans the raw `<img ...>` span for a `src` attribute (case-
- * insensitive, not preceded by another name character) and copies its quoted
- * value verbatim into the engine text pool. The stored slice is what the layout
- * pass hands to the image loader. On no `src`, a malformed attribute, or a full
- * pool the outputs are zeroed, which the layout pass treats as "no image"
- * (placeholder fallback).
+ * @details Scans the raw `<...>` span for attribute @p name (case-insensitive,
+ * not preceded by another name character) and copies its quoted value verbatim
+ * into the engine text pool. Used for `<img src>` / `<a href>` / element `id`.
+ * On no match, a malformed attribute, or a full pool the outputs are zeroed,
+ * which callers treat as "attribute absent".
  *
- * @param[in,out] engine  Engine whose text pool receives the href bytes.
- * @param[in]     tag     Raw tag span starting at '<'.
- * @param[in]     tag_len Length of @p tag, bytes.
- * @param[out]    out_off Receives the text-pool offset of the href (0 if none).
- * @param[out]    out_len Receives the href byte length (0 if none).
+ * @param[in,out] engine   Engine whose text pool receives the value bytes.
+ * @param[in]     tag      Raw tag span starting at '<'.
+ * @param[in]     tag_len  Length of @p tag, bytes.
+ * @param[in]     name     Lower-case attribute name to find.
+ * @param[in]     name_len Length of @p name, bytes.
+ * @param[out]    out_off  Receives the text-pool offset of the value (0 if none).
+ * @param[out]    out_len  Receives the value byte length (0 if none).
  * @return None.
- * @pre `engine`, `tag`, `out_off`, `out_len` are non-null.
+ * @pre `engine`, `tag`, `name`, `out_off`, `out_len` are non-null.
  * @pre `engine->text_pool_used <= k_ra_reflow_text_pool_bytes`.
- * @post `*out_len > 0` iff a quoted `src` value was stored in the pool.
+ * @post `*out_len > 0` iff a quoted @p name value was stored in the pool.
  * @post The pool grows by `*out_len` bytes when a value is stored.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void priv_capture_img_src(ra_reflow_t*   engine,
-                                 const uint8_t* tag,
-                                 size_t         tag_len,
-                                 uint32_t*      out_off,
-                                 uint32_t*      out_len)
+static void priv_capture_attr(ra_reflow_t*   engine,
+                              const uint8_t* tag,
+                              size_t         tag_len,
+                              const char*    name,
+                              size_t         name_len,
+                              uint32_t*      out_off,
+                              uint32_t*      out_len)
 {
   *out_off = 0U;
   *out_len = 0U;
-  if (tag_len < (size_t)k_priv_img_src_min) {
+  if (tag_len < name_len) {
     return;
   }
-  /* Bounded scan for a `src` attribute name (NASA Rule 2: tag_len <= input). */
-  for (size_t i = 0U; (i + (size_t)k_priv_img_src_min) <= tag_len; ++i) {
+  /* Bounded scan for the attribute name (NASA Rule 2: tag_len <= input). */
+  for (size_t i = 0U; (i + name_len) <= tag_len; ++i) {
     size_t vstart = 0U;
     size_t vlen   = 0U;
-    if (!priv_is_src_at(tag, i) ||
-        !priv_attr_quoted_value(tag, tag_len, i + (size_t)k_priv_img_src_min, &vstart, &vlen)) {
+    if (!priv_attr_name_at(tag, i, name, name_len) ||
+        !priv_attr_quoted_value(tag, tag_len, i + name_len, &vstart, &vlen)) {
       continue;
     }
     if ((vlen == 0U) ||
@@ -900,6 +908,140 @@ static void priv_capture_img_src(ra_reflow_t*   engine,
     *out_len = (uint32_t)vlen;
     return;
   }
+}
+
+/**
+ * @brief Intern an `<a>` href slice into the link-target table.
+ *
+ * @details Appends a {href_off, href_len} entry and returns its 1-based id
+ * (stored in subsequent text tokens' `reserved` byte). An empty href or a full
+ * table returns 0 (the run renders as plain underlined text -- not tappable).
+ *
+ * @param[in,out] engine   Engine whose link-target table grows.
+ * @param[in]     href_off Href text-pool offset.
+ * @param[in]     href_len Href byte length.
+ * @return 1-based link id, or 0 if not interned.
+ * @retval 0 Empty href or the table is full.
+ * @pre `engine` is non-null.
+ * @pre `engine->link_target_count <= k_ra_reflow_max_links`.
+ * @post On a non-zero return the table grew by one entry.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static uint8_t priv_intern_link(ra_reflow_t* engine, uint32_t href_off, uint32_t href_len)
+{
+  if ((href_len == 0U) || (engine->link_target_count >= (uint32_t)k_ra_reflow_max_links)) {
+    return 0U;
+  }
+  const uint32_t idx                 = engine->link_target_count;
+  engine->link_targets[idx].href_off = href_off;
+  engine->link_targets[idx].href_len = href_len;
+  engine->link_target_count          = idx + 1U;
+  return (uint8_t)(idx + 1U); /* 1-based: 0 means "no link" */
+}
+
+/**
+ * @brief Capture a just-opened tag's `id` (block) or `href` (`<a>`).
+ *
+ * @details For a block tag, captures `id="..."` and emits the block-start token
+ * carrying the id slice (so layout can record an anchor position). For an `<a>`,
+ * captures `href="..."`, interns it, and sets the active link id on @p ctx.
+ *
+ * @param[in,out] ctx  Tokenizer context (active link + engine pools).
+ * @param[in]     tag  Raw tag span starting at '<'.
+ * @param[in]     span Length of @p tag, bytes.
+ * @param[in]     kind Classified tag.
+ * @param[in]     block True iff @p kind is a block element.
+ * @return k_ra_ok, or k_ra_err_no_mem on a token-pool overflow.
+ * @retval k_ra_err_no_mem Block-start token pool full.
+ * @pre `ctx` and `tag` are non-null.
+ * @pre `ctx->sp > 0` (the tag was already pushed).
+ * @post For a block tag a block-start token is emitted (id slice or 0,0).
+ * @post For `<a>` `ctx->active_link` reflects the interned href (0 if none).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t priv_open_attrs(tok_ctx_t*           ctx,
+                                const uint8_t*       tag,
+                                size_t               span,
+                                ra_reflow_html_tag_t kind,
+                                bool                 block)
+{
+  if (block) {
+    uint32_t id_off = 0U;
+    uint32_t id_len = 0U;
+    priv_capture_attr(ctx->engine, tag, span, "id", sizeof("id") - 1U, &id_off, &id_len);
+    return priv_emit(ctx->engine, k_ra_reflow_tok_block_start, kind, ctx->style, id_off, id_len)
+             ? k_ra_ok
+             : k_ra_err_no_mem;
+  }
+  if (kind == k_ra_reflow_tag_a) {
+    uint32_t href_off = 0U;
+    uint32_t href_len = 0U;
+    priv_capture_attr(ctx->engine, tag, span, "href", sizeof("href") - 1U, &href_off, &href_len);
+    ctx->active_link = priv_intern_link(ctx->engine, href_off, href_len);
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Emit the single token for a void tag (`<br>` / `<hr>` / `<img>`).
+ *
+ * @details `<br>` -> break, `<hr>` -> rule, `<img>` -> image (capturing its
+ * `src`). Returns whether @p tag was a void tag so the caller can fall through
+ * to ordinary open-tag handling otherwise.
+ *
+ * @param[in,out] ctx     Tokenizer context.
+ * @param[in]     buf     Source buffer.
+ * @param[in]     tag_lt  Index of the tag's '<'.
+ * @param[in]     end     One past the tag's '>'.
+ * @param[in]     tag     Classified tag.
+ * @param[out]    out_err Receives the emit result when handled.
+ * @return true iff @p tag was a void tag (then @p *out_err is set).
+ * @retval true  Void tag handled; check @p *out_err.
+ * @retval false Not a void tag; caller continues.
+ * @pre `ctx`, `buf`, `out_err` are non-null.
+ * @pre `end >= tag_lt`.
+ * @post On true a single token was emitted (or the pool overflowed).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool priv_handle_void(tok_ctx_t*           ctx,
+                             const uint8_t*       buf,
+                             size_t               tag_lt,
+                             size_t               end,
+                             ra_reflow_html_tag_t tag,
+                             ra_err_t*            out_err)
+{
+  if (tag == k_ra_reflow_tag_br) {
+    *out_err = priv_emit(ctx->engine, k_ra_reflow_tok_break, tag, ctx->style, 0U, 0U)
+                 ? k_ra_ok
+                 : k_ra_err_no_mem;
+    return true;
+  }
+  if (tag == k_ra_reflow_tag_hr) {
+    *out_err = priv_emit(ctx->engine, k_ra_reflow_tok_rule, tag, ctx->style, 0U, 0U)
+                 ? k_ra_ok
+                 : k_ra_err_no_mem;
+    return true;
+  }
+  if (tag == k_ra_reflow_tag_img) {
+    uint32_t     src_off = 0U;
+    uint32_t     src_len = 0U;
+    const size_t span    = (end > tag_lt) ? (end - tag_lt) : 0U;
+    priv_capture_attr(ctx->engine,
+                      &buf[tag_lt],
+                      span,
+                      "src",
+                      sizeof("src") - 1U,
+                      &src_off,
+                      &src_len);
+    *out_err = priv_emit(ctx->engine, k_ra_reflow_tok_image, tag, ctx->style, src_off, src_len)
+                 ? k_ra_ok
+                 : k_ra_err_no_mem;
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -929,22 +1071,9 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   const ra_reflow_html_tag_t tag       = priv_parse_start(buf, pi, len, &selfclose);
   ctx->saw_element                     = true;
 
-  if (tag == k_ra_reflow_tag_br) {
-    return priv_emit(ctx->engine, k_ra_reflow_tok_break, tag, ctx->style, 0U, 0U) ? k_ra_ok
-                                                                                  : k_ra_err_no_mem;
-  }
-  if (tag == k_ra_reflow_tag_hr) {
-    return priv_emit(ctx->engine, k_ra_reflow_tok_rule, tag, ctx->style, 0U, 0U) ? k_ra_ok
-                                                                                 : k_ra_err_no_mem;
-  }
-  if (tag == k_ra_reflow_tag_img) {
-    uint32_t     src_off = 0U;
-    uint32_t     src_len = 0U;
-    const size_t span    = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
-    priv_capture_img_src(ctx->engine, &buf[tag_lt], span, &src_off, &src_len);
-    return priv_emit(ctx->engine, k_ra_reflow_tok_image, tag, ctx->style, src_off, src_len)
-             ? k_ra_ok
-             : k_ra_err_no_mem;
+  ra_err_t verr = k_ra_ok;
+  if (priv_handle_void(ctx, buf, tag_lt, *pi, tag, &verr)) {
+    return verr;
   }
 
   const bool block = priv_is_block(tag);
@@ -965,9 +1094,12 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   }
   ctx->stack_tag[ctx->sp]   = (uint8_t)tag;
   ctx->stack_style[ctx->sp] = ctx->style;
+  ctx->stack_link[ctx->sp]  = ctx->active_link;
   ctx->sp++;
-  if (block && !priv_emit(ctx->engine, k_ra_reflow_tok_block_start, tag, ctx->style, 0U, 0U)) {
-    return k_ra_err_no_mem;
+  const size_t   span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
+  const ra_err_t aerr = priv_open_attrs(ctx, &buf[tag_lt], span, tag, block);
+  if (aerr != k_ra_ok) {
+    return aerr;
   }
   ctx->style = (uint8_t)(ctx->style | priv_style_for(tag));
   return k_ra_ok;
@@ -1015,6 +1147,50 @@ static ra_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, s
   return priv_handle_start(ctx, buf, pi, len);
 }
 
+/**
+ * @brief Stash + emit a character-data run, tagging it with the active link id.
+ *
+ * @details Text outside any open element is dropped. Otherwise the run is
+ * entity-decoded + whitespace-collapsed into the text pool and emitted as a text
+ * token whose `reserved` byte carries the active `<a>` link id (0 = none).
+ *
+ * @param[in,out] ctx Tokenizer context.
+ * @param[in]     buf Source buffer.
+ * @param[in]     run Run start offset (inclusive).
+ * @param[in]     end Run end offset (exclusive).
+ * @return true on success, false on a pool overflow.
+ * @retval false Text or token pool full.
+ * @pre `ctx` and `buf` are non-null; `run <= end`.
+ * @pre `ctx->engine->token_count` is consistent.
+ * @post On a non-empty stored run a text token is appended + link-tagged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, size_t end)
+{
+  if (ctx->sp == 0U) {
+    return true;
+  }
+  uint32_t off = 0U;
+  uint32_t tln = 0U;
+  if (!priv_stash_run(ctx->engine, buf, run, end, &off, &tln)) {
+    return false;
+  }
+  if (tln == 0U) {
+    return true;
+  }
+  if (!priv_emit(ctx->engine,
+                 k_ra_reflow_tok_text,
+                 k_ra_reflow_tag_unknown,
+                 ctx->style,
+                 off,
+                 tln)) {
+    return false;
+  }
+  ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = ctx->active_link;
+  return true;
+}
+
 /* ===========================================================================
  * Entry point (called by ra_reflow_parse.c)
  * ===========================================================================
@@ -1048,16 +1224,8 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
     while ((i < xhtml_len) && (xhtml_buf[i] != '<')) {
       ++i;
     }
-    if (ctx.sp > 0U) {
-      uint32_t off = 0U;
-      uint32_t tln = 0U;
-      if (!priv_stash_run(engine, xhtml_buf, run, i, &off, &tln)) {
-        return k_ra_err_no_mem;
-      }
-      if ((tln > 0U) &&
-          !priv_emit(engine, k_ra_reflow_tok_text, k_ra_reflow_tag_unknown, ctx.style, off, tln)) {
-        return k_ra_err_no_mem;
-      }
+    if (!priv_emit_text_run(&ctx, xhtml_buf, run, i)) {
+      return k_ra_err_no_mem;
     }
   }
 
