@@ -1299,6 +1299,19 @@ typedef enum : int32_t {
   k_er_kbd_radius    = 10, /**< Key corner radius (rounded, iOS).    */
   k_er_kbd_shadow_dy = 3,  /**< Key drop-shadow offset (down).       */
   k_er_kbd_lab_max   = 8,  /**< Key-label scratch size.              */
+  /* Glyph-icon geometry (px from the key centre) for SHIFT / DEL / RETURN. */
+  k_er_ico_aw   = 11, /**< Shift arrowhead half-width.        */
+  k_er_ico_atop = 12, /**< Shift arrowhead apex, above centre.*/
+  k_er_ico_abot = 2,  /**< Shift arrowhead base, above centre.*/
+  k_er_ico_sw   = 3,  /**< Shift stem half-width.             */
+  k_er_ico_sbot = 11, /**< Shift stem, below centre.          */
+  k_er_ico_dw   = 14, /**< Delete glyph half-width.           */
+  k_er_ico_dh   = 9,  /**< Delete glyph half-height.          */
+  k_er_ico_dx   = 5,  /**< Delete X half-extent.              */
+  k_er_ico_dxo  = 4,  /**< Delete X right-of-centre offset.   */
+  k_er_ico_rw   = 11, /**< Return shaft half-width.           */
+  k_er_ico_rh   = 10, /**< Return tail height.                */
+  k_er_ico_rah  = 6,  /**< Return arrowhead leg.              */
 } er_kbd_render_t;
 
 /** @enum er_kbd_color_t @brief Apple-style grayscale keyboard palette. */
@@ -1309,18 +1322,16 @@ typedef enum : uint32_t {
   k_er_kbd_keysh = 0x909090U, /**< Key drop shadow.            */
 } er_kbd_color_t;
 
-/** @brief Label for key @p idx (a static word, or the live-case char in @p s). */
+/** @brief Text label for key @p idx (SPACE / 123-ABC, or live-case char in @p s).
+ *
+ * @note SHIFT / BACKSPACE / RETURN are drawn as glyph icons, not text, so they
+ *       never reach this helper.
+ */
 static const char* er_kbd_label(uint8_t idx, char* s)
 {
   switch (s_kb.keys[idx].kind) {
     case k_ra_kbd_key_space:
       return "space";
-    case k_ra_kbd_key_backspace:
-      return "del";
-    case k_ra_kbd_key_enter:
-      return "return";
-    case k_ra_kbd_key_shift:
-      return "shift";
     case k_ra_kbd_key_layer:
       if (s_kb.keys[idx].aux == (uint8_t)k_ra_kbd_layer_numbers) {
         return "123";
@@ -1348,32 +1359,111 @@ static void er_round_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t c
   (void)ra_gfx_circle((x + w - r) - 1, (y + h - r) - 1, r, c, true);
 }
 
+/** @brief Filled upward triangle from apex row @p ay to base row @p by (scanlines). */
+static void er_tri_up(int32_t cx, int32_t ay, int32_t by, int32_t hw, uint32_t c)
+{
+  const int32_t span = by - ay;
+  for (int32_t y = ay; y <= by; ++y) {
+    const int32_t half = (span > 0) ? ((hw * (y - ay)) / span) : hw;
+    (void)ra_gfx_line(cx - half, y, cx + half, y, c);
+  }
+}
+
+/** @brief SHIFT glyph: an up-arrow (filled arrowhead over a narrow stem). */
+static void er_icon_shift(int32_t cx, int32_t cy, uint32_t c)
+{
+  er_tri_up(cx, cy - (int32_t)k_er_ico_atop, cy - (int32_t)k_er_ico_abot, (int32_t)k_er_ico_aw, c);
+  (void)ra_gfx_rect(cx - (int32_t)k_er_ico_sw,
+                    cy - (int32_t)k_er_ico_abot,
+                    2 * (int32_t)k_er_ico_sw,
+                    (int32_t)k_er_ico_abot + (int32_t)k_er_ico_sbot,
+                    c,
+                    true);
+}
+
+/** @brief BACKSPACE glyph: a left-pointing pentagon outline with an X inside. */
+static void er_icon_delete(int32_t cx, int32_t cy, uint32_t c)
+{
+  const int32_t w  = (int32_t)k_er_ico_dw;
+  const int32_t h  = (int32_t)k_er_ico_dh;
+  const int32_t tx = (cx - w) + h; /* where the tip opens into the body */
+  (void)ra_gfx_line(cx - w, cy, tx, cy - h, c);
+  (void)ra_gfx_line(tx, cy - h, cx + w, cy - h, c);
+  (void)ra_gfx_line(cx + w, cy - h, cx + w, cy + h, c);
+  (void)ra_gfx_line(cx + w, cy + h, tx, cy + h, c);
+  (void)ra_gfx_line(tx, cy + h, cx - w, cy, c);
+  const int32_t xo = (int32_t)k_er_ico_dxo;
+  const int32_t xe = (int32_t)k_er_ico_dx;
+  (void)ra_gfx_line((cx + xo) - xe, cy - xe, cx + xo + xe, cy + xe, c);
+  (void)ra_gfx_line(cx + xo + xe, cy - xe, (cx + xo) - xe, cy + xe, c);
+}
+
+/** @brief RETURN glyph: a carriage-return arrow (tail down, shaft left, arrowhead). */
+static void er_icon_return(int32_t cx, int32_t cy, uint32_t c)
+{
+  const int32_t w = (int32_t)k_er_ico_rw;
+  const int32_t a = (int32_t)k_er_ico_rah;
+  (void)ra_gfx_line(cx + w, cy - (int32_t)k_er_ico_rh, cx + w, cy, c);
+  (void)ra_gfx_line(cx + w, cy, cx - w, cy, c);
+  (void)ra_gfx_line(cx - w, cy, (cx - w) + a, cy - a, c);
+  (void)ra_gfx_line(cx - w, cy, (cx - w) + a, cy + a, c);
+}
+
 /** @brief True for keys drawn dark (SHIFT / BACKSPACE / 123-ABC / RETURN). */
 static bool er_key_is_special(ra_kbd_key_kind_t kind)
 {
   return (kind != k_ra_kbd_key_char) && (kind != k_ra_kbd_key_space);
 }
 
-/** @brief Draw key @p idx Apple-style: a shadowed rounded key + centred label. */
-static void er_draw_key(uint8_t idx)
+/** @brief Draw the text label of key @p idx centred in the key body. */
+static void
+er_draw_key_label(uint8_t idx, int32_t kx, int32_t ky, int32_t kw, int32_t kh, uint32_t fill)
 {
-  const ra_ui_rect_t      r    = s_kb.keys[idx].rect;
-  const int32_t           g    = (int32_t)k_er_kbd_gap;
-  const int32_t           kx   = r.x + g;
-  const int32_t           ky   = r.y + g;
-  const int32_t           kw   = r.w - (2 * g);
-  const int32_t           kh   = r.h - (2 * g);
-  const ra_kbd_key_kind_t kind = s_kb.keys[idx].kind;
-  const uint32_t          fill =
-    er_key_is_special(kind) ? (uint32_t)k_er_kbd_keydk : (uint32_t)k_er_kbd_keylt;
-  er_round_rect(kx, ky + (int32_t)k_er_kbd_shadow_dy, kw, kh, (uint32_t)k_er_kbd_keysh);
-  er_round_rect(kx, ky, kw, kh, fill);
   char          scratch[k_er_kbd_lab_max] = {};
   const char*   lab                       = er_kbd_label(idx, scratch);
   const int32_t lw                        = (int32_t)strlen(lab) * (int32_t)k_er_kbd_glyph_w;
   const int32_t lx                        = kx + ((kw - lw) / 2);
   const int32_t ly                        = ky + ((kh - (int32_t)k_er_kbd_glyph_h) / 2);
   (void)ra_gfx_text_out(lx, ly, lab, &ra_gfx_font_8x16, (uint32_t)k_er_ink, fill);
+}
+
+/** @brief Draw key @p idx Apple-style: a shadowed rounded key + glyph icon / label.
+ *
+ * @details SHIFT / BACKSPACE / RETURN render as vector glyph icons; every other
+ * key (letters, digits, symbols, SPACE, 123/#+=/ABC) renders its text label. An
+ * armed one-shot SHIFT inverts the SHIFT key (white body) like iOS.
+ */
+static void er_draw_key(uint8_t idx)
+{
+  const ra_ui_rect_t      r       = s_kb.keys[idx].rect;
+  const int32_t           g       = (int32_t)k_er_kbd_gap;
+  const int32_t           kx      = r.x + g;
+  const int32_t           ky      = r.y + g;
+  const int32_t           kw      = r.w - (2 * g);
+  const int32_t           kh      = r.h - (2 * g);
+  const ra_kbd_key_kind_t kind    = s_kb.keys[idx].kind;
+  const bool              special = er_key_is_special(kind);
+  const bool              sh_on   = (kind == k_ra_kbd_key_shift) && s_kb.shift;
+  const uint32_t fill = (special && !sh_on) ? (uint32_t)k_er_kbd_keydk : (uint32_t)k_er_kbd_keylt;
+  er_round_rect(kx, ky + (int32_t)k_er_kbd_shadow_dy, kw, kh, (uint32_t)k_er_kbd_keysh);
+  er_round_rect(kx, ky, kw, kh, fill);
+
+  const int32_t cx = kx + (kw / 2);
+  const int32_t cy = ky + (kh / 2);
+  switch (kind) {
+    case k_ra_kbd_key_shift:
+      er_icon_shift(cx, cy, (uint32_t)k_er_ink);
+      break;
+    case k_ra_kbd_key_backspace:
+      er_icon_delete(cx, cy, (uint32_t)k_er_ink);
+      break;
+    case k_ra_kbd_key_enter:
+      er_icon_return(cx, cy, (uint32_t)k_er_ink);
+      break;
+    default:
+      er_draw_key_label(idx, kx, ky, kw, kh, fill);
+      break;
+  }
 }
 
 /**
