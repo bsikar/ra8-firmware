@@ -58,6 +58,8 @@ typedef enum : uint32_t {
   k_svg_arc_ey      = 6U,          /**< `A` arg index: endpoint Y.        */
   k_svg_arc_seg_max = 24U,         /**< Max segments per arc flatten.     */
   k_svg_g_depth_max = 8U,          /**< Max nested `<g>` transform depth. */
+  k_svg_circle_seg  = 24U,         /**< N-gon segments for a transformed circle.*/
+  k_svg_rect_pts    = 4U,          /**< Corner count of a rectangle.      */
 } priv_svg_consts_t;
 
 /** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
@@ -86,18 +88,21 @@ typedef struct {
 
 /**
  * @struct svg_utf_t
- * @brief A user `transform=` reduced to per-axis scale + translate.
+ * @brief A user `transform=` as a full 2x3 affine matrix.
  *
- * @details The supported subset (`translate`, `scale`) is closed under
- * composition as `(scale, translate)` per axis, so a transform list and nested
- * `<g>` groups collapse to one of these. `rotate` / `skew` / `matrix` are not
- * representable here and are skipped (see ::priv_parse_xform).
+ * @details A point @c (x,y) maps to @c (a*x+c*y+e, b*x+d*y+f). `translate`,
+ * `scale`, `rotate`, `skewX/Y`, and `matrix` are all representable and closed
+ * under composition (::priv_utf_compose), so a transform list and nested `<g>`
+ * groups collapse to one of these. The axis-aligned subset (b==0 && c==0)
+ * reproduces the legacy scale+translate render byte-for-byte.
  */
 typedef struct {
-  float sx; /**< X scale.     */
-  float sy; /**< Y scale.     */
-  float tx; /**< X translate. */
-  float ty; /**< Y translate. */
+  float a; /**< Row0 col0 (x scale). */
+  float b; /**< Row1 col0 (y shear). */
+  float c; /**< Row0 col1 (x shear). */
+  float d; /**< Row1 col1 (y scale). */
+  float e; /**< X translate.         */
+  float f; /**< Y translate.         */
 } svg_utf_t;
 
 /**
@@ -113,14 +118,16 @@ typedef struct {
   int32_t vy; /**< viewBox min-y.   */
   int32_t vw; /**< viewBox width.   */
   int32_t vh; /**< viewBox height.  */
-  /* User-space `transform=` (translate + scale), applied to a point BEFORE the
-   * viewBox->box map. Identity (sx/sy = 1, tx/ty = 0) reproduces the untransformed
-   * render byte-for-byte. Rotate / skew / matrix are out of scope (they break the
-   * axis-aligned primitive path) -- they are parsed and skipped. */
-  float usx; /**< User x scale (1 = identity).  */
-  float usy; /**< User y scale (1 = identity).  */
-  float utx; /**< User x translate (user units).*/
-  float uty; /**< User y translate (user units).*/
+  /* User-space `transform=` as a 2x3 affine, applied to a point BEFORE the
+   * viewBox->box map: (x,y) -> (ua*x+uc*y+ue, ub*x+ud*y+uf). Identity
+   * (ua=ud=1, others 0) reproduces the untransformed render byte-for-byte; the
+   * axis-aligned case (ub==0 && uc==0) keeps the fast-path primitives. */
+  float ua; /**< Affine a (x scale; 1 = identity).  */
+  float ub; /**< Affine b (y shear; 0 = axis-aligned).*/
+  float uc; /**< Affine c (x shear; 0 = axis-aligned).*/
+  float ud; /**< Affine d (y scale; 1 = identity).  */
+  float ue; /**< Affine e (x translate, user units).*/
+  float uf; /**< Affine f (y translate, user units).*/
 } svg_xform_t;
 
 /* ===========================================================================
@@ -381,16 +388,45 @@ static uint32_t priv_attr_paint(const uint8_t* s, size_t len, const char* name, 
  * ===========================================================================
  */
 
-/** @brief Apply the user `transform=` scale+translate to a user-space x. */
+/** @brief Apply the axis-aligned user transform (a/translate) to a user-space x.
+ *         Used only on the fast-path, where the shear terms ub/uc are 0. */
 static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
 {
-  return (int32_t)(((float)sx * t->usx) + t->utx);
+  return (int32_t)(((float)sx * t->ua) + t->ue);
 }
 
-/** @brief Apply the user `transform=` scale+translate to a user-space y. */
+/** @brief Apply the axis-aligned user transform (d/translate) to a user-space y.
+ *         Used only on the fast-path, where the shear terms ub/uc are 0. */
 static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
 {
-  return (int32_t)(((float)sy * t->usy) + t->uty);
+  return (int32_t)(((float)sy * t->ud) + t->uf);
+}
+
+/** @brief True iff the user transform has rotation/shear (so the axis-aligned
+ *         fast-path primitives can't represent it -- use the polygon path). */
+static bool priv_has_rot(const svg_xform_t* t)
+{
+  return (t->ub != 0.0F) || (t->uc != 0.0F);
+}
+
+/**
+ * @brief Map a user-space point through the FULL affine, then viewBox->box.
+ *
+ * @details Generalized point map for rotated/sheared/gradient shapes. When the
+ * affine is axis-aligned (ub==0 && uc==0) the result is byte-identical to
+ * @c (priv_mx(ux), priv_my(uy)), so routing the polygon/path/line emitters
+ * through it does not change the untransformed render.
+ *
+ * @param[in]  t      Active transform.
+ * @param[in]  ux,uy  User-space point.
+ * @param[out] fx,fy  Framebuffer point.
+ */
+static void priv_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* fx, int32_t* fy)
+{
+  const int32_t px = (int32_t)(((float)ux * t->ua) + ((float)uy * t->uc) + t->ue);
+  const int32_t py = (int32_t)(((float)ux * t->ub) + ((float)uy * t->ud) + t->uf);
+  *fx              = t->bx + (int32_t)(((int64_t)(px - t->vx) * (int64_t)t->bw) / (int64_t)t->vw);
+  *fy              = t->by + (int32_t)(((int64_t)(py - t->vy) * (int64_t)t->bh) / (int64_t)t->vh);
 }
 
 /** @brief Map a user-space x to a framebuffer x (user transform, then viewBox). */
@@ -410,7 +446,7 @@ static int32_t priv_my(const svg_xform_t* t, int32_t sy)
 /** @brief Scale a user-space length by the user x scale and the x-axis ratio. */
 static int32_t priv_sx(const svg_xform_t* t, int32_t sw)
 {
-  const int32_t uw = (int32_t)((float)sw * t->usx);
+  const int32_t uw = (int32_t)((float)sw * t->ua);
   return (int32_t)(((int64_t)uw * (int64_t)t->bw) / (int64_t)t->vw);
 }
 
@@ -442,20 +478,23 @@ static float priv_numf(const uint8_t* s, size_t len, size_t* i)
   return v * sgn;
 }
 
-/** @brief Identity user transform (scale 1, translate 0). */
+/** @brief Identity affine (a=d=1, all else 0). */
 static svg_utf_t priv_utf_identity(void)
 {
-  svg_utf_t id = {.sx = 1.0F, .sy = 1.0F, .tx = 0.0F, .ty = 0.0F};
+  svg_utf_t id = {.a = 1.0F, .b = 0.0F, .c = 0.0F, .d = 1.0F, .e = 0.0F, .f = 0.0F};
   return id;
 }
 
-/** @brief Compose @p a (outer) over @p b (inner): a point is mapped by b then a. */
+/** @brief Compose @p a (outer) over @p b (inner): a point is mapped by b then a
+ *         (the 2x3 matrix product a*b). */
 static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
 {
-  svg_utf_t r = {.sx = a.sx * b.sx,
-                 .sy = a.sy * b.sy,
-                 .tx = (a.sx * b.tx) + a.tx,
-                 .ty = (a.sy * b.ty) + a.ty};
+  svg_utf_t r = {.a = (a.a * b.a) + (a.c * b.b),
+                 .b = (a.b * b.a) + (a.d * b.b),
+                 .c = (a.a * b.c) + (a.c * b.d),
+                 .d = (a.b * b.c) + (a.d * b.d),
+                 .e = (a.a * b.e) + (a.c * b.f) + a.e,
+                 .f = (a.b * b.e) + (a.d * b.f) + a.f};
   return r;
 }
 
@@ -470,35 +509,135 @@ static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
 }
 
 /**
- * @brief Parse one `translate`/`scale` function's args at @p v[*j] into a transform.
- *
- * @details `*j` enters just past the `(`. Reads one or two numbers; the second
- * defaults to the first for `scale` (uniform) and to 0 for `translate`.
+ * @enum svg_xf_kind_t
+ * @brief `transform=` function kinds recognised by ::priv_parse_xform.
  */
-static svg_utf_t priv_xform_func(const uint8_t* v, size_t vlen, size_t* j, bool is_sc)
+typedef enum : uint8_t {
+  k_svg_xf_none      = 0U, /**< Unrecognised function -> skipped.    */
+  k_svg_xf_translate = 1U, /**< translate(tx[,ty]).                  */
+  k_svg_xf_scale     = 2U, /**< scale(sx[,sy]).                      */
+  k_svg_xf_rotate    = 3U, /**< rotate(deg[,cx,cy]).                 */
+  k_svg_xf_skewx     = 4U, /**< skewX(deg).                         */
+  k_svg_xf_skewy     = 5U, /**< skewY(deg).                         */
+  k_svg_xf_matrix    = 6U, /**< matrix(a,b,c,d,e,f).                 */
+} svg_xf_kind_t;
+
+/** @brief Degrees -> radians for a transform angle argument. */
+static float priv_deg2rad(float deg)
 {
-  const float a1 = priv_numf(v, vlen, j);
-  while ((*j < vlen) && (priv_ws((char)v[*j]) || (v[*j] == ','))) {
-    ++(*j);
+  return deg * (s_svg_pi / s_svg_deg_half);
+}
+
+/** @brief Read up to 6 numbers from a `(...)` arg list at @p v[*j]; advance @p *j
+ *         past them; return the count read. */
+static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* args)
+{
+  int32_t na = 0;
+  /* Bounded: <= k_svg_argc_cube args; each priv_numf advances *j. */
+  while (na < (int32_t)k_svg_argc_cube) {
+    while ((*j < vlen) && (priv_ws((char)v[*j]) || (v[*j] == ','))) {
+      ++(*j);
+    }
+    if (!priv_is_num_start(v, vlen, *j)) {
+      break;
+    }
+    args[na] = priv_numf(v, vlen, j);
+    ++na;
   }
-  float a2 = 0.0F;
-  if (priv_is_num_start(v, vlen, *j)) {
-    a2 = priv_numf(v, vlen, j);
-  } else if (is_sc) {
-    a2 = a1;
+  return na;
+}
+
+/** @brief rotate(deg[,cx,cy]) about (cx,cy) (origin if absent) as a 2x3 affine. */
+static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
+{
+  const float co = cosf(priv_deg2rad(args[0]));
+  const float si = sinf(priv_deg2rad(args[0]));
+  const float cx = (na >= 3) ? args[1] : 0.0F;
+  const float cy = (na >= 3) ? args[2] : 0.0F;
+  return (svg_utf_t){.a = co,
+                     .b = si,
+                     .c = -si,
+                     .d = co,
+                     .e = (cx * (1.0F - co)) + (cy * si),
+                     .f = (cy * (1.0F - co)) - (cx * si)};
+}
+
+/** @brief Build the 2x3 affine for one parsed transform function. */
+static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t na)
+{
+  switch (kind) {
+    case k_svg_xf_translate:
+      return (svg_utf_t){.a = 1.0F,
+                         .b = 0.0F,
+                         .c = 0.0F,
+                         .d = 1.0F,
+                         .e = args[0],
+                         .f = (na >= 2) ? args[1] : 0.0F};
+    case k_svg_xf_scale:
+      return (svg_utf_t){.a = args[0],
+                         .b = 0.0F,
+                         .c = 0.0F,
+                         .d = (na >= 2) ? args[1] : args[0],
+                         .e = 0.0F,
+                         .f = 0.0F};
+    case k_svg_xf_rotate:
+      return priv_xform_rotate(args, na);
+    case k_svg_xf_skewx:
+      return (svg_utf_t){.a = 1.0F,
+                         .b = 0.0F,
+                         .c = tanf(priv_deg2rad(args[0])),
+                         .d = 1.0F,
+                         .e = 0.0F,
+                         .f = 0.0F};
+    case k_svg_xf_skewy:
+      return (svg_utf_t){.a = 1.0F,
+                         .b = tanf(priv_deg2rad(args[0])),
+                         .c = 0.0F,
+                         .d = 1.0F,
+                         .e = 0.0F,
+                         .f = 0.0F};
+    case k_svg_xf_matrix:
+      return (svg_utf_t){.a = args[0],
+                         .b = args[1],
+                         .c = args[2],
+                         .d = args[3],
+                         .e = args[4],
+                         .f = args[5]};
+    case k_svg_xf_none:
+    default:
+      return priv_utf_identity();
   }
-  if (is_sc) {
-    return (svg_utf_t){.sx = a1, .sy = a2, .tx = 0.0F, .ty = 0.0F};
+}
+
+/** @brief Identify the transform function at @p v[i] by name (case-insensitive). */
+static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
+{
+  if (priv_starts_ci(v, vlen, i, "translate(")) {
+    return k_svg_xf_translate;
   }
-  return (svg_utf_t){.sx = 1.0F, .sy = 1.0F, .tx = a1, .ty = a2};
+  if (priv_starts_ci(v, vlen, i, "scale(")) {
+    return k_svg_xf_scale;
+  }
+  if (priv_starts_ci(v, vlen, i, "rotate(")) {
+    return k_svg_xf_rotate;
+  }
+  if (priv_starts_ci(v, vlen, i, "skewx(")) {
+    return k_svg_xf_skewx;
+  }
+  if (priv_starts_ci(v, vlen, i, "skewy(")) {
+    return k_svg_xf_skewy;
+  }
+  if (priv_starts_ci(v, vlen, i, "matrix(")) {
+    return k_svg_xf_matrix;
+  }
+  return k_svg_xf_none;
 }
 
 /**
- * @brief Parse a `transform=` value into a composed scale+translate.
+ * @brief Parse a `transform=` value into a composed 2x3 affine.
  *
- * @details Recognises `translate(tx[,ty])` and `scale(sx[,sy])`, composed
- * left-to-right (leftmost is the outermost). `rotate` / `skew*` / `matrix` are
- * consumed and skipped (they cannot be axis-aligned -- a documented limitation).
+ * @details Recognises translate/scale/rotate/skewX/skewY/matrix, composed
+ * left-to-right (leftmost is the outermost). Unknown functions are skipped.
  */
 static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
 {
@@ -509,9 +648,8 @@ static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
     while ((i < vlen) && (priv_ws((char)v[i]) || (v[i] == ','))) {
       ++i;
     }
-    const bool is_tr = priv_starts_ci(v, vlen, i, "translate(");
-    const bool is_sc = priv_starts_ci(v, vlen, i, "scale(");
-    size_t     op    = i;
+    const svg_xf_kind_t kind = priv_xform_kind(v, vlen, i);
+    size_t              op   = i;
     while ((op < vlen) && (v[op] != '(')) {
       ++op;
     }
@@ -519,8 +657,10 @@ static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
       break;
     }
     size_t j = op + 1U;
-    if (is_tr || is_sc) {
-      acc = priv_utf_compose(acc, priv_xform_func(v, vlen, &j, is_sc));
+    if (kind != k_svg_xf_none) {
+      float         args[k_svg_path_args] = {};
+      const int32_t na                    = priv_xform_read(v, vlen, &j, args);
+      acc                                 = priv_utf_compose(acc, priv_xform_build(kind, args, na));
     }
     while ((j < vlen) && (v[j] != ')')) {
       ++j;
@@ -538,15 +678,24 @@ static void priv_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
   if (!priv_attr(tag, tlen, "transform", &off, &vl)) {
     return;
   }
-  svg_utf_t       cur = {.sx = t->usx, .sy = t->usy, .tx = t->utx, .ty = t->uty};
+  const svg_utf_t cur = {.a = t->ua, .b = t->ub, .c = t->uc, .d = t->ud, .e = t->ue, .f = t->uf};
   const svg_utf_t out = priv_utf_compose(cur, priv_parse_xform(&tag[off], vl));
-  t->usx              = out.sx;
-  t->usy              = out.sy;
-  t->utx              = out.tx;
-  t->uty              = out.ty;
+  t->ua               = out.a;
+  t->ub               = out.b;
+  t->uc               = out.c;
+  t->ud               = out.d;
+  t->ue               = out.e;
+  t->uf               = out.f;
 }
 
-/** @brief Draw one `<rect>` (span @p s[0..len)) with its fill. */
+/** @brief Even-odd scanline fill (forward decl; defined in the polygon section). */
+static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color);
+
+/** @brief Draw one `<rect>` (span @p s[0..len)) with its fill.
+ *
+ * @details Axis-aligned solid rects keep the exact `ra_gfx_rect` fast-path;
+ * under a rotating/shearing transform the 4 corners are mapped through the full
+ * affine and the polygon is scanline-filled. */
 static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
@@ -557,10 +706,24 @@ static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
   const int32_t ry = priv_attr_num(s, len, "y", 0);
   const int32_t rw = priv_attr_num(s, len, "width", 0);
   const int32_t rh = priv_attr_num(s, len, "height", 0);
-  (void)ra_gfx_rect(priv_mx(t, rx), priv_my(t, ry), priv_sx(t, rw), priv_sx(t, rh), fill, true);
+  if (!priv_has_rot(t)) {
+    (void)ra_gfx_rect(priv_mx(t, rx), priv_my(t, ry), priv_sx(t, rw), priv_sx(t, rh), fill, true);
+    return;
+  }
+  int32_t xs[k_svg_rect_pts] = {};
+  int32_t ys[k_svg_rect_pts] = {};
+  priv_map_point(t, rx, ry, &xs[0], &ys[0]);
+  priv_map_point(t, rx + rw, ry, &xs[1], &ys[1]);
+  priv_map_point(t, rx + rw, ry + rh, &xs[2], &ys[2]);
+  priv_map_point(t, rx, ry + rh, &xs[3], &ys[3]);
+  priv_fill_poly(xs, ys, (int32_t)k_svg_rect_pts, fill);
 }
 
-/** @brief Draw one `<circle>` (span @p s[0..len)) with its fill. */
+/** @brief Draw one `<circle>` (span @p s[0..len)) with its fill.
+ *
+ * @details Axis-aligned solid circles keep the exact `ra_gfx_circle` fast-path;
+ * under a rotating/shearing transform the circle is approximated by an N-gon
+ * whose vertices are mapped through the full affine, then scanline-filled. */
 static void priv_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
@@ -570,7 +733,22 @@ static void priv_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
   const int32_t cx = priv_attr_num(s, len, "cx", 0);
   const int32_t cy = priv_attr_num(s, len, "cy", 0);
   const int32_t r  = priv_attr_num(s, len, "r", 0);
-  (void)ra_gfx_circle(priv_mx(t, cx), priv_my(t, cy), priv_sx(t, r), fill, true);
+  if (!priv_has_rot(t)) {
+    (void)ra_gfx_circle(priv_mx(t, cx), priv_my(t, cy), priv_sx(t, r), fill, true);
+    return;
+  }
+  int32_t xs[k_svg_circle_seg] = {};
+  int32_t ys[k_svg_circle_seg] = {};
+  /* Bounded: k_svg_circle_seg vertices around the circle. */
+  for (int32_t k = 0; k < (int32_t)k_svg_circle_seg; ++k) {
+    const float ang = (s_svg_2pi * (float)k) / (float)k_svg_circle_seg;
+    priv_map_point(t,
+                   cx + (int32_t)((float)r * cosf(ang)),
+                   cy + (int32_t)((float)r * sinf(ang)),
+                   &xs[k],
+                   &ys[k]);
+  }
+  priv_fill_poly(xs, ys, (int32_t)k_svg_circle_seg, fill);
 }
 
 /** @brief Draw one `<line>` (span @p s[0..len)) with its stroke. */
@@ -580,11 +758,17 @@ static void priv_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
   if (stroke == (uint32_t)k_svg_no_paint) {
     return;
   }
-  const int32_t x1 = priv_attr_num(s, len, "x1", 0);
-  const int32_t y1 = priv_attr_num(s, len, "y1", 0);
-  const int32_t x2 = priv_attr_num(s, len, "x2", 0);
-  const int32_t y2 = priv_attr_num(s, len, "y2", 0);
-  (void)ra_gfx_line(priv_mx(t, x1), priv_my(t, y1), priv_mx(t, x2), priv_my(t, y2), stroke);
+  const int32_t x1  = priv_attr_num(s, len, "x1", 0);
+  const int32_t y1  = priv_attr_num(s, len, "y1", 0);
+  const int32_t x2  = priv_attr_num(s, len, "x2", 0);
+  const int32_t y2  = priv_attr_num(s, len, "y2", 0);
+  int32_t       fx1 = 0;
+  int32_t       fy1 = 0;
+  int32_t       fx2 = 0;
+  int32_t       fy2 = 0;
+  priv_map_point(t, x1, y1, &fx1, &fy1);
+  priv_map_point(t, x2, y2, &fx2, &fy2);
+  (void)ra_gfx_line(fx1, fy1, fx2, fy2, stroke);
 }
 
 /* ===========================================================================
@@ -608,8 +792,7 @@ priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* 
     }
     const int32_t ux = priv_num(v, vlen, &k);
     const int32_t uy = priv_num(v, vlen, &k);
-    xs[n]            = priv_mx(t, ux);
-    ys[n]            = priv_my(t, uy);
+    priv_map_point(t, ux, uy, &xs[n], &ys[n]);
     ++n;
   }
   return n;
@@ -777,8 +960,7 @@ static void priv_flatten_cubic(const svg_xform_t* t,
     const float tt = (float)j / (float)k_svg_curve_seg;
     const float bx = priv_bezier1(tt, (float)p0.x, (float)p1.x, (float)p2.x, (float)p3.x);
     const float by = priv_bezier1(tt, (float)p0.y, (float)p1.y, (float)p2.y, (float)p3.y);
-    xs[*n]         = priv_mx(t, (int32_t)bx);
-    ys[*n]         = priv_my(t, (int32_t)by);
+    priv_map_point(t, (int32_t)bx, (int32_t)by, &xs[*n], &ys[*n]);
     ++(*n);
   }
 }
@@ -825,8 +1007,7 @@ static void priv_flatten_quad(const svg_xform_t* t,
     const float tt = (float)j / (float)k_svg_curve_seg;
     const float bx = priv_bezier_q1(tt, (float)p0.x, (float)p1.x, (float)p2.x);
     const float by = priv_bezier_q1(tt, (float)p0.y, (float)p1.y, (float)p2.y);
-    xs[*n]         = priv_mx(t, (int32_t)bx);
-    ys[*n]         = priv_my(t, (int32_t)by);
+    priv_map_point(t, (int32_t)bx, (int32_t)by, &xs[*n], &ys[*n]);
     ++(*n);
   }
 }
@@ -1045,8 +1226,7 @@ static void priv_flatten_arc(const svg_xform_t* t,
                                       args[k_svg_arc_sweep] != 0);
   if (!a.ok) {
     if (*n < (int32_t)k_svg_poly_max) {
-      xs[*n] = priv_mx(t, p_end.x);
-      ys[*n] = priv_my(t, p_end.y);
+      priv_map_point(t, p_end.x, p_end.y, &xs[*n], &ys[*n]);
       ++(*n);
     }
     return;
@@ -1059,8 +1239,7 @@ static void priv_flatten_arc(const svg_xform_t* t,
     const float ey = a.ry * sinf(th);
     const float px = a.cx + (a.cos_phi * ex) - (a.sin_phi * ey);
     const float py = a.cy + (a.sin_phi * ex) + (a.cos_phi * ey);
-    xs[*n]         = priv_mx(t, (int32_t)px);
-    ys[*n]         = priv_my(t, (int32_t)py);
+    priv_map_point(t, (int32_t)px, (int32_t)py, &xs[*n], &ys[*n]);
     ++(*n);
   }
 }
@@ -1172,8 +1351,7 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
       n = cn; /* C/S/Q/T flattened into segments */
     } else {
       priv_path_step(u, rel, args, na, &st.cx, &st.cy);
-      xs[n] = priv_mx(t, st.cx);
-      ys[n] = priv_my(t, st.cy);
+      priv_map_point(t, st.cx, st.cy, &xs[n], &ys[n]);
       ++n;
       st.kind = 0; /* a non-curve breaks the smooth-reflection chain */
     }
@@ -1306,11 +1484,13 @@ priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const
 /** @brief Apply group transform @p g (over the base @p t) into @p out. */
 static void priv_xform_with_group(const svg_xform_t* t, svg_utf_t g, svg_xform_t* out)
 {
-  *out     = *t;
-  out->usx = g.sx;
-  out->usy = g.sy;
-  out->utx = g.tx;
-  out->uty = g.ty;
+  *out    = *t;
+  out->ua = g.a;
+  out->ub = g.b;
+  out->uc = g.c;
+  out->ud = g.d;
+  out->ue = g.e;
+  out->uf = g.f;
 }
 
 /**
@@ -1333,7 +1513,8 @@ static int32_t priv_group_open(const uint8_t*     s,
   if (self_close || (gsp >= (int32_t)k_svg_g_depth_max)) {
     return gsp;
   }
-  gstk[gsp + 1] = (svg_utf_t){.sx = gt.usx, .sy = gt.usy, .tx = gt.utx, .ty = gt.uty};
+  gstk[gsp + 1] =
+    (svg_utf_t){.a = gt.ua, .b = gt.ub, .c = gt.uc, .d = gt.ud, .e = gt.ue, .f = gt.uf};
   return gsp + 1;
 }
 
@@ -1348,8 +1529,8 @@ static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   svg_utf_t gstk[k_svg_g_depth_max + 1U];
   int32_t   gsp = 0;
-  gstk[0]       = (svg_utf_t){.sx = t->usx, .sy = t->usy, .tx = t->utx, .ty = t->uty};
-  size_t i      = 0U;
+  gstk[0]  = (svg_utf_t){.a = t->ua, .b = t->ub, .c = t->uc, .d = t->ud, .e = t->ue, .f = t->uf};
+  size_t i = 0U;
   /* Bounded: each iteration advances past one '<...>' element or breaks at EOF. */
   while (i < len) {
     while ((i < len) && (s[i] != '<')) {
@@ -1463,8 +1644,16 @@ ra_err_t ra_svg_render(const uint8_t* svg, size_t len, int32_t x, int32_t y, int
   if ((w <= 0) || (h <= 0)) {
     return k_ra_err_invalid_arg;
   }
-  svg_xform_t t =
-    {.bx = x, .by = y, .bw = w, .bh = h, .usx = 1.0F, .usy = 1.0F, .utx = 0.0F, .uty = 0.0F};
+  svg_xform_t t = {.bx = x,
+                   .by = y,
+                   .bw = w,
+                   .bh = h,
+                   .ua = 1.0F,
+                   .ub = 0.0F,
+                   .uc = 0.0F,
+                   .ud = 1.0F,
+                   .ue = 0.0F,
+                   .uf = 0.0F};
   priv_read_viewbox(svg, len, &t);
   priv_draw_shapes(svg, len, &t);
   return k_ra_ok;
