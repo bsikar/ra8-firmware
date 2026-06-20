@@ -325,14 +325,42 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
 /* J-Link probes                                                              */
 /* -------------------------------------------------------------------------- */
 
+/** @brief J-Link debug-probe "not yet written" sentinel. */
+typedef enum : uint32_t {
+  k_blc_dbg_unset = 0xFFFFFFFFU, /**< Probe word value before main writes it. */
+} blc_dbg_t;
+
 /** @brief Boot decision outcome (::ra_dfu_action_t), J-Link-readable. */
-static volatile uint32_t s_dbg_action = 0xFFFFFFFFU;
+static volatile uint32_t s_dbg_action = k_blc_dbg_unset;
 /** @brief Slot the DFU path targets (::ra_dfu_slot_t), J-Link-readable. */
-static volatile uint32_t s_dbg_target = 0xFFFFFFFFU;
+static volatile uint32_t s_dbg_target = k_blc_dbg_unset;
 /** @brief Device worker progress: 4 = DFU class attached. */
 static volatile uint32_t s_dbg_dev_step;
 /** @brief Device bring-up error (0 = none). */
 static volatile uint32_t s_dbg_dev_err;
+
+/**
+ * @var g_blc_dfu_tick
+ * @brief HIL liveness counter -- advanced once per DFU device service step.
+ *
+ * @details
+ * Flashed standalone (the HIL scenario), neither application slot is valid, so
+ * ::blc_decide deterministically returns ::k_ra_dfu_action_dfu and control ends
+ * up in ::blc_device_worker's service loop. This counter is incremented on every
+ * pass of that loop, so a J-Link double-halt mem32 read (scripts/
+ * hil_jlink_memprobe.sh, HIL_MODE=jlink_memprobe) sees it advance and proves the
+ * bootloader booted, decided "no bootable slot", and brought the USBX DFU device
+ * up -- not merely that the chip is alive with PC in MRAM. A copy-to-run jump to
+ * a valid slot would leave this counter frozen (PC moves to the SRAM run window);
+ * the dfu_copy_to_run app gates that path instead.
+ *
+ * Global (non-static) and `volatile` so the symbol stays linker-visible for nm
+ * and the increment is not optimized away.
+ *
+ * @note Read externally by J-Link only; firmware never reads it back.
+ * @since 0.1.0
+ */
+volatile uint32_t g_blc_dfu_tick = 0U;
 
 /* -------------------------------------------------------------------------- */
 /* Console helpers (SCI8 -> J-Link OB CDC)                                     */
@@ -566,6 +594,7 @@ static VOID blc_device_worker(ULONG arg)
    * blc_system_reset() once an image commits (that call does not return). */
   while (1) {
     (void)ra_dfu_device_worker_step();
+    g_blc_dfu_tick += 1U; /* HIL liveness: proves the DFU service loop iterates */
     if (ra_dfu_device_committed() && (ra_dfu_device_last_error() == k_ra_ok)) {
       (void)blc_print("dfu-bootloader: image committed -- resetting into new slot\r\n");
       blc_system_reset();
