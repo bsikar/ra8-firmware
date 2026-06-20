@@ -41,9 +41,12 @@ bugs (tracked in the issue tracker):
 1. **Large EPUBs fail to open** -- the static miniz arena is 96 KiB
    (`k_ra_epub_miniz_pool_bytes`); a 7 MB archive's central-directory /
    decompressor allocations exceed it -> `k_ra_err_no_mem`.
-2. **NCX TOC parses zero entries** -- a valid `OEBPS/toc.ncx` with 77
-   `<navPoint>`s yields `toc_count = 0` (the NCX is detected, `toc_kind = 1`,
-   but the nav entries are not extracted).
+2. **NCX TOC parses zero entries** -- **FIXED**. A valid `OEBPS/toc.ncx`
+   with 77 `<navPoint>`s yielded `toc_count = 0`: the shared OPF/NCX scratch
+   buffer was 16 KiB but the NCX is ~17.6 KiB, so its extraction failed
+   `no_mem` and `priv_load_toc` silently dropped the TOC. Bumped the static
+   buffer to 48 KiB (`k_ra_epub_opf_xml_buf`); the book now parses
+   `toc_count = 64` (capped at `k_ra_epub_max_toc`).
 3. Cover resolution is **correct** (returns empty only when the OPF truly
    declares no cover) -- still untested on a real cover-bearing EPUB
    (the 7 MB book that has one does not open yet, per #1).
