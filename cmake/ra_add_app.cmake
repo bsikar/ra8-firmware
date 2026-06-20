@@ -186,6 +186,27 @@ macro(ra_add_app)
             ${RA_REPO_ROOT}/libs/ra_reflow/src)
     endif()
 
+    # ra_epub parses .epub (ZIP container + XML) through the vendored miniz (C)
+    # and tinyxml2 (C++). Its first-party .c sources are globbed by the LIBS loop
+    # above, but the C-callable XML shim is C++ (ra_epub_xml_shim.cpp) and the two
+    # third_party TUs live outside libs/ra_epub/src. Wire them when an app pulls in
+    # ra_epub, mirroring the ra_reflow/stb special-case above. tinyxml2's MemPoolT
+    # is redirected to a static arena inside the shim, and miniz's malloc to the
+    # ra_epub_miniz_alloc static pool (both NASA Rule 3 deviations).
+    set(_ra_epub_cpp "")
+    set(_ra_epub_vendor "")
+    if("ra_epub" IN_LIST _RA_APP_LIBS)
+        file(GLOB_RECURSE _ra_epub_cpp CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.cpp)
+        set(_ra_epub_vendor
+            ${RA_REPO_ROOT}/libs/third_party/miniz/miniz.c
+            ${RA_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp)
+        list(APPEND _ra_lib_extra ${_ra_epub_cpp} ${_ra_epub_vendor})
+        list(APPEND _ra_lib_inc
+            ${RA_REPO_ROOT}/libs/third_party/miniz
+            ${RA_REPO_ROOT}/libs/third_party/tinyxml2
+            ${RA_REPO_ROOT}/libs/ra_epub/src)
+    endif()
+
     set(_ra_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
     set(_ra_elf ${_RA_APP_NAME}.elf)
 
@@ -218,6 +239,19 @@ macro(ra_add_app)
     # The STBI_* allocator macros are defined inside stb_image_impl.c itself.
     if(_ra_stb_img_impl)
         set_property(SOURCE ${_ra_stb_img_impl} APPEND PROPERTY COMPILE_OPTIONS -w)
+    endif()
+
+    # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
+    # set; disable warnings for those two TUs only (the first-party ra_epub .c /
+    # .cpp shim still go through the full warning set). MINIZ_NO_STDIO/NO_TIME
+    # must be set for EVERY TU that includes miniz.h (the vendored miniz.c *and*
+    # ra_epub's TUs) so the header ABI matches -- miniz.c references utime()/
+    # fopen() (absent on bare-metal newlib) only under the default config, and a
+    # mismatched config between miniz.c and ra_epub corrupts the reader. ra_epub
+    # uses only the in-memory reader, so the file path is never needed.
+    if(_ra_epub_vendor)
+        set_property(SOURCE ${_ra_epub_vendor} APPEND PROPERTY COMPILE_OPTIONS -w)
+        target_compile_definitions(${_ra_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME)
     endif()
 
     ra_target_enable_project_warnings(${_ra_elf} STACK_USAGE_BYTES ${_RA_APP_STACK_BYTES})
