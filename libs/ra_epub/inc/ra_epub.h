@@ -561,6 +561,46 @@ ra_epub_get_toc_entry(const ra_epub_book_t* book, uint16_t idx, ra_epub_toc_entr
 ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len);
 
 /**
+ * @brief Copy the raw bytes of an arbitrary archive resource into the caller's
+ *        buffer (#140 external stylesheets, and any href-referenced resource).
+ *
+ * @details
+ * Generic by-path extraction from the open ZIP -- the same path the cover,
+ * embedded fonts, and chapters use. @p path is resolved relative to the OPF
+ * directory (`book->opf_dir`), with a fall-back to @p path taken as an
+ * archive-rooted path; so `"style.css"`, `"css/main.css"`, and a bare
+ * `"OEBPS/style.css"` all resolve. The bytes are returned exactly as stored
+ * (decompressed); the caller owns @p out_buf and interprets them (e.g. CSS text
+ * fed to `ra_css_parse()` via a `ra_reflow` css-loader).
+ *
+ * @param[in]  book    Open book (`in_use == 1`, archive active).
+ * @param[in]  path    Resource path, OPF-dir-relative or archive-rooted, NUL-terminated.
+ * @param[out] out_buf Destination buffer.
+ * @param[in]  max_len Capacity of @p out_buf, bytes.
+ * @param[out] got_len Bytes actually written.
+ *
+ * @retval k_ra_ok                  Resource copied.
+ * @retval k_ra_err_null_ptr        Any pointer NULL.
+ * @retval k_ra_err_not_initialized Book not open / archive inactive.
+ * @retval k_ra_err_invalid_size    `max_len == 0`.
+ * @retval k_ra_err_not_found       No entry at @p path (prefixed or bare).
+ * @retval k_ra_err_no_mem          Resource does not fit in @p max_len.
+ *
+ * @pre `book->in_use == 1` and the archive is active.
+ * @pre @p path, @p out_buf, @p got_len are non-NULL; @p max_len > 0.
+ * @post On success `*got_len` bytes are written to @p out_buf.
+ * @post On any error `*got_len == 0`.
+ * @note Not thread-safe; single-threaded reader context.
+ * @see ra_epub_get_cover_image(), ra_epub_get_embedded_font()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_get_resource(ra_epub_book_t* book,
+                                            const char*     path,
+                                            uint8_t*        out_buf,
+                                            size_t          max_len,
+                                            size_t*         got_len);
+
+/**
  * @brief Count the fonts the EPUB ships in its OPF manifest (#109).
  *
  * @details

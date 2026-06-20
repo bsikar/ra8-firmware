@@ -42,6 +42,7 @@
 #include "miniz.h"
 #include "ra_epub.h"
 #include "ra_err.h"
+#include "ra_reflow.h"
 #include "unity_minimal.h"
 
 /* --------------------------------------------------------------------- */
@@ -118,23 +119,26 @@ static const char* const k_synth_nav =
   "  <li><a href=\"appendix.xhtml\">Appendix</a></li>\n"
   "</ol></nav></body></html>\n";
 
-static const uint8_t k_synth_cover_bytes[]                       = {0x89U, 0x50U, 0x4EU, 0x47U};
-static const uint8_t k_synth_font_bytes[k_test_synth_font_bytes] = {0xDEU,
-                                                                    0xADU,
-                                                                    0xBEU,
-                                                                    0xEFU,
-                                                                    0xCAU,
-                                                                    0xFEU,
-                                                                    0xBAU,
-                                                                    0xBEU,
-                                                                    0x12U,
-                                                                    0x34U,
-                                                                    0x56U,
-                                                                    0x78U,
-                                                                    0x9AU,
-                                                                    0xBCU,
-                                                                    0xDEU,
-                                                                    0xF0U};
+static const uint8_t k_synth_cover_bytes[] = {0x89U, 0x50U, 0x4EU, 0x47U};
+
+/** @brief External stylesheet body (#140) -- a distinctive class rule. */
+static const char* const k_synth_css = ".lead { color: #C00000; }\n";
+static const uint8_t     k_synth_font_bytes[k_test_synth_font_bytes] = {0xDEU,
+                                                                        0xADU,
+                                                                        0xBEU,
+                                                                        0xEFU,
+                                                                        0xCAU,
+                                                                        0xFEU,
+                                                                        0xBAU,
+                                                                        0xBEU,
+                                                                        0x12U,
+                                                                        0x34U,
+                                                                        0x56U,
+                                                                        0x78U,
+                                                                        0x9AU,
+                                                                        0xBCU,
+                                                                        0xDEU,
+                                                                        0xF0U};
 
 /* --------------------------------------------------------------------- */
 /* Build the synthetic EPUB once into a static buffer.                   */
@@ -211,6 +215,13 @@ static void build_synth_epub(void)
                              k_synth_cover_bytes,
                              sizeof(k_synth_cover_bytes),
                              MZ_NO_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(&zip,
+                             "OEBPS/style.css",
+                             k_synth_css,
+                             strlen(k_synth_css),
+                             MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   void*  heap_buf  = nullptr;
@@ -961,6 +972,97 @@ static void test_mcdc_priv_join_path_dst_or(void)
 
 /* --------------------------------------------------------------------- */
 
+/** @brief Sizing for the external-stylesheet consumer test (#140). */
+enum : size_t {
+  k_test_css_buf_bytes = 256U, /**< Scratch for an extracted .css resource. */
+};
+
+/** @brief Static scratch the demonstration css-loader hands back to the engine. */
+static uint8_t s_css_scratch[k_test_css_buf_bytes];
+
+/**
+ * @brief Demonstration `ra_reflow_css_loader_fn`: the #140 consumer glue.
+ *
+ * @details Extracts a chapter's `<link href>` stylesheet bytes from the open
+ * EPUB via ::ra_epub_get_resource. An app wires this once with
+ * `ra_reflow_set_css_loader(engine, epub_css_loader, &book)`; the engine then
+ * pulls + parses each external sheet in document order while tokenizing.
+ *
+ * @param[in]  ctx       The open `ra_epub_book_t*`.
+ * @param[in]  href      Stylesheet href (not NUL-terminated).
+ * @param[in]  href_len  Length of @p href.
+ * @param[out] out_bytes Receives the CSS bytes (static scratch; read-only).
+ * @param[out] out_len   Receives the CSS length.
+ * @return k_ra_ok on success; any error => the engine skips the sheet.
+ */
+static ra_err_t epub_css_loader(void*           ctx,
+                                const char*     href,
+                                uint32_t        href_len,
+                                const uint8_t** out_bytes,
+                                size_t*         out_len)
+{
+  ra_epub_book_t* book = (ra_epub_book_t*)ctx;
+  char            path[k_ra_epub_max_path_len];
+  if (((size_t)href_len + 1U) > sizeof(path)) {
+    return k_ra_err_invalid_size;
+  }
+  memcpy(path, href, (size_t)href_len);
+  path[href_len]     = '\0';
+  size_t         got = 0U;
+  const ra_err_t err = ra_epub_get_resource(book, path, s_css_scratch, sizeof(s_css_scratch), &got);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  *out_bytes = s_css_scratch;
+  *out_len   = got;
+  return k_ra_ok;
+}
+
+/**
+ * @test test_get_resource
+ * @brief `ra_epub_get_resource` extracts an arbitrary archive entry, and the
+ *        #140 css-loader glue returns a chapter's external stylesheet (#140).
+ *
+ * @par MC/DC:
+ * No compound decision in the test itself; the loader's
+ * `href_len+1 > sizeof(path)` guard is the only branch and is covered by the
+ * normal (short href) path plus `ra_epub_get_resource`'s own guards.
+ */
+static void test_get_resource(void)
+{
+  TEST_BEGIN("ra_epub get_resource + the #140 external-stylesheet css-loader");
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
+
+  uint8_t buf[k_test_css_buf_bytes];
+  size_t  got = 0U;
+  /* OPF-dir-relative resolution: "style.css" -> "OEBPS/style.css". */
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_resource(&book, "style.css", buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(strlen(k_synth_css), got);
+  TEST_ASSERT(memcmp(buf, k_synth_css, got) == 0);
+  /* Archive-rooted fallback resolves too. */
+  got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_resource(&book, "OEBPS/style.css", buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(strlen(k_synth_css), got);
+  /* Missing entry -> not_found; too-small buffer -> no_mem; nulls rejected. */
+  TEST_ASSERT_EQ(k_ra_err_not_found,
+                 ra_epub_get_resource(&book, "nope.css", buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_epub_get_resource(&book, "style.css", buf, 1U, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_resource(nullptr, "style.css", buf, sizeof(buf), &got));
+
+  /* The consumer glue returns the external sheet bytes for a `<link href>`. */
+  const uint8_t* css     = nullptr;
+  size_t         css_len = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, epub_css_loader(&book, "style.css", 9U, &css, &css_len));
+  TEST_ASSERT_EQ(strlen(k_synth_css), css_len);
+  TEST_ASSERT(memcmp(css, k_synth_css, css_len) == 0);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+  TEST_END("ra_epub get_resource + the #140 external-stylesheet css-loader");
+}
+
 int main(void)
 {
   build_synth_epub();
@@ -971,6 +1073,7 @@ int main(void)
   test_toc_to_chapter();
   test_get_metadata();
   test_get_cover_image();
+  test_get_resource();
   test_render_glyph_paths();
   test_null_arg_guards();
   test_open_invalid_zip();
