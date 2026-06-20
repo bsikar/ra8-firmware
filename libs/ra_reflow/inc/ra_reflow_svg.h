@@ -12,14 +12,16 @@
  *      ra_img_decode_blit path (no new decoder needed).
  *   2. **Simple in-content vector graphics** -- `<rect>`, `<circle>`, `<line>`,
  *      `<polygon>` (scanline-filled), `<polyline>` (stroked), and `<path>`
- *      (filled; M/L/H/V/Z exact, cubic `C` flattened to line segments, the
- *      remaining curves S/Q/T/A approximated by their endpoint chords), with
- *      solid `fill` / `stroke`. ::ra_svg_render maps them from the SVG `viewBox`
- *      (or width/height) into a caller box and draws them through the bound
- *      ra_gfx framebuffer.
+ *      (filled; M/L/H/V/Z exact, the C/S/Q/T Bezier curves and the A elliptical
+ *      arc flattened to line segments), with solid `fill` / `stroke`. A
+ *      `transform=` of `translate` / `scale` -- on a shape or a `<g>` group
+ *      (nested, bounded depth) -- repositions and resizes the result.
+ *      ::ra_svg_render maps them from the SVG `viewBox` (or width/height) into a
+ *      caller box and draws them through the bound ra_gfx framebuffer.
  *
- * Out of scope (documented limitations, tracked as follow-ups): flattening the
- * S/Q/T/A path curves, gradients, transforms, opacity, CSS styling, stroke
+ * Out of scope (documented limitations, tracked as follow-ups): gradient fills,
+ * the `rotate` / `skew` / `matrix` transforms (they break the axis-aligned
+ * primitive path and are parsed-and-skipped), opacity, CSS styling, stroke
  * width, and fractional coordinates (truncated to integers).
  *
  * The parser is pure string scanning over the caller's byte buffer (no DOM, no

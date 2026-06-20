@@ -57,6 +57,7 @@ typedef enum : uint32_t {
   k_svg_arc_ex      = 5U,          /**< `A` arg index: endpoint X.        */
   k_svg_arc_ey      = 6U,          /**< `A` arg index: endpoint Y.        */
   k_svg_arc_seg_max = 24U,         /**< Max segments per arc flatten.     */
+  k_svg_g_depth_max = 8U,          /**< Max nested `<g>` transform depth. */
 } priv_svg_consts_t;
 
 /** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
@@ -84,6 +85,22 @@ typedef struct {
 } svg_pt_t;
 
 /**
+ * @struct svg_utf_t
+ * @brief A user `transform=` reduced to per-axis scale + translate.
+ *
+ * @details The supported subset (`translate`, `scale`) is closed under
+ * composition as `(scale, translate)` per axis, so a transform list and nested
+ * `<g>` groups collapse to one of these. `rotate` / `skew` / `matrix` are not
+ * representable here and are skipped (see ::priv_parse_xform).
+ */
+typedef struct {
+  float sx; /**< X scale.     */
+  float sy; /**< Y scale.     */
+  float tx; /**< X translate. */
+  float ty; /**< Y translate. */
+} svg_utf_t;
+
+/**
  * @struct svg_xform_t
  * @brief SVG-user-space -> framebuffer-box coordinate transform.
  */
@@ -96,6 +113,14 @@ typedef struct {
   int32_t vy; /**< viewBox min-y.   */
   int32_t vw; /**< viewBox width.   */
   int32_t vh; /**< viewBox height.  */
+  /* User-space `transform=` (translate + scale), applied to a point BEFORE the
+   * viewBox->box map. Identity (sx/sy = 1, tx/ty = 0) reproduces the untransformed
+   * render byte-for-byte. Rotate / skew / matrix are out of scope (they break the
+   * axis-aligned primitive path) -- they are parsed and skipped. */
+  float usx; /**< User x scale (1 = identity).  */
+  float usy; /**< User y scale (1 = identity).  */
+  float utx; /**< User x translate (user units).*/
+  float uty; /**< User y translate (user units).*/
 } svg_xform_t;
 
 /* ===========================================================================
@@ -356,22 +381,169 @@ static uint32_t priv_attr_paint(const uint8_t* s, size_t len, const char* name, 
  * ===========================================================================
  */
 
-/** @brief Map a user-space x to a framebuffer x. */
+/** @brief Apply the user `transform=` scale+translate to a user-space x. */
+static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
+{
+  return (int32_t)(((float)sx * t->usx) + t->utx);
+}
+
+/** @brief Apply the user `transform=` scale+translate to a user-space y. */
+static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
+{
+  return (int32_t)(((float)sy * t->usy) + t->uty);
+}
+
+/** @brief Map a user-space x to a framebuffer x (user transform, then viewBox). */
 static int32_t priv_mx(const svg_xform_t* t, int32_t sx)
 {
-  return t->bx + (int32_t)(((int64_t)(sx - t->vx) * (int64_t)t->bw) / (int64_t)t->vw);
+  const int32_t ux = priv_ux(t, sx);
+  return t->bx + (int32_t)(((int64_t)(ux - t->vx) * (int64_t)t->bw) / (int64_t)t->vw);
 }
 
-/** @brief Map a user-space y to a framebuffer y. */
+/** @brief Map a user-space y to a framebuffer y (user transform, then viewBox). */
 static int32_t priv_my(const svg_xform_t* t, int32_t sy)
 {
-  return t->by + (int32_t)(((int64_t)(sy - t->vy) * (int64_t)t->bh) / (int64_t)t->vh);
+  const int32_t uy = priv_uy(t, sy);
+  return t->by + (int32_t)(((int64_t)(uy - t->vy) * (int64_t)t->bh) / (int64_t)t->vh);
 }
 
-/** @brief Scale a user-space length by the x-axis ratio. */
+/** @brief Scale a user-space length by the user x scale and the x-axis ratio. */
 static int32_t priv_sx(const svg_xform_t* t, int32_t sw)
 {
-  return (int32_t)(((int64_t)sw * (int64_t)t->bw) / (int64_t)t->vw);
+  const int32_t uw = (int32_t)((float)sw * t->usx);
+  return (int32_t)(((int64_t)uw * (int64_t)t->bw) / (int64_t)t->vw);
+}
+
+/** @brief Parse one SVG number including its fraction as a float; skips separators. */
+static float priv_numf(const uint8_t* s, size_t len, size_t* i)
+{
+  while ((*i < len) && (priv_ws((char)s[*i]) || (s[*i] == ','))) {
+    ++(*i);
+  }
+  float sgn = 1.0F;
+  if ((*i < len) && ((s[*i] == '-') || (s[*i] == '+'))) {
+    sgn = (s[*i] == '-') ? -1.0F : 1.0F;
+    ++(*i);
+  }
+  float v = 0.0F;
+  while ((*i < len) && (s[*i] >= '0') && (s[*i] <= '9')) {
+    v = (v * (float)k_svg_dec) + (float)(s[*i] - '0');
+    ++(*i);
+  }
+  if ((*i < len) && (s[*i] == '.')) {
+    ++(*i);
+    float frac = 1.0F;
+    while ((*i < len) && (s[*i] >= '0') && (s[*i] <= '9')) {
+      frac /= (float)k_svg_dec;
+      v += frac * (float)(s[*i] - '0');
+      ++(*i);
+    }
+  }
+  return v * sgn;
+}
+
+/** @brief Identity user transform (scale 1, translate 0). */
+static svg_utf_t priv_utf_identity(void)
+{
+  svg_utf_t id = {.sx = 1.0F, .sy = 1.0F, .tx = 0.0F, .ty = 0.0F};
+  return id;
+}
+
+/** @brief Compose @p a (outer) over @p b (inner): a point is mapped by b then a. */
+static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
+{
+  svg_utf_t r = {.sx = a.sx * b.sx,
+                 .sy = a.sy * b.sy,
+                 .tx = (a.sx * b.tx) + a.tx,
+                 .ty = (a.sy * b.ty) + a.ty};
+  return r;
+}
+
+/** @brief True iff @p s[at] starts a number (sign / digit / dot). */
+static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
+{
+  if (at >= len) {
+    return false;
+  }
+  const char c = (char)s[at];
+  return ((c >= '0') && (c <= '9')) || (c == '-') || (c == '+') || (c == '.');
+}
+
+/**
+ * @brief Parse one `translate`/`scale` function's args at @p v[*j] into a transform.
+ *
+ * @details `*j` enters just past the `(`. Reads one or two numbers; the second
+ * defaults to the first for `scale` (uniform) and to 0 for `translate`.
+ */
+static svg_utf_t priv_xform_func(const uint8_t* v, size_t vlen, size_t* j, bool is_sc)
+{
+  const float a1 = priv_numf(v, vlen, j);
+  while ((*j < vlen) && (priv_ws((char)v[*j]) || (v[*j] == ','))) {
+    ++(*j);
+  }
+  float a2 = 0.0F;
+  if (priv_is_num_start(v, vlen, *j)) {
+    a2 = priv_numf(v, vlen, j);
+  } else if (is_sc) {
+    a2 = a1;
+  }
+  if (is_sc) {
+    return (svg_utf_t){.sx = a1, .sy = a2, .tx = 0.0F, .ty = 0.0F};
+  }
+  return (svg_utf_t){.sx = 1.0F, .sy = 1.0F, .tx = a1, .ty = a2};
+}
+
+/**
+ * @brief Parse a `transform=` value into a composed scale+translate.
+ *
+ * @details Recognises `translate(tx[,ty])` and `scale(sx[,sy])`, composed
+ * left-to-right (leftmost is the outermost). `rotate` / `skew*` / `matrix` are
+ * consumed and skipped (they cannot be axis-aligned -- a documented limitation).
+ */
+static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
+{
+  svg_utf_t acc = priv_utf_identity();
+  size_t    i   = 0U;
+  /* Bounded: each pass consumes one `name(...)` group or breaks; <= vlen steps. */
+  while (i < vlen) {
+    while ((i < vlen) && (priv_ws((char)v[i]) || (v[i] == ','))) {
+      ++i;
+    }
+    const bool is_tr = priv_starts_ci(v, vlen, i, "translate(");
+    const bool is_sc = priv_starts_ci(v, vlen, i, "scale(");
+    size_t     op    = i;
+    while ((op < vlen) && (v[op] != '(')) {
+      ++op;
+    }
+    if (op >= vlen) {
+      break;
+    }
+    size_t j = op + 1U;
+    if (is_tr || is_sc) {
+      acc = priv_utf_compose(acc, priv_xform_func(v, vlen, &j, is_sc));
+    }
+    while ((j < vlen) && (v[j] != ')')) {
+      ++j;
+    }
+    i = (j < vlen) ? (j + 1U) : vlen;
+  }
+  return acc;
+}
+
+/** @brief Compose @p tag's `transform=` (if any) onto @p t's user transform. */
+static void priv_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
+{
+  size_t off = 0U;
+  size_t vl  = 0U;
+  if (!priv_attr(tag, tlen, "transform", &off, &vl)) {
+    return;
+  }
+  svg_utf_t       cur = {.sx = t->usx, .sy = t->usy, .tx = t->utx, .ty = t->uty};
+  const svg_utf_t out = priv_utf_compose(cur, priv_parse_xform(&tag[off], vl));
+  t->usx              = out.sx;
+  t->usy              = out.sy;
+  t->utx              = out.tx;
+  t->uty              = out.ty;
 }
 
 /** @brief Draw one `<rect>` (span @p s[0..len)) with its fill. */
@@ -1111,27 +1283,73 @@ priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const
 {
   const uint8_t* tag  = &s[at];
   const size_t   tlen = (close > at) ? (close - at) : 0U;
+  /* Compose this element's own `transform=` onto the inherited group transform. */
+  svg_xform_t lt = *t;
+  priv_apply_xform(&lt, tag, tlen);
   if (priv_elem_at(s, len, at, "<rect")) {
-    priv_draw_rect(tag, tlen, t);
+    priv_draw_rect(tag, tlen, &lt);
   } else if (priv_elem_at(s, len, at, "<circle")) {
-    priv_draw_circle(tag, tlen, t);
+    priv_draw_circle(tag, tlen, &lt);
   } else if (priv_elem_at(s, len, at, "<polygon")) {
-    priv_draw_polygon(tag, tlen, t);
+    priv_draw_polygon(tag, tlen, &lt);
   } else if (priv_elem_at(s, len, at, "<polyline")) {
-    priv_draw_polyline(tag, tlen, t);
+    priv_draw_polyline(tag, tlen, &lt);
   } else if (priv_elem_at(s, len, at, "<path")) {
-    priv_draw_path(tag, tlen, t);
+    priv_draw_path(tag, tlen, &lt);
   } else if (priv_elem_at(s, len, at, "<line")) {
-    priv_draw_line(tag, tlen, t);
+    priv_draw_line(tag, tlen, &lt);
   } else {
     /* Unsupported element -> skip. */
   }
 }
 
-/** @brief Walk every element in document order and draw the supported shapes. */
+/** @brief Apply group transform @p g (over the base @p t) into @p out. */
+static void priv_xform_with_group(const svg_xform_t* t, svg_utf_t g, svg_xform_t* out)
+{
+  *out     = *t;
+  out->usx = g.sx;
+  out->usy = g.sy;
+  out->utx = g.tx;
+  out->uty = g.ty;
+}
+
+/**
+ * @brief Handle a `<g>` open: compose its transform over the stack top and push.
+ *
+ * @details Self-closing `<g/>` (no children) and depth-cap overflow do not push.
+ * @return The new stack pointer.
+ */
+static int32_t priv_group_open(const uint8_t*     s,
+                               size_t             i,
+                               size_t             close,
+                               const svg_xform_t* t,
+                               svg_utf_t*         gstk,
+                               int32_t            gsp)
+{
+  svg_xform_t gt = {};
+  priv_xform_with_group(t, gstk[gsp], &gt);
+  priv_apply_xform(&gt, &s[i], (close > i) ? (close - i) : 0U);
+  const bool self_close = (close > i) && (s[close - 1U] == '/');
+  if (self_close || (gsp >= (int32_t)k_svg_g_depth_max)) {
+    return gsp;
+  }
+  gstk[gsp + 1] = (svg_utf_t){.sx = gt.usx, .sy = gt.usy, .tx = gt.utx, .ty = gt.uty};
+  return gsp + 1;
+}
+
+/**
+ * @brief Walk every element in document order and draw the supported shapes.
+ *
+ * @details Maintains a bounded `<g>` transform stack: entering `<g transform=>`
+ * composes its transform onto the current group context and pushes; `</g>` pops.
+ * Each shape inherits the top group transform, then composes its own `transform=`.
+ */
 static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  size_t i = 0U;
+  svg_utf_t gstk[k_svg_g_depth_max + 1U];
+  int32_t   gsp = 0;
+  gstk[0]       = (svg_utf_t){.sx = t->usx, .sy = t->usy, .tx = t->utx, .ty = t->uty};
+  size_t i      = 0U;
   /* Bounded: each iteration advances past one '<...>' element or breaks at EOF. */
   while (i < len) {
     while ((i < len) && (s[i] != '<')) {
@@ -1144,7 +1362,15 @@ static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
     while ((close < len) && (s[close] != '>')) {
       ++close;
     }
-    priv_dispatch_shape(s, len, i, close, t);
+    if (priv_elem_at(s, len, i, "</g")) {
+      gsp = (gsp > 0) ? (gsp - 1) : 0;
+    } else if (priv_elem_at(s, len, i, "<g")) {
+      gsp = priv_group_open(s, i, close, t, gstk, gsp);
+    } else {
+      svg_xform_t ct = {};
+      priv_xform_with_group(t, gstk[gsp], &ct);
+      priv_dispatch_shape(s, len, i, close, &ct);
+    }
     i = (close < len) ? (close + 1U) : len;
   }
 }
@@ -1237,7 +1463,8 @@ ra_err_t ra_svg_render(const uint8_t* svg, size_t len, int32_t x, int32_t y, int
   if ((w <= 0) || (h <= 0)) {
     return k_ra_err_invalid_arg;
   }
-  svg_xform_t t = {.bx = x, .by = y, .bw = w, .bh = h};
+  svg_xform_t t =
+    {.bx = x, .by = y, .bw = w, .bh = h, .usx = 1.0F, .usy = 1.0F, .utx = 0.0F, .uty = 0.0F};
   priv_read_viewbox(svg, len, &t);
   priv_draw_shapes(svg, len, &t);
   return k_ra_ok;

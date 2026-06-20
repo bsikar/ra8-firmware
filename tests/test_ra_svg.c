@@ -320,6 +320,82 @@ static void test_render_fill_none(void)
 }
 
 /**
+ * @test test_render_transform
+ * @brief `transform=` translate / scale on a shape and on a `<g>` group move
+ *        and resize the rendered output (viewBox 100->box 200 == 2x).
+ */
+static void test_render_transform(void)
+{
+  TEST_BEGIN("svg transform translate/scale/group");
+  /* translate(40,0): rect user x 10..30 -> 50..70 -> fb 100..140; y -> fb 20..60. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"20\" "
+                        "height=\"20\" fill=\"#ff0000\" transform=\"translate(40,0)\"/></svg>"));
+  TEST_ASSERT_EQ(0xFF0000, (int)px(120, 40)); /* inside the translated rect      */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(40, 40));  /* original position vacated        */
+
+  /* scale(2): rect user 10..20 -> 20..40 -> fb 40..80 (both axes). */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
+                        "height=\"10\" fill=\"#0000ff\" transform=\"scale(2)\"/></svg>"));
+  TEST_ASSERT_EQ(0x0000FF, (int)px(60, 60)); /* inside the scaled-up rect         */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(28, 28)); /* unscaled position now white       */
+
+  /* <g transform="translate(50,50)"> moves the child rect (0..10 -> fb 100..120). */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><g transform=\"translate(50,50)\">"
+                        "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"#00ff00\"/>"
+                        "</g></svg>"));
+  TEST_ASSERT_EQ(0x00FF00, (int)px(110, 110)); /* inside the grouped+moved rect   */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 10));   /* group origin vacated             */
+  TEST_END("svg transform translate/scale/group");
+}
+
+/**
+ * @test test_transform_args_mcdc
+ * @brief The transform argument decision `has2 ? a2 : (is_sc ? a1 : 0)`.
+ *
+ * @par MC/DC:
+ * Decision (per axis, in priv_parse_xform): the second-argument value selects on
+ * `(is_scale, has_second_arg)`.
+ * - Vector 1: `scale(2)`      -> is_sc=T, has2=F -> sy defaults to a1 (=2).
+ * - Vector 2: `scale(2,3)`    -> is_sc=T, has2=T -> sy = a2 (=3), not a1.
+ * - Vector 3: `translate(40)` -> is_sc=F, has2=F -> ty defaults to 0, not a1.
+ * 1+2 prove has2 independently flips sy (2 vs 3); 1+3 prove is_sc independently
+ * flips the default (a1 vs 0). N+1 = 3 vectors for the 2-condition decision.
+ */
+static void test_transform_args_mcdc(void)
+{
+  TEST_BEGIN("svg transform arg mc/dc");
+  /* V1 scale(2): uniform -> rect 10..20 -> fb 40..80 both axes. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
+                        "height=\"10\" fill=\"#112233\" transform=\"scale(2)\"/></svg>"));
+  TEST_ASSERT_EQ(0x112233, (int)px(60, 60)); /* y scaled by 2 like x              */
+
+  /* V2 scale(2,3): y scaled by 3 -> user y 30..60 -> fb 60..120 (not 40..80). */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
+                        "height=\"10\" fill=\"#445566\" transform=\"scale(2,3)\"/></svg>"));
+  TEST_ASSERT_EQ(0x445566, (int)px(60, 90)); /* inside only if y-scale == 3        */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(60, 50)); /* white -> y-scale != 2              */
+
+  /* V3 translate(40): ty defaults to 0 (not 40) -> rect y stays fb 20..40. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
+                        "height=\"10\" fill=\"#778899\" transform=\"translate(40)\"/></svg>"));
+  TEST_ASSERT_EQ(0x778899, (int)px(110, 30));  /* x moved, y unchanged (ty=0)       */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(110, 110)); /* white -> ty != 40                */
+  TEST_END("svg transform arg mc/dc");
+}
+
+/**
  * @test test_guards
  * @brief NULL / non-positive box arguments are rejected.
  */
@@ -354,6 +430,8 @@ int32_t main(void)
   test_render_arc_sweep0();
   test_render_arc_degenerate();
   test_render_fill_none();
+  test_render_transform();
+  test_transform_args_mcdc();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");
   return 0;
