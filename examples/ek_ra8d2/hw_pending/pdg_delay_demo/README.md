@@ -1,0 +1,64 @@
+# pdg_delay_demo
+
+PWM Delay Generation Circuit (PDG) bring-up + delay-program demo for the
+bare EK-RA8D2 EVM. Exercises the `ra_pdg` driver.
+
+## What it does
+
+Brings up SCI8 + LEDs + the PDG DLL, then:
+
+1. `ra_pdg_init` -- selects the 80..160 MHz FRANGE band, enables the DLL,
+   and un-bypasses PDG channel 0.
+2. `ra_pdg_set_delay` -- stages a mid-range delay code (`0x40`) on the
+   GTIOC0A rising edge (DLY[6:0], ~1/128 of the GPT core-clock period per
+   step).
+3. Reads the code back and the PDG status, and once a second reports
+   `pdg: dll=on ch0=on delay=0x40 cfg=ok` on the J-Link OB CDC channel.
+
+- LED1 toggles while the configuration reads back clean; LED2 otherwise.
+- `g_pdg_cfg_ok` / `g_pdg_delay_readback` / `g_pdg_dll` /
+  `g_pdg_heartbeat` mirror the result for headless J-Link probing.
+
+No external hardware required for the bring-up.
+
+## Why this is in hw_pending
+
+The PDG has **no software-readable "edge was delayed" status** -- its only
+observable effect is the *timing* of a GPT output edge, which needs a
+logic analyzer / oscilloscope (and a running GPT32_0 PWM source) to
+measure. `tools/board_sim` shadows the PDG control + delay registers, so
+the **bring-up + delay-program + read-back** path runs and reports
+`cfg=ok` headlessly -- but that only proves the registers took the
+configuration, not that the edge is actually delayed. Confirming the
+delay generation (the point of the block) needs silicon + an instrument,
+so this app is staged in `hw_pending/`.
+
+## Registers (HUM R01UH1065EJ0130 Rev.1.30, Ch 23 "PDG")
+
+- `ra_pdg_init` clears MSTPD6, programs GTDLYCR (DLLEN + FRANGE) and
+  GTDLYCR2 (per-channel bypass), per HUM Figure 23.2 p 1160, Ch 23.2.1
+  p 1154 / 23.2.2 p 1155.
+- `ra_pdg_set_delay` writes the GTDLYRnA / GTDLYRnB temporary register;
+  it propagates to the live delay on the next GPT overflow / underflow /
+  trough (HUM Ch 23.3.2 Figure 23.3 p 1161).
+
+## On-silicon bench plan
+
+1. `make pdg_delay_demo`, then flash the EK-RA8D2.
+2. Confirm the headless config gate first: J-Link CDC prints
+   `pdg: dll=on ch0=on delay=0x40 cfg=ok` (or probe `g_pdg_cfg_ok == 1`,
+   `g_pdg_delay_readback == 0x40`).
+3. **Delay measurement (the real acceptance, needs an instrument):**
+   - Bring up GPT32_0 as a PWM source on GTIOC0A (e.g. mirror
+     `gpt_dma_demo`), with the PDG bound so the staged delay propagates.
+   - Probe GTIOC0A on a scope / logic analyzer; sweep the delay code
+     0x00 -> 0x40 -> 0x7F and confirm the rising edge shifts by the
+     expected `code x (T_gptclk / 128)`.
+4. Once the edge shift is confirmed, move the app to `hw_validated/hil/`.
+
+Build / flash:
+
+```
+make pdg_delay_demo
+make -C examples/ek_ra8d2/hw_pending/pdg_delay_demo flash
+```
