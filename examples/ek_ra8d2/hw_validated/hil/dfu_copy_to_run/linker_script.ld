@@ -314,6 +314,22 @@ SECTIONS
 
     g_ra_ls_sram_text_load = LOADADDR(.sram_text);
 
+    /* ---- HIL copy-to-run probe island (NOLOAD) ----
+     * Two fixed SRAM words the copied-to-run payload writes: a proof-of-run
+     * sentinel (0x22010000) and a free-running heartbeat (0x22010004); see
+     * payload.c k_payload_probe_sentinel / k_payload_probe_counter. They sit
+     * above this app's low-SRAM .bss/.data and below the run base (0x22020000),
+     * so neither this app nor the payload image overwrites them. Pinned here so
+     * the J-Link memprobe gate (HIL_MODE=jlink_memprobe) can resolve
+     * g_dcr_run_heartbeat by name; this app reserves the words but never writes
+     * them (the payload does). The base MUST equal k_payload_probe_sentinel --
+     * main()'s placement guard panic-halts if it drifts. */
+    .dfu_probe 0x22010000 (NOLOAD) :
+    {
+        KEEP(*(.dfu_probe.sentinel))
+        KEEP(*(.dfu_probe.heartbeat))
+    } > SRAM
+
     /* ---- ITCM / DTCM sections (drivers opt in via
      * __attribute__((section(".itcm_text")))). ---- */
     .itcm_text : ALIGN(4)

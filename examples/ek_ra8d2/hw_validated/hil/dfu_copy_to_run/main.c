@@ -54,6 +54,50 @@ typedef enum : uint32_t {
 } dcr_vt_t;
 
 /**
+ * @enum dcr_probe_t
+ * @brief Fixed SRAM probe-word addresses the copied-to-run payload writes.
+ *
+ * @details Mirror of payload.c's `k_payload_probe_sentinel` /
+ * `k_payload_probe_counter`. Once ::ra_dfu_launch branches into it, the payload
+ * (running from the SRAM run window) writes a proof-of-run sentinel and a
+ * free-running heartbeat at these two fixed words. They sit above this app's
+ * low-SRAM `.bss`/`.data` and below the run base (0x22020000), so neither this
+ * app nor the payload image overwrites them. linker_script.ld pins
+ * ::g_dcr_run_sentinel / ::g_dcr_run_heartbeat here so the J-Link memprobe gate
+ * (HIL_MODE=jlink_memprobe) can resolve the heartbeat by name.
+ */
+typedef enum : uintptr_t {
+  k_dcr_probe_sentinel_addr = 0x22010000U, /**< Sentinel word address.   */
+  k_dcr_probe_counter_addr  = 0x22010004U, /**< Heartbeat word address.  */
+} dcr_probe_t;
+
+/**
+ * @var g_dcr_run_sentinel
+ * @brief Memprobe anchor for the payload's proof-of-run sentinel (0x22010000).
+ * @details A reserved 4-byte word pinned by linker_script.ld to
+ *          ::k_dcr_probe_sentinel_addr. This app never touches it -- the
+ *          copied-to-run payload writes `k_payload_sentinel_value` here. It
+ *          exists only so `nm` can resolve a named symbol at the sentinel word.
+ * @warning Written exclusively by the SRAM-resident payload, never by this app.
+ * @since 0.1.0
+ */
+__attribute__((section(".dfu_probe.sentinel"), used)) volatile uint32_t g_dcr_run_sentinel;
+
+/**
+ * @var g_dcr_run_heartbeat
+ * @brief Memprobe liveness counter the copied-to-run payload advances (0x22010004).
+ * @details A reserved 4-byte word pinned by linker_script.ld to
+ *          ::k_dcr_probe_counter_addr. The payload increments the word at this
+ *          address forever once copy-to-run branches into it, so
+ *          hil_jlink_memprobe.sh sees it advance -- proof the image ran via
+ *          copy-to-run (the only writer of this word). This app reserves the
+ *          word but never writes it.
+ * @warning Written exclusively by the SRAM-resident payload, never by this app.
+ * @since 0.1.0
+ */
+__attribute__((section(".dfu_probe.heartbeat"), used)) volatile uint32_t g_dcr_run_heartbeat;
+
+/**
  * @brief Park forever in WFI -- copy-to-run did not happen (alive gate fails).
  * @return Does not return.
  * @pre Reached only when ::ra_dfu_launch returned (run-target check failed).
@@ -87,6 +131,17 @@ int32_t main(void)
 {
   static_assert(sizeof(g_payload_image) >= (2U * sizeof(uint32_t)),
                 "payload image must contain at least the 2-word vector table");
+
+  /* HIL contract: the memprobe gate reads g_dcr_run_heartbeat by name and asserts
+   * it advances. That holds only if the linker pinned the probe words to the
+   * addresses the payload writes (payload.c k_payload_probe_*). Trip the fault
+   * path loudly (and freeze the heartbeat) if a future edit breaks either pin. */
+  if ((uintptr_t)&g_dcr_run_sentinel != (uintptr_t)k_dcr_probe_sentinel_addr) {
+    dcr_panic_halt();
+  }
+  if ((uintptr_t)&g_dcr_run_heartbeat != (uintptr_t)k_dcr_probe_counter_addr) {
+    dcr_panic_halt();
+  }
 
   uint32_t initial_sp  = 0U;
   uint32_t reset_entry = 0U;
