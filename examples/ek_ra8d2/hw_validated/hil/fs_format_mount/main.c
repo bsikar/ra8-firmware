@@ -24,9 +24,9 @@
  *   6. unlink the file and confirm `listdir` no longer shows it;
  *   7. unmount.
  *
- * It then runs an exFAT trial: format + mount + assert type + confirm an empty
- * root (ra_fs writes exFAT but does not yet create files in it, so the trial
- * stops at the read side).
+ * It then runs the identical cycle on an exFAT volume: format + mount + assert
+ * type + confirm an empty root, then create + write + read-back + rename +
+ * unlink, and re-confirm an empty root afterwards.
  *
  * On a clean pass for a type it prints `... FS <TYPE> FORMAT+MOUNT PASS`; after
  * all of them it prints `FS FORMAT+MOUNT ALL PASS`. The HIL runner (and the
@@ -510,6 +510,45 @@ fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
 }
 
 /**
+ * @brief Run the create -> write -> read-back -> rename -> unlink cycle on a
+ *        mounted volume, printing the specific FAIL line on the failing step.
+ *
+ * @details Shared by `fs_fmt_run_one_type` (FAT12/16/32) and `fs_fmt_run_exfat`
+ *          so every writable filesystem proves the identical mutation path. The
+ *          caller owns the mount and unmounts after this returns.
+ *
+ * @param[in] mount Mounted, type-validated volume.
+ * @param[in] type  Filesystem type, for the per-step diagnostic line.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok    create + rename + unlink all verified.
+ * @retval k_ra_err_* The first failing step's code (its FAIL line is printed).
+ * @pre @p mount is mounted; `s_payload` is filled.
+ * @pre `k_name_a` does not already exist on @p mount.
+ * @post On success @p mount no longer holds the test file.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t fs_fmt_write_cycle(ra_fs_mount_t* mount, ra_fs_type_t type)
+{
+  ra_err_t err = fs_fmt_create_and_verify(mount, k_name_a);
+  if (err != k_ra_ok) {
+    fs_fmt_print_line(type, k_msg_fail_write, (uint32_t)sizeof(k_msg_fail_write) - 1U);
+    return err;
+  }
+  err = fs_fmt_rename_and_verify(mount, k_name_a, k_name_b);
+  if (err != k_ra_ok) {
+    fs_fmt_print_line(type, k_msg_fail_rename, (uint32_t)sizeof(k_msg_fail_rename) - 1U);
+    return err;
+  }
+  err = ra_fs_unlink(mount, k_name_b);
+  if (err != k_ra_ok) {
+    fs_fmt_print_line(type, k_msg_fail_unlink, (uint32_t)sizeof(k_msg_fail_unlink) - 1U);
+    return err;
+  }
+  return k_ra_ok;
+}
+
+/**
  * @brief Format the card as @p type, mount, run the full file cycle, unmount.
  *
  * @details Emits a per-step `FAIL ...` diagnostic and returns the failing code
@@ -555,21 +594,8 @@ fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
     (void)ra_fs_unmount(mount);
     return k_ra_err_validation_failed;
   }
-  err = fs_fmt_create_and_verify(mount, k_name_a);
+  err = fs_fmt_write_cycle(mount, type);
   if (err != k_ra_ok) {
-    fs_fmt_print_line(type, k_msg_fail_write, (uint32_t)sizeof(k_msg_fail_write) - 1U);
-    (void)ra_fs_unmount(mount);
-    return err;
-  }
-  err = fs_fmt_rename_and_verify(mount, k_name_a, k_name_b);
-  if (err != k_ra_ok) {
-    fs_fmt_print_line(type, k_msg_fail_rename, (uint32_t)sizeof(k_msg_fail_rename) - 1U);
-    (void)ra_fs_unmount(mount);
-    return err;
-  }
-  err = ra_fs_unlink(mount, k_name_b);
-  if (err != k_ra_ok) {
-    fs_fmt_print_line(type, k_msg_fail_unlink, (uint32_t)sizeof(k_msg_fail_unlink) - 1U);
     (void)ra_fs_unmount(mount);
     return err;
   }
@@ -597,22 +623,56 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void*
 }
 
 /**
- * @brief Format the card as exFAT, mount, assert the type, and list an empty root.
+ * @brief Assert a mounted volume's root directory lists exactly zero files.
  *
- * @details exFAT is read-only in ra_fs (no file creation), so unlike
- *          `fs_fmt_run_one_type` this trial stops at the read side: it formats
- *          the volume, mounts it, asserts the detected type is exFAT, and
- *          confirms a freshly-formatted root lists zero files (the allocation
- *          bitmap / up-case / volume-label system entries must not surface).
- *          The image the formatter writes is independently fsck.exfat-clean.
+ * @details Re-zeroes `s_exfat_listed`, walks the root via `ra_fs_listdir`, and
+ *          fails if the walk errors or any user-visible entry surfaces. Used by
+ *          the exFAT trial both right after format (the bitmap / up-case /
+ *          volume-label system entries must stay hidden) and again after the
+ *          create/rename/unlink cycle (proving the unlink fully reclaimed the
+ *          directory set, not merely returned success).
+ *
+ * @param[in] mount Mounted, type-validated volume.
+ * @param[in] type  Filesystem type, for the per-step diagnostic line.
  *
  * @return ra_err_t
- * @retval k_ra_ok               Format + mount + empty-root all passed.
+ * @retval k_ra_ok                  Root listed zero entries.
+ * @retval k_ra_err_validation_failed Root was non-empty.
+ * @retval k_ra_err_*               `ra_fs_listdir` failed (its code).
+ * @pre @p mount is mounted.
+ * @post `s_exfat_listed` holds the entry count seen on this call.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t fs_fmt_assert_empty_root(ra_fs_mount_t* mount, ra_fs_type_t type)
+{
+  s_exfat_listed = 0U;
+  ra_err_t err   = ra_fs_listdir(mount, "/", fs_fmt_count_cb, nullptr);
+  if ((err != k_ra_ok) || (s_exfat_listed != 0U)) {
+    fs_fmt_print_line(type, k_msg_fail_mount, (uint32_t)sizeof(k_msg_fail_mount) - 1U);
+    return (err != k_ra_ok) ? err : k_ra_err_validation_failed;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Format the card as exFAT, mount, and run the full file-mutation cycle.
+ *
+ * @details Mirrors `fs_fmt_run_one_type` for exFAT now that `ra_fs` writes the
+ *          format: it formats the volume, mounts it, asserts the detected type
+ *          is exFAT, confirms a freshly-formatted root lists zero files (the
+ *          allocation bitmap / up-case / volume-label system entries must stay
+ *          hidden), runs the shared create -> write -> read-back -> rename ->
+ *          unlink cycle, then re-asserts an empty root to prove the unlink fully
+ *          reclaimed the directory set. The image the formatter writes is
+ *          independently fsck.exfat-clean.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Format + mount + full file cycle all passed.
  * @retval k_ra_err_invalid_size Card capacity cannot hold an exFAT volume (SKIP).
  * @retval k_ra_err_*            The first failing step's code.
  *
- * @pre The SD card is initialised and the bus is up.
- * @post The card is left formatted as exFAT.
+ * @pre The SD card is initialised and `s_payload` is filled.
+ * @post The card is left formatted as exFAT with the test file removed.
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t fs_fmt_run_exfat(void)
@@ -645,14 +705,20 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void*
     (void)ra_fs_unmount(mount);
     return k_ra_err_validation_failed;
   }
-  s_exfat_listed = 0U;
-  err            = ra_fs_listdir(mount, "/", fs_fmt_count_cb, nullptr);
-  if ((err != k_ra_ok) || (s_exfat_listed != 0U)) {
-    fs_fmt_print_line(k_ra_fs_type_exfat,
-                      k_msg_fail_mount,
-                      (uint32_t)sizeof(k_msg_fail_mount) - 1U);
+  err = fs_fmt_assert_empty_root(mount, k_ra_fs_type_exfat);
+  if (err != k_ra_ok) {
     (void)ra_fs_unmount(mount);
-    return (err != k_ra_ok) ? err : k_ra_err_validation_failed;
+    return err;
+  }
+  err = fs_fmt_write_cycle(mount, k_ra_fs_type_exfat);
+  if (err != k_ra_ok) {
+    (void)ra_fs_unmount(mount);
+    return err;
+  }
+  err = fs_fmt_assert_empty_root(mount, k_ra_fs_type_exfat);
+  if (err != k_ra_ok) {
+    (void)ra_fs_unmount(mount);
+    return err;
   }
   (void)ra_fs_unmount(mount);
   fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_pass_suf, (uint32_t)sizeof(k_msg_pass_suf) - 1U);
@@ -707,7 +773,8 @@ int32_t main(void)
       fs_fmt_panic_halt(); /* a real failure (mount / write / verify). */
     }
   }
-  /* exFAT trial (read-side: format + mount + empty-root); same SKIP semantics. */
+  /* exFAT trial (full cycle: format + mount + create/write/rename/unlink); same
+   * SKIP semantics as the FAT types above. */
   const ra_err_t ex = fs_fmt_run_exfat();
   if (ex == k_ra_ok) {
     passed++;
