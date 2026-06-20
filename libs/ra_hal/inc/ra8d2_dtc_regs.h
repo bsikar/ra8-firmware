@@ -5,9 +5,13 @@
  * @details
  * The DTC is a lighter-weight alternative to the DMAC for moving
  * small amounts of data in response to peripheral interrupts. Its
- * control registers live at `0x4000AC00` and the actual transfer
- * descriptors are stored in SRAM, indexed by the activation-source
- * vector number (Transfer Information vector table).
+ * control registers live at `0x4000AC00`. Transfer descriptors live
+ * in SRAM, reached through a two-level lookup: `DTCVBR` points at a
+ * vector table of 4-byte entries indexed by the activation-source
+ * vector number, and entry n (at `DTCVBR + n*4`) holds the start
+ * address of that source's 16-byte Transfer Information block (HUM
+ * Ch 18.3.1 "Allocating Transfer Information and DTC Vector Table"
+ * p 796, Figures 18.2/18.3 p 797-798).
  *
  * Register-block layout verified against FSP `R_DTC_Type` in
  * `R7KA8D2KF_core0.h` lines 6581-6732 (size = 48 / 0x30 bytes).
@@ -25,10 +29,13 @@
  *  - 18.2.11 DTCSQE    : p 792
  *  - 18.2.12 DTCADMOD  : p 793
  *
- * Vector-table layout (per HUM Ch 18 "Transfer Information") --
- * each Transfer Information block is 16 bytes consisting of MRA,
- * MRB, SAR, DAR, CRA, CRB; the vector table is an array of
- * `r_dtc_xfer_info_t` indexed by activation-source vector number.
+ * Transfer Information layout (per HUM Figure 18.4 p 799) -- each TI
+ * block is 16 bytes consisting of MRA, MRB, MRC, SAR, DAR, CRA, CRB.
+ * The DTC vector table is an array of 4-byte TI *start addresses*
+ * (NOT the TI blocks themselves) indexed by activation-source vector
+ * number; `r_dtc_xfer_info_t` models one such 16-byte TI block, which
+ * a call site places (16-byte-aligned) wherever it likes and whose
+ * address it stores into `DTCVBR + vector_number*4`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -122,18 +129,22 @@ typedef struct {
 
 /**
  * @struct r_dtc_xfer_info_t
- * @brief One Transfer Information (TI) entry in the DTC vector table.
+ * @brief One 16-byte Transfer Information (TI) block referenced by the
+ *        DTC vector table.
  *
  * @details
- * Each entry is exactly 16 bytes (HUM Ch 18 "Transfer Information"
- * p 793-797). The vector table is an array of these structures
- * placed in SRAM and pointed to by `DTCVBR`; each activation
- * source's TI lives at `DTCVBR + (vector_number * 16)`.
+ * Each TI block is exactly 16 bytes (HUM Figure 18.4 p 799). It is
+ * placed (16-byte-aligned) anywhere in SRAM; its start address is what
+ * a call site stores into the 4-byte DTC vector-table slot for that
+ * activation source (`DTCVBR + vector_number*4`, HUM Ch 18.3.1 p 796).
+ * The TI block is therefore reached one indirection away from `DTCVBR`,
+ * not packed directly into the vector table.
  *
  * Field layout matches FSP `transfer_info_t` so call-sites can be
  * ported one-for-one (and the on-the-wire DTC TI block layout is
  * therefore 16 bytes on every target):
- *  - MR (32 bits, MRA upper / MRB lower) = transfer settings word.
+ *  - MR (32 bits) = transfer settings word: MR[31:24] = MRA,
+ *    MR[23:16] = MRB, MR[15:8] = MRC, MR[7:0] = reserved.
  *  - SAR / DAR = source / destination 32-bit bus addresses.
  *  - CRB = block-mode block count.
  *  - CRA = transfer count (16 bits) -- repeat / block split as
@@ -145,7 +156,7 @@ typedef struct {
  * `(uint32_t)(uintptr_t)ptr` (HUM 18.2 p 793-797).
  */
 typedef struct {
-  volatile uint32_t MR;  /**< Mode register (MRA upper / MRB lower / reserved). */
+  volatile uint32_t MR;  /**< Mode word: [31:24] MRA, [23:16] MRB, [15:8] MRC. */
   volatile uint32_t SAR; /**< Source address register.                          */
   volatile uint32_t DAR; /**< Destination address register.                     */
   volatile uint16_t CRB; /**< Block-count register (block mode only).           */
