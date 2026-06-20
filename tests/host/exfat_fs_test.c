@@ -1,7 +1,8 @@
 /**
  * @file tests/host/exfat_fs_test.c
- * @brief Standalone host test for ra_fs exFAT read (#85) + the leading-slash
- *        open regression (#93).
+ * @brief Standalone host test for ra_fs exFAT read (#85), the leading-slash
+ *        open regression (#93), and the exFAT write path (#104: create /
+ *        multi-cluster write + read-back / rename / unlink).
  *
  * @details
  * Links ONLY ra_fs_fat.c (no ra_core_hal -> no ra_time weak-extern), so it
@@ -17,9 +18,27 @@
  *   4. open("HELLO.TXT") -- without a slash -- also succeeds,
  *   5. the file content reads back byte-for-byte.
  *
+ * It then exercises the exFAT write path (#104) on the same mounted volume:
+ *   6. write_file + read-back + rename + unlink of a single-cluster file,
+ *   7. the same cycle for a multi-cluster file (a payload spanning four 4 KiB
+ *      clusters), proving the bitmap allocation, the read cluster-walk, and the
+ *      multi-cluster free loop that the single-cluster case cannot reach,
+ *   8. negative lookups (same-length wrong name; wrong-length name) that drive
+ *      the matcher's mismatch branches both ways.
+ *
+ * @par MC/DC:
+ * Every decision in the exFAT section of ra_fs_fat.c (priv_exfat_create /
+ * _alloc_write / _build_set / _take_set / _find_set / _free_clusters and the
+ * name-hash / set-checksum helpers) is single-condition -- there is not one
+ * ``&&`` / ``||`` compound decision in the whole exFAT body -- so MC/DC for it
+ * collapses to branch coverage: each decision must be taken both ways. The
+ * cases above drive the match / mismatch and single- / multi-cluster branches
+ * accordingly.
+ *
  * The fixture holds HELLO.TXT (the expected string below) + NOTES.TXT, made
  * with a real exFAT formatter so the on-disk up-case table / name hashes /
- * allocation bitmap are genuine.
+ * allocation bitmap are genuine. It uses 4 KiB clusters (512 B sectors, 8
+ * sectors/cluster) with ~480 free clusters, so the multi-cluster file fits.
  *
  * @author Brighton Sikarskie
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -38,6 +57,10 @@
 #endif
 
 static const char k_expect[] = "Hello exFAT from the ra_fs standalone test 1234567890\n";
+
+/* #104: a payload that spans several 4 KiB exFAT clusters (with an odd tail) so
+ * the write/read/free paths exercise their multi-cluster branches. */
+enum : uint32_t { k_mc_payload_bytes = 12425U };
 
 static uint8_t* g_img;
 static uint32_t g_blocks;
@@ -97,6 +120,36 @@ static void check(int cond, const char* what)
   }
 }
 
+/*
+ * Dump the current in-memory image to "$RA_EXFAT_DUMP.<tag>" when that env var
+ * is set; a no-op otherwise. Lets the mutated volume be checked out-of-band:
+ *   RA_EXFAT_DUMP=/tmp/x ./test_ra_fs_exfat
+ *   # macOS (fsck_exfat needs a block device, not a plain file):
+ *   DEV=$(hdiutil attach -nomount -readonly \
+ *         -imagekey diskimage-class=CRawDiskImage /tmp/x.bigfile | awk 'NR==1{print $1}')
+ *   fsck_exfat -n "${DEV}s1" ; hdiutil detach "$DEV"
+ *   # Linux (fsck.exfat validates the raw partition slice directly):
+ *   dd if=/tmp/x.bigfile bs=512 skip=2048 count=4096 of=/tmp/vol.img ; fsck.exfat -n /tmp/vol.img
+ * #104 confirmed both the BIG.BIN-present and post-unlink images fsck-clean
+ * ("The volume RAFS appears to be OK").
+ */
+static void maybe_dump_image(const char* tag)
+{
+  const char* base = getenv("RA_EXFAT_DUMP");
+  if (base == nullptr) {
+    return;
+  }
+  char path[512];
+  (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
+  FILE* o = fopen(path, "wb");
+  if (o == nullptr) {
+    return;
+  }
+  (void)fwrite(g_img, 1U, (size_t)g_blocks * 512U, o);
+  (void)fclose(o);
+  printf("  [dump] %s\n", path);
+}
+
 /* Open the path, read it, and confirm it is HELLO.TXT's content. */
 static void check_open_reads_hello(ra_fs_mount_t* mnt, const char* path)
 {
@@ -148,6 +201,65 @@ static void check_write_path(ra_fs_mount_t* mnt)
   check(!name_present(mnt, "W83R.TXT"), "unlink removed the entry");
 }
 
+/* #104: multi-cluster exFAT write. A payload larger than one 4 KiB cluster must
+ * allocate a contiguous run in the bitmap, read back byte-identical across the
+ * cluster boundaries, and free every cluster on unlink -- branches the
+ * single-cluster W83.TXT case never reaches. */
+static void check_multicluster_path(ra_fs_mount_t* mnt)
+{
+  static uint8_t big[k_mc_payload_bytes];
+  static uint8_t back[k_mc_payload_bytes];
+  for (uint32_t i = 0U; i < k_mc_payload_bytes; i++) {
+    big[i] = (uint8_t)((i * 31U + 7U) & 0xFFU);
+  }
+
+  check(ra_fs_write_file(mnt, "/BIG.BIN", big, k_mc_payload_bytes) == k_ra_ok,
+        "write_file multi-cluster (> 3 clusters)");
+  check(name_present(mnt, "BIG.BIN"), "multi-cluster file listed");
+
+  ra_fs_file_t* fp = nullptr;
+  if (ra_fs_open(mnt, "/BIG.BIN", k_ra_fs_mode_read, &fp) == k_ra_ok) {
+    uint32_t total = 0U;
+    ra_err_t e     = k_ra_ok;
+    while (total < k_mc_payload_bytes) {
+      uint32_t got = 0U;
+      e            = ra_fs_read(fp, back + total, k_mc_payload_bytes - total, &got);
+      if ((e != k_ra_ok) || (got == 0U)) {
+        break;
+      }
+      total += got;
+    }
+    (void)ra_fs_close(fp);
+    check((e == k_ra_ok) && (total == k_mc_payload_bytes) &&
+            (memcmp(back, big, k_mc_payload_bytes) == 0),
+          "multi-cluster file reads back byte-identical");
+  } else {
+    check(0, "reopen multi-cluster file");
+  }
+
+  /* Image now holds a live multi-cluster file -- snapshot it for the
+   * out-of-band fsck_exfat check (acceptance: stays fsck-clean after writes). */
+  maybe_dump_image("bigfile");
+
+  check(ra_fs_rename(mnt, "/BIG.BIN", "/BIG2.BIN") == k_ra_ok, "multi-cluster rename");
+  check(name_present(mnt, "BIG2.BIN") && !name_present(mnt, "BIG.BIN"),
+        "multi-cluster rename moved the entry");
+  check(ra_fs_unlink(mnt, "/BIG2.BIN") == k_ra_ok, "multi-cluster unlink frees the chain");
+  check(!name_present(mnt, "BIG2.BIN"), "multi-cluster file gone after unlink");
+}
+
+/* #104: drive the name-matcher's mismatch branches in priv_exfat_take_set --
+ * one wrong name of the SAME length (the byte-compare fails) and one of a
+ * DIFFERENT length (the length pre-filter fails). Both must report not_found. */
+static void check_lookup_mismatch_branches(ra_fs_mount_t* mnt)
+{
+  ra_fs_file_t* nf = nullptr;
+  check(ra_fs_open(mnt, "/WORLD.TXT", k_ra_fs_mode_read, &nf) == k_ra_err_not_found,
+        "same-length wrong name -> not_found (byte-compare branch)");
+  check(ra_fs_open(mnt, "/AB.TX", k_ra_fs_mode_read, &nf) == k_ra_err_not_found,
+        "wrong-length name -> not_found (length-prefilter branch)");
+}
+
 int main(int argc, char** argv)
 {
   const char* path = (argc > 1) ? argv[1] : RA_EXFAT_FIXTURE;
@@ -190,6 +302,9 @@ int main(int argc, char** argv)
         "missing file -> not_found");
 
   check_write_path(mnt);
+  check_multicluster_path(mnt);
+  check_lookup_mismatch_branches(mnt);
+  maybe_dump_image("empty"); /* all files unlinked -> back to a clean root. */
 
   printf("\n%s\n", g_fail ? "RESULT: FAIL" : "RESULT: PASS");
   return g_fail;
