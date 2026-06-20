@@ -23,6 +23,7 @@
 #include "miniz.h"
 #include "ra_epub.h"
 #include "ra_epub_internal.h"
+#include "ra_epub_miniz_alloc.h"
 #include "ra_err.h"
 
 /* ---------------------------------------------------------------------------
@@ -364,6 +365,16 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
    * storage punning is intentional and documented in the header. */
   void* const     zip_storage = &out_book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
+#ifndef RA_SIMULATOR_MODE
+  /* Firmware target is zero-heap (_sbrk traps, NASA Rule 3); route miniz's
+   * central-directory + decompressor allocations through the static arena in
+   * ra_epub_miniz_alloc.c instead of the trapped malloc. The host unit-test
+   * build (RA_SIMULATOR_MODE) keeps miniz on its default malloc. */
+  zip->m_pAlloc        = ra_epub_miniz_alloc;
+  zip->m_pFree         = ra_epub_miniz_free;
+  zip->m_pRealloc      = ra_epub_miniz_realloc;
+  zip->m_pAlloc_opaque = nullptr;
+#endif
   if (mz_zip_reader_init_mem(zip, mem->data, mem->size, 0U) == MZ_FALSE) {
     return k_ra_err_validation_failed;
   }

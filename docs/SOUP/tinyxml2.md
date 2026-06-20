@@ -49,11 +49,40 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 - All TinyXML-2 access is wrapped by `libs/ra_epub/` so the SOUP
   boundary is a single facade.
 
+## Memory model on the firmware target
+
+TinyXML-2 allocates its node pools (`MemPoolT<>::Alloc`), growable
+arrays (`DynArray::EnsureCapacity`), and string storage
+(`StrPair::SetStr`) through the global `operator new` / `operator new[]`.
+The firmware is zero-heap (NASA Rule 3: `_sbrk` traps), so those operators
+are replaced, firmware-only, by `libs/ra_epub/src/ra_epub_cpp_alloc.cpp`,
+which routes them through the same bounded static first-fit arena miniz
+uses (`ra_epub_miniz_alloc`). No TinyXML-2 allocation reaches `malloc`.
+The host unit-test build keeps the standard `malloc`-backed operators
+(the override is gated `#ifndef RA_SIMULATOR_MODE`).
+
+**Known limitation -- fault, not error, on pool exhaustion.** The target
+is built `-fno-exceptions`, so the replacement `operator new` returns
+`nullptr` on exhaustion. TinyXML-2 does NOT null-check its `new[]`
+results (e.g. `StrPair::SetStr`, `XMLDocument::Parse`), so an exhausted
+pool faults in the following `memcpy` instead of surfacing
+`XML_ERROR_*`. This is accepted rather than patched (the vendored
+sources stay unmodified) because it cannot be reached by a conformant
+book: the only documents parsed are `META-INF/container.xml` and the
+OPF, and the OPF scratch is capped at `k_ra_epub_opf_xml_buf`, so the
+node footprint is bounded well under the arena size. A future move to a
+hand-rolled SAX scanner (tracked on the EPUB-reader roadmap) removes the
+dependency entirely.
+
 ## Deviations / patches
 
-None. The vendored sources are unmodified.
+The vendored `tinyxml2.cpp` / `tinyxml2.h` sources are unmodified. The
+only integration seam is the external global `operator new` / `delete`
+replacement described under "Memory model on the firmware target"; it
+does not touch the SOUP component's own translation unit.
 
 ## Last review date
 
-- Reviewed: 2026-05-02
+- Reviewed: 2026-06-19 (firmware memory-model integration added; SOUP
+  basis re-confirmed)
 - Expected re-review by: 2027-05-02
