@@ -396,6 +396,66 @@ static void test_transform_args_mcdc(void)
 }
 
 /**
+ * @test test_render_rotate
+ * @brief `transform=` rotate / skew / matrix drive the generalized affine
+ *        polygon path; axis-aligned transforms keep the fast-path.
+ *
+ * @par MC/DC:
+ * Decision `priv_has_rot`: `(ub != 0) || (uc != 0)` selects the generalized
+ * affine-polygon path over the axis-aligned `ra_gfx_rect`/`circle` fast-path.
+ * - Vector 1: `scale(2)`  -> ub=0, uc=0 -> false (fast-path, axis-aligned).
+ * - Vector 2: `skewY(45)` -> ub=tan45!=0, uc=0 -> true (shears in y).
+ * - Vector 3: `skewX(45)` -> ub=0, uc=tan45!=0 -> true (shears in x).
+ * 1+2 prove ub independently flips the path; 1+3 prove uc independently does.
+ * N+1 = 3 vectors for the 2-condition decision.
+ */
+static void test_render_rotate(void)
+{
+  TEST_BEGIN("svg transform rotate/skew");
+  /* rotate(90,50,50): map (x,y)->(100-y,x). A horizontal bar user x30..70,y45..55
+   * becomes a vertical bar user x45..55,y30..70 (fb is 2x: viewBox 100 -> box 200). */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"30\" y=\"45\" width=\"40\" "
+                        "height=\"10\" fill=\"#ff0000\" transform=\"rotate(90,50,50)\"/></svg>"));
+  TEST_ASSERT_EQ(0xFF0000, (int)px(100, 100)); /* rotation centre -> inside the bar  */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(70, 100));  /* original bar's left end vacated     */
+
+  /* V1 scale(2): ub=uc=0 -> fast-path; rect 10..20 -> fb 40..80. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
+                        "height=\"10\" fill=\"#00ff00\" transform=\"scale(2)\"/></svg>"));
+  TEST_ASSERT_EQ(0x00FF00, (int)px(60, 60)); /* inside the axis-aligned scaled rect   */
+
+  /* V3 skewX(45): x'=x+y. Rect user x10..20,y40..50 -> parallelogram spanning user
+   * x~55..65 at y=45; user(60,45)=fb(120,90) is covered only because uc!=0. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"40\" width=\"10\" "
+                        "height=\"10\" fill=\"#0000ff\" transform=\"skewX(45)\"/></svg>"));
+  TEST_ASSERT_EQ(0x0000FF, (int)px(120, 90)); /* inside the x-sheared rect (uc!=0)    */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(30, 90));  /* original rect position vacated       */
+
+  /* V2 skewY(45): y'=y+x. Rect user x40..50,y10..20 -> spans user y~55..65 at x=45;
+   * user(45,60)=fb(90,120) is covered only because ub!=0. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"40\" y=\"10\" width=\"10\" "
+                        "height=\"10\" fill=\"#ffaa00\" transform=\"skewY(45)\"/></svg>"));
+  TEST_ASSERT_EQ(0xFFAA00, (int)px(90, 120)); /* inside the y-sheared rect (ub!=0)    */
+
+  /* matrix(2,0,0,2,0,0): b=c=0 -> fast-path, equivalent to scale(2). */
+  fb_reset();
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
+           "height=\"10\" fill=\"#aa00ff\" transform=\"matrix(2,0,0,2,0,0)\"/></svg>"));
+  TEST_ASSERT_EQ(0xAA00FF, (int)px(60, 60)); /* matrix scale == scale(2)             */
+  TEST_END("svg transform rotate/skew");
+}
+
+/**
  * @test test_guards
  * @brief NULL / non-positive box arguments are rejected.
  */
@@ -432,6 +492,7 @@ int32_t main(void)
   test_render_fill_none();
   test_render_transform();
   test_transform_args_mcdc();
+  test_render_rotate();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");
   return 0;

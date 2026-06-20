@@ -14,15 +14,17 @@
  *      `<polygon>` (scanline-filled), `<polyline>` (stroked), and `<path>`
  *      (filled; M/L/H/V/Z exact, the C/S/Q/T Bezier curves and the A elliptical
  *      arc flattened to line segments), with solid `fill` / `stroke`. A
- *      `transform=` of `translate` / `scale` -- on a shape or a `<g>` group
- *      (nested, bounded depth) -- repositions and resizes the result.
+ *      A full 2x3 affine `transform=` (`translate` / `scale` / `rotate` /
+ *      `skewX` / `skewY` / `matrix`) -- on a shape or a `<g>` group (nested,
+ *      bounded depth) -- repositions, resizes, rotates, and shears the result;
+ *      axis-aligned shapes keep the exact `ra_gfx` fast-path while rotated /
+ *      sheared shapes are mapped through the affine and scanline-polygon-filled.
  *      ::ra_svg_render maps them from the SVG `viewBox` (or width/height) into a
  *      caller box and draws them through the bound ra_gfx framebuffer.
  *
- * Out of scope (documented limitations, tracked as follow-ups): gradient fills,
- * the `rotate` / `skew` / `matrix` transforms (they break the axis-aligned
- * primitive path and are parsed-and-skipped), opacity, CSS styling, stroke
- * width, and fractional coordinates (truncated to integers).
+ * Out of scope (documented limitations, tracked as follow-ups): gradient fills
+ * (`linearGradient` / `radialGradient`), opacity, CSS styling, stroke width, and
+ * fractional coordinates (truncated to integers).
  *
  * The parser is pure string scanning over the caller's byte buffer (no DOM, no
  * heap); ::ra_svg_render's only side effect is drawing through ra_gfx.
