@@ -25,6 +25,7 @@ hardware HIL probe AND the gap below is resolved.
 | da16600_probe | The DA16600 Wi-Fi/BLE module ships factory firmware that does not answer AT commands; it needs the AT-command SDK flashed first. Not an RA8D2-side wiring issue. |
 | tz_nsc_cgc_usb | Needs the real TrustZone secure / non-secure partition (separate S + NS stacks/.bss and a proper BLXNS transition): the NS-pointer veneer check rejects args whose `.data`/`.bss`/stack live in secure SRAM. Tracked in #60 / #54. |
 | dtc_transfer_demo | `tools/board_sim` shadows the DTC control window (DTCCR/DTCVBR/DTCST/DTCSTS) but models no descriptor-table transfer engine, so the SRAM-to-SRAM copy reports `match=N` on the emulator and can only be confirmed on silicon. The TI encoding + indirect vector-table model + slot re-arm are host-tested; the bring-up + ELC/DTC activation run headless. Tracked in #124. |
+| lvd_monitor_demo | `tools/board_sim` shadows the PVD control window but models no analog voltage comparator, so `PVD1SR.MON` reads back 0 and the banner reports `mon=below ok=N` on the emulator; the live `mon=above` reading needs silicon. The verdict logic + status decode + PRCR.PRC3 unlock word are host-tested; the safe flags-only (`response=none`) bring-up runs headless. Tracked in #125. |
 
 ## Recently promoted
 
