@@ -582,11 +582,116 @@ static void test_null_guards(void)
 }
 
 /**
+ * @test test_fontface_parse
+ * @brief `@font-face` at-rules populate the face table; they are not rules.
+ */
+static void test_fontface_parse(void)
+{
+  TEST_BEGIN("css @font-face parse");
+  load("@font-face{font-family:\"Body\";src:url(fonts/Body.ttf)}"
+       "@font-face{font-family:Body;font-weight:bold;src:url('fonts/Body-Bold.ttf')}"
+       "@font-face{font-family:Body;font-style:italic;src:url(fonts/Body-It.ttf)}"
+       "p{color:red}");
+  TEST_ASSERT_EQ(3, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count); /* @font-face blocks are not rules */
+  TEST_ASSERT_EQ(0, (int)s_sheet.faces[0].weight_bold);
+  TEST_ASSERT_EQ(0, (int)s_sheet.faces[0].style_italic);
+  const char* src  = nullptr;
+  uint16_t    slen = 0U;
+  TEST_ASSERT(ra_css_face_src(&s_sheet, 0U, &src, &slen));
+  TEST_ASSERT((slen == (uint16_t)strlen("fonts/Body.ttf")) &&
+              (memcmp(src, "fonts/Body.ttf", slen) == 0));
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);
+  TEST_ASSERT(ra_css_face_src(&s_sheet, 1U, &src, &slen)); /* quotes stripped from url() */
+  TEST_ASSERT((slen == (uint16_t)strlen("fonts/Body-Bold.ttf")) &&
+              (memcmp(src, "fonts/Body-Bold.ttf", slen) == 0));
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].style_italic);
+  TEST_END("css @font-face parse");
+}
+
+/**
+ * @test test_fontface_cascade
+ * @brief `font-family` resolves on a rule and inherits to a child element.
+ */
+static void test_fontface_cascade(void)
+{
+  TEST_BEGIN("css font-family cascade");
+  load("@font-face{font-family:Body;src:url(b.ttf)}p{font-family:Body}");
+  ra_css_element_t p  = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_style_t   ps = ra_css_cascade(&s_sheet, &p, no_inline(), no_inline());
+  TEST_ASSERT((ps.set & (uint8_t)k_ra_css_set_family) != 0U);
+  TEST_ASSERT((ps.family_len == 4U) && (memcmp(&s_sheet.names[ps.family_off], "Body", 4U) == 0));
+  ra_css_element_t em = elem(k_ra_reflow_tag_em, nullptr, nullptr);
+  ra_css_style_t   es = ra_css_cascade(&s_sheet, &em, ps, no_inline());
+  TEST_ASSERT((es.set & (uint8_t)k_ra_css_set_family) != 0U); /* inherited from parent */
+  TEST_ASSERT((es.family_len == 4U) && (memcmp(&s_sheet.names[es.family_off], "Body", 4U) == 0));
+  TEST_END("css font-family cascade");
+}
+
+/**
+ * @test test_fontface_match_mcdc
+ * @brief Face selection: exact (family,weight,style), regular fallback, no-match.
+ *
+ * @par MC/DC:
+ * Decision: `((weight_bold!=0)==want_bold) && ((style_italic!=0)==want_italic)`
+ * tested against one bold+italic face "BI" (weight_bold=1, style_italic=1):
+ * - V1: want_bold=1, want_italic=1 -> A=T, B=T -> true  (returns face 0)
+ * - V2: want_bold=0, want_italic=1 -> A=F, B=T -> false (no exact -> no-face)
+ * - V3: want_bold=1, want_italic=0 -> A=T, B=F -> false (no exact -> no-face)
+ * V1+V2 prove the weight condition independently flips the outcome; V1+V3 the
+ * style condition. N+1 = 3 vectors for the 2-condition decision.
+ */
+static void test_fontface_match_mcdc(void)
+{
+  TEST_BEGIN("css @font-face match MC/DC");
+  load("@font-face{font-family:BI;font-weight:bold;font-style:italic;src:url(bi.ttf)}");
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "BI", 2U, true, true)); /* V1 */
+  TEST_ASSERT_EQ((int)k_ra_css_no_face,
+                 (int)ra_css_match_face(&s_sheet, "BI", 2U, false, true)); /* V2: vary weight */
+  TEST_ASSERT_EQ((int)k_ra_css_no_face,
+                 (int)ra_css_match_face(&s_sheet, "BI", 2U, true, false)); /* V3: vary style */
+  load("@font-face{font-family:Body;src:url(r.ttf)}"
+       "@font-face{font-family:Body;font-weight:bold;src:url(b.ttf)}");
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Body", 4U, false, false)); /* exact regular */
+  TEST_ASSERT_EQ(1, (int)ra_css_match_face(&s_sheet, "Body", 4U, true, false));  /* exact bold   */
+  TEST_ASSERT_EQ(0,
+                 (int)ra_css_match_face(&s_sheet, "Body", 4U, true, true)); /* fallback regular */
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "body", 4U, false, false)); /* case-insens. */
+  TEST_ASSERT_EQ((int)k_ra_css_no_face,
+                 (int)ra_css_match_face(&s_sheet, "Other", 5U, false, false)); /* no such family */
+  TEST_END("css @font-face match MC/DC");
+}
+
+/**
+ * @test test_fontface_null_guards
+ * @brief match / face_src reject NULLs, a zero family, and out-of-range indices.
+ */
+static void test_fontface_null_guards(void)
+{
+  TEST_BEGIN("css @font-face null guards");
+  load("@font-face{font-family:Body;src:url(b.ttf)}");
+  const char* src  = nullptr;
+  uint16_t    slen = 0U;
+  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(nullptr, "Body", 4U, false, false));
+  TEST_ASSERT_EQ((int)k_ra_css_no_face,
+                 (int)ra_css_match_face(&s_sheet, nullptr, 4U, false, false));
+  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(&s_sheet, "Body", 0U, false, false));
+  TEST_ASSERT(!ra_css_face_src(nullptr, 0U, &src, &slen));
+  TEST_ASSERT(!ra_css_face_src(&s_sheet, 99U, &src, &slen));
+  TEST_ASSERT(!ra_css_face_src(&s_sheet, 0U, nullptr, &slen));
+  TEST_END("css @font-face null guards");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
 int32_t main(void)
 {
+  test_fontface_parse();
+  test_fontface_cascade();
+  test_fontface_match_mcdc();
+  test_fontface_null_guards();
   test_parse_props();
   test_parse_normal_resets();
   test_parse_selectors();
