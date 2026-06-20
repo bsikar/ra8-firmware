@@ -1,18 +1,18 @@
 # fs_format_mount
 
-Format + mount + file-ops HIL demo across every FAT type `ra_fs` can write
-(FAT12, FAT16, FAT32) on a real microSD card.
+Format + mount + file-ops HIL demo across every filesystem `ra_fs` can write
+(FAT12, FAT16, FAT32, and exFAT) on a real microSD card.
 
 This app is the on-hardware exercise for the `ra_fs_format()` mkfs API. It does
-not assume any pre-formatted layout: it **reformats the card three times**, once
-per FAT type, and validates each format end to end.
+not assume any pre-formatted layout: it **reformats the card four times**, once
+per filesystem type, and validates each format end to end.
 
 ## What it does
 
 1. Bring CGC + SCI8 console + SCI0 Simple-SPI up.
 2. Probe a Digilent PMOD MicroSD (part 410-380) plugged into Pmod2 (J25) and run
    the SD SPI-mode bring-up (CMD0, CMD8, ACMD41, CMD58, CMD9, CMD16).
-3. For each FAT type in `{ FAT12, FAT16, FAT32 }`:
+3. For each filesystem in `{ FAT12, FAT16, FAT32, exFAT }`:
    1. `ra_fs_format()` the card as that type (auto cluster size).
    2. `ra_fs_mount()` it and assert the detected `ra_fs_type` matches.
    3. Create + write a 1300-byte deterministic payload (`FMTTEST.BIN`).
@@ -22,13 +22,15 @@ per FAT type, and validates each format end to end.
    6. `unlink` `FMTDONE.BIN`.
    7. `unmount`.
    8. Print `fsfmt: FS <TYPE> FORMAT+MOUNT PASS`.
-4. After all three, print `fsfmt: FS FORMAT+MOUNT ALL PASS`.
+4. After all four, print `fsfmt: FS FORMAT+MOUNT ALL PASS`.
 
 On any failure it prints `fsfmt: FS <TYPE> FAIL <step>` and parks the CPU.
 
-> **Warning:** this app **erases the card**. exFAT is intentionally not
-> exercised here -- `ra_fs` reads exFAT but does not format it (see the
-> follow-up roadmap issue linked from `libs/ra_fs/inc/ra_fs.h`).
+> **Warning:** this app **erases the card**. All four filesystems run the
+> identical create / write / read-back / rename / unlink cycle; the exFAT trial
+> additionally asserts an empty root both right after format (the bitmap /
+> up-case / volume-label system entries must stay hidden) and again after the
+> unlink, proving the directory-set teardown fully reclaimed the entry.
 
 ## Hardware
 
@@ -45,9 +47,10 @@ Insert any microSD card before booting -- the demo formats it itself. A card of
 any size >= ~512 KiB works: the formatter's auto cluster-size sweep lands each
 type's cluster count in its valid band (FAT12 < 4085, FAT16 4085..65524,
 FAT32 >= 65525). On a typical multi-GB card, FAT12/FAT16 may exceed their
-cluster ceilings even at the maximum cluster size; if that happens the per-type
-line prints `FAIL format` for that type. Use a small card (or a board_sim
-`--sd-new` card) to exercise all three.
+cluster ceilings even at the maximum cluster size; a type that cannot fit the
+card is **skipped** (`SKIP: capacity out of range`), not failed, so the run
+still ends in `ALL PASS`. Use a small card (or a board_sim `--sd-new` card) to
+exercise every type.
 
 ## Build
 
@@ -81,6 +84,7 @@ fsfmt: card ready
 fsfmt: FS FAT12 FORMAT+MOUNT PASS
 fsfmt: FS FAT16 FORMAT+MOUNT PASS
 fsfmt: FS FAT32 FORMAT+MOUNT PASS
+fsfmt: FS EXFAT FORMAT+MOUNT PASS
 fsfmt: FS FORMAT+MOUNT ALL PASS
 ```
 
@@ -107,6 +111,7 @@ fsfmt: card ready
 fsfmt: FS FAT12 FORMAT+MOUNT PASS
 fsfmt: FS FAT16 FORMAT+MOUNT PASS
 fsfmt: FS FAT32 FORMAT+MOUNT PASS
+fsfmt: FS EXFAT FORMAT+MOUNT PASS
 fsfmt: FS FORMAT+MOUNT ALL PASS
 ```
 
@@ -118,5 +123,5 @@ fsfmt: FS FORMAT+MOUNT ALL PASS
 HIL_MODE=uart_scrape
 HIL_EXPECT="FS FORMAT+MOUNT ALL PASS"
 HIL_EXPECT_NEGATIVE="FAIL|HardFault|TIMEOUT|mismatch"
-HIL_TIMEOUT_S=40
+HIL_TIMEOUT_S=240
 ```

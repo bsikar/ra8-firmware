@@ -9,9 +9,10 @@
  * public ``ra_fs_format()`` API, then proves the result is real by mounting it,
  * asserting the detected ``ra_fs_type`` matches the request, and running a
  * create / write / read-back / verify / list / unlink / unmount cycle on the
- * fresh volume. exFAT formatting is also exercised (format + mount + empty-root;
- * ra_fs writes exFAT but does not yet create files in it), with the produced
- * image independently validated fsck.exfat-clean.
+ * fresh volume. exFAT formatting is also exercised here (format + mount +
+ * empty-root); exFAT file creation / rename / unlink is covered separately by
+ * `tests/host/exfat_fs_test.c` and the `fs_format_mount` HIL. The produced exFAT
+ * image is independently validated fsck.exfat-clean.
  *
  * The compound boolean decisions inside the format geometry/validation logic
  * (``ra_fs_format`` argument + capacity guards, ``priv_fmt_spc_valid``,
@@ -787,12 +788,14 @@ static void test_erase_clear_region_modes(void)
  *
  * @brief Format an exFAT volume, mount it, and confirm an empty root.
  *
- * @details ra_fs writes (but does not yet create files in) exFAT, so this
- *          exercises the mkfs end-to-end on the read side: format, mount, assert
- *          the detected type is exFAT, list the root (the bitmap / up-case /
- *          label system entries must NOT surface as files -> empty), unmount.
- *          The on-disk image this produces is fsck.exfat-clean (validated
- *          out-of-band against macOS fsck_exfat).
+ * @details Focuses on the mkfs result itself: format, mount, assert the
+ *          detected type is exFAT, list the root (the bitmap / up-case / label
+ *          system entries must NOT surface as files -> empty), unmount. exFAT
+ *          file creation / rename / unlink on top of this image is covered
+ *          separately by `tests/host/exfat_fs_test.c` and the `fs_format_mount`
+ *          HIL, so it is intentionally out of scope here. The on-disk image this
+ *          produces is fsck.exfat-clean (validated out-of-band against macOS
+ *          fsck_exfat).
  */
 static void test_format_exfat_mount_empty(void)
 {

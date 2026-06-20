@@ -2174,7 +2174,7 @@ static ra_err_t priv_gpt_locate_volume(ra_fs_mount_t* m, uint32_t* out_base)
 }
 
 /* ===========================================================================
- * exFAT (read-only) support
+ * exFAT support (read, whole-file write, mkfs)
  * ===========================================================================
  */
 
