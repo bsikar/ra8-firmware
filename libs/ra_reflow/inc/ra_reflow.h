@@ -118,6 +118,7 @@ typedef enum : uint16_t {
   k_ra_reflow_default_font_px  = 18U,  /**< Default body font size.         */
   k_ra_reflow_min_font_px      = 8U,   /**< Smallest accepted font size.    */
   k_ra_reflow_max_font_px      = 96U,  /**< Largest accepted font size.     */
+  k_ra_reflow_min_font_bytes   = 16U,  /**< Smallest plausible font blob.   */
   k_ra_reflow_h1_scale_pct     = 200U, /**< H1 size = 200 % of body.       */
   k_ra_reflow_h2_scale_pct     = 175U, /**< H2 size = 175 % of body.       */
   k_ra_reflow_h3_scale_pct     = 150U, /**< H3 size = 150 % of body.       */
@@ -902,6 +903,46 @@ ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* frameb
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px);
+
+/**
+ * @brief Bind an EPUB-embedded typeface as the engine's active face (#109).
+ *
+ * @details
+ * Replaces the face bound at `ra_reflow_init()` with @p font_data so subsequent
+ * layout + render use the book's own typeface (the common "the EPUB ships one
+ * font" case). The blob is validated with `stbtt_InitFont` first; on any failure
+ * the engine keeps its current face unchanged (graceful degradation -- never a
+ * crash). The bytes are referenced, not copied (zero-heap), so they MUST outlive
+ * the engine, exactly like the `ra_reflow_init()` font. If a chapter is already
+ * laid out, the engine re-flows it against the new face (like
+ * `ra_reflow_set_font_size()`); otherwise the next layout picks it up.
+ *
+ * Per-run family / bold / italic face *selection* across multiple embedded faces
+ * is intentionally out of scope here and tracked on #109 (blocked on the
+ * `@font-face` / `font-family` resolution prerequisite, #142).
+ *
+ * @param[in,out] engine    Initialised engine.
+ * @param[in]     font_data TTF/OTF blob; must outlive the engine.
+ * @param[in]     font_len  Length of @p font_data, bytes.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Face bound (and re-flowed if a chapter was laid out).
+ * @retval k_ra_err_null_ptr        @p engine or @p font_data is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ * @retval k_ra_err_invalid_size    `font_len < k_ra_reflow_min_font_bytes`.
+ * @retval k_ra_err_not_supported   `stbtt_InitFont` rejected the blob (face unchanged).
+ *
+ * @pre `engine->in_use == 1`.
+ * @pre @p font_data is non-NULL and outlives the engine.
+ * @post On success `engine->font_data == font_data`; on failure the prior face
+ *       is preserved byte-for-byte.
+ *
+ * @note Not thread-safe; single-threaded init/layout context.
+ * @see ra_reflow_init(), ra_reflow_set_font_size()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_reflow_bind_font(ra_reflow_t* engine, const uint8_t* font_data, size_t font_len);
 
 /* ===========================================================================
  * Internal -- exposed for the parse / layout / render TUs

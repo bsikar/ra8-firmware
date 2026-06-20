@@ -331,6 +331,62 @@ const char* find_nav_manifest_href(const XMLElement* manifest)
 }
 
 /**
+ * @brief True if @p media_type is a recognised font resource type (#109).
+ *
+ * @details Matches the OPF `media-type` values EPUBs use for shipped TTF/OTF
+ * faces. A `nullptr` media-type (malformed `<item>`) is not a font.
+ */
+bool media_type_is_font(const char* media_type)
+{
+  if (media_type == nullptr) {
+    return false;
+  }
+  static const char* const k_font_types[] = {
+    "application/font-sfnt",
+    "application/vnd.ms-opentype",
+    "font/ttf",
+    "font/otf",
+    "application/x-font-ttf",
+  };
+  for (const char* const candidate : k_font_types) {
+    if (std::strcmp(media_type, candidate) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Record manifest font items' hrefs into the book (bounded, #109).
+ *
+ * @details Scans `<manifest>` for `<item media-type="...font...">` and copies
+ * each href into `book->embedded_font_paths` until the static cap
+ * (::k_ra_epub_max_fonts) is reached; the remainder are ignored (graceful
+ * degradation, never an error). Sets `book->embedded_font_count`.
+ */
+void collect_font_items(const XMLElement* manifest, ra_epub_book_t* book)
+{
+  book->embedded_font_count = 0U;
+  if (manifest == nullptr) {
+    return;
+  }
+  for (const XMLElement* item = manifest->FirstChildElement(); item != nullptr;
+       item                   = item->NextSiblingElement()) {
+    if (book->embedded_font_count >= static_cast<std::uint16_t>(k_ra_epub_max_fonts)) {
+      return;
+    }
+    const char* href = item->Attribute("href");
+    if (href == nullptr || !media_type_is_font(item->Attribute("media-type"))) {
+      continue;
+    }
+    copy_bounded(book->embedded_font_paths[book->embedded_font_count],
+                 k_ra_epub_max_path_len,
+                 href);
+    ++book->embedded_font_count;
+  }
+}
+
+/**
  * @brief Append one TOC entry to the book, honouring the static cap.
  */
 void toc_emit(ra_epub_book_t* book, const char* title, const char* href, std::uint8_t depth)
@@ -505,6 +561,9 @@ ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* 
   if (cover_href != nullptr) {
     copy_bounded(book->cover_path, k_ra_epub_max_path_len, cover_href);
   }
+
+  /* ---- embedded fonts (#109): record manifest font hrefs -------------- */
+  collect_font_items(manifest, book);
 
   /* ---- spine (chapters in document order) ----------------------------- */
   uint16_t count = 0U;

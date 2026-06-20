@@ -1755,3 +1755,38 @@ ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px)
   uint32_t pages = 0U;
   return ra_reflow_layout_chapter(engine, engine->xhtml_buf, engine->xhtml_len, &pages);
 }
+
+/** @brief Implementation of `ra_reflow_bind_font()` -- validate then swap. */
+ra_err_t ra_reflow_bind_font(ra_reflow_t* engine, const uint8_t* font_data, size_t font_len)
+{
+  if (engine == nullptr || font_data == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (engine->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  if (font_len < (size_t)k_ra_reflow_min_font_bytes) {
+    return k_ra_err_invalid_size;
+  }
+
+  /* Validate the blob BEFORE swapping; on failure the current face is kept
+   * (graceful degradation). The probe fontinfo is a stack temporary -- the
+   * layout / render paths re-init their own per-call fontinfo from font_data. */
+  const int32_t  offset = stbtt_GetFontOffsetForIndex(font_data, 0);
+  stbtt_fontinfo probe;
+  if (offset < 0 || stbtt_InitFont(&probe, font_data, offset) == 0) {
+    return k_ra_err_not_supported;
+  }
+
+  engine->font_data = font_data;
+  engine->font_len  = font_len;
+
+  /* If a chapter is already laid out, re-flow it against the new face so the
+   * change is immediate (mirrors ra_reflow_set_font_size); otherwise the next
+   * layout picks it up. */
+  if (!ra_reflow_internal_xhtml_invalid(engine->xhtml_buf, engine->xhtml_len)) {
+    uint32_t pages = 0U;
+    return ra_reflow_layout_chapter(engine, engine->xhtml_buf, engine->xhtml_len, &pages);
+  }
+  return k_ra_ok;
+}

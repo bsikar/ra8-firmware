@@ -439,6 +439,54 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
   return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }
 
+ra_err_t ra_epub_get_embedded_font_count(const ra_epub_book_t* book, uint16_t* out_count)
+{
+  if (book == nullptr || out_count == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (book->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  *out_count = book->embedded_font_count;
+  return k_ra_ok;
+}
+
+ra_err_t ra_epub_get_embedded_font(ra_epub_book_t* book,
+                                   uint16_t        idx,
+                                   uint8_t*        out_buf,
+                                   size_t          max_len,
+                                   size_t*         got_len)
+{
+  if (book == nullptr || out_buf == nullptr || got_len == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  *got_len = 0U;
+  if (ra_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+    return k_ra_err_not_initialized;
+  }
+  if (max_len == 0U) {
+    return k_ra_err_invalid_size;
+  }
+  if (idx >= book->embedded_font_count) {
+    return k_ra_err_out_of_range;
+  }
+
+  char full_path[k_ra_epub_max_path_len];
+  ra_epub_internal_join_path(book->opf_dir,
+                             book->embedded_font_paths[idx],
+                             full_path,
+                             sizeof(full_path));
+
+  void* const     zip_storage = &book->zip_archive_storage[0];
+  mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
+  return priv_locate_extract(zip,
+                             full_path,
+                             book->embedded_font_paths[idx],
+                             out_buf,
+                             max_len,
+                             got_len);
+}
+
 ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t font_size)
 {
   if (book == nullptr || font_data == nullptr) {
