@@ -71,6 +71,14 @@ typedef enum : uint16_t {
 } priv_css_fs_t;
 
 /**
+ * @enum priv_css_face_t
+ * @brief `@font-face` parsing constants.
+ */
+typedef enum : uint8_t {
+  k_priv_url_len = 4U, /**< Length of the `url(` token prefix. */
+} priv_css_face_t;
+
+/**
  * @enum priv_css_color_t
  * @brief Common named CSS colours + the "not a colour" sentinel.
  */
@@ -570,6 +578,243 @@ static void priv_parse_selector_list(ra_css_sheet_t* sheet,
 }
 
 /* ===========================================================================
+ * @font-face + font-family parsing
+ * ===========================================================================
+ */
+
+/** @brief Case-insensitive equality of two byte spans. */
+static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t blen)
+{
+  if ((a == nullptr) || (b == nullptr) || (alen != blen)) {
+    return false;
+  }
+  /* Bounded: k < alen (== blen); one byte folded per step. */
+  for (size_t k = 0U; k < alen; ++k) {
+    if (priv_lower(a[k]) != priv_lower(b[k])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** @brief Strip one layer of matching `'`/`"` quotes from span @p s[0..*len). */
+static const char* priv_strip_quotes(const char* s, size_t* len)
+{
+  if ((*len >= 2U) && ((s[0] == '"') || (s[0] == '\'')) && (s[*len - 1U] == s[0])) {
+    *len -= 2U;
+    return &s[1];
+  }
+  return s;
+}
+
+/** @brief Extract the path inside the first `url(...)` of a `src` value. */
+static bool priv_extract_url(const char* val, size_t vlen, const char** url, size_t* ulen)
+{
+  /* Bounded: at most (vlen - 3) windows; i advances by 1 each step. */
+  for (size_t i = 0U; (i + (size_t)k_priv_url_len) <= vlen; ++i) {
+    if (!priv_ci_eq(&val[i], (size_t)k_priv_url_len, "url(")) {
+      continue;
+    }
+    size_t a = i + (size_t)k_priv_url_len;
+    size_t b = a;
+    while ((b < vlen) && (val[b] != ')')) {
+      ++b;
+    }
+    size_t      n = b - a;
+    const char* p = priv_trim(&val[a], &n);
+    p             = priv_strip_quotes(p, &n);
+    if (n == 0U) {
+      return false;
+    }
+    *url  = p;
+    *ulen = n;
+    return true;
+  }
+  return false;
+}
+
+/** @brief True for a `font-weight` keyword that selects the bold face. */
+static bool priv_is_bold_kw(const char* val, size_t vlen)
+{
+  return priv_ci_eq(val, vlen, "bold") || priv_ci_eq(val, vlen, "bolder") ||
+         priv_ci_eq(val, vlen, "600") || priv_ci_eq(val, vlen, "700") ||
+         priv_ci_eq(val, vlen, "800") || priv_ci_eq(val, vlen, "900");
+}
+
+/** @brief True for a `font-style` keyword that selects the italic face. */
+static bool priv_is_italic_kw(const char* val, size_t vlen)
+{
+  return priv_ci_eq(val, vlen, "italic") || priv_ci_eq(val, vlen, "oblique");
+}
+
+/** @brief Apply one `@font-face` declaration to the face being built. */
+static void priv_face_apply(ra_css_sheet_t*    sheet,
+                            const char*        prop,
+                            size_t             plen,
+                            const char*        val,
+                            size_t             vlen,
+                            ra_css_fontface_t* face)
+{
+  if (priv_ci_eq(prop, plen, "font-family")) {
+    size_t      n   = vlen;
+    const char* fam = priv_strip_quotes(val, &n);
+    uint16_t    off = 0U;
+    if ((n > 0U) && priv_intern_name(sheet, fam, n, &off)) {
+      face->family_off = off;
+      face->family_len = (uint16_t)n;
+    }
+  } else if (priv_ci_eq(prop, plen, "font-weight")) {
+    face->weight_bold = priv_is_bold_kw(val, vlen) ? 1U : 0U;
+  } else if (priv_ci_eq(prop, plen, "font-style")) {
+    face->style_italic = priv_is_italic_kw(val, vlen) ? 1U : 0U;
+  } else if (priv_ci_eq(prop, plen, "src")) {
+    const char* url  = nullptr;
+    size_t      ulen = 0U;
+    uint16_t    off  = 0U;
+    if (priv_extract_url(val, vlen, &url, &ulen) && priv_intern_name(sheet, url, ulen, &off)) {
+      face->src_off = off;
+      face->src_len = (uint16_t)ulen;
+    }
+  } else {
+    /* Other @font-face descriptors (unicode-range, ...) -> ignored. */
+  }
+}
+
+/** @brief Callback invoked by ::priv_for_each_decl on each `prop:value` pair. */
+typedef void (
+  *priv_decl_fn)(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen);
+
+/** @brief Iterate `prop:value;` pairs in a declaration block (no braces). */
+static void priv_for_each_decl(const char* s, size_t len, priv_decl_fn cb, void* ctx)
+{
+  size_t i = 0U;
+  /* Bounded: each pass advances past the next ';' (or to len). */
+  while (i < len) {
+    size_t semi = i;
+    while ((semi < len) && (s[semi] != ';')) {
+      ++semi;
+    }
+    size_t colon = i;
+    while ((colon < semi) && (s[colon] != ':')) {
+      ++colon;
+    }
+    if (colon < semi) {
+      size_t      plen = colon - i;
+      const char* prop = priv_trim(&s[i], &plen);
+      size_t      vlen = semi - (colon + 1U);
+      const char* val  = priv_trim(&s[colon + 1U], &vlen);
+      if ((plen > 0U) && (vlen > 0U)) {
+        cb(ctx, prop, plen, val, vlen);
+      }
+    }
+    i = semi + 1U;
+  }
+}
+
+/** @brief Context threading a sheet + the face being built through the loop. */
+typedef struct {
+  ra_css_sheet_t*    sheet; /**< Sheet receiving interned name bytes. */
+  ra_css_fontface_t* face;  /**< Face accumulating descriptors.       */
+} priv_face_ctx_t;
+
+/** @brief ::priv_decl_fn adapter that routes one descriptor to ::priv_face_apply. */
+static void priv_face_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
+{
+  priv_face_ctx_t* c = (priv_face_ctx_t*)ctx;
+  priv_face_apply(c->sheet, prop, plen, val, vlen, c->face);
+}
+
+/** @brief Parse one `@font-face { ... }` block; append it if family + src set. */
+static void priv_parse_fontface(ra_css_sheet_t* sheet, const char* block, size_t len)
+{
+  if (sheet->face_count >= (uint16_t)k_ra_css_max_faces) {
+    return;
+  }
+  ra_css_fontface_t face = {};
+  priv_face_ctx_t   ctx  = {.sheet = sheet, .face = &face};
+  priv_for_each_decl(block, len, priv_face_cb, &ctx);
+  if ((face.family_len != 0U) && (face.src_len != 0U)) {
+    sheet->faces[sheet->face_count] = face;
+    sheet->face_count               = (uint16_t)(sheet->face_count + 1U);
+  }
+}
+
+/** @brief Context threading a sheet + the rule declaration through the loop. */
+typedef struct {
+  ra_css_sheet_t* sheet; /**< Sheet receiving the interned family name. */
+  ra_css_style_t* decl;  /**< Declaration receiving the family slice.   */
+} priv_family_ctx_t;
+
+/** @brief ::priv_decl_fn adapter that interns a rule's `font-family` value. */
+static void priv_family_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
+{
+  priv_family_ctx_t* c = (priv_family_ctx_t*)ctx;
+  if (!priv_ci_eq(prop, plen, "font-family")) {
+    return;
+  }
+  size_t      n   = vlen;
+  const char* fam = priv_strip_quotes(val, &n);
+  uint16_t    off = 0U;
+  if ((n > 0U) && priv_intern_name(c->sheet, fam, n, &off)) {
+    c->decl->set        = (uint8_t)(c->decl->set | (uint8_t)k_ra_css_set_family);
+    c->decl->family_off = off;
+    c->decl->family_len = (uint16_t)n;
+  }
+}
+
+/** @brief Scan a rule's declaration block for `font-family`, interning it. */
+static void
+priv_extract_family(ra_css_sheet_t* sheet, const char* block, size_t len, ra_css_style_t* decl)
+{
+  priv_family_ctx_t ctx = {.sheet = sheet, .decl = decl};
+  priv_for_each_decl(block, len, priv_family_cb, &ctx);
+}
+
+/** @brief Route an at-rule: parse `@font-face`; skip every other `@`-rule. */
+static void priv_parse_at_rule(ra_css_sheet_t* sheet,
+                               const char*     sel,
+                               size_t          sel_len,
+                               const char*     block,
+                               size_t          block_len)
+{
+  if (priv_ci_eq(sel, sel_len, "@font-face")) {
+    priv_parse_fontface(sheet, block, block_len);
+  }
+  /* @media / @import / @page / ... are out of v1 scope -> skipped. */
+}
+
+/** @brief True iff face @p f's family equals @p family (case-insensitive). */
+static bool priv_family_eq(const ra_css_sheet_t*    sheet,
+                           const ra_css_fontface_t* f,
+                           const char*              family,
+                           size_t                   family_len)
+{
+  return priv_ci_eq_span((const char*)&sheet->names[f->family_off],
+                         (size_t)f->family_len,
+                         family,
+                         family_len);
+}
+
+/** @brief Dispatch one `selector|@rule { block }`: at-rule vs. style rule. */
+static void priv_parse_one_block(ra_css_sheet_t* sheet,
+                                 const char*     sel,
+                                 size_t          sel_len,
+                                 const char*     block,
+                                 size_t          block_len)
+{
+  size_t      tlen = sel_len;
+  const char* tsel = priv_trim(sel, &tlen);
+  if ((tlen > 0U) && (tsel[0] == '@')) {
+    priv_parse_at_rule(sheet, tsel, tlen, block, block_len);
+    return;
+  }
+  ra_css_style_t decl = {};
+  priv_parse_decls(block, block_len, &decl);
+  priv_extract_family(sheet, block, block_len, &decl);
+  priv_parse_selector_list(sheet, sel, sel_len, decl);
+}
+
+/* ===========================================================================
  * Public API
  * ===========================================================================
  */
@@ -580,9 +825,9 @@ ra_err_t ra_css_sheet_reset(ra_css_sheet_t* sheet)
     return k_ra_err_null_ptr;
   }
   sheet->rule_count = 0U;
+  sheet->face_count = 0U;
   sheet->next_order = 0U;
   sheet->names_used = 0U;
-  sheet->pad        = 0U;
   return k_ra_ok;
 }
 
@@ -619,9 +864,7 @@ ra_err_t ra_css_parse(ra_css_sheet_t* sheet, const char* css, uint32_t len)
     while ((close < (size_t)len) && (css[close] != '}')) {
       ++close;
     }
-    ra_css_style_t decl = {};
-    priv_parse_decls(&css[brace + 1U], close - (brace + 1U), &decl);
-    priv_parse_selector_list(sheet, &css[i], brace - i, decl);
+    priv_parse_one_block(sheet, &css[i], brace - i, &css[brace + 1U], close - (brace + 1U));
     i = (close < (size_t)len) ? (close + 1U) : (size_t)len;
   }
   return k_ra_ok;
@@ -806,6 +1049,22 @@ static void priv_cascade_scalars(ra_css_style_t*       out,
   }
 }
 
+/** @brief Resolve the inherited `font-family` slice into @p out. */
+static void priv_cascade_family(ra_css_style_t*       out,
+                                const ra_css_sheet_t* sheet,
+                                const bool*           matched,
+                                const ra_css_style_t* inherited,
+                                const ra_css_style_t* inl)
+{
+  const ra_css_style_t* win =
+    priv_resolve((uint8_t)k_ra_css_set_family, inherited, sheet, matched, inl);
+  if (win != nullptr) {
+    out->set        = (uint8_t)(out->set | (uint8_t)k_ra_css_set_family);
+    out->family_off = win->family_off;
+    out->family_len = win->family_len;
+  }
+}
+
 ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
                               const ra_css_element_t* el,
                               ra_css_style_t          inherited,
@@ -822,5 +1081,46 @@ ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
   ra_css_style_t out = {};
   priv_cascade_emphasis(&out, sheet, matched, &inherited, &inline_decl);
   priv_cascade_scalars(&out, sheet, matched, &inherited, &inline_decl);
+  priv_cascade_family(&out, sheet, matched, &inherited, &inline_decl);
   return out;
+}
+
+int16_t ra_css_match_face(const ra_css_sheet_t* sheet,
+                          const char*           family,
+                          uint16_t              family_len,
+                          bool                  want_bold,
+                          bool                  want_italic)
+{
+  if ((sheet == nullptr) || (family == nullptr) || (family_len == 0U)) {
+    return (int16_t)k_ra_css_no_face;
+  }
+  int16_t fallback = (int16_t)k_ra_css_no_face;
+  /* Bounded: face_count <= k_ra_css_max_faces; i advances by 1 each step. */
+  for (uint16_t i = 0U; i < sheet->face_count; ++i) {
+    const ra_css_fontface_t* f = &sheet->faces[i];
+    if (!priv_family_eq(sheet, f, family, (size_t)family_len)) {
+      continue;
+    }
+    if (((f->weight_bold != 0U) == want_bold) && ((f->style_italic != 0U) == want_italic)) {
+      return (int16_t)i;
+    }
+    if ((f->weight_bold == 0U) && (f->style_italic == 0U) && (fallback < 0)) {
+      fallback = (int16_t)i;
+    }
+  }
+  return fallback;
+}
+
+bool ra_css_face_src(const ra_css_sheet_t* sheet,
+                     uint16_t              idx,
+                     const char**          out_src,
+                     uint16_t*             out_len)
+{
+  if ((sheet == nullptr) || (out_src == nullptr) || (out_len == nullptr) ||
+      (idx >= sheet->face_count)) {
+    return false;
+  }
+  *out_src = (const char*)&sheet->names[sheet->faces[idx].src_off];
+  *out_len = sheet->faces[idx].src_len;
+  return true;
 }
