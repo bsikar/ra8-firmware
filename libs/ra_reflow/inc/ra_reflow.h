@@ -163,6 +163,7 @@ typedef enum : uint8_t {
   k_ra_reflow_tag_tr         = 21U, /**< Table row.                       */
   k_ra_reflow_tag_td         = 22U, /**< Table cell.                      */
   k_ra_reflow_tag_th         = 23U, /**< Table header cell.               */
+  k_ra_reflow_tag_link       = 24U, /**< `<link>` (void; stylesheet ref). */
 } ra_reflow_html_tag_t;
 
 /**
@@ -377,6 +378,36 @@ typedef ra_err_t (*ra_reflow_image_loader_fn)(void*           ctx,
                                               size_t*         out_len);
 
 /**
+ * @brief External-stylesheet byte loader for `<link rel="stylesheet" href>`.
+ *
+ * @details Dependency-injection seam (NASA P10 Rule 9 deviation: function
+ * pointer for testability / DIP), mirroring ::ra_reflow_image_loader_fn. The
+ * consumer wires this to its EPUB resource loader; the engine calls it while
+ * tokenizing a chapter, when a `<link rel="stylesheet" href="X">` is seen in
+ * document order, and parses the returned CSS into the chapter's sheet at that
+ * position (so a later `<style>` block / inline `style=` correctly override it).
+ * The returned buffer is only read, never freed, by the engine and need only
+ * stay valid until the call returns.
+ *
+ * @param[in]  ctx       Opaque context passed to ra_reflow_set_css_loader().
+ * @param[in]  href      Stylesheet href string (not NUL-terminated).
+ * @param[in]  href_len  Length of @p href, bytes.
+ * @param[out] out_bytes Receives a pointer to the CSS text bytes.
+ * @param[out] out_len   Receives the CSS byte count.
+ *
+ * @return ra_err_t; ::k_ra_ok on success, any error to skip the stylesheet.
+ *
+ * @note The engine treats any non-::k_ra_ok return as "stylesheet unavailable"
+ *       and continues with only the inline rules.
+ * @since 0.1.0
+ */
+typedef ra_err_t (*ra_reflow_css_loader_fn)(void*           ctx,
+                                            const char*     href,
+                                            uint32_t        href_len,
+                                            const uint8_t** out_bytes,
+                                            size_t*         out_len);
+
+/**
  * @struct ra_reflow_link_target_t
  * @brief One distinct `<a href>` destination interned during a parse.
  *
@@ -545,6 +576,10 @@ typedef struct {
   // cppcheck-suppress unusedStructMember
   ra_img_arena_t* img_arena; /**< Decode scratch (NULL = off).       */
   // cppcheck-suppress unusedStructMember
+  ra_reflow_css_loader_fn css_loader; /**< `<link>` CSS loader (NULL = off). */
+  // cppcheck-suppress unusedStructMember
+  void* css_loader_ctx; /**< Opaque context for `css_loader`.   */
+  // cppcheck-suppress unusedStructMember
   ra_reflow_image_box_t image_boxes[k_ra_reflow_max_images]; /**< Laid-out images. */
   // cppcheck-suppress unusedStructMember
   uint32_t image_box_count; /**< Image boxes used.                  */
@@ -678,6 +713,34 @@ typedef struct {
                                                   ra_reflow_image_loader_fn loader,
                                                   void*                     ctx,
                                                   ra_img_arena_t*           arena);
+
+/**
+ * @brief Bind the external-stylesheet loader for `<link rel="stylesheet">`.
+ *
+ * @details Mirrors ra_reflow_set_image_loader(). When bound, ra_reflow_layout_chapter()
+ * resolves each `<link rel="stylesheet" href>` in the chapter via @p loader and
+ * parses the returned CSS into the chapter sheet in document order (so a later
+ * inline `<style>` / `style=` overrides it). NULL @p loader disables the feature
+ * (chapters parse only their inline CSS, exactly as before).
+ *
+ * @param[in,out] engine Engine to bind.
+ * @param[in]     loader Stylesheet byte loader, or NULL to disable.
+ * @param[in]     ctx    Opaque context handed back to @p loader.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Binding recorded.
+ * @retval k_ra_err_null_ptr        @p engine is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ *
+ * @pre  @p engine is non-NULL and initialized.
+ * @post On success the engine uses (@p loader, @p ctx) for `<link>` stylesheets.
+ * @post Binding takes effect on the next ra_reflow_layout_chapter().
+ *
+ * @note Not thread-safe; bind before laying out.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_reflow_set_css_loader(ra_reflow_t* engine, ra_reflow_css_loader_fn loader, void* ctx);
 
 /**
  * @brief Hit-test a point on a page against the laid-out `<a>` link rectangles.

@@ -286,6 +286,108 @@ static void test_display_none_suppressed(void)
   TEST_END("display:none suppresses subtree");
 }
 
+/** @brief External-stylesheet bytes returned by ::css_stub. */
+static const char k_ext_css[] = ".lead{color:#c80000}";
+
+/** @brief ra_reflow_css_loader_fn stub: hands back ::k_ext_css for any href. */
+static ra_err_t
+css_stub(void* ctx, const char* href, uint32_t href_len, const uint8_t** out_bytes, size_t* out_len)
+{
+  (void)ctx;
+  (void)href;
+  (void)href_len;
+  *out_bytes = (const uint8_t*)k_ext_css;
+  *out_len   = sizeof(k_ext_css) - 1U;
+  return k_ra_ok;
+}
+
+/** @brief Colour of the first text token after a walk (sentinel if none). */
+static uint32_t first_text_color(void)
+{
+  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
+    if (s_engine.tokens[i].kind == (uint8_t)k_ra_reflow_tok_text) {
+      return s_engine.tokens[i].color;
+    }
+  }
+  return 0xDEADBEEFU;
+}
+
+/**
+ * @test test_external_stylesheet
+ * @brief `<link rel=stylesheet>` rules apply, and a later inline `<style>` wins.
+ */
+static void test_external_stylesheet(void)
+{
+  TEST_BEGIN("external <link> stylesheet");
+  const char* doc = "<html><head><link rel=\"stylesheet\" href=\"s.css\"/></head>"
+                    "<body><p class=\"lead\">x</p></body></html>";
+
+  /* No loader bound -> the external rule is invisible (default colour). */
+  s_engine.css_loader = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, walk(doc));
+  const uint32_t c_default = first_text_color();
+
+  /* Loader bound -> `.lead{color:#c80000}` resolves onto the run. */
+  s_engine.css_loader     = css_stub;
+  s_engine.css_loader_ctx = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, walk(doc));
+  const uint32_t c_ext = first_text_color();
+  TEST_ASSERT(c_ext != c_default); /* the external sheet applied */
+
+  /* A `<style>` AFTER the `<link>` overrides it (document order). */
+  const char* doc2 = "<html><head><link rel=\"stylesheet\" href=\"s.css\"/>"
+                     "<style>.lead{color:#0000c8}</style></head>"
+                     "<body><p class=\"lead\">x</p></body></html>";
+  TEST_ASSERT_EQ(k_ra_ok, walk(doc2));
+  TEST_ASSERT(first_text_color() != c_ext); /* inline <style> won by order */
+
+  s_engine.css_loader = nullptr;
+  TEST_END("external <link> stylesheet");
+}
+
+/**
+ * @test test_external_link_mcdc
+ *
+ * @par MC/DC:
+ * Decision (load iff): `find(rel) AND find(href) AND rel_is_stylesheet`, the
+ * 3-condition guard in libs/ra_reflow/src/ra_reflow_tokenize.c@priv_handle_link.
+ * Observable = the `.lead` run's colour changes from its no-link default.
+ *  - V1 rel="stylesheet" href present -> all true  -> loads (colour changes).
+ *  - V2 rel="icon"        href present -> stylesheet false -> no load.
+ *  - V3 (no rel)          href present -> find(rel) false  -> no load.
+ *  - V4 rel="stylesheet"  (no href)    -> find(href) false -> no load.
+ * V1 vs V2/V3/V4 give each condition independent influence; N+1 = 4 vectors.
+ */
+static void test_external_link_mcdc(void)
+{
+  TEST_BEGIN("<link> load decision MC/DC");
+  s_engine.css_loader = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p class=\"lead\">x</p></body></html>"));
+  const uint32_t c_def = first_text_color(); /* no-link baseline */
+
+  s_engine.css_loader     = css_stub;
+  s_engine.css_loader_ctx = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 walk("<html><head><link rel=\"stylesheet\" href=\"s\"/></head>"
+                      "<body><p class=\"lead\">x</p></body></html>"));
+  TEST_ASSERT(first_text_color() != c_def); /* V1: loads */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 walk("<html><head><link rel=\"icon\" href=\"s\"/></head>"
+                      "<body><p class=\"lead\">x</p></body></html>"));
+  TEST_ASSERT_EQ(c_def, first_text_color()); /* V2: not a stylesheet */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 walk("<html><head><link href=\"s\"/></head>"
+                      "<body><p class=\"lead\">x</p></body></html>"));
+  TEST_ASSERT_EQ(c_def, first_text_color()); /* V3: no rel */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 walk("<html><head><link rel=\"stylesheet\"/></head>"
+                      "<body><p class=\"lead\">x</p></body></html>"));
+  TEST_ASSERT_EQ(c_def, first_text_color()); /* V4: no href */
+
+  s_engine.css_loader = nullptr;
+  TEST_END("<link> load decision MC/DC");
+}
+
 int32_t main(void)
 {
   test_is_xml_whitespace();
@@ -294,6 +396,8 @@ int32_t main(void)
   test_utf8_encode();
   test_walk_end_to_end();
   test_display_none_suppressed();
+  test_external_stylesheet();
+  test_external_link_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_tokenize.c\n");
   return 0;
 }

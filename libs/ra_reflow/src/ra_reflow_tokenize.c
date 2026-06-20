@@ -209,6 +209,7 @@ ra_reflow_html_tag_t ra_reflow_tok_classify(const char* name, size_t len)
     {"blockquote", k_ra_reflow_tag_blockquote},
     {"a", k_ra_reflow_tag_a},
     {"img", k_ra_reflow_tag_img},
+    {"link", k_ra_reflow_tag_link},
     {"table", k_ra_reflow_tag_table},
     {"tr", k_ra_reflow_tag_tr},
     {"td", k_ra_reflow_tag_td},
@@ -1161,11 +1162,89 @@ static ra_err_t priv_open_attrs(tok_ctx_t*            ctx,
 }
 
 /**
- * @brief Emit the single token for a void tag (`<br>` / `<hr>` / `<img>`).
+ * @brief True if a `rel` attribute value contains the `stylesheet` token.
+ *
+ * @details Case-sensitive substring scan (EPUB `<link>` rels are authored
+ * lowercase; this also accepts the `alternate stylesheet` form). Bounded by the
+ * value length.
+ *
+ * @param[in] rel Attribute-value bytes (not NUL-terminated).
+ * @param[in] len Length of @p rel, bytes.
+ * @return true if `stylesheet` occurs in @p rel.
+ * @pre @p rel addresses @p len readable bytes.
+ * @post No state mutated.
+ * @note Pure.
+ * @since 0.1.0
+ */
+static bool priv_rel_is_stylesheet(const uint8_t* rel, size_t len)
+{
+  static const char k_kw[] = "stylesheet";
+  const size_t      k_klen = sizeof(k_kw) - 1U;
+  for (size_t i = 0U; (i + k_klen) <= len; i++) {
+    size_t j = 0U;
+    for (; (j < k_klen) && (rel[i + j] == (uint8_t)k_kw[j]); j++) {
+    }
+    if (j == k_klen) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Resolve a `<link rel="stylesheet" href>` via the bound CSS loader.
+ *
+ * @details Best-effort. When a CSS loader is bound and the tag is a stylesheet
+ * link carrying an href, fetches the bytes and parses them into the chapter
+ * sheet at this document position (so a later inline `<style>` / `style=`
+ * overrides them). Any missing attribute / loader failure is silently ignored
+ * -- the chapter renders with whatever rules are present.
+ *
+ * @param[in,out] ctx    Tokenizer context (carries the engine + its CSS sheet).
+ * @param[in]     buf    Source buffer.
+ * @param[in]     tag_lt Index of the tag's '<'.
+ * @param[in]     end    One past the tag's '>'.
+ * @pre `ctx`, `buf` non-null; `end >= tag_lt`.
+ * @post On a resolved stylesheet, its rules are appended to `ctx->engine->css`.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, size_t end)
+{
+  if (ctx->engine->css_loader == nullptr) {
+    return;
+  }
+  const uint8_t* tagbuf   = &buf[tag_lt];
+  const size_t   span     = (end > tag_lt) ? (end - tag_lt) : 0U;
+  size_t         rel_off  = 0U;
+  size_t         rel_len  = 0U;
+  size_t         href_off = 0U;
+  size_t         href_len = 0U;
+  if (!priv_find_attr(tagbuf, span, "rel", sizeof("rel") - 1U, &rel_off, &rel_len) ||
+      !priv_find_attr(tagbuf, span, "href", sizeof("href") - 1U, &href_off, &href_len) ||
+      !priv_rel_is_stylesheet(&tagbuf[rel_off], rel_len)) {
+    return;
+  }
+  const uint8_t* css_bytes = nullptr;
+  size_t         css_len   = 0U;
+  if ((ctx->engine->css_loader(ctx->engine->css_loader_ctx,
+                               (const char*)&tagbuf[href_off],
+                               (uint32_t)href_len,
+                               &css_bytes,
+                               &css_len) == k_ra_ok) &&
+      (css_bytes != nullptr) && (css_len > 0U)) {
+    (void)ra_css_parse(&ctx->engine->css, (const char*)css_bytes, (uint32_t)css_len);
+  }
+}
+
+/**
+ * @brief Emit the single token for a void tag (`<br>` / `<hr>` / `<img>`),
+ *        or resolve a `<link>` stylesheet.
  *
  * @details `<br>` -> break, `<hr>` -> rule, `<img>` -> image (capturing its
- * `src`). Returns whether @p tag was a void tag so the caller can fall through
- * to ordinary open-tag handling otherwise.
+ * `src`), `<link rel=stylesheet>` -> external CSS load (no token). Returns
+ * whether @p tag was a void tag so the caller can fall through to ordinary
+ * open-tag handling otherwise.
  *
  * @param[in,out] ctx     Tokenizer context.
  * @param[in]     buf     Source buffer.
@@ -1189,6 +1268,11 @@ static bool priv_handle_void(tok_ctx_t*           ctx,
                              ra_reflow_html_tag_t tag,
                              ra_err_t*            out_err)
 {
+  if (tag == k_ra_reflow_tag_link) {
+    priv_handle_link(ctx, buf, tag_lt, end); /* external stylesheet (no token) */
+    *out_err = k_ra_ok;
+    return true;
+  }
   const bool is_void =
     (tag == k_ra_reflow_tag_br) || (tag == k_ra_reflow_tag_hr) || (tag == k_ra_reflow_tag_img);
   if (is_void && priv_suppressed(ctx)) {
