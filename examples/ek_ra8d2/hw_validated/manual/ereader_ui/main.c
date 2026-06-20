@@ -37,12 +37,14 @@
 #include <string.h>
 
 #include "arnopro_latin1.h"
+#include "er_pageturn.h"
 #include "figure_fixture.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_box.h"
 #include "ra_cgc.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
+#include "ra_display_pal_policy.h"
 #include "ra_err.h"
 #include "ra_gfx.h"
 #include "ra_gfx_font.h"
@@ -51,6 +53,8 @@
 #include "ra_mstp.h"
 #include "ra_panel.h"
 #include "ra_panel_timing.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
 #include "ra_reflow.h"
 #include "ra_reflow_image.h"
 #include "ra_sdfont.h"
@@ -419,6 +423,37 @@ static uint32_t s_reading_pages = 1U;
 
 /** @brief Debounce: true while a contact is held, to fire once per tap. */
 static bool s_was_touching;
+
+/** @brief Debounce: true while SW1/SW2 are held, to fire once per press. */
+static bool s_was_sw1;
+static bool s_was_sw2; /**< @see s_was_sw1 */
+
+/** @brief Refresh-cadence policy driving e-ink page-turn waveforms (#78). */
+static display_policy_t s_policy;
+
+/**
+ * @brief Pending refresh event for the next flush (set by a tap/button handler).
+ * @details Defaults to a clean chapter-boundary refresh for any screen change;
+ *          a same-chapter page turn lowers it to ::k_display_event_turn.
+ */
+static display_turn_event_t s_pending_event = k_display_event_chapter;
+
+/** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL (#78). */
+volatile uint32_t g_er_cur_page;  /**< Current reading page after the last turn.   */
+volatile uint32_t g_er_turns;     /**< Count of page turns applied since boot.     */
+volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flushed.       */
+
+/** @brief SW1 (P009) = previous page; active-low, internal pull-up. */
+static const ra_port_pin_t k_er_pin_sw1 =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_0 << 8) | (uint16_t)k_ra_pin_9);
+/** @brief SW2 (P008) = next page; active-low, internal pull-up. */
+static const ra_port_pin_t k_er_pin_sw2 =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_0 << 8) | (uint16_t)k_ra_pin_8);
+
+/** @brief Default clean-refresh cadence: a GC16 every N fast turns. */
+enum : uint16_t {
+  k_er_clean_every = 8U,
+};
 
 /**
  * @struct er_loc_t
@@ -1565,6 +1600,86 @@ static void er_push_loc(void)
   }
 }
 
+/** @brief Number of chapters in the (mock) spine. */
+static uint32_t er_spine_count(void)
+{
+  return (uint32_t)(sizeof(k_er_spine) / sizeof(k_er_spine[0]));
+}
+
+/**
+ * @brief Flush the panel for a refresh event through the cadence policy (#78).
+ *
+ * @details Runs the pluggable ::s_policy for @p event to pick the waveform hint
+ * + extent, then issues one ``display_flush`` over the page rect. On a continuous
+ * LCD backend the hint is inert; on e-ink it selects A2 / GC16 / INIT. Refreshes
+ * the SWD telemetry so the headless HIL can observe the cadence.
+ *
+ * @param[in] event The page-transition that occurred (open / turn / chapter).
+ * @pre ::s_policy was initialised and ::s_display is valid.
+ * @pre ::s_fb describes the bound framebuffer.
+ * @post One panel flush is issued; ::g_er_last_hint / ::g_er_cur_page are current.
+ * @note Not thread-safe; the reader UI is single-threaded.
+ * @since 0.1.0
+ */
+static void er_flush_event(display_turn_event_t event)
+{
+  display_policy_decision_t dec = {};
+  if (display_policy_decide(&s_policy, event, &dec) != k_ra_ok) {
+    dec.hint = k_display_refresh_quality; /* safe fallback: a clean full update */
+  }
+  display_rect_t rect = {};
+  if (display_policy_full_rect(s_fb.width_px, s_fb.height_px, &rect) != k_ra_ok) {
+    rect = display_full_rect(s_display);
+  }
+  (void)display_flush(s_display, rect, dec.hint);
+  g_er_last_hint = (uint32_t)dec.hint;
+  g_er_cur_page  = s_reading_page;
+}
+
+/**
+ * @brief Apply a page turn to the reading location (touch + button shared path).
+ *
+ * @details Delegates the pure decision to ::er_pageturn_step (next/prev, chapter
+ * crossing, book-end clamp), writes the new (chapter, page) back to the file-
+ * scope state, and records the matching refresh event in ::s_pending_event
+ * (a same-chapter turn -> ::k_display_event_turn, a chapter crossing ->
+ * ::k_display_event_chapter). A PREV crossing lands on ::k_er_page_last, which
+ * ::er_render_reading clamps to the real last page after it lays the new chapter
+ * out. Counts the turn for the HIL telemetry.
+ *
+ * @param[in] dir Direction (::k_er_dir_prev / ::k_er_dir_next / ::k_er_dir_none).
+ * @return true iff the reading location changed (caller must re-render).
+ * @retval true  A page turn was applied.
+ * @retval false No turn (book end, or ::k_er_dir_none).
+ * @pre The Reading view is active and a chapter is laid out (::s_reading_pages).
+ * @pre ::s_chapter_idx / ::s_reading_page are the visible location.
+ * @post On true the location advanced and ::s_pending_event reflects the kind.
+ * @post On false no state changed.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool er_apply_pageturn(er_dir_t dir)
+{
+  uint32_t n_chap  = s_chapter_idx;
+  uint32_t n_page  = s_reading_page;
+  bool     crossed = false;
+  if (!er_pageturn_step(s_chapter_idx,
+                        s_reading_page,
+                        s_reading_pages,
+                        er_spine_count(),
+                        dir,
+                        &n_chap,
+                        &n_page,
+                        &crossed)) {
+    return false;
+  }
+  s_chapter_idx   = n_chap;
+  s_reading_page  = n_page;
+  s_pending_event = crossed ? k_display_event_chapter : k_display_event_turn;
+  g_er_turns++;
+  return true;
+}
+
 /**
  * @brief Follow a same-chapter `#fragment`: jump to the anchored page.
  * @param[in] off      Href text-pool offset.
@@ -1726,23 +1841,11 @@ static bool er_handle_reading_tap(int32_t x, int32_t y)
   if (er_reading_link_tap(x, y)) {
     return true;
   }
-  /* Page-turn: a tap in the right half of the body advances a page, the left
-   * half goes back. No-ops at the ends and in the bitmap fallback (where
-   * s_reading_pages stays 1), so a tap there leaves the screen unchanged. */
-  const int32_t mid  = (int32_t)s_fb.width_px / 2;
-  uint32_t      want = s_reading_page;
-  if (x >= mid) {
-    if ((s_reading_page + 1U) < s_reading_pages) {
-      want = s_reading_page + 1U;
-    }
-  } else if (s_reading_page > 0U) {
-    want = s_reading_page - 1U;
-  }
-  if (want != s_reading_page) {
-    s_reading_page = want;
-    return true; /* re-render at the new page */
-  }
-  return false;
+  /* Page-turn: a tap in the right third of the screen advances, the left third
+   * goes back, the middle third is neutral. Crosses chapter boundaries and
+   * clamps at the book ends (er_apply_pageturn). A no-op leaves the screen
+   * unchanged (e.g. in the bitmap fallback where s_reading_pages stays 1). */
+  return er_apply_pageturn(er_tap_to_dir(x, (int32_t)s_fb.width_px));
 }
 
 /**
@@ -1772,7 +1875,10 @@ static bool er_handle_keyboard_tap(int32_t x, int32_t y)
 
 static bool er_handle_tap(int32_t x, int32_t y)
 {
-  uint16_t top = (uint16_t)k_er_screen_library;
+  /* Default any screen/location change to a clean full refresh; a same-chapter
+   * page turn lowers this to a fast partial inside er_apply_pageturn. */
+  s_pending_event = k_display_event_chapter;
+  uint16_t top    = (uint16_t)k_er_screen_library;
   (void)ra_ui_nav_top(&s_nav, &top);
   if (top == (uint16_t)k_er_screen_reading) {
     return er_handle_reading_tap(x, y);
@@ -1784,9 +1890,10 @@ static bool er_handle_tap(int32_t x, int32_t y)
   bool     hit    = false;
   (void)ra_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
   if (hit && (action == (uint16_t)k_er_act_open_book)) {
-    s_reading_page   = 0U; /* always open a book at its first page */
-    s_chapter_idx    = 0U; /* and its first chapter */
-    s_loc_back_count = 0U; /* with a fresh navigation back-stack */
+    s_reading_page   = 0U;                   /* always open a book at its first page */
+    s_chapter_idx    = 0U;                   /* and its first chapter */
+    s_loc_back_count = 0U;                   /* with a fresh navigation back-stack */
+    s_pending_event  = k_display_event_open; /* fresh book -> clean INIT */
     return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_reading) == k_ra_ok);
   }
   if (hit && (action == (uint16_t)k_er_act_search)) {
@@ -1821,10 +1928,56 @@ static void er_poll_touch(void)
   if (touching && !s_was_touching) {
     if (er_handle_tap((int32_t)pt.x, (int32_t)pt.y)) {
       er_render_current();
-      (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_quality);
+      er_flush_event(s_pending_event);
     }
   }
   s_was_touching = touching;
+}
+
+/** @brief Read a user switch (active-low); true == pressed. */
+static bool er_sw_pressed(ra_port_pin_t pin)
+{
+  ra_level_t level = k_ra_level_high;
+  if (ra_gpio_read(pin, &level) != k_ra_ok) {
+    return false; /* unreadable switch -> treat as released (touch still works) */
+  }
+  return (level == k_ra_level_low);
+}
+
+/**
+ * @brief Poll SW1/SW2 and turn a page on a fresh press (#78).
+ *
+ * @details Edge-triggered per button (a held switch fires once): SW1 = previous
+ * page, SW2 = next. A turn re-renders the Reading view and flushes through the
+ * cadence policy. Inert outside the Reading view (::er_apply_pageturn no-ops when
+ * there is nothing to turn). board_sim drives the switches via ``--button``.
+ *
+ * @pre The switch pins were configured as inputs (::app_bringup_buttons).
+ * @pre ::s_display / ::s_fb are valid.
+ * @post On a fresh press that turns a page, the new page is shown and flushed.
+ * @post ::s_was_sw1 / ::s_was_sw2 track the held state.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_poll_buttons(void)
+{
+  const bool sw1    = er_sw_pressed(k_er_pin_sw1);
+  const bool sw2    = er_sw_pressed(k_er_pin_sw2);
+  const bool fresh1 = sw1 && !s_was_sw1;
+  const bool fresh2 = sw2 && !s_was_sw2;
+  s_was_sw1         = sw1;
+  s_was_sw2         = sw2;
+  /* Page-turn buttons act only in the Reading view (a press elsewhere is a
+   * no-op, so it cannot disturb the reading location from another screen). */
+  uint16_t top = (uint16_t)k_er_screen_library;
+  (void)ra_ui_nav_top(&s_nav, &top);
+  if ((top != (uint16_t)k_er_screen_reading) || !(fresh1 || fresh2)) {
+    return;
+  }
+  if (er_apply_pageturn(er_buttons_to_dir(fresh1, fresh2))) {
+    er_render_current();
+    er_flush_event(s_pending_event);
+  }
 }
 
 #pragma GCC diagnostic push
@@ -1835,15 +1988,21 @@ int32_t main(void)
   app_bringup_panel();
   app_bringup_gfx();
   app_bringup_touch();
+  /* User switches SW1/SW2 as inputs with internal pull-ups (active-low). Best-
+   * effort: a config failure just leaves page-turn on the touch path. */
+  (void)ra_gpio_input_init(k_er_pin_sw1, k_ra_pull_up);
+  (void)ra_gpio_input_init(k_er_pin_sw2, k_ra_pull_up);
   er_try_load_font(); /* Best-effort SD font for the ra_reflow Reading body. */
 
+  /* Default refresh cadence: fast A2 turns with a periodic GC16 clean (#78). */
+  (void)display_policy_init(&s_policy, k_display_policy_fast_clean, (uint16_t)k_er_clean_every);
   (void)ra_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
   er_render_current();
-  (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_init);
+  er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 
   while (1) {
     er_poll_touch();
-    (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_fast);
+    er_poll_buttons();
     (void)ra_board_led_toggle(k_ra_board_led_blue);
     ra_delay_ms((uint32_t)k_er_frame_ms);
   }
