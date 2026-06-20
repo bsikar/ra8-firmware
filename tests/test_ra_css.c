@@ -116,13 +116,13 @@ static void test_parse_selectors(void)
 
 /**
  * @test test_parse_unsupported_skipped
- * @brief Descendant / multi-class / unknown-tag selectors are dropped, not errored.
+ * @brief Multi-class / unknown-tag selectors are dropped, not errored. (Descendant
+ *        selectors ARE supported now -- see test_descendant.)
  */
 static void test_parse_unsupported_skipped(void)
 {
   TEST_BEGIN("css unsupported selectors skipped");
-  load("p a { font-style: italic; }" /* descendant combinator -> skip */
-       ".a.b { color: red; }"        /* two classes -> skip           */
+  load(".a.b { color: red; }"        /* two classes -> skip           */
        "div { text-align: center; }" /* unknown tag -> skip           */
        "h1 { text-align: right; }"); /* OK                            */
   TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
@@ -683,11 +683,78 @@ static void test_fontface_null_guards(void)
 }
 
 /**
+ * @test test_descendant
+ * @brief Descendant selectors: class + tag ancestors, no-match, specificity,
+ *        and ancestor overflow.
+ *
+ * @par MC/DC:
+ * Decision (`.chapter p` matches): `subject_matches(p) && ancestor_has(.chapter)`
+ * (2 conditions, AND; N+1 = 3 vectors):
+ *  - el=p,  ancestor=.chapter -> true  (control: both true)
+ *  - el=h1, ancestor=.chapter -> false (varies the subject condition)
+ *  - el=p,  ancestor=none     -> false (varies the ancestor condition)
+ */
+static void test_descendant(void)
+{
+  TEST_BEGIN("css descendant selectors");
+  load(".chapter p { font-weight: bold; }\n"
+       "p { font-style: italic; }");
+  TEST_ASSERT_EQ(2, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, (int)s_sheet.rules[0].anc_count);                    /* one ancestor part */
+  TEST_ASSERT(s_sheet.rules[0].anc[0].class_len > 0U);                   /* .chapter          */
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag); /* subject p          */
+
+  const ra_css_style_t   inh     = {};
+  const ra_css_style_t   inl     = no_inline();
+  const ra_css_element_t p       = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  const ra_css_element_t h1      = elem(k_ra_reflow_tag_h1, nullptr, nullptr);
+  const ra_css_element_t chap[1] = {elem(k_ra_reflow_tag_h1, nullptr, "chapter")};
+
+  /* V1: p under .chapter -> `.chapter p` (bold) AND `p` (italic) both apply. */
+  const ra_css_style_t c1 = ra_css_cascade_ctx(&s_sheet, &p, inh, inl, chap, 1U);
+  TEST_ASSERT((c1.style & (uint8_t)k_ra_reflow_style_bold) != 0U);
+  TEST_ASSERT((c1.style & (uint8_t)k_ra_reflow_style_italic) != 0U);
+
+  /* V3: p with no ancestor -> descendant does NOT match (italic only). */
+  const ra_css_style_t c3 = ra_css_cascade_ctx(&s_sheet, &p, inh, inl, nullptr, 0U);
+  TEST_ASSERT((c3.style & (uint8_t)k_ra_reflow_style_bold) == 0U);
+  TEST_ASSERT((c3.style & (uint8_t)k_ra_reflow_style_italic) != 0U);
+
+  /* V2: h1 (not the subject) under .chapter -> no rule matches it. */
+  const ra_css_style_t c2 = ra_css_cascade_ctx(&s_sheet, &h1, inh, inl, chap, 1U);
+  TEST_ASSERT((c2.style & (uint8_t)k_ra_reflow_style_bold) == 0U);
+
+  /* Specificity: `.chapter p` (101) beats `p` (1) for a shared property. */
+  load(".chapter p { color: #ff0000; }\n"
+       "p { color: #0000ff; }");
+  const ra_css_style_t cs = ra_css_cascade_ctx(&s_sheet, &p, inh, inl, chap, 1U);
+  TEST_ASSERT((cs.set & (uint8_t)k_ra_css_set_color) != 0U);
+  TEST_ASSERT_EQ((int)0xFF0000, (int)cs.color);
+
+  /* Tag-ancestor descendant: `p em` (em inside p). */
+  load("p em { text-decoration: underline; }");
+  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, (int)s_sheet.rules[0].anc_count);
+  const ra_css_element_t em    = elem(k_ra_reflow_tag_em, nullptr, nullptr);
+  const ra_css_element_t pa[1] = {elem(k_ra_reflow_tag_p, nullptr, nullptr)};
+  const ra_css_style_t   ce    = ra_css_cascade_ctx(&s_sheet, &em, inh, inl, pa, 1U);
+  TEST_ASSERT((ce.style & (uint8_t)k_ra_reflow_style_underline) != 0U);
+  const ra_css_style_t cen = ra_css_cascade_ctx(&s_sheet, &em, inh, inl, nullptr, 0U);
+  TEST_ASSERT((cen.style & (uint8_t)k_ra_reflow_style_underline) == 0U);
+
+  /* Overflow: more than k_ra_css_max_anc ancestor parts -> the rule is dropped. */
+  load(".a .b .c .d .e p { font-weight: bold; }");
+  TEST_ASSERT_EQ(0, (int)s_sheet.rule_count);
+  TEST_END("css descendant selectors");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
 int32_t main(void)
 {
+  test_descendant();
   test_fontface_parse();
   test_fontface_cascade();
   test_fontface_match_mcdc();

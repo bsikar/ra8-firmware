@@ -76,25 +76,26 @@ typedef enum : uint32_t {
  * @brief Mutable tokenizer state threaded through the scan helpers.
  */
 typedef struct {
-  ra_reflow_t* engine;                          /**< Target engine pools.        */
-  uint8_t      style;                           /**< Current inline-style bits.  */
-  uint8_t      active_link;                     /**< 1-based link id (0 = none).  */
-  uint32_t     color;                           /**< Current CSS colour / inherit.*/
-  uint16_t     css_font_px;                     /**< Inherited CSS font px (0=none).*/
-  uint16_t     family_off;                      /**< Inherited font-family slice off.*/
-  uint16_t     family_len;                      /**< Inherited font-family len (0=none).*/
-  uint8_t      face_slot;                       /**< Resolved embedded face (0=default).*/
-  uint8_t      stack_tag[k_priv_max_depth];     /**< Open-element tag stack.      */
-  uint8_t      stack_style[k_priv_max_depth];   /**< Style to restore on pop.    */
-  uint8_t      stack_link[k_priv_max_depth];    /**< Link id to restore on pop.  */
-  uint32_t     stack_color[k_priv_max_depth];   /**< Colour to restore on pop.   */
-  uint16_t     stack_font[k_priv_max_depth];    /**< CSS font px to restore on pop.*/
-  uint16_t     stack_fam_off[k_priv_max_depth]; /**< font-family off to restore.  */
-  uint16_t     stack_fam_len[k_priv_max_depth]; /**< font-family len to restore.  */
-  uint8_t      stack_face[k_priv_max_depth];    /**< Face slot to restore on pop. */
-  uint32_t     sp;                              /**< Stack depth.                */
-  uint32_t     suppress_sp;                     /**< display:none subtree depth (0=off).*/
-  bool         saw_element;                     /**< At least one element seen.  */
+  ra_reflow_t*     engine;      /**< Target engine pools.        */
+  uint8_t          style;       /**< Current inline-style bits.  */
+  uint8_t          active_link; /**< 1-based link id (0 = none).  */
+  uint32_t         color;       /**< Current CSS colour / inherit.*/
+  uint16_t         css_font_px; /**< Inherited CSS font px (0=none).*/
+  uint16_t         family_off;  /**< Inherited font-family slice off.*/
+  uint16_t         family_len;  /**< Inherited font-family len (0=none).*/
+  uint8_t          face_slot;   /**< Resolved embedded face (0=default).*/
+  ra_css_element_t stack_el
+    [k_priv_max_depth]; /**< Open-element identities (tag+id+class) for the cascade + descendant match. */
+  uint8_t  stack_style[k_priv_max_depth];   /**< Style to restore on pop.    */
+  uint8_t  stack_link[k_priv_max_depth];    /**< Link id to restore on pop.  */
+  uint32_t stack_color[k_priv_max_depth];   /**< Colour to restore on pop.   */
+  uint16_t stack_font[k_priv_max_depth];    /**< CSS font px to restore on pop.*/
+  uint16_t stack_fam_off[k_priv_max_depth]; /**< font-family off to restore.  */
+  uint16_t stack_fam_len[k_priv_max_depth]; /**< font-family len to restore.  */
+  uint8_t  stack_face[k_priv_max_depth];    /**< Face slot to restore on pop. */
+  uint32_t sp;                              /**< Stack depth.                */
+  uint32_t suppress_sp;                     /**< display:none subtree depth (0=off).*/
+  bool     saw_element;                     /**< At least one element seen.  */
 } tok_ctx_t;
 
 /* ===========================================================================
@@ -779,7 +780,7 @@ static ra_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
     return k_ra_err_validation_failed;
   }
   ctx->sp--;
-  const ra_reflow_html_tag_t tag = (ra_reflow_html_tag_t)ctx->stack_tag[ctx->sp];
+  const ra_reflow_html_tag_t tag = (ra_reflow_html_tag_t)ctx->stack_el[ctx->sp].tag;
   ctx->style                     = ctx->stack_style[ctx->sp];
   ctx->active_link               = ctx->stack_link[ctx->sp];
   ctx->color                     = ctx->stack_color[ctx->sp];
@@ -1350,7 +1351,7 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
                                  bool                 block)
 {
   const uint8_t          base = (uint8_t)(ctx->style | priv_style_for(tag));
-  const ra_css_element_t el   = priv_css_element(tag, tagbuf, span);
+  const ra_css_element_t el   = ctx->stack_el[ctx->sp - 1U]; /* pushed by the caller */
   ra_css_style_t         inh  = {.set = (uint8_t)k_priv_style_mask, .style = base};
   if (ctx->color != (uint32_t)k_ra_reflow_color_inherit) {
     inh.set   = (uint8_t)(inh.set | (uint8_t)k_ra_css_set_color);
@@ -1363,9 +1364,12 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
     inh.family_off = ctx->family_off;
     inh.family_len = ctx->family_len;
   }
-  const ra_css_style_t inl  = priv_css_inline(tagbuf, span);
-  const ra_css_style_t comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
-  const uint16_t       fpx  = priv_css_font_px(ctx, &comp);
+  const ra_css_style_t inl = priv_css_inline(tagbuf, span);
+  /* Ancestors = the open-element stack below this one (stack_el[0 .. sp-2]). */
+  const uint8_t        n_anc = (uint8_t)(ctx->sp - 1U);
+  const ra_css_style_t comp =
+    ra_css_cascade_ctx(&ctx->engine->css, &el, inh, inl, ctx->stack_el, n_anc);
+  const uint16_t fpx = priv_css_font_px(ctx, &comp);
   /* display:none (#140): begin suppressing this element + its subtree at the
    * current depth; priv_open_attrs and the emit sites then drop every token
    * until the matching close pops back above this depth. */
@@ -1421,7 +1425,11 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   if (ctx->sp >= (uint32_t)k_priv_max_depth) {
     return k_ra_err_no_mem;
   }
-  ctx->stack_tag[ctx->sp]     = (uint8_t)tag;
+  const size_t span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
+  /* Record the element's full identity (tag + id + class, aliasing the chapter
+   * buffer) so the cascade reads it back and descendant selectors can match it
+   * as an ancestor of a later element. */
+  ctx->stack_el[ctx->sp]      = priv_css_element(tag, &buf[tag_lt], span);
   ctx->stack_style[ctx->sp]   = ctx->style;
   ctx->stack_link[ctx->sp]    = ctx->active_link;
   ctx->stack_color[ctx->sp]   = ctx->color;
@@ -1430,7 +1438,6 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   ctx->stack_fam_len[ctx->sp] = ctx->family_len;
   ctx->stack_face[ctx->sp]    = ctx->face_slot;
   ctx->sp++;
-  const size_t span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
   return priv_open_styled(ctx, &buf[tag_lt], span, tag, block);
 }
 
