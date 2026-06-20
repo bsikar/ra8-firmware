@@ -62,10 +62,19 @@ extern "C" {
  */
 typedef enum : uint16_t {
   k_ra_css_max_rules   = 128U,  /**< Max rules kept across all `<style>` blocks. */
-  k_ra_css_name_pool   = 2048U, /**< Bytes of class / id selector-name storage. */
+  k_ra_css_name_pool   = 2048U, /**< Bytes of class / id / font name storage.   */
   k_ra_css_max_classes = 8U,    /**< Max classes matched per element.           */
-  k_ra_css_name_max    = 64U,   /**< Max bytes of one class / id name.          */
+  k_ra_css_name_max    = 64U,   /**< Max bytes of one class / id / font name.   */
+  k_ra_css_max_faces   = 16U,   /**< Max `@font-face` rules kept per sheet.     */
 } ra_css_limits_t;
+
+/**
+ * @enum ra_css_face_match_t
+ * @brief Sentinel for ::ra_css_match_face when no `@font-face` entry matches.
+ */
+typedef enum : int16_t {
+  k_ra_css_no_face = -1, /**< No `@font-face` matched the requested family. */
+} ra_css_face_match_t;
 
 /**
  * @enum ra_css_set_t
@@ -83,6 +92,7 @@ typedef enum : uint8_t {
   k_ra_css_set_color     = 1U << 4U, /**< `color` was declared.           */
   k_ra_css_set_fontsize  = 1U << 5U, /**< `font-size` was declared.       */
   k_ra_css_set_display   = 1U << 6U, /**< `display` was declared.         */
+  k_ra_css_set_family    = 1U << 7U, /**< `font-family` was declared.     */
 } ra_css_set_t;
 
 /**
@@ -107,14 +117,16 @@ typedef enum : uint8_t {
  * present in `set`.
  */
 typedef struct {
-  uint8_t  set;       /**< ::ra_css_set_t bitmask: which properties are present.  */
-  uint8_t  style;     /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul).  */
-  uint8_t  align;     /**< ::ra_reflow_align_t (valid iff `set & align`).         */
-  uint8_t  font_unit; /**< ::ra_css_font_unit_t (valid iff `set & fontsize`).     */
-  uint32_t color;     /**< 0xRRGGBB text colour (valid iff `set & color`).        */
-  uint16_t font_val;  /**< font-size number: px or % (valid iff `set & fontsize`).*/
-  uint8_t  display;   /**< 1 = `display:none` (valid iff `set & display`).        */
-  uint8_t  pad;       /**< Padding.                                               */
+  uint8_t  set;        /**< ::ra_css_set_t bitmask: which properties are present.  */
+  uint8_t  style;      /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul).  */
+  uint8_t  align;      /**< ::ra_reflow_align_t (valid iff `set & align`).         */
+  uint8_t  font_unit;  /**< ::ra_css_font_unit_t (valid iff `set & fontsize`).     */
+  uint32_t color;      /**< 0xRRGGBB text colour (valid iff `set & color`).        */
+  uint16_t font_val;   /**< font-size number: px or % (valid iff `set & fontsize`).*/
+  uint8_t  display;    /**< 1 = `display:none` (valid iff `set & display`).        */
+  uint8_t  pad;        /**< Padding.                                               */
+  uint16_t family_off; /**< font-family name slice offset (valid iff `set&family`).*/
+  uint16_t family_len; /**< font-family name slice length (0 = none).              */
 } ra_css_style_t;
 
 /**
@@ -141,19 +153,40 @@ typedef struct {
 } ra_css_rule_t;
 
 /**
+ * @struct ra_css_fontface_t
+ * @brief One parsed `@font-face` rule: family + weight/style + `src` href.
+ *
+ * @details `family`/`src` are slices into the owning ::ra_css_sheet_t `names`
+ * pool (the `src` is the de-`url()`-wrapped manifest href, e.g.
+ * `fonts/Body.ttf`). `weight_bold` / `style_italic` capture which face this is so
+ * ::ra_css_match_face can pick the right one for a run's emphasis. The
+ * reflow-side loading of that href is #109's remainder, not this module.
+ */
+typedef struct {
+  uint16_t family_off;   /**< `font-family` name slice offset.            */
+  uint16_t family_len;   /**< `font-family` name slice length.            */
+  uint16_t src_off;      /**< `src` href slice offset.                    */
+  uint16_t src_len;      /**< `src` href slice length.                    */
+  uint8_t  weight_bold;  /**< 1 = this face is the bold weight.           */
+  uint8_t  style_italic; /**< 1 = this face is italic / oblique.          */
+  uint16_t pad;          /**< Padding.                                    */
+} ra_css_fontface_t;
+
+/**
  * @struct ra_css_sheet_t
- * @brief A parsed stylesheet: a fixed rule array + a selector-name byte pool.
+ * @brief A parsed stylesheet: rule + `@font-face` arrays and a name byte pool.
  *
  * @details Embedded in the reflow engine handle. Reset per chapter with
  * ::ra_css_sheet_reset, then grown by ::ra_css_parse for each `<style>` block.
  */
 typedef struct {
-  ra_css_rule_t rules[k_ra_css_max_rules]; /**< Parsed rules.            */
-  uint16_t      rule_count;                /**< Rules in use.            */
-  uint16_t      next_order;                /**< Running source-order ctr.*/
-  uint16_t      names_used;                /**< Bytes used in `names`.   */
-  uint16_t      pad;                       /**< Padding.                 */
-  uint8_t       names[k_ra_css_name_pool]; /**< class/id name bytes.     */
+  ra_css_rule_t     rules[k_ra_css_max_rules]; /**< Parsed rules.             */
+  ra_css_fontface_t faces[k_ra_css_max_faces]; /**< Parsed `@font-face` rules.*/
+  uint16_t          rule_count;                /**< Rules in use.             */
+  uint16_t          face_count;                /**< `@font-face` rules in use. */
+  uint16_t          next_order;                /**< Running source-order ctr. */
+  uint16_t          names_used;                /**< Bytes used in `names`.    */
+  uint8_t           names[k_ra_css_name_pool]; /**< class/id/font name bytes. */
 } ra_css_sheet_t;
 
 /**
@@ -289,6 +322,65 @@ typedef struct {
                                             const ra_css_element_t* el,
                                             ra_css_style_t          inherited,
                                             ra_css_style_t          inline_decl);
+
+/**
+ * @brief Pick the `@font-face` whose family + emphasis best fits a run.
+ *
+ * @details Scans @p sheet's parsed `@font-face` table for entries whose
+ * `font-family` equals @p family (case-insensitive, exact). Among those it
+ * prefers an exact `(weight, style)` match; failing that it falls back to the
+ * family's regular (non-bold, non-italic) face; failing that it reports
+ * ::k_ra_css_no_face so the caller uses its default face. This is the
+ * face-selection decision #109's remainder consumes (it then resolves the
+ * winning entry's ::ra_css_face_src href to a loaded typeface).
+ *
+ * @param[in] sheet       Parsed stylesheet (its `faces` table is scanned).
+ * @param[in] family      Resolved `font-family` bytes (e.g. a cascade result's
+ *                        name slice); need not be NUL-terminated.
+ * @param[in] family_len  Length of @p family, bytes.
+ * @param[in] want_bold   Whether the run is bold.
+ * @param[in] want_italic Whether the run is italic.
+ *
+ * @return The matching `faces` index in `[0, face_count)`, or ::k_ra_css_no_face.
+ *
+ * @pre @p sheet, @p family non-NULL and @p family_len > 0 (else no match).
+ * @pre None.
+ * @post No state modified.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] int16_t ra_css_match_face(const ra_css_sheet_t* sheet,
+                                        const char*           family,
+                                        uint16_t              family_len,
+                                        bool                  want_bold,
+                                        bool                  want_italic);
+
+/**
+ * @brief Read a parsed `@font-face` entry's `src` href bytes.
+ *
+ * @details Returns the de-`url()`-wrapped manifest href slice for face @p idx
+ * (the value ::ra_css_match_face's result indexes), so the caller can resolve it
+ * against the EPUB manifest. The bytes live in @p sheet's name pool and are
+ * valid for the sheet's lifetime; they are not NUL-terminated.
+ *
+ * @param[in]  sheet   Parsed stylesheet owning the face table.
+ * @param[in]  idx     Face index in `[0, face_count)`.
+ * @param[out] out_src Receives a pointer to the href bytes.
+ * @param[out] out_len Receives the href length, bytes.
+ *
+ * @return true iff @p idx is valid and the href was returned.
+ * @retval false A NULL pointer, or @p idx out of range.
+ *
+ * @pre @p sheet, @p out_src, @p out_len non-NULL.
+ * @pre None.
+ * @post On true, `*out_src`/`*out_len` describe the face's href; else unchanged.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] bool
+ra_css_face_src(const ra_css_sheet_t* sheet, uint16_t idx, const char** out_src, uint16_t* out_len);
 
 #ifdef __cplusplus
 }
