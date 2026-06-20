@@ -28,6 +28,7 @@
 #include "ra_display_pal.h"
 #include "ra_display_pal_eink.h"
 #include "ra_display_pal_lcd.h"
+#include "ra_display_pal_policy.h"
 #include "ra_epaper.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
@@ -494,6 +495,55 @@ static void test_eink_luma_conversion(void)
   TEST_END("e-ink: RGB565 -> 8bpp luma");
 }
 
+/**
+ * @brief Drive the refresh-cadence policy end-to-end through the sim e-ink backend.
+ *
+ * @details Proves the policy integrates with the real backend: every hint the
+ * fast_clean policy issues (INIT on open, A2 for the first N-1 turns, GC16 on
+ * the Nth, GC16 on a chapter boundary) is accepted by display_flush on the
+ * IT8951 sim. Closes the loop the pure-logic test in
+ * test_ra_display_pal_policy.c opens (it asserts the cadence; this asserts the
+ * backend honours each issued waveform hint).
+ */
+static void test_eink_policy_sequence(void)
+{
+  TEST_BEGIN("e-ink: refresh policy sequence drives the sim backend");
+  harness_reset_world();
+
+  display_handle_t*   d   = nullptr;
+  const display_cfg_t cfg = make_eink_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, display_init(&cfg, &d));
+
+  display_policy_t p = {};
+  TEST_ASSERT_EQ(k_ra_ok, display_policy_init(&p, k_display_policy_fast_clean, 4U));
+
+  /* Book open -> INIT clear, accepted by the panel. */
+  display_policy_decision_t dec = {};
+  TEST_ASSERT_EQ(k_ra_ok, display_policy_decide(&p, k_display_event_open, &dec));
+  TEST_ASSERT_EQ(k_display_refresh_init, dec.hint);
+  TEST_ASSERT(dec.full_update);
+  TEST_ASSERT_EQ(k_ra_ok, display_flush(d, display_full_rect(d), dec.hint));
+
+  /* Turns 1..3 -> fast A2; the 4th -> clean GC16; each accepted by the backend. */
+  const display_refresh_hint_t expect[4] = {k_display_refresh_fast,
+                                            k_display_refresh_fast,
+                                            k_display_refresh_fast,
+                                            k_display_refresh_quality};
+  for (uint32_t i = 0U; i < 4U; i++) {
+    TEST_ASSERT_EQ(k_ra_ok, display_policy_decide(&p, k_display_event_turn, &dec));
+    TEST_ASSERT_EQ(expect[i], dec.hint);
+    TEST_ASSERT_EQ(k_ra_ok, display_flush(d, display_full_rect(d), dec.hint));
+  }
+
+  /* A chapter boundary forces a clean GC16 even before the cadence elapses. */
+  TEST_ASSERT_EQ(k_ra_ok, display_policy_decide(&p, k_display_event_chapter, &dec));
+  TEST_ASSERT_EQ(k_display_refresh_quality, dec.hint);
+  TEST_ASSERT_EQ(k_ra_ok, display_flush(d, display_full_rect(d), dec.hint));
+
+  TEST_ASSERT_EQ(k_ra_ok, display_deinit(d));
+  TEST_END("e-ink: refresh policy sequence drives the sim backend");
+}
+
 /* =============================================================================
  * Driver
  * =============================================================================
@@ -513,5 +563,6 @@ int main(void)
   test_eink_init_get_caps();
   test_eink_flush_clear_get_fb();
   test_eink_luma_conversion();
+  test_eink_policy_sequence();
   return 0;
 }
