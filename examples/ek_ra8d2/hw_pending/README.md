@@ -26,6 +26,7 @@ hardware HIL probe AND the gap below is resolved.
 | tz_nsc_cgc_usb | Needs the real TrustZone secure / non-secure partition (separate S + NS stacks/.bss and a proper BLXNS transition): the NS-pointer veneer check rejects args whose `.data`/`.bss`/stack live in secure SRAM. Tracked in #60 / #54. |
 | dtc_transfer_demo | `tools/board_sim` shadows the DTC control window (DTCCR/DTCVBR/DTCST/DTCSTS) but models no descriptor-table transfer engine, so the SRAM-to-SRAM copy reports `match=N` on the emulator and can only be confirmed on silicon. The TI encoding + indirect vector-table model + slot re-arm are host-tested; the bring-up + ELC/DTC activation run headless. Tracked in #124. |
 | lvd_monitor_demo | `tools/board_sim` shadows the PVD control window but models no analog voltage comparator, so `PVD1SR.MON` reads back 0 and the banner reports `mon=below ok=N` on the emulator; the live `mon=above` reading needs silicon. The verdict logic + status decode + PRCR.PRC3 unlock word are host-tested; the safe flags-only (`response=none`) bring-up runs headless. Tracked in #125. |
+| bkup_survival_demo | The VBTBKRn read/write window passes on `tools/board_sim` (`rw=ok`), but the emulator models no reset-retained VBATT power domain and clears memory each run, so it reports `survived=N boot=1` -- the reset-survival proof needs a real EK-RA8D2 and a reset cycle (boot1 `survived=N` -> reset -> boot2 `survived=Y`). The pattern + verdict + survival decision are host-tested. Tracked in #131. |
 
 ## Recently promoted
 
