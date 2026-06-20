@@ -11,10 +11,11 @@
  *
  * ## Supported subset (v1)
  *
- *   - **Selectors** (one *simple* selector per rule, comma-grouped):
- *     `*` (universal), `tag` (type), `.class`, `#id`. Compound (`p.note`),
- *     descendant (`div p`) and pseudo selectors are skipped (no match, no
- *     crash) -- a documented limitation, not an error.
+ *   - **Selectors** (comma-grouped): `*` (universal), `tag` (type), `.class`,
+ *     `#id`, compound (`p.note`), and descendant (`div p`, `.chapter p`,
+ *     `.a .b`, up to ::k_ra_css_max_anc ancestor parts). Multiple classes per
+ *     compound (`.a.b`), child/sibling combinators and pseudo selectors are
+ *     skipped (no match, no crash) -- a documented limitation, not an error.
  *   - **Properties** (the ones that fold onto ra_reflow's existing per-run
  *     style bits + per-block alignment, so no layout change is needed):
  *     `font-weight` (bold / normal), `font-style` (italic / normal),
@@ -66,6 +67,7 @@ typedef enum : uint16_t {
   k_ra_css_max_classes = 8U,    /**< Max classes matched per element.           */
   k_ra_css_name_max    = 64U,   /**< Max bytes of one class / id / font name.   */
   k_ra_css_max_faces   = 16U,   /**< Max `@font-face` rules kept per sheet.     */
+  k_ra_css_max_anc     = 4U,    /**< Max descendant-ancestor parts per selector. */
 } ra_css_limits_t;
 
 /**
@@ -130,26 +132,53 @@ typedef struct {
 } ra_css_style_t;
 
 /**
- * @struct ra_css_rule_t
- * @brief One `selector { ... }` rule: a compound selector plus its declarations.
+ * @struct ra_css_anc_t
+ * @brief One ancestor part of a descendant selector (e.g. the `.chapter` in
+ *        `.chapter p`).
  *
- * @details The selector is a compound of up to one type + one class + one id
+ * @details Same compound shape as a rule's subject (one type + one class + one
+ * id), but it constrains some ANCESTOR of the matched element rather than the
+ * element itself. `tag == k_ra_reflow_tag_unknown` / `class_len == 0` /
+ * `id_len == 0` mean that part of the constraint is absent.
+ */
+typedef struct {
+  uint8_t  tag;       /**< Type tag, or k_ra_reflow_tag_unknown = no type. */
+  uint8_t  pad8;      /**< Padding.                                        */
+  uint16_t class_off; /**< Class name slice offset (class_len 0 = none).   */
+  uint16_t class_len; /**< Class name slice length, bytes.                 */
+  uint16_t id_off;    /**< Id name slice offset (id_len 0 = none).         */
+  uint16_t id_len;    /**< Id name slice length, bytes.                    */
+} ra_css_anc_t;
+
+/**
+ * @struct ra_css_rule_t
+ * @brief One `selector { ... }` rule: a (possibly descendant) selector plus its
+ *        declarations.
+ *
+ * @details The SUBJECT is a compound of up to one type + one class + one id
  * constraint (e.g. `p`, `.note`, `#x`, `p.note`, `p#x`); an element matches when
  * every present constraint matches. A constraint is "present" when its field is
  * non-default: `sel_tag != k_ra_reflow_tag_unknown`, `class_len > 0`,
- * `id_len > 0`. No constraint at all (`*`) matches every element. Multiple
- * classes (`.a.b`), descendant combinators (`div p`) and pseudo selectors are
- * not parsed (the rule is dropped).
+ * `id_len > 0`. No constraint at all (`*`) matches every element.
+ *
+ * A DESCENDANT selector (`div p`, `.chapter p`, `.a .b`, `#id p`) adds up to
+ * ::k_ra_css_max_anc ancestor compounds in @ref anc (selector order, outermost
+ * first); the rule matches only when the subject matches AND each ancestor part
+ * matches some element on the open-element ancestor stack, in order (the CSS
+ * descendant combinator -- any depth between parts). Specificity sums every
+ * part. Multiple classes per compound (`.a.b`), child/sibling combinators and
+ * pseudo selectors are still not parsed (the rule is dropped).
  */
 typedef struct {
-  uint8_t        sel_tag;   /**< Type tag, or k_ra_reflow_tag_unknown = no type. */
-  uint8_t        pad8;      /**< Padding.                                        */
-  uint16_t       class_off; /**< Class name slice offset (class_len 0 = none).   */
-  uint16_t       class_len; /**< Class name slice length, bytes.                 */
-  uint16_t       id_off;    /**< Id name slice offset (id_len 0 = none).         */
-  uint16_t       id_len;    /**< Id name slice length, bytes.                    */
-  uint16_t       order;     /**< Source order (lower = earlier; ties to later).  */
-  ra_css_style_t decl;      /**< Declared properties.                            */
+  uint8_t        sel_tag;               /**< Type tag, or k_ra_reflow_tag_unknown = no type. */
+  uint8_t        anc_count;             /**< Ancestor parts in @ref anc (0 = simple).        */
+  uint16_t       class_off;             /**< Class name slice offset (class_len 0 = none).   */
+  uint16_t       class_len;             /**< Class name slice length, bytes.                 */
+  uint16_t       id_off;                /**< Id name slice offset (id_len 0 = none).         */
+  uint16_t       id_len;                /**< Id name slice length, bytes.                    */
+  uint16_t       order;                 /**< Source order (lower = earlier; ties to later).  */
+  ra_css_anc_t   anc[k_ra_css_max_anc]; /**< Descendant ancestor parts.          */
+  ra_css_style_t decl;                  /**< Declared properties.                            */
 } ra_css_rule_t;
 
 /**
@@ -322,6 +351,40 @@ typedef struct {
                                             const ra_css_element_t* el,
                                             ra_css_style_t          inherited,
                                             ra_css_style_t          inline_decl);
+
+/**
+ * @brief Compute an element's cascaded style with descendant-selector context.
+ *
+ * @details Identical to ::ra_css_cascade but also resolves descendant selectors
+ * (`.chapter p`, `div p`): a rule with ancestor parts matches only when its
+ * subject matches @p el AND each ancestor part matches some element in
+ * @p ancestors (the open-element stack, outermost first), in order. ::ra_css_cascade
+ * is the @p n_anc == 0 case (descendant rules never match without ancestor
+ * context). Each matched ancestor part also adds to the rule's specificity.
+ *
+ * @param[in] sheet       Parsed stylesheet (may be empty).
+ * @param[in] el          Element identity (the selector subject).
+ * @param[in] inherited   Parent's computed style (inheritable props flow in).
+ * @param[in] inline_decl Inline `style=""` declaration (`set == 0` if none).
+ * @param[in] ancestors   Open-element ancestors, outermost (root) first; may be
+ *                        NULL iff @p n_anc is 0.
+ * @param[in] n_anc       Number of entries in @p ancestors (0 = no context).
+ *
+ * @return The computed ::ra_css_style_t for @p el.
+ *
+ * @pre @p sheet, @p el non-NULL (NULL -> returns @p inherited).
+ * @pre @p ancestors non-NULL when @p n_anc > 0.
+ * @post Every property bit in the result was set by the winning source.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_css_style_t ra_css_cascade_ctx(const ra_css_sheet_t*   sheet,
+                                                const ra_css_element_t* el,
+                                                ra_css_style_t          inherited,
+                                                ra_css_style_t          inline_decl,
+                                                const ra_css_element_t* ancestors,
+                                                uint8_t                 n_anc);
 
 /**
  * @brief Pick the `@font-face` whose family + emphasis best fits a run.

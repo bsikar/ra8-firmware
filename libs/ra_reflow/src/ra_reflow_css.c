@@ -542,6 +542,77 @@ priv_parse_selector(ra_css_sheet_t* sheet, const char* s, size_t len, ra_css_rul
   return any;
 }
 
+/**
+ * @brief Parse a (possibly descendant) selector into @p rule.
+ *
+ * @details Splits @p s on whitespace into compound parts; the LAST part is the
+ * subject (folded into @p rule's `sel_tag` / `class` / `id`), the earlier parts
+ * are ancestor constraints stored in `rule->anc` (selector order, outermost
+ * first). Returns false (the caller drops the rule) on an unsupported compound,
+ * or on more than ::k_ra_css_max_anc ancestor parts.
+ */
+/**
+ * @brief Split @p s into whitespace-separated compound spans.
+ *
+ * @return The number of compound parts written to @p part_p / @p part_n, or -1
+ *         if there are more than (1 subject + ::k_ra_css_max_anc) parts.
+ */
+static int32_t priv_split_compounds(const char* s, size_t len, const char** part_p, size_t* part_n)
+{
+  size_t nparts = 0U;
+  size_t i      = 0U;
+  /* Bounded: i advances to len; each pass consumes >=1 char after the ws skip. */
+  while (i < len) {
+    while ((i < len) && priv_is_ws(s[i])) {
+      ++i;
+    }
+    if (i >= len) {
+      break;
+    }
+    if (nparts > (size_t)k_ra_css_max_anc) {
+      return -1; /* more than one subject + k_ra_css_max_anc ancestor parts */
+    }
+    const size_t start = i;
+    while ((i < len) && !priv_is_ws(s[i])) {
+      ++i;
+    }
+    part_p[nparts] = &s[start];
+    part_n[nparts] = i - start;
+    ++nparts;
+  }
+  return (int32_t)nparts;
+}
+
+static bool
+priv_parse_complex_selector(ra_css_sheet_t* sheet, const char* s, size_t len, ra_css_rule_t* rule)
+{
+  const char*   part_p[(size_t)k_ra_css_max_anc + 1U] = {};
+  size_t        part_n[(size_t)k_ra_css_max_anc + 1U] = {};
+  const int32_t nparts = priv_split_compounds(s, len, part_p, part_n);
+  if (nparts <= 0) {
+    return false;
+  }
+  const size_t np = (size_t)nparts;
+  /* Last part = subject compound. */
+  if (!priv_parse_selector(sheet, part_p[np - 1U], part_n[np - 1U], rule)) {
+    return false;
+  }
+  /* Earlier parts = ancestor constraints (outermost first). */
+  rule->anc_count = (uint8_t)(np - 1U);
+  for (size_t a = 0U; (a + 1U) < np; ++a) {
+    ra_css_rule_t tmp = {};
+    if (!priv_parse_selector(sheet, part_p[a], part_n[a], &tmp)) {
+      return false;
+    }
+    rule->anc[a].tag       = tmp.sel_tag;
+    rule->anc[a].class_off = tmp.class_off;
+    rule->anc[a].class_len = tmp.class_len;
+    rule->anc[a].id_off    = tmp.id_off;
+    rule->anc[a].id_len    = tmp.id_len;
+  }
+  return true;
+}
+
 /** @brief Append one fully-built rule to the sheet; drop silently if full. */
 static void priv_push_rule(ra_css_sheet_t* sheet, const ra_css_rule_t* rule)
 {
@@ -570,7 +641,7 @@ static void priv_parse_selector_list(ra_css_sheet_t* sheet,
     const char*   one     = priv_trim(&sel[i], &one_len);
     ra_css_rule_t rule    = {};
     rule.decl             = decl;
-    if (priv_parse_selector(sheet, one, one_len, &rule)) {
+    if (priv_parse_complex_selector(sheet, one, one_len, &rule)) {
       priv_push_rule(sheet, &rule);
     }
     i = comma + 1U;
@@ -929,7 +1000,65 @@ bool ra_css_rule_matches(const ra_css_rule_t*    rule,
   return true;
 }
 
-/** @brief Packed specificity (id*10000 + class*100 + type) of a compound rule. */
+/** @brief True if descendant ancestor part @p anc matches element @p el. */
+static bool
+priv_anc_matches(const ra_css_anc_t* anc, const ra_css_element_t* el, const ra_css_sheet_t* sheet)
+{
+  if ((anc->tag != (uint8_t)k_ra_reflow_tag_unknown) && (el->tag != anc->tag)) {
+    return false;
+  }
+  if (anc->class_len != 0U) {
+    const char* nm = (const char*)&sheet->names[anc->class_off];
+    if ((el->class_str == nullptr) ||
+        !priv_class_list_has(el->class_str, el->class_len, nm, anc->class_len)) {
+      return false;
+    }
+  }
+  if (anc->id_len != 0U) {
+    const char* nm = (const char*)&sheet->names[anc->id_off];
+    if ((el->id == nullptr) || (el->id_len != anc->id_len) ||
+        (memcmp(el->id, nm, anc->id_len) != 0)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Full match of a (possibly descendant) rule against @p el + ancestors.
+ *
+ * @details The subject must match @p el; then each ancestor part must match some
+ * element of @p ancestors (outermost first), in selector order, with the CSS
+ * descendant combinator (any depth between parts). A simple rule (no ancestor
+ * parts) reduces to ::ra_css_rule_matches.
+ */
+static bool priv_rule_matches_ctx(const ra_css_rule_t*    rule,
+                                  const ra_css_element_t* el,
+                                  const ra_css_element_t* ancestors,
+                                  uint8_t                 n_anc,
+                                  const ra_css_sheet_t*   sheet)
+{
+  if (!ra_css_rule_matches(rule, el, sheet)) {
+    return false;
+  }
+  if (rule->anc_count == 0U) {
+    return true;
+  }
+  /* Greedy right-to-left: match each ancestor part (innermost first) walking up
+   * the stack from the parent. The descendant combinator allows any depth. */
+  int32_t ai = (int32_t)rule->anc_count - 1;
+  int32_t si = (int32_t)n_anc - 1;
+  /* Bounded: si strictly decreases each pass; ends when si < 0 or ai < 0. */
+  while ((ai >= 0) && (si >= 0)) {
+    if (priv_anc_matches(&rule->anc[ai], &ancestors[si], sheet)) {
+      --ai;
+    }
+    --si;
+  }
+  return ai < 0;
+}
+
+/** @brief Packed specificity (id*10000 + class*100 + type), summing all parts. */
 static uint16_t priv_rule_rank(const ra_css_rule_t* rule)
 {
   uint16_t spec = 0U;
@@ -941,6 +1070,18 @@ static uint16_t priv_rule_rank(const ra_css_rule_t* rule)
   }
   if (rule->id_len != 0U) {
     spec = (uint16_t)(spec + (uint16_t)k_priv_spec_id);
+  }
+  /* Each descendant ancestor part adds to specificity per CSS. */
+  for (uint8_t a = 0U; a < rule->anc_count; ++a) {
+    if (rule->anc[a].tag != (uint8_t)k_ra_reflow_tag_unknown) {
+      spec = (uint16_t)(spec + (uint16_t)k_priv_spec_type);
+    }
+    if (rule->anc[a].class_len != 0U) {
+      spec = (uint16_t)(spec + (uint16_t)k_priv_spec_class);
+    }
+    if (rule->anc[a].id_len != 0U) {
+      spec = (uint16_t)(spec + (uint16_t)k_priv_spec_id);
+    }
   }
   return spec;
 }
@@ -1065,10 +1206,12 @@ static void priv_cascade_family(ra_css_style_t*       out,
   }
 }
 
-ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
-                              const ra_css_element_t* el,
-                              ra_css_style_t          inherited,
-                              ra_css_style_t          inline_decl)
+ra_css_style_t ra_css_cascade_ctx(const ra_css_sheet_t*   sheet,
+                                  const ra_css_element_t* el,
+                                  ra_css_style_t          inherited,
+                                  ra_css_style_t          inline_decl,
+                                  const ra_css_element_t* ancestors,
+                                  uint8_t                 n_anc)
 {
   if ((sheet == nullptr) || (el == nullptr)) {
     return inherited;
@@ -1076,13 +1219,21 @@ ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
   bool matched[k_ra_css_max_rules] = {};
   /* Bounded: rule_count <= k_ra_css_max_rules; i advances by 1 each step. */
   for (uint16_t i = 0U; i < sheet->rule_count; ++i) {
-    matched[i] = ra_css_rule_matches(&sheet->rules[i], el, sheet);
+    matched[i] = priv_rule_matches_ctx(&sheet->rules[i], el, ancestors, n_anc, sheet);
   }
   ra_css_style_t out = {};
   priv_cascade_emphasis(&out, sheet, matched, &inherited, &inline_decl);
   priv_cascade_scalars(&out, sheet, matched, &inherited, &inline_decl);
   priv_cascade_family(&out, sheet, matched, &inherited, &inline_decl);
   return out;
+}
+
+ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
+                              const ra_css_element_t* el,
+                              ra_css_style_t          inherited,
+                              ra_css_style_t          inline_decl)
+{
+  return ra_css_cascade_ctx(sheet, el, inherited, inline_decl, nullptr, 0U);
 }
 
 int16_t ra_css_match_face(const ra_css_sheet_t* sheet,
