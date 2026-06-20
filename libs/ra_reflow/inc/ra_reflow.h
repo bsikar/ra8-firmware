@@ -98,6 +98,7 @@ typedef enum : uint32_t {
   k_ra_reflow_max_links          = 255U,   /**< Max distinct `<a href>` per chapter. */
   k_ra_reflow_max_link_rects     = 512U,   /**< Max positioned link rectangles.      */
   k_ra_reflow_max_anchors        = 256U,   /**< Max `id=` anchor positions.          */
+  k_ra_reflow_max_faces          = 8U,     /**< Max embedded `@font-face` typefaces. */
 } ra_reflow_limits_t;
 
 /**
@@ -180,6 +181,22 @@ typedef enum : uint8_t {
   k_ra_reflow_style_italic    = 1U << 1U, /**< Italic face.            */
   k_ra_reflow_style_underline = 1U << 2U, /**< Underlined run.         */
 } ra_reflow_font_style_t;
+
+/**
+ * @enum ra_reflow_face_pack_t
+ * @brief How a per-run embedded-face index is packed into a glyph/token `style`.
+ *
+ * @details The emphasis bits (bold/italic/underline) occupy bits 0-2 of the
+ * `style` byte; bits 4-7 are free, so the selected embedded-face index
+ * (0 = the engine's bound default face, 1..::k_ra_reflow_max_faces = a
+ * registered `@font-face`) rides in the high nibble (#109). Single-face content
+ * registers no faces, so the nibble is always 0 -- the cached / default render
+ * path is byte-identical.
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_face_shift = 4U,    /**< Bit position of the face index in `style`. */
+  k_ra_reflow_face_mask  = 0x0FU, /**< Face-index mask once shifted down.         */
+} ra_reflow_face_pack_t;
 
 /**
  * @enum ra_reflow_align_t
@@ -433,6 +450,29 @@ typedef enum : uint8_t {
  */
 
 /**
+ * @struct ra_reflow_face_t
+ * @brief One registered embedded `@font-face` typeface (#109).
+ *
+ * @details Maps a parsed `@font-face` table entry (`css_face_idx`, the value
+ * ::ra_css_match_face returns) to its caller-owned TTF/OTF bytes. The blob
+ * outlives the engine (it points into the resident EPUB buffer -- zero-copy).
+ * The engine holds up to ::k_ra_reflow_max_faces of these; the render pass
+ * builds one `stbtt_fontinfo` per registered face plus the default at index 0.
+ *
+ * @see ra_reflow_register_face()
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  const uint8_t* blob; /**< TTF/OTF bytes; caller-owned, outlive the engine. */
+  // cppcheck-suppress unusedStructMember
+  size_t len; /**< Length of `blob`, bytes.                          */
+  // cppcheck-suppress unusedStructMember
+  uint8_t css_face_idx; /**< `@font-face` table index this blob satisfies.    */
+  // cppcheck-suppress unusedStructMember
+  uint8_t pad8[7]; /**< Padding to an 8-byte stride.                     */
+} ra_reflow_face_t;
+
+/**
  * @struct ra_reflow_t
  * @brief Reflow / pagination engine state.
  *
@@ -466,6 +506,10 @@ typedef struct {
   const uint8_t* font_data; /**< TTF blob; outlives the engine.   */
   // cppcheck-suppress unusedStructMember
   size_t font_len; /**< Length of `font_data`, bytes.    */
+  // cppcheck-suppress unusedStructMember
+  ra_reflow_face_t faces[k_ra_reflow_max_faces]; /**< Embedded `@font-face` set. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t face_count; /**< Registered embedded faces (0 = single-face). */
 
   /* --- cached chapter input ------------------------------------------- */
   // cppcheck-suppress unusedStructMember
@@ -943,6 +987,49 @@ ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* frameb
  */
 [[nodiscard]] ra_err_t
 ra_reflow_bind_font(ra_reflow_t* engine, const uint8_t* font_data, size_t font_len);
+
+/**
+ * @brief Register one embedded `@font-face` typeface for per-run selection (#109).
+ *
+ * @details
+ * Validates @p blob with `stbtt_InitFont` and, on success, appends it to the
+ * engine's face registry keyed by @p css_face_idx (the index ::ra_css_match_face
+ * returns for the parsed `<style>` `@font-face` table). After layout, a text run
+ * whose cascaded `font-family` + emphasis match that table entry is rendered with
+ * this face instead of the default bound at ::ra_reflow_init(); unmatched runs
+ * fall back to the default. The app drives this after ::ra_epub_open by walking
+ * the sheet's `@font-face` table, matching each `src` href to a manifest font.
+ *
+ * The blob is stored by pointer (zero-copy) and MUST outlive the engine. While a
+ * face is registered (`engine->face_count > 0`) the pagination cache is bypassed
+ * (`ra_reflow_cache_serialize` / `_load` return ::k_ra_err_invalid_state), so a
+ * multi-face book is never serialized or mis-served under a different face set.
+ *
+ * @param[in,out] engine       Initialised engine.
+ * @param[in]     css_face_idx `@font-face` table index this blob satisfies
+ *                             (`0 .. sheet face_count - 1`).
+ * @param[in]     blob         TTF/OTF bytes; must outlive the engine.
+ * @param[in]     len          Length of @p blob, bytes.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Face registered.
+ * @retval k_ra_err_null_ptr        @p engine or @p blob is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ * @retval k_ra_err_invalid_size    `len < k_ra_reflow_min_font_bytes`.
+ * @retval k_ra_err_no_mem          The registry is full (::k_ra_reflow_max_faces).
+ * @retval k_ra_err_not_supported   `stbtt_InitFont` rejected the blob.
+ *
+ * @pre `engine->in_use == 1`; @p blob non-NULL and outlives the engine.
+ * @pre `css_face_idx` is a valid `@font-face` table index.
+ * @post On success `engine->face_count` grows by one; on failure it is unchanged.
+ * @post Subsequent layouts may select this face per run; the cache is bypassed.
+ *
+ * @note Not thread-safe; single-threaded init/layout context.
+ * @see ra_reflow_init(), ra_reflow_bind_font(), ra_css_match_face()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_reflow_register_face(ra_reflow_t* engine, uint8_t css_face_idx, const uint8_t* blob, size_t len);
 
 /* ===========================================================================
  * Internal -- exposed for the parse / layout / render TUs

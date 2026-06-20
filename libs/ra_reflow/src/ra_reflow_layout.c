@@ -1159,7 +1159,13 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
                                  const stbtt_fontinfo*    font,
                                  const ra_reflow_token_t* tok)
 {
-  cur->active_style = tok->style;
+  /* Pack the per-run embedded-face index (stamped on the token by the cascade,
+   * #109) into the free high nibble of the style stamp; bits 0-2 keep the
+   * bold/italic/underline emphasis. Single-face content carries face 0, so the
+   * style byte is unchanged. */
+  cur->active_style =
+    (uint8_t)(tok->style | (uint8_t)(((uint32_t)tok->reserved16 & (uint32_t)k_ra_reflow_face_mask)
+                                     << (uint32_t)k_ra_reflow_face_shift));
   switch (tok->kind) {
     case k_ra_reflow_tok_block_start:
       return priv_open_block(engine, cur, tok) ? k_ra_ok : k_ra_err_no_mem;
@@ -1788,5 +1794,37 @@ ra_err_t ra_reflow_bind_font(ra_reflow_t* engine, const uint8_t* font_data, size
     uint32_t pages = 0U;
     return ra_reflow_layout_chapter(engine, engine->xhtml_buf, engine->xhtml_len, &pages);
   }
+  return k_ra_ok;
+}
+
+/** @brief Implementation of `ra_reflow_register_face()` -- validate then append. */
+ra_err_t
+ra_reflow_register_face(ra_reflow_t* engine, uint8_t css_face_idx, const uint8_t* blob, size_t len)
+{
+  if (engine == nullptr || blob == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (engine->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  if (len < (size_t)k_ra_reflow_min_font_bytes) {
+    return k_ra_err_invalid_size;
+  }
+  if (engine->face_count >= (uint8_t)k_ra_reflow_max_faces) {
+    return k_ra_err_no_mem;
+  }
+  /* Validate the blob before recording it; a bad face is rejected so layout falls
+   * back to the default face (graceful degradation). The probe is a stack
+   * temporary -- the render pass re-inits its own per-face fontinfo. */
+  const int32_t  offset = stbtt_GetFontOffsetForIndex(blob, 0);
+  stbtt_fontinfo probe;
+  if (offset < 0 || stbtt_InitFont(&probe, blob, offset) == 0) {
+    return k_ra_err_not_supported;
+  }
+  ra_reflow_face_t* face = &engine->faces[engine->face_count];
+  face->blob             = blob;
+  face->len              = len;
+  face->css_face_idx     = css_face_idx;
+  engine->face_count++;
   return k_ra_ok;
 }

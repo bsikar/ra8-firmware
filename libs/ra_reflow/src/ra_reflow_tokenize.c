@@ -76,19 +76,25 @@ typedef enum : uint32_t {
  * @brief Mutable tokenizer state threaded through the scan helpers.
  */
 typedef struct {
-  ra_reflow_t* engine;                        /**< Target engine pools.        */
-  uint8_t      style;                         /**< Current inline-style bits.  */
-  uint8_t      active_link;                   /**< 1-based link id (0 = none).  */
-  uint32_t     color;                         /**< Current CSS colour / inherit.*/
-  uint16_t     css_font_px;                   /**< Inherited CSS font px (0=none).*/
-  uint8_t      stack_tag[k_priv_max_depth];   /**< Open-element tag stack.      */
-  uint8_t      stack_style[k_priv_max_depth]; /**< Style to restore on pop.    */
-  uint8_t      stack_link[k_priv_max_depth];  /**< Link id to restore on pop.  */
-  uint32_t     stack_color[k_priv_max_depth]; /**< Colour to restore on pop.   */
-  uint16_t     stack_font[k_priv_max_depth];  /**< CSS font px to restore on pop.*/
-  uint32_t     sp;                            /**< Stack depth.                */
-  uint32_t     suppress_sp;                   /**< display:none subtree depth (0=off).*/
-  bool         saw_element;                   /**< At least one element seen.  */
+  ra_reflow_t* engine;                          /**< Target engine pools.        */
+  uint8_t      style;                           /**< Current inline-style bits.  */
+  uint8_t      active_link;                     /**< 1-based link id (0 = none).  */
+  uint32_t     color;                           /**< Current CSS colour / inherit.*/
+  uint16_t     css_font_px;                     /**< Inherited CSS font px (0=none).*/
+  uint16_t     family_off;                      /**< Inherited font-family slice off.*/
+  uint16_t     family_len;                      /**< Inherited font-family len (0=none).*/
+  uint8_t      face_slot;                       /**< Resolved embedded face (0=default).*/
+  uint8_t      stack_tag[k_priv_max_depth];     /**< Open-element tag stack.      */
+  uint8_t      stack_style[k_priv_max_depth];   /**< Style to restore on pop.    */
+  uint8_t      stack_link[k_priv_max_depth];    /**< Link id to restore on pop.  */
+  uint32_t     stack_color[k_priv_max_depth];   /**< Colour to restore on pop.   */
+  uint16_t     stack_font[k_priv_max_depth];    /**< CSS font px to restore on pop.*/
+  uint16_t     stack_fam_off[k_priv_max_depth]; /**< font-family off to restore.  */
+  uint16_t     stack_fam_len[k_priv_max_depth]; /**< font-family len to restore.  */
+  uint8_t      stack_face[k_priv_max_depth];    /**< Face slot to restore on pop. */
+  uint32_t     sp;                              /**< Stack depth.                */
+  uint32_t     suppress_sp;                     /**< display:none subtree depth (0=off).*/
+  bool         saw_element;                     /**< At least one element seen.  */
 } tok_ctx_t;
 
 /* ===========================================================================
@@ -735,6 +741,9 @@ static ra_err_t priv_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
                                   tlen)) {
       return k_ra_err_no_mem;
     }
+    if (tlen > 0U) {
+      ctx->engine->tokens[ctx->engine->token_count - 1U].reserved16 = (uint16_t)ctx->face_slot;
+    }
   }
   *pi = ((close + 3U) <= len) ? (close + 3U) : len;
   return k_ra_ok;
@@ -775,6 +784,9 @@ static ra_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
   ctx->active_link               = ctx->stack_link[ctx->sp];
   ctx->color                     = ctx->stack_color[ctx->sp];
   ctx->css_font_px               = ctx->stack_font[ctx->sp];
+  ctx->family_off                = ctx->stack_fam_off[ctx->sp];
+  ctx->family_len                = ctx->stack_fam_len[ctx->sp];
+  ctx->face_slot                 = ctx->stack_face[ctx->sp];
   if (priv_is_block(tag) && !priv_suppressed(ctx) &&
       !priv_emit(ctx->engine, k_ra_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
     return k_ra_err_no_mem;
@@ -1293,6 +1305,44 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra_css_style_t* com
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Map a cascaded run's (font-family + emphasis) to an embedded face slot.
+ *
+ * @details Returns 0 (the engine's default bound face) when no embedded face is
+ * registered, the run has no resolved `font-family`, no `@font-face` matches, or
+ * the matched `@font-face` was never registered (its `src` had no manifest font).
+ * Otherwise returns `1 + the registry index`, which the render pass uses to pick
+ * the matching `stbtt_fontinfo`.
+ *
+ * @param[in] engine Engine whose face registry + parsed sheet are consulted.
+ * @param[in] comp   The element's cascaded style (family + emphasis bits).
+ * @return 0 for the default face, else `1 + engine->faces[] index`.
+ * @pre @p engine and @p comp are non-null.
+ * @post No state is modified.
+ * @note Pure; not thread-safe only insofar as it reads engine state.
+ * @since 0.1.0
+ */
+static uint8_t priv_resolve_face_slot(const ra_reflow_t* engine, const ra_css_style_t* comp)
+{
+  if ((engine->face_count == 0U) || ((comp->set & (uint8_t)k_ra_css_set_family) == 0U) ||
+      (comp->family_len == 0U)) {
+    return 0U;
+  }
+  const char*   family = (const char*)&engine->css.names[comp->family_off];
+  const bool    bold   = (comp->style & (uint8_t)k_ra_reflow_style_bold) != 0U;
+  const bool    italic = (comp->style & (uint8_t)k_ra_reflow_style_italic) != 0U;
+  const int16_t ci     = ra_css_match_face(&engine->css, family, comp->family_len, bold, italic);
+  if (ci < 0) {
+    return 0U;
+  }
+  for (uint8_t k = 0U; k < engine->face_count; ++k) {
+    if (engine->faces[k].css_face_idx == (uint8_t)ci) {
+      return (uint8_t)(k + 1U);
+    }
+  }
+  return 0U;
+}
+
 static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
                                  const uint8_t*       tagbuf,
                                  size_t               span,
@@ -1305,6 +1355,13 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
   if (ctx->color != (uint32_t)k_ra_reflow_color_inherit) {
     inh.set   = (uint8_t)(inh.set | (uint8_t)k_ra_css_set_color);
     inh.color = ctx->color;
+  }
+  /* font-family inherits (#109): seed the cascade with the parent's resolved
+   * family so a child without its own `font-family` keeps the ancestor's face. */
+  if (ctx->family_len != 0U) {
+    inh.set        = (uint8_t)(inh.set | (uint8_t)k_ra_css_set_family);
+    inh.family_off = ctx->family_off;
+    inh.family_len = ctx->family_len;
   }
   const ra_css_style_t inl  = priv_css_inline(tagbuf, span);
   const ra_css_style_t comp = ra_css_cascade(&ctx->engine->css, &el, inh, inl);
@@ -1325,6 +1382,14 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
                        ? comp.color
                        : (uint32_t)k_ra_reflow_color_inherit;
   ctx->css_font_px = fpx;
+  /* Resolve the embedded face for this element from its cascaded family +
+   * emphasis (#109). Children inherit the family slice; text runs stamp the
+   * resolved slot. Both are 0 / unchanged for content without `@font-face`. */
+  if ((comp.set & (uint8_t)k_ra_css_set_family) != 0U) {
+    ctx->family_off = comp.family_off;
+    ctx->family_len = comp.family_len;
+  }
+  ctx->face_slot = priv_resolve_face_slot(ctx->engine, &comp);
   return k_ra_ok;
 }
 
@@ -1356,11 +1421,14 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
   if (ctx->sp >= (uint32_t)k_priv_max_depth) {
     return k_ra_err_no_mem;
   }
-  ctx->stack_tag[ctx->sp]   = (uint8_t)tag;
-  ctx->stack_style[ctx->sp] = ctx->style;
-  ctx->stack_link[ctx->sp]  = ctx->active_link;
-  ctx->stack_color[ctx->sp] = ctx->color;
-  ctx->stack_font[ctx->sp]  = ctx->css_font_px;
+  ctx->stack_tag[ctx->sp]     = (uint8_t)tag;
+  ctx->stack_style[ctx->sp]   = ctx->style;
+  ctx->stack_link[ctx->sp]    = ctx->active_link;
+  ctx->stack_color[ctx->sp]   = ctx->color;
+  ctx->stack_font[ctx->sp]    = ctx->css_font_px;
+  ctx->stack_fam_off[ctx->sp] = ctx->family_off;
+  ctx->stack_fam_len[ctx->sp] = ctx->family_len;
+  ctx->stack_face[ctx->sp]    = ctx->face_slot;
   ctx->sp++;
   const size_t span = (*pi > tag_lt) ? (*pi - tag_lt) : 0U;
   return priv_open_styled(ctx, &buf[tag_lt], span, tag, block);
@@ -1527,8 +1595,9 @@ static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, s
                  tln)) {
     return false;
   }
-  ctx->engine->tokens[ctx->engine->token_count - 1U].reserved = ctx->active_link;
-  ctx->engine->tokens[ctx->engine->token_count - 1U].color    = ctx->color;
+  ctx->engine->tokens[ctx->engine->token_count - 1U].reserved   = ctx->active_link;
+  ctx->engine->tokens[ctx->engine->token_count - 1U].color      = ctx->color;
+  ctx->engine->tokens[ctx->engine->token_count - 1U].reserved16 = (uint16_t)ctx->face_slot;
   return true;
 }
 

@@ -595,6 +595,39 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
   return k_ra_ok;
 }
 
+/**
+ * @brief Shared serialize/load precheck: init state, content args, and the
+ *        #109 multi-face cache-bypass invariant.
+ *
+ * @details Per-glyph embedded face indices (#109) are not part of the cache
+ * key/format, so a book with any registered `@font-face` is never cached: it
+ * live-layouts instead, and a persisted page can never be mis-served under a
+ * different face set. The caller checks its own NULL pointers first.
+ *
+ * @param[in] engine      Engine (already NULL-checked by the caller).
+ * @param[in] content     Chapter bytes, or NULL iff @p content_len is 0.
+ * @param[in] content_len Length of @p content, bytes.
+ * @return k_ra_ok, ::k_ra_err_not_initialized, ::k_ra_err_invalid_arg, or
+ *         ::k_ra_err_invalid_state (a face is registered -> cache bypassed).
+ * @pre @p engine is non-null.
+ * @post No state is modified.
+ * @since 0.1.0
+ */
+static ra_err_t
+priv_cache_precheck(const ra_reflow_t* engine, const uint8_t* content, size_t content_len)
+{
+  if (engine->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  if ((content == nullptr) && (content_len != 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (engine->face_count != 0U) {
+    return k_ra_err_invalid_state;
+  }
+  return k_ra_ok;
+}
+
 [[nodiscard]] ra_err_t ra_reflow_cache_serialize(const ra_reflow_t* engine,
                                                  const uint8_t*     content,
                                                  size_t             content_len,
@@ -605,11 +638,9 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
   if ((engine == nullptr) || (out_buf == nullptr) || (out_len == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if (engine->in_use == 0U) {
-    return k_ra_err_not_initialized;
-  }
-  if ((content == nullptr) && (content_len != 0U)) {
-    return k_ra_err_invalid_arg;
+  const ra_err_t verr = priv_cache_precheck(engine, content, content_len);
+  if (verr != k_ra_ok) {
+    return verr;
   }
   const size_t need = priv_blob_size(engine->glyph_count, engine->page_count);
   if (out_cap < need) {
@@ -643,11 +674,9 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
   if ((engine == nullptr) || (buf == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if (engine->in_use == 0U) {
-    return k_ra_err_not_initialized;
-  }
-  if ((content == nullptr) && (content_len != 0U)) {
-    return k_ra_err_invalid_arg;
+  const ra_err_t verr = priv_cache_precheck(engine, content, content_len);
+  if (verr != k_ra_ok) {
+    return verr;
   }
 
   priv_cache_key_t key  = {};
