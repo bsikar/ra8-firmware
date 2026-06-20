@@ -122,7 +122,7 @@ typedef enum : uint8_t {
   k_ra_fs_type_fat12   = 12, /**< count_of_clusters < 4085. */
   k_ra_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525. */
   k_ra_fs_type_fat32   = 32, /**< count_of_clusters >= 65525. */
-  k_ra_fs_type_exfat   = 64, /**< exFAT (read-only). */
+  k_ra_fs_type_exfat   = 64, /**< exFAT (read + whole-file write + format). */
 } ra_fs_type_t;
 
 /* =============================================================================
@@ -199,8 +199,8 @@ typedef struct {
  * to pick the smallest power-of-two that lands the cluster count inside the
  * range valid for `type` on the backend's capacity.
  *
- * @invariant `type` is one of `k_ra_fs_type_fat12`, `_fat16`, `_fat32`
- *            (exFAT formatting is not implemented -- see `ra_fs_format()`).
+ * @invariant `type` is one of `k_ra_fs_type_fat12`, `_fat16`, `_fat32`, or
+ *            `_exfat` (every type `ra_fs` can write -- see `ra_fs_format()`).
  * @invariant `sectors_per_cluster`, when non-zero, is a power of two in the
  *            closed range 1..128.
  *
@@ -294,11 +294,12 @@ typedef void (*ra_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t size
  */
 
 /**
- * @brief Format a block device as a fresh, empty FAT12/FAT16/FAT32 volume.
+ * @brief Format a block device as a fresh, empty FAT12/FAT16/FAT32/exFAT volume.
  *
  * @details
- * Lays down a complete superfloppy (no MBR) FAT volume at LBA 0 so the very
- * next `ra_fs_mount()` on the same backend detects exactly `opts->type`:
+ * Lays down a complete superfloppy (no MBR) volume at LBA 0 so the very next
+ * `ra_fs_mount()` on the same backend detects exactly `opts->type`. For the FAT
+ * variants this is a classic BPB layout:
  *   - a full BPB (jump prologue, OEM name, `BytsPerSec`, `SecPerClus`,
  *     `RsvdSecCnt`, `NumFATs`, `RootEntCnt` or `RootClus`, `TotSec`, media
  *     descriptor, `FATSz`, volume label, filesystem-type string, and the
@@ -316,11 +317,15 @@ typedef void (*ra_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t size
  * large for FAT12/FAT16 even at the maximum cluster size -- the call fails
  * without writing anything.
  *
- * exFAT (`k_ra_fs_type_exfat`) is intentionally NOT formatted by this routine
- * (ra_fs reads exFAT but the exFAT mkfs on-disk format -- up-case table,
- * allocation bitmap, boot-region checksum -- is a separate body of work tracked
- * as a roadmap follow-up). It returns `k_ra_err_not_supported` so callers can
- * branch cleanly.
+ * exFAT (`k_ra_fs_type_exfat`) lays down its own on-disk structures instead of a
+ * FAT BPB: the 12-sector boot region (Main + Backup) with the VBR checksum
+ * sector, the single FAT, the allocation-bitmap cluster, an up-case-table
+ * cluster, and a root-directory cluster carrying the volume-label, allocation-
+ * bitmap, and up-case-table system directory entries. The image is
+ * `fsck.exfat`-clean and round-trips through `ra_fs_mount()` plus the exFAT
+ * file API: whole-file creation via `ra_fs_write_file()`, read-back via
+ * `ra_fs_open()` (read) + `ra_fs_read()`, `ra_fs_rename()`, and `ra_fs_unlink()`
+ * (exFAT has no streaming open-for-write; see `ra_fs_open()`).
  *
  * @param[in] backend Block-device implementation (read/write/get_capacity all
  *                    non-NULL). Its `write_block` is driven during the format.
@@ -335,7 +340,8 @@ typedef void (*ra_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t size
  *                                    block size is not 512, or
  *                                    `sectors_per_cluster` is non-zero and not
  *                                    a power of two in 1..128.
- * @retval k_ra_err_not_supported     `opts->type` is exFAT or unknown.
+ * @retval k_ra_err_not_supported     `opts->type` is unknown / not a writable
+ *                                    filesystem.
  * @retval k_ra_err_invalid_size      Capacity cannot satisfy `opts->type`.
  * @retval k_ra_err_*                 Backend read/write failure (volume may be
  *                                    partially written on a mid-format I/O
@@ -435,10 +441,16 @@ typedef void (*ra_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t size
  * @retval k_ra_err_not_found          Read mode and path doesn't exist.
  * @retval k_ra_err_no_mem             No free file slot.
  * @retval k_ra_err_no_data            Write mode failed to allocate cluster.
+ * @retval k_ra_err_not_supported      Write/append mode on an exFAT mount: exFAT
+ *                                     opens read-only via this seam. Create exFAT
+ *                                     files with `ra_fs_write_file()` instead.
  *
  * @pre handle->in_use == 1.
  * @post On success, out_file->in_use == 1 and offset is at file start (read/write)
  *       or end (append).
+ * @note On FAT12/16/32 all three modes work; exFAT accepts only
+ *       `k_ra_fs_mode_read` here (whole-file writes go through
+ *       `ra_fs_write_file()`).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
