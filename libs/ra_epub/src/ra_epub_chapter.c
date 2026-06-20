@@ -439,6 +439,31 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
   return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }
 
+ra_err_t ra_epub_get_resource(ra_epub_book_t* book,
+                              const char*     path,
+                              uint8_t*        out_buf,
+                              size_t          max_len,
+                              size_t*         got_len)
+{
+  if (book == nullptr || path == nullptr || out_buf == nullptr || got_len == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  *got_len = 0U;
+  if (ra_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+    return k_ra_err_not_initialized;
+  }
+  if (max_len == 0U) {
+    return k_ra_err_invalid_size;
+  }
+
+  char full_path[k_ra_epub_max_path_len];
+  ra_epub_internal_join_path(book->opf_dir, path, full_path, sizeof(full_path));
+
+  void* const     zip_storage = &book->zip_archive_storage[0];
+  mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
+  return priv_locate_extract(zip, full_path, path, out_buf, max_len, got_len);
+}
+
 ra_err_t ra_epub_get_embedded_font_count(const ra_epub_book_t* book, uint16_t* out_count)
 {
   if (book == nullptr || out_count == nullptr) {
