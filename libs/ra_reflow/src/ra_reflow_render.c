@@ -338,6 +338,40 @@ static void priv_render_images(const ra_reflow_t* engine, uint32_t page_idx, int
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/**
+ * @brief Build the per-render `stbtt_fontinfo` set: default at 0, faces at 1..N.
+ *
+ * @details Slot 0 is the engine's bound default face; slots `1..face_count` are
+ * the registered embedded `@font-face` blobs (#109). A registered blob that
+ * fails `stbtt_InitFont` (already validated at register time, so unexpected)
+ * falls back to the default face for that slot, so a glyph can never index an
+ * uninitialised fontinfo.
+ *
+ * @param[in]  engine  Engine holding the default font + face registry.
+ * @param[out] faces   Array of at least `1 + k_ra_reflow_max_faces` entries.
+ * @param[out] out_n   Receives the number of valid entries (`1 + face_count`).
+ * @return k_ra_ok, or the default-face init error.
+ * @pre @p engine, @p faces, @p out_n are non-null.
+ * @post On success `faces[0..*out_n-1]` are all initialised.
+ * @since 0.1.0
+ */
+static ra_err_t priv_init_faces(const ra_reflow_t* engine, stbtt_fontinfo* faces, uint8_t* out_n)
+{
+  const ra_err_t err = priv_init_font(engine, &faces[0]);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  for (uint8_t k = 0U; k < engine->face_count; ++k) {
+    const uint8_t* blob   = engine->faces[k].blob;
+    const int32_t  offset = stbtt_GetFontOffsetForIndex(blob, 0);
+    if ((offset < 0) || (stbtt_InitFont(&faces[k + 1U], blob, offset) == 0)) {
+      faces[k + 1U] = faces[0]; /* graceful: bad face -> default */
+    }
+  }
+  *out_n = (uint8_t)(engine->face_count + 1U);
+  return k_ra_ok;
+}
+
 static ra_err_t
 priv_render_page(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {
@@ -351,8 +385,11 @@ priv_render_page(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32
     return k_ra_err_out_of_range;
   }
 
-  stbtt_fontinfo font;
-  ra_err_t       err = priv_init_font(engine, &font);
+  /* One fontinfo per face (static -- render is single-threaded, like s_glyph_mask
+   * below; keeps the ~1.4 KB off the stack). Default at 0, embedded at 1..N. */
+  static stbtt_fontinfo s_faces[1U + (uint32_t)k_ra_reflow_max_faces];
+  uint8_t               nfaces = 0U;
+  ra_err_t              err    = priv_init_faces(engine, s_faces, &nfaces);
   if (err != k_ra_ok) {
     return err;
   }
@@ -360,7 +397,12 @@ priv_render_page(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32
   const ra_reflow_page_t* page = &engine->pages[page_idx];
   for (uint32_t i = 0U; i < page->glyph_count; ++i) {
     const ra_reflow_glyph_t* g = &engine->glyphs[page->glyph_first + i];
-    priv_blit_glyph(&font, g, ox, oy);
+    uint8_t fi = (uint8_t)(((uint32_t)g->style >> (uint32_t)k_ra_reflow_face_shift) &
+                           (uint32_t)k_ra_reflow_face_mask);
+    if (fi >= nfaces) {
+      fi = 0U; /* defensive: out-of-range face index -> default */
+    }
+    priv_blit_glyph(&s_faces[fi], g, ox, oy);
   }
   priv_render_images(engine, page_idx, ox, oy);
   return k_ra_ok;
