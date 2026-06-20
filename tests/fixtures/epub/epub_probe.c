@@ -60,6 +60,10 @@ int main(int argc, char** argv)
          (unsigned)book.toc_count,
          (int)k_ra_epub_max_toc);
   printf("  cover_path = '%s'\n", book.cover_path);
+  printf("  opf_dir = '%s'  toc_path = '%s'  toc_kind=%u\n",
+         book.opf_dir,
+         book.toc_path,
+         (unsigned)book.toc_kind);
 
   /* Try to load the first chapter so we exercise miniz inflate + xhtml. */
   if (err == k_ra_ok && book.chapter_count > 0) {
