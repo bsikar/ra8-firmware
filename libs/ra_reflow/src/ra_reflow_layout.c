@@ -1695,6 +1695,19 @@ ra_err_t ra_reflow_set_image_loader(ra_reflow_t*              engine,
   return k_ra_ok;
 }
 
+ra_err_t ra_reflow_set_css_loader(ra_reflow_t* engine, ra_reflow_css_loader_fn loader, void* ctx)
+{
+  if (engine == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (engine->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  engine->css_loader     = loader;
+  engine->css_loader_ctx = ctx;
+  return k_ra_ok;
+}
+
 ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
                                   const uint8_t* xhtml_buf,
                                   size_t         xhtml_len,
