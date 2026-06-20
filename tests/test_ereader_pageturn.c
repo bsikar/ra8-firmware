@@ -19,7 +19,7 @@
 
 /* The decisions live in the reader app (not a library); include the pure,
  * header-only logic directly. Relative path: tests/ -> examples/.../ereader_ui. */
-#include "../examples/ek_ra8d2/hw_validated/manual/ereader_ui/er_pageturn.h"
+#include "../examples/ek_ra8d2/hw_pending/ereader_ui/er_pageturn.h"
 
 /**
  * @test er_tap_to_dir splits the screen into thirds (edge taps).
