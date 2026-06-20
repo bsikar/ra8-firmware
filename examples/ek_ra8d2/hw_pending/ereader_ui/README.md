@@ -38,7 +38,7 @@ Headless render + navigation proof:
 
 ```
 make ereader_ui                                  # cross-build the .elf
-ELF=examples/ek_ra8d2/hw_validated/manual/ereader_ui/build/ereader_ui.elf
+ELF=examples/ek_ra8d2/hw_pending/ereader_ui/build/ereader_ui.elf
 tools/board_sim/build/board_sim "$ELF" --ppm /tmp/library.ppm       # Library
 tools/board_sim/build/board_sim "$ELF" --click 250 250 --ppm /tmp/reading.ppm  # tap a card -> Reading
 ```

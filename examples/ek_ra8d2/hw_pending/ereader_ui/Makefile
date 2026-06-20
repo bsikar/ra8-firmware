@@ -2,7 +2,7 @@
 # Per-app Makefile for the `ereader_ui` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_validated/manual/ereader_ui/
+#   cd examples/ek_ra8d2/hw_pending/ereader_ui/
 #   make             # configure + build -> build/ereader_ui.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
