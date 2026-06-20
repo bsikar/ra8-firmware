@@ -87,6 +87,7 @@ typedef enum : uint16_t {
   k_ra_epub_max_toc      = 64,  /**< Max table-of-contents entries we keep. */
   k_ra_epub_max_path_len = 192, /**< Max `href` length (incl. NUL).         */
   k_ra_epub_meta_len     = 128, /**< Max bytes per metadata field.          */
+  k_ra_epub_max_fonts    = 8,   /**< Max embedded font manifest items kept. */
   k_ra_epub_zip_archive_bytes =
     256, /**< Inline storage for `mz_zip_archive` (sizeof on miniz 3.0.2 is 112; cushion for upstream growth; static_assert in .c). */
 } ra_epub_limits_t;
@@ -231,6 +232,13 @@ typedef struct {
   /* --- Cover ----------------------------------------------------------- */
   // cppcheck-suppress unusedStructMember
   char cover_path[k_ra_epub_max_path_len]; /**< Path to cover image (or empty). */
+
+  /* --- Embedded fonts (#109) ------------------------------------------- */
+  // cppcheck-suppress unusedStructMember
+  uint16_t embedded_font_count; /**< Manifest font items found (<= cap). */
+  // cppcheck-suppress unusedStructMember
+  char embedded_font_paths[k_ra_epub_max_fonts]
+                          [k_ra_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
 
   /* --- OPF base directory --------------------------------------------- */
   // cppcheck-suppress unusedStructMember
@@ -551,6 +559,76 @@ ra_epub_get_toc_entry(const ra_epub_book_t* book, uint16_t idx, ra_epub_toc_entr
  */
 [[nodiscard]] ra_err_t
 ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len);
+
+/**
+ * @brief Count the fonts the EPUB ships in its OPF manifest (#109).
+ *
+ * @details
+ * During `ra_epub_open()` the manifest is scanned for `<item>` entries whose
+ * `media-type` is a known font type (`application/font-sfnt`,
+ * `application/vnd.ms-opentype`, `font/ttf`, `font/otf`,
+ * `application/x-font-ttf`); their hrefs are recorded (up to
+ * ::k_ra_epub_max_fonts). This returns how many were found so the caller can
+ * iterate `ra_epub_get_embedded_font()`. Zero is normal -- many books rely on
+ * the reading-system font.
+ *
+ * @param[in]  book      Open book.
+ * @param[out] out_count Receives the embedded font count (0 .. ::k_ra_epub_max_fonts).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Count written.
+ * @retval k_ra_err_null_ptr        @p book or @p out_count is NULL.
+ * @retval k_ra_err_not_initialized `book->in_use == 0`.
+ *
+ * @pre `book->in_use == 1`.
+ * @pre @p out_count is non-NULL.
+ * @post `*out_count <= k_ra_epub_max_fonts`.
+ * @post @p book is unmodified.
+ *
+ * @note Not thread-safe; single-threaded init-context use.
+ * @see ra_epub_get_embedded_font()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_get_embedded_font_count(const ra_epub_book_t* book,
+                                                       uint16_t*             out_count);
+
+/**
+ * @brief Extract one EPUB-shipped font's bytes into a caller buffer (#109).
+ *
+ * @details
+ * Joins the recorded font href onto the OPF directory and extracts the resource
+ * from the open ZIP (same path as `ra_epub_get_cover_image()`). The returned
+ * bytes can be validated + bound into the reflow engine via
+ * `ra_reflow_bind_font()`, or attached with `ra_epub_set_font()`.
+ *
+ * @param[in,out] book    Open book.
+ * @param[in]     idx     Font index, `0 .. ra_epub_get_embedded_font_count()-1`.
+ * @param[out]    out_buf Destination buffer for the raw font bytes.
+ * @param[in]     max_len Capacity of @p out_buf, bytes.
+ * @param[out]    got_len Bytes actually written.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Font copied; `*got_len > 0`.
+ * @retval k_ra_err_null_ptr        @p book, @p out_buf, or @p got_len is NULL.
+ * @retval k_ra_err_not_initialized `book->in_use == 0`.
+ * @retval k_ra_err_invalid_size    `max_len == 0`.
+ * @retval k_ra_err_out_of_range    `idx >= embedded_font_count`.
+ * @retval k_ra_err_no_mem          Font does not fit in @p max_len.
+ * @retval k_ra_err_not_found       Recorded font href missing from the archive.
+ *
+ * @pre `book->in_use == 1` and `idx < ra_epub_get_embedded_font_count()`.
+ * @pre @p out_buf and @p got_len are non-NULL, `max_len > 0`.
+ * @post On success `*got_len` holds the font length; on failure `*got_len == 0`.
+ *
+ * @note Not thread-safe; single-threaded init-context use.
+ * @see ra_epub_get_embedded_font_count(), ra_reflow_bind_font()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_get_embedded_font(ra_epub_book_t* book,
+                                                 uint16_t        idx,
+                                                 uint8_t*        out_buf,
+                                                 size_t          max_len,
+                                                 size_t*         got_len);
 
 /**
  * @brief Attach a TTF font blob to be used by `ra_epub_render_glyph()`.
