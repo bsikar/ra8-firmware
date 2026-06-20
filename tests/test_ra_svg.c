@@ -166,6 +166,70 @@ static void test_render_cubic(void)
 }
 
 /**
+ * @test test_render_quad
+ * @brief A `<path>` quadratic `Q` is flattened (collinear control == a line edge).
+ */
+static void test_render_quad(void)
+{
+  TEST_BEGIN("svg render quadratic path");
+  fb_reset();
+  /* Q's control (50,10) is collinear with its endpoints (10,10)->(90,10), so the
+   * top edge is straight -> the rectangle (10,10)-(90,90); exercises priv_flatten_quad. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    render("<svg viewBox=\"0 0 100 100\">"
+           "<path d=\"M10 10 Q50 10 90 10 L90 90 L10 90 Z\" fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white      */
+  TEST_END("svg render quadratic path");
+}
+
+/**
+ * @test test_render_smooth_t
+ * @brief A smooth quadratic `T` with no preceding `Q` uses the current point as
+ *        its control (no reflection), so a collinear run stays a straight edge.
+ *
+ * @par MC/DC:
+ * Decision: `st->kind == want` in priv_smooth_ctrl (1 condition).
+ * - Vector A (this test): T after `M`, st->kind=0 != 'q' -> false -> control = p0.
+ * - Vector B (test_render_smooth_s): S after `C`, st->kind='c' == 'c' -> true ->
+ *   control = reflected. A+B exercise both outcomes of the lone condition (N+1=2).
+ */
+static void test_render_smooth_t(void)
+{
+  TEST_BEGIN("svg render smooth-T (no reflect)");
+  fb_reset();
+  /* T with no preceding Q -> control = current point (10,10); from (10,10) to
+   * (90,10) on y=10 -> a straight top edge -> the rectangle (10,10)-(90,90). */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 10 T90 10 L90 90 L10 90 Z\" fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white      */
+  TEST_END("svg render smooth-T (no reflect)");
+}
+
+/**
+ * @test test_render_smooth_s
+ * @brief A smooth cubic `S` after a `C` reflects the previous control; a fully
+ *        collinear run still yields a straight edge (exercises the reflect path).
+ */
+static void test_render_smooth_s(void)
+{
+  TEST_BEGIN("svg render smooth-S (reflect)");
+  fb_reset();
+  /* C ends at (50,10) with ctrl2 (40,10); S reflects it to (60,10); all controls
+   * and endpoints stay on y=10 -> a straight top edge -> rectangle (10,10)-(90,90). */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 10 C20 10 40 10 50 10 S80 10 90 10 L90 90 L10 90 Z\" "
+                        "fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white      */
+  TEST_END("svg render smooth-S (reflect)");
+}
+
+/**
  * @test test_render_fill_none
  * @brief `fill="none"` rects draw nothing; default fill is black.
  */
@@ -211,6 +275,9 @@ int32_t main(void)
   test_render_polygon();
   test_render_path();
   test_render_cubic();
+  test_render_quad();
+  test_render_smooth_t();
+  test_render_smooth_s();
   test_render_fill_none();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");

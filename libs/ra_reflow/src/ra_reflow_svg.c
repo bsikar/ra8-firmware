@@ -52,6 +52,8 @@ typedef enum : uint32_t {
 
 /** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
 static const float s_svg_bez3 = 3.0F;
+/** @brief Quadratic Bernstein middle coefficient (2) for the Bezier flatten. */
+static const float s_svg_bez2 = 2.0F;
 
 /**
  * @struct svg_pt_t
@@ -597,34 +599,150 @@ static svg_pt_t priv_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_
   return p;
 }
 
-/** @brief Flatten a `C`/`c` cubic into the vertex list; advance the point + count. */
-static int32_t priv_path_cubic(const svg_xform_t* t,
-                               bool               rel,
-                               const int32_t*     args,
-                               int32_t*           cx,
-                               int32_t*           cy,
+/**
+ * @struct path_state_t
+ * @brief Running cursor state while parsing a `<path>` `d` string.
+ *
+ * @details Carries the current point plus the previous curve's last control
+ * point and kind, so the smooth commands `S`/`s` and `T`/`t` can reflect it.
+ */
+typedef struct {
+  int32_t  cx;   /**< Current point X (user space).                            */
+  int32_t  cy;   /**< Current point Y (user space).                            */
+  svg_pt_t ctrl; /**< Last control (abs): quad ctrl (Q/T) or cubic ctrl2 (C/S).*/
+  char     kind; /**< 'q' if the last command was Q/T, 'c' if C/S, else 0.     */
+} path_state_t;
+
+/** @brief One axis of a quadratic Bezier at @p tt (control points c0..c2). */
+static float priv_bezier_q1(float tt, float c0, float c1, float c2)
+{
+  const float mt = 1.0F - tt;
+  return ((mt * mt) * c0) + (s_svg_bez2 * mt * tt * c1) + ((tt * tt) * c2);
+}
+
+/** @brief Flatten a quadratic Bezier (P0..P2, user space) into @p (xs,ys); grow @p n. */
+static void priv_flatten_quad(const svg_xform_t* t,
+                              svg_pt_t           p0,
+                              svg_pt_t           p1,
+                              svg_pt_t           p2,
+                              int32_t*           xs,
+                              int32_t*           ys,
+                              int32_t*           n)
+{
+  /* Bounded: k_svg_curve_seg samples, capped by k_svg_poly_max. */
+  for (int32_t j = 1; (j <= (int32_t)k_svg_curve_seg) && (*n < (int32_t)k_svg_poly_max); ++j) {
+    const float tt = (float)j / (float)k_svg_curve_seg;
+    const float bx = priv_bezier_q1(tt, (float)p0.x, (float)p1.x, (float)p2.x);
+    const float by = priv_bezier_q1(tt, (float)p0.y, (float)p1.y, (float)p2.y);
+    xs[*n]         = priv_mx(t, (int32_t)bx);
+    ys[*n]         = priv_my(t, (int32_t)by);
+    ++(*n);
+  }
+}
+
+/** @brief Reflect @p ctrl about the current point @p cur (smooth-curve control). */
+static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
+{
+  const svg_pt_t r = {.x = (2 * cur.x) - ctrl.x, .y = (2 * cur.y) - ctrl.y};
+  return r;
+}
+
+/** @brief Smooth-curve first control: reflect the prev control iff its kind
+ *         matches @p want (per SVG `S`/`T`), else the current point @p p0. */
+static svg_pt_t priv_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
+{
+  return (st->kind == want) ? priv_reflect(p0, st->ctrl) : p0;
+}
+
+/** @brief Flatten a cubic (P0..P3) into the list; record ctrl2 + advance @p st. */
+static int32_t priv_emit_cubic(const svg_xform_t* t,
+                               svg_pt_t           p0,
+                               svg_pt_t           p1,
+                               svg_pt_t           p2,
+                               svg_pt_t           p3,
+                               path_state_t*      st,
                                int32_t*           xs,
                                int32_t*           ys,
                                int32_t            n)
 {
-  const svg_pt_t p0 = {.x = *cx, .y = *cy};
-  const svg_pt_t p1 = priv_arg_pt(rel, *cx, *cy, args[0], args[1]);
-  const svg_pt_t p2 = priv_arg_pt(rel, *cx, *cy, args[2], args[3]);
-  const svg_pt_t p3 = priv_arg_pt(rel, *cx, *cy, args[4], args[(int32_t)k_svg_cube_ey]);
-  int32_t        m  = n;
+  int32_t m = n;
   priv_flatten_cubic(t, p0, p1, p2, p3, xs, ys, &m);
-  *cx = p3.x;
-  *cy = p3.y;
+  st->ctrl = p2;
+  st->kind = 'c';
+  st->cx   = p3.x;
+  st->cy   = p3.y;
   return m;
+}
+
+/** @brief Flatten a quadratic (P0..P2) into the list; record ctrl + advance @p st. */
+static int32_t priv_emit_quad(const svg_xform_t* t,
+                              svg_pt_t           p0,
+                              svg_pt_t           p1,
+                              svg_pt_t           p2,
+                              path_state_t*      st,
+                              int32_t*           xs,
+                              int32_t*           ys,
+                              int32_t            n)
+{
+  int32_t m = n;
+  priv_flatten_quad(t, p0, p1, p2, xs, ys, &m);
+  st->ctrl = p1;
+  st->kind = 'q';
+  st->cx   = p2.x;
+  st->cy   = p2.y;
+  return m;
+}
+
+/**
+ * @brief Flatten a cubic/quadratic `<path>` curve command into the vertex list.
+ *
+ * @details Handles `C`/`c`, `S`/`s` (smooth cubic), `Q`/`q`, and `T`/`t` (smooth
+ * quadratic); `S`/`T` reflect the previous matching control point. Returns -1 for
+ * any other command so the caller falls back to the endpoint-chord path -- used
+ * by the elliptical arc `A`/`a`, which is not flattened (it needs libm trig and
+ * is tracked as the remaining curve on #141).
+ *
+ * @return The new vertex count, or -1 if @p u is not a supported curve command.
+ */
+static int32_t priv_path_curve(const svg_xform_t* t,
+                               char               u,
+                               bool               rel,
+                               const int32_t*     args,
+                               path_state_t*      st,
+                               int32_t*           xs,
+                               int32_t*           ys,
+                               int32_t            n)
+{
+  const svg_pt_t p0 = {.x = st->cx, .y = st->cy};
+  if ((u == 'q') || (u == 't')) {
+    const bool     sm = (u == 't');
+    const svg_pt_t p1 =
+      sm ? priv_smooth_ctrl(p0, st, 'q') : priv_arg_pt(rel, st->cx, st->cy, args[0], args[1]);
+    const int32_t  e  = sm ? 0 : 2;
+    const svg_pt_t p2 = priv_arg_pt(rel, st->cx, st->cy, args[e], args[e + 1]);
+    return priv_emit_quad(t, p0, p1, p2, st, xs, ys, n);
+  }
+  if ((u == 'c') || (u == 's')) {
+    const bool     sm = (u == 's');
+    const svg_pt_t p1 =
+      sm ? priv_smooth_ctrl(p0, st, 'c') : priv_arg_pt(rel, st->cx, st->cy, args[0], args[1]);
+    const int32_t  b  = sm ? 0 : 2;
+    const svg_pt_t p2 = priv_arg_pt(rel, st->cx, st->cy, args[b], args[b + 1]);
+    const svg_pt_t p3 = priv_arg_pt(rel, st->cx, st->cy, args[b + 2], args[b + 3]);
+    return priv_emit_cubic(t, p0, p1, p2, p3, st, xs, ys, n);
+  }
+  return -1;
 }
 
 /**
  * @brief Parse a path `d` value into framebuffer-space vertices; return count.
  *
  * @details Handles M/L/H/V/Z exactly (absolute + relative, with implicit-L
- * repeats after M); the cubic `C`/`c` is flattened into line segments, while
- * S/Q/T/A contribute only their endpoint chord (#141). Multiple subpaths are
- * merged into one polygon.
+ * repeats after M); the cubic `C`/`c`, smooth cubic `S`/`s`, quadratic `Q`/`q`,
+ * and smooth quadratic `T`/`t` are flattened into line segments (the smooth
+ * forms reflect the previous control point). The elliptical arc `A`/`a` still
+ * contributes only its endpoint chord (needs libm trig -- tracked on #141).
+ * Multiple subpaths are merged into one polygon.
  */
 /** @brief Resolve the next path command at @p d[*i] (explicit letter, or an
  *         implicit repeat of @p *last); advances @p i past a letter; 0 at end. */
@@ -648,11 +766,10 @@ static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
 static int32_t
 priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {
-  int32_t n    = 0;
-  int32_t cx   = 0;
-  int32_t cy   = 0;
-  char    last = 0;
-  size_t  i    = 0U;
+  int32_t      n    = 0;
+  path_state_t st   = {.cx = 0, .cy = 0, .ctrl = {.x = 0, .y = 0}, .kind = 0};
+  char         last = 0;
+  size_t       i    = 0U;
   /* Bounded: <= k_svg_poly_max commands; i advances past each command's args. */
   while ((i < dlen) && (n < (int32_t)k_svg_poly_max)) {
     const char    c   = priv_next_cmd(d, dlen, &i, &last);
@@ -669,13 +786,15 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
     for (int32_t a = 0; a < na; ++a) {
       args[a] = priv_num(d, dlen, &i);
     }
-    if (u == 'c') {
-      n = priv_path_cubic(t, rel, args, &cx, &cy, xs, ys, n); /* flatten the curve */
+    const int32_t cn = priv_path_curve(t, u, rel, args, &st, xs, ys, n);
+    if (cn >= 0) {
+      n = cn; /* C/S/Q/T flattened into segments */
     } else {
-      priv_path_step(u, rel, args, na, &cx, &cy);
-      xs[n] = priv_mx(t, cx);
-      ys[n] = priv_my(t, cy);
+      priv_path_step(u, rel, args, na, &st.cx, &st.cy);
+      xs[n] = priv_mx(t, st.cx);
+      ys[n] = priv_my(t, st.cy);
       ++n;
+      st.kind = 0; /* a non-curve breaks the smooth-reflection chain */
     }
     if (u == 'm') {
       last = rel ? 'l' : 'L'; /* implicit coords after M are line-tos */
