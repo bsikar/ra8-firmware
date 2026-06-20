@@ -60,6 +60,13 @@ typedef enum : uint32_t {
   k_svg_g_depth_max = 8U,          /**< Max nested `<g>` transform depth. */
   k_svg_circle_seg  = 24U,         /**< N-gon segments for a transformed circle.*/
   k_svg_rect_pts    = 4U,          /**< Corner count of a rectangle.      */
+  k_svg_grad_max    = 8U,          /**< Max gradients defined per document.*/
+  k_svg_grad_stops  = 8U,          /**< Max colour stops per gradient.    */
+  k_svg_grad_id     = 32U,         /**< Max gradient `id` length, bytes.  */
+  k_svg_grad_linear = 0U,          /**< `<linearGradient>` kind.          */
+  k_svg_grad_radial = 1U,          /**< `<radialGradient>` kind.          */
+  k_svg_chan_mask   = 0xFFU,       /**< One 8-bit RGB channel mask.       */
+  k_svg_sh_r        = 16U,         /**< Red shift within 0x00RRGGBB.      */
 } priv_svg_consts_t;
 
 /** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
@@ -76,6 +83,10 @@ static const float s_svg_deg_half = 180.0F;
 static const float s_svg_half = 0.5F;
 /** @brief Target radians per flattened arc segment (~Pi/8 = 22.5 deg). */
 static const float s_svg_arc_step = 0.39269908F;
+/** @brief Percent divisor (a gradient `offset="50%"` -> 0.5). */
+static const float s_svg_pct = 100.0F;
+/** @brief Gradient parameter / offset upper clamp. */
+static const float s_svg_unit = 1.0F;
 
 /**
  * @struct svg_pt_t
@@ -105,6 +116,9 @@ typedef struct {
   float f; /**< Y translate.         */
 } svg_utf_t;
 
+/** @brief Forward decl: the document's gradient set (defined after svg_xform_t). */
+typedef struct svg_grads svg_grads_t;
+
 /**
  * @struct svg_xform_t
  * @brief SVG-user-space -> framebuffer-box coordinate transform.
@@ -128,7 +142,49 @@ typedef struct {
   float ud; /**< Affine d (y scale; 1 = identity).  */
   float ue; /**< Affine e (x translate, user units).*/
   float uf; /**< Affine f (y translate, user units).*/
+  /* Gradients defined in the document, scanned once before the render walk.
+   * NULL keeps the solid-fill render byte-for-byte unchanged. A shape whose
+   * `fill="url(#id)"` resolves here is filled per-pixel via priv_fill_poly_grad. */
+  const svg_grads_t* grads; /**< Document gradient set, or NULL. */
 } svg_xform_t;
+
+/**
+ * @struct svg_stop_t
+ * @brief One gradient colour stop: an offset in [0,1] and an 0x00RRGGBB colour.
+ */
+typedef struct {
+  float    off; /**< Stop offset, clamped to [0,1]. */
+  uint32_t col; /**< Stop colour, 0x00RRGGBB.       */
+} svg_stop_t;
+
+/**
+ * @struct svg_grad_t
+ * @brief A parsed linear/radial gradient in objectBoundingBox units.
+ *
+ * @details Coordinates are bbox-relative ([0,1]). Linear uses the vector
+ * @c (x1,y1)->(x2,y2); radial uses centre @c (x1,y1) and radius @c x2. Only
+ * @c gradientUnits="objectBoundingBox" (the default) is modelled; other units
+ * are treated as objectBoundingBox (a documented limitation).
+ */
+typedef struct {
+  uint8_t    kind;                    /**< k_svg_grad_linear / k_svg_grad_radial.  */
+  uint8_t    nstops;                  /**< Number of valid stops.                  */
+  char       id[k_svg_grad_id];       /**< NUL-terminated gradient id (for url()). */
+  float      x1;                      /**< Linear start x / radial centre x.       */
+  float      y1;                      /**< Linear start y / radial centre y.       */
+  float      x2;                      /**< Linear end x / radial radius.           */
+  float      y2;                      /**< Linear end y (unused for radial).       */
+  svg_stop_t stops[k_svg_grad_stops]; /**< Colour stops, in document order.        */
+} svg_grad_t;
+
+/**
+ * @struct svg_grads
+ * @brief Bounded set of gradients scanned from the document before the render.
+ */
+struct svg_grads {
+  int32_t    n;                 /**< Number of valid gradients (<= k_svg_grad_max). */
+  svg_grad_t g[k_svg_grad_max]; /**< The gradient table.                            */
+};
 
 /* ===========================================================================
  * Pure string / number helpers
@@ -383,6 +439,53 @@ static uint32_t priv_attr_paint(const uint8_t* s, size_t len, const char* name, 
   return priv_paint(&s[off], vl);
 }
 
+/** @brief Match a `url(#id)` paint @p val[0..vlen) to a gradient index, or -1. */
+static int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen)
+{
+  if ((grads == nullptr) || !priv_starts_ci(val, vlen, 0U, "url(#")) {
+    return -1;
+  }
+  const size_t idoff = strlen("url(#");
+  size_t       idend = idoff;
+  while ((idend < vlen) && (val[idend] != ')')) {
+    ++idend;
+  }
+  const size_t idlen = idend - idoff;
+  /* Bounded: <= grads->n (<= k_svg_grad_max) gradients. */
+  for (int32_t i = 0; i < grads->n; ++i) {
+    const char* gid = grads->g[i].id;
+    if ((strlen(gid) == idlen) && (memcmp(gid, &val[idoff], idlen) == 0)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * @brief Resolve a shape's `fill`: a solid colour, or a gradient index via @p gi.
+ *
+ * @details Sets @p *gi to the matched gradient index (>= 0) for a `fill="url(#id)"`
+ * that resolves in @p t->grads, returning ::k_svg_no_paint so the solid path is
+ * skipped. A `url(#id)` with no match also returns ::k_svg_no_paint with @p *gi
+ * == -1 (graceful skip). An absent `fill` returns @p def; otherwise the solid
+ * colour parsed from the attribute.
+ */
+static uint32_t
+priv_resolve_fill(const uint8_t* s, size_t len, const svg_xform_t* t, uint32_t def, int32_t* gi)
+{
+  *gi        = -1;
+  size_t off = 0U;
+  size_t vl  = 0U;
+  if (!priv_attr(s, len, "fill", &off, &vl)) {
+    return def;
+  }
+  if (priv_starts_ci(&s[off], vl, 0U, "url(#")) {
+    *gi = priv_match_grad(t->grads, &s[off], vl);
+    return (uint32_t)k_svg_no_paint;
+  }
+  return priv_paint(&s[off], vl);
+}
+
 /* ===========================================================================
  * Coordinate transform + shape drawing
  * ===========================================================================
@@ -522,6 +625,19 @@ typedef enum : uint8_t {
   k_svg_xf_matrix    = 6U, /**< matrix(a,b,c,d,e,f).                 */
 } svg_xf_kind_t;
 
+/**
+ * @enum svg_xf_arg_t
+ * @brief Argument indices into a parsed `matrix(a,b,c,d,e,f)` transform list.
+ */
+typedef enum : uint8_t {
+  k_svg_xf_arg_a = 0U, /**< matrix component a (x scale).        */
+  k_svg_xf_arg_b = 1U, /**< matrix component b (y shear).        */
+  k_svg_xf_arg_c = 2U, /**< matrix component c (x shear).        */
+  k_svg_xf_arg_d = 3U, /**< matrix component d (y scale).        */
+  k_svg_xf_arg_e = 4U, /**< matrix component e (x translate).    */
+  k_svg_xf_arg_f = 5U, /**< matrix component f (y translate).    */
+} svg_xf_arg_t;
+
 /** @brief Degrees -> radians for a transform angle argument. */
 static float priv_deg2rad(float deg)
 {
@@ -597,12 +713,12 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
                          .e = 0.0F,
                          .f = 0.0F};
     case k_svg_xf_matrix:
-      return (svg_utf_t){.a = args[0],
-                         .b = args[1],
-                         .c = args[2],
-                         .d = args[3],
-                         .e = args[4],
-                         .f = args[5]};
+      return (svg_utf_t){.a = args[k_svg_xf_arg_a],
+                         .b = args[k_svg_xf_arg_b],
+                         .c = args[k_svg_xf_arg_c],
+                         .d = args[k_svg_xf_arg_d],
+                         .e = args[k_svg_xf_arg_e],
+                         .f = args[k_svg_xf_arg_f]};
     case k_svg_xf_none:
     default:
       return priv_utf_identity();
@@ -690,6 +806,8 @@ static void priv_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
 
 /** @brief Even-odd scanline fill (forward decl; defined in the polygon section). */
 static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color);
+static void
+priv_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g);
 
 /** @brief Draw one `<rect>` (span @p s[0..len)) with its fill.
  *
@@ -698,15 +816,16 @@ static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint
  * affine and the polygon is scanline-filled. */
 static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
-  if (fill == (uint32_t)k_svg_no_paint) {
+  int32_t        gi   = -1;
+  const uint32_t fill = priv_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
+  if ((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) {
     return;
   }
   const int32_t rx = priv_attr_num(s, len, "x", 0);
   const int32_t ry = priv_attr_num(s, len, "y", 0);
   const int32_t rw = priv_attr_num(s, len, "width", 0);
   const int32_t rh = priv_attr_num(s, len, "height", 0);
-  if (!priv_has_rot(t)) {
+  if ((gi < 0) && !priv_has_rot(t)) {
     (void)ra_gfx_rect(priv_mx(t, rx), priv_my(t, ry), priv_sx(t, rw), priv_sx(t, rh), fill, true);
     return;
   }
@@ -716,7 +835,11 @@ static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
   priv_map_point(t, rx + rw, ry, &xs[1], &ys[1]);
   priv_map_point(t, rx + rw, ry + rh, &xs[2], &ys[2]);
   priv_map_point(t, rx, ry + rh, &xs[3], &ys[3]);
-  priv_fill_poly(xs, ys, (int32_t)k_svg_rect_pts, fill);
+  if (gi >= 0) {
+    priv_fill_poly_grad(xs, ys, (int32_t)k_svg_rect_pts, &t->grads->g[gi]);
+  } else {
+    priv_fill_poly(xs, ys, (int32_t)k_svg_rect_pts, fill);
+  }
 }
 
 /** @brief Draw one `<circle>` (span @p s[0..len)) with its fill.
@@ -726,14 +849,15 @@ static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
  * whose vertices are mapped through the full affine, then scanline-filled. */
 static void priv_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
-  if (fill == (uint32_t)k_svg_no_paint) {
+  int32_t        gi   = -1;
+  const uint32_t fill = priv_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
+  if ((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) {
     return;
   }
   const int32_t cx = priv_attr_num(s, len, "cx", 0);
   const int32_t cy = priv_attr_num(s, len, "cy", 0);
   const int32_t r  = priv_attr_num(s, len, "r", 0);
-  if (!priv_has_rot(t)) {
+  if ((gi < 0) && !priv_has_rot(t)) {
     (void)ra_gfx_circle(priv_mx(t, cx), priv_my(t, cy), priv_sx(t, r), fill, true);
     return;
   }
@@ -748,7 +872,11 @@ static void priv_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
                    &xs[k],
                    &ys[k]);
   }
-  priv_fill_poly(xs, ys, (int32_t)k_svg_circle_seg, fill);
+  if (gi >= 0) {
+    priv_fill_poly_grad(xs, ys, (int32_t)k_svg_circle_seg, &t->grads->g[gi]);
+  } else {
+    priv_fill_poly(xs, ys, (int32_t)k_svg_circle_seg, fill);
+  }
 }
 
 /** @brief Draw one `<line>` (span @p s[0..len)) with its stroke. */
@@ -856,19 +984,118 @@ static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint
   }
 }
 
+/** @brief Linear-interpolate two 0x00RRGGBB colours by @p f in [0,1] (per channel). */
+static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
+{
+  const int32_t ra = (int32_t)((a >> (uint32_t)k_svg_sh_r) & (uint32_t)k_svg_chan_mask);
+  const int32_t ga = (int32_t)((a >> (uint32_t)k_svg_hex_chan) & (uint32_t)k_svg_chan_mask);
+  const int32_t ba = (int32_t)(a & (uint32_t)k_svg_chan_mask);
+  const int32_t rb = (int32_t)((b >> (uint32_t)k_svg_sh_r) & (uint32_t)k_svg_chan_mask);
+  const int32_t gb = (int32_t)((b >> (uint32_t)k_svg_hex_chan) & (uint32_t)k_svg_chan_mask);
+  const int32_t bb = (int32_t)(b & (uint32_t)k_svg_chan_mask);
+  const int32_t r  = ra + (int32_t)((float)(rb - ra) * f);
+  const int32_t g  = ga + (int32_t)((float)(gb - ga) * f);
+  const int32_t bl = ba + (int32_t)((float)(bb - ba) * f);
+  return ((uint32_t)r << (uint32_t)k_svg_sh_r) | ((uint32_t)g << (uint32_t)k_svg_hex_chan) |
+         (uint32_t)bl;
+}
+
+/**
+ * @brief Evaluate gradient @p g at bbox-relative point (@p px,@p py) -> 0x00RRGGBB.
+ *
+ * @details Linear: parameter = projection of the point onto the (x1,y1)->(x2,y2)
+ * vector. Radial: parameter = distance from centre (x1,y1) over radius x2. The
+ * parameter selects/interpolates the surrounding stops; values past the ends
+ * clamp to the first/last stop colour.
+ */
+static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
+{
+  if (g->nstops == 0U) {
+    return (uint32_t)k_svg_def_fill;
+  }
+  float p = 0.0F;
+  if (g->kind == (uint8_t)k_svg_grad_radial) {
+    const float dx = px - g->x1;
+    const float dy = py - g->y1;
+    const float rr = (g->x2 > 0.0F) ? g->x2 : 1.0F;
+    p              = sqrtf((dx * dx) + (dy * dy)) / rr;
+  } else {
+    const float vx   = g->x2 - g->x1;
+    const float vy   = g->y2 - g->y1;
+    const float len2 = (vx * vx) + (vy * vy);
+    p                = (len2 > 0.0F) ? ((((px - g->x1) * vx) + ((py - g->y1) * vy)) / len2) : 0.0F;
+  }
+  if (p <= g->stops[0].off) {
+    return g->stops[0].col;
+  }
+  const uint8_t last = (uint8_t)(g->nstops - 1U);
+  if (p >= g->stops[last].off) {
+    return g->stops[last].col;
+  }
+  /* Bounded: at most nstops-1 stop brackets. */
+  for (uint8_t i = 0U; i < last; ++i) {
+    const float o0 = g->stops[i].off;
+    const float o1 = g->stops[i + 1U].off;
+    if ((p >= o0) && (p <= o1)) {
+      const float f = (o1 > o0) ? ((p - o0) / (o1 - o0)) : 0.0F;
+      return priv_col_lerp(g->stops[i].col, g->stops[i + 1U].col, f);
+    }
+  }
+  return g->stops[last].col;
+}
+
+/** @brief Per-pixel scanline fill of polygon (@p xs,@p ys)[0..n) with gradient @p g. */
+static void
+priv_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g)
+{
+  if (n < (int32_t)k_svg_poly_min) {
+    return;
+  }
+  int32_t xmin = xs[0];
+  int32_t xmax = xs[0];
+  int32_t ymin = ys[0];
+  int32_t ymax = ys[0];
+  for (int32_t i = 1; i < n; ++i) {
+    xmin = (xs[i] < xmin) ? xs[i] : xmin;
+    xmax = (xs[i] > xmax) ? xs[i] : xmax;
+    ymin = (ys[i] < ymin) ? ys[i] : ymin;
+    ymax = (ys[i] > ymax) ? ys[i] : ymax;
+  }
+  const float bw = (xmax > xmin) ? (float)(xmax - xmin) : 1.0F;
+  const float bh = (ymax > ymin) ? (float)(ymax - ymin) : 1.0F;
+  /* Bounded: ymax - ymin <= the framebuffer-box height. */
+  for (int32_t y = ymin; y <= ymax; ++y) {
+    int32_t       xint[k_svg_poly_max] = {};
+    const int32_t m                    = priv_scanline_x(xs, ys, n, y, xint);
+    priv_sort_i32(xint, m);
+    const float py = (float)(y - ymin) / bh;
+    for (int32_t k = 0; (k + 1) < m; k += 2) {
+      /* Bounded: xint[k+1] - xint[k] <= the framebuffer-box width. */
+      for (int32_t x = xint[k]; x <= xint[k + 1]; ++x) {
+        (void)ra_gfx_pixel(x, y, priv_grad_eval(g, (float)(x - xmin) / bw, py));
+      }
+    }
+  }
+}
+
 /** @brief Draw one `<polygon>` (span @p s[0..len)) as a filled polygon. */
 static void priv_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
+  int32_t        gi   = -1;
+  const uint32_t fill = priv_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
   size_t         off  = 0U;
   size_t         vl   = 0U;
-  if ((fill == (uint32_t)k_svg_no_paint) || !priv_attr(s, len, "points", &off, &vl)) {
+  if (((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) || !priv_attr(s, len, "points", &off, &vl)) {
     return;
   }
   int32_t       xs[k_svg_poly_max] = {};
   int32_t       ys[k_svg_poly_max] = {};
   const int32_t n                  = priv_parse_points(&s[off], vl, t, xs, ys);
-  priv_fill_poly(xs, ys, n, fill);
+  if (gi >= 0) {
+    priv_fill_poly_grad(xs, ys, n, &t->grads->g[gi]);
+  } else {
+    priv_fill_poly(xs, ys, n, fill);
+  }
 }
 
 /** @brief Draw one `<polyline>` (span @p s[0..len)) as connected stroke segments. */
@@ -1365,16 +1592,21 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
 /** @brief Draw one `<path>` (span @p s[0..len)) as a filled polygon. */
 static void priv_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  const uint32_t fill = priv_attr_paint(s, len, "fill", (uint32_t)k_svg_def_fill);
+  int32_t        gi   = -1;
+  const uint32_t fill = priv_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
   size_t         off  = 0U;
   size_t         vl   = 0U;
-  if ((fill == (uint32_t)k_svg_no_paint) || !priv_attr(s, len, "d", &off, &vl)) {
+  if (((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) || !priv_attr(s, len, "d", &off, &vl)) {
     return;
   }
   int32_t       xs[k_svg_poly_max] = {};
   int32_t       ys[k_svg_poly_max] = {};
   const int32_t n                  = priv_parse_path(&s[off], vl, t, xs, ys);
-  priv_fill_poly(xs, ys, n, fill);
+  if (gi >= 0) {
+    priv_fill_poly_grad(xs, ys, n, &t->grads->g[gi]);
+  } else {
+    priv_fill_poly(xs, ys, n, fill);
+  }
 }
 
 /* ===========================================================================
@@ -1557,6 +1789,146 @@ static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
 }
 
 /* ===========================================================================
+ * Gradient definitions (<linearGradient> / <radialGradient> + <stop>)
+ * ===========================================================================
+ */
+
+/** @brief Read attribute @p name as a float; @p def if absent. */
+static float priv_attr_numf(const uint8_t* s, size_t len, const char* name, float def)
+{
+  size_t off = 0U;
+  size_t vl  = 0U;
+  if (!priv_attr(s, len, name, &off, &vl)) {
+    return def;
+  }
+  size_t k = 0U;
+  return priv_numf(&s[off], vl, &k);
+}
+
+/** @brief Copy the `id` attribute into @p dst, NUL-terminated (<= k_svg_grad_id). */
+static void priv_copy_attr_id(const uint8_t* s, size_t len, char* dst)
+{
+  dst[0]     = '\0';
+  size_t off = 0U;
+  size_t vl  = 0U;
+  if (!priv_attr(s, len, "id", &off, &vl)) {
+    return;
+  }
+  const size_t n = (vl < (size_t)(k_svg_grad_id - 1U)) ? vl : (size_t)(k_svg_grad_id - 1U);
+  for (size_t i = 0U; i < n; ++i) {
+    dst[i] = (char)s[off + i];
+  }
+  dst[n] = '\0';
+}
+
+/** @brief Clamp @p v to [0, 1]. */
+static float priv_clamp01(float v)
+{
+  if (v < 0.0F) {
+    return 0.0F;
+  }
+  return (v > s_svg_unit) ? s_svg_unit : v;
+}
+
+/** @brief Parse a gradient `<stop>` `offset` (fraction or `%`) from @p tag. */
+static float priv_stop_offset(const uint8_t* tag, size_t tlen)
+{
+  size_t ooff = 0U;
+  size_t ovl  = 0U;
+  if (!priv_attr(tag, tlen, "offset", &ooff, &ovl)) {
+    return 0.0F;
+  }
+  size_t      k   = 0U;
+  const float off = priv_numf(&tag[ooff], ovl, &k);
+  for (size_t z = 0U; z < ovl; ++z) {
+    if (tag[ooff + z] == '%') {
+      return off / s_svg_pct;
+    }
+  }
+  return off;
+}
+
+/** @brief Parse a gradient `<stop>` `stop-color` from @p tag (default fill if absent). */
+static uint32_t priv_stop_color(const uint8_t* tag, size_t tlen)
+{
+  size_t coff = 0U;
+  size_t cvl  = 0U;
+  if (!priv_attr(tag, tlen, "stop-color", &coff, &cvl)) {
+    return (uint32_t)k_svg_def_fill;
+  }
+  const uint32_t pc = priv_paint(&tag[coff], cvl);
+  return (pc != (uint32_t)k_svg_no_paint) ? pc : (uint32_t)k_svg_def_fill;
+}
+
+/** @brief Parse the `<stop>` children of a gradient in @p s[from..end) into @p g. */
+static void priv_parse_stops(const uint8_t* s, size_t from, size_t end, svg_grad_t* g)
+{
+  size_t at = from;
+  /* Bounded: <= k_svg_grad_stops stops; `at` advances past each `<stop>`. */
+  while (g->nstops < (uint8_t)k_svg_grad_stops) {
+    const size_t sp = priv_find_ci(s, end, at, "<stop");
+    if (sp >= end) {
+      break;
+    }
+    size_t close = sp;
+    while ((close < end) && (s[close] != '>')) {
+      ++close;
+    }
+    const uint8_t* tag      = &s[sp];
+    const size_t   tlen     = (close > sp) ? (close - sp) : 0U;
+    g->stops[g->nstops].off = priv_clamp01(priv_stop_offset(tag, tlen));
+    g->stops[g->nstops].col = priv_stop_color(tag, tlen);
+    g->nstops += 1U;
+    at = (close < end) ? (close + 1U) : end;
+  }
+}
+
+/** @brief Scan the document for gradient definitions into @p gs (bounded, zero-heap). */
+static void priv_scan_grads(const uint8_t* s, size_t len, svg_grads_t* gs)
+{
+  gs->n       = 0;
+  size_t from = 0U;
+  /* Bounded: <= k_svg_grad_max gradients; `from` strictly advances each pass. */
+  while (gs->n < (int32_t)k_svg_grad_max) {
+    const size_t lin    = priv_find_ci(s, len, from, "<linearGradient");
+    const size_t rad    = priv_find_ci(s, len, from, "<radialGradient");
+    const bool   is_rad = (rad < lin);
+    const size_t at     = is_rad ? rad : lin;
+    if (at >= len) {
+      break;
+    }
+    size_t close = at;
+    while ((close < len) && (s[close] != '>')) {
+      ++close;
+    }
+    const uint8_t* tag  = &s[at];
+    const size_t   tlen = (close > at) ? (close - at) : 0U;
+    svg_grad_t*    g    = &gs->g[gs->n];
+    *g                  = (svg_grad_t){};
+    g->kind             = is_rad ? (uint8_t)k_svg_grad_radial : (uint8_t)k_svg_grad_linear;
+    priv_copy_attr_id(tag, tlen, g->id);
+    if (is_rad) {
+      g->x1 = priv_attr_numf(tag, tlen, "cx", s_svg_half);
+      g->y1 = priv_attr_numf(tag, tlen, "cy", s_svg_half);
+      g->x2 = priv_attr_numf(tag, tlen, "r", s_svg_half);
+    } else {
+      g->x1 = priv_attr_numf(tag, tlen, "x1", 0.0F);
+      g->y1 = priv_attr_numf(tag, tlen, "y1", 0.0F);
+      g->x2 = priv_attr_numf(tag, tlen, "x2", s_svg_unit);
+      g->y2 = priv_attr_numf(tag, tlen, "y2", 0.0F);
+    }
+    const char*  endtag  = is_rad ? "</radialGradient" : "</linearGradient";
+    const size_t endpos  = priv_find_ci(s, len, close, endtag);
+    const size_t stopend = (endpos < len) ? endpos : len;
+    priv_parse_stops(s, close, stopend, g);
+    if (g->nstops > 0U) {
+      gs->n += 1;
+    }
+    from = (endpos < len) ? (endpos + 1U) : len;
+  }
+}
+
+/* ===========================================================================
  * Public API
  * ===========================================================================
  */
@@ -1644,16 +2016,19 @@ ra_err_t ra_svg_render(const uint8_t* svg, size_t len, int32_t x, int32_t y, int
   if ((w <= 0) || (h <= 0)) {
     return k_ra_err_invalid_arg;
   }
-  svg_xform_t t = {.bx = x,
-                   .by = y,
-                   .bw = w,
-                   .bh = h,
-                   .ua = 1.0F,
-                   .ub = 0.0F,
-                   .uc = 0.0F,
-                   .ud = 1.0F,
-                   .ue = 0.0F,
-                   .uf = 0.0F};
+  svg_xform_t t     = {.bx = x,
+                       .by = y,
+                       .bw = w,
+                       .bh = h,
+                       .ua = 1.0F,
+                       .ub = 0.0F,
+                       .uc = 0.0F,
+                       .ud = 1.0F,
+                       .ue = 0.0F,
+                       .uf = 0.0F};
+  svg_grads_t grads = {};
+  priv_scan_grads(svg, len, &grads);
+  t.grads = &grads;
   priv_read_viewbox(svg, len, &t);
   priv_draw_shapes(svg, len, &t);
   return k_ra_ok;

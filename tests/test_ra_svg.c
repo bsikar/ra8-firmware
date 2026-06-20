@@ -456,6 +456,91 @@ static void test_render_rotate(void)
 }
 
 /**
+ * @test test_render_gradient
+ * @brief A `fill="url(#id)"` linear gradient interpolates across the shape; an
+ *        unmatched ref is skipped; a solid fill is unaffected.
+ *
+ * @par MC/DC:
+ * Decision in priv_resolve_fill: a fill is a gradient iff
+ * `is_url_ref(value) && gradient_matched`.
+ * - Vector 1: `fill="#112233"` -> is_url=F -> solid (the rect paints #112233).
+ * - Vector 2: `fill="url(#g)"` with `#g` defined -> is_url=T, matched=T -> gradient.
+ * - Vector 3: `fill="url(#no)"` undefined -> is_url=T, matched=F -> skipped (white).
+ * 1+2 prove is_url independently flips solid-vs-gradient; 2+3 prove the match flips
+ * gradient-vs-skip. N+1 = 3 vectors for the 2-condition decision.
+ */
+static void test_render_gradient(void)
+{
+  TEST_BEGIN("svg linear gradient");
+  /* V2: black->white horizontal linear gradient over the full 100x100 viewBox
+   * (box 200x200, objectBoundingBox default x1=0,y1=0,x2=1,y2=0). */
+  const char* lin =
+    "<svg viewBox=\"0 0 100 100\"><defs><linearGradient id=\"g\">"
+    "<stop offset=\"0\" stop-color=\"#000000\"/><stop offset=\"1\" stop-color=\"#ffffff\"/>"
+    "</linearGradient></defs><rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
+    "fill=\"url(#g)\"/></svg>";
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok, render(lin));
+  TEST_ASSERT_EQ(0x7F7F7F, (int)px(100, 100));        /* midpoint blend (0.5)         */
+  TEST_ASSERT((int)px(10, 100) < (int)px(100, 100));  /* darker toward the left stop  */
+  TEST_ASSERT((int)px(190, 100) > (int)px(100, 100)); /* lighter toward the right stop*/
+
+  /* V3: unmatched url(#no) -> skipped -> background stays white. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"100\" "
+                        "height=\"100\" fill=\"url(#no)\"/></svg>"));
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 100));
+
+  /* V1: a plain solid fill is unchanged by the gradient path. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"100\" "
+                        "height=\"100\" fill=\"#112233\"/></svg>"));
+  TEST_ASSERT_EQ(0x112233, (int)px(100, 100));
+
+  /* Multi-stop: #000000@0 -> #ff0000@0.5 -> #ffffff@1 exercises both brackets of
+   * the stop search in priv_grad_eval (the left point lands in [0,0.5], the right
+   * in [0.5,1]); the middle stop is reproduced exactly. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><defs><linearGradient id=\"g3\">"
+                        "<stop offset=\"0\" stop-color=\"#000000\"/>"
+                        "<stop offset=\"0.5\" stop-color=\"#ff0000\"/>"
+                        "<stop offset=\"1\" stop-color=\"#ffffff\"/></linearGradient></defs>"
+                        "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"url(#g3)\"/>"
+                        "</svg>"));
+  TEST_ASSERT_EQ(0xFF0000, (int)px(100, 100));       /* p=0.5 -> the middle stop       */
+  TEST_ASSERT(((int)px(50, 100) & 0x00FF00) == 0);   /* left bracket: no green         */
+  TEST_ASSERT(((int)px(50, 100) & 0x0000FF) == 0);   /* left bracket: no blue yet      */
+  TEST_ASSERT(((int)px(50, 100) & 0xFF0000) > 0);    /* left bracket: red rising       */
+  TEST_ASSERT(((int)px(150, 100) & 0x0000FF) > 0);   /* right bracket: blue rising     */
+  TEST_ASSERT((int)px(150, 100) > (int)px(50, 100)); /* brighter past the middle stop */
+  TEST_END("svg linear gradient");
+}
+
+/**
+ * @test test_render_gradient_radial
+ * @brief A radial gradient is the first stop at the centre, the last at the edge.
+ */
+static void test_render_gradient_radial(void)
+{
+  TEST_BEGIN("svg radial gradient");
+  /* white centre -> black edge (default cx=cy=r=0.5, objectBoundingBox). */
+  const char* rad =
+    "<svg viewBox=\"0 0 100 100\"><defs><radialGradient id=\"r\">"
+    "<stop offset=\"0\" stop-color=\"#ffffff\"/><stop offset=\"1\" stop-color=\"#000000\"/>"
+    "</radialGradient></defs><rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
+    "fill=\"url(#r)\"/></svg>";
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok, render(rad));
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 100));      /* centre -> first stop (white) */
+  TEST_ASSERT_EQ(0x000000, (int)px(6, 6));          /* corner past r -> last (black) */
+  TEST_ASSERT((int)px(100, 100) > (int)px(40, 40)); /* brightness falls with radius  */
+  TEST_END("svg radial gradient");
+}
+
+/**
  * @test test_guards
  * @brief NULL / non-positive box arguments are rejected.
  */
@@ -493,6 +578,8 @@ int32_t main(void)
   test_render_transform();
   test_transform_args_mcdc();
   test_render_rotate();
+  test_render_gradient();
+  test_render_gradient_radial();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");
   return 0;
