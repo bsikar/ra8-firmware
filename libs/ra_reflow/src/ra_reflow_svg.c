@@ -17,6 +17,7 @@
 
 #include "ra_reflow_svg.h"
 
+#include <math.h>
 #include <string.h>
 
 #include "ra_gfx.h"
@@ -26,34 +27,52 @@
  * @brief Parse + colour constants for the SVG subset.
  */
 typedef enum : uint32_t {
-  k_svg_no_paint  = 0xFFFFFFFFU, /**< `none` / absent paint sentinel.    */
-  k_svg_def_fill  = 0x000000U,   /**< SVG default fill is black.         */
-  k_svg_dec       = 10U,         /**< Decimal base.                      */
-  k_svg_hex_base  = 16U,         /**< Hex base / "not a hex digit".      */
-  k_svg_hex_a10   = 10U,         /**< Value of hex 'a'/'A'.              */
-  k_svg_hex_nib   = 4U,          /**< Bits per hex nibble.               */
-  k_svg_hex_chan  = 8U,          /**< Bits per colour channel.           */
-  k_svg_hex3      = 3U,          /**< `#rgb` digit count.                */
-  k_svg_hex6      = 6U,          /**< `#rrggbb` digit count.             */
-  k_svg_viewbox_n = 4U,          /**< `viewBox` number count.            */
-  k_svg_bom0      = 0xEFU,       /**< UTF-8 BOM byte 0.                  */
-  k_svg_bom1      = 0xBBU,       /**< UTF-8 BOM byte 1.                  */
-  k_svg_bom2      = 0xBFU,       /**< UTF-8 BOM byte 2.                  */
-  k_svg_bom_len   = 3U,          /**< UTF-8 BOM length.                 */
-  k_svg_poly_max  = 64U,         /**< Max points / scanline crossings.  */
-  k_svg_poly_min  = 3U,          /**< Min points for a fillable polygon.*/
-  k_svg_path_args = 7U,          /**< Max args of a path command (`A`). */
-  k_svg_path_ep   = 2U,          /**< Endpoint pair size (x, y); M/L/T. */
-  k_svg_argc_quad = 4U,          /**< Arg count of `S` / `Q`.          */
-  k_svg_argc_cube = 6U,          /**< Arg count of `C`.                */
-  k_svg_curve_seg = 12U,         /**< Segments per cubic-Bezier flatten.*/
-  k_svg_cube_ey   = 5U,          /**< `C` endpoint-y argument index.   */
+  k_svg_no_paint    = 0xFFFFFFFFU, /**< `none` / absent paint sentinel.    */
+  k_svg_def_fill    = 0x000000U,   /**< SVG default fill is black.         */
+  k_svg_dec         = 10U,         /**< Decimal base.                      */
+  k_svg_hex_base    = 16U,         /**< Hex base / "not a hex digit".      */
+  k_svg_hex_a10     = 10U,         /**< Value of hex 'a'/'A'.              */
+  k_svg_hex_nib     = 4U,          /**< Bits per hex nibble.               */
+  k_svg_hex_chan    = 8U,          /**< Bits per colour channel.           */
+  k_svg_hex3        = 3U,          /**< `#rgb` digit count.                */
+  k_svg_hex6        = 6U,          /**< `#rrggbb` digit count.             */
+  k_svg_viewbox_n   = 4U,          /**< `viewBox` number count.            */
+  k_svg_bom0        = 0xEFU,       /**< UTF-8 BOM byte 0.                  */
+  k_svg_bom1        = 0xBBU,       /**< UTF-8 BOM byte 1.                  */
+  k_svg_bom2        = 0xBFU,       /**< UTF-8 BOM byte 2.                  */
+  k_svg_bom_len     = 3U,          /**< UTF-8 BOM length.                 */
+  k_svg_poly_max    = 64U,         /**< Max points / scanline crossings.  */
+  k_svg_poly_min    = 3U,          /**< Min points for a fillable polygon.*/
+  k_svg_path_args   = 7U,          /**< Max args of a path command (`A`). */
+  k_svg_path_ep     = 2U,          /**< Endpoint pair size (x, y); M/L/T. */
+  k_svg_argc_quad   = 4U,          /**< Arg count of `S` / `Q`.          */
+  k_svg_argc_cube   = 6U,          /**< Arg count of `C`.                */
+  k_svg_curve_seg   = 12U,         /**< Segments per cubic-Bezier flatten.*/
+  k_svg_cube_ey     = 5U,          /**< `C` endpoint-y argument index.   */
+  k_svg_arc_rx      = 0U,          /**< `A` arg index: semi-axis X.       */
+  k_svg_arc_ry      = 1U,          /**< `A` arg index: semi-axis Y.       */
+  k_svg_arc_rot     = 2U,          /**< `A` arg index: x-axis rotation.   */
+  k_svg_arc_large   = 3U,          /**< `A` arg index: large-arc flag.    */
+  k_svg_arc_sweep   = 4U,          /**< `A` arg index: sweep flag.        */
+  k_svg_arc_ex      = 5U,          /**< `A` arg index: endpoint X.        */
+  k_svg_arc_ey      = 6U,          /**< `A` arg index: endpoint Y.        */
+  k_svg_arc_seg_max = 24U,         /**< Max segments per arc flatten.     */
 } priv_svg_consts_t;
 
 /** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
 static const float s_svg_bez3 = 3.0F;
 /** @brief Quadratic Bernstein middle coefficient (2) for the Bezier flatten. */
 static const float s_svg_bez2 = 2.0F;
+/** @brief Pi, for arc degree->radian conversion and sweep wrap. */
+static const float s_svg_pi = 3.14159265F;
+/** @brief 2*Pi, for wrapping an arc's signed sweep into range. */
+static const float s_svg_2pi = 6.28318531F;
+/** @brief Degrees spanning Pi radians (deg->rad scale). */
+static const float s_svg_deg_half = 180.0F;
+/** @brief Midpoint / half factor (avoids a magic 2.0 divide). */
+static const float s_svg_half = 0.5F;
+/** @brief Target radians per flattened arc segment (~Pi/8 = 22.5 deg). */
+static const float s_svg_arc_step = 0.39269908F;
 
 /**
  * @struct svg_pt_t
@@ -693,14 +712,195 @@ static int32_t priv_emit_quad(const svg_xform_t* t,
   return m;
 }
 
+/** @brief Absolute value of a float (avoids a libm fabsf dependency). */
+static float priv_absf(float v)
+{
+  return (v < 0.0F) ? -v : v;
+}
+
+/**
+ * @struct svg_arc_t
+ * @brief Centre-parametrisation of an SVG elliptical arc.
+ *
+ * @details Result of ::priv_arc_center -- the centre, the (radius-corrected)
+ * semi-axes, the x-axis rotation (as cos/sin), and the start angle + signed
+ * sweep, ready to sample. @c ok is false for a degenerate arc (zero radius or
+ * coincident endpoints), in which case the caller draws a straight line.
+ */
+typedef struct {
+  float cx;      /**< Centre X (user space).                 */
+  float cy;      /**< Centre Y (user space).                 */
+  float rx;      /**< Corrected semi-axis X.                 */
+  float ry;      /**< Corrected semi-axis Y.                 */
+  float cos_phi; /**< cos(x-axis rotation).                  */
+  float sin_phi; /**< sin(x-axis rotation).                  */
+  float t1;      /**< Start angle, radians.                  */
+  float dt;      /**< Signed sweep, radians.                 */
+  bool  ok;      /**< False => degenerate (draw a line).     */
+} svg_arc_t;
+
+/**
+ * @brief Solve an arc's centre + start/sweep angles (F.6.5.2 / F.6.5.5-6).
+ *
+ * @details Finishes ::priv_arc_center from its rotated half-chord @p (x1p,y1p),
+ * the (radius-corrected) semi-axes @p (rx,ry), and the endpoint midpoint
+ * @p (mx,my). Fills @p a 's centre, start angle, signed sweep, radii, and sets
+ * @c ok. The @c cos_phi / @c sin_phi fields of @p a must already be set.
+ *
+ * @param[in,out] a     Arc whose centre/angles/radii/ok are written.
+ * @param[in] x1p,y1p   Rotated half-chord (F.6.5.1).
+ * @param[in] rx,ry     Corrected semi-axes.
+ * @param[in] mx,my     Endpoint midpoint (user space).
+ * @param[in] large     Large-arc flag.
+ * @param[in] sweep     Sweep flag.
+ * @pre @p den (rx2*y1p^2 + ry2*x1p^2) is non-zero (the chord is non-degenerate).
+ * @post @p a->ok is true.
+ */
+static void priv_arc_solve(svg_arc_t* a,
+                           float      x1p,
+                           float      y1p,
+                           float      rx,
+                           float      ry,
+                           float      mx,
+                           float      my,
+                           bool       large,
+                           bool       sweep)
+{
+  const float rx2 = rx * rx;
+  const float ry2 = ry * ry;
+  const float num = (rx2 * ry2) - (rx2 * y1p * y1p) - (ry2 * x1p * x1p);
+  const float den = (rx2 * y1p * y1p) + (ry2 * x1p * x1p);
+  float       co  = sqrtf((num > 0.0F) ? (num / den) : 0.0F);
+  if (large == sweep) {
+    co = -co;
+  }
+  const float cxp = co * ((rx * y1p) / ry);
+  const float cyp = -co * ((ry * x1p) / rx);
+  a->cx           = (a->cos_phi * cxp) - (a->sin_phi * cyp) + mx;
+  a->cy           = (a->sin_phi * cxp) + (a->cos_phi * cyp) + my;
+  a->t1           = atan2f((y1p - cyp) / ry, (x1p - cxp) / rx);
+  float dt        = atan2f((-y1p - cyp) / ry, (-x1p - cxp) / rx) - a->t1;
+  if (!sweep && (dt > 0.0F)) {
+    dt -= s_svg_2pi;
+  } else if (sweep && (dt < 0.0F)) {
+    dt += s_svg_2pi;
+  }
+  a->dt = dt;
+  a->rx = rx;
+  a->ry = ry;
+  a->ok = true;
+}
+
+/**
+ * @brief Convert an SVG endpoint-parametrised arc to centre parametrisation.
+ *
+ * @details Implements the SVG 1.1 implementation-notes F.6.5 algorithm:
+ * out-of-range radii are scaled up (F.6.6.2), the centre is solved (F.6.5.2),
+ * and the start angle + signed sweep are derived (F.6.5.5/6) honouring the
+ * large-arc and sweep flags. Pure (no MMIO/heap); uses libm trig.
+ *
+ * @param[in] p0      Arc start (current point, user space).
+ * @param[in] p_end   Arc end (user space, already absolute).
+ * @param[in] rx_in   Requested semi-axis X (its absolute value is used).
+ * @param[in] ry_in   Requested semi-axis Y (its absolute value is used).
+ * @param[in] rot_deg X-axis rotation in degrees.
+ * @param[in] large   Large-arc flag.
+ * @param[in] sweep   Sweep (positive-angle) flag.
+ * @return The centre parametrisation; @c ok is false for a degenerate arc.
+ * @pre @p rx_in / @p ry_in fit a float without overflow (SVG coords are small).
+ * @post On @c ok==false no other field is meaningful.
+ */
+static svg_arc_t priv_arc_center(svg_pt_t p0,
+                                 svg_pt_t p_end,
+                                 int32_t  rx_in,
+                                 int32_t  ry_in,
+                                 int32_t  rot_deg,
+                                 bool     large,
+                                 bool     sweep)
+{
+  svg_arc_t a  = {};
+  float     rx = priv_absf((float)rx_in);
+  float     ry = priv_absf((float)ry_in);
+  if ((rx == 0.0F) || (ry == 0.0F) || ((p0.x == p_end.x) && (p0.y == p_end.y))) {
+    a.ok = false;
+    return a;
+  }
+  const float phi = (float)rot_deg * (s_svg_pi / s_svg_deg_half);
+  a.cos_phi       = cosf(phi);
+  a.sin_phi       = sinf(phi);
+  const float dx  = (float)(p0.x - p_end.x) * s_svg_half;
+  const float dy  = (float)(p0.y - p_end.y) * s_svg_half;
+  const float x1p = (a.cos_phi * dx) + (a.sin_phi * dy);
+  const float y1p = -(a.sin_phi * dx) + (a.cos_phi * dy);
+  const float lam = ((x1p * x1p) / (rx * rx)) + ((y1p * y1p) / (ry * ry));
+  if (lam > 1.0F) {
+    const float s = sqrtf(lam);
+    rx *= s;
+    ry *= s;
+  }
+  const float mx = (float)(p0.x + p_end.x) * s_svg_half;
+  const float my = (float)(p0.y + p_end.y) * s_svg_half;
+  priv_arc_solve(&a, x1p, y1p, rx, ry, mx, my, large, sweep);
+  return a;
+}
+
+/** @brief Bounded segment count for an arc of signed sweep @p dt (radians). */
+static int32_t priv_arc_segs(float dt)
+{
+  int32_t segs = (int32_t)(priv_absf(dt) / s_svg_arc_step) + 1;
+  if (segs > (int32_t)k_svg_arc_seg_max) {
+    segs = (int32_t)k_svg_arc_seg_max;
+  }
+  return segs;
+}
+
+/** @brief Flatten an elliptical arc (P0 -> @p p_end, params in @p args) into
+ *         @p (xs,ys); grow @p n. Degenerate radii collapse to a line. */
+static void priv_flatten_arc(const svg_xform_t* t,
+                             svg_pt_t           p0,
+                             const int32_t*     args,
+                             svg_pt_t           p_end,
+                             int32_t*           xs,
+                             int32_t*           ys,
+                             int32_t*           n)
+{
+  const svg_arc_t a = priv_arc_center(p0,
+                                      p_end,
+                                      args[k_svg_arc_rx],
+                                      args[k_svg_arc_ry],
+                                      args[k_svg_arc_rot],
+                                      args[k_svg_arc_large] != 0,
+                                      args[k_svg_arc_sweep] != 0);
+  if (!a.ok) {
+    if (*n < (int32_t)k_svg_poly_max) {
+      xs[*n] = priv_mx(t, p_end.x);
+      ys[*n] = priv_my(t, p_end.y);
+      ++(*n);
+    }
+    return;
+  }
+  const int32_t segs = priv_arc_segs(a.dt);
+  /* Bounded: segs (<= k_svg_arc_seg_max) samples, capped by k_svg_poly_max. */
+  for (int32_t j = 1; (j <= segs) && (*n < (int32_t)k_svg_poly_max); ++j) {
+    const float th = a.t1 + (a.dt * ((float)j / (float)segs));
+    const float ex = a.rx * cosf(th);
+    const float ey = a.ry * sinf(th);
+    const float px = a.cx + (a.cos_phi * ex) - (a.sin_phi * ey);
+    const float py = a.cy + (a.sin_phi * ex) + (a.cos_phi * ey);
+    xs[*n]         = priv_mx(t, (int32_t)px);
+    ys[*n]         = priv_my(t, (int32_t)py);
+    ++(*n);
+  }
+}
+
 /**
  * @brief Flatten a cubic/quadratic `<path>` curve command into the vertex list.
  *
- * @details Handles `C`/`c`, `S`/`s` (smooth cubic), `Q`/`q`, and `T`/`t` (smooth
- * quadratic); `S`/`T` reflect the previous matching control point. Returns -1 for
- * any other command so the caller falls back to the endpoint-chord path -- used
- * by the elliptical arc `A`/`a`, which is not flattened (it needs libm trig and
- * is tracked as the remaining curve on #141).
+ * @details Handles `C`/`c`, `S`/`s` (smooth cubic), `Q`/`q`, `T`/`t` (smooth
+ * quadratic), and the elliptical arc `A`/`a`; `S`/`T` reflect the previous
+ * matching control point, and the arc is centre-parametrised + sampled (see
+ * ::priv_flatten_arc). Returns -1 for any other command so the caller falls
+ * back to the endpoint-chord path (M/L/H/V/Z line-tos).
  *
  * @return The new vertex count, or -1 if @p u is not a supported curve command.
  */
@@ -731,6 +931,15 @@ static int32_t priv_path_curve(const svg_xform_t* t,
     const svg_pt_t p3 = priv_arg_pt(rel, st->cx, st->cy, args[b + 2], args[b + 3]);
     return priv_emit_cubic(t, p0, p1, p2, p3, st, xs, ys, n);
   }
+  if (u == 'a') {
+    const svg_pt_t p_end = priv_arg_pt(rel, st->cx, st->cy, args[k_svg_arc_ex], args[k_svg_arc_ey]);
+    int32_t        m     = n;
+    priv_flatten_arc(t, p0, args, p_end, xs, ys, &m);
+    st->kind = 0; /* an arc breaks the smooth-reflection chain */
+    st->cx   = p_end.x;
+    st->cy   = p_end.y;
+    return m;
+  }
   return -1;
 }
 
@@ -740,8 +949,8 @@ static int32_t priv_path_curve(const svg_xform_t* t,
  * @details Handles M/L/H/V/Z exactly (absolute + relative, with implicit-L
  * repeats after M); the cubic `C`/`c`, smooth cubic `S`/`s`, quadratic `Q`/`q`,
  * and smooth quadratic `T`/`t` are flattened into line segments (the smooth
- * forms reflect the previous control point). The elliptical arc `A`/`a` still
- * contributes only its endpoint chord (needs libm trig -- tracked on #141).
+ * forms reflect the previous control point), and the elliptical arc `A`/`a` is
+ * centre-parametrised and sampled (degenerate radii collapse to a line).
  * Multiple subpaths are merged into one polygon.
  */
 /** @brief Resolve the next path command at @p d[*i] (explicit letter, or an

@@ -230,6 +230,78 @@ static void test_render_smooth_s(void)
 }
 
 /**
+ * @test test_render_arc
+ * @brief A `<path>` elliptical arc `A` is centre-parametrised + flattened. A
+ *        semicircle (chord == diameter) with sweep=1 bulges to one side; the
+ *        closed half-disk fills there, not across the chord.
+ *
+ * @par MC/DC:
+ * Decision: the `priv_arc_center` degenerate guard
+ * `rx==0 || ry==0 || (start==end)` (which selects line-fallback vs a real arc).
+ * - Vector A (here): rx=ry=40>0, start!=end -> all false -> a real arc renders.
+ * - Vector B (::test_render_arc_degenerate): rx=0 -> true -> straight line.
+ * A+B vary the radius condition alone, proving it independently flips the
+ * outcome (N+1 = 2 for the controlling pair).
+ */
+static void test_render_arc(void)
+{
+  TEST_BEGIN("svg render arc (sweep 1)");
+  fb_reset();
+  /* (10,50)->(90,50), r=40 == half-chord -> exact semicircle about (50,50);
+   * sweep=1 bulges UP (peak ~ (50,10)); the upper half-disk fills. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 50 A40 40 0 0 1 90 50 Z\" fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 60));  /* user (50,30): inside the upper bulge */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 150)); /* user (50,75): across the chord -> white */
+  TEST_END("svg render arc (sweep 1)");
+}
+
+/**
+ * @test test_render_arc_sweep0
+ * @brief The same arc with sweep=0 bulges the opposite way (the sweep flag
+ *        independently flips the swept side).
+ *
+ * @par MC/DC:
+ * Decision: the sweep normalisation `(!sweep && dt>0) | (sweep && dt<0)` that
+ * wraps the signed sweep. Vector here: sweep=0 -> the first arm governs (dt is
+ * negative, untouched) -> downward bulge. ::test_render_arc (sweep=1) takes the
+ * second arm (dt wrapped +2pi) -> upward bulge. The two vary the sweep flag
+ * alone and produce opposite fills, proving its independent influence.
+ */
+static void test_render_arc_sweep0(void)
+{
+  TEST_BEGIN("svg render arc (sweep 0)");
+  fb_reset();
+  /* Same chord, sweep=0 -> bulges DOWN (peak ~ (50,90)); lower half-disk fills. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 50 A40 40 0 0 0 90 50 Z\" fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 150)); /* user (50,75): inside the lower bulge */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 60));  /* user (50,30): across the chord -> white */
+  TEST_END("svg render arc (sweep 0)");
+}
+
+/**
+ * @test test_render_arc_degenerate
+ * @brief A zero-radius arc (`rx=0`) collapses to a straight line to its
+ *        endpoint -- here the path closes into a plain rectangle.
+ */
+static void test_render_arc_degenerate(void)
+{
+  TEST_BEGIN("svg render arc (degenerate rx=0)");
+  fb_reset();
+  /* rx=0 -> the A is a line (10,50)->(90,50); L/L/Z close a rectangle 10..90 x 50..90. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 50 A0 40 0 0 1 90 50 L90 90 L10 90 Z\" "
+                        "fill=\"#0088cc\"/></svg>"));
+  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 140)); /* user (50,70): inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 190)); /* user (50,95): below the rectangle -> white */
+  TEST_END("svg render arc (degenerate rx=0)");
+}
+
+/**
  * @test test_render_fill_none
  * @brief `fill="none"` rects draw nothing; default fill is black.
  */
@@ -278,6 +350,9 @@ int32_t main(void)
   test_render_quad();
   test_render_smooth_t();
   test_render_smooth_s();
+  test_render_arc();
+  test_render_arc_sweep0();
+  test_render_arc_degenerate();
   test_render_fill_none();
   test_guards();
   (void)fprintf(stderr, "[OK ] test_ra_svg.c\n");
