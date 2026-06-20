@@ -7,6 +7,10 @@ CMakeCache.txt
 cmake_install.cmake
 compile_commands.json
 
+# Real-world EPUB test fixtures (copyrighted books used for local pipeline
+# testing only -- never committed/published; see tests/fixtures/epub/README.md)
+tests/fixtures/epub/real/*.epub
+
 # Compiled firmware artifacts
 *.elf
 *.bin
