@@ -1388,6 +1388,115 @@ static void prof_write_speedscope(const char* path)
   (void)fclose(f);
 }
 
+/* Self-contained flamechart viewer markup. The page embeds the profile arrays
+ * (written just before this) and renders a time-ordered flame chart on a canvas
+ * -- the Ozone timeline, but as a local file that opens in any browser with no
+ * upload and no external site. Single-quoted HTML/JS strings keep the C literal
+ * free of escapes; pure 7-bit ASCII. */
+static const char k_prof_html_head[] =
+  "<!doctype html><html><head><meta charset='utf-8'><title>board_sim profile</title>\n"
+  "<style>\n"
+  "body{margin:0;font:12px Menlo,monospace;background:#1e1e1e;color:#ddd}\n"
+  "#bar{padding:7px 10px;background:#2a2a2a;border-bottom:1px solid #444}\n"
+  "#bar b{color:#fff}#bar button,#bar input{font:11px monospace;margin-left:10px;"
+  "background:#3a3a3a;color:#ddd;border:1px solid #555;padding:2px 6px}\n"
+  "#tip{position:fixed;pointer-events:none;background:#000;color:#fff;padding:5px 7px;"
+  "border:1px solid #888;display:none;white-space:nowrap;z-index:9;font:11px monospace}\n"
+  "canvas{display:block;cursor:crosshair}\n"
+  "</style></head><body>\n"
+  "<div id='bar'><b id='title'></b><span id='info'></span>"
+  "<button onclick='resetView()'>Reset zoom</button>"
+  "search:<input id='q' size='18' oninput='onSearch()'></div>\n"
+  "<canvas id='fc'></canvas><div id='tip'></div>\n<script>\n";
+
+static const char k_prof_html_js[] =
+  "var cv=document.getElementById('fc'),ctx=cv.getContext('2d'),tip=document.getElementById('tip');\n"
+  "document.getElementById('title').textContent=TITLE;\n"
+  "var ROW=18,total=0,i;for(i=0;i<WEIGHTS.length;i++)total+=WEIGHTS[i];\n"
+  "var maxd=0;for(i=0;i<SAMPLES.length;i++)if(SAMPLES[i].length>maxd)maxd=SAMPLES[i].length;\n"
+  "var rects=[],incl={},self={};\n"
+  "for(var d=0;d<maxd;d++){var cum=0,rs=0,rf=-1,op=false;\n"
+  " for(i=0;i<SAMPLES.length;i++){var ff=d<SAMPLES[i].length?SAMPLES[i][d]:-1;\n"
+  "  if(!(op&&ff===rf)){if(op&&rf>=0)rects.push({d:d,a:rs,b:cum,f:rf});rs=cum;rf=ff;op=true;}\n"
+  "  cum+=WEIGHTS[i];}\n"
+  " if(op&&rf>=0)rects.push({d:d,a:rs,b:cum,f:rf});}\n"
+  "for(i=0;i<SAMPLES.length;i++){var s=SAMPLES[i],w=WEIGHTS[i];\n"
+  " for(var j=0;j<s.length;j++)incl[s[j]]=(incl[s[j]]||0)+w;\n"
+  " if(s.length)self[s[s.length-1]]=(self[s[s.length-1]]||0)+w;}\n"
+  "var vx0=0,vx1=total,q='';\n"
+  "function col(fi){var n=FRAMES[fi],h=0,k;for(k=0;k<n.length;k++)h=(h*31+n.charCodeAt(k))&0xffffff;\n"
+  " var lit=(q&&n.toLowerCase().indexOf(q)>=0);return 'hsl('+(h%359)+','+(lit?'90%':'48%')+','+(lit?'62%':'44%')+')';}\n"
+  "function resize(){cv.width=window.innerWidth;cv.height=Math.max(maxd*ROW+4,160);draw();}\n"
+  "function draw(){ctx.clearRect(0,0,cv.width,cv.height);var span=vx1-vx0;if(span<=0)return;\n"
+  " ctx.font='11px monospace';ctx.textBaseline='middle';\n"
+  " for(var r=0;r<rects.length;r++){var R=rects[r];if(R.b<=vx0||R.a>=vx1)continue;\n"
+  "  var p0=(R.a-vx0)/span*cv.width,p1=(R.b-vx0)/span*cv.width,w=p1-p0;if(w<0.4)continue;\n"
+  "  var y=R.d*ROW;ctx.fillStyle=col(R.f);ctx.fillRect(p0,y,Math.max(w-0.6,0.5),ROW-1);\n"
+  "  if(w>34){ctx.fillStyle='#111';ctx.fillText(FRAMES[R.f],p0+3,y+ROW/2,w-6);}}}\n"
+  "function pick(mx,my){var d=Math.floor(my/ROW),span=vx1-vx0,wx=vx0+mx/cv.width*span,r;\n"
+  " for(r=0;r<rects.length;r++){var R=rects[r];if(R.d===d&&wx>=R.a&&wx<R.b)return R;}return null;}\n"
+  "cv.onmousemove=function(e){var R=pick(e.offsetX,e.offsetY);if(!R){tip.style.display='none';return;}\n"
+  " var n=FRAMES[R.f],to=incl[R.f]||0,se=self[R.f]||0;\n"
+  " tip.innerHTML=n+'<br>this block: '+((R.b-R.a)/total*100).toFixed(2)+'% ('+(R.b-R.a)+' insns)'+\n"
+  "  '<br>total '+(to/total*100).toFixed(2)+'%  self '+(se/total*100).toFixed(2)+'%';\n"
+  " tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';};\n"
+  "cv.onmouseleave=function(){tip.style.display='none';};\n"
+  "cv.onclick=function(e){var R=pick(e.offsetX,e.offsetY);if(R){vx0=R.a;vx1=R.b;draw();}};\n"
+  "function resetView(){vx0=0;vx1=total;draw();}\n"
+  "function onSearch(){q=document.getElementById('q').value.toLowerCase();draw();}\n"
+  "document.getElementById('info').textContent=' | '+SAMPLES.length+' samples, '+total+\n"
+  "  ' insns  (hover for self/total, click a block to zoom, Reset to zoom out)';\n"
+  "window.onresize=resize;resize();\n";
+
+/** @brief Write a self-contained, locally-openable HTML flamechart of the samples. */
+static void prof_write_html(const char* path, uint64_t total)
+{
+  if ((s_samp_n == 0U) || (s_prof_n == 0U)) {
+    return;
+  }
+  FILE* f = fopen(path, "w");
+  if (f == nullptr) {
+    return;
+  }
+  (void)fputs(k_prof_html_head, f);
+  (void)fputs("var FRAMES=[", f);
+  for (uint32_t i = 0U; i < s_prof_n; i++) {
+    (void)fputs((i == 0U) ? "'" : ",'", f);
+    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* escape ' and backslash for JS. */
+      if ((*p == '\'') || (*p == '\\')) {
+        (void)fputc('\\', f);
+      }
+      (void)fputc(*p, f);
+    }
+    (void)fputc('\'', f);
+  }
+  (void)fputs("];\n", f);
+  (void)fputs("var SAMPLES=[", f);
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    (void)fputc((i == 0U) ? '[' : ',', f);
+    if (i != 0U) {
+      (void)fputc('[', f);
+    }
+    for (uint8_t j = 0U; j < s_samp_d[i]; j++) {
+      (void)fprintf(f, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j]);
+    }
+    (void)fputc(']', f);
+  }
+  (void)fputs("];\n", f);
+  (void)fputs("var WEIGHTS=[", f);
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    (void)fprintf(f, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i]);
+  }
+  (void)fputs("];\n", f);
+  (void)fprintf(f,
+                "var TITLE='board_sim flamechart -- %llu insns, %u samples';\n",
+                (unsigned long long)total,
+                (unsigned)s_samp_n);
+  (void)fputs(k_prof_html_js, f);
+  (void)fputs("</script></body></html>\n", f);
+  (void)fclose(f);
+}
+
 /** @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode). */
 static void prof_report_flamechart(void)
 {
@@ -1399,6 +1508,10 @@ static void prof_report_flamechart(void)
   const char* out = getenv("BOARD_SIM_PROFILE_OUT");
   if ((out == nullptr) || (out[0] == '\0')) {
     out = "board_sim_profile.speedscope.json";
+  }
+  const char* html = getenv("BOARD_SIM_PROFILE_HTML");
+  if ((html == nullptr) || (html[0] == '\0')) {
+    html = "board_sim_profile.html";
   }
   prof_write_speedscope(out);
 
@@ -1424,6 +1537,7 @@ static void prof_report_flamechart(void)
   if (total == 0U) {
     return;
   }
+  prof_write_html(html, total); /* self-contained local GUI flamechart. */
 
   /* Phase timeline: collapse each sample's chain to a fixed shallow depth (the
    * major subsystem under main) and print each contiguous run as a boot phase,
@@ -1467,9 +1581,10 @@ static void prof_report_flamechart(void)
 
   /* Inclusive/self table -- the "why is it slow" view (sorted by inclusive). */
   (void)fprintf(stderr,
-                "  [profile] boot flamechart: %u samples over %llu insns "
-                "(open %s at https://speedscope.app)\n"
+                "  [profile] flamechart GUI -> %s  (interactive: hover/zoom/search)\n"
+                "  [profile] %u samples over %llu insns  (also %s for speedscope.app)\n"
                 "       self%%    total%%  function\n",
+                html,
                 (unsigned)s_samp_n,
                 (unsigned long long)total,
                 out);
