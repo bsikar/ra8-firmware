@@ -1331,25 +1331,14 @@ static bool er_draw_reading_body(int32_t height)
   return false; /* bitmap fallback -- the body is not paginated */
 }
 
-/**
- * @brief Render the full Reading screen (status bar, body, footer).
- *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
- * @pre None.
- * @post The framebuffer holds the Reading screen.
- * @post Caller flushes the panel to make it visible.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void er_render_reading(void)
+/** @brief Stash: did the body band reflow live text? The footer bar tracks it. */
+static bool s_read_reflowed = false;
+
+/** @brief Status-bar band widget: wordmark + book title + status-right + hairline. */
+static void er_read_sb_render(ra_widget_t* w)
 {
-  const int32_t width  = (int32_t)s_fb.width_px;
-  const int32_t height = (int32_t)s_fb.height_px;
-
-  (void)ra_gfx_clear((uint32_t)k_er_paper);
-
-  /* Status bar. */
+  (void)w;
+  const int32_t width = (int32_t)s_fb.width_px;
   er_text_left((int32_t)k_er_pad_ui, (int32_t)k_er_text_inset_y, k_er_wordmark, (uint32_t)k_er_ink);
   const int32_t title_x =
     (int32_t)k_er_pad_ui + ((int32_t)sizeof(k_er_wordmark) * (int32_t)k_er_glyph_w);
@@ -1364,10 +1353,21 @@ static void er_render_reading(void)
                     (int32_t)k_er_hair,
                     (uint32_t)k_er_rule,
                     true);
+}
 
-  const bool reflowed = er_draw_reading_body(height);
+/** @brief Body band widget: the reflowed (or bitmap-fallback) chapter text. */
+static void er_read_body_render(ra_widget_t* w)
+{
+  (void)w;
+  s_read_reflowed = er_draw_reading_body((int32_t)s_fb.height_px);
+}
 
-  /* Footer: rule, chapter title, page label, progress bar. */
+/** @brief Footer band widget: rule + chapter title + page label + progress bar. */
+static void er_read_footer_render(ra_widget_t* w)
+{
+  (void)w;
+  const int32_t width    = (int32_t)s_fb.width_px;
+  const int32_t height   = (int32_t)s_fb.height_px;
   const int32_t band_top = height - (int32_t)k_er_footer_h;
   (void)ra_gfx_rect(0, band_top, width, (int32_t)k_er_hair, (uint32_t)k_er_rule, true);
   const int32_t text_y = band_top + (int32_t)k_er_progress_gap;
@@ -1384,11 +1384,57 @@ static void er_render_reading(void)
                     true);
   /* In the reflow path the bar tracks the live page; the bitmap fallback keeps
    * the static placeholder ratio. */
-  const int32_t pg_cur = reflowed ? (int32_t)(s_reading_page + 1U) : (int32_t)k_er_page_current;
-  const int32_t pg_tot = reflowed ? (int32_t)s_reading_pages : (int32_t)k_er_page_total;
+  const int32_t pg_cur =
+    s_read_reflowed ? (int32_t)(s_reading_page + 1U) : (int32_t)k_er_page_current;
+  const int32_t pg_tot = s_read_reflowed ? (int32_t)s_reading_pages : (int32_t)k_er_page_total;
   const int32_t fill_w = (track_w * pg_cur) / pg_tot;
   (void)
     ra_gfx_rect(track_x, track_y, fill_w, (int32_t)k_er_progress_h, (uint32_t)k_er_fill_deep, true);
+}
+
+/** @brief Vtables for the Reading status-bar / body / footer band widgets. */
+static const ra_widget_vtable_t k_er_read_sb_vt     = {.render = er_read_sb_render};
+static const ra_widget_vtable_t k_er_read_body_vt   = {.render = er_read_body_render};
+static const ra_widget_vtable_t k_er_read_footer_vt = {.render = er_read_footer_render};
+
+/**
+ * @brief Render the full Reading screen (status bar, body, footer).
+ *
+ * @details Composes three disjoint-y band widgets (#145) -- status bar, body,
+ * footer -- each drawing its existing absolute-coordinate region. The bands
+ * occupy non-overlapping y-ranges and render in array order (status bar, then
+ * body, then footer), so the composite is byte-identical to the former
+ * monolithic render while each band can now be invalidated + partial-flushed on
+ * its own (a page turn dirties only body + footer, leaving the status bar).
+ *
+ * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre None.
+ * @post The framebuffer holds the Reading screen.
+ * @post Caller flushes the panel to make it visible.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_render_reading(void)
+{
+  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  const ra_ui_rect_t frame    = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
+  ra_widget_t        bands[3] = {};
+  bands[0].vt                 = &k_er_read_sb_vt;
+  bands[0].fixed              = (int16_t)k_er_statusbar_h;
+  bands[0].visible            = true;
+  bands[1].vt                 = &k_er_read_body_vt;
+  bands[1].flex               = 1U;
+  bands[1].visible            = true;
+  bands[2].vt                 = &k_er_read_footer_vt;
+  bands[2].fixed              = (int16_t)k_er_footer_h;
+  bands[2].visible            = true;
+  ra_box_t band_scratch[4];
+  (void)ra_widget_layout_stack(bands, 3U, &frame, k_ra_widget_axis_col, 0, 0, band_scratch, 4U);
+  for (uint16_t i = 0U; i < 3U; ++i) {
+    (void)ra_widget_invalidate(&bands[i], k_ra_widget_refresh_quality);
+  }
+  (void)ra_widget_render_dirty(bands, 3U);
 }
 
 /**
@@ -1577,24 +1623,20 @@ static void er_draw_key(uint8_t idx)
   }
 }
 
-/**
- * @brief Render the on-screen keyboard screen + collect its key targets.
- *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
- * @pre None.
- * @post The framebuffer holds the keyboard; ``s_kb`` + ``s_targets`` set.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void er_render_keyboard(void)
+/** @brief Search-field band widget: the "Search:" label + the query / hint. */
+static void er_kbd_search_render(ra_widget_t* w)
 {
-  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  (void)w;
   const int32_t qy = (int32_t)k_er_statusbar_h + (int32_t)k_er_text_pad;
   er_text_left((int32_t)k_er_pad_ui, qy, "Search:", (uint32_t)k_er_ink_muted);
   const char* shown = (s_query.len > 0U) ? s_query.buf : k_er_search_hint;
   er_text_left((int32_t)k_er_pad_ui + (int32_t)k_er_kbd_qlabel, qy, shown, (uint32_t)k_er_ink);
+}
 
+/** @brief Keyboard band widget: gray backdrop + the laid-out keys + tap targets. */
+static void er_kbd_keys_render(ra_widget_t* w)
+{
+  (void)w;
   /* Fill the keyboard band with the iOS-style gray backdrop. */
   const int32_t band_y = (int32_t)k_er_statusbar_h + (int32_t)k_er_toolbar_h;
   (void)ra_gfx_rect(0,
@@ -1621,6 +1663,47 @@ static void er_render_keyboard(void)
       s_target_count++;
     }
   }
+}
+
+/** @brief Vtables for the keyboard search-field / keys band widgets. */
+static const ra_widget_vtable_t k_er_kbd_search_vt = {.render = er_kbd_search_render};
+static const ra_widget_vtable_t k_er_kbd_keys_vt   = {.render = er_kbd_keys_render};
+
+/**
+ * @brief Render the on-screen keyboard screen + collect its key targets.
+ *
+ * @details Composes two disjoint-y band widgets (#145): the search field over
+ * the keyboard. The search band draws the "Search:" label + query in the top
+ * strip [0, statusbar+toolbar); the keys band fills the gray backdrop and lays
+ * out + draws the keys below it, collecting their tap targets. The bands occupy
+ * non-overlapping y-ranges and render in array order, so the composite is
+ * byte-identical to the former monolithic render while the search field can be
+ * partial-flushed on its own as the query is typed.
+ *
+ * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre None.
+ * @post The framebuffer holds the keyboard; ``s_kb`` + ``s_targets`` set.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_render_keyboard(void)
+{
+  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  const ra_ui_rect_t frame    = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
+  ra_widget_t        bands[2] = {};
+  bands[0].vt                 = &k_er_kbd_search_vt;
+  bands[0].fixed              = (int16_t)((int32_t)k_er_statusbar_h + (int32_t)k_er_toolbar_h);
+  bands[0].visible            = true;
+  bands[1].vt                 = &k_er_kbd_keys_vt;
+  bands[1].flex               = 1U;
+  bands[1].visible            = true;
+  ra_box_t band_scratch[3];
+  (void)ra_widget_layout_stack(bands, 2U, &frame, k_ra_widget_axis_col, 0, 0, band_scratch, 3U);
+  for (uint16_t i = 0U; i < 2U; ++i) {
+    (void)ra_widget_invalidate(&bands[i], k_ra_widget_refresh_quality);
+  }
+  (void)ra_widget_render_dirty(bands, 2U);
 }
 
 #ifdef RA_APP_SETTINGS
