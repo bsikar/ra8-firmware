@@ -39,7 +39,33 @@ typedef enum : uint32_t {
   k_test_bpp_8888 = 4U, /**< ARGB8888 bytes per pixel. */
 } test_bpp_t;
 
+typedef enum : int32_t {
+  k_test_clip_org = 10, /**< Clip-rect origin (x and y).   */
+  k_test_clip_dim = 8,  /**< Clip-rect width and height.   */
+  k_test_clip_in  = 12, /**< A pixel inside the clip rect. */
+} test_clip_t;
+
 static uint8_t s_fb[64U * 64U * 4U];
+
+/**
+ * @brief Byte offset of RGB565 pixel (@p x, @p y) in s_fb.
+ *
+ * @param[in] x Pixel column.
+ * @param[in] y Pixel row.
+ * @return Byte index into s_fb of that pixel's low byte.
+ * @retval 0 For the top-left pixel (x==0, y==0).
+ * @pre The framebuffer is bound at k_test_gfx_dim_normal width in RGB565.
+ * @pre x and y are within the framebuffer.
+ * @post The returned offset is within s_fb.
+ * @post The returned offset addresses the pixel's low byte.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static size_t test_off565(int32_t x, int32_t y)
+{
+  return (((size_t)(uint32_t)y * (size_t)k_test_gfx_dim_normal) + (size_t)(uint32_t)x) *
+         (size_t)k_test_bpp_565;
+}
 
 /**
  * @brief Byte offset of pixel (k_test_rect_pos, k_test_rect_pos) for @p bpp.
@@ -278,6 +304,46 @@ static void test_clear_565_memset_path(void)
   TEST_END("clear_565: lo==hi memset path vs lo!=hi loop path");
 }
 
+/**
+ * @test test_clip_confines_drawing
+ *
+ * @par Behaviour:
+ * ra_gfx_set_clip confines every subsequent draw to its rectangle; pixels
+ * outside are untouched. ra_gfx_reset_clip restores full-framebuffer drawing,
+ * and a zero-area clip makes draws a no-op. Covers the clip path in
+ * internal_fill_rect_565 (reached via ra_gfx_rect) and the set/reset API.
+ */
+static void test_clip_confines_drawing(void)
+{
+  TEST_BEGIN("set_clip confines draws; reset_clip + empty clip");
+  const int32_t dim = (int32_t)k_test_gfx_dim_normal;
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(s_fb, (uint16_t)dim, (uint16_t)dim, k_ra_gfx_format_rgb565));
+
+  /* Clip to a small rect, then fill the WHOLE screen: only the clip changes. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_test_col_clear));
+  const uint8_t base = s_fb[test_off565(k_test_rect_pos, k_test_rect_pos)];
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_gfx_set_clip(k_test_clip_org, k_test_clip_org, k_test_clip_dim, k_test_clip_dim));
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(0, 0, dim, dim, k_test_col_rect, true));
+  TEST_ASSERT(s_fb[test_off565(k_test_clip_in, k_test_clip_in)] != base);    /* inside changed */
+  TEST_ASSERT_EQ(base, s_fb[test_off565(k_test_rect_pos, k_test_rect_pos)]); /* outside kept */
+
+  /* Reset clip: a full fill now reaches the previously-outside pixel. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_reset_clip());
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(0, 0, dim, dim, k_test_col_rect, true));
+  TEST_ASSERT(s_fb[test_off565(k_test_rect_pos, k_test_rect_pos)] != base);
+
+  /* Empty (zero-area) clip: draws are no-ops. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_test_col_clear));
+  const uint8_t base2 = s_fb[0];
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_set_clip(0, 0, 0, 0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(0, 0, dim, dim, k_test_col_rect, true));
+  TEST_ASSERT_EQ(base2, s_fb[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_reset_clip());
+  TEST_END("set_clip confines draws; reset_clip + empty clip");
+}
+
 int32_t main(void)
 {
   test_mcdc_gfx_init_width_range();
@@ -286,6 +352,7 @@ int32_t main(void)
   test_fill_rect_dispatch();
   test_mcdc_glyph_565_clip();
   test_clear_565_memset_path();
+  test_clip_confines_drawing();
   (void)fprintf(stderr, "[OK ] test_ra_gfx_text.c\n");
   return 0;
 }

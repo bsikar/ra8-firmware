@@ -77,7 +77,7 @@ typedef enum : uint16_t {
 ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format);
 
 /**
- * @brief Fill the entire bound framebuffer with a single colour.
+ * @brief Fill the bound framebuffer's clip region with a single colour.
  *
  * @param[in] color 32-bit colour in 0x00RRGGBB or 0xAARRGGBB form.
  *
@@ -86,12 +86,63 @@ ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format);
  * @retval k_ra_err_not_initialized ra_gfx_init() was not called.
  *
  * @pre  ra_gfx_init() returned k_ra_ok.
- * @post Every pixel of the framebuffer equals `color` (down-converted as
- *       needed to the active pixel format).
+ * @post Every pixel of the active clip region equals `color` (down-converted as
+ *       needed to the active pixel format). With the default (full-framebuffer)
+ *       clip this is the whole framebuffer.
  *
+ * @note Honours the clip rectangle set by ra_gfx_set_clip(); the default clip is
+ *       the whole framebuffer, so unclipped callers see no change.
+ * @see ra_gfx_set_clip
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gfx_clear(uint32_t color);
+
+/**
+ * @brief Restrict all subsequent drawing to a rectangle (dirty-region updates).
+ *
+ * @details
+ * Every draw call (clear, rect, line, pixel, text, blit) writes only pixels
+ * inside the intersection of this rectangle and the framebuffer; pixels outside
+ * are left untouched. This is the primitive for incremental / dirty-region
+ * repaints -- set the clip to the damaged area, redraw, then ra_gfx_reset_clip()
+ * -- so a small change (e.g. an overlay banner) does not repaint the whole panel.
+ * The clip persists until changed or reset; ra_gfx_init() and ra_gfx_reset_clip()
+ * set it to the full framebuffer.
+ *
+ * @param[in] x Clip left in pixels (clamped to the framebuffer).
+ * @param[in] y Clip top in pixels (clamped to the framebuffer).
+ * @param[in] w Clip width in pixels (a non-positive width yields an empty clip).
+ * @param[in] h Clip height in pixels (a non-positive height yields an empty clip).
+ *
+ * @return Error code.
+ * @retval k_ra_ok                  Clip set (possibly empty).
+ * @retval k_ra_err_not_initialized ra_gfx_init() was not called.
+ *
+ * @pre  ra_gfx_init() returned k_ra_ok.
+ * @post Subsequent draws are confined to the clamped rectangle.
+ * @post An off-screen or zero-area request leaves an empty clip (draws are no-ops).
+ *
+ * @note Not thread-safe; the clip is module-global state.
+ * @see ra_gfx_reset_clip
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_gfx_set_clip(int32_t x, int32_t y, int32_t w, int32_t h);
+
+/**
+ * @brief Reset the clip rectangle to the whole framebuffer.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                  Clip reset to the full framebuffer.
+ * @retval k_ra_err_not_initialized ra_gfx_init() was not called.
+ *
+ * @pre  ra_gfx_init() returned k_ra_ok.
+ * @post Subsequent draws may touch any framebuffer pixel.
+ *
+ * @note Not thread-safe; the clip is module-global state.
+ * @see ra_gfx_set_clip
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_gfx_reset_clip(void);
 
 /**
  * @brief Set a single pixel.
