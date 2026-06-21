@@ -505,6 +505,34 @@ case " ${apps[*]} " in
     ;;
 esac
 
+# Low-battery nag (ra_batt policy): seed the modelled fuel gauge below each
+# threshold via --battery and assert the edge-triggered warning line. 15% must
+# raise LOW (<=20), 8% must raise CRITICAL (<=10); the default 72% run gated
+# above already proves no nag fires when healthy. Only when the app is built.
+case " ${apps[*]} " in
+*" battery_monitor_demo "*)
+    belf="$(find examples -path '*/battery_monitor_demo/build/battery_monitor_demo.elf' 2>/dev/null | head -1)"
+    printf '  %-24s ' "battery nag LOW"
+    lout="$(BOARD_SIM_STOP_ON='NAG' BOARD_SIM_WALL_S=20 BOARD_SIM_MAX_CHUNKS=6000 \
+        "$sim" "$belf" --battery 15 2>&1 || true)"
+    if echo "$lout" | grep -q "NAG LOW soc=15%"; then
+        echo "OK (--battery 15 -> NAG LOW)"
+    else
+        echo "NAG FAIL (15% did not raise LOW)"
+        fail=1
+    fi
+    printf '  %-24s ' "battery nag CRITICAL"
+    cout="$(BOARD_SIM_STOP_ON='NAG' BOARD_SIM_WALL_S=20 BOARD_SIM_MAX_CHUNKS=6000 \
+        "$sim" "$belf" --battery 8 2>&1 || true)"
+    if echo "$cout" | grep -q "NAG CRITICAL soc=8%"; then
+        echo "OK (--battery 8 -> NAG CRITICAL)"
+    else
+        echo "NAG FAIL (8% did not raise CRITICAL)"
+        fail=1
+    fi
+    ;;
+esac
+
 if [ "$fail" -eq 0 ]; then
     echo "board_sim smoke: ALL PASS"
     exit 0

@@ -2,7 +2,8 @@
 # Per-app CMake stub for `battery_monitor_demo`. All build logic lives in the shared
 # cmake/ra_add_app.cmake recipe; this file only names the app. The SMBus
 # protocol layer (ra_smbus) and its IIC_B transport (ra_i3c) live in ra_hal,
-# which the recipe links into every app, so no extra LIBS are needed.
+# which the recipe links into every app; the low-battery nag policy is the
+# first-party ra_batt library, pulled in via LIBS.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
@@ -19,4 +20,4 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-ra_add_app(NAME battery_monitor_demo STACK_BYTES 2200 DESCRIPTION "battery_monitor_demo firmware for RA8D2")
+ra_add_app(NAME battery_monitor_demo STACK_BYTES 2200 LIBS ra_batt DESCRIPTION "battery_monitor_demo firmware for RA8D2")
