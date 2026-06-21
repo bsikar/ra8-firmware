@@ -96,12 +96,16 @@ typedef enum : uint8_t {
  * @brief Internal module state populated by ra_gfx_init().
  */
 typedef struct {
-  uint8_t*        fb;          /**< Framebuffer base.             */
-  uint16_t        width;       /**< Width in pixels.              */
-  uint16_t        height;      /**< Height in pixels.             */
-  ra_gfx_format_t format;      /**< Pixel format.                 */
-  uint8_t         bpp;         /**< Bytes per pixel.              */
-  bool            initialized; /**< Set after a successful init.  */
+  uint8_t*        fb;          /**< Framebuffer base.                       */
+  uint16_t        width;       /**< Width in pixels.                        */
+  uint16_t        height;      /**< Height in pixels.                       */
+  ra_gfx_format_t format;      /**< Pixel format.                           */
+  uint8_t         bpp;         /**< Bytes per pixel.                        */
+  bool            initialized; /**< Set after a successful init.            */
+  int32_t         clip_x0;     /**< Clip left (inclusive), within [0,width].*/
+  int32_t         clip_y0;     /**< Clip top (inclusive), within [0,height].*/
+  int32_t         clip_x1;     /**< Clip right (exclusive), within [0,w].   */
+  int32_t         clip_y1;     /**< Clip bottom (exclusive), within [0,h].  */
 } ra_gfx_state_t;
 
 /** @brief Module-private framebuffer binding. */
@@ -357,10 +361,13 @@ internal_get_pixel(const uint8_t* src, size_t stride, ra_gfx_format_t format, si
  */
 static void internal_plot(int32_t x, int32_t y, uint32_t color)
 {
-  if ((x < 0) || (y < 0)) {
+  /* The clip rectangle is always within the framebuffer, so this single test
+   * enforces both the clip and the framebuffer bounds. With the default clip
+   * (0,0,width,height) it is identical to a plain bounds check. */
+  if ((x < s_state.clip_x0) || (y < s_state.clip_y0)) {
     return;
   }
-  if ((x >= (int32_t)s_state.width) || (y >= (int32_t)s_state.height)) {
+  if ((x >= s_state.clip_x1) || (y >= s_state.clip_y1)) {
     return;
   }
   internal_put_pixel(s_state.fb,
@@ -432,20 +439,24 @@ static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8
  */
 static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
-  const int32_t fbw = (int32_t)s_state.width;
-  const int32_t fbh = (int32_t)s_state.height;
-  const int32_t x0  = (x >= 0) ? x : 0;
-  const int32_t y0  = (y >= 0) ? y : 0;
+  /* Clip against the active clip rectangle (which is itself within the
+   * framebuffer), so this is both the on-screen clip and the dirty-region clip.
+   * With the default full-framebuffer clip it reduces to min/max against the
+   * framebuffer, i.e. byte-identical to the unclipped fill. */
+  const int32_t cl = s_state.clip_x0;
+  const int32_t ct = s_state.clip_y0;
+  const int32_t cr = s_state.clip_x1;
+  const int32_t cb = s_state.clip_y1;
+  const int32_t x0 = (x >= cl) ? x : cl;
+  const int32_t y0 = (y >= ct) ? y : ct;
   /* Right/bottom edges in 64-bit so x+w / y+h cannot overflow int32 for a
-   * pathological caller; then clamped to the framebuffer. For every in-range
-   * coordinate this is exactly min(fb, x+w), so the fill stays byte-identical
-   * to the per-pixel path. */
+   * pathological caller; then clamped to the clip. */
   const int64_t xr = (int64_t)x + (int64_t)w;
   const int64_t yr = (int64_t)y + (int64_t)h;
-  const int32_t x1 = (xr < (int64_t)fbw) ? (int32_t)xr : fbw;
-  const int32_t y1 = (yr < (int64_t)fbh) ? (int32_t)yr : fbh;
+  const int32_t x1 = (xr < (int64_t)cr) ? (int32_t)xr : cr;
+  const int32_t y1 = (yr < (int64_t)cb) ? (int32_t)yr : cb;
   if ((x1 <= x0) || (y1 <= y0)) {
-    return; /* fully clipped -- nothing on screen. */
+    return; /* fully clipped -- nothing to fill. */
   }
   const uint16_t v      = internal_pack_565(color);
   const uint8_t  lo     = (uint8_t)(v & (uint16_t)k_mask_byte);
@@ -540,6 +551,10 @@ ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t 
   s_state.height      = height;
   s_state.format      = format;
   s_state.bpp         = internal_bpp(format);
+  s_state.clip_x0     = 0;
+  s_state.clip_y0     = 0;
+  s_state.clip_x1     = (int32_t)width; /* default clip = whole framebuffer. */
+  s_state.clip_y1     = (int32_t)height;
   s_state.initialized = true;
   return k_ra_ok;
 }
@@ -549,29 +564,73 @@ ra_err_t ra_gfx_clear(uint32_t color)
   if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
-  /* Pack the constant fill colour once and store it across the contiguous
-   * framebuffer, instead of re-packing (internal_pack_565 + the per-channel
-   * extraction) for every one of width*height pixels. Byte-identical to the
-   * per-pixel path -- same packed value, same byte order -- but it drops the
-   * dominant cost of a full-screen clear (profiled hot on board_sim). */
+  /* "Clear" fills the active clip region (the whole framebuffer by default).
+   * For RGB565 this is the span-fill path -- pack once, memset each row when the
+   * bytes are symmetric -- restricted to the clip, so an incremental repaint
+   * only touches the damaged area. With the default clip the rect is the whole
+   * framebuffer and the bytes written are identical to the old contiguous fill. */
   if (s_state.format == k_ra_gfx_format_rgb565) {
-    const uint16_t v  = internal_pack_565(color);
-    const uint8_t  lo = (uint8_t)(v & (uint16_t)k_mask_byte);
-    const uint8_t  hi = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
-    const size_t   n  = (size_t)s_state.width * (size_t)s_state.height;
-    internal_fill_565(s_state.fb, n, lo, hi);
+    internal_fill_rect_565(0, 0, (int32_t)s_state.width, (int32_t)s_state.height, color);
     return k_ra_ok;
   }
-  for (uint32_t y = 0; y < s_state.height; y++) {
-    for (uint32_t x = 0; x < s_state.width; x++) {
+  for (int32_t y = s_state.clip_y0; y < s_state.clip_y1; y++) {
+    for (int32_t x = s_state.clip_x0; x < s_state.clip_x1; x++) {
       internal_put_pixel(s_state.fb,
                          (size_t)s_state.width * (size_t)s_state.bpp,
                          s_state.format,
-                         x,
-                         y,
+                         (size_t)x,
+                         (size_t)y,
                          color);
     }
   }
+  return k_ra_ok;
+}
+
+ra_err_t ra_gfx_set_clip(int32_t x, int32_t y, int32_t w, int32_t h)
+{
+  if (!s_state.initialized) {
+    return k_ra_err_not_initialized;
+  }
+  const int32_t fbw = (int32_t)s_state.width;
+  const int32_t fbh = (int32_t)s_state.height;
+  /* Clamp the top-left into [0, fb]; the bottom-right into [top-left, fb]. The
+   * edges are computed in 64-bit so x+w / y+h cannot overflow int32, and a
+   * non-positive size or fully off-screen rect collapses to an empty clip
+   * (x1==x0 or y1==y0), which makes every subsequent draw a no-op. */
+  int32_t x0 = (x > 0) ? x : 0;
+  int32_t y0 = (y > 0) ? y : 0;
+  if (x0 > fbw) {
+    x0 = fbw;
+  }
+  if (y0 > fbh) {
+    y0 = fbh;
+  }
+  const int64_t xr = (int64_t)x + (int64_t)w;
+  const int64_t yr = (int64_t)y + (int64_t)h;
+  int32_t       x1 = (xr < (int64_t)fbw) ? (int32_t)xr : fbw;
+  int32_t       y1 = (yr < (int64_t)fbh) ? (int32_t)yr : fbh;
+  if (x1 < x0) {
+    x1 = x0;
+  }
+  if (y1 < y0) {
+    y1 = y0;
+  }
+  s_state.clip_x0 = x0;
+  s_state.clip_y0 = y0;
+  s_state.clip_x1 = x1;
+  s_state.clip_y1 = y1;
+  return k_ra_ok;
+}
+
+ra_err_t ra_gfx_reset_clip(void)
+{
+  if (!s_state.initialized) {
+    return k_ra_err_not_initialized;
+  }
+  s_state.clip_x0 = 0;
+  s_state.clip_y0 = 0;
+  s_state.clip_x1 = (int32_t)s_state.width;
+  s_state.clip_y1 = (int32_t)s_state.height;
   return k_ra_ok;
 }
 
@@ -762,16 +821,21 @@ static void internal_blit_glyph_565(int32_t        x,
                                     uint32_t       fg,
                                     uint32_t       bg)
 {
-  const int32_t fbw = (int32_t)s_state.width;
-  const int32_t fbh = (int32_t)s_state.height;
-  const int32_t cx0 = (x >= 0) ? x : 0;
-  const int32_t cy0 = (y >= 0) ? y : 0;
+  /* Clip the glyph cell against the active clip rectangle (within the
+   * framebuffer), so it honours both the panel bounds and any dirty-region clip.
+   * Default full clip => byte-identical to the unclipped blit. */
+  const int32_t cl  = s_state.clip_x0;
+  const int32_t ct  = s_state.clip_y0;
+  const int32_t cr  = s_state.clip_x1;
+  const int32_t cb  = s_state.clip_y1;
+  const int32_t cx0 = (x >= cl) ? x : cl;
+  const int32_t cy0 = (y >= ct) ? y : ct;
   const int64_t xr  = (int64_t)x + (int64_t)gw; /* 64-bit: no int32 overflow. */
   const int64_t yr  = (int64_t)y + (int64_t)gh;
-  const int32_t cx1 = (xr < (int64_t)fbw) ? (int32_t)xr : fbw;
-  const int32_t cy1 = (yr < (int64_t)fbh) ? (int32_t)yr : fbh;
+  const int32_t cx1 = (xr < (int64_t)cr) ? (int32_t)xr : cr;
+  const int32_t cy1 = (yr < (int64_t)cb) ? (int32_t)yr : cb;
   if ((cx1 <= cx0) || (cy1 <= cy0)) {
-    return; /* glyph fully off screen. */
+    return; /* glyph fully outside the clip. */
   }
   const uint16_t vfg    = internal_pack_565(fg);
   const uint16_t vbg    = internal_pack_565(bg);
