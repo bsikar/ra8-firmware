@@ -46,6 +46,25 @@ tools/board_sim/build/board_sim "$ELF" --click 250 250 --ppm /tmp/reading.ppm  #
 `--click` injects a tap through the genuine GT911 -> I2C -> `ra_touch`
 path, so the navigation is exercised exactly as on hardware.
 
+### Low-battery nag
+
+The chrome reads a MAX17048-class fuel gauge (7-bit `0x36`) over the same IIC_B
+bus the GT911 touch uses, folds the state-of-charge into the `ra_batt` nag policy
+(`libs/ra_batt`), and draws a persistent banner overlay -- gray **Low battery**
+at <=20%, ink **Battery critical** at <=10% -- over whichever screen-app is
+active. It clears once the battery recovers (or is charging). The read is
+best-effort: a stock EVM with no gauge fitted simply shows no banner. board_sim
+models the gauge and drives it from the on-screen battery slider, so:
+
+```
+make sim-ereader_ui                                          # drag the POWER slider below 20% / 10%
+ELF=examples/ek_ra8d2/hw_pending/ereader_ui/build/ereader_ui.elf
+tools/board_sim/build/board_sim "$ELF" --battery 8 --ppm /tmp/nag.ppm   # critical banner
+```
+
+The `battery_low` chrome golden (`make ereader-golden`) renders at `--battery 8`
+and locks in the critical banner pixel-for-pixel.
+
 ## Roadmap (this example)
 
 - **A (done):** Reading chrome via `ra_gfx`, verified in `board_sim`.
