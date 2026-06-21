@@ -544,6 +544,19 @@ static uint8_t s_img_arena_buf[k_er_img_arena] __attribute__((section(".sdram_da
 /** @brief ra_reflow engine for the Reading body (page / glyph / token pools). */
 static ra_reflow_t s_reflow_engine;
 
+/** @enum er_reflow_sentinel_t @brief "No chapter cached" sentinel. */
+typedef enum : uint32_t {
+  k_er_chapter_none = 0xFFFFFFFFU, /**< s_reflow_chapter when nothing is laid out. */
+} er_reflow_sentinel_t;
+
+/** @brief True while ::s_reflow_engine holds a laid-out chapter (cache valid). */
+static bool s_reflow_open = false;
+/** @brief Chapter index currently laid out in ::s_reflow_engine (cache key). */
+static uint32_t s_reflow_chapter = (uint32_t)k_er_chapter_none;
+/** @brief Body geometry the cached layout was paginated for (cache key). */
+static int32_t s_reflow_w = 0;
+static int32_t s_reflow_h = 0; /**< @see s_reflow_w */
+
 /** @brief Bytes of font read off the card (0 if none). */
 static uint32_t s_font_len;
 
@@ -1282,6 +1295,68 @@ static void er_render_library(void)
  * =========================================================================== */
 
 /**
+ * @brief Re-init the reflow engine and lay the current chapter into the cache.
+ *
+ * @details Closes any prior layout, binds the font + image arena, paginates the
+ * current chapter (::s_chapter_idx) and records the cache keys
+ * (::s_reflow_chapter / ::s_reflow_w / ::s_reflow_h) so subsequent same-chapter
+ * page turns skip this expensive step. The costliest part of a Reading render.
+ *
+ * @param[in] body_w    Body width the chapter is paginated for (px).
+ * @param[in] body_h    Body height the chapter is paginated for (px).
+ * @param[in] font_data Font blob (SD-loaded or baked).
+ * @param[in] font_len  Font blob length in bytes.
+ * @return true if the chapter was laid out and the cache is now valid.
+ * @retval true  Layout succeeded; ::s_reflow_open is set.
+ * @retval false init / layout failed; the engine is closed.
+ * @pre @p body_w and @p body_h are > 0.
+ * @pre @p font_data / @p font_len describe a usable face.
+ * @post On true the cache keys reflect the laid-out chapter + geometry.
+ * @post On false ::s_reflow_open is false.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool
+er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uint32_t font_len)
+{
+  if (s_reflow_open) {
+    (void)ra_reflow_close(&s_reflow_engine);
+    s_reflow_open = false;
+  }
+  if (ra_reflow_init((uint16_t)body_w,
+                     (uint16_t)body_h,
+                     font_data,
+                     font_len,
+                     (uint16_t)k_er_reflow_px,
+                     (uint32_t)k_er_reflow_ink,
+                     (uint32_t)k_er_reflow_link,
+                     &s_reflow_engine) != k_ra_ok) {
+    return false;
+  }
+  /* Bind the image loader + SDRAM decode arena so the chapter's <img> renders
+   * (decode -> scale -> blit). Without this the engine reserves a placeholder. */
+  static ra_img_arena_t s_reflow_img_arena;
+  s_reflow_img_arena = (ra_img_arena_t){.base   = s_img_arena_buf,
+                                        .cap    = (size_t)k_er_img_arena,
+                                        .offset = 0U,
+                                        .live   = 0U};
+  (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
+  uint32_t            pages = 0U;
+  const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
+  if (ra_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
+      k_ra_ok) {
+    (void)ra_reflow_close(&s_reflow_engine);
+    return false;
+  }
+  s_reading_pages  = pages;
+  s_reflow_open    = true;
+  s_reflow_chapter = s_chapter_idx;
+  s_reflow_w       = body_w;
+  s_reflow_h       = body_h;
+  return true;
+}
+
+/**
  * @brief Render the Reading body through ra_reflow when an SD font is loaded.
  *
  * @details Lays the chapter XHTML out against the body rectangle (inset
@@ -1322,40 +1397,23 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
   if (body_h <= 0) {
     return false;
   }
-  if (ra_reflow_init((uint16_t)body_w,
-                     (uint16_t)body_h,
-                     font_data,
-                     font_len,
-                     (uint16_t)k_er_reflow_px,
-                     (uint32_t)k_er_reflow_ink,
-                     (uint32_t)k_er_reflow_link,
-                     &s_reflow_engine) != k_ra_ok) {
+  /* Re-flow only when the chapter or body geometry changes. Laying a chapter out
+   * (parse XHTML + paginate every page) dwarfs the cost of rasterising one page,
+   * so a same-chapter page turn reuses the cached layout and only renders the
+   * requested page -- otherwise every turn re-parses + re-paginates the whole
+   * chapter, the multi-second page-turn stall. */
+  const bool need_layout = (!s_reflow_open) || (s_reflow_chapter != s_chapter_idx) ||
+                           (s_reflow_w != body_w) || (s_reflow_h != body_h);
+  if (need_layout && !er_reflow_relayout(body_w, body_h, font_data, font_len)) {
     return false;
   }
-  /* Bind the image loader + SDRAM decode arena so the chapter's <img> renders
-   * (decode -> scale -> blit). Without this the engine reserves a placeholder. */
-  static ra_img_arena_t s_reflow_img_arena;
-  s_reflow_img_arena = (ra_img_arena_t){.base   = s_img_arena_buf,
-                                        .cap    = (size_t)k_er_img_arena,
-                                        .offset = 0U,
-                                        .live   = 0U};
-  (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
-  uint32_t            pages = 0U;
-  const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
-  if (ra_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
-      k_ra_ok) {
-    (void)ra_reflow_close(&s_reflow_engine);
-    return false;
-  }
-  /* Publish the page count (>= 1) for the footer + page-turn taps, and clamp the
-   * current page in case the chapter now paginates shorter than before. */
-  s_reading_pages = pages;
-  if (s_reading_page >= pages) {
-    s_reading_page = pages - 1U;
+  /* Clamp the current page (the chapter may paginate shorter than the last one)
+   * and rasterise just that page from the cached layout. */
+  if (s_reading_page >= s_reading_pages) {
+    s_reading_page = s_reading_pages - 1U;
   }
   (void)
     ra_reflow_render_page_at(&s_reflow_engine, s_reading_page, (int32_t)k_er_margin_x, body_top);
-  (void)ra_reflow_close(&s_reflow_engine);
   return true;
 }
 
