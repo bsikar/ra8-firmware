@@ -112,18 +112,18 @@ help:
 	@echo "  make clean             remove every app build dir and tests/build"
 	@echo "  make compile_commands  regenerate build/compile_commands.json for clangd"
 	@echo ""
-	@echo "RUN / PREVIEW / SIMULATE  (no board needed -- see 'make apps')"
+	@echo "RUN / PREVIEW / SIMULATE  (no board needed -- see 'make apps')          [make sim-help]"
 	@echo "  make sim-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn CPU"
 	@echo "                             emulator, live panel/UI window (tools/board_sim)"
 	@echo "                             e.g. make sim-blink, make sim-bedroom_ui_panel"
 	@echo ""
-	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)"
+	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)  [make flash-help / debug-help / ozone-help]"
 	@echo "  make flash-<app>       build + flash an app  (e.g. make flash-blink)"
 	@echo "  make debug-<app>       build + gdb via J-Link"
 	@echo "  make ozone-<app>       build + open in Ozone"
 	@echo "  make flash-ocd APP=<app> / debug-ocd APP=<app>   OpenOCD instead of J-Link"
 	@echo ""
-	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH)"
+	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH)        [make hil-help]"
 	@echo "  make hil               full HIL suite from this machine (build+flash+verify)"
 	@echo "  make hil-flash APP=<app>     build + flash to the Pi-attached board"
 	@echo "  make hil-recover APP=<app>   recovery flash / make hil-flash-retry APP=<app>"
@@ -219,6 +219,39 @@ $(RA_DEBUG): debug-%: %
 	$(MAKE) -C $(RA_APP_DIR_$*) debug
 $(RA_OZONE): ozone-%: %
 	$(MAKE) -C $(RA_APP_DIR_$*) ozone
+
+# Per-family help. These are plain explicit targets, so they take precedence
+# over the flash-%/debug-%/ozone-% static pattern rules above (which only
+# match real app names in $(RA_APPS), never "help").
+.PHONY: flash-help debug-help ozone-help
+flash-help:
+	@echo "make flash-<app>  -- build APP, then flash it to a board on THIS machine via J-Link"
+	@echo ""
+	@echo "  e.g. make flash-blink"
+	@echo ""
+	@echo "Alternate flashers / related:"
+	@echo "  make flash-ocd APP=<app>     flash via OpenOCD instead of J-Link"
+	@echo "  make hil-flash APP=<app>     flash to the Pi-attached board (see make hil-help)"
+	@echo "  list apps:  make apps"
+
+debug-help:
+	@echo "make debug-<app>  -- build APP, then start a gdb session via J-Link (board on THIS machine)"
+	@echo ""
+	@echo "  e.g. make debug-blink"
+	@echo ""
+	@echo "Related:"
+	@echo "  make debug-ocd APP=<app>     gdb via OpenOCD instead of J-Link"
+	@echo "  make ozone-<app>             open the app in SEGGER Ozone (see make ozone-help)"
+	@echo "  list apps:  make apps"
+
+ozone-help:
+	@echo "make ozone-<app>  -- build APP, then open it in SEGGER Ozone (board on THIS machine, J-Link)"
+	@echo ""
+	@echo "  e.g. make ozone-blink"
+	@echo ""
+	@echo "Related:"
+	@echo "  make debug-<app>             plain gdb via J-Link (see make debug-help)"
+	@echo "  list apps:  make apps"
 
 $(RA_COMPILE_COMMANDS): $(_RA_CMAKE_INPUTS)
 	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake -B $(ROOT)/build $(ROOT)
@@ -373,6 +406,35 @@ $(RA_SIM): sim-%: %
 	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
+# `make sim-help` -- usage, the PANEL knob, and the board_sim flag surface.
+# Explicit target, so it wins over the sim-% static pattern rule above.
+.PHONY: sim-help
+sim-help:
+	@echo "make sim-<app> [PANEL=<name>]  -- boot an app's REAL .elf on the board_sim"
+	@echo "                                  Unicorn CPU emulator (tools/board_sim)"
+	@echo ""
+	@echo "  PANEL=<name>   display descriptor tools/board_sim/panels/<name>.toml (default ek_ra8d2)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make sim-blink                       live board view (LEDs, USB/UART/IRQ sidebar)"
+	@echo "  make sim-ereader_ui                  e-reader chrome UI preview"
+	@echo "  make sim-lcd_color_cycle PANEL=ek_ra8d2"
+	@echo ""
+	@echo "Run board_sim directly for headless / scripted use (tools/board_sim/README.md):"
+	@echo "  cd tools/board_sim && cmake -B build -S . && cmake --build build -j"
+	@echo "  ./build/board_sim <app.elf>                  headless boot + MMIO report"
+	@echo "  ./build/board_sim <app.elf> --view           live macOS window"
+	@echo "  ./build/board_sim <app.elf> --ppm out.ppm    write the composite frame"
+	@echo "  ./build/board_sim <app.elf> --panel <f.toml> | --size 480x272"
+	@echo "  ./build/board_sim <app.elf> --input '<bytes>'      feed the console UART RX"
+	@echo "  ./build/board_sim <app.elf> --usb-in '<bytes>'     feed the USB CDC bulk OUT"
+	@echo "  ./build/board_sim <app.elf> --sd <img> | --sd-new 64:fat32 [--save-sd out.img]"
+	@echo "  ./build/board_sim <app.elf> --trace-sym <fn> [--dump-sym <global>]"
+	@echo ""
+	@echo "Headless run-bounding env vars: BOARD_SIM_MAX_CHUNKS, BOARD_SIM_WALL_S,"
+	@echo "  BOARD_SIM_IDLE_STOP=N, BOARD_SIM_USB_STOP=N, BOARD_SIM_USBH_STOP=N,"
+	@echo "  BOARD_SIM_STOP_ON='<substr>'"
+
 # ---------------------------------------------------------------------------
 # E-reader chrome golden-image regression gate (issue #84).
 #
@@ -423,10 +485,25 @@ version:
 # Add one target per app as they are validated.  The target name is
 # hil-<appname>; `make hil` runs all of them.
 # ---------------------------------------------------------------------------
-.PHONY: hil
+.PHONY: hil hil-help
 
 hil:
 	bash scripts/hil_dev.sh
+
+hil-help:
+	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH; see scripts/hil_*.sh)"
+	@echo ""
+	@echo "  make hil                        full HIL suite from this machine (build+flash+verify)"
+	@echo "  make hil-flash APP=<app>        build + flash to the Pi-attached board"
+	@echo "  make hil-recover APP=<app>      recovery flash when the board is wedged"
+	@echo "  make hil-flash-retry APP=<app>  power-cycle (uhubctl) then flash"
+	@echo "  make hil-erase                  mass-erase the MRAM"
+	@echo "  make hil-dlm-reset              recover from OEM_PL0/PL1 lockout"
+	@echo "  make hil-probe                  quick J-Link + board diagnostic"
+	@echo "  make hil-suite                  run the HIL test suite (on the Pi)"
+	@echo "  make hil-all                    run the full HIL suite"
+	@echo "  make hil-tapo CMD=<status|on|off|cycle>   board power via Tapo plug"
+	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
 
 # Stack-usage proof. Builds every EVM-tier app (each is already
 # compiled with -fstack-usage via cmake/ra_warnings.cmake), then runs
