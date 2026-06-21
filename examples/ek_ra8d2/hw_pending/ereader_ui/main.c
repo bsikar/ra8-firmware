@@ -39,6 +39,7 @@
 #include "arnopro_latin1.h"
 #include "er_pageturn.h"
 #include "figure_fixture.h"
+#include "ra_app.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_box.h"
 #include "ra_cgc.h"
@@ -156,6 +157,7 @@ typedef enum : uint16_t {
   k_er_screen_library  = 1U, /**< Library / home grid.               */
   k_er_screen_reading  = 2U, /**< Reading view.                      */
   k_er_screen_keyboard = 3U, /**< On-screen keyboard (search entry). */
+  k_er_screen_settings = 4U, /**< Settings (optional app, #if RA_APP_SETTINGS). */
 } er_screen_t;
 
 /**
@@ -1577,17 +1579,113 @@ static void er_render_keyboard(void)
   }
 }
 
+#ifdef RA_APP_SETTINGS
+/**
+ * @brief Minimal Settings screen for the optional Settings app.
+ *
+ * @details Only compiled when ``RA_APP_SETTINGS`` is defined -- the default
+ * build excludes the Settings app entirely (it is never registered, so it is
+ * absent from the launcher / nav). A real settings panel would compose its own
+ * widget tree; this stub draws a paper page with an ink title band so the
+ * enabled build is complete and runnable.
+ *
+ * @pre ::ra_gfx is bound to ::s_framebuffer.
+ * @post The framebuffer holds the Settings page; no tap targets are armed.
+ * @since 0.1.0
+ */
+static void er_render_settings(void)
+{
+  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  (void)ra_gfx_rect(0, 0, (int32_t)k_er_fb_w, (int32_t)k_er_statusbar_h, (uint32_t)k_er_ink, true);
+  s_target_count = 0U;
+}
+#endif
+
+/* ===========================================================================
+ * App framework integration (#146)
+ *
+ * Each screen is re-expressed as an ``ra_app``: the screen-id stack (``s_nav``)
+ * remains the source of truth for *which* screen is active, and that id is the
+ * active app's id, so ::er_render_current focuses the matching app and renders
+ * its tree. The render callbacks are the existing ``er_render_*`` functions, so
+ * the composited chrome is byte-identical (``make ereader-golden`` stays green)
+ * while the control flow is now an app composition rather than a hardcoded
+ * if/else. ``RA_APP_SETTINGS`` shows the build-time "uninstallable core" knob: a
+ * Settings app is only registered when the macro is defined.
+ * ===========================================================================
+ */
+
+/** @brief Library / Reading / Keyboard (+ optional Settings) app instances. */
+static ra_app_t s_app_library;
+static ra_app_t s_app_reader;
+static ra_app_t s_app_keyboard;
+#ifdef RA_APP_SETTINGS
+static ra_app_t s_app_settings;
+#endif
+
+/** @brief App registry storage (4 slots: 3 core + an optional Settings). */
+static ra_app_t*         s_app_slots[4];
+static ra_app_registry_t s_app_reg;
+
+/** @brief App render trampoline: dispatch to the screen render by app id. */
+static void er_app_render(ra_app_t* a)
+{
+  if (a->id == (uint16_t)k_er_screen_reading) {
+    er_render_reading();
+  } else if (a->id == (uint16_t)k_er_screen_keyboard) {
+    er_render_keyboard();
+#ifdef RA_APP_SETTINGS
+  } else if (a->id == (uint16_t)k_er_screen_settings) {
+    er_render_settings();
+#endif
+  } else {
+    er_render_library();
+  }
+}
+
+/** @brief Vtable shared by every screen-app (render-only; nav owns transitions). */
+static const ra_app_vtable_t k_er_app_vt = {
+  .render = er_app_render,
+};
+
+/** @brief Register the e-reader screen-apps into ::s_app_reg. */
+static void er_apps_init(void)
+{
+  s_app_library  = (ra_app_t){.vt        = &k_er_app_vt,
+                              .id        = (uint16_t)k_er_screen_library,
+                              .name      = "Library",
+                              .removable = false};
+  s_app_reader   = (ra_app_t){.vt        = &k_er_app_vt,
+                              .id        = (uint16_t)k_er_screen_reading,
+                              .name      = "Reader",
+                              .removable = false};
+  s_app_keyboard = (ra_app_t){.vt        = &k_er_app_vt,
+                              .id        = (uint16_t)k_er_screen_keyboard,
+                              .name      = "Search",
+                              .removable = false};
+  (void)ra_app_registry_init(&s_app_reg,
+                             s_app_slots,
+                             (uint16_t)(sizeof(s_app_slots) / sizeof(s_app_slots[0])));
+  (void)ra_app_register(&s_app_reg, &s_app_library);
+  (void)ra_app_register(&s_app_reg, &s_app_reader);
+  (void)ra_app_register(&s_app_reg, &s_app_keyboard);
+#ifdef RA_APP_SETTINGS
+  s_app_settings = (ra_app_t){.vt        = &k_er_app_vt,
+                              .id        = (uint16_t)k_er_screen_settings,
+                              .name      = "Settings",
+                              .removable = true};
+  (void)ra_app_register(&s_app_reg, &s_app_settings);
+#endif
+}
+
 static void er_render_current(void)
 {
   uint16_t top = (uint16_t)k_er_screen_library;
   (void)ra_ui_nav_top(&s_nav, &top);
-  if (top == (uint16_t)k_er_screen_reading) {
-    er_render_reading();
-  } else if (top == (uint16_t)k_er_screen_keyboard) {
-    er_render_keyboard();
-  } else {
-    er_render_library();
-  }
+  /* The nav top is the active screen-app's id: focus it (idempotent if already
+   * focused, so no flicker) and render its widget tree. */
+  (void)ra_app_launch(&s_app_reg, top);
+  (void)ra_app_render(&s_app_reg);
 }
 
 /** @brief Push the current (chapter, page) on the back-stack, capacity permitting. */
@@ -1997,6 +2095,7 @@ int32_t main(void)
   /* Default refresh cadence: fast A2 turns with a periodic GC16 clean (#78). */
   (void)display_policy_init(&s_policy, k_display_policy_fast_clean, (uint16_t)k_er_clean_every);
   (void)ra_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
+  er_apps_init(); /* re-express the screens as ra_app instances (#146) */
   er_render_current();
   er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 

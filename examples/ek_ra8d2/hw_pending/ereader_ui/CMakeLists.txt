@@ -19,7 +19,7 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_ui STACK_BYTES 4400
            DESCRIPTION "E-reader device chrome (ra_box + ra_gfx) for RA8D2"
-           LIBS ra_gfx ra_ui ra_keyboard ra_box ra_display_pal ra_reflow ra_sdfont ra_sdmmc_spi ra_fs)
+           LIBS ra_app ra_widget ra_gfx ra_ui ra_keyboard ra_box ra_display_pal ra_reflow ra_sdfont ra_sdmmc_spi ra_fs)
 
 # Bake the Latin-1 subset font (libs/fonts/arnopro_latin1.otf) into .rodata so
 # the Reading body reflows real text with no microSD card (see the per-font
