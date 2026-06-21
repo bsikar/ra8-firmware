@@ -214,6 +214,9 @@ uart_expect() { # app -> expected UART substring on stdout
     crc_demo)           printf 'match=Y' ;;
     adc_b_demo)         printf 'adc: raw=' ;;
     agt_periodic)       printf 'agt: tick' ;;
+    i2c_loopback)       printf 'i2c: scan 0x43 ack=1' ;;
+    eth_loopback)       printf 'etha: loopback ok' ;;
+    crypto_aes_demo)    printf 'aes: round-trip OK' ;;
     dma_memcopy_demo)   printf 'dma: copied 1024B match=Y' ;;
     rtc_alarm)          printf 'rtc: alarm fired' ;;
     elc_event_demo)     printf 'elc: en=1 trig=' ;;
@@ -261,7 +264,10 @@ if [ "${#apps[@]}" -eq 0 ]; then
         bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo \
         lpm_idle_demo lpm_deep_sleep_demo \
         ereader_cover_hil ereader_svg_hil ereader_imgfmt_hil ereader_jpeg_hil \
-        epub_parse_hil epub_stress_hil widget_app_hil glcdc_render_hil)
+        epub_parse_hil epub_stress_hil widget_app_hil glcdc_render_hil \
+        acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform \
+        gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo \
+        i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
