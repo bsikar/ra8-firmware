@@ -174,6 +174,7 @@ typedef enum : uint16_t {
   k_er_act_open_book = 1U,   /**< Library card -> open the reading view. */
   k_er_act_nav       = 2U,   /**< Bottom-nav destination (stay in lib).  */
   k_er_act_search    = 3U,   /**< Toolbar Search -> open the keyboard.   */
+  k_er_act_settings  = 4U,   /**< Bottom-nav Settings -> Settings app.   */
   k_er_act_key_base  = 100U, /**< Keyboard key i -> base + i.            */
 } er_action_t;
 
@@ -224,7 +225,8 @@ static const char* const k_er_nav_items[] = {"Library", "Store", "Notes", "Setti
  * @brief Bottom-nav destination count.
  */
 typedef enum : uint16_t {
-  k_er_nav_count = (uint16_t)(sizeof(k_er_nav_items) / sizeof(k_er_nav_items[0])),
+  k_er_nav_count       = (uint16_t)(sizeof(k_er_nav_items) / sizeof(k_er_nav_items[0])),
+  k_er_nav_idx_setting = 3U, /**< Index of the "Settings" nav item. */
 } er_nav_count_t;
 
 /**
@@ -978,8 +980,15 @@ static void er_build_nav(ra_box_tree_t* tree, int16_t parent)
   const ra_box_t nav_t = er_container(k_ra_box_stack_h, (int16_t)k_er_nav_h, 0, 0, 1U);
   const int16_t  nav   = ra_box_add(tree, parent, &nav_t);
   for (uint16_t i = 0U; i < (uint16_t)k_er_nav_count; ++i) {
-    const ra_box_t item_t =
-      er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_ra_box_no_colour);
+    ra_box_t item_t = er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_ra_box_no_colour);
+#ifdef RA_APP_SETTINGS
+    /* The "Settings" nav item is tappable only when the Settings app is installed
+     * (RA_APP_SETTINGS): tagging affects target collection, not pixels, so the
+     * default (uninstalled) build's chrome is byte-identical. */
+    if (i == (uint16_t)k_er_nav_idx_setting) {
+      item_t.tag = (int16_t)k_er_act_settings;
+    }
+#endif
     const int16_t item = ra_box_add(tree, nav, &item_t);
     s_label[item]      = k_er_nav_items[i];
     s_label_col[item]  = (i == 0U) ? (uint32_t)k_er_ink : (uint32_t)k_er_ink_muted;
@@ -2111,9 +2120,20 @@ static bool er_handle_tap(int32_t x, int32_t y)
   if (top == (uint16_t)k_er_screen_keyboard) {
     return er_handle_keyboard_tap(x, y);
   }
+#ifdef RA_APP_SETTINGS
+  if (top == (uint16_t)k_er_screen_settings) {
+    /* Settings has no tap targets; any tap returns to the Library. */
+    return (ra_ui_nav_pop(&s_nav, &top) == k_ra_ok);
+  }
+#endif
   uint16_t action = (uint16_t)k_er_act_none;
   bool     hit    = false;
   (void)ra_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
+#ifdef RA_APP_SETTINGS
+  if (hit && (action == (uint16_t)k_er_act_settings)) {
+    return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_settings) == k_ra_ok);
+  }
+#endif
   if (hit && (action == (uint16_t)k_er_act_open_book)) {
     s_reading_page   = 0U;                   /* always open a book at its first page */
     s_chapter_idx    = 0U;                   /* and its first chapter */
