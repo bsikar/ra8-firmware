@@ -406,6 +406,25 @@ $(RA_SIM): sim-%: %
 	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
+# `make profile-<app>` -- run the app HEADLESS under the board_sim profiler and
+# print the hottest functions on exit (Ozone-style). The default per-instruction
+# mode gives exact instruction %, count and call count per function; MODE=1 is
+# the cheaper wall-time sampler. PROFILE_ARGS passes extra board_sim flags, e.g.
+# to profile a specific interaction rather than just boot:
+#   make profile-ereader_ui                          # profile cold boot
+#   make profile-ereader_ui PROFILE_ARGS="--click 250 250"   # boot + open a book
+#   make profile-ereader_ui MODE=1                   # cheap wall-time sampler
+# (The live --view window prints its breakdown too, but only after you close it.)
+MODE         ?= full
+PROFILE_ARGS ?=
+RA_PROFILE   := $(addprefix profile-,$(RA_APPS))
+.PHONY: $(RA_PROFILE)
+$(RA_PROFILE): profile-%: %
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	BOARD_SIM_PROFILE=$(MODE) BOARD_SIM_IDLE_STOP=4000 BOARD_SIM_MAX_CHUNKS=8000000 \
+		$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf $(PROFILE_ARGS)
+
 # `make sim-help` -- usage, the PANEL knob, and the board_sim flag surface.
 # Explicit target, so it wins over the sim-% static pattern rule above.
 .PHONY: sim-help
@@ -419,6 +438,11 @@ sim-help:
 	@echo "  make sim-blink                       live board view (LEDs, USB/UART/IRQ sidebar)"
 	@echo "  make sim-ereader_ui                  e-reader chrome UI preview"
 	@echo "  make sim-lcd_color_cycle PANEL=ek_ra8d2"
+	@echo ""
+	@echo "Profile an app (Ozone-style hot-function breakdown, printed on exit):"
+	@echo "  make profile-<app>                       per-instruction % / count / calls"
+	@echo "  make profile-ereader_ui PROFILE_ARGS=\"--click 250 250\"   profile opening a book"
+	@echo "  make profile-<app> MODE=1                cheap wall-time sampler"
 	@echo ""
 	@echo "Run board_sim directly for headless / scripted use (tools/board_sim/README.md):"
 	@echo "  cd tools/board_sim && cmake -B build -S . && cmake --build build -j"
