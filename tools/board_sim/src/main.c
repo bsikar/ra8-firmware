@@ -1082,30 +1082,57 @@ static double board_now_s(void)
 }
 
 /* ===========================================================================
- * PC-sampling profiler (BOARD_SIM_PROFILE=1): bucket chunk-start PCs by FUNC
- * symbol so the dominant firmware hot spot is visible. Diagnostic only.
+ * Firmware profiler (BOARD_SIM_PROFILE). Two modes, bucketed by ELF FUNC symbol:
+ *   =1     wall-time sample -- charge each chunk's wall time to its start PC.
+ *          Cheap (no per-instruction cost); good for spotting the dominant cost.
+ *   =full  per-instruction -- a code hook tallies every instruction + call entry
+ *          (like an Ozone trace profile: exact instruction %, count, and call
+ *          count per function). Accurate but slows the run. Off by default.
  * ===========================================================================
  */
 enum : uint32_t {
-  k_prof_max_syms = 8192U, /**< Cap on profiled FUNC symbols. */
-  k_prof_top_n    = 24U,   /**< Top entries printed in the report. */
+  k_prof_max_syms = 8192U, /**< Cap on profiled FUNC symbols.       */
+  k_prof_top_n    = 40U,   /**< Top entries printed in the report.  */
 };
+/** @enum prof_mode_t @brief Profiler mode parsed from BOARD_SIM_PROFILE. */
+typedef enum : uint8_t {
+  k_prof_off  = 0U, /**< Disabled (no env, zero cost).                  */
+  k_prof_wall = 1U, /**< =1: cheap chunk-start wall-time sampler.       */
+  k_prof_insn = 2U, /**< =full/=insn: exact per-instruction + calls.    */
+} prof_mode_t;
 typedef struct {
-  uint32_t    lo;   /**< Function entry (Thumb bit cleared).  */
-  uint32_t    hi;   /**< Function end (lo + st_size).         */
-  const char* name; /**< Pointer into the ELF string table.  */
-  double      secs; /**< Wall seconds attributed to this fn.  */
+  uint32_t    lo;    /**< Function entry (Thumb bit cleared).  */
+  uint32_t    hi;    /**< Function end (lo + st_size).         */
+  const char* name;  /**< Pointer into the ELF string table.  */
+  double      secs;  /**< Wall seconds (wall mode).            */
+  uint64_t    insns; /**< Instructions executed (insn mode).   */
+  uint64_t    calls; /**< Entries to this fn (insn mode).      */
 } prof_sym_t;
-static prof_sym_t s_prof[k_prof_max_syms];
-static uint32_t   s_prof_n       = 0U;
-static double     s_prof_total_s = 0.0;
-static bool       s_prof_on      = false;
+static prof_sym_t  s_prof[k_prof_max_syms];
+static uint32_t    s_prof_n       = 0U;
+static double      s_prof_total_s = 0.0;
+static uint64_t    s_prof_total_i = 0U;
+static prof_mode_t s_prof_mode    = k_prof_off;
 
-/** @brief Collect FUNC symbols (BOARD_SIM_PROFILE only) for PC bucketing. */
+/** @brief qsort comparator: order the FUNC symbols by entry address. */
+static int prof_cmp(const void* a, const void* b)
+{
+  const uint32_t la = ((const prof_sym_t*)a)->lo;
+  const uint32_t lb = ((const prof_sym_t*)b)->lo;
+  return (la < lb) ? -1 : ((la > lb) ? 1 : 0);
+}
+
+/** @brief Collect + sort FUNC symbols (BOARD_SIM_PROFILE only) for PC bucketing. */
 static void prof_load(const uint8_t* elf, long len)
 {
-  s_prof_on = (getenv("BOARD_SIM_PROFILE") != nullptr);
-  if (!s_prof_on || (len < (long)k_elf_ehdr_size)) {
+  const char* mode = getenv("BOARD_SIM_PROFILE");
+  if (mode == nullptr) {
+    s_prof_mode = k_prof_off;
+    return;
+  }
+  s_prof_mode =
+    ((strcmp(mode, "full") == 0) || (strcmp(mode, "insn") == 0)) ? k_prof_insn : k_prof_wall;
+  if (len < (long)k_elf_ehdr_size) {
     return;
   }
   uint32_t shoff = 0U;
@@ -1143,58 +1170,114 @@ static void prof_load(const uint8_t* elf, long len)
       if (((sym[12] & 0x0FU) != 2U) || (st_size == 0U) || (st_name == 0U)) { /* STT_FUNC */
         continue;
       }
-      s_prof[s_prof_n].lo   = st_value & ~1U;
-      s_prof[s_prof_n].hi   = (st_value & ~1U) + st_size;
-      s_prof[s_prof_n].name = (const char*)(elf + str_off + st_name);
-      s_prof[s_prof_n].secs = 0.0;
+      s_prof[s_prof_n].lo    = st_value & ~1U;
+      s_prof[s_prof_n].hi    = (st_value & ~1U) + st_size;
+      s_prof[s_prof_n].name  = (const char*)(elf + str_off + st_name);
+      s_prof[s_prof_n].secs  = 0.0;
+      s_prof[s_prof_n].insns = 0U;
+      s_prof[s_prof_n].calls = 0U;
       s_prof_n++;
     }
   }
-  (void)fprintf(stderr, "  [profile] sampling %u FUNC symbols\n", (unsigned)s_prof_n);
+  qsort(s_prof, (size_t)s_prof_n, sizeof(s_prof[0]), prof_cmp);
+  (void)fprintf(stderr,
+                "  [profile] %s; %u FUNC symbols\n",
+                (s_prof_mode == k_prof_insn) ? "per-instruction (exact, slow)" : "wall-time sample",
+                (unsigned)s_prof_n);
 }
 
-/** @brief Attribute @p dt wall seconds to the function owning @p pc. */
+/** @brief Binary-search the FUNC symbol owning @p pc; returns s_prof_n if none. */
+static uint32_t prof_find(uint32_t pc)
+{
+  uint32_t lo = 0U;
+  uint32_t hi = s_prof_n;
+  while (lo < hi) {
+    const uint32_t mid = lo + ((hi - lo) / 2U);
+    if (s_prof[mid].lo <= pc) {
+      lo = mid + 1U;
+    } else {
+      hi = mid;
+    }
+  }
+  if (lo == 0U) {
+    return s_prof_n;
+  }
+  const uint32_t idx = lo - 1U;
+  return (pc < s_prof[idx].hi) ? idx : s_prof_n;
+}
+
+/** @brief Attribute @p dt wall seconds to @p pc's function (wall-sample mode). */
 static void prof_add(uint32_t pc, double dt)
 {
-  if (!s_prof_on) {
+  if (s_prof_mode != k_prof_wall) {
     return;
   }
   s_prof_total_s += dt;
-  for (uint32_t i = 0U; i < s_prof_n; i++) {
-    if ((pc >= s_prof[i].lo) && (pc < s_prof[i].hi)) {
-      s_prof[i].secs += dt;
-      return;
+  const uint32_t idx = prof_find(pc);
+  if (idx < s_prof_n) {
+    s_prof[idx].secs += dt;
+  }
+}
+
+/** @brief UC_HOOK_CODE per instruction: tally instructions + calls (insn mode). */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)uc;
+  (void)size;
+  (void)user;
+  s_prof_total_i++;
+  const uint32_t idx = prof_find((uint32_t)address);
+  if (idx < s_prof_n) {
+    s_prof[idx].insns++;
+    if ((uint32_t)address == s_prof[idx].lo) {
+      s_prof[idx].calls++; /* PC at the entry point -> a fresh call (approx). */
     }
   }
 }
 
-/** @brief Print the top hot functions by wall-time share at run end. */
+/** @brief Print the top hot functions (by wall time or instruction count) at run end. */
 static void prof_report(void)
 {
-  if (!s_prof_on || (s_prof_total_s <= 0.0)) {
+  const bool   insn = (s_prof_mode == k_prof_insn);
+  const double tot  = insn ? (double)s_prof_total_i : s_prof_total_s;
+  if ((s_prof_mode == k_prof_off) || (tot <= 0.0)) {
     return;
   }
-  (void)fprintf(stderr,
-                "  [profile] %.2fs wall sampled; hottest (by wall time):\n",
-                s_prof_total_s);
+  if (insn) {
+    (void)fprintf(stderr,
+                  "  [profile] %llu instructions; hottest (by instruction count):\n"
+                  "     %%insn       instructions       calls  function\n",
+                  (unsigned long long)s_prof_total_i);
+  } else {
+    (void)fprintf(stderr, "  [profile] %.2fs wall sampled; hottest (by wall time):\n", tot);
+  }
   for (uint32_t k = 0U; k < (uint32_t)k_prof_top_n; k++) {
     uint32_t best  = s_prof_n;
-    double   bestc = 0.0;
+    double   bestv = 0.0;
     for (uint32_t i = 0U; i < s_prof_n; i++) {
-      if (s_prof[i].secs > bestc) {
-        bestc = s_prof[i].secs;
+      const double v = insn ? (double)s_prof[i].insns : s_prof[i].secs;
+      if (v > bestv) {
+        bestv = v;
         best  = i;
       }
     }
-    if ((best == s_prof_n) || (bestc <= 0.0)) {
+    if ((best == s_prof_n) || (bestv <= 0.0)) {
       break;
     }
-    (void)fprintf(stderr,
-                  "    %5.1f%%  %7.2fs  %s\n",
-                  100.0 * bestc / s_prof_total_s,
-                  bestc,
-                  s_prof[best].name);
-    s_prof[best].secs = 0.0;
+    if (insn) {
+      (void)fprintf(stderr,
+                    "    %6.2f%%  %15llu  %10llu  %s\n",
+                    100.0 * bestv / tot,
+                    (unsigned long long)s_prof[best].insns,
+                    (unsigned long long)s_prof[best].calls,
+                    s_prof[best].name);
+      s_prof[best].insns = 0U;
+    } else {
+      (void)
+        fprintf(stderr, "    %6.2f%%  %8.2fs  %s\n", 100.0 * bestv / tot, bestv, s_prof[best].name);
+      s_prof[best].secs = 0.0;
+    }
   }
 }
 
@@ -4328,8 +4411,13 @@ int main(int argc, char** argv)
    * mis-executes: scan the loaded image and hook each site (see on_long_shift).
    * Inert for firmware without any (no sites -> no hooks). */
   long_shift_seam_install(uc, elf, elf_len);
-  /* BOARD_SIM_PROFILE=1: collect FUNC symbols for the PC-sampling profiler. */
+  /* BOARD_SIM_PROFILE: collect FUNC symbols for the profiler; in per-instruction
+   * mode (=full) arm a code hook that tallies every instruction + call. */
   prof_load(elf, elf_len);
+  if (s_prof_mode == k_prof_insn) {
+    static uc_hook h_prof;
+    (void)uc_hook_add(uc, &h_prof, UC_HOOK_CODE, (void*)prof_insn_hook, nullptr, 1, 0);
+  }
   /* Spin up the cpu1 engine for dual-core firmware (shares SRAM with cpu0).
    * NULL for single-core apps -- cpu0 then runs exactly as before. The elf
    * buffer is kept alive for the whole run (freed after the run loop) because a
@@ -4508,7 +4596,7 @@ int main(int argc, char** argv)
     /* BOARD_SIM_PROFILE: charge the wall time of the previous chunk to the
      * function its execution started in (so a cheap WFI-halt chunk and an
      * expensive compute chunk are weighted by real time, not by chunk count). */
-    if (s_prof_on) {
+    if (s_prof_mode == k_prof_wall) {
       const double now = board_now_s();
       if (prof_prev_t > 0.0) {
         prof_add(prof_prev_pc, now - prof_prev_t);
