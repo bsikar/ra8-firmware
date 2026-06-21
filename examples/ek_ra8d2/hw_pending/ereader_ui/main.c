@@ -411,6 +411,12 @@ static ra_ui_target_t s_targets[k_er_max_targets];
 /** @brief Number of tap targets currently populated. */
 static uint16_t s_target_count;
 
+/** @brief Library box-node count (set by er_render_library for the band widgets). */
+static uint16_t s_lib_node_count;
+
+/** @brief First Library body box-node (root=0, status bar=1, body from here). */
+static uint16_t s_lib_body_first = 2U;
+
 /** @brief On-screen keyboard grid (built by er_render_keyboard, read on tap). */
 static ra_kbd_layout_t s_kb;
 
@@ -1047,6 +1053,9 @@ static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
                                 (uint32_t)k_ra_box_no_colour);
   const int16_t  sb   = ra_box_add(tree, root, &sb_t);
   s_label[sb]         = k_er_lib_heading;
+  /* The status bar is one node; everything after it is the body band (the band
+   * widgets in er_render_library split the render at this index). */
+  s_lib_body_first = (uint16_t)(sb + 1);
 
   er_build_toolbar(tree, root);
 
@@ -1080,10 +1089,11 @@ static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_render_boxtree(const ra_box_tree_t* tree)
+/** @brief Render box nodes ``[from, to)`` of ::s_nodes (fill/border/bar/label). */
+static void er_render_boxnodes(uint16_t from, uint16_t to)
 {
-  for (uint16_t i = 0U; i < tree->count; ++i) {
-    const ra_box_t*    n = &tree->nodes[i];
+  for (uint16_t i = from; i < to; ++i) {
+    const ra_box_t*    n = &s_nodes[i];
     const ra_ui_rect_t r = n->rect;
     if (n->fill != (uint32_t)k_ra_box_no_colour) {
       (void)ra_gfx_rect(r.x, r.y, r.w, r.h, n->fill, true);
@@ -1142,23 +1152,13 @@ static void er_collect_targets(const ra_box_tree_t* tree)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_render_library(void)
+/** @brief Status-bar band widget: heading node + the under-bar hairline + clock. */
+static void er_lib_sb_render(ra_widget_t* w)
 {
-  (void)ra_gfx_clear((uint32_t)k_er_paper);
-  ra_box_tree_t      tree;
-  const ra_ui_rect_t frame = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
-  er_build_library(&tree, &frame);
-  er_collect_targets(&tree);
-  er_render_boxtree(&tree);
-  /* Hairline under the status bar and above the nav, for separation. */
+  (void)w;
+  er_render_boxnodes(0U, s_lib_body_first); /* root (no-op) + the status-bar node */
   (void)ra_gfx_rect(0,
                     (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
-                    (int32_t)s_fb.width_px,
-                    (int32_t)k_er_hair,
-                    (uint32_t)k_er_rule,
-                    true);
-  (void)ra_gfx_rect(0,
-                    (int32_t)s_fb.height_px - (int32_t)k_er_nav_h,
                     (int32_t)s_fb.width_px,
                     (int32_t)k_er_hair,
                     (uint32_t)k_er_rule,
@@ -1167,6 +1167,50 @@ static void er_render_library(void)
                 (int32_t)k_er_text_inset_y,
                 k_er_status_right,
                 (uint32_t)k_er_ink_muted);
+}
+
+/** @brief Body band widget: toolbar + book grid + nav nodes + the above-nav rule. */
+static void er_lib_body_render(ra_widget_t* w)
+{
+  (void)w;
+  er_render_boxnodes(s_lib_body_first, s_lib_node_count); /* toolbar + grid + nav */
+  (void)ra_gfx_rect(0,
+                    (int32_t)s_fb.height_px - (int32_t)k_er_nav_h,
+                    (int32_t)s_fb.width_px,
+                    (int32_t)k_er_hair,
+                    (uint32_t)k_er_rule,
+                    true);
+}
+
+/** @brief Vtables for the Library status-bar / body band widgets. */
+static const ra_widget_vtable_t k_er_lib_sb_vt   = {.render = er_lib_sb_render};
+static const ra_widget_vtable_t k_er_lib_body_vt = {.render = er_lib_body_render};
+
+static void er_render_library(void)
+{
+  (void)ra_gfx_clear((uint32_t)k_er_paper);
+  ra_box_tree_t      tree;
+  const ra_ui_rect_t frame = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
+  er_build_library(&tree, &frame);
+  er_collect_targets(&tree);
+  s_lib_node_count = tree.count;
+
+  /* Compose the screen from two band widgets (#145): a status bar over the body
+   * (toolbar + grid + nav). The bands occupy disjoint y-ranges, so the widget
+   * composition renders byte-identically to the monolithic box tree -- the
+   * status bar can now be invalidated + partial-flushed on its own. */
+  ra_widget_t bands[2] = {};
+  bands[0].vt          = &k_er_lib_sb_vt;
+  bands[0].fixed       = (int16_t)k_er_statusbar_h;
+  bands[0].visible     = true;
+  bands[1].vt          = &k_er_lib_body_vt;
+  bands[1].flex        = 1U;
+  bands[1].visible     = true;
+  ra_box_t band_scratch[3];
+  (void)ra_widget_layout_stack(bands, 2U, &frame, k_ra_widget_axis_col, 0, 0, band_scratch, 3U);
+  (void)ra_widget_invalidate(&bands[0], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&bands[1], k_ra_widget_refresh_quality);
+  (void)ra_widget_render_dirty(bands, 2U);
 }
 
 /* ===========================================================================
