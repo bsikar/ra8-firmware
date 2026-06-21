@@ -4361,8 +4361,9 @@ int main(int argc, char** argv)
   uint32_t      chunks          = 0U;
   bool          timed_out       = false;
   bool          closed          = false;
-  uint32_t      settle_left     = 0U; /* >0 once the click landed: chunks to drain. */
-  uint32_t      last_boot_chunk = 0U; /* chunk of the last (re)boot for --reboot. */
+  uint32_t      settle_left     = 0U;    /* >0 once the click landed: chunks to drain. */
+  uint32_t      last_boot_chunk = 0U;    /* chunk of the last (re)boot for --reboot. */
+  bool          slider_grab     = false; /* true while a press grabbed the battery slider. */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
   const board_overlay_btn_t click_btn =
@@ -4581,7 +4582,16 @@ int main(int argc, char** argv)
       uint16_t cx = 0U;
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
-        (void)route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
+        /* A press on the battery slider "grabs" it, so a subsequent drag keeps
+         * setting the SOC from the cursor column even if the mouse leaves the
+         * track row -- standard slider grab semantics. */
+        slider_grab = (route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg) ==
+                       k_board_overlay_btn_battery);
+      }
+      uint16_t dx = 0U;
+      uint16_t dy = 0U;
+      if (board_view_poll_drag(view, &dx, &dy) && slider_grab) {
+        apply_battery_click(k_board_overlay_btn_battery, dx, disp_w);
       }
       /* Mouse-wheel pages the console scrollback, Arduino-Serial-Monitor style:
        * scrolling up reveals older lines AND pauses autoscroll (so new output no
