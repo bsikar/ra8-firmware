@@ -1,6 +1,6 @@
 /**
  * @file board_periph_dmac.c
- * @brief DMAC0 / DTC transfer peripheral-block model for the board emulator
+ * @brief DMAC0 transfer peripheral-block model for the board emulator
  *
  * @details
  * Models the RA8D2 Direct Memory Access Controller (DMAC0) closely enough that
@@ -24,20 +24,17 @@
  *    through), auto-clears SWREQ, and -- if DMINT.DTIE is set -- raises the
  *    channel's transfer-end ELC event through the core's ICU -> NVIC path so an
  *    interrupt-driven transfer also works.
- *  - **DTC** (ra8d2_dtc_regs.h): the Data Transfer Controller shares MSTPA22
- *    with DMAC0 and is driven by the same memory-to-memory copy primitive. Its
- *    control window (DTCCR / DTCVBR / DTCST / DTCSTS at @c 0x4000AC00) is
- *    modelled as a transparent register shadow so the bring-up writes the
- *    driver performs read back correctly; no example in the tree triggers a DTC
- *    chain, so the block keeps the controller observable without inventing a
- *    transfer path the firmware never exercises.
+ *
+ * The DTC (Data Transfer Controller, ra8d2_dtc_regs.h) shares MSTPA22 with
+ * DMAC0 but is modelled in its own file (board_periph_dtc.c), which owns the DTC
+ * control window (@c 0x4000AC00) and the ELC software-event activation path.
  *
  * The shared DMA module-control bank (DMAST activation gate, DMCTL, DELSR ELC
- * links) at @c 0x4000A800 is a third window, also a transparent shadow: the
- * driver sets DMAST.DMST before the per-channel DTE write, and the model honours
- * the readback. The three DMAC windows plus the DTC window register four block
- * descriptors with the core; the per-channel transfer state and the shared
- * registers all reset together from the channel descriptor's reset hook.
+ * links) at @c 0x4000A800 is a second window, a transparent shadow: the driver
+ * sets DMAST.DMST before the per-channel DTE write, and the model honours the
+ * readback. The two DMAC windows register two block descriptors with the core;
+ * the per-channel transfer state and the shared registers all reset together
+ * from the channel descriptor's reset hook.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -81,12 +78,6 @@ typedef enum : uint64_t {
   k_dma_shared_base = 0x4000A800UL, /**< DMAST / DMCTL / DMECHR / DELSR.  */
   k_dma_shared_span = 0xA0UL,       /**< FSP R_DMA_Type size.             */
 } dma_shared_geom_t;
-
-/** @brief DTC control window geometry (ra8d2_dtc_regs.h). */
-typedef enum : uint64_t {
-  k_dtc_base = 0x4000AC00UL, /**< DTC control-register base.              */
-  k_dtc_span = 0x40UL,       /**< Covers DTCCR..DTCSTS comfortably.       */
-} dtc_geom_t;
 
 /** @brief Per-channel register byte offsets (subset the driver touches). */
 typedef enum : uint64_t {
@@ -175,9 +166,6 @@ static dmac_chan_t s_dmac[k_dmac_count];
 
 /** @brief Shared DMA module-control bank shadow (DMAST / DMCTL / DELSR). */
 static uint8_t s_dma_shared[k_dma_shared_span];
-
-/** @brief DTC control-window shadow (DTCCR / DTCVBR / DTCST / DTCSTS). */
-static uint8_t s_dtc[k_dtc_span];
 
 /* =============================================================================
  * DMAC channel transfer primitive (the part that actually moves memory).
@@ -372,7 +360,7 @@ static void dmac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
 }
 
 /* =============================================================================
- * Shared DMA module-control bank + DTC control window (transparent shadows).
+ * Shared DMA module-control bank (transparent shadow).
  * =============================================================================
  */
 
@@ -422,26 +410,12 @@ static void dma_shared_write(uc_engine* uc, uint64_t addr, unsigned size, uint64
                value);
 }
 
-/** @brief MMIO read inside the DTC control window. */
-static uint64_t dtc_read(uc_engine* uc, uint64_t addr, unsigned size)
-{
-  (void)uc;
-  return shadow_read(s_dtc, (uint64_t)k_dtc_span, addr - (uint64_t)k_dtc_base, size);
-}
-
-/** @brief MMIO write inside the DTC control window. */
-static void dtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
-{
-  (void)uc;
-  shadow_write(s_dtc, (uint64_t)k_dtc_span, addr - (uint64_t)k_dtc_base, size, value);
-}
-
 /* =============================================================================
  * Reset / report (carried by the DMAC channel descriptor).
  * =============================================================================
  */
 
-/** @brief Clear all DMAC channel state plus the shared / DTC shadows. */
+/** @brief Clear all DMAC channel state plus the shared module-control shadow. */
 static void dmac_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dmac_count; i++) {
@@ -449,9 +423,6 @@ static void dmac_reset(void)
   }
   for (uint32_t i = 0U; i < (uint32_t)k_dma_shared_span; i++) {
     s_dma_shared[i] = 0U;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_dtc_span; i++) {
-    s_dtc[i] = 0U;
   }
 }
 
@@ -501,23 +472,9 @@ static const board_periph_block_t k_dma_shared_block = {
   .name   = "DMA",
 };
 
-/** @brief DTC control window (transparent shadow). */
-static const board_periph_block_t k_dtc_block = {
-  .base   = (uint64_t)k_dtc_base,
-  .span   = (uint64_t)k_dtc_span,
-  .order  = (uint32_t)k_dmac_block_order,
-  .read   = dtc_read,
-  .write  = dtc_write,
-  .tick   = nullptr,
-  .reset  = nullptr,
-  .report = nullptr,
-  .name   = "DTC",
-};
-
-/** @brief Self-register the DMAC0 / shared / DTC windows before main runs. */
+/** @brief Self-register the DMAC0 / shared module-control windows before main. */
 __attribute__((constructor)) static void board_periph_dmac_register(void)
 {
   board_periph_register_block(&k_dmac_block);
   board_periph_register_block(&k_dma_shared_block);
-  board_periph_register_block(&k_dtc_block);
 }

@@ -45,6 +45,8 @@
 @property(nonatomic, assign) uint16_t clickY;
 /** @brief Set on mouse-down; cleared when polled. */
 @property(nonatomic, assign) BOOL hasClick;
+/** @brief Accumulated scroll-wheel notches since the last poll (+up / -down). */
+@property(nonatomic, assign) int32_t scrollAccum;
 @end
 
 @implementation BoardImageView
@@ -77,6 +79,19 @@
     if (printable || control) {
       board_input_push_key((char)u);
     }
+  }
+}
+/* Mouse-wheel / two-finger scroll drives the console scrollback: accumulate
+ * notches (positive = scroll up into older history) for the run loop to drain
+ * via board_view_poll_scroll. This is independent of keyDown (which feeds the
+ * firmware's UART RX), so scrolling never collides with typing into the app. */
+- (void)scrollWheel:(NSEvent*)event
+{
+  const CGFloat dy = event.scrollingDeltaY;
+  if (dy > 0.5) {
+    self.scrollAccum += 1; /* content moves down -> reveal older lines */
+  } else if (dy < -0.5) {
+    self.scrollAccum -= 1;
   }
 }
 - (void)mouseDown:(NSEvent*)event
@@ -269,6 +284,16 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
   *y                  = view->view.clickY;
   view->view.hasClick = NO;
   return true;
+}
+
+int32_t board_view_poll_scroll(board_view_t* view)
+{
+  if ((view == nullptr) || (view->view == nil)) {
+    return 0;
+  }
+  const int32_t n        = view->view.scrollAccum;
+  view->view.scrollAccum = 0;
+  return n;
 }
 
 void board_view_close(board_view_t* view)

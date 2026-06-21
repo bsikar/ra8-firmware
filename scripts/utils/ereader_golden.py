@@ -40,7 +40,7 @@ from pathlib import Path
 # Width board_sim appends on the right of the panel for its status sidebar.
 # Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/board_overlay.c; the crop
 # removes it so the golden depends only on the firmware chrome.
-SIDEBAR_W = 360
+SIDEBAR_W = 520
 
 # The screens to capture: (golden name, board_sim extra args). Reading is
 # reached by tapping a Library book card; keyboard by tapping the toolbar

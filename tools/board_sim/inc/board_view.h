@@ -78,6 +78,24 @@ bool board_view_pump(board_view_t* view);
 bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
 
 /**
+ * @brief Drain the accumulated console scroll-wheel notches since the last poll.
+ *
+ * @details
+ * The content view's scrollWheel handler accumulates one notch per wheel /
+ * two-finger scroll step (positive scrolling up into older console history,
+ * negative scrolling back down toward the newest line). This returns the net
+ * accumulated notches and clears the accumulator, so the run loop can advance a
+ * console scrollback offset. Independent of board_view_poll_click and of the
+ * keyDown path (which feeds the firmware UART RX), so scrolling the console
+ * never collides with clicking buttons or typing into the running app.
+ *
+ * @param[in] view Handle from board_view_open (nullptr returns 0).
+ * @return Net scroll notches since the last poll (+up / -down), 0 if none.
+ * @since 0.1.0
+ */
+int32_t board_view_poll_scroll(board_view_t* view);
+
+/**
  * @brief Close the window and release its resources.
  *
  * @param[in] view Handle from board_view_open (nullptr is a no-op).

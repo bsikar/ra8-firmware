@@ -175,6 +175,24 @@ void board_periph_register_block(const board_periph_block_t* block);
 void board_periph_icu_raise_event(uc_engine* uc, uint16_t event);
 
 /**
+ * @brief Find the IELSR slot that activates the DTC for an ELC event.
+ *
+ * @details
+ * The DTC block model needs to know which IELSR slot a software / peripheral
+ * event is routed to with DTC activation enabled, so it can index the DTC
+ * vector table (@c DTCVBR + slot*4) at the matching Transfer Information block.
+ * The core owns the IELSR event-link table (the same state
+ * ::board_periph_icu_raise_event scans), so it answers the query: the first
+ * slot whose IELS event-select field equals @p event and whose DTCE bit is set.
+ *
+ * @param[in] event ELC event number to resolve (e.g. ELC_SWEVT0 = 0x0CC).
+ * @return The IELSR slot index [0, 95] when a DTCE-enabled slot links @p event,
+ *         or a value >= 96 when none does.
+ * @since 0.1.0
+ */
+uint32_t board_periph_icu_dtc_slot(uint16_t event);
+
+/**
  * @brief Whether --trace is active (blocks log transitions when true).
  *
  * @return true when the run was started with --trace, else false.
