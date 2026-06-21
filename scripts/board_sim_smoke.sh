@@ -199,6 +199,14 @@ uart_expect() { # app -> expected UART substring on stdout
     ereader_table_hil)  printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
     reflow_content_hil) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
     ereader_input_hil)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
+    ereader_cover_hil)  printf 'ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS' ;;
+    ereader_svg_hil)    printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
+    ereader_imgfmt_hil) printf 'ereader-imgfmt-hil: bmp=D53617C5 gif=350551C5 PASS' ;;
+    ereader_jpeg_hil)   printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
+    epub_parse_hil)     printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
+    epub_stress_hil)    printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
+    widget_app_hil)     printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
+    glcdc_render_hil)   printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
     bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
     keyboard_hil)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
     touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
@@ -215,6 +223,8 @@ uart_expect() { # app -> expected UART substring on stdout
     cac_accuracy_demo)  printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
     lvd_monitor_demo)   printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
     pdg_delay_demo)     printf 'pdg: dll=on ch0=on delay=0x40 cfg=ok' ;;
+    dotf_selftest_demo) printf 'dotf: ch0/1 init=ok selftest=run ok=Y' ;;
+    ecc_monitor_demo)   printf 'ecc: sram2 ecc=on rw=ok ok=Y' ;;
     bkup_survival_demo) printf 'bkup: rw=ok survived=Y' ;;
     wdt_reset_recovery_demo) printf 'wdt: reset_by=watchdog' ;;
     lpm_idle_demo)      printf 'lpm: wake_count=' ;;
@@ -247,8 +257,11 @@ if [ "${#apps[@]}" -eq 0 ]; then
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
         timer_capture_demo drw_fill_demo dtc_transfer_demo \
         cac_accuracy_demo lvd_monitor_demo pdg_delay_demo \
+        dotf_selftest_demo ecc_monitor_demo \
         bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo \
-        lpm_idle_demo lpm_deep_sleep_demo)
+        lpm_idle_demo lpm_deep_sleep_demo \
+        ereader_cover_hil ereader_svg_hil ereader_imgfmt_hil ereader_jpeg_hil \
+        epub_parse_hil epub_stress_hil widget_app_hil glcdc_render_hil)
 fi
 
 echo "board_sim smoke: building the emulator ..."
