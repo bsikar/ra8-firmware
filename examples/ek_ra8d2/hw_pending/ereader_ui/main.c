@@ -84,9 +84,10 @@ typedef enum : uint16_t {
  * @brief Framebuffer byte-math and pacing constants.
  */
 typedef enum : uint16_t {
-  k_er_fb_align  = 64U,  /**< 64-byte AXI-burst alignment.       */
-  k_er_settle_ms = 500U, /**< PLL / SDRAM / panel-POR settle.    */
-  k_er_frame_ms  = 100U, /**< Heartbeat / flush pacing (ms).     */
+  k_er_fb_align  = 64U,  /**< 64-byte AXI-burst alignment.                  */
+  k_er_settle_ms = 500U, /**< PLL / SDRAM / panel-POR settle.              */
+  k_er_frame_ms  = 25U,  /**< Input poll period (ms): touch / button cadence.*/
+  k_er_led_every = 16U,  /**< Toggle the heartbeat LED every Nth frame.     */
 } er_fb_misc_t;
 
 /**
@@ -223,7 +224,8 @@ typedef enum : int32_t {
   k_er_nag_text_dy  = 28, /**< Text inset from the banner top.         */
   k_er_nag_dec_max  = 4,  /**< Scratch for a "NNN%" decimal tail.      */
   k_er_nag_dec_ten  = 10, /**< Decimal base.                           */
-  k_er_nag_line_max = 32, /**< Banner text buffer size (bounds copy).  */
+  k_er_nag_line_max = 48, /**< Banner text buffer size (bounds copy).  */
+  k_er_batt_every   = 40, /**< Poll the gauge every Nth frame (~1/s).  */
 } er_nag_cfg_t;
 
 /** @enum er_nag_color_t @brief Nag-banner palette (grayscale e-ink). */
@@ -485,9 +487,11 @@ static ra_batt_nag_t s_batt_nag = k_ra_batt_nag_none;
 /** @brief Last fuel-gauge SOC percent (for the banner text). */
 static uint8_t s_batt_soc = 0U;
 
-/** @brief Nag banner messages (the SOC percent is appended at render). */
+/** @brief Nag banner messages (the SOC percent + dismiss hint follow at render). */
 static const char k_er_nag_low_msg[]  = "Low battery ";
 static const char k_er_nag_crit_msg[] = "Battery critical ";
+/** @brief Trailing hint so the banner says how to close itself. */
+static const char k_er_nag_hint[] = "  (tap to dismiss)";
 
 /** @brief Refresh-cadence policy driving e-ink page-turn waveforms (#78). */
 static display_policy_t s_policy;
@@ -1922,6 +1926,27 @@ static void er_append_pct(char* buf, uint32_t cap, uint32_t* pos, uint8_t v)
   buf[*pos] = '\0';
 }
 
+/** @brief Append NUL-terminated @p s to @p buf at *pos, bounded + NUL-terminated. */
+static void er_append_str(char* buf, uint32_t cap, uint32_t* pos, const char* s)
+{
+  /* Bounded by the buffer cap (NASA Rule 2); the NUL is the early exit. */
+  for (uint32_t i = 0U; (i < (uint32_t)k_er_nag_line_max) && (s[i] != '\0') && (*pos < (cap - 1U));
+       i++) {
+    buf[*pos] = s[i];
+    (*pos)++;
+  }
+  buf[*pos] = '\0';
+}
+
+/** @brief True iff (x,y) lands on the low-battery banner rect. */
+static bool er_nag_hit(int32_t x, int32_t y)
+{
+  const int32_t bx = (int32_t)k_er_nag_margin;
+  const int32_t bw = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_nag_margin);
+  return (x >= bx) && (x < (bx + bw)) && (y >= (int32_t)k_er_nag_top) &&
+         (y < ((int32_t)k_er_nag_top + (int32_t)k_er_nag_h));
+}
+
 /** @brief Nag banner overlay widget: a centered low-battery toast over the screen. */
 static void er_nag_render(ra_widget_t* w)
 {
@@ -1935,15 +1960,14 @@ static void er_nag_render(ra_widget_t* w)
   const int32_t  bw   = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_nag_margin);
   (void)ra_gfx_rect(x, (int32_t)k_er_nag_top, bw, (int32_t)k_er_nag_h, bg, true);
   (void)ra_gfx_rect(x, (int32_t)k_er_nag_top, bw, (int32_t)k_er_nag_h, (uint32_t)k_er_ink, false);
-  char        line[k_er_nag_line_max];
-  uint32_t    pos = 0U;
-  const char* msg = crit ? k_er_nag_crit_msg : k_er_nag_low_msg;
-  /* Bounded by the buffer cap (NASA Rule 2); the NUL is the early exit. */
-  for (uint32_t i = 0U; (i < (uint32_t)(k_er_nag_line_max - 1)) && (msg[i] != '\0'); i++) {
-    line[pos] = msg[i];
-    pos++;
-  }
+  char     line[k_er_nag_line_max];
+  uint32_t pos = 0U;
+  er_append_str(line,
+                (uint32_t)k_er_nag_line_max,
+                &pos,
+                crit ? k_er_nag_crit_msg : k_er_nag_low_msg);
   er_append_pct(line, (uint32_t)k_er_nag_line_max, &pos, s_batt_soc);
+  er_append_str(line, (uint32_t)k_er_nag_line_max, &pos, k_er_nag_hint);
   (void)ra_gfx_text_out(x + (int32_t)k_er_nag_text_dx,
                         (int32_t)k_er_nag_top + (int32_t)k_er_nag_text_dy,
                         line,
@@ -2260,7 +2284,14 @@ static bool er_handle_tap(int32_t x, int32_t y)
   /* Default any screen/location change to a clean full refresh; a same-chapter
    * page turn lowers this to a fast partial inside er_apply_pageturn. */
   s_pending_event = k_display_event_chapter;
-  uint16_t top    = (uint16_t)k_er_screen_library;
+  /* A tap on the low-battery banner dismisses it (acknowledge). ra_batt will not
+   * re-raise the same band until the battery recovers, so it stays dismissed
+   * until the next descent into a worse band, or a recovery then re-drain. */
+  if ((s_batt_nag != k_ra_batt_nag_none) && er_nag_hit(x, y)) {
+    s_batt_nag = k_ra_batt_nag_none;
+    return true;
+  }
+  uint16_t top = (uint16_t)k_er_screen_library;
   (void)ra_ui_nav_top(&s_nav, &top);
   if (top == (uint16_t)k_er_screen_reading) {
     return er_handle_reading_tap(x, y);
@@ -2381,8 +2412,11 @@ static void er_poll_buttons(void)
  * nag, which raises (or upgrades) the persistent banner; the banner clears once
  * the battery recovers above the low band's hysteresis margin or starts
  * charging. The chrome is re-rendered only when the banner state changes, so a
- * steady battery costs nothing. On the sim the board_sim battery slider drives
- * the gauge, so dragging below 20% / 10% raises the banner and back up clears it.
+ * steady battery costs nothing. The gauge is polled only every ::k_er_batt_every
+ * frames (~1 Hz): each read is two I2C transactions, so polling per frame
+ * starved the touch loop. On the sim the board_sim battery slider drives the
+ * gauge, so dragging below 20% / 10% raises the banner and back up clears it;
+ * tapping the banner dismisses it.
  *
  * @pre ::app_bringup_touch brought up IIC_B channel 0 (shared with the gauge).
  * @pre ::s_batt_mon was initialised by ::ra_batt_monitor_init.
@@ -2403,6 +2437,16 @@ static void er_poll_buttons(void)
  */
 static void er_poll_battery(void)
 {
+  /* Throttle: the gauge moves slowly and each read is two I2C transactions, so
+   * polling it every frame dominated the loop (the GT911 touch read is the only
+   * other per-frame I2C). Poll ~once a second so touch stays responsive. */
+  static uint32_t s_skip = 0U;
+  if (s_skip != 0U) {
+    s_skip--;
+    return;
+  }
+  s_skip = (uint32_t)k_er_batt_every - 1U;
+
   uint8_t soc = 0U;
   bool    chg = false;
   if (!er_read_battery(&soc, &chg)) {
@@ -2448,11 +2492,17 @@ int32_t main(void)
   er_render_current();
   er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 
+  uint32_t frame = 0U;
   while (1) {
-    er_poll_touch();
-    er_poll_buttons();
-    er_poll_battery();
-    (void)ra_board_led_toggle(k_ra_board_led_blue);
+    er_poll_touch();   /* fast cadence so taps feel responsive */
+    er_poll_buttons(); /* page-turn switches */
+    er_poll_battery(); /* self-throttled (~1 Hz) low-battery nag */
+    /* Heartbeat LED toggles on a slow sub-cadence so it blinks (~1 Hz) instead
+     * of strobing at the input-poll rate. */
+    if ((frame % (uint32_t)k_er_led_every) == 0U) {
+      (void)ra_board_led_toggle(k_ra_board_led_blue);
+    }
+    frame++;
     ra_delay_ms((uint32_t)k_er_frame_ms);
   }
   return 0;
