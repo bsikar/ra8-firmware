@@ -31,12 +31,14 @@
  * RTC); if the LOCO is stopped the reference never ticks and the
  * measurement times out.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` shadows the CAC
- * control registers but does not model the edge counter, so CASTR.MENDF
- * never asserts and ``ra_cac_measure`` returns ``k_ra_err_hw_timeout``;
- * the banner reports ``meas=TIMEOUT ok=N`` on the emulator. Real-clock
- * measurement can only be confirmed on silicon, so this app lives in
- * ``hw_pending/``. See ``README.md`` for the bench plan.
+ * @note **Headless-emulator status.** ``tools/board_sim`` models the CAC
+ * edge counter (``board_periph_cac.c``): a CACR0.CFME start latches CASTR.MENDF
+ * and returns a CACNTBR inside the programmed [CALLVR, CAULVR] window, so
+ * ``ra_cac_measure`` completes with FERRF / OVFF clear and the banner reports
+ * ``ok=Y`` (the ``board_sim_smoke.sh`` gate keys on it). The app stays in
+ * ``hw_pending/`` until a real cross-clock measurement is confirmed on silicon
+ * -- the simulator proves the driver start / poll / read-back sequence, not the
+ * real edge count. See ``README.md`` for the bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
