@@ -1073,6 +1073,131 @@ static void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   }
 }
 
+/** @brief Monotonic wall-clock seconds. */
+static double board_now_s(void)
+{
+  struct timespec ts = {};
+  (void)clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (double)ts.tv_sec + ((double)ts.tv_nsec / 1.0e9);
+}
+
+/* ===========================================================================
+ * PC-sampling profiler (BOARD_SIM_PROFILE=1): bucket chunk-start PCs by FUNC
+ * symbol so the dominant firmware hot spot is visible. Diagnostic only.
+ * ===========================================================================
+ */
+enum : uint32_t {
+  k_prof_max_syms = 8192U, /**< Cap on profiled FUNC symbols. */
+  k_prof_top_n    = 24U,   /**< Top entries printed in the report. */
+};
+typedef struct {
+  uint32_t    lo;   /**< Function entry (Thumb bit cleared).  */
+  uint32_t    hi;   /**< Function end (lo + st_size).         */
+  const char* name; /**< Pointer into the ELF string table.  */
+  double      secs; /**< Wall seconds attributed to this fn.  */
+} prof_sym_t;
+static prof_sym_t s_prof[k_prof_max_syms];
+static uint32_t   s_prof_n       = 0U;
+static double     s_prof_total_s = 0.0;
+static bool       s_prof_on      = false;
+
+/** @brief Collect FUNC symbols (BOARD_SIM_PROFILE only) for PC bucketing. */
+static void prof_load(const uint8_t* elf, long len)
+{
+  s_prof_on = (getenv("BOARD_SIM_PROFILE") != nullptr);
+  if (!s_prof_on || (len < (long)k_elf_ehdr_size)) {
+    return;
+  }
+  uint32_t shoff = 0U;
+  (void)memcpy(&shoff, elf + 32, 4);
+  const uint16_t shentsize = (uint16_t)(elf[46] | (elf[47] << 8));
+  const uint16_t shnum     = (uint16_t)(elf[48] | (elf[49] << 8));
+  if (shoff == 0U) {
+    return;
+  }
+  for (uint16_t i = 0U; i < shnum; i++) {
+    const uint8_t* sh      = elf + shoff + ((uint32_t)i * shentsize);
+    uint32_t       sh_type = 0U;
+    (void)memcpy(&sh_type, sh + 4, 4);
+    if (sh_type != 2U) { /* SHT_SYMTAB */
+      continue;
+    }
+    uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
+    (void)memcpy(&sym_off, sh + 16, 4);
+    (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
+    (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
+    (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
+    if ((sym_entsize < 16U) || (sym_link >= shnum)) {
+      continue;
+    }
+    const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
+    uint32_t       str_off = 0U;
+    (void)memcpy(&str_off, strsh + 16, 4);
+    const uint32_t nsym = sym_size / sym_entsize;
+    for (uint32_t s = 0U; (s < nsym) && (s_prof_n < (uint32_t)k_prof_max_syms); s++) {
+      const uint8_t* sym     = elf + sym_off + (s * sym_entsize);
+      uint32_t       st_name = 0U, st_value = 0U, st_size = 0U;
+      (void)memcpy(&st_name, sym + 0, 4);
+      (void)memcpy(&st_value, sym + 4, 4);
+      (void)memcpy(&st_size, sym + 8, 4);
+      if (((sym[12] & 0x0FU) != 2U) || (st_size == 0U) || (st_name == 0U)) { /* STT_FUNC */
+        continue;
+      }
+      s_prof[s_prof_n].lo   = st_value & ~1U;
+      s_prof[s_prof_n].hi   = (st_value & ~1U) + st_size;
+      s_prof[s_prof_n].name = (const char*)(elf + str_off + st_name);
+      s_prof[s_prof_n].secs = 0.0;
+      s_prof_n++;
+    }
+  }
+  (void)fprintf(stderr, "  [profile] sampling %u FUNC symbols\n", (unsigned)s_prof_n);
+}
+
+/** @brief Attribute @p dt wall seconds to the function owning @p pc. */
+static void prof_add(uint32_t pc, double dt)
+{
+  if (!s_prof_on) {
+    return;
+  }
+  s_prof_total_s += dt;
+  for (uint32_t i = 0U; i < s_prof_n; i++) {
+    if ((pc >= s_prof[i].lo) && (pc < s_prof[i].hi)) {
+      s_prof[i].secs += dt;
+      return;
+    }
+  }
+}
+
+/** @brief Print the top hot functions by wall-time share at run end. */
+static void prof_report(void)
+{
+  if (!s_prof_on || (s_prof_total_s <= 0.0)) {
+    return;
+  }
+  (void)fprintf(stderr,
+                "  [profile] %.2fs wall sampled; hottest (by wall time):\n",
+                s_prof_total_s);
+  for (uint32_t k = 0U; k < (uint32_t)k_prof_top_n; k++) {
+    uint32_t best  = s_prof_n;
+    double   bestc = 0.0;
+    for (uint32_t i = 0U; i < s_prof_n; i++) {
+      if (s_prof[i].secs > bestc) {
+        bestc = s_prof[i].secs;
+        best  = i;
+      }
+    }
+    if ((best == s_prof_n) || (bestc <= 0.0)) {
+      break;
+    }
+    (void)fprintf(stderr,
+                  "    %5.1f%%  %7.2fs  %s\n",
+                  100.0 * bestc / s_prof_total_s,
+                  bestc,
+                  s_prof[best].name);
+    s_prof[best].secs = 0.0;
+  }
+}
+
 /** @brief Disassemble + report an instruction the core could not decode. */
 static bool on_invalid_insn(uc_engine* uc, void* user)
 {
@@ -4203,6 +4328,8 @@ int main(int argc, char** argv)
    * mis-executes: scan the loaded image and hook each site (see on_long_shift).
    * Inert for firmware without any (no sites -> no hooks). */
   long_shift_seam_install(uc, elf, elf_len);
+  /* BOARD_SIM_PROFILE=1: collect FUNC symbols for the PC-sampling profiler. */
+  prof_load(elf, elf_len);
   /* Spin up the cpu1 engine for dual-core firmware (shares SRAM with cpu0).
    * NULL for single-core apps -- cpu0 then runs exactly as before. The elf
    * buffer is kept alive for the whole run (freed after the run loop) because a
@@ -4374,8 +4501,21 @@ int main(int argc, char** argv)
   const board_overlay_btn_t click_btn =
     want_click ? board_overlay_hit_button((uint16_t)click_x, (uint16_t)click_y, disp_w)
                : k_board_overlay_btn_none;
-  bool button_fired = false;
+  bool     button_fired = false;
+  uint32_t prof_prev_pc = 0U;
+  double   prof_prev_t  = 0.0;
   for (; chunks < max_chunks; chunks++) {
+    /* BOARD_SIM_PROFILE: charge the wall time of the previous chunk to the
+     * function its execution started in (so a cheap WFI-halt chunk and an
+     * expensive compute chunk are weighted by real time, not by chunk count). */
+    if (s_prof_on) {
+      const double now = board_now_s();
+      if (prof_prev_t > 0.0) {
+        prof_add(prof_prev_pc, now - prof_prev_t);
+      }
+      prof_prev_pc = run_pc;
+      prof_prev_t  = now;
+    }
     /* Publish run telemetry for the board view (PC + chunk counter). */
     s_view_pc     = run_pc;
     s_view_chunks = chunks;
@@ -4741,6 +4881,7 @@ int main(int argc, char** argv)
                   s_bkpt_pc);
   }
   (void)fprintf(stderr, "  chunks run    : %u   SysTick ticks: %u\n", chunks, s_systick_fires);
+  prof_report();
   (void)fprintf(stderr,
                 "  exceptions    : %u PendSV  %u SVCall (real Cortex-M entry/return)\n",
                 s_pendsv_takes,
