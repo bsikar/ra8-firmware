@@ -51,10 +51,12 @@ typedef enum : uint32_t {
  * a window / @c --click tap to the user-switch model instead of the touch panel.
  */
 typedef enum : uint32_t {
-  k_board_overlay_btn_none    = 0U, /**< Click did not land on a control.  */
-  k_board_overlay_btn_sw1     = 1U, /**< On-screen SW1 (P009) push-button. */
-  k_board_overlay_btn_sw2     = 2U, /**< On-screen SW2 (P008) push-button. */
-  k_board_overlay_btn_console = 3U, /**< Console panel: toggle autoscroll. */
+  k_board_overlay_btn_none     = 0U, /**< Click did not land on a control.   */
+  k_board_overlay_btn_sw1      = 1U, /**< On-screen SW1 (P009) push-button.  */
+  k_board_overlay_btn_sw2      = 2U, /**< On-screen SW2 (P008) push-button.  */
+  k_board_overlay_btn_console  = 3U, /**< Console panel: toggle autoscroll.  */
+  k_board_overlay_btn_battery  = 4U, /**< Battery slider track: set SOC.     */
+  k_board_overlay_btn_batt_chg = 5U, /**< Battery CHG button: toggle charge. */
 } board_overlay_btn_t;
 
 /**
@@ -88,6 +90,8 @@ typedef struct {
   uint16_t           touch_y;                   /**< Last touch Y (if any).     */
   bool               sw1_pressed;               /**< On-screen SW1 held down.   */
   bool               sw2_pressed;               /**< On-screen SW2 held down.   */
+  uint8_t            battery_soc;               /**< Fuel-gauge SOC percent.    */
+  bool               battery_charging;          /**< Fuel gauge reports charge. */
   const char*        app_name;                  /**< App / window title.        */
   bool               sd_attached;               /**< A microSD card is attached.*/
   uint64_t           sd_bytes;                  /**< SD card size in bytes (>4GB).*/
@@ -179,6 +183,26 @@ void board_overlay_compose(uint16_t*             out,
  * @since 0.1.0
  */
 board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t panel_w);
+
+/**
+ * @brief Map a click column on the battery slider track to a 0..100 SOC percent.
+ *
+ * @details The POWER section draws a horizontal slider whose fill mirrors the
+ * battery SOC. ::board_overlay_hit_button reports ::k_board_overlay_btn_battery
+ * when a click lands on that track's row; this then converts the click column to
+ * the percent the user dragged to, so the caller can drive the fuel-gauge model.
+ * The percent is the click's fraction across the track, clamped to 0..100 (a
+ * click left of the track yields 0, right of it yields 100), and the same fixed
+ * geometry ::board_overlay_compose draws the track with is used here so the drawn
+ * fill and the drag position stay in lock-step.
+ *
+ * @param[in]  x       Click column in composite pixels (top-left origin).
+ * @param[in]  panel_w Panel width the composite was built with (sidebar origin).
+ * @param[out] out_pct Receives the mapped state-of-charge percent (0..100).
+ * @return True when @p out_pct was written, false if @p out_pct is NULL.
+ * @since 0.1.0
+ */
+bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct);
 
 #ifdef __cplusplus
 }

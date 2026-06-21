@@ -383,6 +383,30 @@ uint32_t board_periph_irq_total(void);
 bool board_periph_touch_last(uint16_t* x, uint16_t* y);
 
 /**
+ * @brief Set the simulated battery state surfaced by the MAX17048 fuel gauge.
+ *
+ * @details
+ * The firmware reads state-of-charge + charge direction from a MAX17048-class
+ * fuel gauge at I2C 0x36; this drives that device's register file. Set from the
+ * CLI (``--battery <pct>`` / ``--charge``) before the run. @p soc_pct is clamped
+ * to 0..100.
+ *
+ * @param[in] soc_pct  State-of-charge percent (clamped to [0, 100]).
+ * @param[in] charging true marks the charger attached (CRATE reads positive).
+ * @since 0.1.0
+ */
+void board_periph_battery_set(uint8_t soc_pct, bool charging);
+
+/**
+ * @brief Read back the simulated battery state (for the status overlay).
+ *
+ * @param[out] out_soc      Receives the state-of-charge percent (NULL ok).
+ * @param[out] out_charging Receives the charging flag (NULL ok).
+ * @since 0.1.0
+ */
+void board_periph_battery_get(uint8_t* out_soc, bool* out_charging);
+
+/**
  * @brief The SCI channel the EK-RA8D2 console (J-Link OB VCOM) uses.
  *
  * @details
