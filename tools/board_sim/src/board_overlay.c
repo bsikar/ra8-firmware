@@ -23,25 +23,37 @@
 
 /** @brief Status-sidebar layout offsets (pixels). */
 typedef enum : int32_t {
-  k_led_label_dy = 5,   /**< LED label vertical offset within its dot. */
-  k_led_row_dy   = 14,  /**< "LEDS" heading to the LED row.            */
-  k_led_col_dx   = 110, /**< Horizontal spacing between LEDs.          */
-  k_led_row_h    = 30,  /**< LED row height (advance to next block).   */
-  k_sidebar_top  = 14,  /**< Sidebar top margin.                       */
-  k_heading_gap  = 12,  /**< Heading to app-name line.                 */
-  k_appname_gap  = 22,  /**< App-name line to the LED block.           */
-  k_leds_gap     = 10,  /**< LED block to the status-text block.       */
+  k_led_label_dy = 6,   /**< LED label vertical offset within its dot. */
+  k_led_row_dy   = 22,  /**< "LEDS" heading to the LED row.            */
+  k_led_col_dx   = 150, /**< Horizontal spacing between LEDs.          */
+  k_led_row_h    = 40,  /**< LED row height (advance to next block).   */
+  k_pad_x        = 18,  /**< Left padding inside the sidebar.          */
+  k_sidebar_top  = 16,  /**< Sidebar top margin.                       */
+  k_title_gap    = 26,  /**< Title line to the app-name line.          */
+  k_appname_gap  = 30,  /**< App-name line to the run-stats block.     */
+  k_section_gap  = 16,  /**< Gap above a section heading.              */
+  k_heading_gap  = 20,  /**< Section heading to its first row.         */
+  k_row_step     = 16,  /**< Vertical step between text rows.          */
 } overlay_layout_t;
 
 /** @brief Sidebar geometry and palette (RGB565). */
 typedef enum : uint32_t {
-  k_ovl_sidebar_w   = 360U,    /**< Sidebar width added on the right.       */
-  k_ovl_min_h       = 320U,    /**< Minimum composite height.               */
-  k_ovl_bg          = 0x18E3U, /**< Dark slate sidebar background.          */
+  k_ovl_sidebar_w   = 520U,    /**< Sidebar width added on the right.       */
+  k_ovl_min_h       = 600U,    /**< Minimum composite height.               */
+  k_ovl_bg          = 0x10A2U, /**< Dark slate sidebar background.          */
+  k_ovl_bg_alt      = 0x18E3U, /**< Slightly lighter band (section panel).  */
   k_ovl_panel_bg    = 0x0000U, /**< Fill behind a missing/short panel.      */
   k_ovl_divider     = 0x4208U, /**< Vertical divider between panel/sidebar. */
+  k_ovl_rule        = 0x39C7U, /**< Thin horizontal section rule.           */
   k_ovl_text        = 0xCE59U, /**< Light-grey body text.                   */
+  k_ovl_dim         = 0x8410U, /**< Dim label text (field names).           */
   k_ovl_heading     = 0xFFFFU, /**< White heading text.                     */
+  k_ovl_accent      = 0x5D1FU, /**< Cyan-blue accent (title / headings).    */
+  k_ovl_ok          = 0x3666U, /**< Green "running / ok" indicator.         */
+  k_ovl_amber       = 0xFD20U, /**< Amber "paused / attention" indicator.   */
+  k_ovl_console_bg  = 0x0841U, /**< Console panel background (near-black).   */
+  k_ovl_console_txt = 0x07E6U, /**< Console text (terminal green).          */
+  k_ovl_console_new = 0xFFFFU, /**< Newest console line (white highlight).  */
   k_ovl_led_off     = 0x2104U, /**< Unlit LED dot.                          */
   k_ovl_led_ring    = 0x6B4DU, /**< LED dot outline.                        */
   k_ovl_btn_border  = 0x8430U, /**< On-screen button outline.               */
@@ -64,15 +76,29 @@ typedef enum : uint32_t {
  * for every panel size.
  */
 typedef enum : int32_t {
-  k_btn_x_dx    = 16,  /**< Button column inset from the sidebar origin.  */
-  k_btn_head_y  = 190, /**< "BUTTONS" heading row.                        */
-  k_btn_y       = 206, /**< Button face top.                              */
+  k_btn_x_dx    = 18,  /**< Button column inset from the sidebar origin.  */
+  k_btn_head_y  = 348, /**< "BUTTONS" heading row.                        */
+  k_btn_y       = 368, /**< Button face top.                              */
   k_btn_w       = 150, /**< Button face width.                            */
   k_btn_h       = 36,  /**< Button face height.                           */
-  k_btn_gap     = 16,  /**< Horizontal gap between SW1 and SW2.           */
-  k_btn_label_x = 12,  /**< Caption inset within the button face.         */
+  k_btn_gap     = 20,  /**< Horizontal gap between SW1 and SW2.           */
+  k_btn_label_x = 14,  /**< Caption inset within the button face.         */
   k_btn_label_y = 12,  /**< Caption top inset within the button face.     */
 } overlay_btn_layout_t;
+
+/** @brief Fixed Y anchor for the I/O section (below the LED row). */
+typedef enum : int32_t {
+  k_io_head_y = 250, /**< "I/O" section heading row (clear of the LEDs). */
+} overlay_io_layout_t;
+
+/** @brief Console-panel layout (the bottom scrolling UART log). */
+typedef enum : int32_t {
+  k_con_head_y = 424, /**< "CONSOLE" heading row.                        */
+  k_con_y      = 440, /**< Console panel top.                            */
+  k_con_pad    = 8,   /**< Inner padding inside the console panel.       */
+  k_con_line_h = 10,  /**< Vertical step between console text lines.     */
+  k_con_bottom = 14,  /**< Bottom margin below the console panel.        */
+} overlay_con_layout_t;
 
 /* 5x7 column-major font, ASCII 0x20..0x7E. Five bytes per glyph; bit b of a
  * column byte lights row b (0 = top). A public-domain 5x7 cell font. */
@@ -257,6 +283,39 @@ static int32_t draw_text(uint16_t*   out,
   return cx;
 }
 
+/** @brief Draw a section heading (accent colour) with a thin rule beneath it. */
+static int32_t
+section_head(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const char* title)
+{
+  draw_text(out, w, h, x, y, title, (uint16_t)k_ovl_accent, 1);
+  fill_rect(out,
+            w,
+            h,
+            x,
+            y + 10,
+            (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
+            1,
+            (uint16_t)k_ovl_rule);
+  return y + (int32_t)k_heading_gap;
+}
+
+/** @brief Draw a "label  value" row: dim label, bright value, returns next y. */
+static int32_t kv_row(uint16_t*   out,
+                      uint16_t    w,
+                      uint16_t    h,
+                      int32_t     x,
+                      int32_t     y,
+                      const char* label,
+                      const char* value,
+                      uint16_t    val_color)
+{
+  const int32_t adv      = ((int32_t)k_ovl_glyph_w + 1);
+  const int32_t value_dx = 7 * adv; /* fixed label column so values align */
+  draw_text(out, w, h, x, y, label, (uint16_t)k_ovl_dim, 1);
+  draw_text(out, w, h, x + value_dx, y, value, val_color, 1);
+  return y + (int32_t)k_row_step;
+}
+
 /** @brief Blit the panel framebuffer into the composite's top-left region. */
 static void blit_panel(uint16_t*       out,
                        uint16_t        w,
@@ -299,68 +358,124 @@ draw_led(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const boar
 static int32_t
 draw_leds(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const board_status_t* st)
 {
-  draw_text(out, w, h, x, y, "LEDS", (uint16_t)k_ovl_heading, 1);
-  const int32_t row_y = y + k_led_row_dy;
+  const int32_t row_y = section_head(out, w, h, x, y, "LEDS");
   for (uint32_t i = 0U; i < (uint32_t)k_overlay_led_count; i++) {
     draw_led(out, w, h, x + ((int32_t)i * k_led_col_dx), row_y, &st->leds[i]);
   }
   return row_y + k_led_row_h;
 }
 
-/** @brief Paint the USB / UART / IRQ / touch text block; returns next free y. */
-static int32_t draw_status_lines(uint16_t*             out,
-                                 uint16_t              w,
-                                 uint16_t              h,
-                                 int32_t               x,
-                                 int32_t               y,
-                                 const board_status_t* st)
+/** @brief Paint the run-stats block (PC / chunks / MMIO / state); next free y. */
+static int32_t draw_run_stats(uint16_t*             out,
+                              uint16_t              w,
+                              uint16_t              h,
+                              int32_t               x,
+                              int32_t               y,
+                              const board_status_t* st)
 {
-  char          buf[96];
-  const int32_t step = 16;
-  int32_t       cy   = y;
-  (void)snprintf(buf, sizeof(buf), "USB:  %s", (st->usb_state != nullptr) ? st->usb_state : "-");
-  draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
-  cy += step;
-  (void)snprintf(buf,
-                 sizeof(buf),
-                 "UART: %s",
-                 ((st->uart_line != nullptr) && (st->uart_line[0] != '\0')) ? st->uart_line : "-");
-  draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
-  cy += step;
-  (void)snprintf(buf,
-                 sizeof(buf),
-                 "IRQ:  %u total  IRQ0 x%u  IRQ1 x%u",
-                 st->irq_total,
-                 st->irq0,
-                 st->irq1);
-  draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
-  cy += step;
+  char    buf[64];
+  int32_t cy = section_head(out, w, h, x, y, "RUN");
+  (void)snprintf(buf, sizeof(buf), "0x%08X", st->pc);
+  cy = kv_row(out, w, h, x, cy, "pc", buf, (uint16_t)k_ovl_heading);
+  (void)snprintf(buf, sizeof(buf), "%s   chunk %u", st->running ? "RUNNING" : "parked", st->chunks);
+  cy =
+    kv_row(out, w, h, x, cy, "state", buf, st->running ? (uint16_t)k_ovl_ok : (uint16_t)k_ovl_dim);
+  (void)snprintf(buf, sizeof(buf), "%u rd / %u wr", st->mmio_reads, st->mmio_writes);
+  cy = kv_row(out, w, h, x, cy, "mmio", buf, (uint16_t)k_ovl_text);
+  return cy;
+}
+
+/** @brief Paint the I/O block (USB / IRQ / touch / SD); returns next free y. */
+static int32_t
+draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const board_status_t* st)
+{
+  char    buf[96];
+  int32_t cy = section_head(out, w, h, x, y, "I/O");
+  cy         = kv_row(out,
+                      w,
+                      h,
+                      x,
+                      cy,
+                      "usb",
+                      (st->usb_state != nullptr) ? st->usb_state : "-",
+                      (uint16_t)k_ovl_text);
+  (void)
+    snprintf(buf, sizeof(buf), "%u total  IRQ0 x%u  IRQ1 x%u", st->irq_total, st->irq0, st->irq1);
+  cy = kv_row(out, w, h, x, cy, "irq", buf, (uint16_t)k_ovl_text);
   if (st->has_touch) {
-    (void)snprintf(buf, sizeof(buf), "touch %u,%u", st->touch_x, st->touch_y);
+    (void)snprintf(buf, sizeof(buf), "%u, %u", st->touch_x, st->touch_y);
   } else {
-    (void)snprintf(buf, sizeof(buf), "touch -");
+    (void)snprintf(buf, sizeof(buf), "-");
   }
-  draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
-  cy += step;
+  cy                        = kv_row(out, w, h, x, cy, "touch", buf, (uint16_t)k_ovl_text);
   const bool          sd_gb = (st->sd_bytes >= (1024ULL * 1024ULL * 1024ULL));
   const unsigned long sd_sz = sd_gb ? (unsigned long)(st->sd_bytes / (1024ULL * 1024ULL * 1024ULL))
                                     : (unsigned long)(st->sd_bytes / (1024ULL * 1024ULL));
   const char*         sd_u  = sd_gb ? "GB" : "MB";
   if (!st->sd_attached) {
-    (void)snprintf(buf, sizeof(buf), "SD:   -");
+    (void)snprintf(buf, sizeof(buf), "-");
   } else if (st->sd_fat_bits != 0U) {
     (void)snprintf(buf,
                    sizeof(buf),
-                   "SD:   %lu %s FAT%u %s",
+                   "%lu %s FAT%u %s",
                    sd_sz,
                    sd_u,
                    (unsigned)st->sd_fat_bits,
                    (st->sd_label != nullptr) ? st->sd_label : "");
   } else {
-    (void)snprintf(buf, sizeof(buf), "SD:   %lu %s (image)", sd_sz, sd_u);
+    (void)snprintf(buf, sizeof(buf), "%lu %s (image)", sd_sz, sd_u);
   }
-  draw_text(out, w, h, x, cy, buf, (uint16_t)k_ovl_text, 1);
-  return cy + step;
+  cy = kv_row(out, w, h, x, cy, "sd", buf, (uint16_t)k_ovl_text);
+  return cy;
+}
+
+/** @brief Paint the scrolling console panel (newest line at the bottom). */
+static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
+{
+  char     buf[80];
+  uint16_t head_col;
+  if (!st->console_autoscroll) {
+    /* Paused: amber heading + how far back the held view sits and how to resume. */
+    (void)snprintf(buf,
+                   sizeof(buf),
+                   "CONSOLE  PAUSED -%u/%u  click=follow",
+                   st->console_scroll,
+                   st->console_total);
+    head_col = (uint16_t)k_ovl_amber;
+  } else {
+    (void)snprintf(buf, sizeof(buf), "CONSOLE  LIVE  (UART %u B, wheel=scroll)", st->uart_tx_total);
+    head_col = (uint16_t)k_ovl_ok;
+  }
+  draw_text(out, w, h, x, (int32_t)k_con_head_y, buf, head_col, 1);
+  fill_rect(out,
+            w,
+            h,
+            x,
+            (int32_t)k_con_head_y + 10,
+            (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
+            1,
+            (uint16_t)k_ovl_rule);
+  const int32_t panel_x = x;
+  const int32_t panel_w = (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x);
+  const int32_t panel_h = (int32_t)h - (int32_t)k_con_y - (int32_t)k_con_bottom;
+  if (panel_h < (int32_t)k_con_line_h) {
+    return;
+  }
+  fill_rect(out, w, h, panel_x, (int32_t)k_con_y, panel_w, panel_h, (uint16_t)k_ovl_console_bg);
+  /* Fit as many lines as the panel height allows; show the newest at the bottom
+   * so the console scrolls upward like a terminal. console[0] is the newest. */
+  const int32_t max_rows = (panel_h - (2 * (int32_t)k_con_pad)) / (int32_t)k_con_line_h;
+  int32_t       rows     = (int32_t)st->console_count;
+  if (rows > max_rows) {
+    rows = max_rows;
+  }
+  for (int32_t i = 0; i < rows; i++) {
+    /* Bottom row (i=0 from the bottom) is console[0], the newest line. */
+    const int32_t ly =
+      (int32_t)k_con_y + panel_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
+    const uint16_t col = (i == 0) ? (uint16_t)k_ovl_console_new : (uint16_t)k_ovl_console_txt;
+    draw_text(out, w, h, panel_x + (int32_t)k_con_pad, ly, st->console[i], col, 1);
+  }
 }
 
 /** @brief Draw one labelled push-button face at @p x (green when @p pressed). */
@@ -390,12 +505,12 @@ draw_button(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const char* label,
 /** @brief Paint the "BUTTONS" heading and the clickable SW1 / SW2 buttons. */
 static void draw_buttons(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
 {
-  draw_text(out, w, h, x, (int32_t)k_btn_head_y, "BUTTONS (click)", (uint16_t)k_ovl_heading, 1);
+  (void)section_head(out, w, h, x, (int32_t)k_btn_head_y, "BUTTONS  (click)");
   draw_button(out, w, h, x, "SW1", st->sw1_pressed);
   draw_button(out, w, h, x + (int32_t)k_btn_w + (int32_t)k_btn_gap, "SW2", st->sw2_pressed);
 }
 
-/** @brief Paint the sidebar background, divider, heading and all status rows. */
+/** @brief Paint the sidebar background, divider, title and all status sections. */
 static void
 draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const board_status_t* st)
 {
@@ -407,27 +522,41 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
             (int32_t)k_ovl_sidebar_w,
             (int32_t)h,
             (uint16_t)k_ovl_bg);
-  fill_rect(out, w, h, (int32_t)panel_w, 0, 2, (int32_t)h, (uint16_t)k_ovl_divider);
+  fill_rect(out, w, h, (int32_t)panel_w, 0, 3, (int32_t)h, (uint16_t)k_ovl_divider);
   if (st == nullptr) {
     return;
   }
-  const int32_t x = (int32_t)panel_w + 16;
+  const int32_t x = (int32_t)panel_w + (int32_t)k_pad_x;
   int32_t       y = k_sidebar_top;
-  draw_text(out, w, h, x, y, "EK-RA8D2 BOARD VIEW", (uint16_t)k_ovl_heading, 1);
-  y += k_heading_gap;
+  /* Title bar: a filled accent band with the board name at 2x scale. */
+  fill_rect(out,
+            w,
+            h,
+            (int32_t)panel_w + 3,
+            0,
+            (int32_t)k_ovl_sidebar_w - 3,
+            40,
+            (uint16_t)k_ovl_bg_alt);
+  draw_text(out, w, h, x, y, "EK-RA8D2  SIMULATOR", (uint16_t)k_ovl_accent, 2);
+  y = 40 + (int32_t)k_section_gap;
   draw_text(out,
             w,
             h,
             x,
             y,
             (st->app_name != nullptr) ? st->app_name : "",
-            (uint16_t)k_ovl_text,
+            (uint16_t)k_ovl_heading,
             1);
-  y += k_appname_gap;
-  y = draw_leds(out, w, h, x, y, st);
-  y += k_leds_gap;
-  (void)draw_status_lines(out, w, h, x, y, st);
+  y += (int32_t)k_title_gap;
+  /* The RUN and LEDS sections sit on the upper sidebar; the layout below them
+   * (I/O, BUTTONS, CONSOLE) uses fixed Y anchors so the console always fills the
+   * bottom regardless of panel height. */
+  y = draw_run_stats(out, w, h, x, y, st);
+  y += (int32_t)k_section_gap;
+  (void)draw_leds(out, w, h, x, y, st);
+  (void)draw_io_block(out, w, h, x, (int32_t)k_io_head_y, st);
   draw_buttons(out, w, h, x, st);
+  draw_console(out, w, h, x, st);
 }
 
 void board_overlay_compose(uint16_t*             out,
@@ -447,18 +576,26 @@ void board_overlay_compose(uint16_t*             out,
 
 board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t panel_w)
 {
-  const int32_t cx = (int32_t)x;
-  const int32_t cy = (int32_t)y;
-  if ((cy < (int32_t)k_btn_y) || (cy >= ((int32_t)k_btn_y + (int32_t)k_btn_h))) {
-    return k_board_overlay_btn_none;
+  const int32_t cx       = (int32_t)x;
+  const int32_t cy       = (int32_t)y;
+  const int32_t side_lo  = (int32_t)panel_w;
+  const int32_t side_hi  = (int32_t)panel_w + (int32_t)k_ovl_sidebar_w;
+  const bool    in_sidex = (cx >= side_lo) && (cx < side_hi);
+  /* SW1 / SW2 push-buttons. */
+  if ((cy >= (int32_t)k_btn_y) && (cy < ((int32_t)k_btn_y + (int32_t)k_btn_h))) {
+    const int32_t bx1 = (int32_t)panel_w + (int32_t)k_btn_x_dx;
+    if ((cx >= bx1) && (cx < (bx1 + (int32_t)k_btn_w))) {
+      return k_board_overlay_btn_sw1;
+    }
+    const int32_t bx2 = bx1 + (int32_t)k_btn_w + (int32_t)k_btn_gap;
+    if ((cx >= bx2) && (cx < (bx2 + (int32_t)k_btn_w))) {
+      return k_board_overlay_btn_sw2;
+    }
   }
-  const int32_t bx1 = (int32_t)panel_w + (int32_t)k_btn_x_dx;
-  if ((cx >= bx1) && (cx < (bx1 + (int32_t)k_btn_w))) {
-    return k_board_overlay_btn_sw1;
-  }
-  const int32_t bx2 = bx1 + (int32_t)k_btn_w + (int32_t)k_btn_gap;
-  if ((cx >= bx2) && (cx < (bx2 + (int32_t)k_btn_w))) {
-    return k_board_overlay_btn_sw2;
+  /* Console region (heading + panel): a click toggles autoscroll / jumps live,
+   * like clicking the Arduino Serial Monitor's pane. */
+  if (in_sidex && (cy >= (int32_t)k_con_head_y)) {
+    return k_board_overlay_btn_console;
   }
   return k_board_overlay_btn_none;
 }

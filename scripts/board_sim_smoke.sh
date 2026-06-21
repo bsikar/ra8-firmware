@@ -175,6 +175,12 @@ sim_extra_args() { # app -> extra args on stdout
     case " $touch_click_apps " in
     *" $1 "*) printf -- '--click 250 250' ;;
     esac
+    # bkup_survival_demo proves reset-survival: --reboot makes the sim re-run the
+    # firmware from its reset vector with the VBATT backup domain retained, so the
+    # second boot finds the sentinel and reports survived=Y.
+    case "$1" in
+    bkup_survival_demo) printf -- '--reboot 1' ;;
+    esac
 }
 
 # Echo the UART substring an app must print for its peripheral to count as
@@ -204,6 +210,15 @@ uart_expect() { # app -> expected UART substring on stdout
     rtc_alarm)          printf 'rtc: alarm fired' ;;
     elc_event_demo)     printf 'elc: en=1 trig=' ;;
     timer_capture_demo) printf 'gpt: period=' ;;
+    drw_fill_demo)      printf 'drw: fill match=Y' ;;
+    dtc_transfer_demo)  printf 'dtc: copied 1024B match=Y' ;;
+    cac_accuracy_demo)  printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
+    lvd_monitor_demo)   printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
+    pdg_delay_demo)     printf 'pdg: dll=on ch0=on delay=0x40 cfg=ok' ;;
+    bkup_survival_demo) printf 'bkup: rw=ok survived=Y' ;;
+    wdt_reset_recovery_demo) printf 'wdt: reset_by=watchdog' ;;
+    lpm_idle_demo)      printf 'lpm: wake_count=' ;;
+    lpm_deep_sleep_demo) printf 'lpm_deep: woke' ;;
     esac
 }
 
@@ -230,7 +245,10 @@ if [ "${#apps[@]}" -eq 0 ]; then
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback imu_lsm6dso_demo smbus_demo gpio_input_demo \
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
-        timer_capture_demo)
+        timer_capture_demo drw_fill_demo dtc_transfer_demo \
+        cac_accuracy_demo lvd_monitor_demo pdg_delay_demo \
+        bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo \
+        lpm_idle_demo lpm_deep_sleep_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -429,13 +447,14 @@ done
 # sidebar's SW1 push-button must route to the user-switch model (drive P009 low),
 # NOT the touch panel -- so gpio_input_demo lights LED1 (SW1 -> LED1) while
 # draining zero GT911 touches. The SW1 button face centre sits at composite
-# (1115,224) on the default 1024x600 panel; this gates board_overlay_hit_button +
-# route_click. Only when gpio_input_demo is in the run set (its ELF is built).
+# (1117,386) on the default 1024x600 panel (panel_w 1024 + k_btn_x_dx 18 + half
+# of k_btn_w 150 = 1117; k_btn_y 368 + half of k_btn_h 36 = 386); this gates
+# board_overlay_hit_button + route_click. Only when gpio_input_demo is built.
 case " ${apps[*]} " in
 *" gpio_input_demo "*)
     printf '  %-24s ' "on-screen SW1 click"
     gelf="$(find examples -path '*/gpio_input_demo/build/gpio_input_demo.elf' 2>/dev/null | head -1)"
-    bout="$("$sim" "$gelf" --click 1115 224 2>&1 || true)"
+    bout="$("$sim" "$gelf" --click 1117 386 2>&1 || true)"
     if echo "$bout" | grep -qE "LED1[^]]*ON" && echo "$bout" | grep -qE "touch clicks  : 0 "; then
         echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
     else

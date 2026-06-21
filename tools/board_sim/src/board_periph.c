@@ -55,6 +55,7 @@ typedef enum : uint32_t {
   k_ielsr_iels_mask = 0x000003FFU, /**< IELS event-select field [9:0].    */
   k_ielsr_ir_bit    = 16U,         /**< IR interrupt status flag (RW1C).  */
   k_ielsr_ir_mask   = 0x00010000U, /**< IR bit mask.                      */
+  k_ielsr_dtce_mask = 0x01000000U, /**< DTCE: DTC activation enable [24]. */
 } ielsr_field_t;
 
 /** @brief Cortex-M NVIC register bases (PPB, read straight from memory). */
@@ -256,6 +257,18 @@ void board_periph_icu_raise_event(uc_engine* uc, uint16_t event)
     }
     return; /* one IELSR slot owns a given event */
   }
+}
+
+uint32_t board_periph_icu_dtc_slot(uint16_t event)
+{
+  for (uint32_t slot = 0U; slot < (uint32_t)k_icu_ielsr_cnt; slot++) {
+    const bool links = (s_ielsr[slot] & (uint32_t)k_ielsr_iels_mask) == (uint32_t)event;
+    const bool dtce  = (s_ielsr[slot] & (uint32_t)k_ielsr_dtce_mask) != 0U;
+    if (links && dtce) {
+      return slot;
+    }
+  }
+  return (uint32_t)k_icu_ielsr_cnt;
 }
 
 /** @brief Index of the IELSR slot owning @p addr, or k_icu_ielsr_cnt if none. */

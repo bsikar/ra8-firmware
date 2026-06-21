@@ -73,6 +73,57 @@ typedef enum : uint8_t {
 void board_periph_init(bool trace);
 
 /**
+ * @brief Record the cause of a warm reboot in the sticky RSTSRn flags.
+ *
+ * @details Called by the board_sim reboot path (main.c) just before it
+ * re-enters the firmware from the reset vector, so the next boot reads the
+ * reset cause it expects. For a power-on reboot, leaves RSTSR0.PORF set and
+ * asserts nothing else. For any other reset, clears PORF and latches the
+ * specific cause in RSTSR1: SWRF (software reset / AIRCR.SYSRESETREQ), WDTRF
+ * (watchdog-0 reset), or IWDTRF (independent-watchdog reset). The reset block's
+ * reset hook preserves these flags across the warm reboot. Exactly one of the
+ * four booleans should be true for a well-formed reset cause.
+ *
+ * @param[in] power_on true for a power-on / cold reboot (RSTSR0.PORF).
+ * @param[in] software true to latch RSTSR1.SWRF (software reset).
+ * @param[in] watchdog true to latch RSTSR1.WDTRF (watchdog-0 reset).
+ * @param[in] iwdt     true to latch RSTSR1.IWDTRF (independent-watchdog reset).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_periph_reset_set_cause(bool power_on, bool software, bool watchdog, bool iwdt);
+
+/**
+ * @brief Request a warm reboot from a peripheral model (e.g. the watchdog).
+ *
+ * @details A peripheral block cannot perform the reboot itself (the run loop in
+ * main.c owns that), so it records a request here and the run loop polls
+ * ::board_periph_reset_take_request once per chunk. Used by the WDT model when
+ * its down-counter underflows in reset mode. Exactly one of the flags should be
+ * true.
+ *
+ * @param[in] watchdog true for a watchdog-0 reset (RSTSR1.WDTRF).
+ * @param[in] iwdt     true for an independent-watchdog reset (RSTSR1.IWDTRF).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_periph_reset_request_reboot(bool watchdog, bool iwdt);
+
+/**
+ * @brief Consume a pending peripheral reboot request, if any (run-loop side).
+ *
+ * @details Polled by the run loop each chunk. If a peripheral requested a warm
+ * reboot (::board_periph_reset_request_reboot), reports which cause and clears
+ * the request so it fires once.
+ *
+ * @param[out] out_watchdog Set true if the request was a watchdog-0 reset.
+ * @param[out] out_iwdt     Set true if the request was an independent-WDT reset.
+ * @return true if a request was pending (and consumed); false otherwise.
+ * @since 0.1.0
+ */
+bool board_periph_reset_take_request(bool* out_watchdog, bool* out_iwdt);
+
+/**
  * @brief Wire a host sink that receives every byte the firmware transmits.
  *
  * @details
@@ -242,6 +293,60 @@ uint16_t board_periph_led_color_rgb565(board_led_id_t led);
  * @since 0.1.0
  */
 const char* board_periph_uart_last_line(void);
+
+/**
+ * @brief Number of completed console lines retained in the scrollback ring.
+ *
+ * @details The SCI_B TX path keeps the most recent lines (capped at the ring
+ * depth) so the board view can render a scrolling console instead of only the
+ * single last line. This is how many ::board_periph_uart_log_line indices are
+ * currently valid (0 before the first line completes).
+ *
+ * @return Count of retained lines, in [0, ring depth].
+ * @since 0.1.0
+ */
+uint32_t board_periph_uart_log_count(void);
+
+/**
+ * @brief Total console lines ever completed (monotonic, never saturates).
+ *
+ * @details Unlike ::board_periph_uart_log_count (which caps at the scrollback
+ * ring depth), this counts every line the firmware has finished since reset.
+ * The board view uses the delta between frames to hold an absolute scrollback
+ * position when autoscroll is paused -- as new lines arrive, the view's "lines
+ * back from newest" offset is advanced by the same delta so the reader's
+ * current lines stay put (Arduino Serial Monitor "autoscroll off" behaviour).
+ *
+ * @return Count of completed lines since reset (monotonic).
+ * @since 0.1.0
+ */
+uint32_t board_periph_uart_log_total(void);
+
+/**
+ * @brief Fetch a retained console line by age (0 = newest).
+ *
+ * @details Indexes the console scrollback ring from the most recent completed
+ * line backwards: @p back = 0 is the newest line, 1 the line before it, and so
+ * on up to ::board_periph_uart_log_count - 1. Older lines have aged out of the
+ * ring. The returned pointer is static storage valid until the next TX byte.
+ *
+ * @param[in] back Age of the wanted line (0 = newest).
+ * @return NUL-terminated line, or NULL when @p back is past the retained depth.
+ * @since 0.1.0
+ */
+const char* board_periph_uart_log_line(uint32_t back);
+
+/**
+ * @brief Total bytes the firmware has transmitted over all SCI channels.
+ *
+ * @details Sum of every modelled SCI channel's TX byte counter -- a coarse
+ * "how chatty is this firmware" figure the board view shows beside the console
+ * panel. Counts raw TDR-write bytes (including CR/LF), not completed lines.
+ *
+ * @return Total SCI TX byte count since reset.
+ * @since 0.1.0
+ */
+uint32_t board_periph_uart_tx_total(void);
 
 /**
  * @brief Number of times a given NVIC line was taken in this run.

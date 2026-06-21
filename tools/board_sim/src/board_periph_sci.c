@@ -141,6 +141,20 @@ static char     s_uart_last[k_uart_line_cap]; /**< Last completed TX line.    */
 static char     s_uart_pend[k_uart_line_cap]; /**< Line being accumulated.    */
 static uint32_t s_uart_pend_len;              /**< Chars buffered in s_uart_pend. */
 
+/** @brief Console scrollback depth (recent completed lines kept for the view). */
+typedef enum : uint32_t {
+  k_uart_log_lines = 64U, /**< Recent TX lines retained for the board view. */
+} board_sci_log_t;
+
+/* Ring of the last k_uart_log_lines completed console lines, so the board view
+ * can show a scrolling console rather than only the single most-recent line.
+ * s_uart_log_count saturates at the ring depth; s_uart_log_head is the next
+ * write slot (one past the newest line). */
+static char     s_uart_log[k_uart_log_lines][k_uart_line_cap]; /**< Scrollback ring. */
+static uint32_t s_uart_log_head;  /**< Next write slot in the ring.            */
+static uint32_t s_uart_log_count; /**< Lines held (saturates at ring depth).   */
+static uint32_t s_uart_log_total; /**< Lines ever completed (monotonic).       */
+
 void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte))
 {
   s_sci_tx_sink = sink;
@@ -175,6 +189,36 @@ void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len
 const char* board_periph_uart_last_line(void)
 {
   return s_uart_last;
+}
+
+uint32_t board_periph_uart_log_count(void)
+{
+  return s_uart_log_count;
+}
+
+uint32_t board_periph_uart_log_total(void)
+{
+  return s_uart_log_total;
+}
+
+uint32_t board_periph_uart_tx_total(void)
+{
+  uint32_t total = 0U;
+  for (uint32_t ch = 0U; ch < (uint32_t)k_sci_count; ch++) {
+    total += s_sci[ch].transmitted;
+  }
+  return total;
+}
+
+const char* board_periph_uart_log_line(uint32_t back)
+{
+  if (back >= s_uart_log_count) {
+    return nullptr; /* Older than the retained history. */
+  }
+  /* back = 0 is the newest line; head points one past the newest. */
+  const uint32_t idx =
+    (s_uart_log_head + (uint32_t)k_uart_log_lines - 1U - back) % (uint32_t)k_uart_log_lines;
+  return s_uart_log[idx];
 }
 
 /** @brief True iff the channel has a queued, unread host RX byte. */
@@ -245,7 +289,18 @@ static void sci_capture_tx_line(uint8_t byte)
       s_uart_last[i] = s_uart_pend[i];
     }
     s_uart_last[s_uart_pend_len] = '\0';
-    s_uart_pend_len              = 0U;
+    /* Push the completed line into the scrollback ring for the board view. */
+    char* slot = s_uart_log[s_uart_log_head];
+    for (uint32_t i = 0U; i < s_uart_pend_len; i++) {
+      slot[i] = s_uart_pend[i];
+    }
+    slot[s_uart_pend_len] = '\0';
+    s_uart_log_head       = (s_uart_log_head + 1U) % (uint32_t)k_uart_log_lines;
+    if (s_uart_log_count < (uint32_t)k_uart_log_lines) {
+      s_uart_log_count++;
+    }
+    s_uart_log_total++;
+    s_uart_pend_len = 0U;
     return;
   }
   if ((byte != (uint8_t)'\r') && (s_uart_pend_len < (uint32_t)(k_uart_line_cap - 1U))) {

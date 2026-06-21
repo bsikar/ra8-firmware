@@ -95,33 +95,35 @@ typedef enum : uint32_t {
  * below polls/edits these words to model what real M-profile hardware would do
  * with the NVIC that Unicorn does not implement. */
 typedef enum : uint64_t {
-  k_syst_csr       = 0xE000E010UL, /**< SysTick control/status (SYST_CSR).   */
-  k_syst_csr_run   = 0x3UL,        /**< ENABLE | TICKINT both set.           */
-  k_scb_icsr       = 0xE000ED04UL, /**< Interrupt control/state (ICSR).      */
-  k_scb_vtor       = 0xE000ED08UL, /**< Vector table offset register.        */
-  k_scb_shpr2      = 0xE000ED1CUL, /**< System handler priority 2 (SVC=b3).  */
-  k_scb_shpr3      = 0xE000ED20UL, /**< System handler priority 3 (PSV/SYT). */
-  k_mpu_type       = 0xE000ED90UL, /**< MPU_TYPE (DREGION in bits 15:8).     */
-  k_mpu_type_seed  = 0x00000800UL, /**< 8 data regions (matches the M85 MPU).*/
-  k_mpu_ctrl       = 0xE000ED94UL, /**< MPU_CTRL (ENABLE in bit 0).          */
-  k_mpu_rnr        = 0xE000ED98UL, /**< MPU_RNR (region number select).      */
-  k_mpu_rbar       = 0xE000ED9CUL, /**< MPU_RBAR (BASE[31:5]|SH|AP[2:1]|XN). */
-  k_mpu_rlar       = 0xE000EDA0UL, /**< MPU_RLAR (LIMIT[31:5]|AttrIdx|EN).   */
-  k_scb_cfsr       = 0xE000ED28UL, /**< Config Fault Status (MMFSR low byte).*/
-  k_scb_mmfar      = 0xE000ED34UL, /**< MemManage Fault Address Register.    */
-  k_icsr_pendsvset = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).  */
-  k_icsr_pendstset = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick). */
-  k_exc_memmanage  = 4UL,          /**< MemManage exception / vector index.   */
-  k_exc_svcall     = 11UL,         /**< SVCall exception / vector index.      */
-  k_exc_pendsv     = 14UL,         /**< PendSV exception / vector index.      */
-  k_exc_systick    = 15UL,         /**< SysTick exception / vector index.     */
-  k_nvic_ipr_base  = 0xE000E400UL, /**< NVIC IPR priority bytes (one per IRQ).*/
-  k_nvic_ispr_base = 0xE000E200UL, /**< NVIC ISPR set-pending (per-IRQ bit).  */
-  k_nvic_iser_base = 0xE000E100UL, /**< NVIC ISER set-enable array base.      */
-  k_nvic_icer_base = 0xE000E180UL, /**< NVIC ICER clear-enable array base.    */
-  k_nvic_en_words  = 8UL,          /**< ISER/ICER words modelled (256 lines). */
-  k_nvic_en_span   = 8UL * 4UL,    /**< Byte span of one set/clear array.     */
-  k_exc_irq_vec0   = 16UL,         /**< Vector index of IRQ0 (16 + IRQn).     */
+  k_syst_csr          = 0xE000E010UL, /**< SysTick control/status (SYST_CSR).   */
+  k_syst_csr_run      = 0x3UL,        /**< ENABLE | TICKINT both set.           */
+  k_scb_icsr          = 0xE000ED04UL, /**< Interrupt control/state (ICSR).      */
+  k_scb_vtor          = 0xE000ED08UL, /**< Vector table offset register.        */
+  k_scb_aircr         = 0xE000ED0CUL, /**< App interrupt/reset control (AIRCR).  */
+  k_aircr_sysresetreq = 2UL,          /**< AIRCR.SYSRESETREQ bit (request reset).*/
+  k_scb_shpr2         = 0xE000ED1CUL, /**< System handler priority 2 (SVC=b3).  */
+  k_scb_shpr3         = 0xE000ED20UL, /**< System handler priority 3 (PSV/SYT). */
+  k_mpu_type          = 0xE000ED90UL, /**< MPU_TYPE (DREGION in bits 15:8).     */
+  k_mpu_type_seed     = 0x00000800UL, /**< 8 data regions (matches the M85 MPU).*/
+  k_mpu_ctrl          = 0xE000ED94UL, /**< MPU_CTRL (ENABLE in bit 0).          */
+  k_mpu_rnr           = 0xE000ED98UL, /**< MPU_RNR (region number select).      */
+  k_mpu_rbar          = 0xE000ED9CUL, /**< MPU_RBAR (BASE[31:5]|SH|AP[2:1]|XN). */
+  k_mpu_rlar          = 0xE000EDA0UL, /**< MPU_RLAR (LIMIT[31:5]|AttrIdx|EN).   */
+  k_scb_cfsr          = 0xE000ED28UL, /**< Config Fault Status (MMFSR low byte).*/
+  k_scb_mmfar         = 0xE000ED34UL, /**< MemManage Fault Address Register.    */
+  k_icsr_pendsvset    = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).  */
+  k_icsr_pendstset    = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick). */
+  k_exc_memmanage     = 4UL,          /**< MemManage exception / vector index.   */
+  k_exc_svcall        = 11UL,         /**< SVCall exception / vector index.      */
+  k_exc_pendsv        = 14UL,         /**< PendSV exception / vector index.      */
+  k_exc_systick       = 15UL,         /**< SysTick exception / vector index.     */
+  k_nvic_ipr_base     = 0xE000E400UL, /**< NVIC IPR priority bytes (one per IRQ).*/
+  k_nvic_ispr_base    = 0xE000E200UL, /**< NVIC ISPR set-pending (per-IRQ bit).  */
+  k_nvic_iser_base    = 0xE000E100UL, /**< NVIC ISER set-enable array base.      */
+  k_nvic_icer_base    = 0xE000E180UL, /**< NVIC ICER clear-enable array base.    */
+  k_nvic_en_words     = 8UL,          /**< ISER/ICER words modelled (256 lines). */
+  k_nvic_en_span      = 8UL * 4UL,    /**< Byte span of one set/clear array.     */
+  k_exc_irq_vec0      = 16UL,         /**< Vector index of IRQ0 (16 + IRQn).     */
 } cortexm_scs_t;
 
 /* Armv7E-M / Armv8-M exception model constants (the part Unicorn's Cortex-M33
@@ -259,6 +261,8 @@ typedef enum : uint32_t {
   k_view_present_every = 16U,      /**< Present the frame every Nth chunk.      */
   k_view_max_chunks    = 4000000U, /**< Cap in --view; closing the window ends. */
   k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.    */
+  k_uart_log_max       = 64U,      /**< Console ring depth (mirrors SCI model). */
+  k_reboot_settle      = 1500U,    /**< Chunks to run before a scheduled --reboot.*/
   /* --record settings. One outer chunk advances SysTick once (~1 ms of emulated
    * time at the firmware's 1 kHz tick), so ~1000 chunks == one emulated second.
    * Recording dumps a frame every k_record_every chunks for k_record_fps fps. */
@@ -301,6 +305,22 @@ static uint32_t s_mmio_n;
 static uint32_t s_mmio_reads;
 static uint32_t s_mmio_writes;
 static uint32_t s_mmio_toggle;
+
+/* Run-state telemetry the board view shows (updated by the run loop each
+ * present): the current PC, the emulation-chunk counter, and whether the run
+ * loop is still live (set false once the run parks / faults / exits). */
+static uint32_t s_view_pc;
+static uint32_t s_view_chunks;
+static bool     s_view_running = true;
+/* Console scrollback state, Arduino-Serial-Monitor style. s_view_scroll is the
+ * offset in lines back from the newest line (0 = the live tail). When
+ * s_view_autoscroll is true the view follows the tail (offset pinned to 0);
+ * scrolling up pauses autoscroll and the view holds its ABSOLUTE lines as new
+ * output arrives (the offset is advanced by each frame's new-line delta, tracked
+ * via s_view_log_seen). Scrolling back down to the tail re-enables autoscroll. */
+static uint32_t s_view_scroll;
+static bool     s_view_autoscroll = true;
+static uint32_t s_view_log_seen;
 static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache.*/
 static int      s_mmio_run_slot = -1; /**< Slot of the current read run.      */
 static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.    */
@@ -323,6 +343,7 @@ static bool     s_systick_pending;           /**< SysTick exception is pended.  
 static bool     s_pendsv_stop;               /**< Chunk ended on a PENDSVSET.   */
 static bool     s_bkpt_hit;                  /**< Firmware executed a BKPT.     */
 static uint32_t s_bkpt_pc;                   /**< PC of the BKPT that halted.   */
+static bool     s_reboot_request;            /**< AIRCR.SYSRESETREQ -> warm reboot.*/
 
 /**
  * @enum mpu_field_t
@@ -1335,6 +1356,41 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
    * execution / idle spin). See the run loop's inner dispatch. */
   s_pendsv_stop = true;
   (void)uc_emu_stop(uc);
+}
+
+/**
+ * @brief UC_HOOK_MEM_WRITE handler for SCB AIRCR -- request a warm reboot.
+ *
+ * @details
+ * Writing AIRCR.SYSRESETREQ (with the mandatory 0x05FA write key in the upper
+ * half-word) asks the chip to reset on hardware. The emulator honours it as a
+ * warm reboot: this handler records the request and stops the chunk, and the
+ * run loop's reboot wrapper then re-runs the firmware from its reset vector
+ * (latching RSTSR1.SWRF so the next boot reads a software-reset cause). Without
+ * this, ra_reset_software_reset would write AIRCR and spin forever waiting for a
+ * reset that never came.
+ *
+ * @param[in,out] uc    Unicorn engine (stopped to end the chunk).
+ * @param[in]     type  Unused memory-event type.
+ * @param[in]     addr  Observed AIRCR address (unused).
+ * @param[in]     size  Access width (unused).
+ * @param[in]     value Value written to AIRCR.
+ * @param[in]     user  Unused hook context.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+static void
+on_aircr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
+{
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
+  if (((uint32_t)value & (1U << (uint32_t)k_aircr_sysresetreq)) == 0U) {
+    return; /* a non-reset AIRCR write (e.g. priority grouping) */
+  }
+  s_reboot_request = true;
+  (void)uc_emu_stop(uc); /* end the chunk; the run loop performs the reboot */
 }
 
 /**
@@ -3121,6 +3177,51 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw2_pin);
   st->app_name    = app_name;
   board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
+  /* Console window: copy up to k_overlay_console_rows lines from the firmware's
+   * scrollback ring, starting s_view_scroll lines back from the newest, so the
+   * mouse-wheel can page through history. console[0] is the newest visible line
+   * (= ring line s_view_scroll). */
+  const uint32_t avail = board_periph_uart_log_count();
+  const uint32_t total = board_periph_uart_log_total();
+  if (s_view_autoscroll) {
+    s_view_scroll = 0U; /* follow the live tail */
+  } else if (total > s_view_log_seen) {
+    /* Paused: new lines pushed the tail forward, so advance the back-offset by
+     * the same amount to keep the reader's current (absolute) lines on screen.
+     * Capped at the ring depth -- lines older than the ring have aged out. */
+    const uint32_t delta = total - s_view_log_seen;
+    s_view_scroll += delta;
+    if (s_view_scroll > (uint32_t)k_uart_log_max) {
+      s_view_scroll = (uint32_t)k_uart_log_max;
+    }
+  }
+  s_view_log_seen = total;
+  const uint32_t max_scroll =
+    (avail > (uint32_t)k_overlay_console_rows) ? (avail - (uint32_t)k_overlay_console_rows) : 0U;
+  if (s_view_scroll > max_scroll) {
+    s_view_scroll = max_scroll; /* re-clamp if history shrank or is shallow */
+  }
+  const uint32_t scroll = s_view_scroll;
+  uint32_t       rows   = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_overlay_console_rows; i++) {
+    const char* line = board_periph_uart_log_line(scroll + i);
+    if (line == nullptr) {
+      break;
+    }
+    (void)snprintf(st->console[i], (size_t)k_overlay_line_cap, "%s", line);
+    rows++;
+  }
+  st->console_count      = rows;
+  st->console_scroll     = scroll;
+  st->console_total      = avail;
+  st->console_autoscroll = s_view_autoscroll;
+  /* Run-state telemetry (set by the run loop before each present). */
+  st->pc            = s_view_pc;
+  st->chunks        = s_view_chunks;
+  st->running       = s_view_running;
+  st->mmio_reads    = s_mmio_reads;
+  st->mmio_writes   = s_mmio_writes;
+  st->uart_tx_total = board_periph_uart_tx_total();
 }
 
 /**
@@ -3239,6 +3340,15 @@ static board_overlay_btn_t route_click(uint16_t cx,
                                        uint32_t rotate_deg)
 {
   const board_overlay_btn_t btn = board_overlay_hit_button(cx, cy, disp_w);
+  if (btn == k_board_overlay_btn_console) {
+    /* Toggle the console autoscroll, Arduino-Serial-Monitor style: pause it
+     * while reading, or click again to jump back to the live tail. */
+    s_view_autoscroll = !s_view_autoscroll;
+    if (s_view_autoscroll) {
+      s_view_scroll = 0U; /* resume following the newest line */
+    }
+    return btn;
+  }
   if (btn != k_board_overlay_btn_none) {
     toggle_switch(btn);
     return btn;
@@ -3270,6 +3380,67 @@ static void build_composite(uc_engine*  uc,
   board_status_t st = {};
   fill_status(&st, app_name);
   board_overlay_compose(composite, shown, disp_w, disp_h, &st);
+}
+
+/**
+ * @brief Warm-reboot the firmware: re-run from the reset vector in place.
+ *
+ * @details
+ * Mirrors a Cortex-M reset without tearing down the Unicorn engine. Restores the
+ * code image and the .data initial values by re-writing the ELF's PT_LOAD
+ * segments (the firmware's own Reset_Handler then re-zeroes .bss and re-copies
+ * .data), re-reads SP/PC from the vector table, resets the peripheral models
+ * (the reset-cause RSTSRn and the VBATT backup domain deliberately survive their
+ * reset hooks, so the reboot cause and battery-backed state persist), and clears
+ * the host-side exception / scheduler bookkeeping so the next boot starts clean.
+ * The installed Unicorn hooks persist across this, so they are NOT re-added, and
+ * one-shot CLI input (--keys / --input / --usb-in) is NOT re-injected.
+ *
+ * @param[in,out] uc    Unicorn engine to reboot (kept alive).
+ * @param[in]     elf   The firmware ELF image bytes (re-loaded).
+ * @param[in]     len   ELF image length in bytes.
+ * @param[in]     trace Whether --trace is active (forwarded to board_periph_init).
+ * @return The reset-vector PC to resume the run loop from (Thumb bit set).
+ * @since 0.1.0
+ */
+static uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool trace)
+{
+  /* 1. Restore the code + .data initial image from the ELF PT_LOAD segments.
+   * The same elf/len loaded successfully at startup, so a failure here means the
+   * engine's memory writes started failing -- report and return PC=0 so the
+   * caller ends the run rather than execute a stale image. */
+  if (load_elf(uc, elf, len) != 0) {
+    (void)fprintf(stderr, "board_sim: warm_reboot: load_elf failed -- ending run\n");
+    return 0U;
+  }
+
+  /* 2. Reset the peripheral + network models (RSTSRn / VBATT backup survive). */
+  board_periph_init(trace);
+  board_net_init(trace);
+
+  /* 3. Clear host-side exception / scheduler bookkeeping. */
+  s_exc_depth       = 0U;
+  s_systick_pending = true;
+  s_bkpt_hit        = false;
+  s_exc_return_hit  = false;
+  s_pendsv_stop     = false;
+  s_mpu_fault       = false;
+  s_systick_fires   = 0U;
+  s_pendsv_takes    = 0U;
+  s_svc_takes       = 0U;
+
+  /* 4. Re-read the Cortex-M reset vector (SP = vectors[0], PC = vectors[1]). */
+  uint32_t sp = 0U;
+  uint32_t pc = 0U;
+  (void)uc_mem_read(uc, k_regions[1].base + 0U, &sp, 4);
+  (void)uc_mem_read(uc, k_regions[1].base + 4U, &pc, 4);
+  pc |= 1U; /* Thumb */
+  uint32_t xpsr = (uint32_t)k_xpsr_t_bit;
+  (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
+  (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
+  (void)fprintf(stderr, "board_sim: warm reboot -- reset SP=0x%08X PC=0x%08X\n", sp, pc);
+  return pc;
 }
 
 typedef enum : uint32_t {
@@ -3545,8 +3716,8 @@ int main(int argc, char** argv)
       stderr,
       "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
       " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
-      " [--usb-in <str>] [--button <1|2>] [--dump-sym <name>] [--trace-sym <name>]"
-      " [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>]\n"
+      " [--usb-in <str>] [--button <1|2>] [--reboot <N>] [--dump-sym <name>]"
+      " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>]\n"
       "  --view          open a macOS window: live board view; click panel"
       " (touch) / on-screen SW1/SW2, type -> UART\n"
       "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -3560,6 +3731,8 @@ int main(int argc, char** argv)
       "  --keys <str>    type <str> via the window-key path -> console UART RX\n"
       "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
       "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
+      "  --reboot <N>    warm-reboot N times (re-run from reset vector; VBATT-backup\n"
+      "                  + reset-cause survive) to exercise reset-survival apps\n"
       "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
       "  --sd-new <N[k|m|g][:fat16|fat32]>  blank FAT card of N MiB (k/m/g unit; e.g. 30g)\n"
       "  --save-sd <out> after the run, dump the SD card image (with firmware writes)\n"
@@ -3590,6 +3763,7 @@ int main(int argc, char** argv)
   int         click_x                          = -1;
   int         click_y                          = -1;
   int         button_press                     = 0; /* 1=SW1, 2=SW2, 0=none. */
+  int         reboot_count                     = 0; /* --reboot N: warm reboots. */
   uint16_t    view_w                           = (uint16_t)k_view_default_w;
   uint16_t    view_h                           = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
@@ -3681,6 +3855,9 @@ int main(int argc, char** argv)
       i += 2;
     } else if ((strncmp(argv[i], "--button", sizeof("--button")) == 0) && ((i + 1) < argc)) {
       button_press = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
+      i += 1;
+    } else if ((strncmp(argv[i], "--reboot", sizeof("--reboot")) == 0) && ((i + 1) < argc)) {
+      reboot_count = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
       i += 1;
     } else if ((strncmp(argv[i], "--size", sizeof("--size")) == 0) && ((i + 1) < argc)) {
       char*      end = nullptr;
@@ -3887,6 +4064,7 @@ int main(int argc, char** argv)
   uc_hook h_unmapped;
   uc_hook h_intr;
   uc_hook h_icsr;
+  uc_hook h_aircr;
   (void)uc_hook_add(uc, &h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
   (void)uc_hook_add(uc, &h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
   /* SVCall / exception-return: Unicorn raises UC_HOOK_INTR on a Thumb `svc` and
@@ -3902,6 +4080,15 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_scb_icsr,
                     (uint64_t)k_scb_icsr + 3U);
+  /* Watch AIRCR so a SYSRESETREQ store triggers a warm reboot (on_aircr_write).
+   * AIRCR is in PPB RAM, so the write-hook is the only way to observe it. */
+  (void)uc_hook_add(uc,
+                    &h_aircr,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_aircr_write,
+                    nullptr,
+                    (uint64_t)k_scb_aircr,
+                    (uint64_t)k_scb_aircr + 3U);
   /* NVIC ISER / ICER are set-enable / clear-enable: fold each written bit into
    * board_periph's enable shadow so enabling several lines does not clobber the
    * earlier ones (see on_nvic_en_write). The PPB is RAM, so this hook is the
@@ -3957,10 +4144,11 @@ int main(int argc, char** argv)
    * Inert for firmware without any (no sites -> no hooks). */
   long_shift_seam_install(uc, elf, elf_len);
   /* Spin up the cpu1 engine for dual-core firmware (shares SRAM with cpu0).
-   * NULL for single-core apps -- cpu0 then runs exactly as before. Must run
-   * before free(elf): it loads cpu1's image from the same buffer. */
+   * NULL for single-core apps -- cpu0 then runs exactly as before. The elf
+   * buffer is kept alive for the whole run (freed after the run loop) because a
+   * warm reboot re-loads its PT_LOAD segments from it; cpu1_engine_init also
+   * reads cpu1's image from it. */
   s_cpu1_uc = cpu1_engine_init(elf, elf_len);
-  free(elf);
 
   /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
    * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
@@ -4104,20 +4292,21 @@ int main(int argc, char** argv)
   if ((stop_on != nullptr) && ((stop_on[0] == '\0') || (view != nullptr))) {
     stop_on = nullptr;
   }
-  uint64_t      idle_sig_prev = 0U;
-  uint32_t      idle_run      = 0U;
-  bool          idle_stopped  = false;
-  uint32_t      usb_stop_run  = 0U;
-  uint32_t      usbh_stop_run = 0U;
-  bool          usb_stopped   = false;
-  uint32_t      rec_frames    = 0U; /* frames written when --record is active. */
-  const clock_t t0            = clock();
-  uc_err        err           = UC_ERR_OK;
-  uint32_t      run_pc        = pc;
-  uint32_t      chunks        = 0U;
-  bool          timed_out     = false;
-  bool          closed        = false;
-  uint32_t      settle_left   = 0U; /* >0 once the click landed: chunks to drain. */
+  uint64_t      idle_sig_prev   = 0U;
+  uint32_t      idle_run        = 0U;
+  bool          idle_stopped    = false;
+  uint32_t      usb_stop_run    = 0U;
+  uint32_t      usbh_stop_run   = 0U;
+  bool          usb_stopped     = false;
+  uint32_t      rec_frames      = 0U; /* frames written when --record is active. */
+  const clock_t t0              = clock();
+  uc_err        err             = UC_ERR_OK;
+  uint32_t      run_pc          = pc;
+  uint32_t      chunks          = 0U;
+  bool          timed_out       = false;
+  bool          closed          = false;
+  uint32_t      settle_left     = 0U; /* >0 once the click landed: chunks to drain. */
+  uint32_t      last_boot_chunk = 0U; /* chunk of the last (re)boot for --reboot. */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
   const board_overlay_btn_t click_btn =
@@ -4125,6 +4314,38 @@ int main(int argc, char** argv)
                : k_board_overlay_btn_none;
   bool button_fired = false;
   for (; chunks < max_chunks; chunks++) {
+    /* Publish run telemetry for the board view (PC + chunk counter). */
+    s_view_pc     = run_pc;
+    s_view_chunks = chunks;
+
+    /* --reboot N: after each boot runs a settle window (enough to exercise its
+     * first-boot path -- e.g. plant a backup-RAM sentinel), force a power-on warm
+     * reboot. The reset-retained models (VBATT backup) survive, so an app proves
+     * reset-survival across the reboot. This is a clean power-on (PORF stays). */
+    if ((reboot_count > 0) && ((chunks - last_boot_chunk) >= (uint32_t)k_reboot_settle)) {
+      reboot_count--;
+      board_periph_reset_set_cause(true, false, false, false); /* power-on reboot */
+      run_pc = warm_reboot(uc, elf, elf_len, want_trace);
+      if (run_pc == 0U) {
+        break; /* reboot failed to reload the image -- end the run */
+      }
+      last_boot_chunk = chunks;
+      continue;
+    }
+    /* A peripheral (the watchdog) may have requested a reset on its tick: latch
+     * the watchdog cause and warm-reboot so the next boot reads reset_by=wdt. */
+    bool wdt_rst  = false;
+    bool iwdt_rst = false;
+    if (board_periph_reset_take_request(&wdt_rst, &iwdt_rst)) {
+      board_periph_reset_set_cause(false, false, wdt_rst, iwdt_rst);
+      run_pc = warm_reboot(uc, elf, elf_len, want_trace);
+      if (run_pc == 0U) {
+        break; /* reboot failed to reload the image -- end the run */
+      }
+      last_boot_chunk = chunks;
+      continue;
+    }
+
     /* Each outer chunk is one SysTick period: arm the periodic tick so the
      * boundary (or a tail-chain) takes it once interrupts permit. */
     s_systick_pending = true;
@@ -4178,6 +4399,9 @@ int main(int argc, char** argv)
       s_pendsv_stop = false; /* set by on_icsr_write iff this run ends on PENDSVSET */
       err           = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      if (s_reboot_request) {
+        break; /* AIRCR.SYSRESETREQ -- the outer wrapper performs the reboot. */
+      }
       if (s_bkpt_hit) {
         faulted = true; /* firmware trapped on a BKPT -- end the run, report it. */
         break;
@@ -4229,6 +4453,20 @@ int main(int argc, char** argv)
     }
     if (faulted) {
       break;
+    }
+    /* AIRCR.SYSRESETREQ requested a reset: latch a software-reset cause and warm
+     * reboot the firmware from its reset vector, then keep running. */
+    if (s_reboot_request) {
+      board_periph_reset_set_cause(false, true, false, false); /* software reset */
+      run_pc = warm_reboot(uc, elf, elf_len, want_trace);
+      /* Cleared after the reboot (the engine is idle during warm_reboot, so no
+       * AIRCR write can be lost here, but clearing last keeps it robust if
+       * warm_reboot ever runs code). */
+      s_reboot_request = false;
+      if (run_pc == 0U) {
+        break; /* reboot failed to reload the image -- end the run */
+      }
+      continue;
     }
 
     /* Dual-core: boot cpu1 on the CPU1ACTCSR release (SP/PC from its vector
@@ -4283,6 +4521,24 @@ int main(int argc, char** argv)
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
         (void)route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
+      }
+      /* Mouse-wheel pages the console scrollback, Arduino-Serial-Monitor style:
+       * scrolling up reveals older lines AND pauses autoscroll (so new output no
+       * longer yanks the view to the bottom); scrolling back down to the tail
+       * re-enables autoscroll. fill_status clamps the offset + holds the absolute
+       * position while paused. */
+      const int32_t notches = board_view_poll_scroll(view);
+      if (notches > 0) {
+        s_view_autoscroll = false; /* user scrolled up -> pause the live follow */
+        s_view_scroll += (uint32_t)notches;
+      } else if (notches < 0) {
+        const uint32_t dec = (uint32_t)(-notches);
+        if (s_view_scroll > dec) {
+          s_view_scroll -= dec;
+        } else {
+          s_view_scroll     = 0U;
+          s_view_autoscroll = true; /* scrolled back to the tail -> resume follow */
+        }
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
         build_composite(uc,
@@ -4375,6 +4631,10 @@ int main(int argc, char** argv)
       }
     }
   }
+
+  /* The run has ended: the board view's final / held frame shows "parked". */
+  s_view_running = false;
+  s_view_pc      = run_pc;
 
   (void)fprintf(stderr,
                 "\nboard_sim: stopped -- %s%s%s%s\n",
@@ -4558,6 +4818,7 @@ int main(int argc, char** argv)
   free(panel_fb);
   free(rot_fb);
   free(composite);
+  free(elf); /* kept alive for the whole run so a warm reboot can re-load it */
   (void)uc_close(uc);
   return 0;
 }

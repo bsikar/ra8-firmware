@@ -88,6 +88,18 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
 }
 
 /**
+ * @brief No-op scroll poll (headless: no window to scroll).
+ *
+ * @param[in] view Always nullptr from board_view_open (unused).
+ * @return Always 0.
+ */
+int32_t board_view_poll_scroll(board_view_t* view)
+{
+  (void)view;
+  return 0;
+}
+
+/**
  * @brief No-op window close (nothing was opened).
  *
  * @param[in] view Always nullptr from board_view_open (unused).
