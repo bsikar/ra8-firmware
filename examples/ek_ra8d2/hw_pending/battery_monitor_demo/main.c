@@ -16,8 +16,12 @@
  *     is 0 while charging (positive rate) and 1 while discharging (negative), so
  *     reading the high byte tells the charge direction.
  *
- * Each second: ``battery: soc=NN% chg=Y/N PASS``. ``g_bat_soc`` / ``g_bat_chg``
- * / ``g_bat_heartbeat`` mirror the result for headless probing.
+ * Each second: ``battery: soc=NN% chg=Y/N PASS``. Each reading is also folded
+ * into the ``ra_batt`` nag policy, which prints a one-shot ``battery: NAG LOW``
+ * (SOC <=20%) or ``battery: NAG CRITICAL`` (SOC <=10%) on the descent into each
+ * band -- edge-triggered with hysteresis, so a steady low battery does not spam.
+ * ``g_bat_soc`` / ``g_bat_chg`` / ``g_bat_nag`` / ``g_bat_heartbeat`` mirror the
+ * result for headless probing.
  *
  * @note **Headless-emulator status.** ``tools/board_sim`` models the MAX17048
  * fuel gauge (``board_periph_i2c.c``): its SOC + CRATE registers are driven by
@@ -34,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra_batt.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -73,13 +78,16 @@ static const ra_port_pin_t k_bm_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c
 /** @brief MikroBUS SDA routed through the Pmod1 I2C side (SDA1). */
 static const ra_port_pin_t k_bm_pin_sda = (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
 
-static const uint8_t k_msg_boot[] = "battery-monitor: boot\r\n";
-static const uint8_t k_msg_fail[] = "battery-monitor: FAIL init\r\n";
-static const uint8_t k_msg_open[] = "battery: FAIL open\r\n";
-static const uint8_t k_msg_nak[]  = "battery: NAK (no fuel gauge)\r\n";
-static const uint8_t k_msg_pre[]  = "battery: soc=";
-static const uint8_t k_msg_pct[]  = "% chg=";
-static const uint8_t k_msg_ok[]   = " PASS\r\n";
+static const uint8_t k_msg_boot[]     = "battery-monitor: boot\r\n";
+static const uint8_t k_msg_fail[]     = "battery-monitor: FAIL init\r\n";
+static const uint8_t k_msg_open[]     = "battery: FAIL open\r\n";
+static const uint8_t k_msg_nak[]      = "battery: NAK (no fuel gauge)\r\n";
+static const uint8_t k_msg_pre[]      = "battery: soc=";
+static const uint8_t k_msg_pct[]      = "% chg=";
+static const uint8_t k_msg_ok[]       = " PASS\r\n";
+static const uint8_t k_msg_nag_low[]  = "battery: NAG LOW soc=";
+static const uint8_t k_msg_nag_crit[] = "battery: NAG CRITICAL soc=";
+static const uint8_t k_msg_nag_tail[] = "%\r\n";
 
 /**
  * @var g_bat_soc
@@ -96,6 +104,14 @@ volatile uint32_t g_bat_soc = 0U;
  * @since 0.1.0
  */
 volatile uint32_t g_bat_chg = 0U;
+
+/**
+ * @var g_bat_nag
+ * @brief Last raised nag level (::ra_batt_nag_t), 0 when none this poll.
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_bat_nag = 0U;
 
 /**
  * @var g_bat_heartbeat
@@ -138,6 +154,20 @@ static void bm_print_uint(uint32_t value)
   for (uint32_t i = 0U; i < n; i++) {
     bm_print(&buf[n - 1U - i], 1U);
   }
+}
+
+/** @brief Emit the low/critical battery nag line for @p nag at @p soc. */
+static void bm_print_nag(ra_batt_nag_t nag, uint8_t soc)
+{
+  if (nag == k_ra_batt_nag_low) {
+    bm_print(k_msg_nag_low, (uint32_t)sizeof(k_msg_nag_low) - 1U);
+  } else if (nag == k_ra_batt_nag_critical) {
+    bm_print(k_msg_nag_crit, (uint32_t)sizeof(k_msg_nag_crit) - 1U);
+  } else {
+    return;
+  }
+  bm_print_uint((uint32_t)soc);
+  bm_print(k_msg_nag_tail, (uint32_t)sizeof(k_msg_nag_tail) - 1U);
 }
 
 /** @brief Route SCI8 console pins + the MikroBUS IIC SCL/SDA via PFS. */
@@ -228,6 +258,11 @@ int32_t main(void)
     bm_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 
+  ra_batt_monitor_t nag_mon;
+  if (ra_batt_monitor_init(&nag_mon) != k_ra_ok) {
+    bm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  }
+
   while (1) {
     uint8_t soc = 0U;
     uint8_t chg = 0U;
@@ -240,6 +275,14 @@ int32_t main(void)
     bm_print(k_msg_pct, (uint32_t)sizeof(k_msg_pct) - 1U);
     bm_print((chg != 0U) ? (const uint8_t*)"Y" : (const uint8_t*)"N", 1U);
     bm_print(k_msg_ok, (uint32_t)sizeof(k_msg_ok) - 1U);
+
+    /* Fold the reading into the nag policy: a one-shot LOW / CRITICAL line
+     * prints on the descent into each band (edge-triggered, see ra_batt). */
+    ra_batt_nag_t nag = k_ra_batt_nag_none;
+    if (ra_batt_update(&nag_mon, soc, (chg != 0U), &nag) == k_ra_ok) {
+      g_bat_nag = (uint32_t)nag;
+      bm_print_nag(nag, soc);
+    }
 
     ++g_bat_heartbeat;
     ra_delay_ms((uint32_t)k_bm_period_ms);

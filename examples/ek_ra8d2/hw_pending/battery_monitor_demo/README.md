@@ -26,7 +26,28 @@ battery: soc=72% chg=N PASS
 `soc` is the percent (0..100); `chg` is `Y` when charging, `N` on battery. A NAK
 (no fuel gauge fitted) prints `battery: NAK (no fuel gauge)` and halts on a BKPT
 before any PASS line, so the gate is exact. `g_bat_soc` / `g_bat_chg` /
-`g_bat_heartbeat` mirror the result for headless probing.
+`g_bat_nag` / `g_bat_heartbeat` mirror the result for headless probing.
+
+## Low-battery nag
+
+Each reading is folded into the **`ra_batt`** nag policy (`libs/ra_batt`), which
+raises a one-shot warning on the descent into each band:
+
+```
+battery: NAG LOW soc=20%        # SOC fell to <=20%
+battery: NAG CRITICAL soc=10%   # SOC fell to <=10%
+```
+
+The policy is **edge-triggered with hysteresis**: each band warns once, stays
+quiet while the battery sits in the band, and only re-arms after SOC recovers
+past the band threshold by `k_ra_batt_rearm_margin` (3%) or while charging -- so
+a steady or jittering low battery does not spam. Charging suppresses warnings.
+The decision logic is pure (no MMIO), so it is host-unit-tested with full MC/DC
+in `tests/test_ra_batt.c`; this app is the on-target consumer.
+
+In the simulator window you can drag the POWER slider down through 20% and 10%
+to watch each nag fire once in the console, then back up and down to see it
+re-arm.
 
 ## Build + run
 
