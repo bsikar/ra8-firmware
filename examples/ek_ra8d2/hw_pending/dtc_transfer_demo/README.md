@@ -28,13 +28,17 @@ No external hardware required.
 
 ## Why this is in hw_pending
 
-`tools/board_sim` shadows the DTC control window (DTCCR / DTCVBR /
-DTCST / DTCSTS) so the HAL bring-up reads back correctly, but it does
-**not** model the descriptor-table transfer engine
-(`tools/board_sim/src/board_periph_dmac.c`: "no example in the tree
-triggers a DTC"). On the emulator the destination is never written and
-the banner reports `match=N`. The app is therefore staged in
-`hw_pending/` until the copy is confirmed on silicon.
+`tools/board_sim` now models the DTC descriptor-table transfer engine
+(`tools/board_sim/src/board_periph_dtc.c`). The model owns the DTC
+control window (tracking `DTCVBR`) and the ELC `ELSEGR0` software-event
+trigger: when the demo fires ELC software event 0, the model resolves
+the DTCE-enabled `IELSR` slot, reads the Transfer Information block at
+`DTCVBR + slot*4`, decodes the `MR` mode word (unit width + address
+increment modes + block count), and copies the block in emulated memory.
+The destination matches, so the banner reports `match=Y` and the
+`board_sim_smoke.sh` gate keys on it. The app stays in `hw_pending/`
+until the copy is confirmed on silicon (the simulator proves the driver
+/ TI / activation register sequence, not the real DTC engine).
 
 ## Activation path (HUM R01UH1065EJ0130 Rev.1.30)
 

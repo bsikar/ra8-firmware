@@ -27,9 +27,10 @@
  * analyzer / oscilloscope (and a running GPT32_0 PWM source) to measure.
  * ``tools/board_sim`` shadows the PDG control + delay registers, so the
  * *bring-up + delay-program + read-back* path runs and reports
- * ``cfg=ok``, but the actual delay generation cannot be confirmed without
- * silicon + an instrument. This app therefore lives in ``hw_pending/``;
- * see ``README.md`` for the on-scope bench plan.
+ * ``cfg=ok`` (the ``board_sim_smoke.sh`` gate keys on it), but the actual
+ * delay generation cannot be confirmed without silicon + an instrument. This
+ * app therefore lives in ``hw_pending/``; see ``README.md`` for the on-scope
+ * bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

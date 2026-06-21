@@ -28,12 +28,13 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` shadows the PVD
- * control window but does not model the analog voltage comparator, so
- * PVD1SR.MON reads back 0 and the banner reports ``mon=below ok=N`` on the
- * emulator. This app therefore lives in ``hw_pending/`` until it is
- * confirmed on silicon (where a healthy rail yields ``mon=above ok=Y``).
- * See ``README.md`` for the bench plan.
+ * @note **Headless-emulator status.** ``tools/board_sim`` models the PVD
+ * status (``board_periph_lvd.c``): ``PVD1SR.MON`` reads "above threshold" with
+ * ``DET`` clear -- the steady state of a healthy 3.3 V rail -- so the banner
+ * reports ``mon=above ok=Y`` and the ``board_sim_smoke.sh`` gate keys on it.
+ * The app stays in ``hw_pending/`` until confirmed on silicon, where the real
+ * analog comparator (not a synthesised status bit) drives ``MON``. See
+ * ``README.md`` for the bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

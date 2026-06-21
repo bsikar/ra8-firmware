@@ -36,12 +36,14 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` shadows the
- * DTC control window (DTCCR / DTCVBR / DTCST / DTCSTS) but does not
- * model the descriptor-table transfer engine, so on the emulator the
- * destination is never written and the banner reports ``match=N`` --
- * this app therefore lives in ``hw_pending/`` until it is confirmed on
- * silicon. See ``README.md`` for the bench plan.
+ * @note **Headless-emulator status.** ``tools/board_sim`` models the DTC
+ * descriptor-table transfer engine (``board_periph_dtc.c``): the ELC
+ * software-event trigger activates the controller, which reads the TI via
+ * ``DTCVBR`` and copies the block in emulated memory, so the banner reports
+ * ``match=Y`` and the ``board_sim_smoke.sh`` gate keys on it. The app stays in
+ * ``hw_pending/`` until the transfer is confirmed on silicon -- the simulator
+ * proves the driver / TI / activation sequence, not the real DTC. See
+ * ``README.md`` for the bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

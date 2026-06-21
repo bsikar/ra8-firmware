@@ -27,12 +27,15 @@ the reference never ticks and the measurement times out.
 
 ## Why this is in hw_pending
 
-`tools/board_sim` shadows the CAC control registers (the bring-up + limit
-programming read back correctly) but does **not** model the edge counter,
-so `CASTR.MENDF` never asserts and `ra_cac_measure` returns
-`k_ra_err_hw_timeout`. The banner reports `meas=TIMEOUT-or-err ok=N` and
-`g_cac_ok = 0` on the emulator. A real cross-clock measurement can only be
-confirmed on silicon, so this app is staged in `hw_pending/`.
+`tools/board_sim` now models the CAC edge counter
+(`tools/board_sim/src/board_periph_cac.c`). A measurement start
+(`CACR0.CFME = 1`) latches `CASTR.MENDF` and loads `CACNTBR` with the
+midpoint of the firmware's programmed `[CALLVR, CAULVR]` window -- in-band
+by construction -- so `ra_cac_measure` completes with `FERRF` / `OVFF`
+clear, the banner reports `meas=ok ... ok=Y`, and `board_sim_smoke.sh`
+keys on it. The app stays in `hw_pending/` until a real cross-clock
+measurement is confirmed on silicon (the simulator proves the driver
+start / poll / read-back sequence, not the real edge count).
 
 ## Configuration (HUM R01UH1065EJ0130 Rev.1.30, Ch 10 "CAC")
 

@@ -32,14 +32,14 @@ No external hardware required.
 
 ## Why this is in hw_pending
 
-`tools/board_sim` shadows the PVD control window (PVD1CMPCR / PVD1CR0 /
-PVD1CR1 / PVD1SR) so the HAL bring-up reads back correctly, but it does
-**not** model the analog voltage comparator. On the emulator `PVD1SR.MON`
-reads back 0, so the banner reports `mon=below ok=N` and `g_lvd_ok == 0`.
-The configuration path and the status-decode / verdict logic are
-host-tested (`tests/test_app_lvd_monitor_demo.c`); only the live
-`mon=above` reading needs silicon. The app is therefore staged in
-`hw_pending/` until confirmed on the EVM.
+`tools/board_sim` now models the PVD status
+(`tools/board_sim/src/board_periph_lvd.c`): `PVD1SR.MON` reads "above
+threshold" with `DET` clear -- the steady state of a healthy 3.3 V rail --
+so the banner reports `mon=above ok=Y` and `board_sim_smoke.sh` keys on
+it. The configuration path and the status-decode / verdict logic are also
+host-tested (`tests/test_app_lvd_monitor_demo.c`). The app stays in
+`hw_pending/` until confirmed on the EVM, where the real analog comparator
+(not a synthesised status bit) drives `MON`.
 
 ## Configuration (HUM R01UH1065EJ0130 Rev.1.30, Ch 8 "PVD")
 
