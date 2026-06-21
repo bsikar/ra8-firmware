@@ -261,6 +261,10 @@ typedef enum : uint32_t {
   k_view_present_every = 16U,      /**< Present the frame every Nth chunk.      */
   k_view_max_chunks    = 4000000U, /**< Cap in --view; closing the window ends. */
   k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.    */
+  k_view_frame_us      = 16000U,   /**< Min wall-us between live presents (~60 Hz). */
+  k_view_yield_us      = 2000U,    /**< Yield this long when a present is skipped.  */
+  k_us_per_s           = 1000000U, /**< Microseconds per second.                   */
+  k_ns_per_us          = 1000U,    /**< Nanoseconds per microsecond.               */
   k_uart_log_max       = 64U,      /**< Console ring depth (mirrors SCI model). */
   k_reboot_settle      = 1500U,    /**< Chunks to run before a scheduled --reboot.*/
   /* --record settings. One outer chunk advances SysTick once (~1 ms of emulated
@@ -4364,6 +4368,7 @@ int main(int argc, char** argv)
   uint32_t      settle_left     = 0U;    /* >0 once the click landed: chunks to drain. */
   uint32_t      last_boot_chunk = 0U;    /* chunk of the last (re)boot for --reboot. */
   bool          slider_grab     = false; /* true while a press grabbed the battery slider. */
+  uint64_t      last_present_us = 0U;    /* wall-us of the last live --view present.    */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
   const board_overlay_btn_t click_btn =
@@ -4612,17 +4617,32 @@ int main(int argc, char** argv)
         }
       }
       if ((chunks % (uint32_t)k_view_present_every) == 0U) {
-        build_composite(uc,
-                        panel_fb,
-                        rot_fb,
-                        composite,
-                        panel_w,
-                        panel_h,
-                        disp_w,
-                        disp_h,
-                        rotate_deg,
-                        win_title);
-        board_view_present(view, composite, comp_w, comp_h);
+        /* Compositing + uploading the full panel+sidebar frame is the dominant
+         * host cost. The firmware advances far faster than a display needs, so
+         * cap the live present to ~60 Hz wall-clock and yield the CPU when a
+         * present is skipped -- otherwise an idle app (cheap chunks) would spin a
+         * host core redrawing identical frames thousands of times a second, which
+         * reads as window lag for "nothing happening". */
+        struct timespec ts_now = {};
+        (void)clock_gettime(CLOCK_MONOTONIC, &ts_now);
+        const uint64_t now_us = ((uint64_t)ts_now.tv_sec * (uint64_t)k_us_per_s) +
+                                ((uint64_t)ts_now.tv_nsec / (uint64_t)k_ns_per_us);
+        if ((now_us - last_present_us) >= (uint64_t)k_view_frame_us) {
+          build_composite(uc,
+                          panel_fb,
+                          rot_fb,
+                          composite,
+                          panel_w,
+                          panel_h,
+                          disp_w,
+                          disp_h,
+                          rotate_deg,
+                          win_title);
+          board_view_present(view, composite, comp_w, comp_h);
+          last_present_us = now_us;
+        } else {
+          (void)usleep((useconds_t)k_view_yield_us);
+        }
       }
       if (board_view_pump(view)) {
         closed = true;
