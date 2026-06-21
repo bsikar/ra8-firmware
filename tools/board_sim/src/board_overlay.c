@@ -60,6 +60,7 @@ typedef enum : uint32_t {
   k_ovl_btn_up      = 0x3186U, /**< Button face, released.                  */
   k_ovl_btn_down    = 0x05E0U, /**< Button face, pressed (green).           */
   k_ovl_btn_label   = 0xFFFFU, /**< Button caption text.                    */
+  k_ovl_red         = 0xF800U, /**< Red gauge fill (low / critical SOC).    */
   k_ovl_glyph_w     = 5U,      /**< Font glyph width in pixels.             */
   k_ovl_glyph_h     = 7U,      /**< Font glyph height in pixels.            */
   k_ovl_glyph_first = 0x20U,   /**< First glyph in the font table (space).  */
@@ -77,8 +78,8 @@ typedef enum : uint32_t {
  */
 typedef enum : int32_t {
   k_btn_x_dx    = 18,  /**< Button column inset from the sidebar origin.  */
-  k_btn_head_y  = 348, /**< "BUTTONS" heading row.                        */
-  k_btn_y       = 368, /**< Button face top.                              */
+  k_btn_head_y  = 404, /**< "BUTTONS" heading row.                        */
+  k_btn_y       = 424, /**< Button face top.                              */
   k_btn_w       = 150, /**< Button face width.                            */
   k_btn_h       = 36,  /**< Button face height.                           */
   k_btn_gap     = 20,  /**< Horizontal gap between SW1 and SW2.           */
@@ -91,10 +92,33 @@ typedef enum : int32_t {
   k_io_head_y = 250, /**< "I/O" section heading row (clear of the LEDs). */
 } overlay_io_layout_t;
 
+/**
+ * @brief Fixed layout of the POWER section: battery slider + CHG toggle.
+ *
+ * @details ::draw_power, ::board_overlay_hit_button and
+ * ::board_overlay_battery_pct_at all derive their rectangles from these, so the
+ * drawn slider, its click hit-box, and the drag-to-percent map stay in lock-step.
+ * The block sits below the I/O text block (which ends near y 334) and above the
+ * BUTTONS block, so it is on-screen for every panel size.
+ */
+typedef enum : int32_t {
+  k_pwr_x_dx     = 18,  /**< POWER column inset from the sidebar origin.   */
+  k_pwr_head_y   = 344, /**< "POWER" heading row.                          */
+  k_pwr_y        = 364, /**< Battery slider track top.                     */
+  k_pwr_h        = 26,  /**< Slider track height.                          */
+  k_pwr_track_w  = 320, /**< Slider track width (the full drag range).     */
+  k_pwr_chg_off  = 338, /**< CHG toggle x offset from the track origin.    */
+  k_pwr_chg_w    = 126, /**< CHG toggle face width.                        */
+  k_pwr_label_y  = 9,   /**< Caption top inset within a POWER face.        */
+  k_pwr_soc_low  = 20,  /**< SOC at or below this draws the gauge red.     */
+  k_pwr_soc_mid  = 50,  /**< SOC at or below this draws the gauge amber.   */
+  k_pwr_soc_full = 100, /**< SOC clamp / percent denominator.              */
+} overlay_pwr_layout_t;
+
 /** @brief Console-panel layout (the bottom scrolling UART log). */
 typedef enum : int32_t {
-  k_con_head_y = 424, /**< "CONSOLE" heading row.                        */
-  k_con_y      = 440, /**< Console panel top.                            */
+  k_con_head_y = 480, /**< "CONSOLE" heading row.                        */
+  k_con_y      = 496, /**< Console panel top.                            */
   k_con_pad    = 8,   /**< Inner padding inside the console panel.       */
   k_con_line_h = 10,  /**< Vertical step between console text lines.     */
   k_con_bottom = 14,  /**< Bottom margin below the console panel.        */
@@ -510,6 +534,99 @@ static void draw_buttons(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
   draw_button(out, w, h, x + (int32_t)k_btn_w + (int32_t)k_btn_gap, "SW2", st->sw2_pressed);
 }
 
+/** @brief Clamp a SOC value to 0..100 for display. */
+static uint8_t battery_clamp(uint8_t soc)
+{
+  return (soc > (uint8_t)k_pwr_soc_full) ? (uint8_t)k_pwr_soc_full : soc;
+}
+
+/** @brief Pick the battery gauge fill colour: green charging, else red/amber/green by level. */
+static uint16_t battery_fill_color(uint8_t soc, bool charging)
+{
+  if (charging) {
+    return (uint16_t)k_ovl_ok; /* charging always reads green. */
+  }
+  if (soc <= (uint8_t)k_pwr_soc_low) {
+    return (uint16_t)k_ovl_red;
+  }
+  if (soc <= (uint8_t)k_pwr_soc_mid) {
+    return (uint16_t)k_ovl_amber;
+  }
+  return (uint16_t)k_ovl_ok;
+}
+
+/**
+ * @brief Paint the POWER section: a drag-to-set battery slider and a CHG toggle.
+ *
+ * @details The slider track is a bordered bar whose left portion is filled to the
+ * SOC fraction in the level colour (red <=20%, amber <=50%, green above, or green
+ * while charging); the "NN%" reading is drawn over it. To the right, a CHG button
+ * shows the charge state -- green "CHG +" while charging, dim "BATT" on battery.
+ * The geometry matches ::board_overlay_hit_button and
+ * ::board_overlay_battery_pct_at so a click drags the percent or toggles charge.
+ *
+ * @param[out] out Composite buffer.
+ * @param[in]  w   Composite width in pixels.
+ * @param[in]  h   Composite height in pixels.
+ * @param[in]  x   Section text origin (sidebar left + padding).
+ * @param[in]  st  Live status snapshot (battery_soc / battery_charging).
+ */
+static void draw_power(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
+{
+  (void)section_head(out, w, h, x, (int32_t)k_pwr_head_y, "POWER  (drag)");
+  const uint8_t  soc    = battery_clamp(st->battery_soc);
+  const int32_t  fill_w = ((int32_t)k_pwr_track_w * (int32_t)soc) / (int32_t)k_pwr_soc_full;
+  const uint16_t fill   = battery_fill_color(soc, st->battery_charging);
+  /* Slider track: border, dark bed, then the SOC-proportional level fill. */
+  fill_rect(out,
+            w,
+            h,
+            x - 1,
+            (int32_t)k_pwr_y - 1,
+            (int32_t)k_pwr_track_w + 2,
+            (int32_t)k_pwr_h + 2,
+            (uint16_t)k_ovl_btn_border);
+  fill_rect(out,
+            w,
+            h,
+            x,
+            (int32_t)k_pwr_y,
+            (int32_t)k_pwr_track_w,
+            (int32_t)k_pwr_h,
+            (uint16_t)k_ovl_btn_up);
+  fill_rect(out, w, h, x, (int32_t)k_pwr_y, fill_w, (int32_t)k_pwr_h, fill);
+  char buf[16];
+  (void)snprintf(buf, sizeof(buf), "%u%%", (unsigned)soc);
+  draw_text(out,
+            w,
+            h,
+            x + (int32_t)k_btn_label_x,
+            (int32_t)k_pwr_y + (int32_t)k_pwr_label_y,
+            buf,
+            (uint16_t)k_ovl_heading,
+            1);
+  /* CHG toggle: green "CHG +" while charging, dim "BATT" on battery. */
+  const int32_t  cx   = x + (int32_t)k_pwr_chg_off;
+  const uint16_t face = st->battery_charging ? (uint16_t)k_ovl_btn_down : (uint16_t)k_ovl_btn_up;
+  fill_rect(out,
+            w,
+            h,
+            cx - 1,
+            (int32_t)k_pwr_y - 1,
+            (int32_t)k_pwr_chg_w + 2,
+            (int32_t)k_pwr_h + 2,
+            (uint16_t)k_ovl_btn_border);
+  fill_rect(out, w, h, cx, (int32_t)k_pwr_y, (int32_t)k_pwr_chg_w, (int32_t)k_pwr_h, face);
+  draw_text(out,
+            w,
+            h,
+            cx + (int32_t)k_btn_label_x,
+            (int32_t)k_pwr_y + (int32_t)k_pwr_label_y,
+            st->battery_charging ? "CHG +" : "BATT",
+            (uint16_t)k_ovl_btn_label,
+            1);
+}
+
 /** @brief Paint the sidebar background, divider, title and all status sections. */
 static void
 draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const board_status_t* st)
@@ -555,6 +672,7 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
   y += (int32_t)k_section_gap;
   (void)draw_leds(out, w, h, x, y, st);
   (void)draw_io_block(out, w, h, x, (int32_t)k_io_head_y, st);
+  draw_power(out, w, h, x, st);
   draw_buttons(out, w, h, x, st);
   draw_console(out, w, h, x, st);
 }
@@ -592,10 +710,38 @@ board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t pa
       return k_board_overlay_btn_sw2;
     }
   }
+  /* POWER row: the battery slider track and the CHG toggle share one row. */
+  if ((cy >= (int32_t)k_pwr_y) && (cy < ((int32_t)k_pwr_y + (int32_t)k_pwr_h))) {
+    const int32_t sx = (int32_t)panel_w + (int32_t)k_pwr_x_dx;
+    if ((cx >= sx) && (cx < (sx + (int32_t)k_pwr_track_w))) {
+      return k_board_overlay_btn_battery;
+    }
+    const int32_t cgx = sx + (int32_t)k_pwr_chg_off;
+    if ((cx >= cgx) && (cx < (cgx + (int32_t)k_pwr_chg_w))) {
+      return k_board_overlay_btn_batt_chg;
+    }
+  }
   /* Console region (heading + panel): a click toggles autoscroll / jumps live,
    * like clicking the Arduino Serial Monitor's pane. */
   if (in_sidex && (cy >= (int32_t)k_con_head_y)) {
     return k_board_overlay_btn_console;
   }
   return k_board_overlay_btn_none;
+}
+
+bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct)
+{
+  if (out_pct == nullptr) {
+    return false;
+  }
+  const int32_t cx = (int32_t)x;
+  const int32_t sx = (int32_t)panel_w + (int32_t)k_pwr_x_dx;
+  if (cx <= sx) {
+    *out_pct = 0U;
+  } else if (cx >= (sx + (int32_t)k_pwr_track_w)) {
+    *out_pct = (uint8_t)k_pwr_soc_full;
+  } else {
+    *out_pct = (uint8_t)(((cx - sx) * (int32_t)k_pwr_soc_full) / (int32_t)k_pwr_track_w);
+  }
+  return true;
 }
