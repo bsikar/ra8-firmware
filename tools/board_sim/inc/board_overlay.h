@@ -37,6 +37,12 @@ typedef enum : uint32_t {
   k_overlay_led_count = 3U, /**< LED1 / LED2 / LED3 (mirrors the BSP). */
 } board_overlay_dims_t;
 
+/** @brief Console-panel sizing for the board view. */
+typedef enum : uint32_t {
+  k_overlay_console_rows = 18U,  /**< Console lines shown (newest at bottom). */
+  k_overlay_line_cap     = 128U, /**< Max chars copied per console line.      */
+} board_overlay_console_t;
+
 /**
  * @brief On-screen sidebar control a click landed on.
  *
@@ -45,9 +51,10 @@ typedef enum : uint32_t {
  * a window / @c --click tap to the user-switch model instead of the touch panel.
  */
 typedef enum : uint32_t {
-  k_board_overlay_btn_none = 0U, /**< Click did not land on a control.  */
-  k_board_overlay_btn_sw1  = 1U, /**< On-screen SW1 (P009) push-button. */
-  k_board_overlay_btn_sw2  = 2U, /**< On-screen SW2 (P008) push-button. */
+  k_board_overlay_btn_none    = 0U, /**< Click did not land on a control.  */
+  k_board_overlay_btn_sw1     = 1U, /**< On-screen SW1 (P009) push-button. */
+  k_board_overlay_btn_sw2     = 2U, /**< On-screen SW2 (P008) push-button. */
+  k_board_overlay_btn_console = 3U, /**< Console panel: toggle autoscroll. */
 } board_overlay_btn_t;
 
 /**
@@ -86,6 +93,20 @@ typedef struct {
   uint64_t           sd_bytes;                  /**< SD card size in bytes (>4GB).*/
   uint8_t            sd_fat_bits;               /**< 12/16/32 if --sd-new, else 0.*/
   const char*        sd_label;                  /**< SD volume label (--sd-new).*/
+  /* Console window: console[0] is the newest *visible* line (the firmware ring
+   * is deeper -- see console_total -- and console_scroll says how far back this
+   * window starts). Unused rows are empty strings. */
+  char     console[k_overlay_console_rows][k_overlay_line_cap]; /**< Visible UART lines. */
+  uint32_t console_count;      /**< Visible lines populated (<= rows).        */
+  uint32_t console_scroll;     /**< Lines scrolled back from newest (0=live). */
+  uint32_t console_total;      /**< Total lines in the firmware ring.         */
+  bool     console_autoscroll; /**< True = following live tail; false=paused. */
+  uint32_t pc;                 /**< Current emulated program counter.            */
+  uint32_t chunks;             /**< Emulation chunks run so far.                 */
+  uint32_t mmio_reads;         /**< Modelled-peripheral MMIO reads served.       */
+  uint32_t mmio_writes;        /**< Modelled-peripheral MMIO writes served.      */
+  uint32_t uart_tx_total;      /**< Total UART TX bytes the firmware emitted.    */
+  bool     running;            /**< True while the run loop is live (not parked). */
 } board_status_t;
 
 /**
