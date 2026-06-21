@@ -326,10 +326,15 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
      * channel's RX queue (RDR/RDRF) -- the real ra_sci_spi + ra_sdmmc_spi path
      * then runs against the FAT image exactly as on hardware. */
     if (ch == (uint32_t)k_sci_sd_ch) {
-      if (board_sd_attached()) {
-        const uint8_t resp = board_sd_exchange(byte);
-        board_periph_sci_feed_rx((uint8_t)ch, &resp, 1U);
-      }
+      /* With a card attached, return its modelled response; with none, return
+       * 0xFF (MISO idles high on an empty bus). Always feeding a byte is what
+       * keeps RDRF advancing -- otherwise the firmware's full-duplex read polls
+       * RDRF forever and every ra_sdmmc probe burns its whole timeout budget
+       * (seconds, per byte), which is the dominant cold-boot stall for any app
+       * that probes the SD without a card present. With 0xFF the probe simply
+       * sees no valid R1 and fails "no card" promptly, as on real hardware. */
+      const uint8_t resp = board_sd_attached() ? board_sd_exchange(byte) : (uint8_t)0xFFU;
+      board_periph_sci_feed_rx((uint8_t)ch, &resp, 1U);
     }
   } else if (off == (uint64_t)k_sci_off_ccr0) {
     s->ccr0 = value;
