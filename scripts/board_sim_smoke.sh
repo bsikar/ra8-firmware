@@ -211,6 +211,7 @@ uart_expect() { # app -> expected UART substring on stdout
     keyboard_hil)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
     touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
     smbus_demo)         printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
+    battery_monitor_demo) printf 'battery: soc=72%% chg=N PASS' ;;
     crc_demo)           printf 'match=Y' ;;
     adc_b_demo)         printf 'adc: raw=' ;;
     agt_periodic)       printf 'agt: tick' ;;
@@ -256,7 +257,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
         ereader_chrome_hil ereader_image_hil ereader_link_hil ereader_align_hil ereader_table_hil \
         reflow_content_hil ereader_input_hil bscan_selftest keyboard_hil touch_demo \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
-        canfd_loopback imu_lsm6dso_demo smbus_demo gpio_input_demo \
+        canfd_loopback imu_lsm6dso_demo smbus_demo battery_monitor_demo gpio_input_demo \
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
         timer_capture_demo drw_fill_demo dtc_transfer_demo \
         cac_accuracy_demo lvd_monitor_demo pdg_delay_demo \
@@ -466,14 +467,14 @@ done
 # sidebar's SW1 push-button must route to the user-switch model (drive P009 low),
 # NOT the touch panel -- so gpio_input_demo lights LED1 (SW1 -> LED1) while
 # draining zero GT911 touches. The SW1 button face centre sits at composite
-# (1117,386) on the default 1024x600 panel (panel_w 1024 + k_btn_x_dx 18 + half
-# of k_btn_w 150 = 1117; k_btn_y 368 + half of k_btn_h 36 = 386); this gates
+# (1117,442) on the default 1024x600 panel (panel_w 1024 + k_btn_x_dx 18 + half
+# of k_btn_w 150 = 1117; k_btn_y 424 + half of k_btn_h 36 = 442); this gates
 # board_overlay_hit_button + route_click. Only when gpio_input_demo is built.
 case " ${apps[*]} " in
 *" gpio_input_demo "*)
     printf '  %-24s ' "on-screen SW1 click"
     gelf="$(find examples -path '*/gpio_input_demo/build/gpio_input_demo.elf' 2>/dev/null | head -1)"
-    bout="$("$sim" "$gelf" --click 1117 386 2>&1 || true)"
+    bout="$("$sim" "$gelf" --click 1117 442 2>&1 || true)"
     if echo "$bout" | grep -qE "LED1[^]]*ON" && echo "$bout" | grep -qE "touch clicks  : 0 "; then
         echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
     else

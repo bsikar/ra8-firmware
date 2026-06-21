@@ -3175,7 +3175,8 @@ static void fill_status(board_status_t* st, const char* app_name)
   /* User switches are active-low: a held button reads its pin low. */
   st->sw1_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw1_pin);
   st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw2_pin);
-  st->app_name    = app_name;
+  board_periph_battery_get(&st->battery_soc, &st->battery_charging);
+  st->app_name = app_name;
   board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
   /* Console window: copy up to k_overlay_console_rows lines from the firmware's
    * scrollback ring, starting s_view_scroll lines back from the newest, so the
@@ -3317,6 +3318,35 @@ static void toggle_switch(board_overlay_btn_t btn)
 }
 
 /**
+ * @brief Apply a POWER-section click to the fuel-gauge model.
+ *
+ * @details A click on the battery slider track maps the click column to a 0..100
+ * percent (::board_overlay_battery_pct_at) and writes it while preserving the
+ * charge state; a click on the CHG toggle flips charging while preserving SOC.
+ * Shared by the live window and the headless @c --click so both behave alike.
+ *
+ * @param[in] btn    The POWER button hit (battery slider or CHG toggle).
+ * @param[in] cx     Click column in composite pixels (for the slider map).
+ * @param[in] disp_w Displayed panel width (the sidebar origin).
+ */
+static void apply_battery_click(board_overlay_btn_t btn, uint16_t cx, uint16_t disp_w)
+{
+  if (btn == k_board_overlay_btn_battery) {
+    uint8_t pct = 0U;
+    if (board_overlay_battery_pct_at(cx, disp_w, &pct)) {
+      bool charging = false;
+      board_periph_battery_get(nullptr, &charging);
+      board_periph_battery_set(pct, charging);
+    }
+  } else if (btn == k_board_overlay_btn_batt_chg) {
+    uint8_t soc      = 0U;
+    bool    charging = false;
+    board_periph_battery_get(&soc, &charging);
+    board_periph_battery_set(soc, !charging);
+  }
+}
+
+/**
  * @brief Route a composite-space click to the right input model.
  *
  * @details An on-screen SW1 / SW2 button toggles that user switch (active-low);
@@ -3347,6 +3377,10 @@ static board_overlay_btn_t route_click(uint16_t cx,
     if (s_view_autoscroll) {
       s_view_scroll = 0U; /* resume following the newest line */
     }
+    return btn;
+  }
+  if ((btn == k_board_overlay_btn_battery) || (btn == k_board_overlay_btn_batt_chg)) {
+    apply_battery_click(btn, cx, disp_w);
     return btn;
   }
   if (btn != k_board_overlay_btn_none) {
@@ -3731,6 +3765,8 @@ int main(int argc, char** argv)
       "  --keys <str>    type <str> via the window-key path -> console UART RX\n"
       "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
       "  --button <1|2>  hold user switch SW1 (P009) / SW2 (P008) pressed\n"
+      "  --battery <pct> set the fuel-gauge state-of-charge (0..100; MAX17048 @ 0x36)\n"
+      "  --charge        mark the battery charging (fuel-gauge CRATE reads positive)\n"
       "  --reboot <N>    warm-reboot N times (re-run from reset vector; VBATT-backup\n"
       "                  + reset-cause survive) to exercise reset-survival apps\n"
       "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
@@ -3762,8 +3798,11 @@ int main(int argc, char** argv)
   bool        want_trace                       = false;
   int         click_x                          = -1;
   int         click_y                          = -1;
-  int         button_press                     = 0; /* 1=SW1, 2=SW2, 0=none. */
-  int         reboot_count                     = 0; /* --reboot N: warm reboots. */
+  int         button_press                     = 0;     /* 1=SW1, 2=SW2, 0=none. */
+  int         reboot_count                     = 0;     /* --reboot N: warm reboots. */
+  int         battery_soc                      = -1;    /* --battery <pct>, -1=default. */
+  bool        battery_charging                 = false; /* --charge. */
+  bool        battery_opt                      = false; /* any battery flag given. */
   uint16_t    view_w                           = (uint16_t)k_view_default_w;
   uint16_t    view_h                           = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
@@ -3856,6 +3895,13 @@ int main(int argc, char** argv)
     } else if ((strncmp(argv[i], "--button", sizeof("--button")) == 0) && ((i + 1) < argc)) {
       button_press = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
       i += 1;
+    } else if ((strncmp(argv[i], "--battery", sizeof("--battery")) == 0) && ((i + 1) < argc)) {
+      battery_soc = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
+      battery_opt = true;
+      i += 1;
+    } else if (strncmp(argv[i], "--charge", sizeof("--charge")) == 0) {
+      battery_charging = true;
+      battery_opt      = true;
     } else if ((strncmp(argv[i], "--reboot", sizeof("--reboot")) == 0) && ((i + 1) < argc)) {
       reboot_count = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
       i += 1;
@@ -3955,6 +4001,16 @@ int main(int argc, char** argv)
                   "board_sim: --button %d held (SW pin P00%u low/pressed)\n",
                   button_press,
                   (unsigned)pin);
+  }
+  if (battery_opt) {
+    uint8_t cur_soc = 0U;
+    board_periph_battery_get(&cur_soc, nullptr);
+    const uint8_t soc = (battery_soc >= 0) ? (uint8_t)battery_soc : cur_soc;
+    board_periph_battery_set(soc, battery_charging);
+    (void)fprintf(stderr,
+                  "board_sim: battery %u%% %s (MAX17048 @ I2C 0x36)\n",
+                  (unsigned)soc,
+                  battery_charging ? "charging" : "discharging");
   }
   if (input_str != nullptr) {
     uint8_t        rx[k_uart_line_max];
@@ -4372,7 +4428,12 @@ int main(int argc, char** argv)
      * point it is consumed once and never re-armed. */
     if (want_click && (click_btn != k_board_overlay_btn_none)) {
       if (!button_fired) {
-        toggle_switch(click_btn); /* on-screen SW1/SW2: press once, then hold. */
+        if ((click_btn == k_board_overlay_btn_battery) ||
+            (click_btn == k_board_overlay_btn_batt_chg)) {
+          apply_battery_click(click_btn, (uint16_t)click_x, disp_w); /* drag SOC / toggle CHG. */
+        } else {
+          toggle_switch(click_btn); /* on-screen SW1/SW2: press once, then hold. */
+        }
         button_fired = true;
       }
     } else if (want_click && (board_periph_touch_reported() == 0U)) {
