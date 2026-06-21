@@ -127,3 +127,7 @@ build_test/
 doxy_run.txt
 .pi-connection
 *.dump
+
+# board_sim profiler output (make profile-<app>)
+*.speedscope.json
+board_sim_profile.*
