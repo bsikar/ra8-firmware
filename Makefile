@@ -407,15 +407,17 @@ $(RA_SIM): sim-%: %
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make profile-<app>` -- run the app HEADLESS under the board_sim profiler and,
-# on exit, emit an Ozone-style breakdown. The default (MODE=full) reconstructs
-# the call chain from the executed PC stream and writes board_sim_profile.speedscope.json
-# -- open it at https://speedscope.app for the time-ordered flamechart ("what ran
-# when") and the sandwich view (self vs total per function). It also prints a boot
-# timeline + inclusive/self table to the terminal. The run auto-stops once boot
-# settles into the idle frame loop, so the profile is boot work, not the idle tail.
-# MODE=1 is the cheaper wall-time sampler (a flat % list, no flamechart).
-# PROFILE_ARGS passes extra board_sim flags, e.g. to profile an interaction:
-#   make profile-ereader_ui                          # profile cold boot -> flamechart
+# on exit, write + OPEN a self-contained interactive flamechart GUI
+# (board_sim_profile.html) -- a local file, no upload and no external site. It is
+# the Ozone-style time-ordered flamechart ("what ran when"); hover a block for
+# self/total %, click to zoom, type to search. The default (MODE=full)
+# reconstructs the call chain from the executed PC stream; it also prints a boot
+# timeline + inclusive/self table to the terminal and drops a
+# board_sim_profile.speedscope.json for speedscope.app if you prefer that. The run
+# auto-stops once boot settles into the idle frame loop, so the profile is boot
+# work, not the idle tail. MODE=1 is the cheaper wall-time sampler (flat % list,
+# no flamechart). PROFILE_ARGS passes extra board_sim flags, e.g. an interaction:
+#   make profile-ereader_ui                          # cold boot -> flamechart GUI opens
 #   make profile-ereader_ui PROFILE_ARGS="--click 250 250"   # boot + open a book
 #   make profile-ereader_ui MODE=1                   # cheap flat wall-time sampler
 #   make profile-ereader_ui STOP_PC=0x02003F40       # stop exactly at a known PC
@@ -430,6 +432,12 @@ $(RA_PROFILE): profile-%: %
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	BOARD_SIM_PROFILE=$(MODE) BOARD_SIM_STOP_PC=$(STOP_PC) BOARD_SIM_MAX_CHUNKS=8000000 \
 		$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf $(PROFILE_ARGS)
+	@if [ -f board_sim_profile.html ]; then \
+		echo "  opening flamechart GUI: board_sim_profile.html"; \
+		( command -v open >/dev/null 2>&1 && open board_sim_profile.html ) \
+		  || ( command -v xdg-open >/dev/null 2>&1 && xdg-open board_sim_profile.html ) \
+		  || echo "  (open board_sim_profile.html in a browser)"; \
+	fi
 
 # `make sim-help` -- usage, the PANEL knob, and the board_sim flag surface.
 # Explicit target, so it wins over the sim-% static pattern rule above.
@@ -445,9 +453,9 @@ sim-help:
 	@echo "  make sim-ereader_ui                  e-reader chrome UI preview"
 	@echo "  make sim-lcd_color_cycle PANEL=ek_ra8d2"
 	@echo ""
-	@echo "Profile an app (Ozone-style flamechart + timeline, written + printed on exit):"
-	@echo "  make profile-<app>                       boot flamechart -> board_sim_profile.speedscope.json"
-	@echo "                                           (open it at https://speedscope.app)"
+	@echo "Profile an app (Ozone-style flamechart; opens a local interactive GUI on exit):"
+	@echo "  make profile-<app>                       boot flamechart -> opens board_sim_profile.html"
+	@echo "                                           (hover=self/total, click=zoom, type=search)"
 	@echo "  make profile-ereader_ui PROFILE_ARGS=\"--click 250 250\"   profile opening a book"
 	@echo "  make profile-<app> MODE=1                cheap flat wall-time sampler (no flamechart)"
 	@echo "  make profile-<app> STOP_PC=0x...         stop the profile at an exact PC"
