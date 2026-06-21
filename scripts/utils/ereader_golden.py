@@ -44,11 +44,14 @@ SIDEBAR_W = 520
 
 # The screens to capture: (golden name, board_sim extra args). Reading is
 # reached by tapping a Library book card; keyboard by tapping the toolbar
-# Search field -- both via the genuine touch path.
+# Search field -- both via the genuine touch path. battery_low drives the
+# modelled fuel gauge below the critical threshold (--battery 8) so the
+# low-battery nag banner overlay is captured over the Library chrome.
 SCREENS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("library", ()),
     ("reading", ("--click", "250", "250")),
     ("keyboard", ("--click", "200", "100")),
+    ("battery_low", ("--battery", "8")),
 )
 
 

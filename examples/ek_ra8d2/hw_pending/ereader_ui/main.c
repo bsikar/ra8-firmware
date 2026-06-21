@@ -40,6 +40,7 @@
 #include "er_pageturn.h"
 #include "figure_fixture.h"
 #include "ra_app.h"
+#include "ra_batt.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_box.h"
 #include "ra_cgc.h"
@@ -49,6 +50,7 @@
 #include "ra_err.h"
 #include "ra_gfx.h"
 #include "ra_gfx_font.h"
+#include "ra_i3c.h"
 #include "ra_isr.h"
 #include "ra_keyboard.h"
 #include "ra_mstp.h"
@@ -192,6 +194,44 @@ typedef enum : uint8_t {
   k_er_touch_addr_7b    = 0x5DU, /**< GT911 default 7-bit addr.   */
   k_er_touch_max_points = 1U,    /**< One contact = one tap.      */
 } er_touch_cfg_t;
+
+/**
+ * @enum er_fg_cfg_t
+ * @brief MAX17048-class fuel gauge wiring (shares the touch IIC_B bus).
+ *
+ * @details The fuel gauge sits at 7-bit 0x36 on the same IIC_B channel 0 the
+ * GT911 touch already brought up, so the battery is read with raw ra_i3c
+ * register reads (no second bus init). board_sim models this gauge and drives
+ * its SOC / CRATE from the on-screen battery slider.
+ */
+typedef enum : uint8_t {
+  k_er_fg_addr      = 0x36U, /**< Fuel gauge 7-bit I2C address.        */
+  k_er_fg_reg_soc   = 0x04U, /**< SOC register (high byte = percent).  */
+  k_er_fg_reg_crate = 0x16U, /**< CRATE register (sign = charge dir).  */
+  k_er_fg_sign      = 0x80U, /**< CRATE high-byte sign bit (discharge).*/
+} er_fg_cfg_t;
+
+/**
+ * @enum er_nag_cfg_t
+ * @brief Low-battery nag-banner geometry.
+ */
+typedef enum : int32_t {
+  k_er_nag_h        = 72, /**< Banner height (px).                     */
+  k_er_nag_margin   = 24, /**< Banner inset from the screen sides.     */
+  k_er_nag_top      = 96, /**< Banner top y (clear of the status bar). */
+  k_er_nag_text_dx  = 28, /**< Text inset from the banner left.        */
+  k_er_nag_text_dy  = 28, /**< Text inset from the banner top.         */
+  k_er_nag_dec_max  = 4,  /**< Scratch for a "NNN%" decimal tail.      */
+  k_er_nag_dec_ten  = 10, /**< Decimal base.                           */
+  k_er_nag_line_max = 32, /**< Banner text buffer size (bounds copy).  */
+} er_nag_cfg_t;
+
+/** @enum er_nag_color_t @brief Nag-banner palette (grayscale e-ink). */
+typedef enum : uint32_t {
+  k_er_nag_low_bg  = 0x555555U, /**< Low-battery banner fill (g5).    */
+  k_er_nag_crit_bg = 0x000000U, /**< Critical banner fill (g0 ink).   */
+  k_er_nag_text    = 0xFFFFFFU, /**< Banner text (paper on the fill). */
+} er_nag_color_t;
 
 /**
  * @enum er_hit_cap_t
@@ -437,6 +477,17 @@ static bool s_was_touching;
 /** @brief Debounce: true while SW1/SW2 are held, to fire once per press. */
 static bool s_was_sw1;
 static bool s_was_sw2; /**< @see s_was_sw1 */
+
+/** @brief Low-battery nag policy state (edge-triggered, see ra_batt). */
+static ra_batt_monitor_t s_batt_mon;
+/** @brief Nag currently shown over the chrome (none = no banner). */
+static ra_batt_nag_t s_batt_nag = k_ra_batt_nag_none;
+/** @brief Last fuel-gauge SOC percent (for the banner text). */
+static uint8_t s_batt_soc = 0U;
+
+/** @brief Nag banner messages (the SOC percent is appended at render). */
+static const char k_er_nag_low_msg[]  = "Low battery ";
+static const char k_er_nag_crit_msg[] = "Battery critical ";
 
 /** @brief Refresh-cadence policy driving e-ink page-turn waveforms (#78). */
 static display_policy_t s_policy;
@@ -1814,6 +1865,96 @@ static void er_apps_init(void)
 #endif
 }
 
+/** @brief Best-effort read of one fuel-gauge register on the touch IIC_B bus. */
+static bool er_fg_read(uint8_t reg, uint8_t* out)
+{
+  if (out == nullptr) {
+    return false;
+  }
+  if (ra_i3c_write((uint8_t)k_er_touch_channel, (uint8_t)k_er_fg_addr, &reg, 1U, true) != k_ra_ok) {
+    return false;
+  }
+  return (ra_i3c_read((uint8_t)k_er_touch_channel, (uint8_t)k_er_fg_addr, out, 1U, false) ==
+          k_ra_ok);
+}
+
+/** @brief Read SOC + charge direction from the fuel gauge; false if absent (NAK). */
+static bool er_read_battery(uint8_t* soc, bool* charging)
+{
+  if ((soc == nullptr) || (charging == nullptr)) {
+    return false;
+  }
+  uint8_t pct      = 0U;
+  uint8_t crate_hi = 0U;
+  if (!er_fg_read((uint8_t)k_er_fg_reg_soc, &pct)) {
+    return false;
+  }
+  if (!er_fg_read((uint8_t)k_er_fg_reg_crate, &crate_hi)) {
+    return false;
+  }
+  *soc      = pct;
+  *charging = ((crate_hi & (uint8_t)k_er_fg_sign) == 0U);
+  return true;
+}
+
+/** @brief Append "<v>%" (v in 0..255) to @p buf at *pos, bounded + NUL-terminated. */
+static void er_append_pct(char* buf, uint32_t cap, uint32_t* pos, uint8_t v)
+{
+  char     tmp[k_er_nag_dec_max];
+  uint32_t n = 0U;
+  if (v == 0U) {
+    tmp[n] = '0';
+    n++;
+  }
+  while ((v > 0U) && (n < (uint32_t)k_er_nag_dec_max)) {
+    tmp[n] = (char)('0' + (v % (uint8_t)k_er_nag_dec_ten));
+    n++;
+    v = (uint8_t)(v / (uint8_t)k_er_nag_dec_ten);
+  }
+  for (uint32_t i = 0U; (i < n) && (*pos < (cap - 1U)); i++) {
+    buf[*pos] = tmp[n - 1U - i];
+    (*pos)++;
+  }
+  if (*pos < (cap - 1U)) {
+    buf[*pos] = '%';
+    (*pos)++;
+  }
+  buf[*pos] = '\0';
+}
+
+/** @brief Nag banner overlay widget: a centered low-battery toast over the screen. */
+static void er_nag_render(ra_widget_t* w)
+{
+  (void)w;
+  if (s_batt_nag == k_ra_batt_nag_none) {
+    return;
+  }
+  const bool     crit = (s_batt_nag == k_ra_batt_nag_critical);
+  const uint32_t bg   = crit ? (uint32_t)k_er_nag_crit_bg : (uint32_t)k_er_nag_low_bg;
+  const int32_t  x    = (int32_t)k_er_nag_margin;
+  const int32_t  bw   = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_nag_margin);
+  (void)ra_gfx_rect(x, (int32_t)k_er_nag_top, bw, (int32_t)k_er_nag_h, bg, true);
+  (void)ra_gfx_rect(x, (int32_t)k_er_nag_top, bw, (int32_t)k_er_nag_h, (uint32_t)k_er_ink, false);
+  char        line[k_er_nag_line_max];
+  uint32_t    pos = 0U;
+  const char* msg = crit ? k_er_nag_crit_msg : k_er_nag_low_msg;
+  /* Bounded by the buffer cap (NASA Rule 2); the NUL is the early exit. */
+  for (uint32_t i = 0U; (i < (uint32_t)(k_er_nag_line_max - 1)) && (msg[i] != '\0'); i++) {
+    line[pos] = msg[i];
+    pos++;
+  }
+  er_append_pct(line, (uint32_t)k_er_nag_line_max, &pos, s_batt_soc);
+  (void)ra_gfx_text_out(x + (int32_t)k_er_nag_text_dx,
+                        (int32_t)k_er_nag_top + (int32_t)k_er_nag_text_dy,
+                        line,
+                        &ra_gfx_font_8x16,
+                        (uint32_t)k_er_nag_text,
+                        bg);
+}
+
+/** @brief Vtable for the low-battery nag banner overlay widget. */
+static const ra_widget_vtable_t k_er_nag_vt = {.render = er_nag_render};
+
 static void er_render_current(void)
 {
   uint16_t top = (uint16_t)k_er_screen_library;
@@ -1822,6 +1963,13 @@ static void er_render_current(void)
    * focused, so no flicker) and render its widget tree. */
   (void)ra_app_launch(&s_app_reg, top);
   (void)ra_app_render(&s_app_reg);
+  /* Low-battery nag (#145/#146): an app-framework-level overlay widget drawn
+   * over whichever screen-app is active. A no-op at a healthy SOC, so the chrome
+   * golden (rendered at the default battery) stays byte-identical. */
+  if (s_batt_nag != k_ra_batt_nag_none) {
+    ra_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
+    (void)ra_widget_render_dirty(&nag, 1U);
+  }
 }
 
 /** @brief Push the current (chapter, page) on the back-stack, capacity permitting. */
@@ -2225,6 +2373,59 @@ static void er_poll_buttons(void)
   }
 }
 
+/**
+ * @brief Poll the fuel gauge, fold it into the nag policy, and toggle the banner.
+ *
+ * @details Best-effort: a fuel-gauge NAK (none fitted, e.g. a stock EVM) leaves
+ * the chrome untouched. ::ra_batt edge-triggers a LOW (<=20%) / CRITICAL (<=10%)
+ * nag, which raises (or upgrades) the persistent banner; the banner clears once
+ * the battery recovers above the low band's hysteresis margin or starts
+ * charging. The chrome is re-rendered only when the banner state changes, so a
+ * steady battery costs nothing. On the sim the board_sim battery slider drives
+ * the gauge, so dragging below 20% / 10% raises the banner and back up clears it.
+ *
+ * @pre ::app_bringup_touch brought up IIC_B channel 0 (shared with the gauge).
+ * @pre ::s_batt_mon was initialised by ::ra_batt_monitor_init.
+ * @post On a banner state change the chrome is re-rendered + flushed.
+ * @post ::s_batt_nag reflects the banner shown.
+ * @note Not thread-safe.
+ *
+ * @par MC/DC:
+ * Decision: `(s_batt_nag != k_ra_batt_nag_none) && (chg || (soc > recover))`
+ * (3 conditions: banner-active, charging, soc-recovered). The ra_batt policy's
+ * own edge / re-arm decisions are MC/DC-tested in tests/test_ra_batt.c; this
+ * clear-the-banner glue is exercised by the board_sim battery-slider gate
+ * (dragging below 20/10 percent raises the banner; back up or toggling charge
+ * clears it) rather than a host unit test, per the hw_pending board-demo
+ * convention (no host test, like smbus_demo).
+ *
+ * @since 0.1.0
+ */
+static void er_poll_battery(void)
+{
+  uint8_t soc = 0U;
+  bool    chg = false;
+  if (!er_read_battery(&soc, &chg)) {
+    return; /* best-effort: no gauge fitted -> no banner */
+  }
+  s_batt_soc        = soc;
+  ra_batt_nag_t nag = k_ra_batt_nag_none;
+  if (ra_batt_update(&s_batt_mon, soc, chg, &nag) != k_ra_ok) {
+    return;
+  }
+  const ra_batt_nag_t prev = s_batt_nag;
+  const uint8_t recover = (uint8_t)((uint8_t)k_ra_batt_low_pct + (uint8_t)k_ra_batt_rearm_margin);
+  if (nag != k_ra_batt_nag_none) {
+    s_batt_nag = nag; /* new low / critical edge -> raise or upgrade the banner */
+  } else if ((s_batt_nag != k_ra_batt_nag_none) && (chg || (soc > recover))) {
+    s_batt_nag = k_ra_batt_nag_none; /* recovered or charging -> clear the banner */
+  }
+  if (s_batt_nag != prev) {
+    er_render_current();
+    er_flush_event(k_display_event_chapter);
+  }
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
@@ -2233,6 +2434,7 @@ int32_t main(void)
   app_bringup_panel();
   app_bringup_gfx();
   app_bringup_touch();
+  (void)ra_batt_monitor_init(&s_batt_mon); /* low-battery nag policy (#145/#146) */
   /* User switches SW1/SW2 as inputs with internal pull-ups (active-low). Best-
    * effort: a config failure just leaves page-turn on the touch path. */
   (void)ra_gpio_input_init(k_er_pin_sw1, k_ra_pull_up);
@@ -2249,6 +2451,7 @@ int32_t main(void)
   while (1) {
     er_poll_touch();
     er_poll_buttons();
+    er_poll_battery();
     (void)ra_board_led_toggle(k_ra_board_led_blue);
     ra_delay_ms((uint32_t)k_er_frame_ms);
   }
