@@ -405,14 +405,33 @@ void Reset_Handler(void)
    * must not read or write any global variables. */
   SystemInit();
 
-  /* Step 2: copy initialized data from flash/MRAM to SRAM. */
+  /* Step 2: copy initialized data (.data) from its load image in MRAM to its
+   * run location in SRAM. A global like `int x = 5;` lives in SRAM at run time
+   * (so it can be written), but its initial value (5) ships in non-volatile MRAM.
+   * The linker stores that initial image at `g_ra_ls_sidata` (the Load Memory
+   * Address) and reserves the run-time slot at `g_ra_ls_sdata..g_ra_ls_edata`
+   * (the Virtual Memory Address); this loop copies the image VMA<-LMA so the
+   * globals hold their initializers before any C code runs.
+   *
+   * `src`/`dst` are `uint32_t*`, so each iteration moves a whole 32-bit WORD
+   * (4 bytes) -- the core's natural store width. That is why this is not replaced
+   * with memcpy(): at -O0 a word loop is ~1.5 instructions/byte, whereas the
+   * (byte-oriented) library routine is slower here; an optimized build collapses
+   * either form to the same code. The section is word-aligned by the linker, so
+   * the `< g_ra_ls_edata` bound is exact. */
   uint32_t* src = &g_ra_ls_sidata;
   uint32_t* dst = &g_ra_ls_sdata;
   while (dst < &g_ra_ls_edata) {
     *dst++ = *src++;
   }
 
-  /* Step 3: zero BSS. */
+  /* Step 3: zero the .bss -- globals with no explicit initializer (e.g.
+   * `static uint8_t buf[4096];`), which the C standard requires to start at 0.
+   * They occupy no space in the MRAM image (storing thousands of zero bytes
+   * would be wasteful), so the linker only reserves the SRAM range
+   * `g_ra_ls_sbss..g_ra_ls_ebss` and this loop writes it to zero a word at a
+   * time, same rationale as Step 2. After this, every global has its correct
+   * starting value and C can run. */
   dst = &g_ra_ls_sbss;
   while (dst < &g_ra_ls_ebss) {
     *dst++ = 0U;
