@@ -25,9 +25,14 @@ typedef enum : int32_t {
 } test_rect_geom_t;
 
 typedef enum : uint32_t {
-  k_test_col_clear = 0x000000FFU, /**< Fill A: blue (nonzero in RGB565).  */
-  k_test_col_rect  = 0x00FF0000U, /**< Fill B: red  (distinct in RGB565). */
+  k_test_col_clear = 0x000000FFU, /**< Fill A: blue (RGB565 0x001F, lo!=hi).  */
+  k_test_col_rect  = 0x00FF0000U, /**< Fill B: red  (distinct in RGB565).     */
+  k_test_col_white = 0x00FFFFFFU, /**< White: RGB565 0xFFFF, lo==hi (memset). */
 } test_rect_col_t;
+
+typedef enum : uint8_t {
+  k_test_byte_ff = 0xFFU, /**< Expected byte after a white RGB565 clear. */
+} test_byte_t;
 
 typedef enum : uint32_t {
   k_test_bpp_565  = 2U, /**< RGB565 bytes per pixel.   */
@@ -249,6 +254,30 @@ static void test_mcdc_glyph_565_clip(void)
   TEST_END("blit_glyph_565 MC/DC: (cx1<=cx0)||(cy1<=cy0)");
 }
 
+/**
+ * @test test_clear_565_memset_path
+ *
+ * @par Branch coverage:
+ * Decision: ``if (lo == hi)`` in internal_fill_565 (single condition), reached
+ * through ra_gfx_clear. White (0xFFFFFF) packs to 0xFFFF (lo==hi) -> the memset
+ * branch; blue (0x0000FF) packs to 0x001F (lo!=hi) -> the byte-loop branch. Both
+ * branches must produce the documented bytes.
+ */
+static void test_clear_565_memset_path(void)
+{
+  TEST_BEGIN("clear_565: lo==hi memset path vs lo!=hi loop path");
+  const int32_t dim = (int32_t)k_test_gfx_dim_normal;
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(s_fb, (uint16_t)dim, (uint16_t)dim, k_ra_gfx_format_rgb565));
+  /* lo==hi: both bytes of every pixel are 0xFF. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_test_col_white));
+  TEST_ASSERT_EQ((uint8_t)k_test_byte_ff, s_fb[0]);
+  TEST_ASSERT_EQ((uint8_t)k_test_byte_ff, s_fb[1]);
+  /* lo!=hi: the two bytes of a pixel differ (loop branch still correct). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_test_col_clear));
+  TEST_ASSERT(s_fb[0] != s_fb[1]);
+  TEST_END("clear_565: lo==hi memset path vs lo!=hi loop path");
+}
+
 int32_t main(void)
 {
   test_mcdc_gfx_init_width_range();
@@ -256,6 +285,7 @@ int32_t main(void)
   test_mcdc_fill_rect_565_clip();
   test_fill_rect_dispatch();
   test_mcdc_glyph_565_clip();
+  test_clear_565_memset_path();
   (void)fprintf(stderr, "[OK ] test_ra_gfx_text.c\n");
   return 0;
 }
