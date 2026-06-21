@@ -78,6 +78,27 @@ bool board_view_pump(board_view_t* view);
 bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
 
 /**
+ * @brief Report the current position of a held-button drag, once.
+ *
+ * @details
+ * Latches the framebuffer-pixel coordinate published by the view's mouseDragged
+ * handler while the primary button is held and moved, returning it to the caller
+ * once (the latch clears on read). This is independent of board_view_poll_click:
+ * the initial press is still reported once via that latch (so a click is routed
+ * once), while continued motion updates only the drag latch -- letting the run
+ * loop follow the cursor for a grabbed control (the battery slider) without
+ * re-firing the one-shot press. Coordinates use the framebuffer's top-left
+ * origin, matching board_view_poll_click. Pump the window first.
+ *
+ * @param[in]  view Handle from board_view_open (nullptr reports no drag).
+ * @param[out] x    Drag column in framebuffer pixels (top-left origin).
+ * @param[out] y    Drag row in framebuffer pixels (top-left origin).
+ * @return true if a fresh drag position was reported (and consumed); false otherwise.
+ * @since 0.1.0
+ */
+bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y);
+
+/**
  * @brief Drain the accumulated console scroll-wheel notches since the last poll.
  *
  * @details

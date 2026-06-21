@@ -45,6 +45,12 @@
 @property(nonatomic, assign) uint16_t clickY;
 /** @brief Set on mouse-down; cleared when polled. */
 @property(nonatomic, assign) BOOL hasClick;
+/** @brief Last unconsumed drag column, framebuffer pixels (top-left origin). */
+@property(nonatomic, assign) uint16_t dragX;
+/** @brief Last unconsumed drag row, framebuffer pixels (top-left origin). */
+@property(nonatomic, assign) uint16_t dragY;
+/** @brief Set while the primary button is held + moved; cleared when polled. */
+@property(nonatomic, assign) BOOL hasDrag;
 /** @brief Accumulated scroll-wheel notches since the last poll (+up / -down). */
 @property(nonatomic, assign) int32_t scrollAccum;
 @end
@@ -94,16 +100,18 @@
     self.scrollAccum -= 1;
   }
 }
-- (void)mouseDown:(NSEvent*)event
+/* Window coords -> framebuffer pixels (top-left origin). The view is not
+ * flipped, so invert Y; the image fills self.bounds, so scale view points to
+ * framebuffer pixels in case the window was resized away from 1:1. Returns NO
+ * (no pixel) until a frame has set the framebuffer size. Shared by mouseDown:
+ * (a press) and mouseDragged: (the button held + moved) so both map alike. */
+- (BOOL)fbPointFromEvent:(NSEvent*)event x:(uint16_t*)ox y:(uint16_t*)oy
 {
-  /* Window coords -> framebuffer pixels (top-left origin). The view is not
-   * flipped, so invert Y; the image fills self.bounds, so scale view points
-   * to framebuffer pixels in case the window was resized away from 1:1. */
   const NSPoint p  = [self convertPoint:event.locationInWindow fromView:nil];
   const CGFloat vw = self.bounds.size.width;
   const CGFloat vh = self.bounds.size.height;
   if ((vw <= 0.0) || (vh <= 0.0) || (self.fbWidth == 0U) || (self.fbHeight == 0U)) {
-    return;
+    return NO;
   }
   CGFloat fx = (p.x / vw) * (CGFloat)self.fbWidth;
   CGFloat fy = ((vh - p.y) / vh) * (CGFloat)self.fbHeight;
@@ -119,9 +127,32 @@
   if (fy > (CGFloat)(self.fbHeight - 1U)) {
     fy = (CGFloat)(self.fbHeight - 1U);
   }
-  self.clickX   = (uint16_t)fx;
-  self.clickY   = (uint16_t)fy;
-  self.hasClick = YES;
+  *ox = (uint16_t)fx;
+  *oy = (uint16_t)fy;
+  return YES;
+}
+- (void)mouseDown:(NSEvent*)event
+{
+  uint16_t fx = 0U;
+  uint16_t fy = 0U;
+  if ([self fbPointFromEvent:event x:&fx y:&fy]) {
+    self.clickX   = fx;
+    self.clickY   = fy;
+    self.hasClick = YES;
+  }
+}
+/* A held-button drag: publish the current position so the run loop can follow it
+ * (the battery slider tracks the cursor). Independent of hasClick so the press is
+ * still routed once on mouseDown; subsequent motion only updates the drag fields. */
+- (void)mouseDragged:(NSEvent*)event
+{
+  uint16_t fx = 0U;
+  uint16_t fy = 0U;
+  if ([self fbPointFromEvent:event x:&fx y:&fy]) {
+    self.dragX   = fx;
+    self.dragY   = fy;
+    self.hasDrag = YES;
+  }
 }
 @end
 
@@ -283,6 +314,20 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
   *x                  = view->view.clickX;
   *y                  = view->view.clickY;
   view->view.hasClick = NO;
+  return true;
+}
+
+bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
+{
+  if ((view == nullptr) || (view->view == nil) || (x == nullptr) || (y == nullptr)) {
+    return false;
+  }
+  if (!view->view.hasDrag) {
+    return false;
+  }
+  *x                 = view->view.dragX;
+  *y                 = view->view.dragY;
+  view->view.hasDrag = NO;
   return true;
 }
 
