@@ -86,6 +86,11 @@ typedef enum : uint8_t {
   k_glyph_msb_index     = 7,
 } ra_gfx_glyph_bits_t;
 
+/** @brief RGB565 bytes per pixel (used to size span byte counts). */
+typedef enum : uint8_t {
+  k_rgb565_bpp = 2,
+} ra_gfx_rgb565_bpp_t;
+
 /**
  * @struct ra_gfx_state_t
  * @brief Internal module state populated by ra_gfx_init().
@@ -389,6 +394,14 @@ static void internal_plot(int32_t x, int32_t y, uint32_t color)
  */
 static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8_t hi)
 {
+  if (lo == hi) {
+    /* Symmetric packed colour (e.g. white paper 0xFFFF, black 0x0000): every
+     * byte of the run is the same value, so the optimised libc memset replaces
+     * the byte loop. Byte-identical -- both write `lo` to every byte. This is the
+     * common full-screen clear, so it is the hot path. */
+    (void)memset(p, (int)lo, count * (size_t)k_rgb565_bpp);
+    return;
+  }
   for (size_t i = 0; i < count; i++) {
     *p++ = lo;
     *p++ = hi;
