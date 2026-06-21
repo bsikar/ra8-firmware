@@ -366,6 +366,144 @@ static void internal_plot(int32_t x, int32_t y, uint32_t color)
                      color);
 }
 
+/**
+ * @brief Fill `count` consecutive RGB565 pixels at `p` with packed bytes lo,hi.
+ *
+ * @details
+ * One tight inner loop that stores the two pre-packed bytes per pixel, so a span
+ * fill pays the colour packing (internal_pack_565 + the per-channel extraction)
+ * once for the whole run instead of once per pixel. The byte order (low byte
+ * first) is exactly what internal_put_pixel writes for k_ra_gfx_format_rgb565, so
+ * the result is byte-identical to plotting each pixel individually.
+ *
+ * @param[out] p     Destination of the first pixel (2 bytes per pixel).
+ * @param[in]  count Number of pixels to write.
+ * @param[in]  lo    Low byte of the packed RGB565 word.
+ * @param[in]  hi    High byte of the packed RGB565 word.
+ * @pre p is non-null and addresses at least 2*count writable bytes.
+ * @pre The destination format is k_ra_gfx_format_rgb565.
+ * @post count pixels starting at p hold the packed colour.
+ * @post No bytes outside the 2*count-byte run are modified.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8_t hi)
+{
+  for (size_t i = 0; i < count; i++) {
+    *p++ = lo;
+    *p++ = hi;
+  }
+}
+
+/**
+ * @brief Span-fill an axis-aligned RGB565 rectangle, clipped to the framebuffer.
+ *
+ * @details
+ * Clips [x,x+w) x [y,y+h) to the framebuffer once, then fills each visible row
+ * with internal_fill_565. This writes exactly the pixels internal_plot would
+ * (the same in-bounds set) with the same packed bytes, so it is byte-identical to
+ * the per-pixel fill while replacing roughly six function calls per pixel
+ * (plot -> put_pixel -> pack_565 -> color_r/g/b -> bpp) with one packed store.
+ *
+ * @param[in] x     Top-left corner x (may be partly or fully off-screen).
+ * @param[in] y     Top-left corner y (may be partly or fully off-screen).
+ * @param[in] w     Width in pixels (assumed > 0 by the caller).
+ * @param[in] h     Height in pixels (assumed > 0 by the caller).
+ * @param[in] color 32-bit colour, packed to RGB565 once.
+ * @pre The module is initialised and the format is k_ra_gfx_format_rgb565.
+ * @pre w > 0 and h > 0 (guaranteed by ra_gfx_rect).
+ * @post Every on-screen pixel of the rectangle holds the packed colour.
+ * @post No off-screen or out-of-rectangle pixel is modified.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
+{
+  const int32_t fbw = (int32_t)s_state.width;
+  const int32_t fbh = (int32_t)s_state.height;
+  const int32_t x0  = (x >= 0) ? x : 0;
+  const int32_t y0  = (y >= 0) ? y : 0;
+  /* Right/bottom edges in 64-bit so x+w / y+h cannot overflow int32 for a
+   * pathological caller; then clamped to the framebuffer. For every in-range
+   * coordinate this is exactly min(fb, x+w), so the fill stays byte-identical
+   * to the per-pixel path. */
+  const int64_t xr = (int64_t)x + (int64_t)w;
+  const int64_t yr = (int64_t)y + (int64_t)h;
+  const int32_t x1 = (xr < (int64_t)fbw) ? (int32_t)xr : fbw;
+  const int32_t y1 = (yr < (int64_t)fbh) ? (int32_t)yr : fbh;
+  if ((x1 <= x0) || (y1 <= y0)) {
+    return; /* fully clipped -- nothing on screen. */
+  }
+  const uint16_t v      = internal_pack_565(color);
+  const uint8_t  lo     = (uint8_t)(v & (uint16_t)k_mask_byte);
+  const uint8_t  hi     = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
+  const size_t   bpp    = (size_t)s_state.bpp;
+  const size_t   stride = (size_t)s_state.width * bpp;
+  const size_t   count  = (size_t)(x1 - x0);
+  for (int32_t row = y0; row < y1; row++) {
+    internal_fill_565(s_state.fb + ((size_t)row * stride) + ((size_t)x0 * bpp), count, lo, hi);
+  }
+}
+
+/**
+ * @brief Fill a solid rectangle (RGB565 span fast path, else per-pixel).
+ *
+ * @details
+ * RGB565 -- the panel format -- takes the clipped span fill; other formats fall
+ * back to the per-pixel internal_plot loop. Both write the same in-bounds pixels.
+ *
+ * @param[in] x     Top-left corner x.
+ * @param[in] y     Top-left corner y.
+ * @param[in] w     Width in pixels (> 0, checked by ra_gfx_rect).
+ * @param[in] h     Height in pixels (> 0, checked by ra_gfx_rect).
+ * @param[in] color 32-bit fill colour.
+ * @pre The module is initialised (checked by ra_gfx_rect).
+ * @pre w > 0 and h > 0 (checked by ra_gfx_rect).
+ * @post Every on-screen pixel of the rectangle holds the colour.
+ * @post No off-screen pixel is modified.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
+{
+  if (s_state.format == k_ra_gfx_format_rgb565) {
+    internal_fill_rect_565(x, y, w, h, color);
+    return;
+  }
+  for (int32_t row = 0; row < h; row++) {
+    for (int32_t col = 0; col < w; col++) {
+      internal_plot(x + col, y + row, color);
+    }
+  }
+}
+
+/**
+ * @brief Draw the four edges of a 1-pixel-wide rectangle outline.
+ *
+ * @param[in] x     Top-left corner x.
+ * @param[in] y     Top-left corner y.
+ * @param[in] w     Width in pixels (> 0, checked by ra_gfx_rect).
+ * @param[in] h     Height in pixels (> 0, checked by ra_gfx_rect).
+ * @param[in] color 32-bit edge colour.
+ * @pre The module is initialised (checked by ra_gfx_rect).
+ * @pre w > 0 and h > 0 (checked by ra_gfx_rect).
+ * @post The four edge runs hold the colour; the interior is untouched.
+ * @post internal_plot clips every pixel to the framebuffer.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void internal_rect_outline(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
+{
+  for (int32_t col = 0; col < w; col++) {
+    internal_plot(x + col, y, color);
+    internal_plot(x + col, y + h - 1, color);
+  }
+  for (int32_t row = 0; row < h; row++) {
+    internal_plot(x, y + row, color);
+    internal_plot(x + w - 1, y + row, color);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
@@ -404,16 +542,11 @@ ra_err_t ra_gfx_clear(uint32_t color)
    * per-pixel path -- same packed value, same byte order -- but it drops the
    * dominant cost of a full-screen clear (profiled hot on board_sim). */
   if (s_state.format == k_ra_gfx_format_rgb565) {
-    const uint16_t v   = internal_pack_565(color);
-    const uint8_t  lo  = (uint8_t)(v & (uint16_t)k_mask_byte);
-    const uint8_t  hi  = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
-    uint8_t* const fb  = s_state.fb;
-    const size_t   bpp = (size_t)internal_bpp(s_state.format);
-    const size_t   n   = (size_t)s_state.width * (size_t)s_state.height;
-    for (size_t i = 0; i < n; i++) {
-      fb[(i * bpp) + (size_t)k_idx_r] = lo;
-      fb[(i * bpp) + (size_t)k_idx_g] = hi;
-    }
+    const uint16_t v  = internal_pack_565(color);
+    const uint8_t  lo = (uint8_t)(v & (uint16_t)k_mask_byte);
+    const uint8_t  hi = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
+    const size_t   n  = (size_t)s_state.width * (size_t)s_state.height;
+    internal_fill_565(s_state.fb, n, lo, hi);
     return k_ra_ok;
   }
   for (uint32_t y = 0; y < s_state.height; y++) {
@@ -483,20 +616,9 @@ ra_err_t ra_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color,
     return k_ra_ok;
   }
   if (filled) {
-    for (int32_t row = 0; row < h; row++) {
-      for (int32_t col = 0; col < w; col++) {
-        internal_plot(x + col, y + row, color);
-      }
-    }
+    internal_fill_rect(x, y, w, h, color);
   } else {
-    for (int32_t col = 0; col < w; col++) {
-      internal_plot(x + col, y, color);
-      internal_plot(x + col, y + h - 1, color);
-    }
-    for (int32_t row = 0; row < h; row++) {
-      internal_plot(x, y + row, color);
-      internal_plot(x + w - 1, y + row, color);
-    }
+    internal_rect_outline(x, y, w, h, color);
   }
   return k_ra_ok;
 }
