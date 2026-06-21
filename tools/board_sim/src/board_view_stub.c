@@ -88,6 +88,22 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
 }
 
 /**
+ * @brief No-op drag poll (headless: no window to drag).
+ *
+ * @param[in]  view Always nullptr from board_view_open (unused).
+ * @param[out] x    Drag column (unused, never written).
+ * @param[out] y    Drag row (unused, never written).
+ * @return Always false -- a headless build reports no drags.
+ */
+bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
+{
+  (void)view;
+  (void)x;
+  (void)y;
+  return false;
+}
+
+/**
  * @brief No-op scroll poll (headless: no window to scroll).
  *
  * @param[in] view Always nullptr from board_view_open (unused).
