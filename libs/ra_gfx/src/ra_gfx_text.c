@@ -716,6 +716,74 @@ ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool f
 }
 
 /**
+ * @brief Blit one 1-bpp glyph cell into an RGB565 framebuffer, clipped on screen.
+ *
+ * @details
+ * The foreground and background colours are packed to RGB565 once, then each
+ * visible cell pixel stores the two pre-packed bytes directly -- so the per-glyph
+ * colour packing (internal_pack_565 + per-channel extraction) and the per-pixel
+ * clip happen once each instead of once per pixel. The cell is clipped to the
+ * framebuffer up front (the same in-bounds set internal_plot would have written),
+ * and every on/off bit maps to the same colour, so the result is byte-identical to
+ * the per-pixel internal_plot path. The full cell is painted (foreground for set
+ * bits, background for clear bits), matching the per-pixel path's opaque cell.
+ *
+ * @param[in]  x,y      Glyph top-left in framebuffer pixels.
+ * @param[in]  gw,gh    Glyph cell width/height in pixels.
+ * @param[in]  row_bytes Bytes per glyph row in @p gd.
+ * @param[in]  gd       Packed 1-bpp glyph bitmap (MSB-first within each byte).
+ * @param[in]  fg,bg    Foreground / background 32-bit colours.
+ * @pre The bound format is k_ra_gfx_format_rgb565.
+ * @pre @p gd addresses at least gh*row_bytes bytes.
+ * @post Every on-screen cell pixel holds fg (set bit) or bg (clear bit).
+ * @post No off-screen pixel is modified.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void internal_blit_glyph_565(int32_t        x,
+                                    int32_t        y,
+                                    int32_t        gw,
+                                    int32_t        gh,
+                                    uint32_t       row_bytes,
+                                    const uint8_t* gd,
+                                    uint32_t       fg,
+                                    uint32_t       bg)
+{
+  const int32_t fbw = (int32_t)s_state.width;
+  const int32_t fbh = (int32_t)s_state.height;
+  const int32_t cx0 = (x >= 0) ? x : 0;
+  const int32_t cy0 = (y >= 0) ? y : 0;
+  const int64_t xr  = (int64_t)x + (int64_t)gw; /* 64-bit: no int32 overflow. */
+  const int64_t yr  = (int64_t)y + (int64_t)gh;
+  const int32_t cx1 = (xr < (int64_t)fbw) ? (int32_t)xr : fbw;
+  const int32_t cy1 = (yr < (int64_t)fbh) ? (int32_t)yr : fbh;
+  if ((cx1 <= cx0) || (cy1 <= cy0)) {
+    return; /* glyph fully off screen. */
+  }
+  const uint16_t vfg    = internal_pack_565(fg);
+  const uint16_t vbg    = internal_pack_565(bg);
+  const uint8_t  flo    = (uint8_t)(vfg & (uint16_t)k_mask_byte);
+  const uint8_t  fhi    = (uint8_t)((vfg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
+  const uint8_t  blo    = (uint8_t)(vbg & (uint16_t)k_mask_byte);
+  const uint8_t  bhi    = (uint8_t)((vbg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
+  const size_t   bpp    = (size_t)s_state.bpp;
+  const size_t   stride = (size_t)s_state.width * bpp;
+  for (int32_t sy = cy0; sy < cy1; sy++) {
+    const uint32_t grow = (uint32_t)(sy - y);
+    uint8_t*       p    = s_state.fb + ((size_t)sy * stride) + ((size_t)cx0 * bpp);
+    for (int32_t sx = cx0; sx < cx1; sx++) {
+      const uint32_t gcol     = (uint32_t)(sx - x);
+      const uint32_t byte_idx = (grow * row_bytes) + (gcol / (uint32_t)k_glyph_bits_per_byte);
+      const uint8_t  bit = (uint8_t)(k_glyph_msb_index - (gcol % (uint32_t)k_glyph_bits_per_byte));
+      const bool     on  = ((gd[byte_idx] >> bit) & 0x01U) != 0U;
+      p[k_idx_r]         = on ? flo : blo;
+      p[k_idx_g]         = on ? fhi : bhi;
+      p += bpp;
+    }
+  }
+}
+
+/**
  * @brief Render a single glyph at (x,y).
  *
  * @details See implementation.
@@ -748,6 +816,17 @@ static void internal_render_glyph(int32_t              x,
   const uint32_t row_bytes =
     ((uint32_t)font->glyph_width + (k_glyph_bits_per_byte - 1U)) / k_glyph_bits_per_byte;
   const uint8_t* gd = font->glyph_data + ((size_t)idx * (size_t)font->bytes_per_glyph);
+  if (s_state.format == k_ra_gfx_format_rgb565) {
+    internal_blit_glyph_565(x,
+                            y,
+                            (int32_t)font->glyph_width,
+                            (int32_t)font->glyph_height,
+                            row_bytes,
+                            gd,
+                            fg,
+                            bg);
+    return;
+  }
   for (uint32_t row = 0; row < font->glyph_height; row++) {
     for (uint32_t col = 0; col < font->glyph_width; col++) {
       const uint32_t byte_idx = (row * row_bytes) + (col / k_glyph_bits_per_byte);
