@@ -486,6 +486,8 @@ static ra_batt_monitor_t s_batt_mon;
 static ra_batt_nag_t s_batt_nag = k_ra_batt_nag_none;
 /** @brief Last fuel-gauge SOC percent (for the banner text). */
 static uint8_t s_batt_soc = 0U;
+/** @brief Set by er_handle_tap when a tap only toggled the nag (incremental repaint). */
+static bool s_nag_region_only = false;
 
 /** @brief Nag banner messages (the SOC percent + dismiss hint follow at render). */
 static const char k_er_nag_low_msg[]  = "Low battery ";
@@ -2054,6 +2056,38 @@ static void er_render_current(void)
   }
 }
 
+/**
+ * @brief Repaint only the low-battery banner rect (dirty-region update).
+ *
+ * Used when the only change is the banner toggling (appear / dismiss / level):
+ * clip to the banner rect, redraw the active screen there (which restores the
+ * chrome the banner had covered, on dismiss) and the banner on top (on appear),
+ * then reset the clip. Everything outside the banner rect is left exactly as the
+ * previous full render drew it, so a banner toggle no longer repaints the whole
+ * 1024x600 panel. The banner draw (er_nag_render) lives entirely within this
+ * rect, so the result is identical to er_render_current() for the same state.
+ */
+static void er_render_nag_region(void)
+{
+  const int32_t nx = (int32_t)k_er_nag_margin;
+  const int32_t ny = (int32_t)k_er_nag_top;
+  const int32_t nw = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_nag_margin);
+  const int32_t nh = (int32_t)k_er_nag_h;
+  if (ra_gfx_set_clip(nx, ny, nw, nh) != k_ra_ok) {
+    er_render_current(); /* clip unavailable -> safe full repaint. */
+    return;
+  }
+  uint16_t top = (uint16_t)k_er_screen_library;
+  (void)ra_ui_nav_top(&s_nav, &top);
+  (void)ra_app_launch(&s_app_reg, top);
+  (void)ra_app_render(&s_app_reg);
+  if (s_batt_nag != k_ra_batt_nag_none) {
+    ra_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
+    (void)ra_widget_render_dirty(&nag, 1U);
+  }
+  (void)ra_gfx_reset_clip();
+}
+
 /** @brief Push the current (chapter, page) on the back-stack, capacity permitting. */
 static void er_push_loc(void)
 {
@@ -2341,12 +2375,15 @@ static bool er_handle_tap(int32_t x, int32_t y)
 {
   /* Default any screen/location change to a clean full refresh; a same-chapter
    * page turn lowers this to a fast partial inside er_apply_pageturn. */
-  s_pending_event = k_display_event_chapter;
+  s_pending_event   = k_display_event_chapter;
+  s_nag_region_only = false; /* assume a full repaint unless only the nag changes. */
   /* A tap on the low-battery banner dismisses it (acknowledge). ra_batt will not
    * re-raise the same band until the battery recovers, so it stays dismissed
-   * until the next descent into a worse band, or a recovery then re-drain. */
+   * until the next descent into a worse band, or a recovery then re-drain. Only
+   * the banner rect changed, so the caller can repaint just that region. */
   if ((s_batt_nag != k_ra_batt_nag_none) && er_nag_hit(x, y)) {
-    s_batt_nag = k_ra_batt_nag_none;
+    s_batt_nag        = k_ra_batt_nag_none;
+    s_nag_region_only = true;
     return true;
   }
   uint16_t top = (uint16_t)k_er_screen_library;
@@ -2409,7 +2446,11 @@ static void er_poll_touch(void)
   const bool touching = (got > 0U);
   if (touching && !s_was_touching) {
     if (er_handle_tap((int32_t)pt.x, (int32_t)pt.y)) {
-      er_render_current();
+      if (s_nag_region_only) {
+        er_render_nag_region(); /* a tap that only dismissed the banner */
+      } else {
+        er_render_current();
+      }
       er_flush_event(s_pending_event);
     }
   }
@@ -2523,7 +2564,7 @@ static void er_poll_battery(void)
     s_batt_nag = k_ra_batt_nag_none; /* recovered or charging -> clear the banner */
   }
   if (s_batt_nag != prev) {
-    er_render_current();
+    er_render_nag_region(); /* only the banner changed -> repaint just its rect */
     er_flush_event(k_display_event_chapter);
   }
 }
