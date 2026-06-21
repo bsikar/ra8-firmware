@@ -1084,10 +1084,13 @@ static double board_now_s(void)
 /* ===========================================================================
  * Firmware profiler (BOARD_SIM_PROFILE). Two modes, bucketed by ELF FUNC symbol:
  *   =1     wall-time sample -- charge each chunk's wall time to its start PC.
- *          Cheap (no per-instruction cost); good for spotting the dominant cost.
+ *          Cheap (no per-instruction cost); a flat % list of the dominant cost.
  *   =full  per-instruction -- a code hook tallies every instruction + call entry
- *          (like an Ozone trace profile: exact instruction %, count, and call
- *          count per function). Accurate but slows the run. Off by default.
+ *          AND reconstructs the live call chain (see below), so the run end emits
+ *          an Ozone-style breakdown: a boot timeline, an inclusive/self table,
+ *          and a speedscope flamechart file. Accurate but ~10x slower; off by
+ *          default. The run auto-stops once boot settles into the idle frame
+ *          loop, so =full profiles boot work rather than the idle tail.
  * ===========================================================================
  */
 enum : uint32_t {
@@ -1113,6 +1116,38 @@ static uint32_t    s_prof_n       = 0U;
 static double      s_prof_total_s = 0.0;
 static uint64_t    s_prof_total_i = 0U;
 static prof_mode_t s_prof_mode    = k_prof_off;
+
+/* ---------------------------------------------------------------------------
+ * Ozone-style call-stack tracing (insn mode only). On top of the per-function
+ * tally above, reconstruct the live call chain straight from the PC stream: a
+ * fresh function entry that is not already on the chain is a call (push), and
+ * re-entering a function already deeper on the chain is a return (pop down to
+ * it). NASA Rule 1 bans recursion in this firmware, so a function appears at
+ * most once on the chain and the "already on the chain" test is unambiguous.
+ * The chain is sampled at a fixed instruction cadence into a bounded,
+ * chronological store and written out as a speedscope "sampled" profile -- open
+ * board_sim_profile.speedscope.json at https://speedscope.app for the
+ * time-ordered flamechart ("what ran when", the Ozone timeline) plus the
+ * sandwich view (self vs total per function). WFI idle naturally weighs ~zero
+ * because a halted core retires no instructions, so the picture is boot work,
+ * not the idle frame loop. ===============================================
+ */
+enum : uint32_t {
+  k_prof_max_depth   = 64U,    /**< Deepest call chain captured per sample.   */
+  k_prof_max_samples = 16384U, /**< Chronological stack samples (decimated).  */
+};
+static uint16_t s_pstk[k_prof_max_depth];                     /**< Live chain. */
+static uint32_t s_pstk_n = 0U;                                /**< Chain depth.*/
+static uint16_t s_samp[k_prof_max_samples][k_prof_max_depth]; /**< root..leaf. */
+static uint8_t  s_samp_d[k_prof_max_samples];                 /**< Per-sample chain depth.   */
+static uint32_t s_samp_w[k_prof_max_samples];                 /**< Per-sample weight (insns).*/
+static uint32_t s_samp_n        = 0U;                         /**< Stored sample count.      */
+static uint64_t s_samp_every    = 256U;                       /**< Insns per sample (>>x2).  */
+static uint64_t s_samp_acc      = 0U;                         /**< Insns since last sample.  */
+static uint32_t s_prof_stop_pc  = 0U;                         /**< BOARD_SIM_STOP_PC (0=off).*/
+static bool     s_prof_stop_hit = false;                      /**< Set when STOP_PC reached. */
+static uint64_t s_incl[k_prof_max_syms];                      /**< Inclusive weight (report).*/
+static uint64_t s_self[k_prof_max_syms];                      /**< Self (leaf) weight.       */
 
 /** @brief qsort comparator: order the FUNC symbols by entry address. */
 static int prof_cmp(const void* a, const void* b)
@@ -1219,11 +1254,66 @@ static void prof_add(uint32_t pc, double dt)
   }
 }
 
-/** @brief UC_HOOK_CODE per instruction: tally instructions + calls (insn mode). */
+/** @brief Halve the sample store (merge adjacent pairs) when it fills up. */
+static void prof_decimate(void)
+{
+  uint32_t dst = 0U;
+  for (uint32_t i = 0U; i < s_samp_n; i += 2U) {
+    const uint32_t w2 = ((i + 1U) < s_samp_n) ? s_samp_w[i + 1U] : 0U;
+    if (dst != i) {
+      (void)memcpy(s_samp[dst], s_samp[i], (size_t)s_samp_d[i] * sizeof(uint16_t));
+      s_samp_d[dst] = s_samp_d[i];
+    }
+    s_samp_w[dst] = s_samp_w[i] + w2; /* merged time keeps the total exact. */
+    dst++;
+  }
+  s_samp_n = dst;
+  s_samp_every *= 2U; /* coarser cadence keeps the next fill the same span. */
+}
+
+/** @brief Append the live call chain as one chronological sample of @p weight insns. */
+static void prof_sample(uint32_t weight)
+{
+  if (s_samp_n >= (uint32_t)k_prof_max_samples) {
+    prof_decimate();
+  }
+  uint32_t d = s_pstk_n;
+  if (d > (uint32_t)k_prof_max_depth) {
+    d = (uint32_t)k_prof_max_depth;
+  }
+  for (uint32_t i = 0U; i < d; i++) {
+    s_samp[s_samp_n][i] = s_pstk[i];
+  }
+  s_samp_d[s_samp_n] = (uint8_t)d;
+  s_samp_w[s_samp_n] = weight;
+  s_samp_n++;
+}
+
+/** @brief Fold @p f (PC's owning FUNC index) into the live call chain (push/pop). */
+static void prof_stack_update(uint32_t f)
+{
+  if (f >= s_prof_n) {
+    return; /* unknown region -- keep the current leaf (it gets the self time). */
+  }
+  if ((s_pstk_n > 0U) && (s_pstk[s_pstk_n - 1U] == (uint16_t)f)) {
+    return; /* still in the same function -- no call/return transition. */
+  }
+  for (uint32_t i = s_pstk_n; i > 0U; i--) {
+    if (s_pstk[i - 1U] == (uint16_t)f) {
+      s_pstk_n = i; /* returned to a frame already on the chain -- unwind to it. */
+      return;
+    }
+  }
+  if (s_pstk_n < (uint32_t)k_prof_max_depth) {
+    s_pstk[s_pstk_n] = (uint16_t)f; /* a fresh call -- push it. */
+    s_pstk_n++;
+  }
+}
+
+/** @brief UC_HOOK_CODE per instruction: tally instructions + calls + call chain. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
-  (void)uc;
   (void)size;
   (void)user;
   s_prof_total_i++;
@@ -1233,6 +1323,174 @@ static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void*
     if ((uint32_t)address == s_prof[idx].lo) {
       s_prof[idx].calls++; /* PC at the entry point -> a fresh call (approx). */
     }
+  }
+  prof_stack_update(idx);
+  s_samp_acc++;
+  if (s_samp_acc >= s_samp_every) {
+    prof_sample((uint32_t)s_samp_acc);
+    s_samp_acc = 0U;
+  }
+  if ((s_prof_stop_pc != 0U) && ((uint32_t)address == s_prof_stop_pc)) {
+    s_prof_stop_hit = true; /* BOARD_SIM_STOP_PC reached -- end the run cleanly. */
+    (void)uc_emu_stop(uc);
+  }
+}
+
+/** @brief Write the captured call chains as a speedscope "sampled" profile JSON. */
+static void prof_write_speedscope(const char* path)
+{
+  if ((s_samp_n == 0U) || (s_prof_n == 0U)) {
+    return;
+  }
+  FILE* f = fopen(path, "w");
+  if (f == nullptr) {
+    return;
+  }
+  uint64_t total = 0U;
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    total += s_samp_w[i];
+  }
+  (void)fprintf(f,
+                "{\"$schema\":\"https://www.speedscope.app/file-format-schema.json\",\n"
+                " \"name\":\"board_sim boot\",\"activeProfileIndex\":0,\n"
+                " \"shared\":{\"frames\":[");
+  for (uint32_t i = 0U; i < s_prof_n; i++) {
+    (void)fputs((i == 0U) ? "{\"name\":\"" : ",{\"name\":\"", f);
+    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* JSON-escape. */
+      if ((*p == '"') || (*p == '\\')) {
+        (void)fputc('\\', f);
+      }
+      (void)fputc(*p, f);
+    }
+    (void)fputs("\"}", f);
+  }
+  (void)fprintf(f,
+                "]},\n"
+                " \"profiles\":[{\"type\":\"sampled\",\"name\":\"boot\",\"unit\":\"none\",\n"
+                "  \"startValue\":0,\"endValue\":%llu,\n"
+                "  \"samples\":[",
+                (unsigned long long)total);
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    (void)fputc((i == 0U) ? '[' : ',', f);
+    if (i != 0U) {
+      (void)fputc('[', f);
+    }
+    for (uint8_t j = 0U; j < s_samp_d[i]; j++) {
+      (void)fprintf(f, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j]);
+    }
+    (void)fputc(']', f);
+  }
+  (void)fputs("],\n  \"weights\":[", f);
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    (void)fprintf(f, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i]);
+  }
+  (void)fputs("]}]}\n", f);
+  (void)fclose(f);
+}
+
+/** @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode). */
+static void prof_report_flamechart(void)
+{
+  enum : uint32_t {
+    k_no_fn       = 0xFFFFFFFFU, /**< Sentinel for "no phase frame".         */
+    k_phase_depth = 2U,          /**< Chain depth used as the boot "phase".  */
+    k_phase_lines = 24U,         /**< Cap on printed timeline segments.      */
+  };
+  const char* out = getenv("BOARD_SIM_PROFILE_OUT");
+  if ((out == nullptr) || (out[0] == '\0')) {
+    out = "board_sim_profile.speedscope.json";
+  }
+  prof_write_speedscope(out);
+
+  /* Inclusive (anywhere on the chain) + self (leaf) weights, from the samples.
+   * No recursion (NASA Rule 1) -> each function appears at most once per sample,
+   * so a straight per-frame add needs no dedup. */
+  uint64_t total = 0U;
+  for (uint32_t i = 0U; i < s_prof_n; i++) {
+    s_incl[i] = 0U;
+    s_self[i] = 0U;
+  }
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    const uint32_t w = s_samp_w[i];
+    const uint8_t  d = s_samp_d[i];
+    total += w;
+    for (uint8_t j = 0U; j < d; j++) {
+      s_incl[s_samp[i][j]] += w;
+    }
+    if (d > 0U) {
+      s_self[s_samp[i][d - 1U]] += w;
+    }
+  }
+  if (total == 0U) {
+    return;
+  }
+
+  /* Phase timeline: collapse each sample's chain to a fixed shallow depth (the
+   * major subsystem under main) and print each contiguous run as a boot phase,
+   * so the terminal shows "what ran when" even without opening speedscope. */
+  (void)fprintf(stderr,
+                "  [profile] boot timeline (phase = call depth %u; start%% .. width%%):\n",
+                (unsigned)k_phase_depth);
+  uint64_t cum   = 0U;
+  uint64_t segw  = 0U;
+  uint32_t segfn = (uint32_t)k_no_fn;
+  uint32_t lines = 0U;
+  for (uint32_t i = 0U; i <= s_samp_n; i++) {
+    uint32_t fn = (uint32_t)k_no_fn;
+    if (i < s_samp_n) {
+      const uint8_t d = s_samp_d[i];
+      if (d > 0U) {
+        const uint8_t pd = ((uint32_t)(d - 1U) < (uint32_t)k_phase_depth) ? (uint8_t)(d - 1U)
+                                                                          : (uint8_t)k_phase_depth;
+        fn               = s_samp[i][pd];
+      }
+    }
+    if ((i == s_samp_n) || (fn != segfn)) {
+      const bool show = (segfn != (uint32_t)k_no_fn) && ((100U * segw) >= total) &&
+                        (lines < (uint32_t)k_phase_lines);
+      if (show) {
+        (void)fprintf(stderr,
+                      "    %5.1f%%  +%4.1f%%  %s\n",
+                      100.0 * (double)cum / (double)total,
+                      100.0 * (double)segw / (double)total,
+                      (segfn < s_prof_n) ? s_prof[segfn].name : "?");
+        lines++;
+      }
+      cum += segw;
+      segw  = 0U;
+      segfn = fn;
+    }
+    if (i < s_samp_n) {
+      segw += s_samp_w[i];
+    }
+  }
+
+  /* Inclusive/self table -- the "why is it slow" view (sorted by inclusive). */
+  (void)fprintf(stderr,
+                "  [profile] boot flamechart: %u samples over %llu insns "
+                "(open %s at https://speedscope.app)\n"
+                "       self%%    total%%  function\n",
+                (unsigned)s_samp_n,
+                (unsigned long long)total,
+                out);
+  for (uint32_t k = 0U; k < (uint32_t)k_prof_top_n; k++) {
+    uint32_t best  = s_prof_n;
+    uint64_t bestv = 0U;
+    for (uint32_t i = 0U; i < s_prof_n; i++) {
+      if (s_incl[i] > bestv) {
+        bestv = s_incl[i];
+        best  = i;
+      }
+    }
+    if ((best == s_prof_n) || (bestv == 0U)) {
+      break;
+    }
+    (void)fprintf(stderr,
+                  "    %8.2f%%  %7.2f%%  %s\n",
+                  100.0 * (double)s_self[best] / (double)total,
+                  100.0 * (double)s_incl[best] / (double)total,
+                  s_prof[best].name);
+    s_incl[best] = 0U; /* consume so the next pick is the runner-up. */
   }
 }
 
@@ -1278,6 +1536,9 @@ static void prof_report(void)
         fprintf(stderr, "    %6.2f%%  %8.2fs  %s\n", 100.0 * bestv / tot, bestv, s_prof[best].name);
       s_prof[best].secs = 0.0;
     }
+  }
+  if (insn && (s_samp_n > 0U)) {
+    prof_report_flamechart(); /* speedscope export + inclusive/self + timeline. */
   }
 }
 
@@ -4567,23 +4828,70 @@ int main(int argc, char** argv)
   if ((stop_on != nullptr) && ((stop_on[0] == '\0') || (view != nullptr))) {
     stop_on = nullptr;
   }
-  uint64_t      idle_sig_prev   = 0U;
-  uint32_t      idle_run        = 0U;
-  bool          idle_stopped    = false;
-  uint32_t      usb_stop_run    = 0U;
-  uint32_t      usbh_stop_run   = 0U;
-  bool          usb_stopped     = false;
-  uint32_t      rec_frames      = 0U; /* frames written when --record is active. */
-  const clock_t t0              = clock();
-  uc_err        err             = UC_ERR_OK;
-  uint32_t      run_pc          = pc;
-  uint32_t      chunks          = 0U;
-  bool          timed_out       = false;
-  bool          closed          = false;
-  uint32_t      settle_left     = 0U;    /* >0 once the click landed: chunks to drain. */
-  uint32_t      last_boot_chunk = 0U;    /* chunk of the last (re)boot for --reboot. */
-  bool          slider_grab     = false; /* true while a press grabbed the battery slider. */
-  uint64_t      last_present_us = 0U;    /* wall-us of the last live --view present.    */
+  /* BOARD_SIM_STOP_PC=0x...: end the run the first time PC reaches this address
+   * (effective in profile insn mode, via prof_insn_hook). Lets the profiler cover
+   * exactly the boot path -- the idle main-loop PC the firmware parks at -- when
+   * the build-stable compute-idle auto-stop below is not specific enough. */
+  {
+    const char* e_spc = getenv("BOARD_SIM_STOP_PC");
+    if (e_spc != nullptr) {
+      const unsigned long v = strtoul(e_spc, nullptr, (int)k_env_strtol_base);
+      s_prof_stop_pc        = (uint32_t)(v & ~1UL); /* clear the Thumb bit if supplied. */
+    }
+  }
+  /* BOARD_SIM_PROFILE compute-idle stop (insn mode, build-stable): once boot has
+   * fallen into the steady frame loop the firmware retires almost no instructions
+   * per chunk (each frame polls a little, then WFI-halts), whereas boot chunks are
+   * compute-heavy. Stop after k_prof_idle_need consecutive chunks that each retire
+   * fewer than k_prof_idle_insns instructions, so the profile spans boot + the
+   * first rendered frame and not the idle tail. Armed only after k_prof_idle_arm
+   * chunks so an early cheap chunk cannot trip it. */
+  enum : uint32_t {
+    k_prof_idle_insns = 4000U, /**< Per-chunk insns below which a chunk is idle.*/
+    k_prof_idle_need  = 600U,  /**< Consecutive idle chunks that end the run.   */
+    k_prof_idle_arm   = 16U,   /**< Chunks to run before the stop is armed.     */
+  };
+  /* All three are overridable so the boot window can be tuned per app (a long
+   * boot-time settle delay is a run of cheap chunks that must not be mistaken
+   * for the steady idle loop). NEED defaults high enough to clear the settle
+   * delays in these apps; raise it (or set BOARD_SIM_STOP_PC) for a longer boot. */
+  uint32_t prof_idle_insns = (uint32_t)k_prof_idle_insns;
+  uint32_t prof_idle_need  = (uint32_t)k_prof_idle_need;
+  uint32_t prof_idle_arm   = (uint32_t)k_prof_idle_arm;
+  {
+    const char* e_pi = getenv("BOARD_SIM_PROFILE_IDLE_INSNS");
+    const char* e_pn = getenv("BOARD_SIM_PROFILE_IDLE_NEED");
+    const char* e_pa = getenv("BOARD_SIM_PROFILE_IDLE_ARM");
+    if (e_pi != nullptr) {
+      prof_idle_insns = (uint32_t)strtoul(e_pi, nullptr, 10);
+    }
+    if (e_pn != nullptr) {
+      prof_idle_need = (uint32_t)strtoul(e_pn, nullptr, 10);
+    }
+    if (e_pa != nullptr) {
+      prof_idle_arm = (uint32_t)strtoul(e_pa, nullptr, 10);
+    }
+  }
+  uint64_t      prof_idle_prev_i = 0U;
+  uint32_t      prof_idle_run    = 0U;
+  bool          prof_stopped     = false;
+  uint64_t      idle_sig_prev    = 0U;
+  uint32_t      idle_run         = 0U;
+  bool          idle_stopped     = false;
+  uint32_t      usb_stop_run     = 0U;
+  uint32_t      usbh_stop_run    = 0U;
+  bool          usb_stopped      = false;
+  uint32_t      rec_frames       = 0U; /* frames written when --record is active. */
+  const clock_t t0               = clock();
+  uc_err        err              = UC_ERR_OK;
+  uint32_t      run_pc           = pc;
+  uint32_t      chunks           = 0U;
+  bool          timed_out        = false;
+  bool          closed           = false;
+  uint32_t      settle_left      = 0U;    /* >0 once the click landed: chunks to drain. */
+  uint32_t      last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot. */
+  bool          slider_grab      = false; /* true while a press grabbed the battery slider. */
+  uint64_t      last_present_us  = 0U;    /* wall-us of the last live --view present.    */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
   const board_overlay_btn_t click_btn =
@@ -4694,6 +5002,9 @@ int main(int argc, char** argv)
       s_pendsv_stop = false; /* set by on_icsr_write iff this run ends on PENDSVSET */
       err           = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      if (s_prof_stop_hit) {
+        break; /* BOARD_SIM_STOP_PC reached (set in prof_insn_hook) -- end the run. */
+      }
       if (s_reboot_request) {
         break; /* AIRCR.SYSRESETREQ -- the outer wrapper performs the reboot. */
       }
@@ -4747,6 +5058,10 @@ int main(int argc, char** argv)
       break;
     }
     if (faulted) {
+      break;
+    }
+    if (s_prof_stop_hit) {
+      prof_stopped = true; /* BOARD_SIM_STOP_PC reached -- end the profiled run. */
       break;
     }
     /* AIRCR.SYSRESETREQ requested a reset: latch a software-reset cause and warm
@@ -4894,6 +5209,24 @@ int main(int argc, char** argv)
         break;
       }
     } else { /* plain headless run (no window, no scripted click) */
+      /* Profiler compute-idle early-stop (insn mode): a chunk that retires very
+       * few instructions is an idle frame (poll + WFI-halt), whereas boot chunks
+       * are compute-heavy. After enough consecutive idle chunks the firmware has
+       * reached its steady frame loop -- end the run so the profile is boot, not
+       * the idle tail. Build-stable (no per-app address), unlike STOP_PC. */
+      if ((s_prof_mode == k_prof_insn) && (record_dir == nullptr) && (chunks >= prof_idle_arm)) {
+        const uint64_t d = s_prof_total_i - prof_idle_prev_i;
+        prof_idle_prev_i = s_prof_total_i;
+        if (d < (uint64_t)prof_idle_insns) {
+          prof_idle_run++;
+          if (prof_idle_run >= prof_idle_need) {
+            prof_stopped = true;
+            break;
+          }
+        } else {
+          prof_idle_run = 0U;
+        }
+      }
       /* Steady-state idle early-stop (opt-in; not while recording, which must
        * span its full window). All tracked counters are monotonic, so an
        * unchanged sum means no MMIO / IRQ / context switch happened this chunk. */
@@ -4956,11 +5289,12 @@ int main(int argc, char** argv)
   s_view_pc      = run_pc;
 
   (void)fprintf(stderr,
-                "\nboard_sim: stopped -- %s%s%s%s\n",
+                "\nboard_sim: stopped -- %s%s%s%s%s\n",
                 uc_strerror(err),
                 timed_out ? " (wall-clock budget reached)" : "",
                 idle_stopped ? " (idle steady-state)" : "",
-                usb_stopped ? " (USB enumerated)" : "");
+                usb_stopped ? " (USB enumerated)" : "",
+                prof_stopped ? " (profile: boot complete)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
   if (s_bkpt_hit) {
     (void)fprintf(stderr,
@@ -5043,7 +5377,7 @@ int main(int argc, char** argv)
   if (truncated) {
     (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
   }
-  if (((err == UC_ERR_OK) || timed_out || idle_stopped) && !s_bkpt_hit) {
+  if (((err == UC_ERR_OK) || timed_out || idle_stopped || prof_stopped) && !s_bkpt_hit) {
     if (idle_stopped) {
       (void)fprintf(stderr,
                     "  => firmware EXECUTED to the run budget (idle steady-state: no "

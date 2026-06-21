@@ -317,9 +317,14 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
      * paths launch a frame by writing TDAT[7:0]; FIFO mode also writes TDR. */
     const uint8_t byte = (uint8_t)(value & (uint32_t)k_sci_data_mask);
     s->transmitted++;
-    sci_capture_tx_line(byte);
-    if (s_sci_tx_sink != nullptr) {
-      s_sci_tx_sink((uint8_t)ch, byte);
+    /* Only the console channel carries UART text. Other channels (e.g. SCI0 in
+     * Simple-SPI mode for the microSD) move binary frames, so capturing + sinking
+     * their TX would spew the SPI traffic as "[uart] SCIn:" garbage -- skip it. */
+    if (ch == (uint32_t)k_sci_console_ch) {
+      sci_capture_tx_line(byte);
+      if (s_sci_tx_sink != nullptr) {
+        s_sci_tx_sink((uint8_t)ch, byte);
+      }
     }
     /* Pmod2 microSD is SCI0 in Simple-SPI mode: every TDR write clocks a
      * full-duplex frame, so feed the modelled card's response back into this
