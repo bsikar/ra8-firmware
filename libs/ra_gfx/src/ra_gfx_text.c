@@ -398,6 +398,24 @@ ra_err_t ra_gfx_clear(uint32_t color)
   if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
+  /* Pack the constant fill colour once and store it across the contiguous
+   * framebuffer, instead of re-packing (internal_pack_565 + the per-channel
+   * extraction) for every one of width*height pixels. Byte-identical to the
+   * per-pixel path -- same packed value, same byte order -- but it drops the
+   * dominant cost of a full-screen clear (profiled hot on board_sim). */
+  if (s_state.format == k_ra_gfx_format_rgb565) {
+    const uint16_t v   = internal_pack_565(color);
+    const uint8_t  lo  = (uint8_t)(v & (uint16_t)k_mask_byte);
+    const uint8_t  hi  = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
+    uint8_t* const fb  = s_state.fb;
+    const size_t   bpp = (size_t)internal_bpp(s_state.format);
+    const size_t   n   = (size_t)s_state.width * (size_t)s_state.height;
+    for (size_t i = 0; i < n; i++) {
+      fb[(i * bpp) + (size_t)k_idx_r] = lo;
+      fb[(i * bpp) + (size_t)k_idx_g] = hi;
+    }
+    return k_ra_ok;
+  }
   for (uint32_t y = 0; y < s_state.height; y++) {
     for (uint32_t x = 0; x < s_state.width; x++) {
       internal_put_pixel(s_state.fb,
