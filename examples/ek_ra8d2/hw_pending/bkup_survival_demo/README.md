@@ -27,13 +27,23 @@ survival across a full power cycle too).
 
 ## Why this is in hw_pending
 
-`tools/board_sim` shadows the `VBTBKRn` window as ordinary R_SYSTEM
-memory, so the read/write half passes headlessly (`g_bkup_rw_ok = 1`,
-banner `rw=ok`). But the emulator starts every run with cleared memory and
-models **no reset-retained power domain**, so the sentinel is never found
-across runs: it always reports `survived=N boot=1`. Reset survival -- the
-whole point of the backup registers -- can only be confirmed on silicon,
-so this app is staged in `hw_pending/`.
+`tools/board_sim` now models the `VBTBKRn` window as a reset-retained
+domain (`tools/board_sim/src/board_periph_bkup.c`): the backup bytes live
+in a buffer whose reset hook deliberately leaves them untouched, so the
+read/write half passes headlessly (`g_bkup_rw_ok = 1`, banner `rw=ok`).
+board_sim also has a **warm-reboot** capability (`--reboot N`) that re-runs
+the firmware from its reset vector with that domain retained, so:
+
+```
+board_sim bkup_survival_demo.elf --reboot 1
+```
+
+plants the sentinel on the first boot, warm-reboots, and the second boot
+finds it intact -- `g_bkup_survived = 1`, banner `survived=Y` -- which the
+`board_sim_smoke.sh` gate asserts. The app stays in `hw_pending/` until
+reset survival is confirmed on silicon (the simulator proves the VBTBKRn
+read / write and the reset-retention contract, not the real battery-backed
+SRAM cell).
 
 ## Registers (HUM R01UH1065EJ0130 Rev.1.30, Ch 12 "Battery Backup")
 

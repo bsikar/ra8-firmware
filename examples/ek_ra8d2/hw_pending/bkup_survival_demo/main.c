@@ -27,13 +27,16 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` shadows the
- * VBTBKRn window as ordinary R_SYSTEM memory, so the read/write half
- * passes (``rw=ok``); but the emulator starts every run with cleared
- * memory and models no reset-retained power domain, so the sentinel is
- * never found and the banner reports ``survived=N boot=1``. Reset
- * survival can therefore only be confirmed on silicon, so this app lives
- * in ``hw_pending/``. See ``README.md`` for the bench plan.
+ * @note **Headless-emulator status.** ``tools/board_sim`` models the VBTBKRn
+ * window as a reset-retained domain (``board_periph_bkup.c``): the read/write
+ * half passes (``rw=ok``) with the backup bytes held in a buffer the block's
+ * reset hook does not clear. Run with ``--reboot 1`` and the emulator re-runs
+ * the firmware from its reset vector with that domain retained, so the second
+ * boot finds the sentinel and reports ``survived=Y`` (the ``board_sim_smoke.sh``
+ * gate exercises exactly this). The app stays in ``hw_pending/`` until reset
+ * survival is confirmed on silicon -- the simulator proves the VBTBKRn read /
+ * write and the reset-retention contract, not the real battery-backed SRAM. See
+ * ``README.md`` for the bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -23,12 +23,13 @@
  * ``ra_drw_cache_flush`` before the verify, and mind the Cortex-M85
  * D-cache (the framebuffer lives in cacheable SRAM) -- see the bench plan.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` shadows the DRW
- * control registers but does not model the rasterizer, so the fill never
- * touches the framebuffer; the centre pixel stays clear and the banner
- * reports ``match=N`` (``g_drw_match = 0``). The actual fill can only be
- * confirmed on silicon, so this app lives in ``hw_pending/``. See
- * ``README.md`` for the bench plan.
+ * @note **Headless-emulator status.** ``tools/board_sim`` models the DRW
+ * solid-fill rasterizer (``board_periph_drw.c``): the box fill lands in the
+ * emulated framebuffer, so the centre pixel reads back green and the banner
+ * reports ``match=Y`` (``g_drw_match = 1``); the ``board_sim_smoke.sh`` gate
+ * keys on that line. The app still lives in ``hw_pending/`` until the fill is
+ * confirmed on silicon -- the simulator proves the driver register sequence,
+ * not the real D/AVE 2D engine. See ``README.md`` for the bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

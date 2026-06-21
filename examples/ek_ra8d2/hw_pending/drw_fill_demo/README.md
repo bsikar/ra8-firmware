@@ -24,12 +24,16 @@ No external hardware required.
 
 ## Why this is in hw_pending
 
-`tools/board_sim` shadows the DRW control registers (the bring-up reads
-back and `ra_drw_wait_idle` returns) but does **not** model the
-rasterizer, so the fill never touches the framebuffer -- the centre pixel
-stays clear and the banner reports `match=N` (`g_drw_match = 0`). The
-actual rectangle fill can only be confirmed on silicon, so this app is
-staged in `hw_pending/`.
+`tools/board_sim` now models the DRW solid-fill rasterizer
+(`tools/board_sim/src/board_periph_drw.c`): a `CONTROL` write with the
+limiter-1..4 box encoding writes the programmed rectangle into the
+emulated framebuffer, so the centre pixel reads back green and the banner
+reports `match=Y` (`g_drw_match = 1`). The `board_sim_smoke.sh` gate keys
+on that banner. The model covers the axis-aligned solid box only; the
+triangle / line / textured-blit / display-list primitives still fall
+through to the sparse fallback. The app stays in `hw_pending/` until the
+fill is confirmed on silicon (the simulator proves the driver register
+sequence, not the real D/AVE 2D engine).
 
 ## Notes (HUM R01UH1065EJ0130 Rev.1.30, Ch 62 "2D Drawing Engine")
 
