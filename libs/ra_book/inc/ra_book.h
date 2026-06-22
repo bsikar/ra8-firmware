@@ -563,5 +563,43 @@ ra_err_t ra_book_open(const void*        file,
  * @see ra_reflow_layout_chapter()
  * @since Version 1.0.0
  */
-ra_err_t ra_book_chapter_to_xhtml(const void* base, uint32_t chapter_idx, char* out, size_t cap,
-                                  size_t* out_len);
+ra_err_t ra_book_chapter_to_xhtml(const void* base,
+                                  uint32_t    chapter_idx,
+                                  char*       out,
+                                  size_t      cap,
+                                  size_t*     out_len);
+
+/**
+ * @brief Extract one chapter's readable plain text from the DOM.
+ *
+ * @details
+ * Walks the chapter's element/text tree iteratively (no recursion, bounded
+ * stack) and writes its text runs into @p out, inserting a newline at each
+ * block-level element so paragraphs stay separated. Markup, attributes and
+ * inline structure are dropped -- this is for a simple word-wrap reader, not
+ * rich layout. The output is NOT NUL-terminated.
+ *
+ * @param[in]  base        Validated `ra_book` blob base (non-NULL).
+ * @param[in]  chapter_idx Spine chapter index (`< header chapter_count`).
+ * @param[out] out         Destination text buffer (non-NULL).
+ * @param[in]  cap         Capacity of @p out in bytes.
+ * @param[out] out_len     Receives the text byte length written.
+ *
+ * @return Error code.
+ * @retval k_ra_ok               Chapter text extracted.
+ * @retval k_ra_err_null_ptr     A required pointer argument is NULL.
+ * @retval k_ra_err_invalid_arg  @p chapter_idx is out of range.
+ * @retval k_ra_err_invalid_size Output did not fit @p cap, or DOM nesting
+ *                               exceeded the bounded walk stack.
+ *
+ * @pre @p base was accepted by ra_book_validate() / ra_book_open().
+ * @post On error, @p out contents are unspecified.
+ *
+ * @note Thread-safe: reads only the immutable blob, writes only @p out.
+ * @since Version 1.0.0
+ */
+ra_err_t ra_book_chapter_text(const void* base,
+                              uint32_t    chapter_idx,
+                              char*       out,
+                              size_t      cap,
+                              size_t*     out_len);
