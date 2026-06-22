@@ -51,6 +51,9 @@ CONTAINER_MAGIC = b"RBKZ"
 # lever; FS dithering is left off because its high-frequency noise defeats
 # DEFLATE (the renderer can dither at draw time if desired).
 MAX_IMAGE_EDGE = 1600
+# When true, drop all images (text-only). Yields a tiny inflated blob that fits
+# in MRAM as a baked fixture -- used by the on-device reader demo.
+SKIP_IMAGES = False
 
 VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input",
@@ -365,7 +368,7 @@ def compile_epub(path):
 
         # images (raster -> 4bpp, svg -> vector); remember manifest-id -> image index
         id_to_image = {}
-        for mid, (href, media, _props) in manifest.items():
+        for mid, (href, media, _props) in (() if SKIP_IMAGES else manifest.items()):
             full = resolve(href)
             if full not in names:
                 continue
@@ -398,16 +401,19 @@ def compile_epub(path):
 
 
 def main():
-    global MAX_IMAGE_EDGE
+    global MAX_IMAGE_EDGE, SKIP_IMAGES
     ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
     ap.add_argument("input", help="source .epub")
     ap.add_argument("output", help="destination .rabook")
     ap.add_argument("--stats", action="store_true", help="print size/structure stats")
     ap.add_argument("--max-edge", type=int, default=MAX_IMAGE_EDGE,
                     help="downscale raster image long edge to at most this many pixels")
+    ap.add_argument("--no-images", action="store_true",
+                    help="drop all images (text-only); tiny blob for a baked fixture")
     args = ap.parse_args()
 
     MAX_IMAGE_EDGE = args.max_edge
+    SKIP_IMAGES = args.no_images
     blob, meta, bb = compile_epub(args.input)
     container = CONTAINER_MAGIC + struct.pack("<I", len(blob)) + zlib.compress(blob, 9)
     with open(args.output, "wb") as fh:
