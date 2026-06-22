@@ -116,6 +116,8 @@ help:
 	@echo "  make sim-<app> [PANEL=ek_ra8d2]  boot an app's REAL .elf on the Unicorn CPU"
 	@echo "                             emulator, live panel/UI window (tools/board_sim)"
 	@echo "                             e.g. make sim-blink, make sim-bedroom_ui_panel"
+	@echo "  make ereader-gui           full hybrid e-reader GUI: baked + SD books on a live"
+	@echo "                             window, --fast-sd (EREADER_SD_COUNT=N, FAST_SD=0 to opt out)"
 	@echo ""
 	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)  [make flash-help / debug-help / ozone-help]"
 	@echo "  make flash-<app>       build + flash an app  (e.g. make flash-blink)"
@@ -446,6 +448,40 @@ $(RA_PROFILE): profile-%: %
 		  || ( command -v xdg-open >/dev/null 2>&1 && xdg-open board_sim_profile.html ) \
 		  || echo "  (open board_sim_profile.html in a browser)"; \
 	fi
+
+# `make ereader-gui` -- the full hybrid e-reader GUI, ready to browse. Builds the
+# ereader_shelf app, board_sim, and mkbookimg; bakes a FAT SD-card image of real
+# compiled books; then launches the live macOS window with --fast-sd so tapping
+# an SD book opens it quickly (the per-byte SPI emulation is bypassed -- see the
+# app README). The shelf shows the baked MRAM books plus the SD books side by
+# side. Overrides:
+#   EREADER_SD_COUNT=N                     how many compiled books to put on the card
+#   EREADER_SD_DIR=<dir>                   source dir of *.rabook for the card
+#   PANEL=<name>                           panel descriptor (default ek_ra8d2)
+#   FAST_SD=0                              keep the faithful per-byte SD path
+EREADER_SD_IMG   := $(ROOT)/build/ereader_sd.img
+EREADER_SD_DIR   ?= $(ROOT)/content/compiled
+EREADER_SD_COUNT ?= 5
+FAST_SD          ?= 1
+_EREADER_FAST    := $(if $(filter-out 0,$(FAST_SD)),--fast-sd,)
+.PHONY: ereader-gui
+ereader-gui: ereader_shelf
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	$(CMAKE) -B $(ROOT)/tools/mkbookimg/build -S $(ROOT)/tools/mkbookimg
+	$(CMAKE) --build $(ROOT)/tools/mkbookimg/build -j
+	@mkdir -p $(ROOT)/build
+	@# Book filenames contain spaces, so select + pass them via a bash array
+	@# (the wildcard/word-split path would break on the first space).
+	@set -e; shopt -s nullglob; \
+		all=("$(EREADER_SD_DIR)"/*.rabook); \
+		books=("$${all[@]:0:$(EREADER_SD_COUNT)}"); \
+		if [ $${#books[@]} -eq 0 ]; then echo "no *.rabook in $(EREADER_SD_DIR)"; exit 1; fi; \
+		echo "  SD card: $${#books[@]} book(s) from $(EREADER_SD_DIR)"; \
+		"$(ROOT)/tools/mkbookimg/build/mkbookimg" "$(EREADER_SD_IMG)" "$${books[@]}"
+	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_ereader_shelf)/build/ereader_shelf.elf \
+		--sd $(EREADER_SD_IMG) $(_EREADER_FAST) \
+		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make sim-help` -- usage, the PANEL knob, and the board_sim flag surface.
 # Explicit target, so it wins over the sim-% static pattern rule above.
