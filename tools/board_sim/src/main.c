@@ -2735,6 +2735,155 @@ static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
                 lr);
 }
 
+/* =============================================================================
+ * --fast-sd: serve whole SD blocks in C instead of clocking 512 SPI bytes each.
+ * =============================================================================
+ *
+ * The firmware reads an SD card over SCI0 in Simple-SPI mode one byte at a time:
+ * ra_sci_spi_xfer8() issues a FIXED five MMIO accesses per byte (poll TDRE, write
+ * TDR, poll RDRF, read RDR, clear RDRF), and a 512-byte block is 512 of those. A
+ * book-sized read is millions of MMIO callbacks -- tens of wall-clock seconds in
+ * Unicorn (QEMU-TCG) -- versus ~0.1 s on the real 25 MHz bus, so the cost is a
+ * pure emulation artifact, not firmware behaviour.
+ *
+ * The right granularity to skip is the BLOCK, not the byte: redirecting a hooked
+ * function back to its caller needs a uc_emu_stop/relaunch, which is far more
+ * expensive than an MMIO callback, so a per-byte hook is a net loss (millions of
+ * relaunches). Opt-in --fast-sd instead installs a UC_HOOK_CODE at the entry of
+ * ra_sdmmc_spi_read_block(lba, buf): with a card attached it copies the 512-byte
+ * block straight from the image via ::board_sd_read_block -- the byte-identical
+ * data the CMD17 path would stream -- writes it to @c buf, returns k_ra_ok and
+ * jumps to LR. One relaunch per sector (hundreds per book) instead of millions
+ * per byte, so the rendered framebuffer is byte-for-byte identical while the read
+ * drops from tens of seconds to well under one.
+ *
+ * Faithfulness: this serves block DATA directly, bypassing the SD-over-SPI block
+ * protocol (CMD17 / 0xFE token / CRC16 / the per-byte SPI loop) for the data
+ * path. The FAT parse, inflate, and render all still run on the real firmware and
+ * see identical bytes; the bypassed block protocol is covered by the host unit
+ * test (tests/test_ra_sdmmc_card_reflow.c) and by hardware. It is OFF by default:
+ * HIL gates and the default run exercise the full handshake; turn it on only to
+ * load a large book fast for an interactive or recorded capture. A card-absent
+ * call, an out-of-range LBA, or a firmware without the symbol falls through to
+ * the real driver, so nothing else is affected.
+ */
+
+/** @enum fast_sd_const_t @brief --fast-sd block-serving constants. */
+typedef enum : uint16_t {
+  k_fast_sd_block = 512U, /**< SD block size served per hook entry. */
+} fast_sd_const_t;
+
+/**
+ * @var s_fast_sd
+ * @brief True once `--fast-sd` is requested on the command line.
+ * @details Gates ::fast_sd_seam_install; when false the hook is never armed and
+ *          the SD path runs the full faithful per-byte MMIO block protocol.
+ * @warning Single-threaded run loop only.
+ * @since 0.1.0
+ */
+static bool s_fast_sd;
+
+/**
+ * @var s_seam_relaunch
+ * @brief Set by ::on_sdmmc_read_block to relaunch WITHOUT consuming a chunk.
+ * @details The block-read hook stops emulation to return to the caller; left
+ *          alone the inner run loop would treat that clean stop as a full
+ *          instruction budget elapsing and advance SysTick + charge a chunk. This
+ *          flag marks the stop as a zero-time seam relaunch -- the inner loop just
+ *          re-enters at the returned PC, exactly like the exception-return path.
+ * @warning Single-threaded run loop only; cleared by the inner loop each relaunch.
+ * @since 0.1.0
+ */
+static bool s_seam_relaunch;
+
+/**
+ * @brief UC_HOOK_CODE at `ra_sdmmc_spi_read_block`: serve one 512-byte block in C.
+ *
+ * @details
+ * Reads the AAPCS arguments (r0 = lba, r1 = destination buffer) at the function's
+ * entry. With a card attached and the LBA in range it copies the block straight
+ * from the image via ::board_sd_read_block -- byte-identical to the CMD17 stream
+ * the per-byte path would produce -- writes it to @c buf, sets the return value to
+ * k_ra_ok and jumps to LR, skipping the SPI block protocol. With no card or a
+ * bad LBA it returns immediately so Unicorn runs the real driver (which errors as
+ * it would on hardware).
+ *
+ * @param[in,out] uc      Active Unicorn engine.
+ * @param[in]     address Hook site (the resolved entry VMA); unused.
+ * @param[in]     size    Instruction size at the site; unused.
+ * @param[in]     user    Unused hook cookie.
+ *
+ * @pre @p uc is at ra_sdmmc_spi_read_block's entry with args still in r0-r1.
+ * @post On the fast path, @c buf holds the block, r0 = k_ra_ok and PC = LR;
+ *       otherwise CPU state is intact and the real body runs.
+ *
+ * @note Not thread-safe; the run loop is single-threaded.
+ * @since 0.1.0
+ */
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
+static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t lba     = 0U;
+  uint32_t buf_ptr = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_R0, &lba);
+  (void)uc_reg_read(uc, UC_ARM_REG_R1, &buf_ptr);
+  uint8_t blk[k_fast_sd_block];
+  /* No card, a null buffer, or an out-of-range LBA -> run the real driver so the
+   * card-absent / error path stays exactly as on hardware. */
+  if (!board_sd_attached() || (buf_ptr == 0U) || !board_sd_read_block(lba, blk)) {
+    return;
+  }
+  (void)uc_mem_write(uc, (uint64_t)buf_ptr, blk, sizeof blk);
+  /* Relaunch as a zero-time seam (no chunk / SysTick cost) so a whole book-sized
+   * read drains within one settle window. */
+  s_seam_relaunch = true;
+  eth_hook_return(uc, 0U); /* k_ra_ok: set r0 + jump to LR, skipping the body. */
+}
+
+/**
+ * @brief Install the `--fast-sd` block-read hook if opted-in and the symbol exists.
+ *
+ * @param[in,out] uc  Active Unicorn engine.
+ * @param[in]     elf Loaded ELF image (for symbol resolution).
+ * @param[in]     len ELF image length in bytes.
+ *
+ * @pre @p uc is initialised and @p elf holds @p len valid bytes.
+ * @post With @c s_fast_sd and the symbol present, a UC_HOOK_CODE fires
+ *       ::on_sdmmc_read_block at the function entry; otherwise nothing is armed.
+ *
+ * @note A firmware without ra_sdmmc_spi_read_block (no SD path) is reported once
+ *       and left on the default per-byte MMIO path.
+ * @since 0.1.0
+ */
+static void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+{
+  if (!s_fast_sd) {
+    return;
+  }
+  const uint32_t addr = elf_sym_addr(elf, len, "ra_sdmmc_spi_read_block", nullptr);
+  if (addr == 0U) {
+    (void)fprintf(
+      stderr,
+      "  [fast-sd] ra_sdmmc_spi_read_block not found -- SD stays on the per-byte path\n");
+    return;
+  }
+  static uc_hook h;
+  (void)uc_hook_add(uc,
+                    &h,
+                    UC_HOOK_CODE,
+                    (void*)on_sdmmc_read_block,
+                    nullptr,
+                    (uint64_t)addr,
+                    (uint64_t)addr);
+  (void)fprintf(stderr,
+                "  [fast-sd] ra_sdmmc_spi_read_block block-hook armed @ 0x%08X "
+                "(SD blocks served direct from the image)\n",
+                (unsigned)addr);
+}
+
 /**
  * @brief Install a `--trace-sym` entry hook for every requested symbol present.
  *
@@ -4676,7 +4825,7 @@ int main(int argc, char** argv)
       "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
       " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
       " [--usb-in <str>] [--button <1|2>] [--reboot <N>] [--dump-sym <name>]"
-      " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>]\n"
+      " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>] [--fast-sd]\n"
       "  --view          open a macOS window: live board view; click panel"
       " (touch) / on-screen SW1/SW2, type -> UART\n"
       "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -4697,6 +4846,8 @@ int main(int argc, char** argv)
       "  --sd <image>    serve a FAT/exFAT image as the microSD card (read + write)\n"
       "  --sd-new <N[k|m|g][:fat16|fat32]>  blank FAT card of N MiB (k/m/g unit; e.g. 30g)\n"
       "  --save-sd <out> after the run, dump the SD card image (with firmware writes)\n"
+      "  --fast-sd       serve SD blocks direct from the image (skip the per-byte SPI\n"
+      "                  protocol; byte-identical render) so a big book loads fast; opt-in\n"
       "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
       "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
       "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
@@ -4812,6 +4963,8 @@ int main(int argc, char** argv)
         trace_sym_n++;
       }
       i++;
+    } else if (strncmp(argv[i], "--fast-sd", sizeof("--fast-sd")) == 0) {
+      s_fast_sd = true;
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
       click_y    = (int)strtol(argv[i + 2], nullptr, (int)k_strtol_base10);
@@ -5129,6 +5282,10 @@ int main(int argc, char** argv)
    * (and fault) rather than trap, so hook each site (see on_mve_vstrw). VMOV.I32
    * is handled separately in the invalid-instruction path. Inert without MVE. */
   mve_seam_install(uc, elf, elf_len);
+  /* --fast-sd (opt-in): serve whole SD blocks from the image in one C hook entry
+   * instead of clocking 512 SPI bytes each, so a book-sized read loads fast.
+   * Inert without the flag or without an SD-capable firmware (see fast_sd). */
+  fast_sd_seam_install(uc, elf, elf_len);
   /* BOARD_SIM_PROFILE: collect FUNC symbols for the profiler; in per-instruction
    * mode (=full) arm a code hook that tallies every instruction + call. */
   prof_load(elf, elf_len);
@@ -5185,6 +5342,20 @@ int main(int argc, char** argv)
      * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
     k_click_settle_chunks = 512U, /**< Extra chunks after the click lands.    */
   };
+  /* BOARD_SIM_CLICK_SETTLE=N: widen the post-click drain for a tap that kicks off
+   * a long operation (e.g. opening a big book from SD: read + inflate + decode +
+   * render can need far more than the default window). Mirrors BOARD_SIM_MAX_CHUNKS;
+   * unset keeps the default so ordinary tap captures stay snappy. */
+  uint32_t click_settle_chunks = (uint32_t)k_click_settle_chunks;
+  {
+    const char* e_settle = getenv("BOARD_SIM_CLICK_SETTLE");
+    if (e_settle != nullptr) {
+      const long v = strtol(e_settle, nullptr, (int)k_env_strtol_base);
+      if (v > 0L) {
+        click_settle_chunks = (uint32_t)v;
+      }
+    }
+  }
 
   /* Chunked run: emulate a block, take a SysTick (and any pending PendSV),
    * repeat. Within a chunk, exception returns (a handler's "BX lr" into an
@@ -5329,27 +5500,27 @@ int main(int argc, char** argv)
       prof_idle_arm = (uint32_t)strtoul(e_pa, nullptr, 10);
     }
   }
-  uint64_t      prof_idle_prev_i = 0U;
-  uint32_t      prof_idle_run    = 0U;
-  bool          prof_stopped     = false;
-  uint64_t      idle_sig_prev    = 0U;
-  uint32_t      idle_run         = 0U;
-  bool          idle_stopped     = false;
-  uint32_t      usb_stop_run     = 0U;
-  uint32_t      usbh_stop_run    = 0U;
-  bool          usb_stopped      = false;
-  uint32_t      rec_frames       = 0U; /* frames written when --record is active. */
-  const clock_t t0               = clock();
-  uc_err        err              = UC_ERR_OK;
-  uint32_t      run_pc           = pc;
-  uint32_t      chunks           = 0U;
-  bool          timed_out        = false;
-  bool          closed           = false;
-  uint32_t      settle_left      = 0U;    /* >0 once the click landed: chunks to drain. */
-  uint32_t      last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot. */
-  bool          slider_grab      = false; /* true while a press grabbed the battery slider. */
-  board_overlay_btn_t held_btn   = k_board_overlay_btn_none; /* SW held down (released on up). */
-  uint64_t      last_present_us  = 0U;    /* wall-us of the last live --view present.    */
+  uint64_t            prof_idle_prev_i = 0U;
+  uint32_t            prof_idle_run    = 0U;
+  bool                prof_stopped     = false;
+  uint64_t            idle_sig_prev    = 0U;
+  uint32_t            idle_run         = 0U;
+  bool                idle_stopped     = false;
+  uint32_t            usb_stop_run     = 0U;
+  uint32_t            usbh_stop_run    = 0U;
+  bool                usb_stopped      = false;
+  uint32_t            rec_frames       = 0U; /* frames written when --record is active. */
+  const clock_t       t0               = clock();
+  uc_err              err              = UC_ERR_OK;
+  uint32_t            run_pc           = pc;
+  uint32_t            chunks           = 0U;
+  bool                timed_out        = false;
+  bool                closed           = false;
+  uint32_t            settle_left      = 0U;    /* >0 once the click landed: chunks to drain. */
+  uint32_t            last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot. */
+  bool                slider_grab      = false; /* true while a press grabbed the battery slider. */
+  board_overlay_btn_t held_btn = k_board_overlay_btn_none; /* SW held down (released on up). */
+  uint64_t            last_present_us = 0U; /* wall-us of the last live --view present.    */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
   const board_overlay_btn_t click_btn =
@@ -5460,6 +5631,13 @@ int main(int argc, char** argv)
       s_pendsv_stop = false; /* set by on_icsr_write iff this run ends on PENDSVSET */
       err           = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      if (s_seam_relaunch) {
+        /* A --fast-sd byte-exchange returned to its caller. This consumed no
+         * modelled time, so relaunch from the returned PC without advancing the
+         * SysTick or charging a chunk (the inner-loop cap still bounds the run). */
+        s_seam_relaunch = false;
+        continue;
+      }
       if (s_prof_stop_hit) {
         break; /* BOARD_SIM_STOP_PC reached (set in prof_insn_hook) -- end the run. */
       }
@@ -5593,10 +5771,10 @@ int main(int argc, char** argv)
          * setting the SOC from the cursor column even if the mouse leaves the
          * track row -- standard slider grab semantics. */
         const board_overlay_btn_t hit = route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
-        slider_grab = (hit == k_board_overlay_btn_battery);
-        held_btn    = ((hit == k_board_overlay_btn_sw1) || (hit == k_board_overlay_btn_sw2))
-                        ? hit
-                        : k_board_overlay_btn_none;
+        slider_grab                   = (hit == k_board_overlay_btn_battery);
+        held_btn = ((hit == k_board_overlay_btn_sw1) || (hit == k_board_overlay_btn_sw2))
+                     ? hit
+                     : k_board_overlay_btn_none;
       }
       /* Mouse-up: release a held push-button and drop any slider grab. */
       if (board_view_poll_release(view)) {
@@ -5669,7 +5847,7 @@ int main(int argc, char** argv)
                                  ? button_fired
                                  : (board_periph_touch_reported() > 0U);
       if (click_acted) {
-        settle_left = (settle_left == 0U) ? (uint32_t)k_click_settle_chunks : (settle_left - 1U);
+        settle_left = (settle_left == 0U) ? click_settle_chunks : (settle_left - 1U);
         if (settle_left == 1U) {
           break;
         }

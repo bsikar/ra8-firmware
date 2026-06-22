@@ -135,11 +135,35 @@ static bool in_range(uint64_t addr, uint64_t base, uint64_t span)
   return (addr >= base) && (addr < (base + span));
 }
 
+/**
+ * @brief Last block returned by ::block_for_addr (one-entry dispatch cache).
+ *
+ * @details
+ * The firmware's polled SD-over-Simple-SPI byte protocol hammers a single
+ * peripheral block (the SCI window) thousands of times in a row, and every MMIO
+ * callback would otherwise re-scan all ~28 registered blocks. Caching the last
+ * owner and testing it first collapses that scan to a single ::in_range compare
+ * on the overwhelmingly common same-block run. It only changes HOW the owning
+ * block is located, never WHICH block answers, so the byte/flag stream the
+ * firmware observes is unchanged.
+ *
+ * @note Cleared in ::board_periph_init so a warm reboot cannot reuse a stale
+ *       pointer (the descriptor list is static, but this keeps the invariant
+ *       explicit).
+ * @warning Not thread-safe; the run loop is single-threaded.
+ * @since 0.1.0
+ */
+static const board_periph_block_t* s_last_block;
+
 /** @brief Find the registered block owning @p addr, or NULL. */
 static const board_periph_block_t* block_for_addr(uint64_t addr)
 {
+  if ((s_last_block != nullptr) && in_range(addr, s_last_block->base, s_last_block->span)) {
+    return s_last_block;
+  }
   for (uint32_t i = 0U; i < s_block_count; i++) {
     if (in_range(addr, s_blocks[i]->base, s_blocks[i]->span)) {
+      s_last_block = s_blocks[i];
       return s_blocks[i];
     }
   }
@@ -331,7 +355,8 @@ bool board_periph_trace(void)
 
 void board_periph_init(bool trace)
 {
-  s_trace = trace;
+  s_trace      = trace;
+  s_last_block = nullptr; /* drop the dispatch cache across a warm reboot */
   if (!s_order_built) {
     board_periph_build_order();
   }
