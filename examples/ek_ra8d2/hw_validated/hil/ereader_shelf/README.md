@@ -35,8 +35,20 @@ shelf (cover-thumbnail grid)
           to step back up (reader -> TOC -> cover -> shelf).
 ```
 
-With no input, an idle self-demo walks the screens (so a headless `board_sim
---record` captures the whole flow); the first touch takes over.
+Hold **SW1 at boot** (`board_sim --button 1`) to run a self-demo that walks every
+screen -- handy for a headless `board_sim --record`. The first touch takes over.
+Without SW1 the app just boots to the shelf and idles, so interactive use (and
+board_sim, which fast-forwards an idle core) stays responsive instead of grinding
+through a continuous re-inflate loop.
+
+### Performance notes
+
+Boot draws the shelf from **pre-baked gray8 cover thumbnails** embedded in
+`library.h` (decoded once by `tools/bake_library.py`), so it never inflates a
+book just to paint the shelf -- a book is inflated only when opened. Under
+board_sim (a ~125x-slower instruction emulator), this cut cold boot from ~17 s to
+~2 s; on the real 1 GHz device both are sub-second. Opening a book still costs one
+DEFLATE inflate (instant on hardware, a couple seconds in the emulator).
 
 ## Modules (`src/`)
 
