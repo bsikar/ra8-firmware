@@ -10,6 +10,18 @@
 #
 cmake_minimum_required(VERSION 3.20)
 
+# A standalone `cmake -S . -B build` makes this file the top-level
+# listfile, which CMake requires to contain a literal, direct project()
+# call. The aggregate repo-root build instead pulls this app in via
+# add_subdirectory() (project() is already called at the root), so guard on
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# below re-runs project() in the standalone case to apply the shared VERSION
+# and the app description.
+get_directory_property(_ra_has_parent PARENT_DIRECTORY)
+if(NOT _ra_has_parent)
+    project(gpio_input_demo LANGUAGES C ASM)
+endif()
+
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
