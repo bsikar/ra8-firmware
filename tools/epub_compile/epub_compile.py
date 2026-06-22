@@ -1,0 +1,397 @@
+#!/usr/bin/env python3
+"""Compile an EPUB into a flat, execute-in-place .rabook blob.
+
+The on-device reader (libs/ra_book) never unzips or parses XHTML at runtime.
+This host tool does it once: it unzips the EPUB, parses every spine document
+into a faithful DOM (every tag, attribute and text run preserved), keeps each
+stylesheet verbatim, transcodes raster images to the panel-native 4bpp
+grayscale (dithered, full resolution, DEFLATE-compressed) and preserves SVG as
+vector source, then serializes everything into the binary layout described by
+libs/ra_book/inc/ra_book.h.
+
+Fidelity is the rule: nothing in the markup is dropped to match what the
+renderer understands today. The only content that changes form is raster
+images, because the e-ink panel is physically 4bpp.
+
+Usage:
+    epub_compile.py INPUT.epub OUTPUT.rabook [--stats]
+"""
+import argparse
+import io
+import os
+import posixpath
+import struct
+import sys
+import zlib
+from html.parser import HTMLParser
+from xml.etree import ElementTree as ET
+from zipfile import ZipFile
+
+from PIL import Image
+
+# --- on-disk constants, kept in lockstep with libs/ra_book/inc/ra_book.h ------
+MAGIC = b"RABOOK1\x00"
+FORMAT_VERSION = 1
+NIL = 0xFFFFFFFF
+NODE_ELEMENT = 0
+NODE_TEXT = 1
+IMG_GRAY4_DEFLATE = 0
+IMG_SVG_RAW = 1
+GRAY_LEVELS = 16
+
+VOID_TAGS = {
+    "area", "base", "br", "col", "embed", "hr", "img", "input",
+    "link", "meta", "param", "source", "track", "wbr",
+}
+
+
+class StringPool:
+    """De-duplicating UTF-8 string pool; offset 0 is always the empty string."""
+
+    def __init__(self):
+        self.buf = bytearray()
+        self._map = {}
+        self.intern("")
+
+    def intern(self, text):
+        if text is None:
+            text = ""
+        raw = text.encode("utf-8")
+        got = self._map.get(raw)
+        if got is not None:
+            return got
+        off = len(self.buf)
+        self.buf += raw + b"\x00"
+        self._map[raw] = off
+        return off
+
+
+class DomBuilder(HTMLParser):
+    """Lenient HTML/XHTML parser that builds a generic element/text tree.
+
+    convert_charrefs resolves entities to Unicode, and <style>/<script> bodies
+    are captured as text (so inline CSS survives). Tag names and attributes are
+    preserved exactly; inline <svg> becomes ordinary elements.
+    """
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.root = {"tag": "#root", "attrs": [], "children": []}
+        self.stack = [self.root]
+
+    def handle_starttag(self, tag, attrs):
+        node = {"tag": tag, "attrs": attrs, "children": []}
+        self.stack[-1]["children"].append(node)
+        if tag not in VOID_TAGS:
+            self.stack.append(node)
+
+    def handle_startendtag(self, tag, attrs):
+        self.stack[-1]["children"].append({"tag": tag, "attrs": attrs, "children": []})
+
+    def handle_endtag(self, tag):
+        for i in range(len(self.stack) - 1, 0, -1):
+            if self.stack[i]["tag"] == tag:
+                del self.stack[i:]
+                return
+
+    def handle_data(self, data):
+        if data:
+            self.stack[-1]["children"].append({"text": data})
+
+
+def find_first(node, tag):
+    """Depth-first search for the first element with the given tag name."""
+    for child in node.get("children", []):
+        if child.get("tag") == tag:
+            return child
+        hit = find_first(child, tag)
+        if hit is not None:
+            return hit
+    return None
+
+
+class BlobBuilder:
+    """Accumulates the node/attr/chapter/image tables and emits the blob."""
+
+    def __init__(self):
+        self.sp = StringPool()
+        self.nodes = []        # list of dicts (see _emit_node)
+        self.attrs = []        # list of (name_off, value_off)
+        self.chapters = []     # list of (title_off, href_off, root_node)
+        self.stylesheets = []  # list of (source_off, scope_chapter)
+        self.images = []       # list of (id_off, w, h, fmt, data, raw_size)
+        self.cover_index = NIL
+
+    # -- DOM serialization ----------------------------------------------------
+    def add_text(self, text):
+        idx = len(self.nodes)
+        self.nodes.append({
+            "kind": NODE_TEXT, "name_off": 0, "text_off": self.sp.intern(text),
+            "attr_count": 0, "first_attr": NIL, "first_child": NIL, "next_sibling": NIL,
+        })
+        return idx
+
+    def add_element(self, elem):
+        first_attr = NIL
+        acount = 0
+        if elem["attrs"]:
+            first_attr = len(self.attrs)
+            for name, value in elem["attrs"]:
+                self.attrs.append((self.sp.intern(name), self.sp.intern(value)))
+                acount += 1
+        idx = len(self.nodes)
+        self.nodes.append({
+            "kind": NODE_ELEMENT, "name_off": self.sp.intern(elem["tag"]), "text_off": 0,
+            "attr_count": acount, "first_attr": first_attr,
+            "first_child": NIL, "next_sibling": NIL,
+        })
+        kids = []
+        for child in elem["children"]:
+            if "text" in child:
+                kids.append(self.add_text(child["text"]))
+            else:
+                kids.append(self.add_element(child))
+        if kids:
+            self.nodes[idx]["first_child"] = kids[0]
+            for cur, nxt in zip(kids, kids[1:]):
+                self.nodes[cur]["next_sibling"] = nxt
+        return idx
+
+    def add_chapter(self, root_elem, title, href):
+        root_idx = self.add_element(root_elem)
+        self.chapters.append((self.sp.intern(title), self.sp.intern(href), root_idx))
+
+    # -- assets ---------------------------------------------------------------
+    def add_stylesheet(self, css_text):
+        self.stylesheets.append((self.sp.intern(css_text), NIL))
+
+    def add_raster_image(self, href, data):
+        im = Image.open(io.BytesIO(data)).convert("L")
+        width, height = im.size
+        palette = []
+        for i in range(GRAY_LEVELS):
+            v = round(i * 255 / (GRAY_LEVELS - 1))
+            palette += [v, v, v]
+        while len(palette) < 768:
+            palette += [0, 0, 0]
+        pal_img = Image.new("P", (1, 1))
+        pal_img.putpalette(palette)
+        dithered = im.convert("RGB").quantize(
+            palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG).convert("L")
+        nib_table = bytes(min(v // 17, GRAY_LEVELS - 1) for v in range(256))
+        nibbles = dithered.tobytes().translate(nib_table)
+        even = nibbles[0::2]
+        odd = nibbles[1::2]
+        packed = bytearray(bytes((e << 4) | o for e, o in zip(even, odd)))
+        if len(even) > len(odd):
+            packed.append(even[-1] << 4)
+        comp = zlib.compress(bytes(packed), 9)
+        self.images.append((self.sp.intern(href), width, height, IMG_GRAY4_DEFLATE,
+                            comp, len(packed)))
+        return len(self.images) - 1
+
+    def add_svg_image(self, href, data):
+        comp = zlib.compress(data, 9)
+        self.images.append((self.sp.intern(href), 0, 0, IMG_SVG_RAW, comp, len(data)))
+        return len(self.images) - 1
+
+    # -- serialization --------------------------------------------------------
+    def serialize(self, meta):
+        chap = b"".join(struct.pack("<3I", *c) for c in self.chapters)
+        node = b"".join(struct.pack(
+            "<BBHIIIII", n["kind"], 0, n["attr_count"], n["name_off"], n["text_off"],
+            n["first_attr"], n["first_child"], n["next_sibling"]) for n in self.nodes)
+        attr = b"".join(struct.pack("<2I", *a) for a in self.attrs)
+        style = b"".join(struct.pack("<2I", *s) for s in self.stylesheets)
+
+        # image pool first, so the image table can reference data_off
+        pool = bytearray()
+        img_records = []
+        for id_off, w, h, fmt, data, raw in self.images:
+            data_off = len(pool)
+            pool += data
+            img_records.append(struct.pack(
+                "<IHHBBHIII", id_off, w, h, fmt, 0, 0, data_off, len(data), raw))
+        image = b"".join(img_records)
+        strings = bytes(self.sp.buf)
+
+        header_size = 100
+        off_chap = header_size
+        off_node = off_chap + len(chap)
+        off_attr = off_node + len(node)
+        off_style = off_attr + len(attr)
+        off_image = off_style + len(style)
+        off_string = off_image + len(image)
+        off_pool = off_string + len(strings)
+        total = off_pool + len(pool)
+
+        body = chap + node + attr + style + image + strings + bytes(pool)
+        crc = zlib.crc32(body) & 0xFFFFFFFF
+
+        header = struct.pack(
+            "<8s23I", MAGIC, FORMAT_VERSION, total, 0,
+            self.sp.intern(meta["title"]), self.sp.intern(meta["author"]),
+            self.sp.intern(meta["language"]), self.sp.intern(meta["identifier"]),
+            self.cover_index,
+            len(self.chapters), off_chap, len(self.nodes), off_node,
+            len(self.attrs), off_attr, len(self.stylesheets), off_style,
+            len(self.images), off_image, off_string, len(strings),
+            off_pool, len(pool), crc)
+        assert len(header) == header_size
+        return header + body
+
+
+# --- EPUB unpacking -----------------------------------------------------------
+def opf_localname(tag):
+    return tag.split("}", 1)[1] if tag and tag[0] == "{" else tag
+
+
+def parse_opf(zf):
+    container = ET.fromstring(zf.read("META-INF/container.xml"))
+    rootfile = None
+    for el in container.iter():
+        if opf_localname(el.tag) == "rootfile":
+            rootfile = el.get("full-path")
+            break
+    opf = ET.fromstring(zf.read(rootfile))
+    opf_dir = posixpath.dirname(rootfile)
+
+    meta = {"title": "", "author": "", "language": "", "identifier": ""}
+    manifest = {}        # id -> (href, media_type, properties)
+    spine = []           # list of idref
+    cover_id = None
+    for el in opf.iter():
+        tag = opf_localname(el.tag)
+        if tag == "title" and not meta["title"]:
+            meta["title"] = (el.text or "").strip()
+        elif tag == "creator" and not meta["author"]:
+            meta["author"] = (el.text or "").strip()
+        elif tag == "language" and not meta["language"]:
+            meta["language"] = (el.text or "").strip()
+        elif tag == "identifier" and not meta["identifier"]:
+            meta["identifier"] = (el.text or "").strip()
+        elif tag == "meta" and el.get("name") == "cover":
+            cover_id = el.get("content")
+        elif tag == "item":
+            manifest[el.get("id")] = (
+                el.get("href"), el.get("media-type", ""), el.get("properties", "") or "")
+        elif tag == "itemref":
+            spine.append(el.get("idref"))
+    return opf_dir, meta, manifest, spine, cover_id
+
+
+def parse_toc(zf, opf_dir, manifest):
+    """Map a normalized doc path -> TOC label, from the EPUB3 nav or EPUB2 NCX."""
+    labels = {}
+
+    def resolve(href):
+        return posixpath.normpath(posixpath.join(opf_dir, href.split("#", 1)[0]))
+
+    nav_href = next((h for (h, _m, p) in manifest.values() if "nav" in p), None)
+    ncx_href = next((h for (h, m, _p) in manifest.values()
+                     if m == "application/x-dtbncx+xml"), None)
+    try:
+        if nav_href:
+            tree = ET.fromstring(zf.read(resolve(nav_href)))
+            base = posixpath.dirname(resolve(nav_href))
+            for a in tree.iter():
+                if opf_localname(a.tag) == "a" and a.get("href"):
+                    tgt = posixpath.normpath(posixpath.join(base, a.get("href").split("#", 1)[0]))
+                    labels.setdefault(tgt, "".join(a.itertext()).strip())
+        elif ncx_href:
+            tree = ET.fromstring(zf.read(resolve(ncx_href)))
+            base = posixpath.dirname(resolve(ncx_href))
+            for nav in tree.iter():
+                if opf_localname(nav.tag) != "navPoint":
+                    continue
+                label = ""
+                href = None
+                for sub in nav.iter():
+                    ln = opf_localname(sub.tag)
+                    if ln == "text" and not label:
+                        label = (sub.text or "").strip()
+                    elif ln == "content":
+                        href = sub.get("src")
+                if href:
+                    tgt = posixpath.normpath(posixpath.join(base, href.split("#", 1)[0]))
+                    labels.setdefault(tgt, label)
+    except (ET.ParseError, KeyError):
+        pass
+    return labels
+
+
+def compile_epub(path):
+    sys.setrecursionlimit(100000)
+    bb = BlobBuilder()
+    with ZipFile(path) as zf:
+        opf_dir, meta, manifest, spine, cover_id = parse_opf(zf)
+        labels = parse_toc(zf, opf_dir, manifest)
+        names = set(zf.namelist())
+
+        def resolve(href):
+            return posixpath.normpath(posixpath.join(opf_dir, href))
+
+        # stylesheets (verbatim)
+        for href, media, _props in manifest.values():
+            if media == "text/css":
+                full = resolve(href)
+                if full in names:
+                    bb.add_stylesheet(zf.read(full).decode("utf-8", "replace"))
+
+        # images (raster -> 4bpp, svg -> vector); remember manifest-id -> image index
+        id_to_image = {}
+        for mid, (href, media, _props) in manifest.items():
+            full = resolve(href)
+            if full not in names:
+                continue
+            try:
+                if media == "image/svg+xml":
+                    id_to_image[mid] = bb.add_svg_image(href, zf.read(full))
+                elif media.startswith("image/"):
+                    id_to_image[mid] = bb.add_raster_image(href, zf.read(full))
+            except (OSError, ValueError):
+                pass
+        if cover_id and cover_id in id_to_image:
+            bb.cover_index = id_to_image[cover_id]
+
+        # spine chapters -> faithful DOM (body subtree)
+        href_by_id = {mid: h for mid, (h, _m, _p) in manifest.items()}
+        for idref in spine:
+            href = href_by_id.get(idref)
+            if not href:
+                continue
+            full = resolve(href)
+            if full not in names:
+                continue
+            dom = DomBuilder()
+            dom.feed(zf.read(full).decode("utf-8", "replace"))
+            body = find_first(dom.root, "body") or dom.root
+            title = labels.get(full, "")
+            bb.add_chapter(body, title, href)
+
+    return bb.serialize(meta), meta, bb
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
+    ap.add_argument("input", help="source .epub")
+    ap.add_argument("output", help="destination .rabook")
+    ap.add_argument("--stats", action="store_true", help="print size/structure stats")
+    args = ap.parse_args()
+
+    blob, meta, bb = compile_epub(args.input)
+    with open(args.output, "wb") as fh:
+        fh.write(blob)
+
+    if args.stats:
+        src = os.path.getsize(args.input)
+        out = len(blob)
+        print(f"{meta['title']} -- {meta['author']}")
+        print(f"  chapters={len(bb.chapters)} nodes={len(bb.nodes)} "
+              f"attrs={len(bb.attrs)} css={len(bb.stylesheets)} images={len(bb.images)}")
+        print(f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
+              f"({100 * out // max(src, 1)}%)")
+
+
+if __name__ == "__main__":
+    main()
