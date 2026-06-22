@@ -66,6 +66,13 @@ macro(ra_add_app)
     get_filename_component(RA_REPO_ROOT "${_RA_ADD_APP_DIR}/.." ABSOLUTE)
 
     # ---- standalone vs embedded -------------------------------------------
+    # NOTE: the per-app stub already contains its own literal, guarded
+    # project() call -- CMake requires the top-level listfile of a standalone
+    # `cmake -S . -B build` to contain a direct project() command, and a call
+    # made here from inside a macro does not satisfy that rule. This second
+    # project() re-affirms it with the shared VERSION and the app description;
+    # it is cheap (compiler detection is already cached) and warning-free. Do
+    # not remove the stub's project() to "dedupe" -- the dev warning returns.
     get_directory_property(_ra_has_parent PARENT_DIRECTORY)
     if(NOT _ra_has_parent)
         file(READ "${RA_REPO_ROOT}/VERSION" _ra_ver)
