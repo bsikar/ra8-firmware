@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra_has_parent PARENT_DIRECTORY)
 if(NOT _ra_has_parent)
-    project(ereader_shelf LANGUAGES C ASM)
+    project(ereader_shelf LANGUAGES C CXX ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -29,6 +29,6 @@ include("${_d}/cmake/ra_add_app.cmake")
 # ra_gfx into the SDRAM framebuffer ra_display_pal scans over GLCDC to the
 # 1024x600 panel. ra_book + miniz inflate the compressed .rabook blobs (baked in
 # MRAM via library.h, or read from SD). src/*.c hold the per-screen modules.
-ra_add_app(NAME ereader_shelf STACK_BYTES 8192
+ra_add_app(NAME ereader_shelf STACK_BYTES 16384
            DESCRIPTION "Hybrid baked+SD e-reader: shelf, covers, TOC, full reader (1024x600 panel)"
-           LIBS ra_gfx ra_display_pal ra_box ra_ui ra_book miniz ra_fs ra_sdmmc_spi)
+           LIBS ra_gfx ra_display_pal ra_box ra_ui ra_book ra_fs ra_sdmmc_spi ra_epub ra_reflow)

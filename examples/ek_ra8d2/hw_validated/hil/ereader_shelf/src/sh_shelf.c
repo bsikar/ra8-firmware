@@ -55,20 +55,6 @@ void sh_decode_cover(uint16_t idx, const void* base)
   }
 }
 
-void sh_capture_sd_meta(uint16_t idx, const void* base)
-{
-  const ra_book_header_t* hdr = ra_book_header(base);
-  (void)strncpy(g_sh.entry[idx].title,
-                ra_book_string(base, hdr->title_off),
-                sizeof g_sh.entry[idx].title - 1U);
-  g_sh.entry[idx].title[sizeof g_sh.entry[idx].title - 1U] = '\0';
-  (void)strncpy(g_sh.entry[idx].author,
-                ra_book_string(base, hdr->author_off),
-                sizeof g_sh.entry[idx].author - 1U);
-  g_sh.entry[idx].author[sizeof g_sh.entry[idx].author - 1U] = '\0';
-  sh_decode_cover(idx, base);
-}
-
 void sh_shelf_build_thumbs(void* scratch, size_t scratch_len)
 {
   /* Baked books only: their covers decode from MRAM in microseconds. SD covers

@@ -107,7 +107,15 @@ static int fs_format_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_m
   return 0;
 }
 
-/** @brief Write each argv[2..] book as BOOKNN.RBK; 0 on success. */
+/** @brief 8.3 extension for an input file: ".EPB" for *.epub, else ".RBK". */
+static const char* book_ext(const char* path)
+{
+  const size_t n   = strlen(path);
+  const size_t ext = strlen(".epub");
+  return ((n > ext) && (strcmp(&path[n - ext], ".epub") == 0)) ? "EPB" : "RBK";
+}
+
+/** @brief Write each argv[2..] book as BOOKNN.RBK / BOOKNN.EPB; 0 on success. */
 static int write_books(ra_fs_mount_t* mnt, char** argv, int n_books)
 {
   for (int i = 0; i < n_books; ++i) {
@@ -118,7 +126,7 @@ static int write_books(ra_fs_mount_t* mnt, char** argv, int n_books)
       return 1;
     }
     char name[k_name_len];
-    (void)snprintf(name, sizeof name, "BOOK%02d.RBK", i + 1);
+    (void)snprintf(name, sizeof name, "BOOK%02d.%s", i + 1, book_ext(argv[2 + i]));
     const ra_err_t err = ra_fs_write_file(mnt, name, data, len);
     if (err == k_ra_ok) {
       (void)fprintf(stderr, "mkbookimg: + %s  (%u bytes)  <- %s\n", name, len, argv[2 + i]);

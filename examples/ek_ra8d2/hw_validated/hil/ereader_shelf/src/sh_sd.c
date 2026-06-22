@@ -21,6 +21,8 @@
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
+#include "ra_epub.h"
+#include "ra_epub_fs.h"
 #include "ra_fs.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -106,29 +108,45 @@ bool sh_sd_mount(void)
   return ra_fs_mount(&s_backend, &s_mount) == k_ra_ok;
 }
 
-/** @brief Case-sensitive ".RBK" suffix test on an 8.3 name. */
-static bool sh_sd_is_rbk(const char* name)
+/** @brief Case-sensitive @p ext (e.g. ".RBK") suffix test on an 8.3 name. */
+static bool sh_sd_has_ext(const char* name, const char* ext)
 {
   const size_t n = strlen(name);
-  return (n > (size_t)k_sd_ext_len) && (strcmp(&name[n - (size_t)k_sd_ext_len], ".RBK") == 0);
+  return (n > (size_t)k_sd_ext_len) && (strcmp(&name[n - (size_t)k_sd_ext_len], ext) == 0);
 }
 
-/** @brief ra_fs_listdir callback: append each root *.RBK as an SD shelf entry. */
+/** @brief Classify an 8.3 name into a book format; true if it is a book. */
+static bool sh_sd_classify(const char* name, sh_book_fmt_t* out_fmt)
+{
+  if (sh_sd_has_ext(name, ".RBK")) {
+    *out_fmt = k_sh_fmt_rabook;
+    return true;
+  }
+  if (sh_sd_has_ext(name, ".EPB")) { /* .epub truncates to the 3-char 8.3 ext .EPB */
+    *out_fmt = k_sh_fmt_epub;
+    return true;
+  }
+  return false;
+}
+
+/** @brief ra_fs_listdir callback: append each root *.RBK / *.EPB as an SD entry. */
 static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
 {
   (void)ctx;
   const uint8_t skip = (uint8_t)k_ra_fs_attr_directory | (uint8_t)k_ra_fs_attr_volume_id;
-  if (((attr & skip) != 0U) || !sh_sd_is_rbk(name) ||
+  sh_book_fmt_t fmt  = k_sh_fmt_rabook;
+  if (((attr & skip) != 0U) || !sh_sd_classify(name, &fmt) ||
       (g_sh.book_count >= (uint16_t)k_sh_max_books)) {
     return;
   }
   sh_entry_t* e = &g_sh.entry[g_sh.book_count];
   *e            = (sh_entry_t){};
   e->from_sd    = true;
+  e->fmt        = fmt;
   e->blob_len   = size;
   (void)strncpy(e->sd_name, name, sizeof e->sd_name - 1U);
-  /* Placeholder until first open populates real title/author/cover from the
-   * header (reading a whole book over SPI at boot is too slow). */
+  /* Placeholder until first open populates real title/author/cover (reading +
+   * parsing a whole book over SPI at boot is too slow). */
   (void)strncpy(e->title, name, sizeof e->title - 1U);
   (void)strncpy(e->author, "SD card -- tap to load", sizeof e->author - 1U);
   g_sh.book_count++;
@@ -158,4 +176,12 @@ const uint8_t* sh_sd_read(const char* name, uint32_t* out_len)
   }
   *out_len = got;
   return s_filebuf;
+}
+
+bool sh_sd_open_epub(const char* name, void* out_book, uint8_t* filebuf, size_t cap)
+{
+  if (s_mount == nullptr) {
+    return false;
+  }
+  return ra_epub_open_fs(s_mount, name, filebuf, cap, (ra_epub_book_t*)out_book) == k_ra_ok;
 }
