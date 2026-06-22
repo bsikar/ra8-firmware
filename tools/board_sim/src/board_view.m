@@ -51,6 +51,8 @@
 @property(nonatomic, assign) uint16_t dragY;
 /** @brief Set while the primary button is held + moved; cleared when polled. */
 @property(nonatomic, assign) BOOL hasDrag;
+/** @brief Set by mouseUp:; one-shot edge consumed by board_view_poll_release. */
+@property(nonatomic, assign) BOOL hasRelease;
 /** @brief Accumulated scroll-wheel notches since the last poll (+up / -down). */
 @property(nonatomic, assign) int32_t scrollAccum;
 @end
@@ -153,6 +155,14 @@
     self.dragY   = fy;
     self.hasDrag = YES;
   }
+}
+/* Primary button released: latch a one-shot edge (no coordinate -- a release is
+ * just the end of the press). The run loop reads it via board_view_poll_release
+ * to release a held momentary push-button (SW1/SW2) and drop a slider grab. */
+- (void)mouseUp:(NSEvent*)event
+{
+  (void)event;
+  self.hasRelease = YES;
 }
 @end
 
@@ -328,6 +338,18 @@ bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
   *x                 = view->view.dragX;
   *y                 = view->view.dragY;
   view->view.hasDrag = NO;
+  return true;
+}
+
+bool board_view_poll_release(board_view_t* view)
+{
+  if ((view == nullptr) || (view->view == nil)) {
+    return false;
+  }
+  if (!view->view.hasRelease) {
+    return false;
+  }
+  view->view.hasRelease = NO;
   return true;
 }
 
