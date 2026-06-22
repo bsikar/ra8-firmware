@@ -218,6 +218,135 @@ static bool ra_book_walk_to_xhtml(const void* base,
   return ok && (guard < max_iter);
 }
 
+/** @brief Implementation of `ra_book_is_block()` -- block-level element test. */
+static bool ra_book_is_block(const char* name)
+{
+  static const char* const k_block[] = {
+    "p",      "h1",         "h2",      "h3",    "h4",     "h5",      "h6",         "li",
+    "ul",     "ol",         "div",     "br",    "hr",     "section", "tr",         "pre",
+    "header", "blockquote", "article", "aside", "footer", "figure",  "figcaption",
+  };
+  for (size_t i = 0U; i < (sizeof(k_block) / sizeof(k_block[0])); ++i) {
+    if (strcmp(name, k_block[i]) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Implementation of `ra_book_emit_text()` -- append a text run with the
+ *        HTML whitespace-collapsing rule (any run of space/tab/CR/LF folds to a
+ *        single space). @p at_break carries the "drop leading space" state
+ *        across calls so source pretty-print indentation between inline elements
+ *        does not leak into the rendered prose.
+ */
+static bool ra_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break)
+{
+  for (const char* p = str; *p != '\0'; ++p) {
+    const char c  = *p;
+    const bool ws = (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
+    if (!ws) {
+      if (!ra_book_emit(out, cap, pos, &c, 1U)) {
+        return false;
+      }
+      *at_break = false;
+      continue;
+    }
+    if (*at_break) {
+      continue;
+    }
+    if (!ra_book_emit(out, cap, pos, " ", 1U)) {
+      return false;
+    }
+    *at_break = true;
+  }
+  return true;
+}
+
+/**
+ * @brief Implementation of `ra_book_emit_break()` -- append a paragraph break for
+ *        a block element: trim any trailing spaces, then emit a single '\n'
+ *        (collapsing runs of breaks from nested blocks).
+ */
+static bool ra_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
+{
+  while ((*pos > 0U) && (out[*pos - 1U] == ' ')) {
+    (*pos)--;
+  }
+  *at_break = true;
+  if ((*pos > 0U) && (out[*pos - 1U] == '\n')) {
+    return true;
+  }
+  return ra_book_emit(out, cap, pos, "\n", 1U);
+}
+
+/**
+ * @brief Implementation of `ra_book_walk_text()` -- bounded pre-order walk that
+ *        emits whitespace-collapsed text runs with a newline at each block-level
+ *        element.
+ */
+static bool ra_book_walk_text(const void* base,
+                              uint32_t    root,
+                              uint32_t    node_count,
+                              char*       out,
+                              size_t      cap,
+                              size_t*     pos)
+{
+  const ra_book_node_t* nodes = ra_book_nodes(base);
+  uint32_t              stack[k_ra_book_xhtml_stack];
+  uint32_t              sp       = 0U;
+  bool                  ok       = true;
+  bool                  at_break = true;
+  stack[sp++]                    = root;
+
+  const uint32_t max_iter = (node_count * k_ra_book_xhtml_iter_x) + k_ra_book_xhtml_stack;
+  uint32_t       guard    = 0U;
+  while (sp > 0U && ok && guard < max_iter) {
+    ++guard;
+    const uint32_t n = stack[--sp];
+    if (n == k_ra_book_nil) {
+      continue;
+    }
+    const ra_book_node_t* node = &nodes[n];
+    if (sp >= k_ra_book_xhtml_stack) {
+      return false;
+    }
+    stack[sp++] = node->next_sibling; /* sibling chain after this subtree */
+    if (node->kind == (uint8_t)k_ra_book_node_text) {
+      ok = ra_book_emit_text(out, cap, pos, ra_book_string(base, node->text_off), &at_break);
+      continue;
+    }
+    if (ra_book_is_block(ra_book_string(base, node->name_off))) {
+      ok = ra_book_emit_break(out, cap, pos, &at_break);
+    }
+    if (ok && (sp < k_ra_book_xhtml_stack)) {
+      stack[sp++] = node->first_child; /* descend, pre-order */
+    }
+  }
+  return ok && (guard < max_iter);
+}
+
+ra_err_t
+ra_book_chapter_text(const void* base, uint32_t chapter_idx, char* out, size_t cap, size_t* out_len)
+{
+  RA_CHECK_NULL_PTR(base, s_tag_xhtml, "text: null base");
+  RA_CHECK_NULL_PTR(out, s_tag_xhtml, "text: null out");
+  RA_CHECK_NULL_PTR(out_len, s_tag_xhtml, "text: null out_len");
+
+  const ra_book_header_t* hdr = ra_book_header(base);
+  if (chapter_idx >= hdr->chapter_count) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t root = ra_book_chapters(base)[chapter_idx].root_node;
+  size_t         pos  = 0U;
+  if (!ra_book_walk_text(base, root, hdr->node_count, out, cap, &pos)) {
+    return k_ra_err_invalid_size;
+  }
+  *out_len = pos;
+  return k_ra_ok;
+}
+
 ra_err_t ra_book_chapter_to_xhtml(const void* base,
                                   uint32_t    chapter_idx,
                                   char*       out,
