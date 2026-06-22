@@ -134,6 +134,9 @@ typedef struct {
   sh_book_fmt_t  fmt;                     /**< Container format (rabook / epub).               */
   const uint8_t* blob;                    /**< Baked RBKZ bytes (MRAM), or NULL when SD.        */
   uint32_t       blob_len;                /**< Baked length, or SD file size in bytes.          */
+  const uint8_t* thumb;                   /**< Pre-baked gray8 cover thumbnail, or NULL.        */
+  uint16_t       thumb_w;                 /**< Pre-baked thumbnail width.                       */
+  uint16_t       thumb_h;                 /**< Pre-baked thumbnail height.                      */
   char           sd_name[k_sh_name_cap];  /**< SD 8.3 file name (e.g. "BOOK01.RBK"). */
   char           title[k_sh_title_cap];   /**< Display title.                       */
   char           author[k_sh_author_cap]; /**< Display author.                      */
