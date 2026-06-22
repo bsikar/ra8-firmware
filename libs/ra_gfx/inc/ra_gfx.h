@@ -164,6 +164,40 @@ ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format);
 [[nodiscard]] ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color);
 
 /**
+ * @brief Blit an 8-bit grayscale image to a framebuffer rectangle.
+ *
+ * @details
+ * Writes the @p w x @p h block of 8-bit gray samples at @p src into the bound
+ * framebuffer with its top-left at (@p dst_x, @p dst_y), expanding each sample
+ * @c g to the colour `(g<<16)|(g<<8)|g` and down-converting to the panel format.
+ * The clip rectangle and framebuffer bounds are resolved ONCE for the whole
+ * block (not per pixel), so a full image is a tight row loop -- the same pixels
+ * a per-pixel ra_gfx_pixel() loop would write, far fewer instructions. Rows are
+ * sampled left-to-right, top-to-bottom; @p src is row-major with stride @p w.
+ *
+ * @param[in] src   Row-major 8-bit gray buffer of at least @p w * @p h bytes.
+ * @param[in] w     Source width in pixels (> 0).
+ * @param[in] h     Source height in pixels (> 0).
+ * @param[in] dst_x Destination column of the block's left edge.
+ * @param[in] dst_y Destination row of the block's top edge.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                  Visible pixels written (or fully clipped out).
+ * @retval k_ra_err_not_initialized ra_gfx_init() was not called.
+ * @retval k_ra_err_invalid_arg     @p src is NULL, or @p w / @p h <= 0.
+ *
+ * @pre  ra_gfx_init() returned k_ra_ok.
+ * @pre  @p src holds at least @p w * @p h bytes.
+ * @post Each in-clip destination pixel equals its down-converted gray sample.
+ * @post Pixels outside the clip rectangle are left unchanged.
+ *
+ * @note Not thread-safe; shares the single ra_gfx bind state.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_gfx_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y);
+
+/**
  * @brief Draw a line from (x0,y0) to (x1,y1) with Bresenham's algorithm.
  *
  * @param[in] x0,y0,x1,y1 Endpoints (clipped to framebuffer).

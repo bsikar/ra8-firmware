@@ -105,14 +105,20 @@ void sh_image_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x
   if ((src == nullptr) || (w <= 0) || (h <= 0)) {
     return;
   }
-  for (int32_t y = 0; y < h; ++y) {
-    for (int32_t x = 0; x < w; ++x) {
-      const uint32_t g     = src[(y * w) + x];
-      const uint32_t color = (g << k_sh_rgb_sh_r) | (g << k_sh_rgb_sh_g) | g;
-      (void)ra_gfx_pixel(dst_x + x, dst_y + y, color);
-    }
-  }
+  /* One clipped row-loop in ra_gfx instead of a per-pixel ra_gfx_pixel chain. */
+  (void)ra_gfx_blit_gray8(src, w, h, dst_x, dst_y);
 }
+
+/**
+ * @var s_sh_cover_row
+ * @brief One decoded gray8 row of the scaled cover, reused across rows.
+ * @details Sized to the panel width (the largest possible fitted cover width),
+ *          so ::sh_image_blit_cover can hand a whole row to ::ra_gfx_blit_gray8
+ *          instead of plotting pixel by pixel. File-scope (not stack) to keep the
+ *          frame small; the single-threaded UI never re-enters the blit.
+ * @since 0.1.0
+ */
+static uint8_t s_sh_cover_row[k_sh_fb_w];
 
 ra_err_t sh_image_blit_cover(const void* base,
                              uint32_t    img_idx,
@@ -134,14 +140,16 @@ ra_err_t sh_image_blit_cover(const void* base,
   sh_fit_box((int32_t)img->width, (int32_t)img->height, box_w, box_h, &fw, &fh);
   const int32_t ox = dst_x + ((box_w - fw) / (int32_t)k_sh_two);
   const int32_t oy = dst_y + ((box_h - fh) / (int32_t)k_sh_two);
+  /* Decode + nearest-neighbour scale one output row, then blit it in a single
+   * clipped pass -- the same pixels the per-pixel loop wrote, far fewer calls. */
+  const int32_t rw = (fw < (int32_t)k_sh_fb_w) ? fw : (int32_t)k_sh_fb_w;
   for (int32_t dy = 0; dy < fh; ++dy) {
     const uint32_t sy = (uint32_t)((dy * (int32_t)img->height) / fh);
-    for (int32_t dx = 0; dx < fw; ++dx) {
-      const uint32_t sx    = (uint32_t)((dx * (int32_t)img->width) / fw);
-      const uint32_t g     = sh_gray4_at(data, img->width, sx, sy);
-      const uint32_t color = (g << k_sh_rgb_sh_r) | (g << k_sh_rgb_sh_g) | g;
-      (void)ra_gfx_pixel(ox + dx, oy + dy, color);
+    for (int32_t dx = 0; dx < rw; ++dx) {
+      const uint32_t sx          = (uint32_t)((dx * (int32_t)img->width) / fw);
+      s_sh_cover_row[(size_t)dx] = sh_gray4_at(data, img->width, sx, sy);
     }
+    (void)ra_gfx_blit_gray8(s_sh_cover_row, rw, 1, ox, oy + dy);
   }
   if (out_w != nullptr) {
     *out_w = fw;
