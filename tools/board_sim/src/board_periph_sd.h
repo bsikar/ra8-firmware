@@ -123,6 +123,30 @@ void board_sd_info(bool* attached, uint64_t* bytes, uint8_t* fat_bits, const cha
 uint8_t board_sd_exchange(uint8_t tx);
 
 /**
+ * @brief Copy one 512-byte block straight out of the backing image.
+ *
+ * @details
+ * The byte-identical data CMD17 would stream back, served in a single call so
+ * board_sim's `--fast-sd` block-read hook can fill the firmware's sector buffer
+ * without clocking 512 individual SPI byte-exchanges through MMIO. Uses the same
+ * SDHC block-addressing (@p lba * 512) as the modelled CMD17 path, so the bytes
+ * delivered are exactly those the full protocol would produce.
+ *
+ * @param[in]  lba Logical block address (SDHC block units).
+ * @param[out] dst Destination for 512 bytes; must hold at least 512 bytes.
+ *
+ * @return true if a card is attached and @p lba is within the image.
+ * @retval false No card attached, or @p lba is past the end of the image.
+ * @pre @p dst is non-null and sized for >= 512 bytes.
+ * @pre A card image is attached (@ref board_sd_attached is true).
+ * @post On true, @p dst holds the block; the backing image is unmodified.
+ * @post On false, @p dst is left unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+bool board_sd_read_block(uint32_t lba, uint8_t* dst);
+
+/**
  * @brief Reset the card's command / response framing to power-on.
  *
  * @details Clears the in-flight command collector and pending response;
