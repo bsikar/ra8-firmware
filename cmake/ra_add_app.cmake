@@ -214,6 +214,17 @@ macro(ra_add_app)
             ${RA_REPO_ROOT}/libs/ra_epub/src)
     endif()
 
+    # A bare "miniz" in LIBS pulls in just the vendored DEFLATE core, for apps
+    # that inflate compressed blobs directly (e.g. ra_book RBKZ containers via the
+    # heap-free tinfl_decompress) without ra_epub's full ZIP + XML stack. Skipped
+    # when ra_epub is present, which already compiles miniz.c above.
+    set(_ra_miniz_vendor "")
+    if(("miniz" IN_LIST _RA_APP_LIBS) AND (NOT "ra_epub" IN_LIST _RA_APP_LIBS))
+        set(_ra_miniz_vendor ${RA_REPO_ROOT}/libs/third_party/miniz/miniz.c)
+        list(APPEND _ra_lib_extra ${_ra_miniz_vendor})
+        list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/third_party/miniz)
+    endif()
+
     set(_ra_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
     set(_ra_elf ${_RA_APP_NAME}.elf)
 
@@ -259,6 +270,16 @@ macro(ra_add_app)
     if(_ra_epub_vendor)
         set_property(SOURCE ${_ra_epub_vendor} APPEND PROPERTY COMPILE_OPTIONS -w)
         target_compile_definitions(${_ra_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME)
+    endif()
+
+    # miniz-only apps: same vendored-TU warning suppression + config defines, so
+    # miniz.c and every first-party TU that includes miniz.h share one ABI.
+    # NO_ARCHIVE_APIS drops the malloc-using ZIP reader the firmware never calls,
+    # leaving the heap-free tinfl DEFLATE core (driven from a static decompressor).
+    if(_ra_miniz_vendor)
+        set_property(SOURCE ${_ra_miniz_vendor} APPEND PROPERTY COMPILE_OPTIONS -w)
+        target_compile_definitions(${_ra_elf} PRIVATE
+            MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ARCHIVE_APIS)
     endif()
 
     ra_target_enable_project_warnings(${_ra_elf} STACK_USAGE_BYTES ${_RA_APP_STACK_BYTES})

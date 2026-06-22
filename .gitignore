@@ -136,3 +136,6 @@ board_sim_profile.*
 # the content/library/*.epub masters (the Git-LFS source of truth).
 content/compiled/*.rabook
 libs/ra_book/inc/ra_book_library.h
+examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
+# Host SD-card images built by tools/mkbookimg (test fixtures).
+*.img
