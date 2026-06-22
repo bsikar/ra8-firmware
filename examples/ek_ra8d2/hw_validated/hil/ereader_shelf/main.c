@@ -1,0 +1,595 @@
+/**
+ * @file examples/ek_ra8d2/hw_validated/hil/ereader_shelf/main.c
+ * @brief Hybrid baked + SD e-reader: shelf, cover, TOC, full-book reader.
+ *
+ * @details
+ * The front end of the compiled-book pipeline on the EK-RA8D2 parallel TFT.
+ * Books come from two sources tested side by side in one app: a few baked into
+ * MRAM (library.h, compressed RBKZ) and the rest read from a FAT SD card. Either
+ * way the bytes are inflated into SDRAM by ra_book_open() and rendered by the
+ * same source-agnostic screens:
+ *
+ *   shelf (cover-thumbnail grid) -> cover/title page -> table of contents ->
+ *   reader (every chapter, paginated, page-turn crosses chapter boundaries).
+ *
+ * This file owns boot (clocks, console, panel, touch, optional SD), the single
+ * ::g_sh state, the miniz inflate callback, source resolution, and the input
+ * loop that polls the GT911 panel + SW1/SW2 and dispatches to the active screen.
+ * Under board_sim, `--click X Y` drives it, `--sd img` attaches the card, and
+ * `--ppm` captures a frame.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * [Ring 6 / App] {World: NS}
+ *
+ * @since 0.1.0
+ */
+#include <string.h>
+
+#include "miniz.h"
+#include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
+#include "ra_display_pal.h"
+#include "ra_display_pal_lcd.h"
+#include "ra_gfx.h"
+#include "ra_isr.h"
+#include "ra_mstp.h"
+#include "ra_panel_timing.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
+#include "ra_sci.h"
+#include "ra_sdramc.h"
+#include "ra_time.h"
+#include "ra_touch.h"
+#include "sh_app.h"
+
+/** @enum sh_main_const_t @brief Boot + buffer sizing constants. */
+typedef enum : uint32_t {
+  k_sh_scratch_bytes = 24U * 1024U * 1024U, /**< Inflate scratch (one open book). */
+  k_sh_thirds        = 3U,                  /**< Reader edge-tap split.           */
+  k_sh_demo_steps    = 8U,                  /**< Idle-demo sequence length.       */
+  k_sh_demo_period   = 30U,                 /**< Input polls between demo steps.  */
+  k_sh_fnv_offset    = 2166136261U,         /**< FNV-1a 32-bit offset basis.      */
+  k_sh_fnv_prime     = 16777619U,           /**< FNV-1a 32-bit prime.             */
+  k_sh_hex_digits    = 8U,                  /**< Hex digits in the framebuffer hash. */
+  k_sh_nib_bits      = 4U,                  /**< Bits per hex digit.              */
+  k_sh_nib_mask      = 0xFU,                /**< Low-nibble mask.                 */
+} sh_main_const_t;
+
+/** @brief The single whole-app state instance. */
+sh_state_t g_sh;
+
+/** @brief SCI8 console TXD = PD02 / RXD = PD03. */
+static const ra_port_pin_t k_sh_pin_txd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+static const ra_port_pin_t k_sh_pin_rxd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+
+/** @brief 1024x600 RGB565 framebuffer in external SDRAM (GLCDC scans this). */
+static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w]
+  __attribute__((section(".sdram_data"), aligned(k_sh_fb_align)));
+
+/** @brief Inflate scratch holding the one currently-open book (SDRAM, NOLOAD). */
+static uint8_t s_scratch[k_sh_scratch_bytes] __attribute__((section(".sdram_data"), aligned(8)));
+
+static const display_cfg_t k_sh_display_cfg = {
+  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .framebuffer       = s_framebuffer,
+  .framebuffer_bytes = sizeof(s_framebuffer),
+  .width_px          = (uint16_t)k_sh_fb_w,
+  .height_px         = (uint16_t)k_sh_fb_h,
+  .pixfmt            = k_display_pixfmt_rgb565,
+  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+};
+static display_handle_t* s_display;
+
+static const uint8_t k_msg_fail[] = "ereader-shelf: FAIL init\r\n";
+
+/** @brief Emit a byte run on the SCI8 console. */
+static void sh_print(const uint8_t* msg, uint32_t len)
+{
+  (void)ra_sci_write_polling((uint8_t)k_sh_uart_chan, msg, len);
+}
+
+/** @brief FNV-1a hash of the whole framebuffer (deterministic render digest). */
+static uint32_t sh_fb_hash(void)
+{
+  uint32_t       h     = (uint32_t)k_sh_fnv_offset;
+  const uint8_t* p     = (const uint8_t*)s_framebuffer;
+  const size_t   bytes = sizeof s_framebuffer;
+  for (size_t i = 0U; i < bytes; ++i) {
+    h = (h ^ p[i]) * (uint32_t)k_sh_fnv_prime;
+  }
+  return h;
+}
+
+/**
+ * @brief Emit the gate banner: book count, SD flag, and framebuffer hash.
+ * @details The hash digests the rendered shelf, so the board_sim uart_scrape
+ *          gate catches cover-decode / layout regressions, not just "booted".
+ */
+static void sh_print_banner(void)
+{
+  char        b[k_sh_linebuf];
+  size_t      p   = 0U;
+  const char* pre = "ereader-shelf: books=";
+  for (const char* s = pre; *s != '\0'; ++s) {
+    b[p++] = *s;
+  }
+  p               = sh_fmt_uint(b, p, g_sh.book_count);
+  const char* mid = " sd=";
+  for (const char* s = mid; *s != '\0'; ++s) {
+    b[p++] = *s;
+  }
+  p               = sh_fmt_uint(b, p, g_sh.sd_ready ? 1U : 0U);
+  const char* fbp = " fb=";
+  for (const char* s = fbp; *s != '\0'; ++s) {
+    b[p++] = *s;
+  }
+  const uint32_t h = sh_fb_hash();
+  for (uint32_t d = 0U; d < (uint32_t)k_sh_hex_digits; ++d) {
+    const uint32_t nib =
+      (h >> (((uint32_t)k_sh_hex_digits - 1U - d) * (uint32_t)k_sh_nib_bits)) & k_sh_nib_mask;
+    b[p++] = (char)((nib < k_sh_dec_base) ? ('0' + nib) : ('A' + (nib - (uint32_t)k_sh_dec_base)));
+  }
+  const char* end = " ok\r\n";
+  for (const char* s = end; *s != '\0'; ++s) {
+    b[p++] = *s;
+  }
+  sh_print((const uint8_t*)b, (uint32_t)p);
+}
+
+/** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
+static void sh_panic_halt(void)
+{
+  sh_print(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+  __asm__ volatile("bkpt #0");
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/**
+ * @brief Static DEFLATE decompressor state (~11 KiB) kept off the small stack.
+ * @note Single-threaded use only; reset by tinfl_init() on every inflate.
+ */
+static tinfl_decompressor s_tinfl;
+
+/**
+ * @brief Heap-free zlib inflater matching ra_book_inflate_fn.
+ * @details ra_book_open() hands the zlib stream (the RBKZ header already
+ *          stripped) plus a destination sized to the recorded inflated length,
+ *          so a single non-wrapping tinfl_decompress() call suffices -- no
+ *          dictionary window, no allocation.
+ */
+static ra_err_t
+sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
+{
+  tinfl_init(&s_tinfl);
+  size_t             in_n  = src_len;
+  size_t             out_n = dst_cap;
+  const tinfl_status st    = tinfl_decompress(
+    &s_tinfl,
+    (const mz_uint8*)src,
+    &in_n,
+    (mz_uint8*)dst,
+    (mz_uint8*)dst,
+    &out_n,
+    (mz_uint32)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
+  if (st != TINFL_STATUS_DONE) {
+    return k_ra_err_invalid_size;
+  }
+  *out_len = out_n;
+  return k_ra_ok;
+}
+
+bool sh_open_compressed(const uint8_t* src,
+                        uint32_t       len,
+                        void*          scratch,
+                        size_t         scratch_len,
+                        const void**   out_base)
+{
+  size_t sz = 0U;
+  return ra_book_open(src, len, sh_inflate, scratch, scratch_len, out_base, &sz) == k_ra_ok;
+}
+
+const uint8_t* sh_get_compressed(uint16_t idx, uint32_t* out_len)
+{
+  if (idx >= g_sh.book_count) {
+    return nullptr;
+  }
+  const sh_entry_t* e = &g_sh.entry[idx];
+  if (!e->from_sd) {
+    *out_len = e->blob_len;
+    return e->blob;
+  }
+  return sh_sd_read(e->sd_name, out_len);
+}
+
+bool sh_open_book(uint16_t idx, void* scratch, size_t scratch_len)
+{
+  uint32_t       len = 0U;
+  const uint8_t* src = sh_get_compressed(idx, &len);
+  if ((src == nullptr) || !sh_open_compressed(src, len, scratch, scratch_len, &g_sh.book_base)) {
+    g_sh.book_base = nullptr;
+    return false;
+  }
+  g_sh.chapter_count = ra_book_header(g_sh.book_base)->chapter_count;
+  /* First open of an SD book: lift its real title/author/cover from the header
+   * (boot only did listdir, so SD cards start as filename placeholders). */
+  if (g_sh.entry[idx].from_sd && (g_sh.thumb_w[idx] == 0U)) {
+    sh_capture_sd_meta(idx, g_sh.book_base);
+  }
+  return true;
+}
+
+/** @brief Seed the shelf with the MRAM-baked library books. */
+static void sh_seed_baked(void)
+{
+  g_sh.book_count = 0U;
+  for (uint16_t i = 0U;
+       (i < (uint16_t)k_library_count) && (g_sh.book_count < (uint16_t)k_sh_max_books);
+       ++i) {
+    sh_entry_t* e = &g_sh.entry[g_sh.book_count];
+    e->from_sd    = false;
+    e->blob       = k_library[i].blob;
+    e->blob_len   = k_library[i].len;
+    (void)strncpy(e->title, k_library[i].title, sizeof e->title - 1U);
+    e->title[sizeof e->title - 1U] = '\0';
+    (void)strncpy(e->author, k_library[i].author, sizeof e->author - 1U);
+    e->author[sizeof e->author - 1U] = '\0';
+    g_sh.book_count++;
+  }
+}
+
+/** @brief Open the selected book and move to the cover screen; ignore on failure. */
+static bool sh_select_book(uint16_t idx)
+{
+  if (!sh_open_book(idx, s_scratch, sizeof s_scratch)) {
+    return false;
+  }
+  g_sh.selected   = idx;
+  g_sh.toc_scroll = 0;
+  g_sh.screen     = k_sh_screen_cover;
+  return true;
+}
+
+/** @brief Reader edge-tap to direction: -1 left third, +1 right third, else 0. */
+static int32_t sh_edge_dir(int32_t x)
+{
+  const int32_t third = (int32_t)k_sh_fb_w / (int32_t)k_sh_thirds;
+  if (x < third) {
+    return -1;
+  }
+  if (x >= ((int32_t)k_sh_fb_w - third)) {
+    return 1;
+  }
+  return 0;
+}
+
+/** @brief Start the reader at the book's first prose chapter (past front matter). */
+static void sh_start_reading(void)
+{
+  sh_reader_load_chapter(sh_reader_first_content());
+  g_sh.screen = k_sh_screen_reader;
+}
+
+/** @brief Handle a cover-screen tap; returns whether to repaint. */
+static bool sh_tap_cover(int32_t x, int32_t y, bool header)
+{
+  if (header) {
+    g_sh.screen = k_sh_screen_shelf;
+    return true;
+  }
+  const sh_cover_act_t act = sh_cover_action(x, y);
+  if (act == k_sh_cover_read) {
+    sh_start_reading();
+    return true;
+  }
+  if (act == k_sh_cover_toc) {
+    g_sh.screen = k_sh_screen_toc;
+    return true;
+  }
+  return false;
+}
+
+/** @brief Handle a TOC-screen tap; returns whether to repaint. */
+static bool sh_tap_toc(int32_t x, int32_t y, bool header)
+{
+  if (header) {
+    g_sh.screen = k_sh_screen_cover;
+    return true;
+  }
+  const int32_t ci = sh_toc_hit(x, y);
+  if (ci < 0) {
+    return false;
+  }
+  sh_reader_load_chapter((uint32_t)ci);
+  g_sh.screen = k_sh_screen_reader;
+  return true;
+}
+
+/** @brief Handle a reader-screen tap (header back / edge page turn). */
+static bool sh_tap_reader(int32_t x, int32_t y, bool header)
+{
+  (void)y;
+  if (header) {
+    g_sh.screen = k_sh_screen_toc;
+    return true;
+  }
+  const int32_t dir = sh_edge_dir(x);
+  return (dir != 0) && sh_reader_turn(dir);
+}
+
+/** @brief Route a touch tap to the active screen; returns whether to repaint. */
+static bool sh_handle_tap(int32_t x, int32_t y)
+{
+  const bool header = (y < (int32_t)k_sh_bar_h);
+  switch (g_sh.screen) {
+    case k_sh_screen_cover:
+      return sh_tap_cover(x, y, header);
+    case k_sh_screen_toc:
+      return sh_tap_toc(x, y, header);
+    case k_sh_screen_reader:
+      return sh_tap_reader(x, y, header);
+    case k_sh_screen_shelf:
+    default: {
+      const int32_t card = sh_shelf_hit(x, y);
+      return (card >= 0) && sh_select_book((uint16_t)card);
+    }
+  }
+}
+
+/** @brief Route an SW1/SW2 edge to the active screen; returns whether to repaint. */
+static bool sh_handle_button(bool is_sw2)
+{
+  switch (g_sh.screen) {
+    case k_sh_screen_shelf:
+      if (g_sh.book_count == 0U) {
+        return false;
+      }
+      if (is_sw2) {
+        return sh_select_book(g_sh.selected);
+      }
+      g_sh.selected = (uint16_t)((g_sh.selected + g_sh.book_count - 1U) % g_sh.book_count);
+      return true;
+    case k_sh_screen_cover:
+      if (is_sw2) {
+        sh_start_reading();
+        return true;
+      }
+      g_sh.screen = k_sh_screen_shelf;
+      return true;
+    case k_sh_screen_toc:
+      sh_toc_scroll(is_sw2 ? 1 : -1);
+      return true;
+    case k_sh_screen_reader:
+    default:
+      return sh_reader_turn(is_sw2 ? 1 : -1);
+  }
+}
+
+/** @brief Re-render the active screen and push it to the panel. */
+static void sh_present(void)
+{
+  switch (g_sh.screen) {
+    case k_sh_screen_cover:
+      sh_cover_render();
+      break;
+    case k_sh_screen_toc:
+      sh_toc_render();
+      break;
+    case k_sh_screen_reader:
+      sh_reader_render();
+      break;
+    case k_sh_screen_shelf:
+    default:
+      sh_shelf_render();
+      break;
+  }
+  const display_rect_t full = {.x = 0U,
+                               .y = 0U,
+                               .w = (uint16_t)k_sh_fb_w,
+                               .h = (uint16_t)k_sh_fb_h};
+  (void)display_flush(s_display, full, k_display_refresh_quality);
+}
+
+/** @brief Route the SCI8 console pins to async mode. */
+[[nodiscard]] static ra_err_t sh_console_pins_init(void)
+{
+  const ra_err_t err = ra_pfs_route_peripheral(k_sh_pin_txd, k_ra_psel_sci_async, "shelf.txd8");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_pfs_route_peripheral(k_sh_pin_rxd, k_ra_psel_sci_async, "shelf.rxd8");
+}
+
+/** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
+static void sh_setup_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  uint32_t pclka_hz   = 0U;
+  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+    sh_panic_halt();
+  }
+  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
+      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+    sh_panic_halt();
+  }
+  if ((ra_time_init(cpuclk0_hz) != k_ra_ok) || (sh_console_pins_init() != k_ra_ok)) {
+    sh_panic_halt();
+  }
+  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_sh_uart_baud,
+                            .data_bits = k_ra_sci_data_8,
+                            .parity    = k_ra_sci_parity_none,
+                            .stop_bits = k_ra_sci_stop_1,
+                            .pclk_hz   = pclka_hz};
+  if (ra_sci_init((uint8_t)k_sh_uart_chan, &cfg) != k_ra_ok) {
+    sh_panic_halt();
+  }
+}
+
+/** @brief SDRAM + GLCDC panel bring-up; bind ra_gfx to the live framebuffer. */
+static void sh_panel_or_halt(void)
+{
+  display_fb_t fb = {};
+  if ((ra_sdramc_init() != k_ra_ok) || (display_init(&k_sh_display_cfg, &s_display) != k_ra_ok) ||
+      (display_get_framebuffer(s_display, &fb) != k_ra_ok)) {
+    sh_panic_halt();
+  }
+  if (ra_gfx_init(fb.pixels, (uint16_t)k_sh_fb_w, (uint16_t)k_sh_fb_h, k_ra_gfx_format_rgb565) !=
+      k_ra_ok) {
+    sh_panic_halt();
+  }
+}
+
+/** @brief Open touch + the two user buttons (best-effort; input is optional). */
+static void sh_input_init(void)
+{
+  const ra_touch_cfg_t cfg = {.i2c_channel = 0U,
+                              .target_7b   = (uint8_t)k_sh_gt911_addr,
+                              .irq_pin     = (uint8_t)k_ra_touch_irq_pin_unset,
+                              .max_points  = (uint8_t)k_sh_poll_pts};
+  (void)ra_touch_open(&cfg);
+  (void)ra_board_sw_init(k_ra_board_sw1);
+  (void)ra_board_sw_init(k_ra_board_sw2);
+}
+
+/** @brief Poll touch + buttons once; re-present on any change. Returns user-acted. */
+static bool
+sh_pump_input(uint8_t* prev_touch, ra_board_sw_state_t* prev1, ra_board_sw_state_t* prev2)
+{
+  bool changed = false;
+  bool acted   = false;
+
+  ra_touch_point_t pts[k_sh_poll_pts] = {};
+  uint8_t          got                = 0U;
+  if (ra_touch_read(pts, (uint8_t)k_sh_poll_pts, &got) == k_ra_ok) {
+    if ((got > 0U) && (*prev_touch == 0U)) {
+      acted   = true;
+      changed = sh_handle_tap((int32_t)pts[0].x, (int32_t)pts[0].y);
+    }
+    *prev_touch = got;
+  }
+
+  ra_board_sw_state_t s1 = k_ra_board_sw_released;
+  ra_board_sw_state_t s2 = k_ra_board_sw_released;
+  if ((ra_board_sw_read(k_ra_board_sw1, &s1) == k_ra_ok) && (s1 == k_ra_board_sw_pressed) &&
+      (*prev1 == k_ra_board_sw_released)) {
+    acted   = true;
+    changed = sh_handle_button(false) || changed;
+  }
+  if ((ra_board_sw_read(k_ra_board_sw2, &s2) == k_ra_ok) && (s2 == k_ra_board_sw_pressed) &&
+      (*prev2 == k_ra_board_sw_released)) {
+    acted   = true;
+    changed = sh_handle_button(true) || changed;
+  }
+  *prev1 = s1;
+  *prev2 = s2;
+
+  if (changed) {
+    sh_present();
+  }
+  return acted;
+}
+
+/**
+ * @brief Advance the idle self-demo one step (shelf -> cover -> TOC -> read ...).
+ * @details Runs only until the user touches the panel; lets a headless
+ *          board_sim --record walk every screen with no input. Wraps to the
+ *          shelf so the loop is closed.
+ */
+/** @enum sh_demo_t @brief Idle-demo step indices (one screen transition each). */
+typedef enum : uint32_t {
+  k_sh_demo_cover0 = 0U, /**< Open book 0 on its cover.   */
+  k_sh_demo_toc0   = 1U, /**< Book 0 table of contents.   */
+  k_sh_demo_read0  = 2U, /**< Read book 0.                */
+  k_sh_demo_turn   = 3U, /**< Turn one page.              */
+  k_sh_demo_cover1 = 4U, /**< Open book 1 cover.          */
+  k_sh_demo_toc1   = 5U, /**< Book 1 table of contents.   */
+  k_sh_demo_cover2 = 6U, /**< Open book 2 cover.          */
+  k_sh_demo_read2  = 7U, /**< Read book 2.                */
+} sh_demo_t;
+
+static void sh_demo_step(uint32_t step)
+{
+  if (g_sh.book_count == 0U) {
+    return; /* nothing to demo; also guards the % book_count below */
+  }
+  switch ((sh_demo_t)(step % k_sh_demo_steps)) {
+    case k_sh_demo_cover0:
+      (void)sh_select_book(0U);
+      break;
+    case k_sh_demo_toc0:
+      g_sh.screen = k_sh_screen_toc;
+      break;
+    case k_sh_demo_read0:
+      sh_start_reading();
+      break;
+    case k_sh_demo_turn:
+      (void)sh_reader_turn(1);
+      break;
+    case k_sh_demo_cover1:
+      (void)sh_select_book((uint16_t)(1U % g_sh.book_count));
+      break;
+    case k_sh_demo_toc1:
+      g_sh.screen = k_sh_screen_toc;
+      break;
+    case k_sh_demo_cover2:
+      (void)sh_select_book((uint16_t)(2U % g_sh.book_count));
+      break;
+    case k_sh_demo_read2:
+    default:
+      sh_start_reading();
+      break;
+  }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief App entry: bring up panel + optional SD, build the shelf, pump input.
+ * @return Never returns.
+ * @pre Reset_Handler copied .data and zeroed .bss; SystemInit set VTOR/FPU.
+ * @post The shelf scans on the panel; taps open books, browse, and read.
+ * @since 0.1.0
+ */
+int32_t main(void)
+{
+  sh_setup_or_halt();
+  ra_isr_globals_enable();
+  sh_panel_or_halt();
+  sh_input_init();
+
+  g_sh.screen   = k_sh_screen_shelf;
+  g_sh.selected = 0U;
+  sh_seed_baked();
+  g_sh.sd_ready = sh_sd_mount();
+  if (g_sh.sd_ready) {
+    sh_sd_scan();
+  }
+  sh_shelf_build_thumbs(s_scratch, sizeof s_scratch);
+  g_sh.book_base = nullptr;
+
+  sh_present();
+  sh_print_banner();
+
+  uint8_t             prev_touch = 0U;
+  ra_board_sw_state_t prev1      = k_ra_board_sw_released;
+  ra_board_sw_state_t prev2      = k_ra_board_sw_released;
+  bool                demo       = true;
+  uint32_t            demo_ticks = 0U;
+  uint32_t            demo_step  = 0U;
+  while (1) {
+    if (sh_pump_input(&prev_touch, &prev1, &prev2)) {
+      demo = false; /* a real touch / button takes over */
+    } else if (demo && (++demo_ticks >= (uint32_t)k_sh_demo_period)) {
+      demo_ticks = 0U;
+      sh_demo_step(demo_step++);
+      sh_present();
+    }
+    (void)ra_delay_ms((uint32_t)k_sh_poll_ms);
+  }
+}
+#pragma GCC diagnostic pop
