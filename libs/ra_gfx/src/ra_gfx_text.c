@@ -646,6 +646,80 @@ ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
   return k_ra_ok;
 }
 
+/** @brief Expand an 8-bit gray sample to the 0x00RRGGBB grey ::internal_pack_565 packs. */
+static inline uint32_t internal_gray_to_color(uint32_t g)
+{
+  return (g << (uint32_t)k_shift_red) | (g << (uint32_t)k_shift_green) |
+         (g << (uint32_t)k_shift_blue);
+}
+
+/**
+ * @brief RGB565 fast path for ::ra_gfx_blit_gray8: clip pre-resolved, tight rows.
+ * @details Writes the clipped block [@p x0,@p x1) x [@p y0,@p y1); @p src/@p dst_x/
+ *          @p dst_y/@p w map a framebuffer pixel back to its gray sample. Stores
+ *          the same two bytes ::internal_put_pixel would for RGB565.
+ */
+static void internal_blit_gray8_565(const uint8_t* src,
+                                    int32_t        w,
+                                    int32_t        dst_x,
+                                    int32_t        dst_y,
+                                    int32_t        x0,
+                                    int32_t        y0,
+                                    int32_t        x1,
+                                    int32_t        y1)
+{
+  const size_t stride = (size_t)s_state.width * (size_t)s_state.bpp;
+  for (int32_t y = y0; y < y1; ++y) {
+    uint8_t*       p = s_state.fb + ((size_t)y * stride) + ((size_t)x0 * (size_t)k_rgb565_bpp);
+    const uint8_t* s = src + ((size_t)(y - dst_y) * (size_t)w) + (size_t)(x0 - dst_x);
+    for (int32_t x = x0; x < x1; ++x) {
+      const uint16_t v = internal_pack_565(internal_gray_to_color((uint32_t)*s));
+      p[k_idx_r]       = (uint8_t)(v & k_mask_byte);
+      p[k_idx_g]       = (uint8_t)((v >> k_glyph_bits_per_byte) & k_mask_byte);
+      p += k_rgb565_bpp;
+      ++s;
+    }
+  }
+}
+
+/** @brief Per-pixel fallback for non-RGB565 formats (matches ::internal_plot exactly). */
+static void
+internal_blit_gray8_slow(const uint8_t* src, int32_t w, int32_t h, int32_t dx, int32_t dy)
+{
+  for (int32_t y = 0; y < h; ++y) {
+    for (int32_t x = 0; x < w; ++x) {
+      internal_plot(dx + x,
+                    dy + y,
+                    internal_gray_to_color(src[((size_t)y * (size_t)w) + (size_t)x]));
+    }
+  }
+}
+
+ra_err_t ra_gfx_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y)
+{
+  if (!s_state.initialized) {
+    return k_ra_err_not_initialized;
+  }
+  if ((src == nullptr) || (w <= 0) || (h <= 0)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Non-panel formats keep the exact per-pixel path; the RGB565 panel resolves
+   * the clip once and runs a tight row loop. */
+  if (s_state.format != k_ra_gfx_format_rgb565) {
+    internal_blit_gray8_slow(src, w, h, dst_x, dst_y);
+    return k_ra_ok;
+  }
+  /* Clip the block to the clip rectangle ONCE (always within the framebuffer). */
+  const int32_t x0 = (dst_x > s_state.clip_x0) ? dst_x : s_state.clip_x0;
+  const int32_t y0 = (dst_y > s_state.clip_y0) ? dst_y : s_state.clip_y0;
+  const int32_t x1 = ((dst_x + w) < s_state.clip_x1) ? (dst_x + w) : s_state.clip_x1;
+  const int32_t y1 = ((dst_y + h) < s_state.clip_y1) ? (dst_y + h) : s_state.clip_y1;
+  if ((x0 < x1) && (y0 < y1)) {
+    internal_blit_gray8_565(src, w, dst_x, dst_y, x0, y0, x1, y1);
+  }
+  return k_ra_ok;
+}
+
 ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color)
 {
   if (!s_state.initialized) {
