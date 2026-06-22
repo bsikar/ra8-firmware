@@ -85,7 +85,7 @@ tools/board_sim/build/board_sim .../ereader_shelf.elf --sd books.img --ppm shelf
 The baked set is regenerated with `tools/bake_library.py` (see the head of
 `library.h`).
 
-## Caveat: board_sim SPI speed
+## Caveat: board_sim SPI speed (and `--fast-sd`)
 
 board_sim emulates the SD-over-SPI bus byte by byte, so reading a *book-sized*
 file (200-450 KB) takes far longer than a real card (which runs at 25 MHz and
@@ -94,6 +94,26 @@ placeholders are board_sim-validated; the full read -> inflate -> render path is
 proven in board_sim with a small fixture book and validated at speed on the same
 `ra_fs` / `ra_sdmmc_spi` stack used by `pagecache` and `epub_open`. To keep boot
 instant, SD cover art loads lazily on first open rather than at boot.
+
+To load a **full-size** book at speed in board_sim, pass the opt-in `--fast-sd`
+flag: it serves whole 512-byte blocks straight from the card image
+(`board_sd_read_block`) in one step instead of clocking each byte through five
+MMIO callbacks, so a 221 KB book that otherwise never finishes loads in one
+window. The firmware receives identical bytes, so the rendered cover is
+**byte-for-byte identical** with and without the flag; only the per-byte SPI
+plumbing is shortcut (still validated by `tests/test_ra_sdmmc_card_reflow.c` and
+on hardware). It is off by default so the HIL gate exercises the full handshake.
+The SD read is then effectively instant; the residual cost for a large cover is
+the firmware's own per-pixel decode (a 683x1024 cover is ~700 K pixels),
+emulated at board_sim's ~125x compute slowdown -- sub-second on the real device.
+
+```sh
+tools/board_sim/build/board_sim .../ereader_shelf.elf \
+  --sd oz.img --click 887 210 --fast-sd --ppm oz.ppm   # full Oz, fast
+```
+
+`BOARD_SIM_CLICK_SETTLE=N` widens the post-`--click` drain when a tap kicks off a
+long load.
 
 ## HIL gate
 

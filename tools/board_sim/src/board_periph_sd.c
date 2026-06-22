@@ -787,6 +787,23 @@ uint8_t board_sd_exchange(uint8_t tx)
   return (uint8_t)k_sd_idle;
 }
 
+bool board_sd_read_block(uint32_t lba, uint8_t* dst)
+{
+  if (!s_sd.attached || (s_sd.image == nullptr) || (dst == nullptr)) {
+    return false;
+  }
+  /* Same SDHC block-addressing as the CMD17 path: arg is a block index. */
+  const uint64_t off = (uint64_t)lba * (uint64_t)k_sd_block;
+  if (off >= s_sd.image_len) {
+    return false; /* past the end of the card -- let the real driver error out. */
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
+    const uint64_t a = off + (uint64_t)i;
+    dst[i]           = (a < s_sd.image_len) ? s_sd.image[a] : 0U;
+  }
+  return true;
+}
+
 void board_sd_reset(void)
 {
   s_sd.collecting = false;
