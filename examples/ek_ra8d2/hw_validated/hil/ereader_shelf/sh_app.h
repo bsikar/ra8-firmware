@@ -109,15 +109,29 @@ typedef struct {
 } sh_line_t;
 
 /**
+ * @enum sh_book_fmt_t
+ * @brief Book container format behind a shelf entry / the open book.
+ * @details Both formats render through the same screens via the sh_book.c
+ *          backend: `.rabook` is the pre-parsed ra_book blob (fast, baked or on
+ *          SD); `.epub` is parsed on-device by ra_epub (SD only).
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_sh_fmt_rabook = 0U, /**< ra_book RBKZ container (inflate + walk). */
+  k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra_epub.        */
+} sh_book_fmt_t;
+
+/**
  * @struct sh_entry_t
- * @brief One shelf book, sourced either from MRAM (baked) or the SD card.
- * @details The reader/TOC/cover code is source-agnostic: ::sh_get_compressed
- *          yields the RBKZ bytes for either source and the rest of the pipeline
- *          is identical. `from_sd` selects which fields are live.
+ * @brief One shelf book, sourced from MRAM (baked) or the SD card, in either
+ *        the `.rabook` or `.epub` format.
+ * @details The reader/TOC/cover screens are backend-agnostic: sh_book.c opens
+ *          the right parser by ::fmt and exposes a uniform chapter/cover API.
  * @since 0.1.0
  */
 typedef struct {
   bool           from_sd;                 /**< true: read ::sd_name from SD; false: use ::blob. */
+  sh_book_fmt_t  fmt;                     /**< Container format (rabook / epub).               */
   const uint8_t* blob;                    /**< Baked RBKZ bytes (MRAM), or NULL when SD.        */
   uint32_t       blob_len;                /**< Baked length, or SD file size in bytes.          */
   char           sd_name[k_sh_name_cap];  /**< SD 8.3 file name (e.g. "BOOK01.RBK"). */
@@ -142,12 +156,13 @@ typedef struct {
   bool        sd_ready;              /**< true once an SD volume mounted.                 */
   sh_entry_t  entry[k_sh_max_books]; /**< Unified baked+SD book table.       */
 
-  const void* book_base;     /**< Open book's inflated base, or nullptr.       */
-  uint32_t    chapter;       /**< Reader: current chapter index.               */
-  uint32_t    chapter_count; /**< Open book chapter count.                   */
-  uint32_t    page;          /**< Reader: current page within the chapter.     */
-  uint32_t    chap_pages;    /**< Reader: pages in the current chapter.        */
-  int32_t     toc_scroll;    /**< TOC: first visible row index.               */
+  sh_book_fmt_t open_fmt;      /**< Format of the currently open book.           */
+  const void*   book_base;     /**< Open rabook's inflated base (rabook only).   */
+  uint32_t      chapter;       /**< Reader: current chapter index.               */
+  uint32_t      chapter_count; /**< Open book chapter count.                   */
+  uint32_t      page;          /**< Reader: current page within the chapter.     */
+  uint32_t      chap_pages;    /**< Reader: pages in the current chapter.        */
+  int32_t       toc_scroll;    /**< TOC: first visible row index.               */
 
   size_t    text_len;              /**< Bytes of valid chapter text.         */
   uint32_t  line_count;            /**< Wrapped lines in the chapter.        */
@@ -269,11 +284,22 @@ void sh_sd_scan(void);
  */
 const uint8_t* sh_sd_read(const char* name, uint32_t* out_len);
 
-/** @brief Decode the open book @p base's cover into the thumbnail cache slot @p idx. */
-void sh_decode_cover(uint16_t idx, const void* base);
+/**
+ * @brief Parse SD file @p name as an EPUB into @p out_book via ra_epub_open_fs.
+ * @param[in]  name     8.3 root file name.
+ * @param[out] out_book ra_epub_book_t* (void* to keep ra_epub out of this header).
+ * @param[in]  filebuf  Caller buffer the whole .epub is read into (must outlive the book).
+ * @param[in]  cap      Capacity of @p filebuf.
+ * @return true if the EPUB opened.
+ * @since 0.1.0
+ */
+bool sh_sd_open_epub(const char* name, void* out_book, uint8_t* filebuf, size_t cap);
 
-/** @brief Populate SD entry @p idx's title/author + cover thumbnail from @p base. */
-void sh_capture_sd_meta(uint16_t idx, const void* base);
+/** @brief The live RGB565 framebuffer ra_gfx scans (defined in main.c). */
+uint16_t* sh_fb_pixels(void);
+
+/** @brief Decode the open rabook @p base's 4bpp cover into thumbnail slot @p idx. */
+void sh_decode_cover(uint16_t idx, const void* base);
 
 /** @brief Decode the baked books' covers into ::sh_state_t::thumb at boot. */
 void sh_shelf_build_thumbs(void* scratch, size_t scratch_len);
@@ -337,8 +363,38 @@ bool sh_open_compressed(const uint8_t* src,
  */
 const uint8_t* sh_get_compressed(uint16_t idx, uint32_t* out_len);
 
-/** @brief Open shelf entry @p idx into @p scratch; sets g_sh.book_base. Returns ok. */
-bool sh_open_book(uint16_t idx, void* scratch, size_t scratch_len);
+/* ----- sh_book.c : format-agnostic book backend (rabook + epub) ------------ */
+
+/**
+ * @brief Open shelf entry @p idx by its format; sets g_sh.open_fmt + chapter
+ *        count, and (for SD books on first open) the entry title/author/cover.
+ * @param[in] idx         Shelf entry index.
+ * @param[in] scratch     SDRAM work buffer (rabook inflate target).
+ * @param[in] scratch_len Capacity of @p scratch.
+ * @return true on success; false leaves no book open.
+ * @since 0.1.0
+ */
+bool sh_book_open(uint16_t idx, void* scratch, size_t scratch_len);
+
+/**
+ * @brief Extract one chapter's plain text from the open book (either backend).
+ * @param[in]  chapter Chapter index (`< g_sh.chapter_count`).
+ * @param[out] out     Plain-text destination.
+ * @param[in]  cap     Capacity of @p out.
+ * @param[out] out_len Receives the text length.
+ * @return k_ra_ok on success.
+ * @since 0.1.0
+ */
+ra_err_t sh_book_chapter_text(uint32_t chapter, char* out, size_t cap, size_t* out_len);
+
+/** @brief Resolve a chapter's TOC label (or "Chapter N") into @p out. */
+void sh_book_chapter_label(uint32_t chapter, char* out, size_t cap);
+
+/** @brief Decode the open book's cover into thumbnail slot @p idx; returns ok. */
+bool sh_book_decode_thumb(uint16_t idx);
+
+/** @brief Draw the open book's cover full-size, aspect-fit into the box. */
+void sh_book_cover_fullscreen(int32_t x, int32_t y, int32_t w, int32_t h);
 
 /** @brief Load + wrap a chapter into the reader working set. */
 void sh_reader_load_chapter(uint32_t chapter);

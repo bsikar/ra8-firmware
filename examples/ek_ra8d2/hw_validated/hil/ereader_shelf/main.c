@@ -207,21 +207,9 @@ const uint8_t* sh_get_compressed(uint16_t idx, uint32_t* out_len)
   return sh_sd_read(e->sd_name, out_len);
 }
 
-bool sh_open_book(uint16_t idx, void* scratch, size_t scratch_len)
+uint16_t* sh_fb_pixels(void)
 {
-  uint32_t       len = 0U;
-  const uint8_t* src = sh_get_compressed(idx, &len);
-  if ((src == nullptr) || !sh_open_compressed(src, len, scratch, scratch_len, &g_sh.book_base)) {
-    g_sh.book_base = nullptr;
-    return false;
-  }
-  g_sh.chapter_count = ra_book_header(g_sh.book_base)->chapter_count;
-  /* First open of an SD book: lift its real title/author/cover from the header
-   * (boot only did listdir, so SD cards start as filename placeholders). */
-  if (g_sh.entry[idx].from_sd && (g_sh.thumb_w[idx] == 0U)) {
-    sh_capture_sd_meta(idx, g_sh.book_base);
-  }
-  return true;
+  return s_framebuffer;
 }
 
 /** @brief Seed the shelf with the MRAM-baked library books. */
@@ -246,7 +234,7 @@ static void sh_seed_baked(void)
 /** @brief Open the selected book and move to the cover screen; ignore on failure. */
 static bool sh_select_book(uint16_t idx)
 {
-  if (!sh_open_book(idx, s_scratch, sizeof s_scratch)) {
+  if (!sh_book_open(idx, s_scratch, sizeof s_scratch)) {
     return false;
   }
   g_sh.selected   = idx;

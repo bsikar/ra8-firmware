@@ -51,20 +51,7 @@ void sh_cover_render(void)
 {
   (void)ra_gfx_clear((uint32_t)k_sh_col_bg);
   sh_titlebar("< Library", nullptr);
-  if (g_sh.book_base == nullptr) {
-    return;
-  }
-  const uint32_t cover = ra_book_header(g_sh.book_base)->cover_image_index;
-  if (cover != k_ra_book_nil) {
-    (void)sh_image_blit_cover(g_sh.book_base,
-                              cover,
-                              k_sh_cv_box_x,
-                              k_sh_cv_box_y,
-                              k_sh_cv_box_w,
-                              k_sh_cv_box_h,
-                              nullptr,
-                              nullptr);
-  }
+  sh_book_cover_fullscreen(k_sh_cv_box_x, k_sh_cv_box_y, k_sh_cv_box_w, k_sh_cv_box_h);
   const sh_entry_t* e = &g_sh.entry[g_sh.selected];
   char              buf[k_sh_linebuf];
   const int32_t     panel_w = (int32_t)k_sh_fb_w - k_sh_cv_panel_x - (int32_t)k_sh_pad;

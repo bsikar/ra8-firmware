@@ -177,7 +177,7 @@ void sh_reader_load_chapter(uint32_t chapter)
   g_sh.page     = 0U;
   g_sh.text_len = 0U;
   size_t tl     = 0U;
-  if (ra_book_chapter_text(g_sh.book_base, chapter, g_sh.text, sizeof g_sh.text, &tl) == k_ra_ok) {
+  if (sh_book_chapter_text(chapter, g_sh.text, sizeof g_sh.text, &tl) == k_ra_ok) {
     g_sh.text_len = tl;
   }
   sh_ascii_fold();
@@ -196,7 +196,7 @@ uint32_t sh_reader_first_content(void)
 {
   for (uint32_t c = 0U; c < g_sh.chapter_count; ++c) {
     size_t tl = 0U;
-    if ((ra_book_chapter_text(g_sh.book_base, c, g_sh.text, sizeof g_sh.text, &tl) == k_ra_ok) &&
+    if ((sh_book_chapter_text(c, g_sh.text, sizeof g_sh.text, &tl) == k_ra_ok) &&
         (tl > (size_t)k_sh_content_min)) {
       return c;
     }

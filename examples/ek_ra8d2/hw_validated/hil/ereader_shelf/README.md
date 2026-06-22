@@ -9,12 +9,18 @@ Books come from **two sources, tested side by side in one app**:
 
 - **Baked** -- a few books compiled to `.rabook` and embedded in MRAM
   (`library.h`, the compressed RBKZ container). Inflated into SDRAM on demand.
-- **SD card** -- the rest live as `BOOKnn.RBK` files on a FAT card, discovered at
-  boot and read on tap.
+- **SD card** -- the rest live on a FAT card, discovered at boot and opened on
+  tap, in **either** format:
+  - `BOOKnn.RBK` -- a pre-compiled `.rabook` (fast: just `ra_book_open` inflate).
+  - `BOOKnn.EPB` -- a plain **`.epub`**, parsed on-device by `ra_epub` (ZIP +
+    XML) so you can drop an ordinary book on the card without pre-compiling.
+    (`.epub` truncates to the 3-char 8.3 extension `.EPB` on FAT.)
 
-Either way the bytes are inflated by `ra_book_open()` (heap-free `tinfl`) and
-rendered by the same source-agnostic screens, so the load path is the only
-difference.
+A small `sh_book.c` backend hides the difference: it opens the right parser by
+format and exposes a uniform chapter-text / TOC-label / cover API, so the
+shelf/cover/TOC/reader screens are identical across all three sources. EPUB
+chapters arrive as XHTML and are stripped to the same plain text the reader
+word-wraps; EPUB covers (JPEG/PNG) decode via `ra_img_decode_blit`.
 
 ## Screens
 
@@ -42,6 +48,7 @@ With no input, an idle self-demo walks the screens (so a headless `board_sim
 | `sh_cover.c`  | cover / title page                                              |
 | `sh_toc.c`    | scrollable chapter list                                         |
 | `sh_reader.c` | per-chapter text extract, UTF-8->ASCII fold, word-wrap, paginate|
+| `sh_book.c`   | format backend: ra_book vs ra_epub dispatch + XHTML->text strip |
 | `sh_sd.c`     | Pmod2 microSD bring-up (`ra_sdmmc_spi` -> `ra_fs`), scan, read   |
 | `sh_util.c`   | shared draw/format helpers                                      |
 
@@ -59,7 +66,7 @@ tools/board_sim/build/board_sim \
 cmake -S tools/mkbookimg -B tools/mkbookimg/build && cmake --build tools/mkbookimg/build
 tools/mkbookimg/build/mkbookimg books.img \
   "content/compiled/The Wonderful Wizard of Oz - L Frank Baum.rabook" \
-  "content/compiled/Pride and Prejudice - Jane Austen.rabook"
+  "content/library/Pride and Prejudice - Jane Austen.epub"   # .rabook or .epub
 tools/board_sim/build/board_sim .../ereader_shelf.elf --sd books.img --ppm shelf.ppm
 ```
 
