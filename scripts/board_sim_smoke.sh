@@ -206,6 +206,7 @@ uart_expect() { # app -> expected UART substring on stdout
     epub_parse_hil)     printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
     epub_stress_hil)    printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
     widget_app_hil)     printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
+    widget_app_demo)    printf 'widget-app-demo: apps=3 lib=26CE7CD0 rdr=22B7E671 route=ok flush=512x44 hint=fast PASS' ;;
     glcdc_render_hil)   printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
     bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
     keyboard_hil)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
@@ -265,7 +266,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
         bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo \
         lpm_idle_demo lpm_deep_sleep_demo \
         ereader_cover_hil ereader_svg_hil ereader_imgfmt_hil ereader_jpeg_hil \
-        epub_parse_hil epub_stress_hil widget_app_hil glcdc_render_hil \
+        epub_parse_hil epub_stress_hil widget_app_hil widget_app_demo glcdc_render_hil \
         acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform \
         gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo \
         i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo)
