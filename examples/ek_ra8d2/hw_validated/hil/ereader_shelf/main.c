@@ -223,6 +223,9 @@ static void sh_seed_baked(void)
     e->from_sd    = false;
     e->blob       = k_library[i].blob;
     e->blob_len   = k_library[i].len;
+    e->thumb      = k_library[i].thumb;
+    e->thumb_w    = k_library[i].thumb_w;
+    e->thumb_h    = k_library[i].thumb_h;
     (void)strncpy(e->title, k_library[i].title, sizeof e->title - 1U);
     e->title[sizeof e->title - 1U] = '\0';
     (void)strncpy(e->author, k_library[i].author, sizeof e->author - 1U);
@@ -563,10 +566,17 @@ int32_t main(void)
   sh_present();
   sh_print_banner();
 
+  /* The idle self-demo (continuous book opens) is opt-in: hold SW1 at boot
+   * (board_sim --button 1) to run the showcase. Plain interactive use stays calm
+   * -- the loop idles in WFI between taps so board_sim fast-forwards instead of
+   * emulating a flat-out re-inflate loop. prev1 starts at the boot SW1 state so a
+   * held SW1 does not also fire as a button edge. */
+  ra_board_sw_state_t sw1_boot = k_ra_board_sw_released;
+  (void)ra_board_sw_read(k_ra_board_sw1, &sw1_boot);
   uint8_t             prev_touch = 0U;
-  ra_board_sw_state_t prev1      = k_ra_board_sw_released;
+  ra_board_sw_state_t prev1      = sw1_boot;
   ra_board_sw_state_t prev2      = k_ra_board_sw_released;
-  bool                demo       = true;
+  bool                demo       = (sw1_boot == k_ra_board_sw_pressed);
   uint32_t            demo_ticks = 0U;
   uint32_t            demo_step  = 0U;
   while (1) {

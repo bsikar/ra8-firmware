@@ -57,21 +57,21 @@ void sh_decode_cover(uint16_t idx, const void* base)
 
 void sh_shelf_build_thumbs(void* scratch, size_t scratch_len)
 {
-  /* Baked books only: their covers decode from MRAM in microseconds. SD covers
-   * load lazily on first open -- reading a whole book over SPI at boot is far
-   * too slow (and pointless for books the user never opens). */
+  /* Baked covers are pre-decoded in library.h, so boot just copies the gray8
+   * thumbnail -- no per-book inflation (which dominated boot time). SD covers
+   * still load lazily on first open. */
+  (void)scratch;
+  (void)scratch_len;
   for (uint16_t i = 0U; i < g_sh.book_count; ++i) {
-    g_sh.thumb_w[i] = 0U;
-    g_sh.thumb_h[i] = 0U;
-    if (g_sh.entry[i].from_sd) {
-      continue;
+    g_sh.thumb_w[i]           = 0U;
+    g_sh.thumb_h[i]           = 0U;
+    const sh_entry_t* const e = &g_sh.entry[i];
+    if (e->from_sd || (e->thumb == nullptr)) {
+      continue; /* SD entries get their cover from sh_book_open on first tap */
     }
-    uint32_t       len  = 0U;
-    const uint8_t* src  = sh_get_compressed(i, &len);
-    const void*    base = nullptr;
-    if ((src != nullptr) && sh_open_compressed(src, len, scratch, scratch_len, &base)) {
-      sh_decode_cover(i, base);
-    }
+    (void)memcpy(g_sh.thumb[i], e->thumb, (size_t)e->thumb_w * (size_t)e->thumb_h);
+    g_sh.thumb_w[i] = e->thumb_w;
+    g_sh.thumb_h[i] = e->thumb_h;
   }
 }
 
