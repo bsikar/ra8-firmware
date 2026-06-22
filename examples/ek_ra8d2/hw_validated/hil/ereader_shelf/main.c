@@ -33,6 +33,7 @@
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_gfx.h"
+#include "ra_gfx_font.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel_timing.h"
@@ -234,9 +235,47 @@ static void sh_seed_baked(void)
   }
 }
 
+/** @brief Centre a string horizontally for the bitmap font. */
+static int32_t sh_center_x(const char* s)
+{
+  return ((int32_t)k_sh_fb_w - ((int32_t)strlen(s) * (int32_t)k_sh_glyph_w)) / 2;
+}
+
+/**
+ * @brief Paint a "Loading from SD card..." panel before a (blocking) SD open.
+ * @details The SD read + inflate is synchronous; over board_sim's byte-emulated
+ *          SPI a large book takes a while, so this gives immediate feedback
+ *          instead of a frozen-looking shelf. On hardware the read is instant.
+ */
+static void sh_loading_overlay(const char* name)
+{
+  (void)ra_gfx_clear((uint32_t)k_sh_col_bg);
+  const int32_t my = ((int32_t)k_sh_fb_h / 2) - (int32_t)k_sh_glyph_h;
+  (void)ra_gfx_text_out(sh_center_x("Loading from SD card..."),
+                        my,
+                        "Loading from SD card...",
+                        &ra_gfx_font_8x16,
+                        (uint32_t)k_sh_col_card,
+                        (uint32_t)k_sh_col_bg);
+  (void)ra_gfx_text_out(sh_center_x(name),
+                        my + (int32_t)k_sh_line_h,
+                        name,
+                        &ra_gfx_font_8x16,
+                        (uint32_t)k_sh_col_sub,
+                        (uint32_t)k_sh_col_bg);
+  const display_rect_t full = {.x = 0U,
+                               .y = 0U,
+                               .w = (uint16_t)k_sh_fb_w,
+                               .h = (uint16_t)k_sh_fb_h};
+  (void)display_flush(s_display, full, k_display_refresh_quality);
+}
+
 /** @brief Open the selected book and move to the cover screen; ignore on failure. */
 static bool sh_select_book(uint16_t idx)
 {
+  if (g_sh.entry[idx].from_sd) {
+    sh_loading_overlay(g_sh.entry[idx].title);
+  }
   if (!sh_book_open(idx, s_scratch, sizeof s_scratch)) {
     return false;
   }
