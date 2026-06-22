@@ -2576,17 +2576,19 @@ priv_exfat_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_f
   if (f == nullptr) {
     return k_ra_err_no_mem;
   }
-  f->mount         = handle;
-  f->first_cluster = first;
-  f->cur_cluster   = first;
-  f->size_bytes    = size;
-  f->offset        = 0U;
-  f->dir_entry_lba = 0U;
-  f->dir_entry_idx = 0U;
-  f->mode          = mode;
-  f->no_fat_chain  = nofat;
-  f->in_use        = 1U;
-  *out_file        = f;
+  f->mount              = handle;
+  f->first_cluster      = first;
+  f->cur_cluster        = first;
+  f->walk_cache_idx     = 0U; /* read accelerator seeded at the chain head */
+  f->walk_cache_cluster = first;
+  f->size_bytes         = size;
+  f->offset             = 0U;
+  f->dir_entry_lba      = 0U;
+  f->dir_entry_idx      = 0U;
+  f->mode               = mode;
+  f->no_fat_chain       = nofat;
+  f->in_use             = 1U;
+  *out_file             = f;
   return k_ra_ok;
 }
 
@@ -5220,6 +5222,8 @@ priv_truncate_existing(ra_fs_mount_t* handle, ra_fs_file_t* f, uint32_t lba, uin
   }
   f->first_cluster                       = 0;
   f->cur_cluster                         = 0;
+  f->walk_cache_idx                      = 0;
+  f->walk_cache_cluster                  = 0; /* < 2: no read cache for a fresh file */
   f->size_bytes                          = 0;
   f->offset                              = 0;
   uint8_t  buf[k_ra_fs_bytes_per_sector] = {};
@@ -5270,15 +5274,17 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
   if (f == nullptr) {
     return k_ra_err_no_mem;
   }
-  f->mount         = handle;
-  f->first_cluster = priv_entry_first_cluster(entry);
-  f->cur_cluster   = f->first_cluster;
-  f->size_bytes    = priv_rd32(&entry[k_dir_off_file_size]);
-  f->dir_entry_lba = lba;
-  f->dir_entry_idx = off;
-  f->mode          = mode;
-  f->no_fat_chain  = 0U;
-  f->in_use        = 1;
+  f->mount              = handle;
+  f->first_cluster      = priv_entry_first_cluster(entry);
+  f->cur_cluster        = f->first_cluster;
+  f->walk_cache_idx     = 0U; /* read accelerator seeded at the chain head */
+  f->walk_cache_cluster = f->first_cluster;
+  f->size_bytes         = priv_rd32(&entry[k_dir_off_file_size]);
+  f->dir_entry_lba      = lba;
+  f->dir_entry_idx      = off;
+  f->mode               = mode;
+  f->no_fat_chain       = 0U;
+  f->in_use             = 1;
   if (mode == k_ra_fs_mode_write) {
     ra_err_t err = priv_truncate_existing(handle, f, lba, off);
     if (err != k_ra_ok) {
@@ -5350,17 +5356,19 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
   if (err != k_ra_ok) {
     return err;
   }
-  f->mount         = handle;
-  f->first_cluster = 0;
-  f->cur_cluster   = 0;
-  f->size_bytes    = 0;
-  f->offset        = 0;
-  f->dir_entry_lba = free_lba;
-  f->dir_entry_idx = free_off;
-  f->mode          = mode;
-  f->no_fat_chain  = 0U;
-  f->in_use        = 1;
-  *out_file        = f;
+  f->mount              = handle;
+  f->first_cluster      = 0;
+  f->cur_cluster        = 0;
+  f->walk_cache_idx     = 0;
+  f->walk_cache_cluster = 0; /* < 2: no read cache for a fresh file */
+  f->size_bytes         = 0;
+  f->offset             = 0;
+  f->dir_entry_lba      = free_lba;
+  f->dir_entry_idx      = free_off;
+  f->mode               = mode;
+  f->no_fat_chain       = 0U;
+  f->in_use             = 1;
+  *out_file             = f;
   return k_ra_ok;
 }
 
@@ -5554,10 +5562,35 @@ priv_read_one_chunk(ra_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32
   if (file->no_fat_chain != 0U) {
     target = file->first_cluster + cluster_idx_now;
   } else {
-    ra_err_t werr = priv_skip_clusters(file->mount, file->first_cluster, cluster_idx_now, &target);
+    /* Read accelerator: a sequential read advances the offset one cluster at a
+     * time, so resume the FAT walk from the cached forward waypoint instead of
+     * re-walking from the chain head on every sector -- O(n) over a file, not the
+     * O(n^2) a per-sector walk-from-head would cost. The cache holds a valid chain
+     * position (walk_cache_cluster at walk_cache_idx); use it only when it is set
+     * (a real data cluster) AND the target is at or ahead of it, else walk from
+     * the head.
+     *
+     * @par MC/DC:
+     * Decision: `(walk_cache_cluster >= k_cluster_first_data) && (cluster_idx_now
+     *            >= walk_cache_idx)` (2 conditions)
+     * - cache set, target ahead   -> true  (resume from waypoint)
+     * - cache unset (cluster < 2)  -> false (first condition independent)
+     * - cache set, target behind   -> false (second condition independent; a
+     *                                 backward seek re-walks from the head)
+     */
+    uint32_t walk_from = file->first_cluster;
+    uint32_t walk_n    = cluster_idx_now;
+    if ((file->walk_cache_cluster >= (uint32_t)k_cluster_first_data) &&
+        (cluster_idx_now >= file->walk_cache_idx)) {
+      walk_from = file->walk_cache_cluster;
+      walk_n    = cluster_idx_now - file->walk_cache_idx;
+    }
+    ra_err_t werr = priv_skip_clusters(file->mount, walk_from, walk_n, &target);
     if (werr != k_ra_ok) {
       return werr;
     }
+    file->walk_cache_idx     = cluster_idx_now;
+    file->walk_cache_cluster = target;
   }
   file->cur_cluster                = target;
   const uint32_t off_in_cluster    = file->offset % cluster_bytes;
@@ -5790,6 +5823,8 @@ static ra_err_t priv_write_stream(ra_fs_file_t* file, const uint8_t* buf, uint32
   ra_fs_mount_t* m             = file->mount;
   const uint32_t cluster_bytes = m->sectors_per_cluster * k_ra_fs_bytes_per_sector;
   uint32_t       consumed      = 0;
+  /* A write may allocate/grow the chain, invalidating any cached read waypoint. */
+  file->walk_cache_cluster = 0;
   while (consumed < len) {
     if (file->first_cluster < k_cluster_first_data) {
       uint32_t c   = 0;
