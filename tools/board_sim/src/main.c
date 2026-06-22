@@ -4231,12 +4231,15 @@ static void unrotate_click(uint16_t  cx,
 }
 
 /** @brief Toggle a user switch's pressed level (active-low) for an on-screen button. */
-static void toggle_switch(board_overlay_btn_t btn)
+static void set_switch(board_overlay_btn_t btn, bool pressed)
 {
   const uint8_t pin =
     (btn == k_board_overlay_btn_sw2) ? (uint8_t)k_sim_sw2_pin : (uint8_t)k_sim_sw1_pin;
-  const bool level = board_periph_gpio_get_input((uint8_t)k_sim_sw_port, pin);
-  board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, !level);
+  /* SW1/SW2 are momentary push-buttons wired active-low (internal pull-up): held
+   * down drives the pin LOW (input false), released lets it return HIGH (true).
+   * Driving the level directly -- instead of toggling -- makes a click behave as a
+   * real button (press on mouse-down, release on mouse-up), not a latching switch. */
+  board_periph_gpio_set_input((uint8_t)k_sim_sw_port, pin, !pressed);
 }
 
 /**
@@ -4306,7 +4309,7 @@ static board_overlay_btn_t route_click(uint16_t cx,
     return btn;
   }
   if (btn != k_board_overlay_btn_none) {
-    toggle_switch(btn);
+    set_switch(btn, true); /* mouse-down -> press; mouse-up releases it (run loop). */
     return btn;
   }
   uint16_t nx = cx;
@@ -5345,6 +5348,7 @@ int main(int argc, char** argv)
   uint32_t      settle_left      = 0U;    /* >0 once the click landed: chunks to drain. */
   uint32_t      last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot. */
   bool          slider_grab      = false; /* true while a press grabbed the battery slider. */
+  board_overlay_btn_t held_btn   = k_board_overlay_btn_none; /* SW held down (released on up). */
   uint64_t      last_present_us  = 0U;    /* wall-us of the last live --view present.    */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
@@ -5428,7 +5432,7 @@ int main(int argc, char** argv)
             (click_btn == k_board_overlay_btn_batt_chg)) {
           apply_battery_click(click_btn, (uint16_t)click_x, disp_w); /* drag SOC / toggle CHG. */
         } else {
-          toggle_switch(click_btn); /* on-screen SW1/SW2: press once, then hold. */
+          set_switch(click_btn, true); /* headless --click SW1/SW2: press + hold. */
         }
         button_fired = true;
       }
@@ -5578,17 +5582,29 @@ int main(int argc, char** argv)
       }
     }
     if (view != nullptr) {
-      /* Live window: a left mouse-down on an on-screen SW1/SW2 button toggles
-       * that user switch; anywhere on the panel arms one GT911 contact, so the
-       * firmware's next real ra_touch_read returns it through the I3C path. */
+      /* Live window: mouse-down on an on-screen SW1/SW2 PRESSES that user switch
+       * (route_click drives it active-low); the matching mouse-up releases it, so
+       * the on-screen buttons act as momentary push-buttons, not latching switches.
+       * A press anywhere on the panel arms one GT911 contact instead. */
       uint16_t cx = 0U;
       uint16_t cy = 0U;
       if (board_view_poll_click(view, &cx, &cy)) {
         /* A press on the battery slider "grabs" it, so a subsequent drag keeps
          * setting the SOC from the cursor column even if the mouse leaves the
          * track row -- standard slider grab semantics. */
-        slider_grab = (route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg) ==
-                       k_board_overlay_btn_battery);
+        const board_overlay_btn_t hit = route_click(cx, cy, panel_w, panel_h, disp_w, rotate_deg);
+        slider_grab = (hit == k_board_overlay_btn_battery);
+        held_btn    = ((hit == k_board_overlay_btn_sw1) || (hit == k_board_overlay_btn_sw2))
+                        ? hit
+                        : k_board_overlay_btn_none;
+      }
+      /* Mouse-up: release a held push-button and drop any slider grab. */
+      if (board_view_poll_release(view)) {
+        if (held_btn != k_board_overlay_btn_none) {
+          set_switch(held_btn, false);
+          held_btn = k_board_overlay_btn_none;
+        }
+        slider_grab = false;
       }
       uint16_t dx = 0U;
       uint16_t dy = 0U;
