@@ -60,7 +60,7 @@ GLCDC render path, and lets you drive it by hand.
 
 `hw_pending`: validated in `tools/board_sim` (GUI render + headless banner), not
 yet exercised on a stock EVM (it shares the GLCDC layer-1 bring-up that
-`glcdc_render_hil` validates on bench).
+`glcdc_render` validates on bench).
 
 ## Build
 
