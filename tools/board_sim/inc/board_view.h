@@ -99,6 +99,26 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
 bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y);
 
 /**
+ * @brief Report whether the primary mouse button was released since the last poll.
+ *
+ * @details
+ * Latches the view's mouseUp event (left button released anywhere over the
+ * content view) and returns it to the caller exactly once -- the latch clears on
+ * read. The run loop uses this to release a momentary on-screen push-button
+ * (SW1/SW2) that a prior board_view_poll_click pressed, so the buttons behave as
+ * real push-buttons (held only while the mouse is down) rather than latching
+ * switches, and to drop a battery-slider grab when the drag ends. Unlike
+ * board_view_poll_click/_drag this carries no coordinate -- a release is a pure
+ * edge. Pump the window (board_view_pump) first so AppKit has delivered the up
+ * event.
+ *
+ * @param[in] view Handle from board_view_open (nullptr reports no release).
+ * @return true if a fresh mouse-up was reported (and consumed); false otherwise.
+ * @since 0.1.0
+ */
+bool board_view_poll_release(board_view_t* view);
+
+/**
  * @brief Drain the accumulated console scroll-wheel notches since the last poll.
  *
  * @details

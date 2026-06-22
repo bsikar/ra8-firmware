@@ -104,6 +104,18 @@ bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
 }
 
 /**
+ * @brief No-op release poll (headless: no window, no mouse-up events).
+ *
+ * @param[in] view Always nullptr from board_view_open (unused).
+ * @return Always false -- a headless build reports no releases.
+ */
+bool board_view_poll_release(board_view_t* view)
+{
+  (void)view;
+  return false;
+}
+
+/**
  * @brief No-op scroll poll (headless: no window to scroll).
  *
  * @param[in] view Always nullptr from board_view_open (unused).
