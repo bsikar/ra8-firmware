@@ -47,7 +47,7 @@ build: $(ELF)
 $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(HERE)/linker_script.ld $(HERE)/CMakeLists.txt
 	$(CMAKE) -S $(HERE) -B $(BUILD_DIR) \
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
-	    -DCMAKE_BUILD_TYPE=Debug \
+	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 	$(CMAKE) --build $(BUILD_DIR)
 
