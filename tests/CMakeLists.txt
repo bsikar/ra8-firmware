@@ -143,6 +143,7 @@ file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/sr
 file(GLOB_RECURSE RA_UI_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ui/src/*.c)
 file(GLOB_RECURSE RA_KEYBOARD_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_keyboard/src/*.c)
 file(GLOB_RECURSE RA_BOX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_box/src/*.c)
+file(GLOB_RECURSE RA_BOOK_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_book/src/*.c)
 file(GLOB_RECURSE RA_BATT_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_batt/src/*.c)
 file(GLOB_RECURSE RA_WIDGET_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_widget/src/*.c)
 file(GLOB_RECURSE RA_APP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_app/src/*.c)
@@ -223,6 +224,7 @@ add_library(ra_core_hal OBJECT
     ${RA_UI_SOURCES}
     ${RA_KEYBOARD_SOURCES}
     ${RA_BOX_SOURCES}
+    ${RA_BOOK_SOURCES}
     ${RA_BATT_SOURCES}
     ${RA_WIDGET_SOURCES}
     ${RA_APP_SOURCES}
@@ -272,6 +274,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_ui/inc
     ${FW_ROOT}/libs/ra_keyboard/inc
     ${FW_ROOT}/libs/ra_box/inc
+    ${FW_ROOT}/libs/ra_book/inc
     ${FW_ROOT}/libs/ra_batt/inc
     ${FW_ROOT}/libs/ra_widget/inc
     ${FW_ROOT}/libs/ra_app/inc
@@ -425,6 +428,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_ui/inc
     ${FW_ROOT}/libs/ra_keyboard/inc
     ${FW_ROOT}/libs/ra_box/inc
+    ${FW_ROOT}/libs/ra_book/inc
     ${FW_ROOT}/libs/ra_batt/inc
     ${FW_ROOT}/libs/ra_widget/inc
     ${FW_ROOT}/libs/ra_app/inc
@@ -475,12 +479,12 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
-  if(APPLE)
-    target_link_options(${name} PRIVATE
-      "-Wl,-pagezero_size,0x4000"
-      "-Wl,-segalign,0x4000"
-    )
-  endif()
+#  if(APPLE)
+#    target_link_options(${name} PRIVATE
+#      "-Wl,-pagezero_size,0x4000"
+#      "-Wl,-segalign,0x4000"
+#    )
+#  endif()
   if(RA_REFLOW_USE_LITEHTML)
     # ra_core_hal is an OBJECT library, so link deps don't propagate
     # automatically; bind litehtml/gumbo directly into each test exe
@@ -539,12 +543,12 @@ if(RA_REFLOW_USE_LITEHTML)
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
   target_link_libraries(test_ra_reflow_v2 PRIVATE litehtml gumbo)
-  if(APPLE)
-    target_link_options(test_ra_reflow_v2 PRIVATE
-      "-Wl,-pagezero_size,0x4000"
-      "-Wl,-segalign,0x4000"
-    )
-  endif()
+#  if(APPLE)
+#    target_link_options(test_ra_reflow_v2 PRIVATE
+#      "-Wl,-pagezero_size,0x4000"
+#      "-Wl,-segalign,0x4000"
+#    )
+#  endif()
   add_test(NAME test_ra_reflow_v2 COMMAND test_ra_reflow_v2)
 endif()
 
@@ -575,12 +579,12 @@ target_include_directories(test_ra_epub_xml_shim PRIVATE
 if(RA_REFLOW_USE_LITEHTML)
   target_link_libraries(test_ra_epub_xml_shim PRIVATE litehtml gumbo)
 endif()
-if(APPLE)
-  target_link_options(test_ra_epub_xml_shim PRIVATE
-    "-Wl,-pagezero_size,0x4000"
-    "-Wl,-segalign,0x4000"
-  )
-endif()
+#if(APPLE)
+#  target_link_options(test_ra_epub_xml_shim PRIVATE
+#    "-Wl,-pagezero_size,0x4000"
+#    "-Wl,-segalign,0x4000"
+#  )
+#endif()
 add_test(NAME test_ra_epub_xml_shim COMMAND test_ra_epub_xml_shim)
 
 # ---------------------------------------------------------------------------

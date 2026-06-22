@@ -275,6 +275,14 @@ check:
 tidy:
 	bash scripts/clang_tidy.sh --check
 
+# `make books` -- regenerate the compiled e-book library from the
+# content/library/*.epub masters (Git LFS): content/compiled/*.rabook plus the
+# manifest header libs/ra_book/inc/ra_book_library.h. Both are build artifacts
+# (gitignored); the epubs are the source of truth. Tune image downscale with
+# RA_BOOK_MAX_EDGE (default 1024 px long edge). See tools/epub_compile/.
+books:
+	bash scripts/build_books.sh
+
 # `make magic` -- full-tree magic-number gate.  Backstops clang-tidy's
 # readability-magic-numbers, which only sees files in the host
 # compile-db (no example main.c, no ARM-only #ifdef code paths).

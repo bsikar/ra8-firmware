@@ -29,15 +29,28 @@ from zipfile import ZipFile
 
 from PIL import Image
 
+# The SE masters are trusted local input; some cover scans exceed Pillow's
+# default decompression-bomb threshold, so lift it rather than warn.
+Image.MAX_IMAGE_PIXELS = None
+
 # --- on-disk constants, kept in lockstep with libs/ra_book/inc/ra_book.h ------
 MAGIC = b"RABOOK1\x00"
 FORMAT_VERSION = 1
 NIL = 0xFFFFFFFF
 NODE_ELEMENT = 0
 NODE_TEXT = 1
-IMG_GRAY4_DEFLATE = 0
-IMG_SVG_RAW = 1
+IMG_GRAY4 = 0
+IMG_SVG = 1
 GRAY_LEVELS = 16
+# .rabook container: "RBKZ" + LE uint32 inflated-size + raw zlib stream of the
+# flat blob. The device inflates once into SDRAM, then walks the flat structure.
+CONTAINER_MAGIC = b"RBKZ"
+# The e-ink panel cannot resolve more than panel-class pixels, so storing
+# full-resolution source images just bloats the blob with pixels that never
+# render. Downscaling the long edge to this bound is the single biggest size
+# lever; FS dithering is left off because its high-frequency noise defeats
+# DEFLATE (the renderer can dither at draw time if desired).
+MAX_IMAGE_EDGE = 1600
 
 VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input",
@@ -167,6 +180,10 @@ class BlobBuilder:
 
     def add_raster_image(self, href, data):
         im = Image.open(io.BytesIO(data)).convert("L")
+        w, h = im.size
+        scale = min(1.0, MAX_IMAGE_EDGE / max(w, h))
+        if scale < 1.0:
+            im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
         width, height = im.size
         palette = []
         for i in range(GRAY_LEVELS):
@@ -176,23 +193,24 @@ class BlobBuilder:
             palette += [0, 0, 0]
         pal_img = Image.new("P", (1, 1))
         pal_img.putpalette(palette)
-        dithered = im.convert("RGB").quantize(
-            palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG).convert("L")
+        quantized = im.convert("RGB").quantize(
+            palette=pal_img, dither=Image.Dither.NONE).convert("L")
         nib_table = bytes(min(v // 17, GRAY_LEVELS - 1) for v in range(256))
-        nibbles = dithered.tobytes().translate(nib_table)
+        nibbles = quantized.tobytes().translate(nib_table)
         even = nibbles[0::2]
         odd = nibbles[1::2]
         packed = bytearray(bytes((e << 4) | o for e, o in zip(even, odd)))
         if len(even) > len(odd):
             packed.append(even[-1] << 4)
-        comp = zlib.compress(bytes(packed), 9)
-        self.images.append((self.sp.intern(href), width, height, IMG_GRAY4_DEFLATE,
-                            comp, len(packed)))
+        # Stored raw; the whole blob is DEFLATE-wrapped as one stream on disk, so
+        # per-image compression would just double-compress for no gain. After the
+        # single inflate-on-open these bytes are panel-ready 4bpp, no decode.
+        raw = bytes(packed)
+        self.images.append((self.sp.intern(href), width, height, IMG_GRAY4, raw, len(raw)))
         return len(self.images) - 1
 
     def add_svg_image(self, href, data):
-        comp = zlib.compress(data, 9)
-        self.images.append((self.sp.intern(href), 0, 0, IMG_SVG_RAW, comp, len(data)))
+        self.images.append((self.sp.intern(href), 0, 0, IMG_SVG, data, len(data)))
         return len(self.images) - 1
 
     # -- serialization --------------------------------------------------------
@@ -213,6 +231,14 @@ class BlobBuilder:
             img_records.append(struct.pack(
                 "<IHHBBHIII", id_off, w, h, fmt, 0, 0, data_off, len(data), raw))
         image = b"".join(img_records)
+
+        # Intern metadata strings BEFORE snapshotting the pool. They may not
+        # appear anywhere in the DOM, so interning them later (during the header
+        # pack) would append past the captured `strings` and dangle the offsets.
+        title_off = self.sp.intern(meta["title"])
+        author_off = self.sp.intern(meta["author"])
+        language_off = self.sp.intern(meta["language"])
+        identifier_off = self.sp.intern(meta["identifier"])
         strings = bytes(self.sp.buf)
 
         header_size = 100
@@ -230,8 +256,7 @@ class BlobBuilder:
 
         header = struct.pack(
             "<8s23I", MAGIC, FORMAT_VERSION, total, 0,
-            self.sp.intern(meta["title"]), self.sp.intern(meta["author"]),
-            self.sp.intern(meta["language"]), self.sp.intern(meta["identifier"]),
+            title_off, author_off, language_off, identifier_off,
             self.cover_index,
             len(self.chapters), off_chap, len(self.nodes), off_node,
             len(self.attrs), off_attr, len(self.stylesheets), off_style,
@@ -373,24 +398,29 @@ def compile_epub(path):
 
 
 def main():
+    global MAX_IMAGE_EDGE
     ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
     ap.add_argument("input", help="source .epub")
     ap.add_argument("output", help="destination .rabook")
     ap.add_argument("--stats", action="store_true", help="print size/structure stats")
+    ap.add_argument("--max-edge", type=int, default=MAX_IMAGE_EDGE,
+                    help="downscale raster image long edge to at most this many pixels")
     args = ap.parse_args()
 
+    MAX_IMAGE_EDGE = args.max_edge
     blob, meta, bb = compile_epub(args.input)
+    container = CONTAINER_MAGIC + struct.pack("<I", len(blob)) + zlib.compress(blob, 9)
     with open(args.output, "wb") as fh:
-        fh.write(blob)
+        fh.write(container)
 
     if args.stats:
         src = os.path.getsize(args.input)
-        out = len(blob)
+        out = len(container)
         print(f"{meta['title']} -- {meta['author']}")
         print(f"  chapters={len(bb.chapters)} nodes={len(bb.nodes)} "
               f"attrs={len(bb.attrs)} css={len(bb.stylesheets)} images={len(bb.images)}")
         print(f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
-              f"({100 * out // max(src, 1)}%)")
+              f"({100 * out // max(src, 1)}%); inflated={len(blob) // 1024} KB")
 
 
 if __name__ == "__main__":

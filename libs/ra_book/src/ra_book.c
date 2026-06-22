@@ -10,6 +10,8 @@
  */
 #include "ra_book.h"
 
+#include <string.h>
+
 #include "ra_attributes.h"
 #include "ra_check.h"
 
@@ -24,8 +26,8 @@ static const char* const s_tag_book = "ra_book";
  * @since Version 1.0.0
  */
 typedef enum : uint32_t {
-  k_ra_book_crc_init  = 0xFFFFFFFFU, /**< CRC seed and final XOR mask.     */
-  k_ra_book_crc_poly  = 0xEDB88320U, /**< Reflected polynomial.            */
+  k_ra_book_crc_init = 0xFFFFFFFFU, /**< CRC seed and final XOR mask.     */
+  k_ra_book_crc_poly = 0xEDB88320U, /**< Reflected polynomial.            */
 } ra_book_crc_const_t;
 
 /**
@@ -39,13 +41,14 @@ typedef enum : uint8_t {
 
 /** @brief Implementation of `ra_book_crc32()` -- bitwise reflected CRC-32. */
 RA_NO_RECURSION
-static uint32_t ra_book_crc32(const uint8_t* data, size_t len) {
+static uint32_t ra_book_crc32(const uint8_t* data, size_t len)
+{
   uint32_t crc = k_ra_book_crc_init;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < k_ra_book_crc_bits_per_byte; ++bit) {
       uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc = (crc >> 1U) ^ (k_ra_book_crc_poly & mask);
+      crc           = (crc >> 1U) ^ (k_ra_book_crc_poly & mask);
     }
   }
   return crc ^ k_ra_book_crc_init;
@@ -56,12 +59,14 @@ static uint32_t ra_book_crc32(const uint8_t* data, size_t len) {
  * @details Returns true when `[off, off + count*elem)` lies within `total`,
  *          computed in 64-bit to avoid 32-bit wraparound on hostile inputs.
  */
-static bool ra_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uint32_t total) {
-  uint64_t end = (uint64_t)off + (uint64_t)count * (uint64_t)elem;
+static bool ra_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uint32_t total)
+{
+  uint64_t end = (uint64_t)off + ((uint64_t)count * (uint64_t)elem);
   return (off <= total) && (end <= (uint64_t)total);
 }
 
-ra_err_t ra_book_validate(const void* base, size_t size) {
+ra_err_t ra_book_validate(const void* base, size_t size)
+{
   RA_CHECK_NULL_PTR(base, s_tag_book, "validate: null base");
 
   if (size < sizeof(ra_book_header_t)) {
@@ -86,23 +91,114 @@ ra_err_t ra_book_validate(const void* base, size_t size) {
   }
 
   const bool tables_ok =
-      ra_book_table_fits(hdr->chapter_off, hdr->chapter_count, sizeof(ra_book_chapter_t), total) &&
-      ra_book_table_fits(hdr->node_off, hdr->node_count, sizeof(ra_book_node_t), total) &&
-      ra_book_table_fits(hdr->attr_off, hdr->attr_count, sizeof(ra_book_attr_t), total) &&
-      ra_book_table_fits(hdr->stylesheet_off, hdr->stylesheet_count,
-                         sizeof(ra_book_stylesheet_t), total) &&
-      ra_book_table_fits(hdr->image_off, hdr->image_count, sizeof(ra_book_image_t), total) &&
-      ra_book_table_fits(hdr->string_off, hdr->string_size, 1U, total) &&
-      ra_book_table_fits(hdr->image_pool_off, hdr->image_pool_size, 1U, total);
+    ra_book_table_fits(hdr->chapter_off, hdr->chapter_count, sizeof(ra_book_chapter_t), total) &&
+    ra_book_table_fits(hdr->node_off, hdr->node_count, sizeof(ra_book_node_t), total) &&
+    ra_book_table_fits(hdr->attr_off, hdr->attr_count, sizeof(ra_book_attr_t), total) &&
+    ra_book_table_fits(hdr->stylesheet_off,
+                       hdr->stylesheet_count,
+                       sizeof(ra_book_stylesheet_t),
+                       total) &&
+    ra_book_table_fits(hdr->image_off, hdr->image_count, sizeof(ra_book_image_t), total) &&
+    ra_book_table_fits(hdr->string_off, hdr->string_size, 1U, total) &&
+    ra_book_table_fits(hdr->image_pool_off, hdr->image_pool_size, 1U, total);
   if (!tables_ok) {
     return k_ra_err_invalid_size;
   }
 
-  const uint8_t* body = (const uint8_t*)base + sizeof(ra_book_header_t);
-  uint32_t body_len = total - (uint32_t)sizeof(ra_book_header_t);
+  const uint8_t* body     = (const uint8_t*)base + sizeof(ra_book_header_t);
+  uint32_t       body_len = total - (uint32_t)sizeof(ra_book_header_t);
   if (ra_book_crc32(body, body_len) != hdr->crc32) {
     return k_ra_err_range_check_failed;
   }
 
   return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_book_container_inflated_size()` -- check the
+ *        "RBKZ" header and read the inflated size, bounding it by @p scratch_cap.
+ */
+static ra_err_t ra_book_container_inflated_size(const uint8_t* bytes,
+                                                size_t         file_len,
+                                                size_t         scratch_cap,
+                                                uint32_t*      out_size)
+{
+  if (file_len < k_ra_book_container_header_len) {
+    return k_ra_err_invalid_size;
+  }
+  const char cmagic[k_ra_book_container_magic_len] = {'R', 'B', 'K', 'Z'};
+  for (uint8_t i = 0U; i < k_ra_book_container_magic_len; ++i) {
+    if ((char)bytes[i] != cmagic[i]) {
+      return k_ra_err_invalid_arg;
+    }
+  }
+  /* Inflated size is a little-endian uint32 after the magic (host packs "<I"). */
+  uint32_t inflated = 0U;
+  memcpy(&inflated, bytes + k_ra_book_container_magic_len, sizeof(inflated));
+  if ((size_t)inflated > scratch_cap) {
+    return k_ra_err_invalid_size;
+  }
+  *out_size = inflated;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_book_inflate_and_validate()` -- inflate the
+ *        container payload into @p scratch and validate the resulting blob.
+ */
+static ra_err_t ra_book_inflate_and_validate(ra_book_inflate_fn inflate,
+                                             const uint8_t*     payload,
+                                             size_t             payload_len,
+                                             void*              scratch,
+                                             size_t             scratch_cap,
+                                             uint32_t           expected,
+                                             const void**       out_base,
+                                             size_t*            out_size)
+{
+  size_t   produced = 0U;
+  ra_err_t err      = inflate(payload, payload_len, scratch, scratch_cap, &produced);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (produced != (size_t)expected) {
+    return k_ra_err_invalid_size;
+  }
+  err = ra_book_validate(scratch, produced);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  *out_base = scratch;
+  *out_size = produced;
+  return k_ra_ok;
+}
+
+ra_err_t ra_book_open(const void*        file,
+                      size_t             file_len,
+                      ra_book_inflate_fn inflate,
+                      void*              scratch,
+                      size_t             scratch_cap,
+                      const void**       out_base,
+                      size_t*            out_size)
+{
+  RA_CHECK_NULL_PTR(file, s_tag_book, "open: null file");
+  RA_CHECK_NULL_PTR((const void*)inflate, s_tag_book, "open: null inflate");
+  RA_CHECK_NULL_PTR(scratch, s_tag_book, "open: null scratch");
+  RA_CHECK_NULL_PTR(out_base, s_tag_book, "open: null out_base");
+  RA_CHECK_NULL_PTR(out_size, s_tag_book, "open: null out_size");
+
+  const uint8_t* bytes         = (const uint8_t*)file;
+  uint32_t       inflated_size = 0U;
+  ra_err_t err = ra_book_container_inflated_size(bytes, file_len, scratch_cap, &inflated_size);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  return ra_book_inflate_and_validate(inflate,
+                                      bytes + k_ra_book_container_header_len,
+                                      file_len - k_ra_book_container_header_len,
+                                      scratch,
+                                      scratch_cap,
+                                      inflated_size,
+                                      out_base,
+                                      out_size);
 }
