@@ -192,24 +192,24 @@ sim_extra_args() { # app -> extra args on stdout
 uart_expect() { # app -> expected UART substring on stdout
     case "$1" in
     uart_hello)         printf 'hello, ra8d2!' ;;
-    ereader_chrome_hil) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
-    ereader_image_hil)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
-    ereader_link_hil)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
-    ereader_align_hil)  printf 'ereader-align-hil: glyphs=210 geom=D4C9657E' ;;
-    ereader_table_hil)  printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
-    reflow_content_hil) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
-    ereader_input_hil)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
-    ereader_cover_hil)  printf 'ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS' ;;
-    ereader_svg_hil)    printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
-    ereader_imgfmt_hil) printf 'ereader-imgfmt-hil: bmp=D53617C5 gif=350551C5 PASS' ;;
-    ereader_jpeg_hil)   printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
-    epub_parse_hil)     printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
-    epub_stress_hil)    printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
-    widget_app_hil)     printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
+    ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
+    ereader_image)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
+    ereader_link)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
+    ereader_align)  printf 'ereader-align-hil: glyphs=210 geom=D4C9657E' ;;
+    ereader_table)  printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
+    reflow_content) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
+    ereader_input)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
+    ereader_cover)  printf 'ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS' ;;
+    ereader_svg)    printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
+    ereader_imgfmt) printf 'ereader-imgfmt-hil: bmp=D53617C5 gif=350551C5 PASS' ;;
+    ereader_jpeg)   printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
+    epub_parse)     printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
+    epub_stress)    printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
+    widget_app)     printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
     widget_app_demo)    printf 'widget-app-demo: apps=3 lib=26CE7CD0 rdr=22B7E671 route=ok flush=512x44 hint=fast PASS' ;;
-    glcdc_render_hil)   printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
+    glcdc_render)   printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
     bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
-    keyboard_hil)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
+    keyboard)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
     touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
     smbus_demo)         printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
     battery_monitor_demo) printf 'battery: soc=72%% chg=N PASS' ;;
@@ -255,8 +255,8 @@ if [ "${#apps[@]}" -eq 0 ]; then
     # file write+readback round-trip. They are ThreadX, so the same Unicorn
     # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
     apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
-        ereader_chrome_hil ereader_image_hil ereader_link_hil ereader_align_hil ereader_table_hil \
-        reflow_content_hil ereader_input_hil bscan_selftest keyboard_hil touch_demo \
+        ereader_chrome ereader_image ereader_link ereader_align ereader_table \
+        reflow_content ereader_input bscan_selftest keyboard touch_demo \
         uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
         canfd_loopback imu_lsm6dso_demo smbus_demo battery_monitor_demo gpio_input_demo \
         adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
@@ -265,8 +265,8 @@ if [ "${#apps[@]}" -eq 0 ]; then
         dotf_selftest_demo ecc_monitor_demo \
         bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo \
         lpm_idle_demo lpm_deep_sleep_demo \
-        ereader_cover_hil ereader_svg_hil ereader_imgfmt_hil ereader_jpeg_hil \
-        epub_parse_hil epub_stress_hil widget_app_hil widget_app_demo glcdc_render_hil \
+        ereader_cover ereader_svg ereader_imgfmt ereader_jpeg \
+        epub_parse epub_stress widget_app widget_app_demo glcdc_render \
         acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform \
         gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo \
         i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo)
