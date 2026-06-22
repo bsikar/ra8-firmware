@@ -31,31 +31,18 @@ static int32_t sh_toc_visible_rows(void)
   return ((int32_t)k_sh_fb_h - (int32_t)k_sh_bar_h) / (int32_t)k_sh_toc_row_h;
 }
 
-/** @brief Resolve chapter @p idx's display label into @p buf (cap bytes). */
+/** @brief Resolve chapter @p idx's display label into @p buf (cap bytes), truncated. */
 static void sh_toc_label(uint32_t idx, char* buf, size_t cap)
 {
-  const ra_book_chapter_t* ch    = &ra_book_chapters(g_sh.book_base)[idx];
-  const char*              label = ra_book_string(g_sh.book_base, ch->title_off);
-  if ((label != nullptr) && (label[0] != '\0')) {
-    sh_fit(buf,
-           cap,
-           label,
-           sh_cells((int32_t)k_sh_fb_w - (2 * (int32_t)k_sh_pad) - k_sh_toc_num_w));
-    return;
-  }
-  size_t p = 0U;
-  buf[p++] = 'C';
-  buf[p++] = 'h';
-  buf[p++] = '.';
-  buf[p++] = ' ';
-  p        = sh_fmt_uint(buf, p, idx + 1U);
-  buf[p]   = '\0';
+  char full[k_sh_linebuf];
+  sh_book_chapter_label(idx, full, sizeof full);
+  sh_fit(buf, cap, full, sh_cells((int32_t)k_sh_fb_w - (2 * (int32_t)k_sh_pad) - k_sh_toc_num_w));
 }
 
 void sh_toc_render(void)
 {
   (void)ra_gfx_clear((uint32_t)k_sh_col_card);
-  sh_titlebar("< Cover", ra_book_string(g_sh.book_base, ra_book_header(g_sh.book_base)->title_off));
+  sh_titlebar("< Cover", g_sh.entry[g_sh.selected].title);
   const int32_t rows = sh_toc_visible_rows();
   for (int32_t r = 0; r < rows; ++r) {
     const uint32_t ci = (uint32_t)(g_sh.toc_scroll + r);
