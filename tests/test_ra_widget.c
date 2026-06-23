@@ -316,6 +316,74 @@ static void test_widget_edge_guards(void)
   TEST_END("ra_widget: edge guards + half-empty damage");
 }
 
+/**
+ * @test Remaining MC/DC arms: null-vt skip, dirty-but-invisible damage skip,
+ *       and the `count == 0` (left-false) branch of every array guard.
+ *
+ * @par MC/DC:
+ * - dispatch eligibility `!visible || vt==NULL || on_input==NULL` (L257, 3
+ *   conditions): the middle `vt == NULL` true arm -- a visible widget with a
+ *   non-null on_input but a NULL `vt` is skipped (no crash, not handled). This
+ *   completes the trio whose `!visible` and `on_input==NULL` arms are covered
+ *   by ::test_dispatch_touch.
+ * - damage selector `!visible || !dirty` (L307, 2 conditions): the `!visible`
+ *   true / `!dirty` false arm -- a dirty but invisible widget is skipped, so it
+ *   contributes nothing to the union or count (proving `visible` independently
+ *   affects the outcome vs. the visible+dirty vector in ::test_invalidate_damage).
+ * - array-precondition guard `(count > 0) && (widgets == NULL)` for dispatch
+ *   (L250), damage (L299), and render_dirty (L324): the left-false arm
+ *   `count == 0` short-circuits the guard so a NULL array with zero widgets is
+ *   accepted and the call returns k_ra_ok (its true arm -- count>0, widgets
+ *   NULL -- is covered by ::test_widget_edge_guards).
+ */
+static void test_widget_remaining_mcdc(void)
+{
+  TEST_BEGIN("ra_widget: remaining MC/DC arms");
+
+  /* L257 middle arm: a visible widget with on_input set but vt == NULL is
+   * skipped during dispatch (the `vt == NULL` condition is true). */
+  mock_ctx_t  cnv                 = {.consume = true};
+  ra_widget_t wnv                 = make_widget(&cnv, 0, 0, 1);
+  wnv.rect                        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 50, .h = 50};
+  wnv.vt                          = nullptr; /* vt == NULL: middle condition true */
+  bool                    handled = true;
+  const ra_widget_event_t touch   = {.kind = k_ra_widget_ev_touch, .x = 10, .y = 10};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(&wnv, 1U, &touch, &handled));
+  TEST_ASSERT_EQ(false, handled);
+  TEST_ASSERT_EQ(0U, cnv.input_calls);
+
+  /* L307 `!visible` true arm: a dirty BUT invisible widget is skipped, so it
+   * never folds into the damage union or the dirty count. */
+  mock_ctx_t  cdi = {};
+  ra_widget_t wdi = make_widget(&cdi, 0, 0, 1);
+  wdi.rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 80, .h = 30};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&wdi, k_ra_widget_refresh_quality));
+  wdi.visible              = false; /* dirty == true, visible == false */
+  ra_ui_rect_t        dmg  = {.x = 7, .y = 7, .w = 7, .h = 7};
+  ra_widget_refresh_t hint = k_ra_widget_refresh_quality;
+  uint16_t            n    = 99U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(&wdi, 1U, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(0U, n);    /* invisible -> not counted */
+  TEST_ASSERT_EQ(0, dmg.w); /* empty accumulator returned */
+  TEST_ASSERT_EQ(0, dmg.h);
+  TEST_ASSERT_EQ((int)k_ra_widget_refresh_none, (int)hint);
+
+  /* L250 / L299 / L324 left-false arm: count == 0 short-circuits the guard, so
+   * a NULL array with zero widgets is accepted and the call returns ok. */
+  const ra_widget_event_t ev = {.kind = k_ra_widget_ev_button, .button_id = 1};
+  handled                    = true;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(nullptr, 0U, &ev, &handled));
+  TEST_ASSERT_EQ(false, handled);
+  dmg  = (ra_ui_rect_t){.x = 5, .y = 5, .w = 5, .h = 5};
+  hint = k_ra_widget_refresh_quality;
+  n    = 99U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(nullptr, 0U, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(0U, n);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_render_dirty(nullptr, 0U));
+
+  TEST_END("ra_widget: remaining MC/DC arms");
+}
+
 int main(void)
 {
   test_layout_stack();
@@ -324,5 +392,6 @@ int main(void)
   test_invalidate_damage();
   test_render_dirty();
   test_widget_edge_guards();
+  test_widget_remaining_mcdc();
   return 0;
 }

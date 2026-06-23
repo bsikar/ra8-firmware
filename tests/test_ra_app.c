@@ -348,6 +348,83 @@ static void test_null_guards(void)
   TEST_END("ra_app: null-arg guards");
 }
 
+/**
+ * @test Null registry-slot arms: a slot pointer that is NULL (left condition
+ *       false) for find / launch-leave / launch-enter / route / tick / render.
+ *
+ * @details
+ * A registry slot can legitimately hold NULL (a caller-provided storage array
+ * entry that was never filled, or cleared). The framework defends every slot
+ * dereference with `apps[i] != NULL`; the existing tests only ever populate
+ * non-null slots, so the left-false arm of each guard is exercised here by
+ * driving the public API against a hand-built registry whose `apps[]` entries
+ * are NULL while `count` / `active` still index them.
+ *
+ * @par MC/DC:
+ * - find guard `(apps[i] != NULL) && (apps[i]->id == id)` (ra_app.c L37): the
+ *   `apps[i] == NULL` left-false arm -- a NULL slot is skipped, so the id is not
+ *   found (its both-true arm is covered by ::test_launch_lifecycle's hits).
+ * - launch leave guard `(cur != NULL) && (cur->vt->on_leave != NULL)` (L91):
+ *   the `cur == NULL` left-false arm -- a NULL previously-active slot is skipped
+ *   (no on_leave call, no crash).
+ * - launch enter guard `(next != NULL) && (next->vt->on_enter != NULL)` (L97):
+ *   the `next == NULL` left-false arm is UNREACHABLE via the public API (see the
+ *   inline note below) -- the launch target always resolves to a non-null slot.
+ * - route guard `(a != NULL) && (a->vt->on_input != NULL)` (L122): the
+ *   `a == NULL` left-false arm -- a NULL active slot routes nothing (not handled).
+ * - tick guard `(a != NULL) && (a->vt->tick != NULL)` (L135): the `a == NULL`
+ *   left-false arm -- a NULL active slot ticks nothing.
+ * - render guard `(a != NULL) && (a->vt->render != NULL)` (L148): the
+ *   `a == NULL` left-false arm -- a NULL active slot renders nothing.
+ */
+static void test_null_slots(void)
+{
+  TEST_BEGIN("ra_app: null registry-slot guards MC/DC");
+  app_ctx_t c0 = {};
+  ra_app_t  a0 = make_app(&c0, 1, "lib");
+
+  /* L37: a NULL slot inside [0, count) is skipped during find. */
+  ra_app_t*         slots_find[2] = {nullptr, &a0};
+  ra_app_registry_t rfind         = {.apps = slots_find, .cap = 2U, .count = 2U, .active = -1};
+  int16_t           idx           = 0;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_find(&rfind, 1, &idx));
+  TEST_ASSERT_EQ(1, (int)idx); /* slot 0 (NULL) skipped, slot 1 matched */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_find(&rfind, 7, &idx));
+  TEST_ASSERT_EQ((int)k_ra_app_none, (int)idx); /* NULL slot never matches */
+
+  /* L91: previously-active slot is NULL -> leave guard left-false, skipped.
+   * active = 0 (a NULL slot), launch id 1 at slot 1 (valid) -> on_enter fires,
+   * but the NULL outgoing slot's on_leave is safely skipped. */
+  ra_app_t*         slots_leave[2] = {nullptr, &a0};
+  ra_app_registry_t rleave         = {.apps = slots_leave, .cap = 2U, .count = 2U, .active = 0};
+  c0.enter_calls                   = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&rleave, 1));
+  TEST_ASSERT_EQ(1, (int)rleave.active); /* switched to slot 1 */
+  TEST_ASSERT_EQ(1U, c0.enter_calls);    /* incoming on_enter fired */
+
+  /* L97 (`next == NULL` enter-guard arm) is UNREACHABLE through the public API:
+   * the launch target comes from ra_app_find(), which only returns an index
+   * whose `apps[target]` is non-NULL (its own L37 guard filters NULL slots).
+   * After `reg->active = target`, `next = reg->apps[target]` is therefore always
+   * non-null, so the `next == NULL` branch is dead defensive code. It is left in
+   * place as belt-and-braces and cannot be covered by a public-API test. */
+
+  /* L122: active slot is NULL -> route guard left-false, nothing handled. */
+  ra_app_t*               slots_act[1] = {nullptr};
+  ra_app_registry_t       ract         = {.apps = slots_act, .cap = 1U, .count = 1U, .active = 0};
+  bool                    handled      = true;
+  const ra_widget_event_t ev           = {.kind = k_ra_widget_ev_button, .button_id = 3};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_route_input(&ract, &ev, &handled));
+  TEST_ASSERT_EQ(false, handled);
+
+  /* L135: active slot is NULL -> tick guard left-false, no-op. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_tick(&ract));
+
+  /* L148: active slot is NULL -> render guard left-false, no-op. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_render(&ract));
+  TEST_END("ra_app: null registry-slot guards MC/DC");
+}
+
 int main(void)
 {
   test_register();
@@ -357,5 +434,6 @@ int main(void)
   test_tick_render();
   test_null_callbacks();
   test_null_guards();
+  test_null_slots();
   return 0;
 }
