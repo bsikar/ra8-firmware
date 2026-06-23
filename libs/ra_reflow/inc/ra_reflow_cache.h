@@ -86,7 +86,7 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra_reflow_cache_magic   = 0x52464331U, /**< Blob magic ('R''F''C''1'). */
-  k_ra_reflow_cache_version = 1U,          /**< Serialised format version.  */
+  k_ra_reflow_cache_version = 2U,          /**< Serialised format version.  */
 } ra_reflow_cache_id_t;
 
 /**
@@ -95,13 +95,15 @@ typedef enum : uint32_t {
  *
  * @details
  * The blob is `header + glyph_count * glyph_bytes + page_count *
- * page_bytes`. A glyph serialises its 6 meaningful fields (x, y, cp,
- * colour, font_px, style = 4+4+4+4+2+1); a page serialises its two
- * `uint32_t` index fields. The struct padding bytes are **not** stored.
+ * page_bytes`. A glyph serialises its 7 meaningful fields (x, y, cp,
+ * colour, font_px, style, reserved = 4+4+4+4+2+1+1); `reserved` carries
+ * the 1-based `<a>` link id used by hyperlink navigation, so it must
+ * round-trip (it is layout state, not padding). A page serialises its
+ * two `uint32_t` index fields.
  */
 typedef enum : size_t {
   k_ra_reflow_cache_header_bytes = 52U, /**< Fixed header size, bytes.       */
-  k_ra_reflow_cache_glyph_bytes  = 19U, /**< Serialised bytes per glyph.     */
+  k_ra_reflow_cache_glyph_bytes  = 20U, /**< Serialised bytes per glyph.     */
   k_ra_reflow_cache_page_bytes   = 8U,  /**< Serialised bytes per page.      */
 } ra_reflow_cache_layout_t;
 
