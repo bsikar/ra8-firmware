@@ -1,0 +1,287 @@
+/**
+ * @file trace.c
+ * @brief Implementation of the #147 reader access-trace corpus + loader.
+ *
+ * @details All synthetic workloads are driven by a fixed-seed xorshift PRNG so
+ * every policy sees byte-identical input and runs are reproducible (the same
+ * determinism board_sim gives the captured traces).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * [Ring 7 / Tooling] {World: NS}
+ *
+ * @since 0.1.0
+ */
+#include "trace.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/** @brief Workload sizing (no magic numbers in the generators). */
+typedef enum : uint32_t {
+  k_cb_obj_book    = 1U,      /**< Object id of the paged EPUB.            */
+  k_cb_obj_comic   = 2U,      /**< Object id of the scrolled CBZ tiles.    */
+  k_cb_footprint   = 8192U,   /**< Pages in the huge file (>> any cache).  */
+  k_cb_accesses    = 120000U, /**< Accesses per synthetic trace.          */
+  k_cb_passes_seq  = 4U,      /**< Linear passes for the sequential flood. */
+  k_cb_hot_pages   = 96U,     /**< Re-read working-set size (locality).    */
+  k_cb_reread_pct  = 82U,     /**< % of re-read accesses inside the hotset.*/
+  k_cb_jump_pct    = 4U,      /**< % of TOC-jump accesses that teleport.   */
+  k_cb_tile_span   = 6144U,   /**< Comic tiles (sequential scroll).        */
+  k_cb_sr_hot      = 192U,    /**< Re-referenced hot set (fits mid caches).*/
+  k_cb_sr_hot_pass = 3U,      /**< Hot-set passes between scan floods.     */
+  k_cb_sr_scan     = 1500U,   /**< Unique pages in each one-time scan.     */
+} cb_workload_dim_t;
+
+/** @brief Fixed-seed xorshift64; deterministic across runs and platforms. */
+static uint64_t cb_rng(uint64_t* s)
+{
+  uint64_t x = *s;
+  x ^= x << 13U;
+  x ^= x >> 7U;
+  x ^= x << 17U;
+  *s = x;
+  return x;
+}
+
+/** @brief Uniform integer in [0, span). */
+static uint32_t cb_rand_below(uint64_t* s, uint32_t span)
+{
+  return (span == 0U) ? 0U : (uint32_t)(cb_rng(s) % (uint64_t)span);
+}
+
+/** @brief Allocate a trace's key array; returns false on OOM. */
+static bool cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
+{
+  t->name      = name;
+  t->n         = n;
+  t->footprint = 0U;
+  t->keys      = (cb_key_t*)calloc((size_t)n, sizeof(cb_key_t));
+  return t->keys != nullptr;
+}
+
+/** @brief Sequential page-turn flooding: linear passes through a huge book. */
+static cb_trace_t cb_gen_sequential(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "seq-pageturn", k_cb_accesses)) {
+    return t;
+  }
+  for (uint64_t i = 0U; i < t.n; ++i) {
+    const uint32_t page =
+      (uint32_t)((i * (uint64_t)k_cb_passes_seq / t.n) * 0U + (i % (uint64_t)k_cb_footprint));
+    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+  }
+  t.footprint = k_cb_footprint;
+  return t;
+}
+
+/** @brief Uniform random access over the whole book (TOC/bookmark chaos). */
+static cb_trace_t cb_gen_random(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "random", k_cb_accesses)) {
+    return t;
+  }
+  uint64_t s = 0x9E3779B97F4A7C15ULL;
+  for (uint64_t i = 0U; i < t.n; ++i) {
+    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = cb_rand_below(&s, k_cb_footprint)};
+  }
+  t.footprint = k_cb_footprint;
+  return t;
+}
+
+/** @brief Back-and-forth re-reading: a hot working set with occasional spread. */
+static cb_trace_t cb_gen_reread(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "reread-locality", k_cb_accesses)) {
+    return t;
+  }
+  uint64_t s    = 0xD1B54A32D192ED03ULL;
+  uint32_t base = 0U;
+  for (uint64_t i = 0U; i < t.n; ++i) {
+    uint32_t page;
+    if (cb_rand_below(&s, 100U) < (uint32_t)k_cb_reread_pct) {
+      page = base + cb_rand_below(&s, k_cb_hot_pages);
+    } else {
+      page = cb_rand_below(&s, k_cb_footprint);
+      base = (page < k_cb_hot_pages) ? 0U : (page - k_cb_hot_pages); /* drift the hotset */
+    }
+    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page % k_cb_footprint};
+  }
+  t.footprint = k_cb_footprint;
+  return t;
+}
+
+/** @brief Mostly-linear reading with occasional TOC/bookmark teleports. */
+static cb_trace_t cb_gen_toc_jumps(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "linear+jumps", k_cb_accesses)) {
+    return t;
+  }
+  uint64_t s    = 0x2545F4914F6CDD1DULL;
+  uint32_t page = 0U;
+  for (uint64_t i = 0U; i < t.n; ++i) {
+    if (cb_rand_below(&s, 100U) < (uint32_t)k_cb_jump_pct) {
+      page = cb_rand_below(&s, k_cb_footprint);
+    } else {
+      page = (page + 1U) % k_cb_footprint;
+    }
+    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+  }
+  t.footprint = k_cb_footprint;
+  return t;
+}
+
+/** @brief CBZ image-tile scroll: long sequential runs over a second object. */
+static cb_trace_t cb_gen_scroll(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "cbz-scroll", k_cb_accesses)) {
+    return t;
+  }
+  for (uint64_t i = 0U; i < t.n; ++i) {
+    t.keys[i] =
+      (cb_key_t){.object_id = k_cb_obj_comic, .page = (uint32_t)(i % (uint64_t)k_cb_tile_span)};
+  }
+  t.footprint = k_cb_tile_span;
+  return t;
+}
+
+/** @brief A realistic mixed session: read -> jump -> reread -> scroll, repeated. */
+static cb_trace_t cb_gen_mixed(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "mixed-session", k_cb_accesses)) {
+    return t;
+  }
+  uint64_t s    = 0x9E3779B97F4A7C15ULL ^ 0xABCDEF1234567890ULL;
+  uint32_t page = 0U;
+  uint32_t hot  = 0U;
+  for (uint64_t i = 0U; i < t.n; ++i) {
+    const uint32_t phase = (uint32_t)((i / 2048U) % 4U); /* alternate behaviours */
+    if (phase == 0U) {
+      page = (page + 1U) % k_cb_footprint; /* linear */
+    } else if (phase == 1U) {
+      page = hot + cb_rand_below(&s, k_cb_hot_pages); /* reread */
+    } else if (phase == 2U) {
+      page = cb_rand_below(&s, k_cb_footprint); /* random jumps */
+      hot  = (page < k_cb_hot_pages) ? 0U : (page - k_cb_hot_pages);
+    } else {
+      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_comic, .page = page % k_cb_tile_span};
+      continue;
+    }
+    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page % k_cb_footprint};
+  }
+  t.footprint = k_cb_footprint;
+  return t;
+}
+
+/**
+ * @brief The scan-resistance case: a fixed hot set re-read between one-time
+ *        linear scans that flood the cache. LRU/CLOCK evict the hot set under
+ *        the scan and thrash; SLRU/SRRIP keep the re-referenced hot set.
+ */
+static cb_trace_t cb_gen_scan_resist(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "hotset+scan", k_cb_accesses)) {
+    return t;
+  }
+  uint64_t i        = 0U;
+  uint32_t scan_pos = (uint32_t)k_cb_hot_pages; /* scan starts past the hot set */
+  while (i < t.n) {
+    for (uint32_t pass = 0U; (pass < (uint32_t)k_cb_sr_hot_pass) && (i < t.n); ++pass) {
+      for (uint32_t h = 0U; (h < (uint32_t)k_cb_sr_hot) && (i < t.n); ++h, ++i) {
+        t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = h};
+      }
+    }
+    for (uint32_t s = 0U; (s < (uint32_t)k_cb_sr_scan) && (i < t.n); ++s, ++i) {
+      const uint32_t page =
+        (uint32_t)k_cb_sr_hot + ((scan_pos + s) % (k_cb_footprint - (uint32_t)k_cb_sr_hot));
+      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+    }
+    scan_pos += (uint32_t)k_cb_sr_scan;
+  }
+  t.footprint = k_cb_footprint;
+  return t;
+}
+
+cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
+{
+  cb_trace_t (*gens[])(void) = {
+    cb_gen_sequential,
+    cb_gen_random,
+    cb_gen_reread,
+    cb_gen_toc_jumps,
+    cb_gen_scroll,
+    cb_gen_scan_resist,
+    cb_gen_mixed,
+  };
+  const uint32_t count = (uint32_t)(sizeof(gens) / sizeof(gens[0]));
+  cb_trace_t*    out   = (cb_trace_t*)calloc((size_t)count, sizeof(cb_trace_t));
+  if (out == nullptr) {
+    *out_count = 0U;
+    return nullptr;
+  }
+  for (uint32_t i = 0U; i < count; ++i) {
+    out[i] = gens[i]();
+  }
+  *out_count = count;
+  return out;
+}
+
+cb_trace_t cb_trace_load(const char* path, const char* name)
+{
+  cb_trace_t t = {.name = name};
+  FILE*      f = fopen(path, "r");
+  if (f == nullptr) {
+    return t;
+  }
+  uint64_t cap = 4096U;
+  t.keys       = (cb_key_t*)calloc((size_t)cap, sizeof(cb_key_t));
+  if (t.keys == nullptr) {
+    (void)fclose(f);
+    return t;
+  }
+  uint32_t obj = 0U;
+  uint32_t pg  = 0U;
+  while (fscanf(f, "%u %u", &obj, &pg) == 2) {
+    if (t.n == cap) {
+      cap *= 2U;
+      cb_key_t* grown = (cb_key_t*)realloc(t.keys, (size_t)cap * sizeof(cb_key_t));
+      if (grown == nullptr) {
+        break;
+      }
+      t.keys = grown;
+    }
+    t.keys[t.n] = (cb_key_t){.object_id = obj, .page = pg};
+    t.n++;
+  }
+  (void)fclose(f);
+  return t;
+}
+
+void cb_trace_free(cb_trace_t* t)
+{
+  if (t != nullptr) {
+    free(t->keys);
+    t->keys = nullptr;
+    t->n    = 0U;
+  }
+}
+
+void cb_traces_free(cb_trace_t* traces, uint32_t count)
+{
+  if (traces == nullptr) {
+    return;
+  }
+  for (uint32_t i = 0U; i < count; ++i) {
+    cb_trace_free(&traces[i]);
+  }
+  free(traces);
+}
