@@ -293,6 +293,12 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
+        # ereader_shelf bakes content/library/*.epub into library.h via
+        # scripts/build_books.sh; those .epub sources are Git LFS, so pull them
+        # (the default checkout fetches only pointer files, which the epub
+        # compiler cannot open as ZIPs).
+        with:
+          lfs: true
       - name: Prefer the official ARM toolchain (bundles libstdc++)
         # The apt `gcc-arm-none-eabi` package ships no C++ standard library, so
         # C++ apps (ereader_shelf -> ra_epub + tinyxml2) fail to cross-compile
