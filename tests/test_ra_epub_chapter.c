@@ -81,6 +81,105 @@ static void test_mcdc_epub_set_font_null_pair(void)
 }
 
 /**
+ * @test test_mcdc_epub_get_resource_null_quad
+ *
+ * @par MC/DC:
+ * Decision: ``if (book == NULL || path == NULL || out_buf == NULL || got_len == NULL)``
+ * (4 conditions, OR; libs/ra_epub/src/ra_epub_chapter.c ra_epub_get_resource).
+ * Per DO-178C 6.4.4.3 a short-circuiting N-way OR needs N+1 = 5 vectors: one
+ * control with every operand false plus one flipping each operand true.
+ *
+ * - V1: all non-NULL -> C1=F,C2=F,C3=F,C4=F -> overall F (guard not taken; the
+ *   stack book has in_use==0 so the next check returns not_initialized).
+ * - V2: book=NULL  -> C1=T (short-circuit) -> overall T. Pair (V1,V2) isolates C1.
+ * - V3: path=NULL  -> C1=F,C2=T            -> overall T. Pair (V1,V3) isolates C2.
+ * - V4: out_buf=NULL -> C1=F,C2=F,C3=T     -> overall T. Pair (V1,V4) isolates C3.
+ * - V5: got_len=NULL -> C1=F,C2=F,C3=F,C4=T-> overall T. Pair (V1,V5) isolates C4.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Each vector executes the production decision in ra_epub_get_resource() so the
+ * source branch counts under -fcoverage-mcdc.
+ */
+static void test_mcdc_epub_get_resource_null_quad(void)
+{
+  TEST_BEGIN("epub_get_resource MC/DC: (book||path||out_buf||got_len) NULL");
+  ra_epub_book_t book = {};
+  size_t         got  = 0U;
+  /* V1: every operand non-NULL -> guard false; book not initialized -> proceeds
+   *     to the book-not-ready check (book is zeroed -> in_use==0). */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_epub_get_resource(&book, "OEBPS/x", s_font_buf, sizeof(s_font_buf), &got));
+  /* V2: book NULL. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_resource(nullptr, "OEBPS/x", s_font_buf, sizeof(s_font_buf), &got));
+  /* V3: path NULL. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_resource(&book, nullptr, s_font_buf, sizeof(s_font_buf), &got));
+  /* V4: out_buf NULL. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_resource(&book, "OEBPS/x", nullptr, sizeof(s_font_buf), &got));
+  /* V5: got_len NULL. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_resource(&book, "OEBPS/x", s_font_buf, sizeof(s_font_buf), nullptr));
+  TEST_END("epub_get_resource MC/DC: (book||path||out_buf||got_len) NULL");
+}
+
+/**
+ * @test test_mcdc_epub_get_embedded_font_count_null_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if (book == NULL || out_count == NULL)``
+ * (2 conditions, OR; libs/ra_epub/src/ra_epub_chapter.c
+ * ra_epub_get_embedded_font_count). Per DO-178C 6.4.4.3 N+1 = 3 vectors.
+ *
+ * - V1: book!=NULL, out_count!=NULL -> C1=F,C2=F -> overall F (guard not taken;
+ *   the zeroed book has in_use==0 -> next check returns not_initialized).
+ * - V2: book=NULL                   -> C1=T (short-circuit) -> overall T.
+ * - V3: book!=NULL, out_count=NULL  -> C1=F,C2=T -> overall T.
+ * Pair (V1,V2) isolates C1; pair (V1,V3) isolates C2.
+ */
+static void test_mcdc_epub_get_embedded_font_count_null_pair(void)
+{
+  TEST_BEGIN("epub_get_embedded_font_count MC/DC: (book||out_count) NULL");
+  ra_epub_book_t book = {};
+  uint16_t       cnt  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_epub_get_embedded_font_count(&book, &cnt));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_embedded_font_count(nullptr, &cnt));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_embedded_font_count(&book, nullptr));
+  TEST_END("epub_get_embedded_font_count MC/DC: (book||out_count) NULL");
+}
+
+/**
+ * @test test_mcdc_epub_get_embedded_font_null_triple
+ *
+ * @par MC/DC:
+ * Decision: ``if (book == NULL || out_buf == NULL || got_len == NULL)``
+ * (3 conditions, OR; libs/ra_epub/src/ra_epub_chapter.c
+ * ra_epub_get_embedded_font). Per DO-178C 6.4.4.3 N+1 = 4 vectors.
+ *
+ * - V1: all non-NULL          -> C1=F,C2=F,C3=F -> overall F (guard not taken;
+ *   the zeroed book is not ready -> next check returns not_initialized).
+ * - V2: book=NULL             -> C1=T -> overall T. Pair (V1,V2) isolates C1.
+ * - V3: out_buf=NULL          -> C1=F,C2=T -> overall T. Pair (V1,V3) isolates C2.
+ * - V4: got_len=NULL          -> C1=F,C2=F,C3=T -> overall T. Pair (V1,V4) isolates C3.
+ */
+static void test_mcdc_epub_get_embedded_font_null_triple(void)
+{
+  TEST_BEGIN("epub_get_embedded_font MC/DC: (book||out_buf||got_len) NULL");
+  ra_epub_book_t book = {};
+  size_t         got  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_epub_get_embedded_font(&book, 0U, s_font_buf, sizeof(s_font_buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_embedded_font(nullptr, 0U, s_font_buf, sizeof(s_font_buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_embedded_font(&book, 0U, nullptr, sizeof(s_font_buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_embedded_font(&book, 0U, s_font_buf, sizeof(s_font_buf), nullptr));
+  TEST_END("epub_get_embedded_font MC/DC: (book||out_buf||got_len) NULL");
+}
+
+/**
  * @test test_mcdc_epub_internal_join_path_guard
  *
  * @par MC/DC:
@@ -222,6 +321,9 @@ int32_t main(void)
   test_mcdc_epub_get_chapter_count_null_pair();
   test_mcdc_epub_get_metadata_null_pair();
   test_mcdc_epub_set_font_null_pair();
+  test_mcdc_epub_get_resource_null_quad();
+  test_mcdc_epub_get_embedded_font_count_null_pair();
+  test_mcdc_epub_get_embedded_font_null_triple();
   test_mcdc_epub_internal_join_path_guard();
   test_mcdc_epub_internal_join_path_dir_loop();
   test_mcdc_epub_internal_join_path_name_loop();
