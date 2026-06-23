@@ -25,19 +25,56 @@ if [ ! -d examples ]; then
     exit 1
 fi
 
-# The ereader_shelf app embeds a baked, compiled book library
-# (examples/.../ereader_shelf/library.h, plus the ra_book manifest header) that
-# scripts/build_books.sh generates from the Git-LFS content/library/*.epub
-# sources. Both are build artifacts (gitignored), so a fresh checkout has
-# neither and ereader_shelf fails with "library.h: No such file or directory".
-# Regenerate them up front so the per-app builds are self-contained. Skipped
-# cleanly when the .epub sources are absent (an LFS-less checkout), in which
-# case the shelf app simply reports its own missing-header build failure.
+# ereader_shelf includes a generated baked-book-library header (library.h): the
+# full version (real .rabook blobs + cover thumbnails) is produced from the
+# Git-LFS content/library/*.epub sources by tools/bake_library.py via
+# `make books`, and is gitignored as a build artifact. A fresh checkout has
+# none, so the app fails to compile with "library.h: No such file or directory".
+# For the cross-build we only need ereader_shelf to COMPILE, not to embed real
+# books, and regenerating from LFS sources needs git-lfs + Pillow that CI lacks.
+# So emit a 0-book stub (with the same struct/symbols) when the real header is
+# absent; `make books` still produces the full library for HIL / deployment.
 shelf_lib="examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
-if [ ! -f "$shelf_lib" ] && ls content/library/*.epub >/dev/null 2>&1; then
-    echo "build_all: regenerating the baked book library (scripts/build_books.sh) ..."
-    bash scripts/build_books.sh ||
-        echo "build_all: WARNING: book generation failed; shelf apps may not build" >&2
+if [ ! -f "$shelf_lib" ]; then
+    echo "build_all: emitting a 0-book stub $shelf_lib (run 'make books' for the full library)"
+    cat > "$shelf_lib" <<'STUB'
+/**
+ * @file library.h
+ * @brief Stub baked book library (0 books) emitted by build_all_examples.sh.
+ * @details ereader_shelf includes this generated header. The real version
+ *          (full .rabook blobs + pre-decoded cover thumbnails) is produced by
+ *          tools/bake_library.py via `make books`. This 0-book stub lets the
+ *          app compile for the cross-build when the Git-LFS .epub sources and
+ *          the book-compile tooling are unavailable; it loads books from the SD
+ *          card at runtime instead.
+ * @since Version 1.0.0
+ */
+#pragma once
+
+#include <stdint.h>
+
+/** @brief One openable baked book: compressed blob + cover thumbnail + metadata. */
+typedef struct {
+  const uint8_t* blob;    /**< RBKZ container start.            */
+  uint32_t       len;     /**< Container length in bytes.       */
+  const uint8_t* thumb;   /**< gray8 cover thumbnail, or NULL.  */
+  uint16_t       thumb_w; /**< Thumbnail width in pixels.       */
+  uint16_t       thumb_h; /**< Thumbnail height in pixels.      */
+  const char*    title;   /**< Display title.                   */
+  const char*    author;  /**< Display author.                  */
+} library_book_t;
+
+/** @brief Number of baked books: one empty placeholder in this compile stub. */
+typedef enum : uint16_t {
+  k_library_count = 1U,
+} library_count_t;
+
+/** @brief Baked book table; a single empty placeholder (cross-build is
+ *         compile-only, so the null blob is never opened at runtime). */
+static const library_book_t k_library[k_library_count] = {
+    {nullptr, 0U, nullptr, 0U, 0U, "", ""},
+};
+STUB
 fi
 
 # Auto-discover apps: every examples/<tier>/<name>/ dir with a main.c.
