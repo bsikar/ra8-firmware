@@ -25,6 +25,21 @@ if [ ! -d examples ]; then
     exit 1
 fi
 
+# The ereader_shelf app embeds a baked, compiled book library
+# (examples/.../ereader_shelf/library.h, plus the ra_book manifest header) that
+# scripts/build_books.sh generates from the Git-LFS content/library/*.epub
+# sources. Both are build artifacts (gitignored), so a fresh checkout has
+# neither and ereader_shelf fails with "library.h: No such file or directory".
+# Regenerate them up front so the per-app builds are self-contained. Skipped
+# cleanly when the .epub sources are absent (an LFS-less checkout), in which
+# case the shelf app simply reports its own missing-header build failure.
+shelf_lib="examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
+if [ ! -f "$shelf_lib" ] && ls content/library/*.epub >/dev/null 2>&1; then
+    echo "build_all: regenerating the baked book library (scripts/build_books.sh) ..."
+    bash scripts/build_books.sh ||
+        echo "build_all: WARNING: book generation failed; shelf apps may not build" >&2
+fi
+
 # Auto-discover apps: every examples/<tier>/<name>/ dir with a main.c.
 # Apps live at arbitrary depth under examples/. Discover them via find.
 # The build-target name is the bare directory name -- `make blink` works
