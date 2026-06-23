@@ -293,6 +293,16 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
+      - name: Prefer the official ARM toolchain (bundles libstdc++)
+        # The apt `gcc-arm-none-eabi` package ships no C++ standard library, so
+        # C++ apps (ereader_shelf -> ra_epub + tinyxml2) fail to cross-compile
+        # with "fatal error: cstddef: No such file or directory". The official
+        # ARM GNU toolchain installed under /opt bundles libstdc++; prepend it
+        # to PATH so cmake's find_program(arm-none-eabi-g++) resolves to it.
+        run: |
+          if [ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-g++ ]; then
+            echo "/opt/arm-gnu-toolchain-13.3/bin" >> "$GITHUB_PATH"
+          fi
       - name: Build all apps
         run: bash scripts/build_all_examples.sh
 

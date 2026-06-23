@@ -241,6 +241,7 @@ typedef enum : uint32_t {
   k_exfat_fmt_csum_skip2  = 112U,        /**< Checksum-excluded byte: PercentInUse.*/
   k_exfat_fmt_csum_hibit  = 0x80000000U, /**< Rotate-right wrap bit (32-bit).    */
   k_exfat_fmt_csum_copies = 128U,        /**< 512 / 4 checksum words per sector.  */
+  k_exfat_fmt_min_sectors = 65536U,      /**< Smallest exFAT volume: 32 MiB.      */
   k_exfat_fmt_thr_256m    = 524288U,     /**< <= 256 MB -> 4 KB clusters.         */
   k_exfat_fmt_thr_32g     = 67108864U,   /**< <= 32 GB -> 32 KB clusters.         */
   k_exfat_fmt_thr_256g    = 536870912U,  /**< <= 256 GB -> 128 KB clusters.       */
@@ -5023,7 +5024,8 @@ static ra_err_t priv_exfat_write_root(const ra_fs_backend_t* backend,
  * @return Error code.
  * @retval k_ra_ok                A mountable exFAT volume was written.
  * @retval k_ra_err_invalid_size  Device too small for an exFAT volume.
- * @retval k_ra_err_not_supported System cluster chains exceed FAT sector 0.
+ * @retval k_ra_err_not_supported Below the exFAT minimum (@ref k_exfat_fmt_min_sectors)
+ *                                or system cluster chains exceed FAT sector 0.
  * @retval k_ra_err_*             Backend write failure.
  *
  * @pre @p backend has a non-NULL write_block; @p total_sectors > 0.
@@ -5037,6 +5039,9 @@ static ra_err_t priv_exfat_write_root(const ra_fs_backend_t* backend,
 static ra_err_t
 priv_exfat_format(const ra_fs_backend_t* backend, uint32_t total_sectors, const char* label)
 {
+  if (total_sectors < (uint32_t)k_exfat_fmt_min_sectors) {
+    return k_ra_err_not_supported;
+  }
   exfat_geom_t g   = {};
   ra_err_t     err = priv_exfat_geometry(total_sectors, &g);
   if (err != k_ra_ok) {

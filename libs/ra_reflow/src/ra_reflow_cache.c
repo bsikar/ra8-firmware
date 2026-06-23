@@ -223,19 +223,21 @@ static uint32_t priv_fnv1a(const uint8_t* data, size_t len)
 }
 
 /**
- * @brief Serialise one glyph (19 bytes) and advance the cursor.
+ * @brief Serialise one glyph (20 bytes) and advance the cursor.
  *
- * @details Writes the six meaningful fields (x, y, cp, colour, font_px,
- *          style); the struct padding byte is not stored.
+ * @details Writes the seven meaningful fields (x, y, cp, colour, font_px,
+ *          style, reserved). `reserved` holds the 1-based `<a>` link id
+ *          (0 = not a link), which is layout state the renderer needs for
+ *          hyperlink hit-testing -- it is **not** padding, so it is stored.
  *
- * @param[out]    buf   Destination buffer (>= 19 bytes free at `*off`).
- * @param[in,out] off   Write cursor (advanced by 19).
+ * @param[out]    buf   Destination buffer (>= 20 bytes free at `*off`).
+ * @param[in,out] off   Write cursor (advanced by 20).
  * @param[in]     glyph Glyph to serialise.
  *
  * @pre  `buf`, `off` and `glyph` are non-NULL.
- * @pre  `*off + 19` does not exceed the buffer capacity.
- * @post `*off` has advanced by 19.
- * @post The glyph's six fields are encoded little-endian.
+ * @pre  `*off + 20` does not exceed the buffer capacity.
+ * @post `*off` has advanced by 20.
+ * @post The glyph's seven fields are encoded little-endian.
  * @note Mirror of priv_get_glyph().
  * @since 0.1.0
  */
@@ -247,22 +249,24 @@ static void priv_put_glyph(uint8_t* buf, size_t* off, const ra_reflow_glyph_t* g
   priv_put_u32(buf, off, glyph->color);
   priv_put_u16(buf, off, glyph->font_px);
   buf[(*off)++] = glyph->style;
+  buf[(*off)++] = glyph->reserved;
 }
 
 /**
- * @brief Deserialise one glyph (19 bytes) and advance the cursor.
+ * @brief Deserialise one glyph (20 bytes) and advance the cursor.
  *
- * @details Reads the six serialised fields and clears the padding byte so
- *          the restored struct is byte-identical to the original.
+ * @details Reads the seven serialised fields, including the `reserved`
+ *          link id, so the restored struct is byte-identical to the
+ *          original (no field is silently zeroed).
  *
- * @param[in]     buf   Source buffer (>= 19 bytes readable at `*off`).
- * @param[in,out] off   Read cursor (advanced by 19).
+ * @param[in]     buf   Source buffer (>= 20 bytes readable at `*off`).
+ * @param[in,out] off   Read cursor (advanced by 20).
  * @param[out]    glyph Receives the decoded glyph.
  *
  * @pre  `buf`, `off` and `glyph` are non-NULL.
- * @pre  `*off + 19` does not exceed the buffer length.
- * @post `*off` has advanced by 19.
- * @post `glyph->reserved == 0`.
+ * @pre  `*off + 20` does not exceed the buffer length.
+ * @post `*off` has advanced by 20.
+ * @post `glyph->reserved` equals the serialised link id.
  * @note Mirror of priv_put_glyph().
  * @since 0.1.0
  */
@@ -274,7 +278,7 @@ static void priv_get_glyph(const uint8_t* buf, size_t* off, ra_reflow_glyph_t* g
   glyph->color    = priv_get_u32(buf, off);
   glyph->font_px  = priv_get_u16(buf, off);
   glyph->style    = buf[(*off)++];
-  glyph->reserved = 0U;
+  glyph->reserved = buf[(*off)++];
 }
 
 /**
