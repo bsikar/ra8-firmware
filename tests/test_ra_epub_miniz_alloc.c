@@ -205,6 +205,140 @@ static void test_overflow_mcdc(void)
 }
 
 /**
+ * @test test_alloc_real_overflow_and_firstfit_mcdc
+ *
+ * @par MC/DC:
+ * Drives the *production* decisions in ra_epub_miniz_alloc() (not a mirror).
+ *
+ * Decision A -- overflow guard ``if ((size != 0U) && (items > SIZE_MAX/size))``
+ * (2 conditions, AND). The existing test_overflow_mcdc already drives the
+ * real (T,T) overflow arm; here the missing left-operand-false arm:
+ *  - size==0 -> C1=F (short-circuit) -> no overflow -> proceeds and returns a
+ *    block (need rounds up to one alignment unit). Pair with the (T,T) arm
+ *    isolates the size!=0 condition.
+ *
+ * Decision B -- first-fit ``if ((b->is_free == free) && (b->size >= need))``
+ * (2 conditions, AND) walked over a crafted pool layout:
+ *  - a freed small block first: C1=T,C2=F (free but too small -> skip),
+ *  - then a used block:         C1=F        (not free -> skip),
+ *  - then the big free tail:     C1=T,C2=T   (fit -> allocate).
+ * One allocation request thus exercises all three condition states, giving the
+ * two independence pairs for the AND.
+ */
+static void test_alloc_real_overflow_and_firstfit_mcdc(void)
+{
+  TEST_BEGIN("alloc real MC/DC: overflow size==0 + first-fit skip arms");
+  /* Decision A, left-operand-false: size==0 short-circuits before the divide. */
+  void* z = ra_epub_miniz_alloc(nullptr, 5U, 0U);
+  TEST_ASSERT(z != nullptr);
+  ra_epub_miniz_free(nullptr, z);
+
+  /* Decision B: lay out [free small][used b][free tail], then ask for a size
+   * that skips the small freed block (T,F) and the used block (F) to land in
+   * the tail (T,T). */
+  void* a = ra_epub_miniz_alloc(nullptr, 1U, k_small);
+  void* b = ra_epub_miniz_alloc(nullptr, 1U, k_small);
+  TEST_ASSERT((a != nullptr) && (b != nullptr));
+  ra_epub_miniz_free(nullptr, a); /* front block now free but only k_small big */
+  void* c = ra_epub_miniz_alloc(nullptr, 1U, k_medium); /* k_medium > k_small */
+  TEST_ASSERT(c != nullptr);
+  TEST_ASSERT(c != b); /* did not reuse the too-small freed block */
+  ra_epub_miniz_free(nullptr, b);
+  ra_epub_miniz_free(nullptr, c);
+  TEST_END("alloc real MC/DC: overflow size==0 + first-fit skip arms");
+}
+
+/**
+ * @test test_free_in_pool_mcdc
+ *
+ * @par MC/DC:
+ * Drives the *production* guard in ra_epub_miniz_free()
+ * ``if ((address == NULL) || !priv_in_pool(address))`` (2 conditions, OR) and,
+ * through it, priv_in_pool()
+ * ``return (q >= base) && (q < end)`` (2 conditions, AND).
+ *
+ * free() OR-guard, N+1 = 3 vectors:
+ *  - V1: address!=NULL, in-pool -> C1=F, C2=F (!in_pool false) -> overall F ->
+ *    the block is actually freed (the pool stays usable afterward).
+ *  - V2: address==NULL -> C1=T (short-circuit) -> overall T -> no-op.
+ *  - V3: address!=NULL, out-of-pool -> C1=F, C2=T -> overall T -> no-op.
+ *
+ * priv_in_pool() AND, exercised by V1/V3 above:
+ *  - V1 in-pool pointer        -> (q>=base)=T, (q<end)=T -> true.
+ *  - a pointer below the base  -> (q>=base)=F           -> false (left independent).
+ *  - a pointer at/after the end-> (q>=base)=T, (q<end)=F -> false (right independent).
+ * The below/above pointers are derived from a live pool pointer offset by twice
+ * the whole pool size, so they are unconditionally outside the 96 KiB arena.
+ */
+static void test_free_in_pool_mcdc(void)
+{
+  TEST_BEGIN("free MC/DC: (NULL || !in_pool) + in_pool bounds");
+  uint8_t* p = (uint8_t*)ra_epub_miniz_alloc(nullptr, 1U, k_small);
+  TEST_ASSERT(p != nullptr);
+
+  /* V3 / priv_in_pool left-false: a pointer two pool-widths below the live
+   * block is below the arena base -> !in_pool true -> free is a no-op. */
+  uint8_t* below = p - (2U * (size_t)k_ra_epub_miniz_pool_bytes);
+  ra_epub_miniz_free(nullptr, below);
+  /* priv_in_pool right-false: a pointer two pool-widths above the live block is
+   * at/after the arena end -> !in_pool true -> free is a no-op. */
+  uint8_t* above = p + (2U * (size_t)k_ra_epub_miniz_pool_bytes);
+  ra_epub_miniz_free(nullptr, above);
+  /* V2: NULL address short-circuits the OR -> no-op. */
+  ra_epub_miniz_free(nullptr, nullptr);
+
+  /* The no-ops must not have corrupted the pool: p is still a live in-pool
+   * block, so a write through it is safe and a real free still works (V1). */
+  (void)memset(p, 0x5AU, k_small);
+  TEST_ASSERT(p[0] == 0x5AU);
+  ra_epub_miniz_free(nullptr, p); /* V1: in-pool, non-NULL -> actually freed */
+
+  /* Pool is healthy again: a fresh big alloc succeeds and is released. */
+  void* big = ra_epub_miniz_alloc(nullptr, 1U, (size_t)k_ra_epub_miniz_pool_bytes / 2U);
+  TEST_ASSERT(big != nullptr);
+  ra_epub_miniz_free(nullptr, big);
+  TEST_END("free MC/DC: (NULL || !in_pool) + in_pool bounds");
+}
+
+/**
+ * @test test_realloc_real_overflow_mcdc
+ *
+ * @par MC/DC:
+ * Drives the *production* overflow guard in ra_epub_miniz_realloc()
+ * ``if ((size != 0U) && (items > SIZE_MAX/size))`` (2 conditions, AND) on a
+ * non-NULL block (so control reaches the guard rather than the realloc(NULL,n)
+ * early-out). N+1 = 3 vectors:
+ *  - V1: size=2, items overflow -> C1=T, C2=T -> NULL; the old block stays valid.
+ *  - V2: size=0                  -> C1=F (short-circuit) -> no overflow; need
+ *    rounds to 0 so the block is freed and NULL returned (frees old block).
+ *  - V3: size=k_medium, items=1  -> C1=T, C2=F -> no overflow -> normal grow.
+ * Pair (V1,V3) isolates the size!=0 short-circuit's effect on the right
+ * condition; pair (V1,V2) isolates the left condition.
+ */
+static void test_realloc_real_overflow_mcdc(void)
+{
+  TEST_BEGIN("realloc real MC/DC: size!=0 && items>MAX/size");
+  /* V1: overflow on a live block -> NULL, original preserved. */
+  uint8_t* p = (uint8_t*)ra_epub_miniz_alloc(nullptr, 1U, k_small);
+  TEST_ASSERT(p != nullptr);
+  p[0]        = 0xC3U;
+  void* nomem = ra_epub_miniz_realloc(nullptr, p, (SIZE_MAX / 2U) + 2U, 2U);
+  TEST_ASSERT(nomem == nullptr);
+  TEST_ASSERT(p[0] == 0xC3U); /* old block still valid after a rejected grow */
+
+  /* V3: a real grow (size!=0, no overflow) succeeds. */
+  uint8_t* g = (uint8_t*)ra_epub_miniz_realloc(nullptr, p, 1U, k_medium);
+  TEST_ASSERT(g != nullptr);
+  TEST_ASSERT(g[0] == 0xC3U); /* payload preserved across the grow */
+
+  /* V2: size==0 short-circuits the guard; need becomes 0 -> frees and returns
+   * NULL (so g is consumed by this call -- do not free it again). */
+  void* none = ra_epub_miniz_realloc(nullptr, g, 4U, 0U);
+  TEST_ASSERT(none == nullptr);
+  TEST_END("realloc real MC/DC: size!=0 && items>MAX/size");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -217,6 +351,9 @@ int32_t main(void)
   test_firstfit_mcdc();
   test_coalesce_mcdc();
   test_overflow_mcdc();
+  test_alloc_real_overflow_and_firstfit_mcdc();
+  test_free_in_pool_mcdc();
+  test_realloc_real_overflow_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_epub_miniz_alloc.c\n");
   return 0;
 }

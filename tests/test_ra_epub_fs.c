@@ -277,9 +277,84 @@ static void test_epub_fs_guards(void)
   TEST_END("ra_epub_fs: open_fs guards (MC/DC)");
 }
 
+/**
+ * @enum epub_fs_fat16_off_t
+ * @brief Byte offsets into the FAT16 image for cluster-chain corruption.
+ *
+ * @details
+ * Geometry of the volume built by ::build_fat16_volume (512 B/sector,
+ * 1 sector/cluster, 1 reserved sector, 2 FATs of 32 sectors each, 16 root
+ * entries). The single file `BOOK.EPB` occupies the first data cluster
+ * (cluster 2), chained 2 -> 3 -> ... -> EOC. FAT16 entry for cluster N lives at
+ * FAT-relative byte `N * 2`.
+ */
+typedef enum : uint32_t {
+  k_fat16_fat0_lba       = 1U,     /**< Reserved sectors = 1 -> FAT0 at LBA 1.    */
+  k_fat16_fat1_lba       = 33U,    /**< FAT0 + 32 sectors/FAT -> FAT1 at LBA 33.  */
+  k_fat16_clus2_ent_byte = 4U,     /**< Cluster 2 entry at FAT-relative byte 2*2. */
+  k_fat16_offdisk_clus   = 0xF000U /**< Off-disk next-cluster ptr (< 0xFFF8 EOC). */
+} epub_fs_fat16_off_t;
+
+/**
+ * @test test_epub_fs_read_error_corrupt_fat
+ * @brief A corrupt FAT chain makes the whole-file read fault; ra_epub_open_fs
+ *        propagates the backend error and still closes the file handle.
+ *
+ * @par MC/DC:
+ * Drives the *production* decision in ra_epub_fs.c ra_epub_open_fs():
+ *   `if ((err == k_ra_ok) && (got != size))` (2 conditions, AND) -- the
+ * left-operand-false arm. Cluster 2's FAT16 entry is rewritten (in both FAT
+ * copies) to 0xF000, a normal (non-EOC) pointer whose data LBA is past the
+ * 8192-sector disk. The first 512-byte chunk reads cluster 2 fine, then the
+ * chain walk follows 2 -> 0xF000, whose LBA (61504) trips the mem_read
+ * `lba + count > block_count` guard -> k_ra_err_out_of_range. So ra_fs_read
+ * returns non-ok, making `(err == k_ra_ok)` FALSE; the AND short-circuits and
+ * the error is propagated.
+ *
+ * - This vector: err != k_ra_ok -> C1=F -> overall F via the left operand.
+ * - The control vector (err==k_ra_ok, got==size -> C1=T, C2=F -> overall F) is
+ *   exercised by test_epub_fs_roundtrip.
+ * Pair (control, this) isolates the left condition.
+ *
+ * @note The right-operand-true arm (err==k_ra_ok && got!=size) is structurally
+ *       unreachable here: ra_fs_read returns k_ra_ok only after producing
+ *       exactly `remaining == size` bytes (offset starts at 0, max_len==size),
+ *       so on the success path got==size is invariant. The short-read guard is
+ *       defensive against a future backend that violates that contract.
+ */
+static void test_epub_fs_read_error_corrupt_fat(void)
+{
+  TEST_BEGIN("ra_epub_fs: corrupt FAT chain -> read error propagated");
+  build_fat16_volume();
+  build_epub();
+  TEST_ASSERT(s_epub_len > (size_t)k_disk_block_size); /* multi-cluster chain */
+  ra_fs_mount_t* mount = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &mount));
+  write_epub(mount, "BOOK.EPB");
+
+  /* Point cluster 2 at an off-disk cluster in both FAT copies so the chain walk
+   * past the first sector faults. FAT-relative byte = cluster*2 = 4. */
+  put16(s_disk.bytes,
+        (k_fat16_fat0_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
+        (uint16_t)k_fat16_offdisk_clus);
+  put16(s_disk.bytes,
+        (k_fat16_fat1_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
+        (uint16_t)k_fat16_offdisk_clus);
+
+  ra_epub_book_t book = {};
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_epub_open_fs(mount, "BOOK.EPB", s_read, (size_t)k_read_cap, &book));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(mount));
+  free(s_disk.bytes);
+  s_disk.bytes = nullptr;
+  TEST_END("ra_epub_fs: corrupt FAT chain -> read error propagated");
+}
+
 int32_t main(void)
 {
   test_epub_fs_roundtrip();
   test_epub_fs_guards();
+  test_epub_fs_read_error_corrupt_fat();
   return 0;
 }
