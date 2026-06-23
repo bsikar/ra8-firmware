@@ -219,12 +219,23 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 
 ## Coding Rules & C23 Standards
 
+> **Scope: these standards apply to EVERY first-party file in the repository**
+> -- not just the firmware. `libs/`, `src/`, `examples/`, `port/`, `tools/`
+> (including the `tools/board_sim` host emulator), `tests/`, and `scripts/`
+> are all held to the same bar. The **only** exemption is vendored
+> third-party code under `libs/third_party/` (SOUP). Generated data under
+> `libs/fonts/` is likewise exempt as it is not hand-authored. A file being
+> a "host tool" or "just a simulator" is NOT a reason to relax the rules:
+> uneven standards train sloppy habits. Every CI gate runs against this same
+> scope; if a gate or a `(RA8D2 C Firmware)` heading below ever reads as
+> firmware-only, treat it as repo-wide.
+
 - **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).
 - **C23 Typed Enums**: Every enum MUST specify an explicit underlying type (`typedef enum : uint8_t { ... } name_t;`). Select the smallest fitting type. Use `uintptr_t` for register base addresses. NO macros for integer constants.
 - **Header Guards**: Use `#pragma once` at the top of headers. DO NOT use traditional include guards.
 - **Function Validation**: Minimum 2 validation checks (preconditions and postconditions) per function (NASA Power of 10 Rule 5). Use `RA_CHECK_NULL_PTR` from `ra_check.h` for null guards.
 
-### Constants and Macros (RA8D2 C Firmware)
+### Constants and Macros (all first-party C, repo-wide)
 
 **Strict preference hierarchy:**
 
@@ -330,7 +341,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
    ioport()->PODR[1] |= (1U << k_bit_led);
    ```
 
-### No Magic Numbers (RA8D2 C Firmware)
+### No Magic Numbers (all first-party C, repo-wide)
 
 **ZERO TOLERANCE for magic numbers.** ALL numeric literals must be named typed enums, including:
 
