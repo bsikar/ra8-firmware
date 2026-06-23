@@ -192,6 +192,8 @@ typedef enum : uint32_t {
   k_elf_sh_size_off    = 20U, /**< sh_size in a section header.       */
   k_elf_sh_link_off    = 24U, /**< sh_link in a section header.       */
   k_elf_sh_entsize_off = 36U, /**< sh_entsize in a section header.    */
+  k_elf_sym_info_off   = 12U, /**< st_info in a symbol-table entry.   */
+  k_elf_st_type_mask   = 0x0FU, /**< Low nibble of st_info is the type. */
   /* Thumb / conditional-select instruction decode. */
   k_thumb_op5_shift = 11U,   /**< op5 = hw0[15:11].                  */
   k_thumb_op5_mask  = 0x1FU, /**< 5-bit op5 field.                   */
@@ -213,6 +215,14 @@ typedef enum : uint32_t {
   k_trace_sym_max   = 16U,         /**< Max --trace-sym functions per run. */
   k_sectors_per_mib = 2048U,       /**< 512-byte sectors per MiB (--sd-new). */
 } board_sim_misc_t;
+
+/** @brief 64-bit byte/size units used by --sd-new card sizing. */
+typedef enum : uint64_t {
+  k_bytes_per_sector = 512ULL,        /**< SD logical sector size in bytes.    */
+  k_size_kib         = 1024ULL,       /**< One kibibyte (k suffix multiplier). */
+  k_sd_u32_max       = 0xFFFFFFFFULL, /**< 32-bit sector-count ceiling.        */
+  k_fat32_min_mib    = 512ULL,        /**< FAT32 default threshold, in MiB.    */
+} board_sim_size_t;
 
 /** @brief EK-RA8D2 user-switch GPIO coordinates (active-low): SW1 P009, SW2 P008. */
 typedef enum : uint8_t {
@@ -1010,6 +1020,8 @@ enum : uint32_t {
   k_mve_vstrw_hw2 = 0x1F00U, /**< VSTRW.32 hw2 fixed bits (Qd in [15:13]).   */
   k_mve_vstrw_h2m = 0x1F80U, /**< Mask isolating the fixed hw2 bits.        */
   k_mve_qd_shift  = 13U,     /**< Qd field position in hw2.                 */
+  k_mve_qd_mask   = 0x7U,    /**< Qd field width (3 bits) after shift.       */
+  k_mve_rn_mask   = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].            */
   k_mve_imm7_mask = 0x7FU,   /**< imm7 field (word offset) in hw2.          */
   k_mve_off_scale = 4U,      /**< VSTRW.32 immediate counts 4-byte words.   */
 };
@@ -1023,8 +1035,8 @@ static bool mve_vstrw_decode(uint16_t hw1, uint16_t hw2, uint32_t* qd, uint32_t*
       ((hw2 & (uint16_t)k_mve_vstrw_h2m) != (uint16_t)k_mve_vstrw_hw2)) {
     return false;
   }
-  *qd  = ((uint32_t)hw2 >> (uint32_t)k_mve_qd_shift) & 0x7U;
-  *rn  = (uint32_t)hw1 & 0xFU;
+  *qd  = ((uint32_t)hw2 >> (uint32_t)k_mve_qd_shift) & (uint32_t)k_mve_qd_mask;
+  *rn  = (uint32_t)hw1 & (uint32_t)k_mve_rn_mask;
   *off = ((uint32_t)hw2 & (uint32_t)k_mve_imm7_mask) * (uint32_t)k_mve_off_scale;
   return true;
 }
@@ -1144,6 +1156,7 @@ enum : uint32_t {
   k_lob_le_h2m   = 0xF000U, /**< Mask isolating the fixed LE hw2 bits.      */
   k_lob_le_imm   = 0x07FFU, /**< LE backward offset, in 2-byte units.       */
   k_lob_reg_lr   = 14U,     /**< Rn == 14 selects LR.                       */
+  k_lob_rn_mask  = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].            */
   k_lob_insn_len = 4U,      /**< LOB instructions are 32-bit Thumb-2.       */
 };
 /** @brief Count of LOB instructions emulated this run (run-end telemetry). */
@@ -1157,7 +1170,7 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   /* DLS lr, Rn -> LR = Rn (start the counted loop). */
   if (((hw1 & (uint16_t)k_lob_dls_h1m) == (uint16_t)k_lob_dls_hw1) &&
       (hw2 == (uint16_t)k_lob_dls_hw2)) {
-    const uint32_t rn = (uint32_t)hw1 & 0xFU;
+    const uint32_t rn = (uint32_t)hw1 & (uint32_t)k_lob_rn_mask;
     const int      rn_id =
       (rn == (uint32_t)k_lob_reg_lr) ? (int)UC_ARM_REG_LR : ((int)UC_ARM_REG_R0 + (int)rn);
     uint32_t v = 0U;
@@ -1393,12 +1406,15 @@ static void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   }
 }
 
+/** @brief Nanoseconds per second (timespec tv_nsec -> seconds). */
+static const double s_nsec_per_sec = 1.0e9;
+
 /** @brief Monotonic wall-clock seconds. */
 static double board_now_s(void)
 {
   struct timespec ts = {};
   (void)clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (double)ts.tv_sec + ((double)ts.tv_nsec / 1.0e9);
+  return (double)ts.tv_sec + ((double)ts.tv_nsec / s_nsec_per_sec);
 }
 
 /* ===========================================================================
@@ -1455,6 +1471,7 @@ static prof_mode_t s_prof_mode    = k_prof_off;
 enum : uint32_t {
   k_prof_max_depth   = 64U,    /**< Deepest call chain captured per sample.   */
   k_prof_max_samples = 16384U, /**< Chronological stack samples (decimated).  */
+  k_prof_samp_every  = 256U,   /**< Default instructions per chain sample.    */
 };
 static uint16_t s_pstk[k_prof_max_depth];                     /**< Live chain. */
 static uint32_t s_pstk_n = 0U;                                /**< Chain depth.*/
@@ -1462,7 +1479,7 @@ static uint16_t s_samp[k_prof_max_samples][k_prof_max_depth]; /**< root..leaf. *
 static uint8_t  s_samp_d[k_prof_max_samples];                 /**< Per-sample chain depth.   */
 static uint32_t s_samp_w[k_prof_max_samples];                 /**< Per-sample weight (insns).*/
 static uint32_t s_samp_n        = 0U;                         /**< Stored sample count.      */
-static uint64_t s_samp_every    = 256U;                       /**< Insns per sample (>>x2).  */
+static uint64_t s_samp_every    = (uint64_t)k_prof_samp_every; /**< Insns per sample (>>x2). */
 static uint64_t s_samp_acc      = 0U;                         /**< Insns since last sample.  */
 static uint32_t s_prof_stop_pc  = 0U;                         /**< BOARD_SIM_STOP_PC (0=off).*/
 static bool     s_prof_stop_hit = false;                      /**< Set when STOP_PC reached. */
@@ -1522,7 +1539,8 @@ static void prof_load(const uint8_t* elf, long len)
       (void)memcpy(&st_name, sym + 0, 4);
       (void)memcpy(&st_value, sym + 4, 4);
       (void)memcpy(&st_size, sym + 8, 4);
-      if (((sym[12] & 0x0FU) != 2U) || (st_size == 0U) || (st_name == 0U)) { /* STT_FUNC */
+      if (((sym[k_elf_sym_info_off] & (uint8_t)k_elf_st_type_mask) != 2U) || (st_size == 0U) ||
+          (st_name == 0U)) { /* STT_FUNC */
         continue;
       }
       s_prof[s_prof_n].lo    = st_value & ~1U;
@@ -1818,12 +1836,16 @@ static void prof_write_html(const char* path, uint64_t total)
 }
 
 /** @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode). */
+/** @brief Fraction-to-per-cent scale (fraction * 100.0 == per-cent). */
+static const double s_percent_scale = 100.0;
+
 static void prof_report_flamechart(void)
 {
   enum : uint32_t {
-    k_no_fn       = 0xFFFFFFFFU, /**< Sentinel for "no phase frame".         */
-    k_phase_depth = 2U,          /**< Chain depth used as the boot "phase".  */
-    k_phase_lines = 24U,         /**< Cap on printed timeline segments.      */
+    k_no_fn        = 0xFFFFFFFFU, /**< Sentinel for "no phase frame".        */
+    k_phase_depth  = 2U,          /**< Chain depth used as the boot "phase". */
+    k_phase_lines  = 24U,         /**< Cap on printed timeline segments.     */
+    k_phase_pct_x1 = 100U,        /**< Per-cent base: keep segments >= 1%.   */
   };
   const char* out = getenv("BOARD_SIM_PROFILE_OUT");
   if ((out == nullptr) || (out[0] == '\0')) {
@@ -1880,13 +1902,14 @@ static void prof_report_flamechart(void)
       }
     }
     if ((i == s_samp_n) || (fn != segfn)) {
-      const bool show = (segfn != (uint32_t)k_no_fn) && ((100U * segw) >= total) &&
+      const bool show = (segfn != (uint32_t)k_no_fn) &&
+                        (((uint32_t)k_phase_pct_x1 * segw) >= total) &&
                         (lines < (uint32_t)k_phase_lines);
       if (show) {
         (void)fprintf(stderr,
                       "    %5.1f%%  +%4.1f%%  %s\n",
-                      100.0 * (double)cum / (double)total,
-                      100.0 * (double)segw / (double)total,
+                      s_percent_scale * (double)cum / (double)total,
+                      s_percent_scale * (double)segw / (double)total,
                       (segfn < s_prof_n) ? s_prof[segfn].name : "?");
         lines++;
       }
@@ -1922,8 +1945,8 @@ static void prof_report_flamechart(void)
     }
     (void)fprintf(stderr,
                   "    %8.2f%%  %7.2f%%  %s\n",
-                  100.0 * (double)s_self[best] / (double)total,
-                  100.0 * (double)s_incl[best] / (double)total,
+                  s_percent_scale * (double)s_self[best] / (double)total,
+                  s_percent_scale * (double)s_incl[best] / (double)total,
                   s_prof[best].name);
     s_incl[best] = 0U; /* consume so the next pick is the runner-up. */
   }
@@ -1961,14 +1984,14 @@ static void prof_report(void)
     if (insn) {
       (void)fprintf(stderr,
                     "    %6.2f%%  %15llu  %10llu  %s\n",
-                    100.0 * bestv / tot,
+                    s_percent_scale * bestv / tot,
                     (unsigned long long)s_prof[best].insns,
                     (unsigned long long)s_prof[best].calls,
                     s_prof[best].name);
       s_prof[best].insns = 0U;
     } else {
       (void)
-        fprintf(stderr, "    %6.2f%%  %8.2fs  %s\n", 100.0 * bestv / tot, bestv, s_prof[best].name);
+        fprintf(stderr, "    %6.2f%%  %8.2fs  %s\n", s_percent_scale * bestv / tot, bestv, s_prof[best].name);
       s_prof[best].secs = 0.0;
     }
   }
@@ -2990,6 +3013,7 @@ typedef enum : uint16_t {
   k_vkbd_dt_hid_report       = 0x22U, /**< HID REPORT descriptor.              */
   k_vkbd_lnst_attached       = 0x02U, /**< SYSSTS0.LNST J-state (device on bus).*/
   k_vkbd_report_len          = 8U,    /**< Boot-keyboard input report width.   */
+  k_vkbd_num_keys            = 5U,    /**< Keycodes typed ("R A 8 D 2").       */
   k_vkbd_dev_desc_len        = 18U,   /**< DEVICE descriptor length.           */
   k_vkbd_cfg_desc_len        = 34U,   /**< Full CONFIGURATION descriptor length.*/
   k_vkbd_stop_reports        = 8U,    /**< Reports streamed before USB_STOP fires.*/
@@ -3033,8 +3057,18 @@ static const uint8_t k_vkbd_report_desc[63] = {
   0x75, 0x08, 0x15, 0x00, 0x25, 0x65, 0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00, 0xC0,
 };
 
+/** @brief HID Usage-Table keycodes (Usage Page 0x07) for the typed string. */
+typedef enum : uint8_t {
+  k_vkbd_key_r = 0x15U, /**< HID usage for 'R'. */
+  k_vkbd_key_a = 0x04U, /**< HID usage for 'A'. */
+  k_vkbd_key_8 = 0x25U, /**< HID usage for '8'. */
+  k_vkbd_key_d = 0x07U, /**< HID usage for 'D'. */
+  k_vkbd_key_2 = 0x1FU, /**< HID usage for '2'. */
+} vkbd_keycode_t;
+
 /** @brief HID Usage-Table keycodes the virtual keyboard "types": R A 8 D 2. */
-static const uint8_t k_vkbd_keycodes[5] = {0x15U, 0x04U, 0x25U, 0x07U, 0x1FU};
+static const uint8_t k_vkbd_keycodes[k_vkbd_num_keys] = {
+  k_vkbd_key_r, k_vkbd_key_a, k_vkbd_key_8, k_vkbd_key_d, k_vkbd_key_2};
 
 static uint8_t  s_vkbd_seq           = 0U; /**< Rolling report seq (report byte 0). */
 static uint32_t s_vkbd_ctrl_serviced = 0U; /**< Control transfers answered.         */
@@ -3133,7 +3167,7 @@ static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void
    * ignores byte 0 and pattern-checks bytes 1.. -- it streams "RA8D2". */
   uint8_t rep[k_vkbd_report_len] = {};
   rep[0]                         = s_vkbd_seq++;
-  for (uint32_t i = 0U; i < 5U; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_vkbd_num_keys; i++) {
     rep[2U + i] = k_vkbd_keycodes[i];
   }
   uint16_t n = (uint16_t)k_vkbd_report_len;
@@ -3176,6 +3210,52 @@ typedef enum : uint32_t {
   k_vmsc_file_bytes     = 0x00100000U, /**< MRAM.BIN size: 1 MiB.             */
   k_vmsc_volid          = 0x52A8D20AU, /**< Boot-sector volume serial.        */
 } vmsc_const_t;
+
+/** @brief FAT16 BPB byte offsets, fixed field values, and store shifts. */
+typedef enum : uint32_t {
+  k_bpb_shift8           = 8U,    /**< Byte 1 store shift.                  */
+  k_bpb_shift16          = 16U,   /**< Byte 2 store shift.                  */
+  k_bpb_shift24          = 24U,   /**< Byte 3 store shift.                  */
+  k_bpb_jmp0             = 0xEBU, /**< BS_jmpBoot[0]: short jump opcode.    */
+  k_bpb_jmp1             = 0x3CU, /**< BS_jmpBoot[1]: jump displacement.    */
+  k_bpb_jmp2             = 0x90U, /**< BS_jmpBoot[2]: NOP.                  */
+  k_bpb_off_oem          = 3U,    /**< BS_OEMName offset.                   */
+  k_bpb_off_bytspersec   = 11U,   /**< BPB_BytsPerSec offset.               */
+  k_bpb_off_secperclus   = 13U,   /**< BPB_SecPerClus offset.               */
+  k_bpb_off_rsvdseccnt   = 14U,   /**< BPB_RsvdSecCnt offset.               */
+  k_bpb_off_numfats      = 16U,   /**< BPB_NumFATs offset.                  */
+  k_bpb_off_rootentcnt   = 17U,   /**< BPB_RootEntCnt offset.               */
+  k_bpb_off_totsec16     = 19U,   /**< BPB_TotSec16 offset.                 */
+  k_bpb_off_media        = 21U,   /**< BPB_Media offset.                    */
+  k_bpb_off_fatsz16      = 22U,   /**< BPB_FATSz16 offset.                  */
+  k_bpb_off_secpertrk    = 24U,   /**< BPB_SecPerTrk offset.                */
+  k_bpb_off_numheads     = 26U,   /**< BPB_NumHeads offset.                 */
+  k_bpb_off_drvnum       = 36U,   /**< BS_DrvNum offset.                    */
+  k_bpb_off_bootsig      = 38U,   /**< BS_BootSig offset.                   */
+  k_bpb_off_volid        = 39U,   /**< BS_VolID offset.                     */
+  k_bpb_off_vollab       = 43U,   /**< BS_VolLab offset.                    */
+  k_bpb_off_filsystype   = 54U,   /**< BS_FilSysType offset.                */
+  k_bpb_off_sig0         = 510U,  /**< 0x55 signature byte.                 */
+  k_bpb_off_sig1         = 511U,  /**< 0xAA signature byte.                 */
+  k_bpb_secperclus_1     = 1U,    /**< 1 sector per cluster.                */
+  k_bpb_rsvdseccnt_1     = 1U,    /**< 1 reserved sector.                   */
+  k_bpb_numfats_1        = 1U,    /**< 1 FAT copy.                          */
+  k_bpb_rootentcnt_512   = 512U,  /**< 512 root-directory entries.          */
+  k_bpb_media_f8         = 0xF8U, /**< Fixed-disk media descriptor.         */
+  k_bpb_fatsz16_17       = 17U,   /**< 17 sectors per FAT.                  */
+  k_bpb_secpertrk_32     = 32U,   /**< 32 sectors per track.                */
+  k_bpb_numheads_16      = 16U,   /**< 16 heads.                            */
+  k_bpb_drvnum_80        = 0x80U, /**< Drive number (first fixed disk).     */
+  k_bpb_bootsig_29       = 0x29U, /**< Extended boot signature.             */
+  k_bpb_sig0_55          = 0x55U, /**< Boot-sector signature byte 0.        */
+  k_bpb_sig1_aa          = 0xAAU, /**< Boot-sector signature byte 1.        */
+  k_dir_off_attr         = 11U,   /**< Directory-entry attribute byte.      */
+  k_dir_off_entry        = 32U,   /**< Second 32-byte directory entry.      */
+  k_dir_off_fstcluslo    = 26U,   /**< DIR_FstClusLO offset within entry.   */
+  k_dir_off_filesize     = 28U,   /**< DIR_FileSize offset within entry.    */
+  k_dir_attr_vollabel    = 0x08U, /**< ATTR_VOLUME_ID.                      */
+  k_dir_attr_readonly    = 0x01U, /**< ATTR_READ_ONLY.                      */
+} vmsc_bpb_t;
 
 static const uint8_t k_vmsc_oem[8]    = {'R', 'A', '8', 'D', '2', 'F', 'W', ' '};
 static const uint8_t k_vmsc_label[11] = {'R', 'A', '8', 'D', '2', ' ', 'M', 'R', 'A', 'M', ' '};
@@ -3241,43 +3321,43 @@ static void vmsc_overlay_put(uint32_t lba, const uint8_t* in)
 /** @brief Little-endian 16-bit store into a sector buffer. */
 static void vmsc_put16(uint8_t* p, uint16_t v)
 {
-  p[0] = (uint8_t)(v & 0xFFU);
-  p[1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[0] = (uint8_t)(v & (uint16_t)k_byte_mask);
+  p[1] = (uint8_t)((v >> (uint16_t)k_bpb_shift8) & (uint16_t)k_byte_mask);
 }
 
 /** @brief Little-endian 32-bit store into a sector buffer. */
 static void vmsc_put32(uint8_t* p, uint32_t v)
 {
-  p[0] = (uint8_t)(v & 0xFFU);
-  p[1] = (uint8_t)((v >> 8) & 0xFFU);
-  p[2] = (uint8_t)((v >> 16) & 0xFFU);
-  p[3] = (uint8_t)((v >> 24) & 0xFFU);
+  p[0] = (uint8_t)(v & (uint32_t)k_byte_mask);
+  p[1] = (uint8_t)((v >> (uint32_t)k_bpb_shift8) & (uint32_t)k_byte_mask);
+  p[2] = (uint8_t)((v >> (uint32_t)k_bpb_shift16) & (uint32_t)k_byte_mask);
+  p[3] = (uint8_t)((v >> (uint32_t)k_bpb_shift24) & (uint32_t)k_byte_mask);
 }
 
 /** @brief Synthesize the FAT16 boot sector (BPB), mirroring the device side. */
 static void vmsc_fill_boot(uint8_t* out)
 {
-  out[0] = 0xEBU;
-  out[1] = 0x3CU;
-  out[2] = 0x90U; /* jmp + nop */
-  (void)memcpy(&out[3], k_vmsc_oem, sizeof(k_vmsc_oem));
-  vmsc_put16(&out[11], (uint16_t)k_vmsc_block_size);
-  out[13] = 1U;               /* sectors/cluster */
-  vmsc_put16(&out[14], 1U);   /* reserved sectors */
-  out[16] = 1U;               /* number of FATs */
-  vmsc_put16(&out[17], 512U); /* root entries */
-  vmsc_put16(&out[19], (uint16_t)k_vmsc_total_sectors);
-  out[21] = 0xF8U;           /* media descriptor */
-  vmsc_put16(&out[22], 17U); /* sectors per FAT */
-  vmsc_put16(&out[24], 32U); /* sectors per track */
-  vmsc_put16(&out[26], 16U); /* heads */
-  out[36] = 0x80U;           /* drive number */
-  out[38] = 0x29U;           /* extended boot signature */
-  vmsc_put32(&out[39], (uint32_t)k_vmsc_volid);
-  (void)memcpy(&out[43], k_vmsc_label, sizeof(k_vmsc_label));
-  (void)memcpy(&out[54], k_vmsc_fstype, sizeof(k_vmsc_fstype));
-  out[510] = 0x55U;
-  out[511] = 0xAAU;
+  out[0] = (uint8_t)k_bpb_jmp0;
+  out[1] = (uint8_t)k_bpb_jmp1;
+  out[2] = (uint8_t)k_bpb_jmp2; /* jmp + nop */
+  (void)memcpy(&out[k_bpb_off_oem], k_vmsc_oem, sizeof(k_vmsc_oem));
+  vmsc_put16(&out[k_bpb_off_bytspersec], (uint16_t)k_vmsc_block_size);
+  out[k_bpb_off_secperclus] = (uint8_t)k_bpb_secperclus_1;                  /* sectors/cluster */
+  vmsc_put16(&out[k_bpb_off_rsvdseccnt], (uint16_t)k_bpb_rsvdseccnt_1);     /* reserved sectors */
+  out[k_bpb_off_numfats] = (uint8_t)k_bpb_numfats_1;                        /* number of FATs */
+  vmsc_put16(&out[k_bpb_off_rootentcnt], (uint16_t)k_bpb_rootentcnt_512);   /* root entries */
+  vmsc_put16(&out[k_bpb_off_totsec16], (uint16_t)k_vmsc_total_sectors);
+  out[k_bpb_off_media] = (uint8_t)k_bpb_media_f8;                           /* media descriptor */
+  vmsc_put16(&out[k_bpb_off_fatsz16], (uint16_t)k_bpb_fatsz16_17);          /* sectors per FAT */
+  vmsc_put16(&out[k_bpb_off_secpertrk], (uint16_t)k_bpb_secpertrk_32);      /* sectors per track */
+  vmsc_put16(&out[k_bpb_off_numheads], (uint16_t)k_bpb_numheads_16);        /* heads */
+  out[k_bpb_off_drvnum]  = (uint8_t)k_bpb_drvnum_80;                        /* drive number */
+  out[k_bpb_off_bootsig] = (uint8_t)k_bpb_bootsig_29;                       /* ext boot signature */
+  vmsc_put32(&out[k_bpb_off_volid], (uint32_t)k_vmsc_volid);
+  (void)memcpy(&out[k_bpb_off_vollab], k_vmsc_label, sizeof(k_vmsc_label));
+  (void)memcpy(&out[k_bpb_off_filsystype], k_vmsc_fstype, sizeof(k_vmsc_fstype));
+  out[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_55;
+  out[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_aa;
 }
 
 /** @brief Synthesize one FAT sector: MRAM.BIN chains clusters 2..2049. */
@@ -3307,12 +3387,12 @@ static void vmsc_fill_root(uint32_t root_sector, uint8_t* out)
     return;
   }
   (void)memcpy(&out[0], k_vmsc_label, sizeof(k_vmsc_label));
-  out[11]    = 0x08U; /* volume-label attribute */
-  uint8_t* e = &out[32];
+  out[k_dir_off_attr] = (uint8_t)k_dir_attr_vollabel; /* volume-label attribute */
+  uint8_t* e          = &out[k_dir_off_entry];
   (void)memcpy(e, k_vmsc_fname, sizeof(k_vmsc_fname));
-  e[11] = 0x01U; /* read-only attribute */
-  vmsc_put16(&e[26], (uint16_t)k_vmsc_first_cluster);
-  vmsc_put32(&e[28], (uint32_t)k_vmsc_file_bytes);
+  e[k_dir_off_attr] = (uint8_t)k_dir_attr_readonly; /* read-only attribute */
+  vmsc_put16(&e[k_dir_off_fstcluslo], (uint16_t)k_vmsc_first_cluster);
+  vmsc_put32(&e[k_dir_off_filesize], (uint32_t)k_vmsc_file_bytes);
 }
 
 /** @brief Fill one 512-byte volume sector (boot / FAT / root / live MRAM data). */
@@ -3345,6 +3425,15 @@ static void on_hmsc_ok(uc_engine* uc, uint64_t address, uint32_t size, void* use
   eth_hook_return(uc, 0U); /* k_ra_ok */
 }
 
+/** @brief ra_usb_hmsc_device_t field offsets + reported bulk EP packet/VID/PID. */
+typedef enum : uint32_t {
+  k_hmsc_off_vid    = 10U,     /**< vid offset in ra_usb_hmsc_device_t.      */
+  k_hmsc_off_pid    = 12U,     /**< pid offset in ra_usb_hmsc_device_t.      */
+  k_hmsc_bulk_mps   = 64U,     /**< Reported bulk-endpoint max packet size.  */
+  k_hmsc_vendor_id  = 0x1A6AU, /**< Reported USB vendor_id.                  */
+  k_hmsc_product_id = 0x4288U, /**< Reported USB product_id.                 */
+} hmsc_dev_t;
+
 /** @brief Hook ra_usb_hmsc_enumerate(out_device*): report the virtual disk. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, void* user)
@@ -3358,13 +3447,13 @@ static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, vo
     /* ra_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
      * out_mps,vid,pid. */
     uint8_t d[14] = {};
-    d[0]          = 1U;          /* device_address */
-    d[1]          = 1U;          /* bulk_in_ep     */
-    d[2]          = 2U;          /* bulk_out_ep    */
-    vmsc_put16(&d[6], 64U);      /* bulk_in_max_packet  */
-    vmsc_put16(&d[8], 64U);      /* bulk_out_max_packet */
-    vmsc_put16(&d[10], 0x1A6AU); /* vendor_id           */
-    vmsc_put16(&d[12], 0x4288U); /* product_id          */
+    d[0]          = 1U; /* device_address */
+    d[1]          = 1U; /* bulk_in_ep     */
+    d[2]          = 2U; /* bulk_out_ep    */
+    vmsc_put16(&d[6], (uint16_t)k_hmsc_bulk_mps);                 /* bulk_in_max_packet  */
+    vmsc_put16(&d[8], (uint16_t)k_hmsc_bulk_mps);                 /* bulk_out_max_packet */
+    vmsc_put16(&d[k_hmsc_off_vid], (uint16_t)k_hmsc_vendor_id);  /* vendor_id            */
+    vmsc_put16(&d[k_hmsc_off_pid], (uint16_t)k_hmsc_product_id); /* product_id           */
     (void)uc_mem_write(uc, (uint64_t)dev_ptr, d, sizeof(d));
   }
   eth_hook_return(uc, 0U); /* k_ra_ok */
@@ -3405,7 +3494,7 @@ static void on_hmsc_read10(uc_engine* uc, uint64_t address, uint32_t size, void*
   (void)uc_reg_read(uc, UC_ARM_REG_R1, &lba);
   (void)uc_reg_read(uc, UC_ARM_REG_R2, &count);
   (void)uc_reg_read(uc, UC_ARM_REG_R3, &buf);
-  count &= 0xFFFFU; /* block_count is a uint16_t argument. */
+  count &= (uint32_t)k_lo16_mask; /* block_count is a uint16_t argument. */
   for (uint32_t i = 0U; (i < count) && (buf != 0U); i++) {
     uint8_t sec[k_vmsc_block_size];
     if (!vmsc_overlay_get(lba + i, sec)) { /* a host WRITE(10) wins over the synthesis. */
@@ -3442,7 +3531,7 @@ static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void
   (void)uc_reg_read(uc, UC_ARM_REG_R1, &lba);
   (void)uc_reg_read(uc, UC_ARM_REG_R2, &count);
   (void)uc_reg_read(uc, UC_ARM_REG_R3, &buf);
-  count &= 0xFFFFU;
+  count &= (uint32_t)k_lo16_mask;
   for (uint32_t i = 0U; (i < count) && (buf != 0U); i++) {
     uint8_t sec[k_vmsc_block_size];
     (void)uc_mem_read(uc,
@@ -4926,25 +5015,29 @@ int main(int argc, char** argv)
        * cannot exceed its cluster ceiling, so multi-GB cards are FAT32. */
       char*      endp = nullptr;
       const long num  = strtol(argv[i + 1], &endp, (int)k_strtol_base10);
-      uint64_t   mult = (uint64_t)k_sectors_per_mib * 512ULL; /* default unit: MiB. */
+      uint64_t mult =
+        (uint64_t)k_sectors_per_mib * (uint64_t)k_bytes_per_sector; /* default unit: MiB. */
       const char unit = ((endp != nullptr) && (*endp != '\0')) ? (char)tolower((int)*endp) : 'm';
       if (unit == 'k') {
-        mult = 1024ULL;
+        mult = (uint64_t)k_size_kib;
       } else if (unit == 'g') {
-        mult = 1024ULL * 1024ULL * 1024ULL;
+        mult = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
       } else if (unit == 't') {
-        mult = 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+        mult = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib *
+               (uint64_t)k_size_kib;
       }
       const uint64_t bytes   = (num > 0L) ? ((uint64_t)num * mult) : 0ULL;
-      const uint64_t sectors = bytes / 512ULL;
+      const uint64_t sectors = bytes / (uint64_t)k_bytes_per_sector;
       const char*    colon   = (endp != nullptr) ? strchr(endp, ':') : nullptr;
-      uint8_t        fat = (bytes >= (512ULL * 1024ULL * 1024ULL)) ? (uint8_t)32U : (uint8_t)16U;
+      const uint64_t fat32_min_bytes =
+        (uint64_t)k_fat32_min_mib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+      uint8_t fat = (bytes >= fat32_min_bytes) ? (uint8_t)32U : (uint8_t)16U;
       if (colon != nullptr) {
         fat = (strstr(colon, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
       }
-      if ((sectors > 0ULL) && (sectors <= 0xFFFFFFFFULL)) {
+      if ((sectors > 0ULL) && (sectors <= (uint64_t)k_sd_u32_max)) {
         (void)board_sd_attach_blank((uint32_t)sectors, fat, "BOARDSIM");
-      } else if (sectors > 0xFFFFFFFFULL) {
+      } else if (sectors > (uint64_t)k_sd_u32_max) {
         (void)fprintf(stderr, "board_sim: --sd-new: size exceeds the 2 TiB FAT limit\n");
       }
       i++;
@@ -5491,13 +5584,13 @@ int main(int argc, char** argv)
     const char* e_pn = getenv("BOARD_SIM_PROFILE_IDLE_NEED");
     const char* e_pa = getenv("BOARD_SIM_PROFILE_IDLE_ARM");
     if (e_pi != nullptr) {
-      prof_idle_insns = (uint32_t)strtoul(e_pi, nullptr, 10);
+      prof_idle_insns = (uint32_t)strtoul(e_pi, nullptr, (int)k_strtol_base10);
     }
     if (e_pn != nullptr) {
-      prof_idle_need = (uint32_t)strtoul(e_pn, nullptr, 10);
+      prof_idle_need = (uint32_t)strtoul(e_pn, nullptr, (int)k_strtol_base10);
     }
     if (e_pa != nullptr) {
-      prof_idle_arm = (uint32_t)strtoul(e_pa, nullptr, 10);
+      prof_idle_arm = (uint32_t)strtoul(e_pa, nullptr, (int)k_strtol_base10);
     }
   }
   uint64_t            prof_idle_prev_i = 0U;
@@ -5990,9 +6083,11 @@ int main(int argc, char** argv)
     uint8_t     sd_f   = 0U;
     const char* sd_l   = nullptr;
     board_sd_info(&sd_att, &sd_b, &sd_f, &sd_l);
-    const bool          sd_gb = (sd_b >= (1024ULL * 1024ULL * 1024ULL));
-    const unsigned long sd_sz = sd_gb ? (unsigned long)(sd_b / (1024ULL * 1024ULL * 1024ULL))
-                                      : (unsigned long)(sd_b / (1024ULL * 1024ULL));
+    const uint64_t      gib_bytes = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+    const uint64_t      mib_bytes = (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+    const bool          sd_gb     = (sd_b >= gib_bytes);
+    const unsigned long sd_sz =
+      sd_gb ? (unsigned long)(sd_b / gib_bytes) : (unsigned long)(sd_b / mib_bytes);
     const char*         sd_u  = sd_gb ? "GB" : "MB";
     if (sd_att && (sd_f != 0U)) {
       (void)fprintf(stderr,

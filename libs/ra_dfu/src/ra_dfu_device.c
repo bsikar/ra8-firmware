@@ -49,6 +49,11 @@ typedef enum : uint8_t {
   k_ra_dfu_dev_reg_config    = 0U, /**< Configuration number.                */
 } ra_dfu_dev_reg_t;
 
+/** @brief MRAM erased-state fill byte used to pad a short final DNLOAD block. */
+typedef enum : uint8_t {
+  k_ra_dfu_dev_erased_byte = 0xFFU, /**< Erased-state byte for an MRAM page. */
+} ra_dfu_dev_fill_t;
+
 /**
  * @struct ra_dfu_dev_ctx_t
  * @brief Single-instance device state shared between the DFU callbacks (ISR)
@@ -122,7 +127,7 @@ internal_dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULO
     const uint32_t plen =
       (uint32_t)((len + (uint32_t)k_ra_dfu_dev_page_mask) & ~(uint32_t)k_ra_dfu_dev_page_mask);
     for (uint32_t i = len; i < plen; i++) {
-      s_dev.stage[i] = 0xFFU;
+      s_dev.stage[i] = (uint8_t)k_ra_dfu_dev_erased_byte;
     }
     const uint32_t off = (uint32_t)block_number * (uint32_t)k_ra_dfu_dev_block_bytes;
     const ra_err_t we  = ra_dfu_program_image(s_dev.target, off, s_dev.stage, plen);

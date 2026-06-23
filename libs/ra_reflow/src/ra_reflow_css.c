@@ -79,6 +79,21 @@ typedef enum : uint8_t {
 } priv_css_face_t;
 
 /**
+ * @enum priv_css_scan_t
+ * @brief Token lengths used by the top-level stylesheet scanner.
+ *
+ * @details Stand-ins for the `/` + `*` comment delimiters so the parse loop
+ * carries no bare numeric literals when stepping over comments and blocks.
+ *
+ * @invariant k_priv_cmt_marker is the byte count of `/` + `*` (or `*` + `/`).
+ * @see ra_css_parse
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_priv_cmt_marker = 2U, /**< Byte length of a CSS comment delimiter pair. */
+} priv_css_scan_t;
+
+/**
  * @enum priv_css_color_t
  * @brief Common named CSS colours + the "not a colour" sentinel.
  */
@@ -902,38 +917,109 @@ ra_err_t ra_css_sheet_reset(ra_css_sheet_t* sheet)
   return k_ra_ok;
 }
 
+/**
+ * @brief Step over a `C`-style comment starting at @p start.
+ *
+ * @details Assumes @p css[start..start+1] is the open delimiter and scans to
+ * the matching close delimiter, returning the offset just past it (clamped to
+ * @p len when the comment is unterminated).
+ *
+ * @param[in] css   Stylesheet text (non-NULL, validated by the caller).
+ * @param[in] len   Total length of @p css, bytes.
+ * @param[in] start Offset of the comment open delimiter.
+ *
+ * @return Offset of the first byte after the comment, in `[start, len]`.
+ * @retval len The comment ran to the end of the buffer (unterminated).
+ *
+ * @pre @p css is non-NULL.
+ * @pre @p start < @p len.
+ * @post The return value is in `[start, len]`.
+ * @post No state is mutated (pure function).
+ * @note Thread-safe; operates on caller-owned memory only.
+ * @since 0.1.0
+ */
+static size_t priv_skip_comment(const char* css, size_t len, size_t start)
+{
+  const char open_a  = '/';
+  const char open_b  = '*';
+  size_t     j       = start + (size_t)k_priv_cmt_marker;
+  /* Bounded: j strictly increases each pass; capped at len. */
+  while (((j + 1U) < len) && !((css[j] == open_b) && (css[j + 1U] == open_a))) {
+    ++j;
+  }
+  const size_t past = j + (size_t)k_priv_cmt_marker;
+  return (past <= len) ? past : len;
+}
+
+/**
+ * @brief Locate the `{ ... }` block beginning at selector offset @p i.
+ *
+ * @details Scans forward for the block-open byte, then the block-close byte,
+ * writing both offsets out. Returns false when no block-open is present, which
+ * the caller treats as end-of-input.
+ *
+ * @param[in]  css       Stylesheet text (non-NULL, validated by the caller).
+ * @param[in]  len       Total length of @p css, bytes.
+ * @param[in]  i         Offset of the selector list start.
+ * @param[out] out_open  Offset of the block-open byte (valid only on true).
+ * @param[out] out_close Offset of the block-close byte, or @p len if missing.
+ *
+ * @return True iff a block-open byte was found at or after @p i.
+ * @retval true  A block-open was found; @p out_open / @p out_close are set.
+ * @retval false No block-open exists in `[i, len)`.
+ *
+ * @pre @p css, @p out_open, @p out_close are non-NULL.
+ * @pre @p i <= @p len.
+ * @post On true, `*out_open < len` and `*out_close <= len`.
+ * @post No state other than the out-params is mutated.
+ * @note Thread-safe; operates on caller-owned memory only.
+ * @since 0.1.0
+ */
+static bool
+priv_find_block(const char* css, size_t len, size_t i, size_t* out_open, size_t* out_close)
+{
+  const char open_c  = '{';
+  const char close_c = '}';
+  size_t     brace   = i;
+  /* Bounded: brace strictly increases each pass; capped at len. */
+  while ((brace < len) && (css[brace] != open_c)) {
+    ++brace;
+  }
+  if (brace >= len) {
+    return false;
+  }
+  size_t close = brace + 1U;
+  /* Bounded: close strictly increases each pass; capped at len. */
+  while ((close < len) && (css[close] != close_c)) {
+    ++close;
+  }
+  *out_open  = brace;
+  *out_close = close;
+  return true;
+}
+
 ra_err_t ra_css_parse(ra_css_sheet_t* sheet, const char* css, uint32_t len)
 {
   if ((sheet == nullptr) || (css == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  size_t i = 0U;
-  /* Bounded: each iteration advances past a `{...}` block or breaks at EOF. */
+  const char open_a = '/';
+  const char open_b = '*';
+  size_t     i      = 0U;
+  /* Bounded: each iteration advances past a block or breaks at EOF. */
   while (i < (size_t)len) {
-    /* Skip a leading comment or whitespace before the selector. */
-    if (((i + 1U) < (size_t)len) && (css[i] == '/') && (css[i + 1U] == '*')) {
-      size_t j = i + 2U;
-      while (((j + 1U) < (size_t)len) && !((css[j] == '*') && (css[j + 1U] == '/'))) {
-        ++j;
-      }
-      i = (j + 2U <= (size_t)len) ? (j + 2U) : (size_t)len;
+    if (((i + 1U) < (size_t)len) && (css[i] == open_a) && (css[i + 1U] == open_b)) {
+      i = priv_skip_comment(css, (size_t)len, i);
       continue;
     }
     if (priv_is_ws(css[i])) {
       ++i;
       continue;
     }
-    /* Selector list runs up to '{'. */
-    size_t brace = i;
-    while ((brace < (size_t)len) && (css[brace] != '{')) {
-      ++brace;
-    }
-    if (brace >= (size_t)len) {
+    size_t brace = 0U;
+    size_t close = 0U;
+    if (!priv_find_block(css, (size_t)len, i, &brace, &close)) {
       break; /* no block -> done */
-    }
-    size_t close = brace + 1U;
-    while ((close < (size_t)len) && (css[close] != '}')) {
-      ++close;
     }
     priv_parse_one_block(sheet, &css[i], brace - i, &css[brace + 1U], close - (brace + 1U));
     i = (close < (size_t)len) ? (close + 1U) : (size_t)len;

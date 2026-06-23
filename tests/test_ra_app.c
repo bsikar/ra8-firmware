@@ -59,7 +59,7 @@ static void app_tick(ra_app_t* a)
   ((app_ctx_t*)a->ctx)->tick_calls++;
 }
 
-static void app_render(ra_app_t* a)
+static void app_render(const ra_app_t* a)
 {
   ((app_ctx_t*)a->ctx)->render_calls++;
 }

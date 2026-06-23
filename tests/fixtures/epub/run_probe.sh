@@ -3,6 +3,9 @@
 #   ./tests/fixtures/epub/run_probe.sh <file.epub>
 # Host-only diagnostic (RA_SIMULATOR_MODE, malloc-backed); reports what
 # ra_epub_open() extracts (parse result, spine, TOC, cover, chapter 0).
+#
+# @copyright Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
 set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"

@@ -2,7 +2,7 @@
 #
 # build_books.sh -- regenerate the compiled e-book library.
 #
-# Compiles every content/library/*.epub master (the Git-LFS source of truth)
+# Compiles every content/library/*.epub source (the Git-LFS source of truth)
 # into content/compiled/*.rabook and regenerates the manifest header
 # libs/ra_book/inc/ra_book_library.h. The .rabook blobs and the manifest are
 # build artifacts (gitignored): they are 100% derived from the epubs plus
@@ -25,7 +25,7 @@ MANIFEST_HDR="$ROOT/libs/ra_book/inc/ra_book_library.h"
 MAX_EDGE="${RA_BOOK_MAX_EDGE:-1024}"
 
 if ! ls "$SRC_DIR"/*.epub >/dev/null 2>&1; then
-    echo "build_books: no .epub masters in $SRC_DIR" >&2
+    echo "build_books: no .epub sources in $SRC_DIR" >&2
     echo "             (run 'git lfs pull' to fetch them)" >&2
     exit 1
 fi

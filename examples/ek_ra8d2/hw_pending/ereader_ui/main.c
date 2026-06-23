@@ -1879,7 +1879,7 @@ static ra_app_t*         s_app_slots[4];
 static ra_app_registry_t s_app_reg;
 
 /** @brief App render trampoline: dispatch to the screen render by app id. */
-static void er_app_render(ra_app_t* a)
+static void er_app_render(const ra_app_t* a)
 {
   if (a->id == (uint16_t)k_er_screen_reading) {
     er_render_reading();

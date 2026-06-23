@@ -15,7 +15,10 @@
  * A future optimization can feed the DOM straight into the tokenizer and skip
  * this XHTML round-trip; until then the bridge keeps the renderer untouched.
  *
- * @since Version 1.0.0
+ * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <string.h>
 
@@ -28,7 +31,7 @@ static const char* const s_tag_xhtml = "ra_book_xhtml";
 /**
  * @enum ra_book_xhtml_bound_t
  * @brief Bounds for the iterative, recursion-free DOM walk.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_book_xhtml_stack  = 512U, /**< Max pending open/close walk entries.       */

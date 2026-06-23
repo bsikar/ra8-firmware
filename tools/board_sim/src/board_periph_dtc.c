@@ -100,13 +100,20 @@ typedef enum : uint32_t {
   k_mra_sz_byte  = 0x0U, /**< SZ = 00b: 8-bit unit.                          */
   k_mra_sz_word  = 0x2U, /**< SZ = 10b: 32-bit unit.                         */
   k_mra_sz_half  = 0x1U, /**< SZ = 01b: 16-bit unit.                         */
+  k_mr_byte_mask = 0xFFU, /**< Eight-bit field mask (one MRA/MRB byte).      */
 } dtc_mr_field_t;
+
+/** @brief DTC transfer-count encoding quirks (HUM 18.2.7). */
+typedef enum : uint32_t {
+  k_dtc_block_cra_zero = 256U, /**< Block mode CRA = 0 encodes a 256-unit block. */
+} dtc_count_t;
 
 /** @brief Vector-table entry layout (DTCVBR + slot*4 -> TI start). */
 typedef enum : uint32_t {
   k_dtc_vt_entry_bytes = 4U,          /**< One 4-byte pointer per IELSR slot. */
   k_dtc_ti_addr_mask   = 0xFFFFFFFEU, /**< Strip bit0 (privilege attribute).  */
   k_dtc_max_units      = 0x10000U,    /**< Sanity cap on a single activation.  */
+  k_dtc_ielsr_slots    = 96U,         /**< Number of IELSR slots (0..95).      */
 } dtc_vt_geom_t;
 
 /** @brief Per-tick order slot for the DTC block (relative order only). */
@@ -165,8 +172,8 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
   const uint32_t crb = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_crb, 2U);
   const uint32_t cra = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_cra, 2U);
 
-  const uint32_t mra = (mr >> (uint32_t)k_mr_mra_shift) & 0xFFU;
-  const uint32_t mrb = (mr >> (uint32_t)k_mr_mrb_shift) & 0xFFU;
+  const uint32_t mra = (mr >> (uint32_t)k_mr_mra_shift) & (uint32_t)k_mr_byte_mask;
+  const uint32_t mrb = (mr >> (uint32_t)k_mr_mrb_shift) & (uint32_t)k_mr_byte_mask;
   const uint32_t md  = (mra >> (uint32_t)k_mra_md_pos) & (uint32_t)k_mr_2bit_mask;
   const uint32_t sz  = (mra >> (uint32_t)k_mra_sz_pos) & (uint32_t)k_mr_2bit_mask;
   const uint32_t sm  = (mra >> (uint32_t)k_mra_sm_pos) & (uint32_t)k_mr_2bit_mask;
@@ -175,7 +182,8 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
   const uint32_t unit = dtc_unit_bytes(sz);
   /* CRA = 0 in block mode encodes a 256-unit block (HUM 18.2.7). Otherwise CRA
    * is the unit count; block mode multiplies by CRB blocks. */
-  const uint32_t per_block = (md == (uint32_t)k_mra_md_block) ? ((cra == 0U) ? 256U : cra) : cra;
+  const uint32_t per_block =
+    (md == (uint32_t)k_mra_md_block) ? ((cra == 0U) ? (uint32_t)k_dtc_block_cra_zero : cra) : cra;
   const uint32_t blocks    = (md == (uint32_t)k_mra_md_block) ? ((crb == 0U) ? 1U : crb) : 1U;
   uint32_t       units     = per_block * blocks;
   if ((units == 0U) || (units > (uint32_t)k_dtc_max_units)) {
@@ -204,7 +212,7 @@ static void dtc_activate_swevt0(uc_engine* uc)
     return; /* Vector base not programmed: nothing to activate. */
   }
   const uint32_t slot = board_periph_icu_dtc_slot((uint16_t)k_elc_swevt0_event);
-  if (slot >= 96U) {
+  if (slot >= (uint32_t)k_dtc_ielsr_slots) {
     return; /* No IELSR slot links the event with DTCE set. */
   }
   const uint64_t vt_entry =

@@ -70,7 +70,10 @@ static void test_cac_app_window(void)
   const uint16_t lower = (uint16_t)(exp - tol);
   TEST_ASSERT(upper > (uint16_t)exp);
   TEST_ASSERT(lower < (uint16_t)exp);
-  TEST_ASSERT(upper <= 0xFFFFU); /* fits the 16-bit limit register */
+  /* The (pre-truncation) upper bound must fit the 16-bit limit register.
+   * Check the uint32_t sum -- `upper` is already uint16_t, so testing it
+   * against 0xFFFF is always true (-Werror=type-limits). */
+  TEST_ASSERT((exp + tol) <= 0xFFFFU);
   TEST_END("cac_accuracy_demo: expected count + window");
 }
 

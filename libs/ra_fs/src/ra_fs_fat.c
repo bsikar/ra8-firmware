@@ -1467,7 +1467,31 @@ typedef enum : uint32_t {
   k_lfn_name_cap       = 256U,    /**< Reassembled-name buffer capacity.       */
   k_lfn_unicode_pad    = 0xFFFFU, /**< Slot padding past the name terminator. */
   k_lfn_ascii_max      = 0x7FU,   /**< Highest code point we keep verbatim.    */
+  k_sfn_csum_high_bit  = 0x80U,   /**< Rotate-in bit when the running sum is odd. */
 } ra_fs_lfn_t;
+
+/**
+ * @enum ra_fs_lfn_char_off_t
+ * @brief Byte offsets of the 13 UTF-16 name characters in a 32-byte LFN entry.
+ * @details MS FAT spec sec 7 "Long Directory Entries": LDIR_Name1 holds five
+ *          chars at offsets 1,3,5,7,9; LDIR_Name2 holds six at 14,16,18,20,22,24;
+ *          LDIR_Name3 holds two at 28,30. Each char is two bytes (low byte first).
+ */
+typedef enum : uint8_t {
+  k_lfn_char_off_0  = 1U,  /**< LDIR_Name1 char 0. */
+  k_lfn_char_off_1  = 3U,  /**< LDIR_Name1 char 1. */
+  k_lfn_char_off_2  = 5U,  /**< LDIR_Name1 char 2. */
+  k_lfn_char_off_3  = 7U,  /**< LDIR_Name1 char 3. */
+  k_lfn_char_off_4  = 9U,  /**< LDIR_Name1 char 4. */
+  k_lfn_char_off_5  = 14U, /**< LDIR_Name2 char 0. */
+  k_lfn_char_off_6  = 16U, /**< LDIR_Name2 char 1. */
+  k_lfn_char_off_7  = 18U, /**< LDIR_Name2 char 2. */
+  k_lfn_char_off_8  = 20U, /**< LDIR_Name2 char 3. */
+  k_lfn_char_off_9  = 22U, /**< LDIR_Name2 char 4. */
+  k_lfn_char_off_10 = 24U, /**< LDIR_Name2 char 5. */
+  k_lfn_char_off_11 = 28U, /**< LDIR_Name3 char 0. */
+  k_lfn_char_off_12 = 30U, /**< LDIR_Name3 char 1. */
+} ra_fs_lfn_char_off_t;
 
 /** @brief In-progress reassembly of one LFN chain across the directory scan. */
 typedef struct {
@@ -1482,7 +1506,8 @@ static uint8_t priv_sfn_checksum(const uint8_t* name83)
   uint8_t sum = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_dir_name_field_len; i++) {
     sum =
-      (uint8_t)((((sum & 1U) != 0U) ? 0x80U : 0U) + (uint32_t)(sum >> 1U) + (uint32_t)name83[i]);
+      (uint8_t)((((sum & 1U) != 0U) ? (uint32_t)k_sfn_csum_high_bit : 0U) +
+                (uint32_t)(sum >> 1U) + (uint32_t)name83[i]);
   }
   return sum;
 }
@@ -1500,8 +1525,12 @@ static void priv_lfn_reset(lfn_state_t* s)
 /** @brief Fold one LFN entry's 13 chars into @p s at their sequence offset. */
 static void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
 {
-  static const uint8_t k_off[k_lfn_chars_per_ent] =
-    {1U, 3U, 5U, 7U, 9U, 14U, 16U, 18U, 20U, 22U, 24U, 28U, 30U};
+  static const uint8_t k_off[k_lfn_chars_per_ent] = {
+    (uint8_t)k_lfn_char_off_0,  (uint8_t)k_lfn_char_off_1,  (uint8_t)k_lfn_char_off_2,
+    (uint8_t)k_lfn_char_off_3,  (uint8_t)k_lfn_char_off_4,  (uint8_t)k_lfn_char_off_5,
+    (uint8_t)k_lfn_char_off_6,  (uint8_t)k_lfn_char_off_7,  (uint8_t)k_lfn_char_off_8,
+    (uint8_t)k_lfn_char_off_9,  (uint8_t)k_lfn_char_off_10, (uint8_t)k_lfn_char_off_11,
+    (uint8_t)k_lfn_char_off_12};
   const uint32_t order = (uint32_t)(ent[k_lfn_off_seq] & (uint8_t)k_lfn_seq_order_mask);
   if ((order < 1U) || (order > (uint32_t)k_lfn_max_entries)) {
     return; /* out-of-range sequence -> corrupt chain, ignore this entry */
@@ -1520,7 +1549,7 @@ static void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
       s->name[pos] = '\0'; /* terminator / padding ends this group's name */
       break;
     }
-    s->name[pos] = (val <= (uint32_t)k_lfn_ascii_max) ? (char)val : '?';
+    s->name[pos] = (val <= (uint32_t)k_lfn_ascii_max) ? (char)(unsigned char)val : '?';
   }
 }
 
@@ -1576,6 +1605,80 @@ static uint8_t priv_name_ieq(const char* a, const char* b)
  * @post On success the out parameters identify the on-disk 8.3 entry.
  * @since 0.1.0
  */
+/**
+ * @enum ra_fs_lfn_scan_t
+ * @brief Outcome of scanning one directory sector for a long-name match.
+ * @details Lets `priv_dir_find_long_sector` report "keep walking", "found",
+ *          or "end of directory reached" without unwinding the caller's loop
+ *          state, keeping each function under the cognitive-complexity gate.
+ */
+typedef enum : uint8_t {
+  k_lfn_scan_continue = 0U, /**< No match in this sector; advance to the next.   */
+  k_lfn_scan_found    = 1U, /**< Long name matched; out parameters populated.    */
+  k_lfn_scan_eod      = 2U, /**< End-of-directory marker hit; stop the walk.     */
+} ra_fs_lfn_scan_t;
+
+/**
+ * @brief Scan one directory sector for a long-name match, updating the chain.
+ *
+ * @details Folds any LFN sub-entries into @p lfn and, on the trailing 8.3
+ *          entry, compares its reassembled long name against @p needle. The
+ *          per-sector body of `priv_dir_find_long`, extracted so both the
+ *          scan and the walk stay under the function-size / complexity gates.
+ *
+ * @param[in]     needle        Requested name (already slash-stripped).
+ * @param[in]     buf           One directory sector (k_ra_fs_bytes_per_sector).
+ * @param[in]     cur_lba       LBA of @p buf (recorded into @p out_lba on hit).
+ * @param[in,out] lfn           Reassembly state carried across sectors.
+ * @param[out]    out_lba       Sector of the matched 8.3 entry (on found).
+ * @param[out]    out_entry_off Byte offset within the sector (on found).
+ * @param[out]    out_entry     32 bytes of the matched 8.3 entry (on found).
+ *
+ * @return Scan outcome.
+ * @retval k_lfn_scan_found    Match; out parameters populated.
+ * @retval k_lfn_scan_eod      Free-permanent marker hit; directory ended.
+ * @retval k_lfn_scan_continue No match in this sector.
+ *
+ * @pre All pointers are non-NULL; @p buf holds one full sector.
+ * @post On found, the out parameters identify the on-disk 8.3 entry.
+ *
+ * @note Not thread-safe; the caller serialises directory access.
+ *
+ * @since 0.1.0
+ */
+static ra_fs_lfn_scan_t priv_dir_find_long_sector(const char*  needle,
+                                                  const uint8_t* buf,
+                                                  uint32_t       cur_lba,
+                                                  lfn_state_t*   lfn,
+                                                  uint32_t*      out_lba,
+                                                  uint32_t*      out_entry_off,
+                                                  uint8_t out_entry[k_ra_fs_dir_entry_bytes])
+{
+  for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
+    const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra_fs_dir_entry_bytes];
+    if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
+      return k_lfn_scan_eod;
+    }
+    if (ent[k_dir_off_name] == k_dir_marker_free_used) {
+      priv_lfn_reset(lfn); /* a deleted slot breaks the chain */
+      continue;
+    }
+    if (ent[k_dir_off_attr] == k_ra_fs_attr_lfn) {
+      priv_lfn_add(lfn, ent);
+      continue;
+    }
+    const char* lname = priv_lfn_name_for(lfn, ent);
+    if ((lname != nullptr) && (priv_name_ieq(needle, lname) != 0U)) {
+      *out_lba       = cur_lba;
+      *out_entry_off = e * (uint32_t)k_ra_fs_dir_entry_bytes;
+      priv_byte_copy(out_entry, ent, k_ra_fs_dir_entry_bytes);
+      return k_lfn_scan_found;
+    }
+    priv_lfn_reset(lfn); /* 8.3 entry consumed -> next chain starts fresh */
+  }
+  return k_lfn_scan_continue;
+}
+
 static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
                                    const char*          want,
                                    uint32_t*            out_lba,
@@ -1597,27 +1700,13 @@ static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
     if (err != k_ra_ok) {
       return err;
     }
-    for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
-      uint8_t* ent = &buf[(size_t)e * (size_t)k_ra_fs_dir_entry_bytes];
-      if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
-        return k_ra_err_not_found;
-      }
-      if (ent[k_dir_off_name] == k_dir_marker_free_used) {
-        priv_lfn_reset(&lfn); /* a deleted slot breaks the chain */
-        continue;
-      }
-      if (ent[k_dir_off_attr] == k_ra_fs_attr_lfn) {
-        priv_lfn_add(&lfn, ent);
-        continue;
-      }
-      const char* lname = priv_lfn_name_for(&lfn, ent);
-      if ((lname != nullptr) && (priv_name_ieq(needle, lname) != 0U)) {
-        *out_lba       = w.cur_lba;
-        *out_entry_off = e * (uint32_t)k_ra_fs_dir_entry_bytes;
-        priv_byte_copy(out_entry, ent, k_ra_fs_dir_entry_bytes);
-        return k_ra_ok;
-      }
-      priv_lfn_reset(&lfn); /* 8.3 entry consumed -> next chain starts fresh */
+    const ra_fs_lfn_scan_t scan =
+      priv_dir_find_long_sector(needle, buf, w.cur_lba, &lfn, out_lba, out_entry_off, out_entry);
+    if (scan == k_lfn_scan_found) {
+      return k_ra_ok;
+    }
+    if (scan == k_lfn_scan_eod) {
+      return k_ra_err_not_found;
     }
     err = priv_dir_walk_next_sector(m, &w, &eod);
     if (err != k_ra_ok) {
@@ -4875,7 +4964,7 @@ static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
 {
   uint32_t n = 0U;
   if (label != nullptr) {
-    for (; (label[n] != '\0') && (n < (uint32_t)k_exfat_fmt_label_max); n++) {
+    for (; (n < (uint32_t)k_exfat_fmt_label_max) && (label[n] != '\0'); n++) {
       dst[(size_t)n * 2U]        = (uint8_t)label[n];
       dst[((size_t)n * 2U) + 1U] = 0U;
     }
@@ -5326,6 +5415,91 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
  *
  * @since 0.1.0
  */
+/**
+ * @brief Write a fresh, empty 8.3 directory entry into a free slot on disk.
+ *
+ * @details Reads the sector holding the free slot, zeroes the 32-byte entry,
+ *          stamps the packed 8.3 name plus the archive attribute, and writes
+ *          the sector back. Extracted from `priv_create_new` so both functions
+ *          stay under the statement / complexity gate.
+ *
+ * @param[in] handle   Mount providing the backend.
+ * @param[in] name83   Packed 11-byte 8.3 short name.
+ * @param[in] free_lba Sector containing the free slot.
+ * @param[in] free_off Byte offset of the free slot within the sector.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Entry written to disk.
+ * @retval k_ra_err_* Backend read/write error.
+ *
+ * @pre `handle` and `name83` are non-NULL; `free_off` is a valid slot offset.
+ * @post On success, a zeroed 8.3 entry with the archive attribute is on disk.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_write_new_dir_entry(ra_fs_mount_t* handle,
+                                         const uint8_t* name83,
+                                         uint32_t       free_lba,
+                                         uint32_t       free_off)
+{
+  uint8_t  buf[k_ra_fs_bytes_per_sector] = {};
+  ra_err_t err                           = priv_read_sector(handle, free_lba, buf);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t* ent = &buf[free_off];
+  for (uint32_t i = 0; i < (uint32_t)k_ra_fs_dir_entry_bytes; i++) {
+    ent[i] = 0;
+  }
+  priv_byte_copy(&ent[k_dir_off_name], name83, k_dir_name_field_len);
+  ent[k_dir_off_attr] = k_ra_fs_attr_archive;
+  return priv_write_sector(handle, free_lba, buf);
+}
+
+/**
+ * @brief Populate a freshly allocated file slot for an empty new file.
+ *
+ * @details Sets every field of @p f to the empty-file initial state: no
+ *          clusters, zero size/offset, the dir-entry location, the open mode,
+ *          and the in-use flag. Extracted from `priv_create_new`.
+ *
+ * @param[out] f        File slot to initialise.
+ * @param[in]  handle   Owning mount.
+ * @param[in]  mode     Open mode to record.
+ * @param[in]  free_lba Sector of the file's directory entry.
+ * @param[in]  free_off Byte offset of the directory entry within the sector.
+ *
+ * @return Nothing.
+ *
+ * @pre `f` and `handle` are non-NULL.
+ * @post `f->in_use` is 1 and every other field holds its empty-file value.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static void priv_init_new_file(ra_fs_file_t* f,
+                               ra_fs_mount_t* handle,
+                               ra_fs_mode_t   mode,
+                               uint32_t       free_lba,
+                               uint32_t       free_off)
+{
+  f->mount              = handle;
+  f->first_cluster      = 0;
+  f->cur_cluster        = 0;
+  f->walk_cache_idx     = 0;
+  f->walk_cache_cluster = 0; /* < 2: no read cache for a fresh file */
+  f->size_bytes         = 0;
+  f->offset             = 0;
+  f->dir_entry_lba      = free_lba;
+  f->dir_entry_idx      = free_off;
+  f->mode               = mode;
+  f->no_fat_chain       = 0U;
+  f->in_use             = 1;
+}
+
 static ra_err_t priv_create_new(ra_fs_mount_t* handle,
                                 const uint8_t* name83,
                                 ra_fs_mode_t   mode,
@@ -5341,34 +5515,12 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
   if (f == nullptr) {
     return k_ra_err_no_mem;
   }
-  uint8_t buf[k_ra_fs_bytes_per_sector] = {};
-  err                                   = priv_read_sector(handle, free_lba, buf);
+  err = priv_write_new_dir_entry(handle, name83, free_lba, free_off);
   if (err != k_ra_ok) {
     return err;
   }
-  uint8_t* ent = &buf[free_off];
-  for (uint32_t i = 0; i < (uint32_t)k_ra_fs_dir_entry_bytes; i++) {
-    ent[i] = 0;
-  }
-  priv_byte_copy(&ent[k_dir_off_name], name83, k_dir_name_field_len);
-  ent[k_dir_off_attr] = k_ra_fs_attr_archive;
-  err                 = priv_write_sector(handle, free_lba, buf);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  f->mount              = handle;
-  f->first_cluster      = 0;
-  f->cur_cluster        = 0;
-  f->walk_cache_idx     = 0;
-  f->walk_cache_cluster = 0; /* < 2: no read cache for a fresh file */
-  f->size_bytes         = 0;
-  f->offset             = 0;
-  f->dir_entry_lba      = free_lba;
-  f->dir_entry_idx      = free_off;
-  f->mode               = mode;
-  f->no_fat_chain       = 0U;
-  f->in_use             = 1;
-  *out_file             = f;
+  priv_init_new_file(f, handle, mode, free_lba, free_off);
+  *out_file = f;
   return k_ra_ok;
 }
 

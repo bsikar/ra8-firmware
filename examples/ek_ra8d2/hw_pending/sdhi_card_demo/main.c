@@ -71,6 +71,11 @@ typedef enum : uint32_t {
   k_sdhi_demo_period_ms   = 500U,        /**< Heartbeat LED toggle period.    */
 } sdhi_demo_config_t;
 
+/** @enum sdhi_demo_mask_t @brief Bit masks for payload byte extraction. */
+typedef enum : uint32_t {
+  k_sdhi_demo_byte_mask = 0xFFU, /**< Low-byte mask for a pattern word. */
+} sdhi_demo_mask_t;
+
 /** @brief SDHI controller instance + pin geometry. */
 typedef enum : uint8_t {
   k_sdhi_demo_instance  = 0U, /**< SDHI0 drives the on-board microSD.   */
@@ -170,7 +175,7 @@ static uint32_t sdhi_demo_pattern(uint32_t i)
 static void sdhi_demo_fill(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
-    buf[i] = (uint8_t)(sdhi_demo_pattern(i) & 0xFFU);
+    buf[i] = (uint8_t)(sdhi_demo_pattern(i) & (uint32_t)k_sdhi_demo_byte_mask);
   }
 }
 

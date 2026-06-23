@@ -78,13 +78,46 @@ static const ra_port_pin_t k_iu_pin_txd =
 static const ra_port_pin_t k_iu_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
+/** @enum iu_rect_t @brief Pixel geometry of the chrome tap-target rects. */
+typedef enum : int32_t {
+  k_iu_grid_col0_x   = 8,   /**< Left column x of the 2x2 book grid.     */
+  k_iu_grid_col1_x   = 116, /**< Right column x of the 2x2 book grid.    */
+  k_iu_grid_row0_y   = 40,  /**< Top row y of the 2x2 book grid.         */
+  k_iu_grid_row1_y   = 110, /**< Bottom row y of the 2x2 book grid.      */
+  k_iu_cell_w        = 100, /**< Book-cell width.                        */
+  k_iu_cell_h        = 60,  /**< Book-cell height.                       */
+  k_iu_toolbar_y     = 4,   /**< Toolbar-button y.                       */
+  k_iu_toolbar_w     = 60,  /**< Toolbar-button width.                   */
+  k_iu_toolbar_h     = 28,  /**< Toolbar-button height.                  */
+} iu_rect_t;
+
 /** @brief Representative chrome targets: a 2x2 book grid + a toolbar button. */
 static const ra_ui_target_t k_iu_targets[] = {
-  {.rect = {.x = 8, .y = 40, .w = 100, .h = 60}, .action_id = (uint16_t)k_iu_act_book0},
-  {.rect = {.x = 116, .y = 40, .w = 100, .h = 60}, .action_id = (uint16_t)k_iu_act_book1},
-  {.rect = {.x = 8, .y = 110, .w = 100, .h = 60}, .action_id = (uint16_t)k_iu_act_book2},
-  {.rect = {.x = 116, .y = 110, .w = 100, .h = 60}, .action_id = (uint16_t)k_iu_act_book3},
-  {.rect = {.x = 8, .y = 4, .w = 60, .h = 28}, .action_id = (uint16_t)k_iu_act_toolbar},
+  {.rect = {.x = k_iu_grid_col0_x,
+            .y = k_iu_grid_row0_y,
+            .w = k_iu_cell_w,
+            .h = k_iu_cell_h},
+   .action_id = (uint16_t)k_iu_act_book0},
+  {.rect = {.x = k_iu_grid_col1_x,
+            .y = k_iu_grid_row0_y,
+            .w = k_iu_cell_w,
+            .h = k_iu_cell_h},
+   .action_id = (uint16_t)k_iu_act_book1},
+  {.rect = {.x = k_iu_grid_col0_x,
+            .y = k_iu_grid_row1_y,
+            .w = k_iu_cell_w,
+            .h = k_iu_cell_h},
+   .action_id = (uint16_t)k_iu_act_book2},
+  {.rect = {.x = k_iu_grid_col1_x,
+            .y = k_iu_grid_row1_y,
+            .w = k_iu_cell_w,
+            .h = k_iu_cell_h},
+   .action_id = (uint16_t)k_iu_act_book3},
+  {.rect = {.x = k_iu_grid_col0_x,
+            .y = k_iu_toolbar_y,
+            .w = k_iu_toolbar_w,
+            .h = k_iu_toolbar_h},
+   .action_id = (uint16_t)k_iu_act_toolbar},
 };
 
 static const uint8_t k_msg_boot[]  = "ui-hil: boot\r\n";

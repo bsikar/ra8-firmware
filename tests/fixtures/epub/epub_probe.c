@@ -1,6 +1,10 @@
 /* Host EPUB-probe harness: open a real .epub via ra_epub and report what
  * our pipeline extracts (parse result, spine length, TOC, cover). Host-only
- * diagnostic; not committed. */
+ * diagnostic; not committed.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

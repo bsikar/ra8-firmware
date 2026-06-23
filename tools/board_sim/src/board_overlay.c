@@ -34,6 +34,9 @@ typedef enum : int32_t {
   k_section_gap  = 16,  /**< Gap above a section heading.              */
   k_heading_gap  = 20,  /**< Section heading to its first row.         */
   k_row_step     = 16,  /**< Vertical step between text rows.          */
+  k_rule_dy      = 10,  /**< Heading baseline to its underline rule.   */
+  k_kv_label_cols = 7,  /**< Label column width (glyphs) so values align. */
+  k_title_bar_h  = 40,  /**< Title-bar band height (board name at 2x). */
 } overlay_layout_t;
 
 /** @brief Sidebar geometry and palette (RGB565). */
@@ -123,6 +126,11 @@ typedef enum : int32_t {
   k_con_line_h = 10,  /**< Vertical step between console text lines.     */
   k_con_bottom = 14,  /**< Bottom margin below the console panel.        */
 } overlay_con_layout_t;
+
+/** @brief Binary size-unit factor for the SD-card capacity readout. */
+typedef enum : uint64_t {
+  k_sd_unit_div = 1024ULL, /**< Bytes per KiB step (KiB->MiB->GiB ladder). */
+} overlay_sd_unit_t;
 
 /* 5x7 column-major font, ASCII 0x20..0x7E. Five bytes per glyph; bit b of a
  * column byte lights row b (0 = top). A public-domain 5x7 cell font. */
@@ -316,7 +324,7 @@ section_head(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const 
             w,
             h,
             x,
-            y + 10,
+            y + (int32_t)k_rule_dy,
             (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
             1,
             (uint16_t)k_ovl_rule);
@@ -334,7 +342,7 @@ static int32_t kv_row(uint16_t*   out,
                       uint16_t    val_color)
 {
   const int32_t adv      = ((int32_t)k_ovl_glyph_w + 1);
-  const int32_t value_dx = 7 * adv; /* fixed label column so values align */
+  const int32_t value_dx = (int32_t)k_kv_label_cols * adv; /* fixed label column so values align */
   draw_text(out, w, h, x, y, label, (uint16_t)k_ovl_dim, 1);
   draw_text(out, w, h, x + value_dx, y, value, val_color, 1);
   return y + (int32_t)k_row_step;
@@ -432,9 +440,10 @@ draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const
     (void)snprintf(buf, sizeof(buf), "-");
   }
   cy                        = kv_row(out, w, h, x, cy, "touch", buf, (uint16_t)k_ovl_text);
-  const bool          sd_gb = (st->sd_bytes >= (1024ULL * 1024ULL * 1024ULL));
-  const unsigned long sd_sz = sd_gb ? (unsigned long)(st->sd_bytes / (1024ULL * 1024ULL * 1024ULL))
-                                    : (unsigned long)(st->sd_bytes / (1024ULL * 1024ULL));
+  const bool          sd_gb = (st->sd_bytes >= (k_sd_unit_div * k_sd_unit_div * k_sd_unit_div));
+  const unsigned long sd_sz = sd_gb
+                                ? (unsigned long)(st->sd_bytes / (k_sd_unit_div * k_sd_unit_div * k_sd_unit_div))
+                                : (unsigned long)(st->sd_bytes / (k_sd_unit_div * k_sd_unit_div));
   const char*         sd_u  = sd_gb ? "GB" : "MB";
   if (!st->sd_attached) {
     (void)snprintf(buf, sizeof(buf), "-");
@@ -475,7 +484,7 @@ static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
             w,
             h,
             x,
-            (int32_t)k_con_head_y + 10,
+            (int32_t)k_con_head_y + (int32_t)k_rule_dy,
             (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
             1,
             (uint16_t)k_ovl_rule);
@@ -652,10 +661,10 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
             (int32_t)panel_w + 3,
             0,
             (int32_t)k_ovl_sidebar_w - 3,
-            40,
+            (int32_t)k_title_bar_h,
             (uint16_t)k_ovl_bg_alt);
   draw_text(out, w, h, x, y, "EK-RA8D2  SIMULATOR", (uint16_t)k_ovl_accent, 2);
-  y = 40 + (int32_t)k_section_gap;
+  y = (int32_t)k_title_bar_h + (int32_t)k_section_gap;
   draw_text(out,
             w,
             h,
