@@ -23,20 +23,20 @@
 
 /** @brief Status-sidebar layout offsets (pixels). */
 typedef enum : int32_t {
-  k_led_label_dy = 6,   /**< LED label vertical offset within its dot. */
-  k_led_row_dy   = 22,  /**< "LEDS" heading to the LED row.            */
-  k_led_col_dx   = 150, /**< Horizontal spacing between LEDs.          */
-  k_led_row_h    = 40,  /**< LED row height (advance to next block).   */
-  k_pad_x        = 18,  /**< Left padding inside the sidebar.          */
-  k_sidebar_top  = 16,  /**< Sidebar top margin.                       */
-  k_title_gap    = 26,  /**< Title line to the app-name line.          */
-  k_appname_gap  = 30,  /**< App-name line to the run-stats block.     */
-  k_section_gap  = 16,  /**< Gap above a section heading.              */
-  k_heading_gap  = 20,  /**< Section heading to its first row.         */
-  k_row_step     = 16,  /**< Vertical step between text rows.          */
-  k_rule_dy      = 10,  /**< Heading baseline to its underline rule.   */
-  k_kv_label_cols = 7,  /**< Label column width (glyphs) so values align. */
-  k_title_bar_h  = 40,  /**< Title-bar band height (board name at 2x). */
+  k_led_label_dy  = 6,   /**< LED label vertical offset within its dot. */
+  k_led_row_dy    = 22,  /**< "LEDS" heading to the LED row.            */
+  k_led_col_dx    = 150, /**< Horizontal spacing between LEDs.          */
+  k_led_row_h     = 40,  /**< LED row height (advance to next block).   */
+  k_pad_x         = 18,  /**< Left padding inside the sidebar.          */
+  k_sidebar_top   = 16,  /**< Sidebar top margin.                       */
+  k_title_gap     = 26,  /**< Title line to the app-name line.          */
+  k_appname_gap   = 30,  /**< App-name line to the run-stats block.     */
+  k_section_gap   = 16,  /**< Gap above a section heading.              */
+  k_heading_gap   = 20,  /**< Section heading to its first row.         */
+  k_row_step      = 16,  /**< Vertical step between text rows.          */
+  k_rule_dy       = 10,  /**< Heading baseline to its underline rule.   */
+  k_kv_label_cols = 7,   /**< Label column width (glyphs) so values align. */
+  k_title_bar_h   = 40,  /**< Title-bar band height (board name at 2x). */
 } overlay_layout_t;
 
 /** @brief Sidebar geometry and palette (RGB565). */
@@ -441,10 +441,10 @@ draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const
   }
   cy                        = kv_row(out, w, h, x, cy, "touch", buf, (uint16_t)k_ovl_text);
   const bool          sd_gb = (st->sd_bytes >= (k_sd_unit_div * k_sd_unit_div * k_sd_unit_div));
-  const unsigned long sd_sz = sd_gb
-                                ? (unsigned long)(st->sd_bytes / (k_sd_unit_div * k_sd_unit_div * k_sd_unit_div))
-                                : (unsigned long)(st->sd_bytes / (k_sd_unit_div * k_sd_unit_div));
-  const char*         sd_u  = sd_gb ? "GB" : "MB";
+  const unsigned long sd_sz =
+    sd_gb ? (unsigned long)(st->sd_bytes / (k_sd_unit_div * k_sd_unit_div * k_sd_unit_div))
+          : (unsigned long)(st->sd_bytes / (k_sd_unit_div * k_sd_unit_div));
+  const char* sd_u = sd_gb ? "GB" : "MB";
   if (!st->sd_attached) {
     (void)snprintf(buf, sizeof(buf), "-");
   } else if (st->sd_fat_bits != 0U) {

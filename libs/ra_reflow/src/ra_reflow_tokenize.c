@@ -874,7 +874,7 @@ static bool priv_attr_name_at(const uint8_t* tag, size_t i, const char* name, si
       return false;
     }
   }
-  const char prev = (i == 0U) ? '<' : (char)tag[i - 1U];
+  const char prev = (char)((i == 0U) ? '<' : tag[i - 1U]);
   return !(((prev >= 'a') && (prev <= 'z')) || ((prev >= 'A') && (prev <= 'Z')));
 }
 

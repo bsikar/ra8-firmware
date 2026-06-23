@@ -200,7 +200,7 @@ static bool priv_ws(char c)
 /** @brief ASCII-fold to lower case. */
 static char priv_lc(char c)
 {
-  return ((c >= 'A') && (c <= 'Z')) ? (char)(c + ('a' - 'A')) : c;
+  return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
 
 /** @brief True iff @p s[at..] begins (case-insensitively) with @p lit. */

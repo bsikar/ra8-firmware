@@ -1505,9 +1505,8 @@ static uint8_t priv_sfn_checksum(const uint8_t* name83)
 {
   uint8_t sum = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_dir_name_field_len; i++) {
-    sum =
-      (uint8_t)((((sum & 1U) != 0U) ? (uint32_t)k_sfn_csum_high_bit : 0U) +
-                (uint32_t)(sum >> 1U) + (uint32_t)name83[i]);
+    sum = (uint8_t)((((sum & 1U) != 0U) ? (uint32_t)k_sfn_csum_high_bit : 0U) +
+                    (uint32_t)(sum >> 1U) + (uint32_t)name83[i]);
   }
   return sum;
 }
@@ -1525,13 +1524,20 @@ static void priv_lfn_reset(lfn_state_t* s)
 /** @brief Fold one LFN entry's 13 chars into @p s at their sequence offset. */
 static void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
 {
-  static const uint8_t k_off[k_lfn_chars_per_ent] = {
-    (uint8_t)k_lfn_char_off_0,  (uint8_t)k_lfn_char_off_1,  (uint8_t)k_lfn_char_off_2,
-    (uint8_t)k_lfn_char_off_3,  (uint8_t)k_lfn_char_off_4,  (uint8_t)k_lfn_char_off_5,
-    (uint8_t)k_lfn_char_off_6,  (uint8_t)k_lfn_char_off_7,  (uint8_t)k_lfn_char_off_8,
-    (uint8_t)k_lfn_char_off_9,  (uint8_t)k_lfn_char_off_10, (uint8_t)k_lfn_char_off_11,
-    (uint8_t)k_lfn_char_off_12};
-  const uint32_t order = (uint32_t)(ent[k_lfn_off_seq] & (uint8_t)k_lfn_seq_order_mask);
+  static const uint8_t k_off[k_lfn_chars_per_ent] = {(uint8_t)k_lfn_char_off_0,
+                                                     (uint8_t)k_lfn_char_off_1,
+                                                     (uint8_t)k_lfn_char_off_2,
+                                                     (uint8_t)k_lfn_char_off_3,
+                                                     (uint8_t)k_lfn_char_off_4,
+                                                     (uint8_t)k_lfn_char_off_5,
+                                                     (uint8_t)k_lfn_char_off_6,
+                                                     (uint8_t)k_lfn_char_off_7,
+                                                     (uint8_t)k_lfn_char_off_8,
+                                                     (uint8_t)k_lfn_char_off_9,
+                                                     (uint8_t)k_lfn_char_off_10,
+                                                     (uint8_t)k_lfn_char_off_11,
+                                                     (uint8_t)k_lfn_char_off_12};
+  const uint32_t       order = (uint32_t)(ent[k_lfn_off_seq] & (uint8_t)k_lfn_seq_order_mask);
   if ((order < 1U) || (order > (uint32_t)k_lfn_max_entries)) {
     return; /* out-of-range sequence -> corrupt chain, ignore this entry */
   }
@@ -1549,7 +1555,8 @@ static void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
       s->name[pos] = '\0'; /* terminator / padding ends this group's name */
       break;
     }
-    s->name[pos] = (val <= (uint32_t)k_lfn_ascii_max) ? (char)(unsigned char)val : '?';
+    s->name[pos] =
+      (char)((val <= (uint32_t)k_lfn_ascii_max) ? (unsigned char)val : (unsigned char)'?');
   }
 }
 
@@ -1646,13 +1653,13 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-static ra_fs_lfn_scan_t priv_dir_find_long_sector(const char*  needle,
+static ra_fs_lfn_scan_t priv_dir_find_long_sector(const char*    needle,
                                                   const uint8_t* buf,
                                                   uint32_t       cur_lba,
                                                   lfn_state_t*   lfn,
                                                   uint32_t*      out_lba,
                                                   uint32_t*      out_entry_off,
-                                                  uint8_t out_entry[k_ra_fs_dir_entry_bytes])
+                                                  uint8_t        out_entry[k_ra_fs_dir_entry_bytes])
 {
   for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra_fs_dir_entry_bytes];
@@ -5480,7 +5487,7 @@ static ra_err_t priv_write_new_dir_entry(ra_fs_mount_t* handle,
  *
  * @since 0.1.0
  */
-static void priv_init_new_file(ra_fs_file_t* f,
+static void priv_init_new_file(ra_fs_file_t*  f,
                                ra_fs_mount_t* handle,
                                ra_fs_mode_t   mode,
                                uint32_t       free_lba,

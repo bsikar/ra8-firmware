@@ -550,7 +550,8 @@ static void tz_usb_mark_ns(void)
 static void tz_usb_handoff_prepare(void)
 {
   /* 1+2+3. Route USB pins (FS device + HS host) and enable the USBHS PLL. */
-  g_tz_usb_pins_err = (uint32_t)tz_usb_route_pins();
+  const ra_err_t pins_err = tz_usb_route_pins();
+  g_tz_usb_pins_err       = (uint32_t)pins_err;
 
   /* 4. Set the U15 I/O-expander to USBHS host mode (SW4-8 -> Host). Decoupled
    *    from the deterministic setup above and best-effort: on a cold boot the

@@ -121,14 +121,14 @@ typedef enum : uint16_t {
   k_ra_elc_event_icu_irq12 = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
   k_ra_elc_event_icu_irq13 = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
   k_ra_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15. */
-  k_ra_elc_event_ulpt0_ulpti   = 0x080U, /**< ULPT0 underflow (counter reaches 0).
+  k_ra_elc_event_ulpt0_ulpti      = 0x080U, /**< ULPT0 underflow (counter reaches 0).
                                               `ULPT0_ULPTI` per HUM Ch 19.2.3
                                               Table 19.3 p 823. Used as the
                                               Software-Standby wake source. */
-  k_ra_elc_event_ulpt0_ulptcmai = 0x081U, /**< ULPT0 compare-match A
+  k_ra_elc_event_ulpt0_ulptcmai   = 0x081U, /**< ULPT0 compare-match A
                                                (`ULPT0_ULPTCMAI`, HUM Ch 19.2.3
                                                Table 19.3 p 823). */
-  k_ra_elc_event_ulpt0_ulptcmbi = 0x082U, /**< ULPT0 compare-match B
+  k_ra_elc_event_ulpt0_ulptcmbi   = 0x082U, /**< ULPT0 compare-match B
                                                (`ULPT0_ULPTCMBI`, HUM Ch 19.2.3
                                                Table 19.3 p 823). */
   k_ra_elc_event_can0_mram_eri    = 0x338U, /**< CANFD0 MRAM ECC error (HUM Ch 19 Table 19.3). */
