@@ -7,9 +7,12 @@
  *
  * @details
  * driver for the RA8D2 ULPT block (two channels, ULPT0
- * and ULPT1). The ULPT clocks from the sub-clock so it keeps
- * counting in software-standby mode, which makes it the right
- * source for low-power wake-up. This driver covers init, start,
+ * and ULPT1). With ULPTMR1.TCK1 = 0 the counter clocks from
+ * ULPTLCLK (the LOCO-derived 32.768 kHz clock, HUM Table 9.2
+ * p 320), which keeps running in Software Standby while
+ * LOCOCR.LCSTP = 0 (HUM Table 11.3 footnote *2 p 433) -- making
+ * it the right source for low-power wake-up without relying on
+ * the off-chip sub-clock crystal. This driver covers init, start,
  * stop, deinit, runtime period change, status read, IRQ
  * dispatch, and power transition. Every register access carries
  * a HUM Ch 25 citation.
@@ -77,8 +80,9 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
 
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
   reg->ULPTCR = 0U;
-  /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 -- free-running,
-   * sub-clock source. */
+  /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 -- timer mode,
+   * TCK1 = 0 selects ULPTLCLK (LOCO-derived 32.768 kHz, HUM Table 9.2
+   * p 320), which survives Software Standby. */
   reg->ULPTMR1 = 0U;
   /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
   reg->ULPTMR2 = 0U;
