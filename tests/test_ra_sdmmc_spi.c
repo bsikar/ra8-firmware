@@ -819,7 +819,7 @@ static void queue_read_back(const uint8_t* block)
   const uint16_t crc = ra_sdmmc_spi_crc16(block, (uint32_t)k_ra_sdmmc_spi_block_size);
   mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
   mock_queue_byte((uint8_t)(crc & 0xFFU));
-  mock_queue_idle(1U);                               /* cs_release post-byte. */
+  mock_queue_idle(1U); /* cs_release post-byte. */
 }
 
 /**

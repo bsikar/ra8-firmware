@@ -111,11 +111,26 @@ static bool s_init = false;
 
 /** @enum priv_alloc_const_t @brief Local allocator constants. */
 typedef enum : size_t {
-  k_priv_hdr_bytes = sizeof(priv_blk_t),   /**< Block-header size.          */
-  k_priv_align     = alignof(max_align_t), /**< Payload alignment.          */
+  /** Block-header stride, rounded up to a whole number of arena cells.
+   *  ::priv_cell_at indexes ``s_pool`` by ``off / sizeof(priv_pool_cell_t)``,
+   *  which truncates any offset that is not a cell multiple. Keeping the
+   *  header a whole number of cells means a payload that starts ``hdr`` bytes
+   *  after a cell-aligned header is itself cell-aligned, so every header and
+   *  payload offset divides exactly and no block is ever aliased onto a
+   *  neighbour. ``sizeof(priv_blk_t)`` alone is not enough: on a target whose
+   *  ``priv_blk_t`` is smaller than a cell, the bare size would leave payloads
+   *  on sub-cell offsets that ::priv_cell_at then collapses. */
+  k_priv_hdr_bytes =
+    ((sizeof(priv_blk_t) + sizeof(priv_pool_cell_t) - 1U) / sizeof(priv_pool_cell_t)) *
+    sizeof(priv_pool_cell_t),
+  /** Payload alignment == one arena cell. This is ``>= alignof(max_align_t)``
+   *  (the cell embeds a ``max_align_t``), so rounding requests up to it both
+   *  satisfies the documented ``max_align_t`` guarantee and keeps every split
+   *  offset cell-aligned for ::priv_cell_at. */
+  k_priv_align = sizeof(priv_pool_cell_t),
   /** Upper bound on block count (NASA Rule 2 loop bound): every block is at
    *  least a header plus one alignment unit of payload. */
-  k_priv_walk_max = k_ra_epub_miniz_pool_bytes / (sizeof(priv_blk_t) + alignof(max_align_t)),
+  k_priv_walk_max = k_ra_epub_miniz_pool_bytes / (k_priv_hdr_bytes + sizeof(priv_pool_cell_t)),
   k_priv_blk_free = 1U, /**< ``is_free`` value for a free block.  */
   k_priv_blk_used = 0U, /**< ``is_free`` value for a used block.  */
 } priv_alloc_const_t;
