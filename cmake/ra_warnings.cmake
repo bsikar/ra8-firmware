@@ -60,7 +60,16 @@ function(ra_target_enable_project_warnings target)
     if(NOT DEFINED RA_WARN_STACK_USAGE_BYTES OR RA_WARN_STACK_USAGE_BYTES STREQUAL "")
         set(RA_WARN_STACK_USAGE_BYTES 2048)
     endif()
-    target_compile_options(${target} PRIVATE
-        $<$<COMPILE_LANG_AND_ID:C,GNU>:-Wstack-usage=${RA_WARN_STACK_USAGE_BYTES}>
-        $<$<COMPILE_LANG_AND_ID:C,GNU>:-fstack-usage>)
+    # STACK_USAGE_BYTES 0 disables the compile-time stack gate. The host
+    # unit-test build uses this: the host (x86_64 / arm64) ABI inflates
+    # frames well past the Cortex-M85 budget, so -Wstack-usage=N there is a
+    # false-positive generator (e.g. ra_book / ra_reflow XML walkers). The
+    # real target stack budget is enforced by the firmware build, which
+    # passes its per-app STACK_USAGE_BYTES, plus the .su aggregation in
+    # scripts/utils/stack_usage_check.py over the ARM `.su` files.
+    if(NOT RA_WARN_STACK_USAGE_BYTES STREQUAL "0")
+        target_compile_options(${target} PRIVATE
+            $<$<COMPILE_LANG_AND_ID:C,GNU>:-Wstack-usage=${RA_WARN_STACK_USAGE_BYTES}>
+            $<$<COMPILE_LANG_AND_ID:C,GNU>:-fstack-usage>)
+    endif()
 endfunction()
