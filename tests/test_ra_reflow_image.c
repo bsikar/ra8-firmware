@@ -270,6 +270,63 @@ static void test_arena_drained_and_no_mem(void)
 }
 
 /**
+ * @test test_decode_fail_real_paths_mcdc
+ *
+ * @par MC/DC:
+ * Two production-source decisions are driven here through the real
+ * ra_img_decode_blit() API (no mirror), by their returned ra_err_t:
+ *
+ * (A) internal_decode_fail(): `if (reason != NULL && strstr(reason,"outofmem"))`
+ *     (libs/ra_reflow/src/ra_reflow_image.c@internal_decode_fail; 2 cond, AND).
+ *      - The OOM arm (C1 T, C2 T -> decision T -> k_ra_err_no_mem) is exercised
+ *        by handing a *valid* 2x2 PNG to an arena far too small to hold even the
+ *        first stb allocation: stb's allocator returns NULL, stb sets its
+ *        failure reason to the tag "outofmem", and internal_decode_fail()
+ *        classifies it as no_mem. This is the previously-uncovered true arm.
+ *      - The non-OOM arm (decision F -> k_ra_err_not_supported) is exercised by
+ *        handing undecodable bytes to a large arena (reason != "outofmem").
+ *
+ * (B) ra_img_decode_blit()'s decode-failure guard
+ *     `if ((pixels == NULL) || (sx <= 0) || (sy <= 0))` (3 cond, OR). The
+ *     reachable condition C1 (pixels == NULL) is driven true by *both* failure
+ *     routes below, taking the failure block to its two distinct error returns.
+ *     C2/C3 (sx<=0 / sy<=0) are defensive: stb never returns a non-NULL buffer
+ *     with a non-positive dimension, so they are not reachable via the API.
+ *
+ * Vectors:
+ *  - V1: valid PNG + 48-byte arena  -> A:C1 T,C2 T -> no_mem.
+ *  - V2: junk bytes  + 64 KiB arena -> A:C2 F      -> not_supported.
+ * Both drive B:C1 (pixels == NULL) true; A's C1 stays true in both (a reason
+ * string is always set on a stb failure), so V1 vs V2 vary A's C2 and flip the
+ * no_mem-vs-not_supported outcome -- C2 independently affects the result.
+ */
+static void test_decode_fail_real_paths_mcdc(void)
+{
+  TEST_BEGIN("ra_img_decode_blit decode-fail MC/DC: no_mem vs not_supported");
+  static uint8_t fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(fb, 4, 4, k_ra_gfx_format_rgb888));
+
+  /* V1: a valid PNG into an arena too small for the first stb allocation
+     deterministically fails with the "outofmem" tag -> no_mem (true arm). */
+  static uint8_t tiny[48];
+  ra_img_arena_t small = {.base = tiny, .cap = sizeof tiny, .offset = 0U, .live = 0U};
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 ra_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL));
+  TEST_ASSERT_EQ(0, (int64_t)small.offset);
+  TEST_ASSERT_EQ(0, (int64_t)small.live);
+
+  /* V2: undecodable bytes into a large arena -> reason != "outofmem"
+     -> not_supported (false arm). */
+  static uint8_t scratch[64U * 1024U];
+  ra_img_arena_t big = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+  TEST_ASSERT_EQ(k_ra_err_not_supported,
+                 ra_img_decode_blit(&big, s_junk, sizeof s_junk, 0, 0, 4, 4, NULL, NULL));
+  TEST_ASSERT_EQ(0, (int64_t)big.offset);
+  TEST_ASSERT_EQ(0, (int64_t)big.live);
+  TEST_END("ra_img_decode_blit decode-fail MC/DC: no_mem vs not_supported");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -280,6 +337,7 @@ int32_t main(void)
   test_decode_blit_precondition_mcdc();
   test_fit_box_branch_mcdc();
   test_decode_fail_classify_mcdc();
+  test_decode_fail_real_paths_mcdc();
   test_arena_drained_and_no_mem();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_image.c\n");
   return 0;
