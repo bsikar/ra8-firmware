@@ -124,7 +124,7 @@ static bool priv_is_ws(char c)
 /** @brief ASCII-fold one byte to lower case. */
 static char priv_lower(char c)
 {
-  return ((c >= 'A') && (c <= 'Z')) ? (char)(c + ('a' - 'A')) : c;
+  return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
 
 /** @brief Case-insensitive compare of span @p s[0..len) against NUL literal @p lit. */
@@ -940,9 +940,9 @@ ra_err_t ra_css_sheet_reset(ra_css_sheet_t* sheet)
  */
 static size_t priv_skip_comment(const char* css, size_t len, size_t start)
 {
-  const char open_a  = '/';
-  const char open_b  = '*';
-  size_t     j       = start + (size_t)k_priv_cmt_marker;
+  const char open_a = '/';
+  const char open_b = '*';
+  size_t     j      = start + (size_t)k_priv_cmt_marker;
   /* Bounded: j strictly increases each pass; capped at len. */
   while (((j + 1U) < len) && !((css[j] == open_b) && (css[j + 1U] == open_a))) {
     ++j;

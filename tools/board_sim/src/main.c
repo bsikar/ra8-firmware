@@ -178,21 +178,21 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   /* ELF32 layout, in bytes. */
-  k_elf_ehdr_size      = 52U, /**< ELF32 file-header size.            */
-  k_elf_em_arm         = 40U, /**< e_machine == EM_ARM.               */
-  k_elf_e_phoff_off    = 28U, /**< e_phoff in the file header.        */
-  k_elf_ph_offset_off  = 4U,  /**< p_offset in a program header.      */
-  k_elf_ph_vaddr_off   = 8U,  /**< p_vaddr (VMA) in a program header. */
-  k_elf_ph_paddr_off   = 12U, /**< p_paddr in a program header.       */
-  k_elf_ph_filesz_off  = 16U, /**< p_filesz in a program header.      */
-  k_elf_ph_flags_off   = 24U, /**< p_flags in a program header.       */
-  k_elf_pf_x           = 1U,  /**< PF_X: segment is executable.       */
-  k_elf_pt_load        = 1U,  /**< p_type == PT_LOAD.                 */
-  k_elf_shentsize_min  = 40U, /**< ELF32 section-header entry size.   */
-  k_elf_sh_size_off    = 20U, /**< sh_size in a section header.       */
-  k_elf_sh_link_off    = 24U, /**< sh_link in a section header.       */
-  k_elf_sh_entsize_off = 36U, /**< sh_entsize in a section header.    */
-  k_elf_sym_info_off   = 12U, /**< st_info in a symbol-table entry.   */
+  k_elf_ehdr_size      = 52U,   /**< ELF32 file-header size.            */
+  k_elf_em_arm         = 40U,   /**< e_machine == EM_ARM.               */
+  k_elf_e_phoff_off    = 28U,   /**< e_phoff in the file header.        */
+  k_elf_ph_offset_off  = 4U,    /**< p_offset in a program header.      */
+  k_elf_ph_vaddr_off   = 8U,    /**< p_vaddr (VMA) in a program header. */
+  k_elf_ph_paddr_off   = 12U,   /**< p_paddr in a program header.       */
+  k_elf_ph_filesz_off  = 16U,   /**< p_filesz in a program header.      */
+  k_elf_ph_flags_off   = 24U,   /**< p_flags in a program header.       */
+  k_elf_pf_x           = 1U,    /**< PF_X: segment is executable.       */
+  k_elf_pt_load        = 1U,    /**< p_type == PT_LOAD.                 */
+  k_elf_shentsize_min  = 40U,   /**< ELF32 section-header entry size.   */
+  k_elf_sh_size_off    = 20U,   /**< sh_size in a section header.       */
+  k_elf_sh_link_off    = 24U,   /**< sh_link in a section header.       */
+  k_elf_sh_entsize_off = 36U,   /**< sh_entsize in a section header.    */
+  k_elf_sym_info_off   = 12U,   /**< st_info in a symbol-table entry.   */
   k_elf_st_type_mask   = 0x0FU, /**< Low nibble of st_info is the type. */
   /* Thumb / conditional-select instruction decode. */
   k_thumb_op5_shift = 11U,   /**< op5 = hw0[15:11].                  */
@@ -1473,18 +1473,18 @@ enum : uint32_t {
   k_prof_max_samples = 16384U, /**< Chronological stack samples (decimated).  */
   k_prof_samp_every  = 256U,   /**< Default instructions per chain sample.    */
 };
-static uint16_t s_pstk[k_prof_max_depth];                     /**< Live chain. */
-static uint32_t s_pstk_n = 0U;                                /**< Chain depth.*/
-static uint16_t s_samp[k_prof_max_samples][k_prof_max_depth]; /**< root..leaf. */
-static uint8_t  s_samp_d[k_prof_max_samples];                 /**< Per-sample chain depth.   */
-static uint32_t s_samp_w[k_prof_max_samples];                 /**< Per-sample weight (insns).*/
-static uint32_t s_samp_n        = 0U;                         /**< Stored sample count.      */
+static uint16_t s_pstk[k_prof_max_depth];                      /**< Live chain. */
+static uint32_t s_pstk_n = 0U;                                 /**< Chain depth.*/
+static uint16_t s_samp[k_prof_max_samples][k_prof_max_depth];  /**< root..leaf. */
+static uint8_t  s_samp_d[k_prof_max_samples];                  /**< Per-sample chain depth.   */
+static uint32_t s_samp_w[k_prof_max_samples];                  /**< Per-sample weight (insns).*/
+static uint32_t s_samp_n        = 0U;                          /**< Stored sample count.      */
 static uint64_t s_samp_every    = (uint64_t)k_prof_samp_every; /**< Insns per sample (>>x2). */
-static uint64_t s_samp_acc      = 0U;                         /**< Insns since last sample.  */
-static uint32_t s_prof_stop_pc  = 0U;                         /**< BOARD_SIM_STOP_PC (0=off).*/
-static bool     s_prof_stop_hit = false;                      /**< Set when STOP_PC reached. */
-static uint64_t s_incl[k_prof_max_syms];                      /**< Inclusive weight (report).*/
-static uint64_t s_self[k_prof_max_syms];                      /**< Self (leaf) weight.       */
+static uint64_t s_samp_acc      = 0U;                          /**< Insns since last sample.  */
+static uint32_t s_prof_stop_pc  = 0U;                          /**< BOARD_SIM_STOP_PC (0=off).*/
+static bool     s_prof_stop_hit = false;                       /**< Set when STOP_PC reached. */
+static uint64_t s_incl[k_prof_max_syms];                       /**< Inclusive weight (report).*/
+static uint64_t s_self[k_prof_max_syms];                       /**< Self (leaf) weight.       */
 
 /** @brief qsort comparator: order the FUNC symbols by entry address. */
 static int prof_cmp(const void* a, const void* b)
@@ -1990,8 +1990,11 @@ static void prof_report(void)
                     s_prof[best].name);
       s_prof[best].insns = 0U;
     } else {
-      (void)
-        fprintf(stderr, "    %6.2f%%  %8.2fs  %s\n", s_percent_scale * bestv / tot, bestv, s_prof[best].name);
+      (void)fprintf(stderr,
+                    "    %6.2f%%  %8.2fs  %s\n",
+                    s_percent_scale * bestv / tot,
+                    bestv,
+                    s_prof[best].name);
       s_prof[best].secs = 0.0;
     }
   }
@@ -3067,8 +3070,11 @@ typedef enum : uint8_t {
 } vkbd_keycode_t;
 
 /** @brief HID Usage-Table keycodes the virtual keyboard "types": R A 8 D 2. */
-static const uint8_t k_vkbd_keycodes[k_vkbd_num_keys] = {
-  k_vkbd_key_r, k_vkbd_key_a, k_vkbd_key_8, k_vkbd_key_d, k_vkbd_key_2};
+static const uint8_t k_vkbd_keycodes[k_vkbd_num_keys] = {k_vkbd_key_r,
+                                                         k_vkbd_key_a,
+                                                         k_vkbd_key_8,
+                                                         k_vkbd_key_d,
+                                                         k_vkbd_key_2};
 
 static uint8_t  s_vkbd_seq           = 0U; /**< Rolling report seq (report byte 0). */
 static uint32_t s_vkbd_ctrl_serviced = 0U; /**< Control transfers answered.         */
@@ -3213,48 +3219,48 @@ typedef enum : uint32_t {
 
 /** @brief FAT16 BPB byte offsets, fixed field values, and store shifts. */
 typedef enum : uint32_t {
-  k_bpb_shift8           = 8U,    /**< Byte 1 store shift.                  */
-  k_bpb_shift16          = 16U,   /**< Byte 2 store shift.                  */
-  k_bpb_shift24          = 24U,   /**< Byte 3 store shift.                  */
-  k_bpb_jmp0             = 0xEBU, /**< BS_jmpBoot[0]: short jump opcode.    */
-  k_bpb_jmp1             = 0x3CU, /**< BS_jmpBoot[1]: jump displacement.    */
-  k_bpb_jmp2             = 0x90U, /**< BS_jmpBoot[2]: NOP.                  */
-  k_bpb_off_oem          = 3U,    /**< BS_OEMName offset.                   */
-  k_bpb_off_bytspersec   = 11U,   /**< BPB_BytsPerSec offset.               */
-  k_bpb_off_secperclus   = 13U,   /**< BPB_SecPerClus offset.               */
-  k_bpb_off_rsvdseccnt   = 14U,   /**< BPB_RsvdSecCnt offset.               */
-  k_bpb_off_numfats      = 16U,   /**< BPB_NumFATs offset.                  */
-  k_bpb_off_rootentcnt   = 17U,   /**< BPB_RootEntCnt offset.               */
-  k_bpb_off_totsec16     = 19U,   /**< BPB_TotSec16 offset.                 */
-  k_bpb_off_media        = 21U,   /**< BPB_Media offset.                    */
-  k_bpb_off_fatsz16      = 22U,   /**< BPB_FATSz16 offset.                  */
-  k_bpb_off_secpertrk    = 24U,   /**< BPB_SecPerTrk offset.                */
-  k_bpb_off_numheads     = 26U,   /**< BPB_NumHeads offset.                 */
-  k_bpb_off_drvnum       = 36U,   /**< BS_DrvNum offset.                    */
-  k_bpb_off_bootsig      = 38U,   /**< BS_BootSig offset.                   */
-  k_bpb_off_volid        = 39U,   /**< BS_VolID offset.                     */
-  k_bpb_off_vollab       = 43U,   /**< BS_VolLab offset.                    */
-  k_bpb_off_filsystype   = 54U,   /**< BS_FilSysType offset.                */
-  k_bpb_off_sig0         = 510U,  /**< 0x55 signature byte.                 */
-  k_bpb_off_sig1         = 511U,  /**< 0xAA signature byte.                 */
-  k_bpb_secperclus_1     = 1U,    /**< 1 sector per cluster.                */
-  k_bpb_rsvdseccnt_1     = 1U,    /**< 1 reserved sector.                   */
-  k_bpb_numfats_1        = 1U,    /**< 1 FAT copy.                          */
-  k_bpb_rootentcnt_512   = 512U,  /**< 512 root-directory entries.          */
-  k_bpb_media_f8         = 0xF8U, /**< Fixed-disk media descriptor.         */
-  k_bpb_fatsz16_17       = 17U,   /**< 17 sectors per FAT.                  */
-  k_bpb_secpertrk_32     = 32U,   /**< 32 sectors per track.                */
-  k_bpb_numheads_16      = 16U,   /**< 16 heads.                            */
-  k_bpb_drvnum_80        = 0x80U, /**< Drive number (first fixed disk).     */
-  k_bpb_bootsig_29       = 0x29U, /**< Extended boot signature.             */
-  k_bpb_sig0_55          = 0x55U, /**< Boot-sector signature byte 0.        */
-  k_bpb_sig1_aa          = 0xAAU, /**< Boot-sector signature byte 1.        */
-  k_dir_off_attr         = 11U,   /**< Directory-entry attribute byte.      */
-  k_dir_off_entry        = 32U,   /**< Second 32-byte directory entry.      */
-  k_dir_off_fstcluslo    = 26U,   /**< DIR_FstClusLO offset within entry.   */
-  k_dir_off_filesize     = 28U,   /**< DIR_FileSize offset within entry.    */
-  k_dir_attr_vollabel    = 0x08U, /**< ATTR_VOLUME_ID.                      */
-  k_dir_attr_readonly    = 0x01U, /**< ATTR_READ_ONLY.                      */
+  k_bpb_shift8         = 8U,    /**< Byte 1 store shift.                  */
+  k_bpb_shift16        = 16U,   /**< Byte 2 store shift.                  */
+  k_bpb_shift24        = 24U,   /**< Byte 3 store shift.                  */
+  k_bpb_jmp0           = 0xEBU, /**< BS_jmpBoot[0]: short jump opcode.    */
+  k_bpb_jmp1           = 0x3CU, /**< BS_jmpBoot[1]: jump displacement.    */
+  k_bpb_jmp2           = 0x90U, /**< BS_jmpBoot[2]: NOP.                  */
+  k_bpb_off_oem        = 3U,    /**< BS_OEMName offset.                   */
+  k_bpb_off_bytspersec = 11U,   /**< BPB_BytsPerSec offset.               */
+  k_bpb_off_secperclus = 13U,   /**< BPB_SecPerClus offset.               */
+  k_bpb_off_rsvdseccnt = 14U,   /**< BPB_RsvdSecCnt offset.               */
+  k_bpb_off_numfats    = 16U,   /**< BPB_NumFATs offset.                  */
+  k_bpb_off_rootentcnt = 17U,   /**< BPB_RootEntCnt offset.               */
+  k_bpb_off_totsec16   = 19U,   /**< BPB_TotSec16 offset.                 */
+  k_bpb_off_media      = 21U,   /**< BPB_Media offset.                    */
+  k_bpb_off_fatsz16    = 22U,   /**< BPB_FATSz16 offset.                  */
+  k_bpb_off_secpertrk  = 24U,   /**< BPB_SecPerTrk offset.                */
+  k_bpb_off_numheads   = 26U,   /**< BPB_NumHeads offset.                 */
+  k_bpb_off_drvnum     = 36U,   /**< BS_DrvNum offset.                    */
+  k_bpb_off_bootsig    = 38U,   /**< BS_BootSig offset.                   */
+  k_bpb_off_volid      = 39U,   /**< BS_VolID offset.                     */
+  k_bpb_off_vollab     = 43U,   /**< BS_VolLab offset.                    */
+  k_bpb_off_filsystype = 54U,   /**< BS_FilSysType offset.                */
+  k_bpb_off_sig0       = 510U,  /**< 0x55 signature byte.                 */
+  k_bpb_off_sig1       = 511U,  /**< 0xAA signature byte.                 */
+  k_bpb_secperclus_1   = 1U,    /**< 1 sector per cluster.                */
+  k_bpb_rsvdseccnt_1   = 1U,    /**< 1 reserved sector.                   */
+  k_bpb_numfats_1      = 1U,    /**< 1 FAT copy.                          */
+  k_bpb_rootentcnt_512 = 512U,  /**< 512 root-directory entries.          */
+  k_bpb_media_f8       = 0xF8U, /**< Fixed-disk media descriptor.         */
+  k_bpb_fatsz16_17     = 17U,   /**< 17 sectors per FAT.                  */
+  k_bpb_secpertrk_32   = 32U,   /**< 32 sectors per track.                */
+  k_bpb_numheads_16    = 16U,   /**< 16 heads.                            */
+  k_bpb_drvnum_80      = 0x80U, /**< Drive number (first fixed disk).     */
+  k_bpb_bootsig_29     = 0x29U, /**< Extended boot signature.             */
+  k_bpb_sig0_55        = 0x55U, /**< Boot-sector signature byte 0.        */
+  k_bpb_sig1_aa        = 0xAAU, /**< Boot-sector signature byte 1.        */
+  k_dir_off_attr       = 11U,   /**< Directory-entry attribute byte.      */
+  k_dir_off_entry      = 32U,   /**< Second 32-byte directory entry.      */
+  k_dir_off_fstcluslo  = 26U,   /**< DIR_FstClusLO offset within entry.   */
+  k_dir_off_filesize   = 28U,   /**< DIR_FileSize offset within entry.    */
+  k_dir_attr_vollabel  = 0x08U, /**< ATTR_VOLUME_ID.                      */
+  k_dir_attr_readonly  = 0x01U, /**< ATTR_READ_ONLY.                      */
 } vmsc_bpb_t;
 
 static const uint8_t k_vmsc_oem[8]    = {'R', 'A', '8', 'D', '2', 'F', 'W', ' '};
@@ -3342,17 +3348,17 @@ static void vmsc_fill_boot(uint8_t* out)
   out[2] = (uint8_t)k_bpb_jmp2; /* jmp + nop */
   (void)memcpy(&out[k_bpb_off_oem], k_vmsc_oem, sizeof(k_vmsc_oem));
   vmsc_put16(&out[k_bpb_off_bytspersec], (uint16_t)k_vmsc_block_size);
-  out[k_bpb_off_secperclus] = (uint8_t)k_bpb_secperclus_1;                  /* sectors/cluster */
-  vmsc_put16(&out[k_bpb_off_rsvdseccnt], (uint16_t)k_bpb_rsvdseccnt_1);     /* reserved sectors */
-  out[k_bpb_off_numfats] = (uint8_t)k_bpb_numfats_1;                        /* number of FATs */
-  vmsc_put16(&out[k_bpb_off_rootentcnt], (uint16_t)k_bpb_rootentcnt_512);   /* root entries */
+  out[k_bpb_off_secperclus] = (uint8_t)k_bpb_secperclus_1;                /* sectors/cluster */
+  vmsc_put16(&out[k_bpb_off_rsvdseccnt], (uint16_t)k_bpb_rsvdseccnt_1);   /* reserved sectors */
+  out[k_bpb_off_numfats] = (uint8_t)k_bpb_numfats_1;                      /* number of FATs */
+  vmsc_put16(&out[k_bpb_off_rootentcnt], (uint16_t)k_bpb_rootentcnt_512); /* root entries */
   vmsc_put16(&out[k_bpb_off_totsec16], (uint16_t)k_vmsc_total_sectors);
-  out[k_bpb_off_media] = (uint8_t)k_bpb_media_f8;                           /* media descriptor */
-  vmsc_put16(&out[k_bpb_off_fatsz16], (uint16_t)k_bpb_fatsz16_17);          /* sectors per FAT */
-  vmsc_put16(&out[k_bpb_off_secpertrk], (uint16_t)k_bpb_secpertrk_32);      /* sectors per track */
-  vmsc_put16(&out[k_bpb_off_numheads], (uint16_t)k_bpb_numheads_16);        /* heads */
-  out[k_bpb_off_drvnum]  = (uint8_t)k_bpb_drvnum_80;                        /* drive number */
-  out[k_bpb_off_bootsig] = (uint8_t)k_bpb_bootsig_29;                       /* ext boot signature */
+  out[k_bpb_off_media] = (uint8_t)k_bpb_media_f8;                      /* media descriptor */
+  vmsc_put16(&out[k_bpb_off_fatsz16], (uint16_t)k_bpb_fatsz16_17);     /* sectors per FAT */
+  vmsc_put16(&out[k_bpb_off_secpertrk], (uint16_t)k_bpb_secpertrk_32); /* sectors per track */
+  vmsc_put16(&out[k_bpb_off_numheads], (uint16_t)k_bpb_numheads_16);   /* heads */
+  out[k_bpb_off_drvnum]  = (uint8_t)k_bpb_drvnum_80;                   /* drive number */
+  out[k_bpb_off_bootsig] = (uint8_t)k_bpb_bootsig_29;                  /* ext boot signature */
   vmsc_put32(&out[k_bpb_off_volid], (uint32_t)k_vmsc_volid);
   (void)memcpy(&out[k_bpb_off_vollab], k_vmsc_label, sizeof(k_vmsc_label));
   (void)memcpy(&out[k_bpb_off_filsystype], k_vmsc_fstype, sizeof(k_vmsc_fstype));
@@ -3447,11 +3453,11 @@ static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, vo
     /* ra_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
      * out_mps,vid,pid. */
     uint8_t d[14] = {};
-    d[0]          = 1U; /* device_address */
-    d[1]          = 1U; /* bulk_in_ep     */
-    d[2]          = 2U; /* bulk_out_ep    */
-    vmsc_put16(&d[6], (uint16_t)k_hmsc_bulk_mps);                 /* bulk_in_max_packet  */
-    vmsc_put16(&d[8], (uint16_t)k_hmsc_bulk_mps);                 /* bulk_out_max_packet */
+    d[0]          = 1U;                                          /* device_address */
+    d[1]          = 1U;                                          /* bulk_in_ep     */
+    d[2]          = 2U;                                          /* bulk_out_ep    */
+    vmsc_put16(&d[6], (uint16_t)k_hmsc_bulk_mps);                /* bulk_in_max_packet  */
+    vmsc_put16(&d[8], (uint16_t)k_hmsc_bulk_mps);                /* bulk_out_max_packet */
     vmsc_put16(&d[k_hmsc_off_vid], (uint16_t)k_hmsc_vendor_id);  /* vendor_id            */
     vmsc_put16(&d[k_hmsc_off_pid], (uint16_t)k_hmsc_product_id); /* product_id           */
     (void)uc_mem_write(uc, (uint64_t)dev_ptr, d, sizeof(d));
@@ -5015,7 +5021,7 @@ int main(int argc, char** argv)
        * cannot exceed its cluster ceiling, so multi-GB cards are FAT32. */
       char*      endp = nullptr;
       const long num  = strtol(argv[i + 1], &endp, (int)k_strtol_base10);
-      uint64_t mult =
+      uint64_t   mult =
         (uint64_t)k_sectors_per_mib * (uint64_t)k_bytes_per_sector; /* default unit: MiB. */
       const char unit = ((endp != nullptr) && (*endp != '\0')) ? (char)tolower((int)*endp) : 'm';
       if (unit == 'k') {
@@ -5023,8 +5029,8 @@ int main(int argc, char** argv)
       } else if (unit == 'g') {
         mult = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
       } else if (unit == 't') {
-        mult = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib *
-               (uint64_t)k_size_kib;
+        mult =
+          (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
       }
       const uint64_t bytes   = (num > 0L) ? ((uint64_t)num * mult) : 0ULL;
       const uint64_t sectors = bytes / (uint64_t)k_bytes_per_sector;
@@ -6083,12 +6089,12 @@ int main(int argc, char** argv)
     uint8_t     sd_f   = 0U;
     const char* sd_l   = nullptr;
     board_sd_info(&sd_att, &sd_b, &sd_f, &sd_l);
-    const uint64_t      gib_bytes = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
-    const uint64_t      mib_bytes = (uint64_t)k_size_kib * (uint64_t)k_size_kib;
-    const bool          sd_gb     = (sd_b >= gib_bytes);
+    const uint64_t gib_bytes = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+    const uint64_t mib_bytes = (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+    const bool     sd_gb     = (sd_b >= gib_bytes);
     const unsigned long sd_sz =
       sd_gb ? (unsigned long)(sd_b / gib_bytes) : (unsigned long)(sd_b / mib_bytes);
-    const char*         sd_u  = sd_gb ? "GB" : "MB";
+    const char* sd_u = sd_gb ? "GB" : "MB";
     if (sd_att && (sd_f != 0U)) {
       (void)fprintf(stderr,
                     "  SD card       : %lu %s FAT%u '%s' (created by --sd-new)\n",

@@ -39,38 +39,38 @@
  * @brief SD SPI-mode protocol and sizing constants (no magic numbers).
  */
 typedef enum : uint16_t {
-  k_sd_block       = 512U,    /**< Bytes per SD block.                     */
-  k_sd_cmd_len     = 6U,      /**< Command frame: opcode + 4 arg + crc.    */
-  k_sd_resp_cap    = 520U,    /**< R1 + token + 512 data + 2 CRC.          */
-  k_sd_cmd_start   = 0x40U,   /**< SPI command lead bits (01xxxxxx).       */
-  k_sd_cmd_mask    = 0xC0U,   /**< Mask isolating the lead bits.           */
-  k_sd_idx_mask    = 0x3FU,   /**< Command index in the lead byte.         */
-  k_sd_idle        = 0xFFU,   /**< Bus idle / CIPO-high byte.              */
-  k_sd_tok_data    = 0xFEU,   /**< Single-block read / write data token.   */
-  k_sd_tok_wmulti  = 0xFCU,   /**< Multi-block write data-start token.      */
-  k_sd_tok_stop    = 0xFDU,   /**< Multi-block write stop-tran token.       */
-  k_sd_data_accept = 0x05U,   /**< Data-response token: block accepted.    */
-  k_sd_busy        = 0x00U,   /**< CIPO held low while the card programs.   */
-  k_sd_crc_len     = 2U,      /**< Trailing CRC16 bytes after a data block. */
-  k_sd_r1_idle     = 0x01U,   /**< R1 with IDLE set.                       */
-  k_sd_r1_ready    = 0x00U,   /**< R1, card ready.                         */
-  k_sd_byte_mask   = 0xFFU,   /**< Low byte mask.                          */
-  k_sd_byte_bits   = 8U,      /**< Bits per byte (shift amount).           */
-  k_sd_r7_len      = 5U,      /**< R1 + 4-byte tail.                       */
-  k_sd_arg_sh0     = 24U,     /**< Arg byte 0 (MSB) shift.                 */
-  k_sd_arg_sh1     = 16U,     /**< Arg byte 1 shift.                       */
-  k_sd_cmd8_echo   = 0xAAU,   /**< CMD8 check pattern echo.                */
-  k_sd_ocr_pwrccs  = 0xC0U,   /**< OCR byte 0: power-up done + CCS.        */
-  k_sd_ocr_volt    = 0x80U,   /**< OCR byte 2: voltage window.             */
-  k_sd_csd_v2      = 0x40U,   /**< CSD_STRUCTURE = 01b (v2.0 / SDHC).      */
-  k_sd_csd_csize   = 0x0FU,   /**< C_SIZE byte (=> 8 MiB modelled card).   */
-  k_sd_csd_len     = 16U,     /**< CSD register length.                    */
-  k_sd_csd_csize_b7 = 7U,     /**< C_SIZE high byte offset in the CSD.     */
-  k_sd_csd_csize_b8 = 8U,     /**< C_SIZE mid byte offset in the CSD.      */
-  k_sd_csd_off     = 9U,      /**< C_SIZE LSB byte offset in the CSD.      */
-  k_sd_csize_b7_mask = 0x3FU, /**< C_SIZE field spans only 6 bits in b7.   */
-  k_sd_crc_poly    = 0x1021U, /**< CRC16-CCITT polynomial.                 */
-  k_sd_crc_msb     = 0x8000U, /**< Top bit of the 16-bit CRC register.     */
+  k_sd_block         = 512U,    /**< Bytes per SD block.                     */
+  k_sd_cmd_len       = 6U,      /**< Command frame: opcode + 4 arg + crc.    */
+  k_sd_resp_cap      = 520U,    /**< R1 + token + 512 data + 2 CRC.          */
+  k_sd_cmd_start     = 0x40U,   /**< SPI command lead bits (01xxxxxx).       */
+  k_sd_cmd_mask      = 0xC0U,   /**< Mask isolating the lead bits.           */
+  k_sd_idx_mask      = 0x3FU,   /**< Command index in the lead byte.         */
+  k_sd_idle          = 0xFFU,   /**< Bus idle / CIPO-high byte.              */
+  k_sd_tok_data      = 0xFEU,   /**< Single-block read / write data token.   */
+  k_sd_tok_wmulti    = 0xFCU,   /**< Multi-block write data-start token.      */
+  k_sd_tok_stop      = 0xFDU,   /**< Multi-block write stop-tran token.       */
+  k_sd_data_accept   = 0x05U,   /**< Data-response token: block accepted.    */
+  k_sd_busy          = 0x00U,   /**< CIPO held low while the card programs.   */
+  k_sd_crc_len       = 2U,      /**< Trailing CRC16 bytes after a data block. */
+  k_sd_r1_idle       = 0x01U,   /**< R1 with IDLE set.                       */
+  k_sd_r1_ready      = 0x00U,   /**< R1, card ready.                         */
+  k_sd_byte_mask     = 0xFFU,   /**< Low byte mask.                          */
+  k_sd_byte_bits     = 8U,      /**< Bits per byte (shift amount).           */
+  k_sd_r7_len        = 5U,      /**< R1 + 4-byte tail.                       */
+  k_sd_arg_sh0       = 24U,     /**< Arg byte 0 (MSB) shift.                 */
+  k_sd_arg_sh1       = 16U,     /**< Arg byte 1 shift.                       */
+  k_sd_cmd8_echo     = 0xAAU,   /**< CMD8 check pattern echo.                */
+  k_sd_ocr_pwrccs    = 0xC0U,   /**< OCR byte 0: power-up done + CCS.        */
+  k_sd_ocr_volt      = 0x80U,   /**< OCR byte 2: voltage window.             */
+  k_sd_csd_v2        = 0x40U,   /**< CSD_STRUCTURE = 01b (v2.0 / SDHC).      */
+  k_sd_csd_csize     = 0x0FU,   /**< C_SIZE byte (=> 8 MiB modelled card).   */
+  k_sd_csd_len       = 16U,     /**< CSD register length.                    */
+  k_sd_csd_csize_b7  = 7U,      /**< C_SIZE high byte offset in the CSD.     */
+  k_sd_csd_csize_b8  = 8U,      /**< C_SIZE mid byte offset in the CSD.      */
+  k_sd_csd_off       = 9U,      /**< C_SIZE LSB byte offset in the CSD.      */
+  k_sd_csize_b7_mask = 0x3FU,   /**< C_SIZE field spans only 6 bits in b7.   */
+  k_sd_crc_poly      = 0x1021U, /**< CRC16-CCITT polynomial.                 */
+  k_sd_crc_msb       = 0x8000U, /**< Top bit of the 16-bit CRC register.     */
 } board_sd_const_t;
 
 /** @brief SD sizing constants that exceed 16 bits. */
@@ -393,8 +393,10 @@ static void board_sd_process_cmd(board_sd_state_t* c)
       if (c->image_len >= (uint32_t)k_sd_csd_unit) {
         csize = (c->image_len / (uint32_t)k_sd_csd_unit) - 1U;
       }
-      csd[k_sd_csd_csize_b7] = (uint8_t)((csize >> (uint32_t)k_sd_arg_sh1) & (uint32_t)k_sd_csize_b7_mask);
-      csd[k_sd_csd_csize_b8] = (uint8_t)((csize >> (uint32_t)k_sd_byte_bits) & (uint16_t)k_sd_byte_mask);
+      csd[k_sd_csd_csize_b7] =
+        (uint8_t)((csize >> (uint32_t)k_sd_arg_sh1) & (uint32_t)k_sd_csize_b7_mask);
+      csd[k_sd_csd_csize_b8] =
+        (uint8_t)((csize >> (uint32_t)k_sd_byte_bits) & (uint16_t)k_sd_byte_mask);
       csd[k_sd_csd_off] = (uint8_t)(csize & (uint16_t)k_sd_byte_mask);
       board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
       break;
@@ -494,29 +496,29 @@ bool board_sd_attached(void)
 
 /** @brief FAT BPB field offsets + format constants. */
 typedef enum : uint32_t {
-  k_fmt_sec_bytes  = 512U,        /**< Bytes per sector.                    */
-  k_fmt_fat16_max  = 65524U,      /**< Max FAT16 data clusters.             */
-  k_fmt_fat16_min  = 4085U,       /**< Min FAT16 data clusters.             */
-  k_fmt_spc_max    = 64U,         /**< Largest sectors-per-cluster we pick. */
-  k_fmt_fat32_pref = 4194304U,    /**< FAT32: preferred max clusters (bumps spc). */
-  k_fmt_root_ents  = 512U,        /**< FAT16 root-directory entries.        */
-  k_fmt_volid      = 0x52A8D200U, /**< Arbitrary volume serial base.        */
-  k_fmt_resv_f16   = 1U,          /**< FAT16 reserved sectors (boot).       */
-  k_fmt_resv_f32   = 32U,         /**< FAT32 reserved sectors.              */
-  k_fmt_label_len  = 11U,         /**< 8.3 volume-label field width.        */
-  k_fmt_totsec16_max = 0x10000U,  /**< Above this, use the 32-bit TotSec.   */
+  k_fmt_sec_bytes    = 512U,        /**< Bytes per sector.                    */
+  k_fmt_fat16_max    = 65524U,      /**< Max FAT16 data clusters.             */
+  k_fmt_fat16_min    = 4085U,       /**< Min FAT16 data clusters.             */
+  k_fmt_spc_max      = 64U,         /**< Largest sectors-per-cluster we pick. */
+  k_fmt_fat32_pref   = 4194304U,    /**< FAT32: preferred max clusters (bumps spc). */
+  k_fmt_root_ents    = 512U,        /**< FAT16 root-directory entries.        */
+  k_fmt_volid        = 0x52A8D200U, /**< Arbitrary volume serial base.        */
+  k_fmt_resv_f16     = 1U,          /**< FAT16 reserved sectors (boot).       */
+  k_fmt_resv_f32     = 32U,         /**< FAT32 reserved sectors.              */
+  k_fmt_label_len    = 11U,         /**< 8.3 volume-label field width.        */
+  k_fmt_totsec16_max = 0x10000U,    /**< Above this, use the 32-bit TotSec.   */
 } sd_fmt_const_t;
 
 /** @brief Little-endian byte offsets, shifts, and mask for image serialization. */
 typedef enum : uint8_t {
-  k_le_byte0      = 0U,    /**< Least-significant byte offset.      */
-  k_le_byte1      = 1U,    /**< Second byte offset.                 */
-  k_le_byte2      = 2U,    /**< Third byte offset.                  */
-  k_le_byte3      = 3U,    /**< Most-significant byte offset.       */
-  k_le_shift_b1   = 8U,    /**< Shift to extract byte 1.            */
-  k_le_shift_b2   = 16U,   /**< Shift to extract byte 2.            */
-  k_le_shift_b3   = 24U,   /**< Shift to extract byte 3.            */
-  k_le_byte_mask  = 0xFFU, /**< Low-byte mask.                      */
+  k_le_byte0     = 0U,    /**< Least-significant byte offset.      */
+  k_le_byte1     = 1U,    /**< Second byte offset.                 */
+  k_le_byte2     = 2U,    /**< Third byte offset.                  */
+  k_le_byte3     = 3U,    /**< Most-significant byte offset.       */
+  k_le_shift_b1  = 8U,    /**< Shift to extract byte 1.            */
+  k_le_shift_b2  = 16U,   /**< Shift to extract byte 2.            */
+  k_le_shift_b3  = 24U,   /**< Shift to extract byte 3.            */
+  k_le_byte_mask = 0xFFU, /**< Low-byte mask.                      */
 } sd_le_const_t;
 
 /** @brief Little-endian 16-bit store into the image. */
@@ -572,24 +574,24 @@ typedef enum : uint16_t {
 
 /** @brief FAT BPB literal field values + the FSInfo signatures. */
 typedef enum : uint32_t {
-  k_bpb_jmp_b0       = 0xEBU,       /**< Boot jump byte 0 (JMP short).      */
-  k_bpb_jmp_b1       = 0x58U,       /**< Boot jump byte 1 (offset).         */
-  k_bpb_jmp_b2       = 0x90U,       /**< Boot jump byte 2 (NOP).            */
-  k_bpb_oem_len      = 8U,          /**< OEM-name field length.             */
-  k_bpb_fstype_len   = 8U,          /**< FilSysType field length.           */
-  k_bpb_sig_byte_lo  = 0x55U,       /**< Boot signature low byte.           */
-  k_bpb_sig_byte_hi  = 0xAAU,       /**< Boot signature high byte.          */
-  k_bpb_num_fats_val = 2U,          /**< Number of FAT copies.              */
-  k_bpb_media_fixed  = 0xF8U,       /**< Media descriptor: fixed disk.      */
-  k_bpb_sec_per_trk_val = 63U,      /**< Sectors per track.                 */
-  k_bpb_num_heads_val   = 255U,     /**< Number of heads.                   */
-  k_bpb_drive_num_val   = 0x80U,    /**< Drive number (hard disk).          */
-  k_bpb_ext_boot_sig    = 0x29U,    /**< Extended boot signature present.   */
-  k_bpb_dir_ent_size    = 32U,      /**< Bytes per directory entry.         */
-  k_bpb_fat16_div       = 256U,     /**< 512-byte sector / 2-byte FAT16 ent.*/
-  k_bpb_fat32_div       = 128U,     /**< FAT32 FAT-size divisor multiplier. */
-  k_fat16_eoc_clus0     = 0xFFF8U,  /**< FAT16 entry 0: media + EOC bits.   */
-  k_fat16_eoc_clus1     = 0xFFFFU,  /**< FAT16 entry 1: end-of-chain.       */
+  k_bpb_jmp_b0          = 0xEBU,       /**< Boot jump byte 0 (JMP short).      */
+  k_bpb_jmp_b1          = 0x58U,       /**< Boot jump byte 1 (offset).         */
+  k_bpb_jmp_b2          = 0x90U,       /**< Boot jump byte 2 (NOP).            */
+  k_bpb_oem_len         = 8U,          /**< OEM-name field length.             */
+  k_bpb_fstype_len      = 8U,          /**< FilSysType field length.           */
+  k_bpb_sig_byte_lo     = 0x55U,       /**< Boot signature low byte.           */
+  k_bpb_sig_byte_hi     = 0xAAU,       /**< Boot signature high byte.          */
+  k_bpb_num_fats_val    = 2U,          /**< Number of FAT copies.              */
+  k_bpb_media_fixed     = 0xF8U,       /**< Media descriptor: fixed disk.      */
+  k_bpb_sec_per_trk_val = 63U,         /**< Sectors per track.                 */
+  k_bpb_num_heads_val   = 255U,        /**< Number of heads.                   */
+  k_bpb_drive_num_val   = 0x80U,       /**< Drive number (hard disk).          */
+  k_bpb_ext_boot_sig    = 0x29U,       /**< Extended boot signature present.   */
+  k_bpb_dir_ent_size    = 32U,         /**< Bytes per directory entry.         */
+  k_bpb_fat16_div       = 256U,        /**< 512-byte sector / 2-byte FAT16 ent.*/
+  k_bpb_fat32_div       = 128U,        /**< FAT32 FAT-size divisor multiplier. */
+  k_fat16_eoc_clus0     = 0xFFF8U,     /**< FAT16 entry 0: media + EOC bits.   */
+  k_fat16_eoc_clus1     = 0xFFFFU,     /**< FAT16 entry 1: end-of-chain.       */
   k_fat32_eoc_media     = 0x0FFFFFF8U, /**< FAT32 entry 0: media + EOC.     */
   k_fat32_eoc           = 0x0FFFFFFFU, /**< FAT32 end-of-chain marker.      */
   k_fat32_root_clus     = 2U,          /**< FAT32 root directory cluster.   */
@@ -638,15 +640,15 @@ static void sd_label_field(uint8_t* dst, const char* label)
 /** @brief Format an empty FAT16 volume; returns the chosen sectors-per-cluster. */
 static uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label)
 {
-  const uint32_t root_sectors =
-      (((uint32_t)k_fmt_root_ents * (uint32_t)k_bpb_dir_ent_size) + ((uint32_t)k_fmt_sec_bytes - 1U)) /
-      (uint32_t)k_fmt_sec_bytes;
-  uint32_t spc   = 1U;
-  uint32_t fatsz = 1U;
+  const uint32_t root_sectors = (((uint32_t)k_fmt_root_ents * (uint32_t)k_bpb_dir_ent_size) +
+                                 ((uint32_t)k_fmt_sec_bytes - 1U)) /
+                                (uint32_t)k_fmt_sec_bytes;
+  uint32_t       spc          = 1U;
+  uint32_t       fatsz        = 1U;
   for (;;) {
     const uint32_t tmp1 = total_sectors - ((uint32_t)k_fmt_resv_f16 + root_sectors);
-    const uint32_t tmp2 =
-        ((uint32_t)k_bpb_fat16_div * spc) + (uint32_t)k_bpb_num_fats_val; /* 256 = 512 / 2-byte ent. */
+    const uint32_t tmp2 = ((uint32_t)k_bpb_fat16_div * spc) +
+                          (uint32_t)k_bpb_num_fats_val; /* 256 = 512 / 2-byte ent. */
     fatsz               = (tmp1 + tmp2 - 1U) / tmp2;
     const uint32_t data = total_sectors - (uint32_t)k_fmt_resv_f16 - (2U * fatsz) - root_sectors;
     const uint32_t clus = data / spc;
@@ -744,7 +746,8 @@ static uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char
   sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free); /* next free cluster */
   sd_put32(&fsi[k_fsi_off_trail], (uint32_t)k_fsi_trail_sig);
   /* Backup boot copy at sector 6. */
-  (void)memcpy(&img[(uint32_t)k_fat32_bkboot_sec * (uint32_t)k_fmt_sec_bytes], img,
+  (void)memcpy(&img[(uint32_t)k_fat32_bkboot_sec * (uint32_t)k_fmt_sec_bytes],
+               img,
                (size_t)k_fmt_sec_bytes);
   /* FAT[0..2]: media + EOC + root-cluster EOC, in both FAT copies. */
   for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
@@ -789,8 +792,8 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
     return false;
   }
   const uint32_t spc = (fat_bits == (uint8_t)k_fat32_bits)
-                           ? sd_format_fat32(img, total_sectors, label)
-                           : sd_format_fat16(img, total_sectors, label);
+                         ? sd_format_fat32(img, total_sectors, label)
+                         : sd_format_fat16(img, total_sectors, label);
   board_sd_release_image();
   s_sd           = (board_sd_state_t){};
   s_sd.image     = img;
@@ -798,14 +801,15 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
   s_sd.mmapped   = true;
   s_sd.map_fd    = fd;
   s_sd.attached  = true;
-  s_sd.fat_bits = (fat_bits == (uint8_t)k_fat32_bits) ? (uint8_t)k_fat32_bits : (uint8_t)k_fat16_bits;
+  s_sd.fat_bits =
+    (fat_bits == (uint8_t)k_fat32_bits) ? (uint8_t)k_fat32_bits : (uint8_t)k_fat16_bits;
   sd_label_field((uint8_t*)s_sd.label, label);
   s_sd.label[k_fmt_label_len] = '\0';
   if (bytes >= ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib * (uint64_t)k_unit_kib)) {
     (void)fprintf(stderr,
                   "board_sim: SD card created (%llu GiB FAT%u, %u sec/clus) sparse + attached\n",
-                  (unsigned long long)(bytes /
-                                       ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
+                  (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib *
+                                                (uint64_t)k_unit_kib)),
                   (unsigned)s_sd.fat_bits,
                   (unsigned)spc);
   } else {
@@ -826,11 +830,11 @@ bool board_sd_save(const char* path)
   /* A sparse multi-GB card would dump GBs of mostly-zeros; cap the dump so
    * --save-sd stays sane. Inspect a large card by its live mount instead. */
   if (s_sd.image_len > (uint64_t)k_sd_save_max_bytes) {
-    (void)fprintf(stderr,
-                  "board_sim: --save-sd: card is %llu MiB (> %u MiB cap) -- skipped\n",
-                  (unsigned long long)(s_sd.image_len / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
-                  (unsigned)((uint64_t)k_sd_save_max_bytes /
-                             ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)));
+    (void)fprintf(
+      stderr,
+      "board_sim: --save-sd: card is %llu MiB (> %u MiB cap) -- skipped\n",
+      (unsigned long long)(s_sd.image_len / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
+      (unsigned)((uint64_t)k_sd_save_max_bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)));
     return false;
   }
   FILE* fp = fopen(path, "wb");
