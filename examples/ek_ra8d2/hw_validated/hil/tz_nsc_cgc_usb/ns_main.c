@@ -197,17 +197,27 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_park(void)
  * @note Single-threaded; IRQs stay masked (no ThreadX/USBX yet).
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void)
+/**
+ * @brief Exercise the three NSC CGC veneers from genuine NS memory.
+ *
+ * @details Stamps ::g_tz_nsc_cgc_usb_init_step before each veneer (so a J-Link
+ *          halt localises a fault/error), calls ``ra_nsc_cgc_pll2_enable``,
+ *          ``ra_nsc_cgc_usbfs_clock_enable`` and ``ra_nsc_cgc_get_clock_hz``
+ *          (the last with an NS-resident ``hz_out`` so its
+ *          ``cmse_check_address_range`` guard passes), and records an NS stack
+ *          address in ::g_tz_nsc_cgc_usb_sp_probe. On any non-OK return it
+ *          bumps ::g_tz_nsc_cgc_usb_mismatch and reports failure.
+ *
+ * @return bool true if all three veneers returned ``k_ra_ok``; false otherwise.
+ * @pre CPU is in NS thread mode (post-BLXNS).
+ * @pre The CMSE import library bound the ``ra_nsc_cgc_*`` names to the SG stubs.
+ * @post On success ::g_tz_nsc_cgc_usb_init_step == ::k_ns_step_veneers_ok.
+ * @post On failure ::g_tz_nsc_cgc_usb_mismatch advanced by 1.
+ * @note Single-threaded; IRQs stay masked.
+ * @since 0.1.0
+ */
+__attribute__((section(".ns_text"))) static bool ns_exercise_veneers(void)
 {
-  /* Zero the NS BSS via uintptr_t arithmetic (cppcheck flags pointer
-   * comparison between two distinct externs as ISO C UB even though the
-   * linker fixes them to a contiguous range). */
-  const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
-  const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
-  for (uintptr_t addr = bss_start; addr < bss_end; addr += sizeof(uint32_t)) {
-    *(volatile uint32_t*)addr = 0U;
-  }
-
   /* ---- Phase C veneer milestone: call the 3 NSC CGC veneers from NS. ----
    * Plain calls; the CMSE import library binds these names to the Secure-
    * Gateway stubs so the call transitions into Secure (see the import note). */
@@ -216,13 +226,13 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
                              (uint8_t)k_ns_pll2_mul_quarters,
                              k_ra_plodiv_div4) != k_ra_ok) {
     g_tz_nsc_cgc_usb_mismatch += 1U;
-    ns_park();
+    return false;
   }
 
   g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_usbfs;
   if (ra_nsc_cgc_usbfs_clock_enable() != k_ra_ok) {
     g_tz_nsc_cgc_usb_mismatch += 1U;
-    ns_park();
+    return false;
   }
 
   /* Capture an NS stack address so a J-Link read confirms where MSP_NS sits
@@ -238,12 +248,30 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void
   if (ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0,
                               (uint32_t*)(uintptr_t)&g_tz_nsc_cgc_usb_clock_hz) != k_ra_ok) {
     g_tz_nsc_cgc_usb_mismatch += 1U;
-    ns_park();
+    return false;
   }
 
   /* All three veneers SG-trapped into Secure, ran ra_cgc_*, and returned OK
    * with an NS-resident pointer arg. The NSC wall works from real NS memory. */
   g_tz_nsc_cgc_usb_init_step = (uint32_t)k_ns_step_veneers_ok;
+  return true;
+}
+
+__attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void)
+{
+  /* Zero the NS BSS via uintptr_t arithmetic (cppcheck flags pointer
+   * comparison between two distinct externs as ISO C UB even though the
+   * linker fixes them to a contiguous range). */
+  const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
+  const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
+  for (uintptr_t addr = bss_start; addr < bss_end; addr += sizeof(uint32_t)) {
+    *(volatile uint32_t*)addr = 0U;
+  }
+
+  /* Phase C: exercise the three NSC CGC veneers from genuine NS memory. */
+  if (!ns_exercise_veneers()) {
+    ns_park();
+  }
 
   /* Point VTOR_NS at the NS vector table so ThreadX's PendSV / SysTick
    * exceptions vector to the NS handlers. ThreadX's tx_initialize_low_level

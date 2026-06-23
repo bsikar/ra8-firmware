@@ -200,7 +200,7 @@ ra_err_t ra_img_decode_blit(ra_img_arena_t* arena,
   int            sy   = 0;
   int            comp = 0;
   uint8_t* const pixels =
-    stbi_load_from_memory(bytes, (int)len, &sx, &sy, &comp, (int)k_ra_img_req_rgb);
+    stbi_load_from_memory(bytes, (int)len, &sx, &sy, &comp, (int)k_ra_img_req_rgb); /* alloc-allow: stb is backed by the fixed ra_img_arena (zero-heap), not malloc */
   if ((pixels == nullptr) || (sx <= 0) || (sy <= 0)) {
     const ra_err_t err = internal_decode_fail();
     internal_arena_release(arena);
@@ -212,7 +212,7 @@ ra_err_t ra_img_decode_blit(ra_img_arena_t* arena,
   int32_t fit_h = 0;
   internal_fit_box((int32_t)sx, (int32_t)sy, box_w, box_h, &fit_w, &fit_h);
   internal_blit_scaled(pixels, (int32_t)sx, (int32_t)sy, fit_w, fit_h, dst_x, dst_y);
-  stbi_image_free(pixels); /* drains the arena (live -> 0 -> offset reset) */
+  stbi_image_free(pixels); /* drains the arena (live -> 0 -> offset reset) -- alloc-allow: stb is backed by the fixed ra_img_arena (zero-heap), not malloc */
   internal_arena_release(arena);
 
   if (out_w != nullptr) {

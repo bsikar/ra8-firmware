@@ -513,7 +513,7 @@ static bool wd_app_on_input(ra_app_t* a, const ra_widget_event_t* ev)
 }
 
 /** @brief App render: clear, lay out the tree, mark all dirty, composite. */
-static void wd_app_render(ra_app_t* a)
+static void wd_app_render(const ra_app_t* a)
 {
   wa_app_state_t*    st = (wa_app_state_t*)a->ctx;
   ra_box_t           scratch[k_wd_box_cap];

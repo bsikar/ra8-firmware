@@ -278,7 +278,7 @@ tidy:
 	bash scripts/clang_tidy.sh --check
 
 # `make books` -- regenerate the compiled e-book library from the
-# content/library/*.epub masters (Git LFS): content/compiled/*.rabook plus the
+# content/library/*.epub sources (Git LFS): content/compiled/*.rabook plus the
 # manifest header libs/ra_book/inc/ra_book_library.h. Both are build artifacts
 # (gitignored); the epubs are the source of truth. Tune image downscale with
 # RA_BOOK_MAX_EDGE (default 1024 px long edge). See tools/epub_compile/.

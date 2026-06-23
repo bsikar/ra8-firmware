@@ -6,7 +6,10 @@
  * The only non-inline part of `ra_book` is integrity/bounds validation. Walking
  * a validated blob is pure offset arithmetic and lives entirely in the header.
  *
- * @since Version 1.0.0
+ * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra_book.h"
 
@@ -23,7 +26,7 @@ static const char* const s_tag_book = "ra_book";
  * @brief Constants for the reflected CRC-32/ISO-HDLC used in the trailer.
  * @details Matches Python `zlib.crc32`, so a blob produced by
  *          `tools/epub_compile` verifies bit-for-bit on device.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_book_crc_init = 0xFFFFFFFFU, /**< CRC seed and final XOR mask.     */
@@ -33,7 +36,7 @@ typedef enum : uint32_t {
 /**
  * @enum ra_book_crc_table_size_t
  * @brief Size of the byte-indexed CRC-32 lookup table.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint16_t {
   k_ra_book_crc_table_len = 256U, /**< One precomputed remainder per byte value. */
@@ -42,7 +45,7 @@ typedef enum : uint16_t {
 /**
  * @enum ra_book_crc_byte_t
  * @brief Byte-folding constants for the table-driven CRC-32 step.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_book_crc_byte_mask = 0xFFU, /**< Low-byte index into the table.        */
@@ -58,7 +61,7 @@ typedef enum : uint8_t {
  *          value 0xCBF43926 over "123456789"), so on-device verification stays
  *          bit-for-bit identical to the `tools/epub_compile` output.
  * @note Immutable, so it needs no run-time initialisation and is thread-safe.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static const uint32_t s_ra_book_crc_table[k_ra_book_crc_table_len] = {
   0x00000000U, 0x77073096U, 0xEE0E612CU, 0x990951BAU, 0x076DC419U, 0x706AF48FU, 0xE963A535U,

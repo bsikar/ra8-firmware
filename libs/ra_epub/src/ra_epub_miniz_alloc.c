@@ -39,11 +39,68 @@ typedef struct {
 } priv_blk_t;
 
 /**
+ * @union priv_pool_cell_t
+ * @brief One ``max_align_t``-aligned storage cell of the arena.
+ *
+ * @details
+ * Backing the pool with an array of this union (rather than a raw
+ * ``uint8_t`` buffer) means a pointer into the pool already carries
+ * ``alignof(max_align_t)`` -- which is ``>= alignof(priv_blk_t)``. Casting
+ * such a pointer to ``priv_blk_t*`` therefore never increases the required
+ * alignment, so it is both well-defined and accepted under ``-Wcast-align``.
+ *
+ * @invariant ``sizeof(priv_pool_cell_t) == alignof(max_align_t)``.
+ */
+typedef union {
+  max_align_t align; /**< Forces ``alignof(max_align_t)`` on the cell. */
+  uint8_t     byte;  /**< Lets the arena be addressed byte-wise.       */
+} priv_pool_cell_t;
+
+/** @enum priv_pool_dim_t @brief Arena dimensions in aligned cells. */
+typedef enum : size_t {
+  /** Cells needed to cover the requested pool, rounded up. */
+  k_priv_pool_cells =
+    (k_ra_epub_miniz_pool_bytes + sizeof(priv_pool_cell_t) - 1U) / sizeof(priv_pool_cell_t),
+} priv_pool_dim_t;
+
+/**
  * @var s_pool
  * @brief The static arena. Aligned so every split payload stays aligned.
  * @warning Module-private; only the allocator functions touch it.
  */
-alignas(max_align_t) static uint8_t s_pool[k_ra_epub_miniz_pool_bytes];
+static priv_pool_cell_t s_pool[k_priv_pool_cells];
+
+/**
+ * @brief Byte-pointer to the start of the arena.
+ *
+ * @details
+ * Narrows the aligned cell pointer to ``uint8_t*`` for byte arithmetic. The
+ * inverse (::priv_cell_at) re-widens before any ``priv_blk_t*`` cast so the
+ * alignment guarantee is never lost across the round trip.
+ *
+ * @return Pointer to byte 0 of the pool.
+ */
+static uint8_t* priv_base(void)
+{
+  return &s_pool[0].byte;
+}
+
+/**
+ * @brief Block header at byte offset @p off from the pool base.
+ *
+ * @details
+ * @p off is always a multiple of ``alignof(max_align_t)`` (headers and
+ * payloads are kept aligned), so dividing by the cell size yields the exact
+ * aligned cell index. Indexing the cell array re-establishes
+ * ``alignof(max_align_t)``, making the ``priv_blk_t*`` cast alignment-safe.
+ *
+ * @param[in] off Byte offset into the pool; must be a cell-size multiple.
+ * @return Header pointer for the block at @p off.
+ */
+static priv_blk_t* priv_cell_at(size_t off)
+{
+  return (priv_blk_t*)&s_pool[off / sizeof(priv_pool_cell_t)];
+}
 
 /**
  * @var s_init
@@ -54,8 +111,8 @@ static bool s_init = false;
 
 /** @enum priv_alloc_const_t @brief Local allocator constants. */
 typedef enum : size_t {
-  k_priv_hdr_bytes = sizeof(priv_blk_t),       /**< Block-header size.          */
-  k_priv_align     = alignof(max_align_t),      /**< Payload alignment.          */
+  k_priv_hdr_bytes = sizeof(priv_blk_t),   /**< Block-header size.          */
+  k_priv_align     = alignof(max_align_t), /**< Payload alignment.          */
   /** Upper bound on block count (NASA Rule 2 loop bound): every block is at
    *  least a header plus one alignment unit of payload. */
   k_priv_walk_max = k_ra_epub_miniz_pool_bytes / (sizeof(priv_blk_t) + alignof(max_align_t)),
@@ -73,7 +130,7 @@ static size_t priv_align_up(size_t n)
 /** @brief One-past-the-end sentinel of the pool. */
 static uint8_t* priv_end(void)
 {
-  return &s_pool[0] + (size_t)k_ra_epub_miniz_pool_bytes;
+  return priv_base() + (size_t)k_ra_epub_miniz_pool_bytes;
 }
 
 /** @brief Payload pointer for block @p b. */
@@ -88,13 +145,15 @@ static priv_blk_t* priv_header(void* p)
   if (p == nullptr) {
     return nullptr;
   }
-  return (priv_blk_t*)(void*)((uint8_t*)p - (size_t)k_priv_hdr_bytes);
+  const size_t payload_off = (size_t)((uint8_t*)p - priv_base());
+  return priv_cell_at(payload_off - (size_t)k_priv_hdr_bytes);
 }
 
 /** @brief Block immediately following @p b in the implicit list. */
 static priv_blk_t* priv_next(priv_blk_t* b)
 {
-  return (priv_blk_t*)(void*)(priv_payload(b) + b->size);
+  const size_t off = (size_t)(priv_payload(b) + b->size - priv_base());
+  return priv_cell_at(off);
 }
 
 /** @brief Lay the whole pool out as a single free block (idempotent). */
@@ -103,7 +162,7 @@ static void priv_init(void)
   if (s_init) {
     return;
   }
-  priv_blk_t* head = (priv_blk_t*)(void*)&s_pool[0];
+  priv_blk_t* head = priv_cell_at(0U);
   head->size       = (size_t)k_ra_epub_miniz_pool_bytes - (size_t)k_priv_hdr_bytes;
   head->is_free    = (size_t)k_priv_blk_free;
   s_init           = true;
@@ -113,13 +172,13 @@ static void priv_init(void)
 static bool priv_in_pool(const void* p)
 {
   const uint8_t* q = (const uint8_t*)p;
-  return (q >= &s_pool[0]) && (q < priv_end());
+  return (q >= priv_base()) && (q < priv_end());
 }
 
 /** @brief Merge every run of adjacent free blocks into one. */
 static void priv_coalesce(void)
 {
-  priv_blk_t* b = (priv_blk_t*)(void*)&s_pool[0];
+  priv_blk_t* b = priv_cell_at(0U);
   for (size_t guard = 0U; guard < (size_t)k_priv_walk_max; guard++) {
     if ((uint8_t*)b >= priv_end()) {
       break;
@@ -141,10 +200,11 @@ static void priv_split(priv_blk_t* b, size_t need)
 {
   /* Only split when the remainder can hold a header plus a minimum payload. */
   if (b->size >= (need + (size_t)k_priv_hdr_bytes + (size_t)k_priv_align)) {
-    priv_blk_t* rem = (priv_blk_t*)(void*)(priv_payload(b) + need);
-    rem->size       = b->size - need - (size_t)k_priv_hdr_bytes;
-    rem->is_free    = (size_t)k_priv_blk_free;
-    b->size         = need;
+    const size_t rem_off = (size_t)(priv_payload(b) + need - priv_base());
+    priv_blk_t*  rem     = priv_cell_at(rem_off);
+    rem->size            = b->size - need - (size_t)k_priv_hdr_bytes;
+    rem->is_free         = (size_t)k_priv_blk_free;
+    b->size              = need;
   }
 }
 
@@ -161,7 +221,7 @@ void* ra_epub_miniz_alloc(void* opaque, size_t items, size_t size)
     need = (size_t)k_priv_align; /* never hand back a zero-size block */
   }
 
-  priv_blk_t* b = (priv_blk_t*)(void*)&s_pool[0];
+  priv_blk_t* b = priv_cell_at(0U);
   for (size_t guard = 0U; guard < (size_t)k_priv_walk_max; guard++) {
     if ((uint8_t*)b >= priv_end()) {
       break;
