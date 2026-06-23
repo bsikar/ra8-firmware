@@ -119,8 +119,10 @@ typedef enum : uint32_t {
   k_etoc_err_bad   = 7U, /**< Malformed-TOC fallback assertion.    */
 } etoc_err_t;
 
-/** @brief Idle-loop pacing for the success heartbeat (ms). */
-static const uint32_t k_etoc_frame_ms = 100U;
+/** @enum etoc_pace_t @brief Idle-loop pacing for the success heartbeat. */
+typedef enum : uint32_t {
+  k_etoc_frame_ms = 100U, /**< Heartbeat period in milliseconds. */
+} etoc_pace_t;
 
 /**
  * @var g_etoc_err

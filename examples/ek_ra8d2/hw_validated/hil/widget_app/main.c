@@ -192,7 +192,7 @@ static void wa_state_init(wa_app_state_t* st, uint32_t content_color)
 }
 
 /** @brief App.render: lay out + composite the app's widget tree. */
-static void wa_app_render(ra_app_t* a)
+static void wa_app_render(const ra_app_t* a)
 {
   wa_app_state_t*    st = (wa_app_state_t*)a->ctx;
   ra_box_t           scratch[4];

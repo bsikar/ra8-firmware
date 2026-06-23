@@ -9,6 +9,9 @@
  * .rabook would mz_uncompress() the container first (see README). Generated.
  *
  * @since Version 1.0.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -166,7 +166,12 @@ typedef enum : uint32_t {
   k_dtc_ti_align   = 16U,   /**< TI start address multiple of 16.         */
 } dtc_vt_geom_t;
 
-static_assert((uint32_t)k_dtc_demo_buf_words == 256U,
+/** @enum dtc_cra_t @brief CRA=0x0000 encodes a full 256-unit block. */
+typedef enum : uint32_t {
+  k_dtc_cra_block_units = 256U, /**< Units per block when CRAH/CRAL = 0. */
+} dtc_cra_t;
+
+static_assert((uint32_t)k_dtc_demo_buf_words == (uint32_t)k_dtc_cra_block_units,
               "CRA=0x0000 encodes a 256-unit block; buffer must be 256 words");
 
 /** @brief Pinout for SCI8 on the J-Link OB CDC channel (PD02 / PD03). */

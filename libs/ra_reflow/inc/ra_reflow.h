@@ -492,6 +492,21 @@ typedef enum : uint8_t {
  *
  * @see ra_reflow_register_face()
  */
+
+/**
+ * @enum ra_reflow_face_pad_t
+ * @brief Padding geometry for ::ra_reflow_face_t.
+ *
+ * @details Names the trailing-pad byte count that rounds ::ra_reflow_face_t up
+ * to an 8-byte stride (one pointer, one `size_t`, one `uint8_t` index, then
+ * `k_ra_reflow_face_pad8` bytes of padding).
+ *
+ * @see ra_reflow_face_t
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_face_pad8 = 7, /**< Pad bytes to reach an 8-byte struct stride. */
+} ra_reflow_face_pad_t;
+
 typedef struct {
   // cppcheck-suppress unusedStructMember
   const uint8_t* blob; /**< TTF/OTF bytes; caller-owned, outlive the engine. */
@@ -500,7 +515,7 @@ typedef struct {
   // cppcheck-suppress unusedStructMember
   uint8_t css_face_idx; /**< `@font-face` table index this blob satisfies.    */
   // cppcheck-suppress unusedStructMember
-  uint8_t pad8[7]; /**< Padding to an 8-byte stride.                     */
+  uint8_t pad8[k_ra_reflow_face_pad8]; /**< Padding to an 8-byte stride.       */
 } ra_reflow_face_t;
 
 /**

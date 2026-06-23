@@ -35,6 +35,17 @@ typedef enum : uint16_t {
   k_ra_dfu_prog_mrefreq_mhz = 125U, /**< Extra-MRAM clock notification (MHz). */
 } ra_dfu_prog_cfg_t;
 
+/**
+ * @enum ra_dfu_prog_fill_t
+ * @brief MRAM erased-state fill byte.
+ * @details Value every byte holds after an MRAM erase; used to seed the
+ * SRAM-resident all-ones page so the erase baseline operand never has to be
+ * read out of code-MRAM while the array is busy (see ::internal_write_secure).
+ */
+typedef enum : uint8_t {
+  k_ra_dfu_prog_erased_byte = 0xFFU, /**< Erased-state byte for an MRAM page. */
+} ra_dfu_prog_fill_t;
+
 /** @brief Default controller bring-up descriptor for ::ra_dfu_program_prepare. */
 static const ra_flash_cfg_t s_ra_dfu_flash_cfg = {
   .mrcfreq_mhz        = (uint16_t)k_ra_dfu_prog_mrcfreq_mhz,
@@ -85,7 +96,7 @@ static ra_err_t internal_write_secure(uintptr_t addr, const uint8_t* src, uint32
    * faults the bus (ra_flash.h SRAM-resident warning); sourcing 0xFF from this
    * stack buffer keeps every operand in SRAM. */
   uint8_t ones[k_ra_dfu_page_size];
-  (void)memset(ones, 0xFF, sizeof(ones));
+  (void)memset(ones, (int)k_ra_dfu_prog_erased_byte, sizeof(ones));
   uint32_t off = 0U;
   /* NASA Rule 2: bound is the caller-validated, page-aligned len. */
   while (off < len) {

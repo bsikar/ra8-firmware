@@ -166,11 +166,6 @@ static uint8_t s_ble_peripheral_battery_level = k_ble_peripheral_battery_init;
 static uint16_t s_ble_peripheral_level_handle = 0U;
 
 /**
- * @brief Tag used in SCI8 / ra_log output to identify this app.
- */
-static const char* s_ble_peripheral_tag = "ble";
-
-/**
  * @brief Park the CPU forever in WFI on fatal init failure.
  *
  * @pre Called only after a fatal error in boot.
@@ -548,7 +543,6 @@ static void ble_peripheral_stack_or_halt(void)
                                   (uint16_t)k_ble_peripheral_adv_int_ms) != k_ra_ok) {
     ble_peripheral_panic_halt();
   }
-  ra_log_info(s_ble_peripheral_tag, "advertising");
   ble_peripheral_log("ble: advertising\r\n");
 }
 

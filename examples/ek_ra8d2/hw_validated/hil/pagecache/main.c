@@ -124,8 +124,10 @@ typedef enum : uint32_t {
   k_pc_err_invalid  = 11U, /**< Alt-size load did not invalidate.     */
 } pc_err_t;
 
-/** @brief Idle-loop pacing for the success heartbeat (ms). */
-static const uint32_t k_pc_frame_ms = 100U;
+/** @enum pc_pace_t @brief Idle-loop pacing for the success heartbeat. */
+typedef enum : uint32_t {
+  k_pc_frame_ms = 100U, /**< Heartbeat period in milliseconds. */
+} pc_pace_t;
 
 /* ---- J-Link / board_sim readable diagnostics (memprobe gate) ------------- */
 

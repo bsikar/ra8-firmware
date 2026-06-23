@@ -460,7 +460,8 @@ static VOID dfu_deactivate(VOID* dfu)
  * @note Single-writer (the USBX DFU thread).
  * @since 0.1.0
  */
-static UINT dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* media_status)
+static UINT dfu_write(VOID* dfu, ULONG block_number, const UCHAR* data, ULONG length,
+                      ULONG* media_status)
 {
   (void)dfu;
   const ULONG off = block_number * (ULONG)k_dfu_xfer_size;
@@ -577,6 +578,22 @@ static UINT dfu_usbx_stack_up(void)
 }
 
 /**
+ * @typedef dfu_write_cb_t
+ * @brief Signature of the USBX DFU download-write callback field.
+ * @details
+ * Mirrors ::UX_SLAVE_CLASS_DFU_PARAMETER::ux_slave_class_dfu_parameter_write,
+ * whose vendored prototype takes a non-const ``UCHAR*`` payload. Our
+ * ::dfu_write keeps the payload ``const`` (it never mutates the block), so the
+ * assignment is funnelled through this typedef with a single explicit cast that
+ * narrows only the const qualifier of the data pointer -- a layout-identical
+ * function-pointer conversion.
+ * @note Used solely at the ::dfu_class_register assignment site.
+ * @since 0.1.0
+ */
+typedef UINT (*dfu_write_cb_t)(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length,
+                               ULONG* media_status);
+
+/**
  * @brief Register the DFU class against configuration 1, interface 0.
  * @return UINT ``UX_SUCCESS`` on success, propagated USBX error otherwise.
  * @retval UX_SUCCESS Class registered.
@@ -597,7 +614,7 @@ static UINT dfu_class_register(void)
     .ux_slave_class_dfu_parameter_instance_activate   = dfu_activate,
     .ux_slave_class_dfu_parameter_instance_deactivate = dfu_deactivate,
     .ux_slave_class_dfu_parameter_read                = dfu_read,
-    .ux_slave_class_dfu_parameter_write               = dfu_write,
+    .ux_slave_class_dfu_parameter_write               = (dfu_write_cb_t)dfu_write,
     .ux_slave_class_dfu_parameter_get_status          = dfu_get_status,
     .ux_slave_class_dfu_parameter_notify              = dfu_notify,
     .ux_slave_class_dfu_parameter_framework           = s_device_framework,
@@ -1191,6 +1208,57 @@ typedef enum : uint32_t {
 }
 
 /**
+ * @brief Enumerate the looped-back device: descriptor hunt, address, config.
+ * @details
+ * Runs the ::k_dfu_phase_enum portion of the host pass -- fetch the device
+ * descriptor, latch the product id into ::s_dbg_pid, assign the bus address,
+ * select configuration 1, and print the enumerated pid. Any failing step
+ * deinitializes the host controller so the caller can retry cleanly.
+ * @return ra_err_t First failing step's error, or k_ra_ok.
+ * @retval k_ra_ok Device enumerated and the pid line printed.
+ * @retval k_ra_err_invalid_state Propagated descriptor / control-transfer error.
+ * @pre ::ra_usb_host_init has already succeeded (controller is up).
+ * @pre The self-loop cable connects J7 to J11.
+ * @post On success ::s_dbg_pid holds the device product id.
+ * @post On failure the host controller is deinitialized.
+ * @note Blocking; runs on the low-priority host thread.
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t dfu_host_enumerate(void)
+{
+  s_dbg_phase                      = (uint32_t)k_dfu_phase_enum;
+  uint8_t desc[k_dfu_dev_desc_len] = {};
+  ra_err_t err                     = dfu_enum_hunt(desc);
+  if (err != k_ra_ok) {
+    (void)dfu_print_fail("enumerate", err);
+    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
+    return err;
+  }
+  s_dbg_pid = (uint32_t)desc[k_dfu_off_dev_pid] |
+              ((uint32_t)desc[(uint32_t)k_dfu_off_dev_pid + 1U] << (uint32_t)k_dfu_byte_bits);
+  err = dfu_enum_set_address();
+  if (err != k_ra_ok) {
+    (void)dfu_print_fail("set_address", err);
+    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
+    return err;
+  }
+  err = dfu_enum_set_config();
+  if (err != k_ra_ok) {
+    (void)dfu_print_fail("set_config", err);
+    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
+    return err;
+  }
+  err = dfu_print("ra8d2 dfu: enumerated pid=0x");
+  if (err == k_ra_ok) {
+    err = dfu_print_hex(s_dbg_pid, (uint8_t)k_dfu_hex_chars_u16);
+  }
+  if (err == k_ra_ok) {
+    err = dfu_print("\r\n");
+  }
+  return err;
+}
+
+/**
  * @brief Run the full host pass: enumerate, download, upload-verify.
  * @return First failing step's error, or k_ra_ok.
  * @retval k_ra_ok The pass printed DFU PASS.
@@ -1214,35 +1282,7 @@ typedef enum : uint32_t {
     return err;
   }
 
-  s_dbg_phase                      = (uint32_t)k_dfu_phase_enum;
-  uint8_t desc[k_dfu_dev_desc_len] = {};
-  err                              = dfu_enum_hunt(desc);
-  if (err != k_ra_ok) {
-    (void)dfu_print_fail("enumerate", err);
-    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
-    return err;
-  }
-  s_dbg_pid = (uint32_t)desc[k_dfu_off_dev_pid] |
-              ((uint32_t)desc[(uint32_t)k_dfu_off_dev_pid + 1U] << (uint32_t)k_dfu_byte_bits);
-  err       = dfu_enum_set_address();
-  if (err != k_ra_ok) {
-    (void)dfu_print_fail("set_address", err);
-    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
-    return err;
-  }
-  err = dfu_enum_set_config();
-  if (err != k_ra_ok) {
-    (void)dfu_print_fail("set_config", err);
-    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
-    return err;
-  }
-  err = dfu_print("ra8d2 dfu: enumerated pid=0x");
-  if (err == k_ra_ok) {
-    err = dfu_print_hex(s_dbg_pid, (uint8_t)k_dfu_hex_chars_u16);
-  }
-  if (err == k_ra_ok) {
-    err = dfu_print("\r\n");
-  }
+  err = dfu_host_enumerate();
   if (err != k_ra_ok) {
     return err;
   }

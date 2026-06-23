@@ -49,7 +49,10 @@
  * @see tools/epub_compile  Host compiler that emits `.rabook` blobs.
  * @see ra_reflow.h         Renderer that consumes the walked DOM.
  *
- * @since Version 1.0.0
+ * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 
@@ -63,7 +66,7 @@
  * @brief Wire-format version stamped into every blob header.
  * @details Bumped on any incompatible change to the on-disk layout. The
  *          loader rejects a blob whose `format_version` it does not recognise.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_book_format_version = 1U, /**< Current `.rabook` layout revision. */
@@ -75,7 +78,7 @@ typedef enum : uint32_t {
  * @details A file is `["RBKZ"][little-endian uint32 inflated_size][DEFLATE stream]`.
  *          The stream inflates to the flat blob described by @ref ra_book_header_t.
  *          @ref ra_book_open() unwraps it.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_book_container_magic_len  = 4U, /**< Length of the "RBKZ" magic.                  */
@@ -89,7 +92,7 @@ typedef enum : uint8_t {
  *          `cover_image_index` and a stylesheet's `scope_chapter` to mean
  *          "none" / "applies to all", since a real index can never be
  *          `0xFFFFFFFF` (the table count is bounded far below that).
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_book_nil = 0xFFFFFFFFU, /**< Absent index / "applies to all chapters". */
@@ -98,7 +101,7 @@ typedef enum : uint32_t {
 /**
  * @enum ra_book_node_kind_t
  * @brief Discriminates the two kinds of DOM node.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_book_node_element = 0U, /**< An element: has a tag name and attributes. */
@@ -111,7 +114,7 @@ typedef enum : uint8_t {
  * @details Raster images use panel-native 4-bit grayscale; SVG keeps its vector
  *          source for on-device rasterization. An enum so future encodings can
  *          be added without a flag-day.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_book_image_gray4 = 0U, /**< 4bpp gray, 2px/byte; pixel (x,y) is at flat index y*width + x. */
@@ -125,7 +128,7 @@ typedef enum : uint8_t {
  *          each record's byte size is part of the contract. These named
  *          constants drive the `static_assert`s that guard against accidental
  *          padding or a silent field change.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef enum : uint16_t {
   k_ra_book_sizeof_header     = 100U, /**< Bytes in @ref ra_book_header_t.     */
@@ -144,7 +147,7 @@ typedef enum : uint16_t {
  *          offsets index the string pool.
  * @invariant `total_size` equals the exact byte length of the blob.
  * @invariant Every `_off` plus its table extent lies within `[0, total_size]`.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef struct {
   char     magic[8];          /**< Always "RABOOK1" (7 chars + NUL).            */
@@ -178,7 +181,7 @@ static_assert(sizeof(ra_book_header_t) == k_ra_book_sizeof_header, "ra_book_head
 /**
  * @struct ra_book_chapter_t
  * @brief One spine document (a renderable chapter) plus its TOC label.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef struct {
   uint32_t title_off; /**< String-pool offset of the TOC label ("" if none).   */
@@ -198,7 +201,7 @@ static_assert(sizeof(ra_book_chapter_t) == k_ra_book_sizeof_chapter,
  *          `text_off` and have neither attributes nor children.
  * @invariant `kind == k_ra_book_node_text` implies `attr_count == 0`,
  *            `first_attr == nil` and `first_child == nil`.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef struct {
   uint8_t  kind;         /**< @ref ra_book_node_kind_t.                          */
@@ -216,7 +219,7 @@ static_assert(sizeof(ra_book_node_t) == k_ra_book_sizeof_node, "ra_book_node_t s
 /**
  * @struct ra_book_attr_t
  * @brief One `name="value"` attribute on an element.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef struct {
   uint32_t name_off;  /**< String-pool offset of the attribute name.  */
@@ -231,7 +234,7 @@ static_assert(sizeof(ra_book_attr_t) == k_ra_book_sizeof_attr, "ra_book_attr_t s
  * @details `source_off` points at the verbatim stylesheet text so the CSS
  *          cascade engine receives the real rules. `scope_chapter` is a chapter
  *          index, or @ref k_ra_book_nil for a book-wide stylesheet.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef struct {
   uint32_t source_off;    /**< String-pool offset of the verbatim CSS text.     */
@@ -251,7 +254,7 @@ static_assert(sizeof(ra_book_stylesheet_t) == k_ra_book_sizeof_stylesheet,
  *          is DEFLATE-wrapped on disk and inflated once on open, so per-image
  *          compression would not help -- thus `data_size == raw_size` and
  *          `data_off` indexes the image pool.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef struct {
   uint32_t id_off;    /**< String-pool offset of the source href / manifest id. */
@@ -279,7 +282,7 @@ static_assert(sizeof(ra_book_image_t) == k_ra_book_sizeof_image, "ra_book_image_
  * @pre `base` is at least `alignof(uint32_t)`-aligned.
  * @post Returned pointer aliases `base`; never NULL when `base` is non-NULL.
  * @note Thread-safe: read-only over immutable data.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const ra_book_header_t* ra_book_header(const void* base)
 {
@@ -295,7 +298,7 @@ static inline const ra_book_header_t* ra_book_header(const void* base)
  * @pre `off` lies inside the blob.
  * @post Result points within `[base, base + total_size)`.
  * @note Thread-safe: pure pointer arithmetic.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const void* ra_book_at(const void* base, uint32_t off)
 {
@@ -311,7 +314,7 @@ static inline const void* ra_book_at(const void* base, uint32_t off)
  * @pre `off` is within the string pool.
  * @post Result is a NUL-terminated string inside the blob.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const char* ra_book_string(const void* base, uint32_t off)
 {
@@ -326,7 +329,7 @@ static inline const char* ra_book_string(const void* base, uint32_t off)
  * @pre `ra_book_header(base)->chapter_count > 0` for the result to be dereferenceable.
  * @post Result indexes a contiguous array of `chapter_count` entries.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const ra_book_chapter_t* ra_book_chapters(const void* base)
 {
@@ -341,7 +344,7 @@ static inline const ra_book_chapter_t* ra_book_chapters(const void* base)
  * @pre `ra_book_header(base)->node_count > 0`.
  * @post Result indexes a contiguous array of `node_count` entries.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const ra_book_node_t* ra_book_nodes(const void* base)
 {
@@ -356,7 +359,7 @@ static inline const ra_book_node_t* ra_book_nodes(const void* base)
  * @pre `ra_book_header(base)->attr_count > 0`.
  * @post Result indexes a contiguous array of `attr_count` entries.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const ra_book_attr_t* ra_book_attrs(const void* base)
 {
@@ -371,7 +374,7 @@ static inline const ra_book_attr_t* ra_book_attrs(const void* base)
  * @pre `ra_book_header(base)->stylesheet_count > 0`.
  * @post Result indexes a contiguous array of `stylesheet_count` entries.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const ra_book_stylesheet_t* ra_book_stylesheets(const void* base)
 {
@@ -386,7 +389,7 @@ static inline const ra_book_stylesheet_t* ra_book_stylesheets(const void* base)
  * @pre `ra_book_header(base)->image_count > 0`.
  * @post Result indexes a contiguous array of `image_count` entries.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const ra_book_image_t* ra_book_images(const void* base)
 {
@@ -402,7 +405,7 @@ static inline const ra_book_image_t* ra_book_images(const void* base)
  * @pre `base` validated.
  * @post Result is a string inside the blob.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const char* ra_book_node_name(const void* base, const ra_book_node_t* node)
 {
@@ -418,7 +421,7 @@ static inline const char* ra_book_node_name(const void* base, const ra_book_node
  * @pre `base` validated.
  * @post Result is a string inside the blob.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const char* ra_book_node_text(const void* base, const ra_book_node_t* node)
 {
@@ -434,7 +437,7 @@ static inline const char* ra_book_node_text(const void* base, const ra_book_node
  * @pre `base` validated.
  * @post Result points within the image pool.
  * @note Thread-safe: read-only.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 static inline const uint8_t* ra_book_image_data(const void* base, const ra_book_image_t* img)
 {
@@ -468,7 +471,7 @@ static inline const uint8_t* ra_book_image_data(const void* base, const ra_book_
  *
  * @note Thread-safe: reads only the immutable candidate buffer.
  * @see ra_book_header()
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 ra_err_t ra_book_validate(const void* base, size_t size);
 
@@ -483,7 +486,7 @@ ra_err_t ra_book_validate(const void* base, size_t size);
  * @param[in]  dst_cap Capacity of `dst` in bytes.
  * @param[out] out_len Receives the number of bytes written to `dst`.
  * @return `k_ra_ok` on success, any non-zero @ref ra_err_t on failure.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 typedef ra_err_t (
   *ra_book_inflate_fn)(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len);
@@ -520,7 +523,7 @@ typedef ra_err_t (
  *
  * @note Thread-safe if `inflate` is and `scratch` is not shared concurrently.
  * @see ra_book_validate()
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 ra_err_t ra_book_open(const void*        file,
                       size_t             file_len,
@@ -561,7 +564,7 @@ ra_err_t ra_book_open(const void*        file,
  *
  * @note Thread-safe: reads only the immutable blob, writes only @p out.
  * @see ra_reflow_layout_chapter()
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 ra_err_t ra_book_chapter_to_xhtml(const void* base,
                                   uint32_t    chapter_idx,
@@ -596,7 +599,7 @@ ra_err_t ra_book_chapter_to_xhtml(const void* base,
  * @post On error, @p out contents are unspecified.
  *
  * @note Thread-safe: reads only the immutable blob, writes only @p out.
- * @since Version 1.0.0
+ * @since Version 0.1.0
  */
 ra_err_t ra_book_chapter_text(const void* base,
                               uint32_t    chapter_idx,

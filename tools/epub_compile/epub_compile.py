@@ -15,6 +15,9 @@ images, because the e-ink panel is physically 4bpp.
 
 Usage:
     epub_compile.py INPUT.epub OUTPUT.rabook [--stats]
+
+@copyright Copyright (c) 2026 Brighton Sikarskie
+SPDX-License-Identifier: MIT
 """
 import argparse
 import io

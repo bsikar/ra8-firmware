@@ -75,7 +75,7 @@ typedef struct {
   ra_err_t (*init)(struct ra_app* a); /**< One-time setup (at register).  */
   void (*on_enter)(struct ra_app* a); /**< Gained focus / foreground.     */
   void (*tick)(struct ra_app* a);     /**< Per-frame update (foreground). */
-  void (*render)(struct ra_app* a);   /**< Draw (on-target, foreground).  */
+  void (*render)(const struct ra_app* a); /**< Draw (on-target, foreground). */
   bool (*on_input)(struct ra_app* a, const ra_widget_event_t* ev); /**< Handle. */
   void (*on_leave)(struct ra_app* a); /**< Lost focus / background.       */
   void (*deinit)(struct ra_app* a);   /**< Teardown.                      */

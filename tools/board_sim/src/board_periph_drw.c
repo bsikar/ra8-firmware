@@ -82,6 +82,17 @@ typedef enum : uint32_t {
   k_drw_hwrevision_stamp = 0x00000909U, /**< Non-zero HWREVISION (present). */
 } drw_field_t;
 
+/** @brief COLOR1 ARGB8888 channel-extraction and pixel-pack constants. */
+typedef enum : uint32_t {
+  k_drw_argb_a_shift   = 24U,    /**< COLOR1 alpha byte position [31:24]. */
+  k_drw_argb_r_shift   = 16U,    /**< COLOR1 red byte position [23:16].   */
+  k_drw_argb_g_shift   = 8U,     /**< COLOR1 green byte position [15:8].   */
+  k_drw_argb_byte_mask = 0xFFU,  /**< Single 8-bit channel mask.          */
+  k_drw_argb4444_a_pos = 12U,    /**< ARGB4444 alpha nibble position.     */
+  k_drw_rgb565_r_pos   = 11U,    /**< RGB565 red field position [15:11].  */
+  k_drw_rgb565_g_pos   = 5U,     /**< RGB565 green field position [10:5]. */
+} drw_pixel_pack_t;
+
 /** @brief WRITEFORMAT codes (ra_drw_writeformat_t). */
 typedef enum : uint32_t {
   k_drw_wfmt_a8       = 0U, /**< 8 bpp A(8).      */
@@ -133,10 +144,10 @@ static uint32_t drw_bpp(void)
 /** @brief Pack the COLOR1 ARGB8888 source into the framebuffer pixel format. */
 static uint32_t drw_pack_pixel(uint32_t bpp)
 {
-  const uint32_t a = (s_drw.color1 >> 24U) & 0xFFU;
-  const uint32_t r = (s_drw.color1 >> 16U) & 0xFFU;
-  const uint32_t g = (s_drw.color1 >> 8U) & 0xFFU;
-  const uint32_t b = s_drw.color1 & 0xFFU;
+  const uint32_t a = (s_drw.color1 >> (uint32_t)k_drw_argb_a_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t r = (s_drw.color1 >> (uint32_t)k_drw_argb_r_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t g = (s_drw.color1 >> (uint32_t)k_drw_argb_g_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t b = s_drw.color1 & (uint32_t)k_drw_argb_byte_mask;
   if (bpp == 4U) {
     return s_drw.color1;
   }
@@ -147,9 +158,11 @@ static uint32_t drw_pack_pixel(uint32_t bpp)
   const uint32_t lo =
     (s_drw.control2 >> (uint32_t)k_drw_c2_wfmt_lo_pos) & (uint32_t)k_drw_c2_wfmt_lo_mask;
   if (lo == (uint32_t)k_drw_wfmt_argb4444) {
-    return ((a >> 4U) << 12U) | ((r >> 4U) << 8U) | ((g >> 4U) << 4U) | (b >> 4U);
+    return ((a >> 4U) << (uint32_t)k_drw_argb4444_a_pos) | ((r >> 4U) << 8U) | ((g >> 4U) << 4U) |
+           (b >> 4U);
   }
-  return ((r >> 3U) << 11U) | ((g >> 2U) << 5U) | (b >> 3U);
+  return ((r >> 3U) << (uint32_t)k_drw_rgb565_r_pos) | ((g >> 2U) << (uint32_t)k_drw_rgb565_g_pos) |
+         (b >> 3U);
 }
 
 /** @brief Rasterize the programmed solid box into emulated framebuffer memory. */

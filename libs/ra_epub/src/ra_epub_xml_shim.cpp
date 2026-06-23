@@ -47,9 +47,11 @@
  * {World: NS}
  */
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <iterator>
 
 #include "ra_epub.h"
 #include "tinyxml2.h"
@@ -348,12 +350,10 @@ bool media_type_is_font(const char* media_type)
     "font/otf",
     "application/x-font-ttf",
   };
-  for (const char* const candidate : k_font_types) {
-    if (std::strcmp(media_type, candidate) == 0) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(std::begin(k_font_types), std::end(k_font_types),
+                     [media_type](const char* const candidate) {
+                       return std::strcmp(media_type, candidate) == 0;
+                     });
 }
 
 /**

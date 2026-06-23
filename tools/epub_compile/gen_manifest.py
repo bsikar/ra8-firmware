@@ -6,6 +6,9 @@ its on-disk and inflated sizes, and emits a C header exposing a static table
 (`g_ra_book_library[]`) so firmware can list the bundled library and size the
 inflate scratch buffer with a single #include. ASCII-only output (titles are
 transliterated) to satisfy the repository encoding policy.
+
+@copyright Copyright (c) 2026 Brighton Sikarskie
+SPDX-License-Identifier: MIT
 """
 import argparse
 import os

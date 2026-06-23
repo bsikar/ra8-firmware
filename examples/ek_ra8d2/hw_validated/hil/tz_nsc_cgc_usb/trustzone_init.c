@@ -439,16 +439,35 @@ static void tz_copy_ns_image(void)
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
-static void tz_usb_handoff_prepare(void)
+/**
+ * @brief Route the USB-FS device pins + USBHS host pins and enable the HS PLL.
+ *
+ * @details Resets the pin validator (stale claims survive warm resets), routes
+ *          the four USB-FS pins as the DEVICE (P5_00 LOW), the two USBHS host
+ *          pins (PD07 HIGH for J7 VBUS, P4_08 USBHS_VBUS), then enables the
+ *          USBHS UTMI PLL. A warm reset leaves the PLL running, so
+ *          ``k_ra_err_busy`` is treated as success. The first failing step's
+ *          error is returned; later steps are short-circuited.
+ *
+ * @return ra_err_t First non-OK error from the pin/PLL chain (0 = OK).
+ * @retval k_ra_ok All pins routed and the USBHS PLL is up.
+ * @pre Caller is in Secure state with full peripheral access.
+ * @pre ``ra_cgc_init`` has run (PLL1 locked).
+ * @post The USB pins are muxed and PD07 is HIGH on success.
+ * @post The pin-validator bitmap reflects only this routine's claims.
+ * @note Not thread-safe; secure-boot only.
+ * @since 0.1.0
+ */
+static ra_err_t tz_usb_route_pins(void)
 {
-  /* 0. Establish the pin-validator baseline. The Secure boot never runs
-   *    ra_infrastructure_init (its main() is dead -- BLXNS does not return), so
-   *    the validator bitmap is in an uninitialised-contract state and warm
-   *    resets leave stale claims (SRAM survives SYSRESETREQ; PFS does not), which
-   *    would make the USB-pin claims spuriously conflict. Reset it first. */
+  /* Establish the pin-validator baseline. The Secure boot never runs
+   * ra_infrastructure_init (its main() is dead -- BLXNS does not return), so
+   * the validator bitmap is in an uninitialised-contract state and warm
+   * resets leave stale claims (SRAM survives SYSRESETREQ; PFS does not), which
+   * would make the USB-pin claims spuriously conflict. Reset it first. */
   ra_pin_validator_reset();
 
-  /* 1. Route the USB-FS pins as the DEVICE (Secure owns PFS). P5_00 LOW = dev. */
+  /* Route the USB-FS pins as the DEVICE (Secure owns PFS). P5_00 LOW = dev. */
   ra_err_t err =
     ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_vbus, k_ra_psel_usb_fs, "tz_usb.fs_vbus");
   if (err == k_ra_ok) {
@@ -461,8 +480,8 @@ static void tz_usb_handoff_prepare(void)
     err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_dm, k_ra_psel_usb_fs, "tz_usb.fs_dm");
   }
 
-  /* 2. USBHS host pins: PD07 HIGH (U18 supplies J7 VBUS), route P4_08
-   *    USBHS_VBUS. (The host-mode mux is the U15 expander -- step 4 below.) */
+  /* USBHS host pins: PD07 HIGH (U18 supplies J7 VBUS), route P4_08
+   * USBHS_VBUS. (The host-mode mux is the U15 expander -- handled later.) */
   if (err == k_ra_ok) {
     err = ra_gpio_output_init((ra_port_pin_t)k_tz_usb_pin_hs_pwr, k_ra_level_high);
   }
@@ -472,30 +491,39 @@ static void tz_usb_handoff_prepare(void)
                                   "tz_usb.hs_vbus");
   }
 
-  /* 3. Enable the USBHS UTMI PLL (Secure CGC; PLL1 already locked). A warm
-   *    reset leaves the CGC PLL domain running, so a re-enable reports
-   *    k_ra_err_busy ("already locked"); the clock is up either way, so treat
-   *    busy as success. */
+  /* Enable the USBHS UTMI PLL (Secure CGC; PLL1 already locked). A warm
+   * reset leaves the CGC PLL domain running, so a re-enable reports
+   * k_ra_err_busy ("already locked"); the clock is up either way, so treat
+   * busy as success. */
   if (err == k_ra_ok) {
     const ra_err_t pll_err = ra_cgc_usbhs_pll_enable();
     if ((pll_err != k_ra_ok) && (pll_err != k_ra_err_busy)) {
       err = pll_err;
     }
   }
-  g_tz_usb_pins_err = (uint32_t)err;
+  return err;
+}
 
-  /* 4. Set the U15 I/O-expander to USBHS host mode (SW4-8 -> Host). Decoupled
-   *    from the deterministic setup above and best-effort: on a cold boot the
-   *    single I2C write lands (probe -> success); after a warm reset RIIC1's
-   *    BBSY can still be set, reporting k_ra_err_busy. The external PI4IOE
-   *    latches its host-mode output, so the USBHS host role persists across the
-   *    MCU warm reset -- the self-loop still enumerates (the HIL gate proves
-   *    it). A retry cannot help here: the expander claims the SCL1/SDA1 pins on
-   *    the first try and a second try would fault the pin validator. */
-  const ra_err_t exp_err = ra_board_io_expander_set_usbhs_host_mode();
-  g_tz_usb_expander_err  = (uint32_t)exp_err;
-
-  /* 4. Mark BOTH USB controllers Non-secure in PSARB (bits 11 + 12). */
+/**
+ * @brief Mark BOTH USB controllers Non-secure in PSARB (bits 11 + 12).
+ *
+ * @details Opens the PRCR_S.PRC4 gate, sets PSARB11 (USBFS0) and PSARB12
+ *          (USBHS) so the NS image reaches them through the 0x5025_0000 /
+ *          0x5035_0000 aliases, spins (bounded) on the read-back until the
+ *          value confirms, then re-locks PRC4. The confirmed value is stored
+ *          in ::g_tz_usb_psarb_readback for a bench halt to verify.
+ *
+ * @return void.
+ * @pre Caller is in Secure state.
+ * @pre The USB pins/PLL setup has run.
+ * @post PSARB.PSARB11|PSARB12 = 1 (both USB controllers Non-secure).
+ * @post PRCR_S.PRC4 is cleared; ::g_tz_usb_psarb_readback holds the confirmed
+ *       value.
+ * @note Not thread-safe; secure-boot only.
+ * @since 0.1.0
+ */
+static void tz_usb_mark_ns(void)
+{
   /* HUM Ch 51.8.1 "PSARB : Peripheral Security Attribution Register B" p 3284
    * -- PSARB11 = USBFS0, PSARB12 = USBHS (+ their MSTPCRB.MSTPB11/12 bits);
    * 0 = Secure, 1 = Non-secure. PSARx share the PRCR_S.PRC4 write gate with
@@ -517,6 +545,26 @@ static void tz_usb_handoff_prepare(void)
   /* HUM Ch 9.2.4 "PRCR_S" p 397 -- re-lock PRC4. */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
   g_tz_usb_psarb_readback               = seen;
+}
+
+static void tz_usb_handoff_prepare(void)
+{
+  /* 1+2+3. Route USB pins (FS device + HS host) and enable the USBHS PLL. */
+  g_tz_usb_pins_err = (uint32_t)tz_usb_route_pins();
+
+  /* 4. Set the U15 I/O-expander to USBHS host mode (SW4-8 -> Host). Decoupled
+   *    from the deterministic setup above and best-effort: on a cold boot the
+   *    single I2C write lands (probe -> success); after a warm reset RIIC1's
+   *    BBSY can still be set, reporting k_ra_err_busy. The external PI4IOE
+   *    latches its host-mode output, so the USBHS host role persists across the
+   *    MCU warm reset -- the self-loop still enumerates (the HIL gate proves
+   *    it). A retry cannot help here: the expander claims the SCL1/SDA1 pins on
+   *    the first try and a second try would fault the pin validator. */
+  const ra_err_t exp_err = ra_board_io_expander_set_usbhs_host_mode();
+  g_tz_usb_expander_err  = (uint32_t)exp_err;
+
+  /* 5. Mark BOTH USB controllers Non-secure in PSARB (bits 11 + 12). */
+  tz_usb_mark_ns();
 }
 
 #endif /* RA_TRUSTZONE_ENABLE */

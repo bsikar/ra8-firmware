@@ -19,7 +19,7 @@ redistribution. This document records what is cleared and why.
 1. **Primary source: Standard Ebooks.** Hand-typeset editions of
    public-domain works, each dedicated to the public domain under
    **CC0 1.0 Universal**. CC0 imposes no attribution or redistribution
-   obligations, which makes these the cleanest masters to bundle and
+   obligations, which makes these the cleanest sources to bundle and
    republish. Download URL pattern (compatible EPUB):
    `https://standardebooks.org/ebooks/<author>/<title>/downloads/<author>_<title>.epub?source=download`
 2. **Public-domain basis of the underlying text: US copyright.** Works

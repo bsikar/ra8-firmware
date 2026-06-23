@@ -118,8 +118,10 @@ typedef enum : uint32_t {
   k_eoh_err_meta  = 9U, /**< Metadata parse / empty title.       */
 } eoh_err_t;
 
-/** @brief Idle-loop pacing for the success heartbeat (ms). */
-static const uint32_t k_eoh_frame_ms = 100U;
+/** @enum eoh_pace_t @brief Idle-loop pacing for the success heartbeat. */
+typedef enum : uint32_t {
+  k_eoh_frame_ms = 100U, /**< Heartbeat period in milliseconds. */
+} eoh_pace_t;
 
 /**
  * @var g_eoh_err
