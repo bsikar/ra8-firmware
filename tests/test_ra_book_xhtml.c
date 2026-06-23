@@ -498,6 +498,91 @@ static void test_ra_book_xhtml_break_trims_trailing_space(void)
   TEST_END("ra_book_xhtml break trims trailing space");
 }
 
+/**
+ * @enum bx_deep_dim_t
+ * @brief Nesting depth for the stack-exhaustion fixture.
+ */
+typedef enum : uint32_t {
+  k_bx_deep_n = 560U, /**< Nesting depth: exceeds the 512-entry walk stack. */
+} bx_deep_dim_t;
+
+/**
+ * @struct bx_deep_t
+ * @brief A `.rabook` blob whose nodes nest @ref k_bx_deep_n elements deep.
+ */
+typedef struct {
+  ra_book_header_t  hdr;                /**< Container header.                */
+  ra_book_chapter_t chapters[1];        /**< Single spine chapter.            */
+  ra_book_node_t    nodes[k_bx_deep_n]; /**< Linear chain of nested elements. */
+  char              strings[8];         /**< "d" tag + "x" leaf text.         */
+} bx_deep_t;
+
+/** @brief Build a single chain of @ref k_bx_deep_n nested `<d>` elements. */
+static void bx_build_deep(bx_deep_t* b)
+{
+  memset(b, 0, sizeof(*b));
+  memcpy(b->hdr.magic, "RABOOK1", 8);
+  b->hdr.format_version = k_ra_book_format_version;
+  b->hdr.total_size     = sizeof(*b);
+  b->hdr.chapter_count  = 1U;
+  b->hdr.chapter_off    = (uint32_t)offsetof(bx_deep_t, chapters);
+  b->hdr.node_count     = k_bx_deep_n;
+  b->hdr.node_off       = (uint32_t)offsetof(bx_deep_t, nodes);
+  b->hdr.string_off     = (uint32_t)offsetof(bx_deep_t, strings);
+  b->hdr.string_size    = sizeof(b->strings);
+  b->strings[0]         = '\0';
+  b->strings[1]         = 'd'; /* tag name at offset 1 */
+  b->strings[2]         = '\0';
+  b->strings[3]         = 'x'; /* leaf text at offset 3 */
+
+  b->chapters[0].root_node = 0U;
+  for (uint32_t i = 0U; i < (k_bx_deep_n - 1U); ++i) {
+    b->nodes[i] = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_element,
+                                   .name_off     = 1U,
+                                   .first_attr   = k_ra_book_nil,
+                                   .first_child  = i + 1U,
+                                   .next_sibling = k_ra_book_nil};
+  }
+  b->nodes[k_bx_deep_n - 1U] = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_text,
+                                                .text_off     = 3U,
+                                                .first_attr   = k_ra_book_nil,
+                                                .first_child  = k_ra_book_nil,
+                                                .next_sibling = k_ra_book_nil};
+}
+
+/**
+ * @brief A deeply-nested DOM exhausts the bounded walk stack on both walkers.
+ *
+ * @par MC/DC:
+ * Decision: the open-tag stack guard `!emit(">") || (*sp + 2 > k_stack)` in
+ * `ra_book_open_element`, and the descend guard `if (ok && (sp < k_stack))` in
+ * `ra_book_walk_text`. A chain of @ref k_bx_deep_n nested elements (output
+ * buffer sized so no emit fails first) drives:
+ * - to_xhtml: `*sp + 2 > k_stack` becomes true near depth 256, so the open-tag
+ *   guard's stack-capacity arm aborts the walk -> ::k_ra_err_invalid_size.
+ * - chapter_text: `sp < k_stack` becomes false and caps the descent, so the
+ *   walk completes without overflow -> ::k_ra_ok with empty output (the false
+ *   arm of the descend guard).
+ * @note The loop-internal `if (sp >= k_stack) return false` in both walkers is
+ *       defense-in-depth: the per-element open / descend guards above cap `sp`
+ *       at k_stack, so a pop always leaves `sp <= k_stack - 1` and that guard's
+ *       true arm is unreachable through the public API (deactivated, not faked).
+ */
+static void test_ra_book_xhtml_deep_nest_bounds(void)
+{
+  TEST_BEGIN("ra_book_xhtml deep-nest walk bounds");
+  static bx_deep_t b;
+  bx_build_deep(&b);
+  char   out[k_bx_big_cap] = {};
+  size_t len               = 99U;
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_chapter_to_xhtml(&b, 0U, out, sizeof(out), &len));
+  len = 99U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text(&b, 0U, out, sizeof(out), &len));
+  TEST_ASSERT_EQ(0, (int64_t)len); /* descent capped before reaching the leaf */
+  TEST_END("ra_book_xhtml deep-nest walk bounds");
+}
+
 int main(void)
 {
   test_ra_book_xhtml_serializes_and_escapes();
@@ -509,5 +594,6 @@ int main(void)
   test_ra_book_xhtml_walk_guard_exhaustion();
   test_ra_book_xhtml_close_chain_overflow();
   test_ra_book_xhtml_break_trims_trailing_space();
+  test_ra_book_xhtml_deep_nest_bounds();
   return 0;
 }
