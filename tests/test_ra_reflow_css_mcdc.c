@@ -34,6 +34,24 @@
  *  - priv_anc_matches    : the ancestor tag / class / id constraint arms.
  *  - priv_resolve        : the winner `rank == best && order >= best_order` arm.
  *  - ra_css_match_face   : the regular-fallback `(!bold && !italic && fb<0)` arm.
+ *  - priv_hex_val        : the below-'0' / below-'a' lower-range false sub-arms.
+ *  - priv_scan_hundredths: the fractional kept/skip `*i < len`-false exits.
+ *  - priv_parse_sel_part : the empty `.`/`#` (nlen == 0) reject arm.
+ *  - priv_ci_eq_span     : the `alen != blen` length-mismatch reject.
+ *  - priv_strip_quotes   : the `*len < 2` and unmatched-close false sub-arms.
+ *  - priv_extract_url    : the unterminated-`url(` (`b < vlen`-false) scan.
+ *  - priv_is_bold_kw     : the remaining bold/600/700/800 OR conditions.
+ *  - priv_is_italic_kw   : the `italic` OR condition.
+ *  - priv_face_apply     : the empty-family / no-url src reject arms.
+ *  - priv_for_each_decl  : the `(plen > 0) && (vlen > 0)` @font-face guard.
+ *  - priv_family_cb      : the empty rule `font-family` (n == 0) reject.
+ *  - priv_parse_one_block: the `tlen == 0` empty-selector (cond1-false) arm.
+ *  - ra_css_parse        : the `/` not-followed-by-`*` (cond3-false) comment scan.
+ *  - priv_class_list_has : the multi-token class-list whitespace scan.
+ *  - priv_anc_matches    : the NULL-class / NULL-id / id-length-mismatch arms.
+ *  - priv_resolve        : the `rank > best_rank` higher-specificity override.
+ *  - ra_css_match_face   : the italic-only (cond2) / second-regular (cond3) arms.
+ *  - ra_css_face_src     : the null-out_len / valid-index 4-OR guard.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -58,6 +76,9 @@ typedef enum : uint16_t {
   k_css_buf_cap       = 256U, /**< Scratch CSS / declaration buffer capacity.  */
   k_css_fs_156        = 156U, /**< 1.567em -> 156% (3rd frac digit dropped).   */
   k_css_fs_150        = 150U, /**< 1.5em -> 150%.                              */
+  k_css_face_one      = 1U,   /**< Expected single-face count.                 */
+  k_css_face_two      = 2U,   /**< Expected two-face count.                    */
+  k_css_rule_one      = 1U,   /**< Expected single-rule count.                 */
 } css_test_consts_t;
 
 /**
@@ -719,6 +740,484 @@ static void test_rule_matches_null_arms(void)
 }
 
 /**
+ * @test test_hex_val_below_ranges
+ * @brief A hex byte below '0' and below 'a' isolates the lower-range conditions.
+ *
+ * @par MC/DC:
+ * priv_hex_val has two range tests:
+ *   `(c >= '0') && (c <= '9')`  (digit arm)
+ *   `(l >= 'a') && (l <= 'f')`  (lower-folded letter arm)
+ * The existing suite drives the upper sub-conditions false ('g' > '9', 'g' > 'f')
+ * and both-true ('0'..'F'). This isolates the LOWER sub-conditions:
+ *  - A '/' byte (0x2F, just below '0') -> `c >= '0'` false (digit cond1 false),
+ *    then lower-folded '/' (< 'a') -> `l >= 'a'` false (letter cond1 false).
+ * The '/' nibble makes the colour invalid, so `color` is NOT set; the
+ * surrounding all-digit nibbles keep the rest of the parse on the valid path.
+ */
+static void test_hex_val_below_ranges(void)
+{
+  TEST_BEGIN("css priv_hex_val below-'0' / below-'a' arms");
+  const uint8_t cset = (uint8_t)k_ra_css_set_color;
+  /* '/' (0x2F) is below '0' and below 'a': both lower-range conditions go false. */
+  ra_css_style_t bad = inl("color: #0/0");
+  TEST_ASSERT((bad.set & cset) == 0U); /* '/' nibble -> invalid -> color unset */
+  /* Control: a clean 3-digit colour still parses on the same code path. */
+  ra_css_style_t ok = inl("color: #0a0");
+  TEST_ASSERT((ok.set & cset) != 0U);
+  TEST_END("css priv_hex_val below-'0' / below-'a' arms");
+}
+
+/**
+ * @test test_fontsize_frac_end_of_input
+ * @brief Fractional digits that run to end-of-input exit the loops via `*i<len`.
+ *
+ * @par MC/DC:
+ * Two loops in priv_scan_hundredths exit when the span ends mid-fraction
+ * (the `*i < len` condition, not the digit / fd-cap conditions):
+ *  (A) kept loop `(*i<len) && digit && (fd < k_priv_fs_frac)` -- "1.5" (no unit)
+ *      keeps '5' then `*i < len` goes false at end-of-input (cond1 false).
+ *  (B) skip loop `(*i<len) && digit` -- "1.567" keeps two digits, the skip loop
+ *      consumes '7' then `*i < len` goes false at end-of-input (cond1 false).
+ * Neither span carries a unit suffix, so priv_parse_fontsize returns false and
+ * `font-size` is NOT set; the point is that the scan terminated on `*i < len`.
+ */
+static void test_fontsize_frac_end_of_input(void)
+{
+  TEST_BEGIN("css font-size fractional *i<len exits");
+  const uint8_t  fset = (uint8_t)k_ra_css_set_fontsize;
+  ra_css_style_t a    = inl("font-size: 1.5");   /* kept loop ends on *i<len   */
+  ra_css_style_t b    = inl("font-size: 1.567"); /* skip loop ends on *i<len   */
+  TEST_ASSERT((a.set & fset) == 0U);             /* no unit -> not applied     */
+  TEST_ASSERT((b.set & fset) == 0U);             /* no unit -> not applied     */
+  TEST_END("css font-size fractional *i<len exits");
+}
+
+/**
+ * @test test_sel_part_empty_name
+ * @brief A `.`/`#` with no following name (nlen == 0) drops the rule.
+ *
+ * @par MC/DC:
+ * Decision (priv_parse_sel_part): `(nlen == 0U) || !priv_intern_name(...)`
+ * (2-cond OR). The existing suite drives the `!intern` arm (over-long / dup);
+ * this isolates the `nlen == 0` arm:
+ *  - control `p { ... }` -> a bare type, no `.`/`#` part -> kept.
+ *  - `em# { ... }` -> after the type `em`, the `#` part has no name byte before
+ *    the selector ends -> nlen == 0 (cond1 true) -> priv_parse_sel_part returns
+ *    false -> the rule is dropped.
+ * Only the control survives in the rule table.
+ */
+static void test_sel_part_empty_name(void)
+{
+  TEST_BEGIN("css selector empty .#-part (nlen == 0) drop");
+  load("p { color: red; }"      /* control kept            */
+       "em# { color: blue; }"); /* '#' with no name -> drop */
+  TEST_ASSERT_EQ((int)k_css_rule_one, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_END("css selector empty .#-part (nlen == 0) drop");
+}
+
+/**
+ * @test test_match_face_length_mismatch
+ * @brief A family query whose length differs from a face is rejected.
+ *
+ * @par MC/DC:
+ * Decision (priv_ci_eq_span via priv_family_eq): `(a == NULL) || (b == NULL) ||
+ *   (alen != blen)` (3-cond OR). The pointer arms are unreachable through
+ * ra_css_match_face (it pre-checks family != NULL and the pooled name is never
+ * NULL), so this isolates the reachable `alen != blen` condition:
+ *  - querying "Body" (len 4) against the "Body" face -> alen == blen -> the span
+ *    compare runs and the face matches (cond3 false: control).
+ *  - querying "Bod" (len 3) against the same face -> alen(4) != blen(3) -> cond3
+ *    true -> no family match -> no-face.
+ */
+static void test_match_face_length_mismatch(void)
+{
+  TEST_BEGIN("css match_face family length mismatch (alen != blen)");
+  load("@font-face{font-family:Body;src:url(b.ttf)}");
+  /* Exact length -> the family compare runs and matches. */
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Body", 4U, false, false));
+  /* Shorter query -> alen != blen short-circuits the compare -> no match. */
+  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(&s_sheet, "Bod", 3U, false, false));
+  TEST_END("css match_face family length mismatch (alen != blen)");
+}
+
+/**
+ * @test test_strip_quotes_short_and_unclosed
+ * @brief A 1-byte family and an unmatched closing quote are NOT quote-stripped.
+ *
+ * @par MC/DC:
+ * Decision (priv_strip_quotes): `(*len >= 2) && ((s[0]=='"') || (s[0]=='\'')) &&
+ *   (s[*len-1] == s[0])` (3-cond AND). The existing suite drives the all-true
+ * arm (`"Body"` / `'Body'`) and the quote-OR false arm (bare `Body`). This
+ * isolates the remaining two AND conditions:
+ *  - family `X` (one byte) -> `*len >= 2` false (cond1 false): kept verbatim, a
+ *    valid 1-byte family.
+ *  - family `"AB'` (open `"`, close `'`) -> cond1 true, quote-OR true, but
+ *    `s[*len-1] != s[0]` (cond3 false): the quotes are NOT stripped, so the
+ *    interned family keeps all three literal bytes.
+ * Matching on the resolved family length proves which bytes were interned.
+ */
+static void test_strip_quotes_short_and_unclosed(void)
+{
+  TEST_BEGIN("css strip_quotes short / unmatched-close arms");
+  const uint16_t one  = 1U;
+  const uint16_t four = 4U;
+  load("@font-face{font-family:X;src:url(x.ttf)}"       /* 1-byte: *len<2    */
+       "@font-face{font-family:\"AB';src:url(y.ttf)}"); /* mismatched close  */
+  TEST_ASSERT_EQ((int)k_css_face_two, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ((int)one, (int)s_sheet.faces[0].family_len);  /* "X" kept       */
+  TEST_ASSERT_EQ((int)four, (int)s_sheet.faces[1].family_len); /* "AB' kept whole */
+  TEST_ASSERT_EQ(0, memcmp(&s_sheet.names[s_sheet.faces[1].family_off], "\"AB'", 4U));
+  TEST_END("css strip_quotes short / unmatched-close arms");
+}
+
+/**
+ * @test test_extract_url_unterminated
+ * @brief A `url(` with no closing `)` is scanned to end-of-value.
+ *
+ * @par MC/DC:
+ * Loop (priv_extract_url): `while ((b < vlen) && (val[b] != ')'))`. The existing
+ * suite drives the `val[b] != ')'`-false exit (a real `url(a.ttf)`). This
+ * isolates the `b < vlen`-false exit:
+ *  - `src:url(noclose.ttf` (no `)`) -> the scan runs to `b == vlen` (cond1 false)
+ *    and still yields a non-empty href, so the face is accepted.
+ * The face is kept (family + a non-empty src), proving the unterminated-url path
+ * extracted a usable href.
+ */
+static void test_extract_url_unterminated(void)
+{
+  TEST_BEGIN("css extract_url unterminated url( (b < vlen)");
+  load("@font-face{font-family:U;src:url(noclose.ttf}");
+  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "U", 1U, false, false));
+  const char* src  = nullptr;
+  uint16_t    slen = 0U;
+  TEST_ASSERT(ra_css_face_src(&s_sheet, 0U, &src, &slen));
+  TEST_ASSERT(slen > 0U); /* the unterminated url still produced an href */
+  TEST_END("css extract_url unterminated url( (b < vlen)");
+}
+
+/**
+ * @test test_fontface_bold_kw_full_or
+ * @brief Each remaining @font-face bold keyword isolates one OR condition.
+ *
+ * @par MC/DC:
+ * Decision (priv_is_bold_kw): `bold || bolder || 600 || 700 || 800 || 900`
+ * (6-cond OR). The existing suite drives cond6 (900), cond2 (bolder) and the
+ * all-false arm (normal). This isolates the four still-uncovered conditions, one
+ * keyword each (the rest false), and a `font-style:italic` face also isolates
+ * priv_is_italic_kw cond1 (italic) against the existing oblique cond2:
+ *  - `font-weight:bold`   -> weight_bold = 1 (bold OR cond1).
+ *  - `font-weight:600`    -> weight_bold = 1 (bold OR cond3).
+ *  - `font-weight:700`    -> weight_bold = 1 (bold OR cond4).
+ *  - `font-weight:800`    -> weight_bold = 1 (bold OR cond5).
+ *  - `font-style:italic`  -> style_italic = 1 (italic OR cond1).
+ */
+static void test_fontface_bold_kw_full_or(void)
+{
+  TEST_BEGIN("css @font-face bold-kw OR conds 1/3/4/5 + italic cond1");
+  load("@font-face{font-family:A;font-weight:bold;src:url(a.ttf)}"
+       "@font-face{font-family:B;font-weight:600;src:url(b.ttf)}"
+       "@font-face{font-family:C;font-weight:700;src:url(c.ttf)}"
+       "@font-face{font-family:D;font-weight:800;src:url(d.ttf)}"
+       "@font-face{font-family:E;font-style:italic;src:url(e.ttf)}");
+  const uint16_t face_five = 5U;
+  TEST_ASSERT_EQ((int)face_five, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* bold */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* 600  */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].weight_bold);  /* 700  */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[3].weight_bold);  /* 800  */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[4].style_italic); /* italic */
+  TEST_END("css @font-face bold-kw OR conds 1/3/4/5 + italic cond1");
+}
+
+/**
+ * @test test_face_apply_reject_arms
+ * @brief An empty-quoted family and a url-less src each leave their slot unset.
+ *
+ * @par MC/DC:
+ * Two guards in priv_face_apply:
+ *  (A) family: `(n > 0U) && priv_intern_name(...)` -- a `font-family:""` value
+ *      strips to length 0, so `n > 0` is false (cond1 false): no family interned.
+ *  (B) src: `priv_extract_url(...) && priv_intern_name(...)` -- a `src:none`
+ *      value has no `url(`, so priv_extract_url returns false (cond1 false):
+ *      no src interned.
+ * With neither family nor src set, priv_parse_fontface's accept guard rejects
+ * the block, so the face table stays empty (the surviving control face proves
+ * the table itself works).
+ */
+static void test_face_apply_reject_arms(void)
+{
+  TEST_BEGIN("css face_apply empty-family / no-url-src rejects");
+  load("@font-face{font-family:Good;src:url(g.ttf)}"            /* control kept        */
+       "@font-face{font-family:\"\";src:none}"                  /* empty fam + no url() */
+       "@font-face{font-family:NoUrl;src:none}");               /* fam ok, src no url() */
+  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count); /* only control */
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Good", 4U, false, false));
+  TEST_ASSERT_EQ((int)k_ra_css_no_face,
+                 (int)ra_css_match_face(&s_sheet, "NoUrl", 5U, false, false));
+  TEST_END("css face_apply empty-family / no-url-src rejects");
+}
+
+/**
+ * @test test_for_each_decl_empty_pairs
+ * @brief Empty @font-face descriptor pairs are skipped by the iterator guard.
+ *
+ * @par MC/DC:
+ * Decision (priv_for_each_decl): `(plen > 0U) && (vlen > 0U)` (2-cond AND),
+ * driven over a @font-face block (this iterator is the @font-face / font-family
+ * one, distinct from priv_parse_decls). N+1 = 3:
+ *  - `font-family:F` -> plen>0 AND vlen>0 -> true (applied: the family is set).
+ *  - `:bad`          -> plen == 0 -> cond1 false (skipped, no descriptor).
+ *  - `font-weight:`  -> vlen == 0 -> cond2 false (skipped, weight stays 0).
+ * The face still has family + src (from the valid pairs), so it is accepted; the
+ * empty pairs simply add nothing.
+ */
+static void test_for_each_decl_empty_pairs(void)
+{
+  TEST_BEGIN("css @font-face decl iterator (plen>0 && vlen>0)");
+  load("@font-face{font-family:F; :bad; font-weight:; src:url(f.ttf)}");
+  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(0, (int)s_sheet.faces[0].weight_bold); /* empty weight stayed 0 */
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "F", 1U, false, false));
+  TEST_END("css @font-face decl iterator (plen>0 && vlen>0)");
+}
+
+/**
+ * @test test_rule_family_empty
+ * @brief A rule `font-family:""` interns nothing (the n == 0 guard arm).
+ *
+ * @par MC/DC:
+ * Decision (priv_family_cb): `(n > 0U) && priv_intern_name(...)` (2-cond AND):
+ *  - `p { font-family: Serif }` -> n>0 AND intern OK -> true (family set bit on).
+ *  - `h1 { font-family: "" }`   -> the empty value strips to length 0, so
+ *    `n > 0` is false (cond1 false): the family set bit stays clear.
+ */
+static void test_rule_family_empty(void)
+{
+  TEST_BEGIN("css rule font-family empty (n == 0) guard");
+  const uint8_t famset = (uint8_t)k_ra_css_set_family;
+  load("p { font-family: Serif; }"   /* family interned         */
+       "h1 { font-family: \"\"; }"); /* empty -> nothing interned */
+  ra_css_element_t pe = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  ra_css_element_t he = elem(k_ra_reflow_tag_h1, nullptr, nullptr);
+  ra_css_style_t   ps = ra_css_cascade(&s_sheet, &pe, no_inline(), no_inline());
+  ra_css_style_t   hs = ra_css_cascade(&s_sheet, &he, no_inline(), no_inline());
+  TEST_ASSERT((ps.set & famset) != 0U); /* control set the family */
+  TEST_ASSERT((hs.set & famset) == 0U); /* empty family not set    */
+  TEST_END("css rule font-family empty (n == 0) guard");
+}
+
+/**
+ * @test test_block_empty_selector
+ * @brief A block with an empty (whitespace-only) selector is not an at-rule.
+ *
+ * @par MC/DC:
+ * Decision (priv_parse_one_block): `(tlen > 0U) && (tsel[0] == '@')` (2-cond
+ * AND). The existing suite drives the all-true arm (@font-face) and the
+ * `tsel[0] != '@'` arm (a `p` rule). This isolates `tlen == 0`:
+ *  - a leading `{ color: red; }` block has an empty selector -> tlen == 0
+ *    (cond1 false): the at-rule branch is NOT taken, the block falls through to
+ *    the style-rule path, but priv_parse_selector rejects an empty selector so
+ *    no rule is added.
+ *  - the following `p { ... }` proves parsing continues normally afterwards.
+ */
+static void test_block_empty_selector(void)
+{
+  TEST_BEGIN("css empty-selector block (tlen == 0) not at-rule");
+  load("{ color: red; }\n"    /* empty selector -> tlen == 0 -> no rule */
+       "p { color: blue; }"); /* parsing resumes -> one rule            */
+  TEST_ASSERT_EQ((int)k_css_rule_one, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ((int)k_css_color_blue, (int)s_sheet.rules[0].decl.color);
+  TEST_END("css empty-selector block (tlen == 0) not at-rule");
+}
+
+/**
+ * @test test_comment_scan_slash_not_star
+ * @brief A `/` not followed by `*` is not a comment open (cond3 false).
+ *
+ * @par MC/DC:
+ * Decision (ra_css_parse): `((i+1)<len) && (css[i]=='/') && (css[i+1]=='*')`
+ * (3-cond AND). The existing suite drives the all-true arm (a real comment) and
+ * the `(i+1) < len`-false arm (a trailing `/`). This isolates cond3:
+ *  - a mid-stream `/x` -> (i+1)<len true, css[i]=='/' true, css[i+1]=='x' != '*'
+ *    (cond3 false): NOT a comment, so the byte is handled by the block scanner
+ *    (which finds no usable selector here and skips it).
+ * The leading `p` rule still parses, proving the non-comment `/` did not derail
+ * the parser.
+ */
+static void test_comment_scan_slash_not_star(void)
+{
+  TEST_BEGIN("css comment scan '/' not '*' (cond3 false)");
+  load("p { color: red; }\n"
+       "/x\n" /* '/' not followed by '*' -> not a comment open */
+       "h1 { color: blue; }");
+  TEST_ASSERT(s_sheet.rule_count >= (uint16_t)k_css_rule_one);
+  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_END("css comment scan '/' not '*' (cond3 false)");
+}
+
+/**
+ * @test test_class_list_multi_token
+ * @brief A space-separated multi-class ancestor list is scanned token by token.
+ *
+ * @par MC/DC:
+ * Loop (priv_class_list_has): the inner whitespace skip
+ * `while ((i < list_len) && priv_is_ws(list[i]))` plus the token scan, reached
+ * via a descendant `.box p` rule whose ancestor carries several classes:
+ *  - ancestor class " lead box " -> the leading space exercises the ws-skip
+ *    (is_ws true), the "lead" token mismatches, the inter-token space skips, and
+ *    "box" matches; the trailing space drives the `i < list_len`-false exit.
+ *  - the same rule against an ancestor class "lead only" (no "box") -> the scan
+ *    walks both tokens and returns no match (the rule does not apply).
+ */
+static void test_class_list_multi_token(void)
+{
+  TEST_BEGIN("css class-list multi-token whitespace scan");
+  const uint8_t          bset = (uint8_t)k_ra_css_set_bold;
+  const ra_css_style_t   inh  = {};
+  const ra_css_element_t p    = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  load(".box p { font-weight: bold; }");
+  /* Leading + inter-token + trailing whitespace around the matching "box". */
+  const ra_css_element_t a_has[1] = {elem(k_ra_reflow_tag_blockquote, nullptr, " lead box ")};
+  const ra_css_element_t a_no[1]  = {elem(k_ra_reflow_tag_blockquote, nullptr, "lead only")};
+  ra_css_style_t         hit      = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_has, 1U);
+  ra_css_style_t         miss     = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_no, 1U);
+  TEST_ASSERT((hit.set & bset) != 0U);  /* "box" found among the tokens */
+  TEST_ASSERT((miss.set & bset) == 0U); /* no "box" token -> no match    */
+  TEST_END("css class-list multi-token whitespace scan");
+}
+
+/**
+ * @test test_anc_null_class_id_and_idlen
+ * @brief Ancestor class/id constraints reject NULL attrs and id-length mismatch.
+ *
+ * @par MC/DC:
+ * priv_anc_matches has two remaining compound arms:
+ *   class: `(el->class_str == NULL) || !class_list_has(...)`
+ *   id   : `(el->id == NULL) || (el->id_len != anc->id_len) || (memcmp != 0)`
+ * The existing suite drives the class `!has` and id `memcmp != 0` arms; this
+ * isolates the rest:
+ *  - `.box p` vs an ancestor with NO class (class_str == NULL) -> class cond1
+ *    true -> no match.
+ *  - `blockquote#main p` vs an ancestor with NO id (id == NULL) -> id cond1 true
+ *    -> no match.
+ *  - `blockquote#main p` vs an ancestor id "mains" (len 5 != 4) -> id cond2
+ *    (`id_len != anc->id_len`) true -> no match.
+ */
+static void test_anc_null_class_id_and_idlen(void)
+{
+  TEST_BEGIN("css anc NULL-class / NULL-id / id-len-mismatch arms");
+  const uint8_t          bset = (uint8_t)k_ra_css_set_bold;
+  const ra_css_style_t   inh  = {};
+  const ra_css_element_t p    = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+
+  /* Class constraint vs an ancestor with NO class attribute. */
+  load(".box p { font-weight: bold; }");
+  const ra_css_element_t a_noc[1] = {elem(k_ra_reflow_tag_blockquote, nullptr, nullptr)};
+  ra_css_style_t         s_noc    = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noc, 1U);
+  TEST_ASSERT((s_noc.set & bset) == 0U); /* class_str == NULL -> no match */
+
+  /* Id constraint vs an ancestor with NO id, and vs a wrong-length id. */
+  load("blockquote#main p { font-weight: bold; }");
+  const ra_css_element_t a_noid[1] = {elem(k_ra_reflow_tag_blockquote, nullptr, nullptr)};
+  const ra_css_element_t a_len[1]  = {elem(k_ra_reflow_tag_blockquote, "mains", nullptr)};
+  ra_css_style_t         s_noid    = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noid, 1U);
+  ra_css_style_t         s_len     = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_len, 1U);
+  TEST_ASSERT((s_noid.set & bset) == 0U); /* id == NULL -> no match        */
+  TEST_ASSERT((s_len.set & bset) == 0U);  /* id_len 5 != 4 -> no match      */
+  TEST_END("css anc NULL-class / NULL-id / id-len-mismatch arms");
+}
+
+/**
+ * @test test_resolve_specificity_override
+ * @brief A higher-specificity rule overrides a lower one (rank > best_rank).
+ *
+ * @par MC/DC:
+ * Decision (priv_resolve winner): `(!have) || (rank > best_rank) ||
+ *   ((rank == best_rank) && (order >= best_order))`. The existing suite drives
+ * the `!have` seed and the equal-rank order tie. This isolates the
+ * `rank > best_rank` disjunct:
+ *  - `p { color: red }` (rank = type only) matches and seeds best.
+ *  - `p.note { color: blue }` (rank = type + class) also matches; its rank is
+ *    strictly greater, so `rank > best_rank` true -> blue overrides red even
+ *    though it is interned at a higher source order.
+ * The result is blue, proving specificity (not source order) chose the winner.
+ */
+static void test_resolve_specificity_override(void)
+{
+  TEST_BEGIN("css resolve specificity override (rank > best_rank)");
+  load("p { color: red; } p.note { color: blue; }");
+  ra_css_element_t e = elem(k_ra_reflow_tag_p, nullptr, "note");
+  ra_css_style_t   r = ra_css_cascade(&s_sheet, &e, no_inline(), no_inline());
+  TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_color) != 0U);
+  TEST_ASSERT_EQ((int)k_css_color_blue, (int)r.color); /* higher specificity wins */
+  TEST_END("css resolve specificity override (rank > best_rank)");
+}
+
+/**
+ * @test test_match_face_fallback_conditions
+ * @brief Isolate the italic-face (cond2) and second-regular (cond3) arms.
+ *
+ * @par MC/DC:
+ * Decision (ra_css_match_face fallback record):
+ *   `(weight_bold == 0) && (style_italic == 0) && (fallback < 0)` (3-cond AND).
+ * The existing suite drives the all-true record and the `weight_bold == 0`-false
+ * (bold-only) arm. This isolates the other two:
+ *  (A) `style_italic == 0` false -- a family with a single italic-only face:
+ *      asking (bold, not-italic) finds no exact match, and the face's
+ *      style_italic = 1 makes cond2 false -> no fallback recorded -> no-face.
+ *  (B) `fallback < 0` false -- a family with TWO regular faces: the first sets
+ *      the fallback, the second sees `fallback < 0` false (cond3 false) and is
+ *      skipped; asking (bold) returns the FIRST regular face.
+ */
+static void test_match_face_fallback_conditions(void)
+{
+  TEST_BEGIN("css match_face fallback conds 2 (italic) / 3 (2nd regular)");
+  /* (A) italic-only family: cond2 (style_italic == 0) false -> no fallback. */
+  load("@font-face{font-family:Ital;font-style:italic;src:url(i.ttf)}");
+  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(&s_sheet, "Ital", 4U, true, false));
+  /* (B) two regular faces: the second hits cond3 (fallback < 0) false. */
+  load("@font-face{font-family:Two;src:url(r1.ttf)}"
+       "@font-face{font-family:Two;src:url(r2.ttf)}");
+  TEST_ASSERT_EQ((int)k_css_face_two, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Two", 3U, true, false));
+  TEST_END("css match_face fallback conds 2 (italic) / 3 (2nd regular)");
+}
+
+/**
+ * @test test_face_src_guard_arms
+ * @brief ra_css_face_src validates each guard condition independently.
+ *
+ * @par MC/DC:
+ * Decision: `(sheet == NULL) || (out_src == NULL) || (out_len == NULL) ||
+ *   (idx >= face_count)` (4-cond OR; N+1 = 5):
+ *  - all valid               -> false (control: the href is returned).
+ *  - sheet == NULL           -> cond1 true  -> false.
+ *  - out_src == NULL         -> cond2 true  -> false.
+ *  - out_len == NULL         -> cond3 true  -> false.
+ *  - idx >= face_count       -> cond4 true  -> false.
+ */
+static void test_face_src_guard_arms(void)
+{
+  TEST_BEGIN("css face_src guard 4-OR");
+  load("@font-face{font-family:Body;src:url(body.ttf)}");
+  const char*    src     = nullptr;
+  uint16_t       slen    = 0U;
+  const uint16_t bad_idx = 99U;
+  TEST_ASSERT(ra_css_face_src(&s_sheet, 0U, &src, &slen)); /* control true */
+  TEST_ASSERT(slen > 0U);
+  TEST_ASSERT(!ra_css_face_src(nullptr, 0U, &src, &slen));       /* cond1 */
+  TEST_ASSERT(!ra_css_face_src(&s_sheet, 0U, nullptr, &slen));   /* cond2 */
+  TEST_ASSERT(!ra_css_face_src(&s_sheet, 0U, &src, nullptr));    /* cond3 */
+  TEST_ASSERT(!ra_css_face_src(&s_sheet, bad_idx, &src, &slen)); /* cond4 */
+  TEST_END("css face_src guard 4-OR");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -745,6 +1244,23 @@ int32_t main(void)
   test_resolve_order_tiebreak();
   test_match_face_regular_fallback();
   test_rule_matches_null_arms();
+  test_hex_val_below_ranges();
+  test_fontsize_frac_end_of_input();
+  test_sel_part_empty_name();
+  test_match_face_length_mismatch();
+  test_strip_quotes_short_and_unclosed();
+  test_extract_url_unterminated();
+  test_fontface_bold_kw_full_or();
+  test_face_apply_reject_arms();
+  test_for_each_decl_empty_pairs();
+  test_rule_family_empty();
+  test_block_empty_selector();
+  test_comment_scan_slash_not_star();
+  test_class_list_multi_token();
+  test_anc_null_class_id_and_idlen();
+  test_resolve_specificity_override();
+  test_match_face_fallback_conditions();
+  test_face_src_guard_arms();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_css_mcdc.c\n");
   return 0;
 }

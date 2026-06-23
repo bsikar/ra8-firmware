@@ -224,9 +224,13 @@ static void test_ra_book_xhtml_to_xhtml_overflow_graded(void)
   TEST_BEGIN("ra_book_xhtml to_xhtml graded overflow");
   bx_book_t b;
   bx_build(&b);
-  char         out[k_bx_out_cap] = {};
-  size_t       len               = 0U;
-  const size_t caps[]            = {0U, 1U, 2U, 4U, 6U, 10U, 20U, 40U};
+  char   out[k_bx_out_cap] = {};
+  size_t len               = 0U;
+  /* Caps walk through the open tag, the per-attribute emit chain (positions
+   * ~5..18 inside ` class="a&quot;b"`) and on into the body, so each condition
+   * of the attribute `&&` chain is the deciding (failing) one in turn. */
+  const size_t caps[] =
+    {0U, 1U, 2U, 4U, 5U, 6U, 7U, 8U, 10U, 11U, 12U, 13U, 16U, 17U, 20U, 30U, 40U, 60U};
   for (size_t i = 0U; i < (sizeof(caps) / sizeof(caps[0])); ++i) {
     len = 99U;
     TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_chapter_to_xhtml(&b, 0U, out, caps[i], &len));
@@ -362,6 +366,138 @@ static void test_ra_book_xhtml_walk_guard_exhaustion(void)
   TEST_END("ra_book_xhtml walk iteration-guard exhaustion");
 }
 
+/** @brief Build a minimal `<p>x</p>` book so small caps reach the close tag. */
+static void bx_build_small(bx_book_t* b)
+{
+  memset(b, 0, sizeof(*b));
+  memcpy(b->hdr.magic, "RABOOK1", 8);
+  b->hdr.format_version = k_ra_book_format_version;
+  b->hdr.total_size     = sizeof(*b);
+  b->hdr.chapter_count  = 1U;
+  b->hdr.chapter_off    = (uint32_t)offsetof(bx_book_t, chapters);
+  b->hdr.node_count     = 2U;
+  b->hdr.node_off       = (uint32_t)offsetof(bx_book_t, nodes);
+  b->hdr.string_off     = (uint32_t)offsetof(bx_book_t, strings);
+  b->hdr.string_size    = k_bx_str_cap;
+
+  uint32_t off    = 0U;
+  b->strings[off] = '\0';
+  off += 1U;
+  const uint32_t s_p = bx_intern(b, &off, "p");
+  const uint32_t s_x = bx_intern(b, &off, "x");
+
+  b->chapters[0].root_node = 0U;
+  b->nodes[0]              = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_element,
+                                              .name_off     = s_p,
+                                              .first_attr   = k_ra_book_nil,
+                                              .first_child  = 1U,
+                                              .next_sibling = k_ra_book_nil};
+  b->nodes[1]              = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_text,
+                                              .text_off     = s_x,
+                                              .first_attr   = k_ra_book_nil,
+                                              .first_child  = k_ra_book_nil,
+                                              .next_sibling = k_ra_book_nil};
+}
+
+/** @brief Build `<div>word <p>x</p></div>`: a trailing space before a block. */
+static void bx_build_trail(bx_book_t* b)
+{
+  memset(b, 0, sizeof(*b));
+  memcpy(b->hdr.magic, "RABOOK1", 8);
+  b->hdr.format_version = k_ra_book_format_version;
+  b->hdr.total_size     = sizeof(*b);
+  b->hdr.chapter_count  = 1U;
+  b->hdr.chapter_off    = (uint32_t)offsetof(bx_book_t, chapters);
+  b->hdr.node_count     = 4U;
+  b->hdr.node_off       = (uint32_t)offsetof(bx_book_t, nodes);
+  b->hdr.string_off     = (uint32_t)offsetof(bx_book_t, strings);
+  b->hdr.string_size    = k_bx_str_cap;
+
+  uint32_t off    = 0U;
+  b->strings[off] = '\0';
+  off += 1U;
+  const uint32_t s_div  = bx_intern(b, &off, "div");
+  const uint32_t s_p    = bx_intern(b, &off, "p");
+  const uint32_t s_word = bx_intern(b, &off, "word ");
+  const uint32_t s_x    = bx_intern(b, &off, "x");
+
+  b->chapters[0].root_node = 0U;
+  b->nodes[0]              = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_element,
+                                              .name_off     = s_div,
+                                              .first_attr   = k_ra_book_nil,
+                                              .first_child  = 1U,
+                                              .next_sibling = k_ra_book_nil};
+  b->nodes[1]              = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_text,
+                                              .text_off     = s_word,
+                                              .first_attr   = k_ra_book_nil,
+                                              .first_child  = k_ra_book_nil,
+                                              .next_sibling = 2U};
+  b->nodes[2]              = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_element,
+                                              .name_off     = s_p,
+                                              .first_attr   = k_ra_book_nil,
+                                              .first_child  = 3U,
+                                              .next_sibling = k_ra_book_nil};
+  b->nodes[3]              = (ra_book_node_t){.kind         = (uint8_t)k_ra_book_node_text,
+                                              .text_off     = s_x,
+                                              .first_attr   = k_ra_book_nil,
+                                              .first_child  = k_ra_book_nil,
+                                              .next_sibling = k_ra_book_nil};
+}
+
+/**
+ * @brief A minimal book lets graded caps fail inside the close-tag emit chain.
+ *
+ * @par MC/DC:
+ * Decision: the close-tag `&&` chain `emit("</") && emit_cstr(name) &&
+ * emit(">")` in `ra_book_walk_to_xhtml`. With the tiny `<p>x</p>` output the
+ * close tag begins at byte 4, so caps 4/5/6/7 make each emit in the close
+ * chain the deciding failure, while the full cap exercises the all-true path.
+ */
+static void test_ra_book_xhtml_close_chain_overflow(void)
+{
+  TEST_BEGIN("ra_book_xhtml close-tag chain overflow");
+  bx_book_t b;
+  bx_build_small(&b);
+  char         out[k_bx_out_cap] = {};
+  size_t       len               = 0U;
+  const size_t caps[]            = {1U, 2U, 3U, 4U, 5U, 6U, 7U};
+  for (size_t i = 0U; i < (sizeof(caps) / sizeof(caps[0])); ++i) {
+    len = 99U;
+    TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_chapter_to_xhtml(&b, 0U, out, caps[i], &len));
+  }
+  /* Full cap: the whole "<p>x</p>" serializes (all chain conditions false). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_to_xhtml(&b, 0U, out, sizeof(out), &len));
+  out[len] = '\0';
+  TEST_ASSERT_NOT_NULL(strstr(out, "<p>x</p>"));
+  TEST_END("ra_book_xhtml close-tag chain overflow");
+}
+
+/**
+ * @brief A trailing space ahead of a block break drives the trim loop.
+ *
+ * @par MC/DC:
+ * Decision: `while ((*pos > 0) && (out[*pos-1] == ' '))` in `ra_book_emit_break`.
+ * - Both-true: "word " leaves a trailing space, then the `<p>` block break
+ *   trims it (the loop body runs).
+ * - `out[*pos-1] == ' '` false: a later break sees a non-space tail and stops.
+ */
+static void test_ra_book_xhtml_break_trims_trailing_space(void)
+{
+  TEST_BEGIN("ra_book_xhtml break trims trailing space");
+  bx_book_t b;
+  bx_build_trail(&b);
+  char   out[k_bx_out_cap] = {};
+  size_t len               = 0U;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text(&b, 0U, out, sizeof(out), &len));
+  out[len] = '\0';
+  TEST_ASSERT_NOT_NULL(strstr(out, "word"));
+  TEST_ASSERT_NOT_NULL(strstr(out, "x"));
+  /* The space between "word" and the block break was trimmed away. */
+  TEST_ASSERT_NULL(strstr(out, "word \n"));
+  TEST_END("ra_book_xhtml break trims trailing space");
+}
+
 int main(void)
 {
   test_ra_book_xhtml_serializes_and_escapes();
@@ -371,5 +507,7 @@ int main(void)
   test_ra_book_xhtml_text_block_breaks();
   test_ra_book_xhtml_text_overflow_graded();
   test_ra_book_xhtml_walk_guard_exhaustion();
+  test_ra_book_xhtml_close_chain_overflow();
+  test_ra_book_xhtml_break_trims_trailing_space();
   return 0;
 }
