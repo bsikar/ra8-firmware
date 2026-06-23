@@ -102,11 +102,11 @@ typedef enum : uint16_t {
 
 /** @brief SCI_B model sizing and the EK-RA8D2 console channel. */
 typedef enum : uint32_t {
-  k_sci_console_ch   = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).    */
-  k_sci_sd_ch        = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI. */
-  k_sci_rx_queue_len = 512U,  /**< Per-channel host->firmware RX capacity. */
-  k_sci_data_mask    = 0xFFU, /**< RDR/TDR data field is 8 bits.          */
-  k_uart_line_cap    = 256U,  /**< Captured last-TX-line buffer capacity.  */
+  k_sci_console_ch    = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).    */
+  k_sci_sd_ch         = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI. */
+  k_sci_rx_queue_len  = 512U,  /**< Per-channel host->firmware RX capacity. */
+  k_sci_data_mask     = 0xFFU, /**< RDR/TDR data field is 8 bits.          */
+  k_uart_line_cap     = 256U,  /**< Captured last-TX-line buffer capacity.  */
   k_sci_spi_miso_idle = 0xFFU, /**< MISO idles high (0xFF) on an empty SPI bus. */
 } sci_tune_t;
 
@@ -339,7 +339,8 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
        * (seconds, per byte), which is the dominant cold-boot stall for any app
        * that probes the SD without a card present. With 0xFF the probe simply
        * sees no valid R1 and fails "no card" promptly, as on real hardware. */
-      const uint8_t resp = board_sd_attached() ? board_sd_exchange(byte) : (uint8_t)k_sci_spi_miso_idle;
+      const uint8_t resp =
+        board_sd_attached() ? board_sd_exchange(byte) : (uint8_t)k_sci_spi_miso_idle;
       board_periph_sci_feed_rx((uint8_t)ch, &resp, 1U);
     }
   } else if (off == (uint64_t)k_sci_off_ccr0) {

@@ -103,8 +103,15 @@ static void priv_place(ra_kbd_layout_t*    kb,
   for (int32_t i = 0; i < n; i++) {
     const int32_t x0 = priv_hx(f, hu0 + (i * (int32_t)k_kbd_key_hu));
     const int32_t x1 = priv_hx(f, hu0 + ((i + 1) * (int32_t)k_kbd_key_hu));
-    priv_add(kb, x0, x1 - x0, y, rh, (char)lo[i], (char)((hi != nullptr) ? hi[i] : lo[i]),
-             k_ra_kbd_key_char, 0U);
+    priv_add(kb,
+             x0,
+             x1 - x0,
+             y,
+             rh,
+             (char)lo[i],
+             (char)((hi != nullptr) ? hi[i] : lo[i]),
+             k_ra_kbd_key_char,
+             0U);
   }
 }
 
@@ -259,7 +266,7 @@ static void priv_build_layer(ra_kbd_layout_t* kb)
   if (k->kind != k_ra_kbd_key_char) {
     return (char)0;
   }
-  return kb->shift ? (char)k->ch_upper : (char)k->ch_lower;
+  return (char)(kb->shift ? k->ch_upper : k->ch_lower);
 }
 
 [[nodiscard]] ra_err_t ra_kbd_text_init(ra_kbd_text_t* t)
@@ -291,7 +298,7 @@ static void priv_append(ra_kbd_text_t* t, char ch)
   const ra_kbd_key_t* k = &kb->keys[key_idx];
   switch (k->kind) {
     case k_ra_kbd_key_char:
-      priv_append(t, kb->shift ? (char)k->ch_upper : (char)k->ch_lower);
+      priv_append(t, (char)(kb->shift ? k->ch_upper : k->ch_lower));
       kb->shift = false; /* one-shot SHIFT clears after a character */
       break;
     case k_ra_kbd_key_space:

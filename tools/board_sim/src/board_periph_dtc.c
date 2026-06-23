@@ -88,18 +88,18 @@ typedef enum : uint32_t {
 
 /** @brief MR mode-word field extraction (MRA in the top byte, MRB next). */
 typedef enum : uint32_t {
-  k_mr_mra_shift = 24U,  /**< MRA occupies MR[31:24].                        */
-  k_mr_mrb_shift = 16U,  /**< MRB occupies MR[23:16].                        */
-  k_mra_md_pos   = 6U,   /**< MRA.MD[7:6] transfer mode.                     */
-  k_mra_sz_pos   = 4U,   /**< MRA.SZ[5:4] unit width.                        */
-  k_mra_sm_pos   = 2U,   /**< MRA.SM[3:2] source-address mode.               */
-  k_mrb_dm_pos   = 2U,   /**< MRB.DM[3:2] dest-address mode.                 */
-  k_mr_2bit_mask = 0x3U, /**< Two-bit field mask.                           */
-  k_mra_md_block = 0x2U, /**< MD = 10b: block transfer.                      */
-  k_mr_addr_inc  = 0x2U, /**< SM / DM = 10b: increment the address.          */
-  k_mra_sz_byte  = 0x0U, /**< SZ = 00b: 8-bit unit.                          */
-  k_mra_sz_word  = 0x2U, /**< SZ = 10b: 32-bit unit.                         */
-  k_mra_sz_half  = 0x1U, /**< SZ = 01b: 16-bit unit.                         */
+  k_mr_mra_shift = 24U,   /**< MRA occupies MR[31:24].                        */
+  k_mr_mrb_shift = 16U,   /**< MRB occupies MR[23:16].                        */
+  k_mra_md_pos   = 6U,    /**< MRA.MD[7:6] transfer mode.                     */
+  k_mra_sz_pos   = 4U,    /**< MRA.SZ[5:4] unit width.                        */
+  k_mra_sm_pos   = 2U,    /**< MRA.SM[3:2] source-address mode.               */
+  k_mrb_dm_pos   = 2U,    /**< MRB.DM[3:2] dest-address mode.                 */
+  k_mr_2bit_mask = 0x3U,  /**< Two-bit field mask.                           */
+  k_mra_md_block = 0x2U,  /**< MD = 10b: block transfer.                      */
+  k_mr_addr_inc  = 0x2U,  /**< SM / DM = 10b: increment the address.          */
+  k_mra_sz_byte  = 0x0U,  /**< SZ = 00b: 8-bit unit.                          */
+  k_mra_sz_word  = 0x2U,  /**< SZ = 10b: 32-bit unit.                         */
+  k_mra_sz_half  = 0x1U,  /**< SZ = 01b: 16-bit unit.                         */
   k_mr_byte_mask = 0xFFU, /**< Eight-bit field mask (one MRA/MRB byte).      */
 } dtc_mr_field_t;
 
@@ -184,8 +184,8 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
    * is the unit count; block mode multiplies by CRB blocks. */
   const uint32_t per_block =
     (md == (uint32_t)k_mra_md_block) ? ((cra == 0U) ? (uint32_t)k_dtc_block_cra_zero : cra) : cra;
-  const uint32_t blocks    = (md == (uint32_t)k_mra_md_block) ? ((crb == 0U) ? 1U : crb) : 1U;
-  uint32_t       units     = per_block * blocks;
+  const uint32_t blocks = (md == (uint32_t)k_mra_md_block) ? ((crb == 0U) ? 1U : crb) : 1U;
+  uint32_t       units  = per_block * blocks;
   if ((units == 0U) || (units > (uint32_t)k_dtc_max_units)) {
     return;
   }

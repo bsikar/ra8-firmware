@@ -84,13 +84,13 @@ typedef enum : uint32_t {
 
 /** @brief COLOR1 ARGB8888 channel-extraction and pixel-pack constants. */
 typedef enum : uint32_t {
-  k_drw_argb_a_shift   = 24U,    /**< COLOR1 alpha byte position [31:24]. */
-  k_drw_argb_r_shift   = 16U,    /**< COLOR1 red byte position [23:16].   */
-  k_drw_argb_g_shift   = 8U,     /**< COLOR1 green byte position [15:8].   */
-  k_drw_argb_byte_mask = 0xFFU,  /**< Single 8-bit channel mask.          */
-  k_drw_argb4444_a_pos = 12U,    /**< ARGB4444 alpha nibble position.     */
-  k_drw_rgb565_r_pos   = 11U,    /**< RGB565 red field position [15:11].  */
-  k_drw_rgb565_g_pos   = 5U,     /**< RGB565 green field position [10:5]. */
+  k_drw_argb_a_shift   = 24U,   /**< COLOR1 alpha byte position [31:24]. */
+  k_drw_argb_r_shift   = 16U,   /**< COLOR1 red byte position [23:16].   */
+  k_drw_argb_g_shift   = 8U,    /**< COLOR1 green byte position [15:8].   */
+  k_drw_argb_byte_mask = 0xFFU, /**< Single 8-bit channel mask.          */
+  k_drw_argb4444_a_pos = 12U,   /**< ARGB4444 alpha nibble position.     */
+  k_drw_rgb565_r_pos   = 11U,   /**< RGB565 red field position [15:11].  */
+  k_drw_rgb565_g_pos   = 5U,    /**< RGB565 green field position [10:5]. */
 } drw_pixel_pack_t;
 
 /** @brief WRITEFORMAT codes (ra_drw_writeformat_t). */
@@ -144,9 +144,12 @@ static uint32_t drw_bpp(void)
 /** @brief Pack the COLOR1 ARGB8888 source into the framebuffer pixel format. */
 static uint32_t drw_pack_pixel(uint32_t bpp)
 {
-  const uint32_t a = (s_drw.color1 >> (uint32_t)k_drw_argb_a_shift) & (uint32_t)k_drw_argb_byte_mask;
-  const uint32_t r = (s_drw.color1 >> (uint32_t)k_drw_argb_r_shift) & (uint32_t)k_drw_argb_byte_mask;
-  const uint32_t g = (s_drw.color1 >> (uint32_t)k_drw_argb_g_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t a =
+    (s_drw.color1 >> (uint32_t)k_drw_argb_a_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t r =
+    (s_drw.color1 >> (uint32_t)k_drw_argb_r_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t g =
+    (s_drw.color1 >> (uint32_t)k_drw_argb_g_shift) & (uint32_t)k_drw_argb_byte_mask;
   const uint32_t b = s_drw.color1 & (uint32_t)k_drw_argb_byte_mask;
   if (bpp == 4U) {
     return s_drw.color1;

@@ -72,9 +72,9 @@ struct ra_app; /* fwd */
  * except `on_input` may be NULL (a no-op). `render` is the only on-target one.
  */
 typedef struct {
-  ra_err_t (*init)(struct ra_app* a); /**< One-time setup (at register).  */
-  void (*on_enter)(struct ra_app* a); /**< Gained focus / foreground.     */
-  void (*tick)(struct ra_app* a);     /**< Per-frame update (foreground). */
+  ra_err_t (*init)(struct ra_app* a);     /**< One-time setup (at register).  */
+  void (*on_enter)(struct ra_app* a);     /**< Gained focus / foreground.     */
+  void (*tick)(struct ra_app* a);         /**< Per-frame update (foreground). */
   void (*render)(const struct ra_app* a); /**< Draw (on-target, foreground). */
   bool (*on_input)(struct ra_app* a, const ra_widget_event_t* ev); /**< Handle. */
   void (*on_leave)(struct ra_app* a); /**< Lost focus / background.       */

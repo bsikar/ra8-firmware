@@ -460,8 +460,8 @@ static VOID dfu_deactivate(VOID* dfu)
  * @note Single-writer (the USBX DFU thread).
  * @since 0.1.0
  */
-static UINT dfu_write(VOID* dfu, ULONG block_number, const UCHAR* data, ULONG length,
-                      ULONG* media_status)
+static UINT
+dfu_write(VOID* dfu, ULONG block_number, const UCHAR* data, ULONG length, ULONG* media_status)
 {
   (void)dfu;
   const ULONG off = block_number * (ULONG)k_dfu_xfer_size;
@@ -590,8 +590,8 @@ static UINT dfu_usbx_stack_up(void)
  * @note Used solely at the ::dfu_class_register assignment site.
  * @since 0.1.0
  */
-typedef UINT (*dfu_write_cb_t)(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length,
-                               ULONG* media_status);
+typedef UINT (
+  *dfu_write_cb_t)(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* media_status);
 
 /**
  * @brief Register the DFU class against configuration 1, interface 0.
@@ -1226,9 +1226,9 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] static ra_err_t dfu_host_enumerate(void)
 {
-  s_dbg_phase                      = (uint32_t)k_dfu_phase_enum;
-  uint8_t desc[k_dfu_dev_desc_len] = {};
-  ra_err_t err                     = dfu_enum_hunt(desc);
+  s_dbg_phase                       = (uint32_t)k_dfu_phase_enum;
+  uint8_t  desc[k_dfu_dev_desc_len] = {};
+  ra_err_t err                      = dfu_enum_hunt(desc);
   if (err != k_ra_ok) {
     (void)dfu_print_fail("enumerate", err);
     (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
@@ -1236,7 +1236,7 @@ typedef enum : uint32_t {
   }
   s_dbg_pid = (uint32_t)desc[k_dfu_off_dev_pid] |
               ((uint32_t)desc[(uint32_t)k_dfu_off_dev_pid + 1U] << (uint32_t)k_dfu_byte_bits);
-  err = dfu_enum_set_address();
+  err       = dfu_enum_set_address();
   if (err != k_ra_ok) {
     (void)dfu_print_fail("set_address", err);
     (void)ra_usb_host_deinit(k_ra_usb_speed_hs);

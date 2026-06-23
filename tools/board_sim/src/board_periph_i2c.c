@@ -510,8 +510,8 @@ static void lsm6dso_stop(void* ctx)
 /** @brief Write a big-endian 16-bit value at register @p reg of @p s. */
 static void fuelgauge_put16(max17048_state_t* s, uint8_t reg, uint16_t val)
 {
-  s->regs[reg]                  = (uint8_t)((val >> (uint16_t)k_battery_byte_shift));
-  s->regs[(uint8_t)(reg + 1U)]  = (uint8_t)(val & (uint16_t)k_battery_byte_mask);
+  s->regs[reg]                 = (uint8_t)((val >> (uint16_t)k_battery_byte_shift));
+  s->regs[(uint8_t)(reg + 1U)] = (uint8_t)(val & (uint16_t)k_battery_byte_mask);
 }
 
 /** @brief Lay the MAX17048 register file from the current ::s_battery state. */
@@ -568,8 +568,7 @@ static void fuelgauge_stop(void* ctx)
 
 void board_periph_battery_set(uint8_t soc_pct, bool charging)
 {
-  s_battery.soc_pct =
-    (soc_pct > (uint8_t)k_battery_soc_max) ? (uint8_t)k_battery_soc_max : soc_pct;
+  s_battery.soc_pct = (soc_pct > (uint8_t)k_battery_soc_max) ? (uint8_t)k_battery_soc_max : soc_pct;
   s_battery.charging = charging;
   fuelgauge_seed(&s_fuelgauge);
 }
@@ -773,8 +772,11 @@ static void i3c_reset(void)
                       &s_lsm6dso);
   /* MAX17048-class fuel gauge at 0x36: exposes the battery state-of-charge +
    * charge direction so a battery monitor reads a real % over I2C. */
-  i2c_device_register(
-    (uint8_t)k_max17048_addr_7b, fuelgauge_write, fuelgauge_read, fuelgauge_stop, &s_fuelgauge);
+  i2c_device_register((uint8_t)k_max17048_addr_7b,
+                      fuelgauge_write,
+                      fuelgauge_read,
+                      fuelgauge_stop,
+                      &s_fuelgauge);
 }
 
 /** @brief Print the GT911 touch line when the firmware drained any contact. */

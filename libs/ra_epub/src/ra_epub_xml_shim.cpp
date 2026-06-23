@@ -350,10 +350,10 @@ bool media_type_is_font(const char* media_type)
     "font/otf",
     "application/x-font-ttf",
   };
-  return std::any_of(std::begin(k_font_types), std::end(k_font_types),
-                     [media_type](const char* const candidate) {
-                       return std::strcmp(media_type, candidate) == 0;
-                     });
+  return std::any_of(
+    std::begin(k_font_types),
+    std::end(k_font_types),
+    [media_type](const char* const candidate) { return std::strcmp(media_type, candidate) == 0; });
 }
 
 /**
