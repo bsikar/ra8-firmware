@@ -126,6 +126,63 @@ static void test_hit_test_link(void)
 }
 
 /**
+ * @test test_hit_test_rect_bounds_mcdc
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_reflow/src/ra_reflow_link.c@ra_reflow_hit_test_link):
+ * `if ((x >= rect->x) && (x < (rect->x + rect->w)) &&
+ *      (y >= rect->y) && (y < (rect->y + rect->h)))` (4 conditions, all AND).
+ * Driven directly through the public API: a hit returns k_ra_ok, a miss
+ * returns k_ra_err_not_found -- production-source MC/DC.
+ *
+ * The single rect is x=20,y=100,w=80,h=24 -> the open box [20,100)..(99,123].
+ * Vectors (Chilenski masking-MC/DC, N+1 = 5 for N=4); each flips exactly one
+ * condition while the other three are held at their true (control) value:
+ *  - V1: x=40, y=110 -> C1 T, C2 T, C3 T, C4 T -> decision T (found).
+ *  - V2: x=19, y=110 -> C1 F (x < rect->x)               -> decision F.
+ *  - V3: x=100,y=110 -> C2 F (x >= rect->x + rect->w)     -> decision F.
+ *  - V4: x=40, y=99  -> C3 F (y < rect->y)                -> decision F.
+ *  - V5: x=40, y=124 -> C4 F (y >= rect->y + rect->h)     -> decision F.
+ *
+ * Independence: V1 vs V2 flip C1, V1 vs V3 flip C2, V1 vs V4 flip C3, V1 vs V5
+ * flip C4 -- each pair leaves the other three conditions true and the outcome
+ * flips, proving each condition independently affects the result.
+ */
+static void test_hit_test_rect_bounds_mcdc(void)
+{
+  TEST_BEGIN("ra_reflow_hit_test_link rect-bounds MC/DC");
+  memset(&s_eng, 0, sizeof s_eng);
+  s_eng.in_use = 1U;
+  memcpy(s_eng.text_pool, "ch2.xhtml", 9);
+  s_eng.text_pool_used           = 9U;
+  s_eng.link_targets[0].href_off = 0U;
+  s_eng.link_targets[0].href_len = 9U;
+  s_eng.link_target_count        = 1U;
+  s_eng.link_rects[0].x          = 20;
+  s_eng.link_rects[0].y          = 100;
+  s_eng.link_rects[0].w          = 80;
+  s_eng.link_rects[0].h          = 24;
+  s_eng.link_rects[0].target     = 0U;
+  s_eng.link_rects[0].page_index = 1U;
+  s_eng.link_rect_count          = 1U;
+
+  uint32_t off = 0U, len = 0U;
+  /* V1: control -- all four conditions true -> hit. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_hit_test_link(&s_eng, 1U, 40, 110, &off, &len));
+  TEST_ASSERT_EQ(0, (int64_t)off);
+  TEST_ASSERT_EQ(9, (int64_t)len);
+  /* V2: x just left of the rect -> C1 false. */
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_hit_test_link(&s_eng, 1U, 19, 110, &off, &len));
+  /* V3: x at the right edge (exclusive) -> C2 false. */
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_hit_test_link(&s_eng, 1U, 100, 110, &off, &len));
+  /* V4: y just above the rect -> C3 false. */
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_hit_test_link(&s_eng, 1U, 40, 99, &off, &len));
+  /* V5: y at the bottom edge (exclusive) -> C4 false. */
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_hit_test_link(&s_eng, 1U, 40, 124, &off, &len));
+  TEST_END("ra_reflow_hit_test_link rect-bounds MC/DC");
+}
+
+/**
  * @test test_find_anchor
  * @brief Same-chapter anchor lookup returns the anchor's page.
  */
@@ -163,6 +220,7 @@ int32_t main(void)
   test_href_split_classify_mcdc();
   test_href_split_spans();
   test_hit_test_link();
+  test_hit_test_rect_bounds_mcdc();
   test_find_anchor();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_link.c\n");
   return 0;
