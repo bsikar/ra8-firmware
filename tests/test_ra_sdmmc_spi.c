@@ -806,12 +806,20 @@ static void queue_erase_blocks_ok(void)
  */
 static void queue_read_back(const uint8_t* block)
 {
-  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD17 R1 */
-  mock_queue_byte((uint8_t)k_test_data_token_start);
+  /* ra_sdmmc_spi_read_block holds CS across CMD17 + the data phase (one
+   * session: cs_assert -> read_data_phase -> cs_release), so we must NOT
+   * use queue_command_response_r1 here -- it injects a cs_release idle byte
+   * between R1 and the data, which starves the data-token wait and trips
+   * k_ra_err_hw_timeout. Model the session directly. */
+  mock_queue_idle(1U);                               /* cs_assert post-byte. */
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD17 frame shifts 0xFF. */
+  mock_queue_byte((uint8_t)k_test_r1_ready);         /* CMD17 R1. */
+  mock_queue_byte((uint8_t)k_test_data_token_start); /* data-start token. */
   mock_queue_bytes(block, (uint32_t)k_ra_sdmmc_spi_block_size);
   const uint16_t crc = ra_sdmmc_spi_crc16(block, (uint32_t)k_ra_sdmmc_spi_block_size);
   mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
   mock_queue_byte((uint8_t)(crc & 0xFFU));
+  mock_queue_idle(1U);                               /* cs_release post-byte. */
 }
 
 /**
