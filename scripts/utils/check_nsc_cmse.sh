@@ -31,10 +31,19 @@ if ! command -v "$GCC" >/dev/null 2>&1; then
     exit 0
 fi
 
+# C23 standard flag: gcc >= 14 spells it `gnu23`, gcc <= 13 only accepts the
+# older `gnu2x` alias. CMake's CMAKE_C_STANDARD 23 in the real build already
+# picks whichever the toolchain supports, so probe the same way here instead
+# of hardcoding (the CI runner's arm-none-eabi-gcc is gcc 13 -> gnu2x).
+cstd="-std=gnu2x"
+if printf 'int main(void){return 0;}\n' | "$GCC" -std=gnu23 -xc -fsyntax-only - >/dev/null 2>&1; then
+    cstd="-std=gnu23"
+fi
+
 # Match the real firmware ABI (cmake/toolchain-ra8d2.cmake) so the cmse
 # argument-register rules are evaluated exactly as the app build sees them.
 flags=(-mcpu=cortex-m85 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-       -mcmse -std=gnu23 -DRA_TRUSTZONE_ENABLE -fsyntax-only)
+       -mcmse "$cstd" -DRA_TRUSTZONE_ENABLE -fsyntax-only)
 
 incs=()
 for d in libs/*/inc; do
