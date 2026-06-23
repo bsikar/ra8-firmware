@@ -225,6 +225,21 @@ macro(ra_add_app)
         list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/third_party/miniz)
     endif()
 
+    # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
+    # through byte buffers, which violates C strict-aliasing. GCC's aliasing
+    # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3
+    # corrupts miniz's inflate so EPUB/RBKZ extraction fails (ra_epub_open ->
+    # "FAIL open") on the official toolchain, while older toolchains happen not
+    # to trip it. Build just these third_party TUs with -fno-strict-aliasing --
+    # the upstream-sanctioned flag for this code -- so the -Og default is
+    # correct on every toolchain. First-party sources stay strict-aliasing clean.
+    set(_ra_soup_tu ${_ra_epub_vendor} ${_ra_miniz_vendor}
+                    ${_ra_stb_impl} ${_ra_stb_img_impl})
+    if(_ra_soup_tu)
+        set_source_files_properties(${_ra_soup_tu}
+            PROPERTIES COMPILE_OPTIONS -fno-strict-aliasing)
+    endif()
+
     set(_ra_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
     set(_ra_elf ${_RA_APP_NAME}.elf)
 
