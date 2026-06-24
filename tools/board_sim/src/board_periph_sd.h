@@ -147,6 +147,31 @@ uint8_t board_sd_exchange(uint8_t tx);
 bool board_sd_read_block(uint32_t lba, uint8_t* dst);
 
 /**
+ * @brief Copy one 512-byte block straight into the backing image.
+ *
+ * @details
+ * The write-side mirror of @ref board_sd_read_block: stores the byte-identical
+ * data a CMD24 single-block write would land, served in a single call so the
+ * native-SDHI block model can commit the firmware's sector buffer without
+ * clocking 128 individual SD_BUF0 FIFO words. Uses the same SDHC block-addressing
+ * (@p lba * 512) as the modelled CMD24 path, so the bytes stored are exactly
+ * those the full protocol would write.
+ *
+ * @param[in] lba Logical block address (SDHC block units).
+ * @param[in] src Source of 512 bytes; must hold at least 512 bytes.
+ *
+ * @return true if a card is attached and a full block fits at @p lba.
+ * @retval false No card attached, or @p lba is past the end of the image.
+ * @pre @p src is non-null and sized for >= 512 bytes.
+ * @pre A card image is attached (@ref board_sd_attached is true).
+ * @post On true, the block at @p lba holds @p src.
+ * @post On false, the backing image is left unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+bool board_sd_write_block(uint32_t lba, const uint8_t* src);
+
+/**
  * @brief Reset the card's command / response framing to power-on.
  *
  * @details Clears the in-flight command collector and pending response;
