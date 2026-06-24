@@ -53,6 +53,7 @@ extern "C" {
 #include "ra_io_blockdev_sdram.h"
 #include "ra_io_blockdev_sdspi.h"
 #include "ra_io_blockdev_xspi.h"
+#include "ra_io_fsfmt.h"
 #include "ra_io_log.h"
 #include "ra_io_stream.h"
 #include "ra_io_stream_blockdev.h"
