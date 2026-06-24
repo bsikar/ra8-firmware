@@ -171,8 +171,9 @@ static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
 
 /**
  * @par MC/DC:
- * (no compound decisions under test -- listdir visits the seeded file; mkdir is
- * not yet supported; unmount makes a name stop resolving)
+ * (no compound decisions under test -- listdir visits the seeded file; mkdir
+ * creates a real subdirectory that then lists and rejects a duplicate; unmount
+ * makes a name stop resolving)
  */
 static void test_listdir_mkdir_unmount(void)
 {
@@ -185,7 +186,14 @@ static void test_listdir_mkdir_unmount(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_listdir("sd:/", count_cb, &n));
   TEST_ASSERT(n >= 1u);
 
-  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_io_vfs_mkdir("sd:/sub"));
+  /* mkdir now creates a real subdirectory (the #158 ra_fs mkdir work); a fresh
+   * empty subdir lists with zero visible entries ("." / ".." are hidden), and a
+   * duplicate create is rejected. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_mkdir("sd:/SUB"));
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_io_vfs_mkdir("sd:/SUB"));
+  uint32_t m = 0;
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_listdir("sd:/SUB", count_cb, &m));
+  TEST_ASSERT_EQ(0u, m);
 
   /* unmount isolation: dropping "sd" leaves "ospi" working */
   TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_unmount("sd"));
