@@ -156,6 +156,13 @@ sd_format_apps="fs_format_mount"
 # fs_format_mount banner, so it gets its own banner assertion via uart_expect().
 sd_io_apps="ra_io_sd_demo"
 
+# OSPI-NOR ra_io app: proves the ra_io fabric over the on-board Octo-SPI NOR
+# (erase-before-write) backend. board_sim models the OSPI controller + a 2 MiB
+# NOR array internally (no CLI flag), but each 512 B write drives a 4 KiB
+# erase+reprogram RMW, so it is slow -- STOP_ON ends the run the moment the PASS
+# banner prints (the app idles forever after). Asserts via uart_expect().
+xspi_io_apps="ra_io_xspi_demo"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -201,6 +208,7 @@ uart_expect() { # app -> expected UART substring on stdout
     ra_io_demo)         printf 'ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
     ra_io_compress_demo) printf 'bytes ram:/STORY.RBK PASS' ;;
     ra_io_sd_demo)      printf 'ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra_io_xspi_demo)    printf 'ra_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
     ereader_image)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
     ereader_link)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
@@ -400,6 +408,25 @@ for app in "${apps[@]}"; do
             echo "OK (ra_io SD backend: $want)"
         else
             echo "RA_IO SD FAIL (did not reach the PASS banner)"
+            fail=1
+        fi
+        continue
+        ;;
+    esac
+    # OSPI-NOR ra_io app: no card needed (OSPI is modelled internally), but the
+    # erase-reprogram RMW is slow -- STOP_ON ends the run as soon as PASS prints.
+    case " $xspi_io_apps " in
+    *" $app "*)
+        want="$(uart_expect "$app")"
+        xsclean="$({ BOARD_SIM_MAX_CHUNKS=8000000 BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 \
+            "$sim" "$elf" 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+        if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$xsclean"; then
+            echo "FAULT (during ra_io OSPI round-trip)"
+            fail=1
+        elif grep -qF "$want" <<<"$xsclean"; then
+            echo "OK (ra_io OSPI NOR backend: $want)"
+        else
+            echo "RA_IO OSPI FAIL (did not reach the PASS banner)"
             fail=1
         fi
         continue
