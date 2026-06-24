@@ -150,6 +150,12 @@ usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 # explicitly, e.g. `scripts/board_sim_smoke.sh fs_format_mount`.
 sd_format_apps="fs_format_mount"
 
+# microSD ra_io apps: prove the ra_io fabric's swappable SD-over-SPI block-device
+# backend (ra_io_blockdev_sdspi) by formatting + mounting FAT16 on a blank
+# --sd-new card and round-tripping a file through the VFS. Distinct from the
+# fs_format_mount banner, so it gets its own banner assertion via uart_expect().
+sd_io_apps="ra_io_sd_demo"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -194,6 +200,7 @@ uart_expect() { # app -> expected UART substring on stdout
     uart_hello)         printf 'hello, ra8d2!' ;;
     ra_io_demo)         printf 'ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
     ra_io_compress_demo) printf 'bytes ram:/STORY.RBK PASS' ;;
+    ra_io_sd_demo)      printf 'ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
     ereader_image)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
     ereader_link)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
@@ -375,6 +382,24 @@ for app in "${apps[@]}"; do
             echo "OK (FS FORMAT+MOUNT ALL PASS -- FAT12/16/32 + exFAT)"
         else
             echo "FS FORMAT FAIL (did not reach ALL PASS banner)"
+            fail=1
+        fi
+        continue
+        ;;
+    esac
+    # microSD ra_io apps: blank FAT16 card via --sd-new, assert the app banner.
+    case " $sd_io_apps " in
+    *" $app "*)
+        want="$(uart_expect "$app")"
+        ioclean="$({ BOARD_SIM_MAX_CHUNKS=200000 BOARD_SIM_WALL_S=300 \
+            "$sim" "$elf" --sd-new 64:fat16 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+        if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$ioclean"; then
+            echo "FAULT (during ra_io SD round-trip)"
+            fail=1
+        elif grep -qF "$want" <<<"$ioclean"; then
+            echo "OK (ra_io SD backend: $want)"
+        else
+            echo "RA_IO SD FAIL (did not reach the PASS banner)"
             fail=1
         fi
         continue
