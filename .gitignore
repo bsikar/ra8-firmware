@@ -143,3 +143,6 @@ examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
 # tools/reader_vmem host build artifacts (binary + generated #147 traces)
 tools/reader_vmem/reader_vmem
 tools/reader_vmem/*.trace
+
+# tools/glyph_bench host build artifact
+tools/glyph_bench/glyph_bench
