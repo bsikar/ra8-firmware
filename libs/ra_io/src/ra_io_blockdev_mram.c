@@ -122,7 +122,7 @@ static ra_err_t mram_window_ok(uintptr_t base, uint32_t block_count)
 {
   const uintptr_t extra_start = (uintptr_t)k_ra_flash_extra_start;
   const uintptr_t extra_end   = extra_start + (uintptr_t)k_ra_flash_extra_size;
-  const uintptr_t span = (uintptr_t)block_count * (uintptr_t)k_ra_io_block_size_bytes;
+  const uintptr_t span        = (uintptr_t)block_count * (uintptr_t)k_ra_io_block_size_bytes;
   if ((base % (uintptr_t)k_ra_io_mram_erase_block_bytes) != 0U) {
     return k_ra_err_invalid_arg;
   }

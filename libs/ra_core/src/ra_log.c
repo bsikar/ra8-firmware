@@ -32,6 +32,31 @@
 #include <stdint.h>
 
 /* =============================================================================
+ * Optional byte sink -- redirect log output off ITM at run time.
+ * =============================================================================
+ */
+
+/**
+ * @var s_byte_sink
+ * @brief Active log byte sink, or nullptr to use the default ITM port.
+ * @warning Set only through ::ra_log_set_byte_sink.
+ */
+static ra_log_byte_sink_fn_t s_byte_sink = nullptr;
+
+/**
+ * @var s_byte_sink_ctx
+ * @brief Opaque cookie passed back to ::s_byte_sink on every byte.
+ * @warning Set only through ::ra_log_set_byte_sink.
+ */
+static void* s_byte_sink_ctx = nullptr;
+
+void ra_log_set_byte_sink(ra_log_byte_sink_fn_t fn, void* ctx)
+{
+  s_byte_sink     = fn;
+  s_byte_sink_ctx = ctx;
+}
+
+/* =============================================================================
  * ITM stimulus port 0 -- CoreSight ITM (Cortex-M85 has one).
  * =============================================================================
  */
@@ -137,6 +162,10 @@ static inline volatile uint32_t* internal_itm_tenr(void)
  */
 static inline bool internal_itm_ready(void)
 {
+  /* A redirected byte sink needs no ITM/debugger -- it is always ready. */
+  if (s_byte_sink != nullptr) {
+    return true;
+  }
 #ifndef RA_SIMULATOR_MODE
   /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
    * and any read of its registers (TCR, TENR, STIM) will bus-fault.
@@ -196,6 +225,10 @@ static inline bool internal_itm_ready(void)
  */
 static inline void internal_itm_putc(uint8_t byte)
 {
+  if (s_byte_sink != nullptr) {
+    s_byte_sink(s_byte_sink_ctx, byte);
+    return;
+  }
   /* A real build should pre-check `internal_itm_ready()` once during
    * init and skip the call entirely when the debugger is absent. For
    * now we poll with a small bound so a disconnected debugger never
