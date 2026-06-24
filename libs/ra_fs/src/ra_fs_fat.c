@@ -1567,7 +1567,31 @@ typedef struct {
   uint8_t have;                 /**< 1 once any group has been accumulated.  */
 } lfn_state_t;
 
-/** @brief The 8.3 short-name checksum the LFN entries carry (MS FAT spec sec 7). */
+/**
+ * @brief Compute the 8.3 short-name checksum carried in each LFN directory entry.
+ *
+ * @details Implements the rotate-right-add algorithm from the Microsoft FAT spec
+ *          section 7 ("Long File Name Directory Entries"). Each of the eleven
+ *          bytes of the 8.3 name field is folded into a running sum: the previous
+ *          sum is rotated right by one bit (preserving the low bit) and the next
+ *          byte is added. The result binds a set of LFN slots to their trailing
+ *          8.3 entry so that a chain cannot alias a different short name.
+ *
+ * @param[in] name83 Pointer to the 11-byte 8.3 name field (DIR_Name in the
+ *                   FAT spec, space-padded, not NUL-terminated).
+ *
+ * @return Computed 8-bit checksum.
+ * @retval 0..255 The folded checksum; all values are possible.
+ *
+ * @pre @p name83 is non-NULL and points to at least 11 valid bytes.
+ * @pre The 11-byte field is the raw DIR_Name from a valid FAT directory entry.
+ * @post Return value matches the Checksum field in every associated LFN entry.
+ * @post No bytes of @p name83 are modified (read-only access).
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static uint8_t priv_sfn_checksum(const uint8_t* name83)
 {
   uint8_t sum = 0U;
@@ -1578,7 +1602,27 @@ static uint8_t priv_sfn_checksum(const uint8_t* name83)
   return sum;
 }
 
-/** @brief Reset the reassembly state for a fresh chain. */
+/**
+ * @brief Reset the LFN reassembly state so a fresh chain can start.
+ *
+ * @details Clears the accumulated name buffer byte-by-byte, then resets the
+ *          stored checksum and the "have" flag to zero. Called at the start of
+ *          a directory walk and whenever a deleted or consumed 8.3 entry breaks
+ *          an in-progress chain.
+ *
+ * @param[in,out] s Reassembly state to reset.
+ *
+ * @return Nothing.
+ *
+ * @pre @p s is non-NULL.
+ * @pre @p s was previously initialised (e.g. via zero-init or a prior reset).
+ * @post @p s->name is all NUL bytes.
+ * @post @p s->have and @p s->checksum are both zero.
+ *
+ * @note Not thread-safe; the caller serialises directory access.
+ *
+ * @since 0.1.0
+ */
 static void priv_lfn_reset(lfn_state_t* s)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_lfn_name_cap; i++) {
@@ -1588,7 +1632,32 @@ static void priv_lfn_reset(lfn_state_t* s)
   s->have     = 0U;
 }
 
-/** @brief Fold one LFN entry's 13 chars into @p s at their sequence offset. */
+/**
+ * @brief Fold one LFN directory entry's 13 UTF-16LE characters into the state.
+ *
+ * @details Reads the sequence number from @p ent (low 5 bits of LDIR_Ord) to
+ *          locate the character group within the assembled name, then copies
+ *          each of the 13 chars at their VFAT byte offsets (LDIR_Name1/2/3).
+ *          Characters above ASCII 0x7F are replaced with '?'. A NUL or the
+ *          padding code-point (0xFFFF) terminates the group early. The stored
+ *          checksum is updated from LDIR_Chksum. Out-of-range sequence numbers
+ *          are silently ignored to tolerate a corrupt chain.
+ *
+ * @param[in,out] s   Reassembly state being accumulated.
+ * @param[in]     ent 32-byte raw LFN directory entry (attribute byte == 0x0F).
+ *
+ * @return Nothing.
+ *
+ * @pre @p s is non-NULL and was initialised by priv_lfn_reset().
+ * @pre @p ent is non-NULL and points to exactly 32 valid bytes.
+ * @post If the sequence number is in range, @p s->name and @p s->checksum
+ *       reflect the characters from this entry.
+ * @post If the sequence number is out of range, @p s is unchanged.
+ *
+ * @note Not thread-safe; the caller serialises directory access.
+ *
+ * @since 0.1.0
+ */
 static void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
 {
   static const uint8_t k_off[k_lfn_chars_per_ent] = {(uint8_t)k_lfn_char_off_0,
@@ -1643,7 +1712,31 @@ static const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83)
   return s->name;
 }
 
-/** @brief Case-insensitive ASCII equality of two NUL-terminated names. */
+/**
+ * @brief Compare two NUL-terminated ASCII names for case-insensitive equality.
+ *
+ * @details Walks both strings simultaneously, uppercasing each character via
+ *          priv_to_upper() before comparing. Returns 1 only if both strings
+ *          reach their NUL terminator at the same step (same length, same
+ *          content ignoring case). A length mismatch or any differing character
+ *          yields 0.
+ *
+ * @param[in] a First NUL-terminated name.
+ * @param[in] b Second NUL-terminated name.
+ *
+ * @return Equality flag.
+ * @retval 1U The names are equal (case-insensitive).
+ * @retval 0U The names differ in length or at least one character.
+ *
+ * @pre @p a is non-NULL and NUL-terminated.
+ * @pre @p b is non-NULL and NUL-terminated.
+ * @post Neither @p a nor @p b is modified.
+ * @post Return value reflects only the ASCII case-fold comparison result.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static uint8_t priv_name_ieq(const char* a, const char* b)
 {
   while ((*a != '\0') && (*b != '\0')) {
@@ -1656,29 +1749,6 @@ static uint8_t priv_name_ieq(const char* a, const char* b)
   return ((*a == '\0') && (*b == '\0')) ? 1U : 0U;
 }
 
-/**
- * @brief Find a directory entry by its VFAT long name (case-insensitive).
- *
- * @details Walks the root directory, reassembling each LFN chain (carried across
- *          sector boundaries), and matches @p want against the long name of the
- *          following 8.3 entry. The fallback ra_fs_open uses when an 8.3 lookup
- *          misses -- so a `.epub` (4-char extension) opens by its real name.
- *
- * @param[in]  m             Mount providing geometry and backend.
- * @param[in]  want          Requested name (a leading '/' is ignored).
- * @param[out] out_lba       Sector containing the matched 8.3 entry.
- * @param[out] out_entry_off Byte offset within the sector.
- * @param[out] out_entry     32 bytes of the matched 8.3 entry.
- *
- * @return Error code.
- * @retval k_ra_ok            Long name matched; out parameters populated.
- * @retval k_ra_err_not_found No entry's long name equals @p want.
- * @retval k_ra_err_*         Backend error.
- *
- * @pre All pointers are non-NULL; @p want is NUL-terminated.
- * @post On success the out parameters identify the on-disk 8.3 entry.
- * @since 0.1.0
- */
 /**
  * @enum ra_fs_lfn_scan_t
  * @brief Outcome of scanning one directory sector for a long-name match.
@@ -1714,7 +1784,9 @@ typedef enum : uint8_t {
  * @retval k_lfn_scan_continue No match in this sector.
  *
  * @pre All pointers are non-NULL; @p buf holds one full sector.
+ * @pre @p lfn was initialised by priv_lfn_reset() before the first sector.
  * @post On found, the out parameters identify the on-disk 8.3 entry.
+ * @post @p lfn reflects any LFN entries accumulated from this sector.
  *
  * @note Not thread-safe; the caller serialises directory access.
  *
@@ -1753,6 +1825,40 @@ static ra_fs_lfn_scan_t priv_dir_find_long_sector(const char*    needle,
   return k_lfn_scan_continue;
 }
 
+/**
+ * @brief Find a directory entry by its VFAT long name (case-insensitive).
+ *
+ * @details Walks the directory described by @p loc sector by sector, calling
+ *          priv_dir_find_long_sector() on each one. LFN chains are carried
+ *          across sector boundaries via an lfn_state_t accumulator. A leading
+ *          '/' in @p want is stripped before matching. Returns on the first
+ *          name that matches @p want via priv_name_ieq(), or reports not-found
+ *          when the end-of-directory marker is reached without a hit. Used as
+ *          the fallback by ra_fs_open() when the 8.3 short-name lookup misses,
+ *          so that files with names longer than 8.3 (e.g. ".epub" four-char
+ *          extensions) are accessible by their real long name.
+ *
+ * @param[in]  m             Mount providing geometry and backend.
+ * @param[in]  loc           Directory to search (root or a subdirectory).
+ * @param[in]  want          Requested name (a leading '/' is ignored).
+ * @param[out] out_lba       Sector containing the matched 8.3 entry.
+ * @param[out] out_entry_off Byte offset within the sector.
+ * @param[out] out_entry     32 bytes of the matched 8.3 directory entry.
+ *
+ * @return Error code.
+ * @retval k_ra_ok            Long name matched; out parameters populated.
+ * @retval k_ra_err_not_found No entry's long name equals @p want.
+ * @retval k_ra_err_*         Backend read error propagated from priv_read_sector().
+ *
+ * @pre All pointer parameters are non-NULL.
+ * @pre @p want is a NUL-terminated ASCII string.
+ * @post On k_ra_ok, out parameters identify the on-disk 8.3 entry for @p want.
+ * @post On failure, the out parameters are left in an unspecified state.
+ *
+ * @note Not thread-safe; the caller serialises directory access.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
                                    const dir_loc_t*     loc,
                                    const char*          want,
@@ -4134,35 +4240,6 @@ static bool priv_fmt_count_in_band(ra_fs_type_t type, uint32_t count)
 }
 
 /**
- * @brief Pick the cluster size that lands the count in the requested band.
- *
- * @details Sweeps `spc` upward through powers of two (1, 2, 4, ... up to
- *          `k_fmt_spc_max`). For FAT32 the count shrinks with larger clusters,
- *          so the first `spc` whose count is in-band (or below
- *          `k_fmt_fat32_clus_cap`) wins. For FAT12/16 a too-large count fails
- *          the lower clusters and a too-small count fails the larger ones, so
- *          the sweep accepts the first in-band hit. On success the geometry's
- *          `sectors_per_cluster`, `fat_size_sectors`, and `count_of_clusters`
- *          are populated.
- *
- * @param[in,out] g        Geometry with `type`, `total_sectors`, `reserved_sectors`,
- *                         `root_entries`, and `root_sectors` pre-filled.
- * @param[in]     spc_hint Caller-pinned cluster size (0 = auto-sweep).
- *
- * @return Error code.
- * @retval k_ra_ok            Geometry chosen and stored.
- * @retval k_ra_err_invalid_size No cluster size yields a count in @p g->type's band.
- *
- * @pre @p g is non-NULL with the input fields set.
- * @pre @p spc_hint is 0 or a validated power of two in 1..128.
- * @post On success the three output fields are consistent and in-band.
- * @post On failure @p g is left partially written (caller discards it).
- *
- * @note Bounded loop (NASA Rule 2): at most 8 iterations (1..128).
- *
- * @since 0.1.0
- */
-/**
  * @brief Default FAT32 cluster size for a device, per the Microsoft table.
  *
  * @details Implements the `DskSzToSecPerClus` tiers from the MS FAT spec
@@ -4179,8 +4256,9 @@ static bool priv_fmt_count_in_band(ra_fs_type_t type, uint32_t count)
  * @retval 64 Device is > 32 GB.
  *
  * @pre @p total_sectors is the card capacity in 512-byte blocks.
- * @pre The result is always a validated power of two.
- * @post Return value is in `[1, k_fmt_spc_max]`.
+ * @pre @p total_sectors represents the actual device capacity, not a user hint.
+ * @post Return value is a power of two in the range [1, k_fmt_spc_max].
+ * @post No state is modified (pure function, no side effects).
  *
  * @note Pure function; trivially thread-safe.
  *
@@ -4203,6 +4281,40 @@ static uint32_t priv_fmt_fat32_default_spc(uint32_t total_sectors)
   return (uint32_t)k_fmt_f32_spc_32k;
 }
 
+/**
+ * @brief Pick the cluster size that lands the FAT cluster count in the right band.
+ *
+ * @details Sweeps `spc` upward through powers of two (1, 2, 4, ... up to
+ *          `k_fmt_spc_max`). For FAT32 the count shrinks with larger clusters,
+ *          so the first `spc` whose count is in-band (or below
+ *          `k_fmt_fat32_clus_cap`) wins. For FAT12/16 a too-large count fails
+ *          the lower clusters and a too-small count fails the larger ones, so
+ *          the sweep accepts the first in-band hit. When `spc_hint` is zero the
+ *          starting point for FAT32 comes from priv_fmt_fat32_default_spc(); for
+ *          FAT12/16 it starts at 1. On success the geometry's
+ *          `sectors_per_cluster`, `fat_size_sectors`, and `count_of_clusters`
+ *          are populated.
+ *
+ * @param[in,out] g        Geometry with `type`, `total_sectors`, `reserved_sectors`,
+ *                         `root_entries`, and `root_sectors` pre-filled.
+ * @param[in]     spc_hint Caller-pinned cluster size (0 = auto-sweep).
+ *
+ * @return Error code.
+ * @retval k_ra_ok               Geometry chosen; output fields stored in @p g.
+ * @retval k_ra_err_invalid_size No cluster size yields a count in @p g->type's band.
+ *
+ * @pre @p g is non-NULL with the input fields (`type`, `total_sectors`,
+ *      `reserved_sectors`, `root_entries`, `root_sectors`) already set.
+ * @pre @p spc_hint is 0 or a power of two in the range [1, k_fmt_spc_max].
+ * @post On k_ra_ok, `g->sectors_per_cluster`, `g->fat_size_sectors`, and
+ *       `g->count_of_clusters` are consistent and in-band for @p g->type.
+ * @post On k_ra_err_invalid_size, @p g is left partially written and must
+ *       be discarded.
+ *
+ * @note Bounded loop (NASA Rule 2): at most k_fmt_spc_max+1 iterations.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_fmt_choose_geometry(ra_fs_fmt_geom_t* g, uint32_t spc_hint)
 {
   bool     auto_mode = (spc_hint == 0U);
@@ -4434,8 +4546,9 @@ static const uint8_t
  * @retval k_ra_err_* Backend write failure within the run.
  *
  * @pre @p backend and `backend->write_block` are non-NULL.
- * @pre @p lba + @p count does not exceed the device.
- * @post On success sectors @p lba .. @p lba+count-1 are all-zero.
+ * @pre @p lba + @p count does not exceed the device capacity.
+ * @post On success, every byte in sectors @p lba .. @p lba+count-1 reads as zero.
+ * @post On failure, sectors up to (but not including) the failing one may be zeroed.
  *
  * @note Bounded loop (NASA Rule 2): at most @p count iterations.
  *
@@ -4742,8 +4855,9 @@ typedef struct {
  * @retval 0..UINT32_MAX The folded checksum.
  *
  * @pre @p buf holds at least @p len bytes.
- * @pre @p len is the exact span to fold.
- * @post No state modified (pure).
+ * @pre @p len is the exact byte count of the span to fold (not a partial overlap).
+ * @post No state is modified; the function has no side effects (pure).
+ * @post Return value equals the rotate-right-add fold of @p cs over @p buf[0..len-1].
  *
  * @note Pure function; trivially thread-safe.
  *
@@ -4757,7 +4871,33 @@ static uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len)
   return cs;
 }
 
-/** @brief exFAT default SectorsPerClusterShift by volume size (MS spec sec 12.1). */
+/**
+ * @brief Return the default SectorsPerClusterShift for an exFAT volume.
+ *
+ * @details Implements the size-tiered lookup from Microsoft exFAT spec
+ *          section 12.1. The shift value encodes a power-of-two cluster size:
+ *          a shift of n means the cluster spans 2^n sectors (512 bytes each).
+ *          Larger cards use bigger clusters to keep the FAT table small and
+ *          to reduce fragmentation overhead on sequential media. The tiers
+ *          used here are: up to 256 MB uses 4 kB clusters (shift 3), up to
+ *          32 GB uses 32 kB clusters (shift 6), up to 256 GB uses 128 kB
+ *          clusters (shift 8), and larger devices use 256 kB clusters (shift 9).
+ *
+ * @param[in] total_sectors Whole-device 512-byte sector count.
+ *
+ * @return SectorsPerClusterShift value for the exFAT VBR.
+ * @retval k_exfat_fmt_spc_4k   Device is <= 256 MB.
+ * @retval k_exfat_fmt_spc_256k Device is > 256 GB.
+ *
+ * @pre @p total_sectors is the actual backend capacity in 512-byte blocks.
+ * @pre @p total_sectors is non-zero.
+ * @post Return value is one of the four defined shift constants.
+ * @post Return value is a valid SectorsPerClusterShift for the exFAT spec.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static uint8_t priv_exfat_spc_shift(uint32_t total_sectors)
 {
   if (total_sectors <= (uint32_t)k_exfat_fmt_thr_256m) {
@@ -4789,8 +4929,10 @@ static uint8_t priv_exfat_spc_shift(uint32_t total_sectors)
  * @retval k_ra_err_invalid_size Device too small to hold a volume.
  *
  * @pre @p g is non-NULL.
- * @pre @p total_sectors is the backend capacity in blocks.
- * @post On success every field of @p g is consistent and in range.
+ * @pre @p total_sectors is the backend capacity in 512-byte blocks (non-zero).
+ * @post On k_ra_ok, every field of @p g is consistent with the exFAT spec.
+ * @post On k_ra_err_invalid_size, @p g may be partially written and must be
+ *       discarded.
  *
  * @note Bounded loop (NASA Rule 2): `k_exfat_fmt_geom_iters` passes.
  *
@@ -4838,7 +4980,31 @@ static ra_err_t priv_exfat_geometry(uint32_t total_sectors, exfat_geom_t* g)
   return k_ra_ok;
 }
 
-/** @brief Build the 512-byte exFAT Main Boot Sector (VBR) into @p sec. */
+/**
+ * @brief Build the 512-byte exFAT Main Boot Sector (VBR) into @p sec.
+ *
+ * @details Zeroes @p sec, then writes all mandatory exFAT VBR fields: the
+ *          3-byte JMP instruction, the "EXFAT   " file-system name, VolumeLength,
+ *          FatOffset, FatLength, ClusterHeapOffset, ClusterCount, RootDirectory
+ *          first cluster, VolumeSerialNumber (XOR of constant and total_sectors),
+ *          FileSystemRevision (1.00), BytesPerSectorShift, SectorsPerClusterShift,
+ *          NumberOfFats, PercentInUse, and the 0xAA55 boot signature. All values
+ *          are written as little-endian fields per the Microsoft exFAT spec.
+ *
+ * @param[out] sec Caller-provided 512-byte buffer to receive the VBR.
+ * @param[in]  g   Resolved exFAT geometry from priv_exfat_geometry().
+ *
+ * @return Nothing.
+ *
+ * @pre @p sec is non-NULL and points to at least 512 writable bytes.
+ * @pre @p g is non-NULL and was filled by a successful priv_exfat_geometry() call.
+ * @post @p sec holds a spec-compliant exFAT Main Boot Sector.
+ * @post All 512 bytes of @p sec have been written (zeroed, then fields set).
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static void priv_exfat_build_vbr(uint8_t* sec, const exfat_geom_t* g)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra_fs_bytes_per_sector; i++) {
@@ -4867,7 +5033,31 @@ static void priv_exfat_build_vbr(uint8_t* sec, const exfat_geom_t* g)
   priv_wr16(&sec[k_exfat_foff_boot_sig], (uint16_t)k_exfat_fmt_boot_sig);
 }
 
-/** @brief Write @p buf to @p lba and to its backup copy (lba + 12). */
+/**
+ * @brief Write a sector to both its primary and backup locations in the exFAT boot region.
+ *
+ * @details Calls @p b->write_block twice: once for the primary copy at @p lba, and
+ *          once for the backup copy at @p lba + k_exfat_fmt_backup_lba (12 sectors
+ *          later, per the Microsoft exFAT spec). The first write failure aborts;
+ *          the backup write is skipped to avoid partial state.
+ *
+ * @param[in] b   Block-device backend with a non-NULL `write_block` function.
+ * @param[in] lba Primary LBA to write (0 <= lba < k_exfat_fmt_boot_secs).
+ * @param[in] buf One 512-byte sector image to write.
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    Both primary and backup copies written successfully.
+ * @retval k_ra_err_* The primary or backup write_block call failed.
+ *
+ * @pre @p b and @p b->write_block are non-NULL.
+ * @pre @p buf is non-NULL and contains exactly 512 bytes to write.
+ * @post On k_ra_ok, sectors @p lba and @p lba+k_exfat_fmt_backup_lba are identical.
+ * @post On failure, the primary may be written but the backup state is undefined.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_exfat_wr_dual(const ra_fs_backend_t* b, uint32_t lba, const uint8_t* buf)
 {
   const ra_err_t err = b->write_block(b->ctx, lba, 1U, buf);
@@ -4878,37 +5068,61 @@ static ra_err_t priv_exfat_wr_dual(const ra_fs_backend_t* b, uint32_t lba, const
 }
 
 /**
- * @brief Write the Main + Backup boot regions and their boot checksums.
+ * @brief Write a 32-bit little-endian word at slot @p idx in a sector buffer.
  *
- * @details Builds the VBR, eight extended boot sectors (ext-boot signature
- *          only), the OEM + reserved sectors, accumulates the rotate-add boot
- *          checksum over sectors 0-10 (excluding VolumeFlags + PercentInUse via
- *          range boundaries), then stamps every word of the checksum sector.
- *          Each sector is written to both the main (LBA 0) and backup (LBA 12)
- *          regions.
+ * @details Computes the byte offset as `idx * 4` and calls priv_wr32() to
+ *          store @p val in little-endian order. Used to populate FAT entries
+ *          and checksum-sector words without repeating the stride arithmetic.
  *
- * @param[in] backend Block-device backend.
- * @param[in] g       Resolved geometry.
+ * @param[in,out] buf Sector buffer to write into.
+ * @param[in]     idx Zero-based 32-bit word index within @p buf.
+ * @param[in]     val 32-bit value to store.
  *
- * @return Backend error code (k_ra_ok on success).
- * @retval k_ra_ok    Both boot regions written.
- * @retval k_ra_err_* Backend write failure.
+ * @return Nothing.
  *
- * @pre @p backend, @p g are non-NULL with a non-NULL write_block.
- * @pre `s_scratch` is available as a sector buffer.
- * @post Sectors 0-23 hold the main + backup boot regions.
+ * @pre @p buf is non-NULL and has at least (idx+1)*4 writable bytes.
+ * @pre @p idx does not overflow the sector (caller verifies the range).
+ * @post Bytes buf[idx*4 .. idx*4+3] hold @p val in little-endian order.
+ * @post No bytes outside the four-byte target word are modified.
  *
- * @note Not thread-safe; part of single-threaded format.
+ * @note Not thread-safe; the caller serialises access to @p buf.
  *
  * @since 0.1.0
  */
-/** @brief Write a 32-bit FAT/checksum word at entry index @p idx of @p buf. */
 static void priv_exfat_put32(uint8_t* buf, uint32_t idx, uint32_t val)
 {
   priv_wr32(&buf[(size_t)idx * 4U], val);
 }
 
-/** @brief Write boot sectors 1-10 + the checksum sector (main + backup) from @p cs. */
+/**
+ * @brief Write exFAT boot sectors 1-11 (ext-boot, OEM, reserved, checksum) to main and backup.
+ *
+ * @details Takes the running boot checksum @p cs (which already covers sector 0)
+ *          and completes the boot region. Sectors 1-8 each receive an extended
+ *          boot sector with only the ExtendedBootSignature (0xAA550000) set;
+ *          sector 9 (OEM) and sector 10 (reserved) are all-zero. Each sector is
+ *          folded into @p cs via priv_exfat_csum32() before being written via
+ *          priv_exfat_wr_dual() to both the main and backup regions. Sector 11
+ *          (checksum) is then filled with k_exfat_fmt_csum_copies copies of the
+ *          final checksum word and written to both regions. The global s_scratch
+ *          buffer is used as a scratch pad.
+ *
+ * @param[in] backend Block-device backend with a non-NULL write_block hook.
+ * @param[in] cs      Running boot checksum accumulated over sector 0.
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    All sectors written to both main and backup regions.
+ * @retval k_ra_err_* Backend write_block failure; format is aborted.
+ *
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p cs reflects the checksum folded over sector 0 of the VBR.
+ * @post On k_ra_ok, sectors 1-11 and their backups (13-23) are written.
+ * @post The checksum sector (11 and 23) contains the finalised boot checksum.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_exfat_write_boot_tail(const ra_fs_backend_t* backend, uint32_t cs)
 {
   /* Sectors 1-8: extended boot (ext-boot signature only). */
@@ -4946,6 +5160,34 @@ static ra_err_t priv_exfat_write_boot_tail(const ra_fs_backend_t* backend, uint3
   return priv_exfat_wr_dual(backend, (uint32_t)k_exfat_fmt_csum_lba, s_scratch);
 }
 
+/**
+ * @brief Write the complete exFAT main and backup boot regions (sectors 0-23).
+ *
+ * @details Builds the VBR in s_scratch via priv_exfat_build_vbr(), then
+ *          accumulates the boot checksum over sector 0, skipping the three bytes
+ *          that the exFAT spec excludes from the checksum: VolumeFlags bytes
+ *          (offsets 106-107) and PercentInUse (offset 112). The three ranges
+ *          [0, 106), [108, 112), and [113, 512) are folded via priv_exfat_csum32().
+ *          Sector 0 is then written to both main (LBA 0) and backup (LBA 12) by
+ *          priv_exfat_wr_dual(). The remaining boot sectors 1-11 and their backups
+ *          are written by priv_exfat_write_boot_tail() using the running checksum.
+ *
+ * @param[in] backend Block-device backend with a non-NULL write_block hook.
+ * @param[in] g       Resolved exFAT geometry from priv_exfat_geometry().
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    Both main and backup boot regions (sectors 0-23) written.
+ * @retval k_ra_err_* Backend write failure; format is aborted.
+ *
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p g was filled by a successful priv_exfat_geometry() call.
+ * @post On k_ra_ok, sectors 0-23 on the device hold spec-compliant boot regions.
+ * @post The boot checksum stored in sectors 11 and 23 covers sectors 0-10.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_exfat_write_boot(const ra_fs_backend_t* backend, const exfat_geom_t* g)
 {
   priv_exfat_build_vbr(s_scratch, g);
@@ -4966,7 +5208,33 @@ static ra_err_t priv_exfat_write_boot(const ra_fs_backend_t* backend, const exfa
   return priv_exfat_write_boot_tail(backend, cs);
 }
 
-/** @brief Zero the FAT, then seed FAT[0]/FAT[1] + the bitmap/up-case/root chains. */
+/**
+ * @brief Zero the exFAT FAT region, then seed the media, EOC, and chain entries.
+ *
+ * @details Clears all FAT sectors via priv_fmt_clear_region(), then builds the
+ *          first FAT sector in s_scratch. FAT[0] is set to the media byte
+ *          (k_exfat_fmt_fat_media) and FAT[1] to the end-of-chain sentinel
+ *          (k_exfat_fmt_fat_eoc). The bitmap cluster chain is written as a
+ *          linked run terminating with EOC. The up-case-table cluster and root
+ *          directory cluster each receive a single EOC entry. Finally, the
+ *          populated first sector is written to the FAT start LBA.
+ *
+ * @param[in] backend Block-device backend with non-NULL write_block.
+ * @param[in] g       Resolved exFAT geometry from priv_exfat_geometry().
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    FAT region zeroed and initial entries written.
+ * @retval k_ra_err_* Backend clear or write failure.
+ *
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p g was filled by a successful priv_exfat_geometry() call.
+ * @post On k_ra_ok, FAT[0..1] and the pre-allocated cluster chains are seeded.
+ * @post The remainder of the FAT region beyond the first sector reads as zero.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_exfat_write_fat(const ra_fs_backend_t* backend, const exfat_geom_t* g)
 {
   ra_err_t err = priv_fmt_clear_region(backend, g->fat_offset, g->fat_length);
@@ -4988,7 +5256,31 @@ static ra_err_t priv_exfat_write_fat(const ra_fs_backend_t* backend, const exfat
   return backend->write_block(backend->ctx, g->fat_offset, 1U, s_scratch);
 }
 
-/** @brief Zero the allocation bitmap region, then mark the pre-allocated clusters. */
+/**
+ * @brief Zero the allocation bitmap region, then mark the pre-allocated clusters.
+ *
+ * @details Clears all bitmap sectors via priv_fmt_clear_region(), then builds
+ *          the first bitmap sector in s_scratch. The g->used_clusters count
+ *          (bitmap + up-case + root) is marked allocated: full bytes are set to
+ *          0xFF and the trailing partial byte gets a mask of the remaining bits.
+ *          The populated sector is then written to the bitmap's heap LBA.
+ *
+ * @param[in] backend Block-device backend with non-NULL write_block.
+ * @param[in] g       Resolved exFAT geometry from priv_exfat_geometry().
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    Bitmap region zeroed and pre-allocated clusters marked.
+ * @retval k_ra_err_* Backend clear or write failure.
+ *
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p g was filled by a successful priv_exfat_geometry() call.
+ * @post On k_ra_ok, the first g->used_clusters bits of the bitmap are set to 1.
+ * @post Remaining bitmap bits beyond g->used_clusters read as zero.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_exfat_write_bitmap(const ra_fs_backend_t* backend, const exfat_geom_t* g)
 {
   const uint32_t bmp_lba     = g->heap_offset;
@@ -5011,7 +5303,38 @@ static ra_err_t priv_exfat_write_bitmap(const ra_fs_backend_t* backend, const ex
   return backend->write_block(backend->ctx, bmp_lba, 1U, s_scratch);
 }
 
-/** @brief Write the compressed up-case table; return its rotate-add checksum. */
+/**
+ * @brief Write the compressed exFAT up-case table and return its checksum.
+ *
+ * @details Builds the compressed up-case table in s_scratch using the exFAT
+ *          compression format (run-length compressed identity ranges and explicit
+ *          upper-case mappings). The table is structured as: a compressed-run
+ *          marker (0xFFFF) covering the identity range 0x0000-0x0060, then the
+ *          26 ASCII lower-case letters (a-z) mapped to their upper-case values
+ *          (A-Z) as explicit entries, then a second compressed-run marker covering
+ *          the remaining range 0x007B-0xFFFF. The rotate-right-add checksum of
+ *          the k_exfat_fmt_upc_bytes byte region is accumulated via
+ *          priv_exfat_csum32() and returned via @p out_csum. The table sector is
+ *          then written to the up-case cluster in the cluster heap.
+ *
+ * @param[in]  backend  Block-device backend with non-NULL write_block.
+ * @param[in]  g        Resolved exFAT geometry from priv_exfat_geometry().
+ * @param[out] out_csum Receives the rotate-add checksum of the up-case data.
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    Up-case table written; @p out_csum populated.
+ * @retval k_ra_err_* Backend write failure; @p out_csum is unspecified.
+ *
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p g was filled by a successful priv_exfat_geometry() call.
+ * @pre @p out_csum is non-NULL.
+ * @post On k_ra_ok, the up-case cluster contains the compressed up-case table.
+ * @post On k_ra_ok, @p out_csum holds the checksum needed for the root dir entry.
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t
 priv_exfat_write_upcase(const ra_fs_backend_t* backend, const exfat_geom_t* g, uint32_t* out_csum)
 {
@@ -5037,7 +5360,32 @@ priv_exfat_write_upcase(const ra_fs_backend_t* backend, const exfat_geom_t* g, u
   return backend->write_block(backend->ctx, lba, 1U, s_scratch);
 }
 
-/** @brief Pack a volume label (<= 11 chars) as UTF-16 into @p dst; return the count. */
+/**
+ * @brief Pack an ASCII volume label into a UTF-16LE buffer for the exFAT VolumeLabel entry.
+ *
+ * @details Converts up to k_exfat_fmt_label_max ASCII characters of @p label
+ *          into UTF-16LE by zero-extending each byte: the low byte of each
+ *          UTF-16 code-unit receives the ASCII character and the high byte is
+ *          set to zero. Stops at the NUL terminator or the 11-character limit,
+ *          whichever comes first. A NULL @p label writes nothing and returns 0.
+ *
+ * @param[out] dst   Destination buffer for the UTF-16LE character array (at
+ *                   least k_exfat_fmt_label_max * 2 bytes).
+ * @param[in]  label NUL-terminated ASCII label, or NULL for no label.
+ *
+ * @return Number of UTF-16 code units written to @p dst.
+ * @retval 0  @p label is NULL or is an empty string.
+ * @retval 11 @p label has 11 or more non-NUL characters.
+ *
+ * @pre @p dst is non-NULL and has at least k_exfat_fmt_label_max * 2 writable bytes.
+ * @pre @p label, if non-NULL, is NUL-terminated and contains only ASCII characters.
+ * @post @p dst[0 .. (return*2)-1] holds the UTF-16LE label characters.
+ * @post No byte beyond the written range of @p dst is modified.
+ *
+ * @note Pure function on the output buffer; trivially thread-safe on distinct buffers.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
 {
   uint32_t n = 0U;
@@ -5050,7 +5398,35 @@ static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
   return n;
 }
 
-/** @brief Write the root directory entry set: bitmap, up-case, volume label. */
+/**
+ * @brief Write the exFAT root directory entry set (bitmap, up-case, label).
+ *
+ * @details Builds the root directory sector in s_scratch and writes it to the
+ *          root cluster in the heap. The sector contains three directory entries:
+ *          an Allocation Bitmap entry (0x81) pointing to the first cluster of
+ *          the bitmap and recording bitmap_bytes as the DataLength; an Up-case
+ *          Table entry (0x82) with @p upcase_csum, the up-case cluster, and
+ *          k_exfat_fmt_upc_bytes as the DataLength; and a Volume Label entry
+ *          (0x83) with the label packed into UTF-16LE via priv_exfat_label_utf16().
+ *
+ * @param[in] backend     Block-device backend with non-NULL write_block.
+ * @param[in] g           Resolved exFAT geometry from priv_exfat_geometry().
+ * @param[in] upcase_csum Rotate-add checksum of the up-case table data.
+ * @param[in] label       Optional NUL-terminated ASCII volume label, or NULL.
+ *
+ * @return Error code from the backend.
+ * @retval k_ra_ok    Root directory sector written to the root cluster.
+ * @retval k_ra_err_* Backend write_block failure.
+ *
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p g was filled by a successful priv_exfat_geometry() call.
+ * @post On k_ra_ok, the root cluster contains the three mandatory directory entries.
+ * @post The label entry holds the UTF-16LE encoding of @p label (or zero length if NULL).
+ *
+ * @note Not thread-safe; part of single-threaded format.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_exfat_write_root(const ra_fs_backend_t* backend,
                                       const exfat_geom_t*    g,
                                       uint32_t               upcase_csum,
@@ -5098,9 +5474,10 @@ static ra_err_t priv_exfat_write_root(const ra_fs_backend_t* backend,
  *                                or system cluster chains exceed FAT sector 0.
  * @retval k_ra_err_*             Backend write failure.
  *
- * @pre @p backend has a non-NULL write_block; @p total_sectors > 0.
- * @pre 512-byte sectors (the only exFAT sector size this code emits).
- * @post On success sectors 0..root hold a complete, fsck-clean exFAT volume.
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p total_sectors is the actual device capacity reported by the backend.
+ * @post On k_ra_ok, sectors 0 through the root cluster hold a complete exFAT volume.
+ * @post On failure, partial writes may have been made; the device should be reformatted.
  *
  * @note Not thread-safe; serialize with mounts on the same backend.
  *
@@ -5472,32 +5849,6 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
 }
 
 /**
- * @brief Carve a fresh dir entry for `name83` and populate a file handle.
- *
- * @details Locates a free directory slot, writes the 8.3 name plus an
- *          archive attribute, and returns a file handle pointing at
- *          an empty file with no allocated clusters.
- *
- * @param[in,out] handle   Mount on which to create the file.
- * @param[in]     name83   Packed 11-byte 8.3 short name.
- * @param[in]     mode     Open mode used to record into the handle.
- * @param[out]    out_file Receives the populated file handle.
- *
- * @return Error code.
- * @retval k_ra_ok          New file created and opened.
- * @retval k_ra_err_no_mem  No free directory slot or file table full.
- * @retval k_ra_err_*       Backend error.
- *
- * @pre All pointers are non-NULL; mount is in use.
- * @pre `name83` is already validated by `priv_path_to_83`.
- * @post On success, `*out_file` is in use and the dir entry is on disk.
- * @post On failure, no dir entry is written.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-/**
  * @brief Write a fresh 8.3 directory entry into a free slot on disk.
  *
  * @details Reads the sector holding the free slot, zeroes the 32-byte entry,
@@ -5517,8 +5868,10 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
  * @retval k_ra_ok    Entry written to disk.
  * @retval k_ra_err_* Backend read/write error.
  *
- * @pre `handle` and `name83` are non-NULL; `free_off` is a valid slot offset.
- * @post On success, a zeroed 8.3 entry with @p attr and @p first_cluster is on disk.
+ * @pre @p handle and @p name83 are non-NULL; @p handle is a mounted volume.
+ * @pre @p free_off is a valid byte offset for a 32-byte directory entry slot.
+ * @post On success, the 32-byte slot at @p free_lba:@p free_off holds the new entry.
+ * @post No other bytes of the sector are modified.
  *
  * @note Not thread-safe; callers serialise.
  *
@@ -5561,8 +5914,10 @@ static ra_err_t priv_write_new_dir_entry(ra_fs_mount_t* handle,
  *
  * @return Nothing.
  *
- * @pre `f` and `handle` are non-NULL.
- * @post `f->in_use` is 1 and every other field holds its empty-file value.
+ * @pre @p f and @p handle are non-NULL.
+ * @pre @p free_lba and @p free_off identify an already-written directory entry slot.
+ * @post @p f->in_use is 1 and every cluster, size, offset, and position field is zero.
+ * @post @p f->dir_entry_lba and @p f->dir_entry_idx reflect the on-disk slot location.
  *
  * @note Not thread-safe; callers serialise.
  *
@@ -5779,6 +6134,36 @@ static ra_err_t priv_resolve_dir(const ra_fs_mount_t* m, const char* path, dir_l
   return priv_enter_subdir(m, &parent, leaf, len, out);
 }
 
+/**
+ * @brief Carve a fresh directory entry for @p name83 and populate a file handle.
+ *
+ * @details Locates a free directory slot in @p parent via priv_dir_find_free(),
+ *          allocates a file slot from the static pool, writes the 8.3 name plus
+ *          an archive attribute via priv_write_new_dir_entry(), and initialises
+ *          the slot to an empty file via priv_init_new_file(). On any failure
+ *          after slot allocation the slot is left unreleased (the file is not
+ *          in-use, so it remains available for the next allocation attempt).
+ *
+ * @param[in,out] handle   Mount on which to create the file.
+ * @param[in]     parent   Directory in which to create the entry.
+ * @param[in]     name83   Packed 11-byte 8.3 short name.
+ * @param[in]     mode     Open mode to record into the returned handle.
+ * @param[out]    out_file Receives the populated file handle on success.
+ *
+ * @return Error code.
+ * @retval k_ra_ok          New file created and opened; @p out_file populated.
+ * @retval k_ra_err_no_mem  No free directory slot or the file table is full.
+ * @retval k_ra_err_*       Backend read/write error.
+ *
+ * @pre All pointers are non-NULL; @p handle is a mounted volume.
+ * @pre @p name83 was produced by a successful priv_path_to_83() call.
+ * @post On k_ra_ok, @p *out_file is in-use with the directory entry on disk.
+ * @post On failure, no valid directory entry is written for @p name83.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t priv_create_new(ra_fs_mount_t*   handle,
                                 const dir_loc_t* parent,
                                 const uint8_t*   name83,
@@ -6894,27 +7279,6 @@ ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
 }
 
 /**
- * @brief Rename a root-level file on a FAT12/16/32 volume (in place).
- *
- * @details Rewrites the 11-byte packed 8.3 name inside the existing
- * directory entry; clusters, size, and attributes are untouched.
- *
- * @param[in] handle   Mounted FAT volume.
- * @param[in] old_path Existing 8.3 name.
- * @param[in] new_path Replacement 8.3 name (must not exist).
- * @return Error code.
- * @retval k_ra_ok                File renamed.
- * @retval k_ra_err_invalid_arg   A path does not convert to 8.3.
- * @retval k_ra_err_not_found     @p old_path does not exist.
- * @retval k_ra_err_exists        @p new_path already resolves.
- * @pre @p handle and both paths are non-NULL; mount is FAT.
- * @pre The file is not open.
- * @post @p new_path resolves to the same entry; @p old_path is gone.
- * @post No cluster or FAT state changes.
- * @note Same-directory rename only; a cross-directory move is rejected.
- * @since 0.1.0
- */
-/**
  * @brief Resolve a rename's old/new paths to a shared parent + packed names.
  *
  * @details Resolves both parents, requires they are the same directory (an
@@ -6981,6 +7345,37 @@ static ra_err_t priv_rename_prepare(const ra_fs_mount_t* handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Rename a file on a FAT12/16/32 volume by rewriting the 8.3 name in place.
+ *
+ * @details Prepares both paths via priv_rename_prepare() (resolves parents, requires
+ *          same-directory, packs both names to 8.3). Checks that @p new_path does not
+ *          already exist (priv_dir_find() on new83 must fail). Locates the existing
+ *          entry for @p old_path via priv_dir_find(), reads the sector, overwrites the
+ *          11-byte name field with the new packed name, and writes the sector back.
+ *          Cluster chains, file sizes, and attributes are not modified.
+ *
+ * @param[in] handle   Mounted FAT12/16/32 volume.
+ * @param[in] old_path Existing path (must resolve to an 8.3-named entry).
+ * @param[in] new_path Replacement path (must not yet exist; same directory as old_path).
+ *
+ * @return Error code.
+ * @retval k_ra_ok                File renamed; old name is gone, new name resolves.
+ * @retval k_ra_err_invalid_arg   A leaf component does not convert to 8.3 format.
+ * @retval k_ra_err_not_found     @p old_path does not exist.
+ * @retval k_ra_err_exists        @p new_path already resolves to an entry.
+ * @retval k_ra_err_not_supported The two paths are in different directories.
+ * @retval k_ra_err_*             Backend read/write error.
+ *
+ * @pre @p handle and both path pointers are non-NULL; @p handle is a mounted FAT volume.
+ * @pre Neither @p old_path nor @p new_path is currently held open.
+ * @post On k_ra_ok, @p new_path resolves to the same directory entry as @p old_path did.
+ * @post On k_ra_ok, @p old_path no longer resolves; no cluster or FAT data is changed.
+ *
+ * @note Not thread-safe; callers serialise access to the mount.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t
 priv_fat_rename(const ra_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
