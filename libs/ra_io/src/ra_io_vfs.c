@@ -417,6 +417,5 @@ ra_err_t ra_io_vfs_mkdir(const char* path)
   if (e != k_ra_ok) {
     return e;
   }
-  /* Subdirectory creation lands in a later increment (the ra_fs mkdir work). */
-  return k_ra_err_not_supported;
+  return ra_fs_mkdir(m, sub);
 }

@@ -539,14 +539,18 @@ ra_fs_write_file(ra_fs_mount_t* handle, const char* path, const uint8_t* data, u
 /**
  * @brief Enumerate directory entries; invoke `cb` once per visible entry.
  *
+ * @details FAT12/16/32 enumerate any directory by path (`"/"` for the root,
+ * `"/books"` for a subdirectory). exFAT enumeration remains root-only (`"/"`).
+ *
  * @param[in] handle Mount handle.
- * @param[in] path   Directory path. Currently only "/" is supported.
+ * @param[in] path   Directory path (`"/"` or a nested path on FAT).
  * @param[in] cb     Callback (must be non-NULL).
  * @param[in] ctx    Cookie forwarded to the callback.
  *
  * @retval k_ra_ok                 Enumeration complete.
  * @retval k_ra_err_null_ptr       handle/cb NULL.
- * @retval k_ra_err_not_supported  path != "/".
+ * @retval k_ra_err_not_found      A path component does not exist.
+ * @retval k_ra_err_not_supported  exFAT path other than "/".
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
@@ -590,6 +594,40 @@ ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb_t cb, vo
  */
 [[nodiscard]] ra_err_t
 ra_fs_rename(ra_fs_mount_t* handle, const char* old_path, const char* new_path);
+
+/**
+ * @brief Create a directory at @p path (FAT12/16/32).
+ *
+ * @details Resolves all-but-the-last path component to an existing parent
+ * directory, then creates the final component as a new, empty subdirectory with
+ * "." and ".." links. Nested paths are supported (`"/books/scifi"`), provided
+ * each intermediate component already exists and every component is an 8.3 name.
+ * exFAT directory creation is not supported. A partial allocation is rolled
+ * back on failure, so the volume is never leaked.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated directory path to create.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Directory created.
+ * @retval k_ra_err_null_ptr      `handle` or `path` was NULL.
+ * @retval k_ra_err_invalid_state Mount is not in use.
+ * @retval k_ra_err_invalid_arg   The leaf is not a valid 8.3 name.
+ * @retval k_ra_err_exists        The name already exists in the parent.
+ * @retval k_ra_err_not_found     An intermediate component does not exist.
+ * @retval k_ra_err_no_mem        Parent directory or volume is full.
+ * @retval k_ra_err_not_supported The volume is exFAT.
+ *
+ * @pre `handle` and `path` are non-NULL; the parent path exists.
+ * @pre Mount is in use.
+ * @post On success an empty directory exists at @p path.
+ * @post On failure the volume is unchanged.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_fs_mkdir(ra_fs_mount_t* handle, const char* path);
 
 #ifdef __cplusplus
 }

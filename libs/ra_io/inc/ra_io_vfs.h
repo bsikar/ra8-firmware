@@ -259,18 +259,20 @@ typedef struct {
 /**
  * @brief Create a directory named `"name:/path"`.
  *
- * @details Delegates to `ra_fs_mkdir`. Subdirectory support is added in a later
- *          increment; on a volume without it the call returns
- *          ::k_ra_err_not_supported.
+ * @details Routes to the named mount and delegates to `ra_fs_mkdir`, which
+ *          creates the final path component as a new FAT directory (nested paths
+ *          are supported when each intermediate component already exists). exFAT
+ *          volumes return ::k_ra_err_not_supported.
  *
  * @param[in] path `"name:/path"` directory string.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok                Directory created.
  * @retval k_ra_err_null_ptr      `path` was NULL.
- * @retval k_ra_err_invalid_arg   `path` has no `name:` prefix.
- * @retval k_ra_err_not_found     The mount name is absent.
- * @retval k_ra_err_not_supported The volume does not support subdirectories.
+ * @retval k_ra_err_invalid_arg   `path` has no `name:` prefix, or a bad leaf.
+ * @retval k_ra_err_not_found     The mount name or a path component is absent.
+ * @retval k_ra_err_exists        The directory already exists.
+ * @retval k_ra_err_not_supported The volume is exFAT.
  *
  * @pre The named volume is mounted.
  * @pre `path` is non-NULL.

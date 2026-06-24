@@ -1320,6 +1320,59 @@ static void priv_dir_walk_init_root(const ra_fs_mount_t* m, dir_walk_t* w)
 }
 
 /**
+ * @struct dir_loc_t
+ * @brief Identifies the directory a lookup/scan should operate in.
+ *
+ * @details Either the volume root (`is_root != 0`) or a subdirectory rooted at
+ *          a first `cluster`. This is what generalises the root-only directory
+ *          primitives to nested paths: the root walker already handles both the
+ *          FAT12/16 fixed-root region and a FAT32 root cluster chain, and a
+ *          subdirectory is simply that same cluster-chain case starting at an
+ *          arbitrary cluster.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t  is_root; /**< 1 => the volume root; 0 => the subdirectory at `cluster`. */
+  uint32_t cluster; /**< First cluster of the subdirectory (ignored when root).    */
+} dir_loc_t;
+
+/**
+ * @brief Initialise a directory walker for an arbitrary directory location.
+ *
+ * @details Dispatches to `priv_dir_walk_init_root` for the root, or sets up a
+ *          plain cluster-chain walk starting at `loc->cluster` for a
+ *          subdirectory (the same machinery the FAT32 root uses, so
+ *          `priv_dir_walk_next_sector` follows the chain unchanged).
+ *
+ * @param[in]  m   Mount providing geometry and FAT type.
+ * @param[in]  loc Directory to walk (root or a subdirectory cluster).
+ * @param[out] w   Walker cursor to initialise.
+ *
+ * @pre `m`, `loc`, and `w` are non-NULL.
+ * @pre For a subdirectory, `loc->cluster >= k_cluster_first_data`.
+ * @post `w` points at the first sector of the chosen directory.
+ * @post `w->entry_idx` is zero.
+ *
+ * @note Pure init -- does not touch the backend.
+ *
+ * @since 0.1.0
+ */
+static void priv_dir_walk_init_loc(const ra_fs_mount_t* m, const dir_loc_t* loc, dir_walk_t* w)
+{
+  if (loc->is_root != 0U) {
+    priv_dir_walk_init_root(m, w);
+    return;
+  }
+  w->is_root_fixed     = 0;
+  w->fixed_remaining   = 0;
+  w->cluster           = loc->cluster;
+  w->sector_in_cluster = 0;
+  w->cur_lba           = priv_cluster_to_lba(m, loc->cluster);
+  w->entry_idx         = 0;
+}
+
+/**
  * @brief Advance the walker to the next sector.
  *
  * @details For fixed-region roots simply increments the LBA. For
@@ -1379,12 +1432,14 @@ static ra_err_t priv_dir_walk_next_sector(const ra_fs_mount_t* m, dir_walk_t* w,
 }
 
 /**
- * @brief Find a directory entry by 8.3 name.
+ * @brief Find a directory entry by 8.3 name within a given directory.
  *
- * @details Walks the root directory and matches on the packed 11-byte
- *          name field. Skips LFN entries (attr 0x0F) and deleted slots.
+ * @details Walks the directory @p loc (root or a subdirectory) and matches on
+ *          the packed 11-byte name field. Skips LFN entries (attr 0x0F) and
+ *          deleted slots.
  *
  * @param[in]  m             Mount providing geometry and backend.
+ * @param[in]  loc           Directory to search (root or a subdirectory).
  * @param[in]  name83        Packed 11-byte name.
  * @param[out] out_lba       Sector containing the entry.
  * @param[out] out_entry_off Byte offset within the sector.
@@ -1405,13 +1460,14 @@ static ra_err_t priv_dir_walk_next_sector(const ra_fs_mount_t* m, dir_walk_t* w,
  * @since 0.1.0
  */
 static ra_err_t priv_dir_find(const ra_fs_mount_t* m,
+                              const dir_loc_t*     loc,
                               const uint8_t*       name83,
                               uint32_t*            out_lba,
                               uint32_t*            out_entry_off,
                               uint8_t              out_entry[k_ra_fs_dir_entry_bytes])
 {
   dir_walk_t w = {};
-  priv_dir_walk_init_root(m, &w);
+  priv_dir_walk_init_loc(m, loc, &w);
   uint8_t eod                           = 0;
   uint8_t buf[k_ra_fs_bytes_per_sector] = {};
   while (eod == 0U) {
@@ -1688,6 +1744,7 @@ static ra_fs_lfn_scan_t priv_dir_find_long_sector(const char*    needle,
 }
 
 static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
+                                   const dir_loc_t*     loc,
                                    const char*          want,
                                    uint32_t*            out_lba,
                                    uint32_t*            out_entry_off,
@@ -1698,7 +1755,7 @@ static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
     needle++; /* flat root: ignore a leading slash */
   }
   dir_walk_t w = {};
-  priv_dir_walk_init_root(m, &w);
+  priv_dir_walk_init_loc(m, loc, &w);
   lfn_state_t lfn = {};
   priv_lfn_reset(&lfn);
   uint8_t eod                           = 0;
@@ -1725,12 +1782,13 @@ static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
 }
 
 /**
- * @brief Locate the first free entry slot in the root directory.
+ * @brief Locate the first free entry slot in a given directory.
  *
- * @details Walks the root and returns the first entry whose name
+ * @details Walks the directory @p loc and returns the first entry whose name
  *          field is 0x00 (never used) or 0xE5 (deleted).
  *
  * @param[in]  m             Mount providing geometry and backend.
+ * @param[in]  loc           Directory to search (root or a subdirectory).
  * @param[out] out_lba       Sector containing the free entry.
  * @param[out] out_entry_off Byte offset within the sector.
  *
@@ -1748,11 +1806,13 @@ static ra_err_t priv_dir_find_long(const ra_fs_mount_t* m,
  *
  * @since 0.1.0
  */
-static ra_err_t
-priv_dir_find_free(const ra_fs_mount_t* m, uint32_t* out_lba, uint32_t* out_entry_off)
+static ra_err_t priv_dir_find_free(const ra_fs_mount_t* m,
+                                   const dir_loc_t*     loc,
+                                   uint32_t*            out_lba,
+                                   uint32_t*            out_entry_off)
 {
   dir_walk_t w = {};
-  priv_dir_walk_init_root(m, &w);
+  priv_dir_walk_init_loc(m, loc, &w);
   uint8_t eod                           = 0;
   uint8_t buf[k_ra_fs_bytes_per_sector] = {};
   while (eod == 0U) {
@@ -5428,24 +5488,27 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
  * @since 0.1.0
  */
 /**
- * @brief Write a fresh, empty 8.3 directory entry into a free slot on disk.
+ * @brief Write a fresh 8.3 directory entry into a free slot on disk.
  *
  * @details Reads the sector holding the free slot, zeroes the 32-byte entry,
- *          stamps the packed 8.3 name plus the archive attribute, and writes
- *          the sector back. Extracted from `priv_create_new` so both functions
- *          stay under the statement / complexity gate.
+ *          stamps the packed 8.3 name, the attribute byte, and the first
+ *          cluster (size left 0), and writes the sector back. Shared by file
+ *          creation (`priv_create_new`, archive attr, cluster 0) and directory
+ *          creation (`ra_fs_mkdir`, directory attr, the new dir cluster).
  *
- * @param[in] handle   Mount providing the backend.
- * @param[in] name83   Packed 11-byte 8.3 short name.
- * @param[in] free_lba Sector containing the free slot.
- * @param[in] free_off Byte offset of the free slot within the sector.
+ * @param[in] handle        Mount providing the backend.
+ * @param[in] name83        Packed 11-byte 8.3 short name.
+ * @param[in] attr          Attribute byte (archive for files, directory for dirs).
+ * @param[in] first_cluster First cluster to record (0 for an empty new file).
+ * @param[in] free_lba      Sector containing the free slot.
+ * @param[in] free_off      Byte offset of the free slot within the sector.
  *
  * @return Error code.
  * @retval k_ra_ok    Entry written to disk.
  * @retval k_ra_err_* Backend read/write error.
  *
  * @pre `handle` and `name83` are non-NULL; `free_off` is a valid slot offset.
- * @post On success, a zeroed 8.3 entry with the archive attribute is on disk.
+ * @post On success, a zeroed 8.3 entry with @p attr and @p first_cluster is on disk.
  *
  * @note Not thread-safe; callers serialise.
  *
@@ -5453,6 +5516,8 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
  */
 static ra_err_t priv_write_new_dir_entry(ra_fs_mount_t* handle,
                                          const uint8_t* name83,
+                                         uint8_t        attr,
+                                         uint32_t       first_cluster,
                                          uint32_t       free_lba,
                                          uint32_t       free_off)
 {
@@ -5466,7 +5531,8 @@ static ra_err_t priv_write_new_dir_entry(ra_fs_mount_t* handle,
     ent[i] = 0;
   }
   priv_byte_copy(&ent[k_dir_off_name], name83, k_dir_name_field_len);
-  ent[k_dir_off_attr] = k_ra_fs_attr_archive;
+  ent[k_dir_off_attr] = attr;
+  priv_entry_set_cluster_size(ent, first_cluster, 0U);
   return priv_write_sector(handle, free_lba, buf);
 }
 
@@ -5512,14 +5578,206 @@ static void priv_init_new_file(ra_fs_file_t*  f,
   f->in_use             = 1;
 }
 
-static ra_err_t priv_create_new(ra_fs_mount_t* handle,
-                                const uint8_t* name83,
-                                ra_fs_mode_t   mode,
-                                ra_fs_file_t** out_file)
+/** @brief Path-resolution caps (statically bound the component walk). */
+typedef enum : uint32_t {
+  k_path_max_depth = 32U, /**< Max nested directory components per path. */
+} ra_fs_path_cap_t;
+
+/**
+ * @brief Descend into the named directory component within @p cur.
+ *
+ * @details Packs the `len`-byte component to an 8.3 name, looks it up in @p cur,
+ *          requires the matched entry to carry the directory attribute, and
+ *          returns its first cluster as a subdirectory location.
+ *
+ * @param[in]  m    Mount providing geometry and backend.
+ * @param[in]  cur  Directory the component is looked up in.
+ * @param[in]  comp Pointer to the component characters (not NUL-terminated).
+ * @param[in]  len  Number of component characters.
+ * @param[out] out  Receives the subdirectory location on success.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                 Component resolved to a subdirectory.
+ * @retval k_ra_err_invalid_arg    Component is not 8.3 or is not a directory.
+ * @retval k_ra_err_not_found      No such entry in @p cur.
+ * @retval k_ra_err_protocol_error Directory entry has no data cluster.
+ * @retval k_ra_err_*              Backend error.
+ *
+ * @pre `m`, `cur`, `comp`, and `out` are non-NULL.
+ * @pre `len` is the exact component length (no trailing slash).
+ * @post On success `out` locates the subdirectory.
+ * @post On failure `out` is unmodified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_enter_subdir(const ra_fs_mount_t* m,
+                                  const dir_loc_t*     cur,
+                                  const char*          comp,
+                                  uint32_t             len,
+                                  dir_loc_t*           out)
+{
+  if (len > (uint32_t)k_ra_fs_short_name_len) {
+    return k_ra_err_invalid_arg;
+  }
+  char namebuf[(uint32_t)k_ra_fs_short_name_len + 1U] = {};
+  for (uint32_t i = 0; i < len; i++) {
+    namebuf[i] = comp[i];
+  }
+  namebuf[len]                   = '\0';
+  uint8_t name83[k_max_8_3_name] = {};
+  if (priv_path_to_83(namebuf, name83) == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  uint32_t lba                            = 0;
+  uint32_t off                            = 0;
+  uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
+  ra_err_t err                            = priv_dir_find(m, cur, name83, &lba, &off, entry);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if ((entry[k_dir_off_attr] & k_ra_fs_attr_directory) == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t cl = priv_entry_first_cluster(entry);
+  if (cl < (uint32_t)k_cluster_first_data) {
+    return k_ra_err_protocol_error;
+  }
+  out->is_root = 0U;
+  out->cluster = cl;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Resolve all-but-the-last path component to a parent directory.
+ *
+ * @details Splits @p path on `/`, descending through each intermediate
+ *          component (which must be an existing subdirectory) and returning the
+ *          final component as @p out_leaf. A flat name (no embedded `/`) yields
+ *          the root as the parent and the whole name as the leaf -- the legacy
+ *          root-only behaviour. The walk is bounded by ::k_path_max_depth.
+ *
+ * @param[in]  m          Mount providing geometry and backend.
+ * @param[in]  path       NUL-terminated path (leading slashes ignored).
+ * @param[out] out_parent Receives the resolved parent directory location.
+ * @param[out] out_leaf   Receives a pointer into @p path at the final component.
+ *
+ * @return Error code.
+ * @retval k_ra_ok              Parent resolved; @p out_leaf set.
+ * @retval k_ra_err_invalid_arg A component is not 8.3, or the path is too deep.
+ * @retval k_ra_err_not_found   An intermediate component does not exist.
+ * @retval k_ra_err_*           Backend error.
+ *
+ * @pre `m`, `path`, `out_parent`, and `out_leaf` are non-NULL.
+ * @pre `path` is NUL-terminated.
+ * @post On success `out_parent` locates the leaf's parent directory.
+ * @post On failure the out parameters are unspecified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_resolve_parent(const ra_fs_mount_t* m,
+                                    const char*          path,
+                                    dir_loc_t*           out_parent,
+                                    const char**         out_leaf)
+{
+  const char* p = path;
+  while (*p == '/') {
+    p++;
+  }
+  dir_loc_t cur = {.is_root = 1U, .cluster = 0U};
+  for (uint32_t depth = 0; depth < (uint32_t)k_path_max_depth; depth++) {
+    const char* end = p;
+    while (*end != '\0') {
+      if (*end == '/') {
+        break;
+      }
+      end++;
+    }
+    if (*end == '\0') {
+      *out_parent = cur;
+      *out_leaf   = p;
+      return k_ra_ok;
+    }
+    dir_loc_t      next = {};
+    const ra_err_t err  = priv_enter_subdir(m, &cur, p, (uint32_t)(end - p), &next);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    cur = next;
+    p   = end;
+    while (*p == '/') {
+      p++;
+    }
+  }
+  return k_ra_err_invalid_arg; /* deeper than k_path_max_depth */
+}
+
+/**
+ * @brief Resolve a whole path to the directory it names.
+ *
+ * @details The empty path or `"/"` resolves to the volume root; otherwise the
+ *          parent is resolved and the final component is entered as a
+ *          subdirectory. Used by `ra_fs_listdir` to walk any directory.
+ *
+ * @param[in]  m    Mount providing geometry and backend.
+ * @param[in]  path NUL-terminated directory path.
+ * @param[out] out  Receives the resolved directory location.
+ *
+ * @return Error code.
+ * @retval k_ra_ok              Directory resolved.
+ * @retval k_ra_err_invalid_arg A component is not a directory / not 8.3.
+ * @retval k_ra_err_not_found   A component does not exist.
+ * @retval k_ra_err_*           Backend error.
+ *
+ * @pre `m`, `path`, and `out` are non-NULL.
+ * @pre `path` is NUL-terminated.
+ * @post On success `out` locates the named directory.
+ * @post On failure `out` is unspecified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_resolve_dir(const ra_fs_mount_t* m, const char* path, dir_loc_t* out)
+{
+  const char* p = path;
+  while (*p == '/') {
+    p++;
+  }
+  if (*p == '\0') {
+    out->is_root = 1U;
+    out->cluster = 0U;
+    return k_ra_ok;
+  }
+  dir_loc_t      parent = {};
+  const char*    leaf   = nullptr;
+  const ra_err_t err    = priv_resolve_parent(m, path, &parent, &leaf);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint32_t len = 0;
+  while (leaf[len] != '\0') {
+    len++;
+  }
+  if (len == 0U) {
+    *out = parent; /* trailing slash: the parent is the directory */
+    return k_ra_ok;
+  }
+  return priv_enter_subdir(m, &parent, leaf, len, out);
+}
+
+static ra_err_t priv_create_new(ra_fs_mount_t*   handle,
+                                const dir_loc_t* parent,
+                                const uint8_t*   name83,
+                                ra_fs_mode_t     mode,
+                                ra_fs_file_t**   out_file)
 {
   uint32_t free_lba = 0;
   uint32_t free_off = 0;
-  ra_err_t err      = priv_dir_find_free(handle, &free_lba, &free_off);
+  ra_err_t err      = priv_dir_find_free(handle, parent, &free_lba, &free_off);
   if (err != k_ra_ok) {
     return err;
   }
@@ -5527,7 +5785,7 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
   if (f == nullptr) {
     return k_ra_err_no_mem;
   }
-  err = priv_write_new_dir_entry(handle, name83, free_lba, free_off);
+  err = priv_write_new_dir_entry(handle, name83, k_ra_fs_attr_archive, 0U, free_lba, free_off);
   if (err != k_ra_ok) {
     return err;
   }
@@ -5578,21 +5836,27 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   if (handle->type == k_ra_fs_type_exfat) {
     return priv_exfat_open(handle, path, mode, out_file);
   }
+  dir_loc_t    parent = {};
+  const char*  leaf   = nullptr;
+  const ra_err_t rerr = priv_resolve_parent(handle, path, &parent, &leaf);
+  if (rerr != k_ra_ok) {
+    return rerr;
+  }
   uint8_t       name83[k_max_8_3_name] = {};
-  const uint8_t have83                 = priv_path_to_83(path, name83);
+  const uint8_t have83                 = priv_path_to_83(leaf, name83);
 
   uint32_t lba                            = 0;
   uint32_t off                            = 0;
   uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
   ra_err_t err                            = k_ra_err_not_found;
   if (have83 != 0U) {
-    err = priv_dir_find(handle, name83, &lba, &off, entry);
+    err = priv_dir_find(handle, &parent, name83, &lba, &off, entry);
   }
   if (err == k_ra_err_not_found) {
     /* VFAT long-name fallback: a name that is not 8.3-representable (e.g. a
      * 4-char ".epub" extension), or an 8.3 lookup that missed, can still match a
      * file's long name. */
-    err = priv_dir_find_long(handle, path, &lba, &off, entry);
+    err = priv_dir_find_long(handle, &parent, leaf, &lba, &off, entry);
   }
   if (err == k_ra_ok) {
     return priv_open_existing(handle, entry, lba, off, mode, out_file);
@@ -5607,7 +5871,7 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   if (have83 == 0U) {
     return k_ra_err_invalid_arg;
   }
-  return priv_create_new(handle, name83, mode, out_file);
+  return priv_create_new(handle, &parent, name83, mode, out_file);
 }
 
 /**
@@ -6305,15 +6569,23 @@ ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb
   if (handle->in_use == 0U) {
     return k_ra_err_invalid_state;
   }
-  /* cppcheck-suppress redundantCondition -- explicit OR-chain documents intent. */
-  if (path[0] != '/' || (path[0] == '/' && path[1] != '\0')) {
-    return k_ra_err_not_supported;
-  }
   if (handle->type == k_ra_fs_type_exfat) {
+    /* exFAT directory listing is root-only for now. */
+    if (path[0] != '/') {
+      return k_ra_err_not_supported;
+    }
+    if (path[1] != '\0') {
+      return k_ra_err_not_supported;
+    }
     return priv_exfat_listdir(handle, cb, ctx);
   }
+  dir_loc_t      loc  = {};
+  const ra_err_t rerr = priv_resolve_dir(handle, path, &loc);
+  if (rerr != k_ra_ok) {
+    return rerr;
+  }
   dir_walk_t w = {};
-  priv_dir_walk_init_root(handle, &w);
+  priv_dir_walk_init_loc(handle, &loc, &w);
   lfn_state_t lfn = {}; /* persists across sectors -- LFN chains can straddle them */
   priv_lfn_reset(&lfn);
   uint8_t eod                           = 0;
@@ -6332,6 +6604,204 @@ ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb
     }
   }
   return k_ra_ok;
+}
+
+/**
+ * @brief Pack a "." or ".." dot entry into a 32-byte directory slot.
+ *
+ * @details Writes the FAT self/parent link: a space-padded name of @p dots
+ *          dots, the directory attribute, and @p cluster as the first cluster
+ *          (size 0). A parent that is the volume root is recorded as cluster 0
+ *          per the FAT specification.
+ *
+ * @param[out] ent     32-byte slot to populate (zeroed by this function).
+ * @param[in]  dots    1 for ".", 2 for "..".
+ * @param[in]  cluster Self cluster ("."), or parent cluster ("..", 0 if root).
+ *
+ * @return Nothing.
+ *
+ * @pre `ent` addresses 32 writable bytes.
+ * @pre `dots` is 1 or 2.
+ * @post `ent` holds a directory dot entry pointing at `cluster`.
+ * @post Bytes after the name/attr/cluster fields are zero.
+ *
+ * @note Trivially thread-safe; not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
+{
+  for (uint32_t i = 0; i < (uint32_t)k_ra_fs_dir_entry_bytes; i++) {
+    ent[i] = 0;
+  }
+  for (uint32_t i = 0; i < (uint32_t)k_dir_name_field_len; i++) {
+    ent[i] = ' ';
+  }
+  for (uint32_t i = 0; i < dots; i++) {
+    ent[i] = '.';
+  }
+  ent[k_dir_off_attr] = k_ra_fs_attr_directory;
+  priv_entry_set_cluster_size(ent, cluster, 0U);
+}
+
+/**
+ * @brief Initialise a freshly allocated directory cluster ("." + ".." + zeros).
+ *
+ * @details Writes the self ("."), parent ("..") links into the first sector and
+ *          zeroes every remaining sector of the cluster so the directory has a
+ *          clean end-of-directory marker for subsequent entries.
+ *
+ * @param[in] m              Mount providing geometry and backend.
+ * @param[in] new_cluster    The directory's own first cluster.
+ * @param[in] parent_cluster Parent's first cluster (0 when the parent is root).
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Cluster initialised on disk.
+ * @retval k_ra_err_* Backend write error.
+ *
+ * @pre `m` is non-NULL; `new_cluster >= k_cluster_first_data`.
+ * @pre `m->sectors_per_cluster >= 1`.
+ * @post On success the cluster holds "." and ".." then zeros.
+ * @post On failure the cluster may be partially written.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_dir_cluster_init(const ra_fs_mount_t* m,
+                                      uint32_t             new_cluster,
+                                      uint32_t             parent_cluster)
+{
+  uint8_t buf[k_ra_fs_bytes_per_sector] = {};
+  priv_pack_dot_entry(&buf[0], 1U, new_cluster);
+  priv_pack_dot_entry(&buf[k_ra_fs_dir_entry_bytes], 2U, parent_cluster);
+  const uint32_t base = priv_cluster_to_lba(m, new_cluster);
+  ra_err_t       err  = priv_write_sector(m, base, buf);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint8_t zero[k_ra_fs_bytes_per_sector] = {};
+  for (uint32_t s = 1; s < m->sectors_per_cluster; s++) {
+    err = priv_write_sector(m, base + s, zero);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of `ra_fs_mkdir()` -- create one FAT directory.
+ *
+ * @details Resolves the parent, rejects an existing name, finds a free parent
+ *          slot, allocates and initialises a directory cluster ("." / ".."),
+ *          then writes the parent's directory entry. On any post-allocation
+ *          failure the new cluster is freed so the volume is not leaked.
+ *
+ * @param[in,out] handle Mounted FAT12/16/32 volume.
+ * @param[in]     path   NUL-terminated directory path to create.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Directory created.
+ * @retval k_ra_err_invalid_arg   Leaf is not an 8.3 name.
+ * @retval k_ra_err_exists        The name already exists in the parent.
+ * @retval k_ra_err_no_mem        Parent directory full or volume full.
+ * @retval k_ra_err_not_found     An intermediate path component is missing.
+ * @retval k_ra_err_*             Backend / FAT error.
+ *
+ * @pre `handle` and `path` are non-NULL; mount is a FAT volume.
+ * @pre The parent path exists.
+ * @post On success the new directory has "." and ".." and an empty body.
+ * @post On failure no cluster is leaked (a partial allocation is freed).
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_fat_mkdir(ra_fs_mount_t* handle, const char* path)
+{
+  dir_loc_t      parent = {};
+  const char*    leaf   = nullptr;
+  const ra_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
+  if (rerr != k_ra_ok) {
+    return rerr;
+  }
+  uint8_t name83[k_max_8_3_name] = {};
+  if (priv_path_to_83(leaf, name83) == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  uint32_t lba                            = 0;
+  uint32_t off                            = 0;
+  uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
+  if (priv_dir_find(handle, &parent, name83, &lba, &off, entry) == k_ra_ok) {
+    return k_ra_err_exists;
+  }
+  uint32_t free_lba = 0;
+  uint32_t free_off = 0;
+  ra_err_t err      = priv_dir_find_free(handle, &parent, &free_lba, &free_off);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  uint32_t new_cluster = 0;
+  err                  = priv_alloc_eoc_cluster(handle, &new_cluster);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const uint32_t parent_cluster = (parent.is_root != 0U) ? 0U : parent.cluster;
+  err                           = priv_dir_cluster_init(handle, new_cluster, parent_cluster);
+  if (err != k_ra_ok) {
+    (void)priv_free_chain(handle, new_cluster);
+    return err;
+  }
+  err = priv_write_new_dir_entry(handle, name83, k_ra_fs_attr_directory, new_cluster, free_lba,
+                                 free_off);
+  if (err != k_ra_ok) {
+    (void)priv_free_chain(handle, new_cluster);
+    return err;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Create a directory on a mounted volume (public API).
+ *
+ * @details Validates arguments and the mount, then dispatches to the FAT
+ *          directory creator. exFAT directory creation is not yet supported.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated directory path to create.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Directory created.
+ * @retval k_ra_err_null_ptr      `handle` or `path` was NULL.
+ * @retval k_ra_err_invalid_state Mount not in use.
+ * @retval k_ra_err_not_supported The volume is exFAT.
+ * @retval k_ra_err_*             See `priv_fat_mkdir`.
+ *
+ * @pre `handle` and `path` are non-NULL.
+ * @pre Mount is in use.
+ * @post On success a new empty directory exists at `path`.
+ * @post On failure the volume is unchanged (a partial alloc is rolled back).
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_fs_mkdir(ra_fs_mount_t* handle, const char* path)
+{
+  if (handle == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (path == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (handle->in_use == 0U) {
+    return k_ra_err_invalid_state;
+  }
+  if (handle->type == k_ra_fs_type_exfat) {
+    return k_ra_err_not_supported;
+  }
+  return priv_fat_mkdir(handle, path);
 }
 
 /**
@@ -6371,14 +6841,20 @@ ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
   if (handle->type == k_ra_fs_type_exfat) {
     return priv_exfat_unlink(handle, path);
   }
+  dir_loc_t      parent = {};
+  const char*    leaf   = nullptr;
+  const ra_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
+  if (rerr != k_ra_ok) {
+    return rerr;
+  }
   uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(path, name83) == 0U) {
+  if (priv_path_to_83(leaf, name83) == 0U) {
     return k_ra_err_invalid_arg;
   }
   uint32_t lba                            = 0;
   uint32_t off                            = 0;
   uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
-  ra_err_t err                            = priv_dir_find(handle, name83, &lba, &off, entry);
+  ra_err_t err                            = priv_dir_find(handle, &parent, name83, &lba, &off, entry);
   if (err != k_ra_ok) {
     return err;
   }
@@ -6416,30 +6892,96 @@ ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
  * @pre The file is not open.
  * @post @p new_path resolves to the same entry; @p old_path is gone.
  * @post No cluster or FAT state changes.
- * @note Root-directory namespace only (matches open/unlink).
+ * @note Same-directory rename only; a cross-directory move is rejected.
  * @since 0.1.0
  */
+/**
+ * @brief Resolve a rename's old/new paths to a shared parent + packed names.
+ *
+ * @details Resolves both parents, requires they are the same directory (an
+ *          in-place rename cannot move an entry between directories), then packs
+ *          both leaf components to 8.3. Extracted from `priv_fat_rename` so that
+ *          function stays under the size/complexity gate.
+ *
+ * @param[in]  handle   Mounted FAT volume.
+ * @param[in]  old_path Existing path.
+ * @param[in]  new_path Replacement path (same directory).
+ * @param[out] out_parent Receives the shared parent directory location.
+ * @param[out] old83    Packed 8.3 name of the existing leaf.
+ * @param[out] new83    Packed 8.3 name of the replacement leaf.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Resolved; outputs populated.
+ * @retval k_ra_err_not_supported The two paths are in different directories.
+ * @retval k_ra_err_invalid_arg   A leaf is not an 8.3 name.
+ * @retval k_ra_err_*             Resolution / backend error.
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre `old83` and `new83` each address `k_max_8_3_name` bytes.
+ * @post On success both names are packed and `out_parent` is set.
+ * @post On failure the outputs are unspecified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t priv_rename_prepare(const ra_fs_mount_t* handle,
+                                    const char*          old_path,
+                                    const char*          new_path,
+                                    dir_loc_t*           out_parent,
+                                    uint8_t              old83[k_max_8_3_name],
+                                    uint8_t              new83[k_max_8_3_name])
+{
+  dir_loc_t   op = {};
+  const char* ol = nullptr;
+  ra_err_t    e1 = priv_resolve_parent(handle, old_path, &op, &ol);
+  if (e1 != k_ra_ok) {
+    return e1;
+  }
+  dir_loc_t   np = {};
+  const char* nl = nullptr;
+  ra_err_t    e2 = priv_resolve_parent(handle, new_path, &np, &nl);
+  if (e2 != k_ra_ok) {
+    return e2;
+  }
+  if (op.is_root != np.is_root) {
+    return k_ra_err_not_supported;
+  }
+  if (op.is_root == 0U) {
+    if (op.cluster != np.cluster) {
+      return k_ra_err_not_supported;
+    }
+  }
+  if (priv_path_to_83(ol, old83) == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (priv_path_to_83(nl, new83) == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_parent = op;
+  return k_ra_ok;
+}
+
 static ra_err_t
 priv_fat_rename(const ra_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
-  uint8_t old83[k_max_8_3_name] = {};
-  uint8_t new83[k_max_8_3_name] = {};
-  if (priv_path_to_83(old_path, old83) == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if (priv_path_to_83(new_path, new83) == 0U) {
-    return k_ra_err_invalid_arg;
+  dir_loc_t parent              = {};
+  uint8_t   old83[k_max_8_3_name] = {};
+  uint8_t   new83[k_max_8_3_name] = {};
+  ra_err_t  perr = priv_rename_prepare(handle, old_path, new_path, &parent, old83, new83);
+  if (perr != k_ra_ok) {
+    return perr;
   }
   uint32_t dup_lba                      = 0U;
   uint32_t dup_off                      = 0U;
   uint8_t  dup[k_ra_fs_dir_entry_bytes] = {};
-  if (priv_dir_find(handle, new83, &dup_lba, &dup_off, dup) == k_ra_ok) {
+  if (priv_dir_find(handle, &parent, new83, &dup_lba, &dup_off, dup) == k_ra_ok) {
     return k_ra_err_exists;
   }
   uint32_t lba                            = 0U;
   uint32_t off                            = 0U;
   uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
-  ra_err_t err                            = priv_dir_find(handle, old83, &lba, &off, entry);
+  ra_err_t err                            = priv_dir_find(handle, &parent, old83, &lba, &off, entry);
   if (err != k_ra_ok) {
     return err;
   }
