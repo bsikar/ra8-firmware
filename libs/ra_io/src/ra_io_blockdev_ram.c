@@ -77,6 +77,10 @@ static ra_err_t ram_bounds(const ra_io_blockdev_ram_state_t* st, uint32_t lba, u
 /**
  * @brief RAM backend: read `count` blocks at `lba` into `buf`.
  *
+ * @details
+ * Bounds-checks the range, then copies `count * 512` bytes from the backing
+ * buffer.
+ *
  * @param[in]  ctx   RAM backend state (as a void cookie).
  * @param[in]  lba   First logical block address.
  * @param[in]  count Number of blocks to read.
@@ -113,6 +117,10 @@ static ra_err_t ram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 
 /**
  * @brief RAM backend: write `count` blocks from `buf` at `lba`.
+ *
+ * @details
+ * Bounds-checks the range, honours the read-only flag, then copies `count * 512`
+ * bytes into the backing buffer.
  *
  * @param[in] ctx   RAM backend state (as a void cookie).
  * @param[in] lba   First logical block address.
@@ -155,6 +163,10 @@ static ra_err_t ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t
 /**
  * @brief RAM backend: erase (zero-fill) `count` blocks at `lba`.
  *
+ * @details
+ * Bounds-checks the range, honours the read-only flag, then zero-fills
+ * `count * 512` bytes (the RAM erase value).
+ *
  * @param[in] ctx   RAM backend state (as a void cookie).
  * @param[in] lba   First logical block address.
  * @param[in] count Number of blocks to erase.
@@ -193,6 +205,10 @@ static ra_err_t ram_erase(void* ctx, uint32_t lba, uint32_t count)
 
 /**
  * @brief RAM backend: report medium capabilities.
+ *
+ * @details
+ * Reports a zero-erase medium that needs no erase-before-write, sized by the
+ * backing buffer.
  *
  * @param[in]  ctx RAM backend state (as a const void cookie).
  * @param[out] out Capabilities snapshot.
