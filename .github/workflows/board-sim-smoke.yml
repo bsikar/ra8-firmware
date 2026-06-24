@@ -47,3 +47,14 @@ jobs:
 
       - name: board_sim boot smoke
         run: bash scripts/board_sim_smoke.sh
+
+      # ra_io fabric (#155) end-to-end gate: every storage backend driven through
+      # the same VFS API (block device -> ra_fs FAT format/mount -> VFS mkdir +
+      # nested file round-trip), plus the DEFLATE stream, asserted by each demo's
+      # PASS banner. Covers RAM/SRAM, external SDRAM, SD-over-SPI, native SDHI,
+      # OSPI NOR (erase-before-write), and on-chip MRAM (program/erase).
+      - name: ra_io fabric board_sim gate (#155-#161)
+        run: |
+          bash scripts/board_sim_smoke.sh \
+            ra_io_demo ra_io_sdram_demo ra_io_compress_demo \
+            ra_io_sd_demo ra_io_sdhi_demo ra_io_xspi_demo ra_io_mram_demo

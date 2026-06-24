@@ -119,6 +119,26 @@ jobs:
         run: bash tests/run_tests.sh
 
   # ---------------------------------------------------------------------------
+  # #147/#160 cache-benchmark toolchain -- builds + runs cache_bench (the SLRU
+  # decision record), reader_vmem (drives the REAL ra_vmem with a reader
+  # workload and emits a cache_bench-consumable trace), and glyph_bench (sweeps
+  # the real glyph atlas). This is #160's "cache_bench builds in CI" gate and
+  # re-confirms SLRU on the captured reader trace on every push.
+  # ---------------------------------------------------------------------------
+  cache-bench:
+    name: Cache benchmarks (#147/#160)
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + run the cache-bench toolchain
+        env:
+          # clang-18 is present on the runner (see the mcdc job) and accepts the
+          # C23 typed-enum / nullptr syntax the bench tools and ra_mem use.
+          CC: clang-18
+        run: make bench-cache
+
+  # ---------------------------------------------------------------------------
   # Coverage gate (gcovr 90 line / 80 branch)
   # ---------------------------------------------------------------------------
   coverage:
