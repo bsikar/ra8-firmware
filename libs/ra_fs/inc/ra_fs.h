@@ -31,8 +31,10 @@
  *   - Unlink (mark dir entry 0xE5, free chain).
  *
  * ## What this deliberately skips
- *   - Long File Names (LFN, 0x0F attribute) -- short 8.3 only.
- *   - Sub-directory creation / removal (`mkdir`, `rmdir`).
+ *   - Long File Names (LFN, 0x0F attribute) on write -- short 8.3 only
+ *     (LFN reads are matched).
+ *   - Sub-directory removal (`rmdir`); `mkdir` and nested-path resolution
+ *     are supported.
  *   - FAT32 FSInfo free-cluster cache (we always linearly scan).
  *   - Date/time stamps on writes (left at 0, like FSP's minimal mode).
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
