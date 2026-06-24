@@ -139,3 +139,7 @@ libs/ra_book/inc/ra_book_library.h
 examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
 # Host SD-card images built by tools/mkbookimg (test fixtures).
 *.img
+
+# tools/reader_vmem host build artifacts (binary + generated #147 traces)
+tools/reader_vmem/reader_vmem
+tools/reader_vmem/*.trace
