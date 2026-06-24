@@ -94,7 +94,7 @@ RA_SIM := $(addprefix sim-,$(RA_APPS))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations all $(RA_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -651,6 +651,29 @@ bench:
 	    $(BENCH_BUILD)/bench/$$t || { echo "FAIL: $$t"; exit 1; }; \
 	done
 	@echo "==== ra_bench done ===="
+
+# ---------------------------------------------------------------------------
+# `make bench-cache` -- the #147/#160 cache-bench toolchain. Builds and runs
+# the host tools that exercise the REAL Layer-1/2/3 caches: cache_bench (the
+# SLRU decision record), reader_vmem (drives ra_vmem with a reader workload and
+# emits a cache_bench-consumable trace), and glyph_bench (sweeps the real glyph
+# atlas). Satisfies #160's "cache_bench builds in CI" and confirms SLRU on the
+# captured reader trace. CC is forwarded so CI can pin a C23 compiler.
+# ---------------------------------------------------------------------------
+bench-cache:
+	$(MAKE) -C $(ROOT)/tools/cache_bench  CC="$(CC)"
+	$(MAKE) -C $(ROOT)/tools/reader_vmem  CC="$(CC)"
+	$(MAKE) -C $(ROOT)/tools/glyph_bench  CC="$(CC)"
+	@echo ""
+	@echo "==== reader_vmem: drive real ra_vmem, emit a cache_bench trace ===="
+	$(ROOT)/tools/reader_vmem/reader_vmem $(ROOT)/tools/reader_vmem/reader_vmem.trace
+	@echo ""
+	@echo "==== cache_bench: replay the reader trace (SLRU confirmation) ===="
+	$(ROOT)/tools/cache_bench/cache_bench reader=$(ROOT)/tools/reader_vmem/reader_vmem.trace
+	@echo ""
+	@echo "==== glyph_bench: glyph-cache budget sweep ===="
+	$(ROOT)/tools/glyph_bench/glyph_bench
+	@echo "==== bench-cache done ===="
 
 # ---------------------------------------------------------------------------
 # `make app-sizes` -- run scripts/utils/app_sizes.py to summarise per-app
