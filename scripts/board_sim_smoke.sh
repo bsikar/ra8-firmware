@@ -192,6 +192,7 @@ sim_extra_args() { # app -> extra args on stdout
 uart_expect() { # app -> expected UART substring on stdout
     case "$1" in
     uart_hello)         printf 'hello, ra8d2!' ;;
+    ra_io_demo)         printf 'ra_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
     ereader_image)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
     ereader_link)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
