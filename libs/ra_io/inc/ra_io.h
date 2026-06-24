@@ -59,6 +59,7 @@ extern "C" {
 #include "ra_io_stream_ram.h"
 #include "ra_io_stream_uart.h"
 #include "ra_io_stream_usbcdc.h"
+#include "ra_io_vfs.h"
 
 #ifdef __cplusplus
 }
