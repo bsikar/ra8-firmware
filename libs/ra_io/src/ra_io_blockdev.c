@@ -139,6 +139,10 @@ ra_err_t ra_io_blockdev_sync(const ra_io_blockdev_t* bd)
 /**
  * @brief `ra_fs` read trampoline -- forward into the bound block device.
  *
+ * @details
+ * Casts the `ra_fs` cookie back to the block-device handle and dispatches the
+ * read.
+ *
  * @param[in]  ctx   The ::ra_io_blockdev_t handle (as a void cookie).
  * @param[in]  lba   First logical block address.
  * @param[in]  count Number of blocks to read.
@@ -168,6 +172,10 @@ static ra_err_t internal_fs_read(void* ctx, uint32_t lba, uint32_t count, uint8_
 /**
  * @brief `ra_fs` write trampoline -- forward into the bound block device.
  *
+ * @details
+ * Casts the `ra_fs` cookie back to the block-device handle and dispatches the
+ * write.
+ *
  * @param[in] ctx   The ::ra_io_blockdev_t handle (as a void cookie).
  * @param[in] lba   First logical block address.
  * @param[in] count Number of blocks to write.
@@ -196,6 +204,10 @@ static ra_err_t internal_fs_write(void* ctx, uint32_t lba, uint32_t count, const
 
 /**
  * @brief `ra_fs` capacity trampoline -- map block-device caps to (count, size).
+ *
+ * @details
+ * Queries the block-device capabilities and reports `block_count` plus the
+ * 512-byte logical block size `ra_fs` expects.
  *
  * @param[in]  ctx         The ::ra_io_blockdev_t handle (as a void cookie).
  * @param[out] block_count Total blocks reported to `ra_fs`.

@@ -47,6 +47,12 @@ extern "C" {
 #endif
 
 #include "ra_io_blockdev.h"
+#include "ra_io_blockdev_mram.h"
+#include "ra_io_blockdev_ram.h"
+#include "ra_io_blockdev_sdhi.h"
+#include "ra_io_blockdev_sdram.h"
+#include "ra_io_blockdev_sdspi.h"
+#include "ra_io_blockdev_xspi.h"
 
 #ifdef __cplusplus
 }
