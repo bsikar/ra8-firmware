@@ -225,6 +225,16 @@ macro(ra_add_app)
         list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/third_party/miniz)
     endif()
 
+    # ra_io_compress.c (globbed in by a bare "ra_io" in LIBS) drives the vendored
+    # miniz DEFLATE core, so it only links when the app also supplies that core --
+    # a bare "miniz" or the full "ra_epub" stack. For plain ra_io consumers (the
+    # common case) drop it from the glob so they need no compressor and no miniz
+    # include path. The header (ra_io_compress.h) is likewise opt-in, kept out of
+    # the ra_io.h umbrella, so an app that never compresses pays nothing.
+    if(NOT (("miniz" IN_LIST _RA_APP_LIBS) OR ("ra_epub" IN_LIST _RA_APP_LIBS)))
+        list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_compress\\.c$")
+    endif()
+
     # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
     # through byte buffers, which violates C strict-aliasing. GCC's aliasing
     # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3
