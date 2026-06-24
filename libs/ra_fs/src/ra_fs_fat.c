@@ -1278,6 +1278,7 @@ typedef struct {
   uint32_t sector_in_cluster; /**< 0..SPC-1 inside cluster.            */
   uint32_t cur_lba;           /**< Currently loaded LBA.               */
   uint32_t entry_idx;         /**< Byte offset within the loaded sector. */
+  uint32_t cluster_hops;      /**< FAT-chain follows so far (cycle guard). */
 } dir_walk_t;
 
 /**
@@ -1316,7 +1317,8 @@ static void priv_dir_walk_init_root(const ra_fs_mount_t* m, dir_walk_t* w)
     w->sector_in_cluster = 0;
     w->cur_lba           = m->first_root_lba;
   }
-  w->entry_idx = 0;
+  w->entry_idx     = 0;
+  w->cluster_hops  = 0;
 }
 
 /**
@@ -1370,6 +1372,7 @@ static void priv_dir_walk_init_loc(const ra_fs_mount_t* m, const dir_loc_t* loc,
   w->sector_in_cluster = 0;
   w->cur_lba           = priv_cluster_to_lba(m, loc->cluster);
   w->entry_idx         = 0;
+  w->cluster_hops      = 0;
 }
 
 /**
@@ -1384,8 +1387,9 @@ static void priv_dir_walk_init_loc(const ra_fs_mount_t* m, const dir_loc_t* loc,
  * @param[out]    out_eod Set to 1 if end-of-directory reached, else 0.
  *
  * @return Error code.
- * @retval k_ra_ok    Walker advanced (or EOD signalled in `*out_eod`).
- * @retval k_ra_err_* Backend error from a FAT read.
+ * @retval k_ra_ok                 Walker advanced (or EOD signalled in `*out_eod`).
+ * @retval k_ra_err_protocol_error Cluster-chain cycle detected (corrupt FAT).
+ * @retval k_ra_err_*              Backend error from a FAT read.
  *
  * @pre `m`, `w`, and `out_eod` are non-NULL.
  * @pre Walker has been initialized by `priv_dir_walk_init_root`.
@@ -1420,6 +1424,12 @@ static ra_err_t priv_dir_walk_next_sector(const ra_fs_mount_t* m, dir_walk_t* w,
     if (priv_is_eoc(m, next) != 0U) {
       *out_eod = 1;
       return k_ra_ok;
+    }
+    /* Cycle guard (NASA Rule 2): a healthy chain visits at most
+     * count_of_clusters distinct clusters; more means a corrupt loop. */
+    w->cluster_hops++;
+    if (w->cluster_hops > m->count_of_clusters) {
+      return k_ra_err_protocol_error;
     }
     w->cluster           = next;
     w->sector_in_cluster = 0;
@@ -6487,12 +6497,14 @@ ra_err_t ra_fs_size(const ra_fs_file_t* file, uint32_t* out_bytes)
 /**
  * @brief Visit every visible entry in one already-loaded directory sector.
  *
- * @details Skips deleted (0xE5) and LFN (attr 0x0F) entries. Stops on
- *          the end-of-directory marker (0x00).
+ * @details Skips deleted (0xE5) and LFN (attr 0x0F) entries and the synthetic
+ *          "." / ".." directory entries. Stops on the end-of-directory marker
+ *          (0x00).
  *
- * @param[in] buf 512-byte sector buffer holding directory entries.
- * @param[in] cb  Caller-supplied per-entry callback.
- * @param[in] ctx Opaque pointer forwarded to `cb`.
+ * @param[in]     buf 512-byte sector buffer holding directory entries.
+ * @param[in,out] lfn LFN reassembly state carried across sectors.
+ * @param[in]     cb  Caller-supplied per-entry callback.
+ * @param[in]     ctx Opaque pointer forwarded to `cb`.
  *
  * @return 1 if end-of-directory marker hit (caller can stop), 0 otherwise.
  * @retval 1  End-of-directory reached; caller should stop.
@@ -6523,6 +6535,10 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra_fs_listdir_cb
       priv_lfn_add(lfn, ent);
       continue;
     }
+    if (ent[k_dir_off_name] == '.') {
+      priv_lfn_reset(lfn); /* synthetic "." / ".." -- not reported to the caller */
+      continue;
+    }
     char short_name[k_ra_fs_short_name_len] = {};
     priv_83_to_str(&ent[k_dir_off_name], short_name);
     /* Report the VFAT long name when the preceding chain matches; else the 8.3. */
@@ -6535,13 +6551,15 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra_fs_listdir_cb
 }
 
 /**
- * @brief Enumerate the entries in the volume root directory.
+ * @brief Enumerate the entries in a directory (root or a subdirectory).
  *
- * @details Only the root path `"/"` is currently supported -- subdir
- *          traversal is not implemented.
+ * @details Resolves @p path to a directory via `priv_resolve_dir` and walks it,
+ *          invoking @p cb once per visible entry. FAT12/16/32 support any path
+ *          (`"/"` or nested); exFAT remains root-only. The synthetic "." and
+ *          ".." entries are not reported.
  *
  * @param[in,out] handle Mount handle.
- * @param[in]     path   Must be `"/"`.
+ * @param[in]     path   Directory path (`"/"` or a nested path on FAT).
  * @param[in]     cb     Per-entry callback.
  * @param[in]     ctx    Opaque pointer forwarded to `cb`.
  *
@@ -6549,12 +6567,13 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra_fs_listdir_cb
  * @retval k_ra_ok                  Directory walked successfully.
  * @retval k_ra_err_null_ptr        Any required pointer was NULL.
  * @retval k_ra_err_invalid_state   Mount not in use.
- * @retval k_ra_err_not_supported   `path` is not `"/"`.
+ * @retval k_ra_err_not_found       A path component does not exist.
+ * @retval k_ra_err_not_supported   exFAT path other than `"/"`.
  * @retval k_ra_err_*               Backend error.
  *
  * @pre `handle`, `path`, and `cb` are non-NULL.
  * @pre Mount is in use.
- * @post `cb` invoked once per visible root-directory entry.
+ * @post `cb` invoked once per visible directory entry.
  * @post No on-disk state modified.
  *
  * @note Not thread-safe; callers serialise.

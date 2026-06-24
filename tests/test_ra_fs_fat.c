@@ -577,7 +577,7 @@ static void test_mcdc_priv_path_to_83_args_pair(void)
  * @test test_mcdc_dir_find_free_marker_pair
  * @par MC/DC:
  * Decision: `if (ent[name]==marker_free_perm || ent[name]==marker_free_used)`
- * (2 conditions, libs/ra_fs/src/ra_fs_fat.c line 734, `priv_dir_find_free`).
+ * (2 conditions, libs/ra_fs/src/ra_fs_fat.c, `priv_dir_find_free`).
  * Reached via `ra_fs_open` write-mode.
  * V1 fresh slot 0x00 -> C1=T. V2 unlinked slot 0xE5 -> C1=F,C2=T. V3 populated
  * slot -> C1=F,C2=F. N+1 = 3 vectors for N=2.
