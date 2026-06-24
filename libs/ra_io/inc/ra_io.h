@@ -47,6 +47,7 @@ extern "C" {
 #endif
 
 #include "ra_io_blockdev.h"
+#include "ra_io_blockdev_cache.h"
 #include "ra_io_blockdev_mram.h"
 #include "ra_io_blockdev_ram.h"
 #include "ra_io_blockdev_sdhi.h"
