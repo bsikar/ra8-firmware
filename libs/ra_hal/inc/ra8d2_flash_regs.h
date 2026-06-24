@@ -653,7 +653,8 @@ typedef enum : uint32_t {
   /* HUM Ch 59.4.2 "Block layout" p 3548 */
   k_ra_mram_block_size_bytes = 32UL, /**< One programmable block.      */
   /* HUM Ch 59 "Configuration-set MACI sequence" p 3550 */
-  k_ra_mram_config_set_word_count = 8UL, /**< 8 halfwords per MACI write.  */
+  k_ra_mram_config_set_word_count = 8UL,  /**< 8 halfwords per MACI write.  */
+  k_ra_mram_config_set_bytes      = 16UL, /**< Bytes per config-set (8 halfwords). */
   /* HUM Ch 7.2.23 "ARC_NSEC layout" p 297 */
   k_ra_mram_arc_max_words = 16UL, /**< Max 32-bit words per ARC.    */
 } ra_mram_data_const_t;

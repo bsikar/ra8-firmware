@@ -1535,6 +1535,46 @@ ra_err_t ra_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_
  * =============================================================================
  */
 
+/**
+ * @brief Pack one config-set's worth of source bytes into 8 halfwords.
+ *
+ * @details Builds the ``k_ra_mram_config_set_word_count``-halfword payload for
+ *          the config-set starting at byte offset @p done into @p src, packing
+ *          two bytes per halfword (little-endian) and padding any byte at or
+ *          beyond @p len with ``k_flash_blank_byte`` (0xFF). Extracted from
+ *          `ra_flash_extra_mram_write` so the multi-config-set loop stays under
+ *          the complexity gate.
+ *
+ * @param[in]  src   Source buffer being programmed.
+ * @param[in]  len   Total valid source length in bytes.
+ * @param[in]  done  Byte offset of this config-set within @p src.
+ * @param[out] words Receives the packed halfword payload.
+ *
+ * @return Nothing.
+ *
+ * @pre @p src and @p words are non-NULL.
+ * @pre @p words holds ``k_ra_mram_config_set_word_count`` entries.
+ * @post @p words[i] holds src[done+2i] in its low byte (0xFF past @p len).
+ * @post No other state is modified.
+ *
+ * @note Trivially thread-safe; operates only on the caller's buffers.
+ * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ */
+static void priv_pack_config_words(const uint8_t* src,
+                                   uint32_t       len,
+                                   uint32_t       done,
+                                   uint16_t       words[k_ra_mram_config_set_word_count])
+{
+  for (uint32_t i = 0U; i < k_ra_mram_config_set_word_count; ++i) {
+    const uint32_t base = done + (i * 2U);
+    const uint8_t  lo   = (base < len) ? src[base] : k_flash_blank_byte;
+    const uint8_t  hi   = (base + 1U < len) ? src[base + 1U] : k_flash_blank_byte;
+    words[i]            = (uint16_t)((uint16_t)lo | ((uint16_t)hi << 8U));
+  }
+}
+
 ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len)
 {
   RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -1558,21 +1598,20 @@ ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint3
     return err;
   }
 
-  /* HUM Ch 59 "MSADDR : MACI Command Start Address" p 3573 */
-  *ra_mram_reg32(k_ra_mram_off_msaddr) = mram_addr;
-
-  /* The MACI program flow (HUM Ch 59 p 3550) is the same opener as a
-   * configuration set; the difference is in the trailer + payload size.
-   * We re-use the config-set sequence with an 8-halfword chunked write
-   * sized to ``len`` (padded with 0xFFFF). */
-  uint16_t cfg_words[k_ra_mram_config_set_word_count] = {};
-  for (uint32_t i = 0U; i < k_ra_mram_config_set_word_count; ++i) {
-    const uint32_t base = i * 2U;
-    const uint8_t  lo   = (base < len) ? src[base] : k_flash_blank_byte;
-    const uint8_t  hi   = (base + 1U < len) ? src[base + 1U] : k_flash_blank_byte;
-    cfg_words[i]        = (uint16_t)((uint16_t)lo | ((uint16_t)hi << 8U));
+  /* The MACI program flow (HUM Ch 59 p 3550) re-uses the config-set opener; one
+   * config-set carries ``k_ra_mram_config_set_word_count`` halfwords (16 bytes),
+   * so a write that spans more than that must issue back-to-back config-sets,
+   * each retargeting MSADDR ``k_ra_flash_config_set_bytes`` further on, until the
+   * whole ``len`` is programmed. ``ra_flash_config_set_write`` sets MSADDR per
+   * call, so no separate MSADDR write is needed here. Tail bytes pad to 0xFFFF. */
+  for (uint32_t done = 0U; done < len; done += (uint32_t)k_ra_mram_config_set_bytes) {
+    uint16_t cfg_words[k_ra_mram_config_set_word_count] = {};
+    priv_pack_config_words(src, len, done, cfg_words);
+    err = ra_flash_config_set_write(mram_addr + done, cfg_words);
+    if (err != k_ra_ok) {
+      break;
+    }
   }
-  err = ra_flash_config_set_write(mram_addr, cfg_words);
 
   ra_err_t exit_err = ra_flash_exit_pe_mode();
   if (err == k_ra_ok) {
