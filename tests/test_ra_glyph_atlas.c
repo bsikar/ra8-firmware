@@ -28,23 +28,29 @@ typedef enum : uint32_t {
   k_t_buckets    = 8U,  /**< Hash buckets.           */
 } t_glyph_const_t;
 
-static uint8_t         s_cells[(size_t)k_t_cells * (size_t)k_t_cell_bytes];
-static ra_glyph_cell_t s_meta[(size_t)k_t_cells];
-static int32_t         s_buckets[(size_t)k_t_buckets];
-static uint32_t        s_render_calls;
+static uint8_t            s_cells[(size_t)k_t_cells * (size_t)k_t_cell_bytes];
+static ra_keycache_cell_t s_meta[(size_t)k_t_cells];
+static ra_glyph_key_t     s_keys[(size_t)k_t_cells];
+static ra_glyph_dims_t    s_dims[(size_t)k_t_cells];
+static int32_t            s_buckets[(size_t)k_t_buckets];
+static uint32_t           s_render_calls;
 
 /** @brief Stub renderer: stamps the key into the cell, dims from the size. */
-static ra_err_t t_render(void* ctx, const ra_glyph_key_t* key, uint8_t* cell, uint32_t cell_bytes,
-                         uint16_t* out_w, uint16_t* out_h)
+static ra_err_t t_render(void*                 ctx,
+                         const ra_glyph_key_t* key,
+                         uint8_t*              cell,
+                         uint32_t              cell_bytes,
+                         uint16_t*             out_w,
+                         uint16_t*             out_h)
 {
   (void)ctx;
   s_render_calls++;
   (void)memset(cell, 0, (size_t)cell_bytes);
-  cell[0]  = (uint8_t)key->glyph_id;
-  cell[1]  = (uint8_t)key->face_id;
-  cell[2]  = (uint8_t)key->mode;
-  *out_w   = 4U;
-  *out_h   = 4U;
+  cell[0] = (uint8_t)key->glyph_id;
+  cell[1] = (uint8_t)key->face_id;
+  cell[2] = (uint8_t)key->mode;
+  *out_w  = 4U;
+  *out_h  = 4U;
   return k_ra_ok;
 }
 
@@ -56,6 +62,8 @@ static ra_glyph_atlas_cfg_t t_cfg(void)
   cfg.cell_bytes           = k_t_cell_bytes;
   cfg.cell_count           = k_t_cells;
   cfg.meta                 = s_meta;
+  cfg.keys                 = s_keys;
+  cfg.dims                 = s_dims;
   cfg.buckets              = s_buckets;
   cfg.bucket_count         = k_t_buckets;
   cfg.render               = t_render;

@@ -14,16 +14,22 @@
  * into a free/evicted cell through a caller-supplied renderer (the FreeType/STB
  * rasteriser in production, a stub in tests).
  *
- * Eviction is LRU with pinned-frame skip: the current page's glyphs are pinned
- * while it is on screen, so a page-turn cannot evict a glyph still being drawn.
- * (Glyph reuse has strong per-page locality, so plain LRU suffices here -- the
- * scan-resistant SLRU lives in the ::ra_vmem page cache where linear file floods
- * happen.) Cells are fixed-size, sized to the largest glyph bitmap the budget
- * allows; a glyph larger than a cell is rejected at render time.
+ * This is a thin typed facade over the reusable ::ra_keycache (key bytes + cell
+ * bytes + render-on-miss + pin/unpin): the glyph key is the cache key, the glyph
+ * bitmap is the cell payload, and the rendered width/height ride in the per-cell
+ * user descriptor (::ra_glyph_dims_t). The image-tile cache (::ra_tile_cache) is
+ * the second facade over the same machinery. Eviction is LRU with pinned-frame
+ * skip: the current page's glyphs are pinned while on screen, so a page-turn
+ * cannot evict a glyph still being drawn. (Glyph reuse has strong per-page
+ * locality, so plain LRU suffices here -- the scan-resistant SLRU lives in the
+ * ::ra_vmem page cache where linear file floods happen.) Cells are fixed-size,
+ * sized to the largest glyph bitmap the budget allows; a glyph larger than a cell
+ * is rejected at render time.
  *
  * Zero allocation (NASA P10 Rule 3): the caller provides the cell storage, the
- * per-cell metadata array, and the hash buckets, carved once from a tier
- * ::ra_arena / ::ra_slab at init (hot tier = SRAM/DTCM).
+ * key storage, the per-cell dimension descriptors, the per-cell link metadata,
+ * and the hash buckets, carved once from a tier ::ra_arena / ::ra_slab at init
+ * (hot tier = SRAM/DTCM).
  *
  * @note Not thread-safe; the renderer is single-threaded.
  *
@@ -42,13 +48,16 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_keycache.h"
 
 /**
  * @struct ra_glyph_key_t
  * @brief Identifies one rendered glyph.
  *
- * @details Equality is field-wise (no padding is compared), so callers may
- *          memset the struct to zero before setting fields.
+ * @details Compared byte-wise by the underlying ::ra_keycache, so the struct must
+ *          be fully initialised before use: zero-fill it (e.g. `= {}`) before
+ *          setting the fields so the @ref reserved padding never carries
+ *          indeterminate bytes. The layout is padding-free (12 bytes).
  *
  * @since 0.1.0
  */
@@ -57,14 +66,37 @@ typedef struct {
   uint16_t face_id;  /**< Font face identifier.                              */
   uint16_t size_px;  /**< Pixel size.                                        */
   uint16_t mode;     /**< Render mode (AA / mono / hinting variant).         */
+  uint16_t reserved; /**< Reserved; keep zero (padding-free byte-wise key).  */
 } ra_glyph_key_t;
+
+/* The key is compared/hashed byte-wise over sizeof(ra_glyph_key_t); guard the
+ * padding-free layout at compile time so an accidental field change cannot
+ * introduce indeterminate padding bytes into the comparison. */
+static_assert(sizeof(ra_glyph_key_t) == sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t) +
+                                          sizeof(uint16_t) + sizeof(uint16_t),
+              "ra_glyph_key_t must be padding-free for byte-wise key comparison");
+
+/**
+ * @struct ra_glyph_dims_t
+ * @brief Per-cell user descriptor: the rendered glyph dimensions.
+ *
+ * @details The render callback writes the rasterised glyph's width/height here;
+ *          ::ra_glyph_atlas_get reads them back into ::ra_glyph_t. Treat as
+ *          private; the cache owns the contents.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t w; /**< Rendered glyph width in pixels.  */
+  uint16_t h; /**< Rendered glyph height in pixels. */
+} ra_glyph_dims_t;
 
 /**
  * @struct ra_glyph_t
- * @brief A pinned view of a cached glyph bitmap returned by ::ra_glyph_get.
+ * @brief A pinned view of a cached glyph bitmap returned by ::ra_glyph_atlas_get.
  *
  * @details `bitmap` points into the cache cell and stays valid until the
- *          matching ::ra_glyph_put. Stride is `width` bytes (8-bit coverage).
+ *          matching ::ra_glyph_atlas_put. Stride is `width` bytes (8-bit coverage).
  *
  * @since 0.1.0
  */
@@ -98,41 +130,26 @@ typedef ra_err_t (*ra_glyph_render_fn)(void*                 ctx,
                                        uint16_t*             out_h);
 
 /**
- * @struct ra_glyph_cell_t
- * @brief Per-cell metadata (one caller-owned array entry per cell).
- *
- * @details Treat as private; the cache owns the contents.
- *
- * @since 0.1.0
- */
-/* cppcheck-suppress-begin [unusedStructMember] */
-typedef struct {
-  ra_glyph_key_t key;       /**< Cached glyph key (valid only when in use).   */
-  int32_t        prev;      /**< LRU link toward MRU, or -1.                   */
-  int32_t        next;      /**< LRU link toward LRU, or -1.                   */
-  int32_t        hash_next; /**< Hash bucket chain link, or -1.               */
-  uint16_t       width;     /**< Cached glyph width.                          */
-  uint16_t       height;    /**< Cached glyph height.                         */
-  uint16_t       pin_count; /**< Outstanding pins (0 => evictable).           */
-  uint8_t        valid;     /**< 1 => this cell holds a glyph.                */
-} ra_glyph_cell_t;
-/* cppcheck-suppress-end [unusedStructMember] */
-
-/**
  * @struct ra_glyph_atlas_cfg_t
  * @brief Caller-supplied storage + renderer for ::ra_glyph_atlas_init.
  *
+ * @details All arrays are caller-owned and must out-live the atlas. `meta`,
+ *          `keys`, and `dims` are parallel per-cell arrays (`cell_count`
+ *          entries each); `cell_mem` holds the bitmaps.
+ *
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*           cell_mem;     /**< `cell_count * cell_bytes` of bitmap storage. */
-  uint32_t           cell_bytes;   /**< Bytes per cell (max glyph bitmap).           */
-  uint32_t           cell_count;   /**< Number of cells.                             */
-  ra_glyph_cell_t*   meta;         /**< `cell_count` metadata entries.               */
-  int32_t*           buckets;      /**< `bucket_count` hash-bucket heads.            */
-  uint32_t           bucket_count; /**< Number of hash buckets (>= 1).               */
-  ra_glyph_render_fn render;       /**< Render-on-miss callback.                     */
-  void*              render_ctx;   /**< Opaque context passed to @c render.          */
+  uint8_t*            cell_mem;     /**< `cell_count * cell_bytes` of bitmap storage. */
+  uint32_t            cell_bytes;   /**< Bytes per cell (max glyph bitmap).           */
+  uint32_t            cell_count;   /**< Number of cells.                             */
+  ra_keycache_cell_t* meta;         /**< `cell_count` link-metadata entries.          */
+  ra_glyph_key_t*     keys;         /**< `cell_count` key-storage entries.            */
+  ra_glyph_dims_t*    dims;         /**< `cell_count` dimension descriptors.          */
+  int32_t*            buckets;      /**< `bucket_count` hash-bucket heads.            */
+  uint32_t            bucket_count; /**< Number of hash buckets (>= 1).               */
+  ra_glyph_render_fn  render;       /**< Render-on-miss callback.                     */
+  void*               render_ctx;   /**< Opaque context passed to @c render.          */
 } ra_glyph_atlas_cfg_t;
 
 /**
@@ -145,12 +162,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_glyph_atlas_cfg_t cfg;       /**< Configuration (copied at init).        */
-  int32_t              lru_head;  /**< MRU cell, or -1.                       */
-  int32_t              lru_tail;  /**< LRU cell, or -1.                       */
-  uint32_t             hits;      /**< Get hits so far.                       */
-  uint32_t             misses;    /**< Get misses so far.                     */
-  uint32_t             evictions; /**< Glyphs evicted so far.                 */
+  ra_keycache_t      kc;         /**< Underlying keyed-LRU cache.            */
+  ra_glyph_render_fn render;     /**< Caller's glyph renderer.               */
+  void*              render_ctx; /**< Caller's renderer context.             */
 } ra_glyph_atlas_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -174,7 +188,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_glyph_atlas_init(ra_glyph_atlas_t* atlas, const ra_glyph_atlas_cfg_t* cfg);
+[[nodiscard]] ra_err_t ra_glyph_atlas_init(ra_glyph_atlas_t*           atlas,
+                                           const ra_glyph_atlas_cfg_t* cfg);
 
 /**
  * @brief Get (and pin) the rendered glyph for @p key.
@@ -182,7 +197,7 @@ typedef struct {
  * @details On a hit the cell is moved to the MRU and pinned. On a miss an
  *          unpinned LRU victim is evicted, the glyph is rendered into the cell,
  *          inserted, and pinned. The returned bitmap stays valid until
- *          ::ra_glyph_put.
+ *          ::ra_glyph_atlas_put.
  *
  * @param[in]  atlas     Initialised atlas.
  * @param[in]  key       Glyph to fetch.
@@ -195,7 +210,7 @@ typedef struct {
  * @retval k_ra_err_*        The renderer failed (returned verbatim).
  *
  * @pre `atlas` was populated by ::ra_glyph_atlas_init.
- * @pre The caller will ::ra_glyph_put the returned glyph.
+ * @pre The caller will ::ra_glyph_atlas_put the returned glyph.
  * @post On success the cell's pin count increased by one.
  * @post On any non-ok return no new pin is held.
  *
@@ -203,9 +218,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_glyph_atlas_get(ra_glyph_atlas_t*     atlas,
-                                          const ra_glyph_key_t* key,
-                                          ra_glyph_t*           out_glyph);
+[[nodiscard]] ra_err_t
+ra_glyph_atlas_get(ra_glyph_atlas_t* atlas, const ra_glyph_key_t* key, ra_glyph_t* out_glyph);
 
 /**
  * @brief Release one pin on a glyph previously returned by ::ra_glyph_atlas_get.
@@ -239,8 +253,9 @@ typedef struct {
  * @param[out] out_evictions Evictions so far (may be NULL).
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok           Counters reported.
- * @retval k_ra_err_null_ptr `atlas` was NULL.
+ * @retval k_ra_ok               Counters reported.
+ * @retval k_ra_err_null_ptr     `atlas` was NULL.
+ * @retval k_ra_err_invalid_state The atlas was not initialised.
  *
  * @pre `atlas` was populated by ::ra_glyph_atlas_init.
  * @pre At least one output pointer is non-NULL to be useful.
