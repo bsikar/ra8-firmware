@@ -154,7 +154,7 @@ sd_format_apps="fs_format_mount"
 # backend (ra_io_blockdev_sdspi) by formatting + mounting FAT16 on a blank
 # --sd-new card and round-tripping a file through the VFS. Distinct from the
 # fs_format_mount banner, so it gets its own banner assertion via uart_expect().
-sd_io_apps="ra_io_sd_demo"
+sd_io_apps="ra_io_sd_demo ra_io_sdhi_demo ra_sdhi_card_demo"
 
 # On-chip non-volatile ra_io apps (no CLI flag -- board_sim models the medium
 # internally): OSPI NOR (ra_io_xspi_demo, erase-before-write 4 KiB RMW) and the
@@ -209,6 +209,8 @@ uart_expect() { # app -> expected UART substring on stdout
     ra_io_sdram_demo)   printf 'ra_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS' ;;
     ra_io_compress_demo) printf 'bytes ram:/STORY.RBK PASS' ;;
     ra_io_sd_demo)      printf 'ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra_io_sdhi_demo)    printf 'ra_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra_sdhi_card_demo)  printf 'ra_sdhi_card_demo: native SDHI block round-trip PASS' ;;
     ra_io_xspi_demo)    printf 'ra_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
     ra_io_mram_demo)    printf 'block erase/program/read on extra MRAM PASS' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;

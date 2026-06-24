@@ -912,6 +912,25 @@ bool board_sd_read_block(uint32_t lba, uint8_t* dst)
   return true;
 }
 
+bool board_sd_write_block(uint32_t lba, const uint8_t* src)
+{
+  if (!s_sd.attached || (s_sd.image == nullptr) || (src == nullptr)) {
+    return false;
+  }
+  /* Same SDHC block-addressing as the CMD24 path: arg is a block index. */
+  const uint64_t off = (uint64_t)lba * (uint64_t)k_sd_block;
+  if (off >= s_sd.image_len) {
+    return false; /* past the end of the card -- let the real driver error out. */
+  }
+  if ((off + (uint64_t)k_sd_block) > s_sd.image_len) {
+    return false; /* a full block would run off the end of the image. */
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
+    s_sd.image[off + (uint64_t)i] = src[i];
+  }
+  return true;
+}
+
 void board_sd_reset(void)
 {
   s_sd.collecting = false;
