@@ -119,6 +119,49 @@ typedef enum : uint8_t {
 void ra_log_init(void);
 
 /**
+ * @typedef ra_log_byte_sink_fn_t
+ * @brief Optional per-byte sink for redirecting log output off ITM.
+ *
+ * @details
+ * When a sink is installed with ::ra_log_set_byte_sink, every byte the logger
+ * would have written to the ITM stimulus port is handed to this callback
+ * instead. The `ra_io` fabric installs an adapter that forwards the bytes to an
+ * `ra_io_stream_t`, making the log destination run-time selectable without
+ * `ra_core` depending on `ra_io`.
+ *
+ * @param[in] ctx  Opaque cookie supplied to ::ra_log_set_byte_sink.
+ * @param[in] byte The log byte to consume.
+ *
+ * @since 0.1.0
+ */
+typedef void (*ra_log_byte_sink_fn_t)(void* ctx, uint8_t byte);
+
+/**
+ * @brief Install (or clear) an optional byte sink for log output.
+ *
+ * @details
+ * Pass a non-NULL `fn` to redirect all subsequent log bytes to `fn`; pass NULL
+ * to restore the default ITM backend. Off by default, so existing behaviour is
+ * unchanged until a sink is installed.
+ *
+ * @param[in] fn  Byte sink callback, or NULL to restore the ITM default.
+ * @param[in] ctx Opaque cookie passed back to `fn` (may be NULL).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok Sink installed (or cleared).
+ *
+ * @pre None.
+ * @pre `fn`, when non-NULL, out-lives the redirect.
+ * @post Subsequent log bytes route to `fn` (or ITM when `fn` is NULL).
+ * @post No log line already in flight is rerouted mid-byte.
+ *
+ * @note Not thread-safe with respect to concurrent logging.
+ *
+ * @since 0.1.0
+ */
+void ra_log_set_byte_sink(ra_log_byte_sink_fn_t fn, void* ctx);
+
+/**
  * @brief Emit an ERROR-level log line with only a tag and a message.
  *
  * @details Backend entry point for the `ra_log_error()` macro.
