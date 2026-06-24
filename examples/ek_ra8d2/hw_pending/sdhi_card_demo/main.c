@@ -29,12 +29,12 @@
  * `g_sdhi_stage` / `g_sdhi_ok` / `g_sdhi_blocks` / `g_sdhi_heartbeat` mirror the
  * result for headless probing.
  *
- * @note **Headless-emulator status.** `tools/board_sim` does not model the SDHI
- * controller or a card on it, so the identification sequence times out on the
- * emulator (no `SD_INFO1.RSPEND`) and the demo stops at `g_sdhi_stage =
- * cardinit` -- it runs without faulting but cannot reach `roundtrip ok` without
- * a real card. The round-trip therefore needs silicon; the app lives in
- * `hw_pending/`. See `README.md` for the bench plan.
+ * @note **Headless-emulator status.** `tools/board_sim` now models the SDHI
+ * host controller (`board_periph_sdhi.c`) backed by the same `--sd-new` card
+ * image as the SPI model, so the identification sequence and the FAT round-trip
+ * both complete on the emulator and the demo reaches `roundtrip ok`. The app
+ * still lives in `hw_pending/` because the bench run on real silicon is the
+ * user's to perform. See `README.md` for the bench plan.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
