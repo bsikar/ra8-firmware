@@ -38,6 +38,17 @@
  * (void)ra_io_blockdev_as_fs_backend(&bd, &be);   // FAT now runs on the ramdisk
  * @endcode
  *
+ * ## Boundary with ra_vsource
+ *
+ * This block device is the read/write/erase storage seam at [Ring 4 / PAL]. It
+ * is deliberately distinct from `ra_vsource` (`ra_vsource.h`, [Ring 2 / Core]),
+ * the read-only byte-offset view that feeds the #147 page cache. The split is
+ * intentional, not drift: a Ring-2 source must not depend on this Ring-4 fabric,
+ * since that would invert ring ordering (see `docs/RING_AND_WORLD.md`). The
+ * sanctioned bridge is the Ring-4 adapter `ra_io_blockdev_vsource.h`, which
+ * exposes a bound block device as a `ra_vsource_read_fn` so it can be wired into
+ * the page cache via `ra_vsource_add_paged`.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *

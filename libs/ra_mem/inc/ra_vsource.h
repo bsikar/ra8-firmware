@@ -22,6 +22,20 @@
  * object's backing (read callback, or memcpy for an XIP object), zero-padding any
  * tail beyond the object's end.
  *
+ * ## Boundary with ra_io_blockdev
+ *
+ * This source is read-only and byte-addressed, and lives at [Ring 2 / Core].
+ * The `ra_io` block-device fabric (`ra_io_blockdev.h`, [Ring 4 / PAL]) is a
+ * separate storage seam: read/write/erase over 512-byte LBAs. The two are kept
+ * distinct on purpose -- a read-only byte view for the page cache versus a
+ * read/write block fabric for filesystems -- and the split is intentional, not
+ * drift. ::ra_vsource must never depend on `ra_io_blockdev`: that would make
+ * Ring 2 depend on Ring 4 and invert ring ordering (see
+ * `docs/RING_AND_WORLD.md`). The sanctioned bridge runs the other (allowed) way:
+ * the Ring-4 adapter `ra_io_blockdev_vsource.h` exposes a block device as a
+ * ::ra_vsource_read_fn, doing the LBA<->byte translation so apps can wire a
+ * block device straight into ::ra_vsource_add_paged.
+ *
  * Zero allocation (NASA P10 Rule 3): the caller supplies the object array.
  *
  * @note Not thread-safe; the reader serialises access.
