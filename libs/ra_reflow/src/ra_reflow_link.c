@@ -84,11 +84,26 @@ ra_err_t ra_reflow_find_anchor(const ra_reflow_t* engine,
  *
  * @details A scheme makes the link external (http:, https:, mailto:, ...),
  * which the e-reader does not follow. A ':' after a '/' is a path character,
- * not a scheme.
+ * not a scheme. The function scans bytes in order from index 0 up to (but not
+ * including) @p end; the first '/' terminates the scan with a false result and
+ * the first ':' terminates it with a true result. If neither character appears
+ * within the range the link is treated as scheme-free.
  *
- * @param[in] href Href bytes.
- * @param[in] end  Exclusive scan bound (the '#' position or length).
- * @return true iff a scheme is present.
+ * @param[in] href Href byte array; must not be NULL when end > 0.
+ * @param[in] end  Exclusive scan bound (the '#' position or total length).
+ * @return bool Classification result.
+ * @retval true  A URI scheme delimiter ':' was found before any '/'.
+ * @retval false No scheme present; ':' absent or appears after the first '/'.
+ *
+ * @pre @p href is a valid pointer to at least @p end readable bytes.
+ * @pre @p end is less than or equal to the total length of the href buffer.
+ * @post The href buffer is not modified.
+ * @post The return value reflects the first ':' or '/' found in [0, end).
+ *
+ * @note Not thread-safe; the caller must ensure @p href is stable for the
+ *       duration of the call.
+ *
+ * @since 0.1.0
  */
 static bool priv_has_scheme(const char* href, uint32_t end)
 {
@@ -109,14 +124,31 @@ static bool priv_has_scheme(const char* href, uint32_t end)
  * @details Locates the fragment '#', detects a URI scheme, and classifies into
  * one of ::ra_reflow_href_kind_t. Factored out of ra_reflow_href_split() so the
  * public wrapper holds only the pointer validation (keeps each within the
- * cognitive-complexity budget).
+ * cognitive-complexity budget). The algorithm first scans for the first '#'
+ * character to separate the path part from the optional fragment. It then
+ * delegates scheme detection to priv_has_scheme() on the path sub-range. Based
+ * on whether a scheme, a fragment, and a non-empty path are present, one of the
+ * five ::ra_reflow_href_kind_t values is written to @p out_kind. Fragment
+ * offset and length are written only when a '#' was found; otherwise the
+ * caller-initialized zeros remain unchanged.
  *
- * @param[in]  href         Href bytes.
- * @param[in]  len          Length of @p href (> 0).
- * @param[out] out_kind     Receives the classification.
- * @param[out] out_path_len Receives the path-part length.
- * @param[out] out_frag_off Receives the fragment offset (0 if none).
- * @param[out] out_frag_len Receives the fragment length (0 if none).
+ * @param[in]  href         Href byte array; must not be NULL and len > 0.
+ * @param[in]  len          Length of @p href in bytes; must be greater than 0.
+ * @param[out] out_kind     Receives the link classification result.
+ * @param[out] out_path_len Receives the byte length of the path part (before '#').
+ * @param[out] out_frag_off Receives the byte offset of the fragment (after '#'); 0 if none.
+ * @param[out] out_frag_len Receives the byte length of the fragment; 0 if none.
+ * @return Nothing.
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre @p len is greater than 0 (callers must guard before invoking).
+ * @post @p out_kind is set to a valid ::ra_reflow_href_kind_t value.
+ * @post @p out_path_len reflects the number of bytes before the first '#' or @p len.
+ *
+ * @note Not thread-safe; the caller must ensure @p href is stable for the
+ *       duration of the call.
+ *
+ * @since 0.1.0
  */
 static void priv_href_classify(const char*            href,
                                uint32_t               len,
