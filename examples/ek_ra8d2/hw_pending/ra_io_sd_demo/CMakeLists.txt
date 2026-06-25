@@ -29,6 +29,10 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
+# EXTRA_SRCS pulls in the shared, backend-agnostic round-trip from ../common; this
+# app differs from the RAM / SDRAM / OSPI demos only by the SD-SPI transport
+# bring-up + its one backend bind line + its own PASS banner (#155).
 ra_add_app(NAME ra_io_sd_demo STACK_BYTES 4096
            DESCRIPTION "ra_io swappable SD-over-SPI backend (#155/#156): VFS round-trip on microSD"
-           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal)
+           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal
+           EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../common/ra_io_roundtrip.c)
