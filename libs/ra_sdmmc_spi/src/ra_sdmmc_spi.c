@@ -33,6 +33,7 @@
 #include "ra_log.h"
 #include "ra_port_utils.h"
 #include "ra_sci_spi.h"
+#include "ra_sdmmc_spi_internal.h"
 #include "ra_spi.h"
 
 /* ---------------------------------------------------------------------------
@@ -53,14 +54,6 @@ static const char* s_tag = "SDSPI";
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @enum sd_cmd_t
- * @brief Wire-byte for every command used by this driver.
- *
- * @details
- * The wire byte is ``0x40 | cmd_index`` per SD spec PHY v9 section 7.3.1.1
- * "Command Format" (bit 7 = 0, bit 6 = 1, bits 5..0 = command index).
- */
 /** @brief SD CSD field masks/shifts and command framing. */
 typedef enum : uint32_t {
   k_sd_cmd_frame_len  = 5U,    /**< Command bytes preceding the CRC7. */
@@ -71,26 +64,6 @@ typedef enum : uint32_t {
   k_sd_mult_lo_mask   = 0x80U, /**< C_SIZE_MULT low bit (byte 10). */
   k_sd_mult_shift     = 7U,    /**< C_SIZE_MULT low-bit shift. */
 } sd_csd_field_t;
-
-typedef enum : uint8_t {
-  k_sd_cmd_go_idle_state           = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
-  k_sd_cmd_send_if_cond            = 0x40U | 8U,  /**< CMD8  SEND_IF_COND         */
-  k_sd_cmd_send_csd                = 0x40U | 9U,  /**< CMD9  SEND_CSD             */
-  k_sd_cmd_send_cid                = 0x40U | 10U, /**< CMD10 SEND_CID             */
-  k_sd_cmd_stop_transmission       = 0x40U | 12U, /**< CMD12 STOP_TRANSMISSION    */
-  k_sd_cmd_set_blocklen            = 0x40U | 16U, /**< CMD16 SET_BLOCKLEN         */
-  k_sd_cmd_read_single_block       = 0x40U | 17U, /**< CMD17 READ_SINGLE_BLOCK    */
-  k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
-  k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24 WRITE_BLOCK          */
-  k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK */
-  k_sd_cmd_erase_wr_blk_start      = 0x40U | 32U, /**< CMD32 ERASE_WR_BLK_START   */
-  k_sd_cmd_erase_wr_blk_end        = 0x40U | 33U, /**< CMD33 ERASE_WR_BLK_END     */
-  k_sd_cmd_erase                   = 0x40U | 38U, /**< CMD38 ERASE                */
-  k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55 APP_CMD              */
-  k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58 READ_OCR             */
-  k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND     */
-  k_sd_acmd_set_wr_blk_erase_count = 0x40U | 23U, /**< ACMD23 pre-erase count */
-} sd_cmd_t;
 
 /**
  * @enum sd_r1_bit_t
@@ -107,63 +80,6 @@ typedef enum : uint8_t {
   /* The top bit (0x80) is always zero -- used as the R1 sentinel. */
   k_sd_r1_sentinel = 0x80U,
 } sd_r1_bit_t;
-
-/**
- * @enum sd_data_token_t
- * @brief Data tokens used for block I/O (SD spec PHY v9 section 7.3.3).
- */
-typedef enum : uint8_t {
-  k_sd_token_data_start_single = 0xFEU, /**< Single-block read / single-block write start. */
-  k_sd_token_data_start_multi  = 0xFCU, /**< Multi-block write start.                       */
-  k_sd_token_stop_multi        = 0xFDU, /**< Multi-block write stop.                        */
-  k_sd_token_idle              = 0xFFU, /**< Bus idle / CIPO high.                          */
-} sd_data_token_t;
-
-/**
- * @enum sd_data_response_t
- * @brief Data-response token bit layout (SD spec PHY v9 section 7.3.3.1).
- *
- * @details
- * Wire layout xxx0sss1 where sss = 010 "accepted", 101 "CRC error",
- * 110 "write error". Mask with ``k_sd_data_response_mask`` first.
- */
-typedef enum : uint8_t {
-  k_sd_data_response_mask      = 0x1FU,
-  k_sd_data_response_accepted  = 0x05U, /**< 0b00101 -- data accepted.  */
-  k_sd_data_response_crc_err   = 0x0BU, /**< 0b01011 -- CRC error.      */
-  k_sd_data_response_write_err = 0x0DU, /**< 0b01101 -- write error.    */
-} sd_data_response_t;
-
-/**
- * @enum sd_protocol_const_t
- * @brief Magic argument values and retry budgets.
- */
-typedef enum : uint32_t {
-  /* CMD0 has a static CRC7-shifted-and-tagged byte of 0x95 (SD spec PHY
-   * v9 section 7.3.1.1 example). Pre-computing avoids running CRC7 over
-   * the all-zero argument every probe. */
-  k_sd_crc7_cmd0_byte = 0x95U,
-  /* CMD8 with argument 0x000001AA uses the documented "pattern 0xAA at
-   * 2.7-3.6 V" check (SD spec PHY v9 section 7.3.2.6). The CRC7-shifted
-   * byte for this exact frame is 0x87, also published in the spec. */
-  k_sd_cmd8_arg_check_pattern = 0x000001AAUL,
-  k_sd_crc7_cmd8_byte         = 0x87U,
-  /* ACMD41 with HCS=1 for v2.x cards. */
-  k_sd_acmd41_arg_hcs = 0x40000000UL,
-  /* OCR bit set when CCS = 1 (block-addressed SDHC/SDXC). */
-  k_sd_ocr_ccs_bit  = 0x40000000UL,
-  k_sd_ocr_busy_bit = 0x80000000UL,
-  /* Retry budgets -- bounded loops, NASA P10 Rule 2. */
-  k_sd_max_r1_wait_bytes    = 16U, /**< R1 must appear within 8 bytes per spec; allow 2x slack. */
-  k_sd_max_data_token_polls = 50000U,  /**< ~500 ms at 100 us / poll. */
-  k_sd_max_busy_poll_bytes  = 100000U, /**< Worst-case write timeout. */
-  k_sd_max_acmd41_attempts  = 1000U,   /**< 1 s at 1 ms / attempt. */
-  k_sd_init_dummy_clocks    = 80U,     /**< 80 clocks = 10 bytes of 0xFF (>=74 required). */
-  k_sd_recover_flush_bytes  = 530U,    /**< >= 512 data + 2 CRC + token to flush a stuck write. */
-  k_sd_recover_idle_bytes   = 64U,     /**< 512 CS-released clocks to drain busy + reset framing. */
-  k_sd_max_recover_attempts = 4U,      /**< Re-flush + retry CMD0 this many times before failing. */
-  k_sd_max_erase_poll_bytes = 5000000U, /**< Busy ceiling for a bulk CMD38 erase (seconds). */
-} sd_protocol_const_t;
 
 /**
  * @enum sd_cmd_arg_idx_t
@@ -200,16 +116,6 @@ typedef enum : uint8_t {
 } sd_csd_layout_t;
 
 /**
- * @enum sd_bit_shift_t
- * @brief Bit-shift constants reused across byte packing.
- */
-typedef enum : uint8_t {
-  k_sd_bit_byte       = 8U,
-  k_sd_bit_two_byte   = 16U,
-  k_sd_bit_three_byte = 24U,
-} sd_bit_shift_t;
-
-/**
  * @enum sd_crc7_const_t
  * @brief CRC7 polynomial and mask constants (SD spec PHY v9 section 4.5).
  *
@@ -240,49 +146,20 @@ typedef enum : uint16_t {
   k_sd_crc16_poly     = 0x1021U, /**< CRC16-CCITT polynomial.            */
 } sd_crc16_const_t;
 
-/**
- * @enum sd_byte_mask_t
- * @brief Generic byte-extraction masks used across argument packing.
- *
- * @details
- * ``k_sd_mask_byte`` isolates the low 8 bits when packing a 32-bit
- * command argument into the 4 big-endian frame bytes (SD spec PHY v9
- * section 7.3.1.1 "Command Format") or splitting a 16-bit CRC16 into
- * its two on-wire bytes. ``k_sd_mask_12bit`` is the CMD8 echo-check
- * mask (SD spec PHY v9 section 7.3.2.6: bits [11:0] of the R7 echo
- * carry the voltage-range code (bits 11:8) and the host check pattern
- * (bits 7:0)).
- */
-typedef enum : uint32_t {
-  k_sd_mask_byte  = 0xFFU,  /**< Low 8 bits of a wider value.              */
-  k_sd_mask_12bit = 0xFFFU, /**< CMD8 R7 echo voltage-range + check pattern. */
-} sd_byte_mask_t;
-
 /* ---------------------------------------------------------------------------
  * Driver state (single global instance -- one card per board today)
  * ---------------------------------------------------------------------------
  */
 
 /**
- * @struct sd_state_t
- * @brief Cached protocol state held across the driver public API.
- *
- * @invariant ``initialized == true`` iff CMD0 ... CMD16 init succeeded.
- */
-typedef struct {
-  ra_sdmmc_spi_transport_t transport;       /**< Bound transport callbacks.            */
-  ra_sdmmc_spi_card_type_t card_type;       /**< Detected card class.                  */
-  uint32_t                 capacity_blocks; /**< 512-byte block count.               */
-  bool                     initialized;     /**< True once the SD init sequence ran.   */
-} sd_state_t;
-
-/**
- * @var s_state
- * @brief Single driver instance.
+ * @var s_sdmmc_spi_state
+ * @brief Single driver instance (the module's one external definition).
+ * @details Shared with the block-I/O TU through ``ra_sdmmc_spi_internal.h``;
+ *          this file owns the sole definition.
  * @note Internal mutable state; access from a single thread only.
  * @since 0.1.0
  */
-static sd_state_t s_state = {};
+sd_state_t s_sdmmc_spi_state = {};
 
 /* ===========================================================================
  * CRC helpers (public for unit-test coverage)
@@ -335,11 +212,12 @@ uint16_t ra_sdmmc_spi_crc16(const uint8_t* data, uint32_t len)
  */
 
 /* Shift out one byte and capture the response -- see implementation for details. */
-static ra_err_t internal_xfer_one(uint8_t tx, uint8_t* rx)
+ra_err_t ra_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx)
 {
   const uint8_t tx_buf[1] = {tx};
   uint8_t       rx_buf[1] = {};
-  ra_err_t      err       = s_state.transport.xfer(s_state.transport.ctx, tx_buf, rx_buf, 1U);
+  ra_err_t      err =
+    s_sdmmc_spi_state.transport.xfer(s_sdmmc_spi_state.transport.ctx, tx_buf, rx_buf, 1U);
   if (err != k_ra_ok) {
     return err;
   }
@@ -350,11 +228,11 @@ static ra_err_t internal_xfer_one(uint8_t tx, uint8_t* rx)
 }
 
 /* Shift ``n`` idle bytes (0xFF) and discard the response -- see implementation for details. */
-static ra_err_t internal_send_idle(uint32_t n)
+ra_err_t ra_sdmmc_spi_send_idle(uint32_t n)
 {
   uint8_t byte;
   for (uint32_t i = 0U; i < n; i++) {
-    ra_err_t err = internal_xfer_one((uint8_t)k_sd_token_idle, &byte);
+    ra_err_t err = ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &byte);
     if (err != k_ra_ok) {
       return err;
     }
@@ -363,25 +241,25 @@ static ra_err_t internal_send_idle(uint32_t n)
 }
 
 /* Drive CS low and clock a single idle byte so CIPO is sampled -- see implementation for details. */
-static ra_err_t internal_cs_assert(void)
+ra_err_t ra_sdmmc_spi_cs_assert(void)
 {
-  ra_err_t err = s_state.transport.cs(s_state.transport.ctx, true);
+  ra_err_t err = s_sdmmc_spi_state.transport.cs(s_sdmmc_spi_state.transport.ctx, true);
   if (err != k_ra_ok) {
     return err;
   }
-  return internal_send_idle(1U);
+  return ra_sdmmc_spi_send_idle(1U);
 }
 
 /* Drive CS high after clocking one idle byte (SD spec section 7.2.4) -- see implementation for details. */
-static ra_err_t internal_cs_release(void)
+ra_err_t ra_sdmmc_spi_cs_release(void)
 {
-  ra_err_t err = s_state.transport.cs(s_state.transport.ctx, false);
+  ra_err_t err = s_sdmmc_spi_state.transport.cs(s_sdmmc_spi_state.transport.ctx, false);
   if (err != k_ra_ok) {
     return err;
   }
   /* Clock 8 idle cycles after CS release so the card can finish any
    * pending internal state transition (SD spec PHY v9 section 7.2.4). */
-  return internal_send_idle(1U);
+  return ra_sdmmc_spi_send_idle(1U);
 }
 
 /* ===========================================================================
@@ -415,7 +293,7 @@ static ra_err_t internal_read_r1(uint8_t* out_r1)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_sd_max_r1_wait_bytes; i++) {
     uint8_t  byte = 0U;
-    ra_err_t err  = internal_xfer_one((uint8_t)k_sd_token_idle, &byte);
+    ra_err_t err  = ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &byte);
     if (err != k_ra_ok) {
       return err;
     }
@@ -428,15 +306,15 @@ static ra_err_t internal_read_r1(uint8_t* out_r1)
 }
 
 /* Send a command frame and capture the R1 response byte -- see implementation for details. */
-static ra_err_t internal_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1)
+ra_err_t ra_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1)
 {
   uint8_t frame[k_ra_sdmmc_spi_cmd_frame_bytes];
   internal_build_frame(cmd, arg, frame);
   uint8_t  rx_dummy[k_ra_sdmmc_spi_cmd_frame_bytes];
-  ra_err_t err = s_state.transport.xfer(s_state.transport.ctx,
-                                        frame,
-                                        rx_dummy,
-                                        (uint32_t)k_ra_sdmmc_spi_cmd_frame_bytes);
+  ra_err_t err = s_sdmmc_spi_state.transport.xfer(s_sdmmc_spi_state.transport.ctx,
+                                                  frame,
+                                                  rx_dummy,
+                                                  (uint32_t)k_ra_sdmmc_spi_cmd_frame_bytes);
   if (err != k_ra_ok) {
     return err;
   }
@@ -444,15 +322,15 @@ static ra_err_t internal_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r
 }
 
 /* Send an ACMD by prefixing it with CMD55 (APP_CMD) -- see implementation for details. */
-static ra_err_t internal_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1)
+ra_err_t ra_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1)
 {
   uint8_t  r1  = 0U;
-  ra_err_t err = internal_send_command(k_sd_cmd_app_cmd, 0U, &r1);
+  ra_err_t err = ra_sdmmc_spi_send_command(k_sd_cmd_app_cmd, 0U, &r1);
   if (err != k_ra_ok) {
     return err;
   }
   /* CMD55 is allowed to leave R1 == idle (0x01) during the init loop. */
-  return internal_send_command(acmd, arg, out_r1);
+  return ra_sdmmc_spi_send_command(acmd, arg, out_r1);
 }
 
 /* ===========================================================================
@@ -464,11 +342,12 @@ static ra_err_t internal_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1)
 static ra_err_t internal_read_r3_or_r7_tail(uint32_t* out_word)
 {
   uint8_t  bytes[4] = {};
-  ra_err_t err      = s_state.transport.xfer(s_state.transport.ctx, nullptr, bytes, 4U);
+  ra_err_t err =
+    s_sdmmc_spi_state.transport.xfer(s_sdmmc_spi_state.transport.ctx, nullptr, bytes, 4U);
   if (err != k_ra_ok) {
     /* Some transports do not allow NULL tx; fall back to per-byte. */
     for (uint32_t i = 0U; i < 4U; i++) {
-      err = internal_xfer_one((uint8_t)k_sd_token_idle, &bytes[i]);
+      err = ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &bytes[i]);
       if (err != k_ra_ok) {
         return err;
       }
@@ -486,11 +365,11 @@ static ra_err_t internal_read_r3_or_r7_tail(uint32_t* out_word)
  */
 
 /* Poll for the data-start token (0xFE), bounded by a retry budget -- see implementation for details. */
-static ra_err_t internal_wait_data_token(void)
+ra_err_t ra_sdmmc_spi_wait_data_token(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_sd_max_data_token_polls; i++) {
     uint8_t  byte = 0U;
-    ra_err_t err  = internal_xfer_one((uint8_t)k_sd_token_idle, &byte);
+    ra_err_t err  = ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &byte);
     if (err != k_ra_ok) {
       return err;
     }
@@ -502,11 +381,11 @@ static ra_err_t internal_wait_data_token(void)
 }
 
 /* Wait for the card to release busy (CIPO -> 0xFF), bounded by @p max_polls -- see implementation for details. */
-static ra_err_t internal_wait_not_busy_bounded(uint32_t max_polls)
+ra_err_t ra_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls)
 {
   for (uint32_t i = 0U; i < max_polls; i++) {
     uint8_t  byte = 0U;
-    ra_err_t err  = internal_xfer_one((uint8_t)k_sd_token_idle, &byte);
+    ra_err_t err  = ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &byte);
     if (err != k_ra_ok) {
       return err;
     }
@@ -518,9 +397,9 @@ static ra_err_t internal_wait_not_busy_bounded(uint32_t max_polls)
 }
 
 /* Wait for the card to release the busy token (CIPO returns to 0xFF) -- see implementation for details. */
-static ra_err_t internal_wait_not_busy(void)
+ra_err_t ra_sdmmc_spi_wait_not_busy(void)
 {
-  return internal_wait_not_busy_bounded((uint32_t)k_sd_max_busy_poll_bytes);
+  return ra_sdmmc_spi_wait_not_busy_bounded((uint32_t)k_sd_max_busy_poll_bytes);
 }
 
 /* ===========================================================================
@@ -567,7 +446,7 @@ static uint32_t internal_csd_to_blocks(const uint8_t* csd)
  */
 
 /* Validate the transport descriptor: every callback non-NULL -- see implementation for details. */
-static ra_err_t internal_validate_transport(const ra_sdmmc_spi_transport_t* transport)
+ra_err_t ra_sdmmc_spi_validate_transport(const ra_sdmmc_spi_transport_t* transport)
 {
   if (transport == nullptr) {
     return k_ra_err_null_ptr;
@@ -603,7 +482,7 @@ static ra_err_t internal_validate_transport(const ra_sdmmc_spi_transport_t* tran
  *
  * @return None.
  * @pre The transport is bound (called from the init probe).
- * @pre All transport callbacks (@c cs, @c xfer) are non-NULL in @c s_state.transport.
+ * @pre All transport callbacks (@c cs, @c xfer) are non-NULL in @c s_sdmmc_spi_state.transport.
  * @post Any in-flight write/read transaction is terminated and the bus is idle.
  * @post CS is released.
  * @note Not thread-safe; part of single-threaded init.
@@ -612,47 +491,47 @@ static ra_err_t internal_validate_transport(const ra_sdmmc_spi_transport_t* tran
 static void internal_recover_stuck_card(void)
 {
   /* Phase 1: drain busy + reset byte framing with CS released. */
-  (void)s_state.transport.cs(s_state.transport.ctx, false);
-  (void)internal_send_idle((uint32_t)k_sd_recover_idle_bytes);
+  (void)s_sdmmc_spi_state.transport.cs(s_sdmmc_spi_state.transport.ctx, false);
+  (void)ra_sdmmc_spi_send_idle((uint32_t)k_sd_recover_idle_bytes);
 
   /* Phase 2: complete/abort a wedged data phase with CS asserted. */
-  if (s_state.transport.cs(s_state.transport.ctx, true) != k_ra_ok) {
+  if (s_sdmmc_spi_state.transport.cs(s_sdmmc_spi_state.transport.ctx, true) != k_ra_ok) {
     return;
   }
-  (void)internal_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
-  (void)internal_send_idle((uint32_t)k_sd_recover_flush_bytes);
-  (void)internal_wait_not_busy();
+  (void)ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
+  (void)ra_sdmmc_spi_send_idle((uint32_t)k_sd_recover_flush_bytes);
+  (void)ra_sdmmc_spi_wait_not_busy();
 
   /* Phase 3: explicit STOP_TRANSMISSION for any open multi-block transfer. */
   uint8_t r1 = 0U;
-  (void)internal_send_command(k_sd_cmd_stop_transmission, 0U, &r1);
-  (void)internal_wait_not_busy();
-  (void)s_state.transport.cs(s_state.transport.ctx, false);
+  (void)ra_sdmmc_spi_send_command(k_sd_cmd_stop_transmission, 0U, &r1);
+  (void)ra_sdmmc_spi_wait_not_busy();
+  (void)s_sdmmc_spi_state.transport.cs(s_sdmmc_spi_state.transport.ctx, false);
 
   /* Phase 4: settle framing before the caller's wake/CMD0. */
-  (void)internal_send_idle((uint32_t)k_sd_recover_idle_bytes);
+  (void)ra_sdmmc_spi_send_idle((uint32_t)k_sd_recover_idle_bytes);
 }
 
 /* Drive >= 74 dummy clocks with CS high to wake the card (SD spec section 7.2.1) -- see implementation for details. */
 static ra_err_t internal_wake_card(void)
 {
-  ra_err_t err = s_state.transport.cs(s_state.transport.ctx, false);
+  ra_err_t err = s_sdmmc_spi_state.transport.cs(s_sdmmc_spi_state.transport.ctx, false);
   if (err != k_ra_ok) {
     return err;
   }
-  return internal_send_idle((uint32_t)k_sd_init_dummy_clocks / (uint32_t)k_sd_bit_byte);
+  return ra_sdmmc_spi_send_idle((uint32_t)k_sd_init_dummy_clocks / (uint32_t)k_sd_bit_byte);
 }
 
 /* Send CMD0 (GO_IDLE_STATE) and require R1 == 0x01 -- see implementation for details. */
 static ra_err_t internal_send_cmd0(void)
 {
-  ra_err_t err = internal_cs_assert();
+  ra_err_t err = ra_sdmmc_spi_cs_assert();
   if (err != k_ra_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err        = internal_send_command(k_sd_cmd_go_idle_state, 0U, &r1);
-  (void)internal_cs_release();
+  err        = ra_sdmmc_spi_send_command(k_sd_cmd_go_idle_state, 0U, &r1);
+  (void)ra_sdmmc_spi_cs_release();
   if (err != k_ra_ok) {
     return err;
   }
@@ -665,24 +544,25 @@ static ra_err_t internal_send_cmd0(void)
 /* Send CMD8 (SEND_IF_COND) and classify the card as v1.x / v2.x -- see implementation for details. */
 static ra_err_t internal_send_cmd8(bool* out_is_v2)
 {
-  ra_err_t err = internal_cs_assert();
+  ra_err_t err = ra_sdmmc_spi_cs_assert();
   if (err != k_ra_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err = internal_send_command(k_sd_cmd_send_if_cond, (uint32_t)k_sd_cmd8_arg_check_pattern, &r1);
+  err =
+    ra_sdmmc_spi_send_command(k_sd_cmd_send_if_cond, (uint32_t)k_sd_cmd8_arg_check_pattern, &r1);
   if (err != k_ra_ok) {
-    (void)internal_cs_release();
+    (void)ra_sdmmc_spi_cs_release();
     return err;
   }
   if ((r1 & (uint8_t)k_sd_r1_illegal_command) != 0U) {
     *out_is_v2 = false;
-    (void)internal_cs_release();
+    (void)ra_sdmmc_spi_cs_release();
     return k_ra_ok;
   }
   uint32_t echo = 0U;
   err           = internal_read_r3_or_r7_tail(&echo);
-  (void)internal_cs_release();
+  (void)ra_sdmmc_spi_cs_release();
   if (err != k_ra_ok) {
     return err;
   }
@@ -699,13 +579,13 @@ static ra_err_t internal_acmd41_loop(bool is_v2)
 {
   const uint32_t arg = is_v2 ? (uint32_t)k_sd_acmd41_arg_hcs : 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_sd_max_acmd41_attempts; i++) {
-    ra_err_t err = internal_cs_assert();
+    ra_err_t err = ra_sdmmc_spi_cs_assert();
     if (err != k_ra_ok) {
       return err;
     }
     uint8_t r1 = 0U;
-    err        = internal_send_acmd(k_sd_acmd_sd_send_op_cond, arg, &r1);
-    (void)internal_cs_release();
+    err        = ra_sdmmc_spi_send_acmd(k_sd_acmd_sd_send_op_cond, arg, &r1);
+    (void)ra_sdmmc_spi_cs_release();
     if (err != k_ra_ok) {
       return err;
     }
@@ -719,19 +599,19 @@ static ra_err_t internal_acmd41_loop(bool is_v2)
 /* Send CMD58 (READ_OCR) and capture the CCS bit -- see implementation for details. */
 static ra_err_t internal_read_ocr(bool* out_is_hc)
 {
-  ra_err_t err = internal_cs_assert();
+  ra_err_t err = ra_sdmmc_spi_cs_assert();
   if (err != k_ra_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err        = internal_send_command(k_sd_cmd_read_ocr, 0U, &r1);
+  err        = ra_sdmmc_spi_send_command(k_sd_cmd_read_ocr, 0U, &r1);
   if (err != k_ra_ok) {
-    (void)internal_cs_release();
+    (void)ra_sdmmc_spi_cs_release();
     return err;
   }
   uint32_t ocr = 0U;
   err          = internal_read_r3_or_r7_tail(&ocr);
-  (void)internal_cs_release();
+  (void)ra_sdmmc_spi_cs_release();
   if (err != k_ra_ok) {
     return err;
   }
@@ -742,38 +622,38 @@ static ra_err_t internal_read_ocr(bool* out_is_hc)
 /* Send CMD9 (SEND_CSD) and parse capacity -- see implementation for details. */
 static ra_err_t internal_read_csd(uint32_t* out_blocks)
 {
-  ra_err_t err = internal_cs_assert();
+  ra_err_t err = ra_sdmmc_spi_cs_assert();
   if (err != k_ra_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err        = internal_send_command(k_sd_cmd_send_csd, 0U, &r1);
+  err        = ra_sdmmc_spi_send_command(k_sd_cmd_send_csd, 0U, &r1);
   if (err != k_ra_ok) {
-    (void)internal_cs_release();
+    (void)ra_sdmmc_spi_cs_release();
     return err;
   }
   if (r1 != 0U) {
-    (void)internal_cs_release();
+    (void)ra_sdmmc_spi_cs_release();
     return k_ra_err_protocol_error;
   }
-  err = internal_wait_data_token();
+  err = ra_sdmmc_spi_wait_data_token();
   if (err != k_ra_ok) {
-    (void)internal_cs_release();
+    (void)ra_sdmmc_spi_cs_release();
     return err;
   }
   uint8_t csd[k_ra_sdmmc_spi_csd_response_len] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_csd_response_len; i++) {
-    err = internal_xfer_one((uint8_t)k_sd_token_idle, &csd[i]);
+    err = ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &csd[i]);
     if (err != k_ra_ok) {
-      (void)internal_cs_release();
+      (void)ra_sdmmc_spi_cs_release();
       return err;
     }
   }
   /* Drain trailing CRC16 (2 bytes). */
   uint8_t crc_bytes[2] = {};
-  (void)internal_xfer_one((uint8_t)k_sd_token_idle, &crc_bytes[0]);
-  (void)internal_xfer_one((uint8_t)k_sd_token_idle, &crc_bytes[1]);
-  (void)internal_cs_release();
+  (void)ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &crc_bytes[0]);
+  (void)ra_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &crc_bytes[1]);
+  (void)ra_sdmmc_spi_cs_release();
   *out_blocks = internal_csd_to_blocks(csd);
   if (*out_blocks == 0U) {
     return k_ra_err_protocol_error;
@@ -784,13 +664,13 @@ static ra_err_t internal_read_csd(uint32_t* out_blocks)
 /* Send CMD16 (SET_BLOCKLEN, 512) to lock the block size -- see implementation for details. */
 static ra_err_t internal_set_block_len(void)
 {
-  ra_err_t err = internal_cs_assert();
+  ra_err_t err = ra_sdmmc_spi_cs_assert();
   if (err != k_ra_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err = internal_send_command(k_sd_cmd_set_blocklen, (uint32_t)k_ra_sdmmc_spi_block_size, &r1);
-  (void)internal_cs_release();
+  err = ra_sdmmc_spi_send_command(k_sd_cmd_set_blocklen, (uint32_t)k_ra_sdmmc_spi_block_size, &r1);
+  (void)ra_sdmmc_spi_cs_release();
   if (err != k_ra_ok) {
     return err;
   }
@@ -850,7 +730,7 @@ static ra_err_t internal_probe_card(bool* out_is_v2, bool* out_is_hc)
 }
 
 /* Walk the full SD identification sequence and learn capacity / type -- see implementation for details. */
-static ra_err_t internal_run_init_sequence(void)
+ra_err_t ra_sdmmc_spi_run_init_sequence(void)
 {
   bool     is_v2 = false;
   bool     is_hc = false;
@@ -865,642 +745,7 @@ static ra_err_t internal_run_init_sequence(void)
    * accept it as a no-op but the spec says we should still issue it. */
   err = internal_set_block_len();
   RA_RETURN_ON_ERROR(err, s_tag, "CMD16 SET_BLOCKLEN");
-  s_state.card_type       = internal_classify_card(is_v2, is_hc);
-  s_state.capacity_blocks = blocks;
-  return k_ra_ok;
-}
-
-/* ===========================================================================
- * Convenience SCI Simple-SPI transport factory (Pmod SD on EK-RA8D2)
- * ===========================================================================
- */
-
-/**
- * @struct sci_bus_ctx_t
- * @brief Bus context handed to the factory's transport callbacks.
- * @details Populated once by ::ra_sdmmc_spi_transport_sci and pointed at by the
- *          returned transport's ``ctx`` cookie; recovers the SCI channel, PCLKA
- *          rate, and chip-select pin inside each shim. Not reentrant.
- * @since 0.1.0
- */
-typedef struct {
-  uint8_t       channel;  /**< SCI Simple-SPI channel index.        */
-  uint32_t      pclka_hz; /**< PCLKA rate (Hz) for the baud shim.   */
-  ra_port_pin_t cs;       /**< Chip-select GPIO pin (active-low).   */
-} sci_bus_ctx_t;
-
-/**
- * @var s_sci_ctx
- * @brief Single-shot bus context backing the factory's transport callbacks.
- * @warning Mutated by ::ra_sdmmc_spi_transport_sci; not thread-safe and only one
- *          SD bus may be brought up through the factory at a time.
- * @since 0.1.0
- */
-static sci_bus_ctx_t s_sci_ctx;
-
-/* cppcheck-suppress constParameterCallback
- * Reason: bound to ra_sdmmc_spi_transport_t::set_clock, whose signature is
- * `ra_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
-/**
- * @brief Factory transport set-clock shim: retune the SCI baud divider.
- * @details Recovers the SCI channel + PCLKA from the bus context and forwards
- *          to ``ra_sci_spi_set_clock``; carries no register access of its own.
- * @param[in] ctx Bus context (::sci_bus_ctx_t*); must be non-NULL.
- * @param[in] hz  Target SPI clock in Hz.
- * @return ra_err_t passthrough from ``ra_sci_spi_set_clock``.
- * @retval k_ra_ok           Baud divider retuned.
- * @retval k_ra_err_null_ptr @p ctx is NULL.
- * @pre @p ctx points to the live ::s_sci_ctx.
- * @pre ``ra_sci_spi_init`` has configured the SCI channel.
- * @post On success the SCI channel clock is retuned to @p hz.
- * @post No bus transaction is issued (clock configuration only).
- * @note ISR-unsafe; blocking. `ctx` is non-const to match the transport
- *       function-pointer type (constParameterCallback suppressed in-tree).
- * @since 0.1.0
- */
-static ra_err_t sci_transport_set_clock(void* ctx, uint32_t hz)
-{
-  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
-  const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
-  return ra_sci_spi_set_clock(c->channel, hz, c->pclka_hz);
-}
-
-/**
- * @brief Factory transport chip-select shim: drive CS low (asserted) or high.
- * @details Drives the chip-select GPIO from the bus context (active-low select);
- *          carries no register access of its own.
- * @param[in] ctx      Bus context (::sci_bus_ctx_t*); must be non-NULL.
- * @param[in] asserted true to select (CS low), false to release (CS high).
- * @return ra_err_t passthrough from ``ra_gpio_write``.
- * @retval k_ra_ok           CS driven to the requested level.
- * @retval k_ra_err_null_ptr @p ctx is NULL.
- * @pre @p ctx points to the live ::s_sci_ctx.
- * @pre The CS pin was claimed as a GPIO output by ::ra_sdmmc_spi_transport_sci.
- * @post On success the CS pin reflects @p asserted.
- * @post No other pin or bus state changes.
- * @note ISR-unsafe. `ctx` is non-const to match the transport function-pointer
- *       type (constParameterCallback suppressed in-tree).
- * @since 0.1.0
- */
-static ra_err_t sci_transport_cs(void* ctx, bool asserted)
-{
-  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
-  const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
-  return ra_gpio_write(c->cs, asserted ? k_ra_level_low : k_ra_level_high);
-}
-
-/**
- * @brief Factory transport transfer shim: full-duplex byte exchange.
- * @details Forwards a full-duplex byte exchange to the SCI channel from the bus
- *          context; carries no register access of its own.
- * @param[in]  ctx Bus context (::sci_bus_ctx_t*); must be non-NULL.
- * @param[in]  tx  TX bytes, or NULL to shift idle 0xFF.
- * @param[out] rx  RX buffer, or NULL to discard.
- * @param[in]  len Byte count; must be > 0.
- * @return ra_err_t passthrough from ``ra_sci_spi_xfer``.
- * @retval k_ra_ok           @p len bytes clocked on the bus.
- * @retval k_ra_err_null_ptr @p ctx is NULL.
- * @pre @p ctx points to the live ::s_sci_ctx.
- * @pre ``ra_sci_spi_init`` configured the channel and CS is asserted.
- * @post On success @p rx holds the received bytes when non-NULL.
- * @post No state beyond @p rx and the SCI data registers is modified.
- * @note ISR-unsafe; blocking. `ctx` is non-const to match the transport
- *       function-pointer type (constParameterCallback suppressed in-tree).
- * @since 0.1.0
- */
-static ra_err_t sci_transport_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
-{
-  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
-  const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
-  return ra_sci_spi_xfer(c->channel, tx, rx, len);
-}
-
-/**
- * @brief Route the four Pmod SPI pins and bring up the SCI Simple-SPI channel.
- * @details Muxes SCK/CIPO/COPI to the SCI async function, claims CS as a GPIO
- *          output held high, then initialises the SCI channel at the SD power-on
- *          clock. All HAL calls are reused (no register access here).
- * @param[in] channel  SCI channel index (0..9).
- * @param[in] pclk_hz  PCLKA rate (Hz) feeding the baud divider; non-zero.
- * @param[in] pins     Non-NULL SCK / CIPO / COPI / CS descriptor.
- * @return ra_err_t Error code.
- * @retval k_ra_ok           Pins routed, CS claimed high, SCI channel up.
- * @retval k_ra_err_null_ptr @p pins is NULL.
- * @retval other             Propagated from ``ra_pfs_route_peripheral`` /
- *                           ``ra_gpio_output_init`` / ``ra_sci_spi_init``.
- * @pre ``ra_cgc_init`` has run; @p pclk_hz is the live PCLKA rate.
- * @pre The four @p pins are free (not routed to another peripheral).
- * @post On success the four pins are muxed and the SCI channel is configured.
- * @post On failure the affected pins are left in their prior state.
- * @note CS is a plain GPIO output (SD SPI-mode holds CS across a frame).
- * @since 0.1.0
- */
-static ra_err_t
-sci_transport_bringup(uint8_t channel, uint32_t pclk_hz, const ra_sdmmc_spi_sci_pins_t* pins)
-{
-  RA_CHECK_NULL_PTR(pins, s_tag, "pins");
-
-  ra_err_t err = ra_pfs_route_peripheral(pins->sck, k_ra_psel_sci_async, "sdspi.sck");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(pins->cipo, k_ra_psel_sci_async, "sdspi.cipo");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(pins->copi, k_ra_psel_sci_async, "sdspi.copi");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_gpio_output_init(pins->cs, k_ra_level_high);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclk_hz   = pclk_hz,
-    .mode      = k_ra_spi_mode_0,
-    .lsb_first = false,
-  };
-  return ra_sci_spi_init(channel, &spi_cfg);
-}
-
-ra_err_t ra_sdmmc_spi_transport_sci(uint8_t                        sci_channel,
-                                    uint32_t                       pclk_hz,
-                                    const ra_sdmmc_spi_sci_pins_t* pins,
-                                    ra_sdmmc_spi_transport_t*      out)
-{
-  RA_CHECK_NULL_PTR(pins, s_tag, "pins");
-  RA_CHECK_NULL_PTR(out, s_tag, "out");
-  if (pclk_hz == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-
-  ra_err_t err = sci_transport_bringup(sci_channel, pclk_hz, pins);
-  if (err != k_ra_ok) {
-    return err;
-  }
-
-  s_sci_ctx.channel  = sci_channel;
-  s_sci_ctx.pclka_hz = pclk_hz;
-  s_sci_ctx.cs       = pins->cs;
-
-  out->set_clock = sci_transport_set_clock;
-  out->cs        = sci_transport_cs;
-  out->xfer      = sci_transport_xfer;
-  out->ctx       = &s_sci_ctx;
-  return k_ra_ok;
-}
-
-/* ===========================================================================
- * Public API
- * ===========================================================================
- */
-
-/* Bind the transport, validate non-reinit, then bring up the init clock -- see implementation for details. */
-static ra_err_t internal_prepare_init(const ra_sdmmc_spi_transport_t* transport)
-{
-  if (s_state.initialized) {
-    ra_log_error(s_tag, "already initialized");
-    return k_ra_err_invalid_state;
-  }
-  s_state.transport       = *transport;
-  s_state.card_type       = k_ra_sdmmc_spi_type_unknown;
-  s_state.capacity_blocks = 0U;
-  return s_state.transport.set_clock(s_state.transport.ctx, (uint32_t)k_ra_sdmmc_spi_clock_init_hz);
-}
-
-/* Drop the bus to data-rate clock and mark the driver initialized -- see implementation for details. */
-static ra_err_t internal_finalize_init(void)
-{
-  ra_err_t err =
-    s_state.transport.set_clock(s_state.transport.ctx, (uint32_t)k_ra_sdmmc_spi_clock_data_hz);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  s_state.initialized = true;
-  return k_ra_ok;
-}
-
-ra_err_t ra_sdmmc_spi_init(const ra_sdmmc_spi_transport_t* transport)
-{
-  ra_err_t err = internal_validate_transport(transport);
-  RA_RETURN_ON_ERROR(err, s_tag, "transport invalid");
-  err = internal_prepare_init(transport);
-  RA_RETURN_ON_ERROR(err, s_tag, "prepare init");
-  err = internal_run_init_sequence();
-  RA_RETURN_ON_ERROR(err, s_tag, "SD init sequence");
-  err = internal_finalize_init();
-  RA_RETURN_ON_ERROR(err, s_tag, "finalize init");
-  return k_ra_ok;
-}
-
-ra_err_t ra_sdmmc_spi_deinit(void)
-{
-  s_state.initialized     = false;
-  s_state.card_type       = k_ra_sdmmc_spi_type_unknown;
-  s_state.capacity_blocks = 0U;
-  return k_ra_ok;
-}
-
-/* Convert the caller's LBA into the on-wire command argument -- see implementation for details. */
-static uint32_t internal_lba_to_arg(uint32_t lba)
-{
-  if (s_state.card_type == k_ra_sdmmc_spi_type_sdhc) {
-    return lba;
-  }
-  return lba * (uint32_t)k_ra_sdmmc_spi_block_size;
-}
-
-/* Send a one-shot command and require R1 == 0 (CS asserted around it) -- see implementation for details. */
-static ra_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t arg)
-{
-  ra_err_t err = internal_cs_assert();
-  if (err != k_ra_ok) {
-    return err;
-  }
-  uint8_t r1 = 0U;
-  err        = internal_send_command(cmd, arg, &r1);
-  (void)internal_cs_release();
-  if (err != k_ra_ok) {
-    return err;
-  }
-  if (r1 != 0U) {
-    return k_ra_err_protocol_error;
-  }
-  return k_ra_ok;
-}
-
-/* Drive the CMD32/CMD33/CMD38 erase sequence over [lba, lba+count) -- see implementation for details. */
-static ra_err_t internal_erase_range(uint32_t lba, uint32_t count)
-{
-  ra_err_t err = internal_cmd_require_ready(k_sd_cmd_erase_wr_blk_start, internal_lba_to_arg(lba));
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err =
-    internal_cmd_require_ready(k_sd_cmd_erase_wr_blk_end, internal_lba_to_arg((lba + count) - 1U));
-  if (err != k_ra_ok) {
-    return err;
-  }
-  /* CMD38 then a long busy wait -- a bulk erase can hold the card busy for
-   * seconds, far longer than a single-block write. */
-  err = internal_cs_assert();
-  if (err != k_ra_ok) {
-    return err;
-  }
-  uint8_t r1 = 0U;
-  err        = internal_send_command(k_sd_cmd_erase, 0U, &r1);
-  if (err != k_ra_ok) {
-    (void)internal_cs_release();
-    return err;
-  }
-  if (r1 != 0U) {
-    (void)internal_cs_release();
-    return k_ra_err_protocol_error;
-  }
-  err = internal_wait_not_busy_bounded((uint32_t)k_sd_max_erase_poll_bytes);
-  (void)internal_cs_release();
-  return err;
-}
-
-/* Drain 512 payload bytes from the card into ``buf`` -- see implementation for details. */
-static ra_err_t internal_read_block_payload(uint8_t* buf)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
-    ra_err_t err = internal_xfer_one((uint8_t)k_sd_token_idle, &buf[i]);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/* Drain the 2-byte CRC16 trailer from the card and verify it -- see implementation for details. */
-static ra_err_t internal_read_block_crc_check(const uint8_t* buf)
-{
-  uint8_t crc_hi = 0U;
-  uint8_t crc_lo = 0U;
-  (void)internal_xfer_one((uint8_t)k_sd_token_idle, &crc_hi);
-  (void)internal_xfer_one((uint8_t)k_sd_token_idle, &crc_lo);
-  const uint16_t expected = ra_sdmmc_spi_crc16(buf, (uint32_t)k_ra_sdmmc_spi_block_size);
-  const uint16_t actual   = (uint16_t)(((uint16_t)crc_hi << k_sd_bit_byte) | (uint16_t)crc_lo);
-  if (expected != actual) {
-    return k_ra_err_crc_mismatch;
-  }
-  return k_ra_ok;
-}
-
-/* Run the CMD17 + data-token + payload-drain phase under CS asserted -- see implementation for details. */
-static ra_err_t internal_read_data_phase(uint32_t lba, uint8_t* buf)
-{
-  uint8_t  r1  = 0U;
-  ra_err_t err = internal_send_command(k_sd_cmd_read_single_block, internal_lba_to_arg(lba), &r1);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  if (r1 != 0U) {
-    return k_ra_err_protocol_error;
-  }
-  err = internal_wait_data_token();
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = internal_read_block_payload(buf);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return internal_read_block_crc_check(buf);
-}
-
-ra_err_t ra_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf)
-{
-  RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  if (lba >= s_state.capacity_blocks) {
-    return k_ra_err_out_of_range;
-  }
-  ra_err_t err = internal_cs_assert();
-  RA_RETURN_ON_ERROR(err, s_tag, "cs assert");
-  err = internal_read_data_phase(lba, buf);
-  (void)internal_cs_release();
-  return err;
-}
-
-/* Stream one data block out (token + payload + CRC16) and check -- see implementation for details. */
-static ra_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_token)
-{
-  ra_err_t err = internal_send_idle(1U); /* N_WR pad (spec >= 1 byte). */
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = internal_xfer_one(start_token, nullptr);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = s_state.transport.xfer(s_state.transport.ctx,
-                               buf,
-                               nullptr,
-                               (uint32_t)k_ra_sdmmc_spi_block_size);
-  if (err != k_ra_ok) {
-    /* Some transports require non-NULL rx -- fall back to per-byte. */
-    for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
-      uint8_t dummy = 0U;
-      err           = internal_xfer_one(buf[i], &dummy);
-      if (err != k_ra_ok) {
-        return err;
-      }
-    }
-  }
-  const uint16_t crc = ra_sdmmc_spi_crc16(buf, (uint32_t)k_ra_sdmmc_spi_block_size);
-  (void)internal_xfer_one((uint8_t)((uint32_t)(crc >> k_sd_bit_byte) & (uint32_t)k_sd_mask_byte),
-                          nullptr);
-  (void)internal_xfer_one((uint8_t)((uint32_t)crc & (uint32_t)k_sd_mask_byte), nullptr);
-  uint8_t response = 0U;
-  err              = internal_xfer_one((uint8_t)k_sd_token_idle, &response);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  if ((response & (uint8_t)k_sd_data_response_mask) != (uint8_t)k_sd_data_response_accepted) {
-    (void)internal_wait_not_busy();
-    return k_ra_err_protocol_error;
-  }
-  return internal_wait_not_busy();
-}
-
-ra_err_t ra_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf)
-{
-  RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  if (lba >= s_state.capacity_blocks) {
-    return k_ra_err_out_of_range;
-  }
-  ra_err_t err = internal_cs_assert();
-  RA_RETURN_ON_ERROR(err, s_tag, "cs assert");
-  uint8_t r1 = 0U;
-  err        = internal_send_command(k_sd_cmd_write_single_block, internal_lba_to_arg(lba), &r1);
-  if (err != k_ra_ok) {
-    (void)internal_cs_release();
-    return err;
-  }
-  if (r1 != 0U) {
-    (void)internal_cs_release();
-    return k_ra_err_protocol_error;
-  }
-  err = internal_write_data_block(buf, (uint8_t)k_sd_token_data_start_single);
-  (void)internal_cs_release();
-  return err;
-}
-
-/* Stream @p count blocks then the stop token inside an open CMD25 -- see implementation for details. */
-static ra_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
-{
-  for (uint32_t i = 0U; i < count; i++) {
-    const ra_err_t err =
-      internal_write_data_block(&buf[(size_t)i * (size_t)k_ra_sdmmc_spi_block_size],
-                                (uint8_t)k_sd_token_data_start_multi);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  (void)internal_send_idle(1U);
-  (void)internal_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
-  (void)internal_send_idle(1U);
-  return internal_wait_not_busy();
-}
-
-/**
- * @brief Write @p count contiguous 512-byte blocks with one CMD25 transaction.
- *
- * @details The fast bulk-write path: an optional ACMD23 pre-erase hint, then a
- * single WRITE_MULTIPLE_BLOCK (CMD25) streaming every block with the multi-block
- * data-start token (0xFC), terminated by the stop-tran token (0xFD). One command
- * for the whole run instead of @p count single-block CMD24 writes -- the SD spec
- * fast path for clearing a large region (e.g. a multi-MB FAT during format).
- *
- * @param[in] lba   First logical block address.
- * @param[in] buf   Source buffer of @p count * 512 bytes.
- * @param[in] count Number of contiguous blocks (>= 1).
- *
- * @return ra_err_t Error code.
- * @retval k_ra_ok All @p count blocks were accepted and programmed.
- * @retval k_ra_err_null_ptr      @p buf is NULL.
- * @retval k_ra_err_invalid_state The driver is not initialised.
- * @retval k_ra_err_out_of_range  @p lba + @p count exceeds the card capacity.
- * @retval k_ra_err_protocol_error A command R1 or data-response token rejected.
- *
- * @pre The driver is initialised and a card is present.
- * @pre @p buf holds at least @p count * 512 bytes.
- * @post The stop token has been sent and the card is no longer busy.
- * @post CS is released on every return path.
- *
- * @note Not thread-safe; serialise card access. ACMD23 is best-effort -- a card
- *       that rejects it still gets a correct (if unpre-erased) CMD25 stream.
- * @since 0.1.0
- */
-ra_err_t ra_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count)
-{
-  RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  if (count == 0U) {
-    return k_ra_ok;
-  }
-  if ((lba >= s_state.capacity_blocks) || (count > (s_state.capacity_blocks - lba))) {
-    return k_ra_err_out_of_range;
-  }
-  if (count == 1U) {
-    return ra_sdmmc_spi_write_block(lba, buf);
-  }
-  ra_err_t err = internal_cs_assert();
-  RA_RETURN_ON_ERROR(err, s_tag, "cs assert");
-  /* Pre-erase hint (ACMD23): best-effort -- ignore the response so a card that
-   * does not implement it still streams correctly below. */
-  uint8_t acmd_r1 = 0U;
-  (void)internal_send_acmd(k_sd_acmd_set_wr_blk_erase_count, count, &acmd_r1);
-  uint8_t r1 = 0U;
-  err        = internal_send_command(k_sd_cmd_write_multi_block, internal_lba_to_arg(lba), &r1);
-  if ((err != k_ra_ok) || (r1 != 0U)) {
-    (void)internal_cs_release();
-    return (err != k_ra_ok) ? err : k_ra_err_protocol_error;
-  }
-  err = internal_write_multi_stream(buf, count);
-  (void)internal_cs_release();
-  return err;
-}
-
-ra_err_t ra_sdmmc_spi_erase_blocks(uint32_t lba, uint32_t count)
-{
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  if (count == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((lba >= s_state.capacity_blocks) || (count > (s_state.capacity_blocks - lba))) {
-    return k_ra_err_out_of_range;
-  }
-  /* Probe: erase only the FIRST block and read it back. The SD post-erase value
-   * is card-dependent (0x00 on some, 0xFF on others), and the SCR
-   * DATA_STAT_AFTER_ERASE bit's polarity is unreliable in practice, so measure
-   * it. A non-zero read-back means this card erases to ones: report "not
-   * supported" so the caller writes zeros -- and skip erasing the rest, which
-   * would be wasted work (a one-block probe instead of the whole region). */
-  ra_err_t err = internal_erase_range(lba, 1U);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  uint8_t blk[k_ra_sdmmc_spi_block_size] = {};
-  err                                    = ra_sdmmc_spi_read_block(lba, blk);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
-    if (blk[i] != 0U) {
-      return k_ra_err_not_supported;
-    }
-  }
-  /* The card erases to zero: erase the remaining range in one operation. */
-  if (count > 1U) {
-    err = internal_erase_range(lba + 1U, count - 1U);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-ra_err_t ra_sdmmc_spi_get_capacity(uint32_t* out_blocks)
-{
-  RA_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks is null");
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  *out_blocks = s_state.capacity_blocks;
-  return k_ra_ok;
-}
-
-ra_err_t ra_sdmmc_spi_get_card_type(ra_sdmmc_spi_card_type_t* out_type)
-{
-  RA_CHECK_NULL_PTR(out_type, s_tag, "out_type is null");
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  *out_type = s_state.card_type;
-  return k_ra_ok;
-}
-
-/* ===========================================================================
- * ra_fs backend adapter
- * ===========================================================================
- */
-
-/* ``read_block`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */
-static ra_err_t internal_fs_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
-{
-  (void)ctx;
-  if (buf == nullptr) {
-    return k_ra_err_null_ptr;
-  }
-  for (uint32_t i = 0U; i < count; i++) {
-    ra_err_t err =
-      ra_sdmmc_spi_read_block(lba + i, &buf[(size_t)i * (size_t)k_ra_sdmmc_spi_block_size]);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/* ``write_block`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */
-static ra_err_t internal_fs_write_block(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
-{
-  (void)ctx;
-  if (buf == nullptr) {
-    return k_ra_err_null_ptr;
-  }
-  /* One CMD25 multi-block transaction for the whole run (fast); the single-block
-   * path is used only for a lone block. */
-  return ra_sdmmc_spi_write_blocks(lba, buf, count);
-}
-
-/* ``erase_blocks`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */
-static ra_err_t internal_fs_erase_block(void* ctx, uint32_t lba, uint32_t count)
-{
-  (void)ctx;
-  return ra_sdmmc_spi_erase_blocks(lba, count);
-}
-
-/* ``get_capacity`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */
-static ra_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  if ((block_count == nullptr) || (block_size == nullptr)) {
-    return k_ra_err_null_ptr;
-  }
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  *block_count = s_state.capacity_blocks;
-  *block_size  = (uint32_t)k_ra_sdmmc_spi_block_size;
-  return k_ra_ok;
-}
-
-ra_err_t ra_sdmmc_spi_bind_fs_backend(ra_fs_backend_t* out_backend)
-{
-  RA_CHECK_NULL_PTR(out_backend, s_tag, "out_backend is null");
-  if (!s_state.initialized) {
-    return k_ra_err_invalid_state;
-  }
-  out_backend->read_block   = internal_fs_read_block;
-  out_backend->write_block  = internal_fs_write_block;
-  out_backend->get_capacity = internal_fs_get_capacity;
-  out_backend->erase_blocks = internal_fs_erase_block;
-  out_backend->ctx          = nullptr;
+  s_sdmmc_spi_state.card_type       = internal_classify_card(is_v2, is_hc);
+  s_sdmmc_spi_state.capacity_blocks = blocks;
   return k_ra_ok;
 }
