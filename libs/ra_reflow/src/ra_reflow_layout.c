@@ -335,24 +335,35 @@ static int32_t priv_glyph_advance(const stbtt_fontinfo* font, uint16_t font_px, 
 }
 
 /**
- * @brief Push one positioned glyph into the engine pool.
+ * @brief Push one positioned glyph into the engine glyph pool.
  *
- * @return false on overflow, true otherwise.
+ * @details Appends a new @ref ra_reflow_glyph_t entry at
+ * `engine->glyphs[engine->glyph_count]`, populates all fields from the
+ * supplied arguments, and increments `engine->glyph_count`. The @p link_id
+ * byte is stored in the `reserved` field of the glyph so that the
+ * post-layout link-rect pass can identify link runs. Returns @c false
+ * immediately -- without mutating state -- if the pool is already at
+ * capacity (`engine->glyph_count >= k_ra_reflow_max_glyphs`).
  *
- * @details See implementation.
- * @param[in] engine See implementation.
- * @param[in] x See implementation.
- * @param[in] y See implementation.
- * @param[in] cp See implementation.
- * @param[in] font_px See implementation.
- * @param[in] style See implementation.
- * @param[in] color See implementation.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @param[in,out] engine  Engine whose glyph pool grows by one entry.
+ * @param[in]     x       Horizontal pen position in pixels.
+ * @param[in]     y       Baseline row in pixels.
+ * @param[in]     cp      Unicode code point (ASCII range in practice).
+ * @param[in]     font_px Active font size in pixels.
+ * @param[in]     style   Inline style stamp (bold/italic/underline + face id).
+ * @param[in]     color   Packed ARGB glyph colour.
+ * @param[in]     link_id 1-based link identifier; 0 means not a link.
+ *
+ * @return Boolean success flag.
+ * @retval true  Glyph appended; `engine->glyph_count` incremented.
+ * @retval false Pool full; engine state is unchanged.
+ *
+ * @pre `engine != nullptr`.
+ * @pre `engine->glyph_count <= k_ra_reflow_max_glyphs`.
+ * @post On true, `engine->glyphs[engine->glyph_count - 1]` holds the new glyph.
+ * @post On false, no state mutated.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static bool priv_push_glyph(ra_reflow_t* engine,
@@ -421,17 +432,22 @@ static bool priv_finish_page(ra_reflow_t* engine, priv_cursor_t* cur)
  * @details Each space glyph absorbs an equal share of the slack (with the
  * remainder spread one pixel at a time across the leftmost gaps); every glyph
  * shifts right by the accumulated widening to its left, so the run's right edge
- * lands at the margin with an even gap distribution.
+ * lands at the margin with an even gap distribution. If the run contains no
+ * space glyphs the function returns early without modifying anything.
  *
  * @param[in,out] engine Engine whose glyph x positions are adjusted.
  * @param[in]     lo     First glyph index (inclusive).
  * @param[in]     hi     One past the last glyph index.
  * @param[in]     slack  Total pixels to distribute (> 0).
- * @return None.
+ *
+ * @return Nothing.
+ *
  * @pre `hi > lo`; the run contains at least one space to justify against.
  * @pre `slack > 0`.
  * @post Glyph x positions in `[lo, hi)` are widened by up to @p slack total.
- * @note Not thread-safe.
+ * @post Glyphs with no space neighbour are shifted right by the cumulative delta.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static void priv_justify_glyphs(ra_reflow_t* engine, uint32_t lo, uint32_t hi, int32_t slack)
@@ -464,20 +480,26 @@ static void priv_justify_glyphs(ra_reflow_t* engine, uint32_t lo, uint32_t hi, i
 /**
  * @brief Apply the active block alignment to the just-completed line.
  *
- * @details Left is a no-op (the default). Centre/right shift every glyph on the
- * line so its content edge meets the centre / right margin. Justify distributes
- * the slack across inter-word gaps -- but only on wrapped lines (@p allow_justify
- * is false for the last line of a paragraph, which stays left). A trailing space
- * left at the break is excluded from the content extent.
+ * @details Left alignment is a no-op (the default). Centre and right shift every
+ * glyph in the range `[cur->line_first_glyph, engine->glyph_count)` so the
+ * content edge meets the centre or right margin. Justify distributes the slack
+ * across inter-word gaps via @ref priv_justify_glyphs -- but only when
+ * @p allow_justify is true (wrapped lines); the last line of a paragraph keeps
+ * its left alignment. A trailing space at the break point is excluded from the
+ * content extent before computing the slack so justification does not over-expand.
  *
  * @param[in,out] engine        Engine whose laid-out glyphs are aligned.
  * @param[in]     cur           Cursor (line range + alignment + pen x).
  * @param[in]     allow_justify True on a wrapped line, false on a paragraph end.
- * @return None.
+ *
+ * @return Nothing.
+ *
  * @pre `cur->line_first_glyph <= engine->glyph_count`.
- * @pre `cur->align` is a valid ra_reflow_align_t.
- * @post Glyph x positions on the line are adjusted per the alignment.
- * @note Not thread-safe.
+ * @pre `cur->align` is a valid `ra_reflow_align_t` value.
+ * @post Glyph x positions in the line range are adjusted per the alignment.
+ * @post For justify mode with no space glyphs, positions are left unchanged.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static void priv_finish_line(ra_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
@@ -515,16 +537,28 @@ static void priv_finish_line(ra_reflow_t* engine, priv_cursor_t* cur, bool allow
 /**
  * @brief Wrap to a new line, finishing a page if the bottom margin is hit.
  *
- * @details See implementation.
- * @param[in] engine See implementation.
- * @param[in] cur See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @details Calls @ref priv_finish_line to apply alignment to the just-completed
+ * line, then advances `cur->y` by `cur->line_height_px`, resets `cur->x` to
+ * the left margin plus the active indent, clears `cur->line_has_content`, and
+ * updates `cur->line_first_glyph`. If the new baseline plus one line height
+ * would exceed the bottom margin it calls @ref priv_finish_page to flush the
+ * current page and reset the cursor to the top of a fresh page.
+ *
+ * @param[in,out] engine        Engine whose page pool may grow by one entry.
+ * @param[in,out] cur           Layout cursor; x, y, line state are updated.
+ * @param[in]     allow_justify Passed to `priv_finish_line`; true on a wrapped
+ *                              line, false at an explicit paragraph end.
+ *
+ * @return Boolean success flag.
+ * @retval true  Line advanced; page flushed if needed.
+ * @retval false Page pool overflowed; no further layout should proceed.
+ *
+ * @pre `engine != nullptr` and `cur != nullptr`.
+ * @pre `cur->line_height_px > 0`.
+ * @post `cur->line_has_content == 0` on true return.
+ * @post On false, `engine->page_count == k_ra_reflow_max_pages`.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static bool priv_newline(ra_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
@@ -547,21 +581,34 @@ static bool priv_newline(ra_reflow_t* engine, priv_cursor_t* cur, bool allow_jus
 
 /**
  * @brief Append one ASCII code point at the current cursor, wrapping
- *        if it would overflow the viewport.
+ *        if it would overflow the right margin.
  *
- * @details See implementation.
- * @param[in] engine See implementation.
- * @param[in] cur See implementation.
- * @param[in] font See implementation.
- * @param[in] cp See implementation.
- * @param[in] color See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @details Measures the advance width of @p cp via @ref priv_glyph_advance,
+ * clamps it to at least `k_priv_min_word_w_px` to prevent zero-width stalls,
+ * and checks the right-overflow predicate
+ * (@ref ra_reflow_internal_right_overflow_break). If a line break is needed
+ * and the line already has content, @ref priv_newline is called before the
+ * glyph is pushed. The glyph is then appended via @ref priv_push_glyph and
+ * `cur->x` is advanced by the clamped advance. `cur->line_has_content` is set
+ * to 1 after the first glyph lands.
+ *
+ * @param[in,out] engine  Engine whose glyph pool grows.
+ * @param[in,out] cur     Layout cursor; x and line state are updated.
+ * @param[in]     font    Font metrics for advance measurement.
+ * @param[in]     cp      Unicode code point to emit (ASCII range in practice).
+ * @param[in]     color   Packed ARGB glyph colour.
+ * @param[in]     link_id 1-based link identifier; 0 means not a link.
+ *
+ * @return ra_err_t error code.
+ * @retval k_ra_ok       Glyph emitted successfully.
+ * @retval k_ra_err_no_mem Page pool or glyph pool overflowed.
+ *
+ * @pre `engine != nullptr`, `cur != nullptr`, `font != nullptr`.
+ * @pre `cur->active_font_px > 0`.
+ * @post On `k_ra_ok`, `engine->glyph_count` has increased by one.
+ * @post On `k_ra_ok`, `cur->line_has_content == 1`.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static ra_err_t priv_emit_char(ra_reflow_t*          engine,
@@ -1054,20 +1101,28 @@ static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
  * @brief Record one tappable link rect spanning glyphs `[lo, hi)`.
  *
  * @details The glyphs are a same-link, same-baseline run on one page. The rect
- * spans from the first glyph's left to the last glyph's right edge, with a
- * generous vertical band (~1.5 em around the baseline) for forgiving taps.
+ * spans from the first glyph's left edge to the last glyph's right edge
+ * (measured by `priv_glyph_advance`), with a generous vertical band
+ * (approximately 1.5 em centered on the baseline) for forgiving tap targets.
+ * The `target` field is stored 0-based (link - 1). If the link-rect pool is
+ * already full the function returns immediately without modifying state.
  *
- * @param[in,out] engine Engine whose link-rect pool grows.
- * @param[in]     font   Font, to measure the last glyph's advance.
- * @param[in]     lo     First glyph index (inclusive).
- * @param[in]     hi     One past the last glyph index.
- * @param[in]     link   1-based link id; stored target is `link - 1`.
+ * @param[in,out] engine Engine whose link-rect pool grows by one entry.
+ * @param[in]     font   Font metrics for last-glyph advance measurement.
+ * @param[in]     lo     First glyph index in `engine->glyphs[]` (inclusive).
+ * @param[in]     hi     One past the last glyph index (exclusive).
+ * @param[in]     link   1-based link identifier; stored as `link - 1`.
  * @param[in]     page   Page index the rect belongs to.
- * @return None.
- * @pre `hi > lo` and both index `engine->glyphs[]`.
+ *
+ * @return Nothing.
+ *
+ * @pre `hi > lo` and both indices are within `engine->glyphs[]`.
  * @pre `link > 0`.
- * @post One link rect is appended unless the pool is full.
- * @note Not thread-safe.
+ * @post One link rect appended and `engine->link_rect_count` incremented, or
+ *       pool full and no mutation occurred.
+ * @post `rect->target == link - 1` when a rect is appended.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static void priv_emit_link_rect(ra_reflow_t*          engine,
@@ -1097,16 +1152,27 @@ static void priv_emit_link_rect(ra_reflow_t*          engine,
 /**
  * @brief Post-layout pass: group link-tagged glyphs into tappable rects.
  *
- * @details Walks each page's glyphs; consecutive glyphs sharing a non-zero link
- * id and baseline `y` form one rect (a wrapped link yields one rect per line).
+ * @details Iterates over every page in `engine->pages[]`. For each page,
+ * walks the glyph run in order; when a glyph carries a non-zero `reserved`
+ * (link id) it scans forward to find the end of the consecutive same-link,
+ * same-baseline-y run, then calls @ref priv_emit_link_rect for that span.
+ * A multi-line anchor link therefore produces one rect per wrapped line.
+ * Glyphs with `reserved == 0` are skipped.
  *
- * @param[in,out] engine Engine holding laid-out glyphs / pages.
- * @param[in]     font   Font for last-glyph advance measurement.
- * @return None.
- * @pre `engine->pages[]` / `engine->glyphs[]` are populated.
- * @pre `engine->link_rect_count == 0` on entry (reset by run_layout).
- * @post `engine->link_rects[]` holds the page-local tappable rectangles.
- * @note Not thread-safe.
+ * @param[in,out] engine Engine holding laid-out glyphs and pages; its
+ *                       link-rect pool grows.
+ * @param[in]     font   Font metrics for last-glyph advance measurement.
+ *
+ * @return Nothing.
+ *
+ * @pre `engine->pages[]` and `engine->glyphs[]` are fully populated by the
+ *      layout pass.
+ * @pre `engine->link_rect_count == 0` on entry (reset by `ra_reflow_run_layout`).
+ * @post `engine->link_rects[]` contains page-local tappable rectangles for
+ *       every link run found.
+ * @post `engine->link_rect_count` reflects the total number of rects emitted.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
 static void priv_build_link_rects(ra_reflow_t* engine, const stbtt_fontinfo* font)
@@ -1192,13 +1258,28 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
 /**
  * @brief Find the block-end token matching the block-start at @p start.
  *
- * @details Tracks nesting of the start token's tag, so it returns the correct
- * close even with nested same-tag elements. Returns @p limit if unmatched.
+ * @details Scans `engine->tokens[]` forward from `start + 1` to `limit - 1`,
+ * matching only tokens whose `tag` equals the tag at @p start. Each nested
+ * block-start increments a depth counter; each block-end decrements it. When
+ * depth reaches zero the index of that block-end is returned. If the scan
+ * reaches @p limit without a match (malformed input), @p limit is returned so
+ * callers can treat the entire remaining range as the cell or row content.
  *
  * @param[in] engine Engine holding the token stream.
- * @param[in] start  Index of a block-start token.
- * @param[in] limit  Exclusive scan bound.
- * @return Index of the matching block-end, or @p limit if none.
+ * @param[in] start  Index of the block-start token whose matching end is sought.
+ * @param[in] limit  Exclusive upper bound for the scan (e.g. table block-end).
+ *
+ * @return Index of the matching block-end token, or @p limit if not found.
+ * @retval limit No matching block-end token was found before @p limit.
+ *
+ * @pre `start < limit` and `start < engine->token_count`.
+ * @pre `engine->tokens[start].kind == k_ra_reflow_tok_block_start`.
+ * @post Return value is in the range `[start + 1, limit]`.
+ * @post Returned index (if < @p limit) refers to a block-end with the same tag.
+ *
+ * @note Pure read on the token stream; not thread-safe if the stream is concurrently
+ *       mutated.
+ * @since 0.1.0
  */
 static uint32_t priv_match_block_end(const ra_reflow_t* engine, uint32_t start, uint32_t limit)
 {
@@ -1221,7 +1302,29 @@ static uint32_t priv_match_block_end(const ra_reflow_t* engine, uint32_t start, 
   return limit;
 }
 
-/** @brief True iff token @p i opens a table cell (`<td>` / `<th>`). */
+/**
+ * @brief True iff token @p i opens a table cell (`<td>` or `<th>`).
+ *
+ * @details Checks both the token kind (must be `block_start`) and the tag
+ * (must be `k_ra_reflow_tag_td` or `k_ra_reflow_tag_th`). Used by
+ * `priv_table_columns` and `priv_row_cells` to locate cell boundaries in the
+ * flat token stream without recursion.
+ *
+ * @param[in] engine Engine holding the token stream.
+ * @param[in] i      Index into `engine->tokens[]` to test.
+ *
+ * @return Boolean cell-start predicate.
+ * @retval true  Token at @p i is a `<td>` or `<th>` block-start.
+ * @retval false Otherwise.
+ *
+ * @pre `i < engine->token_count`.
+ * @pre `engine->tokens` is a valid pointer.
+ * @post No state mutated.
+ * @post Return value depends solely on `engine->tokens[i]`.
+ *
+ * @note Pure read; not thread-safe if the token stream is concurrently mutated.
+ * @since 0.1.0
+ */
 static bool priv_is_cell_start(const ra_reflow_t* engine, uint32_t i)
 {
   const ra_reflow_token_t* tok = &engine->tokens[i];
@@ -1229,7 +1332,29 @@ static bool priv_is_cell_start(const ra_reflow_t* engine, uint32_t i)
          ((tok->tag == (uint8_t)k_ra_reflow_tag_td) || (tok->tag == (uint8_t)k_ra_reflow_tag_th));
 }
 
-/** @brief True iff token @p i opens a table row (`<tr>`). */
+/**
+ * @brief True iff token @p i opens a table row (`<tr>`).
+ *
+ * @details Checks both the token kind (must be `block_start`) and the tag
+ * (must be `k_ra_reflow_tag_tr`). Used by `priv_table_columns` and
+ * `priv_layout_table` to locate row boundaries while scanning the flat
+ * token stream between a table block-start and its matching block-end.
+ *
+ * @param[in] engine Engine holding the token stream.
+ * @param[in] i      Index into `engine->tokens[]` to test.
+ *
+ * @return Boolean row-start predicate.
+ * @retval true  Token at @p i is a `<tr>` block-start.
+ * @retval false Otherwise.
+ *
+ * @pre `i < engine->token_count`.
+ * @pre `engine->tokens` is a valid pointer.
+ * @post No state mutated.
+ * @post Return value depends solely on `engine->tokens[i]`.
+ *
+ * @note Pure read; not thread-safe if the token stream is concurrently mutated.
+ * @since 0.1.0
+ */
 static bool priv_is_row_start(const ra_reflow_t* engine, uint32_t i)
 {
   const ra_reflow_token_t* tok = &engine->tokens[i];
@@ -1240,10 +1365,27 @@ static bool priv_is_row_start(const ra_reflow_t* engine, uint32_t i)
 /**
  * @brief Column count = the maximum number of cells in any row of the table.
  *
- * @param[in] engine Engine holding the token stream.
- * @param[in] start  Index of the table block-start.
- * @param[in] end    Index of the table block-end.
- * @return Column count (0 if the table has no cells).
+ * @details Scans the token range `(start, end)` for `<tr>` block-starts.
+ * For each row it counts `<td>` / `<th>` block-start tokens between the row
+ * open and its matching close (via @ref priv_match_block_end). The maximum
+ * across all rows is returned; zero is returned for a table with no cells.
+ * The scan advances by full row spans so deeply nested same-tag elements do
+ * not distort the count.
+ *
+ * @param[in] engine Engine holding the parsed token stream.
+ * @param[in] start  Index of the `<table>` block-start token.
+ * @param[in] end    Index of the `<table>` block-end token (exclusive bound).
+ *
+ * @return Maximum cell count across all rows; 0 if the table has no cells.
+ * @retval 0 The table span contains no cells.
+ *
+ * @pre `start < end` and `end <= engine->token_count`.
+ * @pre `engine->tokens[start]` is a table block-start token.
+ * @post No state mutated; pure scan.
+ * @post Return value is the maximum per-row cell count or 0.
+ *
+ * @note Pure read on the token stream; not thread-safe if concurrently mutated.
+ * @since 0.1.0
  */
 static uint32_t priv_table_columns(const ra_reflow_t* engine, uint32_t start, uint32_t end)
 {
@@ -1270,39 +1412,40 @@ static uint32_t priv_table_columns(const ra_reflow_t* engine, uint32_t start, ui
 }
 
 /**
- * @brief Lay out one cell's text tokens within a fixed column box (left-flow).
- *
- * @details Greedy word-wrap within `[cell_x, cell_x + cell_w)` from @p top_y;
- * pushes glyphs to the engine pool and returns the line count. Non-text tokens
- * inside the cell are ignored (v1 cells hold text).
- *
- * @param[in,out] engine   Engine whose glyph pool grows.
- * @param[in]     font     Font for metrics.
- * @param[in]     cell_x   Cell content left edge, pixels.
- * @param[in]     cell_w   Cell content width, pixels.
- * @param[in]     top_y    Cell top baseline, pixels.
- * @param[in]     color    Glyph colour.
- * @param[in]     tstart   First token index of the cell content.
- * @param[in]     tend     One past the last token index.
- * @return Number of lines the cell occupies (>= 1).
- */
-/**
  * @brief Flow one text token inside a cell box, wrapping at the column edge.
  *
- * @details Greedy word-wrap from `*cx`/`*cy` within `[cell_x, cell_right)`,
- * pushing glyphs and advancing the running pen + line count. Factored out of
- * priv_layout_cell() to keep each within the cognitive-complexity budget.
+ * @details Performs a greedy word-wrap of the text in @p tok within the pixel
+ * range `[cell_x, cell_right)`, starting from the running pen at `(*cx, *cy)`.
+ * Spaces are emitted individually only if the pen is past the left edge and the
+ * space fits before @p cell_right; otherwise the space is silently dropped (no
+ * leading whitespace on wrapped lines). Each word is pre-measured; if the word
+ * plus the current pen x would exceed @p cell_right and the pen is not already
+ * at the left edge, the pen wraps to `cell_x` on the next line and
+ * `(*lines)++`. Glyphs are pushed via @ref priv_push_glyph with style 0 and
+ * link_id 0 (table cells are always plain body text in v1).
  *
  * @param[in,out] engine     Engine whose glyph pool grows.
- * @param[in]     font       Font for metrics.
- * @param[in]     tok        The text token to flow.
- * @param[in]     cell_x     Cell content left edge.
- * @param[in]     cell_right Cell content right edge.
- * @param[in]     font_px    Glyph size.
- * @param[in]     color      Glyph colour.
- * @param[in,out] cx         Running pen x.
- * @param[in,out] cy         Running pen baseline y.
- * @param[in,out] lines      Running line count.
+ * @param[in]     font       Font metrics for advance measurement.
+ * @param[in]     tok        Text token to flow; only `text_off` / `text_len`
+ *                           are used.
+ * @param[in]     cell_x     Cell content left edge in pixels.
+ * @param[in]     cell_right Cell content right edge in pixels.
+ * @param[in]     font_px    Glyph size in pixels.
+ * @param[in]     color      Packed ARGB glyph colour.
+ * @param[in,out] cx         Running pen x position; updated in place.
+ * @param[in,out] cy         Running pen baseline y; updated on line wrap.
+ * @param[in,out] lines      Running line count; incremented on each wrap.
+ *
+ * @return Nothing.
+ *
+ * @pre `engine != nullptr`, `font != nullptr`, `tok != nullptr`.
+ * @pre `cell_right > cell_x` and `cx != nullptr` and `cy != nullptr` and
+ *      `lines != nullptr`.
+ * @post `*lines >= 1` (starts at 1 before the first call, never decremented).
+ * @post All glyphs from @p tok land in the range `[cell_x, cell_right)`.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
+ * @since 0.1.0
  */
 static void priv_cell_text(ra_reflow_t*             engine,
                            const stbtt_fontinfo*    font,
@@ -1349,6 +1492,37 @@ static void priv_cell_text(ra_reflow_t*             engine,
   }
 }
 
+/**
+ * @brief Lay out one cell's text tokens within a fixed column box (left-flow).
+ *
+ * @details Iterates over tokens `[tstart, tend)` and, for each
+ * `k_ra_reflow_tok_text` token, delegates to @ref priv_cell_text which
+ * performs greedy word-wrap within `[cell_x, cell_x + cell_w)` from @p top_y.
+ * Non-text tokens inside the cell are ignored (v1 table cells hold plain text).
+ * The running pen and line counter are local to this call; the return value
+ * conveys the height consumed so the row can allocate vertical space for the
+ * tallest cell.
+ *
+ * @param[in,out] engine  Engine whose glyph pool grows.
+ * @param[in]     font    Font metrics for advance measurement.
+ * @param[in]     cell_x  Cell content left edge in pixels.
+ * @param[in]     cell_w  Cell content width in pixels (not including padding).
+ * @param[in]     top_y   Cell top baseline in pixels.
+ * @param[in]     color   Packed ARGB glyph colour for all cell text.
+ * @param[in]     tstart  First token index of the cell content (inclusive).
+ * @param[in]     tend    One past the last token index (exclusive).
+ *
+ * @return Number of text lines the cell occupies (>= 1).
+ * @retval 1 The cell fits on a single text line (the minimum).
+ *
+ * @pre `tstart <= tend` and `tend <= engine->token_count`.
+ * @pre `cell_w > 0`.
+ * @post Return value is >= 1 even for an empty cell (floor at 1 line).
+ * @post All pushed glyphs have x in `[cell_x, cell_x + cell_w)`.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
+ * @since 0.1.0
+ */
 static uint32_t priv_layout_cell(ra_reflow_t*          engine,
                                  const stbtt_fontinfo* font,
                                  int32_t               cell_x,
@@ -1375,17 +1549,31 @@ static uint32_t priv_layout_cell(ra_reflow_t*          engine,
 /**
  * @brief Lay out every cell of one row at @p row_y; return the row's line count.
  *
- * @details Cells map to equal columns of width @p col_w; each is flowed via
- * priv_layout_cell() inside a `k_priv_cell_pad_px` inset. The returned line
- * count is the tallest cell (the row height in lines).
+ * @details Scans the token range `(tr_start, tr_end)` for `<td>` / `<th>`
+ * block-starts. Each cell maps to a zero-based column index; the content area
+ * starts at `margin + col * col_w + pad` and has width `col_w - 2 * pad`
+ * (with `pad = k_priv_cell_pad_px`). Each cell is flowed by
+ * @ref priv_layout_cell and the returned line count updates the per-row
+ * maximum. Cells beyond the column count are placed but may overflow the
+ * viewport (caller ensures the column count is non-zero before calling).
  *
- * @param[in,out] engine  Engine whose glyph pool grows.
- * @param[in]     font    Font for metrics.
- * @param[in]     tr_start Index of the row's `<tr>` block-start.
- * @param[in]     tr_end   Index of the row's `<tr>` block-end.
- * @param[in]     col_w   Column width, pixels.
- * @param[in]     row_y   Row top baseline, pixels.
- * @return Max cell line count in the row (>= 1).
+ * @param[in,out] engine   Engine whose glyph pool grows.
+ * @param[in]     font     Font metrics for advance measurement.
+ * @param[in]     tr_start Index of the row's `<tr>` block-start token.
+ * @param[in]     tr_end   Index of the row's `<tr>` block-end token.
+ * @param[in]     col_w    Column width in pixels (total, before padding).
+ * @param[in]     row_y    Row top baseline in pixels.
+ *
+ * @return Maximum cell line count in the row (>= 1).
+ * @retval 1 Every cell in the row fits on a single text line (the minimum).
+ *
+ * @pre `tr_start < tr_end` and both are within `engine->token_count`.
+ * @pre `col_w > 0`.
+ * @post Return value >= 1 even for rows with no text content.
+ * @post All pushed glyphs have x within `[margin, margin + cols * col_w)`.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine.
+ * @since 0.1.0
  */
 static uint32_t priv_row_cells(ra_reflow_t*          engine,
                                const stbtt_fontinfo* font,
@@ -1421,18 +1609,32 @@ static uint32_t priv_row_cells(ra_reflow_t*          engine,
 /**
  * @brief Lay out one table row, page-breaking before it if it would overflow.
  *
- * @details Lays the row at the cursor, measures its height, and -- if the row
- * starts mid-page and overruns the bottom margin -- rolls back its glyphs,
- * flushes the page, and re-lays the row at the top of the next page (so a tall
- * table breaks between rows). Advances the cursor past the row.
+ * @details First lays the row tentatively at `cur->y` via @ref priv_row_cells,
+ * computing `row_h = lines * line_h`. If the row's bottom `(cur->y + row_h)`
+ * exceeds the page bottom margin and the cursor is not already at the top margin
+ * (i.e. there is content above to preserve), the tentative glyphs are rolled
+ * back by restoring `engine->glyph_count` to its value before the call, a page
+ * flush is issued via @ref priv_finish_page, and the row is re-laid from the
+ * top of the fresh page. The cursor is always advanced past the row by
+ * `row_h + k_priv_row_gap_px` before returning.
  *
- * @param[in,out] engine   Engine whose glyph / page pools grow.
- * @param[in,out] cur      Layout cursor.
- * @param[in]     font     Font for metrics.
- * @param[in]     tr_start Index of the row's `<tr>` block-start.
- * @param[in]     table_end Index of the table block-end (scan bound).
- * @param[in]     col_w    Column width, pixels.
- * @return Index just past the row's `<tr>` block-end.
+ * @param[in,out] engine    Engine whose glyph and page pools grow.
+ * @param[in,out] cur       Layout cursor; `cur->y` is advanced past the row.
+ * @param[in]     font      Font metrics for cell advance measurement.
+ * @param[in]     tr_start  Index of the row's `<tr>` block-start token.
+ * @param[in]     table_end Index of the enclosing table block-end (scan bound).
+ * @param[in]     col_w     Column width in pixels.
+ *
+ * @return Token index just past the row's `<tr>` block-end (`tr_end + 1`).
+ * @retval tr_end+1 The token index immediately after the row's `<tr>` block-end.
+ *
+ * @pre `tr_start < table_end` and both are within `engine->token_count`.
+ * @pre `col_w > 0` and `cur->y >= 0`.
+ * @post `cur->y` has advanced by `row_h + k_priv_row_gap_px` on return.
+ * @post If a page break occurred, `engine->page_count` has increased by one.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine and @p cur.
+ * @since 0.1.0
  */
 static uint32_t priv_layout_row(ra_reflow_t*          engine,
                                 priv_cursor_t*        cur,
@@ -1462,16 +1664,36 @@ static uint32_t priv_layout_row(ra_reflow_t*          engine,
 /**
  * @brief Lay out a `<table>` token range as an equal-column grid.
  *
- * @details Flushes the current line, computes the column count + width, lays
- * each row (with row-level page breaks), then resumes linear flow after the
- * table. Sets @p out_next to the token index past the table block-end.
+ * @details Flushes the pending line (if any) via @ref priv_newline, locates
+ * the matching table block-end via @ref priv_match_block_end, and counts
+ * the maximum column count via @ref priv_table_columns. If the table has no
+ * cells the function advances @p out_next past the block-end and returns
+ * immediately. Otherwise the content width is divided equally by column count
+ * to derive @p col_w, then each `<tr>` block-start in the range is processed
+ * by @ref priv_layout_row (which handles row-level page breaks). After all
+ * rows are placed the cursor is repositioned to the left margin and a
+ * paragraph gap is added so linear text flow resumes cleanly below the table.
  *
- * @param[in,out] engine   Engine whose glyph / page pools grow.
- * @param[in,out] cur      Layout cursor.
- * @param[in]     font     Font for metrics.
- * @param[in]     start    Index of the table block-start.
- * @param[out]    out_next Receives the index past the table block-end.
- * @return k_ra_ok, or k_ra_err_no_mem on a line-flush overflow.
+ * @param[in,out] engine   Engine whose glyph and page pools grow.
+ * @param[in,out] cur      Layout cursor; x, y and line state are updated.
+ * @param[in]     font     Font metrics for row and cell layout.
+ * @param[in]     start    Token index of the `<table>` block-start.
+ * @param[out]    out_next Receives the token index just past the table block-end.
+ *
+ * @return ra_err_t error code.
+ * @retval k_ra_ok       Table laid out; @p out_next set.
+ * @retval k_ra_err_no_mem Pending line flush overflowed the page pool.
+ *
+ * @pre `engine != nullptr`, `cur != nullptr`, `font != nullptr`,
+ *      `out_next != nullptr`.
+ * @pre `start < engine->token_count` and `engine->tokens[start]` is a
+ *      `<table>` block-start.
+ * @post On `k_ra_ok`, `*out_next > start` and points past the table block-end.
+ * @post On `k_ra_ok`, `cur->align == k_ra_reflow_align_left` and
+ *       `cur->line_has_content == 0`.
+ *
+ * @note Not thread-safe; caller must serialize access to @p engine and @p cur.
+ * @since 0.1.0
  */
 static ra_err_t priv_layout_table(ra_reflow_t*          engine,
                                   priv_cursor_t*        cur,

@@ -89,6 +89,13 @@ typedef struct {
 /**
  * @brief Reset a nag monitor to the un-nagged, fully-armed state.
  *
+ * @details Writes zero to both band-raised flags inside @p mon, placing the
+ * monitor into the fully-armed state so that the first subsequent call to
+ * ::ra_batt_update can raise either the low or critical nag. The operation is
+ * a single struct clear with no loops, no allocation, and no hardware access,
+ * making it safe to call from any initialisation context on both the RA8D2
+ * target and the host unit-test harness.
+ *
  * @param[out] mon Monitor to initialise.
  *
  * @return ra_err_t Error code.

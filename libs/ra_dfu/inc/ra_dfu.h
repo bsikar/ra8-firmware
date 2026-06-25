@@ -198,10 +198,12 @@ static_assert(sizeof(ra_dfu_img_hdr_t) == (uint32_t)k_ra_dfu_hdr_size,
  *
  * @return The 32-bit CRC of `data[0 .. len)`; 0 of an empty range folds
  *         to 0x00000000 (init ^ final over zero bytes).
+ * @retval 0x00000000 Empty range (`len == 0`); init XOR final over zero bytes.
  *
  * @pre `data != NULL` whenever `len > 0`.
  * @pre `len` does not exceed the addressable image (caller-checked).
  * @post No state is mutated; the result depends only on the inputs.
+ * @post The polynomial accumulator is not retained between calls (stateless).
  *
  * @note Thread-safe and reentrant (no statics).
  * @see ra_dfu_hdr_valid
@@ -231,6 +233,7 @@ uint32_t ra_dfu_crc32(const uint8_t* data, uint32_t len);
  *      `hdr->img_len` bytes of the slot's image body.
  * @pre The slot's image body is readable when the caller computes the CRC.
  * @post No state is mutated.
+ * @post The caller's `hdr` pointer and `computed_crc` value are not modified.
  *
  * @note Thread-safe (pure). Carries compound boolean decisions -- see the
  *       `@par MC/DC:` block in `tests/test_ra_dfu_boot.c`.
@@ -261,7 +264,11 @@ bool ra_dfu_hdr_valid(const ra_dfu_img_hdr_t* hdr, uint32_t computed_crc);
  *
  * @pre `entry` and `img_len` are the live header fields of a slot that already
  *      passed ::ra_dfu_hdr_valid (magic + length + body CRC).
+ * @pre Neither `entry` nor `img_len` is taken from an untrusted external source
+ *      without a prior ::ra_dfu_hdr_valid check.
  * @post No state is mutated.
+ * @post The bootloader never uses `entry` as the copy destination; this
+ *       function only validates it against the trusted ::k_ra_dfu_run_base.
  *
  * @note Thread-safe (pure). Compound decision -- MC/DC vectors in the test.
  * @see ra_dfu_hdr_valid
@@ -327,6 +334,7 @@ void ra_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry);
  * @pre `a_valid` / `b_valid` reflect a prior ::ra_dfu_hdr_valid result.
  * @pre `a_seq` / `b_seq` are the live header sequence values.
  * @post No state is mutated.
+ * @post The returned slot identifier is always a defined ::ra_dfu_slot_t value.
  *
  * @note Thread-safe (pure). Compound decision -- MC/DC vectors in the test.
  * @see ra_dfu_boot_decide
@@ -357,6 +365,7 @@ ra_dfu_slot_t ra_dfu_select_slot(bool a_valid, uint32_t a_seq, bool b_valid, uin
  * @pre Validity flags came from ::ra_dfu_hdr_valid on the live headers.
  * @pre `dfu_trigger` reflects the one-shot no-init magic read at reset.
  * @post No state is mutated.
+ * @post The returned action is always a defined ::ra_dfu_action_t value.
  *
  * @note Thread-safe (pure). Compound decision -- MC/DC vectors in the test.
  * @see ra_dfu_select_slot
@@ -379,28 +388,57 @@ ra_dfu_boot_decide(bool dfu_trigger, bool a_valid, uint32_t a_seq, bool b_valid,
 /**
  * @brief Return the MRAM base address of a slot.
  *
+ * @details
+ * Maps the ::ra_dfu_slot_t identifier to its fixed MRAM window start address.
+ * Slot A maps to ::k_ra_dfu_slot_a_base and Slot B maps to
+ * ::k_ra_dfu_slot_b_base. Returns 0 for ::k_ra_dfu_slot_none or any
+ * out-of-range value so callers can detect the sentinel without a separate
+ * validity test.
+ *
  * @param[in] slot Slot identifier.
- * @return The slot base, or 0 for ::k_ra_dfu_slot_none / an invalid id.
- * @retval k_ra_dfu_slot_a_base Slot A.
- * @retval k_ra_dfu_slot_b_base Slot B.
+ *
+ * @return The slot base address, or 0 for ::k_ra_dfu_slot_none / an invalid id.
+ * @retval k_ra_dfu_slot_a_base Slot A (`slot == k_ra_dfu_slot_a`).
+ * @retval k_ra_dfu_slot_b_base Slot B (`slot == k_ra_dfu_slot_b`).
+ * @retval 0                    `slot` is ::k_ra_dfu_slot_none or out of range.
  *
  * @pre `slot` is a defined ::ra_dfu_slot_t value.
- * @post No state mutated.
- * @note Pure. @since 0.1.0
+ * @pre The caller does not pass a raw integer that has not been validated as a
+ *      ::ra_dfu_slot_t member.
+ * @post No state is mutated.
+ * @post The returned address, when non-zero, lies within the MRAM window
+ *       `[k_ra_dfu_mram_base, k_ra_dfu_mram_base + k_ra_dfu_mram_size)`.
+ *
+ * @note Thread-safe (pure; no statics).
+ * @since 0.1.0
  */
 uintptr_t ra_dfu_slot_base(ra_dfu_slot_t slot);
 
 /**
  * @brief Return the opposite slot (A<->B).
  *
+ * @details
+ * Inverts the slot identifier: Slot A returns Slot B and any other value
+ * (Slot B or ::k_ra_dfu_slot_none) returns Slot A. Used by the DFU device
+ * and host glue to locate the inactive (write-target) slot when the active
+ * slot is known. Passing ::k_ra_dfu_slot_none returns ::k_ra_dfu_slot_a by
+ * the else branch, consistent with "no preference -> start with A".
+ *
  * @param[in] slot Slot identifier (A or B).
- * @return ::k_ra_dfu_slot_b for A, else ::k_ra_dfu_slot_a.
- * @retval k_ra_dfu_slot_b Input was Slot A.
- * @retval k_ra_dfu_slot_a Input was Slot B or none.
+ *
+ * @return The complementary slot identifier.
+ * @retval k_ra_dfu_slot_b Input was ::k_ra_dfu_slot_a.
+ * @retval k_ra_dfu_slot_a Input was ::k_ra_dfu_slot_b or ::k_ra_dfu_slot_none.
  *
  * @pre `slot` is a defined ::ra_dfu_slot_t value.
- * @post No state mutated.
- * @note Pure. @since 0.1.0
+ * @pre The caller understands that ::k_ra_dfu_slot_none maps to
+ *      ::k_ra_dfu_slot_a (not a programming error; see details above).
+ * @post No state is mutated.
+ * @post The returned slot is always either ::k_ra_dfu_slot_a or
+ *       ::k_ra_dfu_slot_b (never ::k_ra_dfu_slot_none).
+ *
+ * @note Thread-safe (pure; no statics).
+ * @since 0.1.0
  */
 ra_dfu_slot_t ra_dfu_other_slot(ra_dfu_slot_t slot);
 
@@ -433,8 +471,14 @@ ra_dfu_slot_t ra_dfu_other_slot(ra_dfu_slot_t slot);
  * @retval false `slot` is none/invalid, or any check fails.
  *
  * @pre `slot` is A or B; the MRAM window is readable.
- * @post No MRAM mutated.
- * @note Reads up to `img_len` bytes of MRAM. @since 0.1.0
+ * @pre The caller has not concurrently issued a program operation to the
+ *      same slot (read-only -- not thread-safe vs a concurrent writer).
+ * @post No MRAM is mutated.
+ * @post The function result accurately reflects the slot state at the time
+ *       of the call; a concurrent write may invalidate it immediately after.
+ *
+ * @note Reads up to `img_len` bytes of MRAM; not thread-safe vs a writer.
+ * @since 0.1.0
  */
 bool ra_dfu_slot_valid(ra_dfu_slot_t slot);
 

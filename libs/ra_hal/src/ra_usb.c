@@ -3755,6 +3755,50 @@ ra_err_t ra_usb_dcp_out_read(ra_usb_speed_t speed, uint8_t* buf, uint16_t cap, u
   return k_ra_ok;
 }
 
+/**
+ * @brief Classify and execute the optional DATA stage of a host control transfer.
+ *
+ * @details Inspects the SETUP packet to determine the data-stage direction:
+ * a non-zero wLength with bmRequestType bit 7 set (device-to-host) and a
+ * non-NULL destination buffer indicates a control-read DATA-IN stage; a
+ * non-zero wLength with bit 7 clear and a non-NULL source buffer indicates a
+ * control-write DATA-OUT stage; otherwise there is no data stage. For each
+ * case the function:
+ *   1. Resolves the DCP max packet size from DCPMAXP.MXPS.
+ *   2. Clamps the transfer size to min(setup->w_length, data_len).
+ *   3. Dispatches to ::internal_host_ctrl_data_out (DATA-OUT) or
+ *      ::internal_host_ctrl_data_in (DATA-IN) as appropriate, updating
+ *      ::s_host_ctrl_stage before and after each.
+ *   4. Records zero bytes received and out_is_read = false when no data
+ *      stage runs (no-data control transfer), and returns k_ra_ok.
+ *
+ * @param[in]  reg         Selected USB controller register block; must have
+ *                         been returned by ::internal_pick (non-NULL).
+ * @param[in]  setup       SETUP packet just delivered to the device; used for
+ *                         bmRequestType direction bit and wLength.
+ * @param[in,out] data     Buffer for the data stage: source bytes for DATA-OUT,
+ *                         destination bytes for DATA-IN; may be NULL only when
+ *                         there is no data stage (w_length == 0 or no buffer).
+ * @param[in]  data_len    Capacity of @p data in bytes; clamps the transfer.
+ * @param[out] out_rx      Receives the byte count actually read from the device
+ *                         (DATA-IN only); set to 0 for DATA-OUT or no-data.
+ * @param[out] out_is_read Set to true when a DATA-IN stage ran; false otherwise.
+ *
+ * @return ra_err_t Transfer outcome.
+ * @retval k_ra_ok             No data stage ran, or the DATA stage completed.
+ * @retval k_ra_err_hw_timeout A DATA-IN or DATA-OUT packet stalled before the
+ *                             deadline elapsed.
+ * @retval k_ra_err_hw_error   The device STALLed the endpoint during DATA-OUT.
+ *
+ * @pre @p reg is non-NULL and points at a powered, host-mode controller.
+ * @pre The SETUP stage for @p setup has already completed (SUREQ self-cleared).
+ * @pre @p out_rx and @p out_is_read are non-NULL output pointers.
+ * @post @p out_rx holds the DATA-IN byte count (0 if no IN stage ran).
+ * @post @p out_is_read reflects whether a DATA-IN stage ran.
+ *
+ * @note Not thread-safe; caller (::ra_usb_host_control_xfer) serialises access.
+ * @since 0.1.0
+ */
 static ra_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
                                          const ra_usb_setup_t*  setup,
                                          uint8_t*               data,

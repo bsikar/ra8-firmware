@@ -596,6 +596,8 @@ ra_err_t ra_book_chapter_to_xhtml(const void* base,
  *                               exceeded the bounded walk stack.
  *
  * @pre @p base was accepted by ra_book_validate() / ra_book_open().
+ * @pre @p chapter_idx is less than `ra_book_header(base)->chapter_count`.
+ * @post On k_ra_ok, `out[0..*out_len)` contains the plain-text run (not NUL-terminated).
  * @post On error, @p out contents are unspecified.
  *
  * @note Thread-safe: reads only the immutable blob, writes only @p out.

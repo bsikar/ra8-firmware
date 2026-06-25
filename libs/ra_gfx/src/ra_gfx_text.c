@@ -504,6 +504,13 @@ static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint3
 /**
  * @brief Draw the four edges of a 1-pixel-wide rectangle outline.
  *
+ * @details
+ * Plots the top row (y), bottom row (y+h-1), left column (x), and right column
+ * (x+w-1) by iterating over all column and row positions in two separate loops.
+ * interior pixels are never touched. Each pixel is routed through internal_plot,
+ * which applies the active clip rectangle before writing to the framebuffer, so
+ * partial off-screen outlines are rendered correctly without additional guards here.
+ *
  * @param[in] x     Top-left corner x.
  * @param[in] y     Top-left corner y.
  * @param[in] w     Width in pixels (> 0, checked by ra_gfx_rect).
@@ -646,7 +653,28 @@ ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
   return k_ra_ok;
 }
 
-/** @brief Expand an 8-bit gray sample to the 0x00RRGGBB grey ::internal_pack_565 packs. */
+/**
+ * @brief Expand an 8-bit gray sample to the 0x00RRGGBB colour word internal_pack_565 expects.
+ *
+ * @details
+ * Replicates the single gray value g into the R, G, and B channels of a packed
+ * 0x00RRGGBB word by shifting g to the positions defined by k_shift_red,
+ * k_shift_green, and k_shift_blue, then ORing the three contributions together.
+ * The alpha channel is left as zero (fully opaque is implied by convention
+ * throughout the software rasteriser). The result can be fed directly to
+ * internal_pack_565 to produce the equivalent RGB565 pixel.
+ *
+ * @param[in] g 8-bit gray intensity in the range [0, 255].
+ * @return uint32_t Packed 0x00RRGGBB colour with R==G==B==g.
+ * @retval 0x00000000 When g is 0 (black).
+ * @retval 0x00FFFFFF When g is 255 (white).
+ * @pre g must fit in 8 bits (values above 255 saturate the low byte only).
+ * @pre The module-level colour shift constants k_shift_red/k_shift_green/k_shift_blue are valid.
+ * @post The returned word has identical R, G, and B byte values equal to g.
+ * @post The alpha byte of the returned word is zero.
+ * @note Not thread-safe; reads only compile-time constants, so concurrent calls are harmless.
+ * @since 0.1.0
+ */
 static inline uint32_t internal_gray_to_color(uint32_t g)
 {
   return (g << (uint32_t)k_shift_red) | (g << (uint32_t)k_shift_green) |
@@ -654,10 +682,32 @@ static inline uint32_t internal_gray_to_color(uint32_t g)
 }
 
 /**
- * @brief RGB565 fast path for ::ra_gfx_blit_gray8: clip pre-resolved, tight rows.
- * @details Writes the clipped block [@p x0,@p x1) x [@p y0,@p y1); @p src/@p dst_x/
- *          @p dst_y/@p w map a framebuffer pixel back to its gray sample. Stores
- *          the same two bytes ::internal_put_pixel would for RGB565.
+ * @brief RGB565 fast path for ra_gfx_blit_gray8(): clip pre-resolved, tight rows.
+ *
+ * @details
+ * Writes the clipped block [x0,x1) x [y0,y1) from a packed gray8 source image
+ * directly into the RGB565 framebuffer. For each visible pixel the gray sample
+ * is located via the src pointer, w (source row stride), dst_x, and dst_y
+ * offset arithmetic, then expanded to 0x00RRGGBB by internal_gray_to_color()
+ * before being packed to two RGB565 bytes by internal_pack_565(). The two bytes
+ * are written in the same low-byte-first order that internal_put_pixel() uses for
+ * k_ra_gfx_format_rgb565, making the result byte-identical to the per-pixel path
+ * while avoiding the per-pixel clip overhead.
+ *
+ * @param[in] src   Base pointer of the source gray8 image (one byte per pixel).
+ * @param[in] w     Source image width in pixels (row stride in bytes).
+ * @param[in] dst_x Destination x offset of the source image top-left in the framebuffer.
+ * @param[in] dst_y Destination y offset of the source image top-left in the framebuffer.
+ * @param[in] x0    First visible column (inclusive), already clipped by the caller.
+ * @param[in] y0    First visible row (inclusive), already clipped by the caller.
+ * @param[in] x1    One past the last visible column (exclusive), already clipped.
+ * @param[in] y1    One past the last visible row (exclusive), already clipped.
+ * @pre The framebuffer format is k_ra_gfx_format_rgb565 and s_state is initialised.
+ * @pre x0 < x1 and y0 < y1 (non-empty visible region, guaranteed by the caller).
+ * @post Every framebuffer pixel in [x0,x1) x [y0,y1) holds the RGB565 encoding of its gray sample.
+ * @post No pixel outside that clipped rectangle is modified.
+ * @note Not thread-safe; shares s_state with all other rasteriser functions.
+ * @since 0.1.0
  */
 static void internal_blit_gray8_565(const uint8_t* src,
                                     int32_t        w,
@@ -682,7 +732,29 @@ static void internal_blit_gray8_565(const uint8_t* src,
   }
 }
 
-/** @brief Per-pixel fallback for non-RGB565 formats (matches ::internal_plot exactly). */
+/**
+ * @brief Per-pixel fallback for non-RGB565 formats, matching internal_plot() exactly.
+ *
+ * @details
+ * Iterates over every pixel in the w x h source gray8 image, expands each
+ * sample to 0x00RRGGBB via internal_gray_to_color(), and calls internal_plot()
+ * to write the result at framebuffer coordinates (dx+col, dy+row). Because
+ * internal_plot() performs per-pixel clipping against the active clip rectangle,
+ * no additional bounds checking is needed here. This path is taken for all formats
+ * other than k_ra_gfx_format_rgb565; the RGB565 fast path is internal_blit_gray8_565().
+ *
+ * @param[in] src Base pointer of the source gray8 image (one byte per pixel, row-major).
+ * @param[in] w   Source image width in pixels (also the byte stride per row).
+ * @param[in] h   Source image height in pixels.
+ * @param[in] dx  Destination x offset of the image top-left in the framebuffer.
+ * @param[in] dy  Destination y offset of the image top-left in the framebuffer.
+ * @pre src is non-null and addresses at least w*h readable bytes.
+ * @pre w > 0 and h > 0 (guaranteed by ra_gfx_blit_gray8() before dispatch).
+ * @post Every on-screen pixel in the destination rectangle holds the colour of its gray sample.
+ * @post Off-screen pixels are silently dropped by internal_plot() clip checks.
+ * @note Not thread-safe; shares s_state with all other rasteriser functions.
+ * @since 0.1.0
+ */
 static void
 internal_blit_gray8_slow(const uint8_t* src, int32_t w, int32_t h, int32_t dx, int32_t dy)
 {
@@ -874,11 +946,14 @@ ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool f
  * the per-pixel internal_plot path. The full cell is painted (foreground for set
  * bits, background for clear bits), matching the per-pixel path's opaque cell.
  *
- * @param[in]  x,y      Glyph top-left in framebuffer pixels.
- * @param[in]  gw,gh    Glyph cell width/height in pixels.
- * @param[in]  row_bytes Bytes per glyph row in @p gd.
- * @param[in]  gd       Packed 1-bpp glyph bitmap (MSB-first within each byte).
- * @param[in]  fg,bg    Foreground / background 32-bit colours.
+ * @param[in]  x         Glyph top-left x in framebuffer pixels.
+ * @param[in]  y         Glyph top-left y in framebuffer pixels.
+ * @param[in]  gw        Glyph cell width in pixels.
+ * @param[in]  gh        Glyph cell height in pixels.
+ * @param[in]  row_bytes Bytes per glyph row in gd.
+ * @param[in]  gd        Packed 1-bpp glyph bitmap (MSB-first within each byte).
+ * @param[in]  fg        Foreground 32-bit colour (applied to set bits).
+ * @param[in]  bg        Background 32-bit colour (applied to clear bits).
  * @pre The bound format is k_ra_gfx_format_rgb565.
  * @pre @p gd addresses at least gh*row_bytes bytes.
  * @post Every on-screen cell pixel holds fg (set bit) or bg (clear bit).

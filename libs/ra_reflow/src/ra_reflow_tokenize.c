@@ -385,7 +385,25 @@ static uint8_t priv_style_for(ra_reflow_html_tag_t tag)
   }
 }
 
-/** @brief True while inside a `display:none` subtree (#140): all emits dropped. */
+/**
+ * @brief Test whether the tokenizer is inside a `display:none` subtree.
+ *
+ * @details Returns true when `ctx->suppress_sp` is nonzero, meaning the scan
+ * entered an element whose cascaded style declared `display:none` (#140). All
+ * token and text-pool emits are suppressed until the matching close tag pops
+ * the stack back above the recorded depth.
+ *
+ * @param[in] ctx Tokenizer context to query.
+ * @return true while inside a `display:none` subtree; false otherwise.
+ * @retval true  Emission is suppressed for the current position.
+ * @retval false Emission proceeds normally.
+ * @pre `ctx` is non-null.
+ * @pre `ctx->suppress_sp` is a valid depth value (0 or a previous `sp`).
+ * @post No state is modified (pure read of `ctx`).
+ * @post `ctx->suppress_sp` is unchanged.
+ * @note Pure function.
+ * @since 0.1.0
+ */
 static bool priv_suppressed(const tok_ctx_t* ctx)
 {
   return ctx->suppress_sp != 0U;
@@ -679,6 +697,7 @@ static size_t priv_skip_past(const uint8_t* buf, size_t i, size_t len, const cha
  * @pre `buf` and `lit` are non-null.
  * @pre `i <= len`.
  * @post No state is modified (pure).
+ * @post Return value is in `[i, len]`.
  * @note Pure function.
  * @since 0.1.0
  */
@@ -967,7 +986,9 @@ priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* v
  * @retval true  `*out_voff` / `*out_vlen` describe the value within @p tag.
  * @retval false Attribute absent or malformed.
  * @pre `tag`, `name`, `out_voff`, `out_vlen` are non-null.
+ * @pre `tag_len >= name_len` (zero-length searches return false immediately).
  * @post No state mutated.
+ * @post On false, `*out_voff` and `*out_vlen` are unspecified.
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
@@ -990,6 +1011,30 @@ static bool priv_find_attr(const uint8_t* tag,
   return false;
 }
 
+/**
+ * @brief Copy a named attribute's quoted value from a tag span into the text pool.
+ *
+ * @details Scans the raw `<...>` span for attribute @p name (case-insensitive,
+ * not preceded by another name character) and copies its quoted value verbatim
+ * into the engine text pool. Used for `<img src>` / `<a href>` / element `id`.
+ * On no match, a malformed attribute, an empty value, or a full pool the outputs
+ * are zeroed, which callers treat as "attribute absent".
+ *
+ * @param[in,out] engine   Engine whose text pool receives the value bytes.
+ * @param[in]     tag      Raw tag span starting at '<'.
+ * @param[in]     tag_len  Length of @p tag, bytes.
+ * @param[in]     name     Lower-case attribute name to find.
+ * @param[in]     name_len Length of @p name, bytes.
+ * @param[out]    out_off  Receives the text-pool offset of the value (0 if none).
+ * @param[out]    out_len  Receives the value byte length (0 if none).
+ * @return Nothing.
+ * @pre `engine`, `tag`, `name`, `out_off`, `out_len` are non-null.
+ * @pre `engine->text_pool_used <= k_ra_reflow_text_pool_bytes`.
+ * @post `*out_len > 0` iff a quoted @p name value was stored in the pool.
+ * @post The pool grows by `*out_len` bytes when a value is stored.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static void priv_capture_attr(ra_reflow_t*   engine,
                               const uint8_t* tag,
                               size_t         tag_len,
@@ -1021,14 +1066,18 @@ static void priv_capture_attr(ra_reflow_t*   engine,
  *
  * @details Locates the `id` and `class` attribute value spans in place (no
  * copy) so the cascade can match `#id` / `.class` selectors; the returned
- * pointers alias @p tag. A missing attribute leaves its pointer NULL.
+ * pointers alias @p tag. A missing attribute leaves its pointer NULL and its
+ * length zero. The element's tag enum is stored so type selectors also work.
  *
  * @param[in] kind Classified tag.
  * @param[in] tag  Raw tag span starting at '<'.
  * @param[in] span Length of @p tag, bytes.
  * @return The element identity for ra_css_cascade().
+ * @retval ra_css_element_t Fully populated struct; absent attributes have NULL pointer and zero length.
  * @pre `tag` is non-null and holds @p span bytes.
+ * @pre `kind` is a valid `ra_reflow_html_tag_t` value.
  * @post No state mutated; returned pointers alias @p tag.
+ * @post `el.tag == (uint8_t)kind`.
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
@@ -1052,11 +1101,19 @@ static ra_css_element_t priv_css_element(ra_reflow_html_tag_t kind, const uint8_
 /**
  * @brief Parse a just-opened tag's inline `style="..."` into a CSS declaration.
  *
+ * @details Locates the `style` attribute within the raw tag span and delegates
+ * to `ra_css_parse_inline()` to parse its value into a declaration struct.
+ * When the attribute is absent or the parser fails the returned struct has
+ * `set == 0`, indicating no inline declarations override the cascade.
+ *
  * @param[in] tag  Raw tag span starting at '<'.
  * @param[in] span Length of @p tag, bytes.
- * @return The inline declaration (empty `set` if no `style` attribute).
+ * @return The inline CSS declaration for this element.
+ * @retval ra_css_style_t Struct with `set == 0` if no `style` attribute is present.
  * @pre `tag` is non-null and holds @p span bytes.
+ * @pre `span > 0` (a zero-span tag cannot carry attributes).
  * @post No state mutated.
+ * @post Returned struct `set` field is 0 when no `style` attribute was found.
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
@@ -1083,9 +1140,11 @@ static ra_css_style_t priv_css_inline(const uint8_t* tag, size_t span)
  * @param[in]     href_len Href byte length.
  * @return 1-based link id, or 0 if not interned.
  * @retval 0 Empty href or the table is full.
+ * @retval 1..k_ra_reflow_max_links The newly assigned 1-based link id.
  * @pre `engine` is non-null.
  * @pre `engine->link_target_count <= k_ra_reflow_max_links`.
  * @post On a non-zero return the table grew by one entry.
+ * @post `engine->link_target_count` is unchanged on a zero return.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -1166,13 +1225,18 @@ static ra_err_t priv_open_attrs(tok_ctx_t*            ctx,
  *
  * @details Case-sensitive substring scan (EPUB `<link>` rels are authored
  * lowercase; this also accepts the `alternate stylesheet` form). Bounded by the
- * value length.
+ * value length. The inner loop iterates at most `len` times so the scan is
+ * O(len) with no dynamic allocation.
  *
  * @param[in] rel Attribute-value bytes (not NUL-terminated).
  * @param[in] len Length of @p rel, bytes.
  * @return true if `stylesheet` occurs in @p rel.
+ * @retval true  The substring "stylesheet" was found in @p rel.
+ * @retval false The substring is absent or @p len is too short to contain it.
  * @pre @p rel addresses @p len readable bytes.
+ * @pre @p rel is non-null (a zero @p len is a valid empty-value case).
  * @post No state mutated.
+ * @post Return value depends solely on the inputs.
  * @note Pure.
  * @since 0.1.0
  */
@@ -1204,8 +1268,11 @@ static bool priv_rel_is_stylesheet(const uint8_t* rel, size_t len)
  * @param[in]     buf    Source buffer.
  * @param[in]     tag_lt Index of the tag's '<'.
  * @param[in]     end    One past the tag's '>'.
+ * @return Nothing.
  * @pre `ctx`, `buf` non-null; `end >= tag_lt`.
+ * @pre `ctx->engine` is non-null and its CSS sheet is initialised.
  * @post On a resolved stylesheet, its rules are appended to `ctx->engine->css`.
+ * @post When no loader is bound or attributes are absent, the sheet is unchanged.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -1258,6 +1325,7 @@ static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, 
  * @pre `ctx`, `buf`, `out_err` are non-null.
  * @pre `end >= tag_lt`.
  * @post On true a single token was emitted (or the pool overflowed).
+ * @post On false neither the token pool nor `*out_err` are modified.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -1341,9 +1409,11 @@ static bool priv_handle_void(tok_ctx_t*           ctx,
  * @param[in] ctx  Tokenizer context (carries the inherited font px + body size).
  * @param[in] comp The element's cascaded style.
  * @return The element's effective CSS font px, or 0 for "use the UA default".
+ * @retval 0 No font-size declared for this element and no ancestor has set one.
  * @pre `ctx` and `comp` are non-null.
  * @pre `ctx->engine->font_px` is the body font size.
  * @post No state mutated.
+ * @post Return value is clamped to [k_ra_reflow_min_font_px, k_ra_reflow_max_font_px] when non-zero.
  * @note Pure aside from reading @p ctx.
  * @since 0.1.0
  */
@@ -1402,8 +1472,11 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra_css_style_t* com
  * @param[in] engine Engine whose face registry + parsed sheet are consulted.
  * @param[in] comp   The element's cascaded style (family + emphasis bits).
  * @return 0 for the default face, else `1 + engine->faces[] index`.
+ * @retval 0 No registered face matches the cascaded family + emphasis combination.
  * @pre @p engine and @p comp are non-null.
+ * @pre `engine->face_count <= k_ra_reflow_max_faces`.
  * @post No state is modified.
+ * @post Return value is in [0, engine->face_count].
  * @note Pure; not thread-safe only insofar as it reads engine state.
  * @since 0.1.0
  */
@@ -1428,6 +1501,33 @@ static uint8_t priv_resolve_face_slot(const ra_reflow_t* engine, const ra_css_st
   return 0U;
 }
 
+/**
+ * @brief Run the CSS cascade for a just-pushed element and apply the result.
+ *
+ * @details Builds the element's CSS identity and inherited run style, runs the
+ * author `<style>` rules + inline `style` attribute through `ra_css_cascade_ctx()`
+ * (#111 / #140), emits the block-start via `priv_open_attrs()` carrying the
+ * cascaded alignment + font size, and updates `ctx->style`, `ctx->color`,
+ * `ctx->css_font_px`, `ctx->family_off`/`len`, and `ctx->face_slot` for
+ * descendant content. Unstyled content lays out byte-identically to the
+ * pre-CSS engine. Factored out of `priv_handle_start()` to stay within the
+ * NASA Rule 4 function-length budget.
+ *
+ * @param[in,out] ctx    Tokenizer context (element already pushed onto stack).
+ * @param[in]     tagbuf Raw tag span starting at '<'.
+ * @param[in]     span   Length of @p tagbuf, bytes.
+ * @param[in]     tag    Classified tag.
+ * @param[in]     block  True iff @p tag is a block element.
+ * @return k_ra_ok, or k_ra_err_no_mem on a block-start token-pool overflow.
+ * @retval k_ra_ok        Cascade applied; context updated.
+ * @retval k_ra_err_no_mem Token pool full when emitting the block-start token.
+ * @pre `ctx` and `tagbuf` are non-null.
+ * @pre `ctx->sp > 0` (the element has already been pushed by the caller).
+ * @post `ctx->style` / `ctx->color` / `ctx->css_font_px` reflect the cascaded style.
+ * @post A block element emitted its block-start token with cascaded alignment.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
                                  const uint8_t*       tagbuf,
                                  size_t               span,
@@ -1481,6 +1581,29 @@ static ra_err_t priv_open_styled(tok_ctx_t*           ctx,
   return k_ra_ok;
 }
 
+/**
+ * @brief Handle an opening, void, or self-closing start tag.
+ *
+ * @details Parses the tag name and self-close flag, then dispatches: void tags
+ * (br / hr / img) emit a single token and return; self-closing block tags emit
+ * an empty block-start / block-end pair; ordinary tags push the element onto
+ * the style stack (after bounds-checking depth) and call `priv_open_styled()`
+ * to cascade + apply CSS and emit any block-start token.
+ *
+ * @param[in,out] ctx Tokenizer context.
+ * @param[in]     buf Source buffer.
+ * @param[in,out] pi  Cursor at '<'; advanced past '>'.
+ * @param[in]     len Total buffer length.
+ * @return k_ra_ok, k_ra_err_no_mem, or k_ra_err_validation_failed.
+ * @retval k_ra_ok        Tag processed successfully.
+ * @retval k_ra_err_no_mem Token pool or nesting-depth bound exceeded.
+ * @pre `ctx`, `buf`, `pi` are non-null.
+ * @pre `buf[*pi] == '<'` and the tag is not an end-tag, comment, or declaration.
+ * @post `*pi` advances past the tag (or to `len` on truncation).
+ * @post The element stack and token pool grow as required by the tag kind.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   const size_t               tag_lt    = *pi; /* index of '<' before parse */
@@ -1539,7 +1662,9 @@ static ra_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi
  * @return true iff the element name matches with a following delimiter.
  * @retval false No match, or a longer name continues past @p name.
  * @pre `buf` and `name` are non-null.
+ * @pre `i <= len` (caller guarantees the cursor is within bounds).
  * @post No state is modified (pure).
+ * @post Return value depends solely on the inputs.
  * @note Pure function.
  * @since 0.1.0
  */
@@ -1662,6 +1787,7 @@ static ra_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, s
  * @pre `ctx` and `buf` are non-null; `run <= end`.
  * @pre `ctx->engine->token_count` is consistent.
  * @post On a non-empty stored run a text token is appended + link-tagged.
+ * @post On `ctx->sp == 0` or inside `display:none` the pools are unchanged.
  * @note Not thread-safe.
  * @since 0.1.0
  */
