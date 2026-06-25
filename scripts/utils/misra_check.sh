@@ -40,42 +40,42 @@ MISRA_RAW="$OUT_DIR/misra-raw.txt"
 RESULTS="$OUT_DIR/results.txt"
 
 if ! command -v cppcheck >/dev/null 2>&1; then
-    echo "[ERROR] cppcheck not in PATH (brew install cppcheck)" >&2
-    exit 2
+  echo "[ERROR] cppcheck not in PATH (brew install cppcheck)" >&2
+  exit 2
 fi
 
 ADDON_DIR=""
 for candidate in /opt/homebrew/share/Cppcheck/addons /usr/share/cppcheck/addons /usr/local/share/Cppcheck/addons; do
-    if [[ -d "$candidate" && -f "$candidate/misra.py" ]]; then
-        ADDON_DIR="$candidate"
-        break
-    fi
+  if [[ -d "$candidate" && -f "$candidate/misra.py" ]]; then
+    ADDON_DIR="$candidate"
+    break
+  fi
 done
 if [[ -z "$ADDON_DIR" ]]; then
-    echo "[ERROR] cppcheck misra.py addon not found" >&2
-    exit 2
+  echo "[ERROR] cppcheck misra.py addon not found" >&2
+  exit 2
 fi
 MISRA_PY="$ADDON_DIR/misra.py"
 
 JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 
 INCLUDE_DIRS=(
-    -Ilibs/ra_core/inc
-    -Ilibs/ra_hal/inc
-    -Ilibs/ra_nsc/inc
-    -Isrc/inc
-    -Itools/board_sim/inc
+  -Ilibs/ra_core/inc
+  -Ilibs/ra_hal/inc
+  -Ilibs/ra_nsc/inc
+  -Isrc/inc
+  -Itools/board_sim/inc
 )
 
 echo "[INFO] cppcheck MISRA-C 2012 audit -- $(cppcheck --version)" >&2
 echo "[INFO] jobs=$JOBS  output=$RESULTS" >&2
 
 if command -v gtimeout >/dev/null 2>&1; then
-    TIMEOUT_CMD=(gtimeout 600)
+  TIMEOUT_CMD=(gtimeout 600)
 elif command -v timeout >/dev/null 2>&1; then
-    TIMEOUT_CMD=(timeout 600)
+  TIMEOUT_CMD=(timeout 600)
 else
-    TIMEOUT_CMD=()
+  TIMEOUT_CMD=()
 fi
 
 # cppcheck 2.20 does not support --std=c23. The codebase uses C23
@@ -86,43 +86,43 @@ fi
 echo "[INFO] generating cppcheck dumps under libs/, src/, port/ ..." >&2
 set +e
 "${TIMEOUT_CMD[@]}" cppcheck \
-    -j "$JOBS" \
-    --dump \
-    --enable=warning \
-    --inline-suppr \
-    --suppressions-list="$ROOT_DIR/.cppcheck-suppressions" \
-    --suppress=missingIncludeSystem \
-    --suppress=unmatchedSuppression \
-    --suppress=syntaxError \
-    --suppress=internalError \
-    --suppress=*:libs/third_party/* \
-    -ilibs/third_party \
-    -ilibs/ra_epub/src/ra_epub_xml_shim.cpp \
-    --std=c11 \
-    --platform=unix32 \
-    --language=c \
-    --quiet \
-    --error-exitcode=0 \
-    "${INCLUDE_DIRS[@]}" \
-    libs src port \
-    2> "$RAW"
+  -j "$JOBS" \
+  --dump \
+  --enable=warning \
+  --inline-suppr \
+  --suppressions-list="$ROOT_DIR/.cppcheck-suppressions" \
+  --suppress=missingIncludeSystem \
+  --suppress=unmatchedSuppression \
+  --suppress=syntaxError \
+  --suppress=internalError \
+  --suppress=*:libs/third_party/* \
+  -ilibs/third_party \
+  -ilibs/ra_epub/src/ra_epub_xml_shim.cpp \
+  --std=c11 \
+  --platform=unix32 \
+  --language=c \
+  --quiet \
+  --error-exitcode=0 \
+  "${INCLUDE_DIRS[@]}" \
+  libs src port \
+  2>"$RAW"
 RC=$?
 set -e
 
 if [[ "$RC" -eq 124 ]]; then
-    echo "[ERROR] cppcheck exceeded 10-minute budget" >&2
-    exit 1
+  echo "[ERROR] cppcheck exceeded 10-minute budget" >&2
+  exit 1
 fi
 
 # Run misra.py on every dump file produced under libs/ src/ port/.
 mapfile -t DUMPS < <(find libs src port -name '*.dump' -not -path '*/third_party/*' | sort)
 echo "[INFO] running misra.py on ${#DUMPS[@]} dump file(s) ..." >&2
 
-: > "$MISRA_RAW"
+: >"$MISRA_RAW"
 if [[ ${#DUMPS[@]} -gt 0 ]]; then
-    set +e
-    python3 "$MISRA_PY" --quiet "${DUMPS[@]}" >> "$MISRA_RAW" 2>&1
-    set -e
+  set +e
+  python3 "$MISRA_PY" --quiet "${DUMPS[@]}" >>"$MISRA_RAW" 2>&1
+  set -e
 fi
 
 # misra.py emits one diagnostic per line in the format:
@@ -152,13 +152,13 @@ grep -E '\[misra-c2012-[0-9]+\.[0-9]+\] *$' "$MISRA_RAW" | awk '
     msg = rest;
     gsub(/\t/, " ", msg);
     printf("%s\t%s\t%s\t%s\t%s\n", rule, sev, file, line, msg);
-}' | sort -u > "$RESULTS"
+}' | sort -u >"$RESULTS"
 
 # Tidy up dump artefacts so they don't pollute the source tree.
 find libs src port -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
 find libs src port -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
 
-TOTAL=$(wc -l < "$RESULTS" | tr -d ' ')
+TOTAL=$(wc -l <"$RESULTS" | tr -d ' ')
 
 echo
 echo "MISRA-C 2012 audit complete"

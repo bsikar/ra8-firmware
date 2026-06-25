@@ -23,7 +23,7 @@ import sys
 def data_records(path: str) -> list[str]:
     """Return all non-EOF records (stripped) from an Intel HEX file."""
     out: list[str] = []
-    with open(path, "r", encoding="ascii") as fh:
+    with open(path, encoding="ascii") as fh:
         for raw in fh:
             line = raw.strip()
             if not line or not line.startswith(":"):
@@ -46,8 +46,7 @@ def main() -> int:
         print(f"merge_ihex: {exc}", file=sys.stderr)
         return 1
     with open(out, "w", encoding="ascii") as fh:
-        for rec in records:
-            fh.write(rec + "\n")
+        fh.writelines(rec + "\n" for rec in records)
         fh.write(":00000001FF\n")  # canonical EOF record.
     print(f"merge_ihex: wrote {len(records)} records -> {out}")
     return 0

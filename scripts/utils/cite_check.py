@@ -47,8 +47,7 @@ import argparse
 import pathlib
 import re
 import sys
-from typing import Iterable
-
+from collections.abc import Iterable
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CHAPTER_MAP_PATH = REPO_ROOT / "docs" / "reference" / "CHAPTER_MAP.md"
@@ -113,7 +112,8 @@ def parse_chapter_map(path: pathlib.Path) -> dict[int, tuple[int, int, str]]:
     Lines that don't match the row pattern are ignored.
     """
     if not path.exists():
-        raise FileNotFoundError(f"chapter map missing: {path}")
+        msg = f"chapter map missing: {path}"
+        raise FileNotFoundError(msg)
 
     row_re = re.compile(
         r"^\|\s*(\d{1,2})\s*\|\s*([^|]+?)\s*\|\s*(\d{1,5})\s*\|\s*(\d{1,5})\s*\|\s*$"
@@ -181,25 +181,20 @@ def check_file(
         line_no = text.count("\n", 0, m.start()) + 1
 
         if chapter not in chapters:
-            findings.append(
-                f"{path}:{line_no}: HUM Ch {chapter} not in chapter map"
-            )
+            findings.append(f"{path}:{line_no}: HUM Ch {chapter} not in chapter map")
             continue
         ch_start, ch_end, ch_title = chapters[chapter]
 
         if start < ch_start or end > ch_end:
             findings.append(
-                f"{path}:{line_no}: HUM Ch {chapter} \"{section}\" "
+                f'{path}:{line_no}: HUM Ch {chapter} "{section}" '
                 f"page range {start}-{end} outside chapter range "
                 f"{ch_start}-{ch_end} ({ch_title})"
             )
             continue
 
         if end < start:
-            findings.append(
-                f"{path}:{line_no}: HUM Ch {chapter} reversed page range "
-                f"{start}-{end}"
-            )
+            findings.append(f"{path}:{line_no}: HUM Ch {chapter} reversed page range {start}-{end}")
             continue
 
     # Catch malformed HUM cites that did NOT match CITE_RE. Anything
@@ -211,7 +206,7 @@ def check_file(
         line_no = text.count("\n", 0, lm.start()) + 1
         findings.append(
             f"{path}:{line_no}: malformed HUM cite "
-            f"{lm.group(0)!r} -- expected /* HUM Ch X.Y \"...\" p NNNN */"
+            f'{lm.group(0)!r} -- expected /* HUM Ch X.Y "..." p NNNN */'
         )
 
     return findings
@@ -242,8 +237,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
 
     if args.warn and args.strict:
-        print("cite_check.py: --warn and --strict are mutually exclusive",
-              file=sys.stderr)
+        print("cite_check.py: --warn and --strict are mutually exclusive", file=sys.stderr)
         return 2
 
     # Default to warn unless explicitly strict.

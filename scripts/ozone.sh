@@ -27,8 +27,7 @@ OZONE_BIN=""
 for candidate in \
   "/Applications/SEGGER/Ozone/Ozone.app/Contents/MacOS/Ozone" \
   "/Applications/Ozone.app/Contents/MacOS/Ozone" \
-  "$(command -v Ozone 2>/dev/null || true)"
-do
+  "$(command -v Ozone 2>/dev/null || true)"; do
   if [[ -n "${candidate}" && -x "${candidate}" ]]; then
     OZONE_BIN="${candidate}"
     break

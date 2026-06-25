@@ -63,41 +63,41 @@ JLINK_DEVICE="R7KA8D2KF_CPU0"
 # inside a self-hosted runner's network namespace, and we have direct
 # access to the same files/devices anyway.
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-    LOCAL_PI=1
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+  LOCAL_PI=1
 fi
 pi_run() {
-    if (( LOCAL_PI )); then
-        bash -c "$1"
-    else
-        ssh "$PI_HOST" "$1"
-    fi
+  if ((LOCAL_PI)); then
+    bash -c "$1"
+  else
+    ssh "$PI_HOST" "$1"
+  fi
 }
 pi_run_stdin() {
-    if (( LOCAL_PI )); then
-        bash -s
-    else
-        ssh "$PI_HOST" "bash -s"
-    fi
+  if ((LOCAL_PI)); then
+    bash -s
+  else
+    ssh "$PI_HOST" "bash -s"
+  fi
 }
 pi_pull() {
-    local remote="$1"
-    local local_path="$2"
-    if (( LOCAL_PI )); then
-        cp -f "$remote" "$local_path" 2>/dev/null || : >"$local_path"
-    else
-        scp -q "${PI_HOST}:${remote}" "$local_path" 2>/dev/null || : >"$local_path"
-    fi
+  local remote="$1"
+  local local_path="$2"
+  if ((LOCAL_PI)); then
+    cp -f "$remote" "$local_path" 2>/dev/null || : >"$local_path"
+  else
+    scp -q "${PI_HOST}:${remote}" "$local_path" 2>/dev/null || : >"$local_path"
+  fi
 }
 pi_write() {
-    local remote="$1"
-    if (( LOCAL_PI )); then
-        cat > "$remote"
-    else
-        ssh "$PI_HOST" "cat > ${remote}"
-    fi
+  local remote="$1"
+  if ((LOCAL_PI)); then
+    cat >"$remote"
+  else
+    ssh "$PI_HOST" "cat > ${remote}"
+  fi
 }
 
 GREEN='\033[0;32m'
@@ -109,17 +109,38 @@ HEX=""
 BOOT_S=2
 APP_NAME=""
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --hex) HEX="$2"; shift 2 ;;
-        --boot-seconds) BOOT_S="$2"; shift 2 ;;
-        --app-name) APP_NAME="$2"; shift 2 ;;
-        -h|--help) sed -n '5,30p' "$0"; exit 0 ;;
-        *) echo "Unknown arg: $1"; exit 2 ;;
-    esac
+  case "$1" in
+    --hex)
+      HEX="$2"
+      shift 2
+      ;;
+    --boot-seconds)
+      BOOT_S="$2"
+      shift 2
+      ;;
+    --app-name)
+      APP_NAME="$2"
+      shift 2
+      ;;
+    -h | --help)
+      sed -n '5,30p' "$0"
+      exit 0
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      exit 2
+      ;;
+  esac
 done
 
-[[ -n "$HEX" ]] || { echo "Usage: $0 --hex <file.hex> [--boot-seconds N]"; exit 2; }
-[[ -f "$HEX" ]] || { echo -e "${RED}[ERROR]${NC} hex not found: $HEX"; exit 1; }
+[[ -n "$HEX" ]] || {
+  echo "Usage: $0 --hex <file.hex> [--boot-seconds N]"
+  exit 2
+}
+[[ -f "$HEX" ]] || {
+  echo -e "${RED}[ERROR]${NC} hex not found: $HEX"
+  exit 1
+}
 [[ -z "$APP_NAME" ]] && APP_NAME="$(basename "$HEX" .hex)"
 
 # 1. Flash the app.
@@ -129,8 +150,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # we don't need in the CI scroll), but KEEP stderr so a real flash
 # failure shows the underlying error instead of just "flash failed".
 "${SCRIPT_DIR}/hil_flash.sh" "$APP_NAME" >/dev/null || {
-    echo -e "${RED}[alive]${NC} flash failed for ${APP_NAME}"
-    exit 1
+  echo -e "${RED}[alive]${NC} flash failed for ${APP_NAME}"
+  exit 1
 }
 
 # 2. Capture UART during the boot dwell. We auto-detect the J-Link OB
@@ -139,7 +160,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Run cat in the background on the Pi for BOOT_S seconds; halt before
 # the J-Link probe begins, since J-Link halt freezes the UART side.
 UART_CAP="/tmp/hil_alive_${APP_NAME}.uart"
-UART_DEV=$(pi_run_stdin <<'REMOTE'
+UART_DEV=$(
+  pi_run_stdin <<'REMOTE'
 for dev in /dev/ttyACM*; do
     [[ -e "$dev" ]] || continue
     if udevadm info "$dev" 2>/dev/null | grep -q "ID_MODEL=J-Link"; then
@@ -165,7 +187,8 @@ pi_pull "${UART_CAP}" "${UART_CAP}"
 # realistic main-loop tick on this chip.
 PI_TMP="/tmp/hil_alive_${APP_NAME}.jlink"
 PI_LOG="/tmp/hil_alive_${APP_NAME}.log"
-JLINK_SCRIPT=$(cat <<EOF
+JLINK_SCRIPT=$(
+  cat <<EOF
 device ${JLINK_DEVICE}
 si SWD
 speed 1000
@@ -182,14 +205,14 @@ q
 EOF
 )
 
-if (( LOCAL_PI )); then
-    echo "$JLINK_SCRIPT" > "$PI_TMP"
-    JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$PI_TMP" > "$PI_LOG" 2>&1 || true
+if ((LOCAL_PI)); then
+  echo "$JLINK_SCRIPT" >"$PI_TMP"
+  JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$PI_TMP" >"$PI_LOG" 2>&1 || true
 else
-    pi_write "${PI_TMP}" <<<"$JLINK_SCRIPT"
-    pi_run "JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript ${PI_TMP} > ${PI_LOG} 2>&1 || true"
-    pi_pull "${PI_LOG}" "/tmp/hil_alive_${APP_NAME}.log"
-    PI_LOG="/tmp/hil_alive_${APP_NAME}.log"
+  pi_write "${PI_TMP}" <<<"$JLINK_SCRIPT"
+  pi_run "JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript ${PI_TMP} > ${PI_LOG} 2>&1 || true"
+  pi_pull "${PI_LOG}" "/tmp/hil_alive_${APP_NAME}.log"
+  PI_LOG="/tmp/hil_alive_${APP_NAME}.log"
 fi
 
 LOG_TEXT="$(cat "$PI_LOG")"
@@ -206,9 +229,9 @@ LOG_TEXT="$(cat "$PI_LOG")"
 mapfile -t PC_LIST < <(echo "$LOG_TEXT" | grep -oE 'PC[ ]*=[ ]*[0-9A-Fa-f]+' | grep -oE '[0-9A-Fa-f]+$' | tr 'a-f' 'A-F' | awk '!seen[$0]++')
 mapfile -t CYC_LIST < <(echo "$LOG_TEXT" | grep -oE 'CycleCnt[ ]*=[ ]*[0-9A-Fa-f]+' | grep -oE '[0-9A-Fa-f]+$' | tr 'a-f' 'A-F' | awk '!seen[$0]++')
 PC1="${PC_LIST[0]:-}"
-PC2="${PC_LIST[$(( ${#PC_LIST[@]} > 1 ? ${#PC_LIST[@]} - 1 : 0 ))]:-${PC1}}"
+PC2="${PC_LIST[$((${#PC_LIST[@]} > 1 ? ${#PC_LIST[@]} - 1 : 0))]:-${PC1}}"
 CYC1="${CYC_LIST[0]:-}"
-CYC2="${CYC_LIST[$(( ${#CYC_LIST[@]} > 1 ? ${#CYC_LIST[@]} - 1 : 0 ))]:-${CYC1}}"
+CYC2="${CYC_LIST[$((${#CYC_LIST[@]} > 1 ? ${#CYC_LIST[@]} - 1 : 0))]:-${CYC1}}"
 
 # CFSR (active configurable-fault flags) -- bits cleared by firmware on
 # normal boot; non-zero means an unhandled configurable fault.
@@ -222,43 +245,43 @@ ok=1
 issues=()
 
 if [[ -z "$PC1" || -z "$CYC1" ]]; then
-    issues+=("could not parse PC/CycleCnt from J-Link output")
-    ok=0
+  issues+=("could not parse PC/CycleCnt from J-Link output")
+  ok=0
 else
-    pc1_dec=$((16#$PC1))
-    pc2_dec=$((16#${PC2:-$PC1}))
-    cyc1_dec=$((16#$CYC1))
-    cyc2_dec=$((16#${CYC2:-$CYC1}))
+  pc1_dec=$((16#$PC1))
+  pc2_dec=$((16#${PC2:-$PC1}))
+  cyc1_dec=$((16#$CYC1))
+  cyc2_dec=$((16#${CYC2:-$CYC1}))
 
-    mram_lo=$((16#02000000))
-    mram_hi=$((16#02100000))
-    itcm_lo=$((16#00000000))
-    itcm_hi=$((16#00010000))
+  mram_lo=$((16#02000000))
+  mram_hi=$((16#02100000))
+  itcm_lo=$((16#00000000))
+  itcm_hi=$((16#00010000))
 
-    in_code_region() {
-        local p="$1"
-        (( p >= mram_lo && p < mram_hi )) && return 0
-        (( p >= itcm_lo && p < itcm_hi )) && return 0
-        return 1
-    }
+  in_code_region() {
+    local p="$1"
+    ((p >= mram_lo && p < mram_hi)) && return 0
+    ((p >= itcm_lo && p < itcm_hi)) && return 0
+    return 1
+  }
 
-    if ! in_code_region "$pc1_dec"; then
-        issues+=("PC1=0x${PC1} outside MRAM/ITCM")
-        ok=0
-    fi
-    if ! in_code_region "$pc2_dec"; then
-        issues+=("PC2=0x${PC2} outside MRAM/ITCM")
-        ok=0
-    fi
-    # DWT CYCCNT is a free-running 32-bit counter: at 1 GHz it wraps
-    # every ~4.3 s, so cyc2 < cyc1 is a normal wrap, not a stall. Use
-    # the unsigned 32-bit delta -- only an exactly-zero delta means the
-    # counter is genuinely frozen.
-    cyc_delta=$(( (cyc2_dec - cyc1_dec) & 0xFFFFFFFF ))
-    if (( cyc_delta == 0 )); then
-        issues+=("CycleCnt did not advance (0x${CYC1} -> 0x${CYC2}); CPU may be stuck")
-        ok=0
-    fi
+  if ! in_code_region "$pc1_dec"; then
+    issues+=("PC1=0x${PC1} outside MRAM/ITCM")
+    ok=0
+  fi
+  if ! in_code_region "$pc2_dec"; then
+    issues+=("PC2=0x${PC2} outside MRAM/ITCM")
+    ok=0
+  fi
+  # DWT CYCCNT is a free-running 32-bit counter: at 1 GHz it wraps
+  # every ~4.3 s, so cyc2 < cyc1 is a normal wrap, not a stall. Use
+  # the unsigned 32-bit delta -- only an exactly-zero delta means the
+  # counter is genuinely frozen.
+  cyc_delta=$(((cyc2_dec - cyc1_dec) & 0xFFFFFFFF))
+  if ((cyc_delta == 0)); then
+    issues+=("CycleCnt did not advance (0x${CYC1} -> 0x${CYC2}); CPU may be stuck")
+    ok=0
+  fi
 fi
 
 # Symbol-name check: PC inside MRAM is necessary but not sufficient.
@@ -271,44 +294,44 @@ fi
 ELF="${HEX%.hex}.elf"
 FAULT_SPINNER_RE='(panic_halt|halt_loop|exception_halt|Default_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|spin_forever|hang_forever|_die|__assert_fail)'
 if [[ -f "$ELF" ]] && command -v arm-none-eabi-addr2line >/dev/null 2>&1; then
-    PC1_SYM="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${PC1}" 2>/dev/null | head -1 || true)"
-    PC2_SYM="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${PC2}" 2>/dev/null | head -1 || true)"
-    if echo "$PC1_SYM" | grep -qE "$FAULT_SPINNER_RE" || \
-       echo "$PC2_SYM" | grep -qE "$FAULT_SPINNER_RE"; then
-        issues+=("PC landed in fault spinner: PC1=${PC1_SYM:-?} PC2=${PC2_SYM:-?}")
-        ok=0
-    fi
+  PC1_SYM="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${PC1}" 2>/dev/null | head -1 || true)"
+  PC2_SYM="$(arm-none-eabi-addr2line -e "$ELF" -f "0x${PC2}" 2>/dev/null | head -1 || true)"
+  if echo "$PC1_SYM" | grep -qE "$FAULT_SPINNER_RE" ||
+    echo "$PC2_SYM" | grep -qE "$FAULT_SPINNER_RE"; then
+    issues+=("PC landed in fault spinner: PC1=${PC1_SYM:-?} PC2=${PC2_SYM:-?}")
+    ok=0
+  fi
 fi
 
 # CFSR is a strong real-fault indicator (not a debug artifact like
 # HFSR.DEBUGEVT). If any configurable-fault bit is latched, treat as
 # fail UNLESS the manifest opted into fault-expected (mpu_partition_*).
 if [[ "${HIL_FAULT_EXPECTED:-0}" == "1" ]]; then
-    # caller said a configurable fault IS the test result -- require
-    # one rather than just ignoring CFSR; otherwise the app could
-    # silently pass when its real failure mode is "no fault at all".
-    if [[ -z "$CFSR_HEX" || "$((16#${CFSR_HEX:-0}))" == "0" ]]; then
-        issues+=("HIL_FAULT_EXPECTED=1 but CFSR=0 (no fault latched)")
-        ok=0
-    fi
+  # caller said a configurable fault IS the test result -- require
+  # one rather than just ignoring CFSR; otherwise the app could
+  # silently pass when its real failure mode is "no fault at all".
+  if [[ -z "$CFSR_HEX" || "$((16#${CFSR_HEX:-0}))" == "0" ]]; then
+    issues+=("HIL_FAULT_EXPECTED=1 but CFSR=0 (no fault latched)")
+    ok=0
+  fi
 elif [[ -n "$CFSR_HEX" ]]; then
-    cfsr_dec=$((16#$CFSR_HEX))
-    if (( cfsr_dec != 0 )); then
-        issues+=("CFSR=0x${CFSR_HEX} non-zero (configurable fault latched)")
-        ok=0
-    fi
+  cfsr_dec=$((16#$CFSR_HEX))
+  if ((cfsr_dec != 0)); then
+    issues+=("CFSR=0x${CFSR_HEX} non-zero (configurable fault latched)")
+    ok=0
+  fi
 fi
 
 # HFSR with DEBUGEVT (bit 31) masked off. DEBUGEVT fires on every SWD
 # halt against debug-disabled silicon -- not a real fault. FORCED (bit
 # 30) and VECTTBL (bit 1) are the meaningful HardFault indicators.
 if [[ "${HIL_FAULT_EXPECTED:-0}" != "1" && -n "$HFSR_HEX" ]]; then
-    hfsr_dec=$((16#$HFSR_HEX))
-    hfsr_real=$(( hfsr_dec & ~(1<<31) ))
-    if (( hfsr_real != 0 )); then
-        issues+=("HFSR=0x${HFSR_HEX} non-zero with DEBUGEVT masked (real HardFault: FORCED/VECTTBL bits latched)")
-        ok=0
-    fi
+  hfsr_dec=$((16#$HFSR_HEX))
+  hfsr_real=$((hfsr_dec & ~(1 << 31)))
+  if ((hfsr_real != 0)); then
+    issues+=("HFSR=0x${HFSR_HEX} non-zero with DEBUGEVT masked (real HardFault: FORCED/VECTTBL bits latched)")
+    ok=0
+  fi
 fi
 
 # UART capture negative-keyword scan. If the firmware emitted a
@@ -320,27 +343,27 @@ fi
 # "fault: handled" (used by mpu_partition_* under HIL_FAULT_EXPECTED).
 UART_TEXT=""
 if [[ -s "$UART_CAP" ]]; then
-    UART_TEXT="$(cat "$UART_CAP" 2>/dev/null || true)"
+  UART_TEXT="$(cat "$UART_CAP" 2>/dev/null || true)"
 fi
 NEG_RE='\b(FAIL|FAILED|panic|NAK|ERROR|HardFault|hardfault|MemFault|BusFault|UsageFault|stack[ _-]?overflow)\b'
 if [[ -n "$UART_TEXT" ]]; then
-    NEG_HIT="$(echo "$UART_TEXT" | grep -iE "$NEG_RE" | head -3 || true)"
-    if [[ -n "$NEG_HIT" ]]; then
-        issues+=("UART emitted failure banner during boot dwell:")
-        while IFS= read -r line; do
-            issues+=("      ${line}")
-        done <<< "$NEG_HIT"
-        ok=0
-    fi
+  NEG_HIT="$(echo "$UART_TEXT" | grep -iE "$NEG_RE" | head -3 || true)"
+  if [[ -n "$NEG_HIT" ]]; then
+    issues+=("UART emitted failure banner during boot dwell:")
+    while IFS= read -r line; do
+      issues+=("      ${line}")
+    done <<<"$NEG_HIT"
+    ok=0
+  fi
 fi
 
-if (( ok == 1 )); then
-    echo -e "${GREEN}[alive]${NC} ${APP_NAME} PASS (PC=0x${PC1}->0x${PC2}, CycleCnt 0x${CYC1}->0x${CYC2})"
-    exit 0
+if ((ok == 1)); then
+  echo -e "${GREEN}[alive]${NC} ${APP_NAME} PASS (PC=0x${PC1}->0x${PC2}, CycleCnt 0x${CYC1}->0x${CYC2})"
+  exit 0
 else
-    echo -e "${RED}[alive]${NC} ${APP_NAME} FAIL"
-    for i in "${issues[@]}"; do echo "    - $i"; done
-    echo "    (J-Link log: ${PI_LOG})"
-    [[ -s "$UART_CAP" ]] && echo "    (UART capture: ${UART_CAP})"
-    exit 1
+  echo -e "${RED}[alive]${NC} ${APP_NAME} FAIL"
+  for i in "${issues[@]}"; do echo "    - $i"; done
+  echo "    (J-Link log: ${PI_LOG})"
+  [[ -s "$UART_CAP" ]] && echo "    (UART capture: ${UART_CAP})"
+  exit 1
 fi

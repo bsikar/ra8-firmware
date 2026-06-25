@@ -19,13 +19,13 @@ In this is a WARNING. Once the existing 1956-vector gap from
 docs/MCDC_GAPS.csv is closed, the hook will be promoted to STRICT
 (non-zero exit on any missing block).
 """
+
 from __future__ import annotations
 
 import re
 import subprocess
 import sys
 from pathlib import Path
-
 
 WARN_ONLY_MODE = False  # Legacy 138-test backlog cleared (2026-05-02); STRICT enforcement enabled.
 

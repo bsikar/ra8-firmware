@@ -24,8 +24,14 @@ OPEN_AFTER=0
 for arg in "$@"; do
   case "${arg}" in
     --open) OPEN_AFTER=1 ;;
-    -h|--help) sed -n '3,12p' "${BASH_SOURCE[0]}"; exit 0 ;;
-    *) echo "build_docs.sh: unknown argument '${arg}'" >&2; exit 2 ;;
+    -h | --help)
+      sed -n '3,12p' "${BASH_SOURCE[0]}"
+      exit 0
+      ;;
+    *)
+      echo "build_docs.sh: unknown argument '${arg}'" >&2
+      exit 2
+      ;;
   esac
 done
 
@@ -61,7 +67,10 @@ mkdir -p "${ROOT_DIR}/build/docs"
 cd "${ROOT_DIR}"
 
 if [[ -n "${DOT_OVERRIDE}" ]]; then
-  { cat "${DOXYFILE}"; printf '%s' "${DOT_OVERRIDE}"; } | doxygen -
+  {
+    cat "${DOXYFILE}"
+    printf '%s' "${DOT_OVERRIDE}"
+  } | doxygen -
 else
   doxygen "${DOXYFILE}"
 fi
@@ -69,7 +78,7 @@ fi
 echo
 echo "build_docs.sh: documentation written to ${OUTPUT_HTML}"
 if [[ -f "${WARN_LOG}" ]]; then
-  WARN_COUNT=$(wc -l < "${WARN_LOG}" | tr -d ' ')
+  WARN_COUNT=$(wc -l <"${WARN_LOG}" | tr -d ' ')
   echo "build_docs.sh: doxygen warning lines: ${WARN_COUNT} (see ${WARN_LOG})"
 fi
 

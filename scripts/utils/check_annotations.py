@@ -30,12 +30,11 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import os
+import contextlib
 import pathlib
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Iterable
 
 # --------------------------------------------------------------------------
 # warn-only gate. Flip to False to make violations fatal by default.
@@ -46,20 +45,41 @@ WARN_ONLY_MODE = True
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 SCAN_DIRS = ("libs", "src", "examples", "tests", "port")
-EXCLUDED_PATH_PARTS = {"build", "_deps", "third_party", "build-cov",
-                       "build-bench", "build-scan", "build-mcdc"}
+EXCLUDED_PATH_PARTS = {
+    "build",
+    "_deps",
+    "third_party",
+    "build-cov",
+    "build-bench",
+    "build-scan",
+    "build-mcdc",
+}
 SOURCE_SUFFIXES = {".c", ".cpp"}
 
 WARN_ONLY_RULES = {"ra_latency_max_ns", "ra_reviewed_by", "ra_register_bank"}
 
 ANNOTATION_PREFIXES = (
-    "ra_test_helper", "ra_internal", "ra_priv", "ra_di_slot",
-    "ra_nsc_veneer", "ra_hw_mmio", "ra_p10_rule3_exception",
-    "ra_mcdc_deactivated", "ra_stack_max", "ra_isr_safe",
-    "ra_expects_lock", "ra_host_friendly", "ra_latency_max_ns",
-    "ra_no_recursion", "ra_bounded_loop", "ra_validates",
-    "ra_owns_resource", "ra_releases_resource", "ra_reviewed_by",
-    "ra_register_bank", "ra_isr_handler",
+    "ra_test_helper",
+    "ra_internal",
+    "ra_priv",
+    "ra_di_slot",
+    "ra_nsc_veneer",
+    "ra_hw_mmio",
+    "ra_p10_rule3_exception",
+    "ra_mcdc_deactivated",
+    "ra_stack_max",
+    "ra_isr_safe",
+    "ra_expects_lock",
+    "ra_host_friendly",
+    "ra_latency_max_ns",
+    "ra_no_recursion",
+    "ra_bounded_loop",
+    "ra_validates",
+    "ra_owns_resource",
+    "ra_releases_resource",
+    "ra_reviewed_by",
+    "ra_register_bank",
+    "ra_isr_handler",
 )
 
 
@@ -70,7 +90,7 @@ ANNOTATION_PREFIXES = (
 # no system-level libclang package is required.
 # --------------------------------------------------------------------------
 try:
-    import clang.cindex as cindex
+    from clang import cindex
 except ImportError:
     sys.stderr.write(
         "check_annotations.py: 'libclang' Python package missing.\n"
@@ -160,7 +180,8 @@ def parse_tu(path: pathlib.Path) -> cindex.TranslationUnit | None:
     """
     args = [
         "-std=c23",
-        "-x", "c",
+        "-x",
+        "c",
         "-DRA_HOST_BUILD=1",
         f"-I{REPO_ROOT}/libs/ra_core/inc",
         f"-I{REPO_ROOT}/libs/ra_hal/inc",
@@ -195,23 +216,19 @@ def walk_tu(
 
     def visit(node: cindex.Cursor, current_func: cindex.Cursor | None) -> None:
         # Function declarations / definitions
-        if node.kind in (cindex.CursorKind.FUNCTION_DECL,):
+        if node.kind == cindex.CursorKind.FUNCTION_DECL:
             anns = collect_annotations(node)
             if anns:
                 # Promote / merge into the symbol table
                 fname = node.spelling
                 sym = symbols.setdefault(
                     fname,
-                    AnnotatedSymbol(name=fname, file=file_of(node),
-                                    line=node.location.line),
+                    AnnotatedSymbol(name=fname, file=file_of(node), line=node.location.line),
                 )
                 for a in anns:
                     if a not in sym.annotations:
                         sym.annotations.append(a)
-                sym.is_static = (
-                    node.linkage == cindex.LinkageKind.INTERNAL
-                    or sym.is_static
-                )
+                sym.is_static = node.linkage == cindex.LinkageKind.INTERNAL or sym.is_static
                 sym.return_type = node.result_type.spelling
                 # libclang exposes inline-ness via the cursor's tokens
                 tokens = [t.spelling for t in node.get_tokens()]
@@ -246,14 +263,15 @@ def walk_tu(
                     if child.kind == cindex.CursorKind.DECL_REF_EXPR and child.referenced:
                         if child.referenced.kind == cindex.CursorKind.FUNCTION_DECL:
                             # Mark address-of by recording a synthetic CallSite.
-                            calls.append(CallSite(
-                                callee_name=child.referenced.spelling,
-                                caller_name=(current_func.spelling
-                                             if current_func else ""),
-                                caller_file=file_of(node),
-                                caller_line=node.location.line,
-                                in_address_of=True,
-                            ))
+                            calls.append(
+                                CallSite(
+                                    callee_name=child.referenced.spelling,
+                                    caller_name=(current_func.spelling if current_func else ""),
+                                    caller_file=file_of(node),
+                                    caller_line=node.location.line,
+                                    in_address_of=True,
+                                )
+                            )
 
         for child in node.get_children():
             visit(child, current_func)
@@ -331,20 +349,27 @@ def enforce_rules(
             if rule == "ra_test_helper":
                 for cs in direct_calls_by_callee.get(sym.name, []):
                     if "/tests/" not in cs.caller_file.replace("\\", "/"):
-                        out.append(Violation(
-                            rule, cs.caller_file, cs.caller_line,
-                            f"function '{sym.name}' tagged RA_TEST_HELPER "
-                            f"called from non-test context",
-                        ))
+                        out.append(
+                            Violation(
+                                rule,
+                                cs.caller_file,
+                                cs.caller_line,
+                                f"function '{sym.name}' tagged RA_TEST_HELPER "
+                                f"called from non-test context",
+                            )
+                        )
 
             # 2. ra_internal -- definition must be static
             elif rule == "ra_internal":
                 if not sym.is_static:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"function '{sym.name}' tagged RA_INTERNAL is not "
-                        f"declared static",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"function '{sym.name}' tagged RA_INTERNAL is not declared static",
+                        )
+                    )
 
             # 3. ra_priv -- callers must share the same libs/<module>/
             elif rule == "ra_priv":
@@ -354,65 +379,91 @@ def enforce_rules(
                 for cs in direct_calls_by_callee.get(sym.name, []):
                     caller_mod = module_of(cs.caller_file)
                     if caller_mod != callee_mod:
-                        out.append(Violation(
-                            rule, cs.caller_file, cs.caller_line,
-                            f"function '{sym.name}' tagged RA_PRIV "
-                            f"({callee_mod}) called from outside its module "
-                            f"(caller={caller_mod or 'unknown'})",
-                        ))
+                        out.append(
+                            Violation(
+                                rule,
+                                cs.caller_file,
+                                cs.caller_line,
+                                f"function '{sym.name}' tagged RA_PRIV "
+                                f"({callee_mod}) called from outside its module "
+                                f"(caller={caller_mod or 'unknown'})",
+                            )
+                        )
 
             # 4. ra_di_slot:<role> -- must be referenced via &name, not direct
             elif rule == "ra_di_slot":
-                if (sym.name in direct_calls_by_callee
-                        and sym.name not in address_taken):
+                if sym.name in direct_calls_by_callee and sym.name not in address_taken:
                     cs = direct_calls_by_callee[sym.name][0]
-                    out.append(Violation(
-                        rule, cs.caller_file, cs.caller_line,
-                        f"function '{sym.name}' tagged RA_DI_SLOT "
-                        f"called directly; must be invoked via function "
-                        f"pointer (DIP)",
-                        warn_only=True,  # heuristic; warn until pattern stable
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            cs.caller_file,
+                            cs.caller_line,
+                            f"function '{sym.name}' tagged RA_DI_SLOT "
+                            f"called directly; must be invoked via function "
+                            f"pointer (DIP)",
+                            warn_only=True,  # heuristic; warn until pattern stable
+                        )
+                    )
 
             # 5. ra_nsc_veneer
             elif rule == "ra_nsc_veneer":
                 f = sym.file.replace("\\", "/")
                 if "/libs/ra_nsc/src/" not in f:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"NSC veneer '{sym.name}' must live under "
-                        f"libs/ra_nsc/src/ (found {f})",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"NSC veneer '{sym.name}' must live under libs/ra_nsc/src/ (found {f})",
+                        )
+                    )
                 body_calls = direct_calls_by_caller.get(sym.name, [])
-                if not any(c.callee_name.startswith("ra_nsc_check_")
-                           for c in body_calls):
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"NSC veneer '{sym.name}' missing ra_nsc_check_* "
-                        f"call in body",
-                    ))
-                if (sym.section
-                        and ".gnu.sgstubs" not in sym.section
-                        and "cmse_nonsecure_entry" not in " ".join(sym.annotations)):
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"NSC veneer '{sym.name}' must live in .gnu.sgstubs "
-                        f"section or be cmse_nonsecure_entry",
-                    ))
+                if not any(c.callee_name.startswith("ra_nsc_check_") for c in body_calls):
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"NSC veneer '{sym.name}' missing ra_nsc_check_* call in body",
+                        )
+                    )
+                if (
+                    sym.section
+                    and ".gnu.sgstubs" not in sym.section
+                    and "cmse_nonsecure_entry" not in " ".join(sym.annotations)
+                ):
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"NSC veneer '{sym.name}' must live in .gnu.sgstubs "
+                            f"section or be cmse_nonsecure_entry",
+                        )
+                    )
 
             # 6. ra_hw_mmio
             elif rule == "ra_hw_mmio":
                 if not sym.has_inline:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"MMIO accessor '{sym.name}' must be inline",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"MMIO accessor '{sym.name}' must be inline",
+                        )
+                    )
                 if "volatile" not in sym.return_type:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"MMIO accessor '{sym.name}' must return volatile* "
-                        f"(got '{sym.return_type}')",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"MMIO accessor '{sym.name}' must return volatile* "
+                            f"(got '{sym.return_type}')",
+                        )
+                    )
                 # Caller-side RA_PROTECTED_WRITE / // CITES-OK: check is
                 # left to a future textual scan; libclang loses macro
                 # context that early.
@@ -427,30 +478,41 @@ def enforce_rules(
             # 8. ra_mcdc_deactivated:<reason>
             elif rule == "ra_mcdc_deactivated":
                 if re.search(r"\.[ch]:\d+", arg):
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"ra_mcdc_deactivated reason on '{sym.name}' "
-                        f"contains file:line citation -- use function name",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"ra_mcdc_deactivated reason on '{sym.name}' "
+                            f"contains file:line citation -- use function name",
+                        )
+                    )
 
             # 9. ra_stack_max:<bytes>
             elif rule == "ra_stack_max":
                 try:
                     annotated = int(arg)
                 except ValueError:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"ra_stack_max:'{arg}' on '{sym.name}' is not an "
-                        f"integer byte count",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"ra_stack_max:'{arg}' on '{sym.name}' is not an integer byte count",
+                        )
+                    )
                     continue
                 measured = find_su_file(sym)
                 if measured is not None and measured > annotated:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"function '{sym.name}' frame {measured} B exceeds "
-                        f"ra_stack_max:{annotated}",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"function '{sym.name}' frame {measured} B exceeds "
+                            f"ra_stack_max:{annotated}",
+                        )
+                    )
 
             # 10. ra_isr_safe -- handled by global ISR-chain pass below.
             elif rule == "ra_isr_safe":
@@ -462,40 +524,49 @@ def enforce_rules(
                 for cs in direct_calls_by_callee.get(sym.name, []):
                     body = direct_calls_by_caller.get(cs.caller_name, [])
                     has_take = any(
-                        c.callee_name == "RA_TAKE_LOCK"
-                        and c.caller_line < cs.caller_line
+                        c.callee_name == "RA_TAKE_LOCK" and c.caller_line < cs.caller_line
                         for c in body
                     )
                     if not has_take:
-                        out.append(Violation(
-                            rule, cs.caller_file, cs.caller_line,
-                            f"call to '{sym.name}' (expects lock '{lock}') "
-                            f"missing preceding RA_TAKE_LOCK(\"{lock}\")",
-                        ))
+                        out.append(
+                            Violation(
+                                rule,
+                                cs.caller_file,
+                                cs.caller_line,
+                                f"call to '{sym.name}' (expects lock '{lock}') "
+                                f'missing preceding RA_TAKE_LOCK("{lock}")',
+                            )
+                        )
 
             # 12. ra_host_friendly
             elif rule == "ra_host_friendly":
                 for cs in direct_calls_by_caller.get(sym.name, []):
                     callee_sym = symbols.get(cs.callee_name)
                     if callee_sym and any(
-                        a.startswith("ra_hw_mmio") or
-                        a.startswith("RA_HW_REGISTER_ACCESS")
+                        a.startswith(("ra_hw_mmio", "RA_HW_REGISTER_ACCESS"))
                         for a in callee_sym.annotations
                     ):
-                        out.append(Violation(
-                            rule, cs.caller_file, cs.caller_line,
-                            f"host-friendly '{sym.name}' calls MMIO "
-                            f"accessor '{cs.callee_name}' (would break in sim)",
-                        ))
+                        out.append(
+                            Violation(
+                                rule,
+                                cs.caller_file,
+                                cs.caller_line,
+                                f"host-friendly '{sym.name}' calls MMIO "
+                                f"accessor '{cs.callee_name}' (would break in sim)",
+                            )
+                        )
 
             # 13. ra_latency_max_ns -- warn-only TODO until WCET pass exists.
             elif rule == "ra_latency_max_ns":
-                out.append(Violation(
-                    rule, sym.file, sym.line,
-                    f"ra_latency_max_ns:{arg} on '{sym.name}' deferred "
-                    f"until WCET pass exists",
-                    warn_only=True,
-                ))
+                out.append(
+                    Violation(
+                        rule,
+                        sym.file,
+                        sym.line,
+                        f"ra_latency_max_ns:{arg} on '{sym.name}' deferred until WCET pass exists",
+                        warn_only=True,
+                    )
+                )
 
             # 14. ra_no_recursion -- transitive call closure must not include self
             elif rule == "ra_no_recursion":
@@ -518,11 +589,15 @@ def enforce_rules(
                     if recursive:
                         break
                 if recursive:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"function '{sym.name}' tagged RA_NO_RECURSION "
-                        f"appears in its own transitive call closure",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"function '{sym.name}' tagged RA_NO_RECURSION "
+                            f"appears in its own transitive call closure",
+                        )
+                    )
 
             # 15. ra_bounded_loop:<symbol> -- textual fallback (libclang
             # loses for/while bounds easily; the textual pass is enough
@@ -552,16 +627,18 @@ def enforce_rules(
                             end = i
                             break
                 body = src[start:end]
-                for loop_match in re.finditer(
-                    r"\b(for|while)\s*\(([^)]*)\)", body
-                ):
+                for loop_match in re.finditer(r"\b(for|while)\s*\(([^)]*)\)", body):
                     cond = loop_match.group(2)
                     if arg not in cond:
-                        out.append(Violation(
-                            rule, sym.file, sym.line,
-                            f"loop in '{sym.name}' missing bound symbol "
-                            f"'{arg}' in condition '{cond.strip()}'",
-                        ))
+                        out.append(
+                            Violation(
+                                rule,
+                                sym.file,
+                                sym.line,
+                                f"loop in '{sym.name}' missing bound symbol "
+                                f"'{arg}' in condition '{cond.strip()}'",
+                            )
+                        )
 
             # 16. ra_validates:<n>
             elif rule == "ra_validates":
@@ -570,16 +647,17 @@ def enforce_rules(
                 except ValueError:
                     continue
                 body = direct_calls_by_caller.get(sym.name, [])
-                count = sum(
-                    1 for c in body
-                    if c.callee_name.startswith("RA_CHECK_")
-                )
+                count = sum(1 for c in body if c.callee_name.startswith("RA_CHECK_"))
                 if count < need:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"function '{sym.name}' has {count} RA_CHECK_* calls; "
-                        f"ra_validates:{need} requires at least {need}",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"function '{sym.name}' has {count} RA_CHECK_* calls; "
+                            f"ra_validates:{need} requires at least {need}",
+                        )
+                    )
 
             # 17. ra_owns_resource:<kind> -- approximate: require at least
             # one matching ra_releases_resource:<kind> call somewhere in body.
@@ -590,33 +668,44 @@ def enforce_rules(
                 for c in body:
                     callee = symbols.get(c.callee_name)
                     if callee and any(
-                        a == f"ra_releases_resource:{kind}"
-                        for a in callee.annotations
+                        a == f"ra_releases_resource:{kind}" for a in callee.annotations
                     ):
                         released = True
                         break
                 if not released:
-                    out.append(Violation(
-                        rule, sym.file, sym.line,
-                        f"function '{sym.name}' acquires '{kind}' but no "
-                        f"matching ra_releases_resource:{kind} call found",
-                    ))
+                    out.append(
+                        Violation(
+                            rule,
+                            sym.file,
+                            sym.line,
+                            f"function '{sym.name}' acquires '{kind}' but no "
+                            f"matching ra_releases_resource:{kind} call found",
+                        )
+                    )
 
             # 18. ra_reviewed_by -- informational rollup only.
             elif rule == "ra_reviewed_by":
-                out.append(Violation(
-                    rule, sym.file, sym.line,
-                    f"reviewed-by '{arg}' recorded for '{sym.name}'",
-                    warn_only=True,
-                ))
+                out.append(
+                    Violation(
+                        rule,
+                        sym.file,
+                        sym.line,
+                        f"reviewed-by '{arg}' recorded for '{sym.name}'",
+                        warn_only=True,
+                    )
+                )
 
             # 19. ra_register_bank -- informational only.
             elif rule == "ra_register_bank":
-                out.append(Violation(
-                    rule, sym.file, sym.line,
-                    f"register-bank '{arg}' recorded for '{sym.name}'",
-                    warn_only=True,
-                ))
+                out.append(
+                    Violation(
+                        rule,
+                        sym.file,
+                        sym.line,
+                        f"register-bank '{arg}' recorded for '{sym.name}'",
+                        warn_only=True,
+                    )
+                )
 
             if warn_only:
                 # Mark synthesised entries as warn-only (idempotent).
@@ -625,9 +714,9 @@ def enforce_rules(
 
     # ----- Rule 7 global sweep: malloc/free/calloc/realloc usage --------
     p10_exempt = {
-        sym.name for sym in symbols.values()
-        if any(a.startswith("ra_p10_rule3_exception")
-               for a in sym.annotations)
+        sym.name
+        for sym in symbols.values()
+        if any(a.startswith("ra_p10_rule3_exception") for a in sym.annotations)
     }
     BAD_ALLOC = {"malloc", "free", "calloc", "realloc", "aligned_alloc"}
     for cs in calls:
@@ -638,20 +727,22 @@ def enforce_rules(
         if "/tests/" in cs.caller_file.replace("\\", "/"):
             continue
         if cs.callee_name in BAD_ALLOC and cs.caller_name not in p10_exempt:
-            out.append(Violation(
-                "ra_p10_rule3_exception", cs.caller_file, cs.caller_line,
-                f"call to '{cs.callee_name}' from '{cs.caller_name}' which "
-                f"is not tagged RA_P10_RULE3_EXCEPTION",
-            ))
+            out.append(
+                Violation(
+                    "ra_p10_rule3_exception",
+                    cs.caller_file,
+                    cs.caller_line,
+                    f"call to '{cs.callee_name}' from '{cs.caller_name}' which "
+                    f"is not tagged RA_P10_RULE3_EXCEPTION",
+                )
+            )
 
     # ----- Rule 10 global sweep: ISR chain reachability -----------------
     isr_safe_names = {
-        s.name for s in symbols.values()
-        if any(a == "ra_isr_safe" for a in s.annotations)
+        s.name for s in symbols.values() if any(a == "ra_isr_safe" for a in s.annotations)
     }
     isr_handler_names = {
-        s.name for s in symbols.values()
-        if any(a == "ra_isr_handler" for a in s.annotations)
+        s.name for s in symbols.values() if any(a == "ra_isr_handler" for a in s.annotations)
     }
     if isr_handler_names or isr_safe_names:
         for handler in isr_handler_names:
@@ -669,19 +760,25 @@ def enforce_rules(
                     callee_sym = symbols.get(callee)
                     if callee_sym is None:
                         # External / libc -- treat as unsafe.
-                        out.append(Violation(
-                            "ra_isr_safe", cs.caller_file, cs.caller_line,
-                            f"ISR handler '{handler}' transitively calls "
-                            f"untagged '{callee}'",
-                        ))
+                        out.append(
+                            Violation(
+                                "ra_isr_safe",
+                                cs.caller_file,
+                                cs.caller_line,
+                                f"ISR handler '{handler}' transitively calls untagged '{callee}'",
+                            )
+                        )
                         continue
-                    if not any(a == "ra_isr_safe"
-                               for a in callee_sym.annotations):
-                        out.append(Violation(
-                            "ra_isr_safe", cs.caller_file, cs.caller_line,
-                            f"ISR handler '{handler}' transitively calls "
-                            f"'{callee}' which lacks RA_ISR_SAFE",
-                        ))
+                    if not any(a == "ra_isr_safe" for a in callee_sym.annotations):
+                        out.append(
+                            Violation(
+                                "ra_isr_safe",
+                                cs.caller_file,
+                                cs.caller_line,
+                                f"ISR handler '{handler}' transitively calls "
+                                f"'{callee}' which lacks RA_ISR_SAFE",
+                            )
+                        )
                     stack.append(callee)
 
     return out
@@ -692,19 +789,20 @@ def enforce_rules(
 # --------------------------------------------------------------------------
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true",
-                    help="exit non-zero on any (non-warn-only) violation")
-    ap.add_argument("--list", action="store_true",
-                    help="dump every annotated symbol and exit")
-    ap.add_argument("--quiet", action="store_true",
-                    help="suppress per-TU progress output")
-    ap.add_argument("paths", nargs="*",
-                    help="optional explicit file list (else scan everything)")
+    ap.add_argument(
+        "--check", action="store_true", help="exit non-zero on any (non-warn-only) violation"
+    )
+    ap.add_argument("--list", action="store_true", help="dump every annotated symbol and exit")
+    ap.add_argument("--quiet", action="store_true", help="suppress per-TU progress output")
+    ap.add_argument("paths", nargs="*", help="optional explicit file list (else scan everything)")
     args = ap.parse_args(argv)
 
     if args.paths:
-        tus = [pathlib.Path(p).resolve() for p in args.paths
-               if pathlib.Path(p).suffix in SOURCE_SUFFIXES]
+        tus = [
+            pathlib.Path(p).resolve()
+            for p in args.paths
+            if pathlib.Path(p).suffix in SOURCE_SUFFIXES
+        ]
     else:
         tus = discover_translation_units()
 
@@ -713,17 +811,14 @@ def main(argv: list[str]) -> int:
 
     for tu_path in tus:
         if not args.quiet and not args.check:
-            print(f"  parsing {tu_path.relative_to(REPO_ROOT)}",
-                  file=sys.stderr)
+            print(f"  parsing {tu_path.relative_to(REPO_ROOT)}", file=sys.stderr)
         tu = parse_tu(tu_path)
         if tu is None:
             continue
         try:
             walk_tu(tu, tu_path, symbols, calls)
-        except Exception as exc:  # noqa: BLE001 -- best-effort tool
-            sys.stderr.write(
-                f"  WARN: walk failed for {tu_path}: {exc}\n"
-            )
+        except Exception as exc:
+            sys.stderr.write(f"  WARN: walk failed for {tu_path}: {exc}\n")
 
     if args.list:
         if not symbols:
@@ -732,20 +827,20 @@ def main(argv: list[str]) -> int:
         print(f"{'symbol':<48} {'file':<60} {'annotations'}")
         for s in sorted(symbols.values(), key=lambda x: (x.file, x.line)):
             rel = pathlib.Path(s.file).resolve()
-            try:
+            with contextlib.suppress(ValueError):
                 rel = rel.relative_to(REPO_ROOT)
-            except ValueError:
-                pass
-            print(f"{s.name:<48} {str(rel):<60} {','.join(s.annotations)}")
+            print(f"{s.name:<48} {rel!s:<60} {','.join(s.annotations)}")
         return 0
 
     violations = enforce_rules(symbols, calls)
 
     if not violations:
         if not args.quiet:
-            print(f"check_annotations: 0 violations across "
-                  f"{len(symbols)} annotated symbols, "
-                  f"{len(calls)} call sites, {len(tus)} TUs")
+            print(
+                f"check_annotations: 0 violations across "
+                f"{len(symbols)} annotated symbols, "
+                f"{len(calls)} call sites, {len(tus)} TUs"
+            )
         return 0
 
     fatal = [v for v in violations if not v.warn_only]
@@ -759,13 +854,10 @@ def main(argv: list[str]) -> int:
             rel = pathlib.Path(v.file)
         sys.stderr.write(f"[{tag}] {rel}:{v.line}: [{v.rule}] {v.message}\n")
 
-    sys.stderr.write(
-        f"check_annotations: {len(fatal)} fatal, "
-        f"{len(informational)} informational\n"
-    )
+    sys.stderr.write(f"check_annotations: {len(fatal)} fatal, {len(informational)} informational\n")
 
     if WARN_ONLY_MODE and not args.check:
- # mode: never fatal at the gate; promotion happens later.
+        # mode: never fatal at the gate; promotion happens later.
         return 0
     return 1 if fatal else 0
 

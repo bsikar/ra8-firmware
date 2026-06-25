@@ -25,31 +25,46 @@ import sys
 # rx72n project's equivalent script so both trees use the same
 # canonical replacements.
 REPLACEMENTS: dict[str, str] = {
-    "\u2014": "--",   # em dash
-    "\u2013": "-",    # en dash
-    "\u2018": "'",    # left single quote
-    "\u2019": "'",    # right single quote
-    "\u201c": '"',    # left double quote
-    "\u201d": '"',    # right double quote
+    "\u2014": "--",  # em dash
+    "\u2013": "-",  # en dash
+    "\u2018": "'",  # left single quote
+    "\u2019": "'",  # right single quote
+    "\u201c": '"',  # left double quote
+    "\u201d": '"',  # right double quote
     "\u2026": "...",  # ellipsis
-    "\u00a0": " ",    # non-breaking space
-    "\u00b0": " deg", # degree sign
+    "\u00a0": " ",  # non-breaking space
+    "\u00b0": " deg",  # degree sign
     "\u00b1": "+/-",  # plus-minus
-    "\u00b5": "u",    # micro
-    "\u03bc": "u",    # Greek mu
-    "\u2264": "<=",   # less than or equal
-    "\u2265": ">=",   # greater than or equal
-    "\u2260": "!=",   # not equal
-    "\u2192": "->",   # right arrow
-    "\u2190": "<-",   # left arrow
-    "\u00d7": "x",    # times
-    "\u00f7": "/",    # divide
+    "\u00b5": "u",  # micro
+    "\u03bc": "u",  # Greek mu
+    "\u2264": "<=",  # less than or equal
+    "\u2265": ">=",  # greater than or equal
+    "\u2260": "!=",  # not equal
+    "\u2192": "->",  # right arrow
+    "\u2190": "<-",  # left arrow
+    "\u00d7": "x",  # times
+    "\u00f7": "/",  # divide
 }
 
 
 EXTENSIONS = {
-    ".c", ".h", ".cpp", ".hpp", ".md", ".yml", ".yaml", ".sh", ".py",
-    ".cmake", ".json", ".toml", ".cfg", ".conf", ".tex", ".txt", ".ini",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".md",
+    ".yml",
+    ".yaml",
+    ".sh",
+    ".py",
+    ".cmake",
+    ".json",
+    ".toml",
+    ".cfg",
+    ".conf",
+    ".tex",
+    ".txt",
+    ".ini",
 }
 
 
@@ -113,8 +128,7 @@ def walk(target: pathlib.Path, *, check_only: bool) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", type=pathlib.Path)
-    parser.add_argument("--check", action="store_true",
-                        help="Only report, do not modify")
+    parser.add_argument("--check", action="store_true", help="Only report, do not modify")
     args = parser.parse_args()
 
     changed = walk(args.target, check_only=args.check)

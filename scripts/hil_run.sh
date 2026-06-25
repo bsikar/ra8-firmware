@@ -34,8 +34,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
-    exit 2
+  echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
+  exit 2
 }
 
 HEX=""
@@ -45,18 +45,39 @@ TIMEOUT_S="10"
 UART=""
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --hex)     HEX="$2";     shift 2 ;;
-        --expect)  EXPECT="$2";  shift 2 ;;
-        --baud)    BAUD="$2";    shift 2 ;;
-        --timeout) TIMEOUT_S="$2"; shift 2 ;;
-        --uart)    UART="$2";    shift 2 ;;
-        *) echo "Unknown arg: $1"; usage ;;
-    esac
+  case "$1" in
+    --hex)
+      HEX="$2"
+      shift 2
+      ;;
+    --expect)
+      EXPECT="$2"
+      shift 2
+      ;;
+    --baud)
+      BAUD="$2"
+      shift 2
+      ;;
+    --timeout)
+      TIMEOUT_S="$2"
+      shift 2
+      ;;
+    --uart)
+      UART="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      usage
+      ;;
+  esac
 done
 
 [[ -z "$HEX" || -z "$EXPECT" ]] && usage
-[[ -f "$HEX" ]] || { echo -e "${RED}[HIL]${NC} firmware file not found: $HEX"; exit 2; }
+[[ -f "$HEX" ]] || {
+  echo -e "${RED}[HIL]${NC} firmware file not found: $HEX"
+  exit 2
+}
 
 # Auto-detect J-Link OB CDC port on the Pi when --uart not given.  Without
 # this the script falls back to /dev/ttyACM0, which is occupied by the
@@ -64,7 +85,8 @@ done
 # stale from before a reset), so reads return garbage from the wrong port.
 # The J-Link OB CDC always reports ID_MODEL=J-Link via udev.
 if [[ -z "$UART" ]]; then
-    UART=$(ssh "$PI_HOST" bash -s <<'REMOTE'
+  UART=$(
+    ssh "$PI_HOST" bash -s <<'REMOTE'
 for dev in /dev/ttyACM*; do
     [[ -e "$dev" ]] || continue
     if udevadm info "$dev" 2>/dev/null | grep -q "ID_MODEL=J-Link"; then
@@ -74,8 +96,8 @@ for dev in /dev/ttyACM*; do
 done
 echo "/dev/ttyACM0"
 REMOTE
-)
-    UART="${UART:-/dev/ttyACM0}"
+  )
+  UART="${UART:-/dev/ttyACM0}"
 fi
 
 APP_NAME="$(basename "${HEX%.*}")"
@@ -94,17 +116,17 @@ echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIME
 # communicate reliably.  Using 4000 kHz causes RAMCode timeout.
 ELF="${HEX%.hex}.elf"
 STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.${FIRMWARE_EXT}"
-OFS_ARGS=( '--remove-section=.option_setting*' )
+OFS_ARGS=('--remove-section=.option_setting*')
 if [[ "$FIRMWARE_EXT" == "elf" ]]; then
-    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex" 2>/dev/null \
-        || arm-none-eabi-objcopy -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex"
-    STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.hex"
+  arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex" 2>/dev/null ||
+    arm-none-eabi-objcopy -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex"
+  STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.hex"
 elif [[ -f "$ELF" ]]; then
-    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_FW" 2>/dev/null \
-        || cp "$HEX" "$STRIPPED_FW"
+  arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_FW" 2>/dev/null ||
+    cp "$HEX" "$STRIPPED_FW"
 else
-    arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_FW" 2>/dev/null \
-        || cp "$HEX" "$STRIPPED_FW"
+  arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_FW" 2>/dev/null ||
+    cp "$HEX" "$STRIPPED_FW"
 fi
 
 # ---- 2. Copy firmware to Pi --------------------------------------------------
@@ -146,7 +168,8 @@ REMOTE
 
 # ---- 3. Read UART and check for expected string ------------------------------
 echo -e "${YELLOW}[HIL]${NC} waiting for '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
-RESULT=$(ssh "$PI_HOST" bash <<REMOTE
+RESULT=$(
+  ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 # Configure baud rate once before opening the device for reading.
 stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb
@@ -167,9 +190,9 @@ REMOTE
 echo -e "${YELLOW}[HIL]${NC} output: ${RESULT}"
 
 if echo "$RESULT" | grep -q "FOUND\|MATCH"; then
-    echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
-    exit 0
+  echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
+  exit 0
 else
-    echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: '${EXPECT}' not seen within ${TIMEOUT_S}s"
-    exit 1
+  echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: '${EXPECT}' not seen within ${TIMEOUT_S}s"
+  exit 1
 fi

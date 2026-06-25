@@ -31,8 +31,10 @@ def decode_cover_thumb(blob):
     if blob[:4] != b"RBKZ":
         return None
     inflated = zlib.decompress(blob[8:])
-    u32 = lambda o: struct.unpack_from("<I", inflated, o)[0]
-    u16 = lambda o: struct.unpack_from("<H", inflated, o)[0]
+    def u32(o):
+        return struct.unpack_from("<I", inflated, o)[0]
+    def u16(o):
+        return struct.unpack_from("<H", inflated, o)[0]
     cover = u32(36)
     if cover == 0xFFFFFFFF:
         return None
@@ -40,7 +42,7 @@ def decode_cover_thumb(blob):
     src_w, src_h, fmt, data_off = u16(img + 4), u16(img + 6), inflated[img + 8], u32(img + 12)
     if fmt != 0 or src_w == 0 or src_h == 0:
         return None
-    data = inflated[u32(88) + data_off:]
+    data = inflated[u32(88) + data_off :]
     fit_w = THUMB_W
     fit_h = (THUMB_W * src_h) // src_w
     if fit_h > THUMB_H:
@@ -114,7 +116,9 @@ def main(argv):
             parts.append(emit_array(thumb_name, tbytes))
         names.append((blob_name, len(data), title, author, thumb_name, tw, th))
         parts.append("")
-    parts.append("/** @brief One openable baked book: compressed blob + cover thumbnail + metadata. */")
+    parts.append(
+        "/** @brief One openable baked book: compressed blob + cover thumbnail + metadata. */"
+    )
     parts.append("typedef struct {")
     parts.append("  const uint8_t* blob;     /**< RBKZ container start.            */")
     parts.append("  uint32_t       len;      /**< Container length in bytes.       */")
@@ -139,8 +143,10 @@ def main(argv):
     parts.append("")
     with open(out_path, "w") as f:
         f.write("\n".join(parts))
-    sys.stderr.write(f"bake_library: wrote {out_path} ({len(books)} books, "
-                     f"{sum(len(d) for d, _, _, _ in books)} blob bytes + thumbnails)\n")
+    sys.stderr.write(
+        f"bake_library: wrote {out_path} ({len(books)} books, "
+        f"{sum(len(d) for d, _, _, _ in books)} blob bytes + thumbnails)\n"
+    )
     return 0
 
 

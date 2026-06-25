@@ -10,10 +10,10 @@ transliterated) to satisfy the repository encoding policy.
 @copyright Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 """
+
 import argparse
 import os
 import struct
-import sys
 import unicodedata
 import zlib
 
@@ -28,7 +28,8 @@ def read_meta(path):
     with open(path, "rb") as fh:
         container = fh.read()
     if container[:4] != b"RBKZ":
-        raise ValueError(f"{path}: not a .rabook container")
+        msg = f"{path}: not a .rabook container"
+        raise ValueError(msg)
     inflated_size = struct.unpack("<I", container[4:8])[0]
     flat = zlib.decompress(container[8:])
     h = struct.unpack("<8s23I", flat[:100])
@@ -40,9 +41,13 @@ def read_meta(path):
         return flat[start:end].decode("utf-8", "replace")
 
     return {
-        "title": s(h[4]), "author": s(h[5]), "language": s(h[6]),
-        "file_size": len(container), "inflated_size": inflated_size,
-        "chapters": h[9], "images": h[17],
+        "title": s(h[4]),
+        "author": s(h[5]),
+        "language": s(h[6]),
+        "file_size": len(container),
+        "inflated_size": inflated_size,
+        "chapters": h[9],
+        "images": h[17],
     }
 
 
@@ -105,16 +110,21 @@ def main():
     lines.append(" * @since Version 1.0.0")
     lines.append(" */")
     lines.append("typedef enum : uint32_t {")
-    lines.append(f"  k_ra_book_library_max_inflated = {biggest}U, /**< Worst-case inflated size. */")
+    lines.append(
+        f"  k_ra_book_library_max_inflated = {biggest}U, /**< Worst-case inflated size. */"
+    )
     lines.append("} ra_book_library_scratch_t;")
     lines.append("")
     lines.append("/** @brief The bundled book index. Generated; data table, magic numbers ok. */")
     lines.append("// NOLINTBEGIN(readability-magic-numbers)")
-    lines.append("static const ra_book_library_entry_t g_ra_book_library[k_ra_book_library_count] = {")
+    lines.append(
+        "static const ra_book_library_entry_t g_ra_book_library[k_ra_book_library_count] = {"
+    )
     for e in entries:
         lines.append(
             f'    {{ "{ascii_only(e["title"])}", "{ascii_only(e["author"])}", '
-            f'"{ascii_only(e["filename"])}", {e["file_size"]}U, {e["inflated_size"]}U }},')
+            f'"{ascii_only(e["filename"])}", {e["file_size"]}U, {e["inflated_size"]}U }},'
+        )
     lines.append("};")
     lines.append("// NOLINTEND(readability-magic-numbers)")
     lines.append("")
@@ -122,8 +132,10 @@ def main():
     with open(args.output, "w", encoding="ascii") as fh:
         fh.write("\n".join(lines))
     total_disk = sum(e["file_size"] for e in entries)
-    print(f"wrote {args.output}: {len(entries)} books, "
-          f"{total_disk // 1024 // 1024} MB on disk, max inflate {biggest // 1024} KB")
+    print(
+        f"wrote {args.output}: {len(entries)} books, "
+        f"{total_disk // 1024 // 1024} MB on disk, max inflate {biggest // 1024} KB"
+    )
 
 
 if __name__ == "__main__":

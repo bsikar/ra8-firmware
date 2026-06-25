@@ -44,45 +44,70 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-tag()  { printf "${CYAN}[recover]${NC} %s\n" "$*"; }
-ok()   { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
-err()  { printf "${RED}[FAIL]${NC} %s\n" "$*"; }
+tag() { printf "${CYAN}[recover]${NC} %s\n" "$*"; }
+ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+err() { printf "${RED}[FAIL]${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 
-[[ $# -ge 1 ]] || { echo "Usage: $0 <app> [--expect <string>] [--uart <dev>] [--baud N] [--timeout N]"; exit 2; }
-APP="$1"; shift
+[[ $# -ge 1 ]] || {
+  echo "Usage: $0 <app> [--expect <string>] [--uart <dev>] [--baud N] [--timeout N]"
+  exit 2
+}
+APP="$1"
+shift
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --expect)  EXPECT="$2";    shift 2 ;;
-        --uart)    UART="$2";      shift 2 ;;
-        --baud)    BAUD="$2";      shift 2 ;;
-        --timeout) TIMEOUT_S="$2"; shift 2 ;;
-        *) echo "Unknown arg: $1"; exit 2 ;;
-    esac
+  case "$1" in
+    --expect)
+      EXPECT="$2"
+      shift 2
+      ;;
+    --uart)
+      UART="$2"
+      shift 2
+      ;;
+    --baud)
+      BAUD="$2"
+      shift 2
+      ;;
+    --timeout)
+      TIMEOUT_S="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      exit 2
+      ;;
+  esac
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ---- locate app dir ----------------------------------------------------------
-APP_DIR="$(find "$ROOT/examples" -name "main.c" \
-    | sed 's|/main\.c||' \
-    | while read -r d; do
-        [[ "$(basename "$d")" == "$APP" ]] && echo "$d" || true
-    done | head -1)"
+APP_DIR="$(find "$ROOT/examples" -name "main.c" |
+  sed 's|/main\.c||' |
+  while read -r d; do
+    [[ "$(basename "$d")" == "$APP" ]] && echo "$d" || true
+  done | head -1)"
 
-[[ -n "$APP_DIR" ]] || { err "app '$APP' not found under examples/"; exit 1; }
+[[ -n "$APP_DIR" ]] || {
+  err "app '$APP' not found under examples/"
+  exit 1
+}
 
 HEX="${APP_DIR}/build/${APP}.hex"
 ELF="${APP_DIR}/build/${APP}.elf"
 
 # ---- build if needed ---------------------------------------------------------
 if [[ ! -f "$HEX" ]]; then
-    tag "building $APP..."
-    make -C "$ROOT" "$APP"
+  tag "building $APP..."
+  make -C "$ROOT" "$APP"
 fi
-[[ -f "$HEX" ]] || { err "build failed -- no hex at $HEX"; exit 1; }
+[[ -f "$HEX" ]] || {
+  err "build failed -- no hex at $HEX"
+  exit 1
+}
 
 # ---- strip OFS sections (the root cause of RAMCode timeout) ------------------
 # OFS sections at 0x0300A100+ cause J-Link RAMCode to time out during
@@ -93,26 +118,27 @@ fi
 # J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
 # communicate reliably.  Using 4000 kHz causes RAMCode timeout.
 STRIPPED_HEX="/tmp/hil_recover_${APP}_mram.hex"
-OFS_SECTIONS=( '--remove-section=.option_setting*' )
+OFS_SECTIONS=('--remove-section=.option_setting*')
 if [[ -f "$ELF" ]]; then
-    arm-none-eabi-objcopy "${OFS_SECTIONS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null \
-        || arm-none-eabi-objcopy -O ihex "$ELF" "$STRIPPED_HEX"
+  arm-none-eabi-objcopy "${OFS_SECTIONS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null ||
+    arm-none-eabi-objcopy -O ihex "$ELF" "$STRIPPED_HEX"
 else
-    arm-none-eabi-objcopy -I ihex "${OFS_SECTIONS[@]}" -O ihex "$HEX" "$STRIPPED_HEX" 2>/dev/null \
-        || cp "$HEX" "$STRIPPED_HEX"
+  arm-none-eabi-objcopy -I ihex "${OFS_SECTIONS[@]}" -O ihex "$HEX" "$STRIPPED_HEX" 2>/dev/null ||
+    cp "$HEX" "$STRIPPED_HEX"
 fi
 tag "OFS-stripped hex: $STRIPPED_HEX"
 
 # ---- flash attempt function --------------------------------------------------
 internal_try_flash() {
-    local remote_hex="/tmp/hil_recover_${APP}_mram.hex"
-    local log="/tmp/hil_recover_jlink_${APP}.log"
+  local remote_hex="/tmp/hil_recover_${APP}_mram.hex"
+  local log="/tmp/hil_recover_jlink_${APP}.log"
 
-    scp -q "$STRIPPED_HEX" "${PI_HOST}:${remote_hex}" 2>/dev/null || {
-        printf "(cannot reach Pi ${PI_HOST})\n"; return 1
-    }
+  scp -q "$STRIPPED_HEX" "${PI_HOST}:${remote_hex}" 2>/dev/null || {
+    printf "(cannot reach Pi ${PI_HOST})\n"
+    return 1
+  }
 
-    ssh "$PI_HOST" bash <<REMOTE > "$log" 2>&1 || true
+  ssh "$PI_HOST" bash <<REMOTE >"$log" 2>&1 || true
 set -uo pipefail
 TMP=\$(mktemp)
 trap 'rm -f "\$TMP"' EXIT
@@ -130,80 +156,81 @@ JLINK
 JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript "\$TMP" 2>&1
 REMOTE
 
-    local vtref halted ramcode_err ok_count download_count
-    vtref="$(grep -oE 'VTref=[0-9.]+V' "$log" | head -1 | sed 's/VTref=//' || echo '?')"
-    halted="$(grep -c 'CPU could not be halted' "$log" || true)"
-    ramcode_err="$(grep -c 'RAMCode did not respond\|Failed to prepare' "$log" || true)"
-    ok_count="$(grep -c 'O\.K\.' "$log" || true)"
-    download_count="$(grep -c 'Downloading file\|Contents already match\|Skipped\.' "$log" || true)"
+  local vtref halted ramcode_err ok_count download_count
+  vtref="$(grep -oE 'VTref=[0-9.]+V' "$log" | head -1 | sed 's/VTref=//' || echo '?')"
+  halted="$(grep -c 'CPU could not be halted' "$log" || true)"
+  ramcode_err="$(grep -c 'RAMCode did not respond\|Failed to prepare' "$log" || true)"
+  ok_count="$(grep -c 'O\.K\.' "$log" || true)"
+  download_count="$(grep -c 'Downloading file\|Contents already match\|Skipped\.' "$log" || true)"
 
-    printf "  VTref=%-8s " "$vtref"
+  printf "  VTref=%-8s " "$vtref"
 
-    if [[ "$ok_count" -gt 0 && "$halted" -eq 0 && "$download_count" -gt 0 && "$ramcode_err" -eq 0 ]]; then
-        return 0
-    fi
+  if [[ "$ok_count" -gt 0 && "$halted" -eq 0 && "$download_count" -gt 0 && "$ramcode_err" -eq 0 ]]; then
+    return 0
+  fi
 
-    # show why it failed
-    if grep -q 'Cannot connect to the probe' "$log" 2>/dev/null; then
-        printf "(J-Link not found -- is USB connected to Pi?)\n"
-    elif [[ "$halted" -gt 0 ]]; then
-        printf "(CPU could not be halted)\n"
-    elif [[ "$ramcode_err" -gt 0 ]]; then
-        printf "(RAMCode timeout -- power cycle may help)\n"
-        grep -E 'RAMCode|Failed to prepare' "$log" | head -3 | sed 's/^/    /'
-    else
-        printf "(unknown failure)\n"
-        grep -iE 'error|fail' "$log" | grep -v 'Writing target memory' | head -3 | sed 's/^/    /'
-    fi
-    return 1
+  # show why it failed
+  if grep -q 'Cannot connect to the probe' "$log" 2>/dev/null; then
+    printf "(J-Link not found -- is USB connected to Pi?)\n"
+  elif [[ "$halted" -gt 0 ]]; then
+    printf "(CPU could not be halted)\n"
+  elif [[ "$ramcode_err" -gt 0 ]]; then
+    printf "(RAMCode timeout -- power cycle may help)\n"
+    grep -E 'RAMCode|Failed to prepare' "$log" | head -3 | sed 's/^/    /'
+  else
+    printf "(unknown failure)\n"
+    grep -iE 'error|fail' "$log" | grep -v 'Writing target memory' | head -3 | sed 's/^/    /'
+  fi
+  return 1
 }
 
 # ---- flash loop --------------------------------------------------------------
 tag "flashing $APP (up to $MAX_ATTEMPTS attempts)..."
 attempt=0
 while [[ $attempt -lt $MAX_ATTEMPTS ]]; do
-    attempt=$((attempt + 1))
-    printf "  [attempt %d/%d] " "$attempt" "$MAX_ATTEMPTS"
+  attempt=$((attempt + 1))
+  printf "  [attempt %d/%d] " "$attempt" "$MAX_ATTEMPTS"
 
-    if internal_try_flash; then
-        printf "\n"
-        ok "flashed $APP on attempt $attempt"
-        break
-    fi
+  if internal_try_flash; then
+    printf "\n"
+    ok "flashed $APP on attempt $attempt"
+    break
+  fi
 
-    if [[ $attempt -lt $MAX_ATTEMPTS ]]; then
-        echo ""
-        warn "flash failed -- please POWER CYCLE the board now"
-        warn "(unplug and replug the USB cable, or hold the RESET button)"
-        printf "  Press ENTER when board is back on..."
-        read -r
-        echo ""
-    fi
+  if [[ $attempt -lt $MAX_ATTEMPTS ]]; then
+    echo ""
+    warn "flash failed -- please POWER CYCLE the board now"
+    warn "(unplug and replug the USB cable, or hold the RESET button)"
+    printf "  Press ENTER when board is back on..."
+    read -r
+    echo ""
+  fi
 done
 
 if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
-    # Check if the last attempt succeeded (loop exits on break or exhaustion)
-    printf "  [attempt %d/%d] " "$((attempt))" "$MAX_ATTEMPTS"
-    if internal_try_flash; then
-        printf "\n"
-        ok "flashed $APP on attempt $attempt"
-    else
-        printf "\n"
-        err "all $MAX_ATTEMPTS attempts failed -- see /tmp/hil_recover_jlink_${APP}.log on Pi"
-        exit 1
-    fi
+  # Check if the last attempt succeeded (loop exits on break or exhaustion)
+  printf "  [attempt %d/%d] " "$((attempt))" "$MAX_ATTEMPTS"
+  if internal_try_flash; then
+    printf "\n"
+    ok "flashed $APP on attempt $attempt"
+  else
+    printf "\n"
+    err "all $MAX_ATTEMPTS attempts failed -- see /tmp/hil_recover_jlink_${APP}.log on Pi"
+    exit 1
+  fi
 fi
 
 # ---- UART verification (runs on Pi) ------------------------------------------
 if [[ -z "$EXPECT" ]]; then
-    exit 0
+  exit 0
 fi
 
 [[ -z "$UART" ]] && UART="/dev/ttyACM0"
 
 tag "waiting for '$EXPECT' on Pi:$UART (${TIMEOUT_S}s)..."
 
-RESULT=$(ssh "$PI_HOST" bash <<REMOTE
+RESULT=$(
+  ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb
 timeout ${TIMEOUT_S} bash -c '
@@ -222,9 +249,9 @@ REMOTE
 echo "$RESULT" | grep '^\[uart\]' | head -10
 
 if echo "$RESULT" | grep -q "FOUND\|MATCH"; then
-    ok "$APP: saw '$EXPECT'"
-    exit 0
+  ok "$APP: saw '$EXPECT'"
+  exit 0
 else
-    err "$APP: '$EXPECT' not seen within ${TIMEOUT_S}s"
-    exit 1
+  err "$APP: '$EXPECT' not seen within ${TIMEOUT_S}s"
+  exit 1
 fi
