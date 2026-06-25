@@ -40,6 +40,7 @@ if [ ! -f "$shelf_lib" ]; then
     cat > "$shelf_lib" <<'STUB'
 /**
  * @file library.h
+ * @generated build_all_examples.sh stub -- do not edit by hand.
  * @brief Stub baked book library (0 books) emitted by build_all_examples.sh.
  * @details ereader_shelf includes this generated header. The real version
  *          (full .rabook blobs + pre-decoded cover thumbnails) is produced by

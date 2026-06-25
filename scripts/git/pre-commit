@@ -194,6 +194,50 @@ if [[ -n "$c_files" ]]; then
         error_found=1
     fi
 
+    # ---- File-size cap (maintainability) --------------------------------
+    # Per-function Rule 4 keeps routines small but does nothing about the
+    # file they live in: a TU can stay Rule-4-clean while growing into a
+    # multi-thousand-line god-file, or the same body can be copy-pasted
+    # across sibling files until each is enormous.  This source-level
+    # checker caps any single .c/.h under libs/, src/, port/, examples/.
+    if ! python3 scripts/utils/check_file_size.py; then
+        echo "[FAIL] file-size violation(s) above the 1000-line cap."
+        echo "   Split along responsibilities or extract a shared helper."
+        error_found=1
+    fi
+
+    # ---- Trailing newline (all first-party source) ----------------------
+    # .editorconfig declares insert_final_newline but only editors honour
+    # it, and .clang-format InsertNewlineAtEOF only covers C/C++ that
+    # reaches the formatter.  This gate enforces a final newline on every
+    # first-party source file (C/C++, Python, shell, CMake, YAML, ...).
+    if ! python3 scripts/utils/check_final_newline.py; then
+        echo "[FAIL] file(s) missing a trailing newline."
+        echo "   Add a single newline at end of file."
+        error_found=1
+    fi
+
+    # ---- Python lint + format (ruff) ------------------------------------
+    # Broad ruff ruleset over scripts/, tools/, tests/.  Fails on ANY
+    # finding (no grandfathering).  Skips with a notice if ruff is not
+    # installed locally (CI runs it with --require, so it cannot be
+    # skipped there).
+    if ! python3 scripts/utils/check_ruff.py; then
+        echo "[FAIL] ruff lint/format finding(s)."
+        echo "   Fix the finding or run 'ruff format'."
+        error_found=1
+    fi
+
+    # ---- Shell lint + format (shellcheck + shfmt) -----------------------
+    # shellcheck --severity=warning + shfmt; fails on ANY finding (no
+    # grandfathering).  Skips with a notice if the tools are not installed
+    # locally (CI runs them with --require).
+    if ! python3 scripts/utils/check_shell.py; then
+        echo "[FAIL] shellcheck/shfmt finding(s)."
+        echo "   Fix the finding or run 'shfmt -w -i 2 -ci <file>'."
+        error_found=1
+    fi
+
     # ---- No magic numbers (whole tree) ----------------------------------
     # Same blind-spot story as function-size: clang-tidy's
     # readability-magic-numbers only fires for files in the host
