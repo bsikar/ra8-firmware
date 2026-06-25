@@ -67,28 +67,13 @@
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_sci_regs.h"
 #include "ra_check.h"
-#include "ra_dma.h"
-#include "ra_dmac.h"
 #include "ra_err.h"
 #include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+#include "ra_sci_internal.h"
 
 static const char* s_tag = "SCI";
-
-/* =============================================================================
- * Local constants
- * =============================================================================
- */
-
-/**
- * @enum ra_sci_limits_inner_t
- * @brief File-local bounds and channel-table sizing.
- */
-typedef enum : uint8_t {
-  k_ra_sci_channel_max_index = 9U,  /**< SCI0..SCI9. */
-  k_ra_sci_channel_count_val = 10U, /**< Total channels tracked. */
-} ra_sci_limits_inner_t;
 
 /* =============================================================================
  * Per-channel state
@@ -96,39 +81,15 @@ typedef enum : uint8_t {
  */
 
 /**
- * @struct ra_sci_state_t
- * @brief Per-channel dispatch state.
+ * @var s_sci_state
+ * @brief Per-channel allocation + dispatch table.
  *
  * @details
- * Holds both the user-attached callback and the byte-stream state that
- * backs ``ra_sci_write`` / ``ra_sci_read``. The byte-stream fields
- * (``tx_buf`` / ``tx_len`` / ``tx_idx`` / ``rx_buf`` / ``rx_len`` /
- * ``rx_idx``) describe the in-flight async transfer: ``tx_idx`` and
- * ``rx_idx`` advance from 0 toward the matching ``*_len`` as TXI / RXI
- * fire. A direction is "idle" when its ``*_len`` is zero; that is the
- * sentinel checked by ``ra_sci_abort`` and ``ra_sci_read_stop``.
+ * Canonical definition of the cross-TU dispatch table declared
+ * ``extern`` in ``ra_sci_internal.h``; ``ra_sci_dma_isr.c`` reads and
+ * mutates the same storage from the ISR dispatch path.
  */
-typedef struct {
-  ra_sci_rx_fn_t rx_fn;       /**< Attached RX handler, NULL if none. */
-  void*          rx_ctx;      /**< RX handler context. */
-  ra_sci_tx_fn_t tx_fn;       /**< Attached TX handler, NULL if none. */
-  void*          tx_ctx;      /**< TX handler context. */
-  bool           initialized; /**< True after ra_sci_init. */
-  /* Async TX state (ra_sci_write). */
-  const uint8_t* tx_buf; /**< Source buffer, NULL when idle. */
-  uint32_t       tx_len; /**< Total bytes requested. 0 = idle. */
-  uint32_t       tx_idx; /**< Next byte index to push. */
-  /* Async RX state (ra_sci_read). */
-  uint8_t* rx_buf; /**< Destination buffer, NULL when idle. */
-  uint32_t rx_len; /**< Total bytes requested. 0 = idle. */
-  uint32_t rx_idx; /**< Next byte index to write. */
-} ra_sci_state_t;
-
-/**
- * @var s_state
- * @brief Per-channel allocation + dispatch table.
- */
-static ra_sci_state_t s_state[k_ra_sci_channel_count_val];
+ra_sci_state_t s_sci_state[k_ra_sci_channel_count_val];
 
 /**
  * @var s_mstp_table
@@ -470,13 +431,13 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
    * separately by ra_sci_attach_{rx,tx}_handler. */
   reg->CCR0 = (1U << k_ra_sci_ccr0_bit_te) | (1U << k_ra_sci_ccr0_bit_re);
 
-  s_state[channel].initialized = true;
-  s_state[channel].tx_buf      = nullptr;
-  s_state[channel].tx_len      = 0U;
-  s_state[channel].tx_idx      = 0U;
-  s_state[channel].rx_buf      = nullptr;
-  s_state[channel].rx_len      = 0U;
-  s_state[channel].rx_idx      = 0U;
+  s_sci_state[channel].initialized = true;
+  s_sci_state[channel].tx_buf      = nullptr;
+  s_sci_state[channel].tx_len      = 0U;
+  s_sci_state[channel].tx_idx      = 0U;
+  s_sci_state[channel].rx_buf      = nullptr;
+  s_sci_state[channel].rx_len      = 0U;
+  s_sci_state[channel].rx_idx      = 0U;
   ra_log_info_val(s_tag, "sci_init channel", (uint32_t)channel);
   return k_ra_ok;
 }
@@ -489,18 +450,18 @@ ra_err_t ra_sci_deinit(uint8_t channel)
   }
 
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-  reg->CCR0                    = 0U;
-  s_state[channel].rx_fn       = nullptr;
-  s_state[channel].rx_ctx      = nullptr;
-  s_state[channel].tx_fn       = nullptr;
-  s_state[channel].tx_ctx      = nullptr;
-  s_state[channel].initialized = false;
-  s_state[channel].tx_buf      = nullptr;
-  s_state[channel].tx_len      = 0U;
-  s_state[channel].tx_idx      = 0U;
-  s_state[channel].rx_buf      = nullptr;
-  s_state[channel].rx_len      = 0U;
-  s_state[channel].rx_idx      = 0U;
+  reg->CCR0                        = 0U;
+  s_sci_state[channel].rx_fn       = nullptr;
+  s_sci_state[channel].rx_ctx      = nullptr;
+  s_sci_state[channel].tx_fn       = nullptr;
+  s_sci_state[channel].tx_ctx      = nullptr;
+  s_sci_state[channel].initialized = false;
+  s_sci_state[channel].tx_buf      = nullptr;
+  s_sci_state[channel].tx_len      = 0U;
+  s_sci_state[channel].tx_idx      = 0U;
+  s_sci_state[channel].rx_buf      = nullptr;
+  s_sci_state[channel].rx_len      = 0U;
+  s_sci_state[channel].rx_idx      = 0U;
   return ra_mstp_disable(s_mstp_table[channel]);
 }
 
@@ -594,8 +555,8 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  s_state[channel].rx_fn  = fn;
-  s_state[channel].rx_ctx = ctx;
+  s_sci_state[channel].rx_fn  = fn;
+  s_sci_state[channel].rx_ctx = ctx;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
    * RIE (bit 16). */
   const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
@@ -613,8 +574,8 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  s_state[channel].tx_fn  = fn;
-  s_state[channel].tx_ctx = ctx;
+  s_sci_state[channel].tx_fn  = fn;
+  s_sci_state[channel].tx_ctx = ctx;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
    * TIE (bit 20). */
   const uint32_t tie = (1U << k_ra_sci_ccr0_bit_tie);
@@ -771,18 +732,18 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_state[channel].initialized) {
+  if (!s_sci_state[channel].initialized) {
     return k_ra_err_invalid_arg;
   }
-  if (s_state[channel].tx_len != 0U) {
+  if (s_sci_state[channel].tx_len != 0U) {
     return k_ra_err_busy;
   }
   if (len == 0U) {
     return k_ra_ok;
   }
-  s_state[channel].tx_buf = data;
-  s_state[channel].tx_len = len;
-  s_state[channel].tx_idx = 0U;
+  s_sci_state[channel].tx_buf = data;
+  s_sci_state[channel].tx_len = len;
+  s_sci_state[channel].tx_idx = 0U;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- arm
    * TIE so the next TDRE event fires the dispatcher. Mirrors FSP
    * r_sci_b_uart.c which sets TE | TIE in a single store. */
@@ -799,18 +760,18 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_state[channel].initialized) {
+  if (!s_sci_state[channel].initialized) {
     return k_ra_err_invalid_arg;
   }
-  if (s_state[channel].rx_len != 0U) {
+  if (s_sci_state[channel].rx_len != 0U) {
     return k_ra_err_busy;
   }
   if (len == 0U) {
     return k_ra_ok;
   }
-  s_state[channel].rx_buf = buf;
-  s_state[channel].rx_len = len;
-  s_state[channel].rx_idx = 0U;
+  s_sci_state[channel].rx_buf = buf;
+  s_sci_state[channel].rx_len = len;
+  s_sci_state[channel].rx_idx = 0U;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- arm
    * RIE so the next RDRF event fires the dispatcher. Mirrors FSP
    * r_sci_b_uart.c which stashes p_rx_dest / rx_dest_bytes for
@@ -831,18 +792,18 @@ ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
   }
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
   if ((direction & k_ra_sci_dir_tx) != 0U) {
-    const uint32_t tie_teie = (1U << k_ra_sci_ccr0_bit_tie) | (1U << k_ra_sci_ccr0_bit_teie);
-    reg->CCR0               = reg->CCR0 & ~tie_teie;
-    s_state[channel].tx_buf = nullptr;
-    s_state[channel].tx_len = 0U;
-    s_state[channel].tx_idx = 0U;
+    const uint32_t tie_teie     = (1U << k_ra_sci_ccr0_bit_tie) | (1U << k_ra_sci_ccr0_bit_teie);
+    reg->CCR0                   = reg->CCR0 & ~tie_teie;
+    s_sci_state[channel].tx_buf = nullptr;
+    s_sci_state[channel].tx_len = 0U;
+    s_sci_state[channel].tx_idx = 0U;
   }
   if ((direction & k_ra_sci_dir_rx) != 0U) {
-    const uint32_t rie      = (1U << k_ra_sci_ccr0_bit_rie);
-    reg->CCR0               = reg->CCR0 & ~rie;
-    s_state[channel].rx_buf = nullptr;
-    s_state[channel].rx_len = 0U;
-    s_state[channel].rx_idx = 0U;
+    const uint32_t rie          = (1U << k_ra_sci_ccr0_bit_rie);
+    reg->CCR0                   = reg->CCR0 & ~rie;
+    s_sci_state[channel].rx_buf = nullptr;
+    s_sci_state[channel].rx_len = 0U;
+    s_sci_state[channel].rx_idx = 0U;
   }
   return k_ra_ok;
 }
@@ -856,13 +817,13 @@ ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
   }
   /* Mirror FSP `R_SCI_B_UART_ReadStop` r_sci_b_uart.c: stash the
    * pre-stop count, zero state, then disarm RIE. */
-  const uint32_t pending  = (s_state[channel].rx_len > s_state[channel].rx_idx)
-                              ? (s_state[channel].rx_len - s_state[channel].rx_idx)
-                              : 0U;
-  *remaining              = pending;
-  s_state[channel].rx_buf = nullptr;
-  s_state[channel].rx_len = 0U;
-  s_state[channel].rx_idx = 0U;
+  const uint32_t pending      = (s_sci_state[channel].rx_len > s_sci_state[channel].rx_idx)
+                                  ? (s_sci_state[channel].rx_len - s_sci_state[channel].rx_idx)
+                                  : 0U;
+  *remaining                  = pending;
+  s_sci_state[channel].rx_buf = nullptr;
+  s_sci_state[channel].rx_len = 0U;
+  s_sci_state[channel].rx_idx = 0U;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
   const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
   reg->CCR0          = reg->CCR0 & ~rie;
@@ -894,189 +855,4 @@ ra_err_t ra_sci_receive_resume(uint8_t channel)
   const uint32_t re = (1U << k_ra_sci_ccr0_bit_re);
   reg->CCR0         = reg->CCR0 | re;
   return k_ra_ok;
-}
-
-/* ---- DMA TX / RX ----------------------------------------- */
-
-/* Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR -- see surrounding code and HUM citations. */
-static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
-                                                  uintptr_t            dst,
-                                                  uint16_t             len,
-                                                  bool                 src_inc,
-                                                  bool                 dst_inc,
-                                                  ra_dma_complete_fn_t on_complete,
-                                                  void*                ctx)
-{
-  ra_dma_request_t req = {};
-  req.src_addr         = src;
-  req.dst_addr         = dst;
-  req.count            = len;
-  req.width            = k_ra_dmac_width_byte;
-  req.src_inc          = src_inc;
-  req.dst_inc          = dst_inc;
-  /* HUM Ch 19 "Event Link Controller (ELC)" p 817 -- trigger routing is a
-   * task; until then use software-start and drive the first
-   * element from the polling path or rely on ra_sim_dma for host tests. */
-  req.trigger     = (ra_elc_event_t)0;
-  req.on_complete = on_complete;
-  req.ctx         = ctx;
-  return req;
-}
-
-ra_err_t ra_sci_write_dma(uint8_t              channel,
-                          const uint8_t*       data,
-                          uint16_t             len,
-                          ra_dma_complete_fn_t on_complete,
-                          void*                ctx,
-                          uint8_t*             out_dma_channel)
-{
-  RA_CHECK_NULL_PTR(data, s_tag, "write_dma: data");
-  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "write_dma: out_dma_channel");
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if ((reg == nullptr) || (len == 0U)) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 -- DMA writes
-   * land in TDR; the engine streams one byte per element while the
-   * source increments across data[]. */
-  const ra_dma_request_t req = internal_make_dma_request((uintptr_t)data,
-                                                         (uintptr_t)&reg->TDR,
-                                                         len,
-                                                         /*src_inc=*/true,
-                                                         /*dst_inc=*/false,
-                                                         on_complete,
-                                                         ctx);
-  return ra_dma_request(&req, out_dma_channel);
-}
-
-/* out_buf is written by the DMAC engine via the dst_addr path, not
- * through the pointer directly, so clang-tidy would otherwise flag
- * it as a const candidate. */
-ra_err_t ra_sci_read_dma(uint8_t              channel,
-                         uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
-                         uint16_t             len,
-                         ra_dma_complete_fn_t on_complete,
-                         void*                ctx,
-                         uint8_t*             out_dma_channel)
-{
-  RA_CHECK_NULL_PTR(out_buf, s_tag, "read_dma: out_buf");
-  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "read_dma: out_dma_channel");
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if ((reg == nullptr) || (len == 0U)) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 -- RDR is
-   * read-once per element; destination increments across out_buf[]. */
-  const ra_dma_request_t req = internal_make_dma_request((uintptr_t)&reg->RDR,
-                                                         (uintptr_t)out_buf,
-                                                         len,
-                                                         /*src_inc=*/false,
-                                                         /*dst_inc=*/true,
-                                                         on_complete,
-                                                         ctx);
-  return ra_dma_request(&req, out_dma_channel);
-}
-
-/* ---- ISR dispatch ----------------------------------------------------- */
-
-void ra_sci_dispatch_txi(uint8_t channel)
-{
-  if (channel > k_ra_sci_channel_max_index) {
-    return;
-  }
-  volatile r_sci_regs_t* reg = ra_sci(channel);
-  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- bounds already validated */
-    return;
-  }
-  const ra_sci_tx_fn_t cb  = s_state[channel].tx_fn;
-  void* const          ctx = s_state[channel].tx_ctx;
-  const uint32_t       tie = (1U << k_ra_sci_ccr0_bit_tie);
-
-  /* Async byte-stream path (ra_sci_write). Mirrors FSP r_sci_b_uart
-   * `txi_isr` (r_sci_b_uart.c) which decrements `tx_src_bytes`
-   * each TXI and clears TIE when the count hits zero. */
-  if (s_state[channel].tx_len > 0U) {
-    if (s_state[channel].tx_idx < s_state[channel].tx_len) {
-      const uint8_t byte = s_state[channel].tx_buf[s_state[channel].tx_idx];
-      s_state[channel].tx_idx += 1U;
-      /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 */
-      reg->TDR = (uint32_t)byte;
-      /* Fire user-attached TX visibility callback per byte; its
-       * boolean return is ignored here because the async path owns
-       * the byte-stream now. */
-      if (cb != nullptr) {
-        uint8_t echo = byte;
-        (void)cb(ctx, &echo);
-      }
-    }
-    if (s_state[channel].tx_idx >= s_state[channel].tx_len) {
-      /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-      reg->CCR0               = reg->CCR0 & ~tie;
-      s_state[channel].tx_buf = nullptr;
-      s_state[channel].tx_len = 0U;
-      s_state[channel].tx_idx = 0U;
-    }
-    return;
-  }
-
-  /* Legacy callback-only path (ra_sci_attach_tx_handler). */
-  if (cb == nullptr) {
-    /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-    reg->CCR0 = reg->CCR0 & ~tie;
-    return;
-  }
-  uint8_t byte = 0U;
-  if (cb(ctx, &byte)) {
-    /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 */
-    reg->TDR = (uint32_t)byte;
-  } else {
-    reg->CCR0 = reg->CCR0 & ~tie;
-  }
-}
-
-void ra_sci_dispatch_rxi(uint8_t channel)
-{
-  if (channel > k_ra_sci_channel_max_index) {
-    return;
-  }
-  volatile r_sci_regs_t* reg = ra_sci(channel);
-  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- bounds already validated */
-    return;
-  }
-  const ra_sci_rx_fn_t cb  = s_state[channel].rx_fn;
-  void* const          ctx = s_state[channel].rx_ctx;
-  /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 */
-  const uint8_t b = (uint8_t)(reg->RDR & k_ra_sci_rdr_mask_data8);
-
-  /* Async byte-stream path (ra_sci_read). Mirrors FSP r_sci_b_uart
-   * `rxi_isr` which appends each byte into `p_rx_dest` until
-   * `rx_dest_bytes` is satisfied, then signals UART_EVENT_RX_COMPLETE. */
-  if (s_state[channel].rx_len > 0U) {
-    if (s_state[channel].rx_idx < s_state[channel].rx_len) {
-      s_state[channel].rx_buf[s_state[channel].rx_idx] = b;
-      s_state[channel].rx_idx += 1U;
-    }
-    if (s_state[channel].rx_idx >= s_state[channel].rx_len) {
-      const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
-      /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-      reg->CCR0               = reg->CCR0 & ~rie;
-      s_state[channel].rx_buf = nullptr;
-      s_state[channel].rx_len = 0U;
-      s_state[channel].rx_idx = 0U;
-    }
-  }
-
-  /* Legacy attach path: still fires per byte even when an async RX is
-   * in flight, so existing flow-control hooks keep working. */
-  if (cb != nullptr) {
-    cb(ctx, b);
-  }
-}
-
-void ra_sci_dispatch_eri(uint8_t channel)
-{
-  if (channel > k_ra_sci_channel_max_index) {
-    return;
-  }
-  (void)ra_sci_clear_errors(channel);
 }
