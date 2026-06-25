@@ -56,7 +56,8 @@ include(${_d}/cmake/threadx_ns.cmake)
 
 add_executable(tz_nsc_cgc_usb_ns.elf
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ns_usb.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_usb.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_usb_host.c)
 
 # Match the toolchain ABI of the Secure side but build for the NS world: no
 # -mcmse (NS emits no veneers), no startup files (the Secure boot copies .data
