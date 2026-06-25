@@ -34,7 +34,6 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_flash.h"
-#include "ra_fs.h"
 #include "ra_io.h"
 #include "ra_log.h"
 #include "ra_port_constants.h"
