@@ -120,10 +120,10 @@ CONF="${APP_DIR}/hil.conf"
   echo -e "${RED}[local]${NC} no hil.conf in ${APP_DIR}"
   exit 2
 }
-# shellcheck disable=SC1090
 HIL_MODE="" HIL_EXPECT="" HIL_EXPECT_NEGATIVE="" HIL_TIMEOUT_S=""
 HIL_BOOT_S="" HIL_PROBE_SYMBOL="" HIL_PROBE_MIN_ADVANCE="" HIL_PROBE_SECONDS=""
 HIL_PROBE_FAILURE_SYMBOL="" HIL_PROBE_MAX_FAILURE="" HIL_PROBE_BOOT_S=""
+# shellcheck disable=SC1090  # CONF path is computed at runtime; location is intentionally non-constant
 source "$CONF"
 MODE="${HIL_MODE:-}"
 [[ -n "$MODE" ]] || {

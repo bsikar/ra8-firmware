@@ -61,6 +61,7 @@ scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
 
 echo -e "${YELLOW}[hil_flash_retry]${NC} power-cycling board via uhubctl (hub ${HUB} port ${PORT})..."
 
+# shellcheck disable=SC2087  # local vars (JLINK_SN, JLINK_DEVICE, etc.) expand client-side; remote vars are escaped
 ssh "$PI_HOST" bash <<REMOTE
 set -uo pipefail
 

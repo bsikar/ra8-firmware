@@ -29,7 +29,6 @@
 set -euo pipefail
 
 PI_HOST="star@star.local"
-HUB="2-1.3"
 HUB_PORT_USBHS=1
 HUB_PORT_USBFS=4
 ENUM_WAIT_S=35
@@ -141,7 +140,7 @@ find_ttyacm_for_vidpid() {
 
 # Wait until lsusb reports the given VID:PID on the right hub port.
 wait_for_enum() {
-  local vidpid="$1" port="$2" timeout="${3:-$ENUM_WAIT_S}" t=0
+  local vidpid="$1" timeout="${3:-$ENUM_WAIT_S}" t=0
   while ((t < timeout)); do
     if pi_run "lsusb 2>/dev/null | grep -q '${vidpid}'" 2>/dev/null; then
       return 0

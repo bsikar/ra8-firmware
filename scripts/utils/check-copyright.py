@@ -50,8 +50,11 @@ def check(path: pathlib.Path) -> bool:
     return True
 
 
+MIN_ARGS = 2  # script name + at least one file path
+
+
 def main() -> int:
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("usage: check-copyright.py FILE [FILE ...]", file=sys.stderr)
         return 2
 

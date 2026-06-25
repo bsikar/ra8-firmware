@@ -72,6 +72,9 @@ EXTENSIONS = {
 # Mirrors check_no_ai_attribution.py and check_line_citations.py.
 EXCLUDED_PARTS = {"third_party", "_deps", "build", "build-cov"}
 
+# Largest code point in 7-bit ASCII (U+007F).
+MAX_ASCII_CODEPOINT = 127
+
 
 def rewrite(text: str) -> tuple[str, int]:
     """Return replaced text and the number of substitutions."""
@@ -83,7 +86,7 @@ def rewrite(text: str) -> tuple[str, int]:
     # Any remaining non-ASCII character becomes '?'.
     cleaned = []
     for ch in text:
-        if ord(ch) < 128:
+        if ord(ch) <= MAX_ASCII_CODEPOINT:
             cleaned.append(ch)
         else:
             cleaned.append("?")

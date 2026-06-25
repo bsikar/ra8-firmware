@@ -44,7 +44,7 @@ NULL_RE = re.compile(r"\bNULL\b")
 
 # Strip C/C++ inline comments and string/char literals so we don't
 # match NULL inside them. Naive but adequate for this use case.
-def _strip_noncode(line: str) -> str:
+def _strip_noncode(line: str) -> str:  # noqa: PLR0912 PLR0915  # char-by-char state machine, splitting hurts readability
     out = []
     i = 0
     in_str = False
@@ -115,18 +115,19 @@ def find_violations(path: pathlib.Path) -> list[tuple[int, str]]:
     in_block_comment = False
     for n, raw in enumerate(text.splitlines(), 1):
         # Multi-line block comment continuation handling.
+        cur = raw
         if in_block_comment:
-            end = raw.find("*/")
+            end = cur.find("*/")
             if end == -1:
                 continue
-            raw = raw[end + 2 :]
+            cur = cur[end + 2 :]
             in_block_comment = False
         # Detect a /* on this line that doesn't close.
-        bo = raw.find("/*")
-        if bo != -1 and raw.find("*/", bo + 2) == -1:
-            raw = raw[:bo]
+        bo = cur.find("/*")
+        if bo != -1 and cur.find("*/", bo + 2) == -1:
+            cur = cur[:bo]
             in_block_comment = True
-        code = _strip_noncode(raw)
+        code = _strip_noncode(cur)
         if "NULL" not in code:
             continue
         # Skip allowed tokens.

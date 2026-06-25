@@ -19,6 +19,11 @@
 import argparse
 import struct
 import sys
+from pathlib import Path
+
+# JPEG SOF0 dimension field is a 16-bit unsigned integer (0x0001..0xFFFF).
+JPEG_DIM_MAX = 0xFFFF
+JPEG_DIM_MIN = 1
 
 
 def build_minimal_jpeg(width: int, height: int) -> bytes:
@@ -27,7 +32,7 @@ def build_minimal_jpeg(width: int, height: int) -> bytes:
     The DCT coefficients in the entropy segment are not meaningful. This
     is a parser-coverage seed only.
     """
-    if not (1 <= width <= 0xFFFF) or not (1 <= height <= 0xFFFF):
+    if not (JPEG_DIM_MIN <= width <= JPEG_DIM_MAX) or not (JPEG_DIM_MIN <= height <= JPEG_DIM_MAX):
         msg = "width/height must be in 1..65535"
         raise ValueError(msg)
 
@@ -88,7 +93,7 @@ def main() -> int:
     if args.output == "-":
         sys.stdout.buffer.write(blob)
     else:
-        with open(args.output, "wb") as fh:
+        with Path(args.output).open("wb") as fh:
             fh.write(blob)
     return 0
 

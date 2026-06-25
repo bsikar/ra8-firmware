@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import contextlib
 import csv
-import os
 import re
 import sys
 from collections import defaultdict
@@ -52,6 +51,24 @@ MCDC_TXT = REPO_ROOT / "build" / "mcdc-report" / "mcdc.txt"
 CSV_OUT = REPO_ROOT / "docs" / "MCDC_GAPS.csv"
 MD_OUT = REPO_ROOT / "docs" / "MCDC_GAPS.md"
 DEACT_MD_OUT = REPO_ROOT / "docs" / "MCDC_DEACTIVATIONS.md"
+
+# ---------------------------------------------------------------------------
+# Coverage thresholds and table display limits
+# ---------------------------------------------------------------------------
+# MC/DC percentage indicating full decision coverage (llvm-cov scale 0..100).
+MCDC_FULL_PCT = 100.0
+# MC/DC percentage indicating zero coverage for a decision.
+MCDC_ZERO_PCT = 0.0
+# Maximum character width of an excerpt cell in the reachable-gaps table.
+EXCERPT_MAX_REACHABLE = 80
+# Truncated excerpt length (EXCERPT_MAX_REACHABLE - len("...")).
+EXCERPT_TRUNC_REACHABLE = 77
+# Maximum character width of excerpt/rationale cells in the deactivated table.
+EXCERPT_MAX_DEACTIVATED = 60
+# Truncated excerpt/rationale length (EXCERPT_MAX_DEACTIVATED - len("...")).
+EXCERPT_TRUNC_DEACTIVATED = 57
+# Maximum number of rows shown inline in the reachable-gaps markdown table.
+TABLE_ROW_CAP = 60
 
 # Lines in mcdc.txt look like:
 #   "  385|      0|  if ((start == 0U) || (start > end)) {"
@@ -134,7 +151,7 @@ def parse_mcdc_txt(path: Path):
 FUNC_DEF_RE = re.compile(r"^[A-Za-z_][\w\s\*\(\),:<>]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$")
 
 
-def resolve_function(rel_path: str, target_line: int) -> str:
+def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Best-effort function name lookup. Returns "(file scope)" if the
     decision is not inside a function (e.g. file-scope initializer)."""
     abs_path = REPO_ROOT / rel_path
@@ -263,7 +280,7 @@ ENUM_OR_SET_RE = re.compile(
 )
 
 
-def _function_body_lines(rel_path: str, target_line: int) -> list[str]:
+def _function_body_lines(rel_path: str, target_line: int) -> list[str]:  # noqa: PLR0911  # multiple early returns for distinct error/sentinel paths
     """Return source lines from the start of the enclosing function up
     to (but not including) `target_line`. Empty list if not found."""
     abs_path = REPO_ROOT / rel_path
@@ -305,7 +322,7 @@ PRIV_NULL_OR_RE = re.compile(
 )
 
 
-def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:
+def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return the function name iff the enclosing function is declared
     `static` and named with the project's TU-private convention
     (`priv_*` or `internal_*`), OR is inside a C++ anonymous namespace
@@ -345,9 +362,7 @@ def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:
                 cand = m.group(1)
                 start = max(0, i - 5)
                 window = " ".join(lines[start:i])
-                is_static_priv = "static" in window and (
-                    cand.startswith(("priv_", "internal_"))
-                )
+                is_static_priv = "static" in window and (cand.startswith(("priv_", "internal_")))
                 is_anon_ns = in_anon_ns and depth == 1
                 if is_static_priv or is_anon_ns:
                     func_name = cand
@@ -403,7 +418,7 @@ def _line_annotation(rel_path: str, line: int) -> str | None:
     return None
 
 
-def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:
+def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return (deactivated?, rationale) for a single decision at
     (rel_path, line) with source text `excerpt`."""
     # Pattern 0: explicit per-line opt-in annotation.
@@ -542,7 +557,7 @@ def decision_snippet(excerpt: str, max_chars: int = 40) -> str:
 
 
 def module_of(rel_path: str) -> str:
-    name = os.path.basename(rel_path)
+    name = Path(rel_path).name
     if name.endswith(".c"):
         name = name[:-2]
     elif name.endswith(".cpp"):
@@ -556,7 +571,7 @@ def module_of(rel_path: str) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> int:
+def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts readability
     if not MCDC_TXT.exists():
         print(
             f"error: {MCDC_TXT} not found. Run `make mcdc` first to generate"
@@ -571,13 +586,13 @@ def main() -> int:
     all_decisions = [d for d in all_decisions if "/third_party/" not in d[0]]
 
     # Gap rows = anything < 100%.
-    gap_rows = [d for d in all_decisions if d[4] < 100.0]
+    gap_rows = [d for d in all_decisions if d[4] < MCDC_FULL_PCT]
     gap_rows.sort(key=lambda r: (r[0], r[1]))
 
     # Classify each gap row as deactivated or reachable.
     classified: list[tuple[str, int, int, str, str, str, bool, str]] = []
     for src, ln, n, excerpt, pct in gap_rows:
-        covered = "no" if pct == 0.0 else "partial"
+        covered = "no" if pct == MCDC_ZERO_PCT else "partial"
         func = resolve_function(src, ln)
         deact, rationale = is_deactivated_decision(src, ln, excerpt)
         classified.append((src, ln, n, func, excerpt, covered, deact, rationale))
@@ -600,7 +615,7 @@ def main() -> int:
                 "deactivation_rationale",
             ]
         )
-        for src, ln, n, func, excerpt, covered, deact, rationale in classified:
+        for src, _ln, n, func, excerpt, covered, deact, rationale in classified:
             w.writerow(
                 [
                     src,
@@ -622,9 +637,9 @@ def main() -> int:
     rows = []
     for mod, pcts in per_module.items():
         total = len(pcts)
-        covered = sum(1 for p in pcts if p >= 100.0)
-        partial = sum(1 for p in pcts if 0.0 < p < 100.0)
-        uncov = sum(1 for p in pcts if p == 0.0)
+        covered = sum(1 for p in pcts if p >= MCDC_FULL_PCT)
+        partial = sum(1 for p in pcts if MCDC_ZERO_PCT < p < MCDC_FULL_PCT)
+        uncov = sum(1 for p in pcts if p == MCDC_ZERO_PCT)
         rows.append((mod, total, covered, partial, uncov))
 
     # Sort by uncovered+partial desc, then total desc, then name.
@@ -633,9 +648,9 @@ def main() -> int:
     # Build the markdown header. Preserve the existing prose; only the
     # numeric blocks get rewritten.
     total_dec = len(all_decisions)
-    yes_dec = sum(1 for d in all_decisions if d[4] >= 100.0)
-    partial_dec = sum(1 for d in all_decisions if 0.0 < d[4] < 100.0)
-    no_dec = sum(1 for d in all_decisions if d[4] == 0.0)
+    yes_dec = sum(1 for d in all_decisions if d[4] >= MCDC_FULL_PCT)
+    partial_dec = sum(1 for d in all_decisions if MCDC_ZERO_PCT < d[4] < MCDC_FULL_PCT)
+    no_dec = sum(1 for d in all_decisions if d[4] == MCDC_ZERO_PCT)
     files_seen = len({d[0] for d in all_decisions})
     rate = (100.0 * yes_dec / total_dec) if total_dec else 0.0
 
@@ -708,13 +723,14 @@ def main() -> int:
     md_lines.append("")
     md_lines.append("| File | Conds | Function | Excerpt | Status |")
     md_lines.append("|------|------:|----------|---------|--------|")
-    for src, _ln, n, func, excerpt, covered, _deact, _rat in reachable_rows[:60]:
+    for src, _ln, n, func, excerpt, covered, _deact, _rat in reachable_rows[:TABLE_ROW_CAP]:
         ex = excerpt.replace("|", "\\|")
-        if len(ex) > 80:
-            ex = ex[:77] + "..."
+        if len(ex) > EXCERPT_MAX_REACHABLE:
+            ex = ex[:EXCERPT_TRUNC_REACHABLE] + "..."
         md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {covered} |")
-    if len(reachable_rows) > 60:
-        md_lines.append(f"| ... | | | | *({len(reachable_rows) - 60} more rows in CSV)* | |")
+    if len(reachable_rows) > TABLE_ROW_CAP:
+        overflow = len(reachable_rows) - TABLE_ROW_CAP
+        md_lines.append(f"| ... | | | | *({overflow} more rows in CSV)* | |")
     md_lines.append("")
     md_lines.append("## Deactivated gaps (DO-178C 6.4.4.3 exempted)")
     md_lines.append("")
@@ -729,11 +745,11 @@ def main() -> int:
     md_lines.append("|------|------:|----------|---------|-----------|")
     for src, _ln, n, func, excerpt, _covered, _deact, rationale in deactivated_rows:
         ex = excerpt.replace("|", "\\|")
-        if len(ex) > 60:
-            ex = ex[:57] + "..."
+        if len(ex) > EXCERPT_MAX_DEACTIVATED:
+            ex = ex[:EXCERPT_TRUNC_DEACTIVATED] + "..."
         rt = rationale.replace("|", "\\|")
-        if len(rt) > 60:
-            rt = rt[:57] + "..."
+        if len(rt) > EXCERPT_MAX_DEACTIVATED:
+            rt = rt[:EXCERPT_TRUNC_DEACTIVATED] + "..."
         md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {rt} |")
     md_lines.append("")
     md_lines.append("## Per-module gap counts (full table)")
@@ -849,9 +865,9 @@ def main() -> int:
     DEACT_MD_OUT.write_text("\n".join(deact_lines), encoding="ascii")
 
     # Stash key counts for the gate script to read without re-parsing.
-    GATE_JSON = REPO_ROOT / "build" / "mcdc-report" / "gate.json"
+    gate_json = REPO_ROOT / "build" / "mcdc-report" / "gate.json"
     with contextlib.suppress(OSError):
-        GATE_JSON.write_text(
+        gate_json.write_text(
             "{\n"
             f'  "total_decisions": {total_dec},\n'
             f'  "covered_decisions": {yes_dec},\n'

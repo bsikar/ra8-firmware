@@ -43,6 +43,7 @@ ok "Pi reachable"
 
 tag "erasing MRAM (this takes ~5s)..."
 
+# shellcheck disable=SC2087  # local vars (JLINK_DEVICE, JLINK_SN) expand client-side; remote vars are escaped
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP=\$(mktemp)
@@ -72,9 +73,6 @@ else
     echo "ERASE_FAIL"
 fi
 REMOTE
-
-# Capture last line as status token
-LAST=$(ssh "$PI_HOST" "tail -1 /tmp/hil_erase.log 2>/dev/null || echo unknown")
 
 # Re-run just to get the status token from the heredoc output
 STATUS=$(

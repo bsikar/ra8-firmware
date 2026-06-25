@@ -57,6 +57,14 @@ from pathlib import Path
 # Production directories that are subject to the MC/DC pre-commit gate.
 PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/")
 
+# Display limits.
+MAX_DISPLAYED_FINDINGS = 50  # Max number of findings to print before summarizing the rest.
+SNIPPET_MAX_LEN = 80  # Max characters of a decision snippet before truncation.
+SNIPPET_TRUNCATE_LEN = 77  # Length of truncated snippet body (leaves room for "...").
+
+# Number of tab-separated fields in a `git diff --name-status -M` rename row.
+RENAME_ROW_FIELD_COUNT = 3  # <status>\t<old>\t<new>
+
 # Excluded subtrees (SOUP, generated, etc.).
 EXCLUDED_SUBSTRINGS: tuple[str, ...] = (
     "/third_party/",
@@ -106,8 +114,8 @@ MCDC_BLOCK_RE = re.compile(
 
 def _git(*args: str) -> str:
     """Run `git <args...>` and return stdout (text)."""
-    return subprocess.run(
-        ["git", *args],
+    return subprocess.run(  # noqa: S603  # trusted: fixed git argv
+        ["git", *args],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -169,7 +177,7 @@ def rename_map() -> dict[str, str]:
     mapping: dict[str, str] = {}
     for row in out.splitlines():
         parts = row.split("\t")
-        if len(parts) == 3 and parts[0].startswith("R"):
+        if len(parts) == RENAME_ROW_FIELD_COUNT and parts[0].startswith("R"):
             _status, old, new = parts
             mapping[new] = old
     return mapping
@@ -243,8 +251,9 @@ def collect_test_citations() -> list[tuple[str, str]]:
         except OSError:
             continue
         for block in MCDC_BLOCK_RE.findall(text):
-            for m in SYMBOL_CITATION_RE.finditer(block):
-                symbol_cites.append((m.group("path"), m.group("sym")))
+            symbol_cites.extend(
+                (m.group("path"), m.group("sym")) for m in SYMBOL_CITATION_RE.finditer(block)
+            )
     return symbol_cites
 
 
@@ -333,11 +342,15 @@ def main() -> int:
         print("       decision -- a drift-proof anchor, no line numbers).")
         print()
         print("       Offending decisions (path:line is informational):")
-        for path, line_no, normalized in findings[:50]:
-            snippet = normalized if len(normalized) <= 80 else normalized[:77] + "..."
+        for path, line_no, normalized in findings[:MAX_DISPLAYED_FINDINGS]:
+            snippet = (
+                normalized
+                if len(normalized) <= SNIPPET_MAX_LEN
+                else normalized[:SNIPPET_TRUNCATE_LEN] + "..."
+            )
             print(f"         {path}:{line_no}: {snippet}")
-        if len(findings) > 50:
-            print(f"         ... and {len(findings) - 50} more")
+        if len(findings) > MAX_DISPLAYED_FINDINGS:
+            print(f"         ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
         print()
         print("       Fix: add a `test_mcdc_<decision>` function in the")
         print("       matching tests/test_<module>.c with N+1 vectors and")

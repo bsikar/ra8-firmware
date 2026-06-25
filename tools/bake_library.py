@@ -16,10 +16,18 @@
 import struct
 import sys
 import zlib
+from pathlib import Path
 
 # Shelf thumbnail box -- MUST match k_sh_thumb_w / k_sh_thumb_h in sh_app.h.
 THUMB_W = 130
 THUMB_H = 195
+
+# Sentinel value in the .rabook header meaning "no cover image present".
+COVER_ABSENT = 0xFFFFFFFF
+# Maximum line length (characters) for emitted C array initializer rows.
+ARRAY_LINE_LIMIT = 96
+# Minimum number of argv entries: script, out.h, at least one spec.
+MIN_ARGV_COUNT = 3
 
 
 def decode_cover_thumb(blob):
@@ -31,12 +39,15 @@ def decode_cover_thumb(blob):
     if blob[:4] != b"RBKZ":
         return None
     inflated = zlib.decompress(blob[8:])
+
     def u32(o):
         return struct.unpack_from("<I", inflated, o)[0]
+
     def u16(o):
         return struct.unpack_from("<H", inflated, o)[0]
+
     cover = u32(36)
-    if cover == 0xFFFFFFFF:
+    if cover == COVER_ABSENT:
         return None
     img = u32(76) + (cover * 24)
     src_w, src_h, fmt, data_off = u16(img + 4), u16(img + 6), inflated[img + 8], u32(img + 12)
@@ -67,7 +78,7 @@ def emit_array(name, data):
     line = "  "
     for b in data:
         line += f"{b}U,"
-        if len(line) >= 96:
+        if len(line) >= ARRAY_LINE_LIMIT:
             out.append(line)
             line = "  "
     if line.strip():
@@ -77,14 +88,14 @@ def emit_array(name, data):
 
 
 def main(argv):
-    if len(argv) < 3:
+    if len(argv) < MIN_ARGV_COUNT:
         sys.stderr.write("usage: bake_library.py <out.h> <rabook>|<title>|<author> ...\n")
         return 2
     out_path = argv[1]
     books = []
     for spec in argv[2:]:
         path, title, author = spec.split("|")
-        with open(path, "rb") as f:
+        with Path(path).open("rb") as f:
             blob = f.read()
         books.append((blob, title, author, decode_cover_thumb(blob)))
     parts = [
@@ -141,7 +152,7 @@ def main(argv):
     parts.append("};")
     parts.append("// NOLINTEND(readability-magic-numbers)")
     parts.append("")
-    with open(out_path, "w") as f:
+    with Path(out_path).open("w") as f:
         f.write("\n".join(parts))
     sys.stderr.write(
         f"bake_library: wrote {out_path} ({len(books)} books, "

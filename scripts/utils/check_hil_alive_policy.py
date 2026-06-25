@@ -69,7 +69,7 @@ def _parse_kv(conf: pathlib.Path) -> dict[str, str]:
         if not m:
             continue
         key, val = m.group(1), m.group(2)
-        if val.startswith(('"', "'")) and val.endswith(val[0]) and len(val) >= 2:
+        if val.startswith(('"', "'")) and val.endswith(val[0]) and len(val) >= 2:  # noqa: PLR2004  # min quoted-string length
             val = val[1:-1]
         out[key] = val
     return out

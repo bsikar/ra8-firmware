@@ -38,6 +38,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Number of integer tokens in a PPM (P6) header: width, height, maxval.
+PPM_HEADER_TOKEN_COUNT = 3
+
 # Width board_sim appends on the right of the panel for its status sidebar.
 # Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/board_overlay.c; the crop
 # removes it so the golden depends only on the firmware chrome.
@@ -64,7 +67,7 @@ def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
         raise ValueError(msg)
     idx = 2
     tokens: list[int] = []
-    while len(tokens) < 3:
+    while len(tokens) < PPM_HEADER_TOKEN_COUNT:
         while idx < len(data) and data[idx] in b" \t\n\r":
             idx += 1
         start = idx
@@ -101,7 +104,7 @@ def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
         # Capture as bytes, not text: board_sim's diagnostic stream can carry
         # raw bytes (e.g. 0xFF SPI idle bytes from an SD bring-up with no card),
         # which would crash a UTF-8 text decode.
-        proc = subprocess.run(cmd, capture_output=True, check=False)
+        proc = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603  # trusted: fixed board_sim argv built from caller-supplied paths
         if proc.returncode != 0:
             err = proc.stderr.decode("utf-8", "replace")
             msg = f"board_sim failed: {' '.join(cmd)}\n{err}"

@@ -159,9 +159,9 @@ def collect_repo_paths() -> list[pathlib.Path]:
 def main() -> int:
     project_version = read_project_version()
 
-    if len(sys.argv) >= 2 and sys.argv[1] == "--all":
+    if len(sys.argv) >= 2 and sys.argv[1] == "--all":  # noqa: PLR2004  # argv[1] presence check
         paths = collect_repo_paths()
-    elif len(sys.argv) >= 2:
+    elif len(sys.argv) >= 2:  # noqa: PLR2004  # argv[1] presence check
         paths = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
     else:
         print("usage: check-since-version.py FILE [FILE ...] | --all", file=sys.stderr)

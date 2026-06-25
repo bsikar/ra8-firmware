@@ -36,6 +36,7 @@ False once the baseline has been observed-stable across several CI
 runs and any baseline-tightening PRs have landed."""
 
 SLACK_PCT = 0.5
+BASELINE_COLUMN_COUNT = 2  # baseline file has two numeric columns: statement% branch%
 """Allow a 0.5pp regression band before failing. gcovr is deterministic
 across runs on a fixed source tree, but the test selection in CI may
 differ slightly between Ubuntu image versions."""
@@ -53,7 +54,7 @@ def parse_baseline(path: Path) -> tuple[float, float]:
         if not s or s.startswith("#"):
             continue
         parts = s.split()
-        if len(parts) >= 2:
+        if len(parts) >= BASELINE_COLUMN_COUNT:
             return float(parts[0]), float(parts[1])
     msg = f"baseline file {path} has no numeric line"
     raise RuntimeError(msg)
@@ -62,7 +63,7 @@ def parse_baseline(path: Path) -> tuple[float, float]:
 def parse_cobertura(path: Path) -> tuple[float, float]:
     """Read line-rate and branch-rate from Cobertura XML root element.
     Both attributes are 0..1 floats; convert to percent."""
-    tree = ET.parse(path)
+    tree = ET.parse(path)  # noqa: S314  # trusted CI-generated Cobertura XML, not user input
     root = tree.getroot()
     line_rate = float(root.attrib["line-rate"]) * 100.0
     branch_rate = float(root.attrib["branch-rate"]) * 100.0

@@ -45,7 +45,7 @@ WHITELIST = {
 def staged_files() -> list[str]:
     """Return the list of files staged for the in-progress commit."""
     out = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],  # noqa: S607  # trusted: git is a fixed dev-tool name
         check=True,
         capture_output=True,
         text=True,

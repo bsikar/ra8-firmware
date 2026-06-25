@@ -128,7 +128,7 @@ _SU_LINE = re.compile(
 class StackEntry:
     __slots__ = ("app", "bytes_", "func", "qualifier", "su_file", "tu")
 
-    def __init__(self, app, tu, func, bytes_, qualifier, su_file):
+    def __init__(self, app, tu, func, bytes_, qualifier, su_file):  # noqa: PLR0913  # data class init, all fields are required
         self.app = app
         self.tu = tu
         self.func = func
@@ -171,7 +171,7 @@ def app_name_for(su_file: Path, repo_root: Path) -> str:
     except ValueError:
         return "unknown"
     parts = rel.parts
-    if len(parts) >= 2:
+    if len(parts) >= 2:  # noqa: PLR2004  # minimum path depth: tier + app
         return parts[1]
     return "unknown"
 
@@ -182,8 +182,8 @@ def parse_su(su_file: Path, app: str) -> list:
         text = su_file.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return entries
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         match = _SU_LINE.match(line)
@@ -251,7 +251,7 @@ def print_top_n(entries: list, n: int) -> None:
         print(f"{r.bytes_:>8}  {r.qualifier:<16}  {r.app}/{r.func}  ({r.tu})")
 
 
-def main(argv: list) -> int:
+def main(argv: list) -> int:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
     parser = argparse.ArgumentParser(
         description="Aggregate gcc .su files into a project-wide report."
     )

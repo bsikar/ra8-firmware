@@ -18,7 +18,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$REPO_ROOT"
+cd "$REPO_ROOT" || exit 1
 
 if [ ! -d examples ]; then
   echo "error: examples/ directory not found at $REPO_ROOT" >&2
@@ -101,8 +101,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
 fi
 
 # Sort the discovered apps alphabetically for stable output.
-IFS=$'\n' apps=($(printf '%s\n' "${apps[@]}" | sort))
-unset IFS
+mapfile -t apps < <(printf '%s\n' "${apps[@]}" | sort)
 
 LOG_DIR="$REPO_ROOT/build/build_all_examples"
 mkdir -p "$LOG_DIR"

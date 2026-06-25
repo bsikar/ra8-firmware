@@ -52,12 +52,40 @@ static const cache_policy_t cb_policy_fifo = {
 
 /* ---------------------------------------------------------------- Random -- */
 
+/**
+ * @enum cb_rand_seed_t
+ * @brief Initial PRNG seed for the Random eviction policy.
+ * @details A fixed non-zero 64-bit value that initialises the xorshift64
+ *          state so benchmark runs are reproducible. Any non-zero odd value
+ *          would work; this one is the splitmix64 gamma constant, chosen for
+ *          good bit-distribution as a starting state.
+ * @since 0.1.0
+ */
+typedef enum : uint64_t {
+  k_rand_seed =
+    0x123456789ABCDEF0ULL, /**< MAGIC-OK: fixed xorshift64 PRNG seed for reproducibility */
+} cb_rand_seed_t;
+
+/**
+ * @enum cb_rand_shift_t
+ * @brief xorshift64 shift-amount triple used in the Random policy's PRNG step.
+ * @details The triple (13, 7, 17) is one of the parameter sets listed in
+ *          Marsaglia (2003) for a full-period 64-bit xorshift generator.
+ *          Changing any value breaks the period guarantee.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_rand_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set) */
+  k_rand_shift_b = 7U,  /**< MAGIC-OK: xorshift64 right-shift b (Marsaglia 2003 set) */
+  k_rand_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set) */
+} cb_rand_shift_t;
+
 /** @brief Random state: a deterministic xorshift seed. */
 static int cb_rand_init(cb_cache_t* c)
 {
   uint64_t* s = (uint64_t*)malloc(sizeof(uint64_t));
   if (s != nullptr) {
-    *s = 0x123456789ABCDEF0ULL;
+    *s = (uint64_t)k_rand_seed;
   }
   c->policy_data = s;
   return (s == nullptr) ? 1 : 0;
@@ -70,9 +98,9 @@ static uint32_t cb_rand_victim(cb_cache_t* c, uint32_t* scanned)
 {
   uint64_t* s = (uint64_t*)c->policy_data;
   uint64_t  x = *s;
-  x ^= x << 13U;
-  x ^= x >> 7U;
-  x ^= x << 17U;
+  x ^= x << (uint8_t)k_rand_shift_a;
+  x ^= x >> (uint8_t)k_rand_shift_b;
+  x ^= x << (uint8_t)k_rand_shift_c;
   *s       = x;
   *scanned = 1U;
   return (uint32_t)(x % (uint64_t)c->capacity);

@@ -133,7 +133,6 @@ cppcheck \
   "${INCLUDE_DIRS[@]}" \
   libs examples \
   2>"$RAW"
-RC=$?
 set -e
 
 # Parse the raw output. cppcheck MISRA diagnostics look like:
