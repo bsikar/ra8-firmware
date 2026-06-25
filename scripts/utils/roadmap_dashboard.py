@@ -46,7 +46,6 @@ import pathlib
 import re
 import sys
 
-
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 ROADMAP_PATH = REPO_ROOT / "docs" / "ROADMAP.md"
 DASHBOARD_PATH = REPO_ROOT / "docs" / "ROADMAP_DASHBOARD.md"
@@ -79,7 +78,7 @@ class Driver:
 
     def __init__(self, name: str, status: str, phase: str) -> None:
         self.name = name
-        self.status = status            # one of " x~!"
+        self.status = status  # one of " x~!"
         self.phase = phase
         self.total_boxes = 0
         self.ticked_boxes = 0
@@ -160,8 +159,7 @@ def progress_bar(ticked: int, total: int, width: int = BAR_WIDTH) -> str:
     if total <= 0:
         return "[" + " " * width + "] 0/0"
     filled = (ticked * width) // total
-    if filled > width:
-        filled = width
+    filled = min(filled, width)
     bar = "=" * filled + " " * (width - filled)
     return f"[{bar}] {ticked}/{total}"
 
@@ -213,16 +211,9 @@ def render_dashboard(drivers: list[Driver]) -> str:
     out.append(f"| WIP | {counts['WIP']} |")
     out.append(f"| BLOCKED | {counts['BLOCKED']} |")
     out.append(f"| TODO | {counts['TODO']} |")
-    out.append(
-        f"| Checklist coverage | {ticked_boxes}/{total_boxes} "
-        f"({pct:.1f}%) |"
-    )
+    out.append(f"| Checklist coverage | {ticked_boxes}/{total_boxes} ({pct:.1f}%) |")
     out.append("")
-    out.append(
-        "Overall: `"
-        + progress_bar(ticked_boxes, total_boxes, BAR_WIDTH * 2)
-        + "`"
-    )
+    out.append("Overall: `" + progress_bar(ticked_boxes, total_boxes, BAR_WIDTH * 2) + "`")
     out.append("")
 
     # Group by phase, preserving first-seen order.
@@ -323,11 +314,11 @@ def render_badge(label: str, value: str, color: str) -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'width="{total_w}" height="{height}" '
         f'role="img" aria-label="{label}: {value}">\n'
-        f'  <title>{label}: {value}</title>\n'
+        f"  <title>{label}: {value}</title>\n"
         f'  <linearGradient id="s" x2="0" y2="100%">\n'
         f'    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>\n'
         f'    <stop offset="1" stop-opacity=".1"/>\n'
-        f'  </linearGradient>\n'
+        f"  </linearGradient>\n"
         f'  <clipPath id="r"><rect width="{total_w}" height="{height}" '
         f'rx="3" fill="#fff"/></clipPath>\n'
         f'  <g clip-path="url(#r)">\n'
@@ -335,7 +326,7 @@ def render_badge(label: str, value: str, color: str) -> str:
         f'    <rect x="{label_w}" width="{value_w}" height="{height}" '
         f'fill="{color}"/>\n'
         f'    <rect width="{total_w}" height="{height}" fill="url(#s)"/>\n'
-        f'  </g>\n'
+        f"  </g>\n"
         f'  <g fill="#fff" text-anchor="middle" '
         f'font-family="Verdana,Geneva,DejaVu Sans,sans-serif" '
         f'text-rendering="geometricPrecision" font-size="110">\n'
@@ -349,8 +340,8 @@ def render_badge(label: str, value: str, color: str) -> str:
         f'textLength="{value_text_w}">{value}</text>\n'
         f'    <text x="{value_cx}" y="140" transform="scale(.1)" '
         f'fill="#fff" textLength="{value_text_w}">{value}</text>\n'
-        f'  </g>\n'
-        f'</svg>\n'
+        f"  </g>\n"
+        f"</svg>\n"
     )
 
 
@@ -381,25 +372,25 @@ def build_badges(drivers: list[Driver]) -> dict[str, str]:
 
     badges: dict[str, str] = {}
     badges["drivers.svg"] = render_badge(
-        "drivers", f"{counts['DONE']}/{total}",
+        "drivers",
+        f"{counts['DONE']}/{total}",
         COLOR_DONE if counts["DONE"] == total else COLOR_INFO,
     )
-    badges["coverage.svg"] = render_badge(
-        "coverage", f"{pct:.1f}%", coverage_color(pct)
-    )
-    badges["done.svg"] = render_badge(
-        "done", str(counts["DONE"]), COLOR_DONE
-    )
+    badges["coverage.svg"] = render_badge("coverage", f"{pct:.1f}%", coverage_color(pct))
+    badges["done.svg"] = render_badge("done", str(counts["DONE"]), COLOR_DONE)
     badges["wip.svg"] = render_badge(
-        "wip", str(counts["WIP"]),
+        "wip",
+        str(counts["WIP"]),
         COLOR_WIP if counts["WIP"] else COLOR_TODO,
     )
     badges["blocked.svg"] = render_badge(
-        "blocked", str(counts["BLOCKED"]),
+        "blocked",
+        str(counts["BLOCKED"]),
         COLOR_BLOCKED if counts["BLOCKED"] else COLOR_DONE,
     )
     badges["todo.svg"] = render_badge(
-        "todo", str(counts["TODO"]),
+        "todo",
+        str(counts["TODO"]),
         COLOR_TODO if counts["TODO"] else COLOR_DONE,
     )
     return badges
@@ -472,9 +463,7 @@ def main(argv: list[str]) -> int:
             changed.append(str(dashboard_path))
         for name, svg in badges.items():
             target = badges_dir / name
-            if not target.exists() or (
-                target.read_text(encoding="utf-8") != svg
-            ):
+            if not target.exists() or (target.read_text(encoding="utf-8") != svg):
                 changed.append(str(target))
         if changed:
             print(
@@ -489,8 +478,7 @@ def main(argv: list[str]) -> int:
             )
             return 1
         print(
-            "roadmap_dashboard.py: dashboard up to date "
-            f"(drivers={len(drivers)})",
+            f"roadmap_dashboard.py: dashboard up to date (drivers={len(drivers)})",
             file=sys.stderr,
         )
         return 0
@@ -503,16 +491,14 @@ def main(argv: list[str]) -> int:
 
     if changed:
         print(
-            f"roadmap_dashboard.py: wrote {len(changed)} file(s) "
-            f"(drivers={len(drivers)})",
+            f"roadmap_dashboard.py: wrote {len(changed)} file(s) (drivers={len(drivers)})",
             file=sys.stderr,
         )
         for c in changed:
             print(f"  {c}", file=sys.stderr)
     else:
         print(
-            "roadmap_dashboard.py: no changes "
-            f"(drivers={len(drivers)})",
+            f"roadmap_dashboard.py: no changes (drivers={len(drivers)})",
             file=sys.stderr,
         )
     return 0

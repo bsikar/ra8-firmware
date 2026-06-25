@@ -50,34 +50,34 @@ REPORT_DIR_REL="build/coverage"
 # macOS shim: re-exec inside the Linux devcontainer.
 # ---------------------------------------------------------------------------
 if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "error: docker not on PATH (need it on macOS for coverage)" >&2
-        exit 1
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "error: docker not on PATH (need it on macOS for coverage)" >&2
+    exit 1
+  fi
+  if command -v colima >/dev/null 2>&1; then
+    if ! colima status >/dev/null 2>&1; then
+      echo "==> Starting colima VM"
+      colima start --cpu 4 --memory 6
     fi
-    if command -v colima >/dev/null 2>&1; then
-        if ! colima status >/dev/null 2>&1; then
-            echo "==> Starting colima VM"
-            colima start --cpu 4 --memory 6
-        fi
-    fi
-    if ! docker info >/dev/null 2>&1; then
-        echo "error: docker daemon not reachable" >&2
-        exit 1
-    fi
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    echo "error: docker daemon not reachable" >&2
+    exit 1
+  fi
 
-    IMAGE_TAG="ra8d2-firmware-test:latest"
-    if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-        echo "==> Building $IMAGE_TAG"
-        docker build -t "$IMAGE_TAG" \
-            -f "$REPO_ROOT/.devcontainer/Dockerfile" \
-            "$REPO_ROOT/.devcontainer"
-    fi
+  IMAGE_TAG="ra8d2-firmware-test:latest"
+  if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+    echo "==> Building $IMAGE_TAG"
+    docker build -t "$IMAGE_TAG" \
+      -f "$REPO_ROOT/.devcontainer/Dockerfile" \
+      "$REPO_ROOT/.devcontainer"
+  fi
 
-    docker run --rm \
-        -v "$REPO_ROOT":/work \
-        -w /work \
-        "$IMAGE_TAG" \
-        bash -lc '
+  docker run --rm \
+    -v "$REPO_ROOT":/work \
+    -w /work \
+    "$IMAGE_TAG" \
+    bash -lc '
             set -e
             if ! command -v gcovr >/dev/null 2>&1; then
                 echo "==> Installing gcovr in container"
@@ -88,17 +88,17 @@ if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
             fi
             bash scripts/utils/coverage_report.sh --in-container
         '
-    exit $?
+  exit $?
 fi
 
 # Drop the --in-container marker if present.
 if [[ "${1:-}" == "--in-container" ]]; then
-    shift
+  shift
 fi
 
 if ! command -v gcovr >/dev/null 2>&1; then
-    echo "error: gcovr not on PATH (pip3 install gcovr)" >&2
-    exit 1
+  echo "error: gcovr not on PATH (pip3 install gcovr)" >&2
+  exit 1
 fi
 
 BUILD_DIR="$REPO_ROOT/$BUILD_DIR_REL"
@@ -108,17 +108,17 @@ mkdir -p "$REPORT_DIR"
 
 echo "==> [1/4] Configuring host tests with RA_COVERAGE=ON RA_MCDC=OFF"
 cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
-    -DCMAKE_BUILD_TYPE=Debug \
-    -DRA_COVERAGE=ON \
-    -DRA_MCDC=OFF \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -Wno-dev >/dev/null
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DRA_COVERAGE=ON \
+  -DRA_MCDC=OFF \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  -Wno-dev >/dev/null
 
 echo "==> [2/4] Building"
 cmake --build "$BUILD_DIR" --parallel >/dev/null
 
 echo "==> [3/4] Running ctest"
-( cd "$BUILD_DIR" && ctest --output-on-failure ) | tail -10 || true
+(cd "$BUILD_DIR" && ctest --output-on-failure) | tail -10 || true
 
 echo "==> [4/4] Running gcovr (HTML + Cobertura XML)"
 # Wipe any stale gcov artifacts from prior MC/DC / lcov / fuzz runs --
@@ -127,22 +127,22 @@ echo "==> [4/4] Running gcovr (HTML + Cobertura XML)"
 find "$BUILD_DIR" -name '*.gcov.json.gz' -delete 2>/dev/null || true
 
 gcovr \
-    --root "$REPO_ROOT" \
-    --filter "libs/ra_" \
-    --filter "src/" \
-    --exclude "libs/third_party/" \
-    --exclude "tests/" \
-    --exclude "build/" \
-    --exclude-throw-branches \
-    --exclude-unreachable-branches \
-    --gcov-ignore-errors all \
-    --gcov-ignore-parse-errors all \
-    --html-details "$REPORT_DIR/index.html" \
-    --xml "$REPORT_DIR/coverage.xml" \
-    --txt "$REPORT_DIR/summary.txt" \
-    --print-summary \
-    "$BUILD_DIR" \
-    | tee "$REPORT_DIR/print-summary.txt"
+  --root "$REPO_ROOT" \
+  --filter "libs/ra_" \
+  --filter "src/" \
+  --exclude "libs/third_party/" \
+  --exclude "tests/" \
+  --exclude "build/" \
+  --exclude-throw-branches \
+  --exclude-unreachable-branches \
+  --gcov-ignore-errors all \
+  --gcov-ignore-parse-errors all \
+  --html-details "$REPORT_DIR/index.html" \
+  --xml "$REPORT_DIR/coverage.xml" \
+  --txt "$REPORT_DIR/summary.txt" \
+  --print-summary \
+  "$BUILD_DIR" |
+  tee "$REPORT_DIR/print-summary.txt"
 
 echo ""
 echo "==> HTML report:   $REPORT_DIR/index.html"

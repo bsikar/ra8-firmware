@@ -110,9 +110,7 @@ ALL_NAMES = DIRECT_ALLOCATORS + TRANSITIVE_ALLOCATORS
 # Match "<name>(" at a word boundary so e.g. mz_free(...) does not match
 # free, and stbtt_GetCodepointBitmapBox does not match
 # stbtt_GetCodepointBitmap.
-SYM_RE = re.compile(
-    r"\b(" + "|".join(re.escape(n) for n in ALL_NAMES) + r")\b\s*\("
-)
+SYM_RE = re.compile(r"\b(" + "|".join(re.escape(n) for n in ALL_NAMES) + r")\b\s*\(")
 
 # Inline exemption marker. The reason after the colon is mandatory.
 ALLOW_RE = re.compile(r"alloc-allow\s*:\s*\S")
@@ -171,9 +169,7 @@ def _is_in_scope(path: pathlib.Path) -> bool:
 
 def _strip_comments(text: str) -> str:
     """Strip /* */ and // comments while preserving line numbers."""
-    no_block = BLOCK_COMMENT_RE.sub(
-        lambda m: "\n" * m.group(0).count("\n"), text
-    )
+    no_block = BLOCK_COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     return LINE_COMMENT_RE.sub("", no_block)
 
 
@@ -196,8 +192,7 @@ def check(path: pathlib.Path) -> list[str]:
                 continue
             kind = "direct" if sym in DIRECT_ALLOCATORS else "transitive"
             problems.append(
-                f"{path}:{line_no}: {kind} dynamic allocation: {sym}() "
-                f"-- {original.strip()}"
+                f"{path}:{line_no}: {kind} dynamic allocation: {sym}() -- {original.strip()}"
             )
 
     for idx, original in enumerate(original_lines):
@@ -242,8 +237,7 @@ def main() -> int:
 
     if failures:
         print(
-            "check_no_dynamic_alloc.py: NASA Rule 3 -- "
-            "no dynamic allocation in firmware code.",
+            "check_no_dynamic_alloc.py: NASA Rule 3 -- no dynamic allocation in firmware code.",
             file=sys.stderr,
         )
         for line in failures:

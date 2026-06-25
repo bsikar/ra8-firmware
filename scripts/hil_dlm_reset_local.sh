@@ -56,53 +56,58 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-tag()  { printf "${CYAN}[dlm_local]${NC} %s\n" "$*"; }
-ok()   { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
-err()  { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
+tag() { printf "${CYAN}[dlm_local]${NC} %s\n" "$*"; }
+ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+err() { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
 warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 
 # ---- Resolve rfp-cli (RFP does not add itself to PATH) ----------------------
 resolve_rfp() {
-    if [[ -n "${RFP_CLI:-}" && -x "${RFP_CLI}" ]]; then
-        echo "${RFP_CLI}"; return 0
-    fi
-    if command -v rfp-cli >/dev/null 2>&1; then
-        command -v rfp-cli; return 0
-    fi
-    local cand
-    for cand in \
-        "$HOME/opt/rfp/rfp-cli" \
-        "/opt/rfp/rfp-cli" \
-        "/opt/rfp/linux-x64/rfp-cli" \
-        "/Applications/Renesas Flash Programmer.app/Contents/MacOS/rfp-cli"; do
-        [[ -x "$cand" ]] && { echo "$cand"; return 0; }
-    done
-    return 1
+  if [[ -n "${RFP_CLI:-}" && -x "${RFP_CLI}" ]]; then
+    echo "${RFP_CLI}"
+    return 0
+  fi
+  if command -v rfp-cli >/dev/null 2>&1; then
+    command -v rfp-cli
+    return 0
+  fi
+  local cand
+  for cand in \
+    "$HOME/opt/rfp/rfp-cli" \
+    "/opt/rfp/rfp-cli" \
+    "/opt/rfp/linux-x64/rfp-cli" \
+    "/Applications/Renesas Flash Programmer.app/Contents/MacOS/rfp-cli"; do
+    [[ -x "$cand" ]] && {
+      echo "$cand"
+      return 0
+    }
+  done
+  return 1
 }
 
 RFP="$(resolve_rfp)" || {
-    err "rfp-cli not found. Set RFP_CLI=/path/to/rfp-cli or install Renesas"
-    err "Flash Programmer. Looked in PATH, \$HOME/opt/rfp, /opt/rfp."
-    exit 2
+  err "rfp-cli not found. Set RFP_CLI=/path/to/rfp-cli or install Renesas"
+  err "Flash Programmer. Looked in PATH, \$HOME/opt/rfp, /opt/rfp."
+  exit 2
 }
 
-rfo() {  # rfo <logfile> -- read flash options, capture to log
-    "$RFP" -d "$DEVICE" -t "jlink:${JLINK_SN}" -if swd -s "$SPEED" -rfo \
-        > "$1" 2>&1
+rfo() { # rfo <logfile> -- read flash options, capture to log
+  "$RFP" -d "$DEVICE" -t "jlink:${JLINK_SN}" -if swd -s "$SPEED" -rfo \
+    >"$1" 2>&1
 }
 
-print_state() {  # print_state <logfile> <label>
-    local f="$1" label="$2" st fl bd
-    st="$(grep -E '^DLM State:'      "$f" | head -1 | sed 's/^DLM State: //')"
-    fl="$(grep -E '^Security Flags:' "$f" | head -1 | sed 's/^Security Flags: //')"
-    bd="$(grep -E '^Boundary:'       "$f" | head -1 | sed 's/^Boundary: //')"
-    tag "${label}: DLM=${st:-<none>}  Flags=${fl:-<none>}  Boundary=${bd:-<none>}"
+print_state() { # print_state <logfile> <label>
+  local f="$1" label="$2" st fl bd
+  st="$(grep -E '^DLM State:' "$f" | head -1 | sed 's/^DLM State: //')"
+  fl="$(grep -E '^Security Flags:' "$f" | head -1 | sed 's/^Security Flags: //')"
+  bd="$(grep -E '^Boundary:' "$f" | head -1 | sed 's/^Boundary: //')"
+  tag "${label}: DLM=${st:-<none>}  Flags=${fl:-<none>}  Boundary=${bd:-<none>}"
 }
 
 MODE="${1:-}"
 [[ "$MODE" == "check" || "$MODE" == "recover" ]] || {
-    echo "Usage: $0 {check|recover}" >&2
-    exit 2
+  echo "Usage: $0 {check|recover}" >&2
+  exit 2
 }
 
 tag "rfp-cli: ${RFP}"
@@ -110,21 +115,21 @@ tag "J-Link SN: ${JLINK_SN}  device: ${DEVICE}  speed: ${SPEED} Hz"
 
 # ---- check: READ-ONLY -------------------------------------------------------
 if [[ "$MODE" == "check" ]]; then
-    LOG="/tmp/hil_dlm_local_check.log"
-    tag "Reading flash options (READ-ONLY)..."
-    if ! rfo "$LOG"; then
-        err "rfp-cli -rfo failed. Output:"
-        tail -15 "$LOG" | sed 's/^/    /' >&2
-        exit 1
-    fi
-    if ! grep -q "DLM State:" "$LOG"; then
-        err "rfo did not return a DLM state. Output:"
-        tail -15 "$LOG" | sed 's/^/    /' >&2
-        exit 1
-    fi
-    print_state "$LOG" "STATE"
-    ok "Recovery path reachable -- check log: ${LOG}"
-    exit 0
+  LOG="/tmp/hil_dlm_local_check.log"
+  tag "Reading flash options (READ-ONLY)..."
+  if ! rfo "$LOG"; then
+    err "rfp-cli -rfo failed. Output:"
+    tail -15 "$LOG" | sed 's/^/    /' >&2
+    exit 1
+  fi
+  if ! grep -q "DLM State:" "$LOG"; then
+    err "rfo did not return a DLM state. Output:"
+    tail -15 "$LOG" | sed 's/^/    /' >&2
+    exit 1
+  fi
+  print_state "$LOG" "STATE"
+  ok "Recovery path reachable -- check log: ${LOG}"
+  exit 0
 fi
 
 # ---- recover: DESTRUCTIVE ---------------------------------------------------
@@ -135,45 +140,45 @@ AFTER="/tmp/hil_dlm_local_after.log"
 tag "Reading DLM state BEFORE Initialize..."
 rfo "$BEFORE" || true
 if grep -q "DLM State:" "$BEFORE"; then
-    print_state "$BEFORE" "BEFORE"
+  print_state "$BEFORE" "BEFORE"
 else
-    warn "BEFORE: rfo did not return a readable DLM state (chip may be"
-    warn "        debug-gated in PL0/PL1 -- expected before recovery)."
+  warn "BEFORE: rfo did not return a readable DLM state (chip may be"
+  warn "        debug-gated in PL0/PL1 -- expected before recovery)."
 fi
 
 tag "Invoking Initialize via rfp-cli -erase-chip..."
 tag "(Erases user flash AND clears flash options -> Boundary returns to"
 tag " the all-Secure default; regresses OEM_PL0/PL1 -> OEM_PL2.)"
 if ! "$RFP" -d "$DEVICE" -t "jlink:${JLINK_SN}" -if swd -s "$SPEED" \
-        -erase-chip > "$INIT" 2>&1; then
-    err "rfp-cli -erase-chip returned non-zero. Output:"
-    tail -15 "$INIT" | sed 's/^/    /' >&2
-    exit 1
+  -erase-chip >"$INIT" 2>&1; then
+  err "rfp-cli -erase-chip returned non-zero. Output:"
+  tail -15 "$INIT" | sed 's/^/    /' >&2
+  exit 1
 fi
 if ! grep -q "Operation successful" "$INIT"; then
-    err "rfp-cli -erase-chip did NOT report Operation successful. Output:"
-    tail -15 "$INIT" | sed 's/^/    /' >&2
-    exit 1
+  err "rfp-cli -erase-chip did NOT report Operation successful. Output:"
+  tail -15 "$INIT" | sed 's/^/    /' >&2
+  exit 1
 fi
 ok "Initialize command reported success."
 
 tag "Reading DLM state AFTER Initialize..."
 rfo "$AFTER" || true
 if ! grep -q "DLM State:" "$AFTER"; then
-    err "AFTER: rfo did not return a DLM state. Output:"
-    tail -15 "$AFTER" | sed 's/^/    /' >&2
-    err "Recovery FAILED -- chip may be in LCK_BOOT or `ce` may be set."
-    exit 1
+  err "AFTER: rfo did not return a DLM state. Output:"
+  tail -15 "$AFTER" | sed 's/^/    /' >&2
+  err "Recovery FAILED -- chip may be in LCK_BOOT or $(ce) may be set."
+  exit 1
 fi
 print_state "$AFTER" "AFTER"
 
 AFTER_STATE="$(grep -E '^DLM State:' "$AFTER" | head -1 | sed 's/^DLM State: //')"
 if [[ "$AFTER_STATE" == "OEM_PL2" ]]; then
-    ok "Chip recovered. DLM is at OEM_PL2; Boundary cleared to default."
-    ok "Do NOT chain 'rfp-cli -dlm <state>' -- that would re-lock the chip."
-    tag "Logs: BEFORE=${BEFORE}  INIT=${INIT}  AFTER=${AFTER}"
-    tag "Next: re-flash a sanity app, e.g. scripts/hil_run_local.sh blink"
-    exit 0
+  ok "Chip recovered. DLM is at OEM_PL2; Boundary cleared to default."
+  ok "Do NOT chain 'rfp-cli -dlm <state>' -- that would re-lock the chip."
+  tag "Logs: BEFORE=${BEFORE}  INIT=${INIT}  AFTER=${AFTER}"
+  tag "Next: re-flash a sanity app, e.g. scripts/hil_run_local.sh blink"
+  exit 0
 fi
 
 err "Initialize ran but DLM state is now '${AFTER_STATE}' (expected OEM_PL2)."

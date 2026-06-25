@@ -104,12 +104,12 @@ PI_HOST="${PI_HOST:-star@star.local}"
 # scripts SSH out automatically -- but we still want to use the matching
 # detection here to avoid double-hops.
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-    LOCAL_PI=1
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+  LOCAL_PI=1
 fi
-pi_run()  { if (( LOCAL_PI )); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
+pi_run() { if ((LOCAL_PI)); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -122,276 +122,294 @@ MODE_FILTER=""
 SKIP_BUILD=0
 LIST_ONLY=0
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --only) ONLY="$2"; shift 2 ;;
-        --mode) MODE_FILTER="$2"; shift 2 ;;
-        --skip-build) SKIP_BUILD=1; shift ;;
-        --list) LIST_ONLY=1; shift ;;
-        -h|--help) sed -n '5,46p' "$0"; exit 0 ;;
-        *) echo "Unknown arg: $1"; exit 2 ;;
-    esac
+  case "$1" in
+    --only)
+      ONLY="$2"
+      shift 2
+      ;;
+    --mode)
+      MODE_FILTER="$2"
+      shift 2
+      ;;
+    --skip-build)
+      SKIP_BUILD=1
+      shift
+      ;;
+    --list)
+      LIST_ONLY=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '5,46p' "$0"
+      exit 0
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      exit 2
+      ;;
+  esac
 done
 
 # Auto-discover hil/<app>/ dirs.
 declare -a APPS=()
 while IFS= read -r d; do
-    name="$(basename "$d")"
-    [[ "$name" == "README.md" ]] && continue
-    APPS+=("$name")
+  name="$(basename "$d")"
+  [[ "$name" == "README.md" ]] && continue
+  APPS+=("$name")
 done < <(find "$HIL_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
 
-if (( ${#APPS[@]} == 0 )); then
-    echo -e "${RED}[hil_all]${NC} no apps found under ${HIL_DIR}"
-    exit 1
+if ((${#APPS[@]} == 0)); then
+  echo -e "${RED}[hil_all]${NC} no apps found under ${HIL_DIR}"
+  exit 1
 fi
 
 echo -e "${CYAN}[hil_all]${NC} discovered ${#APPS[@]} apps under hil/"
 
-if (( LIST_ONLY )); then
-    printf "%-40s %s\n" "APP" "MODE"
-    for app in "${APPS[@]}"; do
-        conf="${HIL_DIR}/${app}/hil.conf"
-        if [[ -f "$conf" ]]; then
-            mode="$(grep -E '^HIL_MODE=' "$conf" | head -1 | cut -d= -f2 | tr -d '"' || true)"
-            printf "%-40s %s\n" "$app" "${mode:-(unset)}"
-        else
-            printf "%-40s %s\n" "$app" "(no hil.conf -- WILL FAIL)"
-        fi
-    done
-    exit 0
+if ((LIST_ONLY)); then
+  printf "%-40s %s\n" "APP" "MODE"
+  for app in "${APPS[@]}"; do
+    conf="${HIL_DIR}/${app}/hil.conf"
+    if [[ -f "$conf" ]]; then
+      mode="$(grep -E '^HIL_MODE=' "$conf" | head -1 | cut -d= -f2 | tr -d '"' || true)"
+      printf "%-40s %s\n" "$app" "${mode:-(unset)}"
+    else
+      printf "%-40s %s\n" "$app" "(no hil.conf -- WILL FAIL)"
+    fi
+  done
+  exit 0
 fi
 
 # Build everything first unless told otherwise. Build failures stop the run.
-if (( SKIP_BUILD == 0 )); then
-    echo -e "${CYAN}[hil_all]${NC} building all apps under hil/"
-    declare -a build_targets=()
-    if [[ -n "$ONLY" ]]; then
-        build_targets=("$ONLY")
-    else
-        build_targets=("${APPS[@]}")
-    fi
-    cd "$REPO_ROOT"
-    # We pass everything to one `make` so the project's discovery sweeps once.
-    if ! make -k "${build_targets[@]}" >/dev/null 2>&1; then
-        echo -e "${RED}[hil_all]${NC} make failed for at least one app -- check 'make <app>' individually"
-        exit 1
-    fi
+if ((SKIP_BUILD == 0)); then
+  echo -e "${CYAN}[hil_all]${NC} building all apps under hil/"
+  declare -a build_targets=()
+  if [[ -n "$ONLY" ]]; then
+    build_targets=("$ONLY")
+  else
+    build_targets=("${APPS[@]}")
+  fi
+  cd "$REPO_ROOT"
+  # We pass everything to one `make` so the project's discovery sweeps once.
+  if ! make -k "${build_targets[@]}" >/dev/null 2>&1; then
+    echo -e "${RED}[hil_all]${NC} make failed for at least one app -- check 'make <app>' individually"
+    exit 1
+  fi
 fi
 
 # Per-app verifiers. Each takes the app name + sourced hil.conf vars and
 # returns 0 on pass, non-zero on fail. Output a one-line PASS/FAIL summary.
 
 run_uart_scrape() {
-    local app="$1"
-    local -a args=(
-        --hex "${HIL_DIR}/${app}/build/${app}.hex"
-        --expect "${HIL_EXPECT}"
-        --timeout "${HIL_TIMEOUT_S:-10}"
-    )
-    if [[ -n "${HIL_EXPECT_NEGATIVE:-}" ]]; then
-        args+=( --expect-negative "${HIL_EXPECT_NEGATIVE}" )
-    fi
-    bash "${REPO_ROOT}/scripts/hil_run_direct.sh" "${args[@]}"
+  local app="$1"
+  local -a args=(
+    --hex "${HIL_DIR}/${app}/build/${app}.hex"
+    --expect "${HIL_EXPECT}"
+    --timeout "${HIL_TIMEOUT_S:-10}"
+  )
+  if [[ -n "${HIL_EXPECT_NEGATIVE:-}" ]]; then
+    args+=(--expect-negative "${HIL_EXPECT_NEGATIVE}")
+  fi
+  bash "${REPO_ROOT}/scripts/hil_run_direct.sh" "${args[@]}"
 }
 
 run_usb_cdc() {
-    local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_usb_test.sh" \
-        --only-app "${app}" \
-        --vidpid "${HIL_VIDPID}" \
-        --hub-port "${HIL_HUB_PORT}" \
-        --ppps-mode "${HIL_PPPS_MODE:-hard}" \
-        --mps-chunk "${HIL_MPS_CHUNK:-512}" \
-        --stream-bytes "${HIL_STREAM_BYTES:-1048576}" \
-        --stream-floor "${HIL_STREAM_FLOOR_KBS:-2000}"
+  local app="$1"
+  bash "${REPO_ROOT}/scripts/hil_usb_test.sh" \
+    --only-app "${app}" \
+    --vidpid "${HIL_VIDPID}" \
+    --hub-port "${HIL_HUB_PORT}" \
+    --ppps-mode "${HIL_PPPS_MODE:-hard}" \
+    --mps-chunk "${HIL_MPS_CHUNK:-512}" \
+    --stream-bytes "${HIL_STREAM_BYTES:-1048576}" \
+    --stream-floor "${HIL_STREAM_FLOOR_KBS:-2000}"
 }
 
 run_usb_hid() {
-    local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_hid_test.sh" \
-        --app "${app}" \
-        --vidpid "${HIL_VIDPID:-1209:0001}"
+  local app="$1"
+  bash "${REPO_ROOT}/scripts/hil_hid_test.sh" \
+    --app "${app}" \
+    --vidpid "${HIL_VIDPID:-1209:0001}"
 }
 
 run_usb_msc() {
-    local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_msc_test.sh" \
-        --app "${app}" \
-        --vidpid "${HIL_VIDPID:-1209:000b}"
+  local app="$1"
+  bash "${REPO_ROOT}/scripts/hil_msc_test.sh" \
+    --app "${app}" \
+    --vidpid "${HIL_VIDPID:-1209:000b}"
 }
 
 run_alive() {
-    local app="$1"
-    local boot_s="${HIL_BOOT_S:-2}"
-    bash "${REPO_ROOT}/scripts/hil_check_alive.sh" \
-        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
-        --boot-seconds "${boot_s}"
+  local app="$1"
+  local boot_s="${HIL_BOOT_S:-2}"
+  bash "${REPO_ROOT}/scripts/hil_check_alive.sh" \
+    --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+    --boot-seconds "${boot_s}"
 }
 
 run_jlink_memprobe() {
-    local app="$1"
-    local -a args=(
-        --hex "${HIL_DIR}/${app}/build/${app}.hex"
-        --symbol "${HIL_PROBE_SYMBOL}"
-        --min-advance "${HIL_PROBE_MIN_ADVANCE:-4}"
-        --seconds "${HIL_PROBE_SECONDS:-3}"
-        --app-name "${app}"
-    )
-    if [[ -n "${HIL_PROBE_FAILURE_SYMBOL:-}" ]]; then
-        args+=( --failure-symbol "${HIL_PROBE_FAILURE_SYMBOL}" )
-        args+=( --max-failure-advance "${HIL_PROBE_MAX_FAILURE:-0}" )
-    fi
-    bash "${REPO_ROOT}/scripts/hil_jlink_memprobe.sh" "${args[@]}"
+  local app="$1"
+  local -a args=(
+    --hex "${HIL_DIR}/${app}/build/${app}.hex"
+    --symbol "${HIL_PROBE_SYMBOL}"
+    --min-advance "${HIL_PROBE_MIN_ADVANCE:-4}"
+    --seconds "${HIL_PROBE_SECONDS:-3}"
+    --app-name "${app}"
+  )
+  if [[ -n "${HIL_PROBE_FAILURE_SYMBOL:-}" ]]; then
+    args+=(--failure-symbol "${HIL_PROBE_FAILURE_SYMBOL}")
+    args+=(--max-failure-advance "${HIL_PROBE_MAX_FAILURE:-0}")
+  fi
+  bash "${REPO_ROOT}/scripts/hil_jlink_memprobe.sh" "${args[@]}"
 }
 
 run_hil_eth_tcp() {
-    local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_eth_tcp.sh" \
-        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
-        --board-ip "${HIL_BOARD_IP}" \
-        --port "${HIL_PORT}" \
-        --proto "${HIL_PROTO:-tcp}" \
-        --payload-bytes "${HIL_PAYLOAD_BYTES:-512}" \
-        --boot-timeout "${HIL_BOOT_TIMEOUT_S:-25}" \
-        --probe-timeout "${HIL_PROBE_TIMEOUT_S:-10}"
+  local app="$1"
+  bash "${REPO_ROOT}/scripts/hil_eth_tcp.sh" \
+    --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+    --board-ip "${HIL_BOARD_IP}" \
+    --port "${HIL_PORT}" \
+    --proto "${HIL_PROTO:-tcp}" \
+    --payload-bytes "${HIL_PAYLOAD_BYTES:-512}" \
+    --boot-timeout "${HIL_BOOT_TIMEOUT_S:-25}" \
+    --probe-timeout "${HIL_PROBE_TIMEOUT_S:-10}"
 }
 
 run_rtt_scrape() {
-    local app="$1"
-    bash "${REPO_ROOT}/scripts/hil_rtt_scrape.sh" \
-        --hex "${HIL_DIR}/${app}/build/${app}.hex" \
-        --elf "${HIL_DIR}/${app}/build/${app}.elf" \
-        --expect "${HIL_EXPECT}" \
-        --rtt-buf-symbol "${HIL_RTT_BUF_SYMBOL:-s_rtt_up_buf}" \
-        --rtt-buf-bytes "${HIL_RTT_BUF_BYTES:-1024}" \
-        --expect-negative "${HIL_EXPECT_NEGATIVE:-}" \
-        --timeout "${HIL_TIMEOUT_S:-10}"
+  local app="$1"
+  bash "${REPO_ROOT}/scripts/hil_rtt_scrape.sh" \
+    --hex "${HIL_DIR}/${app}/build/${app}.hex" \
+    --elf "${HIL_DIR}/${app}/build/${app}.elf" \
+    --expect "${HIL_EXPECT}" \
+    --rtt-buf-symbol "${HIL_RTT_BUF_SYMBOL:-s_rtt_up_buf}" \
+    --rtt-buf-bytes "${HIL_RTT_BUF_BYTES:-1024}" \
+    --expect-negative "${HIL_EXPECT_NEGATIVE:-}" \
+    --timeout "${HIL_TIMEOUT_S:-10}"
 }
 
 declare -i pass=0 fail=0 skipped=0
 declare -a failed_apps=()
 
 for app in "${APPS[@]}"; do
-    if [[ -n "$ONLY" && "$ONLY" != "$app" ]]; then continue; fi
+  if [[ -n "$ONLY" && "$ONLY" != "$app" ]]; then continue; fi
 
-    conf="${HIL_DIR}/${app}/hil.conf"
-    if [[ ! -f "$conf" ]]; then
-        echo -e "${RED}[hil_all]${NC} ${app}: NO hil.conf (every app under hil/ must declare a HIL mode)"
-        failed_apps+=("$app (missing hil.conf)")
-        (( fail++ )) || true
-        continue
-    fi
+  conf="${HIL_DIR}/${app}/hil.conf"
+  if [[ ! -f "$conf" ]]; then
+    echo -e "${RED}[hil_all]${NC} ${app}: NO hil.conf (every app under hil/ must declare a HIL mode)"
+    failed_apps+=("$app (missing hil.conf)")
+    ((fail++)) || true
+    continue
+  fi
 
-    # Source the manifest. Reset known vars first so values from a
-    # previous app's conf cannot leak. Export them so per-mode runners
-    # invoked as subprocesses (e.g. hil_check_alive.sh) can read them.
-    unset HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S
-    unset HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK
-    unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
-    unset HIL_BOOT_S HIL_FAULT_EXPECTED
-    unset HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS
-    unset HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE
-    unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
-    unset HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
-    unset HIL_POST_INITIALIZE
-    # shellcheck disable=SC1090
-    source "$conf"
-    export HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S \
-           HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK \
-           HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
-           HIL_BOOT_S HIL_FAULT_EXPECTED \
-           HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
-           HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE \
-           HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S \
-           HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES \
-           HIL_POST_INITIALIZE
+  # Source the manifest. Reset known vars first so values from a
+  # previous app's conf cannot leak. Export them so per-mode runners
+  # invoked as subprocesses (e.g. hil_check_alive.sh) can read them.
+  unset HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S
+  unset HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK
+  unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
+  unset HIL_BOOT_S HIL_FAULT_EXPECTED
+  unset HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS
+  unset HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE
+  unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
+  unset HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
+  unset HIL_POST_INITIALIZE
+  # shellcheck disable=SC1090
+  source "$conf"
+  export HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S \
+    HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK \
+    HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
+    HIL_BOOT_S HIL_FAULT_EXPECTED \
+    HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
+    HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE \
+    HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S \
+    HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES \
+    HIL_POST_INITIALIZE
 
-    if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
-        (( skipped++ )) || true
-        continue
-    fi
+  if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
+    ((skipped++)) || true
+    continue
+  fi
 
-    echo
-    echo -e "${CYAN}[hil_all]${NC} =========================================="
-    echo -e "${CYAN}[hil_all]${NC} ${app} (mode=${HIL_MODE})"
-    echo -e "${CYAN}[hil_all]${NC} =========================================="
+  echo
+  echo -e "${CYAN}[hil_all]${NC} =========================================="
+  echo -e "${CYAN}[hil_all]${NC} ${app} (mode=${HIL_MODE})"
+  echo -e "${CYAN}[hil_all]${NC} =========================================="
 
-    # Issue #58: USB-mode tests flake when bus state from a prior test
-    # (or even a non-USB test that left the device in an odd state) leaks
-    # into this enumeration. Soft-PPPS the hub port before any usb_*
-    # test so the kernel starts clean. Safe to repeat; the per-test
-    # runners may PPPS again internally without harm.
-    case "$HIL_MODE" in
-        usb_cdc|usb_hid|usb_msc)
-            bash "${REPO_ROOT}/scripts/hil_ppps.sh" --soft cycle "${HIL_HUB_PORT:-4}" \
-                >/dev/null 2>&1 || true
-            sleep 1
-            ;;
-    esac
+  # Issue #58: USB-mode tests flake when bus state from a prior test
+  # (or even a non-USB test that left the device in an odd state) leaks
+  # into this enumeration. Soft-PPPS the hub port before any usb_*
+  # test so the kernel starts clean. Safe to repeat; the per-test
+  # runners may PPPS again internally without harm.
+  case "$HIL_MODE" in
+    usb_cdc | usb_hid | usb_msc)
+      bash "${REPO_ROOT}/scripts/hil_ppps.sh" --soft cycle "${HIL_HUB_PORT:-4}" \
+        >/dev/null 2>&1 || true
+      sleep 1
+      ;;
+  esac
 
-    rc=0
-    case "$HIL_MODE" in
-        uart_scrape)     run_uart_scrape     "$app" || rc=$? ;;
-        usb_cdc)         run_usb_cdc         "$app" || rc=$? ;;
-        usb_hid)         run_usb_hid         "$app" || rc=$? ;;
-        usb_msc)         run_usb_msc         "$app" || rc=$? ;;
-        alive)           run_alive           "$app" || rc=$? ;;
-        jlink_memprobe)  run_jlink_memprobe  "$app" || rc=$? ;;
-        hil_eth_tcp)     run_hil_eth_tcp     "$app" || rc=$? ;;
-        rtt_scrape)      run_rtt_scrape      "$app" || rc=$? ;;
-        *)
-            echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
-            rc=99
-            ;;
-    esac
+  rc=0
+  case "$HIL_MODE" in
+    uart_scrape) run_uart_scrape "$app" || rc=$? ;;
+    usb_cdc) run_usb_cdc "$app" || rc=$? ;;
+    usb_hid) run_usb_hid "$app" || rc=$? ;;
+    usb_msc) run_usb_msc "$app" || rc=$? ;;
+    alive) run_alive "$app" || rc=$? ;;
+    jlink_memprobe) run_jlink_memprobe "$app" || rc=$? ;;
+    hil_eth_tcp) run_hil_eth_tcp "$app" || rc=$? ;;
+    rtt_scrape) run_rtt_scrape "$app" || rc=$? ;;
+    *)
+      echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
+      rc=99
+      ;;
+  esac
 
-    if (( rc == 0 )); then
-        echo -e "${GREEN}[hil_all]${NC} ${app} PASS"
-        (( pass++ )) || true
+  if ((rc == 0)); then
+    echo -e "${GREEN}[hil_all]${NC} ${app} PASS"
+    ((pass++)) || true
+  else
+    echo -e "${RED}[hil_all]${NC} ${app} FAIL (rc=${rc})"
+    failed_apps+=("$app (mode=${HIL_MODE})")
+    ((fail++)) || true
+  fi
+
+  # ------------------------------------------------------------------------
+  # Per-app post-test recovery hook. Apps that deliberately put the chip
+  # into a state that gates the AHB-AP (e.g. LPM deep modes) set
+  # HIL_POST_INITIALIZE=1 in their hil.conf. After running the test we
+  # invoke `rfp-cli -erase-chip` (the boot-firmware Initialize command)
+  # so the next app's flash has a haltable CPU. Without this, LPM-deep
+  # demos cascade-fail every subsequent test until hil_flash.sh's
+  # auto-recovery catches up. See scripts/hil_dlm_reset.sh for the
+  # full DLM/AHB-AP recovery flow.
+  if [[ "${HIL_POST_INITIALIZE:-0}" == "1" ]]; then
+    echo -e "${CYAN}[hil_all]${NC} ${app}: HIL_POST_INITIALIZE=1 -- running rfp-cli -erase-chip..."
+    # Detect Pi vs dev-machine (same heuristic as hil_flash.sh)
+    if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+      [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+      [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+      rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip \
+        >/tmp/hil_all_post_init_${app}.log 2>&1 || true
     else
-        echo -e "${RED}[hil_all]${NC} ${app} FAIL (rc=${rc})"
-        failed_apps+=("$app (mode=${HIL_MODE})")
-        (( fail++ )) || true
+      ssh -o ConnectTimeout=5 -o BatchMode=yes star@star.local \
+        "rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip" \
+        >/tmp/hil_all_post_init_${app}.log 2>&1 || true
     fi
-
-    # ------------------------------------------------------------------------
-    # Per-app post-test recovery hook. Apps that deliberately put the chip
-    # into a state that gates the AHB-AP (e.g. LPM deep modes) set
-    # HIL_POST_INITIALIZE=1 in their hil.conf. After running the test we
-    # invoke `rfp-cli -erase-chip` (the boot-firmware Initialize command)
-    # so the next app's flash has a haltable CPU. Without this, LPM-deep
-    # demos cascade-fail every subsequent test until hil_flash.sh's
-    # auto-recovery catches up. See scripts/hil_dlm_reset.sh for the
-    # full DLM/AHB-AP recovery flow.
-    if [[ "${HIL_POST_INITIALIZE:-0}" == "1" ]]; then
-        echo -e "${CYAN}[hil_all]${NC} ${app}: HIL_POST_INITIALIZE=1 -- running rfp-cli -erase-chip..."
-        # Detect Pi vs dev-machine (same heuristic as hil_flash.sh)
-        if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-           || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-           || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-            rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip \
-                >/tmp/hil_all_post_init_${app}.log 2>&1 || true
-        else
-            ssh -o ConnectTimeout=5 -o BatchMode=yes star@star.local \
-                "rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip" \
-                >/tmp/hil_all_post_init_${app}.log 2>&1 || true
-        fi
-        if grep -q "Operation successful" "/tmp/hil_all_post_init_${app}.log" 2>/dev/null; then
-            echo -e "${GREEN}[hil_all]${NC} ${app}: post-test Initialize OK"
-        else
-            echo -e "${YELLOW}[hil_all]${NC} ${app}: post-test Initialize did not report success"
-            echo -e "${YELLOW}[hil_all]${NC} (see /tmp/hil_all_post_init_${app}.log)"
-        fi
+    if grep -q "Operation successful" "/tmp/hil_all_post_init_${app}.log" 2>/dev/null; then
+      echo -e "${GREEN}[hil_all]${NC} ${app}: post-test Initialize OK"
+    else
+      echo -e "${YELLOW}[hil_all]${NC} ${app}: post-test Initialize did not report success"
+      echo -e "${YELLOW}[hil_all]${NC} (see /tmp/hil_all_post_init_${app}.log)"
     fi
+  fi
 done
 
 echo
 echo "==================================================="
 echo "  hil_all: ${pass} passed, ${fail} failed, ${skipped} skipped"
 echo "==================================================="
-if (( fail > 0 )); then
-    echo "  FAILED apps:"
-    for a in "${failed_apps[@]}"; do echo "    - $a"; done
-    exit 1
+if ((fail > 0)); then
+  echo "  FAILED apps:"
+  for a in "${failed_apps[@]}"; do echo "    - $a"; done
+  exit 1
 fi
 exit 0

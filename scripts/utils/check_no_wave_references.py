@@ -66,8 +66,7 @@ SKIP_DIR_NAMES: frozenset[str] = frozenset(
 )
 
 SCAN_EXTS: frozenset[str] = frozenset(
-    {".c", ".h", ".cpp", ".hpp", ".cc", ".cmake", ".md", ".yml", ".yaml",
-     ".sh", ".py", ".txt"}
+    {".c", ".h", ".cpp", ".hpp", ".cc", ".cmake", ".md", ".yml", ".yaml", ".sh", ".py", ".txt"}
 )
 
 SCAN_BASENAMES: frozenset[str] = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
@@ -90,9 +89,7 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
 def _is_skip_dir(name: str) -> bool:
     if name in SKIP_DIR_NAMES:
         return True
-    if name.startswith("build-") or name == "build":
-        return True
-    return False
+    return bool(name.startswith("build-") or name == "build")
 
 
 def should_scan(path: Path) -> bool:
@@ -154,7 +151,7 @@ def main() -> int:
         print(f"  {rel}:{lineno} {snippet}")
     if len(findings) > 50:
         print(f"  ... {len(findings) - 50} more (truncated)")
-    print("")
+    print()
     print('Per-line opt-out: append "WAVE-OK: <reason>" on the offending line.')
     print("Auto-fix helper: scripts/utils/fix_wave_references.py --apply")
     return 1

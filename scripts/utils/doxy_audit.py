@@ -20,8 +20,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
-from collections import Counter, defaultdict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCAN_DIRS = ["libs", "src", "port"]
@@ -46,9 +46,22 @@ FUNC_RE = re.compile(
 
 # Things that look like function decls but aren't
 NON_FUNC_NAMES = {
-    "if", "for", "while", "switch", "return", "sizeof", "typeof",
-    "do", "else", "case", "goto", "static_assert", "_Static_assert",
-    "alignof", "_Alignof", "defined",
+    "if",
+    "for",
+    "while",
+    "switch",
+    "return",
+    "sizeof",
+    "typeof",
+    "do",
+    "else",
+    "case",
+    "goto",
+    "static_assert",
+    "_Static_assert",
+    "alignof",
+    "_Alignof",
+    "defined",
     # Inline-asm misparse: `__asm__ volatile("...")` looks like a function
     # named `volatile` to the regex; it has no real prototype to document.
     "volatile",
@@ -63,7 +76,7 @@ def strip_comments(src: str) -> str:
     while i < n:
         c = src[i]
         # preserve string literals
-        if c == '"' or c == "'":
+        if c in {'"', "'"}:
             quote = c
             out.append(c)
             i += 1
@@ -120,7 +133,7 @@ def find_preceding_doxy(src: str, func_offset: int):
     # are also accepted as satisfying audit -- they exist purely to mark the
     # function as "documented in header" without producing a duplicate
     # doxygen render.
-    if block.startswith("/**") or block.startswith("/*!"):
+    if block.startswith(("/**", "/*!")):
         return block, True
     if block.startswith("/*") and (
         "see header for full description" in block
@@ -136,7 +149,7 @@ def find_preceding_doxy(src: str, func_offset: int):
 def parse_args(args_text: str):
     """Return list of parameter names. (void) -> []."""
     s = args_text.strip()
-    if s == "" or s == "void":
+    if s in {"", "void"}:
         return []
     # strip nested attributes
     s = re.sub(r"__attribute__\s*\(\([^)]*\)\)", "", s)
@@ -144,10 +157,10 @@ def parse_args(args_text: str):
     depth = 0
     cur = []
     for ch in s:
-        if ch == "(" or ch == "[" or ch == "{":
+        if ch in {"(", "[", "{"}:
             depth += 1
             cur.append(ch)
-        elif ch == ")" or ch == "]" or ch == "}":
+        elif ch in {")", "]", "}"}:
             depth -= 1
             cur.append(ch)
         elif ch == "," and depth == 0:
@@ -177,8 +190,18 @@ def parse_args(args_text: str):
             continue
         # filter out type keywords if it's the only one
         if len(toks) == 1 and toks[0] in {
-            "int", "char", "short", "long", "float", "double", "void",
-            "signed", "unsigned", "bool", "size_t", "ssize_t",
+            "int",
+            "char",
+            "short",
+            "long",
+            "float",
+            "double",
+            "void",
+            "signed",
+            "unsigned",
+            "bool",
+            "size_t",
+            "ssize_t",
         }:
             # unnamed parameter, count as positional
             names.append(f"arg{len(names)}")
@@ -235,7 +258,7 @@ def audit_file(path: Path):
         # 3) Full matched text starting with `*name(` or `&name(` is a call
         #    expression (deref/address-of of an inline accessor return).
         full = m.group(0).lstrip()
-        if full.startswith("*") or full.startswith("&"):
+        if full.startswith(("*", "&")):
             continue
         # skip definitions of macros (shouldn't appear since stripped, but safety)
         # determine the line number in original file
@@ -286,12 +309,16 @@ def audit_file(path: Path):
             # canonical tags live there; the .c stub deliberately uses a
             # single asterisk so doxygen ignores the block (silencing
             # "multiple @param documentation sections" duplication warnings).
-            if block.startswith("/*") and not block.startswith("/**") and (
-                "see header for full description" in block
-                or "see surrounding code and HUM citations" in block
-                or "See the public header for the documented contract" in block
-                or "see header for the documented contract" in block
-                or "see implementation for details" in block.lower()
+            if (
+                block.startswith("/*")
+                and not block.startswith("/**")
+                and (
+                    "see header for full description" in block
+                    or "see surrounding code and HUM citations" in block
+                    or "See the public header for the documented contract" in block
+                    or "see header for the documented contract" in block
+                    or "see implementation for details" in block.lower()
+                )
             ):
                 rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, [], "ok"))
                 continue
@@ -313,9 +340,7 @@ def audit_file(path: Path):
             # @param[in/out/in,out] <name>
             for a in args:
                 # match @param[...] name OR @param name (any direction)
-                pat = re.compile(
-                    r"@param(?:\s*\[[^\]]*\])?\s+" + re.escape(a) + r"\b"
-                )
+                pat = re.compile(r"@param(?:\s*\[[^\]]*\])?\s+" + re.escape(a) + r"\b")
                 if not pat.search(block):
                     missing.append(f"@param[{a}]")
             # @return / @retval (only if non-void)
@@ -341,22 +366,18 @@ def audit_file(path: Path):
             continue
 
         # severity
-        has_brief_or_param_miss = any(
-            t == "@brief" or t.startswith("@param[") for t in missing
-        )
+        has_brief_or_param_miss = any(t == "@brief" or t.startswith("@param[") for t in missing)
         if has_brief_or_param_miss:
             severity = "high"
         elif any(
-            t in ("@return", "@retval") or t.startswith("@pre") or t.startswith("@post")
+            t in ("@return", "@retval") or t.startswith(("@pre", "@post"))
             for t in missing
         ):
             severity = "medium"
         else:
             severity = "low"
 
-        rows.append(
-            (str(path.relative_to(REPO_ROOT)), line_no, name, missing, severity)
-        )
+        rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, missing, severity))
 
     return rows
 
@@ -375,7 +396,7 @@ def run_check() -> int:
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames if d not in EXCLUDE_PARTS]
             for fn in filenames:
-                if not (fn.endswith(".c") or fn.endswith(".h")):
+                if not (fn.endswith((".c", ".h"))):
                     continue
                 p = Path(dirpath) / fn
                 rel_parts = p.relative_to(REPO_ROOT).parts
@@ -396,7 +417,7 @@ def run_check() -> int:
         print(f"  {src}:{line}  {name}  --  {';'.join(missing)}")
     if len(gap_rows) > cap:
         print(f"  ... and {len(gap_rows) - cap} more")
-    print("")
+    print()
     print("Refresh the audit report by running:")
     print("  python3 scripts/utils/doxy_audit.py")
     return 1
@@ -415,7 +436,7 @@ def main() -> int:
             # prune excluded dirs
             dirnames[:] = [d for d in dirnames if d not in EXCLUDE_PARTS]
             for fn in filenames:
-                if not (fn.endswith(".c") or fn.endswith(".h")):
+                if not (fn.endswith((".c", ".h"))):
                     continue
                 p = Path(dirpath) / fn
                 rel_parts = p.relative_to(REPO_ROOT).parts

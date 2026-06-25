@@ -26,6 +26,6 @@ want="scripts/git"
 current="$(git -C "${root}" config --local --get core.hooksPath 2>/dev/null || true)"
 
 if [ "${current}" != "${want}" ]; then
-    git -C "${root}" config core.hooksPath "${want}"
-    echo "[hooks] core.hooksPath -> ${want} (commit-msg, pre-commit, pre-push now active)"
+  git -C "${root}" config core.hooksPath "${want}"
+  echo "[hooks] core.hooksPath -> ${want} (commit-msg, pre-commit, pre-push now active)"
 fi

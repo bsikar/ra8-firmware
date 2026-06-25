@@ -28,6 +28,7 @@ written to ``--out-dir`` for inspection) and exit status is non-zero.
 The script is stdlib-only (gzip / subprocess / argparse) so it runs anywhere the
 board_sim binary and the cross-built ``.elf`` exist.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,7 +60,8 @@ def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
     """Parse a binary (P6) PPM into (width, height, maxval, pixel-bytes)."""
     data = path.read_bytes()
     if data[:2] != b"P6":
-        raise ValueError(f"{path}: not a P6 PPM")
+        msg = f"{path}: not a P6 PPM"
+        raise ValueError(msg)
     idx = 2
     tokens: list[int] = []
     while len(tokens) < 3:
@@ -73,7 +75,8 @@ def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
     width, height, maxval = tokens
     pixels = data[idx : idx + width * height * 3]
     if len(pixels) != width * height * 3:
-        raise ValueError(f"{path}: truncated raster")
+        msg = f"{path}: truncated raster"
+        raise ValueError(msg)
     return width, height, maxval, pixels
 
 
@@ -81,7 +84,8 @@ def crop_panel(width: int, height: int, maxval: int, pixels: bytes) -> bytes:
     """Return a P6 PPM of the panel region (left ``width - SIDEBAR_W`` columns)."""
     panel_w = width - SIDEBAR_W
     if panel_w <= 0:
-        raise ValueError(f"width {width} <= sidebar {SIDEBAR_W}")
+        msg = f"width {width} <= sidebar {SIDEBAR_W}"
+        raise ValueError(msg)
     out = bytearray()
     for row in range(height):
         off = row * width * 3
@@ -100,7 +104,8 @@ def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
         proc = subprocess.run(cmd, capture_output=True, check=False)
         if proc.returncode != 0:
             err = proc.stderr.decode("utf-8", "replace")
-            raise RuntimeError(f"board_sim failed: {' '.join(cmd)}\n{err}")
+            msg = f"board_sim failed: {' '.join(cmd)}\n{err}"
+            raise RuntimeError(msg)
         return crop_panel(*read_ppm(Path(tmp.name)))
 
 

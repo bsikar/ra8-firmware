@@ -42,13 +42,13 @@ Exit code:
   0  no new compound decision is missing a matching MC/DC test.
   1  one or more new decisions lack an MC/DC test (commit rejected).
 """
+
 from __future__ import annotations
 
 import re
 import subprocess
 import sys
 from pathlib import Path
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -114,7 +114,9 @@ def _git(*args: str) -> str:
     ).stdout
 
 
-def staged_files(*, suffix: str | None = None, prefixes: tuple[str, ...] | None = None) -> list[str]:
+def staged_files(
+    *, suffix: str | None = None, prefixes: tuple[str, ...] | None = None
+) -> list[str]:
     """Return staged file paths (added/copied/modified/renamed) optionally
     filtered by suffix and/or path prefix."""
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
@@ -184,8 +186,7 @@ def _scrub(line: str) -> str:
     line = STRING_LITERAL_RE.sub('""', line)
     line = CHAR_LITERAL_RE.sub("''", line)
     line = BLOCK_COMMENT_RE.sub("", line)
-    line = LINE_COMMENT_RE.sub("", line)
-    return line
+    return LINE_COMMENT_RE.sub("", line)
 
 
 def compound_decision_lines(text: str) -> set[tuple[int, str]]:
@@ -293,10 +294,7 @@ def has_matching_citation(
     fn = enclosing_function(src_text, src_line)
     if fn is None:
         return False
-    for path, sym in symbol_cites:
-        if path == src_path and sym == fn:
-            return True
-    return False
+    return any(path == src_path and sym == fn for path, sym in symbol_cites)
 
 
 # ---------------------------------------------------------------------------
@@ -326,21 +324,21 @@ def main() -> int:
         print("[FAIL] check_new_compound_has_mcdc.py: new compound boolean")
         print("       decisions are staged without an accompanying MC/DC")
         print("       test vector set in tests/test_*.c.")
-        print("")
+        print()
         print("       Per docs/MCDC.md, every `&&` / `||` decision under")
         print("       libs/, src/, port/ must have a `test_mcdc_*` function")
         print("       in the matching tests/test_<module>.c whose")
         print("       `@par MC/DC:` block cites the decision as")
         print("       `path@function` (the enclosing function of the")
         print("       decision -- a drift-proof anchor, no line numbers).")
-        print("")
+        print()
         print("       Offending decisions (path:line is informational):")
         for path, line_no, normalized in findings[:50]:
             snippet = normalized if len(normalized) <= 80 else normalized[:77] + "..."
             print(f"         {path}:{line_no}: {snippet}")
         if len(findings) > 50:
             print(f"         ... and {len(findings) - 50} more")
-        print("")
+        print()
         print("       Fix: add a `test_mcdc_<decision>` function in the")
         print("       matching tests/test_<module>.c with N+1 vectors and")
         print("       a `@par MC/DC:` block citing `path@function`,")

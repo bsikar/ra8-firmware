@@ -16,6 +16,7 @@ and exits non-zero if any are found. Whitelists the project's own
 self-documentation (CLAUDE.md note, this script, the migration
 memo) where the tokens appear in *explanatory* context.
 """
+
 from __future__ import annotations
 
 import re
@@ -60,7 +61,19 @@ def scannable(path: Path) -> bool:
     if any(part == "third_party" for part in path.parts):
         return False
     suffix = path.suffix.lower()
-    if suffix in {".c", ".h", ".cpp", ".hpp", ".md", ".py", ".sh", ".cmake", ".yml", ".yaml", ".txt"}:
+    if suffix in {
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".md",
+        ".py",
+        ".sh",
+        ".cmake",
+        ".yml",
+        ".yaml",
+        ".txt",
+    }:
         return True
     return path.name in {"Makefile", "CMakeLists.txt"}
 

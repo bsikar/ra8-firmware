@@ -48,14 +48,14 @@ IWYU="${IWYU:-include-what-you-use}"
 
 CHECK_MODE=0
 if [[ "${1:-}" == "--check" ]]; then
-    CHECK_MODE=1
-    shift
+  CHECK_MODE=1
+  shift
 fi
 
 if ! command -v "$IWYU" >/dev/null 2>&1; then
-    echo "iwyu.sh: SKIP -- $IWYU not on PATH."
-    echo "  Install: sudo apt install iwyu  (or brew install include-what-you-use)"
-    exit 0
+  echo "iwyu.sh: SKIP -- $IWYU not on PATH."
+  echo "  Install: sudo apt install iwyu  (or brew install include-what-you-use)"
+  exit 0
 fi
 
 BUILD_DIR="$REPO_ROOT/tests/build-iwyu"
@@ -65,30 +65,30 @@ mkdir -p "$BUILD_DIR" "$REPORT_DIR"
 
 # Parallelism (portable across linux/macos).
 if command -v nproc >/dev/null 2>&1; then
-    JOBS="$(nproc)"
+  JOBS="$(nproc)"
 elif command -v sysctl >/dev/null 2>&1; then
-    JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+  JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 else
-    JOBS=4
+  JOBS=4
 fi
 
 # IWYU is wired via CMAKE_C_INCLUDE_WHAT_YOU_USE / CMAKE_CXX_INCLUDE_
 # WHAT_YOU_USE -- cmake invokes the tool alongside every compile.
 echo "==> iwyu: configuring host test build at $BUILD_DIR"
 "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_C_INCLUDE_WHAT_YOU_USE="$IWYU" \
-    -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="$IWYU" \
-    -Wno-dev >/dev/null
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  -DCMAKE_C_INCLUDE_WHAT_YOU_USE="$IWYU" \
+  -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="$IWYU" \
+  -Wno-dev >/dev/null
 
 echo "==> iwyu: analyzing (this may take several minutes)..."
 LOG="$REPORT_DIR/iwyu.log"
-"$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" > "$LOG" 2>&1 || true
+"$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" >"$LOG" 2>&1 || true
 
 # IWYU writes "should add"/"should remove" lines to stderr, prefixed
 # by the source path. Bin findings into first-party vs suppressed.
-FIRST_PARTY=$(grep -cE '^/.+\.(c|h|cpp|hpp).* should (add|remove) these lines' "$LOG" 2>/dev/null \
-              | head -1 || true)
+FIRST_PARTY=$(grep -cE '^/.+\.(c|h|cpp|hpp).* should (add|remove) these lines' "$LOG" 2>/dev/null |
+  head -1 || true)
 FIRST_PARTY=${FIRST_PARTY:-0}
 
 # Strip third_party / tests entries, then recount per-TU findings.
@@ -96,14 +96,14 @@ FP=0
 TP=0
 TS=0
 while IFS= read -r line; do
-    # IWYU prints a header line of the form:
-    #   /abs/path/foo.c should add these lines:
-    src="$(echo "$line" | sed -E 's# should (add|remove) these lines.*##')"
-    case "$src" in
-        */libs/third_party/*) TP=$((TP + 1)) ;;
-        */tests/*)            TS=$((TS + 1)) ;;
-        /*)                   FP=$((FP + 1)) ;;
-    esac
+  # IWYU prints a header line of the form:
+  #   /abs/path/foo.c should add these lines:
+  src="$(echo "$line" | sed -E 's# should (add|remove) these lines.*##')"
+  case "$src" in
+    */libs/third_party/*) TP=$((TP + 1)) ;;
+    */tests/*) TS=$((TS + 1)) ;;
+    /*) FP=$((FP + 1)) ;;
+  esac
 done < <(grep -E ' should (add|remove) these lines' "$LOG" 2>/dev/null || true)
 
 echo ""
@@ -117,8 +117,8 @@ echo "    Each TU header above has the full add/remove list in $LOG."
 echo "    To inspect a single TU: grep -A 50 '<filename> should add' $LOG"
 
 if [[ "$CHECK_MODE" -eq 1 && "$FP" -gt 0 ]]; then
-    echo "iwyu.sh: --check FAILED ($FP first-party TUs have IWYU findings)"
-    exit 1
+  echo "iwyu.sh: --check FAILED ($FP first-party TUs have IWYU findings)"
+  exit 1
 fi
 
 exit 0

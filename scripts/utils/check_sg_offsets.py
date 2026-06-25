@@ -24,6 +24,7 @@ Exit codes:
 """
 
 import argparse
+import contextlib
 import shutil
 import subprocess
 import sys
@@ -46,10 +47,8 @@ def read_symbols(elf: str, nm: str) -> dict[str, int]:
     for line in out.splitlines():
         parts = line.split()
         if len(parts) == 3 and parts[1] in ("T", "t", "R", "r", "D", "d", "B", "b"):
-            try:
+            with contextlib.suppress(ValueError):
                 syms[parts[2]] = int(parts[0], 16)
-            except ValueError:
-                pass
     return syms
 
 

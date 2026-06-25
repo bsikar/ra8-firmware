@@ -26,34 +26,34 @@ PI_HOST="${PI_HOST:-star@star.local}"
 # inside a self-hosted runner's network namespace and we have direct
 # access to the same files / J-Link / TTY here.
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-    LOCAL_PI=1
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+  LOCAL_PI=1
 fi
 pi_run() {
-    if (( LOCAL_PI )); then
-        bash -c "$1"
-    else
-        ssh "$PI_HOST" "$1"
-    fi
+  if ((LOCAL_PI)); then
+    bash -c "$1"
+  else
+    ssh "$PI_HOST" "$1"
+  fi
 }
 pi_push() {
-    local local_path="$1"
-    local remote="$2"
-    if (( LOCAL_PI )); then
-        cp -f "$local_path" "$remote"
-    else
-        scp -q "$local_path" "${PI_HOST}:${remote}"
-    fi
+  local local_path="$1"
+  local remote="$2"
+  if ((LOCAL_PI)); then
+    cp -f "$local_path" "$remote"
+  else
+    scp -q "$local_path" "${PI_HOST}:${remote}"
+  fi
 }
 pi_write() {
-    local remote="$1"
-    if (( LOCAL_PI )); then
-        cat > "$remote"
-    else
-        ssh "$PI_HOST" "cat > ${remote}"
-    fi
+  local remote="$1"
+  if ((LOCAL_PI)); then
+    cat >"$remote"
+  else
+    ssh "$PI_HOST" "cat > ${remote}"
+  fi
 }
 
 GREEN='\033[0;32m'
@@ -62,8 +62,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: $0 --hex <file> [--elf <file>] --expect <string> [opts]"
-    exit 2
+  echo "Usage: $0 --hex <file> [--elf <file>] --expect <string> [opts]"
+  exit 2
 }
 
 HEX=""
@@ -75,34 +75,67 @@ BUF_SYM="${HIL_RTT_BUF_SYMBOL:-s_rtt_up_buf}"
 BUF_BYTES="${HIL_RTT_BUF_BYTES:-1024}"
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --hex)             HEX="$2";        shift 2 ;;
-        --elf)             ELF="$2";        shift 2 ;;
-        --expect)          EXPECT="$2";     shift 2 ;;
-        --expect-negative) EXPECT_NEG="$2"; shift 2 ;;
-        --timeout)         TIMEOUT_S="$2";  shift 2 ;;
-        --rtt-buf-symbol)  BUF_SYM="$2";    shift 2 ;;
-        --rtt-buf-bytes)   BUF_BYTES="$2";  shift 2 ;;
-        *) echo "Unknown arg: $1"; usage ;;
-    esac
+  case "$1" in
+    --hex)
+      HEX="$2"
+      shift 2
+      ;;
+    --elf)
+      ELF="$2"
+      shift 2
+      ;;
+    --expect)
+      EXPECT="$2"
+      shift 2
+      ;;
+    --expect-negative)
+      EXPECT_NEG="$2"
+      shift 2
+      ;;
+    --timeout)
+      TIMEOUT_S="$2"
+      shift 2
+      ;;
+    --rtt-buf-symbol)
+      BUF_SYM="$2"
+      shift 2
+      ;;
+    --rtt-buf-bytes)
+      BUF_BYTES="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      usage
+      ;;
+  esac
 done
 
 [[ -z "$HEX" || -z "$EXPECT" ]] && usage
-[[ -f "$HEX" ]] || { echo "[HIL-RTT] hex not found: $HEX"; exit 2; }
+[[ -f "$HEX" ]] || {
+  echo "[HIL-RTT] hex not found: $HEX"
+  exit 2
+}
 [[ -z "$ELF" ]] && ELF="${HEX%.hex}.elf"
-[[ -f "$ELF" ]] || { echo "[HIL-RTT] elf not found: $ELF (needed to resolve $BUF_SYM)"; exit 2; }
+[[ -f "$ELF" ]] || {
+  echo "[HIL-RTT] elf not found: $ELF (needed to resolve $BUF_SYM)"
+  exit 2
+}
 
 if [[ ${#EXPECT} -lt 12 && "${HIL_EXPECT_SHORT_OK:-0}" != "1" ]]; then
-    echo -e "${RED}[HIL-RTT]${NC} --expect='$EXPECT' is too short (${#EXPECT} < 12 chars)."
-    echo "    Override (not recommended): HIL_EXPECT_SHORT_OK=1"
-    exit 2
+  echo -e "${RED}[HIL-RTT]${NC} --expect='$EXPECT' is too short (${#EXPECT} < 12 chars)."
+  echo "    Override (not recommended): HIL_EXPECT_SHORT_OK=1"
+  exit 2
 fi
 
 # Resolve the RTT up-buffer address from the ELF. Prefer an explicit
 # ARM_GNU_NM override, then PATH (CI runners), then the local install.
 NM="${ARM_GNU_NM:-$(command -v arm-none-eabi-nm || echo /home/bsikar/opt/arm-gnu-toolchain/bin/arm-none-eabi-nm)}"
 BUF_ADDR_HEX=$("$NM" "$ELF" | awk -v s="$BUF_SYM" '$NF == s { print $1; exit }')
-[[ -z "$BUF_ADDR_HEX" ]] && { echo "[HIL-RTT] symbol $BUF_SYM not in $ELF"; exit 2; }
+[[ -z "$BUF_ADDR_HEX" ]] && {
+  echo "[HIL-RTT] symbol $BUF_SYM not in $ELF"
+  exit 2
+}
 BUF_ADDR="0x$BUF_ADDR_HEX"
 
 APP_NAME=$(basename "$HEX" .hex)
@@ -147,21 +180,21 @@ pi_run "JLinkExe -if SWD -CommanderScript $REMOTE_SCRIPT" >"$REMOTE_OUT.local" 2
 # be cache-stale; the second / third are reliably consistent. Search
 # the concatenated ASCII column of ALL three -- if any of them
 # contain the expected string we accept it.
-captured=$(awk -F'  ' '/^[0-9A-Fa-f]+ = / { printf "%s", $NF }' "$REMOTE_OUT.local" \
-           | tr -d '\0')
+captured=$(awk -F'  ' '/^[0-9A-Fa-f]+ = / { printf "%s", $NF }' "$REMOTE_OUT.local" |
+  tr -d '\0')
 echo "--- captured RTT ---"
 echo "$captured" | tr '\r' '\n' | sed -e 's/^/[rtt] /' | head -10
 echo "--- end ---"
 
 if ! echo "$captured" | grep -qF -- "$EXPECT"; then
-    echo -e "${RED}[HIL-RTT FAIL]${NC} ${APP_NAME}: '${EXPECT}' not in RTT buffer"
-    exit 1
+  echo -e "${RED}[HIL-RTT FAIL]${NC} ${APP_NAME}: '${EXPECT}' not in RTT buffer"
+  exit 1
 fi
 
 if [[ -n "$EXPECT_NEG" ]] && echo "$captured" | grep -qE -- "$EXPECT_NEG"; then
-    echo -e "${RED}[HIL-RTT FAIL]${NC} ${APP_NAME}: matched --expect-negative=${EXPECT_NEG}"
-    echo "$captured" | grep -E -- "$EXPECT_NEG" | head -5 | sed -e 's/^/    + /'
-    exit 1
+  echo -e "${RED}[HIL-RTT FAIL]${NC} ${APP_NAME}: matched --expect-negative=${EXPECT_NEG}"
+  echo "$captured" | grep -E -- "$EXPECT_NEG" | head -5 | sed -e 's/^/    + /'
+  exit 1
 fi
 
 echo -e "${GREEN}[HIL-RTT PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"

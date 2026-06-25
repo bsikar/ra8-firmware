@@ -23,12 +23,12 @@ is stable across a few CI runs.
 Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 """
+
 from __future__ import annotations
 
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
 
 WARN_ONLY_MODE = True
 """introduces the gate as warn-only (does not fail CI). Set to
@@ -55,7 +55,8 @@ def parse_baseline(path: Path) -> tuple[float, float]:
         parts = s.split()
         if len(parts) >= 2:
             return float(parts[0]), float(parts[1])
-    raise RuntimeError(f"baseline file {path} has no numeric line")
+    msg = f"baseline file {path} has no numeric line"
+    raise RuntimeError(msg)
 
 
 def parse_cobertura(path: Path) -> tuple[float, float]:
@@ -85,10 +86,8 @@ def main() -> int:
     base_line, base_branch = parse_baseline(BASELINE_FILE)
     line_pct, branch_pct = parse_cobertura(COVERAGE_XML)
 
-    print(f"check_coverage.py: baseline statement={base_line:.1f}% "
-          f"branch={base_branch:.1f}%")
-    print(f"check_coverage.py: measured statement={line_pct:.1f}% "
-          f"branch={branch_pct:.1f}%")
+    print(f"check_coverage.py: baseline statement={base_line:.1f}% branch={base_branch:.1f}%")
+    print(f"check_coverage.py: measured statement={line_pct:.1f}% branch={branch_pct:.1f}%")
 
     failures: list[str] = []
     if line_pct + SLACK_PCT < base_line:
@@ -118,8 +117,10 @@ def main() -> int:
     # ratcheting. This is a hint; it does not modify the file.
     if line_pct >= base_line + 1.0 and branch_pct >= base_branch + 1.0:
         print("check_coverage.py: HINT -- coverage exceeds baseline by >=1pp.")
-        print(f"       Consider ratcheting .github/coverage-baseline.txt to "
-              f"{line_pct:.1f} {branch_pct:.1f}.")
+        print(
+            f"       Consider ratcheting .github/coverage-baseline.txt to "
+            f"{line_pct:.1f} {branch_pct:.1f}."
+        )
 
     print("check_coverage.py: PASS")
     return 0

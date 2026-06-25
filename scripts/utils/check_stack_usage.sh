@@ -29,23 +29,23 @@ LATEST_APP=""
 LATEST_MTIME=0
 shopt -s nullglob
 for build_dir in "${REPO_ROOT}"/examples/*/*/build*; do
-    [ -d "${build_dir}" ] || continue
-    if mt=$(stat -f %m "${build_dir}" 2>/dev/null) \
-        || mt=$(stat -c %Y "${build_dir}" 2>/dev/null); then
-        if [ "${mt}" -gt "${LATEST_MTIME}" ]; then
-            LATEST_MTIME=${mt}
-            LATEST_APP="$(basename "$(dirname "${build_dir}")")"
-        fi
+  [ -d "${build_dir}" ] || continue
+  if mt=$(stat -f %m "${build_dir}" 2>/dev/null) ||
+    mt=$(stat -c %Y "${build_dir}" 2>/dev/null); then
+    if [ "${mt}" -gt "${LATEST_MTIME}" ]; then
+      LATEST_MTIME=${mt}
+      LATEST_APP="$(basename "$(dirname "${build_dir}")")"
     fi
+  fi
 done
 shopt -u nullglob
 
 if [ -n "${LATEST_APP}" ]; then
-    echo "stack-usage: most-recently-built app = ${LATEST_APP}"
+  echo "stack-usage: most-recently-built app = ${LATEST_APP}"
 else
-    echo "stack-usage: no built apps found; nothing to summarise."
+  echo "stack-usage: no built apps found; nothing to summarise."
 fi
 
 exec "${PY}" "${SCRIPT_DIR}/stack_usage_check.py" \
-    --repo-root "${REPO_ROOT}" \
-    "$@"
+  --repo-root "${REPO_ROOT}" \
+  "$@"

@@ -27,14 +27,14 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 tag() { printf "${CYAN}[hil_probe]${NC} %s\n" "$*"; }
-ok()  { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
 err() { printf "${RED}[FAIL]${NC} %s\n" "$*"; }
 
 # ---- 1. Pi reachable? --------------------------------------------------------
 tag "checking Pi ${PI_HOST}..."
 if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null; then
-    err "cannot reach ${PI_HOST}"
-    exit 2
+  err "cannot reach ${PI_HOST}"
+  exit 2
 fi
 ok "Pi reachable"
 
@@ -43,16 +43,16 @@ tag "checking USB devices on Pi..."
 USB_INFO=$(ssh "$PI_HOST" "lsusb 2>/dev/null | grep -i 'segger\|j-link\|1366:' || echo 'NOT_FOUND'")
 echo "    lsusb : ${USB_INFO}"
 if [[ "$USB_INFO" == "NOT_FOUND" ]]; then
-    err "J-Link USB device not found on Pi -- recheck USB cable or replug the board"
-    exit 1
+  err "J-Link USB device not found on Pi -- recheck USB cable or replug the board"
+  exit 1
 fi
 ok "J-Link USB device visible"
 
 # ---- 3. JLinkExe present on Pi? ----------------------------------------------
 tag "checking JLinkExe on Pi..."
 if ! ssh "$PI_HOST" "command -v JLinkExe >/dev/null 2>&1"; then
-    err "JLinkExe not found in PATH on ${PI_HOST}"
-    exit 1
+  err "JLinkExe not found in PATH on ${PI_HOST}"
+  exit 1
 fi
 ok "JLinkExe found"
 

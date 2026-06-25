@@ -19,6 +19,7 @@ Usage:
 @copyright Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 """
+
 import argparse
 import io
 import os
@@ -59,8 +60,20 @@ MAX_IMAGE_EDGE = 1600
 SKIP_IMAGES = False
 
 VOID_TAGS = {
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr",
 }
 
 
@@ -134,20 +147,27 @@ class BlobBuilder:
 
     def __init__(self):
         self.sp = StringPool()
-        self.nodes = []        # list of dicts (see _emit_node)
-        self.attrs = []        # list of (name_off, value_off)
-        self.chapters = []     # list of (title_off, href_off, root_node)
+        self.nodes = []  # list of dicts (see _emit_node)
+        self.attrs = []  # list of (name_off, value_off)
+        self.chapters = []  # list of (title_off, href_off, root_node)
         self.stylesheets = []  # list of (source_off, scope_chapter)
-        self.images = []       # list of (id_off, w, h, fmt, data, raw_size)
+        self.images = []  # list of (id_off, w, h, fmt, data, raw_size)
         self.cover_index = NIL
 
     # -- DOM serialization ----------------------------------------------------
     def add_text(self, text):
         idx = len(self.nodes)
-        self.nodes.append({
-            "kind": NODE_TEXT, "name_off": 0, "text_off": self.sp.intern(text),
-            "attr_count": 0, "first_attr": NIL, "first_child": NIL, "next_sibling": NIL,
-        })
+        self.nodes.append(
+            {
+                "kind": NODE_TEXT,
+                "name_off": 0,
+                "text_off": self.sp.intern(text),
+                "attr_count": 0,
+                "first_attr": NIL,
+                "first_child": NIL,
+                "next_sibling": NIL,
+            }
+        )
         return idx
 
     def add_element(self, elem):
@@ -159,11 +179,17 @@ class BlobBuilder:
                 self.attrs.append((self.sp.intern(name), self.sp.intern(value)))
                 acount += 1
         idx = len(self.nodes)
-        self.nodes.append({
-            "kind": NODE_ELEMENT, "name_off": self.sp.intern(elem["tag"]), "text_off": 0,
-            "attr_count": acount, "first_attr": first_attr,
-            "first_child": NIL, "next_sibling": NIL,
-        })
+        self.nodes.append(
+            {
+                "kind": NODE_ELEMENT,
+                "name_off": self.sp.intern(elem["tag"]),
+                "text_off": 0,
+                "attr_count": acount,
+                "first_attr": first_attr,
+                "first_child": NIL,
+                "next_sibling": NIL,
+            }
+        )
         kids = []
         for child in elem["children"]:
             if "text" in child:
@@ -199,8 +225,9 @@ class BlobBuilder:
             palette += [0, 0, 0]
         pal_img = Image.new("P", (1, 1))
         pal_img.putpalette(palette)
-        quantized = im.convert("RGB").quantize(
-            palette=pal_img, dither=Image.Dither.NONE).convert("L")
+        quantized = (
+            im.convert("RGB").quantize(palette=pal_img, dither=Image.Dither.NONE).convert("L")
+        )
         nib_table = bytes(min(v // 17, GRAY_LEVELS - 1) for v in range(256))
         nibbles = quantized.tobytes().translate(nib_table)
         even = nibbles[0::2]
@@ -222,9 +249,20 @@ class BlobBuilder:
     # -- serialization --------------------------------------------------------
     def serialize(self, meta):
         chap = b"".join(struct.pack("<3I", *c) for c in self.chapters)
-        node = b"".join(struct.pack(
-            "<BBHIIIII", n["kind"], 0, n["attr_count"], n["name_off"], n["text_off"],
-            n["first_attr"], n["first_child"], n["next_sibling"]) for n in self.nodes)
+        node = b"".join(
+            struct.pack(
+                "<BBHIIIII",
+                n["kind"],
+                0,
+                n["attr_count"],
+                n["name_off"],
+                n["text_off"],
+                n["first_attr"],
+                n["first_child"],
+                n["next_sibling"],
+            )
+            for n in self.nodes
+        )
         attr = b"".join(struct.pack("<2I", *a) for a in self.attrs)
         style = b"".join(struct.pack("<2I", *s) for s in self.stylesheets)
 
@@ -234,8 +272,9 @@ class BlobBuilder:
         for id_off, w, h, fmt, data, raw in self.images:
             data_off = len(pool)
             pool += data
-            img_records.append(struct.pack(
-                "<IHHBBHIII", id_off, w, h, fmt, 0, 0, data_off, len(data), raw))
+            img_records.append(
+                struct.pack("<IHHBBHIII", id_off, w, h, fmt, 0, 0, data_off, len(data), raw)
+            )
         image = b"".join(img_records)
 
         # Intern metadata strings BEFORE snapshotting the pool. They may not
@@ -261,13 +300,32 @@ class BlobBuilder:
         crc = zlib.crc32(body) & 0xFFFFFFFF
 
         header = struct.pack(
-            "<8s23I", MAGIC, FORMAT_VERSION, total, 0,
-            title_off, author_off, language_off, identifier_off,
+            "<8s23I",
+            MAGIC,
+            FORMAT_VERSION,
+            total,
+            0,
+            title_off,
+            author_off,
+            language_off,
+            identifier_off,
             self.cover_index,
-            len(self.chapters), off_chap, len(self.nodes), off_node,
-            len(self.attrs), off_attr, len(self.stylesheets), off_style,
-            len(self.images), off_image, off_string, len(strings),
-            off_pool, len(pool), crc)
+            len(self.chapters),
+            off_chap,
+            len(self.nodes),
+            off_node,
+            len(self.attrs),
+            off_attr,
+            len(self.stylesheets),
+            off_style,
+            len(self.images),
+            off_image,
+            off_string,
+            len(strings),
+            off_pool,
+            len(pool),
+            crc,
+        )
         assert len(header) == header_size
         return header + body
 
@@ -288,8 +346,8 @@ def parse_opf(zf):
     opf_dir = posixpath.dirname(rootfile)
 
     meta = {"title": "", "author": "", "language": "", "identifier": ""}
-    manifest = {}        # id -> (href, media_type, properties)
-    spine = []           # list of idref
+    manifest = {}  # id -> (href, media_type, properties)
+    spine = []  # list of idref
     cover_id = None
     for el in opf.iter():
         tag = opf_localname(el.tag)
@@ -305,7 +363,10 @@ def parse_opf(zf):
             cover_id = el.get("content")
         elif tag == "item":
             manifest[el.get("id")] = (
-                el.get("href"), el.get("media-type", ""), el.get("properties", "") or "")
+                el.get("href"),
+                el.get("media-type", ""),
+                el.get("properties", "") or "",
+            )
         elif tag == "itemref":
             spine.append(el.get("idref"))
     return opf_dir, meta, manifest, spine, cover_id
@@ -319,8 +380,9 @@ def parse_toc(zf, opf_dir, manifest):
         return posixpath.normpath(posixpath.join(opf_dir, href.split("#", 1)[0]))
 
     nav_href = next((h for (h, _m, p) in manifest.values() if "nav" in p), None)
-    ncx_href = next((h for (h, m, _p) in manifest.values()
-                     if m == "application/x-dtbncx+xml"), None)
+    ncx_href = next(
+        (h for (h, m, _p) in manifest.values() if m == "application/x-dtbncx+xml"), None
+    )
     try:
         if nav_href:
             tree = ET.fromstring(zf.read(resolve(nav_href)))
@@ -371,7 +433,7 @@ def compile_epub(path):
 
         # images (raster -> 4bpp, svg -> vector); remember manifest-id -> image index
         id_to_image = {}
-        for mid, (href, media, _props) in (() if SKIP_IMAGES else manifest.items()):
+        for mid, (href, media, _props) in () if SKIP_IMAGES else manifest.items():
             full = resolve(href)
             if full not in names:
                 continue
@@ -409,10 +471,17 @@ def main():
     ap.add_argument("input", help="source .epub")
     ap.add_argument("output", help="destination .rabook")
     ap.add_argument("--stats", action="store_true", help="print size/structure stats")
-    ap.add_argument("--max-edge", type=int, default=MAX_IMAGE_EDGE,
-                    help="downscale raster image long edge to at most this many pixels")
-    ap.add_argument("--no-images", action="store_true",
-                    help="drop all images (text-only); tiny blob for a baked fixture")
+    ap.add_argument(
+        "--max-edge",
+        type=int,
+        default=MAX_IMAGE_EDGE,
+        help="downscale raster image long edge to at most this many pixels",
+    )
+    ap.add_argument(
+        "--no-images",
+        action="store_true",
+        help="drop all images (text-only); tiny blob for a baked fixture",
+    )
     args = ap.parse_args()
 
     MAX_IMAGE_EDGE = args.max_edge
@@ -426,10 +495,14 @@ def main():
         src = os.path.getsize(args.input)
         out = len(container)
         print(f"{meta['title']} -- {meta['author']}")
-        print(f"  chapters={len(bb.chapters)} nodes={len(bb.nodes)} "
-              f"attrs={len(bb.attrs)} css={len(bb.stylesheets)} images={len(bb.images)}")
-        print(f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
-              f"({100 * out // max(src, 1)}%); inflated={len(blob) // 1024} KB")
+        print(
+            f"  chapters={len(bb.chapters)} nodes={len(bb.nodes)} "
+            f"attrs={len(bb.attrs)} css={len(bb.stylesheets)} images={len(bb.images)}"
+        )
+        print(
+            f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
+            f"({100 * out // max(src, 1)}%); inflated={len(blob) // 1024} KB"
+        )
 
 
 if __name__ == "__main__":

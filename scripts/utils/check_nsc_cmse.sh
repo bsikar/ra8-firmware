@@ -27,8 +27,8 @@ cd "$ROOT"
 
 GCC="${ARM_GCC:-arm-none-eabi-gcc}"
 if ! command -v "$GCC" >/dev/null 2>&1; then
-    echo "check_nsc_cmse: $GCC not found -- skipping (-mcmse gate needs the cross toolchain)"
-    exit 0
+  echo "check_nsc_cmse: $GCC not found -- skipping (-mcmse gate needs the cross toolchain)"
+  exit 0
 fi
 
 # C23 standard flag: gcc >= 14 spells it `gnu23`, gcc <= 13 only accepts the
@@ -37,39 +37,39 @@ fi
 # of hardcoding (the CI runner's arm-none-eabi-gcc is gcc 13 -> gnu2x).
 cstd="-std=gnu2x"
 if printf 'int main(void){return 0;}\n' | "$GCC" -std=gnu23 -xc -fsyntax-only - >/dev/null 2>&1; then
-    cstd="-std=gnu23"
+  cstd="-std=gnu23"
 fi
 
 # Match the real firmware ABI (cmake/toolchain-ra8d2.cmake) so the cmse
 # argument-register rules are evaluated exactly as the app build sees them.
 flags=(-mcpu=cortex-m85 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-       -mcmse "$cstd" -DRA_TRUSTZONE_ENABLE -fsyntax-only)
+  -mcmse "$cstd" -DRA_TRUSTZONE_ENABLE -fsyntax-only)
 
 incs=()
 for d in libs/*/inc; do
-    [ -d "$d" ] && incs+=("-I$d")
+  [ -d "$d" ] && incs+=("-I$d")
 done
 [ -d src/secure_app ] && incs+=("-Isrc/secure_app")
 for d in port/threadx port/usbx libs/third_party; do
-    [ -d "$d" ] && incs+=("-I$d")
+  [ -d "$d" ] && incs+=("-I$d")
 done
 
 fail=0
 errf="$(mktemp)"
 for f in libs/ra_nsc/src/*.c; do
-    if "$GCC" "${flags[@]}" "${incs[@]}" "$f" 2>"$errf"; then
-        printf '  OK    %s\n' "$(basename "$f")"
-    else
-        printf '  FAIL  %s\n' "$(basename "$f")"
-        grep -E 'error:' "$errf" | sed 's/^/        /' | head -4
-        fail=1
-    fi
+  if "$GCC" "${flags[@]}" "${incs[@]}" "$f" 2>"$errf"; then
+    printf '  OK    %s\n' "$(basename "$f")"
+  else
+    printf '  FAIL  %s\n' "$(basename "$f")"
+    grep -E 'error:' "$errf" | sed 's/^/        /' | head -4
+    fail=1
+  fi
 done
 rm -f "$errf"
 
 if [ "$fail" -eq 0 ]; then
-    echo "check_nsc_cmse: all NSC veneers compile under -mcmse (TrustZone-on)"
-    exit 0
+  echo "check_nsc_cmse: all NSC veneers compile under -mcmse (TrustZone-on)"
+  exit 0
 fi
 echo "check_nsc_cmse: FAILURES -- a veneer's args spill past r0-r3; pack them (see ra_nsc_comms.h)"
 exit 1

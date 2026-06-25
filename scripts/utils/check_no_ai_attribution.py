@@ -25,8 +25,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 # Repo root = two parents up from this file (scripts/utils/<this>).
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -39,20 +39,45 @@ EXTRA_TOP_LEVEL_FILES = ("CLAUDE.md", "CONTRIBUTING.md", "README.md")
 
 # File extensions we inspect. Anything else (binaries, PDFs) is skipped.
 TEXT_EXTS = {
-    ".c", ".h", ".cpp", ".hpp", ".cc",
-    ".md", ".txt", ".rst",
-    ".py", ".sh", ".bash",
-    ".cmake", ".yml", ".yaml",
-    ".json", ".toml", ".cfg", ".conf", ".ini",
-    ".tex", ".css", ".html", ".xml",
-    ".ld", ".s", ".S",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".cc",
+    ".md",
+    ".txt",
+    ".rst",
+    ".py",
+    ".sh",
+    ".bash",
+    ".cmake",
+    ".yml",
+    ".yaml",
+    ".json",
+    ".toml",
+    ".cfg",
+    ".conf",
+    ".ini",
+    ".tex",
+    ".css",
+    ".html",
+    ".xml",
+    ".ld",
+    ".s",
+    ".S",
 }
 
 # Always-skip path fragments.
 SKIP_FRAGMENTS = (
-    "/build/", "/_deps/", "/third_party/",
-    "/node_modules/", "/.git/", "/__pycache__/",
-    "/docs/doxygen/html/", "/docs/doxygen/xml/", "/docs/doxygen/latex/",
+    "/build/",
+    "/_deps/",
+    "/third_party/",
+    "/node_modules/",
+    "/.git/",
+    "/__pycache__/",
+    "/docs/doxygen/html/",
+    "/docs/doxygen/xml/",
+    "/docs/doxygen/latex/",
 )
 
 OPT_OUT_TAG = "AI-OK:"
@@ -217,9 +242,17 @@ def _scan_line(line: str) -> list[str]:
     tok = _claude_violation(line)
     if tok:
         hits.append(tok)
-    for rx in (RX_GPT_BAD, RX_ANTHROPIC, RX_OPENAI, RX_COPILOT,
-               RX_OTHER_BRANDS, RX_AI_EMAIL, RX_AI_BOT_USER,
-               RX_COAUTH, RX_GENERATED):
+    for rx in (
+        RX_GPT_BAD,
+        RX_ANTHROPIC,
+        RX_OPENAI,
+        RX_COPILOT,
+        RX_OTHER_BRANDS,
+        RX_AI_EMAIL,
+        RX_AI_BOT_USER,
+        RX_COAUTH,
+        RX_GENERATED,
+    ):
         m = rx.search(line)
         if m:
             hits.append(m.group(0))
@@ -234,9 +267,9 @@ def _iter_files() -> Iterable[Path]:
         for dirpath, dirnames, filenames in os.walk(root):
             # Prune skip dirs in-place so os.walk doesn't descend.
             dirnames[:] = [
-                dn for dn in dirnames
-                if dn not in ("_deps", "third_party",
-                              "node_modules", ".git", "__pycache__")
+                dn
+                for dn in dirnames
+                if dn not in ("_deps", "third_party", "node_modules", ".git", "__pycache__")
                 and not dn.startswith("build")
             ]
             for fn in filenames:
@@ -287,16 +320,13 @@ def main(argv: list[str]) -> int:
             # Trim long excerpts.
             if len(excerpt) > 160:
                 excerpt = excerpt[:157] + "..."
-            print(f"{rel}:{lineno}: AI attribution found "
-                  f"('{tok}'): {excerpt}")
+            print(f"{rel}:{lineno}: AI attribution found ('{tok}'): {excerpt}")
             violations += 1
 
     if violations:
         print(f"\n[FAIL] {violations} AI-attribution violation(s).", file=sys.stderr)
-        print("       See docs/AI_ATTRIBUTION_POLICY.md. Use a per-line",
-              file=sys.stderr)
-        print("       'AI-OK: <reason>' tag only when quoting policy text.",
-              file=sys.stderr)
+        print("       See docs/AI_ATTRIBUTION_POLICY.md. Use a per-line", file=sys.stderr)
+        print("       'AI-OK: <reason>' tag only when quoting policy text.", file=sys.stderr)
         return 1
     return 0
 

@@ -29,7 +29,7 @@ import argparse
 import pathlib
 import re
 import sys
-from typing import Iterable
+from collections.abc import Iterable
 
 # Files we author. Vendored / generated trees are skipped.
 ROOT_DIRS = ("libs", "src", "port", "examples")
@@ -41,6 +41,7 @@ EXTENSIONS = {".c", ".h", ".cpp", ".hpp"}
 # we strip comments and strings first so this only fires in code.
 NULL_RE = re.compile(r"\bNULL\b")
 
+
 # Strip C/C++ inline comments and string/char literals so we don't
 # match NULL inside them. Naive but adequate for this use case.
 def _strip_noncode(line: str) -> str:
@@ -48,12 +49,12 @@ def _strip_noncode(line: str) -> str:
     i = 0
     in_str = False
     in_chr = False
-    in_lc  = False
-    in_bc  = False
+    in_lc = False
+    in_bc = False
     n = len(line)
     while i < n:
         c = line[i]
-        nxt = line[i+1] if i + 1 < n else ""
+        nxt = line[i + 1] if i + 1 < n else ""
         if in_lc:
             break
         if in_bc:
@@ -118,7 +119,7 @@ def find_violations(path: pathlib.Path) -> list[tuple[int, str]]:
             end = raw.find("*/")
             if end == -1:
                 continue
-            raw = raw[end + 2:]
+            raw = raw[end + 2 :]
             in_block_comment = False
         # Detect a /* on this line that doesn't close.
         bo = raw.find("/*")
@@ -141,9 +142,7 @@ def find_violations(path: pathlib.Path) -> list[tuple[int, str]]:
 def needs_check(path: pathlib.Path) -> bool:
     if path.suffix.lower() not in EXTENSIONS:
         return False
-    if any(part in EXCLUDED_PARTS for part in path.parts):
-        return False
-    return True
+    return not any(part in EXCLUDED_PARTS for part in path.parts)
 
 
 def iter_all_files() -> Iterable[pathlib.Path]:
@@ -158,10 +157,10 @@ def iter_all_files() -> Iterable[pathlib.Path]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--all", action="store_true",
-                        help="scan all tracked source files")
-    parser.add_argument("files", nargs="*", type=pathlib.Path,
-                        help="explicit file list (e.g. staged files)")
+    parser.add_argument("--all", action="store_true", help="scan all tracked source files")
+    parser.add_argument(
+        "files", nargs="*", type=pathlib.Path, help="explicit file list (e.g. staged files)"
+    )
     args = parser.parse_args()
 
     if args.all:
@@ -175,15 +174,16 @@ def main() -> int:
     total_violations = 0
     for path in candidates:
         for line, snippet in find_violations(path):
-            print(f"{path}:{line}: bare NULL -- use nullptr (C23): {snippet}",
-                  file=sys.stderr)
+            print(f"{path}:{line}: bare NULL -- use nullptr (C23): {snippet}", file=sys.stderr)
             total_violations += 1
 
     if total_violations:
-        print(f"\n{total_violations} bare NULL token(s) found. Replace with "
-              "`nullptr` (C23 builtin). Allowed: UX_NULL / TX_NULL / FX_NULL "
-              "/ NX_NULL vendor macros, comments, string literals.",
-              file=sys.stderr)
+        print(
+            f"\n{total_violations} bare NULL token(s) found. Replace with "
+            "`nullptr` (C23 builtin). Allowed: UX_NULL / TX_NULL / FX_NULL "
+            "/ NX_NULL vendor macros, comments, string literals.",
+            file=sys.stderr,
+        )
         return 1
     print("check_no_null.py: 0 findings.")
     return 0
