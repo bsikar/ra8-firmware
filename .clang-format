@@ -107,3 +107,4 @@ IncludeCategories:
 #----------------------------------------------------------------------------
 AlwaysBreakTemplateDeclarations: Yes
 FixNamespaceComments: true
+InsertNewlineAtEOF: true    # Every file must end in exactly one trailing newline

@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 # Default values
 CHECK_ONLY=false
 VERBOSE=false
-EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp" "*.m")
+EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp" "*.cc" "*.cxx" "*.hh" "*.hxx" "*.m")
 
 # Pin the clang-format binary via env var so CI can lock to a specific
 # major version (Ubuntu 24.04 ships v18 by default; Homebrew on macOS

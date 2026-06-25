@@ -88,6 +88,7 @@ def main(argv):
     parts = [
         "/**",
         " * @file library.h",
+        " * @generated tools/bake_library.py -- do not edit by hand.",
         " * @brief Baked full .rabook blobs + pre-decoded cover thumbnails (generated).",
         " * @details Each entry is the compressed RBKZ container (ra_book_open inflates it",
         " *          on demand) plus a gray8 cover thumbnail the shelf blits without any",
