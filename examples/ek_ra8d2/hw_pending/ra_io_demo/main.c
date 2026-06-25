@@ -1,32 +1,32 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ra_io_demo/main.c
- * @brief End-to-end demo of the ra_io fabric (epic #155) on the EK-RA8D2.
+ * @brief End-to-end demo of the ra_io fabric (epic #155) over a RAM block device.
  *
  * @details
- * Exercises the whole fabric in one app, with no external hardware:
- *   1. Build a RAM block device over an in-SRAM buffer (Phase 1, #156).
- *   2. Bridge it to ra_fs and format/mount a FAT12 volume (the block-device
- *      bridge), then register it in the VFS as `"ram"` (Phase 3, #158).
- *   3. Write a file and read it back through the `"ram:/..."` name (VFS).
- *   4. Report progress on the SCI8 console through a UART stream sink, with
- *      ra_log routed into the same stream (Phase 2, #157).
+ * Exercises the whole fabric in one app, with no external hardware. The fabric
+ * round-trip (bridge -> format -> mount -> VFS -> write/read/verify -> mkdir +
+ * nested round-trip) is shared with the SDRAM, OSPI/xSPI, and SD demos through
+ * `common/ra_io_roundtrip.{h,c}`; this app differs only by the ONE backend bind
+ * line -- here `ra_io_blockdev_ram_init` over an in-SRAM buffer (Phase 1, #156)
+ * -- plus its own PASS banners.
  *
  * The board_sim emulator captures the SCI8 console, so the PASS/FAIL line and
  * the byte counts are observable headlessly: a successful run prints
- * `ra_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS`.
+ * `ra_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS` followed by
+ * `ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
+#include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_fs.h"
 #include "ra_io.h"
+#include "ra_io_roundtrip.h"
 #include "ra_log.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -38,11 +38,9 @@ typedef enum : uint32_t {
   k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.            */
   k_demo_uart_baud   = 115200U, /**< Console baud.                      */
   k_demo_disk_blocks = 512U,    /**< 256 KiB RAM-disk (FAT12).          */
-  k_demo_payload     = 128U,    /**< Bytes written + read back.         */
+  k_demo_payload     = 128U,    /**< Bytes written + read back at root. */
   k_demo_pin_shift   = 8U,      /**< Port byte position in ra_port_pin_t.*/
-  k_demo_seed_mul    = 7U,      /**< Test-pattern multiplier.           */
   k_demo_note_len    = 64U,     /**< Bytes round-tripped in the subdir.  */
-  k_demo_note_mod    = 26U,     /**< Subdir-note alphabet size.          */
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */
@@ -66,13 +64,60 @@ static ra_io_stream_uart_state_t s_ust;
 /** @brief Module log tag. */
 static const char* const s_tag = "ra_io_demo";
 
-/** @brief Print a NUL-terminated string on the UART stream. */
+/** @brief Shared round-trip parameters for this RAM-backed FAT12 volume. */
+static const ra_io_roundtrip_params_t s_params = {
+  .vfs_prefix   = "ram",
+  .fat_type     = k_ra_fs_type_fat12,
+  .volume_label = "RAIO",
+  .log_tag      = s_tag,
+  .root_file    = "HELLO.TXT",
+  .root_path    = "ram:/HELLO.TXT",
+  .root_bytes   = (uint32_t)k_demo_payload,
+  .subdir_path  = "ram:/SUB",
+  .subdir_file  = "ram:/SUB/NOTE.TXT",
+  .subdir_bytes = (uint32_t)k_demo_note_len,
+};
+
+/**
+ * @brief Print a NUL-terminated string on the demo's UART stream.
+ *
+ * @details Thin wrapper over ::ra_io_stream_puts bound to ::s_uart, so call
+ *          sites do not repeat the sink handle.
+ *
+ * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
+ *
+ * @return None.
+ *
+ * @pre ::s_uart was initialised by ::ra_io_stream_uart_init.
+ * @pre @p msg is non-NULL and NUL-terminated.
+ * @post The bytes of @p msg are queued on the UART stream.
+ * @post No other state changes.
+ *
+ * @note Blocking polled TX; not interrupt-safe.
+ * @since 0.1.0
+ */
 static void demo_print(const char* msg)
 {
   (void)ra_io_stream_puts(&s_uart, msg);
 }
 
-/** @brief Bring up CGC + SysTick + the SCI8 console; halt on any failure. */
+/**
+ * @brief Bring up CGC + SysTick + the SCI8 console; halt forever on any failure.
+ *
+ * @details Initialises clocks, reads CPU/PCLKA rates, starts the millisecond
+ *          time base, routes the SCI8 console pins, and opens the SCI8 UART. Any
+ *          failure spins forever so a debugger can inspect the halt.
+ *
+ * @return None.
+ *
+ * @pre SystemInit configured VTOR / FPU / priority grouping.
+ * @pre Runs single-threaded during early boot.
+ * @post On success SCI8 is open at ::k_demo_uart_baud and the time base runs.
+ * @post On any failure the function never returns (infinite halt loop).
+ *
+ * @note Not thread-safe; boot-context only.
+ * @since 0.1.0
+ */
 static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
@@ -97,71 +142,36 @@ static void demo_setup_or_halt(void)
   }
 }
 
-/** @brief Run the fabric round-trip; returns k_ra_ok on a verified match. */
-static ra_err_t demo_run(void)
+/**
+ * @brief Bind the RAM block device, then run the shared FAT round-trip.
+ *
+ * @details Binds the in-SRAM RAM backend (the single per-demo bind line), mounts
+ *          the FAT12 volume through the shared helper, runs the root-file
+ *          round-trip, and -- on success -- reports the result through @p mnt for
+ *          the subsequent subdir round-trip in `main`.
+ *
+ * @param[out] out_mount Receives the mount handle on success, nullptr on error.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    The RAM volume mounted and the root file round-tripped.
+ * @retval k_ra_err_* The first failing bind / mount / round-trip step's code.
+ *
+ * @pre ::demo_setup_or_halt has run (clocks + console up).
+ * @pre @p out_mount is non-NULL.
+ * @post On success `ram:/HELLO.TXT` holds the verified payload.
+ * @post On any non-ok return `*out_mount` is nullptr.
+ *
+ * @note Not thread-safe; single-caller boot context.
+ * @since 0.1.0
+ */
+static ra_err_t demo_run(ra_fs_mount_t** out_mount)
 {
   RA_RETURN_ON_ERROR(
     ra_io_blockdev_ram_init(&s_bd, &s_bstate, s_disk, (uint32_t)k_demo_disk_blocks, false),
     s_tag,
     "blockdev init");
-  RA_RETURN_ON_ERROR(ra_io_blockdev_as_fs_backend(&s_bd, &s_be), s_tag, "fs bridge");
-  ra_fs_format_opts_t opts = {};
-  opts.type                = k_ra_fs_type_fat12;
-  opts.label               = "RAIO";
-  RA_RETURN_ON_ERROR(ra_fs_format(&s_be, &opts), s_tag, "format");
-  ra_fs_mount_t* mnt = nullptr;
-  RA_RETURN_ON_ERROR(ra_fs_mount(&s_be, &mnt), s_tag, "mount");
-  RA_RETURN_ON_ERROR(ra_io_vfs_mount("ram", mnt), s_tag, "vfs mount");
-
-  uint8_t data[(size_t)k_demo_payload];
-  for (uint32_t i = 0; i < (uint32_t)k_demo_payload; ++i) {
-    data[i] = (uint8_t)(i * (uint32_t)k_demo_seed_mul + 1u);
-  }
-  RA_RETURN_ON_ERROR(ra_fs_write_file(mnt, "HELLO.TXT", data, (uint32_t)k_demo_payload),
-                     s_tag,
-                     "write");
-
-  ra_fs_file_t* f = nullptr;
-  RA_RETURN_ON_ERROR(ra_io_vfs_open("ram:/HELLO.TXT", k_ra_fs_mode_read, &f), s_tag, "open");
-  uint8_t  got[(size_t)k_demo_payload] = {};
-  uint32_t got_len                     = 0;
-  RA_RETURN_ON_ERROR(ra_fs_read(f, got, (uint32_t)k_demo_payload, &got_len), s_tag, "read");
-  RA_RETURN_ON_ERROR(ra_fs_close(f), s_tag, "close");
-  if (got_len != (uint32_t)k_demo_payload) {
-    return k_ra_err_invalid_size;
-  }
-  if (memcmp(got, data, sizeof(data)) != 0) {
-    return k_ra_err_checksum_mismatch;
-  }
-  return k_ra_ok;
-}
-
-/** @brief mkdir a subdir via the VFS, then round-trip a file two levels deep. */
-static ra_err_t demo_subdir(void)
-{
-  RA_RETURN_ON_ERROR(ra_io_vfs_mkdir("ram:/SUB"), s_tag, "mkdir");
-  uint8_t note[(size_t)k_demo_note_len];
-  for (uint32_t i = 0; i < (uint32_t)k_demo_note_len; ++i) {
-    note[i] = (uint8_t)('A' + (i % (uint32_t)k_demo_note_mod));
-  }
-  ra_fs_file_t* wf = nullptr;
-  RA_RETURN_ON_ERROR(ra_io_vfs_open("ram:/SUB/NOTE.TXT", k_ra_fs_mode_write, &wf), s_tag, "open w");
-  RA_RETURN_ON_ERROR(ra_fs_write(wf, note, (uint32_t)k_demo_note_len), s_tag, "write");
-  RA_RETURN_ON_ERROR(ra_fs_close(wf), s_tag, "close w");
-
-  ra_fs_file_t* rf = nullptr;
-  RA_RETURN_ON_ERROR(ra_io_vfs_open("ram:/SUB/NOTE.TXT", k_ra_fs_mode_read, &rf), s_tag, "open r");
-  uint8_t  got[(size_t)k_demo_note_len] = {};
-  uint32_t got_len                      = 0;
-  RA_RETURN_ON_ERROR(ra_fs_read(rf, got, (uint32_t)k_demo_note_len, &got_len), s_tag, "read");
-  RA_RETURN_ON_ERROR(ra_fs_close(rf), s_tag, "close r");
-  if (got_len != (uint32_t)k_demo_note_len) {
-    return k_ra_err_invalid_size;
-  }
-  if (memcmp(got, note, sizeof(note)) != 0) {
-    return k_ra_err_checksum_mismatch;
-  }
-  return k_ra_ok;
+  RA_RETURN_ON_ERROR(ra_io_roundtrip_mount(&s_bd, &s_params, &s_be, out_mount), s_tag, "mount");
+  return ra_io_roundtrip_root_file(*out_mount, &s_params);
 }
 
 /**
@@ -178,10 +188,11 @@ int main(void)
   (void)ra_io_log_attach(&s_uart); /* route ra_log into the UART stream too */
   demo_print("ra_io_demo: boot\r\n");
 
-  const ra_err_t e = demo_run();
+  ra_fs_mount_t* mnt = nullptr;
+  const ra_err_t e   = demo_run(&mnt);
   if (e == k_ra_ok) {
     demo_print("ra_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS\r\n");
-    if (demo_subdir() == k_ra_ok) {
+    if (ra_io_roundtrip_subdir_file(&s_params) == k_ra_ok) {
       demo_print("ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS\r\n");
     } else {
       demo_print("ra_io_demo: mkdir FAIL\r\n");
