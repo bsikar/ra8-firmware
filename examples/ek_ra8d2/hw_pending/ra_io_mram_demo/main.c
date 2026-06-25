@@ -163,8 +163,11 @@ static ra_err_t demo_open(void)
                                .ecc_encoder_enable = true,
                                .ecc_decoder_enable = true};
   RA_RETURN_ON_ERROR(ra_flash_init(&fcfg), s_tag, "flash init");
-  RA_RETURN_ON_ERROR(ra_io_blockdev_mram_init(&s_bd, &s_mstate, (uintptr_t)k_demo_mram_base,
-                                              (uint32_t)k_demo_disk_blocks, false),
+  RA_RETURN_ON_ERROR(ra_io_blockdev_mram_init(&s_bd,
+                                              &s_mstate,
+                                              (uintptr_t)k_demo_mram_base,
+                                              (uint32_t)k_demo_disk_blocks,
+                                              false),
                      s_tag,
                      "mram blockdev init");
   return k_ra_ok;

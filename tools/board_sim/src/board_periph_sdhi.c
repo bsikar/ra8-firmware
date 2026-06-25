@@ -101,13 +101,13 @@ typedef enum : uint32_t {
 
 /** @brief Geometry / sizing constants (no magic numbers). */
 typedef enum : uint32_t {
-  k_sdhi_words        = 128U,    /**< 0x200-byte window as 32-bit words.       */
-  k_sdhi_block_bytes  = 512U,    /**< SD block size in bytes.                  */
-  k_sdhi_words_per_blk = 128U,   /**< 512 / 4 = 128 FIFO words per block.      */
-  k_sdhi_byte_bits    = 8U,      /**< Bits per byte.                           */
-  k_sdhi_byte_mask    = 0xFFU,   /**< One byte.                                */
-  k_sdhi_csize_unit   = 1024U,   /**< CSD v2: blocks per (C_SIZE+1) unit.      */
-  k_sdhi_csize_shift  = 16U,     /**< C_SIZE high-half shift.                  */
+  k_sdhi_words         = 128U,  /**< 0x200-byte window as 32-bit words.       */
+  k_sdhi_block_bytes   = 512U,  /**< SD block size in bytes.                  */
+  k_sdhi_words_per_blk = 128U,  /**< 512 / 4 = 128 FIFO words per block.      */
+  k_sdhi_byte_bits     = 8U,    /**< Bits per byte.                           */
+  k_sdhi_byte_mask     = 0xFFU, /**< One byte.                                */
+  k_sdhi_csize_unit    = 1024U, /**< CSD v2: blocks per (C_SIZE+1) unit.      */
+  k_sdhi_csize_shift   = 16U,   /**< C_SIZE high-half shift.                  */
 } sdhi_geom_t;
 
 /** @brief End-of-run report-order slot (after the XSPI block at 95). */
@@ -124,16 +124,16 @@ typedef enum : uint8_t {
 
 /** @brief SDHI model state: register shadow + command + data-phase engine. */
 typedef struct {
-  uint32_t regs[k_sdhi_words];          /**< 0x200-byte window shadow.          */
-  uint32_t rsp[4];                      /**< Latched response words.            */
-  uint8_t  stage[k_sdhi_block_bytes];   /**< Active 512-byte block buffer.      */
-  uint32_t word_idx;                    /**< Next SD_BUF0 word in the block.    */
-  uint32_t lba;                         /**< Current block address.             */
-  uint32_t blocks_left;                 /**< Remaining blocks in the transfer.  */
-  uint8_t  app_cmd;                     /**< 1 => previous command was CMD55.   */
-  uint8_t  xfer;                        /**< ::sdhi_xfer_t data-phase state.    */
-  uint32_t reads;                       /**< Block reads served.                */
-  uint32_t writes;                      /**< Block writes committed.            */
+  uint32_t regs[k_sdhi_words];        /**< 0x200-byte window shadow.          */
+  uint32_t rsp[4];                    /**< Latched response words.            */
+  uint8_t  stage[k_sdhi_block_bytes]; /**< Active 512-byte block buffer.      */
+  uint32_t word_idx;                  /**< Next SD_BUF0 word in the block.    */
+  uint32_t lba;                       /**< Current block address.             */
+  uint32_t blocks_left;               /**< Remaining blocks in the transfer.  */
+  uint8_t  app_cmd;                   /**< 1 => previous command was CMD55.   */
+  uint8_t  xfer;                      /**< ::sdhi_xfer_t data-phase state.    */
+  uint32_t reads;                     /**< Block reads served.                */
+  uint32_t writes;                    /**< Block writes committed.            */
 } sdhi_state_t;
 
 static sdhi_state_t s_sdhi;
@@ -165,8 +165,8 @@ static void sdhi_make_csd(void)
   const uint32_t c_size = (cap_blocks / (uint32_t)k_sdhi_csize_unit) - 1U;
   s_sdhi.rsp[3]         = (uint32_t)k_sdhi_csd_v2_struct;
   s_sdhi.rsp[2]         = (c_size >> (uint32_t)k_sdhi_csize_shift) & (uint32_t)k_sdhi_csize_lo_mask;
-  s_sdhi.rsp[1]         = (c_size & (uint32_t)k_sdhi_csize_mid_mask) << (uint32_t)k_sdhi_csize_shift;
-  s_sdhi.rsp[0]         = 0U;
+  s_sdhi.rsp[1] = (c_size & (uint32_t)k_sdhi_csize_mid_mask) << (uint32_t)k_sdhi_csize_shift;
+  s_sdhi.rsp[0] = 0U;
 }
 
 /** @brief Load the block at the current LBA into the staging buffer (read phase). */
@@ -285,7 +285,7 @@ static uint32_t sdhi_buf_read(void)
   if (s_sdhi.xfer != (uint8_t)k_sdhi_xfer_read) {
     return 0U;
   }
-  const uint32_t b = s_sdhi.word_idx * 4U;
+  const uint32_t b    = s_sdhi.word_idx * 4U;
   const uint32_t word = (uint32_t)s_sdhi.stage[b] |
                         ((uint32_t)s_sdhi.stage[b + 1U] << (uint32_t)k_sdhi_byte_bits) |
                         ((uint32_t)s_sdhi.stage[b + 2U] << (2U * (uint32_t)k_sdhi_byte_bits)) |
@@ -315,9 +315,10 @@ static void sdhi_buf_write(uint32_t word)
   if (s_sdhi.xfer != (uint8_t)k_sdhi_xfer_write) {
     return;
   }
-  const uint32_t b   = s_sdhi.word_idx * 4U;
-  s_sdhi.stage[b]      = (uint8_t)(word & (uint32_t)k_sdhi_byte_mask);
-  s_sdhi.stage[b + 1U] = (uint8_t)((word >> (uint32_t)k_sdhi_byte_bits) & (uint32_t)k_sdhi_byte_mask);
+  const uint32_t b = s_sdhi.word_idx * 4U;
+  s_sdhi.stage[b]  = (uint8_t)(word & (uint32_t)k_sdhi_byte_mask);
+  s_sdhi.stage[b + 1U] =
+    (uint8_t)((word >> (uint32_t)k_sdhi_byte_bits) & (uint32_t)k_sdhi_byte_mask);
   s_sdhi.stage[b + 2U] =
     (uint8_t)((word >> (2U * (uint32_t)k_sdhi_byte_bits)) & (uint32_t)k_sdhi_byte_mask);
   s_sdhi.stage[b + 3U] =
@@ -368,11 +369,11 @@ static void sdhi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
   if (off == (uint64_t)k_sdhi_off_soft_rst) {
     /* The driver writes 0 then 1; clear the FIFO/command engine either way. */
-    s_sdhi.xfer        = (uint8_t)k_sdhi_xfer_none;
-    s_sdhi.word_idx    = 0U;
-    s_sdhi.blocks_left = 0U;
-    s_sdhi.app_cmd     = 0U;
-    s_sdhi.regs[sdhi_word(off)] = (uint32_t)value;
+    s_sdhi.xfer                                 = (uint8_t)k_sdhi_xfer_none;
+    s_sdhi.word_idx                             = 0U;
+    s_sdhi.blocks_left                          = 0U;
+    s_sdhi.app_cmd                              = 0U;
+    s_sdhi.regs[sdhi_word(off)]                 = (uint32_t)value;
     s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info1)] = 0U;
     s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] = 0U;
     return;
@@ -397,7 +398,9 @@ static void sdhi_report(void)
   if ((s_sdhi.reads == 0U) && (s_sdhi.writes == 0U)) {
     return;
   }
-  (void)fprintf(stderr, "  SDHI card     : %u block reads  %u block writes\n", s_sdhi.reads,
+  (void)fprintf(stderr,
+                "  SDHI card     : %u block reads  %u block writes\n",
+                s_sdhi.reads,
                 s_sdhi.writes);
 }
 

@@ -107,10 +107,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_arena_carve(ra_arena_t* arena,
-                                      uint32_t    bytes,
-                                      uint32_t    align,
-                                      void**      out_ptr);
+[[nodiscard]] ra_err_t
+ra_arena_carve(ra_arena_t* arena, uint32_t bytes, uint32_t align, void** out_ptr);
 
 /**
  * @brief Report the bytes still available in the arena.
