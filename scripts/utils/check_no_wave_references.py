@@ -71,7 +71,15 @@ SCAN_EXTS: frozenset[str] = frozenset(
 
 SCAN_BASENAMES: frozenset[str] = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
 
-# "Wave 70", "wave-3", "WAVE_43b", "(Wave 12)" -- token + optional sep + digit(s) + optional letter(s).
+# Maximum number of violations to print before truncating output.
+MAX_FINDINGS_SHOWN = 50
+# Maximum line length (chars) for a snippet printed in the report.
+SNIPPET_MAX_LEN = 120
+# Truncated snippet suffix consumes 3 chars ("..."), so trim to this length.
+SNIPPET_TRIM_LEN = SNIPPET_MAX_LEN - 3
+
+# "Wave 70", "wave-3", "WAVE_43b", "(Wave 12)" -- token + optional sep +
+# digit(s) + optional letter(s).
 WAVE_RE: re.Pattern[str] = re.compile(r"\b[Ww]ave[\s_\-]?\d+[A-Za-z]?\b")
 
 OPTOUT_RE: re.Pattern[str] = re.compile(r"WAVE-OK\s*:")
@@ -146,11 +154,11 @@ def main() -> int:
         return 0
 
     print(f"no-wave-refs: {len(findings)} violations found.")
-    for rel, lineno, line in findings[:50]:
-        snippet = line if len(line) <= 120 else line[:117] + "..."
+    for rel, lineno, line in findings[:MAX_FINDINGS_SHOWN]:
+        snippet = line if len(line) <= SNIPPET_MAX_LEN else line[:SNIPPET_TRIM_LEN] + "..."
         print(f"  {rel}:{lineno} {snippet}")
-    if len(findings) > 50:
-        print(f"  ... {len(findings) - 50} more (truncated)")
+    if len(findings) > MAX_FINDINGS_SHOWN:
+        print(f"  ... {len(findings) - MAX_FINDINGS_SHOWN} more (truncated)")
     print()
     print('Per-line opt-out: append "WAVE-OK: <reason>" on the offending line.')
     print("Auto-fix helper: scripts/utils/fix_wave_references.py --apply")

@@ -47,7 +47,7 @@ STATUS_LINE_RE = re.compile(r"`\[(?P<mark>[ x~!])\]`\s*Status:")
 CHECKBOX_RE = re.compile(r"^\s*\[(?P<mark>[ x~!])\]")
 
 
-def parse_roadmap(text: str) -> tuple[dict[str, int], int, int]:
+def parse_roadmap(text: str) -> tuple[dict[str, int], int, int]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return ({status_counts}, total_boxes, ticked_boxes).
 
     status_counts has keys 'DONE', 'WIP', 'BLOCKED', 'TODO'.

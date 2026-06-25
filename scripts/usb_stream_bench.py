@@ -22,10 +22,12 @@ import argparse
 import contextlib
 import os
 import select
+import subprocess
 import sys
 import termios
 import threading
 import time
+from pathlib import Path
 
 
 def open_raw(device):
@@ -49,7 +51,7 @@ def open_raw(device):
     return fd
 
 
-def stream_echo(device, total_bytes):
+def stream_echo(device, total_bytes):  # noqa: PLR0915  # streaming bench with writer thread + drain; splitting hurts readability
     fd = open_raw(device)
     # Settle: drain anything pending.
     end_drain = time.monotonic() + 0.3
@@ -125,18 +127,19 @@ def stream_echo(device, total_bytes):
 
 
 def find_cdc_device():
-    import subprocess
-
-    for entry in sorted(os.listdir("/dev")):
-        if not entry.startswith("ttyACM"):
+    dev_dir = Path("/dev")
+    for entry in sorted(dev_dir.iterdir()):
+        if not entry.name.startswith("ttyACM"):
             continue
-        path = os.path.join("/dev", entry)
         try:
-            info = subprocess.check_output(["udevadm", "info", path], text=True)
+            info = subprocess.check_output(  # noqa: S603  # trusted: fixed udevadm argv
+                ["udevadm", "info", str(entry)],  # noqa: S607  # trusted: fixed udevadm argv
+                text=True,
+            )
         except subprocess.CalledProcessError:
             continue
         if "ID_VENDOR_ID=1209" in info:
-            return path
+            return str(entry)
     return None
 
 

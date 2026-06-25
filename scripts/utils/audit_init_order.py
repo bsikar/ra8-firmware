@@ -200,8 +200,7 @@ def render_markdown(audits: list[AppAudit], repo_root: Path) -> str:
         if not audit.calls:
             lines.append("- (no init calls detected)")
         else:
-            for c in audit.calls:
-                lines.append(f"- L{c.line}: {c.name}  (rank {c.rank})")
+            lines.extend(f"- L{c.line}: {c.name}  (rank {c.rank})" for c in audit.calls)
         lines.append("")
     return "\n".join(lines) + "\n"
 

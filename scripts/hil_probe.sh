@@ -22,7 +22,6 @@ JLINK_DEVICE="R7KA8D2KF_CPU0"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -59,6 +58,7 @@ ok "JLinkExe found"
 # ---- 4. Run probe script on Pi (all parsing done remotely) -------------------
 tag "connecting to J-Link SN=${JLINK_SN}, device=${JLINK_DEVICE}..."
 
+# shellcheck disable=SC2087  # client-side substitution of JLINK_SN/JLINK_DEVICE is intentional
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP=\$(mktemp)

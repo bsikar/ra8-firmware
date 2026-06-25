@@ -324,7 +324,7 @@ for app in "${apps[@]}"; do
     fail=1
     continue
   fi
-  # shellcheck disable=SC2046  -- intentional word-split of the extra args
+  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
   extra="$(sim_extra_args "$app")"
   # USB device-enumeration apps: the virtual host drives chapter-9; assert the
   # device reaches CONFIGURED. BOARD_SIM_USB_STOP stops the run a short settle
@@ -484,7 +484,7 @@ for app in "${apps[@]}"; do
   case " $render_assert_apps " in
     *" $app "*)
       ppm="$(mktemp)"
-      # shellcheck disable=SC2046  -- intentional word-split of the extra args
+      # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
       "$sim" "$elf" --ppm "$ppm" $extra >/dev/null 2>&1 || true
       colors="$(count_ppm_colors "$ppm")"
       rm -f "$ppm"

@@ -58,6 +58,10 @@ SOURCE_SUFFIXES = {".c", ".cpp"}
 
 WARN_ONLY_RULES = {"ra_latency_max_ns", "ra_reviewed_by", "ra_register_bank"}
 
+# Upper bound on the call-graph BFS used for ra_no_recursion checking.
+# Prevents infinite loops on pathological call graphs during static analysis.
+RECURSION_GUARD_LIMIT = 1000
+
 ANNOTATION_PREFIXES = (
     "ra_test_helper",
     "ra_internal",
@@ -152,9 +156,11 @@ def discover_translation_units() -> list[pathlib.Path]:
         root = REPO_ROOT / top
         if not root.is_dir():
             continue
-        for path in root.rglob("*"):
-            if path.suffix in SOURCE_SUFFIXES and not is_excluded(path):
-                out.append(path)
+        out.extend(
+            path
+            for path in root.rglob("*")
+            if path.suffix in SOURCE_SUFFIXES and not is_excluded(path)
+        )
     return sorted(out)
 
 
@@ -203,7 +209,7 @@ def parse_tu(path: pathlib.Path) -> cindex.TranslationUnit | None:
 
 def walk_tu(
     tu: cindex.TranslationUnit,
-    tu_path: pathlib.Path,
+    _tu_path: pathlib.Path,
     symbols: dict[str, AnnotatedSymbol],
     calls: list[CallSite],
 ) -> None:
@@ -214,7 +220,7 @@ def walk_tu(
             return ""
         return str(c.location.file)
 
-    def visit(node: cindex.Cursor, current_func: cindex.Cursor | None) -> None:
+    def visit(node: cindex.Cursor, current_func: cindex.Cursor | None) -> None:  # noqa: PLR0912  # AST dispatch, splitting hurts readability
         # Function declarations / definitions
         if node.kind == cindex.CursorKind.FUNCTION_DECL:
             anns = collect_annotations(node)
@@ -259,19 +265,21 @@ def walk_tu(
         if node.kind == cindex.CursorKind.UNARY_OPERATOR:
             tokens = [t.spelling for t in node.get_tokens()]
             if tokens and tokens[0] == "&":
-                for child in node.get_children():
-                    if child.kind == cindex.CursorKind.DECL_REF_EXPR and child.referenced:
-                        if child.referenced.kind == cindex.CursorKind.FUNCTION_DECL:
-                            # Mark address-of by recording a synthetic CallSite.
-                            calls.append(
-                                CallSite(
-                                    callee_name=child.referenced.spelling,
-                                    caller_name=(current_func.spelling if current_func else ""),
-                                    caller_file=file_of(node),
-                                    caller_line=node.location.line,
-                                    in_address_of=True,
-                                )
-                            )
+                calls.extend(
+                    CallSite(
+                        callee_name=child.referenced.spelling,
+                        caller_name=(current_func.spelling if current_func else ""),
+                        caller_file=file_of(node),
+                        caller_line=node.location.line,
+                        in_address_of=True,
+                    )
+                    for child in node.get_children()
+                    if (
+                        child.kind == cindex.CursorKind.DECL_REF_EXPR
+                        and child.referenced
+                        and child.referenced.kind == cindex.CursorKind.FUNCTION_DECL
+                    )
+                )
 
         for child in node.get_children():
             visit(child, current_func)
@@ -310,20 +318,18 @@ def find_su_file(symbol: AnnotatedSymbol) -> int | None:
         return None
     pat = re.compile(r"\b" + re.escape(name) + r"\b\s+(\d+)\s+\w+")
     for su in examples.rglob("*.su"):
-        try:
+        with contextlib.suppress(OSError):
             for line in su.read_text(errors="ignore").splitlines():
                 m = pat.search(line)
                 if m:
                     return int(m.group(1))
-        except OSError:
-            continue
     return None
 
 
 # --------------------------------------------------------------------------
 # Rule enforcement
 # --------------------------------------------------------------------------
-def enforce_rules(
+def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by rule reduces clarity
     symbols: dict[str, AnnotatedSymbol],
     calls: list[CallSite],
 ) -> list[Violation]:
@@ -347,17 +353,16 @@ def enforce_rules(
 
             # 1. ra_test_helper -- callers must live under /tests/
             if rule == "ra_test_helper":
-                for cs in direct_calls_by_callee.get(sym.name, []):
-                    if "/tests/" not in cs.caller_file.replace("\\", "/"):
-                        out.append(
-                            Violation(
-                                rule,
-                                cs.caller_file,
-                                cs.caller_line,
-                                f"function '{sym.name}' tagged RA_TEST_HELPER "
-                                f"called from non-test context",
-                            )
-                        )
+                out.extend(
+                    Violation(
+                        rule,
+                        cs.caller_file,
+                        cs.caller_line,
+                        f"function '{sym.name}' tagged RA_TEST_HELPER called from non-test context",
+                    )
+                    for cs in direct_calls_by_callee.get(sym.name, [])
+                    if "/tests/" not in cs.caller_file.replace("\\", "/")
+                )
 
             # 2. ra_internal -- definition must be static
             elif rule == "ra_internal":
@@ -574,7 +579,7 @@ def enforce_rules(
                 stack = [sym.name]
                 recursive = False
                 guard = 0
-                while stack and guard < 1000:
+                while stack and guard < RECURSION_GUARD_LIMIT:
                     guard += 1
                     cur = stack.pop()
                     for cs in direct_calls_by_caller.get(cur, []):
@@ -718,7 +723,7 @@ def enforce_rules(
         for sym in symbols.values()
         if any(a.startswith("ra_p10_rule3_exception") for a in sym.annotations)
     }
-    BAD_ALLOC = {"malloc", "free", "calloc", "realloc", "aligned_alloc"}
+    bad_alloc = {"malloc", "free", "calloc", "realloc", "aligned_alloc"}
     for cs in calls:
         if cs.in_address_of:
             continue
@@ -726,7 +731,7 @@ def enforce_rules(
         # firmware itself never sees these TUs (see CLAUDE.md "Exempt Code").
         if "/tests/" in cs.caller_file.replace("\\", "/"):
             continue
-        if cs.callee_name in BAD_ALLOC and cs.caller_name not in p10_exempt:
+        if cs.callee_name in bad_alloc and cs.caller_name not in p10_exempt:
             out.append(
                 Violation(
                     "ra_p10_rule3_exception",
@@ -787,7 +792,7 @@ def enforce_rules(
 # --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
-def main(argv: list[str]) -> int:
+def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, splitting hurts readability
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "--check", action="store_true", help="exit non-zero on any (non-warn-only) violation"

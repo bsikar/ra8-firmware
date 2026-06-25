@@ -39,14 +39,19 @@ EXPECTED_OFFSETS = {
 BASE_SYMBOL = "g_ra_ls_sgstubs_start"
 THUMB_MASK = 0xFFFFFFFE
 
+# nm output has 3 fields: address, type, name.
+NM_FIELD_COUNT = 3
+
 
 def read_symbols(elf: str, nm: str) -> dict[str, int]:
     """Return {symbol: address} for every defined symbol in ``elf``."""
-    out = subprocess.run([nm, elf], capture_output=True, text=True, check=True).stdout
+    out = subprocess.run(  # noqa: S603  # trusted: fixed arm-none-eabi-nm argv
+        [nm, elf], capture_output=True, text=True, check=True
+    ).stdout
     syms: dict[str, int] = {}
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) == 3 and parts[1] in ("T", "t", "R", "r", "D", "d", "B", "b"):
+        if len(parts) == NM_FIELD_COUNT and parts[1] in ("T", "t", "R", "r", "D", "d", "B", "b"):
             with contextlib.suppress(ValueError):
                 syms[parts[2]] = int(parts[0], 16)
     return syms

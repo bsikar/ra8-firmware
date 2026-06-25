@@ -59,7 +59,7 @@ FUNC_DEF_DENYLIST = {
 
 def all_tracked_files() -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files"],
+        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -75,7 +75,7 @@ def is_in_scope(path: str) -> bool:
     return not any(path.startswith(p) for p in EXCLUDE_PREFIXES)
 
 
-def find_comment_spans(text: str) -> list[tuple[int, int]]:
+def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     spans: list[tuple[int, int]] = []
     i = 0
     n = len(text)
@@ -189,7 +189,7 @@ def resolve_target(repo_root: Path, citation_path: str, citation_line: int) -> s
 def main() -> int:
     repo_root = Path(
         subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv
             check=True,
             capture_output=True,
             text=True,

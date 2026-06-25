@@ -52,6 +52,11 @@ import re
 import sys
 from pathlib import Path
 
+# Maximum line length shown in the remaining-violations report.
+REPORT_SNIPPET_MAX_LEN = 120
+# Maximum number of violations printed before showing a count summary.
+REPORT_MAX_LINES = 50
+
 SCAN_ROOTS = (
     "libs",
     "src",
@@ -255,11 +260,11 @@ def main() -> int:
     print(f"fix-inclusive ({mode}): rewrote {fixed_lines} lines across {fixed_files} files.")
     if remaining:
         print(f"REMAINING: {len(remaining)} -- needs human edit:", file=sys.stderr)
-        for rel, ln, line in remaining[:50]:
-            snippet = line if len(line) <= 120 else line[:117] + "..."
+        for rel, ln, line in remaining[:REPORT_MAX_LINES]:
+            snippet = line if len(line) <= REPORT_SNIPPET_MAX_LEN else line[:117] + "..."
             print(f"  {rel}:{ln} {snippet}", file=sys.stderr)
-        if len(remaining) > 50:
-            print(f"  ... {len(remaining) - 50} more", file=sys.stderr)
+        if len(remaining) > REPORT_MAX_LINES:
+            print(f"  ... {len(remaining) - REPORT_MAX_LINES} more", file=sys.stderr)
         return 1
     return 0
 

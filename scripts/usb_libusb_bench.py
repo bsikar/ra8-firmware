@@ -29,6 +29,11 @@ import time
 import usb.core
 import usb.util
 
+CDC_DATA_INTERFACE_CLASS = 0x0A  # USB CDC data class (bInterfaceClass)
+USB_TRANSFER_TYPE_BULK = 0x02  # bmAttributes transfer-type field value
+USB_TRANSFER_TYPE_MASK = 0x03  # mask to extract transfer type from bmAttributes
+USB_EP_DIR_IN_BIT = 0x80  # bEndpointAddress direction bit: 1 = IN
+
 
 def find_bulk_endpoints(dev):
     """Return (cfg, interface_num, ep_out_addr, ep_in_addr) for the first
@@ -36,14 +41,14 @@ def find_bulk_endpoints(dev):
     the *data* interface (class 0x0a), not on the comm interface."""
     cfg = dev.get_active_configuration()
     for intf in cfg:
-        if intf.bInterfaceClass != 0x0A:  # CDC data class
+        if intf.bInterfaceClass != CDC_DATA_INTERFACE_CLASS:
             continue
         ep_out = ep_in = None
         for ep in intf:
-            attr = ep.bmAttributes & 0x03
-            if attr != 0x02:
+            attr = ep.bmAttributes & USB_TRANSFER_TYPE_MASK
+            if attr != USB_TRANSFER_TYPE_BULK:
                 continue  # Not bulk
-            if (ep.bEndpointAddress & 0x80) == 0:
+            if (ep.bEndpointAddress & USB_EP_DIR_IN_BIT) == 0:
                 ep_out = ep.bEndpointAddress
             else:
                 ep_in = ep.bEndpointAddress
@@ -52,7 +57,7 @@ def find_bulk_endpoints(dev):
     return None
 
 
-def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):
+def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):  # noqa: ARG001, PLR0912, PLR0915  # parallel_* reserved for future async batching; branchy dispatch
     vid_s, pid_s = vidpid.split(":")
     vid = int(vid_s, 16)
     pid = int(pid_s, 16)
@@ -78,7 +83,7 @@ def bench(vidpid, total_bytes, urb_size, parallel_out, parallel_in):
             if dev.is_kernel_driver_active(i):
                 print(f"Detaching kernel driver from interface {i}")
                 dev.detach_kernel_driver(i)
-        except (NotImplementedError, usb.core.USBError) as e:
+        except (NotImplementedError, usb.core.USBError) as e:  # noqa: PERF203  # short 2-iter loop; inline try is clearest
             print(f"Kernel-driver detach on intf {i} ignored: {e}")
 
     try:

@@ -101,6 +101,9 @@ CITE_RE = re.compile(
 
 LOOSE_HUM_RE = re.compile(r"/\*\s*HUM\s+Ch\b[^*]*\*/")
 
+# HUM chapter numbers are 1-based; the manual has fewer than 100 chapters.
+MAX_HUM_CHAPTER = 99
+
 
 def parse_chapter_map(path: pathlib.Path) -> dict[int, tuple[int, int, str]]:
     """Parse CHAPTER_MAP.md into {chapter: (start_page, end_page, title)}.
@@ -128,7 +131,7 @@ def parse_chapter_map(path: pathlib.Path) -> dict[int, tuple[int, int, str]]:
         title = m.group(2).strip()
         start = int(m.group(3))
         end = int(m.group(4))
-        if not (1 <= num <= 99):
+        if not (1 <= num <= MAX_HUM_CHAPTER):
             continue
         chapters[num] = (start, end, title)
     return chapters

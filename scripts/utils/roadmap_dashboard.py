@@ -72,6 +72,12 @@ COLOR_BLOCKED = "#e05d44"
 COLOR_TODO = "#9f9f9f"
 COLOR_INFO = "#007ec6"
 
+# Coverage thresholds used to pick a badge color for checklist completion.
+COV_EXCELLENT = 95.0  # >= this -> green (COLOR_DONE)
+COV_GOOD = 75.0  # >= this -> light-green
+COV_OK = 50.0  # >= this -> yellow (COLOR_WIP)
+COV_LOW = 25.0  # >= this -> orange
+
 
 class Driver:
     """One "### <name>" driver section."""
@@ -173,7 +179,7 @@ def status_glyph(status: str) -> str:
     }[status]
 
 
-def render_dashboard(drivers: list[Driver]) -> str:
+def render_dashboard(drivers: list[Driver]) -> str:  # noqa: PLR0915  # dashboard builder, splitting into sub-functions hurts readability
     """Build the markdown dashboard text."""
     out: list[str] = []
     out.append("<!--")
@@ -346,13 +352,13 @@ def render_badge(label: str, value: str, color: str) -> str:
 
 
 def coverage_color(pct: float) -> str:
-    if pct >= 95.0:
+    if pct >= COV_EXCELLENT:
         return COLOR_DONE
-    if pct >= 75.0:
+    if pct >= COV_GOOD:
         return "#97ca00"
-    if pct >= 50.0:
+    if pct >= COV_OK:
         return COLOR_WIP
-    if pct >= 25.0:
+    if pct >= COV_LOW:
         return "#fe7d37"
     return COLOR_BLOCKED
 
@@ -412,7 +418,7 @@ def _write_if_changed(path: pathlib.Path, content: str) -> bool:
     return True
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str]) -> int:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--check",
