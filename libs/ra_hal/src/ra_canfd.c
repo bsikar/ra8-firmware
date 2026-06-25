@@ -41,6 +41,7 @@
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hal_internal.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_register_protection.h"
@@ -49,7 +50,7 @@ static const char* s_tag = "CANFD";
 
 /**
  * @enum ra_canfd_internal_t
- * @brief Internal tunables (spin budgets, quanta-search window).
+ * @brief Internal tunables (mode-transition + clock-handshake spin budgets).
  *
  * @details
  * ``k_ra_canfd_spin`` bounds CHLTSTS / CRSTSTS / GHLTSTS / GRSTSTS polls.
@@ -65,21 +66,9 @@ static const char* s_tag = "CANFD";
  * the USB/SCI CKSRDY waits in ``ra_cgc.c``.
  */
 typedef enum : uint32_t {
-  k_ra_canfd_spin         = 20000U,  /**< Bounded poll budget in iterations. */
-  k_ra_canfd_tx_spin      = 100000U, /**< TX-completion poll: 500 us @ 1 GHz / 5 cyc. */
-  k_ra_canfd_ckcr_spin    = 262144U, /**< CANFDCKCR SREQ/SRDY budget.       */
-  k_ra_canfd_tq_search_lo = 8U,      /**< Smallest time-quanta count tried. */
-  k_ra_canfd_tq_search_hi = 25U,     /**< Largest time-quanta count tried. */
+  k_ra_canfd_spin      = 20000U,  /**< Bounded poll budget in iterations. */
+  k_ra_canfd_ckcr_spin = 262144U, /**< CANFDCKCR SREQ/SRDY budget.        */
 } ra_canfd_internal_t;
-
-/**
- * @enum ra_canfd_buffer_idx_t
- * @brief Indices the driver currently owns within the channel block.
- */
-typedef enum : uint8_t {
-  k_ra_canfd_tx_mb_default   = 0U, /**< Driver uses TX MB 0 for fire-and-forget. */
-  k_ra_canfd_rx_fifo_default = 0U, /**< Driver uses RX FIFO 0 for poll-receive.*/
-} ra_canfd_buffer_idx_t;
 
 /**
  * @brief Bounded wait on a `CFDC[0].STS` flag (reset/halt/operation ack).
@@ -149,7 +138,7 @@ static const ra_mstp_t s_canfd_mstp_table[] = {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mode_t mode)
+ra_err_t ra_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mode_t mode)
 {
   /* Read-modify-write the CTR register, mask CHMDC to bits [1:0],
    * stamp the requested mode. Also clear CSLPR (bit 2): the channel
@@ -441,7 +430,7 @@ static ra_err_t internal_wait_canfdcksrdy(uint8_t expected)
  * before the chip raises ``CANFDCKSRDY`` and declares the clock stable.
  * Without that handshake the canfd block's internal state machine
  * cannot reach CH_HALT after the first ``CFDCnCTR.CHMDC`` write --
- * symptom seen on HIL: ``ra_canfd_set_test_mode -> internal_set_channel_mode
+ * symptom seen on HIL: ``ra_canfd_set_test_mode -> ra_canfd_internal_set_channel_mode
  * (k_ra_chmdc_halt) -> internal_wait_status_bit`` times out on CHLTSTS
  * for ``can_classic_loopback`` / ``canfd_loopback`` / ``canfd_filter_demo``.
  *
@@ -543,7 +532,7 @@ static ra_err_t internal_canfd_clock_block_init(void)
 static ra_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
 {
   (void)internal_set_global_mode(reg, k_ra_gctr_value_reset);
-  (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
+  (void)ra_canfd_internal_set_channel_mode(reg, k_ra_chmdc_reset);
 
   internal_install_default_afl(reg);
   internal_configure_rx_fifo0(reg);
@@ -555,7 +544,7 @@ static ra_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
   /* RFE is only writable in GL_HALT / GL_OPERATION, so enable RX FIFO
    * 0 only after the global block has actually transitioned. */
   internal_enable_rx_fifo0(reg);
-  return internal_set_channel_mode(reg, k_ra_chmdc_operation);
+  return ra_canfd_internal_set_channel_mode(reg, k_ra_chmdc_operation);
 }
 
 ra_err_t ra_canfd_init(uint8_t channel)
@@ -598,454 +587,7 @@ ra_err_t ra_canfd_deinit(uint8_t channel)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   /* HUM Ch 41 "CFDCnCTR.CHMDC" p 2762 */ /* "CFDCnCTR.CHMDC" -- park channel in reset. */
-  (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
-  return k_ra_ok;
-}
-
-/**
- * @struct ra_canfd_timing_t
- * @brief Resolved nominal / data phase bit-timing fields.
- *
- * @details
- * All fields are pre-subtract-1 i.e. the human-friendly value before
- * the FSP "field = value - 1" packing. Both nominal and data phases
- * use the same struct; the packing routine differs because the
- * register layouts differ (NCFG vs DCFG).
- */
-typedef struct {
-  uint32_t prescaler; /**< Prescaler integer (pre-subtract-1). */
-  uint32_t tseg1;     /**< Phase segment 1 (pre-subtract-1).   */
-  uint32_t tseg2;     /**< Phase segment 2 (pre-subtract-1).   */
-  uint32_t sjw;       /**< Sync jump width (pre-subtract-1).   */
-} ra_canfd_timing_t;
-
-/**
- * @brief Walk candidate TQ-per-bit counts until one yields an integer prescaler.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] clock_hz See header declaration for direction and constraints.
- * @param[in] bitrate_bps See header declaration for direction and constraints.
- * @param[in] prescaler_max See header declaration for direction and constraints.
- * @param[in] out See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static ra_err_t internal_solve_timing(uint32_t           clock_hz,
-                                      uint32_t           bitrate_bps,
-                                      uint32_t           prescaler_max,
-                                      ra_canfd_timing_t* out)
-{
-  /* mcdc-deactivated: both args are validated by ra_canfd_init upstream; defensive duplicate. */
-  if ((bitrate_bps == 0U) || (clock_hz == 0U)) {
-    return k_ra_err_invalid_arg;
-  }
-  for (uint32_t tq = k_ra_canfd_tq_search_hi; tq >= k_ra_canfd_tq_search_lo; tq--) {
-    const uint32_t denom = bitrate_bps * tq;
-    if ((clock_hz % denom) != 0U) {
-      continue;
-    }
-    const uint32_t prescaler = clock_hz / denom;
-    // mcdc-deactivated: ra_canfd_deinit (bit-timing solver) prescaler-range guard; the search-loop tq bounds (k_ra_canfd_tq_search_lo..hi) and clock_hz/bitrate_bps caller validation upstream make either the lower or upper bound condition the dominant branch for any valid input -- the opposing condition cannot independently flip without violating the documented clock/bitrate range.
-    if ((prescaler < k_ra_canfd_prescaler_min) || (prescaler > prescaler_max)) {
-      continue;
-    }
-    /* 75% sample point: TSEG1 = 3*(tq-1)/4, TSEG2 = tq - 1 - TSEG1. */
-    const uint32_t tseg1 = ((tq - 1U) * 3U) / 4U;
-    const uint32_t tseg2 = (tq - 1U) - tseg1;
-    const uint32_t sjw   = (tseg2 < k_ra_canfd_sjw_max) ? tseg2 : k_ra_canfd_sjw_max;
-    out->prescaler       = prescaler;
-    out->tseg1           = tseg1;
-    out->tseg2           = tseg2;
-    out->sjw             = sjw;
-    return k_ra_ok;
-  }
-  return k_ra_err_invalid_arg;
-}
-
-/**
- * @brief Pack a resolved timing triple into the CFDC[0].NCFG layout.
- *
- * @details
- * FSP `r_canfd.c` line ~422: NBRP/NSJW/NTSEG1/NTSEG2 each minus 1.
- *
- * @param[in] t See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static uint32_t internal_pack_ncfg(const ra_canfd_timing_t* t)
-{
-  const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra_cncfg_mask_nbrp)
-                               << (uint32_t)k_ra_cncfg_shift_nbrp;
-  const uint32_t tseg1_field = (t->tseg1 & k_ra_cncfg_mask_ntseg1)
-                               << (uint32_t)k_ra_cncfg_shift_ntseg1;
-  const uint32_t tseg2_field = (t->tseg2 & k_ra_cncfg_mask_ntseg2)
-                               << (uint32_t)k_ra_cncfg_shift_ntseg2;
-  const uint32_t sjw_field   = ((t->sjw - 1U) & k_ra_cncfg_mask_nsjw)
-                               << (uint32_t)k_ra_cncfg_shift_nsjw;
-  return brp_field | tseg1_field | tseg2_field | sjw_field;
-}
-
-/**
- * @brief Pack a resolved timing triple into the CFDC2[0].DCFG layout.
- *
- * @details
- * FSP `r_canfd.c` line ~432: DBRP/DSJW/DTSEG1/DTSEG2 with NARROWER
- * fields (8/4/5/4 bits) and DIFFERENT shifts (0/24/8/16).
- *
- * @param[in] t See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static uint32_t internal_pack_dcfg(const ra_canfd_timing_t* t)
-{
-  const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra_dcfg_mask_dbrp)
-                               << (uint32_t)k_ra_dcfg_shift_dbrp;
-  const uint32_t tseg1_field = (t->tseg1 & k_ra_dcfg_mask_dtseg1)
-                               << (uint32_t)k_ra_dcfg_shift_dtseg1;
-  const uint32_t tseg2_field = (t->tseg2 & k_ra_dcfg_mask_dtseg2)
-                               << (uint32_t)k_ra_dcfg_shift_dtseg2;
-  const uint32_t sjw_field   = ((t->sjw - 1U) & k_ra_dcfg_mask_dsjw)
-                               << (uint32_t)k_ra_dcfg_shift_dsjw;
-  return brp_field | tseg1_field | tseg2_field | sjw_field;
-}
-
-ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t data_bitrate_bps)
-{
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-
-  uint32_t       pclka_hz = 0U;
-  const ra_err_t clk_err  = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
-  if (clk_err != k_ra_ok) {
-    return clk_err;
-  }
-
-  /* Nominal phase: 10-bit prescaler ceiling = 1024. */
-  ra_canfd_timing_t nominal = {};
-  const ra_err_t    n_err =
-    internal_solve_timing(pclka_hz, bitrate_bps, k_ra_canfd_prescaler_max, &nominal);
-  if (n_err != k_ra_ok) {
-    return n_err;
-  }
-
-  /* NCFG / DCFG are only writable in CH_RESET or CH_HALT.  Use
-   * CH_RESET: halt is a graceful transition that waits for any
-   * in-flight TX to finish, and on internal-loopback bring-up the
-   * channel may be stuck trying to TX onto a bus with no
-   * acknowledger -- halt never converges. CH_RESET is the
-   * immediate abort path, which is what FSP r_canfd does too.
-   * HUM Ch 41 "CFDCnNCFG.NTSEG2" p 2706 */
-  const ra_err_t halt_err = internal_set_channel_mode(reg, k_ra_chmdc_reset);
-  if (halt_err != k_ra_ok) {
-    return halt_err;
-  }
-
-  /* HUM Ch 41 "CFDCnNCFG" p 2705 */
-  reg->CFDC[0].NCFG = internal_pack_ncfg(&nominal);
-
-  if ((data_bitrate_bps != 0U) && (data_bitrate_bps > bitrate_bps)) {
-    /* Data phase: 8-bit prescaler ceiling = 256. */
-    ra_canfd_timing_t data = {};
-    const ra_err_t    d_err =
-      internal_solve_timing(pclka_hz, data_bitrate_bps, k_ra_canfd_data_prescaler_max, &data);
-    if (d_err != k_ra_ok) {
-      /* Best-effort: return the channel to CH_OPERATION so the
-       * caller does not observe a half-applied edit. */
-      (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
-      return d_err;
-    }
-    /* HUM Ch 41 "CFDCnDCFG" p 2785 */
-    reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
-  }
-
-  const ra_err_t op_err = internal_set_channel_mode(reg, k_ra_chmdc_operation);
-  if (op_err != k_ra_ok) {
-    return op_err;
-  }
-
-  ra_log_info_val(s_tag, "set_bitrate bps", bitrate_bps);
-  return k_ra_ok;
-}
-
-/**
- * @brief Range-check a `ra_canfd_frame_t` against the protocol limits.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] frame See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static ra_err_t internal_validate_frame(const ra_canfd_frame_t* frame)
-{
-  if (frame->dlc > k_ra_canfd_dlc_max) {
-    return k_ra_err_invalid_arg;
-  }
-  if (frame->is_extended == 0U) {
-    if ((frame->id & ~k_ra_canfd_id_std_mask) != 0U) {
-      return k_ra_err_invalid_arg;
-    }
-  } else {
-    if ((frame->id & ~k_ra_canfd_id_ext_mask) != 0U) {
-      return k_ra_err_invalid_arg;
-    }
-  }
-  if ((frame->is_brs != 0U) && (frame->is_fd == 0U)) {
-    return k_ra_err_invalid_arg;
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Copy the frame payload into `CFDTM[0].DF[]`. Unused bytes left intact.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] reg See header declaration for direction and constraints.
- * @param[in] frame See header declaration for direction and constraints.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static void internal_write_tx_data(volatile r_canfd_t* reg, const ra_canfd_frame_t* frame)
-{
-  for (uint8_t b = 0U; b < k_ra_canfd_data_bytes_max; b++) {
-    reg->CFDTM[k_ra_canfd_tx_mb_default].DF[b] = frame->data[b];
-  }
-}
-
-/**
- * @brief Assemble the CFDTM[0].ID word (raw ID plus IDE flag).
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] frame See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static uint32_t internal_tx_id(const ra_canfd_frame_t* frame)
-{
-  const uint32_t masked = (frame->is_extended != 0U) ? (frame->id & k_ra_canfd_id_ext_mask)
-                                                     : (frame->id & k_ra_canfd_id_std_mask);
-  return (frame->is_extended != 0U) ? (masked | k_ra_canfd_id_ide) : masked;
-}
-
-/**
- * @brief Assemble the CFDTM[0].FDCTR word (FDF/BRS/ESI flags).
- *
- * @details
- * FSP r_canfd.c line ~676: `p_frame->options & 7` packs ESI/BRS/FDF
- * directly into bits [2:0]. We model the same here.
- *
- * @param[in] frame See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static uint32_t internal_tx_fdctr(const ra_canfd_frame_t* frame)
-{
-  uint32_t w = 0U;
-  if (frame->is_fd != 0U) {
-    w |= k_ra_canfd_fd_fdf;
-  }
-  if (frame->is_brs != 0U) {
-    w |= k_ra_canfd_fd_brs;
-  }
-  return w;
-}
-
-ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
-{
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  RA_CHECK_NULL_PTR(frame, s_tag, "frame must not be nullptr");
-
-  const ra_err_t v = internal_validate_frame(frame);
-  if (v != k_ra_ok) {
-    return v;
-  }
-
-  /* Clear the previous transmission's TMTRF before asserting TXREQ:
-   * HUM Ch 41 "CFDTMSTSj.TMTRF" p ~2756 says TMTR is only honored when
-   * TMTRF is 00b. After the first successful TX the chip leaves
-   * TMTRF=10b ("transmission successful") and silently drops every
-   * subsequent TXREQ -- the symptom is the first round-trip working
-   * and every later one returning no_data. */
-  reg->CFDTMSTS[k_ra_canfd_tx_mb_default] = 0U;
-
-  /* HUM Ch 41 p 2806 "CFDTMID/CFDTMPTR/CFDTMFDCTR/CFDTMDF" +
-   * FSP r_canfd.c line ~668..684. */
-  reg->CFDTM[k_ra_canfd_tx_mb_default].ID    = internal_tx_id(frame);
-  reg->CFDTM[k_ra_canfd_tx_mb_default].PTR   = ((uint32_t)frame->dlc & k_ra_canfd_ptr_mask_dlc)
-                                               << (uint32_t)k_ra_canfd_ptr_shift_dlc;
-  reg->CFDTM[k_ra_canfd_tx_mb_default].FDCTR = internal_tx_fdctr(frame);
-  internal_write_tx_data(reg, frame);
-
-  /* HUM Ch 41 p 2810 "CFDTMC" -- single-byte transmit-request register.
-   * FSP r_canfd.c line ~724: `p_reg->CFDTMC[idx] = 1`. */
-  reg->CFDTMC[k_ra_canfd_tx_mb_default] = k_ra_canfd_tmc_txreq;
-
-  /* Wait for CFDTMSTSj.TMTRF[1:0] to read "transmission complete"
-   * (10b) -- HUM Ch 41 "CFDTMSTSj.TMTRF" p ~2756. The previous mask
-   * (0x06) also matched 01b ("transmission requested"), which on
-   * back-to-back TX calls let the second call clobber CFDTMSTS while
-   * the first frame was still in flight; the chip then silently
-   * dropped the second TX and canfd_filter_demo's mask sub-round
-   * (sent immediately after the exact sub-round) saw the frame
-   * disappear. Mask 0x04 keys on TMTRF[1] only, which is only set
-   * once the TX is actually on the wire and the MB is free.
-   *
-   * 500 kbit/s + 8 bytes = ~240 us; k_ra_canfd_tx_spin (~500 us at
-   * 1 GHz / 5 cycles per iter) covers it with margin. */
-#ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_canfd_tx_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    enum : uint8_t { k_ra_tmsts_tmtrf_done = 0x04U };
-    if ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_done) != 0U) {
-      break;
-    }
-  }
-#endif
-  return k_ra_ok;
-}
-
-/**
- * @brief Copy 64 bytes of RX FIFO data from `CFDRF[0].DF[]` into the caller buffer.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] reg See header declaration for direction and constraints.
- * @param[in] out See header declaration for direction and constraints.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static void internal_read_rx_data(volatile r_canfd_t* reg, ra_canfd_frame_t* out)
-{
-  for (uint8_t b = 0U; b < k_ra_canfd_data_bytes_max; b++) {
-    out->data[b] = reg->CFDRF[k_ra_canfd_rx_fifo_default].DF[b];
-  }
-}
-
-/**
- * @brief Decode the raw CFDRF[0].ID/PTR/FDSTS into `out`.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] id_word See header declaration for direction and constraints.
- * @param[in] ptr_word See header declaration for direction and constraints.
- * @param[in] fdsts_word See header declaration for direction and constraints.
- * @param[in] out See header declaration for direction and constraints.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static void internal_decode_rx_header(uint32_t          id_word,
-                                      uint32_t          ptr_word,
-                                      uint32_t          fdsts_word,
-                                      ra_canfd_frame_t* out)
-{
-  const uint8_t is_ext = ((id_word & k_ra_canfd_id_ide) != 0U) ? 1U : 0U;
-  out->is_extended     = is_ext;
-  out->id =
-    (is_ext != 0U) ? (id_word & k_ra_canfd_id_ext_mask) : (id_word & k_ra_canfd_id_std_mask);
-  out->dlc = (uint8_t)((ptr_word >> (uint32_t)k_ra_canfd_ptr_shift_dlc) & k_ra_canfd_ptr_mask_dlc);
-  out->is_fd  = ((fdsts_word & k_ra_canfd_fd_fdf) != 0U) ? 1U : 0U;
-  out->is_brs = ((fdsts_word & k_ra_canfd_fd_brs) != 0U) ? 1U : 0U;
-}
-
-ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
-{
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  RA_CHECK_NULL_PTR(out_frame, s_tag, "out_frame must not be nullptr");
-
-  /* HUM Ch 41 "CFDRFSTSn.RFEMP" p 2754 */ /* "CFDRFSTSn.RFEMP" -- empty flag is bit 0. */
-  if ((reg->CFDRFSTS[k_ra_canfd_rx_fifo_default] & k_ra_rfsts_bit_empty) != 0U) {
-    return k_ra_err_no_data;
-  }
-
-  /* HUM Ch 41 "CFDRFn ID/PTR/FDSTS/DF" p 2796 */ /* "CFDRFn ID/PTR/FDSTS/DF". */
-  internal_decode_rx_header(reg->CFDRF[k_ra_canfd_rx_fifo_default].ID,
-                            reg->CFDRF[k_ra_canfd_rx_fifo_default].PTR,
-                            reg->CFDRF[k_ra_canfd_rx_fifo_default].FDSTS,
-                            out_frame);
-  internal_read_rx_data(reg, out_frame);
-
-  /* HUM Ch 41 p 2756 "CFDRFPCTRn.RFPC" -- write 0xFF to advance pointer.
-   * FSP r_canfd.c uses the same dummy 0xFF write to pop. */
-  reg->CFDRFPCTR[k_ra_canfd_rx_fifo_default] = k_ra_rfpctr_value_ack;
-  return k_ra_ok;
-}
-
-ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_err)
-{
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  RA_CHECK_NULL_PTR(tx_err, s_tag, "tx_err must not be nullptr");
-  RA_CHECK_NULL_PTR(rx_err, s_tag, "rx_err must not be nullptr");
-
-  /* HUM Ch 41 p 2766 "CFDCnSTS" -- TEC[31:24] / REC[23:16] live in
-   * CFDC[0].STS, NOT in CFDC[0].ERFL like the previous header model. */
-  const uint32_t sts = reg->CFDC[0].STS;
-  *tx_err            = (uint8_t)((sts >> (uint32_t)k_ra_cnsts_bit_tec) & k_ra_cnsts_mask_tec);
-  *rx_err            = (uint8_t)((sts >> (uint32_t)k_ra_cnsts_bit_rec) & k_ra_cnsts_mask_rec);
+  (void)ra_canfd_internal_set_channel_mode(reg, k_ra_chmdc_reset);
   return k_ra_ok;
 }
 
@@ -1099,47 +641,6 @@ void ra_canfd_dispatch(uint8_t channel)
   if (fn != nullptr) {
     fn(ctx, channel, mask);
   }
-}
-
-/**
- * @brief Re-derive the data-phase timing triple and pack it into DCFG.
- *
- * @details
- * Helper for ::ra_canfd_set_brs: solves for an integer prescaler
- * against PCLKA for the requested @p data_bitrate, then writes the
- * FSP-aligned DCFG layout.  HUM Ch 41 "CFDCnDCFG" pp 2702-2867.
- *
- * @param[in] reg See header declaration for direction and constraints.
- * @param[in] data_bitrate See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static ra_err_t internal_program_data_phase(volatile r_canfd_t* reg, uint32_t data_bitrate)
-{
-  if (data_bitrate == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  uint32_t       pclka_hz = 0U;
-  const ra_err_t clk_err  = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
-  if (clk_err != k_ra_ok) {
-    return clk_err;
-  }
-  ra_canfd_timing_t data = {};
-  const ra_err_t    err =
-    internal_solve_timing(pclka_hz, data_bitrate, k_ra_canfd_data_prescaler_max, &data);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  /* HUM Ch 41 "CFDCnDCFG" p 2785 */ /* "CFDCnDCFG" */
-  reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
-  return k_ra_ok;
 }
 
 /** @brief Number of AFL slots that live on page 0. */
@@ -1272,10 +773,10 @@ ra_err_t ra_canfd_set_test_mode(uint8_t channel, ra_ctms_mode_t mode)
    * [26:25]) are only writable in CH_HALT mode.  ra_canfd_init parks
    * the channel in CH_OPERATION so we transition through CH_HALT to
    * land the test-mode select, then return to CH_OPERATION. */
-  const ra_err_t halt_err = internal_set_channel_mode(reg, k_ra_chmdc_halt);
+  const ra_err_t halt_err = ra_canfd_internal_set_channel_mode(reg, k_ra_chmdc_halt);
   if (halt_err != k_ra_ok) {
     /* Best-effort recover the channel before reporting the error. */
-    (void)internal_set_channel_mode(reg, k_ra_chmdc_operation);
+    (void)ra_canfd_internal_set_channel_mode(reg, k_ra_chmdc_operation);
     return halt_err;
   }
 
@@ -1287,14 +788,7 @@ ra_err_t ra_canfd_set_test_mode(uint8_t channel, ra_ctms_mode_t mode)
   ctr |= ((uint32_t)mode << (uint32_t)k_ra_cnctr_bit_ctms) & k_ra_cnctr_mask_ctms;
   reg->CFDC[0].CTR = ctr;
 
-  return internal_set_channel_mode(reg, k_ra_chmdc_operation);
-}
-
-ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate)
-{
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  return internal_program_data_phase(reg, fast_bitrate);
+  return ra_canfd_internal_set_channel_mode(reg, k_ra_chmdc_operation);
 }
 
 ra_err_t ra_canfd_set_iso_mode(bool enable)
@@ -1330,30 +824,3 @@ ra_err_t ra_canfd_exit_stop(uint8_t channel)
   /* HUM Ch 11.2.8 "MSTPCRC" p 447 */ /* ungate channel clock. */
   return ra_mstp_enable(s_canfd_mstp_table[channel]);
 }
-
-#ifdef RA_SIMULATOR_MODE
-ra_err_t ra_canfd_test_inject_frame(uint8_t        channel,
-                                    uint32_t       id_word,
-                                    uint32_t       ptr_word,
-                                    uint32_t       fdsts_word,
-                                    const uint8_t* data,
-                                    uint32_t       data_len)
-{
-  volatile r_canfd_t* reg = ra_canfd(channel);
-  if (reg == nullptr) {
-    return k_ra_err_null_ptr;
-  }
-  reg->CFDRF[k_ra_canfd_rx_fifo_default].ID    = id_word;
-  reg->CFDRF[k_ra_canfd_rx_fifo_default].PTR   = ptr_word;
-  reg->CFDRF[k_ra_canfd_rx_fifo_default].FDSTS = fdsts_word;
-  const uint32_t copy_len                      = (data_len > (uint32_t)k_ra_canfd_data_bytes_max)
-                                                   ? (uint32_t)k_ra_canfd_data_bytes_max
-                                                   : data_len;
-  for (uint32_t b = 0U; b < copy_len; b++) {
-    reg->CFDRF[k_ra_canfd_rx_fifo_default].DF[b] = (data != nullptr) ? data[b] : 0U;
-  }
-  /* Clear the RFEMP bit so ra_canfd_receive sees a frame ready. */
-  reg->CFDRFSTS[k_ra_canfd_rx_fifo_default] &= ~(uint32_t)k_ra_rfsts_bit_empty;
-  return k_ra_ok;
-}
-#endif /* RA_SIMULATOR_MODE */
