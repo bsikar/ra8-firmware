@@ -29,7 +29,11 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_gpio_constants.h"
 #include "ra_log.h"
+#include "ra_port_utils.h"
+#include "ra_sci_spi.h"
+#include "ra_spi.h"
 
 /* ---------------------------------------------------------------------------
  * Log tag
@@ -863,6 +867,188 @@ static ra_err_t internal_run_init_sequence(void)
   RA_RETURN_ON_ERROR(err, s_tag, "CMD16 SET_BLOCKLEN");
   s_state.card_type       = internal_classify_card(is_v2, is_hc);
   s_state.capacity_blocks = blocks;
+  return k_ra_ok;
+}
+
+/* ===========================================================================
+ * Convenience SCI Simple-SPI transport factory (Pmod SD on EK-RA8D2)
+ * ===========================================================================
+ */
+
+/**
+ * @struct sci_bus_ctx_t
+ * @brief Bus context handed to the factory's transport callbacks.
+ * @details Populated once by ::ra_sdmmc_spi_transport_sci and pointed at by the
+ *          returned transport's ``ctx`` cookie; recovers the SCI channel, PCLKA
+ *          rate, and chip-select pin inside each shim. Not reentrant.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t       channel;  /**< SCI Simple-SPI channel index.        */
+  uint32_t      pclka_hz; /**< PCLKA rate (Hz) for the baud shim.   */
+  ra_port_pin_t cs;       /**< Chip-select GPIO pin (active-low).   */
+} sci_bus_ctx_t;
+
+/**
+ * @var s_sci_ctx
+ * @brief Single-shot bus context backing the factory's transport callbacks.
+ * @warning Mutated by ::ra_sdmmc_spi_transport_sci; not thread-safe and only one
+ *          SD bus may be brought up through the factory at a time.
+ * @since 0.1.0
+ */
+static sci_bus_ctx_t s_sci_ctx;
+
+/* cppcheck-suppress constParameterCallback
+ * Reason: bound to ra_sdmmc_spi_transport_t::set_clock, whose signature is
+ * `ra_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
+/**
+ * @brief Factory transport set-clock shim: retune the SCI baud divider.
+ * @details Recovers the SCI channel + PCLKA from the bus context and forwards
+ *          to ``ra_sci_spi_set_clock``; carries no register access of its own.
+ * @param[in] ctx Bus context (::sci_bus_ctx_t*); must be non-NULL.
+ * @param[in] hz  Target SPI clock in Hz.
+ * @return ra_err_t passthrough from ``ra_sci_spi_set_clock``.
+ * @retval k_ra_ok           Baud divider retuned.
+ * @retval k_ra_err_null_ptr @p ctx is NULL.
+ * @pre @p ctx points to the live ::s_sci_ctx.
+ * @pre ``ra_sci_spi_init`` has configured the SCI channel.
+ * @post On success the SCI channel clock is retuned to @p hz.
+ * @post No bus transaction is issued (clock configuration only).
+ * @note ISR-unsafe; blocking. `ctx` is non-const to match the transport
+ *       function-pointer type (constParameterCallback suppressed in-tree).
+ * @since 0.1.0
+ */
+static ra_err_t sci_transport_set_clock(void* ctx, uint32_t hz)
+{
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
+  const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
+  return ra_sci_spi_set_clock(c->channel, hz, c->pclka_hz);
+}
+
+/**
+ * @brief Factory transport chip-select shim: drive CS low (asserted) or high.
+ * @details Drives the chip-select GPIO from the bus context (active-low select);
+ *          carries no register access of its own.
+ * @param[in] ctx      Bus context (::sci_bus_ctx_t*); must be non-NULL.
+ * @param[in] asserted true to select (CS low), false to release (CS high).
+ * @return ra_err_t passthrough from ``ra_gpio_write``.
+ * @retval k_ra_ok           CS driven to the requested level.
+ * @retval k_ra_err_null_ptr @p ctx is NULL.
+ * @pre @p ctx points to the live ::s_sci_ctx.
+ * @pre The CS pin was claimed as a GPIO output by ::ra_sdmmc_spi_transport_sci.
+ * @post On success the CS pin reflects @p asserted.
+ * @post No other pin or bus state changes.
+ * @note ISR-unsafe. `ctx` is non-const to match the transport function-pointer
+ *       type (constParameterCallback suppressed in-tree).
+ * @since 0.1.0
+ */
+static ra_err_t sci_transport_cs(void* ctx, bool asserted)
+{
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
+  const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
+  return ra_gpio_write(c->cs, asserted ? k_ra_level_low : k_ra_level_high);
+}
+
+/**
+ * @brief Factory transport transfer shim: full-duplex byte exchange.
+ * @details Forwards a full-duplex byte exchange to the SCI channel from the bus
+ *          context; carries no register access of its own.
+ * @param[in]  ctx Bus context (::sci_bus_ctx_t*); must be non-NULL.
+ * @param[in]  tx  TX bytes, or NULL to shift idle 0xFF.
+ * @param[out] rx  RX buffer, or NULL to discard.
+ * @param[in]  len Byte count; must be > 0.
+ * @return ra_err_t passthrough from ``ra_sci_spi_xfer``.
+ * @retval k_ra_ok           @p len bytes clocked on the bus.
+ * @retval k_ra_err_null_ptr @p ctx is NULL.
+ * @pre @p ctx points to the live ::s_sci_ctx.
+ * @pre ``ra_sci_spi_init`` configured the channel and CS is asserted.
+ * @post On success @p rx holds the received bytes when non-NULL.
+ * @post No state beyond @p rx and the SCI data registers is modified.
+ * @note ISR-unsafe; blocking. `ctx` is non-const to match the transport
+ *       function-pointer type (constParameterCallback suppressed in-tree).
+ * @since 0.1.0
+ */
+static ra_err_t sci_transport_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+{
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx");
+  const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
+  return ra_sci_spi_xfer(c->channel, tx, rx, len);
+}
+
+/**
+ * @brief Route the four Pmod SPI pins and bring up the SCI Simple-SPI channel.
+ * @details Muxes SCK/CIPO/COPI to the SCI async function, claims CS as a GPIO
+ *          output held high, then initialises the SCI channel at the SD power-on
+ *          clock. All HAL calls are reused (no register access here).
+ * @param[in] channel  SCI channel index (0..9).
+ * @param[in] pclk_hz  PCLKA rate (Hz) feeding the baud divider; non-zero.
+ * @param[in] pins     Non-NULL SCK / CIPO / COPI / CS descriptor.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Pins routed, CS claimed high, SCI channel up.
+ * @retval k_ra_err_null_ptr @p pins is NULL.
+ * @retval other             Propagated from ``ra_pfs_route_peripheral`` /
+ *                           ``ra_gpio_output_init`` / ``ra_sci_spi_init``.
+ * @pre ``ra_cgc_init`` has run; @p pclk_hz is the live PCLKA rate.
+ * @pre The four @p pins are free (not routed to another peripheral).
+ * @post On success the four pins are muxed and the SCI channel is configured.
+ * @post On failure the affected pins are left in their prior state.
+ * @note CS is a plain GPIO output (SD SPI-mode holds CS across a frame).
+ * @since 0.1.0
+ */
+static ra_err_t
+sci_transport_bringup(uint8_t channel, uint32_t pclk_hz, const ra_sdmmc_spi_sci_pins_t* pins)
+{
+  RA_CHECK_NULL_PTR(pins, s_tag, "pins");
+
+  ra_err_t err = ra_pfs_route_peripheral(pins->sck, k_ra_psel_sci_async, "sdspi.sck");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(pins->cipo, k_ra_psel_sci_async, "sdspi.cipo");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral(pins->copi, k_ra_psel_sci_async, "sdspi.copi");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_gpio_output_init(pins->cs, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const ra_sci_spi_cfg_t spi_cfg = {
+    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
+    .pclk_hz   = pclk_hz,
+    .mode      = k_ra_spi_mode_0,
+    .lsb_first = false,
+  };
+  return ra_sci_spi_init(channel, &spi_cfg);
+}
+
+ra_err_t ra_sdmmc_spi_transport_sci(uint8_t                        sci_channel,
+                                    uint32_t                       pclk_hz,
+                                    const ra_sdmmc_spi_sci_pins_t* pins,
+                                    ra_sdmmc_spi_transport_t*      out)
+{
+  RA_CHECK_NULL_PTR(pins, s_tag, "pins");
+  RA_CHECK_NULL_PTR(out, s_tag, "out");
+  if (pclk_hz == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+
+  ra_err_t err = sci_transport_bringup(sci_channel, pclk_hz, pins);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  s_sci_ctx.channel  = sci_channel;
+  s_sci_ctx.pclka_hz = pclk_hz;
+  s_sci_ctx.cs       = pins->cs;
+
+  out->set_clock = sci_transport_set_clock;
+  out->cs        = sci_transport_cs;
+  out->xfer      = sci_transport_xfer;
+  out->ctx       = &s_sci_ctx;
   return k_ra_ok;
 }
 

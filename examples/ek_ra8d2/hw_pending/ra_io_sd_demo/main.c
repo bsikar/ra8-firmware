@@ -10,11 +10,13 @@
  * app runs the IDENTICAL `ra_io` VFS API over a real micro-SD card by swapping
  * only the block-device backend: instead of the RAM backend it binds the
  * `ra_io` SD-over-SPI block device (`ra_io_blockdev_sdspi_init`) on top of the
- * `ra_sdmmc_spi` driver. The same Pmod2 / SCI0 Simple-SPI transport adapter as
- * `fs_format_mount` brings the card up; the data path above the block device is
+ * `ra_sdmmc_spi` driver. The Pmod2 / SCI0 Simple-SPI bus comes up in one library
+ * call -- `ra_sdmmc_spi_transport_sci` routes the four pins, claims CS, brings up
+ * SCI0 Simple-SPI, and fills the transport vtable -- matching the SDHI demo's
+ * one-line `ra_sdcard_init` ergonomics. The data path above the block device is
  * the shared `common/ra_io_roundtrip.{h,c}` helper, identical to the RAM,
  * SDRAM, and OSPI demos -- this app differs only by the SD-SPI transport
- * bring-up plus the ONE backend bind line and its own PASS banner.
+ * factory call plus the ONE backend bind line and its own PASS banner.
  *
  * On a clean round-trip it prints exactly
  * `ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS`; any failed step prints
@@ -44,9 +46,7 @@
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_sci.h"
-#include "ra_sci_spi.h"
 #include "ra_sdmmc_spi.h"
-#include "ra_spi.h"
 #include "ra_time.h"
 
 /* =============================================================================
@@ -173,103 +173,6 @@ static void sd_demo_panic_halt(void)
 }
 
 /* =============================================================================
- * SPI -> ra_sdmmc_spi transport adapter (mirror of fs_format_mount)
- * =============================================================================
- */
-
-/* cppcheck-suppress constParameterCallback
- * Reason: bound to ra_sdmmc_spi_transport_t::set_clock, whose signature is
- * `ra_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
-/**
- * @brief `ra_sdmmc_spi_transport_t::set_clock` shim over `ra_sci_spi_set_clock`.
- *
- * @details Recovers the cached PCLKA rate from the transport context and asks
- *          the SCI0 Simple-SPI driver to reprogram the bit-rate generator for
- *          the requested SCK frequency. Bound by value into the transport vtable
- *          the SD driver calls during init and speed-up.
- *
- * @param[in] ctx Transport context: pointer to the cached PCLKA rate in Hz.
- * @param[in] hz  Requested SCK frequency in Hz.
- *
- * @return ra_err_t from `ra_sci_spi_set_clock`.
- * @retval k_ra_ok    The bit-rate generator was reprogrammed.
- * @retval k_ra_err_* SCI clock-configuration failure.
- *
- * @pre @p ctx points to a live PCLKA-rate value.
- * @pre SCI0 Simple-SPI is initialised.
- * @post On success SCK runs at the closest achievable rate to @p hz.
- * @post No state beyond the SCI bit-rate registers is modified.
- *
- * @note Not thread-safe; called from the SD driver's single-threaded path.
- * @since 0.1.0
- */
-static ra_err_t sd_demo_spi_set_clock(void* ctx, uint32_t hz)
-{
-  const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_sd_demo_spi_channel, hz, pclka_hz);
-}
-
-/**
- * @brief `ra_sdmmc_spi_transport_t::cs` shim that drives the CS GPIO (active-low).
- *
- * @details Translates the driver's logical "assert / deassert" request into the
- *          physical CS level: asserted maps to a low output (card selected),
- *          deasserted to high. The context is unused because the CS pin is a
- *          fixed compile-time constant.
- *
- * @param[in] ctx      Unused transport context.
- * @param[in] asserted true => select the card (drive CS low); false => deselect.
- *
- * @return ra_err_t from `ra_gpio_write`.
- * @retval k_ra_ok    CS was driven to the requested level.
- * @retval k_ra_err_* GPIO write failure.
- *
- * @pre The CS pin is configured as a GPIO output.
- * @pre IOPORT is reachable.
- * @post CS reflects @p asserted on success.
- * @post No other pin state is modified.
- *
- * @note Not thread-safe; called from the SD driver's single-threaded path.
- * @since 0.1.0
- */
-static ra_err_t sd_demo_spi_cs(void* ctx, bool asserted)
-{
-  (void)ctx;
-  return ra_gpio_write(k_sd_demo_pin_cs, asserted ? k_ra_level_low : k_ra_level_high);
-}
-
-/**
- * @brief `ra_sdmmc_spi_transport_t::xfer` shim over `ra_sci_spi_xfer`.
- *
- * @details Performs a full-duplex SPI transfer of @p len bytes on SCI0, shifting
- *          @p tx out while latching the received bytes into @p rx. Either buffer
- *          may be NULL when that direction is don't-care, per the SCI SPI driver
- *          contract. The context is unused (fixed channel).
- *
- * @param[in]  ctx Unused transport context.
- * @param[in]  tx  Bytes to shift out (or NULL to send idle bytes).
- * @param[out] rx  Buffer for received bytes (or NULL to discard).
- * @param[in]  len Transfer length in bytes.
- *
- * @return ra_err_t from `ra_sci_spi_xfer`.
- * @retval k_ra_ok    The transfer completed.
- * @retval k_ra_err_* SCI SPI transfer failure.
- *
- * @pre SCI0 Simple-SPI is initialised and the card is selected as required.
- * @pre @p tx / @p rx each reference @p len bytes when non-NULL.
- * @post On success @p rx holds the @p len received bytes when non-NULL.
- * @post No state beyond @p rx and the SCI data registers is modified.
- *
- * @note Not thread-safe; called from the SD driver's single-threaded path.
- * @since 0.1.0
- */
-static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
-{
-  (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_sd_demo_spi_channel, tx, rx, len);
-}
-
-/* =============================================================================
  * Hardware bring-up
  * =============================================================================
  */
@@ -302,57 +205,23 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
 }
 
 /**
- * @brief Route Pmod2 SPI pins and claim CS as a GPIO output (idle high).
- *
- * @details Routes SCK/CIPO/COPI to the SCI0 Simple-SPI function and drives the
- *          CS pin high as a GPIO output; returns on the first failure.
- *
- * @return ra_err_t from the routing calls.
- * @retval k_ra_ok    SPI pins routed, CS driven high.
- * @retval k_ra_err_* Routing failure.
- *
- * @pre IOPORT is reachable.
- * @pre The SCI0 module clock is enabled.
- * @post P601/P602/P603 are SCI0 Simple-SPI; P604 is a GPIO output high.
- * @post On failure the affected pins are left in their prior state.
- *
- * @note Not thread-safe; call during single-threaded init.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t sd_demo_spi_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_sck, k_ra_psel_sci_async, "sddemo.sck");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_sd_demo_pin_cipo, k_ra_psel_sci_async, "sddemo.cipo");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_sd_demo_pin_copi, k_ra_psel_sci_async, "sddemo.copi");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_gpio_output_init(k_sd_demo_pin_cs, k_ra_level_high);
-}
-
-/**
- * @brief Bring up CGC + SysTick + console SCI + SPI + CS GPIO; panic on fail.
+ * @brief Bring up CGC + SysTick + console SCI; panic on fail.
  *
  * @details Initialises the clock generator, caches CPUCLK0 and PCLKA, starts the
- *          SysTick time base, routes the console pins, configures SCI8 async, and
- *          configures SCI0 Simple-SPI at the SD init clock. Any failing step
- *          panic-halts so a misconfigured bus never reaches the SD bring-up.
+ *          SysTick time base, routes the console pins, and configures SCI8 async.
+ *          The Pmod2 SD SPI bus is brought up later by the `ra_sdmmc_spi` SCI
+ *          transport factory, so this routine only owns the clocks + console.
+ *          Any failing step panic-halts so a misconfigured console never reaches
+ *          the SD bring-up.
  *
- * @param[out] out_pclka_hz Cached PCLKA rate (Hz) for the SPI clock shim.
+ * @param[out] out_pclka_hz Cached PCLKA rate (Hz) handed to the transport factory.
  *
  * @return Nothing (panic-halts on failure).
  *
  * @pre Reset_Handler initialised .data/.bss.
  * @pre @p out_pclka_hz is writable.
- * @post On success the console prints and SCI0 Simple-SPI is configured at the
- *       SD init clock, CS deasserted.
- * @post `*out_pclka_hz` holds the PCLKA rate on success.
+ * @post On success the console prints and `*out_pclka_hz` holds the PCLKA rate.
+ * @post On any failure the CPU is parked in WFI.
  *
  * @note Not thread-safe; call once from the single-threaded init path.
  * @since 0.1.0
@@ -386,48 +255,44 @@ static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
   if (ra_sci_init((uint8_t)k_sd_demo_uart_channel, &sci_cfg) != k_ra_ok) {
     sd_demo_panic_halt();
   }
-  if (sd_demo_spi_pins_init() != k_ra_ok) {
-    sd_demo_panic_halt();
-  }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
-    .pclk_hz   = pclka_hz,
-    .mode      = k_ra_spi_mode_0,
-    .lsb_first = false,
-  };
-  if (ra_sci_spi_init((uint8_t)k_sd_demo_spi_channel, &spi_cfg) != k_ra_ok) {
-    sd_demo_panic_halt();
-  }
   *out_pclka_hz = pclka_hz;
 }
 
 /**
- * @brief Init the SD driver, panic-halt with a diagnostic on failure.
+ * @brief Build the SCI-SPI transport, init the SD driver, panic-halt on failure.
  *
- * @details Builds the transport vtable over the SPI adapters, runs the SD SPI
- *          bring-up (`ra_sdmmc_spi_init`), and prints `card ready` on success or
- *          a `FAIL init` diagnostic before parking on failure.
+ * @details The whole SD-SPI bring-up now collapses to two library calls: the
+ *          `ra_sdmmc_spi` SCI transport factory routes the four Pmod2 pins,
+ *          claims CS, brings up SCI0 Simple-SPI, and fills the transport vtable;
+ *          `ra_sdmmc_spi_init` then runs the SD identification sequence. Prints
+ *          `card ready` on success or a `FAIL init` diagnostic before parking.
  *
- * @param[in] pclka_hz Cached PCLKA (Hz) bound into the transport ctx.
+ * @param[in] pclka_hz Live PCLKA rate (Hz) feeding the SCI baud divider.
  *
  * @return Nothing (panic-halts on failure).
  *
- * @pre SCI0 Simple-SPI + CS GPIO are configured.
- * @pre @p pclka_hz points to the live PCLKA rate.
+ * @pre `ra_cgc_init` has run and the console SCI is up.
+ * @pre @p pclka_hz is the live PCLKA rate.
  * @post On success the SD card is in SPI mode at default speed.
  * @post On failure a diagnostic is printed and the CPU is parked.
  *
- * @note Not thread-safe; call once after the SPI bus is up.
+ * @note Not thread-safe; call once after the clocks + console are up.
  * @since 0.1.0
  */
-static void sd_demo_init_card_or_halt(uint32_t* pclka_hz)
+static void sd_demo_init_card_or_halt(uint32_t pclka_hz)
 {
-  const ra_sdmmc_spi_transport_t transport = {
-    .set_clock = sd_demo_spi_set_clock,
-    .cs        = sd_demo_spi_cs,
-    .xfer      = sd_demo_spi_xfer,
-    .ctx       = pclka_hz,
+  const ra_sdmmc_spi_sci_pins_t pins = {
+    .sck  = k_sd_demo_pin_sck,
+    .cipo = k_sd_demo_pin_cipo,
+    .copi = k_sd_demo_pin_copi,
+    .cs   = k_sd_demo_pin_cs,
   };
+  ra_sdmmc_spi_transport_t transport = {};
+  if (ra_sdmmc_spi_transport_sci((uint8_t)k_sd_demo_spi_channel, pclka_hz, &pins, &transport) !=
+      k_ra_ok) {
+    SD_DEMO_PUTS(k_msg_init_fail);
+    sd_demo_panic_halt();
+  }
   if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
     SD_DEMO_PUTS(k_msg_init_fail);
     sd_demo_panic_halt();
@@ -504,7 +369,7 @@ int main(void)
   ra_log_init();
   SD_DEMO_PUTS(k_msg_boot);
 
-  sd_demo_init_card_or_halt(&pclka_hz);
+  sd_demo_init_card_or_halt(pclka_hz);
 
   const ra_err_t r = sd_demo_roundtrip();
   if (r != k_ra_ok) {
