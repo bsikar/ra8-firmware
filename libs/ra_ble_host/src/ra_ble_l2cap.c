@@ -49,14 +49,14 @@
  * Internal contract shared with ra_ble_att.c / ra_ble_gatt.c
  *
  * The implementation-internal types (constants enum, attribute-table
- * row, host-state struct) plus the shared ``s_state`` instance and
+ * row, host-state struct) plus the shared ``s_ble_host_state`` instance and
  * ``internal_pack_le16`` live in ra_ble_host_internal.h so the GAP
  * advertising TU (ra_ble_l2cap_advertise.c) can reach them too.
  * =============================================================================
  */
 
 /* The single shared-state instance. */
-ra_ble_host_state_t s_state;
+ra_ble_host_state_t s_ble_host_state;
 
 /* =============================================================================
  * Internal entry points used by ra_ble_att.c and ra_ble_gatt.c.
@@ -133,10 +133,10 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  *          to resolve a global symbol by name.
  *
  * @return Pointer to the singleton state. Never NULL.
- * @retval !NULL Always returns a valid pointer to s_state.
+ * @retval !NULL Always returns a valid pointer to s_ble_host_state.
  *
  * @pre None.
- * @pre Linker has placed s_state in writable BSS/data.
+ * @pre Linker has placed s_ble_host_state in writable BSS/data.
  * @post Returned pointer is valid for the program's lifetime.
  * @post No state is mutated.
  *
@@ -146,7 +146,7 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  */
 ra_ble_host_state_t* ra_ble_host_state(void)
 {
-  return &s_state;
+  return &s_ble_host_state;
 }
 
 /**
@@ -160,7 +160,7 @@ ra_ble_host_state_t* ra_ble_host_state(void)
  *
  * @pre evt != NULL.
  * @pre Stack is initialized.
- * @post s_state.evt_count incremented.
+ * @post s_ble_host_state.evt_count incremented.
  * @post If a handler is registered it has been invoked synchronously.
  *
  * @note Not thread-safe; called from the host serial dispatch loop.
@@ -169,9 +169,9 @@ ra_ble_host_state_t* ra_ble_host_state(void)
  */
 void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt)
 {
-  s_state.evt_count++;
-  if (s_state.evt_fn != nullptr) {
-    s_state.evt_fn(s_state.evt_ctx, evt);
+  s_ble_host_state.evt_count++;
+  if (s_ble_host_state.evt_fn != nullptr) {
+    s_ble_host_state.evt_fn(s_ble_host_state.evt_ctx, evt);
   }
 }
 
@@ -280,20 +280,22 @@ static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uin
   if ((payload == nullptr) || (len == 0U)) {
     return;
   }
-  if (s_state.initialized == 0U) {
+  if (s_ble_host_state.initialized == 0U) {
     return;
   }
 
   /* Are we mid-reassembly for the same connection? */
-  if (s_state.reassembly_len > 0U) {
-    if ((uint32_t)s_state.reassembly_len + (uint32_t)len > (uint32_t)k_reassembly_buf_bytes) {
+  if (s_ble_host_state.reassembly_len > 0U) {
+    if ((uint32_t)s_ble_host_state.reassembly_len + (uint32_t)len >
+        (uint32_t)k_reassembly_buf_bytes) {
       /* Drop, abort reassembly. */
-      s_state.reassembly_len = 0U;
+      s_ble_host_state.reassembly_len = 0U;
       return;
     }
-    (void)memcpy(&s_state.reassembly[s_state.reassembly_len], payload, len);
-    s_state.reassembly_len = (uint16_t)(s_state.reassembly_len + len);
-    if (s_state.reassembly_len < s_state.reassembly_expected + k_l2cap_hdr_bytes) {
+    (void)memcpy(&s_ble_host_state.reassembly[s_ble_host_state.reassembly_len], payload, len);
+    s_ble_host_state.reassembly_len = (uint16_t)(s_ble_host_state.reassembly_len + len);
+    if (s_ble_host_state.reassembly_len <
+        s_ble_host_state.reassembly_expected + k_l2cap_hdr_bytes) {
       return; /* still incomplete */
     }
   } else {
@@ -316,21 +318,21 @@ static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uin
     if ((uint32_t)len > (uint32_t)k_reassembly_buf_bytes) {
       return;
     }
-    (void)memcpy(s_state.reassembly, payload, len);
-    s_state.reassembly_len      = len;
-    s_state.reassembly_expected = l2cap_len;
-    s_state.reassembly_cid      = cid;
-    s_state.reassembly_conn     = conn_handle;
+    (void)memcpy(s_ble_host_state.reassembly, payload, len);
+    s_ble_host_state.reassembly_len      = len;
+    s_ble_host_state.reassembly_expected = l2cap_len;
+    s_ble_host_state.reassembly_cid      = cid;
+    s_ble_host_state.reassembly_conn     = conn_handle;
     return;
   }
 
   /* Reassembly complete -- dispatch. */
-  if (s_state.reassembly_cid == k_l2cap_cid_att) {
-    ra_ble_host_att_handle_pdu(s_state.reassembly_conn,
-                               &s_state.reassembly[k_l2cap_hdr_bytes],
-                               s_state.reassembly_expected);
+  if (s_ble_host_state.reassembly_cid == k_l2cap_cid_att) {
+    ra_ble_host_att_handle_pdu(s_ble_host_state.reassembly_conn,
+                               &s_ble_host_state.reassembly[k_l2cap_hdr_bytes],
+                               s_ble_host_state.reassembly_expected);
   }
-  s_state.reassembly_len = 0U;
+  s_ble_host_state.reassembly_len = 0U;
 }
 
 /* HCI ACL -> host trampoline registered via ra_ble_attach_acl_handler -- see implementation for details. */
@@ -391,7 +393,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
     k_min_lemeta_param_bytes  = 19U,
   };
 
-  if ((params == nullptr) || (s_state.initialized == 0U)) {
+  if ((params == nullptr) || (s_ble_host_state.initialized == 0U)) {
     return;
   }
 
@@ -399,11 +401,11 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
       (params[k_lemeta_subev_idx] == k_subev_le_conn_complete)) {
     /* Status byte 0x00 == success. */
     if (params[k_lemeta_status_idx] == 0U) {
-      const uint16_t h            = (uint16_t)((uint16_t)params[k_lemeta_handle_lo_idx] |
-                                               ((uint16_t)params[k_lemeta_handle_hi_idx] << 8U));
-      s_state.conn_handle         = h;
-      s_state.att_mtu             = k_att_mtu_default;
-      const ra_ble_host_event_t e = {
+      const uint16_t h             = (uint16_t)((uint16_t)params[k_lemeta_handle_lo_idx] |
+                                                ((uint16_t)params[k_lemeta_handle_hi_idx] << 8U));
+      s_ble_host_state.conn_handle = h;
+      s_ble_host_state.att_mtu     = k_att_mtu_default;
+      const ra_ble_host_event_t e  = {
         .kind        = k_ra_ble_host_event_connected,
         .conn_handle = h,
         .attr_handle = 0U,
@@ -415,13 +417,13 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
   } else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disconn_param_bytes)) {
     const uint16_t h = (uint16_t)((uint16_t)params[k_disconn_handle_lo_idx] |
                                   ((uint16_t)params[k_disconn_handle_hi_idx] << 8U));
-    if (h == s_state.conn_handle) {
-      s_state.conn_handle = k_invalid_handle;
+    if (h == s_ble_host_state.conn_handle) {
+      s_ble_host_state.conn_handle = k_invalid_handle;
       /* Clear all CCCD subscriptions on disconnect (LE bonded devices
        * would persist these; we don't bond). */
-      for (uint8_t i = 0U; i < s_state.attr_count; i++) {
-        if (s_state.attrs[i].kind == k_attr_kind_cccd) {
-          s_state.attrs[i].cccd_value = 0U;
+      for (uint8_t i = 0U; i < s_ble_host_state.attr_count; i++) {
+        if (s_ble_host_state.attrs[i].kind == k_attr_kind_cccd) {
+          s_ble_host_state.attrs[i].cccd_value = 0U;
         }
       }
       const ra_ble_host_event_t e = {
@@ -474,7 +476,7 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
   if (cfg == nullptr) {
     return k_ra_err_null_ptr;
   }
-  if (s_state.initialized != 0U) {
+  if (s_ble_host_state.initialized != 0U) {
     return k_ra_err_invalid_arg;
   }
   if ((cfg->role != k_ra_ble_host_role_peripheral) && (cfg->role != k_ra_ble_host_role_central) &&
@@ -488,12 +490,12 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
     return k_ra_err_invalid_state;
   }
 
-  (void)memset(&s_state, 0, sizeof(s_state));
-  s_state.role        = cfg->role;
-  s_state.appearance  = cfg->appearance;
-  s_state.next_handle = 1U; /* ATT handles are 1-based. */
-  s_state.conn_handle = k_invalid_handle;
-  s_state.att_mtu     = k_att_mtu_default;
+  (void)memset(&s_ble_host_state, 0, sizeof(s_ble_host_state));
+  s_ble_host_state.role        = cfg->role;
+  s_ble_host_state.appearance  = cfg->appearance;
+  s_ble_host_state.next_handle = 1U; /* ATT handles are 1-based. */
+  s_ble_host_state.conn_handle = k_invalid_handle;
+  s_ble_host_state.att_mtu     = k_att_mtu_default;
   if (cfg->name != nullptr) {
     /* Copy with bound. */
     enum : uint8_t {
@@ -501,17 +503,17 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
     };
     uint8_t i = 0U;
     while ((i < k_name_copy_max) && (cfg->name[i] != '\0')) {
-      s_state.name[i] = cfg->name[i];
-      i               = (uint8_t)(i + 1U);
+      s_ble_host_state.name[i] = cfg->name[i];
+      i                        = (uint8_t)(i + 1U);
     }
-    s_state.name[i] = '\0';
+    s_ble_host_state.name[i] = '\0';
   }
 
   /* Wire up HCI callbacks. ra_ble_attach_* always return k_ra_ok. */
   (void)ra_ble_attach_event_handler(internal_evt_trampoline, nullptr);
   (void)ra_ble_attach_acl_handler(internal_acl_trampoline, nullptr);
 
-  s_state.initialized = 1U;
+  s_ble_host_state.initialized = 1U;
   return k_ra_ok;
 }
 
@@ -536,13 +538,13 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
  */
 ra_err_t ra_ble_host_close(void)
 {
-  if (s_state.initialized == 0U) {
+  if (s_ble_host_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   (void)ra_ble_attach_event_handler(nullptr, nullptr);
   (void)ra_ble_attach_acl_handler(nullptr, nullptr);
   (void)ra_ble_close();
-  (void)memset(&s_state, 0, sizeof(s_state));
+  (void)memset(&s_ble_host_state, 0, sizeof(s_ble_host_state));
   return k_ra_ok;
 }
 
@@ -561,7 +563,7 @@ ra_err_t ra_ble_host_close(void)
  *
  * @pre ra_ble_host_init has succeeded.
  * @pre Caller is single-threaded.
- * @post s_state.evt_fn = fn and s_state.evt_ctx = ctx.
+ * @post s_ble_host_state.evt_fn = fn and s_ble_host_state.evt_ctx = ctx.
  * @post Subsequent events route to the new handler.
  *
  * @note Not thread-safe; called from the application thread.
@@ -570,8 +572,8 @@ ra_err_t ra_ble_host_close(void)
  */
 ra_err_t ra_ble_host_attach_event_handler(ra_ble_host_event_fn_t fn, void* ctx)
 {
-  s_state.evt_fn  = fn;
-  s_state.evt_ctx = ctx;
+  s_ble_host_state.evt_fn  = fn;
+  s_ble_host_state.evt_ctx = ctx;
   return k_ra_ok;
 }
 
@@ -610,7 +612,7 @@ void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fram
 /**
  * @brief Test hook -- read the cumulative dispatched-event counter.
  *
- * @details Returns s_state.evt_count, useful for verifying that an
+ * @details Returns s_ble_host_state.evt_count, useful for verifying that an
  *          expected event was synthesised by the L2CAP/ATT layer.
  *
  * @return uint32_t Cumulative dispatched-event count.
@@ -628,13 +630,13 @@ void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fram
  */
 uint32_t ra_ble_host_test_event_count(void)
 {
-  return s_state.evt_count;
+  return s_ble_host_state.evt_count;
 }
 
 /**
  * @brief Test hook -- force the host into the "connected" state.
  *
- * @details Bypasses the HCI transport and forces s_state.conn_handle
+ * @details Bypasses the HCI transport and forces s_ble_host_state.conn_handle
  *          to conn_handle, dispatching a synthetic
  *          k_ra_ble_host_event_connected. Mirrors the effect of
  *          Bluetooth Core 5.3 Vol 4 Part E 7.7.65.1
@@ -644,7 +646,7 @@ uint32_t ra_ble_host_test_event_count(void)
  *
  * @pre Stack is initialized.
  * @pre Caller is single-threaded.
- * @post s_state.conn_handle == conn_handle.
+ * @post s_ble_host_state.conn_handle == conn_handle.
  * @post A k_ra_ble_host_event_connected event was dispatched.
  *
  * @note Not thread-safe; for unit-test harness use only.
@@ -653,9 +655,9 @@ uint32_t ra_ble_host_test_event_count(void)
  */
 void ra_ble_host_test_inject_connect(uint16_t conn_handle)
 {
-  s_state.conn_handle         = conn_handle;
-  s_state.att_mtu             = k_att_mtu_default;
-  const ra_ble_host_event_t e = {
+  s_ble_host_state.conn_handle = conn_handle;
+  s_ble_host_state.att_mtu     = k_att_mtu_default;
+  const ra_ble_host_event_t e  = {
     .kind        = k_ra_ble_host_event_connected,
     .conn_handle = conn_handle,
     .attr_handle = 0U,

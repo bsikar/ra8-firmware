@@ -12,7 +12,7 @@
  *   - The public ra_ble_host_advertise_start / _stop entry points that
  *     drive the controller bring-up sequence (Vol 6 Part B 4.4.2).
  *
- * Shares the singleton host-state struct (``s_state``) and the
+ * Shares the singleton host-state struct (``s_ble_host_state``) and the
  * little-endian packer (``internal_pack_le16``) with the L2CAP core
  * via ra_ble_host_internal.h.
  *
@@ -83,7 +83,7 @@
  * @retval k_ra_err_null_ptr         Length > 0 with NULL buffer.
  *
  * @pre None (operates only on inputs + module state).
- * @pre Module state field s_state is well-defined.
+ * @pre Module state field s_ble_host_state is well-defined.
  * @post No state mutation.
  * @post Return code reflects only input validation.
  *
@@ -102,11 +102,11 @@ static ra_err_t internal_advertise_validate(const uint8_t* adv_data,
     k_max_interval_ms = 10240U,
   };
 
-  if (s_state.initialized == 0U) {
+  if (s_ble_host_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
-  if ((s_state.role != k_ra_ble_host_role_peripheral) &&
-      (s_state.role != k_ra_ble_host_role_broadcaster)) {
+  if ((s_ble_host_state.role != k_ra_ble_host_role_peripheral) &&
+      (s_ble_host_state.role != k_ra_ble_host_role_broadcaster)) {
     return k_ra_err_invalid_arg;
   }
   if ((adv_data == nullptr) && (adv_data_len > 0U)) {
@@ -309,7 +309,7 @@ ra_err_t ra_ble_host_advertise_start(const uint8_t* adv_data,
  */
 ra_err_t ra_ble_host_advertise_stop(void)
 {
-  if (s_state.initialized == 0U) {
+  if (s_ble_host_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   return ra_ble_set_advertising_enable(0U);
