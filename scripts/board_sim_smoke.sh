@@ -213,6 +213,8 @@ uart_expect() { # app -> expected UART substring on stdout
     ra_sdhi_card_demo)  printf 'ra_sdhi_card_demo: native SDHI block round-trip PASS' ;;
     ra_io_xspi_demo)    printf 'ra_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
     ra_io_mram_demo)    printf 'block erase/program/read on extra MRAM PASS' ;;
+    ra_io_fsfmt_demo)   printf 'ra_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
+    ra_io_cache_demo)   printf 'ra_io_cache_demo: re-read x8 hits=' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
     ereader_image)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
     ereader_link)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
