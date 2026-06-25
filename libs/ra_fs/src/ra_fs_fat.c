@@ -1317,8 +1317,8 @@ static void priv_dir_walk_init_root(const ra_fs_mount_t* m, dir_walk_t* w)
     w->sector_in_cluster = 0;
     w->cur_lba           = m->first_root_lba;
   }
-  w->entry_idx     = 0;
-  w->cluster_hops  = 0;
+  w->entry_idx    = 0;
+  w->cluster_hops = 0;
 }
 
 /**
@@ -6231,9 +6231,9 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   if (handle->type == k_ra_fs_type_exfat) {
     return priv_exfat_open(handle, path, mode, out_file);
   }
-  dir_loc_t    parent = {};
-  const char*  leaf   = nullptr;
-  const ra_err_t rerr = priv_resolve_parent(handle, path, &parent, &leaf);
+  dir_loc_t      parent = {};
+  const char*    leaf   = nullptr;
+  const ra_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
   if (rerr != k_ra_ok) {
     return rerr;
   }
@@ -7072,9 +7072,8 @@ static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
  *
  * @since 0.1.0
  */
-static ra_err_t priv_dir_cluster_init(const ra_fs_mount_t* m,
-                                      uint32_t             new_cluster,
-                                      uint32_t             parent_cluster)
+static ra_err_t
+priv_dir_cluster_init(const ra_fs_mount_t* m, uint32_t new_cluster, uint32_t parent_cluster)
 {
   uint8_t buf[k_ra_fs_bytes_per_sector] = {};
   priv_pack_dot_entry(&buf[0], 1U, new_cluster);
@@ -7157,7 +7156,11 @@ static ra_err_t priv_fat_mkdir(ra_fs_mount_t* handle, const char* path)
     (void)priv_free_chain(handle, new_cluster);
     return err;
   }
-  err = priv_write_new_dir_entry(handle, name83, k_ra_fs_attr_directory, new_cluster, free_lba,
+  err = priv_write_new_dir_entry(handle,
+                                 name83,
+                                 k_ra_fs_attr_directory,
+                                 new_cluster,
+                                 free_lba,
                                  free_off);
   if (err != k_ra_ok) {
     (void)priv_free_chain(handle, new_cluster);
@@ -7258,7 +7261,7 @@ ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
   uint32_t lba                            = 0;
   uint32_t off                            = 0;
   uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
-  ra_err_t err                            = priv_dir_find(handle, &parent, name83, &lba, &off, entry);
+  ra_err_t err = priv_dir_find(handle, &parent, name83, &lba, &off, entry);
   if (err != k_ra_ok) {
     return err;
   }
@@ -7379,7 +7382,7 @@ static ra_err_t priv_rename_prepare(const ra_fs_mount_t* handle,
 static ra_err_t
 priv_fat_rename(const ra_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
-  dir_loc_t parent              = {};
+  dir_loc_t parent                = {};
   uint8_t   old83[k_max_8_3_name] = {};
   uint8_t   new83[k_max_8_3_name] = {};
   ra_err_t  perr = priv_rename_prepare(handle, old_path, new_path, &parent, old83, new83);
@@ -7395,7 +7398,7 @@ priv_fat_rename(const ra_fs_mount_t* handle, const char* old_path, const char* n
   uint32_t lba                            = 0U;
   uint32_t off                            = 0U;
   uint8_t  entry[k_ra_fs_dir_entry_bytes] = {};
-  ra_err_t err                            = priv_dir_find(handle, &parent, old83, &lba, &off, entry);
+  ra_err_t err = priv_dir_find(handle, &parent, old83, &lba, &off, entry);
   if (err != k_ra_ok) {
     return err;
   }

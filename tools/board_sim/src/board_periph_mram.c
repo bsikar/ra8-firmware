@@ -97,13 +97,13 @@ typedef enum : uint32_t {
 
 /** @brief MRAM model state: register shadow + MACI collection + counters. */
 typedef struct {
-  uint32_t regs[k_mram_reg_words];     /**< 0x4013C000 window shadow.        */
-  uint32_t msaddr;                     /**< Latched MACI target address.     */
+  uint32_t regs[k_mram_reg_words];      /**< 0x4013C000 window shadow.        */
+  uint32_t msaddr;                      /**< Latched MACI target address.     */
   uint8_t  payload[k_mram_payload_max]; /**< Collected config-set bytes.     */
-  uint32_t payload_len;                /**< Bytes collected this command.    */
-  uint8_t  maci_state;                 /**< ::maci_state_t collection state. */
-  uint8_t  pe_active;                  /**< 1 => program/erase mode entered. */
-  uint32_t programs;                   /**< Config-set program commands.     */
+  uint32_t payload_len;                 /**< Bytes collected this command.    */
+  uint8_t  maci_state;                  /**< ::maci_state_t collection state. */
+  uint8_t  pe_active;                   /**< 1 => program/erase mode entered. */
+  uint32_t programs;                    /**< Config-set program commands.     */
 } mram_state_t;
 
 static mram_state_t s_mram;
@@ -160,7 +160,7 @@ static void maci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   if (size == 2U) {
     if (s_mram.maci_state == (uint8_t)k_maci_collect) {
       if ((s_mram.payload_len + 2U) <= (uint32_t)k_mram_payload_max) {
-        s_mram.payload[s_mram.payload_len]      = (uint8_t)(value & (uint64_t)k_mram_byte_mask);
+        s_mram.payload[s_mram.payload_len] = (uint8_t)(value & (uint64_t)k_mram_byte_mask);
         s_mram.payload[s_mram.payload_len + 1U] =
           (uint8_t)((value >> (uint64_t)k_mram_hi_shift) & (uint64_t)k_mram_byte_mask);
         s_mram.payload_len += 2U;

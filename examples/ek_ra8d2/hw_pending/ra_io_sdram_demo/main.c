@@ -158,10 +158,9 @@ static void demo_setup_or_halt(void)
  */
 static ra_err_t demo_run(void)
 {
-  RA_RETURN_ON_ERROR(
-    ra_io_blockdev_sdram_init(&s_bd, &s_bstate, (uint32_t)k_demo_disk_blocks),
-    s_tag,
-    "sdram blockdev init");
+  RA_RETURN_ON_ERROR(ra_io_blockdev_sdram_init(&s_bd, &s_bstate, (uint32_t)k_demo_disk_blocks),
+                     s_tag,
+                     "sdram blockdev init");
   RA_RETURN_ON_ERROR(ra_io_blockdev_as_fs_backend(&s_bd, &s_be), s_tag, "fs bridge");
   ra_fs_format_opts_t opts = {};
   opts.type                = k_ra_fs_type_fat12;

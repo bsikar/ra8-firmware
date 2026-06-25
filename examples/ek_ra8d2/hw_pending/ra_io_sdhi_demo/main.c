@@ -100,14 +100,22 @@ static const ra_port_pin_t k_sdhi_demo_pin_rxd =
 
 /** @brief SDHI bus pins (port 4, pins 0..7: CMD/CLK/DAT0..3/WP/CD). */
 static const ra_port_pin_t k_sdhi_demo_pins[k_sdhi_demo_pin_count] = {
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_0),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_1),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_2),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_3),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_4),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_5),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_6),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) | (uint16_t)k_ra_pin_7),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_0),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_1),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_2),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_3),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_4),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_5),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_6),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_demo_port_shift) |
+                  (uint16_t)k_ra_pin_7),
 };
 
 /* =============================================================================

@@ -188,10 +188,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_vmem_get(ra_vmem_t* vm,
-                                   uint32_t   object_id,
-                                   uint64_t   offset,
-                                   void**     out_page);
+[[nodiscard]] ra_err_t
+ra_vmem_get(ra_vmem_t* vm, uint32_t object_id, uint64_t offset, void** out_page);
 
 /**
  * @brief Release one pin on a frame previously returned by ::ra_vmem_get.

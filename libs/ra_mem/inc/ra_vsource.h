@@ -174,10 +174,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_vsource_add_xip(ra_vsource_t* vs,
-                                          uint8_t*      xip_base,
-                                          uint64_t      size,
-                                          uint32_t*     out_id);
+[[nodiscard]] ra_err_t
+ra_vsource_add_xip(ra_vsource_t* vs, uint8_t* xip_base, uint64_t size, uint32_t* out_id);
 
 /**
  * @brief Fill a page frame from an object -- the ::ra_vmem_loader_fn adapter.
