@@ -26,6 +26,10 @@ include("${_d}/cmake/ra_add_app.cmake")
 # so those libs are listed to satisfy their includes even though this demo only
 # drives the SDRAM backend + UART stream. The SDRAM backend's ra_sdramc_init
 # lives in ra_hal (always linked), so no extra lib is needed.
+# EXTRA_SRCS pulls in the shared, backend-agnostic round-trip from ../common; this
+# app differs from the RAM / OSPI / SD demos only by its one backend bind line +
+# its own PASS banner (#155).
 ra_add_app(NAME ra_io_sdram_demo STACK_BYTES 4096
            DESCRIPTION "ra_io fabric over external SDRAM backend: SDRAM block device -> FAT -> VFS -> mkdir -> UART (#155/#156)"
-           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal)
+           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal
+           EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../common/ra_io_roundtrip.c)
