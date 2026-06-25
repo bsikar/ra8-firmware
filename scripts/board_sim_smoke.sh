@@ -207,7 +207,7 @@ uart_expect() { # app -> expected UART substring on stdout
     uart_hello)         printf 'hello, ra8d2!' ;;
     ra_io_demo)         printf 'ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
     ra_io_sdram_demo)   printf 'ra_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS' ;;
-    ra_io_compress_demo) printf 'bytes ram:/STORY.RBK PASS' ;;
+    ra_io_compress_demo) printf 'bytes -> 4096 round-trip PASS' ;;
     ra_io_sd_demo)      printf 'ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
     ra_io_sdhi_demo)    printf 'ra_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
     ra_sdhi_card_demo)  printf 'ra_sdhi_card_demo: native SDHI block round-trip PASS' ;;

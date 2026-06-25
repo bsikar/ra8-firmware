@@ -1,25 +1,32 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ra_io_compress_demo/main.c
- * @brief End-to-end ra_io fabric + DEFLATE compression demo (Phase 6, #161).
+ * @brief Transparent compress-on-write / decompress-on-read over the VFS (#161).
  *
  * @details
- * Extends the plain ra_io_demo with the opt-in compression layer, exercising
- * the whole stack in one app with no external hardware:
- *   1. Build a RAM block device over an in-SRAM buffer (Phase 1, #156).
- *   2. Bridge it to ra_fs, format/mount a FAT12 volume, and register it in the
- *      VFS as `"ram"` (Phase 3, #158).
- *   3. Generate a compressible payload and DEFLATE it with ra_io_compress,
- *      using a caller-provided scratch buffer in SRAM (Phase 6, #161).
- *   4. Write the *compressed* blob to `ram:/STORY.RBK` through the VFS.
- *   5. Read the blob back, inflate it with ra_io_decompress, and verify the
- *      result is byte-identical to the original payload.
- *   6. Report progress on the SCI8 console through a UART stream sink.
+ * Demonstrates that DEFLATE compression is a TRANSPARENT property of the fabric:
+ * the app hands a plain payload to ::ra_io_vfs_write_compressed and reads it
+ * back with ::ra_io_vfs_read_compressed -- it NEVER touches the codec
+ * (`ra_io_compress` / `ra_io_decompress`) or `ra_fs_write_file` directly. The
+ * bytes on the backing store are the compressed blob; the API hides the codec.
  *
- * This mirrors the firmware's real compress-on-write / decompress-on-read path
- * (the `.rabook` RBKZ blobs) but over the unified ra_io fabric. The board_sim
- * emulator captures the SCI8 console, so the PASS line and the byte counts are
- * observable headlessly: a successful run prints
- * `ra_io_compress_demo: 4096 -> N -> 4096 bytes ram:/STORY.RBK PASS`.
+ * Because the compression seam sits ABOVE the VFS, it composes over WHATEVER
+ * backend is mounted. To prove that, this demo mounts TWO backends and runs the
+ * SAME compressed round-trip through the fabric on each:
+ *   1. A RAM block device over an in-SRAM buffer, registered as `"ram"`.
+ *   2. The external 64 MiB SDRAM as a volatile ramdisk, registered as `"dr"`.
+ * The only per-backend difference is the block-device bind line and the VFS
+ * prefix -- the write/read/verify code is identical and backend-agnostic.
+ *
+ * For each backend the demo:
+ *   a. Formats + mounts a FAT12 volume and registers it in the VFS.
+ *   b. ::ra_io_vfs_write_compressed -- compresses + stores `STORY.RBK`.
+ *   c. ::ra_io_vfs_read_compressed -- reads + inflates the blob.
+ *   d. memcmp against the original payload.
+ *
+ * This mirrors the firmware's real `.rabook` RBKZ compress-on-write path. The
+ * board_sim emulator captures the SCI8 console, so the PASS line is observable
+ * headlessly: a successful run ends with
+ * `ra_io_compress_demo: ram+dr 4096 -> N bytes -> 4096 round-trip PASS`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,7 +40,7 @@
 #include "ra_err.h"
 #include "ra_fs.h"
 #include "ra_io.h"
-#include "ra_io_compress.h"
+#include "ra_io_vfs_compress.h"
 #include "ra_log.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -44,7 +51,7 @@
 typedef enum : uint32_t {
   k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.            */
   k_demo_uart_baud   = 115200U, /**< Console baud.                      */
-  k_demo_disk_blocks = 512U,    /**< 256 KiB RAM-disk (FAT12).          */
+  k_demo_disk_blocks = 512U,    /**< 256 KiB per volume (FAT12).        */
   k_demo_payload     = 4096U,   /**< Source bytes (compressible).       */
   k_demo_blob_cap    = 8192U,   /**< Compressed-blob staging capacity.  */
   k_demo_pin_shift   = 8U,      /**< Port byte position in ra_port_pin_t.*/
@@ -59,18 +66,24 @@ static const ra_port_pin_t k_demo_txd =
 static const ra_port_pin_t k_demo_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra_pin_3);
 
-/** @brief 256 KiB RAM-disk backing buffer (in SRAM .bss). */
+/** @brief 256 KiB RAM-disk backing buffer (in SRAM .bss) for the `"ram"` mount. */
 static uint8_t s_disk[(size_t)k_demo_disk_blocks * (size_t)k_ra_io_block_size_bytes];
-/** @brief Block-device handle + its RAM backend state. */
-static ra_io_blockdev_t           s_bd;
-static ra_io_blockdev_ram_state_t s_bstate;
-/** @brief ra_fs backend bridged onto the block device. */
-static ra_fs_backend_t s_be;
+
+/** @brief RAM block-device handle + its backend state. */
+static ra_io_blockdev_t           s_bd_ram;
+static ra_io_blockdev_ram_state_t s_bstate_ram;
+/** @brief SDRAM block-device handle + its (reused RAM-backend) state. */
+static ra_io_blockdev_t           s_bd_dr;
+static ra_io_blockdev_ram_state_t s_bstate_dr;
+/** @brief ra_fs backends bridged onto each block device. */
+static ra_fs_backend_t s_be_ram;
+static ra_fs_backend_t s_be_dr;
+
 /** @brief UART output stream + its sink state. */
 static ra_io_stream_t            s_uart;
 static ra_io_stream_uart_state_t s_ust;
 
-/** @brief Original payload, the compressed blob, and the inflated copy. */
+/** @brief Original payload, compressed-blob staging, and the inflated copy. */
 static uint8_t s_payload[(size_t)k_demo_payload];
 static uint8_t s_blob[(size_t)k_demo_blob_cap];
 static uint8_t s_restored[(size_t)k_demo_payload];
@@ -80,13 +93,46 @@ static uint8_t s_scratch[(size_t)k_ra_io_compress_scratch_bytes];
 /** @brief Module log tag. */
 static const char* const s_tag = "ra_io_compress_demo";
 
-/** @brief Print a NUL-terminated string on the UART stream. */
+/**
+ * @brief Print a NUL-terminated string on the demo's UART stream.
+ *
+ * @details Thin wrapper over ::ra_io_stream_puts bound to ::s_uart so call sites
+ *          do not repeat the sink handle.
+ *
+ * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
+ *
+ * @return None.
+ *
+ * @pre ::s_uart was initialised by ::ra_io_stream_uart_init.
+ * @pre @p msg is non-NULL and NUL-terminated.
+ * @post The bytes of @p msg are queued on the UART stream.
+ * @post No other state changes.
+ *
+ * @note Blocking polled TX; not interrupt-safe.
+ * @since 0.1.0
+ */
 static void demo_print(const char* msg)
 {
   (void)ra_io_stream_puts(&s_uart, msg);
 }
 
-/** @brief Bring up CGC + SysTick + the SCI8 console; halt on any failure. */
+/**
+ * @brief Bring up CGC + SysTick + the SCI8 console; halt forever on any failure.
+ *
+ * @details Initialises clocks, reads CPU/PCLKA rates, starts the millisecond
+ *          time base, routes the SCI8 console pins, and opens the SCI8 UART. Any
+ *          failure spins forever so a debugger can inspect the halt.
+ *
+ * @return None.
+ *
+ * @pre SystemInit configured VTOR / FPU / priority grouping.
+ * @pre Runs single-threaded during early boot.
+ * @post On success SCI8 is open at ::k_demo_uart_baud and the time base runs.
+ * @post On any failure the function never returns (infinite halt loop).
+ *
+ * @note Not thread-safe; boot-context only.
+ * @since 0.1.0
+ */
 static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
@@ -111,72 +157,165 @@ static void demo_setup_or_halt(void)
   }
 }
 
-/** @brief Mount a fresh FAT12 RAM volume and register it as `"ram"`. */
-static ra_err_t demo_mount(ra_fs_mount_t** out_mnt)
+/**
+ * @brief Format + mount a fresh FAT12 volume and register it in the VFS.
+ *
+ * @details Bridges an already-bound block device to ra_fs, formats a FAT12
+ *          volume, mounts it, and registers the mount under @p name in the VFS.
+ *          The block device and backend storage are caller-owned.
+ *
+ * @param[in]  bd   Bound block device (RAM or SDRAM).
+ * @param[out] be   Caller-owned ra_fs backend to populate.
+ * @param[in]  name VFS mount name (e.g. `"ram"` or `"dr"`).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Volume formatted, mounted, and registered.
+ * @retval k_ra_err_null_ptr @p bd, @p be, or @p name was NULL.
+ * @retval (other)           The first failing fabric step's code.
+ *
+ * @pre @p bd was bound by a block-device init call.
+ * @pre @p be and @p name out-live the registration.
+ * @post On success `"<name>:/..."` paths resolve to the new volume.
+ * @post On any non-ok return no volume is registered under @p name.
+ *
+ * @note Not thread-safe; single-caller boot context.
+ * @since 0.1.0
+ */
+static ra_err_t demo_mount(ra_io_blockdev_t* bd, ra_fs_backend_t* be, const char* name)
 {
-  RA_CHECK_NULL_PTR(out_mnt, s_tag, "out_mnt");
-  RA_RETURN_ON_ERROR(
-    ra_io_blockdev_ram_init(&s_bd, &s_bstate, s_disk, (uint32_t)k_demo_disk_blocks, false),
-    s_tag,
-    "blockdev init");
-  RA_RETURN_ON_ERROR(ra_io_blockdev_as_fs_backend(&s_bd, &s_be), s_tag, "fs bridge");
+  RA_CHECK_NULL_PTR(bd, s_tag, "bd");
+  RA_CHECK_NULL_PTR(be, s_tag, "be");
+  RA_CHECK_NULL_PTR(name, s_tag, "name");
+  RA_RETURN_ON_ERROR(ra_io_blockdev_as_fs_backend(bd, be), s_tag, "fs bridge");
   ra_fs_format_opts_t opts = {};
   opts.type                = k_ra_fs_type_fat12;
   opts.label               = "RAIO";
-  RA_RETURN_ON_ERROR(ra_fs_format(&s_be, &opts), s_tag, "format");
-  RA_RETURN_ON_ERROR(ra_fs_mount(&s_be, out_mnt), s_tag, "mount");
-  RA_RETURN_ON_ERROR(ra_io_vfs_mount("ram", *out_mnt), s_tag, "vfs mount");
+  RA_RETURN_ON_ERROR(ra_fs_format(be, &opts), s_tag, "format");
+  ra_fs_mount_t* mnt = nullptr;
+  RA_RETURN_ON_ERROR(ra_fs_mount(be, &mnt), s_tag, "mount");
+  RA_RETURN_ON_ERROR(ra_io_vfs_mount(name, mnt), s_tag, "vfs mount");
   return k_ra_ok;
 }
 
-/** @brief Read `ram:/STORY.RBK`, inflate it, and confirm it matches the source. */
-static ra_err_t demo_read_back_and_verify(uint32_t blob_len)
+/**
+ * @brief Run the transparent compressed round-trip on one mounted volume.
+ *
+ * @details Calls ONLY the fabric's transparent compression API: it writes the
+ *          shared payload to `"<prefix>STORY.RBK"` with
+ *          ::ra_io_vfs_write_compressed (compress-on-write), reads it back with
+ *          ::ra_io_vfs_read_compressed (decompress-on-read), and byte-compares
+ *          against the original. The codec is never invoked directly. This body
+ *          is backend-agnostic: the only thing that varies between volumes is
+ *          @p prefix.
+ *
+ * @param[in]  prefix       VFS path prefix incl. the trailing slash (`"ram:/"`).
+ * @param[out] out_blob_len Compressed blob length stored on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                    The payload round-tripped intact.
+ * @retval k_ra_err_null_ptr          @p prefix or @p out_blob_len was NULL.
+ * @retval k_ra_err_invalid_size      The inflated length differed.
+ * @retval k_ra_err_checksum_mismatch The inflated bytes differed.
+ * @retval (other)                    The first failing fabric step's code.
+ *
+ * @pre The volume named by @p prefix is mounted in the VFS.
+ * @pre ::s_payload holds the deterministic source pattern.
+ * @post On success `"<prefix>STORY.RBK"` holds the compressed blob.
+ * @post No file handle is left open on any return path.
+ *
+ * @note Not thread-safe; single-caller boot context.
+ * @since 0.1.0
+ */
+static ra_err_t demo_roundtrip(const char* prefix, uint32_t* out_blob_len)
 {
-  ra_fs_file_t* f = nullptr;
-  RA_RETURN_ON_ERROR(ra_io_vfs_open("ram:/STORY.RBK", k_ra_fs_mode_read, &f), s_tag, "open");
-  uint32_t got_len = 0;
-  RA_RETURN_ON_ERROR(ra_fs_read(f, s_blob, (uint32_t)k_demo_blob_cap, &got_len), s_tag, "read");
-  RA_RETURN_ON_ERROR(ra_fs_close(f), s_tag, "close");
-  if (got_len != blob_len) {
-    return k_ra_err_invalid_size;
-  }
+  RA_CHECK_NULL_PTR(prefix, s_tag, "prefix");
+  RA_CHECK_NULL_PTR(out_blob_len, s_tag, "out_blob_len");
+
+  char path[(size_t)k_ra_io_vfs_name_max + sizeof("STORY.RBK") + 1U] = {};
+  (void)strncpy(path, prefix, sizeof(path) - 1U);
+  (void)strncat(path, "STORY.RBK", sizeof(path) - strlen(path) - 1U);
+
+  uint32_t blob_len = 0;
+  RA_RETURN_ON_ERROR(ra_io_vfs_write_compressed(path,
+                                                s_payload,
+                                                (uint32_t)k_demo_payload,
+                                                s_scratch,
+                                                (uint32_t)k_ra_io_compress_scratch_bytes,
+                                                s_blob,
+                                                (uint32_t)k_demo_blob_cap,
+                                                &blob_len),
+                     s_tag,
+                     "write compressed");
+
   uint32_t out_len = 0;
-  RA_RETURN_ON_ERROR(
-    ra_io_decompress(s_blob, blob_len, s_restored, (uint32_t)k_demo_payload, &out_len),
-    s_tag,
-    "decompress");
+  RA_RETURN_ON_ERROR(ra_io_vfs_read_compressed(path,
+                                               s_blob,
+                                               (uint32_t)k_demo_blob_cap,
+                                               s_restored,
+                                               (uint32_t)k_demo_payload,
+                                               &out_len),
+                     s_tag,
+                     "read compressed");
   if (out_len != (uint32_t)k_demo_payload) {
     return k_ra_err_invalid_size;
   }
   if (memcmp(s_restored, s_payload, sizeof(s_payload)) != 0) {
     return k_ra_err_checksum_mismatch;
   }
+  *out_blob_len = blob_len;
   return k_ra_ok;
 }
 
-/** @brief Run the compress -> store -> inflate round-trip; report the blob size. */
+/**
+ * @brief Bind both backends and run the transparent round-trip on each.
+ *
+ * @details Builds the deterministic compressible payload once, then for each
+ *          backend (RAM then SDRAM) binds the block device, mounts a FAT12
+ *          volume in the VFS, and runs ::demo_roundtrip through the fabric. The
+ *          per-backend difference is exactly the bind line plus the VFS prefix.
+ *
+ * @param[out] out_blob_len Compressed blob length from the RAM round-trip.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Both backends round-tripped intact.
+ * @retval k_ra_err_null_ptr @p out_blob_len was NULL.
+ * @retval (other)           The first failing backend's failing-step code.
+ *
+ * @pre ::demo_setup_or_halt has run (clocks + console up).
+ * @pre The SDRAM pins/clocks allow `ra_io_blockdev_sdram_init` to succeed.
+ * @post On success both `ram:/STORY.RBK` and `dr:/STORY.RBK` hold the blob.
+ * @post No file handle is left open on any return path.
+ *
+ * @note Not thread-safe; single-caller boot context.
+ * @since 0.1.0
+ */
 static ra_err_t demo_run(uint32_t* out_blob_len)
 {
   RA_CHECK_NULL_PTR(out_blob_len, s_tag, "out_blob_len");
-  ra_fs_mount_t* mnt = nullptr;
-  RA_RETURN_ON_ERROR(demo_mount(&mnt), s_tag, "mount stage");
 
   for (uint32_t i = 0; i < (uint32_t)k_demo_payload; ++i) {
     s_payload[i] = (uint8_t)((i * (uint32_t)k_demo_seed_mul) % (uint32_t)k_demo_pattern_mod);
   }
-  uint32_t blob_len = 0;
-  RA_RETURN_ON_ERROR(ra_io_compress(s_payload,
-                                    (uint32_t)k_demo_payload,
-                                    s_blob,
-                                    (uint32_t)k_demo_blob_cap,
-                                    s_scratch,
-                                    (uint32_t)k_ra_io_compress_scratch_bytes,
-                                    &blob_len),
-                     s_tag,
-                     "compress");
-  RA_RETURN_ON_ERROR(ra_fs_write_file(mnt, "STORY.RBK", s_blob, blob_len), s_tag, "write");
-  RA_RETURN_ON_ERROR(demo_read_back_and_verify(blob_len), s_tag, "verify");
-  *out_blob_len = blob_len;
+
+  /* Backend 1: RAM disk over an in-SRAM buffer, mounted as "ram". */
+  RA_RETURN_ON_ERROR(
+    ra_io_blockdev_ram_init(&s_bd_ram, &s_bstate_ram, s_disk, (uint32_t)k_demo_disk_blocks, false),
+    s_tag,
+    "ram blockdev init");
+  RA_RETURN_ON_ERROR(demo_mount(&s_bd_ram, &s_be_ram, "ram"), s_tag, "ram mount");
+  uint32_t ram_blob_len = 0;
+  RA_RETURN_ON_ERROR(demo_roundtrip("ram:/", &ram_blob_len), s_tag, "ram round-trip");
+
+  /* Backend 2: external SDRAM as a volatile ramdisk, mounted as "dr". */
+  RA_RETURN_ON_ERROR(
+    ra_io_blockdev_sdram_init(&s_bd_dr, &s_bstate_dr, (uint32_t)k_demo_disk_blocks),
+    s_tag,
+    "sdram blockdev init");
+  RA_RETURN_ON_ERROR(demo_mount(&s_bd_dr, &s_be_dr, "dr"), s_tag, "dr mount");
+  uint32_t dr_blob_len = 0;
+  RA_RETURN_ON_ERROR(demo_roundtrip("dr:/", &dr_blob_len), s_tag, "dr round-trip");
+
+  *out_blob_len = ram_blob_len;
   return k_ra_ok;
 }
 
@@ -197,9 +336,9 @@ int main(void)
   uint32_t       blob_len = 0;
   const ra_err_t e        = demo_run(&blob_len);
   if (e == k_ra_ok) {
-    demo_print("ra_io_compress_demo: 4096 -> ");
+    demo_print("ra_io_compress_demo: ram+dr 4096 -> ");
     (void)ra_io_stream_put_u32(&s_uart, blob_len);
-    demo_print(" -> 4096 bytes ram:/STORY.RBK PASS\r\n");
+    demo_print(" bytes -> 4096 round-trip PASS\r\n");
   } else {
     demo_print("ra_io_compress_demo: FAIL\r\n");
   }
