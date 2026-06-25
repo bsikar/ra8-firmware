@@ -265,6 +265,21 @@ macro(ra_add_app)
         list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_vfs_compress\\.c$")
     endif()
 
+    # ra_io_blockdev_vsource.c (globbed in by a bare "ra_io" in LIBS) is the
+    # sanctioned Ring-4 -> Ring-2 bridge that exposes a block device as an
+    # ra_vsource read callback for the issue #147 page cache. It includes
+    # ra_vsource.h from ra_mem, so it only links -- and only adds ra_mem/inc to
+    # the include path -- when the app also declares "ra_mem" in LIBS. Mirrors the
+    # ra_io_compress opt-in gate above: a plain ra_io consumer that never wires a
+    # block device into the page cache pays nothing and needs no ra_mem on its
+    # include path. The header (ra_io_blockdev_vsource.h) is likewise opt-in, kept
+    # out of the ra_io.h umbrella.
+    if("ra_mem" IN_LIST _RA_APP_LIBS)
+        list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/ra_mem/inc)
+    else()
+        list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_blockdev_vsource\\.c$")
+    endif()
+
     # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
     # through byte buffers, which violates C strict-aliasing. GCC's aliasing
     # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3
