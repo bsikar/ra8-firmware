@@ -114,7 +114,7 @@ typedef struct {
 } ra_usb_pmsc_state_data_t;
 
 /**
- * @var s_state
+ * @var s_usb_pmsc_state
  * @brief Singleton shadow state shared by both device-MSC TUs.
  *
  * @details Defined in `ra_usb_pmsc.c`; the SCSI handler TU reads the
@@ -124,7 +124,7 @@ typedef struct {
  * @warning Direct modification outside the driver TUs is forbidden.
  * @since 0.1.0
  */
-extern ra_usb_pmsc_state_data_t s_state;
+extern ra_usb_pmsc_state_data_t s_usb_pmsc_state;
 
 /**
  * @brief Zero `len` bytes at `dst` byte-by-byte.

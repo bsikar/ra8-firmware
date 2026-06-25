@@ -11,7 +11,7 @@
  * command handlers (INQUIRY, READ_CAPACITY(10), REQUEST SENSE, MODE
  * SENSE(6), READ(10), WRITE(10)) that the BOT dispatcher in
  * `ra_usb_pmsc.c` invokes once a CDB has been decoded. The two TUs
- * share the `s_state` shadow singleton and a handful of serialisation
+ * share the `s_usb_pmsc_state` shadow singleton and a handful of serialisation
  * helpers via `ra_usb_pmsc_internal.h`. FSP's
  * `pmsc_atapi_command_processing` is reference material only -- no FSP
  * source is pulled in verbatim.
@@ -214,10 +214,10 @@ ra_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t*
   internal_pad_space(&data_buf[k_ra_pmsc_inq_off_product], (uint32_t)k_ra_pmsc_inq_product_len);
   internal_pad_space(&data_buf[k_ra_pmsc_inq_off_revision], (uint32_t)k_ra_pmsc_inq_revision_len);
 
-  const ra_err_t err = s_state.storage.get_inquiry(s_state.storage.ctx,
-                                                   &data_buf[k_ra_pmsc_inq_off_vendor],
-                                                   &data_buf[k_ra_pmsc_inq_off_product],
-                                                   &data_buf[k_ra_pmsc_inq_off_revision]);
+  const ra_err_t err = s_usb_pmsc_state.storage.get_inquiry(s_usb_pmsc_state.storage.ctx,
+                                                            &data_buf[k_ra_pmsc_inq_off_vendor],
+                                                            &data_buf[k_ra_pmsc_inq_off_product],
+                                                            &data_buf[k_ra_pmsc_inq_off_revision]);
   if (err != k_ra_ok) {
     return err;
   }
@@ -232,7 +232,8 @@ ra_err_t internal_handle_read_capacity(uint8_t* data_buf, uint32_t capacity, uin
   }
   uint32_t       block_count = 0U;
   uint32_t       block_size  = 0U;
-  const ra_err_t err = s_state.storage.get_capacity(s_state.storage.ctx, &block_count, &block_size);
+  const ra_err_t err =
+    s_usb_pmsc_state.storage.get_capacity(s_usb_pmsc_state.storage.ctx, &block_count, &block_size);
   if (err != k_ra_ok) {
     return err;
   }
@@ -275,15 +276,16 @@ ra_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* 
 {
   uint32_t lba         = 0U;
   uint32_t block_count = 0U;
-  internal_decode_rw10(s_state.cbw_cdb, &lba, &block_count);
+  internal_decode_rw10(s_usb_pmsc_state.cbw_cdb, &lba, &block_count);
   if (block_count == 0U) {
     *out_len = 0U;
     return k_ra_ok;
   }
   uint32_t       device_block_count = 0U;
   uint32_t       block_size         = 0U;
-  const ra_err_t cap_err =
-    s_state.storage.get_capacity(s_state.storage.ctx, &device_block_count, &block_size);
+  const ra_err_t cap_err = s_usb_pmsc_state.storage.get_capacity(s_usb_pmsc_state.storage.ctx,
+                                                                 &device_block_count,
+                                                                 &block_size);
   if (cap_err != k_ra_ok) {
     return cap_err;
   }
@@ -294,7 +296,8 @@ ra_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* 
   if (bytes > capacity) {
     return k_ra_err_invalid_size;
   }
-  const ra_err_t err = s_state.storage.read_block(s_state.storage.ctx, lba, block_count, data_buf);
+  const ra_err_t err =
+    s_usb_pmsc_state.storage.read_block(s_usb_pmsc_state.storage.ctx, lba, block_count, data_buf);
   if (err != k_ra_ok) {
     return err;
   }
@@ -306,22 +309,24 @@ ra_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_len)
 {
   uint32_t lba         = 0U;
   uint32_t block_count = 0U;
-  internal_decode_rw10(s_state.cbw_cdb, &lba, &block_count);
+  internal_decode_rw10(s_usb_pmsc_state.cbw_cdb, &lba, &block_count);
   if (block_count == 0U) {
     *out_len = 0U;
     return k_ra_ok;
   }
   uint32_t       device_block_count = 0U;
   uint32_t       block_size         = 0U;
-  const ra_err_t cap_err =
-    s_state.storage.get_capacity(s_state.storage.ctx, &device_block_count, &block_size);
+  const ra_err_t cap_err = s_usb_pmsc_state.storage.get_capacity(s_usb_pmsc_state.storage.ctx,
+                                                                 &device_block_count,
+                                                                 &block_size);
   if (cap_err != k_ra_ok) {
     return cap_err;
   }
   if (block_size == 0U) {
     block_size = (uint32_t)k_ra_pmsc_block_size_default;
   }
-  const ra_err_t err = s_state.storage.write_block(s_state.storage.ctx, lba, block_count, data_buf);
+  const ra_err_t err =
+    s_usb_pmsc_state.storage.write_block(s_usb_pmsc_state.storage.ctx, lba, block_count, data_buf);
   if (err != k_ra_ok) {
     return err;
   }

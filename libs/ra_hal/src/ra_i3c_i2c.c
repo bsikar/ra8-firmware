@@ -96,8 +96,8 @@ bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb)
   return (mask != 0U) && (cb != nullptr);
 }
 
-/** @brief Log tag for this driver (shared across TUs via ra_i3c_i2c_internal.h). */
-const char* s_tag = "IIC_B";
+/** @brief Log tag for this driver's transaction-engine TU. */
+static const char* s_tag = "IIC_B";
 
 /**
  * @enum internal_i3c_i2c_t

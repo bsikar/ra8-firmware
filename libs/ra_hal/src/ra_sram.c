@@ -125,7 +125,7 @@ static const uint32_t s_sram_ecc_off_table[k_ra_sram_bank_count] = {
 /** @brief Driver init flag (set at end of ``ra_sram_init``). */
 static bool s_initialized = false;
 
-/* The ECC error callback table (``s_on_error*``) lives in
+/* The ECC error callback table (``s_sram_on_error*``) lives in
  * ``ra_sram_security.c`` and is reached from ``ra_sram_deinit`` below
  * through the ``extern`` declarations in ``ra_sram_internal.h``. */
 
@@ -588,11 +588,11 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
     (void)ra_mstp_disable(s_sram_mstp_table[bank]);
   }
 
-  s_on_error     = nullptr;
-  s_on_error_ctx = nullptr;
+  s_sram_on_error     = nullptr;
+  s_sram_on_error_ctx = nullptr;
   for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
-    s_on_error_bank[bank]     = nullptr;
-    s_on_error_bank_ctx[bank] = nullptr;
+    s_sram_on_error_bank[bank]     = nullptr;
+    s_sram_on_error_bank_ctx[bank] = nullptr;
   }
   s_initialized = false;
   return k_ra_ok;

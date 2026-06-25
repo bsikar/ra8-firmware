@@ -14,7 +14,7 @@
  *    ``ra_sram_dispatch`` / ``ra_sram_dispatch_from_esr`` fan-out that
  *    walks all eight SRAMESR flags (HUM Ch 58.2.12 p 3535)
  *
- * The callback state defined here (``s_on_error*``) is also referenced
+ * The callback state defined here (``s_sram_on_error*``) is also referenced
  * by ``ra_sram_deinit`` in ``ra_sram.c`` via the ``extern`` declarations
  * in ``ra_sram_internal.h`` so teardown can drop every registration.
  *
@@ -45,21 +45,21 @@ static const char* s_tag = "SRAM";
  */
 
 /** @brief Registered global ECC error callback (NULL until attach). */
-ra_sram_error_fn_t s_on_error = nullptr;
+ra_sram_error_fn_t s_sram_on_error = nullptr;
 
-/** @brief Caller context forwarded to ``s_on_error``. */
-void* s_on_error_ctx = nullptr;
+/** @brief Caller context forwarded to ``s_sram_on_error``. */
+void* s_sram_on_error_ctx = nullptr;
 
 /** @brief Per-bank ECC error callback (NULL until attach). */
-ra_sram_error_fn_t s_on_error_bank[k_ra_sram_bank_count] = {
+ra_sram_error_fn_t s_sram_on_error_bank[k_ra_sram_bank_count] = {
   nullptr,
   nullptr,
   nullptr,
   nullptr,
 };
 
-/** @brief Per-bank context forwarded to ``s_on_error_bank``. */
-void* s_on_error_bank_ctx[k_ra_sram_bank_count] = {
+/** @brief Per-bank context forwarded to ``s_sram_on_error_bank``. */
+void* s_sram_on_error_bank_ctx[k_ra_sram_bank_count] = {
   nullptr,
   nullptr,
   nullptr,
@@ -119,8 +119,8 @@ void* s_on_error_bank_ctx[k_ra_sram_bank_count] = {
 [[nodiscard]] ra_err_t ra_sram_attach_handler(ra_sram_error_fn_t fn, void* ctx)
 {
   RA_CHECK_NULL_PTR(fn, s_tag, "fn must not be nullptr");
-  s_on_error     = fn;
-  s_on_error_ctx = ctx;
+  s_sram_on_error     = fn;
+  s_sram_on_error_ctx = ctx;
   return k_ra_ok;
 }
 
@@ -130,8 +130,8 @@ void* s_on_error_bank_ctx[k_ra_sram_bank_count] = {
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return k_ra_err_invalid_arg;
   }
-  s_on_error_bank[bank]     = fn;
-  s_on_error_bank_ctx[bank] = ctx;
+  s_sram_on_error_bank[bank]     = fn;
+  s_sram_on_error_bank_ctx[bank] = ctx;
   return k_ra_ok;
 }
 
@@ -140,13 +140,13 @@ void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return;
   }
-  const ra_sram_error_fn_t global_fn  = s_on_error;
-  void* const              global_ctx = s_on_error_ctx;
+  const ra_sram_error_fn_t global_fn  = s_sram_on_error;
+  void* const              global_ctx = s_sram_on_error_ctx;
   if (global_fn != nullptr) {
     global_fn(global_ctx, bank, is_2bit, err_addr);
   }
-  const ra_sram_error_fn_t bank_fn  = s_on_error_bank[bank];
-  void* const              bank_ctx = s_on_error_bank_ctx[bank];
+  const ra_sram_error_fn_t bank_fn  = s_sram_on_error_bank[bank];
+  void* const              bank_ctx = s_sram_on_error_bank_ctx[bank];
   if (bank_fn != nullptr) {
     bank_fn(bank_ctx, bank, is_2bit, err_addr);
   }

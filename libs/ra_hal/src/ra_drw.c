@@ -93,14 +93,14 @@ bool ra_drw_internal_rect_above_max(uint16_t max_w, uint16_t max_h, uint16_t wid
  * @brief Logging tag for the DRW driver.
  *
  * @details
- * Declared @c extern in @c ra_drw_internal.h and shared with
- * @c ra_drw_draw.c so the geometry-primitive TU logs under the same tag.
+ * TU-local read-only copy. @c ra_drw_draw.c keeps its own identical copy
+ * so both TUs log under the same @c "DRW" tag without sharing linkage.
  *
  * @note Read-only after definition; do not reassign.
  * @warning Direct modification breaks log correlation.
  * @since 0.1.0
  */
-const char* s_tag = "DRW";
+static const char* s_tag = "DRW";
 
 /**
  * @var s_drw_fn

@@ -11,9 +11,9 @@
  * TU owns the drawing primitives (fill / textured-blit / line /
  * triangle), display-list submission and the performance counters.
  * The surface-setup, lifecycle, IRQ and cache helpers remain in
- * ra_drw.c, which also defines the shared logging tag ``s_tag`` and the
- * shared limiter helper ``internal_program_rect_limiters`` declared in
- * ra_drw_internal.h.
+ * ra_drw.c. This TU keeps its own read-only copy of the ``s_tag``
+ * logging tag and reuses the shared limiter helper
+ * ``internal_program_rect_limiters`` declared in ra_drw_internal.h.
  *
  * Every register access carries a HUM Ch 62 citation immediately
  * above it so ``cite_check.py`` can validate provenance.
@@ -29,6 +29,25 @@
 #include "ra_drw.h"
 #include "ra_drw_internal.h"
 #include "ra_err.h"
+
+/* =============================================================================
+ * Driver-private state
+ * =============================================================================
+ */
+
+/**
+ * @var s_tag
+ * @brief Logging tag for the DRW driver.
+ *
+ * @details
+ * TU-local read-only copy. @c ra_drw.c keeps its own identical copy so
+ * both TUs log under the same @c "DRW" tag without sharing linkage.
+ *
+ * @note Read-only after definition; do not reassign.
+ * @warning Direct modification breaks log correlation.
+ * @since 0.1.0
+ */
+static const char* s_tag = "DRW";
 
 /* =============================================================================
  * Drawing primitives
