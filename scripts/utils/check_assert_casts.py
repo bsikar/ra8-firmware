@@ -72,7 +72,8 @@ def check(path: Path) -> list[str]:
         arg2 = inner[split + 1 :]
         if _has_leading_cast(arg1):
             violations.append(
-                f"{path}:{line_no}: cast in first arg of TEST_ASSERT_EQ: {_MACRO}{arg1.strip()[:60]}..."
+                f"{path}:{line_no}: cast in first arg of TEST_ASSERT_EQ: "
+                f"{_MACRO}{arg1.strip()[:60]}..."
             )
         if _has_leading_cast(arg2):
             violations.append(

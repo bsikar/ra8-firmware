@@ -62,6 +62,7 @@ any are found.
 
 from __future__ import annotations
 
+import math
 import re
 import sys
 from collections.abc import Iterable
@@ -245,7 +246,7 @@ def _literal_value(match: re.Match) -> tuple[bool, float]:
     for base in (0, 8, 10):
         try:
             return False, float(int(body, base))
-        except ValueError:
+        except ValueError:  # noqa: PERF203  # per-base fallback; loop is only 3 iterations
             continue
     return False, float("nan")
 
@@ -268,14 +269,14 @@ def _is_array_dimension(code_line: str, start: int, end: int) -> bool:
 
 
 def _is_ignored(is_float: bool, value: float) -> bool:
-    if value != value:  # NaN -- could not parse, do not flag
+    if math.isnan(value):  # could not parse, do not flag
         return True
     if is_float:
         return value in IGNORED_FLOAT
     return int(value) in IGNORED_INT
 
 
-def _scan_file(path: Path) -> list[tuple[int, int, str]]:
+def _scan_file(path: Path) -> list[tuple[int, int, str]]:  # noqa: PLR0912, PLR0915  # parser/gate dispatch, splitting hurts readability
     """Return a list of (line, column, literal) for every magic number
     in `path`."""
     try:

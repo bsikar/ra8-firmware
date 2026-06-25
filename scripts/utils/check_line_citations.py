@@ -47,6 +47,10 @@ from pathlib import Path
 # `// CITES-OK: <reason>` per-line opt-out.
 WARN_ONLY_MODE = False
 
+# Snippet display limit for violation output lines.
+MAX_SNIPPET_LEN = 120
+SNIPPET_TRUNCATE_LEN = 117
+
 SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
 DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
 EXCLUDE_PREFIXES = ("libs/third_party/", "docs/reference/")
@@ -71,7 +75,7 @@ THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
 
 def staged_files() -> list[str]:
     out = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -81,7 +85,7 @@ def staged_files() -> list[str]:
 
 def all_tracked_files() -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files"],
+        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -177,13 +181,13 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
             if _line_is_tool_exempt(raw):
                 continue
             snippet = raw.strip()
-            if len(snippet) > 120:
-                snippet = snippet[:117] + "..."
+            if len(snippet) > MAX_SNIPPET_LEN:
+                snippet = snippet[:SNIPPET_TRUNCATE_LEN] + "..."
             violations.append((line_no, matched, snippet))
     return violations
 
 
-def find_comment_spans(text: str) -> list[tuple[int, int]]:
+def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return list of (start, end) byte offsets that lie inside C/C++
     comments. Block comments and line comments. String literal aware
     enough to skip `"//foo"` and `"/* */"`."""
@@ -279,16 +283,16 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
             if MOVED_FROM_RE.search(line):
                 continue
             snippet = line.strip()
-            if len(snippet) > 120:
-                snippet = snippet[:117] + "..."
+            if len(snippet) > MAX_SNIPPET_LEN:
+                snippet = snippet[:SNIPPET_TRUNCATE_LEN] + "..."
             violations.append((line_no, matched, snippet))
     return violations
 
 
-def main() -> int:
+def main() -> int:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     repo_root = Path(
         subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv
             check=True,
             capture_output=True,
             text=True,

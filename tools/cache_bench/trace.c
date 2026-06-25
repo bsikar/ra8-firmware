@@ -19,7 +19,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-/** @brief Workload sizing (no magic numbers in the generators). */
+/**
+ * @enum cb_workload_dim_t
+ * @brief Workload sizing constants for the synthetic access-trace generators.
+ * @details
+ * All synthetic-trace parameters live here so every generator function is
+ * free of magic literals. The values are chosen to create a realistic spread
+ * of access patterns (sequential, random, hot-set locality, scan-flood) at a
+ * scale large enough to distinguish policy hit rates while finishing in under
+ * one second on a desktop host.
+ * @since 0.1.0
+ */
 typedef enum : uint32_t {
   k_cb_obj_book    = 1U,      /**< Object id of the paged EPUB.            */
   k_cb_obj_comic   = 2U,      /**< Object id of the scrolled CBZ tiles.    */
@@ -33,15 +43,54 @@ typedef enum : uint32_t {
   k_cb_sr_hot      = 192U,    /**< Re-referenced hot set (fits mid caches).*/
   k_cb_sr_hot_pass = 3U,      /**< Hot-set passes between scan floods.     */
   k_cb_sr_scan     = 1500U,   /**< Unique pages in each one-time scan.     */
+  k_cb_pct_full    = 100U,    /**< Divisor for percentage-range decisions.  */
+  k_cb_mixed_phase = 2048U,   /**< Accesses per phase in the mixed session. */
+  k_cb_load_init   = 4096U,   /**< Initial key-array capacity in cb_trace_load. */
 } cb_workload_dim_t;
+
+/**
+ * @enum cb_rng_shift_t
+ * @brief xorshift64 shift-amount triple for @ref cb_rng.
+ * @details The triple (13, 7, 17) is one of the parameter sets in
+ *          Marsaglia (2003) for a full-period 64-bit xorshift generator.
+ *          Changing any value breaks the period guarantee.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_rng_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set) */
+  k_rng_shift_b = 7U,  /**< MAGIC-OK: xorshift64 right-shift b (Marsaglia 2003 set) */
+  k_rng_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set) */
+} cb_rng_shift_t;
+
+/**
+ * @enum cb_rng_seed_t
+ * @brief Fixed initial PRNG seeds used by the synthetic trace generators.
+ * @details Each generator uses a distinct seed so the traces are
+ *          statistically independent. The values are arbitrary non-zero 64-bit
+ *          integers chosen for good initial bit distribution (odd values avoid
+ *          trivial zero-collapse in xorshift); the MAGIC-OK markers record
+ *          that their exact bit patterns are not semantically significant.
+ * @since 0.1.0
+ */
+typedef enum : uint64_t {
+  k_rng_seed_random =
+    0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: Fibonacci golden-ratio seed (random trace) */
+  k_rng_seed_reread =
+    0xD1B54A32D192ED03ULL, /**< MAGIC-OK: fixed arbitrary seed (reread-locality trace) */
+  k_rng_seed_toc = 0x2545F4914F6CDD1DULL, /**< MAGIC-OK: fixed arbitrary seed (toc-jumps trace) */
+  k_rng_seed_mixed_a =
+    0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: Fibonacci golden-ratio seed (mixed trace base) */
+  k_rng_seed_mixed_b =
+    0xABCDEF1234567890ULL, /**< MAGIC-OK: fixed arbitrary seed XOR'd into mixed trace base */
+} cb_rng_seed_t;
 
 /** @brief Fixed-seed xorshift64; deterministic across runs and platforms. */
 static uint64_t cb_rng(uint64_t* s)
 {
   uint64_t x = *s;
-  x ^= x << 13U;
-  x ^= x >> 7U;
-  x ^= x << 17U;
+  x ^= x << (uint8_t)k_rng_shift_a;
+  x ^= x >> (uint8_t)k_rng_shift_b;
+  x ^= x << (uint8_t)k_rng_shift_c;
   *s = x;
   return x;
 }
@@ -85,7 +134,7 @@ static cb_trace_t cb_gen_random(void)
   if (!cb_alloc(&t, "random", k_cb_accesses)) {
     return t;
   }
-  uint64_t s = 0x9E3779B97F4A7C15ULL;
+  uint64_t s = (uint64_t)k_rng_seed_random;
   for (uint64_t i = 0U; i < t.n; ++i) {
     t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = cb_rand_below(&s, k_cb_footprint)};
   }
@@ -100,11 +149,11 @@ static cb_trace_t cb_gen_reread(void)
   if (!cb_alloc(&t, "reread-locality", k_cb_accesses)) {
     return t;
   }
-  uint64_t s    = 0xD1B54A32D192ED03ULL;
+  uint64_t s    = (uint64_t)k_rng_seed_reread;
   uint32_t base = 0U;
   for (uint64_t i = 0U; i < t.n; ++i) {
     uint32_t page;
-    if (cb_rand_below(&s, 100U) < (uint32_t)k_cb_reread_pct) {
+    if (cb_rand_below(&s, (uint32_t)k_cb_pct_full) < (uint32_t)k_cb_reread_pct) {
       page = base + cb_rand_below(&s, k_cb_hot_pages);
     } else {
       page = cb_rand_below(&s, k_cb_footprint);
@@ -123,10 +172,10 @@ static cb_trace_t cb_gen_toc_jumps(void)
   if (!cb_alloc(&t, "linear+jumps", k_cb_accesses)) {
     return t;
   }
-  uint64_t s    = 0x2545F4914F6CDD1DULL;
+  uint64_t s    = (uint64_t)k_rng_seed_toc;
   uint32_t page = 0U;
   for (uint64_t i = 0U; i < t.n; ++i) {
-    if (cb_rand_below(&s, 100U) < (uint32_t)k_cb_jump_pct) {
+    if (cb_rand_below(&s, (uint32_t)k_cb_pct_full) < (uint32_t)k_cb_jump_pct) {
       page = cb_rand_below(&s, k_cb_footprint);
     } else {
       page = (page + 1U) % k_cb_footprint;
@@ -159,11 +208,12 @@ static cb_trace_t cb_gen_mixed(void)
   if (!cb_alloc(&t, "mixed-session", k_cb_accesses)) {
     return t;
   }
-  uint64_t s    = 0x9E3779B97F4A7C15ULL ^ 0xABCDEF1234567890ULL;
+  uint64_t s    = (uint64_t)k_rng_seed_mixed_a ^ (uint64_t)k_rng_seed_mixed_b;
   uint32_t page = 0U;
   uint32_t hot  = 0U;
   for (uint64_t i = 0U; i < t.n; ++i) {
-    const uint32_t phase = (uint32_t)((i / 2048U) % 4U); /* alternate behaviours */
+    const uint32_t phase =
+      (uint32_t)((i / (uint64_t)k_cb_mixed_phase) % 4U); /* alternate behaviours */
     if (phase == 0U) {
       page = (page + 1U) % k_cb_footprint; /* linear */
     } else if (phase == 1U) {
@@ -242,7 +292,7 @@ cb_trace_t cb_trace_load(const char* path, const char* name)
   if (f == nullptr) {
     return t;
   }
-  uint64_t cap = 4096U;
+  uint64_t cap = (uint64_t)k_cb_load_init;
   t.keys       = (cb_key_t*)calloc((size_t)cap, sizeof(cb_key_t));
   if (t.keys == nullptr) {
     (void)fclose(f);

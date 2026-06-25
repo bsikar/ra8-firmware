@@ -193,6 +193,7 @@ if ((RUN_LOCAL)); then
     fi
   fi
 else
+  # shellcheck disable=SC2087  # local vars (LOG, JLINK_SN, APP) expand client-side; remote vars are escaped
   ssh "$PI_HOST" bash <<REMOTE
 set -uo pipefail
 TMP=\$(mktemp)

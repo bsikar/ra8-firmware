@@ -22,12 +22,12 @@ SPDX-License-Identifier: MIT
 
 import argparse
 import io
-import os
 import posixpath
 import struct
 import sys
 import zlib
 from html.parser import HTMLParser
+from pathlib import Path
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
@@ -46,6 +46,8 @@ NODE_TEXT = 1
 IMG_GRAY4 = 0
 IMG_SVG = 1
 GRAY_LEVELS = 16
+# Full 256-entry RGB palette = 256 * 3 channels.
+PALETTE_BYTES = 768
 # .rabook container: "RBKZ" + LE uint32 inflated-size + raw zlib stream of the
 # flat blob. The device inflates once into SDRAM, then walks the flat structure.
 CONTAINER_MAGIC = b"RBKZ"
@@ -210,10 +212,10 @@ class BlobBuilder:
     def add_stylesheet(self, css_text):
         self.stylesheets.append((self.sp.intern(css_text), NIL))
 
-    def add_raster_image(self, href, data):
+    def add_raster_image(self, href, data, max_image_edge=MAX_IMAGE_EDGE):
         im = Image.open(io.BytesIO(data)).convert("L")
         w, h = im.size
-        scale = min(1.0, MAX_IMAGE_EDGE / max(w, h))
+        scale = min(1.0, max_image_edge / max(w, h))
         if scale < 1.0:
             im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
         width, height = im.size
@@ -221,7 +223,7 @@ class BlobBuilder:
         for i in range(GRAY_LEVELS):
             v = round(i * 255 / (GRAY_LEVELS - 1))
             palette += [v, v, v]
-        while len(palette) < 768:
+        while len(palette) < PALETTE_BYTES:
             palette += [0, 0, 0]
         pal_img = Image.new("P", (1, 1))
         pal_img.putpalette(palette)
@@ -326,7 +328,7 @@ class BlobBuilder:
             len(pool),
             crc,
         )
-        assert len(header) == header_size
+        assert len(header) == header_size  # noqa: S101  # structural invariant: mismatched header_size is a coding error
         return header + body
 
 
@@ -336,13 +338,13 @@ def opf_localname(tag):
 
 
 def parse_opf(zf):
-    container = ET.fromstring(zf.read("META-INF/container.xml"))
+    container = ET.fromstring(zf.read("META-INF/container.xml"))  # noqa: S314  # trusted local EPUB input
     rootfile = None
     for el in container.iter():
         if opf_localname(el.tag) == "rootfile":
             rootfile = el.get("full-path")
             break
-    opf = ET.fromstring(zf.read(rootfile))
+    opf = ET.fromstring(zf.read(rootfile))  # noqa: S314  # trusted local EPUB input
     opf_dir = posixpath.dirname(rootfile)
 
     meta = {"title": "", "author": "", "language": "", "identifier": ""}
@@ -385,14 +387,14 @@ def parse_toc(zf, opf_dir, manifest):
     )
     try:
         if nav_href:
-            tree = ET.fromstring(zf.read(resolve(nav_href)))
+            tree = ET.fromstring(zf.read(resolve(nav_href)))  # noqa: S314  # trusted local EPUB input
             base = posixpath.dirname(resolve(nav_href))
             for a in tree.iter():
                 if opf_localname(a.tag) == "a" and a.get("href"):
                     tgt = posixpath.normpath(posixpath.join(base, a.get("href").split("#", 1)[0]))
                     labels.setdefault(tgt, "".join(a.itertext()).strip())
         elif ncx_href:
-            tree = ET.fromstring(zf.read(resolve(ncx_href)))
+            tree = ET.fromstring(zf.read(resolve(ncx_href)))  # noqa: S314  # trusted local EPUB input
             base = posixpath.dirname(resolve(ncx_href))
             for nav in tree.iter():
                 if opf_localname(nav.tag) != "navPoint":
@@ -413,7 +415,7 @@ def parse_toc(zf, opf_dir, manifest):
     return labels
 
 
-def compile_epub(path):
+def compile_epub(path, max_image_edge=MAX_IMAGE_EDGE, skip_images=SKIP_IMAGES):
     sys.setrecursionlimit(100000)
     bb = BlobBuilder()
     with ZipFile(path) as zf:
@@ -433,7 +435,7 @@ def compile_epub(path):
 
         # images (raster -> 4bpp, svg -> vector); remember manifest-id -> image index
         id_to_image = {}
-        for mid, (href, media, _props) in () if SKIP_IMAGES else manifest.items():
+        for mid, (href, media, _props) in () if skip_images else manifest.items():
             full = resolve(href)
             if full not in names:
                 continue
@@ -441,7 +443,7 @@ def compile_epub(path):
                 if media == "image/svg+xml":
                     id_to_image[mid] = bb.add_svg_image(href, zf.read(full))
                 elif media.startswith("image/"):
-                    id_to_image[mid] = bb.add_raster_image(href, zf.read(full))
+                    id_to_image[mid] = bb.add_raster_image(href, zf.read(full), max_image_edge)
             except (OSError, ValueError):
                 pass
         if cover_id and cover_id in id_to_image:
@@ -466,7 +468,6 @@ def compile_epub(path):
 
 
 def main():
-    global MAX_IMAGE_EDGE, SKIP_IMAGES
     ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
     ap.add_argument("input", help="source .epub")
     ap.add_argument("output", help="destination .rabook")
@@ -484,15 +485,13 @@ def main():
     )
     args = ap.parse_args()
 
-    MAX_IMAGE_EDGE = args.max_edge
-    SKIP_IMAGES = args.no_images
-    blob, meta, bb = compile_epub(args.input)
+    blob, meta, bb = compile_epub(args.input, args.max_edge, args.no_images)
     container = CONTAINER_MAGIC + struct.pack("<I", len(blob)) + zlib.compress(blob, 9)
-    with open(args.output, "wb") as fh:
+    with Path(args.output).open("wb") as fh:
         fh.write(container)
 
     if args.stats:
-        src = os.path.getsize(args.input)
+        src = Path(args.input).stat().st_size
         out = len(container)
         print(f"{meta['title']} -- {meta['author']}")
         print(

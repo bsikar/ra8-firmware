@@ -136,6 +136,7 @@ scp -q "$STRIPPED_FW" "${PI_HOST}:${REMOTE_FW}"
 
 # ---- 3. Flash via J-Link on Pi -----------------------------------------------
 echo -e "${YELLOW}[HIL]${NC} flashing..."
+# shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN/REMOTE_FW/APP_NAME is intentional
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP_SCRIPT=\$(mktemp)
@@ -169,6 +170,7 @@ REMOTE
 # ---- 3. Read UART and check for expected string ------------------------------
 echo -e "${YELLOW}[HIL]${NC} waiting for '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
 RESULT=$(
+  # shellcheck disable=SC2087  # client-side substitution of UART/BAUD/TIMEOUT_S/EXPECT is intentional
   ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 # Configure baud rate once before opening the device for reading.

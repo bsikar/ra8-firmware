@@ -82,6 +82,15 @@ SKIP_FRAGMENTS = (
 
 OPT_OUT_TAG = "AI-OK:"
 
+EXCERPT_MAX_LEN = 160  # Maximum characters shown from a violating line before truncation.
+EXCERPT_TRUNCATE_LEN = 157  # Length of truncated body (leaves room for "...").
+
+# Self-exempt files that legitimately spell the banned tokens.
+SELF_EXEMPT_FILES = {
+    REPO_ROOT / "scripts" / "utils" / "check_no_ai_attribution.py",
+    REPO_ROOT / "docs" / "AI_ATTRIBUTION_POLICY.md",
+}
+
 # ---------------------------------------------------------------------------
 # Detection rules
 # ---------------------------------------------------------------------------
@@ -295,32 +304,30 @@ def _scan_file(path: Path) -> list[tuple[int, str, str]]:
                 if _line_has_opt_out(line):
                     continue
                 hits = _scan_line(line)
-                for tok in hits:
-                    out.append((i, tok, line.rstrip("\n")))
+                out.extend((i, tok, line.rstrip("\n")) for tok in hits)
     except OSError:
         return []
     return out
 
 
-def main(argv: list[str]) -> int:
-    # Self-exempt: this script and the policy doc legitimately spell the
-    # banned tokens. They are matched explicitly so we don't need to
-    # decorate every internal line with AI-OK.
-    SELF_EXEMPT = {
-        REPO_ROOT / "scripts" / "utils" / "check_no_ai_attribution.py",
-        REPO_ROOT / "docs" / "AI_ATTRIBUTION_POLICY.md",
-    }
+def main() -> int:
+    # Self-exempt files legitimately spell the banned tokens; they are
+    # matched explicitly so every internal line need not carry AI-OK.
+    self_exempt_resolved = {q.resolve() for q in SELF_EXEMPT_FILES}
 
     violations = 0
     for p in _iter_files():
-        if p.resolve() in {q.resolve() for q in SELF_EXEMPT}:
+        if p.resolve() in self_exempt_resolved:
             continue
         for lineno, tok, excerpt in _scan_file(p):
             rel = p.relative_to(REPO_ROOT)
             # Trim long excerpts.
-            if len(excerpt) > 160:
-                excerpt = excerpt[:157] + "..."
-            print(f"{rel}:{lineno}: AI attribution found ('{tok}'): {excerpt}")
+            display = (
+                excerpt
+                if len(excerpt) <= EXCERPT_MAX_LEN
+                else excerpt[:EXCERPT_TRUNCATE_LEN] + "..."
+            )
+            print(f"{rel}:{lineno}: AI attribution found ('{tok}'): {display}")
             violations += 1
 
     if violations:
@@ -332,4 +339,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())

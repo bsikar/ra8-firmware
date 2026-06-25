@@ -29,9 +29,12 @@
 import pathlib
 import sys
 
+# Expected number of CLI arguments: script + 4 positional args.
+EXPECTED_ARGC = 5
+
 
 def main() -> int:
-    if len(sys.argv) != 5:
+    if len(sys.argv) != EXPECTED_ARGC:
         sys.stderr.write(
             "usage: font_to_c.py <input-font> <output.c> <symbol_name> <header_name>\n"
         )

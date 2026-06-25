@@ -178,10 +178,6 @@ if [[ -z "$USB_ETH_IFACE" ]]; then
 fi
 echo -e "${YELLOW}[HIL]${NC} USB-Ethernet iface = ${USB_ETH_IFACE}"
 
-# Remember current Pi IP on the iface so we can restore it on exit.
-PRIOR_IPS="$(ip -o -4 addr show dev "$USB_ETH_IFACE" 2>/dev/null |
-  awk '{print $4}' | tr '\n' ' ' || true)"
-
 restore_iface() {
   # Remove our temporary address but leave anything we did not set.
   sudo -n ip addr del "${PI_IP}/${PI_PREFIX}" dev "$USB_ETH_IFACE" 2>/dev/null || true

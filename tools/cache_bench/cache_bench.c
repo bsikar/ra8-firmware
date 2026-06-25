@@ -35,13 +35,39 @@ static uint32_t cb_pow2_ceil(uint32_t v)
   return p;
 }
 
+/**
+ * @enum cb_hash_param_t
+ * @brief Murmur3 finalizer constants used in ::cb_hash.
+ * @details These are the canonical Murmur3 64-bit finalization mix constants
+ *          (Austin Appleby, 2011). They are algorithm-specified bit patterns
+ *          chosen for avalanche quality and must not be renamed to hide their
+ *          origin; the MAGIC-OK markers document the rationale.
+ * @see https://github.com/aappleby/smhasher
+ * @since 0.1.0
+ */
+typedef enum : uint64_t {
+  k_hash_mix_mul = 0xFF51AFD7ED558CCDULL, /**< MAGIC-OK: Murmur3 64-bit finalization multiplier */
+} cb_hash_mul_t;
+
+/**
+ * @enum cb_hash_shift_t
+ * @brief Murmur3 finalizer bit-shift amounts used in ::cb_hash.
+ * @details The value 33 is mandated by the Murmur3 64-bit finalization
+ *          algorithm. It must equal exactly 33 for the required avalanche
+ *          properties; the MAGIC-OK marker documents this constraint.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_hash_shift = 33U, /**< MAGIC-OK: Murmur3 64-bit finalizer shift amount */
+} cb_hash_shift_t;
+
 /** @brief Mix an (object,page) key into a hash bucket. */
 static uint32_t cb_hash(cb_key_t k)
 {
   uint64_t h = ((uint64_t)k.object_id << 32U) | (uint64_t)k.page;
-  h ^= h >> 33U;
-  h *= 0xFF51AFD7ED558CCDULL;
-  h ^= h >> 33U;
+  h ^= h >> (uint8_t)k_hash_shift;
+  h *= (uint64_t)k_hash_mix_mul;
+  h ^= h >> (uint8_t)k_hash_shift;
   return (uint32_t)h;
 }
 
@@ -151,8 +177,46 @@ int cb_replay(const cache_policy_t* pol,
   return 0;
 }
 
+/**
+ * @enum cb_bench_size_t
+ * @brief Swept cache capacities (in frames) used on the RAM-budget axis.
+ * @details These are the seven capacity points that the benchmark sweeps over.
+ *          Each is a power of two chosen to cover the expected SRAM/SDRAM
+ *          budget range for the RA8D2 page cache (#147 decision record).
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_cb_size_64   = 64U,   /**< Smallest evaluated capacity (frames). */
+  k_cb_size_128  = 128U,  /**< 128-frame sweep point.                */
+  k_cb_size_256  = 256U,  /**< Mid-budget representative sweep point. */
+  k_cb_size_512  = 512U,  /**< 512-frame sweep point.                */
+  k_cb_size_1024 = 1024U, /**< 1 K-frame sweep point.                */
+  k_cb_size_2048 = 2048U, /**< Largest evaluated capacity (frames).  */
+} cb_bench_size_t;
+
+/** @brief Representative mid-budget capacity used in the summary table. */
+typedef enum : uint32_t {
+  k_cb_mid_cap = 256U, /**< Mid-point capacity (frames) for the summary view. */
+} cb_mid_cap_t;
+
+/** @brief Full scale used when computing a hit-rate percentage (integer form). */
+typedef enum : uint32_t {
+  k_cb_pct_scale = 100U, /**< Divisor to convert a ratio to a percentage. */
+} cb_pct_scale_t;
+
+/** @brief Floating-point 100.0 scale factor for hit-rate percentage output. */
+static const double k_cb_pct_scale_f = 100.0; /**< double 100.0 for pct maths. */
+
 /** @brief Swept cache capacities (frames) -- the RAM-budget axis. */
-static const uint32_t k_cb_sizes[] = {32U, 64U, 128U, 256U, 512U, 1024U, 2048U};
+static const uint32_t k_cb_sizes[] = {
+  32U,
+  (uint32_t)k_cb_size_64,
+  (uint32_t)k_cb_size_128,
+  (uint32_t)k_cb_size_256,
+  (uint32_t)k_cb_size_512,
+  (uint32_t)k_cb_size_1024,
+  (uint32_t)k_cb_size_2048,
+};
 
 /** @brief Print the per-trace hit-rate matrix (policies x cache sizes). */
 static void cb_report_trace(const cb_trace_t* tr)
@@ -176,7 +240,8 @@ static void cb_report_trace(const cb_trace_t* tr)
     for (uint32_t s = 0U; s < nsz; ++s) {
       cb_result_t r = {};
       (void)cb_replay(g_cb_policies[p], tr->keys, tr->n, k_cb_sizes[s], &r);
-      const double hit = (r.accesses == 0U) ? 0.0 : (100.0 * (double)r.hits / (double)r.accesses);
+      const double hit =
+        (r.accesses == 0U) ? 0.0 : (k_cb_pct_scale_f * (double)r.hits / (double)r.accesses);
       (void)printf(" %5.1f |", hit);
     }
     (void)printf("\n");
@@ -186,7 +251,7 @@ static void cb_report_trace(const cb_trace_t* tr)
 /** @brief Print the cross-workload summary (WCET + metadata + mean hit rate). */
 static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
 {
-  const uint32_t mid_cap = 256U; /* a representative mid-budget */
+  const uint32_t mid_cap = (uint32_t)k_cb_mid_cap;
   (void)printf("\n## Summary at %u frames (mean over all workloads)\n\n", mid_cap);
   (void)printf("| policy | mean hit %% | worst scan/evict | meta bytes/frame |\n");
   (void)printf("|--------|-----------:|-----------------:|-----------------:|\n");
@@ -196,7 +261,8 @@ static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
     for (uint32_t t = 0U; t < ntr; ++t) {
       cb_result_t r = {};
       (void)cb_replay(g_cb_policies[p], traces[t].keys, traces[t].n, mid_cap, &r);
-      sum_hit += (r.accesses == 0U) ? 0.0 : (100.0 * (double)r.hits / (double)r.accesses);
+      sum_hit +=
+        (r.accesses == 0U) ? 0.0 : (k_cb_pct_scale_f * (double)r.hits / (double)r.accesses);
       if (r.worst_scan > worst) {
         worst = r.worst_scan;
       }

@@ -60,9 +60,7 @@ def iter_target_files() -> list[Path]:
         if not root.is_dir():
             continue
         for dirpath, _dirnames, filenames in os.walk(root):
-            for name in filenames:
-                if name in BOOT_BASENAMES:
-                    targets.append(Path(dirpath) / name)
+            targets.extend(Path(dirpath) / name for name in filenames if name in BOOT_BASENAMES)
     return targets
 
 

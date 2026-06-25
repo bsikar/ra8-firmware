@@ -138,6 +138,7 @@ internal_try_flash() {
     return 1
   }
 
+  # shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN/remote_hex is intentional
   ssh "$PI_HOST" bash <<REMOTE >"$log" 2>&1 || true
 set -uo pipefail
 TMP=\$(mktemp)
@@ -230,6 +231,7 @@ fi
 tag "waiting for '$EXPECT' on Pi:$UART (${TIMEOUT_S}s)..."
 
 RESULT=$(
+  # shellcheck disable=SC2087  # client-side substitution of UART/BAUD/TIMEOUT_S/EXPECT is intentional
   ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 stty -F ${UART} ${BAUD} raw -echo cs8 -cstopb -parenb

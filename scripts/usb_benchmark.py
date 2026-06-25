@@ -16,9 +16,11 @@ import argparse
 import fcntl
 import os
 import random
+import subprocess
 import sys
 import termios
 import time
+from pathlib import Path
 
 
 def open_raw(device):
@@ -60,7 +62,7 @@ def drain(fd, flags, quiet_for=0.30):
                     last_data = time.monotonic()
                 else:
                     time.sleep(0.01)
-            except BlockingIOError:
+            except BlockingIOError:  # noqa: PERF203  # non-blocking drain inside timed loop
                 time.sleep(0.01)
     finally:
         fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
@@ -81,7 +83,7 @@ def echo_one(fd, flags, msg, settle=0.25, timeout=1.5):
                     total += d
                 else:
                     time.sleep(0.05)
-            except BlockingIOError:
+            except BlockingIOError:  # noqa: PERF203  # non-blocking read-back inside timed loop
                 time.sleep(0.05)
     finally:
         fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
@@ -91,31 +93,36 @@ def echo_one(fd, flags, msg, settle=0.25, timeout=1.5):
 def test_lengths(fd, flags, max_len):
     print(f"=== Test: all lengths 1..{max_len} (exhaustive correctness) ===")
     passes = fails = 0
-    for L in range(1, max_len + 1):
-        msg = bytes([(i % 256) for i in range(L)])
+    for length in range(1, max_len + 1):
+        msg = bytes([(i % 256) for i in range(length)])
         recv = echo_one(fd, flags, msg)
         if recv == msg:
             passes += 1
         else:
             fails += 1
-            print(f"  FAIL L={L:3d}: sent {msg.hex()[:40]}... recv {recv.hex()[:40]}...")
+            print(f"  FAIL L={length:3d}: sent {msg.hex()[:40]}... recv {recv.hex()[:40]}...")
     print(f"  -> {passes}/{passes + fails} pass")
     return fails == 0
+
+
+RANDOM_SEED_CORRECTNESS = 0xCAFE  # fixed seed for reproducible test sequence
+RANDOM_SEED_THROUGHPUT = 0xC0FFEE  # fixed seed for recognisable payload pattern
+RANDOM_SEED_CHUNKED = 0xBEEF1234  # fixed seed for chunked throughput payload
 
 
 def test_random(fd, flags, n_iters):
     print(f"=== Test: {n_iters} random payloads of length 1..255 ===")
     passes = fails = 0
-    rng = random.Random(0xCAFE)
+    rng = random.Random(RANDOM_SEED_CORRECTNESS)  # noqa: S311  # non-crypto test data
     for i in range(n_iters):
-        L = rng.randint(1, 255)
-        msg = bytes(rng.randint(0, 255) for _ in range(L))
+        length = rng.randint(1, 255)
+        msg = bytes(rng.randint(0, 255) for _ in range(length))
         recv = echo_one(fd, flags, msg, settle=0.3)
         if recv == msg:
             passes += 1
         else:
             fails += 1
-            print(f"  FAIL #{i} L={L}: sent {msg.hex()[:40]}... recv {recv.hex()[:40]}...")
+            print(f"  FAIL #{i} L={length}: sent {msg.hex()[:40]}... recv {recv.hex()[:40]}...")
     print(f"  -> {passes}/{passes + fails} pass")
     return fails == 0
 
@@ -126,12 +133,13 @@ def test_throughput(fd, flags, total_bytes, chunk_size, label):
     # Use a recognisable pseudorandom payload so any data-shuffle is visible
     # in the first mismatching byte rather than blending into a counter
     # pattern that wraps at 256.
-    rng = random.Random(0xC0FFEE)
+    rng = random.Random(RANDOM_SEED_THROUGHPUT)  # noqa: S311  # non-crypto test data
     payload = bytes(rng.randint(0, 255) for _ in range(total_bytes))
     sent_off = 0
     recv = bytearray()
     start = time.monotonic()
     fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+    throughput_timeout_s = 30.0  # generous wall-time cap for large transfers
     try:
         while sent_off < total_bytes or len(recv) < total_bytes:
             if sent_off < total_bytes:
@@ -147,7 +155,7 @@ def test_throughput(fd, flags, total_bytes, chunk_size, label):
                     recv += d
             except BlockingIOError:
                 pass
-            if time.monotonic() - start > 30.0:
+            if time.monotonic() - start > throughput_timeout_s:
                 print("  TIMEOUT")
                 break
     finally:
@@ -188,7 +196,7 @@ def test_throughput_chunked(fd, flags, total_bytes, chunk_bytes, label):
     payload larger than the bulk-IN max-packet size."""
     print(f"=== Test: chunked throughput {label} ({total_bytes}B in {chunk_bytes}B chunks) ===")
     drain(fd, flags)
-    rng = random.Random(0xBEEF1234)
+    rng = random.Random(RANDOM_SEED_CHUNKED)  # noqa: S311  # non-crypto test data
     payload = bytes(rng.randint(0, 255) for _ in range(total_bytes))
     fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
     start = time.monotonic()
@@ -209,16 +217,17 @@ def test_throughput_chunked(fd, flags, total_bytes, chunk_bytes, label):
                         recv += d
                     else:
                         time.sleep(0.001)
-                except BlockingIOError:
+                except BlockingIOError:  # noqa: PERF203  # non-blocking read inside timed loop
                     time.sleep(0.001)
         finally:
             fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
+        chunk_report_limit = 3  # limit repeated mismatch output
         if recv != sent:
             chunk_failures += 1
-            if chunk_failures <= 3:
-                print(
-                    f"  chunk@{offset} mismatch ({n}B): sent {sent.hex()[:40]}... recv {recv.hex()[:40]}..."
-                )
+            if chunk_failures <= chunk_report_limit:
+                sent_hex = sent.hex()[:40]
+                recv_hex = recv.hex()[:40]
+                print(f"  chunk@{offset} mismatch ({n}B): sent {sent_hex}... recv {recv_hex}...")
         offset += n
     elapsed = time.monotonic() - start
     bps = total_bytes / elapsed if elapsed > 0 else 0
@@ -231,18 +240,19 @@ def test_throughput_chunked(fd, flags, total_bytes, chunk_bytes, label):
 
 def find_cdc_device():
     """Return /dev/ttyACMx that maps to a 1209:xxxx (pid.codes) device."""
-    import subprocess
-
-    for entry in sorted(os.listdir("/dev")):
-        if not entry.startswith("ttyACM"):
+    dev_dir = Path("/dev")
+    for entry in sorted(dev_dir.iterdir()):
+        if not entry.name.startswith("ttyACM"):
             continue
-        path = os.path.join("/dev", entry)
         try:
-            info = subprocess.check_output(["udevadm", "info", path], text=True)
+            info = subprocess.check_output(  # noqa: S603  # trusted: fixed udevadm argv
+                ["udevadm", "info", str(entry)],  # noqa: S607  # trusted: fixed udevadm argv
+                text=True,
+            )
         except subprocess.CalledProcessError:
             continue
         if "ID_VENDOR_ID=1209" in info:
-            return path
+            return str(entry)
     return None
 
 

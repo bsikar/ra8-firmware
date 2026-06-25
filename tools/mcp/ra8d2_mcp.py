@@ -45,6 +45,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from shutil import which as _shutil_which
 from typing import Any, Callable
 
 # Repo root = two parents up from this file (tools/mcp/<this>).
@@ -95,7 +96,7 @@ def run_command(argv: list[str], timeout: int) -> str:
     """
     pretty = " ".join(argv)
     try:
-        proc = subprocess.run(
+        proc = subprocess.run(  # noqa: S603  # trusted: fixed make/tool argv from internal registry
             argv,
             cwd=str(REPO_ROOT),
             stdout=subprocess.PIPE,
@@ -284,11 +285,11 @@ def tool_search_code(args: dict[str, Any]) -> str:
     result = run_command(argv, timeout=30)
     lines = result.splitlines()
     if len(lines) > max_results + 3:
-        lines = [*lines[:max_results + 3], f"[... capped at {max_results} hits ...]"]
+        lines = [*lines[: max_results + 3], f"[... capped at {max_results} hits ...]"]
     return "\n".join(lines)
 
 
-def tool_repo_overview(args: dict[str, Any]) -> str:
+def tool_repo_overview(_args: dict[str, Any]) -> str:
     """Summarise the target hardware, key commands, and repo layout."""
     apps = discover_apps()
     return (
@@ -332,7 +333,7 @@ def tool_build_app(args: dict[str, Any]) -> str:
     return run_command(["make", app["name"]], timeout=900)
 
 
-def tool_run_tests(args: dict[str, Any]) -> str:
+def tool_run_tests(_args: dict[str, Any]) -> str:
     """Host-compile and run the unit-test suite via ``make test``."""
     return run_command(["make", "test"], timeout=900)
 
@@ -387,7 +388,7 @@ def tool_sim_app(args: dict[str, Any]) -> str:
 def _capture(argv: list[str], timeout: int = 20) -> str:
     """Return the stripped stdout of ``argv`` (or a short error marker)."""
     try:
-        proc = subprocess.run(
+        proc = subprocess.run(  # noqa: S603  # trusted: fixed git/gh argv from internal callers
             argv,
             cwd=str(REPO_ROOT),
             stdout=subprocess.PIPE,
@@ -830,12 +831,13 @@ def handle_tools_call(params: dict[str, Any]) -> dict[str, Any]:
     arguments = params.get("arguments") or {}
     try:
         text = tool["handler"](arguments)
-        return {"content": [{"type": "text", "text": text}], "isError": False}
     except ValueError as exc:
         return {"content": [{"type": "text", "text": f"invalid request: {exc}"}], "isError": True}
     except Exception as exc:
         log(f"tool '{name}' raised: {exc!r}")
         return {"content": [{"type": "text", "text": f"tool error: {exc}"}], "isError": True}
+    else:
+        return {"content": [{"type": "text", "text": text}], "isError": False}
 
 
 def handle_resources_list() -> dict[str, Any]:
@@ -861,7 +863,7 @@ def handle_resources_read(params: dict[str, Any]) -> dict[str, Any]:
     return {"contents": [{"uri": uri, "mimeType": resource["mimeType"], "text": text}]}
 
 
-def dispatch(request: dict[str, Any]) -> dict[str, Any] | None:
+def dispatch(request: dict[str, Any]) -> dict[str, Any] | None:  # noqa: PLR0911  # JSON-RPC method router, splitting hurts readability
     """Route one JSON-RPC request. Returns a response, or None for notifications."""
     method = request.get("method")
     request_id = request.get("id")
@@ -1075,9 +1077,7 @@ def selftest() -> int:
 
 def which(name: str) -> bool:
     """Return True if ``name`` resolves on PATH."""
-    from shutil import which as _which
-
-    return _which(name) is not None
+    return _shutil_which(name) is not None
 
 
 def main(argv: list[str]) -> int:

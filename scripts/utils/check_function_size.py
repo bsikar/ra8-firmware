@@ -42,6 +42,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # value in ``.clang-tidy`` (readability-function-size.LineThreshold).
 THRESHOLD_LINES = 60
 
+# Maximum signature length printed in the diagnostic table before truncation.
+SIG_DISPLAY_MAX = 70
+SIG_DISPLAY_TRUNCATED = SIG_DISPLAY_MAX - 3  # reserve three chars for "..."
+
 # Directories to scan when called with no argument.
 SCAN_ROOTS = ("libs", "src", "port", "examples")
 
@@ -205,7 +209,11 @@ def main(argv: list[str]) -> int:
     for length, path, line_no, signature in findings:
         # Trim the signature so the table stays readable on an 80-col
         # terminal -- the file:line anchor is enough to jump to it.
-        sig = signature if len(signature) <= 70 else signature[:67] + "..."
+        sig = (
+            signature
+            if len(signature) <= SIG_DISPLAY_MAX
+            else signature[:SIG_DISPLAY_TRUNCATED] + "..."
+        )
         print(f"  {length:5d}  {path}:{line_no}  {sig}", file=sys.stderr)
     print(
         "\nEach function must fit in one display page (<=60 lines).  Extract "

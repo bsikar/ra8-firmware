@@ -36,9 +36,24 @@ typedef enum : uint8_t {
   k_slru_protected = 1U, /**< Frame is in the protected segment.    */
 } slru_seg_t;
 
-/** @brief Protected-segment share of the cache, in percent. */
+/**
+ * @enum slru_dim_t
+ * @brief Protected-segment share of the cache, in percent, plus associated
+ *        scaling and metadata constants.
+ * @details
+ * - @ref k_slru_protected_pct is the fraction of the cache reserved for the
+ *   protected (re-referenced) segment, expressed as an integer percentage.
+ * - @ref k_slru_pct_full_scale is the divisor that converts a ratio expressed
+ *   in the same units as @ref k_slru_protected_pct into a frame count.
+ * - @ref k_slru_meta_bytes is the per-frame metadata consumed by SLRU: one
+ *   uint8_t segment tag (meta[0]) plus eight bytes of linked-list indices
+ *   (two int32_t values: prev and next, threaded through the shared arrays).
+ * @since 0.1.0
+ */
 typedef enum : uint32_t {
-  k_slru_protected_pct = 75U,
+  k_slru_protected_pct  = 75U,  /**< Protected-segment target, percent of capacity.  */
+  k_slru_pct_full_scale = 100U, /**< Divisor for percent-to-frame-count conversion.  */
+  k_slru_meta_bytes     = 9U,   /**< Per-frame metadata: 1 B tag + 8 B list indices. */
 } slru_dim_t;
 
 /** @brief Two LRU segments threaded through shared prev/next frame arrays. */
@@ -94,7 +109,7 @@ static int slru_init(cb_cache_t* c)
   l->pb_tail     = -1;
   l->pt_head     = -1;
   l->pt_tail     = -1;
-  l->pt_cap      = (c->capacity * (uint32_t)k_slru_protected_pct) / 100U;
+  l->pt_cap      = (c->capacity * (uint32_t)k_slru_protected_pct) / (uint32_t)k_slru_pct_full_scale;
   c->policy_data = l;
   return ((l->prev == nullptr) || (l->next == nullptr)) ? 1 : 0;
 }
@@ -156,7 +171,7 @@ static uint32_t slru_victim(cb_cache_t* c, uint32_t* scanned)
 
 const cache_policy_t cb_policy_slru = {
   .name        = "SLRU",
-  .meta_bytes  = 9U, /* 2 list ptrs + segment tag */
+  .meta_bytes  = (size_t)k_slru_meta_bytes,
   .init        = slru_init,
   .deinit      = slru_deinit,
   .on_access   = slru_access,

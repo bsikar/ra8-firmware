@@ -27,8 +27,7 @@ EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp" "*.cc" "*.cxx" "*.hh" "*.hxx" "*.m")
 # compatibility on developer machines.
 CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
 # Scan every top-level dir except infrastructure / vendor / build trees.
-# The list of excluded dirs matches what the pre-commit linters skip.
-EXCLUDE_DIRS=("build" "docs" "cmake" "scripts" "fsp" "STAR" ".git" "node_modules" ".github" ".devcontainer" ".claude")
+# build/docs/cmake/scripts/fsp/.git/etc. are excluded via -not -path in find_source_files.
 DIRECTORIES=()
 
 # Print usage information

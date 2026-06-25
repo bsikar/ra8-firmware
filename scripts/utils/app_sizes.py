@@ -105,24 +105,28 @@ def collect_elfs() -> list[Path]:
     return out
 
 
+_MIN_SYSV_PARTS = 2  # arm-none-eabi-size sysv output has at least "name size" columns
+_BYTES_PER_KIB = 1024  # binary kilobyte
+
+
 def run_size(size_tool: str, elf: Path) -> AppSizes:
     """Run `arm-none-eabi-size --format=sysv` and bucket the
     section sizes into text / data / bss totals."""
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603  # trusted: size_tool comes from shutil.which
         [size_tool, "--format=sysv", str(elf)],
         check=True,
         capture_output=True,
         text=True,
     )
     sizes = AppSizes(name=elf.parent.parent.name, elf=elf)
-    for line in result.stdout.splitlines():
-        line = line.strip()
+    for raw_line in result.stdout.splitlines():
+        line = raw_line.strip()
         if not line or line.startswith(("section", elf.name)):
             continue
         if line.startswith("Total"):
             continue
         parts = line.split()
-        if len(parts) < 2:
+        if len(parts) < _MIN_SYSV_PARTS:
             continue
         section = parts[0]
         try:
@@ -144,9 +148,9 @@ def run_size(size_tool: str, elf: Path) -> AppSizes:
 
 def fmt_bytes(n: int) -> str:
     """Return a humanised byte count: `1234` -> `1234 (1.2 KiB)`."""
-    if n < 1024:
+    if n < _BYTES_PER_KIB:
         return f"{n}"
-    return f"{n} ({n / 1024.0:.1f} KiB)"
+    return f"{n} ({n / _BYTES_PER_KIB:.1f} KiB)"
 
 
 def render_summary(rows: list[AppSizes]) -> str:
@@ -158,11 +162,11 @@ def render_summary(rows: list[AppSizes]) -> str:
         "| App | text | data | bss | total |",
         "|-----|-----:|-----:|----:|------:|",
     ]
-    for r in rows:
-        lines.append(
-            f"| `{r.name}` | {fmt_bytes(r.text)} | {fmt_bytes(r.data)} "
-            f"| {fmt_bytes(r.bss)} | {fmt_bytes(r.total)} |"
-        )
+    lines.extend(
+        f"| `{r.name}` | {fmt_bytes(r.text)} | {fmt_bytes(r.data)} "
+        f"| {fmt_bytes(r.bss)} | {fmt_bytes(r.total)} |"
+        for r in rows
+    )
     if rows:
         n = len(rows)
         smallest = min(rows, key=lambda r: r.total)
@@ -250,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     for elf in elfs:
         try:
             rows.append(run_size(size_tool, elf))
-        except subprocess.CalledProcessError as exc:
+        except subprocess.CalledProcessError as exc:  # noqa: PERF203  # one ELF failure must not abort the rest
             print(f"WARN: {SIZE_TOOL} failed for {elf}: {exc}", file=sys.stderr)
 
     rendered = render_full(rows)
