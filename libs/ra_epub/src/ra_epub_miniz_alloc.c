@@ -135,7 +135,37 @@ typedef enum : size_t {
   k_priv_blk_used = 0U, /**< ``is_free`` value for a used block.  */
 } priv_alloc_const_t;
 
-/** @brief Round @p n up to the payload alignment. */
+/**
+ * @brief Round @p n up to the payload alignment boundary.
+ *
+ * @details
+ * Computes the smallest multiple of ``k_priv_align`` that is greater than or
+ * equal to @p n using the standard bitmask idiom:
+ * ``(n + mask) & ~mask`` where ``mask = k_priv_align - 1``.  Because
+ * ``k_priv_align`` equals ``sizeof(priv_pool_cell_t)`` (a power of two), the
+ * bitmask is exact and no division is required.  The result ensures that every
+ * payload size stored in a block header is a cell-size multiple, which
+ * guarantees that ``priv_cell_at`` can index ``s_pool`` without truncation.
+ *
+ * @param[in] n Raw byte count to round up; may be zero.
+ *
+ * @return Aligned byte count; always a multiple of ``k_priv_align`` and
+ *         always greater than or equal to @p n.
+ * @retval 0             When @p n is 0 (zero rounds to zero).
+ * @retval k_priv_align  Minimum non-zero aligned size when @p n is in
+ *                       ``(0, k_priv_align]``.
+ *
+ * @pre  ``k_priv_align`` is a power of two and greater than zero.
+ * @pre  @p n plus ``k_priv_align - 1`` does not overflow ``size_t``
+ *       (caller is responsible; pool sizes are bounded by the pool constant).
+ *
+ * @post Return value is a multiple of ``k_priv_align``.
+ * @post Return value is greater than or equal to @p n.
+ *
+ * @note Not thread-safe; pure computation with no shared state.
+ *
+ * @since 0.1.0
+ */
 static size_t priv_align_up(size_t n)
 {
   const size_t mask = (size_t)k_priv_align - 1U;
@@ -171,7 +201,35 @@ static priv_blk_t* priv_next(priv_blk_t* b)
   return priv_cell_at(off);
 }
 
-/** @brief Lay the whole pool out as a single free block (idempotent). */
+/**
+ * @brief Lay the whole pool out as a single free block (idempotent).
+ *
+ * @details
+ * On the first call, writes a single ``priv_blk_t`` header at the start of
+ * ``s_pool`` whose ``size`` spans the entire arena minus the header itself and
+ * marks it free, then sets ``s_init`` to prevent re-initialisation.
+ * Subsequent calls return immediately without touching the pool, making the
+ * function safe to call at the top of every public allocator entry-point
+ * without performance cost after startup.  The pool header size and free-block
+ * sentinel values are taken from ``priv_alloc_const_t`` so no magic numbers
+ * appear in this function.
+ *
+ * @pre  ``s_pool`` is a statically allocated array of ``priv_pool_cell_t``
+ *       with at least ``k_priv_hdr_bytes + k_priv_align`` bytes of capacity.
+ * @pre  No concurrent call to any allocator function is in progress (single-
+ *       threaded initialisation context assumed).
+ *
+ * @post When ``s_init`` was false on entry, ``s_pool`` contains exactly one
+ *       free block spanning ``k_ra_epub_miniz_pool_bytes - k_priv_hdr_bytes``
+ *       payload bytes.
+ * @post ``s_init`` is true after the call.
+ *
+ * @return Nothing.
+ *
+ * @note Not thread-safe; must be called before any concurrent allocator use.
+ *
+ * @since 0.1.0
+ */
 static void priv_init(void)
 {
   if (s_init) {
@@ -183,14 +241,70 @@ static void priv_init(void)
   s_init           = true;
 }
 
-/** @brief True if @p p points inside this allocator's pool. */
+/**
+ * @brief True if @p p points inside this allocator's pool.
+ *
+ * @details
+ * Compares the byte address of @p p against the half-open interval
+ * ``[priv_base(), priv_end())``.  Both bounds are derived from ``s_pool``
+ * at call time, so the check remains correct after any future resize of
+ * the pool constant.  The function is used by ``ra_epub_miniz_free`` and
+ * ``ra_epub_miniz_realloc`` to silently ignore pointers that did not
+ * originate from this allocator (e.g. a null or a foreign heap pointer),
+ * which is the behaviour expected by the miniz callback contract.
+ *
+ * @param[in] p Pointer to test; may be null or point anywhere in the
+ *              address space.
+ *
+ * @return Boolean membership result.
+ * @retval true   @p p lies in ``[priv_base(), priv_end())``.
+ * @retval false  @p p is null or lies outside the pool range.
+ *
+ * @pre  ``s_pool`` has been declared (static storage; always true).
+ * @pre  ``priv_base()`` and ``priv_end()`` return consistent pointers into
+ *       the same array (guaranteed by the module-private design).
+ *
+ * @post The pool state is not modified.
+ * @post The return value is deterministic for any given @p p and pool layout.
+ *
+ * @note Not thread-safe; pure read of static storage with no locking.
+ *
+ * @since 0.1.0
+ */
 static bool priv_in_pool(const void* p)
 {
   const uint8_t* q = (const uint8_t*)p;
   return (q >= priv_base()) && (q < priv_end());
 }
 
-/** @brief Merge every run of adjacent free blocks into one. */
+/**
+ * @brief Merge every run of adjacent free blocks into one.
+ *
+ * @details
+ * Walks the implicit free list from the start of the pool to its end.
+ * Whenever a free block is found, its successor is examined in an inner loop:
+ * if the successor is also free its payload and header bytes are absorbed into
+ * the current block (expanding ``b->size`` by ``k_priv_hdr_bytes + n->size``)
+ * and the check repeats with the new successor.  Once the successor is either
+ * in-use or past the pool end, the outer walk advances to the next block via
+ * ``priv_next``.  Both loops are bounded by ``k_priv_walk_max``, satisfying
+ * NASA Power of 10 Rule 2.  After coalescing, no two adjacent free blocks
+ * remain in the pool, so subsequent first-fit searches see the maximum
+ * available contiguous free space.
+ *
+ * @pre  ``priv_init`` has been called at least once (``s_init`` is true).
+ * @pre  All block headers reachable from the pool base are well-formed
+ *       (``size`` is a cell multiple; ``is_free`` is 0 or 1).
+ *
+ * @post No two adjacent blocks in the pool are both free.
+ * @post The total number of payload bytes owned by free blocks is unchanged.
+ *
+ * @return Nothing.
+ *
+ * @note Not thread-safe; must be called with exclusive access to the pool.
+ *
+ * @since 0.1.0
+ */
 static void priv_coalesce(void)
 {
   priv_blk_t* b = priv_cell_at(0U);
@@ -210,7 +324,40 @@ static void priv_coalesce(void)
   }
 }
 
-/** @brief Split @p b so it holds exactly @p need, trailing a free remainder. */
+/**
+ * @brief Split @p b so it holds exactly @p need bytes, leaving a free
+ *        remainder block after it.
+ *
+ * @details
+ * Examines whether the block is large enough to be split: a remainder block
+ * requires at least ``k_priv_hdr_bytes + k_priv_align`` bytes beyond @p need.
+ * When the condition is met, a new ``priv_blk_t`` header is placed immediately
+ * after the first @p need aligned payload bytes of @p b.  The remainder
+ * header's ``size`` is set to absorb all leftover bytes (``b->size - need -
+ * k_priv_hdr_bytes``) and is marked free.  Block @p b is then trimmed to
+ * exactly @p need bytes.  If the block is too small to split, it is left
+ * unchanged and the caller receives a slightly oversized allocation, which is
+ * correct because the block's original size was already at least @p need.
+ *
+ * @param[in,out] b    Block to split; must be a valid free block inside the
+ *                     pool with ``b->size >= need``.
+ * @param[in]     need Aligned payload size the caller requires; must be a
+ *                     multiple of ``k_priv_align`` and greater than zero.
+ *
+ * @pre  @p b is non-null and its header lies within ``s_pool``.
+ * @pre  @p need is a positive multiple of ``k_priv_align`` and does not
+ *       exceed ``b->size``.
+ *
+ * @post When split occurred: @p b has ``size == need`` and the remainder block
+ *       is marked free with size equal to the leftover payload bytes.
+ * @post When no split occurred: @p b is unchanged.
+ *
+ * @return Nothing.
+ *
+ * @note Not thread-safe; must be called with exclusive access to the pool.
+ *
+ * @since 0.1.0
+ */
 static void priv_split(priv_blk_t* b, size_t need)
 {
   /* Only split when the remainder can hold a header plus a minimum payload. */

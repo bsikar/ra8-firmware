@@ -112,39 +112,134 @@ ra_err_t ra_dfu_device_worker_step(void);
 
 /**
  * @brief Total image bytes accepted so far (diagnostic).
- * @return Highest `(block + 1) * wTransferSize` seen. @pre None. @post None.
- * @note JLink-readable. @since 0.1.0
+ *
+ * @details Returns the value of the internal `img_len` field, which tracks
+ * the highest byte offset written: `(block_number * wTransferSize) + padded
+ * block length`. Updated by ::ra_dfu_device_worker_step on each successful
+ * DNLOAD block. Intended for J-Link live-watch or host diagnostics; not
+ * needed for correct DFU operation.
+ *
+ * @return Highest end-offset reached across all programmed DNLOAD blocks, in
+ *         bytes. Zero if no block has been successfully programmed yet.
+ * @retval 0 No blocks have been successfully programmed yet.
+ *
+ * @pre ::ra_dfu_device_start has been called and returned ::k_ra_ok.
+ * @pre The caller reads this value only for diagnostic purposes; no lock is
+ *      required if single-reader, single-writer (worker thread updates it).
+ * @post The returned value is a snapshot; it may increase on the next worker
+ *       step if a new block is being programmed concurrently.
+ * @post The internal counter is not reset by this call.
+ *
+ * @note Safe to read from any context; the underlying field is volatile.
+ * @since 0.1.0
  */
 uint32_t ra_dfu_device_image_len(void);
 
 /**
  * @brief Count of DNLOAD blocks programmed into MRAM (diagnostic).
- * @return Programmed-block counter. @pre None. @post None.
- * @note JLink-readable. @since 0.1.0
+ *
+ * @details Returns the value of the internal `writes` field, which is
+ * incremented once per successfully programmed DNLOAD block inside
+ * ::internal_dfu_write. A block is only counted if the MRAM program call
+ * returned ::k_ra_ok; blocks that fault increment `prog_err` instead.
+ * Intended for J-Link live-watch or host diagnostics.
+ *
+ * @return Number of DNLOAD blocks successfully written to MRAM since
+ *         ::ra_dfu_device_start was called.
+ * @retval 0 No blocks have been successfully programmed yet.
+ *
+ * @pre ::ra_dfu_device_start has been called and returned ::k_ra_ok.
+ * @pre The caller reads this value only for diagnostic purposes; the
+ *      underlying field is updated by ::internal_dfu_write (USBX context).
+ * @post The returned value is a snapshot; it may increase as further blocks
+ *       are received from the host.
+ * @post The internal counter is not reset or modified by this call.
+ *
+ * @note Safe to read from any context; the underlying field is volatile.
+ * @since 0.1.0
  */
 uint32_t ra_dfu_device_block_writes(void);
 
 /**
  * @brief Whether the host has signalled end-of-download / manifest.
- * @return true once a manifest/end-of-download notification arrived.
- * @pre None. @post None. @note JLink-readable. @since 0.1.0
+ *
+ * @details Returns the internal `manifest` flag, which is set to `true` by
+ * ::internal_dfu_write when a zero-length DNLOAD block (end-of-download) is
+ * received, or by ::internal_dfu_notify on a
+ * UX_SLAVE_CLASS_DFU_NOTIFICATION_END_DOWNLOAD event. Once set it is never
+ * cleared within a session. ::ra_dfu_device_worker_step polls this flag to
+ * decide when to commit the image header.
+ *
+ * @return `true` once a manifest or end-of-download signal has been received
+ *         from the host; `false` while the download is still in progress.
+ * @retval true  End-of-download has been signalled; header commit is pending
+ *               or already done.
+ * @retval false No end-of-download has arrived yet; download still in flight.
+ *
+ * @pre ::ra_dfu_device_start has been called and returned ::k_ra_ok.
+ * @pre At least one DFU_DNLOAD transaction has been processed by the USBX
+ *      stack (otherwise the flag remains false by initialisation).
+ * @post The returned value reflects the `manifest` field at the time of the
+ *       call; it will never revert to `false` once it becomes `true`.
+ * @post The `manifest` field itself is not modified by this call.
+ *
+ * @note Safe to read from any context; the underlying field is volatile.
+ * @since 0.1.0
  */
 bool ra_dfu_device_manifested(void);
 
 /**
  * @brief Latched last program error (diagnostic).
- * @return k_ra_ok when healthy, else the failing program code.
- * @pre None. @post None. @note JLink-readable. @since 0.1.0
+ *
+ * @details Returns the value of `s_dev.prog_err`, which is latched to the
+ * first non-::k_ra_ok result from any ::ra_dfu_program_image or
+ * ::ra_dfu_program_commit call. Once set to a non-OK code it is never
+ * cleared within the session. ::internal_dfu_get_status and
+ * ::internal_dfu_write both read this field to decide which USBX
+ * media-status code to report to the host.
+ *
+ * @return The latched program error code.
+ * @retval k_ra_ok        No program fault has occurred in this session.
+ * @retval k_ra_err_*     The error from the first failing ::ra_dfu_program_*
+ *                        call; subsequent errors do not overwrite this value.
+ *
+ * @pre ::ra_dfu_device_start has been called and returned ::k_ra_ok.
+ * @pre The field is initialised to ::k_ra_ok by static zero-initialisation of
+ *      the file-scope context; no explicit reset call is needed.
+ * @post The returned value is a snapshot of the latch at the time of the call.
+ * @post The latch is not reset or modified by this call.
+ *
+ * @note Safe to read from any context; the underlying field is volatile.
+ * @since 0.1.0
  */
 ra_err_t ra_dfu_device_last_error(void);
 
 /**
  * @brief Whether the image header has been committed (slot now bootable).
- * @details Goes true after ::ra_dfu_device_worker_step writes the header on
+ *
+ * @details Returns the internal `committed` flag, which is set to `true` by
+ * ::ra_dfu_device_worker_step immediately after ::ra_dfu_program_commit
+ * succeeds (or even on failure, to prevent repeated commit attempts).
+ * Goes true after ::ra_dfu_device_worker_step writes the header on
  * end-of-download. A bootloader polls this to know when it is safe to reset
  * into the freshly programmed slot.
- * @return true once the target slot's header is programmed.
- * @pre None. @post None. @note JLink-readable. @since 0.1.0
+ *
+ * @return `true` once the target slot's header has been written; `false`
+ *         while the download is still in progress or the commit has not yet
+ *         run.
+ * @retval true  The slot header has been committed; the slot is now bootable
+ *               (assuming no program error was latched).
+ * @retval false The commit has not yet run; download may still be in flight.
+ *
+ * @pre ::ra_dfu_device_start has been called and returned ::k_ra_ok.
+ * @pre ::ra_dfu_device_manifested returns `true` before this flag becomes
+ *      `true`; commit follows manifest in the worker step.
+ * @post The returned value reflects the `committed` field at the time of the
+ *       call; it will never revert to `false` once it becomes `true`.
+ * @post The `committed` field itself is not modified by this call.
+ *
+ * @note Safe to read from any context; the underlying field is volatile.
+ * @since 0.1.0
  */
 bool ra_dfu_device_committed(void);
 

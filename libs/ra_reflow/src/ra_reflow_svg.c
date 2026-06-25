@@ -191,19 +191,95 @@ struct svg_grads {
  * ===========================================================================
  */
 
-/** @brief True for XML whitespace. */
+/**
+ * @brief Test whether a character is XML whitespace.
+ *
+ * @details Classifies @p c as an XML whitespace character according to the XML
+ * 1.0 specification: space (0x20), horizontal tab (0x09), line feed (0x0A),
+ * carriage return (0x0D), or form feed (0x0C). Used throughout the parser to
+ * skip inter-token gaps and attribute boundaries without invoking libc locale.
+ *
+ * @param[in] c Character to test.
+ *
+ * @return bool Classification result.
+ * @retval true  @p c is one of the five XML whitespace characters.
+ * @retval false @p c is not an XML whitespace character.
+ *
+ * @pre  @p c is any value representable by @c char (no range restriction).
+ * @pre  No state or side-effects are required before calling this function.
+ * @post The return value is one of exactly {true, false}.
+ * @post No external state is modified by this function.
+ *
+ * @note Not thread-safe in isolation; all callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_ws(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f');
 }
 
-/** @brief ASCII-fold to lower case. */
+/**
+ * @brief ASCII-fold a character to lower case.
+ *
+ * @details Converts uppercase ASCII letters ('A'-'Z') to their lowercase
+ * equivalents by adding the ('a' - 'A') offset. All other characters,
+ * including non-ASCII bytes, digits, punctuation, and control characters,
+ * are returned unchanged. Used by case-insensitive string comparisons
+ * throughout the SVG parser (element names, attribute names, colour names).
+ *
+ * @param[in] c Character to fold.
+ *
+ * @return char The lowercase equivalent of @p c, or @p c unchanged.
+ * @retval 'a'..'z' When @p c was an uppercase ASCII letter.
+ * @retval c        When @p c was already lowercase or not an ASCII letter.
+ *
+ * @pre  @p c is any value representable by @c char.
+ * @pre  No module state is required before calling this function.
+ * @post The return value is an ASCII lowercase letter when @p c was an uppercase letter.
+ * @post No external state is modified by this function.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static char priv_lc(char c)
 {
   return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
 
-/** @brief True iff @p s[at..] begins (case-insensitively) with @p lit. */
+/**
+ * @brief Test whether a byte span starts with a literal at a given offset,
+ *        case-insensitively.
+ *
+ * @details Computes the length of @p lit via @c strlen, then verifies that
+ * @p s[@p at .. @p at+n) matches @p lit character-for-character after folding
+ * both sides through @c priv_lc. Returns false immediately when the remaining
+ * span @p s[@p at .. @p len) is shorter than @p lit, avoiding any out-of-bounds
+ * access. Matching is done byte-by-byte with no locale dependence.
+ *
+ * @param[in] s   Byte buffer to search; must not be NULL.
+ * @param[in] len Total number of valid bytes in @p s.
+ * @param[in] at  Byte offset within @p s at which to start the comparison.
+ * @param[in] lit NUL-terminated ASCII literal to match; must not be NULL.
+ *
+ * @return bool Result of the case-insensitive prefix test.
+ * @retval true  @p s[@p at .. @p at+strlen(lit)) matches @p lit case-insensitively.
+ * @retval false @p at + strlen(@p lit) > @p len, or any character differs.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p lit is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s and @p lit are not modified.
+ * @post @p at and @p len are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit)
 {
   const size_t n = strlen(lit);
@@ -218,7 +294,35 @@ static bool priv_starts_ci(const uint8_t* s, size_t len, size_t at, const char* 
   return true;
 }
 
-/** @brief Index of the first case-insensitive occurrence of @p lit, or @p len. */
+/**
+ * @brief Find the first case-insensitive occurrence of a literal in a byte span.
+ *
+ * @details Scans @p s[@p from .. @p len) for the first position where
+ * @c priv_starts_ci returns true for @p lit. If @p lit is empty (zero-length),
+ * returns @p len immediately as a defined sentinel rather than matching at every
+ * position. The inner loop advances the position by one byte per iteration;
+ * the loop bound is @p len - strlen(@p lit) + 1, so the scan is O(len * len(lit)).
+ *
+ * @param[in] s    Byte buffer to search; must not be NULL.
+ * @param[in] len  Total valid bytes in @p s.
+ * @param[in] from Starting byte offset; must be <= @p len.
+ * @param[in] lit  NUL-terminated ASCII literal to find; must not be NULL.
+ *
+ * @return size_t Byte offset of the first match, or @p len if not found.
+ * @retval [from..len) Offset of the first case-insensitive occurrence of @p lit.
+ * @retval len         @p lit was not found, or @p lit is empty.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p from is <= @p len.
+ *
+ * @post @p s and @p lit are not modified.
+ * @post The return value is always in the closed range [@p from, @p len].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static size_t priv_find_ci(const uint8_t* s, size_t len, size_t from, const char* lit)
 {
   const size_t n = strlen(lit);
@@ -236,7 +340,33 @@ static size_t priv_find_ci(const uint8_t* s, size_t len, size_t from, const char
   return len;
 }
 
-/** @brief Hex value of @p c, or k_svg_hex_base if not a hex digit. */
+/**
+ * @brief Convert a single hexadecimal digit character to its numeric value.
+ *
+ * @details Accepts '0'-'9', 'a'-'f', and 'A'-'F'. The alphabetic check is
+ * performed after ASCII-folding via @c priv_lc so both cases are handled
+ * uniformly. Returns the sentinel ::k_svg_hex_base (16) for any character
+ * that is not a valid hexadecimal digit, allowing callers to detect and
+ * propagate parse failures without a separate validity flag.
+ *
+ * @param[in] c Character to convert; expected to be a hex digit.
+ *
+ * @return uint8_t Numeric value of the hex digit, or the sentinel on failure.
+ * @retval 0..9                For '0'-'9'.
+ * @retval 10..15              For 'a'-'f' or 'A'-'F'.
+ * @retval (uint8_t)k_svg_hex_base  @p c is not a hexadecimal digit.
+ *
+ * @pre  @p c is any value representable by @c char.
+ * @pre  Callers must check the return value against ::k_svg_hex_base before use.
+ *
+ * @post The return value is in [0, k_svg_hex_base].
+ * @post @p c is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint8_t priv_hex(char c)
 {
   if ((c >= '0') && (c <= '9')) {
@@ -252,6 +382,32 @@ static uint8_t priv_hex(char c)
 /**
  * @brief Parse the integer part of one SVG number at @p s[*i], skipping leading
  *        separators (whitespace / commas); truncates any fraction.
+ *
+ * @details First advances @p *i past any leading whitespace or comma
+ * separators. Then reads an optional sign ('+'/'-') followed by consecutive
+ * decimal digit characters to form an @c int32_t. If a decimal point is found
+ * immediately after the integer digits, the fractional digits are consumed and
+ * discarded so that the next call begins at the correct position. On return
+ * @p *i points one past the last character consumed.
+ *
+ * @param[in]     s   Byte buffer holding the SVG text; must not be NULL.
+ * @param[in]     len Total valid bytes in @p s.
+ * @param[in,out] i   Current parse cursor; updated to one past the consumed number.
+ *
+ * @return int32_t The signed integer value parsed from the current cursor position.
+ * @retval 0  No digit characters were found after the sign (or no sign either).
+ * @retval n  The value of the decimal integer scanned from @p s[*i].
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p i is not NULL, and @p *i is <= @p len.
+ *
+ * @post @p *i is advanced past any whitespace, sign, integer digits, and fraction.
+ * @post @p *i <= @p len.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static int32_t priv_num(const uint8_t* s, size_t len, size_t* i)
 {
@@ -283,7 +439,36 @@ static int32_t priv_num(const uint8_t* s, size_t len, size_t* i)
  * ===========================================================================
  */
 
-/** @brief True iff attribute @p name begins at @p s[at] on a word boundary. */
+/**
+ * @brief Test whether an attribute keyword begins at @p s[@p at] on a word boundary.
+ *
+ * @details Uses @c priv_starts_ci to confirm the case-insensitive match of @p name
+ * at position @p at, then validates two boundary conditions: the character
+ * immediately before @p at (when @p at > 0) must be XML whitespace so that
+ * a substring of a longer name is not accepted, and the character immediately
+ * after the matched name must be '=' or XML whitespace. These three checks
+ * together ensure that only a correctly delimited attribute keyword matches.
+ *
+ * @param[in] s    Byte buffer containing the tag text; must not be NULL.
+ * @param[in] len  Total valid bytes in @p s.
+ * @param[in] at   Byte offset at which to test for the attribute name.
+ * @param[in] name NUL-terminated ASCII attribute name to match; must not be NULL.
+ *
+ * @return bool Result of the word-boundary attribute name test.
+ * @retval true  @p name matches at @p at with valid surrounding delimiters.
+ * @retval false @p name does not match, or a boundary condition fails.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p name is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s, @p len, @p at, and @p name are not modified.
+ * @post No bytes in @p s are written.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_attr_at(const uint8_t* s, size_t len, size_t at, const char* name)
 {
   const size_t n = strlen(name);
@@ -303,7 +488,34 @@ static bool priv_attr_at(const uint8_t* s, size_t len, size_t at, const char* na
 /**
  * @brief Find attribute @p name in tag span @p s[0..len); return its value slice.
  *
- * @return true with @p *voff / @p *vlen set when found; false otherwise.
+ * @details Scans the tag byte span for the first occurrence of @p name that
+ * passes the word-boundary check via @c priv_attr_at. Once located, the
+ * scanner advances past the '=' separator and any surrounding whitespace to
+ * find the opening quote character ('"' or "'"). The matching closing quote is
+ * then located and the slice [@p *voff, @p *voff + @p *vlen) is set to the
+ * attribute value content between the two quote characters. Returns false if
+ * the name is not found, no '=' follows, or no opening quote is present.
+ *
+ * @param[in]  s     Byte buffer containing the tag text; must not be NULL.
+ * @param[in]  len   Total valid bytes in @p s.
+ * @param[in]  name  NUL-terminated ASCII attribute name to find; must not be NULL.
+ * @param[out] voff  Set to the byte offset of the first value character when found.
+ * @param[out] vlen  Set to the byte length of the value when found.
+ *
+ * @return bool Whether the attribute was found and parsed.
+ * @retval true  Attribute @p name found; @p *voff and @p *vlen are valid.
+ * @retval false Attribute not found, missing '=', or missing opening quote.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p voff and @p vlen are valid non-NULL output pointers.
+ *
+ * @post On true: @p *voff < @p len and @p *voff + @p *vlen <= @p len.
+ * @post On false: @p *voff and @p *vlen are indeterminate and must not be used.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static bool priv_attr(const uint8_t* s, size_t len, const char* name, size_t* voff, size_t* vlen)
 {
@@ -336,7 +548,35 @@ static bool priv_attr(const uint8_t* s, size_t len, const char* name, size_t* vo
   return false;
 }
 
-/** @brief Read attribute @p name as an integer; @p def if absent. */
+/**
+ * @brief Read an SVG attribute as a signed integer, returning a default when absent.
+ *
+ * @details Calls @c priv_attr to locate the attribute value slice, then forwards
+ * that slice to @c priv_num starting at offset zero. If the attribute is absent,
+ * returns @p def without modifying any output. Fractional parts of the attribute
+ * value are truncated by @c priv_num. Useful for reading integer-valued SVG
+ * geometry attributes such as @c x, @c y, @c width, and @c height.
+ *
+ * @param[in] s    Byte buffer containing the SVG tag text; must not be NULL.
+ * @param[in] len  Total valid bytes in @p s.
+ * @param[in] name NUL-terminated ASCII attribute name; must not be NULL.
+ * @param[in] def  Value to return when the attribute is absent.
+ *
+ * @return int32_t The parsed integer value, or @p def when the attribute is absent.
+ * @retval def     Attribute @p name was not found in @p s.
+ * @retval n       The signed integer parsed from the attribute value.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p name is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s and @p name are not modified.
+ * @post The return value equals @p def when @c priv_attr returns false.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_attr_num(const uint8_t* s, size_t len, const char* name, int32_t def)
 {
   size_t off = 0U;
@@ -348,7 +588,34 @@ static int32_t priv_attr_num(const uint8_t* s, size_t len, const char* name, int
   return priv_num(&s[off], vl, &k);
 }
 
-/** @brief Case-insensitive compare of a span against a NUL literal. */
+/**
+ * @brief Case-insensitive equality test between a byte span and a NUL-terminated literal.
+ *
+ * @details Advances a shared index through both @p s and @p lit simultaneously,
+ * comparing each pair of characters after folding through @c priv_lc. The loop
+ * terminates as soon as a mismatch is found or the NUL terminator in @p lit is
+ * reached. Returns true only when the index equals @p len at the same point that
+ * @p lit[k] is '\0', ensuring both length equality and content equality.
+ *
+ * @param[in] s   Byte span to compare; must not be NULL.
+ * @param[in] len Number of valid bytes in @p s.
+ * @param[in] lit NUL-terminated ASCII string to compare against; must not be NULL.
+ *
+ * @return bool Whether @p s and @p lit are equal under case folding.
+ * @retval true  @p s[@p 0..len) matches @p lit case-insensitively and lengths agree.
+ * @retval false Any character differs, or the lengths do not match.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p lit is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s and @p lit are not modified.
+ * @post The return value is deterministic given fixed inputs.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
 {
   size_t k = 0U;
@@ -360,7 +627,35 @@ static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
   return (k == len) && (lit[k] == '\0');
 }
 
-/** @brief Parse hex digits (no `#`) at @p s into 0xRRGGBB, or k_svg_no_paint. */
+/**
+ * @brief Parse a hex colour from raw digit bytes (no leading '#') into 0x00RRGGBB.
+ *
+ * @details Accepts exactly @c k_svg_hex3 (3) or @c k_svg_hex6 (6) digit bytes.
+ * For a 6-digit input the bytes are read as pairs RR GG BB; each nibble is
+ * decoded via @c priv_hex and shifted into the 24-bit result. For a 3-digit
+ * input each nibble @c N is expanded to @c NN (i.e. the nibble value is placed
+ * in both the high and low nibble of the channel byte) to conform to the CSS
+ * shorthand rule. Any non-hex digit encountered causes an early return of
+ * ::k_svg_no_paint. Any length other than 3 or 6 also returns ::k_svg_no_paint.
+ *
+ * @param[in] s   Pointer to the first hex digit byte (no '#'); must not be NULL.
+ * @param[in] len Number of digit bytes available at @p s; must be 3 or 6 for success.
+ *
+ * @return uint32_t Parsed colour in 0x00RRGGBB format, or the sentinel on failure.
+ * @retval 0x000000..0xFFFFFF  Valid 24-bit colour when @p len is 3 or 6 and all digits are hex.
+ * @retval (uint32_t)k_svg_no_paint  @p len is neither 3 nor 6, or a non-hex digit is present.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p len equals @c k_svg_hex3 or @c k_svg_hex6 for a successful parse.
+ *
+ * @post @p s is not modified.
+ * @post The return value has bits [31:24] clear (always 0x00RRGGBB).
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_hex_color(const uint8_t* s, size_t len)
 {
   uint32_t rgb = 0U;
@@ -388,7 +683,34 @@ static uint32_t priv_hex_color(const uint8_t* s, size_t len)
   return (uint32_t)k_svg_no_paint;
 }
 
-/** @brief Map a named SVG colour to RGB, or k_svg_no_paint if unknown / `none`. */
+/**
+ * @brief Map a named SVG colour keyword to its 0x00RRGGBB value.
+ *
+ * @details Linearly searches a compile-time table of the twelve most common
+ * SVG/CSS colour keywords (black, white, red, green, blue, gray, grey, silver,
+ * maroon, navy, yellow, orange). Comparison is performed via @c priv_ci_eq so
+ * the keyword is accepted in any mix of upper and lower case. Returns
+ * ::k_svg_no_paint for the keyword "none" and for any name not present in the
+ * table; callers treat this sentinel as "no paint / transparent".
+ *
+ * @param[in] s   Byte span holding the colour keyword; must not be NULL.
+ * @param[in] len Number of valid bytes in @p s.
+ *
+ * @return uint32_t The 24-bit RGB colour, or the no-paint sentinel.
+ * @retval 0x000000..0xFFFFFF  When @p s matches one of the known colour names.
+ * @retval (uint32_t)k_svg_no_paint  When @p s is "none" or an unknown name.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p s contains only ASCII characters (colour keywords are ASCII-only).
+ *
+ * @post @p s is not modified.
+ * @post The return value has bits [31:24] clear (always 0x00RRGGBB or the sentinel).
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_named_color(const uint8_t* s, size_t len)
 {
   static const struct {
@@ -416,7 +738,32 @@ static uint32_t priv_named_color(const uint8_t* s, size_t len)
   return (uint32_t)k_svg_no_paint;
 }
 
-/** @brief Parse an SVG paint value (`#rgb`/`#rrggbb`/name/`none`) to RGB. */
+/**
+ * @brief Parse an SVG paint value ('#rgb'/'#rrggbb'/name/'none') to 0x00RRGGBB.
+ *
+ * @details Routes the span to either @c priv_hex_color (when the first byte is
+ * '#', strip it first) or @c priv_named_color for keyword colours. An empty
+ * span immediately returns ::k_svg_no_paint. The keyword "none" is handled by
+ * @c priv_named_color returning ::k_svg_no_paint so callers skip the paint.
+ *
+ * @param[in] s   Byte span containing the paint value; must not be NULL.
+ * @param[in] len Number of valid bytes in @p s.
+ *
+ * @return uint32_t The 24-bit RGB colour, or ::k_svg_no_paint on failure.
+ * @retval 0x000000..0xFFFFFF  Successfully parsed solid colour.
+ * @retval (uint32_t)k_svg_no_paint  Empty span, "none", or unrecognised value.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p len is the exact byte length of the attribute value to parse.
+ *
+ * @post @p s is not modified.
+ * @post The return value has bits [31:24] clear.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_paint(const uint8_t* s, size_t len)
 {
   if (len == 0U) {
@@ -428,7 +775,35 @@ static uint32_t priv_paint(const uint8_t* s, size_t len)
   return priv_named_color(s, len);
 }
 
-/** @brief Read attribute @p name as a paint; @p def if absent (k_svg_no_paint = skip). */
+/**
+ * @brief Read an SVG attribute as a paint colour, returning a default when absent.
+ *
+ * @details Calls @c priv_attr to locate the attribute value slice, then
+ * forwards that slice to @c priv_paint. If the attribute is absent, returns
+ * @p def unchanged. Useful for reading 'fill' and 'stroke' attributes where
+ * a sentinel of ::k_svg_no_paint means the shape uses no paint for that role.
+ *
+ * @param[in] s    Byte buffer containing the SVG tag text; must not be NULL.
+ * @param[in] len  Total valid bytes in @p s.
+ * @param[in] name NUL-terminated ASCII attribute name; must not be NULL.
+ * @param[in] def  Default paint value returned when the attribute is absent.
+ *
+ * @return uint32_t The parsed paint colour, or @p def when the attribute is absent.
+ * @retval def                       Attribute @p name was not found in @p s.
+ * @retval 0x000000..0xFFFFFF        Successfully parsed solid paint colour.
+ * @retval (uint32_t)k_svg_no_paint  Attribute present but parses to no-paint.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p name is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s and @p name are not modified.
+ * @post The return value equals @p def when the attribute is absent.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_attr_paint(const uint8_t* s, size_t len, const char* name, uint32_t def)
 {
   size_t off = 0U;
@@ -439,7 +814,34 @@ static uint32_t priv_attr_paint(const uint8_t* s, size_t len, const char* name, 
   return priv_paint(&s[off], vl);
 }
 
-/** @brief Match a `url(#id)` paint @p val[0..vlen) to a gradient index, or -1. */
+/**
+ * @brief Match a 'url(#id)' paint value to a gradient index in the document set.
+ *
+ * @details Verifies that @p val begins with "url(#" via @c priv_starts_ci,
+ * then extracts the id substring between '#' and ')'. Performs a linear search
+ * over @p grads->g[0..n) comparing each gradient's @c id field with @c memcmp.
+ * Returns -1 immediately when @p grads is NULL or the value is not a url()
+ * reference, allowing solid-colour callers to short-circuit safely.
+ *
+ * @param[in] grads Gradient set to search; may be NULL (returns -1).
+ * @param[in] val   Byte span holding the raw attribute value; must not be NULL.
+ * @param[in] vlen  Number of valid bytes in @p val.
+ *
+ * @return int32_t Index into @p grads->g, or -1 on no match.
+ * @retval 0..grads->n-1  The gradient whose id matches the url(#id) reference.
+ * @retval -1             @p grads is NULL, @p val is not "url(#...)", or no id match.
+ *
+ * @pre  @p val is a valid pointer to at least @p vlen bytes.
+ * @pre  When @p grads is non-NULL, @p grads->n <= @c k_svg_grad_max.
+ *
+ * @post @p val and @p grads are not modified.
+ * @post The return value is always in [-1, grads->n-1].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen)
 {
   if ((grads == nullptr) || !priv_starts_ci(val, vlen, 0U, "url(#")) {
@@ -462,13 +864,35 @@ static int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, siz
 }
 
 /**
- * @brief Resolve a shape's `fill`: a solid colour, or a gradient index via @p gi.
+ * @brief Resolve a shape's 'fill': a solid colour, or a gradient index via @p gi.
  *
- * @details Sets @p *gi to the matched gradient index (>= 0) for a `fill="url(#id)"`
- * that resolves in @p t->grads, returning ::k_svg_no_paint so the solid path is
- * skipped. A `url(#id)` with no match also returns ::k_svg_no_paint with @p *gi
- * == -1 (graceful skip). An absent `fill` returns @p def; otherwise the solid
- * colour parsed from the attribute.
+ * @details Sets @p *gi to the matched gradient index (>= 0) for a
+ * 'fill="url(#id)"' that resolves in @p t->grads, returning ::k_svg_no_paint
+ * so the solid path is skipped. A 'url(#id)' with no match also returns
+ * ::k_svg_no_paint with @p *gi == -1 (graceful skip). An absent 'fill'
+ * returns @p def; otherwise the solid colour parsed from the attribute.
+ *
+ * @param[in]  s    Byte buffer containing the SVG tag text; must not be NULL.
+ * @param[in]  len  Total valid bytes in @p s.
+ * @param[in]  t    Active coordinate transform carrying the gradient set pointer.
+ * @param[in]  def  Default solid colour when the 'fill' attribute is absent.
+ * @param[out] gi   Set to the matched gradient index, or -1 when not a gradient.
+ *
+ * @return uint32_t The resolved solid colour, or ::k_svg_no_paint for gradient fills.
+ * @retval def                       'fill' attribute is absent.
+ * @retval (uint32_t)k_svg_no_paint  'fill' is a 'url(#id)' reference (gradient).
+ * @retval 0x000000..0xFFFFFF        Solid colour from the 'fill' attribute.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p gi is a valid non-NULL output pointer.
+ *
+ * @post @p *gi is always written before return.
+ * @post When @p *gi >= 0, the return value is ::k_svg_no_paint.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static uint32_t
 priv_resolve_fill(const uint8_t* s, size_t len, const svg_xform_t* t, uint32_t def, int32_t* gi)
@@ -491,22 +915,91 @@ priv_resolve_fill(const uint8_t* s, size_t len, const svg_xform_t* t, uint32_t d
  * ===========================================================================
  */
 
-/** @brief Apply the axis-aligned user transform (a/translate) to a user-space x.
- *         Used only on the fast-path, where the shear terms ub/uc are 0. */
+/**
+ * @brief Apply the axis-aligned user transform (a/translate) to a user-space x.
+ *
+ * @details Computes @c (sx * t->ua) + t->ue as a float, then truncates to
+ * @c int32_t. Valid only on the axis-aligned fast path where the shear
+ * components @c t->ub and @c t->uc are both zero. When the transform has
+ * rotation or shear, use @c priv_map_point instead to apply the full affine.
+ *
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ * @param[in] sx  User-space X coordinate to transform.
+ *
+ * @return int32_t User-space X after applying the axis-aligned scale and translate.
+ * @retval n  The scaled-and-translated X coordinate, truncated to int32_t.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @c t->ub == 0.0F and @c t->uc == 0.0F (axis-aligned fast path).
+ *
+ * @post The return value is (int32_t)((float)sx * t->ua + t->ue).
+ * @post @p t and @p sx are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
 {
   return (int32_t)(((float)sx * t->ua) + t->ue);
 }
 
-/** @brief Apply the axis-aligned user transform (d/translate) to a user-space y.
- *         Used only on the fast-path, where the shear terms ub/uc are 0. */
+/**
+ * @brief Apply the axis-aligned user transform (d/translate) to a user-space y.
+ *
+ * @details Computes @c (sy * t->ud) + t->uf as a float, then truncates to
+ * @c int32_t. Valid only on the axis-aligned fast path where the shear
+ * components @c t->ub and @c t->uc are both zero. When the transform has
+ * rotation or shear, use @c priv_map_point instead to apply the full affine.
+ *
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ * @param[in] sy  User-space Y coordinate to transform.
+ *
+ * @return int32_t User-space Y after applying the axis-aligned scale and translate.
+ * @retval n  The scaled-and-translated Y coordinate, truncated to int32_t.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @c t->ub == 0.0F and @c t->uc == 0.0F (axis-aligned fast path).
+ *
+ * @post The return value is (int32_t)((float)sy * t->ud + t->uf).
+ * @post @p t and @p sy are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
 {
   return (int32_t)(((float)sy * t->ud) + t->uf);
 }
 
-/** @brief True iff the user transform has rotation/shear (so the axis-aligned
- *         fast-path primitives can't represent it -- use the polygon path). */
+/**
+ * @brief Test whether the user transform contains rotation or shear.
+ *
+ * @details Checks whether @c t->ub or @c t->uc is non-zero. When either is
+ * non-zero, the axis-aligned fast-path primitives (ra_gfx_rect, ra_gfx_circle)
+ * cannot represent the shape correctly and callers must fall back to the polygon
+ * path via @c priv_map_point applied to each vertex.
+ *
+ * @param[in] t Active coordinate transform; must not be NULL.
+ *
+ * @return bool Whether the user transform has a rotation or shear component.
+ * @retval true  @c t->ub != 0.0F or @c t->uc != 0.0F.
+ * @retval false Both @c t->ub and @c t->uc are 0.0F (axis-aligned).
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @c t->ub and @c t->uc hold the shear terms of the current affine.
+ *
+ * @post @p t is not modified.
+ * @post The return value is deterministic given the same @p t.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_has_rot(const svg_xform_t* t)
 {
   return (t->ub != 0.0F) || (t->uc != 0.0F);
@@ -520,9 +1013,22 @@ static bool priv_has_rot(const svg_xform_t* t)
  * @c (priv_mx(ux), priv_my(uy)), so routing the polygon/path/line emitters
  * through it does not change the untransformed render.
  *
- * @param[in]  t      Active transform.
- * @param[in]  ux,uy  User-space point.
- * @param[out] fx,fy  Framebuffer point.
+ * @param[in]  t   Active transform; must not be NULL.
+ * @param[in]  ux  User-space X coordinate to map.
+ * @param[in]  uy  User-space Y coordinate to map.
+ * @param[out] fx  Set to the framebuffer X coordinate; must not be NULL.
+ * @param[out] fy  Set to the framebuffer Y coordinate; must not be NULL.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p fx and @p fy are valid non-NULL output pointers.
+ *
+ * @post @p *fx and @p *fy are set to the framebuffer-space coordinates.
+ * @post @p t, @p ux, and @p uy are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static void priv_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* fx, int32_t* fy)
 {
@@ -532,28 +1038,130 @@ static void priv_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t
   *fy              = t->by + (int32_t)(((int64_t)(py - t->vy) * (int64_t)t->bh) / (int64_t)t->vh);
 }
 
-/** @brief Map a user-space x to a framebuffer x (user transform, then viewBox). */
+/**
+ * @brief Map a user-space x coordinate to a framebuffer x coordinate.
+ *
+ * @details Applies the axis-aligned user transform via @c priv_ux, then maps
+ * the result through the viewBox-to-box scaling: bx + (ux - vx) * bw / vw.
+ * Uses 64-bit intermediate arithmetic to avoid overflow on large coordinates.
+ * Valid only when @c t->ub == 0.0F and @c t->uc == 0.0F; for the general
+ * case use @c priv_map_point.
+ *
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ * @param[in] sx  User-space X coordinate to map.
+ *
+ * @return int32_t Framebuffer X coordinate corresponding to @p sx.
+ * @retval n  The framebuffer pixel column for user-space column @p sx.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @c t->vw is non-zero (the viewBox has a positive width).
+ *
+ * @post The return value is @c t->bx + (int32_t)(((ux - t->vx) * t->bw) / t->vw).
+ * @post @p t and @p sx are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_mx(const svg_xform_t* t, int32_t sx)
 {
   const int32_t ux = priv_ux(t, sx);
   return t->bx + (int32_t)(((int64_t)(ux - t->vx) * (int64_t)t->bw) / (int64_t)t->vw);
 }
 
-/** @brief Map a user-space y to a framebuffer y (user transform, then viewBox). */
+/**
+ * @brief Map a user-space y coordinate to a framebuffer y coordinate.
+ *
+ * @details Applies the axis-aligned user transform via @c priv_uy, then maps
+ * the result through the viewBox-to-box scaling: by + (uy - vy) * bh / vh.
+ * Uses 64-bit intermediate arithmetic to avoid overflow on large coordinates.
+ * Valid only when @c t->ub == 0.0F and @c t->uc == 0.0F; for the general
+ * case use @c priv_map_point.
+ *
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ * @param[in] sy  User-space Y coordinate to map.
+ *
+ * @return int32_t Framebuffer Y coordinate corresponding to @p sy.
+ * @retval n  The framebuffer pixel row for user-space row @p sy.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @c t->vh is non-zero (the viewBox has a positive height).
+ *
+ * @post The return value is @c t->by + (int32_t)(((uy - t->vy) * t->bh) / t->vh).
+ * @post @p t and @p sy are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_my(const svg_xform_t* t, int32_t sy)
 {
   const int32_t uy = priv_uy(t, sy);
   return t->by + (int32_t)(((int64_t)(uy - t->vy) * (int64_t)t->bh) / (int64_t)t->vh);
 }
 
-/** @brief Scale a user-space length by the user x scale and the x-axis ratio. */
+/**
+ * @brief Scale a user-space length by the user x scale and the viewBox x ratio.
+ *
+ * @details Applies the user x scale (@c t->ua) to the width @p sw, then scales
+ * the result by the viewBox-to-box x ratio (bw / vw). Uses 64-bit intermediate
+ * arithmetic to avoid overflow. Returns the framebuffer pixel count corresponding
+ * to @p sw user-space units. Valid only on the axis-aligned fast path.
+ *
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ * @param[in] sw  User-space width (or length) to scale.
+ *
+ * @return int32_t Framebuffer pixel width corresponding to @p sw user units.
+ * @retval n  The scaled pixel count, truncated to int32_t.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @c t->vw is non-zero (the viewBox has a positive width).
+ *
+ * @post The return value is (int32_t)((int64_t)((float)sw * t->ua) * t->bw / t->vw).
+ * @post @p t and @p sw are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_sx(const svg_xform_t* t, int32_t sw)
 {
   const int32_t uw = (int32_t)((float)sw * t->ua);
   return (int32_t)(((int64_t)uw * (int64_t)t->bw) / (int64_t)t->vw);
 }
 
-/** @brief Parse one SVG number including its fraction as a float; skips separators. */
+/**
+ * @brief Parse one SVG floating-point number at @p s[*i], skipping leading separators.
+ *
+ * @details Advances @p *i past whitespace and comma separators, reads an optional
+ * sign ('+'/'-'), then accumulates integer digit characters into @p v. If a decimal
+ * point follows, fractional digits are accumulated with decreasing place values.
+ * On return, @p *i points one past the last character consumed so subsequent
+ * calls parse the next number correctly. Used for all floating-point geometry
+ * values including path curve control-point coordinates and arc parameters.
+ *
+ * @param[in]     s   Byte buffer holding the SVG text; must not be NULL.
+ * @param[in]     len Total valid bytes in @p s.
+ * @param[in,out] i   Current parse cursor; updated to one past the consumed number.
+ *
+ * @return float The signed floating-point value parsed from @p s[*i].
+ * @retval 0.0F  No digit characters found after the sign (or no sign/digits at all).
+ * @retval n     The parsed value, including integer and fractional parts.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p i is not NULL, and @p *i is <= @p len.
+ *
+ * @post @p *i is advanced past separators, sign, integer digits, and fraction.
+ * @post @p *i <= @p len.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_numf(const uint8_t* s, size_t len, size_t* i)
 {
   while ((*i < len) && (priv_ws((char)s[*i]) || (s[*i] == ','))) {
@@ -581,15 +1189,62 @@ static float priv_numf(const uint8_t* s, size_t len, size_t* i)
   return v * sgn;
 }
 
-/** @brief Identity affine (a=d=1, all else 0). */
+/**
+ * @brief Return the 2x3 affine identity transform.
+ *
+ * @details Constructs and returns an @c svg_utf_t with @c a=1, @c d=1, and
+ * all other fields zero. This is the identity element for affine composition:
+ * any affine composed with the identity returns the original affine unchanged.
+ * Used to initialise the group transform stack and as the starting accumulator
+ * in @c priv_parse_xform.
+ *
+ * @return svg_utf_t The 2x3 identity affine (a=d=1, b=c=e=f=0).
+ * @retval svg_utf_t{.a=1,.b=0,.c=0,.d=1,.e=0,.f=0}  Always.
+ *
+ * @pre  No preconditions; this function has no parameters.
+ * @pre  The @c svg_utf_t type is properly defined in this translation unit.
+ *
+ * @post The returned struct has @c a==1.0F, @c d==1.0F, and all other fields 0.0F.
+ * @post No external state is modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_utf_t priv_utf_identity(void)
 {
   svg_utf_t id = {.a = 1.0F, .b = 0.0F, .c = 0.0F, .d = 1.0F, .e = 0.0F, .f = 0.0F};
   return id;
 }
 
-/** @brief Compose @p a (outer) over @p b (inner): a point is mapped by b then a
- *         (the 2x3 matrix product a*b). */
+/**
+ * @brief Compose two 2x3 affines: @p a (outer) over @p b (inner).
+ *
+ * @details Computes the 2x3 matrix product @p a * @p b so that a point is first
+ * mapped by @p b and then by @p a, implementing the standard affine composition
+ * rule. The translation components are handled correctly: @c e and @c f of the
+ * result include the full composite translation. Used to accumulate a series of
+ * SVG transform functions (translate, scale, rotate, skew, matrix) into one
+ * affine that can be applied per-point in @c priv_map_point.
+ *
+ * @param[in] a Outer (post) affine; applied second.
+ * @param[in] b Inner (pre) affine; applied first.
+ *
+ * @return svg_utf_t The composed affine @p a * @p b.
+ * @retval svg_utf_t  The result of composing @p a over @p b as 2x3 matrix product.
+ *
+ * @pre  @p a and @p b are fully initialised @c svg_utf_t values.
+ * @pre  The floating-point components of @p a and @p b are finite.
+ *
+ * @post The return value correctly maps any point @c p as a(b(p)).
+ * @post @p a and @p b are not modified (passed by value).
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
 {
   svg_utf_t r = {.a = (a.a * b.a) + (a.c * b.b),
@@ -601,7 +1256,34 @@ static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
   return r;
 }
 
-/** @brief True iff @p s[at] starts a number (sign / digit / dot). */
+/**
+ * @brief Test whether a byte position starts an SVG number literal.
+ *
+ * @details A byte position is considered the start of a number when it is a
+ * decimal digit ('0'-'9'), a sign character ('-' or '+'), or a decimal point
+ * ('.'). Returns false immediately when @p at >= @p len to guard against
+ * out-of-bounds access. Used by @c priv_xform_read to decide whether to call
+ * @c priv_numf for the next argument in a transform function's argument list.
+ *
+ * @param[in] s   Byte buffer containing the transform value; must not be NULL.
+ * @param[in] len Total valid bytes in @p s.
+ * @param[in] at  Byte offset to test.
+ *
+ * @return bool Whether @p s[@p at] can begin an SVG number.
+ * @retval true  @p at < @p len and @p s[@p at] is a digit, sign, or decimal point.
+ * @retval false @p at >= @p len, or @p s[@p at] is not a number-start character.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p at is a size_t value (may equal or exceed @p len).
+ *
+ * @post @p s, @p len, and @p at are not modified.
+ * @post The return value is deterministic given the same inputs.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
 {
   if (at >= len) {
@@ -638,14 +1320,64 @@ typedef enum : uint8_t {
   k_svg_xf_arg_f = 5U, /**< matrix component f (y translate).    */
 } svg_xf_arg_t;
 
-/** @brief Degrees -> radians for a transform angle argument. */
+/**
+ * @brief Convert an angle from degrees to radians.
+ *
+ * @details Multiplies @p deg by the constant (pi / 180), stored as
+ * @c s_svg_pi / @c s_svg_deg_half, to avoid a magic literal. Used by the
+ * rotate, skewX, and skewY transform builders when converting their single
+ * degree argument into the radian angle needed by @c cosf and @c sinf.
+ *
+ * @param[in] deg Angle in degrees (any finite float value).
+ *
+ * @return float The equivalent angle in radians.
+ * @retval n  @p deg * (s_svg_pi / s_svg_deg_half).
+ *
+ * @pre  @p deg is a finite float value (NaN or infinity produce undefined float arithmetic).
+ * @pre  @c s_svg_pi and @c s_svg_deg_half are initialised (guaranteed at module scope).
+ *
+ * @post The return value equals @p deg * (s_svg_pi / 180.0F).
+ * @post @p deg is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_deg2rad(float deg)
 {
   return deg * (s_svg_pi / s_svg_deg_half);
 }
 
-/** @brief Read up to 6 numbers from a `(...)` arg list at @p v[*j]; advance @p *j
- *         past them; return the count read. */
+/**
+ * @brief Read up to 6 float arguments from a transform function's '(...)' list.
+ *
+ * @details Advances @p *j past any leading whitespace/commas, then calls
+ * @c priv_numf for each number that begins at the current cursor. The loop
+ * terminates when @c priv_is_num_start returns false or the
+ * @c k_svg_argc_cube limit (6) is reached. On return @p *j points past all
+ * consumed arguments. Used by @c priv_parse_xform to populate the argument
+ * array passed to @c priv_xform_build.
+ *
+ * @param[in]     v     Byte buffer containing the transform value text; must not be NULL.
+ * @param[in]     vlen  Total valid bytes in @p v.
+ * @param[in,out] j     Parse cursor; updated past all consumed argument bytes.
+ * @param[out]    args  Array of at least @c k_svg_argc_cube floats; must not be NULL.
+ *
+ * @return int32_t Count of numbers successfully read into @p args.
+ * @retval 0..6  The number of float arguments parsed from @p v[*j].
+ *
+ * @pre  @p v is a valid pointer to at least @p vlen bytes.
+ * @pre  @p j is not NULL and @p *j <= @p vlen.
+ *
+ * @post @p args[0..return-1] contain the parsed float arguments.
+ * @post @p *j is advanced past all consumed whitespace, commas, and digits.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* args)
 {
   int32_t na = 0;
@@ -663,7 +1395,32 @@ static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* 
   return na;
 }
 
-/** @brief rotate(deg[,cx,cy]) about (cx,cy) (origin if absent) as a 2x3 affine. */
+/**
+ * @brief Build the 2x3 affine for an SVG 'rotate(deg[,cx,cy])' transform.
+ *
+ * @details Converts @p args[0] from degrees to radians and computes @c cosf /
+ * @c sinf. When @p na >= 3, @p args[1] and @p args[2] supply the centre of
+ * rotation (cx, cy); the translation components e and f are set to keep the
+ * centre fixed. When @p na < 3 the rotation is about the origin (e=f=0).
+ *
+ * @param[in] args Array of at least @p na float arguments; args[0]=degrees,
+ *                 args[1]=cx (optional), args[2]=cy (optional).
+ * @param[in] na   Count of valid entries in @p args (1 or 3).
+ *
+ * @return svg_utf_t The 2x3 rotation affine about (cx,cy).
+ * @retval svg_utf_t  Rotation matrix; e and f absorb the (cx,cy) re-centring.
+ *
+ * @pre  @p args is a valid non-NULL pointer to at least @p na float values.
+ * @pre  @p na is 1 (rotate about origin) or 3 (rotate about cx,cy).
+ *
+ * @post The returned affine maps the origin to itself when @p na < 3.
+ * @post @p args and @p na are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
 {
   const float co = cosf(priv_deg2rad(args[0]));
@@ -678,7 +1435,33 @@ static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
                      .f = (cy * (1.0F - co)) - (cx * si)};
 }
 
-/** @brief Build the 2x3 affine for one parsed transform function. */
+/**
+ * @brief Build the 2x3 affine for one parsed SVG transform function.
+ *
+ * @details Switches on @p kind to construct the appropriate @c svg_utf_t:
+ * translate fills @c e/@c f; scale fills @c a/@c d (uniform if na==1);
+ * rotate delegates to @c priv_xform_rotate; skewX/skewY fill @c c or @c b
+ * via @c tanf; matrix copies all six components directly. An unrecognised
+ * @p kind (k_svg_xf_none or default) returns the identity.
+ *
+ * @param[in] kind Transform function identifier; one of the @c svg_xf_kind_t values.
+ * @param[in] args Parsed float arguments; caller guarantees at least @p na valid entries.
+ * @param[in] na   Count of valid float arguments in @p args.
+ *
+ * @return svg_utf_t The 2x3 affine for the specified transform function.
+ * @retval svg_utf_t  The computed affine; identity for k_svg_xf_none or unknown kind.
+ *
+ * @pre  @p args is a valid non-NULL pointer to at least @p na float values.
+ * @pre  @p na is consistent with @p kind (e.g. >= 1 for translate/scale).
+ *
+ * @post The returned affine is a valid 2x3 affine matrix.
+ * @post @p args and @p na are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t na)
 {
   switch (kind) {
@@ -725,7 +1508,39 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
   }
 }
 
-/** @brief Identify the transform function at @p v[i] by name (case-insensitive). */
+/**
+ * @brief Identify the SVG transform function keyword starting at @p v[@p i].
+ *
+ * @details Tests the byte span at offset @p i against each recognised keyword
+ * ("translate(", "scale(", "rotate(", "skewx(", "skewy(", "matrix(") using
+ * @c priv_starts_ci. Returns the first matching @c svg_xf_kind_t value, or
+ * @c k_svg_xf_none when no keyword matches. Case-insensitive to match the SVG
+ * specification (though SVG uses lower case by convention).
+ *
+ * @param[in] v    Byte buffer containing the 'transform=' attribute value; must not be NULL.
+ * @param[in] vlen Total valid bytes in @p v.
+ * @param[in] i    Byte offset at which the keyword scan begins.
+ *
+ * @return svg_xf_kind_t The matched transform function kind.
+ * @retval k_svg_xf_translate  "translate(" matches at @p v[@p i].
+ * @retval k_svg_xf_scale      "scale(" matches at @p v[@p i].
+ * @retval k_svg_xf_rotate     "rotate(" matches at @p v[@p i].
+ * @retval k_svg_xf_skewx      "skewx(" matches at @p v[@p i].
+ * @retval k_svg_xf_skewy      "skewy(" matches at @p v[@p i].
+ * @retval k_svg_xf_matrix     "matrix(" matches at @p v[@p i].
+ * @retval k_svg_xf_none       No recognised keyword matches.
+ *
+ * @pre  @p v is a valid pointer to at least @p vlen bytes.
+ * @pre  @p i is <= @p vlen.
+ *
+ * @post @p v, @p vlen, and @p i are not modified.
+ * @post The return value is a valid @c svg_xf_kind_t enumerator.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
 {
   if (priv_starts_ci(v, vlen, i, "translate(")) {
@@ -750,10 +1565,32 @@ static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
 }
 
 /**
- * @brief Parse a `transform=` value into a composed 2x3 affine.
+ * @brief Parse a 'transform=' attribute value into a composed 2x3 affine.
  *
- * @details Recognises translate/scale/rotate/skewX/skewY/matrix, composed
- * left-to-right (leftmost is the outermost). Unknown functions are skipped.
+ * @details Recognises translate/scale/rotate/skewX/skewY/matrix functions,
+ * composed left-to-right (the leftmost function becomes the outermost
+ * in the affine product, i.e. applied last). Unknown or unrecognised function
+ * names are skipped. The accumulator starts at the identity and each parsed
+ * function is right-composed via @c priv_utf_compose. Bounded: the scan
+ * advances past at least one '(' per iteration or breaks at end-of-buffer.
+ *
+ * @param[in] v    Byte span holding the attribute value text; must not be NULL.
+ * @param[in] vlen Total valid bytes in @p v.
+ *
+ * @return svg_utf_t The composed 2x3 affine for all recognised functions in @p v.
+ * @retval priv_utf_identity()  @p v contains no recognised transform functions.
+ * @retval svg_utf_t            Composition of all recognised functions, left-to-right.
+ *
+ * @pre  @p v is a valid pointer to at least @p vlen bytes.
+ * @pre  @p vlen accurately reflects the number of valid bytes in @p v.
+ *
+ * @post The returned affine is the left-to-right composition of all recognised functions.
+ * @post @p v is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
 {
@@ -786,7 +1623,32 @@ static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
   return acc;
 }
 
-/** @brief Compose @p tag's `transform=` (if any) onto @p t's user transform. */
+/**
+ * @brief Compose the 'transform=' attribute from @p tag onto @p t's user affine.
+ *
+ * @details Looks up the "transform" attribute in @p tag[0..tlen) using
+ * @c priv_attr. If absent, returns without modification. If found, parses
+ * the value via @c priv_parse_xform and composes the result over the current
+ * user affine in @p t using @c priv_utf_compose, then writes the composed
+ * components back to @p t->ua .. @p t->uf. The viewBox and box fields of
+ * @p t are not touched.
+ *
+ * @param[in,out] t    Transform whose user affine is updated in place; must not be NULL.
+ * @param[in]     tag  Byte span of the element tag to search; must not be NULL.
+ * @param[in]     tlen Total valid bytes in @p tag.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p tag is a valid pointer to at least @p tlen bytes.
+ *
+ * @post When a 'transform=' attribute is found, @p t->ua .. @p t->uf reflect
+ *       the newly composed affine.
+ * @post When no 'transform=' attribute is found, @p t is unchanged.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
 {
   size_t off = 0U;
@@ -804,16 +1666,85 @@ static void priv_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
   t->uf               = out.f;
 }
 
-/** @brief Even-odd scanline fill (forward decl; defined in the polygon section). */
+/**
+ * @brief Even-odd scanline fill of polygon (xs,ys)[0..n) with a solid colour.
+ *
+ * @details Forward declaration; the definition appears later in the polygon
+ * section of this file (see @c priv_fill_poly definition). This declaration
+ * is needed because @c priv_draw_rect and @c priv_draw_circle must call it
+ * before the polygon section is reached by the compiler.
+ *
+ * @param[in] xs    Array of @p n framebuffer X coordinates; must not be NULL.
+ * @param[in] ys    Array of @p n framebuffer Y coordinates; must not be NULL.
+ * @param[in] n     Number of polygon vertices; must be >= @c k_svg_poly_min.
+ * @param[in] color Solid fill colour in 0x00RRGGBB format.
+ *
+ * @pre  @p xs and @p ys are valid pointers to at least @p n elements.
+ * @pre  @p n <= @c k_svg_poly_max.
+ *
+ * @post All pixels inside the even-odd polygon boundary are painted @p color.
+ * @post No pixels outside the polygon boundary are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color);
+
+/**
+ * @brief Per-pixel gradient scanline fill of polygon (xs,ys)[0..n).
+ *
+ * @details Forward declaration; the definition appears later in the polygon
+ * section of this file (see @c priv_fill_poly_grad definition). This declaration
+ * is needed because @c priv_draw_rect and @c priv_draw_circle must call it
+ * before the polygon section is reached by the compiler.
+ *
+ * @param[in] xs Array of @p n framebuffer X coordinates; must not be NULL.
+ * @param[in] ys Array of @p n framebuffer Y coordinates; must not be NULL.
+ * @param[in] n  Number of polygon vertices; must be >= @c k_svg_poly_min.
+ * @param[in] g  Gradient descriptor to evaluate per pixel; must not be NULL.
+ *
+ * @pre  @p xs and @p ys are valid pointers to at least @p n elements.
+ * @pre  @p g is a valid non-NULL pointer to an initialised @c svg_grad_t.
+ *
+ * @post All pixels inside the even-odd polygon boundary are painted with the
+ *       gradient colour evaluated at their bounding-box-relative position.
+ * @post No pixels outside the polygon boundary are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void
 priv_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g);
 
-/** @brief Draw one `<rect>` (span @p s[0..len)) with its fill.
+/**
+ * @brief Draw one SVG 'rect' element using its fill colour or gradient.
  *
- * @details Axis-aligned solid rects keep the exact `ra_gfx_rect` fast-path;
- * under a rotating/shearing transform the 4 corners are mapped through the full
- * affine and the polygon is scanline-filled. */
+ * @details Reads 'x', 'y', 'width', and 'height' attributes from the tag
+ * span @p s[0..len). Axis-aligned solid rects use the @c ra_gfx_rect
+ * fast-path; under a rotating/shearing transform the 4 corners are mapped
+ * through the full affine via @c priv_map_point and the resulting quad is
+ * scanline-filled by @c priv_fill_poly or @c priv_fill_poly_grad.
+ * Returns without drawing when both gi < 0 and fill == ::k_svg_no_paint.
+ *
+ * @param[in] s   Byte span of the element tag; must not be NULL.
+ * @param[in] len Total valid bytes in @p s (the tag span length).
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post All pixels inside the rect boundary are painted with the fill colour.
+ * @post No pixels outside the rect boundary are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
@@ -842,11 +1773,31 @@ static void priv_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
   }
 }
 
-/** @brief Draw one `<circle>` (span @p s[0..len)) with its fill.
+/**
+ * @brief Draw one SVG 'circle' element using its fill colour or gradient.
  *
- * @details Axis-aligned solid circles keep the exact `ra_gfx_circle` fast-path;
- * under a rotating/shearing transform the circle is approximated by an N-gon
- * whose vertices are mapped through the full affine, then scanline-filled. */
+ * @details Reads 'cx', 'cy', and 'r' attributes from the tag span @p s[0..len).
+ * Axis-aligned solid circles use the @c ra_gfx_circle fast-path; under a
+ * rotating/shearing transform the circle is approximated by a @c k_svg_circle_seg
+ * N-gon whose vertices are mapped through the full affine, then scanline-filled
+ * by @c priv_fill_poly or @c priv_fill_poly_grad. Returns without drawing
+ * when both gi < 0 and fill == ::k_svg_no_paint.
+ *
+ * @param[in] s   Byte span of the element tag; must not be NULL.
+ * @param[in] len Total valid bytes in @p s (the tag span length).
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post All pixels inside the circle boundary are painted with the fill colour.
+ * @post No pixels outside the circle boundary are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
@@ -879,7 +1830,30 @@ static void priv_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
   }
 }
 
-/** @brief Draw one `<line>` (span @p s[0..len)) with its stroke. */
+/**
+ * @brief Draw one SVG 'line' element using its stroke colour.
+ *
+ * @details Reads 'stroke' paint, 'x1', 'y1', 'x2', and 'y2' attributes from
+ * the tag span @p s[0..len). Both endpoints are mapped through the full affine
+ * via @c priv_map_point and the result is forwarded to @c ra_gfx_line.
+ * Returns without drawing when 'stroke' is absent or parses to ::k_svg_no_paint.
+ * Note: 'fill' is ignored for 'line' elements (SVG specification).
+ *
+ * @param[in] s   Byte span of the element tag; must not be NULL.
+ * @param[in] len Total valid bytes in @p s (the tag span length).
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post The line from (x1,y1) to (x2,y2) is drawn in the stroke colour.
+ * @post No drawing occurs when the stroke colour is ::k_svg_no_paint.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   const uint32_t stroke = priv_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
@@ -904,7 +1878,36 @@ static void priv_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
  * ===========================================================================
  */
 
-/** @brief Parse a `points` value into framebuffer-space vertices; return count. */
+/**
+ * @brief Parse a 'points' attribute value into framebuffer-space vertices.
+ *
+ * @details Scans @p v[0..vlen) for whitespace/comma-separated x,y integer
+ * pairs via @c priv_num, maps each pair through the full affine via
+ * @c priv_map_point, and stores the result in @p xs[@p n] / @p ys[@p n].
+ * Terminates when @c k_svg_poly_max vertices have been collected or the end
+ * of the span is reached. Returns the count of vertex pairs filled.
+ *
+ * @param[in]  v    Byte span containing the 'points' value text; must not be NULL.
+ * @param[in]  vlen Total valid bytes in @p v.
+ * @param[in]  t    Active coordinate transform; must not be NULL.
+ * @param[out] xs   Array of at least @c k_svg_poly_max int32_t for X coords; must not be NULL.
+ * @param[out] ys   Array of at least @c k_svg_poly_max int32_t for Y coords; must not be NULL.
+ *
+ * @return int32_t Number of vertices filled in @p xs / @p ys.
+ * @retval 0             No valid x,y pairs found.
+ * @retval 1..k_svg_poly_max  Count of vertices parsed and mapped.
+ *
+ * @pre  @p v is a valid pointer to at least @p vlen bytes.
+ * @pre  @p xs and @p ys are valid arrays of at least @c k_svg_poly_max elements.
+ *
+ * @post @p xs[0..return-1] and @p ys[0..return-1] hold framebuffer coordinates.
+ * @post The return value is in [0, k_svg_poly_max].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t
 priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {
@@ -926,7 +1929,29 @@ priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* 
   return n;
 }
 
-/** @brief Ascending insertion sort of @p m int32 values (small @p m). */
+/**
+ * @brief Sort @p m int32 values in @p a into ascending order using insertion sort.
+ *
+ * @details Uses the classic O(m^2) insertion sort, which is efficient for small
+ * arrays (m is bounded by @c k_svg_poly_max scanline crossings per row). Works
+ * in-place with a single temporary variable per outer iteration. Used by the
+ * scanline fill algorithm to sort X-intercept coordinates before pairing them
+ * for span fill.
+ *
+ * @param[in,out] a Array of @p m int32_t values to sort in place; must not be NULL.
+ * @param[in]     m Count of valid elements in @p a; must be >= 0.
+ *
+ * @pre  @p a is a valid pointer to at least @p m elements.
+ * @pre  @p m is in [0, k_svg_poly_max].
+ *
+ * @post @p a[0..m-1] are sorted in non-decreasing order.
+ * @post The number of valid elements in @p a is unchanged.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_sort_i32(int32_t* a, int32_t m)
 {
   /* Bounded: m <= k_svg_poly_max. */
@@ -941,7 +1966,36 @@ static void priv_sort_i32(int32_t* a, int32_t m)
   }
 }
 
-/** @brief Collect the x-coords where polygon edges cross scanline @p y. */
+/**
+ * @brief Collect framebuffer X coordinates where polygon edges cross scanline @p y.
+ *
+ * @details Iterates over all @p n edges of the polygon. For each edge from
+ * vertex @c i to vertex @c (i+1)%n, checks whether scanline @p y passes through
+ * it (using the half-open interval [y0,y1) or [y1,y0)). For crossing edges,
+ * computes the X intercept via linear interpolation with 64-bit arithmetic and
+ * stores it in @p xint. Stops early if @c k_svg_poly_max crossings are found.
+ *
+ * @param[in]  xs   Array of @p n polygon vertex X coordinates (framebuffer); must not be NULL.
+ * @param[in]  ys   Array of @p n polygon vertex Y coordinates (framebuffer); must not be NULL.
+ * @param[in]  n    Number of polygon vertices.
+ * @param[in]  y    Scanline Y coordinate to test.
+ * @param[out] xint Array of at least @c k_svg_poly_max int32_t for crossing X values; must not be NULL.
+ *
+ * @return int32_t Number of edge crossings written to @p xint.
+ * @retval 0         No edges cross scanline @p y.
+ * @retval m         @p m intercept X values in @p xint[0..m-1], unsorted.
+ *
+ * @pre  @p xs and @p ys are valid pointers to at least @p n elements.
+ * @pre  @p xint is a valid array of at least @c k_svg_poly_max elements.
+ *
+ * @post @p xint[0..return-1] hold the X coordinates of edge-scanline intersections.
+ * @post The return value is in [0, k_svg_poly_max].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t
 priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int32_t* xint)
 {
@@ -961,7 +2015,30 @@ priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int3
   return m;
 }
 
-/** @brief Even-odd scanline fill of polygon @p (xs,ys)[0..n) with @p color. */
+/**
+ * @brief Even-odd scanline fill of polygon (xs,ys)[0..n) with a solid colour.
+ *
+ * @details Computes the bounding Y range of the polygon, then for each
+ * scanline Y in [ymin, ymax] calls @c priv_scanline_x to collect intercepts,
+ * sorts them via @c priv_sort_i32, and fills pairs of spans with @c ra_gfx_line.
+ * Returns immediately for polygons with fewer than @c k_svg_poly_min vertices.
+ *
+ * @param[in] xs    Array of @p n framebuffer X coordinates; must not be NULL.
+ * @param[in] ys    Array of @p n framebuffer Y coordinates; must not be NULL.
+ * @param[in] n     Number of polygon vertices.
+ * @param[in] color Fill colour in 0x00RRGGBB format.
+ *
+ * @pre  @p xs and @p ys are valid pointers to at least @p n elements.
+ * @pre  @p n <= @c k_svg_poly_max.
+ *
+ * @post All pixels inside the even-odd polygon boundary are painted @p color.
+ * @post No drawing occurs when @p n < @c k_svg_poly_min.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color)
 {
   if (n < (int32_t)k_svg_poly_min) {
@@ -984,7 +2061,33 @@ static void priv_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint
   }
 }
 
-/** @brief Linear-interpolate two 0x00RRGGBB colours by @p f in [0,1] (per channel). */
+/**
+ * @brief Linear-interpolate two 0x00RRGGBB colours by factor @p f in [0, 1].
+ *
+ * @details Extracts the R, G, and B channels from @p a and @p b, interpolates
+ * each independently as @c (channel_a + (channel_b - channel_a) * f), and
+ * recombines into a 0x00RRGGBB result. The factor @p f is not clamped by this
+ * function; the gradient evaluator is responsible for providing a value in [0,1].
+ * Used by @c priv_grad_eval to blend adjacent gradient stops.
+ *
+ * @param[in] a Colour A in 0x00RRGGBB format.
+ * @param[in] b Colour B in 0x00RRGGBB format.
+ * @param[in] f Interpolation factor; 0.0F returns @p a, 1.0F returns @p b.
+ *
+ * @return uint32_t The interpolated colour in 0x00RRGGBB format.
+ * @retval 0x000000..0xFFFFFF  The per-channel linear blend of @p a and @p b at @p f.
+ *
+ * @pre  @p f is in the range [0.0F, 1.0F] to produce a value between @p a and @p b.
+ * @pre  @p a and @p b have bits [31:24] clear (0x00RRGGBB format).
+ *
+ * @post The return value has bits [31:24] clear.
+ * @post Each channel of the return value is clamped to [0, 255] by construction.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
 {
   const int32_t ra = (int32_t)((a >> (uint32_t)k_svg_sh_r) & (uint32_t)k_svg_chan_mask);
@@ -1001,12 +2104,35 @@ static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
 }
 
 /**
- * @brief Evaluate gradient @p g at bbox-relative point (@p px,@p py) -> 0x00RRGGBB.
+ * @brief Evaluate gradient @p g at bbox-relative point (@p px, @p py).
  *
- * @details Linear: parameter = projection of the point onto the (x1,y1)->(x2,y2)
- * vector. Radial: parameter = distance from centre (x1,y1) over radius x2. The
- * parameter selects/interpolates the surrounding stops; values past the ends
- * clamp to the first/last stop colour.
+ * @details For a linear gradient the scalar parameter is the projection of
+ * (@p px - x1, @p py - y1) onto the vector (x2 - x1, y2 - y1) normalised by
+ * the squared length of that vector. For a radial gradient the parameter is
+ * the Euclidean distance from (x1, y1) divided by radius x2. The parameter
+ * is compared against stop offsets; values before the first stop return the
+ * first stop colour, values after the last return the last stop colour, and
+ * values between two stops are linearly interpolated by @c priv_col_lerp.
+ * Returns the default fill colour when @p g->nstops is zero.
+ *
+ * @param[in] g   Gradient to evaluate; must not be NULL and must have nstops >= 1.
+ * @param[in] px  Bounding-box-relative X position in [0, 1].
+ * @param[in] py  Bounding-box-relative Y position in [0, 1].
+ *
+ * @return uint32_t The evaluated colour in 0x00RRGGBB format.
+ * @retval (uint32_t)k_svg_def_fill  When @p g->nstops is 0.
+ * @retval 0x000000..0xFFFFFF        Interpolated or clamped stop colour.
+ *
+ * @pre  @p g is a valid non-NULL pointer to an initialised @c svg_grad_t.
+ * @pre  @p px and @p py are bounding-box-relative coordinates (typically in [0,1]).
+ *
+ * @post The return value has bits [31:24] clear (0x00RRGGBB format).
+ * @post @p g is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
 {
@@ -1044,7 +2170,33 @@ static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
   return g->stops[last].col;
 }
 
-/** @brief Per-pixel scanline fill of polygon (@p xs,@p ys)[0..n) with gradient @p g. */
+/**
+ * @brief Per-pixel gradient scanline fill of polygon (xs,ys)[0..n).
+ *
+ * @details Computes the bounding box of the polygon, then for each scanline Y
+ * in [ymin, ymax] collects edge intercepts via @c priv_scanline_x and sorts
+ * them. For each filled span, iterates over pixels and evaluates the gradient
+ * at the bounding-box-relative position @c ((x-xmin)/bw, (y-ymin)/bh) via
+ * @c priv_grad_eval. Each pixel is written individually with @c ra_gfx_pixel.
+ * Returns immediately when @p n < @c k_svg_poly_min.
+ *
+ * @param[in] xs Array of @p n framebuffer X coordinates; must not be NULL.
+ * @param[in] ys Array of @p n framebuffer Y coordinates; must not be NULL.
+ * @param[in] n  Number of polygon vertices.
+ * @param[in] g  Gradient descriptor to evaluate per pixel; must not be NULL.
+ *
+ * @pre  @p xs and @p ys are valid pointers to at least @p n elements.
+ * @pre  @p g is a valid non-NULL pointer with @p g->nstops >= 1.
+ *
+ * @post All pixels inside the even-odd polygon boundary are painted with
+ *       the gradient colour evaluated at their bounding-box-relative position.
+ * @post No drawing occurs when @p n < @c k_svg_poly_min.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void
 priv_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g)
 {
@@ -1078,7 +2230,30 @@ priv_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_g
   }
 }
 
-/** @brief Draw one `<polygon>` (span @p s[0..len)) as a filled polygon. */
+/**
+ * @brief Draw one SVG 'polygon' element as a filled polygon.
+ *
+ * @details Resolves the fill (solid or gradient), reads the 'points' attribute,
+ * parses vertices into framebuffer space via @c priv_parse_points, and fills
+ * the resulting polygon with @c priv_fill_poly or @c priv_fill_poly_grad.
+ * Returns without drawing when the fill is absent/none or the 'points'
+ * attribute is not present.
+ *
+ * @param[in] s   Byte span of the element tag; must not be NULL.
+ * @param[in] len Total valid bytes in @p s.
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post All pixels inside the polygon boundary are painted with the fill colour.
+ * @post No drawing occurs when fill is absent or 'points' is missing.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
@@ -1098,7 +2273,29 @@ static void priv_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t
   }
 }
 
-/** @brief Draw one `<polyline>` (span @p s[0..len)) as connected stroke segments. */
+/**
+ * @brief Draw one SVG 'polyline' element as connected stroke line segments.
+ *
+ * @details Reads the 'stroke' paint and the 'points' attribute. Parses vertex
+ * pairs into framebuffer space via @c priv_parse_points and connects adjacent
+ * vertices with @c ra_gfx_line. Returns without drawing when the stroke colour
+ * is absent/none or the 'points' attribute is not present.
+ *
+ * @param[in] s   Byte span of the element tag; must not be NULL.
+ * @param[in] len Total valid bytes in @p s.
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post All (n-1) line segments between adjacent vertices are drawn in the stroke colour.
+ * @post No drawing occurs when stroke is absent or 'points' is missing.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   const uint32_t stroke = priv_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
@@ -1121,7 +2318,36 @@ static void priv_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* 
  * ===========================================================================
  */
 
-/** @brief Argument count of an upper-cased path command, or -1 if unknown. */
+/**
+ * @brief Return the argument count for a lower-cased SVG path command letter.
+ *
+ * @details Maps each recognised lower-case path command to the number of
+ * numeric arguments it consumes: 'm'/'l'/'t' take 2 (x,y); 'h'/'v' take 1;
+ * 'c' takes 6; 's'/'q' take 4; 'a' takes 7; 'z' takes 0. Any unrecognised
+ * letter returns -1 so the caller can detect and stop parsing.
+ *
+ * @param[in] u Lower-cased path command letter to look up.
+ *
+ * @return int32_t Argument count for @p u, or -1 if unrecognised.
+ * @retval 0  'z' (close path, no arguments).
+ * @retval 1  'h' or 'v' (horizontal/vertical line-to).
+ * @retval 2  'm', 'l', 't' (move-to, line-to, smooth quadratic).
+ * @retval 4  's' or 'q' (smooth cubic / quadratic).
+ * @retval 6  'c' (cubic Bezier).
+ * @retval 7  'a' (elliptical arc).
+ * @retval -1 Unrecognised command letter.
+ *
+ * @pre  @p u is a lower-case ASCII character or any other char value.
+ * @pre  The path command alphabet is as defined in the SVG 1.1 specification.
+ *
+ * @post The return value is one of {-1, 0, 1, 2, 4, 6, 7}.
+ * @post @p u is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_cmd_argc(char u)
 {
   switch (u) {
@@ -1146,7 +2372,34 @@ static int32_t priv_cmd_argc(char u)
   }
 }
 
-/** @brief Advance the current point @p (cx,cy) to a command's endpoint. */
+/**
+ * @brief Advance the current path point to the endpoint of a line-type command.
+ *
+ * @details Handles the endpoint-update logic for 'h' (horizontal line-to),
+ * 'v' (vertical line-to), and all other commands that terminate with an (x,y)
+ * endpoint pair as the last two args. For relative commands (@p rel true) the
+ * new position is added to the current point; for absolute commands it replaces
+ * it. Curve commands should call @c priv_emit_cubic / @c priv_emit_quad instead
+ * as they carry additional control-point state.
+ *
+ * @param[in]     u    Lower-case command letter determining the update rule.
+ * @param[in]     rel  True for relative, false for absolute coordinates.
+ * @param[in]     args Array of at least @p na parsed integer arguments; must not be NULL.
+ * @param[in]     na   Count of valid entries in @p args.
+ * @param[in,out] cx   Current point X; updated by this function.
+ * @param[in,out] cy   Current point Y; updated by this function.
+ *
+ * @pre  @p args is a valid pointer to at least @p na int32_t values.
+ * @pre  @p cx and @p cy are valid non-NULL pointers.
+ *
+ * @post @p *cx and @p *cy reflect the endpoint of the command.
+ * @post @p args is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void
 priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, int32_t* cy)
 {
@@ -1164,7 +2417,35 @@ priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, i
   *cy              = rel ? (*cy + ey) : ey;
 }
 
-/** @brief One axis of a cubic Bezier at parameter @p tt (control points c0..c3). */
+/**
+ * @brief Evaluate one axis of a cubic Bernstein-Bezier polynomial at parameter @p tt.
+ *
+ * @details Computes the standard four-point cubic Bezier formula:
+ * (1-tt)^3 * c0 + 3*(1-tt)^2*tt * c1 + 3*(1-tt)*tt^2 * c2 + tt^3 * c3.
+ * Used by @c priv_flatten_cubic to sample x and y independently at each
+ * subdivision parameter value @p tt in (0, 1].
+ *
+ * @param[in] tt Parameter in [0, 1]; 0 returns @p c0, 1 returns @p c3.
+ * @param[in] c0 Start control point value for this axis.
+ * @param[in] c1 First interior control point value.
+ * @param[in] c2 Second interior control point value.
+ * @param[in] c3 End control point value for this axis.
+ *
+ * @return float The Bezier value at parameter @p tt.
+ * @retval c0  When @p tt is exactly 0.0F.
+ * @retval c3  When @p tt is exactly 1.0F.
+ *
+ * @pre  @p tt is a finite float in [0.0F, 1.0F].
+ * @pre  @p c0, @p c1, @p c2, @p c3 are finite float values.
+ *
+ * @post The return value is the cubic Bernstein polynomial evaluated at @p tt.
+ * @post No parameters are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
 {
   const float mt = 1.0F - tt;
@@ -1172,7 +2453,35 @@ static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
          (s_svg_bez3 * mt * (tt * tt) * c2) + ((tt * tt * tt) * c3);
 }
 
-/** @brief Flatten a cubic Bezier (P0..P3, user space) into @p (xs,ys); grow @p n. */
+/**
+ * @brief Flatten a cubic Bezier curve (P0..P3, user space) into the vertex array.
+ *
+ * @details Samples @c k_svg_curve_seg equally-spaced parameter values in (0,1]
+ * using @c priv_bezier1 for each axis, maps each sample through the full affine
+ * via @c priv_map_point, and appends the framebuffer-space point to
+ * @p xs[@p *n] / @p ys[@p *n], incrementing @p *n. Stops early when @p *n
+ * reaches @c k_svg_poly_max to avoid buffer overflow.
+ *
+ * @param[in]     t   Active coordinate transform; must not be NULL.
+ * @param[in]     p0  Start point in user space.
+ * @param[in]     p1  First control point in user space.
+ * @param[in]     p2  Second control point in user space.
+ * @param[in]     p3  End point in user space.
+ * @param[out]    xs  Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out]    ys  Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[in,out] n   Current vertex count; updated by the number of samples appended.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p xs, @p ys are valid arrays of at least @c k_svg_poly_max elements.
+ *
+ * @post @p *n is increased by at most @c k_svg_curve_seg.
+ * @post @p *n <= @c k_svg_poly_max on exit.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_flatten_cubic(const svg_xform_t* t,
                                svg_pt_t           p0,
                                svg_pt_t           p1,
@@ -1192,7 +2501,36 @@ static void priv_flatten_cubic(const svg_xform_t* t,
   }
 }
 
-/** @brief Resolve an absolute/relative point from arg pair @p (ax,ay) about @p (cx,cy). */
+/**
+ * @brief Resolve an absolute or relative SVG point from an argument pair.
+ *
+ * @details When @p rel is true, the result is the current point (@p cx, @p cy)
+ * plus the argument offsets (@p ax, @p ay). When @p rel is false, the result
+ * is simply (@p ax, @p ay) treated as an absolute user-space coordinate.
+ * Used throughout the path parser to interpret command arguments uniformly
+ * regardless of the command's case (uppercase = absolute, lowercase = relative).
+ *
+ * @param[in] rel True for relative coordinates; false for absolute.
+ * @param[in] cx  Current point X (user space); used only when @p rel is true.
+ * @param[in] cy  Current point Y (user space); used only when @p rel is true.
+ * @param[in] ax  X argument from the parsed path command.
+ * @param[in] ay  Y argument from the parsed path command.
+ *
+ * @return svg_pt_t The resolved user-space point.
+ * @retval {cx+ax, cy+ay}  When @p rel is true.
+ * @retval {ax, ay}        When @p rel is false.
+ *
+ * @pre  @p ax and @p ay are valid int32_t argument values.
+ * @pre  When @p rel is true, @p cx and @p cy reflect the current path position.
+ *
+ * @post The return value is a valid user-space @c svg_pt_t.
+ * @post No parameters are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_pt_t priv_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_t ay)
 {
   const svg_pt_t p = {.x = rel ? (cx + ax) : ax, .y = rel ? (cy + ay) : ay};
@@ -1213,14 +2551,67 @@ typedef struct {
   char     kind; /**< 'q' if the last command was Q/T, 'c' if C/S, else 0.     */
 } path_state_t;
 
-/** @brief One axis of a quadratic Bezier at @p tt (control points c0..c2). */
+/**
+ * @brief Evaluate one axis of a quadratic Bernstein-Bezier polynomial at parameter @p tt.
+ *
+ * @details Computes the three-point quadratic Bezier formula:
+ * (1-tt)^2 * c0 + 2*(1-tt)*tt * c1 + tt^2 * c2. Used by @c priv_flatten_quad
+ * to sample x and y independently at each subdivision parameter.
+ *
+ * @param[in] tt Parameter in [0, 1]; 0 returns @p c0, 1 returns @p c2.
+ * @param[in] c0 Start control point value for this axis.
+ * @param[in] c1 Middle control point value.
+ * @param[in] c2 End control point value for this axis.
+ *
+ * @return float The quadratic Bezier value at parameter @p tt.
+ * @retval c0  When @p tt is exactly 0.0F.
+ * @retval c2  When @p tt is exactly 1.0F.
+ *
+ * @pre  @p tt is a finite float in [0.0F, 1.0F].
+ * @pre  @p c0, @p c1, and @p c2 are finite float values.
+ *
+ * @post The return value is the quadratic Bernstein polynomial evaluated at @p tt.
+ * @post No parameters are modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_bezier_q1(float tt, float c0, float c1, float c2)
 {
   const float mt = 1.0F - tt;
   return ((mt * mt) * c0) + (s_svg_bez2 * mt * tt * c1) + ((tt * tt) * c2);
 }
 
-/** @brief Flatten a quadratic Bezier (P0..P2, user space) into @p (xs,ys); grow @p n. */
+/**
+ * @brief Flatten a quadratic Bezier curve (P0..P2, user space) into the vertex array.
+ *
+ * @details Samples @c k_svg_curve_seg equally-spaced parameter values in (0,1]
+ * using @c priv_bezier_q1 for each axis, maps each through the full affine via
+ * @c priv_map_point, and appends the framebuffer-space point to
+ * @p xs[@p *n] / @p ys[@p *n], incrementing @p *n. Stops early when @p *n
+ * reaches @c k_svg_poly_max to avoid buffer overflow.
+ *
+ * @param[in]     t   Active coordinate transform; must not be NULL.
+ * @param[in]     p0  Start point in user space.
+ * @param[in]     p1  Control point in user space.
+ * @param[in]     p2  End point in user space.
+ * @param[out]    xs  Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out]    ys  Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[in,out] n   Current vertex count; updated by the number of samples appended.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p xs, @p ys are valid arrays of at least @c k_svg_poly_max elements.
+ *
+ * @post @p *n is increased by at most @c k_svg_curve_seg.
+ * @post @p *n <= @c k_svg_poly_max on exit.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_flatten_quad(const svg_xform_t* t,
                               svg_pt_t           p0,
                               svg_pt_t           p1,
@@ -1239,21 +2630,102 @@ static void priv_flatten_quad(const svg_xform_t* t,
   }
 }
 
-/** @brief Reflect @p ctrl about the current point @p cur (smooth-curve control). */
+/**
+ * @brief Reflect control point @p ctrl through current point @p cur.
+ *
+ * @details Computes the point that is the reflection of @p ctrl across @p cur:
+ * result = (2*cur.x - ctrl.x, 2*cur.y - ctrl.y). This is the SVG rule for
+ * deriving the implicit first control point of a smooth cubic ('S'/'s') or
+ * smooth quadratic ('T'/'t') curve from the previous command's last control.
+ *
+ * @param[in] cur  The current path point (pivot of the reflection).
+ * @param[in] ctrl The control point to reflect.
+ *
+ * @return svg_pt_t The reflected control point.
+ * @retval {2*cur.x-ctrl.x, 2*cur.y-ctrl.y}  Always.
+ *
+ * @pre  @p cur and @p ctrl are valid @c svg_pt_t values in user space.
+ * @pre  The values fit in int32_t without overflow (SVG coordinates are small).
+ *
+ * @post The return value is the reflection of @p ctrl through @p cur.
+ * @post @p cur and @p ctrl are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
 {
   const svg_pt_t r = {.x = (2 * cur.x) - ctrl.x, .y = (2 * cur.y) - ctrl.y};
   return r;
 }
 
-/** @brief Smooth-curve first control: reflect the prev control iff its kind
- *         matches @p want (per SVG `S`/`T`), else the current point @p p0. */
+/**
+ * @brief Derive the first control point for a smooth curve command.
+ *
+ * @details Returns the reflection of @c st->ctrl through @p p0 when
+ * @c st->kind equals @p want (i.e. the previous command was a matching curve
+ * type); otherwise returns @p p0 itself (the SVG specification says "assume
+ * the control point coincides with the current point"). This implements the
+ * smooth commands 'S'/'s' (want='c') and 'T'/'t' (want='q').
+ *
+ * @param[in] p0   Current path point (used as fallback and pivot for reflection).
+ * @param[in] st   Current path cursor state; must not be NULL.
+ * @param[in] want Expected previous command kind ('c' for S, 'q' for T).
+ *
+ * @return svg_pt_t The derived first control point.
+ * @retval priv_reflect(p0, st->ctrl)  When @c st->kind == @p want.
+ * @retval p0                          Otherwise.
+ *
+ * @pre  @p st is a valid non-NULL pointer to an initialised @c path_state_t.
+ * @pre  @p p0 is the current user-space path position.
+ *
+ * @post The return value is a valid user-space @c svg_pt_t.
+ * @post @p p0, @p st, and @p want are not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static svg_pt_t priv_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
 {
   return (st->kind == want) ? priv_reflect(p0, st->ctrl) : p0;
 }
 
-/** @brief Flatten a cubic (P0..P3) into the list; record ctrl2 + advance @p st. */
+/**
+ * @brief Flatten a cubic Bezier (P0..P3) into the vertex list and advance path state.
+ *
+ * @details Calls @c priv_flatten_cubic to append sampled framebuffer vertices
+ * starting at index @p n, records P2 as the new smooth-curve control point in
+ * @p st->ctrl, sets @p st->kind to 'c', and advances @p st->cx / @p st->cy
+ * to P3. Returns the new vertex count. Used for 'C'/'c' and 'S'/'s' commands.
+ *
+ * @param[in]     t   Active coordinate transform; must not be NULL.
+ * @param[in]     p0  Start point in user space.
+ * @param[in]     p1  First control point in user space.
+ * @param[in]     p2  Second control point in user space (recorded as ctrl).
+ * @param[in]     p3  End point in user space (becomes new current point).
+ * @param[in,out] st  Path cursor state; must not be NULL; updated by this call.
+ * @param[out]    xs  Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out]    ys  Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[in]     n   Vertex count before this call.
+ *
+ * @return int32_t New vertex count after appending the flattened cubic samples.
+ * @retval n..n+k_svg_curve_seg  Depending on how many samples fit before @c k_svg_poly_max.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p st, @p xs, and @p ys are valid non-NULL pointers.
+ *
+ * @post @p st->ctrl, @p st->kind, @p st->cx, and @p st->cy are updated.
+ * @post The return value is in [n, k_svg_poly_max].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_emit_cubic(const svg_xform_t* t,
                                svg_pt_t           p0,
                                svg_pt_t           p1,
@@ -1273,7 +2745,37 @@ static int32_t priv_emit_cubic(const svg_xform_t* t,
   return m;
 }
 
-/** @brief Flatten a quadratic (P0..P2) into the list; record ctrl + advance @p st. */
+/**
+ * @brief Flatten a quadratic Bezier (P0..P2) into the vertex list and advance path state.
+ *
+ * @details Calls @c priv_flatten_quad to append sampled framebuffer vertices
+ * starting at index @p n, records P1 as the new smooth-curve control point in
+ * @p st->ctrl, sets @p st->kind to 'q', and advances @p st->cx / @p st->cy
+ * to P2. Returns the new vertex count. Used for 'Q'/'q' and 'T'/'t' commands.
+ *
+ * @param[in]     t   Active coordinate transform; must not be NULL.
+ * @param[in]     p0  Start point in user space.
+ * @param[in]     p1  Control point in user space (recorded as ctrl).
+ * @param[in]     p2  End point in user space (becomes new current point).
+ * @param[in,out] st  Path cursor state; must not be NULL; updated by this call.
+ * @param[out]    xs  Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out]    ys  Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[in]     n   Vertex count before this call.
+ *
+ * @return int32_t New vertex count after appending the flattened quadratic samples.
+ * @retval n..n+k_svg_curve_seg  Depending on how many samples fit before @c k_svg_poly_max.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p st, @p xs, and @p ys are valid non-NULL pointers.
+ *
+ * @post @p st->ctrl, @p st->kind, @p st->cx, and @p st->cy are updated.
+ * @post The return value is in [n, k_svg_poly_max].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_emit_quad(const svg_xform_t* t,
                               svg_pt_t           p0,
                               svg_pt_t           p1,
@@ -1292,7 +2794,30 @@ static int32_t priv_emit_quad(const svg_xform_t* t,
   return m;
 }
 
-/** @brief Absolute value of a float (avoids a libm fabsf dependency). */
+/**
+ * @brief Compute the absolute value of a float without using libm @c fabsf.
+ *
+ * @details Returns @c -v when @p v is negative, otherwise returns @p v unchanged.
+ * Used in @c priv_arc_center and @c priv_arc_segs to avoid dragging in the full
+ * libm dependency for a trivial operation that the compiler can inline.
+ *
+ * @param[in] v Float value whose absolute value is needed.
+ *
+ * @return float The absolute value of @p v.
+ * @retval -v  When @p v < 0.0F.
+ * @retval v   When @p v >= 0.0F.
+ *
+ * @pre  @p v is any finite float value (NaN and infinity return themselves).
+ * @pre  No external state is required.
+ *
+ * @post The return value is >= 0.0F for all finite @p v.
+ * @post @p v is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_absf(float v)
 {
   return (v < 0.0F) ? -v : v;
@@ -1322,19 +2847,33 @@ typedef struct {
 /**
  * @brief Solve an arc's centre + start/sweep angles (F.6.5.2 / F.6.5.5-6).
  *
- * @details Finishes ::priv_arc_center from its rotated half-chord @p (x1p,y1p),
+ * @details Finishes @c priv_arc_center from its rotated half-chord @p (x1p,y1p),
  * the (radius-corrected) semi-axes @p (rx,ry), and the endpoint midpoint
- * @p (mx,my). Fills @p a 's centre, start angle, signed sweep, radii, and sets
- * @c ok. The @c cos_phi / @c sin_phi fields of @p a must already be set.
+ * @p (mx,my). Fills @p a's centre, start angle, signed sweep, radii, and sets
+ * @p a->ok to true. The @c cos_phi / @c sin_phi fields of @p a must already be
+ * set by the caller. The signed sweep @p a->dt is adjusted so its direction is
+ * consistent with @p sweep (positive angle) and @p large (large-arc) flags.
  *
- * @param[in,out] a     Arc whose centre/angles/radii/ok are written.
- * @param[in] x1p,y1p   Rotated half-chord (F.6.5.1).
- * @param[in] rx,ry     Corrected semi-axes.
- * @param[in] mx,my     Endpoint midpoint (user space).
- * @param[in] large     Large-arc flag.
- * @param[in] sweep     Sweep flag.
- * @pre @p den (rx2*y1p^2 + ry2*x1p^2) is non-zero (the chord is non-degenerate).
- * @post @p a->ok is true.
+ * @param[in,out] a     Arc struct; centre, angles, radii, and ok are written.
+ * @param[in]     x1p   Rotated half-chord X (F.6.5.1, user space).
+ * @param[in]     y1p   Rotated half-chord Y (F.6.5.1, user space).
+ * @param[in]     rx    Corrected semi-axis X.
+ * @param[in]     ry    Corrected semi-axis Y.
+ * @param[in]     mx    Endpoint midpoint X (user space).
+ * @param[in]     my    Endpoint midpoint Y (user space).
+ * @param[in]     large Large-arc flag from the 'A' command.
+ * @param[in]     sweep Sweep (positive-angle) flag from the 'A' command.
+ *
+ * @pre  @p a is a valid non-NULL pointer with @c cos_phi / @c sin_phi already set.
+ * @pre  @p rx > 0.0F and @p ry > 0.0F (degenerate radii handled by the caller).
+ *
+ * @post @p a->ok is set to true.
+ * @post @p a->cx, @p a->cy, @p a->t1, @p a->dt, @p a->rx, @p a->ry are valid.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static void priv_arc_solve(svg_arc_t* a,
                            float      x1p,
@@ -1375,9 +2914,10 @@ static void priv_arc_solve(svg_arc_t* a,
  * @brief Convert an SVG endpoint-parametrised arc to centre parametrisation.
  *
  * @details Implements the SVG 1.1 implementation-notes F.6.5 algorithm:
- * out-of-range radii are scaled up (F.6.6.2), the centre is solved (F.6.5.2),
- * and the start angle + signed sweep are derived (F.6.5.5/6) honouring the
- * large-arc and sweep flags. Pure (no MMIO/heap); uses libm trig.
+ * out-of-range radii are scaled up (F.6.6.2), the centre is solved via
+ * @c priv_arc_solve (F.6.5.2), and the start angle plus signed sweep are
+ * derived (F.6.5.5/6) honouring the large-arc and sweep flags. Pure
+ * (no MMIO/heap); uses libm @c cosf, @c sinf, @c sqrtf.
  *
  * @param[in] p0      Arc start (current point, user space).
  * @param[in] p_end   Arc end (user space, already absolute).
@@ -1386,9 +2926,21 @@ static void priv_arc_solve(svg_arc_t* a,
  * @param[in] rot_deg X-axis rotation in degrees.
  * @param[in] large   Large-arc flag.
  * @param[in] sweep   Sweep (positive-angle) flag.
- * @return The centre parametrisation; @c ok is false for a degenerate arc.
- * @pre @p rx_in / @p ry_in fit a float without overflow (SVG coords are small).
- * @post On @c ok==false no other field is meaningful.
+ *
+ * @return svg_arc_t The centre parametrisation of the arc.
+ * @retval {.ok=false}  Zero radius, or @p p0 and @p p_end are coincident.
+ * @retval {.ok=true}   All fields valid: centre, semi-axes, start angle, sweep.
+ *
+ * @pre  @p rx_in and @p ry_in fit in a float without overflow (SVG coords are bounded).
+ * @pre  @p p0 and @p p_end are valid user-space points.
+ *
+ * @post When @c ok==true, @c cx/@c cy/@c rx/@c ry/@c t1/@c dt are all valid.
+ * @post When @c ok==false, no other field in the returned struct is meaningful.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static svg_arc_t priv_arc_center(svg_pt_t p0,
                                  svg_pt_t p_end,
@@ -1424,7 +2976,30 @@ static svg_arc_t priv_arc_center(svg_pt_t p0,
   return a;
 }
 
-/** @brief Bounded segment count for an arc of signed sweep @p dt (radians). */
+/**
+ * @brief Compute a bounded segment count for an arc of signed sweep @p dt.
+ *
+ * @details Divides the absolute value of @p dt by the target radians-per-segment
+ * constant @c s_svg_arc_step (~pi/8) and adds 1 to ensure at least one segment.
+ * The result is clamped to @c k_svg_arc_seg_max (24) to keep the vertex count
+ * bounded regardless of the sweep angle.
+ *
+ * @param[in] dt Signed arc sweep in radians; negative values are valid.
+ *
+ * @return int32_t Number of segments to use when flattening the arc.
+ * @retval 1..k_svg_arc_seg_max  Always within this range.
+ *
+ * @pre  @p dt is a finite float; the absolute value is used for the calculation.
+ * @pre  @c s_svg_arc_step > 0.0F (guaranteed by the module-scope initialiser).
+ *
+ * @post The return value is in [1, k_svg_arc_seg_max].
+ * @post @p dt is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t priv_arc_segs(float dt)
 {
   int32_t segs = (int32_t)(priv_absf(dt) / s_svg_arc_step) + 1;
@@ -1434,8 +3009,35 @@ static int32_t priv_arc_segs(float dt)
   return segs;
 }
 
-/** @brief Flatten an elliptical arc (P0 -> @p p_end, params in @p args) into
- *         @p (xs,ys); grow @p n. Degenerate radii collapse to a line. */
+/**
+ * @brief Flatten an SVG elliptical arc into the polygon vertex array.
+ *
+ * @details Converts the endpoint-parametrised arc (P0 to @p p_end, with
+ * radii, rotation, and flags from @p args) to centre form via @c priv_arc_center.
+ * When the arc is degenerate (@c ok==false), appends a single line-to @p p_end.
+ * Otherwise samples the arc at @c priv_arc_segs(@p a.dt) parameter values using
+ * trigonometry (the ellipse equation in the rotated frame) and appends each
+ * mapped framebuffer point. Bounded by @c k_svg_poly_max.
+ *
+ * @param[in]     t      Active coordinate transform; must not be NULL.
+ * @param[in]     p0     Arc start point (current path position, user space).
+ * @param[in]     args   Arc argument array indexed by @c svg_arc_* constants; must not be NULL.
+ * @param[in]     p_end  Arc end point (absolute, user space).
+ * @param[out]    xs     Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out]    ys     Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[in,out] n      Current vertex count; updated by this function.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p args has at least @c k_svg_path_args (7) valid int32_t entries.
+ *
+ * @post @p *n is increased by the number of arc sample points appended.
+ * @post @p *n <= @c k_svg_poly_max on exit.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_flatten_arc(const svg_xform_t* t,
                              svg_pt_t           p0,
                              const int32_t*     args,
@@ -1472,15 +3074,37 @@ static void priv_flatten_arc(const svg_xform_t* t,
 }
 
 /**
- * @brief Flatten a cubic/quadratic `<path>` curve command into the vertex list.
+ * @brief Flatten a cubic/quadratic path curve command into the vertex list.
  *
- * @details Handles `C`/`c`, `S`/`s` (smooth cubic), `Q`/`q`, `T`/`t` (smooth
- * quadratic), and the elliptical arc `A`/`a`; `S`/`T` reflect the previous
- * matching control point, and the arc is centre-parametrised + sampled (see
- * ::priv_flatten_arc). Returns -1 for any other command so the caller falls
- * back to the endpoint-chord path (M/L/H/V/Z line-tos).
+ * @details Handles 'C'/'c', 'S'/'s' (smooth cubic), 'Q'/'q', 'T'/'t' (smooth
+ * quadratic), and the elliptical arc 'A'/'a'; 'S'/'T' reflect the previous
+ * matching control point via @c priv_smooth_ctrl, and the arc is centre-
+ * parametrised and sampled via @c priv_flatten_arc. Returns -1 for any other
+ * command so the caller falls back to the endpoint-chord path (M/L/H/V/Z).
  *
- * @return The new vertex count, or -1 if @p u is not a supported curve command.
+ * @param[in]     t    Active coordinate transform; must not be NULL.
+ * @param[in]     u    Lower-case path command letter.
+ * @param[in]     rel  True for relative coordinates.
+ * @param[in]     args Parsed integer arguments; must not be NULL.
+ * @param[in,out] st   Path cursor state; must not be NULL; updated when curve is consumed.
+ * @param[out]    xs   Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out]    ys   Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[in]     n    Vertex count before this call.
+ *
+ * @return int32_t New vertex count, or -1 if @p u is not a supported curve command.
+ * @retval -1  @p u is not 'q', 't', 'c', 's', or 'a'.
+ * @retval n.. New vertex count after flattening the curve.
+ *
+ * @pre  @p t, @p args, @p st, @p xs, and @p ys are valid non-NULL pointers.
+ * @pre  @p n is in [0, k_svg_poly_max].
+ *
+ * @post When the return value >= 0, @p st is updated with the new current point.
+ * @post The return value is in [-1, k_svg_poly_max].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static int32_t priv_path_curve(const svg_xform_t* t,
                                char               u,
@@ -1522,17 +3146,34 @@ static int32_t priv_path_curve(const svg_xform_t* t,
 }
 
 /**
- * @brief Parse a path `d` value into framebuffer-space vertices; return count.
+ * @brief Resolve the next path command at @p d[*i].
  *
- * @details Handles M/L/H/V/Z exactly (absolute + relative, with implicit-L
- * repeats after M); the cubic `C`/`c`, smooth cubic `S`/`s`, quadratic `Q`/`q`,
- * and smooth quadratic `T`/`t` are flattened into line segments (the smooth
- * forms reflect the previous control point), and the elliptical arc `A`/`a` is
- * centre-parametrised and sampled (degenerate radii collapse to a line).
- * Multiple subpaths are merged into one polygon.
+ * @details Skips leading whitespace and commas, then reads the next character.
+ * If it is an ASCII letter ('A'-'Z' or 'a'-'z'), that letter is stored in
+ * @p *last, @p *i is advanced past it, and the letter is returned. If the
+ * next character is not a letter (implicit argument repeat), @p *last is
+ * returned unchanged (the previous command letter). Returns 0 at end-of-buffer.
+ *
+ * @param[in]     d     Path 'd' attribute byte span; must not be NULL.
+ * @param[in]     dlen  Total valid bytes in @p d.
+ * @param[in,out] i     Parse cursor; advanced past the command letter when found.
+ * @param[in,out] last  Last explicit command letter seen; updated when a new letter is consumed.
+ *
+ * @return char The current path command letter, or 0 at end-of-buffer.
+ * @retval 'A'..'Z' or 'a'..'z'  The command letter (new or repeated from @p *last).
+ * @retval 0                      @p *i >= @p dlen (end of buffer).
+ *
+ * @pre  @p d is a valid pointer to at least @p dlen bytes.
+ * @pre  @p i and @p last are valid non-NULL pointers.
+ *
+ * @post @p *i is advanced past the command letter when an explicit letter is consumed.
+ * @post @p *last holds the most recently seen explicit command letter.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
-/** @brief Resolve the next path command at @p d[*i] (explicit letter, or an
- *         implicit repeat of @p *last); advances @p i past a letter; 0 at end. */
 static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
 {
   while ((*i < dlen) && (priv_ws((char)d[*i]) || (d[*i] == ','))) {
@@ -1550,6 +3191,37 @@ static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
   return *last;
 }
 
+/**
+ * @brief Parse a path 'd' value into framebuffer-space vertices; return count.
+ *
+ * @details Handles M/L/H/V/Z exactly (absolute + relative, with implicit-L
+ * repeats after M); the cubic 'C'/'c', smooth cubic 'S'/'s', quadratic 'Q'/'q',
+ * smooth quadratic 'T'/'t', and elliptical arc 'A'/'a' are flattened into
+ * the vertex array (smooth forms reflect the previous control point, arcs are
+ * centre-parametrised). Multiple subpaths are merged into one polygon. 'Z'
+ * is silently accepted and the implicit close is handled by the polygon fill.
+ *
+ * @param[in]  d    Byte span holding the 'd' attribute value; must not be NULL.
+ * @param[in]  dlen Total valid bytes in @p d.
+ * @param[in]  t    Active coordinate transform; must not be NULL.
+ * @param[out] xs   Vertex X array of at least @c k_svg_poly_max elements; must not be NULL.
+ * @param[out] ys   Vertex Y array of at least @c k_svg_poly_max elements; must not be NULL.
+ *
+ * @return int32_t Number of vertices filled in @p xs / @p ys.
+ * @retval 0             No valid path commands produced any vertices.
+ * @retval 1..k_svg_poly_max  Count of framebuffer-space vertices.
+ *
+ * @pre  @p d is a valid pointer to at least @p dlen bytes.
+ * @pre  @p xs and @p ys are valid arrays of at least @c k_svg_poly_max elements.
+ *
+ * @post @p xs[0..return-1] and @p ys[0..return-1] hold framebuffer coordinates.
+ * @post The return value is in [0, k_svg_poly_max].
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static int32_t
 priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {
@@ -1589,7 +3261,30 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
   return n;
 }
 
-/** @brief Draw one `<path>` (span @p s[0..len)) as a filled polygon. */
+/**
+ * @brief Draw one SVG 'path' element as a filled polygon.
+ *
+ * @details Resolves the fill (solid or gradient via @c priv_resolve_fill),
+ * reads the 'd' attribute, parses it into framebuffer-space vertices via
+ * @c priv_parse_path, and fills the resulting polygon with @c priv_fill_poly
+ * or @c priv_fill_poly_grad. Returns without drawing when fill is absent/none
+ * or the 'd' attribute is missing.
+ *
+ * @param[in] s   Byte span of the element tag; must not be NULL.
+ * @param[in] len Total valid bytes in @p s.
+ * @param[in] t   Active coordinate transform; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post All pixels inside the path's filled boundary are painted with the fill colour.
+ * @post No drawing occurs when fill is absent or the 'd' attribute is missing.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
@@ -1614,7 +3309,35 @@ static void priv_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t)
  * ===========================================================================
  */
 
-/** @brief True iff element @p name begins at @p s[at] with a delimiter after. */
+/**
+ * @brief Test whether an element keyword begins at @p s[@p at] with a valid delimiter.
+ *
+ * @details Uses @c priv_starts_ci to match @p name at @p at, then verifies that
+ * the character immediately following the keyword (when within @p len) is either
+ * XML whitespace, '>', or '/'. A match at end-of-buffer is accepted as a valid
+ * (self-closing or run-to-EOF) element. Used to identify element tag kinds
+ * during the document walk without allocating strings.
+ *
+ * @param[in] s    Byte buffer containing the SVG text; must not be NULL.
+ * @param[in] len  Total valid bytes in @p s.
+ * @param[in] at   Byte offset at which to test for the element name.
+ * @param[in] name NUL-terminated element keyword (including '<'); must not be NULL.
+ *
+ * @return bool Whether @p name begins at @p at with a valid post-name delimiter.
+ * @retval true  @p name matches at @p at and is followed by a valid delimiter.
+ * @retval false @p name does not match or the following character is not a delimiter.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p name is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s, @p len, @p at, and @p name are not modified.
+ * @post The return value is deterministic given the same inputs.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_elem_at(const uint8_t* s, size_t len, size_t at, const char* name)
 {
   if (!priv_starts_ci(s, len, at, name)) {
@@ -1628,7 +3351,36 @@ static bool priv_elem_at(const uint8_t* s, size_t len, size_t at, const char* na
   return priv_ws(c) || (c == '>') || (c == '/');
 }
 
-/** @brief Return the span [*open, *close) of the element @p name at/after @p from. */
+/**
+ * @brief Locate the tag span [*open, *close) of element @p name at or after @p from.
+ *
+ * @details Calls @c priv_find_ci to find the first occurrence of @p name in
+ * @p s[@p from .. @p len). If found, scans forward for the next '>' character
+ * to determine the end of the tag. Sets @p *open to the start of the match and
+ * @p *close to the position of '>'. If @p name is not found, returns false.
+ *
+ * @param[in]  s     Byte buffer containing the SVG text; must not be NULL.
+ * @param[in]  len   Total valid bytes in @p s.
+ * @param[in]  from  Start offset for the search; must be <= @p len.
+ * @param[in]  name  NUL-terminated keyword to find; must not be NULL.
+ * @param[out] open  Set to the byte offset of the keyword match when found.
+ * @param[out] close Set to the byte offset of the '>' terminator when found.
+ *
+ * @return bool Whether the element was found.
+ * @retval true  @p name found; @p *open and @p *close are valid.
+ * @retval false @p name not found in @p s[@p from .. @p len).
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p open and @p close are valid non-NULL output pointers.
+ *
+ * @post On true: @p *open <= @p *close <= @p len.
+ * @post On false: @p *open and @p *close are indeterminate.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static bool priv_tag_span(const uint8_t* s,
                           size_t         len,
                           size_t         from,
@@ -1649,7 +3401,30 @@ static bool priv_tag_span(const uint8_t* s,
   return true;
 }
 
-/** @brief Fill @p t's viewBox from the `<svg>` element (default: the box). */
+/**
+ * @brief Fill @p t's viewBox fields from the SVG root element.
+ *
+ * @details Searches for the first '<svg' tag and attempts to read a 'viewBox'
+ * attribute (four integers: min-x, min-y, width, height). If absent, falls
+ * back to 'width' and 'height' attributes. If those are also absent, the
+ * viewBox defaults to (0, 0, bw, bh) so that the SVG user space equals the
+ * target box with no scaling. Values with zero width or height are ignored.
+ *
+ * @param[in]     s   Byte buffer containing the full SVG document; must not be NULL.
+ * @param[in]     len Total valid bytes in @p s.
+ * @param[in,out] t   Transform; @c vx, @c vy, @c vw, @c vh are written.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer with @p t->bw and @p t->bh set.
+ *
+ * @post @p t->vx, @p t->vy, @p t->vw, @p t->vh reflect the parsed viewBox.
+ * @post @p t->vw > 0 and @p t->vh > 0 on exit.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_read_viewbox(const uint8_t* s, size_t len, svg_xform_t* t)
 {
   t->vx        = 0;
@@ -1687,7 +3462,31 @@ static void priv_read_viewbox(const uint8_t* s, size_t len, svg_xform_t* t)
   }
 }
 
-/** @brief Dispatch one element span @p s[at..close) to its shape drawer. */
+/**
+ * @brief Dispatch one element tag span to the appropriate shape-drawing function.
+ *
+ * @details Slices @p s[@p at .. @p close) as the element tag, composes any
+ * element-level 'transform=' onto a local copy of @p t via @c priv_apply_xform,
+ * then selects the drawing function based on the element name: rect, circle,
+ * polygon, polyline, path, or line. Unsupported elements are silently ignored.
+ *
+ * @param[in] s     Full SVG document byte buffer; must not be NULL.
+ * @param[in] len   Total valid bytes in @p s.
+ * @param[in] at    Byte offset of the element opening tag in @p s.
+ * @param[in] close Byte offset of the '>' terminator in @p s.
+ * @param[in] t     Inherited coordinate transform (from group context); must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p at <= @p close <= @p len.
+ *
+ * @post The appropriate shape is drawn using the locally composed transform.
+ * @post @p t is not modified; the local copy absorbs the element transform.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void
 priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const svg_xform_t* t)
 {
@@ -1713,7 +3512,29 @@ priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const
   }
 }
 
-/** @brief Apply group transform @p g (over the base @p t) into @p out. */
+/**
+ * @brief Copy the base transform @p t into @p out and replace the user affine with @p g.
+ *
+ * @details Copies all fields of @p t (box, viewBox, gradient set) into @p out,
+ * then overwrites the six user-affine fields (@c ua .. @c uf) with the
+ * corresponding components of @p g. This produces a transform that has the
+ * same viewBox/box mapping as @p t but uses the group's accumulated affine.
+ *
+ * @param[in]  t   Base transform whose box/viewBox/grads are preserved; must not be NULL.
+ * @param[in]  g   Group affine to install in @p out.
+ * @param[out] out Transform to write; must not be NULL; may alias @p t.
+ *
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ * @pre  @p out is a valid non-NULL pointer to a writable @c svg_xform_t.
+ *
+ * @post @p out->ua .. @p out->uf equal the fields of @p g.
+ * @post All other fields of @p out equal those of @p t.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_xform_with_group(const svg_xform_t* t, svg_utf_t g, svg_xform_t* out)
 {
   *out    = *t;
@@ -1726,10 +3547,36 @@ static void priv_xform_with_group(const svg_xform_t* t, svg_utf_t g, svg_xform_t
 }
 
 /**
- * @brief Handle a `<g>` open: compose its transform over the stack top and push.
+ * @brief Handle a 'g' open tag: compose its 'transform=' over the stack top and push.
  *
- * @details Self-closing `<g/>` (no children) and depth-cap overflow do not push.
- * @return The new stack pointer.
+ * @details Builds a local transform by composing the current stack-top affine
+ * with any 'transform=' attribute on the 'g' element via @c priv_apply_xform.
+ * Self-closing 'g/' elements (detected by '/' before '>') and groups that
+ * would exceed @c k_svg_g_depth_max are not pushed; in those cases @p gsp is
+ * returned unchanged. Otherwise the new affine is pushed as @p gstk[@p gsp+1]
+ * and @p gsp+1 is returned.
+ *
+ * @param[in] s     Full SVG document byte buffer; must not be NULL.
+ * @param[in] i     Byte offset of the '<g' tag start.
+ * @param[in] close Byte offset of the '>' terminator for the 'g' tag.
+ * @param[in] t     Base coordinate transform (box/viewBox); must not be NULL.
+ * @param[in] gstk  Group transform stack of at least @c k_svg_g_depth_max+1 elements; must not be NULL.
+ * @param[in] gsp   Current group stack pointer (index of the top entry).
+ *
+ * @return int32_t The updated stack pointer after this open.
+ * @retval gsp    Self-closing 'g' or depth-cap reached; stack unchanged.
+ * @retval gsp+1  The new group's affine was pushed; stack pointer advanced.
+ *
+ * @pre  @p s is a valid pointer to at least @p close bytes.
+ * @pre  @p gsp is in [0, k_svg_g_depth_max].
+ *
+ * @post @p gstk[@p gsp+1] holds the composed affine when the return value is @p gsp+1.
+ * @post @p gstk and @p t are not modified when @p gsp is returned.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static int32_t priv_group_open(const uint8_t*     s,
                                size_t             i,
@@ -1753,9 +3600,27 @@ static int32_t priv_group_open(const uint8_t*     s,
 /**
  * @brief Walk every element in document order and draw the supported shapes.
  *
- * @details Maintains a bounded `<g>` transform stack: entering `<g transform=>`
- * composes its transform onto the current group context and pushes; `</g>` pops.
- * Each shape inherits the top group transform, then composes its own `transform=`.
+ * @details Maintains a bounded group transform stack of depth @c k_svg_g_depth_max.
+ * Entering a 'g' element (via @c priv_group_open) composes its 'transform='
+ * onto the current top and pushes. Encountering '</g>' pops. Each shape element
+ * inherits the top group transform via @c priv_xform_with_group, then
+ * composes its own element-level 'transform=' in @c priv_dispatch_shape.
+ * The scan is bounded: each iteration advances past one '<...>' tag or breaks.
+ *
+ * @param[in] s   Full SVG document byte buffer; must not be NULL.
+ * @param[in] len Total valid bytes in @p s.
+ * @param[in] t   Base coordinate transform (box, viewBox, gradients); must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p t is a valid non-NULL pointer to an initialised @c svg_xform_t.
+ *
+ * @post All recognisable shape elements in @p s are drawn to the framebuffer.
+ * @post @p t is not modified; local copies absorb all transform composition.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
  */
 static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
@@ -1793,7 +3658,34 @@ static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
  * ===========================================================================
  */
 
-/** @brief Read attribute @p name as a float; @p def if absent. */
+/**
+ * @brief Read an SVG attribute as a floating-point number, returning a default when absent.
+ *
+ * @details Calls @c priv_attr to locate the attribute value slice, then forwards
+ * that slice to @c priv_numf starting at offset zero. Returns @p def when the
+ * attribute is absent. Used for reading gradient geometry attributes (x1, y1,
+ * x2, y2, cx, cy, r) and stop offsets that are specified as decimal fractions.
+ *
+ * @param[in] s    Byte buffer containing the SVG tag text; must not be NULL.
+ * @param[in] len  Total valid bytes in @p s.
+ * @param[in] name NUL-terminated ASCII attribute name; must not be NULL.
+ * @param[in] def  Value to return when the attribute is absent.
+ *
+ * @return float The parsed floating-point value, or @p def when absent.
+ * @retval def  Attribute @p name was not found.
+ * @retval n    The float value parsed from the attribute.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p name is a valid NUL-terminated ASCII string.
+ *
+ * @post @p s and @p name are not modified.
+ * @post The return value equals @p def when @c priv_attr returns false.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_attr_numf(const uint8_t* s, size_t len, const char* name, float def)
 {
   size_t off = 0U;
@@ -1805,7 +3697,30 @@ static float priv_attr_numf(const uint8_t* s, size_t len, const char* name, floa
   return priv_numf(&s[off], vl, &k);
 }
 
-/** @brief Copy the `id` attribute into @p dst, NUL-terminated (<= k_svg_grad_id). */
+/**
+ * @brief Copy the 'id' attribute value into @p dst as a NUL-terminated string.
+ *
+ * @details Looks up the "id" attribute via @c priv_attr. If absent, writes a
+ * NUL byte at @p dst[0] and returns. Otherwise copies at most
+ * @c k_svg_grad_id - 1 bytes from the attribute value to @p dst and appends a
+ * NUL terminator. Used when scanning gradient definitions to store each
+ * gradient's id for later url(#id) resolution.
+ *
+ * @param[in]  s   Byte buffer containing the SVG tag text; must not be NULL.
+ * @param[in]  len Total valid bytes in @p s.
+ * @param[out] dst Output buffer of at least @c k_svg_grad_id bytes; must not be NULL.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p dst is a valid pointer to at least @c k_svg_grad_id bytes.
+ *
+ * @post @p dst[0..n] is NUL-terminated where n <= @c k_svg_grad_id - 1.
+ * @post @p s is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_copy_attr_id(const uint8_t* s, size_t len, char* dst)
 {
   dst[0]     = '\0';
@@ -1821,7 +3736,32 @@ static void priv_copy_attr_id(const uint8_t* s, size_t len, char* dst)
   dst[n] = '\0';
 }
 
-/** @brief Clamp @p v to [0, 1]. */
+/**
+ * @brief Clamp a float value to the unit interval [0, 1].
+ *
+ * @details Returns 0.0F when @p v < 0.0F, returns @c s_svg_unit (1.0F) when
+ * @p v > @c s_svg_unit, and returns @p v unchanged otherwise. Used to clamp
+ * parsed gradient stop offsets to a valid range before they are stored in the
+ * gradient descriptor.
+ *
+ * @param[in] v Float value to clamp.
+ *
+ * @return float The value clamped to [0.0F, 1.0F].
+ * @retval 0.0F         When @p v < 0.0F.
+ * @retval s_svg_unit   When @p v > @c s_svg_unit.
+ * @retval v            When @p v is already in [0.0F, 1.0F].
+ *
+ * @pre  @p v is a finite float value.
+ * @pre  @c s_svg_unit is initialised to 1.0F (module-scope constant).
+ *
+ * @post The return value is in [0.0F, 1.0F].
+ * @post @p v is not modified.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_clamp01(float v)
 {
   if (v < 0.0F) {
@@ -1830,7 +3770,33 @@ static float priv_clamp01(float v)
   return (v > s_svg_unit) ? s_svg_unit : v;
 }
 
-/** @brief Parse a gradient `<stop>` `offset` (fraction or `%`) from @p tag. */
+/**
+ * @brief Parse a gradient 'stop' element's 'offset' attribute.
+ *
+ * @details Reads the "offset" attribute from the stop tag via @c priv_attr and
+ * parses its value as a float via @c priv_numf. If a '%' character is found
+ * anywhere in the attribute value span, the result is divided by @c s_svg_pct
+ * (100.0F) to convert from percentage to fraction. Returns 0.0F when the
+ * attribute is absent. The caller is responsible for clamping via @c priv_clamp01.
+ *
+ * @param[in] tag  Byte span of the 'stop' element tag; must not be NULL.
+ * @param[in] tlen Total valid bytes in @p tag.
+ *
+ * @return float The offset as a fraction in [0, 1] (unclamped), or 0.0F if absent.
+ * @retval 0.0F  Attribute "offset" is absent.
+ * @retval n     Parsed offset; divide by 100 if given as a percentage.
+ *
+ * @pre  @p tag is a valid pointer to at least @p tlen bytes.
+ * @pre  @p tlen > 0 when the tag is expected to contain attributes.
+ *
+ * @post @p tag is not modified.
+ * @post The return value may be outside [0, 1] before the caller clamps it.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static float priv_stop_offset(const uint8_t* tag, size_t tlen)
 {
   size_t ooff = 0U;
@@ -1848,7 +3814,32 @@ static float priv_stop_offset(const uint8_t* tag, size_t tlen)
   return off;
 }
 
-/** @brief Parse a gradient `<stop>` `stop-color` from @p tag (default fill if absent). */
+/**
+ * @brief Parse a gradient 'stop' element's 'stop-color' attribute.
+ *
+ * @details Reads the "stop-color" attribute from the stop tag via @c priv_attr
+ * and parses the value as a paint via @c priv_paint. If the attribute is absent
+ * or the paint parses to ::k_svg_no_paint (e.g. "none"), returns the SVG
+ * default fill colour ::k_svg_def_fill (black).
+ *
+ * @param[in] tag  Byte span of the 'stop' element tag; must not be NULL.
+ * @param[in] tlen Total valid bytes in @p tag.
+ *
+ * @return uint32_t The stop colour in 0x00RRGGBB format.
+ * @retval (uint32_t)k_svg_def_fill  Attribute absent or parses to no-paint.
+ * @retval 0x000000..0xFFFFFF        The parsed solid stop colour.
+ *
+ * @pre  @p tag is a valid pointer to at least @p tlen bytes.
+ * @pre  @p tlen > 0 when the tag is expected to contain attributes.
+ *
+ * @post @p tag is not modified.
+ * @post The return value has bits [31:24] clear.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_stop_color(const uint8_t* tag, size_t tlen)
 {
   size_t coff = 0U;
@@ -1860,7 +3851,31 @@ static uint32_t priv_stop_color(const uint8_t* tag, size_t tlen)
   return (pc != (uint32_t)k_svg_no_paint) ? pc : (uint32_t)k_svg_def_fill;
 }
 
-/** @brief Parse the `<stop>` children of a gradient in @p s[from..end) into @p g. */
+/**
+ * @brief Parse the 'stop' child elements of a gradient definition into @p g.
+ *
+ * @details Scans @p s[@p from .. @p end) for '<stop' tags using @c priv_find_ci.
+ * For each found stop tag, extracts the offset via @c priv_stop_offset (clamped
+ * via @c priv_clamp01) and the colour via @c priv_stop_color, stores them in
+ * @p g->stops[@p g->nstops], and increments @p g->nstops. Bounded by
+ * @c k_svg_grad_stops; stops beyond the limit are silently dropped.
+ *
+ * @param[in]     s    Full SVG document byte buffer; must not be NULL.
+ * @param[in]     from Start offset of the gradient body (after the opening tag).
+ * @param[in]     end  End offset (exclusive; position of the closing tag).
+ * @param[in,out] g    Gradient to populate; @c nstops and @c stops are updated.
+ *
+ * @pre  @p s is a valid pointer to at least @p end bytes.
+ * @pre  @p g is a valid non-NULL pointer with @p g->nstops <= @c k_svg_grad_stops.
+ *
+ * @post @p g->stops[0..nstops-1] hold the parsed stop data.
+ * @post @p g->nstops <= @c k_svg_grad_stops.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_parse_stops(const uint8_t* s, size_t from, size_t end, svg_grad_t* g)
 {
   size_t at = from;
@@ -1883,7 +3898,31 @@ static void priv_parse_stops(const uint8_t* s, size_t from, size_t end, svg_grad
   }
 }
 
-/** @brief Scan the document for gradient definitions into @p gs (bounded, zero-heap). */
+/**
+ * @brief Scan the document for gradient definitions and populate @p gs.
+ *
+ * @details Searches the document for '<linearGradient' and '<radialGradient'
+ * opening tags in document order. For each found gradient, reads the 'id',
+ * 'x1', 'y1', 'x2', 'y2' (linear) or 'cx', 'cy', 'r' (radial) attributes
+ * and populates a new entry in @p gs->g. Then locates the matching closing
+ * tag and calls @c priv_parse_stops to fill the stop list. Bounded by
+ * @c k_svg_grad_max; additional gradients are silently dropped.
+ *
+ * @param[in]  s   Full SVG document byte buffer; must not be NULL.
+ * @param[in]  len Total valid bytes in @p s.
+ * @param[out] gs  Gradient set to populate; @c n and @c g are written.
+ *
+ * @pre  @p s is a valid pointer to at least @p len bytes.
+ * @pre  @p gs is a valid non-NULL pointer to a writable @c svg_grads_t.
+ *
+ * @post @p gs->n holds the count of parsed gradients (<= @c k_svg_grad_max).
+ * @post @p gs->g[0..n-1] are valid, fully-populated @c svg_grad_t entries.
+ *
+ * @note Not thread-safe in isolation; callers in this module are
+ *       single-threaded during SVG render.
+ *
+ * @since 0.1.0
+ */
 static void priv_scan_grads(const uint8_t* s, size_t len, svg_grads_t* gs)
 {
   gs->n       = 0;

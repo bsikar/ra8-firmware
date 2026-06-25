@@ -103,7 +103,35 @@ static const uint32_t s_ra_book_crc_table[k_ra_book_crc_table_len] = {
   0xB40BBE37U, 0xC30C8EA1U, 0x5A05DF1BU, 0x2D02EF8DU,
 };
 
-/** @brief Implementation of `ra_book_crc32()` -- table-driven reflected CRC-32. */
+/**
+ * @brief Implementation of `ra_book_crc32()` -- table-driven reflected CRC-32.
+ *
+ * @details
+ * Computes a CRC-32/ISO-HDLC (reflected polynomial 0xEDB88320) over the byte
+ * array [@p data, @p data + @p len) using the precomputed table
+ * @ref s_ra_book_crc_table. The algorithm seeds the accumulator with
+ * @ref k_ra_book_crc_init, folds one byte per iteration by XOR-indexing the
+ * table and right-shifting the accumulator, then XORs the final value with
+ * @ref k_ra_book_crc_init again to produce the standard CRC-32 result. The
+ * check value over "123456789" is 0xCBF43926, matching Python `zlib.crc32`.
+ *
+ * @param[in] data  Pointer to the byte array to checksum; must not be NULL.
+ * @param[in] len   Number of bytes to process; 0 produces 0x00000000.
+ *
+ * @return uint32_t CRC-32 of the input byte array.
+ * @retval 0x00000000  Returned when @p len is 0 (empty input).
+ * @retval 0xCBF43926  Check value for the ASCII string "123456789".
+ *
+ * @pre @p data is not NULL when @p len is greater than 0.
+ * @pre @p len does not exceed the size of the allocation pointed to by @p data.
+ * @post The returned value equals the CRC-32/ISO-HDLC of the input bytes.
+ * @post Neither @p data nor any external state is modified.
+ *
+ * @note Not thread-safe if the read range overlaps a concurrent write; the
+ *       CRC table itself is immutable and requires no synchronisation.
+ *
+ * @since Version 0.1.0
+ */
 RA_NO_RECURSION
 static uint32_t ra_book_crc32(const uint8_t* data, size_t len)
 {
@@ -117,8 +145,31 @@ static uint32_t ra_book_crc32(const uint8_t* data, size_t len)
 
 /**
  * @brief Implementation of `ra_book_table_fits()` -- overflow-safe extent check.
- * @details Returns true when `[off, off + count*elem)` lies within `total`,
- *          computed in 64-bit to avoid 32-bit wraparound on hostile inputs.
+ *
+ * @details
+ * Returns true when the half-open byte range [@p off, @p off + @p count *
+ * @p elem) lies entirely within a blob of @p total bytes. Both the start
+ * offset and the computed end are promoted to 64-bit before comparison so that
+ * no 32-bit arithmetic can wrap on adversarially crafted blob fields, even when
+ * @p count and @p elem together would overflow a 32-bit product.
+ *
+ * @param[in] off    Byte offset of the table's first element within the blob.
+ * @param[in] count  Number of elements in the table.
+ * @param[in] elem   Size in bytes of one table element.
+ * @param[in] total  Total byte length of the blob (value from the header).
+ *
+ * @return bool Whether the described table fits inside the blob.
+ * @retval true   The range [@p off, @p off + @p count * @p elem) is within @p total.
+ * @retval false  The range overflows or exceeds @p total bytes.
+ *
+ * @pre @p total reflects the actual allocation backing the blob pointer.
+ * @pre @p elem is non-zero; passing zero causes the range to collapse to @p off.
+ * @post No memory is read or written; the result is a pure arithmetic predicate.
+ * @post Returns false for any input combination that would overflow a 32-bit sum.
+ *
+ * @note Pure function with no shared state; thread-safe.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uint32_t total)
 {
@@ -178,6 +229,37 @@ ra_err_t ra_book_validate(const void* base, size_t size)
 /**
  * @brief Implementation of `ra_book_container_inflated_size()` -- check the
  *        "RBKZ" header and read the inflated size, bounding it by @p scratch_cap.
+ *
+ * @details
+ * Verifies that @p bytes begins with the four-byte magic "RBKZ" and that
+ * @p file_len is at least @ref k_ra_book_container_header_len (8 bytes).
+ * If those checks pass, reads the little-endian uint32 inflated size that
+ * immediately follows the magic via `memcpy` (avoids strict-aliasing UB) and
+ * checks that the value does not exceed @p scratch_cap. On success the
+ * inflated size is written to @p out_size so the caller can size the inflate
+ * call and validate the produced byte count.
+ *
+ * @param[in]  bytes        Pointer to the start of the on-disk container file.
+ * @param[in]  file_len     Total byte length of the container file.
+ * @param[in]  scratch_cap  Capacity in bytes of the caller's inflate scratch
+ *                          buffer; the inflated size must not exceed this.
+ * @param[out] out_size     Receives the inflated blob size on success.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok                  Header is valid and inflated size fits in scratch.
+ * @retval k_ra_err_invalid_size    @p file_len is shorter than the container header,
+ *                                  or the inflated size exceeds @p scratch_cap.
+ * @retval k_ra_err_invalid_arg     The "RBKZ" magic does not match.
+ *
+ * @pre @p bytes is not NULL and points to at least @p file_len readable bytes.
+ * @pre @p out_size is not NULL.
+ * @post On @ref k_ra_ok, *@p out_size contains the inflated blob byte count.
+ * @post On any error return, *@p out_size is not modified.
+ *
+ * @note Not thread-safe if @p bytes is concurrently modified; no global state
+ *       is accessed.
+ *
+ * @since Version 0.1.0
  */
 static ra_err_t ra_book_container_inflated_size(const uint8_t* bytes,
                                                 size_t         file_len,
@@ -206,6 +288,46 @@ static ra_err_t ra_book_container_inflated_size(const uint8_t* bytes,
 /**
  * @brief Implementation of `ra_book_inflate_and_validate()` -- inflate the
  *        container payload into @p scratch and validate the resulting blob.
+ *
+ * @details
+ * Calls @p inflate to decompress [@p payload, @p payload + @p payload_len)
+ * into @p scratch. Verifies that the number of bytes produced equals
+ * @p expected (the inflated size read from the container header) to catch
+ * truncated or corrupted streams. On a size match, passes the inflated buffer
+ * to `ra_book_validate()` for magic, version, table-bounds, and CRC-32
+ * integrity checks. If all checks succeed, sets *@p out_base to @p scratch
+ * and *@p out_size to the produced byte count, giving the caller a validated,
+ * position-independent blob ready for inline-accessor traversal.
+ *
+ * @param[in]  inflate      Inflate function pointer satisfying the
+ *                          @ref ra_book_inflate_fn contract; must not be NULL.
+ * @param[in]  payload      Pointer to the compressed DEFLATE stream bytes.
+ * @param[in]  payload_len  Byte length of the compressed stream.
+ * @param[in]  scratch      Caller-provided buffer that receives the inflated
+ *                          blob; must be at least @p scratch_cap bytes.
+ * @param[in]  scratch_cap  Capacity in bytes of @p scratch.
+ * @param[in]  expected     Expected inflated byte count (from the container
+ *                          header); the actual produced count must match.
+ * @param[out] out_base     Receives a pointer to the validated blob in @p scratch.
+ * @param[out] out_size     Receives the number of inflated bytes produced.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok                  Inflation succeeded and the blob is valid.
+ * @retval k_ra_err_invalid_size    Produced byte count does not equal @p expected.
+ * @retval k_ra_err_invalid_arg     `ra_book_validate()` rejected the magic or version.
+ * @retval k_ra_err_range_check_failed  CRC-32 mismatch in the inflated blob.
+ *
+ * @pre @p inflate is not NULL and satisfies the @ref ra_book_inflate_fn contract.
+ * @pre @p scratch is not NULL and is at least @p scratch_cap bytes.
+ * @pre @p out_base and @p out_size are not NULL.
+ * @post On @ref k_ra_ok, *@p out_base equals @p scratch and *@p out_size equals
+ *       @p expected.
+ * @post On any error return, *@p out_base and *@p out_size are not modified.
+ *
+ * @note Not thread-safe; concurrent writes to @p scratch produce undefined
+ *       behaviour. No global mutable state is accessed.
+ *
+ * @since Version 0.1.0
  */
 static ra_err_t ra_book_inflate_and_validate(ra_book_inflate_fn inflate,
                                              const uint8_t*     payload,

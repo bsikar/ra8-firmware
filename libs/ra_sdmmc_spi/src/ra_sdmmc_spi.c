@@ -599,6 +599,7 @@ static ra_err_t internal_validate_transport(const ra_sdmmc_spi_transport_t* tran
  *
  * @return None.
  * @pre The transport is bound (called from the init probe).
+ * @pre All transport callbacks (@c cs, @c xfer) are non-NULL in @c s_state.transport.
  * @post Any in-flight write/read transaction is terminated and the bus is idle.
  * @post CS is released.
  * @note Not thread-safe; part of single-threaded init.
