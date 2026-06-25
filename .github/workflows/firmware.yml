@@ -281,6 +281,16 @@ jobs:
           # compile-db, so it covers cross-compiled TUs the host tidy
           # build never sees (ThreadX/USBX/NetX/HAL register code).
           python3 scripts/utils/check_function_size.py
+          # check_file_size.py: maintainability cap -- no single .c/.h
+          # over 1000 lines.  Complements the per-function Rule 4 gate,
+          # which a multi-thousand-line god-file or copy-pasted sibling
+          # bodies can pass while still being unreviewable.
+          python3 scripts/utils/check_file_size.py
+          # check_final_newline.py: every first-party source file (C/C++,
+          # Python, shell, CMake, YAML, ...) must end in a trailing
+          # newline.  Complements .clang-format InsertNewlineAtEOF (C/C++
+          # only) by covering scripts and config-as-code.
+          python3 scripts/utils/check_final_newline.py
           # check_magic_numbers.py: no magic numbers.  clang-tidy's
           # readability-magic-numbers only sees files in the host
           # compile-db (no example main.c, no ARM-only #ifdef paths),
@@ -293,6 +303,28 @@ jobs:
         env:
           CLANG_FORMAT: clang-format-22
         run: bash scripts/format_code.sh --check
+      - name: Set up Python/shell lint tools (ruff, shellcheck, shfmt)
+        run: |
+          set -euo pipefail
+          # ruff in an isolated venv (PEP 668-safe across runner images)
+          python3 -m venv "$RUNNER_TEMP/lintenv"
+          "$RUNNER_TEMP/lintenv/bin/pip" install --quiet ruff==0.15.19
+          echo "$RUNNER_TEMP/lintenv/bin" >> "$GITHUB_PATH"
+          # pinned static binaries for the X64 runner (no sudo, no apt)
+          mkdir -p "$RUNNER_TEMP/lintbin"
+          curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz \
+            | tar -xJ -C "$RUNNER_TEMP"
+          cp "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/lintbin/"
+          curl -fsSL -o "$RUNNER_TEMP/lintbin/shfmt" \
+            https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          chmod +x "$RUNNER_TEMP/lintbin/shfmt"
+          echo "$RUNNER_TEMP/lintbin" >> "$GITHUB_PATH"
+      - name: Python + shell lint gates (ruff / shellcheck + shfmt)
+        run: |
+          # --require: fail (don't skip) if a tool is missing on the runner.
+          # These gates fail on ANY finding -- there is no grandfathering.
+          python3 scripts/utils/check_ruff.py --require
+          python3 scripts/utils/check_shell.py --require
       - name: clang-tidy
         run: bash scripts/clang_tidy.sh --check
       - name: HUM citation validator
