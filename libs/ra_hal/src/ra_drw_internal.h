@@ -53,20 +53,6 @@ typedef enum : uint32_t {
 } ra_drw_internal_mask32_t;
 
 /**
- * @var s_tag
- * @brief Logging tag for the DRW driver, shared across DRW TUs.
- *
- * @details
- * Defined once in @c ra_drw.c and referenced from @c ra_drw_draw.c via
- * this @c extern declaration so both TUs log under the same tag.
- *
- * @note Read-only after definition; do not reassign.
- * @warning Direct modification breaks log correlation.
- * @since 0.1.0
- */
-extern const char* s_tag;
-
-/**
  * @brief Convert a signed pixel coordinate to the DRW Q12.4 sub-pixel grid.
  *
  * @details

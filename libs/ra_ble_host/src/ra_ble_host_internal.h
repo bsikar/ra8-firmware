@@ -11,8 +11,8 @@
  *     stack-internal capacities).
  *   - The GATT attribute-table row type and its kind enum.
  *   - The singleton host-state struct.
- *   - The single shared-state instance ``s_state`` (defined in
- *     ra_ble_l2cap.c, referenced from ra_ble_l2cap_advertise.c).
+ *   - The single shared-state instance ``s_ble_host_state`` (defined
+ *     in ra_ble_l2cap.c, referenced from ra_ble_l2cap_advertise.c).
  *   - The little-endian uint16 packer used by both TUs.
  *
  * This header is src/-local: it is not part of the public BLE host
@@ -130,7 +130,7 @@ typedef struct {
 } ra_ble_host_state_t;
 
 /**
- * @var s_state
+ * @var s_ble_host_state
  * @brief The single shared-state instance for the BLE host stack.
  *
  * @details Defined in ra_ble_l2cap.c. Referenced directly by the GAP
@@ -145,7 +145,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-extern ra_ble_host_state_t s_state;
+extern ra_ble_host_state_t s_ble_host_state;
 
 /**
  * @brief Pack a little-endian uint16 into a byte buffer.

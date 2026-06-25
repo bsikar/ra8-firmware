@@ -35,6 +35,18 @@
 #include "ra_log.h"
 
 /**
+ * @var s_tag
+ * @brief Logger tag used by every ra_etha_* call in this TU.
+ *
+ * @details TU-local read-only logger tag. The lifecycle TU (ra_etha.c)
+ * keeps its own identical copy; the string is immutable so duplicating
+ * it avoids cross-TU external linkage.
+ * @note Read-only after init; treat as immutable.
+ * @since 0.1.0
+ */
+static const char* s_tag = "ETHA";
+
+/**
  * @enum ra_etha_ring_limits_t
  * @brief Bound checks for ::ra_etha_descriptor_ring_init arguments.
  */
@@ -110,9 +122,9 @@ ra_err_t ra_etha_descriptor_ring_init(ra_etha_port_t channel,
     ra_log_error(s_tag, "etha_descriptor_ring_init: ring args out of range");
     return k_ra_err_invalid_arg;
   }
-  s_slots[(uint8_t)channel].stats.ring_tx  = num_tx;
-  s_slots[(uint8_t)channel].stats.ring_rx  = num_rx;
-  s_slots[(uint8_t)channel].stats.ring_buf = buffer_size;
+  s_etha_slots[(uint8_t)channel].stats.ring_tx  = num_tx;
+  s_etha_slots[(uint8_t)channel].stats.ring_rx  = num_rx;
+  s_etha_slots[(uint8_t)channel].stats.ring_buf = buffer_size;
 
   /* Clamp every per-class TX queue depth to num_tx so the hardware
    * never schedules a class deeper than the host-side ring can hold.
@@ -136,7 +148,7 @@ ra_err_t ra_etha_get_stats(ra_etha_port_t channel, ra_etha_port_stats_t* out_sta
     ra_log_error(s_tag, "etha_get_stats: channel out of range");
     return k_ra_err_invalid_arg;
   }
-  *out_stats = s_slots[(uint8_t)channel].stats;
+  *out_stats = s_etha_slots[(uint8_t)channel].stats;
   return k_ra_ok;
 }
 
@@ -151,7 +163,7 @@ ra_err_t ra_etha_account_traffic(ra_etha_port_t channel,
     ra_log_error(s_tag, "etha_account_traffic: channel out of range");
     return k_ra_err_invalid_arg;
   }
-  ra_etha_port_stats_t* st = &s_slots[(uint8_t)channel].stats;
+  ra_etha_port_stats_t* st = &s_etha_slots[(uint8_t)channel].stats;
   st->tx_ok                = internal_sat_add_u32(st->tx_ok, tx_ok);
   st->tx_err               = internal_sat_add_u32(st->tx_err, tx_err);
   st->rx_ok                = internal_sat_add_u32(st->rx_ok, rx_ok);

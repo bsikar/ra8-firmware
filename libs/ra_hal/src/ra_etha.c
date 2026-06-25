@@ -61,12 +61,13 @@
  * @var s_tag
  * @brief Logger tag used by every ra_etha_* call.
  *
- * @details Defined here and shared with the statistics TU
- * (ra_etha_stats.c) via the extern declaration in ra_etha_internal.h.
+ * @details TU-local read-only logger tag. The statistics TU
+ * (ra_etha_stats.c) keeps its own identical copy; the string is
+ * immutable so duplicating it avoids cross-TU external linkage.
  * @note Read-only after init; treat as immutable.
  * @since 0.1.0
  */
-const char* s_tag = "ETHA";
+static const char* s_tag = "ETHA";
 
 /**
  * @var g_ra_etha_diag_last_eams
@@ -112,7 +113,7 @@ typedef enum : uint16_t {
 } ra_etha_local_size_t;
 
 /**
- * @var s_slots
+ * @var s_etha_slots
  * @brief Per-port handler table; index = ::ra_etha_port_t.
  *
  * @details Defined here and shared with the statistics TU
@@ -120,7 +121,7 @@ typedef enum : uint16_t {
  * @warning Not safe to mutate outside the ETHA driver path.
  * @since 0.1.0
  */
-ra_etha_slot_t s_slots[k_ra_etha_port_count];
+ra_etha_slot_t s_etha_slots[k_ra_etha_port_count];
 
 /**
  * @brief Range-check a traffic-class argument.
@@ -197,9 +198,9 @@ ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEIE2 = cfg->eaeie2_mask;
 
-  s_slots[(uint8_t)port].cb    = nullptr;
-  s_slots[(uint8_t)port].ctx   = nullptr;
-  s_slots[(uint8_t)port].stats = (ra_etha_port_stats_t){};
+  s_etha_slots[(uint8_t)port].cb    = nullptr;
+  s_etha_slots[(uint8_t)port].ctx   = nullptr;
+  s_etha_slots[(uint8_t)port].stats = (ra_etha_port_stats_t){};
   ra_log_info(s_tag, "etha_init");
   return k_ra_ok;
 }
@@ -221,9 +222,9 @@ ra_err_t ra_etha_deinit(ra_etha_port_t port)
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEIE2 = 0U;
 
-  s_slots[(uint8_t)port].cb    = nullptr;
-  s_slots[(uint8_t)port].ctx   = nullptr;
-  s_slots[(uint8_t)port].stats = (ra_etha_port_stats_t){};
+  s_etha_slots[(uint8_t)port].cb    = nullptr;
+  s_etha_slots[(uint8_t)port].ctx   = nullptr;
+  s_etha_slots[(uint8_t)port].stats = (ra_etha_port_stats_t){};
   /* MSTP gate is shared with the rest of the Ethernet subsystem; do
    * NOT drop it here. ra_eth_deinit owns the final reference. */
   return k_ra_ok;
@@ -350,8 +351,8 @@ ra_err_t ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void
     ra_log_error(s_tag, "etha_attach_handler: port out of range");
     return k_ra_err_invalid_arg;
   }
-  s_slots[(uint8_t)port].cb  = cb;
-  s_slots[(uint8_t)port].ctx = ctx;
+  s_etha_slots[(uint8_t)port].cb  = cb;
+  s_etha_slots[(uint8_t)port].ctx = ctx;
   return k_ra_ok;
 }
 
@@ -369,8 +370,8 @@ void ra_etha_dispatch(ra_etha_port_t port)
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   const uint32_t s2 = reg->EAEIS2;
 
-  const ra_etha_event_fn_t fn  = s_slots[(uint8_t)port].cb;
-  void* const              ctx = s_slots[(uint8_t)port].ctx;
+  const ra_etha_event_fn_t fn  = s_etha_slots[(uint8_t)port].cb;
+  void* const              ctx = s_etha_slots[(uint8_t)port].ctx;
 
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEID0 = s0;

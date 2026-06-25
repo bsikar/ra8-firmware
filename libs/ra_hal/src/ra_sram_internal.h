@@ -34,7 +34,7 @@ extern "C" {
 #include "ra_sram.h"
 
 /**
- * @var s_on_error
+ * @var s_sram_on_error
  * @brief Registered global ECC error callback (NULL until attach).
  *
  * @details
@@ -46,11 +46,11 @@ extern "C" {
  * @warning Do not assign directly outside the SRAM driver TUs.
  * @since 0.1.0
  */
-extern ra_sram_error_fn_t s_on_error;
+extern ra_sram_error_fn_t s_sram_on_error;
 
 /**
- * @var s_on_error_ctx
- * @brief Caller context forwarded to ``s_on_error``.
+ * @var s_sram_on_error_ctx
+ * @brief Caller context forwarded to ``s_sram_on_error``.
  *
  * @details Defined in ``ra_sram_security.c``.
  *
@@ -58,10 +58,10 @@ extern ra_sram_error_fn_t s_on_error;
  * @warning Do not assign directly outside the SRAM driver TUs.
  * @since 0.1.0
  */
-extern void* s_on_error_ctx;
+extern void* s_sram_on_error_ctx;
 
 /**
- * @var s_on_error_bank
+ * @var s_sram_on_error_bank
  * @brief Per-bank ECC error callback table (NULL until attach).
  *
  * @details Defined in ``ra_sram_security.c``.
@@ -70,11 +70,11 @@ extern void* s_on_error_ctx;
  * @warning Do not assign directly outside the SRAM driver TUs.
  * @since 0.1.0
  */
-extern ra_sram_error_fn_t s_on_error_bank[k_ra_sram_bank_count];
+extern ra_sram_error_fn_t s_sram_on_error_bank[k_ra_sram_bank_count];
 
 /**
- * @var s_on_error_bank_ctx
- * @brief Per-bank context forwarded to ``s_on_error_bank``.
+ * @var s_sram_on_error_bank_ctx
+ * @brief Per-bank context forwarded to ``s_sram_on_error_bank``.
  *
  * @details Defined in ``ra_sram_security.c``.
  *
@@ -82,7 +82,7 @@ extern ra_sram_error_fn_t s_on_error_bank[k_ra_sram_bank_count];
  * @warning Do not assign directly outside the SRAM driver TUs.
  * @since 0.1.0
  */
-extern void* s_on_error_bank_ctx[k_ra_sram_bank_count];
+extern void* s_sram_on_error_bank_ctx[k_ra_sram_bank_count];
 
 #ifdef __cplusplus
 }

@@ -19,9 +19,10 @@
  * - ``internal_i3c_i2c_dispatch_eri`` ERI service routine that decodes,
  *                                     clears, and forwards errors.
  *
- * These functions share ``s_tag``, the ``s_iic_b_state`` channel table, and
- * the promoted START / STOP / clear-BST / send-address helpers with the
- * transaction engine in ``ra_i3c_i2c.c`` via ``ra_i3c_i2c_internal.h``.
+ * These functions share the ``s_iic_b_state`` channel table and the promoted
+ * START / STOP / clear-BST / send-address helpers with the transaction engine
+ * in ``ra_i3c_i2c.c`` via ``ra_i3c_i2c_internal.h``. Each TU keeps its own
+ * read-only ``s_tag`` log-tag copy.
  *
  * Owns its writes to the I3C register block. See HUM Ch 40
  * "I3C Bus Interface (I3C)", p 2445-2701.
@@ -37,6 +38,9 @@
 #include "ra_err.h"
 #include "ra_i3c_i2c.h"
 #include "ra_i3c_i2c_internal.h"
+
+/** @brief Log tag for this driver's control-plane TU. */
+static const char* s_tag = "IIC_B";
 
 /**
  * @enum internal_i3c_i2c_control_t

@@ -19,21 +19,6 @@ extern "C" {
 #include "ra_i3c_i2c.h"
 
 /**
- * @var s_tag
- * @brief Log tag shared by every translation unit of this driver.
- *
- * @details
- * Defined once in @c ra_i3c_i2c.c and referenced by the control-plane TU
- * (@c ra_i3c_i2c_control.c) for its log calls. A single definition keeps
- * the tag string interned in one place.
- *
- * @note Read-only after program start; do not mutate.
- * @warning Do not redefine in another TU -- it is owned by @c ra_i3c_i2c.c.
- * @since 0.1.0
- */
-extern const char* s_tag;
-
-/**
  * @struct ra_i3c_i2c_state_t
  * @brief Per-channel dispatch state shared across the driver's TUs.
  *

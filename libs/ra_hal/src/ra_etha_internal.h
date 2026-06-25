@@ -37,18 +37,7 @@ typedef struct {
 } ra_etha_slot_t;
 
 /**
- * @var s_tag
- * @brief Logger tag used by every ra_etha_* call.
- *
- * @details Shared logger tag string. Defined once in ra_etha.c and
- * referenced from the split-out statistics TU via this declaration.
- * @note Read-only after init; treat as immutable.
- * @since 0.1.0
- */
-extern const char* s_tag;
-
-/**
- * @var s_slots
+ * @var s_etha_slots
  * @brief Per-port handler table; index = ::ra_etha_port_t.
  *
  * @details Backing store for the per-port callback, cookie, and counter
@@ -57,14 +46,14 @@ extern const char* s_tag;
  * @warning Not safe to mutate outside the ETHA driver path.
  * @since 0.1.0
  */
-extern ra_etha_slot_t s_slots[k_ra_etha_port_count];
+extern ra_etha_slot_t s_etha_slots[k_ra_etha_port_count];
 
 /**
  * @brief Range-check a port argument.
  *
  * @details Shared predicate used by both ETHA translation units to
- * bounds-check a ::ra_etha_port_t before it indexes ::s_slots or selects
- * an MMIO register window. Pure; no side effects.
+ * bounds-check a ::ra_etha_port_t before it indexes ::s_etha_slots or
+ * selects an MMIO register window. Pure; no side effects.
  *
  * @param[in] port Port to validate.
  * @return true if port is one of ::ra_etha_port_t.
