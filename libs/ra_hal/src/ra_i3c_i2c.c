@@ -96,8 +96,8 @@ bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb)
   return (mask != 0U) && (cb != nullptr);
 }
 
-/** @brief Log tag for this driver. */
-static const char* s_tag = "IIC_B";
+/** @brief Log tag for this driver (shared across TUs via ra_i3c_i2c_internal.h). */
+const char* s_tag = "IIC_B";
 
 /**
  * @enum internal_i3c_i2c_t
@@ -119,26 +119,15 @@ typedef enum : uint32_t {
 } internal_i3c_i2c_t;
 
 /**
- * @struct ra_i3c_i2c_state_t
- * @brief Per-channel dispatch state.
- */
-typedef struct {
-  ra_i3c_i2c_complete_fn_t cb;          /**< Callback or NULL.            */
-  void*                    ctx;         /**< Callback context.            */
-  bool                     initialized; /**< Tracks ``internal_i3c_i2c_init`` /
-                                         ``internal_i3c_i2c_deinit``.           */
-  bool                     bus_held;    /**< True when the previous
-                                         transaction returned with
-                                         ``restart=true`` and the next
-                                         call must inject a RESTART
-                                         instead of a fresh START.      */
-} ra_i3c_i2c_state_t;
-
-/**
  * @var s_iic_b_state
  * @brief Per-channel state table indexed by channel.
+ *
+ * @details
+ * The ``ra_i3c_i2c_state_t`` type and the matching ``extern`` declaration
+ * live in ``ra_i3c_i2c_internal.h`` so the control-plane TU
+ * (``ra_i3c_i2c_control.c``) can share this single definition.
  */
-static ra_i3c_i2c_state_t s_iic_b_state[k_ra_i3c_i2c_channel_count];
+ra_i3c_i2c_state_t s_iic_b_state[k_ra_i3c_i2c_channel_count];
 
 /**
  * @brief Compute STDBR.SBRLO / SBRHO half-period count from PCLKA.
@@ -218,38 +207,6 @@ static ra_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint3
 }
 
 /**
- * @brief Decode latched BST error bits into a ``k_ra_i3c_i2c_err_*`` mask.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] bst See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
-{
-  uint8_t mask = k_ra_i3c_i2c_err_none;
-  if ((bst & k_ra_i3c_i2c_msk_bst_alf) != 0U) {
-    mask |= k_ra_i3c_i2c_err_arb_lost;
-  }
-  if ((bst & k_ra_i3c_i2c_msk_bst_nackdf) != 0U) {
-    mask |= k_ra_i3c_i2c_err_nack;
-  }
-  if ((bst & k_ra_i3c_i2c_msk_bst_todf) != 0U) {
-    mask |= k_ra_i3c_i2c_err_timeout;
-  }
-  return mask;
-}
-
-/**
  * @brief Pulse-reset the I3C peripheral via RSTCTL.RI3CRST.
  *
  * @details
@@ -300,7 +257,7 @@ static ra_err_t internal_i3c_i2c_reset(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg)
+void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
   reg->CNDCTL = k_ra_i3c_i2c_msk_cndctl_stcnd;
@@ -348,7 +305,7 @@ static void internal_i3c_i2c_restart(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
+void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
 {
   /* Clear the prior STOP-detect flag so the NEXT transaction sees a
    * fresh edge. W0C semantics. */
@@ -370,7 +327,7 @@ static void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
+void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
 {
   enum : uint32_t {
     k_ra_i3c_i2c_bst_clear_mask = k_ra_i3c_i2c_msk_bst_stcnddf | k_ra_i3c_i2c_msk_bst_spcnddf |
@@ -402,7 +359,7 @@ static void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte)
+ra_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte)
 {
   /* Wait for first TDBEF0 (set after START condition is on the bus).
    * HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
@@ -977,145 +934,4 @@ ra_err_t internal_i3c_i2c_transfer(uint8_t        channel,
     }
   }
   return k_ra_ok;
-}
-
-/* =============================================================================
- * Abort -- cancel an in-flight transaction.
- * =============================================================================
- */
-
-ra_err_t internal_i3c_i2c_abort(uint8_t channel)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  /* Mask interrupts before tearing down (mirrors FSP
-   * iic_b_master_abort_seq_master).
-   * HUM Ch 40.2.48 "BIE", p 2495 / Ch 40.2.52 "NTIE" p 2504. */
-  reg->BIE  = 0U;
-  reg->NTIE = 0U;
-
-  internal_i3c_i2c_stop(reg);
-  internal_i3c_i2c_clear_bst(reg);
-  s_iic_b_state[channel].bus_held = false;
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * Bus probe -- single-byte address-only transaction.
- * =============================================================================
- */
-
-ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_scan: channel");
-  RA_CHECK_NULL_PTR(out_acked, s_tag, "iic_b_scan: out_acked");
-
-  *out_acked = false;
-  internal_i3c_i2c_clear_bst(reg);
-  internal_i3c_i2c_start(reg);
-
-  const uint8_t address_byte =
-    (uint8_t)(((uint32_t)target_7b << k_ra_i3c_i2c_addr_shift) | k_ra_i3c_i2c_addr_rw_write);
-  ra_err_t err = internal_i3c_i2c_send_address(reg, address_byte);
-  if (err != k_ra_ok) {
-    internal_i3c_i2c_stop(reg);
-    return err;
-  }
-
-  /* Wait for either TENDF (peripheral ACKed the address) or NACKDF. */
-  err = k_ra_err_hw_timeout;
-  for (uint32_t i = 0U; i < k_ra_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    const uint32_t bst = reg->BST;
-    if ((bst & (k_ra_i3c_i2c_msk_bst_tendf | k_ra_i3c_i2c_msk_bst_nackdf)) !=
-        0U) { /* GCOVR_EXCL_BR_LINE */
-      *out_acked = (bst & k_ra_i3c_i2c_msk_bst_nackdf) == 0U;
-      err        = k_ra_ok;
-      break;
-    }
-  }
-
-  /* Stop is best-effort -- record the outcome of the probe regardless. */
-  internal_i3c_i2c_stop(reg);
-  internal_i3c_i2c_clear_bst(reg);
-  return err;
-}
-
-/* =============================================================================
- * Status helpers.
- * =============================================================================
- */
-
-ra_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
-{
-  RA_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
-  volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  *out_mask = internal_i3c_i2c_decode_errors(reg->BST);
-  return k_ra_ok;
-}
-
-ra_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
-  enum : uint32_t {
-    k_ra_i3c_i2c_err_clear_mask =
-      k_ra_i3c_i2c_msk_bst_alf | k_ra_i3c_i2c_msk_bst_nackdf | k_ra_i3c_i2c_msk_bst_todf,
-  };
-  reg->BST = reg->BST & ~k_ra_i3c_i2c_err_clear_mask;
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * Interrupt handler attach + ERI dispatch.
- * =============================================================================
- */
-
-ra_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra_i3c_i2c_complete_fn_t fn, void* ctx)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  s_iic_b_state[channel].cb  = fn;
-  s_iic_b_state[channel].ctx = ctx;
-
-  /* Toggle the interrupt sources used by the polling driver as a
-   * single group when (de)attaching a handler. Per-bit tuning lands
-   * when the first interrupt-mode consumer arrives. */
-  if (fn != nullptr) {
-    /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
-    reg->BIE = k_ra_i3c_i2c_msk_bie_nackdie | k_ra_i3c_i2c_msk_bie_alie |
-               k_ra_i3c_i2c_msk_bie_todie | k_ra_i3c_i2c_msk_bie_tendie;
-    /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
-    reg->NTIE = k_ra_i3c_i2c_msk_ntie_tdbeie0 | k_ra_i3c_i2c_msk_ntie_rdbfie0;
-  } else {
-    /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
-    reg->BIE = 0U;
-    /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
-    reg->NTIE = 0U;
-  }
-  return k_ra_ok;
-}
-
-void internal_i3c_i2c_dispatch_eri(uint8_t channel)
-{
-  if ((uint16_t)channel >= k_ra_i3c_i2c_channel_count) {
-    return;
-  }
-  uint8_t mask = 0U;
-  (void)internal_i3c_i2c_get_errors(channel, &mask);
-  (void)internal_i3c_i2c_clear_errors(channel);
-  const ra_i3c_i2c_complete_fn_t cb = s_iic_b_state[channel].cb;
-  if (internal_i3c_i2c_should_dispatch(mask, (const void*)cb)) {
-    cb(s_iic_b_state[channel].ctx, mask);
-  }
 }

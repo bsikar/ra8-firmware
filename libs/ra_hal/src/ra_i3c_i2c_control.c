@@ -1,0 +1,227 @@
+/**
+ * @file ra_i3c_i2c_control.c
+ * @brief IIC_B (I3C unified IP) control-plane + diagnostics implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Control-plane companion translation unit to ``ra_i3c_i2c.c``. Holds the
+ * non-data-path operations of the polling IIC_B driver:
+ *
+ * - ``internal_i3c_i2c_abort``        cancel an in-flight transaction.
+ * - ``internal_i3c_i2c_scan``         single-byte address-only bus probe.
+ * - ``internal_i3c_i2c_get_errors`` / ``internal_i3c_i2c_clear_errors``
+ *                                     latched bus-status decode + scrub.
+ * - ``internal_i3c_i2c_attach_handler`` register a completion / error
+ *                                     callback and toggle the IIC_B IRQ
+ *                                     enable bits as a group.
+ * - ``internal_i3c_i2c_dispatch_eri`` ERI service routine that decodes,
+ *                                     clears, and forwards errors.
+ *
+ * These functions share ``s_tag``, the ``s_iic_b_state`` channel table, and
+ * the promoted START / STOP / clear-BST / send-address helpers with the
+ * transaction engine in ``ra_i3c_i2c.c`` via ``ra_i3c_i2c_internal.h``.
+ *
+ * Owns its writes to the I3C register block. See HUM Ch 40
+ * "I3C Bus Interface (I3C)", p 2445-2701.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_i3c_i2c_regs.h"
+#include "ra_check.h"
+#include "ra_err.h"
+#include "ra_i3c_i2c.h"
+#include "ra_i3c_i2c_internal.h"
+
+/**
+ * @enum internal_i3c_i2c_control_t
+ * @brief Implementation constants for the control-plane TU.
+ */
+typedef enum : uint32_t {
+  /** Generic spin budget for status-flag polls. ~200k iters keeps the
+   * worst-case stall under ~5ms at 250MHz with the load/branch pair
+   * the compiler emits for the wait helpers. */
+  k_ra_i3c_i2c_ctrl_poll_limit = 200000U,
+  /** Shift count to convert a 7-bit address into the on-the-wire byte. */
+  k_ra_i3c_i2c_ctrl_addr_shift = 1U,
+  /** R/W bit value for a write transaction (0 in LSB). */
+  k_ra_i3c_i2c_ctrl_addr_rw_write = 0U,
+} internal_i3c_i2c_control_t;
+
+/**
+ * @brief Decode latched BST error bits into a ``k_ra_i3c_i2c_err_*`` mask.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] bst See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialized by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
+static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
+{
+  uint8_t mask = k_ra_i3c_i2c_err_none;
+  if ((bst & k_ra_i3c_i2c_msk_bst_alf) != 0U) {
+    mask |= k_ra_i3c_i2c_err_arb_lost;
+  }
+  if ((bst & k_ra_i3c_i2c_msk_bst_nackdf) != 0U) {
+    mask |= k_ra_i3c_i2c_err_nack;
+  }
+  if ((bst & k_ra_i3c_i2c_msk_bst_todf) != 0U) {
+    mask |= k_ra_i3c_i2c_err_timeout;
+  }
+  return mask;
+}
+
+/* =============================================================================
+ * Abort -- cancel an in-flight transaction.
+ * =============================================================================
+ */
+
+ra_err_t internal_i3c_i2c_abort(uint8_t channel)
+{
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Mask interrupts before tearing down (mirrors FSP
+   * iic_b_master_abort_seq_master).
+   * HUM Ch 40.2.48 "BIE", p 2495 / Ch 40.2.52 "NTIE" p 2504. */
+  reg->BIE  = 0U;
+  reg->NTIE = 0U;
+
+  internal_i3c_i2c_stop(reg);
+  internal_i3c_i2c_clear_bst(reg);
+  s_iic_b_state[channel].bus_held = false;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Bus probe -- single-byte address-only transaction.
+ * =============================================================================
+ */
+
+ra_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
+{
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_scan: channel");
+  RA_CHECK_NULL_PTR(out_acked, s_tag, "iic_b_scan: out_acked");
+
+  *out_acked = false;
+  internal_i3c_i2c_clear_bst(reg);
+  internal_i3c_i2c_start(reg);
+
+  const uint8_t address_byte = (uint8_t)(((uint32_t)target_7b << k_ra_i3c_i2c_ctrl_addr_shift) |
+                                         k_ra_i3c_i2c_ctrl_addr_rw_write);
+  ra_err_t      err          = internal_i3c_i2c_send_address(reg, address_byte);
+  if (err != k_ra_ok) {
+    internal_i3c_i2c_stop(reg);
+    return err;
+  }
+
+  /* Wait for either TENDF (peripheral ACKed the address) or NACKDF. */
+  err = k_ra_err_hw_timeout;
+  for (uint32_t i = 0U; i < k_ra_i3c_i2c_ctrl_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    const uint32_t bst = reg->BST;
+    if ((bst & (k_ra_i3c_i2c_msk_bst_tendf | k_ra_i3c_i2c_msk_bst_nackdf)) !=
+        0U) { /* GCOVR_EXCL_BR_LINE */
+      *out_acked = (bst & k_ra_i3c_i2c_msk_bst_nackdf) == 0U;
+      err        = k_ra_ok;
+      break;
+    }
+  }
+
+  /* Stop is best-effort -- record the outcome of the probe regardless. */
+  internal_i3c_i2c_stop(reg);
+  internal_i3c_i2c_clear_bst(reg);
+  return err;
+}
+
+/* =============================================================================
+ * Status helpers.
+ * =============================================================================
+ */
+
+ra_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
+  volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_mask = internal_i3c_i2c_decode_errors(reg->BST);
+  return k_ra_ok;
+}
+
+ra_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
+{
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
+  enum : uint32_t {
+    k_ra_i3c_i2c_err_clear_mask =
+      k_ra_i3c_i2c_msk_bst_alf | k_ra_i3c_i2c_msk_bst_nackdf | k_ra_i3c_i2c_msk_bst_todf,
+  };
+  reg->BST = reg->BST & ~k_ra_i3c_i2c_err_clear_mask;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Interrupt handler attach + ERI dispatch.
+ * =============================================================================
+ */
+
+ra_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra_i3c_i2c_complete_fn_t fn, void* ctx)
+{
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  s_iic_b_state[channel].cb  = fn;
+  s_iic_b_state[channel].ctx = ctx;
+
+  /* Toggle the interrupt sources used by the polling driver as a
+   * single group when (de)attaching a handler. Per-bit tuning lands
+   * when the first interrupt-mode consumer arrives. */
+  if (fn != nullptr) {
+    /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
+    reg->BIE = k_ra_i3c_i2c_msk_bie_nackdie | k_ra_i3c_i2c_msk_bie_alie |
+               k_ra_i3c_i2c_msk_bie_todie | k_ra_i3c_i2c_msk_bie_tendie;
+    /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
+    reg->NTIE = k_ra_i3c_i2c_msk_ntie_tdbeie0 | k_ra_i3c_i2c_msk_ntie_rdbfie0;
+  } else {
+    /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
+    reg->BIE = 0U;
+    /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
+    reg->NTIE = 0U;
+  }
+  return k_ra_ok;
+}
+
+void internal_i3c_i2c_dispatch_eri(uint8_t channel)
+{
+  if ((uint16_t)channel >= k_ra_i3c_i2c_channel_count) {
+    return;
+  }
+  uint8_t mask = 0U;
+  (void)internal_i3c_i2c_get_errors(channel, &mask);
+  (void)internal_i3c_i2c_clear_errors(channel);
+  const ra_i3c_i2c_complete_fn_t cb = s_iic_b_state[channel].cb;
+  if (internal_i3c_i2c_should_dispatch(mask, (const void*)cb)) {
+    cb(s_iic_b_state[channel].ctx, mask);
+  }
+}
