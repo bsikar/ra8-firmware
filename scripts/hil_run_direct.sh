@@ -54,8 +54,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: $0 --hex <file> --expect <string> [--expect-negative <regex>] [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
-    exit 2
+  echo "Usage: $0 --hex <file> --expect <string> [--expect-negative <regex>] [--baud 115200] [--timeout 10] [--uart /dev/ttyACM0]"
+  exit 2
 }
 
 HEX=""
@@ -66,19 +66,43 @@ TIMEOUT_S="10"
 UART="/dev/ttyACM0"
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --hex)             HEX="$2";        shift 2 ;;
-        --expect)          EXPECT="$2";     shift 2 ;;
-        --expect-negative) EXPECT_NEG="$2"; shift 2 ;;
-        --baud)            BAUD="$2";       shift 2 ;;
-        --timeout)         TIMEOUT_S="$2";  shift 2 ;;
-        --uart)            UART="$2";       shift 2 ;;
-        *) echo "Unknown arg: $1"; usage ;;
-    esac
+  case "$1" in
+    --hex)
+      HEX="$2"
+      shift 2
+      ;;
+    --expect)
+      EXPECT="$2"
+      shift 2
+      ;;
+    --expect-negative)
+      EXPECT_NEG="$2"
+      shift 2
+      ;;
+    --baud)
+      BAUD="$2"
+      shift 2
+      ;;
+    --timeout)
+      TIMEOUT_S="$2"
+      shift 2
+      ;;
+    --uart)
+      UART="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      usage
+      ;;
+  esac
 done
 
 [[ -z "$HEX" || -z "$EXPECT" ]] && usage
-[[ -f "$HEX" ]] || { echo -e "${RED}[HIL]${NC} hex not found: $HEX"; exit 2; }
+[[ -f "$HEX" ]] || {
+  echo -e "${RED}[HIL]${NC} hex not found: $HEX"
+  exit 2
+}
 
 # Sanity gate 1: minimum positive-expect length.
 # "fxlx" (4 chars) is the canonical failure case -- it appears in both
@@ -87,10 +111,10 @@ done
 # pattern that can't accidentally overlap with a failure path.
 MIN_EXPECT_LEN=12
 if [[ "${HIL_EXPECT_SHORT_OK:-0}" != "1" && ${#EXPECT} -lt $MIN_EXPECT_LEN ]]; then
-    echo -e "${RED}[HIL]${NC} --expect='${EXPECT}' is too short (${#EXPECT} < ${MIN_EXPECT_LEN} chars)."
-    echo "    Tighten the banner so it can't accidentally match a failure path."
-    echo "    Override (not recommended): HIL_EXPECT_SHORT_OK=1"
-    exit 2
+  echo -e "${RED}[HIL]${NC} --expect='${EXPECT}' is too short (${#EXPECT} < ${MIN_EXPECT_LEN} chars)."
+  echo "    Tighten the banner so it can't accidentally match a failure path."
+  echo "    Override (not recommended): HIL_EXPECT_SHORT_OK=1"
+  exit 2
 fi
 
 # Sanity gate 2: overlap with .elf failure banners.
@@ -100,20 +124,20 @@ fi
 # failure banner -- reject before flashing.
 ELF_FOR_STRINGS="${HEX%.hex}.elf"
 if [[ -f "$ELF_FOR_STRINGS" ]] && command -v arm-none-eabi-strings >/dev/null 2>&1; then
-    OVERLAP_HITS=$(arm-none-eabi-strings -n "${MIN_EXPECT_LEN}" "$ELF_FOR_STRINGS" 2>/dev/null \
-        | grep -F -- "$EXPECT" \
-        | grep -iE '\b(FAIL|FAILED|panic|NAK|ERROR|failed|HardFault|MemFault|BusFault|UsageFault|abort)\b' \
-        | head -3 || true)
-    if [[ -n "$OVERLAP_HITS" ]]; then
-        echo -e "${RED}[HIL]${NC} --expect='${EXPECT}' overlaps failure banners in $(basename "$ELF_FOR_STRINGS"):"
-        while IFS= read -r line; do echo "    + $line"; done <<< "$OVERLAP_HITS"
-        echo "    Pick a HIL_EXPECT that is unique to the success path."
-        echo "    Override (not recommended): HIL_EXPECT_OVERLAP_OK=1"
-        if [[ "${HIL_EXPECT_OVERLAP_OK:-0}" != "1" ]]; then
-            exit 2
-        fi
-        echo -e "${YELLOW}[HIL]${NC} HIL_EXPECT_OVERLAP_OK=1 set -- continuing despite overlap."
+  OVERLAP_HITS=$(arm-none-eabi-strings -n "${MIN_EXPECT_LEN}" "$ELF_FOR_STRINGS" 2>/dev/null |
+    grep -F -- "$EXPECT" |
+    grep -iE '\b(FAIL|FAILED|panic|NAK|ERROR|failed|HardFault|MemFault|BusFault|UsageFault|abort)\b' |
+    head -3 || true)
+  if [[ -n "$OVERLAP_HITS" ]]; then
+    echo -e "${RED}[HIL]${NC} --expect='${EXPECT}' overlaps failure banners in $(basename "$ELF_FOR_STRINGS"):"
+    while IFS= read -r line; do echo "    + $line"; done <<<"$OVERLAP_HITS"
+    echo "    Pick a HIL_EXPECT that is unique to the success path."
+    echo "    Override (not recommended): HIL_EXPECT_OVERLAP_OK=1"
+    if [[ "${HIL_EXPECT_OVERLAP_OK:-0}" != "1" ]]; then
+      exit 2
     fi
+    echo -e "${YELLOW}[HIL]${NC} HIL_EXPECT_OVERLAP_OK=1 set -- continuing despite overlap."
+  fi
 fi
 
 APP_NAME="$(basename "${HEX%.hex}")"
@@ -122,39 +146,42 @@ LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
 # Detect whether we're already on the Pi (matches the pattern used by
 # hil_usb_test.sh: hostname OR aarch64 + ttyACM0 present).
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-    LOCAL_PI=1
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+  LOCAL_PI=1
 fi
 
 # Off-Pi: scp the hex over, re-invoke ourselves on the Pi with --hex
 # pointing at the remote copy. This way every Pi-local step (JLinkExe,
 # /dev/ttyACM0 reads) runs natively, and the developer just sees the
 # pass/fail on stdout.
-if (( LOCAL_PI == 0 )); then
-    ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
-        || { echo -e "${RED}[HIL]${NC} cannot reach ${PI_HOST}"; exit 2; }
-    REMOTE_HEX="/tmp/$(basename "$HEX")"
-    scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
-    # If an ELF sibling exists, copy it too -- the OFS-strip path uses it.
-    if [[ -f "${HEX%.hex}.elf" ]]; then
-        scp -q "${HEX%.hex}.elf" "${PI_HOST}:${REMOTE_HEX%.hex}.elf"
-    fi
-    # Re-invoke ourselves on the Pi. Quote the expect string carefully so
-    # spaces / brackets survive the SSH transport.
-    REMOTE_ARGS="--hex '${REMOTE_HEX}' --expect $(printf '%q' "$EXPECT")"
-    if [[ -n "$EXPECT_NEG" ]]; then
-        REMOTE_ARGS+=" --expect-negative $(printf '%q' "$EXPECT_NEG")"
-    fi
-    REMOTE_ARGS+=" --baud '${BAUD}' --timeout '${TIMEOUT_S}' --uart '${UART}'"
-    # Propagate the sanity-gate escape-hatch flags so the remote side
-    # doesn't re-reject inputs the local side already vetted.
-    REMOTE_ENV=""
-    [[ "${HIL_EXPECT_SHORT_OK:-0}" == "1" ]]   && REMOTE_ENV+="HIL_EXPECT_SHORT_OK=1 "
-    [[ "${HIL_EXPECT_OVERLAP_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_OVERLAP_OK=1 "
-    ssh "$PI_HOST" "${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" < "$0"
-    exit $?
+if ((LOCAL_PI == 0)); then
+  ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null ||
+    {
+      echo -e "${RED}[HIL]${NC} cannot reach ${PI_HOST}"
+      exit 2
+    }
+  REMOTE_HEX="/tmp/$(basename "$HEX")"
+  scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
+  # If an ELF sibling exists, copy it too -- the OFS-strip path uses it.
+  if [[ -f "${HEX%.hex}.elf" ]]; then
+    scp -q "${HEX%.hex}.elf" "${PI_HOST}:${REMOTE_HEX%.hex}.elf"
+  fi
+  # Re-invoke ourselves on the Pi. Quote the expect string carefully so
+  # spaces / brackets survive the SSH transport.
+  REMOTE_ARGS="--hex '${REMOTE_HEX}' --expect $(printf '%q' "$EXPECT")"
+  if [[ -n "$EXPECT_NEG" ]]; then
+    REMOTE_ARGS+=" --expect-negative $(printf '%q' "$EXPECT_NEG")"
+  fi
+  REMOTE_ARGS+=" --baud '${BAUD}' --timeout '${TIMEOUT_S}' --uart '${UART}'"
+  # Propagate the sanity-gate escape-hatch flags so the remote side
+  # doesn't re-reject inputs the local side already vetted.
+  REMOTE_ENV=""
+  [[ "${HIL_EXPECT_SHORT_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_SHORT_OK=1 "
+  [[ "${HIL_EXPECT_OVERLAP_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_OVERLAP_OK=1 "
+  ssh "$PI_HOST" "${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0"
+  exit $?
 fi
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
@@ -165,13 +192,13 @@ echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIME
 # the MRAM bank at 0x02000000.
 ELF="${HEX%.hex}.elf"
 STRIPPED_HEX="/tmp/hil_${APP_NAME}_mram.hex"
-OFS_ARGS=( '--remove-section=.option_setting*' )
+OFS_ARGS=('--remove-section=.option_setting*')
 if [[ -f "$ELF" ]]; then
-    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null \
-        || cp "$HEX" "$STRIPPED_HEX"
+  arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null ||
+    cp "$HEX" "$STRIPPED_HEX"
 else
-    arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_HEX" 2>/dev/null \
-        || cp "$HEX" "$STRIPPED_HEX"
+  arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_HEX" 2>/dev/null ||
+    cp "$HEX" "$STRIPPED_HEX"
 fi
 
 # ---- 2. Flash via J-Link (loadfile with OFS-stripped hex) -------------------
@@ -191,7 +218,7 @@ fi
 # Sleep that any interrupt can wake.
 TMP_SCRIPT="$(mktemp)"
 trap 'rm -f "$TMP_SCRIPT" "$STRIPPED_HEX"; pkill -f "cat ${UART}" 2>/dev/null || true' EXIT
-cat > "$TMP_SCRIPT" <<JLINK
+cat >"$TMP_SCRIPT" <<JLINK
 device ${JLINK_DEVICE}
 si SWD
 speed 1000
@@ -228,27 +255,27 @@ sleep 0.1
 JLINK_VID="1366"
 JLINK_TTY=""
 for _i in 1 2 3 4 5 6 7 8 9 10; do
-    for d in /dev/ttyACM*; do
-        [ -e "$d" ] || continue
-        if udevadm info "$d" 2>/dev/null | grep -q "ID_VENDOR_ID=${JLINK_VID}"; then
-            JLINK_TTY="$d"
-            break 2
-        fi
-    done
-    sleep 0.5
+  for d in /dev/ttyACM*; do
+    [ -e "$d" ] || continue
+    if udevadm info "$d" 2>/dev/null | grep -q "ID_VENDOR_ID=${JLINK_VID}"; then
+      JLINK_TTY="$d"
+      break 2
+    fi
+  done
+  sleep 0.5
 done
 if [ -z "$JLINK_TTY" ]; then
-    echo -e "${RED}[HIL]${NC} J-Link VCOM (VID ${JLINK_VID}) never enumerated under /dev/ttyACM*" >&2
-    ls /dev/ttyACM* 2>&1 >&2 || true
-    exit 1
+  echo -e "${RED}[HIL]${NC} J-Link VCOM (VID ${JLINK_VID}) never enumerated under /dev/ttyACM*" >&2
+  ls /dev/ttyACM* 2>&1 >&2 || true
+  exit 1
 fi
 if [ "$JLINK_TTY" != "$UART" ]; then
-    echo -e "${YELLOW}[HIL]${NC} J-Link VCOM is ${JLINK_TTY} (default ${UART} taken by another USB device)"
-    UART="$JLINK_TTY"
+  echo -e "${YELLOW}[HIL]${NC} J-Link VCOM is ${JLINK_TTY} (default ${UART} taken by another USB device)"
+  UART="$JLINK_TTY"
 fi
 stty -F "${UART}" "${BAUD}" raw -echo
 UART_LOG="/tmp/hil_uart_${APP_NAME}.log"
-: > "${UART_LOG}"
+: >"${UART_LOG}"
 # Drain any stale bytes from the previous test that are still queued in
 # the kernel-side tty receive buffer (`stty` doesn't tcflush). Without
 # this, the new firmware's output is preceded by the previous app's
@@ -262,7 +289,7 @@ dd if="${UART}" iflag=nonblock of=/dev/null count=4 bs=1024 2>/dev/null || true
 # is written to the log file immediately.  Without it, one-shot boot
 # banners (e.g. "ulpt: wake\r\n" = 12 bytes) sit in cat's 4KB output buffer
 # and grep races find an empty log.
-setsid stdbuf -o0 cat "${UART}" > "${UART_LOG}" 2>/dev/null &
+setsid stdbuf -o0 cat "${UART}" >"${UART_LOG}" 2>/dev/null &
 READER_PID=$!
 # Make sure the reader actually opened the tty before we proceed.
 sleep 0.2
@@ -272,19 +299,19 @@ sleep 0.2
 # worse without recovering from it, so we fail fast and let the suite move
 # on; the user can power-cycle and rerun any failed apps.
 JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
-    > "${LOG_FILE}" 2>&1
+  >"${LOG_FILE}" 2>&1
 
 if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond" "${LOG_FILE}"; then
-    kill "${READER_PID}" 2>/dev/null
-    echo -e "${RED}[HIL]${NC} J-Link error -- log tail:" >&2
-    tail -20 "${LOG_FILE}" >&2
-    exit 1
+  kill "${READER_PID}" 2>/dev/null
+  echo -e "${RED}[HIL]${NC} J-Link error -- log tail:" >&2
+  tail -20 "${LOG_FILE}" >&2
+  exit 1
 fi
 if ! grep -qE "Programming flash.*Done\.|Skipped\. Contents already match" "${LOG_FILE}"; then
-    kill "${READER_PID}" 2>/dev/null
-    echo -e "${RED}[HIL]${NC} flash phase missing -- log tail:" >&2
-    tail -20 "${LOG_FILE}" >&2
-    exit 1
+  kill "${READER_PID}" 2>/dev/null
+  echo -e "${RED}[HIL]${NC} flash phase missing -- log tail:" >&2
+  tail -20 "${LOG_FILE}" >&2
+  exit 1
 fi
 echo -e "${YELLOW}[HIL]${NC} flash OK"
 
@@ -298,13 +325,13 @@ RESULT="TIMEOUT"
 # more robust than `tail -F | grep` which had a race where small one-shot
 # prints (12-26 bytes) sat in cat's stdio buffer and were not visible to
 # grep until cat was killed and flushed.
-deadline=$(( SECONDS + TIMEOUT_S ))
-while (( SECONDS < deadline )); do
-    if grep -qF "${EXPECT}" "${UART_LOG}" 2>/dev/null; then
-        RESULT="MATCH"
-        break
-    fi
-    sleep 0.1
+deadline=$((SECONDS + TIMEOUT_S))
+while ((SECONDS < deadline)); do
+  if grep -qF "${EXPECT}" "${UART_LOG}" 2>/dev/null; then
+    RESULT="MATCH"
+    break
+  fi
+  sleep 0.1
 done
 echo "--- captured UART ---"
 sed 's/\r/\\r/g' "${UART_LOG}" | head -20 | sed 's/^/[uart] /'
@@ -322,18 +349,18 @@ wait "${READER_PID}" 2>/dev/null || true
 # error banner later in the same run; a positive-only test would
 # wrongly pass.
 if [[ -n "$EXPECT_NEG" ]]; then
-    NEG_HIT=$(grep -iE -- "$EXPECT_NEG" "${UART_LOG}" | head -3 || true)
-    if [[ -n "$NEG_HIT" ]]; then
-        echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: matched --expect-negative='${EXPECT_NEG}'"
-        while IFS= read -r line; do echo "    + $line"; done <<< "$NEG_HIT"
-        exit 1
-    fi
+  NEG_HIT=$(grep -iE -- "$EXPECT_NEG" "${UART_LOG}" | head -3 || true)
+  if [[ -n "$NEG_HIT" ]]; then
+    echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: matched --expect-negative='${EXPECT_NEG}'"
+    while IFS= read -r line; do echo "    + $line"; done <<<"$NEG_HIT"
+    exit 1
+  fi
 fi
 
 if [[ "${RESULT}" == "MATCH" ]]; then
-    echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
-    exit 0
+  echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
+  exit 0
 else
-    echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: '${EXPECT}' not seen within ${TIMEOUT_S}s"
-    exit 1
+  echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: '${EXPECT}' not seen within ${TIMEOUT_S}s"
+  exit 1
 fi

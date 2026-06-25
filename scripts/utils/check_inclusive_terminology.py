@@ -183,9 +183,7 @@ def _is_skip_dir(name: str) -> bool:
     if name in SKIP_DIR_NAMES:
         return True
     # Glob-style: any CMake/build artefact dir like build-fuzz, build-bench.
-    if name.startswith("build-") or name == "build":
-        return True
-    return False
+    return bool(name.startswith("build-") or name == "build")
 
 
 def iter_source_files(root: Path) -> list[Path]:
@@ -247,7 +245,7 @@ def main() -> int:
         print(f"  {rel}:{lineno} [{term}] {snippet}")
     if len(findings) > 50:
         print(f"  ... {len(findings) - 50} more (truncated)")
-    print("")
+    print()
     print("Per-line opt-out: append `LEGACY-OK: <reason>` on the offending line.")
     print("See CLAUDE.md 'Terminology Standard' for the policy.")
 

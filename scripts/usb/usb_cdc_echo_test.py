@@ -26,6 +26,7 @@ Auto-detect example (FS demo):
 from __future__ import annotations
 
 import argparse
+import contextlib
 import errno
 import glob
 import os
@@ -183,10 +184,8 @@ def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, by
             if chunk:
                 rx.extend(chunk)
     finally:
-        try:
+        with contextlib.suppress(OSError):
             os.close(fd)
-        except OSError:
-            pass
 
     received = bytes(rx)
     if not received:

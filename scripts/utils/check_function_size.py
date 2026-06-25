@@ -32,10 +32,9 @@ diagnostic table) if any function is over.
 
 from __future__ import annotations
 
-import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -62,9 +61,22 @@ EXCLUDE_FRAGMENTS = (
 # spans the lines immediately above ``{`` whose first non-whitespace
 # character is *not* a control-flow keyword.
 _CONTROL_PREFIXES = (
-    "if ", "if(", "for ", "for(", "while ", "while(",
-    "switch ", "switch(", "else", "do ", "do{", "do\t",
-    "//", "/*", "*", "}",
+    "if ",
+    "if(",
+    "for ",
+    "for(",
+    "while ",
+    "while(",
+    "switch ",
+    "switch(",
+    "else",
+    "do ",
+    "do{",
+    "do\t",
+    "//",
+    "/*",
+    "*",
+    "}",
 )
 
 
@@ -80,13 +92,10 @@ def _looks_like_function_body_open(prev: str) -> bool:
     if not stripped.endswith(")"):
         return False
     head = prev.lstrip()
-    for prefix in _CONTROL_PREFIXES:
-        if head.startswith(prefix):
-            return False
-    return True
+    return all(not head.startswith(prefix) for prefix in _CONTROL_PREFIXES)
 
 
-def _function_signature_start(lines: List[str], brace_idx: int) -> int:
+def _function_signature_start(lines: list[str], brace_idx: int) -> int:
     """Walk backward from the line containing the opening ``{`` to find
     where the function signature began.
 
@@ -108,7 +117,7 @@ def _function_signature_start(lines: List[str], brace_idx: int) -> int:
     return i
 
 
-def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
+def _scan_file(path: Path) -> list[tuple[int, int, str]]:
     """Return a list of (function_start_line, length, signature) tuples
     for every function in `path` whose body exceeds the threshold."""
     try:
@@ -117,7 +126,7 @@ def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
         return []
 
     lines = text.splitlines()
-    violations: List[Tuple[int, int, str]] = []
+    violations: list[tuple[int, int, str]] = []
     i = 0
     n = len(lines)
     while i < n:
@@ -146,11 +155,11 @@ def _is_excluded(path: Path) -> bool:
     return any(frag in p for frag in EXCLUDE_FRAGMENTS)
 
 
-def _enumerate_targets(arg_paths: Iterable[str]) -> List[Path]:
+def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     """Resolve the list of files to scan from CLI arguments."""
     args = list(arg_paths)
     if args:
-        out: List[Path] = []
+        out: list[Path] = []
         for raw in args:
             p = Path(raw)
             if not p.is_absolute():
@@ -167,13 +176,13 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> List[Path]:
     return [p for p in out if not _is_excluded(p)]
 
 
-def main(argv: List[str]) -> int:
+def main(argv: list[str]) -> int:
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_function_size.py: no files to scan", file=sys.stderr)
         return 0
 
-    findings: List[Tuple[int, str, int, str]] = []
+    findings: list[tuple[int, str, int, str]] = []
     for path in targets:
         for line_no, length, signature in _scan_file(path):
             rel = path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path

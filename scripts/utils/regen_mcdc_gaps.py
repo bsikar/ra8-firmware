@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import os
 import re
@@ -59,9 +60,7 @@ LINE_RE = re.compile(r"^\s*(\d+)\|\s*[^|]*\|(.*)$")
 
 FILE_HEADER_RE = re.compile(r"^/work/(.+\.(?:c|h|cpp|hpp)):\s*$")
 
-DECISION_HDR_RE = re.compile(
-    r"\|---> MC/DC Decision Region \((\d+):\d+\) to \(\d+:\d+\)"
-)
+DECISION_HDR_RE = re.compile(r"\|---> MC/DC Decision Region \((\d+):\d+\) to \(\d+:\d+\)")
 COND_COUNT_RE = re.compile(r"\|\s+Number of Conditions:\s+(\d+)")
 PCT_RE = re.compile(r"\|\s+MC/DC Coverage for Decision:\s+([0-9.]+)%")
 
@@ -132,9 +131,7 @@ def parse_mcdc_txt(path: Path):
 # Function-name resolver: walk the source file's brace structure to find
 # the innermost function definition enclosing a given line.
 # ---------------------------------------------------------------------------
-FUNC_DEF_RE = re.compile(
-    r"^[A-Za-z_][\w\s\*\(\),:<>]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$"
-)
+FUNC_DEF_RE = re.compile(r"^[A-Za-z_][\w\s\*\(\),:<>]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$")
 
 
 def resolve_function(rel_path: str, target_line: int) -> str:
@@ -186,7 +183,9 @@ def resolve_function(rel_path: str, target_line: int) -> str:
         # this line or on a subsequent line before any other open brace.
         if depth == 0:
             m = FUNC_DEF_RE.match(line.strip())
-            if m and not line.strip().startswith(("if", "while", "for", "switch", "return", "do", "}")):
+            if m and not line.strip().startswith(
+                ("if", "while", "for", "switch", "return", "do", "}")
+            ):
                 last_name_at_depth0 = m.group(1)
 
         # Count braces and update depth + function stack
@@ -197,8 +196,7 @@ def resolve_function(rel_path: str, target_line: int) -> str:
                 depth += 1
             elif ch == "}":
                 depth -= 1
-                if depth < 0:
-                    depth = 0
+                depth = max(depth, 0)
                 if func_stack and depth <= func_stack[-1][1]:
                     func_stack.pop()
 
@@ -224,9 +222,7 @@ def resolve_function(rel_path: str, target_line: int) -> str:
 # "reachable" bucket and continues to demand a real test vector --
 # never the other way round.
 # ---------------------------------------------------------------------------
-NULL_TOKEN_RE = re.compile(
-    r"\(\s*([A-Za-z_]\w*(?:->\w+|\.\w+)?)\s*==\s*(?:NULL|nullptr|0)\s*\)"
-)
+NULL_TOKEN_RE = re.compile(r"\(\s*([A-Za-z_]\w*(?:->\w+|\.\w+)?)\s*==\s*(?:NULL|nullptr|0)\s*\)")
 GUARD_NULL_RE = re.compile(
     r"RA_CHECK_NULL_PTR\s*\(\s*([A-Za-z_]\w*)|"
     r"if\s*\(\s*([A-Za-z_]\w*)\s*==\s*(?:NULL|nullptr)\s*\)"
@@ -282,7 +278,7 @@ def _function_body_lines(rel_path: str, target_line: int) -> list[str]:
     depth = 0
     func_start = None
     for i, raw in enumerate(lines, start=1):
-        stripped = raw.strip()
+        raw.strip()
         for ch in raw:
             if ch == "{":
                 if depth == 0:
@@ -348,9 +344,9 @@ def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:
             if m and not stripped.startswith(("if", "while", "for", "switch", "return", "do", "}")):
                 cand = m.group(1)
                 start = max(0, i - 5)
-                window = " ".join(lines[start : i])
+                window = " ".join(lines[start:i])
                 is_static_priv = "static" in window and (
-                    cand.startswith("priv_") or cand.startswith("internal_")
+                    cand.startswith(("priv_", "internal_"))
                 )
                 is_anon_ns = in_anon_ns and depth == 1
                 if is_static_priv or is_anon_ns:
@@ -364,8 +360,7 @@ def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:
                 depth += 1
             elif ch == "}":
                 depth -= 1
-                if depth < 0:
-                    depth = 0
+                depth = max(depth, 0)
                 # If we close back to (or below) the anon-ns opening
                 # depth, we have left the namespace.
                 if in_anon_ns and depth <= anon_ns_depth:
@@ -489,8 +484,7 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
     # Pattern 3: `(p == NULL) || ...` where `p` was already checked
     # earlier in the same function via RA_CHECK_NULL_PTR or
     # `if (p == NULL) return ...`.
-    null_tokens = [m.group(1).split("->")[0].split(".")[0]
-                   for m in NULL_TOKEN_RE.finditer(excerpt)]
+    null_tokens = [m.group(1).split("->")[0].split(".")[0] for m in NULL_TOKEN_RE.finditer(excerpt)]
     if null_tokens:
         body = _function_body_lines(rel_path, line)
         if body:
@@ -540,12 +534,11 @@ def decision_snippet(excerpt: str, max_chars: int = 40) -> str:
         if ch.isalnum() or ch == "_":
             slug_chars.append(ch)
             prev_dash = False
-        else:
-            if not prev_dash:
-                slug_chars.append("-")
-                prev_dash = True
+        elif not prev_dash:
+            slug_chars.append("-")
+            prev_dash = True
     slug = "".join(slug_chars).strip("-")
-    return slug if slug else "unknown"
+    return slug or "unknown"
 
 
 def module_of(rel_path: str) -> str:
@@ -554,7 +547,7 @@ def module_of(rel_path: str) -> str:
         name = name[:-2]
     elif name.endswith(".cpp"):
         name = name[:-4]
-    elif name.endswith(".h") or name.endswith(".hpp"):
+    elif name.endswith((".h", ".hpp")):
         # Drop extension only.
         name = re.sub(r"\.(h|hpp)$", "", name)
     return name
@@ -573,13 +566,9 @@ def main() -> int:
         return 1
 
     # Collect every decision (covered or not) from the live report.
-    all_decisions: list[tuple[str, int, int, str, float]] = list(
-        parse_mcdc_txt(MCDC_TXT)
-    )
+    all_decisions: list[tuple[str, int, int, str, float]] = list(parse_mcdc_txt(MCDC_TXT))
     # Skip third_party (the report already strips them, but be defensive).
-    all_decisions = [
-        d for d in all_decisions if "/third_party/" not in d[0]
-    ]
+    all_decisions = [d for d in all_decisions if "/third_party/" not in d[0]]
 
     # Gap rows = anything < 100%.
     gap_rows = [d for d in all_decisions if d[4] < 100.0]
@@ -660,9 +649,7 @@ def main() -> int:
     deact_count = len(deactivated_rows)
     reachable_total = total_dec - deact_count
     reachable_covered = yes_dec
-    reachable_rate = (
-        (100.0 * reachable_covered / reachable_total) if reachable_total else 100.0
-    )
+    reachable_rate = (100.0 * reachable_covered / reachable_total) if reachable_total else 100.0
 
     md_lines: list[str] = []
     md_lines.append("# MC/DC Coverage Gap Audit")
@@ -677,12 +664,9 @@ def main() -> int:
     md_lines.append("")
     md_lines.append("## Methodology")
     md_lines.append("")
+    md_lines.append("- Source of truth: `build/mcdc-report/mcdc.txt` (output of `make mcdc`).")
     md_lines.append(
-        "- Source of truth: `build/mcdc-report/mcdc.txt` (output of"
-        " `make mcdc`)."
-    )
-    md_lines.append(
-        "- A decision is one llvm-cov \"MC/DC Decision Region\"."
+        '- A decision is one llvm-cov "MC/DC Decision Region".'
         " Condition count is taken from the `Number of Conditions:`"
         " field that llvm-cov emits for that region."
     )
@@ -696,8 +680,7 @@ def main() -> int:
         " but at least one independence pair is missing."
     )
     md_lines.append(
-        "  - `no` -- MC/DC % == 0. The decision was never evaluated"
-        " under instrumentation."
+        "  - `no` -- MC/DC % == 0. The decision was never evaluated under instrumentation."
     )
     md_lines.append("")
     md_lines.append("## Top-line Numbers")
@@ -708,9 +691,7 @@ def main() -> int:
     md_lines.append(f"- Decisions partially covered (`partial`): **{partial_dec}**")
     md_lines.append(f"- Decisions fully uncovered (`no`): **{no_dec}**")
     md_lines.append(f"- Coverage rate (yes / total): **{rate:.2f}%**")
-    md_lines.append(
-        f"- Deactivated gap conditions (DO-178C 6.4.4.3): **{deact_count}**"
-    )
+    md_lines.append(f"- Deactivated gap conditions (DO-178C 6.4.4.3): **{deact_count}**")
     md_lines.append(
         f"- Reachable-condition denominator (total - deactivated): **{reachable_total}**"
     )
@@ -720,8 +701,7 @@ def main() -> int:
     )
     md_lines.append("")
     md_lines.append(
-        "See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation"
-        " rationale catalog."
+        "See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog."
     )
     md_lines.append("")
     md_lines.append("## Reachable gaps (require new MC/DC test vectors)")
@@ -734,9 +714,7 @@ def main() -> int:
             ex = ex[:77] + "..."
         md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {covered} |")
     if len(reachable_rows) > 60:
-        md_lines.append(
-            f"| ... | | | | *({len(reachable_rows) - 60} more rows in CSV)* | |"
-        )
+        md_lines.append(f"| ... | | | | *({len(reachable_rows) - 60} more rows in CSV)* | |")
     md_lines.append("")
     md_lines.append("## Deactivated gaps (DO-178C 6.4.4.3 exempted)")
     md_lines.append("")
@@ -765,9 +743,7 @@ def main() -> int:
     md_lines.append("| Module | Total | Covered | Partial | Uncovered |")
     md_lines.append("|--------|------:|--------:|--------:|----------:|")
     for mod, total, covered, partial, uncov in rows:
-        md_lines.append(
-            f"| {mod} | {total} | {covered} | {partial} | {uncov} |"
-        )
+        md_lines.append(f"| {mod} | {total} | {covered} | {partial} | {uncov} |")
     md_lines.append("")
     md_lines.append("## Top 30 modules with at least one uncovered decision")
     md_lines.append("")
@@ -776,9 +752,7 @@ def main() -> int:
     uncov_only = [r for r in rows if r[4] > 0]
     uncov_only.sort(key=lambda r: (-r[4], -r[3], r[0]))
     for mod, total, covered, partial, uncov in uncov_only[:30]:
-        md_lines.append(
-            f"| {mod} | {uncov} | {partial} | {covered} | {total} |"
-        )
+        md_lines.append(f"| {mod} | {uncov} | {partial} | {covered} | {total} |")
     md_lines.append("")
     md_lines.append("---")
     md_lines.append("")
@@ -801,7 +775,7 @@ def main() -> int:
     deact_lines.append(
         "This file documents every MC/DC condition that has been"
         " classified as **deactivated** under **DO-178C 6.4.4.3"
-        " (\"deactivated code\")**. Deactivated conditions are exempted"
+        ' ("deactivated code")**. Deactivated conditions are exempted'
         " from the 100% MC/DC gate because the public-API contract"
         " makes them unreachable; they remain in the source for"
         " defense-in-depth, fault-injection robustness, and to give"
@@ -850,9 +824,7 @@ def main() -> int:
             deact_lines.append(f"- **Function**: `{func}`")
             deact_lines.append(f"- **Conditions in decision**: {n}")
             deact_lines.append(f"- **Current llvm-cov status**: {covered}")
-            deact_lines.append(
-                f"- **Source line**: `{excerpt.strip()}`"
-            )
+            deact_lines.append(f"- **Source line**: `{excerpt.strip()}`")
             deact_lines.append(f"- **Rationale**: {rationale}")
             deact_lines.append(
                 "- **DO-178C 6.4.4.3 basis**: defensive guard whose"
@@ -878,21 +850,19 @@ def main() -> int:
 
     # Stash key counts for the gate script to read without re-parsing.
     GATE_JSON = REPO_ROOT / "build" / "mcdc-report" / "gate.json"
-    try:
+    with contextlib.suppress(OSError):
         GATE_JSON.write_text(
             "{\n"
-            f"  \"total_decisions\": {total_dec},\n"
-            f"  \"covered_decisions\": {yes_dec},\n"
-            f"  \"deactivated_decisions\": {deact_count},\n"
-            f"  \"reachable_total\": {reachable_total},\n"
-            f"  \"reachable_covered\": {reachable_covered},\n"
-            f"  \"reachable_rate\": {reachable_rate:.4f},\n"
-            f"  \"absolute_rate\": {rate:.4f}\n"
+            f'  "total_decisions": {total_dec},\n'
+            f'  "covered_decisions": {yes_dec},\n'
+            f'  "deactivated_decisions": {deact_count},\n'
+            f'  "reachable_total": {reachable_total},\n'
+            f'  "reachable_covered": {reachable_covered},\n'
+            f'  "reachable_rate": {reachable_rate:.4f},\n'
+            f'  "absolute_rate": {rate:.4f}\n'
             "}\n",
             encoding="ascii",
         )
-    except OSError:
-        pass
 
     print(
         f"Wrote {CSV_OUT.relative_to(REPO_ROOT)} ({len(gap_rows)} gap rows;"

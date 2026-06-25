@@ -28,9 +28,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 <target> [seconds]" >&2
-    echo "  target:  fuzz_ra_jpeg_sw | fuzz_ra_epub | fuzz_ra_modem_at | fuzz_ra_net_arp | fuzz_ra_net_ipv4" >&2
-    exit 2
+  echo "Usage: $0 <target> [seconds]" >&2
+  echo "  target:  fuzz_ra_jpeg_sw | fuzz_ra_epub | fuzz_ra_modem_at | fuzz_ra_net_arp | fuzz_ra_net_ipv4" >&2
+  exit 2
 fi
 
 target="$1"
@@ -44,18 +44,18 @@ CC="${CC:-clang}"
 CXX="${CXX:-clang++}"
 
 if ! command -v "${CC}" >/dev/null 2>&1; then
-    echo "ERROR: ${CC} not found. libFuzzer requires clang." >&2
-    exit 1
+  echo "ERROR: ${CC} not found. libFuzzer requires clang." >&2
+  exit 1
 fi
 
 if [[ ! -f "${build_dir}/CMakeCache.txt" ]]; then
-    echo "Configuring fuzz build (${build_dir})..."
-    cmake -S "${ROOT}/tests" -B "${build_dir}" \
-        -DRA_FUZZ=ON -DRA_COVERAGE=OFF \
-        -DCMAKE_C_COMPILER="${CC}" \
-        -DCMAKE_CXX_COMPILER="${CXX}" \
-        -DCMAKE_BUILD_TYPE=Debug \
-        > "${build_dir}/configure.log" 2>&1
+  echo "Configuring fuzz build (${build_dir})..."
+  cmake -S "${ROOT}/tests" -B "${build_dir}" \
+    -DRA_FUZZ=ON -DRA_COVERAGE=OFF \
+    -DCMAKE_C_COMPILER="${CC}" \
+    -DCMAKE_CXX_COMPILER="${CXX}" \
+    -DCMAKE_BUILD_TYPE=Debug \
+    >"${build_dir}/configure.log" 2>&1
 fi
 
 echo "Building ${target}..."
@@ -63,8 +63,8 @@ cmake --build "${build_dir}" --target "${target}" -j
 
 bin="${build_dir}/fuzz/${target}"
 if [[ ! -x "${bin}" ]]; then
-    echo "ERROR: ${bin} did not build." >&2
-    exit 1
+  echo "ERROR: ${bin} did not build." >&2
+  exit 1
 fi
 
 # Seed the corpus directory the first time and on every run -- the
@@ -79,7 +79,7 @@ echo "Running ${target} for ${seconds}s (corpus -> ${corpus_dir}, artefacts -> $
 # positional corpus dir is consumed as the seed corpus and is also
 # where libFuzzer writes new interesting inputs.
 "${bin}" \
-    "${corpus_dir}" \
-    -max_total_time="${seconds}" \
-    -print_final_stats=1 \
-    -artifact_prefix="${crash_dir}/"
+  "${corpus_dir}" \
+  -max_total_time="${seconds}" \
+  -print_final_stats=1 \
+  -artifact_prefix="${crash_dir}/"

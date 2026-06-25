@@ -83,7 +83,7 @@ def truncate(text: str, limit: int = MAX_OUTPUT_CHARS) -> str:
     if len(text) <= limit:
         return text
     head = "[... output truncated, showing the last bytes ...]\n"
-    return head + text[-(limit - len(head)):]
+    return head + text[-(limit - len(head)) :]
 
 
 def run_command(argv: list[str], timeout: int) -> str:
@@ -177,9 +177,8 @@ def require_app(name: str) -> dict[str, str]:
     app = apps.get(name)
     if app is None:
         sample = ", ".join(sorted(apps)[:12])
-        raise ValueError(
-            f"unknown app '{name}'. Use the list_apps tool. Examples: {sample} ..."
-        )
+        msg = f"unknown app '{name}'. Use the list_apps tool. Examples: {sample} ..."
+        raise ValueError(msg)
     return app
 
 
@@ -212,11 +211,20 @@ def tool_app_info(args: dict[str, Any]) -> str:
     app = require_app(name)
     app_dir = REPO_ROOT / app["dir"]
     boot_files = [
-        f for f in (
-            "main.c", "vector_table.c", "system_init.c", "secure_exception.c",
-            "trustzone_init.c", "trustzone_init.h", "linker_script.ld",
-            "CMakeLists.txt", "Makefile", "README.md",
-        ) if (app_dir / f).is_file()
+        f
+        for f in (
+            "main.c",
+            "vector_table.c",
+            "system_init.c",
+            "secure_exception.c",
+            "trustzone_init.c",
+            "trustzone_init.h",
+            "linker_script.ld",
+            "CMakeLists.txt",
+            "Makefile",
+            "README.md",
+        )
+        if (app_dir / f).is_file()
     ]
     out = [
         f"app:         {app['name']}",
@@ -239,22 +247,44 @@ def tool_search_code(args: dict[str, Any]) -> str:
     """Search first-party source with ripgrep (falls back to grep -r)."""
     pattern = str(args.get("pattern", "")).strip()
     if not pattern:
-        raise ValueError("pattern is required")
+        msg = "pattern is required"
+        raise ValueError(msg)
     glob = str(args.get("glob", "")).strip()
     max_results = int(args.get("max_results", 80))
     if which("rg"):
-        argv = ["rg", "--line-number", "--no-heading", "--max-count", "5",
-                "-g", "!third_party", "-g", "!build"]
+        argv = [
+            "rg",
+            "--line-number",
+            "--no-heading",
+            "--max-count",
+            "5",
+            "-g",
+            "!third_party",
+            "-g",
+            "!build",
+        ]
         if glob:
             argv += ["-g", glob]
         argv += ["--", pattern, "libs", "src", "examples", "tests", "port", "scripts", "docs"]
     else:
-        argv = ["grep", "-rnI", "--exclude-dir=third_party", "--exclude-dir=build",
-                pattern, "libs", "src", "examples", "tests", "port", "scripts", "docs"]
+        argv = [
+            "grep",
+            "-rnI",
+            "--exclude-dir=third_party",
+            "--exclude-dir=build",
+            pattern,
+            "libs",
+            "src",
+            "examples",
+            "tests",
+            "port",
+            "scripts",
+            "docs",
+        ]
     result = run_command(argv, timeout=30)
     lines = result.splitlines()
     if len(lines) > max_results + 3:
-        lines = lines[: max_results + 3] + [f"[... capped at {max_results} hits ...]"]
+        lines = [*lines[:max_results + 3], f"[... capped at {max_results} hits ...]"]
     return "\n".join(lines)
 
 
@@ -326,7 +356,8 @@ def tool_quality_gate(args: dict[str, Any]) -> str:
     gate = str(args.get("gate", "")).strip()
     argv = _GATES.get(gate)
     if argv is None:
-        raise ValueError(f"unknown gate '{gate}'. Choose one of: {', '.join(sorted(_GATES))}")
+        msg = f"unknown gate '{gate}'. Choose one of: {', '.join(sorted(_GATES))}"
+        raise ValueError(msg)
     timeout = 900 if gate in ("tidy", "cppcheck", "mcdc") else 300
     return run_command(argv, timeout=timeout)
 
@@ -356,8 +387,15 @@ def tool_sim_app(args: dict[str, Any]) -> str:
 def _capture(argv: list[str], timeout: int = 20) -> str:
     """Return the stripped stdout of ``argv`` (or a short error marker)."""
     try:
-        proc = subprocess.run(argv, cwd=str(REPO_ROOT), stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, text=True, timeout=timeout, check=False)
+        proc = subprocess.run(
+            argv,
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         return f"[not run: {exc}]"
     return (proc.stdout or "").strip() or "(no output)"
@@ -369,14 +407,31 @@ def tool_git_status(args: dict[str, Any]) -> str:
     branch = _capture(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     status = _capture(["git", "status", "--short", "--branch"])
     commits = _capture(["git", "log", "--oneline", "-8"])
-    prs = _capture(["gh", "pr", "list", "--state", "open", "--limit", "10",
-                    "--json", "number,title,headRefName",
-                    "--template", "{{range .}}#{{.number}} {{.title}} ({{.headRefName}})\n{{end}}"]) \
-        if which("gh") else "(gh not on PATH)"
-    return (f"branch:  {branch}\n\n"
-            f"--- working tree ---\n{status}\n\n"
-            f"--- recent commits ---\n{commits}\n\n"
-            f"--- open PRs ---\n{prs}\n")
+    prs = (
+        _capture(
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--limit",
+                "10",
+                "--json",
+                "number,title,headRefName",
+                "--template",
+                "{{range .}}#{{.number}} {{.title}} ({{.headRefName}})\n{{end}}",
+            ]
+        )
+        if which("gh")
+        else "(gh not on PATH)"
+    )
+    return (
+        f"branch:  {branch}\n\n"
+        f"--- working tree ---\n{status}\n\n"
+        f"--- recent commits ---\n{commits}\n\n"
+        f"--- open PRs ---\n{prs}\n"
+    )
 
 
 def tool_hum_citation(args: dict[str, Any]) -> str:
@@ -385,7 +440,8 @@ def tool_hum_citation(args: dict[str, Any]) -> str:
     section = str(args.get("section", "")).strip()
     page = str(args.get("page", "")).strip()
     if not chapter:
-        raise ValueError("chapter is required, e.g. '38.2.3' (use hum_lookup to find it)")
+        msg = "chapter is required, e.g. '38.2.3' (use hum_lookup to find it)"
+        raise ValueError(msg)
     sect = f' "{section}"' if section else ' "<section name>"'
     pg = f" p {page}" if page else " p <NNNN>"
     return (
@@ -435,7 +491,8 @@ def tool_hil(args: dict[str, Any]) -> str:
     action = str(args.get("action", "")).strip()
     argv = list(_HIL_ACTIONS.get(action, []))
     if not argv:
-        raise ValueError(f"unknown action '{action}'. Choose: {', '.join(sorted(_HIL_ACTIONS))}")
+        msg = f"unknown action '{action}'. Choose: {', '.join(sorted(_HIL_ACTIONS))}"
+        raise ValueError(msg)
     if action in ("flash", "recover", "flash-retry"):
         app = require_app(str(args.get("app", "")).strip())
         argv.append(f"APP={app['name']}")
@@ -460,51 +517,54 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "list_apps",
         "description": "List discovered RA8D2 firmware apps (name, tier/group, "
-                       "description). Optional 'filter' substring narrows the list.",
-        "inputSchema": _schema({"filter": {"type": "string",
-                               "description": "case-insensitive substring filter"}}),
+        "description). Optional 'filter' substring narrows the list.",
+        "inputSchema": _schema(
+            {"filter": {"type": "string", "description": "case-insensitive substring filter"}}
+        ),
         "handler": tool_list_apps,
     },
     {
         "name": "app_info",
         "description": "Details for one firmware app: directory, description, which "
-                       "boot files are present, build/flash/sim commands, README head.",
-        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}},
-                               ["app"]),
+        "boot files are present, build/flash/sim commands, README head.",
+        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}}, ["app"]),
         "handler": tool_app_info,
     },
     {
         "name": "repo_overview",
         "description": "One-shot orientation: target hardware, app count, the common "
-                       "build/test/flash/HIL workflows, and where the docs live.",
+        "build/test/flash/HIL workflows, and where the docs live.",
         "inputSchema": _schema({}),
         "handler": tool_repo_overview,
     },
     {
         "name": "search_code",
         "description": "Search first-party source (libs/src/examples/tests/port/"
-                       "scripts/docs) for a regex pattern. Skips third_party and build.",
-        "inputSchema": _schema({
-            "pattern": {"type": "string", "description": "regex to search for"},
-            "glob": {"type": "string", "description": "optional file glob, e.g. *.c"},
-            "max_results": {"type": "integer", "description": "hit cap (default 80)"},
-        }, ["pattern"]),
+        "scripts/docs) for a regex pattern. Skips third_party and build.",
+        "inputSchema": _schema(
+            {
+                "pattern": {"type": "string", "description": "regex to search for"},
+                "glob": {"type": "string", "description": "optional file glob, e.g. *.c"},
+                "max_results": {"type": "integer", "description": "hit cap (default 80)"},
+            },
+            ["pattern"],
+        ),
         "handler": tool_search_code,
     },
     {
         "name": "hum_lookup",
         "description": "Look up Hardware User's Manual chapter page ranges from "
-                       "docs/reference/CHAPTER_MAP.md (useful for register citations).",
-        "inputSchema": _schema({"query": {"type": "string",
-                               "description": "chapter number or section keyword"}}),
+        "docs/reference/CHAPTER_MAP.md (useful for register citations).",
+        "inputSchema": _schema(
+            {"query": {"type": "string", "description": "chapter number or section keyword"}}
+        ),
         "handler": tool_hum_lookup,
     },
     {
         "name": "build_app",
         "description": "Cross-compile one firmware app (make <app>) and return the "
-                       "build log tail with the real exit status.",
-        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}},
-                               ["app"]),
+        "build log tail with the real exit status.",
+        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}}, ["app"]),
         "handler": tool_build_app,
     },
     {
@@ -516,67 +576,74 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "quality_gate",
         "description": "Run one named quality gate: format-check, tidy, ascii, "
-                       "version, cppcheck, check-annotations, mcdc, cite-check, "
-                       "ai-attribution, inclusive.",
-        "inputSchema": _schema({"gate": {"type": "string", "description": "gate name"}},
-                               ["gate"]),
+        "version, cppcheck, check-annotations, mcdc, cite-check, "
+        "ai-attribution, inclusive.",
+        "inputSchema": _schema({"gate": {"type": "string", "description": "gate name"}}, ["gate"]),
         "handler": tool_quality_gate,
     },
     {
         "name": "flash_app",
         "description": "Build and flash an app to a locally attached EK-RA8D2 via "
-                       "J-Link. HARDWARE WRITE -- previews unless confirm=true.",
-        "inputSchema": _schema({
-            "app": {"type": "string", "description": "app name"},
-            "confirm": {"type": "boolean", "description": "true to actually flash"},
-        }, ["app"]),
+        "J-Link. HARDWARE WRITE -- previews unless confirm=true.",
+        "inputSchema": _schema(
+            {
+                "app": {"type": "string", "description": "app name"},
+                "confirm": {"type": "boolean", "description": "true to actually flash"},
+            },
+            ["app"],
+        ),
         "handler": tool_flash_app,
     },
     {
         "name": "hil",
         "description": "Drive the Pi-attached HIL rig: action in flash, recover, "
-                       "flash-retry, erase, probe, dlm-reset. HARDWARE -- previews "
-                       "unless confirm=true. flash/recover/flash-retry need an app.",
-        "inputSchema": _schema({
-            "action": {"type": "string", "description": "HIL action"},
-            "app": {"type": "string", "description": "app name (for flash actions)"},
-            "confirm": {"type": "boolean", "description": "true to actually run"},
-        }, ["action"]),
+        "flash-retry, erase, probe, dlm-reset. HARDWARE -- previews "
+        "unless confirm=true. flash/recover/flash-retry need an app.",
+        "inputSchema": _schema(
+            {
+                "action": {"type": "string", "description": "HIL action"},
+                "app": {"type": "string", "description": "app name (for flash actions)"},
+                "confirm": {"type": "boolean", "description": "true to actually run"},
+            },
+            ["action"],
+        ),
         "handler": tool_hil,
     },
     {
         "name": "sim_app",
         "description": "Boot one app's real .elf on the board_sim Unicorn emulator (no "
-                       "hardware): build + run headless, assert it reaches its run budget "
-                       "without faulting plus its peripheral UART banner. Returns the verdict.",
-        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}},
-                               ["app"]),
+        "hardware): build + run headless, assert it reaches its run budget "
+        "without faulting plus its peripheral UART banner. Returns the verdict.",
+        "inputSchema": _schema({"app": {"type": "string", "description": "app name"}}, ["app"]),
         "handler": tool_sim_app,
     },
     {
         "name": "coverage",
         "description": "Run the DO-178C Level B MC/DC coverage build (make mcdc) and return "
-                       "the per-decision summary tail.",
+        "the per-decision summary tail.",
         "inputSchema": _schema({}),
         "handler": tool_coverage,
     },
     {
         "name": "git_status",
         "description": "Read-only repo state: current branch, working-tree status, the last "
-                       "few commits, and open GitHub PRs.",
+        "few commits, and open GitHub PRs.",
         "inputSchema": _schema({}),
         "handler": tool_git_status,
     },
     {
         "name": "hum_citation",
         "description": "Emit the HUM register-citation comment skeleton the project requires "
-                       "immediately above every MMIO access. Args: chapter (e.g. 38.2.3), "
-                       "optional section + page.",
-        "inputSchema": _schema({
-            "chapter": {"type": "string", "description": "HUM chapter, e.g. 38.2.3"},
-            "section": {"type": "string", "description": "section name (optional)"},
-            "page": {"type": "string", "description": "page or range, e.g. 2181 (optional)"},
-        }, ["chapter"]),
+        "immediately above every MMIO access. Args: chapter (e.g. 38.2.3), "
+        "optional section + page.",
+        "inputSchema": _schema(
+            {
+                "chapter": {"type": "string", "description": "HUM chapter, e.g. 38.2.3"},
+                "section": {"type": "string", "description": "section name (optional)"},
+                "page": {"type": "string", "description": "page or range, e.g. 2181 (optional)"},
+            },
+            ["chapter"],
+        ),
         "handler": tool_hum_citation,
     },
 ]
@@ -593,6 +660,7 @@ def _resource_doc(rel_path: str) -> Callable[[], str]:
         if not path.is_file():
             return f"{rel_path} not found in this tree."
         return read_text(path)
+
     return reader
 
 
@@ -601,30 +669,62 @@ def _resource_catalogue() -> str:
 
 
 RESOURCES: list[dict[str, Any]] = [
-    {"uri": "ra8d2://doc/claude-md", "name": "CLAUDE.md",
-     "description": "Project rules for AI assistants (the most-violated rules).",
-     "mimeType": "text/markdown", "reader": _resource_doc("CLAUDE.md")},
-    {"uri": "ra8d2://doc/style-guide", "name": "docs/STYLE_GUIDE.md",
-     "description": "Authoritative C23 + Doxygen style guide.",
-     "mimeType": "text/markdown", "reader": _resource_doc("docs/STYLE_GUIDE.md")},
-    {"uri": "ra8d2://doc/ring-and-world", "name": "docs/RING_AND_WORLD.md",
-     "description": "Architectural-ring + TrustZone-world tagging system.",
-     "mimeType": "text/markdown", "reader": _resource_doc("docs/RING_AND_WORLD.md")},
-    {"uri": "ra8d2://doc/contributing", "name": "CONTRIBUTING.md",
-     "description": "Contributor workflow and gate reference.",
-     "mimeType": "text/markdown", "reader": _resource_doc("CONTRIBUTING.md")},
-    {"uri": "ra8d2://reference/chapter-map", "name": "HUM chapter map",
-     "description": "Hardware User's Manual chapter-to-page ranges for citations.",
-     "mimeType": "text/markdown", "reader": _resource_doc("docs/reference/CHAPTER_MAP.md")},
-    {"uri": "ra8d2://doc/hil", "name": "docs/HIL_SUITE.md",
-     "description": "Hardware-in-the-loop suite + how each app is verified in CI.",
-     "mimeType": "text/markdown", "reader": _resource_doc("docs/HIL_SUITE.md")},
-    {"uri": "ra8d2://doc/ai-attribution", "name": "docs/AI_ATTRIBUTION_POLICY.md",
-     "description": "The zero-AI-attribution policy enforced across the tree.",
-     "mimeType": "text/markdown", "reader": _resource_doc("docs/AI_ATTRIBUTION_POLICY.md")},
-    {"uri": "ra8d2://apps/catalogue", "name": "Firmware app catalogue",
-     "description": "Live list of every discovered firmware app.",
-     "mimeType": "text/plain", "reader": _resource_catalogue},
+    {
+        "uri": "ra8d2://doc/claude-md",
+        "name": "CLAUDE.md",
+        "description": "Project rules for AI assistants (the most-violated rules).",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("CLAUDE.md"),
+    },
+    {
+        "uri": "ra8d2://doc/style-guide",
+        "name": "docs/STYLE_GUIDE.md",
+        "description": "Authoritative C23 + Doxygen style guide.",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("docs/STYLE_GUIDE.md"),
+    },
+    {
+        "uri": "ra8d2://doc/ring-and-world",
+        "name": "docs/RING_AND_WORLD.md",
+        "description": "Architectural-ring + TrustZone-world tagging system.",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("docs/RING_AND_WORLD.md"),
+    },
+    {
+        "uri": "ra8d2://doc/contributing",
+        "name": "CONTRIBUTING.md",
+        "description": "Contributor workflow and gate reference.",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("CONTRIBUTING.md"),
+    },
+    {
+        "uri": "ra8d2://reference/chapter-map",
+        "name": "HUM chapter map",
+        "description": "Hardware User's Manual chapter-to-page ranges for citations.",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("docs/reference/CHAPTER_MAP.md"),
+    },
+    {
+        "uri": "ra8d2://doc/hil",
+        "name": "docs/HIL_SUITE.md",
+        "description": "Hardware-in-the-loop suite + how each app is verified in CI.",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("docs/HIL_SUITE.md"),
+    },
+    {
+        "uri": "ra8d2://doc/ai-attribution",
+        "name": "docs/AI_ATTRIBUTION_POLICY.md",
+        "description": "The zero-AI-attribution policy enforced across the tree.",
+        "mimeType": "text/markdown",
+        "reader": _resource_doc("docs/AI_ATTRIBUTION_POLICY.md"),
+    },
+    {
+        "uri": "ra8d2://apps/catalogue",
+        "name": "Firmware app catalogue",
+        "description": "Live list of every discovered firmware app.",
+        "mimeType": "text/plain",
+        "reader": _resource_catalogue,
+    },
 ]
 
 RESOURCE_INDEX: dict[str, dict[str, Any]] = {r["uri"]: r for r in RESOURCES}
@@ -638,12 +738,13 @@ PROMPTS: list[dict[str, Any]] = [
     {
         "name": "audit_register_access",
         "description": "Audit a direct MMIO register access for a valid HUM citation + style.",
-        "arguments": [{"name": "code", "description": "the register read/write line(s)",
-                       "required": True}],
+        "arguments": [
+            {"name": "code", "description": "the register read/write line(s)", "required": True}
+        ],
         "template": (
             "Audit this RA8D2 register access against the project rules: every direct "
             "register read/write MUST be immediately preceded by a HUM citation comment "
-            "`/* HUM Ch X.Y \"section\" p NNNN */`, must go through an inline accessor "
+            '`/* HUM Ch X.Y "section" p NNNN */`, must go through an inline accessor '
             "(never a macro address), and must be pure 7-bit ASCII. Report each violation "
             "with a concrete fix.\n\n```c\n{code}\n```"
         ),
@@ -651,8 +752,9 @@ PROMPTS: list[dict[str, Any]] = [
     {
         "name": "mcdc_vectors",
         "description": "Write minimal MC/DC test vectors for a compound boolean decision.",
-        "arguments": [{"name": "decision", "description": "the C boolean decision",
-                       "required": True}],
+        "arguments": [
+            {"name": "decision", "description": "the C boolean decision", "required": True}
+        ],
         "template": (
             "Write the minimal (N+1) MC/DC test vectors for this decision, demonstrating "
             "that each condition independently affects the outcome, formatted as the "
@@ -665,8 +767,10 @@ PROMPT_INDEX: dict[str, dict[str, Any]] = {p["name"]: p for p in PROMPTS}
 
 
 def handle_prompts_list() -> dict[str, Any]:
-    listed = [{"name": p["name"], "description": p["description"],
-               "arguments": p["arguments"]} for p in PROMPTS]
+    listed = [
+        {"name": p["name"], "description": p["description"], "arguments": p["arguments"]}
+        for p in PROMPTS
+    ]
     return {"prompts": listed}
 
 
@@ -674,15 +778,20 @@ def handle_prompts_get(params: dict[str, Any]) -> dict[str, Any]:
     name = str(params.get("name", ""))
     prompt = PROMPT_INDEX.get(name)
     if prompt is None:
-        raise ValueError(f"unknown prompt: {name}")
+        msg = f"unknown prompt: {name}"
+        raise ValueError(msg)
     arguments = params.get("arguments") or {}
     try:
-        text = prompt["template"].format(**{a["name"]: str(arguments.get(a["name"], ""))
-                                            for a in prompt["arguments"]})
+        text = prompt["template"].format(
+            **{a["name"]: str(arguments.get(a["name"], "")) for a in prompt["arguments"]}
+        )
     except (KeyError, IndexError) as exc:
-        raise ValueError(f"bad prompt arguments: {exc}") from exc
-    return {"description": prompt["description"],
-            "messages": [{"role": "user", "content": {"type": "text", "text": text}}]}
+        msg = f"bad prompt arguments: {exc}"
+        raise ValueError(msg) from exc
+    return {
+        "description": prompt["description"],
+        "messages": [{"role": "user", "content": {"type": "text", "text": text}}],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -706,8 +815,10 @@ def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_tools_list() -> dict[str, Any]:
-    listed = [{"name": t["name"], "description": t["description"],
-               "inputSchema": t["inputSchema"]} for t in TOOLS]
+    listed = [
+        {"name": t["name"], "description": t["description"], "inputSchema": t["inputSchema"]}
+        for t in TOOLS
+    ]
     return {"tools": listed}
 
 
@@ -715,24 +826,28 @@ def handle_tools_call(params: dict[str, Any]) -> dict[str, Any]:
     name = str(params.get("name", ""))
     tool = TOOL_INDEX.get(name)
     if tool is None:
-        return {"content": [{"type": "text", "text": f"unknown tool: {name}"}],
-                "isError": True}
+        return {"content": [{"type": "text", "text": f"unknown tool: {name}"}], "isError": True}
     arguments = params.get("arguments") or {}
     try:
         text = tool["handler"](arguments)
         return {"content": [{"type": "text", "text": text}], "isError": False}
     except ValueError as exc:
-        return {"content": [{"type": "text", "text": f"invalid request: {exc}"}],
-                "isError": True}
-    except Exception as exc:  # noqa: BLE001 -- surface any failure to the caller
+        return {"content": [{"type": "text", "text": f"invalid request: {exc}"}], "isError": True}
+    except Exception as exc:
         log(f"tool '{name}' raised: {exc!r}")
-        return {"content": [{"type": "text", "text": f"tool error: {exc}"}],
-                "isError": True}
+        return {"content": [{"type": "text", "text": f"tool error: {exc}"}], "isError": True}
 
 
 def handle_resources_list() -> dict[str, Any]:
-    listed = [{"uri": r["uri"], "name": r["name"], "description": r["description"],
-               "mimeType": r["mimeType"]} for r in RESOURCES]
+    listed = [
+        {
+            "uri": r["uri"],
+            "name": r["name"],
+            "description": r["description"],
+            "mimeType": r["mimeType"],
+        }
+        for r in RESOURCES
+    ]
     return {"resources": listed}
 
 
@@ -740,7 +855,8 @@ def handle_resources_read(params: dict[str, Any]) -> dict[str, Any]:
     uri = str(params.get("uri", ""))
     resource = RESOURCE_INDEX.get(uri)
     if resource is None:
-        raise ValueError(f"unknown resource uri: {uri}")
+        msg = f"unknown resource uri: {uri}"
+        raise ValueError(msg)
     text = resource["reader"]()
     return {"contents": [{"uri": uri, "mimeType": resource["mimeType"], "text": text}]}
 
@@ -772,12 +888,12 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | None:
             return _result(request_id, handle_prompts_list())
         if method == "prompts/get":
             return _result(request_id, handle_prompts_get(params))
-        if method in ("resources/templates/list",):
+        if method == "resources/templates/list":
             return _result(request_id, {"resourceTemplates": []})
         return _error(request_id, ERR_METHOD_NOT_FOUND, f"method not found: {method}")
     except ValueError as exc:
         return _error(request_id, ERR_INVALID_PARAMS, str(exc))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log(f"dispatch error for {method}: {exc!r}")
         return _error(request_id, ERR_INTERNAL, str(exc))
 
@@ -800,7 +916,9 @@ def serve() -> int:
             out.flush()
             continue
         if not isinstance(request, dict):
-            out.write(json.dumps(_error(None, ERR_INVALID_REQUEST, "request must be an object")) + "\n")
+            out.write(
+                json.dumps(_error(None, ERR_INVALID_REQUEST, "request must be an object")) + "\n"
+            )
             out.flush()
             continue
         response = dispatch(request)
@@ -815,10 +933,20 @@ def selftest() -> int:
     """Exercise the dispatcher in-process (no client, no hardware, no build)."""
     checks: list[tuple[str, bool]] = []
 
-    init = dispatch({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                     "params": {"protocolVersion": PROTOCOL_VERSION_DEFAULT}})
-    checks.append(("initialize returns serverInfo",
-                   bool(init) and init["result"]["serverInfo"]["name"] == SERVER_NAME))
+    init = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"protocolVersion": PROTOCOL_VERSION_DEFAULT},
+        }
+    )
+    checks.append(
+        (
+            "initialize returns serverInfo",
+            bool(init) and init["result"]["serverInfo"]["name"] == SERVER_NAME,
+        )
+    )
 
     tools = dispatch({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = {t["name"] for t in tools["result"]["tools"]}
@@ -828,49 +956,114 @@ def selftest() -> int:
     uris = {r["uri"] for r in res["result"]["resources"]}
     checks.append(("resources/list advertises every resource", uris == set(RESOURCE_INDEX)))
 
-    call = dispatch({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
-                     "params": {"name": "list_apps", "arguments": {}}})
+    call = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {"name": "list_apps", "arguments": {}},
+        }
+    )
     text = call["result"]["content"][0]["text"]
-    checks.append(("list_apps finds firmware apps",
-                   call["result"]["isError"] is False and "firmware app" in text))
+    checks.append(
+        (
+            "list_apps finds firmware apps",
+            call["result"]["isError"] is False and "firmware app" in text,
+        )
+    )
 
-    over = dispatch({"jsonrpc": "2.0", "id": 5, "method": "tools/call",
-                     "params": {"name": "repo_overview", "arguments": {}}})
-    checks.append(("repo_overview mentions the target MCU",
-                   "R7KA8D2KFLCAC" in over["result"]["content"][0]["text"]))
+    over = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {"name": "repo_overview", "arguments": {}},
+        }
+    )
+    checks.append(
+        (
+            "repo_overview mentions the target MCU",
+            "R7KA8D2KFLCAC" in over["result"]["content"][0]["text"],
+        )
+    )
 
-    flash = dispatch({"jsonrpc": "2.0", "id": 6, "method": "tools/call",
-                      "params": {"name": "flash_app", "arguments": {"app": "blink"}}})
-    checks.append(("flash_app withholds the write without confirm",
-                   "[dry run]" in flash["result"]["content"][0]["text"]))
+    flash = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "tools/call",
+            "params": {"name": "flash_app", "arguments": {"app": "blink"}},
+        }
+    )
+    checks.append(
+        (
+            "flash_app withholds the write without confirm",
+            "[dry run]" in flash["result"]["content"][0]["text"],
+        )
+    )
 
-    doc = dispatch({"jsonrpc": "2.0", "id": 7, "method": "resources/read",
-                    "params": {"uri": "ra8d2://doc/claude-md"}})
-    checks.append(("resources/read returns CLAUDE.md",
-                   "CLAUDE" in doc["result"]["contents"][0]["text"]))
+    doc = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "resources/read",
+            "params": {"uri": "ra8d2://doc/claude-md"},
+        }
+    )
+    checks.append(
+        ("resources/read returns CLAUDE.md", "CLAUDE" in doc["result"]["contents"][0]["text"])
+    )
 
     unknown = dispatch({"jsonrpc": "2.0", "id": 8, "method": "no/such/method"})
-    checks.append(("unknown method -> method-not-found",
-                   unknown["error"]["code"] == ERR_METHOD_NOT_FOUND))
+    checks.append(
+        ("unknown method -> method-not-found", unknown["error"]["code"] == ERR_METHOD_NOT_FOUND)
+    )
 
-    cite = dispatch({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
-                     "params": {"name": "hum_citation", "arguments": {"chapter": "38.2.3"}}})
-    checks.append(("hum_citation emits a HUM skeleton",
-                   "HUM Ch 38.2.3" in cite["result"]["content"][0]["text"]))
+    cite = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "tools/call",
+            "params": {"name": "hum_citation", "arguments": {"chapter": "38.2.3"}},
+        }
+    )
+    checks.append(
+        (
+            "hum_citation emits a HUM skeleton",
+            "HUM Ch 38.2.3" in cite["result"]["content"][0]["text"],
+        )
+    )
 
-    badsim = dispatch({"jsonrpc": "2.0", "id": 10, "method": "tools/call",
-                       "params": {"name": "sim_app", "arguments": {"app": "no_such_app"}}})
-    checks.append(("sim_app rejects an unknown app (no build)",
-                   badsim["result"]["isError"] is True))
+    badsim = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 10,
+            "method": "tools/call",
+            "params": {"name": "sim_app", "arguments": {"app": "no_such_app"}},
+        }
+    )
+    checks.append(
+        ("sim_app rejects an unknown app (no build)", badsim["result"]["isError"] is True)
+    )
 
     plist = dispatch({"jsonrpc": "2.0", "id": 11, "method": "prompts/list"})
     pnames = {p["name"] for p in plist["result"]["prompts"]}
     checks.append(("prompts/list advertises every prompt", pnames == set(PROMPT_INDEX)))
 
-    pget = dispatch({"jsonrpc": "2.0", "id": 12, "method": "prompts/get",
-                     "params": {"name": "audit_register_access", "arguments": {"code": "x"}}})
-    checks.append(("prompts/get fills the template",
-                   "HUM" in pget["result"]["messages"][0]["content"]["text"]))
+    pget = dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "prompts/get",
+            "params": {"name": "audit_register_access", "arguments": {"code": "x"}},
+        }
+    )
+    checks.append(
+        (
+            "prompts/get fills the template",
+            "HUM" in pget["result"]["messages"][0]["content"]["text"],
+        )
+    )
 
     ok = True
     for label, passed in checks:
@@ -883,13 +1076,15 @@ def selftest() -> int:
 def which(name: str) -> bool:
     """Return True if ``name`` resolves on PATH."""
     from shutil import which as _which
+
     return _which(name) is not None
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="MCP server for ra8d2-firmware.")
-    parser.add_argument("--selftest", action="store_true",
-                        help="run the in-process dispatcher self-test and exit")
+    parser.add_argument(
+        "--selftest", action="store_true", help="run the in-process dispatcher self-test and exit"
+    )
     options = parser.parse_args(argv)
     if options.selftest:
         return selftest()

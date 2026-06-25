@@ -65,15 +65,15 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-tag()   { printf "${CYAN}[dlm_reset]${NC} %s\n" "$*"; }
-ok()    { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
-err()   { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
-warn()  { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
+tag() { printf "${CYAN}[dlm_reset]${NC} %s\n" "$*"; }
+ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+err() { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
+warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 
 # ---- 0. Sanity-check the Pi reachable ---------------------------------------
 if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" "true" 2>/dev/null; then
-    err "Cannot reach Pi at ${PI_HOST} -- check network / SSH key."
-    exit 2
+  err "Cannot reach Pi at ${PI_HOST} -- check network / SSH key."
+  exit 2
 fi
 tag "Pi reachable: ${PI_HOST}"
 
@@ -81,22 +81,22 @@ tag "Pi reachable: ${PI_HOST}"
 BEFORE_LOG="/tmp/hil_dlm_reset_before.log"
 tag "Reading DLM state BEFORE Initialize..."
 ssh "$PI_HOST" \
-    "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
-    > "$BEFORE_LOG" 2>&1 || true
+  "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
+  >"$BEFORE_LOG" 2>&1 || true
 
 if grep -q "DLM State:" "$BEFORE_LOG"; then
-    BEFORE_STATE="$(grep -E '^DLM State:' "$BEFORE_LOG" | head -1 | sed 's/^DLM State: //')"
-    BEFORE_FLAGS="$(grep -E '^Security Flags:' "$BEFORE_LOG" | head -1 | sed 's/^Security Flags: //')"
-    tag "BEFORE: DLM State = ${BEFORE_STATE}, Security Flags = ${BEFORE_FLAGS}"
+  BEFORE_STATE="$(grep -E '^DLM State:' "$BEFORE_LOG" | head -1 | sed 's/^DLM State: //')"
+  BEFORE_FLAGS="$(grep -E '^Security Flags:' "$BEFORE_LOG" | head -1 | sed 's/^Security Flags: //')"
+  tag "BEFORE: DLM State = ${BEFORE_STATE}, Security Flags = ${BEFORE_FLAGS}"
 elif grep -q "E100000E" "$BEFORE_LOG"; then
-    warn "BEFORE: rfo returned E100000E protection error -- chip is in PL0/PL1 with debug gated."
-    warn "        This is the expected starting condition for recovery."
-    BEFORE_STATE="<protected>"
-    BEFORE_FLAGS="<unreadable>"
+  warn "BEFORE: rfo returned E100000E protection error -- chip is in PL0/PL1 with debug gated."
+  warn "        This is the expected starting condition for recovery."
+  BEFORE_STATE="<protected>"
+  BEFORE_FLAGS="<unreadable>"
 else
-    err "Unexpected rfo output BEFORE Initialize:"
-    tail -10 "$BEFORE_LOG" | sed 's/^/    /' >&2
-    exit 1
+  err "Unexpected rfo output BEFORE Initialize:"
+  tail -10 "$BEFORE_LOG" | sed 's/^/    /' >&2
+  exit 1
 fi
 
 # ---- 2. Run the Initialize via -erase-chip ----------------------------------
@@ -105,17 +105,17 @@ tag "Invoking Initialize command via rfp-cli -erase-chip..."
 tag "(This erases user flash AND runs the boot-firmware Initialize,"
 tag " which transitions DLM from OEM_PL0/PL1 back to OEM_PL2.)"
 if ! ssh "$PI_HOST" \
-    "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip 2>&1" \
-    > "$INIT_LOG" 2>&1; then
-    err "rfp-cli -erase-chip returned non-zero. Output:"
-    tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
-    exit 1
+  "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip 2>&1" \
+  >"$INIT_LOG" 2>&1; then
+  err "rfp-cli -erase-chip returned non-zero. Output:"
+  tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
+  exit 1
 fi
 
 if ! grep -q "Operation successful" "$INIT_LOG"; then
-    err "rfp-cli -erase-chip did NOT report Operation successful. Output:"
-    tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
-    exit 1
+  err "rfp-cli -erase-chip did NOT report Operation successful. Output:"
+  tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
+  exit 1
 fi
 ok "Initialize command reported success."
 
@@ -123,15 +123,15 @@ ok "Initialize command reported success."
 AFTER_LOG="/tmp/hil_dlm_reset_after.log"
 tag "Reading DLM state AFTER Initialize..."
 ssh "$PI_HOST" \
-    "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
-    > "$AFTER_LOG" 2>&1 || true
+  "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
+  >"$AFTER_LOG" 2>&1 || true
 
 if ! grep -q "DLM State:" "$AFTER_LOG"; then
-    err "AFTER: rfo did not return a DLM state. Output:"
-    tail -15 "$AFTER_LOG" | sed 's/^/    /' >&2
-    err "Recovery FAILED -- chip may be in LCK_BOOT, ce flag may have"
-    err "been set, or a different brick mode is at play."
-    exit 1
+  err "AFTER: rfo did not return a DLM state. Output:"
+  tail -15 "$AFTER_LOG" | sed 's/^/    /' >&2
+  err "Recovery FAILED -- chip may be in LCK_BOOT, ce flag may have"
+  err "been set, or a different brick mode is at play."
+  exit 1
 fi
 
 AFTER_STATE="$(grep -E '^DLM State:' "$AFTER_LOG" | head -1 | sed 's/^DLM State: //')"
@@ -139,19 +139,19 @@ AFTER_FLAGS="$(grep -E '^Security Flags:' "$AFTER_LOG" | head -1 | sed 's/^Secur
 tag "AFTER:  DLM State = ${AFTER_STATE}, Security Flags = ${AFTER_FLAGS}"
 
 if [[ "$AFTER_STATE" == "OEM_PL2" ]]; then
-    ok "Chip recovered. DLM is at OEM_PL2 (Initialize regressed PL0 -> PL2)."
-    ok "Do NOT run 'rfp-cli -dlm <state>' after this -- chaining a DLM"
-    ok "transition will re-lock the chip into OEM_PL0."
-    echo
-    tag "Logs:"
-    tag "  BEFORE rfo: ${BEFORE_LOG}"
-    tag "  Initialize: ${INIT_LOG}"
-    tag "  AFTER  rfo: ${AFTER_LOG}"
-    echo
-    tag "Next steps:"
-    tag "  - Flash a sanity-check app:   bash scripts/hil_flash.sh blink"
-    tag "  - Resume normal HIL pipeline: bash scripts/hil_all.sh"
-    exit 0
+  ok "Chip recovered. DLM is at OEM_PL2 (Initialize regressed PL0 -> PL2)."
+  ok "Do NOT run 'rfp-cli -dlm <state>' after this -- chaining a DLM"
+  ok "transition will re-lock the chip into OEM_PL0."
+  echo
+  tag "Logs:"
+  tag "  BEFORE rfo: ${BEFORE_LOG}"
+  tag "  Initialize: ${INIT_LOG}"
+  tag "  AFTER  rfo: ${AFTER_LOG}"
+  echo
+  tag "Next steps:"
+  tag "  - Flash a sanity-check app:   bash scripts/hil_flash.sh blink"
+  tag "  - Resume normal HIL pipeline: bash scripts/hil_all.sh"
+  exit 0
 fi
 
 err "Initialize ran but DLM state is now '${AFTER_STATE}' (expected OEM_PL2)."

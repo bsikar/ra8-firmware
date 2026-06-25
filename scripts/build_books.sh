@@ -25,17 +25,17 @@ MANIFEST_HDR="$ROOT/libs/ra_book/inc/ra_book_library.h"
 MAX_EDGE="${RA_BOOK_MAX_EDGE:-1024}"
 
 if ! ls "$SRC_DIR"/*.epub >/dev/null 2>&1; then
-    echo "build_books: no .epub sources in $SRC_DIR" >&2
-    echo "             (run 'git lfs pull' to fetch them)" >&2
-    exit 1
+  echo "build_books: no .epub sources in $SRC_DIR" >&2
+  echo "             (run 'git lfs pull' to fetch them)" >&2
+  exit 1
 fi
 
 mkdir -p "$OUT_DIR"
 count=0
 for epub in "$SRC_DIR"/*.epub; do
-    base="$(basename "$epub" .epub)"
-    python3 "$COMPILER" "$epub" "$OUT_DIR/$base.rabook" --max-edge "$MAX_EDGE"
-    count=$((count + 1))
+  base="$(basename "$epub" .epub)"
+  python3 "$COMPILER" "$epub" "$OUT_DIR/$base.rabook" --max-edge "$MAX_EDGE"
+  count=$((count + 1))
 done
 
 python3 "$MANIFEST_GEN" "$OUT_DIR" "$MANIFEST_HDR"
@@ -45,9 +45,9 @@ python3 "$MANIFEST_GEN" "$OUT_DIR" "$MANIFEST_HDR"
 # header is generated from the Git-LFS source epubs, not committed.
 SHELF_HDR="$ROOT/examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
 python3 "$ROOT/tools/bake_library.py" "$SHELF_HDR" \
-    "$OUT_DIR/The Time Machine - H G Wells.rabook|The Time Machine|H. G. Wells" \
-    "$OUT_DIR/The Strange Case of Dr Jekyll and Mr Hyde - Robert Louis Stevenson.rabook|The Strange Case of Dr. Jekyll and Mr. Hyde|Robert Louis Stevenson" \
-    "$OUT_DIR/Journey to the Center of the Earth - Jules Verne.rabook|Journey to the Center of the Earth|Jules Verne"
+  "$OUT_DIR/The Time Machine - H G Wells.rabook|The Time Machine|H. G. Wells" \
+  "$OUT_DIR/The Strange Case of Dr Jekyll and Mr Hyde - Robert Louis Stevenson.rabook|The Strange Case of Dr. Jekyll and Mr. Hyde|Robert Louis Stevenson" \
+  "$OUT_DIR/Journey to the Center of the Earth - Jules Verne.rabook|Journey to the Center of the Earth|Jules Verne"
 
 total_kb=$(du -sk "$OUT_DIR" | cut -f1)
 echo "build_books: $count book(s), max-edge=$MAX_EDGE, $((total_kb / 1024)) MB in $OUT_DIR"

@@ -53,58 +53,92 @@ import sys
 from pathlib import Path
 
 SCAN_ROOTS = (
-    "libs", "src", "examples", "tests", "port", "scripts", "docs", "cmake",
+    "libs",
+    "src",
+    "examples",
+    "tests",
+    "port",
+    "scripts",
+    "docs",
+    "cmake",
     ".github",
 )
-SKIP_DIR_NAMES = frozenset({
-    "build", "build-cov", "build-scan", "build-tidy", ".git", "_deps",
-    "third_party", "__pycache__", ".cache", "node_modules", "reference",
-})
-SCAN_EXTS = frozenset({
-    ".c", ".h", ".cpp", ".hpp", ".cc", ".cmake", ".md", ".yml", ".yaml",
-    ".sh", ".py", ".txt",
-})
+SKIP_DIR_NAMES = frozenset(
+    {
+        "build",
+        "build-cov",
+        "build-scan",
+        "build-tidy",
+        ".git",
+        "_deps",
+        "third_party",
+        "__pycache__",
+        ".cache",
+        "node_modules",
+        "reference",
+    }
+)
+SCAN_EXTS = frozenset(
+    {
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".cmake",
+        ".md",
+        ".yml",
+        ".yaml",
+        ".sh",
+        ".py",
+        ".txt",
+    }
+)
 SCAN_BASENAMES = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
 
 # Mirror the gate's exemption / skip list so we do not rewrite vendor
 # files that the gate ignores.
-SELF_EXEMPT = frozenset({
-    "scripts/utils/check_inclusive_terminology.py",
-    "scripts/utils/fix_inclusive_terminology.py",
-    "docs/STYLE_GUIDE.md",
-    "docs/RING_AND_WORLD.md",
-    "docs/ACRONYMS.md",
-    "docs/MCDC_GAPS.md",
-    "docs/MCDC_GAPS.csv",
-    "CLAUDE.md",
-    ".github/workflows/inclusive-terminology.yml",
-})
+SELF_EXEMPT = frozenset(
+    {
+        "scripts/utils/check_inclusive_terminology.py",
+        "scripts/utils/fix_inclusive_terminology.py",
+        "docs/STYLE_GUIDE.md",
+        "docs/RING_AND_WORLD.md",
+        "docs/ACRONYMS.md",
+        "docs/MCDC_GAPS.md",
+        "docs/MCDC_GAPS.csv",
+        "CLAUDE.md",
+        ".github/workflows/inclusive-terminology.yml",
+    }
+)
 
 # These paths are documented vendor citations; leave them alone.
-SKIP_PATTERNS = frozenset({
-    "libs/ra_hal/inc/ra8d2_iic_b_regs.h",
-    "libs/ra_hal/inc/ra8d2_i3c_regs.h",
-    "libs/ra_hal/inc/ra8d2_ospi_regs.h",
-    "libs/ra_hal/inc/ra8d2_mipi_phy_regs.h",
-    "libs/ra_hal/inc/ra8d2_ptp_regs.h",
-    "libs/ra_hal/inc/ra8d2_spi_regs.h",
-    "libs/ra_hal/inc/ra8d2_ssie_regs.h",
-    "libs/ra_hal/inc/ra8d2_vin_regs.h",
-    "libs/ra_hal/inc/ra8d2_vreg_regs.h",
-    "libs/ra_hal/inc/ra_iic_b.h",
-    "libs/ra_hal/src/ra_iic_b.c",
-    "libs/ra_hal/inc/ra_i2c.h",
-    "libs/ra_hal/src/ra_i2c.c",
-    "libs/ra_hal/inc/ra_ptp.h",
-    "libs/ra_hal/src/ra_ptp.c",
-    "tests/test_ra_ptp.c",
-    "libs/ra_hal/inc/ra_mipi_phy.h",
-    "libs/ra_hal/src/ra_mipi_phy.c",
-    "tests/test_ra_mipi_phy.c",
-    "docs/SOUP/nimble.md",
-    "docs/SOUP/ble_patch_image.md",
-    "docs/SOUP/r_sce_AMC_firmware.md",
-})
+SKIP_PATTERNS = frozenset(
+    {
+        "libs/ra_hal/inc/ra8d2_iic_b_regs.h",
+        "libs/ra_hal/inc/ra8d2_i3c_regs.h",
+        "libs/ra_hal/inc/ra8d2_ospi_regs.h",
+        "libs/ra_hal/inc/ra8d2_mipi_phy_regs.h",
+        "libs/ra_hal/inc/ra8d2_ptp_regs.h",
+        "libs/ra_hal/inc/ra8d2_spi_regs.h",
+        "libs/ra_hal/inc/ra8d2_ssie_regs.h",
+        "libs/ra_hal/inc/ra8d2_vin_regs.h",
+        "libs/ra_hal/inc/ra8d2_vreg_regs.h",
+        "libs/ra_hal/inc/ra_iic_b.h",
+        "libs/ra_hal/src/ra_iic_b.c",
+        "libs/ra_hal/inc/ra_i2c.h",
+        "libs/ra_hal/src/ra_i2c.c",
+        "libs/ra_hal/inc/ra_ptp.h",
+        "libs/ra_hal/src/ra_ptp.c",
+        "tests/test_ra_ptp.c",
+        "libs/ra_hal/inc/ra_mipi_phy.h",
+        "libs/ra_hal/src/ra_mipi_phy.c",
+        "tests/test_ra_mipi_phy.c",
+        "docs/SOUP/nimble.md",
+        "docs/SOUP/ble_patch_image.md",
+        "docs/SOUP/r_sce_AMC_firmware.md",
+    }
+)
 
 # Ordered: most-specific first.
 REWRITES: list[tuple[re.Pattern[str], str]] = [
