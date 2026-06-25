@@ -170,7 +170,7 @@ static uint32_t priv_hash(const ra_vmem_t* vm, uint32_t object_id, uint64_t alig
  */
 static void priv_hash_insert(ra_vmem_t* vm, int32_t f)
 {
-  const uint32_t b      = priv_hash(vm, vm->cfg.meta[f].object_id, vm->cfg.meta[f].offset);
+  const uint32_t b          = priv_hash(vm, vm->cfg.meta[f].object_id, vm->cfg.meta[f].offset);
   vm->cfg.meta[f].hash_next = vm->cfg.buckets[b];
   vm->cfg.buckets[b]        = f;
 }
@@ -375,11 +375,11 @@ ra_err_t ra_vmem_init(ra_vmem_t* vm, const ra_vmem_cfg_t* cfg)
     return k_ra_err_invalid_size;
   }
   (void)memset(vm, 0, sizeof(*vm));
-  vm->cfg           = *cfg;
-  vm->pb_head       = -1;
-  vm->pb_tail       = -1;
-  vm->pt_head       = -1;
-  vm->pt_tail       = -1;
+  vm->cfg     = *cfg;
+  vm->pb_head = -1;
+  vm->pb_tail = -1;
+  vm->pt_head = -1;
+  vm->pt_tail = -1;
   vm->protected_cap =
     (cfg->frame_count * (uint32_t)k_vmem_protected_pct) / (uint32_t)k_vmem_percent_full;
   for (uint32_t b = 0U; b < cfg->bucket_count; ++b) {
@@ -423,10 +423,8 @@ ra_err_t ra_vmem_init(ra_vmem_t* vm, const ra_vmem_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t priv_vmem_miss(ra_vmem_t* vm,
-                               uint32_t   object_id,
-                               uint64_t   aligned_off,
-                               void**     out_page)
+static ra_err_t
+priv_vmem_miss(ra_vmem_t* vm, uint32_t object_id, uint64_t aligned_off, void** out_page)
 {
   const int32_t v = priv_pick_victim(vm);
   if (v < 0) {
@@ -438,14 +436,18 @@ static ra_err_t priv_vmem_miss(ra_vmem_t* vm,
     vm->evictions++;
   }
   const uint8_t seg = m->seg;
-  priv_unlink(vm, v, (seg == (uint8_t)k_vmem_seg_protected) ? &vm->pt_head : &vm->pb_head,
+  priv_unlink(vm,
+              v,
+              (seg == (uint8_t)k_vmem_seg_protected) ? &vm->pt_head : &vm->pb_head,
               (seg == (uint8_t)k_vmem_seg_protected) ? &vm->pt_tail : &vm->pb_tail);
   if (seg == (uint8_t)k_vmem_seg_protected) {
     vm->protected_count--;
   }
-  const ra_err_t lerr =
-    vm->cfg.loader(vm->cfg.loader_ctx, object_id, aligned_off, priv_frame_ptr(vm, (uint32_t)v),
-                   vm->cfg.frame_bytes);
+  const ra_err_t lerr = vm->cfg.loader(vm->cfg.loader_ctx,
+                                       object_id,
+                                       aligned_off,
+                                       priv_frame_ptr(vm, (uint32_t)v),
+                                       vm->cfg.frame_bytes);
   if (lerr != k_ra_ok) {
     m->valid = 0U;
     m->seg   = (uint8_t)k_vmem_seg_probation;

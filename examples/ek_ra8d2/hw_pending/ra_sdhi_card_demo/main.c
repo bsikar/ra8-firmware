@@ -100,14 +100,22 @@ static const ra_port_pin_t k_sdhi_card_pin_rxd =
 
 /** @brief SDHI bus pins (port 4, pins 0..7: CMD/CLK/DAT0..3/WP/CD). */
 static const ra_port_pin_t k_sdhi_card_pins[k_sdhi_card_pin_count] = {
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_0),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_1),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_2),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_3),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_4),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_5),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_6),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) | (uint16_t)k_ra_pin_7),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_0),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_1),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_2),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_3),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_4),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_5),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_6),
+  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
+                  (uint16_t)k_ra_pin_7),
 };
 
 /* =============================================================================
@@ -408,13 +416,17 @@ static void sdhi_card_fill_payload(void)
  */
 [[nodiscard]] static ra_err_t sdhi_card_block_roundtrip(void)
 {
-  RA_RETURN_ON_ERROR(ra_sdcard_write_blocks((uint32_t)k_sdhi_card_test_lba, s_payload,
+  RA_RETURN_ON_ERROR(ra_sdcard_write_blocks((uint32_t)k_sdhi_card_test_lba,
+                                            s_payload,
                                             (uint32_t)k_sdhi_card_block_count),
-                     s_tag, "write");
+                     s_tag,
+                     "write");
   memset(s_readback, 0, sizeof(s_readback));
-  RA_RETURN_ON_ERROR(ra_sdcard_read_blocks((uint32_t)k_sdhi_card_test_lba, s_readback,
+  RA_RETURN_ON_ERROR(ra_sdcard_read_blocks((uint32_t)k_sdhi_card_test_lba,
+                                           s_readback,
                                            (uint32_t)k_sdhi_card_block_count),
-                     s_tag, "read");
+                     s_tag,
+                     "read");
   if (memcmp(s_payload, s_readback, (size_t)k_sdhi_card_block_bytes) != 0) {
     return k_ra_err_checksum_mismatch;
   }

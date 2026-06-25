@@ -106,10 +106,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_slab_init(ra_slab_t* slab,
-                                    void*      buffer,
-                                    uint32_t   buffer_bytes,
-                                    uint32_t   cell_bytes);
+[[nodiscard]] ra_err_t
+ra_slab_init(ra_slab_t* slab, void* buffer, uint32_t buffer_bytes, uint32_t cell_bytes);
 
 /**
  * @brief Allocate one cell from the slab (O(1)).
@@ -177,9 +175,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_slab_stats(const ra_slab_t* slab,
-                                     uint32_t*        out_free,
-                                     uint32_t*        out_total);
+[[nodiscard]] ra_err_t
+ra_slab_stats(const ra_slab_t* slab, uint32_t* out_free, uint32_t* out_total);
 
 #ifdef __cplusplus
 }

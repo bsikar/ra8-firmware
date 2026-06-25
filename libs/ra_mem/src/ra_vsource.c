@@ -55,8 +55,8 @@ ra_err_t ra_vsource_add_paged(ra_vsource_t*      vs,
   if (vs->count >= vs->cap) {
     return k_ra_err_no_mem;
   }
-  vs->objs[vs->count] = (ra_vsource_obj_t){
-    .read = read, .ctx = ctx, .xip = nullptr, .base = base, .size = size};
+  vs->objs[vs->count] =
+    (ra_vsource_obj_t){.read = read, .ctx = ctx, .xip = nullptr, .base = base, .size = size};
   *out_id = vs->count;
   vs->count++;
   return k_ra_ok;
@@ -73,8 +73,8 @@ ra_err_t ra_vsource_add_xip(ra_vsource_t* vs, uint8_t* xip_base, uint64_t size, 
   if (vs->count >= vs->cap) {
     return k_ra_err_no_mem;
   }
-  vs->objs[vs->count] = (ra_vsource_obj_t){
-    .read = nullptr, .ctx = nullptr, .xip = xip_base, .base = 0U, .size = size};
+  vs->objs[vs->count] =
+    (ra_vsource_obj_t){.read = nullptr, .ctx = nullptr, .xip = xip_base, .base = 0U, .size = size};
   *out_id = vs->count;
   vs->count++;
   return k_ra_ok;

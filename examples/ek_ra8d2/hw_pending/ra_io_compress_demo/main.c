@@ -165,9 +165,13 @@ static ra_err_t demo_run(uint32_t* out_blob_len)
     s_payload[i] = (uint8_t)((i * (uint32_t)k_demo_seed_mul) % (uint32_t)k_demo_pattern_mod);
   }
   uint32_t blob_len = 0;
-  RA_RETURN_ON_ERROR(ra_io_compress(s_payload, (uint32_t)k_demo_payload, s_blob,
-                                    (uint32_t)k_demo_blob_cap, s_scratch,
-                                    (uint32_t)k_ra_io_compress_scratch_bytes, &blob_len),
+  RA_RETURN_ON_ERROR(ra_io_compress(s_payload,
+                                    (uint32_t)k_demo_payload,
+                                    s_blob,
+                                    (uint32_t)k_demo_blob_cap,
+                                    s_scratch,
+                                    (uint32_t)k_ra_io_compress_scratch_bytes,
+                                    &blob_len),
                      s_tag,
                      "compress");
   RA_RETURN_ON_ERROR(ra_fs_write_file(mnt, "STORY.RBK", s_blob, blob_len), s_tag, "write");
@@ -190,8 +194,8 @@ int main(void)
   (void)ra_io_log_attach(&s_uart);
   demo_print("ra_io_compress_demo: boot\r\n");
 
-  uint32_t blob_len = 0;
-  const ra_err_t e  = demo_run(&blob_len);
+  uint32_t       blob_len = 0;
+  const ra_err_t e        = demo_run(&blob_len);
   if (e == k_ra_ok) {
     demo_print("ra_io_compress_demo: 4096 -> ");
     (void)ra_io_stream_put_u32(&s_uart, blob_len);
