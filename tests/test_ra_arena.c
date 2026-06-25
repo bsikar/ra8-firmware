@@ -46,7 +46,7 @@ static void test_carve_align(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_arena_carve(&a, 100U, 8U, &p1));
   TEST_ASSERT_EQ(0u, (uint32_t)((uintptr_t)p1 % 8U)); /* 8-aligned */
   TEST_ASSERT_EQ(k_ra_ok, ra_arena_carve(&a, 64U, 64U, &p2));
-  TEST_ASSERT_EQ(0u, (uint32_t)((uintptr_t)p2 % 64U)); /* 64-aligned */
+  TEST_ASSERT_EQ(0u, (uint32_t)((uintptr_t)p2 % 64U));  /* 64-aligned */
   TEST_ASSERT((uintptr_t)p2 >= ((uintptr_t)p1 + 100U)); /* no overlap */
 
   TEST_ASSERT_EQ(k_ra_ok, ra_arena_remaining(&a, &rem));
@@ -81,8 +81,8 @@ static void test_validation(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_carve(nullptr, 8U, 8U, &ptr));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_carve(&a, 8U, 8U, nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_arena_carve(&a, 0U, 8U, &ptr));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 0U, &ptr));  /* zero align */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 6U, &ptr));  /* non-pow2 align */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 0U, &ptr)); /* zero align */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 6U, &ptr)); /* non-pow2 align */
   uint32_t rem = 0;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_remaining(nullptr, &rem));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_remaining(&a, nullptr));

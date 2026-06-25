@@ -35,8 +35,8 @@ static ra_vmem_frame_t s_meta[(size_t)k_t_frames];
 static int32_t         s_buckets[(size_t)k_t_buckets];
 
 /** @brief Deterministic loader: stamps object id + page number into the frame. */
-static ra_err_t t_loader(void* ctx, uint32_t object_id, uint64_t offset, uint8_t* frame,
-                         uint32_t frame_bytes)
+static ra_err_t
+t_loader(void* ctx, uint32_t object_id, uint64_t offset, uint8_t* frame, uint32_t frame_bytes)
 {
   (void)ctx;
   const uint8_t page = (uint8_t)(offset / (uint64_t)k_t_frame_bytes);
