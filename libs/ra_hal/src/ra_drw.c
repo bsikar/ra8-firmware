@@ -91,8 +91,16 @@ bool ra_drw_internal_rect_above_max(uint16_t max_w, uint16_t max_h, uint16_t wid
 /**
  * @var s_tag
  * @brief Logging tag for the DRW driver.
+ *
+ * @details
+ * Declared @c extern in @c ra_drw_internal.h and shared with
+ * @c ra_drw_draw.c so the geometry-primitive TU logs under the same tag.
+ *
+ * @note Read-only after definition; do not reassign.
+ * @warning Direct modification breaks log correlation.
+ * @since 0.1.0
  */
-static const char* s_tag = "DRW";
+const char* s_tag = "DRW";
 
 /**
  * @var s_drw_fn
@@ -105,27 +113,6 @@ static ra_drw_event_fn_t s_drw_fn;
  * @brief Opaque context paired with ``s_drw_fn``.
  */
 static void* s_drw_ctx;
-
-/**
- * @enum ra_drw_internal_const_t
- * @brief Driver-internal numeric constants -- avoid bare literals.
- */
-typedef enum : uint16_t {
-  k_ra_drw_internal_byte_mask   = 0x00FFU, /**< 8-bit channel mask. */
-  k_ra_drw_internal_one_subpx   = 16U,     /**< 1 px == 16 sub-pixels. */
-  k_ra_drw_internal_clut_max    = 256U,    /**< CLUT entries (HUM 62.5.4). */
-  k_ra_drw_internal_dlist_align = 4U,      /**< 4-byte alignment of DLIST. */
-  k_ra_drw_internal_perfev_max  = 0x001FU, /**< 0x1F is "every clock". */
-} ra_drw_internal_const_t;
-
-/**
- * @enum ra_drw_internal_mask32_t
- * @brief 32-bit driver-internal masks.
- */
-typedef enum : uint32_t {
-  k_ra_drw_internal_color_alpha_mask = 0x00FFFFFFUL, /**< 0x00RRGGBB low bits. */
-  k_ra_drw_internal_align_mask       = 0x00000003UL, /**< 4-byte alignment. */
-} ra_drw_internal_mask32_t;
 
 /* =============================================================================
  * Internal helpers
@@ -187,50 +174,6 @@ static inline uint32_t internal_pack_readformat(ra_drw_readformat_t fmt)
 }
 
 /**
- * @brief Convert a signed pixel coordinate to the DRW Q12.4 sub-pixel grid.
- *
- * @param[in] px Pixel coordinate (signed, in [-32768, 32767] range
- * -- the framebuffer never grows beyond 1024x1024).
- * @return Sub-pixel value (px << 4), wrapped to uint32_t.
- *
- * @pre Caller has range-checked ``px`` upstream.
- * @pre The shift cannot overflow 32 bits for the supported FB size.
- * @post Returned value preserves bit width and is suitable for
- * LnSTART / LnXADD / LnYADD writes.
- * @post No side effects.
- *
- * @details See implementation.
- * @retval k_ra_ok Operation succeeded.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static inline uint32_t internal_to_subpixel(int32_t px)
-{
-  return (uint32_t)(px << k_ra_drw_subpixel_shift);
-}
-
-/**
- * @brief Compute integer absolute value with no library calls.
- *
- * @param[in] v Signed value (range [-32768, 32767]).
- * @return Non-negative absolute value cast to int32_t.
- *
- * @pre ``v`` may be any int32_t except INT32_MIN.
- * @pre Result fits in int32_t.
- * @post Returned value is >= 0.
- * @post No side effects.
- *
- * @details See implementation.
- * @retval k_ra_ok Operation succeeded.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static inline int32_t internal_iabs(int32_t v)
-{
-  return (v < 0) ? -v : v;
-}
-
-/**
  * @brief Read-modify-write a CONTROL2 mask; preserve unrelated bits.
  *
  * @param[in] clear_mask Bits to clear before applying ``set_mask``.
@@ -258,21 +201,7 @@ static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_m
   return nxt;
 }
 
-/**
- * @brief Programme the four edge limiters that bound an axis-aligned rect.
- *
- * @param[in] rect Rectangle in pixel space (validated by caller).
- *
- * @pre rect dimensions in [1..1024].
- * @pre Driver initialized.
- * @post L1..L4 START / XADD / YADD describe a filled axis-aligned quad.
- * @post SIZE = (height << 16) | width.
- *
- * @details See implementation.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
+void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 {
   const int32_t  x0 = (int32_t)rect->x;
   const int32_t  y0 = (int32_t)rect->y;
@@ -768,303 +697,4 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
     *ra_drw_reg32(k_ra_drw_off_texcldata) = entries[i];
   }
   return k_ra_ok;
-}
-
-/* =============================================================================
- * Drawing primitives
- * =============================================================================
- */
-
-[[nodiscard]] ra_err_t ra_drw_fill_rect(const ra_drw_rect_t* rect)
-{
-  RA_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
-  if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px ||
-      (uint16_t)rect->height_px < k_ra_drw_min_dim_px) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((uint16_t)rect->width_px > k_ra_drw_max_width_px ||
-      (uint16_t)rect->height_px > k_ra_drw_max_height_px) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = rect->color_argb8888;
-
-  internal_program_rect_limiters(rect);
-
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Flush the framebuffer cache so writes from a previous primitive
- * land in memory before this fill consumes the same lines. */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
-
-  /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  /* Enable limiters 1..4; engine starts on this write. */
-  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_quad_box;
-
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_drw_blit_textured_rect(const ra_drw_rect_t* rect)
-{
-  RA_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
-  if (ra_drw_internal_rect_below_min((uint16_t)k_ra_drw_min_dim_px,
-                                     (uint16_t)rect->width_px,
-                                     (uint16_t)rect->height_px)) {
-    return k_ra_err_invalid_arg;
-  }
-  if (ra_drw_internal_rect_above_max((uint16_t)k_ra_drw_max_width_px,
-                                     (uint16_t)k_ra_drw_max_height_px,
-                                     (uint16_t)rect->width_px,
-                                     (uint16_t)rect->height_px)) {
-    return k_ra_err_invalid_arg;
-  }
-
-  internal_program_rect_limiters(rect);
-
-  /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
-  *ra_drw_reg32(k_ra_drw_off_lustart) = 0UL;
-  /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
-  *ra_drw_reg32(k_ra_drw_off_luxadd) = (uint32_t)k_ra_drw_subpixel_unit;
-  /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
-  *ra_drw_reg32(k_ra_drw_off_luyadd) = 0UL;
-
-  /* HUM Ch 62.2.20 "LVSTARTI: V Limiter Start Integer Part", p 3702 */
-  *ra_drw_reg32(k_ra_drw_off_lvstarti) = 0UL;
-  /* HUM Ch 62.2.21 "LVSTARTF: V Limiter Start Fractional Part", p 3702 */
-  *ra_drw_reg32(k_ra_drw_off_lvstartf) = 0UL;
-  /* HUM Ch 62.2.22 "LVXADDI: V Limiter X-Axis Increment Integer", p 3702 */
-  *ra_drw_reg32(k_ra_drw_off_lvxaddi) = 0UL;
-  /* HUM Ch 62.2.23 "LVYADDI: V Limiter Y-Axis Increment Integer", p 3702 */
-  *ra_drw_reg32(k_ra_drw_off_lvyaddi) = (uint32_t)k_ra_drw_subpixel_unit;
-  /* HUM Ch 62.2.24 "LVYXADDF: V Limiter Increment Fractional", p 3703 */
-  *ra_drw_reg32(k_ra_drw_off_lvyxaddf) = 0UL;
-
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Pulse FB + texture cache flush before consuming. */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_all_flush);
-
-  /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_quad_box;
-  return k_ra_ok;
-}
-
-/**
- * @brief Program L1..L4 START/XADD/YADD for a stroked line.
- *
- * @details
- * HUM Ch 62.2.10-62.2.12 (LnSTART/LnXADD/LnYADD pp 3698-3699). The
- * line is encoded as four perpendicular limiters per HUM Ch 62.4.4
- * "Lines" p 3725.
- *
- * @param[in] line Validated line descriptor.
- *
- * @pre ``line`` is non-null.
- * @post Limiter registers reflect the line stroke envelope.
- *
- * @note Internal helper, not thread-safe.
- *
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @since 0.1.0
- */
-static void internal_program_line_limiters(const ra_drw_line_t* line)
-{
-  const int32_t dx  = line->x1 - line->x0;
-  const int32_t dy  = line->y1 - line->y0;
-  const int32_t adx = internal_iabs(dx);
-  const int32_t ady = internal_iabs(dy);
-
-  /* HUM Ch 62.2.10 "LnSTART: Limiter n Start Value Register", p 3698 */
-  *ra_drw_reg32(k_ra_drw_off_l1start) = internal_to_subpixel(line->x0);
-  *ra_drw_reg32(k_ra_drw_off_l2start) = internal_to_subpixel(line->x0);
-  *ra_drw_reg32(k_ra_drw_off_l3start) = internal_to_subpixel(line->y0);
-  *ra_drw_reg32(k_ra_drw_off_l4start) = internal_to_subpixel(line->y0);
-
-  /* HUM Ch 62.2.11 "LnXADD: Limiter n X-Axis Increment Register", p 3698 */
-  *ra_drw_reg32(k_ra_drw_off_l1xadd) = internal_to_subpixel(adx);
-  *ra_drw_reg32(k_ra_drw_off_l2xadd) = internal_to_subpixel(-adx);
-  *ra_drw_reg32(k_ra_drw_off_l3xadd) = internal_to_subpixel(ady);
-  *ra_drw_reg32(k_ra_drw_off_l4xadd) = internal_to_subpixel(-ady);
-
-  /* HUM Ch 62.2.12 "LnYADD: Limiter n Y-Axis Increment Register", p 3699 */
-  *ra_drw_reg32(k_ra_drw_off_l1yadd) = internal_to_subpixel(ady);
-  *ra_drw_reg32(k_ra_drw_off_l2yadd) = internal_to_subpixel(-ady);
-  *ra_drw_reg32(k_ra_drw_off_l3yadd) = internal_to_subpixel(adx);
-  *ra_drw_reg32(k_ra_drw_off_l4yadd) = internal_to_subpixel(-adx);
-
-  /* HUM Ch 62.2.13 "L1BAND/L2BAND: Limiter Band Width Register", p 3699.
-   * Band width = stroke width in sub-pixels for L1 and L2. */
-  const uint32_t band                = (uint32_t)line->width_px * (uint32_t)k_ra_drw_subpixel_unit;
-  *ra_drw_reg32(k_ra_drw_off_l1band) = band;
-  *ra_drw_reg32(k_ra_drw_off_l2band) = band;
-}
-
-[[nodiscard]] ra_err_t ra_drw_draw_line(const ra_drw_line_t* line)
-{
-  RA_CHECK_NULL_PTR(line, s_tag, "line must not be nullptr");
-  if (line->width_px == 0U || (uint16_t)line->width_px > k_ra_drw_max_width_px) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = line->color_argb8888;
-
-  /* Compute the bounding box of the stroke for SIZE: a simple
-   * over-estimate using axis-aligned span + width. The DRW only uses
-   * SIZE as an enumeration upper bound, not for clipping the stroke
-   * itself. HUM Ch 62.2.29 p 3704. */
-  const int32_t  min_x  = (line->x0 < line->x1) ? line->x0 : line->x1;
-  const int32_t  max_x  = (line->x0 > line->x1) ? line->x0 : line->x1;
-  const int32_t  min_y  = (line->y0 < line->y1) ? line->y0 : line->y1;
-  const int32_t  max_y  = (line->y0 > line->y1) ? line->y0 : line->y1;
-  const uint32_t span_x = (uint32_t)(max_x - min_x) + (uint32_t)line->width_px;
-  const uint32_t span_y = (uint32_t)(max_y - min_y) + (uint32_t)line->width_px;
-
-  /* HUM Ch 62.2.29 "SIZE: Bounding Box Dimension Register", p 3704 */
-  *ra_drw_reg32(k_ra_drw_off_size) = (span_y << k_ra_drw_size_height_pos) | span_x;
-
-  internal_program_line_limiters(line);
-
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
-
-  /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_line_quad;
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_drw_draw_triangle(const ra_drw_triangle_t* tri)
-{
-  RA_CHECK_NULL_PTR(tri, s_tag, "tri must not be nullptr");
-
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = tri->color_argb8888;
-
-  /* Bounding box for SIZE -- HUM Ch 62.2.29 p 3704. */
-  int32_t min_x = (tri->x0 < tri->x1) ? tri->x0 : tri->x1;
-  if (tri->x2 < (int16_t)min_x) {
-    min_x = tri->x2;
-  }
-  int32_t max_x = (tri->x0 > tri->x1) ? tri->x0 : tri->x1;
-  if (tri->x2 > (int16_t)max_x) {
-    max_x = tri->x2;
-  }
-  int32_t min_y = (tri->y0 < tri->y1) ? tri->y0 : tri->y1;
-  if (tri->y2 < (int16_t)min_y) {
-    min_y = tri->y2;
-  }
-  int32_t max_y = (tri->y0 > tri->y1) ? tri->y0 : tri->y1;
-  if (tri->y2 > (int16_t)max_y) {
-    max_y = tri->y2;
-  }
-  const uint32_t span_x = (uint32_t)(max_x - min_x);
-  const uint32_t span_y = (uint32_t)(max_y - min_y);
-
-  *ra_drw_reg32(k_ra_drw_off_size) = (span_y << k_ra_drw_size_height_pos) | span_x;
-
-  /* HUM Ch 62.4.5 "Triangles" p 3726: three half-plane limiters,
- * one per edge. The HAL programmes the simplest "axis-aligned
- * triangle" encoding -- the application can override LnSTART /
- * LnXADD / LnYADD via display lists for arbitrary geometry. */
-
-  /* HUM Ch 62.2.10 "LnSTART: Limiter n Start Value Register", p 3698 */
-  *ra_drw_reg32(k_ra_drw_off_l1start) = internal_to_subpixel(tri->x0);
-  *ra_drw_reg32(k_ra_drw_off_l2start) = internal_to_subpixel(tri->x1);
-  *ra_drw_reg32(k_ra_drw_off_l3start) = internal_to_subpixel(tri->x2);
-
-  /* HUM Ch 62.2.11 "LnXADD: Limiter n X-Axis Increment", p 3698 */
-  *ra_drw_reg32(k_ra_drw_off_l1xadd) = internal_to_subpixel((int32_t)tri->y1 - (int32_t)tri->y0);
-  *ra_drw_reg32(k_ra_drw_off_l2xadd) = internal_to_subpixel((int32_t)tri->y2 - (int32_t)tri->y1);
-  *ra_drw_reg32(k_ra_drw_off_l3xadd) = internal_to_subpixel((int32_t)tri->y0 - (int32_t)tri->y2);
-
-  /* HUM Ch 62.2.12 "LnYADD: Limiter n Y-Axis Increment", p 3699 */
-  *ra_drw_reg32(k_ra_drw_off_l1yadd) = internal_to_subpixel((int32_t)tri->x0 - (int32_t)tri->x1);
-  *ra_drw_reg32(k_ra_drw_off_l2yadd) = internal_to_subpixel((int32_t)tri->x1 - (int32_t)tri->x2);
-  *ra_drw_reg32(k_ra_drw_off_l3yadd) = internal_to_subpixel((int32_t)tri->x2 - (int32_t)tri->x0);
-
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
-
-  /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_triangle;
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * Display list mode
- * =============================================================================
- */
-
-[[nodiscard]] ra_err_t ra_drw_run_dlist(const uint32_t* dlist_addr)
-{
-  if (dlist_addr == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  if (((uintptr_t)dlist_addr & (uintptr_t)k_ra_drw_internal_align_mask) != 0U) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  /* Flush both caches so the dlist words written by the CPU are
- * visible to the DRW bus initiator. */
-  const uint32_t cur_cc                = *ra_drw_reg32(k_ra_drw_off_cachectl);
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = cur_cc | k_ra_drw_cachectl_all_flush;
-
-  /* HUM Ch 62.2.32 "DLISTSTART: Display List Start Address Register",
- * p 3705. Writing a new value triggers execution. */
-  *ra_drw_reg32(k_ra_drw_off_dliststart) = (uint32_t)(uintptr_t)dlist_addr;
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * Performance counters
- * =============================================================================
- */
-
-[[nodiscard]] ra_err_t ra_drw_perf_arm(ra_drw_perftrigger_t event_ctr1,
-                                       ra_drw_perftrigger_t event_ctr2)
-{
-  if ((uint16_t)event_ctr1 > k_ra_drw_internal_perfev_max ||
-      (uint16_t)event_ctr2 > k_ra_drw_internal_perfev_max) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 62.2.33 "PERFTRIGGER: Performance Counters Control Register",
- * p 3706. PERFTRIGGER1 in [15:0], PERFTRIGGER2 in [31:16]. */
-  *ra_drw_reg32(k_ra_drw_off_perftrigger) =
-    ((uint32_t)event_ctr2 << k_ra_drw_perftrigger2_pos) | (uint32_t)event_ctr1;
-
-  /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
-  *ra_drw_reg32(k_ra_drw_off_perfcount1) = 0UL;
-  *ra_drw_reg32(k_ra_drw_off_perfcount2) = 0UL;
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_drw_perf_read(ra_drw_perfcounter_id_t id, uint32_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
-  if (id == k_ra_drw_perfctr_1) {
-    *out = *ra_drw_reg32(k_ra_drw_off_perfcount1);
-    return k_ra_ok;
-  }
-  if (id == k_ra_drw_perfctr_2) {
-    *out = *ra_drw_reg32(k_ra_drw_off_perfcount2);
-    return k_ra_ok;
-  }
-  return k_ra_err_invalid_arg;
-}
-
-[[nodiscard]] ra_err_t ra_drw_perf_reset(ra_drw_perfcounter_id_t id)
-{
-  /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
-  if (id == k_ra_drw_perfctr_1) {
-    *ra_drw_reg32(k_ra_drw_off_perfcount1) = 0UL;
-    return k_ra_ok;
-  }
-  if (id == k_ra_drw_perfctr_2) {
-    *ra_drw_reg32(k_ra_drw_off_perfcount2) = 0UL;
-    return k_ra_ok;
-  }
-  return k_ra_err_invalid_arg;
 }
