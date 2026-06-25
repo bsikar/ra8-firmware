@@ -72,7 +72,8 @@ static void test_loader_paged(void)
   ra_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_vsource_init(&vs, s_objs, k_t_objs));
   uint32_t oid = 0xFFFFFFFFU;
-  TEST_ASSERT_EQ(k_ra_ok, ra_vsource_add_paged(&vs, t_read, nullptr, 0U, 100U, &oid)); /* size 100 */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_vsource_add_paged(&vs, t_read, nullptr, 0U, 100U, &oid)); /* size 100 */
   TEST_ASSERT_EQ(0u, oid);
 
   /* A 64-byte frame fully inside the object */
@@ -144,7 +145,7 @@ static void test_vmem_integration(void)
   cfg.bucket_count  = k_t_buckets;
   cfg.loader        = ra_vsource_loader;
   cfg.loader_ctx    = &vs;
-  ra_vmem_t vm = {};
+  ra_vmem_t vm      = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(&vm, &cfg));
 
   /* Page in three different offsets and verify against the backing. */
@@ -166,8 +167,8 @@ static void test_vmem_integration(void)
 static void test_validation(void)
 {
   TEST_BEGIN("vsource validation");
-  ra_vsource_t vs  = {};
-  uint32_t     id  = 0;
+  ra_vsource_t vs                          = {};
+  uint32_t     id                          = 0;
   uint8_t      fr[(size_t)k_t_frame_bytes] = {};
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vsource_init(nullptr, s_objs, k_t_objs));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vsource_init(&vs, nullptr, k_t_objs));
@@ -177,11 +178,13 @@ static void test_validation(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vsource_add_paged(&vs, nullptr, nullptr, 0U, 8U, &id));
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_vsource_add_paged(&vs, t_read, nullptr, 0U, 0U, &id));
   TEST_ASSERT_EQ(k_ra_ok, ra_vsource_add_paged(&vs, t_read, nullptr, 0U, 8U, &id));
-  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_vsource_add_paged(&vs, t_read, nullptr, 0U, 8U, &id)); /* full */
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 ra_vsource_add_paged(&vs, t_read, nullptr, 0U, 8U, &id)); /* full */
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vsource_loader(nullptr, 0U, 0U, fr, k_t_frame_bytes));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vsource_loader(&vs, 0U, 0U, nullptr, k_t_frame_bytes));
-  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_vsource_loader(&vs, 9U, 0U, fr, k_t_frame_bytes)); /* bad id */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_vsource_loader(&vs, 9U, 0U, fr, k_t_frame_bytes)); /* bad id */
   TEST_END("vsource validation");
 }
 

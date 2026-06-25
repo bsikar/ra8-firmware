@@ -55,8 +55,13 @@ static void test_round_trip(void)
 
   uint32_t packed_len = 0;
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_io_compress(s_payload, k_t_payload_bytes, s_packed, k_t_out_bytes, s_scratch,
-                                k_ra_io_compress_scratch_bytes, &packed_len));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                s_packed,
+                                k_t_out_bytes,
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes,
+                                &packed_len));
   TEST_ASSERT(packed_len > 0);
   TEST_ASSERT(packed_len < (uint32_t)k_t_payload_bytes); /* repetitive -> shrinks */
 
@@ -79,20 +84,45 @@ static void test_compress_validation(void)
   TEST_BEGIN("compress validation");
   uint32_t out_len = 0;
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_io_compress(nullptr, k_t_payload_bytes, s_packed, k_t_out_bytes, s_scratch,
-                                k_ra_io_compress_scratch_bytes, &out_len));
+                 ra_io_compress(nullptr,
+                                k_t_payload_bytes,
+                                s_packed,
+                                k_t_out_bytes,
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes,
+                                &out_len));
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_io_compress(s_payload, k_t_payload_bytes, nullptr, k_t_out_bytes, s_scratch,
-                                k_ra_io_compress_scratch_bytes, &out_len));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                nullptr,
+                                k_t_out_bytes,
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes,
+                                &out_len));
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_io_compress(s_payload, k_t_payload_bytes, s_packed, k_t_out_bytes, nullptr,
-                                k_ra_io_compress_scratch_bytes, &out_len));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                s_packed,
+                                k_t_out_bytes,
+                                nullptr,
+                                k_ra_io_compress_scratch_bytes,
+                                &out_len));
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_io_compress(s_payload, k_t_payload_bytes, s_packed, k_t_out_bytes, s_scratch,
-                                k_ra_io_compress_scratch_bytes, nullptr));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                s_packed,
+                                k_t_out_bytes,
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes,
+                                nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_size,
-                 ra_io_compress(s_payload, k_t_payload_bytes, s_packed, k_t_out_bytes, s_scratch,
-                                k_ra_io_compress_scratch_bytes - 1, &out_len));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                s_packed,
+                                k_t_out_bytes,
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes - 1,
+                                &out_len));
   TEST_END("compress validation");
 }
 
@@ -108,8 +138,13 @@ static void test_compress_overflow(void)
   uint32_t out_len = 0;
   uint8_t  tiny[4] = {};
   TEST_ASSERT_EQ(k_ra_err_no_mem,
-                 ra_io_compress(s_payload, k_t_payload_bytes, tiny, (uint32_t)sizeof(tiny),
-                                s_scratch, k_ra_io_compress_scratch_bytes, &out_len));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                tiny,
+                                (uint32_t)sizeof(tiny),
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes,
+                                &out_len));
   TEST_END("compress overflow");
 }
 
@@ -124,8 +159,13 @@ static void test_decompress_validation(void)
   fill_payload();
   uint32_t packed_len = 0;
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_io_compress(s_payload, k_t_payload_bytes, s_packed, k_t_out_bytes, s_scratch,
-                                k_ra_io_compress_scratch_bytes, &packed_len));
+                 ra_io_compress(s_payload,
+                                k_t_payload_bytes,
+                                s_packed,
+                                k_t_out_bytes,
+                                s_scratch,
+                                k_ra_io_compress_scratch_bytes,
+                                &packed_len));
 
   uint32_t out_len = 0;
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
@@ -136,9 +176,8 @@ static void test_decompress_validation(void)
                  ra_io_decompress(s_packed, packed_len, s_restored, k_t_payload_bytes, nullptr));
 
   uint8_t small[8] = {};
-  TEST_ASSERT_EQ(
-    k_ra_err_no_mem,
-    ra_io_decompress(s_packed, packed_len, small, (uint32_t)sizeof(small), &out_len));
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 ra_io_decompress(s_packed, packed_len, small, (uint32_t)sizeof(small), &out_len));
   TEST_END("decompress validation");
 }
 
