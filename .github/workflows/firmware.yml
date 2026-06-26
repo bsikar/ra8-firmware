@@ -306,10 +306,17 @@ jobs:
       - name: Set up Python/shell lint tools (ruff, shellcheck, shfmt)
         run: |
           set -euo pipefail
-          # ruff in an isolated venv (PEP 668-safe across runner images)
-          python3 -m venv "$RUNNER_TEMP/lintenv"
-          "$RUNNER_TEMP/lintenv/bin/pip" install --quiet ruff==0.15.19
-          echo "$RUNNER_TEMP/lintenv/bin" >> "$GITHUB_PATH"
+          # ruff in an isolated venv (PEP 668-safe across runner images).
+          # Some self-hosted runners lack the python3-venv module; fall back to
+          # a --user --break-system-packages install so the gate still runs.
+          if python3 -m venv "$RUNNER_TEMP/lintenv" 2>/dev/null \
+             && "$RUNNER_TEMP/lintenv/bin/pip" install --quiet ruff==0.15.19; then
+            echo "$RUNNER_TEMP/lintenv/bin" >> "$GITHUB_PATH"
+          else
+            echo "venv unavailable; installing ruff via pip --user --break-system-packages"
+            python3 -m pip install --user --break-system-packages --quiet ruff==0.15.19
+            echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          fi
           # pinned static binaries for the X64 runner (no sudo, no apt)
           mkdir -p "$RUNNER_TEMP/lintbin"
           curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz \
