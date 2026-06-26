@@ -31,4 +31,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME threadx_sdcard_demo STACK_BYTES 2200
            DESCRIPTION "Eclipse ThreadX SD card boot-sector dump demo for RA8D2"
-           USES threadx)
+           USES threadx
+           LIBS ra_board_ek_ra8d2)

@@ -737,6 +737,56 @@ ra_err_t ra_board_xspi_pins_init(void)
 }
 
 /* =============================================================================
+ * 6d. Native SDHI bus pin routing (SDHI0, port 4 pins 0..7)
+ * =============================================================================
+ */
+
+/**
+ * @brief Lookup table for the eight SDHI0 bus pins routed to PSEL=0x15.
+ *
+ * @details
+ * Bus order: CMD, CLK, DAT0..DAT3, WP, CD. The pin enums are uint16_t
+ * encodings of (port << 8) | pin -- compatible with the ``ra_port_pin_t``
+ * value space. Source: chip HUM Ch 20.6 "Multiplexed Pin Function
+ * Selector" SDHI pin group (the EK-RA8D2 v1 board has no on-board
+ * micro-SD socket -- see the @warning on ::ra_board_sdhi_pin_t).
+ *
+ * The ``ra_port_pin_t`` enum only enumerates the convenience
+ * ``k_ra_pin_led*`` aliases; raw RA_PIN()-derived values are valid
+ * data-space members but trigger the EnumCastOutOfRange checker, so the
+ * cast cluster is wrapped in a NOLINT region matching the board-pin
+ * convention used throughout this BSP.
+ */
+/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+static const ra_port_pin_t s_sdhi_bus_pins[] = {
+  (ra_port_pin_t)k_ra_board_sdhi_cmd,  /**< SDHI0 CMD,  P400. */
+  (ra_port_pin_t)k_ra_board_sdhi_clk,  /**< SDHI0 CLK,  P401. */
+  (ra_port_pin_t)k_ra_board_sdhi_dat0, /**< SDHI0 DAT0, P402. */
+  (ra_port_pin_t)k_ra_board_sdhi_dat1, /**< SDHI0 DAT1, P403. */
+  (ra_port_pin_t)k_ra_board_sdhi_dat2, /**< SDHI0 DAT2, P404. */
+  (ra_port_pin_t)k_ra_board_sdhi_dat3, /**< SDHI0 DAT3, P405. */
+  (ra_port_pin_t)k_ra_board_sdhi_wp,   /**< SDHI0 WP,   P406. */
+  (ra_port_pin_t)k_ra_board_sdhi_cd,   /**< SDHI0 CD,   P407. */
+};
+/* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+
+ra_err_t ra_board_sdhi_pins_init(void)
+{
+  /* Route the eight SDHI0 bus pins to PSEL=0x15. PSEL 0x15 is the SDHI
+   * SD / MMC function per chip HUM Ch 20.6 "Multiplexed Pin Function
+   * Selector"; the named constant is ``k_ra_psel_sdhi``. */
+  const uint32_t count = (uint32_t)(sizeof(s_sdhi_bus_pins) / sizeof(s_sdhi_bus_pins[0]));
+  for (uint32_t i = 0U; i < count; ++i) {
+    const ra_err_t err =
+      ra_pfs_route_peripheral(s_sdhi_bus_pins[i], k_ra_psel_sdhi, "ra_board.sdhi");
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
  * 5. Arduino header (UM Table 20, page 28)
  * =============================================================================
  */
