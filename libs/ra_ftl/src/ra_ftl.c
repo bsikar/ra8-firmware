@@ -363,8 +363,6 @@ static ra_err_t ftl_bounds(const ra_ftl_t* ftl, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match the
-   ra_io_blockdev_iface_t.read function-pointer signature. */
 static ra_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -538,8 +536,6 @@ static ra_err_t ftl_dev_get_caps(const void* ctx, ra_io_blockdev_caps_t* out)
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match the
-   ra_io_blockdev_iface_t.sync function-pointer signature. */
 static ra_err_t ftl_dev_sync(void* ctx)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");

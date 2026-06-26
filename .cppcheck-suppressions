@@ -201,6 +201,14 @@ misra-c2012-17.7:tools/board_sim/*
 constParameterCallback:libs/ra_hal/src/ra_ipc.c
 constParameterCallback:libs/ra_hal/src/ra_cnecc.c
 
+# constParameterCallback on the ra_ftl block-device vtable shims. ftl_dev_read /
+# ftl_dev_write / ftl_dev_sync take `void* ctx` because they are bound to the
+# ra_io_blockdev_iface_t function-pointer types, whose ctx parameter is `void*`;
+# const-qualifying it would break the shared callback typedef. Suppressed via the
+# list (not inline) so the Doxygen block stays adjacent to the function for the
+# doc-coverage audit (same pattern as ra_sdfont above).
+constParameterCallback:libs/ra_ftl/src/ra_ftl.c
+
 # unusedStructMember in ra_ble_host implementation files. These TUs each
 # define a forward-compatible state struct whose fields are populated by
 # downstream NimBLE-target builds; cppcheck's per-TU view cannot see those
