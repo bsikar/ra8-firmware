@@ -35,6 +35,7 @@
 
 #include "ra_err.h"
 #include "ra_gfx.h"
+#include "ra_glyph_atlas.h"
 #include "ra_reflow.h"
 #include "unity_minimal.h"
 
@@ -126,6 +127,39 @@ static uint8_t s_fb[k_r_fb_bytes];
 static uint8_t s_arena_buf[k_r_arena_cap];
 
 /**
+ * @enum render_atlas_size_t
+ * @brief Glyph-cache backing-store dimensions for the atlas equivalence test.
+ */
+typedef enum : uint32_t {
+  k_ra_cell_px         = 64U,                         /**< Cell edge, px (>= 18px body).     */
+  k_ra_cell_bytes      = k_ra_cell_px * k_ra_cell_px, /**< Bytes per cell (alpha-8, 4096).   */
+  k_ra_cell_count      = 64U,                         /**< Cells (budget > distinct glyphs). */
+  k_ra_buckets         = 128U,                        /**< Hash buckets.                     */
+  k_ra_tiny_cell_bytes = 4U,                          /**< Too small for any body glyph.     */
+} render_atlas_size_t;
+
+/** @brief Reference framebuffer rendered via the direct (no-cache) path. */
+static uint8_t s_fb_ref[k_r_fb_bytes];
+
+/** @brief Glyph-atlas cell storage (caller-owned, like the ereader app). */
+static uint8_t s_atlas_cells[(size_t)k_ra_cell_count * (size_t)k_ra_cell_bytes];
+
+/** @brief Glyph-atlas per-cell link metadata. */
+static ra_keycache_cell_t s_atlas_meta[k_ra_cell_count];
+
+/** @brief Glyph-atlas per-cell key storage. */
+static ra_glyph_key_t s_atlas_keys[k_ra_cell_count];
+
+/** @brief Glyph-atlas per-cell dimension descriptors. */
+static ra_glyph_dims_t s_atlas_dims[k_ra_cell_count];
+
+/** @brief Glyph-atlas hash-bucket heads. */
+static int32_t s_atlas_buckets[k_ra_buckets];
+
+/** @brief Glyph-atlas state bound into the engine. */
+static ra_glyph_atlas_t s_atlas;
+
+/**
  * @brief A 2x2 RGB PNG: TL red, TR green, BL blue, BR white.
  * @details Identical fixture to tests/test_ra_reflow_image.c -- the smallest
  * raster that the image loader can return so layout records an image box and
@@ -213,6 +247,12 @@ static bool fb_has_drawn_pixel(void)
     }
   }
   return false;
+}
+
+/** @brief True iff the two framebuffers are byte-for-byte identical. */
+static bool fb_equal_ref(void)
+{
+  return memcmp(s_fb, s_fb_ref, (size_t)k_r_fb_bytes) == 0;
 }
 
 /**
@@ -420,12 +460,198 @@ static void test_render_images_loader_both_arms(void)
   TEST_END("ra_reflow_render: priv_render_images loader/arena MC/DC");
 }
 
+/**
+ * @test test_render_glyph_atlas_equivalence
+ *
+ * @par Purpose:
+ * Validates the #164 glyph-atlas wiring in ra_reflow_render.c on two axes that
+ * the issue makes the acceptance bar:
+ *  1. **Byte-identity** -- a page rendered through the bound atlas is
+ *     byte-for-byte identical to the same page rendered through the direct
+ *     (no-cache) path. The cache must be a pure optimisation: the same
+ *     stb_truetype rasteriser fills each cell, so cached and freshly-rasterised
+ *     bitmaps are identical and the composited framebuffers match exactly.
+ *  2. **Cache effectiveness** -- re-rendering the same page does ZERO new glyph
+ *     rasterisation (the miss count is unchanged across the second render) while
+ *     the hit count grows. That "re-render never re-rasterises" property is the
+ *     entire motivation for #147/#164.
+ *
+ * The budget (k_ra_cell_count cells) exceeds the distinct-glyph count of the
+ * pangram page, so the second render evicts nothing and is all hits.
+ *
+ * @par Coverage:
+ * Drives priv_blit_glyph's atlas arm (atlas != NULL) and both
+ * priv_glyph_render_cached outcomes (miss -> render-into-cell, hit -> reuse),
+ * plus ra_reflow_set_glyph_atlas bind + detach (atlas == NULL) paths -- source
+ * the no-cache MC/DC tests above cannot reach.
+ */
+static void test_render_glyph_atlas_equivalence(void)
+{
+  TEST_BEGIN("ra_reflow_render: glyph atlas byte-identity + zero re-raster");
+  if (load_font() == 0) {
+    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping atlas render\n");
+    TEST_END("ra_reflow_render: glyph atlas byte-identity + zero re-raster");
+    return;
+  }
+  TEST_ASSERT_EQ(k_ra_ok, init_engine());
+  uint32_t    pages = 0U;
+  const char* xhtml = "<p>The quick brown fox jumps over the lazy dog.</p>";
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_reflow_layout_chapter(&s_engine, (const uint8_t*)xhtml, strlen(xhtml), &pages));
+  TEST_ASSERT(pages >= 1U);
+
+  /* Reference render through the direct path (no atlas bound yet). */
+  memset(s_fb_ref, 0, sizeof s_fb_ref);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_gfx_init(s_fb_ref, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
+  /* (Sanity: s_fb_ref now holds the canonical glyphs; compared against below.) */
+
+  /* Bind a glyph atlas over caller-owned storage -- exactly as the ereader app. */
+  const ra_reflow_glyph_atlas_storage_t storage = {
+    .cell_mem     = s_atlas_cells,
+    .cell_bytes   = (uint32_t)k_ra_cell_bytes,
+    .cell_count   = (uint32_t)k_ra_cell_count,
+    .meta         = s_atlas_meta,
+    .keys         = s_atlas_keys,
+    .dims         = s_atlas_dims,
+    .buckets      = s_atlas_buckets,
+    .bucket_count = (uint32_t)k_ra_buckets,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, &storage));
+
+  /* Cached render #1 (cold cache): must equal the direct render byte-for-byte. */
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
+  TEST_ASSERT(fb_equal_ref());
+
+  uint32_t hits1 = 0U;
+  uint32_t miss1 = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_glyph_atlas_stats(&s_atlas, &hits1, &miss1, nullptr));
+  TEST_ASSERT(miss1 > 0U); /* The cold render rasterised the distinct glyphs. */
+
+  /* Cached render #2 (warm cache): still byte-identical, and crucially renders
+     ZERO new glyphs -- the miss count does not move, every glyph is a hit. */
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
+  TEST_ASSERT(fb_equal_ref());
+
+  uint32_t hits2 = 0U;
+  uint32_t miss2 = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_glyph_atlas_stats(&s_atlas, &hits2, &miss2, nullptr));
+  TEST_ASSERT(hits2 > hits1);                     /* Re-render served from cache.   */
+  TEST_ASSERT_EQ((int64_t)miss1, (int64_t)miss2); /* No glyph re-rasterised (#164). */
+
+  /* Oversized fallback: a cache whose cells are too small for any body glyph
+     forces every glyph down the direct path (priv_atlas_render_glyph returns
+     k_ra_err_invalid_size -> priv_glyph_render_cached returns false). Output
+     must stay byte-identical -- the cache is a pure optimisation. */
+  const ra_reflow_glyph_atlas_storage_t tiny = {
+    .cell_mem     = s_atlas_cells,
+    .cell_bytes   = (uint32_t)k_ra_tiny_cell_bytes,
+    .cell_count   = (uint32_t)k_ra_cell_count,
+    .meta         = s_atlas_meta,
+    .keys         = s_atlas_keys,
+    .dims         = s_atlas_dims,
+    .buckets      = s_atlas_buckets,
+    .bucket_count = (uint32_t)k_ra_buckets,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, &tiny));
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
+  TEST_ASSERT(fb_equal_ref());
+
+  /* Detach reverts to the direct path and still renders identically. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_glyph_atlas(&s_engine, nullptr, nullptr));
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_render_page(&s_engine, 0U, nullptr));
+  TEST_ASSERT(fb_equal_ref());
+  TEST_END("ra_reflow_render: glyph atlas byte-identity + zero re-raster");
+}
+
+/**
+ * @test test_mcdc_set_glyph_atlas_storage_zeros
+ *
+ * @par MC/DC:
+ * Decision: `(storage->cell_bytes == 0U) || (storage->cell_count == 0U) ||
+ * (storage->bucket_count == 0U)` (3 conditions, OR;
+ * libs/ra_reflow/src/ra_reflow_render.c@ra_reflow_set_glyph_atlas). N+1 = 4
+ * vectors:
+ *  - V1 (control, decision F): all three non-zero -> the init path is reached
+ *    and k_ra_ok is returned.
+ *  - V2 (decision T via C1): cell_bytes=0, others non-zero -> C1 T short-circuits
+ *    -> k_ra_err_invalid_size.
+ *  - V3 (decision T via C2): cell_bytes non-zero (C1 F), cell_count=0,
+ *    bucket_count non-zero -> C2 T -> k_ra_err_invalid_size.
+ *  - V4 (decision T via C3): cell_bytes + cell_count non-zero (C1, C2 F),
+ *    bucket_count=0 -> C3 T -> k_ra_err_invalid_size.
+ * V1 vs V2 vary C1; V1 vs V3 vary C2 (C1 held F); V1 vs V4 vary C3 (C1+C2 held
+ * F), so each condition independently flips the decision. N=3 -> N+1=4 vectors.
+ */
+static void test_mcdc_set_glyph_atlas_storage_zeros(void)
+{
+  TEST_BEGIN("ra_reflow_set_glyph_atlas storage-zero MC/DC");
+  if (load_font() == 0) {
+    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping atlas storage MC/DC\n");
+    TEST_END("ra_reflow_set_glyph_atlas storage-zero MC/DC");
+    return;
+  }
+  TEST_ASSERT_EQ(k_ra_ok, init_engine());
+
+  ra_reflow_glyph_atlas_storage_t st = {
+    .cell_mem     = s_atlas_cells,
+    .cell_bytes   = (uint32_t)k_ra_cell_bytes,
+    .cell_count   = (uint32_t)k_ra_cell_count,
+    .meta         = s_atlas_meta,
+    .keys         = s_atlas_keys,
+    .dims         = s_atlas_dims,
+    .buckets      = s_atlas_buckets,
+    .bucket_count = (uint32_t)k_ra_buckets,
+  };
+
+  /* V2 -- C1 true (cell_bytes == 0). */
+  st.cell_bytes = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, &st));
+  st.cell_bytes = (uint32_t)k_ra_cell_bytes;
+
+  /* V3 -- C2 true (cell_count == 0, C1 false). */
+  st.cell_count = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, &st));
+  st.cell_count = (uint32_t)k_ra_cell_count;
+
+  /* V4 -- C3 true (bucket_count == 0, C1 + C2 false). */
+  st.bucket_count = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, &st));
+  st.bucket_count = (uint32_t)k_ra_buckets;
+
+  /* V1 -- control, decision false: all non-zero -> bind succeeds. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, &st));
+
+  /* Null storage with a non-null atlas is rejected (the storage null guard). */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_set_glyph_atlas(&s_engine, &s_atlas, nullptr));
+
+  /* Detach restores the direct path. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_glyph_atlas(&s_engine, nullptr, nullptr));
+  TEST_END("ra_reflow_set_glyph_atlas storage-zero MC/DC");
+}
+
 int32_t main(void)
 {
   test_mcdc_priv_blit_glyph_size();
   test_render_glyph_size_both_arms();
   test_render_register_face_both_arms();
   test_render_images_loader_both_arms();
+  test_render_glyph_atlas_equivalence();
+  test_mcdc_set_glyph_atlas_storage_zeros();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_render.c\n");
   return 0;
 }

@@ -26,8 +26,9 @@
 #include <stdint.h>
 
 #include "ra_err.h"
-#include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch */
-#include "ra_reflow_types.h" /* ra_reflow_t + supporting data model   */
+#include "ra_glyph_atlas.h"  /* ra_glyph_atlas_t + storage descriptor types (#164) */
+#include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch              */
+#include "ra_reflow_types.h" /* ra_reflow_t + supporting data model                */
 
 #ifdef __cplusplus
 extern "C" {
@@ -165,6 +166,82 @@ extern "C" {
  */
 [[nodiscard]] ra_err_t
 ra_reflow_set_css_loader(ra_reflow_t* engine, ra_reflow_css_loader_fn loader, void* ctx);
+
+/**
+ * @struct ra_reflow_glyph_atlas_storage_t
+ * @brief Caller-owned backing storage for the render-path glyph cache (#164).
+ *
+ * @details Mirrors ::ra_glyph_atlas_cfg_t minus the render seam: ra_reflow
+ *          supplies its own stb_truetype rasteriser as the render-on-miss
+ *          callback, so the caller provides only the fixed storage. All arrays
+ *          are caller-owned (typically `static` in the ereader app, carved from
+ *          a tier arena) and must out-live the engine. `meta`, `keys`, and
+ *          `dims` are parallel per-cell arrays (`cell_count` entries each);
+ *          `cell_mem` holds the packed alpha-8 glyph bitmaps. A glyph whose
+ *          bitmap exceeds `cell_bytes` is not cached -- the render path falls
+ *          back to direct rasterisation for it, so output is unchanged.
+ *
+ * @invariant `cell_bytes`, `cell_count`, and `bucket_count` are all non-zero.
+ *
+ * @see ra_reflow_set_glyph_atlas()
+ * @see ra_glyph_atlas_cfg_t
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t*            cell_mem;     /**< `cell_count * cell_bytes` of bitmap storage. */
+  uint32_t            cell_bytes;   /**< Bytes per cell (>= largest cached glyph).    */
+  uint32_t            cell_count;   /**< Number of cells (the glyph-cache budget).    */
+  ra_keycache_cell_t* meta;         /**< `cell_count` link-metadata entries.          */
+  ra_glyph_key_t*     keys;         /**< `cell_count` key-storage entries.            */
+  ra_glyph_dims_t*    dims;         /**< `cell_count` dimension descriptors.          */
+  int32_t*            buckets;      /**< `bucket_count` hash-bucket heads.            */
+  uint32_t            bucket_count; /**< Number of hash buckets (>= 1).               */
+} ra_reflow_glyph_atlas_storage_t;
+
+/**
+ * @brief Bind a Layer-3 glyph cache to the engine's render path (#164).
+ *
+ * @details Mirrors ra_reflow_set_image_loader(). When bound, the per-page
+ * rasteriser routes every glyph through @p atlas: a hit reuses the cached
+ * bitmap, a miss rasterises once (through the engine's stb_truetype path) into a
+ * cache cell and pins it for the blit. Resident glyph RAM stays bounded by the
+ * supplied storage regardless of how many distinct glyphs a book touches, so a
+ * page re-render never re-rasterises a glyph it drew recently. Output is
+ * byte-for-byte identical to the direct path -- the same rasteriser fills the
+ * cell, and oversized glyphs (bitmap > `storage->cell_bytes`) transparently fall
+ * back to direct rasterisation.
+ *
+ * @p atlas is initialised in place from @p storage (the caller need not call
+ * ra_glyph_atlas_init); both @p atlas and the @p storage arrays are caller-owned
+ * and must out-live the engine. Passing @p atlas == NULL detaches any bound
+ * cache and reverts to direct rasterisation.
+ *
+ * @param[in,out] engine  Engine to bind; must be initialized.
+ * @param[in,out] atlas   Caller-owned atlas state to initialise and bind, or
+ *                        NULL to detach the current cache.
+ * @param[in]     storage Backing storage; required (non-NULL) when @p atlas is
+ *                        non-NULL, ignored when @p atlas is NULL.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Cache bound (or detached when @p atlas NULL).
+ * @retval k_ra_err_null_ptr        @p engine NULL, or @p atlas non-NULL with
+ *                                  @p storage NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ * @retval k_ra_err_invalid_size    A required @p storage size field is zero.
+ *
+ * @pre  @p engine is non-NULL and initialized.
+ * @pre  When @p atlas is non-NULL, @p storage and its arrays out-live @p engine.
+ * @post On success with @p atlas non-NULL, glyph rendering consults the cache.
+ * @post On success with @p atlas NULL, the engine renders glyphs directly.
+ *
+ * @note Not thread-safe; bind before rendering. The cache is consulted only by
+ *       ra_reflow_render_page() / ra_reflow_render_page_at().
+ * @see ra_reflow_glyph_atlas_storage_t
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_set_glyph_atlas(ra_reflow_t*                           engine,
+                                                 ra_glyph_atlas_t*                      atlas,
+                                                 const ra_reflow_glyph_atlas_storage_t* storage);
 
 /**
  * @brief Hit-test a point on a page against the laid-out `<a>` link rectangles.
