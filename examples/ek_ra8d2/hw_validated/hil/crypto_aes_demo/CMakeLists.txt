@@ -31,4 +31,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME crypto_aes_demo STACK_BYTES 2200
            DESCRIPTION "crypto_aes_demo firmware for RA8D2"
+           LIBS ra_board_ek_ra8d2
            SIM_LIBS ra_psa_crypto)

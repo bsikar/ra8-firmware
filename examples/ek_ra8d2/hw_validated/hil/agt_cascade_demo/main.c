@@ -34,16 +34,12 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_agt_cas_baud        = 115200U,
-  k_agt_cas_sci_channel = 8U,
-  k_agt_cas_poll_ms     = 10U,
+  k_agt_cas_baud    = 115200U,
+  k_agt_cas_poll_ms = 10U,
   /* 32-bit virtual reload. Low 16 bits go to AGT0, high 16 bits to
    * AGT1. Keep it small enough that AGT1 underflows within the HIL
    * timeout but large enough to demonstrate the cascade chain. */
@@ -61,12 +57,6 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_agt_cas_hi_channel = 1U,
 } agt_cas_chan_t;
-
-/** @brief SCI8 pin map -- mirrors agt_periodic and uart_hello. */
-static const ra_port_pin_t k_agt_cas_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_agt_cas_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Hex print map for the tick counter. */
 static const char k_agt_cas_hex_chars[] = "0123456789ABCDEF";
@@ -99,38 +89,10 @@ static void agt_cas_panic_halt(void)
 }
 
 /**
- * @brief Route SCI8 TXD / RXD onto P13_02 / P13_03.
- *
- * @details
- * Wraps `ra_pfs_route_peripheral` for the two SCI pins.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok              Both pins routed.
- * @retval k_ra_err_invalid_arg PFS rejected the pin map.
- *
- * @pre IOPORT power gate is open (CGC has run).
- * @pre PFS PWPR has been unlocked by the caller.
- *
- * @post P13_02 / P13_03 are owned by SCI8.
- * @post PFS PWPR is re-locked.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t agt_cas_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_agt_cas_pin_txd, k_ra_psel_sci_async, "agt_cas.txd");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_agt_cas_pin_rxd, k_ra_psel_sci_async, "agt_cas.rxd");
-}
-
-/**
  * @brief Bring up CGC, SysTick, SCI8 and LED1.
  *
  * @details
- * Sequence: ra_cgc_init -> ra_time_init -> ra_pfs_route -> ra_sci_init
+ * Sequence: ra_cgc_init -> ra_time_init -> ra_board_uart_console_init
  * -> ra_board_led_init. Any failure goes straight to panic-halt so the
  * HIL gate sees no `agt_cas:` banner.
  *
@@ -146,30 +108,16 @@ static void agt_cas_panic_halt(void)
 static void agt_cas_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     agt_cas_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     agt_cas_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    agt_cas_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     agt_cas_panic_halt();
   }
-  if (agt_cas_pins_init() != k_ra_ok) {
-    agt_cas_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_agt_cas_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_agt_cas_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_agt_cas_baud) != k_ra_ok) {
     agt_cas_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -261,19 +209,16 @@ static void agt_cas_format_tick(uint32_t tick, uint8_t* digits)
 {
   uint8_t digits[k_agt_cas_hex_digits] = {};
   agt_cas_format_tick(tick, digits);
-  ra_err_t err = ra_sci_write_polling((uint8_t)k_agt_cas_sci_channel,
-                                      k_agt_cas_msg_head,
-                                      (uint32_t)(sizeof(k_agt_cas_msg_head) - 1U));
+  ra_err_t err =
+    ra_board_uart_console_write(k_agt_cas_msg_head, (size_t)(sizeof(k_agt_cas_msg_head) - 1U));
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_sci_write_polling((uint8_t)k_agt_cas_sci_channel, digits, sizeof(digits));
+  err = ra_board_uart_console_write(digits, (size_t)sizeof(digits));
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_sci_write_polling((uint8_t)k_agt_cas_sci_channel,
-                              k_agt_cas_msg_tail,
-                              (uint32_t)(sizeof(k_agt_cas_msg_tail) - 1U));
+  return ra_board_uart_console_write(k_agt_cas_msg_tail, (size_t)(sizeof(k_agt_cas_msg_tail) - 1U));
 }
 
 #pragma GCC diagnostic push

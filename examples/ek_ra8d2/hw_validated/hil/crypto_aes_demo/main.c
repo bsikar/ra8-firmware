@@ -43,17 +43,13 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_psa_crypto.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_aes_demo_baud        = 115200U,
-  k_aes_demo_sci_channel = 8U,
-  k_aes_demo_period_ms   = 1000U,
+  k_aes_demo_baud      = 115200U,
+  k_aes_demo_period_ms = 1000U,
 } aes_demo_const_t;
 
 /** @brief AES-128 key + plaintext sizing. */
@@ -74,11 +70,6 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_aes_demo_usage_aead = (uint32_t)k_ra_psa_usage_encrypt | (uint32_t)k_ra_psa_usage_decrypt,
 } aes_demo_usage_t;
-
-static const ra_port_pin_t k_aes_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_aes_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Fixed 128-bit AES key. */
 static const uint8_t k_aes_demo_key[k_aes_demo_key_bytes] = {
@@ -141,42 +132,19 @@ static void aes_demo_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t aes_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_aes_demo_pin_txd, k_ra_psel_sci_async, "crypto.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_aes_demo_pin_rxd, k_ra_psel_sci_async, "crypto.rxd8");
-}
-
 static void aes_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     aes_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     aes_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    aes_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     aes_demo_panic_halt();
   }
-  if (aes_demo_pins_init() != k_ra_ok) {
-    aes_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_aes_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_aes_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_aes_demo_baud) != k_ra_ok) {
     aes_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -274,14 +242,12 @@ int32_t main(void)
 
   while (1) {
     if (aes_demo_one_round_trip() == k_ra_ok) {
-      (void)ra_sci_write_polling((uint8_t)k_aes_demo_sci_channel,
-                                 k_aes_demo_msg_ok,
-                                 (uint32_t)(sizeof(k_aes_demo_msg_ok) - 1U));
+      (void)ra_board_uart_console_write(k_aes_demo_msg_ok,
+                                        (size_t)(sizeof(k_aes_demo_msg_ok) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led1);
     } else {
-      (void)ra_sci_write_polling((uint8_t)k_aes_demo_sci_channel,
-                                 k_aes_demo_msg_fail,
-                                 (uint32_t)(sizeof(k_aes_demo_msg_fail) - 1U));
+      (void)ra_board_uart_console_write(k_aes_demo_msg_fail,
+                                        (size_t)(sizeof(k_aes_demo_msg_fail) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led2);
     }
     ra_delay_ms(k_aes_demo_period_ms);

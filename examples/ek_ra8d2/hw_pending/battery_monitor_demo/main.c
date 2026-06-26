@@ -47,13 +47,11 @@
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_smbus.h"
 #include "ra_time.h"
 
 /** @enum bm_consts_t @brief Console / bus / fuel-gauge knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_bm_uart_chan  = 8U,                                          /**< SCI8 console.      */
   k_bm_uart_baud  = 115200U,                                     /**< Console baud.      */
   k_bm_bus_hz     = 100000U,                                     /**< IIC_B bit rate.    */
   k_bm_iic_chan   = (uint32_t)k_ra_board_mikrobus_iic_b_channel, /**< IIC_B channel (0). */
@@ -67,12 +65,6 @@ typedef enum : uint32_t {
   k_bm_dec_digits = 3U,    /**< Max decimal digits for a 0..100 value.      */
 } bm_consts_t;
 
-/** @brief SCI8 console TXD = PD02. */
-static const ra_port_pin_t k_bm_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_bm_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 /** @brief MikroBUS SCL routed through the Pmod1 I2C side (SCL1). */
 static const ra_port_pin_t k_bm_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
 /** @brief MikroBUS SDA routed through the Pmod1 I2C side (SDA1). */
@@ -124,7 +116,7 @@ volatile uint32_t g_bat_heartbeat = 0U;
 /** @brief Emit a byte run on the SCI8 console. */
 static void bm_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_bm_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -170,15 +162,9 @@ static void bm_print_nag(ra_batt_nag_t nag, uint8_t soc)
   bm_print(k_msg_nag_tail, (uint32_t)sizeof(k_msg_nag_tail) - 1U);
 }
 
-/** @brief Route SCI8 console pins + the MikroBUS IIC SCL/SDA via PFS. */
+/** @brief Route the MikroBUS IIC SCL/SDA via PFS. */
 [[nodiscard]] static ra_err_t bm_pins_init(void)
 {
-  if (ra_pfs_route_peripheral(k_bm_pin_txd, k_ra_psel_sci_async, "battery.txd8") != k_ra_ok) {
-    return k_ra_err_hw_init_failed;
-  }
-  if (ra_pfs_route_peripheral(k_bm_pin_rxd, k_ra_psel_sci_async, "battery.rxd8") != k_ra_ok) {
-    return k_ra_err_hw_init_failed;
-  }
   if (ra_pfs_route_peripheral(k_bm_pin_scl, k_ra_psel_iic, "battery.scl1") != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
@@ -202,12 +188,7 @@ static void bm_setup_or_halt(uint32_t* out_pclka_hz)
   if (bm_pins_init() != k_ra_ok) {
     bm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_bm_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = *out_pclka_hz};
-  if (ra_sci_init((uint8_t)k_bm_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_bm_uart_baud) != k_ra_ok) {
     bm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
