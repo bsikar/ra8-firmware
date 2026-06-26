@@ -159,9 +159,15 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/src/ra_ptp.c",
     "tests/test_ra_ptp.c",
     # MIPI D-PHY `MASTEREN` register bit and DSI/CSI master/slave mode
-    # nomenclature mirrors the MIPI Alliance D-PHY specification.
+    # nomenclature mirrors the MIPI Alliance D-PHY specification. The driver
+    # and its public header were split into sub-1000-line TUs for the
+    # file-size cap; the siblings carry the same upstream nomenclature.
     "libs/ra_hal/inc/ra_mipi_phy.h",
+    "libs/ra_hal/inc/ra_mipi_phy_types.h",
+    "libs/ra_hal/inc/ra_mipi_phy_ops.h",
+    "libs/ra_hal/inc/ra_mipi_phy_api.h",
     "libs/ra_hal/src/ra_mipi_phy.c",
+    "libs/ra_hal/src/ra_mipi_phy_timing.c",
     "tests/test_ra_mipi_phy.c",
     # SOUP provenance docs cite upstream component descriptions verbatim.
     "docs/SOUP/nimble.md",

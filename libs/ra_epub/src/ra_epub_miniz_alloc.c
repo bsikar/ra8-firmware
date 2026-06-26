@@ -131,8 +131,8 @@ typedef enum : size_t {
   /** Upper bound on block count (NASA Rule 2 loop bound): every block is at
    *  least a header plus one alignment unit of payload. */
   k_priv_walk_max = k_ra_epub_miniz_pool_bytes / (k_priv_hdr_bytes + sizeof(priv_pool_cell_t)),
-  k_priv_blk_free = 1U, /**< ``is_free`` value for a free block.  */
-  k_priv_blk_used = 0U, /**< ``is_free`` value for a used block.  */
+  k_priv_blk_free = 1U, /**< ``is_free`` value for a free block. */
+  k_priv_blk_used = 0U, /**< ``is_free`` value for a used block. */
 } priv_alloc_const_t;
 
 /**
@@ -197,7 +197,13 @@ static priv_blk_t* priv_header(void* p)
 /** @brief Block immediately following @p b in the implicit list. */
 static priv_blk_t* priv_next(priv_blk_t* b)
 {
-  const size_t off = (size_t)(priv_payload(b) + b->size - priv_base());
+  /* uintptr_t byte-diff (both operands are uint8_t* into s_pool): identical
+   * value to pointer subtraction, but avoids the analyzer's cross-array
+   * pointer-subtraction UB false positive. Bind to locals first so the casts
+   * are not applied to a bare function-call result (-Wbad-function-cast). */
+  const uint8_t* const blk_end = priv_payload(b) + b->size;
+  const uint8_t* const pool    = priv_base();
+  const size_t         off     = (size_t)((uintptr_t)blk_end - (uintptr_t)pool);
   return priv_cell_at(off);
 }
 
@@ -362,11 +368,13 @@ static void priv_split(priv_blk_t* b, size_t need)
 {
   /* Only split when the remainder can hold a header plus a minimum payload. */
   if (b->size >= (need + (size_t)k_priv_hdr_bytes + (size_t)k_priv_align)) {
-    const size_t rem_off = (size_t)(priv_payload(b) + need - priv_base());
-    priv_blk_t*  rem     = priv_cell_at(rem_off);
-    rem->size            = b->size - need - (size_t)k_priv_hdr_bytes;
-    rem->is_free         = (size_t)k_priv_blk_free;
-    b->size              = need;
+    const uint8_t* const rem_ptr = priv_payload(b) + need;
+    const uint8_t* const pool    = priv_base();
+    const size_t         rem_off = (size_t)((uintptr_t)rem_ptr - (uintptr_t)pool);
+    priv_blk_t*          rem     = priv_cell_at(rem_off);
+    rem->size                    = b->size - need - (size_t)k_priv_hdr_bytes;
+    rem->is_free                 = (size_t)k_priv_blk_free;
+    b->size                      = need;
   }
 }
 

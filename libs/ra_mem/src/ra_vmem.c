@@ -32,10 +32,10 @@ static const char* const s_tag = "ra_vmem";
 /** @brief Internal sizing / policy constants. */
 typedef enum : uint32_t {
   k_vmem_nil_idx       = 0xFFFFFFFFU, /**< "no frame" sentinel for list/hash links. */
-  k_vmem_protected_pct = 75U,         /**< Protected-segment share of the cache.   */
-  k_vmem_percent_full  = 100U,        /**< Percent denominator.                    */
-  k_vmem_hash_mul_obj  = 2654435761U, /**< Knuth multiplicative hash (object id).  */
-  k_vmem_hash_mul_page = 40503U,      /**< Odd multiplier mixing the page number.  */
+  k_vmem_protected_pct = 75U,         /**< Protected-segment share of the cache.    */
+  k_vmem_percent_full  = 100U,        /**< Percent denominator.                     */
+  k_vmem_hash_mul_obj  = 2654435761U, /**< Knuth multiplicative hash (object id).   */
+  k_vmem_hash_mul_page = 40503U,      /**< Odd multiplier mixing the page number.   */
 } ra_vmem_const_t;
 
 /** @brief SLRU segment tags stored in ::ra_vmem_frame_t::seg. */
@@ -213,6 +213,42 @@ static void priv_hash_remove(ra_vmem_t* vm, int32_t f)
 }
 
 /**
+ * @brief Test whether frame metadata @p m holds the valid key (object_id, off).
+ *
+ * @details Checks validity, then the object id, then the offset as three
+ *          independent nested decisions (preserving the original MC/DC vectors).
+ *          Extracted from ::priv_hash_lookup to keep the bucket-chain walk under
+ *          the nesting threshold.
+ *
+ * @param[in] m           Frame metadata to test.
+ * @param[in] object_id   Object id to match.
+ * @param[in] aligned_off Frame-aligned offset to match.
+ *
+ * @return Whether @p m is a valid frame holding the key.
+ * @retval true  The frame is valid and its key matches.
+ * @retval false The frame is invalid or its key differs.
+ *
+ * @pre `m` is non-NULL.
+ * @pre `aligned_off` is a multiple of `frame_bytes`.
+ * @post No state is modified.
+ * @post The result is true only for a valid, key-matching frame.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static bool priv_frame_matches(const ra_vmem_frame_t* m, uint32_t object_id, uint64_t aligned_off)
+{
+  if (m->valid != 0U) {
+    if (m->object_id == object_id) {
+      if (m->offset == aligned_off) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * @brief Find the valid frame holding (object_id, aligned_off), or -1.
  *
  * @details Walks the key's hash bucket chain, returning the first valid frame
@@ -239,12 +275,8 @@ static int32_t priv_hash_lookup(const ra_vmem_t* vm, uint32_t object_id, uint64_
   int32_t        cur = vm->cfg.buckets[b];
   while (cur != -1) {
     const ra_vmem_frame_t* m = &vm->cfg.meta[cur];
-    if (m->valid != 0U) {
-      if (m->object_id == object_id) {
-        if (m->offset == aligned_off) {
-          return cur;
-        }
-      }
+    if (priv_frame_matches(m, object_id, aligned_off)) {
+      return cur;
     }
     cur = m->hash_next;
   }
@@ -357,9 +389,31 @@ static int32_t priv_pick_victim(const ra_vmem_t* vm)
   return priv_first_unpinned(vm, vm->pt_tail);
 }
 
-ra_err_t ra_vmem_init(ra_vmem_t* vm, const ra_vmem_cfg_t* cfg)
+/**
+ * @brief Validate a ::ra_vmem_cfg_t before it is adopted by ::ra_vmem_init.
+ *
+ * @details Rejects a NULL config, any NULL buffer / callback it carries, and any
+ *          zero sizing field. Extracted from ::ra_vmem_init to keep the public
+ *          entry point under the statement threshold.
+ *
+ * @param[in] cfg Caller-supplied configuration to validate.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               The config is structurally valid.
+ * @retval k_ra_err_null_ptr     `cfg` or one of its buffers/callbacks is NULL.
+ * @retval k_ra_err_invalid_size A frame/bucket count or frame size is zero.
+ *
+ * @pre `s_tag` is initialised (always true for this TU).
+ * @pre The caller propagates a non-OK result unchanged.
+ * @post No state is modified.
+ * @post A `k_ra_ok` result guarantees every pointer is non-NULL and every size
+ *       field is non-zero.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t priv_vmem_validate_cfg(const ra_vmem_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR(vm, s_tag, "vm must not be nullptr");
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA_CHECK_NULL_PTR(cfg->frame_mem, s_tag, "frame_mem must not be nullptr");
   RA_CHECK_NULL_PTR(cfg->meta, s_tag, "meta must not be nullptr");
@@ -374,6 +428,51 @@ ra_err_t ra_vmem_init(ra_vmem_t* vm, const ra_vmem_cfg_t* cfg)
   if (cfg->bucket_count == 0U) {
     return k_ra_err_invalid_size;
   }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Reset the hash buckets and thread every frame onto the probation LRU.
+ *
+ * @details Clears all bucket heads to the nil sentinel, then marks each frame
+ *          invalid/unpinned in the probationary segment and pushes it onto the
+ *          probation list (cold frames become the natural eviction order).
+ *          Extracted from ::ra_vmem_init to keep the entry point short.
+ *
+ * @param[in,out] vm Cache whose config has already been adopted.
+ *
+ * @return Nothing.
+ *
+ * @pre `vm->cfg` is fully populated with non-NULL buffers + non-zero counts.
+ * @pre The segment list head/tail pointers are already set to the nil sentinel.
+ * @post Every bucket head is the nil sentinel.
+ * @post Every frame is invalid, unpinned, and linked into the probation list.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_vmem_link_frames(ra_vmem_t* vm)
+{
+  for (uint32_t b = 0U; b < vm->cfg.bucket_count; ++b) {
+    vm->cfg.buckets[b] = -1;
+  }
+  /* All frames start invalid in the probationary segment (cold == LRU). */
+  for (uint32_t i = 0U; i < vm->cfg.frame_count; ++i) {
+    vm->cfg.meta[i].valid     = 0U;
+    vm->cfg.meta[i].pin_count = 0U;
+    vm->cfg.meta[i].seg       = (uint8_t)k_vmem_seg_probation;
+    vm->cfg.meta[i].hash_next = -1;
+    priv_push_head(vm, (int32_t)i, &vm->pb_head, &vm->pb_tail);
+  }
+}
+
+ra_err_t ra_vmem_init(ra_vmem_t* vm, const ra_vmem_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(vm, s_tag, "vm must not be nullptr");
+  const ra_err_t verr = priv_vmem_validate_cfg(cfg);
+  if (verr != k_ra_ok) {
+    return verr;
+  }
   (void)memset(vm, 0, sizeof(*vm));
   vm->cfg     = *cfg;
   vm->pb_head = -1;
@@ -382,17 +481,7 @@ ra_err_t ra_vmem_init(ra_vmem_t* vm, const ra_vmem_cfg_t* cfg)
   vm->pt_tail = -1;
   vm->protected_cap =
     (cfg->frame_count * (uint32_t)k_vmem_protected_pct) / (uint32_t)k_vmem_percent_full;
-  for (uint32_t b = 0U; b < cfg->bucket_count; ++b) {
-    cfg->buckets[b] = -1;
-  }
-  /* All frames start invalid in the probationary segment (cold == LRU). */
-  for (uint32_t i = 0U; i < cfg->frame_count; ++i) {
-    vm->cfg.meta[i].valid     = 0U;
-    vm->cfg.meta[i].pin_count = 0U;
-    vm->cfg.meta[i].seg       = (uint8_t)k_vmem_seg_probation;
-    vm->cfg.meta[i].hash_next = -1;
-    priv_push_head(vm, (int32_t)i, &vm->pb_head, &vm->pb_tail);
-  }
+  priv_vmem_link_frames(vm);
   return k_ra_ok;
 }
 
