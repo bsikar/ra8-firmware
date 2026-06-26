@@ -37,9 +37,6 @@
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel_timing.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
 #include "ra_touch.h"
@@ -60,12 +57,6 @@ typedef enum : uint32_t {
 
 /** @brief The single whole-app state instance. */
 sh_state_t g_sh;
-
-/** @brief SCI8 console TXD = PD02 / RXD = PD03. */
-static const ra_port_pin_t k_sh_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_sh_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief 1024x600 RGB565 framebuffer in external SDRAM (GLCDC scans this). */
 static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w]
@@ -90,7 +81,7 @@ static const uint8_t k_msg_fail[] = "ereader-shelf: FAIL init\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void sh_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_sh_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief FNV-1a hash of the whole framebuffer (deterministic render digest). */
@@ -425,37 +416,20 @@ static void sh_present(void)
   (void)display_flush(s_display, full, k_display_refresh_quality);
 }
 
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t sh_console_pins_init(void)
-{
-  const ra_err_t err = ra_pfs_route_peripheral(k_sh_pin_txd, k_ra_psel_sci_async, "shelf.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_sh_pin_rxd, k_ra_psel_sci_async, "shelf.rxd8");
-}
-
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
 static void sh_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
     sh_panic_halt();
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     sh_panic_halt();
   }
-  if ((ra_time_init(cpuclk0_hz) != k_ra_ok) || (sh_console_pins_init() != k_ra_ok)) {
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     sh_panic_halt();
   }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_sh_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = pclka_hz};
-  if (ra_sci_init((uint8_t)k_sh_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sh_uart_baud) != k_ra_ok) {
     sh_panic_halt();
   }
 }

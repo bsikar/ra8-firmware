@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME fs_format_mount STACK_BYTES 2200
            DESCRIPTION "Format + mount + file-ops HIL demo across FAT12/16/32"
-           LIBS ra_fs ra_sdmmc_spi)
+           LIBS ra_fs ra_sdmmc_spi ra_board_ek_ra8d2)
