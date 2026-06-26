@@ -37,7 +37,7 @@
 #include "ux_api.h"
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
+/* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* CDC-ACM composite descriptor frameworks. Two slots are required so
@@ -59,9 +59,9 @@ UCHAR s_tz_secure_only_usb_hs_device_framework_fs[] = {
   0x01U,
   0x40U,
   0x09U, /* idVendor  lo: VID = 0x1209 (pid.codes open-source VID). */
-  0x12U, /* idVendor  hi                                             */
+  0x12U, /* idVendor  hi                                            */
   0x0CU, /* idProduct lo: PID = 0x000C (HS CDC ACM).                */
-  0x00U, /* idProduct hi                                             */
+  0x00U, /* idProduct hi                                            */
   0x00U,
   0x01U,
   0x01U,
@@ -179,9 +179,9 @@ UCHAR s_tz_secure_only_usb_hs_device_framework_hs[] = {
   0x01U,
   0x40U,
   0x09U, /* idVendor  lo: VID = 0x1209 (pid.codes open-source VID). */
-  0x12U, /* idVendor  hi                                             */
+  0x12U, /* idVendor  hi                                            */
   0x0CU, /* idProduct lo: PID = 0x000C (HS CDC ACM).                */
-  0x00U, /* idProduct hi                                             */
+  0x00U, /* idProduct hi                                            */
   0x00U,
   0x01U,
   0x01U,

@@ -47,7 +47,7 @@ typedef enum : uint32_t {
   k_combo_bus_hz      = 100000U,
   k_combo_sci_channel = 8U,
   k_combo_i2c_channel = 1U, /**< RIIC ch1 -- U15 (P512/P511). */
-  k_combo_i3c_channel = 0U, /**< I3C ch0 -- J27 (P400/P401). */
+  k_combo_i3c_channel = 0U, /**< I3C ch0 -- J27 (P400/P401).  */
 } combo_const_t;
 
 /** @brief Probe address: U15 on RIIC ch1; reused as the I3C scan target. */

@@ -177,8 +177,8 @@ static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
 
 /** @brief Adapter context: holds channel + 7-bit address. */
 typedef struct {
-  uint8_t channel; /**< IIC_B channel (0 on RA8D2).      */
-  uint8_t addr7;   /**< 7-bit peripheral address.        */
+  uint8_t channel; /**< IIC_B channel (0 on RA8D2). */
+  uint8_t addr7;   /**< 7-bit peripheral address.   */
 } imu_demo_iic_ctx_t;
 
 /**

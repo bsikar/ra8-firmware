@@ -43,17 +43,17 @@
 
 /** @enum ep_consts_t @brief Console / parse knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_ep_uart_chan   = 8U,          /**< SCI8 J-Link OB console.            */
-  k_ep_uart_baud   = 115200U,     /**< Console baud.                      */
-  k_ep_expect_chap = 2U,          /**< Spine length of the baked seed.    */
-  k_ep_chap_cap    = 4096U,       /**< Chapter XHTML scratch capacity.    */
-  k_ep_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.              */
-  k_ep_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.       */
-  k_ep_crc_bits    = 8U,          /**< Bits folded per byte.              */
-  k_ep_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.      */
-  k_ep_nibble_bits = 4U,          /**< Bits per hex nibble.               */
-  k_ep_nibble_mask = 0x0FU,       /**< Low-nibble mask.                   */
-  k_ep_dec_ten     = 10U,         /**< Hex digit / decimal split.         */
+  k_ep_uart_chan   = 8U,          /**< SCI8 J-Link OB console.         */
+  k_ep_uart_baud   = 115200U,     /**< Console baud.                   */
+  k_ep_expect_chap = 2U,          /**< Spine length of the baked seed. */
+  k_ep_chap_cap    = 4096U,       /**< Chapter XHTML scratch capacity. */
+  k_ep_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.           */
+  k_ep_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.    */
+  k_ep_crc_bits    = 8U,          /**< Bits folded per byte.           */
+  k_ep_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.   */
+  k_ep_nibble_bits = 4U,          /**< Bits per hex nibble.            */
+  k_ep_nibble_mask = 0x0FU,       /**< Low-nibble mask.                */
+  k_ep_dec_ten     = 10U,         /**< Hex digit / decimal split.      */
 } ep_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

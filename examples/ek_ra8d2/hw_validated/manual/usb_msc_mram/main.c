@@ -91,7 +91,7 @@ void        SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -110,26 +110,26 @@ static const ra_port_pin_t k_demo_pin_dm =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /** @brief SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
   k_scsi_sense_illegal_request = 0x05U, /**< Sense key: ILLEGAL REQUEST. */
-  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range. */
-  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none. */
+  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range.      */
+  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none.                 */
 } scsi_sense_code_t;
 
 /** @brief SCSI sense triple for a write to the protected medium. */
 typedef enum : uint8_t {
-  k_scsi_sense_data_protect  = 0x07U, /**< Sense key: DATA PROTECT.     */
-  k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.       */
+  k_scsi_sense_data_protect  = 0x07U, /**< Sense key: DATA PROTECT. */
+  k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.    */
 } scsi_wp_sense_t;
 
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -162,7 +162,7 @@ static UCHAR s_msc_product_id[]  = "MRAM 1MiB (RO)  ";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
+/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* Single-interface MSC config: bulk-only transport, SCSI command set.
@@ -183,13 +183,13 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0x00U, /* class      = per-interface        */
+  0x00U, /* class      = per-interface */
   0x00U,
   0x00U,
   0x40U,
   0x09U,
   0x12U,
-  0x0CU, /* PID = 0x000C (pid.codes test).    */
+  0x0CU, /* PID = 0x000C (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -315,7 +315,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -444,7 +444,7 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 }
 
 /* -------------------------------------------------------------------------- */
-/* Worker thread: bring USBX up + run the storage class                       */
+/* Worker thread: bring USBX up + run the storage class */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -548,7 +548,7 @@ static VOID demo_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX kernel entry: spawn the worker                                     */
+/* ThreadX kernel entry: spawn the worker */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -571,7 +571,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          0UL,
                          s_demo_stack,
                          k_demo_thread_stack,
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
@@ -579,7 +579,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

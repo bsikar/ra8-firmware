@@ -22,22 +22,22 @@ static const char* s_tag = "KBD";
  * @brief Row geometry in 20ths of the width ("half-units"), iOS proportions.
  */
 typedef enum : int32_t {
-  k_kbd_hu_div    = 20, /**< Half-units per row (a normal key = 2 hu).      */
-  k_kbd_key_hu    = 2,  /**< Normal key width (half-units).                 */
-  k_kbd_wide_hu   = 3,  /**< SHIFT / BACKSPACE width.                       */
-  k_kbd_inset_hu  = 1,  /**< Home-row inset each side.                      */
-  k_kbd_act_hu    = 4,  /**< 123 / ABC / RETURN width.                      */
-  k_kbd_space_hu  = 12, /**< SPACE width.                                   */
-  k_kbd_top_keys  = 10, /**< Keys in rows 0 and 1.                         */
-  k_kbd_mid_keys  = 9,  /**< Keys in the inset home row.                   */
-  k_kbd_r2_lett   = 7,  /**< Letters in letters row 2.                     */
-  k_kbd_punct_n   = 5,  /**< Punctuation keys (. , ? ! ') in row 2.        */
-  k_kbd_punct_hu0 = 5,  /**< Centred start for the 5 punctuation keys.     */
-  k_kbd_sym1_n    = 7,  /**< Symbols row 1 keys (_ \\ | ~ < > `).          */
-  k_kbd_sym1_hu0  = 3,  /**< Centred start for symbols row 1.              */
-  k_kbd_row1      = 1,  /**< Row index 1.                                  */
-  k_kbd_row2      = 2,  /**< Row index 2.                                  */
-  k_kbd_row3      = 3,  /**< Row index 3.                                  */
+  k_kbd_hu_div    = 20, /**< Half-units per row (a normal key = 2 hu). */
+  k_kbd_key_hu    = 2,  /**< Normal key width (half-units).            */
+  k_kbd_wide_hu   = 3,  /**< SHIFT / BACKSPACE width.                  */
+  k_kbd_inset_hu  = 1,  /**< Home-row inset each side.                 */
+  k_kbd_act_hu    = 4,  /**< 123 / ABC / RETURN width.                 */
+  k_kbd_space_hu  = 12, /**< SPACE width.                              */
+  k_kbd_top_keys  = 10, /**< Keys in rows 0 and 1.                     */
+  k_kbd_mid_keys  = 9,  /**< Keys in the inset home row.               */
+  k_kbd_r2_lett   = 7,  /**< Letters in letters row 2.                 */
+  k_kbd_punct_n   = 5,  /**< Punctuation keys (. , ? ! ') in row 2.    */
+  k_kbd_punct_hu0 = 5,  /**< Centred start for the 5 punctuation keys. */
+  k_kbd_sym1_n    = 7,  /**< Symbols row 1 keys (_ \\ | ~ < > `).      */
+  k_kbd_sym1_hu0  = 3,  /**< Centred start for symbols row 1.          */
+  k_kbd_row1      = 1,  /**< Row index 1.                              */
+  k_kbd_row2      = 2,  /**< Row index 2.                              */
+  k_kbd_row3      = 3,  /**< Row index 3.                              */
 } kbd_geom_t;
 
 /* Letters layer rows. */

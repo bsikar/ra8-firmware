@@ -45,14 +45,14 @@
 
 /** @enum demo_const_t @brief Console + volume + cache knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.            */
-  k_demo_uart_baud   = 115200U, /**< Console baud.                      */
-  k_demo_disk_blocks = 512U,    /**< 256 KiB RAM-disk (FAT12).          */
-  k_demo_cache_slots = 32U,     /**< Cached 512-byte sectors (16 KiB).  */
-  k_demo_payload     = 128U,    /**< Bytes written + read back.         */
-  k_demo_reads       = 8U,      /**< Re-read passes over the same file. */
-  k_demo_pin_shift   = 8U,      /**< Port byte position in ra_port_pin_t.*/
-  k_demo_seed_mul    = 7U,      /**< Test-pattern multiplier.           */
+  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.              */
+  k_demo_uart_baud   = 115200U, /**< Console baud.                        */
+  k_demo_disk_blocks = 512U,    /**< 256 KiB RAM-disk (FAT12).            */
+  k_demo_cache_slots = 32U,     /**< Cached 512-byte sectors (16 KiB).    */
+  k_demo_payload     = 128U,    /**< Bytes written + read back.           */
+  k_demo_reads       = 8U,      /**< Re-read passes over the same file.   */
+  k_demo_pin_shift   = 8U,      /**< Port byte position in ra_port_pin_t. */
+  k_demo_seed_mul    = 7U,      /**< Test-pattern multiplier.             */
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */

@@ -51,7 +51,7 @@ typedef enum : uint32_t {
 } hid_phase_t;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host side)                                                  */
+/* J-Link probes (host side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::hid_phase_t). */
@@ -68,7 +68,7 @@ static volatile uint32_t s_dbg_pass_count;
 static volatile uint32_t s_dbg_last_seq;
 
 /* -------------------------------------------------------------------------- */
-/* Host side: self-contained polled enumerate + HID interrupt-IN read        */
+/* Host side: self-contained polled enumerate + HID interrupt-IN read */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -79,13 +79,13 @@ typedef enum : uint16_t {
   k_hid_bm_std_dev_in   = 0x80U, /**< bmRequestType: Std | Device | In.  */
   k_hid_bm_std_dev_out  = 0x00U, /**< bmRequestType: Std | Device | Out. */
   k_hid_breq_get_desc   = 0x06U, /**< GET_DESCRIPTOR.                    */
-  k_hid_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                      */
-  k_hid_breq_set_config = 0x09U, /**< SET_CONFIGURATION.               */
-  k_hid_desc_device     = 0x01U, /**< DEVICE descriptor type.          */
-  k_hid_dev_desc_len    = 18U,   /**< DEVICE descriptor length.        */
-  k_hid_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.       */
-  k_hid_byte_bits       = 8U,    /**< Bits per byte.                   */
-  k_hid_config_value    = 1U,    /**< bConfigurationValue to select.   */
+  k_hid_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                       */
+  k_hid_breq_set_config = 0x09U, /**< SET_CONFIGURATION.                 */
+  k_hid_desc_device     = 0x01U, /**< DEVICE descriptor type.            */
+  k_hid_dev_desc_len    = 18U,   /**< DEVICE descriptor length.          */
+  k_hid_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.         */
+  k_hid_byte_bits       = 8U,    /**< Bits per byte.                     */
+  k_hid_config_value    = 1U,    /**< bConfigurationValue to select.     */
 } hid_usb_req_t;
 
 /**
@@ -93,13 +93,13 @@ typedef enum : uint16_t {
  * @brief Timing / retry tunables for the polled enumeration ladder.
  */
 typedef enum : uint32_t {
-  k_hid_vbus_settle_ms = 200U,      /**< VBUS settle before probing.        */
-  k_hid_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.           */
-  k_hid_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).   */
-  k_hid_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).      */
-  k_hid_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).     */
-  k_hid_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.         */
-  k_hid_enum_tries     = 8U,        /**< Reset+probe attempts.              */
+  k_hid_vbus_settle_ms = 200U,      /**< VBUS settle before probing.          */
+  k_hid_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.             */
+  k_hid_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).     */
+  k_hid_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).        */
+  k_hid_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).       */
+  k_hid_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.           */
+  k_hid_enum_tries     = 8U,        /**< Reset+probe attempts.                */
   k_hid_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } hid_enum_tune_t;
 

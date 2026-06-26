@@ -36,7 +36,7 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint16_t {
-  k_dac_b_demo_full_scale = 4095U, /**< 12-bit max. */
+  k_dac_b_demo_full_scale = 4095U, /**< 12-bit max.              */
   k_dac_b_demo_step       = 16U,   /**< Code increment per tick. */
 } dac_b_demo_const_t;
 

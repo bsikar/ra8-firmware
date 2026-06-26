@@ -186,12 +186,12 @@ int cb_replay(const cache_policy_t* pol,
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_cb_size_64   = 64U,   /**< Smallest evaluated capacity (frames). */
-  k_cb_size_128  = 128U,  /**< 128-frame sweep point.                */
+  k_cb_size_64   = 64U,   /**< Smallest evaluated capacity (frames).  */
+  k_cb_size_128  = 128U,  /**< 128-frame sweep point.                 */
   k_cb_size_256  = 256U,  /**< Mid-budget representative sweep point. */
-  k_cb_size_512  = 512U,  /**< 512-frame sweep point.                */
-  k_cb_size_1024 = 1024U, /**< 1 K-frame sweep point.                */
-  k_cb_size_2048 = 2048U, /**< Largest evaluated capacity (frames).  */
+  k_cb_size_512  = 512U,  /**< 512-frame sweep point.                 */
+  k_cb_size_1024 = 1024U, /**< 1 K-frame sweep point.                 */
+  k_cb_size_2048 = 2048U, /**< Largest evaluated capacity (frames).   */
 } cb_bench_size_t;
 
 /** @brief Representative mid-budget capacity used in the summary table. */

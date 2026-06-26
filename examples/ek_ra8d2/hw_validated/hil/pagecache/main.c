@@ -67,20 +67,20 @@
 
 /** @enum pc_consts_t @brief Console / SPI / reflow knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_pc_uart_chan   = 8U,          /**< SCI8 J-Link OB console.             */
-  k_pc_uart_baud   = 115200U,     /**< Console baud.                       */
-  k_pc_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.        */
-  k_pc_font_cap    = 131072U,     /**< Font read buffer (OTF is ~57 KiB).  */
-  k_pc_blob_cap    = 16384U,      /**< Cache-blob buffer capacity, bytes.  */
-  k_pc_view_w      = 600U,        /**< Reflow viewport width, px.          */
-  k_pc_view_h      = 800U,        /**< Reflow viewport height, px.         */
-  k_pc_font_px     = 18U,         /**< Body font size, px (round-trip key).*/
+  k_pc_uart_chan   = 8U,          /**< SCI8 J-Link OB console.              */
+  k_pc_uart_baud   = 115200U,     /**< Console baud.                        */
+  k_pc_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.         */
+  k_pc_font_cap    = 131072U,     /**< Font read buffer (OTF is ~57 KiB).   */
+  k_pc_blob_cap    = 16384U,      /**< Cache-blob buffer capacity, bytes.   */
+  k_pc_view_w      = 600U,        /**< Reflow viewport width, px.           */
+  k_pc_view_h      = 800U,        /**< Reflow viewport height, px.          */
+  k_pc_font_px     = 18U,         /**< Body font size, px (round-trip key). */
   k_pc_font_px_alt = 24U,         /**< Alt font size to force invalidation. */
-  k_pc_ink_argb    = 0xFF101010U, /**< Body text colour.                   */
-  k_pc_link_argb   = 0xFF2A52BEU, /**< Anchor text colour.                 */
-  k_pc_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.               */
-  k_pc_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.        */
-  k_pc_crc_bits    = 8U,          /**< Bits folded per byte.               */
+  k_pc_ink_argb    = 0xFF101010U, /**< Body text colour.                    */
+  k_pc_link_argb   = 0xFF2A52BEU, /**< Anchor text colour.                  */
+  k_pc_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.                */
+  k_pc_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.         */
+  k_pc_crc_bits    = 8U,          /**< Bits folded per byte.                */
 } pc_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */
@@ -110,18 +110,18 @@ static const char k_pc_body[] = "<html><body><h1>Cache</h1>"
  * @brief Failure-stage codes stamped to ::g_pc_err for SWD / `--dump-sym`.
  */
 typedef enum : uint32_t {
-  k_pc_err_none     = 0U,  /**< No failure (success path).            */
-  k_pc_err_init     = 1U,  /**< CGC / time / console / SPI bring-up.  */
-  k_pc_err_card     = 2U,  /**< SD card SPI init.                     */
-  k_pc_err_mount    = 3U,  /**< Mount (and format-if-blank).          */
-  k_pc_err_font     = 4U,  /**< Provision / read FONT.OTF.            */
-  k_pc_err_layout   = 5U,  /**< ra_reflow_init / layout_chapter.      */
-  k_pc_err_ser      = 6U,  /**< ra_reflow_cache_serialize.            */
-  k_pc_err_persist  = 7U,  /**< Write / read-back the blob on SD.     */
-  k_pc_err_readback = 8U,  /**< Read-back blob != written blob.       */
-  k_pc_err_load     = 9U,  /**< ra_reflow_cache_load (expected hit).  */
-  k_pc_err_crc      = 10U, /**< Reloaded layout CRC != live CRC.      */
-  k_pc_err_invalid  = 11U, /**< Alt-size load did not invalidate.     */
+  k_pc_err_none     = 0U,  /**< No failure (success path).           */
+  k_pc_err_init     = 1U,  /**< CGC / time / console / SPI bring-up. */
+  k_pc_err_card     = 2U,  /**< SD card SPI init.                    */
+  k_pc_err_mount    = 3U,  /**< Mount (and format-if-blank).         */
+  k_pc_err_font     = 4U,  /**< Provision / read FONT.OTF.           */
+  k_pc_err_layout   = 5U,  /**< ra_reflow_init / layout_chapter.     */
+  k_pc_err_ser      = 6U,  /**< ra_reflow_cache_serialize.           */
+  k_pc_err_persist  = 7U,  /**< Write / read-back the blob on SD.    */
+  k_pc_err_readback = 8U,  /**< Read-back blob != written blob.      */
+  k_pc_err_load     = 9U,  /**< ra_reflow_cache_load (expected hit). */
+  k_pc_err_crc      = 10U, /**< Reloaded layout CRC != live CRC.     */
+  k_pc_err_invalid  = 11U, /**< Alt-size load did not invalidate.    */
 } pc_err_t;
 
 /** @enum pc_pace_t @brief Idle-loop pacing for the success heartbeat. */

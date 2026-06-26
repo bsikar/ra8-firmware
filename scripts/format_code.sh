@@ -184,53 +184,89 @@ check_formatting() {
     fi
   done
 
+  # Comment-format gate. clang-format owns the START column of trailing
+  # comments (AlignTrailingComments) but never touches a block comment's
+  # interior, so it cannot enforce "one space after /*", "one space before
+  # */", or align the closing */ of a run. check_comment_format.py owns those.
+  # It runs AFTER the clang-format check above so it sees start-aligned
+  # comments. See scripts/utils/check_comment_format.py.
+  local comment_ok=true
+  if command -v python3 &>/dev/null; then
+    if ! python3 scripts/utils/check_comment_format.py "${files[@]}"; then
+      comment_ok=false
+    fi
+  else
+    print_warning "python3 not found -- comment-format check SKIPPED."
+  fi
+
   if [ "$issues_found" = true ]; then
     echo "" >&2
     print_error "Code formatting check failed!"
     echo "Run 'bash scripts/format_code.sh' to fix formatting issues." >&2
-    return 1
-  else
-    print_success "All files are properly formatted!"
-    return 0
   fi
+  if [ "$issues_found" = true ] || [ "$comment_ok" = false ]; then
+    return 1
+  fi
+  print_success "All files are properly formatted!"
+  return 0
 }
 
-# Format files
-format_files() {
+# Run clang-format in place over the file list; echo the number of files changed.
+run_clang_round() {
   local files=("$@")
-  local formatted_count=0
-
-  print_status "Formatting source files..."
-
+  local changed=0 file temp_file
   for file in "${files[@]}"; do
-    if [ "$VERBOSE" = true ]; then
-      echo "  Processing: $file" >&2
-    fi
-
-    local temp_file
     temp_file=$(mktemp)
-
     "$CLANG_FORMAT" "$file" >"$temp_file" 2>&1 || {
       echo "ERROR: clang-format failed on $file" >&2
       rm "$temp_file"
       continue
     }
-
     if ! cmp -s "$file" "$temp_file" 2>/dev/null; then
       cp "$temp_file" "$file"
-      ((formatted_count++)) || true
-      if [ "$VERBOSE" = true ]; then
-        echo "    [PASS] Formatted" >&2
-      fi
-    elif [ "$VERBOSE" = true ]; then
-      echo "    - No changes needed" >&2
+      ((changed++)) || true
     fi
-
     rm "$temp_file"
   done
+  echo "$changed"
+}
 
-  if [ $formatted_count -gt 0 ]; then
-    print_success "Formatted $formatted_count file(s)!"
+# Format files. clang-format owns the comment START column; the comment pass
+# (check_comment_format.py) owns the interior + the */ end column. The two are
+# run to a joint fixed point: a comment that the pass tightens can free column
+# budget that lets clang-format re-align the start on the next round, so we
+# repeat clang-format + the pass until a whole round changes nothing (this
+# converges in 2 rounds in practice; the cap is a safety bound).
+format_files() {
+  local files=("$@")
+  local max_rounds=5 round clang_changed comment_changed comment_out total=0
+
+  print_status "Formatting source files..."
+
+  if ! command -v python3 &>/dev/null; then
+    print_warning "python3 not found -- comment-format pass SKIPPED."
+  fi
+
+  for ((round = 1; round <= max_rounds; round++)); do
+    clang_changed=$(run_clang_round "${files[@]}")
+
+    comment_changed=0
+    if command -v python3 &>/dev/null; then
+      comment_out=$(python3 scripts/utils/check_comment_format.py --fix "${files[@]}" 2>&1) ||
+        print_warning "comment-format pass reported a problem."
+      echo "$comment_out" >&2
+      comment_changed=$(echo "$comment_out" | sed -n 's/.*reformatted \([0-9][0-9]*\) file.*/\1/p')
+      comment_changed=${comment_changed:-0}
+    fi
+
+    total=$((total + clang_changed + comment_changed))
+    if [ "$clang_changed" -eq 0 ] && [ "$comment_changed" -eq 0 ]; then
+      break
+    fi
+  done
+
+  if [ "$total" -gt 0 ]; then
+    print_success "Formatted (converged in $round round(s) of clang-format + comment pass)."
   else
     print_success "All files were already properly formatted!"
   fi

@@ -49,16 +49,16 @@
 
 /** @enum bs_consts_t @brief Console / self-check knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_bs_uart_chan    = 8U,      /**< SCI8 J-Link OB console.            */
-  k_bs_uart_baud    = 115200U, /**< Console baud.                      */
-  k_bs_reserved_op  = 0x02U,   /**< A reserved JTIR opcode (HUM 50.2.1).*/
-  k_bs_clear_none   = 0x00U,   /**< Legal clear mask (the only one).   */
-  k_bs_bad_mask     = 0x01U,   /**< Illegal non-zero clear mask.       */
-  k_bs_checks_total = 17U,     /**< Count of self-checks below.        */
-  k_bs_hex_nibbles  = 8U,      /**< Hex digits in a 32-bit value.      */
-  k_bs_nibble_bits  = 4U,      /**< Bits per hex nibble.               */
-  k_bs_nibble_mask  = 0x0FU,   /**< Low-nibble mask.                   */
-  k_bs_dec_ten      = 10U,     /**< Hex digit / decimal split.         */
+  k_bs_uart_chan    = 8U,      /**< SCI8 J-Link OB console.              */
+  k_bs_uart_baud    = 115200U, /**< Console baud.                        */
+  k_bs_reserved_op  = 0x02U,   /**< A reserved JTIR opcode (HUM 50.2.1). */
+  k_bs_clear_none   = 0x00U,   /**< Legal clear mask (the only one).     */
+  k_bs_bad_mask     = 0x01U,   /**< Illegal non-zero clear mask.         */
+  k_bs_checks_total = 17U,     /**< Count of self-checks below.          */
+  k_bs_hex_nibbles  = 8U,      /**< Hex digits in a 32-bit value.        */
+  k_bs_nibble_bits  = 4U,      /**< Bits per hex nibble.                 */
+  k_bs_nibble_mask  = 0x0FU,   /**< Low-nibble mask.                     */
+  k_bs_dec_ten      = 10U,     /**< Hex digit / decimal split.           */
 } bs_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

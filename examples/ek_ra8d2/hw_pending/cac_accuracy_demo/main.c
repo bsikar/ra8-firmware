@@ -66,9 +66,9 @@ static const char* s_tag = "cac_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_cac_demo_baud        = 115200U, /**< SCI8 baud rate.            */
+  k_cac_demo_baud        = 115200U, /**< SCI8 baud rate.             */
   k_cac_demo_period_ms   = 1000U,   /**< Delay between measurements. */
-  k_cac_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8.  */
+  k_cac_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8.   */
 } cac_demo_config_t;
 
 /**
@@ -98,7 +98,7 @@ typedef enum : uint32_t {
  *    LOCO CACLCLK), RCDS = 00 (reference /32), DFS = 00 (no filter).
  */
 typedef enum : uint8_t {
-  k_cac_demo_cacr1_main = 0x00U, /**< Target = main osc, /1, rising. */
+  k_cac_demo_cacr1_main = 0x00U, /**< Target = main osc, /1, rising.  */
   k_cac_demo_cacr2_loco = 0x09U, /**< Reference = LOCO /32, internal. */
 } cac_demo_cacr_t;
 

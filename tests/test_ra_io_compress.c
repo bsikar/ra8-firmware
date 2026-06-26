@@ -24,9 +24,9 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_payload_bytes = 4096, /**< Source payload size.             */
-  k_t_out_bytes     = 8192, /**< Compressed/scratch output cap.   */
-  k_t_seed_mul      = 31,   /**< Pattern generator multiplier.    */
+  k_t_payload_bytes = 4096, /**< Source payload size.                                  */
+  k_t_out_bytes     = 8192, /**< Compressed/scratch output cap.                        */
+  k_t_seed_mul      = 31,   /**< Pattern generator multiplier.                         */
   k_t_pattern_mod   = 7,    /**< Pattern alphabet size (so it is highly compressible). */
 } t_compress_const_t;
 

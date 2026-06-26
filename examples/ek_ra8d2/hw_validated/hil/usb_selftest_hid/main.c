@@ -100,7 +100,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -136,7 +136,7 @@ static const ra_port_pin_t k_hid_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /*
@@ -164,7 +164,7 @@ typedef enum : uint32_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -223,7 +223,7 @@ static UX_SLAVE_CLASS_HID* s_hid_class = UX_NULL;
 static TX_SEMAPHORE s_hid_active_sem;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (device side; host-side probes live in the host cluster)     */
+/* J-Link probes (device side; host-side probes live in the host cluster) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Device-side report-queue successes (one hid_event_set each). */
@@ -234,7 +234,7 @@ static volatile uint32_t s_dbg_dev_step;
 static volatile uint32_t s_dbg_dev_err;
 
 /* -------------------------------------------------------------------------- */
-/* HID Report Descriptor (vendor-defined, one 8-byte input report)            */
+/* HID Report Descriptor (vendor-defined, one 8-byte input report) */
 /* -------------------------------------------------------------------------- */
 
 /* A minimal vendor-defined collection with a single 8-byte input report
@@ -246,17 +246,17 @@ static UCHAR s_report_descriptor[] = {
   0x06U, 0x00U, 0xFFU, /* Usage Page (Vendor Defined 0xFF00) */
   0x09U, 0x01U,        /* Usage (0x01)                       */
   0xA1U, 0x01U,        /* Collection (Application)           */
-  0x09U, 0x01U,        /*   Usage (0x01)                     */
-  0x15U, 0x00U,        /*   Logical Minimum (0)              */
-  0x26U, 0xFFU, 0x00U, /*   Logical Maximum (255)            */
-  0x75U, 0x08U,        /*   Report Size (8 bits)             */
-  0x95U, 0x08U,        /*   Report Count (8)                 */
-  0x81U, 0x02U,        /*   Input (Data,Var,Abs)             */
+  0x09U, 0x01U,        /* Usage (0x01)                       */
+  0x15U, 0x00U,        /* Logical Minimum (0)                */
+  0x26U, 0xFFU, 0x00U, /* Logical Maximum (255)              */
+  0x75U, 0x08U,        /* Report Size (8 bits)               */
+  0x95U, 0x08U,        /* Report Count (8)                   */
+  0x81U, 0x02U,        /* Input (Data,Var,Abs)               */
   0xC0U,               /* End Collection                     */
 };
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (HID: one interface, one interrupt-IN endpoint)            */
+/* USB descriptors (HID: one interface, one interrupt-IN endpoint) */
 /* -------------------------------------------------------------------------- */
 
 /* HID config: one HID interface (class 0x03, no boot subclass), one
@@ -276,7 +276,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x18U, /* PID = 0x0018 (pid.codes test).    */
+  0x18U, /* PID = 0x0018 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -404,7 +404,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Shared HID report pattern                                                  */
+/* Shared HID report pattern */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Implementation of `hid_fill_report_body()` -- fixed `i*7 + 0x5A` body. */
@@ -417,7 +417,7 @@ void hid_fill_report_body(uint8_t* out, uint32_t len)
 }
 
 /* -------------------------------------------------------------------------- */
-/* HID activate / deactivate callbacks                                        */
+/* HID activate / deactivate callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -468,7 +468,7 @@ static VOID hid_deactivate(VOID* hid_instance)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX HID interrupt-IN reports                                 */
+/* Device side: USBX HID interrupt-IN reports */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -715,7 +715,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

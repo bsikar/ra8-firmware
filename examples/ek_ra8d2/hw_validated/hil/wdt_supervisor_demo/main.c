@@ -83,11 +83,11 @@ volatile uint32_t g_wdt_supervisor_demo_tick = 0U;
  */
 /** @brief Bring-up step codes for ::g_wdt_supervisor_demo_step (memprobe). */
 typedef enum : uint32_t {
-  k_wdt_sup_step_start               = 0U, /**< Before init. */
-  k_wdt_sup_step_wdt_init            = 1U, /**< WDT initialised. */
-  k_wdt_sup_step_supervisor_init     = 2U, /**< Supervisor initialised. */
-  k_wdt_sup_step_worker_a_registered = 3U, /**< worker_a registered. */
-  k_wdt_sup_step_worker_b_registered = 4U, /**< worker_b registered. */
+  k_wdt_sup_step_start               = 0U, /**< Before init.               */
+  k_wdt_sup_step_wdt_init            = 1U, /**< WDT initialised.           */
+  k_wdt_sup_step_supervisor_init     = 2U, /**< Supervisor initialised.    */
+  k_wdt_sup_step_worker_a_registered = 3U, /**< worker_a registered.       */
+  k_wdt_sup_step_worker_b_registered = 4U, /**< worker_b registered.       */
   k_wdt_sup_step_supervisor_started  = 5U, /**< Supervisor started (done). */
 } wdt_sup_step_t;
 

@@ -107,10 +107,10 @@ typedef enum : uint32_t {
  * iso payload of one microframe.
  */
 typedef enum : uint32_t {
-  k_usb_audio_sample_rate_hz = 48000U,               /**< Sample rate (Hz).             */
-  k_usb_audio_channels       = 2U,                   /**< Stereo.                       */
-  k_usb_audio_bytes_per_samp = 2U,                   /**< 16-bit.                       */
-  k_usb_audio_lut_samples    = 48U,                  /**< 48 stereo samples per frame.  */
+  k_usb_audio_sample_rate_hz = 48000U,               /**< Sample rate (Hz).                    */
+  k_usb_audio_channels       = 2U,                   /**< Stereo.                              */
+  k_usb_audio_bytes_per_samp = 2U,                   /**< 16-bit.                              */
+  k_usb_audio_lut_samples    = 48U,                  /**< 48 stereo samples per frame.         */
   k_usb_audio_lut_bytes = (uint32_t)(48U * 2U * 2U), /**< 48 samples * 2 ch * 2 bytes = 192 B. */
 } usb_audio_format_t;
 

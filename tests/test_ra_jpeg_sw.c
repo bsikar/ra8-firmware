@@ -26,9 +26,9 @@
  * @brief Sizes used by the test fixtures.
  */
 typedef enum : uint16_t {
-  k_jt_w              = 16U,                   /**< Test image width.   */
-  k_jt_h              = 16U,                   /**< Test image height.  */
-  k_jt_pixels         = (uint16_t)(16U * 16U), /**< Pixel count.     */
+  k_jt_w              = 16U,                   /**< Test image width.  */
+  k_jt_h              = 16U,                   /**< Test image height. */
+  k_jt_pixels         = (uint16_t)(16U * 16U), /**< Pixel count.       */
   k_jt_rgb_bytes      = (uint16_t)(16U * 16U * 3U),
   k_jt_jpeg_cap       = 4096U, /**< Encoder out cap.       */
   k_jt_mse_psnr30_max = 65U,   /**< MSE for PSNR ~= 30 dB. */
@@ -689,12 +689,12 @@ static void test_mcdc_decode_sof0_chroma_subsampling(void)
 }
 
 /* ------------------------------------------------------------------ */
-/*  Additional MC/DC fixtures: SOI/SOF/SOS marker permutations.        */
+/* Additional MC/DC fixtures: SOI/SOF/SOS marker permutations. */
 /*                                                                     */
-/*  These cover the residual gaps in MCDC_GAPS.csv that the earlier    */
-/*  vectors marked "partial" or "no". Each fixture is a hand-built     */
-/*  byte array -- no encoder round-trip -- so the decision flips are  */
-/*  independent and reachable.                                         */
+/* These cover the residual gaps in MCDC_GAPS.csv that the earlier */
+/* vectors marked "partial" or "no". Each fixture is a hand-built */
+/* byte array -- no encoder round-trip -- so the decision flips are */
+/* independent and reachable. */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -1408,9 +1408,9 @@ static void test_mcdc_get_dimensions_skip_appn(void)
   uint16_t w = 0U, h = 0U;
   /* APP0 (mk=0xFFE0, C1=F) then SOF0. */
   static const uint8_t app0_then_sof0[] = {
-    0xFFU, 0xD8U,                                                  /* SOI */
+    0xFFU, 0xD8U,                                                  /* SOI                      */
     0xFFU, 0xE0U, 0x00U, 0x04U, 0x00U, 0x00U,                      /* APP0 length 4, payload 2 */
-    0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, /* SOF0 16x16 */
+    0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, /* SOF0 16x16               */
     0x01U, 0x01U, 0x11U, 0x00U,
   };
   TEST_ASSERT_EQ(
@@ -1419,9 +1419,9 @@ static void test_mcdc_get_dimensions_skip_appn(void)
   TEST_ASSERT_EQ(16, w);
   /* JPG marker (0xFFC8, C4=F) then SOF0. */
   static const uint8_t jpg_then_sof0[] = {
-    0xFFU, 0xD8U,                                                  /* SOI */
+    0xFFU, 0xD8U,                                                  /* SOI                     */
     0xFFU, 0xC8U, 0x00U, 0x04U, 0x00U, 0x00U,                      /* JPG length 4, payload 2 */
-    0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, /* SOF0 16x16 */
+    0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, /* SOF0 16x16              */
     0x01U, 0x01U, 0x11U, 0x00U,
   };
   w = 0U;

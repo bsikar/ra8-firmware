@@ -37,13 +37,13 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_test_aes128_bytes = 16U,    /**< AES-128 raw-key length.       */
-  k_test_p256_priv    = 32U,    /**< P-256 private scalar bytes.   */
-  k_test_p256_pub     = 64U,    /**< P-256 public point bytes.     */
-  k_test_pattern_key  = 0x42U,  /**< Sentinel byte for raw keys.   */
-  k_test_pattern_d    = 0x77U,  /**< Sentinel byte for ECC priv.   */
-  k_test_pattern_h    = 0xA5U,  /**< Sentinel byte for ECC pub.    */
-  k_test_bad_key_bits = 0xABCDU /**< Out-of-range AES width.       */
+  k_test_aes128_bytes = 16U,    /**< AES-128 raw-key length.     */
+  k_test_p256_priv    = 32U,    /**< P-256 private scalar bytes. */
+  k_test_p256_pub     = 64U,    /**< P-256 public point bytes.   */
+  k_test_pattern_key  = 0x42U,  /**< Sentinel byte for raw keys. */
+  k_test_pattern_d    = 0x77U,  /**< Sentinel byte for ECC priv. */
+  k_test_pattern_h    = 0xA5U,  /**< Sentinel byte for ECC pub.  */
+  k_test_bad_key_bits = 0xABCDU /**< Out-of-range AES width.     */
 } ra_rsip_ki_test_const_t;
 
 /**

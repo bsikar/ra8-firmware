@@ -73,9 +73,9 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t       channel;  /**< SCI Simple-SPI channel.        */
-  uint32_t      pclka_hz; /**< PCLKA rate for the baud shim.  */
-  ra_port_pin_t cs;       /**< Chip-select GPIO pin.          */
+  uint8_t       channel;  /**< SCI Simple-SPI channel.       */
+  uint32_t      pclka_hz; /**< PCLKA rate for the baud shim. */
+  ra_port_pin_t cs;       /**< Chip-select GPIO pin.         */
 } sdfont_ctx_t;
 
 /**

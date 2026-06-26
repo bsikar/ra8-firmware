@@ -96,10 +96,10 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_display_pixfmt_rgb565 = 0U, /**< 16 bpp, 5/6/5 packed.            */
-  k_display_pixfmt_rgb888 = 1U, /**< 24 bpp, 8/8/8 packed.            */
-  k_display_pixfmt_grey4  = 2U, /**< 4 bpp greyscale (2 px / byte).   */
-  k_display_pixfmt_grey1  = 3U, /**< 1 bpp greyscale (8 px / byte).   */
+  k_display_pixfmt_rgb565 = 0U, /**< 16 bpp, 5/6/5 packed.          */
+  k_display_pixfmt_rgb888 = 1U, /**< 24 bpp, 8/8/8 packed.          */
+  k_display_pixfmt_grey4  = 2U, /**< 4 bpp greyscale (2 px / byte). */
+  k_display_pixfmt_grey1  = 3U, /**< 1 bpp greyscale (8 px / byte). */
 } display_pixfmt_t;
 
 /**
@@ -191,10 +191,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t x; /**< Left edge in pixels.   */
-  uint16_t y; /**< Top edge in pixels.    */
-  uint16_t w; /**< Width in pixels.       */
-  uint16_t h; /**< Height in pixels.      */
+  uint16_t x; /**< Left edge in pixels. */
+  uint16_t y; /**< Top edge in pixels.  */
+  uint16_t w; /**< Width in pixels.     */
+  uint16_t h; /**< Height in pixels.    */
 } display_rect_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

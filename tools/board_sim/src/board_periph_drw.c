@@ -52,8 +52,8 @@
 
 /** @brief DRW block geometry (ra8d2_drw_regs.h). */
 typedef enum : uint64_t {
-  k_drw_base = 0x40444000UL, /**< DRW Secure base (HUM Ch 62).      */
-  k_drw_span = 0x104UL,      /**< Register window (260 bytes).      */
+  k_drw_base = 0x40444000UL, /**< DRW Secure base (HUM Ch 62). */
+  k_drw_span = 0x104UL,      /**< Register window (260 bytes). */
 } drw_geom_t;
 
 /** @brief DRW register offsets this model interprets (ra8d2_drw_regs.h). */
@@ -86,7 +86,7 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_drw_argb_a_shift   = 24U,   /**< COLOR1 alpha byte position [31:24]. */
   k_drw_argb_r_shift   = 16U,   /**< COLOR1 red byte position [23:16].   */
-  k_drw_argb_g_shift   = 8U,    /**< COLOR1 green byte position [15:8].   */
+  k_drw_argb_g_shift   = 8U,    /**< COLOR1 green byte position [15:8].  */
   k_drw_argb_byte_mask = 0xFFU, /**< Single 8-bit channel mask.          */
   k_drw_argb4444_a_pos = 12U,   /**< ARGB4444 alpha nibble position.     */
   k_drw_rgb565_r_pos   = 11U,   /**< RGB565 red field position [15:11].  */
@@ -108,16 +108,16 @@ typedef enum : uint32_t {
 
 /** @brief DRW register state (the subset the solid-fill path consumes). */
 typedef struct {
-  uint32_t origin;   /**< ORIGIN: framebuffer base address.     */
-  uint32_t pitch;    /**< PITCH: framebuffer pitch in pixels.   */
-  uint32_t control2; /**< CONTROL2: write-format + source bits. */
-  uint32_t color1;   /**< COLOR1: ARGB8888 fill colour.         */
-  uint32_t l1start;  /**< L1START: x0 in sub-pixels.            */
-  uint32_t l3start;  /**< L3START: y0 in sub-pixels.            */
-  uint32_t size;     /**< SIZE: packed width / height.          */
-  uint32_t fills;    /**< Solid box fills rasterized.           */
-  uint32_t last_w;   /**< Last fill width (px), for the report. */
-  uint32_t last_h;   /**< Last fill height (px), for the report.*/
+  uint32_t origin;   /**< ORIGIN: framebuffer base address.      */
+  uint32_t pitch;    /**< PITCH: framebuffer pitch in pixels.    */
+  uint32_t control2; /**< CONTROL2: write-format + source bits.  */
+  uint32_t color1;   /**< COLOR1: ARGB8888 fill colour.          */
+  uint32_t l1start;  /**< L1START: x0 in sub-pixels.             */
+  uint32_t l3start;  /**< L3START: y0 in sub-pixels.             */
+  uint32_t size;     /**< SIZE: packed width / height.           */
+  uint32_t fills;    /**< Solid box fills rasterized.            */
+  uint32_t last_w;   /**< Last fill width (px), for the report.  */
+  uint32_t last_h;   /**< Last fill height (px), for the report. */
 } drw_state_t;
 
 static drw_state_t s_drw;

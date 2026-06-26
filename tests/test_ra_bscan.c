@@ -27,7 +27,7 @@
  * @brief Magic-number replacements local to the test file.
  */
 typedef enum : uint32_t {
-  k_ra_bscan_test_idcode_expected = 0x085DA447UL, /**< HUM 50.2.2 p 3258. */
+  k_ra_bscan_test_idcode_expected = 0x085DA447UL, /**< HUM 50.2.2 p 3258.  */
   k_ra_bscan_test_bad_mask        = 0xDEADBEEFUL, /**< Garbage clear mask. */
 } ra_bscan_test_const_t;
 

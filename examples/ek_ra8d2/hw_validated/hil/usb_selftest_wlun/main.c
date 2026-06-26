@@ -97,7 +97,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -133,7 +133,7 @@ static const ra_port_pin_t k_wlun_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /* The compile-time tunables (::wlun_config_t), hex/decimal formatter sizing
@@ -166,7 +166,7 @@ typedef enum : uint8_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -212,7 +212,7 @@ static UCHAR s_msc_product_id[]  = "WRITABLE-RAM RW ";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /* The host-ladder probes (s_dbg_phase / s_dbg_luns_ok / s_dbg_max_lun /
@@ -234,7 +234,7 @@ static volatile uint32_t s_dbg_dev_err;
 static UCHAR s_disk[(size_t)k_wlun_sectors * (size_t)k_wlun_block_size];
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (single-interface MSC; one writable logical unit)         */
+/* USB descriptors (single-interface MSC; one writable logical unit) */
 /* -------------------------------------------------------------------------- */
 
 /* MSC config: bulk-only transport, SCSI command set, EP1 IN + EP2 OUT,
@@ -253,7 +253,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x14U, /* PID = 0x0014 (pid.codes test).    */
+  0x14U, /* PID = 0x0014 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -381,7 +381,7 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
  * usb_selftest_wlun_console.c (shared with the host verifier). */
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (single writable RAM-disk LUN)                */
+/* Storage class media callbacks (single writable RAM-disk LUN) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -527,7 +527,7 @@ static UINT wlun_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
  * wlun_print_fail) live in usb_selftest_wlun_console.c. */
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX MSC with two LUNs                                         */
+/* Device side: USBX MSC with two LUNs */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -735,7 +735,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

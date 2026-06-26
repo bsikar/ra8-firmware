@@ -49,22 +49,22 @@ extern "C" {
  */
 typedef enum : uint8_t {
   k_sd_cmd_go_idle_state           = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
-  k_sd_cmd_send_if_cond            = 0x40U | 8U,  /**< CMD8  SEND_IF_COND         */
-  k_sd_cmd_send_csd                = 0x40U | 9U,  /**< CMD9  SEND_CSD             */
-  k_sd_cmd_send_cid                = 0x40U | 10U, /**< CMD10 SEND_CID             */
-  k_sd_cmd_stop_transmission       = 0x40U | 12U, /**< CMD12 STOP_TRANSMISSION    */
-  k_sd_cmd_set_blocklen            = 0x40U | 16U, /**< CMD16 SET_BLOCKLEN         */
-  k_sd_cmd_read_single_block       = 0x40U | 17U, /**< CMD17 READ_SINGLE_BLOCK    */
-  k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
-  k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24 WRITE_BLOCK          */
-  k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK */
-  k_sd_cmd_erase_wr_blk_start      = 0x40U | 32U, /**< CMD32 ERASE_WR_BLK_START   */
-  k_sd_cmd_erase_wr_blk_end        = 0x40U | 33U, /**< CMD33 ERASE_WR_BLK_END     */
-  k_sd_cmd_erase                   = 0x40U | 38U, /**< CMD38 ERASE                */
-  k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55 APP_CMD              */
-  k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58 READ_OCR             */
-  k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND     */
-  k_sd_acmd_set_wr_blk_erase_count = 0x40U | 23U, /**< ACMD23 pre-erase count */
+  k_sd_cmd_send_if_cond            = 0x40U | 8U,  /**< CMD8  SEND_IF_COND              */
+  k_sd_cmd_send_csd                = 0x40U | 9U,  /**< CMD9  SEND_CSD                  */
+  k_sd_cmd_send_cid                = 0x40U | 10U, /**< CMD10 SEND_CID                  */
+  k_sd_cmd_stop_transmission       = 0x40U | 12U, /**< CMD12 STOP_TRANSMISSION         */
+  k_sd_cmd_set_blocklen            = 0x40U | 16U, /**< CMD16 SET_BLOCKLEN              */
+  k_sd_cmd_read_single_block       = 0x40U | 17U, /**< CMD17 READ_SINGLE_BLOCK         */
+  k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK       */
+  k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24 WRITE_BLOCK               */
+  k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK      */
+  k_sd_cmd_erase_wr_blk_start      = 0x40U | 32U, /**< CMD32 ERASE_WR_BLK_START        */
+  k_sd_cmd_erase_wr_blk_end        = 0x40U | 33U, /**< CMD33 ERASE_WR_BLK_END          */
+  k_sd_cmd_erase                   = 0x40U | 38U, /**< CMD38 ERASE                     */
+  k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55 APP_CMD                   */
+  k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58 READ_OCR                  */
+  k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND          */
+  k_sd_acmd_set_wr_blk_erase_count = 0x40U | 23U, /**< ACMD23 pre-erase count          */
 } sd_cmd_t;
 
 /**
@@ -73,9 +73,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_sd_token_data_start_single = 0xFEU, /**< Single-block read / single-block write start. */
-  k_sd_token_data_start_multi  = 0xFCU, /**< Multi-block write start.                       */
-  k_sd_token_stop_multi        = 0xFDU, /**< Multi-block write stop.                        */
-  k_sd_token_idle              = 0xFFU, /**< Bus idle / CIPO high.                          */
+  k_sd_token_data_start_multi  = 0xFCU, /**< Multi-block write start.                      */
+  k_sd_token_stop_multi        = 0xFDU, /**< Multi-block write stop.                       */
+  k_sd_token_idle              = 0xFFU, /**< Bus idle / CIPO high.                         */
 } sd_data_token_t;
 
 /**
@@ -88,9 +88,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_sd_data_response_mask      = 0x1FU,
-  k_sd_data_response_accepted  = 0x05U, /**< 0b00101 -- data accepted.  */
-  k_sd_data_response_crc_err   = 0x0BU, /**< 0b01011 -- CRC error.      */
-  k_sd_data_response_write_err = 0x0DU, /**< 0b01101 -- write error.    */
+  k_sd_data_response_accepted  = 0x05U, /**< 0b00101 -- data accepted. */
+  k_sd_data_response_crc_err   = 0x0BU, /**< 0b01011 -- CRC error.     */
+  k_sd_data_response_write_err = 0x0DU, /**< 0b01101 -- write error.   */
 } sd_data_response_t;
 
 /**
@@ -114,10 +114,10 @@ typedef enum : uint32_t {
   k_sd_ocr_busy_bit = 0x80000000UL,
   /* Retry budgets -- bounded loops, NASA P10 Rule 2. */
   k_sd_max_r1_wait_bytes    = 16U, /**< R1 must appear within 8 bytes per spec; allow 2x slack. */
-  k_sd_max_data_token_polls = 50000U,  /**< ~500 ms at 100 us / poll. */
-  k_sd_max_busy_poll_bytes  = 100000U, /**< Worst-case write timeout. */
-  k_sd_max_acmd41_attempts  = 1000U,   /**< 1 s at 1 ms / attempt. */
-  k_sd_init_dummy_clocks    = 80U,     /**< 80 clocks = 10 bytes of 0xFF (>=74 required). */
+  k_sd_max_data_token_polls = 50000U,  /**< ~500 ms at 100 us / poll.                           */
+  k_sd_max_busy_poll_bytes  = 100000U, /**< Worst-case write timeout.                           */
+  k_sd_max_acmd41_attempts  = 1000U,   /**< 1 s at 1 ms / attempt.                              */
+  k_sd_init_dummy_clocks    = 80U,     /**< 80 clocks = 10 bytes of 0xFF (>=74 required).       */
   k_sd_recover_flush_bytes  = 530U,    /**< >= 512 data + 2 CRC + token to flush a stuck write. */
   k_sd_recover_idle_bytes   = 64U,     /**< 512 CS-released clocks to drain busy + reset framing. */
   k_sd_max_recover_attempts = 4U,      /**< Re-flush + retry CMD0 this many times before failing. */
@@ -148,7 +148,7 @@ typedef enum : uint8_t {
  * (bits 7:0)).
  */
 typedef enum : uint32_t {
-  k_sd_mask_byte  = 0xFFU,  /**< Low 8 bits of a wider value.              */
+  k_sd_mask_byte  = 0xFFU,  /**< Low 8 bits of a wider value.                */
   k_sd_mask_12bit = 0xFFFU, /**< CMD8 R7 echo voltage-range + check pattern. */
 } sd_byte_mask_t;
 
@@ -164,10 +164,10 @@ typedef enum : uint32_t {
  * @invariant ``initialized == true`` iff CMD0 ... CMD16 init succeeded.
  */
 typedef struct {
-  ra_sdmmc_spi_transport_t transport;       /**< Bound transport callbacks.            */
-  ra_sdmmc_spi_card_type_t card_type;       /**< Detected card class.                  */
+  ra_sdmmc_spi_transport_t transport;       /**< Bound transport callbacks.          */
+  ra_sdmmc_spi_card_type_t card_type;       /**< Detected card class.                */
   uint32_t                 capacity_blocks; /**< 512-byte block count.               */
-  bool                     initialized;     /**< True once the SD init sequence ran.   */
+  bool                     initialized;     /**< True once the SD init sequence ran. */
 } sd_state_t;
 
 /**

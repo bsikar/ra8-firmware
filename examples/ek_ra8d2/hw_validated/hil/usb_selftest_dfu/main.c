@@ -88,7 +88,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -130,7 +130,7 @@ static const ra_port_pin_t k_dfu_pin_sci_rx =
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /** @brief ThreadX TCB for the USBX device-side worker thread. */
@@ -161,7 +161,7 @@ static UCHAR s_dfu_image[k_dfu_image_bytes];
 static volatile uint32_t s_dfu_image_len;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (device side)                                                */
+/* J-Link probes (device side) */
 /* -------------------------------------------------------------------------- */
 
 /* The host-ladder probes (s_dbg_phase / s_dbg_pid / s_dbg_blocks_ok /
@@ -176,7 +176,7 @@ static volatile uint32_t s_dbg_dev_step;
 static volatile uint32_t s_dbg_host_err;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DFU mode: single DFU interface, EP0 only)                 */
+/* USB descriptors (DFU mode: single DFU interface, EP0 only) */
 /* -------------------------------------------------------------------------- */
 
 /* DFU-mode framework: device (PID 0x0019) + one config with a single DFU
@@ -305,7 +305,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX DFU class callbacks                                      */
+/* Device side: USBX DFU class callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -636,7 +636,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

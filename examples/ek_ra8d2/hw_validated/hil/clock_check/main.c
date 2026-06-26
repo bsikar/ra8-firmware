@@ -115,7 +115,7 @@ volatile uint32_t g_clock_check_mismatch = 0U;
  * @since 0.1.0
  */
 typedef struct {
-  ra_clock_id_t id;          /**< Clock-tree domain identifier. */
+  ra_clock_id_t id;          /**< Clock-tree domain identifier.        */
   uint32_t      expected_hz; /**< Target frequency after PLL bring-up. */
 } clock_check_expected_t;
 

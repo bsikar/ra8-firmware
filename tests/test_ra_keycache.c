@@ -26,7 +26,7 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_cell_bytes = 32U, /**< Bytes per cell.   */
+  k_t_cell_bytes = 32U, /**< Bytes per cell.     */
   k_t_cells      = 4U,  /**< Cells in the cache. */
   k_t_buckets    = 8U,  /**< Hash buckets.       */
 } t_kc_const_t;
@@ -139,8 +139,8 @@ static void test_render_hit(void)
   t_key_t            k = t_key(0x41U, 0x99U);
   ra_keycache_view_t v = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_keycache_get(&kc, &k, &v)); /* miss -> render */
-  TEST_ASSERT_EQ(0x41, v.data[0]);                       /* key.a stamp */
-  TEST_ASSERT_EQ(0x99, v.data[1]);                       /* key.b stamp */
+  TEST_ASSERT_EQ(0x41, v.data[0]);                       /* key.a stamp    */
+  TEST_ASSERT_EQ(0x99, v.data[1]);                       /* key.b stamp    */
   TEST_ASSERT(v.user != nullptr);
   const t_dims_t* d = (const t_dims_t*)v.user;
   TEST_ASSERT_EQ(k_t_dim_w, d->w);

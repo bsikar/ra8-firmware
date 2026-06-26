@@ -42,14 +42,14 @@
 
 /** @enum demo_const_t @brief Console + volume knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan    = 8U,      /**< SCI8 J-Link OB console.            */
-  k_demo_uart_baud    = 115200U, /**< Console baud.                      */
-  k_demo_disk_blocks  = 512U,    /**< 256 KiB RAM-disk (FAT12).          */
-  k_demo_stub_blocks  = 8U,      /**< 4 KiB tiny disk for the stub vol.  */
-  k_demo_pin_shift    = 8U,      /**< Port byte position in ra_port_pin_t.*/
-  k_demo_fat_maxname  = 12U,     /**< Expected FAT 8.3 name length.      */
-  k_demo_stub_maxname = 16U,     /**< Stub format max name length.       */
-  k_demo_stub_magic   = 0x5AU,   /**< Stub block-0 signature byte.       */
+  k_demo_uart_chan    = 8U,      /**< SCI8 J-Link OB console.              */
+  k_demo_uart_baud    = 115200U, /**< Console baud.                        */
+  k_demo_disk_blocks  = 512U,    /**< 256 KiB RAM-disk (FAT12).            */
+  k_demo_stub_blocks  = 8U,      /**< 4 KiB tiny disk for the stub vol.    */
+  k_demo_pin_shift    = 8U,      /**< Port byte position in ra_port_pin_t. */
+  k_demo_fat_maxname  = 12U,     /**< Expected FAT 8.3 name length.        */
+  k_demo_stub_maxname = 16U,     /**< Stub format max name length.         */
+  k_demo_stub_magic   = 0x5AU,   /**< Stub block-0 signature byte.         */
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */

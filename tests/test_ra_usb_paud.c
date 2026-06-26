@@ -34,7 +34,7 @@ static const uint8_t s_sample_desc[] = {
   0x1E,
   0x00,
   0x01,
-  0x01, /* AC header    */
+  0x01, /* AC header */
 };
 
 static int32_t  s_setup_cb_calls       = 0;
@@ -298,9 +298,9 @@ static void test_volume_shadow(void)
  * @brief Numeric vectors driving the MC/DC tests below.
  */
 typedef enum : uint16_t {
-  k_test_paud_speed_fs       = 0U, /**< k_ra_usb_speed_fs alias.        */
-  k_test_paud_speed_hs       = 1U, /**< k_ra_usb_speed_hs alias.        */
-  k_test_paud_speed_bad      = 9U, /**< Neither FS nor HS.              */
+  k_test_paud_speed_fs       = 0U, /**< k_ra_usb_speed_fs alias. */
+  k_test_paud_speed_hs       = 1U, /**< k_ra_usb_speed_hs alias. */
+  k_test_paud_speed_bad      = 9U, /**< Neither FS nor HS.       */
   k_test_paud_iface_in       = 0xA1U,
   k_test_paud_iface_out      = 0x21U,
   k_test_paud_ep_in          = 0xA2U,

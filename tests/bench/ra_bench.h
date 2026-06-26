@@ -39,10 +39,10 @@
  * @brief Bench harness tuning knobs.
  */
 typedef enum : uint32_t {
-  k_ra_bench_min_iters    = 3U,        /**< Floor on iteration count.            */
-  k_ra_bench_max_iters    = 10000000U, /**< Ceiling on iteration count.          */
-  k_ra_bench_calibrate_n  = 1U,        /**< Calibration runs before timing.      */
-  k_ra_bench_min_us       = 100000U,   /**< Min wall time per measurement (us).  */
+  k_ra_bench_min_iters    = 3U,        /**< Floor on iteration count.           */
+  k_ra_bench_max_iters    = 10000000U, /**< Ceiling on iteration count.         */
+  k_ra_bench_calibrate_n  = 1U,        /**< Calibration runs before timing.     */
+  k_ra_bench_min_us       = 100000U,   /**< Min wall time per measurement (us). */
   k_ra_bench_ns_per_us    = 1000U,
   k_ra_bench_us_per_s     = 1000000U,
   k_ra_bench_ns_per_s     = 1000000000U,

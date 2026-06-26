@@ -375,12 +375,12 @@ typedef enum : uint8_t {
  * Values cite ``ra-fsp-examples/ek_ra8t2/board_cfg_switch.c``.
  */
 typedef enum : uint8_t {
-  k_ra_board_pi4ioe_reg_devid     = 0x01U, /**< Device ID register. */
-  k_ra_board_pi4ioe_reg_iodir     = 0x03U, /**< 1 = output. */
+  k_ra_board_pi4ioe_reg_devid     = 0x01U, /**< Device ID register.    */
+  k_ra_board_pi4ioe_reg_iodir     = 0x03U, /**< 1 = output.            */
   k_ra_board_pi4ioe_reg_output    = 0x05U, /**< 1 = HIGH (== SW4 OFF). */
-  k_ra_board_pi4ioe_reg_hiz       = 0x07U, /**< 1 = output Hi-Z. */
-  k_ra_board_pi4ioe_reg_pud_sel   = 0x0DU, /**< Pull-up/down select. */
-  k_ra_board_pi4ioe_reg_input_lvl = 0x0FU, /**< Input state. */
+  k_ra_board_pi4ioe_reg_hiz       = 0x07U, /**< 1 = output Hi-Z.       */
+  k_ra_board_pi4ioe_reg_pud_sel   = 0x0DU, /**< Pull-up/down select.   */
+  k_ra_board_pi4ioe_reg_input_lvl = 0x0FU, /**< Input state.           */
 } ra_board_pi4ioe_reg_t;
 
 /**
@@ -401,7 +401,7 @@ typedef enum : uint8_t {
 
 /** @brief IIC1 (system I2C) configuration shared by every U15 access. */
 typedef enum : uint32_t {
-  k_ra_board_io_expander_bus_hz   = 100000U,   /**< 100 kHz Sm. */
+  k_ra_board_io_expander_bus_hz   = 100000U,   /**< 100 kHz Sm.                */
   k_ra_board_io_expander_pclkb_hz = 62500000U, /**< PCLKB = PLL1P/16 post-CGC. */
 } ra_board_io_expander_clk_t;
 
@@ -446,7 +446,7 @@ static const ra_port_pin_t k_ra_board_io_expander_pin_pullup_b =
 
 /** @brief Bit-bang bus-recovery tunables for the system I2C bus. */
 typedef enum : uint32_t {
-  k_ra_board_i2c_recover_pulses = 9U,    /**< SCL clocks to flush one stuck byte + ACK. */
+  k_ra_board_i2c_recover_pulses = 9U,    /**< SCL clocks to flush one stuck byte + ACK.    */
   k_ra_board_i2c_recover_spins  = 2000U, /**< Busy-loop iterations ~= one SCL half-period. */
 } ra_board_i2c_recover_t;
 

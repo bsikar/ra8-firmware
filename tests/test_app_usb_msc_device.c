@@ -43,9 +43,9 @@
 typedef enum : uint16_t {
   k_test_msc_ep_bulk_out = 0x02U, /**< EP2 OUT bulk -- BBB CBW/data. */
   k_test_msc_ep_bulk_in  = 0x81U, /**< EP1 IN  bulk -- BBB data/CSW. */
-  k_test_msc_max_packet  = 64U,   /**< Bulk-FS packet size. */
-  k_test_msc_block_size  = 512U,  /**< SCSI logical block size. */
-  k_test_msc_block_count = 8U,    /**< 8 x 512 = 4 KiB RAM-disk. */
+  k_test_msc_max_packet  = 64U,   /**< Bulk-FS packet size.          */
+  k_test_msc_block_size  = 512U,  /**< SCSI logical block size.      */
+  k_test_msc_block_count = 8U,    /**< 8 x 512 = 4 KiB RAM-disk.     */
 } test_msc_const_t;
 
 /** @brief Pin map mirrors examples/ek_ra8d2/usb_msc_device/main.c. */

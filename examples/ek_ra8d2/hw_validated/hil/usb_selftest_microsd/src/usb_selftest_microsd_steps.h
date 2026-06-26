@@ -34,17 +34,17 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_microsd_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_microsd_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_microsd_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_microsd_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_microsd_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_microsd_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_microsd_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_microsd_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_microsd_sd_spi_channel  = 0U,      /**< SCI0 Simple-SPI -> Pmod2 microSD. */
-  k_microsd_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_microsd_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_microsd_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_microsd_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_microsd_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_microsd_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_microsd_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_microsd_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_microsd_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_microsd_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_microsd_sd_spi_channel  = 0U,      /**< SCI0 Simple-SPI -> Pmod2 microSD.  */
+  k_microsd_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_microsd_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_microsd_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } microsd_config_t;
 
@@ -53,11 +53,11 @@ typedef enum : uint32_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_microsd_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_microsd_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_microsd_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_microsd_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_microsd_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_microsd_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_microsd_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_microsd_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_microsd_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_microsd_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } microsd_hex_t;
 
 /**
@@ -74,17 +74,17 @@ typedef enum : uint32_t {
  * @brief LUN geometry + verification constants.
  */
 typedef enum : uint32_t {
-  k_microsd_count        = 1U,          /**< Single read-only logical unit.   */
-  k_microsd_sectors      = 64U,         /**< Exposed sectors (LBA 0..63).     */
-  k_microsd_block_size   = 512U,        /**< SCSI logical block size.         */
-  k_microsd_burst_blocks = 8U,          /**< Blocks per READ(10) burst.       */
-  k_microsd_burst_bytes  = 4096U,       /**< 8 x 512 B burst buffer.          */
-  k_microsd_target_lun0  = 0U,          /**< First LUN index.                 */
-  k_microsd_no_mismatch  = 0xFFFFFFFFU, /**< Probe: no mismatch.              */
-  k_microsd_snap_bytes   = 64U * 512U,  /**< RAM snapshot of LBA 0..63.       */
-  k_microsd_bootsig_off  = 510U,        /**< FAT/exFAT 0x55AA at byte 510.    */
-  k_microsd_bootsig_lo   = 0x55U,       /**< Boot-signature byte 510.         */
-  k_microsd_bootsig_hi   = 0xAAU,       /**< Boot-signature byte 511.         */
+  k_microsd_count        = 1U,          /**< Single read-only logical unit. */
+  k_microsd_sectors      = 64U,         /**< Exposed sectors (LBA 0..63).   */
+  k_microsd_block_size   = 512U,        /**< SCSI logical block size.       */
+  k_microsd_burst_blocks = 8U,          /**< Blocks per READ(10) burst.     */
+  k_microsd_burst_bytes  = 4096U,       /**< 8 x 512 B burst buffer.        */
+  k_microsd_target_lun0  = 0U,          /**< First LUN index.               */
+  k_microsd_no_mismatch  = 0xFFFFFFFFU, /**< Probe: no mismatch.            */
+  k_microsd_snap_bytes   = 64U * 512U,  /**< RAM snapshot of LBA 0..63.     */
+  k_microsd_bootsig_off  = 510U,        /**< FAT/exFAT 0x55AA at byte 510.  */
+  k_microsd_bootsig_lo   = 0x55U,       /**< Boot-signature byte 510.       */
+  k_microsd_bootsig_hi   = 0xAAU,       /**< Boot-signature byte 511.       */
 } microsd_geom_t;
 
 /**
@@ -92,11 +92,11 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_microsd_phase_boot   = 0U, /**< Host thread not started.   */
-  k_microsd_phase_init   = 1U, /**< ra_usb_hmsc_init issued.   */
-  k_microsd_phase_enum   = 2U, /**< Enumerating.               */
-  k_microsd_phase_verify = 3U, /**< Reading + checking LUNs.   */
-  k_microsd_phase_pass   = 4U, /**< All LUNs verified.         */
+  k_microsd_phase_boot   = 0U, /**< Host thread not started. */
+  k_microsd_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
+  k_microsd_phase_enum   = 2U, /**< Enumerating.             */
+  k_microsd_phase_verify = 3U, /**< Reading + checking LUNs. */
+  k_microsd_phase_pass   = 4U, /**< All LUNs verified.       */
 } microsd_phase_t;
 
 /**

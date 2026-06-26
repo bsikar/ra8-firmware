@@ -74,7 +74,7 @@ extern "C" {
 #endif
 
 #include "ra_reflow_api.h"   /* lifecycle / layout / render / internal prototypes */
-#include "ra_reflow_types.h" /* enums, structs, typedefs, engine handle */
+#include "ra_reflow_types.h" /* enums, structs, typedefs, engine handle           */
 
 #ifdef __cplusplus
 }

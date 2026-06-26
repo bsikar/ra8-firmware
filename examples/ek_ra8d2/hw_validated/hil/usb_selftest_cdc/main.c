@@ -101,7 +101,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -137,7 +137,7 @@ static const ra_port_pin_t k_cdc_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /* The shared sizing/geometry enums (::cdc_config_t, ::cdc_geom_t) live in the
@@ -160,7 +160,7 @@ typedef enum : uint32_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -219,7 +219,7 @@ static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
 static TX_SEMAPHORE s_cdc_active_sem;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (device side)                                                */
+/* J-Link probes (device side) */
 /* -------------------------------------------------------------------------- */
 
 /* The host-side ladder probes (``s_dbg_phase``, ``s_dbg_rounds_ok``,
@@ -236,7 +236,7 @@ static volatile uint32_t s_dbg_dev_step;
 static volatile uint32_t s_dbg_dev_err;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (CDC-ACM: comm + data interface via an IAD)                */
+/* USB descriptors (CDC-ACM: comm + data interface via an IAD) */
 /* -------------------------------------------------------------------------- */
 
 /* CDC-ACM config: one communications interface + one data interface joined
@@ -252,13 +252,13 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0xEFU, /* class      = MISC                 */
-  0x02U, /* subclass   = common               */
-  0x01U, /* protocol   = IAD                  */
+  0xEFU, /* class      = MISC   */
+  0x02U, /* subclass   = common */
+  0x01U, /* protocol   = IAD    */
   0x40U,
   0x09U,
   0x12U,
-  0x17U, /* PID = 0x0017 (pid.codes test).    */
+  0x17U, /* PID = 0x0017 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -433,7 +433,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* CDC-ACM activate / deactivate callbacks                                    */
+/* CDC-ACM activate / deactivate callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -486,7 +486,7 @@ static VOID cdc_deactivate(VOID* cdc_instance)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX CDC-ACM echo                                             */
+/* Device side: USBX CDC-ACM echo */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -699,7 +699,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

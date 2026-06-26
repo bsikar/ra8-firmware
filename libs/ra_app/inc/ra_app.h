@@ -75,10 +75,10 @@ typedef struct {
   ra_err_t (*init)(struct ra_app* a);     /**< One-time setup (at register).  */
   void (*on_enter)(struct ra_app* a);     /**< Gained focus / foreground.     */
   void (*tick)(struct ra_app* a);         /**< Per-frame update (foreground). */
-  void (*render)(const struct ra_app* a); /**< Draw (on-target, foreground). */
-  bool (*on_input)(struct ra_app* a, const ra_widget_event_t* ev); /**< Handle. */
-  void (*on_leave)(struct ra_app* a); /**< Lost focus / background.       */
-  void (*deinit)(struct ra_app* a);   /**< Teardown.                      */
+  void (*render)(const struct ra_app* a); /**< Draw (on-target, foreground).  */
+  bool (*on_input)(struct ra_app* a, const ra_widget_event_t* ev); /**< Handle.                  */
+  void (*on_leave)(struct ra_app* a);                              /**< Lost focus / background. */
+  void (*deinit)(struct ra_app* a);                                /**< Teardown.                */
 } ra_app_vtable_t;
 
 /**
@@ -86,12 +86,12 @@ typedef struct {
  * @brief One app instance + its metadata (caller-owned, static).
  */
 typedef struct ra_app {
-  const ra_app_vtable_t* vt;          /**< Lifecycle table (non-NULL).      */
-  void*                  ctx;         /**< App-specific state.              */
-  uint16_t               id;          /**< Unique app id (launch key).      */
-  const char*            name;        /**< Display name for the launcher.   */
-  bool                   removable;   /**< Optional/uninstallable core?     */
-  bool                   initialized; /**< Set true once `init` succeeded.  */
+  const ra_app_vtable_t* vt;          /**< Lifecycle table (non-NULL).     */
+  void*                  ctx;         /**< App-specific state.             */
+  uint16_t               id;          /**< Unique app id (launch key).     */
+  const char*            name;        /**< Display name for the launcher.  */
+  bool                   removable;   /**< Optional/uninstallable core?    */
+  bool                   initialized; /**< Set true once `init` succeeded. */
 } ra_app_t;
 
 /**

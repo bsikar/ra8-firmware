@@ -72,15 +72,15 @@ static volatile ra_tz_secure_boot_step_t s_step = k_ra_tz_secure_boot_step_idle;
  * PRCR_S lives in the SYSC block at base 0x4001E000 (HUM Ch 9.2.4).
  */
 typedef enum : uintptr_t {
-  k_ra_tz_sau_ctrl_addr    = 0xE000EDD0UL, /**< SAU Control. */
-  k_ra_tz_sau_type_addr    = 0xE000EDD4UL, /**< SAU Type.    */
-  k_ra_tz_sau_rnr_addr     = 0xE000EDD8UL, /**< Region Num.  */
-  k_ra_tz_sau_rbar_addr    = 0xE000EDDCUL, /**< Region Base. */
-  k_ra_tz_sau_rlar_addr    = 0xE000EDE0UL, /**< Region Lim.  */
+  k_ra_tz_sau_ctrl_addr    = 0xE000EDD0UL, /**< SAU Control.           */
+  k_ra_tz_sau_type_addr    = 0xE000EDD4UL, /**< SAU Type.              */
+  k_ra_tz_sau_rnr_addr     = 0xE000EDD8UL, /**< Region Num.            */
+  k_ra_tz_sau_rbar_addr    = 0xE000EDDCUL, /**< Region Base.           */
+  k_ra_tz_sau_rlar_addr    = 0xE000EDE0UL, /**< Region Lim.            */
   k_ra_tz_scb_vtor_ns_addr = 0xE002ED08UL, /**< VTOR Non-Secure alias. */
-  k_ra_tz_ipcsar_addr      = 0x40008610UL, /**< CPSCU IPCSAR. */
-  k_ra_tz_ipcpar_addr      = 0x40008614UL, /**< CPSCU IPCPAR. */
-  k_ra_tz_prcr_s_addr      = 0x4001E3FAUL, /**< SYSC PRCR_S (16-bit). */
+  k_ra_tz_ipcsar_addr      = 0x40008610UL, /**< CPSCU IPCSAR.          */
+  k_ra_tz_ipcpar_addr      = 0x40008614UL, /**< CPSCU IPCPAR.          */
+  k_ra_tz_prcr_s_addr      = 0x4001E3FAUL, /**< SYSC PRCR_S (16-bit).  */
 } ra_tz_secure_boot_addr_t;
 
 /**
@@ -93,11 +93,11 @@ typedef enum : uintptr_t {
  * so the bench-debug trail is easy to follow.
  */
 typedef enum : uint32_t {
-  k_ra_tz_sau_ctrl_enable = 0x00000001U, /**< CTRL.ENABLE.            */
-  k_ra_tz_sau_ctrl_allns  = 0x00000002U, /**< CTRL.ALLNS (kept 0).    */
-  k_ra_tz_sau_rlar_enable = 0x00000001U, /**< RLAR.ENABLE.            */
-  k_ra_tz_sau_rlar_nsc    = 0x00000002U, /**< RLAR.NSC.               */
-  k_ra_tz_sau_type_mask   = 0x000000FFU, /**< TYPE.SREGION lower 8b.  */
+  k_ra_tz_sau_ctrl_enable = 0x00000001U, /**< CTRL.ENABLE.           */
+  k_ra_tz_sau_ctrl_allns  = 0x00000002U, /**< CTRL.ALLNS (kept 0).   */
+  k_ra_tz_sau_rlar_enable = 0x00000001U, /**< RLAR.ENABLE.           */
+  k_ra_tz_sau_rlar_nsc    = 0x00000002U, /**< RLAR.NSC.              */
+  k_ra_tz_sau_type_mask   = 0x000000FFU, /**< TYPE.SREGION lower 8b. */
 } ra_tz_secure_boot_sau_bit_t;
 
 /**
@@ -110,10 +110,10 @@ typedef enum : uint32_t {
  * (PRC4) is the gate for CPSCU security-attribution registers.
  */
 typedef enum : uint16_t {
-  k_ra_tz_prcr_s_key       = 0xA500U, /**< Unlock key (top byte).      */
-  k_ra_tz_prcr_s_prc4_open = 0x0010U, /**< PRC4 gate open (bit 4).     */
-  k_ra_tz_prcr_s_open      = 0xA510U, /**< Key | PRC4 (unlock value).  */
-  k_ra_tz_prcr_s_close     = 0xA500U, /**< Key with PRC4 = 0 (lock).   */
+  k_ra_tz_prcr_s_key       = 0xA500U, /**< Unlock key (top byte).     */
+  k_ra_tz_prcr_s_prc4_open = 0x0010U, /**< PRC4 gate open (bit 4).    */
+  k_ra_tz_prcr_s_open      = 0xA510U, /**< Key | PRC4 (unlock value). */
+  k_ra_tz_prcr_s_close     = 0xA500U, /**< Key with PRC4 = 0 (lock).  */
 } ra_tz_secure_boot_prcr_t;
 
 /**
@@ -173,18 +173,18 @@ typedef enum : uint32_t {
  *            a successful security-init call.
  */
 typedef struct {
-  uint32_t sau_ctrl;                                   /**< Last value written to SAU_CTRL.       */
-  uint32_t sau_region_base[k_ra_tz_sau_region_count];  /**< Per-region base.*/
-  uint32_t sau_region_limit[k_ra_tz_sau_region_count]; /**< Per-region lim. */
-  uint8_t  sau_region_nsc[k_ra_tz_sau_region_count];   /**< NSC flag.       */
-  uint16_t prcr_s_last;                                /**< Last value written to PRCR_S.        */
-  uint8_t  prcr_unlock_count;                          /**< # of PRC4-open writes.               */
-  uint8_t  prcr_relock_count;                          /**< # of PRC4-close writes.              */
-  uint32_t ipcsar_value;                               /**< Latest IPCSAR write (post-unlock).   */
-  uint32_t ipcpar_value;                               /**< Latest IPCPAR write (post-unlock).   */
-  uint32_t blxns_target;                               /**< Captured BLXNS reset vector.         */
-  uint32_t blxns_msp_ns;                               /**< Captured MSP_NS value.               */
-  uint32_t vtor_ns;                                    /**< Captured VTOR_NS value.              */
+  uint32_t sau_ctrl;                                   /**< Last value written to SAU_CTRL.    */
+  uint32_t sau_region_base[k_ra_tz_sau_region_count];  /**< Per-region base.                   */
+  uint32_t sau_region_limit[k_ra_tz_sau_region_count]; /**< Per-region lim.                    */
+  uint8_t  sau_region_nsc[k_ra_tz_sau_region_count];   /**< NSC flag.                          */
+  uint16_t prcr_s_last;                                /**< Last value written to PRCR_S.      */
+  uint8_t  prcr_unlock_count;                          /**< # of PRC4-open writes.             */
+  uint8_t  prcr_relock_count;                          /**< # of PRC4-close writes.            */
+  uint32_t ipcsar_value;                               /**< Latest IPCSAR write (post-unlock). */
+  uint32_t ipcpar_value;                               /**< Latest IPCPAR write (post-unlock). */
+  uint32_t blxns_target;                               /**< Captured BLXNS reset vector.       */
+  uint32_t blxns_msp_ns;                               /**< Captured MSP_NS value.             */
+  uint32_t vtor_ns;                                    /**< Captured VTOR_NS value.            */
 } ra_tz_secure_boot_host_state_t;
 
 /**

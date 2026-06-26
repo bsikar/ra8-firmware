@@ -79,8 +79,8 @@ static const char* s_tag = "USBPAL";
 
 typedef enum : uint16_t {
   k_ra_usb_pal_ep_table_len = 11U,   /**< Index 0..ep_max, 1-based EPs. */
-  k_ra_usb_pal_ring_slots   = 4U,    /**< Per-EP queue depth. */
-  k_ra_usb_pal_pkt_max      = 1024U, /**< Per-packet capacity. */
+  k_ra_usb_pal_ring_slots   = 4U,    /**< Per-EP queue depth.           */
+  k_ra_usb_pal_pkt_max      = 1024U, /**< Per-packet capacity.          */
 } ra_usb_pal_ring_dim_t;
 
 /* =============================================================================
@@ -94,7 +94,7 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t len;                        /**< 0 == empty slot. */
+  uint16_t len;                        /**< 0 == empty slot.      */
   uint8_t  data[k_ra_usb_pal_pkt_max]; /**< Packet payload bytes. */
 } ra_usb_pal_packet_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -106,13 +106,13 @@ typedef struct {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool                 opened;                        /**< True once ra_usb_pal_ep_open fired. */
-  ra_usb_pal_ep_dir_t  dir;                           /**< Stored direction. */
-  ra_usb_pal_ep_type_t type;                          /**< Stored transfer type. */
-  uint16_t             max_packet;                    /**< Stored max packet size. */
-  uint16_t             head;                          /**< Next slot to pop. */
-  uint16_t             tail;                          /**< Next slot to push. */
-  uint16_t             count;                         /**< In-flight packet count. */
-  ra_usb_pal_packet_t  ring[k_ra_usb_pal_ring_slots]; /**< Per-EP queue. */
+  ra_usb_pal_ep_dir_t  dir;                           /**< Stored direction.                   */
+  ra_usb_pal_ep_type_t type;                          /**< Stored transfer type.               */
+  uint16_t             max_packet;                    /**< Stored max packet size.             */
+  uint16_t             head;                          /**< Next slot to pop.                   */
+  uint16_t             tail;                          /**< Next slot to push.                  */
+  uint16_t             count;                         /**< In-flight packet count.             */
+  ra_usb_pal_packet_t  ring[k_ra_usb_pal_ring_slots]; /**< Per-EP queue.                       */
 } ra_usb_pal_ep_slot_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -121,12 +121,12 @@ typedef struct {
  * @brief Singleton PAL state.
  */
 typedef struct {
-  ra_usb_speed_t        speed;                          /**< FS or HS, set at init. */
-  ra_usb_pal_state_t    state;                          /**< Detached/attached/... */
-  ra_usb_pal_event_fn_t event_fn;                       /**< Stack-installed callback. */
-  void*                 event_ctx;                      /**< Callback context. */
+  ra_usb_speed_t        speed;                          /**< FS or HS, set at init.      */
+  ra_usb_pal_state_t    state;                          /**< Detached/attached/...       */
+  ra_usb_pal_event_fn_t event_fn;                       /**< Stack-installed callback.   */
+  void*                 event_ctx;                      /**< Callback context.           */
   bool                  initialized;                    /**< True after ra_usb_pal_init. */
-  ra_usb_pal_ep_slot_t  eps[k_ra_usb_pal_ep_table_len]; /**< Per-EP state. */
+  ra_usb_pal_ep_slot_t  eps[k_ra_usb_pal_ep_table_len]; /**< Per-EP state.               */
 } ra_usb_pal_state_inner_t;
 
 static ra_usb_pal_state_inner_t s_state = {};

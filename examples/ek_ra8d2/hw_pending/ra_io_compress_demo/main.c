@@ -49,13 +49,13 @@
 
 /** @enum demo_const_t @brief Console + volume + payload knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.            */
-  k_demo_uart_baud   = 115200U, /**< Console baud.                      */
-  k_demo_disk_blocks = 512U,    /**< 256 KiB per volume (FAT12).        */
-  k_demo_payload     = 4096U,   /**< Source bytes (compressible).       */
-  k_demo_blob_cap    = 8192U,   /**< Compressed-blob staging capacity.  */
-  k_demo_pin_shift   = 8U,      /**< Port byte position in ra_port_pin_t.*/
-  k_demo_seed_mul    = 31U,     /**< Test-pattern multiplier.           */
+  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.                */
+  k_demo_uart_baud   = 115200U, /**< Console baud.                          */
+  k_demo_disk_blocks = 512U,    /**< 256 KiB per volume (FAT12).            */
+  k_demo_payload     = 4096U,   /**< Source bytes (compressible).           */
+  k_demo_blob_cap    = 8192U,   /**< Compressed-blob staging capacity.      */
+  k_demo_pin_shift   = 8U,      /**< Port byte position in ra_port_pin_t.   */
+  k_demo_seed_mul    = 31U,     /**< Test-pattern multiplier.               */
   k_demo_pattern_mod = 7U,      /**< Small alphabet -> highly compressible. */
 } demo_const_t;
 

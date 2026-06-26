@@ -28,18 +28,18 @@
  * @brief Resolved exFAT volume geometry produced by `priv_exfat_geometry`.
  */
 typedef struct {
-  uint32_t total_sectors;   /**< Whole-device sector count (VolumeLength).     */
-  uint8_t  spc_shift;       /**< SectorsPerClusterShift (log2).                */
-  uint32_t spc;             /**< Sectors per cluster (1 << spc_shift).         */
-  uint32_t fat_offset;      /**< FatOffset (sectors from VBR).                 */
-  uint32_t fat_length;      /**< FatLength (sectors).                          */
-  uint32_t heap_offset;     /**< ClusterHeapOffset (sectors from VBR).         */
-  uint32_t cluster_count;   /**< ClusterCount.                                 */
-  uint32_t bitmap_bytes;    /**< Allocation-bitmap logical size (DataLength).  */
-  uint32_t bitmap_clusters; /**< Clusters the bitmap occupies.                 */
-  uint32_t upcase_cluster;  /**< First cluster of the up-case table.           */
-  uint32_t root_cluster;    /**< First cluster of the root directory.          */
-  uint32_t used_clusters;   /**< bitmap + up-case + root (pre-allocated).      */
+  uint32_t total_sectors;   /**< Whole-device sector count (VolumeLength).    */
+  uint8_t  spc_shift;       /**< SectorsPerClusterShift (log2).               */
+  uint32_t spc;             /**< Sectors per cluster (1 << spc_shift).        */
+  uint32_t fat_offset;      /**< FatOffset (sectors from VBR).                */
+  uint32_t fat_length;      /**< FatLength (sectors).                         */
+  uint32_t heap_offset;     /**< ClusterHeapOffset (sectors from VBR).        */
+  uint32_t cluster_count;   /**< ClusterCount.                                */
+  uint32_t bitmap_bytes;    /**< Allocation-bitmap logical size (DataLength). */
+  uint32_t bitmap_clusters; /**< Clusters the bitmap occupies.                */
+  uint32_t upcase_cluster;  /**< First cluster of the up-case table.          */
+  uint32_t root_cluster;    /**< First cluster of the root directory.         */
+  uint32_t used_clusters;   /**< bitmap + up-case + root (pre-allocated).     */
 } exfat_geom_t;
 
 /**

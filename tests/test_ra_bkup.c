@@ -41,8 +41,8 @@ typedef enum : uint32_t {
  * @brief 32-bit constants used by the read/write tests.
  */
 typedef enum : uint32_t {
-  k_ra_bkup_test_pattern_a    = 0xDEADBEEFU, /**< Marker pattern A. */
-  k_ra_bkup_test_pattern_b    = 0x12345678U, /**< Marker pattern B. */
+  k_ra_bkup_test_pattern_a    = 0xDEADBEEFU, /**< Marker pattern A.                      */
+  k_ra_bkup_test_pattern_b    = 0x12345678U, /**< Marker pattern B.                      */
   k_ra_bkup_test_bbfsar_value = 0x53UL,      /**< NONSEC0 + NONSEC1 + NONSEC4 + NONSEC6. */
   k_ra_bkup_test_bbfsar_bad   = 0x80UL,      /**< Bit 7 reserved.                        */
 } ra_bkup_test_words_t;

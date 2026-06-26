@@ -64,8 +64,8 @@ static uint8_t s_bkup_vbtbkr[k_bkup_reg_count];
 
 /** @brief VBATT control state (cleared by a reset; data is not). */
 typedef struct {
-  uint8_t  vbtber; /**< VBTBER access-enable shadow.       */
-  uint32_t writes; /**< VBTBKRn writes accepted (report).  */
+  uint8_t  vbtber; /**< VBTBER access-enable shadow.      */
+  uint32_t writes; /**< VBTBKRn writes accepted (report). */
 } bkup_ctrl_t;
 
 static bkup_ctrl_t s_bkup;

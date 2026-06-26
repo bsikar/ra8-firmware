@@ -39,45 +39,45 @@
  * @brief SD SPI-mode protocol and sizing constants (no magic numbers).
  */
 typedef enum : uint16_t {
-  k_sd_block         = 512U,    /**< Bytes per SD block.                     */
-  k_sd_cmd_len       = 6U,      /**< Command frame: opcode + 4 arg + crc.    */
-  k_sd_resp_cap      = 520U,    /**< R1 + token + 512 data + 2 CRC.          */
-  k_sd_cmd_start     = 0x40U,   /**< SPI command lead bits (01xxxxxx).       */
-  k_sd_cmd_mask      = 0xC0U,   /**< Mask isolating the lead bits.           */
-  k_sd_idx_mask      = 0x3FU,   /**< Command index in the lead byte.         */
-  k_sd_idle          = 0xFFU,   /**< Bus idle / CIPO-high byte.              */
-  k_sd_tok_data      = 0xFEU,   /**< Single-block read / write data token.   */
+  k_sd_block         = 512U,    /**< Bytes per SD block.                      */
+  k_sd_cmd_len       = 6U,      /**< Command frame: opcode + 4 arg + crc.     */
+  k_sd_resp_cap      = 520U,    /**< R1 + token + 512 data + 2 CRC.           */
+  k_sd_cmd_start     = 0x40U,   /**< SPI command lead bits (01xxxxxx).        */
+  k_sd_cmd_mask      = 0xC0U,   /**< Mask isolating the lead bits.            */
+  k_sd_idx_mask      = 0x3FU,   /**< Command index in the lead byte.          */
+  k_sd_idle          = 0xFFU,   /**< Bus idle / CIPO-high byte.               */
+  k_sd_tok_data      = 0xFEU,   /**< Single-block read / write data token.    */
   k_sd_tok_wmulti    = 0xFCU,   /**< Multi-block write data-start token.      */
   k_sd_tok_stop      = 0xFDU,   /**< Multi-block write stop-tran token.       */
-  k_sd_data_accept   = 0x05U,   /**< Data-response token: block accepted.    */
+  k_sd_data_accept   = 0x05U,   /**< Data-response token: block accepted.     */
   k_sd_busy          = 0x00U,   /**< CIPO held low while the card programs.   */
   k_sd_crc_len       = 2U,      /**< Trailing CRC16 bytes after a data block. */
-  k_sd_r1_idle       = 0x01U,   /**< R1 with IDLE set.                       */
-  k_sd_r1_ready      = 0x00U,   /**< R1, card ready.                         */
-  k_sd_byte_mask     = 0xFFU,   /**< Low byte mask.                          */
-  k_sd_byte_bits     = 8U,      /**< Bits per byte (shift amount).           */
-  k_sd_r7_len        = 5U,      /**< R1 + 4-byte tail.                       */
-  k_sd_arg_sh0       = 24U,     /**< Arg byte 0 (MSB) shift.                 */
-  k_sd_arg_sh1       = 16U,     /**< Arg byte 1 shift.                       */
-  k_sd_cmd8_echo     = 0xAAU,   /**< CMD8 check pattern echo.                */
-  k_sd_ocr_pwrccs    = 0xC0U,   /**< OCR byte 0: power-up done + CCS.        */
-  k_sd_ocr_volt      = 0x80U,   /**< OCR byte 2: voltage window.             */
-  k_sd_csd_v2        = 0x40U,   /**< CSD_STRUCTURE = 01b (v2.0 / SDHC).      */
-  k_sd_csd_csize     = 0x0FU,   /**< C_SIZE byte (=> 8 MiB modelled card).   */
-  k_sd_csd_len       = 16U,     /**< CSD register length.                    */
-  k_sd_csd_csize_b7  = 7U,      /**< C_SIZE high byte offset in the CSD.     */
-  k_sd_csd_csize_b8  = 8U,      /**< C_SIZE mid byte offset in the CSD.      */
-  k_sd_csd_off       = 9U,      /**< C_SIZE LSB byte offset in the CSD.      */
-  k_sd_csize_b7_mask = 0x3FU,   /**< C_SIZE field spans only 6 bits in b7.   */
-  k_sd_crc_poly      = 0x1021U, /**< CRC16-CCITT polynomial.                 */
-  k_sd_crc_msb       = 0x8000U, /**< Top bit of the 16-bit CRC register.     */
+  k_sd_r1_idle       = 0x01U,   /**< R1 with IDLE set.                        */
+  k_sd_r1_ready      = 0x00U,   /**< R1, card ready.                          */
+  k_sd_byte_mask     = 0xFFU,   /**< Low byte mask.                           */
+  k_sd_byte_bits     = 8U,      /**< Bits per byte (shift amount).            */
+  k_sd_r7_len        = 5U,      /**< R1 + 4-byte tail.                        */
+  k_sd_arg_sh0       = 24U,     /**< Arg byte 0 (MSB) shift.                  */
+  k_sd_arg_sh1       = 16U,     /**< Arg byte 1 shift.                        */
+  k_sd_cmd8_echo     = 0xAAU,   /**< CMD8 check pattern echo.                 */
+  k_sd_ocr_pwrccs    = 0xC0U,   /**< OCR byte 0: power-up done + CCS.         */
+  k_sd_ocr_volt      = 0x80U,   /**< OCR byte 2: voltage window.              */
+  k_sd_csd_v2        = 0x40U,   /**< CSD_STRUCTURE = 01b (v2.0 / SDHC).       */
+  k_sd_csd_csize     = 0x0FU,   /**< C_SIZE byte (=> 8 MiB modelled card).    */
+  k_sd_csd_len       = 16U,     /**< CSD register length.                     */
+  k_sd_csd_csize_b7  = 7U,      /**< C_SIZE high byte offset in the CSD.      */
+  k_sd_csd_csize_b8  = 8U,      /**< C_SIZE mid byte offset in the CSD.       */
+  k_sd_csd_off       = 9U,      /**< C_SIZE LSB byte offset in the CSD.       */
+  k_sd_csize_b7_mask = 0x3FU,   /**< C_SIZE field spans only 6 bits in b7.    */
+  k_sd_crc_poly      = 0x1021U, /**< CRC16-CCITT polynomial.                  */
+  k_sd_crc_msb       = 0x8000U, /**< Top bit of the 16-bit CRC register.      */
 } board_sd_const_t;
 
 /** @brief SD sizing constants that exceed 16 bits. */
 typedef enum : uint32_t {
-  k_sd_csd_unit       = 512U * 1024U,               /**< CSD v2.0 C_SIZE unit: 512 KiB.  */
-  k_sd_save_max_bytes = 2U * 1024U * 1024U * 1024U, /**< --save-sd cap: 2 GiB.    */
-  k_unit_kib          = 1024U,                      /**< Binary kilo multiplier (KiB).   */
+  k_sd_csd_unit       = 512U * 1024U,               /**< CSD v2.0 C_SIZE unit: 512 KiB.     */
+  k_sd_save_max_bytes = 2U * 1024U * 1024U * 1024U, /**< --save-sd cap: 2 GiB.              */
+  k_unit_kib          = 1024U,                      /**< Binary kilo multiplier (KiB).      */
   k_sd_min_sectors    = 64U,                        /**< --sd-new floor: 32 KiB of sectors. */
 } board_sd_const32_t;
 
@@ -86,19 +86,19 @@ typedef enum : uint32_t {
  * @brief SD SPI command indices answered by the model (low 6 bits of byte 0).
  */
 typedef enum : uint8_t {
-  k_sd_idx_cmd0   = 0U,  /**< GO_IDLE_STATE.   */
-  k_sd_idx_cmd8   = 8U,  /**< SEND_IF_COND.    */
-  k_sd_idx_cmd9   = 9U,  /**< SEND_CSD.        */
-  k_sd_idx_cmd16  = 16U, /**< SET_BLOCKLEN.    */
-  k_sd_idx_cmd17  = 17U, /**< READ_SINGLE.     */
-  k_sd_idx_cmd24  = 24U, /**< WRITE_SINGLE.    */
-  k_sd_idx_cmd25  = 25U, /**< WRITE_MULTIPLE.  */
+  k_sd_idx_cmd0   = 0U,  /**< GO_IDLE_STATE.      */
+  k_sd_idx_cmd8   = 8U,  /**< SEND_IF_COND.       */
+  k_sd_idx_cmd9   = 9U,  /**< SEND_CSD.           */
+  k_sd_idx_cmd16  = 16U, /**< SET_BLOCKLEN.       */
+  k_sd_idx_cmd17  = 17U, /**< READ_SINGLE.        */
+  k_sd_idx_cmd24  = 24U, /**< WRITE_SINGLE.       */
+  k_sd_idx_cmd25  = 25U, /**< WRITE_MULTIPLE.     */
   k_sd_idx_cmd32  = 32U, /**< ERASE_WR_BLK_START. */
   k_sd_idx_cmd33  = 33U, /**< ERASE_WR_BLK_END.   */
   k_sd_idx_cmd38  = 38U, /**< ERASE.              */
-  k_sd_idx_acmd41 = 41U, /**< SD_SEND_OP_COND. */
-  k_sd_idx_cmd55  = 55U, /**< APP_CMD.         */
-  k_sd_idx_cmd58  = 58U, /**< READ_OCR.        */
+  k_sd_idx_acmd41 = 41U, /**< SD_SEND_OP_COND.    */
+  k_sd_idx_cmd55  = 55U, /**< APP_CMD.            */
+  k_sd_idx_cmd58  = 58U, /**< READ_OCR.           */
 } board_sd_cmd_idx_t;
 
 /**
@@ -106,10 +106,10 @@ typedef enum : uint8_t {
  * @brief Block-write sub-state once a CMD24/CMD25 has been accepted.
  */
 typedef enum : uint8_t {
-  k_sd_wr_idle  = 0U, /**< Not in a write transaction.                 */
-  k_sd_wr_token = 1U, /**< Awaiting the data-start (or stop-tran) token.*/
-  k_sd_wr_data  = 2U, /**< Collecting the 512 payload bytes.           */
-  k_sd_wr_crc   = 3U, /**< Collecting the trailing 2 CRC bytes.        */
+  k_sd_wr_idle  = 0U, /**< Not in a write transaction.                   */
+  k_sd_wr_token = 1U, /**< Awaiting the data-start (or stop-tran) token. */
+  k_sd_wr_data  = 2U, /**< Collecting the 512 payload bytes.             */
+  k_sd_wr_crc   = 3U, /**< Collecting the trailing 2 CRC bytes.          */
 } board_sd_wr_phase_t;
 
 /**
@@ -117,27 +117,27 @@ typedef enum : uint8_t {
  * @brief The modelled card: backing image + command/response framing.
  */
 typedef struct {
-  uint8_t*            image;      /**< Backing card image (malloc or mmap-sparse). */
-  uint64_t            image_len;  /**< Image size in bytes (64-bit: cards > 4 GB). */
-  bool                attached;   /**< A `--sd` image is loaded.                  */
-  bool                mmapped;    /**< image is a sparse mmap (--sd-new) vs malloc.*/
-  int                 map_fd;     /**< Backing temp-file fd when mmapped, else -1. */
-  uint8_t             fat_bits;   /**< 12/16/32 if formatted by --sd-new, else 0. */
-  char                label[12];  /**< Volume label (11 chars + NUL), for the GUI.*/
-  bool                collecting; /**< Mid command-frame collection.              */
-  bool                app_cmd;    /**< Previous command was CMD55 (APP_CMD).      */
-  bool                ready;      /**< ACMD41 has completed.                      */
+  uint8_t*            image;      /**< Backing card image (malloc or mmap-sparse).  */
+  uint64_t            image_len;  /**< Image size in bytes (64-bit: cards > 4 GB).  */
+  bool                attached;   /**< A `--sd` image is loaded.                    */
+  bool                mmapped;    /**< image is a sparse mmap (--sd-new) vs malloc. */
+  int                 map_fd;     /**< Backing temp-file fd when mmapped, else -1.  */
+  uint8_t             fat_bits;   /**< 12/16/32 if formatted by --sd-new, else 0.   */
+  char                label[12];  /**< Volume label (11 chars + NUL), for the GUI.  */
+  bool                collecting; /**< Mid command-frame collection.                */
+  bool                app_cmd;    /**< Previous command was CMD55 (APP_CMD).        */
+  bool                ready;      /**< ACMD41 has completed.                        */
   uint8_t             cmd[k_sd_cmd_len];
   uint32_t            cmd_idx;
   uint8_t             resp[k_sd_resp_cap];
   uint32_t            resp_len;
   uint32_t            resp_pos;
-  board_sd_wr_phase_t wr_phase;    /**< CMD24/CMD25 write sub-state.       */
-  bool                wr_multi;    /**< Write is CMD25 (multi-block).      */
-  uint64_t            wr_off;      /**< Byte offset of the current block.  */
-  uint32_t            wr_cnt;      /**< Bytes seen in the data/CRC phase.  */
-  uint32_t            erase_start; /**< CMD32 ERASE_WR_BLK_START block.    */
-  uint32_t            erase_end;   /**< CMD33 ERASE_WR_BLK_END block.      */
+  board_sd_wr_phase_t wr_phase;    /**< CMD24/CMD25 write sub-state.      */
+  bool                wr_multi;    /**< Write is CMD25 (multi-block).     */
+  uint64_t            wr_off;      /**< Byte offset of the current block. */
+  uint32_t            wr_cnt;      /**< Bytes seen in the data/CRC phase. */
+  uint32_t            erase_start; /**< CMD32 ERASE_WR_BLK_START block.   */
+  uint32_t            erase_end;   /**< CMD33 ERASE_WR_BLK_END block.     */
 } board_sd_state_t;
 
 /** @brief The single modelled SD card. */
@@ -496,29 +496,29 @@ bool board_sd_attached(void)
 
 /** @brief FAT BPB field offsets + format constants. */
 typedef enum : uint32_t {
-  k_fmt_sec_bytes    = 512U,        /**< Bytes per sector.                    */
-  k_fmt_fat16_max    = 65524U,      /**< Max FAT16 data clusters.             */
-  k_fmt_fat16_min    = 4085U,       /**< Min FAT16 data clusters.             */
-  k_fmt_spc_max      = 64U,         /**< Largest sectors-per-cluster we pick. */
+  k_fmt_sec_bytes    = 512U,        /**< Bytes per sector.                          */
+  k_fmt_fat16_max    = 65524U,      /**< Max FAT16 data clusters.                   */
+  k_fmt_fat16_min    = 4085U,       /**< Min FAT16 data clusters.                   */
+  k_fmt_spc_max      = 64U,         /**< Largest sectors-per-cluster we pick.       */
   k_fmt_fat32_pref   = 4194304U,    /**< FAT32: preferred max clusters (bumps spc). */
-  k_fmt_root_ents    = 512U,        /**< FAT16 root-directory entries.        */
-  k_fmt_volid        = 0x52A8D200U, /**< Arbitrary volume serial base.        */
-  k_fmt_resv_f16     = 1U,          /**< FAT16 reserved sectors (boot).       */
-  k_fmt_resv_f32     = 32U,         /**< FAT32 reserved sectors.              */
-  k_fmt_label_len    = 11U,         /**< 8.3 volume-label field width.        */
-  k_fmt_totsec16_max = 0x10000U,    /**< Above this, use the 32-bit TotSec.   */
+  k_fmt_root_ents    = 512U,        /**< FAT16 root-directory entries.              */
+  k_fmt_volid        = 0x52A8D200U, /**< Arbitrary volume serial base.              */
+  k_fmt_resv_f16     = 1U,          /**< FAT16 reserved sectors (boot).             */
+  k_fmt_resv_f32     = 32U,         /**< FAT32 reserved sectors.                    */
+  k_fmt_label_len    = 11U,         /**< 8.3 volume-label field width.              */
+  k_fmt_totsec16_max = 0x10000U,    /**< Above this, use the 32-bit TotSec.         */
 } sd_fmt_const_t;
 
 /** @brief Little-endian byte offsets, shifts, and mask for image serialization. */
 typedef enum : uint8_t {
-  k_le_byte0     = 0U,    /**< Least-significant byte offset.      */
-  k_le_byte1     = 1U,    /**< Second byte offset.                 */
-  k_le_byte2     = 2U,    /**< Third byte offset.                  */
-  k_le_byte3     = 3U,    /**< Most-significant byte offset.       */
-  k_le_shift_b1  = 8U,    /**< Shift to extract byte 1.            */
-  k_le_shift_b2  = 16U,   /**< Shift to extract byte 2.            */
-  k_le_shift_b3  = 24U,   /**< Shift to extract byte 3.            */
-  k_le_byte_mask = 0xFFU, /**< Low-byte mask.                      */
+  k_le_byte0     = 0U,    /**< Least-significant byte offset. */
+  k_le_byte1     = 1U,    /**< Second byte offset.            */
+  k_le_byte2     = 2U,    /**< Third byte offset.             */
+  k_le_byte3     = 3U,    /**< Most-significant byte offset.  */
+  k_le_shift_b1  = 8U,    /**< Shift to extract byte 1.       */
+  k_le_shift_b2  = 16U,   /**< Shift to extract byte 2.       */
+  k_le_shift_b3  = 24U,   /**< Shift to extract byte 3.       */
+  k_le_byte_mask = 0xFFU, /**< Low-byte mask.                 */
 } sd_le_const_t;
 
 /** @brief Little-endian 16-bit store into the image. */
@@ -539,79 +539,79 @@ static void sd_put32(uint8_t* p, uint32_t v)
 
 /** @brief FAT BPB byte offsets within a sector (FAT16 + FAT32 layouts). */
 typedef enum : uint16_t {
-  k_bpb_jmp0          = 0U,   /**< Jump instruction byte 0.              */
-  k_bpb_jmp1          = 1U,   /**< Jump instruction byte 1.              */
-  k_bpb_jmp2          = 2U,   /**< Jump instruction byte 2.              */
-  k_bpb_oem           = 3U,   /**< OEM name (8 bytes).                   */
-  k_bpb_bytes_per_sec = 11U,  /**< BPB_BytsPerSec.                       */
-  k_bpb_sec_per_clus  = 13U,  /**< BPB_SecPerClus.                       */
-  k_bpb_resv_sec      = 14U,  /**< BPB_RsvdSecCnt.                       */
-  k_bpb_num_fats      = 16U,  /**< BPB_NumFATs.                          */
-  k_bpb_root_ents     = 17U,  /**< BPB_RootEntCnt.                       */
-  k_bpb_totsec16      = 19U,  /**< BPB_TotSec16.                         */
-  k_bpb_media         = 21U,  /**< BPB_Media.                            */
-  k_bpb_fatsz16       = 22U,  /**< BPB_FATSz16.                          */
-  k_bpb_sec_per_trk   = 24U,  /**< BPB_SecPerTrk.                        */
-  k_bpb_num_heads     = 26U,  /**< BPB_NumHeads.                         */
-  k_bpb_totsec32      = 32U,  /**< BPB_TotSec32.                         */
-  k_bpb_fatsz32       = 36U,  /**< BPB_FATSz32 (FAT32 only).             */
-  k_bpb16_drive_num   = 36U,  /**< BS_DrvNum (FAT16).                    */
-  k_bpb16_boot_sig    = 38U,  /**< BS_BootSig (FAT16).                   */
-  k_bpb16_volid       = 39U,  /**< BS_VolID (FAT16).                     */
-  k_bpb16_vol_label   = 43U,  /**< BS_VolLab (FAT16, 11 bytes).          */
-  k_bpb32_root_clus   = 44U,  /**< BPB_RootClus (FAT32).                 */
-  k_bpb32_fsinfo_sec  = 48U,  /**< BPB_FSInfo (FAT32).                   */
-  k_bpb32_bkboot_sec  = 50U,  /**< BPB_BkBootSec (FAT32).                */
-  k_bpb16_fstype      = 54U,  /**< BS_FilSysType (FAT16, 8 bytes).       */
-  k_bpb32_drive_num   = 64U,  /**< BS_DrvNum (FAT32).                    */
-  k_bpb32_boot_sig    = 66U,  /**< BS_BootSig (FAT32).                   */
-  k_bpb32_volid       = 67U,  /**< BS_VolID (FAT32).                     */
-  k_bpb32_vol_label   = 71U,  /**< BS_VolLab (FAT32, 11 bytes).          */
-  k_bpb32_fstype      = 82U,  /**< BS_FilSysType (FAT32, 8 bytes).       */
-  k_bpb_sig_lo        = 510U, /**< 0x55 boot-signature byte.             */
-  k_bpb_sig_hi        = 511U, /**< 0xAA boot-signature byte.             */
+  k_bpb_jmp0          = 0U,   /**< Jump instruction byte 0.        */
+  k_bpb_jmp1          = 1U,   /**< Jump instruction byte 1.        */
+  k_bpb_jmp2          = 2U,   /**< Jump instruction byte 2.        */
+  k_bpb_oem           = 3U,   /**< OEM name (8 bytes).             */
+  k_bpb_bytes_per_sec = 11U,  /**< BPB_BytsPerSec.                 */
+  k_bpb_sec_per_clus  = 13U,  /**< BPB_SecPerClus.                 */
+  k_bpb_resv_sec      = 14U,  /**< BPB_RsvdSecCnt.                 */
+  k_bpb_num_fats      = 16U,  /**< BPB_NumFATs.                    */
+  k_bpb_root_ents     = 17U,  /**< BPB_RootEntCnt.                 */
+  k_bpb_totsec16      = 19U,  /**< BPB_TotSec16.                   */
+  k_bpb_media         = 21U,  /**< BPB_Media.                      */
+  k_bpb_fatsz16       = 22U,  /**< BPB_FATSz16.                    */
+  k_bpb_sec_per_trk   = 24U,  /**< BPB_SecPerTrk.                  */
+  k_bpb_num_heads     = 26U,  /**< BPB_NumHeads.                   */
+  k_bpb_totsec32      = 32U,  /**< BPB_TotSec32.                   */
+  k_bpb_fatsz32       = 36U,  /**< BPB_FATSz32 (FAT32 only).       */
+  k_bpb16_drive_num   = 36U,  /**< BS_DrvNum (FAT16).              */
+  k_bpb16_boot_sig    = 38U,  /**< BS_BootSig (FAT16).             */
+  k_bpb16_volid       = 39U,  /**< BS_VolID (FAT16).               */
+  k_bpb16_vol_label   = 43U,  /**< BS_VolLab (FAT16, 11 bytes).    */
+  k_bpb32_root_clus   = 44U,  /**< BPB_RootClus (FAT32).           */
+  k_bpb32_fsinfo_sec  = 48U,  /**< BPB_FSInfo (FAT32).             */
+  k_bpb32_bkboot_sec  = 50U,  /**< BPB_BkBootSec (FAT32).          */
+  k_bpb16_fstype      = 54U,  /**< BS_FilSysType (FAT16, 8 bytes). */
+  k_bpb32_drive_num   = 64U,  /**< BS_DrvNum (FAT32).              */
+  k_bpb32_boot_sig    = 66U,  /**< BS_BootSig (FAT32).             */
+  k_bpb32_volid       = 67U,  /**< BS_VolID (FAT32).               */
+  k_bpb32_vol_label   = 71U,  /**< BS_VolLab (FAT32, 11 bytes).    */
+  k_bpb32_fstype      = 82U,  /**< BS_FilSysType (FAT32, 8 bytes). */
+  k_bpb_sig_lo        = 510U, /**< 0x55 boot-signature byte.       */
+  k_bpb_sig_hi        = 511U, /**< 0xAA boot-signature byte.       */
 } sd_bpb_off_t;
 
 /** @brief FAT BPB literal field values + the FSInfo signatures. */
 typedef enum : uint32_t {
-  k_bpb_jmp_b0          = 0xEBU,       /**< Boot jump byte 0 (JMP short).      */
-  k_bpb_jmp_b1          = 0x58U,       /**< Boot jump byte 1 (offset).         */
-  k_bpb_jmp_b2          = 0x90U,       /**< Boot jump byte 2 (NOP).            */
-  k_bpb_oem_len         = 8U,          /**< OEM-name field length.             */
-  k_bpb_fstype_len      = 8U,          /**< FilSysType field length.           */
-  k_bpb_sig_byte_lo     = 0x55U,       /**< Boot signature low byte.           */
-  k_bpb_sig_byte_hi     = 0xAAU,       /**< Boot signature high byte.          */
-  k_bpb_num_fats_val    = 2U,          /**< Number of FAT copies.              */
-  k_bpb_media_fixed     = 0xF8U,       /**< Media descriptor: fixed disk.      */
-  k_bpb_sec_per_trk_val = 63U,         /**< Sectors per track.                 */
-  k_bpb_num_heads_val   = 255U,        /**< Number of heads.                   */
-  k_bpb_drive_num_val   = 0x80U,       /**< Drive number (hard disk).          */
-  k_bpb_ext_boot_sig    = 0x29U,       /**< Extended boot signature present.   */
-  k_bpb_dir_ent_size    = 32U,         /**< Bytes per directory entry.         */
-  k_bpb_fat16_div       = 256U,        /**< 512-byte sector / 2-byte FAT16 ent.*/
-  k_bpb_fat32_div       = 128U,        /**< FAT32 FAT-size divisor multiplier. */
-  k_fat16_eoc_clus0     = 0xFFF8U,     /**< FAT16 entry 0: media + EOC bits.   */
-  k_fat16_eoc_clus1     = 0xFFFFU,     /**< FAT16 entry 1: end-of-chain.       */
-  k_fat32_eoc_media     = 0x0FFFFFF8U, /**< FAT32 entry 0: media + EOC.     */
-  k_fat32_eoc           = 0x0FFFFFFFU, /**< FAT32 end-of-chain marker.      */
-  k_fat32_root_clus     = 2U,          /**< FAT32 root directory cluster.   */
-  k_fat32_fsinfo_sec    = 1U,          /**< FSInfo sector index.            */
-  k_fat32_bkboot_sec    = 6U,          /**< Backup boot-sector index.       */
-  k_fsi_lead_sig        = 0x41615252U, /**< FSInfo lead signature "RRaA".   */
-  k_fsi_struc_sig       = 0x61417272U, /**< FSInfo struct signature "rrAa". */
-  k_fsi_trail_sig       = 0xAA550000U, /**< FSInfo trailing signature.      */
-  k_fsi_off_lead        = 0U,          /**< FSInfo lead-sig offset.         */
-  k_fsi_off_struc       = 484U,        /**< FSInfo struct-sig offset.       */
-  k_fsi_off_free        = 488U,        /**< FSInfo free-cluster-count off.  */
-  k_fsi_off_nxtfree     = 492U,        /**< FSInfo next-free-cluster off.   */
-  k_fsi_off_trail       = 508U,        /**< FSInfo trailing-sig offset.     */
-  k_fsi_free_unknown    = 0xFFFFFFFFU, /**< Free-cluster count unknown.     */
-  k_fsi_nxt_free        = 3U,          /**< Next-free cluster hint.         */
-  k_fat_ent1_off        = 2U,          /**< FAT16 entry-1 byte offset.      */
-  k_fat32_ent1_off      = 4U,          /**< FAT32 entry-1 byte offset.      */
-  k_fat32_ent2_off      = 8U,          /**< FAT32 entry-2 byte offset.      */
-  k_fat32_bits          = 32U,         /**< FAT32 selector / label width.   */
-  k_fat16_bits          = 16U,         /**< FAT16 selector.                 */
+  k_bpb_jmp_b0          = 0xEBU,       /**< Boot jump byte 0 (JMP short).       */
+  k_bpb_jmp_b1          = 0x58U,       /**< Boot jump byte 1 (offset).          */
+  k_bpb_jmp_b2          = 0x90U,       /**< Boot jump byte 2 (NOP).             */
+  k_bpb_oem_len         = 8U,          /**< OEM-name field length.              */
+  k_bpb_fstype_len      = 8U,          /**< FilSysType field length.            */
+  k_bpb_sig_byte_lo     = 0x55U,       /**< Boot signature low byte.            */
+  k_bpb_sig_byte_hi     = 0xAAU,       /**< Boot signature high byte.           */
+  k_bpb_num_fats_val    = 2U,          /**< Number of FAT copies.               */
+  k_bpb_media_fixed     = 0xF8U,       /**< Media descriptor: fixed disk.       */
+  k_bpb_sec_per_trk_val = 63U,         /**< Sectors per track.                  */
+  k_bpb_num_heads_val   = 255U,        /**< Number of heads.                    */
+  k_bpb_drive_num_val   = 0x80U,       /**< Drive number (hard disk).           */
+  k_bpb_ext_boot_sig    = 0x29U,       /**< Extended boot signature present.    */
+  k_bpb_dir_ent_size    = 32U,         /**< Bytes per directory entry.          */
+  k_bpb_fat16_div       = 256U,        /**< 512-byte sector / 2-byte FAT16 ent. */
+  k_bpb_fat32_div       = 128U,        /**< FAT32 FAT-size divisor multiplier.  */
+  k_fat16_eoc_clus0     = 0xFFF8U,     /**< FAT16 entry 0: media + EOC bits.    */
+  k_fat16_eoc_clus1     = 0xFFFFU,     /**< FAT16 entry 1: end-of-chain.        */
+  k_fat32_eoc_media     = 0x0FFFFFF8U, /**< FAT32 entry 0: media + EOC.         */
+  k_fat32_eoc           = 0x0FFFFFFFU, /**< FAT32 end-of-chain marker.          */
+  k_fat32_root_clus     = 2U,          /**< FAT32 root directory cluster.       */
+  k_fat32_fsinfo_sec    = 1U,          /**< FSInfo sector index.                */
+  k_fat32_bkboot_sec    = 6U,          /**< Backup boot-sector index.           */
+  k_fsi_lead_sig        = 0x41615252U, /**< FSInfo lead signature "RRaA".       */
+  k_fsi_struc_sig       = 0x61417272U, /**< FSInfo struct signature "rrAa".     */
+  k_fsi_trail_sig       = 0xAA550000U, /**< FSInfo trailing signature.          */
+  k_fsi_off_lead        = 0U,          /**< FSInfo lead-sig offset.             */
+  k_fsi_off_struc       = 484U,        /**< FSInfo struct-sig offset.           */
+  k_fsi_off_free        = 488U,        /**< FSInfo free-cluster-count off.      */
+  k_fsi_off_nxtfree     = 492U,        /**< FSInfo next-free-cluster off.       */
+  k_fsi_off_trail       = 508U,        /**< FSInfo trailing-sig offset.         */
+  k_fsi_free_unknown    = 0xFFFFFFFFU, /**< Free-cluster count unknown.         */
+  k_fsi_nxt_free        = 3U,          /**< Next-free cluster hint.             */
+  k_fat_ent1_off        = 2U,          /**< FAT16 entry-1 byte offset.          */
+  k_fat32_ent1_off      = 4U,          /**< FAT32 entry-1 byte offset.          */
+  k_fat32_ent2_off      = 8U,          /**< FAT32 entry-2 byte offset.          */
+  k_fat32_bits          = 32U,         /**< FAT32 selector / label width.       */
+  k_fat16_bits          = 16U,         /**< FAT16 selector.                     */
 } sd_bpb_val_t;
 
 /** @brief Write the shared boot prologue (jump + OEM) and the 0x55AA signature. */
@@ -742,7 +742,7 @@ static uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char
   sd_put32(&fsi[k_fsi_off_lead], (uint32_t)k_fsi_lead_sig);
   sd_put32(&fsi[k_fsi_off_struc], (uint32_t)k_fsi_struc_sig);
   sd_put32(&fsi[k_fsi_off_free],
-           (clusters > 0U) ? (clusters - 1U) : (uint32_t)k_fsi_free_unknown); /* free clusters  */
+           (clusters > 0U) ? (clusters - 1U) : (uint32_t)k_fsi_free_unknown); /* free clusters */
   sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free); /* next free cluster */
   sd_put32(&fsi[k_fsi_off_trail], (uint32_t)k_fsi_trail_sig);
   /* Backup boot copy at sector 6. */

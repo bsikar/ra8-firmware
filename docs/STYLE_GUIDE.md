@@ -8,16 +8,17 @@ restates the most-violated rules but **this file is the source of truth**.
 
 1. [File-header Doxygen block](#file-header-doxygen-block)
 2. [Function documentation](#function-documentation)
-3. [Naming](#naming)
-4. [Types and constants (C23)](#types-and-constants-c23)
-5. [Header guards](#header-guards)
-6. [Hardware register access](#hardware-register-access)
-7. [HUM citations](#hum-citations)
-8. [SOLID principles for C](#solid-principles-for-c)
-9. [NASA Power of 10](#nasa-power-of-10)
-10. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
-11. [Character encoding](#character-encoding)
-12. [Ring and World tagging](#ring-and-world-tagging)
+3. [Comment formatting](#comment-formatting)
+4. [Naming](#naming)
+5. [Types and constants (C23)](#types-and-constants-c23)
+6. [Header guards](#header-guards)
+7. [Hardware register access](#hardware-register-access)
+8. [HUM citations](#hum-citations)
+9. [SOLID principles for C](#solid-principles-for-c)
+10. [NASA Power of 10](#nasa-power-of-10)
+11. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
+12. [Character encoding](#character-encoding)
+13. [Ring and World tagging](#ring-and-world-tagging)
 
 ## File-header Doxygen block
 
@@ -116,6 +117,39 @@ Minimums per CLAUDE.md and the pre-commit hook:
 
 `@param` direction tags are mandatory: `@param[in]`, `@param[out]`,
 `@param[in,out]`. Plain `@param` without the direction is rejected.
+
+## Comment formatting
+
+Spacing inside single-line block comments is enforced by
+`scripts/utils/check_comment_format.py`, which runs as part of `make format`
+(applies) and `make check` (verifies), and so gates pre-commit and CI through
+`scripts/format_code.sh`. The rules:
+
+- **One space after the opener.** `/*text` -> `/* text`; the Doxygen member
+  form gets `/**< text` (never `/**<text`).
+- **One space before the closer.** `text.*/` -> `text. */` (never `text.*/`).
+- **Aligned `*/`.** Across a run of consecutive trailing comments that
+  clang-format put in the same start column, the closing `*/` are padded so
+  they line up under the longest comment in the run (the longest gets one
+  space):
+
+  ```c
+  uint16_t clock_stop_time;       /**< CLSTPTSETR.CLKSTPT[11:2].  */
+  uint8_t  clock_beforehand_time; /**< CLSTPTSETR.CLKBFHT[23:16]. */
+  uint8_t  clock_keep_time;       /**< CLSTPTSETR.CLKKPT[31:24].  */
+  ```
+
+Division of labour: **clang-format owns the comment _start_ column**
+(`AlignTrailingComments: true` aligns each `/**<` to the widest code in the
+block + one space) and never touches the comment interior
+(`ReflowComments: false`); **the pass owns the interior + the `*/` column**.
+Because the two never overlap, they reach a stable result together (a comment
+the pass tightens can free column budget that lets clang-format re-align the
+start, so `make format` repeats both to a fixed point).
+
+Left untouched: multi-line `/** ... */` blocks, `//` line comments, decorative
+banners (`/**** ... ****/`), and inline mid-code comments (`f(/*tag=*/x)`) --
+clang-format owns the spacing around those.
 
 ## Naming
 

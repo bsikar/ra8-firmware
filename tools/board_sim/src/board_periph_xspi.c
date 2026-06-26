@@ -39,7 +39,7 @@
 
 /** @brief XSPI0 register-window geometry (ra8d2_ospi_regs.h). */
 typedef enum : uint64_t {
-  k_xspi_base       = 0x40268000UL, /**< XSPI0 register window base.        */
+  k_xspi_base       = 0x40268000UL, /**< XSPI0 register window base.         */
   k_xspi_span       = 0x200UL,      /**< Window covering WRAPCFG..INTE.      */
   k_xspi_off_cdctl0 = 0x070UL,      /**< CDCTL0 (TRREQ bit 0 / CSSEL bit 3). */
   k_xspi_off_cdbuf  = 0x080UL,      /**< CDBUF[0..3] for manual slot 0.      */
@@ -49,13 +49,13 @@ typedef enum : uint64_t {
 
 /** @brief Command-descriptor (CDT) field positions / masks (ra8d2_ospi_regs.h). */
 typedef enum : uint32_t {
-  k_xspi_cdt_pos_cmdsize   = 0U,      /**< CMDSIZE[1:0] command bytes.   */
-  k_xspi_cdt_pos_datasize  = 5U,      /**< DATASIZE[8:5] data bytes.     */
-  k_xspi_cdt_pos_cmd       = 16U,     /**< CMD[31:16] opcode field.      */
-  k_xspi_cdt_mask_cmdsize  = 0x3U,    /**< CMDSIZE width.                */
-  k_xspi_cdt_mask_datasize = 0xFU,    /**< DATASIZE width.               */
-  k_xspi_cdt_mask_cmd      = 0xFFFFU, /**< CMD field width.              */
-  k_xspi_cdt_byte          = 0xFFU,   /**< One opcode/data byte.         */
+  k_xspi_cdt_pos_cmdsize   = 0U,      /**< CMDSIZE[1:0] command bytes. */
+  k_xspi_cdt_pos_datasize  = 5U,      /**< DATASIZE[8:5] data bytes.   */
+  k_xspi_cdt_pos_cmd       = 16U,     /**< CMD[31:16] opcode field.    */
+  k_xspi_cdt_mask_cmdsize  = 0x3U,    /**< CMDSIZE width.              */
+  k_xspi_cdt_mask_datasize = 0xFU,    /**< DATASIZE width.             */
+  k_xspi_cdt_mask_cmd      = 0xFFFFU, /**< CMD field width.            */
+  k_xspi_cdt_byte          = 0xFFU,   /**< One opcode/data byte.       */
 } xspi_cdt_field_t;
 
 /** @brief CDCTL0 / INTS bits + CDBUF slot-0 word indices. */
@@ -70,23 +70,23 @@ typedef enum : uint32_t {
 
 /** @brief JEDEC opcodes the engine decodes (ra_xspi.c). */
 typedef enum : uint32_t {
-  k_xspi_op_wren  = 0x06U, /**< Write enable.        */
-  k_xspi_op_pp    = 0x02U, /**< Page program.        */
-  k_xspi_op_rdsr  = 0x05U, /**< Read status.         */
-  k_xspi_op_rdid  = 0x9FU, /**< Read JEDEC ID.       */
-  k_xspi_op_read  = 0x03U, /**< Normal read.         */
-  k_xspi_op_erase = 0x20U, /**< 4 KiB sector erase.  */
+  k_xspi_op_wren  = 0x06U, /**< Write enable.       */
+  k_xspi_op_pp    = 0x02U, /**< Page program.       */
+  k_xspi_op_rdsr  = 0x05U, /**< Read status.        */
+  k_xspi_op_rdid  = 0x9FU, /**< Read JEDEC ID.      */
+  k_xspi_op_read  = 0x03U, /**< Normal read.        */
+  k_xspi_op_erase = 0x20U, /**< 4 KiB sector erase. */
 } xspi_op_t;
 
 /** @brief Backing-flash + register-window sizing and constants. */
 typedef enum : uint32_t {
-  k_xspi_flash_size = 0x200000UL,   /**< 2 MiB modelled (apps touch < 1 MiB).  */
-  k_xspi_sector_len = 0x1000UL,     /**< 4 KiB sector (opcode 0x20).           */
-  k_xspi_words      = 128U,         /**< 0x200-byte window as 32-bit words.    */
-  k_xspi_erased     = 0xFFU,        /**< NOR erased byte value.                */
-  k_xspi_status_wel = 0x02U,        /**< RDSR result: WEL=1, WIP=0.            */
-  k_xspi_jedec_cdd0 = 0x001A5A9DUL, /**< {0x9D,0x5A,0x1A} packed for CDD0.   */
-  k_xspi_byte_bits  = 8U,           /**< Bits per byte.                        */
+  k_xspi_flash_size = 0x200000UL,   /**< 2 MiB modelled (apps touch < 1 MiB). */
+  k_xspi_sector_len = 0x1000UL,     /**< 4 KiB sector (opcode 0x20).          */
+  k_xspi_words      = 128U,         /**< 0x200-byte window as 32-bit words.   */
+  k_xspi_erased     = 0xFFU,        /**< NOR erased byte value.               */
+  k_xspi_status_wel = 0x02U,        /**< RDSR result: WEL=1, WIP=0.           */
+  k_xspi_jedec_cdd0 = 0x001A5A9DUL, /**< {0x9D,0x5A,0x1A} packed for CDD0.    */
+  k_xspi_byte_bits  = 8U,           /**< Bits per byte.                       */
 } xspi_lit_t;
 
 /** @brief Per-tick / report order slot (after the SD block, before SPI). */
@@ -96,11 +96,11 @@ typedef enum : uint32_t {
 
 /** @brief xSPI model state: register-window shadow + backing flash. */
 typedef struct {
-  uint32_t regs[k_xspi_words];       /**< 0x200-byte window shadow.   */
-  uint8_t  flash[k_xspi_flash_size]; /**< Backing NOR array.    */
-  uint32_t reads;                    /**< READ commands executed.     */
-  uint32_t writes;                   /**< Page-program commands.      */
-  uint32_t erases;                   /**< Sector erases.              */
+  uint32_t regs[k_xspi_words];       /**< 0x200-byte window shadow. */
+  uint8_t  flash[k_xspi_flash_size]; /**< Backing NOR array.        */
+  uint32_t reads;                    /**< READ commands executed.   */
+  uint32_t writes;                   /**< Page-program commands.    */
+  uint32_t erases;                   /**< Sector erases.            */
 } xspi_state_t;
 
 static xspi_state_t s_xspi;

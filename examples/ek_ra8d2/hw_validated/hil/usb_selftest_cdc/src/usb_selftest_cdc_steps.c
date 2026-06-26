@@ -42,11 +42,11 @@
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_cdc_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_cdc_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_cdc_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_cdc_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_cdc_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_cdc_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_cdc_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_cdc_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_cdc_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_cdc_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } cdc_hex_t;
 
 /**
@@ -71,7 +71,7 @@ typedef enum : uint32_t {
 } cdc_phase_t;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host side)                                                  */
+/* J-Link probes (host side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::cdc_phase_t). */
@@ -86,7 +86,7 @@ static volatile uint32_t s_dbg_mismatch = (uint32_t)k_cdc_no_mismatch;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Shared per-round echo pattern                                              */
+/* Shared per-round echo pattern */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -119,7 +119,7 @@ static void cdc_pattern_fill(uint32_t round, uint8_t* out, uint32_t len)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -341,7 +341,7 @@ static uint32_t cdc_str_len(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: self-contained polled CDC enumerate + bulk echo                 */
+/* Host side: self-contained polled CDC enumerate + bulk echo */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -352,13 +352,13 @@ typedef enum : uint16_t {
   k_cdc_bm_std_dev_in   = 0x80U, /**< bmRequestType: Std | Device | In.  */
   k_cdc_bm_std_dev_out  = 0x00U, /**< bmRequestType: Std | Device | Out. */
   k_cdc_breq_get_desc   = 0x06U, /**< GET_DESCRIPTOR.                    */
-  k_cdc_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                      */
-  k_cdc_breq_set_config = 0x09U, /**< SET_CONFIGURATION.               */
-  k_cdc_desc_device     = 0x01U, /**< DEVICE descriptor type.          */
-  k_cdc_dev_desc_len    = 18U,   /**< DEVICE descriptor length.        */
-  k_cdc_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.       */
-  k_cdc_byte_bits       = 8U,    /**< Bits per byte.                   */
-  k_cdc_config_value    = 1U,    /**< bConfigurationValue to select.   */
+  k_cdc_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                       */
+  k_cdc_breq_set_config = 0x09U, /**< SET_CONFIGURATION.                 */
+  k_cdc_desc_device     = 0x01U, /**< DEVICE descriptor type.            */
+  k_cdc_dev_desc_len    = 18U,   /**< DEVICE descriptor length.          */
+  k_cdc_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.         */
+  k_cdc_byte_bits       = 8U,    /**< Bits per byte.                     */
+  k_cdc_config_value    = 1U,    /**< bConfigurationValue to select.     */
 } cdc_usb_req_t;
 
 /**
@@ -366,13 +366,13 @@ typedef enum : uint16_t {
  * @brief Timing / retry tunables for the polled enumeration ladder.
  */
 typedef enum : uint32_t {
-  k_cdc_vbus_settle_ms = 200U,      /**< VBUS settle before probing.        */
-  k_cdc_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.           */
-  k_cdc_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).   */
-  k_cdc_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).      */
-  k_cdc_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).     */
-  k_cdc_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.         */
-  k_cdc_enum_tries     = 8U,        /**< Reset+probe attempts.              */
+  k_cdc_vbus_settle_ms = 200U,      /**< VBUS settle before probing.          */
+  k_cdc_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.             */
+  k_cdc_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).     */
+  k_cdc_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).        */
+  k_cdc_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).       */
+  k_cdc_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.           */
+  k_cdc_enum_tries     = 8U,        /**< Reset+probe attempts.                */
   k_cdc_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } cdc_enum_tune_t;
 

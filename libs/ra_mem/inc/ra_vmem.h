@@ -80,14 +80,14 @@ typedef ra_err_t (*ra_vmem_loader_fn)(void*    ctx,
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t object_id; /**< Cached object id (valid only when in use).        */
-  uint64_t offset;    /**< Frame-aligned byte offset of the cached page.     */
+  uint32_t object_id; /**< Cached object id (valid only when in use).           */
+  uint64_t offset;    /**< Frame-aligned byte offset of the cached page.        */
   int32_t  prev;      /**< SLRU list link toward MRU within the segment, or -1. */
   int32_t  next;      /**< SLRU list link toward LRU within the segment, or -1. */
-  int32_t  hash_next; /**< Next frame in the hash bucket chain, or -1.        */
-  uint16_t pin_count; /**< Outstanding ::ra_vmem_get pins (0 => evictable).   */
-  uint8_t  seg;       /**< SLRU segment tag (probationary / protected).       */
-  uint8_t  valid;     /**< 1 => this frame holds a cached page.               */
+  int32_t  hash_next; /**< Next frame in the hash bucket chain, or -1.          */
+  uint16_t pin_count; /**< Outstanding ::ra_vmem_get pins (0 => evictable).     */
+  uint8_t  seg;       /**< SLRU segment tag (probationary / protected).         */
+  uint8_t  valid;     /**< 1 => this frame holds a cached page.                 */
 } ra_vmem_frame_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -123,17 +123,17 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_vmem_cfg_t cfg;             /**< The configuration (copied at init).      */
-  int32_t       pb_head;         /**< Probationary MRU frame, or -1.           */
-  int32_t       pb_tail;         /**< Probationary LRU frame, or -1.           */
-  int32_t       pt_head;         /**< Protected MRU frame, or -1.              */
-  int32_t       pt_tail;         /**< Protected LRU frame, or -1.              */
-  uint32_t      protected_count; /**< Frames in the protected segment.         */
-  uint32_t      protected_cap;   /**< Protected-segment capacity.              */
-  uint32_t      free_count;      /**< Frames never yet used (cold).            */
-  uint32_t      hits;            /**< Get hits so far.                         */
-  uint32_t      misses;          /**< Get misses so far.                       */
-  uint32_t      evictions;       /**< Pages evicted so far.                    */
+  ra_vmem_cfg_t cfg;             /**< The configuration (copied at init). */
+  int32_t       pb_head;         /**< Probationary MRU frame, or -1.      */
+  int32_t       pb_tail;         /**< Probationary LRU frame, or -1.      */
+  int32_t       pt_head;         /**< Protected MRU frame, or -1.         */
+  int32_t       pt_tail;         /**< Protected LRU frame, or -1.         */
+  uint32_t      protected_count; /**< Frames in the protected segment.    */
+  uint32_t      protected_cap;   /**< Protected-segment capacity.         */
+  uint32_t      free_count;      /**< Frames never yet used (cold).       */
+  uint32_t      hits;            /**< Get hits so far.                    */
+  uint32_t      misses;          /**< Get misses so far.                  */
+  uint32_t      evictions;       /**< Pages evicted so far.               */
 } ra_vmem_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

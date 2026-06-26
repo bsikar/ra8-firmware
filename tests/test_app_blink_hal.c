@@ -28,7 +28,7 @@
 
 /** @brief Per-test enums replacing magic numbers. */
 typedef enum : uint32_t {
-  k_test_blink_hal_cpu_hz_reset = 8400000U, /**< MOCO ~8.4 MHz at reset. */
+  k_test_blink_hal_cpu_hz_reset = 8400000U, /**< MOCO ~8.4 MHz at reset.      */
   k_test_blink_hal_iters        = 3U,       /**< Toggle-loop iteration count. */
 } test_blink_hal_const_t;
 

@@ -119,10 +119,10 @@ static void free_volume(void)
 
 /** @brief listdir scan context: counts entries and flags a target name/attr. */
 typedef struct {
-  const char* want;       /**< Name to look for.                 */
-  uint32_t    count;      /**< Total entries reported.           */
-  bool        found;      /**< want was reported.                */
-  uint8_t     found_attr; /**< Attribute byte of the found entry.*/
+  const char* want;       /**< Name to look for.                  */
+  uint32_t    count;      /**< Total entries reported.            */
+  bool        found;      /**< want was reported.                 */
+  uint8_t     found_attr; /**< Attribute byte of the found entry. */
 } scan_ctx_t;
 
 static void scan_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)

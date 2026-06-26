@@ -90,13 +90,13 @@ static void build_fat16_volume(void)
   s_disk.block_count = (uint32_t)k_disk_blocks;
   TEST_ASSERT(s_disk.bytes != nullptr);
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, 11U, (uint16_t)k_disk_block_size); /* bytes/sector       */
-  bpb[13] = 1U;                                 /* sectors/cluster    */
-  put16(bpb, 14U, 1U);                          /* reserved sectors   */
-  bpb[16] = 2U;                                 /* number of FATs     */
-  put16(bpb, 17U, 16U);                         /* root dir entries   */
-  put16(bpb, 19U, (uint16_t)k_disk_blocks);     /* total sectors      */
-  put16(bpb, 22U, 32U);                         /* sectors/FAT        */
+  put16(bpb, 11U, (uint16_t)k_disk_block_size); /* bytes/sector     */
+  bpb[13] = 1U;                                 /* sectors/cluster  */
+  put16(bpb, 14U, 1U);                          /* reserved sectors */
+  bpb[16] = 2U;                                 /* number of FATs   */
+  put16(bpb, 17U, 16U);                         /* root dir entries */
+  put16(bpb, 19U, (uint16_t)k_disk_blocks);     /* total sectors    */
+  put16(bpb, 22U, 32U);                         /* sectors/FAT      */
   bpb[510] = 0x55U;
   bpb[511] = 0xAAU;
 }

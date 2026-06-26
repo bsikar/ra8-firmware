@@ -86,8 +86,8 @@ static const ra_mipi_dsi_config_t s_mipi_panel_cfg = {
   .scramble_enable        = false,
   .tearing_detect_enable  = true,
   .crc_check_vc_mask      = 0x01U, /* VC0 only -- the only VC J32 wires up. */
-  .timing                 = {},    /* TODO(panel-datasheet). */
-  .timeouts               = {},    /* TODO(panel-datasheet). */
+  .timing                 = {},    /* TODO(panel-datasheet).                */
+  .timeouts               = {},    /* TODO(panel-datasheet).                */
 };
 
 /**

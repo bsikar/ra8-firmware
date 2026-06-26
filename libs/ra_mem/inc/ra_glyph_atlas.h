@@ -62,11 +62,11 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t glyph_id; /**< Font glyph index.                                  */
-  uint16_t face_id;  /**< Font face identifier.                              */
-  uint16_t size_px;  /**< Pixel size.                                        */
-  uint16_t mode;     /**< Render mode (AA / mono / hinting variant).         */
-  uint16_t reserved; /**< Reserved; keep zero (padding-free byte-wise key).  */
+  uint32_t glyph_id; /**< Font glyph index.                                 */
+  uint16_t face_id;  /**< Font face identifier.                             */
+  uint16_t size_px;  /**< Pixel size.                                       */
+  uint16_t mode;     /**< Render mode (AA / mono / hinting variant).        */
+  uint16_t reserved; /**< Reserved; keep zero (padding-free byte-wise key). */
 } ra_glyph_key_t;
 
 /* The key is compared/hashed byte-wise over sizeof(ra_glyph_key_t); guard the
@@ -101,9 +101,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const uint8_t* bitmap; /**< Glyph coverage bitmap (width*height bytes).     */
-  uint16_t       width;  /**< Glyph width in pixels.                         */
-  uint16_t       height; /**< Glyph height in pixels.                        */
+  const uint8_t* bitmap; /**< Glyph coverage bitmap (width*height bytes). */
+  uint16_t       width;  /**< Glyph width in pixels.                      */
+  uint16_t       height; /**< Glyph height in pixels.                     */
 } ra_glyph_t;
 
 /**
@@ -162,9 +162,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_keycache_t      kc;         /**< Underlying keyed-LRU cache.            */
-  ra_glyph_render_fn render;     /**< Caller's glyph renderer.               */
-  void*              render_ctx; /**< Caller's renderer context.             */
+  ra_keycache_t      kc;         /**< Underlying keyed-LRU cache. */
+  ra_glyph_render_fn render;     /**< Caller's glyph renderer.    */
+  void*              render_ctx; /**< Caller's renderer context.  */
 } ra_glyph_atlas_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

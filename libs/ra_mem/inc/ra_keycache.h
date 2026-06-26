@@ -89,11 +89,11 @@ typedef ra_err_t (*ra_keycache_render_fn)(void*       ctx,
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  int32_t  prev;      /**< LRU link toward MRU, or -1.                 */
-  int32_t  next;      /**< LRU link toward LRU, or -1.                 */
-  int32_t  hash_next; /**< Hash bucket chain link, or -1.              */
-  uint16_t pin_count; /**< Outstanding pins (0 => evictable).          */
-  uint8_t  valid;     /**< 1 => this cell holds an entry.              */
+  int32_t  prev;      /**< LRU link toward MRU, or -1.        */
+  int32_t  next;      /**< LRU link toward LRU, or -1.        */
+  int32_t  hash_next; /**< Hash bucket chain link, or -1.     */
+  uint16_t pin_count; /**< Outstanding pins (0 => evictable). */
+  uint8_t  valid;     /**< 1 => this cell holds an entry.     */
 } ra_keycache_cell_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -108,10 +108,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*              cell_mem;     /**< `cell_count * cell_bytes` of cell storage. */
-  uint32_t              cell_bytes;   /**< Bytes per cell (the rendered payload).     */
-  uint32_t              cell_count;   /**< Number of cells.                           */
-  uint8_t*              key_mem;      /**< `cell_count * key_bytes` of key storage.   */
+  uint8_t*              cell_mem;     /**< `cell_count * cell_bytes` of cell storage.  */
+  uint32_t              cell_bytes;   /**< Bytes per cell (the rendered payload).      */
+  uint32_t              cell_count;   /**< Number of cells.                            */
+  uint8_t*              key_mem;      /**< `cell_count * key_bytes` of key storage.    */
   uint32_t              key_bytes;    /**< Bytes per key (>= 1).                       */
   uint8_t*              user_mem;     /**< `cell_count * user_bytes`, or NULL if none. */
   uint32_t              user_bytes;   /**< Bytes per user descriptor (may be 0).       */
@@ -133,12 +133,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_keycache_cfg_t cfg;       /**< Configuration (copied at init).        */
-  int32_t           lru_head;  /**< MRU cell, or -1.                       */
-  int32_t           lru_tail;  /**< LRU cell, or -1.                       */
-  uint32_t          hits;      /**< Get hits so far.                       */
-  uint32_t          misses;    /**< Get misses so far.                     */
-  uint32_t          evictions; /**< Entries evicted so far.                */
+  ra_keycache_cfg_t cfg;       /**< Configuration (copied at init). */
+  int32_t           lru_head;  /**< MRU cell, or -1.                */
+  int32_t           lru_tail;  /**< LRU cell, or -1.                */
+  uint32_t          hits;      /**< Get hits so far.                */
+  uint32_t          misses;    /**< Get misses so far.              */
+  uint32_t          evictions; /**< Entries evicted so far.         */
 } ra_keycache_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -156,8 +156,8 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t* data; /**< Cell payload (`cell_bytes` wide).                    */
-  void*    user; /**< Per-cell user descriptor, or NULL.                   */
+  uint8_t* data; /**< Cell payload (`cell_bytes` wide).  */
+  void*    user; /**< Per-cell user descriptor, or NULL. */
 } ra_keycache_view_t;
 
 /**

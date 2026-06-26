@@ -34,7 +34,7 @@ extern "C" {
 #include "ra_err.h"
 
 /* ============================================================ */
-/* Limits                                                       */
+/* Limits */
 /* ============================================================ */
 
 /**
@@ -42,13 +42,13 @@ extern "C" {
  * @brief Static-allocation upper bounds.
  */
 typedef enum : uint16_t {
-  k_ra_ble_gatt_client_uuid_bytes      = 16U,  /**< 128-bit UUID length.          */
-  k_ra_ble_gatt_client_max_read_bytes  = 512U, /**< ATT MTU max value length.     */
-  k_ra_ble_gatt_client_max_write_bytes = 512U, /**< ATT MTU max value length.     */
+  k_ra_ble_gatt_client_uuid_bytes      = 16U,  /**< 128-bit UUID length.      */
+  k_ra_ble_gatt_client_max_read_bytes  = 512U, /**< ATT MTU max value length. */
+  k_ra_ble_gatt_client_max_write_bytes = 512U, /**< ATT MTU max value length. */
 } ra_ble_gatt_client_limits_t;
 
 /* ============================================================ */
-/* Discovery payload                                            */
+/* Discovery payload */
 /* ============================================================ */
 
 /**
@@ -62,11 +62,11 @@ typedef enum : uint16_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  uint16_t start_handle; /**< First attribute handle.    */
+  uint16_t start_handle; /**< First attribute handle. */
   // cppcheck-suppress unusedStructMember
-  uint16_t end_handle; /**< Last attribute handle.     */
+  uint16_t end_handle; /**< Last attribute handle. */
   // cppcheck-suppress unusedStructMember
-  uint8_t uuid_128[k_ra_ble_gatt_client_uuid_bytes]; /**< 128-bit service UUID.      */
+  uint8_t uuid_128[k_ra_ble_gatt_client_uuid_bytes]; /**< 128-bit service UUID. */
 } ra_ble_gatt_service_t;
 
 /**
@@ -123,7 +123,7 @@ typedef void (*ra_ble_gatt_notify_fn_t)(void*          ctx,
                                         uint16_t       len);
 
 /* ============================================================ */
-/* Public APIs                                                  */
+/* Public APIs */
 /* ============================================================ */
 
 /**

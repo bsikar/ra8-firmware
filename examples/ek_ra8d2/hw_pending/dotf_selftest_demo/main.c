@@ -70,9 +70,9 @@ static const char* s_tag = "dotf_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_dotf_demo_baud        = 115200U, /**< SCI8 baud rate.             */
-  k_dotf_demo_period_ms   = 1000U,   /**< Delay between self-tests.   */
-  k_dotf_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8.   */
+  k_dotf_demo_baud        = 115200U, /**< SCI8 baud rate.           */
+  k_dotf_demo_period_ms   = 1000U,   /**< Delay between self-tests. */
+  k_dotf_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8. */
 } dotf_demo_config_t;
 
 /** @brief DOTF channels exercised by the demo. */

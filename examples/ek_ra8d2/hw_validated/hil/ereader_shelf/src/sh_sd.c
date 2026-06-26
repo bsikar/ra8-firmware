@@ -33,7 +33,7 @@
 
 /** @enum sh_sd_const_t @brief SD bus + buffer constants. */
 typedef enum : uint32_t {
-  k_sd_spi_chan = 0U,                 /**< Pmod2 / J25 SCI0 Simple-SPI channel. */
+  k_sd_spi_chan = 0U,                 /**< Pmod2 / J25 SCI0 Simple-SPI channel.  */
   k_sd_file_cap = 2U * 1024U * 1024U, /**< Max compressed .RBK readable (SDRAM). */
   k_sd_ext_len  = 4U,                 /**< Length of the ".RBK" extension.       */
 } sh_sd_const_t;

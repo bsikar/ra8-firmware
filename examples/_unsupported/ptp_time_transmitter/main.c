@@ -70,10 +70,10 @@ typedef enum : uint8_t {
 } mac_byte_idx_t;
 
 typedef enum : uint32_t {
-  k_ptp_time_transmitter_baud         = 115200U, /**< J-Link OB CDC baud.            */
-  k_ptp_time_transmitter_sci_channel  = 8U,      /**< SCI8 logging channel.          */
-  k_ptp_time_transmitter_link_poll_ms = 100U,    /**< PHY BMSR poll period.          */
-  k_ptp_time_transmitter_sync_ms      = 1000U,   /**< 1 Hz Sync / Announce cadence.  */
+  k_ptp_time_transmitter_baud         = 115200U, /**< J-Link OB CDC baud.           */
+  k_ptp_time_transmitter_sci_channel  = 8U,      /**< SCI8 logging channel.         */
+  k_ptp_time_transmitter_link_poll_ms = 100U,    /**< PHY BMSR poll period.         */
+  k_ptp_time_transmitter_sync_ms      = 1000U,   /**< 1 Hz Sync / Announce cadence. */
 } ptp_time_transmitter_config_t;
 
 /**

@@ -27,16 +27,16 @@
  * @brief Magic-number-free constants used by the test bodies.
  */
 typedef enum : uint16_t {
-  k_ra_cnecc_test_inst_first = 0U,     /**< ECCMB0.                                */
-  k_ra_cnecc_test_inst_last  = 1U,     /**< ECCMB1.                                */
-  k_ra_cnecc_test_inst_bad   = 2U,     /**< First out-of-range instance index.     */
-  k_ra_cnecc_test_inst_huge  = 200U,   /**< Way out-of-range instance index.       */
-  k_ra_cnecc_test_addr_a     = 0x123U, /**< Sample 10-bit fault address (a).      */
-  k_ra_cnecc_test_addr_b     = 0x2ABU, /**< Sample 10-bit fault address (b).      */
-  k_ra_cnecc_test_addr_max   = 0x3FFU, /**< Highest 10-bit ECEAD value.           */
-  k_ra_cnecc_test_addr_over  = 0x500U, /**< Bits above ECEAD[9:0] -- masked off.  */
-  k_ra_cnecc_test_prio       = 5U,     /**< Sample NVIC priority for ISR attach.  */
-  k_ra_cnecc_test_prio_bad   = 200U,   /**< Out-of-range NVIC priority.           */
+  k_ra_cnecc_test_inst_first = 0U,     /**< ECCMB0.                              */
+  k_ra_cnecc_test_inst_last  = 1U,     /**< ECCMB1.                              */
+  k_ra_cnecc_test_inst_bad   = 2U,     /**< First out-of-range instance index.   */
+  k_ra_cnecc_test_inst_huge  = 200U,   /**< Way out-of-range instance index.     */
+  k_ra_cnecc_test_addr_a     = 0x123U, /**< Sample 10-bit fault address (a).     */
+  k_ra_cnecc_test_addr_b     = 0x2ABU, /**< Sample 10-bit fault address (b).     */
+  k_ra_cnecc_test_addr_max   = 0x3FFU, /**< Highest 10-bit ECEAD value.          */
+  k_ra_cnecc_test_addr_over  = 0x500U, /**< Bits above ECEAD[9:0] -- masked off. */
+  k_ra_cnecc_test_prio       = 5U,     /**< Sample NVIC priority for ISR attach. */
+  k_ra_cnecc_test_prio_bad   = 200U,   /**< Out-of-range NVIC priority.          */
 } ra_cnecc_test_const_t;
 
 /**
@@ -44,8 +44,8 @@ typedef enum : uint16_t {
  * @brief Substitute-data values used by the fault-injection tests.
  */
 typedef enum : uint32_t {
-  k_ra_cnecc_test_subst_a = 0xDEADBEEFUL, /**< Distinctive marker.                */
-  k_ra_cnecc_test_subst_b = 0x55AA55AAUL, /**< Alternate marker.                  */
+  k_ra_cnecc_test_subst_a = 0xDEADBEEFUL, /**< Distinctive marker. */
+  k_ra_cnecc_test_subst_b = 0x55AA55AAUL, /**< Alternate marker.   */
 } ra_cnecc_test_subst_t;
 
 static uint32_t s_cb_count;

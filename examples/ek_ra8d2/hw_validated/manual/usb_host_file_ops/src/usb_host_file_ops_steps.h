@@ -39,13 +39,13 @@
  * @brief Compile-time settings for the host file-ops suite.
  */
 typedef enum : uint32_t {
-  k_fileops_baud        = 115200U, /**< J-Link OB CDC log baud.             */
-  k_fileops_sci_channel = 8U,      /**< SCI8 -> J-Link OB CDC bridge.       */
-  k_fileops_idle_ms     = 50U,     /**< Idle tick in the parked main loop.  */
-  k_fileops_retry_ms    = 5000U,   /**< Pause between ladder retries.       */
-  k_fileops_target_lun  = 0U,      /**< Exercise LUN 0 (typical stick).     */
-  k_fileops_max_blocks  = 0xFFFFU, /**< READ(10)/WRITE(10) 16-bit count.    */
-  k_fileops_print_cap   = 160U,    /**< Bound for console-string scans.     */
+  k_fileops_baud        = 115200U, /**< J-Link OB CDC log baud.            */
+  k_fileops_sci_channel = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_fileops_idle_ms     = 50U,     /**< Idle tick in the parked main loop. */
+  k_fileops_retry_ms    = 5000U,   /**< Pause between ladder retries.      */
+  k_fileops_target_lun  = 0U,      /**< Exercise LUN 0 (typical stick).    */
+  k_fileops_max_blocks  = 0xFFFFU, /**< READ(10)/WRITE(10) 16-bit count.   */
+  k_fileops_print_cap   = 160U,    /**< Bound for console-string scans.    */
 } usb_fileops_config_t;
 
 /**
@@ -53,8 +53,8 @@ typedef enum : uint32_t {
  * @brief Buffer sizing constants.
  */
 typedef enum : uint16_t {
-  k_fileops_sector_bytes = 512U, /**< One SCSI block / FAT sector.      */
-  k_fileops_name_cap     = 64U,  /**< Listdir name compare bound.       */
+  k_fileops_sector_bytes = 512U, /**< One SCSI block / FAT sector. */
+  k_fileops_name_cap     = 64U,  /**< Listdir name compare bound.  */
 } usb_fileops_size_t;
 
 /**
@@ -62,11 +62,11 @@ typedef enum : uint16_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_fileops_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_fileops_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_fileops_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_fileops_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_fileops_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_fileops_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_fileops_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_fileops_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_fileops_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_fileops_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } usb_fileops_hex_t;
 
 /**

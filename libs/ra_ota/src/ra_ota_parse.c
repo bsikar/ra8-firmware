@@ -46,14 +46,14 @@ static const char* const s_tag = "ra_ota";
  * @brief Internal numeric constants used by JSON / hex helpers.
  */
 typedef enum : uint32_t {
-  k_ra_ota_json_skip_max      = 8U,    /**< Max JSON whitespace/quote skip. */
-  k_ra_ota_u32_decimal_digits = 12U,   /**< Max decimal digits in a uint32. */
-  k_ra_ota_u32_decimal_base   = 10U,   /**< Base for decimal parsing. */
+  k_ra_ota_json_skip_max      = 8U,    /**< Max JSON whitespace/quote skip.     */
+  k_ra_ota_u32_decimal_digits = 12U,   /**< Max decimal digits in a uint32.     */
+  k_ra_ota_u32_decimal_base   = 10U,   /**< Base for decimal parsing.           */
   k_ra_ota_hex_alpha_offset   = 10U,   /**< Offset added for 'a'..'f'/'A'..'F'. */
-  k_ra_ota_hex_invalid_nibble = 0xFFU, /**< Sentinel for invalid hex nibble. */
-  k_ra_ota_hex_chars_per_byte = 2U,    /**< Two hex chars per encoded byte. */
-  k_ra_ota_hex_nibble_shift   = 4U,    /**< Shift for high nibble in a byte. */
-  k_ra_ota_hex_buf_bytes      = 257U,  /**< Capacity of stack hex buffer. */
+  k_ra_ota_hex_invalid_nibble = 0xFFU, /**< Sentinel for invalid hex nibble.    */
+  k_ra_ota_hex_chars_per_byte = 2U,    /**< Two hex chars per encoded byte.     */
+  k_ra_ota_hex_nibble_shift   = 4U,    /**< Shift for high nibble in a byte.    */
+  k_ra_ota_hex_buf_bytes      = 257U,  /**< Capacity of stack hex buffer.       */
 } ra_ota_internal_const_t;
 
 /**

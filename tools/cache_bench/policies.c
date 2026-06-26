@@ -75,9 +75,9 @@ typedef enum : uint64_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_rand_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set) */
+  k_rand_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set)  */
   k_rand_shift_b = 7U,  /**< MAGIC-OK: xorshift64 right-shift b (Marsaglia 2003 set) */
-  k_rand_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set) */
+  k_rand_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set)  */
 } cb_rand_shift_t;
 
 /** @brief Random state: a deterministic xorshift seed. */
@@ -119,10 +119,10 @@ static const cache_policy_t cb_policy_random = {
 
 /** @brief LRU recency list threaded through prev/next frame-index arrays. */
 typedef struct {
-  int32_t* prev; /**< prev[f] -- frame nearer MRU, or -1.        */
-  int32_t* next; /**< next[f] -- frame nearer LRU, or -1.        */
-  int32_t  head; /**< Most-recently-used frame, or -1.           */
-  int32_t  tail; /**< Least-recently-used frame (the victim).    */
+  int32_t* prev; /**< prev[f] -- frame nearer MRU, or -1.     */
+  int32_t* next; /**< next[f] -- frame nearer LRU, or -1.     */
+  int32_t  head; /**< Most-recently-used frame, or -1.        */
+  int32_t  tail; /**< Least-recently-used frame (the victim). */
 } cb_lru_t;
 
 static int cb_lru_init(cb_cache_t* c)

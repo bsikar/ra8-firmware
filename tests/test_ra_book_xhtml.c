@@ -28,21 +28,21 @@
  * @brief Fixture capacities and DOM indices for the serializer tests.
  */
 typedef enum : uint32_t {
-  k_bx_node_cap    = 8U,    /**< Node-table slots in the fixture.               */
-  k_bx_attr_cap    = 2U,    /**< Attribute-table slots in the fixture.          */
-  k_bx_str_cap     = 256U,  /**< String-pool bytes in the fixture.              */
-  k_bx_out_cap     = 512U,  /**< Serializer output-buffer bytes.                */
-  k_bx_big_cap     = 1024U, /**< Larger buffer for the guard-exhaustion walk.   */
-  k_bx_node_div    = 0U,    /**< Root <div> element node index.                 */
-  k_bx_node_p      = 1U,    /**< <p> block element node index.                  */
-  k_bx_node_ptext  = 2U,    /**< Text run inside <p> (entity-bearing).          */
-  k_bx_node_img    = 3U,    /**< <img> void element node index.                 */
-  k_bx_node_br     = 4U,    /**< <br> void element node index.                  */
-  k_bx_node_span   = 5U,    /**< <span> inline element node index.              */
-  k_bx_node_sptext = 6U,    /**< Whitespace-heavy text run inside <span>.       */
-  k_bx_node_count  = 7U,    /**< Live nodes in the rich fixture.                */
-  k_bx_attr_class  = 0U,    /**< class="..." attribute record index.            */
-  k_bx_attr_src    = 1U,    /**< src="..." attribute record index.              */
+  k_bx_node_cap    = 8U,    /**< Node-table slots in the fixture.             */
+  k_bx_attr_cap    = 2U,    /**< Attribute-table slots in the fixture.        */
+  k_bx_str_cap     = 256U,  /**< String-pool bytes in the fixture.            */
+  k_bx_out_cap     = 512U,  /**< Serializer output-buffer bytes.              */
+  k_bx_big_cap     = 1024U, /**< Larger buffer for the guard-exhaustion walk. */
+  k_bx_node_div    = 0U,    /**< Root <div> element node index.               */
+  k_bx_node_p      = 1U,    /**< <p> block element node index.                */
+  k_bx_node_ptext  = 2U,    /**< Text run inside <p> (entity-bearing).        */
+  k_bx_node_img    = 3U,    /**< <img> void element node index.               */
+  k_bx_node_br     = 4U,    /**< <br> void element node index.                */
+  k_bx_node_span   = 5U,    /**< <span> inline element node index.            */
+  k_bx_node_sptext = 6U,    /**< Whitespace-heavy text run inside <span>.     */
+  k_bx_node_count  = 7U,    /**< Live nodes in the rich fixture.              */
+  k_bx_attr_class  = 0U,    /**< class="..." attribute record index.          */
+  k_bx_attr_src    = 1U,    /**< src="..." attribute record index.            */
 } bx_dim_t;
 
 /**

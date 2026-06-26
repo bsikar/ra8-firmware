@@ -49,9 +49,9 @@ typedef enum : uint64_t {
 
 /** @brief PVDmSR field masks + the healthy-rail status value (ra_lvd.c). */
 typedef enum : uint8_t {
-  k_lvd_sr_det     = 0x01U, /**< DET latched threshold-crossing (bit 0).        */
-  k_lvd_sr_mon     = 0x02U, /**< MON live "VCC above Vdetm" flag (bit 1).       */
-  k_lvd_sr_healthy = 0x02U, /**< MON = above, DET = 0: a healthy rail.      */
+  k_lvd_sr_det     = 0x01U, /**< DET latched threshold-crossing (bit 0).  */
+  k_lvd_sr_mon     = 0x02U, /**< MON live "VCC above Vdetm" flag (bit 1). */
+  k_lvd_sr_healthy = 0x02U, /**< MON = above, DET = 0: a healthy rail.    */
 } lvd_field_t;
 
 /** @brief Per-tick order slot for the LVD block (relative order only). */
@@ -61,9 +61,9 @@ typedef enum : uint32_t {
 
 /** @brief PVD control-byte shadows (status bytes are synthesised). */
 typedef struct {
-  uint8_t  pvd1cr1; /**< PVD1CR1 control shadow.        */
-  uint8_t  pvd2cr1; /**< PVD2CR1 control shadow.        */
-  uint32_t reads;   /**< Status reads served (report).  */
+  uint8_t  pvd1cr1; /**< PVD1CR1 control shadow.       */
+  uint8_t  pvd2cr1; /**< PVD2CR1 control shadow.       */
+  uint32_t reads;   /**< Status reads served (report). */
 } lvd_state_t;
 
 static lvd_state_t s_lvd;

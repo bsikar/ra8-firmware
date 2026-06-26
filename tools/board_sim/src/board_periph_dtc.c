@@ -56,51 +56,51 @@
 
 /** @brief DTC control-window geometry (ra8d2_dtc_regs.h, r_dtc_regs_t). */
 typedef enum : uint64_t {
-  k_dtc_base       = 0x4000AC00UL, /**< DTC control-register base.            */
-  k_dtc_span       = 0x40UL,       /**< Covers DTCCR..DTCSQE comfortably.     */
-  k_dtc_off_dtccr  = 0x00UL,       /**< DTCCR control (8b).                   */
-  k_dtc_off_dtcvbr = 0x04UL,       /**< DTCVBR vector base (32b).             */
-  k_dtc_off_dtcst  = 0x0CUL,       /**< DTCST module start (8b).              */
-  k_dtc_off_dtcsts = 0x0EUL,       /**< DTCSTS status (16b).                  */
+  k_dtc_base       = 0x4000AC00UL, /**< DTC control-register base.        */
+  k_dtc_span       = 0x40UL,       /**< Covers DTCCR..DTCSQE comfortably. */
+  k_dtc_off_dtccr  = 0x00UL,       /**< DTCCR control (8b).               */
+  k_dtc_off_dtcvbr = 0x04UL,       /**< DTCVBR vector base (32b).         */
+  k_dtc_off_dtcst  = 0x0CUL,       /**< DTCST module start (8b).          */
+  k_dtc_off_dtcsts = 0x0EUL,       /**< DTCSTS status (16b).              */
 } dtc_geom_t;
 
 /** @brief ELC ELSEGR-window geometry (ra8d2_elc_regs.h). */
 typedef enum : uint64_t {
-  k_elc_base        = 0x40201000UL, /**< R_ELC base.                          */
-  k_elc_span        = 0x100UL,      /**< Covers ELCR / ELSEGR[0..3] / ELSR.    */
-  k_elc_off_elsegr0 = 0x04UL,       /**< ELSEGR0 software-event gen (8b).      */
+  k_elc_base        = 0x40201000UL, /**< R_ELC base.                        */
+  k_elc_span        = 0x100UL,      /**< Covers ELCR / ELSEGR[0..3] / ELSR. */
+  k_elc_off_elsegr0 = 0x04UL,       /**< ELSEGR0 software-event gen (8b).   */
 } elc_geom_t;
 
 /** @brief ELC software event 0 number and its ELSEGR trigger value. */
 typedef enum : uint32_t {
-  k_elc_swevt0_event   = 0x0CCU, /**< ELC_SWEVT0 event (HUM Table 19.3).      */
-  k_elc_elsegr_trigger = 0x41U,  /**< WE=1, SEG=1: fires the software event.  */
+  k_elc_swevt0_event   = 0x0CCU, /**< ELC_SWEVT0 event (HUM Table 19.3).     */
+  k_elc_elsegr_trigger = 0x41U,  /**< WE=1, SEG=1: fires the software event. */
 } elc_swevt_t;
 
 /** @brief DTC TI block field offsets (r_dtc_xfer_info_t, HUM Figure 18.4). */
 typedef enum : uint32_t {
-  k_ti_off_mr  = 0U,  /**< MR mode word ([31:24] MRA, [23:16] MRB).          */
-  k_ti_off_sar = 4U,  /**< SAR source address.                               */
-  k_ti_off_dar = 8U,  /**< DAR destination address.                          */
-  k_ti_off_crb = 12U, /**< CRB block count (16b).                            */
-  k_ti_off_cra = 14U, /**< CRA transfer count (16b).                         */
+  k_ti_off_mr  = 0U,  /**< MR mode word ([31:24] MRA, [23:16] MRB). */
+  k_ti_off_sar = 4U,  /**< SAR source address.                      */
+  k_ti_off_dar = 8U,  /**< DAR destination address.                 */
+  k_ti_off_crb = 12U, /**< CRB block count (16b).                   */
+  k_ti_off_cra = 14U, /**< CRA transfer count (16b).                */
 } dtc_ti_off_t;
 
 /** @brief MR mode-word field extraction (MRA in the top byte, MRB next). */
 typedef enum : uint32_t {
-  k_mr_mra_shift = 24U,   /**< MRA occupies MR[31:24].                        */
-  k_mr_mrb_shift = 16U,   /**< MRB occupies MR[23:16].                        */
-  k_mra_md_pos   = 6U,    /**< MRA.MD[7:6] transfer mode.                     */
-  k_mra_sz_pos   = 4U,    /**< MRA.SZ[5:4] unit width.                        */
-  k_mra_sm_pos   = 2U,    /**< MRA.SM[3:2] source-address mode.               */
-  k_mrb_dm_pos   = 2U,    /**< MRB.DM[3:2] dest-address mode.                 */
-  k_mr_2bit_mask = 0x3U,  /**< Two-bit field mask.                           */
-  k_mra_md_block = 0x2U,  /**< MD = 10b: block transfer.                      */
-  k_mr_addr_inc  = 0x2U,  /**< SM / DM = 10b: increment the address.          */
-  k_mra_sz_byte  = 0x0U,  /**< SZ = 00b: 8-bit unit.                          */
-  k_mra_sz_word  = 0x2U,  /**< SZ = 10b: 32-bit unit.                         */
-  k_mra_sz_half  = 0x1U,  /**< SZ = 01b: 16-bit unit.                         */
-  k_mr_byte_mask = 0xFFU, /**< Eight-bit field mask (one MRA/MRB byte).      */
+  k_mr_mra_shift = 24U,   /**< MRA occupies MR[31:24].                  */
+  k_mr_mrb_shift = 16U,   /**< MRB occupies MR[23:16].                  */
+  k_mra_md_pos   = 6U,    /**< MRA.MD[7:6] transfer mode.               */
+  k_mra_sz_pos   = 4U,    /**< MRA.SZ[5:4] unit width.                  */
+  k_mra_sm_pos   = 2U,    /**< MRA.SM[3:2] source-address mode.         */
+  k_mrb_dm_pos   = 2U,    /**< MRB.DM[3:2] dest-address mode.           */
+  k_mr_2bit_mask = 0x3U,  /**< Two-bit field mask.                      */
+  k_mra_md_block = 0x2U,  /**< MD = 10b: block transfer.                */
+  k_mr_addr_inc  = 0x2U,  /**< SM / DM = 10b: increment the address.    */
+  k_mra_sz_byte  = 0x0U,  /**< SZ = 00b: 8-bit unit.                    */
+  k_mra_sz_word  = 0x2U,  /**< SZ = 10b: 32-bit unit.                   */
+  k_mra_sz_half  = 0x1U,  /**< SZ = 01b: 16-bit unit.                   */
+  k_mr_byte_mask = 0xFFU, /**< Eight-bit field mask (one MRA/MRB byte). */
 } dtc_mr_field_t;
 
 /** @brief DTC transfer-count encoding quirks (HUM 18.2.7). */
@@ -112,8 +112,8 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_dtc_vt_entry_bytes = 4U,          /**< One 4-byte pointer per IELSR slot. */
   k_dtc_ti_addr_mask   = 0xFFFFFFFEU, /**< Strip bit0 (privilege attribute).  */
-  k_dtc_max_units      = 0x10000U,    /**< Sanity cap on a single activation.  */
-  k_dtc_ielsr_slots    = 96U,         /**< Number of IELSR slots (0..95).      */
+  k_dtc_max_units      = 0x10000U,    /**< Sanity cap on a single activation. */
+  k_dtc_ielsr_slots    = 96U,         /**< Number of IELSR slots (0..95).     */
 } dtc_vt_geom_t;
 
 /** @brief Per-tick order slot for the DTC block (relative order only). */
@@ -123,12 +123,12 @@ typedef enum : uint32_t {
 
 /** @brief DTC control-register state plus an activation/byte tally. */
 typedef struct {
-  uint8_t  dtccr;       /**< DTCCR shadow.                          */
-  uint32_t dtcvbr;      /**< DTCVBR vector-table base address.      */
-  uint8_t  dtcst;       /**< DTCST module-start shadow.             */
-  uint16_t dtcsts;      /**< DTCSTS status shadow.                  */
-  uint32_t activations; /**< Successful DTC activations performed.  */
-  uint32_t bytes;       /**< Bytes moved on the last activation.    */
+  uint8_t  dtccr;       /**< DTCCR shadow.                         */
+  uint32_t dtcvbr;      /**< DTCVBR vector-table base address.     */
+  uint8_t  dtcst;       /**< DTCST module-start shadow.            */
+  uint16_t dtcsts;      /**< DTCSTS status shadow.                 */
+  uint32_t activations; /**< Successful DTC activations performed. */
+  uint32_t bytes;       /**< Bytes moved on the last activation.   */
 } dtc_state_t;
 
 static dtc_state_t s_dtc;

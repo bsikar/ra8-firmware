@@ -24,8 +24,8 @@
  * @brief Constants used across multiple test cases.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_test_frrclk         = 3U, /**< vclk/hsclk = 125/90 example.    */
-  k_ra_mipi_csi_test_frrskw         = 5U, /**< vclk/hsclk = 125/90 example.    */
+  k_ra_mipi_csi_test_frrclk         = 3U, /**< vclk/hsclk = 125/90 example. */
+  k_ra_mipi_csi_test_frrskw         = 5U, /**< vclk/hsclk = 125/90 example. */
   k_ra_mipi_csi_test_ractdet_marker = 0x00020000UL,
   k_ra_mipi_csi_test_ctx_marker     = 0xCAFEU,
   k_ra_mipi_csi_test_dl_marker      = 0xC0DEU,
@@ -1163,7 +1163,7 @@ static void test_deinit(void)
  */
 
 typedef enum : uint32_t {
-  k_ra_mipi_csi_test_vc_keep_mask = 0x0005U,  /**< Keep VC0 + VC2.       */
+  k_ra_mipi_csi_test_vc_keep_mask = 0x0005U,  /**< Keep VC0 + VC2.      */
   k_ra_mipi_csi_test_vc_seed      = 0xABCDUL, /**< Pre-seeded VCIE val. */
   k_ra_mipi_csi_test_err_marker   = 0xDEC0DE0U,
   k_ra_mipi_csi_test_err_ctx_val  = 0xCAFEU,

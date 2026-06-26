@@ -60,9 +60,9 @@ typedef enum : uint32_t {
 
 /** @brief SCI8 ELC event numbers (FSP ra8d2 bsp_elc: RXI/TXI/TEI). */
 typedef enum : uint16_t {
-  k_uart_irq_event_rxi = 0x122U, /**< SCI8 RXI receive-data-full event. */
+  k_uart_irq_event_rxi = 0x122U, /**< SCI8 RXI receive-data-full event.   */
   k_uart_irq_event_txi = 0x123U, /**< SCI8 TXI transmit-data-empty event. */
-  k_uart_irq_event_tei = 0x124U, /**< SCI8 TEI transmit-end event. */
+  k_uart_irq_event_tei = 0x124U, /**< SCI8 TEI transmit-end event.        */
 } uart_irq_event_t;
 
 /** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */

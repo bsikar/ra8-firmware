@@ -677,15 +677,15 @@ static float priv_absf(float v)
  * coincident endpoints), in which case the caller draws a straight line.
  */
 typedef struct {
-  float cx;      /**< Centre X (user space).                 */
-  float cy;      /**< Centre Y (user space).                 */
-  float rx;      /**< Corrected semi-axis X.                 */
-  float ry;      /**< Corrected semi-axis Y.                 */
-  float cos_phi; /**< cos(x-axis rotation).                  */
-  float sin_phi; /**< sin(x-axis rotation).                  */
-  float t1;      /**< Start angle, radians.                  */
-  float dt;      /**< Signed sweep, radians.                 */
-  bool  ok;      /**< False => degenerate (draw a line).     */
+  float cx;      /**< Centre X (user space).             */
+  float cy;      /**< Centre Y (user space).             */
+  float rx;      /**< Corrected semi-axis X.             */
+  float ry;      /**< Corrected semi-axis Y.             */
+  float cos_phi; /**< cos(x-axis rotation).              */
+  float sin_phi; /**< sin(x-axis rotation).              */
+  float t1;      /**< Start angle, radians.              */
+  float dt;      /**< Signed sweep, radians.             */
+  bool  ok;      /**< False => degenerate (draw a line). */
 } svg_arc_t;
 
 /**

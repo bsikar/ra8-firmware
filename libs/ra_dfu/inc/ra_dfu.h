@@ -91,18 +91,18 @@ extern "C" {
  *            k_ra_dfu_mram_base + k_ra_dfu_mram_size`.
  */
 typedef enum : uint32_t {
-  k_ra_dfu_mram_base     = 0x02000000U, /**< Code-MRAM window base.            */
-  k_ra_dfu_mram_size     = 0x00100000U, /**< Code-MRAM window size (1 MiB).    */
-  k_ra_dfu_bl_size       = 0x00020000U, /**< Immutable bootloader size (128K). */
-  k_ra_dfu_slot_a_base   = 0x02020000U, /**< Slot A base (app vectors here).   */
-  k_ra_dfu_slot_b_base   = 0x02090000U, /**< Slot B base (app vectors here).   */
-  k_ra_dfu_slot_size     = 0x00070000U, /**< Per-slot size (448 KiB).          */
-  k_ra_dfu_page_size     = 0x00000020U, /**< MRAM program page (32 bytes).     */
-  k_ra_dfu_hdr_size      = 0x00000020U, /**< Image header size (32 bytes).     */
-  k_ra_dfu_img_max       = 0x0006FFE0U, /**< Max image bytes (slot - header).  */
-  k_ra_dfu_hdr_offset    = 0x0006FFE0U, /**< Header offset (slot's last page). */
-  k_ra_dfu_hdr_magic     = 0x52413844U, /**< Valid-image header magic ("RA8D").*/
-  k_ra_dfu_trigger_magic = 0xDF00B007U, /**< No-init SRAM DFU-request magic.   */
+  k_ra_dfu_mram_base     = 0x02000000U, /**< Code-MRAM window base.             */
+  k_ra_dfu_mram_size     = 0x00100000U, /**< Code-MRAM window size (1 MiB).     */
+  k_ra_dfu_bl_size       = 0x00020000U, /**< Immutable bootloader size (128K).  */
+  k_ra_dfu_slot_a_base   = 0x02020000U, /**< Slot A base (app vectors here).    */
+  k_ra_dfu_slot_b_base   = 0x02090000U, /**< Slot B base (app vectors here).    */
+  k_ra_dfu_slot_size     = 0x00070000U, /**< Per-slot size (448 KiB).           */
+  k_ra_dfu_page_size     = 0x00000020U, /**< MRAM program page (32 bytes).      */
+  k_ra_dfu_hdr_size      = 0x00000020U, /**< Image header size (32 bytes).      */
+  k_ra_dfu_img_max       = 0x0006FFE0U, /**< Max image bytes (slot - header).   */
+  k_ra_dfu_hdr_offset    = 0x0006FFE0U, /**< Header offset (slot's last page).  */
+  k_ra_dfu_hdr_magic     = 0x52413844U, /**< Valid-image header magic ("RA8D"). */
+  k_ra_dfu_trigger_magic = 0xDF00B007U, /**< No-init SRAM DFU-request magic.    */
 } ra_dfu_layout_t;
 
 /**
@@ -130,8 +130,8 @@ typedef enum : uint32_t {
  * @brief Application-slot identifier.
  */
 typedef enum : uint8_t {
-  k_ra_dfu_slot_a    = 0U, /**< Slot A (0x02020000). */
-  k_ra_dfu_slot_b    = 1U, /**< Slot B (0x02090000). */
+  k_ra_dfu_slot_a    = 0U, /**< Slot A (0x02020000).   */
+  k_ra_dfu_slot_b    = 1U, /**< Slot B (0x02090000).   */
   k_ra_dfu_slot_none = 2U, /**< No valid slot present. */
 } ra_dfu_slot_t;
 
@@ -141,8 +141,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_dfu_action_dfu    = 0U, /**< Enter the DFU device; do not jump. */
-  k_ra_dfu_action_jump_a = 1U, /**< Jump to the Slot A application. */
-  k_ra_dfu_action_jump_b = 2U, /**< Jump to the Slot B application. */
+  k_ra_dfu_action_jump_a = 1U, /**< Jump to the Slot A application.    */
+  k_ra_dfu_action_jump_b = 2U, /**< Jump to the Slot B application.    */
 } ra_dfu_action_t;
 
 /**
@@ -171,14 +171,14 @@ typedef enum : uint8_t {
  * @see ra_dfu_run_target_valid
  */
 typedef struct {
-  uint32_t magic;     /**< Must equal ::k_ra_dfu_hdr_magic.                  */
-  uint32_t seq;       /**< Monotonic sequence; higher valid slot wins.       */
-  uint32_t img_len;   /**< Image body length in bytes (32-byte multiple).    */
-  uint32_t img_crc32; /**< CRC32 (IEEE) over the image body.                 */
-  uint32_t entry;     /**< SRAM run base (== ::k_ra_dfu_run_base).           */
-  uint32_t rsv0;      /**< Reserved; programmed 0.                           */
-  uint32_t rsv1;      /**< Reserved; programmed 0.                           */
-  uint32_t rsv2;      /**< Reserved; programmed 0.                           */
+  uint32_t magic;     /**< Must equal ::k_ra_dfu_hdr_magic.               */
+  uint32_t seq;       /**< Monotonic sequence; higher valid slot wins.    */
+  uint32_t img_len;   /**< Image body length in bytes (32-byte multiple). */
+  uint32_t img_crc32; /**< CRC32 (IEEE) over the image body.              */
+  uint32_t entry;     /**< SRAM run base (== ::k_ra_dfu_run_base).        */
+  uint32_t rsv0;      /**< Reserved; programmed 0.                        */
+  uint32_t rsv1;      /**< Reserved; programmed 0.                        */
+  uint32_t rsv2;      /**< Reserved; programmed 0.                        */
 } ra_dfu_img_hdr_t;
 
 static_assert(sizeof(ra_dfu_img_hdr_t) == (uint32_t)k_ra_dfu_hdr_size,

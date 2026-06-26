@@ -99,7 +99,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -144,7 +144,7 @@ static const ra_port_pin_t k_microsd_pin_sd_copi = (ra_port_pin_t)k_ra_board_pmo
 static const ra_port_pin_t k_microsd_pin_sd_cs = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /*
@@ -157,7 +157,7 @@ static const ra_port_pin_t k_microsd_pin_sd_cs = (ra_port_pin_t)k_ra_board_pmod2
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -196,7 +196,7 @@ static UCHAR s_host_stack[k_microsd_host_stack];
  * cross-TU snapshot symbols are owned here. */
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (SD bring-up owned)                                          */
+/* J-Link probes (SD bring-up owned) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief SD bring-up result: 0 = card read into snapshot OK, else error. */
@@ -229,7 +229,7 @@ static uint32_t s_pclka_hz = 0U;
 UCHAR s_usb_selftest_microsd_sd_snapshot[k_microsd_snap_bytes];
 
 /* -------------------------------------------------------------------------- */
-/* microSD over SCI0 Simple-SPI -- READ-ONLY backing snapshot                  */
+/* microSD over SCI0 Simple-SPI -- READ-ONLY backing snapshot */
 /* -------------------------------------------------------------------------- */
 
 /* cppcheck-suppress-begin [constParameterCallback] -- these three hooks
@@ -460,7 +460,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

@@ -51,8 +51,8 @@ extern "C" {
  * one-shot warnings for the low and critical bands.
  */
 typedef enum : uint8_t {
-  k_ra_batt_nag_none     = 0U, /**< No new warning this step.            */
-  k_ra_batt_nag_low      = 1U, /**< SOC fell to the low band (<=20%).   */
+  k_ra_batt_nag_none     = 0U, /**< No new warning this step.              */
+  k_ra_batt_nag_low      = 1U, /**< SOC fell to the low band (<=20%).      */
   k_ra_batt_nag_critical = 2U, /**< SOC fell to the critical band (<=10%). */
 } ra_batt_nag_t;
 
@@ -65,10 +65,10 @@ typedef enum : uint8_t {
  * so a battery hovering at the boundary does not re-nag every step.
  */
 typedef enum : uint8_t {
-  k_ra_batt_low_pct      = 20U,  /**< Low-battery threshold (inclusive).   */
-  k_ra_batt_critical_pct = 10U,  /**< Critical threshold (inclusive).      */
+  k_ra_batt_low_pct      = 20U,  /**< Low-battery threshold (inclusive).    */
+  k_ra_batt_critical_pct = 10U,  /**< Critical threshold (inclusive).       */
   k_ra_batt_rearm_margin = 3U,   /**< Hysteresis above a band to re-arm it. */
-  k_ra_batt_pct_max      = 100U, /**< SOC clamp ceiling.                   */
+  k_ra_batt_pct_max      = 100U, /**< SOC clamp ceiling.                    */
 } ra_batt_threshold_t;
 
 /**

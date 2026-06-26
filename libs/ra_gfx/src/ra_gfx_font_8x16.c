@@ -30,11 +30,11 @@
  * @brief Geometry constants for the bundled 8x16 font.
  */
 typedef enum : uint8_t {
-  k_font_8x16_width  = 8,    /**< Glyph width in pixels.        */
-  k_font_8x16_height = 16,   /**< Glyph height in pixels.       */
-  k_font_8x16_bytes  = 16,   /**< Bytes per glyph.              */
-  k_font_8x16_first  = 0x20, /**< First codepoint stored.       */
-  k_font_8x16_last   = 0x7E, /**< Last codepoint stored.        */
+  k_font_8x16_width  = 8,    /**< Glyph width in pixels.  */
+  k_font_8x16_height = 16,   /**< Glyph height in pixels. */
+  k_font_8x16_bytes  = 16,   /**< Bytes per glyph.        */
+  k_font_8x16_first  = 0x20, /**< First codepoint stored. */
+  k_font_8x16_last   = 0x7E, /**< Last codepoint stored.  */
 } ra_gfx_font_8x16_constants_t;
 
 /* clang-format off */

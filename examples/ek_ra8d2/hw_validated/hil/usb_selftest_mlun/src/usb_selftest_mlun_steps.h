@@ -36,16 +36,16 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_mlun_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_mlun_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_mlun_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_mlun_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_mlun_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_mlun_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_mlun_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_mlun_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_mlun_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_mlun_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_mlun_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_mlun_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_mlun_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_mlun_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_mlun_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_mlun_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_mlun_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_mlun_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_mlun_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_mlun_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_mlun_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } mlun_config_t;
 
@@ -54,11 +54,11 @@ typedef enum : uint32_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_mlun_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_mlun_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_mlun_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_mlun_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_mlun_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_mlun_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_mlun_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_mlun_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_mlun_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_mlun_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } mlun_hex_t;
 
 /**
@@ -76,17 +76,17 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_mlun_count              = 2U,          /**< Logical units exposed (UX_MAX_SLAVE_LUN). */
-  k_mlun_sectors            = 256U,        /**< 512-byte sectors per LUN.      */
-  k_mlun_block_size         = 512U,        /**< SCSI logical block size.       */
-  k_mlun_burst_blocks       = 8U,          /**< Blocks per READ(10) burst.     */
-  k_mlun_burst_bytes        = 4096U,       /**< 8 x 512 B burst buffer.        */
-  k_mlun_target_lun0        = 0U,          /**< First LUN index.               */
-  k_mlun_no_mismatch        = 0xFFFFFFFFU, /**< Probe: no mismatch.            */
-  k_mlun_pat_lun_mul        = 97U,         /**< Per-LUN pattern multiplier.    */
-  k_mlun_pat_lba_mul        = 7U,          /**< Per-LBA pattern multiplier.    */
-  k_mlun_pat_bias           = 0x5AU,       /**< Pattern constant bias.         */
-  k_mlun_byte_mask          = 0xFFU,       /**< Byte mask.                     */
-  k_mlun_mismatch_lun_shift = 24U,         /**< s_dbg_mismatch: LUN in bits 31:24. */
+  k_mlun_sectors            = 256U,        /**< 512-byte sectors per LUN.                 */
+  k_mlun_block_size         = 512U,        /**< SCSI logical block size.                  */
+  k_mlun_burst_blocks       = 8U,          /**< Blocks per READ(10) burst.                */
+  k_mlun_burst_bytes        = 4096U,       /**< 8 x 512 B burst buffer.                   */
+  k_mlun_target_lun0        = 0U,          /**< First LUN index.                          */
+  k_mlun_no_mismatch        = 0xFFFFFFFFU, /**< Probe: no mismatch.                       */
+  k_mlun_pat_lun_mul        = 97U,         /**< Per-LUN pattern multiplier.               */
+  k_mlun_pat_lba_mul        = 7U,          /**< Per-LBA pattern multiplier.               */
+  k_mlun_pat_bias           = 0x5AU,       /**< Pattern constant bias.                    */
+  k_mlun_byte_mask          = 0xFFU,       /**< Byte mask.                                */
+  k_mlun_mismatch_lun_shift = 24U,         /**< s_dbg_mismatch: LUN in bits 31:24.        */
 } mlun_geom_t;
 
 /**
@@ -94,11 +94,11 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_mlun_phase_boot   = 0U, /**< Host thread not started.   */
-  k_mlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued.   */
-  k_mlun_phase_enum   = 2U, /**< Enumerating.               */
-  k_mlun_phase_verify = 3U, /**< Reading + checking LUNs.   */
-  k_mlun_phase_pass   = 4U, /**< All LUNs verified.         */
+  k_mlun_phase_boot   = 0U, /**< Host thread not started. */
+  k_mlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
+  k_mlun_phase_enum   = 2U, /**< Enumerating.             */
+  k_mlun_phase_verify = 3U, /**< Reading + checking LUNs. */
+  k_mlun_phase_pass   = 4U, /**< All LUNs verified.       */
 } mlun_phase_t;
 
 #ifndef RA_SIMULATOR_MODE

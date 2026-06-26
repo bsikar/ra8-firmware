@@ -415,13 +415,13 @@ static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
  * @brief `transform=` function kinds recognised by ::priv_parse_xform.
  */
 typedef enum : uint8_t {
-  k_svg_xf_none      = 0U, /**< Unrecognised function -> skipped.    */
-  k_svg_xf_translate = 1U, /**< translate(tx[,ty]).                  */
-  k_svg_xf_scale     = 2U, /**< scale(sx[,sy]).                      */
-  k_svg_xf_rotate    = 3U, /**< rotate(deg[,cx,cy]).                 */
-  k_svg_xf_skewx     = 4U, /**< skewX(deg).                         */
-  k_svg_xf_skewy     = 5U, /**< skewY(deg).                         */
-  k_svg_xf_matrix    = 6U, /**< matrix(a,b,c,d,e,f).                 */
+  k_svg_xf_none      = 0U, /**< Unrecognised function -> skipped. */
+  k_svg_xf_translate = 1U, /**< translate(tx[,ty]).               */
+  k_svg_xf_scale     = 2U, /**< scale(sx[,sy]).                   */
+  k_svg_xf_rotate    = 3U, /**< rotate(deg[,cx,cy]).              */
+  k_svg_xf_skewx     = 4U, /**< skewX(deg).                       */
+  k_svg_xf_skewy     = 5U, /**< skewY(deg).                       */
+  k_svg_xf_matrix    = 6U, /**< matrix(a,b,c,d,e,f).              */
 } svg_xf_kind_t;
 
 /**
@@ -429,12 +429,12 @@ typedef enum : uint8_t {
  * @brief Argument indices into a parsed `matrix(a,b,c,d,e,f)` transform list.
  */
 typedef enum : uint8_t {
-  k_svg_xf_arg_a = 0U, /**< matrix component a (x scale).        */
-  k_svg_xf_arg_b = 1U, /**< matrix component b (y shear).        */
-  k_svg_xf_arg_c = 2U, /**< matrix component c (x shear).        */
-  k_svg_xf_arg_d = 3U, /**< matrix component d (y scale).        */
-  k_svg_xf_arg_e = 4U, /**< matrix component e (x translate).    */
-  k_svg_xf_arg_f = 5U, /**< matrix component f (y translate).    */
+  k_svg_xf_arg_a = 0U, /**< matrix component a (x scale).     */
+  k_svg_xf_arg_b = 1U, /**< matrix component b (y shear).     */
+  k_svg_xf_arg_c = 2U, /**< matrix component c (x shear).     */
+  k_svg_xf_arg_d = 3U, /**< matrix component d (y scale).     */
+  k_svg_xf_arg_e = 4U, /**< matrix component e (x translate). */
+  k_svg_xf_arg_f = 5U, /**< matrix component f (y translate). */
 } svg_xf_arg_t;
 
 /**

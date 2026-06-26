@@ -38,9 +38,9 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.   */
-  k_t_xspi_blocks    = 8,      /**< 4 KiB == the sim fake-flash (one sector).   */
-  k_t_mram_blocks    = 4,      /**< 2 KiB inside the 12 KiB extra-MRAM region.  */
+  k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.  */
+  k_t_xspi_blocks    = 8,      /**< 4 KiB == the sim fake-flash (one sector).  */
+  k_t_mram_blocks    = 4,      /**< 2 KiB inside the 12 KiB extra-MRAM region. */
   k_t_sdram_oversize = 200000, /**< > 64 MiB / 512 -- rejected by sdram init.  */
 } t_backend_const_t;
 

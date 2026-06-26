@@ -64,8 +64,8 @@
 #include "ra_tz_secure_boot.h"
 
 /* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
-extern uint32_t g_ra_ls_sgstubs_start; /**< Veneer-region start (NSC).      */
-extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).        */
+extern uint32_t g_ra_ls_sgstubs_start; /**< Veneer-region start (NSC). */
+extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
 
 /**
  * @enum tz_ns_image_t
@@ -81,9 +81,9 @@ extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).        */
  * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image.ld.
  */
 typedef enum : uintptr_t {
-  k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).          */
-  k_tz_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).       */
-  k_tz_ns_copy_size = 0x00030000U, /**< Bytes copied LMA->VMA (192 KB).      */
+  k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).     */
+  k_tz_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).  */
+  k_tz_ns_copy_size = 0x00030000U, /**< Bytes copied LMA->VMA (192 KB). */
 } tz_ns_image_t;
 
 #ifdef RA_TRUSTZONE_ENABLE
@@ -100,14 +100,14 @@ typedef enum : uintptr_t {
  *            Secure state and (for SRAMSABAR) an open PRC4 gate.
  */
 typedef enum : uintptr_t {
-  k_tz_sau_ctrl_addr   = 0xE000EDD0U, /**< SAU Control Register.            */
-  k_tz_sau_type_addr   = 0xE000EDD4U, /**< SAU Type (implemented regions).  */
-  k_tz_sau_rnr_addr    = 0xE000EDD8U, /**< SAU Region Number.               */
-  k_tz_sau_rbar_addr   = 0xE000EDDCU, /**< SAU Region Base Address.         */
-  k_tz_sau_rlar_addr   = 0xE000EDE0U, /**< SAU Region Limit Address.        */
-  k_tz_sramsabar0_addr = 0x40008400U, /**< CPSCU SRAMSABAR0 (+4*n for n>0). */
-  k_tz_prcr_s_addr     = 0x4001E3FAU, /**< SYSC PRCR_S (16-bit).            */
-  k_tz_psarb_addr      = 0x40204004U, /**< PSCU PSARB (peripheral S/NS attr).*/
+  k_tz_sau_ctrl_addr   = 0xE000EDD0U, /**< SAU Control Register.              */
+  k_tz_sau_type_addr   = 0xE000EDD4U, /**< SAU Type (implemented regions).    */
+  k_tz_sau_rnr_addr    = 0xE000EDD8U, /**< SAU Region Number.                 */
+  k_tz_sau_rbar_addr   = 0xE000EDDCU, /**< SAU Region Base Address.           */
+  k_tz_sau_rlar_addr   = 0xE000EDE0U, /**< SAU Region Limit Address.          */
+  k_tz_sramsabar0_addr = 0x40008400U, /**< CPSCU SRAMSABAR0 (+4*n for n>0).   */
+  k_tz_prcr_s_addr     = 0x4001E3FAU, /**< SYSC PRCR_S (16-bit).              */
+  k_tz_psarb_addr      = 0x40204004U, /**< PSCU PSARB (peripheral S/NS attr). */
 } tz_reg_addr_t;
 
 /**
@@ -118,15 +118,15 @@ typedef enum : uintptr_t {
  *            occupies bits [31:5] (ARMv8-M 32-byte region quantum).
  */
 typedef enum : uint32_t {
-  k_tz_sau_ctrl_enable      = 0x00000001U, /**< SAU_CTRL.ENABLE, ALLNS = 0.      */
-  k_tz_sau_rlar_enable      = 0x00000001U, /**< SAU_RLAR.ENABLE.                 */
-  k_tz_sau_rlar_nsc         = 0x00000002U, /**< SAU_RLAR.NSC (Non-secure call).  */
-  k_tz_sau_limit_mask       = 0xFFFFFFE0U, /**< 32-byte-aligned limit mask.      */
-  k_tz_sau_type_mask        = 0x000000FFU, /**< SAU_TYPE.SREGION field mask.     */
-  k_tz_psarb_usbfs_ns       = 0x00000800U, /**< PSARB11 = 1: USBFS0 Non-secure.  */
-  k_tz_psarb_usbhs_ns       = 0x00001000U, /**< PSARB12 = 1: USBHS Non-secure.   */
-  k_tz_psarb_usb_ns         = 0x00001800U, /**< PSARB11|12: both USB ctrls NS.   */
-  k_tz_psarb_readback_spins = 1000U,       /**< Bounded read-back confirm loop.  */
+  k_tz_sau_ctrl_enable      = 0x00000001U, /**< SAU_CTRL.ENABLE, ALLNS = 0.     */
+  k_tz_sau_rlar_enable      = 0x00000001U, /**< SAU_RLAR.ENABLE.                */
+  k_tz_sau_rlar_nsc         = 0x00000002U, /**< SAU_RLAR.NSC (Non-secure call). */
+  k_tz_sau_limit_mask       = 0xFFFFFFE0U, /**< 32-byte-aligned limit mask.     */
+  k_tz_sau_type_mask        = 0x000000FFU, /**< SAU_TYPE.SREGION field mask.    */
+  k_tz_psarb_usbfs_ns       = 0x00000800U, /**< PSARB11 = 1: USBFS0 Non-secure. */
+  k_tz_psarb_usbhs_ns       = 0x00001000U, /**< PSARB12 = 1: USBHS Non-secure.  */
+  k_tz_psarb_usb_ns         = 0x00001800U, /**< PSARB11|12: both USB ctrls NS.  */
+  k_tz_psarb_readback_spins = 1000U,       /**< Bounded read-back confirm loop. */
 } tz_field_t;
 
 /**
@@ -142,12 +142,12 @@ typedef enum : uint32_t {
  * @invariant Matches the EK-RA8D2 v1 User's Manual USB-FS (J11) pin map.
  */
 typedef enum : uint16_t {
-  k_tz_usb_pin_vbus   = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7,  /**< P4_07 FS VBUS. */
-  k_tz_usb_pin_vbusen = ((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0,  /**< P5_00 FS role. */
-  k_tz_usb_pin_dp     = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14, /**< P8_14 FS D+.   */
-  k_tz_usb_pin_dm     = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15, /**< P8_15 FS D-.   */
+  k_tz_usb_pin_vbus    = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7, /**< P4_07 FS VBUS. */
+  k_tz_usb_pin_vbusen  = ((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0, /**< P5_00 FS role. */
+  k_tz_usb_pin_dp      = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14, /**< P8_14 FS D+. */
+  k_tz_usb_pin_dm      = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15, /**< P8_15 FS D-. */
   k_tz_usb_pin_hs_vbus = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8, /**< P4_08 HS VBUS. */
-  k_tz_usb_pin_hs_pwr  = ((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7, /**< PD07 J7 pwr.  */
+  k_tz_usb_pin_hs_pwr  = ((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7, /**< PD07 J7 pwr. */
 } tz_usb_pin_t;
 
 /**
@@ -193,8 +193,8 @@ volatile uint32_t g_tz_usb_expander_err;
  * @invariant The top byte is the 0xA5 key; bit 4 is PRC4.
  */
 typedef enum : uint16_t {
-  k_tz_prcr_s_open  = 0xA510U, /**< Key | PRC4 set (unlock CPSCU writes).   */
-  k_tz_prcr_s_close = 0xA500U, /**< Key | PRC4 clear (re-lock).             */
+  k_tz_prcr_s_open  = 0xA510U, /**< Key | PRC4 set (unlock CPSCU writes). */
+  k_tz_prcr_s_close = 0xA500U, /**< Key | PRC4 clear (re-lock).           */
 } tz_prcr_t;
 
 /**
@@ -225,10 +225,10 @@ typedef enum : uint32_t {
  * @brief Region indices for the bit[28] SAU layout.
  */
 typedef enum : uint8_t {
-  k_tz_region_nsc     = 0U, /**< NSC veneers (.gnu.sgstubs in MRAM).       */
-  k_tz_region_ns_code = 1U, /**< 0x1000_0000-0x1FFF_FFFF NS.              */
-  k_tz_region_ns_sram = 2U, /**< 0x3000_0000-0x3FFF_FFFF NS (NS image).   */
-  k_tz_region_ns_per  = 3U, /**< 0x5000_0000-0xDFFF_FFFF NS.              */
+  k_tz_region_nsc     = 0U, /**< NSC veneers (.gnu.sgstubs in MRAM).    */
+  k_tz_region_ns_code = 1U, /**< 0x1000_0000-0x1FFF_FFFF NS.            */
+  k_tz_region_ns_sram = 2U, /**< 0x3000_0000-0x3FFF_FFFF NS (NS image). */
+  k_tz_region_ns_per  = 3U, /**< 0x5000_0000-0xDFFF_FFFF NS.            */
 } tz_region_t;
 
 /**

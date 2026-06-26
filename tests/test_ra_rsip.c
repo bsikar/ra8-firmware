@@ -35,11 +35,11 @@
  */
 typedef enum : uint32_t {
   k_ra_rsip_test_trng_bytes  = 32U,          /**< TRNG read length under test. */
-  k_ra_rsip_test_msg_bytes   = 8U,           /**< SHA input message size. */
-  k_ra_rsip_test_pattern_w   = 0xCAFEBABEUL, /**< Sentinel TRNG word. */
-  k_ra_rsip_test_digest_seed = 0x11223344UL, /**< Sentinel HASH digest word. */
-  k_ra_rsip_test_invalid_len = 5U,           /**< Non-multiple-of-4 length. */
-  k_ra_rsip_test_isr_garbage = 0x40000000UL, /**< Bit outside ISR field. */
+  k_ra_rsip_test_msg_bytes   = 8U,           /**< SHA input message size.      */
+  k_ra_rsip_test_pattern_w   = 0xCAFEBABEUL, /**< Sentinel TRNG word.          */
+  k_ra_rsip_test_digest_seed = 0x11223344UL, /**< Sentinel HASH digest word.   */
+  k_ra_rsip_test_invalid_len = 5U,           /**< Non-multiple-of-4 length.    */
+  k_ra_rsip_test_isr_garbage = 0x40000000UL, /**< Bit outside ISR field.       */
 } ra_rsip_test_const_t;
 
 /**

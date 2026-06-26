@@ -52,7 +52,7 @@ static const UCHAR s_fat_file_name[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' '
 static volatile uint32_t s_dbg_read_calls;
 
 /* -------------------------------------------------------------------------- */
-/* FAT16 synthesis (identical layout to usb_msc_mram)                         */
+/* FAT16 synthesis (identical layout to usb_msc_mram) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -258,7 +258,7 @@ static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
 
 UINT selftest_msc_read(VOID*  storage,

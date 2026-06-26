@@ -52,9 +52,9 @@ extern "C" {
  * verify the board they were built for. All three are ASCII string
  * literals with permanent storage duration.
  */
-extern const char* const k_ra_board_name;    /**< "EK-RA8D2 v1". */
+extern const char* const k_ra_board_name;    /**< "EK-RA8D2 v1".              */
 extern const char* const k_ra_board_doc_rev; /**< "R20UT5523EG0101 Rev 1.01". */
-extern const char* const k_ra_board_mcu;     /**< "R7KA8D2KFLCAC". */
+extern const char* const k_ra_board_mcu;     /**< "R7KA8D2KFLCAC".            */
 
 /**
  * @struct ra_board_info_t
@@ -261,9 +261,9 @@ ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx);
 
 /** @brief GLCDC parallel-RGB pixel formats supported by EK-RA8D2 J1. */
 typedef enum : uint8_t {
-  k_ra_board_glcdc_fmt_rgb888 = 0U, /**< 24-bit, 8 bits/colour.   */
-  k_ra_board_glcdc_fmt_rgb666 = 1U, /**< 18-bit, 6 bits/colour.   */
-  k_ra_board_glcdc_fmt_rgb565 = 2U, /**< 16-bit, 5/6/5 bits.      */
+  k_ra_board_glcdc_fmt_rgb888 = 0U, /**< 24-bit, 8 bits/colour. */
+  k_ra_board_glcdc_fmt_rgb666 = 1U, /**< 18-bit, 6 bits/colour. */
+  k_ra_board_glcdc_fmt_rgb565 = 2U, /**< 16-bit, 5/6/5 bits.    */
 } ra_board_glcdc_fmt_t;
 
 /** @brief One row of the GLCDC pin table -- (signal name, RA8D2 pin). */
@@ -320,7 +320,7 @@ extern const uint32_t g_ra_board_glcdc_rgb565_pin_count;
  *  for the analyzer.  Source: EK-RA8D2 v1 UM Table 33 p 42.
  */
 typedef enum : uint16_t {
-  k_ra_board_lcd_reset_l = (uint16_t)k_ra_pin_lcd_reset_l, /**< J1-6 RST,  P606 (active-low). */
+  k_ra_board_lcd_reset_l = (uint16_t)k_ra_pin_lcd_reset_l, /**< J1-6 RST,  P606 (active-low).  */
   k_ra_board_lcd_blen    = (uint16_t)k_ra_pin_lcd_blen,    /**< J1-1 BLEN, P514 (active-high). */
 } ra_board_lcd_gpio_pin_t;
 

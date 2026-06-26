@@ -35,7 +35,7 @@
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
   k_test_fxlx_block_count = 256U, /**< Mock backend size in sectors.        */
-  k_test_fxlx_block_size  = 512U, /**< FAT bytes-per-sector.                 */
+  k_test_fxlx_block_size  = 512U, /**< FAT bytes-per-sector.                */
   k_test_fxlx_sci_chan    = 8U,   /**< SCI channel routed to J-Link OB CDC. */
 } test_fxlx_const_t;
 

@@ -25,7 +25,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------------- */
-/* Mock byte transport: two FIFOs + a fake monotonic clock.                  */
+/* Mock byte transport: two FIFOs + a fake monotonic clock. */
 /* ------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
@@ -128,7 +128,7 @@ static ra_err_t bring_up_with_probe(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* Tests                                                                     */
+/* Tests */
 /* ------------------------------------------------------------------------- */
 
 /**

@@ -66,11 +66,11 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t max_name_len;             /**< Longest file name (incl NUL).        */
-  bool     read_only;                /**< true => no writes/creates/erases.    */
-  bool     supports_mkdir;           /**< true => sub-directory creation.      */
-  bool     supports_streaming_write; /**< true => open-for-write streaming.    */
-  bool     case_sensitive;           /**< true => names compare case-sensitive.*/
+  uint16_t max_name_len;             /**< Longest file name (incl NUL).         */
+  bool     read_only;                /**< true => no writes/creates/erases.     */
+  bool     supports_mkdir;           /**< true => sub-directory creation.       */
+  bool     supports_streaming_write; /**< true => open-for-write streaming.     */
+  bool     case_sensitive;           /**< true => names compare case-sensitive. */
 } ra_io_fsfmt_caps_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

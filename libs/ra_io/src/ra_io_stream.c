@@ -34,10 +34,10 @@ static const char* const s_tag = "ra_io_stream";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_io_dec_base       = 10,    /**< Base for ::ra_io_stream_put_u32.       */
-  k_ra_io_hex_base       = 16,    /**< Base for ::ra_io_stream_put_hex.       */
-  k_ra_io_u32_max_digits = 10,    /**< Decimal digits in UINT32_MAX.          */
-  k_ra_io_hex_max_digits = 8,     /**< Hex digits in a 32-bit value.          */
+  k_ra_io_dec_base       = 10,    /**< Base for ::ra_io_stream_put_u32.            */
+  k_ra_io_hex_base       = 16,    /**< Base for ::ra_io_stream_put_hex.            */
+  k_ra_io_u32_max_digits = 10,    /**< Decimal digits in UINT32_MAX.               */
+  k_ra_io_hex_max_digits = 8,     /**< Hex digits in a 32-bit value.               */
   k_ra_io_puts_max       = 65535, /**< Bounded scan limit for ::ra_io_stream_puts. */
 } ra_io_stream_const_t;
 

@@ -40,10 +40,10 @@ static const char* const s_tag_img = "ra_img";
  */
 typedef enum : uint8_t {
   k_ra_img_req_rgb  = 3, /**< Desired channel count requested from stb_image. */
-  k_ra_img_ch_r     = 0, /**< Red byte offset within an RGB triple.          */
-  k_ra_img_ch_g     = 1, /**< Green byte offset within an RGB triple.        */
-  k_ra_img_ch_b     = 2, /**< Blue byte offset within an RGB triple.         */
-  k_ra_img_min_edge = 1, /**< Minimum scaled / box edge length, pixels.      */
+  k_ra_img_ch_r     = 0, /**< Red byte offset within an RGB triple.           */
+  k_ra_img_ch_g     = 1, /**< Green byte offset within an RGB triple.         */
+  k_ra_img_ch_b     = 2, /**< Blue byte offset within an RGB triple.          */
+  k_ra_img_min_edge = 1, /**< Minimum scaled / box edge length, pixels.       */
 } ra_img_pack_t;
 
 /**

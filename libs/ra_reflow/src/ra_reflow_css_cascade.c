@@ -42,10 +42,10 @@
  * selector (no constraints) is also 0 but beats inheritance on source order.
  */
 typedef enum : uint16_t {
-  k_priv_rank_inherited = 0U,     /**< Inheritance / universal weight.    */
-  k_priv_spec_type      = 1U,     /**< A type constraint adds this.       */
-  k_priv_spec_class     = 100U,   /**< A class constraint adds this.      */
-  k_priv_spec_id        = 10000U, /**< An id constraint adds this.        */
+  k_priv_rank_inherited = 0U,     /**< Inheritance / universal weight. */
+  k_priv_spec_type      = 1U,     /**< A type constraint adds this.    */
+  k_priv_spec_class     = 100U,   /**< A class constraint adds this.   */
+  k_priv_spec_id        = 10000U, /**< An id constraint adds this.     */
 } priv_css_consts_t;
 
 /**

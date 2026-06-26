@@ -84,11 +84,11 @@ extern "C" {
  * extensions land.
  */
 typedef enum : uint16_t {
-  k_ra_usb_pal_ep_max         = 10U,   /**< Maximum endpoint number. */
-  k_ra_usb_pal_ep0_max_packet = 64U,   /**< EP0 max packet on FS / HS-FS. */
+  k_ra_usb_pal_ep_max         = 10U,   /**< Maximum endpoint number.       */
+  k_ra_usb_pal_ep0_max_packet = 64U,   /**< EP0 max packet on FS / HS-FS.  */
   k_ra_usb_pal_bulk_max_fs    = 64U,   /**< Bulk max packet at full-speed. */
   k_ra_usb_pal_bulk_max_hs    = 512U,  /**< Bulk max packet at high-speed. */
-  k_ra_usb_pal_xfer_max       = 1024U, /**< Single-shot xfer cap. */
+  k_ra_usb_pal_xfer_max       = 1024U, /**< Single-shot xfer cap.          */
   k_ra_usb_pal_ep_addr_mask   = 0x7FU, /**< Strip USB-IN dir bit (bit 7) from descriptor ep_addr. */
 } ra_usb_pal_limits_t;
 
@@ -117,12 +117,12 @@ typedef enum : uint8_t {
  * @brief USB device state per chapter 9 of USB 2.0.
  */
 typedef enum : uint8_t {
-  k_ra_usb_pal_state_detached  = 0U, /**< D+ pull-up off. */
+  k_ra_usb_pal_state_detached  = 0U, /**< D+ pull-up off.          */
   k_ra_usb_pal_state_attached  = 1U, /**< D+ pull-up on, no reset. */
-  k_ra_usb_pal_state_default   = 2U, /**< Reset received. */
-  k_ra_usb_pal_state_addressed = 3U, /**< Address assigned. */
-  k_ra_usb_pal_state_configd   = 4U, /**< SET_CONFIGURATION done. */
-  k_ra_usb_pal_state_suspended = 5U, /**< Bus idle > 3 ms. */
+  k_ra_usb_pal_state_default   = 2U, /**< Reset received.          */
+  k_ra_usb_pal_state_addressed = 3U, /**< Address assigned.        */
+  k_ra_usb_pal_state_configd   = 4U, /**< SET_CONFIGURATION done.  */
+  k_ra_usb_pal_state_suspended = 5U, /**< Bus idle > 3 ms.         */
 } ra_usb_pal_state_t;
 
 /* =============================================================================
@@ -136,16 +136,16 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_ra_usb_pal_event_none    = 0x0000U,
-  k_ra_usb_pal_event_reset   = 0x0001U, /**< Bus reset. */
-  k_ra_usb_pal_event_suspend = 0x0002U, /**< Bus suspend (idle). */
-  k_ra_usb_pal_event_resume  = 0x0004U, /**< Bus resume. */
-  k_ra_usb_pal_event_setup   = 0x0008U, /**< SETUP packet on EP0. */
-  k_ra_usb_pal_event_ep_in   = 0x0010U, /**< IN endpoint complete. */
-  k_ra_usb_pal_event_ep_out  = 0x0020U, /**< OUT endpoint complete. */
-  k_ra_usb_pal_event_sof     = 0x0040U, /**< Start-of-Frame. */
-  k_ra_usb_pal_event_attach  = 0x0080U, /**< VBUS rose / cable in. */
+  k_ra_usb_pal_event_reset   = 0x0001U, /**< Bus reset.                */
+  k_ra_usb_pal_event_suspend = 0x0002U, /**< Bus suspend (idle).       */
+  k_ra_usb_pal_event_resume  = 0x0004U, /**< Bus resume.               */
+  k_ra_usb_pal_event_setup   = 0x0008U, /**< SETUP packet on EP0.      */
+  k_ra_usb_pal_event_ep_in   = 0x0010U, /**< IN endpoint complete.     */
+  k_ra_usb_pal_event_ep_out  = 0x0020U, /**< OUT endpoint complete.    */
+  k_ra_usb_pal_event_sof     = 0x0040U, /**< Start-of-Frame.           */
+  k_ra_usb_pal_event_attach  = 0x0080U, /**< VBUS rose / cable in.     */
   k_ra_usb_pal_event_detach  = 0x0100U, /**< VBUS dropped / cable out. */
-  k_ra_usb_pal_event_error   = 0x8000U, /**< Controller error. */
+  k_ra_usb_pal_event_error   = 0x8000U, /**< Controller error.         */
 } ra_usb_pal_event_t;
 
 /**

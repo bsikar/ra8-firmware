@@ -210,7 +210,7 @@ static void test_mcdc_iter_live(void)
   ra_box_t           rootn = container(k_ra_box_stack_v, 0, 0, 1U);
   const int16_t      r     = ra_box_add(&t, (int16_t)k_ra_box_none, &rootn);
   ra_box_t           an = leaf(10, 0U), bn = leaf(10, 0U);
-  const int16_t      a     = ra_box_add(&t, r, &an); /* walked: C1=T (V1) */
+  const int16_t      a     = ra_box_add(&t, r, &an); /* walked: C1=T (V1)          */
   const int16_t      b     = ra_box_add(&t, r, &bn); /* then chain ends: C1=F (V2) */
   const ra_ui_rect_t frame = {0, 0, 40, 40};
   TEST_ASSERT_EQ(k_ra_ok, ra_box_layout(&t, r, &frame));
@@ -277,7 +277,7 @@ static void test_mcdc_box_layout(void)
   ra_box_t      n = leaf(0, 1U);
   const int16_t r = ra_box_add(&t, (int16_t)k_ra_box_none, &n);
   TEST_ASSERT_EQ(0, r);
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_box_layout(&t, (int16_t)-1, &frame)); /* root<0 */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_box_layout(&t, (int16_t)-1, &frame)); /* root<0      */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_box_layout(&t, (int16_t)5, &frame));  /* root>=count */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_box_layout(&t, 0, nullptr));
   TEST_ASSERT_EQ(k_ra_ok, ra_box_layout(&t, 0, &frame)); /* valid */

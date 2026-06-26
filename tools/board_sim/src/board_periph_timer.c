@@ -33,30 +33,30 @@
 
 /** @brief AGT block geometry (ra8d2_agt_regs.h, 16-bit view). */
 typedef enum : uint64_t {
-  k_agt_base    = 0x40221000UL, /**< AGT0 base.                           */
-  k_agt_stride  = 0x100UL,      /**< Bytes per AGT channel.               */
-  k_agt_count   = 10UL,         /**< AGT0..AGT9.                          */
+  k_agt_base    = 0x40221000UL, /**< AGT0 base.             */
+  k_agt_stride  = 0x100UL,      /**< Bytes per AGT channel. */
+  k_agt_count   = 10UL,         /**< AGT0..AGT9.            */
   k_agt_span    = 0x100UL * 10UL,
-  k_agt_off_agt = 0x00UL, /**< AGT counter (16-bit down).           */
-  k_agt_off_cma = 0x02UL, /**< AGTCMA compare-match A.              */
-  k_agt_off_cmb = 0x04UL, /**< AGTCMB compare-match B.              */
-  k_agt_off_cr  = 0x08UL, /**< AGTCR control/status (8-bit).        */
-  k_agt_off_mr1 = 0x09UL, /**< AGTMR1 mode 1 (8-bit).               */
+  k_agt_off_agt = 0x00UL, /**< AGT counter (16-bit down).    */
+  k_agt_off_cma = 0x02UL, /**< AGTCMA compare-match A.       */
+  k_agt_off_cmb = 0x04UL, /**< AGTCMB compare-match B.       */
+  k_agt_off_cr  = 0x08UL, /**< AGTCR control/status (8-bit). */
+  k_agt_off_mr1 = 0x09UL, /**< AGTMR1 mode 1 (8-bit).        */
 } agt_map_t;
 
 /** @brief GPT block geometry (ra8d2_gpt_regs.h, 32-bit channels). */
 typedef enum : uint64_t {
-  k_gpt_base      = 0x40322000UL, /**< GPT0 base.                           */
-  k_gpt_stride    = 0x100UL,      /**< Bytes per GPT channel.               */
-  k_gpt_count     = 14UL,         /**< GPT0..GPT13.                         */
+  k_gpt_base      = 0x40322000UL, /**< GPT0 base.             */
+  k_gpt_stride    = 0x100UL,      /**< Bytes per GPT channel. */
+  k_gpt_count     = 14UL,         /**< GPT0..GPT13.           */
   k_gpt_span      = 0x100UL * 14UL,
-  k_gpt_off_gtstr = 0x04UL, /**< GTSTR software start.                */
-  k_gpt_off_gtstp = 0x08UL, /**< GTSTP software stop.                 */
-  k_gpt_off_gtclr = 0x0CUL, /**< GTCLR software clear.                */
-  k_gpt_off_gtcr  = 0x2CUL, /**< GTCR control (CST bit0).             */
-  k_gpt_off_gtst  = 0x3CUL, /**< GTST status.                         */
-  k_gpt_off_gtcnt = 0x48UL, /**< GTCNT counter (32-bit up).           */
-  k_gpt_off_gtpr  = 0x64UL, /**< GTPR period.                         */
+  k_gpt_off_gtstr = 0x04UL, /**< GTSTR software start.      */
+  k_gpt_off_gtstp = 0x08UL, /**< GTSTP software stop.       */
+  k_gpt_off_gtclr = 0x0CUL, /**< GTCLR software clear.      */
+  k_gpt_off_gtcr  = 0x2CUL, /**< GTCR control (CST bit0).   */
+  k_gpt_off_gtst  = 0x3CUL, /**< GTST status.               */
+  k_gpt_off_gtcnt = 0x48UL, /**< GTCNT counter (32-bit up). */
+  k_gpt_off_gtpr  = 0x64UL, /**< GTPR period.               */
 } gpt_map_t;
 
 /** @brief 16-bit counter wrap value (also the GPT default period). */
@@ -66,19 +66,19 @@ typedef enum : uint32_t {
 
 /** @brief AGTCR (control/status) bits -- ra_agt_agtcr_bits_t. */
 typedef enum : uint32_t {
-  k_agtcr_tstart = 0x01U, /**< TSTART start request.                 */
-  k_agtcr_tcstf  = 0x02U, /**< TCSTF count-status flag (RO).         */
-  k_agtcr_tundf  = 0x20U, /**< TUNDF underflow flag (RW1C).          */
-  k_agtcr_tcmaf  = 0x40U, /**< TCMAF compare-match A flag (RW1C).    */
-  k_agtcr_tcmbf  = 0x80U, /**< TCMBF compare-match B flag (RW1C).    */
+  k_agtcr_tstart = 0x01U, /**< TSTART start request.              */
+  k_agtcr_tcstf  = 0x02U, /**< TCSTF count-status flag (RO).      */
+  k_agtcr_tundf  = 0x20U, /**< TUNDF underflow flag (RW1C).       */
+  k_agtcr_tcmaf  = 0x40U, /**< TCMAF compare-match A flag (RW1C). */
+  k_agtcr_tcmbf  = 0x80U, /**< TCMBF compare-match B flag (RW1C). */
 } agtcr_bit_t;
 
 /** @brief GPT GTCR / GTST bits -- ra_gpt register notes. */
 typedef enum : uint32_t {
-  k_gtcr_cst   = 0x00000001U, /**< GTCR.CST count-start.                 */
-  k_gtst_tcfa  = 0x00000001U, /**< GTST.TCFA compare-match A.            */
-  k_gtst_tcfpo = 0x00000040U, /**< GTST.TCFPO overflow.                  */
-  k_gtst_tcfpu = 0x00000080U, /**< GTST.TCFPU underflow.                 */
+  k_gtcr_cst   = 0x00000001U, /**< GTCR.CST count-start.      */
+  k_gtst_tcfa  = 0x00000001U, /**< GTST.TCFA compare-match A. */
+  k_gtst_tcfpo = 0x00000040U, /**< GTST.TCFPO overflow.       */
+  k_gtst_tcfpu = 0x00000080U, /**< GTST.TCFPU underflow.      */
 } gpt_bit_t;
 
 /**
@@ -91,8 +91,8 @@ typedef enum : uint32_t {
  * IELSR slot, so the ICU model can match the raised event to that slot.
  */
 typedef enum : uint16_t {
-  k_event_gpt0_ovf = 0x0C1U, /**< GPT0 GTCIV counter-overflow event.      */
-  k_event_agt0_int = 0x0DFU, /**< AGT0 AGTI combined interrupt event.     */
+  k_event_gpt0_ovf = 0x0C1U, /**< GPT0 GTCIV counter-overflow event.  */
+  k_event_agt0_int = 0x0DFU, /**< AGT0 AGTI combined interrupt event. */
 } elc_event_t;
 
 /** @brief Per-chunk advance for the modelled counters (one chunk == 1 tick). */
@@ -109,16 +109,16 @@ typedef struct {
   uint16_t cmpb;       /**< AGTCMB compare-match B.    */
   uint8_t  cr;         /**< AGTCR control/status.      */
   uint8_t  mr1;        /**< AGTMR1 mode 1.             */
-  uint32_t underflows; /**< Underflow event count.  */
+  uint32_t underflows; /**< Underflow event count.     */
 } agt_state_t;
 
 /** @brief One GPT channel: a 32-bit saw up-counter + status. */
 typedef struct {
-  uint32_t cnt;       /**< GTCNT live count.         */
-  uint32_t period;    /**< GTPR period.              */
-  uint32_t cr;        /**< GTCR (CST in bit0).       */
-  uint32_t st;        /**< GTST status flags.        */
-  uint32_t overflows; /**< Overflow event count.     */
+  uint32_t cnt;       /**< GTCNT live count.     */
+  uint32_t period;    /**< GTPR period.          */
+  uint32_t cr;        /**< GTCR (CST in bit0).   */
+  uint32_t st;        /**< GTST status flags.    */
+  uint32_t overflows; /**< Overflow event count. */
 } gpt_state_t;
 
 static agt_state_t s_agt[k_agt_count];

@@ -75,7 +75,7 @@ extern "C" {
  * part, a wired-up wrong address, or a dead bus.
  */
 typedef enum : uint8_t {
-  k_lsm6dso_who_am_i_value  = 0x6CU, /**< WHO_AM_I expected value (DS12140 sec 9.11). */
+  k_lsm6dso_who_am_i_value  = 0x6CU, /**< WHO_AM_I expected value (DS12140 sec 9.11).  */
   k_lsm6dso_fifo_words_max  = 0x80U, /**< Default FIFO-batch cap exposed to callers.   */
   k_lsm6dso_fifo_bytes_word = 0x07U, /**< Bytes per FIFO word (TAG + 6 data, sec 9.7). */
 } ra_lsm6dso_const_t;
@@ -108,20 +108,20 @@ typedef enum : uint8_t {
  * is a future extension.
  */
 typedef enum : uint8_t {
-  k_lsm6dso_reg_fifo_ctrl1    = 0x07U, /**< FIFO_CTRL1   (DS12140 sec 9.6). */
-  k_lsm6dso_reg_fifo_ctrl2    = 0x08U, /**< FIFO_CTRL2   (DS12140 sec 9.7). */
-  k_lsm6dso_reg_fifo_ctrl3    = 0x09U, /**< FIFO_CTRL3   (DS12140 sec 9.8). */
-  k_lsm6dso_reg_fifo_ctrl4    = 0x0AU, /**< FIFO_CTRL4   (DS12140 sec 9.9). */
-  k_lsm6dso_reg_who_am_i      = 0x0FU, /**< WHO_AM_I     (DS12140 sec 9.11). */
-  k_lsm6dso_reg_ctrl1_xl      = 0x10U, /**< CTRL1_XL     (DS12140 sec 9.12). */
-  k_lsm6dso_reg_ctrl2_g       = 0x11U, /**< CTRL2_G      (DS12140 sec 9.13). */
-  k_lsm6dso_reg_ctrl3_c       = 0x12U, /**< CTRL3_C      (DS12140 sec 9.14). */
-  k_lsm6dso_reg_ctrl6_c       = 0x15U, /**< CTRL6_C      (DS12140 sec 9.17). */
-  k_lsm6dso_reg_ctrl7_g       = 0x16U, /**< CTRL7_G      (DS12140 sec 9.18). */
-  k_lsm6dso_reg_out_temp_l    = 0x20U, /**< OUT_TEMP_L   (DS12140 sec 9.27). */
-  k_lsm6dso_reg_outx_l_g      = 0x22U, /**< OUTX_L_G     (DS12140 sec 9.29). */
-  k_lsm6dso_reg_outx_l_a      = 0x28U, /**< OUTX_L_A     (DS12140 sec 9.35). */
-  k_lsm6dso_reg_fifo_status1  = 0x3AU, /**< FIFO_STATUS1 (DS12140 sec 9.44). */
+  k_lsm6dso_reg_fifo_ctrl1    = 0x07U, /**< FIFO_CTRL1   (DS12140 sec 9.6).       */
+  k_lsm6dso_reg_fifo_ctrl2    = 0x08U, /**< FIFO_CTRL2   (DS12140 sec 9.7).       */
+  k_lsm6dso_reg_fifo_ctrl3    = 0x09U, /**< FIFO_CTRL3   (DS12140 sec 9.8).       */
+  k_lsm6dso_reg_fifo_ctrl4    = 0x0AU, /**< FIFO_CTRL4   (DS12140 sec 9.9).       */
+  k_lsm6dso_reg_who_am_i      = 0x0FU, /**< WHO_AM_I     (DS12140 sec 9.11).      */
+  k_lsm6dso_reg_ctrl1_xl      = 0x10U, /**< CTRL1_XL     (DS12140 sec 9.12).      */
+  k_lsm6dso_reg_ctrl2_g       = 0x11U, /**< CTRL2_G      (DS12140 sec 9.13).      */
+  k_lsm6dso_reg_ctrl3_c       = 0x12U, /**< CTRL3_C      (DS12140 sec 9.14).      */
+  k_lsm6dso_reg_ctrl6_c       = 0x15U, /**< CTRL6_C      (DS12140 sec 9.17).      */
+  k_lsm6dso_reg_ctrl7_g       = 0x16U, /**< CTRL7_G      (DS12140 sec 9.18).      */
+  k_lsm6dso_reg_out_temp_l    = 0x20U, /**< OUT_TEMP_L   (DS12140 sec 9.27).      */
+  k_lsm6dso_reg_outx_l_g      = 0x22U, /**< OUTX_L_G     (DS12140 sec 9.29).      */
+  k_lsm6dso_reg_outx_l_a      = 0x28U, /**< OUTX_L_A     (DS12140 sec 9.35).      */
+  k_lsm6dso_reg_fifo_status1  = 0x3AU, /**< FIFO_STATUS1 (DS12140 sec 9.44).      */
   k_lsm6dso_reg_fifo_data_out = 0x78U, /**< FIFO_DATA_OUT_TAG (DS12140 sec 9.60). */
 } ra_lsm6dso_reg_t;
 
@@ -139,9 +139,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_lsm6dso_xl_fs_2g  = 0x00U, /**< +-2  g, sens 0.061 mg/LSB (default). */
-  k_lsm6dso_xl_fs_16g = 0x01U, /**< +-16 g, sens 0.488 mg/LSB.            */
-  k_lsm6dso_xl_fs_4g  = 0x02U, /**< +-4  g, sens 0.122 mg/LSB.            */
-  k_lsm6dso_xl_fs_8g  = 0x03U, /**< +-8  g, sens 0.244 mg/LSB.            */
+  k_lsm6dso_xl_fs_16g = 0x01U, /**< +-16 g, sens 0.488 mg/LSB.           */
+  k_lsm6dso_xl_fs_4g  = 0x02U, /**< +-4  g, sens 0.122 mg/LSB.           */
+  k_lsm6dso_xl_fs_8g  = 0x03U, /**< +-8  g, sens 0.244 mg/LSB.           */
 } ra_lsm6dso_xl_fs_t;
 
 /**
@@ -160,10 +160,10 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_lsm6dso_g_fs_125dps  = 0x00U, /**< +-125  dps narrow scale (FS_125 = 1). */
-  k_lsm6dso_g_fs_250dps  = 0x01U, /**< +-250  dps (default).                  */
-  k_lsm6dso_g_fs_500dps  = 0x02U, /**< +-500  dps.                            */
-  k_lsm6dso_g_fs_1000dps = 0x03U, /**< +-1000 dps.                            */
-  k_lsm6dso_g_fs_2000dps = 0x04U, /**< +-2000 dps.                            */
+  k_lsm6dso_g_fs_250dps  = 0x01U, /**< +-250  dps (default).                 */
+  k_lsm6dso_g_fs_500dps  = 0x02U, /**< +-500  dps.                           */
+  k_lsm6dso_g_fs_1000dps = 0x03U, /**< +-1000 dps.                           */
+  k_lsm6dso_g_fs_2000dps = 0x04U, /**< +-2000 dps.                           */
 } ra_lsm6dso_g_fs_t;
 
 /**
@@ -178,17 +178,17 @@ typedef enum : uint8_t {
  * the chosen code into the high nibble of both CTRL1_XL and CTRL2_G.
  */
 typedef enum : uint8_t {
-  k_lsm6dso_odr_off    = 0x00U, /**< Power-down (default).        */
-  k_lsm6dso_odr_12_5hz = 0x01U, /**< 12.5  Hz (low-power).        */
-  k_lsm6dso_odr_26hz   = 0x02U, /**< 26    Hz.                    */
-  k_lsm6dso_odr_52hz   = 0x03U, /**< 52    Hz.                    */
-  k_lsm6dso_odr_104hz  = 0x04U, /**< 104   Hz (normal mode).      */
-  k_lsm6dso_odr_208hz  = 0x05U, /**< 208   Hz.                    */
-  k_lsm6dso_odr_416hz  = 0x06U, /**< 416   Hz.                    */
-  k_lsm6dso_odr_833hz  = 0x07U, /**< 833   Hz.                    */
-  k_lsm6dso_odr_1660hz = 0x08U, /**< 1.66  kHz.                   */
-  k_lsm6dso_odr_3330hz = 0x09U, /**< 3.33  kHz.                   */
-  k_lsm6dso_odr_6660hz = 0x0AU, /**< 6.66  kHz.                   */
+  k_lsm6dso_odr_off    = 0x00U, /**< Power-down (default).   */
+  k_lsm6dso_odr_12_5hz = 0x01U, /**< 12.5  Hz (low-power).   */
+  k_lsm6dso_odr_26hz   = 0x02U, /**< 26    Hz.               */
+  k_lsm6dso_odr_52hz   = 0x03U, /**< 52    Hz.               */
+  k_lsm6dso_odr_104hz  = 0x04U, /**< 104   Hz (normal mode). */
+  k_lsm6dso_odr_208hz  = 0x05U, /**< 208   Hz.               */
+  k_lsm6dso_odr_416hz  = 0x06U, /**< 416   Hz.               */
+  k_lsm6dso_odr_833hz  = 0x07U, /**< 833   Hz.               */
+  k_lsm6dso_odr_1660hz = 0x08U, /**< 1.66  kHz.              */
+  k_lsm6dso_odr_3330hz = 0x09U, /**< 3.33  kHz.              */
+  k_lsm6dso_odr_6660hz = 0x0AU, /**< 6.66  kHz.              */
 } ra_lsm6dso_odr_t;
 
 /**
@@ -202,9 +202,9 @@ typedef enum : uint8_t {
  * see DS12140 Table 3 for the per-FS sensitivity values.
  */
 typedef struct {
-  int16_t x; /**< X-axis raw count.                            */
-  int16_t y; /**< Y-axis raw count.                            */
-  int16_t z; /**< Z-axis raw count.                            */
+  int16_t x; /**< X-axis raw count. */
+  int16_t y; /**< Y-axis raw count. */
+  int16_t z; /**< Z-axis raw count. */
 } ra_lsm6dso_xyz_t;
 
 /* =============================================================================
@@ -280,11 +280,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_lsm6dso_bus_t   bus;           /**< Transport interface.                 */
+  ra_lsm6dso_bus_t   bus;           /**< Transport interface.                  */
   ra_lsm6dso_xl_fs_t accel_fs_code; /**< Last accel full-scale code written.   */
   ra_lsm6dso_g_fs_t  gyro_fs_code;  /**< Last gyro  full-scale code written.   */
   ra_lsm6dso_odr_t   odr_code;      /**< Last ODR code written to both blocks. */
-  bool               initialized;   /**< True after a successful ``_init``.   */
+  bool               initialized;   /**< True after a successful ``_init``.    */
 } ra_lsm6dso_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

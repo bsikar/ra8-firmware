@@ -61,9 +61,9 @@
 typedef enum : uint16_t {
   k_test_pll2_mul_int      = 80U, /**< PLL2 multiplier integer part. */
   k_test_pll2_mul_quarters = 0U,  /**< PLL2 multiplier quarter part. */
-  k_test_pll2_bad_mul_int  = 0U,  /**< Invalid multiplier (zero). */
-  k_test_pll2_bad_mul_q    = 7U,  /**< Invalid quarter (>3). */
-  k_test_cdc_max_packet    = 64U, /**< Bulk-FS packet size. */
+  k_test_pll2_bad_mul_int  = 0U,  /**< Invalid multiplier (zero).    */
+  k_test_pll2_bad_mul_q    = 7U,  /**< Invalid quarter (>3).         */
+  k_test_cdc_max_packet    = 64U, /**< Bulk-FS packet size.          */
 } test_tz_nsc_cgc_const_t;
 
 /** @brief Pin map mirrors examples/ek_ra8d2/tz_nsc_cgc_usb/main.c. */

@@ -237,7 +237,7 @@ int32_t main(void)
   kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_space), &taps);
   kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_layer), &taps); /* 123 -> numbers layer */
   kb_tap(&t, kb_key_of('9'), &taps);                     /* digit, now reachable */
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_enter), &taps); /* RETURN commits */
+  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_enter), &taps); /* RETURN commits       */
 
   if (!kb_streq(t.buf, k_kb_expected) || !t.committed) {
     kb_panic_halt(k_msg_miss, (uint32_t)sizeof(k_msg_miss) - 1U);

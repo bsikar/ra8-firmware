@@ -33,29 +33,29 @@
 
 /** @brief DAC_B block geometry (ra8d2_dac_b_regs.h, FSP R_DAC_B0_Type). */
 typedef enum : uint64_t {
-  k_dac_base       = 0x40233000UL,  /**< DAC_B0 base.                          */
-  k_dac_stride     = 0x100UL,       /**< Bytes between DAC_B0 and DAC_B1.       */
-  k_dac_count      = 2UL,           /**< DAC_B0 / DAC_B1.                       */
-  k_dac_span       = 0x200UL,       /**< Both instances (2 x 0x100 stride).     */
-  k_dac_inst_words = 0x100UL / 4UL, /**< Backing words per instance.           */
-  k_dac_off_dadr   = 0x00UL,        /**< DADR 12-bit data (16-bit reg).        */
-  k_dac_off_dacr0  = 0x04UL,        /**< DACR0 control (DACEN/DAE/DAOUTDIS).    */
-  k_dac_off_dacr1  = 0x08UL,        /**< DACR1 control (DPSEL).                 */
-  k_dac_off_dacr2  = 0x0CUL,        /**< DACR2 control (OFSSEL).                */
+  k_dac_base       = 0x40233000UL,  /**< DAC_B0 base.                        */
+  k_dac_stride     = 0x100UL,       /**< Bytes between DAC_B0 and DAC_B1.    */
+  k_dac_count      = 2UL,           /**< DAC_B0 / DAC_B1.                    */
+  k_dac_span       = 0x200UL,       /**< Both instances (2 x 0x100 stride).  */
+  k_dac_inst_words = 0x100UL / 4UL, /**< Backing words per instance.         */
+  k_dac_off_dadr   = 0x00UL,        /**< DADR 12-bit data (16-bit reg).      */
+  k_dac_off_dacr0  = 0x04UL,        /**< DACR0 control (DACEN/DAE/DAOUTDIS). */
+  k_dac_off_dacr1  = 0x08UL,        /**< DACR1 control (DPSEL).              */
+  k_dac_off_dacr2  = 0x0CUL,        /**< DACR2 control (OFSSEL).             */
 } dac_map_t;
 
 /** @brief DAC_B field masks. */
 typedef enum : uint32_t {
-  k_dac_dadr_mask  = 0x00000FFFUL, /**< 12-bit DADR data field.          */
-  k_dac_dacen_mask = 0x00000001UL, /**< DACR0.DACEN channel-enable bit.  */
+  k_dac_dadr_mask  = 0x00000FFFUL, /**< 12-bit DADR data field.         */
+  k_dac_dacen_mask = 0x00000001UL, /**< DACR0.DACEN channel-enable bit. */
 } dac_field_t;
 
 /** @brief One DAC_B instance: register backing store + write observability. */
 typedef struct {
-  uint32_t reg[k_dac_inst_words]; /**< Word-addressed register backing.  */
-  uint16_t last;                  /**< Last DADR code written.           */
-  uint16_t peak;                  /**< Largest DADR code seen.           */
-  uint32_t writes;                /**< DADR write count.                 */
+  uint32_t reg[k_dac_inst_words]; /**< Word-addressed register backing. */
+  uint16_t last;                  /**< Last DADR code written.          */
+  uint16_t peak;                  /**< Largest DADR code seen.          */
+  uint32_t writes;                /**< DADR write count.                */
 } dac_inst_t;
 
 static dac_inst_t s_dac[k_dac_count];

@@ -42,16 +42,16 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_hid_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_hid_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_hid_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_hid_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_hid_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_hid_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_hid_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_hid_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_hid_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_hid_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_hid_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_hid_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_hid_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_hid_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_hid_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_hid_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_hid_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_hid_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_hid_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_hid_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_hid_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } hid_config_t;
 
@@ -60,11 +60,11 @@ typedef enum : uint32_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_hid_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_hid_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_hid_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_hid_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_hid_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_hid_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_hid_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_hid_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_hid_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_hid_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } hid_hex_t;
 
 /**

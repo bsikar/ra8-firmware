@@ -21,8 +21,8 @@
 
 /** @brief Mirror of ra_err_t domain used by the verdict (0 == k_ra_ok). */
 typedef enum : int32_t {
-  k_t_dotf_ok  = 0, /**< Stand-in for k_ra_ok.          */
-  k_t_dotf_err = 1, /**< Any non-ok ra_err_t code.      */
+  k_t_dotf_ok  = 0, /**< Stand-in for k_ra_ok.     */
+  k_t_dotf_err = 1, /**< Any non-ok ra_err_t code. */
 } t_dotf_err_t;
 
 /**

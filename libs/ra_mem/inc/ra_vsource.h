@@ -88,11 +88,11 @@ typedef ra_err_t (*ra_vsource_read_fn)(void* ctx, uint64_t offset, uint8_t* buf,
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_vsource_read_fn read; /**< Paged read callback (NULL for an XIP object).   */
-  void*              ctx;  /**< Context passed to @c read.                      */
-  uint8_t*           xip;  /**< XIP base pointer (NULL for a paged object).     */
-  uint64_t           base; /**< Paged: absolute base offset of the object.      */
-  uint64_t           size; /**< Object length in bytes.                         */
+  ra_vsource_read_fn read; /**< Paged read callback (NULL for an XIP object). */
+  void*              ctx;  /**< Context passed to @c read.                    */
+  const uint8_t*     xip;  /**< XIP base pointer (NULL for a paged object).   */
+  uint64_t           base; /**< Paged: absolute base offset of the object.    */
+  uint64_t           size; /**< Object length in bytes.                       */
 } ra_vsource_obj_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -189,7 +189,7 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_vsource_add_xip(ra_vsource_t* vs, uint8_t* xip_base, uint64_t size, uint32_t* out_id);
+ra_vsource_add_xip(ra_vsource_t* vs, const uint8_t* xip_base, uint64_t size, uint32_t* out_id);
 
 /**
  * @brief Fill a page frame from an object -- the ::ra_vmem_loader_fn adapter.

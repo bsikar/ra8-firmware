@@ -62,10 +62,10 @@ static const char* s_tag = "ecc_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_ecc_demo_baud        = 115200U,     /**< SCI8 baud rate.                  */
-  k_ecc_demo_period_ms   = 1000U,       /**< Delay between status reads.      */
-  k_ecc_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.        */
-  k_ecc_demo_pat_xor     = 0x5A5A5A5AU, /**< Per-word rw-test pattern XOR.   */
+  k_ecc_demo_baud        = 115200U,     /**< SCI8 baud rate.               */
+  k_ecc_demo_period_ms   = 1000U,       /**< Delay between status reads.   */
+  k_ecc_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.     */
+  k_ecc_demo_pat_xor     = 0x5A5A5A5AU, /**< Per-word rw-test pattern XOR. */
 } ecc_demo_config_t;
 
 /** @brief ECC target geometry. */

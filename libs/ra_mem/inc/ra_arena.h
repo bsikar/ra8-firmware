@@ -54,8 +54,8 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t* base; /**< First byte of the tier region.        */
-  uint32_t size; /**< Region length in bytes.               */
+  uint8_t* base; /**< First byte of the tier region.         */
+  uint32_t size; /**< Region length in bytes.                */
   uint32_t used; /**< High-water mark (bytes carved so far). */
 } ra_arena_t;
 

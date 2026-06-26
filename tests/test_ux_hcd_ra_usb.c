@@ -35,7 +35,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------ */
-/* Operand-identical mirrors of the four compound decisions.          */
+/* Operand-identical mirrors of the four compound decisions. */
 /* ------------------------------------------------------------------ */
 
 static inline bool internal_mirror_h_ep_create_guard(uint8_t pipe)
@@ -59,7 +59,7 @@ static inline bool internal_mirror_h_init_guard(const void* system_host, const v
 }
 
 /* ------------------------------------------------------------------ */
-/* MC/DC vector tests                                                 */
+/* MC/DC vector tests */
 /* ------------------------------------------------------------------ */
 
 /**

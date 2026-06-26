@@ -371,11 +371,11 @@ static void test_set_region_writes_pair(void)
  * @brief Constants used by the MC/DC vector tests.
  */
 typedef enum : uint32_t {
-  k_test_mpu_size_zero        = 0U,      /**< not pow2: value==0 path. */
-  k_test_mpu_size_three       = 3U,      /**< nonzero, not power-of-two. */
-  k_test_mpu_size_pow2_lt_min = 16U,     /**< pow2 but below 32-byte min.*/
-  k_test_mpu_size_min_ok      = 32U,     /**< pow2 and == min: accepted. */
-  k_test_mpu_size_4k          = 0x1000U, /**< Standard 4 KiB region.     */
+  k_test_mpu_size_zero        = 0U,      /**< not pow2: value==0 path.    */
+  k_test_mpu_size_three       = 3U,      /**< nonzero, not power-of-two.  */
+  k_test_mpu_size_pow2_lt_min = 16U,     /**< pow2 but below 32-byte min. */
+  k_test_mpu_size_min_ok      = 32U,     /**< pow2 and == min: accepted.  */
+  k_test_mpu_size_4k          = 0x1000U, /**< Standard 4 KiB region.      */
 } test_mpu_mcdc_t;
 
 /**

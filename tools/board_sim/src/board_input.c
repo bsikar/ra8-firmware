@@ -22,9 +22,9 @@ typedef enum : uint32_t {
   k_key_ring_cap = 64U, /**< Ring capacity (one slot is the full/empty guard). */
 } board_input_cfg_t;
 
-static char     s_ring[k_key_ring_cap]; /**< Keystroke ring storage.      */
-static uint32_t s_head;                 /**< Read cursor (oldest byte).   */
-static uint32_t s_tail;                 /**< Write cursor (next free).    */
+static char     s_ring[k_key_ring_cap]; /**< Keystroke ring storage.    */
+static uint32_t s_head;                 /**< Read cursor (oldest byte). */
+static uint32_t s_tail;                 /**< Write cursor (next free).  */
 
 void board_input_push_key(char ch)
 {

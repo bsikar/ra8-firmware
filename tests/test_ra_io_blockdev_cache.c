@@ -25,8 +25,8 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_under_blocks = 8, /**< RAM backend size.        */
-  k_t_cache_slots  = 2, /**< Cached sectors.          */
+  k_t_under_blocks = 8, /**< RAM backend size. */
+  k_t_cache_slots  = 2, /**< Cached sectors.   */
 } t_cache_const_t;
 
 static uint8_t s_disk[(size_t)k_t_under_blocks * (size_t)k_ra_io_block_size_bytes];
@@ -76,8 +76,8 @@ static void test_hit_miss_lru(void)
   uint8_t blk[(size_t)k_ra_io_block_size_bytes] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* miss */
   TEST_ASSERT(block_is(blk, 0x10));
-  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* hit  */
-  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 1, 1, blk)); /* miss */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* hit            */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 1, 1, blk)); /* miss           */
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 2, 1, blk)); /* miss, evicts 0 */
   TEST_ASSERT(block_is(blk, 0x12));
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* miss (0 evicted) */
@@ -148,7 +148,7 @@ static void test_erase_invalidate(void)
   uint8_t blk[(size_t)k_ra_io_block_size_bytes] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 4, 1, blk)); /* cache 0x44 */
   TEST_ASSERT(block_is(blk, 0x44));
-  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_erase(&cbd, 4, 1));     /* erase + invalidate */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_erase(&cbd, 4, 1));     /* erase + invalidate       */
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 4, 1, blk)); /* re-read backend (zeroed) */
   TEST_ASSERT(block_is(blk, 0x00));
   TEST_END("cache erase invalidate");

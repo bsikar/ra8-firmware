@@ -46,14 +46,14 @@ extern "C" {
  * the root cause of a fault and makes the dump three times larger.
  */
 typedef struct {
-  uint32_t r0;   /**< General-purpose register R0.   */
-  uint32_t r1;   /**< General-purpose register R1.   */
-  uint32_t r2;   /**< General-purpose register R2.   */
-  uint32_t r3;   /**< General-purpose register R3.   */
-  uint32_t r12;  /**< Scratch register R12.          */
-  uint32_t lr;   /**< Link register (return addr).   */
-  uint32_t pc;   /**< Program counter at fault.      */
-  uint32_t xpsr; /**< Program status register.       */
+  uint32_t r0;   /**< General-purpose register R0. */
+  uint32_t r1;   /**< General-purpose register R1. */
+  uint32_t r2;   /**< General-purpose register R2. */
+  uint32_t r3;   /**< General-purpose register R3. */
+  uint32_t r12;  /**< Scratch register R12.        */
+  uint32_t lr;   /**< Link register (return addr). */
+  uint32_t pc;   /**< Program counter at fault.    */
+  uint32_t xpsr; /**< Program status register.     */
 } ra_exception_frame_t;
 
 /**
@@ -61,12 +61,12 @@ typedef struct {
  * @brief SCB fault-status register snapshot.
  */
 typedef struct {
-  uint32_t cfsr;  /**< Configurable Fault Status Register.          */
-  uint32_t hfsr;  /**< HardFault Status Register.                   */
-  uint32_t dfsr;  /**< Debug Fault Status Register.                 */
-  uint32_t bfar;  /**< BusFault Address Register (if BFARVALID).    */
-  uint32_t mmfar; /**< MemManage Fault Address Reg (if MMARVALID).  */
-  uint32_t afsr;  /**< Auxiliary Fault Status Register.             */
+  uint32_t cfsr;  /**< Configurable Fault Status Register.         */
+  uint32_t hfsr;  /**< HardFault Status Register.                  */
+  uint32_t dfsr;  /**< Debug Fault Status Register.                */
+  uint32_t bfar;  /**< BusFault Address Register (if BFARVALID).   */
+  uint32_t mmfar; /**< MemManage Fault Address Reg (if MMARVALID). */
+  uint32_t afsr;  /**< Auxiliary Fault Status Register.            */
 } ra_exception_diagnostics_t;
 
 /**

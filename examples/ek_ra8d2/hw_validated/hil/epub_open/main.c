@@ -66,20 +66,20 @@
 
 /** @enum eoh_consts_t @brief Console / SPI / parse knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_eoh_uart_chan   = 8U,          /**< SCI8 J-Link OB console.            */
-  k_eoh_uart_baud   = 115200U,     /**< Console baud.                      */
-  k_eoh_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.       */
-  k_eoh_expect_chap = 2U,          /**< Spine length of the baked seed.    */
-  k_eoh_expect_crc  = 0xCF23AEEEU, /**< Chapter-0 XHTML CRC-32 (seed).     */
-  k_eoh_epub_cap    = 2048U,       /**< .epub read buffer (seed is 1355 B).*/
-  k_eoh_chap_cap    = 4096U,       /**< Chapter XHTML scratch capacity.    */
-  k_eoh_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.              */
-  k_eoh_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.       */
-  k_eoh_crc_bits    = 8U,          /**< Bits folded per byte.              */
-  k_eoh_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.      */
-  k_eoh_nibble_bits = 4U,          /**< Bits per hex nibble.               */
-  k_eoh_nibble_mask = 0x0FU,       /**< Low-nibble mask.                   */
-  k_eoh_dec_ten     = 10U,         /**< Hex digit / decimal split.         */
+  k_eoh_uart_chan   = 8U,          /**< SCI8 J-Link OB console.             */
+  k_eoh_uart_baud   = 115200U,     /**< Console baud.                       */
+  k_eoh_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.        */
+  k_eoh_expect_chap = 2U,          /**< Spine length of the baked seed.     */
+  k_eoh_expect_crc  = 0xCF23AEEEU, /**< Chapter-0 XHTML CRC-32 (seed).      */
+  k_eoh_epub_cap    = 2048U,       /**< .epub read buffer (seed is 1355 B). */
+  k_eoh_chap_cap    = 4096U,       /**< Chapter XHTML scratch capacity.     */
+  k_eoh_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.               */
+  k_eoh_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.        */
+  k_eoh_crc_bits    = 8U,          /**< Bits folded per byte.               */
+  k_eoh_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.       */
+  k_eoh_nibble_bits = 4U,          /**< Bits per hex nibble.                */
+  k_eoh_nibble_mask = 0x0FU,       /**< Low-nibble mask.                    */
+  k_eoh_dec_ten     = 10U,         /**< Hex digit / decimal split.          */
 } eoh_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */
@@ -106,16 +106,16 @@ static const char k_eoh_book_path[] = "BOOK.EPB";
  * that failed, so a memprobe gate can triage without the console.
  */
 typedef enum : uint32_t {
-  k_eoh_err_none  = 0U, /**< No failure (success path).          */
-  k_eoh_err_init  = 1U, /**< CGC / time / console / SPI bring-up.*/
-  k_eoh_err_card  = 2U, /**< SD card SPI init.                   */
-  k_eoh_err_mount = 3U, /**< Mount (and format-if-blank).        */
-  k_eoh_err_prov  = 4U, /**< Provision the .epub onto the card.  */
-  k_eoh_err_open  = 5U, /**< ra_epub_open_fs.                    */
-  k_eoh_err_chap  = 6U, /**< Chapter-count mismatch.             */
-  k_eoh_err_load  = 7U, /**< Chapter-0 DEFLATE load.             */
-  k_eoh_err_crc   = 8U, /**< Chapter-0 CRC mismatch.             */
-  k_eoh_err_meta  = 9U, /**< Metadata parse / empty title.       */
+  k_eoh_err_none  = 0U, /**< No failure (success path).           */
+  k_eoh_err_init  = 1U, /**< CGC / time / console / SPI bring-up. */
+  k_eoh_err_card  = 2U, /**< SD card SPI init.                    */
+  k_eoh_err_mount = 3U, /**< Mount (and format-if-blank).         */
+  k_eoh_err_prov  = 4U, /**< Provision the .epub onto the card.   */
+  k_eoh_err_open  = 5U, /**< ra_epub_open_fs.                     */
+  k_eoh_err_chap  = 6U, /**< Chapter-count mismatch.              */
+  k_eoh_err_load  = 7U, /**< Chapter-0 DEFLATE load.              */
+  k_eoh_err_crc   = 8U, /**< Chapter-0 CRC mismatch.              */
+  k_eoh_err_meta  = 9U, /**< Metadata parse / empty title.        */
 } eoh_err_t;
 
 /** @enum eoh_pace_t @brief Idle-loop pacing for the success heartbeat. */

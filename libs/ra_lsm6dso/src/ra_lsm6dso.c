@@ -44,8 +44,8 @@ static const char* const k_lsm6dso_tag = "lsm6dso";
 
 /** @brief Layout constants used by burst-read helpers. */
 typedef enum : uint32_t {
-  k_lsm6dso_xyz_burst_bytes   = 6U, /**< 3 axes * 2 bytes (DS12140 sec 9.29 / 9.35). */
-  k_lsm6dso_temp_burst_bytes  = 2U, /**< OUT_TEMP_L + OUT_TEMP_H (DS12140 sec 9.27). */
+  k_lsm6dso_xyz_burst_bytes   = 6U, /**< 3 axes * 2 bytes (DS12140 sec 9.29 / 9.35).     */
+  k_lsm6dso_temp_burst_bytes  = 2U, /**< OUT_TEMP_L + OUT_TEMP_H (DS12140 sec 9.27).     */
   k_lsm6dso_fifo_status_bytes = 2U, /**< FIFO_STATUS1 + FIFO_STATUS2 (DS12140 sec 9.44). */
 } ra_lsm6dso_burst_bytes_t;
 
@@ -67,25 +67,25 @@ typedef enum : uint8_t {
 
 /** @brief CTRL1_XL / CTRL2_G field positions (DS12140 sec 9.12 / 9.13). */
 typedef enum : uint8_t {
-  k_lsm6dso_shift_odr    = 4U, /**< ODR_xL[3:0] / ODR_G[3:0] occupy bits [7:4]. */
+  k_lsm6dso_shift_odr    = 4U, /**< ODR_xL[3:0] / ODR_G[3:0] occupy bits [7:4].      */
   k_lsm6dso_shift_fs_xl  = 2U, /**< FS_XL[1:0]                  occupies bits [3:2]. */
   k_lsm6dso_shift_fs_g   = 2U, /**< FS_G[1:0]                   occupies bits [3:2]. */
   k_lsm6dso_shift_fs_125 = 1U, /**< FS_125 select bit           occupies bit  [1].   */
 } ra_lsm6dso_shift_t;
 
 typedef enum : uint8_t {
-  k_lsm6dso_mask_odr       = 0xF0U, /**< Bits [7:4]: ODR field.        */
-  k_lsm6dso_mask_fs_xl     = 0x0CU, /**< Bits [3:2]: FS_XL field.      */
-  k_lsm6dso_mask_fs_g      = 0x0CU, /**< Bits [3:2]: FS_G field.       */
-  k_lsm6dso_mask_fs_125    = 0x02U, /**< Bit  [1]:   FS_125 select.    */
-  k_lsm6dso_mask_fs_g_full = 0x0EU, /**< FS_G + FS_125 combined.    */
+  k_lsm6dso_mask_odr       = 0xF0U, /**< Bits [7:4]: ODR field.               */
+  k_lsm6dso_mask_fs_xl     = 0x0CU, /**< Bits [3:2]: FS_XL field.             */
+  k_lsm6dso_mask_fs_g      = 0x0CU, /**< Bits [3:2]: FS_G field.              */
+  k_lsm6dso_mask_fs_125    = 0x02U, /**< Bit  [1]:   FS_125 select.           */
+  k_lsm6dso_mask_fs_g_full = 0x0EU, /**< FS_G + FS_125 combined.              */
   k_lsm6dso_mask_nibble    = 0x0FU, /**< Low nibble (used for FIFO len high). */
-  k_lsm6dso_mask_byte      = 0xFFU, /**< Full byte mask.               */
+  k_lsm6dso_mask_byte      = 0xFFU, /**< Full byte mask.                      */
 } ra_lsm6dso_mask_t;
 
 /** @brief Temperature conversion constants per DS12140 sec 9.27. */
 typedef enum : int32_t {
-  k_lsm6dso_temp_offset_centi_c = 2500, /**< +25 C zero offset, scaled x100. */
+  k_lsm6dso_temp_offset_centi_c = 2500, /**< +25 C zero offset, scaled x100.  */
   k_lsm6dso_temp_scale_num      = 100,  /**< Numerator   for centi-C convert. */
   k_lsm6dso_temp_scale_den      = 256,  /**< Denominator for centi-C convert. */
 } ra_lsm6dso_temp_const_t;

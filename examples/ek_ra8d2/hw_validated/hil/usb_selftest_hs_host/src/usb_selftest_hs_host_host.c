@@ -39,7 +39,7 @@
 #include "ra_usb_hmsc.h"
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::selftest_phase_t). */
@@ -54,7 +54,7 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -277,7 +277,7 @@ static uint32_t selftest_str_len(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_fs backend over the polled host-MSC class                    */
+/* Host side: ra_fs backend over the polled host-MSC class */
 /* -------------------------------------------------------------------------- */
 
 /**

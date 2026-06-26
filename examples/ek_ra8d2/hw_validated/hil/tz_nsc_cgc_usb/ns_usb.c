@@ -155,11 +155,11 @@ uint32_t ra_time_ms(void)
 
 /** @brief USBX worker thread + pool tunables. */
 typedef enum : uint32_t {
-  k_ns_usb_thread_stack  = 8192U,  /**< Worker thread stack (bytes).        */
-  k_ns_usb_pool_bytes    = 16384U, /**< USBX memory pool (bytes).           */
-  k_ns_usb_thread_prio   = 8U,     /**< Worker priority + preempt threshold.*/
-  k_ns_usb_echo_out_pipe = 2U,     /**< CDC bulk-OUT -> pipe 2 (auto-echo). */
-  k_ns_usb_echo_in_pipe  = 1U,     /**< CDC bulk-IN  -> pipe 1 (auto-echo). */
+  k_ns_usb_thread_stack  = 8192U,  /**< Worker thread stack (bytes).         */
+  k_ns_usb_pool_bytes    = 16384U, /**< USBX memory pool (bytes).            */
+  k_ns_usb_thread_prio   = 8U,     /**< Worker priority + preempt threshold. */
+  k_ns_usb_echo_out_pipe = 2U,     /**< CDC bulk-OUT -> pipe 2 (auto-echo).  */
+  k_ns_usb_echo_in_pipe  = 1U,     /**< CDC bulk-IN  -> pipe 1 (auto-echo).  */
 } ns_usb_cfg_t;
 
 /**

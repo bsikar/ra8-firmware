@@ -25,9 +25,9 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_frame_bytes = 64U, /**< Bytes per frame.        */
-  k_t_frames      = 8U,  /**< Frames in the cache.    */
-  k_t_buckets     = 16U, /**< Hash buckets.           */
+  k_t_frame_bytes = 64U, /**< Bytes per frame.     */
+  k_t_frames      = 8U,  /**< Frames in the cache. */
+  k_t_buckets     = 16U, /**< Hash buckets.        */
 } t_vmem_const_t;
 
 static uint8_t         s_frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
@@ -82,12 +82,12 @@ static void test_miss_hit_content(void)
   ra_vmem_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(&vm, &cfg));
 
-  uint8_t* p = (uint8_t*)t_get(&vm, 3U, 5U); /* miss -> load */
-  TEST_ASSERT_EQ(3, p[0]);                   /* object id stamp */
+  uint8_t* p = (uint8_t*)t_get(&vm, 3U, 5U); /* miss -> load      */
+  TEST_ASSERT_EQ(3, p[0]);                   /* object id stamp   */
   TEST_ASSERT_EQ(5, p[1]);                   /* page number stamp */
   TEST_ASSERT_EQ(k_ra_ok, ra_vmem_put(&vm, p));
 
-  uint8_t* q = (uint8_t*)t_get(&vm, 3U, 5U); /* hit */
+  uint8_t* q = (uint8_t*)t_get(&vm, 3U, 5U); /* hit        */
   TEST_ASSERT(q == p);                       /* same frame */
   TEST_ASSERT_EQ(k_ra_ok, ra_vmem_put(&vm, q));
 

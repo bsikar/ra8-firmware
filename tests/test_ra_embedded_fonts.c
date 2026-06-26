@@ -39,18 +39,18 @@
 
 /** @brief Local sizing + measurement constants (no magic numbers). */
 typedef enum : uint32_t {
-  k_tef_epub_cap     = 65536U,      /**< Synthetic .epub heap buffer.        */
-  k_tef_font_cap     = 32768U,      /**< Extracted-font scratch buffer.      */
-  k_tef_viewport_w   = 600U,        /**< Layout viewport width, px.          */
-  k_tef_viewport_h   = 800U,        /**< Layout viewport height, px.         */
-  k_tef_font_px      = 16U,         /**< Body font size for the layout.      */
-  k_tef_body_color   = 0x000000U,   /**< Black body text.                    */
-  k_tef_link_color   = 0x0000FFU,   /**< Blue links.                         */
-  k_tef_crc_init     = 0xFFFFFFFFU, /**< CRC-32 seed.                      */
-  k_tef_crc_poly     = 0xEDB88320U, /**< CRC-32 reflected polynomial.      */
-  k_tef_crc_bits     = 8U,          /**< Bits folded per byte.               */
-  k_tef_garbage_len  = 32U,         /**< Length of crafted invalid blobs.    */
-  k_tef_min_m_glyphs = 2U,          /**< Glyphs needed to measure an advance.*/
+  k_tef_epub_cap     = 65536U,      /**< Synthetic .epub heap buffer.         */
+  k_tef_font_cap     = 32768U,      /**< Extracted-font scratch buffer.       */
+  k_tef_viewport_w   = 600U,        /**< Layout viewport width, px.           */
+  k_tef_viewport_h   = 800U,        /**< Layout viewport height, px.          */
+  k_tef_font_px      = 16U,         /**< Body font size for the layout.       */
+  k_tef_body_color   = 0x000000U,   /**< Black body text.                     */
+  k_tef_link_color   = 0x0000FFU,   /**< Blue links.                          */
+  k_tef_crc_init     = 0xFFFFFFFFU, /**< CRC-32 seed.                         */
+  k_tef_crc_poly     = 0xEDB88320U, /**< CRC-32 reflected polynomial.         */
+  k_tef_crc_bits     = 8U,          /**< Bits folded per byte.                */
+  k_tef_garbage_len  = 32U,         /**< Length of crafted invalid blobs.     */
+  k_tef_min_m_glyphs = 2U,          /**< Glyphs needed to measure an advance. */
 } tef_const_t;
 
 /** @brief Backing store for the synthetic .epub. */

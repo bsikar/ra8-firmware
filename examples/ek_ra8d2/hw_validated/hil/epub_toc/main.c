@@ -61,29 +61,29 @@
 
 /** @enum etoc_consts_t @brief Console / SPI / parse knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_etoc_uart_chan  = 8U,          /**< SCI8 J-Link OB console.            */
-  k_etoc_uart_baud  = 115200U,     /**< Console baud.                      */
-  k_etoc_spi_chan   = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.       */
-  k_etoc_epub_cap   = 2048U,       /**< .epub read buffer (max fix 1528 B).*/
-  k_etoc_crc_init   = 0xFFFFFFFFU, /**< CRC-32 initial value.              */
-  k_etoc_crc_poly   = 0xEDB88320U, /**< CRC-32 reflected polynomial.       */
-  k_etoc_crc_bits   = 8U,          /**< Bits folded per byte.              */
-  k_etoc_title_max  = 256U,        /**< Bounded title scan (NASA Rule 2).  */
-  k_etoc_no_chap    = 0xFFFFU,     /**< Sentinel: entry has no spine target.*/
-  k_etoc_kind_unset = 0xFFU,       /**< Sentinel: toc_kind not yet read.   */
+  k_etoc_uart_chan  = 8U,          /**< SCI8 J-Link OB console.              */
+  k_etoc_uart_baud  = 115200U,     /**< Console baud.                        */
+  k_etoc_spi_chan   = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.         */
+  k_etoc_epub_cap   = 2048U,       /**< .epub read buffer (max fix 1528 B).  */
+  k_etoc_crc_init   = 0xFFFFFFFFU, /**< CRC-32 initial value.                */
+  k_etoc_crc_poly   = 0xEDB88320U, /**< CRC-32 reflected polynomial.         */
+  k_etoc_crc_bits   = 8U,          /**< Bits folded per byte.                */
+  k_etoc_title_max  = 256U,        /**< Bounded title scan (NASA Rule 2).    */
+  k_etoc_no_chap    = 0xFFFFU,     /**< Sentinel: entry has no spine target. */
+  k_etoc_kind_unset = 0xFFU,       /**< Sentinel: toc_kind not yet read.     */
 } etoc_consts_t;
 
 /** @enum etoc_expect_t @brief Byte-exact expected TOC results (host-verified). */
 typedef enum : uint32_t {
-  k_etoc_ncx_kind  = 1U,          /**< k_ra_epub_toc_ncx.                  */
-  k_etoc_ncx_count = 2U,          /**< navMap navPoints.                   */
-  k_etoc_ncx_crc   = 0xDBC4EA24U, /**< crc32("Intro").                     */
-  k_etoc_nav_kind  = 2U,          /**< k_ra_epub_toc_nav.                  */
-  k_etoc_nav_count = 3U,          /**< nav <ol> entries.                   */
-  k_etoc_nav_crc   = 0x4CC9A9C1U, /**< crc32("Cover").                     */
-  k_etoc_bad_kind  = 0U,          /**< k_ra_epub_toc_none (no TOC doc).    */
-  k_etoc_exp_chap  = 2U,          /**< Spine length in every fixture.      */
-  k_etoc_entry0    = 0U,          /**< Entry-0 -> spine index 0.           */
+  k_etoc_ncx_kind  = 1U,          /**< k_ra_epub_toc_ncx.               */
+  k_etoc_ncx_count = 2U,          /**< navMap navPoints.                */
+  k_etoc_ncx_crc   = 0xDBC4EA24U, /**< crc32("Intro").                  */
+  k_etoc_nav_kind  = 2U,          /**< k_ra_epub_toc_nav.               */
+  k_etoc_nav_count = 3U,          /**< nav <ol> entries.                */
+  k_etoc_nav_crc   = 0x4CC9A9C1U, /**< crc32("Cover").                  */
+  k_etoc_bad_kind  = 0U,          /**< k_ra_epub_toc_none (no TOC doc). */
+  k_etoc_exp_chap  = 2U,          /**< Spine length in every fixture.   */
+  k_etoc_entry0    = 0U,          /**< Entry-0 -> spine index 0.        */
 } etoc_expect_t;
 
 /** @brief SCI8 console TXD = PD02. */
@@ -99,7 +99,7 @@ static const ra_port_pin_t k_etoc_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi
 static const ra_port_pin_t k_etoc_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
 static const ra_port_pin_t k_etoc_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
 
-/** @brief SD paths for the three baked books (8.3 short names; ra_fs root-only).*/
+/** @brief SD paths for the three baked books (8.3 short names; ra_fs root-only). */
 static const char k_etoc_path_ncx[] = "TOCNCX.EPB";
 static const char k_etoc_path_nav[] = "TOCNAV.EPB";
 static const char k_etoc_path_bad[] = "TOCBAD.EPB";
@@ -130,17 +130,17 @@ typedef enum : uint32_t {
  * @note Exported (non-static) so a memprobe gate can read it by symbol.
  */
 volatile uint32_t g_etoc_err       = (uint32_t)k_etoc_err_none;
-volatile uint32_t g_etoc_ncx_kind  = 0U; /**< NCX toc_kind on success.        */
-volatile uint32_t g_etoc_ncx_n     = 0U; /**< NCX toc_count on success.       */
-volatile uint32_t g_etoc_ncx_e0crc = 0U; /**< NCX entry-0 label CRC.          */
-volatile uint32_t g_etoc_ncx_ch0   = 0U; /**< NCX entry-0 -> spine index.     */
-volatile uint32_t g_etoc_nav_kind  = 0U; /**< nav toc_kind on success.        */
-volatile uint32_t g_etoc_nav_n     = 0U; /**< nav toc_count on success.       */
-volatile uint32_t g_etoc_nav_e0crc = 0U; /**< nav entry-0 label CRC.          */
-volatile uint32_t g_etoc_nav_ch0   = 0U; /**< nav entry-0 -> spine index.     */
-volatile uint32_t g_etoc_bad_kind  = 0U; /**< malformed-TOC kind (expect 0).  */
-volatile uint32_t g_etoc_bad_chap  = 0U; /**< malformed-TOC spine fallback.   */
-/** @brief Idle heartbeat; advances ONLY after all asserts pass (the HIL gate).*/
+volatile uint32_t g_etoc_ncx_kind  = 0U; /**< NCX toc_kind on success.       */
+volatile uint32_t g_etoc_ncx_n     = 0U; /**< NCX toc_count on success.      */
+volatile uint32_t g_etoc_ncx_e0crc = 0U; /**< NCX entry-0 label CRC.         */
+volatile uint32_t g_etoc_ncx_ch0   = 0U; /**< NCX entry-0 -> spine index.    */
+volatile uint32_t g_etoc_nav_kind  = 0U; /**< nav toc_kind on success.       */
+volatile uint32_t g_etoc_nav_n     = 0U; /**< nav toc_count on success.      */
+volatile uint32_t g_etoc_nav_e0crc = 0U; /**< nav entry-0 label CRC.         */
+volatile uint32_t g_etoc_nav_ch0   = 0U; /**< nav entry-0 -> spine index.    */
+volatile uint32_t g_etoc_bad_kind  = 0U; /**< malformed-TOC kind (expect 0). */
+volatile uint32_t g_etoc_bad_chap  = 0U; /**< malformed-TOC spine fallback.  */
+/** @brief Idle heartbeat; advances ONLY after all asserts pass (the HIL gate). */
 volatile uint32_t g_etoc_heartbeat = 0U;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */

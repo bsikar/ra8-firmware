@@ -53,23 +53,23 @@
  * claiming that page would break every app's boot.
  */
 typedef enum : uint64_t {
-  k_mram_reg_base    = 0x4013E000UL, /**< MRMS program-mode sub-window base.  */
-  k_mram_reg_span    = 0x00000100UL, /**< Covers MSADDR / MSTATR / MENTRYR.   */
-  k_mram_off_msaddr  = 0x0030UL,     /**< MSADDR  : MACI start address.       */
-  k_mram_off_mstatr  = 0x0080UL,     /**< MSTATR  : extra-MRAM status.        */
-  k_mram_off_mentryr = 0x0084UL,     /**< MENTRYR : program-mode entry.       */
+  k_mram_reg_base    = 0x4013E000UL, /**< MRMS program-mode sub-window base. */
+  k_mram_reg_span    = 0x00000100UL, /**< Covers MSADDR / MSTATR / MENTRYR.  */
+  k_mram_off_msaddr  = 0x0030UL,     /**< MSADDR  : MACI start address.      */
+  k_mram_off_mstatr  = 0x0080UL,     /**< MSTATR  : extra-MRAM status.       */
+  k_mram_off_mentryr = 0x0084UL,     /**< MENTRYR : program-mode entry.      */
 } mram_reg_map_t;
 
 /** @brief MACI command-issuing area window (ra8d2_flash_regs.h). */
 typedef enum : uint64_t {
-  k_maci_base = 0x40120000UL, /**< MACI command-issuing area base. */
+  k_maci_base = 0x40120000UL, /**< MACI command-issuing area base.   */
   k_maci_span = 0x00000010UL, /**< One command port (byte+halfword). */
 } maci_map_t;
 
 /** @brief Register bit values the driver polls / writes. */
 typedef enum : uint32_t {
-  k_mram_mentryr_pe_bit = 0x0080U,     /**< MENTRYR.MENTRY status bit.       */
-  k_mram_mstatr_mrdy    = 0x00008000U, /**< MSTATR.MRDY (command complete).  */
+  k_mram_mentryr_pe_bit = 0x0080U,     /**< MENTRYR.MENTRY status bit.      */
+  k_mram_mstatr_mrdy    = 0x00008000U, /**< MSTATR.MRDY (command complete). */
 } mram_status_t;
 
 /** @brief MACI command opcodes the config-set sequence uses. */
@@ -88,18 +88,18 @@ typedef enum : uint8_t {
 
 /** @brief Sizing + report-order constants. */
 typedef enum : uint32_t {
-  k_mram_reg_words   = (uint32_t)(k_mram_reg_span / 4UL), /**< Shadow words.       */
-  k_mram_payload_max = 32U,                               /**< Max config-set bytes.*/
-  k_mram_byte_mask   = 0xFFU,                             /**< One byte.           */
-  k_mram_hi_shift    = 8U,                                /**< High-byte shift.    */
-  k_mram_block_order = 92U,                               /**< Report order slot.  */
+  k_mram_reg_words   = (uint32_t)(k_mram_reg_span / 4UL), /**< Shadow words.         */
+  k_mram_payload_max = 32U,                               /**< Max config-set bytes. */
+  k_mram_byte_mask   = 0xFFU,                             /**< One byte.             */
+  k_mram_hi_shift    = 8U,                                /**< High-byte shift.      */
+  k_mram_block_order = 92U,                               /**< Report order slot.    */
 } mram_lit_t;
 
 /** @brief MRAM model state: register shadow + MACI collection + counters. */
 typedef struct {
   uint32_t regs[k_mram_reg_words];      /**< 0x4013C000 window shadow.        */
   uint32_t msaddr;                      /**< Latched MACI target address.     */
-  uint8_t  payload[k_mram_payload_max]; /**< Collected config-set bytes.     */
+  uint8_t  payload[k_mram_payload_max]; /**< Collected config-set bytes.      */
   uint32_t payload_len;                 /**< Bytes collected this command.    */
   uint8_t  maci_state;                  /**< ::maci_state_t collection state. */
   uint8_t  pe_active;                   /**< 1 => program/erase mode entered. */

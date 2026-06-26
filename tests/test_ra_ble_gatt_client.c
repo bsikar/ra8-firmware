@@ -146,7 +146,7 @@ static void test_subscribe_invalid(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_gatt_client.c      */
+/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_gatt_client.c */
 /* --------------------------------------------------------------------- */
 
 /**

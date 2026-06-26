@@ -86,7 +86,7 @@ static void test_lifecycle(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_mesh.c             */
+/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_mesh.c */
 /* --------------------------------------------------------------------- */
 
 /**

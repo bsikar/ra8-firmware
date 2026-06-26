@@ -63,9 +63,9 @@ static const char* s_tag = "SDSPI";
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t       channel;  /**< SCI Simple-SPI channel index.        */
-  uint32_t      pclka_hz; /**< PCLKA rate (Hz) for the baud shim.   */
-  ra_port_pin_t cs;       /**< Chip-select GPIO pin (active-low).   */
+  uint8_t       channel;  /**< SCI Simple-SPI channel index.      */
+  uint32_t      pclka_hz; /**< PCLKA rate (Hz) for the baud shim. */
+  ra_port_pin_t cs;       /**< Chip-select GPIO pin (active-low). */
 } sci_bus_ctx_t;
 
 /**

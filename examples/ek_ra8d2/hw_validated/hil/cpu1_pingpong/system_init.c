@@ -50,25 +50,25 @@ extern const uint32_t g_ra_vector_table_start[];
  */
 
 typedef enum : uintptr_t {
-  k_ra_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register. */
-  k_ra_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register. */
-  k_ra_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State. */
-  k_ra_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control. */
-  k_ra_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control. */
-  k_ra_scb_iciallu    = 0xE000EF50UL, /**< ICIALLU -- invalidate I-cache. */
+  k_ra_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register.              */
+  k_ra_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register.        */
+  k_ra_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.          */
+  k_ra_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.                */
+  k_ra_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.                 */
+  k_ra_scb_iciallu    = 0xE000EF50UL, /**< ICIALLU -- invalidate I-cache.             */
   k_ra_scb_dciallu    = 0xE000EF58UL, /**< DCIALLU -- invalidate D-cache (sets only). */
-  k_ra_scb_csselr     = 0xE000ED84UL, /**< Cache Size Selection Register. */
-  k_ra_scb_ccsidr     = 0xE000ED80UL, /**< Cache Size ID Register. */
-  k_ra_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way. */
-  k_ra_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register. */
-  k_ra_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.*/
-  k_ra_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register. */
-  k_ra_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU Control Register. */
-  k_ra_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU Region Number. */
-  k_ra_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU Region Base Address. */
-  k_ra_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU Region Limit Address. */
-  k_ra_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU Attribute Indirection 0. */
-  k_ra_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU Attribute Indirection 1. */
+  k_ra_scb_csselr     = 0xE000ED84UL, /**< Cache Size Selection Register.             */
+  k_ra_scb_ccsidr     = 0xE000ED80UL, /**< Cache Size ID Register.                    */
+  k_ra_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way.             */
+  k_ra_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.              */
+  k_ra_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.      */
+  k_ra_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register.                         */
+  k_ra_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU Control Register.                      */
+  k_ra_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU Region Number.                         */
+  k_ra_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU Region Base Address.                   */
+  k_ra_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU Region Limit Address.                  */
+  k_ra_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU Attribute Indirection 0.               */
+  k_ra_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU Attribute Indirection 1.               */
 } ra_core_addr_t;
 
 extern uint32_t g_ra_ls_stack_top; /* from vector_table.c / linker. */
@@ -211,7 +211,7 @@ static void internal_enable_fpu_lazy_stack(void)
 static void internal_set_priority_grouping(void)
 {
   enum : uint32_t {
-    k_ra_aircr_vectkey    = 0x05FA0000UL, /**< Required write key. */
+    k_ra_aircr_vectkey    = 0x05FA0000UL, /**< Required write key.     */
     k_ra_aircr_prigroup_4 = 0x00000300UL, /**< PRIGROUP = 3 -> 4 bits. */
   };
   internal_write32(k_ra_nvic_aircr, k_ra_aircr_vectkey | k_ra_aircr_prigroup_4);
@@ -242,8 +242,8 @@ static void internal_set_priority_grouping(void)
  */
 /* RBAR attribute-byte encodings (bottom 5 bits of RBAR). */
 enum : uint32_t {
-  k_ra_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0. */
-  k_ra_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1. */
+  k_ra_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0.                        */
+  k_ra_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1.                        */
   k_ra_rbar_attr_device_rw = 0x23U, /* AP=RW, SH=outer sh, XN=1, MAIR idx = device. */
   k_ra_mpu_rlar_enable     = 1UL << 0,
 };

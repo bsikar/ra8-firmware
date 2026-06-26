@@ -31,20 +31,20 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_cb_obj_book    = 1U,      /**< Object id of the paged EPUB.            */
-  k_cb_obj_comic   = 2U,      /**< Object id of the scrolled CBZ tiles.    */
-  k_cb_footprint   = 8192U,   /**< Pages in the huge file (>> any cache).  */
-  k_cb_accesses    = 120000U, /**< Accesses per synthetic trace.          */
-  k_cb_passes_seq  = 4U,      /**< Linear passes for the sequential flood. */
-  k_cb_hot_pages   = 96U,     /**< Re-read working-set size (locality).    */
-  k_cb_reread_pct  = 82U,     /**< % of re-read accesses inside the hotset.*/
-  k_cb_jump_pct    = 4U,      /**< % of TOC-jump accesses that teleport.   */
-  k_cb_tile_span   = 6144U,   /**< Comic tiles (sequential scroll).        */
-  k_cb_sr_hot      = 192U,    /**< Re-referenced hot set (fits mid caches).*/
-  k_cb_sr_hot_pass = 3U,      /**< Hot-set passes between scan floods.     */
-  k_cb_sr_scan     = 1500U,   /**< Unique pages in each one-time scan.     */
-  k_cb_pct_full    = 100U,    /**< Divisor for percentage-range decisions.  */
-  k_cb_mixed_phase = 2048U,   /**< Accesses per phase in the mixed session. */
+  k_cb_obj_book    = 1U,      /**< Object id of the paged EPUB.                 */
+  k_cb_obj_comic   = 2U,      /**< Object id of the scrolled CBZ tiles.         */
+  k_cb_footprint   = 8192U,   /**< Pages in the huge file (>> any cache).       */
+  k_cb_accesses    = 120000U, /**< Accesses per synthetic trace.                */
+  k_cb_passes_seq  = 4U,      /**< Linear passes for the sequential flood.      */
+  k_cb_hot_pages   = 96U,     /**< Re-read working-set size (locality).         */
+  k_cb_reread_pct  = 82U,     /**< % of re-read accesses inside the hotset.     */
+  k_cb_jump_pct    = 4U,      /**< % of TOC-jump accesses that teleport.        */
+  k_cb_tile_span   = 6144U,   /**< Comic tiles (sequential scroll).             */
+  k_cb_sr_hot      = 192U,    /**< Re-referenced hot set (fits mid caches).     */
+  k_cb_sr_hot_pass = 3U,      /**< Hot-set passes between scan floods.          */
+  k_cb_sr_scan     = 1500U,   /**< Unique pages in each one-time scan.          */
+  k_cb_pct_full    = 100U,    /**< Divisor for percentage-range decisions.      */
+  k_cb_mixed_phase = 2048U,   /**< Accesses per phase in the mixed session.     */
   k_cb_load_init   = 4096U,   /**< Initial key-array capacity in cb_trace_load. */
 } cb_workload_dim_t;
 
@@ -57,9 +57,9 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_rng_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set) */
+  k_rng_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set)  */
   k_rng_shift_b = 7U,  /**< MAGIC-OK: xorshift64 right-shift b (Marsaglia 2003 set) */
-  k_rng_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set) */
+  k_rng_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set)  */
 } cb_rng_shift_t;
 
 /**

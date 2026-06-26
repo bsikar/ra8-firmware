@@ -119,10 +119,10 @@ static void test_decode_entity(void)
   TEST_ASSERT(ra_reflow_tok_decode_entity("&#x41;", 6U, &cp, &used));
   TEST_ASSERT_EQ(0x41, cp);
   TEST_ASSERT_EQ(6, used);
-  TEST_ASSERT(!ra_reflow_tok_decode_entity("&zz;", 4U, &cp, &used));  /* unknown name */
-  TEST_ASSERT(!ra_reflow_tok_decode_entity("&amp", 4U, &cp, &used));  /* no terminator */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&zz;", 4U, &cp, &used));  /* unknown name      */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&amp", 4U, &cp, &used));  /* no terminator     */
   TEST_ASSERT(!ra_reflow_tok_decode_entity("&#;", 3U, &cp, &used));   /* no digits / short */
-  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#9z;", 5U, &cp, &used)); /* bad digit */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#9z;", 5U, &cp, &used)); /* bad digit         */
   TEST_END("ra_reflow_tok_decode_entity");
 }
 
@@ -143,8 +143,8 @@ static void test_utf8_encode(void)
   TEST_ASSERT_EQ(2, ra_reflow_tok_utf8_encode(0xE9U, b)); /* e-acute */
   TEST_ASSERT_EQ(0xC3, b[0]);
   TEST_ASSERT_EQ(0xA9, b[1]);
-  TEST_ASSERT_EQ(3, ra_reflow_tok_utf8_encode(0x20ACU, b));   /* euro */
-  TEST_ASSERT_EQ(4, ra_reflow_tok_utf8_encode(0x1F600U, b));  /* emoji */
+  TEST_ASSERT_EQ(3, ra_reflow_tok_utf8_encode(0x20ACU, b));   /* euro    */
+  TEST_ASSERT_EQ(4, ra_reflow_tok_utf8_encode(0x1F600U, b));  /* emoji   */
   TEST_ASSERT_EQ(4, ra_reflow_tok_utf8_encode(0xFFFFFFU, b)); /* clamped */
   TEST_END("ra_reflow_tok_utf8_encode");
 }
@@ -270,7 +270,7 @@ static void test_display_none_suppressed(void)
                       "<p>visibletwo</p></body></html>"));
   TEST_ASSERT(text_has("visibleone"));  /* before the hidden div */
   TEST_ASSERT(text_has("visibletwo"));  /* after the hidden div  */
-  TEST_ASSERT(!text_has("hiddentext")); /* inside -> suppressed   */
+  TEST_ASSERT(!text_has("hiddentext")); /* inside -> suppressed  */
   bool saw_img = false;
   for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
     saw_img = saw_img || (s_engine.tokens[i].kind == (uint8_t)k_ra_reflow_tok_image);

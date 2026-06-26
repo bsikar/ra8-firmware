@@ -23,9 +23,9 @@
 
 /** @brief A named access trace (heap-owned key array). */
 typedef struct {
-  const char* name;      /**< Workload name for the report.        */
-  cb_key_t*   keys;      /**< Access stream.                       */
-  uint64_t    n;         /**< Number of accesses.                  */
+  const char* name;      /**< Workload name for the report.              */
+  cb_key_t*   keys;      /**< Access stream.                             */
+  uint64_t    n;         /**< Number of accesses.                        */
   uint32_t    footprint; /**< Distinct pages touched (working-set size). */
 } cb_trace_t;
 

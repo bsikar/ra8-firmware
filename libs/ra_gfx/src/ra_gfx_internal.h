@@ -29,16 +29,16 @@
  * @brief Internal module state populated by ra_gfx_init().
  */
 typedef struct {
-  uint8_t*        fb;          /**< Framebuffer base.                       */
-  uint16_t        width;       /**< Width in pixels.                        */
-  uint16_t        height;      /**< Height in pixels.                       */
-  ra_gfx_format_t format;      /**< Pixel format.                           */
-  uint8_t         bpp;         /**< Bytes per pixel.                        */
-  bool            initialized; /**< Set after a successful init.            */
-  int32_t         clip_x0;     /**< Clip left (inclusive), within [0,width].*/
-  int32_t         clip_y0;     /**< Clip top (inclusive), within [0,height].*/
-  int32_t         clip_x1;     /**< Clip right (exclusive), within [0,w].   */
-  int32_t         clip_y1;     /**< Clip bottom (exclusive), within [0,h].  */
+  uint8_t*        fb;          /**< Framebuffer base.                        */
+  uint16_t        width;       /**< Width in pixels.                         */
+  uint16_t        height;      /**< Height in pixels.                        */
+  ra_gfx_format_t format;      /**< Pixel format.                            */
+  uint8_t         bpp;         /**< Bytes per pixel.                         */
+  bool            initialized; /**< Set after a successful init.             */
+  int32_t         clip_x0;     /**< Clip left (inclusive), within [0,width]. */
+  int32_t         clip_y0;     /**< Clip top (inclusive), within [0,height]. */
+  int32_t         clip_x1;     /**< Clip right (exclusive), within [0,w].    */
+  int32_t         clip_y1;     /**< Clip bottom (exclusive), within [0,h].   */
 } ra_gfx_state_t;
 
 /**

@@ -24,8 +24,8 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_cell_bytes = 16U, /**< Cell size under test.   */
-  k_t_cells      = 8U,  /**< Cells in the pool.      */
+  k_t_cell_bytes = 16U, /**< Cell size under test. */
+  k_t_cells      = 8U,  /**< Cells in the pool.    */
 } t_slab_const_t;
 
 static uint8_t s_pool[(size_t)k_t_cells * (size_t)k_t_cell_bytes];
@@ -130,7 +130,7 @@ static void test_validation(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_slab_init(&slab, s_pool, sizeof(s_pool), 2U)); /* < 4 */
   TEST_ASSERT_EQ(k_ra_err_invalid_size,
                  ra_slab_init(&slab, s_pool, sizeof(s_pool), 6U));             /* not 4-aligned */
-  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_slab_init(&slab, s_pool, 8U, 16U)); /* zero cells */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_slab_init(&slab, s_pool, 8U, 16U)); /* zero cells    */
 
   TEST_ASSERT_EQ(k_ra_ok, ra_slab_init(&slab, s_pool, sizeof(s_pool), k_t_cell_bytes));
   /* alloc/free/stats null guards */

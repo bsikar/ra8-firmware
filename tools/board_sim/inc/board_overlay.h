@@ -66,9 +66,9 @@ typedef enum : uint32_t {
  * dark otherwise; @c label is the short caption printed beside the dot.
  */
 typedef struct {
-  bool        on;    /**< True when the GPIO pin is driven high.        */
-  uint16_t    color; /**< RGB565 lit colour (blue / green / red).       */
-  const char* label; /**< Short ASCII caption (e.g. "LED1").            */
+  bool        on;    /**< True when the GPIO pin is driven high.  */
+  uint16_t    color; /**< RGB565 lit colour (blue / green / red). */
+  const char* label; /**< Short ASCII caption (e.g. "LED1").      */
 } board_led_status_t;
 
 /**
@@ -79,37 +79,37 @@ typedef struct {
  * the duration of the ::board_overlay_compose call; the overlay copies nothing.
  */
 typedef struct {
-  board_led_status_t leds[k_overlay_led_count]; /**< Per-LED indicator state.   */
-  const char*        usb_state;                 /**< USB device state string.   */
-  const char*        uart_line;                 /**< Last captured UART line.   */
-  uint32_t           irq_total;                 /**< Total NVIC IRQs taken.     */
-  uint32_t           irq0;                      /**< IRQ0 taken count.          */
-  uint32_t           irq1;                      /**< IRQ1 taken count.          */
-  bool               has_touch;                 /**< A touch has been drained.  */
-  uint16_t           touch_x;                   /**< Last touch X (if any).     */
-  uint16_t           touch_y;                   /**< Last touch Y (if any).     */
-  bool               sw1_pressed;               /**< On-screen SW1 held down.   */
-  bool               sw2_pressed;               /**< On-screen SW2 held down.   */
-  uint8_t            battery_soc;               /**< Fuel-gauge SOC percent.    */
-  bool               battery_charging;          /**< Fuel gauge reports charge. */
-  const char*        app_name;                  /**< App / window title.        */
-  bool               sd_attached;               /**< A microSD card is attached.*/
-  uint64_t           sd_bytes;                  /**< SD card size in bytes (>4GB).*/
-  uint8_t            sd_fat_bits;               /**< 12/16/32 if --sd-new, else 0.*/
-  const char*        sd_label;                  /**< SD volume label (--sd-new).*/
+  board_led_status_t leds[k_overlay_led_count]; /**< Per-LED indicator state.      */
+  const char*        usb_state;                 /**< USB device state string.      */
+  const char*        uart_line;                 /**< Last captured UART line.      */
+  uint32_t           irq_total;                 /**< Total NVIC IRQs taken.        */
+  uint32_t           irq0;                      /**< IRQ0 taken count.             */
+  uint32_t           irq1;                      /**< IRQ1 taken count.             */
+  bool               has_touch;                 /**< A touch has been drained.     */
+  uint16_t           touch_x;                   /**< Last touch X (if any).        */
+  uint16_t           touch_y;                   /**< Last touch Y (if any).        */
+  bool               sw1_pressed;               /**< On-screen SW1 held down.      */
+  bool               sw2_pressed;               /**< On-screen SW2 held down.      */
+  uint8_t            battery_soc;               /**< Fuel-gauge SOC percent.       */
+  bool               battery_charging;          /**< Fuel gauge reports charge.    */
+  const char*        app_name;                  /**< App / window title.           */
+  bool               sd_attached;               /**< A microSD card is attached.   */
+  uint64_t           sd_bytes;                  /**< SD card size in bytes (>4GB). */
+  uint8_t            sd_fat_bits;               /**< 12/16/32 if --sd-new, else 0. */
+  const char*        sd_label;                  /**< SD volume label (--sd-new).   */
   /* Console window: console[0] is the newest *visible* line (the firmware ring
    * is deeper -- see console_total -- and console_scroll says how far back this
    * window starts). Unused rows are empty strings. */
   char     console[k_overlay_console_rows][k_overlay_line_cap]; /**< Visible UART lines. */
-  uint32_t console_count;      /**< Visible lines populated (<= rows).        */
-  uint32_t console_scroll;     /**< Lines scrolled back from newest (0=live). */
-  uint32_t console_total;      /**< Total lines in the firmware ring.         */
-  bool     console_autoscroll; /**< True = following live tail; false=paused. */
-  uint32_t pc;                 /**< Current emulated program counter.            */
-  uint32_t chunks;             /**< Emulation chunks run so far.                 */
-  uint32_t mmio_reads;         /**< Modelled-peripheral MMIO reads served.       */
-  uint32_t mmio_writes;        /**< Modelled-peripheral MMIO writes served.      */
-  uint32_t uart_tx_total;      /**< Total UART TX bytes the firmware emitted.    */
+  uint32_t console_count;      /**< Visible lines populated (<= rows).            */
+  uint32_t console_scroll;     /**< Lines scrolled back from newest (0=live).     */
+  uint32_t console_total;      /**< Total lines in the firmware ring.             */
+  bool     console_autoscroll; /**< True = following live tail; false=paused.     */
+  uint32_t pc;                 /**< Current emulated program counter.             */
+  uint32_t chunks;             /**< Emulation chunks run so far.                  */
+  uint32_t mmio_reads;         /**< Modelled-peripheral MMIO reads served.        */
+  uint32_t mmio_writes;        /**< Modelled-peripheral MMIO writes served.       */
+  uint32_t uart_tx_total;      /**< Total UART TX bytes the firmware emitted.     */
   bool     running;            /**< True while the run loop is live (not parked). */
 } board_status_t;
 

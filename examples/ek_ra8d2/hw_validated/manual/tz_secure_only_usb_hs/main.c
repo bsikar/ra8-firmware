@@ -97,7 +97,7 @@
 static const char* s_demo_tag = "TZSECONLYHS";
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (USBHS, EK-RA8D2 v1 User's Manual Rev 1.01 sec 6.2 p 34)            */
+/* Pinout (USBHS, EK-RA8D2 v1 User's Manual Rev 1.01 sec 6.2 p 34) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -132,7 +132,7 @@ static const ra_port_pin_t k_demo_pin_pd07_role =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

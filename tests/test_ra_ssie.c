@@ -53,7 +53,7 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_ra_ssie_test_ssifsr_demo =
     (0x0AUL << 24U) | (0x05UL << 8U) | 0x00010001UL,      /* TDC=10, RDC=5, TDE+RDF */
-  k_ra_ssie_test_ssisr_err = 0x04000000UL | 0x10000000UL, /* ROIRQ + TOIRQ */
+  k_ra_ssie_test_ssisr_err = 0x04000000UL | 0x10000000UL, /* ROIRQ + TOIRQ          */
 } ra_ssie_test_status_t;
 
 static uint32_t s_ssie_cb_count;
@@ -1234,10 +1234,10 @@ static void test_recv_iso_bad_args(void)
  */
 typedef enum : uint16_t {
   k_ssie_mcdc_thresh_in   = 0x10U, /**< Within k_ra_ssie_thresh_max=0x1F. */
-  k_ssie_mcdc_thresh_over = 0x40U, /**< Above max.                       */
-  k_ssie_mcdc_dma_valid   = 3U,    /**< Valid DMAC channel (< 8).        */
-  k_ssie_mcdc_dma_bad     = 100U,  /**< Above k_ra_ssie_dma_max_ch=8.    */
-  k_ssie_mcdc_dir_bad     = 5U,    /**< Not rx/tx/tx_rx.                 */
+  k_ssie_mcdc_thresh_over = 0x40U, /**< Above max.                        */
+  k_ssie_mcdc_dma_valid   = 3U,    /**< Valid DMAC channel (< 8).         */
+  k_ssie_mcdc_dma_bad     = 100U,  /**< Above k_ra_ssie_dma_max_ch=8.     */
+  k_ssie_mcdc_dir_bad     = 5U,    /**< Not rx/tx/tx_rx.                  */
 } ra_ssie_mcdc_const_t;
 
 /**

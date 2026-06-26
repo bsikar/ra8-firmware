@@ -43,7 +43,7 @@
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Shared compile-time constants                                              */
+/* Shared compile-time constants */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -51,16 +51,16 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_hid_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_hid_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_hid_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_hid_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_hid_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_hid_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_hid_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_hid_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_hid_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_hid_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_hid_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_hid_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_hid_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_hid_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_hid_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_hid_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_hid_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_hid_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_hid_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_hid_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_hid_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } hid_config_t;
 
@@ -69,11 +69,11 @@ typedef enum : uint32_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_hid_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_hid_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_hid_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_hid_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_hid_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_hid_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_hid_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_hid_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_hid_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_hid_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } hid_hex_t;
 
 /**
@@ -90,21 +90,21 @@ typedef enum : uint32_t {
  * @brief HID report + interrupt-pipe + pattern constants.
  */
 typedef enum : uint32_t {
-  k_hid_mps         = 64U,         /**< Interrupt endpoint wMaxPacketSize. */
-  k_hid_report_len  = 8U,          /**< Vendor input report width (bytes). */
-  k_hid_rounds      = 8U,          /**< Reports the host reads + checks.   */
-  k_hid_read_buf    = 64U,         /**< One-MPS receive buffer (bytes).    */
-  k_hid_dev_addr    = 1U,          /**< Address the host assigns.          */
-  k_hid_ep_in_num   = 1U,          /**< Device interrupt-IN endpoint num.  */
-  k_hid_pipe_in     = 1U,          /**< Host pipe for the device IN.       */
+  k_hid_mps         = 64U,         /**< Interrupt endpoint wMaxPacketSize.     */
+  k_hid_report_len  = 8U,          /**< Vendor input report width (bytes).     */
+  k_hid_rounds      = 8U,          /**< Reports the host reads + checks.       */
+  k_hid_read_buf    = 64U,         /**< One-MPS receive buffer (bytes).        */
+  k_hid_dev_addr    = 1U,          /**< Address the host assigns.              */
+  k_hid_ep_in_num   = 1U,          /**< Device interrupt-IN endpoint num.      */
+  k_hid_pipe_in     = 1U,          /**< Host pipe for the device IN.           */
   k_hid_seq_idx     = 0U,          /**< Report byte 0: modifier / rolling seq. */
-  k_hid_body_idx    = 1U,          /**< Report body starts at byte 1.      */
-  k_hid_no_mismatch = 0xFFFFFFFFU, /**< Probe: no mismatch.                */
-  k_hid_pat_idx_mul = 7U,          /**< Per-index pattern multiplier.      */
-  k_hid_pat_bias    = 0x5AU,       /**< Pattern constant bias.             */
-  k_hid_byte_mask   = 0xFFU,       /**< Byte mask.                         */
-  k_hid_key0_idx    = 2U,          /**< Boot-keyboard first-keycode byte.  */
-  k_hid_nkeys       = 5U,          /**< Keycodes typed ("RA8D2").          */
+  k_hid_body_idx    = 1U,          /**< Report body starts at byte 1.          */
+  k_hid_no_mismatch = 0xFFFFFFFFU, /**< Probe: no mismatch.                    */
+  k_hid_pat_idx_mul = 7U,          /**< Per-index pattern multiplier.          */
+  k_hid_pat_bias    = 0x5AU,       /**< Pattern constant bias.                 */
+  k_hid_byte_mask   = 0xFFU,       /**< Byte mask.                             */
+  k_hid_key0_idx    = 2U,          /**< Boot-keyboard first-keycode byte.      */
+  k_hid_nkeys       = 5U,          /**< Keycodes typed ("RA8D2").              */
 } hid_geom_t;
 
 /**
@@ -112,20 +112,20 @@ typedef enum : uint32_t {
  * @brief HID Usage-Table keycode ranges for decoding keycodes back to ASCII.
  */
 typedef enum : uint8_t {
-  k_hid_kc_a = 0x04U, /**< Keycode for 'a' / 'A'.            */
-  k_hid_kc_z = 0x1DU, /**< Keycode for 'z' / 'Z'.            */
-  k_hid_kc_1 = 0x1EU, /**< Keycode for '1'.                  */
-  k_hid_kc_0 = 0x27U, /**< Keycode for '0' (top of digits).  */
-  k_hid_kc_r = 0x15U, /**< Keycode for 'r' / 'R'.            */
-  k_hid_kc_8 = 0x25U, /**< Keycode for '8'.                  */
-  k_hid_kc_d = 0x07U, /**< Keycode for 'd' / 'D'.            */
-  k_hid_kc_2 = 0x1FU, /**< Keycode for '2'.                  */
+  k_hid_kc_a = 0x04U, /**< Keycode for 'a' / 'A'.           */
+  k_hid_kc_z = 0x1DU, /**< Keycode for 'z' / 'Z'.           */
+  k_hid_kc_1 = 0x1EU, /**< Keycode for '1'.                 */
+  k_hid_kc_0 = 0x27U, /**< Keycode for '0' (top of digits). */
+  k_hid_kc_r = 0x15U, /**< Keycode for 'r' / 'R'.           */
+  k_hid_kc_8 = 0x25U, /**< Keycode for '8'.                 */
+  k_hid_kc_d = 0x07U, /**< Keycode for 'd' / 'D'.           */
+  k_hid_kc_2 = 0x1FU, /**< Keycode for '2'.                 */
 } hid_keycode_t;
 
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* Shared mutable state (defined once in main.c)                              */
+/* Shared mutable state (defined once in main.c) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -140,7 +140,7 @@ typedef enum : uint8_t {
 extern TX_SEMAPHORE s_usb_host_keyboard_hid_active_sem;
 
 /* -------------------------------------------------------------------------- */
-/* Shared HID report pattern                                                  */
+/* Shared HID report pattern */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -164,7 +164,7 @@ extern TX_SEMAPHORE s_usb_host_keyboard_hid_active_sem;
 void hid_fill_report_body(uint8_t* out, uint32_t len);
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX HID interrupt-IN reports                                 */
+/* Device side: USBX HID interrupt-IN reports */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -205,7 +205,7 @@ VOID hid_device_worker(ULONG arg);
 void usb_host_keyboard_device_thread_create(void);
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**

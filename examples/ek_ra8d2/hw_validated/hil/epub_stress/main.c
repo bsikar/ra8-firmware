@@ -54,12 +54,12 @@
 
 /** @enum est_consts_t @brief Console / assertion knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_est_uart_chan    = 8U,      /**< SCI8 J-Link OB console.               */
-  k_est_uart_baud    = 115200U, /**< Console baud.                         */
-  k_est_expect_chap  = 60U,     /**< Spine length of the synthetic book.   */
-  k_est_expect_toc   = 60U,     /**< navPoint count in the synthetic NCX.  */
+  k_est_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                */
+  k_est_uart_baud    = 115200U, /**< Console baud.                          */
+  k_est_expect_chap  = 60U,     /**< Spine length of the synthetic book.    */
+  k_est_expect_toc   = 60U,     /**< navPoint count in the synthetic NCX.   */
   k_est_expect_files = 125U,    /**< Archive entries (reported, not gated). */
-  k_est_dec_ten      = 10U,     /**< Decimal base for the small printer.   */
+  k_est_dec_ten      = 10U,     /**< Decimal base for the small printer.    */
 } est_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

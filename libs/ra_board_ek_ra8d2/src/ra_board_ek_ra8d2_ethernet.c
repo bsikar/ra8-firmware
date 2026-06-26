@@ -238,9 +238,9 @@ static ra_err_t internal_eth_route_alt_pins(void)
  * safety ceiling that satisfies NASA P10 Rule 2.
  */
 typedef enum : uint32_t {
-  k_ra_board_eth_coma_delay_iters  = 3000000UL, /**< ~1-3 ms busy wait between COMA writes. */
-  k_ra_board_eth_etha_step_iters   = 200000UL,  /**< ~50 us settle between ETHA mode writes.*/
-  k_ra_board_eth_coma_bpr_poll_max = 1000000UL, /**< CABPIRM.BPR poll upper bound.          */
+  k_ra_board_eth_coma_delay_iters  = 3000000UL, /**< ~1-3 ms busy wait between COMA writes.  */
+  k_ra_board_eth_etha_step_iters   = 200000UL,  /**< ~50 us settle between ETHA mode writes. */
+  k_ra_board_eth_coma_bpr_poll_max = 1000000UL, /**< CABPIRM.BPR poll upper bound.           */
 } ra_board_eth_coma_delay_t;
 
 /**
@@ -582,16 +582,16 @@ static ra_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
  * PHY (MIICTRL.RXSKEW).
  */
 typedef enum : uint16_t {
-  k_ra_board_eth_phy_reg_bmcr     = 0U,      /**< BMCR (basic control).        */
-  k_ra_board_eth_phy_reg_anar     = 4U,      /**< Auto-neg advertisement.      */
-  k_ra_board_eth_phy_reg_gbcr     = 9U,      /**< 1000BASE-T control.          */
-  k_ra_board_eth_phy_reg_miictrl  = 0x17U,   /**< GPY111 MIICTRL vendor reg.   */
-  k_ra_board_eth_phy_bmcr_reset   = 0x8000U, /**< BMCR.RESET (self-clearing).  */
-  k_ra_board_eth_phy_bmcr_an_en   = 0x1000U, /**< BMCR.AUTONEG_ENABLE.         */
-  k_ra_board_eth_phy_bmcr_an_rst  = 0x0200U, /**< BMCR.AUTONEG_RESTART.        */
-  k_ra_board_eth_phy_rxskew_mask  = 0x7000U, /**< MIICTRL RXSKEW field [14:12].*/
-  k_ra_board_eth_phy_rxskew_1p0ns = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.    */
-  k_ra_board_eth_phy_anar_value   = 0x01E1U, /**< Advertise 100F/100H/10F/10H. */
+  k_ra_board_eth_phy_reg_bmcr     = 0U,      /**< BMCR (basic control).         */
+  k_ra_board_eth_phy_reg_anar     = 4U,      /**< Auto-neg advertisement.       */
+  k_ra_board_eth_phy_reg_gbcr     = 9U,      /**< 1000BASE-T control.           */
+  k_ra_board_eth_phy_reg_miictrl  = 0x17U,   /**< GPY111 MIICTRL vendor reg.    */
+  k_ra_board_eth_phy_bmcr_reset   = 0x8000U, /**< BMCR.RESET (self-clearing).   */
+  k_ra_board_eth_phy_bmcr_an_en   = 0x1000U, /**< BMCR.AUTONEG_ENABLE.          */
+  k_ra_board_eth_phy_bmcr_an_rst  = 0x0200U, /**< BMCR.AUTONEG_RESTART.         */
+  k_ra_board_eth_phy_rxskew_mask  = 0x7000U, /**< MIICTRL RXSKEW field [14:12]. */
+  k_ra_board_eth_phy_rxskew_1p0ns = 0x2000U, /**< RXSKEW = 0b010 -> 1.0 ns.     */
+  k_ra_board_eth_phy_anar_value   = 0x01E1U, /**< Advertise 100F/100H/10F/10H.  */
   /* GBCR = 0: 1000BASE-T is not advertised, so the link settles at
    * 100M full-duplex where it runs at 0 % loss. At 1 Gbps the RGMII
    * TXC is 125 MHz DDR and the clock-to-data window shrinks to ~1 ns;
@@ -603,7 +603,7 @@ typedef enum : uint16_t {
    * the gigabit eye needs a scope on the TX pins or an EEPROM to
    * override the PHY straps; until then the link stays at 100M. */
   k_ra_board_eth_phy_gbcr_value = 0x0000U, /**< 1000BASE-T NOT advertised (see above). */
-  k_ra_board_eth_phy_reset_spin = 4096U,   /**< BMCR.RESET self-clear cap.   */
+  k_ra_board_eth_phy_reset_spin = 4096U,   /**< BMCR.RESET self-clear cap.             */
 } ra_board_eth_phy_reg_t;
 
 /**

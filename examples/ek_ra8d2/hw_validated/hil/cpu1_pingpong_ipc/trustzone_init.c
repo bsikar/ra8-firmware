@@ -60,9 +60,9 @@ extern uint32_t g_ra_ls_cpu1_stack_top;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ipcsar_value         = 0x000F0303UL, /**< All IPC subblocks NS. */
+  k_ipcsar_value         = 0x000F0303UL, /**< All IPC subblocks NS.              */
   k_ipcpar_value         = 0x000F0303UL, /**< All IPC subblocks unprivileged-OK. */
-  k_ns_vector_table_addr = 0x02080000UL, /**< NS image entry vectors.   */
+  k_ns_vector_table_addr = 0x02080000UL, /**< NS image entry vectors.            */
 } cpu1_pingpong_ipc_tz_const_t;
 
 /**
@@ -147,10 +147,10 @@ static void internal_release_cpu1(void)
    * the chip's bus arbiter; the CPU1 SAU init in cpu1_main.c alone is
    * not sufficient to reach IPCSAR-attributed channels. HUM Ch 9.2.4
    * "CPSCU" + FSP R_BSP_SecurityInit. */
-  *(volatile uint32_t*)0x40008100UL = 0x00000001UL; /* BUSSARA */
-  *(volatile uint32_t*)0x40008104UL = 0x00000001UL; /* BUSSARB */
-  *(volatile uint32_t*)0x40008110UL = 0x00000001UL; /* BUSSARC */
-  *(volatile uint32_t*)0x40008170UL = 0x00000000UL; /* CPUSAR */
+  *(volatile uint32_t*)0x40008100UL = 0x00000001UL; /* BUSSARA  */
+  *(volatile uint32_t*)0x40008104UL = 0x00000001UL; /* BUSSARB  */
+  *(volatile uint32_t*)0x40008110UL = 0x00000001UL; /* BUSSARC  */
+  *(volatile uint32_t*)0x40008170UL = 0x00000000UL; /* CPUSAR   */
   *(volatile uint32_t*)0x40008130UL = 0xFFFFFFFFUL; /* MMPUSARA */
   *(volatile uint32_t*)0x40008134UL = 0xFFFFFFFFUL; /* MMPUSARB */
 

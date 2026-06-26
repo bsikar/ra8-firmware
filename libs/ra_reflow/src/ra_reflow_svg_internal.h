@@ -35,46 +35,46 @@
  * @brief Parse + colour constants for the SVG subset.
  */
 typedef enum : uint32_t {
-  k_svg_no_paint    = 0xFFFFFFFFU, /**< `none` / absent paint sentinel.    */
-  k_svg_def_fill    = 0x000000U,   /**< SVG default fill is black.         */
-  k_svg_dec         = 10U,         /**< Decimal base.                      */
-  k_svg_hex_base    = 16U,         /**< Hex base / "not a hex digit".      */
-  k_svg_hex_a10     = 10U,         /**< Value of hex 'a'/'A'.              */
-  k_svg_hex_nib     = 4U,          /**< Bits per hex nibble.               */
-  k_svg_hex_chan    = 8U,          /**< Bits per colour channel.           */
-  k_svg_hex3        = 3U,          /**< `#rgb` digit count.                */
-  k_svg_hex6        = 6U,          /**< `#rrggbb` digit count.             */
-  k_svg_viewbox_n   = 4U,          /**< `viewBox` number count.            */
-  k_svg_bom0        = 0xEFU,       /**< UTF-8 BOM byte 0.                  */
-  k_svg_bom1        = 0xBBU,       /**< UTF-8 BOM byte 1.                  */
-  k_svg_bom2        = 0xBFU,       /**< UTF-8 BOM byte 2.                  */
-  k_svg_bom_len     = 3U,          /**< UTF-8 BOM length.                 */
-  k_svg_poly_max    = 64U,         /**< Max points / scanline crossings.  */
-  k_svg_poly_min    = 3U,          /**< Min points for a fillable polygon.*/
-  k_svg_path_args   = 7U,          /**< Max args of a path command (`A`). */
-  k_svg_path_ep     = 2U,          /**< Endpoint pair size (x, y); M/L/T. */
-  k_svg_argc_quad   = 4U,          /**< Arg count of `S` / `Q`.          */
-  k_svg_argc_cube   = 6U,          /**< Arg count of `C`.                */
-  k_svg_curve_seg   = 12U,         /**< Segments per cubic-Bezier flatten.*/
-  k_svg_cube_ey     = 5U,          /**< `C` endpoint-y argument index.   */
-  k_svg_arc_rx      = 0U,          /**< `A` arg index: semi-axis X.       */
-  k_svg_arc_ry      = 1U,          /**< `A` arg index: semi-axis Y.       */
-  k_svg_arc_rot     = 2U,          /**< `A` arg index: x-axis rotation.   */
-  k_svg_arc_large   = 3U,          /**< `A` arg index: large-arc flag.    */
-  k_svg_arc_sweep   = 4U,          /**< `A` arg index: sweep flag.        */
-  k_svg_arc_ex      = 5U,          /**< `A` arg index: endpoint X.        */
-  k_svg_arc_ey      = 6U,          /**< `A` arg index: endpoint Y.        */
-  k_svg_arc_seg_max = 24U,         /**< Max segments per arc flatten.     */
-  k_svg_g_depth_max = 8U,          /**< Max nested `<g>` transform depth. */
-  k_svg_circle_seg  = 24U,         /**< N-gon segments for a transformed circle.*/
-  k_svg_rect_pts    = 4U,          /**< Corner count of a rectangle.      */
-  k_svg_grad_max    = 8U,          /**< Max gradients defined per document.*/
-  k_svg_grad_stops  = 8U,          /**< Max colour stops per gradient.    */
-  k_svg_grad_id     = 32U,         /**< Max gradient `id` length, bytes.  */
-  k_svg_grad_linear = 0U,          /**< `<linearGradient>` kind.          */
-  k_svg_grad_radial = 1U,          /**< `<radialGradient>` kind.          */
-  k_svg_chan_mask   = 0xFFU,       /**< One 8-bit RGB channel mask.       */
-  k_svg_sh_r        = 16U,         /**< Red shift within 0x00RRGGBB.      */
+  k_svg_no_paint    = 0xFFFFFFFFU, /**< `none` / absent paint sentinel.          */
+  k_svg_def_fill    = 0x000000U,   /**< SVG default fill is black.               */
+  k_svg_dec         = 10U,         /**< Decimal base.                            */
+  k_svg_hex_base    = 16U,         /**< Hex base / "not a hex digit".            */
+  k_svg_hex_a10     = 10U,         /**< Value of hex 'a'/'A'.                    */
+  k_svg_hex_nib     = 4U,          /**< Bits per hex nibble.                     */
+  k_svg_hex_chan    = 8U,          /**< Bits per colour channel.                 */
+  k_svg_hex3        = 3U,          /**< `#rgb` digit count.                      */
+  k_svg_hex6        = 6U,          /**< `#rrggbb` digit count.                   */
+  k_svg_viewbox_n   = 4U,          /**< `viewBox` number count.                  */
+  k_svg_bom0        = 0xEFU,       /**< UTF-8 BOM byte 0.                        */
+  k_svg_bom1        = 0xBBU,       /**< UTF-8 BOM byte 1.                        */
+  k_svg_bom2        = 0xBFU,       /**< UTF-8 BOM byte 2.                        */
+  k_svg_bom_len     = 3U,          /**< UTF-8 BOM length.                        */
+  k_svg_poly_max    = 64U,         /**< Max points / scanline crossings.         */
+  k_svg_poly_min    = 3U,          /**< Min points for a fillable polygon.       */
+  k_svg_path_args   = 7U,          /**< Max args of a path command (`A`).        */
+  k_svg_path_ep     = 2U,          /**< Endpoint pair size (x, y); M/L/T.        */
+  k_svg_argc_quad   = 4U,          /**< Arg count of `S` / `Q`.                  */
+  k_svg_argc_cube   = 6U,          /**< Arg count of `C`.                        */
+  k_svg_curve_seg   = 12U,         /**< Segments per cubic-Bezier flatten.       */
+  k_svg_cube_ey     = 5U,          /**< `C` endpoint-y argument index.           */
+  k_svg_arc_rx      = 0U,          /**< `A` arg index: semi-axis X.              */
+  k_svg_arc_ry      = 1U,          /**< `A` arg index: semi-axis Y.              */
+  k_svg_arc_rot     = 2U,          /**< `A` arg index: x-axis rotation.          */
+  k_svg_arc_large   = 3U,          /**< `A` arg index: large-arc flag.           */
+  k_svg_arc_sweep   = 4U,          /**< `A` arg index: sweep flag.               */
+  k_svg_arc_ex      = 5U,          /**< `A` arg index: endpoint X.               */
+  k_svg_arc_ey      = 6U,          /**< `A` arg index: endpoint Y.               */
+  k_svg_arc_seg_max = 24U,         /**< Max segments per arc flatten.            */
+  k_svg_g_depth_max = 8U,          /**< Max nested `<g>` transform depth.        */
+  k_svg_circle_seg  = 24U,         /**< N-gon segments for a transformed circle. */
+  k_svg_rect_pts    = 4U,          /**< Corner count of a rectangle.             */
+  k_svg_grad_max    = 8U,          /**< Max gradients defined per document.      */
+  k_svg_grad_stops  = 8U,          /**< Max colour stops per gradient.           */
+  k_svg_grad_id     = 32U,         /**< Max gradient `id` length, bytes.         */
+  k_svg_grad_linear = 0U,          /**< `<linearGradient>` kind.                 */
+  k_svg_grad_radial = 1U,          /**< `<radialGradient>` kind.                 */
+  k_svg_chan_mask   = 0xFFU,       /**< One 8-bit RGB channel mask.              */
+  k_svg_sh_r        = 16U,         /**< Red shift within 0x00RRGGBB.             */
 } priv_svg_consts_t;
 
 /**
@@ -113,24 +113,24 @@ typedef struct svg_grads svg_grads_t;
  * @brief SVG-user-space -> framebuffer-box coordinate transform.
  */
 typedef struct {
-  int32_t bx; /**< Box left.        */
-  int32_t by; /**< Box top.         */
-  int32_t bw; /**< Box width.       */
-  int32_t bh; /**< Box height.      */
-  int32_t vx; /**< viewBox min-x.   */
-  int32_t vy; /**< viewBox min-y.   */
-  int32_t vw; /**< viewBox width.   */
-  int32_t vh; /**< viewBox height.  */
+  int32_t bx; /**< Box left.       */
+  int32_t by; /**< Box top.        */
+  int32_t bw; /**< Box width.      */
+  int32_t bh; /**< Box height.     */
+  int32_t vx; /**< viewBox min-x.  */
+  int32_t vy; /**< viewBox min-y.  */
+  int32_t vw; /**< viewBox width.  */
+  int32_t vh; /**< viewBox height. */
   /* User-space `transform=` as a 2x3 affine, applied to a point BEFORE the
    * viewBox->box map: (x,y) -> (ua*x+uc*y+ue, ub*x+ud*y+uf). Identity
    * (ua=ud=1, others 0) reproduces the untransformed render byte-for-byte; the
    * axis-aligned case (ub==0 && uc==0) keeps the fast-path primitives. */
-  float ua; /**< Affine a (x scale; 1 = identity).  */
-  float ub; /**< Affine b (y shear; 0 = axis-aligned).*/
-  float uc; /**< Affine c (x shear; 0 = axis-aligned).*/
-  float ud; /**< Affine d (y scale; 1 = identity).  */
-  float ue; /**< Affine e (x translate, user units).*/
-  float uf; /**< Affine f (y translate, user units).*/
+  float ua; /**< Affine a (x scale; 1 = identity).     */
+  float ub; /**< Affine b (y shear; 0 = axis-aligned). */
+  float uc; /**< Affine c (x shear; 0 = axis-aligned). */
+  float ud; /**< Affine d (y scale; 1 = identity).     */
+  float ue; /**< Affine e (x translate, user units).   */
+  float uf; /**< Affine f (y translate, user units).   */
   /* Gradients defined in the document, scanned once before the render walk.
    * NULL keeps the solid-fill render byte-for-byte unchanged. A shape whose
    * `fill="url(#id)"` resolves here is filled per-pixel via ra_svgp_fill_poly_grad. */

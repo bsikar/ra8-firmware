@@ -250,15 +250,12 @@ static void test_set_format_invalid_args(void)
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_haud_set_format(0U, 16U, 48000U)); /* 0 channels.    */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_haud_set_format(9U, 16U, 48000U));                      /* 9 channels.    */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_haud_set_format(0U, 16U, 48000U)); /* 0 channels. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_haud_set_format(9U, 16U, 48000U)); /* 9 channels. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_haud_set_format(2U, 4U, 48000U)); /* 4-bit too low. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_usb_haud_set_format(2U, 64U, 48000U)); /* 64-bit too high. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_haud_set_format(2U, 16U, 4000U)); /* 4 kHz too low.  */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_haud_set_format(2U, 16U, 4000U)); /* 4 kHz too low. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_usb_haud_set_format(2U, 16U, 384000U)); /* 384 kHz too high. */
   TEST_END("set_format rejects out-of-range channels / bits / rate");

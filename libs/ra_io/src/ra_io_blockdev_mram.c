@@ -48,13 +48,13 @@ static const char* const s_tag = "ra_io_blockdev_mram";
  */
 typedef enum : uint32_t {
   k_ra_io_mram_erase_block_bytes = (uint32_t)k_ra_mram_block_size_bytes,
-  /**< MRAM erase/program unit in bytes (32).                                  */
+  /**< MRAM erase/program unit in bytes (32). */
   k_ra_io_mram_program_bytes = (uint32_t)k_ra_mram_write_size_bytes,
-  /**< MRAM minimum program granularity in bytes (32).                         */
+  /**< MRAM minimum program granularity in bytes (32). */
   k_ra_io_mram_erase_unit_blocks = 1U,
-  /**< Logical-block erase granularity: 1 (MRAM erases in 32-byte sub-units).   */
-  k_ra_io_mram_min_blocks = 1U, /**< Smallest legal device size.               */
-  k_ra_io_mram_zero_len   = 0U, /**< Sentinel for an empty length.             */
+  /**< Logical-block erase granularity: 1 (MRAM erases in 32-byte sub-units). */
+  k_ra_io_mram_min_blocks = 1U, /**< Smallest legal device size.   */
+  k_ra_io_mram_zero_len   = 0U, /**< Sentinel for an empty length. */
 } ra_io_mram_const_t;
 
 /**

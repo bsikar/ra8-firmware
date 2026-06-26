@@ -64,7 +64,7 @@ typedef enum : uint32_t {
 
 /** @brief PDG channel + delay programmed by this demo. */
 typedef enum : uint8_t {
-  k_pdg_demo_channel    = 0U,    /**< PDG / GPT32 channel 0.            */
+  k_pdg_demo_channel    = 0U,    /**< PDG / GPT32 channel 0.           */
   k_pdg_demo_chan_mask  = 0x01U, /**< channel_mask bit 0.              */
   k_pdg_demo_delay_code = 0x40U, /**< Mid-range DLY[6:0] code (0..7F). */
 } pdg_demo_chan_t;

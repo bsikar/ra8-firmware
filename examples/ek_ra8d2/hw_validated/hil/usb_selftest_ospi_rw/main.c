@@ -103,7 +103,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -139,7 +139,7 @@ static const ra_port_pin_t k_ospirw_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /* Shared compile-time tunables (threads, pool, console cadence, LUN geometry,
@@ -171,7 +171,7 @@ typedef enum : uint8_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -217,7 +217,7 @@ static UCHAR s_msc_product_id[]  = "WRITABLE OSPI RW";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /* Host-ladder J-Link probes (s_dbg_phase, s_dbg_luns_ok, s_dbg_max_lun,
@@ -239,7 +239,7 @@ static volatile uint32_t s_dbg_dev_err;
  * ::ospirw_ospi_provision in usb_selftest_ospi_rw_device.c. */
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (single-interface MSC; one writable logical unit)         */
+/* USB descriptors (single-interface MSC; one writable logical unit) */
 /* -------------------------------------------------------------------------- */
 
 /* MSC config: bulk-only transport, SCSI command set, EP1 IN + EP2 OUT,
@@ -258,7 +258,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x16U, /* PID = 0x0016 (pid.codes test).    */
+  0x16U, /* PID = 0x0016 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -383,7 +383,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (single writable OSPI-flash LUN)             */
+/* Storage class media callbacks (single writable OSPI-flash LUN) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -543,7 +543,7 @@ static UINT ospirw_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* m
 }
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX MSC with two LUNs                                         */
+/* Device side: USBX MSC with two LUNs */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -756,7 +756,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**
