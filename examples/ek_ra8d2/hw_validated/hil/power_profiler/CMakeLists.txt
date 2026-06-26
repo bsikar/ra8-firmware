@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME power_profiler STACK_BYTES 2200
            DESCRIPTION "power_profiler firmware for RA8D2"
-           LIBS ra_power_profile)
+           LIBS ra_power_profile ra_board_ek_ra8d2)
