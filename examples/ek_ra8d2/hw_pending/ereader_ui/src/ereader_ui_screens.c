@@ -574,6 +574,50 @@ void er_render_library(void)
  * =========================================================================== */
 
 /**
+ * @brief Bind the Layer-3 glyph atlas (#164) to the reflow engine.
+ *
+ * @details A page turn re-renders the same body glyphs, so caching the
+ * rasterised bitmaps (cells in SDRAM, like the framebuffer + decode arena)
+ * avoids re-running stb_truetype every frame. Re-bound on each relayout
+ * (ra_reflow_init zeroes the engine); the cache clears per chapter, the natural
+ * working-set boundary. Output is byte-identical to the direct path -- oversized
+ * glyphs fall back to direct rasterisation. The caller-owned storage is
+ * function-static (single reflow engine, single-threaded UI loop).
+ *
+ * @pre ::s_reflow_engine has been initialised by ra_reflow_init().
+ * @pre The SDRAM `.sdram_data` section is mapped (post ra_sdramc_init()).
+ * @post ::s_reflow_engine renders body glyphs through the glyph cache.
+ * @post The cache starts empty (re-init clears it).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void er_bind_glyph_atlas(void)
+{
+  /* cppcheck-suppress unassignedVariable ; filled through the pointer handed to
+     ra_reflow_set_glyph_atlas() -> ra_glyph_atlas_init(); cppcheck can't follow it. */
+  static uint8_t s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes]
+    __attribute__((section(".sdram_data")));
+  static ra_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
+  static ra_glyph_key_t     s_glyph_keys[k_er_glyph_cells];
+  static ra_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];
+  /* cppcheck-suppress unassignedVariable ; hash-bucket heads are cleared by
+     ra_glyph_atlas_init() through the storage pointer; not a direct assignment. */
+  static int32_t                        s_glyph_buckets[k_er_glyph_buckets];
+  static ra_glyph_atlas_t               s_glyph_atlas;
+  const ra_reflow_glyph_atlas_storage_t glyph_store = {
+    .cell_mem     = s_glyph_cells,
+    .cell_bytes   = (uint32_t)k_er_glyph_cell_bytes,
+    .cell_count   = (uint32_t)k_er_glyph_cells,
+    .meta         = s_glyph_meta,
+    .keys         = s_glyph_keys,
+    .dims         = s_glyph_dims,
+    .buckets      = s_glyph_buckets,
+    .bucket_count = (uint32_t)k_er_glyph_buckets,
+  };
+  (void)ra_reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
+}
+
+/**
  * @brief Re-init the reflow engine and lay the current chapter into the cache.
  *
  * @details Closes any prior layout, binds the font + image arena, paginates the
@@ -620,35 +664,7 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
                                         .offset = 0U,
                                         .live   = 0U};
   (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
-
-  /* Bind the Layer-3 glyph atlas (#164): a page turn re-renders the same body
-   * glyphs, so caching the rasterised bitmaps (cells in SDRAM, like the FB and
-   * decode arena) avoids re-running stb_truetype every frame. Re-bound on each
-   * relayout (ra_reflow_init zeroes the engine); the cache clears per chapter,
-   * which is the natural working-set boundary. Output is byte-identical to the
-   * direct path -- oversized glyphs simply fall back to direct rasterisation. */
-  /* cppcheck-suppress unassignedVariable ; filled through the pointer handed to
-     ra_reflow_set_glyph_atlas() -> ra_glyph_atlas_init(); cppcheck can't follow it. */
-  static uint8_t s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes]
-    __attribute__((section(".sdram_data")));
-  static ra_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
-  static ra_glyph_key_t     s_glyph_keys[k_er_glyph_cells];
-  static ra_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];
-  /* cppcheck-suppress unassignedVariable ; hash-bucket heads are cleared by
-     ra_glyph_atlas_init() through the storage pointer; not a direct assignment. */
-  static int32_t                        s_glyph_buckets[k_er_glyph_buckets];
-  static ra_glyph_atlas_t               s_glyph_atlas;
-  const ra_reflow_glyph_atlas_storage_t glyph_store = {
-    .cell_mem     = s_glyph_cells,
-    .cell_bytes   = (uint32_t)k_er_glyph_cell_bytes,
-    .cell_count   = (uint32_t)k_er_glyph_cells,
-    .meta         = s_glyph_meta,
-    .keys         = s_glyph_keys,
-    .dims         = s_glyph_dims,
-    .buckets      = s_glyph_buckets,
-    .bucket_count = (uint32_t)k_er_glyph_buckets,
-  };
-  (void)ra_reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
+  er_bind_glyph_atlas();
 
   uint32_t            pages = 0U;
   const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
