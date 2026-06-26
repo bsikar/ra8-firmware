@@ -9,7 +9,7 @@
  * One ThreadX thread that exercises the full ``ra_sdcard`` HAL stack:
  *
  *   1. Route the eight SDHI pins (CMD, CLK, DAT0..3, WP, CD) on port 4
- *      to PSEL=k_ra_psel_sdhi (0x12 -- SDHI / MMC).
+ *      to the SDHI peripheral function via ``ra_board_sdhi_pins_init``.
  *   2. Bring the J-Link OB VCOM console up at 115200 8N1 via
  *      ``ra_board_uart_console_init``.
  *   3. ``ra_sdcard_init`` runs the standard SD Physical Layer
@@ -20,8 +20,8 @@
  *      (``XX XX XX XX...``) and pushed out the console; LED1 toggles
  *      once per pass to make the activity visible.
  *
- * SDHI pin map mirrors ``examples/ereader``: port 4, pins 0..7 routed
- * to the on-chip SDHI block (see ereader main.c for the same map).
+ * SDHI pin map is owned by the BSP (``ra_board_sdhi_pins_init``): port 4,
+ * pins 0..7 routed to the on-chip SDHI block.
  *
  * @par Threads
  *
@@ -39,10 +39,7 @@
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_sdcard.h"
 
 /*
@@ -90,9 +87,8 @@ typedef enum : uint16_t {
  * @brief SDHI pin layout constants.
  */
 typedef enum : uint8_t {
-  k_sdcard_sdhi_pin_count = 8U,  /**< CMD + CLK + DAT0..3 + WP + CD. */
-  k_sdcard_sdhi_instance  = 0U,  /**< SDHI instance index.           */
-  k_sdcard_dump_bytes     = 16U, /**< Bytes from sector 0 to print.  */
+  k_sdcard_sdhi_instance = 0U,  /**< SDHI instance index.          */
+  k_sdcard_dump_bytes    = 16U, /**< Bytes from sector 0 to print. */
 } sdcard_layout_t;
 
 /**
@@ -111,40 +107,6 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_sdcard_block_bytes = 512U,
 } sdcard_block_size_t;
-
-/**
- * @brief Pack (port, pin) into a ra_port_pin_t at file scope.
- */
-typedef enum : uint8_t {
-  k_sdcard_port_shift = 8U,
-} sdcard_port_pack_t;
-
-/* ---------------------------------------------------------------------------
- * SDHI pin map (port 4, pins 0..7) -- identical to examples/ereader.
- * --------------------------------------------------------------------------- */
-
-#define SDCARD_PP(port_, pin_)                                                                     \
-  ((ra_port_pin_t)(((uint16_t)(port_) << k_sdcard_port_shift) | (uint16_t)(pin_)))
-
-/**
- * @brief SDHI pin list. Each pin is set to ``k_ra_psel_sdhi``.
- *
- * @details
- * RA8D2 datasheet R01DS0493EJ "Pin Functions" -> "SDHI" lists the
- * default mapping at port 4. Same caveat as examples/ereader -- the
- * board-side wiring should be confirmed against EK-RA8D2 v1 docs once
- * they are committed to ``docs/reference/``.
- */
-static const ra_port_pin_t k_sdcard_sdhi_pins[k_sdcard_sdhi_pin_count] = {
-  SDCARD_PP(k_ra_port_4, k_ra_pin_0), /* SD_CMD  */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_1), /* SD_CLK  */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_2), /* SD_DAT0 */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_3), /* SD_DAT1 */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_4), /* SD_DAT2 */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_5), /* SD_DAT3 */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_6), /* SD_WP   */
-  SDCARD_PP(k_ra_port_4, k_ra_pin_7), /* SD_CD   */
-};
 
 /* ---------------------------------------------------------------------------
  * Vector table override and thread storage (cross-build only).
@@ -247,26 +209,6 @@ static void sdcard_log(const char* s)
     len++;
   }
   (void)ra_board_uart_console_write((const uint8_t*)s, len);
-}
-
-/**
- * @brief Route the eight SDHI pins to PSEL=k_ra_psel_sdhi.
- *
- * @return Error code from the first failing route call, or k_ra_ok.
- *
- * @pre IOPORT module reachable; single-threaded init context.
- * @post On success the eight SDHI pins are owned by the SDHI block.
- */
-[[nodiscard]] static ra_err_t sdcard_pins_init(void)
-{
-  for (uint8_t i = 0U; i < (uint8_t)k_sdcard_sdhi_pin_count; i++) {
-    const ra_err_t err =
-      ra_pfs_route_peripheral(k_sdcard_sdhi_pins[i], k_ra_psel_sdhi, "threadx_sdcard.sdhi");
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
 }
 
 /* ---------------------------------------------------------------------------
@@ -389,7 +331,7 @@ int32_t main(void)
     }
   }
 #ifndef RA_SIMULATOR_MODE
-  if (sdcard_pins_init() != k_ra_ok) {
+  if (ra_board_sdhi_pins_init() != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }

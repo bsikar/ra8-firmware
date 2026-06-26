@@ -30,4 +30,5 @@ endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ra_sdhi_card_demo STACK_BYTES 4096
-           DESCRIPTION "native 4-bit SDHI raw-block round-trip (#123): ra_sdcard read/write blocks")
+           DESCRIPTION "native 4-bit SDHI raw-block round-trip (#123): ra_sdcard read/write blocks"
+           LIBS ra_board_ek_ra8d2)

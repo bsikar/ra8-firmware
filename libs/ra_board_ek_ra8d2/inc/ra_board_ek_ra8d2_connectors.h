@@ -801,6 +801,101 @@ typedef enum : uint8_t {
   k_ra_board_pi4ioe_output_usbhs_host = 0x72U,
 } ra_board_pi4ioe_project_t;
 
+/* =============================================================================
+ * 6d. Native SDHI bus (SDHI0, port 4 pins 0..7)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_board_sdhi_pin_t
+ * @brief Pin assignments for the native 4-bit SDHI0 micro-SD bus.
+ *
+ * @details
+ * The RA8D2 routes the SDHI0 SD/MMC host-controller signals to port 4
+ * pins 0..7 under ``PSEL = k_ra_psel_sdhi`` (chip HUM Ch 20.6
+ * "Multiplexed Pin Function Selector"). In bus order the eight pins are
+ * CMD / CLK / DAT0 / DAT1 / DAT2 / DAT3 / WP (write-protect) /
+ * CD (card-detect). The values are ``(port << 8) | pin`` encodings in
+ * the ``ra_port_pin_t`` value space, matching every other board-pin
+ * enum in this header.
+ *
+ * @warning HARDWARE CAVEAT -- the EK-RA8D2 v1 board does NOT carry an
+ * on-board micro-SD socket and the SDHI0 peripheral is not populated
+ * (board UM has no SD-card table; see ``docs/MEMORY_MAP.md`` and
+ * ``docs/HARDWARE_BRINGUP.md``). On EK-RA8D2 v1 these port-4 pads serve
+ * CANFD / IIC functions, not SDHI. This enum and
+ * ``ra_board_sdhi_pins_init`` capture the chip-side SDHI0 pin map shared
+ * by the SDHI / ra_io demo apps; running them against real hardware
+ * requires an external SDHI break-out wired to port 4. The apps that use
+ * this map therefore live under ``hw_pending`` / ``_unsupported``.
+ *
+ * @invariant All eight members carry port index 4 (high byte 0x04).
+ * @see ra_board_sdhi_pins_init
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra_board_sdhi_cmd =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_0), /**< SDHI0 CMD,  P400. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_clk =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_1), /**< SDHI0 CLK,  P401. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_dat0 =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_2), /**< SDHI0 DAT0, P402. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_dat1 =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_3), /**< SDHI0 DAT1, P403. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_dat2 =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_4), /**< SDHI0 DAT2, P404. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_dat3 =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_5), /**< SDHI0 DAT3, P405. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_wp =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_6), /**< SDHI0 WP,   P406. Chip HUM Ch 20.6. */
+  k_ra_board_sdhi_cd =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_7), /**< SDHI0 CD,   P407. Chip HUM Ch 20.6. */
+} ra_board_sdhi_pin_t;
+
+/**
+ * @brief SDHI instance that backs the ::ra_board_sdhi_pin_t bus pins.
+ *
+ * @details
+ * Exposed as a typed enum (not a macro) so applications can pass the
+ * instance index to ``ra_sdcard_init`` / ``ra_sdhi_init`` without
+ * re-encoding the literal. The port-4 pin map above is the SDHI **0**
+ * function group in the chip HUM I/O Ports chapter.
+ */
+typedef enum : uint8_t {
+  k_ra_board_sdhi_instance = 0U, /**< SDHI0 (chip HUM Ch 20.6 SDHI pin group). */
+} ra_board_sdhi_instance_t;
+
+/**
+ * @brief Route the eight SDHI0 bus pins to the SDHI peripheral function.
+ *
+ * @details
+ * Walks the ::ra_board_sdhi_pin_t bus order (CMD / CLK / DAT0..3 / WP /
+ * CD on port 4 pins 0..7) and calls ``ra_pfs_route_peripheral`` for each
+ * under ``PSEL = k_ra_psel_sdhi`` (chip HUM Ch 20.6 "Multiplexed Pin
+ * Function Selector"). It does NOT bring the SDHI block or the card up --
+ * call ``ra_sdcard_init`` / ``ra_sdhi_init`` after this returns. Returns
+ * on the first failing pin so the caller can panic-halt before SD
+ * bring-up.
+ *
+ * See the @warning on ::ra_board_sdhi_pin_t: EK-RA8D2 v1 has no on-board
+ * micro-SD socket, so this routing is only meaningful with an external
+ * SDHI break-out wired to port 4.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                All eight SDHI0 pins routed.
+ * @retval k_ra_err_invalid_arg   PFS programming rejected an entry.
+ * @retval k_ra_err_gpio_conflict At least one pin already owned.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre Single-threaded init context (no other consumer owns port-4 pins).
+ * @post On success port-4 pins 0..7 are in the SDHI alternate function.
+ * @post On failure the affected pins are left in their prior state.
+ *
+ * @note Not thread-safe; call once during board bring-up before SDHI init.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_sdhi_pins_init(void);
+
 #ifdef __cplusplus
 }
 #endif
