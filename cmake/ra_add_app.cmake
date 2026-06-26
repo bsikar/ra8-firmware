@@ -218,6 +218,19 @@ macro(ra_add_app)
             ${RA_REPO_ROOT}/libs/ra_reflow/src)
     endif()
 
+    # ra_reflow's glyph rasteriser (ra_reflow_render.c) caches rendered glyph
+    # bitmaps through the Layer-3 ra_glyph_atlas (libs/ra_mem, #164) so a page
+    # re-render never re-rasterises a glyph it drew recently, with resident glyph
+    # RAM bounded regardless of how many glyphs a book touches. ra_mem depends
+    # only on ra_core, so wire it in automatically for ra_reflow consumers
+    # (mirroring the stb special-case above), unless the app already lists ra_mem
+    # in LIBS -- in which case the loop above already globbed it.
+    if(("ra_reflow" IN_LIST _RA_APP_LIBS) AND (NOT "ra_mem" IN_LIST _RA_APP_LIBS))
+        file(GLOB_RECURSE _ra_lib_mem CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_mem/src/*.c)
+        list(APPEND _ra_lib_extra ${_ra_lib_mem})
+        list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/ra_mem/inc)
+    endif()
+
     # ra_epub parses .epub (ZIP container + XML) through the vendored miniz (C)
     # and tinyxml2 (C++). Its first-party .c sources are globbed by the LIBS loop
     # above, but the C-callable XML shim is C++ (ra_epub_xml_shim.cpp) and the two

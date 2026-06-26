@@ -25,8 +25,9 @@
 #include <stdint.h>
 
 #include "ra_err.h"
-#include "ra_reflow_css.h"   /* ra_css_sheet_t for the content-CSS cascade (#111) */
-#include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch             */
+#include "ra_glyph_atlas.h"  /* ra_glyph_atlas_t for the Layer-3 glyph cache (#164) */
+#include "ra_reflow_css.h"   /* ra_css_sheet_t for the content-CSS cascade (#111)   */
+#include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch               */
 
 /* ===========================================================================
  * Compile-time limits
@@ -570,6 +571,10 @@ typedef struct {
   /* --- content CSS cascade (#111) ------------------------------------ */
   // cppcheck-suppress unusedStructMember
   ra_css_sheet_t css; /**< Parsed `<style>` rules for the chapter. */
+
+  /* --- glyph atlas (Layer-3 cache, #164) ----------------------------- */
+  // cppcheck-suppress unusedStructMember
+  ra_glyph_atlas_t* glyph_atlas; /**< Glyph bitmap cache, or NULL for direct raster. */
 
   /* --- lifecycle ------------------------------------------------------ */
   // cppcheck-suppress unusedStructMember

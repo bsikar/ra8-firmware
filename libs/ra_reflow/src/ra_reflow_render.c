@@ -31,6 +31,7 @@
 
 #include "ra_err.h"
 #include "ra_gfx.h"
+#include "ra_glyph_atlas.h"
 #include "ra_reflow.h"
 #include "ra_reflow_svg.h"
 #include "stb_truetype.h"
@@ -51,6 +52,7 @@ typedef enum : uint16_t {
   k_priv_underline_thick_px  = 1U,   /**< Thickness of the anchor underline.             */
   k_priv_glyph_dim_max       = 192U, /**< Mask edge bound = 2 * k_ra_reflow_max_font_px. */
   k_priv_svg_href_max        = 256U, /**< Max unwrapped SVG cover-image href length.     */
+  k_priv_glyph_mode_aa       = 0U,   /**< Glyph-cache render mode: stb coverage AA.      */
 } priv_render_consts_t;
 
 /**
@@ -67,6 +69,94 @@ typedef enum : uint16_t {
  * skipped rather than truncated.
  */
 static uint8_t s_glyph_mask[(size_t)k_priv_glyph_dim_max * (size_t)k_priv_glyph_dim_max];
+
+/**
+ * @struct priv_glyph_render_ctx_t
+ * @brief Per-glyph state handed to the glyph-atlas render-on-miss callback.
+ *
+ * @details The ::ra_glyph_atlas render seam is fixed at bind time, but the font,
+ *          scale, and bitmap extent for the glyph currently being drawn vary per
+ *          call. The blit path computes the box once (::priv_blit_glyph) and
+ *          stashes them here immediately before ::ra_glyph_atlas_get, so a cache
+ *          miss rasterises the right glyph at the known size without recomputing
+ *          the box. Single instance (render is single-threaded, like
+ *          @ref s_glyph_mask and @c s_faces).
+ *
+ * @invariant When a miss can fire, `font` is non-NULL and `w`, `h` are the
+ *            positive extents the blit path already validated for the glyph.
+ * @since 0.1.0
+ */
+typedef struct {
+  const stbtt_fontinfo* font;  /**< Font for the in-flight glyph.             */
+  float                 scale; /**< stb pixel-height scale for that glyph.    */
+  int                   w;     /**< Glyph bitmap width (from the box query).  */
+  int                   h;     /**< Glyph bitmap height (from the box query). */
+} priv_glyph_render_ctx_t;
+
+/**
+ * @brief Render context shared with the bound glyph atlas (file-static, like
+ *        @ref s_glyph_mask -- render is single-threaded).
+ *
+ * @warning Mutated by the blit path before each ::ra_glyph_atlas_get; not
+ *          re-entrant.
+ */
+static priv_glyph_render_ctx_t s_glyph_render_ctx;
+
+/**
+ * @brief Glyph-atlas render-on-miss callback: rasterise one glyph into a cell.
+ *
+ * @details Bridges ::ra_glyph_atlas to the engine's stb_truetype rasteriser. On
+ *          a cache miss the atlas calls this (only ever through ::ra_glyph_atlas_get,
+ *          which validates ctx/key/cell and supplies its own cell + out_w/out_h
+ *          storage, so no argument null-check is needed here -- the same
+ *          caller-guarantee convention as ::priv_blit_alpha_mask). The font,
+ *          scale, and extent come from @ref s_glyph_render_ctx (already computed
+ *          and validated by ::priv_blit_glyph before the get); the code point
+ *          rides in `key->glyph_id`. `stbtt_MakeCodepointBitmap` runs with
+ *          stride == w exactly as the direct path, so a cached bitmap is
+ *          byte-identical to a freshly rasterised one. A glyph whose bitmap
+ *          exceeds the cell is rejected so the caller falls back to direct
+ *          rasterisation.
+ * @param[in]  ctx        The ::priv_glyph_render_ctx_t set by ::priv_blit_glyph.
+ * @param[in]  key        Glyph to render (`glyph_id` is the code point).
+ * @param[out] cell       Destination cell buffer (`cell_bytes` writable).
+ * @param[in]  cell_bytes Cell capacity in bytes.
+ * @param[out] out_w      Rendered glyph width in pixels.
+ * @param[out] out_h      Rendered glyph height in pixels.
+ * @return Result code.
+ * @retval k_ra_ok               Glyph rendered; `*out_w`/`*out_h` written.
+ * @retval k_ra_err_invalid_size The glyph bitmap does not fit the cell.
+ * @pre `ctx` is the bound ::s_glyph_render_ctx with a valid font/scale/w/h.
+ * @pre `cell` has room for `cell_bytes` bytes (guaranteed by the keycache).
+ * @post On `k_ra_ok` the cell holds a tightly packed alpha-8 `w*h` bitmap.
+ * @post On `k_ra_err_invalid_size` the cell is untouched and stays unpinned.
+ * @note Not thread-safe; uses @ref s_glyph_render_ctx.
+ * @since 0.1.0
+ */
+static ra_err_t priv_atlas_render_glyph(void*                 ctx,
+                                        const ra_glyph_key_t* key,
+                                        uint8_t*              cell,
+                                        uint32_t              cell_bytes,
+                                        uint16_t*             out_w,
+                                        uint16_t*             out_h)
+{
+  const priv_glyph_render_ctx_t* rc = (const priv_glyph_render_ctx_t*)ctx;
+  /* w/h were computed and validated (> 0) by priv_blit_glyph before the get. */
+  if (((size_t)rc->w * (size_t)rc->h) > (size_t)cell_bytes) {
+    return k_ra_err_invalid_size; /* Too big to cache -> caller blits directly. */
+  }
+  stbtt_MakeCodepointBitmap(rc->font,
+                            cell,
+                            rc->w,
+                            rc->h,
+                            rc->w,
+                            rc->scale,
+                            rc->scale,
+                            (int)key->glyph_id);
+  *out_w = (uint16_t)rc->w;
+  *out_h = (uint16_t)rc->h;
+  return k_ra_ok;
+}
 
 /**
  * @brief Initialise an stbtt_fontinfo from the engine's font blob.
@@ -170,49 +260,166 @@ static void priv_draw_underline(const stbtt_fontinfo*    font,
 }
 
 /**
- * @brief Rasterise one glyph at (gx, gy) into the bound framebuffer.
+ * @brief Rasterise one glyph straight into @ref s_glyph_mask and blit it.
+ *
+ * @details The heap-free fallback path used when no glyph cache is bound or a
+ *          glyph is too large to cache. "Make" rasterises into the fixed
+ *          tightly-packed @ref s_glyph_mask (stride == w, matching
+ *          ::priv_blit_alpha_mask) -- the bitmap never hits the heap; stb's
+ *          vertex/edge scratch is served by the static arena in
+ *          ra_stbtt_alloc.c. Glyphs larger than the mask are skipped (not
+ *          truncated), exactly as before the cache existed.
+ * @param[in] font  Initialised font for this glyph.
+ * @param[in] scale stb pixel-height scale for @p g.
+ * @param[in] g     Positioned glyph to draw.
+ * @param[in] w     Glyph bitmap width from the box query.
+ * @param[in] h     Glyph bitmap height from the box query.
+ * @param[in] x0    stb x baseline offset from the box query.
+ * @param[in] y0    stb y baseline offset from the box query.
+ * @param[in] ox    Pixel offset added to every glyph x.
+ * @param[in] oy    Pixel offset added to every glyph y.
+ * @pre `w` and `h` are the positive extents reported for @p g.
+ * @pre @p font is initialised and @p g is non-NULL.
+ * @post On a fitting glyph the covered pixels are blitted; oversized are skipped.
+ * @post No engine or cache state is mutated.
+ * @note Not thread-safe; uses @ref s_glyph_mask.
+ * @since 0.1.0
+ */
+static void priv_glyph_render_direct(const stbtt_fontinfo*    font,
+                                     float                    scale,
+                                     const ra_reflow_glyph_t* g,
+                                     int                      w,
+                                     int                      h,
+                                     int                      x0,
+                                     int                      y0,
+                                     int32_t                  ox,
+                                     int32_t                  oy)
+{
+  /* Skip (do not truncate) any glyph larger than the fixed mask. */
+  const size_t total = (size_t)w * (size_t)h;
+  if (total <= sizeof s_glyph_mask) {
+    stbtt_MakeCodepointBitmap(font, s_glyph_mask, w, h, w, scale, scale, g->cp);
+    priv_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0, ox, oy);
+  }
+}
+
+/**
+ * @brief Draw one glyph through the bound glyph atlas (cache hit or render-miss).
+ *
+ * @details Keys the glyph by (face, size, code point, mode), fetches a pinned
+ *          bitmap from @p atlas (rendering once on a miss via
+ *          ::priv_atlas_render_glyph), blits it, then unpins. Because the cache
+ *          is filled by the very same stb rasteriser as the direct path, the
+ *          blitted pixels are byte-identical either way. Any atlas error
+ *          (oversized glyph, or every cell pinned) returns @c false so the
+ *          caller can fall back to ::priv_glyph_render_direct -- the cache is a
+ *          pure optimisation and never changes output.
+ * @param[in] atlas   Bound glyph cache (non-NULL).
+ * @param[in] face_id Face index resolved for this glyph.
+ * @param[in] font    Initialised font for this glyph.
+ * @param[in] scale   stb pixel-height scale for @p g.
+ * @param[in] g       Positioned glyph to draw.
+ * @param[in] w       Glyph bitmap width from the box query (> 0).
+ * @param[in] h       Glyph bitmap height from the box query (> 0).
+ * @param[in] x0      stb x baseline offset from the box query.
+ * @param[in] y0      stb y baseline offset from the box query.
+ * @param[in] ox      Pixel offset added to every glyph x.
+ * @param[in] oy      Pixel offset added to every glyph y.
+ * @return @c true if the glyph was drawn from the cache; @c false to fall back.
+ * @retval true  The glyph was fetched (hit or render-on-miss) and blitted.
+ * @retval false The atlas could not service the glyph; caller blits directly.
+ * @pre @p atlas, @p font, and @p g are non-NULL.
+ * @pre @p w and @p h are the positive extents already validated by the caller.
+ * @post On @c true the glyph is blitted and no cache pin is left held.
+ * @post On @c false no pixels were drawn and no cache pin is held.
+ * @note Not thread-safe; mutates @ref s_glyph_render_ctx.
+ * @note The ::ra_glyph_atlas_put return is intentionally `(void)`-cast: the
+ *       `bitmap` pointer came from ::ra_glyph_atlas_get on the same @p atlas in
+ *       this call frame and the cell is still pinned, so put cannot fail with
+ *       k_ra_err_null_ptr (both args non-NULL) or k_ra_err_invalid_arg (the cell
+ *       is a member of this atlas and is pinned). The NASA Rule 7 deviation is
+ *       bounded to this programmer-error-only path.
+ * @since 0.1.0
+ */
+static bool priv_glyph_render_cached(ra_glyph_atlas_t*        atlas,
+                                     uint8_t                  face_id,
+                                     const stbtt_fontinfo*    font,
+                                     float                    scale,
+                                     const ra_reflow_glyph_t* g,
+                                     int                      w,
+                                     int                      h,
+                                     int                      x0,
+                                     int                      y0,
+                                     int32_t                  ox,
+                                     int32_t                  oy)
+{
+  /* Hand the render-on-miss callback the font/scale/extent for this glyph. */
+  s_glyph_render_ctx.font  = font;
+  s_glyph_render_ctx.scale = scale;
+  s_glyph_render_ctx.w     = w;
+  s_glyph_render_ctx.h     = h;
+
+  ra_glyph_key_t key = {};
+  key.glyph_id       = (uint32_t)g->cp;
+  key.face_id        = (uint16_t)face_id;
+  key.size_px        = g->font_px;
+  key.mode           = (uint16_t)k_priv_glyph_mode_aa;
+
+  ra_glyph_t glyph = {};
+  if (ra_glyph_atlas_get(atlas, &key, &glyph) != k_ra_ok) {
+    return false; /* Uncacheable (oversized / full) -> caller blits directly. */
+  }
+  priv_blit_alpha_mask(g, glyph.bitmap, (int)glyph.width, (int)glyph.height, x0, y0, ox, oy);
+  (void)ra_glyph_atlas_put(atlas, glyph.bitmap);
+  return true;
+}
+
+/**
+ * @brief Rasterise one glyph at its baseline position into the bound framebuffer.
  *
  * @details
- * `gx` / `gy` are the glyph's baseline-left position. We add the
- * stbtt y-offset so the bitmap lands in the correct row above the
- * baseline; columns are offset by stbtt's xoff so accents and
- * descenders place correctly.
+ * `g->x` / `g->y` are the glyph's baseline-left position. The "Box" call reports
+ * the bitmap extent and stb baseline offsets (x0, y0) -- cheap, no raster -- so
+ * the bitmap lands in the correct row above the baseline and columns place
+ * accents/descenders correctly. When @p atlas is bound the bitmap is fetched
+ * from (or rendered once into) the cache; otherwise it is rasterised directly.
+ * Underlined link glyphs additionally get an underline strip.
  *
- * @param[in] font See implementation.
- * @param[in] g See implementation.
- * @param[in] ox Pixel offset added to every glyph x.
- * @param[in] oy Pixel offset added to every glyph y.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @param[in] atlas   Bound glyph cache, or NULL for direct rasterisation.
+ * @param[in] face_id Face index resolved for this glyph (for the cache key).
+ * @param[in] font    Initialised font for this glyph.
+ * @param[in] g       Positioned glyph to draw.
+ * @param[in] ox      Pixel offset added to every glyph x.
+ * @param[in] oy      Pixel offset added to every glyph y.
+ * @pre @p font is initialised and @p g is non-NULL.
+ * @pre @p face_id selected @p font in the caller.
+ * @post The glyph (and any underline) is blitted into the bound framebuffer.
+ * @post Engine state is unchanged; only the framebuffer and cache LRU move.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void
-priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g, int32_t ox, int32_t oy)
+static void priv_blit_glyph(ra_glyph_atlas_t*        atlas,
+                            uint8_t                  face_id,
+                            const stbtt_fontinfo*    font,
+                            const ra_reflow_glyph_t* g,
+                            int32_t                  ox,
+                            int32_t                  oy)
 {
   const float scale = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
-  /* Bounded, heap-free glyph rasterisation: the "Box" call reports the
-   * bitmap extent and baseline offsets (x0, y0), then "Make" rasterises
-   * directly into the fixed s_glyph_mask (tightly packed, stride == w,
-   * matching priv_blit_alpha_mask) -- so the bitmap never hits the heap.
-   * stb's internal vertex/edge scratch is served by the static arena in
-   * ra_stbtt_alloc.c (STBTT_malloc is redirected there at build time),
-   * keeping the whole path off libc malloc. */
-  int x0 = 0;
-  int y0 = 0;
-  int x1 = 0;
-  int y1 = 0;
+  int         x0    = 0;
+  int         y0    = 0;
+  int         x1    = 0;
+  int         y1    = 0;
   stbtt_GetCodepointBitmapBox(font, g->cp, scale, scale, &x0, &y0, &x1, &y1);
   const int w = x1 - x0;
   const int h = y1 - y0;
-  if (w > 0 && h > 0) {
-    /* Skip (do not truncate) any glyph larger than the fixed mask. */
-    const size_t total = (size_t)w * (size_t)h;
-    if (total <= sizeof s_glyph_mask) {
-      stbtt_MakeCodepointBitmap(font, s_glyph_mask, w, h, w, scale, scale, g->cp);
-      priv_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0, ox, oy);
+  if ((w > 0) && (h > 0)) {
+    bool drawn = false;
+    if (atlas != nullptr) {
+      drawn = priv_glyph_render_cached(atlas, face_id, font, scale, g, w, h, x0, y0, ox, oy);
+    }
+    if (!drawn) {
+      priv_glyph_render_direct(font, scale, g, w, h, x0, y0, ox, oy);
     }
   }
 
@@ -496,7 +703,7 @@ priv_render_page(const ra_reflow_t* engine, uint32_t page_idx, int32_t ox, int32
     if (fi >= nfaces) {
       fi = 0U; /* defensive: out-of-range face index -> default */
     }
-    priv_blit_glyph(&s_faces[fi], g, ox, oy);
+    priv_blit_glyph(engine->glyph_atlas, fi, &s_faces[fi], g, ox, oy);
   }
   priv_render_images(engine, page_idx, ox, oy);
   return k_ra_ok;
@@ -514,4 +721,45 @@ ra_err_t ra_reflow_render_page_at(const ra_reflow_t* engine,
                                   int32_t            origin_y)
 {
   return priv_render_page(engine, page_idx, origin_x, origin_y);
+}
+
+ra_err_t ra_reflow_set_glyph_atlas(ra_reflow_t*                           engine,
+                                   ra_glyph_atlas_t*                      atlas,
+                                   const ra_reflow_glyph_atlas_storage_t* storage)
+{
+  if (engine == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (engine->in_use == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  if (atlas == nullptr) {
+    engine->glyph_atlas = nullptr; /* Detach -> revert to direct rasterisation. */
+    return k_ra_ok;
+  }
+  if (storage == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if ((storage->cell_bytes == 0U) || (storage->cell_count == 0U) || (storage->bucket_count == 0U)) {
+    return k_ra_err_invalid_size;
+  }
+
+  const ra_glyph_atlas_cfg_t cfg = {
+    .cell_mem     = storage->cell_mem,
+    .cell_bytes   = storage->cell_bytes,
+    .cell_count   = storage->cell_count,
+    .meta         = storage->meta,
+    .keys         = storage->keys,
+    .dims         = storage->dims,
+    .buckets      = storage->buckets,
+    .bucket_count = storage->bucket_count,
+    .render       = priv_atlas_render_glyph,
+    .render_ctx   = &s_glyph_render_ctx,
+  };
+  const ra_err_t err = ra_glyph_atlas_init(atlas, &cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  engine->glyph_atlas = atlas;
+  return k_ra_ok;
 }
