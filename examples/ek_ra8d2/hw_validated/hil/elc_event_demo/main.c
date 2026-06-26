@@ -12,7 +12,7 @@
  * involvement (HUM Ch 19, p 817..836). This demo:
  *
  *   1. ``ra_cgc_init`` -- clocks up.
- *   2. ``ra_mstp_init`` + console pins (PD02 / PD03 SCI8).
+ *   2. ``ra_mstp_init`` + ``ra_board_uart_console_init`` (PD02 / PD03 SCI8).
  *   3. ``ra_elc_init`` -- powers on the controller and clears
  *      every ELSR slot.
  *   4. ``ra_elc_link(0, k_ra_elc_event_icu_irq0)`` -- routes
@@ -45,18 +45,14 @@
 #include "ra_cgc.h"
 #include "ra_elc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_elc_demo_baud        = 115200U,
-  k_elc_demo_period_ms   = 1000U,
-  k_elc_demo_sci_channel = 8U,
+  k_elc_demo_baud      = 115200U,
+  k_elc_demo_period_ms = 1000U,
 } elc_demo_const_t;
 
 /** @brief ELC slot / software-event indices used by the demo. */
@@ -69,12 +65,6 @@ typedef enum : uint8_t {
   k_elc_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10. */
   k_elc_demo_print_buf    = 48U, /**< Max bytes in one print line.    */
 } elc_demo_byte_t;
-
-/** @brief Pinout for SCI8 console. */
-static const ra_port_pin_t k_elc_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_elc_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Park forever after a fatal init failure.
  *
@@ -97,15 +87,11 @@ static void elc_demo_panic_halt(void)
 static void elc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     elc_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    elc_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     elc_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -114,22 +100,7 @@ static void elc_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     elc_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_elc_demo_pin_txd, k_ra_psel_sci_async, "elc_event_demo.txd8") !=
-      k_ra_ok) {
-    elc_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_elc_demo_pin_rxd, k_ra_psel_sci_async, "elc_event_demo.rxd8") !=
-      k_ra_ok) {
-    elc_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_elc_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_elc_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_elc_demo_baud) != k_ra_ok) {
     elc_demo_panic_halt();
   }
 
@@ -245,9 +216,7 @@ int32_t main(void)
        * stop advancing but the demo would keep emitting "elc: en=1
        * t=0" indefinitely and the probe would pass. */
       const uint8_t trig_fail[] = "elc: FAIL trigger\r\n";
-      (void)ra_sci_write_polling((uint8_t)k_elc_demo_sci_channel,
-                                 trig_fail,
-                                 (uint32_t)(sizeof(trig_fail) - 1U));
+      (void)ra_board_uart_console_write(trig_fail, (size_t)(sizeof(trig_fail) - 1U));
     } else {
       trig_count++;
     }
@@ -255,13 +224,11 @@ int32_t main(void)
     if (ra_elc_is_enabled(&enabled) != k_ra_ok) {
       (void)ra_board_led_on(k_ra_board_led2);
       const uint8_t enabled_fail[] = "elc: FAIL is_enabled\r\n";
-      (void)ra_sci_write_polling((uint8_t)k_elc_demo_sci_channel,
-                                 enabled_fail,
-                                 (uint32_t)(sizeof(enabled_fail) - 1U));
+      (void)ra_board_uart_console_write(enabled_fail, (size_t)(sizeof(enabled_fail) - 1U));
     }
     uint8_t        out[k_elc_demo_print_buf] = {};
     const uint32_t off                       = elc_demo_format_line(out, enabled, trig_count);
-    if (ra_sci_write_polling((uint8_t)k_elc_demo_sci_channel, out, off) != k_ra_ok) {
+    if (ra_board_uart_console_write(out, (size_t)off) != k_ra_ok) {
       break;
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {

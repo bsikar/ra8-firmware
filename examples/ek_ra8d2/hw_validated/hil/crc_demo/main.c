@@ -33,18 +33,13 @@
 #include "ra_cgc.h"
 #include "ra_crc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_crc_demo_baud        = 115200U,
-  k_crc_demo_period_ms   = 1000U,
-  k_crc_demo_sci_channel = 8U,
+  k_crc_demo_baud      = 115200U,
+  k_crc_demo_period_ms = 1000U,
 } crc_demo_config_t;
 
 /** @brief Software CRC-32 polynomial + bit constants (reflected). */
@@ -65,12 +60,6 @@ typedef enum : uint8_t {
   k_crc_demo_payload_len   = 16U,
   k_crc_demo_hex_per_word  = 8U,
 } crc_demo_byte_t;
-
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8). */
-static const ra_port_pin_t k_crc_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_crc_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Fixed 16-byte test payload. */
 static const uint8_t k_crc_demo_payload[k_crc_demo_payload_len] = {
@@ -188,28 +177,10 @@ static uint32_t crc_demo_sw_crc32(const uint8_t* data, uint32_t len)
   return crc ^ (uint32_t)k_crc_demo_sw_xor_out;
 }
 
-/**
- * @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via PFS.
- *
- * @pre IOPORT module reachable.
- * @post On success PD_02 + PD_03 in SCI-async mode.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t crc_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_crc_demo_pin_txd, k_ra_psel_sci_async, "crc_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_crc_demo_pin_rxd, k_ra_psel_sci_async, "crc_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LEDs + CRC unit up. */
 static void crc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     crc_demo_panic_halt();
@@ -217,23 +188,10 @@ static void crc_demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    crc_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     crc_demo_panic_halt();
   }
-  if (crc_demo_pins_init() != k_ra_ok) {
-    crc_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_crc_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_crc_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_crc_demo_baud) != k_ra_ok) {
     crc_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -251,12 +209,15 @@ static void crc_demo_setup_or_halt(void)
  * @brief One iteration: compute hw + sw CRC and emit the comparison line.
  *
  * @par MC/DC:
- * Compound decision: ``hw_compute != ok || sci_writes != ok``. Two
- * atomic conditions x N+1 = 3 vectors (both-ok runtime path + each
- * failure branch covered by host integration test).
+ * Single atomic decision: ``ra_crc_compute(...) != k_ra_ok``. One
+ * condition x 2 vectors -- the steady-state success path plus the
+ * compute-failure branch (covered by the host integration test). The
+ * console writes are fire-and-forget so they add no decision.
  *
  * @param[out] out_match Receives 1 if hw == sw, 0 otherwise.
- * @return Error code from the first failing primitive.
+ * @return Error code from the CRC compute primitive.
+ * @retval k_ra_ok Comparison line emitted; ``*out_match`` valid.
+ * @retval k_ra_err_hw_error Hardware CRC compute failed.
  *
  * @pre ``out_match`` non-NULL.
  * @post On success ``*out_match`` is 0 or 1.
@@ -277,35 +238,17 @@ static void crc_demo_setup_or_halt(void)
   crc_demo_word_to_hex(hw, hwhex);
   crc_demo_word_to_hex(sw, swhex);
 
-  if (ra_sci_write_polling((uint8_t)k_crc_demo_sci_channel,
-                           k_crc_demo_prefix,
-                           (uint32_t)(sizeof(k_crc_demo_prefix) - 1U)) != k_ra_ok) {
-    return k_ra_err_hw_error;
-  }
-  if (ra_sci_write_polling((uint8_t)k_crc_demo_sci_channel,
-                           hwhex,
-                           (uint32_t)k_crc_demo_hex_per_word) != k_ra_ok) {
-    return k_ra_err_hw_error;
-  }
-  if (ra_sci_write_polling((uint8_t)k_crc_demo_sci_channel,
-                           k_crc_demo_sw_tag,
-                           (uint32_t)(sizeof(k_crc_demo_sw_tag) - 1U)) != k_ra_ok) {
-    return k_ra_err_hw_error;
-  }
-  if (ra_sci_write_polling((uint8_t)k_crc_demo_sci_channel,
-                           swhex,
-                           (uint32_t)k_crc_demo_hex_per_word) != k_ra_ok) {
-    return k_ra_err_hw_error;
-  }
+  (void)ra_board_uart_console_write(k_crc_demo_prefix, (size_t)(sizeof(k_crc_demo_prefix) - 1U));
+  (void)ra_board_uart_console_write(hwhex, (size_t)k_crc_demo_hex_per_word);
+  (void)ra_board_uart_console_write(k_crc_demo_sw_tag, (size_t)(sizeof(k_crc_demo_sw_tag) - 1U));
+  (void)ra_board_uart_console_write(swhex, (size_t)k_crc_demo_hex_per_word);
   *out_match = (hw == sw) ? 1U : 0U;
   if (*out_match != 0U) {
-    return ra_sci_write_polling((uint8_t)k_crc_demo_sci_channel,
-                                k_crc_demo_ok_tag,
-                                (uint32_t)(sizeof(k_crc_demo_ok_tag) - 1U));
+    (void)ra_board_uart_console_write(k_crc_demo_ok_tag, (size_t)(sizeof(k_crc_demo_ok_tag) - 1U));
+    return k_ra_ok;
   }
-  return ra_sci_write_polling((uint8_t)k_crc_demo_sci_channel,
-                              k_crc_demo_bad_tag,
-                              (uint32_t)(sizeof(k_crc_demo_bad_tag) - 1U));
+  (void)ra_board_uart_console_write(k_crc_demo_bad_tag, (size_t)(sizeof(k_crc_demo_bad_tag) - 1U));
+  return k_ra_ok;
 }
 
 #pragma GCC diagnostic push

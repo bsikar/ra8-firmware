@@ -48,12 +48,8 @@
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sram.h"
 #include "ra_time.h"
 
@@ -62,10 +58,9 @@ static const char* s_tag = "ecc_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_ecc_demo_baud        = 115200U,     /**< SCI8 baud rate.               */
-  k_ecc_demo_period_ms   = 1000U,       /**< Delay between status reads.   */
-  k_ecc_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.     */
-  k_ecc_demo_pat_xor     = 0x5A5A5A5AU, /**< Per-word rw-test pattern XOR. */
+  k_ecc_demo_baud      = 115200U,     /**< SCI8 baud rate.               */
+  k_ecc_demo_period_ms = 1000U,       /**< Delay between status reads.   */
+  k_ecc_demo_pat_xor   = 0x5A5A5A5AU, /**< Per-word rw-test pattern XOR. */
 } ecc_demo_config_t;
 
 /** @brief ECC target geometry. */
@@ -73,12 +68,6 @@ typedef enum : uint8_t {
   k_ecc_demo_bank       = 2U,  /**< Spare SRAM bank 2 (program uses 0-1). */
   k_ecc_demo_test_words = 64U, /**< rw round-trip words (256 B).          */
 } ecc_demo_geom_t;
-
-/** @brief Pinout for SCI8 on the J-Link OB CDC channel (PD02 / PD03). */
-static const ra_port_pin_t k_ecc_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ecc_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Output line tags. */
 static const uint8_t k_ecc_demo_ok_msg[]  = "ecc: sram2 ecc=on rw=ok ok=Y\r\n";
@@ -149,36 +138,15 @@ static uint32_t ecc_demo_pattern(uint32_t i)
   return (i * i) ^ (uint32_t)k_ecc_demo_pat_xor;
 }
 
-/**
- * @brief Route PD02 / PD03 to SCI8 TXD/RXD via PFS.
- *
- * @return ``ra_err_t`` error code from the underlying PFS routing.
- * @pre IOPORT module reachable.
- * @post On success PD02 + PD03 are in SCI-async mode.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t ecc_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_ecc_demo_pin_txd, k_ra_psel_sci_async, "ecc_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_ecc_demo_pin_rxd, k_ra_psel_sci_async, "ecc_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
 static void ecc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     ecc_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    ecc_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     ecc_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -187,17 +155,7 @@ static void ecc_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     ecc_demo_panic_halt();
   }
-  if (ecc_demo_pins_init() != k_ra_ok) {
-    ecc_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_ecc_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_ecc_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_ecc_demo_baud) != k_ra_ok) {
     ecc_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -322,14 +280,12 @@ int32_t main(void)
     const uint8_t  good = (err == k_ra_ok && ok != 0U) ? 1U : 0U;
     g_ecc_ok            = (uint32_t)good;
     if (good != 0U) {
-      (void)ra_sci_write_polling((uint8_t)k_ecc_demo_sci_channel,
-                                 k_ecc_demo_ok_msg,
-                                 (uint32_t)(sizeof(k_ecc_demo_ok_msg) - 1U));
+      (void)ra_board_uart_console_write(k_ecc_demo_ok_msg,
+                                        (size_t)(sizeof(k_ecc_demo_ok_msg) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led1);
     } else {
-      (void)ra_sci_write_polling((uint8_t)k_ecc_demo_sci_channel,
-                                 k_ecc_demo_bad_msg,
-                                 (uint32_t)(sizeof(k_ecc_demo_bad_msg) - 1U));
+      (void)ra_board_uart_console_write(k_ecc_demo_bad_msg,
+                                        (size_t)(sizeof(k_ecc_demo_bad_msg) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led2);
     }
     ++g_ecc_heartbeat;
